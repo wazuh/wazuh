@@ -260,6 +260,34 @@ static void BM_JsonConstruction_MediumNested(benchmark::State& state)
 }
 BENCHMARK(BM_JsonConstruction_MediumNested);
 
+// =============================================================================
+// Serialization: str() / prettyStr() of a valid document (output validity check cost)
+// =============================================================================
+
+static void BM_JsonStr_MediumNested(benchmark::State& state)
+{
+    const Json json(MEDIUM_NESTED_JSON);
+    for (auto _ : state)
+    {
+        auto out = json.str();
+        benchmark::DoNotOptimize(out);
+    }
+    state.SetItemsProcessed(state.iterations());
+}
+BENCHMARK(BM_JsonStr_MediumNested);
+
+static void BM_JsonPrettyStr_MediumNested(benchmark::State& state)
+{
+    const Json json(MEDIUM_NESTED_JSON);
+    for (auto _ : state)
+    {
+        auto out = json.prettyStr();
+        benchmark::DoNotOptimize(out);
+    }
+    state.SetItemsProcessed(state.iterations());
+}
+BENCHMARK(BM_JsonPrettyStr_MediumNested);
+
 static void BM_JsonConstruction_LargeFlat(benchmark::State& state)
 {
     for (auto _ : state)

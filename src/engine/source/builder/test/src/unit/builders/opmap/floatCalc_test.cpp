@@ -1,3 +1,5 @@
+#include <limits>
+
 #include "builders/baseBuilders_test.hpp"
 
 #include "builders/opmap/opBuilderHelperMap.hpp"
@@ -324,6 +326,42 @@ INSTANTIATE_TEST_SUITE_P(
         MapT(R"({"ref": null})",
              getOpBuilderHelperCalc(false),
              {makeValue(R"("div")"), makeRef("ref"), makeValue(R"(1)")},
-             FAILURE(customRefExpected()))),
+             FAILURE(customRefExpected())),
+        // Non-finite division results must fail, like SUM/SUB/MUL overflow
+        MapT("{}",
+             getOpBuilderHelperCalc(false),
+             {makeValue(R"("div")"), makeValue(R"(1)"), makeValue(R"(1e-320)")},
+             FAILURE()),
+        MapT(R"({"ref": 1e308})",
+             getOpBuilderHelperCalc(false),
+             {makeValue(R"("div")"), makeRef("ref"), makeValue(R"(1e-308)")},
+             FAILURE(customRefExpected())),
+        MapT("{}",
+             getOpBuilderHelperCalc(false),
+             {makeValue(R"("div")"), makeValue(R"(1e308)"), makeValue(R"(0.5)")},
+             FAILURE()),
+        MapT("{}",
+             getOpBuilderHelperCalc(false),
+             {makeValue(R"("div")"), makeValue(R"(1)"), makeValue(R"(4)")},
+             SUCCESS(json::Json(R"(0.25)")))),
     testNameFormatter<MapOperationTest>("FloatCalc"));
+
+// A NaN operand cannot be written as JSON text, so the event is built by hand
+class FloatCalcNonFiniteTest : public BaseBuilderTest
+{
+};
+
+TEST_F(FloatCalcNonFiniteTest, DivNaNRefFails)
+{
+    auto event = std::make_shared<json::Json>(R"({})");
+    event->setDouble(std::numeric_limits<double>::quiet_NaN(), "/ref");
+
+    expectBuildSuccess();
+    customRefExpected()(*mocks);
+
+    auto operation =
+        getOpBuilderHelperCalc(false)({makeValue(R"("div")"), makeRef("ref"), makeValue(R"(2)")}, mocks->ctx);
+    auto result = operation(event);
+    ASSERT_FALSE(result);
+}
 } // namespace mapoperatestest
