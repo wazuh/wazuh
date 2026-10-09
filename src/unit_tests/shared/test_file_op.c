@@ -630,12 +630,17 @@ void test_w_compress_gzfile_directory_rejected(void **state){
 void test_w_compress_gzfile_clear_nonblock_fail(void **state){
 
     int ret;
+    char expected[2 * PATH_MAX];
 
     g_fail_fcntl_setfl = true;
-    expect_any(__wrap__merror, formatted_msg);
+    /* The reason given is F_SETFL's, kept across the close() that follows it. */
+    snprintf(expected, sizeof(expected), "in w_compress_gzfile(): cannot open %s (%d):'%s'", compress_src, EBADF,
+             strerror(EBADF));
+    expect_string(__wrap__merror, formatted_msg, expected);
 
     ret = w_compress_gzfile(compress_src, "testfiledst.gz");
     assert_int_equal(ret, -1);
+    assert_int_equal(errno, EBADF);
 }
 #endif
 
