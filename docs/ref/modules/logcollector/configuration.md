@@ -356,7 +356,8 @@ Maximum number of file descriptors Logcollector can open.
 - **Note:** Must be higher than `logcollector.max_files`. The daemon raises only its own soft limit
   and never the hard limit, which belongs to whatever starts the agent (`LimitNOFILE=65536` in
   `wazuh-agent.service`, the init script, or the container's `ulimits.nofile`); a value above that
-  ceiling is kept at the ceiling and logged as a warning. See
+  ceiling is kept at the ceiling and logged as a warning. The agent's configuration report shows the
+  configured value, not the limit in force. See
   [File descriptor limits](../../configuration/agent/README.md#file-descriptor-limits).
 
 ### logcollector.force_reload
