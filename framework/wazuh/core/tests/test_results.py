@@ -508,6 +508,38 @@ def test_uninformative_failure_survives_in_the_per_node_breakdown():
     assert merged.node_attribution['worker1'] == {'failed_items': {1774: ['001']}}
 
 
+def test_upgrade_placeholder_yields_and_stands_alone():
+    """1816 is dropped where another node answered, and kept where no node did.
+
+    The Task Manager answers 1816 on every node for an agent whose OS information is incomplete, so
+    for such an agent it is the only outcome there is and must reach the top level -- skipping it on
+    the node is what made the refusal invisible. Every entry carrying the code is reconciled, not
+    the first: errors are keyed by their text, so two wordings make two entries.
+    """
+    def upgrade_error(code, message):
+        return WazuhError(code, cmd_error=True, extra_message=message)
+
+    master = _node_result(affected=['001'])
+    master.add_failed_item(id_='002', error=upgrade_error(1824, 'The WPK file does not exist'))
+    master.add_failed_item(id_='003', error=upgrade_error(1816, 'Agent information not found in database'))
+    worker = _node_result()
+    worker.add_failed_item(id_='001', error=upgrade_error(1816, 'Agent information not found in database'))
+    worker.add_failed_item(id_='002', error=upgrade_error(1816, 'Agent information not found'))
+    worker.add_failed_item(id_='003', error=upgrade_error(1816, 'Agent information not found in database'))
+
+    merged = master | worker
+    merged.drop_uninformative_failures(1816)
+
+    rendered = merged.render()['data']
+    assert rendered['affected_items'] == ['001']
+    failed = {}
+    for item in rendered['failed_items']:
+        failed.setdefault(item['error']['code'], set()).update(item['id'])
+    # 002's second-wording 1816 is the entry a first-match drop would have left behind.
+    assert failed == {1824: {'002'}, 1816: {'003'}}
+    assert rendered['total_failed_items'] == 2
+
+
 def test_drop_uninformative_failures_is_a_no_op_without_the_code():
     """A result that never carried the placeholder must come out untouched."""
     result = _node_result(affected=['001'], failed=[('002', 1761)])

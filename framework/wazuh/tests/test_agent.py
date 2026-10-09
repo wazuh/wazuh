@@ -1445,14 +1445,13 @@ def test_agent_upgrade_agents_reports_mixed_outcomes_per_agent(mock_socket, mock
 @patch('wazuh.core.common.CLIENT_KEYS', new=os.path.join(test_agent_path, 'client.keys'))
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_agent_upgrade_agents_skips_agent_not_in_local_db(mock_socket, mock_wdb, mock_client_keys):
-    """Test `upgrade_agents` silently skips an agent this node has no info for (error 1816).
+def test_agent_upgrade_agents_reports_agent_not_in_local_db(mock_socket, mock_wdb, mock_client_keys):
+    """Test `upgrade_agents` reports socket error 6 as a 1816 failed item, without raising.
 
-    Regression test: when a request is broadcast to a node that doesn't have this agent's info
-    (e.g. because agents connect over stateless, load-balanced HTTPS with no fixed owning node),
-    the upgrade socket returns error 1816 (WM_UPGRADE_GLOBAL_DB_FAILURE). That must not raise and
-    kill the whole request -- it should be skipped so the node that actually has the agent's info
-    can report the real outcome.
+    It must not kill the whole request, and it must not be skipped either: the Task Manager also
+    answers it for an agent whose OS information is incomplete, identically on every node, so a node
+    that skips it leaves the agent out of the response everywhere and the refusal invisible. A
+    cluster merge drops it for an agent another node reported on.
     """
     result_from_socket = {
         'error': 0,
@@ -1467,8 +1466,11 @@ def test_agent_upgrade_agents_skips_agent_not_in_local_db(mock_socket, mock_wdb,
 
     assert result.affected_items == ['001']
     assert result.total_affected_items == 1
-    assert not result.failed_items
-    assert result.total_failed_items == 0
+    failed = {error.code: ids for error, ids in result.failed_items.items()}
+    assert failed == {1816: {'002'}}
+    assert result.total_failed_items == 1
+    error = next(iter(result.failed_items))
+    assert error.message == 'Agent information not found in database', 'the Task Manager\'s reason must reach the user'
 
 
 @pytest.mark.parametrize('filename, group_list', [
