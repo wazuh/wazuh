@@ -173,6 +173,12 @@
 | [#39064](https://github.com/wazuh/wazuh/issues/39064) | The installers no longer add an `<authorization_pass_path>` element naming the default password file. |
 | [#39064](https://github.com/wazuh/wazuh/issues/39064) | An agent enrolled before the upgrade keeps working on its existing key, but must be re-pointed with an enrollment token to obtain a re-enrollment secret. |
 | [#39406](https://github.com/wazuh/wazuh/issues/39406) | Changed the Windows agent tray GUI (`win32ui`) to display the manager address and enrollment key read-only, removing the `Save` button and its unverified write path. |
+| [#40120](https://github.com/wazuh/wazuh/issues/40120) | Renamed the Windows agent Start menu folder from `OSSEC` to `Wazuh` and the agent GUI shortcut from `Manage Agent` to `Wazuh Agent Manager`. |
+| [#40120](https://github.com/wazuh/wazuh/issues/40120) | Upgrades remove the agent shortcuts left in the legacy `OSSEC` Start menu folder, and the folder itself when nothing else is left in it. |
+| [#40121](https://github.com/wazuh/wazuh/issues/40121) | The Windows agent GUI shows `(no manager configured)` instead of a placeholder or empty endpoint. |
+| [#40121](https://github.com/wazuh/wazuh/issues/40121) | With no manager configured, **Manage** > **Start** and **Restart** in the Windows agent GUI report "check config" instead of starting an agent that exits at once. |
+| [#40121](https://github.com/wazuh/wazuh/issues/40121) | The Windows installer's no-token message points to **Manage** > **Enroll** in the agent GUI or to `wazuh-agent-auth.exe`. |
+| [#40121](https://github.com/wazuh/wazuh/issues/40121) | Windows installer lines in `ossec.log` use the agent's `yyyy/mm/dd hh:mm:ss` timestamp. |
 
 #### Removed
 

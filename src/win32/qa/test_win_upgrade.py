@@ -9,6 +9,9 @@ BASE_PATH = 'C:\\win-agent-base\\'
 INSTALL_PATH = 'C:\\Program Files (x86)\\ossec-agent\\'
 # Administrators and SYSTEM
 EXPECTED_SHARED_SIDS = {'S-1-5-32-544', 'S-1-5-18'}
+# The installer is per-machine, so its shortcuts live in the all-users Start menu.
+START_MENU_PATH = os.path.join(os.environ.get('PROGRAMDATA', 'C:\\ProgramData'),
+                               'Microsoft', 'Windows', 'Start Menu', 'Programs')
 
 
 def populate_dict(dict, files_list):
@@ -130,3 +133,16 @@ def test_win_upgrade_shared_dir_permissions():
 
     unexpected = {path: sorted(sids) for path, sids in sids_by_path.items() if sids != EXPECTED_SHARED_SIDS}
     assert not unexpected, f"Expected only {sorted(EXPECTED_SHARED_SIDS)}, found: {unexpected}"
+
+
+def test_win_upgrade_start_menu():
+    # Runs after test_win_upgrade, on the upgraded installation. The agent GUI must be reachable
+    # from a Start menu search for "Wazuh", and the folder the released version used is gone.
+    # That folder is removed by the released MSI's own uninstall, which the upgrade runs, so this
+    # does not cover the new cleanup of shortcuts the NSIS installer left there.
+    gui_shortcut = os.path.join(START_MENU_PATH, 'Wazuh', 'Wazuh Agent Manager.lnk')
+    assert os.path.isfile(gui_shortcut), f"Shortcut '{gui_shortcut}' not found"
+
+    legacy_folder = os.path.join(START_MENU_PATH, 'OSSEC')
+    assert not os.path.exists(legacy_folder), \
+        f"Legacy Start menu folder '{legacy_folder}' still present: {os.listdir(legacy_folder)}"
