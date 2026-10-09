@@ -185,7 +185,7 @@ void recoverModuleData(const std::string& index) {
 
     // Clear the manager's index before resending the fresh snapshot.
     if (!protocol->notifyDataClean({index}).success) {
-        merror("Failed to clear index %s before recovery; will retry later", index.c_str());
+        mwarn("Failed to clear index %s before recovery; will retry later", index.c_str());
         return;
     }
 
@@ -418,7 +418,7 @@ private:
             {
                 if (!m_protocol->notifyDataClean({"wazuh-states-inventory-packages"}).success)
                 {
-                    merror("Failed to clear wazuh-states-inventory-packages before full-replace resync");
+                    mwarn("Failed to clear wazuh-states-inventory-packages before full-replace resync");
                     continue;
                 }
 
