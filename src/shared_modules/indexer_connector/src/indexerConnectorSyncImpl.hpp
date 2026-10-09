@@ -187,6 +187,7 @@ inline bool validateBulkResponse(const std::string& response, const char* tag)
         size_t totalItems = responseJson["items"].size();
         size_t successCount = 0;
         size_t versionConflictAcceptedCount = 0;
+        size_t alreadyAbsentDeleteCount = 0;
         size_t realFailureCount = 0;
 
         // Validate each item individually
@@ -258,6 +259,23 @@ inline bool validateBulkResponse(const std::string& response, const char* tag)
                 continue;
             }
 
+            // A delete of a document that is no longer there answers 404 "result":"not_found" with no `error`: the
+            // delete's goal is already met, so it counts as done -- the async connector ignores the very same item.
+            // A delete on a missing index carries `index_not_found_exception` and stays a failure.
+            if (status == HTTP_NOT_FOUND && operation == "delete" && !result.contains("error") &&
+                result.contains("result") && result["result"].is_string() &&
+                result["result"].get_ref<const std::string&>() == "not_found")
+            {
+                alreadyAbsentDeleteCount++;
+                const auto docIdIt = result.find("_id");
+                logDebug2(tag,
+                          "Delete of document '%s' answered 404 not_found: already absent, treating as success",
+                          docIdIt != result.end() && docIdIt->is_string()
+                              ? docIdIt->get_ref<const std::string&>().c_str()
+                              : "?");
+                continue;
+            }
+
             // Any other error status is a real failure
             std::string errorMsg = "Unknown error";
             if (result.contains("error"))
@@ -280,20 +298,25 @@ inline bool validateBulkResponse(const std::string& response, const char* tag)
 
         if (realFailureCount > 0)
         {
-            logWarn(tag,
-                    "Bulk operation summary: %zu total, %zu success, %zu acceptable version conflicts, %zu failures",
-                    totalItems,
-                    successCount,
-                    versionConflictAcceptedCount,
-                    realFailureCount);
+            logWarn(
+                tag,
+                "Bulk operation summary: %zu total, %zu success, %zu acceptable version conflicts, %zu already-absent "
+                "deletes, %zu failures",
+                totalItems,
+                successCount,
+                versionConflictAcceptedCount,
+                alreadyAbsentDeleteCount,
+                realFailureCount);
         }
         else
         {
             logDebug2(tag,
-                      "Bulk operation summary: %zu total, %zu success, %zu acceptable version conflicts",
+                      "Bulk operation summary: %zu total, %zu success, %zu acceptable version conflicts, %zu "
+                      "already-absent deletes",
                       totalItems,
                       successCount,
-                      versionConflictAcceptedCount);
+                      versionConflictAcceptedCount,
+                      alreadyAbsentDeleteCount);
         }
 
         // Return success only if no real failures occurred
@@ -1772,6 +1795,13 @@ public:
         return hitsResult;
     }
 
+    /**
+     * @brief Stage the deletion of ONE document by id.
+     *
+     * Deleting a document that is not there is not an error: the item comes back `404` ("result": "not_found")
+     * with no `error` element and validateBulkResponse() counts it as done, so repeating a delete is free. A
+     * delete on an index that does not exist carries `index_not_found_exception` and still fails the bulk.
+     */
     void bulkDelete(std::string_view id, std::string_view index)
     {
         if (!isSafeIndexName(index))

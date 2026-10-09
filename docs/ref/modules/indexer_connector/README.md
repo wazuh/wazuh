@@ -40,6 +40,10 @@ The library provides these classes:
 - Each consumer sets these values from its own internal options: the Vulnerability Scanner's are in its [Internal Options](../vulnerability-scanner/configuration.md#internal-options), the Inventory Sync Server's in its [configuration reference](../inventory-sync-server/configuration.md).
 - If the indexer returns HTTP 413 (payload too large), the batch is split and retried.
 - Version conflicts at the document level are handled per-document.
+- A `bulkDelete()` of a document that is not there is a per-item `404 not_found` with no `error`, and it counts as done:
+  deletes are idempotent, so it does not fail the batch. When the bulk response reports errors for other items, these
+  deletes are counted as `already-absent deletes` in the `Bulk operation summary` line. A delete on an index that does not
+  exist (`index_not_found_exception`) still fails the batch.
 
 ### Async flush behavior
 

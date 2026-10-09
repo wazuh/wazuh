@@ -4,9 +4,12 @@
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <cstdarg>
+#include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <future>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -15,7 +18,10 @@
 #include <mutex>
 #include <set>
 #include <sstream>
+#include <string_view>
 #include <thread>
+#include <variant>
+#include <vector>
 
 using ::testing::_;
 using ::testing::AtLeast;
@@ -3784,6 +3790,404 @@ TEST_F(IndexerConnectorSyncTest, BulkResponseValidationVersionConflictWithDiffer
     // Should throw - version conflict without version_conflict_engine_exception is a failure
     EXPECT_THROW(connector.flush(), IndexerConnectorException);
     EXPECT_TRUE(postCalled);
+}
+
+// Captures the log lines written through the global log function while it is alive.
+class ScopedLogCapture
+{
+public:
+    ScopedLogCapture()
+        : m_previous(Log::GLOBAL_LOG_FUNCTION)
+    {
+        // assignLogFunction() is a no-op when a function is already installed, so drop the current one first.
+        Log::deassignLogFunction();
+        Log::assignLogFunction(
+            [this](const int level, const char*, const char*, const int, const char*, const char* format, va_list args)
+            {
+                char buffer[2048];
+                va_list copy;
+                va_copy(copy, args);
+                vsnprintf(buffer, sizeof(buffer), format, copy);
+                va_end(copy);
+                std::scoped_lock lock(m_mutex);
+                m_lines.push_back({level, buffer});
+            });
+    }
+
+    ~ScopedLogCapture()
+    {
+        Log::deassignLogFunction();
+        Log::assignLogFunction(m_previous);
+    }
+
+    ScopedLogCapture(const ScopedLogCapture&) = delete;
+    ScopedLogCapture& operator=(const ScopedLogCapture&) = delete;
+
+    bool contains(std::string_view needle) const
+    {
+        std::scoped_lock lock(m_mutex);
+        return std::any_of(m_lines.begin(),
+                           m_lines.end(),
+                           [needle](const Line& line) { return line.text.find(needle) != std::string::npos; });
+    }
+
+    bool containsAtLevel(int level, std::string_view needle) const
+    {
+        std::scoped_lock lock(m_mutex);
+        return std::any_of(m_lines.begin(),
+                           m_lines.end(),
+                           [level, needle](const Line& line)
+                           { return line.level == level && line.text.find(needle) != std::string::npos; });
+    }
+
+private:
+    struct Line
+    {
+        int level;
+        std::string text;
+    };
+
+    std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)> m_previous;
+    mutable std::mutex m_mutex;
+    std::vector<Line> m_lines;
+};
+
+// Answers a bulk POST with `body` through whichever postParams variant the connector used.
+template<typename PostParams>
+static void answerBulkPostSuccess(PostParams& postParams, std::string body)
+{
+    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+    {
+        std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(body);
+    }
+    else
+    {
+        std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(body));
+    }
+}
+
+// A 409 item that validateBulkResponse() accepts.
+static constexpr auto ACCEPTABLE_CONFLICT_ITEM = R"({"index": {
+    "_id": "present",
+    "status": 409,
+    "error": {
+        "type": "version_conflict_engine_exception",
+        "reason": "[present]: version conflict, current version [1] is higher than the one provided [0]"
+    }
+}})";
+
+// Real response of probe 2 (r2), trimmed to the fields the validator reads: delete not_found + index 200 updated +
+// index 409 version conflict.
+TEST_F(IndexerConnectorSyncTest, BulkResponseValidationDeleteNotFoundWithVersionConflict)
+{
+    ScopedLogCapture logs;
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [](auto /*requestParams*/, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                answerBulkPostSuccess(postParams, R"({
+                    "took": 2,
+                    "errors": true,
+                    "items": [
+                        {"delete": {"_index": "del404-40178-b", "_id": "absent2", "_version": 1,
+                                    "result": "not_found", "status": 404}},
+                        {"index": {"_index": "del404-40178-b", "_id": "present", "_version": 1,
+                                   "result": "updated", "status": 200}},
+                        {"index": {
+                            "_index": "del404-40178-b",
+                            "_id": "present",
+                            "status": 409,
+                            "error": {
+                                "type": "version_conflict_engine_exception",
+                                "reason": "[present]: version conflict, current version [1] is higher than the one provided [0]",
+                                "index": "del404-40178-b",
+                                "shard": "0"
+                            }
+                        }}
+                    ]
+                })");
+            }));
+
+    IndexerConnectorSyncImplNoFlushInterval connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.bulkDelete("absent2", "test-index");
+    connector.bulkIndex("present", "test-index", R"({"f":"a"})", "1");
+    connector.bulkIndex("present", "test-index", R"({"f":"b"})", "0");
+
+    EXPECT_NO_THROW(connector.flush());
+    EXPECT_FALSE(logs.contains("Indexing failure"));
+    EXPECT_FALSE(logs.containsAtLevel(Log::LOGLEVEL_WARNING, "Bulk operation summary"));
+    EXPECT_TRUE(
+        logs.containsAtLevel(Log::LOGLEVEL_DEBUG_VERBOSE, "1 acceptable version conflicts, 1 already-absent deletes"));
+    EXPECT_TRUE(logs.containsAtLevel(Log::LOGLEVEL_DEBUG_VERBOSE,
+                                     "Delete of document 'absent2' answered 404 not_found: already absent"));
+}
+
+// Real response of probe 2 (r1), trimmed to the fields the validator reads: a lone delete not_found, "errors": false.
+TEST_F(IndexerConnectorSyncTest, BulkResponseValidationDeleteNotFoundAloneIsSuccess)
+{
+    ScopedLogCapture logs;
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [](auto /*requestParams*/, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                answerBulkPostSuccess(postParams, R"({
+                    "took": 1,
+                    "errors": false,
+                    "items": [
+                        {"delete": {"_index": "del404-40178-b", "_id": "absent", "_version": 1,
+                                    "result": "not_found", "status": 404}}
+                    ]
+                })");
+            }));
+
+    IndexerConnectorSyncImplNoFlushInterval connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.bulkDelete("absent", "test-index");
+
+    EXPECT_NO_THROW(connector.flush());
+    EXPECT_FALSE(logs.contains("Indexing failure"));
+}
+
+// Items 2 and 4 of probe 1, trimmed to the fields the validator reads: a delete on a missing index
+// (index_not_found_exception) and an index 201.
+TEST_F(IndexerConnectorSyncTest, BulkResponseValidationDeleteIndexNotFoundFails)
+{
+    ScopedLogCapture logs;
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [](auto /*requestParams*/, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                answerBulkPostSuccess(postParams, R"({
+                    "took": 18,
+                    "errors": true,
+                    "items": [
+                        {"delete": {
+                            "_index": "nonexistent-idx-40178",
+                            "_id": "x",
+                            "status": 404,
+                            "error": {
+                                "type": "index_not_found_exception",
+                                "reason": "no such index [nonexistent-idx-40178]",
+                                "index": "nonexistent-idx-40178",
+                                "resource.id": "nonexistent-idx-40178",
+                                "resource.type": "index_expression",
+                                "index_uuid": "_na_"
+                            }
+                        }},
+                        {"index": {"_index": "del404-40178", "_id": "new", "_version": 1,
+                                   "result": "created", "status": 201}}
+                    ]
+                })");
+            }));
+
+    IndexerConnectorSyncImplNoFlushInterval connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.bulkDelete("x", "nonexistent-idx-40178");
+    connector.bulkIndex("new", "test-index", R"({"f":"a"})");
+
+    try
+    {
+        connector.flush();
+        FAIL() << "a delete on a missing index must fail the flush";
+    }
+    catch (const IndexerConnectorException& e)
+    {
+        EXPECT_EQ(e.category(), IndexerConnectorException::Category::DocumentRejected);
+    }
+    EXPECT_TRUE(logs.containsAtLevel(Log::LOGLEVEL_WARNING,
+                                     "Indexing failure for delete operation (status 404): no such index ["));
+}
+
+// Synthetic: only `delete` items get the not_found exemption.
+TEST_F(IndexerConnectorSyncTest, BulkResponseValidationIndexOperationNotFoundFails)
+{
+    ScopedLogCapture logs;
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [](auto /*requestParams*/, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                answerBulkPostSuccess(postParams,
+                                      std::string(R"({"took":1,"errors":true,"items":[)") +
+                                          R"({"index":{"_id":"x","status":404,"result":"not_found"}},)" +
+                                          ACCEPTABLE_CONFLICT_ITEM + "]}");
+            }));
+
+    IndexerConnectorSyncImplNoFlushInterval connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.bulkIndex("x", "test-index", R"({"f":"a"})");
+    connector.bulkIndex("present", "test-index", R"({"f":"b"})");
+
+    try
+    {
+        connector.flush();
+        FAIL() << "an index item answering 404 not_found must fail the flush";
+    }
+    catch (const IndexerConnectorException& e)
+    {
+        EXPECT_EQ(e.category(), IndexerConnectorException::Category::DocumentRejected);
+    }
+}
+
+// Synthetic: a delete 404 not_found that carries an `error` element is a failure.
+TEST_F(IndexerConnectorSyncTest, BulkResponseValidationDeleteNotFoundWithErrorFails)
+{
+    ScopedLogCapture logs;
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [](auto /*requestParams*/, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                answerBulkPostSuccess(postParams,
+                                      std::string(R"({"took":1,"errors":true,"items":[)") +
+                                          R"({"delete":{"_id":"x","status":404,"result":"not_found",)" +
+                                          R"("error":{"type":"some_error","reason":"x"}}},)" +
+                                          ACCEPTABLE_CONFLICT_ITEM + "]}");
+            }));
+
+    IndexerConnectorSyncImplNoFlushInterval connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.bulkDelete("x", "test-index");
+    connector.bulkIndex("present", "test-index", R"({"f":"b"})");
+
+    try
+    {
+        connector.flush();
+        FAIL() << "a delete 404 not_found with an error element must fail the flush";
+    }
+    catch (const IndexerConnectorException& e)
+    {
+        EXPECT_EQ(e.category(), IndexerConnectorException::Category::DocumentRejected);
+    }
+}
+
+// Synthetic: a delete 404 without "result":"not_found" is a failure.
+TEST_F(IndexerConnectorSyncTest, BulkResponseValidationDelete404WithoutNotFoundResultFails)
+{
+    ScopedLogCapture logs;
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [](auto /*requestParams*/, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                answerBulkPostSuccess(postParams,
+                                      std::string(R"({"took":1,"errors":true,"items":[)") +
+                                          R"({"delete":{"_id":"x","status":404}},)" + ACCEPTABLE_CONFLICT_ITEM + "]}");
+            }));
+
+    IndexerConnectorSyncImplNoFlushInterval connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.bulkDelete("x", "test-index");
+    connector.bulkIndex("present", "test-index", R"({"f":"b"})");
+
+    try
+    {
+        connector.flush();
+        FAIL() << "a delete 404 without result not_found must fail the flush";
+    }
+    catch (const IndexerConnectorException& e)
+    {
+        EXPECT_EQ(e.category(), IndexerConnectorException::Category::DocumentRejected);
+    }
+}
+
+// Synthetic: an absent delete (without `_id`, logged as '?') next to a real failure; the summary reports both and the
+// delete is not a failure.
+TEST_F(IndexerConnectorSyncTest, BulkResponseValidationDeleteNotFoundWithRealFailure)
+{
+    ScopedLogCapture logs;
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [](auto /*requestParams*/, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                answerBulkPostSuccess(postParams, R"({
+                    "took": 1,
+                    "errors": true,
+                    "items": [
+                        {"delete": {"result": "not_found", "status": 404}},
+                        {"index": {"_id": "y", "status": 500, "error": {"type": "t", "reason": "boom"}}}
+                    ]
+                })");
+            }));
+
+    IndexerConnectorSyncImplNoFlushInterval connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.bulkDelete("x", "test-index");
+    connector.bulkIndex("y", "test-index", R"({"f":"a"})");
+
+    try
+    {
+        connector.flush();
+        FAIL() << "a real failure must fail the flush";
+    }
+    catch (const IndexerConnectorException& e)
+    {
+        EXPECT_EQ(e.category(), IndexerConnectorException::Category::DocumentRejected);
+    }
+    EXPECT_TRUE(logs.containsAtLevel(Log::LOGLEVEL_WARNING, "1 already-absent deletes, 1 failures"));
+    EXPECT_FALSE(logs.contains("Indexing failure for delete"));
+    EXPECT_TRUE(logs.containsAtLevel(Log::LOGLEVEL_DEBUG_VERBOSE, "Delete of document '?' answered 404 not_found"));
+}
+
+// Synthetic: 413 splits the bulk; every chunk answers a delete not_found plus an acceptable conflict.
+TEST_F(IndexerConnectorSyncTest, SplitBulkDeleteNotFoundIsSuccess)
+{
+    ScopedLogCapture logs;
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::atomic<int> postCount {0};
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(3)
+        .WillRepeatedly(Invoke(
+            [&postCount](auto /*requestParams*/, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                if (++postCount == 1)
+                {
+                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                    {
+                        std::get<TPostRequestParameters<const std::string&>>(postParams)
+                            .onError("Payload Too Large", 413, "");
+                    }
+                    else
+                    {
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onError("Payload Too Large", 413, "");
+                    }
+                    return;
+                }
+                answerBulkPostSuccess(postParams,
+                                      std::string(R"({"took":1,"errors":true,"items":[)") +
+                                          R"({"delete":{"_id":"x","result":"not_found","status":404}},)" +
+                                          ACCEPTABLE_CONFLICT_ITEM + "]}");
+            }));
+
+    IndexerConnectorSyncImplNoFlushInterval connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.bulkDelete("a", "test-index");
+    connector.bulkDelete("b", "test-index");
+    connector.bulkDelete("c", "test-index");
+
+    EXPECT_NO_THROW(connector.flush());
+    EXPECT_EQ(postCount.load(), 3);
 }
 
 // Tests for deleteByQuery with 404 response
