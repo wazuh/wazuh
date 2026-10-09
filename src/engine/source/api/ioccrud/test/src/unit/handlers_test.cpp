@@ -1,10 +1,16 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <algorithm>
+#include <array>
 #include <atomic>
 #include <chrono>
 #include <filesystem>
 #include <fstream>
+#include <future>
+
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include <fmt/format.h>
 
@@ -22,35 +28,49 @@ using namespace testing;
 
 namespace
 {
-// Helper to create temporary test file with IOC data
-class TempIOCFile
+// Unique directory per test: <tmp>/ioccrud_<pid>_<n>/ with the input root and a sibling outside it
+class TestDirs
 {
 public:
-    TempIOCFile(const std::string& content = "")
-        : m_path("/tmp/test_ioc_" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count())
-                 + ".json")
+    TestDirs()
     {
-        std::ofstream ofs(m_path);
-        if (!content.empty())
-        {
-            ofs << content;
-        }
-        else
-        {
-            // Default valid IOC content with supported types
-            ofs << R"({"type":"connection","name":"192.168.1.1","source":"test"})" << "\n";
-            ofs << R"({"type":"url_domain","name":"example.com","source":"test"})" << "\n";
-        }
-        ofs.close();
+        static std::atomic<unsigned> counter {0};
+        m_base =
+            std::filesystem::temp_directory_path() / fmt::format("ioccrud_{}_{}", ::getpid(), counter.fetch_add(1));
+        std::filesystem::create_directories(root());
+        std::filesystem::create_directories(outside());
     }
 
-    ~TempIOCFile() { std::filesystem::remove(m_path); }
+    ~TestDirs() { std::filesystem::remove_all(m_base); }
 
-    std::string path() const { return m_path; }
+    std::filesystem::path base() const { return m_base; }
+    std::filesystem::path root() const { return m_base / "ioc-input"; }
+    std::filesystem::path outside() const { return m_base / "outside"; }
+
+    std::filesystem::path writeFile(const std::filesystem::path& dir, const std::string& content) const
+    {
+        static std::atomic<unsigned> counter {0};
+        auto path = dir / fmt::format("ioc_{}.json", counter.fetch_add(1));
+        std::ofstream ofs(path);
+        ofs << content;
+        return path;
+    }
+
+    // Default valid IOC content with supported types
+    std::filesystem::path writeValidFile(const std::filesystem::path& dir) const
+    {
+        return writeFile(dir,
+                         R"({"type":"connection","name":"192.168.1.1","source":"test"})"
+                         "\n"
+                         R"({"type":"url_domain","name":"example.com","source":"test"})"
+                         "\n");
+    }
 
 private:
-    std::string m_path;
+    std::filesystem::path m_base;
 };
+
+constexpr auto GENERIC_PATH_ERROR = "Field /path must be a regular file inside ";
 
 class SyncIocHandlerTest : public ::testing::Test
 {
@@ -58,8 +78,6 @@ protected:
     void SetUp() override
     {
         logging::testInit();
-        // Reset static flag before each test
-        // Note: This accesses a private global, may need friend declaration or alternative approach
         m_kvdbManager = std::make_shared<ioc::kvdb::MockKVDBManager>();
         m_scheduler = std::make_shared<scheduler::mocks::MockIScheduler>();
         m_store = std::make_shared<store::mocks::MockStore>();
@@ -82,6 +100,31 @@ protected:
         return api::adapter::createRequest(protoReq);
     }
 
+    api::adapter::RouteHandler handler() { return syncIoc(m_kvdbManager, m_scheduler, m_store, m_dirs.root()); }
+
+    // Runs the handler with a store that never matches the hash, so only the path check decides
+    httplib::Response postPath(const std::string& path)
+    {
+        EXPECT_CALL(*m_store, readDoc(_)).Times(0);
+        EXPECT_CALL(*m_scheduler, scheduleTask(_, _)).Times(0);
+        httplib::Response response;
+        handler()(createValidRequest(path, "path_check_hash"), response);
+        return response;
+    }
+
+    // exists() answers true only for the six production DB names
+    static bool isProdDB(std::string_view dbName)
+    {
+        static const std::array<std::string_view, 6> prodDBs = {"ioc_connections",
+                                                                "ioc_urls_full",
+                                                                "ioc_urls_domain",
+                                                                "ioc_hashes_md5",
+                                                                "ioc_hashes_sha1",
+                                                                "ioc_hashes_sha256"};
+        return std::find(prodDBs.begin(), prodDBs.end(), dbName) != prodDBs.end();
+    }
+
+    TestDirs m_dirs;
     std::shared_ptr<ioc::kvdb::MockKVDBManager> m_kvdbManager;
     std::shared_ptr<scheduler::mocks::MockIScheduler> m_scheduler;
     std::shared_ptr<store::mocks::MockStore> m_store;
@@ -94,8 +137,6 @@ protected:
  ****************************************************************************/
 TEST_F(SyncIocHandlerTest, EmptyPath_Returns400)
 {
-    auto handler = syncIoc(m_kvdbManager, m_scheduler, m_store);
-
     com::wazuh::api::engine::ioc::UpdateIoc_Request protoReq;
     protoReq.set_path("");
     protoReq.set_hash("somehash");
@@ -103,7 +144,7 @@ TEST_F(SyncIocHandlerTest, EmptyPath_Returns400)
     auto request = api::adapter::createRequest(protoReq);
     httplib::Response response;
 
-    handler(request, response);
+    handler()(request, response);
 
     EXPECT_EQ(response.status, httplib::StatusCode::BadRequest_400);
     EXPECT_THAT(response.body, HasSubstr("Field /path cannot be empty"));
@@ -114,20 +155,154 @@ TEST_F(SyncIocHandlerTest, EmptyPath_Returns400)
  ****************************************************************************/
 TEST_F(SyncIocHandlerTest, EmptyHash_Returns400)
 {
-    TempIOCFile tempFile;
-    auto handler = syncIoc(m_kvdbManager, m_scheduler, m_store);
-
     com::wazuh::api::engine::ioc::UpdateIoc_Request protoReq;
-    protoReq.set_path(tempFile.path());
+    protoReq.set_path(m_dirs.writeValidFile(m_dirs.root()).string());
     protoReq.set_hash("");
 
     auto request = api::adapter::createRequest(protoReq);
     httplib::Response response;
 
-    handler(request, response);
+    handler()(request, response);
 
     EXPECT_EQ(response.status, httplib::StatusCode::BadRequest_400);
     EXPECT_THAT(response.body, HasSubstr("Field /hash cannot be empty"));
+}
+
+/*****************************************************************************
+ * Tests: path confinement
+ ****************************************************************************/
+TEST_F(SyncIocHandlerTest, PathNonexistent_Returns400_GenericMessage)
+{
+    const auto path = (m_dirs.root() / "missing.json").string();
+    auto response = postPath(path);
+
+    EXPECT_EQ(response.status, httplib::StatusCode::BadRequest_400);
+    EXPECT_THAT(response.body, HasSubstr(GENERIC_PATH_ERROR + m_dirs.root().string()));
+    EXPECT_THAT(response.body, Not(HasSubstr(path)));
+}
+
+TEST_F(SyncIocHandlerTest, PathOutsideRoot_Returns400_SameMessageAsNonexistent)
+{
+    const auto existing = m_dirs.writeValidFile(m_dirs.outside()).string();
+    const auto missing = (m_dirs.outside() / "missing.json").string();
+
+    auto existingResp = postPath(existing);
+    auto missingResp = postPath(missing);
+
+    EXPECT_EQ(existingResp.status, httplib::StatusCode::BadRequest_400);
+    EXPECT_EQ(missingResp.status, httplib::StatusCode::BadRequest_400);
+    EXPECT_THAT(existingResp.body, HasSubstr(GENERIC_PATH_ERROR));
+    EXPECT_EQ(existingResp.body, missingResp.body);
+}
+
+TEST_F(SyncIocHandlerTest, PathTraversalOutOfRoot_Returns400)
+{
+    const auto outsideFile = m_dirs.writeValidFile(m_dirs.outside());
+    const auto path = (m_dirs.root() / ".." / "outside" / outsideFile.filename()).string();
+
+    auto response = postPath(path);
+
+    EXPECT_EQ(response.status, httplib::StatusCode::BadRequest_400);
+    EXPECT_THAT(response.body, HasSubstr(GENERIC_PATH_ERROR));
+}
+
+TEST_F(SyncIocHandlerTest, PathInSiblingDirSharingPrefix_Returns400)
+{
+    const auto sibling = std::filesystem::path(m_dirs.root().string() + "-evil");
+    std::filesystem::create_directories(sibling);
+    const auto path = m_dirs.writeValidFile(sibling).string();
+
+    auto response = postPath(path);
+
+    EXPECT_EQ(response.status, httplib::StatusCode::BadRequest_400);
+    EXPECT_THAT(response.body, HasSubstr(GENERIC_PATH_ERROR));
+}
+
+TEST_F(SyncIocHandlerTest, SymlinkInRootPointingOutside_Returns400)
+{
+    const auto target = m_dirs.writeValidFile(m_dirs.outside());
+    const auto link = m_dirs.root() / "link.json";
+    std::filesystem::create_symlink(target, link);
+
+    auto response = postPath(link.string());
+
+    EXPECT_EQ(response.status, httplib::StatusCode::BadRequest_400);
+    EXPECT_THAT(response.body, HasSubstr(GENERIC_PATH_ERROR));
+}
+
+TEST_F(SyncIocHandlerTest, RootItself_Returns400)
+{
+    auto response = postPath(m_dirs.root().string());
+
+    EXPECT_EQ(response.status, httplib::StatusCode::BadRequest_400);
+    EXPECT_THAT(response.body, HasSubstr(GENERIC_PATH_ERROR));
+}
+
+TEST_F(SyncIocHandlerTest, DirectoryInRoot_Returns400)
+{
+    const auto dir = m_dirs.root() / "subdir";
+    std::filesystem::create_directories(dir);
+
+    auto response = postPath(dir.string());
+
+    EXPECT_EQ(response.status, httplib::StatusCode::BadRequest_400);
+    EXPECT_THAT(response.body, HasSubstr(GENERIC_PATH_ERROR));
+}
+
+TEST_F(SyncIocHandlerTest, FifoInRoot_Returns400_WithoutBlocking)
+{
+    const auto fifo = m_dirs.root() / "feed.fifo";
+    ASSERT_EQ(::mkfifo(fifo.c_str(), 0600), 0);
+
+    auto future = std::async(std::launch::async, [&]() { return postPath(fifo.string()); });
+    ASSERT_EQ(future.wait_for(std::chrono::seconds(5)), std::future_status::ready) << "handler blocked on the FIFO";
+
+    auto response = future.get();
+    EXPECT_EQ(response.status, httplib::StatusCode::BadRequest_400);
+    EXPECT_THAT(response.body, HasSubstr(GENERIC_PATH_ERROR));
+}
+
+TEST_F(SyncIocHandlerTest, RootMissing_Returns400)
+{
+    const auto path = m_dirs.writeValidFile(m_dirs.outside()).string();
+    auto missingRootHandler = syncIoc(m_kvdbManager, m_scheduler, m_store, m_dirs.base() / "no-such-root");
+
+    EXPECT_CALL(*m_scheduler, scheduleTask(_, _)).Times(0);
+    httplib::Response response;
+    missingRootHandler(createValidRequest(path), response);
+
+    EXPECT_EQ(response.status, httplib::StatusCode::BadRequest_400);
+    EXPECT_THAT(response.body, HasSubstr(GENERIC_PATH_ERROR));
+}
+
+TEST_F(SyncIocHandlerTest, SymlinkedRoot_RegularFileInside_Schedules)
+{
+    // The configured root may itself be reached through a symlink
+    const auto rootLink = m_dirs.base() / "root-link";
+    std::filesystem::create_directory_symlink(m_dirs.root(), rootLink);
+    const auto file = m_dirs.writeValidFile(m_dirs.root());
+    const auto viaLink = (rootLink / file.filename()).string();
+
+    store::Doc statusDoc;
+    statusDoc.setString("old_hash", "/hash");
+    EXPECT_CALL(*m_store, readDoc(_)).WillOnce(Return(store::mocks::storeReadDocResp(statusDoc)));
+    EXPECT_CALL(*m_scheduler, scheduleTask(_, _)).Times(1);
+
+    httplib::Response response;
+    syncIoc(m_kvdbManager, m_scheduler, m_store, rootLink)(createValidRequest(viaLink, "new_hash"), response);
+
+    EXPECT_EQ(response.status, httplib::StatusCode::OK_200);
+}
+
+TEST_F(SyncIocHandlerTest, ResolveInputFile_ReturnsCanonicalPath)
+{
+    const auto file = m_dirs.writeValidFile(m_dirs.root());
+    const auto dotted = m_dirs.root() / "." / file.filename();
+
+    auto resolved = detail::resolveInputFile(m_dirs.root(), dotted.string());
+
+    ASSERT_TRUE(resolved.has_value());
+    EXPECT_EQ(*resolved, std::filesystem::canonical(file));
 }
 
 /*****************************************************************************
@@ -135,15 +310,13 @@ TEST_F(SyncIocHandlerTest, EmptyHash_Returns400)
  ****************************************************************************/
 TEST_F(SyncIocHandlerTest, StoreNotAvailable_Returns500)
 {
-    TempIOCFile tempFile;
-
     // Create handler with nullptr store (simulates expired weak_ptr)
-    auto handler = syncIoc(m_kvdbManager, m_scheduler, nullptr);
+    auto nullStoreHandler = syncIoc(m_kvdbManager, m_scheduler, nullptr, m_dirs.root());
 
-    auto request = createValidRequest(tempFile.path());
+    auto request = createValidRequest(m_dirs.writeValidFile(m_dirs.root()).string());
     httplib::Response response;
 
-    handler(request, response);
+    nullStoreHandler(request, response);
 
     EXPECT_EQ(response.status, httplib::StatusCode::InternalServerError_500);
     EXPECT_THAT(response.body, HasSubstr("Store is not available"));
@@ -154,7 +327,6 @@ TEST_F(SyncIocHandlerTest, StoreNotAvailable_Returns500)
  ****************************************************************************/
 TEST_F(SyncIocHandlerTest, HashMatches_Returns200_NoSync)
 {
-    TempIOCFile tempFile;
     const std::string hash = "matching_hash_123";
 
     // Setup store to return existing document with matching hash
@@ -162,12 +334,12 @@ TEST_F(SyncIocHandlerTest, HashMatches_Returns200_NoSync)
     statusDoc.setString(hash, "/hash");
 
     EXPECT_CALL(*m_store, readDoc(_)).WillOnce(Return(store::mocks::storeReadDocResp(statusDoc)));
+    EXPECT_CALL(*m_scheduler, scheduleTask(_, _)).Times(0);
 
-    auto handler = syncIoc(m_kvdbManager, m_scheduler, m_store);
-    auto request = createValidRequest(tempFile.path(), hash);
+    auto request = createValidRequest(m_dirs.writeValidFile(m_dirs.root()).string(), hash);
     httplib::Response response;
 
-    handler(request, response);
+    handler()(request, response);
 
     EXPECT_EQ(response.status, httplib::StatusCode::OK_200);
     EXPECT_THAT(response.body, HasSubstr("IOC data is already up to date"));
@@ -178,7 +350,6 @@ TEST_F(SyncIocHandlerTest, HashMatches_Returns200_NoSync)
  ****************************************************************************/
 TEST_F(SyncIocHandlerTest, HashMismatch_SchedulesSync_Returns200)
 {
-    TempIOCFile tempFile;
     const std::string storedHash = "old_hash";
     const std::string newHash = "new_hash";
 
@@ -191,11 +362,10 @@ TEST_F(SyncIocHandlerTest, HashMismatch_SchedulesSync_Returns200)
     // Expect task to be scheduled
     EXPECT_CALL(*m_scheduler, scheduleTask(_, _)).Times(1);
 
-    auto handler = syncIoc(m_kvdbManager, m_scheduler, m_store);
-    auto request = createValidRequest(tempFile.path(), newHash);
+    auto request = createValidRequest(m_dirs.writeValidFile(m_dirs.root()).string(), newHash);
     httplib::Response response;
 
-    handler(request, response);
+    handler()(request, response);
 
     EXPECT_EQ(response.status, httplib::StatusCode::OK_200);
     EXPECT_THAT(response.body, HasSubstr("\"status\":\"OK\""));
@@ -206,55 +376,20 @@ TEST_F(SyncIocHandlerTest, HashMismatch_SchedulesSync_Returns200)
  ****************************************************************************/
 TEST_F(SyncIocHandlerTest, DocumentDoesNotExist_CreatesAndProceeds)
 {
-    TempIOCFile tempFile;
-
     // Store returns error (document doesn't exist) on first call
     EXPECT_CALL(*m_store, readDoc(_)).WillOnce(Return(store::mocks::storeReadError<store::Doc>()));
 
-    // Expect document to be created - this will fail because of semaphore
-    // Since another test may have locked the semaphore, we expect upsert to be called or not
-    EXPECT_CALL(*m_store, upsertDoc(_, _)).Times(AtMost(1)).WillRepeatedly(Return(store::mocks::storeOk()));
+    // Expect document to be created
+    EXPECT_CALL(*m_store, upsertDoc(_, _)).WillOnce(Return(store::mocks::storeOk()));
 
-    // Task scheduling may or may not happen depending on semaphore state
-    EXPECT_CALL(*m_scheduler, scheduleTask(_, _)).Times(AtMost(1));
+    EXPECT_CALL(*m_scheduler, scheduleTask(_, _)).Times(1);
 
-    auto handler = syncIoc(m_kvdbManager, m_scheduler, m_store);
-    auto request = createValidRequest(tempFile.path(), "new_hash");
+    auto request = createValidRequest(m_dirs.writeValidFile(m_dirs.root()).string(), "new_hash");
     httplib::Response response;
 
-    handler(request, response);
+    handler()(request, response);
 
-    // Accept either OK (if semaphore was free) or error (if locked)
-    EXPECT_TRUE(response.status == httplib::StatusCode::OK_200
-                || response.status == httplib::StatusCode::BadRequest_400);
-}
-
-/*****************************************************************************
- * Test: File Not Found (without semaphore interference)
- ****************************************************************************/
-TEST_F(SyncIocHandlerTest, FileNotFound_Returns400)
-{
-    // Use a completely different hash to avoid semaphore issues if possible
-    // This test may fail if semaphore is locked from previous test
-
-    // Setup store to return document with different hash
-    store::Doc statusDoc;
-    statusDoc.setString("unique_old_hash_fnf", "/hash");
-
-    EXPECT_CALL(*m_store, readDoc(_))
-        .Times(AtMost(1))
-        .WillRepeatedly(Return(store::mocks::storeReadDocResp(statusDoc)));
-
-    auto handler = syncIoc(m_kvdbManager, m_scheduler, m_store);
-    auto request = createValidRequest("/nonexistent/file.json", "unique_new_hash_fnf");
-    httplib::Response response;
-
-    handler(request, response);
-
-    // Could be either file not found or sync in progress depending on execution order
-    EXPECT_TRUE(response.status == httplib::StatusCode::BadRequest_400);
-    EXPECT_TRUE(response.body.find("File not found") != std::string::npos
-                || response.body.find("IOC synchronization already in progress") != std::string::npos);
+    EXPECT_EQ(response.status, httplib::StatusCode::OK_200);
 }
 
 /*****************************************************************************
@@ -262,25 +397,21 @@ TEST_F(SyncIocHandlerTest, FileNotFound_Returns400)
  ****************************************************************************/
 TEST_F(SyncIocHandlerTest, SchedulerNotAvailable_Returns500)
 {
-    TempIOCFile tempFile;
-
     // Setup store
     store::Doc statusDoc;
     statusDoc.setString("unique_old_hash_sna", "/hash");
-    EXPECT_CALL(*m_store, readDoc(_))
-        .Times(AtMost(1))
-        .WillRepeatedly(Return(store::mocks::storeReadDocResp(statusDoc)));
+    EXPECT_CALL(*m_store, readDoc(_)).WillOnce(Return(store::mocks::storeReadDocResp(statusDoc)));
 
     // Create handler with nullptr scheduler
-    auto handler = syncIoc(m_kvdbManager, nullptr, m_store);
-    auto request = createValidRequest(tempFile.path(), "unique_new_hash_sna");
+    auto nullSchedulerHandler = syncIoc(m_kvdbManager, nullptr, m_store, m_dirs.root());
+    auto request = createValidRequest(m_dirs.writeValidFile(m_dirs.root()).string(), "unique_new_hash_sna");
     httplib::Response response;
 
-    handler(request, response);
+    nullSchedulerHandler(request, response);
 
-    // May get scheduler error or semaphore error
-    EXPECT_TRUE(response.status == httplib::StatusCode::InternalServerError_500
-                || response.status == httplib::StatusCode::BadRequest_400);
+    EXPECT_EQ(response.status, httplib::StatusCode::InternalServerError_500);
+    EXPECT_THAT(response.body, HasSubstr("Scheduler is not available"));
+    EXPECT_FALSE(detail::g_syncInProgress.load()); // Semaphore released on the error path
 }
 
 /*****************************************************************************
@@ -288,47 +419,16 @@ TEST_F(SyncIocHandlerTest, SchedulerNotAvailable_Returns500)
  ****************************************************************************/
 TEST_F(SyncIocHandlerTest, InvalidRequestFormat_Returns400)
 {
-    auto handler = syncIoc(m_kvdbManager, m_scheduler, m_store);
-
     httplib::Request request;
     request.body = "invalid json {{{";
     request.set_header("Content-Type", "text/plain");
 
     httplib::Response response;
 
-    handler(request, response);
+    handler()(request, response);
 
     EXPECT_EQ(response.status, httplib::StatusCode::BadRequest_400);
     EXPECT_THAT(response.body, HasSubstr("Failed to parse protobuff json request"));
-}
-
-/*****************************************************************************
- * Test: Empty Hash - Still Proceeds with Sync
- ****************************************************************************/
-TEST_F(SyncIocHandlerTest, EmptyHash_ProceedsWithSync)
-{
-    TempIOCFile tempFile;
-
-    // Setup store to return document
-    store::Doc statusDoc;
-    statusDoc.setString("some_hash_unique", "/hash");
-
-    EXPECT_CALL(*m_store, readDoc(_))
-        .Times(AtMost(1))
-        .WillRepeatedly(Return(store::mocks::storeReadDocResp(statusDoc)));
-
-    // Empty hash should not match, so sync may proceed if semaphore is free
-    EXPECT_CALL(*m_scheduler, scheduleTask(_, _)).Times(AtMost(1));
-
-    auto handler = syncIoc(m_kvdbManager, m_scheduler, m_store);
-    auto request = createValidRequest(tempFile.path(), ""); // Empty hash
-    httplib::Response response;
-
-    handler(request, response);
-
-    // Accept either OK (if semaphore was free) or error (if locked)
-    EXPECT_TRUE(response.status == httplib::StatusCode::OK_200
-                || response.status == httplib::StatusCode::BadRequest_400);
 }
 
 /*****************************************************************************
@@ -371,8 +471,7 @@ TEST_F(SyncIocHandlerTest, GetIocState_DocumentDoesNotExist_ReturnsEmptyState)
     EXPECT_EQ(response.status, httplib::StatusCode::OK_200);
     EXPECT_THAT(response.body, HasSubstr("\"status\":\"OK\""));
     EXPECT_THAT(response.body, HasSubstr("\"hash\":\"\""));
-    // updating can be true or false depending on global semaphore state
-    EXPECT_THAT(response.body, HasSubstr("\"updating\":"));
+    EXPECT_THAT(response.body, HasSubstr("\"updating\":false"));
     EXPECT_THAT(response.body, HasSubstr("\"lastError\":\"\""));
 }
 
@@ -400,8 +499,7 @@ TEST_F(SyncIocHandlerTest, GetIocState_DocumentExists_ReturnsStoredState)
     EXPECT_EQ(response.status, httplib::StatusCode::OK_200);
     EXPECT_THAT(response.body, HasSubstr("\"status\":\"OK\""));
     EXPECT_THAT(response.body, HasSubstr(fmt::format("\"hash\":\"{}\"", testHash)));
-    // updating can be true or false depending on global semaphore state
-    EXPECT_THAT(response.body, HasSubstr("\"updating\":"));
+    EXPECT_THAT(response.body, HasSubstr("\"updating\":false"));
     EXPECT_THAT(response.body, HasSubstr("\"lastError\":\"\""));
 }
 
@@ -417,9 +515,7 @@ TEST_F(SyncIocHandlerTest, GetIocState_SyncInProgress_ReturnsUpdatingTrue)
 
     EXPECT_CALL(*m_store, readDoc(_)).WillOnce(Return(store::mocks::storeReadDocResp(statusDoc)));
 
-    // NOTE: We cannot directly set g_syncInProgress from here as it's in an anonymous namespace
-    // This test verifies the response structure when updating is false (normal state)
-    // To test updating=true, integration tests would be needed where a real sync is triggered
+    detail::g_syncInProgress.store(true);
 
     auto handler = getIocState(m_store);
 
@@ -431,8 +527,7 @@ TEST_F(SyncIocHandlerTest, GetIocState_SyncInProgress_ReturnsUpdatingTrue)
     EXPECT_EQ(response.status, httplib::StatusCode::OK_200);
     EXPECT_THAT(response.body, HasSubstr("\"status\":\"OK\""));
     EXPECT_THAT(response.body, HasSubstr("\"hash\":\"current_hash\""));
-    // In this test, updating will be false since no actual sync is running
-    EXPECT_THAT(response.body, HasSubstr("\"updating\":"));
+    EXPECT_THAT(response.body, HasSubstr("\"updating\":true"));
 }
 
 /*****************************************************************************
@@ -459,8 +554,7 @@ TEST_F(SyncIocHandlerTest, GetIocState_DocumentWithError_ReturnsLastError)
     EXPECT_EQ(response.status, httplib::StatusCode::OK_200);
     EXPECT_THAT(response.body, HasSubstr("\"status\":\"OK\""));
     EXPECT_THAT(response.body, HasSubstr("\"hash\":\"old_hash_123\""));
-    // updating can be true or false depending on global semaphore state
-    EXPECT_THAT(response.body, HasSubstr("\"updating\":"));
+    EXPECT_THAT(response.body, HasSubstr("\"updating\":false"));
     EXPECT_THAT(response.body, HasSubstr(errorMsg));
 }
 
@@ -473,29 +567,11 @@ TEST_F(SyncIocHandlerTest, GetIocState_DocumentWithError_ReturnsLastError)
  ****************************************************************************/
 TEST_F(SyncIocHandlerTest, PerformIOCSync_Success_UpdatesHashAndClearsError)
 {
-    // Create test file with valid IOC data
-    TempIOCFile tempFile;
+    const auto file = m_dirs.writeValidFile(m_dirs.root());
     const std::string testHash = "test_hash_123";
 
     // Setup mocks - exists returns false for temp DBs, true for production DBs
-    EXPECT_CALL(*m_kvdbManager, exists(_))
-        .WillRepeatedly(
-            [](std::string_view dbName)
-            {
-                // Check if it's one of the known production DB names
-                static const std::array<std::string_view, 6> prodDBs = {"ioc_connections",
-                                                                        "ioc_urls_full",
-                                                                        "ioc_urls_domain",
-                                                                        "ioc_hashes_md5",
-                                                                        "ioc_hashes_sha1",
-                                                                        "ioc_hashes_sha256"};
-                for (const auto& prodDB : prodDBs)
-                {
-                    if (dbName == prodDB)
-                        return true;
-                }
-                return false; // Temp DBs or non-existent
-            });
+    EXPECT_CALL(*m_kvdbManager, exists(_)).WillRepeatedly(isProdDB);
     EXPECT_CALL(*m_kvdbManager, add(_)).Times(AtLeast(1));
     EXPECT_CALL(*m_kvdbManager, get(_, _)).WillRepeatedly(Return(std::nullopt)); // IOCs are new
     EXPECT_CALL(*m_kvdbManager, put(_, _, _)).Times(AtLeast(1));
@@ -516,7 +592,7 @@ TEST_F(SyncIocHandlerTest, PerformIOCSync_Success_UpdatesHashAndClearsError)
             });
 
     // Call the sync function
-    detail::performIOCSync(m_kvdbManager, m_store, tempFile.path(), testHash);
+    detail::performIOCSync(m_kvdbManager, m_store, file.string(), testHash);
 }
 
 /*****************************************************************************
@@ -524,7 +600,7 @@ TEST_F(SyncIocHandlerTest, PerformIOCSync_Success_UpdatesHashAndClearsError)
  ****************************************************************************/
 TEST_F(SyncIocHandlerTest, PerformIOCSync_FileNotFound_StoresError)
 {
-    const std::string nonExistentFile = "/tmp/nonexistent_file_12345.json";
+    const std::string nonExistentFile = (m_dirs.root() / "nonexistent_file_12345.json").string();
     const std::string testHash = "test_hash_456";
     const std::string existingHash = "old_hash_preserved";
 
@@ -552,41 +628,137 @@ TEST_F(SyncIocHandlerTest, PerformIOCSync_FileNotFound_StoresError)
 }
 
 /*****************************************************************************
- * Test: performIOCSync - Invalid JSON (all lines skipped)
+ * Test: performIOCSync - Symlink swapped in after the handler check is not followed
  ****************************************************************************/
-TEST_F(SyncIocHandlerTest, PerformIOCSync_InvalidJSON_StoresError)
+TEST_F(SyncIocHandlerTest, PerformIOCSync_SymlinkPath_StoresErrorWithoutReading)
 {
-    // Create file with invalid JSON
-    TempIOCFile tempFile("invalid json content {{{");
-    const std::string testHash = "test_hash_789";
+    const auto target = m_dirs.writeValidFile(m_dirs.outside());
+    const auto link = m_dirs.root() / "swapped.json";
+    std::filesystem::create_symlink(target, link);
+    const std::string existingHash = "hash_kept_symlink";
 
-    // Setup mocks - temp DBs will be created and then cleaned up since prod DBs don't exist
-    // 6 exists() calls for temp DB creation, 6 add() calls to create them
-    EXPECT_CALL(*m_kvdbManager, exists(_))
-        .Times(12) // 6 for temp DBs (don't exist), 6 for prod DBs during hot-swap (don't exist)
-        .WillRepeatedly(Return(false));
-    EXPECT_CALL(*m_kvdbManager, add(_)).Times(6);        // Create 6 temp DBs
-    EXPECT_CALL(*m_kvdbManager, remove(_)).Times(6);     // Cleanup temp DBs since prod doesn't exist
-    EXPECT_CALL(*m_kvdbManager, hotSwap(_, _)).Times(0); // No hot-swap since prod DBs don't exist
+    store::Doc existingDoc;
+    existingDoc.setString(existingHash, "/hash");
+    EXPECT_CALL(*m_store, readDoc(_)).WillOnce(Return(store::mocks::storeReadDocResp(existingDoc)));
 
-    // Expect hash to be updated since sync "completes" (with 0 processed, 1 skipped)
-    // The lastError should contain information about skipped lines
+    EXPECT_CALL(*m_kvdbManager, add(_)).Times(0);
+    EXPECT_CALL(*m_kvdbManager, put(_, _, _)).Times(0);
+    EXPECT_CALL(*m_kvdbManager, hotSwap(_, _)).Times(0);
+
     EXPECT_CALL(*m_store, upsertDoc(_, _))
         .WillOnce(
-            [&testHash](const base::Name& name, const store::Doc& doc)
+            [&existingHash](const base::Name& name, const store::Doc& doc)
             {
                 std::string hashStr;
                 std::string lastErrorStr;
                 doc.getString(hashStr, "/hash");
                 doc.getString(lastErrorStr, "/lastError");
-                EXPECT_EQ(hashStr, testHash); // Hash is updated even with skipped lines
-                // LastError should contain message about skipped lines
-                EXPECT_THAT(lastErrorStr, HasSubstr("skipped"));
+                EXPECT_EQ(hashStr, existingHash);
+                EXPECT_THAT(lastErrorStr, HasSubstr("Failed to open file"));
                 return store::mocks::storeOk();
             });
 
-    // Call the sync function
-    detail::performIOCSync(m_kvdbManager, m_store, tempFile.path(), testHash);
+    detail::performIOCSync(m_kvdbManager, m_store, link.string(), "new_hash");
+}
+
+/*****************************************************************************
+ * Test: performIOCSync - Directory is not a regular file
+ ****************************************************************************/
+TEST_F(SyncIocHandlerTest, PerformIOCSync_Directory_StoresErrorWithoutReading)
+{
+    const std::string existingHash = "hash_kept_dir";
+
+    store::Doc existingDoc;
+    existingDoc.setString(existingHash, "/hash");
+    EXPECT_CALL(*m_store, readDoc(_)).WillOnce(Return(store::mocks::storeReadDocResp(existingDoc)));
+
+    EXPECT_CALL(*m_kvdbManager, add(_)).Times(0);
+    EXPECT_CALL(*m_kvdbManager, hotSwap(_, _)).Times(0);
+
+    EXPECT_CALL(*m_store, upsertDoc(_, _))
+        .WillOnce(
+            [&existingHash](const base::Name& name, const store::Doc& doc)
+            {
+                std::string hashStr;
+                std::string lastErrorStr;
+                doc.getString(hashStr, "/hash");
+                doc.getString(lastErrorStr, "/lastError");
+                EXPECT_EQ(hashStr, existingHash);
+                EXPECT_THAT(lastErrorStr, HasSubstr("Not a regular file"));
+                return store::mocks::storeOk();
+            });
+
+    detail::performIOCSync(m_kvdbManager, m_store, m_dirs.root().string(), "new_hash");
+}
+
+/*****************************************************************************
+ * Test: performIOCSync - Invalid JSON (all lines skipped): sync rejected, data kept
+ ****************************************************************************/
+TEST_F(SyncIocHandlerTest, PerformIOCSync_InvalidJSON_RejectsAndKeepsHash)
+{
+    const auto file = m_dirs.writeFile(m_dirs.root(), "invalid json content {{{");
+    const std::string existingHash = "hash_kept_invalid";
+
+    store::Doc existingDoc;
+    existingDoc.setString(existingHash, "/hash");
+    EXPECT_CALL(*m_store, readDoc(_)).WillOnce(Return(store::mocks::storeReadDocResp(existingDoc)));
+
+    // 6 temp DBs are created, then dropped; production DBs are never touched
+    EXPECT_CALL(*m_kvdbManager, exists(_)).Times(6).WillRepeatedly(Return(false));
+    EXPECT_CALL(*m_kvdbManager, add(_)).Times(6);
+    EXPECT_CALL(*m_kvdbManager, put(_, _, _)).Times(0);
+    EXPECT_CALL(*m_kvdbManager, remove(_)).Times(6);
+    EXPECT_CALL(*m_kvdbManager, hotSwap(_, _)).Times(0);
+
+    EXPECT_CALL(*m_store, upsertDoc(_, _))
+        .WillOnce(
+            [&existingHash](const base::Name& name, const store::Doc& doc)
+            {
+                std::string hashStr;
+                std::string lastErrorStr;
+                doc.getString(hashStr, "/hash");
+                doc.getString(lastErrorStr, "/lastError");
+                EXPECT_EQ(hashStr, existingHash);
+                EXPECT_THAT(lastErrorStr, HasSubstr("No valid IOC lines in file"));
+                EXPECT_THAT(lastErrorStr, HasSubstr("1 skipped"));
+                return store::mocks::storeOk();
+            });
+
+    detail::performIOCSync(m_kvdbManager, m_store, file.string(), "new_hash");
+}
+
+/*****************************************************************************
+ * Test: performIOCSync - Empty File: sync rejected, data kept
+ ****************************************************************************/
+TEST_F(SyncIocHandlerTest, PerformIOCSync_EmptyFile_RejectsAndKeepsHash)
+{
+    const auto file = m_dirs.writeFile(m_dirs.root(), "");
+    const std::string existingHash = "hash_kept_empty";
+
+    store::Doc existingDoc;
+    existingDoc.setString(existingHash, "/hash");
+    EXPECT_CALL(*m_store, readDoc(_)).WillOnce(Return(store::mocks::storeReadDocResp(existingDoc)));
+
+    EXPECT_CALL(*m_kvdbManager, exists(_)).Times(6).WillRepeatedly(Return(false));
+    EXPECT_CALL(*m_kvdbManager, add(_)).Times(6);
+    EXPECT_CALL(*m_kvdbManager, put(_, _, _)).Times(0);
+    EXPECT_CALL(*m_kvdbManager, remove(_)).Times(6);
+    EXPECT_CALL(*m_kvdbManager, hotSwap(_, _)).Times(0);
+
+    EXPECT_CALL(*m_store, upsertDoc(_, _))
+        .WillOnce(
+            [&existingHash](const base::Name& name, const store::Doc& doc)
+            {
+                std::string hashStr;
+                std::string lastErrorStr;
+                doc.getString(hashStr, "/hash");
+                doc.getString(lastErrorStr, "/lastError");
+                EXPECT_EQ(hashStr, existingHash);
+                EXPECT_EQ(lastErrorStr, "No valid IOC lines in file");
+                return store::mocks::storeOk();
+            });
+
+    detail::performIOCSync(m_kvdbManager, m_store, file.string(), "new_hash");
 }
 
 /*****************************************************************************
@@ -594,7 +766,7 @@ TEST_F(SyncIocHandlerTest, PerformIOCSync_InvalidJSON_StoresError)
  ****************************************************************************/
 TEST_F(SyncIocHandlerTest, PerformIOCSync_KVDBNotAvailable_StoresError)
 {
-    TempIOCFile tempFile;
+    const auto file = m_dirs.writeValidFile(m_dirs.root());
     const std::string testHash = "test_hash_kvdb";
     const std::string existingHash = "preserved_hash_kvdb";
 
@@ -619,7 +791,7 @@ TEST_F(SyncIocHandlerTest, PerformIOCSync_KVDBNotAvailable_StoresError)
 
     // Call with null weak_ptr (will expire immediately)
     std::weak_ptr<::ioc::kvdb::IKVDBManager> nullWeak;
-    detail::performIOCSync(nullWeak, m_store, tempFile.path(), testHash);
+    detail::performIOCSync(nullWeak, m_store, file.string(), testHash);
 }
 
 /*****************************************************************************
@@ -627,14 +799,14 @@ TEST_F(SyncIocHandlerTest, PerformIOCSync_KVDBNotAvailable_StoresError)
  ****************************************************************************/
 TEST_F(SyncIocHandlerTest, PerformIOCSync_StoreNotAvailable_NoError)
 {
-    TempIOCFile tempFile;
+    const auto file = m_dirs.writeValidFile(m_dirs.root());
     const std::string testHash = "test_hash_store";
 
     // No expectations on store since it's not available
 
     // Call with null store weak_ptr (will expire immediately)
     std::weak_ptr<store::IStore> nullWeak;
-    detail::performIOCSync(m_kvdbManager, nullWeak, tempFile.path(), testHash);
+    detail::performIOCSync(m_kvdbManager, nullWeak, file.string(), testHash);
 
     // Test passes if no crash occurs
 }
@@ -644,7 +816,7 @@ TEST_F(SyncIocHandlerTest, PerformIOCSync_StoreNotAvailable_NoError)
  ****************************************************************************/
 TEST_F(SyncIocHandlerTest, PerformIOCSync_SemaphoreReleasedAfterExecution)
 {
-    TempIOCFile tempFile;
+    const auto file = m_dirs.writeValidFile(m_dirs.root());
     const std::string testHash = "test_hash_semaphore";
 
     // Setup minimal mocks
@@ -658,7 +830,7 @@ TEST_F(SyncIocHandlerTest, PerformIOCSync_SemaphoreReleasedAfterExecution)
     detail::g_syncInProgress.store(true);
 
     // Call the sync function
-    detail::performIOCSync(m_kvdbManager, m_store, tempFile.path(), testHash);
+    detail::performIOCSync(m_kvdbManager, m_store, file.string(), testHash);
 
     // Verify semaphore is released after execution
     EXPECT_FALSE(detail::g_syncInProgress.load());
@@ -669,7 +841,6 @@ TEST_F(SyncIocHandlerTest, PerformIOCSync_SemaphoreReleasedAfterExecution)
  ****************************************************************************/
 TEST_F(SyncIocHandlerTest, SyncInProgress_Returns400)
 {
-    TempIOCFile tempFile;
     const std::string newHash = "concurrent_hash";
 
     // Setup store to return different hash (would trigger sync)
@@ -680,11 +851,10 @@ TEST_F(SyncIocHandlerTest, SyncInProgress_Returns400)
     // Manually set semaphore to simulate sync in progress
     detail::g_syncInProgress.store(true);
 
-    auto handler = syncIoc(m_kvdbManager, m_scheduler, m_store);
-    auto request = createValidRequest(tempFile.path(), newHash);
+    auto request = createValidRequest(m_dirs.writeValidFile(m_dirs.root()).string(), newHash);
     httplib::Response response;
 
-    handler(request, response);
+    handler()(request, response);
 
     EXPECT_EQ(response.status, httplib::StatusCode::BadRequest_400);
     EXPECT_THAT(response.body, HasSubstr("IOC synchronization already in progress"));
@@ -695,7 +865,6 @@ TEST_F(SyncIocHandlerTest, SyncInProgress_Returns400)
  ****************************************************************************/
 TEST_F(SyncIocHandlerTest, DocumentCreationFails_ContinuesWithEmptyHash)
 {
-    TempIOCFile tempFile;
     const std::string newHash = "new_hash_doc_fail";
 
     // Store returns error on read (document doesn't exist)
@@ -707,11 +876,10 @@ TEST_F(SyncIocHandlerTest, DocumentCreationFails_ContinuesWithEmptyHash)
     // Should still schedule task since hash mismatch (empty != new_hash)
     EXPECT_CALL(*m_scheduler, scheduleTask(_, _)).Times(1);
 
-    auto handler = syncIoc(m_kvdbManager, m_scheduler, m_store);
-    auto request = createValidRequest(tempFile.path(), newHash);
+    auto request = createValidRequest(m_dirs.writeValidFile(m_dirs.root()).string(), newHash);
     httplib::Response response;
 
-    handler(request, response);
+    handler()(request, response);
 
     EXPECT_EQ(response.status, httplib::StatusCode::OK_200);
 }
@@ -733,27 +901,11 @@ TEST_F(SyncIocHandlerTest, PerformIOCSync_MixedValidInvalid_ProcessesValid)
                                R"({"type":"hash_md5","name":"5d41402abc4b2a76b9719d911017c592","source":"test"})"
                                "\n";
 
-    TempIOCFile tempFile(mixedContent);
+    const auto file = m_dirs.writeFile(m_dirs.root(), mixedContent);
     const std::string testHash = "mixed_hash";
 
     // Setup mocks - expect processing of valid IOCs
-    EXPECT_CALL(*m_kvdbManager, exists(_))
-        .WillRepeatedly(
-            [](std::string_view dbName)
-            {
-                static const std::array<std::string_view, 6> prodDBs = {"ioc_connections",
-                                                                        "ioc_urls_full",
-                                                                        "ioc_urls_domain",
-                                                                        "ioc_hashes_md5",
-                                                                        "ioc_hashes_sha1",
-                                                                        "ioc_hashes_sha256"};
-                for (const auto& prodDB : prodDBs)
-                {
-                    if (dbName == prodDB)
-                        return true;
-                }
-                return false;
-            });
+    EXPECT_CALL(*m_kvdbManager, exists(_)).WillRepeatedly(isProdDB);
     EXPECT_CALL(*m_kvdbManager, add(_)).Times(AtLeast(1));
     EXPECT_CALL(*m_kvdbManager, get(_, _)).WillRepeatedly(Return(std::nullopt));
     EXPECT_CALL(*m_kvdbManager, put(_, _, _)).Times(AtLeast(3)); // 3 valid IOCs
@@ -773,7 +925,7 @@ TEST_F(SyncIocHandlerTest, PerformIOCSync_MixedValidInvalid_ProcessesValid)
                 return store::mocks::storeOk();
             });
 
-    detail::performIOCSync(m_kvdbManager, m_store, tempFile.path(), testHash);
+    detail::performIOCSync(m_kvdbManager, m_store, file.string(), testHash);
 }
 
 /*****************************************************************************
@@ -796,27 +948,11 @@ TEST_F(SyncIocHandlerTest, PerformIOCSync_MultipleTypes_CreatesMultipleDatabases
         R"({"type":"hash_sha256","name":"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08","source":"test6"})"
         "\n";
 
-    TempIOCFile tempFile(multiTypeContent);
+    const auto file = m_dirs.writeFile(m_dirs.root(), multiTypeContent);
     const std::string testHash = "multitype_hash";
 
     // Setup mocks - expect 6 different temp DBs to be created
-    EXPECT_CALL(*m_kvdbManager, exists(_))
-        .WillRepeatedly(
-            [](std::string_view dbName)
-            {
-                static const std::array<std::string_view, 6> prodDBs = {"ioc_connections",
-                                                                        "ioc_urls_full",
-                                                                        "ioc_urls_domain",
-                                                                        "ioc_hashes_md5",
-                                                                        "ioc_hashes_sha1",
-                                                                        "ioc_hashes_sha256"};
-                for (const auto& prodDB : prodDBs)
-                {
-                    if (dbName == prodDB)
-                        return true;
-                }
-                return false;
-            });
+    EXPECT_CALL(*m_kvdbManager, exists(_)).WillRepeatedly(isProdDB);
 
     EXPECT_CALL(*m_kvdbManager, add(_)).Times(AtLeast(6));
     EXPECT_CALL(*m_kvdbManager, get(_, _)).WillRepeatedly(Return(std::nullopt));
@@ -836,7 +972,7 @@ TEST_F(SyncIocHandlerTest, PerformIOCSync_MultipleTypes_CreatesMultipleDatabases
                 return store::mocks::storeOk();
             });
 
-    detail::performIOCSync(m_kvdbManager, m_store, tempFile.path(), testHash);
+    detail::performIOCSync(m_kvdbManager, m_store, file.string(), testHash);
 }
 
 /*****************************************************************************
@@ -844,7 +980,7 @@ TEST_F(SyncIocHandlerTest, PerformIOCSync_MultipleTypes_CreatesMultipleDatabases
  ****************************************************************************/
 TEST_F(SyncIocHandlerTest, PerformIOCSync_ProductionDbNotExist_CleansUpTemp)
 {
-    TempIOCFile tempFile;
+    const auto file = m_dirs.writeValidFile(m_dirs.root());
     const std::string testHash = "cleanup_hash";
 
     // Setup mocks - exists returns false for ALL databases (including production)
@@ -870,49 +1006,7 @@ TEST_F(SyncIocHandlerTest, PerformIOCSync_ProductionDbNotExist_CleansUpTemp)
                 return store::mocks::storeOk();
             });
 
-    detail::performIOCSync(m_kvdbManager, m_store, tempFile.path(), testHash);
-}
-
-/*****************************************************************************
- * Test: performIOCSync - Empty File
- ****************************************************************************/
-TEST_F(SyncIocHandlerTest, PerformIOCSync_EmptyFile_UpdatesHashWithoutError)
-{
-    // Create truly empty file by using a newline-only content
-    std::string emptyPath =
-        "/tmp/test_ioc_empty_" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + ".json";
-    std::ofstream ofs(emptyPath);
-    ofs.close(); // Close immediately to create empty file
-
-    const std::string testHash = "empty_file_hash";
-
-    // Temp DBs will be created and then cleaned up since prod DBs don't exist
-    EXPECT_CALL(*m_kvdbManager, exists(_))
-        .Times(12) // 6 for temp DBs (don't exist), 6 for prod DBs during hot-swap (don't exist)
-        .WillRepeatedly(Return(false));
-    EXPECT_CALL(*m_kvdbManager, add(_)).Times(6);        // Create 6 temp DBs
-    EXPECT_CALL(*m_kvdbManager, put(_, _, _)).Times(0);  // No data inserted
-    EXPECT_CALL(*m_kvdbManager, remove(_)).Times(6);     // Cleanup temp DBs since prod doesn't exist
-    EXPECT_CALL(*m_kvdbManager, hotSwap(_, _)).Times(0); // No hot-swap since prod DBs don't exist
-
-    // Hash should be updated (0 processed, 0 skipped = success)
-    EXPECT_CALL(*m_store, upsertDoc(_, _))
-        .WillOnce(
-            [&testHash](const base::Name& name, const store::Doc& doc)
-            {
-                std::string hashStr;
-                std::string lastErrorStr;
-                doc.getString(hashStr, "/hash");
-                doc.getString(lastErrorStr, "/lastError");
-                EXPECT_EQ(hashStr, testHash);
-                EXPECT_EQ(lastErrorStr, "");
-                return store::mocks::storeOk();
-            });
-
-    detail::performIOCSync(m_kvdbManager, m_store, emptyPath, testHash);
-
-    // Cleanup
-    std::filesystem::remove(emptyPath);
+    detail::performIOCSync(m_kvdbManager, m_store, file.string(), testHash);
 }
 
 /*****************************************************************************
@@ -928,27 +1022,11 @@ TEST_F(SyncIocHandlerTest, PerformIOCSync_DuplicateIOCs_AppendsToArray)
                                    R"({"type":"connection","name":"192.168.1.1","source":"source3"})"
                                    "\n";
 
-    TempIOCFile tempFile(duplicateContent);
+    const auto file = m_dirs.writeFile(m_dirs.root(), duplicateContent);
     const std::string testHash = "duplicate_hash";
 
     // Setup mocks
-    EXPECT_CALL(*m_kvdbManager, exists(_))
-        .WillRepeatedly(
-            [](std::string_view dbName)
-            {
-                static const std::array<std::string_view, 6> prodDBs = {"ioc_connections",
-                                                                        "ioc_urls_full",
-                                                                        "ioc_urls_domain",
-                                                                        "ioc_hashes_md5",
-                                                                        "ioc_hashes_sha1",
-                                                                        "ioc_hashes_sha256"};
-                for (const auto& prodDB : prodDBs)
-                {
-                    if (dbName == prodDB)
-                        return true;
-                }
-                return false;
-            });
+    EXPECT_CALL(*m_kvdbManager, exists(_)).WillRepeatedly(isProdDB);
     EXPECT_CALL(*m_kvdbManager, add(_)).Times(AtLeast(1));
 
     // First get returns nullopt, subsequent gets return the stored value
@@ -967,5 +1045,5 @@ TEST_F(SyncIocHandlerTest, PerformIOCSync_DuplicateIOCs_AppendsToArray)
     EXPECT_CALL(*m_kvdbManager, hotSwap(_, _)).Times(AtLeast(1));
     EXPECT_CALL(*m_store, upsertDoc(_, _)).WillOnce(Return(store::mocks::storeOk()));
 
-    detail::performIOCSync(m_kvdbManager, m_store, tempFile.path(), testHash);
+    detail::performIOCSync(m_kvdbManager, m_store, file.string(), testHash);
 }
