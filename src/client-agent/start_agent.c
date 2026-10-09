@@ -32,8 +32,7 @@
 
 int timeout;    //timeout in seconds waiting for a server reply
 
-/* 0 when SO_RCVTIMEO is in effect. */
-STATIC int handshake_poll_timeout = 0;
+atomic_int_t recv_poll_timeout = ATOMIC_INT_INITIALIZER(0);
 STATIC bool poll_fallback_logged = false;
 
 static ssize_t receive_message(char *buffer, unsigned int max_lenght);
@@ -155,7 +154,7 @@ bool connect_server(int server_id, bool verbose)
             }
         #endif
         int send_poll_timeout = 0;
-        handshake_poll_timeout = 0;
+        atomic_int_set(&recv_poll_timeout, 0);
 
         if (agt->server[server_id].protocol != IPPROTO_UDP) {
             /* Detect a silently half-closed TCP connection (no FIN/RST seen)
@@ -192,15 +191,11 @@ bool connect_server(int server_id, bool verbose)
                 }
             }
 
-            /* Bound the handshake's blocking receive too (receive_message()
-             * -> OS_RecvSecureTCP() -> os_recv_waitall()), which otherwise has
-             * no timeout at all: a manager that delivers a partial reply and
-             * goes silent would hang this single-threaded path indefinitely,
-             * the same clinical picture (status='connected', stuck forever)
-             * this whole fix exists to close on the send side. */
+            /* Receives have no timeout by default (os_recv_waitall()), so a half-sent reply would hang forever;
+             * bound them here, through poll() when SO_RCVTIMEO is unsupported. */
             if (OS_SetRecvTimeout(new_sock, timeout, 0) < 0) {
                 if (sockopt_unsupported()) {
-                    handshake_poll_timeout = timeout;
+                    atomic_int_set(&recv_poll_timeout, timeout);
                     log_poll_fallback();
                 } else {
 #ifdef WIN32
@@ -396,11 +391,7 @@ static ssize_t receive_message(char *buffer, unsigned int max_lenght) {
                 recv_b = recv(sock, buffer, max_lenght, MSG_DONTWAIT);
             } else {
                 /* Receive response TCP*/
-                if (handshake_poll_timeout > 0) {
-                    recv_b = OS_RecvSecureTCPTimeout(sock, buffer, max_lenght, handshake_poll_timeout);
-                } else {
-                    recv_b = OS_RecvSecureTCP(sock, buffer, max_lenght);
-                }
+                recv_b = OS_RecvSecureTCPTimeout(sock, buffer, max_lenght, atomic_int_get(&recv_poll_timeout));
             }
 
             /* Successful response */

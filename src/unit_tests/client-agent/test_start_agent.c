@@ -32,7 +32,7 @@ extern void send_msg_on_startup(void);
 extern bool agent_handshake_to_server(int server_id, bool is_startup);
 extern void send_agent_stopped_message();
 extern int _s_verify_counter;
-extern int handshake_poll_timeout;
+extern atomic_int_t recv_poll_timeout;
 extern bool poll_fallback_logged;
 
 int __wrap_send_msg(const char *msg, ssize_t msg_length) {
@@ -260,7 +260,7 @@ static void test_connect_server_timeouts_unsupported(void **state) {
     connected = connect_server(1, true);
     assert_true(connected);
     assert_int_equal(atomic_int_get(&agt->sock), 10);
-    assert_int_equal(handshake_poll_timeout, 5);
+    assert_int_equal(atomic_int_get(&recv_poll_timeout), 5);
 
     /* Next connection (UDP) must not inherit the bound */
     will_return(__wrap_getDefine_Int, 5);
@@ -274,7 +274,7 @@ static void test_connect_server_timeouts_unsupported(void **state) {
 
     connected = connect_server(0, true);
     assert_true(connected);
-    assert_int_equal(handshake_poll_timeout, 0);
+    assert_int_equal(atomic_int_get(&recv_poll_timeout), 0);
 }
 
 /* Handshake reply over a TCP socket without SO_RCVTIMEO is read with the poll() bound */
@@ -443,10 +443,11 @@ static void test_agent_handshake_to_server(void **state) {
     will_return(__wrap_OS_SetSendTimeout, 0);
     will_return(__wrap_OS_SetRecvTimeout, 0);
     will_return(__wrap_wnet_select, 1);
-    expect_any(__wrap_OS_RecvSecureTCP, sock);
-    expect_any(__wrap_OS_RecvSecureTCP, size);
-    will_return(__wrap_OS_RecvSecureTCP, SERVER_ENC_ACK);
-    will_return(__wrap_OS_RecvSecureTCP, strlen(SERVER_ENC_ACK));
+    expect_any(__wrap_OS_RecvSecureTCPTimeout, sock);
+    expect_any(__wrap_OS_RecvSecureTCPTimeout, size);
+    expect_value(__wrap_OS_RecvSecureTCPTimeout, timeout, 0);
+    will_return(__wrap_OS_RecvSecureTCPTimeout, SERVER_ENC_ACK);
+    will_return(__wrap_OS_RecvSecureTCPTimeout, strlen(SERVER_ENC_ACK));
     expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v4.5.0\"}");
     expect_string(__wrap_ReadSecMSG, buffer, SERVER_ENC_ACK);
     will_return(__wrap_ReadSecMSG, "#!-agent ack ");
@@ -479,10 +480,11 @@ static void test_agent_handshake_to_server(void **state) {
     will_return(__wrap_OS_SetSendTimeout, 0);
     will_return(__wrap_OS_SetRecvTimeout, 0);
     will_return(__wrap_wnet_select, 1);
-    expect_any(__wrap_OS_RecvSecureTCP, sock);
-    expect_any(__wrap_OS_RecvSecureTCP, size);
-    will_return(__wrap_OS_RecvSecureTCP, SERVER_ENC_ACK);
-    will_return(__wrap_OS_RecvSecureTCP, strlen(SERVER_ENC_ACK));
+    expect_any(__wrap_OS_RecvSecureTCPTimeout, sock);
+    expect_any(__wrap_OS_RecvSecureTCPTimeout, size);
+    expect_value(__wrap_OS_RecvSecureTCPTimeout, timeout, 0);
+    will_return(__wrap_OS_RecvSecureTCPTimeout, SERVER_ENC_ACK);
+    will_return(__wrap_OS_RecvSecureTCPTimeout, strlen(SERVER_ENC_ACK));
     expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v4.5.0\"}");
     expect_string(__wrap_send_msg, msg, "1:wazuh-agent:ossec: Agent started: 'agent0->any'.");
     expect_string(__wrap_ReadSecMSG, buffer, SERVER_ENC_ACK);
