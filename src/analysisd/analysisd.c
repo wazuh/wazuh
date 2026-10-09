@@ -849,6 +849,9 @@ int main_analysisd(int argc, char **argv)
     pthread_rwlock_init(&g_hotreload_ruleset_mutex, &rwlock_attr);
     pthread_rwlockattr_destroy(&rwlock_attr);
 
+    /* Load the logtest config before the socket that serves it (getconfig) is published */
+    w_logtest_init_parameters();
+
     // Start com request thread
     w_create_thread(asyscom_main, NULL);
 
