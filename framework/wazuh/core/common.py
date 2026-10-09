@@ -221,3 +221,8 @@ AGENT_NOT_IN_LOCAL_DB_ERROR_CODE = 1774
 # information is incomplete, on every node -- which is exactly why it must reach the merge rather
 # than be skipped by the node: when no node reports anything better, it is the outcome.
 UPGRADE_AGENT_NOT_IN_LOCAL_DB_ERROR_CODE = 1816
+
+# 1701 -> "Agent does not exist", by this node's replicated client.keys. A verdict when every node
+# gives it, but a copy that has not reached a worker yet makes that worker give it for an agent
+# another node knows, so the same merge drops it for any agent another node reported on.
+AGENT_DOES_NOT_EXIST_ERROR_CODE = 1701

@@ -1229,3 +1229,53 @@ def test_canonicalize_dynamic_ids_maps_every_int_spelling_to_the_denied_id(db_se
     db_setup._canonicalize_dynamic_ids(['user:id:{user_ids}', 'user:id:{user_id}'], kwargs)
 
     assert kwargs == {'user_ids': ['5', '6'], 'user_id': '5'}
+
+
+@pytest.mark.parametrize('broadcasting', [False, True])
+@pytest.mark.parametrize('agent_list', [['999'], ['001', '999'], '999'])
+def test_explicit_ids_are_answered_when_broadcast(db_setup, broadcasting, agent_list):
+    """Ids the caller named are answered whether or not the request is broadcast.
+
+    The restart, reload and upgrade agent endpoints always broadcast, and broadcasting used to mark
+    an explicit agents_list as not explicit -- so list_handler applied exclude_codes and a
+    non-existent id's 1701 vanished, leaving error 0 with nothing in failed_items.
+    """
+    token = db_setup.broadcast.set(broadcasting)
+    try:
+        _, _, add_denied = db_setup._get_required_permissions(actions=['agent:restart'],
+                                                              resources=['agent:id:{agent_list}'],
+                                                              agent_list=agent_list)
+    finally:
+        db_setup.broadcast.reset(token)
+
+    assert add_denied is True
+
+
+def test_omitted_ids_stay_non_explicit_when_broadcast(db_setup):
+    """A broadcast '*' reaches the decorator with agent_list deleted (DAPI does it), and stays
+    non-explicit: exclude_codes still apply to a request that named no agent."""
+    token = db_setup.broadcast.set(True)
+    try:
+        _, _, add_denied = db_setup._get_required_permissions(actions=['agent:restart'],
+                                                              resources=['agent:id:{agent_list}'])
+    finally:
+        db_setup.broadcast.reset(token)
+
+    assert add_denied is False
+
+
+def test_list_handler_keeps_1701_for_explicit_ids(db_setup):
+    """With the ids explicit, a 1701 survives post-processing despite being in exclude_codes."""
+    from wazuh.core.exception import WazuhResourceNotFound
+
+    def node_result():
+        result = AffectedItemsWazuhResult(all_msg='all', some_msg='some', none_msg='none')
+        result.add_failed_item(id_='999', error=WazuhResourceNotFound(1701))
+        return result
+
+    kept = db_setup.list_handler(node_result(), original={'agent_list': ['999']}, allowed={'agent:id': {'999'}},
+                                 target={'agent:id': 'agent_list'}, add_denied=True, exclude_codes=[1701, 1703])
+    assert {error.code for error in kept.failed_items} == {1701}
+
+    dropped = db_setup.list_handler(node_result(), add_denied=False, exclude_codes=[1701, 1703])
+    assert not dropped.failed_items

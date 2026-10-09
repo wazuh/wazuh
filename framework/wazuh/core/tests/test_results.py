@@ -540,6 +540,27 @@ def test_upgrade_placeholder_yields_and_stands_alone():
     assert rendered['total_failed_items'] == 2
 
 
+def test_lagging_1701_yields_before_the_placeholders_are_judged():
+    """The order DistributedAPI drops in: 1701 first, then 1774.
+
+    A worker its client.keys copy has not reached answers 1701 for an agent the master knows but
+    that has never connected (1774). Dropped in the other order, 1701 would be the real answer
+    that removes the 1774 and the agent would come back as non-existent. An agent no node knows
+    keeps its 1701.
+    """
+    master = _node_result(failed=[('001', 1774), ('999', 1701)])
+    worker = _node_result(failed=[('001', 1701), ('999', 1701)])
+
+    merged = master | worker
+    merged.drop_uninformative_failures(1701)
+    merged.drop_uninformative_failures(1774)
+
+    rendered = merged.render()['data']
+    assert [(item['error']['code'], item['id']) for item in rendered['failed_items']] == \
+           [(1701, ['999']), (1774, ['001'])]
+    assert rendered['total_failed_items'] == 2
+
+
 def test_drop_uninformative_failures_is_a_no_op_without_the_code():
     """A result that never carried the placeholder must come out untouched."""
     result = _node_result(affected=['001'], failed=[('002', 1761)])

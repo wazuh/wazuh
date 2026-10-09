@@ -137,6 +137,8 @@ A manager only knows the version of the agents that have connected to **it**, an
 
 In a cluster this is what makes the per-node breakdown readable. The request is broadcast to every node — 5.x agents connect over stateless, load-balanced HTTPS and have no fixed owning node, so the task is created everywhere and the agent, which discards a task id it has already run, runs it once wherever it polls. `1774` is then a per-node answer, so read it in the `nodes` field: a merge drops it as soon as any node reports that agent as affected, and it reaches the top level only when no node has ever seen the agent.
 
+An id named in `agents_list` that is not registered is answered with `1701` ("Agent does not exist"), and one the caller may not act on with `4000`, exactly as for a single agent — broadcasting does not make them disappear. A node whose replicated `client.keys` has not caught up yet may answer `1701` for an agent another node knows; the merge drops that answer in favour of the other node's, so `1701` reaches the top level only when no node knows the agent. Omitting `agents_list` (all agents) reports neither.
+
 ### Verifying the result
 
 Nothing reports completion. A restarted agent reconnects; check its status and `lastKeepAlive` with
