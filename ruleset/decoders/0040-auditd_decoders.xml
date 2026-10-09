@@ -45,7 +45,7 @@
 <!-- SYSCALL - key -->
 <decoder name="auditd-syscall">
   <parent>auditd</parent>
-  <regex offset="after_regex">key=\((\S+)\)|key="(\S+)"|key=(\S+) </regex>
+  <regex type="pcre2" offset="after_regex">^(?:(?! type=)[^\x1d])*?(?:^|\s)key=(?|\(([^\s)]+)\)|"([^\s"]+)"|([^\s"\x1d]+))</regex>
   <order>audit.key</order>
 </decoder>
 
@@ -137,25 +137,25 @@
 
 <decoder name="auditd-config_change">
   <parent>auditd</parent>
-  <regex offset="after_regex">^auid=(\S+) ses=(\S+) op="(\S+)"</regex>
+  <regex type="pcre2" offset="after_regex">^auid=(\S+) ses=(\S+)(?: subj=\S+)? op=(?|"([^"]+)"|([^\s"\x1d]+))</regex>
   <order>audit.auid,audit.session,audit.op</order>
 </decoder>
 
 <decoder name="auditd-config_change">
   <parent>auditd</parent>
-  <regex offset="after_regex">key=\((\S+)\)|key="(\S+)"|key=(\S+) </regex>
+  <regex type="pcre2" offset="after_regex">^(?:(?! type=)[^\x1d])*?(?:^|\s)key=(?|\(([^\s)]+)\)|"([^\s"]+)"|([^\s"\x1d]+))</regex>
   <order>audit.key</order>
 </decoder>
 
 <decoder name="auditd-config_change">
   <parent>auditd</parent>
-  <regex offset="after_regex">list=(\S+)</regex>
+  <regex type="pcre2" offset="after_regex">^(?:(?! type=)[^\x1d])*?(?:^|\s)list=([^\s\x1d]+)</regex>
   <order>audit.list</order>
 </decoder>
 
 <decoder name="auditd-config_change">
   <parent>auditd</parent>
-  <regex offset="after_regex">res=(\S+)</regex>
+  <regex type="pcre2" offset="after_regex">^(?:(?! type=)[^\x1d])*?(?:^|\s)res=([^\s\x1d]+)</regex>
   <order>audit.res</order>
 </decoder>
 
@@ -171,7 +171,7 @@
 
 <decoder name="auditd-promiscuous">
   <parent>auditd</parent>
-  <regex offset="after_regex">^dev=(\S+) prom=(\S+) old_prom=(\S+) auid=(\S+) uid=(\S+) gid=(\S+) ses=(\S+)</regex>
+  <regex type="pcre2" offset="after_regex">^dev=(\S+) prom=(\S+) old_prom=(\S+) auid=(\S+) uid=(\S+) gid=(\S+) ses=([^\s\x1d]+)</regex>
   <order>audit.dev,audit.prom,audit.old_prom,audit.auid,audit.uid,audit.gid,audit.session</order>
 </decoder>
 
@@ -188,7 +188,7 @@
 
 <decoder name="auditd-selinux_macstatus">
   <parent>auditd</parent>
-  <regex offset="after_regex">^enforcing=(\S+) old_enforcing=(\S+) auid=(\S+) ses=(\S+)</regex>
+  <regex type="pcre2" offset="after_regex">^enforcing=(\S+) old_enforcing=(\S+) auid=(\S+) ses=([^\s\x1d]+)</regex>
   <order>audit.enforcing,audit.old_enforcing,audit.auid,audit.session</order>
 </decoder>
 
@@ -280,7 +280,7 @@
 
 <decoder name="auditd-login">
   <parent>auditd</parent>
-  <regex offset="after_regex">old-auid=(\S+) auid=(\S+) old-ses=(\S+) ses=(\S+) res=(\S+)</regex>
+  <regex type="pcre2" offset="after_regex">old-auid=(\S+) auid=(\S+) old-ses=(\S+) ses=(\S+) res=([^\s\x1d]+)</regex>
   <order>audit.old-auid,audit.auid,audit.old-ses,audit.session,audit.res</order>
 </decoder>
 
