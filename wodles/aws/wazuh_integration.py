@@ -331,7 +331,9 @@ class WazuhIntegration:
         There is no separate corruption pre-check: gzip/zip corruption is instead caught around
         the caller's own read of the yielded object (its "with" block), so a stream too large or
         too corrupted to use is only ever decompressed once, not once to validate and discarded,
-        then again for real.
+        then again for real. After logging, the handlers re-raise, so the caller still sees the
+        error (e.g. get_log_file() sends its error event under skip_on_error); with skip_on_error
+        off the process exits with code 8 first.
 
         Parameters
         ----------
@@ -365,10 +367,12 @@ class WazuhIntegration:
             aws_tools.error('Invalid gzip file received.')
             if not self.skip_on_error:
                 sys.exit(8)
+            raise
         except zipfile.BadZipFile:
             aws_tools.error('Invalid zip file received.')
             if not self.skip_on_error:
                 sys.exit(8)
+            raise
 
 
 class WazuhAWSDatabase(WazuhIntegration):

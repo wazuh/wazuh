@@ -413,6 +413,26 @@ def test_wazuh_integration_decompress_file_catches_corruption_raised_by_the_call
 
 
 @patch('io.BytesIO')
+def test_wazuh_integration_decompress_file_reraises_corruption_when_skip_on_error(mock_io):
+    """Test decompress_file() lets a corruption error raised while the caller reads propagate when
+    skip_on_error is set, so get_log_file() can still send the error event for the corrupt file."""
+    integration = utils.get_mocked_wazuh_integration()
+    integration.client = MagicMock()
+    integration.bucket = utils.TEST_BUCKET
+    integration.skip_on_error = True
+
+    with patch('gzip.open') as mock_gzip_open, pytest.raises(gzip.BadGzipFile):
+        gzip_mock = _mock_context_manager(mock_gzip_open.return_value)
+        gzip_mock.read.side_effect = gzip.BadGzipFile('CRC check failed')
+        with integration.decompress_file(integration.bucket, 'test.gz') as f:
+            f.read()
+
+    with patch('zipfile.ZipFile', side_effect=zipfile.BadZipFile), pytest.raises(zipfile.BadZipFile):
+        with integration.decompress_file(integration.bucket, 'test.zip'):
+            pass
+
+
+@patch('io.BytesIO')
 def test_aws_wazuh_integration_decompress_file_handles_exceptions_when_decompress_fails(mock_io):
     """Test 'decompress_file' method handles exceptions raised when trying to decompress a file and
     exits with the expected exit code.
