@@ -347,6 +347,39 @@ static void test_fim_recovery_persist_table_and_resync_null_items(void **state) 
     // Function should return early without crashing
 }
 
+// A failed clear is logged as a warning, not an error: an agent reload landing mid-pass is the
+// usual cause and the next cycle retries. Nothing is persisted or synced after it.
+static void test_fim_recovery_persist_table_and_resync_data_clean_failure(void **state) {
+    (void) state;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234; // Mock handle
+
+    cJSON* test_items = cJSON_CreateArray();
+    cJSON* item = cJSON_CreateObject();
+    cJSON_AddStringToObject(item, "path", "/tmp/test.txt");
+    cJSON_AddStringToObject(item, "checksum", "abc123");
+    cJSON_AddNumberToObject(item, "version", 1);
+    cJSON_AddItemToArray(test_items, item);
+
+    expect_string(__wrap_fim_db_increase_each_entry_version, table_name, FIMDB_FILE_TABLE_NAME);
+    will_return(__wrap_fim_db_increase_each_entry_version, 0);
+
+    expect_string(__wrap_fim_db_get_every_element, table_name, FIMDB_FILE_TABLE_NAME);
+    expect_string(__wrap_fim_db_get_every_element, row_filter, "WHERE sync=1");
+    will_return(__wrap_fim_db_get_every_element, test_items);
+
+    expect_value(__wrap_asp_notify_data_clean, handle, handle);
+    expect_any(__wrap_asp_notify_data_clean, indices);
+    expect_value(__wrap_asp_notify_data_clean, indices_count, 1);
+    will_return(__wrap_asp_notify_data_clean, false);
+
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "Failed to clear index '" FIM_FILES_SYNC_INDEX "' before recovery resync for table "
+                  FIMDB_FILE_TABLE_NAME "; will retry later");
+
+    // No asp_persist_diff/asp_sync_module_bounded expectations: reaching either would be the bug.
+    assert_false(fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories));
+}
+
 // Test: Check if full sync required - checksum mismatch
 static void test_fim_recovery_check_if_full_sync_required_mismatch(void **state) {
     (void) state;
@@ -853,6 +886,7 @@ int main(void) {
         cmocka_unit_test(test_fim_recovery_persist_table_and_resync_failure),
         cmocka_unit_test(test_fim_recovery_persist_table_and_resync_version_increase_failure),
         cmocka_unit_test(test_fim_recovery_persist_table_and_resync_null_items),
+        cmocka_unit_test(test_fim_recovery_persist_table_and_resync_data_clean_failure),
         cmocka_unit_test(test_fim_recovery_persist_table_and_resync_skips_orphan_paths),
         cmocka_unit_test(test_fim_recovery_check_if_full_sync_required_mismatch),
         cmocka_unit_test(test_fim_recovery_check_if_full_sync_required_match),

@@ -124,8 +124,10 @@ bool fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
     // payload and could permanently drop whatever didn't fit in that one session).
     const char* clean_indices[] = { recovery_index };
     if (!asp_notify_data_clean(handle, clean_indices, 1)) {
-        merror("Failed to clear index '%s' before recovery resync for table %s; will retry later",
-               recovery_index, table_name);
+        // Warning, not error, like Syscollector's recovery resync: an agent reload landing
+        // mid-pass makes this fail too, and the caller tries again later.
+        mwarn("Failed to clear index '%s' before recovery resync for table %s; will retry later",
+              recovery_index, table_name);
         cJSON_Delete(items);
         return false;
     }
