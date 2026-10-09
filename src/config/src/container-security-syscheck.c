@@ -40,6 +40,7 @@ static const char* CS_XML_SYSCHECK = "syscheck";
 static const char* CS_XML_SYSCOLLECTOR = "syscollector";
 static const char* CS_XML_ENABLED = "enabled";
 static const char* CS_XML_DIRECTORIES = "directories";
+static const char* CS_XML_FILE_LIMIT = "file_limit";
 
 static const char* CS_ATTR_CONTAINER_NAME = "container_name";
 static const char* CS_ATTR_RESTRICT = "restrict";
@@ -373,6 +374,35 @@ static int cs_read_syscheck_block(const OS_XML* xml, xml_node* node, syscheck_co
             }
 
             cs_read_container_attr(syscheck, children[i]->content, children[i]->attributes, children[i]->values);
+        }
+        else if (strcmp(children[i]->element, CS_XML_FILE_LIMIT) == 0)
+        {
+            /* Rows ONE container may store (#37532 / O10). Spelled like the
+             * host's <syscheck><file_limit> because it is the same kind of
+             * thing — a ceiling on the database, not on what is reported — and
+             * it sits in the container block because it applies per container. */
+            if (children[i]->content == NULL)
+            {
+                mwarn("Empty <%s> in <container_security><syscheck>.", CS_XML_FILE_LIMIT);
+                continue;
+            }
+
+            char* end = NULL;
+            const long value = strtol(children[i]->content, &end, 10);
+
+            if (end == children[i]->content || (end && *end != '\0') || value < 0 || value > INT_MAX)
+            {
+                /* Fail OPEN, unlike <enabled> above: a limit we cannot read must
+                 * not silently become a small number, and refusing to monitor is
+                 * a worse answer than monitoring without a ceiling. */
+                mwarn("Invalid <%s> value '%s' in <container_security><syscheck>. Container file monitoring "
+                      "continues without a per-container row limit.",
+                      CS_XML_FILE_LIMIT,
+                      children[i]->content);
+                continue;
+            }
+
+            syscheck->container_file_entry_limit = (int)value;
         }
         else
         {
