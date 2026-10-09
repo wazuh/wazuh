@@ -199,7 +199,11 @@ namespace remoted::enrollment
         {
             return remoted::auth::AuthError::TokenRevoked;
         }
-        return EnrollmentGranted {std::string {kid}, /*credentialVerified=*/true};
+        // A token with no uses left still proves nothing authd will honour, so it is charged like an
+        // unverified caller: replaying a spent single-use token must not drain the bucket password and
+        // fresh-token enrollments are served from. Demoted, not refused: the replica can read a use that
+        // authd is about to give back, and a local 9024 would make the agent discard a live token.
+        return EnrollmentGranted {std::string {kid}, /*credentialVerified=*/!entry->exhausted};
     }
 
 } // namespace remoted::enrollment

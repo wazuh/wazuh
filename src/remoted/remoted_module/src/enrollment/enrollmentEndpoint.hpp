@@ -44,8 +44,9 @@ namespace remoted::enrollment
      * Two classes, two buckets, because "passed authenticate()" is not "proved anything" on every
      * path: a re-enrollment bearer is handed to authd unverified (only the master holds its secret)
      * and Open mode admits a credential-less request outright. Anyone can produce those, so they are
-     * charged to @c unverified; a request whose password or enrollment token was verified here is
-     * charged to @c verified, which nobody without a credential can reach.
+     * charged to @c unverified, and so is an enrollment token with no uses left: a spent single-use
+     * token is easy to find (install commands, CI logs), and only authd can turn it down. A request
+     * whose password or live enrollment token was verified here is charged to @c verified.
      *
      * Each admission returns true to proceed, or false once it has already sent the 429 on the
      * responder it was given. A null admission admits everything.
@@ -55,7 +56,7 @@ namespace remoted::enrollment
         using Admission = std::function<bool(remoted::http::IHttpResponder&)>;
 
         Admission verified;   ///< Password- or enrollment-token-verified enrollments.
-        Admission unverified; ///< Re-enrollments (judged by authd) and credential-less (Open) ones.
+        Admission unverified; ///< Re-enrollments, credential-less (Open) ones and spent tokens.
     };
 
     /**

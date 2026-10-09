@@ -766,14 +766,14 @@ namespace
     namespace tvt = jwt_profile::v1::test_vectors::enroll_token;
 
     // A store holding the frozen vector token (id 00..0f, secret 10..1f), as authd writes it.
-    std::string writeTokenStore(const char* tag, bool revoked = false)
+    std::string writeTokenStore(const char* tag, bool revoked = false, int uses = 0)
     {
         const std::string path = "/tmp/enrollmentEndpoint_test_" + std::to_string(::getpid()) + tag + ".tokens.json";
         std::ofstream file(path);
         file << R"({"version":1,"tokens":[{"id":")" << tvt::kIdB64Url << R"(","secret":")" << tvt::kSecretB64Url
              << R"(","adr":"siem.example.local","pin":")" << tvt::kPinB64Url
-             << R"(","ca":null,"created":1700000000,"expires":4102444800,"max_uses":1,"uses":0,"revoked":)"
-             << (revoked ? "true" : "false") << R"(,"description":null}]})";
+             << R"(","ca":null,"created":1700000000,"expires":4102444800,"max_uses":1,"uses":)" << uses
+             << R"(,"revoked":)" << (revoked ? "true" : "false") << R"(,"description":null}]})";
         return path;
     }
 
@@ -1231,6 +1231,31 @@ TEST(EnrollmentEndpointTest, AVerifiedEnrollmentIsServedWhileTheUnverifiedBucket
     EXPECT_TRUE(run.authdReached);
     EXPECT_EQ(verified.charged.load(), 1);
     EXPECT_EQ(unverified.charged.load(), 0);
+
+    std::remove(store.c_str());
+}
+
+TEST(EnrollmentEndpointTest, ASpentTokenIsChargedToTheUnverifiedBucket)
+{
+    // A single-use token whose use is already consumed: anyone who finds it can still sign with it, so it
+    // must not spend the bucket password and live-token enrollments are served from. It still reaches
+    // authd, which owns the verdict; here the unverified bucket refuses first, so the verified one is
+    // provably untouched.
+    const std::string store = writeTokenStore("_gated_spent", /*revoked=*/false, /*uses=*/1);
+    GateProbe verified;
+    GateProbe unverified;
+    unverified.admits = false;
+
+    auto tokenSource = std::make_shared<remoted::auth::TokenKeySource>(store);
+    EnrollmentAuthenticator authenticator {EnrollmentAuthConfig {/*requirePassword=*/true}, nullptr, tokenSource};
+    auto request = makeRequest(kValidBody);
+    request.headers.emplace("authorization", vectorTokenBearer(static_cast<std::int64_t>(std::time(nullptr))));
+    const auto run = runGated(authenticator, std::move(request), verified, unverified, "spent_token");
+
+    EXPECT_EQ(run.response.status, 429);
+    EXPECT_EQ(unverified.charged.load(), 1);
+    EXPECT_EQ(verified.charged.load(), 0);
+    EXPECT_FALSE(run.authdReached);
 
     std::remove(store.c_str());
 }

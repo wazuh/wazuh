@@ -427,9 +427,9 @@ a whole.
   answered `400`/`401`/`413`/`415` and spends nothing, so a flood of them cannot starve the agents
   that pass them.
 - **Two buckets of this rate:** enrollments whose password or enrollment token was **verified** by
-  remoted are charged to one; re-enrollments (their bearer is only verifiable on the master) and
-  enrollments without a credential (Open mode, or a listener requiring a client certificate instead)
-  to the other. Anyone can produce the second kind, so exhausting it never refuses the first. authd
+  remoted, with uses left for a token, are charged to one; re-enrollments (their bearer is only
+  verifiable on the master), enrollments without a credential (Open mode, or a listener requiring a
+  client certificate instead) and enrollment tokens with no uses left to the other. Anyone can produce the second kind, so exhausting it never refuses the first. authd
   may therefore be asked up to twice this rate when both run at their ceiling at once; the authd
   queue (`remoted.authd_max_queue_size`) still bounds what is in flight.
 - **Note:** Neither bucket is per caller. In Open mode, and for re-enrollments, one source can still
