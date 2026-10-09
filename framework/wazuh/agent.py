@@ -64,16 +64,23 @@ ERROR_CODES_UPGRADE_SOCKET = [1819, 1820, 1821, 1822, 1823, 1824, 1826, 1828]
 # created stays in affected_items. That is also what lets a cluster merge keep the nodes that
 # succeeded, since two AffectedItemsWazuhResult objects merge normally.
 
-# 1816 -> Agent information not found in this node's database. Agents have no fixed owning node
-# (5.x agents connect over stateless, load-balanced HTTPS), so a request can be broadcast to a
-# node that simply doesn't have this agent's info yet/at all. Skip it silently here instead of
-# failing the whole request: whichever node actually has the agent will report the real outcome.
-ERROR_CODE_UPGRADE_AGENT_NOT_IN_LOCAL_DB = 1816
+# 1816 -> the Task Manager's GlobalDbFailure (socket error 6), "Agent information not found in
+# database". It is reported per agent, never skipped, and is the upgrade twin of
+# common.AGENT_NOT_IN_LOCAL_DB_ERROR_CODE below: a placeholder the cluster merge drops
+# (DistributedAPI, drop_uninformative_failures) once another node reports the same agent as
+# affected or with a real error.
+#
+# It used to be skipped silently, on the reasoning that it only meant "this node does not know the
+# agent" and that the node which did would report the real outcome. The Task Manager answers it in
+# more cases than that: an agent whose platform, architecture or OS major version is empty
+# (resolvePackageType()), an agent version it cannot read, a wazuh-db query that does not
+# complete. Those are answered identically by EVERY node, so every node skipped the agent and the
+# request came back as error 0, "No upgrade task was created", with nothing in failed_items.
+ERROR_CODE_UPGRADE_AGENT_NOT_IN_LOCAL_DB = common.UPGRADE_AGENT_NOT_IN_LOCAL_DB_ERROR_CODE
 
-# common.AGENT_NOT_IN_LOCAL_DB_ERROR_CODE (1774) is the restart/reload twin of 1816 above: the same
-# situation, reported instead of skipped. The upgrade socket's answer is one node's share of a task
-# the other nodes still report on, while for restart/reload a silent skip would leave an agent
-# nobody has ever seen out of the response altogether, with the request answered as a success.
+# common.AGENT_NOT_IN_LOCAL_DB_ERROR_CODE (1774) is the restart/reload twin of 1816 above: a
+# silent skip would leave an agent out of the response altogether, with the request answered as a
+# success, so both are reported and left for the merge to reconcile.
 
 STATUS = 'status'
 COUNT = 'count'
@@ -1580,14 +1587,12 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
                     result.affected_items.append(agent_id)
                     result.total_affected_items += 1
 
-                # Upgrade error for specific agents
-                elif (error_code := 1810 + socket_error) in ERROR_CODES_UPGRADE_SOCKET:
+                # Upgrade error for specific agents. 1816 included: a cluster merge drops it for an
+                # agent another node reported on, and keeps it when no node could (see its constant)
+                elif (error_code := 1810 + socket_error) in ERROR_CODES_UPGRADE_SOCKET or \
+                        error_code == ERROR_CODE_UPGRADE_AGENT_NOT_IN_LOCAL_DB:
                     error = WazuhError(error_code, cmd_error=True, extra_message=agent_result['message'])
                     result.add_failed_item(id_=str(agent_result['agent']).zfill(3), error=error)
-
-                # This node has no info for this agent: not this node's to report on, skip it
-                elif error_code == ERROR_CODE_UPGRADE_AGENT_NOT_IN_LOCAL_DB:
-                    continue
 
                 # Upgrade error for all agents, internal server error
                 else:

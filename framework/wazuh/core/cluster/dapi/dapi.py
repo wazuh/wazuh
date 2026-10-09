@@ -627,8 +627,17 @@ class DistributedAPI:
                 # nodes that DO know the agent -- an affected item, or a real error such as 1761 --
                 # the placeholder would list that agent a second time and count it a second time.
                 # Dropped here and not in the merge itself: each node's own answer stays untouched
-                # in `nodes`, where "this node has no information about it" is the point.
+                # in `nodes`, where "this node has no information about it" is the point. 1816 is
+                # the upgrade endpoints' equivalent, from the Task Manager.
+                #
+                # 1701 goes first. client.keys is replicated, so every node normally agrees on it,
+                # but a worker the latest copy has not reached yet answers 1701 for an agent the
+                # master knows -- and any other node's verdict about an agent proves it exists. It
+                # must yield before the placeholders are judged, or it would be the "real" answer
+                # that removes a 1774 standing alone, and the agent would be reported as missing.
+                response.drop_uninformative_failures(common.AGENT_DOES_NOT_EXIST_ERROR_CODE)
                 response.drop_uninformative_failures(common.AGENT_NOT_IN_LOCAL_DB_ERROR_CODE)
+                response.drop_uninformative_failures(common.UPGRADE_AGENT_NOT_IN_LOCAL_DB_ERROR_CODE)
             if isinstance(response, wresults.AbstractWazuhResult):
                 response = response.limit(limit=self.f_kwargs.get('limit', common.DATABASE_LIMIT),
                                           offset=self.f_kwargs.get('offset', 0)) \

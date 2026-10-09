@@ -33,7 +33,7 @@ One row per operation of `api/api/spec/spec.yaml`, one column per case the opera
 | 2xx | 100 | 100 |
 | 400 | 85 | 85 |
 | 401 | 100 | 100 |
-| 403 | 80 | 92 |
+| 403 | 84 | 92 |
 | 404 | 21 | 21 |
 | 405 | 100 | 100 |
 | 413 | 16 | 16 |
@@ -58,8 +58,8 @@ One row per operation of `api/api/spec/spec.yaml`, one column per case the opera
 | `GET /agents/{agent_id}/key` | ✓ | ✓ | ✓ | ✓ | · | ✓ | · | · | agent_GET_endpoints, auth_endpoints, rbac_black_agent_endpoints, rbac_white_agent_endpoints, rbac_white_all_endpoints |
 | `PUT /agents/{agent_id}/restart` | ✓ | ✓ | ✓ | ✓ | · | ✓ | · | · | agent_PUT_endpoints, auth_endpoints, rbac_black_agent_endpoints, rbac_white_agent_endpoints, rbac_white_all_endpoints |
 | `PUT /agents/{agent_id}/reload` | ✓ | ✓ | ✓ | ✓ | · | ✓ | · | · | agent_PUT_endpoints, auth_endpoints, rbac_white_all_endpoints |
-| `PUT /agents/upgrade` | ✓ | ✓ | ✓ | waived | · | ✓ | · | · | agent_PUT_endpoints, auth_endpoints, rbac_black_agent_endpoints, rbac_white_agent_endpoints, rbac_white_all_endpoints |
-| `PUT /agents/upgrade_custom` | ✓ | ✓ | ✓ | waived | · | ✓ | · | · | agent_PUT_endpoints, auth_endpoints, rbac_black_agent_endpoints, rbac_white_agent_endpoints, rbac_white_all_endpoints |
+| `PUT /agents/upgrade` | ✓ | ✓ | ✓ | ✓ | · | ✓ | · | · | agent_PUT_endpoints, auth_endpoints, rbac_black_agent_endpoints, rbac_white_agent_endpoints, rbac_white_all_endpoints |
+| `PUT /agents/upgrade_custom` | ✓ | ✓ | ✓ | ✓ | · | ✓ | · | · | agent_PUT_endpoints, auth_endpoints, rbac_black_agent_endpoints, rbac_white_agent_endpoints, rbac_white_all_endpoints |
 | `GET /agents/uninstall` | ✓ | · | ✓ | ✓ | · | ✓ | · | · | agent_GET_endpoints, auth_endpoints, rbac_black_agent_endpoints, rbac_white_agent_endpoints |
 | `DELETE /agents/group` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | agent_DELETE_endpoints, auth_endpoints, rbac_black_agent_endpoints, rbac_white_agent_endpoints, rbac_white_all_endpoints |
 | `PUT /agents/group` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | agent_PUT_endpoints, auth_endpoints, rbac_black_agent_endpoints, rbac_white_agent_endpoints, rbac_white_all_endpoints |
@@ -73,8 +73,8 @@ One row per operation of `api/api/spec/spec.yaml`, one column per case the opera
 | `DELETE /agents/enrollment-tokens/{token_id}` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · | agent_DELETE_endpoints, agent_GET_endpoints, agent_POST_endpoints, auth_endpoints, rbac_black_agent_endpoints, rbac_white_agent_endpoints |
 | `GET /agents/no_group` | ✓ | ✓ | ✓ | waived | · | ✓ | · | · | agent_GET_endpoints, auth_endpoints, rbac_black_agent_endpoints, rbac_white_agent_endpoints, rbac_white_all_endpoints |
 | `GET /agents/outdated` | ✓ | ✓ | ✓ | waived | · | ✓ | · | · | agent_GET_endpoints, auth_endpoints, rbac_black_agent_endpoints, rbac_white_agent_endpoints, rbac_white_all_endpoints |
-| `PUT /agents/reload` | ✓ | ✓ | ✓ | waived | · | ✓ | · | · | agent_PUT_endpoints, auth_endpoints, rbac_white_all_endpoints |
-| `PUT /agents/restart` | ✓ | ✓ | ✓ | waived | · | ✓ | · | · | agent_PUT_endpoints, auth_endpoints, rbac_white_agent_endpoints, rbac_white_all_endpoints |
+| `PUT /agents/reload` | ✓ | ✓ | ✓ | ✓ | · | ✓ | · | · | agent_PUT_endpoints, auth_endpoints, rbac_white_all_endpoints |
+| `PUT /agents/restart` | ✓ | ✓ | ✓ | ✓ | · | ✓ | · | · | agent_PUT_endpoints, auth_endpoints, rbac_white_agent_endpoints, rbac_white_all_endpoints |
 | `PUT /agents/scan/vulnerability` | ✓ | ✓ | ✓ | ✓ | · | ✓ | · | · | agent_PUT_endpoints, auth_endpoints, rbac_white_all_endpoints |
 | `GET /agents/stats/distinct` | ✓ | ✓ | ✓ | waived | · | ✓ | · | · | agent_GET_endpoints, auth_endpoints, rbac_black_agent_endpoints, rbac_white_agent_endpoints, rbac_white_all_endpoints |
 | `GET /agents/summary` | ✓ | ✓ | ✓ | waived | · | ✓ | · | · | agent_GET_endpoints, auth_endpoints, rbac_black_agent_endpoints, rbac_white_agent_endpoints, rbac_white_all_endpoints |

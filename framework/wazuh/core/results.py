@@ -601,7 +601,8 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
         """Drop `code` from failed_items for every item some other source already accounted for.
 
         `code` marks a failure that is not a verdict about the item but the absence of one --
-        `common.AGENT_NOT_IN_LOCAL_DB_ERROR_CODE`, "this node has no information about the agent".
+        `common.AGENT_NOT_IN_LOCAL_DB_ERROR_CODE`, "this node has no information about the agent",
+        or its upgrade twin `common.UPGRADE_AGENT_NOT_IN_LOCAL_DB_ERROR_CODE`.
         It is worth reporting only while nothing better exists: once another node has reported
         that same item, as an affected item or with a real error, keeping the placeholder lists
         the item twice and counts it twice in total_failed_items, so a 12-agent request comes back
@@ -616,8 +617,10 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
         code : int
             Error code to treat as a placeholder.
         """
-        placeholder = next((error for error in self._failed_items if error.code == code), None)
-        if placeholder is None:
+        # Every entry with the code, not the first: errors are keyed by their text too, so two nodes
+        # wording the placeholder differently leave two entries.
+        placeholders = [error for error in self._failed_items if error.code == code]
+        if not placeholders:
             return
 
         # Identifier-shaped items only, like attribute_to_node: an endpoint whose affected items
@@ -627,9 +630,10 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
                           for error, ids in self._failed_items.items() if error.code != code
                           for id_ in ids}
 
-        self._failed_items[placeholder] -= accounted_for
-        if not self._failed_items[placeholder]:
-            del self._failed_items[placeholder]
+        for placeholder in placeholders:
+            self._failed_items[placeholder] -= accounted_for
+            if not self._failed_items[placeholder]:
+                del self._failed_items[placeholder]
         self._recalculate_failed_items()
 
     def attribute_to_node(self, node_name: str):
