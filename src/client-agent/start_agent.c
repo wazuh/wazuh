@@ -391,12 +391,7 @@ static ssize_t receive_message(char *buffer, unsigned int max_lenght) {
                 recv_b = recv(sock, buffer, max_lenght, MSG_DONTWAIT);
             } else {
                 /* Receive response TCP*/
-                const int poll_timeout = atomic_int_get(&recv_poll_timeout);
-                if (poll_timeout > 0) {
-                    recv_b = OS_RecvSecureTCPTimeout(sock, buffer, max_lenght, poll_timeout);
-                } else {
-                    recv_b = OS_RecvSecureTCP(sock, buffer, max_lenght);
-                }
+                recv_b = OS_RecvSecureTCPTimeout(sock, buffer, max_lenght, atomic_int_get(&recv_poll_timeout));
             }
 
             /* Successful response */

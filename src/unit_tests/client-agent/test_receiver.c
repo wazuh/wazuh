@@ -36,19 +36,9 @@ static int cleanup_result;
 static int publish_result;
 static int publications;
 static int discarded;
-static int plain_receives;
 static int timeout_errno;
 static const char* accepted_hash;
 static const char* checksum = "0123456789abcdef0123456789abcdef";
-
-ssize_t __wrap_OS_RecvSecureTCP(int sock, char* buffer, size_t size)
-{
-    (void)sock;
-    (void)size;
-    ++plain_receives;
-    strcpy(buffer, "message");
-    return 7;
-}
 
 int __wrap_OS_RecvSecureTCPTimeout(int sock, char* buffer, uint32_t size, int timeout)
 {
@@ -215,7 +205,7 @@ static int setup(void** state)
     errors = cleanups = cache_clears = validations = reloads = 0;
     cleanup_result = publish_result = publications = discarded = 0;
     accepted_hash = "previous";
-    plain_receives = timeout_errno = 0;
+    timeout_errno = 0;
     atomic_int_set(&recv_poll_timeout, 0);
     return 0;
 }
@@ -240,22 +230,33 @@ static int teardown(void** state)
     return 0;
 }
 
+static void expect_receive(int timeout)
+{
+    expect_value(__wrap_OS_RecvSecureTCPTimeout, sock, 0);
+    expect_value(__wrap_OS_RecvSecureTCPTimeout, size, OS_MAXSTR);
+    expect_value(__wrap_OS_RecvSecureTCPTimeout, timeout, timeout);
+    will_return(__wrap_OS_RecvSecureTCPTimeout, 7);
+}
+
 static void receive_bundle(void)
 {
     char update[256];
     snprintf(update, sizeof(update), CONTROL_HEADER "%s%s %s", FILE_UPDATE_HEADER, checksum, SHAREDCFG_FILENAME);
     message = update;
+    expect_receive(0);
     expect_any(__wrap__mdebug2, formatted_msg);
     assert_int_equal(receive_msg(), 0);
 
     if (bundle_data)
     {
         message = (char*)bundle_data;
+        expect_receive(0);
         expect_any(__wrap__mdebug2, formatted_msg);
         assert_int_equal(receive_msg(), 0);
     }
 
     message = CONTROL_HEADER FILE_CLOSE_HEADER;
+    expect_receive(0);
     expect_any(__wrap__mdebug2, formatted_msg);
 
     int extracted_all = extraction_result != UNMERGE_FAILED;
@@ -535,14 +536,14 @@ static void test_update_without_remote_conf(void** state)
     assert_int_equal(reloads, 0);
 }
 
-/* Without a poll() bound the receive stays on the blocking read. */
+/* Without a poll() bound the receive uses timeout 0 (blocking read). */
 static void test_receive_without_poll_timeout(void** state)
 {
     (void)state;
     message = CONTROL_HEADER HC_ACK;
+    expect_receive(0);
     expect_any(__wrap__mdebug2, formatted_msg);
     assert_int_equal(receive_msg(), 0);
-    assert_int_equal(plain_receives, 1);
 }
 
 static void test_receive_with_poll_timeout(void** state)
@@ -550,13 +551,9 @@ static void test_receive_with_poll_timeout(void** state)
     (void)state;
     atomic_int_set(&recv_poll_timeout, 5);
     message = CONTROL_HEADER HC_ACK;
-    expect_value(__wrap_OS_RecvSecureTCPTimeout, sock, 0);
-    expect_value(__wrap_OS_RecvSecureTCPTimeout, size, OS_MAXSTR);
-    expect_value(__wrap_OS_RecvSecureTCPTimeout, timeout, 5);
-    will_return(__wrap_OS_RecvSecureTCPTimeout, 7);
+    expect_receive(5);
     expect_any(__wrap__mdebug2, formatted_msg);
     assert_int_equal(receive_msg(), 0);
-    assert_int_equal(plain_receives, 0);
 }
 
 /* A poll() timeout is logged as a connection error and makes the agent reconnect. */
@@ -571,7 +568,6 @@ static void test_receive_poll_timeout_expires(void** state)
     will_return(__wrap_OS_RecvSecureTCPTimeout, -1);
     expect_string(__wrap__merror, formatted_msg, "Connection socket: Resource temporarily unavailable (11)");
     assert_int_equal(receive_msg(), -1);
-    assert_int_equal(plain_receives, 0);
 }
 
 int main(void)
