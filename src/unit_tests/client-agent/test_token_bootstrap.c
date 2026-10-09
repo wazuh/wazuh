@@ -306,8 +306,9 @@ int __wrap_chmod(const char *path, mode_t mode) {
 
 /* The descriptor-based half of the pair above, for the same reason __wrap_fchown() exists:
  * w_token_bootstrap_repair_anchor_ownership() sets the sticky group-writable mode on a directory
- * descriptor it opened with O_NOFOLLOW, never on the path. Wrapped rather than left real so an
- * unprivileged run behaves like a privileged one, exactly as __wrap_chmod() does. */
+ * descriptor it opened with O_NOFOLLOW, never on the path, and w_reenroll_secret_store() sets the
+ * secret's mode on its staged copy's descriptor. Wrapped rather than left real so an unprivileged
+ * run behaves like a privileged one, exactly as __wrap_chmod() does. */
 int __wrap_fchmod(int fd, mode_t mode) {
     char link[64];
     char path[PATH_MAX];
@@ -324,6 +325,8 @@ int __wrap_fchmod(int fd, mode_t mode) {
             g_dir_chmod_via_fd = true;
         } else if (is_anchor_path(path)) {
             g_anchor_chmod_mode = mode;
+        } else if (is_secret_path(path)) {
+            g_secret_chmod_mode = mode;
         }
     }
 
@@ -1453,7 +1456,7 @@ static void test_bootstrap_stores_the_reenroll_secret_from_the_root_path(void **
     assert_string_equal(secret, REENROLL_SECRET);
 
     /* client.keys's mode, so the daemon can rewrite it after the drop. Read off the wrapper
-     * rather than stat(): __wrap_chmod() records the mode instead of applying it, so the file on
+     * rather than stat(): __wrap_fchmod() records the mode instead of applying it, so the file on
      * disk keeps mkstemp()'s 0600 and only the recorded value shows what the code asked for. */
     assert_int_equal(stat(AGENT_REENROLL_SECRET, &info), 0);
     assert_int_equal(g_secret_chmod_mode, 0640);
