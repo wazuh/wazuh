@@ -433,6 +433,39 @@ STATIC int w_agent_auth_copy_mode_and_owner(int fd, const struct stat *original)
 #endif
 
 /**
+ * @brief Moves the staged rewrite at @p path onto ossec.conf.
+ *
+ * A bare rename() on POSIX, never OS_MoveFile(): when rename() fails, that one falls back to
+ * copying by name, which opens ossec.conf for writing. The account that can write etc/ can make
+ * rename() fail after every check here has passed, by putting a directory at the staged name, and
+ * can point ossec.conf at any file before that; root would then truncate that file. A failed move
+ * here is only a failed install. ca_publication.c installs the trust store the same way.
+ *
+ * Windows keeps OS_MoveFile(), which replaces through MoveFileEx(): nothing less privileged can
+ * write the install directory there.
+ *
+ * @return 0 on success, -1 on failure (a reason is written to @p err).
+ */
+STATIC int w_agent_auth_move_staged(const char *path, FILE *err) {
+#ifdef WIN32
+    if (OS_MoveFile(path, WAZUHCONF) == 0) {
+        return 0;
+    }
+
+    fprintf(err, "%s: could not install the rewritten '%s'.\n", AGENT_AUTH_NAME, WAZUHCONF);
+#else
+    if (rename(path, WAZUHCONF) == 0) {
+        return 0;
+    }
+
+    fprintf(err, "%s: could not install the rewritten '%s': %s (%d).\n", AGENT_AUTH_NAME, WAZUHCONF,
+            strerror(errno), errno);
+#endif
+
+    return -1;
+}
+
+/**
  * @brief Points <agent><manager><endpoint> at @p adr.
  *
  * Only ever a replacement, never an insertion: OS_WriteXMLToStream() appends a node it cannot
@@ -514,8 +547,7 @@ STATIC int w_agent_auth_update_endpoint(const char *adr, const char *configured,
 
     staged.fp = NULL;
 
-    if (OS_MoveFile(staged.name, WAZUHCONF) < 0) {
-        fprintf(err, "%s: could not install the rewritten '%s'.\n", AGENT_AUTH_NAME, WAZUHCONF);
+    if (w_agent_auth_move_staged(staged.name, err) != 0) {
         goto done;
     }
 

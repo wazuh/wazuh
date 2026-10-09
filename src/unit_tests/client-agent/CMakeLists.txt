@@ -179,7 +179,7 @@ list(APPEND client-agent_flags "-Wl,--wrap,kill -Wl,--wrap,hc_fetch_cacerts \
                                 -Wl,--wrap,OS_WriteXMLToStream -Wl,--wrap,OS_MoveFile \
                                 -Wl,--wrap,Privsep_GetUser -Wl,--wrap,Privsep_GetGroup \
                                 -Wl,--wrap,chown -Wl,--wrap,fchown -Wl,--wrap,fchmodat \
-                                -Wl,--wrap,TempFile ${DEBUG_OP_WRAPPERS}")
+                                -Wl,--wrap,TempFile -Wl,--wrap,rename ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND client-agent_names "test_https_client_bridge")
 list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_http_request \
