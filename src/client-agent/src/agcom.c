@@ -291,12 +291,9 @@ cJSON *getDocumentLimits(const char *module) {
 
     if (strcmp(module, "fim") == 0) {
         cJSON_AddNumberToObject(cfg, "file", agent_module_limits.fim.file);
+        cJSON_AddNumberToObject(cfg, "container_file", agent_module_limits.fim.container_file);
         cJSON_AddNumberToObject(cfg, "registry_key", agent_module_limits.fim.registry_key);
         cJSON_AddNumberToObject(cfg, "registry_value", agent_module_limits.fim.registry_value);
-    } else if (strcmp(module, "fim_containers") == 0) {
-        /* Its own module name, like syscollector_containers: container FIM rows
-         * share the FIM sync index with host rows but not a budget (#37532/O10). */
-        cJSON_AddNumberToObject(cfg, "file", agent_module_limits.fim_containers.file);
     } else if (strcmp(module, "syscollector") == 0) {
         cJSON_AddNumberToObject(cfg, "hotfixes", agent_module_limits.syscollector.hotfixes);
         cJSON_AddNumberToObject(cfg, "packages", agent_module_limits.syscollector.packages);
@@ -311,20 +308,19 @@ cJSON *getDocumentLimits(const char *module) {
         cJSON_AddNumberToObject(cfg, "groups", agent_module_limits.syscollector.groups);
         cJSON_AddNumberToObject(cfg, "services", agent_module_limits.syscollector.services);
         cJSON_AddNumberToObject(cfg, "browser_extensions", agent_module_limits.syscollector.browser_extensions);
-    } else if (strcmp(module, "syscollector_containers") == 0) {
-        /* A module name of its own rather than more keys under "syscollector":
-         * container rows and host rows share a sync index but not a budget, so
-         * Syscollector fetches the two sets separately (#37532 / #37534). */
-        cJSON_AddNumberToObject(cfg, "processes", agent_module_limits.syscollector_containers.processes);
-        cJSON_AddNumberToObject(cfg, "ports", agent_module_limits.syscollector_containers.ports);
-        cJSON_AddNumberToObject(cfg, "packages", agent_module_limits.syscollector_containers.packages);
-        cJSON_AddNumberToObject(cfg, "users", agent_module_limits.syscollector_containers.users);
-        cJSON_AddNumberToObject(cfg, "groups", agent_module_limits.syscollector_containers.groups);
-        cJSON_AddNumberToObject(cfg, "os_info", agent_module_limits.syscollector_containers.os_info);
-        cJSON_AddNumberToObject(cfg, "network_iface", agent_module_limits.syscollector_containers.network_iface);
-        cJSON_AddNumberToObject(cfg, "network_protocol", agent_module_limits.syscollector_containers.network_protocol);
-        cJSON_AddNumberToObject(cfg, "network_address", agent_module_limits.syscollector_containers.network_address);
-        cJSON_AddNumberToObject(cfg, "hardware", agent_module_limits.syscollector_containers.hardware);
+        /* Per container, in the same reply: syscollector splits the two scopes
+         * on the container_ prefix rather than making a second query. */
+        cJSON_AddNumberToObject(cfg, "container_processes", agent_module_limits.syscollector.container_processes);
+        cJSON_AddNumberToObject(cfg, "container_ports", agent_module_limits.syscollector.container_ports);
+        cJSON_AddNumberToObject(cfg, "container_packages", agent_module_limits.syscollector.container_packages);
+        cJSON_AddNumberToObject(cfg, "container_users", agent_module_limits.syscollector.container_users);
+        cJSON_AddNumberToObject(cfg, "container_groups", agent_module_limits.syscollector.container_groups);
+        cJSON_AddNumberToObject(cfg, "container_os_info", agent_module_limits.syscollector.container_os_info);
+        cJSON_AddNumberToObject(cfg, "container_network_iface", agent_module_limits.syscollector.container_network_iface);
+        cJSON_AddNumberToObject(cfg, "container_network_protocol", agent_module_limits.syscollector.container_network_protocol);
+        cJSON_AddNumberToObject(cfg, "container_network_address", agent_module_limits.syscollector.container_network_address);
+        cJSON_AddNumberToObject(cfg, "container_hardware", agent_module_limits.syscollector.container_hardware);
+        cJSON_AddNumberToObject(cfg, "container_services", agent_module_limits.syscollector.container_services);
     } else if (strcmp(module, "sca") == 0) {
         cJSON_AddNumberToObject(cfg, "checks", agent_module_limits.sca.checks);
     } else {
