@@ -505,16 +505,22 @@ namespace remoted::enrollment
                                             const Config& config,
                                             EnrollmentMetrics& metrics,
                                             std::shared_ptr<const remoted::decoding::IBodyDecoder> bodyDecoder,
-                                            remoted::metrics::EndpointHttpMetrics httpMetrics)
+                                            remoted::metrics::EndpointHttpMetrics httpMetrics,
+                                            RateGates rateGates)
     {
         return [&authenticator,
                 &authdClient,
                 config,
                 &metrics,
                 bodyDecoder = std::move(bodyDecoder),
-                httpMetrics = std::move(httpMetrics)](std::shared_ptr<const remoted::http::HttpRequest> request,
-                                                      std::shared_ptr<remoted::http::IHttpResponder> responder)
+                httpMetrics = std::move(httpMetrics),
+                rateGates = std::move(rateGates)](std::shared_ptr<const remoted::http::HttpRequest> request,
+                                                  std::shared_ptr<remoted::http::IHttpResponder> responder)
         {
+            // The transport's own responder, kept for the rate-limit refusal below: that one counts
+            // its status cell itself and must stay out of the latency histogram (rateLimitGate.hpp).
+            const auto unmeteredResponder = responder;
+
             // Wrapped once, here, so the status/latency accounting covers every answer below --
             // the five inline rejections AND the one authd's callback delivers on a worker thread
             // -- without repeating an instrumentation line per branch (and without a later branch
@@ -550,6 +556,14 @@ namespace remoted::enrollment
             // to the master unverified, since the secret that signs it is in the master's global.db alone.
             const auto* granted = std::get_if<EnrollmentGranted>(&decision);
             const auto* reenroll = std::get_if<ReenrollmentRequested>(&decision);
+
+            // A request that proved nothing here is paced now, before the decoder: anyone can produce
+            // one, and the decoder reserves shared in-flight budget for a compressed body.
+            const bool verified = granted && granted->credentialVerified;
+            if (!verified && rateGates.unverified && !rateGates.unverified(*unmeteredResponder))
+            {
+                return;
+            }
 
             // Zero-copy view into request->body, kept alive by the request itself -- same
             // technique AuthGateway uses (authGateway.cpp) for the same reason: one physical copy
@@ -587,6 +601,13 @@ namespace remoted::enrollment
             {
                 incRejectedValidation(metrics);
                 responder->send(errorResponse(400, 0, "Agent version is newer than this manager allows"));
+                return;
+            }
+
+            // A verified request is charged only now: one that fails a body or version check above
+            // has been answered without spending the bucket the agents holding a credential share.
+            if (verified && rateGates.verified && !rateGates.verified(*unmeteredResponder))
+            {
                 return;
             }
 

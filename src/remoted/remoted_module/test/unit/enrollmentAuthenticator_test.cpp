@@ -98,6 +98,14 @@ namespace
         return granted ? granted->tokenId : std::nullopt;
     }
 
+    /// Whether the grant says a credential was verified (the bucket /enroll charges it to).
+    bool verifiedOf(const EnrollmentDecision& decision)
+    {
+        const auto* granted = std::get_if<EnrollmentGranted>(&decision);
+        EXPECT_NE(granted, nullptr);
+        return granted && granted->credentialVerified;
+    }
+
     struct PasswordFixture : public ::testing::Test
     {
         std::string path = writePasswordFile(std::string {tv::kPassword});
@@ -128,14 +136,19 @@ namespace
     // Another canonical 22-char token id (16 zero bytes): well-formed, never minted.
     constexpr std::string_view kOtherKid = "AAAAAAAAAAAAAAAAAAAAAA";
 
-    std::string writeTokenStore(std::int64_t expires = kFarFuture, bool revoked = false, const char* tag = "")
+    std::string writeTokenStore(std::int64_t expires = kFarFuture,
+                                bool revoked = false,
+                                const char* tag = "",
+                                std::uint64_t maxUses = 0,
+                                std::uint64_t uses = 0)
     {
         const std::string path = "/tmp/enrollmentAuthenticator_test_" + std::to_string(getpid()) + tag + ".tokens.json";
         std::ofstream file(path);
         file << R"({"version":1,"tokens":[{"id":")" << tvt::kIdB64Url << R"(","secret":")" << tvt::kSecretB64Url
              << R"(","adr":"siem.example.local","pin":")" << tvt::kPinB64Url
-             << R"(","ca":null,"created":1700000000,"expires":)" << expires << R"(,"max_uses":0,"uses":0,"revoked":)"
-             << (revoked ? "true" : "false") << R"(,"description":null}]})";
+             << R"(","ca":null,"created":1700000000,"expires":)" << expires << R"(,"max_uses":)" << maxUses
+             << R"(,"uses":)" << uses << R"(,"revoked":)" << (revoked ? "true" : "false")
+             << R"(,"description":null}]})";
         return path;
     }
 
@@ -344,6 +357,8 @@ TEST(EnrollmentAuthenticatorTest, RequirePasswordFalseAlwaysPasses)
     EnrollmentAuthenticator authenticator {EnrollmentAuthConfig {false}, nullptr};
     EXPECT_EQ(errorOf(authenticator.authenticate(kVersion, "", kSmallBody, kNow)), std::nullopt);
     EXPECT_EQ(errorOf(authenticator.authenticate(kVersion, "garbage", kSmallBody, kNow)), std::nullopt);
+    // Admitted, but nothing was proved: /enroll charges it to the unverified bucket.
+    EXPECT_FALSE(verifiedOf(authenticator.authenticate(kVersion, "", kSmallBody, kNow)));
 }
 
 // -----------------------------------------------------------------------------
@@ -452,6 +467,7 @@ TEST_F(TokenFixture, TokenBearerIsAcceptedEvenWhenPasswordIsNotRequired)
     EnrollmentAuthenticator open {EnrollmentAuthConfig {false}, nullptr, tokenSource};
     const auto decision = open.authenticate(kVersion, validTokenBearer(), kSmallBody, kNow);
     EXPECT_EQ(tokenIdOf(decision), std::string {tvt::kIdB64Url});
+    EXPECT_TRUE(verifiedOf(decision));
 }
 
 TEST_F(TokenFixture, TokenBearerIsAcceptedInPasswordMode)
@@ -629,6 +645,8 @@ TEST_F(TokenFixture, SharedKeyBearerInOpenModeIsIgnoredAsBefore)
     const auto decision =
         open.authenticate(kVersion, "Bearer " + std::string {tv::kWrongPasswordToken}, kSmallBody, kNow);
     EXPECT_EQ(tokenIdOf(decision), std::nullopt);
+    // Ignored is not verified: a bearer nobody checked must not reach the verified bucket.
+    EXPECT_FALSE(verifiedOf(decision));
 }
 
 TEST_F(PasswordFixture, PasswordBearerGrantsWithoutATokenId)
@@ -636,4 +654,36 @@ TEST_F(PasswordFixture, PasswordBearerGrantsWithoutATokenId)
     // The password path never names a token: authd's `add` stays byte-identical for it.
     const auto decision = authenticator.authenticate(kVersion, validBearer(), kSmallBody, kNow);
     EXPECT_EQ(tokenIdOf(decision), std::nullopt);
+    EXPECT_TRUE(verifiedOf(decision));
+}
+
+TEST(EnrollmentAuthenticatorTest, ASpentTokenIsForwardedToAuthdButNotVerified)
+{
+    // Signature, expiry and revocation all pass, but the replica sees no uses left. authd still gets the
+    // token id and gives the verdict (9024); the grant only stops claiming the verified bucket, so
+    // replaying a spent single-use token cannot drain it.
+    const std::string path = writeTokenStore(kFarFuture, false, "_spent", /*maxUses=*/1, /*uses=*/1);
+    auto tokenSource = std::make_shared<TokenKeySource>(path);
+    EnrollmentAuthenticator authenticator {EnrollmentAuthConfig {/*requirePassword=*/true}, nullptr, tokenSource};
+
+    const auto decision =
+        authenticator.authenticate(kVersion, tokenBearer(vectorTokenKey(), tvt::kIdB64Url, kNow), kSmallBody, kNow);
+    EXPECT_EQ(tokenIdOf(decision), std::string {tvt::kIdB64Url});
+    EXPECT_FALSE(verifiedOf(decision));
+
+    std::remove(path.c_str());
+}
+
+TEST(EnrollmentAuthenticatorTest, ATokenWithUsesLeftStaysVerified)
+{
+    const std::string path = writeTokenStore(kFarFuture, false, "_live", /*maxUses=*/2, /*uses=*/1);
+    auto tokenSource = std::make_shared<TokenKeySource>(path);
+    EnrollmentAuthenticator authenticator {EnrollmentAuthConfig {/*requirePassword=*/true}, nullptr, tokenSource};
+
+    const auto decision =
+        authenticator.authenticate(kVersion, tokenBearer(vectorTokenKey(), tvt::kIdB64Url, kNow), kSmallBody, kNow);
+    EXPECT_EQ(tokenIdOf(decision), std::string {tvt::kIdB64Url});
+    EXPECT_TRUE(verifiedOf(decision));
+
+    std::remove(path.c_str());
 }

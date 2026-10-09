@@ -20,6 +20,7 @@
 #include "metrics.hpp"
 
 #include <cstddef>
+#include <functional>
 #include <memory>
 
 namespace remoted::enrollment
@@ -31,6 +32,34 @@ namespace remoted::enrollment
     /// size cap on the dedicated BodyDecoder instance /enroll uses -- see makeHandler()'s doc
     /// comment on why /enroll needs its own (smaller) cap there, unlike AuthGateway's shared one.
     inline constexpr std::size_t kMaxEnrollBodySize = 16U * 1024U;
+
+    /**
+     * @brief The rate-limit admissions /enroll charges, one per class of caller.
+     *
+     * Charged INSIDE the handler, once the credential is classified -- not in front of the whole
+     * route -- so a request that fails its credential check is answered without spending anything,
+     * and a flood of such requests cannot starve the agents that pass it. @c unverified is charged
+     * right then, before the body is decoded or parsed (anyone can reach it, and decoding a
+     * compressed body reserves shared in-flight budget); @c verified only after the body and
+     * version checks, before the authd round trip it exists to protect.
+     *
+     * Two classes, two buckets, because "passed authenticate()" is not "proved anything" on every
+     * path: a re-enrollment bearer is handed to authd unverified (only the master holds its secret)
+     * and Open mode admits a credential-less request outright. Anyone can produce those, so they are
+     * charged to @c unverified, and so is an enrollment token with no uses left: a spent single-use
+     * token is easy to find (install commands, CI logs), and only authd can turn it down. A request
+     * whose password or live enrollment token was verified here is charged to @c verified.
+     *
+     * Each admission returns true to proceed, or false once it has already sent the 429 on the
+     * responder it was given. A null admission admits everything.
+     */
+    struct RateGates
+    {
+        using Admission = std::function<bool(remoted::http::IHttpResponder&)>;
+
+        Admission verified;   ///< Password- or enrollment-token-verified enrollments.
+        Admission unverified; ///< Re-enrollments, credential-less (Open) ones and spent tokens.
+    };
 
     /**
      * @brief Builds the `POST /enroll` route handler.
@@ -58,10 +87,13 @@ namespace remoted::enrollment
      *      rejects malformed input with 400 without ever reaching authd. `force`/`id`/`key` are
      *      never read from the body even if present -- self-enrollment always gets an
      *      auto-assigned ID and an authd-generated key.
-     *   5. Resolves the enrollment IP (config.useSourceIp -> the HTTPS peer address; else the
+     *   5. Charges @p rateGates (see RateGates): the unverified gate right after step 2, before
+     *      any decoding; the verified gate only here, after every check above, so a verified
+     *      request with a bad body spends nothing.
+     *   6. Resolves the enrollment IP (config.useSourceIp -> the HTTPS peer address; else the
      *      body's `ip`; else "any") and forwards to authd via @p authdClient, deferring the
      *      response until its callback fires.
-     *   6. Maps authd's result to the HTTP response (200 + {id,name,ip,key}; a mapped status for
+     *   7. Maps authd's result to the HTTP response (200 + {id,name,ip,key}; a mapped status for
      *      a business-rejection authd code; 503 for a transport failure/timeout).
      *
      * @p httpMetrics adds the same remoted.http.<endpoint>.{responses.*,latency} accounting the four
@@ -82,7 +114,8 @@ namespace remoted::enrollment
                                             const Config& config,
                                             EnrollmentMetrics& metrics,
                                             std::shared_ptr<const remoted::decoding::IBodyDecoder> bodyDecoder,
-                                            remoted::metrics::EndpointHttpMetrics httpMetrics = {});
+                                            remoted::metrics::EndpointHttpMetrics httpMetrics = {},
+                                            RateGates rateGates = {});
 
     /**
      * @brief The 429 body this route answers when the endpoint's rate limit refuses a request.

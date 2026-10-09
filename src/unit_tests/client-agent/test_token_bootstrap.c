@@ -861,6 +861,27 @@ static void test_fetch_not_found_logs_named_error_and_writes_nothing(void **stat
     assert_int_not_equal(IsFile("etc/client.keys"), 0);
 }
 
+static void test_fetch_rate_limited_is_transient_and_writes_nothing(void **state) {
+    (void) state;
+    write_token_file(true, true, NULL);
+
+    will_return(__wrap_hc_fetch_cacerts, 429L);
+    will_return(__wrap_hc_fetch_cacerts, NULL);
+    will_return(__wrap_hc_fetch_cacerts, 1);
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "/cacerts rate_limited -- the manager is serving the certificate authority at "
+                  "its configured rate; retrying later.");
+
+    /* TRANSIENT, not PERMANENT: a PERMANENT result makes agentd exit at startup, and the
+     * route's bucket is the node's -- anyone can empty it for a few seconds. */
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_TRANSIENT);
+    assert_int_equal(g_fetch_call_count, 1);
+    assert_int_equal(g_enroll_call_count, 0);
+    assert_int_not_equal(IsFile("etc/certs/root-ca.pem"), 0);
+    assert_int_not_equal(IsFile("etc/client.keys"), 0);
+}
+
 static void test_fetch_ca_mismatch_logs_named_error_and_writes_nothing(void **state) {
     (void) state;
     write_token_file(true, true, NULL);
@@ -1736,6 +1757,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_malformed_token_logs_named_error_and_writes_nothing, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_fetch_adr_unreachable_logs_named_error_and_writes_nothing, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_fetch_not_found_logs_named_error_and_writes_nothing, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_fetch_rate_limited_is_transient_and_writes_nothing, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_fetch_ca_mismatch_logs_named_error_and_writes_nothing, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_pin_mismatch_logs_named_error_and_writes_nothing, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_fatal_token_refusal_discards_the_dead_token, setup_test, teardown_test),

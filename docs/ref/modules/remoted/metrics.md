@@ -305,7 +305,7 @@ except the pulls at the end (the `authd` queue and the token store).
 | `remoted.enroll.disabled` | Enrollment is administratively off, so the request was answered `403` without touching `authd` | the manager's enrollment setting (the route always exists, so this is distinguishable from a `404`) |
 | `remoted.enroll.authd_error` | `authd` answered, and refused on its own business rules (duplicate name, agent limit, cluster forwarding) — including the `403` it gives a verified enrollment token it will not consume (9022 not found or revoked, 9023 expired, 9024 uses exhausted) | diagnostic — `authd`'s own limits; the mapped status is in the `enroll` response cells |
 | `remoted.enroll.authd_unavailable` | No clean answer from `authd`: a full request queue, an unreachable socket, a timeout, or the module shutting down | see the queue metrics below to tell saturation apart from the rest |
-| `remoted.enroll.rate_limited` | `429`: the endpoint was asked faster than its configured rate, so the request was refused **before** the handler ran — no body decoded, no credential read, no `authd` round trip. In none of the rows above for that reason | [`https.enroll_rate_limit`](configuration.md#httpsenroll_rate_limit) |
+| `remoted.enroll.rate_limited` | `429`: the request passed its credential check (and, for a verified one, its body and version checks) but its bucket — verified credential, or re-enrollment / no credential — was at its configured rate, so it was refused **before** the `authd` round trip. In none of the rows above for that reason. `remoted.enroll.rate_limit.available` and `remoted.enroll.unverified.rate_limit.available` say which bucket ran dry | [`https.enroll_rate_limit`](configuration.md#httpsenroll_rate_limit) |
 
 The **enrollment-token** subset — requests whose bearer's `kid` named an enrollment token — by
 what happened to the token (the [HTTPS Agent API](https-events-api.md#enrollment-endpoint-post-enroll)
@@ -458,9 +458,11 @@ overlap window — see the [CA Rotation Runbook](ca-rotation.md).
 
 ### Rate limits — `remoted.<endpoint>.rate_limit.*`
 
-The live state of the two rate-limit **buckets** (`enroll`, `cacerts`). There are two buckets and
-two routes: `remoted.enroll.rate_limit.*` governs `POST /enroll` and `remoted.cacerts.rate_limit.*`
-governs `GET /cacerts`. The **refusals** are not here — those are `remoted.enroll.rate_limited`
+The live state of the three rate-limit **buckets** (`enroll`, `enroll.unverified`, `cacerts`).
+`POST /enroll` has two buckets of the same configured rate: `remoted.enroll.rate_limit.*` is the one
+enrollments with a **verified** password or enrollment token with uses left are charged to, and
+`remoted.enroll.unverified.rate_limit.*` the one re-enrollments, credential-less (Open mode)
+enrollments and spent enrollment tokens are charged to. `remoted.cacerts.rate_limit.*` governs `GET /cacerts`. The **refusals** are not here — those are `remoted.enroll.rate_limited`
 and `remoted.cacerts.rate_limited` above, with the rest of each endpoint's outcomes. The three pulls below answer a different question: how much of the
 bucket's budget is left?
 

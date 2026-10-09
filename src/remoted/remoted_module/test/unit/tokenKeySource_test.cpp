@@ -54,7 +54,10 @@ namespace
     }
 
     // One store record exactly as authd writes it (every field, in its order), for the vector token.
-    std::string vectorRecord(std::int64_t expires = kFarFuture, bool revoked = false)
+    std::string vectorRecord(std::int64_t expires = kFarFuture,
+                             bool revoked = false,
+                             std::uint64_t maxUses = 0,
+                             std::uint64_t uses = 0)
     {
         std::string out = R"({"id":")";
         out += tv::kIdB64Url;
@@ -64,7 +67,7 @@ namespace
         out += tv::kPinB64Url;
         out += R"(","ca":null,"created":1700000000,"expires":)";
         out += std::to_string(expires);
-        out += R"(,"max_uses":0,"uses":0,"revoked":)";
+        out += R"(,"max_uses":)" + std::to_string(maxUses) + R"(,"uses":)" + std::to_string(uses) + R"(,"revoked":)";
         out += revoked ? "true" : "false";
         out += R"(,"description":null})";
         return out;
@@ -190,6 +193,45 @@ namespace
         const auto entry = source.lookup(tv::kIdB64Url);
         ASSERT_TRUE(entry.has_value());
         EXPECT_TRUE(entry->revoked);
+    }
+
+    TEST_F(TokenKeySourceTest, ATokenWithNoUsesLeftIsReplicatedAsExhausted)
+    {
+        writeFile(store(vectorRecord(kFarFuture, false, /*maxUses=*/1, /*uses=*/1)));
+        TokenKeySource source(m_path);
+
+        const auto entry = source.lookup(tv::kIdB64Url);
+        ASSERT_TRUE(entry.has_value());
+        EXPECT_TRUE(entry->exhausted);
+    }
+
+    TEST_F(TokenKeySourceTest, AnUnlimitedOrPartlyUsedTokenIsNotExhausted)
+    {
+        writeFile(store(vectorRecord(kFarFuture, false, /*maxUses=*/0, /*uses=*/7)));
+        TokenKeySource unlimited(m_path);
+        ASSERT_TRUE(unlimited.lookup(tv::kIdB64Url).has_value());
+        EXPECT_FALSE(unlimited.lookup(tv::kIdB64Url)->exhausted);
+
+        writeFile(store(vectorRecord(kFarFuture, false, /*maxUses=*/3, /*uses=*/2)));
+        TokenKeySource partlyUsed(m_path);
+        ASSERT_TRUE(partlyUsed.lookup(tv::kIdB64Url).has_value());
+        EXPECT_FALSE(partlyUsed.lookup(tv::kIdB64Url)->exhausted);
+    }
+
+    TEST_F(TokenKeySourceTest, MissingOrMalformedUseCountsKeepTheTokenAndReadAsNotExhausted)
+    {
+        // The counts only pick a rate-limit bucket: a record without them, or with a value authd never
+        // writes, is still a usable token, read the way the replica read every token before it had them.
+        writeFile(store(R"({"id":")" + std::string {tv::kIdB64Url} + R"(","secret":")" +
+                        std::string {tv::kSecretB64Url} +
+                        R"(","expires":4102444800,"max_uses":"one","uses":-1,"revoked":false})"));
+        TokenKeySource source(m_path);
+
+        const auto entry = source.lookup(tv::kIdB64Url);
+        ASSERT_TRUE(entry.has_value());
+        EXPECT_FALSE(entry->exhausted);
+        EXPECT_TRUE(source.diagnostics().lastLoadOk);
+        EXPECT_EQ(source.diagnostics().tokens, 1U);
     }
 
     TEST_F(TokenKeySourceTest, CredentialLessTokensAreNotReplicated)

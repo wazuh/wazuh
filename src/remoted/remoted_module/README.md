@@ -43,7 +43,7 @@ remoted_module/
 │   │   ├── cacertsMetrics.hpp          # remoted.cacerts.* + remoted.server.tls.* name catalog
 │   │   ├── controlEndpoint.hpp/.cpp    # POST /control JSON dispatch (see below)
 │   │   ├── downloadMetrics.hpp         # remoted.download.* catalog (POST /download)
-│   │   ├── rateLimitGate.hpp/.cpp      # wraps a route in an EndpointRateLimiter; 429 + Retry-After (see below)
+│   │   ├── rateLimitGate.hpp/.cpp      # EndpointRateLimiter admission (Gate) + route wrapper; 429 + Retry-After (see below)
 │   │   └── scanVdEndpoint.hpp/.cpp     # POST /scan/vd JSON dispatch (see below)
 │   ├── control/                    # ns remoted::control — 5.x agent control messages (/control);
 │   │                               #   metrics.hpp = remoted.control.* catalog
@@ -380,17 +380,25 @@ src/endpoints/
 ├── downloadEndpoint.hpp/.cpp # /download policy: request grammar + resource resolution + file streaming
 ├── iAgentGroupSource.hpp     # interface: the selector an authenticated agent may download
 ├── cacertsEndpoint.hpp/.cpp  # GET /cacerts: the CA the listener cert chains to, certificates only (no auth)
-├── rateLimitGate.hpp/.cpp    # per-endpoint rate limit in front of the two unauthenticated routes
+├── rateLimitGate.hpp/.cpp    # per-endpoint rate limit of the two unauthenticated routes
 └── agentRequestLimiter.hpp   # per-agent open-request cap + the AdmittedResponder that releases it
 ```
 
-- **`rateLimitGate.hpp/.cpp` (ns `remoted::endpoints::ratelimit`):** `wrap()` takes a
-  `RouteHandler` and returns one that consults an `EndpointRateLimiter`
-  (`http_server/endpointRateLimiter.hpp`) first, answering `429` + `Retry-After` when the bucket is
-  empty and otherwise calling straight through. Applied at route registration in the facade to
-  `POST /enroll` and `GET /cacerts` — **the two routes no credential can gate**: an enrolling agent
-  has no `client.keys` entry and a trust-bootstrapping one has no anchor, so neither can sit behind
-  the bearer-token gateway that bounds every other route.
+- **`rateLimitGate.hpp/.cpp` (ns `remoted::endpoints::ratelimit`):** `Gate` charges an
+  `EndpointRateLimiter` (`http_server/endpointRateLimiter.hpp`) and, when the bucket is empty, sends
+  `429` + `Retry-After` in the route's own envelope, counting it in both metric families. `wrap()`
+  puts a `Gate` in front of a whole `RouteHandler`. These are **the two routes no credential can
+  gate**: an enrolling agent has no `client.keys` entry and a trust-bootstrapping one has no anchor,
+  so neither can sit behind the bearer-token gateway that bounds every other route. `GET /cacerts`
+  is wrapped at registration. `POST /enroll` is not: its handler charges a `Gate` itself, only once
+  the request passed its credential check, from one of two buckets of the same rate — verified password or enrollment token with uses
+  left, or not (a re-enrollment bearer, which only the master can verify, Open mode, and a token the
+  store shows as spent: only authd can refuse it, and a found single-use token must not drain the
+  verified bucket). The unverified bucket is charged right
+  away, before the body is decoded (decoding a compressed body reserves shared in-flight budget); the
+  verified one after the body and version checks, right before the authd round trip. A caller without
+  a credential therefore neither spends the allowance by failing the credential check nor reaches the
+  bucket verified agents are served from (`enrollment::RateGates`).
 
   The bucket is per **endpoint**, not per caller: `allow()` takes no argument at all, so the
   configured rate is a ceiling on what the manager serves rather than an allowance each client gets.
@@ -2282,7 +2290,7 @@ linked into the settings' own documentation — is the official docs page:
 | `remoted.server.budget.{available.bytes, inflight.bytes, inflight.requests, rejected.total}` (pulls) | is `remoted.max_inflight_bytes` sized right; how much did the byte budget shed | `IHttpServer::diagnostics()` over the transport's `InFlightBudget` |
 | `remoted.server.connections.{open, max}` (pulls) | how close the listener runs to `remoted.max_parallel_connections` — the only view of it, since reaching the cap postpones the accept instead of refusing | registered next to the budget pulls in `registerPublicTransportDiagnostics()`; `open` reads the transport's `HandshakeLedger` (counted from the start of the TLS handshake to the close) |
 | `remoted.server.connections.handshaking`, `remoted.server.handshake.{timeouts, rejected_per_source}.total` (pulls) | are slots being held by peers that never complete a TLS handshake — invisible to every request-level metric; what the deadline (`remoted.http_read_timeout`) and the per-source cap (`remoted.max_handshakes_per_source`) closed | `IHttpServer::diagnostics()` over the `HandshakeLedger`; names in `http_server/handshakeMetrics.hpp` |
-| `remoted.enroll.{accepted, rejected_auth, rejected_validation, disabled, authd_error, authd_unavailable, rate_limited}` | WHY each `/enroll` request ended that way (the status/latency view is the `enroll` families above). `rate_limited` is the odd one: the request was refused before the handler ran, so it has no outcome among the others | `enrollment/metrics.hpp`, counted in `enrollmentEndpoint.cpp`; `rate_limited` by the gate (`endpoints/rateLimitGate.cpp`) |
+| `remoted.enroll.{accepted, rejected_auth, rejected_validation, disabled, authd_error, authd_unavailable, rate_limited}` | WHY each `/enroll` request ended that way (the status/latency view is the `enroll` families above). `rate_limited` is the odd one: the request passed its local checks and was refused before the authd round trip, so it has no outcome among the others | `enrollment/metrics.hpp`, counted in `enrollmentEndpoint.cpp`; `rate_limited` by the gate (`endpoints/rateLimitGate.cpp`), which the handler charges |
 | `remoted.<enroll\|cacerts>.rate_limit.{limit, burst, available}` (pulls) | is the BUCKET's ceiling sized right: `available` pinned at 0 while `rate_limited` climbs is a rate below what the fleet needs, not necessarily an attack. Two buckets, two routes — `enroll` governs `POST /enroll`, `cacerts` governs `GET /cacerts` | `EndpointRateLimiter::diagnostics()` through `registerRateLimitDiagnostics()`; reads the bucket WITHOUT charging it, so scraping never costs an agent its enrollment |
 | `remoted.enroll.token.{accepted, rejected_unknown, rejected_expired, rejected_revoked, rejected_exhausted}` | the enrollment-token subset of the above, by what happened to the TOKEN: unknown/expired/revoked decided by remoted's replica (and by authd's 9022/9023 when the replica lagged), exhausted by authd alone (9024) | `countTokenRejection()` (remoted's own verdict) + `countTokenOutcome()` (authd's) in `enrollmentEndpoint.cpp` |
 | `remoted.enroll.reenroll.{accepted, rejected_unknown, rejected_signature, rejected_stale, rejected_in_progress}` | the re-enrollment subset (`kid` = agent id): authd's verdict on the master — 9026 / 9027 / 9028 / 9030 — since remoted forwards that bearer unverified; each rejection also lands in the `remoted.auth.reject.*` cell of the `AuthError` it maps to | `countReenrollOutcome()` in `enrollmentEndpoint.cpp` |
@@ -2551,7 +2559,8 @@ unanswered), `endpointRateLimiter_test.cpp` (the fourth limiter, a token
 bucket per endpoint: burst spent before the rate paces it, refill over time, saturation at the
 burst, one bucket shared by every caller, **the bucket starting full** — an empty one would refuse
 the first requests after every restart — a `diagnostics()` read that never charges it, and
-`Retry-After` rounded up and never 0), `rateLimitGate_test.cpp` (the wrapper around a route:
+`Retry-After` rounded up and never 0), `rateLimitGate_test.cpp` (a `Gate` admitting and then refusing
+on the responder it is handed, and the wrapper around a route:
 an admitted request reaching the inner handler untouched and a refused one **never reaching it at
 all** — asserted on the handler, not on the status code, which a gate doing the work first would
 satisfy too —, each route's own 429 envelope plus the gate's `Retry-After`, a refusal counted in
