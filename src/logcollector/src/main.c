@@ -169,14 +169,10 @@ int main(int argc, char **argv)
     /* Start signal handler */
     StartSIG(ARGV0);
 
-    // Raise the soft file descriptor limit; the hard limit belongs to whoever started the agent
-    {
-        const long effective = w_raise_nofile_limit((long)nofile, "logcollector.rlimit_nofile");
-
-        if (effective >= 0) {
-            nofile = (rlim_t)effective;
-        }
-    }
+    // Raise the soft file descriptor limit; the hard limit belongs to whoever started the agent.
+    // nofile keeps the configured value, which is what the configuration report publishes as
+    // logcollector.rlimit_nofile; a lower effective limit is logged by w_raise_nofile_limit().
+    w_raise_nofile_limit((long)nofile, "logcollector.rlimit_nofile");
 
     if (!run_foreground) {
         /* Going on daemon mode */

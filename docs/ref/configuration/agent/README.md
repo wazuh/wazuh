@@ -96,6 +96,11 @@ runs `wazuh-modulesd -t` first and modulesd raises its limit before that check;
 `wazuh-logcollector` raises its limit only after its `-t` exit, so it logs the line once. An option
 above the hard limit never fails and never logs an error.
 
+The agent's configuration report, and logcollector's local `getconfig internal` reply, carry
+`logcollector.rlimit_nofile` as configured. The limit in
+force can be higher, because a daemon never lowers the soft limit it inherits, or lower, when the
+hard limit caps it; read it from `Max open files` in `/proc/<pid>/limits`.
+
 To go higher than the ceiling the unit declares, use a systemd drop-in rather than editing the
 unit, which a package upgrade replaces:
 
