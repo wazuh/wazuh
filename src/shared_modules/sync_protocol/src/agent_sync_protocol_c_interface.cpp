@@ -35,6 +35,40 @@ namespace
 
         return cResult;
     }
+
+    IntegrityCheckResult_t toCIntegrityCheckResult(const IntegrityCheckResult& cppResult)
+    {
+        IntegrityCheckResult_t cResult;
+
+        switch (cppResult.status)
+        {
+            case IntegrityCheckStatus::VALID:
+                cResult.status = INTEGRITY_CHECK_VALID;
+                break;
+
+            case IntegrityCheckStatus::MISMATCH:
+                cResult.status = INTEGRITY_CHECK_MISMATCH;
+                break;
+
+            default:
+                cResult.status = INTEGRITY_CHECK_NOT_CHECKED;
+                break;
+        }
+
+        strncpy(cResult.failure_reason, cppResult.failureReason.c_str(), SYNC_FAILURE_REASON_MAX_LEN - 1);
+
+        cResult.failure_reason[SYNC_FAILURE_REASON_MAX_LEN - 1] = '\0';
+
+        cResult.stopped = cppResult.stopped;
+
+        cResult.manager_not_ready = cppResult.managerNotReady;
+
+        cResult.local_transport_unavailable = cppResult.localTransportUnavailable;
+
+        cResult.mismatch_unconfirmed = cppResult.mismatchUnconfirmed;
+
+        return cResult;
+    }
 } // namespace
 
 extern "C" {
@@ -166,25 +200,36 @@ extern "C" {
         }
     }
 
-    bool asp_requires_full_sync(AgentSyncProtocolHandle* handle,
-                                const char* index,
-                                const char* checksum)
+    IntegrityCheckResult_t asp_requires_full_sync(AgentSyncProtocolHandle* handle,
+                                                  const char* index,
+                                                  const char* checksum)
     {
+        IntegrityCheckResult cppResult;
+
         try
         {
-            if (!handle || !index || !checksum) return false;
-
-            auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
-            return wrapper->impl->requiresFullSync(index, checksum);
+            if (!handle || !index || !checksum)
+            {
+                cppResult.failureReason = "Invalid integrity check arguments.";
+            }
+            else
+            {
+                auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
+                cppResult = wrapper->impl->requiresFullSync(index, checksum);
+            }
         }
         catch (const std::exception& ex)
         {
-            return false;
+            cppResult = {};
+            cppResult.failureReason = std::string("Integrity check error: ") + ex.what();
         }
         catch (...)
         {
-            return false;
+            cppResult = {};
+            cppResult.failureReason = "Integrity check error.";
         }
+
+        return toCIntegrityCheckResult(cppResult);
     }
 
     bool asp_parse_response_buffer(AgentSyncProtocolHandle* handle, const uint8_t* data, size_t length)

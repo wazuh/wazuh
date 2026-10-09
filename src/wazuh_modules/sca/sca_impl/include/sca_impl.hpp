@@ -17,6 +17,7 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <shared_mutex>
 #include <string>
 #include <vector>
@@ -322,13 +323,21 @@ class SecurityConfigurationAssessment
         /// @param genericFailureLevel Level for the final fallback branch (a real failure unrelated
         /// to manager-not-ready/local-transport). executeFlushSync() keeps that case at LOG_ERROR,
         /// since it is an on-demand operation rather than a periodic cycle that retries on its own.
+        /// @param retryNote Sentence saying when the operation is retried. Unset keeps the periodic
+        /// cycle's "Will retry next cycle." on a deferral and says nothing on a failure; recovery sets it,
+        /// since it is retried in the next integrity_interval, not the next cycle.
         void logSyncFailure(const SyncModuleResult& result, const std::string& operationLabel,
-                            modules_log_level_t genericFailureLevel = LOG_WARNING);
+                            modules_log_level_t genericFailureLevel = LOG_WARNING,
+                            const std::optional<std::string>& retryNote = std::nullopt);
 
         /// @brief Check with manager if full sync required via checksum
         /// @param checksum Local checksum to validate
-        /// @return true if recovery needed
-        bool checkIfRecoveryRequired(const std::string& checksum);
+        /// @return MISMATCH if recovery is needed, VALID if the checksum matches, NOT_CHECKED (with the
+        ///         reason) if the check did not complete.
+        IntegrityCheckResult checkIfRecoveryRequired(const std::string& checksum);
+
+        /// @brief The configured integrity_interval in the largest whole unit that fits (86400 -> "24h").
+        std::string integrityIntervalText() const;
 
         /// @brief Check if DB has data (policies or checks)
         /// @return true if DB contains any policies or checks

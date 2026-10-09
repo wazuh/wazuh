@@ -1376,22 +1376,8 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                     atomic_int_set(&syscheck.fim_first_sync_completed, 1);
                 }
 
-                for (int i = 0; i < table_count; i++) {
-                    if (fim_shutdown_process_on()) {
-                        break;
-                    }
-                    if (fim_recovery_integrity_interval_has_elapsed(table_names[i], syscheck.integrity_interval)) {
-                        mdebug1("Starting integrity validation process for %s", table_names[i]);
-                        bool full_sync_required = fim_recovery_check_if_full_sync_required(table_names[i],
-                                                                                           syscheck.sync_handle);
-                        if (full_sync_required) {
-                            fim_recovery_persist_table_and_resync(table_names[i],
-                                                                  syscheck.sync_handle,
-                                                                  directories_snapshot);
-                        }
-                        fim_db_update_last_sync_time(table_names[i]);
-                    }
-                }
+                fim_recovery_run_integrity_checks(syscheck.sync_handle, table_names, table_count,
+                                                  directories_snapshot, syscheck.integrity_interval);
 
                 #ifdef WIN32
                 w_mutex_unlock(&syscheck.fim_registry_scan_mutex);
