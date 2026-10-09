@@ -962,3 +962,61 @@ TEST_F(CMSyncSynchronizeTest, MarksUnavailableWhenRouteRemovedOutOfBand)
     EXPECT_FALSE(sync->getSpacesStatus()[0].available); // route removed → not available
     EXPECT_TRUE(sync->getSpacesStatus()[0].enabled);    // policy still enabled (last known)
 }
+
+// A FAILED check followed by a successful one that finds no changes (Case 2) must return the space to
+// READY; otherwise it stays FAILED until the next content change.
+TEST_F(CMSyncSynchronizeTest, Case2_ClearsFailedStatusWhenHashUnchanged)
+{
+    auto state = createStoredStateWithNs("standard", "current_ns");
+    auto sync = createSyncWithState(state);
+
+    auto entry = makeRouterEntry("cmsync_standard", "current_ns", 1, router::env::State::ENABLED, "same_hash");
+    EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).Times(2).WillRepeatedly(::testing::Return(true));
+    EXPECT_CALL(*indexer, isConsumerReadyForSync(::testing::_)).Times(2).WillRepeatedly(::testing::Return(true));
+    EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard"), ::testing::_))
+        .Times(2)
+        .WillRepeatedly(::testing::Return(std::optional(std::make_pair(std::string("same_hash"), true))));
+    EXPECT_CALL(*router, existsEntry("cmsync_standard")).Times(2).WillRepeatedly(::testing::Return(true));
+    EXPECT_CALL(*router, getEntry("cmsync_standard"))
+        .WillOnce(::testing::Return(base::RespOrError<router::prod::Entry>(base::Error {"route error"}))) // 1st
+        .WillOnce(::testing::Return(base::RespOrError<router::prod::Entry>(entry)));                      // 2nd
+
+    // 1st sync: the check throws → FAILED.
+    sync->synchronize();
+    ASSERT_EQ(sync->getSpacesStatus().size(), 1U);
+    ASSERT_EQ(sync->getSpacesStatus()[0].status, base::SyncStatus::FAILED);
+
+    // 2nd sync: check succeeds, same hash → no download, but the status is back to READY.
+    sync->synchronize();
+    EXPECT_EQ(sync->getSpacesStatus()[0].status, base::SyncStatus::READY);
+    EXPECT_TRUE(sync->getSpacesStatus()[0].available);
+}
+
+// Same as above for a policy found disabled in the indexer (Case 1): the check succeeded, so an earlier
+// FAILED must be cleared.
+TEST_F(CMSyncSynchronizeTest, Case1_ClearsFailedStatusWhenPolicyDisabled)
+{
+    auto state = createStoredStateWithNs("standard", "dummy_ns_id");
+    auto sync = createSyncWithState(state);
+
+    EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).Times(2).WillRepeatedly(::testing::Return(true));
+    EXPECT_CALL(*indexer, isConsumerReadyForSync(::testing::_)).Times(2).WillRepeatedly(::testing::Return(true));
+    EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard"), ::testing::_))
+        .WillOnce(::testing::Return(std::optional(std::make_pair(std::string("hash1"), true))))   // 1st
+        .WillOnce(::testing::Return(std::optional(std::make_pair(std::string("hash1"), false)))); // 2nd
+    EXPECT_CALL(*router, existsEntry("cmsync_standard"))
+        .WillOnce(::testing::Return(true))   // 1st: route present, getEntry fails below
+        .WillOnce(::testing::Return(false)); // 2nd: no route
+    EXPECT_CALL(*router, getEntry("cmsync_standard"))
+        .WillOnce(::testing::Return(base::RespOrError<router::prod::Entry>(base::Error {"route error"})));
+
+    // 1st sync: the check throws → FAILED.
+    sync->synchronize();
+    ASSERT_EQ(sync->getSpacesStatus().size(), 1U);
+    ASSERT_EQ(sync->getSpacesStatus()[0].status, base::SyncStatus::FAILED);
+
+    // 2nd sync: policy disabled, nothing to remove → READY.
+    sync->synchronize();
+    EXPECT_EQ(sync->getSpacesStatus()[0].status, base::SyncStatus::READY);
+    EXPECT_FALSE(sync->getSpacesStatus()[0].available);
+}
