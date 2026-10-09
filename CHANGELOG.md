@@ -9,6 +9,12 @@ All notable changes to this project will be documented in this file.
 
 - Fixed AWS Inspector wodle not collecting findings after AWS retired the Classic API. ([#39017](https://github.com/wazuh/wazuh/pull/39017))
 
+### RESTful API
+
+#### Fixed
+
+- Fixed `wazuh-apid` staying alive without its PID file when it receives `SIGTERM` during startup. ([#39917](https://github.com/wazuh/wazuh/pull/39917))
+
 ## [v4.10.5]
 
 ### Manager
