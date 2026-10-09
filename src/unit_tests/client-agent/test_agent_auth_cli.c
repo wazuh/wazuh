@@ -135,10 +135,17 @@ int __wrap_fchmodat(int dirfd, const char *path, mode_t mode, int flags) {
 
 static bool g_swap_staged = false;
 
+/* The name TempFile() chose, for the hooks below that act on it later. */
+static char g_staged_name[PATH_MAX] = {0};
+
 int __real_TempFile(File *file, const char *source, int copy);
 
 int __wrap_TempFile(File *file, const char *source, int copy) {
     int result = __real_TempFile(file, source, copy);
+
+    if (result == 0) {
+        snprintf(g_staged_name, sizeof(g_staged_name), "%s", file->name);
+    }
 
     if (result == 0 && g_swap_staged) {
         assert_int_equal(unlink(file->name), 0);
@@ -147,6 +154,40 @@ int __wrap_TempFile(File *file, const char *source, int copy) {
     }
 
     return result;
+}
+
+/* The same account, later: once every check on the staged copy has passed, it puts a directory at
+ * the staged name, so rename() cannot move it, and points ossec.conf itself at SWAP_TARGET. A
+ * failed move must stay a failure; anything that falls back to copying by name would open
+ * ossec.conf for writing and truncate the target as root. */
+static bool g_swap_at_rename = false;
+
+int __real_rename(const char *oldpath, const char *newpath);
+
+int __wrap_rename(const char *oldpath, const char *newpath) {
+    if (g_swap_at_rename && strcmp(newpath, WAZUHCONF) == 0) {
+        g_swap_at_rename = false;
+        assert_int_equal(unlink(oldpath), 0);
+        assert_int_equal(mkdir(oldpath, 0700), 0);
+        assert_int_equal(unlink(newpath), 0);
+        assert_int_equal(symlink("swap-target", newpath), 0);
+    }
+
+    return __real_rename(oldpath, newpath);
+}
+
+/* Puts things back after the hook above: the directory left at the staged name, and the link at
+ * ossec.conf, which the next test's write_file() would otherwise follow. */
+static void undo_swap_at_rename(void) {
+    struct stat st;
+
+    if (g_staged_name[0] != '\0') {
+        rmdir(g_staged_name);
+    }
+
+    if (lstat(WAZUHCONF, &st) == 0 && S_ISLNK(st.st_mode)) {
+        unlink(WAZUHCONF);
+    }
 }
 
 
@@ -330,6 +371,8 @@ static int setup_test(void **state) {
     g_fchown_group = (gid_t) -1;
     g_fchmodat_calls = 0;
     g_swap_staged = false;
+    g_staged_name[0] = '\0';
+    g_swap_at_rename = false;
     unlink(SWAP_TARGET);
     unlink(KEYS_FILE);
     unlink(AGENT_ANCHOR_CA);
@@ -355,6 +398,7 @@ static int teardown_test(void **state) {
     rmdir(AGENT_DELIVERED_CA);
     unlink(AGENT_DELIVERED_CA);
     rmdir("var/incoming");
+    undo_swap_at_rename();
     clear_agentd_pidfiles();
 
     if (agt != NULL) {
@@ -899,6 +943,36 @@ static void test_config_rewrite_sets_mode_and_owner_through_the_descriptor(void 
     assert_int_equal(stat(WAZUHCONF, &rewritten), 0);
     assert_int_equal(rewritten.st_mode & 07777, 0640);
     assert_file_content(WAZUHCONF, REWRITTEN_CONFIG);
+}
+
+/* After every check on the staged copy has passed, the account that can write etc/ makes the move
+ * fail and points ossec.conf at another file. The move has to fail as a move: copying into
+ * ossec.conf by name instead would have root truncate that other file. */
+static void test_config_rewrite_install_never_writes_through_a_symlink(void **state) {
+    (void) state;
+    char err_buf[2048] = {0};
+    FILE *err = fmemopen(err_buf, sizeof(err_buf), "w");
+
+    write_file(WAZUHCONF, CONFIG_WITH_ENDPOINT);
+    write_file(SWAP_TARGET, SWAP_TARGET_CONTENT);
+    g_swap_at_rename = true;
+
+    /* Allowed, not required: only a fallback copy would log here. Optional, so that a regression
+     * fails on the target below rather than on an unexpected log line. */
+    expect_any_count(__wrap__mdebug1, formatted_msg, WILL_RETURN_ONCE);
+    expect_any_count(__wrap__merror, formatted_msg, WILL_RETURN_ONCE);
+
+    expect_string(__wrap_OS_WriteXMLToStream, newval, "new.example.local:1518");
+    will_return(__wrap_OS_WriteXMLToStream, REWRITTEN_CONFIG);
+    will_return(__wrap_OS_WriteXMLToStream, 0);
+
+    assert_int_equal(w_agent_auth_update_endpoint("new.example.local:1518", "siem.example.local", err), -1);
+
+    fclose(err);
+
+    assert_false(g_swap_at_rename);
+    assert_file_content(SWAP_TARGET, SWAP_TARGET_CONTENT);
+    assert_non_null(strstr(err_buf, "could not install"));
 }
 
 
@@ -1446,6 +1520,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_config_rewrite_never_follows_a_swapped_staging_file, setup_test,
                                         teardown_test),
         cmocka_unit_test_setup_teardown(test_config_rewrite_sets_mode_and_owner_through_the_descriptor, setup_test,
+                                        teardown_test),
+        cmocka_unit_test_setup_teardown(test_config_rewrite_install_never_writes_through_a_symlink, setup_test,
                                         teardown_test),
         cmocka_unit_test_setup_teardown(test_registered_is_decided_by_content_not_by_shape, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_dry_run_previews_instead_of_refusing, setup_test, teardown_test),
