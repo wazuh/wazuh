@@ -28,6 +28,9 @@ int __wrap_connect(__attribute__((unused))int __fd, __attribute__((unused))__CON
 
 int __wrap_accept(__attribute__((unused))int __fd, struct sockaddr * __addr, __attribute__((unused))socklen_t *__restrict __addr_len);
 
+/* When not 0, the next __wrap_send() calls set errno to this value before returning */
+extern int wrap_send_errno;
+
 ssize_t __wrap_send(__attribute__((unused))int __fd, __attribute__((unused))const void *__buf, __attribute__((unused))size_t __n, __attribute__((unused))int __flags);
 
 ssize_t __wrap_sendto(__attribute__((unused))int __fd, __attribute__((unused))const void *__buf, __attribute__((unused))size_t __n, __attribute__((unused)) int __flags,

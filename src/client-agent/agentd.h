@@ -116,6 +116,11 @@ void sender_init();
 /* Send message to server */
 int send_msg(const char *msg, ssize_t msg_length);
 
+/* Bound TCP sends with poll() for this many seconds, for sockets where
+ * SO_SNDTIMEO is unsupported (ENOPROTOOPT). 0 disables it.
+ * The caller must hold the send mutex. */
+void send_set_poll_timeout(int seconds);
+
 /* Acquire/release the same mutex send_msg() uses around agt->sock, so
  * connect_server() can mutate agt->sock without racing a concurrent sender. */
 void send_mutex_lock(void);

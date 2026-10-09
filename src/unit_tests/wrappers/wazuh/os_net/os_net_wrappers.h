@@ -20,6 +20,9 @@
 typedef uint16_t u_int16_t;
 #endif
 
+/* When not 0, the failing OS_SetRecvTimeout()/OS_SetSendTimeout() wrappers set errno to this value */
+extern int wrap_sockopt_errno;
+
 int __wrap_OS_BindUnixDomainWithPerms(const char *path, int type, int max_msg_size, uid_t uid, gid_t gid, mode_t perm);
 
 int __wrap_OS_BindUnixDomain(const char *path, int type, int max_msg_size);
@@ -30,11 +33,15 @@ int __wrap_OS_SendUDPbySize(int sock, int size, const char *msg);
 
 int __wrap_OS_SendSecureTCP(int sock, uint32_t size, const void * msg);
 
+int __wrap_OS_SendSecureTCPTimeout(int sock, uint32_t size, const void * msg, int timeout);
+
 int __wrap_OS_SendUnix(int socket, const char *msg, int size);
 
 void expect_OS_SendUnix_call(int socket, const char *msg, int size, int ret);
 
 int __wrap_OS_RecvSecureTCP(int sock, char * ret, uint32_t size);
+
+int __wrap_OS_RecvSecureTCPTimeout(int sock, char * ret, uint32_t size, int timeout);
 
 int __wrap_OS_RecvUnix(int socket, int sizet, char *ret);
 

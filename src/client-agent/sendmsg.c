@@ -13,10 +13,17 @@
 #include "os_net/os_net.h"
 
 static pthread_mutex_t send_mutex;
+/* 0 when SO_SNDTIMEO is in effect. */
+static int send_poll_timeout = 0;
 
 /* Initialize sender structure */
 void sender_init() {
     w_mutex_init(&send_mutex, NULL);
+    send_poll_timeout = 0;
+}
+
+void send_set_poll_timeout(int seconds) {
+    send_poll_timeout = seconds;
 }
 
 void send_mutex_lock(void) {
@@ -68,7 +75,11 @@ int send_msg(const char *msg, ssize_t msg_length)
             sleep(1);
             return (-1);
         }
-        retval = OS_SendSecureTCP(sock, msg_size, crypt_msg);
+        if (send_poll_timeout > 0) {
+            retval = OS_SendSecureTCPTimeout(sock, msg_size, crypt_msg, send_poll_timeout);
+        } else {
+            retval = OS_SendSecureTCP(sock, msg_size, crypt_msg);
+        }
         if (retval) {
             bool socket_dead;
 #ifdef WIN32
