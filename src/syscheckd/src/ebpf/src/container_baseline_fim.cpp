@@ -30,6 +30,8 @@
  */
 
 #include "container_baseline_fim.h"
+
+#include "container_row_budget.h"
 #include "container_baseline.h"
 #include "container_baseline_fim_bridge.h"
 #include "container_event_drain.hpp"
@@ -76,6 +78,14 @@ void LogDebug(const char* fmt, Args... args)
     char buffer[512];
     std::snprintf(buffer, sizeof(buffer), fmt, args...);
     fim_container_baseline_log_debug(buffer);
+}
+
+template <typename... Args>
+void LogWarn(const char* fmt, Args... args)
+{
+    char buffer[512];
+    std::snprintf(buffer, sizeof(buffer), fmt, args...);
+    fim_container_baseline_log_warn(buffer);
 }
 
 template <typename... Args>
@@ -188,15 +198,39 @@ class ScopedContainerTxn {
 
         [[nodiscard]] bool valid() const { return m_txn != nullptr; }
 
-        void syncRow(const std::string& row_json)
+        /// Stores one row, subject to this container's own row ceiling.
+        ///
+        /// A baseline rewrites the container's whole row set, so the count of
+        /// rows synced in this transaction IS the container's row count — no
+        /// persistent counter is needed, and none can drift.
+        ///
+        /// Two refusals are possible and both matter. The per-container cap is
+        /// refused here. The NODE ceiling is refused by dbsync underneath
+        /// (max_rows on file_entry), and used to be swallowed by the LogDebug
+        /// below — measured on a real node, 8,643 rows were refused that way
+        /// while the scan reported "0 partial scan(s)". Either way the row set
+        /// is now incomplete, and rowsRefused() is how onStatus() learns that.
+        void syncRow(const std::string& row_json, int perContainerLimit)
         {
             if (!m_txn) return;
 
+            if (!container_row_admitted(perContainerLimit, m_synced)) {
+                ++m_refused;
+                return;
+            }
+
             if (fim_db_transaction_sync_row_json(m_txn, "file_entry", row_json.c_str()) != FIMDB_OK) {
+                ++m_refused;
                 LogDebug("Container FIM baseline: failed to sync a row for container '%s'.",
                         m_ctx.container_id.c_str());
+                return;
             }
+
+            ++m_synced;
         }
+
+        [[nodiscard]] size_t rowsSynced() const { return m_synced; }
+        [[nodiscard]] size_t rowsRefused() const { return m_refused; }
 
         /// @param detect_deletions false for an incomplete scan: the rows this
         ///        transaction did NOT refresh are missing because the walk was
@@ -220,6 +254,8 @@ class ScopedContainerTxn {
     private:
         ContainerTxnCtx m_ctx;
         TXN_HANDLE      m_txn{nullptr};
+        std::size_t     m_synced{0};
+        std::size_t     m_refused{0};
 };
 
 /// Streams the baseline into per-container transactions.
@@ -285,7 +321,7 @@ class BaselineDriver {
             beginContainer(container_id);
             if (!m_txn || !m_txn->valid()) return;
 
-            m_txn->syncRow(row.dump());
+            m_txn->syncRow(row.dump(), syscheck.container_file_entry_limit);
             ++m_rows;
         }
 
@@ -308,7 +344,25 @@ class BaselineDriver {
             // so previously-stored rows for this container age out as DELETED.
             beginContainer(id);
 
-            const bool partial = status.partial != 0;
+            // status.partial is the WALKER's verdict, reached before a single
+            // row touches the database. A row the database refused is just as
+            // missing, and until now nothing carried that back: measured on a
+            // real node, 8,643 rows were refused while every scan in the window
+            // reported "0 partial scan(s)". Suppressing deletions on it is D11
+            // rule 4 — never let a partial view delete.
+            const std::size_t refused = (m_txn && m_current == id) ? m_txn->rowsRefused() : 0;
+            const bool partial = container_scan_is_partial(status.partial != 0, refused);
+
+            if (refused > 0) {
+                LogWarn("Container FIM baseline: container '%s' stored %zu row(s) and %zu were refused "
+                        "(per-container limit %d, node limit %d). Its file state is incomplete, so "
+                        "delete detection is suppressed for it this pass.",
+                        id.c_str(),
+                        m_txn ? m_txn->rowsSynced() : 0,
+                        refused,
+                        syscheck.container_file_entry_limit,
+                        syscheck.file_entry_limit);
+            }
 
             if (partial) {
                 // D17: each reason is named, because they are not equally
