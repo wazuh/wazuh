@@ -747,10 +747,15 @@ endif
 endif
 
 ${WAZUH_LIB_OUTPUT_PATH}${LIBSTDCPP_NAME}: ${libstdc++_path}
-	cp $< $@
+	cp $< $@.tmp
 ifneq (${uname_S},AIX)
-	${STRIP_TOOL} -x $@
+	${STRIP_TOOL} -x $@.tmp
 endif
+ifeq (${uname_S},SunOS)
+# Bundled libstdc++ has no RUNPATH, so ld.so.1 loads a second libgcc_s.so.1 from /usr/lib and every C++ throw aborts.
+	elfedit -e 'dyn:runpath $$ORIGIN' $@.tmp
+endif
+	mv $@.tmp $@
 
 ${WAZUH_LIB_OUTPUT_PATH}${LIBGCC_S_NAME}: ${libgcc_s_path}
 	cp $< $@
