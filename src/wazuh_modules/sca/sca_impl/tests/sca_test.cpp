@@ -1140,7 +1140,7 @@ TEST_F(ScaTest, PerformRecovery_DataCleanManagerNotReadyWithinToleranceLogsDefer
     .WillOnce(testing::Return(SyncModuleResult{false, "Failed to communicate with the manager.", false, true, 1u}));
 
     m_logOutput.clear();
-    EXPECT_FALSE(scaMock.callPerformRecovery());
+    EXPECT_EQ(scaMock.callPerformRecovery(), RecoveryOutcome::FAILED);
 
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
                     "SCA recovery deferred: Failed to communicate with the manager. It will be retried in the next integrity_interval"));
@@ -1169,7 +1169,7 @@ TEST_F(ScaTest, PerformRecovery_ResendFailsAfterDataCleanSaysQueuedRowsGoWithNex
     .WillOnce(testing::Return(SyncModuleResult{false, "Failed to communicate with the manager.", false, true, 1u}));
 
     m_logOutput.clear();
-    EXPECT_FALSE(scaMock.callPerformRecovery());
+    EXPECT_EQ(scaMock.callPerformRecovery(), RecoveryOutcome::QUEUED);
 
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
                     "SCA recovery deferred: Failed to communicate with the manager. The queued checks will be "
@@ -1198,7 +1198,7 @@ TEST_F(ScaTest, PerformRecovery_DataCleanManagerNotReadyPastToleranceLogsWarning
     .WillOnce(testing::Return(SyncModuleResult{false, "Failed to communicate with the manager.", false, true, streak}));
 
     m_logOutput.clear();
-    EXPECT_FALSE(scaMock.callPerformRecovery());
+    EXPECT_EQ(scaMock.callPerformRecovery(), RecoveryOutcome::FAILED);
 
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
                     "SCA recovery failed " + std::to_string(streak) +
@@ -1226,7 +1226,7 @@ TEST_F(ScaTest, PerformRecovery_DataCleanLocalTransportUnavailableWithinToleranc
     .WillOnce(testing::Return(SyncModuleResult{false, "Failed to reach the sync intake socket.", false, false, 1u, false, true}));
 
     m_logOutput.clear();
-    EXPECT_FALSE(scaMock.callPerformRecovery());
+    EXPECT_EQ(scaMock.callPerformRecovery(), RecoveryOutcome::FAILED);
 
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
                     "SCA recovery deferred: Failed to reach the sync intake socket. It will be retried in the next integrity_interval"));
@@ -1251,7 +1251,7 @@ TEST_F(ScaTest, PerformRecovery_DataCleanLocalTransportUnavailablePastToleranceL
     .WillOnce(testing::Return(SyncModuleResult{false, "Failed to reach the sync intake socket.", false, false, streak, false, true}));
 
     m_logOutput.clear();
-    EXPECT_FALSE(scaMock.callPerformRecovery());
+    EXPECT_EQ(scaMock.callPerformRecovery(), RecoveryOutcome::FAILED);
 
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
                     "SCA recovery failed " + std::to_string(streak) +

@@ -245,23 +245,6 @@ TEST_F(DBTestFixture, TestFimDBUpdateLastSyncTimeValueNullParameter)
     });
 }
 
-TEST_F(DBTestFixture, TestFimDBUpdateLastSyncTime)
-{
-    EXPECT_NO_THROW(
-    {
-        // Get initial sync time (should be 0)
-        auto initialSyncTime = fim_db_get_last_sync_time(FIMDB_FILE_TABLE_NAME);
-        ASSERT_EQ(initialSyncTime, 0);
-
-        // Update to current time using fim_db_update_last_sync_time
-        fim_db_update_last_sync_time(FIMDB_FILE_TABLE_NAME);
-
-        // Verify it was updated (should be greater than 0)
-        auto updatedSyncTime = fim_db_get_last_sync_time(FIMDB_FILE_TABLE_NAME);
-        ASSERT_GT(updatedSyncTime, 0);
-    });
-}
-
 TEST_F(DBTestFixture, TestFimDBCalculateTableChecksumEmptyTable)
 {
     EXPECT_NO_THROW(

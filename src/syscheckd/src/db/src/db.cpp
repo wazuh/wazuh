@@ -376,20 +376,6 @@ FIMDBErrorCode fim_db_init(
     return retVal;
 }
 
-void fim_db_update_last_sync_time(const char* table_name)
-{
-    try
-    {
-        DB::updateLastSyncTime(table_name, Utils::getSecondsFromEpoch());
-    }
-    catch (const std::exception& ex)
-    {
-        // Log error but don't exit - this is not critical
-        // The worst case is the integrity check runs again sooner than expected
-        FIMDB::instance().logFunction(LOG_ERROR, ex.what());
-    }
-}
-
 TXN_HANDLE fim_db_transaction_start(const char* table, result_callback_t row_callback, void* user_data)
 {
     try

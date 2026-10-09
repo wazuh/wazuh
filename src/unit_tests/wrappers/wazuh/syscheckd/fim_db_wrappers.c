@@ -155,10 +155,6 @@ void __wrap_fim_db_clean_file_table() {
     function_called();
 }
 
-void __wrap_fim_db_update_last_sync_time(__attribute__((unused)) const char* table_name) {
-    function_called();
-}
-
 int __wrap_fim_db_get_max_version_file() {
     return mock_type(int);
 }

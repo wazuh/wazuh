@@ -4914,16 +4914,16 @@ IntegrityCheckResult Syscollector::checkIfFullSyncRequired(const std::string& ta
 
     if (result.status == IntegrityCheckStatus::MISMATCH)
     {
-        m_logFunction(LOG_DEBUG, "Checksum mismatch detected for index " + tableName + " full sync required");
+        m_logFunction(LOG_DEBUG, "Checksum mismatch detected for table " + tableName + ", full sync required");
     }
     else if (result.status == IntegrityCheckStatus::VALID)
     {
-        m_logFunction(LOG_DEBUG, "Checksum valid for index " + tableName + ", delta sync sufficient");
+        m_logFunction(LOG_DEBUG, "Checksum valid for table " + tableName + ", delta sync sufficient");
     }
     else
     {
         // Reported by runRecoveryProcess(), once per pass for every table left unchecked.
-        m_logFunction(LOG_DEBUG, "Checksum not verified for index " + tableName + ": " + result.failureReason);
+        m_logFunction(LOG_DEBUG, "Checksum not verified for table " + tableName + ": " + result.failureReason);
     }
 
     return result;
@@ -5076,17 +5076,6 @@ static std::string formatIntegrityInterval(uint32_t seconds)
     return std::to_string(seconds) + "s";
 }
 
-/// @brief Sync-protocol failure reasons are full sentences; this lets them sit inside parentheses.
-static std::string withoutTrailingPeriod(std::string reason)
-{
-    if (!reason.empty() && reason.back() == '.')
-    {
-        reason.pop_back();
-    }
-
-    return reason;
-}
-
 bool Syscollector::recoveryIntervalHasEllapsed(const std::string& tableName, int64_t integrityInterval)
 {
     int64_t currentTime = Utils::getSecondsFromEpoch();
@@ -5220,7 +5209,7 @@ bool Syscollector::resyncTableToManager(const std::string& tableName,
         }
 
         m_logFunction(LOG_WARNING, "Failed to clear index " + index + " before recovery resync for table " + tableName +
-                      (cleanResult.failureReason.empty() ? "" : " (" + withoutTrailingPeriod(cleanResult.failureReason) + ")") + "; " + retryNote);
+                      (cleanResult.failureReason.empty() ? "" : " (" + Utils::rightTrim(cleanResult.failureReason, ".") + ")") + "; " + retryNote);
         return false;
     }
 
@@ -5457,7 +5446,7 @@ void Syscollector::checkAgentIdentity()
                 continue;
             }
 
-            if (!resyncTableToManager(tableName, index, !vdTable))
+            if (!resyncTableToManager(tableName, index, !vdTable, "it will be retried on the next sync cycle"))
             {
                 // Keep going: the tables that can be resent should be, and aborting here would
                 // make every later pass re-upload the ones that already succeeded. The marker is
@@ -5582,8 +5571,6 @@ void Syscollector::runRecoveryProcess()
             break;
         }
 
-        // LCOV_EXCL_START
-        // Recovery process requires manager integration for checksum validation.
         if (recoveryIntervalHasEllapsed(tableName, m_integrityIntervalValue))
         {
             m_logFunction(LOG_DEBUG, "Starting integrity validation process for " + tableName);
@@ -5602,7 +5589,10 @@ void Syscollector::runRecoveryProcess()
 
             if (check.status == IntegrityCheckStatus::NOT_CHECKED)
             {
-                notChecked.push_back(index + " (" + withoutTrailingPeriod(check.failureReason) + ")");
+                // Sync-protocol reasons are full sentences; drop the trailing period inside the parentheses.
+                notChecked.push_back(index + " (" + Utils::rightTrim(check.failureReason, ".") +
+                                     (check.mismatchUnconfirmed ? ", after a checksum mismatch reported by the manager" : "") +
+                                     ")");
             }
             else if (check.status == IntegrityCheckStatus::MISMATCH)
             {
@@ -5623,8 +5613,6 @@ void Syscollector::runRecoveryProcess()
             // next integrity_interval, never in the next sync cycle.
             updateLastSyncTime(tableName, Utils::getSecondsFromEpoch());
         }
-
-        // LCOV_EXCL_STOP
     }
 
     if (!notChecked.empty())

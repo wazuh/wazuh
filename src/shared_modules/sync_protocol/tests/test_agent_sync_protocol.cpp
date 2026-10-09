@@ -19,6 +19,7 @@
 
 #include <future>
 #include <atomic>
+#include <tuple>
 #include <mutex>
 #include <optional>
 #include <thread>
@@ -378,6 +379,41 @@ TEST_F(AgentSyncProtocolTest, CInterfacePropagatesStoppedFlag)
     asp_stop(handle);
     SyncModuleResult_t afterStop = asp_sync_module(handle, MODE_DELTA);
     EXPECT_FALSE(afterStop.success);
+    EXPECT_TRUE(afterStop.stopped);
+
+    asp_destroy(handle);
+}
+
+// Exercises the C interface of the integrity check (asp_requires_full_sync ->
+// IntegrityCheckResult_t), the path FIM relies on: a check that did not run must cross it as
+// NOT_CHECKED with its reason and flags, and bad arguments must not reach the C++ layer.
+TEST_F(AgentSyncProtocolTest, CInterfaceIntegrityCheckCarriesTheResult)
+{
+    auto* handle = asp_create("test_module", ":memory:", +[](modules_log_level_t, const char*) {});
+    ASSERT_NE(handle, nullptr);
+
+    for (const auto& [h, index, checksum] : std::vector<std::tuple<AgentSyncProtocolHandle*, const char*, const char*>> {
+             {nullptr, "index", "checksum"}, {handle, nullptr, "checksum"}, {handle, "index", nullptr}})
+    {
+        const IntegrityCheckResult_t invalid = asp_requires_full_sync(h, index, checksum);
+        EXPECT_EQ(invalid.status, INTEGRITY_CHECK_NOT_CHECKED);
+        EXPECT_STREQ(invalid.failure_reason, "Invalid integrity check arguments.");
+        EXPECT_FALSE(invalid.stopped);
+        EXPECT_FALSE(invalid.mismatch_unconfirmed);
+    }
+
+    // asp_create wires the real socket transport and its intake socket does not exist here, so
+    // the check returns at the checkStatus early out.
+    const IntegrityCheckResult_t unreachable = asp_requires_full_sync(handle, "index", "checksum");
+    EXPECT_EQ(unreachable.status, INTEGRITY_CHECK_NOT_CHECKED);
+    EXPECT_STREQ(unreachable.failure_reason, "Failed to reach the sync intake socket.");
+    EXPECT_TRUE(unreachable.local_transport_unavailable);
+    EXPECT_FALSE(unreachable.manager_not_ready);
+    EXPECT_FALSE(unreachable.stopped);
+
+    asp_stop(handle);
+    const IntegrityCheckResult_t afterStop = asp_requires_full_sync(handle, "index", "checksum");
+    EXPECT_EQ(afterStop.status, INTEGRITY_CHECK_NOT_CHECKED);
     EXPECT_TRUE(afterStop.stopped);
 
     asp_destroy(handle);
@@ -1288,10 +1324,8 @@ TEST_F(AgentSyncProtocolTest, VdSyncWithoutAFeedOffsetIsStillSent)
 // its sessions would be rejected.
 TEST_F(AgentSyncProtocolTest, StartCarriesTheCanonicalAgentId)
 {
-    for (const auto& [stored, claimed] : std::vector<std::pair<std::string, std::string>>
-{
-    {"001", "001"}, {"0001", "001"}, {"1", "001"}, {"1000", "1000"}, {"01000", "1000"}
-})
+    for (const auto& [stored, claimed] : std::vector<std::pair<std::string, std::string>> {
+             {"001", "001"}, {"0001", "001"}, {"1", "001"}, {"1000", "1000"}, {"01000", "1000"}})
     {
         agent_metadata_t metadata = {};
         strncpy(metadata.agent_id, stored.c_str(), sizeof(metadata.agent_id) - 1);
@@ -1310,15 +1344,12 @@ TEST_F(AgentSyncProtocolTest, StartCarriesTheCanonicalAgentId)
 
         std::vector<PersistedData> testData = {{0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}};
         EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_))
-        .WillOnce(Return(testData))
-        .WillOnce(Return(std::vector<PersistedData> {}));
+            .WillOnce(Return(testData))
+            .WillOnce(Return(std::vector<PersistedData> {}));
         EXPECT_CALL(*mockQueue, clearSyncedItems()).Times(1);
 
         SyncModuleResult result;
-        std::thread syncThread([this, &result]()
-        {
-            result = protocol->synchronizeModule(Mode::DELTA);
-        });
+        std::thread syncThread([this, &result]() { result = protocol->synchronizeModule(Mode::DELTA); });
 
         EXPECT_TRUE(mockSyncTransport->waitForSession());
         feedHttpResult(200);
