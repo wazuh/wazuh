@@ -1,0 +1,17 @@
+Why: Delete the assignment operator of on_error_notification, which assigns to a const member and fails to compile with GCC 14; the struct is only used through shared_ptr.
+Upstream: ReactiveX/RxCpp#605 (open issue; main still has the assignment)
+Remove when: the RxCpp entry moves to a release that deletes or fixes that operator.
+
+diff --git a/Rx/v2/src/rxcpp/rx-notification.hpp b/Rx/v2/src/rxcpp/rx-notification.hpp
+index 20e0c69..6222b6e 100644
+--- a/Rx/v2/src/rxcpp/rx-notification.hpp
++++ b/Rx/v2/src/rxcpp/rx-notification.hpp
+@@ -150,7 +150,7 @@ private:
+         }
+         on_error_notification(const on_error_notification& o) : ep(o.ep) {}
+         on_error_notification(const on_error_notification&& o) : ep(std::move(o.ep)) {}
+-        on_error_notification& operator=(on_error_notification o) { ep = std::move(o.ep); return *this; }
++        on_error_notification& operator=(on_error_notification o) RXCPP_DELETE; 
+         virtual void out(std::ostream& os) const {
+             os << "on_error(";
+             os << rxu::what(ep);

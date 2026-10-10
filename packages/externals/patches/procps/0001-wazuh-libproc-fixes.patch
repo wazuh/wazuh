@@ -1,0 +1,421 @@
+Why: Wazuh fixes to the procps 3.2.8 libproc sources (proc/): explicit constructor priorities, checked read() results and compiler warning cleanups, from wazuh/wazuh#9743.
+Upstream: none: procps 3.2.8 is unmaintained (superseded by procps-ng).
+Remove when: Wazuh stops building libproc from procps 3.2.8.
+
+diff --git a/devname.c b/devname.c
+index 32ad954..50456f4 100644
+--- a/devname.c
++++ b/devname.c
+@@ -1,13 +1,13 @@
+ /*
+- * Copyright 1998-2002 by Albert Cahalan; all rights resered.         
++ * Copyright 1998-2002 by Albert Cahalan; all rights resered.
+  * This file may be used subject to the terms and conditions of the
+- * GNU Library General Public License Version 2, or any later version  
++ * GNU Library General Public License Version 2, or any later version
+  * at your option, as published by the Free Software Foundation.
+  * This program is distributed in the hope that it will be useful,
+  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  * GNU Library General Public License for more details.
+- */                                 
++ */
+ 
+ #include <stdio.h>
+ #include <stdlib.h>
+@@ -69,7 +69,7 @@ static void load_drivers(void){
+   p = buf;
+   while(( p = strstr(p, " /dev/") )){  // " /dev/" is the second column
+     tty_map_node *tmn;
+-    int len;
++    unsigned int len;
+     char *end;
+     p += 6;
+     end = strchr(p, ' ');
+diff --git a/readproc.c b/readproc.c
+index 4fad11d..dfa070d 100644
+--- a/readproc.c
++++ b/readproc.c
+@@ -37,6 +37,7 @@ extern void __cyg_profile_func_enter(void*,void*);
+ #define LEAVE(x)
+ #endif
+ 
++#ifndef SIGNAL_STRING
+ // convert hex string to unsigned long long
+ static unsigned long long unhex(const char *restrict cp){
+     unsigned long long ull = 0;
+@@ -47,6 +48,7 @@ static unsigned long long unhex(const char *restrict cp){
+     }
+     return ull;
+ }
++#endif
+ 
+ static int task_dir_missing;
+ 
+@@ -400,8 +402,7 @@ LEAVE(0x160);
+ /////////////////////////////////////////////////////////////////////////
+ 
+ static void statm2proc(const char* s, proc_t *restrict P) {
+-    int num;
+-    num = sscanf(s, "%ld %ld %ld %ld %ld %ld %ld",
++    sscanf(s, "%ld %ld %ld %ld %ld %ld %ld",
+ 	   &P->size, &P->resident, &P->share,
+ 	   &P->trs, &P->lrs, &P->drs, &P->dt);
+ /*    fprintf(stderr, "statm2proc converted %d fields.\n",num); */
+@@ -467,7 +468,7 @@ static char** file2strvec(const char* directory, const char* what) {
+     q = ret = (char**) (endbuf+align);		/* ==> free(*ret) to dealloc */
+     *q++ = p = rbuf;				/* point ptrs to the strings */
+     endbuf--;					/* do not traverse final NUL */
+-    while (++p < endbuf) 
++    while (++p < endbuf)
+     	if (!*p)				/* NUL char implies that */
+ 	    *q++ = p+1;				/* next string -> next char */
+ 
+@@ -598,7 +599,7 @@ static proc_t* simple_readproc(PROCTAB *restrict const PT, proc_t *restrict cons
+ 	p->environ = file2strvec(path, "environ");
+     else
+         p->environ = NULL;
+-    
++
+     return p;
+ next_proc:
+     return NULL;
+diff --git a/sig.c b/sig.c
+index ea63397..53ed8d8 100644
+--- a/sig.c
++++ b/sig.c
+@@ -214,7 +214,7 @@ void pretty_print_signals(void){
+   while(++i <= number_of_signals){
+     int n;
+     n = printf("%2d %s", i, signal_number_to_name(i));
+-    if(i%7) printf("           \0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0" + n);
++    if(i%7) printf("%*c",n,' ');
+     else printf("\n");
+   }
+   if((i-1)%7) printf("\n");
+@@ -231,7 +231,7 @@ void unix_print_signals(void){
+ }
+ 
+ /* sanity check */
+-static int init_signal_list(void) __attribute__((constructor));
++static int init_signal_list(void) __attribute__((constructor(101)));
+ static int init_signal_list(void){
+   if(number_of_signals != 31){
+     fprintf(stderr, "WARNING: %d signals -- adjust and recompile.\n", number_of_signals);
+diff --git a/slab.c b/slab.c
+index 60c5696..5f3901f 100644
+--- a/slab.c
++++ b/slab.c
+@@ -1,4 +1,4 @@
+-/* 
++/*
+  * slab.c - slab related functions for libproc
+  *
+  * Chris Rivera <cmrivera@ufl.edu>
+@@ -51,7 +51,7 @@ static struct slab_info *get_slabnode(void)
+ 
+ /*
+  * slab_badname_detect - return true if current slab was declared with
+- *                       whitespaces for instance 
++ *                       whitespaces for instance
+  *			 FIXME :Other cases ?
+  */
+ 
+@@ -61,9 +61,9 @@ static int slab_badname_detect(const char *restrict buffer)
+ 	while (*buffer){
+ 		if((*buffer)==' ')
+ 			numberarea=1;
+-		if(isalpha(*buffer)&&numberarea)	
++		if(isalpha(*buffer)&&numberarea)
+ 			return 1;
+-		buffer++;	
++		buffer++;
+ 	}
+ 	return 0;
+ }
+@@ -89,35 +89,36 @@ void free_slabinfo(struct slab_info *list)
+ 	}
+ }
+ 
+-// parse_slabinfo20 - actual parse routine for slabinfo 2.x (2.6 kernels)
+-// Note: difference between 2.0 and 2.1 is in the ": globalstat" part where version 2.1 
+-// has extra column <nodeallocs>. We don't use ": globalstat" part in both versions.
+-//
+-// Formats (we don't use "statistics" extensions)
+-//
+-//  slabinfo - version: 2.1
+-//  # name            <active_objs> <num_objs> <objsize> <objperslab> <pagesperslab> \
+-//  : tunables <batchcount> <limit> <sharedfactor> \
+-//  : slabdata <active_slabs> <num_slabs> <sharedavail>
+-//
+-//  slabinfo - version: 2.1 (statistics)
+-//  # name            <active_objs> <num_objs> <objsize> <objperslab> <pagesperslab> \
+-//  : tunables <batchcount> <limit> <sharedfactor> \
+-//  : slabdata <active_slabs> <num_slabs> <sharedavail> \
+-//  : globalstat <listallocs> <maxobjs> <grown> <reaped> <error> <maxfreeable> <freelimit> <nodeallocs> \
+-//  : cpustat <allochit> <allocmiss> <freehit> <freemiss>
+-//             
+-//  slabinfo - version: 2.0
+-//  # name            <active_objs> <num_objs> <objsize> <objperslab> <pagesperslab> \
+-//  : tunables <batchcount> <limit> <sharedfactor> \
+-//  : slabdata <active_slabs> <num_slabs> <sharedavail>
+-//
+-//  slabinfo - version: 2.0 (statistics)
+-//  # name            <active_objs> <num_objs> <objsize> <objperslab> <pagesperslab> \
+-//  : tunables <batchcount> <limit> <sharedfactor> \
+-//  : slabdata <active_slabs> <num_slabs> <sharedavail> \
+-//  : globalstat <listallocs> <maxobjs> <grown> <reaped> <error> <maxfreeable> <freelimit> \
+-//  : cpustat <allochit> <allocmiss> <freehit> <freemiss>
++/* parse_slabinfo20 - actual parse routine for slabinfo 2.x (2.6 kernels)
++   Note: difference between 2.0 and 2.1 is in the ": globalstat" part where version 2.1
++   has extra column <nodeallocs>. We don't use ": globalstat" part in both versions.
++
++   Formats (we don't use "statistics" extensions)
++
++    slabinfo - version: 2.1
++    # name            <active_objs> <num_objs> <objsize> <objperslab> <pagesperslab> \
++    : tunables <batchcount> <limit> <sharedfactor> \
++    : slabdata <active_slabs> <num_slabs> <sharedavail>
++
++    slabinfo - version: 2.1 (statistics)
++    # name            <active_objs> <num_objs> <objsize> <objperslab> <pagesperslab> \
++    : tunables <batchcount> <limit> <sharedfactor> \
++    : slabdata <active_slabs> <num_slabs> <sharedavail> \
++    : globalstat <listallocs> <maxobjs> <grown> <reaped> <error> <maxfreeable> <freelimit> <nodeallocs> \
++    : cpustat <allochit> <allocmiss> <freehit> <freemiss>
++
++    slabinfo - version: 2.0
++    # name            <active_objs> <num_objs> <objsize> <objperslab> <pagesperslab> \
++    : tunables <batchcount> <limit> <sharedfactor> \
++    : slabdata <active_slabs> <num_slabs> <sharedavail>
++
++    slabinfo - version: 2.0 (statistics)
++    # name            <active_objs> <num_objs> <objsize> <objperslab> <pagesperslab> \
++    : tunables <batchcount> <limit> <sharedfactor> \
++    : slabdata <active_slabs> <num_slabs> <sharedavail> \
++    : globalstat <listallocs> <maxobjs> <grown> <reaped> <error> <maxfreeable> <freelimit> \
++    : cpustat <allochit> <allocmiss> <freehit> <freemiss>
++*/
+ static int parse_slabinfo20(struct slab_info **list, struct slab_stat *stats,
+ 				FILE *f)
+ {
+@@ -134,7 +135,7 @@ static int parse_slabinfo20(struct slab_info **list, struct slab_stat *stats,
+ 
+ 		if (buffer[0] == '#')
+ 			continue;
+-	
++
+ 		curr = get_slabnode();
+ 		if (!curr)
+ 			break;
+@@ -146,8 +147,8 @@ static int parse_slabinfo20(struct slab_info **list, struct slab_stat *stats,
+ 
+ 		assigned = sscanf(buffer, "%" STRINGIFY(SLAB_INFO_NAME_LEN)
+ 				"s %d %d %d %d %d : tunables %*d %*d %*d : \
+-				slabdata %d %d %*d", curr->name, 
+-				&curr->nr_active_objs, &curr->nr_objs, 
++				slabdata %d %d %*d", curr->name,
++				&curr->nr_active_objs, &curr->nr_objs,
+ 				&curr->obj_size, &curr->objs_per_slab,
+ 				&curr->pages_per_slab, &curr->nr_active_slabs,
+ 				&curr->nr_slabs);
+@@ -231,7 +232,7 @@ static int parse_slabinfo11(struct slab_info **list, struct slab_stat *stats,
+ 		if (assigned < 6) {
+ 			fprintf(stderr, "unrecognizable data in  your slabinfo version 1.1\n\r");
+ 			if(slab_badname_detect(buffer))
+-				fprintf(stderr, "Found an error in cache name at line %s\n", buffer); 
++				fprintf(stderr, "Found an error in cache name at line %s\n", buffer);
+ 			curr = NULL;
+ 			break;
+ 		}
+@@ -251,7 +252,7 @@ static int parse_slabinfo11(struct slab_info **list, struct slab_stat *stats,
+ 
+ 		if (curr->obj_size)
+ 			curr->objs_per_slab = curr->pages_per_slab *
+-					page_size / curr->obj_size;		
++					page_size / curr->obj_size;
+ 
+ 		stats->nr_objs += curr->nr_objs;
+ 		stats->nr_active_objs += curr->nr_active_objs;
+diff --git a/sysinfo.c b/sysinfo.c
+index cd59534..3a86691 100644
+--- a/sysinfo.c
++++ b/sysinfo.c
+@@ -169,7 +169,7 @@ static void old_Hertz_hack(void){
+     /* If 32-bit or big-endian (not Alpha or ia64), assume HZ is 100. */
+     Hertz = (sizeof(long)==sizeof(int) || htons(999)==999) ? 100UL : 1024UL;
+ #endif
+-    fprintf(stderr, "Unknown HZ value! (%d) Assume %Ld.\n", h, Hertz);
++   // fprintf(stderr, "Unknown HZ value! (%d) Assume %Ld.\n", h, Hertz);
+   }
+ }
+ 
+@@ -184,7 +184,7 @@ static void old_Hertz_hack(void){
+ 
+ #define NOTE_NOT_FOUND 42
+ 
+-//extern char** environ;
++extern char** environ;
+ 
+ /* for ELF executables, notes are pushed before environment and args */
+ static unsigned long find_elf_note(unsigned long findme){
+@@ -209,7 +209,7 @@ static int check_for_privs(void){
+   return !!rc;
+ }
+ 
+-static void init_libproc(void) __attribute__((constructor));
++static void init_libproc(void) __attribute__((constructor(103)));
+ static void init_libproc(void){
+   have_privs = check_for_privs();
+   // ought to count CPUs in /proc/stat instead of relying
+@@ -222,7 +222,7 @@ static void init_libproc(void){
+   smp_num_cpus = sysconf(_SC_NPROCESSORS_ONLN);
+   if(smp_num_cpus<1) smp_num_cpus=1; /* SPARC glibc is buggy */
+ 
+-  if(linux_version_code > LINUX_VERSION(2, 4, 0)){ 
++  if(linux_version_code > LINUX_VERSION(2, 4, 0)){
+     Hertz = find_elf_note(AT_CLKTCK);
+     if(Hertz!=NOTE_NOT_FOUND) return;
+     fputs("2.4+ kernel w/o ELF notes? -- report this\n", stderr);
+@@ -256,7 +256,7 @@ void eight_cpu_numbers(double *restrict uret, double *restrict nret, double *res
+     new_y = 0;
+     tmp_z = 0.0;
+     new_z = 0;
+- 
++
+     FILE_TO_BUF(STAT_FILE,stat_fd);
+     sscanf(buf, "cpu %Lu %Lu %Lu %Lu %Lu %Lu %Lu %Lu", &new_u, &new_n, &new_s, &new_i, &new_w, &new_x, &new_y, &new_z);
+     ticks_past = (new_u+new_n+new_s+new_i+new_w+new_x+new_y+new_z)-(old_u+old_n+old_s+old_i+old_w+old_x+old_y+old_z);
+@@ -304,7 +304,7 @@ void eight_cpu_numbers(double *restrict uret, double *restrict nret, double *res
+ void loadavg(double *restrict av1, double *restrict av5, double *restrict av15) {
+     double avg_1=0, avg_5=0, avg_15=0;
+     char *restrict savelocale;
+-    
++
+     FILE_TO_BUF(LOADAVG_FILE,loadavg_fd);
+     savelocale = setlocale(LC_NUMERIC, NULL);
+     setlocale(LC_NUMERIC, "C");
+@@ -349,7 +349,11 @@ static void getrunners(unsigned int *restrict running, unsigned int *restrict bl
+     fd = open(tbuf, O_RDONLY, 0);
+     if (fd == -1) continue;
+     memset(tbuf, '\0', sizeof tbuf); // didn't feel like checking read()
+-    read(fd, tbuf, sizeof tbuf - 1); // need 32 byte buffer at most
++    if (read(fd, tbuf, sizeof tbuf - 1) < 0) { // need 32 byte buffer at most
++        perror(tbuf);
++        fflush(NULL);
++        _exit(103);
++    }
+     close(fd);
+ 
+     cp = strrchr(tbuf, ')');
+@@ -388,8 +392,12 @@ void getstat(jiff *restrict cuse, jiff *restrict cice, jiff *restrict csys, jiff
+     fd = open("/proc/stat", O_RDONLY, 0);
+     if(fd == -1) crash("/proc/stat");
+   }
+-  read(fd,buff,BUFFSIZE-1);
+-  *intr = 0; 
++  if (read(fd,buff,BUFFSIZE-1) < 0) {
++      perror("/proc/stat");
++      fflush(NULL);
++      _exit(103);
++  }
++  *intr = 0;
+   *ciow = 0;  /* not separated out until the 2.5.41 kernel */
+   *cxxx = 0;  /* not separated out until the 2.6.0-test4 kernel */
+   *cyyy = 0;  /* not separated out until the 2.6.0-test4 kernel */
+@@ -661,21 +669,21 @@ unsigned long vm_pageoutrun;  // times kswapd ran page reclaim
+ unsigned long vm_allocstall; // times a page allocator ran direct reclaim
+ unsigned long vm_pgrotated; // pages rotated to the tail of the LRU for immediate reclaim
+ // seen on a 2.6.8-rc1 kernel, apparently replacing old fields
+-static unsigned long vm_pgalloc_dma;          // 
+-static unsigned long vm_pgalloc_high;         // 
+-static unsigned long vm_pgalloc_normal;       // 
+-static unsigned long vm_pgrefill_dma;         // 
+-static unsigned long vm_pgrefill_high;        // 
+-static unsigned long vm_pgrefill_normal;      // 
+-static unsigned long vm_pgscan_direct_dma;    // 
+-static unsigned long vm_pgscan_direct_high;   // 
+-static unsigned long vm_pgscan_direct_normal; // 
+-static unsigned long vm_pgscan_kswapd_dma;    // 
+-static unsigned long vm_pgscan_kswapd_high;   // 
+-static unsigned long vm_pgscan_kswapd_normal; // 
+-static unsigned long vm_pgsteal_dma;          // 
+-static unsigned long vm_pgsteal_high;         // 
+-static unsigned long vm_pgsteal_normal;       // 
++static unsigned long vm_pgalloc_dma;          //
++static unsigned long vm_pgalloc_high;         //
++static unsigned long vm_pgalloc_normal;       //
++static unsigned long vm_pgrefill_dma;         //
++static unsigned long vm_pgrefill_high;        //
++static unsigned long vm_pgrefill_normal;      //
++static unsigned long vm_pgscan_direct_dma;    //
++static unsigned long vm_pgscan_direct_high;   //
++static unsigned long vm_pgscan_direct_normal; //
++static unsigned long vm_pgscan_kswapd_dma;    //
++static unsigned long vm_pgscan_kswapd_high;   //
++static unsigned long vm_pgscan_kswapd_normal; //
++static unsigned long vm_pgsteal_dma;          //
++static unsigned long vm_pgsteal_high;         //
++static unsigned long vm_pgsteal_normal;       //
+ // seen on a 2.6.8-rc1 kernel
+ static unsigned long vm_kswapd_inodesteal;    //
+ static unsigned long vm_nr_unstable;          //
+@@ -804,7 +812,7 @@ unsigned int getdiskstat(struct disk_stat **disks, struct partition_stat **parti
+ 
+   *disks = NULL;
+   *partitions = NULL;
+-  buff[BUFFSIZE-1] = 0; 
++  buff[BUFFSIZE-1] = 0;
+   fd = fopen("/proc/diskstats", "rb");
+   if(!fd) crash("/proc/diskstats");
+ 
+@@ -847,7 +855,7 @@ unsigned int getdiskstat(struct disk_stat **disks, struct partition_stat **parti
+         &(*partitions)[cPartition].requested_writes
+       );
+       (*partitions)[cPartition++].parent_disk = cDisk-1;
+-      (*disks)[cDisk-1].partitions++;	
++      (*disks)[cDisk-1].partitions++;
+     }
+   }
+ 
+@@ -860,7 +868,7 @@ unsigned int getdiskstat(struct disk_stat **disks, struct partition_stat **parti
+ unsigned int getslabinfo (struct slab_cache **slab){
+   FILE* fd;
+   int cSlab = 0;
+-  buff[BUFFSIZE-1] = 0; 
++  buff[BUFFSIZE-1] = 0;
+   *slab = NULL;
+   fd = fopen("/proc/slabinfo", "rb");
+   if(!fd) crash("/proc/slabinfo");
+diff --git a/version.c b/version.c
+index 69bae4f..d0eb071 100644
+--- a/version.c
++++ b/version.c
+@@ -14,11 +14,8 @@
+ #include <stdlib.h>
+ #include "version.h"
+ 
+-#ifdef MINORVERSION
+-const char procps_version[] = "procps version " VERSION "." SUBVERSION "." MINORVERSION;
+-#else
+-const char procps_version[] = "procps version " VERSION "." SUBVERSION;
+-#endif
++
++const char procps_version[] = "procps version 2.8.3";
+ 
+ void display_version(void) {
+     fprintf(stdout, "%s\n", procps_version);
+@@ -33,11 +30,11 @@ void display_version(void) {
+ 
+ int linux_version_code;
+ 
+-static void init_Linux_version(void) __attribute__((constructor));
++static void init_Linux_version(void) __attribute__((constructor(102)));
+ static void init_Linux_version(void) {
+     static struct utsname uts;
+     int x = 0, y = 0, z = 0;	/* cleared in case sscanf() < 3 */
+-    
++
+     if (uname(&uts) == -1)	/* failure implies impending death */
+ 	exit(1);
+     if (sscanf(uts.release, "%d.%d.%d", &x, &y, &z) < 3)

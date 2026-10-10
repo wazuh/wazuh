@@ -13,6 +13,7 @@ on:
       - 'src/shared_modules/manager_config/**'
       - 'src/CMakeLists.txt'
       - 'src/Makefile'
+      - 'src/deps.lock.mk'
       # Tavern suite (5_testintegration_api-endpoints.yml) and framework unit tests
       - '!api/test/**'
       - '!framework/**/tests/**'

@@ -7,6 +7,7 @@ on:
       - '.github/workflows/5_testunit_wodles.yml'
       - 'wodles/**'
       - 'src/Makefile'
+      - 'src/deps.lock.mk'
       - 'framework/requirements-wodles.txt'
       - 'framework/requirements-wodles-dev.txt'
   workflow_dispatch:

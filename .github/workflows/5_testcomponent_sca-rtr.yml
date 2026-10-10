@@ -10,6 +10,7 @@ on:
       - "src/wazuh_modules/sca/**"
       - "src/config/src/wmodules-sca.c"
       - "src/Makefile"
+      - "src/deps.lock.mk"
       - ".github/workflows/5_testcomponent_sca-rtr.yml"
       - ".github/actions/**"
 

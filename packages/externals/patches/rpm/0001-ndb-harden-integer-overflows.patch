@@ -1,0 +1,284 @@
+Why: Backport the integer overflow hardening of the ndb rpmdb backend, which rpm 4.20.1 does not include.
+Upstream: rpm-software-management/rpm f85845c26cc8 (lib/backend/ndb only; the tests/rpmdb.at hunk is left out)
+Remove when: the rpm entry moves to a release that contains f85845c26cc8.
+
+diff --git a/lib/backend/ndb/rpmidx.c b/lib/backend/ndb/rpmidx.c
+index 75dbb2b836..1912930d64 100644
+--- a/lib/backend/ndb/rpmidx.c
++++ b/lib/backend/ndb/rpmidx.c
+@@ -217,6 +217,14 @@ static int rpmidxReadHeader(rpmidxdb idxdb)
+     idxdb->keyend     = le2ha(idxdb->head_mapped + IDXDB_OFFSET_KEYEND);
+     idxdb->keyexcess  = le2ha(idxdb->head_mapped + IDXDB_OFFSET_KEYEXCESS);
+ 
++    /* make sure data is sane */
++    if (idxdb->nslots < 256 || (idxdb->nslots & (idxdb->nslots - 1)) != 0 ||
++	    idxdb->usedslots > idxdb->nslots || idxdb->dummyslots > idxdb->nslots ||
++	    idxdb->nslots >= (0xffffffffU - IDXDB_SLOT_OFFSET) / 12) {
++	rpmidxUnmap(idxdb);	/* too small, somthing is wrong */
++	return RPMRC_FAIL;
++    }
++
+     idxdb->hmask = idxdb->nslots - 1;
+ 
+     /* now that we know nslots we can split between slots and keys */
+@@ -370,6 +378,8 @@ static inline int equalkey(rpmidxdb idxdb, unsigned int off, const unsigned char
+ static int addkeypage(rpmidxdb idxdb) {
+     unsigned int addsize = idxdb->pagesize > IDXDB_KEY_CHUNKSIZE ? idxdb->pagesize : IDXDB_KEY_CHUNKSIZE;
+ 
++    if (addsize > 0xffffffffU - idxdb->file_size)
++	return RPMRC_FAIL;
+     if (rpmxdbResizeBlob(idxdb->xdb, idxdb->xdbid, idxdb->file_size + addsize))
+ 	return RPMRC_FAIL;
+     return RPMRC_OK;
+@@ -500,6 +510,8 @@ static int rpmidxRebuildInternal(rpmidxdb idxdb)
+     while (nslots & (nslots - 1))
+ 	nslots = nslots & (nslots - 1);
+     nslots *= 4;
++    if (nslots < 256 || nslots >= (0xffffffffU - IDXDB_SLOT_OFFSET) / 12)
++	return RPMRC_FAIL;
+ 
+     nidxdb->nslots = nslots;
+     nidxdb->hmask = nslots - 1;
+@@ -508,11 +520,16 @@ static int rpmidxRebuildInternal(rpmidxdb idxdb)
+     key_size = idxdb->keyend;
+     if (key_size < IDXDB_KEY_CHUNKSIZE)
+ 	key_size = IDXDB_KEY_CHUNKSIZE;
++    if (key_size >= 0xffffffffU - (IDXDB_SLOT_OFFSET + nslots * 12))
++	return RPMRC_FAIL;
++
+     file_size = IDXDB_SLOT_OFFSET + nslots * 12 + key_size;
+ 
+     /* round file size to multiple of the page size */
+     if (file_size & (nidxdb->pagesize - 1)) {
+ 	unsigned int add = nidxdb->pagesize - (file_size & (nidxdb->pagesize - 1));
++	if (add > 0xffffffffU - file_size)
++	    return RPMRC_FAIL;
+ 	file_size += add;
+ 	key_size += add;
+     }
+@@ -586,7 +603,7 @@ static int rpmidxRebuildInternal(rpmidxdb idxdb)
+  */
+ static int rpmidxCheck(rpmidxdb idxdb)
+ {
+-    if (idxdb->usedslots * 2 > idxdb->nslots ||
++    if (idxdb->usedslots > idxdb->nslots / 2 ||
+ 	(idxdb->keyexcess > 4096 && idxdb->keyexcess * 4 > idxdb->keyend) ||
+ 	idxdb->keyend >= ~idxdb->xmask) {
+ 	if (rpmidxRebuildInternal(idxdb))
+@@ -608,6 +625,8 @@ static int rpmidxPutInternal(rpmidxdb idxdb, const unsigned char *key, unsigned
+ 
+     if (datidx >= 0x80000000)
+ 	return RPMRC_FAIL;
++    if (keyl >= 0x80000000)
++	return RPMRC_FAIL;
+     if (rpmidxCheck(idxdb))
+ 	return RPMRC_FAIL;
+     data = encodedata(idxdb, pkgidx, datidx, &ovldata);
+@@ -679,6 +698,8 @@ static int rpmidxDelInternal(rpmidxdb idxdb, const unsigned char *key, unsigned
+ 
+     if (datidx >= 0x80000000)
+ 	return RPMRC_FAIL;
++    if (keyl >= 0x80000000)
++	return RPMRC_FAIL;
+     if (rpmidxCheck(idxdb))
+ 	return RPMRC_FAIL;
+     data = encodedata(idxdb, pkgidx, datidx, &ovldata);
+diff --git a/lib/backend/ndb/rpmpkg.c b/lib/backend/ndb/rpmpkg.c
+index 8ce4596ca0..a7c1fbb6ea 100644
+--- a/lib/backend/ndb/rpmpkg.c
++++ b/lib/backend/ndb/rpmpkg.c
+@@ -88,6 +88,12 @@ static unsigned int update_adler32(unsigned int adler, unsigned char *buf, unsig
+     return ((s2 % 65521) << 16) + (s1 % 65521);
+ }
+ 
++/*** Size definitions ***/
++
++#define SLOT_SIZE 16
++#define BLK_SIZE  16
++#define PAGE_SIZE 4096
++
+ /*** Header management ***/
+ 
+ #define PKGDB_MAGIC	('R' | 'p' << 8 | 'm' << 16 | 'P' << 24)
+@@ -102,6 +108,9 @@ static unsigned int update_adler32(unsigned int adler, unsigned char *buf, unsig
+ #define PKGDB_OFFSET_SLOTNPAGES 12
+ #define PKGDB_OFFSET_NEXTPKGIDX 16
+ 
++/* the slot index and the block index must fit into a 32bit integer */
++#define PKGDB_MAX_SLOTNPAGES (0xffffffffU / (PAGE_SIZE / (SLOT_SIZE > BLK_SIZE ? BLK_SIZE : SLOT_SIZE)))
++
+ static int rpmpkgReadHeader(rpmpkgdb pkgdb)
+ {
+     unsigned int generation, slotnpages, nextpkgidx, version;
+@@ -125,6 +134,8 @@ static int rpmpkgReadHeader(rpmpkgdb pkgdb)
+     generation = le2h(header + PKGDB_OFFSET_GENERATION);
+     slotnpages = le2h(header + PKGDB_OFFSET_SLOTNPAGES);
+     nextpkgidx = le2h(header + PKGDB_OFFSET_NEXTPKGIDX);
++    if (slotnpages > PKGDB_MAX_SLOTNPAGES)
++	return RPMRC_FAIL;
+     /* free slots if our internal data no longer matches */
+     if (pkgdb->slots && (pkgdb->generation != generation || pkgdb->slotnpages != slotnpages)) {
+ 	free(pkgdb->slots);
+@@ -167,10 +178,6 @@ static int rpmpkgWriteHeader(rpmpkgdb pkgdb)
+ 
+ #define SLOT_MAGIC	('S' | 'l' << 8 | 'o' << 16 | 't' << 24)
+ 
+-#define SLOT_SIZE 16
+-#define BLK_SIZE  16
+-#define PAGE_SIZE 4096
+-
+ /* the first slots (i.e. 32 bytes) are used for the header */
+ #define SLOT_START (PKGDB_HEADER_SIZE / SLOT_SIZE)
+ 
+@@ -235,10 +242,12 @@ static int rpmpkgReadSlots(rpmpkgdb pkgdb)
+ 	return RPMRC_FAIL;
+     if (stb.st_size % BLK_SIZE)
+ 	return RPMRC_FAIL;	/* hmm */
++    if (stb.st_size / BLK_SIZE >= 0xffffffffU)
++	return RPMRC_FAIL;	/* hmm */
+     fileblks = stb.st_size / BLK_SIZE;
+ 
+     /* read (and somewhat verify) all slots */
+-    pkgdb->slots = xcalloc(slotnpages * (PAGE_SIZE / SLOT_SIZE), sizeof(*pkgdb->slots));
++    pkgdb->slots = xcalloc(slotnpages, sizeof(*pkgdb->slots) * (PAGE_SIZE / SLOT_SIZE));
+     i = 0;
+     slot = pkgdb->slots;
+     minblkoff = slotnpages * (PAGE_SIZE / BLK_SIZE);
+@@ -261,6 +270,8 @@ static int rpmpkgReadSlots(rpmpkgdb pkgdb)
+ 	    }
+ 	    pkgidx = le2h(pp + 4);
+ 	    blkcnt = le2h(pp + 12);
++	    if (blkoff >= 0xffffffffU - blkcnt)
++		return RPMRC_FAIL;	/* oversized entry */
+ 	    slot->pkgidx = pkgidx;
+ 	    slot->blkoff = blkoff;
+ 	    slot->blkcnt = blkcnt;
+@@ -352,6 +363,8 @@ static int rpmpkgFindEmptyOffset(rpmpkgdb pkgdb, unsigned int pkgidx, unsigned i
+     if (!bestblkoff) {
+ 	bestblkoff = lastblkend;	/* append to end */
+     }
++    if (bestblkoff >= 0xffffffffU - blkcnt)
++	return RPMRC_FAIL;		/* oversized */
+     *oldslotp = oldslot;
+     *blkoffp = bestblkoff;
+     return RPMRC_OK;
+@@ -513,6 +526,8 @@ static int rpmpkgValidateZero(rpmpkgdb pkgdb, unsigned int blkoff, unsigned int
+ #define BLOBHEAD_SIZE	(4 + 4 + 4 + 4)
+ #define BLOBTAIL_SIZE	(4 + 4 + 4)
+ 
++#define PKGDB_MAX_BLOBSIZE (0xffffffffU - (BLOBHEAD_SIZE + BLOBTAIL_SIZE + BLK_SIZE - 1))
++
+ static int rpmpkgReadBlob(rpmpkgdb pkgdb, unsigned int pkgidx, unsigned int blkoff, unsigned int blkcnt, unsigned char *blob, unsigned int *bloblp, unsigned int *generationp)
+ {
+     unsigned char buf[BLOBHEAD_SIZE > BLOBTAIL_SIZE ? BLOBHEAD_SIZE : BLOBTAIL_SIZE];
+@@ -534,6 +549,8 @@ static int rpmpkgReadBlob(rpmpkgdb pkgdb, unsigned int pkgidx, unsigned int blko
+ 	return RPMRC_FAIL;	/* bad blob */
+     generation = le2h(buf + 8);
+     bloblen = le2h(buf + 12);
++    if (bloblen > PKGDB_MAX_BLOBSIZE)
++	return RPMRC_FAIL;	/* bad blob */
+     if (blkcnt != (BLOBHEAD_SIZE + bloblen + BLOBTAIL_SIZE + BLK_SIZE - 1) / BLK_SIZE)
+ 	return RPMRC_FAIL;	/* bad blob */
+     adl = ADLER32_INIT;
+@@ -596,8 +613,8 @@ static int rpmpkgWriteBlob(rpmpkgdb pkgdb, unsigned int pkgidx, unsigned int blk
+     off_t fileoff;
+ 
+     /* sanity */
+-    if (blkcnt <  (BLOBHEAD_SIZE + BLOBTAIL_SIZE + BLK_SIZE - 1) / BLK_SIZE)
+-	return RPMRC_FAIL;	/* blkcnt too small */
++    if (blobl >= PKGDB_MAX_BLOBSIZE)
++	return RPMRC_FAIL;	/* oversized blob */
+     if (blkcnt != (BLOBHEAD_SIZE + blobl + BLOBTAIL_SIZE + BLK_SIZE - 1) / BLK_SIZE)
+ 	return RPMRC_FAIL;	/* blkcnt mismatch */
+     fileoff = (off_t)blkoff * BLK_SIZE;
+@@ -687,6 +704,8 @@ static int rpmpkgMoveBlob(rpmpkgdb pkgdb, pkgslot *slot, unsigned int newblkoff)
+ static int rpmpkgAddSlotPage(rpmpkgdb pkgdb)
+ {
+     unsigned int cutoff;
++    if (pkgdb->slotnpages >= PKGDB_MAX_SLOTNPAGES)
++	return RPMRC_FAIL;
+     if (!pkgdb->ordered)
+ 	rpmpkgOrderSlots(pkgdb);
+     cutoff = (pkgdb->slotnpages + 1) * (PAGE_SIZE / BLK_SIZE);
+@@ -961,7 +980,7 @@ int rpmpkgSalvage(rpmpkgdb *pkgdbp, const char *filename)
+ 	rpmpkgClose(pkgdb);
+ 	return RPMRC_FAIL;
+     }
+-    pkgdb->fileblks = stb.st_size / BLK_SIZE;
++    pkgdb->fileblks = stb.st_size / BLK_SIZE >= 0xffffffffU ? 0xffffffffU : stb.st_size / BLK_SIZE;
+     blkskip = 1;
+     nfound = 0;
+     salvaged = xmalloc(64 * (4 * sizeof(unsigned int)));
+@@ -1088,6 +1107,8 @@ static int rpmpkgPutInternal(rpmpkgdb pkgdb, unsigned int pkgidx, unsigned char
+     if (rpmpkgReadSlots(pkgdb)) {
+ 	return RPMRC_FAIL;
+     }
++    if (blobl >= 0xffffffffU - (BLOBHEAD_SIZE + BLOBTAIL_SIZE + BLK_SIZE - 1))
++	return RPMRC_FAIL;
+     blkcnt = (BLOBHEAD_SIZE + blobl + BLOBTAIL_SIZE + BLK_SIZE - 1) / BLK_SIZE;
+     /* find a nice place for the blob */
+     if (rpmpkgFindEmptyOffset(pkgdb, pkgidx, blkcnt, &blkoff, &oldslot, 0)) {
+@@ -1111,11 +1132,12 @@ static int rpmpkgPutInternal(rpmpkgdb pkgdb, unsigned int pkgidx, unsigned char
+     if (rpmpkgWriteBlob(pkgdb, pkgidx, blkoff, blkcnt, blob, blobl, pkgdb->generation)) {
+ 	return RPMRC_FAIL;
+     }
++    /* update nextpkgidx if needed */
++    if (pkgidx >= pkgdb->nextpkgidx) {
++	pkgdb->nextpkgidx = pkgidx + 1; 
++    }    
+     /* write slot */
+     slotno = oldslot ? oldslot->slotno : pkgdb->freeslot;
+-    if (!slotno) {
+-	return RPMRC_FAIL;
+-    }
+     if (rpmpkgWriteslot(pkgdb, slotno, pkgidx, blkoff, blkcnt)) {
+ 	free(pkgdb->slots);
+ 	pkgdb->slots = 0;
+diff --git a/lib/backend/ndb/rpmxdb.c b/lib/backend/ndb/rpmxdb.c
+index 3422cd66a7..26085f72ee 100644
+--- a/lib/backend/ndb/rpmxdb.c
++++ b/lib/backend/ndb/rpmxdb.c
+@@ -102,6 +102,11 @@ static inline void h2lea(unsigned int x, unsigned char *p)
+ #define SLOT_SIZE		16
+ #define SLOT_START (XDB_HEADER_SIZE / SLOT_SIZE)
+ 
++/* limits */
++#define XDB_MAX_SLOTNPAGES 0x10000
++#define XDB_MIN_PAGESIZE   0x100
++#define XDB_MAX_PAGESIZE   0x10000
++
+ 
+ /* low level map/remap a file into memory */
+ static void *mapmem(void *oldaddr, size_t oldsize, size_t newsize, int prot, int fd, off_t offset)
+@@ -249,6 +254,10 @@ static int rpmxdbReadHeaderRaw(rpmxdb xdb, unsigned int *generationp, unsigned i
+     *usergenerationp = le2ha((unsigned char *)header + XDB_OFFSET_USERGENERATION);
+     if (!*slotnpagesp || !*pagesizep)
+ 	return RPMRC_FAIL;
++    if ((*pagesizep & (*pagesizep - 1)) != 0 || *pagesizep < XDB_MIN_PAGESIZE || *pagesizep > XDB_MAX_PAGESIZE)
++	return RPMRC_FAIL;
++    if (*slotnpagesp >= XDB_MAX_SLOTNPAGES)
++	return RPMRC_FAIL;
+     return RPMRC_OK;
+ }
+ 
+@@ -471,6 +480,10 @@ static int rpmxdbInitInternal(rpmxdb xdb)
+         xdb->slotnpages = 1;
+         xdb->generation++;
+ 	xdb->pagesize = sysconf(_SC_PAGE_SIZE);
++	if (xdb->pagesize > XDB_MAX_PAGESIZE)
++	    xdb->pagesize = XDB_MAX_PAGESIZE;
++	if ((xdb->pagesize & (xdb->pagesize - 1)) != 0 || xdb->pagesize < XDB_MIN_PAGESIZE)
++            return RPMRC_FAIL;
+         if (rpmxdbWriteEmptySlotpage(xdb, 0)) {
+             return RPMRC_FAIL;
+         }
+@@ -779,6 +792,9 @@ static int addslotpage(rpmxdb xdb)
+     if (xdb->firstfree)
+ 	return RPMRC_FAIL;
+ 
++    if (xdb->slotnpages >= XDB_MAX_SLOTNPAGES - 1)
++	return RPMRC_FAIL;
++
+     /* move first blob if needed */
+     nslots = xdb->nslots;
+     for (i = xdb->slots[0].next; i != nslots; i = slot->next) {

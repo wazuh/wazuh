@@ -22,7 +22,6 @@ ARCHITECTURE=""
 SYSTEM=""
 TARGET="manager"
 DOCKER_TAG="latest"
-DEPS_TO_UPDATE=""
 JOBS="$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 2)"
 VERBOSE=""
 OUTDIR="${WAZUH_PATH}/packages/output_externals"
@@ -35,9 +34,6 @@ Usage: $0 [OPTIONS]
   -a, --architecture <amd64|arm64> [Required] Target architecture.
   -t, --target <agent|manager>     [Optional] Build set. Default: manager.
       --tag <tag>                  [Optional] Docker image tag. Default: latest.
-      --dependencies "<spec>"      [Optional] "name:version;name:version;..."
-                                   Empty = rebuild all from currently vendored
-                                   sources; nothing is replaced.
       --jobs <n>                   [Optional] Parallel make jobs.
       --output <path>              [Optional] Host output dir (collected zips).
                                    Default: <repo>/packages/output_externals.
@@ -53,7 +49,6 @@ while [ -n "$1" ]; do
         -a|--architecture)   ARCHITECTURE="$2"; shift 2 ;;
         -t|--target)         TARGET="$2"; shift 2 ;;
         --tag)               DOCKER_TAG="$2"; shift 2 ;;
-        --dependencies)      DEPS_TO_UPDATE="$2"; shift 2 ;;
         --jobs)              JOBS="$2"; shift 2 ;;
         --output)            OUTDIR="$2"; shift 2 ;;
         --verbose)           VERBOSE="yes"; shift 1 ;;
@@ -108,8 +103,13 @@ fi
 mkdir -p "${OUTDIR}"
 
 echo "[generate_external] target=${TARGET} system=${SYSTEM} arch=${ARCHITECTURE}"
-echo "[generate_external] deps='${DEPS_TO_UPDATE}'"
 echo "[generate_external] output=${OUTDIR}"
+
+# Sources come from packages/externals/dependencies.json, each from its own URL.
+# Not every builder image has python3, so the host flattens it to bash arrays
+# the leg sources.
+DEPS_ENV_FILE="external_sources.env"
+python3 "${CURRENT_PATH}/deps.py" flatten > "${OUTDIR}/${DEPS_ENV_FILE}"
 
 # macOS runs natively on the macOS runner (no Docker available, host toolchain
 # is what we ship against). Every other leg runs inside a pinned Wazuh builder
@@ -132,7 +132,9 @@ if [ "${SYSTEM}" = "macos" ]; then
         SYSTEM="${SYSTEM}" \
         BUILD_TARGET="${TARGET}" \
         ARCHITECTURE_TARGET="${ARCHITECTURE}" \
-        DEPS_TO_UPDATE="${DEPS_TO_UPDATE}" \
+        DEPS_ENV="${OUTDIR}/${DEPS_ENV_FILE}" \
+        DEPS_BUILD="${DEPS_BUILD:-}" \
+        DEPS_POOL_URL="${DEPS_POOL_URL:-}" \
         JOBS="${JOBS}" \
         WAZUH_VERBOSE="${VERBOSE}" \
         bash "${WAZUH_PATH}/packages/externals/build_external.sh"
@@ -157,7 +159,9 @@ else
         -e SYSTEM="${SYSTEM}" \
         -e BUILD_TARGET="${TARGET}" \
         -e ARCHITECTURE_TARGET="${ARCHITECTURE}" \
-        -e DEPS_TO_UPDATE="${DEPS_TO_UPDATE}" \
+        -e DEPS_ENV="/var/local/wazuh/${DEPS_ENV_FILE}" \
+        -e DEPS_BUILD="${DEPS_BUILD:-}" \
+        -e DEPS_POOL_URL="${DEPS_POOL_URL:-}" \
         -e JOBS="${JOBS}" \
         -e WAZUH_VERBOSE="${VERBOSE}" \
         --entrypoint /bin/bash \
@@ -168,18 +172,15 @@ fi
 echo "[generate_external] per-dep zips:"
 ls -la "${OUTDIR}/external_artifacts/" 2>/dev/null || echo "  (none — build may have failed)"
 
-# Re-pack the per-dep zips into the S3 layout `make deps` consumes from
-# packages.wazuh.com/deps/<version>/libraries/. Each runner emits a single
-# tarball that already contains its slice of the libraries/ tree, so
-# downloading every artifact from a run and extracting each into the same
-# destination yields the complete tree — no aggregation job needed.
-#
-# Layout written by this leg:
-#   libraries/<os>/<arch>/<dep>.tar.gz    binaries for this (system, arch)
-#   libraries/sources/<dep>.tar.gz        upstream sources (every leg writes
-#                                         identical content, so the final
-#                                         tree has one copy regardless of
-#                                         extract order)
+# Re-pack the per-dep zips into the pool layout `make deps` consumes from
+# packages.wazuh.com/deps/pool/, under the refs of src/deps.lock.mk:
+#   pool/<ref>/sources/<dep>.tar.gz    the source tree (identical on every leg)
+#   pool/<ref>/<os>/<arch>/<dep>.tar.gz  what this leg compiled, when it compiled
+#                                       something: a leg that only has the
+#                                       sources of a dependency (procps on the
+#                                       manager legs) leaves its platform to others
+# The consolidate job merges the legs; where two legs compiled the same
+# dependency it keeps the agent leg's copy (see consolidate.sh).
 #
 # Inner and outer tarballs use owner=0/group=0 so they extract under any UID.
 case "${SYSTEM}-${ARCHITECTURE}" in
@@ -192,7 +193,7 @@ case "${SYSTEM}-${ARCHITECTURE}" in
 esac
 
 if [ -z "${S3_PATH}" ]; then
-    echo "[generate_external] no S3 path mapping for ${SYSTEM}-${ARCHITECTURE}; skipping pack step"
+    echo "[generate_external] no pool path mapping for ${SYSTEM}-${ARCHITECTURE}; skipping pack step"
     exit 0
 fi
 
@@ -210,73 +211,57 @@ if [ ! -d "${OUTDIR}/external_artifacts" ]; then
     exit 0
 fi
 
-LIBS_DIR="${OUTDIR}/libraries"
-PLATFORM_DIR="${LIBS_DIR}/${S3_PATH}"
-SOURCES_DIR="${LIBS_DIR}/sources"
-rm -rf "${LIBS_DIR}"
-mkdir -p "${PLATFORM_DIR}" "${SOURCES_DIR}"
+POOL_DIR="${OUTDIR}/pool"
+LOCK="${WAZUH_PATH}/src/deps.lock.mk"
+rm -rf "${POOL_DIR}"
+# A leg that builds nothing still ships an (empty) pool/.
+mkdir -p "${POOL_DIR}"
 
-echo "[generate_external] packing zips into libraries/${S3_PATH}/ and libraries/sources/"
-
+# Pack <zip>'s <dep>/ into <dest>/<dep>.tar.gz; with `compiled`, only if it holds a library.
 repack() {
-    local zip="$1" dep="$2" dest="$3"
+    local zip="$1" dep="$2" dest="$3" only_compiled="${4:-}"
     local tmp
     tmp="$(mktemp -d)"
     unzip -q "${zip}" -d "${tmp}"
     if [ ! -d "${tmp}/${dep}" ]; then
         echo "[generate_external] WARN: ${zip} missing '${dep}/' dir — skipping" >&2
-        rm -rf "${tmp}"
-        return 0
+    elif [ -n "${only_compiled}" ] && [ -z "$(find "${tmp}/${dep}" -type f \( -name '*.a' -o -name '*.so' -o -name '*.so.*' -o -name '*.lib' -o -name '*.dylib' \) | head -n1)" ]; then
+        echo "[generate_external] ${dep}: nothing compiled on this leg; no ${S3_PATH} tarball"
+    else
+        mkdir -p "${dest}"
+        ( cd "${tmp}" && "${TAR}" -czf "${dest}/${dep}.tar.gz" --owner=0 --group=0 --no-same-owner "${dep}" )
     fi
-    ( cd "${tmp}" && "${TAR}" -czf "${dest}/${dep}.tar.gz" --owner=0 --group=0 --no-same-owner "${dep}" )
     rm -rf "${tmp}"
 }
 
-# Each leg packs every dep it produced into its own slice of the libraries/
-# tree — binaries under libraries/<os>/<arch>/, sources under
-# libraries/sources/. No cross-leg deduplication happens here.
-#
-# On Linux the agent and manager legs both build the agent dep set, so their
-# per-leg tarballs deliberately overlap: e.g. both ship libraries/linux/<arch>/
-# curl.tar.gz. Deciding which copy survives needs both legs' output side by
-# side — a leg only owns a dep's binary if it actually *compiled* it (the
-# agent leg gets a source-only snapshot for server-only deps like rocksdb /
-# jemalloc that src/external/CMakeLists.txt gates behind `if(NOT IS_AGENT ...)`),
-# and where both legs compiled a dep the agent copy wins because its
-# centos:6 / glibc-2.12 binaries link in every Wazuh builder image while the
-# manager's centos:7 / glibc-2.17 binaries do not. That comparison is the
-# consolidate job's responsibility (see 5_builderpackage_externals.yml); it
-# is output-driven, so changing a dependency never needs a code change here.
-#
-# Source zips are byte-identical across legs; the consolidate merge keeps one.
 bin_suffix="_${SYSTEM}_${ARCHITECTURE}.zip"
 for zip in "${OUTDIR}/external_artifacts/"*.zip; do
     [ -f "${zip}" ] || continue
     base="$(basename "${zip}")"
     case "${base}" in
-        *_src.zip)
-            dep="${base%_src.zip}"
-            repack "${zip}" "${dep}" "${SOURCES_DIR}"
-            ;;
-        *"${bin_suffix}")
-            dep="${base%${bin_suffix}}"
-            repack "${zip}" "${dep}" "${PLATFORM_DIR}"
-            ;;
+        *_src.zip)          dep="${base%_src.zip}" ;;
+        *"${bin_suffix}")   dep="${base%${bin_suffix}}" ;;
+        *)                  continue ;;
+    esac
+    ref="$(sed -n "s/^DEP_REF_${dep} := //p" "${LOCK}")"
+    if [ -z "${ref}" ]; then
+        echo "[generate_external] ERROR: no DEP_REF_${dep} in ${LOCK}" >&2
+        exit 1
+    fi
+    case "${base}" in
+        *_src.zip) repack "${zip}" "${dep}" "${POOL_DIR}/${ref}/sources" ;;
+        *)         repack "${zip}" "${dep}" "${POOL_DIR}/${ref}/${S3_PATH}" compiled ;;
     esac
 done
 
-# Pass-through tarballs: already in upstream tar.gz form (e.g. precompiled
-# cpython blob), so just drop them into libraries/sources/ with the
-# .passthrough.tar.gz marker stripped. No unzip/retar dance needed.
-for tar in "${OUTDIR}/external_artifacts/"*.passthrough.tar.gz; do
-    [ -f "${tar}" ] || continue
-    base="$(basename "${tar}")"
-    dep="${base%.passthrough.tar.gz}"
-    cp "${tar}" "${SOURCES_DIR}/${dep}.tar.gz"
-    echo "[generate_external] pass-through ${dep}.tar.gz"
-done
+# What the leg installed on the fly, for the manifests (consolidate.sh).
+rm -rf "${OUTDIR}/toolchain"
+mkdir -p "${OUTDIR}/toolchain"
+if [ -f "${OUTDIR}/external_artifacts/toolchain.txt" ]; then
+    cp "${OUTDIR}/external_artifacts/toolchain.txt" "${OUTDIR}/toolchain/${SYSTEM}-${ARCHITECTURE}-${TARGET}.txt"
+fi
 
 OUT_TARBALL="${OUTDIR}/externals-${SYSTEM}-${ARCHITECTURE}-${TARGET}.tar.gz"
-( cd "${OUTDIR}" && "${TAR}" -czf "${OUT_TARBALL}" --owner=0 --group=0 --no-same-owner libraries )
+( cd "${OUTDIR}" && "${TAR}" -czf "${OUT_TARBALL}" --owner=0 --group=0 --no-same-owner pool toolchain )
 echo "[generate_external] packed: ${OUT_TARBALL}"
 ls -lh "${OUT_TARBALL}"
