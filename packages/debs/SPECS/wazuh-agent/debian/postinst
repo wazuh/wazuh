@@ -75,9 +75,12 @@ case "$1" in
         echo "wazuh-agent: removed the fleet-wide enrollment password at ${DIR}/etc/authd.pass. 5.0 enrols with an enrollment token (WAZUH_ENROLLMENT_TOKEN) and re-enrols with a per-agent secret."
     fi
 
-    # Restore the local rules, client.keys and local_decoder
+    # Restore the local rules, client.keys and local_decoder. Each backup is removed only after
+    # its restore succeeded, so a postinst that fails partway through leaves the surviving
+    # backups in place for the next run to pick up (#40246).
     if [ -f ${WAZUH_TMP_DIR}/client.keys ]; then
         cp ${WAZUH_TMP_DIR}/client.keys ${DIR}/etc/client.keys
+        rm -f ${WAZUH_TMP_DIR}/client.keys
     fi
     # Restore ossec.conf configuration
     if [ -f ${WAZUH_TMP_DIR}/ossec.conf ]; then
