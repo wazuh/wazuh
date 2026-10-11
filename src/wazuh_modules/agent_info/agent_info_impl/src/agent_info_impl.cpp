@@ -789,7 +789,8 @@ std::vector<std::string> AgentInfoImpl::readAgentGroups() const
 
     // merged.mg has two possible formats:
     // 1. Single group: First line is "#groupname" (where groupname is not a hash)
-    // 2. Multiple groups: First line is "#hash_id" (8-char hex), groups appear as "<!-- Source file:
+    // 2. Multiple groups: First line is "#hash_id" (32-char hex; 8-char before the hash was widened),
+    //    groups appear as "<!-- Source file:
     // groupname/agent.conf -->"
     bool isFirstLine = true;
     bool foundXMLComments = false;
@@ -812,9 +813,9 @@ std::vector<std::string> AgentInfoImpl::readAgentGroups() const
 
                 if (!firstLineValue.empty())
                 {
-                    // Check if this looks like a hash (8 hex characters) or a group name
-                    // Hashes are typically 8 characters and all hexadecimal
-                    bool looksLikeHash = (firstLineValue.length() == 8);
+                    // Check if this looks like a hash or a group name. Hashes are 32 hexadecimal
+                    // characters, or 8 in a merged.mg written before the hash was widened
+                    bool looksLikeHash = (firstLineValue.length() == 32 || firstLineValue.length() == 8);
 
                     if (looksLikeHash)
                     {

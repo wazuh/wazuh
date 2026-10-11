@@ -1600,10 +1600,13 @@ def test_WazuhDBQuery_substitute_params(mock_socket_conn, mock_conn_db, mock_glo
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
 def test_WazuhDBQuery_substitute_params_values(mock_socket_conn, mock_conn_db, mock_glob, mock_exists):
-    """Scalars, ints and lists render with the historical quoting."""
+    """Strings are quoted, ints and floats are not, whether scalar or inside a list."""
     backend = utils.WazuhDBBackend(agent_id=0)
     assert backend._substitute_params("a = :a AND b = :b", {'a': 'hello', 'b': 5}) == "a = 'hello' AND b = 5"
-    assert backend._substitute_params("id IN (:ids)", {'ids': ['001', '002', 'abc']}) == "id IN (001,002,'abc')"
+    assert backend._substitute_params("id IN (:ids)", {'ids': ['001', '002', 'abc']}) == "id IN ('001','002','abc')"
+    assert backend._substitute_params("name IN (:names)", {'names': ['007']}) == "name IN ('007')"
+    assert backend._substitute_params("name NOT IN (:names)", {'names': ['00', '0123']}) == "name NOT IN ('00','0123')"
+    assert backend._substitute_params("id IN (:ids)", {'ids': ['007', 5, 1.5]}) == "id IN ('007',5,1.5)"
     assert backend._substitute_params("no placeholders", {}) == "no placeholders"
     with pytest.raises(TypeError):
         backend._substitute_params("x = :x", {'x': object()})
@@ -1733,11 +1736,11 @@ def test_WazuhDBQuery_general_run(mock_socket_conn, execute_value, expected_resu
 
 
 @pytest.mark.parametrize('execute_value, rbac_ids, negate, expected_ids, final_rbac_ids, expected_result', [
-    ([{'id': 99}, {'id': 100}], ['001', '099', '101'], False, ['099'], [{'id': 99}],
+    ([{'id': 99}, {'id': 100}], ['001', '099', '101'], False, [99], [{'id': 99}],
      {'items': [{'id': '099'}], 'totalItems': 1}),
-    ([{'id': 1}], [], True, ['001'], [{'id': 1}], {'items': [{'id': '001'}], 'totalItems': 1}),
+    ([{'id': 1}], [], True, [1], [{'id': 1}], {'items': [{'id': '001'}], 'totalItems': 1}),
     ([{'id': i} for i in range(30000)], [str(i).zfill(3) for i in range(15001)], True,
-     [str(i).zfill(3) for i in range(15001, 30000)], [{'id': i} for i in range(15001, 30000)],
+     list(range(15001, 30000)), [{'id': i} for i in range(15001, 30000)],
      {'items': [{'id': str(i).zfill(3)} for i in range(15001, 30000)], 'totalItems': 14999})
 ])
 @patch('socket.socket.connect')
@@ -1799,7 +1802,8 @@ def test_WazuhDBQuery_oversized_run_offset(mock_socket_conn, negate, rbac_ids):
         assert query.oversized_run() == {'items': [{'id': '005'}, {'id': '006'}], 'totalItems': 8}
 
         _, second_request = execute.call_args_list[1].args
-        assert second_request['rbac_id'] == ['002', '003', '004', '005', '006']
+        # Agent ids are sent to wazuh-db as integers, not as zero-padded strings
+        assert second_request['rbac_id'] == [2, 3, 4, 5, 6]
         assert second_request['offset'] == 3
         assert second_request['limit'] == 2
 

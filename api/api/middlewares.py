@@ -361,11 +361,11 @@ async def check_blocked_ip(request: Request):
                        "to a high number of login attempts"
             )
 
+        # The timestamp is only set when the entry is created so `block_time` counts from the first attempt.
         if host not in ip_stats:
-            ip_stats[host] = {'attempts': 1}
+            ip_stats[host] = {'attempts': 1, 'timestamp': get_utc_now().timestamp()}
         else:
             ip_stats[host]['attempts'] += 1
-        ip_stats[host]['timestamp'] = get_utc_now().timestamp()
 
         if ip_stats[host]['attempts'] >= max_login_attempts:
             ip_block.add(host)
@@ -391,8 +391,13 @@ async def settle_login_attempt(request: Request):
         if host not in ip_stats:
             return
 
-        ip_stats[host]['attempts'] -= 1
-        if ip_stats[host]['attempts'] < max_login_attempts:
+        attempts = ip_stats[host]['attempts'] - 1
+        # An entry with no outstanding attempts is dropped so the next window starts at the next attempt.
+        if attempts > 0:
+            ip_stats[host]['attempts'] = attempts
+        else:
+            del ip_stats[host]
+        if attempts < max_login_attempts:
             ip_block.discard(host)
 
 

@@ -868,7 +868,14 @@ nlohmann::json SysInfo::getBrowserExtensions() const
 
             result.push_back(std::move(extensionItem));
         }
+    }
+    catch (const std::exception&)
+    {
+        // Keep collecting the remaining browsers
+    }
 
+    try
+    {
         // Collect Safari extensions
         SafariExtensionsProvider safariProvider;
         auto collectedSafariExtensions = safariProvider.collect();
@@ -902,7 +909,14 @@ nlohmann::json SysInfo::getBrowserExtensions() const
 
             result.push_back(std::move(extensionItem));
         }
+    }
+    catch (const std::exception&)
+    {
+        // Keep collecting the remaining browsers
+    }
 
+    try
+    {
         // Collect Firefox extensions
         FirefoxAddonsProvider firefoxProvider;
         auto collectedFirefoxExtensions = firefoxProvider.collect();

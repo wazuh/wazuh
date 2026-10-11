@@ -467,11 +467,10 @@ bool SudoersProvider::isUserSudoer(const nlohmann::json& sudoers,
         return false;
     }
 
-    // sudoers(5) precedence is last-match-wins across the whole policy, not just within one
-    // rule's user list, so `state` must persist across rules the same way userListMatchState()
-    // already persists it across one list's entries.
-    ListMatchState state = ListMatchState::NoMatch;
-
+    // Per sudoers(5), a rule whose user list does not resolve to a grant for the user is skipped,
+    // whether the list denies the user ("!alice") or does not name them at all. Such a rule never
+    // revokes what another rule granted, so the result is whether any rule grants. Last-match-wins
+    // only applies inside one user list, which userListMatchState() already handles.
     for (const auto& rule : sudoers)
     {
         if (!rule.is_object())
@@ -487,13 +486,12 @@ bool SudoersProvider::isUserSudoer(const nlohmann::json& sudoers,
         }
 
         const auto userList = ruleUserList(header, rule.value("rule_details", ""));
-        const auto ruleState = userListMatchState(userList, userName, userGroups, userAliases, 0);
 
-        if (ruleState != ListMatchState::NoMatch)
+        if (userListGrants(userList, userName, userGroups, userAliases, 0))
         {
-            state = ruleState;
+            return true;
         }
     }
 
-    return state == ListMatchState::Granted;
+    return false;
 }

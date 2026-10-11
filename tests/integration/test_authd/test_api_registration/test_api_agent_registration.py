@@ -73,17 +73,27 @@ pytestmark = [pytest.mark.server, pytest.mark.tier(level=0)]
 test_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_api_agent_registration.yaml')
 test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cases_path)
 
-client_keys_update_timeout = 1
-
 daemons_handler_configuration = {'all_daemons': True}
 
-def retrieve_client_key_entry(agent_parameters):
-    client_keys_dictionary = get_client_keys()
-    desired_entries = []
-    for client_keys_entry_dict in client_keys_dictionary:
-        if agent_parameters.items() <= client_keys_entry_dict.items():
-            desired_entries.append(agent_parameters)
-    return desired_entries
+
+def wait_for_client_keys_entry(agent_parameters, timeout=10, interval=0.5):
+    """Wait until client.keys holds an entry matching every given field.
+
+    Args:
+        agent_parameters (dict): Fields the entry must contain.
+        timeout (int): Max seconds to wait.
+        interval (float): Seconds between reads.
+
+    Returns:
+        bool: True if a matching entry appeared before the timeout, False otherwise.
+    """
+    end_time = time.time() + timeout
+    while True:
+        if any(agent_parameters.items() <= entry.items() for entry in get_client_keys()):
+            return True
+        if time.time() >= end_time:
+            return False
+        time.sleep(interval)
 
 
 def check_valid_agent_id(id):
@@ -193,6 +203,5 @@ def test_agentd_server_configuration(test_metadata, configure_for_api_test, trun
 
         # Ensure client keys is updated
         if response.json()['error'] == 0:
-            time.sleep(client_keys_update_timeout)
-            assert retrieve_client_key_entry(expected_client_keys_entry),\
+            assert wait_for_client_keys_entry(expected_client_keys_entry), \
                 f"Client keys expected {expected_client_keys_entry} but no agent was found for that configuration"

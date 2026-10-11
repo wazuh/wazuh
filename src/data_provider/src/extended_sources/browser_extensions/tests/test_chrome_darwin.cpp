@@ -13,6 +13,8 @@
 #include "gmock/gmock.h"
 
 #include <filesystem>
+#include <sys/stat.h>
+#include <unistd.h>
 
 class MockBrowserExtensionsWrapper : public IBrowserExtensionsWrapper
 {
@@ -22,13 +24,21 @@ class MockBrowserExtensionsWrapper : public IBrowserExtensionsWrapper
         MOCK_METHOD(std::string, getUserId, (std::string), (override));
 };
 
+
+// The fixture files must belong to the profile owner, so the owner reported is whoever owns the checkout
+static std::string fixtureOwner(const std::string& path)
+{
+    struct stat st {};
+    return ::stat(path.c_str(), &st) == 0 ? std::to_string(st.st_uid) : "";
+}
+
 TEST(ChromeExtensionsTests, NumberOfExtensions)
 {
     auto mockExtensionsWrapper = std::make_shared<MockBrowserExtensionsWrapper>();
     std::string mockHomePath = (std::filesystem::path(__FILE__).parent_path() / "darwin").string();
 
     EXPECT_CALL(*mockExtensionsWrapper, getHomePath()).WillRepeatedly(::testing::Return(mockHomePath));
-    EXPECT_CALL(*mockExtensionsWrapper, getUserId(::testing::StrEq("mock-user"))).WillOnce(::testing::Return("123"));
+    EXPECT_CALL(*mockExtensionsWrapper, getUserId(::testing::StrEq("mock-user"))).WillOnce(::testing::Return(fixtureOwner(mockHomePath)));
 
     chrome::ChromeExtensionsProvider chromeExtensionsProvider(mockExtensionsWrapper);
     nlohmann::json extensionsJson = chromeExtensionsProvider.collect();
@@ -41,7 +51,7 @@ TEST(ChromeExtensionsTests, CollectReturnsExpectedJson)
     std::string mockHomePath = (std::filesystem::path(__FILE__).parent_path() / "darwin").string();
 
     EXPECT_CALL(*mockExtensionsWrapper, getHomePath()).WillRepeatedly(::testing::Return(mockHomePath));
-    EXPECT_CALL(*mockExtensionsWrapper, getUserId(::testing::StrEq("mock-user"))).WillOnce(::testing::Return("123"));
+    EXPECT_CALL(*mockExtensionsWrapper, getUserId(::testing::StrEq("mock-user"))).WillOnce(::testing::Return(fixtureOwner(mockHomePath)));
 
     chrome::ChromeExtensionsProvider chromeExtensionsProvider(mockExtensionsWrapper);
     nlohmann::json extensionsJson = chromeExtensionsProvider.collect();
@@ -71,7 +81,7 @@ TEST(ChromeExtensionsTests, CollectReturnsExpectedJson)
             EXPECT_EQ(jsonElement["referenced"], "1");
             EXPECT_EQ(jsonElement["referenced_identifier"], "nmmhkkegccagdldgiimedpiccmgmieda");
             EXPECT_EQ(jsonElement["state"], "1");
-            EXPECT_EQ(jsonElement["uid"], "123");
+            EXPECT_EQ(jsonElement["uid"], fixtureOwner(mockHomePath));
             EXPECT_EQ(jsonElement["update_url"], "https://clients2.google.com/service/update2/crx");
             EXPECT_EQ(jsonElement["version"], "1.0.0.6");
             break;

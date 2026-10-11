@@ -1410,12 +1410,12 @@ limit, so an oversized or deeply nested blob costs nothing proportional to its s
 | `resource_type` | `resource_id` | Resolves to |
 | --- | --- | --- |
 | `config` | one group name | `etc/shared/<group>/merged.mg` |
-| `config` | several group names, comma-separated | `var/multigroups/<sha256(resource_id)[0..8)>/merged.mg` |
+| `config` | several group names, comma-separated | `var/multigroups/<sha256(resource_id)[0..32)>/merged.mg` |
 | `wpk` | a package filename | `var/upgrade/<filename>` |
 
 The comma-separated form is wazuh's own multigroup selector, and it is what lets an agent in several
 groups fetch its **effective** configuration rather than one member group's. It needs no database
-lookup: the directory name is the first **8 hex characters** (the first four digest bytes) of the
+lookup: the directory name is the first **32 hex characters** (the first sixteen digest bytes) of the
 SHA-256 of the selector verbatim, exactly how wazuh-db names the directory (`WDB_GROUP_HASH_SIZE`).
 
 Accepted identifiers:

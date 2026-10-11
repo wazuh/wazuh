@@ -13,7 +13,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/lib/libagent_sync_protocol.so,root,wazuh,750,file,-rwxr-x---,327648,0.1
 /var/ossec/lib/libhttps_client.so,root,wazuh,750,file,-rwxr-x---,1281040,0.1
 /var/ossec/lib/libschema_validator.so,root,wazuh,750,file,-rwxr-x---,390232,0.1
-/var/ossec/lib/libsysinfo.so,root,wazuh,750,file,-rwxr-x---,2603392,0.1
+/var/ossec/lib/libsysinfo.so,root,wazuh,750,file,-rwxr-x---,2866400,0.1
 /var/ossec/lib/libfimdb.so,root,wazuh,750,file,-rwxr-x---,253344,0.1
 /var/ossec/lib/libbpf.so,root,wazuh,750,file,-rwxr-x---,444000,0.1
 /var/ossec/lib/libfimebpf.so,root,wazuh,750,file,-rwxr-x---,64168,0.1
@@ -31,7 +31,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/etc/ossec.conf,root,wazuh,640,file,-rw-r-----,4095,0.1
 /var/ossec/etc/local_internal_options.conf,root,wazuh,640,file,-rw-r-----,320,0.1
 /var/ossec/active-response/bin/block-ip,root,wazuh,750,file,-rwxr-x---,126144,0.1
-/var/ossec/active-response/bin/disable-account,root,wazuh,750,file,-rwxr-x---,114512,0.1
+/var/ossec/active-response/bin/disable-account,root,wazuh,750,file,-rwxr-x---,130312,0.1
 /var/ossec/logs/active-responses.log,wazuh,wazuh,660,file,-rw-rw----,0,0.1
 /var/ossec/logs/ossec.log,root,wazuh,660,file,-rw-rw----,0,0.1
 /var/ossec/queue/syscollector/norm_config.json,root,wazuh,640,file,-rw-r-----,4206,0.1

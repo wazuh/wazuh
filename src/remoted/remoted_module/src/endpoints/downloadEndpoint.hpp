@@ -145,8 +145,8 @@ namespace remoted::endpoints::download
      * @brief Directory name a multigroup selector maps to under `var/multigroups`.
      *
      * Computed here, never looked up. wazuh-db is what NAMES that directory on disk, as
-     * `OS_SHA256_String_sized(csv, out, WDB_GROUP_HASH_SIZE)` with WDB_GROUP_HASH_SIZE == 8 -- the
-     * first 8 lowercase hex characters of the SHA-256, i.e. the first FOUR digest bytes.
+     * `OS_SHA256_String_sized(csv, out, WDB_GROUP_HASH_SIZE)` with WDB_GROUP_HASH_SIZE == 32 -- the
+     * first 32 lowercase hex characters of the SHA-256, i.e. the first SIXTEEN digest bytes.
      * Replicating that formula is exactly what keeps this endpoint free of any database access; if
      * the two ever diverge, every multi-group agent silently stops receiving configuration.
      *
@@ -167,7 +167,7 @@ namespace remoted::endpoints::download
      *
      * `resource_id` names what the agent is asking for and the manager serves exactly that:
      *   - Config, one group   -> `<sharedDir>/<resourceId>/merged.mg`
-     *   - Config, several     -> `<multigroupsDir>/<sha256(resourceId)[0..8)>/merged.mg`
+     *   - Config, several     -> `<multigroupsDir>/<sha256(resourceId)[0..32)>/merged.mg`
      *   - Wpk                 -> `<wpkDir>/<resourceId>`
      *
      * The multigroup form is what lets an agent in several groups fetch its EFFECTIVE configuration

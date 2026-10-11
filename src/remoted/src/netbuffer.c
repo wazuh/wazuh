@@ -21,6 +21,10 @@ static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 // Release a slot's resources and drop it from the unauthenticated count. Call with the mutex held.
 static void nb_release_slot(netbuffer_t * buffer, int sock) {
+    if (!buffer->buffers || sock < 0 || sock > buffer->max_fd) {
+        return;
+    }
+
     sockbuffer_t * sockbuf = &buffer->buffers[sock];
 
     if (sockbuf->bqueue) {
@@ -53,10 +57,9 @@ void nb_open(netbuffer_t * buffer, int sock, const struct sockaddr_storage * pee
         buffer->max_fd = sock;
     }
 
-    // _close_sock() calls close() before nb_close(), so accept() can hand this number back while the old
-    // slot is still open. Release it here so neither its queue nor its unauthenticated count leaks. This
-    // only covers the leak: the pending nb_close() still frees this new slot (a known descriptor-number
-    // race, same as before).
+    // nb_close_socket() closes the descriptor under this mutex and releases both slots before
+    // unlocking, so accept() cannot hand this number back while its old slot is still open. Release
+    // it anyway as a safety net, so neither a queue nor the unauthenticated count can ever leak.
     nb_release_slot(buffer, sock);
 
     memcpy(&buffer->buffers[sock].peer_info, peer_info, sizeof(struct sockaddr_storage));
@@ -71,13 +74,32 @@ void nb_open(netbuffer_t * buffer, int sock, const struct sockaddr_storage * pee
     w_mutex_unlock(&mutex);
 }
 
-void nb_close(netbuffer_t * buffer, int sock) {
+bool nb_close_socket(netbuffer_t * recv, netbuffer_t * send, int sock) {
+    bool released = false;
 
     w_mutex_lock(&mutex);
 
-    nb_release_slot(buffer, sock);
+    // nb_recv() queues under this mutex, so no message of this connection can carry a counter past this fence
+    rem_setCounter(sock, global_counter);
+
+    // Closing under the mutex makes an accept() that reuses the fd wait in nb_open() until both slots are released
+    const int close_ret = close(sock);
+    const int close_errno = errno;
+
+    // Release the slots even when close() fails: on Linux a failed close() still frees the descriptor, so
+    // its number can be handed to anything else at once, and a slot left open would let the
+    // unauthenticated-connection reaper close() that number again later. EBADF is the exception: the
+    // descriptor was not open, so another nb_close_socket() already closed it and released the slots, and
+    // by now its number may already belong to a newly accepted connection whose slots must survive.
+    if (close_ret == 0 || close_errno != EBADF) {
+        nb_release_slot(recv, sock);
+        nb_release_slot(send, sock);
+        released = true;
+    }
 
     w_mutex_unlock(&mutex);
+
+    return released;
 }
 
 /*
@@ -292,10 +314,11 @@ int nb_queue_nowait(netbuffer_t * buffer, int socket, const char * msg, size_t m
     return retval;
 }
 
-void nb_set_authenticated(netbuffer_t * buffer, int sock) {
+void nb_set_authenticated(netbuffer_t * buffer, int sock, size_t counter) {
     w_mutex_lock(&mutex);
 
-    if (nb_is_open(buffer, sock) && !buffer->buffers[sock].authenticated) {
+    // A message older than the last close of this fd belongs to a previous connection
+    if (nb_is_open(buffer, sock) && !buffer->buffers[sock].authenticated && counter > rem_getCounter(sock)) {
         buffer->buffers[sock].authenticated = true;
 
         if (buffer->tracks_authentication && buffer->unauthenticated > 0) {

@@ -225,13 +225,19 @@ void DeleteState();
 int MergeAppendFile(FILE *finalfp, const char *files, int path_offset) __attribute__((nonnull(1, 2)));
 
 
+/* UnmergeFiles() results */
+#define UNMERGE_FAILED          0   /* An entry could not be written, or the merged file could not be read */
+#define UNMERGE_COMPLETE        1   /* Every entry was unmerged */
+#define UNMERGE_NAMES_SKIPPED   2   /* Entries with invalid names were skipped, every other one was unmerged */
+
 /**
  * @brief Unmerge file.
  *
  * @param finalpath Path of the merged file.
  * @param optdir Path of the folder to unmerge the files. If not specified, the files will be unmerged in the current working directory.
  * @param mode Indicates if the merged file must be readed as a binary file  or not. Use `#OS_TEXT`, `#OS_BINARY`.
- * @return 1 if the file was unmerged, 0 on error.
+ * @param unmerged_files Optional list to which successfully extracted names are appended, including on error.
+ * @return `#UNMERGE_COMPLETE`, `#UNMERGE_NAMES_SKIPPED` or `#UNMERGE_FAILED`. Successful entries are retained.
  */
 int UnmergeFiles(const char *finalpath, const char *optdir, int mode, char ***unmerged_files) __attribute__((nonnull(1)));
 
@@ -513,24 +519,26 @@ FILE * w_fopen_regular(const char * pathname, const char * mode);
 
 
 /**
- * @brief Create or truncate a file inside a base directory for writing, without following symlinks.
+ * @brief Create, truncate or append to a file inside a base directory, without following symlinks.
  *
- * Intended for directories that only ever hold files written by Wazuh itself (var/incoming and
- * friends): a symlink, hard link, FIFO, device or directory found at the target path is rejected
+ * Intended for directories that only ever hold files written by Wazuh itself (var/incoming, the
+ * active-response log and friends): a symlink, hard link, FIFO, device or directory found at the target path is rejected
  * instead of being written through. @p filename must be a bare file name; it is rejected if it is
  * empty, "." or "..", if it refers to a parent folder, or if it contains a path separator, so the
  * resulting open cannot escape @p basedir.
  *
  * On both platforms the file is opened without truncating, the descriptor is vetted, and only then is
- * the file truncated: truncating at open time would destroy the target of a hard link before anything
- * about it could be checked. On Linux/macOS the open is relative to a descriptor of @p basedir and
- * uses O_NOFOLLOW; HP-UX, which has no openat(), opens the joined path with O_NOFOLLOW instead; on
- * Windows it skips reparse-point processing. In all cases the descriptor must turn out to be a regular
- * file with a link count of exactly 1.
+ * the file truncated (write modes only; append modes keep the content and write at its end):
+ * truncating at open time would destroy the target of a hard link before anything about it could be
+ * checked. On Linux/macOS the open is relative to a descriptor of @p basedir and uses O_NOFOLLOW;
+ * HP-UX, which has no openat(), opens the joined path with O_NOFOLLOW instead; AIX, which has neither,
+ * rejects a symlink found by lstat() and checks the opened file is the one lstat() saw, or creates a
+ * missing file with O_EXCL; on Windows it skips reparse-point processing. In all cases the descriptor
+ * must turn out to be a regular file with a link count of exactly 1.
  *
  * @param basedir Base directory holding the file. Not created by this function.
  * @param filename Bare file name inside @p basedir.
- * @param mode Open mode, either "w" or "wb".
+ * @param mode Open mode: "w" or "wb" to truncate, "a" or "ab" to append.
  * @return File pointer on success, NULL on error (sets errno).
  */
 FILE * w_fopen_nofollow(const char * basedir, const char * filename, const char * mode);
@@ -568,9 +576,10 @@ FILE * w_fopen_nofollow_update(const char * basedir, const char * filename);
  * path separator, so the resulting open cannot escape @p basedir.
  *
  * On Linux/macOS the open is relative to a descriptor of @p basedir and uses O_NOFOLLOW; HP-UX, which
- * has no openat(), opens the joined path with O_NOFOLLOW instead; on Windows it skips reparse-point
- * processing. In all cases the descriptor must turn out to be a regular file with a link count of
- * exactly 1 before it is handed to zlib.
+ * has no openat(), opens the joined path with O_NOFOLLOW instead; AIX, which has neither, rejects a
+ * symlink found by lstat() and checks the opened file is the one lstat() saw; on Windows it skips
+ * reparse-point processing. In all cases the descriptor must turn out to be a regular file with a link
+ * count of exactly 1 before it is handed to zlib.
  *
  * @param basedir Base directory holding the file. Not created by this function.
  * @param filename Bare file name inside @p basedir.
@@ -626,7 +635,21 @@ int w_openat_nofollow_vetted(const char * basedir, const char * filename, int of
  * A rejection sets errno to EINVAL (file type) or EPERM (trust), never ENOENT, so a caller that treats
  * ENOENT as "file gone" is not misled by it. A path that keeps changing while it is checked, as a symlink
  * re-pointed during rotation does, is retried a few times and then fails with EAGAIN: it was not rejected,
- * and may be opened again later. Windows falls back to wfopen().
+ * and may be opened again later.
+ *
+ * Windows follows junctions and symlinks too, and accepts a path that traverses none without further
+ * checks. When it does, the path is resolved one component at a time, as on POSIX: each junction or
+ * symlink met is checked, then its target is read one level only and the walk continues from there, so the
+ * junctions and symlinks inside a link's destination are checked too. Each directory and link on the way
+ * is held open, without delete sharing, so it cannot be renamed, deleted or replaced until the file has
+ * been matched against it. Every junction or symlink met must be owned by SYSTEM, BUILTIN\Administrators,
+ * TrustedInstaller, a member of the local Administrators group or the owner of the file finally read, and
+ * no other principal may modify it, else the open fails with EPERM. The same rejection applies to a
+ * reparse point that redirects the path in a way that cannot be read one level at a time, a link to
+ * anything but a local volume, a chain of more than 40 junctions or symbolic links, and a file reached by
+ * more than one hard link. A component that changes, vanishes or is in a sharing violation while it is
+ * checked is retried and then fails with EAGAIN. The file must be on disk (EINVAL otherwise) and on a
+ * local volume (EPERM otherwise).
  *
  * Solaris 10 and HP-UX lack the *at() calls the component walk needs. There the path is followed as
  * wfopen() would, still non-blocking, and the same rules are applied to the opened file, but only the
@@ -642,9 +665,12 @@ FILE * w_fopen_vetted_follow(const char * path, const char * mode);
 /**
  * @brief Compress a file in GZIP.
  *
+ * On POSIX the source is opened as w_fopen_vetted_follow() does, except a symlink as its last entry is not
+ * followed, and it must be a regular file.
+ *
  * @param filesrc Source file.
  * @param filedst Compressed file path.
- * @return 0 on success, -1 on error.
+ * @return 0 on success, -2 if the source is skipped, -1 on error.
  */
 int w_compress_gzfile(const char *filesrc, const char *filedst);
 
@@ -790,8 +816,10 @@ char **expand_win32_wildcards(const char *path);
  * - Extended-length paths: \\\\?\\C:\\...
  * - Mapped network drives: Z:\\folder\\file.txt
  *
- * Any path starting with \\\\ is considered a network path, as there are no
- * legitimate local file paths in Windows that begin with this prefix.
+ * Any path starting with two separators is considered a network path, as there
+ * are no legitimate local file paths in Windows that begin with this prefix.
+ * Forward slashes are treated like backslashes, so forms such as //server/share
+ * or /\\server\\share are caught as well.
  *
  * @param path A null-terminated string containing the file path to check.
  * @return true if the path points to a network location, false otherwise.

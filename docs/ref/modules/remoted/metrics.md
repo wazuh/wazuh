@@ -526,6 +526,7 @@ legacy daemon counters that same response has always carried:
   "metrics": {
     "bytes": { "received": 0, "sent": 0 },   // legacy TCP/UDP channel — see the caveat below
     "tcp_sessions": 0,
+    "tcp_sessions_unassociated": 0, // legacy sessions not yet authenticated with an agent key
     // ... the rest of the legacy counters ...
     "http_server": {
       "timestamp": "2026-08-19T12:00:00Z",

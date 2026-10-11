@@ -75,7 +75,7 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
 
         if (buffer[rbytes - 1] == '\n') {
             if (is_valid_context_file) {
-                OS_SHA1_Stream(context, NULL, buffer);
+                OS_SHA1_Stream_Bytes(context, buffer, (size_t) rbytes);
             }
 
             buffer[rbytes - 1] = '\0';
@@ -88,6 +88,10 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
         } else {
             if (rbytes == OS_MAX_LOG_SIZE - 1) {
                 // Message too large, discard line
+                if (is_valid_context_file) {
+                    OS_SHA1_Stream_Bytes(context, buffer, (size_t) rbytes);
+                }
+
                 for (offset += rbytes; fgets(buffer, OS_MAX_LOG_SIZE, lf->fp); offset += rbytes) {
                     rbytes = w_ftell(lf->fp) - offset;
 
@@ -96,10 +100,12 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
                         break;
                     }
                     if (is_valid_context_file) {
-                        OS_SHA1_Stream(context, NULL, buffer);
+                        OS_SHA1_Stream_Bytes(context, buffer, (size_t) rbytes);
                     }
 
                     if (buffer[rbytes - 1] == '\n') {
+                        /* The stored offset must cover every byte hashed */
+                        offset += rbytes;
                         break;
                     }
                 }
@@ -120,11 +126,13 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
 
         if (strlen(buffer) == 0) {
             mdebug2("audit reader: empty line, skipping.");
+            offset += rbytes;
             break;
         }
 
         if (!((id = strstr(buffer, "type=")) && (id = strstr(id + 5, " msg=audit(")) && (p = strstr(id += 11, "):")))) {
             mwarn("Discarding audit message because of invalid syntax.");
+            offset += rbytes;
             break;
         }
 

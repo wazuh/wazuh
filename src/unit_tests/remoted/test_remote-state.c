@@ -57,6 +57,7 @@ void test_rem_create_state_json(void ** state) {
     will_return(__wrap_time, 123456789);
     will_return(__wrap_rem_get_input_bytes_used, 789);
     will_return(__wrap_rem_get_input_max_bytes, 100000);
+    will_return(__wrap_nb_unauthenticated_count, 3);
 
     cJSON* state_json = rem_create_state_json();
 
@@ -125,6 +126,8 @@ void test_rem_create_state_json(void ** state) {
 
     assert_non_null(cJSON_GetObjectItem(metrics, "tcp_sessions"));
     assert_int_equal(cJSON_GetObjectItem(metrics, "tcp_sessions")->valueint, 5);
+    assert_non_null(cJSON_GetObjectItem(metrics, "tcp_sessions_unassociated"));
+    assert_int_equal(cJSON_GetObjectItem(metrics, "tcp_sessions_unassociated")->valueint, 3);
     assert_non_null(cJSON_GetObjectItem(metrics, "keys_reload_count"));
     assert_int_equal(cJSON_GetObjectItem(metrics, "keys_reload_count")->valueint, 15);
 

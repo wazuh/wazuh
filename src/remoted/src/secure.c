@@ -1392,7 +1392,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
 
     /* The connection proved it holds a registered key: exempt it from the unauthenticated timeout and cap. */
     if (message->sock >= 0) {
-        nb_set_authenticated(&netbuffer_recv, message->sock);
+        nb_set_authenticated(&netbuffer_recv, message->sock, message->counter);
     }
 
     /* Recieved valid message timestamp updated. */
@@ -1654,17 +1654,10 @@ int _close_sock(keystore * keys, int sock) {
     retval = OS_DeleteSocket(keys, sock);
     key_unlock();
 
-    const int close_ret = close(sock);
-    const int close_errno = errno;
-
-    // Release the slots even when close() fails: on Linux a failed close() still frees the descriptor, so
-    // its number can be handed to anything else at once, and a slot left open would let the
-    // unauthenticated-connection reaper close() that number again later. EBADF is the exception: the
-    // descriptor was not open, so another _close_sock() already closed it and releases the slots itself,
-    // and by now its number may already belong to a newly accepted connection whose slots must survive.
-    if (close_ret == 0 || close_errno != EBADF) {
-        nb_close(&netbuffer_recv, sock);
-        nb_close(&netbuffer_send, sock);
+    // Closes the descriptor and releases both slots in one critical section. They are released even when
+    // close() fails (Linux frees the descriptor anyway), except on EBADF: another _close_sock() already
+    // closed it, and its number may already belong to a newly accepted connection.
+    if (nb_close_socket(&netbuffer_recv, &netbuffer_send, sock)) {
         rem_dec_tcp();
     }
 

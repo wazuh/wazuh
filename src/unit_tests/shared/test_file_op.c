@@ -30,6 +30,7 @@
 #include "../wrappers/wazuh/shared/utf8_winapi_wrapper_wrappers.h"
 #include "../wrappers/externals/zlib/zlib_wrappers.h"
 #ifdef WIN32
+#include <direct.h>
 #include "../wrappers/windows/fileapi_wrappers.h"
 #else
 #include <signal.h>
@@ -579,7 +580,30 @@ void test_w_compress_gzfile_fifo_rejected(void **state){
 
     ret = w_compress_gzfile(srcfile, "testfiledst.gz");
     assert_int_equal(ret, -2);
-    assert_int_equal(errno, EINVAL);
+}
+
+void test_w_compress_gzfile_directory_symlink_other_owner_rejected(void **state){
+
+    int ret;
+    char srcfile[PATH_MAX + 1];
+
+    if (geteuid() != 0) {
+        print_message("Skipped: needs root to create a symlink owned by someone other than its target.\n");
+        skip();
+    }
+
+    // A directory symlink owned by another uid, in a directory it owns, leading to a root-owned file.
+    snprintf(srcfile, sizeof(srcfile), "%s/link", compress_dir);
+    assert_int_equal(symlink(compress_dir, srcfile), 0);
+    assert_int_equal(lchown(srcfile, 1000, (gid_t) -1), 0);
+    assert_int_equal(chown(compress_dir, 1000, (gid_t) -1), 0);
+    snprintf(srcfile, sizeof(srcfile), "%s/link/testfilesrc", compress_dir);
+
+    expect_any(__wrap__mdebug2, formatted_msg);
+
+    ret = w_compress_gzfile(srcfile, "testfiledst.gz");
+    assert_int_equal(ret, -2);
+    assert_int_equal(errno, EPERM);
 }
 
 void test_w_compress_gzfile_directory_rejected(void **state){
@@ -1318,6 +1342,34 @@ void test_is_network_path_extended_length_local(void **state) {
     assert_int_equal(ret, 1);
 }
 
+void test_is_network_path_forward_slash_unc(void **state) {
+    char *path = "//server/share";
+    int ret = is_network_path(path);
+    assert_int_equal(ret, 1);
+}
+
+void test_is_network_path_mixed_slash_unc(void **state) {
+    char *path = "/\\server\\share";
+    int ret = is_network_path(path);
+    assert_int_equal(ret, 1);
+
+    path = "\\/server/share";
+    ret = is_network_path(path);
+    assert_int_equal(ret, 1);
+}
+
+void test_is_network_path_forward_slash_extended_length_unc(void **state) {
+    char *path = "//?/UNC/server/share";
+    int ret = is_network_path(path);
+    assert_int_equal(ret, 1);
+}
+
+void test_is_network_path_forward_slash_local(void **state) {
+    char *path = "C:/file.txt";
+    int ret = is_network_path(path);
+    assert_int_equal(ret, 0);
+}
+
 void test_wfopen_local_path(void **state) {
     errno = 0;
     char *path = "C:\\file.txt";
@@ -1334,6 +1386,17 @@ void test_wfopen_network_path(void **state) {
     char *path = "Z:\\file.txt";
 
     expect_string(__wrap__mwarn, formatted_msg, "(9800): File access denied. Network path usage is not allowed: 'Z:\\file.txt'.");
+
+    FILE *fp = wfopen(path, "r");
+    assert_int_equal(fp, NULL);
+    assert_int_equal(errno, EACCES);
+}
+
+void test_wfopen_forward_slash_network_path(void **state) {
+    errno = 0;
+    char *path = "//server/share/x.log";
+
+    expect_string(__wrap__mwarn, formatted_msg, "(9800): File access denied. Network path usage is not allowed: '//server/share/x.log'.");
 
     FILE *fp = wfopen(path, "r");
     assert_int_equal(fp, NULL);
@@ -1498,6 +1561,339 @@ void test_w_stat64_network_path(void **state) {
     int ret = w_stat64(path, NULL);
     assert_int_equal(ret, -1);
     assert_int_equal(errno, EACCES);
+}
+
+// Reaches the reparse-point owner trust decision in file_op.c; admins is NULL to skip the live group lookup.
+struct w_win_admins;
+extern bool w_win_owner_trusted(PSID owner, PSID file_owner, PSID trusted[], const struct w_win_admins * admins);
+
+void test_w_win_owner_trusted(void **state) {
+    (void) state;
+    SID_IDENTIFIER_AUTHORITY nt = SECURITY_NT_AUTHORITY;
+    PSID system = NULL;
+    PSID administrators = NULL;
+    PSID trusted_installer = NULL;
+    PSID file_owner = NULL;
+    PSID other = NULL;
+    PSID trusted[3];
+
+    assert_true(AllocateAndInitializeSid(&nt, 1, SECURITY_LOCAL_SYSTEM_RID, 0, 0, 0, 0, 0, 0, 0, &system));
+    assert_true(AllocateAndInitializeSid(&nt, 2, SECURITY_BUILTIN_DOMAIN_RID, DOMAIN_ALIAS_RID_ADMINS, 0, 0, 0, 0, 0,
+                                         0, &administrators));
+    assert_true(AllocateAndInitializeSid(&nt, 6, 80, 956008885, 3418522649, 1831038044, 1853292631, 2271478464, 0,
+                                         0, &trusted_installer));
+    assert_true(AllocateAndInitializeSid(&nt, 2, SECURITY_BUILTIN_DOMAIN_RID, DOMAIN_ALIAS_RID_USERS, 0, 0, 0, 0, 0,
+                                         0, &file_owner));
+    assert_true(AllocateAndInitializeSid(&nt, 1, SECURITY_INTERACTIVE_RID, 0, 0, 0, 0, 0, 0, 0, &other));
+
+    trusted[0] = system;
+    trusted[1] = administrators;
+    trusted[2] = trusted_installer;
+
+    // A trusted account owns it.
+    assert_true(w_win_owner_trusted(system, file_owner, trusted, NULL));
+    assert_true(w_win_owner_trusted(administrators, file_owner, trusted, NULL));
+    assert_true(w_win_owner_trusted(trusted_installer, file_owner, trusted, NULL));
+
+    // The owner of the file finally read owns it.
+    assert_true(w_win_owner_trusted(file_owner, file_owner, trusted, NULL));
+
+    // Any other owner is rejected, and a missing owner or file owner is never trusted.
+    assert_false(w_win_owner_trusted(other, file_owner, trusted, NULL));
+    assert_false(w_win_owner_trusted(NULL, file_owner, trusted, NULL));
+    assert_false(w_win_owner_trusted(other, NULL, trusted, NULL));
+
+    FreeSid(system);
+    FreeSid(administrators);
+    FreeSid(trusted_installer);
+    FreeSid(file_owner);
+    FreeSid(other);
+}
+
+// Reaches the one-level reparse-target parser in file_op.c with crafted FSCTL_GET_REPARSE_POINT buffers.
+#ifndef IO_REPARSE_TAG_MOUNT_POINT
+#define IO_REPARSE_TAG_MOUNT_POINT 0xA0000003L
+#endif
+#ifndef IO_REPARSE_TAG_SYMLINK
+#define IO_REPARSE_TAG_SYMLINK 0xA000000CL
+#endif
+#ifndef SYMLINK_FLAG_RELATIVE
+#define SYMLINK_FLAG_RELATIVE 1
+#endif
+#ifndef MAXIMUM_REPARSE_DATA_BUFFER_SIZE
+#define MAXIMUM_REPARSE_DATA_BUFFER_SIZE (16 * 1024)
+#endif
+
+// This layout must match w_win_reparse_data_t in file_op.c.
+typedef struct {
+    DWORD ReparseTag;
+    WORD ReparseDataLength;
+    WORD Reserved;
+    union {
+        struct {
+            WORD SubstituteNameOffset;
+            WORD SubstituteNameLength;
+            WORD PrintNameOffset;
+            WORD PrintNameLength;
+            DWORD Flags;
+            WCHAR PathBuffer[1];
+        } SymbolicLinkReparseBuffer;
+        struct {
+            WORD SubstituteNameOffset;
+            WORD SubstituteNameLength;
+            WORD PrintNameOffset;
+            WORD PrintNameLength;
+            WCHAR PathBuffer[1];
+        } MountPointReparseBuffer;
+    } u;
+} test_reparse_data_t;
+
+extern int w_win_reparse_target(const test_reparse_data_t * data, DWORD got, wchar_t * path, size_t end);
+
+static DWORD test_build_reparse(BYTE * raw, int symlink, int relative, DWORD tag_override, const wchar_t * subst) {
+    test_reparse_data_t * d = (test_reparse_data_t *) raw;
+    size_t n = wcslen(subst);
+
+    d->Reserved = 0;
+
+    if (symlink) {
+        d->ReparseTag = tag_override ? tag_override : (DWORD) IO_REPARSE_TAG_SYMLINK;
+        d->u.SymbolicLinkReparseBuffer.SubstituteNameOffset = 0;
+        d->u.SymbolicLinkReparseBuffer.SubstituteNameLength = (WORD) (n * sizeof(WCHAR));
+        d->u.SymbolicLinkReparseBuffer.PrintNameOffset = (WORD) ((n + 1) * sizeof(WCHAR));
+        d->u.SymbolicLinkReparseBuffer.PrintNameLength = 0;
+        d->u.SymbolicLinkReparseBuffer.Flags = relative ? SYMLINK_FLAG_RELATIVE : 0;
+        wmemcpy(d->u.SymbolicLinkReparseBuffer.PathBuffer, subst, n + 1);
+        d->ReparseDataLength = (WORD) (12 + (n + 1) * sizeof(WCHAR));
+    } else {
+        d->ReparseTag = tag_override ? tag_override : (DWORD) IO_REPARSE_TAG_MOUNT_POINT;
+        d->u.MountPointReparseBuffer.SubstituteNameOffset = 0;
+        d->u.MountPointReparseBuffer.SubstituteNameLength = (WORD) (n * sizeof(WCHAR));
+        d->u.MountPointReparseBuffer.PrintNameOffset = (WORD) ((n + 1) * sizeof(WCHAR));
+        d->u.MountPointReparseBuffer.PrintNameLength = 0;
+        wmemcpy(d->u.MountPointReparseBuffer.PathBuffer, subst, n + 1);
+        d->ReparseDataLength = (WORD) (8 + (n + 1) * sizeof(WCHAR));
+    }
+
+    return 8 + d->ReparseDataLength;
+}
+
+void test_w_win_reparse_target(void **state) {
+    (void) state;
+    union {
+        test_reparse_data_t data;
+        BYTE bytes[MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
+    } buf;
+    BYTE * raw = buf.bytes;
+    wchar_t path[4096];
+    DWORD got;
+
+    // Absolute junction, link is the last component: the path becomes the target.
+    got = test_build_reparse(raw, 0, 0, 0, L"\\??\\C:\\ProgramData\\App\\switch\\logs");
+    wcscpy(path, L"C:\\logs\\app");
+    assert_int_equal(w_win_reparse_target((test_reparse_data_t *) raw, got, path, wcslen(path)), 1);
+    assert_true(wcscmp(path, L"C:\\ProgramData\\App\\switch\\logs") == 0);
+
+    // Components after the link are re-attached to the target.
+    got = test_build_reparse(raw, 0, 0, 0, L"\\??\\C:\\ProgramData\\App\\switch\\logs");
+    wcscpy(path, L"C:\\logs\\app\\sub\\x.log");
+    assert_int_equal(w_win_reparse_target((test_reparse_data_t *) raw, got, path, wcslen(L"C:\\logs\\app")), 1);
+    assert_true(wcscmp(path, L"C:\\ProgramData\\App\\switch\\logs\\sub\\x.log") == 0);
+
+    // A relative symbolic link resolves against the directory holding the link.
+    got = test_build_reparse(raw, 1, 1, 0, L"..\\sibling");
+    wcscpy(path, L"C:\\a\\b\\link");
+    assert_int_equal(w_win_reparse_target((test_reparse_data_t *) raw, got, path, wcslen(path)), 1);
+    assert_true(wcscmp(path, L"C:\\a\\sibling") == 0);
+
+    // A network target, an unprefixed target and an alternate-data-stream name are all rejected.
+    got = test_build_reparse(raw, 0, 0, 0, L"\\??\\UNC\\server\\share");
+    wcscpy(path, L"C:\\link");
+    errno = 0;
+    assert_int_equal(w_win_reparse_target((test_reparse_data_t *) raw, got, path, wcslen(path)), -1);
+    assert_int_equal(errno, EPERM);
+
+    got = test_build_reparse(raw, 0, 0, 0, L"C:\\foo");
+    wcscpy(path, L"C:\\link");
+    errno = 0;
+    assert_int_equal(w_win_reparse_target((test_reparse_data_t *) raw, got, path, wcslen(path)), -1);
+    assert_int_equal(errno, EPERM);
+
+    got = test_build_reparse(raw, 0, 0, 0, L"\\??\\C:\\a\\b:stream");
+    wcscpy(path, L"C:\\link");
+    errno = 0;
+    assert_int_equal(w_win_reparse_target((test_reparse_data_t *) raw, got, path, wcslen(path)), -1);
+    assert_int_equal(errno, EPERM);
+
+    // A Microsoft reparse point that keeps the name (deduplication) is left in place, not followed.
+    got = test_build_reparse(raw, 0, 0, 0x80000013, L"\\??\\C:\\x");
+    wcscpy(path, L"C:\\link");
+    assert_int_equal(w_win_reparse_target((test_reparse_data_t *) raw, got, path, wcslen(path)), 0);
+    assert_true(wcscmp(path, L"C:\\link") == 0);
+
+    // A malformed buffer whose name runs past its declared length is rejected.
+    got = test_build_reparse(raw, 0, 0, 0, L"\\??\\C:\\x");
+    ((test_reparse_data_t *) raw)->u.MountPointReparseBuffer.SubstituteNameLength =
+        ((test_reparse_data_t *) raw)->ReparseDataLength;
+    wcscpy(path, L"C:\\link");
+    errno = 0;
+    assert_int_equal(w_win_reparse_target((test_reparse_data_t *) raw, got, path, wcslen(path)), -1);
+    assert_int_equal(errno, EPERM);
+
+    // ".." in a target never climbs above the volume root.
+    got = test_build_reparse(raw, 0, 0, 0, L"\\??\\C:\\..\\..\\x");
+    wcscpy(path, L"C:\\link");
+    assert_int_equal(w_win_reparse_target((test_reparse_data_t *) raw, got, path, wcslen(path)), 1);
+    assert_true(wcscmp(path, L"C:\\x") == 0);
+
+    // A mounted-folder target names its volume by GUID.
+    got = test_build_reparse(raw, 0, 0, 0, L"\\??\\Volume{12345678-1234-1234-1234-123456789abc}\\data");
+    wcscpy(path, L"C:\\link");
+    assert_int_equal(w_win_reparse_target((test_reparse_data_t *) raw, got, path, wcslen(path)), 1);
+    assert_true(wcscmp(path, L"Volume{12345678-1234-1234-1234-123456789abc}\\data") == 0);
+
+    // An embedded NUL in the target name is rejected: it would truncate the name silently.
+    got = test_build_reparse(raw, 0, 0, 0, L"\\??\\C:\\abc");
+    ((test_reparse_data_t *) raw)->u.MountPointReparseBuffer.PathBuffer[7] = L'\0';
+    wcscpy(path, L"C:\\link");
+    errno = 0;
+    assert_int_equal(w_win_reparse_target((test_reparse_data_t *) raw, got, path, wcslen(path)), -1);
+    assert_int_equal(errno, EPERM);
+
+    // An odd (non-WCHAR-aligned) name offset is rejected.
+    got = test_build_reparse(raw, 0, 0, 0, L"\\??\\C:\\x");
+    ((test_reparse_data_t *) raw)->u.MountPointReparseBuffer.SubstituteNameOffset = 1;
+    wcscpy(path, L"C:\\link");
+    errno = 0;
+    assert_int_equal(w_win_reparse_target((test_reparse_data_t *) raw, got, path, wcslen(path)), -1);
+    assert_int_equal(errno, EPERM);
+
+    // A buffer shorter than the reparse header is rejected.
+    got = test_build_reparse(raw, 0, 0, 0, L"\\??\\C:\\x");
+    wcscpy(path, L"C:\\link");
+    errno = 0;
+    assert_int_equal(w_win_reparse_target((test_reparse_data_t *) raw, 4, path, wcslen(path)), -1);
+    assert_int_equal(errno, EPERM);
+}
+
+extern bool w_win_reparse_tag_is_plain(DWORD tag);
+
+void test_w_win_reparse_tag_is_plain(void **state) {
+    (void) state;
+
+    // Deduplication, WOF and cloud files keep the name: not a link.
+    assert_true(w_win_reparse_tag_is_plain(0x80000013));
+    assert_true(w_win_reparse_tag_is_plain(0x80000017));
+    assert_true(w_win_reparse_tag_is_plain(0x9000601A));
+
+    // Junctions and symbolic links redirect the name: a link to vet.
+    assert_false(w_win_reparse_tag_is_plain(IO_REPARSE_TAG_MOUNT_POINT));
+    assert_false(w_win_reparse_tag_is_plain(IO_REPARSE_TAG_SYMLINK));
+
+    // A non-Microsoft tag is never treated as plain.
+    assert_false(w_win_reparse_tag_is_plain(0x00000001));
+    assert_false(w_win_reparse_tag_is_plain(0x20000001));
+}
+
+// Entry names and bundle framing of UnmergeFiles and TestUnmergeFiles under Windows rules
+
+int unmerge_normalize_name(const char *name, char *normalized);
+
+static char unmerge_cwd[MAX_PATH];
+static char unmerge_dir[MAX_PATH];
+
+static int setup_unmerge(void **state) {
+    char tmp[MAX_PATH];
+
+    // The bundle is written and read through the file system, not the wrappers.
+    test_mode = 0;
+    assert_non_null(_getcwd(unmerge_cwd, sizeof(unmerge_cwd)));
+    assert_true(GetTempPathA(sizeof(tmp), tmp) > 0);
+    snprintf(unmerge_dir, sizeof(unmerge_dir), "%swazuh_unmerge_%lu", tmp, GetCurrentProcessId());
+    assert_int_equal(_mkdir(unmerge_dir), 0);
+    assert_int_equal(_chdir(unmerge_dir), 0);
+    return 0;
+}
+
+static int teardown_unmerge(void **state) {
+    remove("merged.mg");
+    _chdir(unmerge_cwd);
+    _rmdir(unmerge_dir);
+    test_mode = 1;
+    return 0;
+}
+
+static void write_unmerge_bundle(const char *content) {
+    // Text mode, as the agent receives merged.mg: each LF is stored as CR LF.
+    FILE *fp = fopen("merged.mg", "w");
+
+    assert_non_null(fp);
+    assert_true(fputs(content, fp) >= 0);
+    assert_int_equal(fclose(fp), 0);
+}
+
+void test_unmerge_normalize_name_windows(void **state) {
+    const char *invalid[] = {
+        "", "..", "/a", "a\rb", "\\a", "a\\", "a\\..\\b", "sub/..\\x", "C:a", "C:\\a", "a:b", "a?b",
+        "a<b", "a>b", "a|b", "a\"b", "a*b", "notes.", "space ", "...", "a./b", "a /b", "merged.mg",
+        ".\\MERGED.MGT", "COM1", "nul.txt", "Aux", "sub/LPT9.log", "con .conf", "com0", "PRN.tar.gz",
+        "LPT\xC2\xB9", "sub\\COM\xC2\xB3.cfg", "CONIN$", "sub\\conout$.txt", "MERGED~1.TMP", "merged~1.tmp",
+        "sub\\AGENT~2.CON", "AR034B~1.CON", "a~1", "DIR~12/x"
+    };
+    const char *valid[][2] = {
+        {"a\\b", "a/b"}, {"sub/c\\.\\d", "sub/c/d"}, {".\\upgrade.sh", "upgrade.sh"}, {"a\\\\b", "a/b"},
+        {".hidden", ".hidden"}, {"..name", "..name"}, {"sub\\merged.mg", "sub/merged.mg"},
+        {"COM10", "COM10"}, {"NULL", "NULL"}, {"console.conf", "console.conf"}, {"sub\\aux_rules", "sub/aux_rules"},
+        {"LPT\xC2\xB4", "LPT\xC2\xB4"}, {"CONIN", "CONIN"}, {"merged.mg.tmp", "merged.mg.tmp"},
+        {"file~1.conf", "file~1.conf"}, {"foo~bar.txt", "foo~bar.txt"}, {"longname~1.txt", "longname~1.txt"}
+    };
+    char normalized[64];
+
+    for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); i++) {
+        assert_int_equal(unmerge_normalize_name(invalid[i], normalized), 0);
+    }
+
+    for (size_t i = 0; i < sizeof(valid) / sizeof(*valid); i++) {
+        assert_int_equal(unmerge_normalize_name(valid[i][0], normalized), 1);
+        assert_string_equal(normalized, valid[i][1]);
+    }
+}
+
+void test_unmerge_windows_text_mode_bundle(void **state) {
+    static char content[10000];
+    FILE *fp;
+
+    // Each entry takes 13 bytes on disk, so across 4096 entries every byte of the entry
+    // layout lands on every offset of the stdio read buffer.
+    fp = fopen("merged.mg", "w");
+    assert_non_null(fp);
+
+    for (unsigned int i = 0; i < 4096; i++) {
+        assert_true(fprintf(fp, "!2 %05x\n\nx", i) > 0);
+    }
+
+    assert_int_equal(fclose(fp), 0);
+    assert_int_equal(TestUnmergeFiles("merged.mg", OS_TEXT), 1);
+
+    // An entry spanning several buffers, with LF, CR LF and lone CR bytes, then another entry.
+    for (size_t i = 0; i < sizeof(content); i++) {
+        content[i] = i % 7 == 0 ? '\n' : i % 11 == 0 ? '\r' : 'a' + i % 26;
+    }
+
+    fp = fopen("merged.mg", "w");
+    assert_non_null(fp);
+    assert_true(fprintf(fp, "!%u big.txt\n", (unsigned int)sizeof(content)) > 0);
+    assert_int_equal(fwrite(content, 1, sizeof(content), fp), sizeof(content));
+    assert_true(fputs("!3 last.conf\n\r\n\r", fp) >= 0);
+    assert_int_equal(fclose(fp), 0);
+    assert_int_equal(TestUnmergeFiles("merged.mg", OS_TEXT), 1);
+
+    // A size beyond the data is rejected by the remaining-bytes check or, when the stored CR
+    // bytes leave room for it, by the read reaching the end of the bundle first.
+    write_unmerge_bundle("!6 short.conf\nshort");
+    assert_int_equal(TestUnmergeFiles("merged.mg", OS_TEXT), 0);
+    write_unmerge_bundle("!5 lines.conf\na\nb\n");
+    assert_int_equal(TestUnmergeFiles("merged.mg", OS_TEXT), 0);
 }
 
 #endif
@@ -1941,6 +2337,57 @@ void test_w_fopen_nofollow_truncates_existing_file(void **state) {
     assert_int_equal(nofollow_size("regular"), 0);
 }
 
+void test_w_fopen_nofollow_append_keeps_existing_content(void **state) {
+    FILE * fp;
+
+    nofollow_create_file("regular", "previous ");
+
+    fp = w_fopen_nofollow(nofollow_dir, "regular", "a");
+    assert_non_null(fp);
+    assert_int_equal(fwrite("content", 1, 7, fp), 7);
+    assert_int_equal(fclose(fp), 0);
+    assert_int_equal(nofollow_size("regular"), 16);
+}
+
+void test_w_fopen_nofollow_append_creates_file(void **state) {
+    FILE * fp = w_fopen_nofollow(nofollow_dir, "regular", "ab");
+
+    assert_non_null(fp);
+    assert_int_equal(fwrite("content", 1, 7, fp), 7);
+    assert_int_equal(fclose(fp), 0);
+    assert_int_equal(nofollow_size("regular"), 7);
+}
+
+void test_w_fopen_nofollow_append_symlink_rejected(void **state) {
+    char target[PATH_MAX + 1];
+    char link[PATH_MAX + 1];
+
+    nofollow_create_file("victim", "sensitive data");
+    nofollow_path(target, "victim");
+    nofollow_path(link, "link");
+    assert_int_equal(symlink(target, link), 0);
+
+    errno = 0;
+    assert_null(w_fopen_nofollow(nofollow_dir, "link", "a"));
+    assert_true(errno == ELOOP || errno == EMLINK);
+    assert_int_equal(nofollow_size("victim"), 14);
+}
+
+void test_w_fopen_nofollow_append_hard_link_rejected(void **state) {
+    char target[PATH_MAX + 1];
+    char hardlink[PATH_MAX + 1];
+
+    nofollow_create_file("victim", "sensitive data");
+    nofollow_path(target, "victim");
+    nofollow_path(hardlink, "link");
+    assert_int_equal(link(target, hardlink), 0);
+
+    errno = 0;
+    assert_null(w_fopen_nofollow(nofollow_dir, "link", "a"));
+    assert_int_equal(errno, EMLINK);
+    assert_int_equal(nofollow_size("victim"), 14);
+}
+
 void test_w_fopen_nofollow_symlink_rejected(void **state) {
     char target[PATH_MAX + 1];
     char link[PATH_MAX + 1];
@@ -1957,6 +2404,60 @@ void test_w_fopen_nofollow_symlink_rejected(void **state) {
     // The whole point: the symlink target was neither opened nor truncated.
     assert_int_equal(nofollow_size("victim"), 14);
 }
+
+#ifdef W_VETTED_TEST_NO_O_NOFOLLOW
+// Emulated O_NOFOLLOW, as on AIX 6.1.
+void test_w_fopen_nofollow_emulated_symlink_eloop(void **state) {
+    const char * modes[] = { "wb", "ab", NULL };
+    char target[PATH_MAX + 1];
+    char link[PATH_MAX + 1];
+    int i;
+
+    nofollow_create_file("victim", "sensitive data");
+    nofollow_path(target, "victim");
+    nofollow_path(link, "link");
+    assert_int_equal(symlink(target, link), 0);
+
+    for (i = 0; modes[i]; i++) {
+        errno = 0;
+        assert_null(w_fopen_nofollow(nofollow_dir, "link", modes[i]));
+        assert_int_equal(errno, ELOOP);
+    }
+
+    assert_int_equal(nofollow_size("victim"), 14);
+}
+
+void test_w_fopen_nofollow_emulated_dangling_symlink_not_created(void **state) {
+    char link[PATH_MAX + 1];
+    char created[PATH_MAX + 1];
+    struct stat statbuf;
+
+    nofollow_path(link, "dangling");
+    nofollow_path(created, "target");
+    assert_int_equal(symlink(created, link), 0);
+
+    errno = 0;
+    assert_null(w_fopen_nofollow(nofollow_dir, "dangling", "ab"));
+    assert_int_equal(errno, ELOOP);
+    assert_int_equal(stat(created, &statbuf), -1);
+    assert_int_equal(errno, ENOENT);
+}
+
+void test_w_fopen_nofollow_emulated_create_and_append(void **state) {
+    FILE * fp;
+
+    fp = w_fopen_nofollow(nofollow_dir, "regular", "wb");
+    assert_non_null(fp);
+    fclose(fp);
+    assert_int_equal(nofollow_size("regular"), 0);
+
+    nofollow_create_file("regular", "kept");
+    fp = w_fopen_nofollow(nofollow_dir, "regular", "ab");
+    assert_non_null(fp);
+    fclose(fp);
+    assert_int_equal(nofollow_size("regular"), 4);
+}
+#endif
 
 void test_w_fopen_nofollow_hard_link_rejected(void **state) {
     char target[PATH_MAX + 1];
@@ -2032,7 +2533,7 @@ void test_w_fopen_nofollow_invalid_name(void **state) {
 }
 
 void test_w_fopen_nofollow_invalid_mode(void **state) {
-    const char * modes[] = { "r", "rb", "a", "w+", "", NULL };
+    const char * modes[] = { "r", "rb", "a+", "w+", "", NULL };
     int i;
 
     for (i = 0; modes[i]; i++) {
@@ -2197,6 +2698,12 @@ void test_w_fopen_vetted_follow_search_only_dir_accepted(void **state) {
         skip();
     }
 
+#ifdef W_VETTED_TEST_NO_O_NOFOLLOW
+    // No search-only directory open on HP-UX/AIX 6.1 (the agent runs as root there), so the walk refuses it.
+    print_message("Skipped: the forked walk cannot hold a search-only directory.\n");
+    skip();
+#endif
+
     nofollow_path(path, "subdir");
     assert_int_equal(mkdir(path, 0750), 0);
     nofollow_create_file("subdir/victim", "content");
@@ -2304,6 +2811,10 @@ void test_w_fopen_vetted_follow_repointed_symlink_not_rejected(void **state) {
     nofollow_path(link_path, "link");
     nofollow_path(tmp_path, "dangling");
     assert_int_equal(symlink(targets[0], link_path), 0);
+
+    // A walk that keeps losing the race logs a warning once its retries run out. Whether that happens
+    // depends on scheduling, so the expectation must be optional: _always would demand at least one call.
+    expect_any_count(__wrap__mwarn, formatted_msg, WILL_RETURN_ONCE);
 
     // Re-point the link the way rotation does (ln -sfn + mv -T) while it is opened: a swap caught mid-walk
     // must be retried, never reported as a trust rejection.
@@ -2621,6 +3132,7 @@ void test_w_vet_opened_file_hard_link_writable_dir_rejected(void **state) {
 int main(void) {
     const struct CMUnitTest tests[] = {
 #ifndef TEST_WINAGENT
+#ifndef W_VETTED_TEST_NO_O_NOFOLLOW
         cmocka_unit_test(test_CreatePID_success),
         cmocka_unit_test(test_CreatePID_failure_chmod),
         cmocka_unit_test(test_CreatePID_failure_fopen),
@@ -2647,6 +3159,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_w_compress_gzfile_symlink_rejected, setup_compress_gzfile, teardown_compress_gzfile),
         cmocka_unit_test_setup_teardown(test_w_compress_gzfile_fifo_rejected, setup_compress_gzfile, teardown_compress_gzfile),
         cmocka_unit_test_setup_teardown(test_w_compress_gzfile_directory_rejected, setup_compress_gzfile, teardown_compress_gzfile),
+        cmocka_unit_test_setup_teardown(test_w_compress_gzfile_directory_symlink_other_owner_rejected, setup_compress_gzfile, teardown_compress_gzfile),
         cmocka_unit_test_setup_teardown(test_w_compress_gzfile_gzopen_fail, setup_compress_gzfile, teardown_compress_gzfile),
         cmocka_unit_test_setup_teardown(test_w_compress_gzfile_write_error, setup_compress_gzfile, teardown_compress_gzfile),
         cmocka_unit_test_setup_teardown(test_w_compress_gzfile_success, setup_compress_gzfile, teardown_compress_gzfile),
@@ -2681,10 +3194,20 @@ int main(void) {
         cmocka_unit_test(test_cldir_ex_ignore_rmdir_ex_failure),
         cmocka_unit_test(test_cldir_ex_ignore_multiple_files_in_ignore),
         cmocka_unit_test(test_cldir_ex_ignore_partial_path_match),
+#endif
         // w_fopen_nofollow
         cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_regular_file, setup_nofollow, teardown_nofollow),
         cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_truncates_existing_file, setup_nofollow, teardown_nofollow),
+        cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_append_keeps_existing_content, setup_nofollow, teardown_nofollow),
+        cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_append_creates_file, setup_nofollow, teardown_nofollow),
+        cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_append_symlink_rejected, setup_nofollow, teardown_nofollow),
+        cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_append_hard_link_rejected, setup_nofollow, teardown_nofollow),
         cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_symlink_rejected, setup_nofollow, teardown_nofollow),
+#ifdef W_VETTED_TEST_NO_O_NOFOLLOW
+        cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_emulated_symlink_eloop, setup_nofollow, teardown_nofollow),
+        cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_emulated_dangling_symlink_not_created, setup_nofollow, teardown_nofollow),
+        cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_emulated_create_and_append, setup_nofollow, teardown_nofollow),
+#endif
         cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_hard_link_rejected, setup_nofollow, teardown_nofollow),
         cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_dangling_symlink_rejected, setup_nofollow, teardown_nofollow),
         cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_fifo_rejected, setup_nofollow, teardown_nofollow),
@@ -2745,8 +3268,13 @@ int main(void) {
         cmocka_unit_test(test_is_network_path_extended_length_unc),
         cmocka_unit_test(test_is_network_path_device),
         cmocka_unit_test(test_is_network_path_extended_length_local),
+        cmocka_unit_test(test_is_network_path_forward_slash_unc),
+        cmocka_unit_test(test_is_network_path_mixed_slash_unc),
+        cmocka_unit_test(test_is_network_path_forward_slash_extended_length_unc),
+        cmocka_unit_test(test_is_network_path_forward_slash_local),
         cmocka_unit_test(test_wfopen_local_path),
         cmocka_unit_test(test_wfopen_network_path),
+        cmocka_unit_test(test_wfopen_forward_slash_network_path),
         cmocka_unit_test(test_waccess_local_path),
         cmocka_unit_test(test_waccess_network_path),
         cmocka_unit_test(test_wCreateFile_local_path),
@@ -2760,6 +3288,11 @@ int main(void) {
         cmocka_unit_test(test_w_stat_network_path),
         cmocka_unit_test(test_w_stat64_local_path),
         cmocka_unit_test(test_w_stat64_network_path),
+        cmocka_unit_test(test_w_win_owner_trusted),
+        cmocka_unit_test(test_w_win_reparse_target),
+        cmocka_unit_test(test_w_win_reparse_tag_is_plain),
+        cmocka_unit_test(test_unmerge_normalize_name_windows),
+        cmocka_unit_test_setup_teardown(test_unmerge_windows_text_mode_bundle, setup_unmerge, teardown_unmerge),
 
 #endif
     };

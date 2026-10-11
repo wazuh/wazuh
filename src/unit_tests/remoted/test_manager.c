@@ -48,7 +48,7 @@ char* __wrap_get_node_name(void) {
 
 /* tests */
 
-#define LONG_PATH "190-characters-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+#define LONG_PATH "214-characters-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
 void keyentry_init(keyentry *key, char *name, char *id, char *ip, char *raw_key) {
     os_calloc(1, sizeof(os_ip), key->ip);
@@ -1883,7 +1883,7 @@ void test_process_deleted_multi_groups_delete(void **state)
     expect_any(__wrap_OS_SHA256_String, str);
     will_return(__wrap_OS_SHA256_String, "6e3a107738e7d0fc85241f04ed9686d37738e7d08086fb46e3a100fc85241f04");
 
-    expect_string(__wrap_rmdir_ex, name, "var/multigroups/6e3a1077");
+    expect_string(__wrap_rmdir_ex, name, "var/multigroups/6e3a107738e7d0fc85241f04ed9686d3");
     will_return(__wrap_rmdir_ex, 0);
 
     process_deleted_multi_groups(false);

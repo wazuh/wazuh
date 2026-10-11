@@ -337,6 +337,24 @@ def test_add_rule(db_setup):
         assert rum.get_rule_by_name('not_exists') == db_setup.SecurityError.RULE_NOT_EXIST
 
 
+@pytest.mark.parametrize('rule', [
+    {'MATCH': {'user': ["r'^a|b"]}},
+    {'MATCH': {"r'^user": ['admin']}},
+    {'FIND': {'user': "r'"}},
+    {'MATCH': {'user': ["r'^(a'"]}},
+])
+def test_add_and_update_rule_reject_malformed_regex(db_setup, rule):
+    """Rules holding an unclosed or non-compiling r'...' expression must not be stored."""
+    with db_setup.RulesManager() as rum:
+        assert rum.add_rule(name='malformed_rule', rule=rule) == db_setup.SecurityError.INVALID
+        assert rum.get_rule_by_name('malformed_rule') == db_setup.SecurityError.RULE_NOT_EXIST
+
+        assert rum.add_rule(name='valid_rule', rule={'MATCH': {'user': ["r'^a|b'"]}}) is True
+        rule_id = rum.get_rule_by_name('valid_rule')['id']
+        assert rum.update_rule(rule_id=rule_id, name='valid_rule', rule=rule) == db_setup.SecurityError.INVALID
+        assert rum.get_rule(rule_id)['rule'] == {'MATCH': {'user': ["r'^a|b'"]}}
+
+
 def test_get_user(db_setup):
     """Check users in the database"""
     with db_setup.AuthenticationManager() as am:

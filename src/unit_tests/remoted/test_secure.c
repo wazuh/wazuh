@@ -1176,11 +1176,9 @@ void test_HandleSecureMessage_invalid_message(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    will_return(__wrap_close, 0);
-
-    // nb_close
-    expect_value(__wrap_nb_close, sock, message.sock);
-    expect_value(__wrap_nb_close, sock, message.sock);
+    // nb_close_socket
+    expect_value(__wrap_nb_close_socket, sock, message.sock);
+    will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
@@ -1252,11 +1250,9 @@ void test_HandleSecureMessage_different_sock(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    will_return(__wrap_close, 0);
-
-    // nb_close
-    expect_value(__wrap_nb_close, sock, message.sock);
-    expect_value(__wrap_nb_close, sock, message.sock);
+    // nb_close_socket
+    expect_value(__wrap_nb_close_socket, sock, message.sock);
+    will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
@@ -1327,11 +1323,9 @@ void test_HandleSecureMessage_different_sock_2(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    will_return(__wrap_close, 0);
-
-    // nb_close
-    expect_value(__wrap_nb_close, sock, message.sock);
-    expect_value(__wrap_nb_close, sock, message.sock);
+    // nb_close_socket
+    expect_value(__wrap_nb_close_socket, sock, message.sock);
+    will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
@@ -1403,11 +1397,9 @@ void test_HandleSecureMessage_conflict_first_seen(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    will_return(__wrap_close, 0);
-
-    // nb_close
-    expect_value(__wrap_nb_close, sock, message.sock);
-    expect_value(__wrap_nb_close, sock, message.sock);
+    // nb_close_socket
+    expect_value(__wrap_nb_close_socket, sock, message.sock);
+    will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
@@ -1481,11 +1473,9 @@ void test_HandleSecureMessage_conflict_persists(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    will_return(__wrap_close, 0);
-
-    // nb_close
-    expect_value(__wrap_nb_close, sock, message.sock);
-    expect_value(__wrap_nb_close, sock, message.sock);
+    // nb_close_socket
+    expect_value(__wrap_nb_close_socket, sock, message.sock);
+    will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
@@ -1570,11 +1560,9 @@ void test_HandleSecureMessage_close_idle_sock(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    will_return(__wrap_close, 0);
-
-    // nb_close
-    expect_value(__wrap_nb_close, sock, key->sock);
-    expect_value(__wrap_nb_close, sock, key->sock);
+    // nb_close_socket
+    expect_value(__wrap_nb_close_socket, sock, key->sock);
+    will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
@@ -1669,11 +1657,9 @@ void test_HandleSecureMessage_close_idle_sock_2(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    will_return(__wrap_close, 0);
-
-    // nb_close
-    expect_value(__wrap_nb_close, sock, key->sock);
-    expect_value(__wrap_nb_close, sock, key->sock);
+    // nb_close_socket
+    expect_value(__wrap_nb_close_socket, sock, key->sock);
+    will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
@@ -1754,11 +1740,9 @@ void test_HandleSecureMessage_close_idle_sock_disabled(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    will_return(__wrap_close, 0);
-
-    // nb_close
-    expect_value(__wrap_nb_close, sock, message.sock);
-    expect_value(__wrap_nb_close, sock, message.sock);
+    // nb_close_socket
+    expect_value(__wrap_nb_close_socket, sock, message.sock);
+    will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
@@ -1832,11 +1816,9 @@ void test_HandleSecureMessage_close_idle_sock_disabled_2(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    will_return(__wrap_close, 0);
-
-    // nb_close
-    expect_value(__wrap_nb_close, sock, message.sock);
-    expect_value(__wrap_nb_close, sock, message.sock);
+    // nb_close_socket
+    expect_value(__wrap_nb_close_socket, sock, message.sock);
+    will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
@@ -1914,11 +1896,9 @@ void test_HandleSecureMessage_close_idle_sock_recv_fail(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    will_return(__wrap_close, 0);
-
-    // nb_close
-    expect_value(__wrap_nb_close, sock, message.sock);
-    expect_value(__wrap_nb_close, sock, message.sock);
+    // nb_close_socket
+    expect_value(__wrap_nb_close_socket, sock, message.sock);
+    will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
@@ -1936,11 +1916,9 @@ void test_HandleSecureMessage_close_idle_sock_recv_fail(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    will_return(__wrap_close, 0);
-
-    // nb_close
-    expect_value(__wrap_nb_close, sock, key->sock);
-    expect_value(__wrap_nb_close, sock, key->sock);
+    // nb_close_socket
+    expect_value(__wrap_nb_close_socket, sock, key->sock);
+    will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
@@ -2027,11 +2005,9 @@ void test_HandleSecureMessage_close_idle_sock_decrypt_fail(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    will_return(__wrap_close, 0);
-
-    // nb_close
-    expect_value(__wrap_nb_close, sock, message.sock);
-    expect_value(__wrap_nb_close, sock, message.sock);
+    // nb_close_socket
+    expect_value(__wrap_nb_close_socket, sock, message.sock);
+    will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
@@ -2049,11 +2025,9 @@ void test_HandleSecureMessage_close_idle_sock_decrypt_fail(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    will_return(__wrap_close, 0);
-
-    // nb_close
-    expect_value(__wrap_nb_close, sock, key->sock);
-    expect_value(__wrap_nb_close, sock, key->sock);
+    // nb_close_socket
+    expect_value(__wrap_nb_close_socket, sock, key->sock);
+    will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
@@ -2160,11 +2134,9 @@ void test_HandleSecureMessage_close_idle_sock_control_msg_succes(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    will_return(__wrap_close, 0);
-
-    // nb_close
-    expect_value(__wrap_nb_close, sock, key->sock);
-    expect_value(__wrap_nb_close, sock, key->sock);
+    // nb_close_socket
+    expect_value(__wrap_nb_close_socket, sock, key->sock);
+    will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
@@ -3120,11 +3092,9 @@ void test_handle_new_tcp_connection_wnotify_fail(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    will_return(__wrap_close, 0);
-
-    // nb_close
-    expect_value(__wrap_nb_close, sock, sock_client);
-    expect_value(__wrap_nb_close, sock, sock_client);
+    // nb_close_socket
+    expect_value(__wrap_nb_close_socket, sock, sock_client);
+    will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
@@ -3212,10 +3182,8 @@ static void expect_close_sock(int sock, const char* disconnected_msg)
     will_return(__wrap_OS_DeleteSocket, 0);
     expect_function_call(__wrap_key_unlock);
 
-    will_return(__wrap_close, 0);
-
-    expect_value(__wrap_nb_close, sock, sock);
-    expect_value(__wrap_nb_close, sock, sock);
+    expect_value(__wrap_nb_close_socket, sock, sock);
+    will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
     expect_string(__wrap__mdebug1, formatted_msg, disconnected_msg);
@@ -3302,7 +3270,7 @@ void test_reap_unauthenticated_connections_reports_pending_refusals(void** state
     assert_int_equal(unauthenticated_refused_warned, 1060);
 }
 
-/* _close_sock() up to close(): the counter and the keystore */
+/* _close_sock() up to nb_close_socket(): the counter and the keystore */
 static void expect_close_sock_until_close(int sock)
 {
     expect_value(__wrap_rem_setCounter, fd, sock);
@@ -3314,19 +3282,16 @@ static void expect_close_sock_until_close(int sock)
     expect_function_call(__wrap_key_unlock);
 }
 
-void test_close_sock_failed_close_still_releases_slots(void** state)
+void test_close_sock_released_slots_decrement_tcp(void** state)
 {
     global_counter = 0;
 
     expect_close_sock_until_close(5);
 
-    // Linux frees the descriptor even when close() fails: the slots must go too, or the reaper would
-    // close() the number again once something else owns it
-    will_return(__wrap_close, -1);
-    errno = EINTR;
-
-    expect_value(__wrap_nb_close, sock, 5);
-    expect_value(__wrap_nb_close, sock, 5);
+    // nb_close_socket() released the slots (close() succeeded, or failed with anything but EBADF, since
+    // Linux frees the descriptor anyway): the session is gone
+    expect_value(__wrap_nb_close_socket, sock, 5);
+    will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [5]");
@@ -3340,10 +3305,11 @@ void test_close_sock_ebadf_leaves_slots_alone(void** state)
 
     expect_close_sock_until_close(5);
 
-    // EBADF: another _close_sock() already closed it and releases the slots itself, and the number may
-    // already belong to a newly accepted connection. No nb_close(), no counter change.
-    will_return(__wrap_close, -1);
-    errno = EBADF;
+    // EBADF: another _close_sock() already closed it and released the slots, and the number may
+    // already belong to a newly accepted connection. nb_close_socket() leaves its slots alone, and the
+    // counter does not change.
+    expect_value(__wrap_nb_close_socket, sock, 5);
+    will_return(__wrap_nb_close_socket, false);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [5]");
 
@@ -3565,11 +3531,9 @@ void test_handle_incoming_data_from_tcp_socket_too_big_message(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    will_return(__wrap_close, 0);
-
-    // nb_close
-    expect_value(__wrap_nb_close, sock, sock_client);
-    expect_value(__wrap_nb_close, sock, sock_client);
+    // nb_close_socket
+    expect_value(__wrap_nb_close_socket, sock, sock_client);
+    will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
@@ -3598,11 +3562,9 @@ void test_handle_incoming_data_from_tcp_socket_case_0(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    will_return(__wrap_close, 0);
-
-    // nb_close
-    expect_value(__wrap_nb_close, sock, sock_client);
-    expect_value(__wrap_nb_close, sock, sock_client);
+    // nb_close_socket
+    expect_value(__wrap_nb_close_socket, sock, sock_client);
+    will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
@@ -3635,11 +3597,9 @@ void test_handle_incoming_data_from_tcp_socket_case_1(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    will_return(__wrap_close, 0);
-
-    // nb_close
-    expect_value(__wrap_nb_close, sock, sock_client);
-    expect_value(__wrap_nb_close, sock, sock_client);
+    // nb_close_socket
+    expect_value(__wrap_nb_close_socket, sock, sock_client);
+    will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
@@ -3698,11 +3658,9 @@ void test_handle_outgoing_data_to_tcp_socket_case_1_EPIPE(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    will_return(__wrap_close, 0);
-
-    // nb_close
-    expect_value(__wrap_nb_close, sock, sock_client);
-    expect_value(__wrap_nb_close, sock, sock_client);
+    // nb_close_socket
+    expect_value(__wrap_nb_close_socket, sock, sock_client);
+    will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
     // rem_setCounter
@@ -4429,7 +4387,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(
             test_handle_new_tcp_connection_refusal_within_window_not_reported, setup_new_tcp, teardown_new_tcp),
         // Tests _close_sock
-        cmocka_unit_test(test_close_sock_failed_close_still_releases_slots),
+        cmocka_unit_test(test_close_sock_released_slots_decrement_tcp),
         cmocka_unit_test(test_close_sock_ebadf_leaves_slots_alone),
         // Tests rem_check_unauthenticated_cap
         cmocka_unit_test(test_rem_check_unauthenticated_cap_within_limit),

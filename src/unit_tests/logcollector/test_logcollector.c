@@ -156,6 +156,7 @@ static int teardown_process(void **state) {
     os_free(stream_backup);
     os_free(show_backup);
     os_free(local_macos_processes);
+    macos_log_shutdown = 0;
 
     return 0;
 }
@@ -283,6 +284,65 @@ void test_w_get_hash_context_done(void ** state) {
     bool ret = w_get_hash_context (lf, &context, position);
 
     assert_false(ret);
+}
+
+/* w_hash_read_line */
+
+/* Hex SHA1 of what the context has hashed so far */
+static void hash_read_line_digest(EVP_MD_CTX *context, os_sha1 output) {
+    unsigned char md[SHA_DIGEST_LENGTH];
+    EVP_MD_CTX *aux = EVP_MD_CTX_new();
+
+    EVP_MD_CTX_copy(aux, context);
+    EVP_DigestFinal(aux, md, NULL);
+    OS_SHA1_Hexdigest(md, output);
+    EVP_MD_CTX_free(aux);
+}
+
+void test_w_hash_read_line_hashes_bytes_after_nul(void ** state) {
+    logreader lf = { .fp = (FILE *) 1 };
+    const char line[] = { 'a', 'b', '\0', 'c', 'd', '\n', '\0' };
+    int64_t position = 10;
+    EVP_MD_CTX *context = EVP_MD_CTX_new();
+    os_sha1 output;
+
+    EVP_DigestInit(context, EVP_sha1());
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 16);
+
+    w_hash_read_line(&lf, context, line, &position);
+
+    hash_read_line_digest(context, output);
+    /* SHA1 of the 6 bytes "ab\0cd\n" */
+    assert_string_equal(output, "d59c6b01e724cf9549f485e1847090b0208f1221");
+    assert_int_equal(position, 16);
+    EVP_MD_CTX_free(context);
+    /* OpenSSL initialisation can leave errno set, and later tests print it */
+    errno = 0;
+}
+
+void test_w_hash_read_line_ftell_fail(void ** state) {
+    logreader lf = { .fp = (FILE *) 1 };
+    const char line[] = { 'a', 'b', '\0', 'c', 'd', '\n', '\0' };
+    int64_t position = 10;
+    EVP_MD_CTX *context = EVP_MD_CTX_new();
+    os_sha1 output;
+
+    EVP_DigestInit(context, EVP_sha1());
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) -1);
+
+    w_hash_read_line(&lf, context, line, &position);
+
+    hash_read_line_digest(context, output);
+    /* Without a position the line is hashed up to its first NUL: SHA1 of "ab" */
+    assert_string_equal(output, "da23614e02469a0d7c7bd1bdab5c9c474b1904dc");
+    assert_int_equal(position, -1);
+    EVP_MD_CTX_free(context);
+    /* OpenSSL initialisation can leave errno set, and later tests print it */
+    errno = 0;
 }
 
 /* w_update_file_status */
@@ -2743,6 +2803,11 @@ void test_w_macos_release_log_execution_log_stream_and_show_not_launched(void **
 
 }
 
+/* The reader must see the shutdown flag before the child is killed */
+static int check_sigterm_after_shutdown(const LargestIntegralType value, __attribute__((unused)) const LargestIntegralType data) {
+    return value == SIGTERM && macos_log_shutdown == 1;
+}
+
 void test_w_macos_release_log_execution_log_stream_and_show_launched_and_running(void ** state) {
 
     macos_processes = *state;
@@ -2750,7 +2815,7 @@ void test_w_macos_release_log_execution_log_stream_and_show_launched_and_running
     macos_processes->stream.wfd->pid = 11;
 
     expect_string(__wrap__mdebug1, formatted_msg, "macOS ULS: Releasing macOS `log show` resources.");
-    expect_value(__wrap_kill, sig, SIGTERM);
+    expect_check(__wrap_kill, sig, check_sigterm_after_shutdown, 0);
     expect_value(__wrap_kill, pid, 10);
     will_return(__wrap_kill, 0);
     will_return(__wrap_wpclose, 0);
@@ -2916,6 +2981,10 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_w_get_hash_context_NULL_file_exist, setup_log_context, teardown_log_context),
         cmocka_unit_test_setup_teardown(test_w_get_hash_context_NULL_file_not_exist, setup_log_context, teardown_log_context),
         cmocka_unit_test_setup_teardown(test_w_get_hash_context_done, setup_log_context, teardown_log_context),
+
+        // Test w_hash_read_line
+        cmocka_unit_test(test_w_hash_read_line_hashes_bytes_after_nul),
+        cmocka_unit_test(test_w_hash_read_line_ftell_fail),
 
         // Test w_update_file_status
         cmocka_unit_test_setup_teardown(test_w_update_file_status_fail_update_add_table_hash, setup_local_hashmap, teardown_local_hashmap),
