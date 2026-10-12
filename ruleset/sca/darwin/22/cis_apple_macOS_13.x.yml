@@ -53,18 +53,16 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0043"
-          - "TA0007"
+          - "TA0001"
+          - "TA0002"
         name:
-          - "Reconnaissance"
-          - "Discovery"
+          - "Initial Access"
+          - "Execution"
       technique:
         id:
-          - "T1595"
           - "T1190"
           - "T1203"
         name:
-          - "Active Scanning"
           - "Exploit Public-Facing Application"
           - "Exploitation for Client Execution"
     condition: any
@@ -93,18 +91,16 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0043"
-          - "TA0007"
+          - "TA0001"
+          - "TA0002"
         name:
-          - "Reconnaissance"
-          - "Discovery"
+          - "Initial Access"
+          - "Execution"
       technique:
         id:
-          - "T1595"
           - "T1190"
           - "T1203"
         name:
-          - "Active Scanning"
           - "Exploit Public-Facing Application"
           - "Exploitation for Client Execution"
     condition: any
@@ -133,18 +129,16 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0043"
-          - "TA0007"
+          - "TA0001"
+          - "TA0002"
         name:
-          - "Reconnaissance"
-          - "Discovery"
+          - "Initial Access"
+          - "Execution"
       technique:
         id:
-          - "T1595"
           - "T1190"
           - "T1203"
         name:
-          - "Active Scanning"
           - "Exploit Public-Facing Application"
           - "Exploitation for Client Execution"
     condition: any
@@ -173,18 +167,16 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0043"
-          - "TA0007"
+          - "TA0001"
+          - "TA0002"
         name:
-          - "Reconnaissance"
-          - "Discovery"
+          - "Initial Access"
+          - "Execution"
       technique:
         id:
-          - "T1595"
           - "T1190"
           - "T1203"
         name:
-          - "Active Scanning"
           - "Exploit Public-Facing Application"
           - "Exploitation for Client Execution"
     condition: all
@@ -217,18 +209,16 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0043"
-          - "TA0007"
+          - "TA0001"
+          - "TA0002"
         name:
-          - "Reconnaissance"
-          - "Discovery"
+          - "Initial Access"
+          - "Execution"
       technique:
         id:
-          - "T1595"
           - "T1190"
           - "T1203"
         name:
-          - "Active Scanning"
           - "Exploit Public-Facing Application"
           - "Exploitation for Client Execution"
     condition: all
@@ -259,18 +249,16 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0043"
-          - "TA0007"
+          - "TA0001"
+          - "TA0002"
         name:
-          - "Reconnaissance"
-          - "Discovery"
+          - "Initial Access"
+          - "Execution"
       technique:
         id:
-          - "T1595"
           - "T1190"
           - "T1203"
         name:
-          - "Active Scanning"
           - "Exploit Public-Facing Application"
           - "Exploitation for Client Execution"
     condition: any
@@ -385,31 +373,33 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0002"
           - "TA0005"
           - "TA0006"
           - "TA0007"
+          - "TA0112"
         name:
+          - "Execution"
           - "Stealth"
           - "Credential Access"
           - "Discovery"
+          - "Defense Impairment"
       technique:
         id:
-          - "T1562"
+          - "T1685"
           - "T1070"
           - "T1059"
           - "T1040"
         name:
-          - "Impair Defenses"
+          - "Disable or Modify Tools"
           - "Indicator Removal"
           - "Command and Scripting Interpreter"
           - "Network Sniffing"
       subtechnique:
         id:
-          - "T1562.002"
-          - "T1070.001"
+          - "T1685.006"
         name:
-          - "Disable Windows Event Logging"
-          - "Clear Windows Event Logs"
+          - "Clear Linux or Mac System Logs"
     condition: all
     rules:
       - 'c:/usr/sbin/systemsetup -getusingnetworktime -> r:Network Time:\s*\t*On'
@@ -435,31 +425,33 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0002"
           - "TA0005"
           - "TA0006"
           - "TA0007"
+          - "TA0112"
         name:
+          - "Execution"
           - "Stealth"
           - "Credential Access"
           - "Discovery"
+          - "Defense Impairment"
       technique:
         id:
-          - "T1562"
+          - "T1685"
           - "T1070"
           - "T1059"
           - "T1040"
         name:
-          - "Impair Defenses"
+          - "Disable or Modify Tools"
           - "Indicator Removal"
           - "Command and Scripting Interpreter"
           - "Network Sniffing"
       subtechnique:
         id:
-          - "T1562.002"
-          - "T1070.001"
+          - "T1685.006"
         name:
-          - "Disable Windows Event Logging"
-          - "Clear Windows Event Logs"
+          - "Clear Linux or Mac System Logs"
     condition: all
     rules:
       - "c:systemsetup -getnetworktimeserver -> r:Network Time Server:"
@@ -847,11 +839,15 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0006"
           - "TA0009"
           - "TA0010"
+          - "TA0011"
         name:
+          - "Credential Access"
           - "Collection"
           - "Exfiltration"
+          - "Command and Control"
       technique:
         id:
           - "T1005"
@@ -859,12 +855,16 @@ checks:
           - "T1041"
           - "T1567"
           - "T1573"
+          - "T1048"
+          - "T1552"
         name:
           - "Data from Local System"
           - "Data from Removable Media"
           - "Exfiltration Over C2 Channel"
           - "Exfiltration Over Web Service"
           - "Encrypted Channel"
+          - "Exfiltration Over Alternative Protocol"
+          - "Unsecured Credentials"
       subtechnique:
         id:
           - "T1048.003"
@@ -978,28 +978,28 @@ checks:
         id:
           - "TA0002"
           - "TA0005"
+          - "TA0011"
+          - "TA0112"
         name:
           - "Execution"
           - "Stealth"
+          - "Command and Control"
+          - "Defense Impairment"
       technique:
         id:
-          - "T1562"
+          - "T1685"
           - "T1070"
           - "T1059"
           - "T1105"
         name:
-          - "Impair Defenses"
+          - "Disable or Modify Tools"
           - "Indicator Removal"
           - "Command and Scripting Interpreter"
           - "Ingress Tool Transfer"
       subtechnique:
         id:
-          - "T1562.001"
-          - "T1562.002"
           - "T1070.004"
         name:
-          - "Disable or Modify Tools"
-          - "Disable Windows Event Logging"
           - "File Deletion"
     condition: all
     rules:
@@ -1030,11 +1030,15 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0006"
           - "TA0009"
           - "TA0010"
+          - "TA0011"
         name:
+          - "Credential Access"
           - "Collection"
           - "Exfiltration"
+          - "Command and Control"
       technique:
         id:
           - "T1005"
@@ -1042,12 +1046,16 @@ checks:
           - "T1041"
           - "T1567"
           - "T1573"
+          - "T1048"
+          - "T1552"
         name:
           - "Data from Local System"
           - "Data from Removable Media"
           - "Exfiltration Over C2 Channel"
           - "Exfiltration Over Web Service"
           - "Encrypted Channel"
+          - "Exfiltration Over Alternative Protocol"
+          - "Unsecured Credentials"
       subtechnique:
         id:
           - "T1048.003"
@@ -1375,11 +1383,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0006"
+          - "TA0001"
           - "TA0003"
+          - "TA0004"
+          - "TA0005"
+          - "TA0006"
+          - "TA0112"
         name:
-          - "Credential Access"
+          - "Initial Access"
           - "Persistence"
+          - "Privilege Escalation"
+          - "Stealth"
+          - "Credential Access"
+          - "Defense Impairment"
       technique:
         id:
           - "T1078"
@@ -1395,13 +1411,9 @@ checks:
           - "Modify Authentication Process"
       subtechnique:
         id:
-          - "T1556.001"
-          - "T1550.001"
-          - "T1550.002"
+          - "T1556.003"
         name:
-          - "Domain Controller Authentication"
-          - "Application Access Token"
-          - "Pass the Hash"
+          - "Pluggable Authentication Modules"
     condition: none
     rules:
       - 'not c:dscl . -list /Users hint -> r:^[\w@-]*$'
@@ -1429,11 +1441,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0006"
+          - "TA0001"
           - "TA0003"
+          - "TA0004"
+          - "TA0005"
+          - "TA0006"
+          - "TA0112"
         name:
-          - "Credential Access"
+          - "Initial Access"
           - "Persistence"
+          - "Privilege Escalation"
+          - "Stealth"
+          - "Credential Access"
+          - "Defense Impairment"
       technique:
         id:
           - "T1078"
@@ -1449,13 +1469,9 @@ checks:
           - "Modify Authentication Process"
       subtechnique:
         id:
-          - "T1556.001"
-          - "T1550.001"
-          - "T1550.002"
+          - "T1556.003"
         name:
-          - "Domain Controller Authentication"
-          - "Application Access Token"
-          - "Pass the Hash"
+          - "Pluggable Authentication Modules"
     condition: any
     rules:
       - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.MCX'').objectForKey(''DisableGuestAccount'')" -> r:^1$'
@@ -1482,11 +1498,15 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0006"
           - "TA0009"
           - "TA0010"
+          - "TA0011"
         name:
+          - "Credential Access"
           - "Collection"
           - "Exfiltration"
+          - "Command and Control"
       technique:
         id:
           - "T1005"
@@ -1494,12 +1514,16 @@ checks:
           - "T1041"
           - "T1567"
           - "T1573"
+          - "T1048"
+          - "T1552"
         name:
           - "Data from Local System"
           - "Data from Removable Media"
           - "Exfiltration Over C2 Channel"
           - "Exfiltration Over Web Service"
           - "Encrypted Channel"
+          - "Exfiltration Over Alternative Protocol"
+          - "Unsecured Credentials"
       subtechnique:
         id:
           - "T1048.003"
@@ -1572,31 +1596,33 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0002"
           - "TA0005"
           - "TA0006"
           - "TA0007"
+          - "TA0112"
         name:
+          - "Execution"
           - "Stealth"
           - "Credential Access"
           - "Discovery"
+          - "Defense Impairment"
       technique:
         id:
-          - "T1562"
+          - "T1685"
           - "T1070"
           - "T1059"
           - "T1040"
         name:
-          - "Impair Defenses"
+          - "Disable or Modify Tools"
           - "Indicator Removal"
           - "Command and Scripting Interpreter"
           - "Network Sniffing"
       subtechnique:
         id:
-          - "T1562.002"
-          - "T1070.001"
+          - "T1685.006"
         name:
-          - "Disable Windows Event Logging"
-          - "Clear Windows Event Logs"
+          - "Clear Linux or Mac System Logs"
     condition: all
     rules:
       - "c:launchctl list -> r:com\\.apple\\.auditd"
@@ -1627,11 +1653,15 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0006"
           - "TA0009"
           - "TA0010"
+          - "TA0011"
         name:
+          - "Credential Access"
           - "Collection"
           - "Exfiltration"
+          - "Command and Control"
       technique:
         id:
           - "T1005"
@@ -1639,12 +1669,16 @@ checks:
           - "T1041"
           - "T1567"
           - "T1573"
+          - "T1048"
+          - "T1552"
         name:
           - "Data from Local System"
           - "Data from Removable Media"
           - "Exfiltration Over C2 Channel"
           - "Exfiltration Over Web Service"
           - "Encrypted Channel"
+          - "Exfiltration Over Alternative Protocol"
+          - "Unsecured Credentials"
       subtechnique:
         id:
           - "T1048.003"
@@ -1678,31 +1712,33 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0002"
           - "TA0005"
           - "TA0006"
           - "TA0007"
+          - "TA0112"
         name:
+          - "Execution"
           - "Stealth"
           - "Credential Access"
           - "Discovery"
+          - "Defense Impairment"
       technique:
         id:
-          - "T1562"
+          - "T1685"
           - "T1070"
           - "T1059"
           - "T1040"
         name:
-          - "Impair Defenses"
+          - "Disable or Modify Tools"
           - "Indicator Removal"
           - "Command and Scripting Interpreter"
           - "Network Sniffing"
       subtechnique:
         id:
-          - "T1562.002"
-          - "T1070.001"
+          - "T1685.006"
         name:
-          - "Disable Windows Event Logging"
-          - "Clear Windows Event Logs"
+          - "Clear Linux or Mac System Logs"
     condition: all
     rules:
       - 'f:/etc/asl/com.apple.install -> n:^\s*ttl=(\d+) compare > 364'
@@ -1729,31 +1765,33 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0002"
           - "TA0005"
           - "TA0006"
           - "TA0007"
+          - "TA0112"
         name:
+          - "Execution"
           - "Stealth"
           - "Credential Access"
           - "Discovery"
+          - "Defense Impairment"
       technique:
         id:
-          - "T1562"
+          - "T1685"
           - "T1070"
           - "T1059"
           - "T1040"
         name:
-          - "Impair Defenses"
+          - "Disable or Modify Tools"
           - "Indicator Removal"
           - "Command and Scripting Interpreter"
           - "Network Sniffing"
       subtechnique:
         id:
-          - "T1562.002"
-          - "T1070.001"
+          - "T1685.006"
         name:
-          - "Disable Windows Event Logging"
-          - "Clear Windows Event Logs"
+          - "Clear Linux or Mac System Logs"
     condition: any
     rules:
       - 'f:/etc/security/audit_control -> n:^expire-after:\s*(\d+)s OR \d+[\w@-] compare >= 5184000'
@@ -1984,11 +2022,15 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0006"
           - "TA0009"
           - "TA0010"
+          - "TA0011"
         name:
+          - "Credential Access"
           - "Collection"
           - "Exfiltration"
+          - "Command and Control"
       technique:
         id:
           - "T1005"
@@ -1996,12 +2038,16 @@ checks:
           - "T1041"
           - "T1567"
           - "T1573"
+          - "T1048"
+          - "T1552"
         name:
           - "Data from Local System"
           - "Data from Removable Media"
           - "Exfiltration Over C2 Channel"
           - "Exfiltration Over Web Service"
           - "Encrypted Channel"
+          - "Exfiltration Over Alternative Protocol"
+          - "Unsecured Credentials"
       subtechnique:
         id:
           - "T1048.003"
@@ -2040,11 +2086,19 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0001"
+          - "TA0003"
           - "TA0004"
           - "TA0005"
+          - "TA0006"
+          - "TA0112"
         name:
+          - "Initial Access"
+          - "Persistence"
           - "Privilege Escalation"
           - "Stealth"
+          - "Credential Access"
+          - "Defense Impairment"
       technique:
         id:
           - "T1078"
@@ -2079,11 +2133,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0006"
+          - "TA0001"
           - "TA0003"
+          - "TA0004"
+          - "TA0005"
+          - "TA0006"
+          - "TA0112"
         name:
-          - "Credential Access"
+          - "Initial Access"
           - "Persistence"
+          - "Privilege Escalation"
+          - "Stealth"
+          - "Credential Access"
+          - "Defense Impairment"
       technique:
         id:
           - "T1078"
@@ -2099,13 +2161,9 @@ checks:
           - "Modify Authentication Process"
       subtechnique:
         id:
-          - "T1556.001"
-          - "T1550.001"
-          - "T1550.002"
+          - "T1556.003"
         name:
-          - "Domain Controller Authentication"
-          - "Application Access Token"
-          - "Pass the Hash"
+          - "Pluggable Authentication Modules"
     condition: all
     rules:
       - 'c:pwpolicy -n /Local/Default -getglobalpolicy -> n:minChars=(\d+) compare > 14'
@@ -2131,11 +2189,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0006"
+          - "TA0001"
           - "TA0003"
+          - "TA0004"
+          - "TA0005"
+          - "TA0006"
+          - "TA0112"
         name:
-          - "Credential Access"
+          - "Initial Access"
           - "Persistence"
+          - "Privilege Escalation"
+          - "Stealth"
+          - "Credential Access"
+          - "Defense Impairment"
       technique:
         id:
           - "T1078"
@@ -2151,13 +2217,9 @@ checks:
           - "Modify Authentication Process"
       subtechnique:
         id:
-          - "T1556.001"
-          - "T1550.001"
-          - "T1550.002"
+          - "T1556.003"
         name:
-          - "Domain Controller Authentication"
-          - "Application Access Token"
-          - "Pass the Hash"
+          - "Pluggable Authentication Modules"
     condition: any
     rules:
       - "c:pwpolicy -getaccountpolicies -> r:Contain at least one number and one alphabetic character\\."
@@ -2184,11 +2246,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0006"
+          - "TA0001"
           - "TA0003"
+          - "TA0004"
+          - "TA0005"
+          - "TA0006"
+          - "TA0112"
         name:
-          - "Credential Access"
+          - "Initial Access"
           - "Persistence"
+          - "Privilege Escalation"
+          - "Stealth"
+          - "Credential Access"
+          - "Defense Impairment"
       technique:
         id:
           - "T1078"
@@ -2204,13 +2274,9 @@ checks:
           - "Modify Authentication Process"
       subtechnique:
         id:
-          - "T1556.001"
-          - "T1550.001"
-          - "T1550.002"
+          - "T1556.003"
         name:
-          - "Domain Controller Authentication"
-          - "Application Access Token"
-          - "Pass the Hash"
+          - "Pluggable Authentication Modules"
     condition: any
     rules:
       - "c:pwpolicy -getaccountpolicies -> r:Contain at least one number and one alphabetic character\\."
@@ -2239,11 +2305,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0006"
+          - "TA0001"
           - "TA0003"
+          - "TA0004"
+          - "TA0005"
+          - "TA0006"
+          - "TA0112"
         name:
-          - "Credential Access"
+          - "Initial Access"
           - "Persistence"
+          - "Privilege Escalation"
+          - "Stealth"
+          - "Credential Access"
+          - "Defense Impairment"
       technique:
         id:
           - "T1078"
@@ -2259,13 +2333,9 @@ checks:
           - "Modify Authentication Process"
       subtechnique:
         id:
-          - "T1556.001"
-          - "T1550.001"
-          - "T1550.002"
+          - "T1556.003"
         name:
-          - "Domain Controller Authentication"
-          - "Application Access Token"
-          - "Pass the Hash"
+          - "Pluggable Authentication Modules"
     condition: any
     rules:
       - 'c:sh  -c "pwpolicy -getaccountpolicies | grep -A1 minimumMixedCaseCharacters " -> n:>(\d+)< compare >= 1'
@@ -2291,11 +2361,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0006"
+          - "TA0001"
           - "TA0003"
+          - "TA0004"
+          - "TA0005"
+          - "TA0006"
+          - "TA0112"
         name:
-          - "Credential Access"
+          - "Initial Access"
           - "Persistence"
+          - "Privilege Escalation"
+          - "Stealth"
+          - "Credential Access"
+          - "Defense Impairment"
       technique:
         id:
           - "T1078"
@@ -2311,13 +2389,9 @@ checks:
           - "Modify Authentication Process"
       subtechnique:
         id:
-          - "T1556.001"
-          - "T1550.001"
-          - "T1550.002"
+          - "T1556.003"
         name:
-          - "Domain Controller Authentication"
-          - "Application Access Token"
-          - "Pass the Hash"
+          - "Pluggable Authentication Modules"
     condition: all
     rules:
       - 'c:pwpolicy -n /Local/Default -getglobalpolicy -> n:maxMinutesUntilChangePassword=(\d+) compare < 525601'
@@ -2343,11 +2417,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0006"
+          - "TA0001"
           - "TA0003"
+          - "TA0004"
+          - "TA0005"
+          - "TA0006"
+          - "TA0112"
         name:
-          - "Credential Access"
+          - "Initial Access"
           - "Persistence"
+          - "Privilege Escalation"
+          - "Stealth"
+          - "Credential Access"
+          - "Defense Impairment"
       technique:
         id:
           - "T1078"
@@ -2363,13 +2445,9 @@ checks:
           - "Modify Authentication Process"
       subtechnique:
         id:
-          - "T1556.001"
-          - "T1550.001"
-          - "T1550.002"
+          - "T1556.003"
         name:
-          - "Domain Controller Authentication"
-          - "Application Access Token"
-          - "Pass the Hash"
+          - "Pluggable Authentication Modules"
     condition: all
     rules:
       - 'c:pwpolicy -n /Local/Default -getglobalpolicy -> n:usingHistory=(\d+) compare > 14'
@@ -2398,11 +2476,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0006"
+          - "TA0001"
           - "TA0003"
+          - "TA0004"
+          - "TA0005"
+          - "TA0006"
+          - "TA0112"
         name:
-          - "Credential Access"
+          - "Initial Access"
           - "Persistence"
+          - "Privilege Escalation"
+          - "Stealth"
+          - "Credential Access"
+          - "Defense Impairment"
       technique:
         id:
           - "T1078"
@@ -2418,13 +2504,9 @@ checks:
           - "Modify Authentication Process"
       subtechnique:
         id:
-          - "T1556.001"
-          - "T1550.001"
-          - "T1550.002"
+          - "T1556.003"
         name:
-          - "Domain Controller Authentication"
-          - "Application Access Token"
-          - "Pass the Hash"
+          - "Pluggable Authentication Modules"
     condition: all
     rules:
       - "c:sudo -V -> r:Authentication timestamp timeout: 0\\.0 minutes"
@@ -2453,11 +2535,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0006"
+          - "TA0001"
           - "TA0003"
+          - "TA0004"
+          - "TA0005"
+          - "TA0006"
+          - "TA0112"
         name:
-          - "Credential Access"
+          - "Initial Access"
           - "Persistence"
+          - "Privilege Escalation"
+          - "Stealth"
+          - "Credential Access"
+          - "Defense Impairment"
       technique:
         id:
           - "T1078"
@@ -2473,13 +2563,9 @@ checks:
           - "Modify Authentication Process"
       subtechnique:
         id:
-          - "T1556.001"
-          - "T1550.001"
-          - "T1550.002"
+          - "T1556.003"
         name:
-          - "Domain Controller Authentication"
-          - "Application Access Token"
-          - "Pass the Hash"
+          - "Pluggable Authentication Modules"
     condition: all
     rules:
       - "c:sudo -V -> r:Type of authentication timestamp record: tty"
@@ -2505,11 +2591,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0006"
+          - "TA0001"
           - "TA0003"
+          - "TA0004"
+          - "TA0005"
+          - "TA0006"
+          - "TA0112"
         name:
-          - "Credential Access"
+          - "Initial Access"
           - "Persistence"
+          - "Privilege Escalation"
+          - "Stealth"
+          - "Credential Access"
+          - "Defense Impairment"
       technique:
         id:
           - "T1078"
@@ -2525,13 +2619,9 @@ checks:
           - "Modify Authentication Process"
       subtechnique:
         id:
-          - "T1556.001"
-          - "T1550.001"
-          - "T1550.002"
+          - "T1556.003"
         name:
-          - "Domain Controller Authentication"
-          - "Application Access Token"
-          - "Pass the Hash"
+          - "Pluggable Authentication Modules"
     condition: all
     rules:
       - "c:dscl . -read /Users/root AuthenticationAuthority -> r:^No such key: AuthenticationAuthority"
@@ -2560,11 +2650,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0006"
+          - "TA0001"
           - "TA0003"
+          - "TA0004"
+          - "TA0005"
+          - "TA0006"
+          - "TA0112"
         name:
-          - "Credential Access"
+          - "Initial Access"
           - "Persistence"
+          - "Privilege Escalation"
+          - "Stealth"
+          - "Credential Access"
+          - "Defense Impairment"
       technique:
         id:
           - "T1078"
@@ -2580,13 +2678,9 @@ checks:
           - "Modify Authentication Process"
       subtechnique:
         id:
-          - "T1556.001"
-          - "T1550.001"
-          - "T1550.002"
+          - "T1556.003"
         name:
-          - "Domain Controller Authentication"
-          - "Application Access Token"
-          - "Pass the Hash"
+          - "Pluggable Authentication Modules"
     condition: all
     rules:
       - "c:security authorizationdb read system.login.screensaver -> r:use-login-window-ui"
