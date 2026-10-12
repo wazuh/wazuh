@@ -77,7 +77,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/lib/libagent_sync_protocol.so,root,wazuh,750,file,-rwxr-x---,315360,0.1
 /var/ossec/lib/libhttps_client.so,root,wazuh,750,file,-rwxr-x---,1260760,0.1
 /var/ossec/lib/libschema_validator.so,root,wazuh,750,file,-rwxr-x---,386024,0.1
-/var/ossec/lib/libsysinfo.so,root,wazuh,750,file,-rwxr-x---,2555328,0.1
+/var/ossec/lib/libsysinfo.so,root,wazuh,750,file,-rwxr-x---,2821160,0.1
 /var/ossec/lib/libfimdb.so,root,wazuh,750,file,-rwxr-x---,249304,0.1
 /var/ossec/lib/libbpf.so,root,wazuh,750,file,-rwxr-x---,444128,0.1
 /var/ossec/lib/libfimebpf.so,root,wazuh,750,file,-rwxr-x---,60080,0.1
