@@ -354,3 +354,71 @@ TEST(IEExplorerTests, NumberOfExtensions)
     nlohmann::json extensionsJson = ieExtensionsProvider.collect();
     ASSERT_EQ(extensionsJson.size(), static_cast<size_t>(3));
 }
+
+TEST(IEExplorerTests, NetworkExecutablePathIsNotOpened)
+{
+    auto ieExtensionsWrapper = std::make_shared<MockIEExtensionsWrapper>();
+    const auto bhoKey {reinterpret_cast<HKEY>(0x200)};
+    const auto serverKey {reinterpret_cast<HKEY>(0x202)};
+
+    EXPECT_CALL(*ieExtensionsWrapper, RegOpenKeyExAWrapper(::testing::_, ::testing::_, 0, KEY_READ, ::testing::_))
+    .WillRepeatedly([&](HKEY hive, LPCSTR lpSubKey, DWORD, REGSAM, PHKEY phkResult)
+    {
+        if (hive == HKEY_LOCAL_MACHINE && strcmp(lpSubKey, "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Browser Helper Objects") == 0)
+        {
+            *phkResult = bhoKey;
+            return ERROR_SUCCESS;
+        }
+
+        if (hive == HKEY_LOCAL_MACHINE && strcmp(lpSubKey, "SOFTWARE\\Classes\\CLSID\\{6873AAAA-0000-4000-8000-000000006873}\\InProcServer32") == 0)
+        {
+            *phkResult = serverKey;
+            return ERROR_SUCCESS;
+        }
+
+        return ERROR_FILE_NOT_FOUND;
+    });
+
+    EXPECT_CALL(*ieExtensionsWrapper, RegEnumKeyExAWrapper(::testing::_, ::testing::_, ::testing::_, ::testing::_,
+                                                           ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+    .WillRepeatedly([&](HKEY hKey, DWORD dwIndex, char* lpName, DWORD * lpcchName, LPDWORD, LPSTR, LPDWORD, PFILETIME)
+    {
+        if (hKey == bhoKey && dwIndex == 0)
+        {
+            strcpy(lpName, "{6873AAAA-0000-4000-8000-000000006873}");
+            *lpcchName = static_cast<DWORD>(strlen(lpName));
+            return ERROR_SUCCESS;
+        }
+
+        return ERROR_NO_MORE_ITEMS;
+    });
+
+    EXPECT_CALL(*ieExtensionsWrapper, RegQueryValueExAWrapper(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+    .WillRepeatedly([&](HKEY hKey, LPCSTR, LPDWORD, LPDWORD lpType, LPBYTE lpData, LPDWORD lpcbData)
+    {
+        if (hKey != serverKey)
+        {
+            return ERROR_FILE_NOT_FOUND;
+        }
+
+        const char value[] = "\\\\10.0.0.5\\share\\bho.dll";
+
+        if (lpType) *lpType = REG_SZ;
+
+        if (lpcbData) *lpcbData = sizeof(value);
+
+        if (lpData) memcpy(lpData, value, sizeof(value));
+
+        return ERROR_SUCCESS;
+    });
+
+    EXPECT_CALL(*ieExtensionsWrapper, RegCloseKeyWrapper(::testing::_)).WillRepeatedly(::testing::Return(ERROR_SUCCESS));
+    EXPECT_CALL(*ieExtensionsWrapper, GetFileVersionInfoSizeWWrapper(::testing::_, ::testing::_)).Times(0);
+
+    IEExtensionsProvider ieExtensionsProvider(ieExtensionsWrapper);
+    nlohmann::json extensionsJson = ieExtensionsProvider.collect();
+
+    ASSERT_EQ(extensionsJson.size(), static_cast<size_t>(1));
+    EXPECT_EQ(extensionsJson[0]["path"], "\\\\10.0.0.5\\share\\bho.dll");
+    EXPECT_EQ(extensionsJson[0]["version"], "No version info");
+}
