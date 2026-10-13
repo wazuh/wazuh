@@ -132,6 +132,22 @@ TEST_F(PackageMetadataFileTest, OversizedFileIsSkipped)
     EXPECT_FALSE(PackageMetadataFile::read(path, content));
 }
 
+TEST_F(PackageMetadataFileTest, LargeSparseFileWithoutNewlineIsNotBuffered)
+{
+    const auto path {m_dir / "METADATA"};
+    std::ofstream {path};
+    std::filesystem::resize_file(path, 1024ULL * 1024 * 1024);
+
+    bool callbackCalled {false};
+    PackageMetadataFileIO::readLineByLine(path, [&](const std::string&)
+    {
+        callbackCalled = true;
+        return true;
+    });
+
+    EXPECT_FALSE(callbackCalled);
+}
+
 TEST_F(PackageMetadataFileTest, FileAtSizeLimitIsRead)
 {
     const auto path {m_dir / "METADATA"};
