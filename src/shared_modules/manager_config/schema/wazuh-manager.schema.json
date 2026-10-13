@@ -284,7 +284,7 @@
               "minimum": 0,
               "maximum": 100000,
               "default": 100,
-              "description": "Sustained POST /enroll requests per second this manager serves, counted for the endpoint as a whole and not per agent. 0 disables the limit. Requests over it get 429 without reaching authd. Short bursts are absorbed: the endpoint may serve twice this value back to back before the rate paces it."
+              "description": "Sustained POST /enroll requests per second this manager forwards to authd, counted for the node as a whole and not per agent. 0 disables the limit. Applied after the credential check, so a request that fails it never spends it (a verified enrollment also after its body checks), and kept as two buckets of this rate: one for enrollments whose password or enrollment token (with uses left) was verified, one for re-enrollments, enrollments without a credential and enrollment tokens with no uses left. Requests over it get 429 without reaching authd. Short bursts are absorbed: each bucket may serve twice this value back to back before the rate paces it."
             },
             "cacerts_rate_limit": {
               "type": "integer",

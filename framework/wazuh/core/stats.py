@@ -82,9 +82,11 @@ _REMOTED_METRIC_GROUPS = {
             'capacity': 'remoted.enroll.authd.queue.capacity',
             'rejected_total': 'remoted.enroll.authd.queue.rejected.total',
         },
-        # Refused by the endpoint's rate limit before the handler ran, so it is in none of the
-        # outcome counters above. `rate_limit` is the route's live budget: `available` at 0 while
-        # `rate_limited` climbs is a ceiling set below what the fleet needs.
+        # Refused by the endpoint's rate limit before the authd round trip, so it is in none of the
+        # outcome counters above. `rate_limit` is the live budget of the verified-credential bucket
+        # (the re-enrollment / no-credential one is remoted.enroll.unverified.rate_limit.* in
+        # GET /metrics): `available` at 0 while `rate_limited` climbs is a ceiling set below what
+        # the fleet needs.
         'rate_limited': 'remoted.enroll.rate_limited',
         'rate_limit': {
             'limit': 'remoted.enroll.rate_limit.limit',

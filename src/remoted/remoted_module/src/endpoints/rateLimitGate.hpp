@@ -46,8 +46,14 @@
 
 #include <functional>
 #include <memory>
+#include <string>
 
 #include <wazuh_metrics/iManager.hpp>
+
+namespace remoted::common
+{
+    class LogThrottle;
+} // namespace remoted::common
 
 namespace remoted::endpoints::ratelimit
 {
@@ -86,6 +92,53 @@ namespace remoted::endpoints::ratelimit
 
     /// GET /cacerts' limiter settings, same resolution.
     remoted::http::EndpointRateLimiter::Settings buildCacertsSettings(const remoted_module_config_t& config);
+
+    /**
+     * @brief One route's admission check: charges @p limiter and, when it refuses, sends the 429.
+     *
+     * What wrap() runs in front of a whole handler, exposed on its own for a route that must charge
+     * its bucket from INSIDE the handler -- POST /enroll, which only charges once the request has
+     * passed the checks that cost the manager nothing (credential, body), so a caller that cannot
+     * pass them never spends the allowance the rest of the fleet enrolls with. The refusal's
+     * accounting, envelope, `Retry-After` and throttled log line are the same either way, which is
+     * why both paths share this one object rather than two copies of it.
+     *
+     * Thread-safe: admit() is called concurrently from the transport's worker threads.
+     */
+    class Gate final
+    {
+    public:
+        /// Same parameters, with the same meaning, as wrap()'s (minus the handler).
+        Gate(std::shared_ptr<remoted::http::EndpointRateLimiter> limiter,
+             std::function<remoted::http::HttpResponse()> rejection,
+             std::shared_ptr<wazuh::metrics::ICounter> rejected,
+             const remoted::metrics::EndpointHttpMetrics* httpMetrics,
+             const char* route);
+
+        /// Whether this gate limits anything at all (a null or disabled limiter admits everything).
+        bool enabled() const noexcept;
+
+        /**
+         * @brief Charge one request.
+         *
+         * @return true when the request may proceed. false when it was refused, in which case the
+         *         429 has ALREADY been sent on @p responder and the caller must not answer again.
+         *
+         * @p responder should be the transport's own, not a MeteredResponder: the refusal bumps the
+         * endpoint's status cell directly and must stay out of its latency histogram (see the file
+         * comment).
+         */
+        bool admit(remoted::http::IHttpResponder& responder) const;
+
+    private:
+        std::shared_ptr<remoted::http::EndpointRateLimiter> m_limiter;
+        std::function<remoted::http::HttpResponse()> m_rejection;
+        std::shared_ptr<wazuh::metrics::ICounter> m_rejected;
+        const remoted::metrics::EndpointHttpMetrics* m_httpMetrics;
+        std::string m_route;
+        std::string m_retryAfter;
+        std::shared_ptr<remoted::common::LogThrottle> m_throttle;
+    };
 
     /**
      * @brief Build a handler that admits through @p limiter and otherwise answers 429.

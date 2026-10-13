@@ -360,6 +360,7 @@ public:
             {
                 std::lock_guard<std::mutex> lock {m_rateLimitDiagMutex};
                 m_enrollRateLimiter.reset();
+                m_enrollUnverifiedRateLimiter.reset();
                 m_cacertsRateLimiter.reset();
             }
 
@@ -910,35 +911,68 @@ private:
 
         registerAuthdQueueDiagnostics(m_authdClient);
 
-        // Rate limit in front of the handler ('remote.https.enroll_rate_limit'). This is the route
+        // Rate limit on the authd round trip ('remote.https.enroll_rate_limit'). This is the route
         // with the largest gap between what a request costs the CALLER (one HTTP request, no
         // credential required to reach the bridge in Open mode) and what it costs the MANAGER (an
         // authd round trip over the local socket and, on a worker, a cluster round trip to the
         // master). The AuthdClient queue already bounds the damage, but only once the work has been
         // queued; this refuses the excess before the bridge is touched at all, which is what keeps
         // an unauthenticated caller from turning /enroll into an amplifier onto the cluster's
-        // internal socket. The bucket is the endpoint's, so this ceiling is shared by the whole
-        // fleet -- see endpointRateLimiter.hpp on what that does and does not buy.
+        // internal socket.
+        //
+        // Charged by the handler once the credential is classified, not in front of the route, and
+        // from two buckets of the same configured rate (enrollmentEndpoint.hpp, RateGates): one for
+        // the enrollments whose password or token was verified here, charged after the body checks,
+        // and one for everything authd still has to judge or nobody judges at all (re-enrollment
+        // bearers, Open mode), charged before the body is decoded. A pre-auth bucket
+        // shared by both let one unauthenticated source starve every enrollment on the node. The
+        // price is that authd may be asked up to twice the configured rate when both classes run at
+        // their ceiling at once; the AuthdClient queue still bounds what is in flight. Each bucket is
+        // still the whole node's -- see endpointRateLimiter.hpp on what that does and does not buy.
         {
             std::lock_guard<std::mutex> lock {m_rateLimitDiagMutex};
             m_enrollRateLimiter = std::make_shared<remoted::http::EndpointRateLimiter>(
                 remoted::endpoints::ratelimit::buildEnrollSettings(m_config));
+            m_enrollUnverifiedRateLimiter = std::make_shared<remoted::http::EndpointRateLimiter>(
+                remoted::endpoints::ratelimit::buildEnrollSettings(m_config));
         }
 
-        m_httpServer->addRoute(
-            remoted::http::Method::Post,
-            "/enroll",
-            remoted::endpoints::ratelimit::wrap(remoted::enrollment::makeHandler(*m_enrollmentAuthenticator,
-                                                                                 *m_authdClient,
-                                                                                 enrollConfig,
-                                                                                 m_enrollmentMetrics,
-                                                                                 enrollBodyDecoder,
-                                                                                 m_enrollHttpMetrics),
-                                                m_enrollRateLimiter,
-                                                &remoted::enrollment::rateLimitedResponse,
-                                                m_enrollmentMetrics.rateLimited,
-                                                &m_enrollHttpMetrics,
-                                                "POST /enroll"));
+        const auto admissionThrough = [](std::shared_ptr<const remoted::endpoints::ratelimit::Gate> gate)
+            -> remoted::enrollment::RateGates::Admission
+        {
+            if (!gate->enabled())
+            {
+                return nullptr;
+            }
+            return [gate = std::move(gate)](remoted::http::IHttpResponder& responder)
+            {
+                return gate->admit(responder);
+            };
+        };
+
+        remoted::enrollment::RateGates enrollRateGates;
+        enrollRateGates.verified = admissionThrough(
+            std::make_shared<const remoted::endpoints::ratelimit::Gate>(m_enrollRateLimiter,
+                                                                        &remoted::enrollment::rateLimitedResponse,
+                                                                        m_enrollmentMetrics.rateLimited,
+                                                                        &m_enrollHttpMetrics,
+                                                                        "POST /enroll (verified credential)"));
+        enrollRateGates.unverified = admissionThrough(std::make_shared<const remoted::endpoints::ratelimit::Gate>(
+            m_enrollUnverifiedRateLimiter,
+            &remoted::enrollment::rateLimitedResponse,
+            m_enrollmentMetrics.rateLimited,
+            &m_enrollHttpMetrics,
+            "POST /enroll (unverified: re-enrollment, no credential or spent token)"));
+
+        m_httpServer->addRoute(remoted::http::Method::Post,
+                               "/enroll",
+                               remoted::enrollment::makeHandler(*m_enrollmentAuthenticator,
+                                                                *m_authdClient,
+                                                                enrollConfig,
+                                                                m_enrollmentMetrics,
+                                                                enrollBodyDecoder,
+                                                                m_enrollHttpMetrics,
+                                                                std::move(enrollRateGates)));
 
         registerRateLimitDiagnostics();
 
@@ -1057,14 +1091,16 @@ private:
         }
         m_rateLimitPullsRegistered = true;
 
-        const auto snapshot = [this](bool enrollment)
+        using LimiterMember = std::shared_ptr<remoted::http::EndpointRateLimiter> RemotedModuleFacade::*;
+
+        const auto snapshot = [this](LimiterMember member)
         {
             std::lock_guard<std::mutex> lock {m_rateLimitDiagMutex};
-            const auto& limiter = enrollment ? m_enrollRateLimiter : m_cacertsRateLimiter;
+            const auto& limiter = this->*member;
             return limiter ? limiter->diagnostics() : remoted::http::EndpointRateLimiter::Diagnostics {};
         };
 
-        const auto registerFor = [this, snapshot](bool enrollment, const char* endpoint, const char* route)
+        const auto registerFor = [this, snapshot](LimiterMember enrollment, const char* endpoint, const char* route)
         {
             const std::string prefix = std::string {"remoted."} + endpoint + ".rate_limit.";
             const std::string routeName {route};
@@ -1088,8 +1124,11 @@ private:
                 "requests");
         };
 
-        registerFor(/*enrollment=*/true, "enroll", "POST /enroll");
-        registerFor(/*enrollment=*/false, "cacerts", "GET /cacerts");
+        registerFor(&RemotedModuleFacade::m_enrollRateLimiter, "enroll", "POST /enroll (verified credential)");
+        registerFor(&RemotedModuleFacade::m_enrollUnverifiedRateLimiter,
+                    "enroll.unverified",
+                    "POST /enroll (unverified: re-enrollment, no credential or spent token)");
+        registerFor(&RemotedModuleFacade::m_cacertsRateLimiter, "cacerts", "GET /cacerts");
     }
 
     void registerKeystoreDiagnostics(const std::shared_ptr<remoted::auth::Keystore>& keystore)
@@ -1916,6 +1955,8 @@ private:
     /// Guarded because those pulls are served on the admin server's threads.
     std::mutex m_rateLimitDiagMutex;
     std::shared_ptr<remoted::http::EndpointRateLimiter> m_enrollRateLimiter;
+    /// Second /enroll bucket, same rate: re-enrollments and credential-less enrollments (RateGates).
+    std::shared_ptr<remoted::http::EndpointRateLimiter> m_enrollUnverifiedRateLimiter;
     std::shared_ptr<remoted::http::EndpointRateLimiter> m_cacertsRateLimiter;
     bool m_rateLimitPullsRegistered {false};
 
