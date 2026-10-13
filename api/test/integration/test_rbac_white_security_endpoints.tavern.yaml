@@ -431,9 +431,9 @@ test_name: UPDATE USER'S ALLOW_RUN_AS FLAG
 
 stages:
 
-  # Enabling run_as puts every role linked to a rule above the reserved range (100 to 105 here) within the
-  # account's reach, so it needs security:update over all of them; this caller only holds 102, 103 and 105.
-  - name: Enable one specified user's allow_run_as flag (Denied, roles reachable through rules)
+  # Enabling run_as puts every role within the account's reach, those a custom rule is linked to later
+  # included, so it needs security:update over role:id:*; this caller only holds 102, 103 and 105.
+  - name: Enable one specified user's allow_run_as flag (Denied, every role reachable through rules)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{balanced_port:d}/security/users/103/run_as"

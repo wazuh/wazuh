@@ -10,7 +10,7 @@ from wazuh.core import common
 from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError
 
 """
-Wazuh HIDS Python package
+Wazuh Python package
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Wazuh is a python package to manage OSSEC.
 
