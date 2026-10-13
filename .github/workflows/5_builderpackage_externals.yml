@@ -605,6 +605,10 @@ jobs:
           aws-region: ${{ vars.DEPS_POOL_REGION || 'us-west-1' }}
 
       - name: Publish the new refs
+        env:
+          # Recorded with the refs in deps/pool/_published/, for deps.py orphans.
+          PUBLISH_PULL_REQUEST: ${{ github.event.pull_request.number }}
+          PUBLISH_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
         run: bash packages/externals/publish_pool.sh pool-new/pool "${{ secrets.DEPS_POOL_BUCKET }}"
 
   verify:
