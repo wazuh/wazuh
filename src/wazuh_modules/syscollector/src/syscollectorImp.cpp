@@ -5388,26 +5388,33 @@ void Syscollector::checkAgentIdentity()
                                  && vdSyncedId == static_cast<int64_t>(currentId);
 
     // Same rule per plain-lane table: one already resent under this id is not cleared again, and
-    // a failed read counts as "not done".
+    // a failed read counts as "not done". VD-lane tables follow the lane's marker instead.
     const auto tableMarkerKey = [](const std::string & tableName)
     {
         return std::string(SYSCOLLECTOR_TABLE_SYNCED_AGENT_ID_METADATA_PREFIX) + tableName;
     };
-    std::set<std::string> plainTablesAlreadyResent;
+    std::set<std::string> tablesAlreadyResent;
 
     for (const auto& [tableName, index] : INDEX_MAP)
     {
-        int64_t tableSyncedId = 0;
-
-        if (!(isVDIndex(index) && m_vdSyncEnabled)
-                && getMetadataValue(tableMarkerKey(tableName), tableSyncedId)
-                && tableSyncedId == static_cast<int64_t>(currentId))
+        if (!isCollectorEnabledForTable(tableName))
         {
-            plainTablesAlreadyResent.insert(tableName);
+            continue;
+        }
+
+        int64_t tableSyncedId = 0;
+        const bool alreadyResent = isVDIndex(index) && m_vdSyncEnabled
+                                   ? vdAlreadyResent
+                                   : getMetadataValue(tableMarkerKey(tableName), tableSyncedId)
+                                   && tableSyncedId == static_cast<int64_t>(currentId);
+
+        if (alreadyResent)
+        {
+            tablesAlreadyResent.insert(tableName);
         }
     }
 
-    if (plainTablesAlreadyResent.empty() && !vdAlreadyResent)
+    if (tablesAlreadyResent.empty())
     {
         m_logFunction(LOG_INFO,
                       "Inventory was last synchronized as agent " + std::to_string(syncedId) +
@@ -5475,17 +5482,10 @@ void Syscollector::checkAgentIdentity()
                 continue;
             }
 
-            if (vdTable && vdAlreadyResent)
+            if (tablesAlreadyResent.count(tableName) != 0)
             {
-                // Already sent under this identity by an earlier cycle whose plain lane did not
-                // finish. Clearing and requeueing it again would buy nothing and cost an alert
-                // window.
-                continue;
-            }
-
-            if (!vdTable && plainTablesAlreadyResent.count(tableName) != 0)
-            {
-                // Already resent under this identity by an earlier, unfinished pass.
+                // Already resent under this identity by an earlier, unfinished pass. For the VD
+                // lane, clearing and requeueing it again would also cost an alert window.
                 continue;
             }
 
@@ -5568,6 +5568,20 @@ void Syscollector::checkAgentIdentity()
     // DataClean, in this pass or in an earlier one under the same id. Gating on a plain sync
     // result instead would let an empty queue -- which reports success without opening a session
     // at all -- record a cycle that never landed.
+    //
+    // The per-table and VD markers only mean something while this transition is in progress.
+    // Cleared first, so a later enrollment that reuses an id they hold cannot skip a table.
+    for (const auto& [tableName, index] : INDEX_MAP)
+    {
+        int64_t tableSyncedId = 0;
+
+        if (getMetadataValue(tableMarkerKey(tableName), tableSyncedId) && tableSyncedId != 0)
+        {
+            updateMetadataValue(tableMarkerKey(tableName), 0);
+        }
+    }
+
+    updateMetadataValue(SYSCOLLECTOR_VD_SYNCED_AGENT_ID_METADATA_KEY, 0);
     updateMetadataValue(SYSCOLLECTOR_SYNCED_AGENT_ID_METADATA_KEY, currentId);
     updateMetadataValue(SYSCOLLECTOR_FIRST_SYNC_COMPLETED_METADATA_KEY, Utils::getSecondsFromEpoch());
 }

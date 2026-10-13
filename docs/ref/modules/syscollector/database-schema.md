@@ -468,7 +468,9 @@ This table enables the recovery mechanism by tracking when each inventory table 
 
 The same table also holds module-wide markers, stored in `last_sync_time` under these keys:
 - `synced_agent_id`: Agent ID under which the manager holds this module's whole inventory; when the agent's current ID differs (for example, after re-enrolling), Syscollector resends every table
-- `vd_synced_agent_id`: Agent ID under which the vulnerability detection tables (OS, packages and, on Windows, hotfixes) were last resent
-- `synced_agent_id:<table>`: Agent ID under which that table was last resent, so a resend cut short by a restart or by a failed table resumes with the tables still pending
+- `vd_synced_agent_id`: Agent ID under which the vulnerability detection tables (OS, packages and, on Windows, hotfixes) were last resent during a resend still in progress
+- `synced_agent_id:<table>`: Agent ID under which that table was last resent during a resend still in progress, so a resend cut short by a restart or by a failed table resumes with the tables still pending
+
+The last two are reset to `0` once `synced_agent_id` records the new ID.
 
 ---

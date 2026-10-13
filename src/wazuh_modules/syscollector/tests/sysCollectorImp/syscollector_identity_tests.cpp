@@ -224,6 +224,19 @@ class SyscollectorIdentityTest : public ::testing::Test
             sqlite3_close(db);
         }
 
+        /// @brief Writes a non-numeric value under a key, so reading it back fails.
+        static void seedUnreadableMetadata(const std::string& key)
+        {
+            sqlite3* db = nullptr;
+            ASSERT_EQ(sqlite3_open_v2(IDENTITY_DB_PATH, &db, SQLITE_OPEN_READWRITE, nullptr), SQLITE_OK);
+
+            const std::string statement =
+                "INSERT OR REPLACE INTO table_metadata (table_name, last_sync_time) VALUES ('" + key + "', 'unreadable');";
+
+            ASSERT_EQ(sqlite3_exec(db, statement.c_str(), nullptr, nullptr, nullptr), SQLITE_OK);
+            sqlite3_close(db);
+        }
+
         /// @brief Seeds one OS row, so a packages recovery has a real DataContext to attach.
         /// Written from outside the module for the same reason seedMarker() is: DBSync holds the
         /// database open while it is initialized.
@@ -640,6 +653,83 @@ TEST_F(SyscollectorIdentityTest, PerTableMarkerFromAnotherIdIsIgnored)
     Syscollector::instance().checkAgentIdentity();
 
     EXPECT_EQ(readMarker(), 2);
+}
+
+// A per-table marker that cannot be read counts as "not done", so the table is resent.
+TEST_F(SyscollectorIdentityTest, UnreadablePerTableMarkerCountsAsNotDone)
+{
+    initModule(true, true);
+    Syscollector::instance().destroy();
+    seedMarker(1);
+    seedUnreadableMetadata(std::string(TABLE_SYNCED_AGENT_ID_PREFIX) + USERS_TABLE);
+    initModule(true, true);
+    publishAgentId("2");
+    INJECT_MOCK_PROTOCOLS();
+
+    int64_t unreadable = 0;
+    ASSERT_FALSE(Syscollector::instance().getMetadataValue(std::string(TABLE_SYNCED_AGENT_ID_PREFIX) + USERS_TABLE,
+                                                           unreadable));
+
+    EXPECT_CALL(*vdProtocol, notifyDataClean(_, _, _)).Times(1).WillOnce(Return(okResult()));
+    EXPECT_CALL(*plainProtocol, notifyDataClean(_, _, _)).Times(1).WillOnce(Return(okResult()));
+    EXPECT_CALL(*vdProtocol, synchronizeModule(_, _)).WillRepeatedly(Return(okResult()));
+    EXPECT_CALL(*plainProtocol, synchronizeModule(_, _)).WillRepeatedly(Return(okResult()));
+
+    Syscollector::instance().checkAgentIdentity();
+
+    EXPECT_EQ(readMarker(), 2);
+}
+
+// packages resent on the plain lane while the VD lane was off does not count for the VD lane:
+// once the lane exists under the same id, the VD inventory is still resent as one session.
+TEST_F(SyscollectorIdentityTest, PlainLaneMarkerDoesNotSkipTheVDLane)
+{
+    // os off, so packages starts on the plain lane.
+    initWithMarker(true, true, 1);
+    publishAgentId("2");
+    INJECT_MOCK_PROTOCOLS();
+
+    // packages is cleared once per lane.
+    EXPECT_CALL(*vdProtocol, notifyDataClean(_, _, _)).Times(2).WillRepeatedly(Return(okResult()));
+    // users fails the first pass, so the identity stays unrecorded, and lands on the second.
+    EXPECT_CALL(*plainProtocol, notifyDataClean(_, _, _))
+    .Times(2)
+    .WillOnce(Return(SyncModuleResult {}))
+    .WillOnce(Return(okResult()));
+    EXPECT_CALL(*vdProtocol, synchronizeModule(_, _)).WillRepeatedly(Return(okResult()));
+    EXPECT_CALL(*plainProtocol, synchronizeModule(_, _)).WillRepeatedly(Return(okResult()));
+
+    Syscollector::instance().checkAgentIdentity();
+    EXPECT_EQ(readMarker(), 1);
+
+    Syscollector::instance().m_vdSyncEnabled = true;
+    Syscollector::instance().checkAgentIdentity();
+    EXPECT_EQ(readMarker(), 2);
+}
+
+// The per-table and VD markers only describe the transition in progress. Once the identity is
+// recorded they are cleared, so a later enrollment that reuses one of those ids skips nothing.
+TEST_F(SyscollectorIdentityTest, ProgressMarkersAreClearedOnceTheIdentityIsRecorded)
+{
+    initWithMarker(true, true, 1, /* os */ true);
+    publishAgentId("2");
+    INJECT_MOCK_PROTOCOLS();
+
+    EXPECT_CALL(*vdProtocol, notifyDataClean(_, _, _)).WillRepeatedly(Return(okResult()));
+    EXPECT_CALL(*plainProtocol, notifyDataClean(_, _, _)).WillRepeatedly(Return(okResult()));
+    EXPECT_CALL(*vdProtocol, synchronizeModule(_, _)).WillRepeatedly(Return(okResult()));
+    EXPECT_CALL(*plainProtocol, synchronizeModule(_, _)).WillRepeatedly(Return(okResult()));
+
+    Syscollector::instance().checkAgentIdentity();
+    ASSERT_EQ(readMarker(), 2);
+
+    int64_t value = -1;
+    EXPECT_TRUE(Syscollector::instance().getMetadataValue(std::string(TABLE_SYNCED_AGENT_ID_PREFIX) + USERS_TABLE, value));
+    EXPECT_EQ(value, 0);
+
+    value = -1;
+    EXPECT_TRUE(Syscollector::instance().getMetadataValue("vd_synced_agent_id", value));
+    EXPECT_EQ(value, 0);
 }
 
 // A recovery session has to carry the same DataContext a scan would attach, and

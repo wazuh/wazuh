@@ -190,7 +190,7 @@ The `table_metadata` table supports FIM recovery functionality by tracking each 
 
 **Identity Markers:** the same table holds the agent ID FIM data was last synchronized under, stored in `last_sync_time`:
 - `synced_agent_id`: Agent ID under which the manager holds every FIM table; when the agent's current ID differs (for example, after re-enrolling), FIM resends every monitored entry
-- `synced_agent_id:<table>`: Agent ID under which that table was last resent, so a resend cut short by a restart or by a failed table resumes with the tables still pending
+- `synced_agent_id:<table>`: Agent ID under which that table was last resent during a resend still in progress, so a resend cut short by a restart or by a failed table resumes with the tables still pending; reset to `0` once `synced_agent_id` records the new ID
 
 ---
 
