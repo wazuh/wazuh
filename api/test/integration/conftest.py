@@ -8,6 +8,7 @@ import json
 import os
 import re
 import shutil
+import socket
 import subprocess
 import time
 from base64 import b64encode
@@ -34,10 +35,17 @@ login_headers = {'Content-Type': 'application/json',
                  'Authorization': f'Basic {b64encode(basic_auth).decode()}'}
 environment_status = None
 env_cluster_nodes = ['master', 'worker1', 'worker2']
+basic_daemons = ('wazuh-modulesd', 'wazuh-analysisd', 'wazuh-execd', 'wazuh-db', 'wazuh-remoted')
+# Administrator account: the test user has restricted permissions in the RBAC suites
+admin_login_headers = {'Content-Type': 'application/json',
+                       'Authorization': f"Basic {common['basic_auth_context']}"}
 agent_names = ['agent1', 'agent2', 'agent3', 'agent4', 'agent5', 'agent6', 'agent7', 'agent8']
 
 standalone_env_mode = 'standalone'
 cluster_env_mode = 'cluster'
+
+# Host ports published by env/docker-compose.yml
+host_ports = (55000, 55001, 55002)
 
 
 def pytest_addoption(parser):
@@ -59,15 +67,20 @@ def pytest_collection_modifyitems(items: list):
             item.add_marker(cluster_env_mode)
 
 
-def get_token_login_api():
+def get_token_login_api(headers: dict = login_headers):
     """Get the API token for the test
+
+    Parameters
+    ----------
+    headers : dict
+        Login request headers.
 
     Returns
     -------
     str
         API token
     """
-    response = requests.post(login_url, headers=login_headers, verify=False)
+    response = requests.post(login_url, headers=headers, verify=False, timeout=30)
     if response.status_code == 200:
         return json.loads(response.content.decode())['data']['token']
     else:
@@ -79,6 +92,74 @@ def pytest_tavern_beta_before_every_test_run(test_dict, variables):
     """Disable HTTPS verification warnings."""
     urllib3.disable_warnings()
     variables["test_login_token"] = get_token_login_api()
+
+
+def port_is_free(port: int) -> bool:
+    """Check whether a host port can be bound the way the docker proxy does.
+
+    Parameters
+    ----------
+    port : int
+        Port number.
+
+    Returns
+    -------
+    bool
+        True if the port can be bound, False otherwise.
+    """
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            sock.bind(('0.0.0.0', port))
+        except OSError:
+            return False
+
+    return True
+
+
+def wait_for_free_ports(timeout: int = 60, interval: int = 5) -> list:
+    """Wait until the host ports used by the environment can be bound.
+
+    Parameters
+    ----------
+    timeout : int
+        Maximum time in seconds to wait.
+    interval : int
+        Time interval in seconds between checks.
+
+    Returns
+    -------
+    list
+        Ports that are still in use after the timeout.
+    """
+    deadline = time.time() + timeout
+    while True:
+        busy_ports = [port for port in host_ports if not port_is_free(port)]
+        if not busy_ports or time.time() >= deadline:
+            return busy_ports
+        time.sleep(interval)
+
+
+def get_port_holders(ports: list) -> str:
+    """Get the sockets that have the given ports as local port.
+
+    Parameters
+    ----------
+    ports : list
+        Port numbers.
+
+    Returns
+    -------
+    str
+        Matching `ss` output lines.
+    """
+    try:
+        sockets = subprocess.run(['ss', '-H', '-tanp'], stdout=subprocess.PIPE, universal_newlines=True).stdout
+    except OSError:
+        return 'ss is not available'
+
+    return ''.join(f'{line}\n' for line in sockets.splitlines()
+                   if len(line.split()) > 3 and int(line.split()[3].rsplit(':', 1)[-1]) in ports)
 
 
 def build_and_up(env_mode: str, interval: int = 10, build: bool = True):
@@ -110,6 +191,10 @@ def build_and_up(env_mode: str, interval: int = 10, build: bool = True):
         elif not response.ok:
             pytest.fail(f"Couldn't obtain branch tarball: {response.reason}")
 
+    busy_ports = wait_for_free_ports()
+    if busy_ports:
+        pytest.fail(f"Host ports already in use: {busy_ports}\n{get_port_holders(busy_ports)}")
+
     os.chdir(env_path)
     max_retries = 3
     retries = 0
@@ -122,6 +207,8 @@ def build_and_up(env_mode: str, interval: int = 10, build: bool = True):
                     "--build-arg", f"ENV_MODE={env_mode}", "--no-cache"],
                     stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True)
                 build_process.wait()
+            if retries == 0:  # Later attempts find the ports held by the containers of the failed one
+                wait_for_free_ports()  # The build opens outgoing connections that can take an ephemeral port
             up_process = subprocess.Popen(
                 ["docker", "compose", "--profile", env_mode, "up", "-d"],
                 env=dict(os.environ, ENV_MODE=env_mode),
@@ -136,6 +223,10 @@ def build_and_up(env_mode: str, interval: int = 10, build: bool = True):
 
     os.chdir(current_path)
 
+    if up_process.returncode != 0:
+        with open(docker_log_path, 'r') as f_docker:
+            pytest.fail(f"docker compose up failed {max_retries} times:\n{''.join(f_docker.readlines()[-20:])}")
+
 
 def down_env(env_mode: str):
     """Stop and remove all Docker containers."""
@@ -145,6 +236,30 @@ def down_env(env_mode: str):
                                            stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True)
         current_process.wait()
     os.chdir(current_path)
+
+
+def container_is_healthy(container: str) -> bool:
+    """Check whether a container reports a healthy status.
+
+    A container that has no healthcheck state yet (docker inspect fails) is not healthy.
+
+    Parameters
+    ----------
+    container : str
+        Container name.
+
+    Returns
+    -------
+    bool
+        True if the container is healthy, False otherwise.
+    """
+    try:
+        health = subprocess.check_output(
+            ['docker', 'inspect', container, '-f', '{{json .State.Health.Status}}'], stderr=subprocess.DEVNULL)
+    except subprocess.CalledProcessError:
+        return False
+
+    return health.startswith(b'"healthy"')
 
 
 def check_health(node_type: str = 'manager', agents: list = None,
@@ -169,25 +284,55 @@ def check_health(node_type: str = 'manager', agents: list = None,
     if node_type == 'manager':
         nodes_to_check = ['master'] if only_check_master_health else env_cluster_nodes
         for node in nodes_to_check:
-            health = subprocess.check_output(
-                f"docker inspect env-wazuh-{node}-1 -f '{{{{json .State.Health.Status}}}}'",
-                shell=True)
-            if not health.startswith(b'"healthy"'):
+            if not container_is_healthy(f'env-wazuh-{node}-1'):
                 return False
     elif node_type == 'agent':
         for agent in agents:
-            health = subprocess.check_output(
-                f"docker inspect env-wazuh-agent{agent}-1 -f '{{{{json .State.Health.Status}}}}'",
-                shell=True)
-            if not health.startswith(b'"healthy"'):
+            if not container_is_healthy(f'env-wazuh-agent{agent}-1'):
                 return False
     elif node_type == 'haproxy-lb':
-        health = subprocess.check_output(
-            "docker inspect env-haproxy-lb-1 -f '{{json .State.Health.Status}}'", shell=True)
-        if not health.startswith(b'"healthy"'):
+        if not container_is_healthy('env-haproxy-lb-1'):
             return False
     else:
         raise ValueError(f"Invalid node_type value: '{node_type}'.")
+
+    return True
+
+
+def check_api_ready(env_mode: str) -> bool:
+    """Check that every node answers API requests and has its basic daemons running.
+
+    The status endpoints go through the DAPI daemons check, so they fail while a daemon is failed, restarting or
+    stopped. The cluster ones also fail while the node is not connected to the master.
+
+    Parameters
+    ----------
+    env_mode : str
+        Environment mode: standalone or cluster.
+
+    Returns
+    -------
+    bool
+        True if all the nodes are ready, False otherwise.
+    """
+    try:
+        token = get_token_login_api(admin_login_headers)
+    except Exception:  # The login fails until the API is up
+        return False
+
+    endpoints = ['manager/status']
+    for endpoint in endpoints:
+        try:
+            response = requests.get(f"{common['protocol']}://{common['host']}:{common['port']}/{endpoint}",
+                                    headers={'Authorization': f'Bearer {token}'}, verify=False, timeout=15)
+            daemons = response.json()['data']['affected_items'][0]
+        except (requests.RequestException, ValueError, KeyError, IndexError):
+            return False
+        if response.status_code != 200 or any(daemons.get(daemon) != 'running' for daemon in basic_daemons):
+            return False
+        # The manager suites disable the cluster in the master node, even in the cluster environment
+        if endpoint == 'manager/status' and env_mode == cluster_env_mode and daemons.get('wazuh-clusterd') == 'running':
+            endpoints += [f'cluster/{node}/status' for node in env_cluster_nodes[1:]]
 
     return True
 
@@ -411,7 +556,7 @@ def api_test(request: _pytest.fixtures.SubRequest):
         except subprocess.CalledProcessError:
             pass
 
-        if managers_health and agents_health and haproxy_health:
+        if managers_health and agents_health and haproxy_health and check_api_ready(env_mode):
             return
 
         retries += 1

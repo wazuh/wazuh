@@ -5,6 +5,8 @@ stages:
 
   # GET /rootcheck/001/last_scan
   - name: Get when the last scan for agent 001 started and ended
+    max_retries: 30
+    delay_before: 10
     request:
       verify: False
       method: GET

@@ -964,6 +964,8 @@ stages:
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        wait_for_complete: true  # Avoid the API timeout when the node is slow
     response:
       status_code: 200
       json:
