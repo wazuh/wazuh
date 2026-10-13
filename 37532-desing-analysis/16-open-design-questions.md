@@ -435,32 +435,51 @@ message either way rather than left for a reviewer to discover.
 
 *(owner: product + this project · issue: #37203)*
 
-**True today.** No node-level benchmark exists (roadmap item 39, never run — it needs a real
-multi-container node). [04](04-findings-performance.md) models the costs and micro-benchmarks the
-`/proc` resolver, but the numbers that matter — wall-clock per rootfs size, cold-start storm at
-N = 10 / 50 / 100, image-digest de-dup saving — have never been taken. Per-dimension row budgets are
-implemented (`ce04396e50`) and validated at small N.
+**True today — updated 2026-10-13.** The node-level benchmark (roadmap item 39) **has now been run**:
+[23](23-nfr3-container-limits.md), at N = 6 / 16 / 56 containers on a real node. 96–133 inventory rows
+per container, rising with the image mix; 2,005 FIM rows per container monitoring 2,000 files;
+~700 s walk settle at N=56; agent cost 45 MB and 65 MB RSS, which is modest. Image-digest de-dup
+saving was **not** measured, and inventory figures are collection-side while
+[#40092](https://github.com/wazuh/wazuh/issues/40092) stands.
+
+**What the benchmark answers, and what it leaves to product.** "What happens above it" now has a
+code answer rather than a shrug: the agent **caps and says so** — per container and per node, naming
+the container whose rows were refused and suppressing its deletions. 50 containers × 2,000 files is
+validated end to end. What is still unanswered is the *stated* number: at the shipped 300,000-row
+budget, ~100 containers of 2,000 monitored files each is the reference point, and nobody has written
+that down as a supported figure.
 
 **The question.** Is v1 stated to support 10 containers, 50, 100? And above the stated number, does
 the agent degrade (longer intervals), cap (budgets, already present), or refuse? "Untested above N"
 is an acceptable answer only if N is written down.
 
-**Answerable by:** item 39, then a product statement.
+**Answerable by:** ~~item 39~~ — run, 2026-10-08 — **then a product statement, which is all that is
+left.**
 
 ### Q17 — Which shipped defaults are still placeholders?
 
 *(owner: this project · issue: #37532 / #37534)*
 
-**True today.** At least these, all picked rather than derived: the lifecycle journal ring size
-(4096), the reconciliation floor interval (24 h — and see Q5, the floor does not exist yet), the
-delta poll cadence, `container_baseline_interval`, the settle delay (500 ms), the resolver interval
-(5 s), `max_resolves_per_cycle` (32), and the 8 MiB ring size the provider inherits.
+**True today — updated 2026-10-13.** At least these, all picked rather than derived: the lifecycle
+journal ring size (4096), the reconciliation floor interval (24 h — and see Q5, the floor does not
+exist yet), the delta poll cadence, `container_baseline_interval`, the settle delay (500 ms), the
+resolver interval (5 s), `max_resolves_per_cycle` (32), and the 8 MiB ring size the provider
+inherits.
+
+**The limit defaults have left this list** ([23 §23.8](23-nfr3-container-limits.md)). They are derived
+from the item 39 benchmark and documented with what they are and are not: 30000 per container is a
+blast-radius guard at ~200× a realistic container's inventory, **not** a working ceiling; the
+300,000-row node budget is the number that actually bounds the agent, and is the one default here
+that changes behaviour for an agent running **no containers at all** — its "database N% full"
+warnings now fire later. The hardcoded walk caps (`max_files` 20000, `max_paths_per_container` 4096,
+`max_containers` 512) remain picked rather than derived, and remain compile-time.
 
 **The question.** Which of these are user-configurable in v1, and which are internal? Every one made
 configurable is a support surface and a compatibility commitment; every one left internal needs to be
 right by default at the scale Q16 names.
 
-**Answerable by:** item 39's numbers, then one pass over the configuration schema.
+**Answerable by:** ~~item 39's numbers~~ — taken, and the limit defaults derived from them — then one
+pass over the configuration schema for the defaults still on the list above.
 
 ### Q18 — What is the operator-facing configuration surface across two consumers? — **ANSWERED**
 
