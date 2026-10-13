@@ -52,9 +52,16 @@ endif()
 set(OPENSSL_FLAGS "enable-weak-ssl-ciphers;no-shared")
 
 if(IS_WINDOWS)
+  # mingw keeps the POSIX default prefix, so the openssl.cnf, provider and engine
+  # directories compiled into libcrypto land under C:\usr\local, which any user can
+  # create on most hosts (CVE-2019-1552). All three derive from --prefix, and only
+  # administrators can create folders in C:\Program Files, on 32- and 64-bit Windows
+  # alike. Configure takes a non-POSIX prefix only when cross-compiling, hence the
+  # cross prefix instead of a prefixed CC.
   set(OPENSSL_CONFIGURE_CMD ${EXTERNAL_DIR}/openssl/Configure ${OPENSSL_FLAGS}
-                            mingw)
-  set(OPENSSL_ENV CC=${MINGW_CC} RC=${MINGW_PREFIX}windres)
+                            mingw --cross-compile-prefix=${MINGW_PREFIX}
+                            "--prefix=C:/Program Files/ossec-agent")
+  set(OPENSSL_ENV CC=gcc RC=windres)
 elseif(IS_DARWIN)
   if(IS_AARCH64)
     set(OPENSSL_CONFIGURE_CMD ${EXTERNAL_DIR}/openssl/Configure
