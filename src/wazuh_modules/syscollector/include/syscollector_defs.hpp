@@ -43,6 +43,13 @@
     FRIEND_TEST(SyscollectorIdentityTest, ResyncStampsTheIntegrityClockPerTable);                                      \
     FRIEND_TEST(SyscollectorIdentityTest, PlainLaneFailureDoesNotRedoTheVDLaneNextCycle);                              \
     FRIEND_TEST(SyscollectorIdentityTest, DisabledVDLaneDoesNotClaimTheVDMarker);                                      \
+    FRIEND_TEST(SyscollectorIdentityTest, NextPassResendsOnlyThePendingTables);                                        \
+    FRIEND_TEST(SyscollectorIdentityTest, PassCutByStopResumesWithThePendingTables);                                   \
+    FRIEND_TEST(SyscollectorIdentityTest, PerTableMarkerFromAnotherIdIsIgnored);                                       \
+    FRIEND_TEST(SyscollectorIdentityTest, UnreadablePerTableMarkerCountsAsNotDone);                                    \
+    FRIEND_TEST(SyscollectorIdentityTest, PlainLaneMarkerDoesNotSkipTheVDLane);                                        \
+    FRIEND_TEST(SyscollectorIdentityTest, ProgressMarkersAreClearedOnceTheIdentityIsRecorded);                         \
+    FRIEND_TEST(SyscollectorIdentityTest, FailedVDTableKeepsTheVDLanePending);                                         \
     FRIEND_TEST(SyscollectorIdentityTest, VDRecoveryAttachesTheDataContext);                                           \
     FRIEND_TEST(SyscollectorIdentityTest, PlainRecoveryLeavesTheVDContextAlone);                                       \
     FRIEND_TEST(SyscollectorIdentityTest, DeferredVDRecoveryDoesNotAttachContext);                                     \

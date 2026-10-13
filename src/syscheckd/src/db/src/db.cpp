@@ -699,6 +699,26 @@ void fim_db_update_last_sync_time_value(const char* table_name, int64_t timestam
     }
 }
 
+bool fim_db_try_update_last_sync_time_value(const char* table_name, int64_t value)
+{
+    if (!table_name)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, "Invalid parameters");
+        return false;
+    }
+
+    try
+    {
+        DB::updateLastSyncTime(table_name, value);
+        return true;
+    }
+    catch (const std::exception& err)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, err.what());
+        return false;
+    }
+}
+
 int fim_db_count_synced_docs(const char* table_name)
 {
     if (!table_name)

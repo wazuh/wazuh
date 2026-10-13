@@ -527,7 +527,7 @@ add_executable(test_recovery test_recovery.c)
 target_compile_options(test_recovery PRIVATE "-Wall")
 
 set(RECOVERY_BASE_FLAGS "-Wl,--wrap,fim_db_get_last_sync_time -Wl,--wrap,fim_db_try_get_last_sync_time \
-                         -Wl,--wrap,fim_db_update_last_sync_time_value \
+                         -Wl,--wrap,fim_db_update_last_sync_time_value -Wl,--wrap,fim_db_try_update_last_sync_time_value \
                          -Wl,--wrap,fim_shutdown_process_on \
                          -Wl,--wrap,fim_db_get_every_element -Wl,--wrap,fim_db_calculate_table_checksum \
                          -Wl,--wrap,fim_db_increase_each_entry_version \

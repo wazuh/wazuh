@@ -107,6 +107,9 @@ constexpr auto SYSCOLLECTOR_SYNCED_AGENT_ID_METADATA_KEY {"synced_agent_id"};
 // cleared and resent on every cycle -- each time as a first scan, which suppresses alerts, so a
 // genuinely new CVE appearing between two of those cycles would never raise one.
 constexpr auto SYSCOLLECTOR_VD_SYNCED_AGENT_ID_METADATA_KEY {"vd_synced_agent_id"};
+// Per plain-lane table, followed by the table name: the agent id the table was last resent under,
+// so a resync cut short by a restart or a failed table resumes with the tables still pending.
+constexpr auto SYSCOLLECTOR_TABLE_SYNCED_AGENT_ID_METADATA_PREFIX {"synced_agent_id:"};
 
 static const std::map<ReturnTypeCallback, std::string> OPERATION_MAP
 {
@@ -5373,11 +5376,8 @@ void Syscollector::checkAgentIdentity()
 
     m_identityResyncAttempts.fetch_add(1);
 
-    m_logFunction(LOG_INFO,
-                  "Inventory was last synchronized as agent " + std::to_string(syncedId) +
-                  ", now running as agent " + std::to_string(currentId) + ". Resending every table.");
-
     bool anyFailed = false;
+    bool vdLaneFailed = false;
     std::vector<std::string> vdTablesResent;
 
     // Has the VD lane already landed for this identity? Only the combined marker below waits for
@@ -5387,6 +5387,44 @@ void Syscollector::checkAgentIdentity()
     int64_t vdSyncedId = 0;
     const bool vdAlreadyResent = getMetadataValue(SYSCOLLECTOR_VD_SYNCED_AGENT_ID_METADATA_KEY, vdSyncedId)
                                  && vdSyncedId == static_cast<int64_t>(currentId);
+
+    // Same rule per plain-lane table: one already resent under this id is not cleared again, and
+    // a failed read counts as "not done". VD-lane tables follow the lane's marker instead.
+    const auto tableMarkerKey = [](const std::string & tableName)
+    {
+        return std::string(SYSCOLLECTOR_TABLE_SYNCED_AGENT_ID_METADATA_PREFIX) + tableName;
+    };
+    // The VD lane exists only while m_vdSyncEnabled; otherwise its tables ride the plain lane.
+    const auto onVDLane = [this](const std::string & index)
+    {
+        return isVDIndex(index) && m_vdSyncEnabled;
+    };
+    std::set<std::string> tablesAlreadyResent;
+
+    for (const auto& [tableName, index] : INDEX_MAP)
+    {
+        if (!isCollectorEnabledForTable(tableName))
+        {
+            continue;
+        }
+
+        int64_t tableSyncedId = 0;
+        const bool alreadyResent = onVDLane(index)
+                                   ? vdAlreadyResent
+                                   : getMetadataValue(tableMarkerKey(tableName), tableSyncedId)
+                                   && tableSyncedId == static_cast<int64_t>(currentId);
+
+        if (alreadyResent)
+        {
+            tablesAlreadyResent.insert(tableName);
+        }
+    }
+
+    m_logFunction(LOG_INFO,
+                  "Inventory was last synchronized as agent " + std::to_string(syncedId) + ", now running as agent " +
+                  std::to_string(currentId) + (tablesAlreadyResent.empty()
+                                               ? ". Resending every table."
+                                               : ". Resuming the resend with the tables not yet sent under this id."));
 
     // The plain lane keeps one session per table: an index is cleared immediately before its own
     // rows are queued, so a session that never reaches the manager leaves the others untouched
@@ -5415,8 +5453,9 @@ void Syscollector::checkAgentIdentity()
         {
             if (m_stopping.load())
             {
-                // Cut short by shutdown: leave the marker alone so the next boot re-fires rather
-                // than recording a pass that never finished.
+                // Cut short by shutdown: leave the identity marker alone so the next boot re-fires
+                // rather than recording a pass that never finished. The tables already resent keep
+                // their own markers, so that pass resumes with the pending ones.
                 return;
             }
 
@@ -5433,7 +5472,7 @@ void Syscollector::checkAgentIdentity()
             // claim a lane that never ran. A later run that does enable the lane would honour
             // that marker, skip the whole VD inventory, and leave it to go out as VDSYNC --
             // an alert for every finding the manager has never seen for this identity.
-            const bool vdTable = isVDIndex(index) && m_vdSyncEnabled;
+            const bool vdTable = onVDLane(index);
 
             // pass 0 = the plain lane, one session each; pass 1 = the VD lane, queued only.
             if (vdTable != (pass == 1))
@@ -5441,11 +5480,10 @@ void Syscollector::checkAgentIdentity()
                 continue;
             }
 
-            if (vdTable && vdAlreadyResent)
+            if (tablesAlreadyResent.count(tableName) != 0)
             {
-                // Already sent under this identity by an earlier cycle whose plain lane did not
-                // finish. Clearing and requeueing it again would buy nothing and cost an alert
-                // window.
+                // Already resent under this identity by an earlier, unfinished pass. For the VD
+                // lane, clearing and requeueing it again would also cost an alert window.
                 continue;
             }
 
@@ -5456,6 +5494,7 @@ void Syscollector::checkAgentIdentity()
                 // what must not move -- recording it would claim the manager holds data it never
                 // received -- so remember the failure and leave it alone at the end.
                 anyFailed = true;
+                vdLaneFailed = vdLaneFailed || vdTable;
             }
             else if (vdTable)
             {
@@ -5472,6 +5511,10 @@ void Syscollector::checkAgentIdentity()
                 // and if that second clean is ordered after the rows queued here, it deletes
                 // them.
                 updateLastSyncTime(tableName, Utils::getSecondsFromEpoch());
+
+                // Same proof the combined marker waits for: the manager accepted the DataClean
+                // and the rows are queued in the persistent sync queue.
+                updateMetadataValue(tableMarkerKey(tableName), currentId);
             }
         }
     }
@@ -5489,7 +5532,7 @@ void Syscollector::checkAgentIdentity()
                           "will be resent as an ordinary synchronization.");
         }
 
-        if (syncModule(Mode::DELTA).success)
+        if (syncModule(Mode::DELTA).success && !vdLaneFailed)
         {
             // Recorded here, not with the combined marker at the end: this lane is done for this
             // identity even if a plain table still is not, and the next cycle must not redo it.
@@ -5502,8 +5545,8 @@ void Syscollector::checkAgentIdentity()
         }
         else
         {
-            // The rows stay queued and the marker stays unset, so the next cycle sends them as a
-            // VDFirst session too. The identity marker is what must not move.
+            // A session that did not land, or a VD table that could not be cleared: the marker
+            // stays unset, so the next cycle resends the whole VD lane as one VDFirst session.
             anyFailed = true;
         }
     }
@@ -5520,9 +5563,34 @@ void Syscollector::checkAgentIdentity()
     // the next cycle sees a mismatch and resends everything. One extra pass under rapid
     // re-enrollment churn, never a marker claiming more than was actually sent.
     //
-    // Both markers move together, and only once every table above proved the manager accepted
-    // its DataClean. Gating on a plain sync result instead would let an empty queue -- which
-    // reports success without opening a session at all -- record a cycle that never landed.
+    // Both markers move together, and only once every table proved the manager accepted its
+    // DataClean, in this pass or in an earlier one under the same id. Gating on a plain sync
+    // result instead would let an empty queue -- which reports success without opening a session
+    // at all -- record a cycle that never landed.
+    //
+    // The per-table and VD markers only mean something while this transition is in progress.
+    // Cleared first, so a later enrollment that reuses an id they hold cannot skip a table; if
+    // any of them cannot be cleared, the identity is not recorded and the next cycle retries.
+    bool resetFailed = false;
+
+    for (const auto& [tableName, index] : INDEX_MAP)
+    {
+        int64_t tableSyncedId = 0;
+
+        if ((!getMetadataValue(tableMarkerKey(tableName), tableSyncedId) || tableSyncedId != 0)
+                && !updateMetadataValue(tableMarkerKey(tableName), 0))
+        {
+            resetFailed = true;
+        }
+    }
+
+    if (resetFailed || !updateMetadataValue(SYSCOLLECTOR_VD_SYNCED_AGENT_ID_METADATA_KEY, 0))
+    {
+        m_logFunction(LOG_DEBUG, "Could not clear the inventory resync progress markers; the identity will be "
+                      "recorded on the next sync cycle.");
+        return;
+    }
+
     updateMetadataValue(SYSCOLLECTOR_SYNCED_AGENT_ID_METADATA_KEY, currentId);
     updateMetadataValue(SYSCOLLECTOR_FIRST_SYNC_COMPLETED_METADATA_KEY, Utils::getSecondsFromEpoch());
 }

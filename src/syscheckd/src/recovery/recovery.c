@@ -324,6 +324,11 @@ bool fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
  * the kernel's linux/audit.h, which is not on this translation unit's include path. */
 bool fim_shutdown_process_on(void);
 
+/* Builds the table_metadata key holding the agent id a table was last resent under. */
+static void fim_table_synced_key(const char* table_name, char* key, size_t key_size) {
+    snprintf(key, key_size, "%s%s", FIM_TABLE_SYNCED_AGENT_ID_METADATA_PREFIX, table_name);
+}
+
 bool fim_resync_on_agent_id_change(AgentSyncProtocolHandle* handle, char** table_names, int table_count, const OSList* directories_list) {
     const long current_id = asp_get_agent_id();
 
@@ -367,16 +372,39 @@ bool fim_resync_on_agent_id_change(AgentSyncProtocolHandle* handle, char** table
         return false;
     }
 
-    minfo("FIM was last synchronized as agent %ld, now running as agent %ld. Resending every monitored entry.",
-          (long)synced_id, current_id);
+    // Tables an earlier, unfinished pass already resent under this id are not cleared again. A
+    // failed read counts as "not done": one redundant resend is noise.
+    bool* already_resent = NULL;
+    bool resuming = false;
+    char table_key[OS_SIZE_256];
+
+    os_calloc(table_count > 0 ? table_count : 1, sizeof(bool), already_resent);
+
+    for (int i = 0; i < table_count; i++) {
+        int64_t table_synced_id = 0;
+        fim_table_synced_key(table_names[i], table_key, sizeof(table_key));
+        already_resent[i] = fim_db_try_get_last_sync_time(table_key, &table_synced_id) &&
+                            table_synced_id == (int64_t)current_id;
+        resuming = resuming || already_resent[i];
+    }
+
+    minfo("FIM was last synchronized as agent %ld, now running as agent %ld. %s", (long)synced_id, current_id,
+          resuming ? "Resuming the resend with the tables not yet sent under this id." : "Resending every monitored entry.");
 
     bool any_failed = false;
 
     for (int i = 0; i < table_count; i++) {
         if (fim_shutdown_process_on()) {
             // Cut short by shutdown, like the integrity loop that follows this one: leave the
-            // marker alone so the next boot re-fires rather than recording a partial pass.
+            // marker alone so the next boot re-fires rather than recording a partial pass. The
+            // tables already resent keep their own markers, so that pass resumes with the rest.
+            os_free(already_resent);
             return false;
+        }
+
+        if (already_resent[i]) {
+            mdebug1("FIM table '%s' was already resent under agent %ld; skipping it.", table_names[i], current_id);
+            continue;
         }
 
         if (!fim_recovery_persist_table_and_resync(table_names[i], handle, directories_list,
@@ -387,12 +415,35 @@ bool fim_resync_on_agent_id_change(AgentSyncProtocolHandle* handle, char** table
             // not one. The marker is the part that must not move -- recording it would claim the
             // manager holds data it never received -- so remember the failure for the end.
             any_failed = true;
+        } else {
+            // Stamp the integrity clock, so the checksum loop right after this does not clear and
+            // resend the same table again.
+            fim_db_update_last_sync_time_value(table_names[i], (int64_t)time(NULL));
+
+            // The manager accepted the DataClean and the rows are queued: this table is done for
+            // this id even if another one is not.
+            fim_table_synced_key(table_names[i], table_key, sizeof(table_key));
+            fim_db_update_last_sync_time_value(table_key, (int64_t)current_id);
         }
     }
+
+    os_free(already_resent);
 
     if (any_failed) {
         // Not fully resynchronized, so the identity is not adopted and the next cycle retries.
         return false;
+    }
+
+    // The per-table markers only mean something while this transition is in progress. Cleared
+    // first, so a later enrollment that reuses an id they hold cannot skip a table; if any of
+    // them cannot be cleared, the identity is not recorded and the next cycle retries.
+    for (int i = 0; i < table_count; i++) {
+        fim_table_synced_key(table_names[i], table_key, sizeof(table_key));
+        if (!fim_db_try_update_last_sync_time_value(table_key, 0)) {
+            mdebug1("Could not clear the FIM resync progress markers; the identity will be recorded on the next "
+                    "sync cycle.");
+            return false;
+        }
     }
 
     fim_db_update_last_sync_time_value(FIM_SYNCED_AGENT_ID_METADATA_KEY, (int64_t)current_id);
