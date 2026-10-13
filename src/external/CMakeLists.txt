@@ -42,6 +42,23 @@ else()
 endif()
 
 # ==============================================================================
+# Flags inherited from the project
+# ==============================================================================
+
+include(WazuhExternalFlags)
+
+# These libraries add a "d" postfix to their file name in a Debug build; the
+# targets that link them expect the plain name, which the precompiled ones have.
+function(deps_debug_alias target dir lib)
+  if(DEPS_BUILD_TYPE STREQUAL "Debug")
+    ExternalProject_Add_Step(
+      ${target} debug_alias
+      COMMAND ${CMAKE_COMMAND} -E copy ${dir}/${lib}d.a ${dir}/${lib}.a
+      DEPENDEES build)
+  endif()
+endfunction()
+
+# ==============================================================================
 # Section 1: Autotools-based dependencies (ExternalProject_Add)
 # ==============================================================================
 
@@ -155,7 +172,7 @@ else()
     ExternalProject_Add(
       zlib_external
       SOURCE_DIR ${EXTERNAL_DIR}/zlib
-      CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env CFLAGS=-fPIC
+      CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env "CFLAGS=-fPIC${DEPS_CFLAGS_EXTRA}"
                         ${EXTERNAL_DIR}/zlib/configure
       BUILD_COMMAND ${CMAKE_MAKE_PROGRAM} libz.a
       BUILD_IN_SOURCE TRUE
@@ -191,7 +208,7 @@ if(NOT IS_WINDOWS)
       SOURCE_DIR ${EXTERNAL_DIR}/zlib/contrib/minizip
       CONFIGURE_COMMAND ""
       BUILD_COMMAND
-        ${CMAKE_C_COMPILER} -fPIC -c
+        ${CMAKE_C_COMPILER} -fPIC ${DEPS_CFLAGS_LIST} -c
         ${EXTERNAL_DIR}/zlib/contrib/minizip/unzip.c
         ${EXTERNAL_DIR}/zlib/contrib/minizip/ioapi.c -I${EXTERNAL_DIR}/zlib
       COMMAND ar rcs ${EXTERNAL_DIR}/zlib/contrib/minizip/libminizip.a unzip.o
@@ -223,7 +240,7 @@ if(IS_WINDOWS)
       -E
       env
       CC=${MINGW_CC}
-      CFLAGS=-fPIC
+      "CFLAGS=-fPIC${DEPS_CFLAGS_EXTRA}"
       ${EXTERNAL_DIR}/libyaml/configure
       --host=${MINGW_HOST}
       --enable-static=yes)
@@ -232,7 +249,7 @@ else()
       ${CMAKE_COMMAND}
       -E
       env
-      CFLAGS=-fPIC
+      "CFLAGS=-fPIC${DEPS_CFLAGS_EXTRA}"
       ${EXTERNAL_DIR}/libyaml/configure
       --enable-static=yes
       --enable-shared=no)
@@ -320,6 +337,7 @@ elseif(IS_LINUX)
       ${CMAKE_COMMAND}
       -E
       env
+      ${DEPS_CFLAGS_ENV}
       "CPPFLAGS=-fPIC -I${EXTERNAL_DIR}/openssl/include -I${EXTERNAL_DIR}/zlib"
       "LDFLAGS=-L${EXTERNAL_DIR}/openssl -L${EXTERNAL_DIR}/zlib"
       "LIBS=-ldl -lpthread"
@@ -338,6 +356,7 @@ else() # Darwin
       ${CMAKE_COMMAND}
       -E
       env
+      ${DEPS_CFLAGS_ENV}
       "CPPFLAGS=-fPIC -I${EXTERNAL_DIR}/openssl/include"
       "LDFLAGS=-L${EXTERNAL_DIR}/openssl"
       "LIBS=-lpthread"
@@ -351,6 +370,10 @@ else() # Darwin
       --without-librtmp
       --without-zstd
       --without-libpsl)
+endif()
+# curl's configure sets its own -O level; CFLAGS alone do not change it.
+if(DEPS_BUILD_TYPE STREQUAL "Debug")
+  list(APPEND CURL_CONFIGURE_CMD --disable-optimize)
 endif()
 
 if(EXISTS ${EXTERNAL_DIR}/curl/lib/.libs/libcurl.a)
@@ -385,7 +408,7 @@ if(IS_WINDOWS)
       ${CMAKE_COMMAND}
       -E
       env
-      CFLAGS=-fPIC
+      "CFLAGS=-fPIC${DEPS_CFLAGS_EXTRA}"
       CC=${MINGW_CC}
       ${EXTERNAL_DIR}/libpcre2/configure
       --enable-jit=no
@@ -396,7 +419,7 @@ else()
       ${CMAKE_COMMAND}
       -E
       env
-      CFLAGS=-fPIC
+      "CFLAGS=-fPIC${DEPS_CFLAGS_EXTRA}"
       ${EXTERNAL_DIR}/libpcre2/configure
       --enable-jit=auto
       --disable-shared)
@@ -442,7 +465,7 @@ if(IS_LINUX AND IS_AGENT)
       audit_external
       SOURCE_DIR ${EXTERNAL_DIR}/audit-userspace
       CONFIGURE_COMMAND ${EXTERNAL_DIR}/audit-userspace/autogen.sh
-      COMMAND ${CMAKE_COMMAND} -E env CFLAGS=-fPIC
+      COMMAND ${CMAKE_COMMAND} -E env "CFLAGS=-fPIC${DEPS_CFLAGS_EXTRA}"
               ${EXTERNAL_DIR}/audit-userspace/configure --with-libcap-ng=no
       BUILD_COMMAND ${CMAKE_MAKE_PROGRAM} -C lib
       BUILD_IN_SOURCE TRUE
@@ -482,7 +505,7 @@ if(NOT IS_AGENT)
     ExternalProject_Add(
       libffi_external
       SOURCE_DIR ${EXTERNAL_DIR}/libffi
-      CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env CFLAGS=-fPIC
+      CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env "CFLAGS=-fPIC${DEPS_CFLAGS_EXTRA}"
                         ${EXTERNAL_DIR}/libffi/configure --enable-builddir=build
       BUILD_COMMAND ${CMAKE_MAKE_PROGRAM}
       BUILD_IN_SOURCE TRUE
@@ -544,7 +567,7 @@ if(NOT IS_WINDOWS)
       SOURCE_DIR ${EXTERNAL_DIR}/bzip2
       CONFIGURE_COMMAND ""
       BUILD_COMMAND ${CMAKE_MAKE_PROGRAM}
-                    "CFLAGS=-fpic -Wall -O2 -D_FILE_OFFSET_BITS=64" libbz2.a
+                    "CFLAGS=-fpic -Wall -O2 -D_FILE_OFFSET_BITS=64${DEPS_CFLAGS_EXTRA}" libbz2.a
       BUILD_IN_SOURCE TRUE
       INSTALL_COMMAND ""
       BUILD_BYPRODUCTS ${EXTERNAL_DIR}/bzip2/libbz2.a)
@@ -571,7 +594,7 @@ if(IS_LINUX AND IS_AGENT)
       libdb_external
       SOURCE_DIR ${EXTERNAL_DIR}/libdb/build_unix
       CONFIGURE_COMMAND
-        ${CMAKE_COMMAND} -E env CPPFLAGS=-fPIC
+        ${CMAKE_COMMAND} -E env ${DEPS_CFLAGS_ENV} CPPFLAGS=-fPIC
         ${EXTERNAL_DIR}/libdb/dist/configure --with-cryptography=no
         --disable-queue --disable-heap --disable-partition
         --disable-mutexsupport --disable-replication --disable-verify
@@ -607,8 +630,8 @@ if(IS_LINUX AND IS_AGENT)
       # Upstream CFLAGS without -march=native, so the library runs on any CPU of the target architecture.
       BUILD_COMMAND
         ${CMAKE_MAKE_PROGRAM} all
-        "CFLAGS=-Wall -O2 -fPIC -DLUA_USE_LINUX -fno-stack-protector -fno-common"
-        "MYLIBS=-lm -ldl"
+        "CFLAGS=-Wall -O2 -fPIC -DLUA_USE_LINUX -fno-stack-protector -fno-common${DEPS_CFLAGS_EXTRA}"
+        "MYLIBS=-lm -ldl${DEPS_CFLAGS_EXTRA}"
       BUILD_IN_SOURCE TRUE
       INSTALL_COMMAND ""
       BUILD_BYPRODUCTS ${EXTERNAL_DIR}/lua/liblua.a)
@@ -647,7 +670,7 @@ if(IS_LINUX AND IS_AGENT)
       dbus_external
       SOURCE_DIR ${EXTERNAL_DIR}/dbus
       CONFIGURE_COMMAND
-        ${CMAKE_COMMAND} -E env CFLAGS=-fPIC CXXFLAGS=-fPIC LDFLAGS=-fPIC
+        ${CMAKE_COMMAND} -E env "CFLAGS=-fPIC${DEPS_CFLAGS_EXTRA}" "CXXFLAGS=-fPIC${DEPS_CFLAGS_EXTRA}" LDFLAGS=-fPIC
         ${EXTERNAL_DIR}/dbus/configure ${DBUS_CONFIG_OPTS}
       BUILD_COMMAND ${CMAKE_MAKE_PROGRAM}
       INSTALL_COMMAND ${CMAKE_MAKE_PROGRAM} install
@@ -715,7 +738,7 @@ if(NOT IS_AGENT AND NOT IS_WINDOWS)
       rocksdb_external
       SOURCE_DIR ${EXTERNAL_DIR}/rocksdb
       BINARY_DIR ${EXTERNAL_DIR}/rocksdb/build
-      CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release
+      CMAKE_ARGS ${DEPS_CMAKE_ARGS}
                  -DWITH_GFLAGS=0
                  -DWITH_TESTS=0
                  -DWITH_BENCHMARK_TOOLS=0
@@ -760,7 +783,7 @@ if(NOT IS_AGENT AND NOT IS_WINDOWS)
       simdjson_external
       SOURCE_DIR ${EXTERNAL_DIR}/simdjson
       BINARY_DIR ${EXTERNAL_DIR}/simdjson/build
-      CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DSIMDJSON_DEVELOPER_MODE=OFF
+      CMAKE_ARGS ${DEPS_CMAKE_ARGS} -DSIMDJSON_DEVELOPER_MODE=OFF
                  -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=1
       INSTALL_COMMAND ""
       BUILD_BYPRODUCTS ${EXTERNAL_DIR}/simdjson/build/libsimdjson.a)
@@ -792,7 +815,7 @@ if(NOT IS_AGENT AND NOT IS_WINDOWS)
       SOURCE_DIR ${EXTERNAL_DIR}/abseil-cpp
       BINARY_DIR ${EXTERNAL_DIR}/abseil-cpp/build
       CMAKE_ARGS
-        -DCMAKE_BUILD_TYPE=Release
+        ${DEPS_CMAKE_ARGS}
         -DABSL_BUILD_TESTING=OFF
         -DABSL_USE_GOOGLETEST_HEAD=OFF
         -DCMAKE_CXX_STANDARD=17
@@ -822,7 +845,7 @@ if(NOT IS_AGENT AND NOT IS_WINDOWS)
       SOURCE_DIR ${EXTERNAL_DIR}/re2
       BINARY_DIR ${EXTERNAL_DIR}/re2/build
       CMAKE_ARGS
-        -DCMAKE_BUILD_TYPE=Release
+        ${DEPS_CMAKE_ARGS}
         -DRE2_BUILD_TESTING=OFF
         -DCMAKE_CXX_STANDARD=17
         -DBUILD_SHARED_LIBS=OFF
@@ -860,7 +883,7 @@ else()
     flatbuffers_external
     SOURCE_DIR ${EXTERNAL_DIR}/flatbuffers
     BINARY_DIR ${EXTERNAL_DIR}/flatbuffers/build
-    CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DFLATBUFFERS_BUILD_TESTS=0
+    CMAKE_ARGS ${DEPS_CMAKE_ARGS} -DFLATBUFFERS_BUILD_TESTS=0
                -DFLATBUFFERS_INSTALL=0 -DCMAKE_POSITION_INDEPENDENT_CODE=1
                "-DCMAKE_EXE_LINKER_FLAGS=${FLATBUFFERS_EXE_LINKER_FLAGS}"
     INSTALL_COMMAND ""
@@ -889,7 +912,7 @@ if(NOT IS_AGENT AND NOT IS_WINDOWS)
       spdlog_external
       SOURCE_DIR ${EXTERNAL_DIR}/spdlog
       BINARY_DIR ${EXTERNAL_DIR}/spdlog/build
-      CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release
+      CMAKE_ARGS ${DEPS_CMAKE_ARGS}
                  -DSPDLOG_BUILD_EXAMPLE=OFF
                  -DSPDLOG_BUILD_TESTS=OFF
                  -DSPDLOG_BUILD_BENCH=OFF
@@ -898,6 +921,7 @@ if(NOT IS_AGENT AND NOT IS_WINDOWS)
                  -DCMAKE_POSITION_INDEPENDENT_CODE=ON
       INSTALL_COMMAND ""
       BUILD_BYPRODUCTS ${EXTERNAL_DIR}/spdlog/build/libspdlog.a)
+    deps_debug_alias(spdlog_external ${EXTERNAL_DIR}/spdlog/build libspdlog)
   endif()
 
   add_library(ext_spdlog STATIC IMPORTED GLOBAL)
@@ -922,10 +946,11 @@ if(NOT IS_AGENT AND NOT IS_WINDOWS)
       yamlcpp_external
       SOURCE_DIR ${EXTERNAL_DIR}/yaml-cpp
       BINARY_DIR ${EXTERNAL_DIR}/yaml-cpp/build
-      CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DYAML_CPP_BUILD_TOOLS=OFF
+      CMAKE_ARGS ${DEPS_CMAKE_ARGS} -DYAML_CPP_BUILD_TOOLS=OFF
                  -DYAML_CPP_BUILD_TESTS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=1
       INSTALL_COMMAND ""
       BUILD_BYPRODUCTS ${EXTERNAL_DIR}/yaml-cpp/build/libyaml-cpp.a)
+    deps_debug_alias(yamlcpp_external ${EXTERNAL_DIR}/yaml-cpp/build libyaml-cpp)
   endif()
 
   add_library(ext_yamlcpp STATIC IMPORTED GLOBAL)
@@ -950,7 +975,7 @@ if(NOT IS_AGENT AND NOT IS_WINDOWS)
       pugixml_external
       SOURCE_DIR ${EXTERNAL_DIR}/pugixml
       BINARY_DIR ${EXTERNAL_DIR}/pugixml/build
-      CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DPUGIXML_BUILD_TESTS=OFF
+      CMAKE_ARGS ${DEPS_CMAKE_ARGS} -DPUGIXML_BUILD_TESTS=OFF
                  -DCMAKE_POSITION_INDEPENDENT_CODE=1
       INSTALL_COMMAND ""
       BUILD_BYPRODUCTS ${EXTERNAL_DIR}/pugixml/build/libpugixml.a)
@@ -980,7 +1005,7 @@ if(NOT IS_AGENT AND NOT IS_WINDOWS)
       maxminddb_external
       SOURCE_DIR ${EXTERNAL_DIR}/libmaxminddb
       BINARY_DIR ${EXTERNAL_DIR}/libmaxminddb/build
-      CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
+      CMAKE_ARGS ${DEPS_CMAKE_ARGS} -DBUILD_TESTING=OFF
                  -DCMAKE_POSITION_INDEPENDENT_CODE=1
       INSTALL_COMMAND ""
       BUILD_BYPRODUCTS ${EXTERNAL_DIR}/libmaxminddb/build/libmaxminddb.a)
@@ -1008,10 +1033,11 @@ if(NOT IS_AGENT AND NOT IS_WINDOWS)
       protobuf_external
       SOURCE_DIR ${EXTERNAL_DIR}/protobuf
       BINARY_DIR ${EXTERNAL_DIR}/protobuf/build
-      CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -Dprotobuf_BUILD_TESTS=OFF
+      CMAKE_ARGS ${DEPS_CMAKE_ARGS} -Dprotobuf_BUILD_TESTS=OFF
                  -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON
       INSTALL_COMMAND ""
       BUILD_BYPRODUCTS ${EXTERNAL_DIR}/protobuf/build/libprotobuf.a)
+    deps_debug_alias(protobuf_external ${EXTERNAL_DIR}/protobuf/build libprotobuf)
   endif()
 
   add_library(ext_protobuf STATIC IMPORTED GLOBAL)
@@ -1036,7 +1062,7 @@ if(NOT IS_AGENT AND NOT IS_WINDOWS)
       date_external
       SOURCE_DIR ${EXTERNAL_DIR}/date
       BINARY_DIR ${EXTERNAL_DIR}/date/build
-      CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release
+      CMAKE_ARGS ${DEPS_CMAKE_ARGS}
                  -DENABLE_DATE_TESTING=OFF
                  -DUSE_SYSTEM_TZ_DB=OFF
                  -DBUILD_TZ_LIB=ON
@@ -1071,10 +1097,11 @@ if(NOT IS_AGENT AND NOT IS_WINDOWS)
       fmt_external
       SOURCE_DIR ${EXTERNAL_DIR}/fmt
       BINARY_DIR ${EXTERNAL_DIR}/fmt/build
-      CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DFMT_TEST=OFF -DFMT_DOC=OFF
+      CMAKE_ARGS ${DEPS_CMAKE_ARGS} -DFMT_TEST=OFF -DFMT_DOC=OFF
                  -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON
       INSTALL_COMMAND ""
       BUILD_BYPRODUCTS ${EXTERNAL_DIR}/fmt/build/libfmt.a)
+    deps_debug_alias(fmt_external ${EXTERNAL_DIR}/fmt/build libfmt)
   endif()
 
   add_library(ext_fmt STATIC IMPORTED GLOBAL)
@@ -1191,7 +1218,7 @@ else()
     zstd_external
     SOURCE_DIR ${EXTERNAL_DIR}/zstd/build/cmake
     BINARY_DIR ${ZSTD_BINARY_DIR}
-    CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release
+    CMAKE_ARGS ${DEPS_CMAKE_ARGS}
                -DBUILD_SHARED_LIBS=OFF
                -DZSTD_BUILD_STATIC=ON
                -DZSTD_BUILD_SHARED=OFF
@@ -1442,7 +1469,7 @@ if(IS_LINUX AND IS_AGENT)
       "-L${EXTERNAL_DIR}/openssl" "-L${EXTERNAL_DIR}/zlib"
       "-L${EXTERNAL_DIR}/popt/build/output/src/.libs"
       "-L${EXTERNAL_DIR}/sqlite" "-L${EXTERNAL_DIR}/lua")
-  string(JOIN " " RPM_CFLAGS_STR "-fPIC" ${RPM_INC_PATHS} ${RPM_LIB_PATHS})
+  string(JOIN " " RPM_CFLAGS_STR "-fPIC" ${DEPS_CFLAGS_LIST} ${RPM_INC_PATHS} ${RPM_LIB_PATHS})
 
   if(EXISTS ${EXTERNAL_DIR}/rpm/builddir/librpm.a)
     message(STATUS "Using precompiled RPM library")

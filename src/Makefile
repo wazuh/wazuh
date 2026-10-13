@@ -114,6 +114,9 @@ endif
 ifneq (,$(filter ${TSANITIZE},YES yes y Y 1))
 CMAKE_OPTS+=-DTSANITIZE=ON
 endif
+ifneq (,$(filter ${EXTERNAL_SANITIZE},YES yes y Y 1))
+CMAKE_OPTS+=-DEXTERNAL_SANITIZE=ON
+endif
 ifneq (,$(filter ${DISABLE_JEMALLOC},YES yes y Y 1))
 CMAKE_OPTS+=-DDISABLE_JEMALLOC=ON
 endif
@@ -888,6 +891,8 @@ ifneq ($(wildcard external/*/*),)
 	rm -rf $(EXTERNAL_POPT)build
 	rm -rf $(EXTERNAL_RPM)builddir
 	rm -rf $(EXTERNAL_LLHTTP)build
+	rm -rf external/zstd/build/cmake-build*
+	rm -rf ${EXTERNAL_DBUS}lib
 # Manually-compiled dependencies - remove object files and build artifacts
 	rm -f $(EXTERNAL_JSON)*.o $(EXTERNAL_JSON)*.a
 	rm -f $(EXTERNAL_SQLITE)*.o $(EXTERNAL_SQLITE)*.a

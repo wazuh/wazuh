@@ -245,6 +245,12 @@ Grype applies no verdicts here: CVEs that do not affect a dependency are recorde
 
 The precompiled-fetch rules in `src/Makefile` (`external-precompiled/%.tar.gz` and its cpython counterpart) never fail `make deps`: a missing precompiled tarball is non-fatal and CMake falls back to source compilation. The generic rule prints a `[!] Precompiled <dep> ...` line when the tarball exists but cannot be used (a server or network error, or a broken archive); a 403 or 404, how a platform without binaries looks, stays silent. The cpython rule stays silent in every case. A packing-path bug (a binary placed under `linux/amd64/` when `make deps` looked for `linux/aarch64/`, say) therefore does not fail `make deps`. The smoke-build analysis step catches it by grepping the build log for `Performing build step for '<dep>_external'` and `Building ... ext_<dep>.dir/`. Treat any smoke-build warning as a blocker.
 
+### Source builds inherit the project's Debug flags
+
+With `make DEBUG=yes EXTERNAL_SRC_ONLY=yes`, the dependencies are built in Debug with `-g -O0` (curl with `--disable-optimize`; `src/cmake/WazuhExternalFlags.cmake` computes `DEPS_BUILD_TYPE` and `DEPS_CFLAGS_LIST`). `FSANITIZE=yes` or `TSANITIZE=yes` instrument only the project's C++, as without this; add `EXTERNAL_SANITIZE=yes` to instrument the dependencies too. That is meant for C++ module tests: the project's C executables (for example `block-ip`) link `libwazuhext`, which holds the dependencies, without a sanitizer runtime, so they no longer link. Windows legs, openssl, jemalloc, popt (its CMake recipe gets no arguments) and the dependencies with their own build scripts take none of these flags.
+
+Pool artifacts are always Release and uninstrumented: the variables are empty otherwise, `build_external.sh` refuses to run with `DEBUG`, `FSANITIZE`, `TSANITIZE` or `EXTERNAL_SANITIZE` set, calls make with them empty and without `MAKEFLAGS`, `CMAKE_OPTS` or `CMAKE_BUILD_TYPE` from the environment, and fails if the configured cache is Debug or instrumented. A build tree left by an earlier build is not rebuilt, so run `make clean-external` when switching between Release, Debug and a sanitizer.
+
 ### macOS and Windows are agent-only
 
 There are no manager builder images for darwin or windows. The matrix reflects this; do not add manager entries for those systems.
