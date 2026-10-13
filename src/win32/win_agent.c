@@ -20,6 +20,7 @@
 #include "execd.h"
 #include "md5_op.h"
 #include "external/cJSON/cJSON.h"
+#include <openssl/crypto.h>
 
 #ifndef ARGV0
 #define ARGV0 "wazuh-agent"
@@ -138,6 +139,12 @@ STATIC int run_service_restart(void)
 
 int main(int argc, char **argv)
 {
+    /* Never read an openssl.cnf: Wazuh ships none, and OpenSSL's compiled-in directory is not ours
+     * to trust. Configuration loads once per process, so this first call turns every later request
+     * (libcurl, the hash helpers, enrollment TLS) into a no-op. Ahead of everything below, because
+     * --show-token and the other early subcommands reach OpenSSL too. */
+    OPENSSL_init_crypto(OPENSSL_INIT_NO_LOAD_CONFIG, NULL);
+
     /* Decoding a token is a pure function of stdin, so it is answered before anything here looks
      * at the installation -- in particular before the chdir() below, which exits the process on
      * failure. The package installer calls this while it is still rewriting ossec.conf, and an

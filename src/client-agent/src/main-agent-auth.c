@@ -16,6 +16,9 @@
 #include "shared.h"
 #include "agentd.h"
 #include "agent_auth_cli.h"
+#ifdef WIN32
+#include <openssl/crypto.h>
+#endif
 
 #define AGENT_AUTH_NAME "wazuh-agent-auth"
 
@@ -25,6 +28,11 @@ int main(int argc, char **argv) {
     char *home_path = NULL;
     int c;
     int result;
+
+#ifdef WIN32
+    // Never read an openssl.cnf; the first init decides for the whole process
+    OPENSSL_init_crypto(OPENSSL_INIT_NO_LOAD_CONFIG, NULL);
+#endif
 
     w_agent_auth_opts_init(&opts);
 
