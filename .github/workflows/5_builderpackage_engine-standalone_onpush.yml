@@ -8,8 +8,73 @@ on:
     paths:
       - '.github/workflows/5_builderpackage_engine-standalone.yml'
       - '.github/workflows/5_builderpackage_engine-standalone_onpush.yml'
-      - 'src/engine/**'
-      - 'packages/**'
+      # Callee plumbing (5_builderpackage_engine-standalone.yml:103, :114, :164, :261)
+      - '.github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh'
+      # sourced by pull_image_from_ghcr.sh (RETRY_SCRIPT, line 6)
+      - '.github/scripts/run_with_retry.sh'
+      - '.github/actions/upload_s3_artifact/**'
+      - '.github/actions/download_s3_artifact/**'
+      # Image tag, package name and extracted directory (callee :70, generate_package.sh:178)
+      - 'VERSION.json'
+      # No packages/**: the builder image is pulled prebuilt from ghcr by version tag
+      # (--dont-build-docker, callee :103/:108), published only after merge by the push dispatcher
+      # 5_builderprecompiled_docker-images-upload.yml; a PR's packages/ never reaches it.
+      #
+      # The release engine binary (docker-entrypoint.sh:28, plain make: no test/ or benchmark/).
+      - 'src/engine/CMakeLists.txt'
+      - 'src/engine/source/**'
+      - '!src/engine/source/**/test/**'
+      - '!src/engine/source/**/benchmark/**'
+      # Packaging scripts, and what generate_package.sh copies or runs
+      - 'src/engine/standalone/**'
+      # engine_schema.py generate (generate_package.sh:185-191)
+      - 'src/engine/tools/engine-schema/**'
+      # schema templates and the copied schemas/enrichments (generate_package.sh:186-191, :223-231)
+      - 'src/engine/ruleset/schemas/**'
+      # Link closure outside src/engine. The engine is configured inside the src/ tree
+      # (add_subdirectory(engine), src/CMakeLists.txt:278).
+      - 'src/CMakeLists.txt'
+      # wazuh_link_jemalloc(wazuh-engine) (src/engine/CMakeLists.txt:373, src/cmake/WazuhJemalloc.cmake:20)
+      - 'src/cmake/**'
+      # wazuhext, rocksdb and the vendored libraries (src/CMakeLists.txt:237); librocksdb, libjemalloc
+      # and libwazuhext are shipped in the package (generate_package.sh:243-245)
+      - 'src/external/CMakeLists.txt'
+      # make deps / build (docker-entrypoint.sh:22-28); pins http-request (src/Makefile:98);
+      # downloads tzdata, geo_db and the WCS flat files the package embeds
+      - 'src/Makefile'
+      # Ref list for every ref-based `make deps` download (src/Makefile:708)
+      - 'tools/get_git_refs.sh'
+      # Submodule gitlink: urlrequest, linked by conf and geo (source/conf/CMakeLists.txt:13,
+      # source/geo/CMakeLists.txt:17) and by indexer_connector. Moves together with src/Makefile:98.
+      - 'src/shared_modules/http-request'
+      # include_directories (src/engine/CMakeLists.txt:195)
+      - 'src/shared_modules/utils/**'
+      # commonDefs.h, on the indexer_connector/keystore include path (indexer_connector/CMakeLists.txt:33)
+      - 'src/shared_modules/common/**'
+      # base links manager_config (source/base/CMakeLists.txt:47)
+      - 'src/shared_modules/manager_config/**'
+      # wiconnector links indexer_connector (source/wiconnector/CMakeLists.txt:24); its .so is
+      # shipped in the package (generate_package.sh:246)
+      - 'src/shared_modules/indexer_connector/**'
+      # linked by indexer_connector (indexer_connector/CMakeLists.txt:52)
+      - 'src/shared_modules/keystore/**'
+      # Other components' test trees, harnesses and tools: never linked into the engine.
+      - '!src/shared_modules/utils/tests/**'
+      - '!src/shared_modules/utils/benchmark/**'
+      - '!src/shared_modules/utils/mocks/**'
+      - '!src/shared_modules/utils/flatbuffers/**'
+      - '!src/shared_modules/manager_config/tests/**'
+      - '!src/shared_modules/manager_config/cli/**'
+      - '!src/shared_modules/indexer_connector/tests/**'
+      - '!src/shared_modules/indexer_connector/qa/**'
+      - '!src/shared_modules/indexer_connector/testtool/**'
+      - '!src/shared_modules/keystore/tests/**'
+      - '!src/shared_modules/keystore/qa/**'
+      - '!src/shared_modules/keystore/testtool/**'
+      # READMEs build nothing ...
+      - '!src/**/*.md'
+      # ... except the standalone README, which ships in the package (generate_package.sh:240).
+      - 'src/engine/standalone/README.md'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -28,5 +93,7 @@ jobs:
     uses: ./.github/workflows/5_builderpackage_engine-standalone.yml
     secrets: inherit
     with:
-      wazuh-branch: ${{ github.head_ref }}
+      # The PR merge ref, as every other lane checks out: head_ref built the branch tip (not the
+      # result of merging into the base) and whatever was pushed last while the run was queued.
+      wazuh-branch: refs/pull/${{ github.event.pull_request.number }}/merge
       build-type: 'release'

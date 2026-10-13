@@ -9,6 +9,11 @@ on:
       - 'framework/**/*.py'
       - 'api/**/*.py'
       - 'wodles/**/*.py'
+      # setup-python reads it below
+      - 'framework/.python-version'
+      # Both scans exclude the test trees (-x '**/test/**,**/tests/**')
+      - '!**/test/**'
+      - '!**/tests/**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -47,7 +52,9 @@ jobs:
 
       - name: Run bandit scan on PR changes
         env:
-          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          # The commit actions/checkout fetched (the merge commit on a pull request): the head
+          # branch name does not resolve in this clone when the PR comes from a fork
+          HEAD_SHA: ${{ github.sha }}
         run: |
-          git checkout ${HEAD_REF}
+          git checkout ${HEAD_SHA}
           bandit -r ${{ env.PYTHON_DIRS }} -x '**/test/**,**/tests/**' --baseline bandit_baseline.json

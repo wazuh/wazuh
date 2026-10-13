@@ -5,11 +5,46 @@ on:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - ".github/workflows/5_testunit_managercerts.yml"
+      # The module, its tests and tests/ci/assert_no_skipped_tests.sh (run by both jobs below).
       - "src/shared_modules/manager_certs/**"
+      # manager_certs_core links ca_bundle PUBLIC (CMakeLists.txt:40), so every target built here
+      # (utest, CLI) compiles its headers and links its archive. Its test/ is not in the closure.
+      - "src/shared_modules/ca_bundle/CMakeLists.txt"
+      - "src/shared_modules/ca_bundle/include/**"
+      - "src/shared_modules/ca_bundle/src/**"
+      # bin/wazuh-manager-certs links manager_config (CMakeLists.txt:63), which embeds its schema at
+      # configure time (manager_config/CMakeLists.txt:20-28); the CLI and component ctests run it.
+      - "src/shared_modules/manager_config/CMakeLists.txt"
+      - "src/shared_modules/manager_config/include/**"
+      - "src/shared_modules/manager_config/src/**"
+      - "src/shared_modules/manager_config/schema/**"
+      # Configure path: build_target_cpp configures src/ as one tree -- src/CMakeLists.txt (registers
+      # this module at :288, includes src/cmake/*.cmake at :85-87 -- wazuh_set_runtime_rpath comes
+      # from WazuhRpath.cmake -- and reads VERSION.json at :128, the string manager_certs_cli asserts)
+      # and src/external/CMakeLists.txt, which defines ssl/crypto/ext_curl/ext_zlib linked here.
+      - "src/CMakeLists.txt"
+      - "src/cmake/**"
+      - "src/external/CMakeLists.txt"
+      - "VERSION.json"
+      # build_external_deps runs `make deps`/`make build-external` (src/Makefile; its ref list comes
+      # from tools/get_git_refs.sh, src/Makefile:708) and builds the http-request submodule
+      # (action.yml:35-43, also configured at src/CMakeLists.txt:244). A submodule bump changes only
+      # the gitlink path, which `http-request/**` would never match.
+      - "src/Makefile"
+      - "tools/get_git_refs.sh"
+      - "src/shared_modules/http-request"
+      # Result-affecting actions this workflow executes. test_cpp is NOT used: both jobs run ctest
+      # elevated by hand. upload_s3_artifact is left out on purpose: coverage_cpp calls it with
+      # continue-on-error (coverage_cpp/action.yml:112-121), so it can only report, and the agent
+      # package and -rtr lanes exercise it on PRs.
       - ".github/actions/build_external_deps/**"
       - ".github/actions/build_target_cpp/**"
       - ".github/actions/coverage_cpp/**"
-      - ".github/actions/test_cpp/**"
+      - ".github/actions/reinstall_cmake/**"
+      - "tools/devContainer/reinstall-cmake.sh"
+      - ".github/actions/setup-sccache/**"
+      # Prose: no build or test reads it.
+      - "!src/shared_modules/manager_certs/README.md"
   workflow_dispatch:
 
 concurrency:

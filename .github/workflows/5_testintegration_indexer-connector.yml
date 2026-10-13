@@ -1,0 +1,109 @@
+name: "5.X - Indexer Connector - Integration tests"
+on:
+  pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
+    paths:
+      - ".github/workflows/5_testintegration_indexer-connector.yml"
+      # The suite (qa/test_efficacy_log.py) runs build/bin/indexer_connector_tool
+      # (testtool/CMakeLists.txt:17-23), which links the indexer_connector library built from src/
+      # and include/ (CMakeLists.txt:45-53); the suite generates its configurations and events per
+      # test. Every CMakeLists.txt of the module is on the configure path (CMakeLists.txt:61,64).
+      # Not the unit or component tests, nor the testtool's README.md, docker-compose.yml or
+      # sample input/ (neither main.cpp nor the suite reads it).
+      - "src/shared_modules/indexer_connector/**/CMakeLists.txt"
+      - "src/shared_modules/indexer_connector/include/**"
+      - "src/shared_modules/indexer_connector/src/**"
+      - "src/shared_modules/indexer_connector/testtool/*.cpp"
+      - "src/shared_modules/indexer_connector/testtool/*.hpp"
+      - "src/shared_modules/indexer_connector/qa/**"
+      # Linked: keystore (CMakeLists.txt:52-53; the testtool seeds the indexer credentials into it,
+      # testtool/main.cpp) and urlrequest from the http-request submodule (gitlink below).
+      # keystore: built standalone with everything in it by build_external_deps/action.yml:45-53
+      # (wazuh-manager-keystore, testtool) -- not its qa/ suite.
+      - "src/shared_modules/keystore/**"
+      - "!src/shared_modules/keystore/qa/**"
+      # The testtool includes shared/include/logging_helper.h (testtool/main.cpp:3, include dir at
+      # testtool/CMakeLists.txt:7).
+      - "src/shared/include/logging_helper.h"
+      # Headers from shared_modules/utils and common/commonDefs.h (included by
+      # utils/loggerHelper.h:15). utils/flatbuffers is built by build_external_deps/action.yml:55-63.
+      # utils' own tests and benchmark are another component's tree; only their CMakeLists.txt are on
+      # the configure path (utils/CMakeLists.txt).
+      - "src/shared_modules/utils/**"
+      - "!src/shared_modules/utils/tests/**"
+      - "!src/shared_modules/utils/benchmark/**"
+      - "src/shared_modules/utils/tests/CMakeLists.txt"
+      - "src/shared_modules/utils/benchmark/CMakeLists.txt"
+      - "src/shared_modules/common/**"
+      # Configure path: build_target_cpp configures all of src/ as one tree
+      # (build_target_cpp/action.yml:57) -- src/CMakeLists.txt (src/cmake/*.cmake at :86-87,
+      # VERSION.json at :128) and src/external/CMakeLists.txt (ext_* targets, wazuhext at :1474).
+      - "src/CMakeLists.txt"
+      - "src/cmake/**"
+      - "src/external/CMakeLists.txt"
+      - "VERSION.json"
+      # build_external_deps runs make deps/build-external (src/Makefile:610, ref list from
+      # tools/get_git_refs.sh at src/Makefile:708) and builds the http-request submodule
+      # (action.yml:35-43). A submodule bump changes only the gitlink path, which no '/**'
+      # pattern matches.
+      - "src/Makefile"
+      - "tools/get_git_refs.sh"
+      - "src/shared_modules/http-request"
+      # Result-affecting actions and scripts (reinstall_cmake runs tools/devContainer/reinstall-cmake.sh).
+      - ".github/actions/build_external_deps/**"
+      - ".github/actions/build_target_cpp/**"
+      - ".github/actions/reinstall_cmake/**"
+      - "tools/devContainer/reinstall-cmake.sh"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  indexer-connector-integration:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Cancel previous runs
+        uses: fkirc/skip-duplicate-actions@master
+        with:
+          cancel_others: 'true'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          skip_after_successful_duplicate: 'false'
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install compatible CMake
+        uses: ./.github/actions/reinstall_cmake
+
+      - name: Build external dependencies
+        uses: ./.github/actions/build_external_deps
+
+      # The QA harness: indexer_connector_tool runs the real connector against the test indexer and
+      # seeds the indexer credentials of each case's config.json into the keystore.
+      - name: Indexer Connector - Test tool
+        uses: ./.github/actions/build_target_cpp
+        with:
+          target: "indexer_connector_tool"
+          test: "false"
+          asan: "false"
+
+      - name: Install dependencies
+        run: |
+          pip install -r src/shared_modules/indexer_connector/qa/requirements.txt
+
+      # Each case starts its own single-node OpenSearch container (security disabled) on
+      # localhost:9200 through the docker SDK, and chdirs to src/ to run build/bin/indexer_connector_tool.
+      - name: Run integration QA
+        run: |
+          cd src/shared_modules/indexer_connector/qa
+          python -m pytest -vv --log-cli-level=INFO

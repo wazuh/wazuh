@@ -10,7 +10,11 @@ on:
           Default is '4.x'.
         required: false
         default: "4.x"
+  # On this (5.x) branch this file is a deprecated stub; 5_codeanalysis_coverity-image.yml owns the
+  # same path here. Scoped to the 4.x release branches so a 5.x push no longer runs it.
   push:
+    branches:
+      - '[0-4].[0-9]+.[0-9]+'
     paths:
       - "tools/testing/coverity/**"
 

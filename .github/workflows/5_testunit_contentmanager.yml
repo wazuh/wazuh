@@ -5,12 +5,59 @@ on:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - ".github/workflows/5_testunit_contentmanager.yml"
+      # content_manager_utest and content_manager_ctest (tests/unit, tests/component) link the
+      # content_manager library built from src/ and include/ (CMakeLists.txt:51-56). Every
+      # CMakeLists.txt of the module is on the configure path (CMakeLists.txt:64,67). Not the
+      # testtool sources (target not built here), README.md or doc/.
+      - "src/shared_modules/content_manager/**/CMakeLists.txt"
+      - "src/shared_modules/content_manager/include/**"
+      - "src/shared_modules/content_manager/src/**"
+      - "src/shared_modules/content_manager/tests/**"
+      # Linked: indexer_connector (CMakeLists.txt:55-56, tests/component/CMakeLists.txt:38), and
+      # through it keystore (indexer_connector/CMakeLists.txt:52-53; keystore is also built
+      # standalone by build_external_deps/action.yml:45-53) -- none of their test trees or qa/.
+      - "src/shared_modules/indexer_connector/**/CMakeLists.txt"
+      - "src/shared_modules/indexer_connector/include/**"
+      - "src/shared_modules/indexer_connector/src/**"
+      - "src/shared_modules/keystore/**"
+      - "!src/shared_modules/keystore/qa/**"
+      # Header-only use of the UDS transport (CMakeLists.txt:21-26: contentOnDemand.hpp,
+      # onDemandManager.hpp include uds_http_server/IUdsHttpServer.hpp and logThrottle.hpp) and of
+      # shared/include/defs.h (src/components/executionContext.hpp:17).
+      - "src/shared_modules/uds_http_server/include/**"
+      - "src/shared/include/defs.h"
+      # Headers from shared_modules/utils (CMakeLists.txt:37-38) and common/commonDefs.h
+      # (include/content_manager.h:28, utils/loggerHelper.h:15). utils/flatbuffers is built by
+      # build_external_deps/action.yml:55-63. utils' own tests and benchmark are another component's
+      # tree; only their CMakeLists.txt are on the configure path (utils/CMakeLists.txt).
       - "src/shared_modules/utils/**"
-      - "src/shared_modules/content_manager/**"
+      - "!src/shared_modules/utils/tests/**"
+      - "!src/shared_modules/utils/benchmark/**"
+      - "src/shared_modules/utils/tests/CMakeLists.txt"
+      - "src/shared_modules/utils/benchmark/CMakeLists.txt"
+      - "src/shared_modules/common/**"
+      # Configure path: build_target_cpp configures all of src/ as one tree
+      # (build_target_cpp/action.yml:57) -- src/CMakeLists.txt (src/cmake/*.cmake at :86-87,
+      # VERSION.json at :128) and src/external/CMakeLists.txt (ext_* targets, wazuhext at :1474).
+      - "src/CMakeLists.txt"
+      - "src/cmake/**"
+      - "src/external/CMakeLists.txt"
+      - "VERSION.json"
+      # build_external_deps runs make deps/build-external (src/Makefile:610, ref list from
+      # tools/get_git_refs.sh at src/Makefile:708) and builds http-request (action.yml:35-43), linked
+      # through indexer_connector as urlrequest. A submodule bump changes only the gitlink path.
+      - "src/Makefile"
+      - "tools/get_git_refs.sh"
+      - "src/shared_modules/http-request"
+      # Result-affecting actions both jobs execute (setup-sccache wraps the compilers).
+      # upload_s3_artifact is left out on purpose: coverage_cpp calls it with continue-on-error
+      # (coverage_cpp/action.yml:112-121), so it only reports, and the agent package lanes
+      # exercise it on PRs.
       - ".github/actions/build_external_deps/**"
       - ".github/actions/build_target_cpp/**"
       - ".github/actions/coverage_cpp/**"
       - ".github/actions/test_cpp/**"
+      - ".github/actions/setup-sccache/**"
   workflow_dispatch:
 
 concurrency:
@@ -63,19 +110,21 @@ jobs:
           test: "true"
           asan: "false"
 
+      # Valgrind off: test_cpp's valgrind branch wraps only the ctest driver (no
+      # --trace-children=yes, test_cpp/action.yml), so it never instrumented the test binary.
+      # The ASAN job below is the memory gate.
       - name: Content manager - Run tests
         uses: ./.github/actions/test_cpp
         with:
-          valgrind: "true"
+          valgrind: "false"
           target: "content_manager_utest"
 
-      # The component suite runs here too, purely so its coverage counts. It exercises the
-      # module's orchestration layer (contentModule, contentModuleFacade, actionOrchestrator,
-      # action, contentProvider) that no unit test reaches, and CI already runs it in
-      # 5_testcomponent_contentmanager.yml -- but that workflow has no coverage step, so those
-      # lines were being reported as untested. Its fake server is cpp-httplib on localhost, so
-      # nothing external is required. No valgrind: 5_testcomponent_contentmanager.yml already
-      # covers that dimension, and repeating it here would only double the job's runtime.
+      # The component suite runs here too, so its coverage counts: it exercises the module's
+      # orchestration layer (contentModule, contentModuleFacade, actionOrchestrator, action,
+      # contentProvider) that no unit test reaches. Its fake server is cpp-httplib on localhost, so
+      # nothing external is required. This is the suite's only lane: the former
+      # 5_testcomponent_contentmanager.yml ran the same label in the same coverage-flag build (its
+      # "valgrind" leg instrumented nothing) plus an ASAN build, which the job below now does.
       - name: Content manager - Build component tests
         uses: ./.github/actions/build_target_cpp
         with:
@@ -139,6 +188,19 @@ jobs:
         uses: ./.github/actions/test_cpp
         with:
           target: "content_manager_utest"
+          valgrind: "false"
+
+      - name: Content manager - Build component tests
+        uses: ./.github/actions/build_target_cpp
+        with:
+          target: "content_manager_ctest"
+          test: "true"
+          asan: "true"
+
+      - name: Content manager - Run component tests
+        uses: ./.github/actions/test_cpp
+        with:
+          target: "content_manager_ctest"
           valgrind: "false"
       - name: "Compilation cache statistics"
         if: always()

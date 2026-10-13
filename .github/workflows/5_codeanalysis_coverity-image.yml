@@ -10,9 +10,18 @@ on:
           Default is '5.x'.
         required: false
         default: '5.x'
+  # Publishes the shared `coverity-scan:5.x` image, so only the release-line branches may push it:
+  # without `branches`, every feature-branch (and tag) push touching the Dockerfile republished 5.x
+  # from unmerged code. Unlike the VERSION.json-tagged package images, the tag here is the fixed
+  # '5.x', so only the 5.x release branches publish it; `main` (5.1.0 today, but it moves to the next
+  # major and would then republish '5.x' from 6.x code) is left out deliberately. No pull_request: the build
+  # needs the Coverity token and pushes; 5_codeanalysis_coverity.yml consumes the image.
   push:
+    branches:
+      - '5.[0-9]+.[0-9]+'
     paths:
       - 'tools/testing/coverity/**'
+      - '.github/workflows/5_codeanalysis_coverity-image.yml'
 
 env:
   REGISTRY: ghcr.io
