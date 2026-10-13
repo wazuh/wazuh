@@ -345,7 +345,7 @@ static inline void logBulkItemErrors(const nlohmann::json& responseJson, const s
                     auto& rejection = rejections[std::make_pair(type, reason)];
                     if (rejection.first++ == 0)
                     {
-                        rejection.second = id;
+                        rejection.second = std::move(id);
                     }
                 }
                 catch (const nlohmann::json::exception&)
