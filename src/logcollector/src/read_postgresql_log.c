@@ -130,10 +130,10 @@ void *read_postgresql_log(logreader *lf, int *rc, int drop_it) {
             }
 
             /* Add additional message to the saved buffer */
-            if (sizeof(buffer) - buffer_len > str_len) {
-                /* Here we make sure that the size of the buffer
-                 * minus what was used (strlen) is greater than
-                 * the length of the received message.
+            if (sizeof(buffer) - buffer_len > str_len + 1) {
+                /* Here we make sure that the buffer has room for the
+                 * separator, the received message and the terminating
+                 * null byte before appending.
                  */
                 buffer[buffer_len] = ' ';
                 buffer[buffer_len + 1] = '\0';
