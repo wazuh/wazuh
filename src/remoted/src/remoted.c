@@ -41,6 +41,9 @@ void HandleRemote(int uid)
     /* If TCP is enabled then bind the TCP socket */
     if (logr.proto & REMOTED_NET_PROTOCOL_TCP) {
 
+        // Against the effective limit, now that it is known
+        rem_check_unauthenticated_cap();
+
         logr.tcp_sock = OS_Bindporttcp(logr.port, logr.lip, logr.ipv6);
 
         if (logr.tcp_sock < 0) {

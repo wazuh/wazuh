@@ -78,16 +78,18 @@ private:
         }
     }
 
-    void processRead(std::shared_ptr<TSocket> client,
+    bool processRead(std::shared_ptr<TSocket> client,
                      const std::function<void(const int, const char*, uint32_t, const char*, uint32_t)>& onRead) const
     {
         try
         {
             client->read(onRead);
+            return true;
         }
         catch (const std::exception&)
         {
-            // Error reading from client
+            // Error reading from client (disconnect, socket error or malformed packet).
+            return false;
         }
     }
 
@@ -104,14 +106,12 @@ private:
             }
 
             // If EPOLLIN is set, then we can read data, so process the read.
-            if (event & EPOLLIN)
-            {
-                processRead(std::move(client), onRead);
-            }
+            // A failed read leaves the stream out of sync with the framing, so the client is dropped as well.
+            const auto readFailed {(event & EPOLLIN) && !processRead(std::move(client), onRead)};
 
             // If EPOLLERR or EPOLLHUP is set, then remove the client(Close the connection). This removes is in the end
             // to process the max number of events.
-            if (event & EPOLLERR || event & EPOLLHUP)
+            if (readFailed || event & EPOLLERR || event & EPOLLHUP)
             {
                 removeClient(eventFD);
             }

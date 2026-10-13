@@ -41,6 +41,9 @@ namespace remoted::common
         // than served. This is the equivalent of zstd's own recommended ZSTD_d_windowLogMax for
         // untrusted input, applied before any allocation happens.
         constexpr unsigned long long kMaxDeclaredWindowSize = 8ULL * 1024ULL * 1024ULL;
+        /// kMaxDeclaredWindowSize as the log2 ZSTD_d_windowLogMax takes.
+        constexpr int kMaxDeclaredWindowLog = 23;
+        static_assert((1ULL << kMaxDeclaredWindowLog) == kMaxDeclaredWindowSize);
     } // namespace
 
     std::variant<std::string, ZstdDecodeError>
@@ -107,6 +110,13 @@ namespace remoted::common
         {
             return ZstdDecodeError::Malformed;
         }
+        // The header check above reads the FIRST frame only. Hold the decoder itself to the same
+        // window ceiling, so no frame it ever starts can make it allocate past kMaxDeclaredWindowSize
+        // -- without this, libzstd's own default (windowLog 27, 128 MiB) applies, outside the budget.
+        if (ZSTD_isError(ZSTD_DCtx_setParameter(dstream, ZSTD_d_windowLogMax, kMaxDeclaredWindowLog)))
+        {
+            return ZstdDecodeError::Malformed;
+        }
 
         ZSTD_inBuffer input {compressed.data(), compressed.size(), 0};
         std::string output;
@@ -155,6 +165,14 @@ namespace remoted::common
                 return ZstdDecodeError::Malformed;
             }
             frameRemaining = ret;
+
+            // One body is one frame: the agent compresses each body as a single frame. Anything
+            // after it -- a second frame, a skippable frame -- was never checked by the header
+            // read above nor charged to the budget, so it is refused rather than decoded.
+            if (ret == 0 && input.pos < input.size)
+            {
+                return ZstdDecodeError::Malformed;
+            }
 
             if (out.pos > 0)
             {

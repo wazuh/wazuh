@@ -590,7 +590,7 @@ stages:
               username: wazuh
           total_affected_items: 1
 
-  - name: Update wazuh-wui admin user password
+  - name: Update wazuh-internal-client admin user password
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{balanced_port:d}/security/users/2"
@@ -606,7 +606,7 @@ stages:
         data:
           affected_items:
             - id: 2
-              username: wazuh-wui
+              username: wazuh-internal-client
           total_affected_items: 1
 
 

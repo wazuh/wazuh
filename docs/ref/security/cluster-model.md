@@ -12,9 +12,11 @@ a user-facing API. It is distinct from the RESTful API (port 55000), which is
 the user-facing entry point and the place where user authentication and
 authorization are enforced.
 
-Communication on the cluster protocol is encrypted and authenticated using a
-shared Fernet key. Possession of this key is what defines membership in the
-cluster.
+Communication on the cluster protocol is encrypted and authenticated with
+per-connection keys derived from a shared cluster key, and every message is
+bound to its connection, its position in that connection and its header (see
+[Transport Protection](#transport-protection)). Possession of the cluster key is
+what defines membership in the cluster.
 
 > **Note:** The `<cluster>` XML section (where the key and other cluster
 > settings are configured) is validated against the manager configuration
@@ -27,7 +29,7 @@ cluster.
 ## Trust Boundary
 
 The cluster operates within a single **authority context** shared by all
-manager nodes that hold the Fernet key. Within this context:
+manager nodes that hold the cluster key. Within this context:
 
 - Nodes are **privileged peers by design**, not clients of one another.
 - Any node may invoke operations on any other node through the DAPI, subject
@@ -38,6 +40,141 @@ manager nodes that hold the Fernet key. Within this context:
 A node joining the cluster is therefore equivalent, in terms of authority, to
 an administrator of every other node in the cluster. This is intentional and
 is the basis of the cluster's distributed operation.
+
+## Transport Protection
+
+This section specifies how a TCP connection on port 1516 is protected. It
+applies to every connection between nodes. The local
+`queue/sockets/cluster-internal.sock` socket is created with no key; it stays
+plaintext and is protected by its file permissions alone.
+
+### Threat addressed
+
+Earlier versions encrypted each payload as a Fernet token under the static
+cluster key and sent a 20-byte header (`!2I12s`: counter, length, command)
+**outside** the token. Nothing in a token tied it to a connection, a position
+or a header, and the decrypt applied no TTL. An attacker with only a capture of
+cluster traffic, and no key, could therefore:
+
+- **Replay a session**: open a new connection and resend a worker's captured
+  `hello` (accepted whenever that worker is not connected at the time), then
+  its `dapi` and `sendsync` frames. The master re-executes API operations that
+  RBAC authorized once.
+- **Replay or reorder within a connection**: inject a copy of a captured frame
+  into a live connection.
+- **Relabel**: send a valid token under a different command or counter in the
+  header.
+- **Reflect**: send a master's frame back to the master, because both
+  directions shared one key.
+
+Each of these is "executing operations on the cluster protocol without
+possession of the key", which this model classifies as a vulnerability.
+
+### Handshake
+
+Each side writes a 37-byte plaintext **preamble** as soon as the connection is
+established, before any frame:
+
+| Offset | Size | Field | Value |
+|---|---|---|---|
+| 0 | 4 | magic | `WZCP` |
+| 4 | 1 | version | `1` |
+| 5 | 32 | nonce | `os.urandom(32)`, fresh per connection |
+
+The acceptor (the master's server handler) sends its preamble from
+`connection_made`. The connector (the worker's client) also sends its preamble
+from `connection_made`, but sends `hello` only once it has received the
+acceptor's preamble. Both preambles travel in parallel, so the handshake adds
+one half round trip before `hello`. Each side reads exactly 37 bytes before it
+parses any frame; anything that follows them in the same read belongs to the
+first frame. A wrong magic or version closes the connection with error 3063.
+That is what a peer running an older protocol sees, in either direction, instead
+of a decryption error. A peer that never sends a preamble is closed by the
+existing pre-handshake deadline (`PRE_AUTH_PAYLOAD_TIMEOUT`).
+
+### Key schedule
+
+Each direction has its own key:
+
+```text
+salt   = nonce_connector || nonce_acceptor                     (64 bytes)
+k_c2s  = HKDF-SHA256(ikm = cluster key, salt, info = "wazuh-cluster/1 c2s", L = 32)
+k_s2c  = HKDF-SHA256(ikm = cluster key, salt, info = "wazuh-cluster/1 s2c", L = 32)
+```
+
+`ikm` is the 32-character `<cluster><key>`, encoded as ASCII. Each 32-byte output
+is a Fernet key (16 bytes for HMAC-SHA256, 16 bytes for AES-128-CBC), passed to
+`Fernet` base64url-encoded. A side encrypts with its sending key and decrypts
+with its receiving key. The keys live only in the handler object and are
+discarded with the connection; every reconnect derives new ones.
+
+### Message format
+
+The outer header is unchanged (`!2I12s`, 20 bytes), and so are message
+division into `request_chunk` pieces and the `d` flag. What changes is the
+plaintext that each Fernet token encrypts:
+
+```text
+token = Fernet(k_send).encrypt( pack("!QI11s", seq, counter, command) || payload )
+```
+
+- `seq` is a 64-bit per-direction message number. It starts at 0 for each
+  connection and increments by one for each **logical** message, so all chunks
+  of a divided message share one `seq`. It is never written to the outer
+  header: the receiver expects it. The sender consumes a number only once all
+  of a message's frames are built, so a build that fails (the `MemoryError`
+  path of `send_request`) leaves no gap.
+- `counter` is the outer header's counter, which stays the request/response
+  matching ID.
+- `command` is the command name as the receiver parses it from the outer
+  header: the 12-byte field up to its first space, without the padding and the
+  division flag. It is NUL-padded to 11 bytes, the longest command allowed.
+
+On receipt the message is decrypted once, after reassembly as today, with
+`k_recv`. It is accepted only if all three inner fields match: `seq` equals the
+expected number, `counter` equals the outer counter, and `command` equals the
+command parsed from the header of the message's last frame. Then the expected
+number is incremented. A token that fails to decrypt raises 3025. A token that
+decrypts but fails a match raises 3064. Either way the frame is not dispatched,
+no response is sent, and the connection is closed with an error in
+`cluster.log`. A keyed handler that is asked to build a frame before its
+handshake completes refuses with 3063 rather than send it unbound
+(`send_request` reports it wrapped in 3018).
+
+Requiring an exact `seq` is sound because TCP delivers in order and a message's
+frames are always written together: `msg_build` and `push` run in one
+synchronous step in both `send_request` and `dispatch`, with no `await` between
+them, so frames of different messages never interleave.
+
+### Design decisions
+
+1. **Session binding, not a TTL.** The decrypt keeps `ttl=None`. A replay from
+   another connection fails because the keys differ, so a TTL adds no replay
+   protection. It would add a dependency on clock synchronization between nodes,
+   and would also risk rejecting a large synchronization message that is still
+   in transit when its timestamp expires.
+2. **A separate sequence number, not a monotonic header counter.** The outer
+   counter cannot be checked for monotonicity: each side seeds it at random, and
+   a response reuses its request's counter. It stays the matching ID, and order
+   is enforced by the implicit `seq`.
+3. **Fernet stays the cipher.** Only its key changes. This keeps the change
+   local to `Handler` and leaves the framing, the chunking and their size limits
+   as they are.
+4. **Per-direction keys.** These defeat reflection without needing a direction
+   bit in the plaintext.
+5. **No compatibility shim.** A worker must already run the master's exact
+   version (error 3031), so mixed-protocol clusters cannot form. The preamble's
+   magic and version turn a mismatch into a clear 3063 instead of a 3025.
+
+### What this does not provide
+
+- **Forward secrecy.** The nonces travel in clear, so anyone who holds the
+  cluster key and a capture can derive the session keys. Ephemeral key
+  agreement and TLS are out of scope (see the closed #4517). Key compromise
+  remains the event described in
+  [Cluster Key Compromise](#cluster-key-compromise).
+- **Protection against an on-path attacker who drops or resets connections.**
+  The nodes detect the break and reconnect, but cannot prevent it.
 
 ## Authorization Model
 
@@ -129,7 +266,7 @@ from outside the isolated cluster network.
 **Mitigations**:
 - Network segmentation prevents access from untrusted networks (operator
   responsibility, deployment assumption)
-- Even if network access is gained, the Fernet key is required to authenticate
+- Even if network access is gained, the cluster key is required to authenticate
 - The attacker must breach network isolation **and** obtain the cluster key
 
 **CVSS vector**: AV:A, as it requires breaching the adjacent network boundary
@@ -137,7 +274,7 @@ first.
 
 ### Cluster Key Compromise
 
-**Attack path**: An attacker obtains the Fernet cluster key (e.g., via file
+**Attack path**: An attacker obtains the cluster key (e.g., via file
 read vulnerability, backup exposure, or insider access).
 
 **Impact**: The key alone is insufficient for cluster compromise. The attacker
@@ -179,10 +316,11 @@ enables the cluster's distributed operation.
 Within this model, the following are considered vulnerabilities in the
 cluster surface:
 
-- Disclosure of the Fernet key to a principal that is not a cluster
+- Disclosure of the cluster key to a principal that is not a cluster
   administrator.
 - Joining the cluster, or executing operations on the cluster protocol,
-  without possession of the Fernet key.
+  without possession of the cluster key — including by replaying, reordering,
+  reflecting or relabelling captured cluster traffic.
 - Bypassing the explicit restrictions listed above (writing local
   `wazuh-manager.conf` remotely, or executing operations outside the Wazuh authority
   context through the DAPI).

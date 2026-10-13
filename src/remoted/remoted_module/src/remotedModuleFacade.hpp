@@ -52,7 +52,6 @@
 #include "endpoints/downloadEndpoint.hpp"
 #include "endpoints/endpoint.hpp"
 #include "endpoints/rateLimitGate.hpp"
-#include "endpoints/reenrollSecretEndpoint.hpp"
 #include "endpoints/scanVdEndpoint.hpp"
 #include "endpoints/statefulEndpoint.hpp"
 #include "endpoints/statelessEndpoint.hpp"
@@ -63,6 +62,7 @@
 #include "enrollment/enrollmentEndpoint.hpp"
 #include "enrollment/metrics.hpp"
 #include "http_server/IHttpServer.hpp"
+#include "http_server/handshakeMetrics.hpp"
 #include "http_server/httpServerConfig.hpp"
 #include "http_server/httpServerFactory.hpp"
 #include "loggerHelper.h"
@@ -131,6 +131,10 @@ constexpr auto REMOTED_MODULE_HEARTBEAT_SECS {60};
 // Default cap on requests parked awaiting a downstream service (used when the caller leaves
 // remoted_module_config_t::max_deferred_requests <= 0).
 constexpr int REMOTED_MODULE_DEFAULT_MAX_DEFERRED {128};
+
+// Default cap on requests ONE authenticated agent may have open (used when the caller leaves
+// remoted_module_config_t::max_requests_per_agent <= 0). An honest agent peaks at 5.
+constexpr int REMOTED_MODULE_DEFAULT_MAX_REQUESTS_PER_AGENT {6};
 
 // Fixed path of the module's LOCAL admin socket (GET / + GET /metrics + GET /status + GET /tls). RELATIVE on
 // purpose: remoted chroot()s into the install dir, so the bind lands at $WAZUH_HOME/queue/sockets/.
@@ -454,15 +458,79 @@ private:
         // the auth layer stays about authentication only. Built ONCE and shared (BodyDecoder is
         // stateless -- see its own class comment) across every AuthGateway route, so they all get
         // the same policy and none can accidentally opt out or drift out of sync with each other.
+        //
+        // Capped at 'remoted.auth_max_decoded_body_size'. The credential gate keeps strangers away
+        // from the decoder, but not an enrolled agent: uncapped, one agent's zstd frame of a few KB
+        // could reserve nearly the whole in-flight budget and get every other agent a 503/413.
         const auto authConfig = remoted::auth::buildAuthConfig(m_config);
         const auto bodyDecoder = std::make_shared<const remoted::decoding::BodyDecoder>(
-            *m_httpServer, m_config.http_content_encoding_enabled);
-        m_authGateway = std::make_unique<remoted::endpoints::AuthGateway>(authConfig, m_keystore, bodyDecoder);
+            *m_httpServer, m_config.http_content_encoding_enabled, authConfig.maxDecodedBodySize);
+        // Per-agent open-request cap: every other capacity limit is fleet-wide, so without it one
+        // agent could hold all of them. Owned by the routes (each captures it), not by the facade.
+        const auto maxRequestsPerAgent = m_config.max_requests_per_agent > 0
+                                             ? static_cast<std::size_t>(m_config.max_requests_per_agent)
+                                             : static_cast<std::size_t>(REMOTED_MODULE_DEFAULT_MAX_REQUESTS_PER_AGENT);
+        // Per-agent byte share: what one agent's decoded bodies may hold at once, across all its
+        // requests. Half the in-flight budget by default -- enough for the whole inventory of a
+        // vulnerability-detection first sync, which the agent cannot split, while every other agent
+        // keeps the other half. Never below the decoded cap of the other routes, or a body legal there
+        // could never be charged. Each warning names the key the operator actually set: the explicit
+        // share when there is one, the budget it was derived from otherwise.
+        const bool explicitShare = m_config.max_inflight_bytes_per_agent > 0;
+        auto agentByteShare = explicitShare ? static_cast<std::size_t>(m_config.max_inflight_bytes_per_agent)
+                                            : config.maxInFlightBytes / 2;
+        if (agentByteShare < authConfig.maxDecodedBodySize)
+        {
+            if (explicitShare)
+            {
+                LOGFN_WARN(moduleLogFn(),
+                           "'remoted.max_inflight_bytes_per_agent' (%zu) is below 'remoted.auth_max_decoded_body_size' "
+                           "(%zu); using %zu.",
+                           agentByteShare,
+                           authConfig.maxDecodedBodySize,
+                           authConfig.maxDecodedBodySize);
+            }
+            agentByteShare = authConfig.maxDecodedBodySize;
+        }
+        // A share as large as the whole budget bounds nothing: one agent could hold all of it again.
+        // Kept rather than shrunk below what a legal body needs, but said out loud, naming the key
+        // that causes it. (The derived default is half the budget, so it only gets here through the
+        // decoded cap.)
+        if (config.maxInFlightBytes != 0 && agentByteShare >= config.maxInFlightBytes)
+        {
+            if (authConfig.maxDecodedBodySize >= config.maxInFlightBytes)
+            {
+                LOGFN_WARN(moduleLogFn(),
+                           "'remoted.auth_max_decoded_body_size' (%zu) is not below 'remoted.max_inflight_bytes' "
+                           "(%zu): one agent can hold the whole in-flight budget.",
+                           authConfig.maxDecodedBodySize,
+                           config.maxInFlightBytes);
+            }
+            else
+            {
+                LOGFN_WARN(moduleLogFn(),
+                           "'remoted.max_inflight_bytes_per_agent' (%zu) is not below 'remoted.max_inflight_bytes' "
+                           "(%zu): one agent can hold the whole in-flight budget.",
+                           agentByteShare,
+                           config.maxInFlightBytes);
+            }
+        }
+        m_authGateway = std::make_unique<remoted::endpoints::AuthGateway>(
+            authConfig,
+            m_keystore,
+            bodyDecoder,
+            std::make_shared<remoted::endpoints::AgentRequestLimiter>(maxRequestsPerAgent, agentByteShare));
+        // /stateful's own decoder, capped at the agent's whole byte share instead of
+        // auth_max_decoded_body_size: a vulnerability-detection first sync carries a host's entire
+        // inventory in ONE session the agent cannot split. The share, not this cap, is what keeps one
+        // agent from holding the budget.
+        const auto statefulBodyDecoder = std::make_shared<const remoted::decoding::BodyDecoder>(
+            *m_httpServer, m_config.http_content_encoding_enabled, agentByteShare);
 
         // /enroll gets its OWN BodyDecoder instance, not the shared one above: every AuthGateway
-        // route requires a verified credential before decode() ever runs, which closes the
-        // amplification lever a decoded-size cap exists for -- but /enroll's Open mode has NO
-        // credential check at all by design, so an unauthenticated peer CAN reach decode() there.
+        // route requires a verified credential before decode() ever runs -- but /enroll's Open mode
+        // has NO credential check at all by design, so an unauthenticated peer CAN reach decode()
+        // there, and it gets a far tighter cap than an enrolled agent does.
         // Capped at kMaxEnrollBodySize (the same cap parseAndValidateBody() applies post-decode,
         // enrollmentEndpoint.hpp) so a small, highly-compressed frame can't hold much of the
         // shared in-flight byte budget (the same one /stateless and friends draw from) even
@@ -656,7 +724,9 @@ private:
             remoted::endpoints::stateful::makeHandler(*m_forwarder,
                                                       inventorySyncSocketPath,
                                                       downstreamConfig.statefulResponseTimeoutMs,
-                                                      &m_statefulHttpMetrics));
+                                                      &m_statefulHttpMetrics),
+            remoted::http::ResponseMode::Buffered,
+            statefulBodyDecoder);
 
         warnIfDownstreamBudgetExceedsRequestTimeout(
             "/stateful",
@@ -870,34 +940,6 @@ private:
                                                 &m_enrollHttpMetrics,
                                                 "POST /enroll"));
 
-        // /enroll/secret: an agent that already holds a client.keys identity asks for the
-        // re-enrollment secret its enrollment never gave it (a 4.x agent upgraded over WPK, an
-        // agent enrolled over 1515, a row rebuilt from client.keys). Authenticated -- unlike
-        // /enroll, the caller IS a known agent, and the secret is minted for the identity its
-        // bearer proves, never for a body field.
-        //
-        // REGISTERED HERE, below m_enrollRateLimiter's construction, and not up in the
-        // authenticated-route block: it shares /enroll's bucket, and a gate handed a null limiter
-        // is silently inert -- no log, no error -- so a registration a few lines earlier would
-        // ship the route unlimited with nothing to show for it. The bucket is shared rather than
-        // given an option of its own because the two routes cost the manager the same round trips
-        // and a fleet-wide 4.x->5.0 wave is exactly the burst that ceiling exists to absorb:
-        // unthrottled it would fill the identity journal (IDENTITY_JOURNAL_MAX_ENTRIES) and start
-        // refusing REAL enrollments with 9031. The refusal counters stay one per route, which is
-        // what keeps the two distinguishable under one ceiling.
-        m_authGateway->addAuthenticatedRoute(
-            *m_httpServer,
-            remoted::http::Method::Post,
-            "/enroll/secret",
-            remoted::endpoints::reenrollsecret::makeHandler(
-                *m_authdClient, m_reenrollSecretMetrics, m_enrollSecretHttpMetrics),
-            remoted::http::ResponseMode::Buffered,
-            remoted::endpoints::AuthenticatedRouteGate {m_enrollRateLimiter,
-                                                        &remoted::endpoints::reenrollsecret::rateLimitedResponse,
-                                                        m_reenrollSecretMetrics.rateLimited,
-                                                        &m_enrollSecretHttpMetrics,
-                                                        "POST /enroll/secret"});
-
         registerRateLimitDiagnostics();
 
         // Same sanity check the other four endpoints get (see warnIfDownstreamBudgetExceedsRequestTimeout's
@@ -995,11 +1037,8 @@ private:
      * @brief Publishes both endpoint rate limiters as remoted.<endpoint>.rate_limit.* pulls.
      *
      * The REFUSALS are not here: those are the plain remoted.enroll.rate_limited /
-     * remoted.enroll.secret.rate_limited / remoted.cacerts.rate_limited counters the gates bump,
-     * which belong with the rest of each endpoint's outcomes -- and they stay one per ROUTE even
-     * though /enroll and /enroll/secret share one bucket, which is what keeps the two
-     * distinguishable under a single ceiling. What is here is the headroom, which only a pull can
-     * answer, and it is per BUCKET: the
+     * remoted.cacerts.rate_limited counters the gate bumps, which belong with the rest of each
+     * endpoint's outcomes. What is here is the headroom, which only a pull can answer: the
      * configured ceiling, and how much of this second's allowance is still unspent. `available`
      * hovering near zero is the route running at its limit -- the reading that says whether a
      * climbing `rate_limited` is a flood to investigate or simply a rate set too low for the fleet.
@@ -1033,8 +1072,8 @@ private:
             m_metricsManager->registerPullMetric(
                 prefix + "limit",
                 [snapshot, enrollment] { return static_cast<uint64_t>(snapshot(enrollment).limitPerSecond); },
-                routeName + " requests per second THIS NODE is willing to serve, for the routes named "
-                            "together (0 when the limit is disabled)",
+                routeName + " requests per second THIS NODE is willing to serve on the route "
+                            "(0 when the limit is disabled)",
                 "requests_per_second");
             m_metricsManager->registerPullMetric(
                 prefix + "burst",
@@ -1044,17 +1083,12 @@ private:
             m_metricsManager->registerPullMetric(
                 prefix + "available",
                 [snapshot, enrollment] { return static_cast<uint64_t>(snapshot(enrollment).available); },
-                routeName + " allowance left unspent right now: near zero means the bucket is at its "
+                routeName + " allowance left unspent right now: near zero means the route is at its "
                             "ceiling and further requests are being refused with 429",
                 "requests");
         };
 
-        // One bucket, two routes: the remoted.enroll.rate_limit.* readings govern POST /enroll and
-        // POST /enroll/secret together, so the description names both. A bootstrap wave spending
-        // allowance /enroll would otherwise have had is the deliberate trade -- paced backpressure
-        // with a retry behind it, in exchange for making identity-journal exhaustion unprovokable
-        // from the secret route. An operator watching both throttle still has one number to raise.
-        registerFor(/*enrollment=*/true, "enroll", "POST /enroll and POST /enroll/secret");
+        registerFor(/*enrollment=*/true, "enroll", "POST /enroll");
         registerFor(/*enrollment=*/false, "cacerts", "GET /cacerts");
     }
 
@@ -1619,6 +1653,28 @@ private:
             "new connections wait in the backlog instead of being refused",
             "connections");
 
+        // A connection holds its slot from accept, BEFORE the TLS handshake, so peers that connect
+        // and never speak TLS fill the ceiling above without a single request -- invisible to every
+        // request-level metric (issue #6883). These three show it: the level, and what the two
+        // guards (the handshake deadline, the per-source cap) closed.
+        m_metricsManager->registerPullMetric(
+            remoted::http::metrics::METRIC_CONNECTIONS_HANDSHAKING,
+            [snapshot] { return static_cast<uint64_t>(snapshot().connectionsHandshaking); },
+            "Connections still in the TLS handshake (a subset of connections.open); an honest one leaves it "
+            "in milliseconds",
+            "connections");
+        m_metricsManager->registerPullMetric(
+            remoted::http::metrics::METRIC_HANDSHAKE_TIMEOUTS,
+            [snapshot] { return snapshot().handshakeTimeoutsTotal; },
+            "Connections closed for not completing the TLS handshake within 'remoted.http_read_timeout'",
+            "connections");
+        m_metricsManager->registerPullMetric(
+            remoted::http::metrics::METRIC_HANDSHAKE_REJECTED_PER_SOURCE,
+            [snapshot] { return snapshot().handshakeRejectedPerSourceTotal; },
+            "Connections closed at once because their address already had 'remoted.max_handshakes_per_source' "
+            "TLS handshakes in progress",
+            "connections");
+
         // The served certificate's health, read from the same weak target. Expiry is the
         // monitor's: evaluated by the transport at start and every certificateStatusInterval
         // (24 h). The CA half comes from the same CaCertificateSource GET /cacerts answers from,
@@ -1918,12 +1974,7 @@ private:
     // (whenever enrollment is enabled) constructed for it in startHttpServer() -- their background
     // watcher threads' lifetimes are tied to the authenticator's.
     remoted::enrollment::EnrollmentMetrics m_enrollmentMetrics {
-        remoted::enrollment::makeEnrollmentMetrics(*m_metricsManager)}; ///< /enroll counters.
-    /// POST /enroll/secret counters (remoted.enroll.secret.*). Its own family, on the facade for
-    /// the same reason as the one above: the handler holds a REFERENCE to it, so its address must
-    /// stay stable across HTTP-server restart retries.
-    remoted::enrollment::ReenrollSecretMetrics m_reenrollSecretMetrics {
-        remoted::enrollment::makeReenrollSecretMetrics(*m_metricsManager)};
+        remoted::enrollment::makeEnrollmentMetrics(*m_metricsManager)};                      ///< /enroll counters.
     std::unique_ptr<remoted::enrollment::EnrollmentAuthenticator> m_enrollmentAuthenticator; ///< /enroll auth.
     /// shared_ptr, not unique_ptr, for the same reason as m_httpServer: the queue pulls hold a
     /// weak_ptr to it, so a dump that races the shutdown reset() sees a dead target and
@@ -1975,12 +2026,6 @@ private:
     // latency: a file read has no tuning knob to size.
     remoted::metrics::EndpointHttpMetrics m_cacertsHttpMetrics {
         remoted::metrics::makeEndpointHttpMetrics(*m_metricsManager, "cacerts", /*withLatency=*/false, "GET")};
-    // POST /enroll/secret (the WHAT: remoted.http.enroll.secret.responses.*). The route label is
-    // explicit because the family's name segment cannot be the path verbatim. Referenced by raw
-    // pointer from the rate-limit gate (the 429 cell) AND copied into the handler's
-    // MeteredResponder, so it is a value member like the rest.
-    remoted::metrics::EndpointHttpMetrics m_enrollSecretHttpMetrics {remoted::metrics::makeEndpointHttpMetrics(
-        *m_metricsManager, "enroll.secret", /*withLatency=*/false, "POST", "/enroll/secret")};
 };
 
 #endif // _REMOTED_MODULE_FACADE_HPP

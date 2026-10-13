@@ -3276,8 +3276,8 @@ checks:
     condition: all
     rules:
       - 'f:/boot/grub/menu.lst -> r:^\s*kernel && !r:selinux=0|enforcing=0'
-      - 'f:/boot/grub2/grub.cfg -> r:^\s*linux && !r:selinux=0|enforcing=0'
-      - 'f:/boot/grub/grub.cfg -> r:^\s*linux && !r:selinux=0|enforcing=0'
+      - 'f:/boot/grub2/grub.cfg -> r:^\s*\t*\s*linux && !r:selinux=0|enforcing=0'
+      - 'f:/boot/grub/grub.cfg -> r:^\s*\t*\s*linux && !r:selinux=0|enforcing=0'
 
   # 1.6.2.2 Ensure the SELinux state is enforcing. (Scored)
   - id: 36035
@@ -5127,7 +5127,7 @@ checks:
     rules:
       - "f:/etc/ntp.conf"
       - 'f:/etc/ntp.conf -> r:^\s*\t*server|^\s*\t*pool'
-      - "f:/etc/ntp.conf -> r:restrict -(\\d+) && r:default && r:kod && r:nomodify && r:notrap && r:nopeer && r:noquery"
+      - "f:/etc/ntp.conf -> r:restrict -4 && r:default && r:kod && r:nomodify && r:notrap && r:nopeer && r:noquery"
       - "f:/etc/ntp.conf -> r:restrict -6 && r:default && r:kod && r:nomodify && r:notrap && r:nopeer && r:noquery"
 
   # 2.2.1.3 Ensure chrony is configured. (Scored)

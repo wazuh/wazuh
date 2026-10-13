@@ -12,6 +12,8 @@
 #include "socketWrapper_test.hpp"
 #include "osPrimitives.hpp"
 #include "socketWrapper.hpp"
+#include <algorithm>
+#include <cstdint>
 #include <gmock/gmock.h>
 
 void SocketWrapperTest::SetUp() {};
@@ -368,4 +370,181 @@ TEST_F(SocketWrapperTest, DISABLED_ReadSuccessBufferIncrement)
 
     // Buffer is decreased to the original value.
     EXPECT_EQ(socketWrapper.recvBufferSize(), initialRecvBufferSize);
+}
+
+namespace
+{
+    // Answers one recv() with the given bytes, as the peer would deliver them.
+    auto recvBytes(const std::vector<char>& bytes)
+    {
+        return [bytes](int, void* buffer, size_t size, int) -> ssize_t
+        {
+            EXPECT_GE(size, bytes.size());
+            std::copy(bytes.begin(), bytes.end(), static_cast<char*>(buffer));
+            return static_cast<ssize_t>(bytes.size());
+        };
+    }
+
+    // Answers recv() with "nothing more to read", which ends a read() call.
+    ssize_t recvWouldBlock(int, void*, size_t, int)
+    {
+        errno = EAGAIN;
+        return SOCKET_ERROR;
+    }
+
+    std::vector<char> lengthPrefix(const uint32_t size)
+    {
+        std::vector<char> bytes(PACKET_FIELD_SIZE);
+        std::memcpy(bytes.data(), &size, sizeof(size));
+        return bytes;
+    }
+
+    const std::function<void(const int, const char*, uint32_t, const char*, uint32_t)> UNEXPECTED_CALLBACK =
+        [](const int, const char*, uint32_t, const char*, uint32_t)
+    {
+        FAIL() << "Callback must not be called for a malformed packet";
+    };
+} // namespace
+
+TEST_F(SocketWrapperTest, ReadRejectsLengthPrefixThatWrapsTheResize)
+{
+    constexpr int SOCK {123};
+    Socket<OSWrapper, SizeHeaderProtocol> socketWrapper {SOCK};
+
+    // 0xFFFFFFFF + 1 wrapped to 0: the buffer was emptied and recv() was then asked for 4 GiB.
+    EXPECT_CALL(socketWrapper, recv(SOCK, _, PACKET_FIELD_SIZE, _))
+        .WillOnce(Invoke(recvBytes(lengthPrefix(UINT32_MAX))));
+    EXPECT_CALL(socketWrapper, shutdown(SOCK, _)).WillOnce(Return(0));
+    EXPECT_CALL(socketWrapper, close(SOCK)).WillOnce(Return(0));
+
+    EXPECT_THROW(socketWrapper.read(UNEXPECTED_CALLBACK), std::runtime_error);
+    EXPECT_EQ(socketWrapper.recvBufferSize(), static_cast<size_t>(BUFFER_MAX_SIZE));
+}
+
+TEST_F(SocketWrapperTest, ReadRejectsLengthPrefixAboveTheMaximum)
+{
+    constexpr int SOCK {123};
+    Socket<OSWrapper, SizeHeaderProtocol> socketWrapper {SOCK};
+
+    // 0x7FFFFFFF used to allocate a 2 GiB buffer.
+    EXPECT_CALL(socketWrapper, recv(SOCK, _, PACKET_FIELD_SIZE, _))
+        .WillOnce(Invoke(recvBytes(lengthPrefix(RECEIVE_PACKET_MAX_SIZE + 1))))
+        .WillOnce(Invoke(recvBytes(lengthPrefix(INT32_MAX))));
+    EXPECT_CALL(socketWrapper, shutdown(SOCK, _)).WillOnce(Return(0));
+    EXPECT_CALL(socketWrapper, close(SOCK)).WillOnce(Return(0));
+
+    EXPECT_THROW(socketWrapper.read(UNEXPECTED_CALLBACK), std::runtime_error);
+    EXPECT_EQ(socketWrapper.recvBufferSize(), static_cast<size_t>(BUFFER_MAX_SIZE));
+
+    // The rejection resets the framing: the next read starts again at a length prefix.
+    EXPECT_THROW(socketWrapper.read(UNEXPECTED_CALLBACK), std::runtime_error);
+    EXPECT_EQ(socketWrapper.recvBufferSize(), static_cast<size_t>(BUFFER_MAX_SIZE));
+}
+
+TEST_F(SocketWrapperTest, ReadAcceptsLengthPrefixAtTheMaximum)
+{
+    constexpr int SOCK {123};
+    Socket<OSWrapper, SizeHeaderProtocol> socketWrapper {SOCK};
+
+    EXPECT_CALL(socketWrapper, recv(SOCK, _, _, _))
+        .WillOnce(Invoke(recvBytes(lengthPrefix(RECEIVE_PACKET_MAX_SIZE))))
+        .WillOnce(Invoke(recvWouldBlock));
+    EXPECT_CALL(socketWrapper, shutdown(SOCK, _)).WillOnce(Return(0));
+    EXPECT_CALL(socketWrapper, close(SOCK)).WillOnce(Return(0));
+
+    EXPECT_NO_THROW(socketWrapper.read(UNEXPECTED_CALLBACK));
+    EXPECT_EQ(socketWrapper.recvBufferSize(), static_cast<size_t>(RECEIVE_PACKET_MAX_SIZE) + 1);
+}
+
+TEST_F(SocketWrapperTest, ReadDeliversPacketAndShrinksTheBuffer)
+{
+    constexpr int SOCK {123};
+    Socket<OSWrapper, SizeHeaderProtocol> socketWrapper {SOCK};
+
+    const std::vector<char> body(BUFFER_MAX_SIZE * 2, 'x');
+    bool called {false};
+
+    EXPECT_CALL(socketWrapper, recv(SOCK, _, _, _))
+        .WillOnce(Invoke(recvBytes(lengthPrefix(static_cast<uint32_t>(body.size())))))
+        .WillOnce(Invoke(recvBytes(body)))
+        .WillOnce(Invoke(recvWouldBlock));
+    EXPECT_CALL(socketWrapper, shutdown(SOCK, _)).WillOnce(Return(0));
+    EXPECT_CALL(socketWrapper, close(SOCK)).WillOnce(Return(0));
+
+    EXPECT_NO_THROW(socketWrapper.read(
+        [&](const int sock, const char* data, uint32_t dataSize, const char*, uint32_t headerSize)
+        {
+            called = true;
+            EXPECT_EQ(sock, SOCK);
+            EXPECT_EQ(headerSize, 0u);
+            ASSERT_EQ(dataSize, body.size());
+            EXPECT_TRUE(std::equal(body.begin(), body.end(), data));
+        }));
+    EXPECT_TRUE(called);
+    EXPECT_EQ(socketWrapper.recvBufferSize(), static_cast<size_t>(BUFFER_MAX_SIZE));
+}
+
+TEST_F(SocketWrapperTest, ReadRejectsInnerHeaderLargerThanThePacket)
+{
+    constexpr int SOCK {123};
+    Socket<OSWrapper, AppendHeaderProtocol> socketWrapper {SOCK};
+
+    // 8-byte packet whose header-size field claims 0xFFFFFFFF bytes of header.
+    std::vector<char> packet(8, 'x');
+    const uint32_t headerSize {UINT32_MAX};
+    std::memcpy(packet.data(), &headerSize, sizeof(headerSize));
+
+    EXPECT_CALL(socketWrapper, recv(SOCK, _, _, _))
+        .WillOnce(Invoke(recvBytes(lengthPrefix(static_cast<uint32_t>(packet.size())))))
+        .WillOnce(Invoke(recvBytes(packet)));
+    EXPECT_CALL(socketWrapper, shutdown(SOCK, _)).WillOnce(Return(0));
+    EXPECT_CALL(socketWrapper, close(SOCK)).WillOnce(Return(0));
+
+    EXPECT_THROW(socketWrapper.read(UNEXPECTED_CALLBACK), std::runtime_error);
+}
+
+TEST_F(SocketWrapperTest, ReadRejectsPacketShorterThanTheHeaderSizeField)
+{
+    constexpr int SOCK {123};
+    Socket<OSWrapper, AppendHeaderProtocol> socketWrapper {SOCK};
+
+    // AppendHeaderProtocol needs at least the 4-byte header-size field inside the packet.
+    EXPECT_CALL(socketWrapper, recv(SOCK, _, _, _))
+        .WillOnce(Invoke(recvBytes(lengthPrefix(2))))
+        .WillOnce(Invoke(recvBytes({0, 0})));
+    EXPECT_CALL(socketWrapper, shutdown(SOCK, _)).WillOnce(Return(0));
+    EXPECT_CALL(socketWrapper, close(SOCK)).WillOnce(Return(0));
+
+    EXPECT_THROW(socketWrapper.read(UNEXPECTED_CALLBACK), std::runtime_error);
+}
+
+TEST_F(SocketWrapperTest, ReadDeliversInnerHeaderAndBody)
+{
+    constexpr int SOCK {123};
+    Socket<OSWrapper, AppendHeaderProtocol> socketWrapper {SOCK};
+
+    const std::string header {"hdr"};
+    const std::string body {"body"};
+    std::vector<char> packet(HEADER_FIELD_SIZE);
+    const auto headerSize {static_cast<uint32_t>(header.size())};
+    std::memcpy(packet.data(), &headerSize, sizeof(headerSize));
+    packet.insert(packet.end(), header.begin(), header.end());
+    packet.insert(packet.end(), body.begin(), body.end());
+    bool called {false};
+
+    EXPECT_CALL(socketWrapper, recv(SOCK, _, _, _))
+        .WillOnce(Invoke(recvBytes(lengthPrefix(static_cast<uint32_t>(packet.size())))))
+        .WillOnce(Invoke(recvBytes(packet)))
+        .WillOnce(Invoke(recvWouldBlock));
+    EXPECT_CALL(socketWrapper, shutdown(SOCK, _)).WillOnce(Return(0));
+    EXPECT_CALL(socketWrapper, close(SOCK)).WillOnce(Return(0));
+
+    EXPECT_NO_THROW(socketWrapper.read(
+        [&](const int, const char* data, uint32_t dataSize, const char* hdr, uint32_t hdrSize)
+        {
+            called = true;
+            EXPECT_EQ(std::string(hdr, hdrSize), header);
+            EXPECT_EQ(std::string(data, dataSize), body);
+        }));
+    EXPECT_TRUE(called);
 }

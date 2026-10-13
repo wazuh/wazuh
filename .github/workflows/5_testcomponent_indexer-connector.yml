@@ -6,11 +6,48 @@ on:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - ".github/workflows/5_testcomponent_indexer-connector.yml"
-      - "src/shared_modules/indexer_connector/**"
+      # indexer_connector_ctests compiles tests/component/*.cpp and links the indexer_connector
+      # library (tests/component/CMakeLists.txt:7,20), built from src/ and include/
+      # (CMakeLists.txt:45-53). Every CMakeLists.txt of the module is on the configure path
+      # (CMakeLists.txt:61,64).
+      - "src/shared_modules/indexer_connector/**/CMakeLists.txt"
+      - "src/shared_modules/indexer_connector/include/**"
+      - "src/shared_modules/indexer_connector/src/**"
+      - "src/shared_modules/indexer_connector/tests/component/**"
+      # Linked: keystore (CMakeLists.txt:52-53, tests/component/CMakeLists.txt:21; also built
+      # standalone by build_external_deps/action.yml:45-53, testtool included) -- not its qa/ suite.
+      - "src/shared_modules/keystore/**"
+      - "!src/shared_modules/keystore/qa/**"
+      # Headers from shared_modules/utils (CMakeLists.txt:32) and common/commonDefs.h (included by
+      # utils/loggerHelper.h:15). utils/flatbuffers is built by build_external_deps/action.yml:55-63.
+      # utils' own tests and benchmark are another component's tree; only their CMakeLists.txt are on
+      # the configure path (utils/CMakeLists.txt).
       - "src/shared_modules/utils/**"
+      - "!src/shared_modules/utils/tests/**"
+      - "!src/shared_modules/utils/benchmark/**"
+      - "src/shared_modules/utils/tests/CMakeLists.txt"
+      - "src/shared_modules/utils/benchmark/CMakeLists.txt"
+      - "src/shared_modules/common/**"
+      # Configure path: build_target_cpp configures all of src/ as one tree
+      # (build_target_cpp/action.yml:57) -- src/CMakeLists.txt (src/cmake/*.cmake at :86-87,
+      # VERSION.json at :128) and src/external/CMakeLists.txt (ext_* targets, wazuhext at :1474).
+      - "src/CMakeLists.txt"
+      - "src/cmake/**"
+      - "src/external/CMakeLists.txt"
+      - "VERSION.json"
+      # build_external_deps runs make deps/build-external (src/Makefile:610, ref list from
+      # tools/get_git_refs.sh at src/Makefile:708) and builds http-request (action.yml:35-43), linked
+      # here as urlrequest (CMakeLists.txt:52). A submodule bump changes only the gitlink path.
+      - "src/Makefile"
+      - "tools/get_git_refs.sh"
+      - "src/shared_modules/http-request"
+      # Result-affecting actions and scripts this workflow executes (setup-sccache wraps the
+      # compilers; reinstall_cmake runs tools/devContainer/reinstall-cmake.sh).
       - ".github/actions/build_external_deps/**"
       - ".github/actions/build_target_cpp/**"
       - ".github/actions/reinstall_cmake/**"
+      - "tools/devContainer/reinstall-cmake.sh"
+      - ".github/actions/setup-sccache/**"
       - ".github/actions/test_cpp/**"
 
 concurrency:
@@ -29,9 +66,13 @@ jobs:
       fail-fast: true
       matrix:
         include:
+          # This leg keeps its name (check names) but no longer wraps ctest in valgrind: test_cpp's
+          # valgrind branch never instrumented the test binary (no --trace-children=yes,
+          # test_cpp/action.yml), so it is the plain, non-sanitized build of the suite. The asan
+          # leg is the memory gate.
           - test_type: valgrind
             asan_enabled: "false"
-            valgrind_enabled: "true"
+            valgrind_enabled: "false"
           - test_type: asan
             asan_enabled: "true"
             valgrind_enabled: "false"

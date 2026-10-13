@@ -29,6 +29,7 @@ namespace
             NiceMock<MockCallbackSink> m_sink;
             int m_wakes {0};
             AuthGate m_gate {m_sink, [this] { m_wakes++; }};
+            std::vector<uint64_t> m_seenAtCallback;
     };
 } // namespace
 
@@ -61,6 +62,25 @@ TEST_F(AuthGateTest, ReleaseUnpausesReArmsAndWakes)
     m_gate.reportAuthFailure(); // A later dead key fires again.
     EXPECT_TRUE(m_gate.paused());
     EXPECT_EQ(3, m_wakes);
+}
+
+TEST_F(AuthGateTest, IncidentsCountEachLatchOnceAndBeforeTheConsumerIsAsked)
+{
+    // Counted before onReenrollRequired(): a key renewed from inside it must never be seen
+    // without its incident (#38329).
+    EXPECT_CALL(m_sink, onReenrollRequired())
+    .Times(2)
+    .WillRepeatedly(::testing::Invoke([this] { m_seenAtCallback.push_back(m_gate.incidents()); }));
+
+    EXPECT_EQ(0u, m_gate.incidents());
+    m_gate.reportAuthFailure();
+    m_gate.reportAuthFailure(); // Same incident: not counted again.
+    EXPECT_EQ(1u, m_gate.incidents());
+    m_gate.release();
+    EXPECT_EQ(1u, m_gate.incidents()); // A renewal does not erase it.
+    m_gate.reportAuthFailure();
+    EXPECT_EQ(2u, m_gate.incidents());
+    EXPECT_EQ((std::vector<uint64_t> {1, 2}), m_seenAtCallback);
 }
 
 TEST_F(AuthGateTest, ConcurrentReportsAndReleasesNeverStrandUnpaused)

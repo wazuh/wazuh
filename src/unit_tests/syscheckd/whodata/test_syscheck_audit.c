@@ -1755,6 +1755,44 @@ void test_audit_read_events_select_success_recv_success_too_long(void **state) {
     os_free(buffer);
 }
 
+void test_audit_read_events_select_success_recv_success_cache_boundary(void **state) {
+    int *audit_sock = *state;
+    audit_thread_active.data = 1;
+
+    expect_value_count(__wrap_atomic_int_get, atomic, &audit_thread_active, 4);
+    will_return_count(__wrap_atomic_int_get, 1, 4);
+
+    expect_value(__wrap_atomic_int_get, atomic, &audit_thread_active);
+    will_return(__wrap_atomic_int_get, 0);
+
+    char *line1 = "type=SYSCALL msg=audit(1571914029.306:3004254): a\n";
+
+    // Second line fills the cache up to its last byte, leaving no room for the terminator
+    size_t len2 = OS_MAXSTR - 1 - strlen(line1);
+    char *line2 = malloc(len2 + 2);
+    memset(line2, 'a', len2);
+    const char *hdr2 = "type=CWD msg=audit(1571914029.306:3004254): ";
+    memcpy(line2, hdr2, strlen(hdr2));
+    line2[len2] = '\n';
+    line2[len2 + 1] = '\0';
+
+    will_return(__wrap_select, 1);
+    expect_value(__wrap_recv, __fd, *audit_sock);
+    will_return(__wrap_recv, strlen(line1));
+    will_return(__wrap_recv, line1);
+
+    will_return(__wrap_select, 1);
+    expect_value(__wrap_recv, __fd, *audit_sock);
+    will_return(__wrap_recv, strlen(line2));
+    will_return(__wrap_recv, line2);
+
+    expect_string(__wrap__mwarn, formatted_msg, "(6929): Caching Audit message: event too long. Event with ID: '1571914029.306:3004254' will be discarded.");
+
+    audit_read_events(audit_sock, &audit_thread_active);
+
+    os_free(line2);
+}
+
 void test_audit_parse_thread(void **state) {
     audit_parse_thread_active.data = 1;
 
@@ -2167,6 +2205,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_audit_read_events_select_success_recv_success_no_endline, test_audit_read_events_setup, test_audit_read_events_teardown),
         cmocka_unit_test_setup_teardown(test_audit_read_events_select_success_recv_success_no_id, test_audit_read_events_setup, test_audit_read_events_teardown),
         cmocka_unit_test_setup_teardown(test_audit_read_events_select_success_recv_success_too_long, test_audit_read_events_setup, test_audit_read_events_teardown),
+        cmocka_unit_test_setup_teardown(test_audit_read_events_select_success_recv_success_cache_boundary, test_audit_read_events_setup, test_audit_read_events_teardown),
         cmocka_unit_test(test_audit_parse_thread),
         cmocka_unit_test_setup_teardown(test_audit_rules_to_realtime, setup_syscheck_dir_links, teardown_rules_to_realtime),
         cmocka_unit_test_setup_teardown(test_audit_rules_to_realtime_first_search_audit_rule_fail, setup_syscheck_dir_links, teardown_rules_to_realtime),

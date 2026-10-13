@@ -342,6 +342,30 @@ wazuh_modules.inventory_sync_server_vd_scan_queue_slots=0
 
 ---
 
+### wazuh_modules.inventory_sync_server_max_sessions_per_agent
+
+Sessions one agent may have admitted and not yet answered, across the sync pipeline and the
+vulnerability-detection scan lane.
+
+```ini
+wazuh_modules.inventory_sync_server_max_sessions_per_agent=2
+```
+
+- **Default value:** `2`
+- **Allowed values:** 1 to 1024
+- **Note:** A session past it is answered `503` before anything is queued, and counted as
+  `sync.agent_busy.total` in [`GET /metrics`](metrics.md#sync-pipeline--syncpipeline-syncshardi-syncsessionduration). A session stays counted
+  until it is answered, which can be after remoted has stopped waiting for it: remoted gives up at
+  `remoted.downstream_stateful_response_timeout` (20 s by default) and the agent re-sends, while this
+  module keeps applying the first copy. The default of 2 is the session being applied plus one such
+  re-send. Further copies are refused rather than queued behind work that is already in progress,
+  so one agent cannot fill `sync_queue_bytes` or the scan lane for the rest of the fleet.
+- **Note:** A rising count usually means a slow indexer or vulnerability scanner, not a broken
+  agent: the agents re-send faster than their sessions are applied. Raising the value only queues
+  more duplicates.
+
+---
+
 ### wazuh_modules.inventory_sync_server_session_query_batch_size
 
 Indexer search page size of the checksum verification (`ModuleCheck` sessions), which pages the agent's

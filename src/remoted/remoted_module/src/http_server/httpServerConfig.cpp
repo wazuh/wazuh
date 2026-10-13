@@ -58,6 +58,11 @@ namespace
     // peak (bodies being received before they reach the budget) to conns * http_max_body_size.
     constexpr std::size_t DEFAULT_MAX_PARALLEL_CONNECTIONS {256};
 
+    // Max connections from one address still in the TLS handshake (issue #6883). An honest one leaves
+    // the handshake in milliseconds, so even a large fleet behind one NAT address rarely has more
+    // than a few there at once; one host stalling handshakes gets an eighth of the default slots.
+    constexpr std::size_t DEFAULT_MAX_HANDSHAKES_PER_SOURCE {32};
+
     // Relative to remoted's cwd, which is the chroot root ("/") by the time these paths are
     // opened (Privsep_Chroot() chdir()s there before the HTTPS module starts), so these resolve
     // identically to an equivalent leading-"/" path -- written without one here to avoid reading
@@ -189,6 +194,13 @@ namespace remoted::http
         result.maxParallelConnections = config.max_parallel_connections > 0
                                             ? static_cast<std::size_t>(config.max_parallel_connections)
                                             : DEFAULT_MAX_PARALLEL_CONNECTIONS;
+
+        // 0 means "no cap" here, so it is read only when flagged as set (a zeroed struct keeps
+        // meaning "module defaults"); a negative value cannot come from remoted and is ignored.
+        result.maxHandshakesPerSource =
+            config.max_handshakes_per_source_set != 0 && config.max_handshakes_per_source >= 0
+                ? static_cast<std::size_t>(config.max_handshakes_per_source)
+                : DEFAULT_MAX_HANDSHAKES_PER_SOURCE;
 
         result.certificatePath =
             config.certificate_path[0] != '\0' ? std::string {config.certificate_path} : DEFAULT_CERTIFICATE_PATH;

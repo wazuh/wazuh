@@ -63,6 +63,30 @@ def test_identity_mismatch_is_403(client, cluster, agent_id):
     assert _error(response)["code"] == 403
 
 
+@pytest.mark.parametrize("claim", [lambda a: "0" + a,
+                                   lambda a: "00" + a,
+                                   lambda a: str(2 ** 32 + int(a))],  # atoi() wrapped this onto the agent
+                         ids=["leading-zero", "two-leading-zeros", "wraps-to-the-agent"])
+def test_another_spelling_of_the_agent_id_is_400(client, cluster, agent_id, claim):
+    """An agent id is a string: the claim must be the authenticated id byte for byte. "0001" for
+    "001" used to pass a numeric comparison and index documents its deletion never matched, and an
+    out-of-range id could wrap onto the real one."""
+    session = build_session(default_start(claim(agent_id), cluster),
+                            {"sync_data": {"values": [{"id": "d1", "index": "wazuh-states-inventory-system",
+                                                       "data": {}}]}})
+    response = client.post_stateful(session, agent_id=agent_id)
+    assert response.status == 400
+    assert _error(response)["code"] == 400
+
+
+def test_non_canonical_agent_id_header_is_400(client, cluster, agent_id):
+    claimed = str(int(agent_id))  # "100" stays "100"; the header gets a leading zero instead
+    session = build_session(default_start(claimed, cluster),
+                            {"sync_data": {"values": [{"id": "d1", "index": "wazuh-states-inventory-system",
+                                                       "data": {}}]}})
+    assert client.post_stateful(session, agent_id="0" + claimed).status == 400
+
+
 def test_foreign_cluster_is_403(client, agent_id):
     session = build_session(default_start(agent_id, "someone-elses-cluster"),
                             {"sync_data": {"values": [{"id": "d1", "index": "wazuh-states-inventory-system",

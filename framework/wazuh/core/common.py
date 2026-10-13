@@ -214,3 +214,15 @@ SECURITY_PATH = os.path.join(WAZUH_PATH, 'api', 'configuration', 'security')
 # cluster merge in core/cluster/dapi drops it for any agent another node did report on -- a
 # placeholder only stands while nothing better exists.
 AGENT_NOT_IN_LOCAL_DB_ERROR_CODE = 1774
+
+# 1816 -> the upgrade twin of 1774: the Task Manager's "Agent information not found in database"
+# (socket error 6), emitted by wazuh/agent.py upgrade_agents() and dropped by the same merge. Unlike
+# 1774 it is not always a placeholder -- the Task Manager also answers it for an agent whose OS
+# information is incomplete, on every node -- which is exactly why it must reach the merge rather
+# than be skipped by the node: when no node reports anything better, it is the outcome.
+UPGRADE_AGENT_NOT_IN_LOCAL_DB_ERROR_CODE = 1816
+
+# 1701 -> "Agent does not exist", by this node's replicated client.keys. A verdict when every node
+# gives it, but a copy that has not reached a worker yet makes that worker give it for an agent
+# another node knows, so the same merge drops it for any agent another node reported on.
+AGENT_DOES_NOT_EXIST_ERROR_CODE = 1701

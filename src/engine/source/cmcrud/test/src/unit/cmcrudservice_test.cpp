@@ -699,6 +699,9 @@ TEST_F(CrudServiceUpsertIntegrationTest, UpsertIntegration_UpdateWhenUUIDExists)
     EXPECT_CALL(*validator, softIntegrationValidate(_, _)).Times(1).WillOnce(Return(base::noError()));
 
     EXPECT_CALL(*nsPtr, assetExistsByUUID("5c1df6b6-1458-4b2e-9001-96f67a8b12c8")).Times(1).WillOnce(Return(true));
+    EXPECT_CALL(*nsPtr, resolveNameFromUUID("5c1df6b6-1458-4b2e-9001-96f67a8b12c8"))
+        .Times(1)
+        .WillOnce(Return(std::make_tuple("windows", ResourceType::INTEGRATION)));
 
     EXPECT_CALL(*nsPtr, updateResourceByUUID("5c1df6b6-1458-4b2e-9001-96f67a8b12c8", _)).Times(1);
     EXPECT_CALL(*nsPtr, createResource("windows", ResourceType::INTEGRATION, _)).Times(0);
@@ -736,6 +739,30 @@ TEST_F(CrudServiceUpsertIntegrationTest, UpsertIntegration_AcceptsJsonPayloadAnd
     EXPECT_NO_THROW(service->upsertResource(nsId, ResourceType::INTEGRATION, makeJsonPayload(kIntegrationJson)));
 }
 
+TEST_F(CrudServiceUpsertIntegrationTest, UpsertIntegration_UUIDOfAnotherTypeIsRejected)
+{
+    const NamespaceId nsId {"dev"};
+    auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
+
+    ON_CALL(*nsPtr, getNamespaceId()).WillByDefault(testing::ReturnRef(nsId));
+    EXPECT_CALL(*store, getNS(Truly([&nsId](const NamespaceId& id) { return id.toStr() == nsId.toStr(); })))
+        .Times(1)
+        .WillOnce(Return(nsPtr));
+
+    EXPECT_CALL(*validator, softIntegrationValidate(_, _)).Times(1).WillOnce(Return(base::noError()));
+
+    EXPECT_CALL(*nsPtr, assetExistsByUUID("5c1df6b6-1458-4b2e-9001-96f67a8b12c8")).Times(1).WillOnce(Return(true));
+    EXPECT_CALL(*nsPtr, resolveNameFromUUID("5c1df6b6-1458-4b2e-9001-96f67a8b12c8"))
+        .Times(1)
+        .WillOnce(Return(std::make_tuple("some_kvdb", ResourceType::KVDB)));
+
+    EXPECT_CALL(*nsPtr, updateResourceByUUID(_, _)).Times(0);
+    EXPECT_CALL(*nsPtr, createResource(_, _, _)).Times(0);
+
+    EXPECT_THROW(service->upsertResource(nsId, ResourceType::INTEGRATION, makeJsonPayload(kIntegrationJson)),
+                 std::runtime_error);
+}
+
 // ---------------------------------------------------------------------
 // upsertResource - KVDB (create vs update)
 // ---------------------------------------------------------------------
@@ -767,11 +794,35 @@ TEST_F(CrudServiceUpsertKVDBTest, UpsertKVDB_UpdateWhenUUIDExists)
         .WillOnce(Return(nsPtr));
 
     EXPECT_CALL(*nsPtr, assetExistsByUUID("82e215c4-988a-4f64-8d15-b98b2fc03a4f")).Times(1).WillOnce(Return(true));
+    EXPECT_CALL(*nsPtr, resolveNameFromUUID("82e215c4-988a-4f64-8d15-b98b2fc03a4f"))
+        .Times(1)
+        .WillOnce(Return(std::make_tuple("windows_kerberos_status_code_to_code_name", ResourceType::KVDB)));
 
     EXPECT_CALL(*nsPtr, updateResourceByUUID("82e215c4-988a-4f64-8d15-b98b2fc03a4f", _)).Times(1);
     EXPECT_CALL(*nsPtr, createResource("windows_kerberos_status_code_to_code_name", ResourceType::KVDB, _)).Times(0);
 
     EXPECT_NO_THROW(service->upsertResource(nsId, ResourceType::KVDB, makeJsonPayload(kKVDBJson)));
+}
+
+// A KVDB payload carrying a decoder's UUID must not overwrite the decoder
+TEST_F(CrudServiceUpsertKVDBTest, UpsertKVDB_UUIDOfAnotherTypeIsRejected)
+{
+    const NamespaceId nsId {"dev"};
+    auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
+
+    EXPECT_CALL(*store, getNS(Truly([&nsId](const NamespaceId& id) { return id.toStr() == nsId.toStr(); })))
+        .Times(1)
+        .WillOnce(Return(nsPtr));
+
+    EXPECT_CALL(*nsPtr, assetExistsByUUID("82e215c4-988a-4f64-8d15-b98b2fc03a4f")).Times(1).WillOnce(Return(true));
+    EXPECT_CALL(*nsPtr, resolveNameFromUUID("82e215c4-988a-4f64-8d15-b98b2fc03a4f"))
+        .Times(1)
+        .WillOnce(Return(std::make_tuple("decoder/syslog/0", ResourceType::DECODER)));
+
+    EXPECT_CALL(*nsPtr, updateResourceByUUID(_, _)).Times(0);
+    EXPECT_CALL(*nsPtr, createResource(_, _, _)).Times(0);
+
+    EXPECT_THROW(service->upsertResource(nsId, ResourceType::KVDB, makeJsonPayload(kKVDBJson)), std::runtime_error);
 }
 
 // ---------------------------------------------------------------------

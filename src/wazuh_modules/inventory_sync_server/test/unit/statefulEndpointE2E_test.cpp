@@ -67,7 +67,7 @@ namespace
 
     /// POST with the authenticated-agent header remoted would set. peerRequest() has no headers
     /// parameter, so the head is assembled here, matching the peer's wire shape.
-    std::string statefulRequest(const std::string& body, const std::string& agentId = "1")
+    std::string statefulRequest(const std::string& body, const std::string& agentId = "001")
     {
         std::string request = "POST /stateful HTTP/1.1\r\nHost: localhost\r\n";
         if (!agentId.empty())
@@ -195,7 +195,7 @@ TEST_F(StatefulEndpointE2ETest, GarbageIs400AndAForeignIdentityIs403)
     EXPECT_EQ(400, wazuh::uds_http::test::sendRaw(m_path, statefulRequest("junk")).status);
 
     const auto body = invsync::test::buildSyncDataSession(SessionSpec {}, {invsync::test::ValueSpec {}});
-    const auto spoofed = wazuh::uds_http::test::sendRaw(m_path, statefulRequest(body, "42"));
+    const auto spoofed = wazuh::uds_http::test::sendRaw(m_path, statefulRequest(body, "042"));
     EXPECT_EQ(403, spoofed.status);
     EXPECT_NE(std::string::npos, spoofed.body.find("identity mismatch"));
     EXPECT_TRUE(m_events->syncOps().empty()) << "rejections must never reach the indexer";
@@ -385,7 +385,7 @@ TEST_F(StatefulEndpointE2ETest, DeleteAgentsWipesTheAgentAcrossBothHalves)
     // could not order against a report still sitting in the async connector's queue, which is why
     // those two moved to the by-id half below.
     EXPECT_EQ(std::vector<std::string>({"wazuh-states-*", "wazuh-states-*"}), deletedIndices);
-    // Padded like every document _id: the first deletion is agent 9, the second agent 10.
+    // Canonical like every document _id: the first deletion is agent 9, the second agent 10.
     EXPECT_EQ(std::vector<std::string>({"009", "010"}), deletedAgents);
     EXPECT_GE(m_events->m_syncFlushes.load(), 2) << "each queued delete must end in its own flush";
 

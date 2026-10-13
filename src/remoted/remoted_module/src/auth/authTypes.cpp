@@ -11,9 +11,12 @@
 
 #include "authTypes.hpp"
 
+#include <algorithm>
+
 namespace
 {
     constexpr std::size_t DEFAULT_MAX_BODY_SIZE {5U * 1024U * 1024U};
+    constexpr std::size_t DEFAULT_MAX_DECODED_BODY_SIZE {32U * 1024U * 1024U};
 } // namespace
 
 namespace remoted::auth
@@ -51,6 +54,13 @@ namespace remoted::auth
         result.timePolicy = buildTimePolicy(config.jwt_max_age, config.jwt_clock_skew, config.jwt_clock_skew_set != 0);
         result.maxBodySize =
             config.auth_max_body_size > 0 ? static_cast<std::size_t>(config.auth_max_body_size) : DEFAULT_MAX_BODY_SIZE;
+        result.maxDecodedBodySize = config.auth_max_decoded_body_size > 0
+                                        ? static_cast<std::size_t>(config.auth_max_decoded_body_size)
+                                        : DEFAULT_MAX_DECODED_BODY_SIZE;
+        // A decoded cap below the wire cap would refuse, once decoded, a body the wire cap accepted.
+        // remoted's secure.c already raises it with a warning; this holds the same line for any
+        // other caller of the C ABI.
+        result.maxDecodedBodySize = std::max(result.maxDecodedBodySize, result.maxBodySize);
 
         return result;
     }

@@ -707,6 +707,8 @@ void CMSync::synchronize()
                               nsState.getOriginSpace());
                 }
                 nsState.setRouteState(false, false, ""); // route removed / absent → not available
+                // The check succeeded: clear a FAILED left by an earlier check.
+                nsState.setSyncStatus(base::SyncStatus::READY);
                 continue;
             }
 
@@ -719,7 +721,10 @@ void CMSync::synchronize()
                     LOG_DEBUG("[{}] No changes detected for space '{}', skipping synchronization",
                               LOG_MODULE_NAME,
                               nsState.getOriginSpace());
-                    continue; // Case 4: No changes, skip synchronization
+                    // The check succeeded and the deployed namespace is current: clear a FAILED left by an
+                    // earlier check (e.g. indexer unreachable), otherwise it sticks until the next content change.
+                    nsState.setSyncStatus(base::SyncStatus::READY);
+                    continue; // Case 2: No changes, skip synchronization
                 }
             }
 

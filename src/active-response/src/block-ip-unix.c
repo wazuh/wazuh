@@ -593,14 +593,23 @@ firewall_result_t try_hostsdeny(const char *srcip, int action, int ip_version, c
         return FIREWALL_EXECUTION_FAILED;
     }
 
+    // Canonicalize the IP so the rule written and the rule matched on removal are
+    // byte-identical, whatever textual form the alert carried.
+    char canonical_ip[NI_MAXHOST];
+    if (!canonicalize_ip(srcip, canonical_ip, sizeof(canonical_ip))) {
+        log_firewall_action(argv0, LOG_LEVEL_WARNING, "hostsdeny", "check",
+                          "Cannot canonicalize source IP");
+        return FIREWALL_EXECUTION_FAILED;
+    }
+
     // Determine the rule format and file path based on OS
     memset(hosts_deny_rule, '\0', COMMANDSIZE_4096);
     memset(hosts_deny_path, '\0', COMMANDSIZE_4096);
     if (!strcmp("FreeBSD", uname_buffer.sysname)) {
-        snprintf(hosts_deny_rule, COMMANDSIZE_4096 - 1, "ALL : %s : deny", srcip);
+        snprintf(hosts_deny_rule, COMMANDSIZE_4096 - 1, "ALL : %s : deny", canonical_ip);
         strcpy(hosts_deny_path, FREEBSD_HOSTS_DENY_PATH);
     } else {
-        snprintf(hosts_deny_rule, COMMANDSIZE_4096 - 1, "ALL:%s", srcip);
+        snprintf(hosts_deny_rule, COMMANDSIZE_4096 - 1, "ALL:%s", canonical_ip);
         strcpy(hosts_deny_path, DEFAULT_HOSTS_DENY_PATH);
     }
 
@@ -631,7 +640,7 @@ firewall_result_t try_hostsdeny(const char *srcip, int action, int ip_version, c
         // Check for duplicates
         memset(output_buf, '\0', OS_MAXSTR - 25);
         while (fgets(output_buf, OS_MAXSTR - 25, host_deny_fp)) {
-            if (strstr(output_buf, srcip) != NULL) {
+            if (hosts_deny_rule_matches(output_buf, hosts_deny_rule)) {
                 memset(log_msg, '\0', OS_MAXSTR);
                 snprintf(log_msg, OS_MAXSTR - 1, "IP %s already exists in '%s'", srcip, hosts_deny_path);
                 log_firewall_action(argv0, LOG_LEVEL_INFO, "hostsdeny", "add", log_msg);
@@ -667,6 +676,7 @@ firewall_result_t try_hostsdeny(const char *srcip, int action, int ip_version, c
         FILE *temp_host_deny_fp = NULL;
         char temp_hosts_deny_path[COMMANDSIZE_4096];
         bool write_fail = false;
+        bool entry_removed = false;
 
         memset(temp_hosts_deny_path, '\0', COMMANDSIZE_4096);
         snprintf(temp_hosts_deny_path, COMMANDSIZE_4096 - 1, "%s", "active-response/bin/temp-hosts-deny");
@@ -691,10 +701,10 @@ firewall_result_t try_hostsdeny(const char *srcip, int action, int ip_version, c
             return FIREWALL_EXECUTION_FAILED;
         }
 
-        // Copy all lines except those containing the srcip
+        // Copy all lines except the exact Wazuh-managed rule for srcip
         memset(output_buf, '\0', OS_MAXSTR - 25);
         while (fgets(output_buf, OS_MAXSTR - 25, host_deny_fp)) {
-            if (strstr(output_buf, srcip) == NULL) {
+            if (!hosts_deny_rule_matches(output_buf, hosts_deny_rule)) {
                 if (fwrite(output_buf, 1, strlen(output_buf), temp_host_deny_fp) != strlen(output_buf)) {
                     memset(log_msg, '\0', OS_MAXSTR);
                     snprintf(log_msg, OS_MAXSTR - 1, "Unable to write to temporary file");
@@ -702,6 +712,8 @@ firewall_result_t try_hostsdeny(const char *srcip, int action, int ip_version, c
                     write_fail = true;
                     break;
                 }
+            } else {
+                entry_removed = true;
             }
             memset(output_buf, '\0', OS_MAXSTR - 25);
         }
@@ -709,8 +721,9 @@ firewall_result_t try_hostsdeny(const char *srcip, int action, int ip_version, c
         fclose(host_deny_fp);
         fclose(temp_host_deny_fp);
 
-        // Replace original file with temp file
-        if (write_fail || OS_MoveFile(temp_hosts_deny_path, hosts_deny_path) != 0) {
+        // Replace the original file only when an entry was actually removed, to
+        // avoid changing its inode and mode on every expiring block.
+        if (write_fail || (entry_removed && OS_MoveFile(temp_hosts_deny_path, hosts_deny_path) != 0)) {
             memset(log_msg, '\0', OS_MAXSTR);
             snprintf(log_msg, OS_MAXSTR - 1, "Unable to update file '%s'", hosts_deny_path);
             log_firewall_action(argv0, LOG_LEVEL_WARNING, "hostsdeny", "delete", log_msg);

@@ -42,7 +42,7 @@ void test_md5_sha1_sha256_file(void **state)
     char file_name[256] = "/tmp/tmp_file-XXXXXX";
 
     FILE * fp = (FILE *)0x1;
-    expect_wfopen(file_name, "r", fp);
+    expect_w_fopen_regular(file_name, "r", fp);
     expect_fread(string, strlen(string));
     expect_fread(string, 0);
     expect_fclose(fp, 0);
@@ -64,7 +64,7 @@ void test_md5_sha1_sha256_file_fail(void **state)
     os_sha1 sha1buffer;
     os_sha256 sha256buffer;
 
-    expect_wfopen("file_name", "r", NULL);
+    expect_w_fopen_regular("file_name", "r", NULL);
 
     assert_int_equal(OS_MD5_SHA1_SHA256_File("file_name", md5buffer, sha1buffer, sha256buffer, OS_TEXT, 20), -1);
 }
@@ -80,7 +80,7 @@ void test_md5_sha1_sha256_file_max_size_fail(void **state)
     char file_name[256] = "/tmp/tmp_file-XXXXXX";
 
     FILE * fp = (FILE *)0x1;
-    expect_wfopen(file_name, "r", fp);
+    expect_w_fopen_regular(file_name, "r", fp);
     expect_fread(string, strlen(string));
     expect_fclose(fp, 0);
 

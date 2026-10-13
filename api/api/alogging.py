@@ -124,6 +124,37 @@ def redact_sensitive_fields(value):
     return root
 
 
+def redact_headers(headers) -> dict:
+    """Return the request headers as a dict with every credential value masked.
+
+    The name rule is `is_sensitive_field`, so `Authorization`, `Proxy-Authorization`, `Cookie` and
+    `X-API-Key` are all covered. An authorization value keeps its scheme (`Basic ****`,
+    `Bearer ****`): the scheme is what a proxy or CORS problem is debugged with, while the credential
+    behind it is the login password or a live token. Header names are case-insensitive and a header
+    may be repeated, so the pairs are walked as received, never indexed by name; a repeated header
+    is written as one comma-joined value.
+
+    Parameters
+    ----------
+    headers : Mapping or None
+        Request headers: Starlette's `Headers` or a plain dict.
+
+    Returns
+    -------
+    dict
+        Lowercased header names mapped to their value, masked where the name is sensitive.
+    """
+    redacted = {}
+    for name, value in (headers.items() if headers else ()):
+        name = name.lower()
+        if is_sensitive_field(name):
+            scheme, separator, _ = value.partition(' ')
+            value = f'{scheme} {REDACTED_VALUE}' if separator and name.endswith('authorization') \
+                else REDACTED_VALUE
+        redacted[name] = f'{redacted[name]}, {value}' if name in redacted else value
+    return redacted
+
+
 def escape_control_chars(value: str) -> str:
     """Replace each control character with its Python escape sequence (`\\n`, `\\x1b`...)."""
     return control_chars_pattern.sub(lambda m: repr(m.group())[1:-1], value)
@@ -348,7 +379,7 @@ def custom_logging(user, remote, method, path, query,
     hash_auth_context : str, optional
         Hash representing the authorization context. Default: ''
     headers: dict
-        Optional dictionary of request headers.
+        Optional request headers. Credential values are masked before they are written.
     """
     # Redact here rather than at the call site: the function that writes the log is the one that
     # masks, so no caller can forget to. `redact_sensitive_fields` returns a copy, which is what
@@ -391,4 +422,4 @@ def custom_logging(user, remote, method, path, query,
 
     logger.info(log_info, extra={'log_type': 'log'})
     logger.info(json_info, extra={'log_type': 'json'})
-    logger.debug2(f'Receiving headers {headers}')
+    logger.debug2(f'Receiving headers {redact_headers(headers)}')

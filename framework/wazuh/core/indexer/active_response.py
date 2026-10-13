@@ -7,6 +7,7 @@ import json
 import jsonschema
 import logging
 import os
+import re
 
 from collections import Counter
 from dataclasses import dataclass, field
@@ -39,6 +40,14 @@ DEFAULT_PAGE_SIZE = 1000
 #: below, because a refusal is terminal for one document while a transport failure is not.
 HTTP_REJECTED_CODE = 2019
 
+#: The indices `event.index` may name. The event is fetched with the manager's own indexer
+#: credentials and merged into a payload delivered to agents, so the name is an allow-list, not a
+#: free target: the event and findings families only, as a concrete index or a data stream's
+#: backing index, and nothing that the indexer would expand (`,`, `*`, `?`, `-` exclusions,
+#: `<date math>`, `cluster:` prefixes) since every character outside [a-z0-9._-] is refused.
+EVENT_INDEX_PATTERN = r"^(?:\.ds-)?wazuh-(?:events|findings)-v5-[a-z0-9][a-z0-9._-]*\Z"
+_EVENT_INDEX_RE = re.compile(EVENT_INDEX_PATTERN)
+
 #: The document contract, as the code depends on it. The readable version is the "Manager-side
 #: ingestion" section of docs/ref/modules/active-response/architecture.md; keep the two aligned.
 AR_SCHEMA = {
@@ -48,7 +57,7 @@ AR_SCHEMA = {
         "event": {
             "type": "object",
             "properties": {
-                "index": {"type": "string", "minLength": 1},
+                "index": {"type": "string", "pattern": EVENT_INDEX_PATTERN},
                 "doc_id": {"type": "string", "minLength": 1},
             },
             "required": ["index", "doc_id"],
@@ -139,6 +148,34 @@ AR_SCHEMA = {
         }
     ],
 }
+
+
+def _usable_event_ref(index: Any, doc_id: Any) -> bool:
+    """Whether an `event` reference may be looked up: a permitted index and a non-empty id.
+
+    The single predicate both get_events_by_ar() and enrich_ar_with_events_info() apply, because
+    the two decisions have to agree: a reference refused here can never be "not visible yet". It
+    restates AR_SCHEMA's `event` clause for a caller that skips validation, since the mget it
+    guards runs with the manager's credentials.
+
+    Parameters
+    ----------
+    index : Any
+        The `event.index` value of an active response document.
+    doc_id : Any
+        The `event.doc_id` value of an active response document.
+
+    Returns
+    -------
+    bool
+        True if the reference names an allowed index and a non-empty document id.
+    """
+    return (
+        isinstance(index, str)
+        and _EVENT_INDEX_RE.match(index) is not None
+        and isinstance(doc_id, str)
+        and bool(doc_id)
+    )
 
 
 def _ar_age_seconds(doc_source: Dict[str, Any]) -> Optional[float]:
@@ -506,11 +543,12 @@ class ActiveResponseHelpers:
             except (KeyError, TypeError):
                 index = doc_id = None
 
-            # AR_SCHEMA constrains `wazuh` only, so `event` and both of these can be any JSON value.
-            # Checked before the insert rather than caught after it: a null index is hashable, so it
-            # raises nothing here and comes back as a 400 from mget instead. Either way one document
-            # aborted the work for the whole page, which this loop builds before any I/O.
-            if not isinstance(index, str) or not isinstance(doc_id, str) or not index or not doc_id:
+            # Without AR_SCHEMA, `event` and both of these can be any JSON value. Checked before the
+            # insert rather than caught after it: a null index is hashable, so it raises nothing
+            # here and comes back as a 400 from mget instead, aborting the whole page. And the index
+            # is an allow-list, not a free target: the mget below reads with the manager's
+            # credentials and its result is delivered to agents.
+            if not _usable_event_ref(index, doc_id):
                 ActiveResponseHelpers.logger.warning(f"Active response `{ar.doc_id}` carries no usable event reference. Discarding it.")
                 continue
 
@@ -642,7 +680,7 @@ class ActiveResponseBuilder:
             event_id = event_ref.get("doc_id")
             # Same predicate get_events_by_ar() applies before the mget, because the two decisions
             # have to agree: a reference it refused to look up can never be "not visible yet".
-            usable = bool(isinstance(index_id, str) and index_id and isinstance(event_id, str) and event_id)
+            usable = _usable_event_ref(index_id, event_id)
 
             try:
                 ar.event = events[index_id][event_id]

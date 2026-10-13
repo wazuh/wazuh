@@ -10,7 +10,8 @@
 #include "shared.h"
 
 #ifndef WIN32
-#define LOG_FILE "logs/active-responses.log"
+#define AR_LOG_DIR "logs"
+#define AR_LOG_FILE_NAME "active-responses.log"
 #else
 #define LOG_FILE "active-response\\active-responses.log"
 #endif
@@ -157,6 +158,27 @@ int isEnabledFromPattern(const char * output_buf, const char * str_pattern_1, co
 int validate_srcip(const char *srcip);
 
 #ifndef WIN32
+
+/**
+ * Canonicalize a numeric IP into its standard text form (e.g. "2001:0db8::1" -> "2001:db8::1")
+ * using strict inet_pton parsing; non-canonical IPv4 forms (octal, hex, short) are rejected
+ * @param ip Numeric IP to canonicalize
+ * @param output Buffer that receives the canonical form
+ * @param output_size Size of output
+ * @retval true on success
+ * @retval false on error or non-canonical/invalid IP
+ * */
+bool canonicalize_ip(const char *ip, char *output, size_t output_size);
+
+/**
+ * Check whether a hosts.deny file line is exactly the Wazuh-managed rule
+ * (trailing EOL/whitespace ignored), so substrings never match
+ * @param line Line read from hosts.deny
+ * @param rule Exact rule Wazuh writes (e.g. "ALL:10.0.0.1")
+ * @retval true if the line is that rule
+ * @retval false otherwise
+ * */
+bool hosts_deny_rule_matches(const char *line, const char *rule);
 
 /**
  * Write process pid to lock simultaneous executions of the script

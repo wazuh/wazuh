@@ -116,9 +116,9 @@ def prefixed(path: str) -> str:
     return GLOBAL_PREFIX + path
 
 def multigroup_dir_name(selector: str) -> str:
-    """Same formula wazuh-db uses to NAME the directory: OS_SHA256_String_sized(sel, out, 8).
+    """Same formula wazuh-db uses to NAME the directory: OS_SHA256_String_sized(sel, out, 32).
     Replicated, not queried -- the manager derives it the same way."""
-    return hashlib.sha256(selector.encode()).hexdigest()[:8]
+    return hashlib.sha256(selector.encode()).hexdigest()[:32]
 
 
 def expected_config_path(paths: ManagerPaths, selector: str) -> str:
@@ -514,7 +514,9 @@ def main():
     parser.add_argument("--all", action="store_true", help="Run every success/failure scenario.")
     parser.add_argument("--simulate", type=int, metavar="N",
                         help="Simulate N enrolled agents downloading concurrently.")
-    parser.add_argument("--repeat", type=int, default=1, help="Downloads per simulated agent.")
+    parser.add_argument("--repeat", type=int, default=1,
+                        help="Downloads per simulated agent, all in flight at once. Above the manager's "
+                             "remoted.max_requests_per_agent (6 by default) the excess is answered 503 by design.")
     parser.add_argument("--selectors", default="default",
                         help="Semicolon-separated resource_ids to hand the simulated agents, "
                              "round-robin (';' because ',' already separates a multigroup). "

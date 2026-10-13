@@ -298,7 +298,8 @@ def _canonicalize_dynamic_ids(resources: list, kwargs: dict):
     """Rewrite in place every dynamic resource id in kwargs to its canonical spelling.
 
     RBAC compares ids as strings and the framework functions cast them to integers, so both must see
-    the same value: otherwise a padded id (`01`, `0005`) is allowed by a wildcard, missed by a deny
+    the same value: otherwise another spelling `int()` reads as the same id (`01`, `0005`, `5\\n`, a
+    non-ASCII digit) is allowed by a wildcard, missed by a deny
     written for the canonical id, and then reaches the denied object anyway. Duplicates a list gains
     this way are dropped, keeping the first occurrence.
 
@@ -357,16 +358,20 @@ def _get_required_permissions(actions: list = None, resources: list = None, **kw
                 if m.group(3) in kwargs:
                     # Dynamic resources ids are found within the {}
                     params = kwargs[m.group(3)]
+                    # Ids the caller named are explicit whether or not the request is broadcast:
+                    # each one is answered -- denied (4000) or failed with exclude_codes such as
+                    # 1701 -- instead of vanishing. Broadcasting turned that off, so an explicit
+                    # agents_list on the broadcast agent endpoints (restart, reload, upgrade) lost
+                    # its non-existent and denied ids. A broadcast '*' never reaches here: DAPI
+                    # deletes a wildcard agent_list, which takes the KeyError branch below.
                     if isinstance(params, list):
                         for param in params:
                             res_list.append("{0}:{1}".format(res_base, param))
-                        add_denied = not broadcast.get()
+                        add_denied = True
                     else:
                         if params is None or params == '*':
-                            add_denied = True
                             params = '*'
-                        else:
-                            add_denied = not broadcast.get()
+                        add_denied = True
                         res_list.append("{0}:{1}".format(res_base, params))
                 # KeyError occurs if required dynamic resources can't be found within request parameters
                 else:

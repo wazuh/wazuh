@@ -29,6 +29,7 @@ import argparse
 import contextlib
 import getpass
 import grp
+import ipaddress
 import json
 import os
 import pwd
@@ -38,6 +39,7 @@ import ssl
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 
 TOOL_VERSION = "2.0.0"
@@ -46,6 +48,10 @@ BUNDLE_VERSION = 2
 DEFAULT_SOURCE_DIR = "/var/ossec"
 DEFAULT_TARGET_DIR = "/var/wazuh-manager"
 DEFAULT_API_URL = "https://localhost:55000"
+
+# The CA the manager issued apid.pem from at install, relative to the 5.0 installation. The default
+# trust anchor for --api-ca: apid.pem carries localhost, 127.0.0.1 and ::1 among its SANs.
+TARGET_ROOT_CA = os.path.join("etc", "certs", "root-ca.pem")
 
 # Where a 5.0 manager publishes the Server API password it generated at install (#39554). Read
 # as data, never sourced; the last assignment of the key wins, as the manager's own reader does.
@@ -95,20 +101,19 @@ class ManagerApi:
     with each other. That is the whole reason the import side has no notion of either.
     """
 
-    def __init__(self, url, user, password, ca_path=None):
+    def __init__(self, url, user, password, ca_path):
         self.url = url.rstrip("/")
         self.user = user
         self.password = password
         self.token = None
+        # Always verified, chain and hostname: this connection carries the superuser password and
+        # every imported agent key. resolve_api_ca() decides which CA, and refuses when none fits.
+        self.context = None
         if ca_path:
-            self.context = ssl.create_default_context(cafile=ca_path)
-        else:
-            # The default target is the manager's own loopback address, where the connection never
-            # leaves the host and apid serves a certificate it issued itself. Pass --api-ca to
-            # verify instead, which is what a non-local --api-url needs.
-            self.context = ssl.create_default_context()
-            self.context.check_hostname = False
-            self.context.verify_mode = ssl.CERT_NONE
+            try:
+                self.context = ssl.create_default_context(cafile=ca_path)
+            except (ssl.SSLError, OSError) as error:
+                raise MigrationError("cannot load the CA bundle %s: %s" % (ca_path, error))
 
     def _call(self, method, path, body=None, auth=None, content_type="application/json"):
         request = urllib.request.Request(self.url + path, method=method)
@@ -134,6 +139,11 @@ class ManagerApi:
             except ValueError:
                 return {"__status": error.code, "title": error.reason, "detail": payload[:200]}
         except urllib.error.URLError as error:
+            if isinstance(error.reason, ssl.SSLCertVerificationError):
+                raise MigrationError(
+                    "the manager API at %s presented a certificate that does not verify: %s."
+                    " Pass --api-ca with the CA that issued it, and an --api-url whose host the"
+                    " certificate names." % (self.url, error.reason.verify_message or error.reason))
             raise MigrationError(
                 "cannot reach the manager API at %s: %s. The API has to be running for the"
                 " import, unlike the 4.x side. Check the address and --api-user/--api-password-file."
@@ -165,6 +175,54 @@ class ManagerApi:
             raise MigrationError("%s failed: %s" % (what or "%s %s" % (method, path),
                                                     describe_api_error(answer)))
         return answer
+
+
+def is_loopback(host):
+    """True for localhost and any loopback address, the only hosts a connection never leaves."""
+    if not host:
+        return False
+    if host.lower() == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
+def resolve_api_ca(args):
+    """The CA to verify the manager API with, or None for a plain-HTTP loopback URL.
+
+    The password and the agent keys this tool sends are worth an on-path attacker's while, so the
+    connection is never left unverified. Without --api-ca it trusts the target's own root-ca.pem,
+    which issued apid.pem, and only for a loopback --api-url: a remote API is verified against a CA
+    the operator names, never against a file that merely sits on this host.
+    """
+    parts = urllib.parse.urlsplit(args.api_url)
+    if parts.scheme not in ("https", "http"):
+        raise MigrationError("--api-url %s is not an http(s) URL" % args.api_url)
+    loopback = is_loopback(parts.hostname)
+    if parts.scheme == "http":
+        if not loopback:
+            raise MigrationError(
+                "--api-url %s would send the API password and the agent keys in clear. Use"
+                " https, or run the tool on the manager against its loopback address."
+                % args.api_url)
+        return None
+    if args.api_ca:
+        if not os.path.isfile(args.api_ca):
+            raise MigrationError("--api-ca %s is not a file" % args.api_ca)
+        return args.api_ca
+    if not loopback:
+        raise MigrationError(
+            "--api-url %s is not a loopback address, so --api-ca is required: name the CA that"
+            " issued the API certificate (on that manager, %s)."
+            % (args.api_url, os.path.join(DEFAULT_TARGET_DIR, TARGET_ROOT_CA)))
+    ca_path = os.path.join(args.target_dir, TARGET_ROOT_CA)
+    if not os.path.isfile(ca_path):
+        raise MigrationError(
+            "%s is missing, so the API certificate cannot be verified. Pass --api-ca with the CA"
+            " that issued it." % ca_path)
+    return ca_path
 
 
 def describe_api_error(answer):
@@ -600,7 +658,8 @@ def stage_rbac(target_dir, dry_run):
     4.x and 5.0 both stamp RBAC version 1, so a carried database is taken for a current one and
     keeps the 4.x default policies: the ones 5.0 added, enrollment-token minting among them, are
     never created. Setting the version to 0 is what asks for the supported upgrade, which rebuilds
-    the defaults and migrates across the users, roles and policies an operator created.
+    the defaults, gives user 2 its 5.0 name (`wazuh-internal-client`, keeping its password) and
+    migrates across the users, roles and policies an operator created.
     """
     path = os.path.join(target_dir, "api", "configuration", "security", "rbac.db")
     if not os.path.isfile(path):
@@ -617,8 +676,9 @@ def command_import(args):
     target = args.target_dir
     version = assert_install(target, 5, "target")
     manifest = load_manifest(args.bundle)
+    ca_path = resolve_api_ca(args)
 
-    api = ManagerApi(args.api_url, args.api_user, read_api_password(args), args.api_ca)
+    api = ManagerApi(args.api_url, args.api_user, read_api_password(args), ca_path)
     api.authenticate()
 
     log("Bundle from %s (%s), %d agent(s), %d group(s)"
@@ -651,9 +711,9 @@ def command_import(args):
                 # The manager never reseeds an existing rbac.db, so from the next start both
                 # Server API users carry their 4.x passwords, while the file still holds the values
                 # the install generated and handed to the dashboard. Two records, one true.
-                warn("from the next start the 'wazuh' and 'wazuh-wui' passwords are the 4.x ones"
+                warn("from the next start the 'wazuh' and 'wazuh-internal-client' passwords are the 4.x ones"
                      " carried in rbac.db; %s and WAZUH_MANAGER_WUI_PASSWORD in %s no longer"
-                     " match them, and a dashboard installed with that WUI value cannot log in."
+                     " match them, and a dashboard installed with that value cannot log in."
                      " Either set both users back to the published values with"
                      " 'rbac_control change-password' after the restart, or update the dashboard"
                      " and pass --api-password-file to 'check'."
@@ -687,7 +747,8 @@ def command_import(args):
 def command_check(args):
     assert_install(args.target_dir, 5, "target")
     manifest = load_manifest(args.bundle)
-    api = ManagerApi(args.api_url, args.api_user, read_api_password(args), args.api_ca)
+    ca_path = resolve_api_ca(args)
+    api = ManagerApi(args.api_url, args.api_user, read_api_password(args), ca_path)
     api.authenticate()
 
     problems = []
@@ -796,8 +857,9 @@ def build_parser():
                                help="file holding the API password, or '-' for standard input."
                                     " WAZUH_API_PASSWORD is read when this is not given")
         subparser.add_argument("--api-ca",
-                               help="CA bundle to verify the API certificate with. Without it the"
-                                    " connection to the default loopback address is not verified")
+                               help="CA bundle to verify the API certificate with. Required for a"
+                                    " non-loopback --api-url; a loopback one defaults to the"
+                                    " target's %s" % TARGET_ROOT_CA)
 
     return parser
 

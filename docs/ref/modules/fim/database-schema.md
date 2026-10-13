@@ -181,7 +181,7 @@ CREATE TABLE IF NOT EXISTS table_metadata (
 
 #### Purpose
 
-The `table_metadata` table supports FIM recovery functionality by tracking each table's last synchronization attempt. This allows the system to trigger recovery operations with the frequency specified by the `integtrity_interal` option's value.
+The `table_metadata` table supports FIM recovery functionality by tracking each table's last synchronization attempt. This allows the system to trigger recovery operations with the frequency specified by the `<synchronization><integrity_interval>` option's value.
 
 **Tracked Tables:**
 - `file_entry` - File monitoring state
@@ -202,9 +202,11 @@ CREATE TABLE IF NOT EXISTS persistent_queue (
     idx TEXT NOT NULL,
     data TEXT NOT NULL,
     operation INTEGER NOT NULL,
+    version INTEGER NOT NULL DEFAULT 0,
     sync_status INTEGER NOT NULL DEFAULT 0,
     create_status INTEGER NOT NULL DEFAULT 0,
-    operation_syncing INTEGER NOT NULL DEFAULT 3
+    operation_syncing INTEGER NOT NULL DEFAULT 3,
+    is_data_context INTEGER NOT NULL DEFAULT 0
 );
 ```
 
@@ -216,9 +218,11 @@ CREATE TABLE IF NOT EXISTS persistent_queue (
 | `idx` | TEXT | - | Index identifier for grouping related entries |
 | `data` | TEXT | - | JSON serialized FIM data |
 | `operation` | INTEGER | - | Type of operation (0=CREATE, 1=UPDATE, 2=DELETE) |
+| `version` | INTEGER | 0 | Version of the entry's data |
 | `sync_status` | INTEGER | 0 | Current sync state (0=PENDING, 1=SYNCING, 2=SYNCING_UPDATED) |
 | `create_status` | INTEGER | 0 | Creation tracking (0=EXISTING, 1=NEW, 2=NEW_DELETED) |
 | `operation_syncing` | INTEGER | 3 | Original operation being synchronized |
+| `is_data_context` | INTEGER | 0 | Whether the row is context data rather than a data value; always `0` for FIM |
 
 #### Sync Status Values
 

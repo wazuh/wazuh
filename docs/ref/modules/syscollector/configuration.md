@@ -33,7 +33,7 @@ Enable or disable the Syscollector module.
 How frequently the module performs inventory scans.
 
 - **Default value:** `1h`
-- **Allowed values:** Time period (minimum `60s`)
+- **Allowed values:** Positive time period up to `4294967294` seconds; `0` and larger values are rejected
 - **Note:** Accepts time suffixes: `s` (seconds), `m` (minutes), `h` (hours), `d` (days)
 
 #### scan_on_start
@@ -172,14 +172,6 @@ How often to trigger synchronization with the manager.
 - **Allowed values:** `1` to unlimited (seconds)
 - **Note:** Lower values provide faster synchronization but increase manager load. Higher values reduce network traffic but delay inventory delivery.
 
-### max_eps
-
-Maximum events per second for synchronization messages.
-
-- **Default value:** `75`
-- **Allowed values:** `0` to `1000000`
-- **Note:** Prevents overwhelming the manager with inventory synchronization traffic. Separate from stateless inventory event rate limiting. Set to `0` for unlimited (not recommended).
-
 ### integrity_interval
 
 Time between integrity checks for each inventory table.
@@ -233,7 +225,6 @@ Standard configuration for most deployments:
     <synchronization>
         <enabled>yes</enabled>
         <interval>300</interval>
-        <max_eps>75</max_eps>
         <integrity_interval>86400</integrity_interval>
     </synchronization>
 </wodle>
@@ -332,7 +323,6 @@ For environments with frequent inventory changes:
     <synchronization>
         <enabled>yes</enabled>
         <interval>120</interval>         <!-- Sync every 2 minutes -->
-        <max_eps>150</max_eps>           <!-- Higher sync throughput -->
         <integrity_interval>3600</integrity_interval>  <!-- Check integrity every hour -->
     </synchronization>
 </wodle>
@@ -367,7 +357,6 @@ Optimized for large-scale deployments with fast networks:
     <synchronization>
         <enabled>yes</enabled>
         <interval>120</interval>
-        <max_eps>200</max_eps>
         <integrity_interval>43200</integrity_interval>  <!-- 12 hours -->
     </synchronization>
 </wodle>
@@ -407,29 +396,13 @@ Optimized for large-scale deployments with fast networks:
 
 ## Event Rate Control
 
-Syscollector implements separate rate controls for different event types:
-
-### Stateless Inventory Events
-
-Configured at the module level:
+The module-level `max_eps` limits the stateless inventory change events:
 
 ```xml
-<max_eps>50</max_eps>  <!-- Outside synchronization block -->
+<max_eps>50</max_eps>
 ```
 
-Controls stateless immediate inventory change alerts with higher priority than sync messages.
-
-### Synchronization Events
-
-Configured within the synchronization block:
-
-```xml
-<synchronization>
-    <max_eps>75</max_eps>  <!-- Inside synchronization block -->
-</synchronization>
-```
-
-Controls stateful persistence messages sent during sync sessions for batch inventory state synchronization.
+Synchronization messages are not limited by this option.
 
 ---
 

@@ -11,6 +11,8 @@
 
 #include "configEndpoint.hpp"
 
+#include "common/agentId.hpp"
+#include "common/jsonNestingDepth.hpp"
 #include "loggerHelper.h"
 #include "sync/stateIndexAllowlist.hpp" // AGENT_CONFIG_INDEX -- shared with the deletion scope
 #include "timeHelper.h"
@@ -143,6 +145,23 @@ namespace invsync::endpoints::config
             if (agentIdIt == request->headers.end() || agentIdIt->second.empty())
             {
                 responder->send(badRequest("Missing agent id header"));
+                return;
+            }
+            // It is also the document id and `wazuh.agent.id`, so it must be the one canonical spelling
+            // the whole-agent deletion matches: anything else would index a document no deletion
+            // reaches. remoted only ever sends that form, so this rejects a bypassing caller.
+            if (!invsync::common::isCanonicalAgentId(agentIdIt->second))
+            {
+                responder->send(badRequest("Agent id header must be a canonical agent id"));
+                return;
+            }
+
+            // Before the parse, on the raw bytes: the copy out of the document and dump() below both
+            // recurse once per level, so a deep enough body would overflow this thread's stack and
+            // take the whole of modulesd down.
+            if (invsync::common::exceedsNestingDepth(request->body))
+            {
+                responder->send(badRequest("Body nests deeper than the allowed limit"));
                 return;
             }
 

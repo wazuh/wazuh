@@ -16,7 +16,9 @@
 #include <gtest/gtest.h>
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
+#include <string_view>
 #include <variant>
 #include <vector>
 
@@ -406,4 +408,66 @@ TEST(ZstdDecoder, AFrameDeclaringAWindowUnderTheHardCeilingIsStillAccepted)
 
     ASSERT_TRUE(std::holds_alternative<std::string>(result));
     EXPECT_EQ(std::get<std::string>(result), plain);
+}
+
+namespace
+{
+    // A zstd skippable frame: magic 0x184D2A50 (little-endian), a 4-byte payload size, the payload.
+    std::string skippableFrame(std::string_view payload)
+    {
+        std::string frame {"\x50\x2A\x4D\x18", 4};
+        const auto size = static_cast<std::uint32_t>(payload.size());
+        for (int shift = 0; shift < 32; shift += 8)
+        {
+            frame.push_back(static_cast<char>((size >> shift) & 0xFFU));
+        }
+        frame.append(payload);
+        return frame;
+    }
+} // namespace
+
+// The header check reads the FIRST frame only. A tiny first frame followed by one declaring
+// libzstd's default maximum window (windowLog 27, 128 MiB) used to make the decoder allocate that
+// window outside the budget -- one request, ~128 MiB of untracked memory. It is refused instead.
+TEST(ZstdDecoder, AnEmptyFrameFollowedByALargeWindowFrameIsRefused)
+{
+    const auto compressed =
+        zstdCompress("") + remoted::testutil::zstdCompressWithDeclaredWindowLog(std::string(128, 'q'), 27);
+
+    int windowReservations = 0;
+    const auto result = zstdDecode(
+        compressed,
+        [&windowReservations](std::size_t)
+        {
+            ++windowReservations;
+            return true;
+        },
+        alwaysReserve);
+
+    ASSERT_TRUE(std::holds_alternative<ZstdDecodeError>(result));
+    EXPECT_EQ(std::get<ZstdDecodeError>(result), ZstdDecodeError::Malformed);
+    EXPECT_EQ(windowReservations, 1) << "only the first frame's window was ever reserved";
+}
+
+// One body is one frame. Even two perfectly valid frames back to back are refused: the second was
+// never checked against the window ceiling nor charged, and no agent sends more than one.
+TEST(ZstdDecoder, TwoValidFramesBackToBackAreRefused)
+{
+    const auto result = zstdDecode(zstdCompress("first") + zstdCompress("second"), alwaysReserve, alwaysReserve);
+
+    ASSERT_TRUE(std::holds_alternative<ZstdDecodeError>(result));
+    EXPECT_EQ(std::get<ZstdDecodeError>(result), ZstdDecodeError::Malformed);
+}
+
+// A skippable frame is trailing data like any other: after the real frame it is refused, and as
+// the first frame it never was a zstd frame at all.
+TEST(ZstdDecoder, ASkippableFrameIsRefusedBeforeOrAfterTheRealFrame)
+{
+    const auto after = zstdDecode(zstdCompress("body") + skippableFrame("note"), alwaysReserve, alwaysReserve);
+    ASSERT_TRUE(std::holds_alternative<ZstdDecodeError>(after));
+    EXPECT_EQ(std::get<ZstdDecodeError>(after), ZstdDecodeError::Malformed);
+
+    const auto before = zstdDecode(skippableFrame("note") + zstdCompress("body"), alwaysReserve, alwaysReserve);
+    ASSERT_TRUE(std::holds_alternative<ZstdDecodeError>(before));
+    EXPECT_EQ(std::get<ZstdDecodeError>(before), ZstdDecodeError::Malformed);
 }

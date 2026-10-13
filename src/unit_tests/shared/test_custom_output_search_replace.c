@@ -50,8 +50,8 @@ void test_escape_newlines(void **state)
 {
     const char *tests[][2] = {
         {"hello\n", "hello\\n"},
-        {"hello\r", "hello\\n"},
-        {"hello\r\n", "hello\\n\\n"},
+        {"hello\r", "hello\\r"},
+        {"hello\r\n", "hello\\r\\n"},
         {"", ""},
         {NULL, NULL}
     };

@@ -11,6 +11,7 @@
 
 #include "sync/sessionProcessor.hpp"
 
+#include "common/jsonNestingDepth.hpp"
 #include "sync/stateIndexAllowlist.hpp"
 #include "sync/syncQueryBuilder.hpp"
 
@@ -38,6 +39,9 @@ namespace
     constexpr auto OK_BODY {R"({"status":"ok"})"};
     constexpr auto NOOP_BODY {R"({"status":"ok","noop":true})"};
     constexpr auto CHECKSUM_MISMATCH_BODY {R"({"status":"checksum_mismatch"})"};
+
+    /// The indexer's limit on a document _id (D27).
+    constexpr std::size_t MAX_DOCUMENT_ID_BYTES {512};
 
     invsync::sync::ProcessOutcome ok()
     {
@@ -153,6 +157,25 @@ namespace invsync::sync
             }
         }
 
+        // Manager-controlled metadata, built once and merged over every upsert. Any field the agent
+        // tries to set under these keys gets clobbered, so the agent cannot impersonate another agent
+        // or another cluster (legacy facade:1244-1258). merge_patch() replaces whatever non-object
+        // value the agent put on the path (`"wazuh":"x"`, `"wazuh":{"agent":[1]}`), where operator[]
+        // would throw out of this function and fail every co-batched session with it (D29). Its
+        // strings are the Start's, which validation proved serializable.
+        nlohmann::json overlay;
+        overlay["wazuh"]["agent"]["id"] = session.agentId;
+        overlay["wazuh"]["agent"]["name"] = session.agentName;
+        overlay["wazuh"]["agent"]["version"] = session.agentVersion;
+        overlay["wazuh"]["agent"]["groups"] = session.groups;
+        overlay["wazuh"]["agent"]["host"]["architecture"] = session.architecture;
+        overlay["wazuh"]["agent"]["host"]["hostname"] = session.hostname;
+        overlay["wazuh"]["agent"]["host"]["os"]["name"] = session.osname;
+        overlay["wazuh"]["agent"]["host"]["os"]["platform"] = session.osplatform;
+        overlay["wazuh"]["agent"]["host"]["os"]["type"] = session.ostype;
+        overlay["wazuh"]["agent"]["host"]["os"]["version"] = session.osversion;
+        overlay["wazuh"]["cluster"]["name"] = session.clusterName;
+
         std::size_t staged {0};
         std::size_t skipped {0};
         std::size_t stagedBytes {0};
@@ -205,6 +228,19 @@ namespace invsync::sync
             elementId.append("_");
             elementId.append(viewOf(value->id()));
 
+            // D27: the indexer refuses an _id over 512 bytes, and that one refused item would fail
+            // the whole group commit -- every co-batched session with it, on every re-POST.
+            if (elementId.size() > MAX_DOCUMENT_ID_BYTES)
+            {
+                LOGFN_WARN(logFn(),
+                           "Skipping bulk entry for agent %s: its _id is %zu bytes, over the indexer's %zu-byte limit.",
+                           session.agentId.c_str(),
+                           elementId.size(),
+                           MAX_DOCUMENT_ID_BYTES);
+                ++skipped;
+                continue;
+            }
+
             if (isUpsert)
             {
                 // Strict parse before staging: nlohmann rejects unescaped control characters
@@ -219,10 +255,23 @@ namespace invsync::sync
                     continue;
                 }
 
-                nlohmann::json document = nlohmann::json::parse(
-                    std::string_view(reinterpret_cast<const char*>(value->data()->data()), value->data()->size()),
-                    nullptr,
-                    /*allow_exceptions=*/false);
+                const std::string_view rawData {reinterpret_cast<const char*>(value->data()->data()),
+                                                value->data()->size()};
+
+                // Before the parse, on the raw bytes (D24): dump() below recurses once per level, so
+                // a deep enough document would overflow this worker's stack and take the whole of
+                // modulesd down.
+                if (common::exceedsNestingDepth(rawData))
+                {
+                    LOGFN_WARN(logFn(),
+                               "Skipping bulk entry for agent %s: DataValue body nests deeper than %zu levels.",
+                               session.agentId.c_str(),
+                               common::MAX_JSON_NESTING_DEPTH);
+                    ++skipped;
+                    continue;
+                }
+
+                nlohmann::json document = nlohmann::json::parse(rawData, nullptr, /*allow_exceptions=*/false);
                 if (document.is_discarded() || !document.is_object())
                 {
                     LOGFN_WARN(logFn(),
@@ -232,22 +281,25 @@ namespace invsync::sync
                     continue;
                 }
 
-                // Overlay manager-controlled metadata on top of the agent payload. Any field the
-                // agent tries to set under wazuh.* gets clobbered here, so the agent cannot
-                // impersonate another agent or another cluster (legacy facade:1244-1258).
-                document["wazuh"]["agent"]["id"] = session.agentId;
-                document["wazuh"]["agent"]["name"] = session.agentName;
-                document["wazuh"]["agent"]["version"] = session.agentVersion;
-                document["wazuh"]["agent"]["groups"] = session.groups;
-                document["wazuh"]["agent"]["host"]["architecture"] = session.architecture;
-                document["wazuh"]["agent"]["host"]["hostname"] = session.hostname;
-                document["wazuh"]["agent"]["host"]["os"]["name"] = session.osname;
-                document["wazuh"]["agent"]["host"]["os"]["platform"] = session.osplatform;
-                document["wazuh"]["agent"]["host"]["os"]["type"] = session.ostype;
-                document["wazuh"]["agent"]["host"]["os"]["version"] = session.osversion;
-                document["wazuh"]["cluster"]["name"] = session.clusterName;
-
-                const auto dataString = document.dump();
+                // Everything that can throw while BUILDING the document stays per-document (D29): an
+                // exception out of stageBulk() fails the worker's whole open batch, because the
+                // pipeline cannot tell it from a connector failure. Nothing has reached the connector
+                // for this document yet, so skipping it leaves the staged state exact.
+                std::string dataString;
+                try
+                {
+                    document.merge_patch(overlay);
+                    dataString = document.dump();
+                }
+                catch (const nlohmann::json::exception& e)
+                {
+                    LOGFN_WARN(logFn(),
+                               "Skipping bulk entry for agent %s: DataValue body cannot be serialized: %s.",
+                               session.agentId.c_str(),
+                               e.what());
+                    ++skipped;
+                    continue;
+                }
                 stagedBytes += dataString.size();
 
                 // version > 0 rides the external_gte path (a scripted update that checks

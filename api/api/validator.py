@@ -18,20 +18,21 @@ _base64 = re.compile(r'^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]
 _group_names = re.compile(r'^(?!^(\.{1,2}|all)$)[A-Za-z0-9.\-_]+$')
 _group_names_or_all = re.compile(r'^(?!^\.{1,2}$)[A-Za-z0-9.\-_]+$')
 _hashes = re.compile(r'^(?:[\da-fA-F]{32})?$|(?:[\da-fA-F]{40})?$|(?:[\da-fA-F]{56})?$|(?:[\da-fA-F]{64})?$|(?:['
-                     r'\da-fA-F]{96})?$|(?:[\da-fA-F]{128})?$')
+                     r'\da-fA-F]{96})?$|(?:[\da-fA-F]{128})?$', re.ASCII)
 _iso8601_date = re.compile(r'^([0-9]{4})-(1[0-2]|0[1-9])-(3[01]|0[1-9]|[12][0-9])$')
 _iso8601_date_time = re.compile(
     r'^([0-9]{4})-(1[0-2]|0[1-9])-(3[01]|0[1-9]|[12][0-9])[tT](2[0-3]|[01][0-9]):([0-5][0-9]):([0-5][0-9])(\.['
     r'0-9]+)?([zZ]|[+-](?:2[0-3]|[01][0-9]):[0-5][0-9])$')
 _names = re.compile(r'^[\w\-.%]+$', re.ASCII)
-_numbers = re.compile(r'^\d+$')
-_numbers_or_all = re.compile(r'^(\d+|all)$')
+# Without re.ASCII, \d also matches non-ASCII decimal digits, which int() reads as ASCII ones.
+_numbers = re.compile(r'^\d+$', re.ASCII)
+_numbers_or_all = re.compile(r'^(\d+|all)$', re.ASCII)
 _wazuh_key = re.compile(r'^[0-9a-f]+$')
-_wazuh_version = re.compile(r'^(?:wazuh |)v?\d+\.\d+\.\d+$', re.IGNORECASE)
+_wazuh_version = re.compile(r'^(?:wazuh |)v?\d+\.\d+\.\d+$', re.IGNORECASE | re.ASCII)
 _paths = re.compile(r'^[\w\-.\\/:]+$')
 _search_param = re.compile(r'^[^;|&^*>]+$')
 _sort_param = re.compile(r'^[\w_\-,\s+.]+$')
-_timeframe_type = re.compile(r'^(\d+[dhms]?)$')
+_timeframe_type = re.compile(r'^(\d+[dhms]?)$', re.ASCII)
 _wpk_path = re.compile(r'^[\w\-.\\/:\s]*[^\/]\.wpk$')
 
 security_config_schema = {
@@ -243,7 +244,9 @@ def check_exp(exp: str, regex: re.Pattern) -> bool:
     """
     if not isinstance(exp, str):
         return True
-    return regex.match(exp) is not None
+    # fullmatch, not match: with match a pattern's trailing `$` also matches before a final newline,
+    # so "5\n" passed as a number and int() then read it as 5.
+    return regex.fullmatch(exp) is not None
 
 
 def allowed_fields(filters: Dict) -> List:

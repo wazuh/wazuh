@@ -9,6 +9,12 @@
 // module was retired; inventory_sync_server is its only manager-side consumer
 // (remoted relays the body opaquely, and the module itself cross-checks
 // Start.agentid against the authenticated identity).
+//
+// Build a FullSession WITHOUT shared objects: no two offsets may name the same
+// string or table (no CreateSharedString). The server charges every object a
+// message reaches its minimum encoded size and answers 400 when the total
+// exceeds the message (inventory_sync_server D25); Start.groups (128 x 255 B)
+// and Start.index (64 x 255 B) are capped too (D26).
 namespace Wazuh.SyncSchema;
 
 enum Mode: byte {

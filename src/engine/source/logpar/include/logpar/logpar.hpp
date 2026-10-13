@@ -359,11 +359,26 @@ parsec::Parser<Choice> pChoice();
 /** @brief Parse a sequence of logpar expressions. */
 parsec::Parser<parsec::Values<ParserInfo>> pExpr();
 
-/** @brief Parse a grouped (optional) expression. */
-parsec::Parser<Group> pGroup();
+/**
+ * @brief Hard cap on group nesting. The group parser is recursive, so this bounds its stack
+ * use whatever the expression length; Logpar refuses a larger maxGroupRecursion.
+ */
+constexpr size_t MAX_GROUP_NESTING = 64;
 
-/** @brief Parse a complete logpar expression string. */
-parsec::Parser<std::list<ParserInfo>> pLogpar();
+/**
+ * @brief Parse a grouped (optional) expression.
+ *
+ * @param maxDepth maximum nesting level, the outermost group being level 1. A deeper group
+ * fails the parse before it is descended into.
+ */
+parsec::Parser<Group> pGroup(size_t maxDepth = MAX_GROUP_NESTING);
+
+/**
+ * @brief Parse a complete logpar expression string.
+ *
+ * @param maxGroupDepth maximum group nesting level, see pGroup.
+ */
+parsec::Parser<std::list<ParserInfo>> pLogpar(size_t maxGroupDepth = MAX_GROUP_NESTING);
 
 }; // namespace parser
 
@@ -489,7 +504,8 @@ public:
      *
      * @param fieldParserOverrides a json object with overrides for the field parsers
      * @param schemaValidator the schema validator to validate the fields
-     * @param maxGroupRecursion the maximum number of times a group can be nested
+     * @param maxGroupRecursion the maximum number of times a group can be nested, at most
+     * parser::MAX_GROUP_NESTING
      * @param debugLvl the debug level
      *
      * @throws std::runtime_error if errors occur while initializing

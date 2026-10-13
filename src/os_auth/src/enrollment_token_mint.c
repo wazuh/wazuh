@@ -343,8 +343,9 @@ int etoken_mint_prepare(const etoken_mint_request_t *req, etoken_mint_t *out, ch
         ASN1_OCTET_STRING_free(literal);
         /* Allowed, and sometimes the only option, but it ties the token to an address that a
          * re-deployment changes -- and the agent cannot follow a name it was never given */
-        mwarn("Enrollment token address '%s' is an IP address: agents will not be able to verify the "
-              "manager by name (document section 4.10).", req->address);
+        mwarn("Enrollment token address '%s' is an IP address: the token stops working if the "
+              "manager's address changes. Use a DNS name if the manager's IP address can change.",
+              req->address);
     }
 
     /* --- The trust anchor -------------------------------------------------------------------- */

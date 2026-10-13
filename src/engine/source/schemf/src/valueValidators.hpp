@@ -3,10 +3,16 @@
 
 #include <algorithm>
 #include <cctype>
+#include <chrono>
 #include <cmath>
+#include <locale>
 #include <sstream>
+#include <string>
 #include <string_view>
 
+#include <arpa/inet.h>
+
+#include <date/date.h>
 #include <hlp/hlp.hpp>
 #include <schemf/ivalidator.hpp>
 
@@ -135,14 +141,60 @@ inline ValueValidator getStringValidator()
     };
 }
 
+namespace detail
+{
+
+/**
+ * @brief Checks the exact layout YYYY-MM-DDTHH:MM:SS[.fraction]Z, with two-digit fields and nothing after the zone.
+ *
+ * The zone is 'Z' or 'Zulu': the index mapping accepts both, and 'Zulu' is the only zone id that starts with 'Z'.
+ *
+ * The date library accepts single-digit fields and ignores trailing text, while the index mapping rejects both.
+ * The fraction length is not capped here: parsing into nanoseconds rejects more than 9 digits, as the mapping does.
+ */
+inline bool isIsoUtcLayout(std::string_view val)
+{
+    constexpr std::string_view LAYOUT {"DDDD-DD-DDTDD:DD:DD"};
+    if (val.size() <= LAYOUT.size())
+    {
+        return false;
+    }
+
+    for (std::size_t i = 0; i < LAYOUT.size(); ++i)
+    {
+        const auto isDigit = std::isdigit(static_cast<unsigned char>(val[i])) != 0;
+        if (LAYOUT[i] == 'D' ? !isDigit : val[i] != LAYOUT[i])
+        {
+            return false;
+        }
+    }
+
+    auto pos = LAYOUT.size();
+    if (val[pos] == '.')
+    {
+        const auto fractionStart = ++pos;
+        while (pos < val.size() && std::isdigit(static_cast<unsigned char>(val[pos])) != 0)
+        {
+            ++pos;
+        }
+
+        if (pos == fractionStart)
+        {
+            return false;
+        }
+    }
+
+    const auto zone = val.substr(pos);
+    return zone == "Z" || zone == "Zulu";
+}
+
+} // namespace detail
+
 /** @brief Validator that checks if a JSON value is a valid date string. */
 inline ValueValidator getDateValidator()
 {
     // TODO parametrize date format
-    auto params = hlp::Params {};
-    params.options.emplace_back("%Y-%m-%dT%H:%M:%SZ");
-    auto dateParser = hlp::parsers::getDateParser(params);
-    return [dateParser](const json::Json& value) -> base::OptError
+    return [](const json::Json& value) -> base::OptError
     {
         if (!value.isString())
         {
@@ -151,8 +203,25 @@ inline ValueValidator getDateValidator()
 
         std::string_view val;
         value.getString(val);
-        auto res = dateParser(val);
-        if (!res.success())
+        if (!detail::isIsoUtcLayout(val))
+        {
+            return base::Error {"Invalid date"};
+        }
+
+        std::istringstream stream {std::string(val)};
+        stream.imbue(std::locale::classic());
+        date::fields<std::chrono::nanoseconds> fields {};
+        std::string abbrev {};
+        std::chrono::minutes offset {0};
+        stream >> date::parse("%Y-%m-%dT%H:%M:%SZ", fields, abbrev, offset);
+        if (stream.fail())
+        {
+            return base::Error {"Invalid date"};
+        }
+
+        // The date library does not check ranges: month 13, February 31 or hour 25 parse fine
+        if (!fields.ymd.ok() || fields.tod.hours() >= std::chrono::hours {24}
+            || fields.tod.minutes() >= std::chrono::minutes {60} || fields.tod.seconds() >= std::chrono::seconds {60})
         {
             return base::Error {"Invalid date"};
         }
@@ -164,8 +233,7 @@ inline ValueValidator getDateValidator()
 /** @brief Validator that checks if a JSON value is a valid IP address string. */
 inline ValueValidator getIpValidator()
 {
-    auto ipParser = hlp::parsers::getIPParser({});
-    return [ipParser](const json::Json& value) -> base::OptError
+    return [](const json::Json& value) -> base::OptError
     {
         if (!value.isString())
         {
@@ -174,9 +242,17 @@ inline ValueValidator getIpValidator()
 
         std::string_view val;
         value.getString(val);
-        auto res = ipParser(val);
 
-        if (!res.success() || !res.remaining().empty())
+        // inet_pton reads a C string, so anything after an embedded NUL would be ignored
+        if (val.find('\0') != std::string_view::npos)
+        {
+            return base::Error {"Invalid IP"};
+        }
+
+        const std::string address {val};
+        in_addr ipv4 {};
+        in6_addr ipv6 {};
+        if (inet_pton(AF_INET, address.c_str(), &ipv4) != 1 && inet_pton(AF_INET6, address.c_str(), &ipv6) != 1)
         {
             return base::Error {"Invalid IP"};
         }
@@ -200,7 +276,7 @@ inline ValueValidator getBinaryValidator()
         value.getString(val);
         auto res = binaryParser(val);
 
-        if (!res.success())
+        if (!res.success() || !res.remaining().empty())
         {
             return base::Error {"Invalid binary"};
         }

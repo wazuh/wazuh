@@ -63,6 +63,15 @@ std::string Definitions::replace(std::string_view input) const
 }
 
 // private
+void Definitions::addExpansion(std::size_t added) const
+{
+    if (m_expandedBytes.fetch_add(added) + added > MAX_TOTAL_EXPANSION)
+    {
+        throw std::runtime_error(
+            fmt::format("Definitions expand beyond the total size limit ({} bytes)", MAX_TOTAL_EXPANSION));
+    }
+}
+
 void Definitions::preResolveDefinitions()
 {
     auto defObj = m_definitions->getObject().value();
@@ -77,6 +86,7 @@ void Definitions::preResolveDefinitions()
 
     std::unordered_set<std::string> visited;
     std::unordered_set<std::string> inStack;
+    std::unordered_map<std::string, std::size_t> depths;
     visited.reserve(rawDefinitions.size());
     inStack.reserve(rawDefinitions.size());
 
@@ -85,7 +95,7 @@ void Definitions::preResolveDefinitions()
     {
         if (visited.find(name) == visited.end())
         {
-            resolveDefinitionDFS(name, rawDefinitions, visited, inStack);
+            resolveDefinitionDFS(name, rawDefinitions, visited, inStack, depths);
         }
     }
 }
@@ -93,7 +103,8 @@ void Definitions::preResolveDefinitions()
 std::string Definitions::resolveDefinitionDFS(const std::string& defName,
                                               const std::unordered_map<std::string, std::string>& rawDefs,
                                               std::unordered_set<std::string>& visited,
-                                              std::unordered_set<std::string>& inStack)
+                                              std::unordered_set<std::string>& inStack,
+                                              std::unordered_map<std::string, std::size_t>& depths)
 {
     // If already resolved, return cached value
     if (m_resolvedDefinitions.find(defName) != m_resolvedDefinitions.end())
@@ -115,11 +126,18 @@ std::string Definitions::resolveDefinitionDFS(const std::string& defName,
         return "$" + defName;
     }
 
+    if (inStack.size() >= MAX_DEPTH)
+    {
+        throw std::runtime_error(
+            fmt::format("Definition '{}' is nested deeper than the limit ({})", defName, MAX_DEPTH));
+    }
+
     // Mark as visited and add to recursion stack
     visited.insert(defName);
     inStack.insert(defName);
 
     std::string resolved = it->second;
+    std::size_t depth = 1;
 
     // Find all $var patterns and resolve them
     size_t pos = 0;
@@ -160,10 +178,27 @@ std::string Definitions::resolveDefinitionDFS(const std::string& defName,
         else
         {
             // Recursively resolve the dependency
-            std::string depValue = resolveDefinitionDFS(depName, rawDefs, visited, inStack);
+            std::string depValue = resolveDefinitionDFS(depName, rawDefs, visited, inStack, depths);
+            depth = std::max(depth, depths[depName] + 1);
+            if (depth > MAX_DEPTH)
+            {
+                throw std::runtime_error(
+                    fmt::format("Definition '{}' is nested deeper than the limit ({})", defName, MAX_DEPTH));
+            }
+
+            const auto refLength = nameEnd - pos;
+            if (resolved.size() - refLength + depValue.size() > MAX_EXPANDED_SIZE)
+            {
+                throw std::runtime_error(fmt::format(
+                    "Definition '{}' expands beyond the size limit ({} bytes)", defName, MAX_EXPANDED_SIZE));
+            }
+            if (depValue.size() > refLength)
+            {
+                addExpansion(depValue.size() - refLength);
+            }
 
             // Replace in the current definition
-            resolved.replace(pos, nameEnd - pos, depValue);
+            resolved.replace(pos, refLength, depValue);
             pos += depValue.length();
         }
     }
@@ -171,6 +206,7 @@ std::string Definitions::resolveDefinitionDFS(const std::string& defName,
     // Remove from recursion stack and cache the resolved value
     inStack.erase(defName);
     m_resolvedDefinitions[defName] = resolved;
+    depths[defName] = depth;
 
     return resolved;
 }
@@ -239,6 +275,11 @@ std::string Definitions::replaceVariableInString(const std::string& input,
 
         if (isCompleteVariable)
         {
+            if (replacement.size() > varPattern.size())
+            {
+                addExpansion(replacement.size() - varPattern.size());
+            }
+
             // Replace the variable
             result.replace(pos, varPattern.length(), replacement);
             pos += replacement.length();

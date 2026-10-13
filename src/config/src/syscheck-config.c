@@ -114,8 +114,6 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
     syscheck->queue_size                      = 16384;
 #endif
     syscheck->sync_interval                   = 300;
-    syscheck->sync_end_delay                  = 1;
-    syscheck->sync_max_eps                    = 75;
     syscheck->integrity_interval              = 24 * 60 * 60;  // 24 hours
     syscheck->max_eps                         = 50;
     syscheck->notify_first_scan               = 0; // Default value, no notification on first scan
@@ -1252,9 +1250,12 @@ out_free:
 static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
      const char *xml_enabled = "enabled";
      const char *xml_sync_interval = "interval";
-     const char *xml_sync_end_delay = "sync_end_delay";
-     const char *xml_max_eps = "max_eps";
      const char *xml_integrity_interval = "integrity_interval";
+     /* 4.x synchronization options: an upgrade keeps ossec.conf, so they are recognized but ignored.
+      * The 4.x default ossec.conf sets the first list, so every upgraded agent carries them: they
+      * are reported at INFO, as other harmless 4.x leftovers are. Only a user sets the rest. */
+     char *const xml_deprecated_defaults[] = {"max_eps", "max_interval", NULL};
+     char *const xml_deprecated[] = {"response_timeout", "queue_size", "registry_enabled", "thread_pool", NULL};
 
      for (int i = 0; node[i]; i++) {
          if (strcmp(node[i]->element, xml_enabled) == 0) {
@@ -1273,23 +1274,6 @@ static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
              } else {
                  syscheck->sync_interval = t;
              }
-         } else if (strcmp(node[i]->element, xml_sync_end_delay) == 0) {
-             long sync_end_delay = w_parse_time(node[i]->content);
-
-             if (sync_end_delay < 0) {
-                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-             } else {
-                 syscheck->sync_end_delay = (uint32_t) sync_end_delay;
-             }
-         } else if (strcmp(node[i]->element, xml_max_eps) == 0) {
-             char * end;
-             long value = strtol(node[i]->content, &end, 10);
-
-             if (value < 0 || value > 1000000 || *end) {
-                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-             } else {
-                 syscheck->sync_max_eps = value;
-             }
          } else if (strcmp(node[i]->element, xml_integrity_interval) == 0) {
              long t = w_parse_time(node[i]->content);
 
@@ -1298,6 +1282,10 @@ static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
              } else {
                  syscheck->integrity_interval = t;
              }
+         } else if (w_is_str_in_array(xml_deprecated_defaults, node[i]->element)) {
+             minfo(XML_DEPRECATED, node[i]->element);
+         } else if (w_is_str_in_array(xml_deprecated, node[i]->element)) {
+             mwarn(XML_DEPRECATED, node[i]->element);
          } else {
              mwarn(XML_INVELEM, node[i]->element);
          }
@@ -1310,9 +1298,13 @@ int read_data_unit(const char *content) {
     int read_value = 0;
     char *value_str;
 
+    if (len_value_str == 0) {
+        return -1;
+    }
+
     // Check that the last character is a 'B' or a 'b', if it is, translate data unit
     // Else, use written value as KB
-    if (content[len_value_str - 1] == 'B' || content[len_value_str - 1] == 'b') {
+    if (len_value_str > 1 && (content[len_value_str - 1] == 'B' || content[len_value_str - 1] == 'b')) {
         if (isalpha(content[len_value_str - 2])){
             os_calloc(len_value_str, sizeof(char), value_str);
             memcpy(value_str, content, len_value_str - 2);
@@ -1632,6 +1624,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     int i = 0;
     int j = 0;
     xml_node **children = NULL;
+    bool whodata_restart_audit_set = false;
 
     /* XML Definitions */
     const char *xml_directories = "directories";
@@ -1674,6 +1667,12 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     const char *xml_max_eps = "max_eps";
     const char *xml_notify_first_scan = "notify_first_scan";
     const char *xml_diff = "diff";
+    /* 4.x options: an upgrade keeps ossec.conf, so they are recognized but ignored.
+     * The 4.x default ossec.conf sets the first list, so every upgraded agent carries them: they
+     * are reported at INFO, as other harmless 4.x leftovers are. Only a user sets the rest. */
+    char *const xml_deprecated_defaults[] = {"scan_on_start", NULL};
+    char *const xml_deprecated[] = {"alert_new_files", "auto_ignore", "database", "prefilter_cmd",
+                                    "allow_remote_prefilter_cmd", "remove_old_diff", NULL};
 
     /* Configuration example
         <directories check_all="yes">/etc,/usr/bin</directories>
@@ -2047,6 +2046,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                         return(OS_INVALID);
                     }
                 } else if (strcmp(children[j]->element, xml_restart_audit) == 0) {
+                    whodata_restart_audit_set = true;
                     if(strcmp(children[j]->content, "yes") == 0)
                         syscheck->restart_audit = 1;
                     else if(strcmp(children[j]->content, "no") == 0)
@@ -2149,6 +2149,26 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             }
             syscheck->max_files_per_second = atoi(node[i]->content);
 
+        } else if (strcmp(node[i]->element, xml_restart_audit) == 0) {
+            /* Still applied, only spelled the older way: INFO, as nothing is wrong */
+            minfo("The <%s> tag is deprecated, please use <whodata><restart_audit> instead.", xml_restart_audit);
+
+            /* <whodata><restart_audit> takes precedence wherever it appears */
+            if (whodata_restart_audit_set) {
+                continue;
+            }
+
+            if (strcmp(node[i]->content, "yes") == 0) {
+                syscheck->restart_audit = 1;
+            } else if (strcmp(node[i]->content, "no") == 0) {
+                syscheck->restart_audit = 0;
+            } else {
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+            }
+        } else if (w_is_str_in_array(xml_deprecated_defaults, node[i]->element)) {
+            minfo(XML_DEPRECATED, node[i]->element);
+        } else if (w_is_str_in_array(xml_deprecated, node[i]->element)) {
+            mwarn(XML_DEPRECATED, node[i]->element);
         } else {
             minfo(XML_INVELEM, node[i]->element);
         }

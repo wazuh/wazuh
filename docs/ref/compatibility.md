@@ -18,9 +18,9 @@ Below is a list of versions supported in this version (5.X.X):
   - Amazon Linux: 1 and later
   - Debian: 7 and later
   - Fedora: 41 and later
-  - openSUSE Leap: 15
+  - openSUSE Leap: 15, 16
   - Oracle Linux: 6 and later
-  - SUSE / SLES: 15
+  - SUSE / SLES: 15, 16
   - Ubuntu: 18.04 and later
 - macOS: 14 or later
 - Windows: 7 and later
