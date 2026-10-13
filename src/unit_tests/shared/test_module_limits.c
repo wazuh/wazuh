@@ -74,55 +74,68 @@ static void test_syscollector_limits_init_null(void **state) {
 
 /* sca_limits_init tests */
 
-/* syscollector_containers_limits_init tests (#37532 / #37534) */
+/* Container-scope limit tests (#37532 / #37534 / O10).
+ *
+ * The container caps used to live in a struct and a namespace of their own and
+ * to be ONE allowance shared by every container. Both are now wrong: they are
+ * spelled container_<dimension> inside the submodule that owns them, and each
+ * applies to one container. */
 
-static void test_syscollector_containers_limits_init_success(void **state) {
+static void test_syscollector_container_limits_init_success(void **state) {
     (void)state;
-    syscollector_containers_limits_t containers;
+    syscollector_limits_t syscollector;
 
-    memset(&containers, 0xFF, sizeof(containers));
+    memset(&syscollector, 0xFF, sizeof(syscollector));
 
-    syscollector_containers_limits_init(&containers);
+    syscollector_limits_init(&syscollector);
 
-    assert_int_equal(containers.processes, DEFAULT_SYSCOLLECTOR_CONTAINERS_PROCESSES_LIMIT);
-    assert_int_equal(containers.ports, DEFAULT_SYSCOLLECTOR_CONTAINERS_PORTS_LIMIT);
-    assert_int_equal(containers.packages, DEFAULT_SYSCOLLECTOR_CONTAINERS_PACKAGES_LIMIT);
-    assert_int_equal(containers.users, DEFAULT_SYSCOLLECTOR_CONTAINERS_USERS_LIMIT);
-    assert_int_equal(containers.groups, DEFAULT_SYSCOLLECTOR_CONTAINERS_GROUPS_LIMIT);
-    assert_int_equal(containers.os_info, DEFAULT_SYSCOLLECTOR_CONTAINERS_OS_INFO_LIMIT);
-    assert_int_equal(containers.network_iface, DEFAULT_SYSCOLLECTOR_CONTAINERS_NETWORK_IFACE_LIMIT);
-    assert_int_equal(containers.network_protocol, DEFAULT_SYSCOLLECTOR_CONTAINERS_NETWORK_PROTO_LIMIT);
-    assert_int_equal(containers.network_address, DEFAULT_SYSCOLLECTOR_CONTAINERS_NETWORK_ADDR_LIMIT);
-    assert_int_equal(containers.hardware, DEFAULT_SYSCOLLECTOR_CONTAINERS_HARDWARE_LIMIT);
+    assert_int_equal(syscollector.container_processes, DEFAULT_SYSCOLLECTOR_CONTAINER_PROCESSES_LIMIT);
+    assert_int_equal(syscollector.container_ports, DEFAULT_SYSCOLLECTOR_CONTAINER_PORTS_LIMIT);
+    assert_int_equal(syscollector.container_packages, DEFAULT_SYSCOLLECTOR_CONTAINER_PACKAGES_LIMIT);
+    assert_int_equal(syscollector.container_users, DEFAULT_SYSCOLLECTOR_CONTAINER_USERS_LIMIT);
+    assert_int_equal(syscollector.container_groups, DEFAULT_SYSCOLLECTOR_CONTAINER_GROUPS_LIMIT);
+    assert_int_equal(syscollector.container_os_info, DEFAULT_SYSCOLLECTOR_CONTAINER_OS_INFO_LIMIT);
+    assert_int_equal(syscollector.container_network_iface, DEFAULT_SYSCOLLECTOR_CONTAINER_NETWORK_IFACE_LIMIT);
+    assert_int_equal(syscollector.container_network_protocol, DEFAULT_SYSCOLLECTOR_CONTAINER_NETWORK_PROTO_LIMIT);
+    assert_int_equal(syscollector.container_network_address, DEFAULT_SYSCOLLECTOR_CONTAINER_NETWORK_ADDR_LIMIT);
+    assert_int_equal(syscollector.container_hardware, DEFAULT_SYSCOLLECTOR_CONTAINER_HARDWARE_LIMIT);
+    assert_int_equal(syscollector.container_services, DEFAULT_SYSCOLLECTOR_CONTAINER_SERVICES_LIMIT);
 }
 
-/* Every container dimension must default to UNLIMITED. This is not a
- * restatement of the case above: the host dimensions default to 30000 on the
- * manager, and an agent that inherits a nonzero default here would start
- * withholding container events the moment container inventory shipped. */
-static void test_syscollector_containers_limits_default_to_unlimited(void **state) {
+/* ELEVEN container dimensions, mirroring the tables the container scanner
+ * actually fills -- not the host's thirteen. `hotfixes` has no data source on
+ * the platform containers run on, so a cap for it could never do anything, and
+ * `browser_extensions` has no container scanner. `services` IS collected: it
+ * was omitted on the belief that containers run no init, and a measurement on a
+ * real node found it producing 144 rows, the second-largest dimension. */
+static void test_syscollector_container_dimensions_mirror_what_is_collected(void **state) {
     (void)state;
-    syscollector_containers_limits_t containers;
+    syscollector_limits_t syscollector;
 
-    syscollector_containers_limits_init(&containers);
+    syscollector_limits_init(&syscollector);
 
-    assert_int_equal(containers.processes, 0);
-    assert_int_equal(containers.ports, 0);
-    assert_int_equal(containers.packages, 0);
-    assert_int_equal(containers.users, 0);
-    assert_int_equal(containers.groups, 0);
-    assert_int_equal(containers.os_info, 0);
-    assert_int_equal(containers.network_iface, 0);
-    assert_int_equal(containers.network_protocol, 0);
-    assert_int_equal(containers.network_address, 0);
-    assert_int_equal(containers.hardware, 0);
+    /* Collected for containers, so capped. */
+    assert_int_equal(syscollector.container_services, DEFAULT_SYSCOLLECTOR_CONTAINER_SERVICES_LIMIT);
+
+    /* The container caps default to the same value the host ones do: nothing
+     * about running in a container makes a file less worth reporting. */
+    assert_int_equal(syscollector.container_packages, syscollector.packages);
+    assert_int_equal(syscollector.container_processes, syscollector.processes);
 }
 
-static void test_syscollector_containers_limits_init_null(void **state) {
+/* The FIM container cap lives in the fim namespace, beside the host one, and is
+ * PER CONTAINER. There is no registry counterpart: containers are Linux-only
+ * here and registry monitoring is Windows-only. */
+static void test_fim_container_limit_sits_beside_the_host_one(void **state) {
     (void)state;
+    fim_limits_t fim;
 
-    /* Should not crash when passed NULL */
-    syscollector_containers_limits_init(NULL);
+    memset(&fim, 0xFF, sizeof(fim));
+
+    fim_limits_init(&fim);
+
+    assert_int_equal(fim.container_file, DEFAULT_FIM_CONTAINER_FILE_LIMIT);
+    assert_int_equal(fim.container_file, fim.file);
 }
 
 /* A change in a container dimension must be seen as a change. Without this the
@@ -138,11 +151,15 @@ static void test_module_limits_changed_detects_container_dimensions(void **state
 
     assert_false(module_limits_changed(&a, &b));
 
-    b.syscollector_containers.processes = 500;
+    b.syscollector.container_processes = 500;
     assert_true(module_limits_changed(&a, &b));
 
     module_limits_init(&b);
-    b.syscollector_containers.hardware = 1;
+    b.syscollector.container_services = 1;
+    assert_true(module_limits_changed(&a, &b));
+
+    module_limits_init(&b);
+    b.fim.container_file = 7;
     assert_true(module_limits_changed(&a, &b));
 
     /* And a container dimension must not be confused with the host one of the
@@ -150,7 +167,8 @@ static void test_module_limits_changed_detects_container_dimensions(void **state
     module_limits_init(&b);
     b.syscollector.processes = 500;
     assert_true(module_limits_changed(&a, &b));
-    assert_int_equal(b.syscollector_containers.processes, 0);
+    assert_int_equal(b.syscollector.container_processes,
+                     DEFAULT_SYSCOLLECTOR_CONTAINER_PROCESSES_LIMIT);
 }
 
 static void test_sca_limits_init_success(void **state) {
@@ -204,16 +222,16 @@ static void test_module_limits_init_success(void **state) {
     assert_int_equal(limits.syscollector.browser_extensions, DEFAULT_SYSCOLLECTOR_BROWSER_EXTENSIONS_LIMIT);
 
     /* Verify Syscollector container-inventory limits */
-    assert_int_equal(limits.syscollector_containers.processes, DEFAULT_SYSCOLLECTOR_CONTAINERS_PROCESSES_LIMIT);
-    assert_int_equal(limits.syscollector_containers.ports, DEFAULT_SYSCOLLECTOR_CONTAINERS_PORTS_LIMIT);
-    assert_int_equal(limits.syscollector_containers.packages, DEFAULT_SYSCOLLECTOR_CONTAINERS_PACKAGES_LIMIT);
-    assert_int_equal(limits.syscollector_containers.users, DEFAULT_SYSCOLLECTOR_CONTAINERS_USERS_LIMIT);
-    assert_int_equal(limits.syscollector_containers.groups, DEFAULT_SYSCOLLECTOR_CONTAINERS_GROUPS_LIMIT);
-    assert_int_equal(limits.syscollector_containers.os_info, DEFAULT_SYSCOLLECTOR_CONTAINERS_OS_INFO_LIMIT);
-    assert_int_equal(limits.syscollector_containers.network_iface, DEFAULT_SYSCOLLECTOR_CONTAINERS_NETWORK_IFACE_LIMIT);
-    assert_int_equal(limits.syscollector_containers.network_protocol, DEFAULT_SYSCOLLECTOR_CONTAINERS_NETWORK_PROTO_LIMIT);
-    assert_int_equal(limits.syscollector_containers.network_address, DEFAULT_SYSCOLLECTOR_CONTAINERS_NETWORK_ADDR_LIMIT);
-    assert_int_equal(limits.syscollector_containers.hardware, DEFAULT_SYSCOLLECTOR_CONTAINERS_HARDWARE_LIMIT);
+    assert_int_equal(limits.syscollector.container_processes, DEFAULT_SYSCOLLECTOR_CONTAINER_PROCESSES_LIMIT);
+    assert_int_equal(limits.syscollector.container_ports, DEFAULT_SYSCOLLECTOR_CONTAINER_PORTS_LIMIT);
+    assert_int_equal(limits.syscollector.container_packages, DEFAULT_SYSCOLLECTOR_CONTAINER_PACKAGES_LIMIT);
+    assert_int_equal(limits.syscollector.container_users, DEFAULT_SYSCOLLECTOR_CONTAINER_USERS_LIMIT);
+    assert_int_equal(limits.syscollector.container_groups, DEFAULT_SYSCOLLECTOR_CONTAINER_GROUPS_LIMIT);
+    assert_int_equal(limits.syscollector.container_os_info, DEFAULT_SYSCOLLECTOR_CONTAINER_OS_INFO_LIMIT);
+    assert_int_equal(limits.syscollector.container_network_iface, DEFAULT_SYSCOLLECTOR_CONTAINER_NETWORK_IFACE_LIMIT);
+    assert_int_equal(limits.syscollector.container_network_protocol, DEFAULT_SYSCOLLECTOR_CONTAINER_NETWORK_PROTO_LIMIT);
+    assert_int_equal(limits.syscollector.container_network_address, DEFAULT_SYSCOLLECTOR_CONTAINER_NETWORK_ADDR_LIMIT);
+    assert_int_equal(limits.syscollector.container_hardware, DEFAULT_SYSCOLLECTOR_CONTAINER_HARDWARE_LIMIT);
 
     /* Verify SCA limits */
     assert_int_equal(limits.sca.checks, DEFAULT_SCA_CHECKS_LIMIT);
@@ -294,9 +312,9 @@ int main(void) {
         cmocka_unit_test(test_syscollector_limits_init_success),
         cmocka_unit_test(test_syscollector_limits_init_null),
         /* sca_limits_init tests */
-        cmocka_unit_test(test_syscollector_containers_limits_init_success),
-        cmocka_unit_test(test_syscollector_containers_limits_default_to_unlimited),
-        cmocka_unit_test(test_syscollector_containers_limits_init_null),
+        cmocka_unit_test(test_syscollector_container_limits_init_success),
+        cmocka_unit_test(test_syscollector_container_dimensions_mirror_what_is_collected),
+        cmocka_unit_test(test_fim_container_limit_sits_beside_the_host_one),
         cmocka_unit_test(test_module_limits_changed_detects_container_dimensions),
 
         cmocka_unit_test(test_sca_limits_init_success),
