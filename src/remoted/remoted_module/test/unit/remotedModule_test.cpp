@@ -96,8 +96,8 @@ namespace
     // when the configured certificate/key is missing or unreadable -- see
     // RemotedModuleFacade::start(). The tests below that need a module which actually starts must
     // therefore hand it a real, readable self-signed certificate/key pair; there is no built-in
-    // fallback that works outside of remoted's own chroot (the module default,
-    // "etc/certs/remoted.pem", only resolves once Privsep_Chroot() has chdir()'d to "/").
+    // fallback that works outside of the installation directory (the module default,
+    // "etc/certs/remoted.pem", is relative and only resolves once remoted has chdir()'d there).
     void writeSelfSignedTls(const std::string& certificatePath, const std::string& privateKeyPath)
     {
         using EvpPkeyPtr = std::unique_ptr<EVP_PKEY, decltype(&EVP_PKEY_free)>;

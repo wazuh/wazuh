@@ -46,10 +46,10 @@
 
 namespace
 {
-    // Where the facade binds its admin server: FIXED and RELATIVE (remoted chroot()s into the
-    // install dir; here it simply resolves against the test process's cwd, the same convention
-    // remotedModule_test.cpp's default-TLS-path test relies on). Spelled out literally so a
-    // change of the facade's constant is a conscious test change too.
+    // Where the facade binds its admin server: FIXED and RELATIVE (remoted's cwd is the
+    // installation directory; here it simply resolves against the test process's cwd, the same
+    // convention remotedModule_test.cpp's default-TLS-path test relies on). Spelled out literally
+    // so a change of the facade's constant is a conscious test change too.
     constexpr auto kAdminSocketPath {"queue/sockets/remote-admin-http.sock"};
 
     // A port the OS says is free, asked for right before the module binds it -- same rationale

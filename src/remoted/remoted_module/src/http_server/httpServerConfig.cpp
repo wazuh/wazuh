@@ -63,10 +63,8 @@ namespace
     // than a few there at once; one host stalling handshakes gets an eighth of the default slots.
     constexpr std::size_t DEFAULT_MAX_HANDSHAKES_PER_SOURCE {32};
 
-    // Relative to remoted's cwd, which is the chroot root ("/") by the time these paths are
-    // opened (Privsep_Chroot() chdir()s there before the HTTPS module starts), so these resolve
-    // identically to an equivalent leading-"/" path -- written without one here to avoid reading
-    // as a real host-absolute path.
+    // Relative to remoted's cwd, the installation directory (remoted changes to it at startup,
+    // before the HTTPS module starts), like remoted::paths (common/installPaths.hpp).
     constexpr auto DEFAULT_CERTIFICATE_PATH {"etc/certs/remoted.pem"};
     constexpr auto DEFAULT_PRIVATE_KEY_PATH {"etc/certs/remoted-key.pem"};
     constexpr auto DEFAULT_CA_PATH {"etc/certs/root-ca.pem"};

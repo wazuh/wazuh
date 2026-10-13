@@ -475,7 +475,7 @@ TEST(DownloadLocateTest, ConfigResolvesUnderTheSharedDirectoryUsingTheRequestedG
     const auto result = locateResource(configRequest("web-servers"), {});
 
     EXPECT_EQ(result.error, LocateError::None);
-    EXPECT_EQ(result.path, "/etc/shared/web-servers/merged.mg");
+    EXPECT_EQ(result.path, "etc/shared/web-servers/merged.mg");
 }
 
 TEST(DownloadLocateTest, AnyRequestedGroupResolvesRegardlessOfTheAgent)
@@ -487,7 +487,7 @@ TEST(DownloadLocateTest, AnyRequestedGroupResolvesRegardlessOfTheAgent)
     {
         const auto result = locateResource(configRequest(group), {});
         EXPECT_EQ(result.error, LocateError::None);
-        EXPECT_EQ(result.path, std::string {"/etc/shared/"} + group + "/merged.mg");
+        EXPECT_EQ(result.path, std::string {"etc/shared/"} + group + "/merged.mg");
     }
 }
 
@@ -513,7 +513,7 @@ TEST(DownloadLocateTest, AMultigroupSelectorResolvesUnderVarMultigroups)
     const auto result = locateResource(configRequest("web-servers,databases"), {});
 
     EXPECT_EQ(result.error, LocateError::None);
-    EXPECT_EQ(result.path, "/var/multigroups/97d668590155b0b50fb09c254d636adc/merged.mg");
+    EXPECT_EQ(result.path, "var/multigroups/97d668590155b0b50fb09c254d636adc/merged.mg");
 }
 
 TEST(DownloadLocateTest, HonoursInjectedBaseDirectories)
@@ -534,7 +534,7 @@ TEST(DownloadLocateTest, WpkResolvesUnderTheUpgradeDirectory)
     const auto result = locateResource(DownloadRequest {ResourceType::Wpk, "wazuh_agent_v5.0.1_linux_x86_64.wpk"}, {});
 
     EXPECT_EQ(result.error, LocateError::None);
-    EXPECT_EQ(result.path, "/var/upgrade/wazuh_agent_v5.0.1_linux_x86_64.wpk");
+    EXPECT_EQ(result.path, "var/upgrade/wazuh_agent_v5.0.1_linux_x86_64.wpk");
 }
 
 TEST(DownloadLocateTest, HostileGroupNamesNeverReachLocateResource)
