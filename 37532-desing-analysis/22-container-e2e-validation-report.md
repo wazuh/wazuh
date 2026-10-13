@@ -183,7 +183,9 @@ Schema validation failed for Syscollector message
 ```
 
 Rejected tables — **9 distinct**, i.e. every producing dimension except `services`, which D14 says is
-always empty for containers: `dbsync_groups`, `dbsync_hwinfo`, `dbsync_network_address`,
+always empty for containers (**that premise is wrong, and was measured so on 2026-10-09 — see
+[23 §23.3](23-nfr3-container-limits.md); why `services` alone was not rejected here is unexplained
+and was not investigated**): `dbsync_groups`, `dbsync_hwinfo`, `dbsync_network_address`,
 `dbsync_network_iface`, `dbsync_network_protocol`, `dbsync_osinfo`, `dbsync_packages`,
 `dbsync_processes`, `dbsync_users`.
 

@@ -66,7 +66,9 @@ only. The authoritative totals are the scan-finished lines.
 
 ## 23.3 Finding 1 — `services` is collected, is the second-largest dimension, and has no cap
 
-D14 records *"Services is collected but always empty — containers run no init"*, and
+**D14 of #39636's decision register** — not [12](12-blocking-decisions.md)'s D14, which is a
+different decision about drop accounting — records *"Services is collected but always empty —
+containers run no init"*, and
 `syscollector_containers_limits_t` omits `services` on exactly that basis: *"the container scanner
 does not collect those, so a cap for them would be a knob with nothing behind it"*
 (`module_limits.h:92-94`).
@@ -78,6 +80,10 @@ That container is visible *because of* Fix 1 (`1b9ba77373`), which made a contai
 owns its cgroups resolvable. Fix 1 invalidated D14's premise, and the limits struct still encodes it.
 `services` is now a producing container dimension with **no container-scope cap at all**: the scope
 map has no `services` key, so `limitsFor(container)` yields 0 = unlimited.
+
+*Fixed in WP3.* The dimension set is now derived from `CONTAINER_BASELINE_TABLES` rather than kept
+by hand beside it, which is the fix for the class of drift rather than this instance: a new scanner
+plus its table entry brings its cap with it. 23.8 carries the shipped value.
 
 It also settles Decision 1 on measurement rather than argument: **one container produced a quarter of
 the node's inventory.** A node-wide budget alone cannot express that; a per-container ceiling can.
