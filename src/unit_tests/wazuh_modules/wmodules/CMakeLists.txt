@@ -32,7 +32,8 @@ include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 
 # Generate wmodules tests
 list(APPEND wmodules_names "test_wmodules")
-list(APPEND wmodules_flags "-Wl,--wrap,w_query_agentd -Wl,--wrap,_merror -Wl,--wrap,_mdebug1")
+list(APPEND wmodules_flags "-Wl,--wrap,w_query_agentd -Wl,--wrap,_merror -Wl,--wrap,_mdebug1 \
+                            -Wl,--wrap,OS_ConnectUnixDomain")
 
 list(APPEND wmodules_names "test_wmcom")
 list(APPEND wmodules_flags "-Wl,--wrap,getModulesConfig -Wl,--wrap,getModulesInternalOptions \
@@ -63,3 +64,18 @@ foreach(counter RANGE ${count})
     endif()
     add_test(NAME ${test_name} COMMAND ${test_name})
 endforeach()
+
+# wm_handler() lives in main.c, which WMODULES_O leaves out: the test includes it, built as CLIENT like the agent.
+if(${TARGET} STREQUAL "agent")
+    add_executable(test_wm_main test_wm_main.c)
+    target_compile_definitions(test_wm_main PRIVATE CLIENT)
+    target_link_libraries(
+        test_wm_main
+        ${WAZUHLIB}
+        ${WAZUHEXT}
+        WMODULES_O
+        ${TEST_DEPS}
+        "-Wl,--wrap,_merror -Wl,--wrap,_mdebug1 -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,sleep -Wl,--wrap,getpid"
+    )
+    add_test(NAME test_wm_main COMMAND test_wm_main)
+endif()

@@ -375,6 +375,12 @@ void wm_handler(int signum)
     }
     w_mutex_unlock(&sig_lock);
 
+    // Signal all module loops to exit before calling their stop() callbacks
+    // so that modules blocked in wm_sleep_interruptible / wm_select_interruptible
+    // wake up immediately. Set before the wait below: wazuh-control signals every
+    // daemon in the same pass, so failing to reach them meanwhile is part of the shutdown.
+    wm_shutdown_requested = 1;
+
     // We wait in case the modules haven't completed the initialization
     sleep(1);
 
@@ -384,11 +390,6 @@ void wm_handler(int signum)
     case SIGINT:
     case SIGTERM:
         mdebug1("Shutting down Wazuh modules.");
-
-        // Signal all module loops to exit before calling their stop() callbacks
-        // so that modules blocked in wm_sleep_interruptible / wm_select_interruptible
-        // wake up immediately.
-        wm_shutdown_requested = 1;
 
         for (cur_module = wmodules; cur_module && cur_module->context && cur_module->context->name; cur_module = cur_module->next) {
             if (cur_module->context->stop) {
