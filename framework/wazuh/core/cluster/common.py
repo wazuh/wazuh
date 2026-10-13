@@ -1574,7 +1574,12 @@ class SyncFiles(SyncTask):
                 data=task_id + b' ' + os.path.relpath(compressed_data, common.WAZUH_PATH).encode()
             )
         except Exception as e:
-            self.logger.error(f"Error sending zip file: {e}")
+            if isinstance(e, exception.WazuhClusterError) and e.code == 3034:
+                # The zip was created just before, so it was most likely wiped by connection_lost's
+                # cluster.clean_up(), e.g. while the master shuts down.
+                self.logger.warning(f"Error sending zip file: {e}")
+            else:
+                self.logger.error(f"Error sending zip file: {e}")
             if isinstance(e, exception.WazuhException):
                 exc = json.dumps(e, cls=WazuhJSONEncoder).encode()
             else:

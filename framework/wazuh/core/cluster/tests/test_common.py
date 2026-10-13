@@ -2248,6 +2248,44 @@ async def test_sync_files_sync_ok(log_subprocess_mock, compress_files_mock, unli
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("code, error_calls, warning_calls", [(3034, 0, 1), (3020, 1, 0)])
+@patch("os.path.relpath", return_value="path")
+@patch("os.unlink")
+@patch("wazuh.core.cluster.cluster.compress_files", return_value=("files/path/", {}))
+@patch("wazuh.core.cluster.utils.log_subprocess_execution")
+async def test_sync_files_sync_send_file_error_level(log_subprocess_mock, compress_files_mock, unlink_mock,
+                                                     relpath_mock, code, error_calls, warning_calls):
+    """Check that only a zip removed by the connection cleanup (3034) is logged as a warning."""
+
+    class WorkerMock:
+        """Worker whose zip file disappears before it is sent."""
+
+        def __init__(self):
+            self.name = "Testing"
+            self.loop = loop
+            self.current_zip_limit = cluster_items['intervals']['communication']['max_zip_size']
+            self.interrupted_tasks = set()
+            self.cluster_items = cluster_items
+
+        async def send_request(self, command, data):
+            return b"OK"
+
+        async def send_file(self, filename, task_id):
+            raise exception.WazuhClusterError(code, extra_message=filename)
+
+    sync_files = cluster_common.SyncFiles(b"cmd", logging.getLogger("wazuh"), WorkerMock())
+
+    with patch.object(logging.getLogger("wazuh"), "error") as logger_error_mock, \
+            patch.object(logging.getLogger("wazuh"), "warning") as logger_warning_mock:
+        await sync_files.sync({"path1": "metadata1"}, {"path2": "metadata2"}, 1, task_pool=None)
+
+    assert logger_error_mock.call_count == error_calls
+    assert logger_warning_mock.call_count == warning_calls
+    logger = logger_warning_mock if warning_calls else logger_error_mock
+    logger.assert_called_once_with(f"Error sending zip file: {exception.WazuhClusterError(code, extra_message='files/path/')}")
+
+
+@pytest.mark.asyncio
 @patch("wazuh.core.cluster.common.Handler.send_request", side_effect=Exception())
 async def test_sync_files_sync_ko(send_request_mock):
     """Test if the right exceptions are being risen when necessary."""
