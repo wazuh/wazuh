@@ -279,9 +279,10 @@ int wm_task_manager_read_json(const cJSON *section, wmodule *module) {
 
     wm_task_manager *data = module->data;
 
-    /* Outside the section guard below: `global` and `remote` are different sections, and both are
-     * still needed when `task-manager` itself is absent -- the sweep needs its interval, and the
-     * upgrade gates need remoted's delivery settings. */
+    /* Outside the section guard below: `global` and `remote` are different sections, read whatever
+     * `section` is -- the sweep needs its interval, and the upgrade gates need remoted's delivery
+     * settings. On a manager the defaults step inserts every absent section, so `section` is only NULL
+     * when a caller passes no document; the guard is defensive, not a "section removed" path. */
     data->disconnection_time = wm_task_manager_disconnection_time();
     wm_task_manager_read_remoted(data);
 

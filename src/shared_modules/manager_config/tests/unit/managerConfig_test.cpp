@@ -149,7 +149,7 @@ TEST(Load, GeneratedManagerFileKeepsUserValuesAndFillsTheRest)
     EXPECT_STREQ(rapidjson::Pointer("/https/certificate").Get(remote)->GetString(), "etc/certs/remoted.pem");
     EXPECT_STREQ(rapidjson::Pointer("/https/ca_certificate").Get(remote)->GetString(), "etc/certs/root-ca.pem");
     EXPECT_EQ(remote["https"].MemberCount(), 9u) << "port, bind_addr, global_prefix, certificate, key, ca, "
-                                                    "ca_certificate and the two rate limits (the three "
+                                                    "ca_certificate and the two rate limits (the four "
                                                     "no-default options stay absent)";
     const auto auth = json(doc.sectionJson("auth"));
     EXPECT_TRUE(auth["purge"].GetBool());

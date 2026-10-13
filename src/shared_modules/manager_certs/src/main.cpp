@@ -533,8 +533,8 @@ namespace
         }
 
         // File-existence checks are ours to do (bundle/leaf get their own, distinct messages below):
-        // manager_config's own checkFiles never looks at /remote/https/ca_certificate at all, and
-        // folding /remote/https/certificate's check into it would collapse "leaf missing" into
+        // manager_config's checkFiles covers /remote/https/ca_certificate and /remote/https/certificate
+        // too, but folding them into it would collapse "bundle missing" and "leaf missing" into
         // "configuration invalid".
         manager_config::LoadOptions options;
         options.checkFiles = false;

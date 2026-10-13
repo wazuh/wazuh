@@ -57,6 +57,8 @@ int w_is_single_node(int* is_worker) {
             is_single_node = 0;
             _is_worker = strcmp(node_type, "worker") == 0 ? 1 : 0;
         } else {
+            // Unreachable from a validated document: the schema defaults cluster.node_type to "master",
+            // so every 5.x manager answers 0 here. Kept for a hand-built document without the key.
             is_single_node = 1;
         }
     }

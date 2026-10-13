@@ -727,6 +727,8 @@ rm -fr %{buildroot}
 %{_localstatedir}/lib/libpython3.12.so.1.0
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/logs
 %attr(660, wazuh-manager, wazuh-manager) %ghost %{_localstatedir}/logs/api.log
+%attr(660, wazuh-manager, wazuh-manager) %ghost %{_localstatedir}/logs/api.json
+%attr(660, wazuh-manager, wazuh-manager) %ghost %{_localstatedir}/logs/cluster.log
 %attr(660, wazuh-manager, wazuh-manager) %ghost %{_localstatedir}/logs/wazuh-manager.log
 %attr(660, wazuh-manager, wazuh-manager) %ghost %{_localstatedir}/logs/wazuh-manager.json
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/logs/api

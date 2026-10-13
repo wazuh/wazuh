@@ -38,8 +38,9 @@ SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $
 LOCK="${DIR}/var/start-script-lock"
 LOCK_PID="${LOCK}/pid"
 
-# Seconds the lock loop waits. Below the unit's TimeoutSec (45,
-# templates/wazuh-manager.service), or systemd reports a timeout instead of the real reason.
+# Seconds the lock loop waits. Below the unit's TimeoutSec (45, which still bounds stop and reload;
+# start has TimeoutStartSec=180 for the engine readiness wait, templates/wazuh-manager.service), or
+# systemd reports a timeout instead of the real reason.
 MAX_ITERATION="40"
 
 MAX_KILL_TRIES=30
