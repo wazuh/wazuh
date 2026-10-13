@@ -1,10 +1,12 @@
 # 23 — NFR3 limit values for the container scopes (O10 / #40097)
 
-Status: **WP1 measured, decision pending WP2–WP5.**
+Status: **complete.** Measured (23.1–23.5), implemented and validated end to end (23.6–23.7), defaults shipped (23.8).
 
 #37203's NFR3 asks for configurable limits on what FIM and IT Hygiene track, with values derived
 "based on benchmarking and capacity planning". Roadmap item 39 — the node-level benchmark those
-values depend on — had never been run. This document records it.
+values depend on — had never been run. This document records it, and then what was built
+from it: 23.1–23.5 are the benchmark and the three findings it produced, 23.6–23.8 are the
+implementation, its end-to-end validation and the defaults that shipped.
 
 ---
 
@@ -354,4 +356,7 @@ a 100,000 node budget -- would have been a knob that could never bind first.
    today the only upward signal fires on the host scan, names the host's database, and the baseline's
    own row count hides the shortfall.
 
-Values are proposed in WP5 once WP2-WP4 land; nothing here is a shipped default yet.
+These implications were written before the implementation. Five of the six were acted on and are
+recorded in 23.6–23.8. The exception is point 3: the 12-hour sweep cadence is unchanged, and is
+filed as [#40329](https://github.com/wazuh/wazuh/issues/40329). The values that resulted are the
+shipped defaults in 23.8, not proposals.
