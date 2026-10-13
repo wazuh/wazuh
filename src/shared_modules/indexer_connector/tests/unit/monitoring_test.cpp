@@ -11,13 +11,19 @@
 
 #include "mocks/MockHTTPRequest.hpp"
 #include "monitoring.hpp"
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <cstdarg>
+#include <cstdio>
+#include <functional>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <mutex>
+#include <string>
 #include <thread>
+#include <vector>
 
 // Healt check interval for the servers
 constexpr auto MONITORING_HEALTH_CHECK_INTERVAL {1u};
@@ -728,4 +734,218 @@ TEST_F(MonitoringTest, TheDestructorDoesNotWaitOutTheRemainingRound)
     // stop was requested. Anything above that means the round kept probing hosts after stop.
     EXPECT_EQ(gate.calls(), static_cast<int>(servers.size()) + 1)
         << "the monitor kept probing hosts after stop was requested";
+}
+
+namespace
+{
+    /// A canned health-check answer: 200 goes to onSuccess with the body, anything else to onError.
+    struct ProbeAnswer
+    {
+        long statusCode;
+        std::string body;
+    };
+
+    const ProbeAnswer GREEN {200, R"([{"status":"green"}])"};
+    const ProbeAnswer UNAVAILABLE {503, ""};
+    const ProbeAnswer BREAKER {
+        429,
+        R"({"error":{"root_cause":[{"type":"circuit_breaking_exception","reason":"[parent] Data too large",)"
+        R"("durability":"TRANSIENT"}],"type":"circuit_breaking_exception","reason":"[parent] Data too large",)"
+        R"("durability":"TRANSIENT"},"status":429})"};
+    const ProbeAnswer PERMANENT_BREAKER {
+        429,
+        R"({"error":{"type":"circuit_breaking_exception","reason":"[parent] Data too large",)"
+        R"("durability":"PERMANENT"},"status":429})"};
+
+    template<typename TPostParams>
+    void answer(const TPostParams& postParams, const ProbeAnswer& probeAnswer)
+    {
+        if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+        {
+            const auto& params = std::get<TPostRequestParameters<const std::string&>>(postParams);
+            probeAnswer.statusCode == 200 ? params.onSuccess(probeAnswer.body)
+                                          : params.onError("Client error", probeAnswer.statusCode, probeAnswer.body);
+        }
+        else
+        {
+            const auto& params = std::get<TPostRequestParameters<std::string&&>>(postParams);
+            probeAnswer.statusCode == 200 ? params.onSuccess(std::string {probeAnswer.body})
+                                          : params.onError("Client error", probeAnswer.statusCode, probeAnswer.body);
+        }
+    }
+} // namespace
+
+/**
+ * @brief Monitoring tests that read the log: the global log function is swapped for a recorder and
+ * restored afterwards.
+ */
+class MonitoringLogTest : public MonitoringTest
+{
+protected:
+    struct LogLine
+    {
+        int level;
+        std::string message;
+    };
+
+    std::mutex m_logMutex;
+    std::vector<LogLine> m_logLines;
+    std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>
+        m_previousLogFunction;
+    std::atomic<size_t> m_probes {0};
+
+    void SetUp() override
+    {
+        m_previousLogFunction = Log::GLOBAL_LOG_FUNCTION;
+        Log::deassignLogFunction();
+        Log::assignLogFunction(
+            [this](const int level, const char*, const char*, const int, const char*, const char* format, va_list args)
+            {
+                char buffer[2048];
+                va_list copy;
+                va_copy(copy, args);
+                vsnprintf(buffer, sizeof(buffer), format, copy);
+                va_end(copy);
+                std::scoped_lock lock(m_logMutex);
+                m_logLines.push_back({level, buffer});
+            });
+    }
+
+    void TearDown() override
+    {
+        Log::deassignLogFunction();
+        Log::assignLogFunction(m_previousLogFunction);
+    }
+
+    /// Answers the probes in order and repeats the last answer forever.
+    void scriptProbes(std::vector<ProbeAnswer> script)
+    {
+        EXPECT_CALL(m_mockHttpRequest, get(::testing::_, ::testing::_, ::testing::_))
+            .WillRepeatedly(::testing::Invoke(
+                [this, script](const auto& /*requestParams*/, const auto& postParams, const auto& /*configParams*/)
+                {
+                    const auto index = m_probes++;
+                    answer(postParams, script.at(std::min(index, script.size() - 1)));
+                }));
+    }
+
+    void waitForProbes(size_t count)
+    {
+        while (m_probes < count)
+        {
+            std::this_thread::yield();
+        }
+    }
+
+    size_t countLines(int level, const std::string& needle)
+    {
+        std::scoped_lock lock(m_logMutex);
+        return std::count_if(m_logLines.begin(),
+                             m_logLines.end(),
+                             [&](const LogLine& line)
+                             { return line.level == level && line.message.find(needle) != std::string::npos; });
+    }
+};
+
+TEST_F(MonitoringLogTest, A429ProbeKeepsTheHostAvailable)
+{
+    const std::string server {"http://localhost:9201"};
+    scriptProbes({BREAKER});
+
+    const auto monitoring = std::make_shared<TestMonitoring>(std::vector<std::string> {server},
+                                                             MONITORING_HEALTH_CHECK_INTERVAL,
+                                                             SecureCommunication {},
+                                                             &m_mockHttpRequest);
+
+    EXPECT_TRUE(monitoring->isAvailable(server));
+    EXPECT_EQ(monitoring->getUnavailableServersDetails(), "no error details available");
+}
+
+TEST_F(MonitoringLogTest, A429ProbeIsLoggedWithTheStatusAndBreakerType)
+{
+    const std::string server {"http://localhost:9202"};
+    scriptProbes({BREAKER});
+
+    const auto monitoring = std::make_shared<TestMonitoring>(std::vector<std::string> {server},
+                                                             MONITORING_HEALTH_CHECK_INTERVAL,
+                                                             SecureCommunication {},
+                                                             &m_mockHttpRequest);
+
+    EXPECT_EQ(countLines(Log::LOGLEVEL_INFO, "is throttling requests (HTTP 429 circuit_breaking_exception"), 1);
+    EXPECT_EQ(countLines(Log::LOGLEVEL_INFO, "is no longer available"), 0);
+    EXPECT_EQ(countLines(Log::LOGLEVEL_INFO, "Client error"), 0);
+    EXPECT_EQ(countLines(Log::LOGLEVEL_WARNING, "PERMANENT"), 0);
+}
+
+TEST_F(MonitoringLogTest, APermanentBreakerWarnsOncePerTransition)
+{
+    const std::string server {"http://localhost:9203"};
+    scriptProbes({PERMANENT_BREAKER, PERMANENT_BREAKER, PERMANENT_BREAKER, GREEN, PERMANENT_BREAKER});
+
+    const auto monitoring = std::make_shared<TestMonitoring>(std::vector<std::string> {server},
+                                                             MONITORING_HEALTH_CHECK_INTERVAL_ZERO,
+                                                             SecureCommunication {},
+                                                             &m_mockHttpRequest);
+    waitForProbes(8);
+
+    // Three trips in a row are one transition; the trip after a green probe is a second one.
+    EXPECT_EQ(countLines(Log::LOGLEVEL_WARNING, "reports a PERMANENT circuit breaker"), 2);
+    EXPECT_TRUE(monitoring->isAvailable(server));
+}
+
+TEST_F(MonitoringLogTest, ThrottledToAvailableIsEdgeTriggered)
+{
+    const std::string server {"http://localhost:9204"};
+    scriptProbes({GREEN, BREAKER, BREAKER, GREEN});
+
+    const auto monitoring = std::make_shared<TestMonitoring>(std::vector<std::string> {server},
+                                                             MONITORING_HEALTH_CHECK_INTERVAL_ZERO,
+                                                             SecureCommunication {},
+                                                             &m_mockHttpRequest);
+    waitForProbes(7);
+
+    EXPECT_EQ(countLines(Log::LOGLEVEL_INFO, "is throttling requests"), 1);
+    EXPECT_EQ(countLines(Log::LOGLEVEL_INFO, "accepts requests again"), 1);
+    EXPECT_EQ(countLines(Log::LOGLEVEL_INFO, "is available again"), 0);
+    EXPECT_EQ(countLines(Log::LOGLEVEL_INFO, "is no longer available"), 0);
+}
+
+TEST_F(MonitoringLogTest, ADownHostThatAnswers429IsBackInRotation)
+{
+    const std::string server {"http://localhost:9205"};
+    scriptProbes({UNAVAILABLE, BREAKER});
+
+    const auto monitoring = std::make_shared<TestMonitoring>(std::vector<std::string> {server},
+                                                             MONITORING_HEALTH_CHECK_INTERVAL_ZERO,
+                                                             SecureCommunication {},
+                                                             &m_mockHttpRequest);
+    waitForProbes(4);
+
+    EXPECT_TRUE(monitoring->isAvailable(server));
+    EXPECT_EQ(countLines(Log::LOGLEVEL_INFO, "is no longer available"), 1);
+    EXPECT_EQ(countLines(Log::LOGLEVEL_INFO, "is throttling requests"), 1);
+    EXPECT_EQ(countLines(Log::LOGLEVEL_INFO, "is available again"), 0);
+}
+
+TEST_F(MonitoringLogTest, A4xxOtherThan429StillMarksTheHostDown)
+{
+    const std::string server400 {"http://localhost:9206"};
+    const std::string server404 {"http://localhost:9207"};
+    EXPECT_CALL(m_mockHttpRequest, get(::testing::_, ::testing::_, ::testing::_))
+        .WillRepeatedly(::testing::Invoke(
+            [&server400](const auto& requestParams, const auto& postParams, const auto& /*configParams*/)
+            {
+                const auto& url = std::get<TRequestParameters<std::string>>(requestParams).url.url();
+                answer(postParams, ProbeAnswer {url.find(server400) != std::string::npos ? 400L : 404L, ""});
+            }));
+
+    const auto monitoring = std::make_shared<TestMonitoring>(std::vector<std::string> {server400, server404},
+                                                             MONITORING_HEALTH_CHECK_INTERVAL,
+                                                             SecureCommunication {},
+                                                             &m_mockHttpRequest);
+
+    EXPECT_FALSE(monitoring->isAvailable(server400));
+    EXPECT_FALSE(monitoring->isAvailable(server404));
+    EXPECT_EQ(countLines(Log::LOGLEVEL_INFO, "is no longer available"), 2);
+    EXPECT_EQ(countLines(Log::LOGLEVEL_INFO, "is throttling requests"), 0);
 }

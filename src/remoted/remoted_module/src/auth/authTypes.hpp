@@ -100,11 +100,7 @@ namespace remoted::auth
      */
     struct AuthenticatedRequest
     {
-        std::string agentId; ///< Verified agent id, canonical (the token's `sub`, never the raw header).
-        /// SHA-256 of the key that authenticated this request -- see VerifiedAgent::keyFingerprint
-        /// for what it is and is not. Empty on any path that did not authenticate against a
-        /// client.keys key. Only credential-changing endpoints have any business reading it.
-        std::string keyFingerprint;
+        std::string agentId;         ///< Verified agent id, canonical (the token's `sub`, never the raw header).
         std::string protocolVersion; ///< Value of the protocol-version header.
         std::string method;          ///< Uppercase HTTP method, e.g. "POST".
         std::string requestTarget;   ///< Raw path + query, exactly as received.
@@ -179,6 +175,13 @@ namespace remoted::auth
                                     ///< operator revoked. Like the two above it is a 401 whose class names
                                     ///< it on the wire (`token_revoked`) and counts in its own
                                     ///< remoted.auth.reject.token_* cell.
+        AgentBusy,                  ///< Raised ONLY by the AuthGateway, after authentication: the
+                                    ///< verified agent already has `remoted.max_requests_per_agent`
+                                    ///< requests open, or its decoded body does not fit what is left
+                                    ///< of `remoted.max_inflight_bytes_per_agent` (AgentRequestLimiter).
+                                    ///< A plain 503 like every
+                                    ///< other capacity shed -- not a credential failure, so no class
+                                    ///< and no challenge.
     };
 
     /**
@@ -188,15 +191,6 @@ namespace remoted::auth
     struct VerifiedAgent
     {
         std::string agentId; ///< Canonical form ("001"): the token's verified `sub`, equal to `kid`.
-        /// SHA-256 of the client.keys key this request was actually verified against, as 64
-        /// lowercase hex chars (see keyFingerprint()). NOT a credential: it is one-way, and it is
-        /// derived from a key the manager already holds, so it proves nothing on its own.
-        ///
-        /// It exists because the id alone does not say WHICH key authenticated (#39315): remoted
-        /// answers from its own copy of client.keys, which on a worker may be an out-of-date
-        /// replica, so an endpoint that changes credentials must be able to ask the authority
-        /// "is this still the key you have?" rather than trust that nothing rotated in between.
-        std::string keyFingerprint;
     };
 
     /**
@@ -281,6 +275,9 @@ namespace remoted::auth
         /// / `jwt_clock_skew`, see buildAuthConfig()).
         jwt_profile::v1::TimePolicy timePolicy {};
         std::size_t maxBodySize = 5 * 1024 * 1024; ///< Hard cap on the authenticated body size (5 MiB).
+        /// Hard cap on that body once `Content-Encoding: zstd` is decoded (32 MiB). Larger than
+        /// maxBodySize on purpose: the agent sizes its batches before compressing them.
+        std::size_t maxDecodedBodySize = 32 * 1024 * 1024;
     };
 
     /**

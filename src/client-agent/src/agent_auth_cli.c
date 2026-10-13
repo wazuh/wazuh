@@ -815,7 +815,7 @@ STATIC int w_agent_auth_enroll(const agent_auth_opts_t *opts, FILE *in, FILE *ou
             }
         } else {
             if (report.manager_message[0] != '\0') {
-                fprintf(err, "  The manager said: %s\n", report.manager_message);
+                fprintf(err, "  " AGENT_AUTH_MANAGER_SAID "%s\n", report.manager_message);
             }
 
             fprintf(err, "  Nothing was changed.\n");

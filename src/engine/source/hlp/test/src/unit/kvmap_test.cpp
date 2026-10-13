@@ -1,5 +1,10 @@
 #include <gtest/gtest.h>
 
+#include <string>
+#include <utility>
+#include <vector>
+
+#include "address_space_cap.hpp"
 #include "hlp_test.hpp"
 
 auto constexpr NAME = "kvmapParser";
@@ -389,10 +394,10 @@ INSTANTIATE_TEST_SUITE_P(
                getKVParser,
                {NAME, TARGET, {}, {"::=", " || ", "\"", "\\"}}),
 
-        // Dots in the key nest the value; an empty value is written under the key as given (flat null).
+        // Dots in the key nest the value, also when the value is empty.
         ParseT(SUCCESS,
                R"(a.b.c=v d.e=)",
-               j(fmt::format(R"({{"{}":{{"a":{{"b":{{"c":"v"}}}},"d.e":null}}}})", TARGET.substr(1))),
+               j(fmt::format(R"({{"{}":{{"a":{{"b":{{"c":"v"}}}},"d":{{"e":null}}}}}})", TARGET.substr(1))),
                12,
                getKVParser,
                {NAME, TARGET, {}, {"=", " ", "'", "\\"}}),
@@ -421,7 +426,7 @@ INSTANTIATE_TEST_SUITE_P(
                getKVParser,
                {NAME, TARGET, {}, {"=", " ", "'", "\\"}}),
 
-        // An empty value keeps the key unconverted, and its path of 257 '/' still exceeds the limit.
+        // An empty value converts the key too, and its path of 257 '/' exceeds the limit.
         ParseT(FAILURE,
                deepKey(257, '/') + "=",
                {},
@@ -470,12 +475,11 @@ TEST(KvParserDepth, MaxDepthMaps)
         EXPECT_FALSE(event.exists(TARGET + "/a"));
     }
 
-    // An empty value is written under the key as given: 256 dots are one token, a flat null
+    // An empty value nests its dots as well: 255 dots map to a null 256 tokens deep (256 dots are rejected below)
     {
-        const auto key = deepKey(257, '.');
         json::Json event;
-        ASSERT_NO_FATAL_FAILURE(mapInto(key + "=", event));
-        EXPECT_TRUE(event.isNull(TARGET + "/" + key));
+        ASSERT_NO_FATAL_FAILURE(mapInto(deepKey(256, '.') + "=", event));
+        EXPECT_TRUE(event.isNull(TARGET + "/" + deepKey(256, '/')));
         EXPECT_EQ(event.size(TARGET), 1u);
     }
 
@@ -496,7 +500,10 @@ TEST(KvParserDepth, TraceNamesLimit)
 {
     const auto parser = depthParser();
     // Value branch, empty-value branch, and a deep key between two valid pairs
-    for (const auto& input : {deepKey(257, '.') + "=v", deepKey(257, '/') + "=", "a=1 " + deepKey(257, '.') + "=v b=2"})
+    for (const auto& input : {deepKey(257, '.') + "=v",
+                              deepKey(257, '/') + "=",
+                              deepKey(257, '.') + "=",
+                              "a=1 " + deepKey(257, '.') + "=v b=2"})
     {
         auto result = parser(input);
         ASSERT_TRUE(result.success()) << result.trace();
@@ -509,5 +516,59 @@ TEST(KvParserDepth, TraceNamesLimit)
         auto untraced = result.value().semParser(result.value().parsed, false);
         ASSERT_TRUE(std::holds_alternative<base::Error>(untraced));
         EXPECT_TRUE(std::get<base::Error>(untraced).message.empty());
+    }
+}
+
+namespace
+{
+
+// Keys that rapidjson reads as array indexes: up to 4294967294, plus one whose overflow it does not detect
+const std::string LARGE_NUMERIC_KEYS = "99999999=v 999999999=w 4294967294=x 10000000000=y";
+
+} // namespace
+
+TEST(KvNumericKey, SmallKeyIsMember)
+{
+    json::Json event;
+    ASSERT_NO_FATAL_FAILURE(mapInto("123=v a.5=w", event));
+    EXPECT_EQ(event, json::Json {R"({"TargetField":{"123":"v","a":{"5":"w"}}})"});
+}
+
+// Large numeric keys are mapped as members without allocating in proportion to their value. Parsed in a child
+// whose address space is capped: a regression makes the child die instead of exhausting the host.
+TEST(KvNumericKey, LargeKeysBoundedMemory)
+{
+    SKIP_UNDER_SANITIZER();
+    const DeathTestStyleGuard style {"threadsafe"};
+    EXPECT_EXIT(
+        exitUnderAddressSpaceCap(
+            []
+            {
+                json::Json event;
+                event.setObject();
+                const auto error = hlp::parser::run(depthParser(), LARGE_NUMERIC_KEYS, event, false);
+                return !error.has_value()
+                       && event
+                              == json::Json {
+                                  R"({"TargetField":{"99999999":"v","999999999":"w","4294967294":"x","10000000000":"y"}})"};
+            }),
+        ::testing::ExitedWithCode(0),
+        "");
+}
+
+TEST(KvNumericKey, MixedOrderAndRepeats)
+{
+    const std::vector<std::pair<std::string, std::string>> cases {
+        {"a.x=1 5=2", R"({"TargetField":{"a":{"x":"1"},"5":"2"}})"},
+        {"5=1 a.7=2", R"({"TargetField":{"5":"1","a":{"7":"2"}}})"},
+        {"5=a 5=b", R"({"TargetField":{"5":"b"}})"},
+        {"a/5=v", R"({"TargetField":{"a":{"5":"v"}}})"},
+        {"123= a/7=", R"({"TargetField":{"123":null,"a":{"7":null}}})"},
+    };
+    for (const auto& [input, expected] : cases)
+    {
+        json::Json event;
+        ASSERT_NO_FATAL_FAILURE(mapInto(input, event)) << input;
+        EXPECT_EQ(event, json::Json {expected.c_str()}) << input;
     }
 }

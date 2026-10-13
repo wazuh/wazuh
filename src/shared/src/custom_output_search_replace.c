@@ -112,7 +112,7 @@ char *escape_newlines(const char *orig)
             retptr += 2;
         } else if (*ptr == '\r') {
             *retptr = '\\';
-            *(retptr + 1) = 'n';
+            *(retptr + 1) = 'r';
             retptr += 2;
         } else {
             *retptr = *ptr;

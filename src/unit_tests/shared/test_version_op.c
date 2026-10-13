@@ -13,6 +13,7 @@
 #include <cmocka.h>
 #include <stdio.h>
 #include <string.h>
+#include <pthread.h>
 
 #include "shared.h"
 #include "../wrappers/common.h"
@@ -2227,6 +2228,106 @@ void test_compare_wazuh_versions_truncated_version(void **state)
     assert_int_equal(ret, 1);
 }
 
+// The gates call compare_wazuh_versions(manager, agent, false) and refuse the agent when it is < 0, so a
+// zero-padded agent version that the old nine-byte copy cut short must still compare greater.
+void test_compare_wazuh_versions_zero_padded_major(void **state)
+{
+    (void) state;
+
+    assert_int_equal(compare_wazuh_versions("v5.0.0", "v000000006.0.0", false), -1);
+    assert_int_equal(compare_wazuh_versions("v000000006.0.0", "v6.0.0", true), 0);
+}
+
+void test_compare_wazuh_versions_zero_padded_minor(void **state)
+{
+    (void) state;
+
+    assert_int_equal(compare_wazuh_versions("v5.0.0", "v5.0000001", false), -1);
+    assert_int_equal(compare_wazuh_versions("v5.0000001", "v5.1", true), 0);
+}
+
+void test_compare_wazuh_versions_zero_padded_major_only(void **state)
+{
+    (void) state;
+
+    assert_int_equal(compare_wazuh_versions("v5.0.0", "v0000000099", false), -1);
+    assert_int_equal(compare_wazuh_versions("v0000000099", "v99.0.0", true), 0);
+}
+
+void test_compare_wazuh_versions_long_patch_not_truncated(void **state)
+{
+    (void) state;
+
+    assert_int_equal(compare_wazuh_versions("v10.14.100", "v10.14.10", true), 1);
+    assert_int_equal(compare_wazuh_versions("v10.14.10", "v10.14.100", true), -1);
+    assert_int_equal(compare_wazuh_versions("v123.456.789", "v123.456.789", true), 0);
+}
+
+void test_compare_wazuh_versions_huge_part_saturates(void **state)
+{
+    (void) state;
+
+    assert_int_equal(compare_wazuh_versions("v99999999999999999999.0.0", "v5.0.0", true), 1);
+    assert_int_equal(compare_wazuh_versions("v5.0.0", "v99999999999999999999.0.0", true), -1);
+    assert_int_equal(compare_wazuh_versions("v99999999999999999999.0.0", "v99999999999999999999.0.0", true), 0);
+}
+
+void test_compare_wazuh_versions_suffix_and_empty_parts(void **state)
+{
+    (void) state;
+
+    assert_int_equal(compare_wazuh_versions("v4.14.0-rc1", "v4.14.0", true), 0);
+    assert_int_equal(compare_wazuh_versions("v5..1", "v5.1.0", true), 0);
+    assert_int_equal(compare_wazuh_versions("v4.14", "v4.14.0", true), 0);
+    assert_int_equal(compare_wazuh_versions("4.14.0", "v4.14.0", true), 0);
+    assert_int_equal(compare_wazuh_versions("v-5.0.0", "v0.0.0", true), 0);
+}
+
+#define VERSION_THREADS 8
+#define VERSION_ITERATIONS 5000
+
+static void *compare_wazuh_versions_thread(void *arg)
+{
+    const int index = *(int *) arg;
+    char lower[16];
+    char higher[16];
+    int mismatches = 0;
+    int iteration;
+
+    // Each thread compares a different pair, so any cross-thread state would change an answer.
+    snprintf(lower, sizeof(lower), "v4.%d.0", index);
+    snprintf(higher, sizeof(higher), "v4.%d.1", index);
+
+    for (iteration = 0; iteration < VERSION_ITERATIONS; iteration++) {
+        mismatches += compare_wazuh_versions(lower, higher, true) != -1;
+        mismatches += compare_wazuh_versions(higher, lower, true) != 1;
+        mismatches += compare_wazuh_versions(lower, higher, false) != 0;
+    }
+
+    *(int *) arg = mismatches;
+    return NULL;
+}
+
+// The old implementation split with strtok(), whose cursor is process-global; remoted calls this
+// function from its worker threads.
+void test_compare_wazuh_versions_reentrant_across_threads(void **state)
+{
+    (void) state;
+    pthread_t threads[VERSION_THREADS];
+    int results[VERSION_THREADS];
+    int index;
+
+    for (index = 0; index < VERSION_THREADS; index++) {
+        results[index] = index;
+        assert_int_equal(pthread_create(&threads[index], NULL, compare_wazuh_versions_thread, &results[index]), 0);
+    }
+
+    for (index = 0; index < VERSION_THREADS; index++) {
+        assert_int_equal(pthread_join(threads[index], NULL), 0);
+        assert_int_equal(results[index], 0);
+    }
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
 #ifdef __linux__
@@ -2282,7 +2383,14 @@ int main(void) {
             cmocka_unit_test(test_compare_wazuh_versions_long_string_v1),
             cmocka_unit_test(test_compare_wazuh_versions_long_string_v2),
             cmocka_unit_test(test_compare_wazuh_versions_long_string_both),
-            cmocka_unit_test(test_compare_wazuh_versions_truncated_version)
+            cmocka_unit_test(test_compare_wazuh_versions_truncated_version),
+            cmocka_unit_test(test_compare_wazuh_versions_zero_padded_major),
+            cmocka_unit_test(test_compare_wazuh_versions_zero_padded_minor),
+            cmocka_unit_test(test_compare_wazuh_versions_zero_padded_major_only),
+            cmocka_unit_test(test_compare_wazuh_versions_long_patch_not_truncated),
+            cmocka_unit_test(test_compare_wazuh_versions_huge_part_saturates),
+            cmocka_unit_test(test_compare_wazuh_versions_suffix_and_empty_parts),
+            cmocka_unit_test(test_compare_wazuh_versions_reentrant_across_threads)
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }

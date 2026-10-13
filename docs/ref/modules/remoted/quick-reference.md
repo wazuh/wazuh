@@ -62,8 +62,8 @@ GET /cluster/{node_id}/configuration/request/remote                      # effec
 
 | Situation | Setting |
 |---|---|
-| HTTPS answers `503` under load | [`remoted.max_inflight_bytes`](configuration.md#remotedmax_inflight_bytes), [`remoted.max_deferred_requests`](configuration.md#remotedmax_deferred_requests), [`remoted.max_parallel_connections`](configuration.md#remotedmax_parallel_connections) — read the metrics first |
-| Enrolling a large fleet at once | [`remote.https.enroll_rate_limit`](configuration.md#httpsenroll_rate_limit) (100 per second by default, shared by `POST /enroll` and `POST /enroll/secret`; at the default, 10 000 agents need at least ~100 s) |
+| HTTPS answers `503` under load | [`remoted.max_inflight_bytes`](configuration.md#remotedmax_inflight_bytes), [`remoted.max_deferred_requests`](configuration.md#remotedmax_deferred_requests), [`remoted.max_parallel_connections`](configuration.md#remotedmax_parallel_connections), [`remoted.max_requests_per_agent`](configuration.md#remotedmax_requests_per_agent) / [`remoted.max_inflight_bytes_per_agent`](configuration.md#remotedmax_inflight_bytes_per_agent) when one agent is the source — read the metrics first |
+| Enrolling a large fleet at once | [`remote.https.enroll_rate_limit`](configuration.md#httpsenroll_rate_limit) (100 per second by default, for `POST /enroll`; at the default, 10 000 agents need at least ~100 s) |
 | Slow agent links | [`remoted.http_read_timeout`](configuration.md#remotedhttp_read_timeout) together with the agent's own budget — [Connection timing tuning](timing-tuning.md) |
 | Agents with unsynchronized clocks get `401 stale_token` | fix NTP; [`remoted.jwt_clock_skew`](configuration.md#remotedjwt_clock_skew) only as a stopgap |
 | No 4.x agent left | [`remote.legacy.enabled`](configuration.md#legacyenabled) `no` |

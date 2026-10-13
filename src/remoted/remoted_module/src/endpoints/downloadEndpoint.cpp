@@ -52,10 +52,10 @@ namespace
     /**
      * @brief Hex characters in a multigroup directory name.
      *
-     * Must equal wazuh-db's WDB_GROUP_HASH_SIZE (8). Note that is 8 HEX CHARACTERS -- the first
-     * four digest bytes -- not the first eight bytes.
+     * Must equal wazuh-db's WDB_GROUP_HASH_SIZE (32). Note that is 32 HEX CHARACTERS -- the first
+     * sixteen digest bytes -- not the first 32 bytes.
      */
-    constexpr std::size_t MULTIGROUP_HASH_HEX_CHARS {8};
+    constexpr std::size_t MULTIGROUP_HASH_HEX_CHARS {32};
 
     /// Cap on a whole multigroup selector, mirroring wazuh's own multigroup length allowance.
     constexpr std::size_t MAX_MULTIGROUP_SELECTOR_SIZE {4096};

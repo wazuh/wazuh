@@ -308,7 +308,10 @@ class WazuhDBQueryAgents(WazuhDBQuery):
 
         # Add RBAC filters and remove them from query_filters
         if "rbac_ids" in legacy_filters_as_list:
-            rbac_value = legacy_filters_as_list.pop("rbac_ids")
+            rbac_value = [
+                int(i) if isinstance(i, str) and i.isascii() and i.isdigit() else i
+                for i in legacy_filters_as_list.pop("rbac_ids")
+            ]
             operator = "NOT IN" if self.rbac_negate else "IN"
         else:
             rbac_value = None

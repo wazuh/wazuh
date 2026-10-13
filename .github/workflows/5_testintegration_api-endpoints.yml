@@ -28,6 +28,9 @@ on:
       - "VERSION.json"
       - "tools/mitre/**"
       - "tools/devContainer/scripts/wazuh-certs-tool.sh"
+      # .github/actions/upload_s3_artifact only uploads logs on failure: it tests nothing, and a
+      # broken upload fails the job visibly; 5_builderpackage_manager-multiples.yml lists it and
+      # exercises it on every pull request it runs.
       # Unit tests, docs and dev tools of those trees never reach the environment
       - "!api/api/**/test/**"
       - "!api/tools/**"
@@ -42,6 +45,9 @@ on:
       - "!src/engine/test/**"
       - "!src/engine/docs/**"
       - "!**/*.md"
+      # ...but not the generated report the setup job diffs (`endpoint_coverage.py --check` fails when
+      # it is out of date): a hand edit must run that check
+      - "api/test/integration/mapping/COVERAGE.md"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}

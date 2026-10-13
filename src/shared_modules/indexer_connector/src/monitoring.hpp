@@ -17,6 +17,7 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <cstdint>
 #include <json.hpp>
 #include <loggerHelper.h>
 #include <map>
@@ -35,6 +36,22 @@ constexpr auto HEALTH_CHECK_TIMEOUT_MS = 5000u;
 constexpr auto SERVER_HEALTH_FIELD_NAME {"status"};
 
 auto constexpr MONITOR_NAME {"monitoring"};
+
+/**
+ * @brief What the last health check said about a host.
+ *
+ * A 429 on the probe is an answer: the node is alive but rejecting work it cannot take now (for
+ * example a tripped circuit breaker). Requests to a throttled host back off on their own 429s, so it
+ * stays in rotation; only a host that did not answer usefully is down.
+ */
+enum class HostState : uint8_t
+{
+    Available, ///< Answered green or yellow.
+    Throttled, ///< Answered HTTP 429.
+    Down       ///< No answer, 401/403, any other 4xx, 5xx, or a red cluster.
+};
+
+static_assert(std::atomic<HostState>::is_always_lock_free, "host state reads must stay wait-free");
 
 /**
  * @brief Monitoring class.
@@ -64,9 +81,9 @@ auto constexpr MONITOR_NAME {"monitoring"};
 template<typename THttpRequest>
 class TMonitoring final
 {
-    /// Host -> availability. Structure frozen after construction; values published by the monitor
-    /// thread with release and read wait-free with acquire. See the class comment.
-    std::map<std::string, std::atomic<bool>, std::less<>> m_servers;
+    /// Host -> state. Structure frozen after construction; values published by the monitor thread
+    /// with release and read wait-free with acquire. See the class comment.
+    std::map<std::string, std::atomic<HostState>, std::less<>> m_servers;
     std::thread m_thread;
     /// Guards ONLY the interval wait of the monitor thread. Deliberately never held across a health
     /// check: that is the whole point of this class's synchronisation. Named for what it protects so
@@ -81,10 +98,16 @@ class TMonitoring final
     /// a read and NEVER across an HTTP call, so it cannot reintroduce the stall.
     std::mutex m_reasonsMutex;
     std::map<std::string, std::string, std::less<>> m_unavailableReasonByServer;
-    /// Touched only by the thread running a round (the constructor's, then the monitor's), purely to
-    /// make the "no longer available" / "available again" logging edge-triggered. Needs no
-    /// synchronisation: no reader ever looks at it.
-    std::map<std::string, bool, std::less<>> m_previousServerAvailability;
+    /// What the previous round saw for a host, kept only to make the transition logging
+    /// edge-triggered.
+    struct PreviousState
+    {
+        HostState state;
+        bool permanent;
+    };
+    /// Touched only by the thread running a round (the constructor's, then the monitor's). Needs no
+    /// synchronisation: no reader ever looks at it. A host with no entry counts as available.
+    std::map<std::string, PreviousState, std::less<>> m_previousServerState;
 
     /**
      * @brief Checks the health of a server.
@@ -92,21 +115,24 @@ class TMonitoring final
      * @note It sends a request to the \p serverAddress and update the serverStatus. The \p authentication object is
      * used to provide secure communication.
      *
-     * @note The serverStatus is updated to true if the server is green or yellow, otherwise it is updated to false.
+     * @note The state is Available if the server is green or yellow, Throttled if it answered HTTP 429, and Down
+     * otherwise.
      *
      * @param serverAddress Server's address.
-     * @param serverStatus The availability slot to publish into. Passed in rather than looked up so
-     *                     this function can never insert into m_servers (see the class comment).
+     * @param serverStatus The state slot to publish into. Passed in rather than looked up so this
+     *                     function can never insert into m_servers (see the class comment).
      * @param authentication Object that provides secure communication.
      */
     void healthCheck(const std::string& serverAddress,
-                     std::atomic<bool>& serverStatus,
+                     std::atomic<HostState>& serverStatus,
                      const SecureCommunication& authentication)
     {
-        const auto previousAvailability = m_previousServerAvailability.find(serverAddress);
-        const bool wasAvailable =
-            previousAvailability == m_previousServerAvailability.end() || previousAvailability->second;
+        const auto previousEntry = m_previousServerState.find(serverAddress);
+        const auto previous = previousEntry == m_previousServerState.end() ? PreviousState {HostState::Available, false}
+                                                                           : previousEntry->second;
         std::string unavailableReason;
+        std::string throttleReason;
+        bool permanent {false};
 
         /*
          * Computed into a local and published ONCE, at the end.
@@ -117,10 +143,10 @@ class TMonitoring final
          * that no reader could get past; with wait-free readers the transient becomes observable, and
          * it would make getNext() skip a healthy host, or answer 503 with one host configured.
          */
-        bool available {false};
+        HostState state {HostState::Down};
 
         // On success callback
-        const auto onSuccess = [&available](std::string response)
+        const auto onSuccess = [&state](std::string response)
         {
             // Parse the response without throwing exceptions
             // Response example:
@@ -150,17 +176,19 @@ class TMonitoring final
             if (!data.is_discarded() && data.contains(SERVER_HEALTH_FIELD_NAME))
             {
                 const auto& serverHealth = data.at(SERVER_HEALTH_FIELD_NAME).get_ref<const std::string&>();
-                available = serverHealth.compare("green") == 0 || serverHealth.compare("yellow") == 0;
+                if (serverHealth.compare("green") == 0 || serverHealth.compare("yellow") == 0)
+                {
+                    state = HostState::Available;
+                }
             }
         };
 
         // On error callback
-        const auto onError = [&serverAddress, &unavailableReason](
+        const auto onError = [&serverAddress, &unavailableReason, &throttleReason, &permanent, &state](
                                  const std::string& error, const long statusCode, const std::string& errorBody)
         {
-            // LCOV_EXCL_START
             //  Try to extract error details from JSON
-            std::string errorType, errorReason;
+            std::string errorType, errorReason, durability;
             try
             {
                 const auto errorJson = nlohmann::json::parse(errorBody);
@@ -175,6 +203,16 @@ class TMonitoring final
                     {
                         errorReason = err.at("reason").get_ref<const std::string&>();
                     }
+                    // A circuit breaker reports it at the top level and in root_cause[0].
+                    if (err.contains("durability"))
+                    {
+                        durability = err.at("durability").get_ref<const std::string&>();
+                    }
+                    else if (err.contains("root_cause") && err.at("root_cause").is_array() &&
+                             !err.at("root_cause").empty() && err.at("root_cause").at(0).contains("durability"))
+                    {
+                        durability = err.at("root_cause").at(0).at("durability").get_ref<const std::string&>();
+                    }
                 }
             }
             catch (const nlohmann::json::exception&)
@@ -183,6 +221,19 @@ class TMonitoring final
             }
 
             // Log based on status code
+            if (statusCode == 429)
+            {
+                state = HostState::Throttled;
+                permanent = durability == "PERMANENT";
+                throttleReason = "HTTP 429";
+                if (!errorType.empty())
+                {
+                    throttleReason += " " + errorType + (errorReason.empty() ? "" : ": " + errorReason);
+                }
+                logDebug2(
+                    MONITOR_NAME, "Health check of '%s' throttled - %s", serverAddress.c_str(), throttleReason.c_str());
+                return;
+            }
             if (statusCode == 401)
             {
                 if (!errorType.empty() && !errorReason.empty())
@@ -218,7 +269,6 @@ class TMonitoring final
             logDebug2(
                 MONITOR_NAME, "Health check failed for '%s' - %s", serverAddress.c_str(), unavailableReason.c_str());
         };
-        // LCOV_EXCL_STOP
 
         // Get the health of the server.
         thread_local std::string url;
@@ -230,16 +280,16 @@ class TMonitoring final
 
         // The single publish. Everything below reads the local, so the log line, the stored reason and
         // the value readers see can never disagree.
-        serverStatus.store(available, std::memory_order_release);
+        serverStatus.store(state, std::memory_order_release);
 
-        if (!available && unavailableReason.empty())
+        if (state == HostState::Down && unavailableReason.empty())
         {
             unavailableReason = "Cluster reported unhealthy status";
         }
 
         {
             std::scoped_lock lock(m_reasonsMutex);
-            if (!available)
+            if (state == HostState::Down)
             {
                 m_unavailableReasonByServer[serverAddress] = unavailableReason;
             }
@@ -249,19 +299,40 @@ class TMonitoring final
             }
         }
 
-        if (wasAvailable && !available)
+        if (state == HostState::Down && previous.state != HostState::Down)
         {
             logInfo(MONITOR_NAME,
                     "Indexer node '%s' is no longer available. Reason: %s",
                     serverAddress.c_str(),
                     unavailableReason.c_str());
         }
-        else if (!wasAvailable && available)
+        else if (state == HostState::Throttled && previous.state != HostState::Throttled)
+        {
+            logInfo(MONITOR_NAME,
+                    "Indexer node '%s' is throttling requests (%s); it stays in rotation and requests back off.",
+                    serverAddress.c_str(),
+                    throttleReason.c_str());
+        }
+        else if (state == HostState::Available && previous.state == HostState::Throttled)
+        {
+            logInfo(MONITOR_NAME, "Indexer node '%s' accepts requests again.", serverAddress.c_str());
+        }
+        else if (state == HostState::Available && previous.state == HostState::Down)
         {
             logInfo(MONITOR_NAME, "Indexer node '%s' is available again.", serverAddress.c_str());
         }
 
-        m_previousServerAvailability[serverAddress] = available;
+        if (state == HostState::Throttled && permanent &&
+            !(previous.state == HostState::Throttled && previous.permanent))
+        {
+            logWarn(MONITOR_NAME,
+                    "Indexer node '%s' reports a PERMANENT circuit breaker (%s): heap usage is above the breaker "
+                    "limit; check the indexer heap sizing.",
+                    serverAddress.c_str(),
+                    throttleReason.c_str());
+        }
+
+        m_previousServerState[serverAddress] = {state, state == HostState::Throttled && permanent};
     }
 
     /**
@@ -281,7 +352,7 @@ class TMonitoring final
                 // If the thread is stopped, break the loop.
                 return;
             }
-            const auto [entry, _] = m_servers.try_emplace(serverAddress, false);
+            const auto [entry, _] = m_servers.try_emplace(serverAddress, HostState::Down);
             healthCheck(entry->first, entry->second, authentication);
         }
     }
@@ -354,13 +425,23 @@ public:
     }
 
     /**
-     * @brief Checks whether a server is available or not.
+     * @brief Checks whether a server can take requests: Available or Throttled.
      *
      * @param serverAddress Server's address.
-     * @return true if available.
-     * @return false if not available.
+     * @return true unless the last health check found the server Down.
      */
-    bool isAvailable(std::string_view serverAddress)
+    bool isAvailable(std::string_view serverAddress) const
+    {
+        return state(serverAddress) != HostState::Down;
+    }
+
+    /**
+     * @brief State of a server as of its last health check.
+     *
+     * @param serverAddress Server's address.
+     * @return HostState Available, Throttled or Down.
+     */
+    HostState state(std::string_view serverAddress) const
     {
         // Wait-free, and on the hot path: TServerSelector::getNext() calls this for every operation
         // against the indexer. Safe without a lock because the map's structure is frozen after
@@ -381,9 +462,9 @@ public:
         // blocking this call behind a health-check round to make it perfectly consistent.
         std::string result;
         std::scoped_lock lock(m_reasonsMutex);
-        for (const auto& [serverAddress, available] : m_servers)
+        for (const auto& [serverAddress, state] : m_servers)
         {
-            if (available.load(std::memory_order_acquire))
+            if (state.load(std::memory_order_acquire) != HostState::Down)
             {
                 continue;
             }

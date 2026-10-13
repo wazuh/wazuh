@@ -81,7 +81,7 @@ namespace
         std::atomic<bool> m_sent {false};
     };
 
-    SyncPipeline::Item makeItem(std::string body, std::shared_ptr<FutureResponder> responder, const char* agent = "1")
+    SyncPipeline::Item makeItem(std::string body, std::shared_ptr<FutureResponder> responder, const char* agent = "001")
     {
         auto request = std::make_shared<HttpRequest>();
         request->body = std::move(body);
@@ -97,7 +97,7 @@ namespace
 
     std::string vdDeltaBody(const char* docId = "doc-1",
                             invsync::test::fb::Option option = invsync::test::fb::Option_VDFirst,
-                            const char* agentId = "1",
+                            const char* agentId = "001",
                             std::uint64_t feedOffset = 0)
     {
         SessionSpec spec;
@@ -220,19 +220,20 @@ TEST(VdScanLaneTest, AFullQueueRefusesAtAdmission)
     // First session occupies the worker (parked inside its scan); second fills the single slot;
     // the third must bounce.
     auto first = std::make_shared<FutureResponder>();
-    ASSERT_EQ(VdScanLane::Admission::Accepted,
-              fixture.lane->tryEnqueue(makeItem(vdDeltaBody("doc-1", invsync::test::fb::Option_VDFirst, "1"), first)));
+    ASSERT_EQ(
+        VdScanLane::Admission::Accepted,
+        fixture.lane->tryEnqueue(makeItem(vdDeltaBody("doc-1", invsync::test::fb::Option_VDFirst, "001"), first)));
     ASSERT_TRUE(waitFor([&] { return fixture.events->m_scanEntered.load() == 1; }));
 
     auto second = std::make_shared<FutureResponder>();
-    ASSERT_EQ(
-        VdScanLane::Admission::Accepted,
-        fixture.lane->tryEnqueue(makeItem(vdDeltaBody("doc-2", invsync::test::fb::Option_VDFirst, "2"), second, "2")));
+    ASSERT_EQ(VdScanLane::Admission::Accepted,
+              fixture.lane->tryEnqueue(
+                  makeItem(vdDeltaBody("doc-2", invsync::test::fb::Option_VDFirst, "002"), second, "002")));
 
     auto third = std::make_shared<FutureResponder>();
-    EXPECT_EQ(
-        VdScanLane::Admission::Full,
-        fixture.lane->tryEnqueue(makeItem(vdDeltaBody("doc-3", invsync::test::fb::Option_VDFirst, "3"), third, "3")));
+    EXPECT_EQ(VdScanLane::Admission::Full,
+              fixture.lane->tryEnqueue(
+                  makeItem(vdDeltaBody("doc-3", invsync::test::fb::Option_VDFirst, "003"), third, "003")));
     EXPECT_FALSE(third->answered()) << "the caller answers a refused admission, not the lane";
 
     fixture.events->openScanGate();
@@ -248,14 +249,15 @@ TEST(VdScanLaneTest, FeedTurningUnreadyBetweenAdmissionAndDispatchAnswers503With
     fixture.events->closeScanGate(); // hold the worker so we can flip the feed under a QUEUED item
 
     auto first = std::make_shared<FutureResponder>();
-    ASSERT_EQ(VdScanLane::Admission::Accepted,
-              fixture.lane->tryEnqueue(makeItem(vdDeltaBody("doc-1", invsync::test::fb::Option_VDFirst, "1"), first)));
+    ASSERT_EQ(
+        VdScanLane::Admission::Accepted,
+        fixture.lane->tryEnqueue(makeItem(vdDeltaBody("doc-1", invsync::test::fb::Option_VDFirst, "001"), first)));
     ASSERT_TRUE(waitFor([&] { return fixture.events->m_scanEntered.load() == 1; }));
 
     auto queued = std::make_shared<FutureResponder>();
-    ASSERT_EQ(
-        VdScanLane::Admission::Accepted,
-        fixture.lane->tryEnqueue(makeItem(vdDeltaBody("doc-2", invsync::test::fb::Option_VDFirst, "2"), queued, "2")));
+    ASSERT_EQ(VdScanLane::Admission::Accepted,
+              fixture.lane->tryEnqueue(
+                  makeItem(vdDeltaBody("doc-2", invsync::test::fb::Option_VDFirst, "002"), queued, "002")));
 
     fixture.events->m_vdFeedReady.store(false);
     fixture.events->openScanGate();
@@ -292,13 +294,13 @@ TEST(VdScanLaneTest, FeedUnreadyAtDispatchCountsOnceAndSamplesLaneTime)
     fixture.events->closeScanGate(); // hold the worker so we can flip the feed under a QUEUED item
 
     auto first = std::make_shared<FutureResponder>();
-    auto firstItem = makeItem(vdDeltaBody("doc-1", invsync::test::fb::Option_VDFirst, "1"), first);
+    auto firstItem = makeItem(vdDeltaBody("doc-1", invsync::test::fb::Option_VDFirst, "001"), first);
     firstItem.enqueuedAt = std::chrono::steady_clock::now(); // the endpoint stamps this in production
     ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(std::move(firstItem)));
     ASSERT_TRUE(waitFor([&] { return fixture.events->m_scanEntered.load() == 1; }));
 
     auto queued = std::make_shared<FutureResponder>();
-    auto queuedItem = makeItem(vdDeltaBody("doc-2", invsync::test::fb::Option_VDFirst, "2"), queued, "2");
+    auto queuedItem = makeItem(vdDeltaBody("doc-2", invsync::test::fb::Option_VDFirst, "002"), queued, "002");
     queuedItem.enqueuedAt = std::chrono::steady_clock::now();
     ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(std::move(queuedItem)));
 
@@ -335,11 +337,13 @@ TEST(VdScanLaneTest, TheRegistrySerializesTwoSessionsOfTheSameAgent)
 
     auto first = std::make_shared<FutureResponder>();
     auto second = std::make_shared<FutureResponder>();
-    ASSERT_EQ(VdScanLane::Admission::Accepted,
-              fixture.lane->tryEnqueue(makeItem(vdDeltaBody("doc-1", invsync::test::fb::Option_VDFirst, "1"), first)));
+    ASSERT_EQ(
+        VdScanLane::Admission::Accepted,
+        fixture.lane->tryEnqueue(makeItem(vdDeltaBody("doc-1", invsync::test::fb::Option_VDFirst, "001"), first)));
     ASSERT_TRUE(waitFor([&] { return fixture.events->m_scanEntered.load() == 1; }));
-    ASSERT_EQ(VdScanLane::Admission::Accepted,
-              fixture.lane->tryEnqueue(makeItem(vdDeltaBody("doc-2", invsync::test::fb::Option_VDFirst, "1"), second)));
+    ASSERT_EQ(
+        VdScanLane::Admission::Accepted,
+        fixture.lane->tryEnqueue(makeItem(vdDeltaBody("doc-2", invsync::test::fb::Option_VDFirst, "001"), second)));
 
     // Give the second worker every chance to (wrongly) dispatch the same agent.
     std::this_thread::sleep_for(std::chrono::milliseconds {100});
@@ -370,7 +374,7 @@ TEST(VdScanLaneTest, ThePipelineParksItemsOfAnAgentWhoseScanIsInFlight)
     auto scanResponder = std::make_shared<FutureResponder>();
     ASSERT_EQ(VdScanLane::Admission::Accepted,
               fixture.lane->tryEnqueue(
-                  makeItem(vdDeltaBody("doc-vd", invsync::test::fb::Option_VDFirst, "1"), scanResponder)));
+                  makeItem(vdDeltaBody("doc-vd", invsync::test::fb::Option_VDFirst, "001"), scanResponder)));
     ASSERT_TRUE(waitFor([&] { return fixture.events->m_scanEntered.load() == 1; }));
 
     // …then feed the pipeline one item of the SAME agent and one of another.
@@ -382,10 +386,11 @@ TEST(VdScanLaneTest, ThePipelineParksItemsOfAnAgentWhoseScanIsInFlight)
 
     auto other = std::make_shared<FutureResponder>();
     SessionSpec otherAgent;
-    otherAgent.agentId = "2";
+    otherAgent.agentId = "002";
     ValueSpec otherValue;
     otherValue.id = "doc-other";
-    ASSERT_TRUE(pipeline->enqueue(makeItem(invsync::test::buildSyncDataSession(otherAgent, {otherValue}), other, "2")));
+    ASSERT_TRUE(
+        pipeline->enqueue(makeItem(invsync::test::buildSyncDataSession(otherAgent, {otherValue}), other, "002")));
 
     // The OTHER agent flows while agent 001 is fenced; 001's item stays parked.
     EXPECT_EQ(200, other->get().status);
@@ -429,7 +434,7 @@ TEST(VdScanLaneTest, AnAgentMidScanCannotBeQuiescedInstantlyButPauseSucceedsOnce
     auto vdFirst = std::make_shared<FutureResponder>();
     ASSERT_EQ(
         VdScanLane::Admission::Accepted,
-        fixture.lane->tryEnqueue(makeItem(vdDeltaBody("doc-1", invsync::test::fb::Option_VDFirst, "1"), vdFirst)));
+        fixture.lane->tryEnqueue(makeItem(vdDeltaBody("doc-1", invsync::test::fb::Option_VDFirst, "001"), vdFirst)));
     ASSERT_TRUE(waitFor([&] { return fixture.events->m_scanEntered.load() == 1; }));
 
     EXPECT_FALSE(coordinator.pauseAgent("001", "test")) << "an agent mid-scan cannot be quiesced instantly";
@@ -502,13 +507,13 @@ TEST(VdScanLaneTest, StopAnswers503ToQueuedSessions)
     auto inFlight = std::make_shared<FutureResponder>();
     ASSERT_EQ(
         VdScanLane::Admission::Accepted,
-        fixture.lane->tryEnqueue(makeItem(vdDeltaBody("doc-1", invsync::test::fb::Option_VDFirst, "1"), inFlight)));
+        fixture.lane->tryEnqueue(makeItem(vdDeltaBody("doc-1", invsync::test::fb::Option_VDFirst, "001"), inFlight)));
     ASSERT_TRUE(waitFor([&] { return fixture.events->m_scanEntered.load() == 1; }));
 
     auto queued = std::make_shared<FutureResponder>();
-    ASSERT_EQ(
-        VdScanLane::Admission::Accepted,
-        fixture.lane->tryEnqueue(makeItem(vdDeltaBody("doc-2", invsync::test::fb::Option_VDFirst, "2"), queued, "2")));
+    ASSERT_EQ(VdScanLane::Admission::Accepted,
+              fixture.lane->tryEnqueue(
+                  makeItem(vdDeltaBody("doc-2", invsync::test::fb::Option_VDFirst, "002"), queued, "002")));
 
     std::thread opener {[&fixture]
                         {
@@ -522,9 +527,9 @@ TEST(VdScanLaneTest, StopAnswers503ToQueuedSessions)
     EXPECT_EQ(503, queued->get().status);
 
     auto late = std::make_shared<FutureResponder>();
-    EXPECT_EQ(
-        VdScanLane::Admission::Stopping,
-        fixture.lane->tryEnqueue(makeItem(vdDeltaBody("doc-3", invsync::test::fb::Option_VDFirst, "3"), late, "3")));
+    EXPECT_EQ(VdScanLane::Admission::Stopping,
+              fixture.lane->tryEnqueue(
+                  makeItem(vdDeltaBody("doc-3", invsync::test::fb::Option_VDFirst, "003"), late, "003")));
 }
 
 /**
@@ -542,7 +547,7 @@ TEST(VdScanLaneTest, VdSessionWithMatchingFeedOffsetProceedsToScan)
 
     ASSERT_EQ(VdScanLane::Admission::Accepted,
               fixture.lane->tryEnqueue(makeItem(
-                  vdDeltaBody("doc-1", invsync::test::fb::Option_VDFirst, "1", /*feedOffset=*/100), responder)));
+                  vdDeltaBody("doc-1", invsync::test::fb::Option_VDFirst, "001", /*feedOffset=*/100), responder)));
 
     EXPECT_EQ(200, responder->get().status);
     const auto ops = fixture.events->syncOps();
@@ -558,7 +563,7 @@ TEST(VdScanLaneTest, VdSessionWithMismatchedFeedOffsetIsRejectedWith409BeforeSca
 
     ASSERT_EQ(VdScanLane::Admission::Accepted,
               fixture.lane->tryEnqueue(makeItem(
-                  vdDeltaBody("doc-1", invsync::test::fb::Option_VDFirst, "1", /*feedOffset=*/50), responder)));
+                  vdDeltaBody("doc-1", invsync::test::fb::Option_VDFirst, "001", /*feedOffset=*/50), responder)));
 
     const auto response = responder->get();
     EXPECT_EQ(409, response.status);
@@ -589,7 +594,7 @@ TEST(VdScanLaneTest, VdSessionWithAnyFeedOffsetIsAcceptedWhenTheNodeRunsNoScanne
 
     ASSERT_EQ(VdScanLane::Admission::Accepted,
               fixture.lane->tryEnqueue(makeItem(
-                  vdDeltaBody("doc-1", invsync::test::fb::Option_VDFirst, "1", /*feedOffset=*/849527), responder)));
+                  vdDeltaBody("doc-1", invsync::test::fb::Option_VDFirst, "001", /*feedOffset=*/849527), responder)));
 
     EXPECT_EQ(200, responder->get().status);
     const auto ops = fixture.events->syncOps();
@@ -611,7 +616,7 @@ TEST(VdScanLaneTest, VdSessionIsStillRejectedWhenARunningScannerReportsOffsetZer
 
     ASSERT_EQ(VdScanLane::Admission::Accepted,
               fixture.lane->tryEnqueue(makeItem(
-                  vdDeltaBody("doc-1", invsync::test::fb::Option_VDFirst, "1", /*feedOffset=*/849527), responder)));
+                  vdDeltaBody("doc-1", invsync::test::fb::Option_VDFirst, "001", /*feedOffset=*/849527), responder)));
 
     EXPECT_EQ(409, responder->get().status);
     EXPECT_TRUE(fixture.events->syncOps().empty()) << "a rejected session must never reach the scanner";
@@ -628,7 +633,7 @@ TEST(VdScanLaneTest, NonVdSessionIgnoresFeedOffsetMismatch)
     // a VD session, and must proceed exactly as any other non-VD item would.
     ASSERT_EQ(VdScanLane::Admission::Accepted,
               fixture.lane->tryEnqueue(makeItem(
-                  vdDeltaBody("doc-1", invsync::test::fb::Option_Sync, "1", /*feedOffset=*/999999), responder)));
+                  vdDeltaBody("doc-1", invsync::test::fb::Option_Sync, "001", /*feedOffset=*/999999), responder)));
 
     EXPECT_EQ(200, responder->get().status);
     const auto ops = fixture.events->syncOps();
@@ -750,12 +755,12 @@ TEST(VdScanLaneTest, ASessionOfABusyAgentIsStillQueuedRatherThanRefused)
     ASSERT_TRUE(waitFor([&] { return fixture.events->m_scanEntered.load() == 1; }));
 
     // Agent "1" and agent id "001" are the SAME agent: validateFullSession() pads, and so does the
-    // endpoint that builds a scan request. That shared padded form is what makes the per-agent
+    // endpoint that builds a scan request. That shared canonical form is what makes the per-agent
     // exclusion work across the two lanes at all.
     auto session = std::make_shared<FutureResponder>();
-    EXPECT_EQ(
-        VdScanLane::Admission::Accepted,
-        fixture.lane->tryEnqueue(makeItem(vdDeltaBody("doc-1", invsync::test::fb::Option_VDFirst, "1"), session, "1")));
+    EXPECT_EQ(VdScanLane::Admission::Accepted,
+              fixture.lane->tryEnqueue(
+                  makeItem(vdDeltaBody("doc-1", invsync::test::fb::Option_VDFirst, "001"), session, "001")));
 
     fixture.events->openScanGate();
     EXPECT_EQ(200, scan->get().status);

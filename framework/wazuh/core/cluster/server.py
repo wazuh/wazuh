@@ -104,6 +104,7 @@ class AbstractServerHandler(c_common.Handler):
         self.logger.info(f'Connection from {peername}')
         self.transport = transport
         self._start_handshake_deadline()
+        self.start_session()
 
     def _start_handshake_deadline(self) -> None:
         """Arm a timer that closes this connection if the handshake is never completed."""

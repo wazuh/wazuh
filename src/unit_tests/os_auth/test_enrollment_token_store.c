@@ -775,7 +775,7 @@ static void test_purge_dead_removes_only_the_unusable(void **state) {
         assert_int_equal(etoken_store_consume(used_id, time(NULL)), ETOKEN_USE_OK);
         /* The enrollment that took the use finished, as the local server does when the agent was
          * created: an open reservation would (rightly) keep the entry out of this purge */
-        etoken_store_commit(used_id);
+        etoken_store_commit(used_id, NULL, NULL);
     }
     cJSON_Delete(data);
 
@@ -1081,7 +1081,15 @@ static void test_purge_dead_removes_it_once_the_enrollment_is_over(void **state)
     expect_any_minfo();
 
     reserve_only_use(id, sizeof(id));
-    etoken_store_commit(id);
+    {
+        unsigned int uses = 99;
+        unsigned int max_uses = 99;
+
+        /* The count the local server logs: this use included, against the minted limit */
+        assert_int_equal(etoken_store_commit(id, &uses, &max_uses), 0);
+        assert_int_equal(uses, 1);
+        assert_int_equal(max_uses, 1);
+    }
 
     /* Committed: the use is spent for good and the entry is a leftover like any other */
     assert_int_equal(etoken_store_purge(ETOKEN_PURGE_DEAD, time(NULL), NULL), 1);
@@ -1123,7 +1131,7 @@ static void test_a_reservation_survives_a_reload(void **state) {
     assert_int_equal(etoken_store_purge(ETOKEN_PURGE_DEAD, time(NULL), NULL), 0);
     assert_int_equal(etoken_store_count(), 1);
 
-    etoken_store_commit(id);
+    etoken_store_commit(id, NULL, NULL);
     assert_int_equal(etoken_store_purge(ETOKEN_PURGE_DEAD, time(NULL), NULL), 1);
 }
 

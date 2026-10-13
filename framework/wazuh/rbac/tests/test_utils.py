@@ -41,19 +41,29 @@ def _make_cached_lookup(cache, backing):
     ('agent:id', '*', '*'),
     ('role:id', None, None),
     ('role:id', 1, 1),
-    ('role:id', '١', '١'),
+    ('role:id', '\u0661', '1'),
+    ('user:id', '\uff15', '5'),
+    ('agent:id', '\u0665', '005'),
+    ('user:id', '5\n', '5'),
+    ('role:id', ' 01 ', '1'),
+    ('policy:id', '+7', '7'),
+    ('rule:id', '1_0', '10'),
+    ('role:id', '-1', '-1'),
+    ('role:id', '5a', '5a'),
+    ('agent:group', '\u0665', '\u0665'),
     ('agent:group', '007', '007'),
     ('group:id', '01', '01'),
     ('node:id', '01', '01'),
 ])
 def test_canonical_id(resource_type, value, expected):
-    """Only ASCII digit ids of the numeric resource types are rewritten; anything else is left alone."""
+    """Numeric resource ids are rewritten to what int() reads them as; anything else is left alone."""
     assert rbac_utils.canonical_id(resource_type, value) == expected
 
 
 @pytest.mark.parametrize('resource, expected', [
     ('agent:id:5', 'agent:id:005'),
     ('role:id:01', 'role:id:1'),
+    ('user:id:5\n', 'user:id:5'),
     ('agent:id:*', 'agent:id:*'),
     ('agent:group:007', 'agent:group:007'),
     ('*:*:*', '*:*:*'),

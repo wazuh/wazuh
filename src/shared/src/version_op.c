@@ -14,6 +14,7 @@
 
 #include "shared.h"
 #include "version_op.h"
+#include <limits.h>
 
 #ifdef __linux__
 #include <sched.h>
@@ -1067,65 +1068,52 @@ int get_nproc() {
 #endif
 }
 
+/* Read a version as up to three dot-separated numbers, starting after the first 'v' when there is one.
+ * Missing or non-numeric parts are 0, empty parts are skipped, a suffix such as "-rc1" is ignored and a
+ * number that does not fit an int saturates. The input is read in place: no copy, no strtok(). */
+static void parse_wazuh_version(const char *version, int parts[3]) {
+    const char *cursor;
+    int index;
+
+    parts[0] = parts[1] = parts[2] = 0;
+
+    if (!version) {
+        return;
+    }
+
+    cursor = strchr(version, 'v');
+    cursor = cursor ? cursor + 1 : version;
+
+    for (index = 0; index < 3; index++) {
+        long value;
+
+        while (*cursor == '.') {
+            cursor++;
+        }
+
+        if (*cursor == '\0') {
+            return;
+        }
+
+        value = strtol(cursor, NULL, 10);
+        parts[index] = value > INT_MAX ? INT_MAX : value < 0 ? 0 : (int)value;
+
+        if (cursor = strchr(cursor, '.'), !cursor) {
+            return;
+        }
+    }
+}
+
 int compare_wazuh_versions(const char *version1, const char *version2, bool compare_patch) {
-    char ver1[10];
-    char ver2[10];
-    char *tmp_v1 = NULL;
-    char *tmp_v2 = NULL;
-    char *token = NULL;
-    int patch1 = 0;
-    int major1 = 0;
-    int minor1 = 0;
-    int patch2 = 0;
-    int major2 = 0;
-    int minor2 = 0;
+    int ver1[3];
+    int ver2[3];
     int result = 0;
 
-    if (version1) {
-        strncpy(ver1, version1, sizeof(ver1) - 1);
-        ver1[sizeof(ver1) - 1] = '\0';
+    parse_wazuh_version(version1, ver1);
+    parse_wazuh_version(version2, ver2);
 
-        if (tmp_v1 = strchr(ver1, 'v'), tmp_v1) {
-            tmp_v1++;
-        } else {
-            tmp_v1 = ver1;
-        }
-
-        if (token = strtok(tmp_v1, "."), token) {
-            major1 = atoi(token);
-
-            if (token = strtok(NULL, "."), token) {
-                minor1 = atoi(token);
-
-                if (token = strtok(NULL, "."), token) {
-                    patch1 = atoi(token);
-                }
-            }
-        }
-    }
-
-    if (version2) {
-        strncpy(ver2, version2, sizeof(ver2) - 1);
-        ver2[sizeof(ver2) - 1] = '\0';
-
-        if (tmp_v2 = strchr(ver2, 'v'), tmp_v2) {
-            tmp_v2++;
-        } else {
-            tmp_v2 = ver2;
-        }
-
-        if (token = strtok(tmp_v2, "."), token) {
-            major2 = atoi(token);
-
-            if (token = strtok(NULL, "."), token) {
-                minor2 = atoi(token);
-
-                if (token = strtok(NULL, "."), token) {
-                    patch2 = atoi(token);
-                }
-            }
-        }
-    }
+    const int major1 = ver1[0], minor1 = ver1[1], patch1 = ver1[2];
+    const int major2 = ver2[0], minor2 = ver2[1], patch2 = ver2[2];
 
     if (major1 > major2) {
         result = 1;

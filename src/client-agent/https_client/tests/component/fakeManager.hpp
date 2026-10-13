@@ -24,6 +24,8 @@
 #include "external/cpp-httplib/httplib.h"
 #include "external/nlohmann/json.hpp"
 
+#include <gtest/gtest.h>
+
 #include <openssl/evp.h>
 #include <openssl/pem.h>
 #include <openssl/x509.h>
@@ -35,7 +37,6 @@
 #include <chrono>
 #include <csignal>
 #include <cstdint>
-#include <cstdio>
 #include <cstdlib>
 #include <ctime>
 #include <memory>
@@ -1058,7 +1059,7 @@ class FakeManager final
             server.listen("127.0.0.1", m_port);
         }
 
-        void waitUntilReady() const
+        void waitUntilReady()
         {
             const char* scheme = m_tls ? "https" : "http";
             const std::string base = std::string {scheme} + "://127.0.0.1:" + std::to_string(m_port);
@@ -1072,18 +1073,21 @@ class FakeManager final
                     return; // Any HTTP reply means the listener is up.
                 }
 
+                // The child exits as soon as listen() fails, which means something in this binary
+                // already holds the port. Fail now and name it: probing a server that is gone used
+                // to cost 300s and then read as the code under test hanging.
+                if (waitpid(m_pid, nullptr, WNOHANG) == m_pid)
+                {
+                    m_pid = -1; // Reaped: the destructor must not signal a pid that may be reused.
+                    ADD_FAILURE() << "FakeManager: the server for " << base
+                                  << " exited before it was ready; is port " << m_port << " already taken?";
+                    return;
+                }
+
                 usleep(50 * 1000);
             }
 
-            // 300s gone and nothing ever answered, so the child never got the port -- almost always
-            // another test in this same binary already holding it. Say so: returning quietly leaves
-            // the test to fail on its first assertion against a server that was never there, which
-            // looks like the code under test hanging and costs an afternoon to trace back to here.
-            std::fprintf(stderr,
-                         "FakeManager: nothing listening on %s after 300s; is port %u already "
-                         "taken by another component test?\n",
-                         base.c_str(),
-                         static_cast<unsigned>(m_port));
+            ADD_FAILURE() << "FakeManager: nothing answered on " << base << " after 300s and the server is still running";
         }
 
         pid_t m_pid {-1};

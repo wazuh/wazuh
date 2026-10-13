@@ -2,7 +2,11 @@ name: 4.X - Create and publish - Unit tests Docker image
 
 on:
   workflow_dispatch:
+  # On this (5.x) branch this file is a deprecated stub. Scoped to the 4.x release branches so a
+  # 5.x push no longer runs it.
   push:
+    branches:
+      - '[0-4].[0-9]+.[0-9]+'
     paths:
       - "tools/testing/unit-tests/**"
 

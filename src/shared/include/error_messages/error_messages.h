@@ -93,6 +93,7 @@
 #define XML_INVATTR     "(1233): Invalid attribute '%s' in the configuration: '%s'."
 #define XML_VALUENULL   "(1234): Invalid NULL content for element: %s."
 #define XML_VALUEERR    "(1235): Invalid value for element '%s': %s."
+#define XML_DEPRECATED  "The <%s> option is deprecated and no longer has any effect."
 #define INVALID_IP      "(1237): Invalid ip address: '%s'."
 #define INVALID_ELEMENT "(1238): Invalid value for element '%s': %s"
 #define NO_CONFIG       "(1239): Configuration file not found: '%s'."

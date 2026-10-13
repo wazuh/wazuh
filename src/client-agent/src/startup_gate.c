@@ -67,15 +67,26 @@ void startup_gate_mark_download_pending(void) {
     w_mutex_unlock(&startup_gate_mutex);
 }
 
+void startup_gate_clear_download_pending(void) {
+    w_mutex_lock(&startup_gate_mutex);
+    startup_gate_download_pending = false;
+    w_mutex_unlock(&startup_gate_mutex);
+}
+
 void startup_gate_release_from_https_apply(void) {
     // /download already verified the bytes' SHA-256 against the manager's
     // config_hash before the callback fired, and bridge_on_config_downloaded()
-    // has since written and applied those exact bytes. That is the invariant
-    // the gate exists for, so it opens directly, with no second comparison.
+    // has since validated, published and written those exact bytes. That is
+    // the invariant the gate exists for, so it opens directly, with no second
+    // comparison -- but only while that apply is pending. agentd's SIGUSR1
+    // handler calls this on every reload, and a reload nobody's validated
+    // download asked for (a manual "wazuh-control reload") proves nothing
+    // about the configuration on disk.
     w_mutex_lock(&startup_gate_mutex);
+    const bool pending = startup_gate_download_pending;
     startup_gate_download_pending = false;
 
-    if (startup_gate_enabled && !startup_gate_ready) {
+    if (startup_gate_enabled && !startup_gate_ready && pending) {
         startup_gate_set_locked(true, "https_config_applied");
         w_mutex_unlock(&startup_gate_mutex);
         mdebug1("Startup hash gate released via HTTPS configuration apply (https_config_applied).");

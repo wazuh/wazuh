@@ -814,7 +814,7 @@ cJSON *wm_sca_dump(const wm_sca_t * data) {
     cJSON *root = cJSON_CreateObject();
     cJSON *wm_wd = cJSON_CreateObject();
 
-    sched_scan_dump(&(data->scan_config), wm_wd);
+    cJSON_AddNumberToObject(wm_wd, "interval", data->interval);
 
     cJSON_AddStringToObject(wm_wd, "enabled", data->enabled ? "yes" : "no");
     cJSON_AddStringToObject(wm_wd, "scan_on_start", data->scan_on_start ? "yes" : "no");
@@ -836,9 +836,7 @@ cJSON *wm_sca_dump(const wm_sca_t * data) {
     // Database synchronization values
     cJSON * synchronization = cJSON_CreateObject();
     cJSON_AddStringToObject(synchronization, "enabled", data->sync.enable_synchronization ? "yes" : "no");
-    cJSON_AddNumberToObject(synchronization, "sync_end_delay", data->sync.sync_end_delay);
     cJSON_AddNumberToObject(synchronization, "interval", data->sync.sync_interval);
-    cJSON_AddNumberToObject(synchronization, "max_eps", data->sync.sync_max_eps);
     cJSON_AddItemToObject(wm_wd, "synchronization", synchronization);
 
     cJSON_AddItemToObject(root,"sca",wm_wd);

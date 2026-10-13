@@ -24,10 +24,38 @@ from wazuh.core.indexer.active_response import (
     ActiveResponseHelpers,
 )
 
-GOOD_EVENT_DOC = {"event": {"index": "idx", "doc_id": "1"}}
-ONE_FOUND_DOC = {"docs": [{"_index": "idx", "_id": "1", "_source": {"k": "v"}, "found": True}]}
+#: `event.index` values outside the allow-list: other indices the manager's credentials can read,
+#: and every expression the indexer would expand into more than the one index named.
+FORBIDDEN_EVENT_INDICES = [
+    "wazuh-states-vulnerabilities-node",
+    ".opendistro-security",
+    "wazuh-active-responses",
+    "*",
+    "wazuh-events-v5-*",
+    "wazuh-events-v5-a,.opendistro-security",
+    "wazuh-events-v5-a,*",
+    "wazuh-events-v5-?",
+    "<wazuh-events-v5-{now/d}>",
+    "remote:wazuh-events-v5-a",
+    "WAZUH-EVENTS-V5-A",
+    "wazuh-events-v5-",
+    "wazuh-events-v5-a\n",
+    ".ds-wazuh-active-responses-000001",
+    "xwazuh-events-v5-a",
+]
 
-# Everything AR_SCHEMA lets through in `event`, since it constrains `wazuh` and nothing else.
+#: Concrete names the producer can write: an index, a rolled-over index, a backing index.
+ALLOWED_EVENT_INDICES = [
+    "wazuh-events-v5-system-activity",
+    "wazuh-events-v5-system-activity-000001",
+    "wazuh-findings-v5-security",
+    ".ds-wazuh-findings-v5-security-2026.10.06-000001",
+]
+
+GOOD_EVENT_DOC = {"event": {"index": "wazuh-events-v5-idx", "doc_id": "1"}}
+ONE_FOUND_DOC = {"docs": [{"_index": "wazuh-events-v5-idx", "_id": "1", "_source": {"k": "v"}, "found": True}]}
+
+# Every `event` a caller that skips AR_SCHEMA could hand over, forbidden indices included.
 # The unhashable doc_id sits on its own index on purpose: on `idx` the good AR would refill the
 # set setdefault() had already inserted, and the empty-ids query would never happen.
 UNUSABLE_EVENT_DOCS = [
@@ -39,9 +67,9 @@ UNUSABLE_EVENT_DOCS = [
     {"event": {"index": {}, "doc_id": "1"}},
     {"event": {"index": None, "doc_id": "1"}},
     {"event": {"index": "", "doc_id": "1"}},
-    {"event": {"index": "idx", "doc_id": None}},
-    {"event": {"index": "other-idx", "doc_id": {}}},
-]
+    {"event": {"index": "wazuh-events-v5-idx", "doc_id": None}},
+    {"event": {"index": "wazuh-events-v5-other", "doc_id": {}}},
+] + [{"event": {"index": index, "doc_id": "1"}} for index in FORBIDDEN_EVENT_INDICES]
 
 
 def _ar(doc_source):
@@ -71,7 +99,7 @@ def _missing_event_doc(seconds_ago):
     """An active response whose referenced event is not in the mget result, stamped in the past."""
     return {
         "@timestamp": _stamp(seconds_ago),
-        "event": {"index": "idx", "doc_id": "missing"},
+        "event": {"index": "wazuh-events-v5-idx", "doc_id": "missing"},
     }
 
 
@@ -377,8 +405,8 @@ class TestActiveResponseHelpers:
             client.search.return_value = {
                 "hits": {
                     "hits": [
-                        {"_source": {"k": "v"}, "_id": "1", "_index": "idx", "sort": [1, "1"]},
-                        {"_source": {"k": "v"}, "_id": "2", "_index": "idx", "sort": [2, "2"]},
+                        {"_source": {"k": "v"}, "_id": "1", "_index": "wazuh-events-v5-idx", "sort": [1, "1"]},
+                        {"_source": {"k": "v"}, "_id": "2", "_index": "wazuh-events-v5-idx", "sort": [2, "2"]},
                     ]
                 }
             }
@@ -412,8 +440,8 @@ class TestActiveResponseHelpers:
             client.search.return_value = {
                 "hits": {
                     "hits": [
-                        {"_source": {"valid": True}, "_id": "1", "_index": "idx", "sort": [1, "1"]},
-                        {"_source": {"invalid": True}, "_id": "2", "_index": "idx", "sort": [2, "2"]},
+                        {"_source": {"valid": True}, "_id": "1", "_index": "wazuh-events-v5-idx", "sort": [1, "1"]},
+                        {"_source": {"invalid": True}, "_id": "2", "_index": "wazuh-events-v5-idx", "sort": [2, "2"]},
                     ]
                 }
             }
@@ -447,7 +475,7 @@ class TestActiveResponseHelpers:
             client.mget.return_value = {
                 "docs": [
                     {
-                        "_index": "idx",
+                        "_index": "wazuh-events-v5-idx",
                         "_id": "1",
                         "_source": {"k": "v"},
                         "found": True,
@@ -457,13 +485,13 @@ class TestActiveResponseHelpers:
             mock_client.return_value.__aenter__.return_value = client
 
             ar = ActiveResponse(
-                doc_source={"event": {"index": "idx", "doc_id": "1"}},
+                doc_source={"event": {"index": "wazuh-events-v5-idx", "doc_id": "1"}},
                 bookmark=ActiveResponseBookmark(),
             )
 
             result = await ActiveResponseHelpers.get_events_by_ar([ar])
 
-            assert result == {"idx": {"1": {"k": "v"}}}
+            assert result == {"wazuh-events-v5-idx": {"1": {"k": "v"}}}
 
         @pytest.mark.asyncio
         @patch("wazuh.core.indexer.active_response.get_indexer_client")
@@ -473,7 +501,7 @@ class TestActiveResponseHelpers:
             mock_client.return_value.__aenter__.return_value = client
 
             ar = ActiveResponse(
-                doc_source={"event": {"index": "idx", "doc_id": "1"}},
+                doc_source={"event": {"index": "wazuh-events-v5-idx", "doc_id": "1"}},
                 bookmark=ActiveResponseBookmark(),
             )
 
@@ -494,17 +522,29 @@ class TestActiveResponseHelpers:
 
             result = await ActiveResponseHelpers.get_events_by_ar([_ar(doc_source), _ar(GOOD_EVENT_DOC)])
 
-            assert result == {"idx": {"1": {"k": "v"}}}
+            assert result == {"wazuh-events-v5-idx": {"1": {"k": "v"}}}
             # The query actually issued: a mocked mget hides a poisoned index or an empty id list,
             # so the call itself is what has to be asserted, not just the absence of an exception.
-            client.mget.assert_awaited_once_with(index="idx", body={"ids": ["1"]})
+            client.mget.assert_awaited_once_with(index="wazuh-events-v5-idx", body={"ids": ["1"]})
+
+        @pytest.mark.parametrize("index", ALLOWED_EVENT_INDICES)
+        @pytest.mark.asyncio
+        @patch("wazuh.core.indexer.active_response.get_indexer_client")
+        async def test_allowed_index_reaches_mget(self, mock_client, index):
+            client = AsyncMock()
+            client.mget.return_value = {"docs": []}
+            mock_client.return_value.__aenter__.return_value = client
+
+            await ActiveResponseHelpers.get_events_by_ar([_ar({"event": {"index": index, "doc_id": "1"}})])
+
+            client.mget.assert_awaited_once_with(index=index, body={"ids": ["1"]})
 
         @pytest.mark.asyncio
         @patch("wazuh.core.indexer.active_response.get_indexer_client")
         async def test_found_without_source_is_not_an_event(self, mock_client):
             """An index that does not store `_source` answers `found` with nothing to merge."""
             client = AsyncMock()
-            client.mget.return_value = {"docs": [{"_index": "idx", "_id": "1", "found": True}]}
+            client.mget.return_value = {"docs": [{"_index": "wazuh-events-v5-idx", "_id": "1", "found": True}]}
             mock_client.return_value.__aenter__.return_value = client
 
             result = await ActiveResponseHelpers.get_events_by_ar([_ar(GOOD_EVENT_DOC)])
@@ -567,10 +607,10 @@ class TestActiveResponseBuilder:
             "wazuh.core.indexer.active_response.ActiveResponseHelpers.get_events_by_ar"
         )
         async def test_enrich_success(self, mock_events):
-            mock_events.return_value = {"idx": {"1": {"k": "v"}}}
+            mock_events.return_value = {"wazuh-events-v5-idx": {"1": {"k": "v"}}}
 
             ar = ActiveResponse(
-                doc_source={"event": {"index": "idx", "doc_id": "1"}},
+                doc_source={"event": {"index": "wazuh-events-v5-idx", "doc_id": "1"}},
                 bookmark=ActiveResponseBookmark(),
             )
 
@@ -595,7 +635,7 @@ class TestActiveResponseBuilder:
             logger = MagicMock()
 
             ar = ActiveResponse(
-                doc_source={"event": {"index": "idx", "doc_id": "1"}},
+                doc_source={"event": {"index": "wazuh-events-v5-idx", "doc_id": "1"}},
                 bookmark=ActiveResponseBookmark(),
             )
 
@@ -619,7 +659,7 @@ class TestActiveResponseBuilder:
             mock_events.return_value = {}
 
             ar = ActiveResponse(
-                doc_source={"event": {"index": "idx", "doc_id": "1"}},
+                doc_source={"event": {"index": "wazuh-events-v5-idx", "doc_id": "1"}},
                 bookmark=ActiveResponseBookmark(),
             )
 
@@ -646,7 +686,7 @@ class TestActiveResponseBuilder:
             # take the event-visibility hold: get_events_by_ar() already refused to look it up, and
             # a reference it would not query can never become visible. Without the `usable` check
             # this document holds the whole page for the length of the grace window.
-            mock_events.return_value = {"idx": {"1": {"k": "v"}}}
+            mock_events.return_value = {"wazuh-events-v5-idx": {"1": {"k": "v"}}}
 
             logger = MagicMock()
             good = _ar(GOOD_EVENT_DOC)
@@ -670,7 +710,7 @@ class TestActiveResponseBuilder:
         async def test_an_event_not_visible_yet_holds_the_page(self, mock_events):
             # The page carried two responses and only the first resolved. The cursor has to stop
             # between them, so the second is read again once its event is visible.
-            mock_events.return_value = {"idx": {"1": {"k": "v"}}}
+            mock_events.return_value = {"wazuh-events-v5-idx": {"1": {"k": "v"}}}
 
             good = ActiveResponse(
                 doc_source=GOOD_EVENT_DOC, bookmark=ActiveResponseBookmark([1, "1"])
@@ -1260,7 +1300,7 @@ class TestActiveResponseFetchTask:
 #: A `found` mget hit that carries no `_source`: an index that does not store it.
 NO_SOURCE = object()
 
-ALERT_REF = {"index": "wazuh-alerts", "doc_id": "alert-1"}
+ALERT_REF = {"index": "wazuh-findings-v5-security", "doc_id": "alert-1"}
 
 
 def _channel(location, agent_id=None):
@@ -1282,13 +1322,13 @@ GOOD_AR = {
 
 # A response whose event is not in the fake indexer.
 WAITING_AR = {
-    "event": {"index": "wazuh-alerts", "doc_id": "not-yet"},
+    "event": {"index": "wazuh-findings-v5-security", "doc_id": "not-yet"},
     "wazuh": {"active_response": _channel("defined-agent", "007")},
 }
 
 # A referenced document's shape is out of AR_SCHEMA's reach: it is only known after the mget.
 EVENT_WAZUH_IS_A_STRING = {
-    "event": {"index": "other-idx", "doc_id": "weird-1"},
+    "event": {"index": "wazuh-events-v5-other", "doc_id": "weird-1"},
     "wazuh": {"active_response": _channel("defined-agent", "007")},
 }
 
@@ -1306,7 +1346,7 @@ POISON_DOCS = [
     pytest.param(EVENT_WAZUH_IS_A_STRING, id="event-wazuh-is-a-string"),
     pytest.param(
         {
-            "event": {"index": "nosource-idx", "doc_id": "x"},
+            "event": {"index": "wazuh-events-v5-nosource", "doc_id": "x"},
             "wazuh": {"active_response": _channel("defined-agent", "007")},
         },
         id="event-found-without-source",
@@ -1316,9 +1356,9 @@ POISON_DOCS = [
 ]
 
 EVENTS = {
-    "wazuh-alerts": {"alert-1": {"wazuh": {"agent": {"id": "001"}}, "rule": {"id": "5710"}}},
-    "other-idx": {"weird-1": {"wazuh": "not-an-object"}},
-    "nosource-idx": {"x": NO_SOURCE},
+    "wazuh-findings-v5-security": {"alert-1": {"wazuh": {"agent": {"id": "001"}}, "rule": {"id": "5710"}}},
+    "wazuh-events-v5-other": {"weird-1": {"wazuh": "not-an-object"}},
+    "wazuh-events-v5-nosource": {"x": NO_SOURCE},
 }
 
 
@@ -1501,6 +1541,22 @@ SCHEMA_TABLE = [
         "event",
         id="38904-no-event",
     ),
+    *[
+        pytest.param(
+            {"event": {"index": index, "doc_id": "1"}, "wazuh": {"active_response": _channel("all")}},
+            None,
+            id=f"allowed-index-{index}",
+        )
+        for index in ALLOWED_EVENT_INDICES
+    ],
+    *[
+        pytest.param(
+            {"event": {"index": index, "doc_id": "1"}, "wazuh": {"active_response": _channel("all")}},
+            "does not match",
+            id=f"forbidden-index-{index!r}",
+        )
+        for index in FORBIDDEN_EVENT_INDICES
+    ],
     pytest.param(
         {"event": ALERT_REF, "wazuh": {"active_response": _channel("local")}},
         "agent",
@@ -1523,7 +1579,7 @@ SCHEMA_TABLE = [
     ),
     pytest.param(
         {
-            "event": {"index": "wazuh-alerts", "doc_id": ""},
+            "event": {"index": "wazuh-findings-v5-security", "doc_id": ""},
             "wazuh": {"active_response": _channel("defined-agent", "001")},
         },
         "",
@@ -1570,7 +1626,7 @@ class TestSettingsReachTheCycle:
     )
     async def test_event_grace_bounds_the_hold(self, grace, age, updates):
         waiting = {
-            "event": {"index": "wazuh-alerts", "doc_id": "not-yet"},
+            "event": {"index": "wazuh-findings-v5-security", "doc_id": "not-yet"},
             "wazuh": {"active_response": _channel("defined-agent", "007")},
         }
         hits = [_hit("waiting", waiting, sort=[1, "waiting"], seconds_ago=age)]

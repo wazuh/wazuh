@@ -101,7 +101,7 @@ Three differences worth knowing before reading logs:
   or malformed token — collapses to a single generic **`401`** (with `WWW-Authenticate: Bearer`). The specific cause is deliberately not
   exposed to the client; it is in the manager log and in the `remoted.auth.reject.*` metrics.
 - Capacity is shed with **`503`**. The manager processes what it has capacity for instead of buffering into a fixed queue, which is why `<queue_size>` no longer applies to this channel.
-- Rate limiting is a separate mechanism that answers **`429 Too Many Requests`** with a `Retry-After`. It applies only to `POST /enroll`, `GET /cacerts` and `POST /enroll/secret` (which shares `POST /enroll`'s bucket); see [HTTPS Agent API](../../ref/modules/remoted/https-events-api.md) and [the `remote.https` rate options](../../ref/modules/remoted/configuration.md#rate-limits-of-the-unauthenticated-routes).
+- Rate limiting is a separate mechanism that answers **`429 Too Many Requests`** with a `Retry-After`. It applies only to `POST /enroll` and `GET /cacerts`; see [HTTPS Agent API](../../ref/modules/remoted/https-events-api.md) and [the `remote.https` rate options](../../ref/modules/remoted/configuration.md#rate-limits-of-the-unauthenticated-routes).
 
 ## What the legacy channel still carries
 
@@ -233,7 +233,7 @@ for reading them.
 
 ## References
 
-- [HTTPS Agent API](../../ref/modules/remoted/https-events-api.md) — the protocol and all eleven agent-facing routes
+- [HTTPS Agent API](../../ref/modules/remoted/https-events-api.md) — the protocol and all ten agent-facing routes
 - [Remoted architecture](../../ref/modules/remoted/architecture.md) — how the two channels sit side by side
 - [Remoted configuration](../../ref/modules/remoted/configuration.md) — every `<remote>` option and internal option
 - [Manager configuration migration](manager-configuration-migration.md) — the `wazuh-manager.conf` edits

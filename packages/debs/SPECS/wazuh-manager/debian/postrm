@@ -102,7 +102,7 @@ case "$1" in
         # SAME list the RPM's %preun feeds to wazuh_env_unset(). The two removal paths must take
         # exactly the same keys out of the file; an open-ended prefix here would also claim a key a
         # future sibling publishes under that name.
-        CRED_KEYS="WAZUH_MANAGER_API_PASSWORD WAZUH_MANAGER_WUI_PASSWORD WAZUH_MANAGER_CERT_SANS WAZUH_MANAGER_REMOTED_CERT_SANS"
+        CRED_KEYS="WAZUH_MANAGER_API_PASSWORD WAZUH_MANAGER_WUI_PASSWORD WAZUH_MANAGER_CERT_SANS WAZUH_MANAGER_REMOTED_CERT_SANS WAZUH_MANAGER_APID_CERT_SANS"
 
         # WAZUH_BASE_DIR is how wazuh_base_get_dir() resolves the base, and it is a process setting
         # only -- reading it from the file whose location it decides would be circular. Honouring it

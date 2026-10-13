@@ -73,7 +73,7 @@ namespace
         bool m_resolved {false};
     };
 
-    std::shared_ptr<const HttpRequest> makeRequest(std::string body, const char* agentId = "1")
+    std::shared_ptr<const HttpRequest> makeRequest(std::string body, const char* agentId = "001")
     {
         auto request = std::make_shared<HttpRequest>();
         request->method = Method::Post;
@@ -101,7 +101,8 @@ namespace
 
         explicit HandlerUnderTest(invsync::sync::SyncPipelineConfig config = {},
                                   int retryAfter = 60,
-                                  invsync::vd::VdScanLaneConfig laneConfig = {})
+                                  invsync::vd::VdScanLaneConfig laneConfig = {},
+                                  std::shared_ptr<invsync::sync::AgentSessionLimiter> agentSessions = nullptr)
         {
             std::vector<std::shared_ptr<invsync::indexer::IIndexerConnectorSync>> connectors {admission};
             pipeline = std::make_shared<invsync::sync::SyncPipeline>(config, std::move(connectors), CLUSTER, registry);
@@ -112,8 +113,16 @@ namespace
                     std::make_shared<FakeIndexerConnectorSync>(events, "sync")},
                 registry,
                 CLUSTER);
-            handler = invsync::endpoints::sync::makeHandler(invsync::endpoints::sync::Dependencies {
-                pipeline, admission, invsync::common::ClusterIdentity {CLUSTER, false}, retryAfter, lane, scanner});
+            handler = invsync::endpoints::sync::makeHandler(
+                invsync::endpoints::sync::Dependencies {pipeline,
+                                                        admission,
+                                                        invsync::common::ClusterIdentity {CLUSTER, false},
+                                                        retryAfter,
+                                                        lane,
+                                                        scanner,
+                                                        {},
+                                                        {},
+                                                        std::move(agentSessions)});
         }
     };
 
@@ -190,7 +199,7 @@ TEST(SyncEndpointTest, AnIdentityMismatchIs403)
     HandlerUnderTest fixture;
     auto responder = std::make_shared<CapturingResponder>();
 
-    fixture.handler(makeRequest(validDelta(), "42"), responder);
+    fixture.handler(makeRequest(validDelta(), "042"), responder);
 
     ASSERT_TRUE(responder->captured.has_value());
     EXPECT_EQ(403, responder->captured->status);
@@ -264,16 +273,16 @@ TEST(SyncEndpointTest, AVDSessionAgainstAFullLaneGets503ScanCapacity)
 
     SessionSpec second;
     second.option = invsync::test::fb::Option_VDFirst;
-    second.agentId = "2";
+    second.agentId = "002";
     auto queued = std::make_shared<CapturingResponder>();
-    fixture.handler(makeRequest(invsync::test::buildSyncDataSession(second, {invsync::test::ValueSpec {}}), "2"),
+    fixture.handler(makeRequest(invsync::test::buildSyncDataSession(second, {invsync::test::ValueSpec {}}), "002"),
                     queued);
 
     SessionSpec third;
     third.option = invsync::test::fb::Option_VDFirst;
-    third.agentId = "3";
+    third.agentId = "003";
     auto rejected = std::make_shared<CapturingResponder>();
-    fixture.handler(makeRequest(invsync::test::buildSyncDataSession(third, {invsync::test::ValueSpec {}}), "3"),
+    fixture.handler(makeRequest(invsync::test::buildSyncDataSession(third, {invsync::test::ValueSpec {}}), "003"),
                     rejected);
 
     ASSERT_TRUE(rejected->captured.has_value());
@@ -422,4 +431,92 @@ TEST(SyncEndpointTest, AValidSessionIsDeferredAndAnsweredByTheWorkerExactlyOnce)
     EXPECT_EQ(R"({"status":"ok"})", response.body);
     EXPECT_EQ(1, responder->sendCount);
     EXPECT_FALSE(fixture.events->syncOps().empty()) << "the session must have reached the connector";
+}
+
+/**
+ * D28: remoted stops waiting at its downstream deadline and frees the agent's slot there, but an
+ * admitted session keeps going here. The per-agent cap counts sessions until they are ANSWERED, so
+ * an agent re-sending while its earlier sessions are still parked is refused instead of piling more
+ * copies into the shared queue -- and another agent is not affected.
+ */
+TEST(SyncEndpointTest, AnAgentOverItsPendingSessionCapIs503UntilOneIsAnswered)
+{
+    invsync::vd::VdScanLaneConfig laneConfig;
+    laneConfig.workers = 1;
+    laneConfig.queueSlots = 4;
+    const auto sessions = std::make_shared<invsync::sync::AgentSessionLimiter>(2);
+    HandlerUnderTest fixture {{}, 60, laneConfig, sessions};
+    fixture.events->closeScanGate();
+
+    SessionSpec spec;
+    spec.option = invsync::test::fb::Option_VDFirst;
+    const auto body = invsync::test::buildSyncDataSession(spec, {invsync::test::ValueSpec {}});
+
+    // One parked at the scan gate, one queued behind it: the agent's two pending sessions.
+    auto first = std::make_shared<CapturingResponder>();
+    fixture.handler(makeRequest(body), first);
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds {10};
+    while (fixture.events->m_scanEntered.load() < 1 && std::chrono::steady_clock::now() < deadline)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds {5});
+    }
+    ASSERT_EQ(1, fixture.events->m_scanEntered.load());
+    auto second = std::make_shared<CapturingResponder>();
+    fixture.handler(makeRequest(body), second);
+    EXPECT_FALSE(second->captured.has_value()) << "admitted and queued";
+    EXPECT_EQ(2U, sessions->pendingSessions("001"));
+
+    // The re-send remoted would forward after timing out on the first one.
+    auto resent = std::make_shared<CapturingResponder>();
+    fixture.handler(makeRequest(body), resent);
+    ASSERT_TRUE(resent->captured.has_value());
+    EXPECT_EQ(503, resent->captured->status);
+    EXPECT_EQ(1U, sessions->rejectedTotal());
+
+    // Another agent still gets in.
+    SessionSpec other;
+    other.option = invsync::test::fb::Option_VDFirst;
+    other.agentId = "002";
+    auto otherAgent = std::make_shared<CapturingResponder>();
+    fixture.handler(makeRequest(invsync::test::buildSyncDataSession(other, {invsync::test::ValueSpec {}}), "002"),
+                    otherAgent);
+    EXPECT_FALSE(otherAgent->captured.has_value()) << "admitted";
+    EXPECT_EQ(1U, sessions->pendingSessions("002"));
+
+    // Answering the sessions gives the slots back: the agent may send again.
+    fixture.events->openScanGate();
+    EXPECT_EQ(200, first->await().status);
+    EXPECT_EQ(200, second->await().status);
+    EXPECT_EQ(200, otherAgent->await().status);
+    // The slot is released right AFTER the inner send that resolved await(): poll briefly.
+    const auto released = std::chrono::steady_clock::now() + std::chrono::seconds {10};
+    while (sessions->trackedAgents() != 0 && std::chrono::steady_clock::now() < released)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds {5});
+    }
+    EXPECT_EQ(0U, sessions->trackedAgents());
+
+    auto again = std::make_shared<CapturingResponder>();
+    fixture.handler(makeRequest(body), again);
+    EXPECT_EQ(200, again->await().status);
+}
+
+/// Inline rejections answer through the same responder, so a session refused after admission (here:
+/// the pipeline queue is full) does not keep its slot.
+TEST(SyncEndpointTest, ASessionShedAfterAdmissionGivesItsSlotBack)
+{
+    invsync::sync::SyncPipelineConfig config;
+    config.maxQueueBytes = 1;
+    const auto sessions = std::make_shared<invsync::sync::AgentSessionLimiter>(1);
+    HandlerUnderTest fixture {config, 60, {}, sessions};
+
+    for (int i = 0; i < 3; ++i)
+    {
+        auto responder = std::make_shared<CapturingResponder>();
+        fixture.handler(makeRequest(validDelta()), responder);
+        ASSERT_TRUE(responder->captured.has_value());
+        EXPECT_EQ(503, responder->captured->status);
+    }
+    EXPECT_EQ(0U, sessions->trackedAgents());
+    EXPECT_EQ(0U, sessions->rejectedTotal()) << "every 503 was the queue's, none the agent cap's";
 }

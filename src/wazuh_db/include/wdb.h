@@ -61,7 +61,7 @@ typedef enum wdb_global_group_hash_operations_t {
 #define WDB_GROUP_MODE_OVERRIDE "override"
 #define WDB_GROUP_MODE_APPEND "append"
 
-#define WDB_GROUP_HASH_SIZE        8 /* Size of the groups hash */
+#define WDB_GROUP_HASH_SIZE        32 /* Size of the groups hash */
 
 #define WDB_BLOCK_SEND_TIMEOUT_S   1 /* Max time in seconds waiting for the client to receive the information sent with a blocking method*/
 

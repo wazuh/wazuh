@@ -166,6 +166,37 @@ static void test_valid_agent_insert_id_rejects_out_of_range_or_reserved(void **s
     assert_false(OS_IsValidAgentInsertID("999999999999999999999999999999999999999999"));
 }
 
+/* --- OS_CanonicalAgentInsertID ------------------------------------------------------------------ */
+
+static void test_canonical_agent_insert_id_is_one_spelling_per_number(void **state) {
+    (void) state;
+    char out[12];
+
+    assert_int_equal(OS_CanonicalAgentInsertID("1", out, sizeof(out)), 0);
+    assert_string_equal(out, "001");
+    assert_int_equal(OS_CanonicalAgentInsertID("001", out, sizeof(out)), 0);
+    assert_string_equal(out, "001");
+    assert_int_equal(OS_CanonicalAgentInsertID("0001", out, sizeof(out)), 0); /* the alias it closes */
+    assert_string_equal(out, "001");
+    assert_int_equal(OS_CanonicalAgentInsertID("01000", out, sizeof(out)), 0);
+    assert_string_equal(out, "1000");
+    assert_int_equal(OS_CanonicalAgentInsertID("2147483647", out, sizeof(out)), 0);
+    assert_string_equal(out, "2147483647");
+}
+
+static void test_canonical_agent_insert_id_rejects_what_insert_rejects(void **state) {
+    (void) state;
+    char out[12] = "untouched";
+
+    assert_int_equal(OS_CanonicalAgentInsertID(NULL, out, sizeof(out)), -1);
+    assert_int_equal(OS_CanonicalAgentInsertID("0", out, sizeof(out)), -1);
+    assert_int_equal(OS_CanonicalAgentInsertID("0001x", out, sizeof(out)), -1);
+    assert_int_equal(OS_CanonicalAgentInsertID("2147483648", out, sizeof(out)), -1);
+    assert_int_equal(OS_CanonicalAgentInsertID("4294967297", out, sizeof(out)), -1);
+    assert_int_equal(OS_CanonicalAgentInsertID("1", NULL, sizeof(out)), -1);
+    assert_int_equal(OS_CanonicalAgentInsertID("2147483647", out, 4), -1); /* does not fit */
+}
+
 /* --- OS_IsValidAgentKey ------------------------------------------------------------------------ */
 
 static void test_valid_agent_key_accepts_exactly_64_lowercase_hex(void **state) {
@@ -269,6 +300,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_id_counter_at_int_max_fails_instead_of_wrapping, setup_keys, teardown_keys),
         cmocka_unit_test(test_valid_agent_insert_id_accepts_the_full_int32_range),
         cmocka_unit_test(test_valid_agent_insert_id_rejects_out_of_range_or_reserved),
+        cmocka_unit_test(test_canonical_agent_insert_id_is_one_spelling_per_number),
+        cmocka_unit_test(test_canonical_agent_insert_id_rejects_what_insert_rejects),
         cmocka_unit_test(test_valid_agent_key_accepts_exactly_64_lowercase_hex),
         cmocka_unit_test(test_valid_agent_key_rejects_other_shapes),
         cmocka_unit_test(test_new_reenroll_secret_is_64_lowercase_hex_and_fresh),

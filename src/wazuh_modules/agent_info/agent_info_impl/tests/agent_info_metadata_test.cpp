@@ -731,7 +731,7 @@ TEST_F(AgentInfoMetadataTest, ReadAgentGroups_MultiGroupFormat_WithHash)
                   [](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
     {
         // Multi-group format: first line is #hash_id
-        callback("#93f39afe");
+        callback("#93f39afe0c1d2e3f4a5b6c7d8e9f0a1b");
         callback("!234 agent.conf");
         callback("<!-- Source file: default/agent.conf -->");
         callback("<agent_config>");

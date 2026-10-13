@@ -214,8 +214,13 @@ void etoken_store_release(const char *id);
 
 /**
  * @brief Close a reservation whose enrollment succeeded. Touches no file: the use is already spent.
+ *
+ * @param id The token whose reservation is closed.
+ * @param uses If not NULL, receives the token's use count (this use included).
+ * @param max_uses If not NULL, receives the token's max_uses (0 = unlimited).
+ * @return 0, or -1 when the token is no longer in the store (both outputs are then left untouched).
  */
-void etoken_store_commit(const char *id);
+int etoken_store_commit(const char *id, unsigned int *uses, unsigned int *max_uses);
 
 /**
  * @brief Number of tokens in memory (revoked ones included).

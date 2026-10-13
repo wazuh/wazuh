@@ -6,13 +6,12 @@
 `client.keys`, mirrors every registration into Wazuh DB, and makes sure a removed agent's documents
 leave the indexer too. Enrollment arrives through three doors — the TLS port on 1515, remoted's
 `/enroll` route and the server API — and all of them converge on the same in-memory keystore behind
-one mutex: the last two both arrive over the local Unix socket, as do the token CLI and remoted's
-`/enroll/secret` route.
+one mutex: the last two both arrive over the local Unix socket, as does the token CLI.
 
 ```mermaid
 flowchart TB
     AG[Agent] -->|"enrollment (TLS 1.3, port 1515)"| REMS
-    REM2[wazuh-manager-remoted\nPOST /enroll, /enroll/secret] -->|"add / issue_reenroll_secret (UDS)"| LOCS
+    REM2[wazuh-manager-remoted\nPOST /enroll] -->|"add (UDS)"| LOCS
     API[wazuh-manager-apid\nserver API] -->|"add / remove / get (UDS)"| LOCS
 
     subgraph AUTHD["wazuh-manager-authd"]
@@ -58,7 +57,7 @@ thread instead of being called inline.
 | Thread | Runs on | Role |
 |---|---|---|
 | Remote server | any node with both `remote_enrollment` and `legacy_enrollment` | TLS enrollment on port 1515 |
-| Local server | every node | `queue/sockets/auth.sock`: `add`, `remove`, `get` — for the server API and for remoted's `/enroll` — `issue_reenroll_secret` for remoted's `/enroll/secret`, plus `token_create`, `token_list`, `token_revoke` and `token_purge` for the token CLI and the API |
+| Local server | every node | `queue/sockets/auth.sock`: `add`, `remove`, `get` — for the server API and for remoted's `/enroll` — plus `token_create`, `token_list`, `token_revoke` and `token_purge` for the token CLI and the API |
 | Writer | master only | persists `client.keys`, removes Wazuh DB rows, records each deletion as a Task Manager task, and settles the credentials the [identity journal](#the-identity-journal) still owes — waking on its own clock while any remain |
 | authpass watcher | workers with `use_password` | re-reads `etc/authd.pass` as the cluster syncs it down from the master |
 
@@ -217,8 +216,8 @@ derives its signing key from the real secret and `client.keys` does not carry it
 that the transition happened and restore nothing. Treat the file as a secret: it is `0640`, and it is
 normally empty.
 
-**Only `local_add()`, `local_reenroll()` and `local_issue_reenroll_secret()` append transitions.**
-This covers the server API and remoted's `POST /enroll` and `POST /enroll/secret`. Direct enrollment on the master's TLS port 1515 queues an insert with no
+**Only `local_add()` and `local_reenroll()` append transitions.**
+This covers the server API and remoted's `POST /enroll`. Direct enrollment on the master's TLS port 1515 queues an insert with no
 secret and no journal sequence. However, port-1515 enrollment received by a **worker** is forwarded
 to the master's local socket and therefore does journal there. The legacy response still returns
 only id/name/IP/key: the worker discards the master's re-enrollment secret, so the agent cannot use
@@ -251,7 +250,8 @@ os_strdup(keys.keyentries[index]->raw_key, *key);
 
 An insertion may also *name* an id explicitly (`POST /agents/insert`). That path is
 refused rather than served when the id is taken (`9012`) or still owes a purge (`9018`); self-enrolling
-agents never send one.
+agents never send one. The id is first rewritten to its canonical spelling (`OS_CanonicalAgentInsertID()`:
+`0042` → `042`), so another spelling of a taken id is a duplicate, not a second agent.
 
 ## Duplicate handling and force replacement
 
@@ -359,11 +359,9 @@ The local socket answers a numeric code that the server API maps onto its own, a
 | 9022 / 9023 / 9024 | enrollment token unknown or revoked / expired / out of uses (`add` with `token_id`) | `403` — the bearer verified, authd refused the use. Expiry and successfully persisted revocation survive restart; the **use count is best effort**, so `9024` is a best-effort bound — see [the README](README.md#enrollment-tokens) |
 | 9025 | mint refused (`token_create`); the message carries the reason after `Enrollment token refused:` — the address checks against the listener certificate, or the store being full (5000 tokens) or about to cross its 7 MiB ceiling | — |
 | 9026 / 9027 / 9028 | re-enrollment: unknown agent or no secret on record / invalid credential / outside the time window | `401` (`unknown_agent` / `invalid_signature` / `stale_token`) |
-| 9026 (on `issue_reenroll_secret`) | the agent is not in the keystore, **or has no row in `global.db` yet** — the state a migrated agent is in until `wazuh-manager-modulesd` rebuilds its row from `client.keys`. Refused rather than answered, because `set-agent-credentials` reports `ok` for an UPDATE matching zero rows and the credential would be silently dropped at commit | `401 unknown_agent`, counter `remoted.enroll.secret.authd_error` |
 | 9029 | *Enrollment token store write failed* — `token_revoke` could not persist. The token stops being honoured here immediately and the id is retried on the next verb, but the caller is told the write failed rather than given a success or the `9022` of an unknown id | No `/enroll` path; server API `1771` → `500` |
-| 9030 | *Re-enrollment already in progress* — another rotation holds that agent's reservation. A wait, not a credential problem. `issue_reenroll_secret` takes the same reservation, so the two serialise against each other | `409`, counter `remoted.enroll.reenroll.rejected_in_progress` (or `remoted.enroll.secret.rejected_in_progress`) |
+| 9030 | *Re-enrollment already in progress* — another rotation holds that agent's reservation. A wait, not a credential problem | `409`, counter `remoted.enroll.reenroll.rejected_in_progress` |
 | 9031 | *Identity transition could not be recorded* — the [identity journal](#the-identity-journal) could not take the line, so no credential is handed out at all | `503` (the server API's `1772`) |
-| 9032 | *Agent key changed since the request was authenticated* (`issue_reenroll_secret`) — the `key_fingerprint` the caller presented is not the SHA-256 of the key this keystore now holds for that id, or none was presented. remoted verifies bearers against **its own** copy of `client.keys`, which on a worker is a replica that can lag the master, so a key the master has already rotated away from still authenticates there; this is the check that stops the holder of a superseded key from being handed a live credential for the current identity. Compared under `mutex_keys`, after the reservation, because the generation counter cannot see a rotation that completed *before* the request arrived | `401 unknown_agent` — deliberately indistinguishable from `9026`, so the answer does not tell a caller which half of a stale replica it reached. Counter `remoted.enroll.secret.authd_error` |
 
 ## Agent removal
 
@@ -540,12 +538,11 @@ The re-enrollment secret is retained in `agent.reenroll_secret` in `global.db` a
 | `Recovered N identity transition(s) that the previous run did not finish writing to the database.` | startup found credentials still owed; the writer applies them on its own clock |
 | `Discarded N recorded identity transition(s) whose agent is no longer in client.keys and M superseded by a later one.` | startup reconciliation dropped what is no longer owed |
 | `Enrollment token 'X' minted for '…' (expires …, max_uses …, credential …)…` | a mint; never the secret or the token text |
-| `Enrollment token 'X' consumed by agent 'N'.` / `Enrollment token 'X' revoked.` | the token paths. A refused token logs `ERROR 902x: …`; a re-enrollment the master's verification refuses (`9026`–`9028`) logs at debug level only |
+| `Agent key generated for agent 'N' (requested by <address>)` / `… (requested locally)` | a new agent on the local socket: the agent's peer address when the request came through remoted's `POST /enroll` (also when a worker forwarded it), `locally` for `manage_agents` and the API |
+| `Enrollment token 'X' used by agent 'N' (U/M).` / `Enrollment token 'X' revoked.` | the token paths; `U/M` is uses spent against `max_uses` (`U/unlimited` when it is `0`, the default). A refused token logs `ERROR 902x: …`; a re-enrollment the master's verification refuses (`9026`–`9028`) logs at debug level only |
 | `The enrollment token store holds N of the 5000 tokens it accepts…` | 80% of the cap reached; purge before it binds |
 | `Could not load the enrollment tokens from '…'` | the store could not be loaded at start; enrollments presenting a token are refused until it is fixed |
 | `Agent 'N' (id 'I') re-enrolled: key and re-enrollment secret rotated.` | a rotation in place; nothing was deleted |
-| `Re-enrollment secret issued for agent 'I' (its key was not changed).` | an `issue_reenroll_secret` answered |
-| `Secret issuance for agent 'I' refused: the request was authenticated with a key that is not the agent's current one…` | `9032`: a worker's `client.keys` replica is behind the master; the agent retries |
 
 The purge's own outcome — the `deleteByQuery` and its flush — is reported by
 [inventory_sync_server](../inventory-sync-server/architecture.md#agent-deletion) and recorded as the

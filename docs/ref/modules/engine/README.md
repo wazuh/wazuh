@@ -1461,6 +1461,7 @@ This approach enables text reuse within an asset. Definitions are applied at bui
 - **Chaining Definitions**: Definitions can use other definitions in their values as long as they are defined beforehand.
 - **Context**: Definitions can only appear on the right side of operations, meaning we can't define the structure of the document with definitions or be used inside non operational stages.
 - **Scope**: Definitions are scoped to the asset where they are defined. They cannot be shared across assets.
+- **Limits**: A chain of definitions referencing definitions can be at most 256 deep, a definition can expand to at most 64 KiB once its references are replaced, and the text added by expanding definitions in one asset (in other definitions and in the stages that use them) can total at most 1 MiB. An asset beyond any of them fails to build, naming the definition and the limit. These are compile-time constants, not settings.
 
 #### Use Cases
 - **Parsing Complex Logs**

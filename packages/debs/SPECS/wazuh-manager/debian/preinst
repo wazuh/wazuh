@@ -146,14 +146,16 @@ case "$1" in
                 fi
             fi
 
+            # api/configuration/ is writable by ${GROUP}: a link there is not ours to back up, and
+            # cp would carry its target's content into the restored file.
             # RBAC database
-            if [ -f ${DIR}/api/configuration/security/rbac.db ]; then
-                cp -fp ${DIR}/api/configuration/security/rbac.db ${WAZUH_TMP_DIR}/rbac.db
+            if [ -f ${DIR}/api/configuration/security/rbac.db ] && [ ! -L ${DIR}/api/configuration/security/rbac.db ]; then
+                cp -fpP ${DIR}/api/configuration/security/rbac.db ${WAZUH_TMP_DIR}/rbac.db
             fi
 
             # API configuration file
-            if [ -f ${DIR}/api/configuration/api.yaml ]; then
-                cp -fp ${DIR}/api/configuration/api.yaml ${WAZUH_TMP_DIR}/api.yaml
+            if [ -f ${DIR}/api/configuration/api.yaml ] && [ ! -L ${DIR}/api/configuration/api.yaml ]; then
+                cp -fpP ${DIR}/api/configuration/api.yaml ${WAZUH_TMP_DIR}/api.yaml
             fi
 
         else

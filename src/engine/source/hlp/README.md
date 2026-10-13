@@ -272,7 +272,7 @@ The root container is level 1: 256 nested containers (objects and arrays) parse,
 |--------|------------|----------|---------|
 | `getJSONParser` | open JSON containers (objects and arrays), counted by `json::Json::parseBounded` | the 257th nested container | Syntax-phase failure (`makeFailure`) whose trace names the limit; no document is built |
 | `getXMLParser` | nested XML elements, counted by `xmlToJson` (in `windows` mode the root `Event`, omitted from the output, is level 1) | the 257th nested element | Semantic-phase `base::Error`, the same contract as `Invalid XML` |
-| `getKVParser` | tokens of the destination path of a key with a value: one level per `.` plus one | a key with 256 dots (a key with 255 dots maps) | Semantic-phase `base::Error` |
+| `getKVParser` | tokens of the destination path of a key, with or without a value: one level per `.` plus one | a key with 256 dots (a key with 255 dots maps) | Semantic-phase `base::Error` |
 
 `parser::run()` turns either failure into a `base::Error` that carries the message only when tracing is enabled (test mode) and is empty otherwise, exactly as for any other parse failure.
 
@@ -285,7 +285,7 @@ XML text and CDATA are leaves (`#text`) and do not add a level. A CDATA child is
 Used by DSV/CSV and KV parsers to split delimited fields while respecting quoting and escaping:
 - `getField()` — parses a single field from input with configurable delimiter, quote, and escape characters
 - `unescape()` — removes escape characters from parsed values
-- `updateDoc()` — adds a key-value to the JSON (`setNull` for an empty value, `setString` otherwise); rejects destination paths deeper than the nesting cap
+- `updateDoc()` — adds a key-value to the JSON (`setNullAsMembers` for an empty value, `setStringAsMembers` otherwise); the dots of the key nest the value in both cases (`a.b=` maps to `{"a":{"b":null}}`); rejects destination paths deeper than the nesting cap. Every token of the key is written as an object member, never as an array index: `123=v` maps to `{"123":"v"}` and `a.5=v` to `{"a":{"5":"v"}}`, and the cost does not depend on the value of a numeric key
 
 ### External Libraries
 

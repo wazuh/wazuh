@@ -130,6 +130,11 @@ public:
         return m_impl.isAvailable();
     }
 
+    bool hasAvailableServer() const
+    {
+        return m_impl.hasAvailableServer();
+    }
+
     IndexerBulkRequestStats takeBulkRequestStats()
     {
         return m_impl.takeBulkRequestStats();
@@ -244,6 +249,11 @@ void IndexerConnectorSync::refresh(std::string_view indexPattern)
 bool IndexerConnectorSync::isAvailable() const
 {
     return m_impl->isAvailable();
+}
+
+bool IndexerConnectorSync::hasAvailableServer() const
+{
+    return m_impl->hasAvailableServer();
 }
 
 IndexerBulkRequestStats IndexerConnectorSync::takeBulkRequestStats()
