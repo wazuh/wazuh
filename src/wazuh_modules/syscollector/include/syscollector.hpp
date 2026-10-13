@@ -270,9 +270,10 @@ class EXPORTED Syscollector final
         /**
          * @brief Checks if a full sync is required by calculating the checksum-of-checksums for a table and comparing it with the manager's
          * @param table_name The table to check
-         * @returns true if a full sync is required, false if a delta sync is sufficient
+         * @returns MISMATCH if a full sync is required, VALID if a delta sync is sufficient, NOT_CHECKED
+         *          (with the reason) if the check did not complete.
          */
-        bool checkIfFullSyncRequired(const std::string& tableName);
+        IntegrityCheckResult checkIfFullSyncRequired(const std::string& tableName);
 
         /**
          * @brief Get a metadata value from table_metadata.
@@ -471,8 +472,8 @@ class EXPORTED Syscollector final
         /// @param tableName Source dbsync table.
         /// @param index Destination index name.
         /// @return false when the table could not be resynced at all (version bump failed, rows
-        ///         could not be read, no protocol, or the manager refused the DataClean), which
-        ///         the caller treats as "leave the integrity timestamp alone and retry". A failure
+        ///         could not be read, no protocol, or the manager refused the DataClean); when the
+        ///         caller tries again is the caller's decision, and @p retryNote says it. A failure
         ///         of the final synchronization itself returns true: the data reached the queue
         ///         and the ordinary sync cycle will drain it.
         /// @param syncNow When false, the table is cleared and re-persisted but no session is
@@ -481,7 +482,12 @@ class EXPORTED Syscollector final
         ///                one VDFirst session, which is the only one whose scan chain suppresses
         ///                alerts, and each VDFirst session begins by deleting what the previous
         ///                one indexed.
-        bool resyncTableToManager(const std::string& tableName, const std::string& index, bool syncNow = true);
+        /// @param retryNote Appended to the message logged when the resync cannot be carried out,
+        ///                  saying when the caller will try again.
+        bool resyncTableToManager(const std::string& tableName,
+                                  const std::string& index,
+                                  bool syncNow,
+                                  const std::string& retryNote);
 
         /// @brief Whether the collector that owns a table is enabled in the configuration.
         /// @param tableName dbsync table to check.

@@ -19,6 +19,7 @@
 
 #include <future>
 #include <atomic>
+#include <tuple>
 #include <mutex>
 #include <optional>
 #include <thread>
@@ -378,6 +379,41 @@ TEST_F(AgentSyncProtocolTest, CInterfacePropagatesStoppedFlag)
     asp_stop(handle);
     SyncModuleResult_t afterStop = asp_sync_module(handle, MODE_DELTA);
     EXPECT_FALSE(afterStop.success);
+    EXPECT_TRUE(afterStop.stopped);
+
+    asp_destroy(handle);
+}
+
+// Exercises the C interface of the integrity check (asp_requires_full_sync ->
+// IntegrityCheckResult_t), the path FIM relies on: a check that did not run must cross it as
+// NOT_CHECKED with its reason and flags, and bad arguments must not reach the C++ layer.
+TEST_F(AgentSyncProtocolTest, CInterfaceIntegrityCheckCarriesTheResult)
+{
+    auto* handle = asp_create("test_module", ":memory:", +[](modules_log_level_t, const char*) {});
+    ASSERT_NE(handle, nullptr);
+
+    for (const auto& [h, index, checksum] : std::vector<std::tuple<AgentSyncProtocolHandle*, const char*, const char*>> {
+             {nullptr, "index", "checksum"}, {handle, nullptr, "checksum"}, {handle, "index", nullptr}})
+    {
+        const IntegrityCheckResult_t invalid = asp_requires_full_sync(h, index, checksum);
+        EXPECT_EQ(invalid.status, INTEGRITY_CHECK_NOT_CHECKED);
+        EXPECT_STREQ(invalid.failure_reason, "Invalid integrity check arguments.");
+        EXPECT_FALSE(invalid.stopped);
+        EXPECT_FALSE(invalid.mismatch_unconfirmed);
+    }
+
+    // asp_create wires the real socket transport and its intake socket does not exist here, so
+    // the check returns at the checkStatus early out.
+    const IntegrityCheckResult_t unreachable = asp_requires_full_sync(handle, "index", "checksum");
+    EXPECT_EQ(unreachable.status, INTEGRITY_CHECK_NOT_CHECKED);
+    EXPECT_STREQ(unreachable.failure_reason, "Failed to reach the sync intake socket.");
+    EXPECT_TRUE(unreachable.local_transport_unavailable);
+    EXPECT_FALSE(unreachable.manager_not_ready);
+    EXPECT_FALSE(unreachable.stopped);
+
+    asp_stop(handle);
+    const IntegrityCheckResult_t afterStop = asp_requires_full_sync(handle, "index", "checksum");
+    EXPECT_EQ(afterStop.status, INTEGRITY_CHECK_NOT_CHECKED);
     EXPECT_TRUE(afterStop.stopped);
 
     asp_destroy(handle);
@@ -1950,11 +1986,12 @@ TEST_F(AgentSyncProtocolTest, RequiresFullSyncWithMatchingChecksum)
     // Start requiresFullSync in a separate thread
     std::thread syncThread([this, &testIndex, &testChecksum]()
     {
-        bool result = protocol->requiresFullSync(
-                          testIndex,
-                          testChecksum
-                      );
-        EXPECT_FALSE(result);
+        const auto result = protocol->requiresFullSync(
+                                testIndex,
+                                testChecksum
+                            );
+        EXPECT_EQ(result.status, IntegrityCheckStatus::VALID);
+        EXPECT_TRUE(result.failureReason.empty());
     });
 
     // Wait for start message
@@ -1988,7 +2025,7 @@ TEST_F(AgentSyncProtocolTest, RequiresFullSyncWithNonMatchingChecksum)
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) )
     .Times(0);
 
-    bool result = false;
+    IntegrityCheckResult result;
     std::thread syncThread([this, &testIndex, &testChecksum, &result]()
     {
         result = protocol->requiresFullSync(testIndex, testChecksum);
@@ -2013,7 +2050,7 @@ TEST_F(AgentSyncProtocolTest, RequiresFullSyncWithNonMatchingChecksum)
     }
 
     syncThread.join();
-    EXPECT_TRUE(result);
+    EXPECT_EQ(result.status, IntegrityCheckStatus::MISMATCH);
     EXPECT_EQ(mockSyncTransport->sendCount(), 5);
 }
 
@@ -2029,7 +2066,7 @@ TEST_F(AgentSyncProtocolTest, RequiresFullSyncRecoversAfterTransientMismatch)
     const std::string testIndex = "test_index";
     const std::string testChecksum = "test_checksum";
 
-    bool result = true;
+    IntegrityCheckResult result;
     std::thread syncThread([this, &testIndex, &testChecksum, &result]()
     {
         result = protocol->requiresFullSync(testIndex, testChecksum);
@@ -2050,7 +2087,7 @@ TEST_F(AgentSyncProtocolTest, RequiresFullSyncRecoversAfterTransientMismatch)
     feedHttpResult(200);
 
     syncThread.join();
-    EXPECT_FALSE(result);
+    EXPECT_EQ(result.status, IntegrityCheckStatus::VALID);
     EXPECT_EQ(mockSyncTransport->sendCount(), 2);
 }
 
@@ -2064,12 +2101,16 @@ TEST_F(AgentSyncProtocolTest, RequiresFullSyncNoQueueAvailable)
     const std::string testIndex = "test_index";
     const std::string testChecksum = "test_checksum";
 
-    bool result = protocol->requiresFullSync(
-                      testIndex,
-                      testChecksum
-                  );
+    // No answer: the session times out, which says nothing about the checksum.
+    const auto result = protocol->requiresFullSync(
+                            testIndex,
+                            testChecksum
+                        );
 
-    EXPECT_FALSE(result);
+    EXPECT_EQ(result.status, IntegrityCheckStatus::NOT_CHECKED);
+    EXPECT_TRUE(result.managerNotReady);
+    EXPECT_FALSE(result.stopped);
+    EXPECT_FALSE(result.failureReason.empty());
 }
 
 TEST_F(AgentSyncProtocolTest, RequiresFullSyncSendStartFails)
@@ -2081,12 +2122,16 @@ TEST_F(AgentSyncProtocolTest, RequiresFullSyncSendStartFails)
     const std::string testIndex = "test_index";
     const std::string testChecksum = "test_checksum";
 
-    bool result = protocol->requiresFullSync(
-                      testIndex,
-                      testChecksum
-                  );
+    // No answer: the session times out, which says nothing about the checksum.
+    const auto result = protocol->requiresFullSync(
+                            testIndex,
+                            testChecksum
+                        );
 
-    EXPECT_FALSE(result);
+    EXPECT_EQ(result.status, IntegrityCheckStatus::NOT_CHECKED);
+    EXPECT_TRUE(result.managerNotReady);
+    EXPECT_FALSE(result.stopped);
+    EXPECT_FALSE(result.failureReason.empty());
 }
 
 TEST_F(AgentSyncProtocolTest, RequiresFullSyncStartAckTimeout)
@@ -2098,12 +2143,116 @@ TEST_F(AgentSyncProtocolTest, RequiresFullSyncStartAckTimeout)
     const std::string testIndex = "test_index";
     const std::string testChecksum = "test_checksum";
 
-    bool result = protocol->requiresFullSync(
-                      testIndex,
-                      testChecksum
-                  );
+    // No answer: the session times out, which says nothing about the checksum.
+    const auto result = protocol->requiresFullSync(
+                            testIndex,
+                            testChecksum
+                        );
 
-    EXPECT_FALSE(result);
+    EXPECT_EQ(result.status, IntegrityCheckStatus::NOT_CHECKED);
+    EXPECT_TRUE(result.managerNotReady);
+    EXPECT_FALSE(result.stopped);
+    EXPECT_FALSE(result.failureReason.empty());
+}
+
+// A check that cannot reach the local sync intake sends nothing, so it must not read as VALID.
+TEST_F(AgentSyncProtocolTest, RequiresFullSyncNotCheckedWhenLocalTransportUnavailable)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+
+    mockSyncTransport->setAvailable(false);
+
+    const auto result = protocol->requiresFullSync("test_index", "test_checksum");
+
+    EXPECT_EQ(result.status, IntegrityCheckStatus::NOT_CHECKED);
+    EXPECT_TRUE(result.localTransportUnavailable);
+    EXPECT_FALSE(result.managerNotReady);
+    EXPECT_FALSE(result.stopped);
+    EXPECT_FALSE(result.failureReason.empty());
+    EXPECT_EQ(mockSyncTransport->sendCount(), 0);
+}
+
+TEST_F(AgentSyncProtocolTest, RequiresFullSyncNotCheckedWhenManagerNotReady)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+
+    IntegrityCheckResult result;
+    std::thread syncThread([this, &result]()
+    {
+        result = protocol->requiresFullSync("test_index", "test_checksum");
+    });
+
+    EXPECT_TRUE(mockSyncTransport->waitForSession());
+    feedHttpResult(503);
+
+    syncThread.join();
+    EXPECT_EQ(result.status, IntegrityCheckStatus::NOT_CHECKED);
+    EXPECT_TRUE(result.managerNotReady);
+    EXPECT_FALSE(result.stopped);
+    EXPECT_FALSE(result.mismatchUnconfirmed);
+    EXPECT_FALSE(result.failureReason.empty());
+    // A 503 does not spend the 409 retry budget.
+    EXPECT_EQ(mockSyncTransport->sendCount(), 1);
+}
+
+TEST_F(AgentSyncProtocolTest, RequiresFullSyncNotCheckedWhenHandOffFails)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+
+    mockSyncTransport->setAccept(false);
+
+    const auto result = protocol->requiresFullSync("test_index", "test_checksum");
+
+    EXPECT_EQ(result.status, IntegrityCheckStatus::NOT_CHECKED);
+    EXPECT_FALSE(result.stopped);
+    EXPECT_FALSE(result.failureReason.empty());
+}
+
+TEST_F(AgentSyncProtocolTest, RequiresFullSyncNotCheckedWhenStoppedBeforeStart)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+
+    protocol->stop();
+
+    const auto result = protocol->requiresFullSync("test_index", "test_checksum");
+
+    EXPECT_EQ(result.status, IntegrityCheckStatus::NOT_CHECKED);
+    EXPECT_TRUE(result.stopped);
+    EXPECT_FALSE(result.mismatchUnconfirmed);
+    EXPECT_EQ(mockSyncTransport->sendCount(), 0);
+}
+
+// A stop while a 409 is still being confirmed abandons that mismatch; the result must say so
+// instead of reading as VALID.
+TEST_F(AgentSyncProtocolTest, RequiresFullSyncReportsUnconfirmedMismatchWhenStopped)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+
+    IntegrityCheckResult result;
+    std::thread syncThread([this, &result]()
+    {
+        result = protocol->requiresFullSync("test_index", "test_checksum");
+    });
+
+    EXPECT_TRUE(mockSyncTransport->waitForSession());
+    feedHttpResult(409);
+    protocol->stop();
+
+    syncThread.join();
+    EXPECT_EQ(result.status, IntegrityCheckStatus::NOT_CHECKED);
+    EXPECT_TRUE(result.stopped);
+    EXPECT_TRUE(result.mismatchUnconfirmed);
+    EXPECT_FALSE(result.managerNotReady);
 }
 
 // Tests for synchronizeMetadataOrGroups

@@ -28,8 +28,17 @@
  * cmocka's queue so the cases that do not care about shutdown need not script every call: the
  * resync loop asks once per table. */
 static bool mock_fim_shutdown = false;
+/* When positive, that many calls answer false before every later one answers true: lets a case
+ * raise the shutdown between two steps of the same call (e.g. after the check, during the DataClean). */
+static int mock_fim_shutdown_after_calls = 0;
 
 bool __wrap_fim_shutdown_process_on(void) {
+    if (mock_fim_shutdown_after_calls > 0) {
+        if (--mock_fim_shutdown_after_calls == 0) {
+            mock_fim_shutdown = true;
+        }
+        return false;
+    }
     return mock_fim_shutdown;
 }
 #include "../../syscheckd/src/db/include/db.h"
@@ -180,6 +189,7 @@ static void test_fim_recovery_persist_table_and_resync_success(void **state) {
     AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234; // Mock handle
 
     expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_any_always(__wrap__minfo, formatted_msg);
 
     // Create test data - simple file entry
     cJSON* test_items = cJSON_CreateArray();
@@ -234,7 +244,7 @@ static void test_fim_recovery_persist_table_and_resync_success(void **state) {
     will_return(__wrap_asp_sync_module_bounded, true);
 
     // Call the function
-    fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories);
+    fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories, "retry note");
 
     // The function should complete successfully
     // Note: test_items is freed by the function, so don't free it here
@@ -246,6 +256,7 @@ static void test_fim_recovery_persist_table_and_resync_failure(void **state) {
     AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234; // Mock handle
 
     expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_any_always(__wrap__minfo, formatted_msg);
 
     // Create test data - simple file entry
     cJSON* test_items = cJSON_CreateArray();
@@ -300,7 +311,7 @@ static void test_fim_recovery_persist_table_and_resync_failure(void **state) {
     will_return(__wrap_asp_sync_module_bounded, false);
 
     // Call the function
-    fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories);
+    fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories, "retry note");
 
     // The function should complete (even though sync failed)
     // Note: test_items is freed by the function, so don't free it here
@@ -319,7 +330,7 @@ static void test_fim_recovery_persist_table_and_resync_version_increase_failure(
     expect_any(__wrap__merror, formatted_msg);
 
     // Call the function - should return early without calling other functions
-    fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories);
+    fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories, "retry note");
 
     // Function should return early without crashing
 }
@@ -342,7 +353,7 @@ static void test_fim_recovery_persist_table_and_resync_null_items(void **state) 
     expect_any(__wrap__merror, formatted_msg);
 
     // Call the function - should handle NULL gracefully (no sync call expected)
-    fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories);
+    fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories, "retry note");
 
     // Function should return early without crashing
 }
@@ -374,10 +385,10 @@ static void test_fim_recovery_persist_table_and_resync_data_clean_failure(void *
 
     expect_string(__wrap__mwarn, formatted_msg,
                   "Failed to clear index '" FIM_FILES_SYNC_INDEX "' before recovery resync for table "
-                  FIMDB_FILE_TABLE_NAME "; will retry later");
+                  FIMDB_FILE_TABLE_NAME "; retry note");
 
     // No asp_persist_diff/asp_sync_module_bounded expectations: reaching either would be the bug.
-    assert_false(fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories));
+    assert_false(fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories, "retry note"));
 }
 
 // Test: Check if full sync required - checksum mismatch
@@ -392,16 +403,18 @@ static void test_fim_recovery_check_if_full_sync_required_mismatch(void **state)
     expect_string(__wrap_fim_db_calculate_table_checksum, table_name, FIMDB_FILE_TABLE_NAME);
     will_return(__wrap_fim_db_calculate_table_checksum, test_checksum);
 
-    // Expect asp_requires_full_sync call - return true (mismatch)
+    // Expect asp_requires_full_sync call - mismatch
+    IntegrityCheckResult_t mismatch = {0};
+    mismatch.status = INTEGRITY_CHECK_MISMATCH;
     expect_value(__wrap_asp_requires_full_sync, handle, handle);
     expect_string(__wrap_asp_requires_full_sync, index, FIM_FILES_SYNC_INDEX);
     expect_string(__wrap_asp_requires_full_sync, checksum, test_checksum);
-    will_return(__wrap_asp_requires_full_sync, true);
+    will_return(__wrap_asp_requires_full_sync, &mismatch);
 
-    bool result = fim_recovery_check_if_full_sync_required(FIMDB_FILE_TABLE_NAME, handle);
+    IntegrityCheckResult_t result = fim_recovery_check_if_full_sync_required(FIMDB_FILE_TABLE_NAME, handle);
 
-    // Should return true (full sync required)
-    assert_true(result);
+    // Full sync required
+    assert_int_equal(result.status, INTEGRITY_CHECK_MISMATCH);
 }
 
 // Test: Check if full sync required - checksum match
@@ -416,16 +429,18 @@ static void test_fim_recovery_check_if_full_sync_required_match(void **state) {
     expect_string(__wrap_fim_db_calculate_table_checksum, table_name, FIMDB_FILE_TABLE_NAME);
     will_return(__wrap_fim_db_calculate_table_checksum, test_checksum);
 
-    // Expect asp_requires_full_sync call - return false (match)
+    // Expect asp_requires_full_sync call - match
+    IntegrityCheckResult_t valid = {0};
+    valid.status = INTEGRITY_CHECK_VALID;
     expect_value(__wrap_asp_requires_full_sync, handle, handle);
     expect_string(__wrap_asp_requires_full_sync, index, FIM_FILES_SYNC_INDEX);
     expect_string(__wrap_asp_requires_full_sync, checksum, test_checksum);
-    will_return(__wrap_asp_requires_full_sync, false);
+    will_return(__wrap_asp_requires_full_sync, &valid);
 
-    bool result = fim_recovery_check_if_full_sync_required(FIMDB_FILE_TABLE_NAME, handle);
+    IntegrityCheckResult_t result = fim_recovery_check_if_full_sync_required(FIMDB_FILE_TABLE_NAME, handle);
 
-    // Should return false (delta sync sufficient)
-    assert_false(result);
+    // Delta sync sufficient
+    assert_int_equal(result.status, INTEGRITY_CHECK_VALID);
 }
 
 // Test: Check if full sync required - NULL checksum (error)
@@ -440,10 +455,11 @@ static void test_fim_recovery_check_if_full_sync_required_null_checksum(void **s
     expect_string(__wrap_fim_db_calculate_table_checksum, table_name, FIMDB_FILE_TABLE_NAME);
     will_return(__wrap_fim_db_calculate_table_checksum, NULL);
 
-    bool result = fim_recovery_check_if_full_sync_required(FIMDB_FILE_TABLE_NAME, handle);
+    IntegrityCheckResult_t result = fim_recovery_check_if_full_sync_required(FIMDB_FILE_TABLE_NAME, handle);
 
-    // Should return false on error
-    assert_false(result);
+    // A checksum that could not be computed checked nothing, so it must not read as valid
+    assert_int_equal(result.status, INTEGRITY_CHECK_NOT_CHECKED);
+    assert_string_not_equal(result.failure_reason, "");
 }
 
 // Test (#36134): Persist and resync skips rows whose path is no longer in the configuration.
@@ -454,6 +470,7 @@ static void test_fim_recovery_persist_table_and_resync_skips_orphan_paths(void *
     AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
 
     expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_any_always(__wrap__minfo, formatted_msg);
     expect_any_always(__wrap__mdebug2, formatted_msg);
 
     cJSON* test_items = cJSON_CreateArray();
@@ -512,7 +529,7 @@ static void test_fim_recovery_persist_table_and_resync_skips_orphan_paths(void *
     expect_value(__wrap_asp_sync_module_bounded, max_blocks, 10);
     will_return(__wrap_asp_sync_module_bounded, true);
 
-    fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories);
+    fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories, "retry note");
 
     // test_items is freed by the function.
 }
@@ -598,6 +615,7 @@ static void test_fim_recovery_persist_table_and_resync_skips_orphan_registry_key
     AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
 
     expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_any_always(__wrap__minfo, formatted_msg);
     expect_any_always(__wrap__mdebug2, formatted_msg);
 
     cJSON* test_items = cJSON_CreateArray();
@@ -659,7 +677,7 @@ static void test_fim_recovery_persist_table_and_resync_skips_orphan_registry_key
     expect_value(__wrap_asp_sync_module_bounded, max_blocks, 10);
     will_return(__wrap_asp_sync_module_bounded, true);
 
-    fim_recovery_persist_table_and_resync(FIMDB_REGISTRY_KEY_TABLENAME, handle, &mock_directories);
+    fim_recovery_persist_table_and_resync(FIMDB_REGISTRY_KEY_TABLENAME, handle, &mock_directories, "retry note");
 
     // test_items is freed by the function.
 }
@@ -877,6 +895,255 @@ static void test_fim_resync_on_agent_id_change_absent_marker_not_adopted_while_s
     mock_fim_shutdown = false;
 }
 
+/* fim_recovery_run_integrity_checks(): one table, due (last checked two intervals ago). Each case
+ * scripts the interval check, the checksum, and the protocol's answer; the stamp is an expectation
+ * only where the table must be stamped. */
+#define RUN_CHECKS_NOW ((int64_t)1000000)
+#define RUN_CHECKS_INTERVAL ((int64_t)86400)
+
+static void expect_table_due_and_checked(AgentSyncProtocolHandle* handle, IntegrityCheckResult_t* answer) {
+#ifdef TEST_WINAGENT
+    time_mock_value = RUN_CHECKS_NOW;
+#else
+    will_return_always(__wrap_time, RUN_CHECKS_NOW);
+#endif
+    expect_string(__wrap_fim_db_get_last_sync_time, table_name, FIMDB_FILE_TABLE_NAME);
+    will_return(__wrap_fim_db_get_last_sync_time, RUN_CHECKS_NOW - 2 * RUN_CHECKS_INTERVAL);
+
+    expect_string(__wrap_fim_db_calculate_table_checksum, table_name, FIMDB_FILE_TABLE_NAME);
+    will_return(__wrap_fim_db_calculate_table_checksum, strdup("run_checks_checksum"));
+
+    expect_value(__wrap_asp_requires_full_sync, handle, handle);
+    expect_string(__wrap_asp_requires_full_sync, index, FIM_FILES_SYNC_INDEX);
+    expect_string(__wrap_asp_requires_full_sync, checksum, "run_checks_checksum");
+    will_return(__wrap_asp_requires_full_sync, answer);
+}
+
+/* Same as expect_table_due_and_checked(), for a second table in the same pass: the clock is already
+ * scripted. */
+static void expect_another_table_due_and_checked(AgentSyncProtocolHandle* handle, IntegrityCheckResult_t* answer) {
+    expect_string(__wrap_fim_db_get_last_sync_time, table_name, FIMDB_FILE_TABLE_NAME);
+    will_return(__wrap_fim_db_get_last_sync_time, RUN_CHECKS_NOW - 2 * RUN_CHECKS_INTERVAL);
+
+    expect_string(__wrap_fim_db_calculate_table_checksum, table_name, FIMDB_FILE_TABLE_NAME);
+    will_return(__wrap_fim_db_calculate_table_checksum, strdup("run_checks_checksum"));
+
+    expect_value(__wrap_asp_requires_full_sync, handle, handle);
+    expect_string(__wrap_asp_requires_full_sync, index, FIM_FILES_SYNC_INDEX);
+    expect_string(__wrap_asp_requires_full_sync, checksum, "run_checks_checksum");
+    will_return(__wrap_asp_requires_full_sync, answer);
+}
+
+/* A mismatch's recovery up to the DataClean, with nothing to resend. */
+static void expect_recovery_until_data_clean(AgentSyncProtocolHandle* handle, bool data_clean_ok) {
+    expect_string(__wrap_fim_db_increase_each_entry_version, table_name, FIMDB_FILE_TABLE_NAME);
+    will_return(__wrap_fim_db_increase_each_entry_version, 0);
+    expect_string(__wrap_fim_db_get_every_element, table_name, FIMDB_FILE_TABLE_NAME);
+    expect_string(__wrap_fim_db_get_every_element, row_filter, "WHERE sync=1");
+    will_return(__wrap_fim_db_get_every_element, cJSON_CreateArray());
+    expect_value(__wrap_asp_notify_data_clean, handle, handle);
+    expect_any(__wrap_asp_notify_data_clean, indices);
+    expect_value(__wrap_asp_notify_data_clean, indices_count, 1);
+    will_return(__wrap_asp_notify_data_clean, data_clean_ok);
+}
+
+static void expect_table_stamped(void) {
+    expect_string(__wrap_fim_db_update_last_sync_time_value, table_name, FIMDB_FILE_TABLE_NAME);
+    expect_value(__wrap_fim_db_update_last_sync_time_value, timestamp, RUN_CHECKS_NOW);
+}
+
+// A check that could not run still counts the table as checked for this interval, but says so --
+// once, with the reason -- instead of passing for a valid checksum.
+static void test_fim_recovery_run_integrity_checks_unchecked_table_is_stamped_and_reported(void **state) {
+    (void) state;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+    char* tables[] = {FIMDB_FILE_TABLE_NAME};
+
+    IntegrityCheckResult_t not_checked = {0};
+    not_checked.status = INTEGRITY_CHECK_NOT_CHECKED;
+    not_checked.manager_not_ready = true;
+    snprintf(not_checked.failure_reason, sizeof(not_checked.failure_reason), "Failed to communicate with the manager.");
+
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_table_due_and_checked(handle, &not_checked);
+    expect_table_stamped();
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "Integrity check could not be performed for 1 table(s): " FIM_FILES_SYNC_INDEX
+                  " (Failed to communicate with the manager); they will be checked again in the next "
+                  "integrity_interval (24h).");
+
+    fim_recovery_run_integrity_checks(handle, tables, 1, &mock_directories, RUN_CHECKS_INTERVAL);
+}
+
+// A shutdown in the middle of a check is not a failed check: the table is left unstamped so it is
+// checked after the restart, and a mismatch the manager had already reported is mentioned.
+static void test_fim_recovery_run_integrity_checks_stop_during_check_leaves_table_unstamped(void **state) {
+    (void) state;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+    char* tables[] = {FIMDB_FILE_TABLE_NAME};
+
+    IntegrityCheckResult_t stopped = {0};
+    stopped.status = INTEGRITY_CHECK_NOT_CHECKED;
+    stopped.stopped = true;
+    stopped.mismatch_unconfirmed = true;
+    snprintf(stopped.failure_reason, sizeof(stopped.failure_reason), "Module is stopping.");
+
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_table_due_and_checked(handle, &stopped);
+    // No stamp expectation: stamping here is what would hide the table for a whole interval.
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Integrity check for " FIM_FILES_SYNC_INDEX " interrupted: module is stopping; a checksum "
+                  "mismatch reported by the manager was not confirmed. It will be checked again after the restart.");
+
+    fim_recovery_run_integrity_checks(handle, tables, 1, &mock_directories, RUN_CHECKS_INTERVAL);
+}
+
+// A recovery that cannot start is retried in the next integrity_interval, like a failed check:
+// the table is stamped and the warning says when.
+static void test_fim_recovery_run_integrity_checks_refused_data_clean_stamps(void **state) {
+    (void) state;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+    char* tables[] = {FIMDB_FILE_TABLE_NAME};
+
+    IntegrityCheckResult_t mismatch = {0};
+    mismatch.status = INTEGRITY_CHECK_MISMATCH;
+
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_table_due_and_checked(handle, &mismatch);
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Checksum mismatch confirmed for " FIM_FILES_SYNC_INDEX
+                  "; starting recovery (index cleanup and full resend).");
+
+    expect_string(__wrap_fim_db_increase_each_entry_version, table_name, FIMDB_FILE_TABLE_NAME);
+    will_return(__wrap_fim_db_increase_each_entry_version, 0);
+    expect_string(__wrap_fim_db_get_every_element, table_name, FIMDB_FILE_TABLE_NAME);
+    expect_string(__wrap_fim_db_get_every_element, row_filter, "WHERE sync=1");
+    will_return(__wrap_fim_db_get_every_element, cJSON_CreateArray());
+    expect_value(__wrap_asp_notify_data_clean, handle, handle);
+    expect_any(__wrap_asp_notify_data_clean, indices);
+    expect_value(__wrap_asp_notify_data_clean, indices_count, 1);
+    will_return(__wrap_asp_notify_data_clean, false);
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "Failed to clear index '" FIM_FILES_SYNC_INDEX "' before recovery resync for table " FIMDB_FILE_TABLE_NAME
+                  "; it will be retried in the next integrity_interval (24h)");
+
+    expect_table_stamped();
+
+    fim_recovery_run_integrity_checks(handle, tables, 1, &mock_directories, RUN_CHECKS_INTERVAL);
+}
+
+// A valid checksum stamps the table and reports nothing above DEBUG.
+static void test_fim_recovery_run_integrity_checks_valid_table_is_stamped_quietly(void **state) {
+    (void) state;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+    char* tables[] = {FIMDB_FILE_TABLE_NAME};
+
+    IntegrityCheckResult_t valid = {0};
+    valid.status = INTEGRITY_CHECK_VALID;
+
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_table_due_and_checked(handle, &valid);
+    expect_table_stamped();
+    // No _minfo/_mwarn expectation: either one would fail the case.
+
+    fim_recovery_run_integrity_checks(handle, tables, 1, &mock_directories, RUN_CHECKS_INTERVAL);
+}
+
+// A confirmed mismatch whose recovery completes is reported at INFO and stamps the table.
+static void test_fim_recovery_run_integrity_checks_recovered_mismatch_is_stamped(void **state) {
+    (void) state;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+    char* tables[] = {FIMDB_FILE_TABLE_NAME};
+
+    IntegrityCheckResult_t mismatch = {0};
+    mismatch.status = INTEGRITY_CHECK_MISMATCH;
+
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_table_due_and_checked(handle, &mismatch);
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Checksum mismatch confirmed for " FIM_FILES_SYNC_INDEX
+                  "; starting recovery (index cleanup and full resend).");
+    expect_recovery_until_data_clean(handle, true);
+    expect_value(__wrap_asp_sync_module_bounded, handle, handle);
+    expect_value(__wrap_asp_sync_module_bounded, mode, MODE_DELTA);
+    expect_value(__wrap_asp_sync_module_bounded, max_blocks, 10);
+    will_return(__wrap_asp_sync_module_bounded, true);
+    expect_string(__wrap__minfo, formatted_msg, "Recovery of index '" FIM_FILES_SYNC_INDEX "' completed.");
+    expect_table_stamped();
+
+    fim_recovery_run_integrity_checks(handle, tables, 1, &mock_directories, RUN_CHECKS_INTERVAL);
+}
+
+// Every table left unchecked goes into one WARNING, each with its reason; a mismatch the manager
+// had reported before the failure is named. Linux FIM has a single table with a sync index, so the
+// same table stands in for two.
+static void test_fim_recovery_run_integrity_checks_unchecked_tables_share_one_warning(void **state) {
+    (void) state;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+    char* tables[] = {FIMDB_FILE_TABLE_NAME, FIMDB_FILE_TABLE_NAME};
+
+    IntegrityCheckResult_t after_mismatch = {0};
+    after_mismatch.status = INTEGRITY_CHECK_NOT_CHECKED;
+    after_mismatch.manager_not_ready = true;
+    after_mismatch.mismatch_unconfirmed = true;
+    snprintf(after_mismatch.failure_reason, sizeof(after_mismatch.failure_reason),
+             "Failed to communicate with the manager.");
+
+    IntegrityCheckResult_t timed_out = {0};
+    timed_out.status = INTEGRITY_CHECK_NOT_CHECKED;
+    snprintf(timed_out.failure_reason, sizeof(timed_out.failure_reason), "Timed out waiting for manager response.");
+
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_table_due_and_checked(handle, &after_mismatch);
+    expect_table_stamped();
+    expect_another_table_due_and_checked(handle, &timed_out);
+    expect_table_stamped();
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "Integrity check could not be performed for 2 table(s): " FIM_FILES_SYNC_INDEX
+                  " (Failed to communicate with the manager, after a checksum mismatch reported by the manager), "
+                  FIM_FILES_SYNC_INDEX " (Timed out waiting for manager response); they will be checked again in "
+                  "the next integrity_interval (24h).");
+
+    fim_recovery_run_integrity_checks(handle, tables, 2, &mock_directories, RUN_CHECKS_INTERVAL);
+}
+
+// A shutdown that makes the DataClean fail leaves the confirmed mismatch unstamped, so it is
+// recovered after the restart, and ends the pass.
+static void test_fim_recovery_run_integrity_checks_stop_during_data_clean_leaves_table_unstamped(void **state) {
+    (void) state;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+    char* tables[] = {FIMDB_FILE_TABLE_NAME, FIMDB_FILE_TABLE_NAME};
+
+    IntegrityCheckResult_t mismatch = {0};
+    mismatch.status = INTEGRITY_CHECK_MISMATCH;
+
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_table_due_and_checked(handle, &mismatch);
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Checksum mismatch confirmed for " FIM_FILES_SYNC_INDEX
+                  "; starting recovery (index cleanup and full resend).");
+    expect_recovery_until_data_clean(handle, false);
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Recovery of index '" FIM_FILES_SYNC_INDEX "' interrupted: module is stopping.");
+    // No stamp and no second table: either one would fail the case.
+
+    mock_fim_shutdown_after_calls = 1; // The pass starts; the DataClean failure finds the shutdown.
+    fim_recovery_run_integrity_checks(handle, tables, 2, &mock_directories, RUN_CHECKS_INTERVAL);
+    mock_fim_shutdown_after_calls = 0;
+    mock_fim_shutdown = false;
+}
+
+// A shutdown before the pass starts checks nothing and stamps nothing.
+static void test_fim_recovery_run_integrity_checks_shutdown_checks_nothing(void **state) {
+    (void) state;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+    char* tables[] = {FIMDB_FILE_TABLE_NAME};
+
+    mock_fim_shutdown = true;
+    fim_recovery_run_integrity_checks(handle, tables, 1, &mock_directories, RUN_CHECKS_INTERVAL);
+    mock_fim_shutdown = false;
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_fim_recovery_integrity_interval_has_elapsed_first_time),
@@ -899,6 +1166,14 @@ int main(void) {
         cmocka_unit_test(test_fim_resync_on_agent_id_change_failed_read_adopts_nothing),
         cmocka_unit_test(test_fim_resync_on_agent_id_change_continues_past_a_failed_table),
         cmocka_unit_test(test_fim_resync_on_agent_id_change_absent_marker_not_adopted_while_stopping),
+        cmocka_unit_test(test_fim_recovery_run_integrity_checks_unchecked_table_is_stamped_and_reported),
+        cmocka_unit_test(test_fim_recovery_run_integrity_checks_stop_during_check_leaves_table_unstamped),
+        cmocka_unit_test(test_fim_recovery_run_integrity_checks_refused_data_clean_stamps),
+        cmocka_unit_test(test_fim_recovery_run_integrity_checks_shutdown_checks_nothing),
+        cmocka_unit_test(test_fim_recovery_run_integrity_checks_valid_table_is_stamped_quietly),
+        cmocka_unit_test(test_fim_recovery_run_integrity_checks_recovered_mismatch_is_stamped),
+        cmocka_unit_test(test_fim_recovery_run_integrity_checks_unchecked_tables_share_one_warning),
+        cmocka_unit_test(test_fim_recovery_run_integrity_checks_stop_during_data_clean_leaves_table_unstamped),
         cmocka_unit_test(test_buildFileStatefulEvent_success),
 #ifdef WIN32
         cmocka_unit_test(test_buildRegistryKeyStatefulEvent_success),

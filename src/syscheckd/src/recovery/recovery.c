@@ -3,6 +3,7 @@
 #include <string.h>
 #include <time.h>
 #include <stdint.h>
+#include <inttypes.h>
 #include <cJSON.h>
 
 #include "debug_op.h"
@@ -23,6 +24,24 @@
 /* Recovery runs with the scan and realtime mutexes held, so each resync keeps the smaller
  * per-call block limit; the regular cycle sends whatever is left without them. */
 #define FIM_RECOVERY_MAX_BLOCKS_PER_SYNC 10
+
+/**
+ * @brief Returns the sync index a FIM table is stored in, or NULL when the table has none.
+ */
+static const char* fim_recovery_table_index(const char* table_name) {
+    if (strcmp(table_name, FIMDB_FILE_TABLE_NAME) == 0) {
+        return FIM_FILES_SYNC_INDEX;
+    }
+#ifdef WIN32
+    if (strcmp(table_name, FIMDB_REGISTRY_KEY_TABLENAME) == 0) {
+        return FIM_REGISTRY_KEYS_SYNC_INDEX;
+    }
+    if (strcmp(table_name, FIMDB_REGISTRY_VALUE_TABLENAME) == 0) {
+        return FIM_REGISTRY_VALUES_SYNC_INDEX;
+    }
+#endif
+    return NULL;
+}
 
 /**
  * @brief Build stateful event for a file from cJSON object
@@ -84,36 +103,26 @@ cJSON* buildRegistryValueStatefulEvent(const char* path, char* value, cJSON* val
 }
 #endif // WIN32
 
-bool fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHandle* handle, const OSList *directories_list){
+bool fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHandle* handle, const OSList *directories_list,
+                                           const char* retry_note){
     int increase_result = fim_db_increase_each_entry_version(table_name);
     if (increase_result == -1) {
-        merror("Failed to increase version for each entry in %s", table_name);
+        merror("Failed to increase version for each entry in %s; %s", table_name, retry_note);
         return false;
     }
     // Get all synced items from the table
     cJSON* items = fim_db_get_every_element(table_name, "WHERE sync=1");
     if (!items) {
-        merror("Failed to retrieve elements from table: %s", table_name);
+        merror("Failed to retrieve elements from table: %s; %s", table_name, retry_note);
         return false;
     }
 
     int item_count = cJSON_GetArraySize(items);
 
     // The sync index only depends on the table, not on any individual item.
-    const char* recovery_index = NULL;
-    if (strcmp(table_name, FIMDB_FILE_TABLE_NAME) == 0) {
-        recovery_index = FIM_FILES_SYNC_INDEX;
-    }
-#ifdef WIN32
-    else if (strcmp(table_name, FIMDB_REGISTRY_KEY_TABLENAME) == 0) {
-        recovery_index = FIM_REGISTRY_KEYS_SYNC_INDEX;
-    }
-    else if (strcmp(table_name, FIMDB_REGISTRY_VALUE_TABLENAME) == 0) {
-        recovery_index = FIM_REGISTRY_VALUES_SYNC_INDEX;
-    }
-#endif
-    else {
-        merror("Invalid table name: %s", table_name);
+    const char* recovery_index = fim_recovery_table_index(table_name);
+    if (!recovery_index) {
+        merror("Invalid table name: %s; %s", table_name, retry_note);
         cJSON_Delete(items);
         return false;
     }
@@ -124,10 +133,14 @@ bool fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
     // payload and could permanently drop whatever didn't fit in that one session).
     const char* clean_indices[] = { recovery_index };
     if (!asp_notify_data_clean(handle, clean_indices, 1)) {
-        // Warning, not error, like Syscollector's recovery resync: an agent reload landing
-        // mid-pass makes this fail too, and the caller tries again later.
-        mwarn("Failed to clear index '%s' before recovery resync for table %s; will retry later",
-              recovery_index, table_name);
+        if (fim_shutdown_process_on()) {
+            minfo("Recovery of index '%s' interrupted: module is stopping.", recovery_index);
+        } else {
+            // Warning, not error, like Syscollector's recovery resync: an agent reload landing
+            // mid-pass makes this fail too, and the caller tries again later.
+            mwarn("Failed to clear index '%s' before recovery resync for table %s; %s",
+                  recovery_index, table_name, retry_note);
+        }
         cJSON_Delete(items);
         return false;
     }
@@ -159,9 +172,9 @@ bool fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
 
         uint64_t document_version = (uint64_t)cJSON_GetNumberValue(version_obj);
 
-        // Calculate ID and index based on table type
+        // Calculate ID based on table type
         char* id_str = NULL;
-        const char* index = NULL;
+        const char* index = recovery_index;
 
 #ifdef WIN32
         int arch = 0;
@@ -169,7 +182,6 @@ bool fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
 #endif
         if (strcmp(table_name, FIMDB_FILE_TABLE_NAME) == 0) {
             id_str = strdup(path);
-            index = FIM_FILES_SYNC_INDEX;
         }
 #ifdef WIN32
         else if (strcmp(table_name, FIMDB_REGISTRY_KEY_TABLENAME) == 0) {
@@ -181,7 +193,6 @@ bool fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
             size_t id_len = snprintf(NULL, 0, "%d:%s", arch, path) + 1;
             os_calloc(id_len, sizeof(char), id_str);
             snprintf(id_str, id_len, "%d:%s", arch, path);
-            index = FIM_REGISTRY_KEYS_SYNC_INDEX;
         }
         else if (strcmp(table_name, FIMDB_REGISTRY_VALUE_TABLENAME) == 0) {
             cJSON* arch_obj = cJSON_GetObjectItem(item_copy, "architecture");
@@ -194,7 +205,6 @@ bool fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
             size_t id_len = snprintf(NULL, 0, "%s:%d:%s", path, arch, value) + 1;
             os_calloc(id_len, sizeof(char), id_str);
             snprintf(id_str, id_len, "%s:%d:%s", path, arch, value);
-            index = FIM_REGISTRY_VALUES_SYNC_INDEX;
         }
 #endif // WIN32
         else {
@@ -290,9 +300,18 @@ bool fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
     SyncModuleResult_t result = asp_sync_module_bounded(handle, MODE_DELTA, FIM_RECOVERY_MAX_BLOCKS_PER_SYNC);
 
     if (result.success) {
-        mdebug1("Recovery completed successfully");
+        minfo("Recovery of index '%s' completed.", recovery_index);
     } else {
-        mdebug1("Recovery synchronization failed, will retry later%s%s", result.failure_reason[0] != '\0' ? ": " : "", result.failure_reason);
+        // The rows are queued, so the ordinary cycle delivers them; nothing about this table
+        // has to be redone.
+        // Sync-protocol reasons are full sentences; drop the trailing period inside the parentheses.
+        int reason_len = (int)strlen(result.failure_reason);
+        if (reason_len > 0 && result.failure_reason[reason_len - 1] == '.') {
+            reason_len--;
+        }
+        minfo("Recovery of index '%s' did not finish sending%s%.*s%s; the queued rows will be delivered by the next "
+              "regular synchronization.", recovery_index, reason_len > 0 ? " (" : "", reason_len,
+              result.failure_reason, reason_len > 0 ? ")" : "");
     }
 
     // True from here on: the manager accepted the DataClean above and every row is queued, so
@@ -360,7 +379,8 @@ bool fim_resync_on_agent_id_change(AgentSyncProtocolHandle* handle, char** table
             return false;
         }
 
-        if (!fim_recovery_persist_table_and_resync(table_names[i], handle, directories_list)) {
+        if (!fim_recovery_persist_table_and_resync(table_names[i], handle, directories_list,
+                                                   "it will be retried on the next sync cycle")) {
             // Keep going, like Syscollector::checkAgentIdentity(): the tables that can be resent
             // should be, and abandoning the pass here would make every later one re-clear and
             // re-upload the tables that had already succeeded. On Windows this is three tables,
@@ -381,41 +401,34 @@ bool fim_resync_on_agent_id_change(AgentSyncProtocolHandle* handle, char** table
 
 // Excluding from coverage since this function is a simple wrapper around calculateTableChecksum and requiresFullSync
 // LCOV_EXCL_START
-bool fim_recovery_check_if_full_sync_required(char* table_name, AgentSyncProtocolHandle* handle){
+IntegrityCheckResult_t fim_recovery_check_if_full_sync_required(char* table_name, AgentSyncProtocolHandle* handle){
     mdebug1("Attempting to get checksum for %s table", table_name);
 
     char* final_checksum = fim_db_calculate_table_checksum(table_name);
     if (!final_checksum) {
         merror("Failed to calculate checksum for table: %s", table_name);
-        return false;
+
+        IntegrityCheckResult_t not_checked = {0};
+        not_checked.status = INTEGRITY_CHECK_NOT_CHECKED;
+        snprintf(not_checked.failure_reason, sizeof(not_checked.failure_reason), "Failed to calculate the local checksum.");
+        return not_checked;
     }
 
     mdebug1("Success! Final file table checksum is: %s", final_checksum);
 
-    // Determine index based on table name
-    const char* index = NULL;
-    if (strcmp(table_name, FIMDB_FILE_TABLE_NAME) == 0) {
-        index = FIM_FILES_SYNC_INDEX;
-    }
-#ifdef WIN32
-    else if (strcmp(table_name, FIMDB_REGISTRY_KEY_TABLENAME) == 0) {
-        index = FIM_REGISTRY_KEYS_SYNC_INDEX;
-    }
-    else if (strcmp(table_name, FIMDB_REGISTRY_VALUE_TABLENAME) == 0) {
-        index = FIM_REGISTRY_VALUES_SYNC_INDEX;
-    }
-#endif // WIN32
-
-    bool needs_full_sync = asp_requires_full_sync(handle, index, final_checksum);
+    IntegrityCheckResult_t result = asp_requires_full_sync(handle, fim_recovery_table_index(table_name), final_checksum);
     os_free(final_checksum);
 
-    if (needs_full_sync) {
+    if (result.status == INTEGRITY_CHECK_MISMATCH) {
         mdebug1("Checksum mismatch detected for table %s, full sync required", table_name);
-    } else {
+    } else if (result.status == INTEGRITY_CHECK_VALID) {
         mdebug1("Checksum valid for table %s, delta sync sufficient", table_name);
+    } else {
+        // Reported by fim_recovery_run_integrity_checks(), once per pass for every table left unchecked.
+        mdebug1("Checksum not verified for table %s: %s", table_name, result.failure_reason);
     }
 
-    return needs_full_sync;
+    return result;
 }
 // LCOV_EXCL_STOP
 
@@ -432,4 +445,109 @@ bool fim_recovery_integrity_interval_has_elapsed(char* table_name, int64_t integ
 
     int64_t new_sync_time = current_time - last_sync_time;
     return (new_sync_time >= integrity_interval);
+}
+
+/**
+ * @brief Writes integrity_interval in the largest whole unit that fits (86400 -> "24h").
+ */
+static void fim_recovery_format_interval(int64_t seconds, char* buffer, size_t size) {
+    if (seconds != 0 && seconds % 3600 == 0) {
+        snprintf(buffer, size, "%" PRId64 "h", seconds / 3600);
+    } else if (seconds != 0 && seconds % 60 == 0) {
+        snprintf(buffer, size, "%" PRId64 "m", seconds / 60);
+    } else {
+        snprintf(buffer, size, "%" PRId64 "s", seconds);
+    }
+}
+
+/**
+ * @brief Returns the sync index a FIM table is stored in, or the table name itself when it has none, so
+ *        the integrity-pass messages name what the manager and the Indexer call it, as Syscollector does.
+ */
+static const char* fim_recovery_sync_index(const char* table_name) {
+    const char* index = fim_recovery_table_index(table_name);
+    return index ? index : table_name;
+}
+
+/**
+ * @brief Appends "<index> (<reason>)" to the list of tables left unchecked. Sync-protocol reasons are
+ *        full sentences, so the trailing period is dropped to let them sit inside parentheses. When the
+ *        manager had reported a mismatch that the failed attempt could not confirm, the entry says so.
+ */
+static void fim_recovery_append_unchecked(char* list, size_t size, const char* index, const char* reason,
+                                          bool mismatch_unconfirmed) {
+    size_t used = strlen(list);
+    size_t reason_len = strlen(reason);
+
+    if (reason_len > 0 && reason[reason_len - 1] == '.') {
+        reason_len--;
+    }
+
+    snprintf(list + used, size - used, "%s%s (%.*s%s)", used > 0 ? ", " : "", index, (int)reason_len, reason,
+             mismatch_unconfirmed ? ", after a checksum mismatch reported by the manager" : "");
+}
+
+void fim_recovery_run_integrity_checks(AgentSyncProtocolHandle* handle, char** table_names, int table_count,
+                                       const OSList* directories_list, int64_t integrity_interval) {
+    char interval[32];
+    char retry_note[96];
+    char* unchecked = NULL;
+    int unchecked_count = 0;
+
+    fim_recovery_format_interval(integrity_interval, interval, sizeof(interval));
+    snprintf(retry_note, sizeof(retry_note), "it will be retried in the next integrity_interval (%s)", interval);
+    os_calloc(OS_MAXSTR, sizeof(char), unchecked);
+
+    for (int i = 0; i < table_count; i++) {
+        // A shutdown leaves every remaining table unstamped, so it is checked after the restart
+        // instead of being counted as checked without one.
+        if (fim_shutdown_process_on()) {
+            break;
+        }
+
+        if (!fim_recovery_integrity_interval_has_elapsed(table_names[i], integrity_interval)) {
+            continue;
+        }
+
+        mdebug1("Starting integrity validation process for %s", table_names[i]);
+        IntegrityCheckResult_t check = fim_recovery_check_if_full_sync_required(table_names[i], handle);
+
+        // fim_shutdown_process_on() too: the protocol is stopped after the shutdown flag is raised,
+        // so a check that failed in between does not carry the stopped flag.
+        if (check.status == INTEGRITY_CHECK_NOT_CHECKED && (check.stopped || fim_shutdown_process_on())) {
+            minfo("Integrity check for %s interrupted: module is stopping%s. It will be checked again after "
+                  "the restart.", fim_recovery_sync_index(table_names[i]),
+                  check.mismatch_unconfirmed ? "; a checksum mismatch reported by the manager was not confirmed" : "");
+            break;
+        }
+
+        if (check.status == INTEGRITY_CHECK_NOT_CHECKED) {
+            fim_recovery_append_unchecked(unchecked, OS_MAXSTR, fim_recovery_sync_index(table_names[i]),
+                                          check.failure_reason, check.mismatch_unconfirmed);
+            unchecked_count++;
+        } else if (check.status == INTEGRITY_CHECK_MISMATCH) {
+            minfo("Checksum mismatch confirmed for %s; starting recovery (index cleanup and full resend).",
+                  fim_recovery_sync_index(table_names[i]));
+
+            // A failure here is reported by fim_recovery_persist_table_and_resync() itself. Like any
+            // other failure of this pass, the table still counts as checked, so it is not retried
+            // until the next integrity_interval -- unless a shutdown cut it short: the mismatch is
+            // confirmed, so the table is left unstamped and checked again after the restart.
+            if (!fim_recovery_persist_table_and_resync(table_names[i], handle, directories_list, retry_note) &&
+                fim_shutdown_process_on()) {
+                break;
+            }
+        }
+
+        // Stamped whatever the outcome: a failed check or recovery is re-evaluated in the next
+        // integrity_interval, never in the next sync cycle.
+        fim_db_update_last_sync_time_value(table_names[i], (int64_t)time(NULL));
+    }
+
+    if (unchecked_count > 0) {
+        mwarn("Integrity check could not be performed for %d table(s): %s; they will be checked again in the next "
+              "integrity_interval (%s).", unchecked_count, unchecked, interval);
+    }
+
+    os_free(unchecked);
 }
