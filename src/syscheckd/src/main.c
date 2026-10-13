@@ -22,6 +22,7 @@
 #include "startup_gate_op.h"
 #ifdef __linux__
 #include "container_baseline_fim.h"
+#include "container_baseline_host_api.h"
 #endif
 
 #ifndef WIN32
@@ -498,11 +499,20 @@ int main(int argc, char **argv)
     // turning container file monitoring off should cost nothing, not subscribe and
     // then discard.
     if (!syscheck.disabled && syscheck.container_enabled) {
-        // Hand the container path the host functions it cannot link against:
-        // check_max_fps() lives in syscheckd_lib, which links libfimebpf, so
-        // the library takes it as a pointer instead of calling it. Must precede
-        // both the walk and the reconcile consumer, which share the budget.
-        fim_container_baseline_set_host_callbacks(check_max_fps);
+        // Hand the container path everything it borrows from this daemon.
+        // All of it lives in syscheckd_lib, which links libfimebpf, so the
+        // library takes pointers rather than calling directly -- otherwise it
+        // carries undefined symbols and nothing else can link it. Must precede
+        // both the walk and the event consumer, which share these.
+        const fim_container_host_api_t container_host_api = {
+            .config = &syscheck,
+            .rate_limit = check_max_fps,
+            .attributes_json = fim_attributes_json,
+            .calculate_dbsync_difference = fim_calculate_dbsync_difference,
+            .send_event = send_syscheck_msg,
+            .validate_and_persist = validate_and_persist_fim_event,
+        };
+        fim_container_baseline_set_host_api(&container_host_api);
 
         // Subscribe BEFORE walking (#37396 / #37532). The drain stages container
         // file events from here on, so a file changed while the walk is running
