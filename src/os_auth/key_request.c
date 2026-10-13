@@ -240,18 +240,6 @@ void* run_key_request_main(__attribute__((unused)) void *arg) {
     }
 
     while (running) {
-        if (config.timeout_sec || config.timeout_usec) {
-            if (OS_SetRecvTimeout(sock, config.timeout_sec, config.timeout_usec) < 0) {
-                static int reported = 0;
-
-                if (!reported) {
-                    int error = errno;
-                    merror("Could not set timeout to internal socket: %s (%d)", strerror(error), error);
-                    reported = 1;
-                }
-            }
-        }
-
         if (OS_RecvUnix(sock, OS_MAXSTR, buffer) > 0) {
             if(OSHash_Get_ex(request_hash, buffer)){
                 mdebug2("Request '%s' already being processed. Discarding request.", buffer);
