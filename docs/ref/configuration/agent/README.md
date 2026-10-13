@@ -96,11 +96,6 @@ runs `wazuh-modulesd -t` first and modulesd raises its limit before that check;
 `wazuh-logcollector` raises its limit only after its `-t` exit, so it logs the line once. An option
 above the hard limit never fails and never logs an error.
 
-The agent's configuration report, and logcollector's local `getconfig internal` reply, carry
-`logcollector.rlimit_nofile` as configured. The limit in
-force can be higher, because a daemon never lowers the soft limit it inherits, or lower, when the
-hard limit caps it; read it from `Max open files` in `/proc/<pid>/limits`.
-
 To go higher than the ceiling the unit declares, use a systemd drop-in rather than editing the
 unit, which a package upgrade replaces:
 
@@ -112,6 +107,13 @@ LimitNOFILE=131072
 
 For a SysV start, raise the limit with `ulimit -n` before the init script, and in a container set
 `ulimits.nofile`.
+
+The agent's configuration report and logcollector's local `getconfig internal` reply carry
+`logcollector.rlimit_nofile` as configured. The limit in force can be higher, because a daemon never
+lowers the soft limit it inherits, or lower, when the hard limit caps the raise (the warning above)
+or the system call that raises it fails (logged as an error). On Linux, read it from `Max open files` in `/proc/<pid>/limits`. When the limit
+in force leaves fewer than 100 descriptors above `logcollector.max_files`, logcollector logs a
+warning naming both values.
 
 Note for agents upgraded from a release before the unit declared `LimitNOFILE`: hosts whose systemd
 granted a higher hard limit (512K on EL8+, Fedora, Debian 10+ and Ubuntu 20.04+) now start with

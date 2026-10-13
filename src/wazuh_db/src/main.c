@@ -157,14 +157,9 @@ int main(int argc, char ** argv)
         nowDaemon();
     }
 
-    // Raise the soft file descriptor limit; the hard limit belongs to whoever started the manager
-    {
-        const long effective = w_raise_nofile_limit((long)nofile, "wazuh_db.rlimit_nofile");
-
-        if (effective >= 0) {
-            nofile = (rlim_t)effective;
-        }
-    }
+    // Raise the soft file descriptor limit; the hard limit belongs to whoever started the manager.
+    // nofile keeps the configured value; a lower limit in force is logged by w_raise_nofile_limit().
+    w_raise_nofile_limit((long)nofile, "wazuh_db.rlimit_nofile");
 
     // Set user and group
 

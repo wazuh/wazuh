@@ -32,7 +32,8 @@ int worker_pool;
 int merge_shared;
 size_t ctrl_msg_queue_size;
 int keyupdate_interval;
-rlim_t nofile;
+rlim_t nofile;          // remoted.rlimit_nofile as configured; what getconfig reports
+rlim_t nofile_effective; // Soft limit in force once HandleRemote() has raised it
 int sender_pool;
 int rto_sec;
 int rto_msec;
@@ -115,6 +116,7 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     ctrl_msg_queue_size = (size_t)getDefine_Int_default("remoted", "control_msg_queue_size", 4096, 0x1 << 20, 16384);
     keyupdate_interval = getDefine_Int_default("remoted", "keyupdate_interval", 1, 3600, 10);
     nofile = getDefine_Int_default("remoted", "rlimit_nofile", 1024, 1048576, 65536);
+    nofile_effective = nofile;
     sender_pool = getDefine_Int_default("remoted", "sender_pool", 1, 64, 8);
     request_pool = getDefine_Int_default("remoted", "request_pool", 1, 4096, 1024);
     request_timeout = getDefine_Int_default("remoted", "request_timeout", 1, 600, 10);
