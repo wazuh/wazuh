@@ -113,7 +113,7 @@ def generate_password() -> str:
 # Start a session and set the default security elements
 DB_FILE = os.path.join(SECURITY_PATH, "rbac.db")
 DB_FILE_TMP = f"{DB_FILE}.tmp"
-CURRENT_ORM_VERSION = 7
+CURRENT_ORM_VERSION = 8
 _new_columns = {}
 _engine = create_engine(f"sqlite:///{DB_FILE}", pool_size=10, echo=False)
 _Base = declarative_base()
