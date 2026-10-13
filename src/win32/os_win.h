@@ -28,6 +28,9 @@ typedef struct win_module_start_ctx {
 DWORD WINAPI skthread(LPVOID arg);
 DWORD WINAPI logcollector_thread(LPVOID arg);
 DWORD WINAPI win_module_thread(void *arg);
+
+/* Returns 1 if SYSTEM or Administrators own the service-restart mutex, 0 otherwise */
+int restart_mutex_owner_trusted(HANDLE mutex);
 #endif
 
 /* Install the WAZUH-HIDS agent service */

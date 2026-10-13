@@ -88,7 +88,12 @@ STATIC int run_service_restart(void)
     const DWORD restartMutexWaitMs = 60000;  // 60 seconds
 
     HANDLE restart_mutex = CreateMutex(NULL, FALSE, "Global\\WazuhAgentServiceRestart");
-    if (restart_mutex == NULL) {
+    if (restart_mutex != NULL && GetLastError() == ERROR_ALREADY_EXISTS && !restart_mutex_owner_trusted(restart_mutex)) {
+        /* Held by an unprivileged account: waiting on it would let that account block every restart. */
+        plain_mwarn("service-restart: the restart mutex is not owned by SYSTEM or Administrators; "
+                    "proceeding unsynchronized.");
+        CloseHandle(restart_mutex);
+    } else if (restart_mutex == NULL) {
         plain_merror("service-restart: CreateMutex failed (error %lu); proceeding unsynchronized.", GetLastError());
     } else {
         const DWORD restart_mutex_wait_result = WaitForSingleObject(restart_mutex, restartMutexWaitMs);

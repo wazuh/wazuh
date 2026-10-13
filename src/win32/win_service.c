@@ -20,6 +20,7 @@
 
 #ifdef WAZUH_UNIT_TESTING
 #include "unit_tests/wrappers/windows/winsvc_wrappers.h"
+#include "unit_tests/wrappers/windows/aclapi_wrappers.h"
 #endif
 
 /**************************************************************************************
@@ -165,6 +166,27 @@ int CheckServiceRunning()
     }
 
     return (rc);
+}
+
+/* Any user can create a name in Global\ first, so an existing restart mutex
+ * only counts as another restart in progress when SYSTEM or Administrators own
+ * it: a real restart runs as one of them, and nobody else can make either the
+ * owner of an object they create.
+ *
+ * Returns 1 if the owner is SYSTEM or Administrators, or 0 otherwise or if the
+ * owner cannot be read. */
+int restart_mutex_owner_trusted(HANDLE mutex)
+{
+    PSID owner = NULL;
+    PSECURITY_DESCRIPTOR sd = NULL;
+    int trusted = 0;
+
+    if (GetSecurityInfo(mutex, SE_KERNEL_OBJECT, OWNER_SECURITY_INFORMATION, &owner, NULL, NULL, NULL, &sd) == ERROR_SUCCESS) {
+        trusted = IsWellKnownSid(owner, WinLocalSystemSid) || IsWellKnownSid(owner, WinBuiltinAdministratorsSid);
+    }
+
+    LocalFree(sd);
+    return trusted;
 }
 
 /* Install the OSSEC-HIDS agent service */
