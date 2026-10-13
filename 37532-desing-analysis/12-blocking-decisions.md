@@ -1266,6 +1266,12 @@ byte-identical to the spike branch's copies. That line of §12.7 was wrong.
   one of the three things that make a scan `partial`. D17 has since answered that — a row cap sets
   `row_cap_hit`, which suppresses delete detection — so what still blocks the limits is where
   per-dimension enforcement lives, not what a cap means. See [14 WP4](14-spike-integration-plan.md).
+  **Resolved 2026-10-13 ([23](23-nfr3-container-limits.md)):** enforcement lives per container, in
+  the owning submodule's own namespace, with the dimension set derived from
+  `CONTAINER_BASELINE_TABLES`. `syscollector_containers_limits_t` no longer exists. The deferral's
+  framing also turned out to be incomplete: a **document** limit gates `sync` and leaves the row
+  stored, so it never made a scan partial in the first place — only the **row** cap added above
+  dbsync does, and that is what carries a refusal into `row_cap_hit`.
 
 ### The config parser's tests, and what running them changed (`998fd0ce5a`)
 
