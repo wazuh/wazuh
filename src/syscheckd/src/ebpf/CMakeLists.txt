@@ -30,7 +30,12 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${LIB_DIR})
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${LIB_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-add_library(fimebpf SHARED src/ebpf_whodata.cpp src/container_baseline_fim.cpp src/container_event_drain.cpp src/container_baseline_fim_bridge.c ../persist_syscheck_msg.c)
+# ../persist_syscheck_msg.c is deliberately NOT here. Nothing in this library
+# calls it, it is already compiled into syscheckd_lib, and carrying a second
+# copy meant two definitions of the same symbol -- one exported by this .so
+# and one in the daemon -- plus an undefined reference to the daemon's own
+# syscheck configuration.
+add_library(fimebpf SHARED src/ebpf_whodata.cpp src/container_baseline_fim.cpp src/container_event_drain.cpp src/container_baseline_fim_bridge.c)
 
 # Link against wazuh, the container-baseline module (#37532) and the eBPF
 # Module's loader (#37396). rt_engine is a static library built
@@ -45,7 +50,7 @@ add_library(fimebpf SHARED src/ebpf_whodata.cpp src/container_baseline_fim.cpp s
 # left with undefined symbols that only resolve once it is linked INTO the
 # daemon -- which is why anything else linking it, such as the whodata test,
 # could not.
-target_link_libraries(fimebpf PRIVATE wazuh container_baseline rt_engine fimdb agent_sync_protocol)
+target_link_libraries(fimebpf PRIVATE wazuh container_baseline rt_engine fimdb)
 
 # Set additional compile flags for the loader (if needed)
 target_compile_options(fimebpf PRIVATE -Wall -Wextra)
