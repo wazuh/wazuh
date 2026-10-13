@@ -327,7 +327,7 @@ class BaselineDriver {
             // while the table held 91,420 -- the shortfall appeared in no
             // counter and no log line (23.4). A total that cannot be wrong in
             // that direction is the whole point of reporting one.
-            if (m_txn->syncRow(row.dump(), syscheck.container_file_entry_limit)) {
+            if (m_txn->syncRow(row.dump(), fim_container_baseline_row_limit())) {
                 ++m_rows;
             } else {
                 ++m_refused;
@@ -369,8 +369,8 @@ class BaselineDriver {
                         id.c_str(),
                         m_txn ? m_txn->rowsSynced() : 0,
                         refused,
-                        syscheck.container_file_entry_limit,
-                        syscheck.file_entry_limit);
+                        fim_container_baseline_row_limit(),
+                        fim_container_baseline_node_row_limit());
             }
 
             if (partial) {
