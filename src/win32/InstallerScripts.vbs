@@ -740,6 +740,13 @@ Public Function SetWazuhPermissions()
         remAuthenticatedUsersPermsReenroll = "icacls """ & home_dir & "reenroll.secret" & """ /remove *S-1-5-11 /q"
         WshShell.run remAuthenticatedUsersPermsReenroll, 0, True
 
+        ' Uninstall keeps client.keys, ossec.conf, local_internal_options.conf and installer.log
+        ' as *.save (RemoveAllScript.vbs), and a reinstall into the same folder gives them the
+        ' blanket Authenticated Users:RX above. client.keys.save still holds the agent key, so
+        ' every kept copy gets client.keys's treatment.
+        remAuthenticatedUsersPermsSave = "icacls """ & home_dir & "*.save" & """ /remove *S-1-5-11 /q"
+        WshShell.run remAuthenticatedUsersPermsSave, 0, True
+
         ' Remove the Authenticated Users group from the tmp directory to avoid
         ' inherited permissions on client.keys and ossec.conf when using win32ui.
         remAuthenticatedUsersPermsTmpDir = "icacls """ & home_dir & "tmp" & """ /remove:g *S-1-5-11 /q"
@@ -757,6 +764,30 @@ Public Function SetWazuhPermissions()
         ' file it replaces.
         remAuthenticatedUsersPermsSharedDir = "icacls """ & home_dir & "shared" & """ /remove:g *S-1-5-11 /t /c /q"
         WshShell.run remAuthenticatedUsersPermsSharedDir, 0, True
+
+        ' The agent's own data gets the same treatment as shared: queue holds the FIM report_changes
+        ' copies of monitored files and every module database, logs the rotated ossec.log, rids and
+        ' bookmarks the agentd and eventchannel state. Nothing unprivileged reads them (win32ui
+        ' requires elevation), and what the agent creates below them later inherits only the
+        ' Administrators and SYSTEM entries.
+        remAuthenticatedUsersPermsQueueDir = "icacls """ & home_dir & "queue" & """ /remove:g *S-1-5-11 /t /c /q"
+        WshShell.run remAuthenticatedUsersPermsQueueDir, 0, True
+
+        remAuthenticatedUsersPermsLogsDir = "icacls """ & home_dir & "logs" & """ /remove:g *S-1-5-11 /t /c /q"
+        WshShell.run remAuthenticatedUsersPermsLogsDir, 0, True
+
+        remAuthenticatedUsersPermsRidsDir = "icacls """ & home_dir & "rids" & """ /remove:g *S-1-5-11 /t /c /q"
+        WshShell.run remAuthenticatedUsersPermsRidsDir, 0, True
+
+        remAuthenticatedUsersPermsBookmarksDir = "icacls """ & home_dir & "bookmarks" & """ /remove:g *S-1-5-11 /t /c /q"
+        WshShell.run remAuthenticatedUsersPermsBookmarksDir, 0, True
+
+        ' The live log sits in the root, so on an upgrade it already exists and gets the grants above.
+        remAuthenticatedUsersPermsLog = "icacls """ & home_dir & "ossec.log" & """ /remove *S-1-5-11 /q"
+        WshShell.run remAuthenticatedUsersPermsLog, 0, True
+
+        remAuthenticatedUsersPermsJsonLog = "icacls """ & home_dir & "ossec.json" & """ /remove *S-1-5-11 /q"
+        WshShell.run remAuthenticatedUsersPermsJsonLog, 0, True
 
     End If
 End Function
