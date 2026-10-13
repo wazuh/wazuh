@@ -409,7 +409,7 @@ namespace Utils
                     // Otherwise, the entry name is the base directory, followed by a '\', followed by the entry.
                     const auto entryName { baseDir.empty() ? entry : R"(\)" + entry };
 
-                    // A key literally named with a wildcard would rebuild the same pattern and recurse forever.
+                    // If the entry name matches the pattern, then expand the path.
                     if (std::string::npos == entry.find_first_of("*?") && Utils::patternMatch(entryName, pattern))
                     {
                         // If the next directory position is npos, then there is no next directory.

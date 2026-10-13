@@ -440,7 +440,6 @@ namespace chrome
 
 #ifdef _WIN32
 
-                // Preferences is user-writable; probing a network path as SYSTEM leaks the machine credentials.
                 if (!insideProfile && !Utils::isLocalFixedPath(extensionPath))
                 {
                     continue;
