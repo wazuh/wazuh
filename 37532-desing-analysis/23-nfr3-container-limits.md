@@ -302,7 +302,40 @@ until someone re-measures deliberately.
 
 ---
 
-## 23.8 What this implies for the decision
+## 23.8 The shipped defaults (WP6)
+
+| Knob | Default | Scope | Basis |
+| --- | --- | --- | --- |
+| `fim.file_limit` | 30000 | host, documents | unchanged |
+| `fim.container_file_limit` | **30000** | **per container**, documents | team's figure; matches the host |
+| `syscollector.container_<dim>_limit` x11 | **30000** | **per container**, documents | team's figure; matches the host |
+| `syscheck.file_entry_limit` | **300000** (was 100000) | whole `file_entry` table | 23.4 and 23.6 |
+| `syscheck.container_file_entry_limit` | **30000** | **per container**, rows stored | mirrors the document budget |
+
+**What the document figures are and are not.** 23.2 measured 96-133 inventory rows per container
+across mixed images, so 30,000 is roughly 200x a realistic container. It is a blast-radius guard
+against one pathological container, not a working ceiling. Container FIM is the one dimension where
+it can bind: 23.2 measured 2,005 file rows for a container monitoring 2,000 files.
+
+**The node budget is the number that changed for everyone.** Raising `file_entry_limit` from the
+host-era 100,000 to 300,000 is the only default here that affects an agent running **no containers at
+all**: it is a ceiling, so such an agent pays nothing for it, but its "database is N% full" warnings
+now fire later than they used to.
+
+It was raised because the workload it has to cover changed, and the old value was measured failing
+against it (23.4): 50 containers filled it exactly, four ended with no rows, and walk order decided
+which four. The reference node of 100 containers is ~200,500 container rows plus the host's own;
+300,000 covers that with headroom and is the value validated end to end in 23.6. At the measured
+~435 bytes/row it bounds the database at roughly 130 MB.
+
+**Why 30,000 per container under a 300,000 node budget is coherent.** Ten containers at their
+ceiling reach the node budget, so the node ceiling is what bounds the agent and the per-container one
+bounds a single container's blast radius. The reverse arrangement -- a 30,000 per-container cap under
+a 100,000 node budget -- would have been a knob that could never bind first.
+
+---
+
+## 23.9 What this implies for the decision
 
 1. **Two levels are required, not one.** One container produced 25% of the node's inventory (23.3), and
    walk order decided which containers were monitored at all (23.4). A node-wide budget bounds the
