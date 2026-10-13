@@ -280,6 +280,9 @@ missing on that node — the password key is simply not involved.
 
 > Mutual TLS is independent of both. If the listener requires a client certificate *and*
 > `use_password` is on, both apply: they are two checks on the same connection, not a choice.
+> A token does not replace the client certificate: the agent presents its `<agent><ssl>`
+> certificate and key on the token bootstrap's `GET /cacerts` and `POST /enroll` as on every other
+> request.
 
 ### What remoted can refuse on its own
 

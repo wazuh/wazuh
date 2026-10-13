@@ -713,7 +713,9 @@ static void token_report_identity(const hc_enroll_result_t *result,
  * and the line in the log cannot drift apart. NULL-safe in @p report: agentd passes none.
  */
 STATIC void token_report_fail(w_token_enroll_report_t *report, const char *fmt, ...) {
-    char text[256];
+    /* Sized for the log line, which carries libcurl's whole error text; the report's copy is
+     * truncated to its own field. */
+    char text[OS_SIZE_1024];
     va_list args;
 
     va_start(args, fmt);
@@ -725,6 +727,119 @@ STATIC void token_report_fail(w_token_enroll_report_t *report, const char *fmt, 
     if (report != NULL) {
         strncpy(report->detail, text, sizeof(report->detail) - 1);
     }
+}
+
+/**
+ * @brief Refuses a client identity the module would reject before any request leaves.
+ *
+ * The module checks the pair itself, but that refusal comes back as a transport failure with no
+ * HTTP status, which the bootstrap reports as an unreachable manager and retries forever. A local
+ * configuration error cannot heal by retrying, so it is named here and reported as permanent.
+ * Only a missing half or a path that is not a file is caught: a file that exists but does not
+ * hold a usable certificate or key still fails at the handshake.
+ *
+ * An empty element counts as not configured, as it does for the module (ModuleConfig).
+ */
+static bool token_client_identity_usable(w_token_enroll_report_t *report) {
+    const char *cert = (agt != NULL) ? agt->ssl.certificate : NULL;
+    const char *key = (agt != NULL) ? agt->ssl.key : NULL;
+
+    if (cert != NULL && cert[0] == '\0') {
+        cert = NULL;
+    }
+    if (key != NULL && key[0] == '\0') {
+        key = NULL;
+    }
+
+    if (cert == NULL && key == NULL) {
+        return true;
+    }
+
+    if (cert == NULL || key == NULL || IsFile(cert) != 0 || IsFile(key) != 0) {
+        token_report_fail(report, "The <agent><ssl> client certificate and key must be set together "
+                          "and name existing files (certificate: '%s', key: '%s').",
+                          cert != NULL ? cert : "", key != NULL ? key : "");
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * @brief Copies the agent's own TLS identity (<agent><ssl> certificate, key and ciphers) into a
+ *        bootstrap request's configuration.
+ *
+ * Only the identity: how the manager is verified stays the token's call (pin or embedded CA),
+ * never the configured mode. A manager with remote.https verification_mode 'certificate' or
+ * 'full' rejects any handshake without a client certificate, /cacerts and /enroll included,
+ * exactly like it does for the regular transport (bridge_build_transport_config()).
+ */
+static void token_apply_client_identity(hc_config_t *config) {
+    if (agt == NULL) {
+        return;
+    }
+    if (agt->ssl.certificate) {
+        strncpy(config->client_cert, agt->ssl.certificate, sizeof(config->client_cert) - 1);
+    }
+    if (agt->ssl.key) {
+        strncpy(config->client_key, agt->ssl.key, sizeof(config->client_key) - 1);
+    }
+    if (agt->ssl.ciphers) {
+        strncpy(config->ciphers, agt->ssl.ciphers, sizeof(config->ciphers) - 1);
+    }
+}
+
+/**
+ * @brief Whether a request that got no HTTP status failed because the manager refused the TLS
+ *        handshake over the agent's client certificate, and which alert it sent.
+ *
+ * The alert arrives as libcurl's error text (OpenSSL's reason string, the same on every platform
+ * the agent bundles OpenSSL on), with no HTTP status, so without this it reads as an unreachable
+ * manager. Only the certificate-related alerts count: they mean the manager was reached and
+ * refused this agent's identity, which retrying cannot change. Any other alert, or no alert at
+ * all, keeps its existing classification.
+ *
+ * @param transport_error The request's transport error text.
+ * @param reason Receives the alert as OpenSSL names it, e.g. "tlsv13 alert certificate required".
+ * @param size Size of @p reason.
+ */
+STATIC bool token_tls_rejection(const char *transport_error, char *reason, size_t size) {
+    static const char *const alerts[] = {
+        "alert certificate required", "alert unknown ca", "alert bad certificate",
+        "alert certificate expired", "alert certificate revoked", "alert certificate unknown",
+        "alert unsupported certificate", "alert access denied",
+    };
+    const char *match = NULL;
+    const char *start;
+    size_t len;
+
+    if (transport_error == NULL || reason == NULL || size == 0) {
+        return false;
+    }
+
+    for (size_t i = 0; i < sizeof(alerts) / sizeof(alerts[0]) && match == NULL; i++) {
+        match = strstr(transport_error, alerts[i]);
+    }
+
+    if (match == NULL) {
+        return false;
+    }
+
+    /* Back to the protocol prefix ("tlsv13 ", "sslv3 "), which OpenSSL puts after the last ':'. */
+    start = match;
+    while (start > transport_error && start[-1] != ':') {
+        start--;
+    }
+
+    len = strcspn(start, ",");
+    if (len >= size) {
+        len = size - 1;
+    }
+
+    memcpy(reason, start, len);
+    reason[len] = '\0';
+
+    return true;
 }
 
 w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
@@ -806,11 +921,19 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
         char *pin_b64 = NULL;
         bool fetched;
 
+        /* Checked per request rather than once up front: --certs-only with an embedded CA sends
+         * nothing, so an identity it never presents must not stop it. */
+        if (!token_client_identity_usable(report)) {
+            w_etoken_free(&token);
+            return W_TOKEN_ENROLL_ERR_REQUEST;
+        }
+
         memset(&fetch_config, 0, sizeof(fetch_config));
         strncpy(fetch_config.server_host, host, sizeof(fetch_config.server_host) - 1);
         fetch_config.server_port = (uint16_t)port;
         fetch_config.server_scope_id = scope_id;
         strncpy(fetch_config.server_endpoint, endpoint, sizeof(fetch_config.server_endpoint) - 1);
+        token_apply_client_identity(&fetch_config);
 
         memset(&fetch_request, 0, sizeof(fetch_request));
         fetch_request.log = mtLoggingFunctionsWrapper;
@@ -827,8 +950,15 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
              * it has no CA to serve, provisioned or not, and repeating the request cannot change
              * that. */
             bool fetch_transient;
+            char tls_alert[96];
 
-            if (fetch_result.http_code == 0) {
+            if (fetch_result.http_code == 0
+                    && token_tls_rejection(fetch_result.transport_error, tls_alert, sizeof(tls_alert))) {
+                fetch_transient = false;
+                token_report_fail(report, "/cacerts tls_rejected -- the manager refused the TLS handshake "
+                       "(%s): check the <agent><ssl> certificate and key against its "
+                       "remote.https verification_mode.", tls_alert);
+            } else if (fetch_result.http_code == 0) {
                 fetch_transient = true;
                 token_report_fail(report, "/cacerts adr_unreachable -- could not reach the "
                        "manager to fetch the certificate authority%s%s.",
@@ -1010,6 +1140,13 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
         return W_TOKEN_ENROLL_OK;
     }
 
+    if (!token_client_identity_usable(report)) {
+        unlink(anchor_file.name);
+        os_free(anchor_file.name);
+        w_etoken_free(&token);
+        return W_TOKEN_ENROLL_ERR_REQUEST;
+    }
+
     if (w_enrollment_build_request(&built_request) != 0) {
         /* w_enrollment_build_request() already logged the specific reason. */
         unlink(anchor_file.name);
@@ -1025,6 +1162,7 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
     strncpy(enroll_config.server_endpoint, endpoint, sizeof(enroll_config.server_endpoint) - 1);
     enroll_config.verify_mode = HC_VERIFY_FULL;
     strncpy(enroll_config.ca_path, anchor_file.name, sizeof(enroll_config.ca_path) - 1);
+    token_apply_client_identity(&enroll_config);
 
     memset(&enroll_request, 0, sizeof(enroll_request));
     strncpy(enroll_request.body_json, built_request.body_json, sizeof(enroll_request.body_json) - 1);
@@ -1100,13 +1238,27 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
     }
 
     if (!hc_enroll(&enroll_config, &enroll_request, &enroll_result) || enroll_result.http_code == 0) {
-        merror("The verified enrollment request could not be sent%s%s.",
-               enroll_result.transport_error[0] != '\0' ? ": " : "",
-               enroll_result.transport_error[0] != '\0' ? enroll_result.transport_error : "");
+        char tls_alert[96];
+        const bool tls_rejected = (enroll_result.http_code == 0
+                && token_tls_rejection(enroll_result.transport_error, tls_alert, sizeof(tls_alert)));
+
+        /* Reported, not only logged: wazuh-agent-auth silences the log's stderr echo, so the
+         * operator would otherwise see the class and no cause. */
+        if (tls_rejected) {
+            token_report_fail(report, "/enroll tls_rejected -- the manager refused the TLS handshake "
+                              "(%s): check the <agent><ssl> certificate and key against its "
+                              "remote.https verification_mode.", tls_alert);
+        } else {
+            token_report_fail(report, "The verified enrollment request could not be sent%s%s.",
+                              enroll_result.transport_error[0] != '\0' ? ": " : "",
+                              enroll_result.transport_error[0] != '\0' ? enroll_result.transport_error : "");
+        }
 
         if (report != NULL) {
-            /* Nothing answered, or the manager answered with its own trouble. Either may clear. */
-            report->transient = (enroll_result.http_code == 0 || enroll_result.http_code >= 500);
+            /* Nothing answered, or the manager answered with its own trouble. Either may clear.
+             * A refused client certificate does not. */
+            report->transient = !tls_rejected
+                                && (enroll_result.http_code == 0 || enroll_result.http_code >= 500);
         }
 
         w_enroll_request_destroy(&built_request);
