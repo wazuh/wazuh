@@ -304,7 +304,24 @@ STATIC void wm_github_execute_scan(wm_github *github_config, int initial_scan) {
                     if (response) {
                         if (response->max_size_reached) {
                             mtdebug1(WM_GITHUB_LOGTAG, "Libcurl error, reached maximum response size.");
-                            scan_finished = 1;
+                            // Skip only this page: the rest of the window is still collected, and
+                            // retrying would fail the same way on every scan. The headers arrive in
+                            // full before the body, so the next page link is still available.
+                            mtwarn(WM_GITHUB_LOGTAG, "Skipped a page of audit events of organization '%s' and event type '%s' between '%s' and '%s': "
+                                "it is larger than curl_max_size (%ld bytes).", current->org_name, event_types[event_types_it],
+                                last_scan_time_str, new_scan_time_str, (long)github_config->curl_max_size);
+
+                            next_page = wm_read_http_header_element(response->header, GITHUB_NEXT_PAGE_REGEX);
+                            if ((next_page == NULL) || (strlen(next_page) >= OS_SIZE_8192)) {
+                                scan_finished = 1;
+                            } else if (!wm_url_is_allowed(next_page, GITHUB_API_HOST)) {
+                                mtwarn(WM_GITHUB_LOGTAG, "Ignoring next page URL out of '%s'.", GITHUB_API_HOST);
+                                scan_finished = 1;
+                                fail = 1;
+                            } else {
+                                snprintf(url, sizeof(url), "%s", next_page);
+                            }
+                            os_free(next_page);
                         } else if (response->status_code == 200) {
                             // Load body to json and sent as localfile
                             cJSON *array_logs_json = NULL;

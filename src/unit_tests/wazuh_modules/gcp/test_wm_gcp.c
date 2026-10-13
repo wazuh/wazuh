@@ -380,7 +380,44 @@ static void test_wm_gcp_pubsub_run_error_running_command(void **state)  {
     will_return(__wrap_wm_exec, 1);
 
     expect_string(__wrap__mterror, tag, WM_GCP_PUBSUB_LOGTAG);
-    expect_string(__wrap__mterror, formatted_msg, "Internal error. Exiting...");
+    expect_string(__wrap__mterror, formatted_msg, "Internal error running the command.");
+
+    wm_gcp_pubsub_run(gcp_config);
+}
+
+static void test_wm_gcp_pubsub_run_cannot_execute(void **state)  {
+    wm_gcp_pubsub *gcp_config = *state;
+
+    snprintf(gcp_config->project_id, OS_SIZE_1024, "wazuh-gcp-test");
+    snprintf(gcp_config->subscription_name, OS_SIZE_1024, "wazuh-subscription-test");
+    snprintf(gcp_config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
+
+    gcp_config->max_messages = 10;
+    gcp_config->num_threads = 2;
+
+    expect_string(__wrap__mtdebug2, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "Create argument list");
+    expect_string(__wrap__mtdebug1, tag, WM_GCP_PUBSUB_LOGTAG);
+    will_return(__wrap_isDebug, 1);
+    will_return(__wrap_isDebug, 1);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
+        "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2 --log_level 1");
+
+    expect_string(__wrap_wm_exec, command,
+        "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2 --log_level 1");
+    expect_value(__wrap_wm_exec, secs, 0);
+    expect_value(__wrap_wm_exec, add_path, NULL);
+
+    // wm_exec() leaves the output untouched when the command cannot be executed
+    will_return(__wrap_wm_exec, NULL);
+    will_return(__wrap_wm_exec, EXECVE_ERROR);
+    will_return(__wrap_wm_exec, -1);
+
+    expect_string(__wrap__mterror, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "Could not execute 'wodles/gcloud/gcloud' (exit code 127). "
+                  "Check that it and the python3 interpreter it runs with are installed.");
 
     wm_gcp_pubsub_run(gcp_config);
 }
@@ -1777,7 +1814,7 @@ static void test_wm_gcp_bucket_run_error_running_command(void **state)  {
     will_return(__wrap_wm_exec, 1);
 
     expect_string(__wrap__mterror, tag, WM_GCP_BUCKET_LOGTAG);
-    expect_string(__wrap__mterror, formatted_msg, "Internal error. Exiting...");
+    expect_string(__wrap__mterror, formatted_msg, "Internal error running the command.");
 
     wm_gcp_bucket_run(cur_bucket);
 }
@@ -2900,6 +2937,7 @@ static void test_wm_gcp_bucket_main_sleep_then_run(void **state) {
 int main(void) {
     const struct CMUnitTest tests[] = {
         /* wm_gcp_pubsub_run */
+        cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_run_cannot_execute, setup_group_pubsub, teardown_group_pubsub),
         cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_run_error_running_command, setup_group_pubsub, teardown_group_pubsub),
         cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_run_unknown_error, setup_group_pubsub, teardown_group_pubsub),
         cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_run_unknown_error_no_description, setup_group_pubsub, teardown_group_pubsub),

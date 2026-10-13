@@ -59,7 +59,8 @@ daemon at start with `(2302): Invalid definition for <name>: '<value>'.`
 | `wazuh_modules.rlimit_nofile` | `8192` | `8192`-`1048576` | Soft file descriptor limit of `wazuh-modulesd`, see [File descriptor limits](#file-descriptor-limits) |
 | `wazuh_modules.max_eps` | `100` | `1`-`1000` | Events per second sent by Command, AWS, MS Graph and Agent Upgrade |
 | `wazuh_modules.task_nice` | `10` | `-20`-`19` | Nice value of the external programs modules launch (Command, AWS, Azure, GCP, SCA policy commands, the Agent Upgrade installer) |
-| `wazuh_modules.kill_timeout` | `10` | `0`-`3600` | Seconds a module's child process (the programs above, the Docker listener) gets to exit at shutdown before it is killed |
+| `wazuh_modules.kill_timeout` | `10` | `0`-`3600` | Seconds a module's child process (the programs above, the Docker listener) gets to exit, at shutdown or after its command times out, before it is killed |
+| `wazuh_modules.socket_timeout` | `1` | `1`-`60` | Seconds a local client of the `wazuh-modulesd` request socket (`queue/sockets/wmodules`) has to send its request and to read the reply before the connection is dropped; not used on Windows |
 | `wazuh.thread_stack_size` | `8192` | `2048`-`65536` | Stack size, in KiB, of the threads the daemons start through the shared thread helper |
 
 `wazuh_modules.rlimit_nofile` cannot go below `8192`: a lower value is rejected at start with

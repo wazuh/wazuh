@@ -36,7 +36,8 @@ typedef enum _command_error_codes {
     ERROR_CLEAN_DIRECTORY,
     ERROR_UNMERGE,
     ERROR_CHMOD,
-    ERROR_EXEC
+    ERROR_EXEC,
+    ERROR_EXEC_TIMEOUT
 } command_error_codes;
 
 STATIC const char * error_messages[] = {
@@ -50,7 +51,8 @@ STATIC const char * error_messages[] = {
     [ERROR_CLEAN_DIRECTORY] = "Could not clean up upgrade directory",
     [ERROR_UNMERGE] = "Error unmerging file",
     [ERROR_CHMOD] = "Could not chmod",
-    [ERROR_EXEC] = "Error executing command"
+    [ERROR_EXEC] = "Error executing command",
+    [ERROR_EXEC_TIMEOUT] = "Timeout executing command"
 };
 
 // Variable used to allow new upgrades after confirming the result of the previous upgrade
@@ -134,7 +136,10 @@ STATIC char * wm_agent_upgrade_com_upgrade(const cJSON* json_object) {
     const cJSON *package_obj = cJSON_GetObjectItem(json_object, "file");
     const cJSON *installer_obj = cJSON_GetObjectItem(json_object, "installer");
     int status = 0;
-    char *out;
+    // wm_exec() only sets the output on a non-negative return, so it must start as NULL
+    // for the os_free() below to be a no-op on the failure paths.
+    char *out = NULL;
+    int exec_result;
 
     int req_timeout = getDefine_Int("execd", "request_timeout", 1, 3600);
 
@@ -180,14 +185,20 @@ STATIC char * wm_agent_upgrade_com_upgrade(const cJSON* json_object) {
     }
 #endif
 
-    if (wm_exec(installer_j, &out, &status, req_timeout, NULL) < 0) {
+    exec_result = wm_exec(installer_j, &out, &status, req_timeout, NULL);
+    os_free(out);
+
+    if (exec_result < 0) {
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_COMMAND_ERROR, "upgrade", installer_j);
-        os_free(out);
         return wm_agent_upgrade_command_ack(ERROR_EXEC, error_messages[ERROR_EXEC]);
+    } else if (exec_result == WM_ERROR_TIMEOUT) {
+        // The installer only stages the upgrade in the background and returns at once, so not
+        // returning within the request timeout means it did not run as expected.
+        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_COMMAND_TIMEOUT, "upgrade", installer_j, req_timeout);
+        return wm_agent_upgrade_command_ack(ERROR_EXEC_TIMEOUT, error_messages[ERROR_EXEC_TIMEOUT]);
     } else {
         char status_str[5];
         sprintf(status_str, "%d", status);
-        os_free(out);
         return wm_agent_upgrade_command_ack(ERROR_OK, status_str);
     }
 }

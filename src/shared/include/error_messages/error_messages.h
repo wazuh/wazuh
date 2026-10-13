@@ -487,6 +487,7 @@
 #define WM_UPGRADE_UNMERGING_FILE_ERROR             "(8133): At %s: Error unmerging file: '%s'"
 #define WM_UPGRADE_CHMOD_ERROR                      "(8134): At %s: Could not chmod '%s'"
 #define WM_UPGRADE_COMMAND_ERROR                    "(8135): At %s: Error executing command [%s]"
+#define WM_UPGRADE_COMMAND_TIMEOUT                  "(8142): At %s: Command [%s] did not finish within %d seconds"
 #define WM_UPGRADE_ERASE_FILE_ERROR                 "(8136): At %s: Could not erase file '%s'"
 #define WM_UPGRADE_TOO_LONG_TEMP_FILE               "(8137): At %s: Too long temp file."
 #define WM_UPGRADE_COMPRESSED_FILE_ERROR            "(8138): At %s: Could not create temporary compressed file."

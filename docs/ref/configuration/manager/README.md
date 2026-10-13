@@ -121,6 +121,7 @@ below, and a value outside the range stops the daemon at start with
 | `wazuh_modules.max_eps` | `100` | `1`-`1000` | Events per second of the agent-side modules; read and range-checked, but no manager module paces on it |
 | `wazuh_modules.task_nice` | `10` | `-20`-`19` | Nice value of the external programs a module launches; no manager module launches one |
 | `wazuh_modules.kill_timeout` | `10` | `0`-`3600` | Seconds a module's child process gets to exit at shutdown before it is killed; no manager module starts one |
+| `wazuh_modules.socket_timeout` | `1` | `1`-`60` | Seconds a local client of the `wazuh-manager-modulesd` request socket has to send its request and to read the reply before the connection is dropped |
 | `wazuh.thread_stack_size` | `8192` | `2048`-`65536` | Stack size, in KiB, of the threads `wazuh-manager-remoted` and `wazuh-manager-modulesd` start; read at each thread creation |
 
 ---

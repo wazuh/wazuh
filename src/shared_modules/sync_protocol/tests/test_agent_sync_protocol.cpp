@@ -91,11 +91,9 @@ class AgentSyncProtocolTest : public ::testing::Test
         }
 
         /// Builds the wire format https_client_bridge.c sends for a /stateful outcome:
-        /// "HCRESULT:<session>:<http_code>:<body>". forSession=0 skips the protocol's
-        /// session-correlation check (matching how these tests never cared about it
-        /// before the HTTP-result contract existed).
-        static std::vector<uint8_t> buildHcResult(int httpCode, const std::string& body = "{}",
-                                                  uint64_t forSession = 0)
+        /// "HCRESULT:<session>:<http_code>:<body>".
+        static std::vector<uint8_t> buildHcResult(int httpCode, const std::string& body,
+                                                  uint64_t forSession)
         {
             const std::string text = "HCRESULT:" + std::to_string(forSession) + ":" +
                                      std::to_string(httpCode) + ":" + body;
@@ -103,9 +101,12 @@ class AgentSyncProtocolTest : public ::testing::Test
         }
 
         /// Feeds a /stateful HTTP result to the protocol, as https_client_bridge.c would.
-        bool feedHttpResult(int httpCode, const std::string& body = "{}", uint64_t forSession = 0)
+        /// Unless @p forSession says otherwise, it answers the last session the protocol
+        /// handed to the transport, as the real bridge does.
+        bool feedHttpResult(int httpCode, const std::string& body = "{}",
+                            std::optional<uint64_t> forSession = std::nullopt)
         {
-            const auto buf = buildHcResult(httpCode, body, forSession);
+            const auto buf = buildHcResult(httpCode, body, forSession.value_or(mockSyncTransport->session()));
             return protocol->parseResponseBuffer(buf.data(), buf.size());
         }
 
@@ -226,6 +227,42 @@ TEST_F(AgentSyncProtocolTest, PersistDifferenceCatchesException)
     .WillOnce(::testing::Throw(std::runtime_error("Test exception")));
 
     EXPECT_NO_THROW(protocol->persistDifference(testId, testOperation, testIndex, testData, testVersion));
+}
+
+// Only the answer for the session in flight may complete it. A result for session 0 (no real
+// session ever has that id) or for another session must be discarded, leaving the sync waiting.
+TEST_F(AgentSyncProtocolTest, SynchronizeModuleDiscardsResultForOtherSession)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+
+    std::vector<PersistedData> testData =
+    {
+        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
+    };
+    // After the session is acknowledged the cycle asks for more and finds the queue empty
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_))
+    .WillOnce(Return(testData))
+    .WillRepeatedly(Return(std::vector<PersistedData> {}));
+    EXPECT_CALL(*mockQueue, clearSyncedItems()).Times(1);
+
+    auto syncFuture = std::async(std::launch::async, [this]()
+    {
+        return protocol->synchronizeModule(Mode::DELTA);
+    });
+
+    ASSERT_TRUE(mockSyncTransport->waitForSession());
+    const uint64_t inFlight = mockSyncTransport->session();
+    ASSERT_NE(inFlight, 0u);
+
+    EXPECT_TRUE(feedHttpResult(200, "{}", 0));
+    EXPECT_TRUE(feedHttpResult(200, "{}", inFlight + 1));
+    EXPECT_EQ(syncFuture.wait_for(std::chrono::milliseconds(200)), std::future_status::timeout);
+
+    EXPECT_TRUE(feedHttpResult(200, "{}", inFlight));
+    ASSERT_EQ(syncFuture.wait_for(std::chrono::seconds(10)), std::future_status::ready);
+    EXPECT_TRUE(syncFuture.get().success);
 }
 
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleTransportUnavailable)

@@ -1789,25 +1789,22 @@ std::string SQLiteDBEngine::buildUpdateDataSqlQuery(const std::string& table,
                                                     const Row& row,
                                                     const std::pair<const std::string, TableField>& field)
 {
+    // Values are bound by updateRows(), never pasted into the SQL text: they come from the
+    // collected data, and a quote in one of them must not be able to change the statement.
     std::string sql{ "UPDATE " };
     sql.append(table);
     sql.append(" SET ");
     sql.append(field.first);
-    sql.append("=");
-    getFieldValueFromTuple(field, sql, true);
-    sql.append(" WHERE ");
+    sql.append("=? WHERE ");
 
     if (0 != primaryKeyList.size())
     {
         for (const auto& value : primaryKeyList)
         {
-            const auto it { row.find("PK_" + value) };
-
-            if (it != row.end())
+            if (row.find("PK_" + value) != row.end())
             {
                 sql.append(value);
-                sql.append("=");
-                getFieldValueFromTuple((*it), sql, true);
+                sql.append("=?");
             }
             else
             {
@@ -2039,7 +2036,32 @@ bool SQLiteDBEngine::updateRows(const std::string& table,
                                             row,
                                             field)
                 };
-                m_sqliteConnection->execute(sql);
+
+                if (sql.empty())
+                {
+                    continue;
+                }
+
+                const auto stmt { getStatement(sql) };
+                int32_t index { 1l };
+
+                bindFieldData(stmt, index, field.second);
+                ++index;
+
+                for (const auto& value : primaryKeyList)
+                {
+                    bindFieldData(stmt, index, row.at("PK_" + value));
+                    ++index;
+                }
+
+                // LCOV_EXCL_START
+                if (SQLITE_ERROR == stmt->step())
+                {
+                    throw dbengine_error{ BIND_FIELDS_DOES_NOT_MATCH };
+                }
+
+                // LCOV_EXCL_STOP
+                stmt->reset();
             }
         }
     }

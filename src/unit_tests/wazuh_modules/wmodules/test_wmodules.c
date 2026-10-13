@@ -32,11 +32,22 @@ static int sync_fail(const char * args, size_t length) {
     return -1;
 }
 
+static int sync_calls;
+
+// Sync callback that records the call, to tell which module a frame was routed to.
+static int sync_record(const char * args, size_t length) {
+    (void)args;
+    (void)length;
+    sync_calls++;
+    return 0;
+}
+
 static int setup_modules(void ** state) {
     static wm_context CONTEXTS[] = {
         { .name = "A", .query = echo },
         { .name = "B", .query = NULL },
         { .name = "sca", .sync = sync_fail },
+        { .name = "syscollector", .sync = sync_record },
     };
 
     wmodules = calloc(1, sizeof(wmodule));
@@ -46,8 +57,12 @@ static int setup_modules(void ** state) {
     wmodules->next->next = calloc(1, sizeof(wmodule));
     wmodules->next->next->context = &CONTEXTS[2];
     wmodules->next->next->tag = "sca";
+    wmodules->next->next->next = calloc(1, sizeof(wmodule));
+    wmodules->next->next->next->context = &CONTEXTS[3];
+    wmodules->next->next->next->tag = "syscollector";
 
     wm_shutdown_requested = 0;
+    sync_calls = 0;
 
     *state = NULL;
     return 0;
@@ -55,6 +70,7 @@ static int setup_modules(void ** state) {
 
 static int teardown_modules(void ** state) {
     free(*state);
+    free(wmodules->next->next->next);
     free(wmodules->next->next);
     free(wmodules->next);
     free(wmodules);
@@ -232,6 +248,7 @@ static void test_get_modules_internal_options_reports_all_common_options(void **
     wm_task_nice = -5;
     wm_max_eps = 250;
     wm_kill_timeout = 45;
+    wm_socket_timeout = 9;
     wm_debug_level = 2;
 
     cJSON * root = getModulesInternalOptions();
@@ -251,6 +268,10 @@ static void test_get_modules_internal_options_reports_all_common_options(void **
     cJSON * kill_timeout = cJSON_GetObjectItem(internals, "wazuh_modules.kill_timeout");
     assert_non_null(kill_timeout);
     assert_int_equal(kill_timeout->valueint, 45);
+
+    cJSON * socket_timeout = cJSON_GetObjectItem(internals, "wazuh_modules.socket_timeout");
+    assert_non_null(socket_timeout);
+    assert_int_equal(socket_timeout->valueint, 9);
 
     cJSON * debug = cJSON_GetObjectItem(internals, "wazuh_modules.debug");
     assert_non_null(debug);
@@ -330,6 +351,45 @@ static void test_url_is_allowed_matching_host_with_fragment(void ** state) {
     assert_true(wm_url_is_allowed("https://api.github.com#fragment", "api.github.com"));
 }
 
+// The frame header alone names the destination module: a syscollector frame whose payload
+// mentions another module (here "sca", which comes first in the list) must still reach syscollector.
+static void test_modules_sync_routes_by_header(void ** state) {
+    (void)state;
+    char input[] = "syscollector_sync {\"module\":\"sca\"}";
+
+    int ret = modulesSync(input, sizeof(input));
+
+    assert_int_equal(ret, 0);
+    assert_int_equal(sync_calls, 1);
+}
+
+// The vulnerability detection stream of a module is routed to that same module.
+static void test_modules_sync_routes_vd_header(void ** state) {
+    (void)state;
+    char input[] = "syscollector_vd_sync payload";
+
+    int ret = modulesSync(input, sizeof(input));
+
+    assert_int_equal(ret, 0);
+    assert_int_equal(sync_calls, 1);
+}
+
+// A module name anywhere but at the start of the frame does not route it there.
+static void test_modules_sync_ignores_name_outside_header(void ** state) {
+    (void)state;
+    char input[] = "other_sync syscollector_sync payload";
+
+    expect_string(__wrap__mdebug1, formatted_msg, "WModules is not ready. Retry 1");
+    expect_string(__wrap__mdebug1, formatted_msg, "WModules is not ready. Retry 2");
+    expect_string(__wrap__mdebug1, formatted_msg, "WModules is not ready. Retry 3");
+    expect_string(__wrap__merror, formatted_msg, "At modulesSync(): Unable to sync module '': (-1)");
+
+    int ret = modulesSync(input, sizeof(input));
+
+    assert_int_equal(ret, -1);
+    assert_int_equal(sync_calls, 0);
+}
+
 static void test_url_is_allowed_case_insensitive(void ** state) {
     assert_true(wm_url_is_allowed("HTTPS://API.GITHUB.COM/audit-log", "api.github.com"));
 }
@@ -346,6 +406,9 @@ int main() {
         cmocka_unit_test_setup_teardown(test_modules_sync_failure_during_shutdown, setup_modules, teardown_modules),
         cmocka_unit_test_setup_teardown(test_fim_query_connect_refused_while_running, setup_modules, teardown_modules),
         cmocka_unit_test_setup_teardown(test_fim_query_connect_refused_during_shutdown, setup_modules, teardown_modules),
+        cmocka_unit_test_setup_teardown(test_modules_sync_routes_by_header, setup_modules, teardown_modules),
+        cmocka_unit_test_setup_teardown(test_modules_sync_routes_vd_header, setup_modules, teardown_modules),
+        cmocka_unit_test_setup_teardown(test_modules_sync_ignores_name_outside_header, setup_modules, teardown_modules),
         cmocka_unit_test(test_get_modules_internal_options_reports_all_common_options),
         cmocka_unit_test(test_url_is_allowed_null_url),
         cmocka_unit_test(test_url_is_allowed_matching_host),

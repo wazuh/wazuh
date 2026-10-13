@@ -290,9 +290,9 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         ///        (timeout/connect/TLS failure/abort), handled like a 503.
         /// @param body Raw JSON response body (may be empty); used only for logging - the
         ///        HTTP code alone fully determines the outcome.
-        /// @param expectedSession Session that this result belongs to; 0 skips validation
-        ///        (legacy path). The check is performed under m_syncState.mtx so it is
-        ///        race-free with a concurrent session start.
+        /// @param expectedSession Session that this result belongs to. It must match the
+        ///        session in flight, so 0 never does. The check is performed under
+        ///        m_syncState.mtx so it is race-free with a concurrent session start.
         bool applyHttpResult(int httpCode, std::string_view body, uint64_t expectedSession = 0);
 
         /// @brief Picks the id for a new session. The agent chooses it because the
