@@ -115,7 +115,7 @@ jobs:
 
     steps:
       - name: Cancel previous runs
-        uses: fkirc/skip-duplicate-actions@master
+        uses: fkirc/skip-duplicate-actions@v5.3.2
         with:
           cancel_others: "true"
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -446,12 +446,11 @@ jobs:
           name: ${{ env.PACKAGE_SYMBOLS_NAME }}
           path: /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}
 
-      - name: Set up AWS CLI
+      - name: Configure AWS credentials via OIDC
         if: ${{ env.SHOULD_UPLOAD == 'true' }}
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
-          aws-access-key-id: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_ACCESS_KEY }}
-          aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}
+          role-to-assume: ${{ secrets.CI_OIDC_ROLE_ARN }}
           aws-region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Upload package to S3

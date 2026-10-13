@@ -41,7 +41,7 @@ jobs:
 
     steps:
       - name: Cancel previous runs
-        uses: fkirc/skip-duplicate-actions@master
+        uses: fkirc/skip-duplicate-actions@v5.3.2
         with:
           cancel_others: 'true'
           github_token: ${{ secrets.GITHUB_TOKEN }}
