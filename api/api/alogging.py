@@ -35,6 +35,9 @@ def escape_control_chars(value: str) -> str:
 # refuses to buffer a body at all.
 MAX_LOGGED_BODY_SIZE = 8 * 1024
 
+# Request headers that carry credentials; their values are masked before the headers are logged.
+SENSITIVE_HEADERS = frozenset({'authorization', 'proxy-authorization', 'cookie'})
+
 
 class APILoggerSize:
     size_regex = re.compile(r"(\d+)([KM])")
@@ -295,4 +298,5 @@ def custom_logging(user, remote, method, path, query,
 
     logger.info(log_info, extra={'log_type': 'log'})
     logger.info(json_info, extra={'log_type': 'json'})
-    logger.debug2(f'Receiving headers {headers}')
+    masked_headers = {k: '****' if k.lower() in SENSITIVE_HEADERS else v for k, v in (headers or {}).items()}
+    logger.debug2(f'Receiving headers {masked_headers}')
