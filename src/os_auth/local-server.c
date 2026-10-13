@@ -118,6 +118,16 @@ void* run_local_server(__attribute__((unused)) void *arg) {
             continue;
         }
 
+        if (OS_SetRecvTimeout(peer, 1, 0) < 0) {
+            static int reported = 0;
+
+            if (!reported) {
+                int error = errno;
+                merror("Could not set timeout to internal socket: %s (%d)", strerror(error), error);
+                reported = 1;
+            }
+        }
+
         os_calloc(OS_MAXSTR, sizeof(char), buffer);
         switch (length = OS_RecvSecureTCP(peer, buffer,OS_MAXSTR), length) {
         case OS_SOCKTERR:
