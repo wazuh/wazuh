@@ -251,7 +251,58 @@ the guard returned `50 partial scan(s)`. **The rule is load-bearing, not decorat
 
 ---
 
-## 23.7 What this implies for the decision
+## 23.7 Reporting what the limits held back (WP5, 2026-10-13)
+
+### The row total now means what it says
+
+10 containers x 2,000 files, per-container ceiling 500, node budget 300,000:
+
+```
+16 container(s) scanned, 5003 row(s) stored, 15010 row(s) refused,
+10 partial scan(s), 0 stale container(s) cleaned, 16 container(s) known.
+```
+
+```sql
+SELECT count(*) FROM file_entry WHERE container_id <> '';   -- 5003
+```
+
+**Reported == stored.** Before this change the same run would have announced **20,013** — the rows
+offered — which is exactly how 23.4's 8,643-row shortfall stayed invisible. The number an operator
+reads can no longer be wrong in the direction that hides a problem.
+
+Alongside it, once per pass:
+
+```
+Container FIM: 15010 row(s) could not be stored and will not reach the manager. Raise
+<container_security><syscheck><file_limit> for a single container's share, or
+<syscheck><file_limit><entries> for the agent's whole file database.
+```
+
+and ten per-container warnings, one per truncated container.
+
+### What was NOT validated, and why
+
+- **The inventory saturation message.** The limits reply reaching syscollector carried **13 host keys
+  and 0 `container_*` keys**, so no container inventory limit could be non-zero and the path could not
+  saturate. The cause is deployment, not code: only agent-side artefacts were deployed, while the
+  manager's `remoted` (which sends the keys) and `wazuh-agentd` (which parses and re-serves them
+  through `agcom`) are the packaged binaries. Validating it needs a 5.x manager built and deployed
+  from this tree.
+- **The upward event.** `send_log_msg()` does not log locally, archives are not enabled on this
+  manager, and a 5.x manager has no `etc/ossec.conf` to enable them in. It is sent through the same
+  path as the pre-existing `wazuh: FIM DB:` message, which has no decoder or rule in this repository
+  either -- so even observed, nothing would act on it. Treat it as unverified.
+
+### Note on container inventory persistence
+
+527 package rows carrying a `container_id` were found in the agent's `local.db` during this run.
+23.1 recorded that #40092 left *no* container inventory row surviving. One of the two observations is
+out of date; **this is flagged, not resolved**, and 23.2's inventory figures remain collection-side
+until someone re-measures deliberately.
+
+---
+
+## 23.8 What this implies for the decision
 
 1. **Two levels are required, not one.** One container produced 25% of the node's inventory (23.3), and
    walk order decided which containers were monitored at all (23.4). A node-wide budget bounds the
