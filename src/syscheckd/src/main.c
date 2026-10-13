@@ -498,6 +498,12 @@ int main(int argc, char **argv)
     // turning container file monitoring off should cost nothing, not subscribe and
     // then discard.
     if (!syscheck.disabled && syscheck.container_enabled) {
+        // Hand the container path the host functions it cannot link against:
+        // check_max_fps() lives in syscheckd_lib, which links libfimebpf, so
+        // the library takes it as a pointer instead of calling it. Must precede
+        // both the walk and the reconcile consumer, which share the budget.
+        fim_container_baseline_set_host_callbacks(check_max_fps);
+
         // Subscribe BEFORE walking (#37396 / #37532). The drain stages container
         // file events from here on, so a file changed while the walk is running
         // is reconciled afterwards instead of falling into the gap between "the
