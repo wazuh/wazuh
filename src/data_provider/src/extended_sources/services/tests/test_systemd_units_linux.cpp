@@ -9,6 +9,9 @@
 
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <string>
+#include <tuple>
+#include <vector>
 #include "idbus_wrapper.hpp"
 #include "systemd_units_linux.hpp"
 
@@ -438,9 +441,19 @@ void SetUpSingleUnitMock(std::shared_ptr<MockDBusWrapper>& mockDbusWrapper,
 
     if (expectProperties)
     {
-        EXPECT_CALL(*mockDbusWrapper, getProperty(conn, _, servicePath, _, _, _))
-        .Times(4)
-        .WillRepeatedly(DoAll(SetArgReferee<5>(std::string("value")), Return(true)));
+        const std::vector<std::tuple<std::string, std::string, std::string>> properties
+        {
+            {"org.freedesktop.systemd1.Unit", "FragmentPath", "/lib/systemd/system/apt-daily.service"},
+            {"org.freedesktop.systemd1.Unit", "SourcePath", "/etc/systemd/system/apt-daily.service"},
+            {"org.freedesktop.systemd1.Service", "User", "root"},
+            {"org.freedesktop.systemd1.Unit", "UnitFileState", "enabled"}
+        };
+
+        for (const auto& [interface, name, value] : properties)
+        {
+            EXPECT_CALL(*mockDbusWrapper, getProperty(conn, "org.freedesktop.systemd1", servicePath, interface, name, _))
+            .WillOnce(DoAll(SetArgReferee<5>(value), Return(true)));
+        }
     }
     else
     {
@@ -463,20 +476,44 @@ TEST(SystemdUnitsProviderTest, SkipsInactiveNotFoundUnits)
     EXPECT_TRUE(provider.collect().empty());
 }
 
-TEST(SystemdUnitsProviderTest, KeepsActiveNotFoundUnits)
+// load_state, active_state, sub_state of units that must still be reported.
+class SystemdUnitsKeptStatesTest : public ::testing::TestWithParam<std::tuple<std::string, std::string, std::string>>
 {
+};
+
+TEST_P(SystemdUnitsKeptStatesTest, ReportsUnitWithItsProperties)
+{
+    const auto& [loadState, activeState, subState] = GetParam();
     auto mockDbusWrapper = std::make_shared<MockDBusWrapper>();
 
-    SetUpSingleUnitMock(mockDbusWrapper, "not-found", "active", "running", true);
+    SetUpSingleUnitMock(mockDbusWrapper, loadState, activeState, subState, true);
 
     SystemdUnitsProvider provider(mockDbusWrapper);
 
     nlohmann::json unitsJson = provider.collect();
     ASSERT_EQ(unitsJson.size(), 1u);
-    EXPECT_EQ(unitsJson[0]["id"],           "apt-daily");
-    EXPECT_EQ(unitsJson[0]["load_state"],   "not-found");
-    EXPECT_EQ(unitsJson[0]["active_state"], "active");
+    EXPECT_EQ(unitsJson[0]["id"],              "apt-daily");
+    EXPECT_EQ(unitsJson[0]["load_state"],      loadState);
+    EXPECT_EQ(unitsJson[0]["active_state"],    activeState);
+    EXPECT_EQ(unitsJson[0]["sub_state"],       subState);
+    EXPECT_EQ(unitsJson[0]["fragment_path"],   "/lib/systemd/system/apt-daily.service");
+    EXPECT_EQ(unitsJson[0]["source_path"],     "/etc/systemd/system/apt-daily.service");
+    EXPECT_EQ(unitsJson[0]["user"],            "root");
+    EXPECT_EQ(unitsJson[0]["unit_file_state"], "enabled");
 }
+
+INSTANTIATE_TEST_SUITE_P(
+    SystemdUnitsProviderTest,
+    SystemdUnitsKeptStatesTest,
+    ::testing::Values(
+        // Installed but stopped services.
+        std::make_tuple("loaded", "inactive", "dead"),
+        std::make_tuple("masked", "inactive", "dead"),
+        // Unit file removed while the process is still around.
+        std::make_tuple("not-found", "active", "running"),
+        std::make_tuple("not-found", "failed", "failed"),
+        std::make_tuple("not-found", "activating", "start"),
+        std::make_tuple("not-found", "deactivating", "stop-sigterm")));
 
 TEST(SystemdUnitsProviderTest, FailsWhenBusConnectionFails)
 {
