@@ -169,7 +169,11 @@ elseif(NOT UNIT_TEST)
   set_target_properties(
     wazuh-syscheckd PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY
                                                    ${SRC_FOLDER}/build/bin)
-  target_link_libraries(wazuh-syscheckd PRIVATE syscheckd_lib fimebpf)
+  # fimebpf is built, and linked into syscheckd_lib as PUBLIC, only on Linux --
+  # so the executable inherits it there and must not name it anywhere else.
+  # Naming it here unconditionally is what made macOS fail with
+  # "ld: library 'fimebpf' not found"; main does not name it either.
+  target_link_libraries(wazuh-syscheckd PRIVATE syscheckd_lib)
 
   wazuh_set_runtime_rpath(wazuh-syscheckd)
 endif()
