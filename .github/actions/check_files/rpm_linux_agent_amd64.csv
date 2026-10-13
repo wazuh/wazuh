@@ -1,6 +1,6 @@
 full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_error
 /var/ossec/var/selinux/wazuh.pp,root,wazuh,640,file,-rw-r-----,3515,0.1
-/var/ossec/bin/wazuh-syscheckd,root,root,750,file,-rwxr-x---,722184,0.1
+/var/ossec/bin/wazuh-syscheckd,root,root,750,file,-rwxr-x---,628328,0.1
 /var/ossec/bin/wazuh-execd,root,root,750,file,-rwxr-x---,591616,0.1
 /var/ossec/bin/wazuh-logcollector,root,root,750,file,-rwxr-x---,653320,0.1
 /var/ossec/bin/wazuh-control,root,root,750,file,-rwxr-x---,9331,0.1
@@ -14,12 +14,12 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/lib/libhttps_client.so,root,wazuh,750,file,-rwxr-x---,1260760,0.1
 /var/ossec/lib/libschema_validator.so,root,wazuh,750,file,-rwxr-x---,386024,0.1
 /var/ossec/lib/libsysinfo.so,root,wazuh,750,file,-rwxr-x---,2821160,0.1
-/var/ossec/lib/libfimdb.so,root,wazuh,750,file,-rwxr-x---,249304,0.1
+/var/ossec/lib/libfimdb.so,root,wazuh,750,file,-rwxr-x---,343848,0.1
 /var/ossec/lib/libbpf.so,root,wazuh,750,file,-rwxr-x---,444128,0.1
-/var/ossec/lib/libfimebpf.so,root,wazuh,750,file,-rwxr-x---,60080,0.1
+/var/ossec/lib/libfimebpf.so,root,wazuh,750,file,-rwxr-x---,497816,0.1
 /var/ossec/lib/modern.bpf.o,root,wazuh,750,file,-rwxr-x---,1293032,0.1
 /var/ossec/lib/libstdc++.so.6,root,wazuh,750,file,-rwxr-x---,2530376,0.1
-/var/ossec/lib/libsyscollector.so,root,wazuh,750,file,-rwxr-x---,851368,0.1
+/var/ossec/lib/libsyscollector.so,root,wazuh,750,file,-rwxr-x---,917224,0.1
 /var/ossec/lib/libsca.so,root,wazuh,750,file,-rwxr-x---,866120,0.1
 /var/ossec/lib/libagent_info.so,root,wazuh,750,file,-rwxr-x---,418344,0.1
 /var/ossec/lib/libagent_metadata.so,root,wazuh,750,file,-rwxr-x---,14472,0.1
