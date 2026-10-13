@@ -252,7 +252,8 @@ Path to the TLS certificate chain (PEM) presented by the server.
   `wazuh-manager:wazuh-manager 640` before the first start. Missing: `wazuh-manager-control start`
   refuses with `(1244): Invalid configuration at '/remote/https/certificate': file not found: …`.
   Present but unreadable by the service user: `wazuh-manager-remoted` exits with
-  `Cannot start the HTTPS agent listener: …`.
+  `Cannot start the HTTPS agent listener: …`. The same message names the CA certificate
+  (`remote.https.ca`) when `verification_mode` is `certificate` or `full` and that file is missing or unreadable.
 - **Note:** at startup the manager warns if this certificate has expired or expires within 30 days,
   so a silent outage for verifying agents can be prevented before it happens.
 

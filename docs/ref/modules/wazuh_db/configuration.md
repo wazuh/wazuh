@@ -180,6 +180,8 @@ These examples show only the `<wdb>` section; a real `wazuh-manager.conf` also c
 | MITRE database | `/var/wazuh-manager/var/db/mitre.db` |
 | Backups | `/var/wazuh-manager/backup/db/` |
 
+SQLite has no fixed temporary directory, and the daemon no longer runs in a restricted root, so its temporary files go to the host's `/var/tmp` (or the unit's private `/var/tmp` under systemd).
+
 ---
 
 ## Backup Management
