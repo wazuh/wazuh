@@ -17,6 +17,16 @@
 #include <time.h>
 #include <unistd.h>
 
+/* The host's files-per-second limiter, handed over at startup.
+ *
+ * It is NOT called directly even though syscheck.h declares it here, because
+ * check_max_fps() is defined in run_check.c -- part of syscheckd_lib, which
+ * links THIS library. Calling it directly leaves libfimebpf.so with an
+ * undefined symbol that only resolves once the daemon links it, and linking
+ * back the other way is a cycle. So it arrives the same way every other host
+ * function this library needs does: as a pointer, set once at startup. */
+static void (*g_host_rate_limit)(void) = NULL;
+
 static void copy_if_present(cJSON* source, cJSON* target, const char* source_key, const char* target_key)
 {
     cJSON* item = cJSON_GetObjectItem(source, source_key);
@@ -370,9 +380,21 @@ int fim_container_baseline_abspath(const char* relative, char* out, size_t out_s
     return 0;
 }
 
+void fim_container_baseline_set_host_callbacks(void (*rate_limit)(void))
+{
+    g_host_rate_limit = rate_limit;
+}
+
 void fim_container_baseline_rate_limit(void)
 {
-    check_max_fps();
+    if (g_host_rate_limit == NULL) {
+        /* Unset means nobody registered it -- the walk runs unthrottled rather
+         * than not at all. Failing open here matches the rest of this path: a
+         * missing budget costs I/O, a refused walk costs coverage. */
+        return;
+    }
+
+    g_host_rate_limit();
 }
 
 void fim_compute_row_checksum(const char* row_json, char out_sha1[41])
