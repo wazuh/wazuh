@@ -668,9 +668,9 @@ TEST_F(SyscollectorImpTest, aLifecycleNotificationBringsTheContainerPassForward)
     EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_PORTS_JSON)));
     EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([])"_json));
     EXPECT_CALL(*spInfoWrapper, processes(_)).Times(testing::AnyNumber()).WillRepeatedly(testing::InvokeArgument<0>
-            (nlohmann::json::parse(EXPECT_CALL_PROCESSES_JSON)));
+                                                                                         (nlohmann::json::parse(EXPECT_CALL_PROCESSES_JSON)));
     EXPECT_CALL(*spInfoWrapper, packages(_)).Times(testing::AnyNumber()).WillRepeatedly(testing::InvokeArgument<0>
-            (R"({"name":"TEXT", "version_":"TEXT", "vendor":"TEXT", "installed":"TEXT", "path":"TEXT", "architecture":"TEXT", "category":"TEXT", "description":"TEXT", "size":"TEXT", "priority":"TEXT", "multiarch":"TEXT", "source":"TEXT", "os_patch":"TEXT"})"_json));
+                                                                                        (R"({"name":"TEXT", "version_":"TEXT", "vendor":"TEXT", "installed":"TEXT", "path":"TEXT", "architecture":"TEXT", "category":"TEXT", "description":"TEXT", "size":"TEXT", "priority":"TEXT", "multiarch":"TEXT", "source":"TEXT", "os_patch":"TEXT"})"_json));
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_GROUPS_JSON)));
     EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_USERS_JSON)));
     EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_SERVICES_JSON)));
@@ -780,9 +780,9 @@ TEST_F(SyscollectorImpTest, containerBaselineRunsOnItsOwnIntervalNotTheHostOne)
     EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_PORTS_JSON)));
     EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([])"_json));
     EXPECT_CALL(*spInfoWrapper, processes(_)).Times(testing::AnyNumber()).WillRepeatedly(testing::InvokeArgument<0>
-            (nlohmann::json::parse(EXPECT_CALL_PROCESSES_JSON)));
+                                                                                         (nlohmann::json::parse(EXPECT_CALL_PROCESSES_JSON)));
     EXPECT_CALL(*spInfoWrapper, packages(_)).Times(testing::AnyNumber()).WillRepeatedly(testing::InvokeArgument<0>
-            (R"({"name":"TEXT", "version_":"TEXT", "vendor":"TEXT", "installed":"TEXT", "path":"TEXT", "architecture":"TEXT", "category":"TEXT", "description":"TEXT", "size":"TEXT", "priority":"TEXT", "multiarch":"TEXT", "source":"TEXT", "os_patch":"TEXT"})"_json));
+                                                                                        (R"({"name":"TEXT", "version_":"TEXT", "vendor":"TEXT", "installed":"TEXT", "path":"TEXT", "architecture":"TEXT", "category":"TEXT", "description":"TEXT", "size":"TEXT", "priority":"TEXT", "multiarch":"TEXT", "source":"TEXT", "os_patch":"TEXT"})"_json));
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_GROUPS_JSON)));
     EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_USERS_JSON)));
     EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_SERVICES_JSON)));
