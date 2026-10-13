@@ -451,6 +451,11 @@ REMOTED_MODULE_METRICS = [
     # Downloads are the usual reason it climbs: a streamed response holds its connection for
     # the whole transfer. Plotted against its cap below as well.
     ("server_connections_open",   "Public Transport — Connections Open",  "Connections"),
+    # Slots held by peers still in the TLS handshake. Near zero under honest load; a level that
+    # stays up, or either guard total moving, is a client holding slots without speaking TLS.
+    ("server_connections_handshaking", "Public Transport — Connections in TLS Handshake", "Connections"),
+    ("server_handshake_timeouts_total", "Public Transport — Handshakes Timed Out", "Count"),
+    ("server_handshake_rejected_per_source_total", "Public Transport — Handshakes Refused (per-source cap)", "Count"),
     ("admin_sessions_live",       "Admin Socket — Live Connections",      "Connections"),
 ]
 

@@ -13,13 +13,19 @@ The following specific versions are required for compatibility with the global d
 | `mdbook` | `0.4.40` |
 | `mdbook-mermaid` | `0.13.0` |
 | Python 3 with `PyYAML` | `PyYAML` `6.0.3` in CI |
-| Node.js and `npm` | Node.js `20` in CI |
+| Node.js and `npm` (optional — only needed for Mermaid diagram validation) | Node.js `20` in CI |
 
 `build.sh` runs two Python tools (`docs/tools/gen-manager-conf-ref.py` and `docs/tools/check-docs.py`, which
 imports `yaml`), and `check-docs.py` validates the Mermaid diagrams with Node.js: on its first run it
 installs the pinned `jsdom` from `docs/tools/package-lock.json` with `npm ci` into
 `~/.cache/wazuh-docs-tools` (or `$WAZUH_DOCS_NODE_DIR`), outside `docs/` so that mdBook does not
 publish it. These versions are the ones the CI job (`.github/workflows/5_testbuild_docs.yml`) installs.
+Node.js and `npm` are not a hard requirement, though: if `node` is not on `PATH`, or if `npm` is not on
+`PATH` and the `jsdom` cache needs to be (re)built, `check-docs.py` detects it, prints
+`check-docs: node not found on PATH, skipping Mermaid validation` or
+`check-docs: npm not found on PATH, skipping Mermaid validation` respectively, and continues without
+validating the Mermaid diagrams — the rest of the script's checks already ran and their findings can
+still fail the build.
 
 ## Installation
 

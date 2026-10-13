@@ -114,6 +114,16 @@ format_display_test_results() {
         cat test_results.txt
         exit 1
     fi
+    # run_wazuh_unit_tests masks ctest's exit code (`|| true`) so the table above is always
+    # printed; the FAILED grep catches failed, crashed, timed-out and "Not Run" tests, but not a
+    # run with nothing in it: ctest prints "No tests were found!!!" and exits 0 when nothing is
+    # registered, and prints no summary at all when it dies before running. Require the summary of
+    # a run that executed at least one test.
+    if ! grep -Eq '[0-9]+% tests passed, [0-9]+ tests? failed out of [1-9][0-9]*' test_results.txt; then
+        cat test_results.txt
+        echo "::error::ctest executed no tests: no 'N% tests passed, M tests failed out of K' summary (K >= 1) in test_results.txt"
+        exit 1
+    fi
 }
 
 

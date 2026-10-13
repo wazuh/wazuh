@@ -436,18 +436,6 @@ void w_inc_global_get_fragmentation_time(struct timeval time) {
     w_mutex_unlock(&db_state_t_mutex);
 }
 
-void w_inc_global_sleep() {
-    w_mutex_lock(&db_state_t_mutex);
-    wdb_state.queries_breakdown.global_breakdown.sleep_queries++;
-    w_mutex_unlock(&db_state_t_mutex);
-}
-
-void w_inc_global_sleep_time(struct timeval time) {
-    w_mutex_lock(&db_state_t_mutex);
-    timeradd(&wdb_state.queries_breakdown.global_breakdown.sleep_time, &time, &wdb_state.queries_breakdown.global_breakdown.sleep_time);
-    w_mutex_unlock(&db_state_t_mutex);
-}
-
 void w_inc_mitre() {
     w_mutex_lock(&db_state_t_mutex);
     wdb_state.queries_breakdown.mitre_queries++;
@@ -505,7 +493,6 @@ cJSON* wdb_create_state_json() {
     cJSON_AddNumberToObject(_global_db, "vacuum", wdb_state_cpy.queries_breakdown.global_breakdown.vacuum_queries);
     cJSON_AddNumberToObject(_global_db, "commit", wdb_state_cpy.queries_breakdown.global_breakdown.commit_queries);
     cJSON_AddNumberToObject(_global_db, "get_fragmentation", wdb_state_cpy.queries_breakdown.global_breakdown.get_fragmentation_queries);
-    cJSON_AddNumberToObject(_global_db, "sleep", wdb_state_cpy.queries_breakdown.global_breakdown.sleep_queries);
 
     cJSON *_global_tables = cJSON_CreateObject();
     cJSON_AddItemToObject(_global_breakdown, "tables", _global_tables);
@@ -581,7 +568,6 @@ cJSON* wdb_create_state_json() {
     cJSON_AddNumberToObject(_global_db_t, "vacuum", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.vacuum_time));
     cJSON_AddNumberToObject(_global_db_t, "commit", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.commit_time));
     cJSON_AddNumberToObject(_global_db_t, "get_fragmentation", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.get_fragmentation_time));
-    cJSON_AddNumberToObject(_global_db_t, "sleep", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.sleep_time));
 
     cJSON *_global_tables_t = cJSON_CreateObject();
     cJSON_AddItemToObject(_global_breakdown_t, "tables", _global_tables_t);
@@ -647,7 +633,6 @@ STATIC uint64_t get_global_time(wdb_state_t *state){
     timeradd(&task_time, &state->queries_breakdown.global_breakdown.vacuum_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.global_breakdown.commit_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.global_breakdown.get_fragmentation_time, &task_time);
-    timeradd(&task_time, &state->queries_breakdown.global_breakdown.sleep_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.global_breakdown.agent.insert_agent_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.global_breakdown.agent.update_agent_data_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.global_breakdown.agent.update_keepalive_time, &task_time);

@@ -1,13 +1,64 @@
 #include "indexerOutput.hpp"
 
+#include <map>
 #include <memory>
-#include <regex>
+#include <optional>
 #include <stdexcept>
+#include <string_view>
 
 #include "builders/utils.hpp"
 
 namespace builder::builders
 {
+
+namespace
+{
+constexpr std::string_view INDEX_PREFIX = "wazuh-events-v5-";
+
+/**
+ * @brief Parses an index name of the form wazuh-events-v5-(?:[a-z0-9.-]+|\$\{[^}]+\})*
+ *
+ * Linear scan instead of std::regex: libstdc++'s regex recurses per character, so an unbounded name overflows the
+ * stack.
+ *
+ * @return Map of each placeholder (`${field}`) to its field path, or nullopt if the name is invalid.
+ */
+std::optional<std::map<std::string, std::string>> parseIndexName(std::string_view indexName)
+{
+    if (indexName.substr(0, INDEX_PREFIX.size()) != INDEX_PREFIX)
+    {
+        return std::nullopt;
+    }
+
+    std::map<std::string, std::string> placeholders;
+    size_t pos = INDEX_PREFIX.size();
+    while (pos < indexName.size())
+    {
+        const char c = indexName[pos];
+        if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '.' || c == '-')
+        {
+            ++pos;
+            continue;
+        }
+
+        // Placeholder: '${' + at least one non-'}' character + '}'
+        if (indexName.substr(pos, 2) != "${")
+        {
+            return std::nullopt;
+        }
+        const auto close = indexName.find('}', pos + 2);
+        if (close == std::string_view::npos || close == pos + 2)
+        {
+            return std::nullopt;
+        }
+        placeholders.emplace(std::string(indexName.substr(pos, close - pos + 1)),
+                             std::string(indexName.substr(pos + 2, close - pos - 2)));
+        pos = close + 1;
+    }
+
+    return placeholders;
+}
+} // namespace
 
 base::Expression indexerOutputBuilder(const json::Json& definition,
                                       const std::shared_ptr<const IBuildCtx>& buildCtx,
@@ -57,7 +108,8 @@ base::Expression indexerOutputBuilder(const json::Json& definition,
 
     // Index name can’t contain any of the following characters:
     // ' ', ',', ':', '"', '*', '+', '/', '\', '|', '?', '#', '>', or '<'
-    if (!std::regex_match(indexName, std::regex(R"(^wazuh-events-v5-(?:[a-z0-9.-]+|\$\{[^}]+\})*$)")))
+    auto parsedPlaceholders = parseIndexName(indexName);
+    if (!parsedPlaceholders)
     {
         throw std::runtime_error(
             fmt::format("Stage '{}' expects the index name to start with 'wazuh-events-v5-' and it should only contain "
@@ -68,14 +120,9 @@ base::Expression indexerOutputBuilder(const json::Json& definition,
 
     // Extract placeholders and drop in map
     std::map<std::string, std::string> placeholderMap;
-    std::regex placeholder_regex(R"(\$\{([^}]+)\})");
-    auto words_begin = std::sregex_iterator(indexName.begin(), indexName.end(), placeholder_regex);
-    auto words_end = std::sregex_iterator();
-    for (std::sregex_iterator i = words_begin; i != words_end; ++i)
+    for (const auto& [fullMatch, field] : *parsedPlaceholders)
     {
-        std::string fullMatch = (*i)[0].str();
-        std::string formattedPath = json::Json::formatJsonPath((*i)[1].str());
-        placeholderMap[fullMatch] = formattedPath;
+        placeholderMap[fullMatch] = json::Json::formatJsonPath(field);
     }
 
     // Pre-build PointerPath objects for each placeholder to avoid re-parsing per event

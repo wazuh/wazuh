@@ -46,7 +46,7 @@ def preload_sources(script_args):
     """Read the password files the command was given, before privileges are dropped.
 
     `drop_privileges()` runs before the command does, so a file only root can read -- the documented
-    `--password-file /root/wui.pass` at `0600 root:root` -- would otherwise fail with `Permission
+    `--password-file /root/internal-client.pass` at `0600 root:root` -- would otherwise fail with `Permission
     denied` once this process is the service user. The file belongs to whoever invoked us, and they
     are root; what dropping privileges protects is `rbac.db`, created under a directory the service
     group can write, and that is unaffected by reading here.

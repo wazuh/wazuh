@@ -47,7 +47,6 @@
 // XML configuration constants
 static const char* XML_INTERVAL = "interval";
 static const char* XML_INTEGRITY_INTERVAL = "integrity_interval";
-static const char* XML_SYNC = "synchronization";
 
 // Type definitions
 typedef bool (*agent_info_parse_response_func)(const uint8_t* data, size_t data_len);
@@ -55,7 +54,6 @@ typedef bool (*agent_info_parse_response_func)(const uint8_t* data, size_t data_
 // Static module variables
 static int g_agent_info_queue = 0; // Output queue file descriptor
 static int g_shutting_down = 0;
-static bool agent_info_enable_synchronization = true;
 
 // Module handle and function pointers
 void* agent_info_module = NULL;
@@ -110,91 +108,6 @@ const wm_context WM_AGENT_INFO_CONTEXT = {.name = AGENT_INFO_WM_NAME,
 // ==============================================================================
 // Static Helper Functions
 // ==============================================================================
-
-// Synchronization parsing function
-static void wm_agent_info_parse_synchronization(wm_agent_info_t* agent_info, xml_node** node)
-{
-    const char* XML_DB_SYNC_ENABLED = "enabled";
-    const char* XML_DB_SYNC_END_DELAY = "sync_end_delay";
-    const char* XML_DB_SYNC_RESPONSE_TIMEOUT = "response_timeout";
-    const char* XML_DB_SYNC_RETRIES = "retries";
-    const char* XML_DB_SYNC_MAX_EPS = "max_eps";
-
-    for (int i = 0; node[i]; ++i)
-    {
-        if (strcmp(node[i]->element, XML_DB_SYNC_ENABLED) == 0)
-        {
-            int r = w_parse_bool(node[i]->content);
-
-            if (r < 0)
-            {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-            }
-            else
-            {
-                agent_info->sync.enable_synchronization = r;
-            }
-        }
-        else if (strcmp(node[i]->element, XML_DB_SYNC_END_DELAY) == 0)
-        {
-            long sync_end_delay = w_parse_time(node[i]->content);
-
-            if (sync_end_delay < 0)
-            {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-            }
-            else
-            {
-                agent_info->sync.sync_end_delay = (uint32_t)sync_end_delay;
-            }
-        }
-        else if (strcmp(node[i]->element, XML_DB_SYNC_RESPONSE_TIMEOUT) == 0)
-        {
-            long response_timeout = w_parse_time(node[i]->content);
-
-            if (response_timeout < 0)
-            {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-            }
-            else
-            {
-                agent_info->sync.sync_response_timeout = (uint32_t)response_timeout;
-            }
-        }
-        else if (strcmp(node[i]->element, XML_DB_SYNC_RETRIES) == 0)
-        {
-            char* end;
-            const long value = strtol(node[i]->content, &end, 10);
-
-            if (value < 0 || value > 100 || *end)
-            {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-            }
-            else
-            {
-                agent_info->sync.sync_retries = (uint32_t)value;
-            }
-        }
-        else if (strcmp(node[i]->element, XML_DB_SYNC_MAX_EPS) == 0)
-        {
-            char* end;
-            const long value = strtol(node[i]->content, &end, 10);
-
-            if (value < 0 || value > 1000000 || *end)
-            {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-            }
-            else
-            {
-                agent_info->sync.sync_max_eps = value;
-            }
-        }
-        else
-        {
-            mwarn(XML_INVELEM, node[i]->element);
-        }
-    }
-}
 
 // Durable task_id registry bounds are internal_options.conf tunables
 // (agent_info.max_entries/agent_info.ttl), read via getDefine_Int_default() in
@@ -465,13 +378,6 @@ int wm_agent_info_read(__attribute__((unused)) const OS_XML* xml, xml_node** nod
     agent_info->interval = 60;              // Delta updates every 60 seconds
     agent_info->integrity_interval = 86400; // Integrity check every 24 hours (86400 seconds)
 
-    // Database synchronization config values
-    agent_info->sync.enable_synchronization = 1;
-    agent_info->sync.sync_end_delay = 1;
-    agent_info->sync.sync_response_timeout = 30;
-    agent_info->sync.sync_retries = 3;
-    agent_info->sync.sync_max_eps = 50;
-
     // Durable task_id registry bounds: not part of this module's ossec.conf configuration
     // surface, so these are internal_options.conf tunables (agent_info.max_entries/
     // agent_info.ttl) rather than an ossec.conf <task_registry> block. Defaults: 4096
@@ -529,17 +435,6 @@ int wm_agent_info_read(__attribute__((unused)) const OS_XML* xml, xml_node** nod
             else
             {
                 agent_info->integrity_interval = value;
-            }
-        }
-        else if (!strcmp(nodes[i]->element, XML_SYNC))
-        {
-            // Synchronization section - Let's get the children node and iterate the values
-            xml_node** children = OS_GetElementsbyNode(xml, nodes[i]);
-
-            if (children)
-            {
-                wm_agent_info_parse_synchronization(agent_info, children);
-                OS_ClearNode(children);
             }
         }
         else
@@ -791,7 +686,7 @@ void wm_agent_info_stop()
 // Sync message function
 int wm_agent_info_sync_message(const char* command, size_t command_len)
 {
-    if (agent_info_enable_synchronization && agent_info_parse_response_ptr)
+    if (agent_info_parse_response_ptr)
     {
         size_t header_len = strlen(AGENT_INFO_SYNC_HEADER);
         const uint8_t* data = (const uint8_t*)(command + header_len);
@@ -809,7 +704,7 @@ int wm_agent_info_sync_message(const char* command, size_t command_len)
     }
     else
     {
-        mdebug1("Agent-info synchronization is disabled or function not available");
+        mdebug1("Agent-info synchronization function not available");
         return -1;
     }
 }
@@ -855,9 +750,6 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
         merror("Agent-info configuration is NULL. Exiting.");
         return NULL;
     }
-
-    // Set synchronization parameters from configuration
-    agent_info_enable_synchronization = agent_info->sync.enable_synchronization;
 
     // Don't open agent_info.db if shutdown was already requested (e.g. mid WPK upgrade).
     if (wm_agent_info_is_shutting_down())
@@ -1069,16 +961,6 @@ cJSON* wm_agent_info_dump(const wm_agent_info_t* agent_info)
     {
         cJSON_AddNumberToObject(wm_agent_info, "interval", agent_info->interval);
         cJSON_AddNumberToObject(wm_agent_info, "integrity_interval", agent_info->integrity_interval);
-
-        // Database synchronization values
-        cJSON* synchronization = cJSON_CreateObject();
-        cJSON_AddStringToObject(synchronization, "enabled", agent_info->sync.enable_synchronization ? "yes" : "no");
-        cJSON_AddNumberToObject(synchronization, "sync_end_delay", agent_info->sync.sync_end_delay);
-        cJSON_AddNumberToObject(synchronization, "response_timeout", agent_info->sync.sync_response_timeout);
-        cJSON_AddNumberToObject(synchronization, "retries", agent_info->sync.sync_retries);
-        cJSON_AddNumberToObject(synchronization, "max_eps", agent_info->sync.sync_max_eps);
-
-        cJSON_AddItemToObject(wm_agent_info, "synchronization", synchronization);
 
         // Durable task_id registry values -- internal_options.conf tunables
         // (agent_info.max_entries/agent_info.ttl), not ossec.conf, but still worth

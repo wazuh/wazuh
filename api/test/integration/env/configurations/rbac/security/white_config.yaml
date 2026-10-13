@@ -46,7 +46,7 @@
   resources:
   - user:id:105 # guest
   - user:id:101 # normal
-  - user:id:2 # wazuh-wui
+  - user:id:2 # wazuh-internal-client
   - policy:id:*
   effect: allow
 

@@ -254,6 +254,15 @@ void wm_setup()
     if (batch.size > 0) {
         mdebug1("Sync sessions bounded to %lld bytes by <agent><batch><size>.", batch.size);
     }
+
+    // agent.sync_max_blocks_per_cycle is handed down the same way: how many of those
+    // sessions one sync cycle may send before the rest waits for the next cycle.
+    const int sync_max_blocks = getDefine_Int_default("agent", "sync_max_blocks_per_cycle", 1, 1000, 0);
+    asp_set_max_blocks_per_sync((uint32_t)sync_max_blocks);
+
+    if (sync_max_blocks > 0) {
+        mdebug1("Sync cycles bounded to %d blocks by agent.sync_max_blocks_per_cycle.", sync_max_blocks);
+    }
 #endif
 
     // Go daemon

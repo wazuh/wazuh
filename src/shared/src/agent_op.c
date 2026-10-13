@@ -60,7 +60,8 @@ static cJSON* w_create_agent_add_payload(const char *name,
                                          authd_force_options_t *force_options,
                                          const char *token_id,
                                          const char *reenroll_kid,
-                                         const char *reenroll_bearer);
+                                         const char *reenroll_bearer,
+                                         const char *source);
 
 
 /* Read the agent name for the current agent
@@ -342,7 +343,8 @@ static cJSON* w_create_agent_add_payload(const char *name,
                                          authd_force_options_t *force_options,
                                          const char *token_id,
                                          const char *reenroll_kid,
-                                         const char *reenroll_bearer) {
+                                         const char *reenroll_bearer,
+                                         const char *source) {
     cJSON* request = cJSON_CreateObject();
     cJSON* arguments = cJSON_CreateObject();
 
@@ -378,6 +380,12 @@ static cJSON* w_create_agent_add_payload(const char *name,
         cJSON *reenroll = cJSON_AddObjectToObject(arguments, "reenroll");
         cJSON_AddStringToObject(reenroll, "kid", reenroll_kid);
         cJSON_AddStringToObject(reenroll, "bearer", reenroll_bearer);
+    }
+
+    // Where the agent's request came from, for the master's log line only: `ip` cannot say it, since
+    // it is the address to register (often "any"), not the peer's.
+    if (source) {
+        cJSON_AddStringToObject(arguments, "source", source);
     }
 
     cJSON* j_force = w_force_options_to_json(force_options);
@@ -639,6 +647,7 @@ int w_request_agent_add_clustered(char *err_response,
                                   const char *token_id,
                                   const char *reenroll_kid,
                                   const char *reenroll_bearer,
+                                  const char *source,
                                   int *master_error_code) {
     int result;
     char response[OS_MAXSTR + 1];
@@ -646,7 +655,7 @@ int w_request_agent_add_clustered(char *err_response,
     char new_key[KEYSIZE+1] = { '\0' };
     char new_secret[AGENT_REENROLL_SECRET_HEX_CHARS + 1] = { '\0' };
 
-    cJSON* message = w_create_agent_add_payload(name, ip, groups, key_hash, *key, agent_id, force_options, token_id, reenroll_kid, reenroll_bearer);
+    cJSON* message = w_create_agent_add_payload(name, ip, groups, key_hash, *key, agent_id, force_options, token_id, reenroll_kid, reenroll_bearer, source);
 
     cJSON* payload = w_create_sendsync_payload("authd", message);
     char* output = cJSON_PrintUnformatted(payload);
@@ -670,107 +679,6 @@ int w_request_agent_add_clustered(char *err_response,
     }
     OPENSSL_cleanse(new_secret, sizeof(new_secret));
     OPENSSL_cleanse(response, sizeof(response)); // the master's answer carried the key and the secret
-
-    return result;
-}
-
-static cJSON* w_create_agent_secret_payload(const char *agent_id, const char *key_fingerprint) {
-    cJSON* request = cJSON_CreateObject();
-    cJSON* arguments = cJSON_CreateObject();
-
-    cJSON_AddStringToObject(request, "function", "issue_reenroll_secret");
-    cJSON_AddItemToObject(request, "arguments", arguments);
-    cJSON_AddStringToObject(arguments, "id", agent_id);
-    /* The key remoted authenticated the agent against (#39315), travelling to the one node that can
-     * judge it. Omitted when the worker received none, so that the master's refusal is "no
-     * fingerprint was presented" rather than "an empty one did not match" -- the same refusal
-     * either way, but only one of them is honest about which caller is at fault. */
-    if (key_fingerprint && *key_fingerprint) {
-        cJSON_AddStringToObject(arguments, "key_fingerprint", key_fingerprint);
-    }
-
-    return request;
-}
-
-/* The master's answer to "issue_reenroll_secret": {"error":0,"data":{"id":..,"reenroll_secret":..}}.
- *
- * A success whose data carries no secret is treated as a MALFORMED response (-2), not as a success
- * with nothing to hand back: this verb exists only to produce a secret, so an answer without one can
- * only mean the two nodes disagree about the protocol. Answering 0 there would have the worker tell
- * the agent "here you are" with an empty credential. */
-static int w_parse_agent_secret_response(const char* buffer, char *err_response, char **reenroll_secret, int *error_code) {
-    int result = 0;
-    cJSON* response = NULL;
-    cJSON* error = NULL;
-    cJSON* message = NULL;
-    cJSON* data = NULL;
-    cJSON* data_secret = NULL;
-
-    const char *jsonErrPtr;
-    if (response = cJSON_ParseWithOpts(buffer, &jsonErrPtr, 0), !response) {
-        result = -2;
-    } else if (error = cJSON_GetObjectItem(response, "error"), !cJSON_IsNumber(error)) {
-        result = -2;
-    } else if (error->valueint > 0) {
-        message = cJSON_GetObjectItem(response, "message");
-        mwarn("%d: %s", error->valueint, message && message->valuestring ? message->valuestring : "(undefined)");
-        if (error_code) {
-            *error_code = error->valueint;
-        }
-        result = -1;
-    } else if (data = cJSON_GetObjectItem(response, "data"), !data) {
-        result = -2;
-    } else if (data_secret = cJSON_GetObjectItem(data, "reenroll_secret"),
-               !cJSON_IsString(data_secret) || !data_secret->valuestring || !*data_secret->valuestring) {
-        result = -2;
-    } else if (reenroll_secret) {
-        os_strdup(data_secret->valuestring, *reenroll_secret);
-    }
-
-    if (err_response) {
-        if (result == -1) {
-            snprintf(err_response, 2048, "ERROR: %s", message && message->valuestring ? message->valuestring : "(undefined)");
-        } else if (result == -2) {
-            snprintf(err_response, 2048, "ERROR: Invalid message format");
-        }
-    }
-
-    // The parsed tree held the secret in the clear; it is copied out above, so wipe the original.
-    // NULL first: cJSON_IsString() is opaque to the static analyser, which then reads the
-    // dereference below as a possible null one.
-    if (data_secret && cJSON_IsString(data_secret) && data_secret->valuestring) {
-        OPENSSL_cleanse(data_secret->valuestring, strlen(data_secret->valuestring));
-    }
-
-    cJSON_Delete(response);
-
-    return result;
-}
-
-//Send a clustered re-enrollment secret request.
-int w_request_agent_secret_clustered(char *err_response,
-                                     const char *agent_id,
-                                     const char *key_fingerprint,
-                                     char **reenroll_secret,
-                                     int *master_error_code) {
-    int result;
-    char response[OS_MAXSTR + 1];
-
-    cJSON* message = w_create_agent_secret_payload(agent_id, key_fingerprint);
-
-    cJSON* payload = w_create_sendsync_payload("authd", message);
-    char* output = cJSON_PrintUnformatted(payload);
-    cJSON_Delete(payload);
-
-    if (result = w_send_clustered_message("sendsync", output, response), result == 0) {
-        result = w_parse_agent_secret_response(response, err_response, reenroll_secret, master_error_code);
-    }
-    else if (err_response) {
-        snprintf(err_response, 2048, "ERROR: Cannot communicate with master");
-    }
-
-    free(output);
-    OPENSSL_cleanse(response, sizeof(response)); // the master's answer carried the secret
 
     return result;
 }
@@ -802,7 +710,7 @@ int w_request_agent_remove_clustered(char *err_response, const char* agent_id, i
 int w_request_agent_add_local(int sock, char *id, const char *name, const char *ip, const char *groups, const char *key, authd_force_options_t *force_options, const int json_format, const char *agent_id, int exit_on_error) {
     int result;
 
-    cJSON* payload = w_create_agent_add_payload(name, ip, groups, NULL, key, agent_id, force_options, NULL, NULL, NULL);
+    cJSON* payload = w_create_agent_add_payload(name, ip, groups, NULL, key, agent_id, force_options, NULL, NULL, NULL, NULL);
     char* output = cJSON_PrintUnformatted(payload);
     cJSON_Delete(payload);
 

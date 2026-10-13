@@ -384,36 +384,6 @@
       "value": 2003
     },
     {
-      "name": "remoted.enroll.secret.authd_error",
-      "type": "counter",
-      "enabled": true,
-      "value": 2053.0
-    },
-    {
-      "name": "remoted.enroll.secret.authd_unavailable",
-      "type": "counter",
-      "enabled": true,
-      "value": 2054.0
-    },
-    {
-      "name": "remoted.enroll.secret.issued",
-      "type": "counter",
-      "enabled": true,
-      "value": 2051.0
-    },
-    {
-      "name": "remoted.enroll.secret.rate_limited",
-      "type": "counter",
-      "enabled": true,
-      "value": 2055.0
-    },
-    {
-      "name": "remoted.enroll.secret.rejected_in_progress",
-      "type": "counter",
-      "enabled": true,
-      "value": 2052.0
-    },
-    {
       "name": "remoted.forwarder.deferred.capacity",
       "type": "pull",
       "enabled": true,
@@ -661,60 +631,6 @@
       "type": "counter",
       "enabled": true,
       "value": 1508
-    },
-    {
-      "name": "remoted.http.enroll.secret.responses.2xx",
-      "type": "counter",
-      "enabled": true,
-      "value": 1651.0
-    },
-    {
-      "name": "remoted.http.enroll.secret.responses.400",
-      "type": "counter",
-      "enabled": true,
-      "value": 1652.0
-    },
-    {
-      "name": "remoted.http.enroll.secret.responses.403",
-      "type": "counter",
-      "enabled": true,
-      "value": 1653.0
-    },
-    {
-      "name": "remoted.http.enroll.secret.responses.409",
-      "type": "counter",
-      "enabled": true,
-      "value": 1654.0
-    },
-    {
-      "name": "remoted.http.enroll.secret.responses.413",
-      "type": "counter",
-      "enabled": true,
-      "value": 1655.0
-    },
-    {
-      "name": "remoted.http.enroll.secret.responses.429",
-      "type": "counter",
-      "enabled": true,
-      "value": 1659.0
-    },
-    {
-      "name": "remoted.http.enroll.secret.responses.500",
-      "type": "counter",
-      "enabled": true,
-      "value": 1656.0
-    },
-    {
-      "name": "remoted.http.enroll.secret.responses.503",
-      "type": "counter",
-      "enabled": true,
-      "value": 1657.0
-    },
-    {
-      "name": "remoted.http.enroll.secret.responses.other",
-      "type": "counter",
-      "enabled": true,
-      "value": 1658.0
     },
     {
       "name": "remoted.http.stateful.latency",

@@ -350,3 +350,37 @@ def test_custom_logging_redacts_sensitive_fields():
     # The caller's objects are not rewritten on its behalf.
     assert body['nested']['password'] == 'SuperSecret123'
     assert query['password'] == 'q_secret'
+
+    # The debug2 header dump keeps the scheme and masks the credential behind it.
+    headers_line = log_mock.debug2.call_args.args[0]
+    assert REQUEST_HEADERS_TEST['authorization'].split(' ')[1] not in headers_line
+    assert "'authorization': 'Basic ****'" in headers_line
+
+
+@pytest.mark.parametrize('headers, expected', [
+    ({'Authorization': 'Bearer x.y.z'}, {'authorization': 'Bearer ****'}),
+    ({'authorization': 'Basic dXNlcjpwYXNz'}, {'authorization': 'Basic ****'}),
+    ({'Proxy-Authorization': 'Basic dXNlcjpwYXNz'}, {'proxy-authorization': 'Basic ****'}),
+    ({'AUTHORIZATION': 'opaque-token'}, {'authorization': '****'}),
+    ({'Cookie': 'session=abc; theme=dark'}, {'cookie': '****'}),
+    ({'X-API-Key': 'k'}, {'x-api-key': '****'}),
+    ({'host': '127.0.0.1:55000', 'user-agent': 'curl/8.5.0', 'accept': '*/*'},
+     {'host': '127.0.0.1:55000', 'user-agent': 'curl/8.5.0', 'accept': '*/*'}),
+    ({}, {}),
+    (None, {}),
+])
+def test_redact_headers(headers, expected):
+    """Credential headers are masked whatever their case; harmless ones stay verbatim."""
+    assert alogging.redact_headers(headers) == expected
+
+
+def test_redact_headers_walks_repeated_and_mixed_case_names():
+    """Starlette headers are case-insensitive and may repeat: every occurrence is masked."""
+    from starlette.datastructures import Headers
+
+    headers = Headers(raw=[(b'Authorization', b'Bearer first.token'),
+                           (b'authorization', b'Bearer second.token'),
+                           (b'Content-Type', b'application/json')])
+
+    assert alogging.redact_headers(headers) == {'authorization': 'Bearer ****, Bearer ****',
+                                                'content-type': 'application/json'}

@@ -205,7 +205,7 @@ without an `agent`. The per-agent codes:
 | 2 | 1812 | `Required parameters in json message where not found` (or the parser's own text) |
 | 3 | 1813 | `JSON parameter not recognized` (or the parser's own text) |
 | 4 | 1814 | `Task manager communication error` — the batch queue is full, the module is shutting down, or the rows could not be stored; the Server API halves the chunk and retries |
-| 6 | 1816 | `Agent information not found in database` |
+| 6 | 1816 | `Agent information not found in database` — no such agent in this node's wazuh-db, the query did not complete, or the agent's record is missing what a repository upgrade needs (platform, architecture, OS major version — and minor on Ubuntu — or a readable agent version). In a cluster the Server API drops it for an agent another node reported on, so it reaches the top level only when no node could create the task |
 | 7 | 1817 | `The WPK for this platform is not available` |
 | 8 | 1818 | `Remote upgrade is not available for this agent version` |
 | 9 | 1819 | `Direct upgrade to v5.0.0 is not supported. Please upgrade to v4.14.x first` |

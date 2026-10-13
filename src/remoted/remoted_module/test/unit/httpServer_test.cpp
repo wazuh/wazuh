@@ -40,7 +40,9 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
+#include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 
 #include <algorithm>
 #include <array>
@@ -53,6 +55,7 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <future>
 #include <istream>
 #include <iterator>
 #include <limits>
@@ -252,6 +255,7 @@ TEST(HttpServerConfigTest, DefaultsWhenEmpty)
     EXPECT_EQ(config.streamChunkSize, 64U * 1024U);
     EXPECT_EQ(config.maxInFlightBytes, 256U * 1024U * 1024U);
     EXPECT_EQ(config.maxParallelConnections, 256U);
+    EXPECT_EQ(config.maxHandshakesPerSource, 32U);
     EXPECT_EQ(config.certificatePath, "etc/certs/remoted.pem");
     EXPECT_EQ(config.privateKeyPath, "etc/certs/remoted-key.pem");
     EXPECT_EQ(config.caPath, "etc/certs/root-ca.pem");
@@ -310,6 +314,24 @@ TEST(HttpServerConfigTest, MaxConnectionsStructWinsElseDefault)
     // from remoted itself.
     raw.max_parallel_connections = 0;
     EXPECT_EQ(buildHttpServerConfig(raw).maxParallelConnections, 256U);
+}
+
+// 0 is a real setting here ("no cap"), so the field is read only when flagged as set: a zeroed
+// struct keeps meaning "module defaults", like jwt_clock_skew.
+TEST(HttpServerConfigTest, MaxHandshakesPerSourceHonorsZeroOnlyWhenSet)
+{
+    auto raw = zeroedConfig();
+    EXPECT_EQ(buildHttpServerConfig(raw).maxHandshakesPerSource, 32U); // unset -> default
+
+    raw.max_handshakes_per_source_set = 1;
+    raw.max_handshakes_per_source = 0;
+    EXPECT_EQ(buildHttpServerConfig(raw).maxHandshakesPerSource, 0U); // explicit "no cap"
+
+    raw.max_handshakes_per_source = 100;
+    EXPECT_EQ(buildHttpServerConfig(raw).maxHandshakesPerSource, 100U);
+
+    raw.max_handshakes_per_source_set = 0; // a value without the flag is not a setting
+    EXPECT_EQ(buildHttpServerConfig(raw).maxHandshakesPerSource, 32U);
 }
 
 TEST(HttpServerConfigTest, StructValuesWin)
@@ -2395,6 +2417,240 @@ TEST(HttpServerTest, DiagnosticsCountARealConnection)
     ASSERT_FALSE(raw.empty()) << "no response from the server";
 
     EXPECT_GE(openDuringRequest.load(), 1U) << "the state listener never counted the live connection";
+
+    server->stop();
+}
+
+// ---------------------------------------------------------------------------
+// TLS handshake guard (issue #6883)
+// ---------------------------------------------------------------------------
+
+namespace
+{
+    /// A TCP connection that never starts a TLS handshake: what an attacker holding slots sends.
+    class StalledConnection
+    {
+    public:
+        explicit StalledConnection(std::uint16_t port)
+            : m_socket {m_ioc}
+        {
+            asio::error_code ec;
+            m_socket.connect({asio::ip::make_address("127.0.0.1"), port}, ec);
+            EXPECT_FALSE(ec) << "could not connect: " << ec.message();
+        }
+
+        /// Sends raw bytes (plain HTTP to the TLS port: a handshake that fails, not one that stalls).
+        void send(const std::string& bytes)
+        {
+            asio::error_code ec;
+            asio::write(m_socket, asio::buffer(bytes), ec);
+        }
+
+        /// Whether the SERVER has closed it: a read returns EOF (or a reset) within @p wait.
+        bool closedByPeer(std::chrono::milliseconds wait = std::chrono::milliseconds {500})
+        {
+            timeval tv {};
+            tv.tv_sec = static_cast<time_t>(wait.count() / 1000);
+            tv.tv_usec = static_cast<suseconds_t>((wait.count() % 1000) * 1000);
+            ::setsockopt(m_socket.native_handle(), SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+            char byte;
+            const auto n = ::recv(m_socket.native_handle(), &byte, 1, 0);
+            return n == 0 || (n < 0 && errno == ECONNRESET);
+        }
+
+        void close()
+        {
+            asio::error_code ignored;
+            m_socket.close(ignored);
+        }
+
+    private:
+        asio::io_context m_ioc;
+        asio::ip::tcp::socket m_socket;
+    };
+
+    /// Polls @p condition until it holds or @p timeout passes; returns its last value.
+    template<typename Condition>
+    bool eventually(Condition condition, std::chrono::milliseconds timeout = std::chrono::seconds {5})
+    {
+        const auto deadline = std::chrono::steady_clock::now() + timeout;
+        while (!condition())
+        {
+            if (std::chrono::steady_clock::now() >= deadline)
+            {
+                return condition();
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds {20});
+        }
+        return true;
+    }
+
+    HttpServerConfig handshakeGuardConfig(const TempCert& cert, std::uint16_t port)
+    {
+        HttpServerConfig config;
+        config.caPublicationRecordPath = ""; // not under test here
+        config.port = port;
+        config.certificatePath = cert.certPath();
+        config.privateKeyPath = cert.keyPath();
+        config.maxBodySize = 1U * 1024U * 1024U;
+        config.maxInFlightBytes = 50U * 1024U * 1024U;
+        config.ioThreads = 2;
+        config.workerThreads = 2;
+        return config;
+    }
+
+    void addHealthRoute(IHttpServer& server)
+    {
+        server.addRoute(
+            Method::Get,
+            "/",
+            [](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
+            { responder->send(HttpResponse::json(200, R"({"status":"ok"})")); },
+            /*countAgainstBudget=*/false);
+    }
+} // namespace
+
+// The report: every slot held by a socket that connected and never spoke TLS locked out every agent
+// for as long as the attacker liked, because RESTinio arms no timer before the handshake succeeds.
+// Fill every slot that way, then require an honest request -- queued in the kernel backlog behind
+// them -- to be served once the deadline (http_read_timeout) has closed the stalled ones.
+TEST(HandshakeGuardTest, StalledHandshakesAreClosedAndTheirSlotsServeAnHonestClient)
+{
+    TempCert cert;
+    auto server = makeHttpServer();
+    addHealthRoute(*server);
+
+    auto config = handshakeGuardConfig(cert, static_cast<std::uint16_t>(36000 + (::getpid() % 5000)));
+    config.readTimeoutSec = 1;
+    config.maxParallelConnections = 4;
+    config.maxHandshakesPerSource = 0; // the deadline alone is under test here
+    ASSERT_NO_THROW(server->start(config));
+
+    std::vector<std::unique_ptr<StalledConnection>> stalled;
+    for (int i = 0; i < 4; ++i)
+    {
+        stalled.push_back(std::make_unique<StalledConnection>(config.port));
+    }
+    ASSERT_TRUE(eventually([&] { return server->diagnostics().connectionsHandshaking == 4U; }))
+        << "the stalled connections were not counted as handshaking";
+    EXPECT_EQ(server->diagnostics().connectionsOpen, 4U);
+
+    // Every slot is taken: this one waits in the backlog until the deadline frees one. Before the
+    // fix it waited until the stalled sockets left, i.e. forever.
+    auto honest =
+        std::async(std::launch::async, [port = config.port] { return remoted::test::sendGetRequest(port, "/"); });
+    const auto status = honest.wait_for(std::chrono::seconds {5});
+
+    std::vector<bool> closedByServer;
+    for (auto& connection : stalled)
+    {
+        closedByServer.push_back(connection->closedByPeer());
+        connection->close(); // unblocks the honest request even when the guard failed
+    }
+    const auto response = honest.get();
+
+    ASSERT_EQ(status, std::future_status::ready) << "an honest client stayed locked out by stalled handshakes";
+    EXPECT_NE(response.find(" 200 "), std::string::npos) << response;
+    for (std::size_t i = 0; i < closedByServer.size(); ++i)
+    {
+        EXPECT_TRUE(closedByServer[i]) << "stalled connection " << i << " was never closed by the server";
+    }
+
+    const auto d = server->diagnostics();
+    EXPECT_EQ(d.handshakeTimeoutsTotal, 4U);
+    EXPECT_EQ(d.handshakeRejectedPerSourceTotal, 0U);
+    EXPECT_TRUE(eventually([&] { return server->diagnostics().connectionsOpen == 0U; }));
+    EXPECT_EQ(server->diagnostics().connectionsHandshaking, 0U);
+
+    server->stop();
+}
+
+// One address may have at most maxHandshakesPerSource connections in the handshake: the excess is
+// closed at once, without waiting for any deadline, and is counted.
+TEST(HandshakeGuardTest, PerSourceCapClosesTheExcessAtOnce)
+{
+    TempCert cert;
+    auto server = makeHttpServer();
+    addHealthRoute(*server);
+
+    auto config = handshakeGuardConfig(cert, static_cast<std::uint16_t>(37000 + (::getpid() % 5000)));
+    config.readTimeoutSec = 60; // far beyond the test: nothing here may be closed by the deadline
+    config.maxParallelConnections = 16;
+    config.maxHandshakesPerSource = 2;
+    ASSERT_NO_THROW(server->start(config));
+
+    std::vector<std::unique_ptr<StalledConnection>> stalled;
+    for (int i = 0; i < 5; ++i)
+    {
+        stalled.push_back(std::make_unique<StalledConnection>(config.port));
+    }
+
+    ASSERT_TRUE(eventually([&] { return server->diagnostics().handshakeRejectedPerSourceTotal == 3U; }))
+        << "rejected: " << server->diagnostics().handshakeRejectedPerSourceTotal;
+    EXPECT_EQ(server->diagnostics().connectionsHandshaking, 2U);
+    EXPECT_EQ(server->diagnostics().handshakeTimeoutsTotal, 0U);
+
+    std::size_t closedByServer = 0;
+    for (auto& connection : stalled)
+    {
+        closedByServer += connection->closedByPeer(std::chrono::milliseconds {200}) ? 1U : 0U;
+    }
+    EXPECT_EQ(closedByServer, 3U) << "exactly the connections over the cap must be closed";
+
+    // The two in progress still hold the address's whole share; once they leave, it is free again.
+    for (auto& connection : stalled)
+    {
+        connection->close();
+    }
+    ASSERT_TRUE(eventually([&] { return server->diagnostics().connectionsHandshaking == 0U; }));
+    const auto response = remoted::test::sendGetRequest(config.port, "/");
+    EXPECT_NE(response.find(" 200 "), std::string::npos) << response;
+
+    server->stop();
+}
+
+// RESTinio reports `accepted` only after a successful handshake, but `closed` after a failed one too.
+// Counting those against each other wrapped connections.open around on every failed handshake (a
+// port scan, plain HTTP, a rejected client certificate). Fail a few, then require the level -- read
+// while one honest connection is open -- to be exact.
+TEST(HandshakeGuardTest, FailedHandshakesDoNotUnderflowTheConnectionLevel)
+{
+    TempCert cert;
+    std::atomic<std::size_t> openDuringRequest {0};
+    auto server = makeHttpServer();
+    auto* serverPtr = server.get();
+    server->addRoute(
+        Method::Get,
+        "/",
+        [serverPtr, &openDuringRequest](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
+        {
+            openDuringRequest = serverPtr->diagnostics().connectionsOpen;
+            responder->send(HttpResponse::json(200, "{}"));
+        },
+        /*countAgainstBudget=*/false);
+
+    auto config = handshakeGuardConfig(cert, static_cast<std::uint16_t>(38000 + (::getpid() % 5000)));
+    ASSERT_NO_THROW(server->start(config));
+
+    for (int i = 0; i < 3; ++i)
+    {
+        StalledConnection plain {config.port};
+        plain.send("GET / HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n");
+        EXPECT_TRUE(plain.closedByPeer(std::chrono::seconds {2})) << "plain HTTP must fail the handshake";
+    }
+    {
+        // Connects and leaves without a byte -- once the server has it in the handshake, so it is
+        // not still waiting in the backlog when the level is read below.
+        StalledConnection gone {config.port};
+        ASSERT_TRUE(eventually([&] { return server->diagnostics().connectionsHandshaking == 1U; }));
+    }
+    ASSERT_TRUE(eventually([&] { return server->diagnostics().connectionsOpen == 0U; }))
+        << "connections.open: " << server->diagnostics().connectionsOpen;
+
+    const auto response = remoted::test::sendGetRequest(config.port, "/");
+    EXPECT_NE(response.find(" 200 "), std::string::npos) << response;
+    EXPECT_EQ(openDuringRequest.load(), 1U) << "the level must count exactly the one live connection";
+    EXPECT_EQ(server->diagnostics().handshakeTimeoutsTotal, 0U);
 
     server->stop();
 }

@@ -6,26 +6,50 @@ on:
     paths:
       - "src/**"
       - ".github/workflows/5_testcomponent_build-macos.yml"
+      # Manager-only trees: src/CMakeLists.txt:276-293 and src/wazuh_modules/CMakeLists.txt:97-102
+      # add them only when TARGET is not an agent. Their include/ directories stay: agent code
+      # compiles against them (shared/src/agent_op.c -> os_auth/include/auth.h,
+      # shared/src/agent_validate_op.c -> wazuh_db/include/wdb.h, and
+      # wazuh_modules/src/wm_{content_manager,inventory_sync_server,keystore_server,
+      # vulnerability_scanner}.c, globbed for every target at wazuh_modules/CMakeLists.txt:110-119,
+      # -> each module's include/).
       - "!src/engine/**"
       - "!src/remoted/**"
       - "!src/util/**"
-      # Windows-only, never built for the macOS agent
-      - "!src/win32/**"
+      - "!src/shared_modules/ca_bundle/**"
       - "!src/shared_modules/indexer_connector/**"
       - "!src/shared_modules/keystore/**"
-      # Only src/ for these server trees: agent modules compile against their include/
-      - "!src/os_auth/src/**"
-      - "!src/wazuh_db/src/**"
-      - "!src/wazuh_db/schemas/**"
-      - "!src/shared_modules/content_manager/src/**"
-      - "!src/wazuh_modules/vulnerability_scanner/src/**"
-      - "!src/wazuh_modules/inventory_sync_server/src/**"
+      - "!src/shared_modules/manager_certs/**"
+      - "!src/shared_modules/manager_config/**"
+      - "!src/shared_modules/metrics/**"
+      - "!src/shared_modules/uds_http_server/**"
+      - "!src/os_auth/**"
+      - "src/os_auth/include/**"
+      - "!src/wazuh_db/**"
+      - "src/wazuh_db/include/**"
+      - "!src/shared_modules/content_manager/**"
+      - "src/shared_modules/content_manager/include/**"
+      - "!src/wazuh_modules/inventory_sync_server/**"
+      - "src/wazuh_modules/inventory_sync_server/include/**"
+      - "!src/wazuh_modules/keystore_server/**"
+      - "src/wazuh_modules/keystore_server/include/**"
+      - "!src/wazuh_modules/task_manager/**"
+      - "src/wazuh_modules/task_manager/include/**"
+      - "!src/wazuh_modules/vulnerability_scanner/**"
+      - "src/wazuh_modules/vulnerability_scanner/include/**"
+      # Installer scripts (the manager's credential ladder included) and their shell suites:
+      # neither make nor ctest reads src/init
+      - "!src/init/**"
+      # Windows-only, never built for the macOS agent
+      - "!src/win32/**"
       # Test trees: UNIT_TEST-gated, never built by this workflow
       - "!src/unit_tests/**"
       - "!src/**/tests/**"
-      - "!src/wazuh_modules/inventory_sync_server/test/**"
       - "!src/**/integrationTests/**"
       - "!src/**/qa/**"
+      # Prose: nothing compiles Markdown (last, so it wins over the re-included include/)
+      - "!src/**/*.md"
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

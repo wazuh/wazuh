@@ -1091,7 +1091,6 @@ default, so in most cases no configuration change is needed:
     <synchronization>
       <enabled>yes</enabled>
       <interval>5m</interval>
-      <max_eps>75</max_eps>
       <integrity_interval>24h</integrity_interval>
     </synchronization>
   </wodle>

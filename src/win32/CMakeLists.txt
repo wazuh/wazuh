@@ -108,7 +108,8 @@ target_compile_definitions(win32_stubs PRIVATE ARGV0="wazuh-agent"
 # win32_ui: UI source files compiled with ARGV0="wazuh-win32ui" and no OSSECHIDS
 add_library(win32_ui OBJECT ${CMAKE_CURRENT_SOURCE_DIR}/ui/os_win32ui.c
                             ${CMAKE_CURRENT_SOURCE_DIR}/ui/common.c
-                            ${CMAKE_CURRENT_SOURCE_DIR}/ui/agent_enroll.c)
+                            ${CMAKE_CURRENT_SOURCE_DIR}/ui/agent_enroll.c
+                            ${CMAKE_CURRENT_SOURCE_DIR}/ui/enroll_result.c)
 target_compile_definitions(win32_ui PRIVATE ARGV0="wazuh-win32ui"
                                             _WIN32_WINNT=0x600)
 target_include_directories(win32_ui PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/ui/

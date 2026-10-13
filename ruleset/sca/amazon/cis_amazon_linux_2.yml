@@ -1470,7 +1470,7 @@ checks:
         name:
           - "Exfiltration Over Unencrypted Non-C2 Protocol"
           - "Credentials In Files"
-    condition: all
+    condition: none
     rules:
       - 'f:/boot/grub2/grub.cfg -> r:^\s*linux.+selinux=0|linux.+enforcing=0'
 

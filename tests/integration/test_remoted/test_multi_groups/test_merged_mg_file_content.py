@@ -45,7 +45,7 @@ def manipulate_file(action, file_path):
 
 # Variables
 groups_list = ['default', 'testing_group']
-mg_name = hashlib.sha256(','.join(groups_list).encode()).hexdigest()[:8]
+mg_name = hashlib.sha256(','.join(groups_list).encode()).hexdigest()[:32]
 mg_folder_path = os.path.join(VAR_MULTIGROUPS_PATH, mg_name)
 merged_mg_file = os.path.join(mg_folder_path, 'merged.mg')
 shared_file_name = 'testing_file'

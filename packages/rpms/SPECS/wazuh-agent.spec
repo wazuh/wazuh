@@ -282,10 +282,12 @@ fi
 
 if [ $1 = 2 ]; then
   # #39064: drop the fleet-wide enrollment password. It is one secret that enrols any endpoint,
-  # left at rest on every one of them; 5.0 replaces it with an enrollment token for the first
-  # credential and a per-agent re-enrollment secret thereafter. A fresh 5.0 install never creates
-  # the file, so without this an upgraded host -- the longest-running one in the estate, which is
-  # exactly where the exposure matters most -- would keep it for ever.
+  # left at rest on every one of them; 5.0 replaces it with an enrollment token. An agent that
+  # enrols through POST /enroll also receives a per-agent re-enrollment secret; one enrolled
+  # before the upgrade holds none, so once the file is gone it has no unattended recovery left.
+  # A fresh 5.0 install never creates the file, so without this an upgraded host -- the
+  # longest-running one in the estate, which is exactly where the exposure matters most -- would
+  # keep it for ever.
   #
   # Upgrade only ($1 = 2), and once: this is a package decision, not a runtime one, so it must not
   # depend on the agent ever reaching a manager. Overwritten before it is unlinked, because the
@@ -295,7 +297,7 @@ if [ $1 = 2 ]; then
       dd if=/dev/zero of=%{_localstatedir}/etc/authd.pass bs=1 count=$(wc -c < %{_localstatedir}/etc/authd.pass) conv=notrunc > /dev/null 2>&1 || true
     fi
     rm -f %{_localstatedir}/etc/authd.pass
-    echo "wazuh-agent: removed the fleet-wide enrollment password at %{_localstatedir}/etc/authd.pass. 5.0 enrols with an enrollment token (WAZUH_ENROLLMENT_TOKEN) and re-enrols with a per-agent secret."
+    echo "wazuh-agent: removed the fleet-wide enrollment password at %{_localstatedir}/etc/authd.pass. 5.0 enrols with an enrollment token (WAZUH_ENROLLMENT_TOKEN); an agent enrolled before the upgrade holds no re-enrollment secret and must be re-pointed with a token if the manager stops recognising its key."
   fi
 
   if [ -d %{_localstatedir}/logs/ossec ]; then

@@ -130,8 +130,7 @@ docker exec lab-probe python3 /probe/route_matrix.py \
   --agent-id <id> --key <key> --password labpassword
 ```
 
-Ten of the eleven routes (every one but `POST /enroll/secret`, which the probe does not drive yet)
-through all four front ends. `/control` is one route: `startup`, `notify` and
+All ten routes through all four front ends. `/control` is one route: `startup`, `notify` and
 `shutdown` are values of the body's `type`, and they return **different fields** — the hashes
 appear only on `notify`.
 

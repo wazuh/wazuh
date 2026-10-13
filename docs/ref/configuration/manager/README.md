@@ -58,8 +58,8 @@ element is rejected as a duplicate.
   `section`/`field`, `raw=true` for the XML text) and replaces the file with an XML document
   (`PUT /cluster/{node_id}/configuration`, `application/xml` or `application/octet-stream`); a
   malformed document is refused with error 1131 and an invalid one with error 1130 and the same JSON
-  pointer. A new `<cluster><key>` needs `cluster:read_secrets` over the node (error 1132 otherwise);
-  the masked `*****` the `GET` returns keeps the current key. After a `PUT` the file keeps its mode and
+  pointer. A new `<cluster><key>`, or any change to `<indexer>`, needs `cluster:read_secrets` over the
+  node (error 1132 otherwise); the masked `*****` the `GET` returns keeps the current key. After a `PUT` the file keeps its mode and
   is owned by `wazuh-manager:wazuh-manager` (the API runs as that user).
   `GET /cluster/{node_id}/configuration/{component}/{configuration}` returns what a running daemon
   reports instead (for example `request/internal` for remoted's `remoted.*` internal options).

@@ -177,16 +177,18 @@ jobs:
       - name: Install compatible CMake
         if: inputs.build_run_id == ''
         uses: ./.github/actions/reinstall_cmake
-      # Compilation cache (issue 38139). Skipped on fork PRs (no credentials).
+      # Compilation cache (issue 38139). Skipped on fork PRs (no credentials), and on Path A: only the
+      # from-source build compiles anything, so a pull request (always Path A, called with the
+      # build's run id) never runs setup-sccache and the caller does not list it.
       - name: "Configure AWS credentials for the compilation cache"
-        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        if: inputs.build_run_id == '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.CI_OIDC_ROLE_ARN }}
           aws-region: ${{ secrets.CI_AWS_REGION }}
           role-duration-seconds: 7200
       - name: "Set up sccache"
-        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        if: inputs.build_run_id == '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
         uses: ./.github/actions/setup-sccache
         with:
           bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
@@ -222,7 +224,10 @@ jobs:
           # someone else's PKI is under no obligation to keep a copy of its root CA.
           # The pairs come from the devcontainer copy of the installation assistant tool; the manager
           # node's SAN carries DNS:wazuh-manager, which the integration tests assert on the listener
-          # certificate.
+          # certificate. All three pairs (indexer connector, remoted, apid) come from that PKI: the
+          # API no longer generates its own certificate, and the installation issues the apid pair
+          # with the remoted profile, so the listener pair is installed for the Server API as well
+          # (serverAuth, leaf followed by the CA, SAN including localhost, which the tests connect to).
           sudo systemctl stop wazuh-manager 2>/dev/null || true
           CERTS_YML="$RUNNER_TEMP/wazuh-certs.yml"
           CERTS_OUT="$RUNNER_TEMP/wazuh-certificates"
@@ -252,6 +257,8 @@ jobs:
           sudo install -o root -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager-key.pem" "$INSTALLATION_DIR/etc/certs/indexer-connector-key.pem"
           sudo install -o wazuh-manager -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager-remoted.pem" "$INSTALLATION_DIR/etc/certs/remoted.pem"
           sudo install -o wazuh-manager -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager-remoted-key.pem" "$INSTALLATION_DIR/etc/certs/remoted-key.pem"
+          sudo install -o wazuh-manager -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager-remoted.pem" "$INSTALLATION_DIR/etc/certs/apid.pem"
+          sudo install -o wazuh-manager -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager-remoted-key.pem" "$INSTALLATION_DIR/etc/certs/apid-key.pem"
           sudo chown root:wazuh-manager "$INSTALLATION_DIR/etc/certs"
           sudo chmod 1770 "$INSTALLATION_DIR/etc/certs"
           # The installation minted a bootstrap CA here, including its private key. Nothing consults it
@@ -322,9 +329,12 @@ jobs:
             --html=results.html --self-contained-html
           EXIT_CODE=$?
           set -e
+          # Exit 5 is "no tests collected". Every (module, tier) row in test_modules_manager.json
+          # selects tests that exist (each pytest_target carries tier(level=N) marks for the tiers
+          # its row lists), so an empty selection means the suite or its tier marks were lost, or
+          # conftest.py deselected everything: a run that tested nothing must not report success.
           if [ $EXIT_CODE -eq 5 ]; then
-            echo "No tests were selected for this configuration. Skipping."
-            exit 0
+            echo "::error::pytest selected no tests for ${PYTEST_TARGET} ${PYTEST_TIER_ARGS}"
           fi
           exit $EXIT_CODE
 

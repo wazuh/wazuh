@@ -20,6 +20,7 @@ import http.server
 import importlib.util
 import json
 import os
+import shutil
 import sqlite3
 import ssl
 import subprocess
@@ -493,6 +494,88 @@ class MigrationToolTest(unittest.TestCase):
         self.assertEqual(0, self.do_import())
         FakeManager.agents[1]["groups"] = []
         self.assertEqual(1, self.check())
+
+    # -- verifying the API it sends the password and the agent keys to
+
+    def call_api(self, command, url, *extra):
+        return tool.main([command, self.bundle, "--target-dir", self.target,
+                          "--api-url", url, "--api-password-file", self.password] + list(extra))
+
+    def test_loopback_detection(self):
+        for host in ("localhost", "LOCALHOST", "127.0.0.1", "127.8.9.10", "::1"):
+            self.assertTrue(tool.is_loopback(host), host)
+        for host in (None, "", "10.0.0.5", "manager.example.com", "localhost.example.com",
+                     "::ffff:10.0.0.5", "0.0.0.0"):
+            self.assertFalse(tool.is_loopback(host), host)
+
+    def test_a_remote_api_without_a_ca_is_refused_before_any_call(self):
+        self.assertEqual(0, self.export())
+        for command in ("import", "check"):
+            for url in ("https://10.0.0.5:55000", "https://manager.example.com:55000"):
+                self.assertEqual(2, self.call_api(command, url), "%s %s" % (command, url))
+        self.assertEqual([], FakeManager.calls, "the password must not leave before verification")
+
+    def test_a_remote_api_over_plain_http_is_refused_even_with_a_ca(self):
+        self.assertEqual(0, self.export())
+        ca = os.path.join(self.workspace.name, "ca.pem")
+        open(ca, "w").close()
+        self.assertEqual(2, self.call_api("import", "http://10.0.0.5:55000", "--api-ca", ca))
+        self.assertEqual([], FakeManager.calls)
+
+    def test_ca_resolution(self):
+        def resolve(url, ca=None):
+            return tool.resolve_api_ca(tool.build_parser().parse_args(
+                ["check", self.bundle, "--target-dir", self.target, "--api-url", url]
+                + (["--api-ca", ca] if ca else [])))
+
+        root_ca = os.path.join(self.target, "etc", "certs", "root-ca.pem")
+        with self.assertRaises(tool.MigrationError, msg="loopback with no root-ca.pem to trust"):
+            resolve("https://localhost:55000")
+        os.makedirs(os.path.dirname(root_ca))
+        open(root_ca, "w").close()
+        self.assertEqual(root_ca, resolve("https://localhost:55000"))
+        self.assertEqual(root_ca, resolve("https://[::1]:55000"))
+        self.assertIsNone(resolve("http://127.0.0.1:55000"), "plain loopback carries no TLS")
+        with self.assertRaises(tool.MigrationError, msg="the local CA never vouches for a remote"):
+            resolve("https://10.0.0.5:55000")
+        self.assertEqual(root_ca, resolve("https://10.0.0.5:55000", ca=root_ca))
+        with self.assertRaises(tool.MigrationError):
+            resolve("https://10.0.0.5:55000", ca=root_ca + ".missing")
+        with self.assertRaises(tool.MigrationError):
+            resolve("ftp://localhost:55000")
+
+    @unittest.skipUnless(shutil.which("openssl"), "needs openssl to mint a test certificate")
+    def test_the_api_certificate_is_verified_against_the_target_root_ca(self):
+        def mint(name):
+            cert, key = (os.path.join(self.workspace.name, name + s) for s in (".pem", "-key.pem"))
+            subprocess.run(["openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes",
+                            "-days", "1", "-subj", "/CN=localhost", "-keyout", key, "-out", cert,
+                            "-addext", "subjectAltName=DNS:localhost,IP:127.0.0.1"],
+                           check=True, capture_output=True)
+            return cert, key
+
+        served_cert, served_key = mint("apid")
+        other_ca, _ = mint("other")
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        context.load_cert_chain(served_cert, served_key)
+        server = http.server.HTTPServer(("127.0.0.1", 0), FakeManager)
+        server.socket = context.wrap_socket(server.socket, server_side=True)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        self.addCleanup(server.server_close)
+        self.addCleanup(server.shutdown)
+        url = "https://localhost:%d" % server.server_port
+
+        self.assertEqual(0, self.export())
+        root_ca = os.path.join(self.target, "etc", "certs", "root-ca.pem")
+        os.makedirs(os.path.dirname(root_ca))
+        shutil.copy(other_ca, root_ca)
+        self.assertEqual(2, self.call_api("import", url),
+                         "a certificate the target's CA did not issue is refused")
+        self.assertEqual([], FakeManager.calls, "nothing, the password included, was sent")
+
+        shutil.copy(served_cert, root_ca)
+        self.assertEqual(0, self.call_api("import", url))
+        self.assertEqual(0, self.call_api("check", url))
 
 
 if __name__ == "__main__":

@@ -23,7 +23,8 @@ namespace task_manager::upgrade
      * THE NUMERIC VALUES ARE WIRE FORMAT. The Server API turns each one into an exception code by
      * adding 1810 (framework/wazuh/agent.py), and three of those codes are then classified by
      * literal value: ERROR_CODES_UPGRADE_SOCKET = [1819, 1820, 1821, 1822, 1823, 1828],
-     * ERROR_CODES_UPGRADE_SOCKET_BAD_REQUEST = [1824, 1826], and 1816 is silently skipped. None of
+     * ERROR_CODES_UPGRADE_SOCKET_BAD_REQUEST = [1824, 1826], and 1816 is reported per agent but
+     * dropped by a cluster merge for an agent another node answered. None of
      * the 1810..1828 range has an entry in framework/wazuh/core/exception.py, so the human-readable
      * text the user sees is the MESSAGES string below, lifted verbatim off the wire.
      *

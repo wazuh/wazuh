@@ -101,7 +101,8 @@ daemons apply). Constructs the 4.x parser tolerated are now rejected at startup,
   schema (see the [generated reference](../../ref/configuration/manager/reference.md)).
 - **`<cluster>` and `<indexer>` are required sections**, and `<cluster><key>` and `<indexer><hosts>`
   cannot be omitted within them: every manager runs as a cluster node and needs at least one indexer
-  host to start `wazuh-manager-analysisd` (the installer always generates both).
+  host to start `wazuh-manager-analysisd` (the installer always generates both). The 4.x
+  `<cluster><disabled>` option is gone — see [`<cluster>` section](#cluster-section).
 - The **minimal valid document** is
   `<wazuh_config><cluster><key>...32 alphanumeric...</key></cluster><indexer><hosts><host>scheme://host:port</host></hosts></indexer></wazuh_config>`:
   every other option then takes its schema default (`bin/wazuh-manager-conf dump` prints the resulting
@@ -300,7 +301,9 @@ The `<indexer>` section exists in both 4.x and 5.0 but has two changes.
 
 **`<enabled>` removed**
 
-In 4.x the section had an `<enabled>` flag. In 5.0 the indexer connection is always active and the flag has been removed; left in place it is an unknown option and the manager does not start.
+In 4.x the section had an `<enabled>` flag. In 5.0 the indexer connection is always active and the flag has been removed; left in place it is an unknown option and the manager does not start. The installer still needs an `apid.pem`/`apid-key.pem` pair under the default names to
+complete: when the manager's CA has no private key (an anchor-only deployment), stage one signed by that
+CA even if the API is then pointed at other files.
 
 **Certificate paths changed**
 
@@ -343,6 +346,59 @@ In 4.x the certificates pointed to Filebeat's certificate directory. In 5.0, Fil
 > The 5.0 installer generates the `<indexer>` section with these certificates as paths relative to
 > `/var/wazuh-manager` (`etc/certs/root-ca.pem`, …); relative and absolute paths are equivalent. See
 > [Configure the indexer address](../../ref/getting-started/installation.md#configure-the-indexer-address).
+
+### `<cluster>` section
+
+The `<cluster>` section exists in both 4.x and 5.0, but **`<disabled>` has been removed**. Every 4.x
+`<cluster>` block carries it (`<disabled>yes</disabled>` on a standalone manager, `<disabled>no</disabled>`
+on a cluster node), and 5.0 rejects it whatever its value:
+
+```
+(1244): Invalid configuration at '/cluster/disabled': unknown option (does not satisfy 'additionalProperties') [schema /properties/cluster]
+```
+
+so a 4.x cluster block copied as-is stops the manager. In 5.0 every manager is a cluster node and the
+cluster is always active: a 4.x standalone manager (`<disabled>yes</disabled>`) becomes a single
+`master` node, which needs no configuration beyond the generated defaults.
+
+The other 4.x options carry over: `<name>`, `<node_name>`, `<node_type>`, `<key>`, `<port>`,
+`<bind_addr>`, `<nodes>` and `<hidden>`. `<key>` is now mandatory and must be exactly 32 alphanumeric
+characters; `<hidden>` is still accepted but has no effect.
+
+**4.x:**
+```xml
+<cluster>
+  <name>wazuh</name>
+  <node_name>node01</node_name>
+  <node_type>master</node_type>
+  <key>c98b62a9b6169ac5f67dae55ae4a9088</key>
+  <port>1516</port>
+  <bind_addr>0.0.0.0</bind_addr>
+  <nodes>
+    <node>NODE_IP</node>
+  </nodes>
+  <hidden>no</hidden>
+  <disabled>no</disabled>
+</cluster>
+```
+
+**5.0:**
+```xml
+<cluster>
+  <name>wazuh</name>
+  <node_name>node01</node_name>
+  <node_type>master</node_type>
+  <key>c98b62a9b6169ac5f67dae55ae4a9088</key>
+  <port>1516</port>
+  <bind_addr>0.0.0.0</bind_addr>
+  <nodes>
+    <node>NODE_IP</node>
+  </nodes>
+  <hidden>no</hidden>
+</cluster>
+```
+
+See the [generated reference](../../ref/configuration/manager/reference.md) for the 5.0 defaults.
 
 ---
 
@@ -495,9 +551,13 @@ The API certificates moved to the unified `etc/certs` directory and were renamed
 The 5.0 defaults resolve to `/var/wazuh-manager/etc/certs/apid.pem`, `apid-key.pem` and
 `root-ca.pem`. The three values are **file names only** (letters, digits, `_`, `-`, `.`; a directory
 is rejected with error `2000`) and are always looked up in `etc/certs/`. To keep your 4.x API
-certificates, copy them into `/var/wazuh-manager/etc/certs/` and either give them the default names or
-set `https.key`/`https.cert`/`https.ca` to their names. If the key or the certificate is missing when
-`wazuh-manager-apid` starts, it generates a self-signed pair under those names.
+certificates, copy them into `/var/wazuh-manager/etc/certs/` under other file names, readable by `wazuh-manager`,
+and set `https.key`/`https.cert`/`https.ca` to those names. The names `apid.pem` and `apid-key.pem` are
+those of the pair the installer issues, or that you provide signed by the manager's CA, which the
+installer validates (chain to the CA, `serverAuth`, `CA:FALSE`, not expired, with a SAN extension, key, owner and mode). `wazuh-manager-apid`
+generates no certificate: if `https.enabled` is on and the configured pair is missing, not readable by
+`wazuh-manager`, or its key does not match, it logs error `2003` naming the files in `logs/api.log` and
+does not start.
 
 **4.x (`ssl_protocol` is rejected in 5.0):**
 ```yaml

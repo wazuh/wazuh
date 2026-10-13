@@ -13,7 +13,7 @@ from asyncinotify import Inotify, Mask
 from api import configuration
 from api.constants import (SECURITY_PATH)
 from api.authentication import generate_keypair, _private_key_path, _public_key_path
-from api.middlewares import cleanup_general_request_stats, RATE_LIMIT_WINDOW_SECONDS
+from api.middlewares import cleanup_general_request_stats, cleanup_login_attempt_stats, RATE_LIMIT_WINDOW_SECONDS
 
 logger = logging.getLogger('wazuh-api')
 
@@ -55,11 +55,12 @@ async def clean_auth_keys_cache():
 
 @cancel_signal_handler
 async def clean_general_request_stats():
-    """Periodically prune expired per-address entries from the rate limiter's stats dict."""
+    """Periodically prune expired per-address entries from the rate limiter and login-attempt stats."""
 
     while True:
         await asyncio.sleep(RATE_LIMIT_WINDOW_SECONDS)
         await cleanup_general_request_stats()
+        await cleanup_login_attempt_stats()
 
 
 @contextlib.asynccontextmanager

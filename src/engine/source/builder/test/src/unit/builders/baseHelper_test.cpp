@@ -10,6 +10,7 @@
 #include "builders/types.hpp"
 #include "mockBuildCtx.hpp"
 #include "mockRegistry.hpp"
+#include "valueValidators.hpp"
 
 #include <builder/mockAllowedFields.hpp>
 #include <defs/mockDefinitions.hpp>
@@ -263,6 +264,64 @@ TEST_F(BaseHelperTest, RunTypeRuntimeValidationFails)
     auto event = std::make_shared<json::Json>(R"({})");
     auto mapResult = mapOp(event);
     ASSERT_TRUE(mapResult.failure());
+}
+
+TEST_F(BaseHelperTest, RunTypeRealIpValidatorRejectsInvalid)
+{
+    // runType wraps a MapBuilder with the real schema IP validator
+    Reference targetField("target.field");
+    ON_CALL(*ctx, isTestMode()).WillByDefault(Return(true)); // Need test mode to get trace
+
+    {
+        SCOPED_TRACE("999.1.1.1");
+        OpBuilder builder {makeSimpleMapBuilder(json::Json(R"_j("999.1.1.1")_j"))};
+        schemf::ValidationResult valResult(schemf::validators::getIpValidator());
+
+        auto result = runType(builder, targetField, valResult);
+        ASSERT_EQ(result.index(), 0u);
+
+        auto wrappedMapBuilder = std::get<MapBuilder>(result);
+        auto mapOp = wrappedMapBuilder({}, ctx);
+        auto event = std::make_shared<json::Json>(R"({})");
+        auto mapResult = mapOp(event);
+        ASSERT_TRUE(mapResult.failure());
+    }
+
+    {
+        SCOPED_TRACE("10.0.0.1");
+        OpBuilder builder {makeSimpleMapBuilder(json::Json(R"_j("10.0.0.1")_j"))};
+        schemf::ValidationResult valResult(schemf::validators::getIpValidator());
+
+        auto result = runType(builder, targetField, valResult);
+        ASSERT_EQ(result.index(), 0u);
+
+        auto wrappedMapBuilder = std::get<MapBuilder>(result);
+        auto mapOp = wrappedMapBuilder({}, ctx);
+        auto event = std::make_shared<json::Json>(R"({})");
+        auto mapResult = mapOp(event);
+        ASSERT_TRUE(mapResult.success());
+        ASSERT_EQ(mapResult.payload(), json::Json(R"_j("10.0.0.1")_j"));
+    }
+
+    {
+        SCOPED_TRACE("999.1.1.1 written through mapToTransform");
+        OpBuilder builder {makeSimpleMapBuilder(json::Json(R"_j("999.1.1.1")_j"))};
+        schemf::ValidationResult valResult(schemf::validators::getIpValidator());
+
+        auto result = runType(builder, targetField, valResult);
+        ASSERT_EQ(result.index(), 0u);
+
+        auto transformBuilder = mapToTransform(std::get<MapBuilder>(result), targetField);
+        Reference ignored("ignored");
+        auto transformOp = transformBuilder(ignored, {}, ctx);
+
+        // A rejected value leaves the target field unset and the rest of the event untouched
+        auto event = std::make_shared<json::Json>(R"({"keep": 1})");
+        auto transformResult = transformOp(event);
+        ASSERT_TRUE(transformResult.failure());
+        EXPECT_FALSE(event->exists("/target/field"));
+        EXPECT_EQ(event->getInt("/keep"), 1);
+    }
 }
 
 TEST_F(BaseHelperTest, RunTypeInnerMapFails)

@@ -88,8 +88,9 @@ def main():
     parser.add_argument("--content-type", default="application/octet-stream",
                         help="Content-Type header; pass an empty string to omit it, as the peer does")
     parser.add_argument("--timeout", type=float, default=30.0, help="per-request timeout in seconds")
-    parser.add_argument("--agent-id", default="1",
-                        help="X-Wazuh-Agent-Id header value (default: 1; pass an empty string to omit the header)")
+    parser.add_argument("--agent-id", default="001",
+                        help="X-Wazuh-Agent-Id header value, a canonical agent id (default: 001; pass an empty "
+                             "string to omit the header)")
     parser.add_argument("--health", action="store_true", help="probe GET / instead (expects 200)")
     parser.add_argument("--bad-route", action="store_true", help="target an unknown path (expects 404)")
     parser.add_argument("--quiet", action="store_true", help="only print a summary")

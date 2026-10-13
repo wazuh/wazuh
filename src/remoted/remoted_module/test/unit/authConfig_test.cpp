@@ -36,6 +36,7 @@ TEST(AuthConfigTest, DefaultsWhenEmpty)
 
     EXPECT_EQ(config.supportedProtocolVersion, "1");
     EXPECT_EQ(config.maxBodySize, 5U * 1024U * 1024U);
+    EXPECT_EQ(config.maxDecodedBodySize, 32U * 1024U * 1024U);
     // A zeroed C-ABI struct means "unset": the bearer profile's maxima apply -- for the skew too,
     // because "configured" is a separate flag (jwt_clock_skew_set), not the value itself.
     EXPECT_EQ(config.timePolicy.maxAgeSec(), 60);
@@ -49,6 +50,7 @@ TEST(AuthConfigTest, StructValuesWin)
     raw.jwt_clock_skew = 20;
     raw.jwt_clock_skew_set = 1;
     raw.auth_max_body_size = 1048576;
+    raw.auth_max_decoded_body_size = 2097152;
 
     const auto config = buildAuthConfig(raw);
 
@@ -56,6 +58,22 @@ TEST(AuthConfigTest, StructValuesWin)
     EXPECT_EQ(config.timePolicy.maxAgeSec(), 45);
     EXPECT_EQ(config.timePolicy.skewSec(), 20);
     EXPECT_EQ(config.maxBodySize, 1048576U);
+    EXPECT_EQ(config.maxDecodedBodySize, 2097152U);
+}
+
+// A decoded cap below the wire cap would refuse, once decoded, a body the wire cap accepted.
+// secure.c raises it with a warning; buildAuthConfig() holds the same line for any C-ABI caller.
+TEST(AuthConfigTest, TheDecodedCapIsNeverBelowTheWireCap)
+{
+    auto raw = zeroedConfig();
+    raw.auth_max_body_size = 8388608;
+    raw.auth_max_decoded_body_size = 2097152;
+    EXPECT_EQ(buildAuthConfig(raw).maxDecodedBodySize, 8388608U);
+
+    // An unset decoded cap takes its default, which a raised wire cap can also overtake.
+    raw.auth_max_decoded_body_size = 0;
+    raw.auth_max_body_size = 67108864;
+    EXPECT_EQ(buildAuthConfig(raw).maxDecodedBodySize, 67108864U);
 }
 
 // The whole range remoted's getDefine_Int_default() admits (jwt_max_age 1..43200, jwt_clock_skew
@@ -91,12 +109,14 @@ TEST(AuthConfigTest, NegativeValuesFallBackToDefaultsOrAreRejected)
     auto raw = zeroedConfig();
     raw.jwt_max_age = -1;
     raw.auth_max_body_size = -1;
+    raw.auth_max_decoded_body_size = -1;
 
     const auto config = buildAuthConfig(raw);
 
     EXPECT_EQ(config.timePolicy.maxAgeSec(), 60);
     EXPECT_EQ(config.timePolicy.skewSec(), 30);
     EXPECT_EQ(config.maxBodySize, 5U * 1024U * 1024U);
+    EXPECT_EQ(config.maxDecodedBodySize, 32U * 1024U * 1024U);
 
     raw.jwt_clock_skew = -1;
     raw.jwt_clock_skew_set = 1;

@@ -68,7 +68,8 @@ namespace
     class PassthroughBodyDecoder final : public IBodyDecoder
     {
     public:
-        remoted::auth::AuthError decode(ContentEncoding, remoted::auth::Payload&) const override
+        remoted::auth::AuthError
+        decode(ContentEncoding, remoted::auth::Payload&, const remoted::decoding::DecodeCharge&) const override
         {
             return remoted::auth::AuthError::None;
         }

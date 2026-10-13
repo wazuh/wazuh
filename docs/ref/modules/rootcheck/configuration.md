@@ -133,7 +133,7 @@ Enable or disable checking network interfaces for promiscuous mode.
 
 Enable or disable scanning of network-mounted filesystems.
 
-- **Default value:** `yes`
+- **Default value:** `no`. The shipped `ossec.conf` sets it to `yes`.
 - **Allowed values:** `yes`, `no`
 - **Platform:** Linux, FreeBSD
 - **Note:** When enabled, rootcheck will skip checking files on CIFS or NFS mounts to avoid performance issues

@@ -212,6 +212,7 @@ static void test_release_from_https_apply_wins_race_over_pending_hash_match(void
  * OS_SHA256_File mock is queued, so cmocka fails if one is attempted). */
 static void test_release_from_https_apply_releases_blocked_gate(void **state) {
     (void)state;
+    startup_gate_mark_download_pending();
     expect_string(__wrap__mdebug1, formatted_msg,
                   "Startup hash gate released via HTTPS configuration apply (https_config_applied).");
 
@@ -234,6 +235,7 @@ static void test_release_from_https_apply_is_noop_when_disabled(void **state) {
  * download after the gate is already open) must not re-log or change state. */
 static void test_release_from_https_apply_is_noop_once_already_released(void **state) {
     (void)state;
+    startup_gate_mark_download_pending();
     expect_string(__wrap__mdebug1, formatted_msg,
                   "Startup hash gate released via HTTPS configuration apply (https_config_applied).");
     startup_gate_release_from_https_apply();
@@ -244,6 +246,37 @@ static void test_release_from_https_apply_is_noop_once_already_released(void **s
      * this test if it logs again. */
     startup_gate_release_from_https_apply();
     assert_gate_state(true, "https_config_applied");
+}
+
+/* agentd's SIGUSR1 handler calls release_from_https_apply() on every reload.
+ * A reload no validated download asked for (a manual "wazuh-control reload")
+ * must not open the gate: nothing says the configuration on disk is valid. */
+static void test_release_from_https_apply_without_pending_apply_keeps_gate_blocked(void **state) {
+    (void)state;
+    /* No expect_any(__wrap__mdebug1, ...): must not log a release. */
+    startup_gate_release_from_https_apply();
+
+    assert_gate_state(false, "waiting_config_hash");
+}
+
+/* A download whose SHAREDCFG_FILE write failed clears its own pending mark:
+ * no reload follows to do it, and a stale mark would let a later unrelated
+ * SIGUSR1 open the gate. The hash comparison runs again afterwards. */
+static void test_clear_download_pending_restores_hash_check_and_release_guard(void **state) {
+    (void)state;
+    startup_gate_mark_download_pending();
+    startup_gate_clear_download_pending();
+
+    startup_gate_release_from_https_apply();
+    assert_gate_state(false, "waiting_config_hash");
+
+    expect_local_sha256(MANAGER_SHA256, 0);
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "Startup hash gate: manager config hash (SHA-256) matches local, gate released.");
+
+    startup_gate_check_manager_config_hash(MANAGER_SHA256);
+
+    assert_gate_state(true, "https_hash_match");
 }
 
 int main(void) {
@@ -272,6 +305,10 @@ int main(void) {
                                         setup_remote_conf_enabled, teardown_gate),
         cmocka_unit_test_setup_teardown(test_release_from_https_apply_is_noop_when_disabled,
                                         setup_remote_conf_disabled, teardown_gate),
+        cmocka_unit_test_setup_teardown(test_release_from_https_apply_without_pending_apply_keeps_gate_blocked,
+                                        setup_remote_conf_enabled, teardown_gate),
+        cmocka_unit_test_setup_teardown(test_clear_download_pending_restores_hash_check_and_release_guard,
+                                        setup_remote_conf_enabled, teardown_gate),
         cmocka_unit_test_setup_teardown(test_release_from_https_apply_is_noop_once_already_released,
                                         setup_remote_conf_enabled, teardown_gate),
     };

@@ -122,7 +122,7 @@ namespace
 
 TEST(EnrollComponentTest, OpenModeSucceedsAgainstFakeManager)
 {
-    constexpr uint16_t port = 44870;
+    constexpr uint16_t port = 24870;
     FakeManager manager {port, "", /*tls=*/true};
 
     const auto config = tlsConfig(port);
@@ -137,7 +137,7 @@ TEST(EnrollComponentTest, OpenModeSucceedsAgainstFakeManager)
 
 TEST(EnrollComponentTest, PasswordModeSucceedsWithCorrectSignature)
 {
-    constexpr uint16_t port = 44871;
+    constexpr uint16_t port = 24871;
     FakeManager manager {port,
                          /*keyHex=*/"",
                          /*tls=*/true,
@@ -162,7 +162,7 @@ TEST(EnrollComponentTest, PasswordModeSucceedsWithCorrectSignature)
 
 TEST(EnrollComponentTest, PasswordModeIsRejectedWhenPasswordsDiffer)
 {
-    constexpr uint16_t port = 44872;
+    constexpr uint16_t port = 24872;
     FakeManager manager {port,
                          "",
                          true,
@@ -189,7 +189,7 @@ TEST(EnrollComponentTest, PasswordModeIsRejectedWhenPasswordsDiffer)
 
 TEST(EnrollComponentTest, ForcedApplicationErrorsPassThroughUnmapped)
 {
-    constexpr uint16_t port = 44873;
+    constexpr uint16_t port = 24873;
     FakeManager manager {port, "", true, 0, {}, 0, 0, {}, {}, 0, 0, {}, /*enrollForcedStatus=*/409};
 
     const auto config = tlsConfig(port);
@@ -202,7 +202,7 @@ TEST(EnrollComponentTest, ForcedApplicationErrorsPassThroughUnmapped)
 
 TEST(EnrollComponentTest, ClientCertConfigCoexistsWithPasswordOverRealHandshake)
 {
-    constexpr uint16_t port = 44874;
+    constexpr uint16_t port = 24874;
     FakeManager manager {port,
                          "",
                          /*tls=*/true,

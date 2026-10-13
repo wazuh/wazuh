@@ -58,8 +58,8 @@ async def login_user(user: str, raw: bool = False) -> ConnexionResponse:
 
     token = None
     try:
-        token = generate_token(issued_at_ms=request.context['token_info']['auth_time_ms'],
-                               user_id=user, data=data.dikt)
+        token = await generate_token(issued_at_ms=request.context['token_info']['auth_time_ms'],
+                                     user_id=user, data=data.dikt)
     except WazuhException as e:
         raise_if_exc(e)
 
@@ -105,8 +105,8 @@ async def run_as_login(user: str, raw: bool = False) -> ConnexionResponse:
 
     token = None
     try:
-        token = generate_token(issued_at_ms=request.context['token_info']['auth_time_ms'],
-                               user_id=user, data=data.dikt, auth_context=auth_context)
+        token = await generate_token(issued_at_ms=request.context['token_info']['auth_time_ms'],
+                                     user_id=user, data=data.dikt, auth_context=auth_context)
     except WazuhException as e:
         raise_if_exc(e)
 

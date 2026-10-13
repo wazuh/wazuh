@@ -51,9 +51,9 @@ pytestmark = pytest.mark.server
 daemons_handler_configuration = {"all_daemons": True}
 
 # This test drives the run_as login, which is only available to a user with `allow_run_as`. Among
-# the default users that is `wazuh-wui` alone. Its password is the one the manager under test was
+# the default users that is `wazuh-internal-client` alone. Its password is the one the manager under test was
 # installed with, resolved at login.
-RUN_AS_API_USER = "wazuh-wui"
+RUN_AS_API_USER = "wazuh-internal-client"
 
 
 @pytest.fixture

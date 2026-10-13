@@ -775,7 +775,7 @@ To confirm the round trip: after the script sends `check_keys`, `wazuh-execd` wr
 
 ### Channel dispatches but the script never runs
 
-The response document lands in `wazuh-active-responses*` (so the monitor fired), but the agent's `active-responses.log` shows nothing and no firewall rule appears. A common cause is an **Executable** field that names no file under `/var/ossec/active-response/bin/` — a 4.x name such as `firewall-drop`, a typo, or a **leading or trailing space** (e.g. `" block-ip"`). `wazuh-execd` then logs `(1311): Invalid command name ' block-ip' provided.` in the agent's `ossec.log` and runs nothing. Edit the channel (**Explore → Active Responses → <channel> → Actions → Edit**) and ensure **Executable** is exactly the script name with no surrounding whitespace.
+The response document lands in `wazuh-active-responses*` (so the monitor fired), but the agent's `active-responses.log` shows nothing and no firewall rule appears. A common cause is an **Executable** field that names no file under `/var/ossec/active-response/bin/` — a 4.x name such as `firewall-drop`, a typo, or a **leading or trailing space** (e.g. `" block-ip"`). `wazuh-execd` then logs `(1311): Invalid command name ' block-ip' provided.` in the agent's `ossec.log` and runs nothing. Edit the channel (**Explore → Active Responses → `<channel>` → Actions → Edit**) and ensure **Executable** is exactly the script name with no surrounding whitespace.
 
 ### `block-ip` uses firewalld, not raw iptables
 

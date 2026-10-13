@@ -48,6 +48,8 @@ size_t queue_max_bytes;
 size_t batch_events_max_bytes;
 int enrich_cache_expire_time;
 int legacy_task_polling_interval;
+int unauthenticated_timeout;
+int unauthenticated_max;
 
 /* Manager's module limits instance */
 module_limits_t manager_module_limits;
@@ -130,6 +132,8 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     batch_events_max_bytes = (size_t)getDefine_Int_default("remoted", "batch_events_max_bytes", 0, INT_MAX, 32 * 1024 * 1024);
     enrich_cache_expire_time = getDefine_Int_default("remoted", "enrich_cache_expire_time", 60, 86400, 300);
     legacy_task_polling_interval = getDefine_Int_default("remoted", "legacy_task_polling_interval", 300, 86400, 900);
+    unauthenticated_timeout = getDefine_Int_default("remoted", "unauthenticated_timeout", 10, 3600, 60);
+    unauthenticated_max = getDefine_Int_default("remoted", "unauthenticated_max", 64, 1048576, 16384);
 
     /* Setting default values for global parameters */
     cfg->global.agents_disconnection_time = 900;
@@ -236,6 +240,8 @@ cJSON *getRemoteInternalConfig(void) {
     cJSON_AddNumberToObject(remoted,"batch_events_max_bytes",(double)batch_events_max_bytes);
     cJSON_AddNumberToObject(remoted,"enrich_cache_expire_time",enrich_cache_expire_time);
     cJSON_AddNumberToObject(remoted, "legacy_task_polling_interval", legacy_task_polling_interval);
+    cJSON_AddNumberToObject(remoted, "unauthenticated_timeout", unauthenticated_timeout);
+    cJSON_AddNumberToObject(remoted, "unauthenticated_max", unauthenticated_max);
 
     cJSON_AddItemToObject(internals,"remoted",remoted);
     cJSON_AddItemToObject(root,"internal",internals);

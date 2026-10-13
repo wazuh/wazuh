@@ -27,16 +27,56 @@
 #include <chrono>
 #include <cstring>
 #include <mutex>
+#include <string>
 #include <thread>
 #include <vector>
 
 namespace
 {
     std::atomic<int> g_logCalls {0};
+    std::atomic<int> g_criticalLogs {0};
+    std::atomic<int> g_errorLogs {0};
 
-    void testLogCallback(const int, const char*, const char*, const int, const char*, const char*, va_list)
+    // LOGLEVEL_CRITICAL / LOGLEVEL_ERROR as the agent defines them (loggerHelper.h).
+    constexpr int CRITICAL_LEVEL {4};
+    constexpr int ERROR_LEVEL {3};
+
+    void testLogCallback(const int level, const char*, const char*, const int, const char*, const char*, va_list)
     {
         g_logCalls++;
+
+        if (level == CRITICAL_LEVEL)
+        {
+            g_criticalLogs++;
+        }
+        else if (level == ERROR_LEVEL)
+        {
+            g_errorLogs++;
+        }
+    }
+
+    std::mutex g_fatalMutex;
+    int g_fatalCalls {0};
+    std::string g_fatalReason;
+
+    void onFatal(const char* reason, void*)
+    {
+        std::lock_guard<std::mutex> lock(g_fatalMutex);
+        g_fatalCalls++;
+        g_fatalReason = reason;
+    }
+
+    // An hc_enroll() call validateTransport() rejects at critical level, before any network I/O.
+    void logCriticalThroughTheModule()
+    {
+        hc_config_t config {};
+        std::strncpy(config.server_host, "127.0.0.1", sizeof(config.server_host) - 1);
+        config.server_port = 9;
+        config.verify_mode = HC_VERIFY_FULL;
+
+        hc_enroll_request_t request {};
+        hc_enroll_result_t result {};
+        hc_enroll(&config, &request, &result);
     }
 
     struct Recorder
@@ -94,6 +134,113 @@ class HcInterfaceTest : public ::testing::Test
         hc_config_t m_config {makeConfig()};
         hc_callbacks_t m_callbacks {makeCallbacks(&m_recorder)};
 };
+
+class HcFatalTest : public HcInterfaceTest
+{
+    protected:
+        struct Counts
+        {
+            int critical;
+            int error;
+            int fatal;
+        };
+
+        void SetUp() override
+        {
+            m_callbacks.on_fatal = onFatal;
+        }
+
+        static Counts counts()
+        {
+            std::lock_guard<std::mutex> lock(g_fatalMutex);
+            return {g_criticalLogs.load(), g_errorLogs.load(), g_fatalCalls};
+        }
+
+        // What one module CRITICAL turned into: the levels the agent received and on_fatal calls.
+        template<typename Action>
+        static Counts delta(Action action)
+        {
+            const Counts before = counts();
+            action();
+            const Counts after = counts();
+            return {after.critical - before.critical, after.error - before.error, after.fatal - before.fatal};
+        }
+
+        static std::string fatalReason()
+        {
+            std::lock_guard<std::mutex> lock(g_fatalMutex);
+            return g_fatalReason;
+        }
+};
+
+TEST_F(HcFatalTest, CriticalBeforeStartReachesTheAgentUnchanged)
+{
+    hc_handle* handle = hc_create(&m_config, &m_callbacks);
+    ASSERT_NE(nullptr, handle);
+
+    const Counts change = delta(logCriticalThroughTheModule);
+
+    EXPECT_EQ(1, change.critical);
+    EXPECT_EQ(0, change.error);
+    EXPECT_EQ(0, change.fatal);
+    hc_destroy(handle);
+}
+
+TEST_F(HcFatalTest, CriticalWhileRunningIsReportedOnceAndLoggedAsError)
+{
+    hc_config_t failClosed = m_config;
+    failClosed.verify_mode = HC_VERIFY_FULL;
+    hc_handle* handle = hc_create(&failClosed, &m_callbacks);
+    ASSERT_NE(nullptr, handle);
+
+    const Counts first = delta([handle]()
+    {
+        EXPECT_FALSE(hc_start(handle));
+    });
+    const Counts second = delta(logCriticalThroughTheModule);
+
+    EXPECT_EQ(0, first.critical);
+    EXPECT_EQ(1, first.error);
+    EXPECT_EQ(1, first.fatal);
+    EXPECT_NE(std::string::npos, fatalReason().find("requires a readable CA file"));
+    EXPECT_EQ(0, second.critical);
+    EXPECT_EQ(1, second.error);
+    EXPECT_EQ(0, second.fatal);
+    hc_destroy(handle);
+}
+
+TEST_F(HcFatalTest, CriticalWhileStoppingIsOnlyLoggedAsError)
+{
+    hc_handle* handle = hc_create(&m_config, &m_callbacks);
+    ASSERT_NE(nullptr, handle);
+    ASSERT_TRUE(hc_start(handle));
+    hc_stop(handle);
+
+    const Counts change = delta(logCriticalThroughTheModule);
+
+    EXPECT_EQ(0, change.critical);
+    EXPECT_EQ(1, change.error);
+    EXPECT_EQ(0, change.fatal);
+    hc_destroy(handle);
+}
+
+TEST_F(HcFatalTest, WithoutOnFatalCriticalReachesTheAgentUnchanged)
+{
+    m_callbacks.on_fatal = nullptr;
+    hc_config_t failClosed = m_config;
+    failClosed.verify_mode = HC_VERIFY_FULL;
+    hc_handle* handle = hc_create(&failClosed, &m_callbacks);
+    ASSERT_NE(nullptr, handle);
+
+    const Counts change = delta([handle]()
+    {
+        EXPECT_FALSE(hc_start(handle));
+    });
+
+    EXPECT_EQ(1, change.critical);
+    EXPECT_EQ(0, change.fatal);
+    hc_destroy(handle);
+}
 
 TEST_F(HcInterfaceTest, CreateWithNullArgsReturnsNull)
 {

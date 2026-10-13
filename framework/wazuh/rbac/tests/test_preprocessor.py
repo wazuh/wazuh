@@ -99,7 +99,7 @@ def test_get_roles_uses_auth_context_method(preprocessor_module, rbac_mocks, aut
     _, rbac_checker = rbac_mocks
     rbac_checker.run_auth_context_roles.return_value = []
 
-    roles = preprocessor_module.get_roles(auth_context=auth_context, user_id='wazuh-wui')
+    roles = preprocessor_module.get_roles(auth_context=auth_context, user_id='wazuh-internal-client')
 
     rbac_checker.run_auth_context_roles.assert_called_once_with()
     rbac_checker.run_user_role_link_roles.assert_not_called()
@@ -111,7 +111,7 @@ def test_get_roles_without_auth_context_uses_user_role_link(preprocessor_module,
     _, rbac_checker = rbac_mocks
     rbac_checker.run_user_role_link_roles.return_value = [1]
 
-    roles = preprocessor_module.get_roles(auth_context=None, user_id='wazuh-wui')
+    roles = preprocessor_module.get_roles(auth_context=None, user_id='wazuh-internal-client')
 
     rbac_checker.run_user_role_link_roles.assert_called_once_with(1)
     rbac_checker.run_auth_context_roles.assert_not_called()
@@ -130,7 +130,7 @@ def test_get_permissions_run_as_not_allowed(preprocessor_module, rbac_mocks, aut
     auth_manager.user_allow_run_as.return_value = False
 
     with pytest.raises(WazuhPermissionError, match='.* 6004 .*'):
-        preprocessor_module.get_permissions(user_id='wazuh-wui', auth_context=auth_context)
+        preprocessor_module.get_permissions(user_id='wazuh-internal-client', auth_context=auth_context)
 
 
 def test_get_permissions_empty_auth_context_returns_no_roles(preprocessor_module, rbac_mocks):
@@ -139,7 +139,7 @@ def test_get_permissions_empty_auth_context_returns_no_roles(preprocessor_module
     auth_manager.user_allow_run_as.return_value = True
     rbac_checker.run_auth_context_roles.return_value = []
 
-    result = preprocessor_module.get_permissions(user_id='wazuh-wui', auth_context={})
+    result = preprocessor_module.get_permissions(user_id='wazuh-internal-client', auth_context={})
 
     rbac_checker.run_auth_context_roles.assert_called_once_with()
     rbac_checker.run_user_role_link_roles.assert_not_called()
@@ -152,7 +152,7 @@ def test_get_permissions_without_auth_context_returns_static_roles(preprocessor_
     auth_manager.user_allow_run_as.return_value = False
     rbac_checker.run_user_role_link_roles.return_value = [1]
 
-    result = preprocessor_module.get_permissions(user_id='wazuh-wui', auth_context=None)
+    result = preprocessor_module.get_permissions(user_id='wazuh-internal-client', auth_context=None)
 
     rbac_checker.run_user_role_link_roles.assert_called_once_with(1)
     rbac_checker.run_auth_context_roles.assert_not_called()

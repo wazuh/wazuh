@@ -46,13 +46,14 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
         /* Get the last occurrence of \n */
         if (str[rbytes - 1] == '\n') {
             if (is_valid_context_file) {
-                OS_SHA1_Stream(context, NULL, str);
+                OS_SHA1_Stream_Bytes(context, str, (size_t) rbytes);
             }
             str[rbytes - 1] = '\0';
 
             if ((int64_t)strlen(str) != rbytes - 1)
             {
                 mdebug2("Line in '%s' contains some zero-bytes (valid=" FTELL_TT "/ total=" FTELL_TT "). Dropping line.", lf->file, FTELL_INT64 strlen(str), FTELL_INT64 rbytes - 1);
+                current_position = offset + rbytes;
                 continue;
             }
         }
@@ -64,7 +65,7 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
             /* Message size > maximum allowed */
             __ms = 1;
             if (is_valid_context_file) {
-                OS_SHA1_Stream(context, NULL, str);
+                OS_SHA1_Stream_Bytes(context, str, (size_t) rbytes);
             }
             str[rbytes - 1] = '\0';
         } else {
@@ -130,7 +131,7 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
                 }
 
                 if (is_valid_context_file) {
-                    OS_SHA1_Stream(context, NULL, str);
+                    OS_SHA1_Stream_Bytes(context, str, (size_t) rbytes);
                 }
 
                 /* Get the last occurrence of \n */

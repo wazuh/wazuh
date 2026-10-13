@@ -26,10 +26,11 @@
 #include "enrollClient.hpp"
 #include "moduleConfig.hpp"
 #include "moduleLog.hpp"
-#include "secretClient.hpp"
 #include "spkiPin.hpp"
 #include "sysSeams.hpp"
 
+#include <atomic>
+#include <cstdio>
 #include <cstring>
 #include <string>
 #include <string_view>
@@ -53,23 +54,59 @@ struct hc_handle
 
 namespace
 {
-    // Route the module's LOGFN_* calls back through the agent's logger.
+    // Process-wide, like the log sink itself: one client per process.
+    enum class Lifecycle
+    {
+        Idle,     ///< Not started: a critical message exits through the agent's callback.
+        Running,  ///< Started: a critical message is reported through on_fatal instead.
+        Stopping, ///< Stopping: the agent is already exiting, so it is only logged.
+    };
+
+    std::atomic<Lifecycle> g_lifecycle {Lifecycle::Idle};
+    std::atomic<bool> g_fatalReported {false};
+    std::atomic<full_log_fnc_t> g_agentLog {nullptr};
+    // Written by hc_create() before any module thread exists, read only by those threads.
+    void (*g_onFatal)(const char*, void*) = nullptr;
+    void* g_onFatalUserData = nullptr;
+
+    void forwardLog(int level, const char* tag, const char* file, int line, const char* func,
+                    const char* logMessage, va_list args)
+    {
+        const auto lifecycle = g_lifecycle.load();
+
+        if (level == Log::LOGLEVEL_CRITICAL && lifecycle != Lifecycle::Idle)
+        {
+            if (lifecycle == Lifecycle::Running && !g_fatalReported.exchange(true))
+            {
+                char reason[1024];
+                va_list reasonArgs;
+                va_copy(reasonArgs, args);
+                std::vsnprintf(reason, sizeof(reason), logMessage, reasonArgs);
+                va_end(reasonArgs);
+                g_onFatal(reason, g_onFatalUserData);
+            }
+
+            level = Log::LOGLEVEL_ERROR;
+        }
+
+        if (const auto agentLog = g_agentLog.load())
+        {
+            agentLog(level, tag, file, line, func, logMessage, args);
+        }
+    }
+
+    // Route the module's LOGFN_* calls back through the agent's logger. The module keeps the
+    // first sink it is given for the whole process, so the sink installed is always
+    // forwardLog(), and each call only updates which agent callback it forwards to. A null
+    // callback (a caller with no logger yet) keeps the previous one.
     void assignModuleLogSink(full_log_fnc_t callbackLog)
     {
-        Log::assignLogFunction(
-            [callbackLog](const int level,
-                          const char* tag,
-                          const char* file,
-                          const int line,
-                          const char* func,
-                          const char* logMessage,
-                          va_list args)
+        if (callbackLog)
         {
-            if (callbackLog)
-            {
-                callbackLog(level, tag, file, line, func, logMessage, args);
-            }
-        });
+            g_agentLog.store(callbackLog);
+        }
+
+        Log::assignLogFunction(forwardLog);
     }
 
     // Fixed-size C buffers are not guaranteed NUL-terminated when the caller
@@ -94,6 +131,10 @@ extern "C"
         try
         {
             assignModuleLogSink(callbacks->log);
+            g_onFatal = callbacks->on_fatal;
+            g_onFatalUserData = callbacks->user_data;
+            g_fatalReported = false;
+            g_lifecycle = Lifecycle::Idle;
             return new hc_handle(*config, *callbacks);
         }
         catch (...)
@@ -107,6 +148,14 @@ extern "C"
         if (handle == nullptr)
         {
             return false;
+        }
+
+        // Before start(), not after: it starts the module threads, and one of them can hit a
+        // fatal condition before start() returns. A configuration start() rejects on this
+        // thread is reported too, and start() still returns false.
+        if (g_onFatal != nullptr)
+        {
+            g_lifecycle = Lifecycle::Running;
         }
 
         try
@@ -126,6 +175,8 @@ extern "C"
             return;
         }
 
+        g_lifecycle = Lifecycle::Stopping;
+
         try
         {
             handle->impl.stop();
@@ -138,6 +189,11 @@ extern "C"
 
     void hc_destroy(hc_handle* handle)
     {
+        if (handle != nullptr)
+        {
+            g_lifecycle = Lifecycle::Stopping;
+        }
+
         try
         {
             delete handle; // Destructor stops the client first.
@@ -381,53 +437,6 @@ extern "C"
             // the pinned certificate may be exactly what is missing -- so the caller has to be
             // able to tell "this is not the CA I expected" from "I could not read all of it".
             result->body_truncated = response.body.size() >= sizeof(result->body);
-            std::strncpy(result->body, response.body.c_str(), sizeof(result->body) - 1);
-            std::strncpy(result->transport_error, response.curlError.c_str(),
-                         sizeof(result->transport_error) - 1);
-
-            return response.httpCode != 0;
-        }
-        catch (...)
-        {
-            return false; // LCOV_EXCL_LINE: nothing throws into C.
-        }
-    }
-
-    bool hc_fetch_reenroll_secret(const hc_config_t* config, const hc_secret_request_t* request,
-                                  hc_secret_result_t* result)
-    {
-        if (config == nullptr || request == nullptr || result == nullptr)
-        {
-            return false;
-        }
-
-        // Zeroed before anything that could throw -- same contract as hc_enroll().
-        *result = {};
-
-        try
-        {
-            // Assigns its own sink, like the other two handle-less calls: this one runs on a
-            // detached bootstrap thread that may start before, after or alongside hc_create().
-            assignModuleLogSink(request->log);
-
-            const auto typedConfig = ModuleConfig::fromC(*config);
-            FsProbe fsProbe;
-            // SkewCorrectedClock for the same reason EnrollClient gets one: the bearer binds a
-            // timestamp, and a skewed agent is answered 401 by the manager's time policy.
-            // SecretClient::fetch() runs the same one-shot Date-based correction on a 401, so this
-            // instance can serve two signatures -- the second on a corrected clock. It is local to
-            // this call (the facade's long-lived corrected clock is not reachable from a
-            // handle-less entry point), so the correction is relearned each start: one extra round
-            // trip, against never obtaining the secret at all on a skewed agent.
-            SystemClock systemClock;
-            SkewCorrectedClock clock {systemClock};
-            CurlPerformer performer(typedConfig, defaultCurlHandleFactory(), fsProbe);
-            SecretClient client(typedConfig, performer, fsProbe, clock, HTTPS_CLIENT_LOGTAG);
-
-            const HttpResponse response = client.fetch();
-
-            result->http_code = response.httpCode;
-            result->retry_after_seconds = response.retryAfterSeconds;
             std::strncpy(result->body, response.body.c_str(), sizeof(result->body) - 1);
             std::strncpy(result->transport_error, response.curlError.c_str(),
                          sizeof(result->transport_error) - 1);

@@ -104,8 +104,9 @@ int __wrap_gethostname(char *name, int len) {
     return mock_type(int);
 }
 
-int __wrap_readlink(__attribute__((unused)) void **state) {
-    return mock();
+ssize_t __wrap_readlink(__attribute__((unused)) const char *path, __attribute__((unused)) char *buf, size_t bufsiz) {
+    ssize_t ret = mock();
+    return ret > (ssize_t)bufsiz ? (ssize_t)bufsiz : ret;
 }
 
 int __wrap_symlink(const char *path1, const char *path2) {

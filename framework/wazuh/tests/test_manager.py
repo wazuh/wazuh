@@ -1012,19 +1012,83 @@ def _conf_with_key(key: str) -> str:
     return f"<wazuh_config>\n  <cluster>\n    <name>wazuh</name>\n    <key>{key}</key>\n  </cluster>\n</wazuh_config>\n"
 
 
+def _parse_conf(text: str) -> dict:
+    """Stand-in for the CLI parser: comments dropped, CDATA kept as text, every leaf a string."""
+    import xml.etree.ElementTree as ET
+
+    def to_dict(element):
+        if len(element) == 0:
+            return element.text or ''
+        return {child.tag: to_dict(child) for child in element}
+
+    return to_dict(ET.fromstring(text))
+
+
 @pytest.mark.parametrize('read_secrets', [False, True])
 def test_update_manager_conf_keeps_a_masked_cluster_key(update_mocks, read_secrets):
     """A cluster key sent back masked, as GET serves it without cluster:read_secrets, keeps the current key: the text
-    that is validated and written carries the real key, never the mask."""
+    that is written carries the real key, never the mask, and the key is only put back after the parser has placed it
+    at /cluster/key."""
     update_mocks['load_manager_conf'].return_value = {'cluster': {'name': 'wazuh', 'key': CLUSTER_KEY}}
-    update_mocks['load_manager_conf_text'].return_value = {'cluster': {'name': 'wazuh', 'key': CLUSTER_KEY}}
+    update_mocks['load_manager_conf_text'].side_effect = _parse_conf
     update_mocks['can_read_secrets'].return_value = read_secrets
 
     result = update_manager_conf(new_conf=_conf_with_key('*****'))
 
     assert result.render()['data']['total_failed_items'] == 0
-    update_mocks['load_manager_conf_text'].assert_called_once_with(_conf_with_key(CLUSTER_KEY))
+    assert CLUSTER_KEY not in update_mocks['load_manager_conf_text'].call_args.args[0]
     update_mocks['write_manager_conf'].assert_called_once_with(_conf_with_key(CLUSTER_KEY))
+
+
+@pytest.mark.parametrize('new_conf, written', [
+    # An old key left commented out next to the masked one: the comment keeps the mask, the option gets the key.
+    ("<wazuh_config><cluster><!-- <key>*****</key> --><key>*****</key></cluster></wazuh_config>",
+     f"<wazuh_config><cluster><!-- <key>*****</key> --><key>{CLUSTER_KEY}</key></cluster></wazuh_config>"),
+    # Only the comment is masked: nothing is restored anywhere.
+    (f"<wazuh_config><cluster><!-- <key>*****</key> --><key>{CLUSTER_KEY}</key></cluster></wazuh_config>",
+     f"<wazuh_config><cluster><!-- <key>*****</key> --><key>{CLUSTER_KEY}</key></cluster></wazuh_config>"),
+])
+def test_update_manager_conf_masked_cluster_key_in_a_comment(update_mocks, new_conf, written):
+    """A mask the parser drops (a comment) is never given the real key: it is written back as the mask."""
+    update_mocks['load_manager_conf'].return_value = {'cluster': {'key': CLUSTER_KEY}}
+    update_mocks['load_manager_conf_text'].side_effect = _parse_conf
+
+    result = update_manager_conf(new_conf=new_conf)
+
+    assert result.render()['data']['total_failed_items'] == 0
+    update_mocks['write_manager_conf'].assert_called_once_with(written)
+
+
+@pytest.mark.parametrize('read_secrets', [False, True])
+@pytest.mark.parametrize('new_conf', [
+    # A comment opening <cluster> before another section widens the text scan over that section's <key>.
+    "<wazuh_config><!-- <cluster> --><remote><https><key>*****</key></https></remote>"
+    "<cluster><key>*****</key></cluster></wazuh_config>",
+    # Same with a decoy close after it.
+    "<wazuh_config><cluster><key>*****</key></cluster><remote><https><key>*****</key></https></remote>"
+    "<!-- </cluster> --></wazuh_config>",
+    # A <key> inside a CDATA section is text of another option once parsed.
+    "<wazuh_config><cluster><name><![CDATA[<key>*****</key>]]></name><key>*****</key></cluster></wazuh_config>",
+    # The decoy alone, with the real option absent.
+    "<wazuh_config><!-- <cluster> --><remote><https><key>*****</key></https></remote><!-- </cluster> -->"
+    "</wazuh_config>",
+])
+def test_update_manager_conf_masked_cluster_key_decoy(update_mocks, read_secrets, new_conf):
+    """A mask placed so that the cluster key would land in an option served unmasked is refused before anything is
+    written, and the key never reaches the text: GET would otherwise disclose it to a caller without
+    cluster:read_secrets."""
+    update_mocks['load_manager_conf'].return_value = {'cluster': {'key': CLUSTER_KEY}}
+    update_mocks['load_manager_conf_text'].side_effect = _parse_conf
+    update_mocks['can_read_secrets'].return_value = read_secrets
+
+    result = update_manager_conf(new_conf=new_conf)
+
+    failed = result.render()['data']['failed_items'][0]['error']
+    assert failed['code'] == 1132
+    assert '/cluster/key' in failed['message']
+    assert CLUSTER_KEY not in update_mocks['load_manager_conf_text'].call_args.args[0]
+    update_mocks['write_manager_conf'].assert_not_called()
+    update_mocks['full_copy'].assert_not_called()
 
 
 @pytest.mark.parametrize('read_secrets, sent_key, expected_code', [
@@ -1050,3 +1114,34 @@ def test_update_manager_conf_cluster_key_needs_read_secrets(update_mocks, read_s
     else:
         assert result.render()['data']['total_failed_items'] == 0
         update_mocks['write_manager_conf'].assert_called_once_with(_conf_with_key(sent_key))
+
+
+INDEXER = {'hosts': ['https://127.0.0.1:9200'], 'ssl': {'certificate_authorities': ['etc/certs/root-ca.pem'],
+                                                       'certificate': '', 'key': ''}}
+
+
+@pytest.mark.parametrize('read_secrets, sent_hosts, expected_code', [
+    (False, ['https://127.0.0.1:9200'], None),
+    (False, ['https://attacker.example:9200'], 1132),
+    (True, ['https://10.0.0.2:9200'], None),
+])
+def test_update_manager_conf_indexer_needs_read_secrets(update_mocks, read_secrets, sent_hosts, expected_code):
+    """Every indexer host receives the manager's indexer credential, so redirecting the indexer section requires
+    cluster:read_secrets: without it the text is refused before anything is written, whatever api.yaml's
+    upload_configuration.indexer.allow says. An unchanged section is accepted."""
+    sent = {'hosts': sent_hosts, 'ssl': INDEXER['ssl']}
+    update_mocks['load_manager_conf'].return_value = {'indexer': INDEXER}
+    update_mocks['load_manager_conf_text'].return_value = {'indexer': sent}
+    update_mocks['can_read_secrets'].return_value = read_secrets
+
+    result = update_manager_conf(new_conf='<wazuh_config/>')
+
+    if expected_code:
+        failed = result.render()['data']['failed_items'][0]['error']
+        assert failed['code'] == expected_code
+        assert '/indexer' in failed['message']
+        update_mocks['write_manager_conf'].assert_not_called()
+        update_mocks['full_copy'].assert_not_called()
+    else:
+        assert result.render()['data']['total_failed_items'] == 0
+        update_mocks['write_manager_conf'].assert_called_once()

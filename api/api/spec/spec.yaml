@@ -242,7 +242,7 @@ x-rbac-catalog:
         resources: ['node:id:worker1', 'node:id:worker3']
         effect: "deny"
     'cluster:read_secrets':
-      description: "Read the sensitive configuration values -- the enrollment password and the cluster key -- in clear instead of masked, and change the cluster key"
+      description: "Read the sensitive configuration values -- the enrollment password and the cluster key -- in clear instead of masked, and change the cluster key or the indexer section"
       resources:
         - $ref: '#/x-rbac-catalog/resources/node:id'
       example:
@@ -2079,7 +2079,11 @@ components:
             tcp_sessions:
               type: integer
               format: int32
-              description: "Current active TCP sessions (agents) on the legacy TCP channel. Stays 0 unless `remote.legacy.enabled` is set; for the HTTPS channel see `http_server`"
+              description: "Current active TCP sessions on the legacy TCP channel. Stays 0 unless `remote.legacy.enabled` is set; for the HTTPS channel see `http_server`"
+            tcp_sessions_unassociated:
+              type: integer
+              format: int32
+              description: "Current active TCP sessions on the legacy TCP channel not yet authenticated with an agent key (subset of tcp_sessions)"
             http_server:
               type: object
               description: |
@@ -7026,7 +7030,7 @@ paths:
       tags:
         - Cluster
       summary: "Update node configuration"
-      description: "Replace the manager configuration (etc/wazuh-manager.conf) of the given node with the XML text contained in the API request. The text is validated (syntax, schema, protected sections, secret options) before the file is written. A cluster key sent back masked (`*****`), as this API returns it to a caller without `cluster:read_secrets`, keeps the node's current key; changing the key to any other value requires `cluster:read_secrets` over that node and is refused with error 1132 otherwise."
+      description: "Replace the manager configuration (etc/wazuh-manager.conf) of the given node with the XML text contained in the API request. The text is validated (syntax, schema, protected sections, secret options) before the file is written. A cluster key sent back masked (`*****`), as this API returns it to a caller without `cluster:read_secrets`, keeps the node's current key; changing the key to any other value requires `cluster:read_secrets` over that node and is refused with error 1132 otherwise. So is any change to the indexer section (hosts, TLS): every indexer host receives the manager's indexer credential."
       operationId: api.controllers.cluster_controller.update_configuration
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:update_config'
@@ -7142,6 +7146,7 @@ paths:
                             size: 67108864
                             usage: 0
                         tcp_sessions: 0
+                        tcp_sessions_unassociated: 0
                         http_server:
                           timestamp: 2022-07-21T10:48:32Z
                           responses:
@@ -8472,9 +8477,9 @@ paths:
         - Security
       summary: "Enable/Disable run_as"
       description: "Modify a user's allow_run_as flag by specifying their ID. The flag of a reserved user (`wazuh`,
-        `wazuh-wui`) can only be changed by a reserved user authenticated without an authorization context
+        `wazuh-internal-client`) can only be changed by a reserved user authenticated without an authorization context
         (run_as). Enabling it also requires `security:update` over every role linked to a rule with ID above
-        99 (any rule for `wazuh-wui`), because a run_as login of the user can resolve to any of them"
+        99 (any rule for `wazuh-internal-client`), because a run_as login of the user can resolve to any of them"
       operationId: api.controllers.security_controller.edit_run_as
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:edit_run_as'
@@ -8681,7 +8686,7 @@ paths:
                         roles:
                           - 1
                       - id: 2
-                        username: wazuh-wui
+                        username: wazuh-internal-client
                         allow_run_as: true
                         roles: []
                     total_affected_items: 8
