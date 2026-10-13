@@ -123,11 +123,14 @@ def test_WazuhGCloudSubscriber_pull_request(mock_credentials, mock_send_msg, num
     """Test pull_request makes the request using the provided parameters and returns the expected number of messages."""
     # Create a large list of fake messages
     message_list = [MagicMock() for _ in range(100)]
+    for message in message_list:
+        message.message.data.decode.return_value = '{"logName": "test"}'
     pubsub = WazuhGCloudSubscriber(**get_wodle_config())
     pubsub.subscriber.pull.return_value = MagicMock(received_messages=message_list[:num_messages])
     assert pubsub.pull_request(max_messages=num_messages) == num_messages
     pubsub.subscriber.pull.assert_called_with(request={'subscription': pubsub.subscription_path,
                                                        'max_messages': num_messages})
+    assert mock_send_msg.call_count == num_messages
 
 
 @patch('pubsub.subscriber.WazuhGCloudSubscriber.send_msg')
@@ -137,6 +140,51 @@ def test_WazuhGCloudSubscriber_pull_request_ko(mock_credentials, mock_send_msg):
     pubsub = WazuhGCloudSubscriber(**get_wodle_config())
     pubsub.subscriber.pull.side_effect = google_exceptions.DeadlineExceeded("placeholder")
     assert pubsub.pull_request(max_messages=MAX_MESSAGES) == 0
+
+
+@pytest.mark.parametrize('raw_payload', [
+    'not json at all',
+    # Would otherwise close the "gcp" value early and splice a top-level "srcip" key into the
+    # event analysisd decodes, overriding a trusted field.
+    '{}, "srcip": "8.8.8.8"',
+    # Not JSONDecodeError: an integer past the digit limit raises ValueError, deep nesting RecursionError.
+    pytest.param('1' * 5000, id='integer-over-digit-limit'),
+    pytest.param('[' * 100000, id='deeply-nested'),
+])
+@patch('pubsub.subscriber.WazuhGCloudSubscriber.send_msg')
+@patch('pubsub.subscriber.pubsub.subscriber.Client.from_service_account_file')
+def test_WazuhGCloudSubscriber_pull_request_discards_invalid_json(mock_credentials, mock_send_msg, raw_payload):
+    """Test pull_request acks but does not forward a Pub/Sub message that is not valid JSON, whether it is plain
+    garbage or crafted to inject sibling keys past format_msg()'s template."""
+    message = MagicMock()
+    message.message.data.decode.return_value = raw_payload
+    message.ack_id = 'ack-id-1'
+
+    pubsub = WazuhGCloudSubscriber(**get_wodle_config())
+    pubsub.subscriber.pull.return_value = MagicMock(received_messages=[message])
+
+    assert pubsub.pull_request(max_messages=1) == 1
+    mock_send_msg.assert_not_called()
+    pubsub.logger.warning.assert_called_once()
+    pubsub.subscriber.acknowledge.assert_called_with(
+        request={'subscription': pubsub.subscription_path, 'ack_ids': ['ack-id-1']})
+
+
+@patch('pubsub.subscriber.WazuhGCloudSubscriber.send_msg')
+@patch('pubsub.subscriber.pubsub.subscriber.Client.from_service_account_file')
+def test_WazuhGCloudSubscriber_pull_request_forwards_valid_json(mock_credentials, mock_send_msg):
+    """Test pull_request forwards a well-formed message re-serialized through json.loads()/dumps(), rather than the
+    raw decoded bytes."""
+    message = MagicMock()
+    message.message.data.decode.return_value = '{"logName":   "test"}'
+    message.ack_id = 'ack-id-1'
+
+    pubsub = WazuhGCloudSubscriber(**get_wodle_config())
+    pubsub.subscriber.pull.return_value = MagicMock(received_messages=[message])
+
+    assert pubsub.pull_request(max_messages=1) == 1
+    mock_send_msg.assert_called_once_with(pubsub.format_msg('{"logName": "test"}'))
+    pubsub.logger.warning.assert_not_called()
 
 
 @patch('pubsub.subscriber.pubsub.subscriber.Client.from_service_account_file')

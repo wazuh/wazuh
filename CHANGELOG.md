@@ -25,6 +25,20 @@ All notable changes to this project will be documented in this file.
 - Fixed `run_as` authorization-context regex rules without a closing quote being evaluated as a partial expression, and rejected such rules when creating or updating security rules. ([#39855](https://github.com/wazuh/wazuh/pull/39855))
 - Fixed `MATCH` and `MATCH$` security rules granting a role when a rule item was not satisfied, because matches were counted instead of checked per rule item. ([#39855](https://github.com/wazuh/wazuh/pull/39855))
 - Fixed `GET /groups` returning no results for users restricted by RBAC to groups whose name is made of digits with leading zeros, such as `007`. ([#40161](https://github.com/wazuh/wazuh/pull/40161))
+- Fixed the SonicWall decoder leaving its `category` field unterminated for a `c=` value of 7 or more digits. ([#40010](https://github.com/wazuh/wazuh/pull/40010))
+- Fixed `OS_IPFound`/`OS_IPFoundList` comparing an IP against a rule of a different family, reading past the end of an IPv4 rule's allocation for an IPv6 query. ([#40010](https://github.com/wazuh/wazuh/pull/40010))
+- Fixed `wazuh-remoted`'s syslog-TCP listener advancing its buffer length after a failed `recv()`, writing one byte before the buffer on a reset connection. ([#40010](https://github.com/wazuh/wazuh/pull/40010))
+- Fixed a path traversal in analysisd's diff-folder path construction via an unvalidated syslog hostname. ([#40010](https://github.com/wazuh/wazuh/pull/40010))
+- Fixed an agent overriding the trusted agent ID in its own upgrade status report by supplying its own `agents` field. ([#40010](https://github.com/wazuh/wazuh/pull/40010))
+- Fixed an integer wrap in the shared modules' socket wrapper that could request an unbounded `recv()` on a length-prefixed read. ([#40010](https://github.com/wazuh/wazuh/pull/40010))
+- Fixed an inverted bounds check in the shared modules' socket wrapper letting a malformed header length move its read offset past the message. ([#40010](https://github.com/wazuh/wazuh/pull/40010))
+- Fixed an integer underflow in the keystore's AES decryption of a ciphertext shorter than its key and IV. ([#40010](https://github.com/wazuh/wazuh/pull/40010))
+- Fixed a zip-slip guard allowing extraction into a sibling directory sharing the target directory's name prefix. ([#40010](https://github.com/wazuh/wazuh/pull/40010))
+- Fixed the Azure Log Analytics wodle logging its OAuth bearer token at debug level. ([#40010](https://github.com/wazuh/wazuh/pull/40010))
+- Fixed a GCP Pub/Sub message being spliced unescaped into the event JSON sent to analysisd, letting a crafted message add or override event fields. ([#40010](https://github.com/wazuh/wazuh/pull/40010))
+- Fixed the AWS wodle decompressing gzip objects twice before processing them, doubling memory and CPU use per object. ([#40010](https://github.com/wazuh/wazuh/pull/40010))
+- Fixed a quadratic-time loop in the AWS Macie/custom-bucket JSON parser caused by re-slicing the remaining buffer on every object, and its zero-matching regex backtracking quadratically on long runs of zeros. ([#40010](https://github.com/wazuh/wazuh/pull/40010))
+- Fixed the Maltiverse integration sending an unvalidated alert hostname unescaped in the request path, allowing path or query manipulation within the Maltiverse API. ([#40010](https://github.com/wazuh/wazuh/pull/40010))
 
 ### Agent
 

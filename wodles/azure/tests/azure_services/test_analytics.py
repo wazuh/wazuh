@@ -245,6 +245,30 @@ def test_get_log_analytics_events_error_responses(mock_get):
     response_mock.raise_for_status.assert_called_once()
 
 
+@patch('azure_services.analytics.logging.debug')
+@patch('azure_services.analytics.get')
+def test_get_log_analytics_events_does_not_log_headers(mock_get, mock_logging):
+    """Test get_log_analytics_events does not write the authentication token to the log."""
+    token = 'A_TOKEN_THAT_MUST_NOT_BE_LOGGED'
+
+    response_mock = MagicMock(status_code=200)
+    response_mock.json.return_value = {'tables': [{'columns': [], 'rows': []}]}
+    mock_get.return_value = response_mock
+
+    get_log_analytics_events(
+        url='url',
+        body='body',
+        headers={'Authorization': f'Bearer {token}'},
+        md5_hash='',
+        query='test_query',
+        tag='test',
+        tenant='tenant',
+    )
+
+    for call in mock_logging.call_args_list:
+        assert token not in call[0][0]
+
+
 @pytest.mark.parametrize(
     'columns, position',
     [
