@@ -4718,6 +4718,45 @@ void Syscollector::releaseContainerCounts(const std::string& containerId)
     // those stale entries still appear to hold.
     std::lock_guard<std::mutex> lock(m_limitsMutex);
     m_containerDocumentCounts.erase(containerId);
+
+    // Its saturation state goes with it, or a container id that is reused would
+    // inherit a "already reported" flag it never earned.
+    for (auto it = m_limitReported.begin(); it != m_limitReported.end();)
+    {
+        it = (it->first == containerId) ? m_limitReported.erase(it) : std::next(it);
+    }
+}
+
+size_t Syscollector::unsyncedCountFor(const std::string& tableName,
+                                      LimitScope scope,
+                                      const std::string& containerId)
+{
+    size_t count = 0;
+
+    if (!m_spDBSync)
+    {
+        return count;
+    }
+
+    // Only ever called on the saturated path, and only when that scope newly
+    // saturated, so this costs one COUNT(*) per saturation event rather than
+    // one per scan.
+    auto selectQuery = SelectQuery::builder()
+                       .table(tableName)
+                       .columnList({"COUNT(*)"})
+                       .rowFilter("WHERE sync=0" + scopeFilter(scope, containerId))
+                       .build();
+
+    m_spDBSync->selectRows(selectQuery.query(),
+                           [&count](ReturnTypeCallback, const nlohmann::json & result)
+    {
+        if (result.contains("COUNT(*)") && result["COUNT(*)"].is_number())
+        {
+            count = result["COUNT(*)"].get<size_t>();
+        }
+    });
+
+    return count;
 }
 
 std::set<std::string> Syscollector::containersWithRowsIn(const std::string& tableName)
@@ -5520,14 +5559,33 @@ void Syscollector::promoteItemsAfterScanLocked(LimitScope scope)
 
             if (availableSpace == 0)
             {
-                if (m_logFunction)
+                // Saturation is reported at a level an operator will see, and
+                // ONCE per (scope, index, container) until it clears. A limit
+                // nobody can observe is not a limit; a limit that says so every
+                // scan is a limit nobody reads. The previous message was
+                // LOG_DEBUG_VERBOSE, which is to say invisible.
+                const auto key = std::make_pair(containerId, index);
+
+                if (m_limitReported.insert(key).second)
                 {
-                    m_logFunction(LOG_DEBUG_VERBOSE, "Index '" + index + "' is at limit (" +
-                                  std::to_string(limit) + "), no items to promote" + scopeSuffix);
+                    const size_t withheld = unsyncedCountFor(tableName, scope, containerId);
+
+                    if (m_logFunction)
+                    {
+                        m_logFunction(LOG_INFO,
+                                      "Inventory limit reached for '" + index + "' (" +
+                                      std::to_string(limit) + " documents)" + scopeSuffix +
+                                      ". " + std::to_string(withheld) +
+                                      " collected row(s) are held back and will not reach the "
+                                      "manager until the limit is raised or rows are freed.");
+                    }
                 }
 
                 continue;
             }
+
+            // Below the limit again: let it report once more if it saturates.
+            m_limitReported.erase(std::make_pair(containerId, index));
 
             if (m_logFunction)
             {
