@@ -75,6 +75,19 @@ void fim_container_events_release(void);
  */
 void fim_container_events_stop(void);
 
+/**
+ * @brief Hand this library the host functions it cannot link against.
+ *
+ * Call before fim_container_events_start() or fim_run_container_baseline().
+ *
+ * @param rate_limit FIM's files-per-second budget (check_max_fps). It lives in
+ *                   syscheckd_lib, which links this library, so it cannot be
+ *                   called directly without making the dependency circular and
+ *                   leaving this library unlinkable on its own. Passing NULL
+ *                   leaves the container walk unthrottled.
+ */
+void fim_container_baseline_set_host_callbacks(void (*rate_limit)(void));
+
 #ifdef __cplusplus
 }
 #endif
