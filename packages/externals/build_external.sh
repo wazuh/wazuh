@@ -68,6 +68,12 @@ err() { echo "[external][ERROR] $*" >&2; }
 in_build() { [ -z "${DEPS_BUILD:-}" ] || [[ " ${DEPS_BUILD} " == *" $1 "* ]]; }
 # An empty DEPS_POOL_URL would override the Makefile default.
 [ -n "${DEPS_POOL_URL:-}" ] || unset DEPS_POOL_URL
+# The recipes inherit these from the project, and a pool ref must be Release and uninstrumented.
+for _var in DEBUG FSANITIZE TSANITIZE EXTERNAL_SANITIZE; do
+    case "${!_var:-}" in
+        YES|yes|y|Y|1) err "${_var}=${!_var} is set: pool artifacts must be built in Release"; exit 1 ;;
+    esac
+done
 
 # Runtime tooling not always present in the package builder images:
 #   - zip/unzip: write per-dep snapshot zips and extract .zip upstream tarballs.
@@ -465,9 +471,19 @@ export CXX_FOR_BUILD="${CXX:-g++}"
 # whatever deps did build successfully, which is useful for diagnostics. The
 # script's exit code reflects the build-external outcome at the end.
 set +e
-make -j"${JOBS}" -C "${SRC_DIR}" TARGET="${MAKE_TARGET}" build-external
+
+# Nothing from the environment may turn the build into Debug or instrument it: make variables passed through
+# MAKEFLAGS, the CMake options the Makefile appends to, or CMAKE_BUILD_TYPE, which CMake reads by itself.
+env -u MAKEFLAGS -u MFLAGS -u CMAKE_OPTS -u CMAKE_ENGINE_OPTS -u WAZUH_TEST -u WAZUH_RELEASE_TYPE -u CMAKE_BUILD_TYPE \
+    make -j"${JOBS}" -C "${SRC_DIR}" TARGET="${MAKE_TARGET}" DEBUG= FSANITIZE= TSANITIZE= EXTERNAL_SANITIZE= TEST= \
+    ENGINE_TEST= build-external
 build_external_rc=$?
 set -e
+if grep -Eqi '^(CMAKE_BUILD_TYPE:STRING=debug|(FSANITIZE|TSANITIZE|EXTERNAL_SANITIZE):[a-z]+=(on|true|yes|y|1))$' \
+    "${SRC_DIR}/build/CMakeCache.txt" 2>/dev/null; then
+    err "the configured build is Debug or instrumented: pool artifacts must be built in Release"
+    exit 1
+fi
 if [ "${build_external_rc}" -ne 0 ]; then
     err "make build-external returned ${build_external_rc}; continuing to snapshot whatever built"
 fi

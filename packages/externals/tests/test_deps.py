@@ -1232,6 +1232,11 @@ def test_lock_check_stale(tmp_path):
     assert lines[1].rstrip("\n") in result.stderr
 
 
+def test_committed_lock_is_current():
+    result = run("lock", "--check")
+    assert result.returncode == 0, result.stderr
+
+
 @pytest.mark.skipif(shutil.which("make") is None, reason="needs make")
 def test_lock_make_parses(tmp_path):
     lock = tmp_path / "deps.lock.mk"
@@ -2431,3 +2436,96 @@ def test_consolidate_ebpf_toolchain(consolidate_repo, tmp_path):
         sorted([refs["libbpf-bootstrap"], refs["zlib"]])
     for path in manifests:
         assert json.loads(path.read_text())["toolchain"]["build-ebpf"] == ["leg: build-ebpf", "zig: 0.14.1"], path
+
+
+@pytest.mark.parametrize("value", ["YES", "yes", "y", "Y", "1"])
+@pytest.mark.parametrize("var", ["DEBUG", "FSANITIZE", "TSANITIZE", "EXTERNAL_SANITIZE"])
+def test_build_external_refuses_debug_flags_for_the_pool(tmp_path, var, value):
+    env = {**os.environ, var: value, "ARTIFACTS_DIR": str(tmp_path / "artifacts"),
+           "DOWNLOAD_DIR": str(tmp_path / "download"), "WAZUH_VERBOSE": "no"}
+    result = subprocess.run(["bash", str(BUILD_EXTERNAL)], env=env, capture_output=True, text=True)
+    assert result.returncode == 1
+    assert f"{var}={value} is set" in result.stderr
+
+
+FAKE_PROJECT_MAKEFILE = """\
+ifneq (,$(filter ${DEBUG},YES yes y Y 1))
+TYPE=Debug
+endif
+build-external:
+\tmkdir -p build && printf 'CMAKE_BUILD_TYPE:STRING=%s\\nOPTS:STRING=%s\\n%s' '$(TYPE)$(FORCE)' '$(CMAKE_OPTS)' '$(EXTRA)' > build/CMakeCache.txt
+"""
+
+
+def run_build_external_make(tmp_path, env, force="", extra=""):
+    """The make call and the configured-cache check of build_external.sh, against a stand-in project Makefile."""
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "Makefile").write_text(FAKE_PROJECT_MAKEFILE + f"FORCE={force}\nEXTRA={extra}\n")
+    block = subprocess.run(["sed", "-n", "/^env -u MAKEFLAGS/,/^fi$/p", str(BUILD_EXTERNAL)], capture_output=True,
+                           text=True, check=True).stdout
+    assert block.count("make ") == 1 and "CMakeCache.txt" in block
+    script = f'err() {{ echo "$*" >&2; }}\nSRC_DIR={shlex.quote(str(src))}\nJOBS=1\nMAKE_TARGET=agent\nset +e\n' + block
+    result = subprocess.run(["bash", "-c", script], env={**os.environ, **env}, capture_output=True, text=True)
+    return result, (src / "build" / "CMakeCache.txt").read_text()
+
+
+@pytest.mark.skipif(shutil.which("make") is None, reason="needs make")
+@pytest.mark.parametrize("env", [{"MAKEFLAGS": "DEBUG=yes"}, {"MFLAGS": "DEBUG=yes"},
+                                 {"CMAKE_OPTS": "-DCMAKE_BUILD_TYPE=Debug -DTSANITIZE=ON"}, {"DEBUG": "yes"}])
+def test_build_external_make_ignores_the_environment(tmp_path, env):
+    result, cache = run_build_external_make(tmp_path, env)
+    assert result.returncode == 0, result.stderr
+    assert cache == "CMAKE_BUILD_TYPE:STRING=\nOPTS:STRING=\n"
+
+
+@pytest.mark.skipif(shutil.which("make") is None, reason="needs make")
+@pytest.mark.parametrize("force,extra", [("debug", ""), ("", "FSANITIZE:UNINITIALIZED=ON"), ("", "TSANITIZE:BOOL=yes"),
+                                         ("", "EXTERNAL_SANITIZE:UNINITIALIZED=1")])
+def test_build_external_refuses_a_debug_cache(tmp_path, force, extra):
+    result, _ = run_build_external_make(tmp_path, {}, force=force, extra=extra)
+    assert result.returncode == 1 and "is Debug or instrumented" in result.stderr
+
+
+def external_flags(tmp_path, **variables):
+    """DEPS_BUILD_TYPE and DEPS_CMAKE_ARGS that src/cmake/WazuhExternalFlags.cmake computes from `variables`."""
+    driver = "".join(f'set({name} "{value}")\n' for name, value in variables.items())
+    driver += f'include("{SRC / "cmake" / "WazuhExternalFlags.cmake"}")\nmessage("${{DEPS_BUILD_TYPE}}|${{DEPS_CMAKE_ARGS}}|${{DEPS_CFLAGS_ENV}}")\n'
+    (tmp_path / "driver.cmake").write_text(driver)
+    result = subprocess.run(["cmake", "-P", str(tmp_path / "driver.cmake")], capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+    return result.stderr.strip().split("|")
+
+
+ASAN = "-g -O0 -fsanitize=address,leak,undefined"
+TSAN = "-g -O0 -fsanitize=thread"
+
+
+@pytest.mark.skipif(shutil.which("cmake") is None, reason="needs cmake")
+@pytest.mark.parametrize("variables,build_type,flags", [
+    ({"CMAKE_BUILD_TYPE": "Release"}, "Release", ""),
+    ({"CMAKE_BUILD_TYPE": ""}, "Release", ""),
+    ({"CMAKE_BUILD_TYPE": "RelWithDebInfo"}, "Release", ""),
+    ({"CMAKE_BUILD_TYPE": "Debug"}, "Debug", "-g -O0"),
+    ({"CMAKE_BUILD_TYPE": "debug"}, "Debug", "-g -O0"),
+    ({"CMAKE_BUILD_TYPE": "Debug", "FSANITIZE": "ON"}, "Debug", "-g -O0"),
+    ({"CMAKE_BUILD_TYPE": "Debug", "TSANITIZE": "ON"}, "Debug", "-g -O0"),
+    ({"CMAKE_BUILD_TYPE": "Debug", "FSANITIZE": "ON", "EXTERNAL_SANITIZE": "ON"}, "Debug", ASAN),
+    ({"CMAKE_BUILD_TYPE": "Debug", "TSANITIZE": "ON", "EXTERNAL_SANITIZE": "ON"}, "Debug", TSAN),
+    ({"CMAKE_BUILD_TYPE": "Debug", "EXTERNAL_SANITIZE": "ON"}, "Debug", "-g -O0"),
+    ({"CMAKE_BUILD_TYPE": "Release", "FSANITIZE": "ON", "EXTERNAL_SANITIZE": "ON"}, "Release", ""),
+    ({"CMAKE_BUILD_TYPE": "Debug", "FSANITIZE": "ON", "EXTERNAL_SANITIZE": "ON", "IS_WINDOWS": "TRUE"}, "Release", ""),
+])
+def test_external_flags(tmp_path, variables, build_type, flags):
+    got_type, args, cflags_env = external_flags(tmp_path, **variables)
+    expected = [f"-DCMAKE_BUILD_TYPE={build_type}"] + ([f"-DCMAKE_C_FLAGS={flags}", f"-DCMAKE_CXX_FLAGS={flags}"] if flags else [])
+    assert (got_type, args.split(";"), cflags_env) == (build_type, expected, f"CFLAGS={flags}" if flags else "")
+
+
+@pytest.mark.skipif(shutil.which("make") is None, reason="needs make")
+@pytest.mark.parametrize("value,expected", [("yes", True), ("", False), ("no", False)])
+def test_makefile_passes_external_sanitize(value, expected):
+    result = subprocess.run(["make", "-s", "-C", str(SRC), "print-CMAKE_OPTS", f"EXTERNAL_SANITIZE={value}"],
+                            capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+    assert ("-DEXTERNAL_SANITIZE=ON" in result.stdout) == expected
