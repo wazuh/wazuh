@@ -35,7 +35,7 @@ Any failed test should be reported, detailing the error and possible cause.
 
 ## Workflows to review
 
-The scheduled task executes the following workflows every Wednesday:
+The scheduled task executes the following workflows every Tuesday. 4.x branches and tags run the `4_*` workflows:
 
 | Test                                    | Link                                                                                        |
 |-----------------------------------------|---------------------------------------------------------------------------------------------|
@@ -48,6 +48,16 @@ The scheduled task executes the following workflows every Wednesday:
 |4_testintegration_remoted-tier-2         |https://github.com/wazuh/wazuh/actions/workflows/4_testintegration_remoted-tier-2.yml        |
 |4_testintegration_wazuh_db-tier-0-1      |https://github.com/wazuh/wazuh/actions/workflows/4_testintegration_wazuh_db-tier-0-1.yml     |
 |4_testcomponent_vulnerability-scanner    |https://github.com/wazuh/wazuh/actions/workflows/4_testcomponent_vulnerability-scanner.yml    |
+
+5.x branches and tags run the `5_*` workflows:
+
+| Test                                    | Link                                                                                        |
+|-----------------------------------------|---------------------------------------------------------------------------------------------|
+|5_testintegration_engine                 |https://github.com/wazuh/wazuh/actions/workflows/5_testintegration_engine.yml                |
+|5_testintegration_vulnerability-scanner  |https://github.com/wazuh/wazuh/actions/workflows/5_testintegration_vulnerability-scanner.yml |
+|5_testcomponent_vulnerability-scanner    |https://github.com/wazuh/wazuh/actions/workflows/5_testcomponent_vulnerability-scanner.yml   |
+|5_testintegration_api-endpoints          |https://github.com/wazuh/wazuh/actions/workflows/5_testintegration_api-endpoints.yml         |
+|5_testintegration_manager                |https://github.com/wazuh/wazuh/actions/workflows/5_testintegration_manager.yml               |
 
 <!--
 **INSTRUCTIONS:**
@@ -74,6 +84,17 @@ The scheduled task executes the following workflows every Wednesday:
 | :black_circle: | 4_testintegration_remoted-tier-2         | | |
 | :black_circle: | 4_testintegration_wazuh_db-tier-0-1      | | |
 | :black_circle: | 4_testcomponent_vulnerability-scanner    | | |
+
+For 5.x branches and tags:
+
+## [VERSION_OR_TAG]
+| Status                                             | Test| Link      | Coments |
+|----------------------------------------------|-----|-----------|--|
+| :black_circle: | 5_testintegration_engine                 | | |
+| :black_circle: | 5_testintegration_vulnerability-scanner  | | |
+| :black_circle: | 5_testcomponent_vulnerability-scanner    | | |
+| :black_circle: | 5_testintegration_api-endpoints          | | |
+| :black_circle: | 5_testintegration_manager                | | |
 -->
 
 <!--
@@ -100,4 +121,11 @@ gh workflow run 4_testintegration_remoted-tier-0-1.yml --repo=wazuh/wazuh --ref 
 gh workflow run 4_testintegration_remoted-tier-2.yml --repo=wazuh/wazuh --ref <VERSION>
 gh workflow run 4_testintegration_wazuh_db-tier-0-1.yml --repo=wazuh/wazuh --ref <VERSION>
 gh workflow run 4_testcomponent_vulnerability-scanner.yml --repo=wazuh/wazuh --ref <VERSION>
+
+5.x workflows:
+gh workflow run 5_testintegration_engine.yml --repo=wazuh/wazuh --ref <VERSION>
+gh workflow run 5_testintegration_vulnerability-scanner.yml --repo=wazuh/wazuh --ref <VERSION>
+gh workflow run 5_testcomponent_vulnerability-scanner.yml --repo=wazuh/wazuh --ref <VERSION>
+gh workflow run 5_testintegration_api-endpoints.yml --repo=wazuh/wazuh --ref <VERSION>
+gh workflow run 5_testintegration_manager.yml --repo=wazuh/wazuh --ref <VERSION> --field modules=all --field base_branch=<VERSION>
 -->
