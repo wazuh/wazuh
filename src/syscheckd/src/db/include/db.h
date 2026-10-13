@@ -278,6 +278,15 @@ EXPORTED bool fim_db_try_get_last_sync_time(const char* table_name, int64_t* out
 EXPORTED void fim_db_update_last_sync_time_value(const char* table_name, int64_t timestamp);
 
 /**
+ * @brief Same as fim_db_update_last_sync_time_value(), but reports whether the write succeeded.
+ *
+ * @param table_name Pseudo-key to write.
+ * @param value Value to store.
+ * @return false when the write failed.
+ */
+EXPORTED bool fim_db_try_update_last_sync_time_value(const char* table_name, int64_t value);
+
+/**
  * @brief Set the sync flag for a file document.
  *
  * @param file_path The file path to update.

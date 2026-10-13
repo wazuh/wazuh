@@ -736,6 +736,39 @@ TEST_F(SyscollectorIdentityTest, ProgressMarkersAreClearedOnceTheIdentityIsRecor
     EXPECT_EQ(value, 0);
 }
 
+// A VD table that could not be cleared keeps the VD marker unset even if the VD session lands, so
+// the next pass resends the whole VD lane, that table included, instead of skipping it.
+TEST_F(SyscollectorIdentityTest, FailedVDTableKeepsTheVDLanePending)
+{
+    initWithMarker(true, true, 1, /* os */ true);
+    publishAgentId("2");
+    INJECT_MOCK_PROTOCOLS();
+
+    EXPECT_CALL(*vdProtocol,
+                notifyDataClean(std::vector<std::string> {SYSCOLLECTOR_SYNC_INDEX_SYSTEM}, _, _))
+    .Times(2)
+    .WillOnce(Return(SyncModuleResult {}))
+    .WillOnce(Return(okResult()));
+    EXPECT_CALL(*vdProtocol,
+                notifyDataClean(std::vector<std::string> {SYSCOLLECTOR_SYNC_INDEX_PACKAGES}, _, _))
+    .Times(2)
+    .WillRepeatedly(Return(okResult()));
+    // users lands on the first pass and is not cleared again.
+    EXPECT_CALL(*plainProtocol, notifyDataClean(_, _, _)).Times(1).WillOnce(Return(okResult()));
+    EXPECT_CALL(*vdProtocol, synchronizeModule(_, _)).WillRepeatedly(Return(okResult()));
+    EXPECT_CALL(*plainProtocol, synchronizeModule(_, _)).WillRepeatedly(Return(okResult()));
+
+    Syscollector::instance().checkAgentIdentity();
+
+    int64_t vdMarker = -1;
+    EXPECT_TRUE(Syscollector::instance().getMetadataValue("vd_synced_agent_id", vdMarker));
+    EXPECT_EQ(vdMarker, 0);
+    EXPECT_EQ(readMarker(), 1);
+
+    Syscollector::instance().checkAgentIdentity();
+    EXPECT_EQ(readMarker(), 2);
+}
+
 // A recovery session has to carry the same DataContext a scan would attach, and
 // processVDDataContext() is the only thing that builds it. It runs once per scan cycle -- a path
 // recovery never takes -- so before this it was simply never invoked for a recovered VD table,

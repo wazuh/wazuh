@@ -74,6 +74,12 @@ static directory_t mock_directory_config = {0};
 static registry_t mock_registry_config = {0};
 #endif
 
+bool __wrap_fim_db_try_update_last_sync_time_value(const char* table_name, int64_t value) {
+    check_expected(table_name);
+    check_expected(value);
+    return mock_type(bool);
+}
+
 // Per-table identity markers, as fim_resync_on_agent_id_change() builds them
 #define FILE_TABLE_SYNCED_KEY FIM_TABLE_SYNCED_AGENT_ID_METADATA_PREFIX FIMDB_FILE_TABLE_NAME
 #define REGISTRY_KEY_TABLE_SYNCED_KEY FIM_TABLE_SYNCED_AGENT_ID_METADATA_PREFIX FIMDB_REGISTRY_KEY_TABLENAME
@@ -828,8 +834,9 @@ static void test_fim_resync_on_agent_id_change_resends_and_records(void **state)
     // The table's own marker, cleared again once every table is done, then the identity marker.
     expect_string(__wrap_fim_db_update_last_sync_time_value, table_name, FILE_TABLE_SYNCED_KEY);
     expect_value(__wrap_fim_db_update_last_sync_time_value, timestamp, 2);
-    expect_string(__wrap_fim_db_update_last_sync_time_value, table_name, FILE_TABLE_SYNCED_KEY);
-    expect_value(__wrap_fim_db_update_last_sync_time_value, timestamp, 0);
+    expect_string(__wrap_fim_db_try_update_last_sync_time_value, table_name, FILE_TABLE_SYNCED_KEY);
+    expect_value(__wrap_fim_db_try_update_last_sync_time_value, value, 0);
+    will_return(__wrap_fim_db_try_update_last_sync_time_value, true);
     expect_string(__wrap_fim_db_update_last_sync_time_value, table_name, FIM_SYNCED_AGENT_ID_METADATA_KEY);
     expect_value(__wrap_fim_db_update_last_sync_time_value, timestamp, 2);
 
@@ -954,6 +961,36 @@ static void test_fim_resync_on_agent_id_change_resumes_with_the_pending_tables(v
 
     // No fim_db_update_last_sync_time_value expectation: neither pending table reached the manager.
     assert_false(fim_resync_on_agent_id_change(handle, tables, 3, &mock_directories));
+}
+
+// A per-table marker that cannot be cleared keeps the identity unrecorded, so the next cycle
+// retries instead of leaving a marker that a later enrollment reusing this id would trust.
+static void test_fim_resync_on_agent_id_change_failed_marker_reset_records_nothing(void **state) {
+    (void) state;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+    char* tables[] = {FIMDB_FILE_TABLE_NAME, FIMDB_REGISTRY_KEY_TABLENAME};
+
+    expect_any_always(__wrap__minfo, formatted_msg);
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+
+    will_return(__wrap_asp_get_agent_id, 2);
+
+    expect_string(__wrap_fim_db_try_get_last_sync_time, table_name, FIM_SYNCED_AGENT_ID_METADATA_KEY);
+    will_return(__wrap_fim_db_try_get_last_sync_time, 1);
+    will_return(__wrap_fim_db_try_get_last_sync_time, true);
+    expect_string(__wrap_fim_db_try_get_last_sync_time, table_name, FILE_TABLE_SYNCED_KEY);
+    will_return(__wrap_fim_db_try_get_last_sync_time, 2);
+    will_return(__wrap_fim_db_try_get_last_sync_time, true);
+    expect_string(__wrap_fim_db_try_get_last_sync_time, table_name, REGISTRY_KEY_TABLE_SYNCED_KEY);
+    will_return(__wrap_fim_db_try_get_last_sync_time, 2);
+    will_return(__wrap_fim_db_try_get_last_sync_time, true);
+
+    expect_string(__wrap_fim_db_try_update_last_sync_time_value, table_name, FILE_TABLE_SYNCED_KEY);
+    expect_value(__wrap_fim_db_try_update_last_sync_time_value, value, 0);
+    will_return(__wrap_fim_db_try_update_last_sync_time_value, false);
+
+    // No fim_db_update_last_sync_time_value expectation: recording the identity here would be the bug.
+    assert_false(fim_resync_on_agent_id_change(handle, tables, 2, &mock_directories));
 }
 
 // A shutdown right after the first table leaves the identity marker alone, and the next pass
@@ -1082,8 +1119,9 @@ static void test_fim_resync_on_agent_id_change_records_when_every_table_was_rese
 
     // The per-table markers are cleared before the identity marker is recorded.
     for (int i = 0; i < 3; i++) {
-        expect_string(__wrap_fim_db_update_last_sync_time_value, table_name, table_keys[i]);
-        expect_value(__wrap_fim_db_update_last_sync_time_value, timestamp, 0);
+        expect_string(__wrap_fim_db_try_update_last_sync_time_value, table_name, table_keys[i]);
+        expect_value(__wrap_fim_db_try_update_last_sync_time_value, value, 0);
+        will_return(__wrap_fim_db_try_update_last_sync_time_value, true);
     }
 
     expect_string(__wrap_fim_db_update_last_sync_time_value, table_name, FIM_SYNCED_AGENT_ID_METADATA_KEY);
@@ -1385,6 +1423,7 @@ int main(void) {
         cmocka_unit_test(test_fim_resync_on_agent_id_change_resumes_with_the_pending_tables),
         cmocka_unit_test(test_fim_resync_on_agent_id_change_pass_cut_by_shutdown_resumes),
         cmocka_unit_test(test_fim_resync_on_agent_id_change_records_when_every_table_was_resent_earlier),
+        cmocka_unit_test(test_fim_resync_on_agent_id_change_failed_marker_reset_records_nothing),
         cmocka_unit_test(test_fim_resync_on_agent_id_change_absent_marker_not_adopted_while_stopping),
         cmocka_unit_test(test_fim_recovery_run_integrity_checks_unchecked_table_is_stamped_and_reported),
         cmocka_unit_test(test_fim_recovery_run_integrity_checks_stop_during_check_leaves_table_unstamped),

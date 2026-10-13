@@ -388,13 +388,8 @@ bool fim_resync_on_agent_id_change(AgentSyncProtocolHandle* handle, char** table
         resuming = resuming || already_resent[i];
     }
 
-    if (resuming) {
-        minfo("FIM was last synchronized as agent %ld, now running as agent %ld. Resuming the resend with the "
-              "tables not yet sent under this id.", (long)synced_id, current_id);
-    } else {
-        minfo("FIM was last synchronized as agent %ld, now running as agent %ld. Resending every monitored entry.",
-              (long)synced_id, current_id);
-    }
+    minfo("FIM was last synchronized as agent %ld, now running as agent %ld. %s", (long)synced_id, current_id,
+          resuming ? "Resuming the resend with the tables not yet sent under this id." : "Resending every monitored entry.");
 
     bool any_failed = false;
 
@@ -440,10 +435,15 @@ bool fim_resync_on_agent_id_change(AgentSyncProtocolHandle* handle, char** table
     }
 
     // The per-table markers only mean something while this transition is in progress. Cleared
-    // first, so a later enrollment that reuses an id they hold cannot skip a table.
+    // first, so a later enrollment that reuses an id they hold cannot skip a table; if any of
+    // them cannot be cleared, the identity is not recorded and the next cycle retries.
     for (int i = 0; i < table_count; i++) {
         fim_table_synced_key(table_names[i], table_key, sizeof(table_key));
-        fim_db_update_last_sync_time_value(table_key, 0);
+        if (!fim_db_try_update_last_sync_time_value(table_key, 0)) {
+            mdebug1("Could not clear the FIM resync progress markers; the identity will be recorded on the next "
+                    "sync cycle.");
+            return false;
+        }
     }
 
     fim_db_update_last_sync_time_value(FIM_SYNCED_AGENT_ID_METADATA_KEY, (int64_t)current_id);

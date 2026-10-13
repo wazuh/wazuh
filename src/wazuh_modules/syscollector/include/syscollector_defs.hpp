@@ -49,6 +49,7 @@
     FRIEND_TEST(SyscollectorIdentityTest, UnreadablePerTableMarkerCountsAsNotDone);                                    \
     FRIEND_TEST(SyscollectorIdentityTest, PlainLaneMarkerDoesNotSkipTheVDLane);                                        \
     FRIEND_TEST(SyscollectorIdentityTest, ProgressMarkersAreClearedOnceTheIdentityIsRecorded);                         \
+    FRIEND_TEST(SyscollectorIdentityTest, FailedVDTableKeepsTheVDLanePending);                                         \
     FRIEND_TEST(SyscollectorIdentityTest, VDRecoveryAttachesTheDataContext);                                           \
     FRIEND_TEST(SyscollectorIdentityTest, PlainRecoveryLeavesTheVDContextAlone);                                       \
     FRIEND_TEST(SyscollectorIdentityTest, DeferredVDRecoveryDoesNotAttachContext);                                     \

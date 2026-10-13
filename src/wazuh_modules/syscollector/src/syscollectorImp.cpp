@@ -5377,6 +5377,7 @@ void Syscollector::checkAgentIdentity()
     m_identityResyncAttempts.fetch_add(1);
 
     bool anyFailed = false;
+    bool vdLaneFailed = false;
     std::vector<std::string> vdTablesResent;
 
     // Has the VD lane already landed for this identity? Only the combined marker below waits for
@@ -5393,6 +5394,11 @@ void Syscollector::checkAgentIdentity()
     {
         return std::string(SYSCOLLECTOR_TABLE_SYNCED_AGENT_ID_METADATA_PREFIX) + tableName;
     };
+    // The VD lane exists only while m_vdSyncEnabled; otherwise its tables ride the plain lane.
+    const auto onVDLane = [this](const std::string & index)
+    {
+        return isVDIndex(index) && m_vdSyncEnabled;
+    };
     std::set<std::string> tablesAlreadyResent;
 
     for (const auto& [tableName, index] : INDEX_MAP)
@@ -5403,7 +5409,7 @@ void Syscollector::checkAgentIdentity()
         }
 
         int64_t tableSyncedId = 0;
-        const bool alreadyResent = isVDIndex(index) && m_vdSyncEnabled
+        const bool alreadyResent = onVDLane(index)
                                    ? vdAlreadyResent
                                    : getMetadataValue(tableMarkerKey(tableName), tableSyncedId)
                                    && tableSyncedId == static_cast<int64_t>(currentId);
@@ -5414,19 +5420,11 @@ void Syscollector::checkAgentIdentity()
         }
     }
 
-    if (tablesAlreadyResent.empty())
-    {
-        m_logFunction(LOG_INFO,
-                      "Inventory was last synchronized as agent " + std::to_string(syncedId) +
-                      ", now running as agent " + std::to_string(currentId) + ". Resending every table.");
-    }
-    else
-    {
-        m_logFunction(LOG_INFO,
-                      "Inventory was last synchronized as agent " + std::to_string(syncedId) +
-                      ", now running as agent " + std::to_string(currentId) +
-                      ". Resuming the resend with the tables not yet sent under this id.");
-    }
+    m_logFunction(LOG_INFO,
+                  "Inventory was last synchronized as agent " + std::to_string(syncedId) + ", now running as agent " +
+                  std::to_string(currentId) + (tablesAlreadyResent.empty()
+                                               ? ". Resending every table."
+                                               : ". Resuming the resend with the tables not yet sent under this id."));
 
     // The plain lane keeps one session per table: an index is cleared immediately before its own
     // rows are queued, so a session that never reaches the manager leaves the others untouched
@@ -5474,7 +5472,7 @@ void Syscollector::checkAgentIdentity()
             // claim a lane that never ran. A later run that does enable the lane would honour
             // that marker, skip the whole VD inventory, and leave it to go out as VDSYNC --
             // an alert for every finding the manager has never seen for this identity.
-            const bool vdTable = isVDIndex(index) && m_vdSyncEnabled;
+            const bool vdTable = onVDLane(index);
 
             // pass 0 = the plain lane, one session each; pass 1 = the VD lane, queued only.
             if (vdTable != (pass == 1))
@@ -5496,6 +5494,7 @@ void Syscollector::checkAgentIdentity()
                 // what must not move -- recording it would claim the manager holds data it never
                 // received -- so remember the failure and leave it alone at the end.
                 anyFailed = true;
+                vdLaneFailed = vdLaneFailed || vdTable;
             }
             else if (vdTable)
             {
@@ -5533,7 +5532,7 @@ void Syscollector::checkAgentIdentity()
                           "will be resent as an ordinary synchronization.");
         }
 
-        if (syncModule(Mode::DELTA).success)
+        if (syncModule(Mode::DELTA).success && !vdLaneFailed)
         {
             // Recorded here, not with the combined marker at the end: this lane is done for this
             // identity even if a plain table still is not, and the next cycle must not redo it.
@@ -5546,8 +5545,8 @@ void Syscollector::checkAgentIdentity()
         }
         else
         {
-            // The rows stay queued and the marker stays unset, so the next cycle sends them as a
-            // VDFirst session too. The identity marker is what must not move.
+            // A session that did not land, or a VD table that could not be cleared: the marker
+            // stays unset, so the next cycle resends the whole VD lane as one VDFirst session.
             anyFailed = true;
         }
     }
@@ -5570,18 +5569,28 @@ void Syscollector::checkAgentIdentity()
     // at all -- record a cycle that never landed.
     //
     // The per-table and VD markers only mean something while this transition is in progress.
-    // Cleared first, so a later enrollment that reuses an id they hold cannot skip a table.
+    // Cleared first, so a later enrollment that reuses an id they hold cannot skip a table; if
+    // any of them cannot be cleared, the identity is not recorded and the next cycle retries.
+    bool resetFailed = false;
+
     for (const auto& [tableName, index] : INDEX_MAP)
     {
         int64_t tableSyncedId = 0;
 
-        if (getMetadataValue(tableMarkerKey(tableName), tableSyncedId) && tableSyncedId != 0)
+        if ((!getMetadataValue(tableMarkerKey(tableName), tableSyncedId) || tableSyncedId != 0)
+                && !updateMetadataValue(tableMarkerKey(tableName), 0))
         {
-            updateMetadataValue(tableMarkerKey(tableName), 0);
+            resetFailed = true;
         }
     }
 
-    updateMetadataValue(SYSCOLLECTOR_VD_SYNCED_AGENT_ID_METADATA_KEY, 0);
+    if (resetFailed || !updateMetadataValue(SYSCOLLECTOR_VD_SYNCED_AGENT_ID_METADATA_KEY, 0))
+    {
+        m_logFunction(LOG_DEBUG, "Could not clear the inventory resync progress markers; the identity will be "
+                      "recorded on the next sync cycle.");
+        return;
+    }
+
     updateMetadataValue(SYSCOLLECTOR_SYNCED_AGENT_ID_METADATA_KEY, currentId);
     updateMetadataValue(SYSCOLLECTOR_FIRST_SYNC_COMPLETED_METADATA_KEY, Utils::getSecondsFromEpoch());
 }
