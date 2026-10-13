@@ -2,7 +2,7 @@
 
 # Copyright (C) 2015, Wazuh Inc.
 # wazuh-manager-control        This shell script takes care of starting
-#                      or stopping wazuh-hids
+#                      or stopping Wazuh
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
 
 # Getting where we are installed

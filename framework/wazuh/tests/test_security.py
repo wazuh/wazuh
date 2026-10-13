@@ -256,12 +256,19 @@ def test_rbac_catalog_getters_are_not_memoized(db_setup):
 # Users of schema_security_test.sql: 'administrator' (100, roles 100 and 101, run_as on), 'normal' (101,
 # roles 103 to 105), 'guest' (105, no roles). Roles 100 to 105 each carry one rule above the reserved range.
 RUN_AS_REACHABLE = {100, 101, 102, 103, 104, 105}
+# 'security:update' over every role, those not created yet included: what a run_as account reaches.
+EVERY_ROLE_UPDATE = {'rbac_mode': 'white', 'security:update': {'role:id:*': 'allow'}}
 
 
 def _white_role_update(role_ids):
     """RBAC context of a white-mode caller holding 'security:update' over the given roles only."""
     return {'rbac_mode': 'white',
             'security:update': {f'role:id:{role_id}': 'allow' for role_id in role_ids}}
+
+
+def _existing_role_ids(security):
+    with security.RolesManager() as rm:
+        return {role.id for role in rm.get_roles()}
 
 
 @pytest.fixture
@@ -277,23 +284,12 @@ def rbac_context():
         rbac.reset(token)
 
 
-def test_run_as_reachable_roles(db_setup):
-    """Every role with a rule above the reserved range is reachable; wazuh-internal-client reaches the reserved rules too."""
-    security, _, _ = db_setup
+@pytest.mark.parametrize('granted', [set(), RUN_AS_REACHABLE])
+def test_edit_run_as_enable_requires_every_existing_role(db_setup, rbac_context, granted):
+    """Enabling run_as on an account, the caller's own included, needs 'security:update' over every role.
 
-    assert security._run_as_reachable_roles(105) == RUN_AS_REACHABLE
-    wui = security._run_as_reachable_roles(2)
-    assert RUN_AS_REACHABLE < wui
-    # The extra ones are the default roles, linked only to reserved rules.
-    assert all(role_id <= 99 for role_id in wui - RUN_AS_REACHABLE)
-
-
-@pytest.mark.parametrize('granted, denied', [
-    (set(), RUN_AS_REACHABLE),
-    ({100, 101, 102, 103, 104}, {105}),
-])
-def test_edit_run_as_enable_requires_every_reachable_role(db_setup, rbac_context, granted, denied):
-    """Enabling run_as on an account, the caller's own included, needs 'security:update' over every reachable role."""
+    Covering the roles a custom rule reaches today is not enough: any other role can gain one later.
+    """
     security, _, _ = db_setup
     rbac_context(_white_role_update(granted))
 
@@ -301,17 +297,60 @@ def test_edit_run_as_enable_requires_every_reachable_role(db_setup, rbac_context
         security.edit_run_as(user_id='105', allow_run_as=True, current_user='guest')
 
     assert exc.value.code == 4000
-    assert exc.value.ids == denied
+    assert exc.value.ids == _existing_role_ids(security) - granted
 
 
-def test_edit_run_as_enable_with_every_reachable_role(db_setup, rbac_context):
-    """A caller that could link every reachable role to the account may enable its run_as flag."""
+def test_edit_run_as_enable_requires_roles_not_created_yet(db_setup, rbac_context):
+    """Listing every existing role is not enough in white mode: a role created later is reachable too."""
     security, _, _ = db_setup
-    rbac_context(_white_role_update(RUN_AS_REACHABLE))
+    rbac_context(_white_role_update(_existing_role_ids(security)))
+
+    with pytest.raises(WazuhPermissionError) as exc:
+        security.edit_run_as(user_id='105', allow_run_as=True, current_user='guest')
+
+    assert exc.value.code == 4000
+    with security.AuthenticationManager() as auth:
+        assert auth.get_user_id(105)['allow_run_as'] is False
+
+
+def test_edit_run_as_enable_refused_before_any_custom_rule(db_setup, rbac_context):
+    """The check does not depend on the rules that exist when the flag is enabled.
+
+    Enabling it while no custom rule is linked, then linking one to a role, must not put that role
+    within reach of a caller that could not assign it.
+    """
+    security, _, _ = db_setup
+    with security.RulesManager() as rum:
+        rum.delete_all_rules()
+    rbac_context(_white_role_update(set()))
+
+    with pytest.raises(WazuhPermissionError) as exc:
+        security.edit_run_as(user_id='105', allow_run_as=True, current_user='guest')
+
+    assert exc.value.code == 4000
+    assert exc.value.ids == _existing_role_ids(security)
+
+
+@pytest.mark.parametrize('context', [EVERY_ROLE_UPDATE, {'rbac_mode': 'black'}])
+def test_edit_run_as_enable_with_every_role(db_setup, rbac_context, context):
+    """A caller that could link any role, present or future, to the account may enable its run_as flag."""
+    security, _, _ = db_setup
+    rbac_context(context)
 
     result = security.edit_run_as(user_id='105', allow_run_as=True, current_user='guest').to_dict()
 
     assert result['affected_items'][0]['allow_run_as'] is True
+
+
+def test_edit_run_as_enable_black_mode_honours_a_deny(db_setup, rbac_context):
+    """In black mode a deny over any role refuses the flag."""
+    security, _, _ = db_setup
+    rbac_context({'rbac_mode': 'black', 'security:update': {'role:id:102': 'deny'}})
+
+    with pytest.raises(WazuhPermissionError) as exc:
+        security.edit_run_as(user_id='105', allow_run_as=True, current_user='guest')
+
+    assert exc.value.ids == {102}
 
 
 def test_edit_run_as_disable_needs_no_role(db_setup, rbac_context):
@@ -327,8 +366,6 @@ def test_edit_run_as_disable_needs_no_role(db_setup, rbac_context):
 @pytest.mark.parametrize('user_id, granted, denied', [
     ('101', set(), {103, 104, 105}),
     ('101', {103, 104}, {105}),
-    # run_as is on for 'administrator': its reachable roles count besides its linked ones.
-    ('100', {100, 101}, {102, 103, 104, 105}),
 ])
 def test_update_user_requires_the_target_roles(db_setup, rbac_context, user_id, granted, denied):
     """Resetting another account's password needs 'security:update' over every role that account reaches."""
@@ -342,18 +379,37 @@ def test_update_user_requires_the_target_roles(db_setup, rbac_context, user_id, 
     assert exc.value.ids == denied
 
 
-@pytest.mark.parametrize('user_id, granted, current_user', [
-    ('101', {103, 104, 105}, 'guest'),
-    ('100', RUN_AS_REACHABLE, 'guest'),
+@pytest.mark.parametrize('delete_custom_rules', [False, True])
+def test_update_user_of_a_run_as_account_requires_every_role(db_setup, rbac_context, delete_custom_rules):
+    """run_as is on for 'administrator': its password is held to every role, those not created yet included.
+
+    Whether a custom rule is linked when the password is reset does not matter: one linked later would
+    reach the account whose password the caller now knows.
+    """
+    security, _, _ = db_setup
+    if delete_custom_rules:
+        with security.RulesManager() as rum:
+            rum.delete_all_rules()
+    rbac_context(_white_role_update(_existing_role_ids(security)))
+
+    with pytest.raises(WazuhPermissionError) as exc:
+        security.update_user(user_id=['100'], password='Password1234', current_user='guest')
+
+    assert exc.value.code == 4000
+
+
+@pytest.mark.parametrize('user_id, context, current_user', [
+    ('101', _white_role_update({103, 104, 105}), 'guest'),
+    ('100', EVERY_ROLE_UPDATE, 'guest'),
     # An account without roles reaches nothing.
-    ('105', set(), 'normal'),
+    ('105', _white_role_update(set()), 'normal'),
     # The caller's own account: it already holds every one of its roles.
-    ('101', set(), 'normal'),
+    ('101', _white_role_update(set()), 'normal'),
 ])
-def test_update_user_allowed(db_setup, rbac_context, user_id, granted, current_user):
+def test_update_user_allowed(db_setup, rbac_context, user_id, context, current_user):
     """The password is reset when the caller covers the target's roles, or is the target."""
     security, _, _ = db_setup
-    rbac_context(_white_role_update(granted))
+    rbac_context(context)
 
     result = security.update_user(user_id=[user_id], password='Password1234', current_user=current_user).to_dict()
 
