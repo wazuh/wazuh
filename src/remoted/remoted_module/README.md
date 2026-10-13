@@ -2491,7 +2491,7 @@ Response shape (`http_server/tlsInventory.cpp` renders it, keys in this order):
 Contract points:
 
 - **Fixed path, no knob**: the constant `queue/sockets/remote-admin-http.sock` is **relative** on
-  purpose — remoted `chroot()`s into the install dir, so the socket lands at
+  purpose — remoted's working directory is the installation directory, so the socket lands at
   `$WAZUH_HOME/queue/sockets/remote-admin-http.sock` (mode 0660). Internal options only carry ints,
   so a path knob has nowhere to live — the same criterion that fixed inventory sync's path.
 - **Warn-on-failure**: a failed bind/start is a `WARN` and the module continues without the

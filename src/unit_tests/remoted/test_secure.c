@@ -4213,6 +4213,28 @@ void test_w_remoted_check_tls_files_ok(void** state)
     w_remoted_check_tls_files(&rm_config);
 }
 
+// Paths are taken as configured: an absolute host path is probed and reported verbatim, like a relative one.
+void test_w_remoted_check_tls_files_absolute_paths(void** state)
+{
+    (void) state;
+    remoted_module_config_t rm_config;
+    memset(&rm_config, 0, sizeof(rm_config));
+    snprintf(rm_config.certificate_path, sizeof(rm_config.certificate_path), "%s", "/etc/pki/wazuh/remoted.pem");
+    snprintf(rm_config.private_key_path, sizeof(rm_config.private_key_path), "%s", "/etc/pki/wazuh/remoted-key.pem");
+
+    expect_string(__wrap_access, __name, "/etc/pki/wazuh/remoted.pem");
+    expect_value(__wrap_access, __type, R_OK);
+    will_return(__wrap_access, -1);
+    expect_string(__wrap_access, __name, "/etc/pki/wazuh/remoted-key.pem");
+    expect_value(__wrap_access, __type, R_OK);
+    will_return(__wrap_access, 0);
+    expect_string(__wrap__merror_exit, formatted_msg,
+                  "Cannot start the HTTPS agent listener: the TLS certificate '/etc/pki/wazuh/remoted.pem' is missing "
+                  "or unreadable by the service user." TLS_FILES_TEST_HINT);
+
+    expect_assert_failure(w_remoted_check_tls_files(&rm_config));
+}
+
 void test_w_remoted_check_tls_files_cert_missing(void** state)
 {
     (void) state;
@@ -4253,6 +4275,75 @@ void test_w_remoted_check_tls_files_both_missing(void** state)
                   "'etc/certs/remoted-key.pem' are missing or unreadable by the service user." TLS_FILES_TEST_HINT);
 
     expect_assert_failure(w_remoted_check_tls_files(&rm_config));
+}
+
+// With client-certificate verification on, the CA is probed after the pair, R_OK too.
+static void expect_tls_ca_access(const char *ca, int ca_result)
+{
+    expect_string(__wrap_access, __name, ca);
+    expect_value(__wrap_access, __type, R_OK);
+    will_return(__wrap_access, ca_result);
+}
+
+void test_w_remoted_check_tls_files_ca_explicit_unreadable(void** state)
+{
+    (void) state;
+    remoted_module_config_t rm_config;
+    tls_files_config(&rm_config);
+    snprintf(rm_config.ca_path, sizeof(rm_config.ca_path), "%s", "etc/x.pem");
+    rm_config.verification_mode = REMOTED_HTTPS_VERIFY_CERTIFICATE;
+
+    expect_tls_files_access(0, 0);
+    expect_tls_ca_access("etc/x.pem", -1);
+    expect_string(__wrap__merror_exit, formatted_msg,
+                  "Cannot start the HTTPS agent listener: the CA certificate 'etc/x.pem', which verifies agent "
+                  "client certificates, is missing or unreadable by the service user. remote.https.verification_mode "
+                  "requires it: if the file is present, check that it is readable by the service user, since "
+                  "remoted opens it after dropping privileges; otherwise point remote.https.ca at the CA that "
+                  "signs the agents' client certificates.");
+
+    expect_assert_failure(w_remoted_check_tls_files(&rm_config));
+}
+
+void test_w_remoted_check_tls_files_ca_default_full(void** state)
+{
+    (void) state;
+    remoted_module_config_t rm_config;
+    tls_files_config(&rm_config);
+    rm_config.verification_mode = REMOTED_HTTPS_VERIFY_FULL;
+
+    // An empty ca_path probes the module's default, never access(""). No expect_string for
+    // __wrap__merror_exit: exiting here fails the test.
+    expect_tls_files_access(0, 0);
+    expect_tls_ca_access("etc/certs/root-ca.pem", 0);
+
+    w_remoted_check_tls_files(&rm_config);
+}
+
+void test_w_remoted_check_tls_files_ca_none(void** state)
+{
+    (void) state;
+    remoted_module_config_t rm_config;
+    tls_files_config(&rm_config);
+    rm_config.verification_mode = REMOTED_HTTPS_VERIFY_NONE;
+
+    // Only the pair is probed: a third access() call would find no expectation and fail the test.
+    expect_tls_files_access(0, 0);
+
+    w_remoted_check_tls_files(&rm_config);
+}
+
+void test_w_remoted_check_tls_files_ca_unset(void** state)
+{
+    (void) state;
+    remoted_module_config_t rm_config;
+    tls_files_config(&rm_config);
+    rm_config.verification_mode = REMOTED_HTTPS_VERIFY_UNSET;
+
+    // UNSET resolves to no verification in the module, so the CA is not probed either.
+    expect_tls_files_access(0, 0);
+
+    w_remoted_check_tls_files(&rm_config);
 }
 
 void test_w_remoted_build_module_config_null_https_strings_leave_buffers_empty(void** state)
@@ -4433,6 +4524,11 @@ int main(void)
         cmocka_unit_test(test_w_remoted_check_tls_files_ok),
         cmocka_unit_test(test_w_remoted_check_tls_files_cert_missing),
         cmocka_unit_test(test_w_remoted_check_tls_files_key_missing),
-        cmocka_unit_test(test_w_remoted_check_tls_files_both_missing)};
+        cmocka_unit_test(test_w_remoted_check_tls_files_both_missing),
+        cmocka_unit_test(test_w_remoted_check_tls_files_ca_explicit_unreadable),
+        cmocka_unit_test(test_w_remoted_check_tls_files_ca_default_full),
+        cmocka_unit_test(test_w_remoted_check_tls_files_ca_none),
+        cmocka_unit_test(test_w_remoted_check_tls_files_ca_unset),
+        cmocka_unit_test(test_w_remoted_check_tls_files_absolute_paths)};
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

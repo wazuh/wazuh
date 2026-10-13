@@ -180,11 +180,8 @@ int main(int argc, char ** argv)
             merror_exit(SETGID_ERROR, GROUPGLOBAL, errno, strerror(errno));
         }
 
-        // Change root
-
-        if (Privsep_Chroot(home_path) < 0) {
-            merror_exit(CHROOT_ERROR, home_path, errno, strerror(errno));
-        }
+        // The working directory is the installation directory since the chdir() above, like the other
+        // daemons, and every path below is relative to it.
 
         if (Privsep_SetUser(uid) < 0) {
             merror_exit(SETUID_ERROR, USER, errno, strerror(errno));

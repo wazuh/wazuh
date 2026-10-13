@@ -17,7 +17,6 @@
 #endif
 
 static int dbg_flag = 0;
-static int chroot_flag = 0;
 static int daemon_flag = 0;
 static int pid;
 
@@ -186,7 +185,7 @@ static void _log_function(int level, const char *tag, const char * file, int lin
     }
 
     if (flags.log_plain) {
-      /* If under chroot, log directly to /logs/<wazuh log file> */
+      /* Log directly to the plain log file (LOGFILE, relative to the installation directory) */
 
 #ifndef WIN32
         int oldmask;
@@ -670,11 +669,6 @@ void _mlerror_exit(const int level, const char * file, int line, const char * fu
     exit(1);
 }
 
-void nowChroot()
-{
-    chroot_flag = 1;
-}
-
 void nowDaemon()
 {
     daemon_flag = 1;
@@ -700,11 +694,6 @@ void nowDebug()
 int isDebug(void)
 {
     return dbg_flag;
-}
-
-int isChroot()
-{
-    return (chroot_flag);
 }
 
 #ifdef WIN32

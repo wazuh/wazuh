@@ -147,9 +147,6 @@ int main(int argc, char **argv)
 
     os_free(home_path);
 
-    /* Inside chroot now */
-    nowChroot();
-
     /* Start signal handler */
     StartSIG2(ARGV0, manage_shutdown);
 #else

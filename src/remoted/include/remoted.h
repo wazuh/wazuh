@@ -27,8 +27,8 @@
 #define MAX_SHARED_PATH    224
 
 /* Preflight of the HTTPS agent listener's TLS files (w_remoted_check_tls_files() in secure.c): exactly
- * one of the three messages is logged, with the hint appended, and remoted exits. The texts are pinned
- * by src/unit_tests/remoted/test_secure.c and matched by the test_https_cert_missing integration test. */
+ * one of the four messages is logged, with its hint appended, and remoted exits. The texts are pinned
+ * by src/unit_tests/remoted/test_secure.c; the test_https_cert_missing integration test matches the key one. */
 #define REMOTED_TLS_FILES_HINT " The pair is issued at installation and is never reissued at start: " \
     "if the files are present, check that they are owned by the service user and mode 0640, since " \
     "remoted opens them after dropping privileges; otherwise provision remoted.pem, remoted-key.pem " \
@@ -39,6 +39,11 @@
     "missing or unreadable by the service user." REMOTED_TLS_FILES_HINT
 #define REMOTED_TLS_FILES_MISSING_KEY "Cannot start the HTTPS agent listener: the TLS private key '%s' is " \
     "missing or unreadable by the service user." REMOTED_TLS_FILES_HINT
+#define REMOTED_TLS_FILES_CA_HINT " remote.https.verification_mode requires it: if the file is present, check " \
+    "that it is readable by the service user, since remoted opens it after dropping privileges; otherwise " \
+    "point remote.https.ca at the CA that signs the agents' client certificates."
+#define REMOTED_TLS_FILES_MISSING_CA "Cannot start the HTTPS agent listener: the CA certificate '%s', which " \
+    "verifies agent client certificates, is missing or unreadable by the service user." REMOTED_TLS_FILES_CA_HINT
 
 /* Pending data structure */
 

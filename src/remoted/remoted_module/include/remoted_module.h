@@ -182,7 +182,8 @@ extern "C"
         char bind_address[256];        ///< HTTPS listen address (empty -> module default).
         char global_prefix[256];       ///< URL path prefix every route is registered under
                                        ///< (empty -> "/", endpoints served unprefixed).
-        char ca_path[512];             ///< CA bundle (PEM) for client-certificate verification (empty -> disabled).
+        char ca_path[512];             ///< CA bundle (PEM) for client-certificate verification, used when
+                                       ///< verification_mode is certificate or full (empty -> module default).
         char ca_certificate_path[512]; ///< CA that signs the listener certificate (PEM), served on GET /cacerts
                                        ///< (empty -> module default).
         char ciphers[256];             ///< TLS 1.3 ciphersuite override (SSL_CTX_set_ciphersuites() naming scheme;
