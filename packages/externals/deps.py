@@ -238,6 +238,10 @@ def _check_entry(entry, patches_dir, repo_root, overlays_dir=OVERLAYS_DIR):
     for patch in entry.get("patches", []) if isinstance(entry.get("patches"), list) else []:
         if not (Path(patches_dir) / patch).is_file():
             err(f"patch {patch!r} not found under {patches_dir}")
+    # Both are segments of the pool keys in the bucket.
+    for field in ("name", "version"):
+        if isinstance(entry.get(field), str) and not OVERLAY_RE.fullmatch(entry[field]):
+            err(f"`{field}` {entry[field]!r} must be a single path segment of letters, digits and ._+-")
     for field in ("overlay", "subdir"):
         if entry.get(field) == "":
             err(f"`{field}` must not be empty")
@@ -691,6 +695,10 @@ def ref(entry, key):
     return f"{entry['name']}/{entry['version']}-{key}"
 
 
+# What ref() gives for an entry that passes _check_entry.
+POOL_REF_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._+-]*/[A-Za-z0-9][A-Za-z0-9._+-]*-[0-9a-f]{12}")
+
+
 def key_paths():
     """Every repository path or glob that goes into some key; workflow `paths:` filters must cover them."""
     specs = set(SOURCE_RECIPE) | set(BUILD_RECIPE) | set(KEY_INPUT_FILES) | {s for own in OWN_RECIPE.values() for s in own}
@@ -887,9 +895,14 @@ def _fetch(url, timeout=300, retries=0):
         time.sleep(2 ** attempt)
 
 
+def lock_refs_text(text):
+    """{name: ref} from the text of a deps.lock.mk."""
+    return dict(re.findall(r"^DEP_REF_(\S+) := (\S+)$", text, re.M))
+
+
 def lock_refs(path=LOCK):
     """{name: ref} from src/deps.lock.mk."""
-    return dict(re.findall(r"^DEP_REF_(\S+) := (\S+)$", Path(path).read_text(encoding="utf-8"), re.M))
+    return lock_refs_text(Path(path).read_text(encoding="utf-8"))
 
 
 def verify(local_pool, pool=POOL):
@@ -999,6 +1012,193 @@ def mirror(doc, dest, local=None, pool=POOL, target=None, platform=None, repo=RE
     return missing
 
 
+MAINTAINED_BRANCH = re.compile(r"^refs/remotes/origin/(main|\d{1,3}\.\d{1,2}\.\d{1,2})$")
+MAINTAINED_DAYS = 120
+LOCK_RELPATH = "src/deps.lock.mk"
+LOCK_LINE = re.compile(r"DEP_REF_(\S+) := (\S+)")
+# Any line make could read as an assignment of a DEP_REF_ variable.
+LOCK_ASSIGNMENT = re.compile(r"\s*(?:override\s+|export\s+)?DEP_REF_")
+ORIGIN_URL = re.compile(r"(https://([^@/]+@)?|ssh://git@|git@)github\.com[:/]wazuh/wazuh(\.git)?/?", re.I)
+ORIGIN_FETCH = "+refs/heads/*:refs/remotes/origin/*"
+
+
+class OrphanError(RuntimeError):
+    """The orphan refs cannot be listed safely: nothing is listed rather than too much."""
+
+
+def _git(repo, *args):
+    result = subprocess.run(["git", "-C", str(repo), *args], capture_output=True, text=True)
+    if result.returncode != 0:
+        raise OrphanError(f"git {' '.join(args)}: {result.stderr.strip() or 'exit ' + str(result.returncode)}")
+    return result.stdout
+
+
+def _lock_at(repo, rev, strict=False):
+    """{name: ref} of the lock at rev, or None when that revision has no lock.
+
+    Values that are not pool refs are dropped; with strict, any DEP_REF_ line make would read differently, a value
+    that is not a pool ref or a repeated name fails instead."""
+    if not _git(repo, "ls-tree", rev, "--", LOCK_RELPATH).strip():
+        return None
+    text = _git(repo, "show", f"{rev}:{LOCK_RELPATH}")
+    if not strict:
+        return {name: value for name, value in lock_refs_text(text).items() if POOL_REF_RE.fullmatch(value)}
+    found = {}
+    for line in text.splitlines():
+        if not LOCK_ASSIGNMENT.match(line):
+            continue
+        match = LOCK_LINE.fullmatch(line)
+        if not match or not POOL_REF_RE.fullmatch(match.group(2)) or match.group(1) in found:
+            raise OrphanError(f"{rev}: unexpected line in {LOCK_RELPATH}: {line!r}")
+        found[match.group(1)] = match.group(2)
+    return found
+
+
+def _check_origin(repo):
+    """A clone of another repository, or one that does not fetch every branch, would miss maintained branches."""
+    try:
+        url = _git(repo, "config", "--get", "remote.origin.url").strip()
+        fetch = _git(repo, "config", "--get-all", "remote.origin.fetch").split()
+    except OrphanError:
+        raise OrphanError("the clone has no origin remote with a fetch refspec") from None
+    if not ORIGIN_URL.fullmatch(url):
+        raise OrphanError(f"origin is {url}, not wazuh/wazuh")
+    if ORIGIN_FETCH not in fetch:
+        raise OrphanError(f"origin does not fetch every branch ({' '.join(fetch)})")
+
+
+def _maintained_branches(repo, now):
+    """(remote branches `main` and `X.Y.Z` whose tip is at most MAINTAINED_DAYS old, {older ones: tip date}), as
+    full ref names."""
+    rows = _git(repo, "for-each-ref", "--format=%(refname) %(committerdate:unix)", "refs/remotes/origin").splitlines()
+    tips = {name: int(stamp) for name, stamp in (row.rsplit(" ", 1) for row in rows) if MAINTAINED_BRANCH.fullmatch(name)}
+    maintained = sorted(name for name, stamp in tips.items() if now - stamp <= MAINTAINED_DAYS * 86400)
+    return maintained, {name: stamp for name, stamp in tips.items() if name not in maintained}
+
+
+def _referenced(repo, now, pr_refs):
+    """(refs used by maintained branch tips, v* tags and open PRs, refs used by the branch tips alone, branches,
+    tag count, {ref: when the branch that held it stopped being maintained})."""
+    if _git(repo, "rev-parse", "--is-shallow-repository").strip() == "true":
+        raise OrphanError("the clone is shallow: the history of the lock is incomplete")
+    _check_origin(repo)
+    branches, stale = _maintained_branches(repo, now)
+    if not branches:
+        raise OrphanError(f"no maintained branch (main or X.Y.Z with a commit in the last {MAINTAINED_DAYS} days) under origin/")
+    tags = [f"refs/tags/{tag}" for tag in _git(repo, "tag", "--list", "v*").split()]
+    for pr in pr_refs:
+        _git(repo, "rev-parse", "--verify", f"{pr}^{{commit}}")
+    used, by_branches = set(), set()
+    for rev in [*branches, *tags, *pr_refs]:
+        values = (_lock_at(repo, rev, strict=True) or {}).values()
+        used.update(values)
+        if rev in branches:
+            by_branches.update(values)
+    if not used:
+        raise OrphanError("no lock in any maintained branch, tag or open pull request")
+    retired = {}
+    for name, stamp in stale.items():
+        for value in (_lock_at(repo, name) or {}).values():
+            retired[value] = max(retired.get(value, 0), stamp + MAINTAINED_DAYS * 86400)
+    return used, by_branches, branches, len(tags), retired
+
+
+def _abandoned_at(repo):
+    """{ref: when it stopped being used}, for every ref the lock ever had.
+
+    A commit drops the refs its first parent's lock has and its own does not, at its committer date: that is how a
+    merge, a squash or a removal leaves a branch. A ref is abandoned at the latest of its drops and of the commits
+    that have it."""
+    locks = {}
+
+    def lock(rev):
+        if rev not in locks:
+            locks[rev] = _lock_at(repo, rev) or {}
+        return locks[rev]
+
+    abandoned = {}
+    for row in _git(repo, "log", "--all", "--full-history", "--format=%H %ct %P", "--", LOCK_RELPATH).splitlines():
+        sha, stamp, *parents = row.split()
+        dropped = set(lock(parents[0]).values()) - set(lock(sha).values()) if parents else set()
+        for value in dropped | set(lock(sha).values()):
+            abandoned[value] = max(abandoned.get(value, 0), int(stamp))
+    return abandoned
+
+
+def _pool_serves_any(pool, values):
+    """Whether the pool serves at least one of values: when it serves none, a missing ref says nothing."""
+    for value in sorted(values):
+        published = _published_manifest(f"{pool}/{value}/manifest.json")
+        if isinstance(published, dict):
+            return True
+        if published != "missing":
+            raise OrphanError(f"cannot read {pool}/{value}/manifest.json: {published}")
+    return False
+
+
+PUBLISHED_RUN = re.compile(r"[0-9]+-[0-9]+")
+
+
+def _published_by_runs(pool, runs):
+    """{ref: when it was published}, from the deps/pool/_published/<run id>-<attempt>.json records publish_pool.sh
+    writes: the refs a pull request published stay out of every branch once its commits are gone."""
+    published = {}
+    for run in runs:
+        if not PUBLISHED_RUN.fullmatch(run):
+            raise OrphanError(f"published run {run!r} is not <run id>-<attempt>")
+        url = f"{pool}/_published/{run}.json"
+        record = _published_manifest(url)
+        if record == "missing":
+            raise OrphanError(f"run {run} published, but {url} is missing")
+        if isinstance(record, Exception):
+            raise OrphanError(f"cannot read {url}: {record}")
+        refs, stamp = (record.get("refs"), record.get("published_at")) if isinstance(record, dict) else (None, None)
+        if type(stamp) is not int or not isinstance(refs, list) \
+                or not all(isinstance(ref, str) and POOL_REF_RE.fullmatch(ref) for ref in refs):
+            raise OrphanError(f"{url} is not a publication record")
+        for ref in refs:
+            published[ref] = max(published.get(ref, 0), stamp)
+    return published
+
+
+def orphans(repo=REPO, pool=POOL, grace_days=30, pr_refs=(), now=None, bucket="<bucket>", published_runs=()):
+    """(lines to print, number of listed orphans). Raises OrphanError when the listing would not be safe."""
+    now = int(time.time()) if now is None else now
+    used, by_branches, branches, tag_count, retired = _referenced(repo, now, pr_refs)
+    abandoned = _abandoned_at(repo)
+    for value, stamp in [*retired.items(), *_published_by_runs(pool, published_runs).items()]:
+        abandoned[value] = max(abandoned.get(value, 0), stamp)
+    due, in_grace = [], []
+    for value, stamp in sorted(abandoned.items()):
+        if value in used:
+            continue
+        (due if now - stamp >= grace_days * 86400 else in_grace).append((value, stamp))
+    lines = [f"Maintained branches: {', '.join(b.removeprefix('refs/remotes/origin/') for b in branches)}; "
+             f"tags v*: {tag_count}; open pull requests: {len(pr_refs)}; publications: {len(published_runs)}"]
+    if due and not _pool_serves_any(pool, by_branches):
+        return lines + [f"PENDING - the pool serves none of the refs the maintained branches use: {pool}"], 0
+    listed = []
+    for value, stamp in due:
+        published = _published_manifest(f"{pool}/{value}/manifest.json")
+        if published == "missing":
+            continue
+        if not isinstance(published, dict):
+            raise OrphanError(f"cannot read {pool}/{value}/manifest.json: {published}")
+        listed.append((value, stamp))
+    if not listed:
+        lines.append("No orphan refs.")
+    else:
+        lines.append(f"Orphan refs of the pool, unreferenced for at least {grace_days} days: {len(listed)}")
+        for value, stamp in listed:
+            day = time.strftime("%Y-%m-%d", time.gmtime(stamp))
+            lines += [f"- {value} (unreferenced since {day})",
+                      f"  aws s3 rm {shlex.quote(f's3://{bucket}/deps/pool/{value}/manifest.json')}",
+                      f"  aws s3 rm {shlex.quote(f's3://{bucket}/deps/pool/{value}/')} --recursive"]
+    if in_grace:
+        lines.append(f"Unreferenced for less than {grace_days} days (not listed): {len(in_grace)}")
+    return lines, len(listed)
+
+
 def _report(errors):
     for error in errors:
         print(f"ERROR: {error}", file=sys.stderr)
@@ -1018,6 +1218,7 @@ def main(argv=None):
         ("mirror", "lay out the pool refs a target needs, from a local tree and the pool"),
         ("lock", "write src/deps.lock.mk"), ("key", "print the pool ref and inputs hash of entries"),
         ("key-paths", "print the repository paths that go into the keys"),
+        ("orphans", "list the pool refs that no maintained branch, v* tag or open pull request references"),
         ("builder-image", "print a value of builder-images.json, e.g. `linux manager amd64` or `darwin xcode`"))}
     for command in commands.values():
         command.add_argument("--inventory", default=str(DEFAULT_INVENTORY))
@@ -1047,6 +1248,13 @@ def main(argv=None):
     commands["mirror"].add_argument("--platform", help="pool platform directory, e.g. linux/amd64 or windows")
     commands["mirror"].add_argument("--lock", default=str(LOCK))
     commands["mirror"].add_argument("--without", nargs="*", default=[], help="entries left out, e.g. cpython")
+    commands["orphans"].add_argument("--repo", default=str(REPO), help="full clone with every branch and tag")
+    commands["orphans"].add_argument("--pool", default=POOL)
+    commands["orphans"].add_argument("--grace-days", type=int, default=30)
+    commands["orphans"].add_argument("--open-pr-refs", nargs="*", default=[], help="git refs of the open pull requests")
+    commands["orphans"].add_argument("--published-runs", nargs="*", default=[],
+                                     help="<run id>-<attempt> of every externals run whose publish job succeeded")
+    commands["orphans"].add_argument("--bucket", default="<bucket>", help="bucket named in the delete commands")
     commands["lock"].add_argument("--check", action="store_true", help="fail instead of rewriting")
     commands["lock"].add_argument("--output", default=str(LOCK))
     commands["key"].add_argument("names", nargs="*")
@@ -1065,7 +1273,7 @@ def main(argv=None):
         return 0
 
     try:
-        doc = None if (args.command == "verify" and not args.lock) or (args.command == "sbom" and args.manifest) \
+        doc = None if args.command == "orphans" or (args.command == "verify" and not args.lock) or (args.command == "sbom" and args.manifest) \
             else load(args.inventory)
     except (OSError, ValueError) as exc:
         print(f"ERROR: <inventory>: cannot read {args.inventory}: {exc}", file=sys.stderr)
@@ -1106,6 +1314,13 @@ def main(argv=None):
             print(" ".join(name for name, problem in status.items() if problem == "missing"))
         elif args.command == "verify":
             return _report((lock_mismatches(doc, args.local) if args.lock else []) + verify(args.local, args.pool))
+        elif args.command == "orphans":
+            try:
+                lines, _ = orphans(args.repo, args.pool, args.grace_days, args.open_pr_refs, bucket=args.bucket,
+                                   published_runs=args.published_runs)
+            except OrphanError as exc:
+                return _report([f"orphans: {exc}"])
+            print("\n".join(lines))
         elif args.command == "mirror":
             missing = mirror(doc, args.dest, args.local, args.pool, args.target, args.platform, lock=args.lock,
                              without=set(args.without))

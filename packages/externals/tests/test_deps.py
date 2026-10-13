@@ -16,6 +16,7 @@ import signal
 import subprocess
 import sys
 import tarfile
+import time
 import zipfile
 from pathlib import Path
 
@@ -570,7 +571,7 @@ def pool_tree(root, refs_files, document=None, inputs_hash=None):
     return refs
 
 
-def run_publish(tmp_path, pool_dir, store=None, race=None, get_fails=None, put_fails=None, old_cli=False):
+def run_publish(tmp_path, pool_dir, store=None, race=None, get_fails=None, put_fails=None, run=None, old_cli=False):
     fake = tmp_path / "fake"
     (fake / "bin").mkdir(parents=True, exist_ok=True)
     (fake / "bin" / "aws").write_text(FAKE_AWS)
@@ -587,6 +588,7 @@ def run_publish(tmp_path, pool_dir, store=None, race=None, get_fails=None, put_f
         env["FAKE_PUT_FAILS"] = put_fails
     if old_cli:
         env["FAKE_OLD_CLI"] = "1"
+    env.update(run or {})
     result = subprocess.run(["bash", str(PUBLISH), str(pool_dir), "bucket"], capture_output=True, text=True,
                             env=env, timeout=60)
     log = (fake / "calls.log").read_text().splitlines() if (fake / "calls.log").exists() else []
@@ -611,6 +613,58 @@ def test_publish_pool_uploads(tmp_path):
     assert local == remote and len(local) == 5
     assert all((tmp_path / "pool" / p).read_bytes() == (store / "deps/pool" / p).read_bytes() for p in local)
     assert "published 2 refs, 0 already in the pool" in result.stdout
+
+
+RUN_ENV = {"GITHUB_RUN_ID": "7", "GITHUB_RUN_ATTEMPT": "2", "GITHUB_REPOSITORY": "wazuh/wazuh",
+           "GITHUB_EVENT_NAME": "pull_request", "PUBLISH_PULL_REQUEST": "39853", "PUBLISH_COMMIT": "abc123"}
+
+
+@needs_publish
+@pytest.mark.parametrize("already", [False, True], ids=["new", "one-already-published"])
+def test_publish_pool_record(tmp_path, already):
+    refs = pool_tree(tmp_path / "pool", {"curl": CURL_FILES, "zlib": ZLIB_FILES})
+    store = {}
+    if already:
+        store = {f"deps/pool/{refs['zlib']}/{rel}": (tmp_path / "pool" / refs["zlib"] / rel).read_bytes()
+                 for rel in ("manifest.json", "sources/zlib.tar.gz")}
+    result, calls, store_dir = run_publish(tmp_path, tmp_path / "pool", store=store, run=RUN_ENV)
+    assert result.returncode == 0, result.stderr
+    assert [c for c in calls if c[0] == "put-object"][-1] == ["put-object", "deps/pool/_published/7-2.json", "cond=yes"]
+    record = json.loads((store_dir / "deps/pool/_published/7-2.json").read_text())
+    assert record["refs"] == sorted([refs["curl"], refs["zlib"]]) and record["pull_request"] == 39853 and record["commit"] == "abc123"
+    assert (record["run_id"], record["run_attempt"], record["event"]) == (7, 2, "pull_request")
+    assert record["workflow_run"] == "https://github.com/wazuh/wazuh/actions/runs/7"
+    assert abs(record["published_at"] - time.time()) < 60
+
+
+@needs_publish
+def test_publish_pool_record_exists(tmp_path):
+    pool_tree(tmp_path / "pool", {"zlib": ZLIB_FILES})
+    result, _, _ = run_publish(tmp_path, tmp_path / "pool", store={"deps/pool/_published/7-2.json": b"{}"}, run=RUN_ENV)
+    assert result.returncode == 1 and "deps/pool/_published/7-2.json already exists" in result.stderr
+
+
+@needs_publish
+def test_publish_pool_record_upload_fails(tmp_path):
+    pool_tree(tmp_path / "pool", {"zlib": ZLIB_FILES})
+    result, _, _ = run_publish(tmp_path, tmp_path / "pool", put_fails="_published/", run=RUN_ENV)
+    assert result.returncode != 0 and "upload of deps/pool/_published/7-2.json failed" in result.stderr
+    assert "recorded the refs" not in result.stdout
+
+
+@needs_publish
+def test_publish_pool_no_record_without_a_run(tmp_path):
+    pool_tree(tmp_path / "pool", {"zlib": ZLIB_FILES})
+    result, calls, _ = run_publish(tmp_path, tmp_path / "pool")
+    assert result.returncode == 0, result.stderr
+    assert not puts(calls, "deps/pool/_published/") and "no GITHUB_RUN_ID" in result.stdout
+
+
+@needs_publish
+def test_publish_pool_record_not_written_on_failure(tmp_path):
+    pool_tree(tmp_path / "pool", {"curl": CURL_FILES, "zlib": ZLIB_FILES})
+    result, calls, _ = run_publish(tmp_path, tmp_path / "pool", put_fails="zlib", run=RUN_ENV)
+    assert result.returncode != 0 and not puts(calls, "deps/pool/_published/")
 
 
 def published_manifest(tmp_path, name, **overrides):
@@ -1677,6 +1731,14 @@ def test_publish_gated():
     assert job_needs(workflow["verify"]) == ["pool", "publish"]
 
 
+def test_publish_job_passes_the_pull_request():
+    step = next(s for s in job_steps(jobs(EXTERNALS_WORKFLOW.read_text(encoding="utf-8"))["publish"])
+                if s["run"] and "publish_pool.sh" in s["run"])
+    assert re.search(r"^          PUBLISH_PULL_REQUEST: \$\{\{ github\.event\.pull_request\.number \}\}$", step["text"], re.M)
+    assert re.search(r"^          PUBLISH_COMMIT: \$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.sha \}\}$",
+                     step["text"], re.M)
+
+
 def test_pool_new_sealed_between_jobs():
     workflow = jobs(EXTERNALS_WORKFLOW.read_text(encoding="utf-8"))
     assert re.search(r"^    outputs:\n      sha256: \$\{\{ steps\.merge\.outputs\.sha256 \}\}$", workflow["pool"], re.M)
@@ -2572,3 +2634,491 @@ def test_makefile_passes_external_sanitize(value, expected):
                             capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
     assert ("-DEXTERNAL_SANITIZE=ON" in result.stdout) == expected
+
+
+DAY = 86400
+A, B, C = "curl/8.20.0-aaaaaaaaaaaa", "curl/8.21.0-bbbbbbbbbbbb", "curl/8.22.0-cccccccccccc"
+
+
+def git(repo, *args, when=None):
+    env = {**os.environ, "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_SYSTEM": os.devnull,
+           "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}
+    if when is not None:
+        env["GIT_COMMITTER_DATE"] = env["GIT_AUTHOR_DATE"] = f"{when} +0000"
+    return subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True, text=True, env=env).stdout
+
+
+class LockRepo:
+    """A git repository whose commits change src/deps.lock.mk at chosen dates; its branches are mirrored as origin/*."""
+
+    def __init__(self, tmp_path, now):
+        self.path, self.now = tmp_path / "repo", now
+        self.path.mkdir()
+        git(self.path, "init", "-q", "-b", "main")
+        git(self.path, "remote", "add", "origin", "https://github.com/wazuh/wazuh.git")
+
+    def commit(self, ref, days_ago, branch=None, start=None, lock=True):
+        if branch:
+            git(self.path, "checkout", "-q", "-B", branch, *([start] if start else []))
+        lock_file = self.path / "src" / "deps.lock.mk"
+        lock_file.parent.mkdir(exist_ok=True)
+        if lock:
+            lock_file.write_text(f"# lock\nDEP_REF_curl := {ref}\n", encoding="utf-8")
+        else:
+            lock_file.unlink(missing_ok=True)
+            (self.path / "other").write_text(ref, encoding="utf-8")
+        git(self.path, "add", "-A")
+        when = self.now - int(days_ago * DAY)
+        git(self.path, "commit", "-q", "--allow-empty", "-m", ref, when=when)
+        return git(self.path, "rev-parse", "HEAD").strip()
+
+    def publish(self, *branches):
+        for name in branches:
+            git(self.path, "update-ref", f"refs/remotes/origin/{name}", name)
+
+
+def pool_with(tmp_path, *refs):
+    pool = tmp_path / "pool"
+    for value in refs:
+        (pool / value).mkdir(parents=True, exist_ok=True)
+        (pool / value / "manifest.json").write_text("{}", encoding="utf-8")
+    pool.mkdir(exist_ok=True)
+    return f"file://{pool}"
+
+
+def orphan_lines(repo, pool, now, **kwargs):
+    return deps.orphans(repo.path, pool, now=now, **kwargs)[0]
+
+
+NOW = 1_800_000_000
+
+
+def test_orphans_listed_with_delete_commands(tmp_path):
+    repo = LockRepo(tmp_path, NOW)
+    repo.commit(A, 100, branch="main")
+    repo.commit(B, 40)
+    repo.publish("main")
+    lines = orphan_lines(repo, pool_with(tmp_path, A, B), NOW, bucket="b")
+    assert [line for line in lines if line.startswith("- ")] == [f"- {A} (unreferenced since {time.strftime('%Y-%m-%d', time.gmtime(NOW - 40 * DAY))})"]
+    assert lines[-2:] == [f"  aws s3 rm s3://b/deps/pool/{A}/manifest.json", f"  aws s3 rm s3://b/deps/pool/{A}/ --recursive"]
+
+
+def test_orphans_grace_period_boundary(tmp_path):
+    repo = LockRepo(tmp_path, NOW)
+    repo.commit(A, 100, branch="main")
+    repo.commit(B, 29.9)
+    repo.publish("main")
+    pool = pool_with(tmp_path, A, B)
+    lines = orphan_lines(repo, pool, NOW)
+    assert "No orphan refs." in lines and "Unreferenced for less than 30 days (not listed): 1" in lines
+    assert any(A in line for line in orphan_lines(repo, pool, NOW + int(0.1 * DAY)))
+
+
+def test_orphans_abandonment_is_counted_from_the_last_use(tmp_path):
+    repo = LockRepo(tmp_path, NOW)
+    repo.commit(A, 100, branch="main")
+    repo.commit(B, 40)
+    repo.commit(A, 35)
+    repo.commit(B, 10)
+    repo.publish("main")
+    lines = orphan_lines(repo, pool_with(tmp_path, A, B), NOW)
+    assert "No orphan refs." in lines and "Unreferenced for less than 30 days (not listed): 1" in lines
+
+
+def test_orphans_ref_that_returns_is_used(tmp_path):
+    repo = LockRepo(tmp_path, NOW)
+    repo.commit(A, 100, branch="main")
+    repo.commit(B, 90)
+    repo.commit(A, 80)
+    repo.publish("main")
+    lines = orphan_lines(repo, pool_with(tmp_path, A, B), NOW)
+    assert [line for line in lines if line.startswith("- ")] == [f"- {B} (unreferenced since {time.strftime('%Y-%m-%d', time.gmtime(NOW - 80 * DAY))})"]
+
+
+def test_orphans_ref_of_a_tag_is_kept(tmp_path):
+    repo = LockRepo(tmp_path, NOW)
+    repo.commit(A, 100, branch="main")
+    git(repo.path, "tag", "v5.0.0-rc1")
+    repo.commit(B, 60)
+    repo.publish("main")
+    lines = orphan_lines(repo, pool_with(tmp_path, A, B), NOW)
+    assert "No orphan refs." in lines and not any(line.startswith("- ") for line in lines)
+
+
+def test_orphans_ref_of_an_open_pull_request_is_kept(tmp_path):
+    repo = LockRepo(tmp_path, NOW)
+    repo.commit(A, 100, branch="main")
+    repo.commit(B, 60)
+    repo.publish("main")
+    git(repo.path, "checkout", "-q", "-B", "pr", "main")
+    repo.commit(C, 50)
+    git(repo.path, "update-ref", "refs/pull/1/head", "pr")
+    pool = pool_with(tmp_path, A, B, C)
+    assert any(line.startswith(f"- {C} ") for line in orphan_lines(repo, pool, NOW))
+    lines = orphan_lines(repo, pool, NOW, pr_refs=["refs/pull/1/head"])
+    assert not any(line.startswith(f"- {C} ") for line in lines)
+    assert "open pull requests: 1" in lines[0]
+
+
+def test_orphans_sees_refs_merged_with_a_merge_commit(tmp_path):
+    repo = LockRepo(tmp_path, NOW)
+    repo.commit(A, 100, branch="main")
+    repo.commit(B, 70, branch="feature", start="main")
+    repo.commit(C, 60)
+    git(repo.path, "checkout", "-q", "main")
+    git(repo.path, "merge", "-q", "--no-ff", "-s", "ours", "-m", "merge", "feature", when=NOW - 50 * DAY)
+    (repo.path / "src" / "deps.lock.mk").write_text(f"# lock\nDEP_REF_curl := {C}\n", encoding="utf-8")
+    git(repo.path, "add", "-A")
+    git(repo.path, "commit", "-q", "--amend", "--no-edit", when=NOW - 50 * DAY)
+    git(repo.path, "branch", "-q", "-D", "feature")
+    repo.publish("main")
+    lines = orphan_lines(repo, pool_with(tmp_path, A, B, C), NOW)
+    listed = [line.split()[1] for line in lines if line.startswith("- ")]
+    assert B in listed and A in listed and C not in listed
+
+
+def test_orphans_skips_refs_the_pool_does_not_have(tmp_path):
+    repo = LockRepo(tmp_path, NOW)
+    repo.commit(A, 100, branch="main")
+    repo.commit(B, 60)
+    repo.publish("main")
+    assert "No orphan refs." in orphan_lines(repo, pool_with(tmp_path, B), NOW)
+
+
+def test_orphans_branch_without_recent_commits_is_not_maintained(tmp_path):
+    repo = LockRepo(tmp_path, NOW)
+    base = repo.commit(A, 300, branch="main")
+    repo.commit(C, 200, branch="5.0.5", start=base)
+    repo.commit(B, 10, branch="main", start=base)
+    repo.publish("main", "5.0.5")
+    lines = orphan_lines(repo, pool_with(tmp_path, A, C, B), NOW)
+    assert lines[0].startswith("Maintained branches: main;")
+    assert any(line.startswith(f"- {C} ") for line in lines)
+
+
+@pytest.mark.parametrize("tip_days,maintained", [(120, True), (121, False)])
+def test_orphans_maintained_window_boundary(tmp_path, tip_days, maintained):
+    repo = LockRepo(tmp_path, NOW)
+    base = repo.commit(A, 300, branch="main")
+    repo.commit(C, tip_days, branch="5.0.5", start=base)
+    repo.commit(B, 10, branch="main", start=base)
+    repo.publish("main", "5.0.5")
+    lines = orphan_lines(repo, pool_with(tmp_path, A, B, C), NOW)
+    assert lines[0].startswith("Maintained branches: 5.0.5, main;" if maintained else "Maintained branches: main;")
+
+
+def test_orphans_grace_starts_when_a_branch_stops_being_maintained(tmp_path):
+    repo = LockRepo(tmp_path, NOW)
+    base = repo.commit(A, 300, branch="main")
+    repo.commit(C, 130, branch="5.0.5", start=base)
+    repo.commit(B, 10, branch="main", start=base)
+    repo.publish("main", "5.0.5")
+    lines = orphan_lines(repo, pool_with(tmp_path, A, B, C), NOW)
+    assert "No orphan refs." in lines and "Unreferenced for less than 30 days (not listed): 2" in lines
+
+
+@pytest.mark.parametrize("setup", ["shallow", "no-branches", "no-lock", "missing-pr-ref", "unreadable-pool"])
+def test_orphans_fails_closed(tmp_path, setup):
+    repo = LockRepo(tmp_path, int(time.time()))
+    repo.commit(A, 100, branch="main")
+    repo.commit(B, 60)
+    repo.publish("main")
+    path, extra = repo.path, []
+    if setup == "shallow":
+        path = tmp_path / "shallow"
+        subprocess.run(["git", "clone", "-q", "--depth", "1", f"file://{repo.path}", str(path)], check=True,
+                       capture_output=True, env={**os.environ, "GIT_CONFIG_GLOBAL": os.devnull})
+    elif setup == "no-branches":
+        git(repo.path, "tag", "v5.0.0")
+        git(repo.path, "update-ref", "-d", "refs/remotes/origin/main")
+    elif setup == "no-lock":
+        repo.commit("x", 1, lock=False)
+        repo.publish("main")
+    elif setup == "missing-pr-ref":
+        extra = ["--open-pr-refs", "refs/pull/9/head"]
+    pool = pool_with(tmp_path, A, B)
+    if setup == "unreadable-pool":
+        (tmp_path / "pool" / A / "manifest.json").write_text("not json", encoding="utf-8")
+    result = run("orphans", "--repo", str(path), "--pool", pool, *extra)
+    assert result.returncode == 1 and result.stderr.startswith("ERROR: orphans:")
+    assert "aws s3 rm" not in result.stdout
+
+
+def test_orphans_none(tmp_path):
+    repo = LockRepo(tmp_path, int(time.time()))
+    repo.commit(A, 100, branch="main")
+    repo.publish("main")
+    result = run("orphans", "--repo", str(repo.path), "--pool", pool_with(tmp_path, A))
+    assert result.returncode == 0 and "No orphan refs." in result.stdout
+
+
+def pool_with_records(tmp_path, refs, records):
+    pool = pool_with(tmp_path, *refs)
+    (tmp_path / "pool" / "_published").mkdir()
+    for run, content in records.items():
+        text = content if isinstance(content, str) else json.dumps(content)
+        (tmp_path / "pool" / "_published" / f"{run}.json").write_text(text, encoding="utf-8")
+    return pool
+
+
+@pytest.mark.parametrize("published_days_ago,in_git_days_ago,open_pr,listed", [
+    (40, None, False, True), (10, None, False, False), (40, None, True, False), (10, 100, False, False)],
+    ids=["listed", "in-grace", "used-by-open-pr", "also-in-git"])
+def test_orphans_published_record(tmp_path, published_days_ago, in_git_days_ago, open_pr, listed):
+    """A ref a pull request published and no branch kept is a candidate from its publication date."""
+    repo = LockRepo(tmp_path, NOW)
+    if in_git_days_ago:
+        repo.commit(C, in_git_days_ago + 1, branch="main")
+        repo.commit(A, in_git_days_ago)
+    else:
+        repo.commit(A, 100, branch="main")
+    repo.publish("main")
+    pr_refs = []
+    if open_pr:
+        git(repo.path, "checkout", "-q", "-B", "pr", "main")
+        repo.commit(C, 1)
+        git(repo.path, "update-ref", "refs/pull/1/head", "pr")
+        pr_refs = ["refs/pull/1/head"]
+    stamp = NOW - published_days_ago * DAY
+    pool = pool_with_records(tmp_path, [A, C], {"7-1": {"refs": [C], "published_at": stamp}})
+    lines = orphan_lines(repo, pool, NOW, pr_refs=pr_refs, published_runs=["7-1"])
+    assert "publications: 1" in lines[0]
+    expected = f"- {C} (unreferenced since {time.strftime('%Y-%m-%d', time.gmtime(stamp))})"
+    assert (expected in lines) == listed
+    if not listed:
+        assert not any(line.startswith(f"- {C} ") for line in lines)
+
+
+def test_orphans_published_twice_counts_from_the_latest(tmp_path):
+    repo = LockRepo(tmp_path, NOW)
+    repo.commit(A, 100, branch="main")
+    repo.publish("main")
+    pool = pool_with_records(tmp_path, [A, C], {"7-1": {"refs": [C], "published_at": NOW - 10 * DAY},
+                                                "8-1": {"refs": [C], "published_at": NOW - 40 * DAY}})
+    lines = orphan_lines(repo, pool, NOW, published_runs=["7-1", "8-1"])
+    assert "No orphan refs." in lines and "Unreferenced for less than 30 days (not listed): 1" in lines
+
+
+@pytest.mark.parametrize("run,content,message", [
+    ("7-1", None, "run 7-1 published, but"),
+    ("7-1", {"refs": ["curl/8.20.0-nothex"], "published_at": NOW}, "is not a publication record"),
+    ("7-1", {"refs": [C], "published_at": "yesterday"}, "is not a publication record"),
+    ("7-1", "[]", "is not a publication record"),
+    ("7-1", "{not json", "cannot read"),
+    ("7", {"refs": [C], "published_at": NOW}, "is not <run id>-<attempt>"),
+], ids=["missing", "bad-ref", "bad-date", "not-an-object", "bad-json", "bad-run"])
+def test_orphans_published_record_errors(tmp_path, run, content, message):
+    repo = LockRepo(tmp_path, NOW)
+    repo.commit(A, 100, branch="main")
+    repo.publish("main")
+    pool = pool_with_records(tmp_path, [A], {} if content is None else {run: content})
+    with pytest.raises(deps.OrphanError, match=re.escape(message)):
+        orphan_lines(repo, pool, NOW, published_runs=[run])
+
+
+def test_orphans_published_runs_cli(tmp_path):
+    repo = LockRepo(tmp_path, int(time.time()))
+    repo.commit(A, 100, branch="main")
+    repo.publish("main")
+    pool = pool_with_records(tmp_path, [A, C], {"7-1": {"refs": [C], "published_at": int(time.time()) - 40 * DAY}})
+    result = run("orphans", "--repo", str(repo.path), "--pool", pool, "--published-runs", "7-1")
+    assert result.returncode == 0 and f"- {C} " in result.stdout, result.stderr
+
+
+def write_lock(repo, text, days_ago, msg="lock"):
+    (repo.path / "src" / "deps.lock.mk").write_text(text, encoding="utf-8")
+    git(repo.path, "add", "-A")
+    git(repo.path, "commit", "-q", "-m", msg, when=NOW - int(days_ago * DAY))
+
+
+def in_grace(lines, count=1):
+    return "No orphan refs." in lines and f"Unreferenced for less than 30 days (not listed): {count}" in lines
+
+
+def test_orphans_merge_of_an_old_branch_starts_the_grace(tmp_path):
+    repo = LockRepo(tmp_path, NOW)
+    repo.commit(A, 300, branch="main")
+    repo.commit(B, 200, branch="feature", start="main")
+    git(repo.path, "checkout", "-q", "main")
+    (repo.path / "x").write_text("x")
+    git(repo.path, "add", "-A")
+    git(repo.path, "commit", "-q", "-m", "x", when=NOW - 5 * DAY)
+    git(repo.path, "merge", "-q", "--no-ff", "-m", "merge", "feature", when=NOW - 3600)
+    git(repo.path, "branch", "-q", "-D", "feature")
+    repo.publish("main")
+    assert in_grace(orphan_lines(repo, pool_with(tmp_path, A, B), NOW))
+
+
+def test_orphans_squash_while_the_branch_is_kept_starts_the_grace(tmp_path):
+    repo = LockRepo(tmp_path, NOW)
+    repo.commit(A, 300, branch="main")
+    repo.commit(B, 200, branch="feature", start="main")
+    repo.commit(B, 0.04, branch="main", start="main")
+    repo.publish("main", "feature")
+    assert in_grace(orphan_lines(repo, pool_with(tmp_path, A, B), NOW))
+
+
+def test_orphans_removed_dependency_starts_the_grace(tmp_path):
+    repo = LockRepo(tmp_path, NOW)
+    git(repo.path, "checkout", "-q", "-B", "main")
+    (repo.path / "src").mkdir()
+    write_lock(repo, f"DEP_REF_curl := {A}\nDEP_REF_zlib := zlib/1.3-dddddddddddd\n", 300)
+    write_lock(repo, "DEP_REF_zlib := zlib/1.3-dddddddddddd\n", 0.04)
+    repo.publish("main")
+    assert in_grace(orphan_lines(repo, pool_with(tmp_path, A, "zlib/1.3-dddddddddddd"), NOW))
+
+
+def test_orphans_ref_of_a_maintained_release_branch_is_kept(tmp_path):
+    repo = LockRepo(tmp_path, NOW)
+    base = repo.commit(A, 100, branch="main")
+    repo.commit(B, 60)
+    repo.commit(A, 10, branch="5.0.0", start=base)
+    repo.publish("main", "5.0.0")
+    git(repo.path, "checkout", "-q", "main")
+    git(repo.path, "branch", "-q", "-D", "5.0.0")
+    lines = orphan_lines(repo, pool_with(tmp_path, A, B), NOW)
+    assert lines[0].startswith("Maintained branches: 5.0.0, main;") and "No orphan refs." in lines
+
+
+def test_orphans_every_open_pull_request_counts(tmp_path):
+    repo = LockRepo(tmp_path, NOW)
+    repo.commit(A, 100, branch="main")
+    repo.publish("main")
+    repo.commit(B, 60, branch="pr1", start="main")
+    git(repo.path, "update-ref", "refs/pull/1/head", "pr1")
+    repo.commit(C, 50, branch="pr2", start="main")
+    git(repo.path, "update-ref", "refs/pull/2/head", "pr2")
+    lines = orphan_lines(repo, pool_with(tmp_path, A, B, C), NOW, pr_refs=["refs/pull/1/head", "refs/pull/2/head"])
+    assert "No orphan refs." in lines
+
+
+def test_orphans_history_of_a_remote_only_branch_is_read(tmp_path):
+    repo = LockRepo(tmp_path, NOW)
+    repo.commit(A, 100, branch="main")
+    repo.commit(B, 80, branch="feature", start="main")
+    repo.commit(C, 70)
+    repo.publish("main", "feature")
+    git(repo.path, "checkout", "-q", "main")
+    git(repo.path, "branch", "-q", "-D", "feature")
+    listed = [line.split()[1] for line in orphan_lines(repo, pool_with(tmp_path, A, B, C), NOW) if line.startswith("- ")]
+    assert B in listed
+
+
+def test_orphans_abandonment_uses_the_committer_date(tmp_path):
+    repo = LockRepo(tmp_path, NOW)
+    repo.commit(A, 100, branch="main")
+    (repo.path / "src" / "deps.lock.mk").write_text(f"DEP_REF_curl := {B}\n", encoding="utf-8")
+    git(repo.path, "add", "-A")
+    env_date = {"GIT_AUTHOR_DATE": f"{NOW - DAY} +0000"}
+    subprocess.run(["git", "-C", str(repo.path), "commit", "-q", "-m", "b"], check=True, capture_output=True,
+                   env={**os.environ, "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_SYSTEM": os.devnull,
+                        "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t",
+                        "GIT_COMMITTER_EMAIL": "t@t", "GIT_COMMITTER_DATE": f"{NOW - 40 * DAY} +0000", **env_date})
+    repo.publish("main")
+    assert any(line.startswith(f"- {A} ") for line in orphan_lines(repo, pool_with(tmp_path, A, B), NOW))
+
+
+def test_orphans_sees_a_side_branch_that_a_merge_discarded(tmp_path):
+    repo = LockRepo(tmp_path, NOW)
+    repo.commit(A, 100, branch="main")
+    repo.commit(B, 90, branch="feature", start="main")
+    git(repo.path, "checkout", "-q", "main")
+    git(repo.path, "merge", "-q", "--no-ff", "-s", "ours", "-m", "merge", "feature", when=NOW - 80 * DAY)
+    git(repo.path, "branch", "-q", "-D", "feature")
+    repo.publish("main")
+    assert any(line.startswith(f"- {B} ") for line in orphan_lines(repo, pool_with(tmp_path, A, B), NOW))
+
+
+def test_orphans_ignores_values_of_the_history_that_are_not_pool_refs(tmp_path):
+    repo = LockRepo(tmp_path, NOW)
+    repo.commit(f"{A}/manifest.json#;touch${{IFS}}pwned;", 100, branch="main")
+    repo.commit(A, 60)
+    repo.commit(B, 40)
+    repo.publish("main")
+    lines = orphan_lines(repo, pool_with(tmp_path, A, B), NOW, bucket="b")
+    assert [line.split()[1] for line in lines if line.startswith("- ")] == [A]
+    assert not any(";" in line or "$" in line or "#" in line for line in lines[1:])
+
+
+@pytest.mark.parametrize("line", ["DEP_REF_curl := curl/8.20.0-xyz", f" DEP_REF_curl := {A}", f"DEP_REF_curl += {A}",
+                                  f"override DEP_REF_curl := {A}", f"DEP_REF_curl := {A}\t",
+                                  f"DEP_REF_curl := {A}\nDEP_REF_curl := {B}"])
+def test_orphans_fails_on_a_malformed_lock_of_a_maintained_branch(tmp_path, line):
+    repo = LockRepo(tmp_path, int(time.time()))
+    repo.commit(A, 100, branch="main")
+    (repo.path / "src" / "deps.lock.mk").write_text(f"# lock\n{line}\n", encoding="utf-8")
+    git(repo.path, "commit", "-q", "-am", "bad")
+    repo.publish("main")
+    result = run("orphans", "--repo", str(repo.path), "--pool", pool_with(tmp_path, A, B))
+    assert result.returncode == 1 and "unexpected line in src/deps.lock.mk" in result.stderr
+
+
+@pytest.mark.parametrize("field,value", [("name", "cu/rl"), ("name", "curl\n"), ("version", "1.0/.."),
+                                         ("version", ".."), ("version", "1.0 x")])
+def test_name_and_version_are_single_path_segments(field, value):
+    result = errors(doc(entry(value) if field == "name" else entry("curl", version=value)))
+    assert any(f"`{field}` {value!r} must be a single path segment" in e for e in result)
+
+
+@pytest.mark.parametrize("pool_refs", [None, (A,)])
+def test_orphans_pending_when_the_pool_serves_no_ref_of_the_branches(tmp_path, pool_refs):
+    repo = LockRepo(tmp_path, int(time.time()))
+    repo.commit(A, 100, branch="main")
+    repo.commit(B, 60)
+    repo.publish("main")
+    pool = f"file://{tmp_path}/absent" if pool_refs is None else pool_with(tmp_path, *pool_refs)
+    result = run("orphans", "--repo", str(repo.path), "--pool", pool)
+    assert result.returncode == 0 and "\nPENDING - the pool serves none of the refs" in result.stdout
+    assert "aws s3 rm" not in result.stdout and "No orphan refs." not in result.stdout
+
+
+def test_orphans_pool_error_while_probing_fails(tmp_path):
+    repo = LockRepo(tmp_path, int(time.time()))
+    repo.commit(A, 100, branch="main")
+    repo.commit(B, 60)
+    repo.publish("main")
+    pool = pool_with(tmp_path, A, B)
+    (tmp_path / "pool" / B / "manifest.json").write_text("not json", encoding="utf-8")
+    result = run("orphans", "--repo", str(repo.path), "--pool", pool)
+    assert result.returncode == 1 and f"{B}/manifest.json" in result.stderr
+
+
+@pytest.mark.parametrize("setup", ["no-origin", "fork", "single-branch", "other-repo"])
+def test_orphans_fails_on_an_incomplete_clone(tmp_path, setup):
+    repo = LockRepo(tmp_path, int(time.time()))
+    repo.commit(A, 100, branch="main")
+    repo.commit(B, 60)
+    repo.publish("main")
+    if setup == "no-origin":
+        git(repo.path, "config", "--unset-all", "remote.origin.fetch")
+        git(repo.path, "config", "--unset", "remote.origin.url")
+    elif setup == "fork":
+        git(repo.path, "remote", "set-url", "origin", "https://github.com/someone/wazuh.git")
+    elif setup == "other-repo":
+        git(repo.path, "remote", "set-url", "origin", "https://github.com/wazuh/wazuh-indexer")
+    else:
+        git(repo.path, "config", "remote.origin.fetch", "+refs/heads/main:refs/remotes/origin/main")
+    result = run("orphans", "--repo", str(repo.path), "--pool", pool_with(tmp_path, A, B))
+    assert result.returncode == 1 and result.stderr.startswith("ERROR: orphans:")
+
+
+def test_orphans_branch_and_tag_named_like_a_remote_branch(tmp_path):
+    repo = LockRepo(tmp_path, NOW)
+    base = repo.commit(A, 100, branch="main")
+    repo.commit(B, 60)
+    repo.commit(A, 10, branch="5.0.0", start=base)
+    repo.publish("main", "5.0.0")
+    git(repo.path, "branch", "-q", "origin/5.0.0", "main")
+    git(repo.path, "tag", "origin/5.0.0", "main")
+    lines = orphan_lines(repo, pool_with(tmp_path, A, B), NOW)
+    assert lines[0].startswith("Maintained branches: 5.0.0, main;") and "No orphan refs." in lines
+
+
+def test_orphans_delete_commands_are_quoted_for_the_shell(tmp_path):
+    repo = LockRepo(tmp_path, NOW)
+    repo.commit(A, 100, branch="main")
+    repo.commit(B, 40)
+    repo.publish("main")
+    lines = orphan_lines(repo, pool_with(tmp_path, A, B), NOW)
+    assert lines[-2:] == [f"  aws s3 rm 's3://<bucket>/deps/pool/{A}/manifest.json'",
+                          f"  aws s3 rm 's3://<bucket>/deps/pool/{A}/' --recursive"]

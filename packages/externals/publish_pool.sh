@@ -19,6 +19,12 @@
 #   - manifest.json goes last, so a ref without it is incomplete and the next
 #     run completes it.
 #
+# In a workflow run (GITHUB_RUN_ID set) it then writes the record
+# deps/pool/_published/<run id>-<attempt>.json: every ref of the tree, the pull
+# request (PUBLISH_PULL_REQUEST) and the commit (PUBLISH_COMMIT, default
+# GITHUB_SHA). deps.py orphans reads the records to see the refs published from a
+# pull request whose commits no branch keeps.
+#
 # Needs bash >= 4.4 (inherit_errexit), python3 and an AWS CLI with
 # put-object --if-none-match: an older one rejects the option on the first upload,
 # which then fails before writing anything. The role needs s3:ListBucket on the
@@ -138,3 +144,32 @@ while IFS= read -r dir; do
 done <<< "${refs}"
 
 log "published ${published} refs, ${skipped} already in the pool"
+
+if [ -z "${GITHUB_RUN_ID:-}" ]; then
+    log "no GITHUB_RUN_ID: no record under deps/pool/_published/ (deps.py orphans will not see these refs unless a branch keeps them)"
+    exit 0
+fi
+record="deps/pool/_published/${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT:-1}.json"
+printf '%s\n' "${refs}" > "${WORK}/refs.txt"
+python3 - "${WORK}/record.json" "${POOL_DIR%/}" "${WORK}/refs.txt" <<'PY'
+import json, os, sys, time
+out, pool, refs = sys.argv[1], sys.argv[2] + "/", open(sys.argv[3]).read().splitlines()
+pull = os.environ.get("PUBLISH_PULL_REQUEST", "")
+json.dump({
+    "workflow_run": f'{os.environ.get("GITHUB_SERVER_URL", "https://github.com")}/{os.environ.get("GITHUB_REPOSITORY", "")}'
+                    f'/actions/runs/{os.environ["GITHUB_RUN_ID"]}',
+    "run_id": int(os.environ["GITHUB_RUN_ID"]),
+    "run_attempt": int(os.environ.get("GITHUB_RUN_ATTEMPT", "1")),
+    "event": os.environ.get("GITHUB_EVENT_NAME", ""),
+    "pull_request": int(pull) if pull else None,
+    "commit": os.environ.get("PUBLISH_COMMIT") or os.environ.get("GITHUB_SHA", ""),
+    "published_at": int(time.time()),
+    "refs": sorted(ref.removeprefix(pool) for ref in refs),
+}, open(out, "w"), indent=2)
+PY
+existing="$(put "${WORK}/record.json" "${record}")"
+if [ -n "${existing}" ]; then
+    err "${record} already exists: an attempt of a run publishes once"
+    exit 1
+fi
+log "recorded the refs of this run in ${record}"
