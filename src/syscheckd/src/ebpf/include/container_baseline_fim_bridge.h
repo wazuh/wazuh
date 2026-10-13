@@ -34,7 +34,8 @@ int fim_container_baseline_available(const char* socket_path);
  * actually baselined (see cbaseline_run_fim_dbsync()'s return value contract),
  * plus how much of it was usable. */
 void fim_report_container_baseline_result(int baselined,
-                                          size_t rows,
+                                          size_t rows,     /* STORED, not offered */
+                                          size_t refused,  /* offered and turned away */
                                           size_t partial,
                                           size_t stale,
                                           size_t known);

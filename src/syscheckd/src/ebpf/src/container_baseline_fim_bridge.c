@@ -346,11 +346,62 @@ int fim_container_baseline_available(const char* socket_path)
     return 1;
 }
 
-void fim_report_container_baseline_result(int baselined, size_t rows, size_t partial, size_t stale, size_t known)
+void fim_report_container_baseline_result(int baselined,
+                                          size_t rows,
+                                          size_t refused,
+                                          size_t partial,
+                                          size_t stale,
+                                          size_t known)
 {
-    minfo("Container FIM baseline finished: %d container(s) scanned, %zu row(s), %zu partial scan(s), "
-          "%zu stale container(s) cleaned, %zu container(s) known.",
-          baselined, rows, partial, stale, known);
+    minfo("Container FIM baseline finished: %d container(s) scanned, %zu row(s) stored, "
+          "%zu row(s) refused, %zu partial scan(s), %zu stale container(s) cleaned, "
+          "%zu container(s) known.",
+          baselined, rows, refused, partial, stale, known);
+
+    if (refused > 0) {
+        /* The number an operator needs to act on, at a level they will see.
+         * A row that was offered and turned away is file state the manager will
+         * never receive, and the only previous trace of it was this same line
+         * reporting the rows OFFERED as though they had all been kept. */
+        mwarn("Container FIM: %zu row(s) could not be stored and will not reach the manager. "
+              "Raise <container_security><syscheck><file_limit> for a single container's share, "
+              "or <syscheck><file_limit><entries> for the agent's whole file database.",
+              refused);
+
+        /* Upward, following the only pattern that exists for telling a manager
+         * an agent is saturated -- fim_check_db_state()'s "wazuh: FIM DB:"
+         * message on LOCALFILE_MQ (fim_scan.c).
+         *
+         * Worth knowing before relying on it: that pattern has NO decoder or
+         * rule in this repository, so this reaches the manager's archives and
+         * nothing acts on it. Making it actionable is ruleset work on the
+         * server side, not something the agent can do alone. It is sent anyway
+         * because an operator grepping archives can find it, and because a
+         * saturated agent that says nothing upward is how this defect went
+         * unnoticed in the first place. */
+        cJSON* event = cJSON_CreateObject();
+
+        if (event != NULL) {
+            cJSON_AddStringToObject(event, "fim_db_table", "file_entry");
+            cJSON_AddStringToObject(event, "scope", "container");
+            cJSON_AddStringToObject(event, "alert_type", "rows_refused");
+            cJSON_AddNumberToObject(event, "rows_refused", (double)refused);
+            cJSON_AddNumberToObject(event, "rows_stored", (double)rows);
+            cJSON_AddNumberToObject(event, "container_file_entry_limit", syscheck.container_file_entry_limit);
+            cJSON_AddNumberToObject(event, "file_entry_limit", syscheck.file_entry_limit);
+
+            char* plain = cJSON_PrintUnformatted(event);
+
+            if (plain != NULL) {
+                char alert_msg[OS_SIZE_256];
+                snprintf(alert_msg, OS_SIZE_256, "wazuh: FIM DB: %s", plain);
+                send_log_msg(alert_msg);
+                os_free(plain);
+            }
+
+            cJSON_Delete(event);
+        }
+    }
 
     if (partial > 0) {
         mdebug1("Container FIM baseline: %zu container(s) had an incomplete scan; delete detection was "

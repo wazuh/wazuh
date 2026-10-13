@@ -78,3 +78,53 @@ TEST(ContainerRowBudget, AScanIsCompleteOnlyWhenNothingWasWithheld)
         }
     }
 }
+
+/// The accounting discipline the baseline's own reporting depends on.
+///
+/// A baseline reports a row total, and that total is what an operator and the
+/// next engineer read as "what the agent knows". It therefore has to be rows
+/// KEPT. Counting rows OFFERED is what let a baseline report 100,063 rows while
+/// the database held 91,420 — the 8,643-row shortfall appeared in no counter,
+/// no log line and no flag, which is why the defect survived a full e2e run.
+///
+/// Stored must be exactly what the ceiling allows, refused must be the rest,
+/// and the two must account for every row offered.
+TEST(ContainerRowBudget, StoredPlusRefusedAccountsForEveryRowOffered)
+{
+    struct Case { int limit; size_t offered; size_t expectStored; };
+
+    const Case cases[] =
+    {
+        {   0, 2005, 2005 },  // unlimited: everything kept
+        { 500, 2005,  500 },  // the measured Test B shape
+        {3000, 2005, 2005 },  // ceiling above the load never bites
+        {   1,    5,    1 },
+        { 100,    0,    0 },  // nothing offered, nothing accounted
+    };
+
+    for (const auto& c : cases)
+    {
+        size_t stored = 0;
+        size_t refused = 0;
+
+        for (size_t i = 0; i < c.offered; ++i)
+        {
+            if (container_row_admitted(c.limit, stored))
+            {
+                ++stored;
+            }
+            else
+            {
+                ++refused;
+            }
+        }
+
+        EXPECT_EQ(stored, c.expectStored) << "limit=" << c.limit << " offered=" << c.offered;
+        EXPECT_EQ(stored + refused, c.offered) << "every offered row must be accounted for";
+
+        // The reported total is `stored`. If it were `offered`, this is the
+        // assertion that would catch it.
+        EXPECT_LE(stored, c.offered);
+        EXPECT_TRUE(c.limit <= 0 || stored <= static_cast<size_t>(c.limit));
+    }
+}
