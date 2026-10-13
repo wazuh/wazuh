@@ -420,6 +420,97 @@ TEST(SystemdUnitsProviderTest, CollectsUnitsSuccessfully)
     EXPECT_EQ(unitsJson[1]["unit_file_state"], "enabled");
 }
 
+void SetUpSingleUnitMock(std::shared_ptr<MockDBusWrapper>& mockDbusWrapper,
+                         const std::string& loadState,
+                         const std::string& activeState,
+                         const std::string& subState,
+                         bool expectProperties)
+{
+    DBusConnection* conn  = reinterpret_cast<DBusConnection*>(0x1);
+    DBusMessage*    msg   = reinterpret_cast<DBusMessage*>(0x2);
+    DBusMessage*    reply = reinterpret_cast<DBusMessage*>(0x3);
+
+    EXPECT_CALL(*mockDbusWrapper, error_init(_));
+    EXPECT_CALL(*mockDbusWrapper, bus_get_private(DBUS_BUS_SYSTEM, _)).WillOnce(Return(conn));
+    EXPECT_CALL(*mockDbusWrapper, connection_close(conn)).Times(1);
+    EXPECT_CALL(*mockDbusWrapper, connection_unref(conn)).Times(1);
+    EXPECT_CALL(*mockDbusWrapper, error_is_set(_)).WillRepeatedly(Return(false));
+    EXPECT_CALL(*mockDbusWrapper, message_new_method_call(_, _, _, "ListUnits")).WillOnce(Return(msg));
+    EXPECT_CALL(*mockDbusWrapper, connection_send_with_reply_and_block(conn, msg, -1, _)).WillOnce(Return(reply));
+    EXPECT_CALL(*mockDbusWrapper, message_iter_init(reply, _)).WillOnce(Return(true));
+
+    EXPECT_CALL(*mockDbusWrapper, message_iter_get_arg_type(_))
+    .WillOnce(Return(DBUS_TYPE_ARRAY))
+    .WillOnce(Return(DBUS_TYPE_STRUCT))
+    .WillOnce(Return(DBUS_TYPE_INVALID));
+
+    EXPECT_CALL(*mockDbusWrapper, message_iter_recurse(_, _)).WillRepeatedly(Return());
+
+    // ssssssouso: the job id (index 7) is the only non-string field.
+    auto fields = std::make_shared<std::vector<std::string>>(std::vector<std::string>
+    {
+        "apt-daily.service", "apt-daily.service", loadState, activeState, subState, "", servicePath, "", "", "/"
+    });
+    auto index = std::make_shared<size_t>(0);
+
+    EXPECT_CALL(*mockDbusWrapper, message_iter_get_basic(_, _))
+    .Times(10)
+    .WillRepeatedly(Invoke([fields, index](DBusMessageIter*, void* v)
+    {
+        const auto i = (*index)++;
+
+        if (i == 7)
+        {
+            *(uint32_t*)v = 0;
+        }
+        else
+        {
+            *(const char**)v = (*fields)[i].c_str();
+        }
+    }));
+
+    if (expectProperties)
+    {
+        EXPECT_CALL(*mockDbusWrapper, getProperty(conn, _, servicePath, _, _, _))
+        .Times(4)
+        .WillRepeatedly(DoAll(SetArgReferee<5>(std::string("value")), Return(true)));
+    }
+    else
+    {
+        EXPECT_CALL(*mockDbusWrapper, getProperty(_, _, _, _, _, _)).Times(0);
+    }
+
+    EXPECT_CALL(*mockDbusWrapper, message_iter_next(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*mockDbusWrapper, message_unref(_)).WillRepeatedly(Return());
+    EXPECT_CALL(*mockDbusWrapper, error_free(_)).WillRepeatedly(Return());
+}
+
+TEST(SystemdUnitsProviderTest, SkipsInactiveNotFoundUnits)
+{
+    auto mockDbusWrapper = std::make_shared<MockDBusWrapper>();
+
+    SetUpSingleUnitMock(mockDbusWrapper, "not-found", "inactive", "dead", false);
+
+    SystemdUnitsProvider provider(mockDbusWrapper);
+
+    EXPECT_TRUE(provider.collect().empty());
+}
+
+TEST(SystemdUnitsProviderTest, KeepsActiveNotFoundUnits)
+{
+    auto mockDbusWrapper = std::make_shared<MockDBusWrapper>();
+
+    SetUpSingleUnitMock(mockDbusWrapper, "not-found", "active", "running", true);
+
+    SystemdUnitsProvider provider(mockDbusWrapper);
+
+    nlohmann::json unitsJson = provider.collect();
+    ASSERT_EQ(unitsJson.size(), 1u);
+    EXPECT_EQ(unitsJson[0]["id"],           "apt-daily");
+    EXPECT_EQ(unitsJson[0]["load_state"],   "not-found");
+    EXPECT_EQ(unitsJson[0]["active_state"], "active");
+}
+
 TEST(SystemdUnitsProviderTest, FailsWhenBusConnectionFails)
 {
     auto mockDbusWrapper = std::make_shared<MockDBusWrapper>();

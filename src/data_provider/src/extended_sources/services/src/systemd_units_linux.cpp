@@ -194,6 +194,13 @@ bool SystemdUnitsProvider::getSystemdUnits(std::vector<SystemdUnit>& output)
         m_dbusWrapper->message_iter_get_basic(&structIter, &str);
         unit.jobPath = str;
 
+        // Placeholders for units only referenced by other units' dependencies; keep running orphans.
+        if (unit.loadState == "not-found" && unit.activeState == "inactive")
+        {
+            m_dbusWrapper->message_iter_next(&arrayIter);
+            continue;
+        }
+
         // Extra properties
         for (const auto& query : m_propertyQueryList)
         {
