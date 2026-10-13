@@ -144,6 +144,7 @@ jobs:
           bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
           aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           path: src/shared_modules/content_manager
+          test_directory: src/shared_modules/content_manager
           id: content_manager
           threshold: "65"
       - name: "Compilation cache statistics"

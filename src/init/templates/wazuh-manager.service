@@ -7,6 +7,10 @@ After=network.target network-online.target
 Type=forking
 LimitNOFILE=65536
 TimeoutSec=45
+# Start waits up to ~130 s for analysisd's engine API (wait_for_wazuh_engine_ready in
+# wazuh-manager-control); a shorter start timeout would report a systemd timeout instead of the
+# script's own error. Stop keeps the 45 s above.
+TimeoutStartSec=180
 
 ExecStart=/usr/bin/env WAZUH_HOME_TMP/bin/wazuh-manager-control start
 ExecStop=/usr/bin/env WAZUH_HOME_TMP/bin/wazuh-manager-control stop
