@@ -890,7 +890,8 @@ int main(int argc, char* argv[])
             LOG_DEBUG("Content Manager CRUD API registered");
 
             // IOC CRUD
-            api::ioccrud::handlers::registerHandlers(IOCkvdb, scheduler, store, apiServer);
+            const std::filesystem::path iocInputPath(confManager.get<std::string>(conf::key::KVDB_IOC_INPUT_PATH));
+            api::ioccrud::handlers::registerHandlers(IOCkvdb, scheduler, store, apiServer, iocInputPath);
             LOG_DEBUG("IOC CRUD API registered");
 
             // Status

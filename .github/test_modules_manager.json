@@ -13,13 +13,15 @@
         ".github/workflows/5_testintegration_manager.yml",
         ".github/test_modules_manager.json",
         ".github/workflows/.python-version-it",
-        ".github/actions/reinstall_cmake/**",
+        ".github/actions/download_package/**",
+        "tools/devContainer/scripts/wazuh-certs-tool.sh",
         "api/**",
         "framework/wazuh/**",
         "framework/scripts/**",
         "src/shared_modules/manager_config/**",
         "src/Makefile",
         "tests/integration/conftest.py",
+        "tests/integration/pytest.ini",
         "tests/integration/test_api/**"
       ]
     },
@@ -35,14 +37,18 @@
         ".github/workflows/5_testintegration_manager.yml",
         ".github/test_modules_manager.json",
         ".github/workflows/.python-version-it",
-        ".github/actions/reinstall_cmake/**",
+        ".github/actions/download_package/**",
+        "tools/devContainer/scripts/wazuh-certs-tool.sh",
         "src/config/src/wazuh_db-config.c",
         "src/config/include/wazuh_db-config.h",
         "src/wazuh_db/**",
+        "src/shared_modules/uds_http_server/**",
         "src/Makefile",
         "tests/integration/conftest.py",
+        "tests/integration/pytest.ini",
         "tests/integration/test_wazuh_db/**"
-      ]
+      ],
+      "_comment_paths": "wdb_lib links wazuh_uds_http_server for wdb-http.sock (src/wazuh_db/CMakeLists.txt:102-104)."
     },
     {
       "name": "remoted-tier-0-1",
@@ -55,14 +61,20 @@
         ".github/workflows/5_testintegration_manager.yml",
         ".github/test_modules_manager.json",
         ".github/workflows/.python-version-it",
-        ".github/actions/reinstall_cmake/**",
+        ".github/actions/download_package/**",
+        "tools/devContainer/scripts/wazuh-certs-tool.sh",
         "src/config/src/remote-config.c",
         "src/config/include/remote-config.h",
         "src/remoted/**",
+        "src/shared_modules/ca_bundle/**",
+        "src/shared_modules/metrics/**",
+        "src/shared_modules/uds_http_server/**",
         "src/Makefile",
         "tests/integration/conftest.py",
+        "tests/integration/pytest.ini",
         "tests/integration/test_remoted/**"
-      ]
+      ],
+      "_comment_paths": "remoted_module links wazuh_metrics, wazuh_uds_http_server and ca_bundle (src/remoted/remoted_module/CMakeLists.txt:42-43)."
     },
     {
       "name": "remoted-tier-2",
@@ -75,14 +87,20 @@
         ".github/workflows/5_testintegration_manager.yml",
         ".github/test_modules_manager.json",
         ".github/workflows/.python-version-it",
-        ".github/actions/reinstall_cmake/**",
+        ".github/actions/download_package/**",
+        "tools/devContainer/scripts/wazuh-certs-tool.sh",
         "src/config/src/remote-config.c",
         "src/config/include/remote-config.h",
         "src/remoted/**",
+        "src/shared_modules/ca_bundle/**",
+        "src/shared_modules/metrics/**",
+        "src/shared_modules/uds_http_server/**",
         "src/Makefile",
         "tests/integration/conftest.py",
+        "tests/integration/pytest.ini",
         "tests/integration/test_remoted/**"
-      ]
+      ],
+      "_comment_paths": "remoted_module links wazuh_metrics, wazuh_uds_http_server and ca_bundle (src/remoted/remoted_module/CMakeLists.txt:42-43)."
     },
     {
       "name": "authd-tier-0-1",
@@ -95,12 +113,14 @@
         ".github/workflows/5_testintegration_manager.yml",
         ".github/test_modules_manager.json",
         ".github/workflows/.python-version-it",
-        ".github/actions/reinstall_cmake/**",
+        ".github/actions/download_package/**",
+        "tools/devContainer/scripts/wazuh-certs-tool.sh",
         "src/config/src/authd-config.c",
         "src/config/include/authd-config.h",
         "src/os_auth/**",
         "src/Makefile",
         "tests/integration/conftest.py",
+        "tests/integration/pytest.ini",
         "tests/integration/test_authd/**"
       ]
     },
@@ -116,16 +136,26 @@
         ".github/workflows/5_testintegration_manager.yml",
         ".github/test_modules_manager.json",
         ".github/workflows/.python-version-it",
-        ".github/actions/reinstall_cmake/**",
+        ".github/actions/download_package/**",
+        "tools/devContainer/scripts/wazuh-certs-tool.sh",
         "api/scripts/wazuh_manager_apid.py",
         "framework/wazuh/core/pyDaemonModule.py",
         "framework/wazuh/core/utils.py",
         "framework/scripts/wazuh_manager_clusterd.py",
         "src/init/wazuh-server.sh",
+        "src/init/credentials/resolve-credentials.sh",
+        "src/init/credentials/wazuh-manager-certificates.sh",
+        "tools/get_git_refs.sh",
+        "install.sh",
+        "src/init/inst-functions.sh",
+        "src/init/templates/wazuh-manager.service",
+        "packages/debs/SPECS/wazuh-manager/**",
         "src/Makefile",
         "tests/integration/conftest.py",
+        "tests/integration/pytest.ini",
         "tests/integration/test_manager_control/**"
-      ]
+      ],
+      "_comment_paths": "test_unsafe_credentials_file drives checkcredentials() in wazuh-server.sh, which runs the resolver (src/init/credentials/) in --check mode; the shared helper it sources is fetched by make deps through tools/get_git_refs.sh. This is also the install-and-start smoke for the .deb every suite installs: the package recipe (install.sh, inst-functions.sh, the DEB maintainer scripts) and the systemd unit `systemctl start` runs. Only the .deb is installed (5_testintegration_manager.yml dpkg -i), so the RPM spec is not listed."
     }
   ]
 }

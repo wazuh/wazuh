@@ -3,19 +3,82 @@ name: 5.X - Package - Build multiple Wazuh Manager Packages
 on:
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
+    # The closure is what the package build compiles and installs, plus what the integration
+    # suites run against the installed .deb (test_modules_manager.json selects which ones).
     paths:
+      # Python plane: pip-installed into the embedded interpreter (src/Makefile install_framework /
+      # install_api) and installed by api/Makefile.
       - "api/**"
       - "framework/**"
+      # Compiled by debian/rules:44 / the RPM %build (make -C src TARGET=manager), installed by
+      # install.sh -> src/init/inst-functions.sh, and src/init/* copied wholesale into the package
+      # (debian/rules:93, wazuh-manager.spec:141) for the maintainer scripts.
       - "src/**"
+      # Packaging inputs read from the checkout (mounted at /wazuh-local-src by generate_package.sh).
+      # packages/build.sh, packages/{debs,rpms}/utils/* and the builder Dockerfiles are NOT read
+      # here: they are baked into the GHCR image this lane pulls (pull_image_from_ghcr.sh, Dockerfile
+      # `ADD build.sh` / `ADD helper_function.sh`), so they are 5_builderprecompiled_docker-images-
+      # upload-manager.yml's closure, not this lane's.
+      - "packages/generate_package.sh"
+      - "packages/debs/SPECS/wazuh-manager/**"
+      - "packages/rpms/SPECS/wazuh-manager.spec"
+      # install.sh drives the install the package recipes run (debian/rules:55); VERSION.json is
+      # read by CMake, by install.sh and copied into the tree (inst-functions.sh InstallCommon).
+      - "install.sh"
+      - "VERSION.json"
+      # Configuration templates, internal options and agent.conf installed by InstallCommon /
+      # InstallServer; etc/templates/config/{generic,debian,ubuntu,centos,rhel} are also shipped
+      # for the maintainer scripts (debian/rules:95-102, wazuh-manager.spec:127-138).
+      - "etc/**"
+      # install.sh sources only etc/templates/${LANGUAGE}/messages.txt (install.sh:1069-1078), and
+      # both recipes preload USER_LANGUAGE="en" (debian/rules:46, wazuh-manager.spec:89), so the
+      # other languages never reach a package.
+      - "!etc/templates/**"
+      - "etc/templates/en/**"
+      - "etc/templates/config/**"
+      # ...and not the agent's files: InstallCommon reads these only when INSTYPE is agent
+      # (inst-functions.sh:838 ossec-agent.conf, :1190-1195 internal_options.conf and
+      # local_internal_options.conf, InstallAgent :1668 wpk_root.pem), and the Windows/macOS agent
+      # templates are never selected for a Linux manager.
+      - "!etc/ossec-agent.conf"
+      - "!etc/internal_options.conf"
+      - "!etc/local_internal_options.conf"
+      - "!etc/local_internal_options-win.conf"
+      - "!etc/wpk_root.pem"
+      - "!etc/templates/config/windows/**"
+      - "!etc/templates/config/darwin/**"
+      # mitre.db is built at install time: src/Makefile install_mitre runs tools/mitre/mitredb.py,
+      # which reads ruleset/mitre/enterprise-attack.json (mitredb.py:754).
+      - "tools/mitre/**"
+      - "ruleset/mitre/**"
+      # `make deps` resolves every download (wazuh-credentials.sh, indexer templates, WCS files)
+      # through this script (src/Makefile GIT_REFS_LIST).
+      - "tools/get_git_refs.sh"
+      # CI plumbing: this workflow, the reusable build and integration workflows it calls, and every
+      # script/action they run that can change the result. reinstall_cmake and setup-sccache are
+      # not listed: 5_testintegration_manager.yml runs them only on its from-source path
+      # (build_run_id == ''), which a pull request never takes -- this caller always passes the run id.
       - ".github/workflows/5_builderpackage_manager-multiples.yml"
       - ".github/workflows/5_builderpackage_manager.yml"
-      - "packages/*/SPECS/wazuh-manager/**"
-      - "packages/*"
-      - "packages/*/utils/*"
       - ".github/workflows/5_testintegration_manager.yml"
       - ".github/workflows/.python-version-it"
       - ".github/test_modules_manager.json"
-      - ".github/actions/reinstall_cmake/**"
+      - ".github/scripts/run_with_retry.sh"
+      - ".github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh"
+      - ".github/actions/test-install-components/**"
+      - ".github/actions/check_files/action.yml"
+      - ".github/actions/check_files/check_files.py"
+      - ".github/actions/check_files/requirements.txt"
+      - ".github/actions/check_files/manager_base.csv"
+      - ".github/actions/5_builderpackage_manager-upgrade-rules-test/**"
+      # The build job uploads the .deb with it (if: always()) and the integration job installs the
+      # package that download_package fetches back: the hand-off between the two jobs.
+      - ".github/actions/upload_s3_artifact/**"
+      - ".github/actions/download_package/**"
+      # Issues the TLS pairs every integration run installs (5_testintegration_manager.yml
+      # "Provision TLS certificates", unconditional, so also on the pull-request path).
+      - "tools/devContainer/scripts/wazuh-certs-tool.sh"
+      # Integration suites run by test_modules_manager.json (and their shared configuration).
       - "tests/integration/conftest.py"
       - "tests/integration/pytest.ini"
       - "tests/integration/test_manager_control/**"
@@ -23,26 +86,65 @@ on:
       - "tests/integration/test_wazuh_db/**"
       - "tests/integration/test_remoted/**"
       - "tests/integration/test_authd/**"
-      # Agent-only trees, never built for the manager target (src/CMakeLists.txt gating)
+      # Agent-only trees, never built for the manager target (src/CMakeLists.txt:258-274 adds them
+      # only if(IS_AGENT); src/wazuh_modules/CMakeLists.txt:103-108 likewise for agent_info, sca and
+      # syscollector). Their include/ directories stay: manager code compiles against them --
+      # shared/include/shared.h -> dbsync/include/dbsync.h, shared/include/syscheck_op.h ->
+      # syscheckd/include/syscheck.h, shared/src/agent_op.c -> data_provider/include/sysInfo.h,
+      # shared/src/log_builder.c -> client-agent/include/agentd.h, util/src/verify-agent-conf.c ->
+      # logcollector/include/logcollector.h, wazuh_modules/src/wm_{agent_info,sca,syscollector}.c
+      # (globbed for every target, wazuh_modules/CMakeLists.txt:110-119) -> each module's include/,
+      # and those headers -> sync_protocol/include. active-response stays whole:
+      # shared/CMakeLists.txt:89 compiles active-response/src/active_responses.c into libwazuhshared.
       - "!src/rootcheck/**"
       - "!src/addagent/**"
       - "!src/os_execd/**"
       - "!src/win32/**"
+      - "!src/client-agent/**"
+      - "src/client-agent/include/**"
+      - "!src/data_provider/**"
+      - "src/data_provider/include/**"
+      - "!src/logcollector/**"
+      - "src/logcollector/include/**"
+      - "!src/syscheckd/**"
+      - "src/syscheckd/include/**"
+      - "!src/shared_modules/agent_metadata/**"
+      - "src/shared_modules/agent_metadata/include/**"
+      - "!src/shared_modules/dbsync/**"
+      - "src/shared_modules/dbsync/include/**"
+      - "!src/shared_modules/sync_protocol/**"
+      - "src/shared_modules/sync_protocol/include/**"
+      - "!src/wazuh_modules/agent_info/**"
+      - "src/wazuh_modules/agent_info/include/**"
+      - "!src/wazuh_modules/sca/**"
+      - "src/wazuh_modules/sca/include/**"
+      - "!src/wazuh_modules/syscollector/**"
+      - "src/wazuh_modules/syscollector/include/**"
       # Manager build forces USE_SELINUX=no (src/Makefile); only agent specs package it
       - "!src/selinux/**"
+      # Agent build tooling (src/build.py and its src/ci/ helpers), never run by the package build
+      - "!src/build.py"
+      - "!src/ci/**"
       # Test trees: UNIT_TEST/WAZUH_ENGINE_TEST-gated or excluded from the wheel (setup.py)
       - "!src/unit_tests/**"
       - "!src/**/tests/**"
-      - "!src/**/integrationTests/**"
-      # qa/ suites run in other workflows; indexer_connector/** is detect-changes-mapped
-      - "!src/data_provider/qa/**"
-      - "!src/shared_modules/keystore/qa/**"
-      - "!src/wazuh_modules/vulnerability_scanner/qa/**"
       - "!src/engine/test/**"
       - "!src/engine/docs/**"
+      # qa/ harnesses (pytest + test tools) run in their own workflows; nothing installs them
+      - "!src/**/qa/**"
       - "!framework/**/tests/**"
+      # api/**/test/** also covers api/test/** (`**` matches zero directories)
       - "!api/**/test/**"
-      - "!api/test/**"
+      # Docker developer environment, not part of the api wheel (api/setup.py packages only .py)
+      - "!api/tools/**"
+      # Framework developer/wodles requirement sets: the package installs only
+      # framework/requirements.txt (src/Makefile python_dependencies)
+      - "!framework/requirements-dev.txt"
+      - "!framework/requirements-wodles.txt"
+      - "!framework/requirements-wodles-dev.txt"
+      - "!framework/pytest.ini"
+      # Prose: nothing builds or installs Markdown (last, so it wins over the re-included include/)
+      - "!**/*.md"
   workflow_dispatch:
     inputs:
       targets:
@@ -195,8 +297,11 @@ jobs:
                   for tier in mod.get("tiers", ["0 1"]):
                       matrix_entries.append(build_entry(mod, tier))
           elif base_sha and head_sha:
+              # Three-dot: the PR's own changes since the merge base, as GitHub's `paths` filter
+              # sees them. A two-dot diff against the base tip would also list commits that landed
+              # on the base branch after the PR branched, selecting modules the PR never touched.
               result = subprocess.run(
-                  ["git", "diff", "--name-only", base_sha, head_sha],
+                  ["git", "diff", "--name-only", f"{base_sha}...{head_sha}"],
                   capture_output=True, text=True, check=True,
               )
               changed = set(result.stdout.splitlines())

@@ -25,9 +25,16 @@ On Error Resume Next
 private sub install_log(home_dir, objFSO, message)
     Dim objLog
     Set objLog = objFSO.OpenTextFile(home_dir & "ossec.log", 8, True)
-    objLog.WriteLine Now & " " & message
+    objLog.WriteLine LogTimestamp(Now) & " " & message
     objLog.Close
 end sub
+
+' The agent's own yyyy/mm/dd hh:mm:ss, so installer lines read like the rest of ossec.log;
+' a bare Now is formatted by the machine's locale and differs from one install to another.
+Function LogTimestamp(t)
+    LogTimestamp = Year(t) & "/" & Right("0" & Month(t), 2) & "/" & Right("0" & Day(t), 2) & " " & _
+                   Right("0" & Hour(t), 2) & ":" & Right("0" & Minute(t), 2) & ":" & Right("0" & Second(t), 2)
+End Function
 
 ' Escapes the three characters that are structurally significant in XML content --
 ' '&', '<', '>' -- so a value written verbatim into ossec.conf (a CA path, in
@@ -203,7 +210,7 @@ public function config()
     deployment_refused = False
 
     If WAZUH_ENROLLMENT_TOKEN = "" Then
-        install_log home_dir, objFSO, "No manager configured [INFO_NO_MANAGER]: WAZUH_ENROLLMENT_TOKEN was not supplied, so the agent does not know where to connect. Set <manager><endpoint> in ossec.conf by hand, or reinstall with a token."
+        install_log home_dir, objFSO, "No manager configured [INFO_NO_MANAGER]: enroll the agent with Manage > Enroll in the agent GUI or with wazuh-agent-auth.exe, or reinstall with WAZUH_ENROLLMENT_TOKEN."
     Else
         ' Decoded before the endpoint is looked at, matching resolve_deployment_conflicts() in
         ' src/init/register_configure_agent.sh: a malformed token passed together with an

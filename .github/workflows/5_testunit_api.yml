@@ -8,14 +8,44 @@ on:
       - 'api/**'
       # The API imports the framework
       - 'framework/**'
-      - 'framework/requirements*.txt'
       # The job builds wazuh-manager-conf, and test_spec_manager_configuration.py reads its schema
       - 'src/shared_modules/manager_config/**'
+      # ...with the error catalogue on its include path (manager_config/CMakeLists.txt:50), whose
+      # codes framework/wazuh/core/manager_conf.py maps
+      - 'src/shared/include/error_messages/error_messages.h'
+      # Configure (src/CMakeLists.txt:86 includes src/cmake; ext_pugixml/ext_rapidjson are defined in
+      # src/external/CMakeLists.txt) and `make deps` (src/Makefile:708 runs get_git_refs.sh)
       - 'src/CMakeLists.txt'
+      - 'src/cmake/**'
+      - 'src/external/CMakeLists.txt'
       - 'src/Makefile'
-      # Tavern suite (5_testintegration_api-endpoints.yml) and framework unit tests
+      - 'tools/get_git_refs.sh'
+      # Tavern suite and its selection (5_testintegration_api-endpoints.yml), the dev environment,
+      # framework unit tests (5_testunit_framework.yml) and manager_config's C++ suites
       - '!api/test/**'
+      - '!api/tools/**'
       - '!framework/**/tests/**'
+      - '!src/shared_modules/manager_config/tests/**'
+      # ...except the RBAC bypass the controller tests import (api/api/controllers/test/*:
+      # `from wazuh.tests.util import RBAC_bypasser`)
+      - 'framework/wazuh/tests/util.py'
+      # Neither collected nor imported by `pytest api/api`: the framework CLIs (framework/scripts,
+      # imported by no api/ module), the embedded-Python build, the example, the installer's
+      # wrappers, Makefiles, setup.py and service functions, and the wodles' requirements
+      - '!framework/scripts/**'
+      - '!framework/cpython/**'
+      - '!framework/examples/**'
+      - '!framework/wrappers/**'
+      - '!framework/Makefile'
+      - '!framework/setup.py'
+      - '!framework/requirements-wodles*.txt'
+      # The job pins its interpreter in the matrix; it does not read framework/.python-version
+      - '!framework/.python-version'
+      - '!api/service/**'
+      - '!api/wrappers/**'
+      - '!api/Makefile'
+      - '!api/setup.py'
+      - '!**/*.md'
   workflow_dispatch:
     inputs:
       generate_report:

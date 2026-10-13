@@ -11,11 +11,14 @@ package com.wazuh.api.engine.ioc;
  *
  * Performs an update of the IOCs in the manager using the provided file path and hash.
  * The file should be in nd-json format, where each line is a JSON object representing an IOC.
+ * The path must resolve (symlinks followed) to a regular file inside the IOC input directory
+ * (analysisd.kvdb_ioc_input_path); anything else is rejected with one generic error.
+ * A file without a single valid IOC line is rejected by the sync task and the current data is kept.
  * The hash is used to skip the update if the file has not changed since the last update, improving efficiency.
  **************************************************/
 message UpdateIoc_Request
 {
-    string path = 1; ///< Path to the file containing the IOCs to update (nd-json format)
+    string path = 1; ///< Path to the file containing the IOCs to update (nd-json format, inside the IOC input directory)
     string hash = 2; ///< MD5 hash of the file to update
 }
 

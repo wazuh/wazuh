@@ -4,9 +4,81 @@ on:
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
-      - 'src/engine/**'
-      - '.github/actions/reinstall_cmake/**'
+      # The engine binary. This lane builds a plain `make TARGET=manager`: the per-module test/
+      # and benchmark/ trees are compiled only under ENGINE_BUILD_TEST / ENGINE_BUILD_BENCHMARK
+      # (every reference is inside those guards in source/*/CMakeLists.txt), so they are left out.
+      - 'src/engine/CMakeLists.txt'
+      - 'src/engine/source/**'
+      - '!src/engine/source/**/test/**'
+      - '!src/engine/source/**/benchmark/**'
+      # What the two test jobs install and run.
+      - 'src/engine/test/setupEnvironment.py'
+      - 'src/engine/test/engine-test-utils/**'
+      - 'src/engine/test/helper_tests/**'
+      - 'src/engine/test/integration_tests/**'
+      - 'src/engine/tools/api-communication/**'
+      - 'src/engine/tools/engine-suite/**'
+      # Copied into the test store by setupEnvironment.py:11-18
+      - 'src/engine/ruleset/schemas/engine-schema.json'
+      - 'src/engine/ruleset/schemas/wazuh-logpar-overrides.json'
+      - 'src/engine/ruleset/schemas/allowed-fields.json'
+      # Loaded by engine-it init (integration_tests/engine-it/src/integration_test/initial_state.py:213)
+      - 'src/engine/ruleset/outputs/**'
+      # Link closure outside src/engine. The engine is configured inside the src/ tree
+      # (add_subdirectory(engine), src/CMakeLists.txt:278).
+      - 'src/CMakeLists.txt'
+      # wazuh_link_jemalloc(wazuh-engine) (src/engine/CMakeLists.txt:373, src/cmake/WazuhJemalloc.cmake:20)
+      - 'src/cmake/**'
+      # wazuhext and the vendored libraries the engine imports from src/external (src/CMakeLists.txt:237)
+      - 'src/external/CMakeLists.txt'
+      # make deps / build; pins http-request (HTTP_REQUEST_BRANCH, src/Makefile:98) and tzdata,
+      # which this lane uploads and the test jobs read
+      - 'src/Makefile'
+      # Ref list for every ref-based `make deps` download (src/Makefile:708)
+      - 'tools/get_git_refs.sh'
+      # Submodule gitlink: urlrequest, linked by conf and geo (source/conf/CMakeLists.txt:13,
+      # source/geo/CMakeLists.txt:17) and by indexer_connector. Moves together with src/Makefile:98.
+      - 'src/shared_modules/http-request'
+      # include_directories (src/engine/CMakeLists.txt:195): loggerHelper.h, proc.hpp, zlibHelper.hpp
+      - 'src/shared_modules/utils/**'
+      # commonDefs.h, on the indexer_connector/keystore include path (indexer_connector/CMakeLists.txt:33)
+      - 'src/shared_modules/common/**'
+      # base links manager_config (source/base/CMakeLists.txt:47); schema embedded at build time
+      # (manager_config/CMakeLists.txt:20)
+      - 'src/shared_modules/manager_config/**'
+      # wiconnector links indexer_connector (source/wiconnector/CMakeLists.txt:24); its .so is
+      # uploaded and loaded by the engine at test time
+      - 'src/shared_modules/indexer_connector/**'
+      # linked by indexer_connector (indexer_connector/CMakeLists.txt:52); wazuh-manager-keystore
+      # (keystore/CMakeLists.txt:42) is run by setupEnvironment.py:52-57
+      - 'src/shared_modules/keystore/**'
+      # Other components' test trees, harnesses and tools: never linked into the engine.
+      - '!src/shared_modules/utils/tests/**'
+      - '!src/shared_modules/utils/benchmark/**'
+      - '!src/shared_modules/utils/mocks/**'
+      - '!src/shared_modules/utils/flatbuffers/**'
+      - '!src/shared_modules/manager_config/tests/**'
+      - '!src/shared_modules/manager_config/cli/**'
+      - '!src/shared_modules/indexer_connector/tests/**'
+      - '!src/shared_modules/indexer_connector/qa/**'
+      - '!src/shared_modules/indexer_connector/testtool/**'
+      - '!src/shared_modules/keystore/tests/**'
+      - '!src/shared_modules/keystore/qa/**'
+      - '!src/shared_modules/keystore/testtool/**'
+      # READMEs build nothing ...
+      - '!src/**/*.md'
+      # ... except those pip reads as package metadata when installing the test tools.
+      - 'src/engine/tools/engine-suite/README.md'                # setup.cfg:6 long_description
+      - 'src/engine/test/engine-test-utils/README.md'            # pyproject.toml:10 readme
+      - 'src/engine/test/integration_tests/engine-it/README.md'  # pyproject.toml:10 readme
+      # CI plumbing (the S3 actions carry the build artifacts to the test jobs).
       - '.github/workflows/5_testintegration_engine.yml'
+      - '.github/actions/reinstall_cmake/**'
+      # run by reinstall_cmake (.github/actions/reinstall_cmake/action.yml:29)
+      - 'tools/devContainer/reinstall-cmake.sh'
+      - '.github/actions/setup-sccache/**'
+      - '.github/actions/upload_s3_artifact/**'
+      - '.github/actions/download_s3_artifact/**'
   workflow_dispatch:
 
 concurrency:
@@ -310,4 +382,10 @@ jobs:
       run: engine-it -e /tmp/actions -t ${{env.ENGINE_DIR}}/test/integration_tests/ init
 
     - name: Integration Test
-      run: engine-it -e /tmp/actions -t ${{env.ENGINE_DIR}}/test/integration_tests/ run
+      # engine-it runs every <suite>/ holding features/ and steps/ and exits 0 when it finds none
+      # (engine-it/src/integration_test/core.py:24-31): require at least one suite to have started.
+      run: |
+        set -o pipefail
+        engine-it -e /tmp/actions -t ${{env.ENGINE_DIR}}/test/integration_tests/ run | tee /tmp/engine-it.log
+        grep -q '=====> Start Behave' /tmp/engine-it.log || {
+          echo "::error::engine-it ran no behave suite"; exit 1; }

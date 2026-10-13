@@ -470,16 +470,31 @@
                 </Directory>
             </Directory>
             <Directory Id="ProgramMenuFolder">
-                <Directory Id="ProgramMenuDir" Name="OSSEC">
-                    <Component Id="StartMenuShortcuts" Guid="6C151D64-A90E-48A0-853C-FDEE0BD628C5">
+                <!-- Both the folder and the agent GUI shortcut carry "Wazuh" so a Start menu search for it
+                     finds the GUI. The component moved out of the old "OSSEC" folder, so it takes a new GUID
+                     and a key path of its own instead of sharing the old component's unnamed value. -->
+                <Directory Id="ProgramMenuDir" Name="Wazuh">
+                    <Component Id="StartMenuShortcuts" Guid="902BBA86-B0B8-47D9-92AE-0CBF91248257">
                         <RemoveFolder Id="ProgramMenuDir" On="uninstall" />
-                        <RegistryValue Root="HKCU" Key="Software\[Manufacturer]\[ProductName]" Type="string" Value="[Version]" />
+                        <RegistryValue Root="HKCU" Key="Software\[Manufacturer]\[ProductName]" Name="StartMenuShortcuts" Type="string" Value="[Version]" KeyPath="yes" />
                         <Shortcut Id="EDIT_CONF" Name="Edit conf" Target="[APPLICATIONFOLDER]ossec.conf" WorkingDirectory="APPLICATIONFOLDER" />
                         <Shortcut Id="UninstallProduct" Name="Uninstall" Description="Uninstalls the application" Target="[System64Folder]msiexec.exe" Arguments="/x [ProductCode]" />
-                        <Shortcut Id="RUN_WIN32UI" Name="Manage Agent" Target="[APPLICATIONFOLDER]win32ui.exe" WorkingDirectory="APPLICATIONFOLDER" />
+                        <Shortcut Id="RUN_WIN32UI" Name="Wazuh Agent Manager" Target="[APPLICATIONFOLDER]win32ui.exe" WorkingDirectory="APPLICATIONFOLDER" />
                         <util:InternetShortcut Id="WebsiteShortcut" Name="Documentation" Target="https://documentation.wazuh.com" xmlns:util="http://schemas.microsoft.com/wix/UtilExtension" />
+                        <!-- Removing an older MSI already deletes its own "OSSEC" folder, but an agent first
+                             installed with the NSIS installer also has shortcuts the MSI never owned, which
+                             keep that folder alive. Only those known names are removed, so anything else a
+                             user put there stays, and the folder itself goes only once it is empty. -->
+                        <RemoveFile Id="LegacyManageAgent" Directory="LegacyProgramMenuDir" Name="Manage Agent.lnk" On="install" />
+                        <RemoveFile Id="LegacyEditConf" Directory="LegacyProgramMenuDir" Name="Edit conf.lnk" On="install" />
+                        <RemoveFile Id="LegacyEditConfig" Directory="LegacyProgramMenuDir" Name="Edit Config.lnk" On="install" />
+                        <RemoveFile Id="LegacyEdit" Directory="LegacyProgramMenuDir" Name="Edit.lnk" On="install" />
+                        <RemoveFile Id="LegacyDocumentation" Directory="LegacyProgramMenuDir" Name="Documentation.lnk" On="install" />
+                        <RemoveFile Id="LegacyUninstall" Directory="LegacyProgramMenuDir" Name="Uninstall.lnk" On="install" />
+                        <RemoveFolder Id="LegacyProgramMenuDir" Directory="LegacyProgramMenuDir" On="install" />
                     </Component>
                 </Directory>
+                <Directory Id="LegacyProgramMenuDir" Name="OSSEC" />
             </Directory>
         </Directory>
         <DirectoryRef Id="ACTIVE_RESPONSE">

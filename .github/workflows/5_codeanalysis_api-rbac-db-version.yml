@@ -6,8 +6,8 @@ on:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - ".github/workflows/5_codeanalysis_api-rbac-db-version.yml"
+      # Only a change to the defaults needs the check (an orm.py-only change has nothing to verify)
       - "framework/wazuh/rbac/default/**"
-      - "framework/wazuh/rbac/orm.py"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
@@ -54,7 +54,9 @@ jobs:
             exit 1
           fi
           git fetch origin ${{ github.base_ref }}
-          DB_VERSION_CHANGED=$(git diff "origin/${{ github.base_ref }}" HEAD -- framework/wazuh/rbac/orm.py | grep -U0 'CURRENT_ORM_VERSION' | wc -l)
+          # Only an added assignment counts: without -U0 a context line or any other edit that
+          # mentions the constant would pass the check
+          DB_VERSION_CHANGED=$(git diff -U0 "origin/${{ github.base_ref }}" HEAD -- framework/wazuh/rbac/orm.py | grep -cE '^\+[[:space:]]*CURRENT_ORM_VERSION([[:space:]]*:[^=]*)?[[:space:]]*=' || true)
           if [ "$DB_VERSION_CHANGED" -eq "0" ]; then
             echo "Error: CURRENT_ORM_VERSION was not bumped in orm.py."
             exit 1

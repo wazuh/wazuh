@@ -186,6 +186,24 @@ Function LogHas(dir, needle)
     LogHas = (InStr(ReadAllText(dir & "ossec.log"), needle) > 0)
 End Function
 
+' Every non-empty line, not just the first: a locale-formatted Now would only fail on a
+' machine whose regional date format differs from the agent's, so this checks the shape.
+Function LogLinesUseAgentTimestamp(dir)
+    Dim re, lines, i, seen
+    Set re = new regexp
+    re.Pattern = "^\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2} "
+    lines = Split(Replace(ReadAllText(dir & "ossec.log"), vbCr, ""), vbLf)
+    seen = False
+    LogLinesUseAgentTimestamp = True
+    For i = 0 To UBound(lines)
+        If lines(i) <> "" Then
+            seen = True
+            If Not re.Test(lines(i)) Then LogLinesUseAgentTimestamp = False
+        End If
+    Next
+    If Not seen Then LogLinesUseAgentTimestamp = False
+End Function
+
 ' Anchored on the space before the name, so a check for KEY cannot be satisfied by a line about
 ' WAZUH_REGISTRATION_KEY. Eight of the eighteen removed names are a substring of another, which
 ' is exactly the misalignment two parallel 18-element arrays invite.
@@ -269,6 +287,8 @@ Next
 dir = MakeHomeDir("ver: 1" & vbLf & "adr: siem.example.local" & vbLf & "credential: present", 0)
 RunConfig dir, Payload(dir, "", "", "", "", "")
 Check "no token and no endpoint names the missing manager", True, LogHas(dir, "INFO_NO_MANAGER")
+Check "no token points at the GUI's enroll action", True, LogHas(dir, "Manage > Enroll in the agent GUI")
+Check "installer lines use the agent's yyyy/mm/dd hh:mm:ss timestamp", True, LogLinesUseAgentTimestamp(dir)
 Check "no token leaves the shipped placeholder", "IP:1517/wazuh-manager/", EndpointOf(dir)
 Check "no token stores no token", "absent", Exists(dir, "enrollment_token")
 RemoveDir dir

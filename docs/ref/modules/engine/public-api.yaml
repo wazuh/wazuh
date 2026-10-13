@@ -631,7 +631,7 @@ paths:
       - Content
       summary: Update IOCs from a file
       description: "Performs an asynchronous update of the Indicators of Compromise (IOCs) in the manager \nusing the provided file path and hash.\n\nThe file must be in **nd-json** (newline-delimited JSON) format, where each line \nrepresents a single IOC JSON object containing at minimum:\n- `name`: The IOC value (IP, domain, hash, etc.)\n- `type`: The IOC type (e.g., \"connection\", \"url_domain\", \"file_hash\")\n\n**Hash-based optimization**: The `hash` field (typically MD5) is used to skip the \nupdate if the file content hasn't changed since the last synchronization, improving \nefficiency and reducing unnecessary I/O operations.\n\n**Behavior**:\n- If the hash matches the previously stored hash, returns OK without performing sync.\n- If the hash differs, schedules an asynchronous synchronization task.\n- Only one synchronization can run at a time (enforced by internal semaphore).\n- Updates are performed using a hot-swap mechanism to avoid service interruption.\n\n**Error handling**:\n\
-        - File path validation is performed before scheduling.\n- An empty `hash` field results in a 400 Bad Request (`Field /hash cannot be empty`).\n"
+        - `path` must resolve (symlinks followed) to a regular file inside the IOC input directory\n  (`analysisd.kvdb_ioc_input_path`, default `/var/wazuh-manager/data/ioc-input`). A path outside it,\n  a directory, a special file, a nonexistent path or one escaping the directory through `..` or a symlink\n  is rejected with the same 400 Bad Request (`Field /path must be a regular file inside <directory>`),\n  so the response does not reveal whether a path outside the directory exists.\n- A file without a single valid IOC line is rejected by the synchronization task: the current IOC data and\n  the stored hash are kept and `GET /content/ioc/state` reports `No valid IOC lines in file`.\n- An empty `hash` field results in a 400 Bad Request (`Field /hash cannot be empty`).\n"
       requestBody:
         required: true
         content:
@@ -642,7 +642,7 @@ paths:
               update_iocs:
                 summary: Update IOCs from file with hash
                 value:
-                  path: /var/lib/wazuh-server/iocs/threat-intel.ndjson
+                  path: /var/wazuh-manager/data/ioc-input/threat-intel.ndjson
                   hash: 5d41402abc4b2a76b9719d911017c592
       responses:
         '200':
@@ -1297,8 +1297,8 @@ components:
       properties:
         path:
           type: string
-          description: Absolute path to the ndjson file containing IOCs to synchronize
-          example: /var/lib/wazuh-server/iocs/threat-intel.ndjson
+          description: Absolute path to the ndjson file containing IOCs to synchronize. Must be a regular file inside the IOC input directory (`analysisd.kvdb_ioc_input_path`).
+          example: /var/wazuh-manager/data/ioc-input/threat-intel.ndjson
         hash:
           type: string
           description: MD5 hash of the IOC file. Required for change detection and skipping unnecessary syncs.
