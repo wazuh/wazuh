@@ -210,23 +210,24 @@ class ScopedContainerTxn {
         /// below — measured on a real node, 8,643 rows were refused that way
         /// while the scan reported "0 partial scan(s)". Either way the row set
         /// is now incomplete, and rowsRefused() is how onStatus() learns that.
-        void syncRow(const std::string& row_json, int perContainerLimit)
+        bool syncRow(const std::string& row_json, int perContainerLimit)
         {
-            if (!m_txn) return;
+            if (!m_txn) return false;
 
             if (!container_row_admitted(perContainerLimit, m_synced)) {
                 ++m_refused;
-                return;
+                return false;
             }
 
             if (fim_db_transaction_sync_row_json(m_txn, "file_entry", row_json.c_str()) != FIMDB_OK) {
                 ++m_refused;
                 LogDebug("Container FIM baseline: failed to sync a row for container '%s'.",
                         m_ctx.container_id.c_str());
-                return;
+                return false;
             }
 
             ++m_synced;
+            return true;
         }
 
         [[nodiscard]] size_t rowsSynced() const { return m_synced; }
@@ -321,8 +322,16 @@ class BaselineDriver {
             beginContainer(container_id);
             if (!m_txn || !m_txn->valid()) return;
 
-            m_txn->syncRow(row.dump(), syscheck.container_file_entry_limit);
-            ++m_rows;
+            // m_rows counts rows the database KEPT, not rows handed to it.
+            // Counting the latter is what let a baseline report 100,063 rows
+            // while the table held 91,420 -- the shortfall appeared in no
+            // counter and no log line (23.4). A total that cannot be wrong in
+            // that direction is the whole point of reporting one.
+            if (m_txn->syncRow(row.dump(), syscheck.container_file_entry_limit)) {
+                ++m_rows;
+            } else {
+                ++m_refused;
+            }
         }
 
         void onStatus(const cb_container_status_t& status)
@@ -446,6 +455,7 @@ class BaselineDriver {
         }
 
         [[nodiscard]] size_t rows() const { return m_rows; }
+        [[nodiscard]] size_t refused() const { return m_refused; }
         [[nodiscard]] size_t scanned() const { return m_scanned.size(); }
         [[nodiscard]] size_t partial() const { return m_partial; }
         [[nodiscard]] size_t stale() const { return m_stale; }
@@ -495,7 +505,8 @@ class BaselineDriver {
         std::unique_ptr<ScopedContainerTxn> m_txn;
         std::string                          m_current;
         std::set<std::string>                m_scanned;
-        size_t                               m_rows{0};
+        size_t                               m_rows{0};     // stored
+        size_t                               m_refused{0};  // offered and turned away
         size_t                               m_partial{0};
         size_t                               m_stale{0};
         size_t                               m_malformed_rows{0};
@@ -789,6 +800,7 @@ extern "C" void fim_run_container_baseline(void)
 
         fim_report_container_baseline_result(baselined,
                                              driver.rows(),
+                                             driver.refused(),
                                              driver.partial(),
                                              driver.stale(),
                                              known.size());

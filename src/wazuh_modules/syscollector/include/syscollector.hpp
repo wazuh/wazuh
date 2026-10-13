@@ -493,6 +493,16 @@ class EXPORTED Syscollector final
         std::set<std::string> containersWithRowsIn(const std::string& tableName);
 
         /**
+         * @brief How many collected rows are being held back in one scope.
+         *
+         * Rows with sync=0: collected, stored, and not reported to the manager
+         * because the scope is at its limit. Caller must hold m_limitsMutex.
+         */
+        size_t unsyncedCountFor(const std::string& tableName,
+                                LimitScope scope,
+                                const std::string& containerId);
+
+        /**
          * @brief Drops a container's document counts once its rows are gone.
          *
          * Takes m_limitsMutex itself, so it must NOT be called with the lock
@@ -846,6 +856,10 @@ class EXPORTED Syscollector final
         std::map<std::string, size_t>                                            m_containerDocumentLimits;
         // Counts key on the CONTAINER first: one budget each (#37532 / O10).
         std::map<std::string, std::map<std::string, size_t>>                     m_containerDocumentCounts;
+
+        // (container, index) pairs already reported as saturated, so the
+        // message is emitted once per saturation rather than once per scan.
+        std::set<std::pair<std::string, std::string>>                            m_limitReported;
 
         // Mutex for thread-safe access to limits and counts
         std::mutex                                                               m_limitsMutex;
