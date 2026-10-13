@@ -367,8 +367,7 @@ sudo chown root:wazuh-manager /var/wazuh-manager/etc \
     /var/wazuh-manager/etc/indexer-plugins \
     /var/wazuh-manager/etc/wazuh-manager.conf \
     /var/wazuh-manager/etc/wazuh-manager-internal-options.conf \
-    /var/wazuh-manager/etc/wazuh-manager.schema.json \
-    /var/wazuh-manager/etc/localtime
+    /var/wazuh-manager/etc/wazuh-manager.schema.json
 
 # client.keys stays with the service account: authd appends to it after dropping
 # privileges, so root ownership would stop enrollment.
@@ -571,8 +570,7 @@ sudo chown root:wazuh-manager /var/wazuh-manager/etc \
     /var/wazuh-manager/etc/indexer-plugins \
     /var/wazuh-manager/etc/wazuh-manager.conf \
     /var/wazuh-manager/etc/wazuh-manager-internal-options.conf \
-    /var/wazuh-manager/etc/wazuh-manager.schema.json \
-    /var/wazuh-manager/etc/localtime
+    /var/wazuh-manager/etc/wazuh-manager.schema.json
 
 sudo sh -c 'cd /var/wazuh-manager/etc/certs || exit 1
     chown root:wazuh-manager . && chmod 1770 .
@@ -900,8 +898,7 @@ sudo chown root:wazuh-manager /var/wazuh-manager/etc \
     /var/wazuh-manager/etc/indexer-plugins \
     /var/wazuh-manager/etc/wazuh-manager.conf \
     /var/wazuh-manager/etc/wazuh-manager-internal-options.conf \
-    /var/wazuh-manager/etc/wazuh-manager.schema.json \
-    /var/wazuh-manager/etc/localtime
+    /var/wazuh-manager/etc/wazuh-manager.schema.json
 
 # client.keys stays with the service account: authd appends to it after dropping
 # privileges, so root ownership would stop enrollment.

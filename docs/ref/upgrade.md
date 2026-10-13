@@ -82,7 +82,7 @@ During a 5.x to 5.x upgrade, the package and source upgrade scripts apply a **pr
 
 | Path | Result after upgrade |
 |---|---|
-| `etc/` | Preserved from the previous installation, including `localtime`. |
+| `etc/` | Preserved from the previous installation. |
 | `data/*` (except `data/tzdb`) | Preserved from the previous installation. |
 | `data/tzdb` | Not preserved by the upgrade backup/restore flow; updated from the new package or source timezone database. |
 | `bin/`, libraries, assets | Replaced by the new package. |

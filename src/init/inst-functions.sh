@@ -1176,14 +1176,15 @@ InstallCommon()
 
   ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc
 
-    if [ -f /etc/localtime ]
+    # Only the agent keeps copies of the host's time zone (localtime, TIMEZONE): no manager daemon chroots.
+    if [ "X${INSTYPE}" = "Xagent" ] && [ -f /etc/localtime ]
     then
          ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} /etc/localtime ${INSTALLDIR}/etc
     fi
 
   ${INSTALL} -d -m 1770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/tmp
 
-    if [ -f /etc/TIMEZONE ]; then
+    if [ "X${INSTYPE}" = "Xagent" ] && [ -f /etc/TIMEZONE ]; then
          ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} /etc/TIMEZONE ${INSTALLDIR}/etc/
     fi
 

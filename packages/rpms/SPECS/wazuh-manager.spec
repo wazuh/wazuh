@@ -628,18 +628,6 @@ if [ -f %{_localstatedir}/tmp/wazuh.restart ]; then
   fi
 fi
 
-%triggerin -- glibc
-# Runs on every glibc update. etc/ is writable by wazuh-manager: the copy is made in a directory only
-# root can enter (the install root is not group-writable) and renamed into place, which replaces a
-# link planted there instead of following it.
-if [ -r %{_sysconfdir}/localtime ] && LOCALTIME_STAGE=$(mktemp -d %{_localstatedir}/.localtime.XXXXXX); then
-  cp -pL %{_sysconfdir}/localtime ${LOCALTIME_STAGE}/localtime \
-    && chmod 0640 ${LOCALTIME_STAGE}/localtime \
-    && chown root:wazuh-manager ${LOCALTIME_STAGE}/localtime \
-    && mv -fT ${LOCALTIME_STAGE}/localtime %{_localstatedir}/etc/localtime
-  rm -rf ${LOCALTIME_STAGE}
-fi
-
 %clean
 rm -fr %{buildroot}
 
@@ -684,7 +672,6 @@ rm -fr %{buildroot}
 %attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/client.keys
 %attr(640, root, wazuh-manager) %{_localstatedir}/etc/wazuh-manager-internal-options.conf
 %attr(640, root, wazuh-manager) %{_localstatedir}/etc/wazuh-manager.schema.json
-%attr(640, root, wazuh-manager) %{_localstatedir}/etc/localtime
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/etc/shared
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/shared/default
 %attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/shared/agent-template.conf

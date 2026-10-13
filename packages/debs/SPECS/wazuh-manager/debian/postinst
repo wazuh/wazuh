@@ -190,20 +190,6 @@ case "$1" in
     }
     in_dir ${DIR}/etc/certs fix_service_certs || true
 
-    if [ -z "$2" ]; then
-        # For the etc dir
-        mkdir -p ${WAZUH_TMP_DIR}
-        if [ -f /etc/localtime ]; then
-            cp -pL /etc/localtime ${WAZUH_TMP_DIR}/localtime && \
-                install_file ${WAZUH_TMP_DIR}/localtime 640 root:${GROUP} ${DIR}/etc/localtime
-        fi
-
-        if [ -f /etc/TIMEZONE ]; then
-            cp -p /etc/TIMEZONE ${WAZUH_TMP_DIR}/TIMEZONE && \
-                install_file ${WAZUH_TMP_DIR}/TIMEZONE 640 root:${GROUP} ${DIR}/etc/TIMEZONE
-        fi
-    fi
-
     for BIN in agent_groups agent_upgrade cluster_control rbac_control \
         wazuh-manager-analysisd wazuh-manager-apid wazuh-manager-authd \
         wazuh-manager-clusterd wazuh-manager-control wazuh-manager-service-control wazuh-manager-db \

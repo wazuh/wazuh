@@ -12,7 +12,6 @@ from shutil import copyfile
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 from unittest.mock import call, MagicMock, Mock, mock_open, patch, ANY, sentinel
 from xml.etree.ElementTree import Element
-from wazuh.core.common import WAZUH_LOCALTIME_PATH
 
 import pytest
 from defusedxml.ElementTree import parse
@@ -2433,30 +2432,20 @@ def test_get_utc_strptime(mock_get_localtime, is_at_utc):
         assert date == datetime.datetime(2026, 1, 28, 6, 30, 15, tzinfo=datetime.timezone.utc)
 
 @pytest.mark.parametrize(
-    'wazuh_localtime, system_localtime',
+    'system_localtime',
     [
-        pytest.param(None, sentinel.system_tz, id='system_fallback'),
-        pytest.param(sentinel.wazuh_tz, sentinel.system_tz, id='wazuh'),
-        pytest.param(None, None, id='utc_fallback'),
+        pytest.param(sentinel.system_tz, id='system'),
+        pytest.param(None, id='utc_fallback'),
     ]
 )
 @patch('wazuh.core.utils.gettz')
-def test_get_localtime(mock_gettz, wazuh_localtime, system_localtime):
-    """Test if the result is the expected timezone."""
+def test_get_localtime(mock_gettz, system_localtime):
+    """Test if the result is the system's timezone, or UTC when there is none."""
 
-    mock_gettz.side_effect = [wazuh_localtime, system_localtime]
+    mock_gettz.return_value = system_localtime
 
     timezone = utils.get_localtime()
 
-    calls = [call(WAZUH_LOCALTIME_PATH)]
+    mock_gettz.assert_called_once_with()
 
-    if wazuh_localtime is None:
-        calls.append(call())
-
-    mock_gettz.assert_has_calls(calls)
-
-    assert timezone is (
-        wazuh_localtime
-        if wazuh_localtime is not None
-        else system_localtime or timezone.utc
-    )
+    assert timezone is (system_localtime or datetime.timezone.utc)

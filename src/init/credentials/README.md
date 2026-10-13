@@ -148,7 +148,9 @@ only an anchor.
 
 ## Integration
 
-Run as root; adjust helper paths for your package's private copies:
+Run as root; adjust helper paths for your package's private copies. Under the manager's systemd unit a
+relocated base must already exist and be added to `ReadWritePaths=` in the drop-in that sets
+`WAZUH_BASE_DIR` (see the comment in `wazuh-manager.service`):
 
 ```sh
 export WAZUH_BASE_DIR=/opt/wazuh-bootstrap
