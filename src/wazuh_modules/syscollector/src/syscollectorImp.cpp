@@ -5910,7 +5910,8 @@ void Syscollector::promoteItemsAfterScanLocked(LimitScope scope)
 
             const std::string scopeSuffix = (scope == LimitScope::host)
                                             ? std::string {}
-                                            : " [container " + containerId + "]";
+                                            : " [container "
+                                            + containerId + "]";
 
             if (availableSpace == 0)
             {

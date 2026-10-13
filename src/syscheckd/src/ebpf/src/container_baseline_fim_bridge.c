@@ -42,6 +42,23 @@ static const syscheck_config* host_config(void)
     return g_host.config;
 }
 
+/* The daemon's synced-document lock. Container counts share it with the host's
+ * on purpose, so this must be the daemon's own mutex; before registration there
+ * is nothing to share with and nothing running that could race. */
+static void synced_docs_lock(void)
+{
+    if (g_host.synced_docs_mutex != NULL) {
+        w_mutex_lock(g_host.synced_docs_mutex);
+    }
+}
+
+static void synced_docs_unlock(void)
+{
+    if (g_host.synced_docs_mutex != NULL) {
+        w_mutex_unlock(g_host.synced_docs_mutex);
+    }
+}
+
 static void copy_if_present(cJSON* source, cJSON* target, const char* source_key, const char* target_key)
 {
     cJSON* item = cJSON_GetObjectItem(source, source_key);
@@ -387,15 +404,19 @@ void fim_report_container_baseline_result(int baselined,
             cJSON_AddStringToObject(event, "alert_type", "rows_refused");
             cJSON_AddNumberToObject(event, "rows_refused", (double)refused);
             cJSON_AddNumberToObject(event, "rows_stored", (double)rows);
-            cJSON_AddNumberToObject(event, "container_file_entry_limit", syscheck.container_file_entry_limit);
-            cJSON_AddNumberToObject(event, "file_entry_limit", syscheck.file_entry_limit);
+            cJSON_AddNumberToObject(event, "container_file_entry_limit",
+                                    fim_container_baseline_row_limit());
+            cJSON_AddNumberToObject(event, "file_entry_limit",
+                                    fim_container_baseline_node_row_limit());
 
             char* plain = cJSON_PrintUnformatted(event);
 
             if (plain != NULL) {
                 char alert_msg[OS_SIZE_256];
                 snprintf(alert_msg, OS_SIZE_256, "wazuh: FIM DB: %s", plain);
-                send_log_msg(alert_msg);
+                if (g_host.send_log != NULL) {
+                    g_host.send_log(alert_msg);
+                }
                 os_free(plain);
             }
 
@@ -445,6 +466,16 @@ int fim_container_baseline_abspath(const char* relative, char* out, size_t out_s
     }
 
     return 0;
+}
+
+int fim_container_baseline_row_limit(void)
+{
+    return (host_config() != NULL) ? host_config()->container_file_entry_limit : 0;
+}
+
+int fim_container_baseline_node_row_limit(void)
+{
+    return (host_config() != NULL) ? host_config()->file_entry_limit : 0;
 }
 
 void fim_container_baseline_rate_limit(void)
@@ -509,12 +540,12 @@ void fim_container_doc_budget_release(const char* container_id)
         return;
     }
 
-    w_mutex_lock(&synced_docs_mutex);
+    synced_docs_lock();
     if (container_doc_counts != NULL) {
         int* slot = (int*)OSHash_Delete(container_doc_counts, container_id);
         os_free(slot);
     }
-    w_mutex_unlock(&synced_docs_mutex);
+    synced_docs_unlock();
 }
 
 /* Applies container_budget_decide() to one row, owning the lock and the count
@@ -522,7 +553,7 @@ void fim_container_doc_budget_release(const char* container_id)
  * be tested without a daemon; this is only the plumbing. */
 static int container_row_sync_flag(const cJSON* row, int operation)
 {
-    const int limit = syscheck.container_file_limit;
+    const int limit = (host_config() != NULL) ? host_config()->container_file_limit : 0;
 
     if (limit <= 0) {
         return 1; /* Unlimited: today's behaviour, and the default. */
@@ -547,7 +578,7 @@ static int container_row_sync_flag(const cJSON* row, int operation)
     /* Check-then-apply must be atomic for the same reason it must be on the
      * host path: the scheduled baseline and an event-driven reconcile reach
      * this concurrently. */
-    w_mutex_lock(&synced_docs_mutex);
+    synced_docs_lock();
     int* slot = container_doc_count_slot(id_json->valuestring);
     int granted = 1;
 
@@ -563,7 +594,7 @@ static int container_row_sync_flag(const cJSON* row, int operation)
     }
     /* slot == NULL means the table could not be grown. Fail OPEN: a counter we
      * could not keep is not grounds for withholding a container's state. */
-    w_mutex_unlock(&synced_docs_mutex);
+    synced_docs_unlock();
 
     return granted;
 }

@@ -506,10 +506,12 @@ int main(int argc, char **argv)
         // both the walk and the event consumer, which share these.
         const fim_container_host_api_t container_host_api = {
             .config = &syscheck,
+            .synced_docs_mutex = &synced_docs_mutex,
             .rate_limit = check_max_fps,
             .attributes_json = fim_attributes_json,
             .calculate_dbsync_difference = fim_calculate_dbsync_difference,
             .send_event = send_syscheck_msg,
+            .send_log = send_log_msg,
             .validate_and_persist = validate_and_persist_fim_event,
         };
         fim_container_baseline_set_host_api(&container_host_api);
