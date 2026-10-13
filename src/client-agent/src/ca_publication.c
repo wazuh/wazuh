@@ -64,8 +64,9 @@ int64_t w_ca_publication_read(const char *path) {
 
         /* Everything after the digits must be blank: a trailing token means this line was not
          * written by w_ca_publication_render() and reading a publication out of it would be
-         * guessing. */
-        if (errno != 0 || end == value || parsed <= 0 || parsed > INT64_MAX) {
+         * guessing. No upper bound to check: a long long can't exceed INT64_MAX, and strtoll()
+         * reports overflow through errno. */
+        if (errno != 0 || end == value || parsed <= 0) {
             break;
         }
 
