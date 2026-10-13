@@ -336,7 +336,7 @@ bool ar_source_allowlisted(const char *srcip)
     hints.ai_family = AF_UNSPEC;
     hints.ai_flags = AI_NUMERICHOST;
 
-    // Same parser block-ip uses, so shorthand forms like "127.1" cannot slip past the list.
+    // Same parser block-ip uses, so both read the address the same way.
     if (!srcip || getaddrinfo(srcip, NULL, &hints, &src) != 0 || !src) {
         return false;
     }

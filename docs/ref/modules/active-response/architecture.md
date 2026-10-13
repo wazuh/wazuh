@@ -550,8 +550,7 @@ under the agent's own tag. Debug lines need `execd.debug` (see
   and no DNS on Unix and macOS, a character whitelist on Windows); `disable-account` accepts only a
   valid local user name and never `root`.
 - **Allowlist**: execd does not run a response whose `source.ip` is the manager, loopback, an
-  unspecified address or an `<allowlist>` entry (see [Configuration](configuration.md#allowlist)),
-  so an event with a forged source cannot make the agent block its own manager.
+  unspecified address or an `<allowlist>` entry (see [Configuration](configuration.md#allowlist)).
 - **Commands**: the shipped executables accept only `enable` and `disable`, and only `continue` and
   `abort` as execd's answer.
 - **Log file**: `logs/active-responses.log` is created `wazuh:wazuh` mode `0660`.
