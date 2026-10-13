@@ -650,8 +650,10 @@ typedef struct hc_cacerts_result_t
  *        separate pin-compare step (not part of this function) validates it
  *        against the enrollment token's pin.
  * @param config Only the transport half is read (host, port, timeout,
- *        compression toggle); verify_mode/ca_path/client_cert/client_key are
- *        ignored, since this call always fetches unverified.
+ *        compression toggle, and the client_cert/client_key/ciphers identity,
+ *        which a manager that requires client certificates checks on this
+ *        request too); verify_mode/ca_path are ignored, since this call always
+ *        fetches unverified.
  * @return true once a request was actually sent and answered, whatever the
  *         HTTP status. false when nothing was ever sent (an invalid
  *         transport config -- e.g. a mismatched client cert/key pair -- or a

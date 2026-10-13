@@ -40,6 +40,11 @@
 
 static hc_config_t g_fetch_config;
 static int g_fetch_call_count = 0;
+/* libcurl's error text for the next failed request; empty unless a test sets it. */
+static const char *g_fetch_transport_error = NULL;
+static const char *g_enroll_transport_error = NULL;
+
+bool token_tls_rejection(const char *transport_error, char *reason, size_t size);
 
 bool __wrap_hc_fetch_cacerts(const hc_config_t *config, const hc_cacerts_request_t *request,
                              hc_cacerts_result_t *result) {
@@ -57,6 +62,9 @@ bool __wrap_hc_fetch_cacerts(const hc_config_t *config, const hc_cacerts_request
 
         if (body != NULL) {
             strncpy(result->body, body, sizeof(result->body) - 1);
+        }
+        if (g_fetch_transport_error != NULL) {
+            strncpy(result->transport_error, g_fetch_transport_error, sizeof(result->transport_error) - 1);
         }
     }
 
@@ -86,6 +94,9 @@ bool __wrap_hc_enroll(const hc_config_t *config, const hc_enroll_request_t *requ
 
         if (body != NULL) {
             strncpy(result->body, body, sizeof(result->body) - 1);
+        }
+        if (g_enroll_transport_error != NULL) {
+            strncpy(result->transport_error, g_enroll_transport_error, sizeof(result->transport_error) - 1);
         }
     }
 
@@ -387,6 +398,8 @@ static void remove_test_paths(void) {
     unlink("etc/certs/.anchor-committed");
     unlink("etc/client.keys");
     unlink("etc/other-file");
+    unlink("etc/certs/agent.pem");
+    unlink("etc/certs/agent-key.pem");
     unlink(AGENT_REENROLL_SECRET);
     unlink(AGENT_DELIVERED_CA);
     remove_staged_siblings("etc/certs", "root-ca.pem.");
@@ -423,6 +436,8 @@ static int setup_test(void **state) {
     memset(&g_enroll_request, 0, sizeof(g_enroll_request));
     g_fetch_call_count = 0;
     g_enroll_call_count = 0;
+    g_fetch_transport_error = NULL;
+    g_enroll_transport_error = NULL;
     g_fail_anchor_move = false;
     g_spki_call_count = 0;
     g_anchor_chown_uid = (uid_t) -1;
@@ -1146,6 +1161,11 @@ static void test_full_happy_path_via_pin(void **state) {
 
     assert_int_equal(g_enroll_config.verify_mode, HC_VERIFY_FULL);
     assert_true(strlen(g_enroll_config.ca_path) > 0);
+    /* No <agent><ssl> identity configured: neither request presents one. */
+    assert_string_equal(g_fetch_config.client_cert, "");
+    assert_string_equal(g_fetch_config.client_key, "");
+    assert_string_equal(g_enroll_config.client_cert, "");
+    assert_string_equal(g_enroll_config.client_key, "");
     assert_string_equal(g_enroll_request.password, "");
     assert_int_equal((int) strlen(g_enroll_request.enroll_kid), 22);
     assert_int_equal((int) strlen(g_enroll_request.enroll_key_hex), 64);
@@ -1415,6 +1435,376 @@ static void test_full_happy_path_via_ca_pem(void **state) {
     assert_true(g_anchor_chown_recorded_before_move);
     assert_int_equal(g_keys_chown_uid, 0);
     assert_int_equal(g_keys_chown_gid, getgid());
+}
+
+/* A manager with remote.https verification_mode 'certificate' or 'full' refuses any handshake
+ * without a client certificate, /cacerts included. The bootstrap must present the <agent><ssl>
+ * identity on both requests, while the manager is still verified the way the token says (the
+ * unverified pin fetch, then FULL against the pinned anchor) and never against the configured CA. */
+static void test_pin_path_presents_the_client_certificate(void **state) {
+    (void) state;
+    write_token_file(true, true, NULL);
+    write_file("etc/certs/agent.pem", "FAKE-AGENT-CERT");
+    write_file("etc/certs/agent-key.pem", "FAKE-AGENT-KEY");
+    agt->ssl.certificate = (char *) "etc/certs/agent.pem";
+    agt->ssl.key = (char *) "etc/certs/agent-key.pem";
+    agt->ssl.ciphers = (char *) "TLS_AES_256_GCM_SHA384";
+    agt->ssl.certificate_authorities = (char *) "etc/certs/configured-ca.pem";
+
+    will_return(__wrap_hc_fetch_cacerts, 200L);
+    will_return(__wrap_hc_fetch_cacerts, "FAKE-CA-BODY");
+    will_return(__wrap_hc_fetch_cacerts, 1);
+    will_return(__wrap_hc_spki_pinned_certificate, PINNED_CERT);
+    will_return(__wrap_hc_enroll, 200L);
+    will_return(__wrap_hc_enroll, VALID_ENROLL_BODY);
+    will_return(__wrap_hc_enroll, 1);
+    expect_valid_ip("10.0.0.5");
+
+    expect_any(__wrap__mdebug1, formatted_msg);
+    expect_any(__wrap__mdebug1, formatted_msg);
+
+    expect_string(__wrap__minfo, formatted_msg, "Enrolling as 'test-agent'. Groups: none.");
+    expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
+    expect_string(__wrap__minfo, formatted_msg, "Valid key received");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Token bootstrap: enrollment succeeded; the manager's CA is now the agent's "
+                  "trust anchor.");
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);
+    assert_int_equal(g_fetch_call_count, 1);
+    assert_int_equal(g_enroll_call_count, 1);
+
+    assert_string_equal(g_fetch_config.client_cert, "etc/certs/agent.pem");
+    assert_string_equal(g_fetch_config.client_key, "etc/certs/agent-key.pem");
+    assert_string_equal(g_fetch_config.ciphers, "TLS_AES_256_GCM_SHA384");
+    assert_string_equal(g_fetch_config.ca_path, "");
+
+    assert_string_equal(g_enroll_config.client_cert, "etc/certs/agent.pem");
+    assert_string_equal(g_enroll_config.client_key, "etc/certs/agent-key.pem");
+    assert_string_equal(g_enroll_config.ciphers, "TLS_AES_256_GCM_SHA384");
+    assert_int_equal(g_enroll_config.verify_mode, HC_VERIFY_FULL);
+    /* The staged anchor, never the configured CA, and no fallback the module could prefer. */
+    assert_int_equal(strncmp(g_enroll_config.ca_path, "etc/certs/root-ca.pem.", strlen("etc/certs/root-ca.pem.")), 0);
+    assert_string_equal(g_enroll_config.system_fallback_ca_path, "");
+}
+
+/* Same for a token that carries its CA: there is no /cacerts request, but /enroll still has to
+ * present the client certificate. */
+static void test_embedded_ca_path_presents_the_client_certificate(void **state) {
+    (void) state;
+    write_token_file(false, true, "FAKE-EMBEDDED-CA");
+    write_file("etc/certs/agent.pem", "FAKE-AGENT-CERT");
+    write_file("etc/certs/agent-key.pem", "FAKE-AGENT-KEY");
+    agt->ssl.certificate = (char *) "etc/certs/agent.pem";
+    agt->ssl.key = (char *) "etc/certs/agent-key.pem";
+
+    will_return(__wrap_hc_enroll, 200L);
+    will_return(__wrap_hc_enroll, VALID_ENROLL_BODY);
+    will_return(__wrap_hc_enroll, 1);
+    expect_valid_ip("10.0.0.5");
+
+    expect_any(__wrap__mdebug1, formatted_msg);
+    expect_any(__wrap__mdebug1, formatted_msg);
+
+    expect_string(__wrap__minfo, formatted_msg, "Enrolling as 'test-agent'. Groups: none.");
+    expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
+    expect_string(__wrap__minfo, formatted_msg, "Valid key received");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Token bootstrap: enrollment succeeded; the manager's CA is now the agent's "
+                  "trust anchor.");
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);
+    assert_int_equal(g_fetch_call_count, 0);
+    assert_int_equal(g_enroll_call_count, 1);
+
+    assert_string_equal(g_enroll_config.client_cert, "etc/certs/agent.pem");
+    assert_string_equal(g_enroll_config.client_key, "etc/certs/agent-key.pem");
+    assert_string_equal(g_enroll_config.ciphers, "");
+}
+
+/* The certificate is already on the /cacerts request when it fails, and a failed fetch keeps its
+ * existing taxonomy and writes nothing. */
+static void test_fetch_failure_with_client_certificate_writes_nothing(void **state) {
+    (void) state;
+    write_token_file(true, true, NULL);
+    write_file("etc/certs/agent.pem", "FAKE-AGENT-CERT");
+    write_file("etc/certs/agent-key.pem", "FAKE-AGENT-KEY");
+    agt->ssl.certificate = (char *) "etc/certs/agent.pem";
+    agt->ssl.key = (char *) "etc/certs/agent-key.pem";
+
+    will_return(__wrap_hc_fetch_cacerts, 0L);
+    will_return(__wrap_hc_fetch_cacerts, NULL);
+    will_return(__wrap_hc_fetch_cacerts, 0);
+    expect_string(__wrap__merror, formatted_msg,
+                  "/cacerts adr_unreachable -- could not reach the manager to fetch the "
+                  "certificate authority.");
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_TRANSIENT);
+    assert_int_equal(g_enroll_call_count, 0);
+    assert_string_equal(g_fetch_config.client_cert, "etc/certs/agent.pem");
+    assert_string_equal(g_fetch_config.client_key, "etc/certs/agent-key.pem");
+    assert_int_not_equal(IsFile("etc/certs/root-ca.pem"), 0);
+    assert_int_not_equal(IsFile("etc/client.keys"), 0);
+}
+
+/* A half-configured or dangling client identity is a local configuration error: it is named and
+ * reported as permanent before any request, instead of surfacing as an unreachable manager that
+ * the agent would retry forever. */
+static void test_client_certificate_without_key_is_refused_before_any_request(void **state) {
+    (void) state;
+    write_token_file(true, true, NULL);
+    write_file("etc/certs/agent.pem", "FAKE-AGENT-CERT");
+    agt->ssl.certificate = (char *) "etc/certs/agent.pem";
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "The <agent><ssl> client certificate and key must be set together and name "
+                  "existing files (certificate: 'etc/certs/agent.pem', key: '').");
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_PERMANENT);
+    assert_int_equal(g_fetch_call_count, 0);
+    assert_int_equal(g_enroll_call_count, 0);
+    /* Not the manager's verdict on the token: it stays for the next attempt. */
+    assert_int_equal(IsFile("etc/enrollment_token"), 0);
+}
+
+static void test_missing_client_certificate_file_is_refused_before_any_request(void **state) {
+    (void) state;
+    write_token_file(false, true, "FAKE-EMBEDDED-CA");
+    write_file("etc/certs/agent-key.pem", "FAKE-AGENT-KEY");
+    agt->ssl.certificate = (char *) "etc/certs/agent.pem";
+    agt->ssl.key = (char *) "etc/certs/agent-key.pem";
+
+    /* TempFile()'s benign FSTAT_ERROR for the anchor it stages before the check. */
+    expect_any(__wrap__mdebug1, formatted_msg);
+    expect_string(__wrap__merror, formatted_msg,
+                  "The <agent><ssl> client certificate and key must be set together and name "
+                  "existing files (certificate: 'etc/certs/agent.pem', key: "
+                  "'etc/certs/agent-key.pem').");
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_PERMANENT);
+    assert_int_equal(g_fetch_call_count, 0);
+    assert_int_equal(g_enroll_call_count, 0);
+    assert_int_equal(IsFile("etc/enrollment_token"), 0);
+    /* The staged anchor is removed, not left beside the real path. */
+    assert_int_not_equal(IsFile("etc/certs/root-ca.pem"), 0);
+}
+
+/* The same local error must read the same whichever token carries the manager's CA: a pinned
+ * token used to report it as an anchor failure, which wazuh-agent-auth turns into the "manager's
+ * CA could not be established" exit code and so blames the manager. */
+static void test_broken_client_identity_is_a_request_error_for_both_token_kinds(void **state) {
+    (void) state;
+    const bool pins[] = {true, false};
+
+    agt->ssl.certificate = (char *) "etc/certs/agent.pem";
+    write_file("etc/certs/agent.pem", "FAKE-AGENT-CERT");
+
+    for (size_t i = 0; i < sizeof(pins) / sizeof(pins[0]); i++) {
+        w_token_enroll_opts_t opts = {0};
+        w_token_enroll_report_t report;
+        char *token = make_token(pins[i], true, pins[i] ? NULL : "FAKE-EMBEDDED-CA");
+
+        opts.token_text = token;
+        opts.uid = -1;
+        opts.gid = -1;
+
+        if (!pins[i]) {
+            expect_any(__wrap__mdebug1, formatted_msg);
+        }
+        expect_any(__wrap__merror, formatted_msg);
+
+        assert_int_equal(w_agent_token_enroll(&opts, &report), W_TOKEN_ENROLL_ERR_REQUEST);
+        assert_false(report.transient);
+        assert_int_equal(g_fetch_call_count, 0);
+        assert_int_equal(g_enroll_call_count, 0);
+
+        os_free(token);
+    }
+}
+
+#define CERT_REQUIRED_ERROR "(56) Failure when receiving data from the peer: OpenSSL SSL_read: " \
+    "OpenSSL/3.6.2: error:0A00045C:SSL routines::tlsv13 alert certificate required, errno 0"
+
+/* A manager that requires a client certificate refuses the handshake with a TLS alert and no HTTP
+ * status. That is the manager answering, not an unreachable one, and retrying cannot fix the
+ * agent's identity: named for what it is and reported as permanent. */
+static void test_fetch_tls_rejection_is_named_and_permanent(void **state) {
+    (void) state;
+    write_token_file(true, true, NULL);
+    g_fetch_transport_error = CERT_REQUIRED_ERROR;
+
+    will_return(__wrap_hc_fetch_cacerts, 0L);
+    will_return(__wrap_hc_fetch_cacerts, NULL);
+    will_return(__wrap_hc_fetch_cacerts, 1);
+    expect_string(__wrap__merror, formatted_msg,
+                  "/cacerts tls_rejected -- the manager refused the TLS handshake (tlsv13 alert "
+                  "certificate required): check the <agent><ssl> certificate and key against its "
+                  "remote.https verification_mode.");
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_PERMANENT);
+    assert_int_equal(g_enroll_call_count, 0);
+    assert_int_not_equal(IsFile("etc/certs/root-ca.pem"), 0);
+    /* Not the manager's verdict on the token: kept for the next attempt. */
+    assert_int_equal(IsFile("etc/enrollment_token"), 0);
+}
+
+/* A network failure with no alert keeps its transient adr_unreachable class. */
+static void test_fetch_without_tls_alert_stays_adr_unreachable(void **state) {
+    (void) state;
+    write_token_file(true, true, NULL);
+    g_fetch_transport_error = "(7) Couldn't connect to server";
+
+    will_return(__wrap_hc_fetch_cacerts, 0L);
+    will_return(__wrap_hc_fetch_cacerts, NULL);
+    will_return(__wrap_hc_fetch_cacerts, 0);
+    expect_string(__wrap__merror, formatted_msg,
+                  "/cacerts adr_unreachable -- could not reach the manager to fetch the certificate "
+                  "authority: (7) Couldn't connect to server.");
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_TRANSIENT);
+}
+
+/* Same for /enroll, which a token with an embedded CA reaches without any /cacerts. The cause
+ * reaches the report too, so wazuh-agent-auth can show it. */
+static void test_enroll_tls_rejection_is_named_permanent_and_reported(void **state) {
+    (void) state;
+    w_token_enroll_opts_t opts = {0};
+    w_token_enroll_report_t report;
+    char *token = make_token(false, true, "FAKE-EMBEDDED-CA");
+    const char *expected = "/enroll tls_rejected -- the manager refused the TLS handshake (tlsv1 alert "
+                           "unknown ca): check the <agent><ssl> certificate and key against its "
+                           "remote.https verification_mode.";
+
+    opts.token_text = token;
+    opts.uid = -1;
+    opts.gid = -1;
+    g_enroll_transport_error = "(56) Failure when receiving data from the peer: OpenSSL SSL_read: "
+                               "OpenSSL/3.6.2: error:0A000418:SSL routines::tlsv1 alert unknown ca, errno 0";
+
+    will_return(__wrap_hc_enroll, 0L);
+    will_return(__wrap_hc_enroll, NULL);
+    will_return(__wrap_hc_enroll, 1);
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_any_always(__wrap__minfo, formatted_msg);
+    expect_string(__wrap__merror, formatted_msg, expected);
+
+    assert_int_equal(w_agent_token_enroll(&opts, &report), W_TOKEN_ENROLL_ERR_ENROLL);
+    assert_false(report.transient);
+    assert_string_equal(report.detail, expected);
+    assert_int_not_equal(IsFile("etc/certs/root-ca.pem"), 0);
+
+    os_free(token);
+}
+
+/* A transport failure on /enroll with no alert stays transient, and now also reaches the report. */
+static void test_enroll_transport_failure_stays_transient_and_is_reported(void **state) {
+    (void) state;
+    w_token_enroll_opts_t opts = {0};
+    w_token_enroll_report_t report;
+    char *token = make_token(false, true, "FAKE-EMBEDDED-CA");
+    const char *expected = "The verified enrollment request could not be sent: (28) Operation timed out.";
+
+    opts.token_text = token;
+    opts.uid = -1;
+    opts.gid = -1;
+    g_enroll_transport_error = "(28) Operation timed out";
+
+    will_return(__wrap_hc_enroll, 0L);
+    will_return(__wrap_hc_enroll, NULL);
+    will_return(__wrap_hc_enroll, 0);
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_any_always(__wrap__minfo, formatted_msg);
+    expect_string(__wrap__merror, formatted_msg, expected);
+
+    assert_int_equal(w_agent_token_enroll(&opts, &report), W_TOKEN_ENROLL_ERR_ENROLL);
+    assert_true(report.transient);
+    assert_string_equal(report.detail, expected);
+
+    os_free(token);
+}
+
+/* The classifier itself: every certificate alert is named with its protocol prefix, an unrelated
+ * alert or plain network error is not, and the reason never overruns its buffer. */
+static void test_tls_rejection_classifier(void **state) {
+    (void) state;
+    char reason[96];
+    char tiny[8];
+
+    assert_true(token_tls_rejection(CERT_REQUIRED_ERROR, reason, sizeof(reason)));
+    assert_string_equal(reason, "tlsv13 alert certificate required");
+    assert_true(token_tls_rejection("error:0A000412:SSL routines::sslv3 alert bad certificate", reason,
+                                    sizeof(reason)));
+    assert_string_equal(reason, "sslv3 alert bad certificate");
+    assert_true(token_tls_rejection("error:0A00042E:SSL routines::tlsv1 alert access denied, errno 0",
+                                    reason, sizeof(reason)));
+    assert_string_equal(reason, "tlsv1 alert access denied");
+
+    assert_false(token_tls_rejection("error:0A000438:SSL routines::tlsv1 alert internal error", reason,
+                                     sizeof(reason)));
+    assert_false(token_tls_rejection("(7) Couldn't connect to server", reason, sizeof(reason)));
+    assert_false(token_tls_rejection("", reason, sizeof(reason)));
+    assert_false(token_tls_rejection(NULL, reason, sizeof(reason)));
+
+    assert_true(token_tls_rejection(CERT_REQUIRED_ERROR, tiny, sizeof(tiny)));
+    assert_string_equal(tiny, "tlsv13 ");
+}
+
+/* An empty <certificate/> and <key/> are parsed as "", which the module reads as "not configured";
+ * the bootstrap must agree instead of refusing to start over a path that is not there. */
+static void test_empty_client_identity_counts_as_not_configured(void **state) {
+    (void) state;
+    write_token_file(true, true, NULL);
+    agt->ssl.certificate = (char *) "";
+    agt->ssl.key = (char *) "";
+
+    will_return(__wrap_hc_fetch_cacerts, 200L);
+    will_return(__wrap_hc_fetch_cacerts, "FAKE-CA-BODY");
+    will_return(__wrap_hc_fetch_cacerts, 1);
+    will_return(__wrap_hc_spki_pinned_certificate, PINNED_CERT);
+    will_return(__wrap_hc_enroll, 200L);
+    will_return(__wrap_hc_enroll, VALID_ENROLL_BODY);
+    will_return(__wrap_hc_enroll, 1);
+    expect_valid_ip("10.0.0.5");
+
+    expect_any(__wrap__mdebug1, formatted_msg);
+    expect_any(__wrap__mdebug1, formatted_msg);
+
+    expect_string(__wrap__minfo, formatted_msg, "Enrolling as 'test-agent'. Groups: none.");
+    expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
+    expect_string(__wrap__minfo, formatted_msg, "Valid key received");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Token bootstrap: enrollment succeeded; the manager's CA is now the agent's "
+                  "trust anchor.");
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);
+    assert_string_equal(g_fetch_config.client_cert, "");
+    assert_string_equal(g_enroll_config.client_cert, "");
+}
+
+/* --certs-only with an embedded CA sends no request at all, so an identity it would never present
+ * must not stop it from installing the anchor. */
+static void test_certs_only_embedded_ca_ignores_a_broken_client_identity(void **state) {
+    (void) state;
+    w_token_enroll_opts_t opts = {0};
+    w_token_enroll_report_t report;
+    char *token = make_token(false, true, "FAKE-EMBEDDED-CA");
+
+    agt->ssl.certificate = (char *) "etc/certs/agent.pem";
+
+    opts.token_text = token;
+    opts.uid = -1;
+    opts.gid = -1;
+    opts.anchor_only = true;
+
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_any_always(__wrap__minfo, formatted_msg);
+
+    assert_int_equal(w_agent_token_enroll(&opts, &report), W_TOKEN_ENROLL_OK);
+    assert_int_equal(g_fetch_call_count, 0);
+    assert_int_equal(g_enroll_call_count, 0);
+    assert_string_equal(read_file("etc/certs/root-ca.pem"), "FAKE-EMBEDDED-CA");
+
+    os_free(token);
 }
 
 /* #39064: the bootstrap runs as ROOT, before the privilege drop, and w_enrollment_process_response()
@@ -1780,6 +2170,30 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fresh_enrollment_keys_chown_failure_logs_merror, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_credential_less_token_enrolls_without_error, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_full_happy_path_via_ca_pem, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_pin_path_presents_the_client_certificate, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_embedded_ca_path_presents_the_client_certificate, setup_test,
+                                        teardown_test),
+        cmocka_unit_test_setup_teardown(test_fetch_failure_with_client_certificate_writes_nothing, setup_test,
+                                        teardown_test),
+        cmocka_unit_test_setup_teardown(test_client_certificate_without_key_is_refused_before_any_request,
+                                        setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_missing_client_certificate_file_is_refused_before_any_request,
+                                        setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_broken_client_identity_is_a_request_error_for_both_token_kinds,
+                                        setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_empty_client_identity_counts_as_not_configured, setup_test,
+                                        teardown_test),
+        cmocka_unit_test_setup_teardown(test_fetch_tls_rejection_is_named_and_permanent, setup_test,
+                                        teardown_test),
+        cmocka_unit_test_setup_teardown(test_fetch_without_tls_alert_stays_adr_unreachable, setup_test,
+                                        teardown_test),
+        cmocka_unit_test_setup_teardown(test_enroll_tls_rejection_is_named_permanent_and_reported, setup_test,
+                                        teardown_test),
+        cmocka_unit_test_setup_teardown(test_enroll_transport_failure_stays_transient_and_is_reported,
+                                        setup_test, teardown_test),
+        cmocka_unit_test(test_tls_rejection_classifier),
+        cmocka_unit_test_setup_teardown(test_certs_only_embedded_ca_ignores_a_broken_client_identity,
+                                        setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_bootstrap_stores_the_reenroll_secret_from_the_root_path, setup_test,
                                         teardown_test),
         cmocka_unit_test_setup_teardown(test_bootstrap_without_a_secret_leaves_no_store, setup_test, teardown_test),
