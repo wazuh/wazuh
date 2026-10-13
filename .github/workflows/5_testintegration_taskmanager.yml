@@ -4,14 +4,59 @@ on:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - ".github/workflows/5_testintegration_taskmanager.yml"
-      - "src/wazuh_modules/task_manager/**"
-      - "src/shared_modules/uds_http_server/**"
-      - "src/shared_modules/http-request/**"
+      # task_manager_testtool (testtool/CMakeLists.txt:5,18) links the task_manager library built
+      # from src/ and include/ (CMakeLists.txt:19); the qa/ suite drives it. Every CMakeLists.txt of
+      # the module is on the configure path (CMakeLists.txt:81,86). Not the unit tests (test/) or
+      # qa/README.md.
+      - "src/wazuh_modules/task_manager/**/CMakeLists.txt"
+      - "src/wazuh_modules/task_manager/include/**"
+      - "src/wazuh_modules/task_manager/src/**"
+      - "src/wazuh_modules/task_manager/testtool/**"
+      - "src/wazuh_modules/task_manager/qa/**"
+      - "!src/wazuh_modules/task_manager/qa/README.md"
+      # Compiled in, not linked: shared/src/os_cert_bundle.c (task_manager/CMakeLists.txt:17,19) and
+      # its header (src/upgrade/httpWpkRepository.cpp:14).
+      - "src/shared/src/os_cert_bundle.c"
+      - "src/shared/include/os_cert_bundle.h"
+      # Linked: wazuh_metrics, wazuh_uds_http_server, urlrequest (task_manager/CMakeLists.txt:75-76).
+      # Their README.md and own test sources are not in this closure.
+      - "src/shared_modules/metrics/**/CMakeLists.txt"
+      - "src/shared_modules/metrics/include/**"
+      - "src/shared_modules/metrics/src/**"
+      - "src/shared_modules/uds_http_server/**/CMakeLists.txt"
+      - "src/shared_modules/uds_http_server/include/**"
+      - "src/shared_modules/uds_http_server/src/**"
+      # Headers from shared_modules/utils and common/commonDefs.h (included by
+      # utils/loggerHelper.h:15). utils/flatbuffers is built by build_external_deps/action.yml:55-63.
+      # utils' own tests and benchmark are another component's tree; only their CMakeLists.txt are on
+      # the configure path (utils/CMakeLists.txt).
       - "src/shared_modules/utils/**"
-      - "src/shared_modules/metrics/**"
+      - "!src/shared_modules/utils/tests/**"
+      - "!src/shared_modules/utils/benchmark/**"
+      - "src/shared_modules/utils/tests/CMakeLists.txt"
+      - "src/shared_modules/utils/benchmark/CMakeLists.txt"
+      - "src/shared_modules/common/**"
+      # Configure path: build_target_cpp configures all of src/ as one tree
+      # (build_target_cpp/action.yml:57) -- src/CMakeLists.txt (src/cmake/*.cmake at :86-87,
+      # VERSION.json at :128) and src/external/CMakeLists.txt (ext_* targets, wazuhext at :1474).
+      - "src/CMakeLists.txt"
+      - "src/cmake/**"
+      - "src/external/CMakeLists.txt"
+      - "VERSION.json"
+      # This module's parent on the configure path (src/CMakeLists.txt:255).
+      - "src/wazuh_modules/CMakeLists.txt"
+      # build_external_deps runs make deps/build-external (src/Makefile:610, ref list from
+      # tools/get_git_refs.sh at src/Makefile:708) and builds the http-request submodule
+      # (action.yml:35-43), linked here as urlrequest. A submodule bump changes only the gitlink
+      # path, which no '/**' pattern matches.
+      - "src/Makefile"
+      - "tools/get_git_refs.sh"
+      - "src/shared_modules/http-request"
+      # Result-affecting actions and scripts (reinstall_cmake runs tools/devContainer/reinstall-cmake.sh).
       - ".github/actions/build_external_deps/**"
       - ".github/actions/build_target_cpp/**"
       - ".github/actions/reinstall_cmake/**"
+      - "tools/devContainer/reinstall-cmake.sh"
   workflow_dispatch:
 
 concurrency:
@@ -62,7 +107,16 @@ jobs:
       # No container and no external service: the suite stubs the consumer itself, which is what
       # lets it drive the cases that matter -- a route that stalls, answers 409, or is not listening
       # at all -- and it kills the module outright to exercise the startup sweep's recovery.
+      #
+      # conftest.py's testtool_path fixture pytest.skip()s every case when task_manager_testtool is
+      # not at $WAZUH_BUILD/bin, and a fully skipped run exits 0: fail on any skip instead. pipefail
+      # keeps pytest's own exit code through the tee.
       - name: Run integration QA
         run: |
+          set -o pipefail
           cd src/wazuh_modules/task_manager/qa
-          WAZUH_BUILD=${GITHUB_WORKSPACE}/src/build python -m pytest -vv --log-cli-level=INFO
+          WAZUH_BUILD=${GITHUB_WORKSPACE}/src/build python -m pytest -vv --log-cli-level=INFO -rs 2>&1 | tee "${RUNNER_TEMP}/task_manager_qa.log"
+          if grep -Eq '^=+ .*[0-9]+ skipped' "${RUNNER_TEMP}/task_manager_qa.log"; then
+            echo "::error::the task manager QA suite skipped tests; it must run every case"
+            exit 1
+          fi

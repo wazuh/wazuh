@@ -177,16 +177,18 @@ jobs:
       - name: Install compatible CMake
         if: inputs.build_run_id == ''
         uses: ./.github/actions/reinstall_cmake
-      # Compilation cache (issue 38139). Skipped on fork PRs (no credentials).
+      # Compilation cache (issue 38139). Skipped on fork PRs (no credentials), and on Path A: only the
+      # from-source build compiles anything, so a pull request (always Path A, called with the
+      # build's run id) never runs setup-sccache and the caller does not list it.
       - name: "Configure AWS credentials for the compilation cache"
-        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        if: inputs.build_run_id == '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.CI_OIDC_ROLE_ARN }}
           aws-region: ${{ secrets.CI_AWS_REGION }}
           role-duration-seconds: 7200
       - name: "Set up sccache"
-        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        if: inputs.build_run_id == '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
         uses: ./.github/actions/setup-sccache
         with:
           bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
@@ -327,9 +329,12 @@ jobs:
             --html=results.html --self-contained-html
           EXIT_CODE=$?
           set -e
+          # Exit 5 is "no tests collected". Every (module, tier) row in test_modules_manager.json
+          # selects tests that exist (each pytest_target carries tier(level=N) marks for the tiers
+          # its row lists), so an empty selection means the suite or its tier marks were lost, or
+          # conftest.py deselected everything: a run that tested nothing must not report success.
           if [ $EXIT_CODE -eq 5 ]; then
-            echo "No tests were selected for this configuration. Skipping."
-            exit 0
+            echo "::error::pytest selected no tests for ${PYTEST_TARGET} ${PYTEST_TIER_ARGS}"
           fi
           exit $EXIT_CODE
 
