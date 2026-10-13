@@ -41,6 +41,7 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
 
     // Default kvdb ioc
     addUnit<std::string>(key::KVDB_IOC_PATH, "WAZUH_KVDB_IOC_PATH", (wazuhRoot / "data/kvdb-ioc").c_str());
+    addUnit<std::string>(key::KVDB_IOC_INPUT_PATH, "WAZUH_KVDB_IOC_INPUT_PATH", (wazuhRoot / "data/ioc-input").c_str());
 
     // Content Manager
     addUnit<std::string>(key::CM_RULESET_PATH, "WAZUH_CM_RULESET_PATH", (wazuhRoot / "data/ruleset").c_str());

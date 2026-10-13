@@ -1,12 +1,18 @@
 
 #include <api/ioccrud/handlers.hpp>
 
+#include <algorithm>
 #include <atomic>
-#include <fstream>
+#include <istream>
 #include <memory>
 #include <random>
 #include <sstream>
 #include <unordered_set>
+
+#include <ext/stdio_filebuf.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include <fmt/format.h>
 
@@ -74,12 +80,43 @@ void updateIOCStatus(const std::shared_ptr<store::IStore>& storeRef,
     }
 }
 
+std::optional<std::filesystem::path> resolveInputFile(const std::filesystem::path& inputRoot,
+                                                      const std::string& requestedPath)
+{
+    std::error_code ec;
+    const auto root = std::filesystem::canonical(inputRoot, ec);
+    if (ec)
+    {
+        return std::nullopt;
+    }
+
+    const auto file = std::filesystem::canonical(requestedPath, ec);
+    if (ec)
+    {
+        return std::nullopt;
+    }
+
+    // Every component of the root must match, and the file must have at least one more
+    const auto [rootEnd, fileIt] = std::mismatch(root.begin(), root.end(), file.begin(), file.end());
+    if (rootEnd != root.end() || fileIt == file.end())
+    {
+        return std::nullopt;
+    }
+
+    if (!std::filesystem::is_regular_file(std::filesystem::status(file, ec)) || ec)
+    {
+        return std::nullopt;
+    }
+
+    return file;
+}
+
 /**
  * @brief Perform IOC synchronization from a file
  *
  * @param weakKvdbManager Weak pointer to KVDB Manager
  * @param weakStore Weak pointer to Store
- * @param filePath Path to the ndjson file containing IOCs
+ * @param filePath Path to the ndjson file containing IOCs, already resolved by resolveInputFile
  * @param fileHash Hash of the file being synchronized
  */
 void performIOCSync(const std::weak_ptr<::ioc::kvdb::IKVDBManager>& weakKvdbManager,
@@ -116,20 +153,50 @@ void performIOCSync(const std::weak_ptr<::ioc::kvdb::IKVDBManager>& weakKvdbMana
 
     try
     {
-        // Open the ndjson file
-        std::ifstream file(filePath);
-        if (!file.is_open())
+        // Open the ndjson file. The path was resolved by the handler; refuse a symlink swapped in since then
+        // and anything that is not a regular file (O_NONBLOCK keeps a FIFO from blocking the open)
+        const int fd = ::open(filePath.c_str(), O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC);
+        if (fd < 0)
         {
             LOG_WARNING_L(lambdaName.c_str(), "[{}] Failed to open file: {}", LOG_MODULE_NAME, filePath);
             updateIOCStatus(storeRef, "", fmt::format("Failed to open file: {}", filePath));
             return;
         }
 
+        struct stat fileStat {};
+        if (::fstat(fd, &fileStat) != 0 || !S_ISREG(fileStat.st_mode))
+        {
+            ::close(fd);
+            LOG_WARNING_L(lambdaName.c_str(), "[{}] Not a regular file: {}", LOG_MODULE_NAME, filePath);
+            updateIOCStatus(storeRef, "", fmt::format("Not a regular file: {}", filePath));
+            return;
+        }
+
+        __gnu_cxx::stdio_filebuf<char> fileBuf(fd, std::ios::in); // Owns fd, closes it on destruction
+        std::istream file(&fileBuf);
+
         // Generate random suffix for temporary databases
         const std::string tmpSuffix = "_" + base::utils::generators::randomHexString(4);
 
         // Initialize all temporary databases at once
         ioc::kvdb::details::initializeDBs(kvdbManager, tmpSuffix);
+
+        auto removeTmpDB = [&](const std::string& tmpDbName)
+        {
+            try
+            {
+                kvdbManager->remove(tmpDbName);
+                LOG_DEBUG_L(lambdaName.c_str(), "[{}] Deleted unused temporary DB: {}", LOG_MODULE_NAME, tmpDbName);
+            }
+            catch (const std::exception& e)
+            {
+                LOG_WARNING_L(lambdaName.c_str(),
+                              "[{}] Failed to delete temporary DB {}: {}",
+                              LOG_MODULE_NAME,
+                              tmpDbName,
+                              e.what());
+            }
+        };
 
         // Process file line by line
         std::string line;
@@ -172,8 +239,6 @@ void performIOCSync(const std::weak_ptr<::ioc::kvdb::IKVDBManager>& weakKvdbMana
             }
         }
 
-        file.close();
-
         // Log summary of processing
         if (skippedLines > 0)
         {
@@ -189,6 +254,23 @@ void performIOCSync(const std::weak_ptr<::ioc::kvdb::IKVDBManager>& weakKvdbMana
             LOG_DEBUG_L(lambdaName.c_str(), "[{}] Processed {} IOC entries from file", LOG_MODULE_NAME, processedLines);
         }
 
+        // A file without a single valid IOC never replaces the current data
+        if (processedLines == 0)
+        {
+            for (const auto& entry : ioc::kvdb::details::IOC_TYPE_TABLE)
+            {
+                removeTmpDB(std::string(entry.dbName) + tmpSuffix);
+            }
+            const auto message = skippedLines > 0
+                                     ? fmt::format("No valid IOC lines in file ({} skipped). Last error: {}",
+                                                   skippedLines,
+                                                   lastSkipError)
+                                     : std::string("No valid IOC lines in file");
+            LOG_WARNING_L(lambdaName.c_str(), "[{}] IOC sync rejected: {}", LOG_MODULE_NAME, message);
+            updateIOCStatus(storeRef, "", message);
+            return;
+        }
+
         // Perform hot-swap for ALL temporary databases to production
         size_t dbsUpdated = 0;
         for (const auto& entry : ioc::kvdb::details::IOC_TYPE_TABLE)
@@ -202,20 +284,7 @@ void performIOCSync(const std::weak_ptr<::ioc::kvdb::IKVDBManager>& weakKvdbMana
                               "[{}] Original DB {} does not exist, skipping hot-swap for this DB",
                               LOG_MODULE_NAME,
                               originalDbName);
-                // Clean up the temporary database since production DB doesn't exist
-                try
-                {
-                    kvdbManager->remove(tmpDbName);
-                    LOG_DEBUG_L(lambdaName.c_str(), "[{}] Deleted unused temporary DB: {}", LOG_MODULE_NAME, tmpDbName);
-                }
-                catch (const std::exception& e)
-                {
-                    LOG_WARNING_L(lambdaName.c_str(),
-                                  "[{}] Failed to delete temporary DB {}: {}",
-                                  LOG_MODULE_NAME,
-                                  tmpDbName,
-                                  e.what());
-                }
+                removeTmpDB(tmpDbName);
                 continue;
             }
 
@@ -249,11 +318,13 @@ void performIOCSync(const std::weak_ptr<::ioc::kvdb::IKVDBManager>& weakKvdbMana
 
 adapter::RouteHandler syncIoc(const std::shared_ptr<::ioc::kvdb::IKVDBManager>& kvdbManager,
                               const std::shared_ptr<scheduler::IScheduler>& scheduler,
-                              const std::shared_ptr<store::IStore>& store)
+                              const std::shared_ptr<store::IStore>& store,
+                              const std::filesystem::path& inputRoot)
 {
     return [weakKvdbManager = std::weak_ptr<::ioc::kvdb::IKVDBManager>(kvdbManager),
             weakScheduler = std::weak_ptr<scheduler::IScheduler>(scheduler),
-            weakStore = std::weak_ptr<store::IStore>(store)](const httplib::Request& req, httplib::Response& res)
+            weakStore = std::weak_ptr<store::IStore>(store),
+            inputRoot](const httplib::Request& req, httplib::Response& res)
     {
         using RequestType = eIoc::UpdateIoc_Request;
         using ResponseType = eEngine::GenericStatus_Response;
@@ -283,7 +354,17 @@ adapter::RouteHandler syncIoc(const std::shared_ptr<::ioc::kvdb::IKVDBManager>& 
             return;
         }
 
-        const std::string filePath = protoReq.path();
+        // Confine the path to the input root. One message for every rejection, so the response does not tell
+        // whether a path outside the root exists
+        const auto inputFile = detail::resolveInputFile(inputRoot, protoReq.path());
+        if (!inputFile)
+        {
+            res = adapter::userErrorResponse<ResponseType>(
+                fmt::format("Field /path must be a regular file inside {}", inputRoot.string()));
+            return;
+        }
+
+        const std::string filePath = inputFile->string();
         const std::string fileHash = protoReq.hash();
 
         // Get store reference
@@ -343,16 +424,6 @@ adapter::RouteHandler syncIoc(const std::shared_ptr<::ioc::kvdb::IKVDBManager>& 
             res = adapter::userErrorResponse<ResponseType>("IOC synchronization already in progress");
             return;
         }
-
-        // Verify file exists before scheduling the task
-        std::ifstream fileCheck(filePath);
-        if (!fileCheck.is_open())
-        {
-            detail::g_syncInProgress.store(false); // Release the semaphore
-            res = adapter::userErrorResponse<ResponseType>(fmt::format("File not found: {}", filePath));
-            return;
-        }
-        fileCheck.close();
 
         // Get scheduler reference
         auto schedulerRef = weakScheduler.lock();

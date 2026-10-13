@@ -2788,14 +2788,15 @@ output:
 
 ### Paths
 
-The manager process creates and writes these paths at start-up; they must remain owned by `wazuh-manager` (see
-[Process Privileges](configuration.md#process-privileges)).
+The manager process creates and writes these paths at start-up (except the IoC input directory, which it only
+reads); they must remain owned by `wazuh-manager` (see [Process Privileges](configuration.md#process-privileges)).
 
 | Setting | Env var | Description | Default | Mode |
 |:--|:--|:--|:--:|:--:|
 | `analysisd.store_path` | `WAZUH_STORE_PATH` | Directory holding the engine's compiled policy store. | `/var/wazuh-manager/data/store` | both |
 | `analysisd.output_path` | `WAZUH_OUTPUTS_PATH` | Directory holding the default output definitions. | `/var/wazuh-manager/etc/outputs/` | both |
 | `analysisd.kvdb_ioc_path` | `WAZUH_KVDB_IOC_PATH` | Directory holding the IoC key-value databases. | `/var/wazuh-manager/data/kvdb-ioc` | both |
+| `analysisd.kvdb_ioc_input_path` | `WAZUH_KVDB_IOC_INPUT_PATH` | The only directory `POST /content/ioc/update` accepts IoC feed files from; the path must resolve to a regular file inside it. The manager installer does not create it: in manager mode the IOC set comes from the in-process indexer sync, so every request to this endpoint is rejected until an operator creates the directory (owner-only, `0750`). In standalone mode `run_engine.sh` sets it to the bundle's `data/` directory, where `wazuh-indexer` writes `iocs.ndjson`. | `/var/wazuh-manager/data/ioc-input` | both |
 | `analysisd.cm_ruleset_path` | `WAZUH_CM_RULESET_PATH` | Directory holding the content-manager ruleset synced from `wazuh-indexer`. | `/var/wazuh-manager/data/ruleset` | both |
 
 ### Event queue
