@@ -112,12 +112,12 @@ replicated on a timer, or never replicated at all.
 
 | Path | Replicated? | Consequence |
 |---|---|---|
-| `etc/client.keys` | yes, from master | A new agent is unknown to workers for a few seconds |
-| `etc/authd.pass` | yes, from master | A changed password is not accepted everywhere at once |
-| `etc/enrollment_tokens.json` | yes, from master | A fresh token is unknown to workers for a few seconds |
-| `etc/shared/` | yes, recursive | Group configuration converges |
+| `/etc/wazuh-manager/client.keys` | yes, from master | A new agent is unknown to workers for a few seconds |
+| `/etc/wazuh-manager/authd.pass` | yes, from master | A changed password is not accepted everywhere at once |
+| `/etc/wazuh-manager/enrollment_tokens.json` | yes, from master | A fresh token is unknown to workers for a few seconds |
+| `/etc/wazuh-manager/shared/` | yes, recursive | Group configuration converges |
 | `var/multigroups/merged.mg` | yes | Multigroup configuration converges |
-| **`etc/certs/`** | **no** | **Every node needs its own listener certificate, issued externally** |
+| **`/etc/wazuh-manager/certs/`** | **no** | **Every node needs its own listener certificate, issued externally** |
 | **`var/upgrade/`** | **no** | **A custom WPK must be placed on every node by hand** |
 | **`queue/tasks/`** | **no** | Each node tracks task delivery on its own |
 | **remoted's in-memory agent registry** | **no** | See [§7](#7-what-an-agent-observes-while-the-cluster-catches-up) |
@@ -168,7 +168,7 @@ is. Neither is wrong; the deployment has to know which one it picked.
 
 ## 6. Certificates
 
-`etc/certs/` is **not** replicated, so every node needs its own listener pair, from one CA. Each
+`/etc/wazuh-manager/certs/` is **not** replicated, so every node needs its own listener pair, from one CA. Each
 node's installation issues its pair when that CA is staged in `/etc/wazuh/ca` beforehand (see
 [Cluster deployments](../../getting-started/credentials.md#cluster-deployments)); otherwise issue the
 pairs externally, for example with the Wazuh installation assistant's `wazuh-certs-tool`.
@@ -257,9 +257,9 @@ Measured on a three-node cluster:
 
 | File | Master accepts after | Workers accept after | Rejection while waiting |
 |---|---|---|---|
-| `etc/client.keys` | 0.04 s | 8.4 – 13.0 s | `401`, code `unknown_agent` |
-| `etc/authd.pass` | immediately | ~23 s | `401`, code `enrollment_key_unavailable` |
-| `etc/enrollment_tokens.json` | 0.13 s | 7.2 – 13.1 s | `401`, code `token_unknown` |
+| `/etc/wazuh-manager/client.keys` | 0.04 s | 8.4 – 13.0 s | `401`, code `unknown_agent` |
+| `/etc/wazuh-manager/authd.pass` | immediately | ~23 s | `401`, code `enrollment_key_unavailable` |
+| `/etc/wazuh-manager/enrollment_tokens.json` | 0.13 s | 7.2 – 13.1 s | `401`, code `token_unknown` |
 
 **The agent recovers on its own**, in every case, without intervention.
 
@@ -335,14 +335,14 @@ Two further properties worth knowing:
 
 | Value | Converges? | Why |
 |---|---|---|
-| `config_hash` | yes | Computed from `etc/shared/` and `var/multigroups/`, both replicated |
+| `config_hash` | yes | Computed from `/etc/wazuh-manager/shared/` and `var/multigroups/`, both replicated |
 | `config_token` | yes | It is the agent's group list; identical everywhere |
 | `settings_hash` | yes, if the inputs match | SHA-256 over the manager's `limits` object plus `cluster.name`, both read locally — **keep both identical across nodes** |
 | `vd_feed_offset` | only when feeds are level | Read from each node's local vulnerability module |
 
 `settings_hash` is the one an operator can break. Its `limits` inputs are **internal options**, not
 a section of `wazuh-manager.conf`: `fim.file_limit`, `syscollector.*_limit`, `sca.checks_limit` and
-their siblings, read from `etc/wazuh-manager-internal-options.conf`. A node whose values differ, or
+their siblings, read from `/etc/wazuh-manager/wazuh-manager-internal-options.conf`. A node whose values differ, or
 whose `<cluster><name>` differs, reports a different value for the same agent.
 
 ---
@@ -452,8 +452,8 @@ re-encrypts to the backend.
 
 ##### Deploy and verify
 
-Install each pair on its node as `etc/certs/remoted.pem` and `etc/certs/remoted-key.pem`, with the
-signing CA as `etc/certs/root-ca.pem`. Nothing here is replicated by the cluster; every node is
+Install each pair on its node as `/etc/wazuh-manager/certs/remoted.pem` and `/etc/wazuh-manager/certs/remoted-key.pem`, with the
+signing CA as `/etc/wazuh-manager/certs/root-ca.pem`. Nothing here is replicated by the cluster; every node is
 provisioned on its own.
 
 Then verify, because this is the step that catches the mistake:
@@ -466,8 +466,8 @@ openssl x509 -in <node>.pem -noout -subject -ext subjectAltName
 openssl verify -CAfile root-ca.pem <node>.pem
 
 # And the CA installed on the node must be the one that signs the listener it serves.
-openssl verify -CAfile /var/wazuh-manager/etc/certs/root-ca.pem \
-               /var/wazuh-manager/etc/certs/remoted.pem
+openssl verify -CAfile /etc/wazuh-manager/certs/root-ca.pem \
+               /etc/wazuh-manager/certs/remoted.pem
 ```
 
 Finally, check it end to end from outside, dialling the agent-facing address exactly as an agent
@@ -503,9 +503,9 @@ for the full certificate-tool reference.
     <port>1517</port>
     <bind_addr>0.0.0.0</bind_addr>
     <global_prefix>/wazuh-manager/</global_prefix>
-    <certificate>etc/certs/remoted.pem</certificate>
-    <key>etc/certs/remoted-key.pem</key>
-    <ca_certificate>etc/certs/root-ca.pem</ca_certificate>
+    <certificate>/etc/wazuh-manager/certs/remoted.pem</certificate>
+    <key>/etc/wazuh-manager/certs/remoted-key.pem</key>
+    <ca_certificate>/etc/wazuh-manager/certs/root-ca.pem</ca_certificate>
   </https>
 </remote>
 ```
@@ -593,7 +593,7 @@ issued in [§8.2](#82-issue-certificates).
 | `<verification_mode>` | `full` also checks the address against the certificate's SAN, which is what `--agent-san` and the `load_balancer` entry exist to satisfy |
 
 If `<verification_mode>` is left out, the agent resolves it from what it finds on disk, and a CA at
-`etc/certs/root-ca.pem` alone is enough to promote it to `full`. See
+`etc/certs/root-ca.pem` (under the agent's installation directory) alone is enough to promote it to `full`. See
 [agent configuration](../client/configuration.md#verification_mode).
 
 Deploying with an enrollment token instead sets the address, the trust anchor and the credential
@@ -704,7 +704,7 @@ Balancer:
 Cluster:
 
 - [ ] A custom WPK is placed in `var/upgrade/` on **every** node before requesting an upgrade.
-- [ ] The team knows that `etc/certs/`, `var/upgrade/` and `queue/tasks/` are not replicated.
+- [ ] The team knows that `/etc/wazuh-manager/certs/`, `var/upgrade/` and `queue/tasks/` are not replicated.
 
 Operations:
 

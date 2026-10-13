@@ -59,7 +59,7 @@ The enrichment itself has no options: when the legacy channel is enabled, it is 
 
 What is tunable is the cache's entry lifetime and the queues feeding it —
 `remoted.enrich_cache_expire_time`, `remoted.control_msg_queue_size` and
-`remoted.batch_events_capacity` in `/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`.
+`remoted.batch_events_capacity` in `/etc/wazuh-manager/wazuh-manager-internal-options.conf`.
 
 See the [Configuration guide](configuration.md#stateless-metadata-cache) for defaults and the cleanup cadence.
 

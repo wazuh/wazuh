@@ -21,7 +21,8 @@ int authd_read_config(const char *path) {
 
     mdebug2("Reading configuration '%s'", path);
 
-    /* etc/wazuh-manager.conf: loaded once per process, then the `auth` section as cJSON (mconf-config.h). */
+    /* /etc/wazuh-manager/wazuh-manager.conf: loaded once per process, then the `auth` section as cJSON
+     * (mconf-config.h). */
     if (w_mconf_load(path) < 0) {
         return OS_INVALID;
     }
@@ -84,7 +85,7 @@ int authd_read_config(const char *path) {
     return 0;
 }
 
-/* getconfig "auth": the effective `auth` section of etc/wazuh-manager.conf (schema defaults applied,
+/* getconfig "auth": the effective `auth` section of /etc/wazuh-manager/wazuh-manager.conf (schema defaults applied,
  * native types), exactly what authd_read_config() loaded. The internal options authd reads on top of it
  * (auth.timeout_*, authd.max_agents, authd.purge_delay) are not configuration-file options and are not
  * reported here. */

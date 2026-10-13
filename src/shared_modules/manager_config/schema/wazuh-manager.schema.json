@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
   "id": "wazuh-manager.schema.json",
-  "title": "Wazuh manager configuration (etc/wazuh-manager.conf)",
+  "title": "Wazuh manager configuration (/etc/wazuh-manager/wazuh-manager.conf)",
   "description": "Single source of truth for the manager configuration: types, ranges, defaults and documentation of every option. Consumed by the manager_config C++ module (embedded) and by the Python framework (installed copy).",
   "type": "object",
   "additionalProperties": false,
@@ -228,7 +228,7 @@
                   "$ref": "#/definitions/path"
                 }
               ],
-              "default": "etc/certs/remoted.pem",
+              "default": "/etc/wazuh-manager/certs/remoted.pem",
               "description": "Server certificate (PEM)."
             },
             "key": {
@@ -237,7 +237,7 @@
                   "$ref": "#/definitions/path"
                 }
               ],
-              "default": "etc/certs/remoted-key.pem",
+              "default": "/etc/wazuh-manager/certs/remoted-key.pem",
               "description": "Server private key (PEM). Must be set together with 'certificate'."
             },
             "ca": {
@@ -247,7 +247,7 @@
                 }
               ],
               "default": "",
-              "description": "CA bundle used to verify agent certificates. Empty = client certificate verification disabled, unless 'verification_mode' is set explicitly, in which case etc/certs/root-ca.pem is used."
+              "description": "CA bundle used to verify agent certificates. Empty = client certificate verification disabled, unless 'verification_mode' is set explicitly, in which case /etc/wazuh-manager/certs/root-ca.pem is used."
             },
             "ca_certificate": {
               "allOf": [
@@ -256,7 +256,7 @@
                 }
               ],
               "minLength": 1,
-              "default": "etc/certs/root-ca.pem",
+              "default": "/etc/wazuh-manager/certs/root-ca.pem",
               "description": "CA certificate that signs the listener certificate; served on GET /cacerts and pinned by enrollment tokens. Not the client-verification CA ('ca')."
             },
             "verification_mode": {
@@ -393,7 +393,7 @@
         "use_password": {
           "type": "boolean",
           "default": false,
-          "description": "Require the shared password (etc/authd.pass)."
+          "description": "Require the shared password (/etc/wazuh-manager/authd.pass)."
         },
         "ciphers": {
           "allOf": [
@@ -424,7 +424,7 @@
               "$ref": "#/definitions/path"
             }
           ],
-          "default": "etc/certs/remoted.pem",
+          "default": "/etc/wazuh-manager/certs/remoted.pem",
           "description": "Manager certificate (PEM)."
         },
         "ssl_manager_key": {
@@ -433,7 +433,7 @@
               "$ref": "#/definitions/path"
             }
           ],
-          "default": "etc/certs/remoted-key.pem",
+          "default": "/etc/wazuh-manager/certs/remoted-key.pem",
           "description": "Manager private key (PEM)."
         },
         "remote_enrollment": {

@@ -30,7 +30,7 @@ Three values are deliberately NOT configurable:
 
 ## Internal Options
 
-**Configuration file:** `/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`
+**Configuration file:** `/etc/wazuh-manager/wazuh-manager-internal-options.conf`
 
 **Internal Options prefix:** `wazuh_modules.inventory_sync_server_*`
 

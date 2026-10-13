@@ -231,7 +231,7 @@ jobs:
           TESTS_PATH=$GITHUB_WORKSPACE/.github/actions/test-install-components/
           if [ -z "${{ env.PACKAGE_NAME }}" ]; then echo "No package found matching the pattern!"; exit 1; fi
 
-          CONTAINER_ID=$(sudo docker run -d -v $TESTS_PATH/:/tests -v /tmp/:/packages -v /var/wazuh-manager:/var/wazuh-manager \
+          CONTAINER_ID=$(sudo docker run -d -v $TESTS_PATH/:/tests -v /tmp/:/packages -v /var/wazuh-manager:/var/wazuh-manager -v /etc/wazuh-manager:/etc/wazuh-manager \
             --entrypoint '/bin/sh' $CONTAINER_NAME:${{ env.TAG }} -c "tail -f /dev/null")
 
           sudo docker exec $CONTAINER_ID /tests/install_component.sh $PACKAGE_NAME manager
@@ -260,7 +260,7 @@ jobs:
           wazuh_group_name: wazuh-manager
           size_check: "false"
           ignore: "site-packages,/var/wazuh-manager/framework/python"
-          installation_directory: "/var/wazuh-manager"
+          installation_directory: "/var/wazuh-manager,/etc/wazuh-manager"
 
       - name: Check embedded Python version
         run: |

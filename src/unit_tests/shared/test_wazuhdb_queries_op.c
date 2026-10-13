@@ -2205,7 +2205,7 @@ void test_wdb_update_groups_error_max_path(void **state) {
     will_return(__wrap_opendir, 0);
     will_return(__wrap_closedir, 0);
     will_return(__wrap_strerror, "error");
-    expect_string(__wrap__merror, formatted_msg, "Couldn't open directory 'etc/shared': error.");
+    expect_string(__wrap__merror, formatted_msg, "Couldn't open directory '" SHAREDCFG_DIR "': error.");
 
     wdb_update_groups(SHAREDCFG_DIR, NULL);
 
@@ -2290,7 +2290,7 @@ void test_wdb_update_groups_error_adding_new_groups(void **state) {
     // Adding new groups
     will_return(__wrap_opendir, 0);
     will_return(__wrap_strerror, "error");
-    expect_string(__wrap__merror, formatted_msg, "Couldn't open directory 'etc/shared': error.");
+    expect_string(__wrap__merror, formatted_msg, "Couldn't open directory '" SHAREDCFG_DIR "': error.");
 
     ret = wdb_update_groups(SHAREDCFG_DIR, NULL);
 
@@ -2332,7 +2332,7 @@ void test_wdb_update_groups_success(void **state) {
     will_return(__wrap_opendir, 1);
     will_return(__wrap_closedir, 0);
     will_return(__wrap_readdir, dir_ent);
-    expect_string(__wrap_IsDir, file, "etc/shared/test_group");
+    expect_string(__wrap_IsDir, file, SHAREDCFG_DIR "/test_group");
     will_return(__wrap_IsDir, 0);
 
     //// Call to wdb_find_group

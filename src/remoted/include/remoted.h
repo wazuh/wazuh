@@ -31,9 +31,9 @@
  * remoted exits. The texts are pinned by src/unit_tests/remoted/test_secure.c; the test_https_cert_missing
  * integration test matches the key one. */
 #define REMOTED_TLS_FILES_HINT " The pair is issued at installation and is never reissued at start: " \
-    "if the files are present, check that they are owned by the service user and mode 0640, since " \
+    "if the files are present, check that they are root:wazuh-manager and mode 0640, since " \
     "remoted opens them after dropping privileges; otherwise provision remoted.pem, remoted-key.pem " \
-    "and root-ca.pem under etc/certs (see 'Credentials' in the installation guide)."
+    "and root-ca.pem under /etc/wazuh-manager/certs (see 'Credentials' in the installation guide)."
 #define REMOTED_TLS_FILES_MISSING_BOTH "Cannot start the HTTPS agent listener: the TLS certificate '%s' and " \
     "private key '%s' are missing or unreadable by the service user." REMOTED_TLS_FILES_HINT
 #define REMOTED_TLS_FILES_MISSING_CERT "Cannot start the HTTPS agent listener: the TLS certificate '%s' is " \

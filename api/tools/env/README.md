@@ -59,7 +59,7 @@ If a single manager container is needed:
    `docker compose build wazuh.base`
 2. Build the manager image from this folder: `docker build -t wazuh-manager --target server ./wazuh-manager`
 3. Export the variables of `.env` in your shell.
-4. Run it (it waits until `root-ca.pem` exists in `/var/wazuh-manager/etc/certs`, so provide the certificates, for
+4. Run it (it waits until `root-ca.pem` exists in `/etc/wazuh-manager/certs`, so provide the certificates, for
    example by mounting the `wazuh-certs` volume the compose project creates):
 
 ```bash
@@ -79,7 +79,7 @@ wazuh-manager \
 The entrypoint's third argument is the node role: `master` selects the XML overlay
 `wazuh-manager/xml/master_wazuh-manager_conf.xml`, and any other value (or none, as the compose workers pass) selects
 `worker_wazuh-manager_conf.xml`; the overlay is merged into
-`/var/wazuh-manager/etc/wazuh-manager.conf`.
+`/etc/wazuh-manager/wazuh-manager.conf`.
 
 If more agents are needed:
 `docker compose up --scale wazuh.agent=<number_of_agents>`

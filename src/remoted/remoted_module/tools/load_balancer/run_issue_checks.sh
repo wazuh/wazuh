@@ -140,7 +140,7 @@ fi
 # Copy the store INTO the probe container rather than next to this script: the container may
 # mount its /probe from anywhere, and writing to the wrong side leaves it reading a stale file.
 STORE_TMP="$(mktemp)"
-docker exec wazuh-master sh -c "cat /var/wazuh-manager/etc/enrollment_tokens.json" \
+docker exec wazuh-master sh -c "cat /etc/wazuh-manager/enrollment_tokens.json" \
     > "$STORE_TMP" 2>/dev/null || true
 if [[ -s "$STORE_TMP" ]]; then
     docker cp "$STORE_TMP" lab-probe:/probe/store.json >/dev/null 2>&1

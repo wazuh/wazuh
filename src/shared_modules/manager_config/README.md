@@ -1,6 +1,6 @@
-# manager_config — loader of the manager configuration (`etc/wazuh-manager.conf`)
+# manager_config — loader of the manager configuration (`/etc/wazuh-manager/wazuh-manager.conf`)
 
-Manager-only C++17 static library that turns `etc/wazuh-manager.conf` (strict XML) into the **effective
+Manager-only C++17 static library that turns `/etc/wazuh-manager/wazuh-manager.conf` (strict XML) into the **effective
 configuration** (parsed XML, validated against the embedded JSON Schema, defaults filled, cross-field
 semantics checked) and exposes it as canonical JSON to the C daemons (`manager_config_c.h`) and as a C++
 class (`manager_config.hpp`). It replaces the pseudo-XML `ReadConfig`/`os_xml` path and the "bypass"
@@ -58,8 +58,10 @@ the language).
   meaningful ("module default / inferred"); the required `cluster.key` and `indexer.hosts` have none either.
 - **Ports**: a disabled listener (`remote.legacy.enabled: no`, `auth.disabled: yes`) does not reserve its port;
   `remote.https.port` and `cluster.port` always do.
-- **Files**: `LoadOptions::checkFiles` (default on) resolves relative paths against `LoadOptions::home`; unit tests turn it
-  off or create the files under a temporary home. Only `remote.https.{certificate,key,ca,ca_certificate}` and
+- **Files**: `LoadOptions::checkFiles` (default on) resolves relative paths against `LoadOptions::home` and uses absolute
+  ones as they are. The certificate/key defaults are absolute (`/etc/wazuh-manager/certs/...`, the fixed configuration
+  directory, which a custom home never moves), so unit tests turn the checks off or name the files explicitly under a
+  temporary home; an operator-written relative path still means "relative to the manager home". Only `remote.https.{certificate,key,ca,ca_certificate}` and
   `auth.{ssl_agent_ca,ssl_manager_cert,ssl_manager_key}` are checked, and an empty value is skipped.
 - **`cluster.key` is required and has no default**: a well-known default key would be a shared secret; the installer
   always generates one. `cluster` and `indexer` are the only `required` properties at the document root:

@@ -45,7 +45,7 @@ ASIDE_SUFFIX = '.aside'
 
 # The published CA certificate is a copy of the installation CA: root-ca.pem itself is read by other
 # daemons, which must keep starting.
-INSTALLATION_CA = os.path.join(WAZUH_PATH, 'etc', 'certs', 'root-ca.pem')
+INSTALLATION_CA = os.path.join(os.sep, 'etc', 'wazuh-manager', 'certs', 'root-ca.pem')
 
 
 @pytest.fixture
@@ -56,7 +56,7 @@ def break_listener_tls_files(test_metadata):
     Nothing reissues a certificate at start, so whatever the mutation removes has to be put back by
     hand: `missing_certificate` moves the certificate aside (same directory), `unreadable_key` makes the
     private key root-owned 0600 so only the validator (root) can read it, and `unreadable_ca_certificate`
-    creates the case's `ca_certificate` as a root-owned 0600 copy of etc/certs/root-ca.pem. Ownership and
+    creates the case's `ca_certificate` as a root-owned 0600 copy of /etc/wazuh-manager/certs/root-ca.pem. Ownership and
     mode are read before touching anything and restored in `finally` (the copy is removed), whatever the
     test outcome.
     '''
@@ -124,7 +124,7 @@ def test_https_cert_missing(test_configuration, test_metadata, configure_local_i
     '''
     description: Check that the manager refuses to start when the HTTPS agent listener's certificate is
                  missing, and that the verdict tells the operator where the file is meant to come from.
-                 For this purpose, the test moves etc/certs/remoted.pem aside, starts the service and checks
+                 For this purpose, the test moves /etc/wazuh-manager/certs/remoted.pem aside, starts the service and checks
                  the manager log with a FileMonitor for the 1244 verdict wazuh-manager-control dumps there
                  (pointer '/remote/https/certificate', 'file not found' with the resolved path, and the
                  provisioning hint). No daemon starts: the validator runs before all of them.
@@ -167,8 +167,8 @@ def test_https_cert_unreadable_by_service_user(test_configuration, test_metadata
     '''
     description: Check that remoted refuses to start when a TLS file the HTTPS agent listener opens exists
                  but the service user cannot read it: the private key, or the CA certificate it publishes on
-                 /cacerts. For this purpose, the test makes etc/certs/remoted-key.pem root-owned 0600, or
-                 points ca_certificate at a root-owned 0600 copy of etc/certs/root-ca.pem -- the
+                 /cacerts. For this purpose, the test makes /etc/wazuh-manager/certs/remoted-key.pem root-owned 0600, or
+                 points ca_certificate at a root-owned 0600 copy of /etc/wazuh-manager/certs/root-ca.pem -- the
                  configuration validator, which runs as root, still passes -- starts the service and checks
                  the manager log with a FileMonitor for remoted's preflight error, which names the file and
                  says it is missing or unreadable by the service user. remoted exits instead of coming up

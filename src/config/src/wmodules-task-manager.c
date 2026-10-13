@@ -160,7 +160,7 @@ static void wm_task_manager_read_tunables(wm_task_manager *data) {
 }
 
 /* Default instance of the module (default_modules[] in wmodules.c): the configuration itself comes from
- * etc/wazuh-manager.conf through wm_task_manager_read_json(). `nodes` is unused (manager only). */
+ * /etc/wazuh-manager/wazuh-manager.conf through wm_task_manager_read_json(). `nodes` is unused (manager only). */
 int wm_task_manager_read(__attribute__((unused)) const OS_XML *xml, __attribute__((unused)) xml_node **nodes, wmodule *module) {
     wm_task_manager* data;
 
@@ -268,7 +268,7 @@ static void wm_task_manager_read_remoted(wm_task_manager *data) {
     os_free(remoted_config.https.ciphers);
 }
 
-/* Reader of the `task-manager` section of the effective document (etc/wazuh-manager.conf, see
+/* Reader of the `task-manager` section of the effective document (/etc/wazuh-manager/wazuh-manager.conf, see
  * mconf-config.h). `module` is the instance default_modules[] already initialised through
  * wm_task_manager_read(NULL, NULL, module). The schema guarantees non-negative integers; 0 keeps the
  * module default, as with the XML reader. */

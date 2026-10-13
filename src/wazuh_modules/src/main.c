@@ -47,7 +47,7 @@ int main(int argc, char **argv)
 #ifdef CLIENT
 #define WM_GETOPT_CONF ""
 #else
-#define WM_GETOPT_CONF "c:"   // -c <config>: manager configuration file (etc/wazuh-manager.conf)
+#define WM_GETOPT_CONF "c:"   // -c <config>: manager configuration file (/etc/wazuh-manager/wazuh-manager.conf)
 #endif
 #ifdef WAZUH_RUNTIME_USER
     const char *runtime_user = WAZUH_RUNTIME_USER;
@@ -235,7 +235,8 @@ void wm_help()
 
 void wm_setup()
 {
-    // Read the configuration (etc/wazuh-manager.conf on the manager, ossec.conf on the agent) and internal options
+    // Read the configuration (/etc/wazuh-manager/wazuh-manager.conf on the manager, ossec.conf on the
+    // agent) and internal options
 
     if (wm_config() < 0) {
         exit(EXIT_FAILURE);

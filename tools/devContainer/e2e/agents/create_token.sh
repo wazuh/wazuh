@@ -32,6 +32,8 @@ EOF
 }
 
 HOME_DIR="${WAZUH_MANAGER_HOME:-/var/wazuh-manager}"
+# The manager configuration directory is fixed: --home moves the home only, never the configuration.
+CONF_DIR="/etc/wazuh-manager"
 ENV_FILE=""; META=""; ADDRESS="host.docker.internal"; PORT=""; PREFIX=""; TTL="1d"; MAX_USES=""
 DESC=""; EMBED_CA=0; NO_PASSWORD=0
 while [ $# -gt 0 ]; do
@@ -83,8 +85,8 @@ mkdir -p "$(dirname "$ENV_FILE")"
 {
   echo "# written by create_token.sh $(date -u +%Y-%m-%dT%H:%M:%SZ) — delete after 'docker compose up'"
   echo "WAZUH_ENROLLMENT_TOKEN=$token"
-  if [ "$NO_PASSWORD" -eq 0 ] && [ -r "$HOME_DIR/etc/authd.pass" ]; then
-    echo "AUTHD_PASSWORD=$(head -n 1 "$HOME_DIR/etc/authd.pass" | tr -d '\r\n')"
+  if [ "$NO_PASSWORD" -eq 0 ] && [ -r "$CONF_DIR/authd.pass" ]; then
+    echo "AUTHD_PASSWORD=$(head -n 1 "$CONF_DIR/authd.pass" | tr -d '\r\n')"
   fi
 } > "$ENV_FILE"
 chmod 600 "$ENV_FILE"
@@ -100,7 +102,7 @@ if [ -n "$META" ]; then
     echo "ttl=$TTL max_uses=${MAX_USES:-unlimited} embed_ca=$EMBED_CA"
     echo "description=$DESC"
     echo "env_file=$ENV_FILE"
-    echo "password_included=$([ "$NO_PASSWORD" -eq 0 ] && [ -r "$HOME_DIR/etc/authd.pass" ] && echo yes || echo no)"
+    echo "password_included=$([ "$NO_PASSWORD" -eq 0 ] && [ -r "$CONF_DIR/authd.pass" ] && echo yes || echo no)"
     echo "--- wazuh-manager-authd stderr ---"
     printf '%s\n' "$meta_lines"
   } > "$META"

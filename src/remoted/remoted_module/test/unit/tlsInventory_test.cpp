@@ -88,8 +88,8 @@ namespace
     {
         TlsInventory inventory;
         inventory.listener =
-            TlsListener {*describeCertificate(pki.leaf.get()), at(kNow - 500), "etc/certs/remoted.pem"};
-        inventory.caCertificatePath = "etc/certs/root-ca.pem";
+            TlsListener {*describeCertificate(pki.leaf.get()), at(kNow - 500), "/etc/wazuh-manager/certs/remoted.pem"};
+        inventory.caCertificatePath = "/etc/wazuh-manager/certs/root-ca.pem";
         inventory.ca.entries.push_back(CaCertificateEntry {*describeCertificate(pki.ca.get()), true});
         inventory.ca.entries.push_back(CaCertificateEntry {*describeCertificate(pki.other.get()), false});
         inventory.ca.certificates = 2;
@@ -125,13 +125,13 @@ TEST(TlsInventory, RendersTheIssueDocument)
     EXPECT_GT(listener["seconds_until_expiry"].get<std::int64_t>(), 0);
     EXPECT_EQ(listener["fingerprint"], leaf.fingerprint);
     EXPECT_EQ(listener["serial"], "0x01");
-    EXPECT_EQ(listener["path"], "etc/certs/remoted.pem");
+    EXPECT_EQ(listener["path"], "/etc/wazuh-manager/certs/remoted.pem");
     // The one stale thing in the document, dated: the leaf is fixed until the next start().
     EXPECT_EQ(listener["loaded_at"], "2026-09-15T09:51:40Z");
     EXPECT_EQ(listener["loaded_at_ts"], kNow - 500);
 
     const Json& bundle = document["ca_bundle"];
-    EXPECT_EQ(bundle["path"], "etc/certs/root-ca.pem");
+    EXPECT_EQ(bundle["path"], "/etc/wazuh-manager/certs/root-ca.pem");
     EXPECT_EQ(bundle["publication"], 0);
     EXPECT_EQ(bundle["publication_vouched"], false);
     EXPECT_EQ(bundle["content_sha256"], std::string(64, 'a'));

@@ -74,13 +74,13 @@ DisableAuthd()
     echo "    <ciphers>TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256</ciphers>" >> $NEWCONFIG
     echo "    <!-- <ssl_agent_ca></ssl_agent_ca> -->" >> $NEWCONFIG
     echo "    <ssl_verify_host>no</ssl_verify_host>" >> $NEWCONFIG
-    # Unified manager certificate (see CheckListenerCerts()): authd does not own a cert/key pair
+    # Unified manager certificate (see SetCertsOwnership()): authd does not own a cert/key pair
     # of its own, so even in this <disabled>yes</disabled> block these point at remoted's,
     # keeping the value valid in the (rare) case an operator later flips <disabled> back to "no"
     # by hand instead of regenerating the whole file. Same custom-certificate override as the
     # enabled path (see WriteAuthd's AUTH_TEMPLATE substitution above), for the same reason.
-    echo "    <ssl_manager_cert>${WAZUH_REMOTE_HTTPS_CERTIFICATE:-etc/certs/remoted.pem}</ssl_manager_cert>" >> $NEWCONFIG
-    echo "    <ssl_manager_key>${WAZUH_REMOTE_HTTPS_KEY:-etc/certs/remoted-key.pem}</ssl_manager_key>" >> $NEWCONFIG
+    echo "    <ssl_manager_cert>${WAZUH_REMOTE_HTTPS_CERTIFICATE:-${CONF_DIR}/certs/remoted.pem}</ssl_manager_cert>" >> $NEWCONFIG
+    echo "    <ssl_manager_key>${WAZUH_REMOTE_HTTPS_KEY:-${CONF_DIR}/certs/remoted-key.pem}</ssl_manager_key>" >> $NEWCONFIG
     echo "  </auth>" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 }
@@ -164,73 +164,31 @@ InstallSecurityConfigurationAssessmentFiles()
 }
 
 ##########
-# CheckListenerCerts()
+# SetCertsOwnership()
 ##########
-# The certificate and key of the HTTPS agent listener (remoted_module) are issued by the
-# credential resolver (bin/wazuh-manager-resolve-credentials --install) later in this same
-# installation, from the CA in $WAZUH_CA_DIR, or deployed by the operator beforehand; authd's
-# <ssl_manager_cert>/<ssl_manager_key> point at the same pair (see auth.template and
-# DisableAuthd() above), so both listeners present one manager identity. This step only
-# creates etc/certs and fixes the ownership of whatever is already there (remoted opens the
-# pair after dropping privileges, so ${WAZUH_USER} owns it); it prints nothing when the pair
-# is missing (see the note at the end of the function): wazuh-manager-control refuses to
-# start until it exists. Manager only -- the listener does not exist on agents. Custom paths supplied
-# through the WAZUH_REMOTE_HTTPS_CERTIFICATE / WAZUH_REMOTE_HTTPS_KEY installation
-# variables are honoured (relative paths resolve against the installation directory,
-# as the configuration validator does).
-CheckListenerCerts()
+# ${ETC_DIR}/certs holds the manager's TLS material: the agent listener pair (remoted and authd),
+# the Server API pair, the manager CA and the indexer trust material. The credential resolver
+# (bin/wazuh-manager-resolve-credentials --install) issues or imports them later in this same
+# installation; the operator may also stage them beforehand. Nothing writes here at run time, so the
+# directory and every file in it are root's, readable through ${WAZUH_GROUP}: the daemons and the
+# Server API read them after dropping privileges and cannot replace them. Applied unconditionally
+# so re-runs and upgrades correct earlier ownerships. Manager only.
+#
+# No notice when a pair is absent: the resolver reports for itself, and the service then refuses to
+# start naming the file.
+SetCertsOwnership()
 {
     if [ "X${INSTYPE}" = "Xagent" ]; then
         return
     fi
 
-    # Unified certificate directory: root-owned and sticky (drwxrwx--T), shared with the
-    # root-owned indexer trust material (see SetIndexerCertsOwnership()).
-    ${INSTALL} -d -m 1770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/certs
-
-    # Owned by ${WAZUH_USER}: remoted and the Server API open their certificates and keys
-    # after dropping privileges. Re-applied unconditionally so upgrades from installs that left
-    # them root-owned also get corrected.
-    for CERT_FILE in remoted.pem remoted-key.pem apid.pem apid-key.pem; do
-        if [ -f "${INSTALLDIR}/etc/certs/${CERT_FILE}" ] && [ ! -L "${INSTALLDIR}/etc/certs/${CERT_FILE}" ]; then
-            chown -h ${WAZUH_USER}:${WAZUH_GROUP} ${INSTALLDIR}/etc/certs/${CERT_FILE}
-            chmod 640 ${INSTALLDIR}/etc/certs/${CERT_FILE}
-        fi
-    done
-
-    # No notice when a pair is absent. The credential resolver issues it later in this same
-    # installation, from whatever is in $WAZUH_CA_DIR -- and only there, never at a service start
-    # or an upgrade. It reports for itself when it could not, and the service then refuses to start
-    # on the configuration validator's (1244) verdict naming the file, which is where someone
-    # looks. A notice here fires before the step that resolves the very state it describes, and
-    # warning about a state that is about to be resolved is what trains operators to ignore
-    # installer output.
-}
-
-##########
-# SetIndexerCertsOwnership()
-##########
-# etc/certs holds two kinds of material: the certificates the service daemons read after
-# dropping privileges (the externally provisioned listener pair, see CheckListenerCerts(), and
-# the Server API pair the installer issues -- owned by ${WAZUH_USER}) and the indexer trust
-# material provisioned externally (root-owned, the manager only reads it). The directory is
-# root-owned and sticky so the daemons can write their own files but cannot replace the
-# root-owned indexer material; the indexer certs are group-readable by ${WAZUH_GROUP} so the
-# engine and the framework read them after dropping privileges. Applied unconditionally so
-# upgrades and re-runs correct earlier ownerships.
-SetIndexerCertsOwnership()
-{
-    if [ "X${INSTYPE}" = "Xagent" ]; then
-        return
-    fi
-
-    ${INSTALL} -d -m 1770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/certs
-    chown root:${WAZUH_GROUP} ${INSTALLDIR}/etc/certs
-    chmod 1770 ${INSTALLDIR}/etc/certs
-    for CERT_FILE in root-ca.pem indexer-connector.pem indexer-connector-key.pem; do
-        if [ -f "${INSTALLDIR}/etc/certs/${CERT_FILE}" ] && [ ! -L "${INSTALLDIR}/etc/certs/${CERT_FILE}" ]; then
-            chown -h root:${WAZUH_GROUP} ${INSTALLDIR}/etc/certs/${CERT_FILE}
-            chmod 640 ${INSTALLDIR}/etc/certs/${CERT_FILE}
+    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${ETC_DIR}/certs
+    chown root:${WAZUH_GROUP} ${ETC_DIR}/certs
+    chmod 0750 ${ETC_DIR}/certs
+    for CERT_FILE in ${ETC_DIR}/certs/*.pem; do
+        if [ -f "${CERT_FILE}" ] && [ ! -L "${CERT_FILE}" ]; then
+            chown -h root:${WAZUH_GROUP} "${CERT_FILE}"
+            chmod 640 "${CERT_FILE}"
         fi
     done
 }
@@ -711,9 +669,9 @@ WriteRemote()
     echo "      <port>${WAZUH_REMOTE_HTTPS_PORT:-1517}</port>" >> $NEWCONFIG
     echo "      <bind_addr>${WAZUH_REMOTE_HTTPS_BIND_ADDR:-0.0.0.0}</bind_addr>" >> $NEWCONFIG
     echo "      <global_prefix>${WAZUH_REMOTE_HTTPS_GLOBAL_PREFIX:-/wazuh-manager/}</global_prefix>" >> $NEWCONFIG
-    echo "      <certificate>${WAZUH_REMOTE_HTTPS_CERTIFICATE:-etc/certs/remoted.pem}</certificate>" >> $NEWCONFIG
-    echo "      <key>${WAZUH_REMOTE_HTTPS_KEY:-etc/certs/remoted-key.pem}</key>" >> $NEWCONFIG
-    echo "      <ca_certificate>${WAZUH_REMOTE_HTTPS_CA_CERTIFICATE:-etc/certs/root-ca.pem}</ca_certificate>" >> $NEWCONFIG
+    echo "      <certificate>${WAZUH_REMOTE_HTTPS_CERTIFICATE:-${CONF_DIR}/certs/remoted.pem}</certificate>" >> $NEWCONFIG
+    echo "      <key>${WAZUH_REMOTE_HTTPS_KEY:-${CONF_DIR}/certs/remoted-key.pem}</key>" >> $NEWCONFIG
+    echo "      <ca_certificate>${WAZUH_REMOTE_HTTPS_CA_CERTIFICATE:-${CONF_DIR}/certs/root-ca.pem}</ca_certificate>" >> $NEWCONFIG
     if [ -n "${WAZUH_REMOTE_HTTPS_CA}" ]; then
         echo "      <ca>${WAZUH_REMOTE_HTTPS_CA}</ca>" >> $NEWCONFIG
     fi
@@ -794,12 +752,12 @@ WriteManager()
     # Writting auth configuration
     if [ "X${AUTHD}" = "Xyes" ]; then
         # Same custom-certificate override WriteRemote()'s <https> block already honors (see
-        # CheckListenerCerts() above): authd's <ssl_manager_cert>/<ssl_manager_key> must point
+        # SetCertsOwnership() above): authd's <ssl_manager_cert>/<ssl_manager_key> must point
         # at whatever file the manager's HTTPS listener actually loads, or authd fails to start
         # (ENOENT) whenever a custom certificate is supplied -- auth.template's cert paths used
-        # to stay hardcoded to the default etc/certs/remoted.pem regardless.
-        WAZUH_AUTHD_SSL_MANAGER_CERT="${WAZUH_REMOTE_HTTPS_CERTIFICATE:-etc/certs/remoted.pem}"
-        WAZUH_AUTHD_SSL_MANAGER_KEY="${WAZUH_REMOTE_HTTPS_KEY:-etc/certs/remoted-key.pem}"
+        # to stay hardcoded to the default certs/remoted.pem regardless.
+        WAZUH_AUTHD_SSL_MANAGER_CERT="${WAZUH_REMOTE_HTTPS_CERTIFICATE:-${CONF_DIR}/certs/remoted.pem}"
+        WAZUH_AUTHD_SSL_MANAGER_KEY="${WAZUH_REMOTE_HTTPS_KEY:-${CONF_DIR}/certs/remoted-key.pem}"
         sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" \
             -e "s|\${WAZUH_AUTHD_SSL_MANAGER_CERT}|$WAZUH_AUTHD_SSL_MANAGER_CERT|g" \
             -e "s|\${WAZUH_AUTHD_SSL_MANAGER_KEY}|$WAZUH_AUTHD_SSL_MANAGER_KEY|g" \
@@ -836,6 +794,14 @@ InstallCommon()
   elif [ ${INSTYPE} = 'agent' ]; then
       WAZUH_CONTROL_SRC='./init/wazuh-client.sh'
       WAZUH_CONF_SRC='../etc/ossec-agent.conf'
+  fi
+
+  # The configuration directory: fixed for the manager (CONF_DIR, see shared.sh), under the
+  # installation directory for the agent.
+  if [ ${INSTYPE} = 'manager' ]; then
+      ETC_DIR="${CONF_DIR}"
+  else
+      ETC_DIR="${INSTALLDIR}/etc"
   fi
 
   if [ ${INSTYPE} = 'manager' ]; then
@@ -1174,19 +1140,21 @@ InstallCommon()
     ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/wodles
   fi
 
-  ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc
+  ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${ETC_DIR}
 
-    # Only the agent keeps copies of the host's time zone (localtime, TIMEZONE): no manager daemon chroots.
-    if [ "X${INSTYPE}" = "Xagent" ] && [ -f /etc/localtime ]
+  # The manager reads the system's time zone directly; only the agent keeps its copy.
+  if [ "X${INSTYPE}" = "Xagent" ]; then
+    if [ -f /etc/localtime ]
     then
          ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} /etc/localtime ${INSTALLDIR}/etc
     fi
 
-  ${INSTALL} -d -m 1770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/tmp
-
-    if [ "X${INSTYPE}" = "Xagent" ] && [ -f /etc/TIMEZONE ]; then
+    if [ -f /etc/TIMEZONE ]; then
          ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} /etc/TIMEZONE ${INSTALLDIR}/etc/
     fi
+  fi
+
+  ${INSTALL} -d -m 1770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/tmp
 
     if [ "X${INSTYPE}" = "Xagent" ]; then
         ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} -b ../etc/internal_options.conf ${INSTALLDIR}/etc/
@@ -1195,25 +1163,25 @@ InstallCommon()
             ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} ../etc/local_internal_options.conf ${INSTALLDIR}/etc/local_internal_options.conf
         fi
     else
-        if [ ! -f ${INSTALLDIR}/etc/wazuh-manager-internal-options.conf ]; then
-            ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} ../etc/wazuh-manager-internal-options.conf ${INSTALLDIR}/etc/wazuh-manager-internal-options.conf
+        if [ ! -f ${ETC_DIR}/wazuh-manager-internal-options.conf ]; then
+            ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} ../etc/wazuh-manager-internal-options.conf ${ETC_DIR}/wazuh-manager-internal-options.conf
         fi
     fi
 
     if [ "X${INSTYPE}" = "Xmanager" ]; then
         # JSON Schema of etc/wazuh-manager.conf: product (always refreshed), consumed by the Python framework.
-        ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} shared_modules/manager_config/schema/wazuh-manager.schema.json ${INSTALLDIR}/etc/wazuh-manager.schema.json
+        ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} shared_modules/manager_config/schema/wazuh-manager.schema.json ${ETC_DIR}/wazuh-manager.schema.json
     fi
 
-    if [ ! -f ${INSTALLDIR}/etc/client.keys ]; then
+    if [ ! -f ${ETC_DIR}/client.keys ]; then
         if [ "X${INSTYPE}" = "Xagent" ]; then
-            ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} /dev/null ${INSTALLDIR}/etc/client.keys
+            ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} /dev/null ${ETC_DIR}/client.keys
         else
-            ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} /dev/null ${INSTALLDIR}/etc/client.keys
+            ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} /dev/null ${ETC_DIR}/client.keys
         fi
     fi
 
-    if [ ! -f ${INSTALLDIR}/etc/${WAZUH_CONF} ]; then
+    if [ ! -f ${ETC_DIR}/${WAZUH_CONF} ]; then
         if [ ! -f ../etc/wazuh.mc ]; then
             echo "WARNING: missing ../etc/wazuh.mc. Regenerating configuration template."
             if ! ./init/gen_wazuh.sh conf "${INSTYPE}" "${DIST_NAME}" "${DIST_VER}.${DIST_SUBVER}" "${INSTALLDIR}" > ../etc/wazuh.mc; then
@@ -1226,25 +1194,25 @@ InstallCommon()
             if [ "X${INSTYPE}" = "Xmanager" ]; then
                 # The generated etc/wazuh-manager.conf must validate against the embedded schema before it is
                 # installed (file existence is not checked: the certificates are issued later in the installation by
-                # the credential resolver, or deployed by the operator -- see CheckListenerCerts()).
+                # the credential resolver, or deployed by the operator -- see SetCertsOwnership()).
                 if ! build/bin/wazuh-manager-conf --skip-file-checks validate -f ../etc/wazuh.mc; then
                     echo "ERROR: the generated ${WAZUH_CONF} is not a valid manager configuration."
                     exit 1
                 fi
             fi
-            ${INSTALL} -m 0660 -o root -g ${WAZUH_GROUP} ../etc/wazuh.mc ${INSTALLDIR}/etc/${WAZUH_CONF}
+            ${INSTALL} -m 0660 -o root -g ${WAZUH_GROUP} ../etc/wazuh.mc ${ETC_DIR}/${WAZUH_CONF}
         else
             if [ "X${INSTYPE}" = "Xmanager" ]; then
                 echo "ERROR: unable to generate ${WAZUH_CONF}; ${WAZUH_CONF_SRC} is a template, not an installable configuration."
                 exit 1
             fi
             echo "WARNING: unable to generate ${WAZUH_CONF} with desired configurations, using default configurations from ${WAZUH_CONF_SRC}"
-            ${INSTALL} -m 0660 -o root -g ${WAZUH_GROUP} ${WAZUH_CONF_SRC} ${INSTALLDIR}/etc/${WAZUH_CONF}
+            ${INSTALL} -m 0660 -o root -g ${WAZUH_GROUP} ${WAZUH_CONF_SRC} ${ETC_DIR}/${WAZUH_CONF}
         fi
     fi
 
 
-  ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/shared
+  ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${ETC_DIR}/shared
   if [ "X${INSTYPE}" = "Xagent" ]; then
     # Active response scripts and helpers are agent runtime assets.
     ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/active-response
@@ -1273,7 +1241,7 @@ InstallCommon()
 installIndexerTemplates()
 {
     local SRC_DIR="external/indexer-plugins"
-    local DEST_DIR="${INSTALLDIR}/etc/indexer-plugins"
+    local DEST_DIR="${ETC_DIR}/indexer-plugins"
     local STREAMS="metrics-agents.json metrics-comms.json metrics-normalization.json"
 
     if [ ! -d "${SRC_DIR}" ]; then
@@ -1351,7 +1319,7 @@ installEngineStore()
     echo "Engine store installed successfully."
 
     # Copy default output configuration files
-    local OUTPUTS_PATH=${INSTALLDIR}/etc/outputs
+    local OUTPUTS_PATH=${ETC_DIR}/outputs
     local DEFAULT_OUTPUTS_PATH=${OUTPUTS_PATH}/default
     ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${DEFAULT_OUTPUTS_PATH}
     cp "${ENGINE_SRC_PATH}/ruleset/outputs/"*.yml "${DEFAULT_OUTPUTS_PATH}/"
@@ -1531,8 +1499,12 @@ InstallLocal()
 
 TransferShared()
 {
-    rm -f ${INSTALLDIR}/etc/shared/merged.mg
-    find ${INSTALLDIR}/etc/shared -maxdepth 1 -type f -exec mv -f {} ${INSTALLDIR}/etc/shared/default \;
+    rm -f ${ETC_DIR}/shared/merged.mg
+    for SHARED_FILE in ${ETC_DIR}/shared/* ${ETC_DIR}/shared/.[!.]* ${ETC_DIR}/shared/..?*; do
+        if [ -f "${SHARED_FILE}" ] && [ ! -L "${SHARED_FILE}" ]; then
+            mv -f "${SHARED_FILE}" ${ETC_DIR}/shared/default
+        fi
+    done
 }
 
 InstallServer()
@@ -1585,7 +1557,7 @@ InstallServer()
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/cluster
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs/cluster
 
-    ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/shared/default
+    ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${ETC_DIR}/shared/default
 
     TransferShared
 
@@ -1600,16 +1572,15 @@ InstallServer()
 
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/backup/db
 
-    if [ ! -f ${INSTALLDIR}/etc/shared/default/agent.conf ]; then
-        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ../etc/agent.conf ${INSTALLDIR}/etc/shared/default
+    if [ ! -f ${ETC_DIR}/shared/default/agent.conf ]; then
+        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ../etc/agent.conf ${ETC_DIR}/shared/default
     fi
 
-    if [ ! -f ${INSTALLDIR}/etc/shared/agent-template.conf ]; then
-        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ../etc/agent.conf ${INSTALLDIR}/etc/shared/agent-template.conf
+    if [ ! -f ${ETC_DIR}/shared/agent-template.conf ]; then
+        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ../etc/agent.conf ${ETC_DIR}/shared/agent-template.conf
     fi
 
-    CheckListenerCerts
-    SetIndexerCertsOwnership
+    SetCertsOwnership
 
     # authd's durable state: the agent deletions whose indexer purge is still pending
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/authd

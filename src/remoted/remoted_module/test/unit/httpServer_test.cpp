@@ -256,10 +256,10 @@ TEST(HttpServerConfigTest, DefaultsWhenEmpty)
     EXPECT_EQ(config.maxInFlightBytes, 256U * 1024U * 1024U);
     EXPECT_EQ(config.maxParallelConnections, 256U);
     EXPECT_EQ(config.maxHandshakesPerSource, 32U);
-    EXPECT_EQ(config.certificatePath, "etc/certs/remoted.pem");
-    EXPECT_EQ(config.privateKeyPath, "etc/certs/remoted-key.pem");
-    EXPECT_EQ(config.caPath, "etc/certs/root-ca.pem");
-    EXPECT_EQ(config.caCertificatePath, "etc/certs/root-ca.pem");
+    EXPECT_EQ(config.certificatePath, "/etc/wazuh-manager/certs/remoted.pem");
+    EXPECT_EQ(config.privateKeyPath, "/etc/wazuh-manager/certs/remoted-key.pem");
+    EXPECT_EQ(config.caPath, "/etc/wazuh-manager/certs/root-ca.pem");
+    EXPECT_EQ(config.caCertificatePath, "/etc/wazuh-manager/certs/root-ca.pem");
     EXPECT_EQ(config.ciphers, "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256");
     EXPECT_EQ(config.verificationMode, ClientVerificationMode::None);
     // Unset, not Disabled: buildHttpServerConfig() intentionally leaves this distinct
@@ -277,8 +277,8 @@ TEST(HttpServerConfigTest, CaCertificateDefaultsToRootCa)
     // listener certificate defaults to the installer's root CA, independently of `ca` (the
     // client-verification bundle), which keeps its own default.
     const auto config = buildHttpServerConfig(zeroedConfig());
-    EXPECT_EQ(config.caCertificatePath, "etc/certs/root-ca.pem");
-    EXPECT_EQ(config.caPath, "etc/certs/root-ca.pem");
+    EXPECT_EQ(config.caCertificatePath, "/etc/wazuh-manager/certs/root-ca.pem");
+    EXPECT_EQ(config.caPath, "/etc/wazuh-manager/certs/root-ca.pem");
 }
 
 TEST(HttpServerConfigTest, CaCertificateOverrideFromConfig)
@@ -288,7 +288,7 @@ TEST(HttpServerConfigTest, CaCertificateOverrideFromConfig)
     // ca_path deliberately left empty: the two fields must not leak into each other.
     const auto config = buildHttpServerConfig(raw);
     EXPECT_EQ(config.caCertificatePath, "/custom/listener-ca.pem");
-    EXPECT_EQ(config.caPath, "etc/certs/root-ca.pem");
+    EXPECT_EQ(config.caPath, "/etc/wazuh-manager/certs/root-ca.pem");
 }
 
 TEST(HttpServerConfigTest, InFlightBytesStructWinsElseDefault)

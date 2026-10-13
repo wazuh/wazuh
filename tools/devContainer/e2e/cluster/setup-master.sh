@@ -8,8 +8,11 @@ set -euo pipefail
 # ------------------------------------------------------------------------------
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 
-CONF="${WAZUH_MANAGER_CONF:-/var/wazuh-manager/etc/wazuh-manager.conf}"
-BIN="$(dirname "$CONF")/../bin"
+# The manager configuration directory is fixed: it lives outside the installation home.
+CONF_DIR="/etc/wazuh-manager"
+CONF="${WAZUH_MANAGER_CONF:-${CONF_DIR}/wazuh-manager.conf}"
+WAZUH_MANAGER_HOME="${WAZUH_MANAGER_HOME:-/var/wazuh-manager}"
+BIN="${WAZUH_MANAGER_HOME}/bin"
 MASTER_NODE_NAME="${MASTER_NODE_NAME:-master}"
 ENV_FILE="${SCRIPT_DIR}/.env"
 
@@ -97,7 +100,7 @@ fi
 # status exits 1 when any daemon is down: read its output apart from its exit code.
 STATUS="$("${BIN}/wazuh-manager-control" status)" || true
 if ! grep -q '^wazuh-manager-clusterd is running' <<<"$STATUS"; then
-  echo "ERROR: wazuh-manager-clusterd is not running after the restart; see $(dirname "$CONF")/../logs/wazuh-manager.log" >&2
+  echo "ERROR: wazuh-manager-clusterd is not running after the restart; see ${WAZUH_MANAGER_HOME}/logs/wazuh-manager.log" >&2
   echo "       The previous config is in ${CONF}.bak." >&2
   exit 1
 fi

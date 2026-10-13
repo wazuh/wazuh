@@ -14,7 +14,7 @@
 
 /**
  * @file ca_bundle.hpp
- * @brief The CA bundle (`etc/certs/root-ca.pem`) as a value: its certificates, its publication
+ * @brief The CA bundle (`/etc/wazuh-manager/certs/root-ca.pem`) as a value: its certificates, its publication
  *        block, and the guards that decide whether it may be vouched for.
  *
  * One library so the manager and the `wazuh-manager-certs` tool answer the questions about that

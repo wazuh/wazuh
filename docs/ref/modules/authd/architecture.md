@@ -59,7 +59,7 @@ thread instead of being called inline.
 | Remote server | any node with both `remote_enrollment` and `legacy_enrollment` | TLS enrollment on port 1515 |
 | Local server | every node | `queue/sockets/auth.sock`: `add`, `remove`, `get` — for the server API and for remoted's `/enroll` — plus `token_create`, `token_list`, `token_revoke` and `token_purge` for the token CLI and the API |
 | Writer | master only | persists `client.keys`, removes Wazuh DB rows, records each deletion as a Task Manager task, and settles the credentials the [identity journal](#the-identity-journal) still owes — waking on its own clock while any remain |
-| authpass watcher | workers with `use_password` | re-reads `etc/authd.pass` as the cluster syncs it down from the master |
+| authpass watcher | workers with `use_password` | re-reads `/etc/wazuh-manager/authd.pass` as the cluster syncs it down from the master |
 
 ## The two stores
 
@@ -71,7 +71,7 @@ flowchart TB
     G["authd generates a key"] --> MEM
     MEM[("in-memory keystore\ncurrent from the instant the key exists")]
     MEM -->|"answers the enrolling agent"| AG[Agent]
-    MEM -.->|"the writer copies it\nCAN LAG"| CK[("etc/client.keys")]
+    MEM -.->|"the writer copies it\nCAN LAG"| CK[("/etc/wazuh-manager/client.keys")]
     CK --> REM["remoted\nauthenticates every agent request"]
     MEM --> AUT["authd itself\nduplicates, agent limit, force rules"]
 ```
@@ -79,7 +79,7 @@ flowchart TB
 - **The in-memory keystore** (`keys`, guarded by `mutex_keys`) is authoritative *inside* authd. It is
   where `OS_AddNewAgent()` assigns the id, where duplicate checks look, and where the key the agent
   receives comes from. It is current the moment a key exists.
-- **`etc/client.keys`** is how the rest of the manager finds out. Only the writer thread rewrites it,
+- **`/etc/wazuh-manager/client.keys`** is how the rest of the manager finds out. Only the writer thread rewrites it,
   and **remoted authenticates agents by reading it** — so an agent whose key has not reached the file
   yet is rejected as unknown (`401`), even though the key it holds is perfectly valid.
 
@@ -316,7 +316,7 @@ Because of that, on a worker the window between "the agent has its key" and "rem
 property of the cluster sync interval, not of authd's own speed. The `<force>` settings are ignored on
 a worker — the master decides — and a worker that cannot reach the master answers `9016`.
 
-The same sync carries `etc/enrollment_tokens.json`, with the same asymmetry: the master alone mints,
+The same sync carries `/etc/wazuh-manager/enrollment_tokens.json`, with the same asymmetry: the master alone mints,
 consumes and revokes (`token_create`/`token_revoke` answer `9015` on a worker; `token_list` reads the
 replica), and `w_request_agent_add_clustered()` forwards `token_id` and `reenroll` with the `add` so the
 master consumes the use or verifies the bearer, then relays the master's `reenroll_secret` to the agent.
@@ -325,7 +325,7 @@ the sync interval; the master's re-check on `add` is what makes a revocation imm
 
 ## The enrollment password
 
-With `use_password` enabled, `etc/authd.pass` holds the shared secret. The master generates one at
+With `use_password` enabled, `/etc/wazuh-manager/authd.pass` holds the shared secret. The master generates one at
 start if none exists and `remote_enrollment` is on, and logs that it did: `w_generate_random_pass()` takes 32 bytes from the
 CSPRNG (`RAND_bytes`) and hex-encodes them to 64 characters, the same shape and the same fail-closed
 rule as the agent key (`OS_NewAgentKey()`) — a CSPRNG failure aborts the start rather than falling
@@ -509,13 +509,13 @@ held their ids before, in the indices they do not resynchronise themselves.
 
 | Path | Contents |
 |---|---|
-| `etc/client.keys` | one line per agent: `<id> <name> <ip> <key>`; rewritten whole, never edited in place. A removed agent is kept as a `!name` line unless `<purge>` is `yes` |
+| `/etc/wazuh-manager/client.keys` | one line per agent: `<id> <name> <ip> <key>`; rewritten whole, never edited in place. A removed agent is kept as a `!name` line unless `<purge>` is `yes` |
 | `queue/agents-timestamp` | per-agent registration timestamp |
-| `etc/authd.pass` | enrollment password |
+| `/etc/wazuh-manager/authd.pass` | enrollment password |
 | `queue/authd/pending-purges` | deletions between phase 1 and phase 4, plus the highest id and sequence ever handed out. Normally empty |
 | `queue/authd/pending-identities` | credentials handed out but not yet committed to `global.db` — see [the identity journal](#the-identity-journal). Mode `0640`, one JSON line per transition, **in the clear**. Normally empty; a persistent nonempty file warrants checking database writes and journal-compaction errors |
 | `queue/rids/<id>` | per-agent anti-replay counters, removed with the agent |
-| `etc/enrollment_tokens.json` | the enrollment token store, `{"version":1,"tokens":[…]}`: per token `id`, `secret` (`null` without credential), `adr`, `pin`/`ca`, `created`, `expires`, `max_uses`, `uses`, `revoked`, `description`. Rewritten whole by the master (temporary file, `0640`, rename); a worker's copy comes from the cluster sync, and a momentarily missing file keeps the previous replica. Bounded at 5000 tokens and 7 MiB (one MiB below what remoted's replica accepts), and pruned by `token_purge` — which removes entries, unlike `token_revoke`, and is what a mint into a full store runs by itself before refusing. The **document** is read all or nothing (bad JSON, another `version`, no `tokens` array, or past either bound: the replica already loaded is kept); a single **entry** that cannot be parsed is dropped with a warning and the rest of the file loads, so one bad record cannot stop a node from honouring any token (issue #39133) |
+| `/etc/wazuh-manager/enrollment_tokens.json` | the enrollment token store, `{"version":1,"tokens":[…]}`: per token `id`, `secret` (`null` without credential), `adr`, `pin`/`ca`, `created`, `expires`, `max_uses`, `uses`, `revoked`, `description`. Rewritten whole by the master (temporary file, `0640`, rename); a worker's copy comes from the cluster sync, and a momentarily missing file keeps the previous replica. Bounded at 5000 tokens and 7 MiB (one MiB below what remoted's replica accepts), and pruned by `token_purge` — which removes entries, unlike `token_revoke`, and is what a mint into a full store runs by itself before refusing. The **document** is read all or nothing (bad JSON, another `version`, no `tokens` array, or past either bound: the replica already loaded is kept); a single **entry** that cannot be parsed is dropped with a warning and the rest of the file loads, so one bad record cannot stop a node from honouring any token (issue #39133) |
 
 The re-enrollment secret is retained in `agent.reenroll_secret` in `global.db` and temporarily in
 `pending-identities`; it never appears in `client.keys`.

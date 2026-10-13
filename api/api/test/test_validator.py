@@ -69,7 +69,7 @@ from wazuh import WazuhError
         ("sort param-", _sort_param),
         ("search param3", _search_param),
         # paths
-        ("/var/wazuh-manager/etc/internal_options", _paths),
+        ("/etc/wazuh-manager/internal_options", _paths),
         ("correct.wpk", _wpk_path),
         # version
         ("v4.4.0", _wazuh_version),
@@ -123,7 +123,7 @@ def test_validation_check_exp_ok(exp, regex_name):
         ("12x", _timeframe_type),
         ("\u0661d", _timeframe_type),
         # paths
-        ("/var/wazuh-manager/etc/internal_options$", _paths),
+        ("/etc/wazuh-manager/internal_options$", _paths),
         ("incorrect.txt", _wpk_path),
         (".wpk", _wpk_path),
         # version

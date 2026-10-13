@@ -122,7 +122,7 @@ int main(int argc, char ** argv)
     // Allocating memory for configuration structures and setting default values
     wdb_init_conf();
 
-    // Read the manager configuration (etc/wazuh-manager.conf): loaded once, then the `wdb` section as cJSON.
+    // Read the manager configuration (/etc/wazuh-manager/wazuh-manager.conf): loaded once, then the `wdb` section as cJSON.
     if (w_mconf_load(cfg) < 0) {
         merror_exit("Invalid configuration block for Wazuh-DB.");
     }

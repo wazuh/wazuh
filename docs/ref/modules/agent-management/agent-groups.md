@@ -12,7 +12,7 @@ groups at once, up to 128.
 ## How it works
 
 1. The administrator creates a group (API or `agent_groups`), which creates
-   `/var/wazuh-manager/etc/shared/<GROUP_NAME>/` with a copy of `etc/shared/agent-template.conf` as its
+   `/etc/wazuh-manager/shared/<GROUP_NAME>/` with a copy of `/etc/wazuh-manager/shared/agent-template.conf` as its
    `agent.conf`.
 2. Agents are assigned to the group; the assignment is stored by `wazuh-manager-db`.
 3. `wazuh-manager-remoted` builds a `merged.mg` file from every file of each group (and of each
@@ -23,7 +23,7 @@ groups at once, up to 128.
 ## Group directory structure
 
 ```text
-/var/wazuh-manager/etc/shared/
+/etc/wazuh-manager/shared/
 ├── agent-template.conf      ← copied into every new group
 ├── default/
 │   └── agent.conf

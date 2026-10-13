@@ -47,10 +47,22 @@
 namespace
 {
     // Where the facade binds its admin server: FIXED and RELATIVE (remoted's cwd is the
-    // installation directory; here it simply resolves against the test process's cwd, the same
-    // convention remotedModule_test.cpp's default-TLS-path test relies on). Spelled out literally
-    // so a change of the facade's constant is a conscious test change too.
+    // installation directory; here it simply resolves against the test process's cwd). Spelled out
+    // literally so a change of the facade's constant is a conscious test change too.
     constexpr auto kAdminSocketPath {"queue/sockets/remote-admin-http.sock"};
+
+    // The module's own defaults for client.keys, authd.pass, enrollment_tokens.json and the CA
+    // bundle are absolute, under the manager's fixed configuration directory, and the C ABI has no
+    // field to move them. Tests that assert those files are ABSENT therefore only hold on a host
+    // without an installed manager (every CI runner); on one with it they are skipped, rather than
+    // reading -- or asserting against -- the host's real secrets.
+    constexpr auto kManagerConfDir {"/etc/wazuh-manager"};
+
+    bool hostHasManagerConfDir()
+    {
+        std::error_code ec;
+        return std::filesystem::exists(kManagerConfDir, ec);
+    }
 
     // A port the OS says is free, asked for right before the module binds it -- same rationale
     // as remotedModule_test.cpp: nothing here asserts on the port, it only has to be free.
@@ -97,10 +109,9 @@ protected:
     void SetUp() override
     {
         // Isolate each test in a fresh, unique scratch directory instead of writing relative to
-        // the test binary's ambient cwd: SetUp() below creates/truncates "queue/sockets" and
-        // "etc/client.keys" relative to cwd, and if that cwd were ever a real install (e.g.
-        // ctest invoked from /var/wazuh-manager), this would wipe a real keystore. A fresh temp
-        // directory can also never contain a leftover, real etc/authd.pass from the host.
+        // the test binary's ambient cwd: SetUp() below creates "queue/sockets" relative to cwd,
+        // and if that cwd were ever a real install (e.g. ctest invoked from /var/wazuh-manager),
+        // this would scrub a real socket.
         m_originalCwd = std::filesystem::current_path();
         m_scratchDir =
             std::filesystem::temp_directory_path() / ("admin_server_test_" + std::to_string(::getpid()) + "_" +
@@ -114,14 +125,6 @@ protected:
         std::error_code ec;
         std::filesystem::remove(kAdminSocketPath, ec);
         remoted::test::LogRecorder::clear();
-
-        // Keystore's default path (etc/client.keys, also relative to cwd) needs to exist and be
-        // readable so the module's startup load succeeds -- otherwise every test in this fixture
-        // would start with a permanently-unreadable keystore, which GetStatusReportsKeystoreAnd-
-        // PasswordReadiness below needs to NOT be the case (an empty, successfully-loaded file is
-        // exactly the state lastLoadOk() exists to distinguish from "never loaded").
-        std::filesystem::create_directories("etc");
-        std::ofstream {"etc/client.keys"};
     }
 
     void TearDown() override
@@ -157,8 +160,8 @@ protected:
      * @param serveOwnCertificateAsCa When true, a copy of the throwaway (self-signed) certificate
      *        is installed at caPath() and configured as remote.https.ca_certificate, so the CA
      *        bundle GET /tls describes has one certificate that signs the leaf and the test can
-     *        rewrite that file. Otherwise the module's default path (etc/certs/root-ca.pem, relative
-     *        to the scratch cwd) is left unconfigured and never exists.
+     *        rewrite that file. Otherwise the module's default path (/etc/wazuh-manager/certs/root-ca.pem)
+     *        is left unconfigured and, on a host without an installed manager, never exists.
      * @return The public HTTPS port the module bound (0 when the fixture itself failed).
      */
     std::uint16_t
@@ -460,6 +463,10 @@ TEST_F(AdminServerTest, GetTlsFollowsTheCaBundleWithoutARestart)
 // and the CA half says why it is empty instead of reading as "nothing to worry about".
 TEST_F(AdminServerTest, GetTlsWithoutAReadableCaStillDescribesTheListener)
 {
+    if (hostHasManagerConfDir())
+    {
+        GTEST_SKIP() << "this host has a real " << kManagerConfDir << ", where the default CA bundle may exist";
+    }
     startModule();
 
     const auto client = makeAdminClient();
@@ -470,7 +477,7 @@ TEST_F(AdminServerTest, GetTlsWithoutAReadableCaStillDescribesTheListener)
     const auto document = nlohmann::json::parse(response->body);
     EXPECT_TRUE(document.contains("listener"));
     const auto& bundle = document.at("ca_bundle");
-    EXPECT_EQ(bundle.at("path"), "etc/certs/root-ca.pem"); // the module default, relative to the install dir
+    EXPECT_EQ(bundle.at("path"), "/etc/wazuh-manager/certs/root-ca.pem"); // the module default
     EXPECT_EQ(bundle.at("certificates_count"), 0);
     EXPECT_TRUE(bundle.at("chain_valid").is_null());
     ASSERT_TRUE(bundle.contains("last_read_failure"));
@@ -480,13 +487,16 @@ TEST_F(AdminServerTest, GetTlsWithoutAReadableCaStillDescribesTheListener)
 // GET /status reports client.keys (informational, under "readable") and, when Password-mode
 // enrollment is enabled, enrollment password readiness (the SOLE gate on top-level "ready"),
 // read directly from Keystore/PasswordKeySource's resident state -- no I/O in the handler
-// itself. The module starts with an empty (but successfully loaded) client.keys, so
-// keystore.readable is true with agents_loaded:0 -- the exact case lastLoadOk() exists to get
-// right (see keystore_test.cpp's EmptyFileIsALoadedStateNotAFailedOne). No real authd.pass exists
-// on disk in this test, so the enrollment password is unavailable and top-level "ready" must
-// track that alone, regardless of keystore.readable being true.
+// itself. Neither file exists at its fixed default path here, so keystore.readable is false with
+// agents_loaded:0 (the empty-but-loaded case lastLoadOk() exists to get right is pinned by
+// keystore_test.cpp's EmptyFileIsALoadedStateNotAFailedOne), the enrollment password is
+// unavailable, and top-level "ready" must track the password alone.
 TEST_F(AdminServerTest, GetStatusReportsKeystoreAndPasswordReadiness)
 {
+    if (hostHasManagerConfDir())
+    {
+        GTEST_SKIP() << "this host has a real " << kManagerConfDir << ", where client.keys/authd.pass may exist";
+    }
     startModule(/*enrollUsePassword=*/true);
 
     const auto client = makeAdminClient();
@@ -500,10 +510,10 @@ TEST_F(AdminServerTest, GetStatusReportsKeystoreAndPasswordReadiness)
     EXPECT_NE(response->body.find("\"agents_loaded\""), std::string::npos) << response->body;
     // Password-mode enabled: the key is unreachable in this test (no real authd.pass on disk), so
     // enrollment_password.ready is false and top-level ready must be false too -- it is the sole
-    // gate, never re-coupled to keystore.readable (which is true here).
+    // gate, never coupled to keystore.readable.
     EXPECT_NE(response->body.find(R"({"ready":false,"enrollment_password":{"ready":false})"), std::string::npos)
         << response->body;
-    EXPECT_NE(response->body.find(R"("keystore":{"readable":true)"), std::string::npos) << response->body;
+    EXPECT_NE(response->body.find(R"("keystore":{"readable":false)"), std::string::npos) << response->body;
     EXPECT_NE(response->body.find(R"("agents_loaded":0)"), std::string::npos) << response->body;
 }
 
@@ -522,7 +532,7 @@ TEST_F(AdminServerTest, GetStatusOmitsEnrollmentPasswordWhenPasswordModeDisabled
 
 // Regression test: a healthy, supported config (enrollment administratively disabled, but
 // <use_password> left at its installer default of "yes") must not construct a PasswordKeySource
-// that waits forever for an etc/authd.pass nothing will ever create -- "ready" must converge
+// that waits forever for an authd.pass nothing will ever create -- "ready" must converge
 // immediately, with `enrollment_password` omitted entirely, the same as the Password-mode-off
 // case above.
 TEST_F(AdminServerTest, GetStatusOmitsEnrollmentPasswordWhenEnrollmentDisabled)
@@ -543,11 +553,12 @@ TEST_F(AdminServerTest, GetStatusOmitsEnrollmentPasswordWhenEnrollmentDisabled)
 // enrollment_password is absent entirely.
 TEST_F(AdminServerTest, GetStatusKeystoreFailureDoesNotAffectReadyWhenPasswordModeDisabled)
 {
-    // Remove the client.keys SetUp() created so the module's initial Keystore load fails
+    // No client.keys at its fixed default path, so the module's initial Keystore load fails
     // (missing file -> Keystore::kReloadUnreadable -> lastLoadOk() == false).
-    std::error_code ec;
-    std::filesystem::remove("etc/client.keys", ec);
-
+    if (hostHasManagerConfDir())
+    {
+        GTEST_SKIP() << "this host has a real " << kManagerConfDir << ", where client.keys may exist";
+    }
     startModule(/*enrollUsePassword=*/false);
 
     const auto client = makeAdminClient();

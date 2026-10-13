@@ -64,7 +64,7 @@ To move the system service to the new directory on purpose, pass
 
 `install.sh` resolves the manager's credentials at the end of the run: it seeds the
 Server API passwords, stores the indexer credential if one was supplied, and issues
-the three TLS pairs under `etc/certs` from a bootstrap CA in `/etc/wazuh/ca`. So a plain
+the three TLS pairs under `/etc/wazuh-manager/certs` from a bootstrap CA in `/etc/wazuh/ca`. So a plain
 source install already has certificates and you can skip this section.
 
 Two cases where you supply them instead:
@@ -75,11 +75,11 @@ Two cases where you supply them instead:
   tree is copied somewhere else, since a bootstrap CA private key generated once and
   shared by every copy is worse than no certificate at all.
 
-Deploy under `etc/certs` the indexer trust material — `root-ca.pem`,
-`indexer-connector.pem`, `indexer-connector-key.pem` (`root:wazuh-manager 640`) — and
+Deploy under `/etc/wazuh-manager/certs` the indexer trust material — `root-ca.pem`,
+`indexer-connector.pem`, `indexer-connector-key.pem` — and
 the HTTPS agent listener pair — `remoted.pem`, `remoted-key.pem` — and the
-Server API pair — `apid.pem`, `apid-key.pem` (both
-`wazuh-manager:wazuh-manager 640`) — issued by the Wazuh installation assistant's
+Server API pair — `apid.pem`, `apid-key.pem` (all
+`root:wazuh-manager 640`, in a `root:wazuh-manager 0750` directory) — issued by the Wazuh installation assistant's
 certificate tool (`wazuh-certs-tool`). The tool issues no apid pair: the listener pair serves as one
 (the installer issues `apid.pem` with the profile of `remoted.pem`), as long as its SAN carries the
 name the API is reached by — `localhost` in these environments.
@@ -99,10 +99,12 @@ names and ownership above:
 ```bash
 cd $WAZUH_REPO/tools/devContainer/e2e
 ./init.sh --certs-only          # issues certs/ (reuses certs/root-ca.pem when present)
-sudo ./wazuh_copy_certs.sh      # -> /var/wazuh-manager/etc/certs
+sudo ./wazuh_copy_certs.sh      # -> /etc/wazuh-manager/certs
 ```
 
-For a sandbox install, point the copy script at its directory:
+For a sandbox install, point the copy script at its directory (the certificates still go to
+`/etc/wazuh-manager/certs`: a custom installation directory moves the home only, so two installs on one
+host share one configuration directory):
 
 ```bash
 sudo WAZUH_MANAGER_HOME=/tmp/clean_env/wazuh-manager ./wazuh_copy_certs.sh
@@ -243,7 +245,7 @@ Get-Service -Name WazuhSvc
 The main server configuration file is located at:
 
 ```
-/var/wazuh-manager/etc/wazuh-manager.conf
+/etc/wazuh-manager/wazuh-manager.conf
 ```
 
 After modifying the configuration, restart the server:

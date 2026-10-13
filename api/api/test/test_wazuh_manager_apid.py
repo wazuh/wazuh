@@ -660,7 +660,7 @@ def ssl_apid(apid, tmp_path):
 
     apid.ssl = ssl
     apid.APIError = APIError
-    # api.util.to_relative_path() is relative to WAZUH_PATH; the identity keeps the paths readable.
+    # api.util.to_relative_path() (still used for the api.yaml path) is relative to WAZUH_PATH; the identity keeps it readable.
     apid.to_relative_path = lambda path: path
     apid.api_conf = {
         'https': {'key': str(tmp_path / 'apid-key.pem'), 'cert': str(tmp_path / 'apid.pem'),

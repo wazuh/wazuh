@@ -145,8 +145,7 @@ STATIC int w_token_bootstrap_split_dir_filename(const char *path, char *buf, siz
  *        The sticky bit is what keeps the grant no wider than that. It restricts unlink and
  *        rename-over to the owner of the file, so the agent can replace the anchor it owns and
  *        still cannot touch anything root-owned in the same directory. Plain 0770 would hand it
- *        the whole directory. The manager's own etc/certs is 01770 for the same reason
- *        (inst-functions.sh, SetIndexerCertsOwnership).
+ *        the whole directory.
  *
  *        Windows has neither half of that reasoning: no privilege drop for the ownership to
  *        survive, and no uid/gid to express it with. The directory is left with what it
@@ -184,8 +183,7 @@ STATIC void w_token_bootstrap_ensure_parent_dir(const char *path, int gid) {
      * The sticky bit is what keeps that from being a wider grant than intended: it restricts
      * unlink and rename-over to the owner of the file, so the agent can replace its own anchor
      * and still cannot touch anything root-owned that shares this directory -- the marker this
-     * bootstrap writes beside the anchor among them. Same shape the manager already uses for its
-     * own etc/certs (inst-functions.sh, SetIndexerCertsOwnership). */
+     * bootstrap writes beside the anchor among them. */
     if (chmod(dir, 01770) == -1) {
         merror("Could not set permissions on '%s': %s (%d).", dir,
                strerror(errno), errno);

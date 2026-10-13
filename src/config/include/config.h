@@ -39,7 +39,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2);
 void PrintErrorAcordingToModules(int modules, const char *cfgfile);
 
 #ifndef CLIENT
-/* Readers of the effective document (etc/wazuh-manager.conf, see mconf-config.h): the cJSON
+/* Readers of the effective document (/etc/wazuh-manager/wazuh-manager.conf, see mconf-config.h): the cJSON
  * argument is the section returned by w_mconf_section(); NULL/absent keys keep the caller defaults.
  * File-scope forward declaration: a `struct` first named inside a prototype would have prototype scope. */
 struct cJSON;
@@ -88,7 +88,7 @@ int Read_Authd_JSON(const struct cJSON *auth, void *d1);
 #endif
 int Read_LogCollecSocket(XML_NODE node, void *d1, void *d2);
 #ifndef CLIENT
-/* Readers of the effective document (etc/wazuh-manager.conf, see mconf-config.h) used by modulesd:
+/* Readers of the effective document (/etc/wazuh-manager/wazuh-manager.conf, see mconf-config.h) used by modulesd:
  * `vulnerability-detection` (d1 = wmodule **; a NULL section creates no module) and `indexer` (sets
  * indexer_config; a NULL section or an empty host list leaves it NULL). */
 int Read_Vulnerability_Detection_JSON(const struct cJSON *vd, void *d1);

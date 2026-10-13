@@ -11,9 +11,12 @@ cd ${LOCAL}
 PWD=`pwd`
 DIR=`dirname $PWD`;
 PLIST=${DIR}/bin/.process_list;
+# The configuration directory is fixed: a custom installation home moves the home only. Kept identical
+# with CONF_DIR in src/init/shared.sh and WAZUH_MANAGER_CONF_DIR in defs.h.
+CONF_DIR="/etc/wazuh-manager"
 WAZUH_CONF="${WAZUH_CONF:-wazuh-manager.conf}"
 # Reader of the manager configuration: validation and effective values (schema defaults applied).
-MCONF="${DIR}/bin/wazuh-manager-conf -H ${DIR} -f ${DIR}/etc/${WAZUH_CONF}"
+MCONF="${DIR}/bin/wazuh-manager-conf -H ${DIR} -f ${CONF_DIR}/${WAZUH_CONF}"
 
 # Installation info
 VERSION="v5.0.0"
@@ -31,8 +34,18 @@ AUTHOR="Wazuh Inc."
 USE_JSON=false
 DAEMONS="wazuh-manager-clusterd wazuh-manager-modulesd wazuh-manager-remoted wazuh-manager-analysisd wazuh-manager-db wazuh-manager-authd wazuh-manager-apid"
 
+# The words of $1 in reverse order.
+reverse_list()
+{
+    _reversed=""
+    for _word in $1; do
+        _reversed="${_word}${_reversed:+ ${_reversed}}"
+    done
+    echo "${_reversed}"
+}
+
 # Reverse order of daemons
-SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
+SDAEMONS=$(reverse_list "${DAEMONS}")
 
 ## Locking for the start/stop
 LOCK="${DIR}/var/start-script-lock"
@@ -424,17 +437,36 @@ get_wazuh_engine_pid()
     ${DIR}/bin/wazuh-manager-analysisd
 
     while [ $ticks -lt $max_ticks ]; do
-        pidfile=$(ls ${DIR}/var/run/wazuh-manager-analysisd-*.pid 2>/dev/null | head -n1)
-        if [ -n "$pidfile" ]; then
-            echo "${pidfile##*-}" | sed 's/\.pid$//'
-            return 0
-        fi
+        for pidfile in ${DIR}/var/run/wazuh-manager-analysisd-*.pid; do
+            if [ -f "$pidfile" ]; then
+                pidfile="${pidfile##*-}"
+                echo "${pidfile%.pid}"
+                return 0
+            fi
+        done
         ticks=$((ticks + 1))
         sleep 0.1
     done
 
     return 1  # timeout
 }
+
+# Asks the engine API whether it answers, through the bundled interpreter (the package declares no
+# HTTP client). Succeeds on any status below 400, as `curl --fail` did; the socket timeout keeps a
+# hung engine from stalling the readiness loop below.
+ENGINE_PROBE='import http.client, socket, sys
+class UnixConnection(http.client.HTTPConnection):
+    def connect(self):
+        self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        self.sock.settimeout(self.timeout)
+        self.sock.connect(sys.argv[1])
+try:
+    connection = UnixConnection("localhost", timeout=5)
+    connection.request("POST", "/_internal/event-dumper/status", body="{}",
+                       headers={"Content-Type": "application/json"})
+    sys.exit(0 if connection.getresponse().status < 400 else 1)
+except Exception:
+    sys.exit(1)'
 
 wait_for_wazuh_engine_ready()
 {
@@ -448,11 +480,8 @@ wait_for_wazuh_engine_ready()
     fi
 
     while [ $attempts -lt $max_attempts ]; do
-        curl --silent --fail --unix-socket ${DIR}/queue/sockets/engine-api-http.sock \
-            -X POST -H "Content-Type: application/json" \
-            -d '{}' \
-            http://localhost/_internal/event-dumper/status \
-            > /dev/null 2>&1
+        ${DIR}/framework/python/bin/python3 -I -c "${ENGINE_PROBE}" \
+            ${DIR}/queue/sockets/engine-api-http.sock > /dev/null 2>&1
         if [ $? -eq 0 ]; then
             return 0
         fi
@@ -479,13 +508,16 @@ start_service()
         echo "Starting Wazuh $VERSION..."
     fi
 
-    # Delete all files in temporary folder
-    TO_DELETE="$DIR/tmp"
-    find "$TO_DELETE" -mindepth 1 -delete
+    # Delete all files in temporary folder. rm -rf does not follow a link it removes.
+    for TO_DELETE in "$DIR"/tmp/* "$DIR"/tmp/.[!.]* "$DIR"/tmp/..?*; do
+        if [ -e "$TO_DELETE" ] || [ -L "$TO_DELETE" ]; then
+            rm -rf -- "$TO_DELETE"
+        fi
+    done
 
     node_type=$(get_node_type);
     if [ -z $node_type ]; then
-        echo "Invalid cluster configuration, check the $DIR/etc/${WAZUH_CONF} file."
+        echo "Invalid cluster configuration, check the ${CONF_DIR}/${WAZUH_CONF} file."
         unlock;
         exit 1;
     fi
@@ -582,8 +614,7 @@ pstatus()
     ls ${DIR}/var/run/${pfile}-*.pid > /dev/null 2>&1
     if [ $? = 0 ]; then
         for pid in `cat ${DIR}/var/run/${pfile}-*.pid 2>/dev/null`; do
-            ps -p ${pid} > /dev/null 2>&1
-            if [ ! $? = 0 ]; then
+            if [ ! -d "/proc/${pid}" ]; then
                 if [ $USE_JSON = false ] && [ -z "${_pstatus_quiet}" ]; then
                     echo "${pfile}: Process ${pid} not used by Wazuh, removing..."
                 fi
@@ -758,8 +789,15 @@ restart)
     RETVAL=0
     ;;
 reload)
-    DAEMONS=$(echo $DAEMONS | sed 's/wazuh-manager-remoted//')
-    SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
+    # Everything except remoted, which keeps the agents connected across a reload.
+    RELOAD_DAEMONS=""
+    for i in ${DAEMONS}; do
+        if [ "$i" != "wazuh-manager-remoted" ]; then
+            RELOAD_DAEMONS="${RELOAD_DAEMONS:+${RELOAD_DAEMONS} }$i"
+        fi
+    done
+    DAEMONS="${RELOAD_DAEMONS}"
+    SDAEMONS=$(reverse_list "${DAEMONS}")
     restart_service
     RETVAL=0
     ;;

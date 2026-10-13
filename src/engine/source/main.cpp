@@ -170,10 +170,11 @@ int main(int argc, char* argv[])
             return EXIT_FAILURE;
         }
 
-        // Manager configuration (etc/wazuh-manager.conf). -t validates it, including the files it
-        // references; a normal start loads it once (no file checks) and registers it as the section
-        // provider of libwazuhshared.so before the first log, so the logging format and the cluster
-        // getters inside the shared library read the same document.
+        // Manager configuration (/etc/wazuh-manager/wazuh-manager.conf; relative paths inside it resolve
+        // against the home). -t validates it, including the files it references; a normal start loads it
+        // once (no file checks) and registers it as the section provider of libwazuhshared.so before the
+        // first log, so the logging format and the cluster getters inside the shared library read the same
+        // document.
         if (opts.testConfig)
         {
             if (const auto error = base::managerConfig::validate(wazuhHome))
@@ -237,8 +238,12 @@ int main(int argc, char* argv[])
         base::process::goDaemon();
     }
 
-    // Load the configuration
-    const auto confPath = base::process::getWazuhHome() / "etc/wazuh-manager-internal-options.conf";
+    // Load the configuration. Manager mode: the internal options live in the fixed configuration directory.
+    // Standalone mode never reads the file (conf::Conf::load()); its path stays relative to the cwd.
+    const auto confPath = base::process::isStandaloneModeEnable()
+                              ? base::process::getWazuhHome() / "etc/wazuh-manager-internal-options.conf"
+                              : std::filesystem::path(std::string(base::managerConfig::MANAGER_CONF_DIR))
+                                    / "wazuh-manager-internal-options.conf";
     auto confManager = conf::Conf(std::make_shared<conf::FileLoader>(confPath));
     try
     {
@@ -458,7 +463,7 @@ int main(int argc, char* argv[])
 
             try
             {
-                // Get base configuration (from standalone or the `indexer` section of etc/wazuh-manager.conf)
+                // Get base configuration (from standalone or the `indexer` section of wazuh-manager.conf)
                 const auto baseJsonCnf = base::process::isStandaloneModeEnable()
                                              ? standAloneConfig()
                                              : base::managerConfig::sectionJson("indexer");

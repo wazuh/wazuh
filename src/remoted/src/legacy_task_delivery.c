@@ -116,7 +116,7 @@
  * with the agent's own key, so the 4.x symmetric-key channel bootstraps the 5.0 asymmetric
  * anchor with no unauthenticated moment and no trust-on-first-use window.
  *
- * The name is the SAME at both ends: the manager reads etc/certs/root-ca.pem and the agent's
+ * The name is the SAME at both ends: the manager reads /etc/wazuh-manager/certs/root-ca.pem and the agent's
  * installer looks for the drop-in at its own etc/certs/root-ca.pem (pkg_installer.sh's
  * DEFAULT_CA_FILE; certs\root-ca.pem on Windows). Keeping it means the agent-side step is a copy
  * rather than a rename, and a hand-staged anchor and a delivered one produce identical layouts. */

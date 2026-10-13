@@ -1093,7 +1093,7 @@ cJSON* wdb_get_internal_config() {
     return root;
 }
 
-/* getconfig "wdb": the effective `wdb` section of etc/wazuh-manager.conf (schema defaults applied),
+/* getconfig "wdb": the effective `wdb` section of /etc/wazuh-manager/wazuh-manager.conf (schema defaults applied),
  * exactly what Read_WazuhDB_JSON() loaded into wconfig. */
 cJSON* wdb_get_config() {
     cJSON *root = cJSON_CreateObject();

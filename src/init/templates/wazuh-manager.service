@@ -19,7 +19,7 @@ ProtectSystem=full
 # Writable: the installation directory, the shared credentials directory that
 # wazuh-manager-resolve-credentials --prestart writes on a first start (it cannot create it here, so it
 # must already exist: the installer's credential resolver creates it; with USER_RESOLVE_CREDENTIALS=n,
-# create it 0700 root:root before the first start), and the future configuration directory. '-' skips a
+# create it 0700 root:root before the first start), and the configuration directory /etc/wazuh-manager. '-' skips a
 # missing path. A base relocated with WAZUH_BASE_DIR must exist and be added to ReadWritePaths in the
 # same drop-in, outside /home, /root, /run/user and /tmp. Otherwise --prestart fails with "mktemp: ...
 # Read-only file system" and "wazuh-credentials: cannot create a temporary value file"; without

@@ -1238,7 +1238,7 @@ private:
         m_metricsManager->registerPullMetric(
             "remoted.enroll.token_store.tokens",
             [snapshot] { return static_cast<uint64_t>(snapshot().tokens); },
-            "Enrollment tokens with a credential currently replicated from etc/enrollment_tokens.json",
+            "Enrollment tokens with a credential currently replicated from /etc/wazuh-manager/enrollment_tokens.json",
             "tokens");
         m_metricsManager->registerPullMetric(
             "remoted.enroll.token_store.reloads.total",

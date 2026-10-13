@@ -11,6 +11,7 @@
 
 #include "httpServerConfig.hpp"
 
+#include "managerConfDir.hpp"
 #include "proc.hpp"
 
 #include <algorithm>
@@ -63,14 +64,19 @@ namespace
     // than a few there at once; one host stalling handshakes gets an eighth of the default slots.
     constexpr std::size_t DEFAULT_MAX_HANDSHAKES_PER_SOURCE {32};
 
-    // Relative to remoted's cwd, the installation directory (remoted changes to it at startup,
-    // before the HTTPS module starts), like remoted::paths (common/installPaths.hpp). The two CA defaults come
-    // from remoted_module.h, shared with src/remoted/src/secure.c, which probes the same files before the module
-    // starts.
-    constexpr auto DEFAULT_CERTIFICATE_PATH {"etc/certs/remoted.pem"};
-    constexpr auto DEFAULT_PRIVATE_KEY_PATH {"etc/certs/remoted-key.pem"};
+    // Absolute, under the manager's fixed configuration directory (Utils::MANAGER_CONF_DIR), like the schema
+    // defaults of remote.https.{certificate,key,ca_certificate}. The two CA defaults come from remoted_module.h,
+    // shared with src/remoted/src/secure.c, which probes the same files before the module starts. Literals rather
+    // than strings built from the constant so the ternaries below keep their std::string type; the static_asserts
+    // keep them from drifting.
+    constexpr auto DEFAULT_CERTIFICATE_PATH {"/etc/wazuh-manager/certs/remoted.pem"};
+    constexpr auto DEFAULT_PRIVATE_KEY_PATH {"/etc/wazuh-manager/certs/remoted-key.pem"};
     constexpr auto DEFAULT_CA_PATH {REMOTED_MODULE_DEFAULT_CA_PATH};
     constexpr auto DEFAULT_CA_CERTIFICATE_PATH {REMOTED_MODULE_DEFAULT_CA_CERTIFICATE_PATH};
+    static_assert(Utils::isInManagerConfDir(DEFAULT_CERTIFICATE_PATH));
+    static_assert(Utils::isInManagerConfDir(DEFAULT_PRIVATE_KEY_PATH));
+    static_assert(Utils::isInManagerConfDir(DEFAULT_CA_PATH));
+    static_assert(Utils::isInManagerConfDir(DEFAULT_CA_CERTIFICATE_PATH));
     constexpr auto DEFAULT_CIPHERS {"TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"};
 
     // A positive caller value wins; otherwise the built-in default. remoted is expected to

@@ -2440,12 +2440,11 @@ def test_get_utc_strptime(mock_get_localtime, is_at_utc):
 )
 @patch('wazuh.core.utils.gettz')
 def test_get_localtime(mock_gettz, system_localtime):
-    """Test if the result is the system's timezone, or UTC when there is none."""
+    """Test that the system timezone is returned, or UTC when none is found."""
 
     mock_gettz.return_value = system_localtime
 
-    timezone = utils.get_localtime()
+    result = utils.get_localtime()
 
     mock_gettz.assert_called_once_with()
-
-    assert timezone is (system_localtime or datetime.timezone.utc)
+    assert result is (system_localtime if system_localtime is not None else datetime.timezone.utc)

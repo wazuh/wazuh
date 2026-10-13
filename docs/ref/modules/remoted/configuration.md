@@ -10,7 +10,7 @@ For module overview and architecture, see [Remoted Module](README.md).
 
 ## Main Configuration
 
-**Configuration file:** `/var/wazuh-manager/etc/wazuh-manager.conf`
+**Configuration file:** `/etc/wazuh-manager/wazuh-manager.conf`
 
 **XML Section:** `<remote>`
 
@@ -246,10 +246,10 @@ Whether an IPv6 `bind_addr` (e.g. `::`) also accepts IPv4 clients on the same so
 
 Path to the TLS certificate chain (PEM) presented by the server.
 
-- **Default value:** `etc/certs/remoted.pem` (relative to the manager's home)
+- **Default value:** `/etc/wazuh-manager/certs/remoted.pem` (a relative path resolves against the manager's home, `/var/wazuh-manager`)
 - **Note:** the manager issues this file at installation and never reissues it. To use your own PKI, overwrite it — a leaf of the CA in
   `ca_certificate`, issued by the installation assistant's `wazuh-certs-tool` — as
-  `wazuh-manager:wazuh-manager 640` before the first start. Missing: `wazuh-manager-control start`
+  `root:wazuh-manager 640` before the first start. Missing: `wazuh-manager-control start`
   refuses with `(1244): Invalid configuration at '/remote/https/certificate': file not found: …`.
   Present but unreadable by the service user: `wazuh-manager-remoted` exits with
   `Cannot start the HTTPS agent listener: …`. The same message names the CA certificate
@@ -261,7 +261,7 @@ Path to the TLS certificate chain (PEM) presented by the server.
 
 Path to the TLS private key (PEM) matching `certificate`.
 
-- **Default value:** `etc/certs/remoted-key.pem` (relative to the manager's home)
+- **Default value:** `/etc/wazuh-manager/certs/remoted-key.pem`
 - **Note:** provisioned together with `certificate`, same ownership and the same fail-closed
   behaviour when missing (`(1244) … '/remote/https/key': file not found`) or unreadable by the
   service user.
@@ -276,8 +276,7 @@ Path to a CA bundle (PEM) used to verify client (agent) certificates.
 - **Default value:** empty (not set). Empty means "no client-verification CA configured": no
   `verification_mode` is inferred from it, and verification stays off.
 - **Note:** Only read when `verification_mode` is `certificate` or `full`. If one of those modes is
-  set explicitly with no `ca`, the module falls back to `etc/certs/root-ca.pem` (relative to the
-  manager's home). Setting `ca` without `verification_mode` turns verification on — see the special
+  set explicitly with no `ca`, the module falls back to `/etc/wazuh-manager/certs/root-ca.pem`. Setting `ca` without `verification_mode` turns verification on — see the special
   case below.
 - **Note:** a configured `ca` that does not exist stops `wazuh-manager-control start`
   (`(1244) … '/remote/https/ca': file not found`).
@@ -296,7 +295,7 @@ X.509 blocks it found, so a PEM that also carries the CA's private key (a mispro
 hands out the certificate and nothing else, on `GET /cacerts` as well as in a `--embed-ca` token.
 A file it cannot parse to the end is refused whole rather than served up to its first bad block.
 
-- **Default value:** `etc/certs/root-ca.pem` (relative to the manager's home; the installer
+- **Default value:** `/etc/wazuh-manager/certs/root-ca.pem` (the installer
   writes the option explicitly). Like the listener certificate, the file is issued by the credential
   resolver at installation (`root:wazuh-manager 640`), or provisioned by the operator together with
   the listener certificate it signs.
@@ -469,7 +468,7 @@ whole.
 
 ## Internal Options
 
-**Configuration file:** `/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`
+**Configuration file:** `/etc/wazuh-manager/wazuh-manager-internal-options.conf`
 
 **Internal Options prefix:** `remoted.*`
 
@@ -789,7 +788,7 @@ Interval in seconds for reloading shared configuration files.
 
 - **Default value:** `10`
 - **Allowed values:** Integer from `1` to `18000` (seconds)
-- **Note:** How often remoted re-reads `etc/shared/` and regenerates `merged.mg` files
+- **Note:** How often remoted re-reads `/etc/wazuh-manager/shared/` and regenerates `merged.mg` files
 
 ### remoted.disk_storage
 
@@ -1410,8 +1409,8 @@ High-water mark for queued task-manager requests.
 #### remoted.enroll_password_refresh_interval
 
 Seconds between fallback polls of the two `authd`-written secret files `POST /enroll` authenticates
-against: `etc/authd.pass` (the shared enrollment password, Password mode) and
-`etc/enrollment_tokens.json` (the enrollment token store, every mode). Both are also watched with
+against: `/etc/wazuh-manager/authd.pass` (the shared enrollment password, Password mode) and
+`/etc/wazuh-manager/enrollment_tokens.json` (the enrollment token store, every mode). Both are also watched with
 `inotify`, which normally reacts first; this interval only bounds how long a missed notification can
 go unnoticed.
 
@@ -1496,7 +1495,7 @@ Seconds to wait for the write side of the same inline `POST /scan/vd` relay to V
 
 ### Installed Configuration
 
-The `<remote>` block the installer writes into `etc/wazuh-manager.conf` (every value can be changed
+The `<remote>` block the installer writes into `/etc/wazuh-manager/wazuh-manager.conf` (every value can be changed
 at install time through the matching `WAZUH_REMOTE_*` variable):
 
 ```xml
@@ -1506,9 +1505,9 @@ at install time through the matching `WAZUH_REMOTE_*` variable):
       <port>1517</port>
       <bind_addr>0.0.0.0</bind_addr>
       <global_prefix>/wazuh-manager/</global_prefix>
-      <certificate>etc/certs/remoted.pem</certificate>
-      <key>etc/certs/remoted-key.pem</key>
-      <ca_certificate>etc/certs/root-ca.pem</ca_certificate>
+      <certificate>/etc/wazuh-manager/certs/remoted.pem</certificate>
+      <key>/etc/wazuh-manager/certs/remoted-key.pem</key>
+      <ca_certificate>/etc/wazuh-manager/certs/root-ca.pem</ca_certificate>
     </https>
 
     <legacy>
@@ -1579,10 +1578,10 @@ among the certificate's SAN entries):
     <port>1517</port>
     <bind_addr>0.0.0.0</bind_addr>
     <global_prefix>/wazuh-manager/</global_prefix>
-    <certificate>etc/certs/remoted.pem</certificate>
-    <key>etc/certs/remoted-key.pem</key>
-    <ca_certificate>etc/certs/root-ca.pem</ca_certificate>
-    <ca>etc/certs/root-ca.pem</ca>
+    <certificate>/etc/wazuh-manager/certs/remoted.pem</certificate>
+    <key>/etc/wazuh-manager/certs/remoted-key.pem</key>
+    <ca_certificate>/etc/wazuh-manager/certs/root-ca.pem</ca_certificate>
+    <ca>/etc/wazuh-manager/certs/root-ca.pem</ca>
     <verification_mode>certificate</verification_mode>
     <ciphers>TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256</ciphers>
     <max_body_size>20M</max_body_size>
@@ -1592,7 +1591,7 @@ among the certificate's SAN entries):
 
 ### Memory-Capped Legacy Queues
 
-Internal options (`/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`):
+Internal options (`/etc/wazuh-manager/wazuh-manager-internal-options.conf`):
 
 ```conf
 # Cap the legacy input queue at 128 MiB
@@ -1699,7 +1698,7 @@ range: it validates them and exits non-zero on the first bad one.
 
 ### Enable Debug Logging
 
-Enable verbose logging in `/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`:
+Enable verbose logging in `/etc/wazuh-manager/wazuh-manager-internal-options.conf`:
 
 ```conf
 remoted.debug=2
