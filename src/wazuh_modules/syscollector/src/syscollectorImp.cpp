@@ -2535,7 +2535,8 @@ void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_th
             // behaviour; every sync after that follows m_notify normally.
             const bool isFirstSync = self->m_knownContainerIds.insert(current).second;
             const std::optional<bool> notifyOverride =
-                isFirstSync ? std::optional<bool> {false} : std::nullopt;
+                isFirstSync ? std::optional<bool> {false} :
+                std::nullopt;
 
             for (const auto& table : CONTAINER_BASELINE_TABLES)
             {
@@ -5050,7 +5051,10 @@ void Syscollector::initializeDocumentCounts()
             // Once per scope: host and container rows live in the same table and
             // the same sync index, so one COUNT(*) would credit the host budget
             // with every container row already reported.
-            for (const auto scope : {LimitScope::host, LimitScope::container})
+            for (const auto scope :
+                    {
+                        LimitScope::host, LimitScope::container
+                    })
             {
                 auto selectQuery = SelectQuery::builder()
                                    .table(table)
