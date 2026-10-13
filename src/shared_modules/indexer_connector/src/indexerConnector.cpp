@@ -26,6 +26,7 @@
 #include <mutex>
 #include <pwd.h>
 #include <unistd.h>
+#include <vector>
 
 constexpr auto USER_GROUP {"wazuh"};
 constexpr auto DEFAULT_PATH {"tmp/root-ca-merged.pem"};
