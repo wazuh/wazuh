@@ -8,6 +8,7 @@
  */
 
 #include "container_baseline_fim_bridge.h"
+#include "container_baseline_host_api.h"
 
 #include "file.h"
 #include "shared.h"
@@ -17,15 +18,27 @@
 #include <time.h>
 #include <unistd.h>
 
-/* The host's files-per-second limiter, handed over at startup.
- *
- * It is NOT called directly even though syscheck.h declares it here, because
- * check_max_fps() is defined in run_check.c -- part of syscheckd_lib, which
- * links THIS library. Calling it directly leaves libfimebpf.so with an
- * undefined symbol that only resolves once the daemon links it, and linking
- * back the other way is a cycle. So it arrives the same way every other host
- * function this library needs does: as a pointer, set once at startup. */
-static void (*g_host_rate_limit)(void) = NULL;
+/* Everything this library borrows from the daemon that links it. See
+ * container_baseline_host_api.h for why none of it can simply be called. */
+static fim_container_host_api_t g_host = {0};
+
+void fim_container_baseline_set_host_api(const fim_container_host_api_t* api)
+{
+    if (api == NULL) {
+        memset(&g_host, 0, sizeof(g_host));
+        return;
+    }
+
+    g_host = *api;
+}
+
+/* The daemon's live configuration, or NULL before registration. Every caller
+ * checks: unregistered behaves as "nothing configured", which is the same
+ * answer an agent with no <container_security> block gives. */
+static const syscheck_config* host_config(void)
+{
+    return g_host.config;
+}
 
 static void copy_if_present(cJSON* source, cJSON* target, const char* source_key, const char* target_key)
 {
@@ -201,13 +214,13 @@ static const directory_t* fim_container_configuration_directory(const char* path
     int top = 0;
     OSListNode* node_it;
 
-    if (path == NULL || *path == '\0' || syscheck.container_directories == NULL) {
+    if (path == NULL || *path == '\0' || host_config() == NULL || host_config()->container_directories == NULL) {
         return NULL;
     }
 
     trail_path_separator(full_path, path, sizeof(full_path));
 
-    OSList_foreach(node_it, syscheck.container_directories) {
+    OSList_foreach(node_it, host_config()->container_directories) {
         const directory_t* dir_it = (const directory_t*)node_it->data;
 
         if (dir_it == NULL || dir_it->path == NULL) {
@@ -239,13 +252,14 @@ int fim_collect_container_monitored_paths(cb_monitored_path_t** out_paths, size_
     *out_paths = NULL;
     *out_count = 0U;
 
-    if (syscheck.container_directories == NULL || !syscheck.enable_synchronization) {
+    if (host_config() == NULL || host_config()->container_directories == NULL
+        || !host_config()->enable_synchronization) {
         return 0;
     }
 
     size_t count = 0U;
-    for (OSListNode* it = OSList_GetFirstNode(syscheck.container_directories); it != NULL;
-         it = OSList_GetNext(syscheck.container_directories, it)) {
+    for (OSListNode* it = OSList_GetFirstNode(host_config()->container_directories); it != NULL;
+         it = OSList_GetNext(host_config()->container_directories, it)) {
         const directory_t* path = (const directory_t*)it->data;
         if (path != NULL && path->path != NULL) {
             ++count;
@@ -264,8 +278,8 @@ int fim_collect_container_monitored_paths(cb_monitored_path_t** out_paths, size_
     }
 
     size_t index = 0U;
-    for (OSListNode* it = OSList_GetFirstNode(syscheck.container_directories); it != NULL;
-         it = OSList_GetNext(syscheck.container_directories, it)) {
+    for (OSListNode* it = OSList_GetFirstNode(host_config()->container_directories); it != NULL;
+         it = OSList_GetNext(host_config()->container_directories, it)) {
         const directory_t* path = (const directory_t*)it->data;
         if (path == NULL || path->path == NULL) {
             continue;
@@ -277,7 +291,7 @@ int fim_collect_container_monitored_paths(cb_monitored_path_t** out_paths, size_
 
         /* Reuse FIM's own size limit rather than a private literal: files above
          * it are not hashed at all, exactly as the host walk treats them. */
-        paths[index].max_hash_bytes = syscheck.file_max_size;
+        paths[index].max_hash_bytes = host_config()->file_max_size;
 
         /* Honour the per-directory hash selection instead of always computing
          * all three digests. */
@@ -380,21 +394,16 @@ int fim_container_baseline_abspath(const char* relative, char* out, size_t out_s
     return 0;
 }
 
-void fim_container_baseline_set_host_callbacks(void (*rate_limit)(void))
-{
-    g_host_rate_limit = rate_limit;
-}
-
 void fim_container_baseline_rate_limit(void)
 {
-    if (g_host_rate_limit == NULL) {
+    if (g_host.rate_limit == NULL) {
         /* Unset means nobody registered it -- the walk runs unthrottled rather
          * than not at all. Failing open here matches the rest of this path: a
          * missing budget costs I/O, a refused walk costs coverage. */
         return;
     }
 
-    g_host_rate_limit();
+    g_host.rate_limit();
 }
 
 void fim_compute_row_checksum(const char* row_json, char out_sha1[41])
@@ -479,16 +488,20 @@ void fim_persist_baseline_row(const char* id, int operation, const char* index, 
 
     char item_desc[128];
     snprintf(item_desc, sizeof(item_desc), "container FIM baseline row %s", id ? id : "<null>");
-    validate_and_persist_fim_event(msg,
-                                   id,
-                                   (Operation_t)operation,
-                                   index,
-                                   version,
-                                   item_desc,
-                                   false,
-                                   NULL,
-                                   NULL,
-                                   1);
+    if (g_host.validate_and_persist == NULL) {
+        return;
+    }
+
+    g_host.validate_and_persist(msg,
+                                id,
+                                (Operation_t)operation,
+                                index,
+                                version,
+                                item_desc,
+                                false,
+                                NULL,
+                                NULL,
+                                1);
 
     cJSON_Delete(msg);
 }
@@ -521,7 +534,7 @@ static int container_notify_scan = -1;
 static int container_should_report_events(void)
 {
     if (container_notify_scan < 0) {
-        container_notify_scan = syscheck.notify_first_scan ? 1 : 0;
+        container_notify_scan = (host_config() != NULL && host_config()->notify_first_scan) ? 1 : 0;
     }
 
     return container_notify_scan;
@@ -594,7 +607,9 @@ void fim_send_container_stateless_event(const cJSON* row_data,
         changed_attributes = cJSON_CreateArray();
         old_attributes = cJSON_CreateObject();
 
-        fim_calculate_dbsync_difference(config, old_data, changed_attributes, old_attributes);
+        if (g_host.calculate_dbsync_difference != NULL) {
+            g_host.calculate_dbsync_difference(config, old_data, changed_attributes, old_attributes);
+        }
 
         if (cJSON_GetArraySize(changed_attributes) == 0) {
             /* DBSync saw the row change, but only in a column none of this
@@ -641,9 +656,9 @@ void fim_send_container_stateless_event(const cJSON* row_data,
      * Container rows have no fim_file_data struct, so this always takes
      * fim_attributes_json()'s JSON-only mode (data == NULL) — which reads the
      * named columns and ignores container_id/container_json. */
-    cJSON* file_stateless = (operation == OPERATION_DELETE)
+    cJSON* file_stateless = (operation == OPERATION_DELETE || g_host.attributes_json == NULL)
         ? cJSON_CreateObject()
-        : fim_attributes_json(row_data, NULL, config);
+        : g_host.attributes_json(row_data, NULL, config);
     cJSON_AddItemToObject(data, "file", file_stateless);
 
     cJSON_AddStringToObject(file_stateless, "path", path);
@@ -662,7 +677,9 @@ void fim_send_container_stateless_event(const cJSON* row_data,
 
     add_container_context(row_data, data);
 
-    send_syscheck_msg(stateless_event);
+    if (g_host.send_event != NULL) {
+        g_host.send_event(stateless_event);
+    }
 
     cJSON_Delete(stateless_event);
 }
