@@ -106,8 +106,8 @@ curl --unix-socket /var/wazuh-manager/queue/sockets/task-http.sock http://localh
   concurrency cap in each task type's descriptor. Adding a task type is one descriptor plus a
   handler — no lane assignment, no rotation logic, no change to the store or the schema.
 - **The scheduler is one timer thread.** It spawns scheduled runs, sweeps ownership, applies
-  retention, runs the daily VACUUM and reports stalls. It sleeps until the earliest of those is due
-  rather than polling.
+  retention, returns the freed space to the filesystem a step at a time and reports stalls. It
+  sleeps until the earliest of those is due rather than polling.
 - **The upgrade pool is separate from the executor**, and is the one place on this socket where a
   request is answered later rather than inline. Its workers count *batches*, not agents: per-agent
   work is one wazuh-db call on a shared socket plus arithmetic, so parallelising agents would only
@@ -129,7 +129,7 @@ workers (`manager_task_executor_threads`) + 1 scheduler + `cores / 2` upgrade ba
 | `TASKS` | Agent tasks: `pending` → `delivered`, or `pending` → `expired` after `task_ttl`; a delivered task is removed 24 h after delivery, an expired one once it is 24 h old |
 | `MANAGER_TASKS` | Manager tasks and their outcomes |
 | `MANAGER_TASK_SCHEDULES` | The mutable half of each recurring schedule |
-| `metadata` | Module bookkeeping (last VACUUM) |
+| `metadata` | Module bookkeeping |
 
 **Agent tasks age out while pending; manager tasks never do.** That asymmetry is deliberate: ageing
 out a pending manager task would destroy exactly the long-outage work the queue exists to survive.

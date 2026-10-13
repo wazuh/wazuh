@@ -94,7 +94,7 @@ def test_invalid_run_as_context_tokens(mock_add_user_roles_rules, db_setup):
 def test_revoke_run_as_tokens_by_authorization_context(db_setup):
     """Logging out with a run_as token revokes its authorization context, never the account it names."""
     security, WazuhResult, _ = db_setup
-    mock_current_user = ContextVar('current_user', default='wazuh-wui')
+    mock_current_user = ContextVar('current_user', default='wazuh-internal-client')
     with patch("wazuh.core.common.current_user", new=mock_current_user), \
             patch('wazuh.security.invalid_users_tokens') as mock_users, \
             patch('wazuh.security.invalid_run_as_context_tokens') as mock_contexts:

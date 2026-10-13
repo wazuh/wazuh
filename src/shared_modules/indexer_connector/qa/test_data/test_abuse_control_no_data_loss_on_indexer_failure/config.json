@@ -1,7 +1,0 @@
-{
-  "name": "wazuh-states-vulnerabilities-default",
-  "enabled": "yes",
-  "hosts": ["http://localhost:9200"],
-  "username": "admin",
-  "password": "admin"
-}

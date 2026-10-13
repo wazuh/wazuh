@@ -561,7 +561,7 @@ def test_startup_hash_gate_scenarios(test_configuration, test_metadata, set_wazu
             # then reassigned to group B server-side" condition: the local
             # cache is stale relative to the manager's view.
             stale_merged_content = (
-                b"!23 stale-agent.conf\n"
+                b"!29 stale-agent.conf\n"
                 b"<agent_config></agent_config>"
             )
             assert (

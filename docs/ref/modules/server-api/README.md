@@ -55,4 +55,4 @@ The API is served by `wazuh-manager-apid`, on port `55000` by default, and **onl
 - **wazuh-manager-authd**: Handles the agent registrations, deletions and enrollment tokens requested through the `/agents` endpoints
 - **wazuh-manager-remoted**: Reports its statistics and TLS listener state to the `/cluster/{node_id}/daemons/*` endpoints
 - **[RBAC](../rbac/README.md)**: The authorization model the API enforces
-- **Wazuh Dashboard**: Consumes the same Server API for its UI, as the `wazuh-wui` user
+- **Wazuh Dashboard**: Consumes the same Server API for its UI, as the `wazuh-internal-client` user

@@ -278,7 +278,7 @@ def rbac_context():
 
 
 def test_run_as_reachable_roles(db_setup):
-    """Every role with a rule above the reserved range is reachable; wazuh-wui reaches the reserved rules too."""
+    """Every role with a rule above the reserved range is reachable; wazuh-internal-client reaches the reserved rules too."""
     security, _, _ = db_setup
 
     assert security._run_as_reachable_roles(105) == RUN_AS_REACHABLE
@@ -369,3 +369,44 @@ def test_update_user_black_mode_honours_a_deny(db_setup, rbac_context):
         security.update_user(user_id=['101'], password='Password1234', current_user='guest')
 
     assert exc.value.ids == {103}
+
+
+NEW_RULE_BODY = {'MATCH': {'definition': 'attackerContext'}}
+
+
+@pytest.mark.parametrize('context', [
+    _white_role_update(set()),
+    {'rbac_mode': 'black', 'security:update': {'role:id:103': 'deny'}},
+])
+def test_update_rule_body_requires_the_linked_roles(db_setup, rbac_context, context):
+    """Rewriting a rule's body remaps every linked role, so it needs 'security:update' over each of them."""
+    security, _, _ = db_setup
+    rbac_context(context)
+
+    with pytest.raises(WazuhPermissionError) as exc:
+        security.update_rule(rule_id=['103'], rule=NEW_RULE_BODY)
+
+    assert exc.value.code == 4000
+    assert exc.value.ids == {103}
+    with security.RulesManager() as rum:
+        assert rum.get_rule(103)['rule'] == {'MATCH': {'definition': 'administratorRule'}}
+
+
+def test_update_rule_body_with_the_linked_roles(db_setup, rbac_context):
+    """A caller that could link the rule to its roles may rewrite its body."""
+    security, _, _ = db_setup
+    rbac_context(_white_role_update({103}))
+
+    result = security.update_rule(rule_id=['103'], rule=NEW_RULE_BODY).to_dict()
+
+    assert result['affected_items'][0]['rule'] == NEW_RULE_BODY
+
+
+def test_update_rule_name_needs_no_role(db_setup, rbac_context):
+    """A rename does not change which contexts the rule maps, so it is never refused over roles."""
+    security, _, _ = db_setup
+    rbac_context(_white_role_update(set()))
+
+    result = security.update_rule(rule_id=['103'], name='renamed').to_dict()
+
+    assert result['affected_items'][0]['name'] == 'renamed'

@@ -19,7 +19,7 @@ edit_run_as:
     result:
       affected_items:
         - id: 2
-          username: wazuh-wui
+          username: wazuh-internal-client
           allow_run_as: true
           roles:
             - 1
@@ -27,7 +27,7 @@ edit_run_as:
   - params:
       user_id: 1
       allow_run_as: True
-      current_user: wazuh-wui
+      current_user: wazuh-internal-client
       run_as: true
     result:
       affected_items: []
@@ -37,7 +37,7 @@ edit_run_as:
   - params:
       user_id: 2
       allow_run_as: False
-      current_user: wazuh-wui
+      current_user: wazuh-internal-client
       run_as: true
     result:
       affected_items: []
@@ -73,7 +73,7 @@ edit_run_as:
   - params:
       user_id: 100
       allow_run_as: False
-      current_user: wazuh-wui
+      current_user: wazuh-internal-client
       run_as: true
     result:
       affected_items:

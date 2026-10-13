@@ -392,6 +392,9 @@ list(APPEND shared_tests_names "test_remoted_op")
 list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
 
 
+list(APPEND shared_tests_names "test_file_op_unmerge")
+list(APPEND shared_tests_flags "-Wl,--wrap,fopen,--wrap,fwrite,--wrap,fclose,--wrap,fread ${DEBUG_OP_WRAPPERS}")
+
 endif()
 
 if(${TARGET} STREQUAL "manager")
@@ -518,3 +521,26 @@ foreach(counter RANGE ${count})
     endif()
     add_test(NAME ${test_name} COMMAND ${test_name})
 endforeach()
+
+# Rebuild file_op.c as on AIX 6.1 (no O_NOFOLLOW, no *at()) so the forked walk and emulated O_NOFOLLOW run on Linux; the
+# local object overrides the library copy.
+if(NOT ${TARGET} STREQUAL "winagent")
+    list(FIND shared_tests_names "test_file_op" file_op_index)
+    list(GET shared_tests_flags ${file_op_index} file_op_flags)
+
+    add_executable(test_file_op_no_o_nofollow test_file_op.c ${SRC_FOLDER}/shared/src/file_op.c)
+    target_compile_definitions(test_file_op_no_o_nofollow PRIVATE W_VETTED_TEST_NO_O_NOFOLLOW)
+    if(${TARGET} STREQUAL "manager")
+        target_link_libraries(test_file_op_no_o_nofollow ${WAZUHLIB} ${WAZUHEXT} ${TEST_DEPS})
+    else()
+        target_link_libraries(test_file_op_no_o_nofollow ${TEST_DEPS})
+    endif()
+    # The emulation calls the real lstat(), so drop its wrapper: only the mocked tests excluded from this variant use it.
+    string(REPLACE ",--wrap,lstat" "" file_op_flags "${file_op_flags}")
+    string(FIND "${file_op_flags}" "--wrap,lstat" lstat_wrapped)
+    if(NOT lstat_wrapped EQUAL -1)
+        message(FATAL_ERROR "test_file_op_no_o_nofollow: the lstat wrapper is still linked")
+    endif()
+    target_link_libraries(test_file_op_no_o_nofollow ${file_op_flags})
+    add_test(NAME test_file_op_no_o_nofollow COMMAND test_file_op_no_o_nofollow)
+endif()

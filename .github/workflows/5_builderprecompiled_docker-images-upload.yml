@@ -6,8 +6,28 @@ on:
     branches:
       - '5.[0-9]+.[0-9]+'
       - 'main'
+    # The union of the image filters below (packages/ inputs of each builder image), plus what the
+    # manager images are built with outside packages/: retry.sh is ADDed from
+    # .github/scripts/run_with_retry.sh, and the dispatched workflow and its build script push them.
+    # Other packages/ trees (SPECS, externals, macos, binutils/gcc images) dispatch nothing here.
     paths:
-      - 'packages/**'
+      - 'packages/build.sh'
+      - 'packages/generate_package.sh'
+      - 'packages/debs/*/manager/**'
+      - 'packages/debs/*/agent/**'
+      - 'packages/debs/utils/**'
+      - 'packages/rpms/*/manager/**'
+      - 'packages/rpms/*/agent/**'
+      - 'packages/rpms/utils/**'
+      - 'packages/windows/**'
+      - 'packages/wpk/wpkpack.py'
+      - 'packages/wpk/run.sh'
+      - 'packages/wpk/generate_wpk_package.sh'
+      - 'packages/wpk/common/**'
+      - '.github/scripts/run_with_retry.sh'
+      - '.github/actions/ghcr-pull-and-push/build_and_push_image_to_ghcr.sh'
+      - '.github/workflows/5_builderprecompiled_docker-images-upload-manager.yml'
+      - '.github/workflows/5_builderprecompiled_docker-images-upload.yml'
 
 jobs:
   Upload-package-building-images:
@@ -30,27 +50,41 @@ jobs:
         uses: dorny/paths-filter@v2
         id: changes
         with:
+          # Manager images: the build context is packages/<system>s/<arch>/manager plus the files the
+          # dispatched workflow copies into it (packages/build.sh, packages/<system>s/utils/*,
+          # .github/scripts/run_with_retry.sh as retry.sh). generate_package.sh runs on the host
+          # (5_builderpackage_manager.yml), never inside the image, so it rebuilds no manager image.
+          # The agent images are built in wazuh/wazuh-agent-packages from this ref; their filters
+          # are kept as that repository expects.
           filters: |
             pkg_deb_manager_builder_amd64:
               - 'packages/build.sh'
-              - 'packages/generate_package.sh'
               - 'packages/debs/amd64/manager/**'
               - 'packages/debs/utils/**'
+              - '.github/scripts/run_with_retry.sh'
+              - '.github/actions/ghcr-pull-and-push/build_and_push_image_to_ghcr.sh'
+              - '.github/workflows/5_builderprecompiled_docker-images-upload-manager.yml'
             pkg_deb_manager_builder_arm64:
               - 'packages/build.sh'
-              - 'packages/generate_package.sh'
               - 'packages/debs/arm64/manager/**'
               - 'packages/debs/utils/**'
+              - '.github/scripts/run_with_retry.sh'
+              - '.github/actions/ghcr-pull-and-push/build_and_push_image_to_ghcr.sh'
+              - '.github/workflows/5_builderprecompiled_docker-images-upload-manager.yml'
             pkg_rpm_manager_builder_amd64:
               - 'packages/build.sh'
-              - 'packages/generate_package.sh'
               - 'packages/rpms/amd64/manager/**'
               - 'packages/rpms/utils/**'
+              - '.github/scripts/run_with_retry.sh'
+              - '.github/actions/ghcr-pull-and-push/build_and_push_image_to_ghcr.sh'
+              - '.github/workflows/5_builderprecompiled_docker-images-upload-manager.yml'
             pkg_rpm_manager_builder_arm64:
               - 'packages/build.sh'
-              - 'packages/generate_package.sh'
               - 'packages/rpms/arm64/manager/**'
               - 'packages/rpms/utils/**'
+              - '.github/scripts/run_with_retry.sh'
+              - '.github/actions/ghcr-pull-and-push/build_and_push_image_to_ghcr.sh'
+              - '.github/workflows/5_builderprecompiled_docker-images-upload-manager.yml'
             pkg_deb_agent_builder_amd64:
               - 'packages/build.sh'
               - 'packages/generate_package.sh'

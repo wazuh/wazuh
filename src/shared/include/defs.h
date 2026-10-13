@@ -430,6 +430,9 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 #define SHAREDCFG_FILE     SHAREDCFG_DIR "/merged.mg"
 #define SHAREDCFG_FILENAME "merged.mg"
+/* Bundle being received by the agent. As an 8.3 name it gets no NTFS short alias that an entry could write through,
+ * and managers never distribute files whose names start with merged.mg. */
+#define SHAREDCFG_TMPFILENAME "merged.mgt"
 
 #define MAX_QUEUED_EVENTS_PATH "/proc/sys/fs/inotify/max_queued_events"
 

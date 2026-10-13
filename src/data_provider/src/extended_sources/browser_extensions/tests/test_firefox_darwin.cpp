@@ -13,6 +13,8 @@
 #include "gmock/gmock.h"
 
 #include <filesystem>
+#include <sys/stat.h>
+#include <unistd.h>
 
 class MockBrowserExtensionsWrapper : public IBrowserExtensionsWrapper
 {
@@ -22,13 +24,21 @@ class MockBrowserExtensionsWrapper : public IBrowserExtensionsWrapper
         MOCK_METHOD(std::string, getUserId, (std::string), (override));
 };
 
+
+// The fixture files must belong to the profile owner, so the owner reported is whoever owns the checkout
+static std::string fixtureOwner(const std::string& path)
+{
+    struct stat st {};
+    return ::stat(path.c_str(), &st) == 0 ? std::to_string(st.st_uid) : "";
+}
+
 TEST(FirefoxAddonsTests, NumberOfExtensions)
 {
     auto mockAddonsWrapper = std::make_shared<MockBrowserExtensionsWrapper>();
     std::string mockHomePath = (std::filesystem::path(__FILE__).parent_path() / "darwin").string();
 
     EXPECT_CALL(*mockAddonsWrapper, getHomePath()).WillRepeatedly(::testing::Return(mockHomePath));
-    EXPECT_CALL(*mockAddonsWrapper, getUserId(::testing::StrEq("mock-user"))).WillRepeatedly(::testing::Return("123"));
+    EXPECT_CALL(*mockAddonsWrapper, getUserId(::testing::StrEq("mock-user"))).WillRepeatedly(::testing::Return(fixtureOwner(mockHomePath)));
 
     FirefoxAddonsProvider firefoxAddonsProvider(mockAddonsWrapper);
     nlohmann::json extensionsJson = firefoxAddonsProvider.collect();
@@ -41,7 +51,7 @@ TEST(FirefoxAddonsTests, CollectReturnsExpectedJson)
     std::string mockHomePath = (std::filesystem::path(__FILE__).parent_path() / "darwin").string();
 
     EXPECT_CALL(*mockAddonsWrapper, getHomePath()).WillRepeatedly(::testing::Return(mockHomePath));
-    EXPECT_CALL(*mockAddonsWrapper, getUserId(::testing::StrEq("mock-user"))).WillRepeatedly(::testing::Return("123"));
+    EXPECT_CALL(*mockAddonsWrapper, getUserId(::testing::StrEq("mock-user"))).WillRepeatedly(::testing::Return(fixtureOwner(mockHomePath)));
 
     FirefoxAddonsProvider firefoxAddonsProvider(mockAddonsWrapper);
     nlohmann::json extensionsJson = firefoxAddonsProvider.collect();
@@ -61,7 +71,7 @@ TEST(FirefoxAddonsTests, CollectReturnsExpectedJson)
             EXPECT_EQ(jsonElement["path"], "");
             EXPECT_EQ(jsonElement["source_url"], "");
             EXPECT_EQ(jsonElement["type"], "extension");
-            EXPECT_EQ(jsonElement["uid"], "123");
+            EXPECT_EQ(jsonElement["uid"], fixtureOwner(mockHomePath));
             EXPECT_EQ(jsonElement["version"], "2.0.0");
             EXPECT_EQ(jsonElement["visible"], true);
         }

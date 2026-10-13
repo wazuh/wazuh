@@ -10,10 +10,31 @@ on:
       - 'api/api/**'
       # The job builds wazuh-manager-conf, which core/manager_conf.py shells out to
       - 'src/shared_modules/manager_config/**'
+      # ...with the error catalogue on its include path (manager_config/CMakeLists.txt:50), whose
+      # codes core/manager_conf.py maps
+      - 'src/shared/include/error_messages/error_messages.h'
+      # Configure (src/CMakeLists.txt:86 includes src/cmake; ext_pugixml/ext_rapidjson are defined in
+      # src/external/CMakeLists.txt) and `make deps` (src/Makefile:708 runs get_git_refs.sh)
       - 'src/CMakeLists.txt'
+      - 'src/cmake/**'
+      - 'src/external/CMakeLists.txt'
       - 'src/Makefile'
-      # API unit tests
+      - 'tools/get_git_refs.sh'
+      # API unit tests (5_testunit_api.yml) and manager_config's C++ suites (5_testunit_managerconfig.yml)
       - '!api/api/**/test/**'
+      - '!src/shared_modules/manager_config/tests/**'
+      # Neither collected nor imported by `pytest framework`: the embedded-Python build
+      # (5_builderpackage_embedded-python.yml), the example, the installer's wrapper, Makefile and
+      # setup.py, and the wodles' requirements (5_testunit_wodles.yml)
+      - '!framework/cpython/**'
+      - '!framework/examples/**'
+      - '!framework/wrappers/**'
+      - '!framework/Makefile'
+      - '!framework/setup.py'
+      - '!framework/requirements-wodles*.txt'
+      # The job pins its interpreter in the matrix; it does not read framework/.python-version
+      - '!framework/.python-version'
+      - '!**/*.md'
   workflow_dispatch:
     inputs:
       generate_report:

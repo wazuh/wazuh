@@ -289,11 +289,11 @@ async def test_get_users(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_requ
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_edit_run_as(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'edit_run_as' endpoint is working as expected."""
-    mock_request.context['token_info'].update({'sub': 'wazuh-wui', 'run_as': True})
+    mock_request.context['token_info'].update({'sub': 'wazuh-internal-client', 'run_as': True})
     result = await edit_run_as(user_id='001', allow_run_as=False)
     f_kwargs = {'user_id': '001',
                 'allow_run_as': False,
-                'current_user': 'wazuh-wui',
+                'current_user': 'wazuh-internal-client',
                 'run_as': True
                 }
     mock_dapi.assert_called_once_with(f=security.edit_run_as,
@@ -342,7 +342,7 @@ async def test_create_user(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_re
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_update_user(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'update_user' endpoint is working as expected."""
-    mock_request.context['token_info'].update({'sub': 'wazuh-wui', 'run_as': True})
+    mock_request.context['token_info'].update({'sub': 'wazuh-internal-client', 'run_as': True})
     with patch('api.controllers.security_controller.Body.validate_content_type'):
         with patch('api.controllers.security_controller.UpdateUserModel.get_kwargs',
                    return_value=AsyncMock()) as mock_getkwargs:

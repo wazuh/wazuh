@@ -43,7 +43,8 @@ tags:
     - enrollment
 '''
 import pytest
-import socket, time
+import socket
+import time
 from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
@@ -87,27 +88,30 @@ AGENT_NAME = 'test_agent'
 INPUT_MESSAGE = "OSSEC A:'{}_{}'\n"
 
 
-def wait_for_tcp_port(port, host='localhost', timeout=10):
-    """Wait until a port starts accepting TCP connections.
+def wait_for_tcp_port(port, host='localhost', timeout=30, interval=0.5):
+    """Wait until a TCP port accepts connections.
+
+    A daemon can log that it started before it binds its port, so the log line alone is not a
+    reliable readiness signal right after a restart.
+
     Args:
-        port (int): Port number.
-        host (str): Host address on which the port should be listening. Default 'localhost'
-        timeout (float): In seconds. How long to wait before raising errors.
-    Raises:
-        TimeoutError: The port isn't accepting connection after time specified in `timeout`.
+        port (int): Port to connect to.
+        host (str): Host to connect to. Default `localhost`.
+        timeout (int): Max seconds to wait for the port to accept connections.
+        interval (float): Seconds between attempts.
+
+    Returns:
+        bool: True if the port accepted a connection before the timeout, False otherwise.
     """
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    start_time = time.time()
-    while time.time() - start_time < timeout:
+    end_time = time.time() + timeout
+    while time.time() < end_time:
         try:
-            sock.connect((host, port))
-            sock.close()
-            return
-        except ConnectionRefusedError:
-            time.sleep(1)
+            with socket.create_connection((host, int(port)), timeout=1):
+                return True
+        except OSError:
+            time.sleep(interval)
 
-
-    raise TimeoutError(f'Waited too long for the port {port} on host {host} to start accepting messages')
+    return False
 
 
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
@@ -168,13 +172,14 @@ def test_remote_enrollment(test_configuration, test_metadata, set_wazuh_configur
 
     if remote_enrollment_enabled:
         expected_log = "Accepting connections on port 1515. No password required."
-        wait_for_tcp_port(DEFAULT_SSL_REMOTE_ENROLLMENT_PORT)
+        assert wait_for_tcp_port(DEFAULT_SSL_REMOTE_ENROLLMENT_PORT, timeout=30), \
+            f"Port {DEFAULT_SSL_REMOTE_ENROLLMENT_PORT} did not start accepting connections in time"
     else:
         expected_log = ".*Port 1515 was set as disabled.*"
         expectation = pytest.raises(ConnectionRefusedError)
 
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
-    log_monitor.start(timeout=5, callback=callbacks.generate_callback(f'{PREFIX}{expected_log}'))
+    log_monitor.start(timeout=30, callback=callbacks.generate_callback(f'{PREFIX}{expected_log}'))
     assert log_monitor.callback_result, f'Expected log not found: {expected_log}'
     with expectation:
         ssl_socket = SocketController(remote_enrollment_address, family='AF_INET', connection_protocol='ssl_tls')

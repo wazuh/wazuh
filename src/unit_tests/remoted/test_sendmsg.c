@@ -516,6 +516,82 @@ void test_send_msg_udp_error_generic(void ** state) {
     assert_int_equal(ret, -1);
 }
 
+/* send_msg_nowait() up to the TCP enqueue: lookup, encryption, both locks */
+static void expect_nowait_until_queue(const char *agent_id, const char *msg, const char *crypto_msg, int retval) {
+    const ssize_t crypto_size = strlen(crypto_msg);
+
+    logr.global.agents_disconnection_time = 0;
+
+    expect_function_call(__wrap_rwlock_lock_read);
+
+    expect_string(__wrap_OS_IsAllowedID, id, agent_id);
+    will_return(__wrap_OS_IsAllowedID, 0);
+
+    will_return(__wrap_time, (time_t)0);
+
+    expect_string(__wrap_CreateSecMSG, msg, msg);
+    expect_value(__wrap_CreateSecMSG, msg_length, strlen(msg));
+    expect_value(__wrap_CreateSecMSG, id, 0);
+    will_return(__wrap_CreateSecMSG, crypto_size);
+    will_return(__wrap_CreateSecMSG, crypto_msg);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+
+    // Never nb_queue(), which waits for buffer space
+    expect_value(__wrap_nb_queue_nowait, socket, 15);
+    expect_string(__wrap_nb_queue_nowait, msg, crypto_msg);
+    expect_value(__wrap_nb_queue_nowait, msg_size, crypto_size);
+    will_return(__wrap_nb_queue_nowait, retval);
+}
+
+void test_send_msg_nowait_tcp_ok(void ** state) {
+    (void) state;
+    int full_sock = -1;
+
+    expect_nowait_until_queue("001", "abcdefghijk", "!@#123abc", 0);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_rwlock_unlock);
+
+    int ret = send_msg_nowait("001", "abcdefghijk", -1, &full_sock);
+
+    assert_int_equal(ret, OS_SUCCESS);
+    assert_int_equal(full_sock, -1);
+}
+
+void test_send_msg_nowait_tcp_queue_full(void ** state) {
+    (void) state;
+    int full_sock = -1;
+
+    expect_nowait_until_queue("001", "abcdefghijk", "!@#123abc", -1);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_rwlock_unlock);
+
+    int ret = send_msg_nowait("001", "abcdefghijk", -1, &full_sock);
+
+    // The caller closes the connection, after both locks are released
+    assert_int_equal(ret, SEND_MSG_QUEUE_FULL);
+    assert_int_equal(full_sock, 15);
+}
+
+void test_send_msg_nowait_tcp_socket_gone(void ** state) {
+    (void) state;
+    int full_sock = -1;
+
+    expect_nowait_until_queue("001", "abcdefghijk", "!@#123abc", -2);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Send operation cancelled due to closed socket.");
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_rwlock_unlock);
+
+    int ret = send_msg_nowait("001", "abcdefghijk", -1, &full_sock);
+
+    assert_int_equal(ret, OS_INVALID);
+    assert_int_equal(full_sock, -1);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         // Guard clauses tests
@@ -527,6 +603,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_send_msg_tcp_ok, test_setup_tcp, test_teardown_tcp),
         cmocka_unit_test_setup_teardown(test_send_msg_tcp_err, test_setup_tcp, test_teardown_tcp),
         cmocka_unit_test_setup_teardown(test_send_msg_tcp_err_closed_socket, test_setup_tcp, test_teardown_tcp),
+        cmocka_unit_test_setup_teardown(test_send_msg_nowait_tcp_ok, test_setup_tcp, test_teardown_tcp),
+        cmocka_unit_test_setup_teardown(test_send_msg_nowait_tcp_queue_full, test_setup_tcp, test_teardown_tcp),
+        cmocka_unit_test_setup_teardown(test_send_msg_nowait_tcp_socket_gone, test_setup_tcp, test_teardown_tcp),
 
         // UDP tests
         cmocka_unit_test_setup_teardown(test_send_msg_udp_ok, test_setup_udp, test_teardown_udp),

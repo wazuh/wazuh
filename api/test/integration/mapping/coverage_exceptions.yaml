@@ -32,19 +32,3 @@
 - operation: GET /cluster/healthcheck
   bucket: forbidden
   reason: Filtered by cluster:read per node, answers 200 with the permitted nodes only.
-
-# Broadcast agent commands (DistributedAPI broadcasting=True): every node answers for the agents it
-# may act on and the merge drops the rest, so a denied agent, even a single specific one, is absent
-# from a 200 answer instead of refused. rbac_white_all asserts the empty answer for each of them.
-- operation: PUT /agents/restart
-  bucket: forbidden
-  reason: Broadcast to every node; a denied agent is dropped from each node's answer, never refused with 403.
-- operation: PUT /agents/reload
-  bucket: forbidden
-  reason: Broadcast to every node; a denied agent is dropped from each node's answer, never refused with 403.
-- operation: PUT /agents/upgrade
-  bucket: forbidden
-  reason: Broadcast to every node; a denied agent is dropped from each node's answer, never refused with 403.
-- operation: PUT /agents/upgrade_custom
-  bucket: forbidden
-  reason: Broadcast to every node; a denied agent is dropped from each node's answer, never refused with 403.

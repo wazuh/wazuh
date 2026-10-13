@@ -227,10 +227,11 @@ static void test_fim_recovery_persist_table_and_resync_success(void **state) {
     expect_any(__wrap_asp_persist_diff, data);
     expect_value(__wrap_asp_persist_diff, version, 1);
 
-    // Expect asp_sync_module call - return success
-    expect_value(__wrap_asp_sync_module, handle, handle);
-    expect_value(__wrap_asp_sync_module, mode, MODE_DELTA);
-    will_return(__wrap_asp_sync_module, true);
+    // Expect asp_sync_module_bounded call - return success
+    expect_value(__wrap_asp_sync_module_bounded, handle, handle);
+    expect_value(__wrap_asp_sync_module_bounded, mode, MODE_DELTA);
+    expect_value(__wrap_asp_sync_module_bounded, max_blocks, 10);
+    will_return(__wrap_asp_sync_module_bounded, true);
 
     // Call the function
     fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories);
@@ -292,10 +293,11 @@ static void test_fim_recovery_persist_table_and_resync_failure(void **state) {
     expect_any(__wrap_asp_persist_diff, data);
     expect_value(__wrap_asp_persist_diff, version, 1);
 
-    // Expect asp_sync_module call - return failure
-    expect_value(__wrap_asp_sync_module, handle, handle);
-    expect_value(__wrap_asp_sync_module, mode, MODE_DELTA);
-    will_return(__wrap_asp_sync_module, false);
+    // Expect asp_sync_module_bounded call - return failure
+    expect_value(__wrap_asp_sync_module_bounded, handle, handle);
+    expect_value(__wrap_asp_sync_module_bounded, mode, MODE_DELTA);
+    expect_value(__wrap_asp_sync_module_bounded, max_blocks, 10);
+    will_return(__wrap_asp_sync_module_bounded, false);
 
     // Call the function
     fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories);
@@ -343,6 +345,39 @@ static void test_fim_recovery_persist_table_and_resync_null_items(void **state) 
     fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories);
 
     // Function should return early without crashing
+}
+
+// A failed clear is logged as a warning, not an error: an agent reload landing mid-pass is the
+// usual cause and the next cycle retries. Nothing is persisted or synced after it.
+static void test_fim_recovery_persist_table_and_resync_data_clean_failure(void **state) {
+    (void) state;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234; // Mock handle
+
+    cJSON* test_items = cJSON_CreateArray();
+    cJSON* item = cJSON_CreateObject();
+    cJSON_AddStringToObject(item, "path", "/tmp/test.txt");
+    cJSON_AddStringToObject(item, "checksum", "abc123");
+    cJSON_AddNumberToObject(item, "version", 1);
+    cJSON_AddItemToArray(test_items, item);
+
+    expect_string(__wrap_fim_db_increase_each_entry_version, table_name, FIMDB_FILE_TABLE_NAME);
+    will_return(__wrap_fim_db_increase_each_entry_version, 0);
+
+    expect_string(__wrap_fim_db_get_every_element, table_name, FIMDB_FILE_TABLE_NAME);
+    expect_string(__wrap_fim_db_get_every_element, row_filter, "WHERE sync=1");
+    will_return(__wrap_fim_db_get_every_element, test_items);
+
+    expect_value(__wrap_asp_notify_data_clean, handle, handle);
+    expect_any(__wrap_asp_notify_data_clean, indices);
+    expect_value(__wrap_asp_notify_data_clean, indices_count, 1);
+    will_return(__wrap_asp_notify_data_clean, false);
+
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "Failed to clear index '" FIM_FILES_SYNC_INDEX "' before recovery resync for table "
+                  FIMDB_FILE_TABLE_NAME "; will retry later");
+
+    // No asp_persist_diff/asp_sync_module_bounded expectations: reaching either would be the bug.
+    assert_false(fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories));
 }
 
 // Test: Check if full sync required - checksum mismatch
@@ -472,9 +507,10 @@ static void test_fim_recovery_persist_table_and_resync_skips_orphan_paths(void *
     expect_any(__wrap_asp_persist_diff, data);
     expect_value(__wrap_asp_persist_diff, version, 1);
 
-    expect_value(__wrap_asp_sync_module, handle, handle);
-    expect_value(__wrap_asp_sync_module, mode, MODE_DELTA);
-    will_return(__wrap_asp_sync_module, true);
+    expect_value(__wrap_asp_sync_module_bounded, handle, handle);
+    expect_value(__wrap_asp_sync_module_bounded, mode, MODE_DELTA);
+    expect_value(__wrap_asp_sync_module_bounded, max_blocks, 10);
+    will_return(__wrap_asp_sync_module_bounded, true);
 
     fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories);
 
@@ -618,9 +654,10 @@ static void test_fim_recovery_persist_table_and_resync_skips_orphan_registry_key
     expect_any(__wrap_asp_persist_diff, data);
     expect_value(__wrap_asp_persist_diff, version, 1);
 
-    expect_value(__wrap_asp_sync_module, handle, handle);
-    expect_value(__wrap_asp_sync_module, mode, MODE_DELTA);
-    will_return(__wrap_asp_sync_module, true);
+    expect_value(__wrap_asp_sync_module_bounded, handle, handle);
+    expect_value(__wrap_asp_sync_module_bounded, mode, MODE_DELTA);
+    expect_value(__wrap_asp_sync_module_bounded, max_blocks, 10);
+    will_return(__wrap_asp_sync_module_bounded, true);
 
     fim_recovery_persist_table_and_resync(FIMDB_REGISTRY_KEY_TABLENAME, handle, &mock_directories);
 
@@ -739,9 +776,10 @@ static void test_fim_resync_on_agent_id_change_resends_and_records(void **state)
     expect_any(__wrap_asp_persist_diff, data);
     expect_value(__wrap_asp_persist_diff, version, 1);
 
-    expect_value(__wrap_asp_sync_module, handle, handle);
-    expect_value(__wrap_asp_sync_module, mode, MODE_DELTA);
-    will_return(__wrap_asp_sync_module, true);
+    expect_value(__wrap_asp_sync_module_bounded, handle, handle);
+    expect_value(__wrap_asp_sync_module_bounded, mode, MODE_DELTA);
+    expect_value(__wrap_asp_sync_module_bounded, max_blocks, 10);
+    will_return(__wrap_asp_sync_module_bounded, true);
 
     expect_string(__wrap_fim_db_update_last_sync_time_value, table_name, FIM_SYNCED_AGENT_ID_METADATA_KEY);
     expect_value(__wrap_fim_db_update_last_sync_time_value, timestamp, 2);
@@ -848,6 +886,7 @@ int main(void) {
         cmocka_unit_test(test_fim_recovery_persist_table_and_resync_failure),
         cmocka_unit_test(test_fim_recovery_persist_table_and_resync_version_increase_failure),
         cmocka_unit_test(test_fim_recovery_persist_table_and_resync_null_items),
+        cmocka_unit_test(test_fim_recovery_persist_table_and_resync_data_clean_failure),
         cmocka_unit_test(test_fim_recovery_persist_table_and_resync_skips_orphan_paths),
         cmocka_unit_test(test_fim_recovery_check_if_full_sync_required_mismatch),
         cmocka_unit_test(test_fim_recovery_check_if_full_sync_required_match),

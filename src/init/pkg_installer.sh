@@ -919,12 +919,19 @@ case "${SSL_VERIFICATION_MODE}" in
             echo "$(date +"%Y/%m/%d %H:%M:%S") - System CA trust check skipped (test mode)." >> ./logs/upgrade.log
         elif probe_server_verified "${SERVER_ADDRESS}" "${SERVER_PORT}" "${SERVER_ENDPOINT}"; then
             echo "$(date +"%Y/%m/%d %H:%M:%S") - The system trust store already verifies the manager's certificate; proceeding under verify_mode=system." >> ./logs/upgrade.log
+        elif [ "${SSL_VERIFICATION_MODE_EXPLICIT}" = "1" ] && [ "${ANCHOR_AVAILABLE}" = "1" ]; then
+            # Under 'system' the agent falls back to the anchor when the OS trust store fails.
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - <ssl><verification_mode> is explicitly 'system' and the system trust store does not verify the manager's certificate at ${SERVER_ADDRESS}:${SERVER_PORT}, but a trust anchor is present at ${DEFAULT_CA_FILE} -- the upgraded agent falls back to it when the OS trust store fails, so proceeding." >> ./logs/upgrade.log
         elif [ "${SSL_VERIFICATION_MODE_EXPLICIT}" = "1" ]; then
-            # <verification_mode>system</verification_mode> was set explicitly:
-            # pinning a CA here would be rejected at runtime (validateTls() in
-            # moduleConfig.cpp refuses system+certificate_authorities together), so
-            # there is nothing this script can safely fix on the operator's behalf.
-            echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. <ssl><verification_mode> is explicitly 'system' but the system trust store does not verify the manager's certificate at ${SERVER_ADDRESS}:${SERVER_PORT}. Import it into the OS trust store, or switch to <verification_mode>certificate</verification_mode> with a <certificate_authorities> path, interrupting upgrade." >> ./logs/upgrade.log
+            # Explicit 'system' with no anchor to fall back to. A <certificate_authorities> pin is
+            # rejected alongside 'system', so the fix is the operator's.
+            EXPLICIT_SYSTEM_ADVICE="Import the manager's CA into the OS trust store, place it at ${DEFAULT_CA_FILE} and retry, or switch to <verification_mode>certificate</verification_mode> with a <certificate_authorities> path"
+            if [ -n "${CA_TOOL_HINT}" ]; then
+                EXPLICIT_SYSTEM_ADVICE="${EXPLICIT_SYSTEM_ADVICE}. ${CA_HINT_REF} Interrupting upgrade."
+            else
+                EXPLICIT_SYSTEM_ADVICE="${EXPLICIT_SYSTEM_ADVICE}, interrupting upgrade."
+            fi
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. <ssl><verification_mode> is explicitly 'system' but the system trust store does not verify the manager's certificate at ${SERVER_ADDRESS}:${SERVER_PORT}, and no trust anchor is present at ${DEFAULT_CA_FILE} to fall back to. ${EXPLICIT_SYSTEM_ADVICE}" >> ./logs/upgrade.log
             abort_upgrade "2"
         elif [ "${ANCHOR_AVAILABLE}" = "1" ]; then
             # <verification_mode> was left unset (not explicit), so the new binary

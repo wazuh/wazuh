@@ -4,21 +4,25 @@ on:
   workflow_dispatch:
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
+    # The action checks only `find <path> -name '*.cpp' -o -name '*.hpp'` in each of the twelve
+    # trees below (.github/actions/clang_format/action.yml), against the nearest .clang-format:
+    # headers (.h), CMake files and docs in those trees cannot change its result.
+    # upload_s3_artifact is not listed: it only uploads the error file of a failed check.
     paths:
       - .clang-format
-      - src/shared_modules/indexer_connector/**
-      - src/shared_modules/content_manager/**
-      - src/shared_modules/utils/**
-      - src/shared_modules/metrics/**
-      - src/shared_modules/manager_config/**
-      - src/shared_modules/ca_bundle/**
-      - src/shared_modules/manager_certs/**
-      - src/wazuh_modules/inventory_sync_server/**
-      - src/wazuh_modules/task_manager/**
-      - src/wazuh_modules/vulnerability_scanner/**
-      - src/remoted/remoted_module/**
-      - src/engine/**
       - src/engine/.clang-format
+      - src/shared_modules/indexer_connector/**/*.[ch]pp
+      - src/shared_modules/content_manager/**/*.[ch]pp
+      - src/shared_modules/utils/**/*.[ch]pp
+      - src/shared_modules/metrics/**/*.[ch]pp
+      - src/shared_modules/manager_config/**/*.[ch]pp
+      - src/shared_modules/ca_bundle/**/*.[ch]pp
+      - src/shared_modules/manager_certs/**/*.[ch]pp
+      - src/wazuh_modules/inventory_sync_server/**/*.[ch]pp
+      - src/wazuh_modules/task_manager/**/*.[ch]pp
+      - src/wazuh_modules/vulnerability_scanner/**/*.[ch]pp
+      - src/remoted/remoted_module/**/*.[ch]pp
+      - src/engine/**/*.[ch]pp
       - .github/workflows/5_codelinter_clangformat.yml
       - .github/actions/clang_format/**
 

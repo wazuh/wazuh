@@ -239,3 +239,48 @@ TEST_F(SocketServerTest, RemoveClient)
     EXPECT_CALL(*server.m_epoll, deleteDescriptor(testing::_)).Times(1);
     EXPECT_CALL(*server.m_listenSocket, closeSocket()).Times(1);
 }
+
+TEST_F(SocketServerTest, ProcessEventRemovesClientWhenReadFails)
+{
+    SocketServer<MockSocket, MockEpollWrapper> server("test");
+
+    int clientFD = 123;
+    auto clientSocket = std::make_shared<MockSocket>(clientFD);
+    server.addClient(clientFD, clientSocket);
+
+    auto onRead = [](const int, const char*, uint32_t, const char*, uint32_t)
+    {
+        // Not used
+    };
+
+    // A malformed packet (or a disconnect) makes read() throw: the stream can no longer be framed.
+    EXPECT_CALL(*clientSocket, read(testing::_)).WillOnce(testing::Throw(std::runtime_error("Invalid packet size.")));
+
+    EXPECT_NO_THROW(server.processEvent(EPOLLIN, clientFD, onRead));
+    EXPECT_FALSE(server.getClient(clientFD));
+
+    EXPECT_CALL(*server.m_epoll, deleteDescriptor(testing::_)).Times(1);
+    EXPECT_CALL(*server.m_listenSocket, closeSocket()).Times(1);
+}
+
+TEST_F(SocketServerTest, ProcessEventKeepsClientWhenReadSucceeds)
+{
+    SocketServer<MockSocket, MockEpollWrapper> server("test");
+
+    int clientFD = 123;
+    auto clientSocket = std::make_shared<MockSocket>(clientFD);
+    server.addClient(clientFD, clientSocket);
+
+    auto onRead = [](const int, const char*, uint32_t, const char*, uint32_t)
+    {
+        // Not used
+    };
+
+    EXPECT_CALL(*clientSocket, read(testing::_)).Times(1);
+
+    EXPECT_NO_THROW(server.processEvent(EPOLLIN, clientFD, onRead));
+    EXPECT_EQ(server.getClient(clientFD), clientSocket);
+
+    EXPECT_CALL(*server.m_epoll, deleteDescriptor(testing::_)).Times(1);
+    EXPECT_CALL(*server.m_listenSocket, closeSocket()).Times(1);
+}

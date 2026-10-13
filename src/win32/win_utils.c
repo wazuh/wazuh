@@ -19,7 +19,6 @@
 #include "sym_load.h"
 #include "os_net.h"
 #include "dll_load_notify.h"
-#include "reenroll_secret.h"
 #include "startup_gate_op.h"
 #include "token_bootstrap.h"
 #include "agent_sync_protocol_c_interface.h"
@@ -472,6 +471,15 @@ int local_start()
         mdebug1("Sync sessions bounded to %lld bytes by <agent><batch><size>.", agt->batch.size);
     }
 
+    /* agent.sync_max_blocks_per_cycle is handed down the same way: how many of those
+     * sessions one sync cycle may send before the rest waits for the next cycle. */
+    const int sync_max_blocks = getDefine_Int_default("agent", "sync_max_blocks_per_cycle", 1, 1000, 0);
+    asp_set_max_blocks_per_sync((uint32_t)sync_max_blocks);
+
+    if (sync_max_blocks > 0) {
+        mdebug1("Sync cycles bounded to %d blocks by agent.sync_max_blocks_per_cycle.", sync_max_blocks);
+    }
+
     if(agt->enrollment.enabled) {
         // If autoenrollment is enabled, we will avoid exit if there is no valid key
         OS_PassEmptyKeyfile();
@@ -519,18 +527,6 @@ int local_start()
         merror_exit("https_client: startup failed. Exiting.");
     }
     atexit(w_https_client_stop);
-
-    /* Re-enrollment secret bootstrap (#39315), the twin of AgentdStart()'s own call: an agent that
-     * reached 5.0 while KEEPING its client.keys identity -- one upgraded from 4.x over WPK, one
-     * enrolled over port 1515, one whose manager-side row was rebuilt from client.keys -- never
-     * called POST /enroll and so never received a re-enrollment secret. Without one, the day the
-     * manager stops accepting its key, recovery needs an operator at the endpoint.
-     *
-     * HERE for the same reason as on POSIX: the transport must be up, and the call must stay off the
-     * boot path. It returns immediately and is never fatal. This is a separate call site rather than
-     * a shared one because agentd.c is excluded from the Windows build -- the same split
-     * w_agent_token_bootstrap() above already lives with. */
-    w_reenroll_secret_bootstrap_async();
 
     /* Start syscheck thread */
     w_create_thread(NULL,

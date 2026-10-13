@@ -6,10 +6,52 @@ on:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - ".github/workflows/5_testcomponent_remoted_module.yml"
-      - "src/remoted/remoted_module/**"
-      - "src/shared_modules/ca_bundle/**"
-      - "src/shared_modules/metrics/**"
+      # remoted_module_utest (test/CMakeLists.txt:14,26) links the remoted_module library built from
+      # src/ and include/ (CMakeLists.txt:13-15). Not tools/ (load-balancer lab, send_*.py drivers)
+      # or README.md. remoted_module links none of remoted's C sources; its only parent on the
+      # configure path is src/remoted/CMakeLists.txt:63 (registered at src/CMakeLists.txt:284).
+      - "src/remoted/remoted_module/CMakeLists.txt"
+      - "src/remoted/remoted_module/include/**"
+      - "src/remoted/remoted_module/src/**"
+      - "src/remoted/remoted_module/test/**"
+      - "src/remoted/CMakeLists.txt"
+      # Linked: wazuh_metrics, wazuh_uds_http_server, ca_bundle (CMakeLists.txt:42-43; the test also
+      # links wazuh_metrics and ca_bundle directly, test/CMakeLists.txt). wazuh_uds_http_server is
+      # registered by the first consumer's guarded add_subdirectory (src/CMakeLists.txt:245-254).
+      - "src/shared_modules/ca_bundle/**/CMakeLists.txt"
+      - "src/shared_modules/ca_bundle/include/**"
+      - "src/shared_modules/ca_bundle/src/**"
+      - "src/shared_modules/metrics/**/CMakeLists.txt"
+      - "src/shared_modules/metrics/include/**"
+      - "src/shared_modules/metrics/src/**"
+      - "src/shared_modules/uds_http_server/**/CMakeLists.txt"
+      - "src/shared_modules/uds_http_server/include/**"
+      - "src/shared_modules/uds_http_server/src/**"
+      # Headers from shared_modules/utils and common/commonDefs.h (included by
+      # utils/loggerHelper.h:15). utils/flatbuffers is built by build_external_deps/action.yml:55-63.
+      # utils' own tests and benchmark are another component's tree; only their CMakeLists.txt are on
+      # the configure path (utils/CMakeLists.txt).
       - "src/shared_modules/utils/**"
+      - "!src/shared_modules/utils/tests/**"
+      - "!src/shared_modules/utils/benchmark/**"
+      - "src/shared_modules/utils/tests/CMakeLists.txt"
+      - "src/shared_modules/utils/benchmark/CMakeLists.txt"
+      - "src/shared_modules/common/**"
+      # Configure path: build_target_cpp configures all of src/ as one tree
+      # (build_target_cpp/action.yml:57) -- src/CMakeLists.txt (src/cmake/*.cmake at :86-87,
+      # VERSION.json at :128) and src/external/CMakeLists.txt (ext_* targets, wazuhext at :1474).
+      - "src/CMakeLists.txt"
+      - "src/cmake/**"
+      - "src/external/CMakeLists.txt"
+      - "VERSION.json"
+      # build_external_deps runs make deps/build-external (src/Makefile:610, ref list from
+      # tools/get_git_refs.sh at src/Makefile:708) and builds the http-request submodule
+      # (action.yml:35-43). A submodule bump changes only the gitlink path, which no '/**'
+      # pattern matches.
+      - "src/Makefile"
+      - "tools/get_git_refs.sh"
+      - "src/shared_modules/http-request"
+      # Result-affecting actions this workflow executes.
       - ".github/actions/build_external_deps/**"
       - ".github/actions/build_target_cpp/**"
       - ".github/actions/test_cpp/**"
@@ -27,9 +69,13 @@ jobs:
       fail-fast: true
       matrix:
         include:
+          # This leg keeps its name (check names) but no longer wraps ctest in valgrind: test_cpp's
+          # valgrind branch never instrumented the test binary (no --trace-children=yes,
+          # test_cpp/action.yml), so it is the plain, non-sanitized build of the suite. The asan
+          # leg is the memory gate.
           - test_type: valgrind
             asan_enabled: "false"
-            valgrind_enabled: "true"
+            valgrind_enabled: "false"
           - test_type: asan
             asan_enabled: "true"
             valgrind_enabled: "false"

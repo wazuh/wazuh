@@ -148,7 +148,6 @@ typedef struct _agent {
     int server_count; ///< Holds the total amount of servers
     int notify_time;
     int max_time_reconnect_try;
-    int main_ip_update_interval;
     char *profile;
     int package_uninstallation;
     agent_flags_t flags;

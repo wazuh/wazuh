@@ -756,7 +756,8 @@ static void process_message(struct client *client) {
     char* key_hash = NULL;
     char* new_key = NULL;
 
-    mdebug2("Request received: <%s>", client->read_buffer);
+    /* Never log the buffer: a legacy request starts with "OSSEC PASS: <authd.pass>". */
+    mdebug2("Enrollment request received from %s", client->ip);
 
     /* authpass is only mutable on the worker: the watcher thread reloads it and so does the
      * block below. The master sets it once at startup, so it needs no serialisation there and
@@ -807,6 +808,12 @@ static void process_message(struct client *client) {
         return;
     }
 
+    /* The peer's address, before w_auth_parse_data() replaces client->ip with the address to register
+     * ("any", or the agent's own IP:'...'): a worker forwards it so the master's log names the agent's
+     * source rather than "requested locally" */
+    char source[IPSIZE + 1];
+    snprintf(source, sizeof(source), "%s", client->ip);
+
     int auth_parse_result = w_auth_parse_data(client->read_buffer, response, authpass, client->ip, &client->agentname, &client->centralized_group, &key_hash);
     if (serialize_authpass) {
         w_mutex_unlock(&mutex_authpass);
@@ -816,7 +823,7 @@ static void process_message(struct client *client) {
         if (config.worker_node) {
             minfo("Dispatching request to master node");
             // The force registration settings are ignored for workers. The master decides.
-            if (0 == w_request_agent_add_clustered(response, client->agentname, client->ip, client->centralized_group, key_hash, &client->new_id, &new_key, NULL, NULL, NULL, NULL, NULL, NULL, NULL)) {
+            if (0 == w_request_agent_add_clustered(response, client->agentname, client->ip, client->centralized_group, key_hash, &client->new_id, &new_key, NULL, NULL, NULL, NULL, NULL, NULL, source, NULL)) {
                 client->enrollment_ok = TRUE;
             }
         }
@@ -869,6 +876,15 @@ static int handle_ssl_read(struct client *client) {
                 break;
             }
 
+            /* No terminator yet. A request split across TLS records is normal, so keep
+             * draining until SSL_ERROR_WANT_READ (the socket is edge-triggered). Only a full
+             * buffer is final, and it costs the peer a whole buffer per line logged. */
+            if (client->read_offset >= MAX_SSL_MSG_SIZE) {
+                mdebug1("Enrollment request from %s exceeds %d bytes without a newline terminator. "
+                        "Closing connection.", client->ip, MAX_SSL_MSG_SIZE);
+                return -1;
+            }
+
         } else if (ret == 0) {
             // The client closed the connection
             mdebug2("Client closed connection ip: %s fd: %d", client->ip, client->socket);
@@ -884,11 +900,6 @@ static int handle_ssl_read(struct client *client) {
                 merror("SSL read error (%d)", err);
                 return -1;
             }
-        }
-
-        if (ret < (MAX_SSL_MSG_SIZE - client->read_offset) && ret < MAX_SSL_PACKET_SIZE) {
-            merror("Newline terminator not found in message request for %s", client->ip);
-            break;
         }
     }
 

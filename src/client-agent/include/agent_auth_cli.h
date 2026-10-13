@@ -49,6 +49,11 @@
                                       * at the previous manager. The opposite remediation to 5,
                                       * which is why it is not the same code. */
 
+/* Leads the stderr line that carries the manager's own reason for refusing a request. The
+ * Windows agent UI finds that line by this prefix to show the reason in its message box, so
+ * the CLI and the UI must spell it the same way. */
+#define AGENT_AUTH_MANAGER_SAID   "The manager said: "
+
 typedef enum {
     AGENT_AUTH_ACTION_ENROLL = 0,
     AGENT_AUTH_ACTION_SHOW

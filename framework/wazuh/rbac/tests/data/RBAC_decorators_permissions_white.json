@@ -566,7 +566,7 @@
         "post_proc_kwargs": null
     },
     "function_params": {
-      "user_id": ["wazuh", "wazuh-wui"]
+      "user_id": ["wazuh", "wazuh-internal-client"]
     },
     "fake_system_resources": {"user:id:*": ["wazuh"]},
     "allowed_resources": [["wazuh"]]
@@ -575,7 +575,7 @@
     "rbac": {
       "security:read": {
         "user:id:*": "deny",
-        "user:id:wazuh-wui": "allow"
+        "user:id:wazuh-internal-client": "allow"
       }
     },
     "decorator_params": {
@@ -585,16 +585,16 @@
         "post_proc_kwargs": null
     },
     "function_params": {
-      "user_id": ["wazuh", "wazuh-wui"]
+      "user_id": ["wazuh", "wazuh-internal-client"]
     },
     "fake_system_resources": {"user:id:*": ["wazuh"]},
-    "allowed_resources": [["wazuh-wui"]]
+    "allowed_resources": [["wazuh-internal-client"]]
   },
   {
     "rbac": {
       "security:delete": {
         "user:id:*": "deny",
-        "user:id:wazuh-wui": "allow"
+        "user:id:wazuh-internal-client": "allow"
       }
     },
     "decorator_params": {
@@ -604,16 +604,16 @@
         "post_proc_kwargs": null
     },
     "function_params": {
-      "user_id": ["wazuh", "wazuh-wui"]
+      "user_id": ["wazuh", "wazuh-internal-client"]
     },
     "fake_system_resources": {"user:id:*": ["wazuh"]},
-    "allowed_resources": [["wazuh-wui"]]
+    "allowed_resources": [["wazuh-internal-client"]]
   },
   {
     "rbac": {
       "security:delete": {
         "user:id:wazuh": "deny",
-        "user:id:wazuh-wui": "allow"
+        "user:id:wazuh-internal-client": "allow"
       }
     },
     "decorator_params": {
@@ -623,10 +623,10 @@
         "post_proc_kwargs": null
     },
     "function_params": {
-      "user_id": ["wazuh", "wazuh-wui"]
+      "user_id": ["wazuh", "wazuh-internal-client"]
     },
     "fake_system_resources": {"user:id:*": ["wazuh"]},
-    "allowed_resources": [["wazuh-wui"]]
+    "allowed_resources": [["wazuh-internal-client"]]
   },
   {
     "rbac": {

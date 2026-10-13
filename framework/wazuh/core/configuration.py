@@ -813,6 +813,9 @@ def upload_group_configuration(group_id: str, file_content: str) -> str:
 
             tmp_file.write(pretty_xml)
     except Exception as e:
+        # remove created temporary file
+        if os.path.exists(tmp_file_path):
+            remove(tmp_file_path)
         raise WazuhError(1113, str(e))
 
     try:

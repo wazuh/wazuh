@@ -36,7 +36,7 @@ with patch('wazuh.core.common.wazuh_uid'):
             restart_agents, upgrade_agents, upload_group_file, \
             reload_agents, \
             check_uninstall_permission, ERROR_CODES_UPGRADE_SOCKET
-        from wazuh.core.agent import Agent
+        from wazuh.core.agent import Agent, WazuhDBQueryGroup
         from wazuh import WazuhError, WazuhException, WazuhInternalError
         from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
         from wazuh.core.tests.test_agent import InitAgent
@@ -160,19 +160,25 @@ def test_agent_sort_order(socket_mock, send_mock, fields, order, expected_items)
                                                            f'"{expected_items}". '
 
 
+@pytest.mark.parametrize('agent_list, expected_ids', [
+    ([], []),
+    (['002', '001'], ['001', '002']),
+    (['001', '999'], ['001']),
+    (['001', '5\n', '١'], ['001']),
+])
+@patch('wazuh.core.common.CLIENT_KEYS', new=os.path.join(test_agent_path, 'client.keys'))
 @patch('wazuh.core.wdb_http.WazuhDBHTTPClient')
-async def test_get_agents_summary(wdb_http_client_mock: AsyncMock):
-    """Test if get_agent_groups() asks for agent's groups correctly."""
-    agent_ids = []
+async def test_get_agents_summary(wdb_http_client_mock: AsyncMock, agent_list: list, expected_ids: list):
+    """Test that get_agents_summary() sends wazuh-db only the ids of agents in the system."""
     summary = AgentsSummary(agents_by_status={'active': 10, 'disconnected': 2})
     wdb_http_client_mock.return_value.close = AsyncMock()
     get_agents_summary_mock = AsyncMock(return_value=summary)
     wdb_http_client_mock.return_value.get_agents_summary = get_agents_summary_mock
 
-    agents_summary = await get_agents_summary(agent_ids)
+    agents_summary = await get_agents_summary.__wrapped__(agent_list)
     assert agents_summary['data'] == summary.to_dict()
 
-    get_agents_summary_mock.assert_called_once_with(agent_ids)
+    get_agents_summary_mock.assert_called_once_with(expected_ids)
 
 
 @patch('wazuh.core.common.CLIENT_KEYS', new=os.path.join(test_agent_path, 'client.keys'))
@@ -637,6 +643,25 @@ def test_agent_get_agent_groups(socket_mock, send_mock, group_list, q, expected_
         assert item['name'] == group_name
         assert item['mergedSum']
         assert item['configSum']
+
+
+@patch('wazuh.core.common.SHARED_PATH', new=test_shared_path)
+@patch('wazuh.agent.get_groups', return_value={'default', 'group-1', 'group-2', '007'})
+@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('socket.socket.connect')
+def test_agent_get_agent_groups_leading_zeros(socket_mock, send_mock, mock_get_groups):
+    """Test the RBAC group filter matches the group named 007 and not the group named 7."""
+    test_data.cur.execute("INSERT INTO `group` (name) VALUES ('7'), ('007')")
+    try:
+        # `get_agent_groups` drops names outside the allowed list, so the query result is checked directly.
+        with WazuhDBQueryGroup(filters={'rbac_ids': ['007']}, rbac_negate=False, limit=None) as group_query:
+            queried_names = [group['name'] for group in group_query.run()['items']]
+        group_result = get_agent_groups(['007'])
+    finally:
+        test_data.cur.execute("DELETE FROM `group` WHERE name IN ('7', '007')")
+
+    assert queried_names == ['007']
+    assert [item['name'] for item in group_result.affected_items] == ['007']
 
 
 @pytest.mark.parametrize('db_global, system_groups, error_code', [
@@ -1445,14 +1470,13 @@ def test_agent_upgrade_agents_reports_mixed_outcomes_per_agent(mock_socket, mock
 @patch('wazuh.core.common.CLIENT_KEYS', new=os.path.join(test_agent_path, 'client.keys'))
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_agent_upgrade_agents_skips_agent_not_in_local_db(mock_socket, mock_wdb, mock_client_keys):
-    """Test `upgrade_agents` silently skips an agent this node has no info for (error 1816).
+def test_agent_upgrade_agents_reports_agent_not_in_local_db(mock_socket, mock_wdb, mock_client_keys):
+    """Test `upgrade_agents` reports socket error 6 as a 1816 failed item, without raising.
 
-    Regression test: when a request is broadcast to a node that doesn't have this agent's info
-    (e.g. because agents connect over stateless, load-balanced HTTPS with no fixed owning node),
-    the upgrade socket returns error 1816 (WM_UPGRADE_GLOBAL_DB_FAILURE). That must not raise and
-    kill the whole request -- it should be skipped so the node that actually has the agent's info
-    can report the real outcome.
+    It must not kill the whole request, and it must not be skipped either: the Task Manager also
+    answers it for an agent whose OS information is incomplete, identically on every node, so a node
+    that skips it leaves the agent out of the response everywhere and the refusal invisible. A
+    cluster merge drops it for an agent another node reported on.
     """
     result_from_socket = {
         'error': 0,
@@ -1467,8 +1491,11 @@ def test_agent_upgrade_agents_skips_agent_not_in_local_db(mock_socket, mock_wdb,
 
     assert result.affected_items == ['001']
     assert result.total_affected_items == 1
-    assert not result.failed_items
-    assert result.total_failed_items == 0
+    failed = {error.code: ids for error, ids in result.failed_items.items()}
+    assert failed == {1816: {'002'}}
+    assert result.total_failed_items == 1
+    error = next(iter(result.failed_items))
+    assert error.message == 'Agent information not found in database', 'the Task Manager\'s reason must reach the user'
 
 
 @pytest.mark.parametrize('filename, group_list', [

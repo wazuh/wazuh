@@ -346,6 +346,19 @@ int w_update_file_status(const char* path, int64_t pos, EVP_MD_CTX* context);
  */
 bool w_get_hash_context(logreader* lf, EVP_MD_CTX** context, int64_t position);
 
+/**
+ * @brief Update the hash context with the line just read by fgets, NUL bytes included
+ *
+ * fgets does not report how many bytes it read, so the length is the distance between `*position`
+ * and the current position of the stream. If the position cannot be read, the line is hashed up to
+ * its first NUL, as before (w_ftell already logs the failure).
+ * @param lf Structure that contains file information.
+ * @param context EVP_MD_CTX context.
+ * @param line Line read from `lf->fp`.
+ * @param position Position of the stream before the line was read. It is moved to the end of the line.
+ */
+void w_hash_read_line(logreader *lf, EVP_MD_CTX *context, const char *line, int64_t *position);
+
 extern int sample_log_length;
 extern int lc_debug_level;
 extern int accept_remote;

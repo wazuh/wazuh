@@ -49,7 +49,7 @@ from pathlib import Path
 
 from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 from wazuh_testing.constants.api import CONFIGURATION_TYPES, USERS_ROUTE
-from wazuh_testing.constants.paths.api import WAZUH_API_CERTIFICATE
+from wazuh_testing.constants.paths.api import WAZUH_API_CA_CERTIFICATE
 from wazuh_testing.constants.paths.logs import WAZUH_API_JSON_LOG_FILE_PATH, WAZUH_API_LOG_FILE_PATH
 from wazuh_testing.modules.api.utils import get_base_url, login
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
@@ -135,7 +135,7 @@ def test_logs_redaction(test_configuration, test_metadata, add_configuration, tr
     expected_code = test_metadata['expected_code']
 
     response = requests.post(f"{get_base_url()}{USERS_ROUTE}", json=test_metadata['body'],
-                             headers=authentication_headers, verify=WAZUH_API_CERTIFICATE, timeout=10)
+                             headers=authentication_headers, verify=WAZUH_API_CA_CERTIFICATE, timeout=10)
 
     assert response.status_code == expected_code, f"The status code was {response.status_code}." \
                                                   f"\nExpected: {expected_code}."

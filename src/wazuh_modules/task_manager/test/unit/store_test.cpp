@@ -532,8 +532,18 @@ namespace
 
         std::int64_t walBytes() const
         {
+            return fileBytes(m_dbPath + "-wal");
+        }
+
+        std::int64_t dbBytes() const
+        {
+            return fileBytes(m_dbPath);
+        }
+
+        static std::int64_t fileBytes(const std::string& path)
+        {
             struct stat info {};
-            if (::stat((m_dbPath + "-wal").c_str(), &info) != 0)
+            if (::stat(path.c_str(), &info) != 0)
             {
                 return 0;
             }
@@ -607,4 +617,101 @@ TEST_F(WalStoreTest, TheWalStaysBoundedAcrossManySchedulerPasses)
     // NOT of uptime: with the snapshot leaking, the file grew with every pass and nothing here --
     // not the automatic checkpoint, not the explicit one -- could move a page out of it.
     EXPECT_LT(peak, BOUND_BYTES) << "WAL peaked at " << peak << " bytes over " << PASSES << " passes";
+}
+
+// ---- compaction ------------------------------------------------------------------------------
+
+/*
+ * Compaction replaced a daily VACUUM, which rebuilt the whole database in the process heap -- a day
+ * of Active Response, hundreds of MB -- and held the store for the seconds it took. These are
+ * file-backed for the same reason as the WAL tests: an in-memory database has no file to shrink.
+ */
+TEST_F(WalStoreTest, AFreshDatabaseCompactsIncrementally)
+{
+    // auto_vacuum only takes on a database with no tables yet, and SQLite ignores it silently once
+    // the WAL pragma has written the header. A wrong pragma order shows up here and nowhere else.
+    EXPECT_TRUE(m_store->compactStep(256).supported);
+}
+
+TEST_F(WalStoreTest, CompactionShrinksTheFileAfterRowsAreDeleted)
+{
+    constexpr int ROWS {2000};
+    const std::string payload(4000, 'x');
+
+    std::vector<AgentTask> tasks;
+    tasks.reserve(ROWS);
+    for (int i = 0; i < ROWS; ++i)
+    {
+        AgentTask task;
+        task.taskId = "t" + std::to_string(i);
+        task.agentId = "001";
+        task.taskType = "agent_restart";
+        task.payload = payload;
+        task.createTime = 1000;
+        tasks.push_back(std::move(task));
+    }
+    ASSERT_EQ(m_store->createAgentTasks(tasks).size(), static_cast<std::size_t>(ROWS));
+
+    // A day of retention in one go: every row expires, then goes.
+    ASSERT_EQ(m_store->expireAgentTasks(5000), ROWS);
+    ASSERT_EQ(m_store->deleteOldAgentTasks(5000), ROWS);
+    ASSERT_FALSE(m_store->checkpointWal().busy);
+    const auto full {dbBytes()};
+
+    CompactStats stats;
+    int steps {0};
+    do
+    {
+        stats = m_store->compactStep(256);
+        ASSERT_TRUE(stats.supported);
+        ASSERT_LT(++steps, 1000) << "compaction is not making progress";
+    } while (stats.freePages >= 256);
+
+    // More than one step: a single step must stay bounded, which is the point of the design.
+    EXPECT_GT(steps, 1);
+
+    ASSERT_FALSE(m_store->checkpointWal().busy);
+    // ~8 MB of payload deleted; what is left is the schema and at most one step of slack.
+    EXPECT_LT(dbBytes(), full / 4) << "file went from " << full << " to " << dbBytes() << " bytes";
+
+    // The store is still usable after compaction moved pages under its prepared statements.
+    AgentTask task;
+    task.taskId = "after";
+    task.agentId = "001";
+    task.taskType = "agent_restart";
+    task.payload = "{}";
+    task.createTime = 6000;
+    ASSERT_TRUE(m_store->createAgentTask(task));
+    EXPECT_EQ(m_store->takePendingAgentTasks("001", 10).size(), 1U);
+}
+
+TEST(CompactionTest, ADatabaseCreatedWithoutAutoVacuumIsReportedNotCompacted)
+{
+    std::string pattern {"/tmp/wazuh_tasks_compact_test_XXXXXX"};
+    ASSERT_NE(::mkdtemp(pattern.data()), nullptr);
+    const std::string dir {pattern};
+    const std::string dbPath {dir + "/tasks.db"};
+
+    {
+        // What an earlier build left behind: a WAL database whose tables predate the pragma.
+        SQLite3Wrapper::Connection legacy {dbPath};
+        legacy.execute("PRAGMA journal_mode=WAL; CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, "
+                       "value TEXT);");
+    }
+
+    {
+        SqliteTaskStore::Options options;
+        options.dbPath = dbPath;
+        options.groupCommitWindow = std::chrono::milliseconds {0};
+
+        std::unique_ptr<SqliteTaskStore> store;
+        ASSERT_NO_THROW(store = std::make_unique<SqliteTaskStore>(std::move(options)));
+
+        // Opening it is fine and it keeps working; it just cannot shrink, and says so instead of
+        // looping on a free list that never empties.
+        const auto stats {store->compactStep(256)};
+        EXPECT_FALSE(stats.supported);
+    }
+
+    static_cast<void>(std::system(("rm -rf '" + dir + "'").c_str()));
 }

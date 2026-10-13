@@ -177,6 +177,8 @@ add_executable(builder_utest
 	# ${UNIT_SRC_DIR}/builders/optransform/windows_test.cpp
 	${UNIT_SRC_DIR}/builders/optransform/hlp_test.cpp
 	${UNIT_SRC_DIR}/builders/optransform/hlpAllParsers_test.cpp
+	# Per-event array helpers under an address space cap
+	${UNIT_SRC_DIR}/builders/arrayHelpersMemory_test.cpp
 	# Stage Builders
 	${UNIT_SRC_DIR}/builders/stage/check_test.cpp
 	${UNIT_SRC_DIR}/builders/stage/map_test.cpp
@@ -188,7 +190,7 @@ add_executable(builder_utest
 	${UNIT_SRC_DIR}/builders/stage/indexerOutput_test.cpp
 	${UNIT_SRC_DIR}/builders/stage/first_of_test.cpp
 )
-target_include_directories(builder_utest PRIVATE ${BUILDER_PRI_INCS} ${TEST_SRC_DIR} ${UNIT_SRC_DIR})
+target_include_directories(builder_utest PRIVATE ${BUILDER_PRI_INCS} ${TEST_SRC_DIR} ${UNIT_SRC_DIR} ${CMAKE_CURRENT_LIST_DIR}/../schemf/src)
 target_link_libraries(builder_utest
 	PUBLIC
 	GTest::gtest_main
@@ -206,6 +208,7 @@ target_link_libraries(builder_utest
 	streamlogger::mocks
 	wIndexerConnector::mocks
 	fastmetrics::mocks
+	date::date
 )
 gtest_discover_tests(builder_utest)
 

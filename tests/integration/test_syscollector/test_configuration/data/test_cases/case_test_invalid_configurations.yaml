@@ -16,7 +16,6 @@
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
     BROWSER_EXTENSIONS_SCAN: 'yes'
-    MAX_EPS: 10
   metadata:
     field: disabled
     attribute: null
@@ -39,7 +38,6 @@
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
     BROWSER_EXTENSIONS_SCAN: 'yes'
-    MAX_EPS: 10
   metadata:
     field: interval
     attribute: null
@@ -62,7 +60,6 @@
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
     BROWSER_EXTENSIONS_SCAN: 'yes'
-    MAX_EPS: 10
   metadata:
     field: scan_on_start
     attribute: null
@@ -85,7 +82,6 @@
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
     BROWSER_EXTENSIONS_SCAN: 'yes'
-    MAX_EPS: 10
   metadata:
     field: hardware
     attribute: null
@@ -108,7 +104,6 @@
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
     BROWSER_EXTENSIONS_SCAN: 'yes'
-    MAX_EPS: 10
   metadata:
     field: os
     attribute: null
@@ -131,7 +126,6 @@
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
     BROWSER_EXTENSIONS_SCAN: 'yes'
-    MAX_EPS: 10
   metadata:
     field: network
     attribute: null
@@ -154,7 +148,6 @@
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
     BROWSER_EXTENSIONS_SCAN: 'yes'
-    MAX_EPS: 10
   metadata:
     field: packages
     attribute: null
@@ -177,7 +170,6 @@
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
     BROWSER_EXTENSIONS_SCAN: 'yes'
-    MAX_EPS: 10
   metadata:
     field: ports
     attribute: null
@@ -200,7 +192,6 @@
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
     BROWSER_EXTENSIONS_SCAN: 'yes'
-    MAX_EPS: 10
   metadata:
     field: null
     attribute: all
@@ -223,7 +214,6 @@
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
     BROWSER_EXTENSIONS_SCAN: 'yes'
-    MAX_EPS: 10
   metadata:
     field: processes
     attribute: null
@@ -246,7 +236,6 @@
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
     BROWSER_EXTENSIONS_SCAN: 'yes'
-    MAX_EPS: 10
   metadata:
     field: disabled
     attribute: null
@@ -269,7 +258,6 @@
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
     BROWSER_EXTENSIONS_SCAN: 'yes'
-    MAX_EPS: 10
   metadata:
     field: interval
     attribute: null
@@ -292,7 +280,6 @@
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
     BROWSER_EXTENSIONS_SCAN: 'yes'
-    MAX_EPS: 10
   metadata:
     field: scan_on_start
     attribute: null
@@ -315,7 +302,6 @@
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
     BROWSER_EXTENSIONS_SCAN: 'yes'
-    MAX_EPS: 10
   metadata:
     field: hardware
     attribute: null
@@ -338,7 +324,6 @@
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
     BROWSER_EXTENSIONS_SCAN: 'yes'
-    MAX_EPS: 10
   metadata:
     field: os
     attribute: null
@@ -361,7 +346,6 @@
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
     BROWSER_EXTENSIONS_SCAN: 'yes'
-    MAX_EPS: 10
   metadata:
     field: network
     attribute: null
@@ -384,7 +368,6 @@
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
     BROWSER_EXTENSIONS_SCAN: 'yes'
-    MAX_EPS: 10
   metadata:
     field: packages
     attribute: null
@@ -407,7 +390,6 @@
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
     BROWSER_EXTENSIONS_SCAN: 'yes'
-    MAX_EPS: 10
   metadata:
     field: ports
     attribute: null
@@ -430,7 +412,6 @@
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
     BROWSER_EXTENSIONS_SCAN: 'yes'
-    MAX_EPS: 10
   metadata:
     field: null
     attribute: all
@@ -453,32 +434,8 @@
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
     BROWSER_EXTENSIONS_SCAN: 'yes'
-    MAX_EPS: 10
   metadata:
     field: processes
-    attribute: null
-
-- name: invalid_value_max_eps
-  description: Verify that the module starts and an error is displayed
-  configuration_parameters:
-    DISABLED: 'no'
-    INTERVAL_SCAN: 1h
-    START_ON_START: 'yes'
-    HARDWARE_SCAN: 'yes'
-    OS_SCAN: 'yes'
-    NETWORK_SCAN: 'yes'
-    PACKAGES_SCAN: 'yes'
-    PORTS_SCAN: 'yes'
-    ALL_PORTS: 'no'
-    PROCESSES_SCAN: 'yes'
-    HOTFIXES_SCAN: 'yes'
-    GROUPS_SCAN: 'yes'
-    USERS_SCAN: 'yes'
-    SERVICES_SCAN: 'yes'
-    BROWSER_EXTENSIONS_SCAN: 'yes'
-    MAX_EPS: -1
-  metadata:
-    field: max_eps
     attribute: null
 
 - name: empty_value_hotfixes
@@ -499,7 +456,6 @@
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
     BROWSER_EXTENSIONS_SCAN: 'yes'
-    MAX_EPS: 10
   metadata:
     field: hotfixes
     attribute: null
@@ -522,7 +478,6 @@
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
     BROWSER_EXTENSIONS_SCAN: 'yes'
-    MAX_EPS: 10
   metadata:
     field: hotfixes
     attribute: null
@@ -546,7 +501,6 @@
     GROUPS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
     BROWSER_EXTENSIONS_SCAN: 'yes'
-    MAX_EPS: 10
   metadata:
     field: users
     attribute: null
@@ -570,7 +524,6 @@
     GROUPS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
     BROWSER_EXTENSIONS_SCAN: 'yes'
-    MAX_EPS: 10
   metadata:
     field: users
     attribute: null
@@ -593,7 +546,6 @@
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
     BROWSER_EXTENSIONS_SCAN: 'yes'
-    MAX_EPS: 10
   metadata:
     field: groups
     attribute: null
@@ -616,7 +568,6 @@
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
     BROWSER_EXTENSIONS_SCAN: 'yes'
-    MAX_EPS: 10
   metadata:
     field: groups
     attribute: null
@@ -639,7 +590,6 @@
     USERS_SCAN: 'yes'
     SERVICES_SCAN: ''
     BROWSER_EXTENSIONS_SCAN: 'yes'
-    MAX_EPS: 10
   metadata:
     field: services
     attribute: null
@@ -662,7 +612,6 @@
     USERS_SCAN: 'yes'
     SERVICES_SCAN: invalid
     BROWSER_EXTENSIONS_SCAN: 'yes'
-    MAX_EPS: 10
   metadata:
     field: services
     attribute: null
@@ -685,7 +634,6 @@
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
     BROWSER_EXTENSIONS_SCAN: ''
-    MAX_EPS: 10
   metadata:
     field: browser_extensions
     attribute: null
@@ -708,7 +656,6 @@
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
     BROWSER_EXTENSIONS_SCAN: invalid
-    MAX_EPS: 10
   metadata:
     field: browser_extensions
     attribute: null

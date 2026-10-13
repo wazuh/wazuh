@@ -1268,8 +1268,8 @@ static void test_legacy_client_warns_for_every_ignored_option(void **state) {
                   "<force_reconnect_interval> inside the legacy <client> block is ignored: only "
                   "<server> and <enrollment> are read from it.");
     expect_string(__wrap__mwarn, formatted_msg,
-                  "<ip_update_interval> inside the legacy <client> block is ignored. "
-                  "Configure it under <agent>.");
+                  "<ip_update_interval> inside the legacy <client> block is ignored: only "
+                  "<server> and <enrollment> are read from it.");
     expect_string(__wrap__mwarn, formatted_msg,
                   "<auto_restart> inside the legacy <client> block is ignored. "
                   "Configure it under <agent>.");
@@ -1284,7 +1284,6 @@ static void test_legacy_client_warns_for_every_ignored_option(void **state) {
     assert_int_equal(cfg.notify_time, 0);
     assert_int_equal(cfg.execdq, 0);
     assert_int_equal(cfg.flags.auto_restart, 0);
-    assert_int_equal(cfg.main_ip_update_interval, 0);
 
     cleanup(&xml, nodes, &cfg);
 }
@@ -1915,7 +1914,7 @@ static void test_read_agent_batch_survives_a_missing_file(void **state) {
     assert_int_equal(batch.interval, 42);
 }
 
-/* Deprecated legacy-TCP options: accepted, ignored, warned (#37702 restriction 4) */
+/* Deprecated legacy-TCP options: accepted, ignored, reported (#37702 restriction 4) */
 
 static void test_time_reconnect_is_deprecated(void **state) {
     OS_XML xml = {0};
@@ -1926,7 +1925,7 @@ static void test_time_reconnect_is_deprecated(void **state) {
         "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
         "<time-reconnect>60</time-reconnect>";
 
-    expect_string(__wrap__mwarn, formatted_msg,
+    expect_string(__wrap__minfo, formatted_msg,
                   "The <time-reconnect> option is deprecated and no longer has any effect.");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);

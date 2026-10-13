@@ -1895,8 +1895,8 @@ Windows event logs which often contain complex and repetitive tag structures.
 ```
 
 - `mode`: Optional parameter specifying the parser mode. If omitted, the default mode is used. For Windows Event Logs,
-  use `windows` mode. This mode processes complex XML structures by ignoring repetitive tags like <Event> and uses the
-  unique identifiers from <Data> tags directly as keys in the resulting JSON object.
+  use `windows` mode. This mode processes complex XML structures by ignoring repetitive tags like `<Event>` and uses the
+  unique identifiers from `<Data>` tags directly as keys in the resulting JSON object.
 
 ### Examples of Default Mode
 
@@ -2071,9 +2071,9 @@ nested delimiters or escape sequences.
     even the `separator` and `delimiter` tokens
 - Customizable delimiters and separator tokens.
 - Input nested deeper than 256 levels (json::Json::MAX_DEPTH) is rejected: the parser fails as on invalid input, the field is not set and nothing is logged; the nesting depth exceeds the limit (256) message names the cap in test traces.
-  For a key that has a value, each `.` in the key creates one nested level in the output, so the destination path has
-  one level per `.` plus one and the limit counts those levels: a key with 255 dots is mapped, a key with 256 dots
-  fails. The limit is fixed (not configurable) and is not an input-size limit; the event size is capped by remoted.
+  For every key, with or without a value, each `.` in the key creates one nested level in the output (`a.b=` maps to
+  `{"a":{"b":null}}`), so the destination path has one level per `.` plus one and the limit counts those levels: a key
+  with 255 dots is mapped, a key with 256 dots fails. The limit is fixed (not configurable) and is not an input-size limit; the event size is capped by remoted.
 - It does not require an end token.
 
 ### Signature

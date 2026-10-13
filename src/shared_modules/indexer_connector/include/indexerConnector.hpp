@@ -336,10 +336,18 @@ public:
     /**
      * @brief Bulk index with version.
      *
-     * @param id ID.
+     * Not OpenSearch external versioning: with a non-empty @p version the document is written by a
+     * scripted upsert that replaces it only when its stored `state.document_version` is absent or
+     * less than or equal to @p version, and is a no-op otherwise. OpenSearch's own `_version` is
+     * not involved. An empty @p version falls back to a plain `index` operation.
+     *
+     * @param id ID. Required when @p version is not empty.
      * @param index Index name.
      * @param data Data.
-     * @param version Document version for external versioning.
+     * @param version Document version, compared against the stored `state.document_version`;
+     *                inserted into the script as a number, so it must be a numeric literal.
+     *
+     * @throw IndexerConnectorException if @p version is not empty and @p id is.
      */
     void bulkIndex(std::string_view id, std::string_view index, std::string_view data, std::string_view version);
 
@@ -382,9 +390,22 @@ public:
     [[nodiscard]] std::unique_lock<std::mutex> scopeLock();
 
     /**
-     * @brief Register a callback to be called when the indexer is flushed.
+     * @brief Register a callback to run once the indexer confirms a write.
      *
-     * @param callback Callback to be called when the indexer is flushed.
+     * Registered callbacks become due only after an operation the indexer confirmed: a bulk whose
+     * response validated item by item (a 413 split counts only if every chunk did), a staged
+     * delete by query with no bulk data alongside it, or an executeUpdateByQuery() whose response
+     * confirmed every update (or that had no valid index to target). Due callbacks run once, all
+     * of them, outside the internal mutex, from flush(), from invokePendingCallbacks() or from the
+     * background flush thread, and are then forgotten.
+     *
+     * A failed bulk leaves them registered, to run after a later confirmed write. A failed
+     * executeUpdateByQuery() (an HTTP error, a 409, an unconfirmed update, an exhausted retry
+     * budget) or a stop requested during it discards them without running them.
+     *
+     * This method does not lock; call it under scopeLock().
+     *
+     * @param callback Callback to run after a confirmed write.
      */
     void registerNotify(std::function<void()> callback);
 
@@ -403,6 +424,13 @@ public:
      * @return true if have a server available, false otherwise.
      */
     bool isAvailable() const;
+
+    /**
+     * @brief Check have a server that accepts requests now: available, not merely throttled (HTTP 429).
+     *
+     * @return true if some server is available and not throttled, false otherwise.
+     */
+    bool hasAvailableServer() const;
 
     /**
      * @brief Returns the `_bulk` request counts accumulated since the previous call and resets them.

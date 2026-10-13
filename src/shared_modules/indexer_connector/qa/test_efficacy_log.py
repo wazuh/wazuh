@@ -1,1017 +1,272 @@
-import pytest
-import docker
-import time
-import requests
+"""End-to-end checks of the indexer connector against a real OpenSearch, driven by
+build/bin/indexer_connector_tool (testtool/main.cpp, push-events mode).
+
+What the 5.x connector owns, and so what these tests pin:
+  * every event pushed is indexed into the configured `index` (no template or mapping creation:
+    the indexer plugins own the index, so the harness plays that part when a test needs a mapping);
+  * a document the indexer rejects fails the flush loudly -- the tool exits 1 with
+    "Bulk operation had indexing failures" and the item's status and reason are logged
+    (indexerConnectorSyncImpl.hpp validateBulkResponse) -- instead of being dropped silently;
+  * a 413 Payload Too Large splits the bulk recursively until every document lands;
+  * an indexer outage fails the push, and nothing indexed before it is lost or duplicated after.
+
+Inputs (configuration and events) are generated per test under pytest's tmp_path.
+"""
+
+import json
 import logging
 import re
-import os
 import subprocess
-import inspect
+import time
 from pathlib import Path
-import json
-import shutil
+
+import docker
+import pytest
+import requests
 
 LOGGER = logging.getLogger(__name__)
-GLOBAL_URL = 'localhost:9200'
 
-def init_opensearch(low_resources):
-    client = docker.from_env()
-    env_vars = {
-            'discovery.type': 'single-node',
-            'plugins.security.disabled': 'true',
-            'OPENSEARCH_INITIAL_ADMIN_PASSWORD': 'WazuhTest99$'
-        }
+SRC_DIR = Path(__file__).resolve().parents[3]
+TOOL = SRC_DIR / "build" / "bin" / "indexer_connector_tool"
 
-    if low_resources:
-        env_vars['http.max_content_length'] = '4mb'
+HOST = "localhost:9200"
+BASE_URL = f"http://{HOST}"
+IMAGE = "opensearchproject/opensearch:2.11.1"
+CONTAINER = "indexer-connector-qa-opensearch"
+TOOL_TIMEOUT = 300
 
-    client.containers.run("opensearchproject/opensearch", detach=True, ports={'9200/tcp': 9200},
-                          environment=env_vars, name='opensearch', stdout=True, stderr=True)
-    ## Wait for the container is running and opensearch is ready
-    while True:
+
+# ─── OpenSearch ────────────────────────────────────────────────────────────────
+
+def _remove_container(client):
+    try:
+        client.containers.get(CONTAINER).remove(force=True)
+    except docker.errors.NotFound:
+        pass
+
+
+def wait_until_ready(timeout=180):
+    """Waits for the node to answer and for the cluster to reach at least yellow."""
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
         try:
-            response = requests.get('http://'+GLOBAL_URL+'')
-            if response.status_code == 200:
-                break
-        except requests.exceptions.ConnectionError:
+            health = requests.get(f"{BASE_URL}/_cluster/health",
+                                  params={"wait_for_status": "yellow", "timeout": "5s"}, timeout=10)
+            if health.status_code == 200 and health.json().get("status") in ("green", "yellow"):
+                return
+        except requests.exceptions.RequestException:
             pass
         time.sleep(1)
-    return client
+    pytest.fail(f"OpenSearch was not ready after {timeout}s")
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture
 def opensearch(request):
-    low_resources = request.param
-    client = init_opensearch(low_resources)
-    yield client
-    # Stop all containers
-    for container in client.containers.list():
-        container.stop()
-    client.containers.prune()
+    """A fresh single-node OpenSearch per test. Parametrize indirectly with a dict of extra node
+    settings (e.g. {"http.max_content_length": "1mb"}); the docker entrypoint turns dotted
+    environment variables into node settings."""
+    extra_settings = getattr(request, "param", None) or {}
+    client = docker.from_env()
+    _remove_container(client)
+    environment = {
+        "discovery.type": "single-node",
+        "DISABLE_SECURITY_PLUGIN": "true",
+        "OPENSEARCH_JAVA_OPTS": "-Xms512m -Xmx512m",
+        **extra_settings,
+    }
+    container = client.containers.run(IMAGE, detach=True, name=CONTAINER, ports={"9200/tcp": 9200},
+                                      environment=environment)
+    try:
+        wait_until_ready()
+        yield container
+    finally:
+        _remove_container(client)
 
-@pytest.mark.parametrize('opensearch', [False], indirect=True)
+
+def count_documents(index):
+    requests.post(f"{BASE_URL}/{index}/_refresh", timeout=30)
+    response = requests.get(f"{BASE_URL}/{index}/_count", timeout=30)
+    assert response.status_code == 200, f"_count on {index} failed: {response.text}"
+    return response.json()["count"]
+
+
+def put_cluster_setting(name, value):
+    response = requests.put(f"{BASE_URL}/_cluster/settings",
+                            json={"persistent": {name: value}}, timeout=30)
+    assert response.status_code == 200, f"Setting {name} failed: {response.text}"
+
+
+# ─── The tool ──────────────────────────────────────────────────────────────────
+
+def make_event(i):
+    return {
+        "message": f"indexer connector qa event {i}",
+        "agent": {"id": f"{i % 1000:03d}", "name": f"agent-{i}"},
+        "package": {"name": "sample_package", "version": "1.0.0", "size": 12345},
+    }
+
+
+class Run:
+    def __init__(self, completed, log_text):
+        self.returncode = completed.returncode
+        self.output = completed.stdout + completed.stderr
+        self.log = log_text
+
+    def text(self):
+        return self.output + self.log
+
+
+def run_tool(tmp_path, name, index, events, *extra_args, **config_overrides):
+    """Runs push-events once and waits for it to exit (-w 1 keeps it from waiting on stdin).
+    The tool runs from src/, where the keystore it seeds credentials into lives (queue/keystore)."""
+    assert TOOL.exists(), f"{TOOL} was not built"
+
+    config = {"index": index, "hosts": [BASE_URL], "username": "admin", "password": "admin",
+              **config_overrides}
+    config_file = tmp_path / f"{name}.config.json"
+    events_file = tmp_path / f"{name}.events.json"
+    log_file = tmp_path / f"{name}.log"
+    config_file.write_text(json.dumps(config))
+    events_file.write_text(json.dumps(events))
+
+    command = [str(TOOL), "-c", str(config_file), "-e", str(events_file), "-w", "1",
+               "-l", str(log_file), *extra_args]
+    LOGGER.info("Running %s", " ".join(command))
+    completed = subprocess.run(command, cwd=SRC_DIR, capture_output=True, text=True, timeout=TOOL_TIMEOUT)
+    run = Run(completed, log_file.read_text() if log_file.exists() else "")
+    LOGGER.info("Exit code %d", run.returncode)
+    if run.returncode != 0:
+        LOGGER.info("Tool output:\n%s\nTool log:\n%s", run.output[-4000:], run.log[-4000:])
+    return run
+
+
+# ─── Tests ─────────────────────────────────────────────────────────────────────
+
 def test_opensearch_health(opensearch):
-    url = 'http://'+GLOBAL_URL+'/_cluster/health'
-    response = requests.get(url)
+    response = requests.get(f"{BASE_URL}/_cluster/health", timeout=30)
     assert response.status_code == 200
-    assert response.json()['status'] == 'green' or response.json()['status'] == 'yellow'
-
-@pytest.mark.parametrize('opensearch', [False], indirect=True)
-def test_initialize_indexer_connector(opensearch):
-    os.chdir(Path(__file__).parent.parent.parent.parent)
-    LOGGER.debug(f"Current directory: {os.getcwd()}")
-
-    ## Remove folder queue/indexer/
-    if os.path.exists("queue/indexer/"):
-        shutil.rmtree("queue/indexer/")
-
-    # Run indexer connector testtool out of the container
-    cmd = Path("build/bin/", "indexer_connector_tool")
-
-    # Ensure the binary exists
-    assert cmd.exists(), "The binary does not exists"
-
-    # Remove previous log file if exists
-    if Path("log.out").exists():
-        Path("log.out").unlink()
-
-    test_name = inspect.currentframe().f_code.co_name
-
-    LOGGER.debug(f"Running test {test_name}")
-
-    args = ["-c", "shared_modules/indexer_connector/qa/test_data/" + test_name + "/config.json",
-            "-t", "shared_modules/indexer_connector/qa/test_data/" + test_name + "/template.json",
-            "-w", "120",
-            "-l", "log.out"]
-
-    command = [cmd] + args
-
-    LOGGER.debug(f"Running command: {command}")
-    process = subprocess.Popen(command)
-    # if the process is not running fail the test
-    assert process.poll() is None, "The process is not running"
-
-    # Query to check if the index is created and template is applied
-    counter = 0
-    while counter < 10:
-        url = 'http://'+GLOBAL_URL+'/_cat/indices'
-        response = requests.get(url)
-        if response.status_code == 200 and 'wazuh-states-vulnerabilities-default' in response.text:
-            LOGGER.debug(f"Index created {response.text}")
-            break
-        time.sleep(1)
-        counter += 1
-
-    process.terminate()
-    assert counter < 10, "The index was not created"
-
-@pytest.mark.parametrize('opensearch', [False], indirect=True)
-def test_add_bulk_indexer_connector(opensearch):
-    os.chdir(Path(__file__).parent.parent.parent.parent)
-    LOGGER.debug(f"Current directory: {os.getcwd()}")
-
-    ## Remove folder queue/indexer/
-    if os.path.exists("queue/indexer/"):
-        shutil.rmtree("queue/indexer/")
-
-    # Run indexer connector testtool out of the container
-    cmd = Path("build/bin/", "indexer_connector_tool")
-
-    # Ensure the binary exists
-    assert cmd.exists(), "The binary does not exists"
-
-    # Remove previous log file if exists
-    if Path("log.out").exists():
-        Path("log.out").unlink()
-
-    test_name = inspect.currentframe().f_code.co_name
-
-    LOGGER.debug(f"Running test {test_name}")
-
-    args = ["-c", "shared_modules/indexer_connector/qa/test_data/" + test_name + "/config.json",
-            "-t", "shared_modules/indexer_connector/qa/test_data/" + test_name + "/template.json",
-            "-e", "shared_modules/indexer_connector/qa/test_data/" + test_name + "/event_insert.json",
-            "-w", "120",
-            "-l", "log.out"]
-
-    command = [cmd] + args
-    process = subprocess.Popen(command)
-    # if the process is not running fail the test
-    assert process.poll() is None, "The process is not running"
-
-    # Query to check if the index is created and template is applied
-    counter = 0
-    while counter < 10:
-        url = 'http://'+GLOBAL_URL+'/wazuh-states-vulnerabilities-default/_search'
-        query = {
-            "query": {
-                "match_all": {}
-            }
-        }
-        response = requests.get(url, json=query)
-        LOGGER.debug(f"Info {response.text}")
-        if response.status_code == 200 and response.json()['hits']['total']['value'] == 1:
-            LOGGER.debug(f"Document created {response.text}")
-            break
-        time.sleep(1)
-        counter += 1
-    assert counter < 10, "The document was not created"
-    process.terminate()
-
-    # Delete the document to test the resync.
-    url = 'http://'+GLOBAL_URL+'/wazuh-states-vulnerabilities-default/_delete_by_query?refresh=true'
-    query = {
-        "query": {
-            "match_all": {}
-        }
-    }
-    response = requests.post(url, json=query)
-    assert response.status_code == 200
-
-    url = 'http://'+GLOBAL_URL+'/wazuh-states-vulnerabilities-default/_search'
-    query = {
-        "query": {
-            "match_all": {}
-        }
-    }
-    response = requests.get(url, json=query)
-    assert response.status_code == 200
-
-    # Run the process again to check the resync
-    args = ["-c", "shared_modules/indexer_connector/qa/test_data/" + test_name + "/config.json",
-            "-t", "shared_modules/indexer_connector/qa/test_data/" + test_name + "/template.json",
-            "-s", "000",
-            "-w", "120",
-            "-l", "log.out"]
-
-    command = [cmd] + args
-    process = subprocess.Popen(command)
-
-    # Query to check if the element is resynced
-    counter = 0
-    while counter < 10:
-        url = 'http://'+GLOBAL_URL+'/wazuh-states-vulnerabilities-default/_search'
-        query = {
-            "query": {
-                "match_all": {}
-            }
-        }
-        response = requests.get(url, json=query)
-        LOGGER.debug(f"Info {response.text}")
-        if response.status_code == 200 and response.json()['hits']['total']['value'] == 1:
-            LOGGER.debug(f"Document created in sync {response.text}")
-            break
-        time.sleep(1)
-        counter += 1
-
-    assert counter < 10, "The document was not resynced"
-    process.terminate()
-
-    # Delete element
-    args = ["-c", "shared_modules/indexer_connector/qa/test_data/" + test_name + "/config.json",
-            "-t", "shared_modules/indexer_connector/qa/test_data/" + test_name + "/template.json",
-            "-e", "shared_modules/indexer_connector/qa/test_data/" + test_name + "/event_delete.json",
-            "-w", "120",
-            "-l", "log.out"]
-
-    command = [cmd] + args
-    process = subprocess.Popen(command)
-
-    # if the process is not running fail the test
-    assert process.poll() is None, "The process is not running"
-
-    # Query to check if the element is deleted
-    counter = 0
-    while counter < 10:
-        url = 'http://'+GLOBAL_URL+'/wazuh-states-vulnerabilities-default/_search'
-        query = {
-            "query": {
-                "match_all": {}
-            }
-        }
-        response = requests.get(url, json=query)
-        LOGGER.debug(f"Info {response.text}")
-        if response.status_code == 200 and response.json()['hits']['total']['value'] == 0:
-            LOGGER.debug(f"Document deleted {response.text}")
-            break
-        time.sleep(1)
-        counter += 1
-
-    assert counter < 10, "The document was not deleted"
-
-    process.terminate()
-
-    # Manual insert and check if resync clean the element.
-    url = 'http://'+GLOBAL_URL+'/wazuh-states-vulnerabilities-cluster/_doc/000_pkghash_CVE-2022-123456?refresh=true'
-    query = """{
-      "wazuh": {
-        "agent": {
-          "build": {
-          "original": "sample_build_1"
-          },
-          "ephemeral_id": "eph_id_1",
-          "id": "000",
-          "name": "agent_name_1",
-          "type": "agent_type_1",
-          "version": "1.0.0"
-        }
-      },
-      "message": "Sample message",
-      "package": {
-        "architecture": "x64",
-        "build_version": "1.0.0",
-        "checksum": "checksum_value",
-        "description": "Sample package description",
-        "install_scope": "global",
-        "installed": "2023-09-17T12:00:00Z",
-        "license": "MIT",
-        "name": "sample_package",
-        "path": "/path/to/package",
-        "reference": "sample_reference",
-        "size": 12345,
-        "type": "sample_package_type",
-        "version": "1.0.0"
-      },
-      "tags": ["sample", "tag1"],
-      "vulnerability": {
-        "detected_at": "2023-09-18T12:00:00Z",
-        "published_at": "2023-01-18T12:00:00Z",
-        "category": "sample_category",
-        "classification": "sample_classification",
-        "description": "Sample vulnerability description",
-        "enumeration": "sample_enumeration",
-        "id": "vuln_id_1",
-        "reference": "sample_reference",
-        "report_id": "report_id_1",
-        "scanner": {
-          "vendor": "sample_vendor"
-        },
-        "score": {
-          "base": 5.0,
-          "environmental": 5.5,
-          "temporal": 4.5,
-          "version": "1.0.0"
-        },
-        "severity": "medium"
-      }
-    }"""
-    response = requests.put(url, data=query)
-    LOGGER.debug(f"Manual insert info {response.text}")
-
-    # Run the process again to check the resync
-    args = ["-c", "shared_modules/indexer_connector/qa/test_data/" + test_name + "/config.json",
-            "-t", "shared_modules/indexer_connector/qa/test_data/" + test_name + "/template.json",
-            "-s", "000",
-            "-w", "120",
-            "-l", "log.out"]
-
-    command = [cmd] + args
-    process = subprocess.Popen(command)
-
-    # Query to check if the element is resynced
-    counter = 0
-    while counter < 10:
-        url = 'http://'+GLOBAL_URL+'/wazuh-states-vulnerabilities-default/_search'
-        query = {
-            "query": {
-                "match_all": {}
-            }
-        }
-        response = requests.get(url, json=query)
-        LOGGER.debug(f"Info {response.text}")
-        if response.status_code == 200 and response.json()['hits']['total']['value'] == 0:
-            LOGGER.debug(f"Document deleted in sync {response.text}")
-            break
-        time.sleep(1)
-        counter += 1
-
-    assert counter < 10, "The document was not resynced"
-    process.terminate()
-
-
-@pytest.mark.parametrize('opensearch', [True], indirect=True)
-def test_bulk_indexer_413_connector(opensearch):
-    os.chdir(Path(__file__).parent.parent.parent.parent)
-    LOGGER.debug(f"Current directory: {os.getcwd()}")
-
-    ## Remove folder queue/indexer/
-    if os.path.exists("queue/indexer/"):
-        shutil.rmtree("queue/indexer/")
-
-    # Run indexer connector testtool out of the container
-    cmd = Path("build/bin/", "indexer_connector_tool")
-
-    # Ensure the binary exists
-    assert cmd.exists(), "The binary does not exists"
-
-    # Remove previous log file if exists
-    if Path("log.out").exists():
-        Path("log.out").unlink()
-
-    test_name = inspect.currentframe().f_code.co_name
-
-    path_base_data = Path("shared_modules/indexer_connector/qa/test_data",test_name,"base.json")
-
-    # create a json with an array of x elements using the base json and adding an authonumeric id to each element
-    json_data = []  # Declare the json_data variable as an empty list
-
-    #Elements to create and test.
-    elements = 6250
-    with open(path_base_data, 'r') as file:
-        # Json array create.
-        data = file.read()
-        for i in range(elements):
-            json_data.append(json.loads(data))
-            json_data[i]["id"] = "000_" + str(i)
-
-        file = Path("shared_modules/indexer_connector/qa/test_data/" + test_name + "/data.json")
-        if file.exists():
-            file.unlink()
-
-
-        with open("shared_modules/indexer_connector/qa/test_data/" + test_name + "/data.json", 'w') as file:
-            file.write(json.dumps(json_data))
-
-    LOGGER.debug(f"Running test {test_name}")
-
-    args = ["-c", "shared_modules/indexer_connector/qa/test_data/" + test_name + "/config.json",
-            "-t", "shared_modules/indexer_connector/qa/test_data/" + test_name + "/template.json",
-            "-e", "shared_modules/indexer_connector/qa/test_data/" + test_name + "/data.json",
-            "-w", "120",
-            "-l", "log.out"]
-
-    command = [cmd] + args
-    process = subprocess.Popen(command)
-    # if the process is not running fail the test
-    assert process.poll() is None, "The process is not running"
-
-    # Query to check if the index is created and template is applied
-    counter = 0
-    while counter < 60:
-        url = 'http://'+GLOBAL_URL+'/wazuh-states-vulnerabilities-default/_search'
-        query = {
-            "query": {
-                "match_all": {}
-            }
-        }
-        response = requests.get(url, json=query)
-        if response.status_code == 200:
-            LOGGER.debug(f"Elements on the index {response.json()['hits']['total']['value']}")
-            if response.json()['hits']['total']['value'] == elements:
-                LOGGER.debug(f"Documents created {elements}")
-                break
-        time.sleep(1)
-        counter += 1
-    assert counter < 60, "The documents was not created"
-    process.terminate()
-
-    # Delete the document to test the resync.
-    url = 'http://'+GLOBAL_URL+'/wazuh-states-vulnerabilities-default/_delete_by_query?refresh=true'
-    query = {
-        "query": {
-            "match_all": {}
-        }
-    }
-    response = requests.post(url, json=query)
-    assert response.status_code == 200
-
-    url = 'http://'+GLOBAL_URL+'/wazuh-states-vulnerabilities-default/_search'
-    query = {
-        "query": {
-            "match_all": {}
-        }
-    }
-    response = requests.get(url, json=query)
-
-    assert response.status_code == 200, "Documents was not deleted"
-    assert response.json()['hits']['total']['value'] == 0, "Documents was not deleted"
-
-    # Run the process again to check the resync
-    args = ["-c", "shared_modules/indexer_connector/qa/test_data/" + test_name + "/config.json",
-            "-t", "shared_modules/indexer_connector/qa/test_data/" + test_name + "/template.json",
-            "-s", "000",
-            "-w", "120",
-            "-l", "log.out"]
-
-    command = [cmd] + args
-    process = subprocess.Popen(command)
-
-    # Query to check if the element is resynced
-    counter = 0
-    while counter < 60:
-        url = 'http://'+GLOBAL_URL+'/wazuh-states-vulnerabilities-default/_search'
-        query = {
-            "query": {
-                "match_all": {}
-            }
-        }
-        response = requests.get(url, json=query)
-        if response.status_code == 200:
-            LOGGER.debug(f"Elements on the index {response.json()['hits']['total']['value']}")
-            if response.json()['hits']['total']['value'] == elements:
-                LOGGER.debug(f"Document created in sync {elements}")
-                break
-        time.sleep(1)
-        counter += 1
-
-    assert counter < 60, "The document was not resynced"
-    process.terminate()
-
-
-@pytest.mark.parametrize('opensearch', [True], indirect=True)
-def test_update_mappings_connector(opensearch):
-    os.chdir(Path(__file__).parent.parent.parent.parent)
-    LOGGER.debug(f"Current directory: {os.getcwd()}")
-
-    ## Remove folder queue/indexer/
-    if os.path.exists("queue/indexer/"):
-        shutil.rmtree("queue/indexer/")
-
-    # Run indexer connector testtool out of the container
-    cmd = Path("build/bin/", "indexer_connector_tool")
-
-    # Ensure the binary exists
-    assert cmd.exists(), "The binary does not exists"
-
-    # Remove previous log file if exists
-    if Path("log.out").exists():
-        Path("log.out").unlink()
-
-    test_name = inspect.currentframe().f_code.co_name
-
-    LOGGER.debug(f"Running test {test_name}")
-
-    # -------------------------------------------
-    # Create the index and try to insert a document with old mapping, this should fail and the element queue in the persistent rocksdb queue.
-    # -------------------------------------------
-    args = ["-c", "shared_modules/indexer_connector/qa/test_data/" + test_name + "/config.json",
-            "-t", "shared_modules/indexer_connector/qa/test_data/" + test_name + "/template.json",
-            "-e", "shared_modules/indexer_connector/qa/test_data/" + test_name + "/event_insert_1.json",
-            "-w", "10",
-            "-l", "log.out"]
-
-    command = [cmd] + args
-    process = subprocess.Popen(command)
-    # if the process is not running fail the test
-    assert process.poll() is None, "The process is not running"
-
-    # Wait for the process to finish, 10 seconds is the time to wait for the process to finish (defined in the command line)
-    counter = 0
-    while counter < 15:
-        if process.poll() is not None:
-            LOGGER.debug("Process finished")
-            break
-        time.sleep(1)
-        counter += 1
-    assert counter < 15, "Process still running"
-    process.terminate()
-
-    # Check if the index is created.
-    url = 'http://' + GLOBAL_URL + '/wazuh-states-vulnerabilities-default/'
-    response = requests.get(url)
-    if response.status_code == 200:
-        LOGGER.debug("Index created")
-
-    # Check if the document was not inserted
-    counter = 0
-    while counter < 10:
-        url = 'http://' + GLOBAL_URL + '/wazuh-states-vulnerabilities-default/_search'
-        query = {
-            "query": {
-                "match_all": {}
-            }
-        }
-        response = requests.get(url, json=query)
-        if response.status_code == 200 and response.json()['hits']['total']['value'] == 0:
-            LOGGER.debug("Document not exists.")
-            break
-        time.sleep(1)
-        counter += 1
-    assert counter < 10, "The document exists"
-
-    # -------------------------------------------
-    # Run the process again to update the mapping and check if the document is inserted, because now the queue have one pending element.
-    # -------------------------------------------
-    args = ["-c", "shared_modules/indexer_connector/qa/test_data/" + test_name + "/config.json",
-            "-t", "shared_modules/indexer_connector/qa/test_data/" + test_name + "/template2.json",
-            "-u", "shared_modules/indexer_connector/qa/test_data/" + test_name + "/update.json",
-             "-e", "shared_modules/indexer_connector/qa/test_data/" + test_name + "/event_insert_2.json",
-            "-w", "120",
-            "-l", "log2.out"]
-
-    command = [cmd] + args
-    process = subprocess.Popen(command)
-
-    # Query to check if the element exists
-    counter = 0
-    while counter < 10:
-        url = 'http://' + GLOBAL_URL + '/wazuh-states-vulnerabilities-default/_search'
-        query = {
-            "query": {
-                "match_all": {}
-            }
-        }
-        response = requests.get(url, json=query)
-        if response.status_code == 200 and response.json()['hits']['total']['value'] == 1:
-            LOGGER.debug(f"Document created after updated the mapping {response.text}")
-            break
-        time.sleep(1)
-        counter += 1
-
-    assert counter < 10, "The document was not inserted"
-    process.terminate()
-
-
-@pytest.mark.parametrize('opensearch', [True], indirect=True)
-def test_update_mappings_connector_legacy(opensearch):
-    os.chdir(Path(__file__).parent.parent.parent.parent)
-    LOGGER.debug(f"Current directory: {os.getcwd()}")
-
-    ## Remove folder queue/indexer/
-    if os.path.exists("queue/indexer/"):
-        shutil.rmtree("queue/indexer/")
-
-    # Run indexer connector testtool out of the container
-    cmd = Path("build/bin/", "indexer_connector_tool")
-
-    # Ensure the binary exists
-    assert cmd.exists(), "The binary does not exists"
-
-    # Remove previous log file if exists
-    if Path("log.out").exists():
-        Path("log.out").unlink()
-
-    test_name = inspect.currentframe().f_code.co_name
-
-    LOGGER.debug(f"Running test {test_name}")
-
-    # -------------------------------------------
-    # Create the index and try to insert a document with old mapping, this should fail and the element queue in the persistent rocksdb queue.
-    # -------------------------------------------
-    args = ["-c", "shared_modules/indexer_connector/qa/test_data/" + test_name + "/config.json",
-            "-t", "shared_modules/indexer_connector/qa/test_data/" + test_name + "/template.json",
-            "-e", "shared_modules/indexer_connector/qa/test_data/" + test_name + "/event_insert_1.json",
-            "-w", "10",
-            "-l", "log.out"]
-
-    command = [cmd] + args
-    process = subprocess.Popen(command)
-    # if the process is not running fail the test
-    assert process.poll() is None, "The process is not running"
-
-    # Wait for the process to finish, 10 seconds is the time to wait for the process to finish (defined in the command line)
-    counter = 0
-    while counter < 15:
-        if process.poll() is not None:
-            LOGGER.debug("Process finished")
-            break
-        time.sleep(1)
-        counter += 1
-    assert counter < 15, "Process still running"
-    process.terminate()
-
-    # Check if the index is created.
-    url = 'http://' + GLOBAL_URL + '/wazuh-states-vulnerabilities-default/'
-    response = requests.get(url)
-    if response.status_code == 200:
-        LOGGER.debug("Index created")
-
-    # Check if the document was not inserted
-    counter = 0
-    while counter < 10:
-        url = 'http://' + GLOBAL_URL + '/wazuh-states-vulnerabilities-default/_search'
-        query = {
-            "query": {
-                "match_all": {}
-            }
-        }
-        response = requests.get(url, json=query)
-        if response.status_code == 200 and response.json()['hits']['total']['value'] == 0:
-            LOGGER.debug("Document not exists.")
-            break
-        time.sleep(1)
-        counter += 1
-    assert counter < 10, "The document exists"
-
-    # -------------------------------------------
-    # Run the process again to update the mapping and check if the document is inserted, because now the queue have one pending element.
-    # -------------------------------------------
-    args = ["-c", "shared_modules/indexer_connector/qa/test_data/" + test_name + "/config.json",
-            "-t", "shared_modules/indexer_connector/qa/test_data/" + test_name + "/template2.json",
-            "-u", "shared_modules/indexer_connector/qa/test_data/" + test_name + "/update.json",
-             "-e", "shared_modules/indexer_connector/qa/test_data/" + test_name + "/event_insert_2.json",
-            "-w", "120",
-            "-l", "log2.out"]
-
-    command = [cmd] + args
-    process = subprocess.Popen(command)
-
-    # Query to check if the element exists
-    counter = 0
-    while counter < 10:
-        url = 'http://' + GLOBAL_URL + '/wazuh-states-vulnerabilities-default/_search'
-        query = {
-            "query": {
-                "match_all": {}
-            }
-        }
-        response = requests.get(url, json=query)
-        if response.status_code == 200 and response.json()['hits']['total']['value'] == 1:
-            LOGGER.debug(f"Document created after updated the mapping {response.text}")
-            break
-        time.sleep(1)
-        counter += 1
-
-    assert counter < 10, "The document was not inserted"
-    process.terminate()
-
-
-@pytest.mark.parametrize("opensearch", [True], indirect=True)
-def test_error_handling_shard_limit_exceeded(opensearch):
-    """
-    Test that shard limit validation error is logged with recommendation.
-
-    Scenario:
-    1. Configure OpenSearch with very low shard limit (e.g., 1)
-    2. Try to create multiple indices
-    3. Verify WARNING log contains recommendation to increase cluster.max_shards_per_node
-
-    Note: This requires OpenSearch configuration change to set low shard limit.
-    """
-    os.chdir(Path(__file__).parent.parent.parent.parent)
-    LOGGER.debug(f"Current directory: {os.getcwd()}")
-
-    # Set very low shard limit on OpenSearch
-    url = f'http://{GLOBAL_URL}/_cluster/settings'
-    settings = {"persistent": {"cluster.max_shards_per_node": 1}}
-    response = requests.put(url, json=settings)
-    assert response.status_code == 200, "Failed to set shard limit"
-
-    # Clean up
-    if os.path.exists("queue/indexer/"):
-        shutil.rmtree("queue/indexer/")
-
-    cmd = Path(
-        "build/shared_modules/indexer_connector/testtool/", "indexer_connector_tool"
-    )
-    assert cmd.exists(), "The binary does not exist"
-
-    log_file = Path("log.out")
-    if log_file.exists():
-        log_file.unlink()
-
-    test_name = inspect.currentframe().f_code.co_name
-
-    LOGGER.debug(f"Running test {test_name}")
-
-    # Try to create index (should fail with shard limit error)
-    args = [
-        "-c",
-        f"shared_modules/indexer_connector/qa/test_data/{test_name}/config.json",
-        "-t",
-        f"shared_modules/indexer_connector/qa/test_data/{test_name}/template.json",
-        "-w",
-        "10",
-        "-l",
-        str(log_file),
-    ]
-
-    command = [cmd] + args
-    process = subprocess.Popen(command)
-    time.sleep(5)
-    process.terminate()
-
-    # Verify log contains error
-    with open(log_file, "r") as f:
-        log_content = f.read()
-        assert "validation_exception" in log_content, (
-            "Expected validation_exception not found"
-        )
-        assert re.search(r"maximum.*shards open", log_content), (
-            "Expected shard limit error not found"
-        )
-
-    # Restore shard limit
-    settings = {"persistent": {"cluster.max_shards_per_node": None}}
-    requests.put(url, json=settings)
-
-    LOGGER.info("Shard limit error logged")
-
-
-@pytest.mark.parametrize("opensearch", [True], indirect=True)
-def test_error_handling_404_index_not_found(opensearch):
-    """
-    Test 404 index not found error handling.
-
-    Scenario:
-    1. Try to sync with non-existent index (don't create it first)
-    2. Verify WARNING with type: 'index_not_found_exception'
-    """
-    os.chdir(Path(__file__).parent.parent.parent.parent)
-    LOGGER.debug(f"Current directory: {os.getcwd()}")
-
-    # Clean up
-    if os.path.exists("queue/indexer/"):
-        shutil.rmtree("queue/indexer/")
-
-    # Ensure test index does NOT exist
-    index_url = f'http://{GLOBAL_URL}/wazuh-nonexistent-index-404'
-    response = requests.delete(index_url)
-    LOGGER.debug(f"Deleted test index (if existed): {response.status_code}")
-
-    cmd = Path("build/bin/indexer_connector_tool")
-    assert cmd.exists(), "The binary does not exist"
-
-    log_file = Path("log.out")
-    if log_file.exists():
-        log_file.unlink()
-
-    test_name = inspect.currentframe().f_code.co_name
-
-    LOGGER.debug(f"Running test {test_name}")
-
-    # Try to sync with non-existent index (no template, no creation)
-
-@pytest.mark.parametrize("opensearch", [False], indirect=True)
-def test_abuse_control_indexer_connector(opensearch):
-    os.chdir(Path(__file__).parent.parent.parent.parent)
-    test_name = inspect.currentframe().f_code.co_name
-
-    cmd = Path("build/bin/indexer_connector_tool")
-    assert cmd.exists()
-
-    if Path("log.out").exists():
-        Path("log.out").unlink()
-
-    args = [
-        "-c",
-        f"shared_modules/indexer_connector/qa/test_data/{test_name}/config.json",
-        "-t",
-        f"shared_modules/indexer_connector/qa/test_data/{test_name}/template.json",
-        "-e",
-        f"shared_modules/indexer_connector/qa/test_data/{test_name}/event_insert.json",
-        "-s",
-        "000",
-        "-L",
-        "30",  # new flag to simulate 30 rapid syncs
-        "-w",
-        "30",
-        "-D",
-        "0",  # 0 seconds delay (immediate/rapid)
-        "-l",
-        "log.out",
-    ]
-
-    subprocess.run([cmd] + args, check=True)
-
-    # verify only 1 document created
-    url = f"http://{GLOBAL_URL}/wazuh-states-vulnerabilities-default/_search"
-    r = requests.get(url, json={"query": {"match_all": {}}})
-    count = r.json()["hits"]["total"]["value"]
-    assert count == 1, f"Expected 1 doc, found {count}"
-
-    logs = Path("log.out").read_text()
-    blocked = logs.count("sync blocked by rate limit")
-    assert blocked >= 25, f"Expected most syncs to be blocked, found {blocked}"
-
-@pytest.mark.parametrize("opensearch", [False], indirect=True)
-def test_abuse_control_no_data_loss_on_indexer_failure(opensearch):
-    """
-    Real-world scenario test: Verify no data loss when indexer goes down
-
-    Steps:
-    1. Start indexer - publish event - succeeds
-    2. Stop indexer (simulate outage)
-    3. Re-run tool with sync - fails (indexer down)
-    4. Re-run tool with sync AGAIN - should NOT be blocked (this is the bug fix!)
-    5. Restart indexer
-    6. Re-run tool with sync - succeeds and data is preserved
-    """
-    os.chdir(Path(__file__).parent.parent.parent.parent)
-    LOGGER.info("="*80)
-    LOGGER.info("TEST: No Data Loss on Indexer Failure")
-    LOGGER.info("="*80)
-
-    test_name = inspect.currentframe().f_code.co_name
-
-    # Clean up
-    if os.path.exists("queue/indexer/"):
-        shutil.rmtree("queue/indexer/")
-
-    cmd = Path("build/bin/indexer_connector_tool")
-    assert cmd.exists(), "Binary does not exist"
-
-    client = opensearch
-
-    # ========================================================================
-    # STEP 1: Indexer UP - Publish event (succeeds)
-    # ========================================================================
-    LOGGER.info("\n[STEP 1] Publishing event with indexer UP...")
-
-    if Path("log_publish.out").exists():
-        Path("log_publish.out").unlink()
-
-    args_publish = [
-        "-c", f"shared_modules/indexer_connector/qa/test_data/{test_name}/config.json",
-        "-t", f"shared_modules/indexer_connector/qa/test_data/{test_name}/template.json",
-        "-e", f"shared_modules/indexer_connector/qa/test_data/{test_name}/event_insert.json",
-        "-w", "10",
-        "-l", "log_publish.out",
-    ]
-
-    subprocess.run([cmd] + args_publish, check=True)
-
-    # Verify document was created
-    time.sleep(2)
-    url = f"http://{GLOBAL_URL}/wazuh-states-vulnerabilities-default/_search"
-    response = requests.get(url, json={"query": {"match_all": {}}})
-    assert response.status_code == 200
-    initial_count = response.json()["hits"]["total"]["value"]
-    assert initial_count == 1, f"Expected 1 document, got {initial_count}"
-
-    LOGGER.info(f"✓ Event published successfully, {initial_count} document(s) in index")
-
-    # ========================================================================
-    # STEP 2: STOP INDEXER (simulate outage)
-    # ========================================================================
-    LOGGER.info("\n[STEP 2] Stopping indexer (simulating outage)...")
-
-    for container in client.containers.list():
-        if "opensearch" in container.name.lower():
-            container.stop()
-            LOGGER.info("✓ OpenSearch stopped")
-            break
-
-    time.sleep(3)
-
-    # ========================================================================
-    # STEP 3: Re-run tool with SYNC (will fail - indexer down)
-    # ========================================================================
-    LOGGER.info("\n[STEP 3] Running sync with indexer DOWN (will fail)...")
-
-    if Path("log_sync_fail.out").exists():
-        Path("log_sync_fail.out").unlink()
-
-    args_sync = [
-        "-c", f"shared_modules/indexer_connector/qa/test_data/{test_name}/config.json",
-        "-t", f"shared_modules/indexer_connector/qa/test_data/{test_name}/template.json",
-        "-s", "000",  # Trigger sync for agent 000
-        "-w", "5",
-        "-l", "log_sync_fail.out",
-    ]
-
-    # Run and expect it to complete (even though sync fails internally)
-    subprocess.run([cmd] + args_sync, check=True)
-
-    # Verify sync failed
-    log_fail = Path("log_sync_fail.out").read_text()
-    has_error = any(word in log_fail.lower() for word in ["error", "fail", "refused", "timeout", "connection"])
-    assert has_error, "Expected sync to fail when indexer is down"
-
-    LOGGER.info("✓ Sync failed as expected (indexer down)")
-
-    # ========================================================================
-    # STEP 4: CRITICAL TEST - Re-run sync AGAIN (should NOT be blocked!)
-    # ========================================================================
-    LOGGER.info("\n[STEP 4] CRITICAL: Re-run sync immediately (should NOT be blocked by rate limit)...")
-
-    if Path("log_sync_retry.out").exists():
-        Path("log_sync_retry.out").unlink()
-
-    args_retry = [
-        "-c", f"shared_modules/indexer_connector/qa/test_data/{test_name}/config.json",
-        "-t", f"shared_modules/indexer_connector/qa/test_data/{test_name}/template.json",
-        "-s", "000",
-        "-w", "5",
-        "-l", "log_sync_retry.out",
-    ]
-
-    subprocess.run([cmd] + args_retry, check=True)
-
-    # Check if retry was attempted or blocked
-    log_retry = Path("log_sync_retry.out").read_text()
-
-    # BUG CHECK: Was retry blocked by rate limit?
-    blocked_by_rate_limit = "sync blocked by rate limit" in log_retry.lower()
-
-    if blocked_by_rate_limit:
-        LOGGER.error("❌ BUG DETECTED: Retry was blocked by rate limit after failed sync!")
-        LOGGER.error("This means timestamp was updated BEFORE sync completed (original bug)")
-        assert False, "BUG: Failed sync should NOT block immediate retry"
-
-    # Retry should be attempted (will fail again, but that's OK)
-    retry_attempted = "syncing agent" in log_retry.lower() or "starting sync" in log_retry.lower()
-
-    if not retry_attempted:
-        LOGGER.warning("⚠️ Sync might be in progress from previous attempt, checking logs...")
-        LOGGER.debug(f"Retry log:\n{log_retry}")
-
-    LOGGER.info("✓ Retry was NOT blocked by rate limit (bug is FIXED!)")
-
-    # ========================================================================
-    # STEP 5: RESTART INDEXER
-    # ========================================================================
-    LOGGER.info("\n[STEP 5] Restarting indexer...")
-
-    for container in client.containers.list(all=True):
-        if "opensearch" in container.name.lower():
-            container.start()
-            LOGGER.info("✓ OpenSearch restarted")
-            break
-
-    # Wait for indexer to be ready
-    counter = 0
-    while counter < 30:
-        try:
-            response = requests.get(f"http://{GLOBAL_URL}")
-            if response.status_code == 200:
-                LOGGER.info("✓ OpenSearch is ready")
-                break
-        except:
-            pass
-        time.sleep(1)
-        counter += 1
-
-    assert counter < 30, "OpenSearch did not restart in time"
-
-    # ========================================================================
-    # STEP 6: Re-run sync (should succeed and preserve data)
-    # ========================================================================
-    LOGGER.info("\n[STEP 6] Running sync after indexer recovery (should succeed)...")
-
-    if Path("log_sync_success.out").exists():
-        Path("log_sync_success.out").unlink()
-
-    args_success = [
-        "-c", f"shared_modules/indexer_connector/qa/test_data/{test_name}/config.json",
-        "-t", f"shared_modules/indexer_connector/qa/test_data/{test_name}/template.json",
-        "-s", "000",
-        "-w", "10",
-        "-l", "log_sync_success.out",
-    ]
-
-    subprocess.run([cmd] + args_success, check=True)
-
-    # Verify sync succeeded
-    log_success = Path("log_sync_success.out").read_text()
-    sync_succeeded = "sync succeeded" in log_success.lower() or "syncing agent" in log_success.lower()
-
-    assert sync_succeeded, "Sync should succeed after indexer recovery"
-    LOGGER.info("✓ Sync succeeded after indexer recovery")
-
-    # ========================================================================
-    # STEP 7: Verify data integrity - no data loss
-    # ========================================================================
-    LOGGER.info("\n[STEP 7] Verifying data integrity...")
-
-    time.sleep(2)
-    response = requests.get(url, json={"query": {"match_all": {}}})
-    assert response.status_code == 200
-
-    final_count = response.json()["hits"]["total"]["value"]
-
-    # Should still have the original document (no data loss)
-    assert final_count >= initial_count, \
-        f"Data loss detected! Initial: {initial_count}, Final: {final_count}"
-
-    LOGGER.info(f"✓ Data preserved: {final_count} document(s) in index")
+    assert response.json()["status"] in ("green", "yellow")
+
+
+def test_sync_push_indexes_every_event(opensearch, tmp_path):
+    index = "wazuh-qa-sync"
+    events = [make_event(i) for i in range(3)]
+
+    first = run_tool(tmp_path, "first", index, events)
+    assert first.returncode == 0, "The push failed"
+    assert count_documents(index) == len(events)
+
+    # The tool's ids are positional (doc-0 ... doc-N), so pushing the same events again overwrites
+    # them: a re-sent batch must not duplicate documents.
+    second = run_tool(tmp_path, "second", index, events)
+    assert second.returncode == 0, "The second push failed"
+    assert count_documents(index) == len(events)
+
+
+def test_async_push_drains_into_the_index(opensearch, tmp_path):
+    index = "wazuh-qa-async"
+    events = [make_event(i) for i in range(50)]
+
+    run = run_tool(tmp_path, "async", index, events, "-m", "async")
+    assert run.returncode == 0, "The async push failed"
+    assert count_documents(index) == len(events)
+
+
+@pytest.mark.parametrize("opensearch", [{"http.max_content_length": "1mb"}], indirect=True)
+def test_payload_too_large_is_split_until_everything_lands(opensearch, tmp_path):
+    index = "wazuh-qa-413"
+    # ~1.2 KB per document: ~5 MB in one bulk, under the connector's 16 MB bulk size set below but
+    # five times the node's 1 MB limit, so the first request is answered 413 and split recursively.
+    base = make_event(0)
+    base["padding"] = "x" * 1024
+    events = [dict(base, message=f"event {i}") for i in range(4000)]
+
+    run = run_tool(tmp_path, "split", index, events, max_bulk_size=16 * 1024 * 1024)
+    assert run.returncode == 0, "The push failed"
+    assert "Received 413 error (Payload Too Large). Splitting bulk data." in run.log, \
+        "The bulk was never answered 413, so the split path was not exercised"
+    assert count_documents(index) == len(events)
+
+
+def test_rejected_document_fails_the_flush_until_the_mapping_allows_it(opensearch, tmp_path):
+    index = "wazuh-qa-mapping"
+    # The indexer plugins own the mapping in 5.x; here the harness plays that part.
+    mapping = {"mappings": {"dynamic": "strict", "properties": {"message": {"type": "keyword"}}}}
+    response = requests.put(f"{BASE_URL}/{index}", json=mapping, timeout=30)
+    assert response.status_code == 200, response.text
+
+    events = [{"message": "first", "unexpected": "field the mapping does not have"}]
+
+    rejected = run_tool(tmp_path, "rejected", index, events)
+    assert rejected.returncode == 1, "A rejected document must fail the push"
+    assert "Bulk operation had indexing failures" in rejected.output
+    assert "Indexing failure for index operation (status 400)" in rejected.log
+    assert "dynamic introduction of [unexpected]" in rejected.log
+    assert count_documents(index) == 0
+
+    response = requests.put(f"{BASE_URL}/{index}/_mapping",
+                            json={"properties": {"unexpected": {"type": "keyword"}}}, timeout=30)
+    assert response.status_code == 200, response.text
+
+    accepted = run_tool(tmp_path, "accepted", index, events)
+    assert accepted.returncode == 0, "The same push must succeed once the mapping allows it"
+    assert count_documents(index) == 1
+
+
+def test_shard_limit_rejection_is_reported(opensearch, tmp_path):
+    # A new index needs a primary and a replica: two shards against a limit of one.
+    put_cluster_setting("cluster.max_shards_per_node", 1)
+
+    run = run_tool(tmp_path, "shards", "wazuh-qa-shards", [make_event(0)])
+    assert run.returncode == 1, "A rejected index creation must fail the push"
+    assert "Bulk operation had indexing failures" in run.output
+    assert "Indexing failure for index operation (status 400)" in run.log
+    assert re.search(r"maximum.*shards open", run.log), "The shard-limit reason was not logged"
+
+
+def test_missing_index_rejection_is_reported(opensearch, tmp_path):
+    index = "wazuh-qa-missing"
+    put_cluster_setting("action.auto_create_index", False)
+
+    run = run_tool(tmp_path, "missing", index, [make_event(0)])
+    assert run.returncode == 1, "A bulk to a missing index must fail the push"
+    assert "Bulk operation had indexing failures" in run.output
+    assert "Indexing failure for index operation (status 404)" in run.log
+    assert f"no such index [{index}]" in run.log
+    assert requests.head(f"{BASE_URL}/{index}", timeout=30).status_code == 404
+
+
+def test_outage_fails_the_push_and_loses_nothing(opensearch, tmp_path):
+    index = "wazuh-qa-outage"
+    events = [make_event(i) for i in range(3)]
+
+    before = run_tool(tmp_path, "before", index, events)
+    assert before.returncode == 0, "The push with the indexer up failed"
+    assert count_documents(index) == len(events)
+
+    opensearch.stop()
+
+    # Small retry budget: with the node down the push has to fail, not hang and not report success.
+    during = run_tool(tmp_path, "during", index, events, max_retry_attempts=2, max_retry_duration_seconds=5)
+    assert during.returncode != 0, "A push with the indexer down must not succeed"
+    assert re.search(r"No available server|Transport-level failure|retry budget exhausted", during.text()), \
+        "The outage was not reported"
+
+    opensearch.start()
+    wait_until_ready()
+    assert count_documents(index) == len(events), "Documents indexed before the outage were lost"
+
+    after = run_tool(tmp_path, "after", index, events)
+    assert after.returncode == 0, "The push after recovery failed"
+    assert count_documents(index) == len(events), "The push after recovery duplicated documents"
+
+
+def test_repeated_flushes_do_not_resend(opensearch, tmp_path):
+    index = "wazuh-qa-flush-loop"
+    events = [make_event(i) for i in range(3)]
+
+    # -L: flush() called again and again on an already-flushed (empty) buffer (main.cpp, sync only).
+    run = run_tool(tmp_path, "loop", index, events, "-L", "10", "-D", "0")
+    assert run.returncode == 0, "Repeated flushes failed"
+    assert "Flush call 10/10" in run.output
+    assert count_documents(index) == len(events)

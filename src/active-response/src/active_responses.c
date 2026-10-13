@@ -22,7 +22,11 @@ static char* build_json_keys_message(const char *ar_name, char **keys);
 void write_debug_file(const char *ar_name, const char *msg) {
     char *timestamp = w_get_timestamp(time(NULL));
 
+#ifndef WIN32
+    FILE *ar_log_file = w_fopen_nofollow(AR_LOG_DIR, AR_LOG_FILE_NAME, "a");
+#else
     FILE *ar_log_file = wfopen(LOG_FILE, "a");
+#endif
 
     if (ar_log_file) {
         fprintf(ar_log_file, "%s %s: %s\n", timestamp, ar_name, msg);
@@ -468,6 +472,41 @@ int validate_srcip(const char *srcip) {
 }
 
 #ifndef WIN32
+
+bool canonicalize_ip(const char *ip, char *output, size_t output_size) {
+    unsigned char addr[sizeof(struct in6_addr)];
+
+    if (!ip || !output || output_size == 0) {
+        return false;
+    }
+
+    // Strict parsing matching the manager's white_list grammar (inet_pton): octal, hex
+    // and short IPv4 forms are rejected instead of reinterpreted into a different host.
+    if (inet_pton(AF_INET, ip, addr) == 1) {
+        return inet_ntop(AF_INET, addr, output, output_size) != NULL;
+    }
+    if (inet_pton(AF_INET6, ip, addr) == 1) {
+        return inet_ntop(AF_INET6, addr, output, output_size) != NULL;
+    }
+
+    return false;
+}
+
+bool hosts_deny_rule_matches(const char *line, const char *rule) {
+    if (!line || !rule) {
+        return false;
+    }
+
+    // Match the exact Wazuh-managed rule, ignoring trailing EOL/whitespace, so an
+    // administrator line that merely contains the IP as a substring is never touched.
+    size_t len = strlen(line);
+    while (len > 0 && (line[len - 1] == '\n' || line[len - 1] == '\r' ||
+                       line[len - 1] == ' ' || line[len - 1] == '\t')) {
+        len--;
+    }
+
+    return strlen(rule) == len && strncmp(line, rule, len) == 0;
+}
 
 int lock(const char *lock_path, const char *lock_pid_path, const char *log_path, const char *proc_name) {
     char log_msg[OS_MAXSTR];

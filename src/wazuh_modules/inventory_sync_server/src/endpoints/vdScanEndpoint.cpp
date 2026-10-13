@@ -10,8 +10,8 @@
 
 #include "vdScanEndpoint.hpp"
 
+#include "common/agentId.hpp"
 #include "loggerHelper.h"
-#include "sync/fullSessionValidator.hpp" // isNumericAgentId(), padAgentId()
 
 #include <cstdint>
 #include <json.hpp>
@@ -52,7 +52,8 @@ namespace
      * manager daemon, so this guards against a caller bug, not against spoofing.
      *
      * @param[out] reason Caller-facing 400 message, set only on failure.
-     * @return The id as written by the caller (unpadded), or nullopt when it is absent or not an id.
+     * @return The id in its canonical spelling ("7" and "0007" -> "007"), or nullopt when it is
+     *         absent or not an agent id (not digits, or out of the 32-bit range).
      */
     std::optional<std::string> resolveAgentId(const wazuh::uds_http::HttpRequest& request, const char*& reason)
     {
@@ -86,13 +87,14 @@ namespace
             agentId = std::to_string(agentIdIt->get<std::uint64_t>());
         }
 
-        if (!invsync::sync::isNumericAgentId(agentId))
+        auto canonical = invsync::common::canonicalAgentId(agentId);
+        if (!canonical)
         {
             reason = R"("agent_id" must be a numeric agent id)";
             return std::nullopt;
         }
 
-        return agentId;
+        return canonical;
     }
 } // namespace
 
@@ -138,11 +140,11 @@ namespace invsync::endpoints::vd_scan
             // mean scanned rather than "accepted".
             item.responder = responder;
             item.kind = invsync::sync::SyncPipeline::Item::Kind::VdScanRequest;
-            // Padded like every document `_id`, query and registry key. The padding is what makes
-            // the per-agent exclusion work ACROSS the two lanes: the pipeline registers an agent's
-            // sessions under this form, so a scan keyed on the raw id would be invisible to it and
-            // could run while that agent's session is mid-apply.
-            const auto agentId = invsync::sync::padAgentId(*callerAgentId);
+            // Canonical like every document `_id`, query and registry key. That one spelling is what
+            // makes the per-agent exclusion work ACROSS the two lanes: the pipeline registers an
+            // agent's sessions under this form, so a scan keyed on the raw id would be invisible to
+            // it and could run while that agent's session is mid-apply.
+            const auto& agentId = *callerAgentId;
             item.session.agentId = agentId;
 
             switch (lane->tryEnqueue(std::move(item)))

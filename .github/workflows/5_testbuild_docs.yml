@@ -3,17 +3,35 @@ name: 5.X - Docs build check
 on:
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
-    # check-docs.py reads every tracked .md under src/, framework/, api/ and tools/, the repository
-    # paths the docs name, and the installed-file inventory: a rename anywhere there can break a
-    # link, so the check runs with the change that makes it.
+    # The closure of docs/build.sh, which is wide by construction:
+    # - gen-manager-conf-ref.py --check reads the manager_config schema (under src/**).
+    # - mdbook builds docs/** (SUMMARY.md, book.toml, the readme-links preprocessor, mermaid assets).
+    # - check-docs.py reads every tracked .md under docs/ and its DEV_TREES (src, framework, api,
+    #   tools), and fails on a backticked path matching its REPO_PATH prefixes (src/, docs/, tools/,
+    #   packages/, .github/, framework/wazuh|scripts/, api/api|scripts|test/) that no longer exists,
+    #   so a rename or deletion of ANY file under those prefixes can break a page that names it. It
+    #   also reads the installed-file inventory (.github/actions/check_files/manager_base.csv) and
+    #   asks `git check-ignore` (the .gitignore files) before reporting a missing path.
+    # Relative links can name any repository file; every link today resolves under the patterns
+    # below. A page that starts linking a file outside them must add that path here.
     paths:
       - "docs/**"
       - "src/**"
-      - "framework/**"
-      - "api/**"
       - "tools/**"
       - "packages/**"
-      - ".github/actions/check_files/manager_base.csv"
+      - "framework/wazuh/**"
+      - "framework/scripts/**"
+      - "framework/**/*.md"
+      - "api/api/**"
+      - "api/scripts/**"
+      - "api/test/**"
+      - "api/**/*.md"
+      # Named by READMEs and docs/dev pages (workflows, actions, test_modules_manager.json) and the
+      # inventory CSV; the REPO_PATH prefix covers all of .github/.
+      - ".github/**"
+      - ".gitignore"
+      - "framework/.gitignore"
+      - "api/.gitignore"
       - ".github/workflows/5_testbuild_docs.yml"
 
 concurrency:
@@ -48,3 +66,25 @@ jobs:
         env:
           WAZUH_DOCS_NODE_DIR: ${{ runner.temp }}/wazuh-docs-tools
         run: cd docs && sh build.sh
+
+      - name: "Verify check-docs.py degrades gracefully without Node/npm (regression for #39955)"
+        run: |
+          GREP=$(command -v grep); CAT=$(command -v cat); PY=$(command -v python3)
+          STRIPPED_PATH=""
+          IFS=':' read -ra DIRS <<< "$PATH"
+          # Strip every PATH dir with node/npm, not just one: ubuntu-24.04 ships Node preinstalled
+          # via the n version manager in addition to whatever actions/setup-node adds, so a single
+          # directory is not enough (see the #39955 review history for the runner image evidence).
+          for d in "${DIRS[@]}"; do
+            [ -x "$d/node" ] || [ -x "$d/npm" ] && continue
+            STRIPPED_PATH="${STRIPPED_PATH:+$STRIPPED_PATH:}$d"
+          done
+          if PATH="$STRIPPED_PATH" command -v node >/dev/null 2>&1; then
+            echo "::error::node still resolvable after stripping PATH — fix the filter (runner image changed?)"
+            exit 1
+          fi
+          cd docs
+          PATH="$STRIPPED_PATH" "$PY" tools/check-docs.py --book book > /tmp/check-docs-no-node.log 2>&1 || true
+          "$CAT" /tmp/check-docs-no-node.log
+          "$GREP" -qF 'check-docs: node not found on PATH, skipping Mermaid validation' /tmp/check-docs-no-node.log
+          ! "$GREP" -q 'Traceback (most recent call last)' /tmp/check-docs-no-node.log

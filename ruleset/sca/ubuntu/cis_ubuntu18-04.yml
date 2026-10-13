@@ -3287,8 +3287,8 @@ checks:
           - "Modify Authentication Process"
     condition: none
     rules:
-      - 'f:/boot/grub/grub.cfg -> r:^\s*linux && !r:apparmor=1 && !r:/boot/memtest86\+\.bin'
-      - 'f:/boot/grub/grub.cfg -> r:^\s*linux && !r:security=apparmor && !r:/boot/memtest86\+\.bin'
+      - 'f:/boot/grub/grub.cfg -> r:^\s*linux && !r:apparmor=1 && !r:memtest86'
+      - 'f:/boot/grub/grub.cfg -> r:^\s*linux && !r:security=apparmor && !r:memtest86'
 
   # 1.6.1.3 Ensure all AppArmor Profiles are in enforce or complain mode (Automated)
   - id: 18535

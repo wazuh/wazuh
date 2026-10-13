@@ -127,6 +127,8 @@ class AbstractClient(common.Handler):
     Define a client protocol. Handle connection with server.
     """
 
+    is_connector = True
+
     def __init__(self, loop: uvloop.EventLoopPolicy, on_con_lost: asyncio.Future, name: str, fernet_key: str,
                  logger: logging.Logger, manager: AbstractClientManager, cluster_items: Dict, tag: str = "Client"):
         """Class constructor.
@@ -184,6 +186,10 @@ class AbstractClient(common.Handler):
             Socket to write data on.
         """
         self.transport = transport
+        self.start_session()
+
+    def session_established(self):
+        """Send the hello request once the session keys are agreed with the server."""
         future = asyncio.gather(self.send_request(command=b'hello', data=self.client_data))
         future.add_done_callback(self.connection_result)
 
