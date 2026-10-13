@@ -19,9 +19,15 @@
 #include <sqlite3.h>
 #include <thread>
 #include <cstring>
+#if defined(__linux__)
+// Only the lifecycle-notification test needs these, and it already skips itself
+// everywhere else -- but an include is not covered by a skip inside the test
+// body, and Windows has none of these headers. Same guard, same reason, as the
+// notification include in syscollectorImp.cpp.
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
+#endif
 
 #include "syscollectorImp_test.h"
 #include "syscollector.hpp"
