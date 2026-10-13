@@ -15,9 +15,16 @@
 #include "timeHelper.h"
 #include "wazuhCommon.hpp"
 #include "defer.hpp"
-#include "container_instances_notify_socket.hpp"
 #include "defs.h"
+#if defined(__linux__)
+// Container lifecycle notifications are a Linux-only path, and this include has
+// to say so: the socket helper reaches for <sys/socket.h>, <sys/un.h> and the
+// SOCK_NONBLOCK / SOCK_CLOEXEC flags, none of which exist on Windows and the
+// last two of which do not exist on macOS either. Guarded exactly like
+// container_baseline.h a few lines below, for the same reason.
+#include "container_instances_notify_socket.hpp"
 #include <poll.h>
+#endif
 #include <algorithm>
 #include <cstdint>
 #include <iostream>
@@ -3037,6 +3044,7 @@ void Syscollector::scan()
     m_logFunction(LOG_INFO, "Evaluation finished.");
 }
 
+#if defined(__linux__)
 void Syscollector::containerNotifyLoop()
 {
     wazuh::container_instances_client::NotifySocket notify;
@@ -3079,6 +3087,15 @@ void Syscollector::containerNotifyLoop()
         m_cv.notify_all();
     }
 }
+#else
+void Syscollector::containerNotifyLoop()
+{
+    // Nothing to be notified about: container monitoring is Linux-only, so no
+    // container_instances runs here to send a hint. Returning leaves the scan
+    // interval as the only trigger, which is the same state a Linux host with
+    // no container_instances socket ends up in.
+}
+#endif
 
 void Syscollector::syncLoop(std::unique_lock<std::mutex>& scan_lock)
 {
