@@ -64,11 +64,13 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     /* Read module limits from internal_options.conf */
     /* FIM limits */
     manager_module_limits.fim.file = getDefine_Int_default("fim", "file_limit", 0, INT_MAX, 30000);
-    /* Per container, not shared across them (#37532 / O10). Default 0 =
-     * UNLIMITED, unlike the host cap beside it: an operator who has not
-     * thought about containers gets the behaviour they had before container
-     * FIM existed. */
-    manager_module_limits.fim.container_file = getDefine_Int_default("fim", "container_file_limit", 0, INT_MAX, 0);
+    /* Per container, not shared across them (#37532 / O10). 30000 matches the
+     * host cap beside it: a container gets the same allowance the endpoint
+     * does, and nothing about running in a container makes its files less
+     * worth reporting. Measured basis: a container monitoring 2,000 files
+     * produces 2,005 rows, so this is a blast-radius guard against one
+     * pathological container, not a working ceiling (23.2). */
+    manager_module_limits.fim.container_file = getDefine_Int_default("fim", "container_file_limit", 0, INT_MAX, 30000);
     manager_module_limits.fim.registry_key = getDefine_Int_default("fim", "registry_key_limit", 0, INT_MAX, 30000);
     manager_module_limits.fim.registry_value = getDefine_Int_default("fim", "registry_value_limit", 0, INT_MAX, 30000);
 
@@ -87,21 +89,22 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     manager_module_limits.syscollector.services = getDefine_Int_default("syscollector", "services_limit", 0, INT_MAX, 30000);
     manager_module_limits.syscollector.browser_extensions = getDefine_Int_default("syscollector", "browser_extensions_limit", 0, INT_MAX, 30000);
 
-    /* Per container, not shared across them (#37532 / O10). Default 0 =
-     * UNLIMITED, unlike the host caps above: an operator who has not thought
-     * about containers gets the behaviour they had before container inventory
-     * existed, and the separation from the host budget is the fix on its own. */
-    manager_module_limits.syscollector.container_processes = getDefine_Int_default("syscollector", "container_processes_limit", 0, INT_MAX, 0);
-    manager_module_limits.syscollector.container_ports = getDefine_Int_default("syscollector", "container_ports_limit", 0, INT_MAX, 0);
-    manager_module_limits.syscollector.container_packages = getDefine_Int_default("syscollector", "container_packages_limit", 0, INT_MAX, 0);
-    manager_module_limits.syscollector.container_users = getDefine_Int_default("syscollector", "container_users_limit", 0, INT_MAX, 0);
-    manager_module_limits.syscollector.container_groups = getDefine_Int_default("syscollector", "container_groups_limit", 0, INT_MAX, 0);
-    manager_module_limits.syscollector.container_os_info = getDefine_Int_default("syscollector", "container_os_info_limit", 0, INT_MAX, 0);
-    manager_module_limits.syscollector.container_network_iface = getDefine_Int_default("syscollector", "container_network_iface_limit", 0, INT_MAX, 0);
-    manager_module_limits.syscollector.container_network_protocol = getDefine_Int_default("syscollector", "container_network_protocol_limit", 0, INT_MAX, 0);
-    manager_module_limits.syscollector.container_network_address = getDefine_Int_default("syscollector", "container_network_address_limit", 0, INT_MAX, 0);
-    manager_module_limits.syscollector.container_hardware = getDefine_Int_default("syscollector", "container_hardware_limit", 0, INT_MAX, 0);
-    manager_module_limits.syscollector.container_services = getDefine_Int_default("syscollector", "container_services_limit", 0, INT_MAX, 0);
+    /* Per container, not shared across them (#37532 / O10). 30000 matches the
+     * host caps above, for the same reason. Measured basis: 96-133 inventory
+     * rows per container across mixed images, so this is ~200x a realistic
+     * container -- a guard against one pathological container rather than a
+     * working ceiling (23.2). */
+    manager_module_limits.syscollector.container_processes = getDefine_Int_default("syscollector", "container_processes_limit", 0, INT_MAX, 30000);
+    manager_module_limits.syscollector.container_ports = getDefine_Int_default("syscollector", "container_ports_limit", 0, INT_MAX, 30000);
+    manager_module_limits.syscollector.container_packages = getDefine_Int_default("syscollector", "container_packages_limit", 0, INT_MAX, 30000);
+    manager_module_limits.syscollector.container_users = getDefine_Int_default("syscollector", "container_users_limit", 0, INT_MAX, 30000);
+    manager_module_limits.syscollector.container_groups = getDefine_Int_default("syscollector", "container_groups_limit", 0, INT_MAX, 30000);
+    manager_module_limits.syscollector.container_os_info = getDefine_Int_default("syscollector", "container_os_info_limit", 0, INT_MAX, 30000);
+    manager_module_limits.syscollector.container_network_iface = getDefine_Int_default("syscollector", "container_network_iface_limit", 0, INT_MAX, 30000);
+    manager_module_limits.syscollector.container_network_protocol = getDefine_Int_default("syscollector", "container_network_protocol_limit", 0, INT_MAX, 30000);
+    manager_module_limits.syscollector.container_network_address = getDefine_Int_default("syscollector", "container_network_address_limit", 0, INT_MAX, 30000);
+    manager_module_limits.syscollector.container_hardware = getDefine_Int_default("syscollector", "container_hardware_limit", 0, INT_MAX, 30000);
+    manager_module_limits.syscollector.container_services = getDefine_Int_default("syscollector", "container_services_limit", 0, INT_MAX, 30000);
 
     /* SCA limits */
     manager_module_limits.sca.checks = getDefine_Int_default("sca", "checks_limit", 0, INT_MAX, 30000);

@@ -30,9 +30,9 @@
  * decided by scan order. Measured on a real node, one container produced 25% of
  * the node's inventory rows -- see 23-nfr3-container-limits.md.
  *
- * Default 0 = unlimited, so an agent whose manager never sends this behaves
- * exactly as before. */
-#define DEFAULT_FIM_CONTAINER_FILE_LIMIT                0
+ * 30000 matches the host cap. A manager that never sends it leaves the agent
+ * on this value, which is the same answer the host gets. */
+#define DEFAULT_FIM_CONTAINER_FILE_LIMIT                30000
 
 /* Syscollector default values */
 #define DEFAULT_SYSCOLLECTOR_HOTFIXES_LIMIT             0
@@ -67,19 +67,19 @@
  * no container scanner yet. `services` IS collected -- it was left out on the
  * belief that containers run no init, and measurement disproved that.
  *
- * Default 0 = unlimited, so an agent that never hears these behaves exactly as
- * before -- except that container rows no longer draw down the host's counters. */
-#define DEFAULT_SYSCOLLECTOR_CONTAINER_PROCESSES_LIMIT        0
-#define DEFAULT_SYSCOLLECTOR_CONTAINER_PORTS_LIMIT            0
-#define DEFAULT_SYSCOLLECTOR_CONTAINER_PACKAGES_LIMIT         0
-#define DEFAULT_SYSCOLLECTOR_CONTAINER_USERS_LIMIT            0
-#define DEFAULT_SYSCOLLECTOR_CONTAINER_GROUPS_LIMIT           0
-#define DEFAULT_SYSCOLLECTOR_CONTAINER_OS_INFO_LIMIT          0
-#define DEFAULT_SYSCOLLECTOR_CONTAINER_NETWORK_IFACE_LIMIT    0
-#define DEFAULT_SYSCOLLECTOR_CONTAINER_NETWORK_PROTO_LIMIT    0
-#define DEFAULT_SYSCOLLECTOR_CONTAINER_NETWORK_ADDR_LIMIT     0
-#define DEFAULT_SYSCOLLECTOR_CONTAINER_HARDWARE_LIMIT         0
-#define DEFAULT_SYSCOLLECTOR_CONTAINER_SERVICES_LIMIT         0
+ * 30000 matches the host caps. An agent that never hears them stays on this
+ * value, and container rows no longer draw down the host's counters either way. */
+#define DEFAULT_SYSCOLLECTOR_CONTAINER_PROCESSES_LIMIT        30000
+#define DEFAULT_SYSCOLLECTOR_CONTAINER_PORTS_LIMIT            30000
+#define DEFAULT_SYSCOLLECTOR_CONTAINER_PACKAGES_LIMIT         30000
+#define DEFAULT_SYSCOLLECTOR_CONTAINER_USERS_LIMIT            30000
+#define DEFAULT_SYSCOLLECTOR_CONTAINER_GROUPS_LIMIT           30000
+#define DEFAULT_SYSCOLLECTOR_CONTAINER_OS_INFO_LIMIT          30000
+#define DEFAULT_SYSCOLLECTOR_CONTAINER_NETWORK_IFACE_LIMIT    30000
+#define DEFAULT_SYSCOLLECTOR_CONTAINER_NETWORK_PROTO_LIMIT    30000
+#define DEFAULT_SYSCOLLECTOR_CONTAINER_NETWORK_ADDR_LIMIT     30000
+#define DEFAULT_SYSCOLLECTOR_CONTAINER_HARDWARE_LIMIT         30000
+#define DEFAULT_SYSCOLLECTOR_CONTAINER_SERVICES_LIMIT         30000
 
 /* SCA default values */
 #define DEFAULT_SCA_CHECKS_LIMIT                        0
