@@ -80,7 +80,7 @@ def get_token_login_api(headers: dict = login_headers):
     str
         API token
     """
-    response = requests.post(login_url, headers=headers, verify=False)
+    response = requests.post(login_url, headers=headers, verify=False, timeout=30)
     if response.status_code == 200:
         return json.loads(response.content.decode())['data']['token']
     else:
@@ -207,6 +207,8 @@ def build_and_up(env_mode: str, interval: int = 10, build: bool = True):
                     "--build-arg", f"ENV_MODE={env_mode}", "--no-cache"],
                     stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True)
                 build_process.wait()
+            if retries == 0:  # Later attempts find the ports held by the containers of the failed one
+                wait_for_free_ports()  # The build opens outgoing connections that can take an ephemeral port
             up_process = subprocess.Popen(
                 ["docker", "compose", "--profile", env_mode, "up", "-d"],
                 env=dict(os.environ, ENV_MODE=env_mode),
@@ -319,9 +321,6 @@ def check_api_ready(env_mode: str) -> bool:
         return False
 
     endpoints = ['manager/status']
-    if env_mode == cluster_env_mode:
-        endpoints += [f'cluster/{node}/status' for node in env_cluster_nodes[1:]]
-
     for endpoint in endpoints:
         try:
             response = requests.get(f"{common['protocol']}://{common['host']}:{common['master_port']}/{endpoint}",
@@ -331,6 +330,9 @@ def check_api_ready(env_mode: str) -> bool:
             return False
         if response.status_code != 200 or any(daemons.get(daemon) != 'running' for daemon in basic_daemons):
             return False
+        # The manager suites disable the cluster in the master node, even in the cluster environment
+        if endpoint == 'manager/status' and env_mode == cluster_env_mode and daemons.get('wazuh-clusterd') == 'running':
+            endpoints += [f'cluster/{node}/status' for node in env_cluster_nodes[1:]]
 
     return True
 
