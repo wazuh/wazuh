@@ -205,6 +205,9 @@ static void test_remoted_internal_options_config(void **state) {
     int ret = RemotedConfig("test_ossec.conf", &logr);
     assert_int_equal(ret, 1);
 
+    // Until HandleRemote() raises the soft limit, the limit in force is taken as the configured one
+    assert_int_equal(nofile_effective, 59);
+
     // verification_mode must start UNSET (not NONE/0), so a later absent
     // https.verification_mode stays distinguishable from an explicit "none".
     assert_int_equal(logr.https.verification_mode, REMOTED_HTTPS_VERIFY_UNSET);
@@ -256,6 +259,24 @@ static void test_remoted_internal_options_config(void **state) {
 
     cJSON_Delete(json);
     os_free(logr.lip);
+}
+
+/* remoted.rlimit_nofile reports the configured value, not the limit in force: a manager started with
+ * a higher inherited soft limit (or capped below the option) must still report what was configured. */
+static void test_remoted_rlimit_nofile_reports_configured_value(void **state) {
+    (void) state;
+
+    nofile = 4096;
+    nofile_effective = 65536;
+
+    cJSON *json = getRemoteInternalConfig();
+    assert_non_null(json);
+
+    cJSON *remoted_obj = cJSON_GetObjectItem(cJSON_GetObjectItem(json, "internal"), "remoted");
+    assert_non_null(remoted_obj);
+    assert_int_equal(cJSON_GetObjectItem(remoted_obj, "rlimit_nofile")->valueint, 4096);
+
+    cJSON_Delete(json);
 }
 
 /* Verifies config.c wires the 300/86400/900 (min/max/default) triple and that
@@ -746,6 +767,7 @@ int main(void)
     const struct CMUnitTest tests[] = {
         /* Internal options and post-load validation */
         cmocka_unit_test(test_remoted_internal_options_config),
+        cmocka_unit_test(test_remoted_rlimit_nofile_reports_configured_value),
         cmocka_unit_test(test_remoted_legacy_task_polling_interval_bounds),
         cmocka_unit_test(test_remoted_queue_size_above_threshold_warns),
         cmocka_unit_test(test_remoted_queue_size_at_threshold_does_not_warn),
