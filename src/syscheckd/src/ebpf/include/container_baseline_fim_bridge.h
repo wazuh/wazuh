@@ -69,6 +69,15 @@ int fim_container_baseline_abspath(const char* relative, char* out, size_t out_s
  * included it would take the symbol with C++ linkage and fail to link. */
 void fim_container_baseline_rate_limit(void);
 
+/* The two row ceilings, read from the daemon's live configuration.
+ *
+ * Shims for the same reason the logging ones are: the C++ driver cannot include
+ * syscheck.h, and this library no longer reads the daemon's configuration
+ * directly -- it is handed it. Both return 0, meaning unlimited, before the
+ * host API is registered. */
+int fim_container_baseline_row_limit(void);       /* per container */
+int fim_container_baseline_node_row_limit(void);  /* the whole file_entry table */
+
 /**
  * @brief Release a container's per-container document count (#37532 / O10).
  *
