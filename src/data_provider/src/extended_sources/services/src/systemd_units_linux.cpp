@@ -194,8 +194,11 @@ bool SystemdUnitsProvider::getSystemdUnits(std::vector<SystemdUnit>& output)
         m_dbusWrapper->message_iter_get_basic(&structIter, &str);
         unit.jobPath = str;
 
-        // Placeholders for units only referenced by other units' dependencies; keep running orphans.
-        if (unit.loadState == "not-found" && unit.activeState == "inactive")
+        // Filter before the per-unit property queries, which cost one D-Bus round trip each.
+        // Inactive not-found units are placeholders only referenced by other units' dependencies.
+        const bool isPlaceholder = unit.loadState == "not-found" && unit.activeState == "inactive";
+
+        if (isPlaceholder || !Utils::endsWith(unit.id, ".service") || !Utils::replaceLast(unit.id, ".service", ""))
         {
             m_dbusWrapper->message_iter_next(&arrayIter);
             continue;
@@ -228,10 +231,7 @@ bool SystemdUnitsProvider::getSystemdUnits(std::vector<SystemdUnit>& output)
             }
         }
 
-        if (Utils::endsWith(unit.id, ".service") && Utils::replaceLast(unit.id, ".service", ""))
-        {
-            output.emplace_back(std::move(unit));
-        }
+        output.emplace_back(std::move(unit));
 
         m_dbusWrapper->message_iter_next(&arrayIter);
     }

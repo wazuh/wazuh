@@ -261,41 +261,8 @@ void SetUpTestMock(std::shared_ptr<MockDBusWrapper>& mockDbusWrapper)
                             _))
     .WillOnce(DoAll(SetArgReferee<5>(std::string("enabled")), Return(true)));
 
-    EXPECT_CALL(*mockDbusWrapper,
-                getProperty(conn,
-                            "org.freedesktop.systemd1",
-                            devicePath,
-                            "org.freedesktop.systemd1.Unit",
-                            "FragmentPath",
-                            _))
-    .WillOnce(DoAll(SetArgReferee<5>(std::string("/lib/systemd/system/test_device.device")), Return(true)));
-
-    EXPECT_CALL(*mockDbusWrapper,
-                getProperty(conn,
-                            "org.freedesktop.systemd1",
-                            devicePath,
-                            "org.freedesktop.systemd1.Unit",
-                            "SourcePath",
-                            _))
-    .WillOnce(DoAll(SetArgReferee<5>(std::string("/etc/systemd/system/test_device.device")), Return(true)));
-
-    EXPECT_CALL(*mockDbusWrapper,
-                getProperty(conn,
-                            "org.freedesktop.systemd1",
-                            devicePath,
-                            "org.freedesktop.systemd1.Service",
-                            "User",
-                            _))
-    .WillOnce(DoAll(SetArgReferee<5>(std::string("root")), Return(true)));
-
-    EXPECT_CALL(*mockDbusWrapper,
-                getProperty(conn,
-                            "org.freedesktop.systemd1",
-                            devicePath,
-                            "org.freedesktop.systemd1.Unit",
-                            "UnitFileState",
-                            _))
-    .WillOnce(DoAll(SetArgReferee<5>(std::string("enabled")), Return(true)));
+    // Non-service units are discarded before their properties are queried.
+    EXPECT_CALL(*mockDbusWrapper, getProperty(_, _, devicePath, _, _, _)).Times(0);
 
     EXPECT_CALL(*mockDbusWrapper,
                 getProperty(conn,
