@@ -219,6 +219,8 @@ promoteUnsyncedItems(index, tableName, availableSlots, reason);
 - Items are promoted in deterministic alphabetical order (COLLATE NOCASE)
 - Uses primary key fields for stable ordering (e.g., packages ordered by `name, type`)
 - Ensures consistent behavior across agent restarts
+- Decides which pending items fill free slots and which synchronized items a lowered limit returns to `sync=0` (the end of that order). Items already at `sync=1` are never displaced by new ones
+- Items a local user can create count toward the limit, such as per-user uninstall entries under `HKEY_USERS` on Windows and user-level PyPI and npm packages. A user who adds more items than the limit (`syscollector.<type>_limit`, `30000` per inventory type by default) can keep items collected later, or after the local database is rebuilt, out of the indexer
 
 **Dynamic Limit Updates:**
 - Limits can be updated during agent reconnection
