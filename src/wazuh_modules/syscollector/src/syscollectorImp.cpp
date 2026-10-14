@@ -2264,6 +2264,13 @@ std::size_t Syscollector::sweepContainerRows(const std::vector<std::string>& con
         }
 
         m_knownContainerIds.erase(containerId);
+
+        // The same release the whole-list sweep does. Omitting it here leaked
+        // an entry per container removed through the delta path -- the rows
+        // were gone, but the budget they had spent was never returned, so a
+        // node that churns containers drifts toward a cap that reports no
+        // space while holding none.
+        releaseContainerCounts(containerId);
         ++swept;
     }
 
@@ -3644,9 +3651,8 @@ std::vector<nlohmann::json> Syscollector::fetchAllFromTable(const std::string& t
         else if (indexIt != INDEX_MAP.end())
         {
             const std::string& index = indexIt->second;
-            size_t documentLimit = getDocumentLimit(index);
 
-            if (documentLimit > 0)
+            if (syncFilterRequired(index))
             {
                 // With limits: only include items with sync=1 (within document limits)
                 rowFilterClause = "WHERE sync=1";
@@ -4680,6 +4686,7 @@ void Syscollector::setAdmittedContainers(const std::map<std::string, bool>& disc
     }
 
     std::lock_guard<std::mutex> lock(m_limitsMutex);
+    m_containerAdmissionWithholding = (admitted.size() != discovered.size());
     m_admittedContainers = std::move(admitted);
     m_admissionKnown = true;
 }
@@ -5980,10 +5987,19 @@ void Syscollector::clearTablesForIndices(const std::vector<std::string>& indices
     }
 }
 
-size_t Syscollector::getDocumentLimit(const std::string& index)
+bool Syscollector::syncFilterRequired(const std::string& index)
 {
     std::lock_guard<std::mutex> limitsLock(m_limitsMutex);
-    return m_documentLimits[index];
+
+    if (m_documentLimits[index] > 0 || m_containerDocumentLimits[index] > 0)
+    {
+        return true;
+    }
+
+    // A withheld container leaves every one of its rows at sync=0 whatever the
+    // per-dimension budgets say, so the filter is required even when no budget
+    // is configured at all.
+    return m_containerAdmissionWithholding;
 }
 
 // LCOV_EXCL_START
@@ -5999,14 +6015,13 @@ bool Syscollector::checkIfFullSyncRequired(const std::string& tableName)
     if (indexIt != INDEX_MAP.end())
     {
         const std::string& index = indexIt->second;
-        size_t documentLimit = getDocumentLimit(index);
 
-        if (documentLimit > 0)
+        if (syncFilterRequired(index))
         {
             // With limits: only include items with sync=1 in checksum
             // This matches what the manager has (only synced items were sent)
             rowFilter = "WHERE sync=1";
-            m_logFunction(LOG_DEBUG, "Calculating checksum with filter 'sync=1' (limit=" + std::to_string(documentLimit) + ")");
+            m_logFunction(LOG_DEBUG, "Calculating checksum with filter 'sync=1'");
         }
         else
         {
@@ -6238,15 +6253,13 @@ bool Syscollector::resyncTableToManager(const std::string& tableName, const std:
 
     std::vector<nlohmann::json> items;
 
-    // Determine if we need to filter by sync=1
-    // Only filter when document limits are configured (limit > 0)
-    // If limit == 0 (unlimited), recover all items without filtering
-    size_t documentLimit = getDocumentLimit(index);
+    // Determine if we need to filter by sync=1: whenever anything can leave a
+    // row at sync=0, including a withheld container.
     std::string rowFilterClause;
 
     try
     {
-        if (documentLimit > 0)
+        if (syncFilterRequired(index))
         {
             // With limits: only recover items with sync=1
             // Items with sync=0 exceeded the document limit and should not be recovered
