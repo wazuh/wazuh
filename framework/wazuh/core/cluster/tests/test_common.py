@@ -1576,6 +1576,7 @@ def test_wazuh_common_end_receiving_file_ko():
 def test_wazuh_common_error_receiving_file_ok(json_loads_mock):
     """Check how error are handled by peer in the sent file process."""
 
+    json_loads_mock.return_value = Exception("error_details")
     with patch('os.path.exists', return_value=True):
         with patch('os.remove'):
             # Test first condition and its nested condition
@@ -1589,11 +1590,56 @@ def test_wazuh_common_error_receiving_file_ok(json_loads_mock):
 def test_wazuh_common_error_receiving_file_ko():
     """Test the 'error_receiving_file' when an exception takes place."""
 
-    with patch('json.loads'):
+    with patch('json.loads', return_value=Exception("error_details")):
         with patch('os.path.exists', return_value=True):
             with patch('os.remove', side_effect=Exception):
                 with patch('wazuh.core.cluster.common.WazuhCommon.get_logger'):
                     assert wazuh_common.error_receiving_file("task_ID error_details") == (b'ok', b'Error received')
+
+
+@pytest.mark.parametrize('error_details', ['"etc/client.keys"', '["etc/client.keys"]', '{"a": 1}', 'null'])
+def test_wazuh_common_error_receiving_file_rejects_non_exception(error_details):
+    """Check that error details which are not a serialized exception are not stored nor remove any file."""
+
+    task = MagicMock(filename='')
+    wazuh_common.sync_tasks = {'task_ID': task}
+    with patch('wazuh.core.cluster.common.WazuhCommon.get_logger') as logger_mock:
+        with patch('os.remove') as remove_mock:
+            assert wazuh_common.error_receiving_file(f"task_ID {error_details}") == (b'ok', b'Error received')
+
+    remove_mock.assert_not_called()
+    logger_mock.return_value.error.assert_called_once()
+    assert task.filename == ''
+    task.received_information.set.assert_not_called()
+
+
+def test_wazuh_common_error_receiving_file_stores_exception():
+    """Check that a serialized exception is stored in the task and its availability is notified."""
+
+    task = MagicMock(filename='')
+    wazuh_common.sync_tasks = {'task_ID': task}
+    error = json.dumps(exception.WazuhClusterError(1000), cls=cluster_common.WazuhJSONEncoder)
+    assert wazuh_common.error_receiving_file(f"task_ID {error}") == (b'ok', b'Error received')
+
+    assert isinstance(task.filename, exception.WazuhClusterError)
+    task.received_information.set.assert_called_once()
+
+
+def test_wazuh_common_error_receiving_file_second_error_for_same_task():
+    """Check that a second error for a task whose filename is already an exception is ignored."""
+
+    stored_error = exception.WazuhClusterError(1000)
+    task = MagicMock(filename=stored_error)
+    wazuh_common.sync_tasks = {'task_ID': task}
+    error = json.dumps(exception.WazuhClusterError(1001), cls=cluster_common.WazuhJSONEncoder)
+    with patch('wazuh.core.cluster.common.WazuhCommon.get_logger') as logger_mock:
+        with patch('os.remove') as remove_mock:
+            assert wazuh_common.error_receiving_file(f"task_ID {error}") == (b'ok', b'Error received')
+
+    remove_mock.assert_not_called()
+    logger_mock.return_value.error.assert_called_once()
+    assert task.filename is stored_error
+    task.received_information.set.assert_not_called()
 
 
 def test_wazuh_common_end_receiving_file_invalid_absolute_path():

@@ -1425,7 +1425,14 @@ class WazuhCommon:
         """
         task_id, error_details = task_id_and_error_details.split(' ', 1)
         error_details_json = json.loads(error_details, object_hook=as_wazuh_object)
+        if not isinstance(error_details_json, Exception):
+            self.get_logger(logger_tag).error(f"Invalid error details received for task {task_id}")
+            return b'ok', b'Error received'
         if task_id in self.sync_tasks:
+            if not isinstance(self.sync_tasks[task_id].filename, str):
+                self.get_logger(logger_tag).error(f"Task {task_id} already holds an error, ignoring additional report")
+                return b'ok', b'Error received'
+
             # Remove filename if exists
             if os.path.exists(self.sync_tasks[task_id].filename):
                 try:
