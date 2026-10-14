@@ -292,12 +292,20 @@ if [ $1 = 2 ]; then
   # Upgrade only ($1 = 2), and once: this is a package decision, not a runtime one, so it must not
   # depend on the agent ever reaching a manager. Overwritten before it is unlinked, because the
   # bytes are a secret.
-  if [ -f %{_localstatedir}/etc/authd.pass ]; then
-    if [ -s %{_localstatedir}/etc/authd.pass ]; then
-      dd if=/dev/zero of=%{_localstatedir}/etc/authd.pass bs=1 count=$(wc -c < %{_localstatedir}/etc/authd.pass) conv=notrunc > /dev/null 2>&1 || true
+  #
+  # etc/ belongs to wazuh, which could leave a link at etc/authd.pass for dd to write zeros
+  # through. The entry is renamed first into a directory only root can enter, under the
+  # installation directory (a rename moves a link, never its target), and only zeroed there when
+  # it is a plain file with no other link.
+  if [ -f %{_localstatedir}/etc/authd.pass ] && AUTHD_PASS_STAGE=$(mktemp -d %{_localstatedir}/.authd-pass.XXXXXX); then
+    AUTHD_PASS=${AUTHD_PASS_STAGE}/authd.pass
+    if mv -f %{_localstatedir}/etc/authd.pass ${AUTHD_PASS}; then
+      if [ -f ${AUTHD_PASS} ] && [ ! -L ${AUTHD_PASS} ] && [ -n "$(find ${AUTHD_PASS} -links 1)" ] && [ -s ${AUTHD_PASS} ]; then
+        dd if=/dev/zero of=${AUTHD_PASS} bs=1 count=$(wc -c < ${AUTHD_PASS}) conv=notrunc > /dev/null 2>&1 || true
+      fi
+      echo "wazuh-agent: removed the fleet-wide enrollment password at %{_localstatedir}/etc/authd.pass. 5.0 enrols with an enrollment token (WAZUH_ENROLLMENT_TOKEN); an agent enrolled before the upgrade holds no re-enrollment secret and must be re-pointed with a token if the manager stops recognising its key."
     fi
-    rm -f %{_localstatedir}/etc/authd.pass
-    echo "wazuh-agent: removed the fleet-wide enrollment password at %{_localstatedir}/etc/authd.pass. 5.0 enrols with an enrollment token (WAZUH_ENROLLMENT_TOKEN); an agent enrolled before the upgrade holds no re-enrollment secret and must be re-pointed with a token if the manager stops recognising its key."
+    rm -rf ${AUTHD_PASS_STAGE}
   fi
 
   if [ -d %{_localstatedir}/logs/ossec ]; then

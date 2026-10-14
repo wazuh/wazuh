@@ -37,6 +37,14 @@ case "$1" in
         (cd -P -- "$1" 2> /dev/null && [ "$(pwd -P)" = "${REAL_DIR}${1#"${DIR}"}" ] && shift && "$@")
     }
 
+    # zero_fill_plain_file FILE: overwrites FILE with zeros when it is a plain, non-empty file with no
+    # other link, so nothing but FILE's own bytes is touched.
+    zero_fill_plain_file() {
+        if [ -f "$1" ] && [ ! -L "$1" ] && [ -n "$(find "$1" -links 1)" ] && [ -s "$1" ]; then
+            dd if=/dev/zero of="$1" bs=1 count=$(wc -c < "$1") conv=notrunc > /dev/null 2>&1 || true
+        fi
+    }
+
     # restore_conf_file NAME: puts back the copy of etc/NAME preinst took, root:${GROUP} 0640. A link
     # in its place is one swapped in while preinst copied, and is dropped.
     restore_conf_file() {
@@ -98,12 +106,17 @@ case "$1" in
     # Upgrade only ($2 is the previously configured version, empty on a fresh install), and once:
     # this is a package decision, not a runtime one, so it must not depend on the agent ever
     # reaching a manager. Overwritten before it is unlinked, because the bytes are a secret.
+    #
+    # etc/ is writable by ${GROUP}, which could leave a link at etc/authd.pass for dd to write
+    # zeros through. The entry is renamed into ${WAZUH_TMP_DIR} first (a rename moves a link, never
+    # its target), and only zeroed there when it is a plain file with no other link.
     if [ -n "$2" ] && [ -f ${DIR}/etc/authd.pass ]; then
-        if [ -s ${DIR}/etc/authd.pass ]; then
-            dd if=/dev/zero of=${DIR}/etc/authd.pass bs=1 count=$(wc -c < ${DIR}/etc/authd.pass) conv=notrunc > /dev/null 2>&1 || true
+        mkdir -p ${WAZUH_TMP_DIR}
+        if mv -f ${DIR}/etc/authd.pass ${WAZUH_TMP_DIR}/authd.pass; then
+            zero_fill_plain_file ${WAZUH_TMP_DIR}/authd.pass
+            rm -f ${WAZUH_TMP_DIR}/authd.pass
+            echo "wazuh-agent: removed the fleet-wide enrollment password at ${DIR}/etc/authd.pass. 5.0 enrols with an enrollment token (WAZUH_ENROLLMENT_TOKEN); an agent enrolled before the upgrade holds no re-enrollment secret and must be re-pointed with a token if the manager stops recognising its key."
         fi
-        rm -f ${DIR}/etc/authd.pass
-        echo "wazuh-agent: removed the fleet-wide enrollment password at ${DIR}/etc/authd.pass. 5.0 enrols with an enrollment token (WAZUH_ENROLLMENT_TOKEN); an agent enrolled before the upgrade holds no re-enrollment secret and must be re-pointed with a token if the manager stops recognising its key."
     fi
 
     # Restore client.keys, ossec.conf and the internal options
