@@ -208,7 +208,7 @@ it) or unreadable by the `wazuh-manager` user (`wazuh-manager-remoted`, after it
 `wazuh-manager-apid` loads its own pair at start, after dropping privileges and before daemonizing,
 and refuses to start (error `2003` on the terminal and in `logs/api.log`) when it is missing,
 unreadable by `wazuh-manager`, mismatched or encrypted. The indexer pair is not checked at start at all — see
-[Certificates](credentials.md#issued-at-installation-and-at-no-other-moment). Check what a node
+[Certificates](credentials.md#server-pairs). Check what a node
 presents with `openssl x509 -in /etc/wazuh-manager/certs/remoted.pem -noout -text`.
 
 #### Configure the indexer address

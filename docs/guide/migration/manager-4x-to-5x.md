@@ -157,7 +157,7 @@ value here. Validation is of presence and format only; a wrong password passes i
 **The API passwords.** The manager generates the `wazuh` and `wazuh-internal-client` passwords when the package
 is installed and publishes them into a managed block of the same file; nothing prints them. The
 file's layout, and how to read a value back without its quotation marks, are in
-[The credentials file](../../ref/getting-started/credentials.md#the-credentials-file).
+[The credentials file](../../ref/getting-started/credentials.md#files-and-modes).
 
 They matter twice in this procedure: the [migration tool](#1-back-up-the-4x-manager) reads
 `WAZUH_MANAGER_API_PASSWORD` from there, and carrying the 4.x `rbac.db` in
@@ -169,7 +169,7 @@ for the agent listener on `1517` and `wazuh-manager-authd` on `1515`, and
 `indexer-connector.pem`/`indexer-connector-key.pem`, the client certificate presented to the indexer, and
 `apid.pem`/`apid-key.pem`, the certificate of the Server API on `55000`.
 The install decides what to do about them from what it finds in `/etc/wazuh/ca` and in `/etc/wazuh-manager/certs`
-([What the install does](../../ref/getting-started/credentials.md#what-the-install-does) has every
+([What the install does](../../ref/getting-started/credentials.md#server-pairs) has every
 case). For a migration there are three choices:
 
 - **Nothing in either place.** The manager mints a bootstrap CA on this host and issues the three pairs
@@ -454,7 +454,7 @@ sudo sh -c '. /var/wazuh-manager/lib/wazuh-credentials.sh && wazuh_env_get WAZUH
 ```
 
 The values are read through the same parser the manager uses, which strips their quotation marks
-(see [Reading a value back](../../ref/getting-started/credentials.md#reading-a-value-back)).
+(see [Reading a value back](../../ref/getting-started/credentials.md#the-published-passwords)).
 
 or keep the 4.x passwords and give the dashboard the one `wazuh-wui` had on 4.x. The migration tool
 prints this same warning when it installs `rbac.db`.
