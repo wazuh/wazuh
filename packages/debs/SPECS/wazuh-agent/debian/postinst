@@ -23,6 +23,7 @@ case "$1" in
     # may be a link the service account planted, and cp, chmod and chown follow links. A file root
     # writes there is built in ${WAZUH_TMP_DIR} (root only) and renamed into place: a rename
     # replaces a link instead of following it.
+    mkdir -p ${WAZUH_TMP_DIR}
 
     # install_file SOURCE MODE OWNER:GROUP DEST: moves SOURCE, already in ${WAZUH_TMP_DIR}, to DEST.
     install_file() {
@@ -75,7 +76,6 @@ case "$1" in
 
     # Generated in ${WAZUH_TMP_DIR} and moved into place. Not under the name ossec.conf there: that
     # is preinst's copy of the current one, restored below.
-    mkdir -p ${WAZUH_TMP_DIR}
     CONF_STAGE=${WAZUH_TMP_DIR}/ossec.conf.generated
     if [ -z "$2" ] || [ -f ${WAZUH_TMP_DIR}/create_conf ] ; then
 
@@ -89,7 +89,6 @@ case "$1" in
 
     # For the etc dir
     if [ -f /etc/localtime ]; then
-        mkdir -p ${WAZUH_TMP_DIR}
         cp -pL /etc/localtime ${WAZUH_TMP_DIR}/localtime && \
             install_file ${WAZUH_TMP_DIR}/localtime 640 root:${GROUP} ${DIR}/etc/localtime
     fi
@@ -115,7 +114,6 @@ case "$1" in
     # zeros through. The entry is renamed into ${WAZUH_TMP_DIR} first (a rename moves a link, never
     # its target), and only zeroed there when it is a plain file with no other link.
     if [ -n "$2" ] && [ -f ${DIR}/etc/authd.pass ]; then
-        mkdir -p ${WAZUH_TMP_DIR}
         if mv -f ${DIR}/etc/authd.pass ${WAZUH_TMP_DIR}/authd.pass; then
             zero_fill_plain_file ${WAZUH_TMP_DIR}/authd.pass
             rm -f ${WAZUH_TMP_DIR}/authd.pass
