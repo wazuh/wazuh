@@ -15,10 +15,10 @@
 #include <climits>
 #include <fcntl.h>
 #include <filesystem>
-#include <fstream>
 #include <grp.h>
 #include <pwd.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include <fmt/format.h>
@@ -27,206 +27,215 @@
 #include <base/managerLogSink.hpp>
 #include <base/process.hpp>
 
-constexpr auto MAX_RBUFFER_SIZE = 65536;
-
 namespace base::process
 {
 
-void goDaemon()
+namespace
 {
-    pid_t pid = fork();
+constexpr std::size_t LOOKUP_BUFFER_CAP = 65536;    ///< Largest buffer offered to getpwnam_r/getgrnam_r
+constexpr std::size_t LOOKUP_BUFFER_DEFAULT = 1024; ///< Used when sysconf gives no hint
+
+/// "<strerror> (<code>)" for an errno-style code.
+std::string describeError(int code)
+{
+    return fmt::format("{} ({})", std::strerror(code), code);
+}
+
+/// Initial buffer size for a reentrant lookup: the sysconf hint, or the default; never above the cap.
+std::size_t initialLookupSize(int sysconfName)
+{
+    const long hint = sysconf(sysconfName);
+    const auto size = hint > 0 ? static_cast<std::size_t>(hint) : LOOKUP_BUFFER_DEFAULT;
+    return std::min(size, LOOKUP_BUFFER_CAP);
+}
+
+/**
+ * @brief Runs a getpwnam_r/getgrnam_r-style lookup, doubling the buffer on ERANGE up to the cap.
+ *
+ * Only the return code of the lookup decides; errno is never read. Returns idOf(entry) while the buffer that
+ * backs the entry's strings is still alive.
+ */
+template<typename Entry, typename Lookup, typename IdOf>
+auto lookupId(const char* kind, const std::string& name, int sysconfName, const Lookup& lookup, IdOf idOf)
+{
+    std::vector<char> buffer(initialLookupSize(sysconfName));
+
+    while (true)
+    {
+        Entry entry {};
+        Entry* found = nullptr;
+        const int rc = lookup(name.c_str(), &entry, buffer.data(), buffer.size(), &found);
+
+        if (rc == 0)
+        {
+            if (found == nullptr)
+            {
+                throw std::runtime_error {fmt::format("{} '{}' not found", kind, name)};
+            }
+            return idOf(*found);
+        }
+
+        if (rc != ERANGE)
+        {
+            throw std::runtime_error {fmt::format("could not look up {} '{}': {}", kind, name, describeError(rc))};
+        }
+
+        if (buffer.size() >= LOOKUP_BUFFER_CAP)
+        {
+            throw std::runtime_error {
+                fmt::format("could not look up {} '{}': entry larger than {} bytes", kind, name, LOOKUP_BUFFER_CAP)};
+        }
+        buffer.resize(std::min(buffer.size() * 2, LOOKUP_BUFFER_CAP));
+    }
+}
+
+/// fork(); the parent leaves with _exit (no atexit handlers, no static destructors), the child returns.
+void detach(const char* stage)
+{
+    const pid_t pid = fork();
     if (pid < 0)
     {
-        throw std::runtime_error {fmt::format("FORK_ERROR (1st): {} ({})", std::strerror(errno), errno)};
+        const int err = errno;
+        throw std::runtime_error {fmt::format("fork failed ({}): {}", stage, describeError(err))};
     }
     if (pid > 0)
     {
-        exit(EXIT_SUCCESS); // Parent exits
+        _exit(EXIT_SUCCESS);
     }
+}
+} // namespace
+
+void goDaemon()
+{
+    detach("first");
 
     if (setsid() < 0)
     {
-        throw std::runtime_error {fmt::format("SETSID_ERROR: {} ({})", std::strerror(errno), errno)};
+        const int err = errno;
+        throw std::runtime_error {fmt::format("setsid failed: {}", describeError(err))};
     }
 
-    pid = fork();
-    if (pid < 0)
-    {
-        throw std::runtime_error {fmt::format("FORK_ERROR (2nd): {} ({})", std::strerror(errno), errno)};
-    }
-    if (pid > 0)
-    {
-        exit(EXIT_SUCCESS); // First child exits
-    }
+    detach("second");
 
-    // Optional: set file mode creation mask
     umask(027);
 
-    // Redirect stdin, stdout, stderr to /dev/null
-    int fd = open("/dev/null", O_RDWR);
+    const int fd = open("/dev/null", O_RDWR | O_CLOEXEC);
     if (fd < 0)
     {
-        throw std::runtime_error {
-            fmt::format("REDIRECT_ERROR: Could not open /dev/null - {} ({})", std::strerror(errno), errno)};
+        const int err = errno;
+        throw std::runtime_error {fmt::format("could not open /dev/null: {}", describeError(err))};
     }
 
-    dup2(fd, STDIN_FILENO);
-    dup2(fd, STDOUT_FILENO);
-    dup2(fd, STDERR_FILENO);
-    close(fd);
+    for (const int target : {STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO})
+    {
+        if (dup2(fd, target) < 0)
+        {
+            const int err = errno;
+            if (fd > STDERR_FILENO)
+            {
+                close(fd);
+            }
+            throw std::runtime_error {
+                fmt::format("could not redirect fd {} to /dev/null: {}", target, describeError(err))};
+        }
+    }
+
+    if (fd > STDERR_FILENO)
+    {
+        close(fd);
+    }
 }
 
 OptError createPID(const std::string& path, const std::string& name, int pid)
 {
-    const auto file = std::filesystem::path(path) / fmt::format("{}-{}.pid", name, pid);
+    const auto file = (std::filesystem::path(path) / fmt::format("{}-{}.pid", name, pid)).string();
 
-    std::ofstream ofs(file, std::ios::trunc);
-    if (!ofs)
+    const int fd = open(file.c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0640);
+    if (fd < 0)
     {
-        return Error {fmt::format("FILE_ERROR: {} - {} ({})", file.string(), std::strerror(errno), errno)};
+        const int err = errno;
+        return Error {fmt::format("could not create PID file {}: {}", file, describeError(err))};
     }
 
-    ofs << pid << '\n';
-    ofs.close();
-
-    if (chmod(file.c_str(), 0640) != 0)
+    // The mode given to open() is filtered by the umask; fchmod sets it exactly.
+    if (fchmod(fd, 0640) != 0)
     {
-        return Error {fmt::format("CHMOD_ERROR: {} - {} ({})", file.string(), std::strerror(errno), errno)};
+        const int err = errno;
+        close(fd);
+        return Error {fmt::format("could not set mode 0640 on PID file {}: {}", file, describeError(err))};
+    }
+
+    const auto content = fmt::format("{}\n", pid);
+    std::size_t written = 0;
+    while (written < content.size())
+    {
+        const ssize_t rc = write(fd, content.data() + written, content.size() - written);
+        if (rc < 0)
+        {
+            const int err = errno;
+            if (err == EINTR)
+            {
+                continue;
+            }
+            close(fd);
+            return Error {fmt::format("could not write PID file {}: {}", file, describeError(err))};
+        }
+        if (rc == 0)
+        {
+            close(fd);
+            return Error {fmt::format("could not write PID file {}: short write", file)};
+        }
+        written += static_cast<std::size_t>(rc);
+    }
+
+    if (close(fd) != 0)
+    {
+        const int err = errno;
+        return Error {fmt::format("could not close PID file {}: {}", file, describeError(err))};
     }
 
     return std::nullopt;
 }
 
-struct passwd* getpwnam(const char* name, struct passwd* pwd, char* buf, size_t buflen)
+uid_t lookupUid(const std::string& name, const UserLookup& lookup)
 {
-    struct passwd* result = NULL;
-    int retval = getpwnam_r(name, pwd, buf, buflen, &result);
-
-    if (result == NULL)
-    {
-        errno = retval;
-    }
-
-    return result;
+    return lookupId<struct passwd>(
+        "user", name, _SC_GETPW_R_SIZE_MAX, lookup, [](const struct passwd& entry) { return entry.pw_uid; });
 }
 
-struct group* getgrnam(const char* name, struct group* grp, char* buf, int buflen)
+gid_t lookupGid(const std::string& name, const GroupLookup& lookup)
 {
-    struct group* result = NULL;
-    int retval = getgrnam_r(name, grp, buf, buflen, &result);
-
-    if (result == NULL)
-    {
-        errno = retval;
-    }
-
-    return result;
+    return lookupId<struct group>(
+        "group", name, _SC_GETGR_R_SIZE_MAX, lookup, [](const struct group& entry) { return entry.gr_gid; });
 }
 
-gid_t privSepGetGroup(const std::string& groupname)
+void dropToGroup(gid_t gid)
 {
-    long bufsize = sysconf(_SC_GETGR_R_SIZE_MAX);
-    if (bufsize <= 0)
-        bufsize = 1024;
-
-    std::vector<char> buffer(static_cast<size_t>(bufsize));
-    struct group grp_storage {};
-    struct group* result = nullptr;
-
-    while (true)
+    if (setgroups(1, &gid) != 0)
     {
-        result = getgrnam(groupname.c_str(), &grp_storage, buffer.data(), buffer.size());
-        if (result)
-        {
-            return result->gr_gid;
-        }
-        if (errno == ERANGE)
-        {
-            if (buffer.size() >= MAX_RBUFFER_SIZE)
-            {
-                break;
-            }
-            buffer.resize(std::min(buffer.size() * 2, static_cast<size_t>(MAX_RBUFFER_SIZE)));
-            errno = 0;
-        }
-        else if (errno == 0)
-        {
-            throw std::runtime_error("Error changing to group '" + groupname + "': group not found");
-        }
-        else
-        {
-            throw std::runtime_error(
-                fmt::format("Error looking up group '{}': {} ({})", groupname, std::strerror(errno), errno));
-        }
+        const int err = errno;
+        throw std::runtime_error {fmt::format("could not drop supplementary groups: {}", describeError(err))};
     }
 
-    throw std::runtime_error("Exceeded maximum buffer size looking up group '" + groupname + "'");
-}
-
-void privSepSetGroup(gid_t gid)
-{
-    if (setgroups(1, &gid) == -1)
+    if (setgid(gid) != 0)
     {
-        throw std::runtime_error(fmt::format("Error clearing supplementary groups: {} ({})", strerror(errno), errno));
-    }
-
-    if (setgid(gid) < 0)
-    {
-        throw std::runtime_error(fmt::format("Error changing to group ID {}: {} ({})", gid, strerror(errno), errno));
+        const int err = errno;
+        throw std::runtime_error {fmt::format("could not set group ID {}: {}", gid, describeError(err))};
     }
 }
 
-uid_t privSepGetUser(const std::string& username)
+void dropToUser(uid_t uid)
 {
-    long bufsize = sysconf(_SC_GETPW_R_SIZE_MAX);
-    if (bufsize <= 0)
-        bufsize = 1024;
-
-    std::vector<char> buffer(static_cast<size_t>(bufsize));
-    struct passwd pwd_storage {};
-    struct passwd* result = nullptr;
-
-    while (true)
+    if (setuid(uid) != 0)
     {
-        result = getpwnam(username.c_str(), &pwd_storage, buffer.data(), buffer.size());
-        if (result)
-        {
-            return result->pw_uid;
-        }
-        if (errno == ERANGE)
-        {
-            if (buffer.size() >= MAX_RBUFFER_SIZE)
-            {
-                break;
-            }
-            buffer.resize(std::min(buffer.size() * 2, static_cast<size_t>(MAX_RBUFFER_SIZE)));
-            errno = 0;
-        }
-        else if (errno == 0)
-        {
-            throw std::runtime_error("Error changing to user '" + username + "': user not found");
-        }
-        else
-        {
-            throw std::runtime_error(
-                fmt::format("Error looking up user '{}': {} ({})", username, std::strerror(errno), errno));
-        }
+        const int err = errno;
+        throw std::runtime_error {fmt::format("could not set user ID {}: {}", uid, describeError(err))};
     }
 
-    throw std::runtime_error("Exceeded maximum buffer size looking up user '" + username + "'");
-}
-
-void privSepSetUser(uid_t uid)
-{
-    if (setuid(uid) < 0)
+    if (seteuid(uid) != 0)
     {
-        throw std::runtime_error(fmt::format("Error changing to user ID {}: {} ({})", uid, strerror(errno), errno));
-    }
-
-    if (seteuid(uid) < 0)
-    {
-        throw std::runtime_error(
-            fmt::format("Error setting effective user ID {}: {} ({})", uid, strerror(errno), errno));
+        const int err = errno;
+        throw std::runtime_error {fmt::format("could not set effective user ID {}: {}", uid, describeError(err))};
     }
 }
 
