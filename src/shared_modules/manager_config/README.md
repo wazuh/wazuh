@@ -13,7 +13,7 @@ daemons remoted, authd, wazuh-db and modulesd through libconfig's `w_mconf_*()`
 `getconfig` returns the effective sections); the cluster getters and the logging format inside libwazuh
 through the `w_mconf_hook_*` provider; the engine (`wazuh-manager-analysisd`) through the C++ API —
 `src/engine/source/base/src/managerConfig.cpp` links the `manager_config` target, loads the document
-once and registers it as the section provider of `libwazuhshared.so`; `wazuh-server.sh` (`validate`
+once and reads its sections directly (for example the logging format, `managerConfig::logFormat()`); `wazuh-server.sh` (`validate`
 before any daemon `-t`, `get cluster.node_type`, `get auth.disabled`); and the Python framework
 (`wazuh.core.manager_conf` consumes `dump`/`validate` of the CLI — there is no second implementation of
 the language).

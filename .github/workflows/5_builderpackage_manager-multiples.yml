@@ -95,7 +95,7 @@ on:
       # logcollector/include/logcollector.h, wazuh_modules/src/wm_{agent_info,sca,syscollector}.c
       # (globbed for every target, wazuh_modules/CMakeLists.txt:110-119) -> each module's include/,
       # and those headers -> sync_protocol/include. active-response stays whole:
-      # shared/CMakeLists.txt:89 compiles active-response/src/active_responses.c into libwazuhshared.
+      # shared/CMakeLists.txt:89 compiles active-response/src/active_responses.c into libwazuh.
       - "!src/rootcheck/**"
       - "!src/addagent/**"
       - "!src/os_execd/**"

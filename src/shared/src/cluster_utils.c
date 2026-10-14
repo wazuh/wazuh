@@ -16,7 +16,7 @@
 #include "mconf_hook.h"
 
 /* The `cluster` section of the effective document through the hook libconfig registers
- * (mconf_hook.h). NULL without provider or document: libwazuhshared.so as the engine loads it, or a
+ * (mconf_hook.h). NULL without provider or document: unit tests, or a
  * process that never loaded its configuration -- the getters then answer as they always did when the
  * configuration file could not be read. */
 static cJSON *cluster_section(void) {

@@ -735,7 +735,6 @@ rm -fr %{buildroot}
 %attr(640, root, wazuh-manager) %{_localstatedir}/framework/wazuh/core/cluster/dapi/*.py
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/lib
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libwazuhext.so
-%attr(750, root, wazuh-manager) %{_localstatedir}/lib/libwazuhshared.so
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libschema_validator.so
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libjemalloc.so.2
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libstdc++.so.6

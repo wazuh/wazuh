@@ -310,8 +310,7 @@ points `<indexer><ssl>` straight at `/etc/wazuh-indexer/certs/`; here the two ar
 containers, so the same three files are copied into each manager's own `/etc/wazuh-manager/certs`.
 
 The vulnerability feed does not load here. The manager reads it from the indexer's CTI
-catalogue, which nothing populates: the `wazuh-engine` binary shipped inside the indexer package
-does not start, because it `dlopen`s `libwazuhshared.so`, which that package does not contain.
+catalogue, which nothing populates in this lab.
 
 ## What this lab does not cover
 

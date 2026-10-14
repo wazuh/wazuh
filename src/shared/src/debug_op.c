@@ -275,8 +275,8 @@ void w_logging_init(){
 
 #ifndef CLIENT
 /* Manager: `logging.log_format` of the effective /etc/wazuh-manager/wazuh-manager.conf, through the hook libconfig
- * registers (mconf_hook.h). Without a provider or a document (libwazuhshared.so as the engine loads it,
- * unit tests) the format is plain -- not fatal: the daemon reports the configuration error when it loads
+ * registers (mconf_hook.h). Without a provider or a document (unit tests)
+ * the format is plain -- not fatal: the daemon reports the configuration error when it loads
  * the file itself. The schema already restricts the list to "plain"/"json". */
 void os_logging_config(){
   cJSON * logging = w_mconf_hook_section("logging");

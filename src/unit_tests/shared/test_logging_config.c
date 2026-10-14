@@ -77,7 +77,7 @@ static void test_os_logging_config_defaults_to_plain(void **state) {
     os_logging_config();
     assert_format("yes", "no");
 
-    /* No provider at all (libwazuhshared.so in the engine) */
+    /* No provider at all (unit tests) */
     w_mconf_hook_set(NULL);
     os_logging_config();
     assert_format("yes", "no");
