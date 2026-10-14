@@ -3048,7 +3048,138 @@ bool w_path_names_fd(const char *path, int fd) {
            named.st_nlink == 1 && named.st_dev == opened.st_dev && named.st_ino == opened.st_ino;
 }
 
+/* The flags w_openat_nofollow_vetted() requires on top of the access mode */
+#define W_VETTED_OPEN_FLAGS (O_CLOEXEC | O_NONBLOCK | O_NOCTTY)
+
+/* w_openat_nofollow_vetted() on a path: the name inside its directory */
+static int w_open_path_vetted(const char *path, int oflags, mode_t mode) {
+    const char *slash = strrchr(path, '/');
+    char dir[PATH_MAX];
+    size_t dir_length;
+
+    if (slash == NULL) {
+        return w_openat_nofollow_vetted(".", path, oflags, mode);
+    }
+
+    /* "/name" is "name" inside "/" */
+    dir_length = (slash == path) ? 1 : (size_t)(slash - path);
+
+    if (dir_length >= sizeof(dir)) {
+        errno = ENAMETOOLONG;
+        return -1;
+    }
+
+    memcpy(dir, path, dir_length);
+    dir[dir_length] = '\0';
+    return w_openat_nofollow_vetted(dir, slash + 1, oflags, mode);
+}
+
+/* Writes all of @p buffer, across short writes */
+static int w_write_fully(int fd, const char *buffer, size_t length) {
+    while (length > 0) {
+        ssize_t written = write(fd, buffer, length);
+
+        if (written < 0 && errno == EINTR) {
+            continue;
+        }
+
+        if (written <= 0) {
+            return -1;
+        }
+
+        buffer += written;
+        length -= (size_t)written;
+    }
+
+    return 0;
+}
+
+/* Replaces what @p out holds with what is left to read on @p in */
+static int w_replace_contents(int in, int out) {
+    char buffer[4096];
+    ssize_t count;
+
+    if (ftruncate(out, 0) != 0) {
+        return -1;
+    }
+
+    while ((count = read(in, buffer, sizeof(buffer))) != 0) {
+        if (count < 0 && errno == EINTR) {
+            continue;
+        }
+
+        if (count < 0 || w_write_fully(out, buffer, (size_t)count) != 0) {
+            return -1;
+        }
+    }
+
+    return 0;
+}
+
+/* Copies @p src over @p dst, each opened by w_open_path_vetted(). A @p dst that has to be created
+ * gets @p src's permission bits, as the rename would have given it, less the umask. */
+static int w_copy_file_vetted(const char *src, const char *dst) {
+    struct stat source;
+    int saved_errno;
+    int in;
+    int out = -1;
+    int result = -1;
+
+    if (in = w_open_path_vetted(src, O_RDONLY | W_VETTED_OPEN_FLAGS, 0), in < 0) {
+        return -1;
+    }
+
+    if (fstat(in, &source) == 0 &&
+        (out = w_open_path_vetted(dst, O_WRONLY | O_CREAT | W_VETTED_OPEN_FLAGS, source.st_mode & 07777)) >= 0) {
+        result = w_replace_contents(in, out);
+    }
+
+    saved_errno = errno;
+
+    if (out >= 0 && close(out) != 0 && result == 0) {
+        saved_errno = errno;
+        result = -1;
+    }
+
+    close(in);
+    errno = saved_errno;
+    return result;
+}
 #endif
+
+int w_move_file_nofollow(const char *src, const char *dst) {
+#ifdef WIN32
+    if (utf8_MoveFileEx(src, dst, MOVEFILE_REPLACE_EXISTING)) {
+        return 0;
+    }
+
+    mdebug1("Couldn't move '%s' to '%s': error %lu", src, dst, GetLastError());
+    return -1;
+#else
+    int error;
+
+    if (rename(src, dst) == 0) {
+        return 0;
+    }
+
+    error = errno;
+    mdebug1("Couldn't rename '%s' to '%s': %s (%d). Copying it instead.", src, dst, strerror(error), error);
+
+    if (w_copy_file_vetted(src, dst) != 0) {
+        error = errno;
+        merror("Couldn't copy '%s' to '%s': %s (%d).", src, dst, strerror(error), error);
+        errno = error;
+        return -1;
+    }
+
+    if (unlink(src) != 0) {
+        error = errno;
+        mwarn("Couldn't remove '%s' once copied to '%s': %s (%d).", src, dst, strerror(error), error);
+    }
+
+    return 0;
+#endif
+}
 
 
 FILE * w_fopen_nofollow(const char * basedir, const char * filename, const char * mode) {

@@ -327,6 +327,24 @@ int OS_MoveFile(const char *src, const char *dst);
 
 
 /**
+ * @brief Moves @p src onto @p dst without following a link at either name.
+ *
+ * For a destination in a directory that an unprivileged account can write. It renames first. When
+ * the rename can't replace @p dst -- a single-file bind mount answers EBUSY, another filesystem
+ * EXDEV -- it copies @p src into @p dst instead, through descriptors w_openat_nofollow_vetted()
+ * opened, so a symlink or a hard link at either name is refused, never written through. @p src is
+ * removed once the copy is complete. OS_MoveFile()'s copy opens both names with fopen().
+ *
+ * On Windows it is MoveFileEx() replacing @p dst, without a copy fallback.
+ *
+ * @param src Source path.
+ * @param dst Destination path.
+ * @return 0 on success. -1 on failure, with @p src left in place and errno set (POSIX).
+ */
+int w_move_file_nofollow(const char *src, const char *dst);
+
+
+/**
  * @brief Copy file.
  *
  * @param src Source path.

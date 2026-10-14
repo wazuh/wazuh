@@ -187,10 +187,11 @@ list(APPEND shared_tests_names "test_http_op")
 list(APPEND shared_tests_flags " ")
 endif()
 
-# w_path_names_fd(), on real files: test_file_op mocks the lstat() it needs.
+# w_path_names_fd() and the POSIX w_move_file_nofollow(), on real files: test_file_op mocks the
+# unlink() and lstat() they need. rename() is wrapped only to fail the way a bind mount does.
 if(NOT ${TARGET} STREQUAL "winagent")
 list(APPEND shared_tests_names "test_file_op_names")
-list(APPEND shared_tests_flags " ")
+list(APPEND shared_tests_flags "-Wl,--wrap,rename ${DEBUG_OP_WRAPPERS}")
 endif()
 
 # manager_task_op.c reaches the Task Manager over http_op, so it is server-only for the same
