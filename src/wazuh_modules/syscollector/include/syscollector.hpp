@@ -475,6 +475,27 @@ class EXPORTED Syscollector final
         static std::string scopeFilter(LimitScope scope, const std::string& containerId = {});
 
         /**
+         * @brief Record which containers may report, from one connector reply.
+         *
+         * @param discovered Every known container, mapped to its verdict.
+         *
+         * Call only when the connector actually answered. A failed query
+         * reports no containers, and taking that as "nothing is admitted"
+         * would withhold every container's rows on a momentary blip -- the
+         * same class of mistake as sweeping against an empty list, differing
+         * only in being recoverable.
+         */
+        void setAdmittedContainers(const std::map<std::string, bool>& discovered);
+
+        /**
+         * @brief Whether a container may report. Caller must hold m_limitsMutex.
+         *
+         * True for the host scope (an empty id is not a container) and true
+         * for every container until a connector reply says otherwise.
+         */
+        bool isContainerAdmittedLocked(const std::string& containerId) const;
+
+        /**
          * @brief The limits map for a scope. Caller must hold m_limitsMutex.
          */
         std::map<std::string, size_t>& limitsFor(LimitScope scope);
@@ -865,6 +886,16 @@ class EXPORTED Syscollector final
         // (container, index) pairs already reported as saturated, so the
         // message is emitted once per saturation rather than once per scan.
         std::set<std::pair<std::string, std::string>>                            m_limitReported;
+
+        // Containers container_instances says may report to the manager.
+        //
+        // A SEPARATE question from the per-dimension budgets beside it: those
+        // bound how much one container reports, this bounds how many report at
+        // all. Empty means "not told yet", which reads as admit-everything --
+        // the connector is queried per pass, and an agent that has not heard an
+        // answer must keep reporting rather than go quiet.
+        std::set<std::string>                                                    m_admittedContainers;
+        bool                                                                     m_admissionKnown {false};
 
         // Mutex for thread-safe access to limits and counts
         std::mutex                                                               m_limitsMutex;

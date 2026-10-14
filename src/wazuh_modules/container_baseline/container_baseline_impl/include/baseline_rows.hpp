@@ -26,6 +26,17 @@ struct ContainerIdentity
 {
     std::string        container_id;
     ContainerContextPtr context;
+
+    /// Whether this container may report to the manager, as container_instances
+    /// decided it. TRUE when the connector said nothing, so a server older than
+    /// the decision keeps reporting everything rather than silently stopping.
+    ///
+    /// It does NOT mean "skip this container". The container is still walked,
+    /// still stored, and still counted as existing — what changes is only
+    /// whether its rows are offered to the manager. A container dropped from
+    /// the caller's known set would have its stored rows DELETED by the stale
+    /// sweeps, which is the opposite of withholding them.
+    bool synced {true};
 };
 
 /// @brief Stamp a container's identity onto any baseline row.

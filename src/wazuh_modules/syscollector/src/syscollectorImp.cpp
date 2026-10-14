@@ -2899,17 +2899,39 @@ void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_th
     // merely stopped is still reported here even though it produced no rows
     // above — this is what lets the stale sweep below tell "stopped" apart
     // from "gone" instead of conflating them.
-    std::set<std::string> discoveredIds;
-    const auto idSink = [](const char* containerId, void* userData)
+    // id -> may this container report to the manager. Both answers come from
+    // the same reply on purpose: listing the containers and then asking about
+    // admission separately could straddle a reconcile and attribute one
+    // container's verdict to another.
+    std::map<std::string, bool> discovered;
+    const auto idSink = [](const char* containerId, int synced, void* userData)
     {
-        auto* ids = static_cast<std::set<std::string>*>(userData);
+        auto* ids = static_cast<std::map<std::string, bool>*>(userData);
 
         if (ids && containerId)
         {
-            ids->insert(containerId);
+            (*ids)[containerId] = (synced != 0);
         }
     };
-    const int listed = cbaseline_list_containers(CB_DEFAULT_CONNECTOR_SOCKET_PATH, idSink, &discoveredIds);
+    const int listed = cbaseline_list_containers(CB_DEFAULT_CONNECTOR_SOCKET_PATH, idSink, &discovered);
+
+    // EVERY known container, admitted or not. The sweep below deletes what is
+    // absent from this set, and a container whose rows are merely withheld has
+    // not been removed -- leaving it out here would delete the very rows the
+    // cap is holding back, turning "do not report this yet" into "this is
+    // gone". That distinction is the whole reason the cap withholds instead of
+    // shortening the list.
+    std::set<std::string> discoveredIds;
+
+    for (const auto& entry : discovered)
+    {
+        discoveredIds.insert(entry.first);
+    }
+
+    if (listed >= 0)
+    {
+        setAdmittedContainers(discovered);
+    }
 
     // Containers still in the DB but no longer known to container_instances
     // at all (genuinely removed, not merely stopped): an empty scoped sync
@@ -5047,6 +5069,42 @@ std::string Syscollector::scopeFilter(LimitScope scope, const std::string& conta
     return " AND container_id='" + containerId + "'";
 }
 
+void Syscollector::setAdmittedContainers(const std::map<std::string, bool>& discovered)
+{
+    std::set<std::string> admitted;
+
+    for (const auto& [containerId, isAdmitted] : discovered)
+    {
+        if (isAdmitted)
+        {
+            admitted.insert(containerId);
+        }
+    }
+
+    std::lock_guard<std::mutex> lock(m_limitsMutex);
+    m_admittedContainers = std::move(admitted);
+    m_admissionKnown = true;
+}
+
+bool Syscollector::isContainerAdmittedLocked(const std::string& containerId) const
+{
+    // The host is not a container and never spends this budget.
+    if (containerId.empty())
+    {
+        return true;
+    }
+
+    // Nothing heard yet: report, do not withhold. The alternative makes an
+    // agent that has not yet reached the connector look exactly like one whose
+    // every container was capped.
+    if (!m_admissionKnown)
+    {
+        return true;
+    }
+
+    return m_admittedContainers.count(containerId) != 0;
+}
+
 std::map<std::string, size_t>& Syscollector::limitsFor(LimitScope scope)
 {
     return (scope == LimitScope::host) ? m_documentLimits : m_containerDocumentLimits;
@@ -5670,6 +5728,21 @@ bool Syscollector::checkDocumentLimit(const std::string& table,
         isAlreadySynced = (data["sync"].get<int>() == 1);
     }
 
+    // Whether this container may report AT ALL -- a question the per-dimension
+    // budget above never asks. A container that is not admitted withholds every
+    // row in every dimension, and spends no budget doing it: counting a row
+    // nobody can see would let an invisible container hold slots against a
+    // visible one.
+    //
+    // Deletes are deliberately not gated here. A DELETE is only ever emitted
+    // for a row the manager already holds, and withdrawing one it holds is
+    // safe; suppressing it would strand that row on the manager with nothing
+    // left that could remove it.
+    if ((result == INSERTED || result == MODIFIED) && !isContainerAdmittedLocked(containerId))
+    {
+        return false;
+    }
+
     if (result == INSERTED || result == MODIFIED)
     {
         if (isAlreadySynced)  // sync=1
@@ -5902,6 +5975,16 @@ void Syscollector::promoteItemsAfterScanLocked(LimitScope scope)
 
         for (const auto& containerId : targets)
         {
+            // A container that may not report keeps its rows at sync=0. Without
+            // this, post-scan promotion would walk straight past the withholding
+            // decision checkDocumentLimit() just made and promote the very rows
+            // it declined -- the cap would appear to do nothing, intermittently,
+            // depending on whether a scan had run.
+            if (!isContainerAdmittedLocked(containerId))
+            {
+                continue;
+            }
+
             // Current count is already updated by DELETEs during scan
             size_t currentCount = countFor(scope, index, containerId);
 

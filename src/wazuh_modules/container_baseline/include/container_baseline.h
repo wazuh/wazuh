@@ -316,8 +316,18 @@ EXPORTED int cbaseline_lifecycle_since(const char*         connector_socket_path
                                        void*               user_data);
 
 /* Invoked once per container currently known to the container-connector
- * module, independent of whether it has a resolvable live PID right now. */
-typedef void (*cb_container_id_sink_t)(const char* container_id, void* user_data);
+ * module, independent of whether it has a resolvable live PID right now.
+ *
+ * `synced` is that container's synchronization verdict: non-zero when it may
+ * report to the manager, zero when its rows must be withheld. It is 1 when the
+ * connector expressed no opinion, so an agent talking to a module older than
+ * the decision keeps reporting everything instead of silently going quiet.
+ *
+ * A container with `synced == 0` is STILL KNOWN and must still be counted as
+ * existing. Leaving it out of the set passed to a stale sweep would delete its
+ * stored rows, which is the opposite of withholding them — withholding keeps
+ * the rows and stops offering them. */
+typedef void (*cb_container_id_sink_t)(const char* container_id, int synced, void* user_data);
 
 /* Lists every container currently known to the container-connector module
  * (queried via its IPC socket at `connector_socket_path`) — including a

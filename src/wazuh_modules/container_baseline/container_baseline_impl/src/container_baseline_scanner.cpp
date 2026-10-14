@@ -269,7 +269,7 @@ std::vector<ContainerIdentity> DiscoverContainers(const std::string& socket_path
         {
             ctx = ContextFromRecord(ref.record);
         }
-        out.push_back(ContainerIdentity{ref.containerId, std::move(ctx)});
+        out.push_back(ContainerIdentity{ref.containerId, std::move(ctx), ref.synced});
     }
     return out;
 }
@@ -696,7 +696,7 @@ int ListContainers(const std::string& connector_socket_path, const ContainerIdSi
     int count = 0;
 
     for (const auto& identity : identities) {
-        sink(identity.container_id);
+        sink(identity.container_id, identity.synced);
         ++count;
     }
 
