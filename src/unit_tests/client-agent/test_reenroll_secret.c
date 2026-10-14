@@ -39,6 +39,7 @@ static char g_staged_name[PATH_MAX] = {0};
 static int g_staged_chmods = 0;
 static bool g_staged_disk_full = false;
 static bool g_fail_staged_rename = false;
+static bool g_busy_staged_rename = false;
 
 #define SWAP_TARGET "etc/swap-target"
 #define SWAP_TARGET_CONTENT "not the re-enrollment secret\n"
@@ -74,11 +75,17 @@ int __wrap_chmod(const char *path, mode_t mode) {
     return __real_chmod(path, mode);
 }
 
-/* Makes the move of the staged copy fail, with a directory at its name, and points the
- * destination's name at SWAP_TARGET, which has to come through untouched. */
+/* Makes the move of the staged copy fail: with a directory at its name, pointing the destination's
+ * name at SWAP_TARGET, which has to come through untouched; or with EBUSY, as when the secret's
+ * file is a single-file bind mount. */
 int __real_rename(const char *oldpath, const char *newpath);
 
 int __wrap_rename(const char *oldpath, const char *newpath) {
+    if (g_busy_staged_rename && strcmp(oldpath, g_staged_name) == 0) {
+        errno = EBUSY;
+        return -1;
+    }
+
     if (g_fail_staged_rename && strcmp(oldpath, g_staged_name) == 0) {
         g_fail_staged_rename = false;
         assert_int_equal(unlink(oldpath), 0);
@@ -100,6 +107,7 @@ static void reset_staged_hooks(void) {
     g_staged_chmods = 0;
     g_staged_disk_full = false;
     g_fail_staged_rename = false;
+    g_busy_staged_rename = false;
 }
 
 /* ---- fixtures ---- */
@@ -226,9 +234,10 @@ static void test_store_sets_the_mode_through_the_descriptor(void **state) {
     assert_string_equal(read_store(), "001 " VALID_SECRET "\n");
 }
 
-/* A move that fails is a failed store. Nothing is copied into the secret's file by name instead,
- * so whatever that name points at comes through untouched. */
-static void test_store_never_copies_over_a_failed_move(void **state) {
+/* A staged copy that can be neither moved nor copied, here because its name no longer holds a
+ * regular file, is a failed store, and nothing goes through the secret file's name: whatever that
+ * name points at comes through untouched. */
+static void test_store_never_writes_through_a_swapped_name(void **state) {
     (void) state;
     FILE *fp;
     char content[64] = {0};
@@ -253,6 +262,30 @@ static void test_store_never_copies_over_a_failed_move(void **state) {
     assert_non_null(fgets(content, sizeof(content), fp));
     fclose(fp);
     assert_string_equal(content, SWAP_TARGET_CONTENT);
+}
+
+/* A secret's file that rename() can't replace, as when it is a single-file bind mount, still gets the
+ * secret: copied into it, by a copy that never follows a link at either name. */
+static void test_store_copies_into_a_secret_file_rename_cannot_replace(void **state) {
+    (void) state;
+    char content[128] = {0};
+    int held;
+
+    write_store("001 " OTHER_SECRET "\n");
+    /* The file a bind mount pins: the secret has to land in it, not in one renamed over its name */
+    held = open(AGENT_REENROLL_SECRET, O_RDONLY);
+    assert_int_not_equal(held, -1);
+    g_busy_staged_rename = true;
+
+    ignore_debug_lines();
+
+    assert_int_equal(w_reenroll_secret_store("001", VALID_SECRET), 0);
+
+    assert_true(pread(held, content, sizeof(content) - 1, 0) > 0);
+    close(held);
+    assert_string_equal(content, "001 " VALID_SECRET "\n");
+    assert_string_equal(read_store(), "001 " VALID_SECRET "\n");
+    assert_int_equal(IsFile(g_staged_name), -1);
 }
 
 #ifdef __linux__
@@ -440,7 +473,9 @@ int main(void) {
 #ifndef WIN32
         cmocka_unit_test_setup_teardown(test_stored_file_has_client_keys_mode, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_store_sets_the_mode_through_the_descriptor, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_store_never_copies_over_a_failed_move, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_store_never_writes_through_a_swapped_name, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_store_copies_into_a_secret_file_rename_cannot_replace, setup_test,
+                                        teardown_test),
 #ifdef __linux__
         cmocka_unit_test_setup_teardown(test_store_keeps_the_previous_secret_when_the_write_fails, setup_test,
                                         teardown_test),

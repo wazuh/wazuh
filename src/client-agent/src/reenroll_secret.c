@@ -61,7 +61,7 @@ int w_reenroll_secret_store(const char *id, const char *secret) {
      * reenroll_secret.h). TempFile()'s mkstemp() creates 0600, so without this the daemon could
      * not read back a secret written in the root window of w_agent_token_bootstrap(). Set, and
      * the secret written, through the descriptor TempFile() returned: nothing is done to the
-     * staged copy by name but the rename below. */
+     * staged copy by name but the move below. */
     if (fchmod(fileno(file.fp), 0640) == -1) {
         merror(CHMOD_ERROR, file.name, errno, strerror(errno));
         fclose(file.fp);
@@ -80,10 +80,10 @@ int w_reenroll_secret_store(const char *id, const char *secret) {
         return -1;
     }
 
-    /* A bare rename: one that fails is a failed store, never a copy into the secret's file by
-     * name. rename_ex() logs the reason. The previous secret, if any, is untouched: that is the
-     * point of writing through a temporary file. */
-    if (rename_ex(file.name, AGENT_REENROLL_SECRET) != 0) {
+    /* w_move_file_nofollow() renames it over the previous secret, or copies it in where the file
+     * can't be renamed over, such as a single-file bind mount, without following a link at either
+     * name. It logs why it failed. */
+    if (w_move_file_nofollow(file.name, AGENT_REENROLL_SECRET) != 0) {
         unlink(file.name);
         os_free(file.name);
         return -1;
