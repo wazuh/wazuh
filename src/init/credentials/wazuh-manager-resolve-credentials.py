@@ -1140,7 +1140,6 @@ def check_own_ca(paths: Paths, conf: Dir, lookup: Lookup, report: Report) -> Non
             check_bundle(paths, certs, state, report, "check")
         if certs is not None:
             check_server_pairs(paths, certs, state, lookup, report)
-            check_indexer_trust(paths, certs, report)
     finally:
         for opened in (ca, certs):
             if opened is not None:
@@ -1610,9 +1609,16 @@ def _write_unit(paths: Paths, certs: Dir, unit: ImportUnit, contents: Dict[str, 
         write_file(certs, name, contents[name], 0o640, 0, gid)
 
 
-def _handle_unit(paths: Paths, certs: Dir, source, unit: ImportUnit, validate, report: Report):
-    """Apply the import rule to one unit. Returns its validated contents in certs/ (name -> bytes), or None."""
+def _handle_unit(paths: Paths, certs: Dir, source, unit: ImportUnit, validate, report: Report, *, write: bool = True):
+    """Apply the import rule to one unit and return its validated contents (name -> bytes), or None.
+    With write=False, select and validate the same contents without changing files or markers."""
     state = import_state(certs, unit)
+    if state == "imported":
+        try:
+            read_file(certs, unit.marker, certs_file_spec(paths))
+        except UnsafeEntry as exc:
+            report.unsafe(exc)
+            return None
     if state == "half":
         present = [n for n in unit.files if _exists(certs, n)][0]
         missing = [n for n in unit.files if not _exists(certs, n)][0]
@@ -1648,7 +1654,8 @@ def _handle_unit(paths: Paths, certs: Dir, source, unit: ImportUnit, validate, r
         if problem:
             report.problem(INVALID, source_cert, problem)
             return None
-        _write_unit(paths, certs, unit, incoming, state == "imported")
+        if write:
+            _write_unit(paths, certs, unit, incoming, state == "imported")
         report.progress(f"{blamed}: {'re-imported' if complete else 'imported'} from {paths.indexer_export}")
         return incoming
     if incoming is None:
@@ -1656,7 +1663,7 @@ def _handle_unit(paths: Paths, certs: Dir, source, unit: ImportUnit, validate, r
     return None
 
 
-def step_indexer_trust(paths: Paths, certs: Dir, report: Report) -> None:
+def step_indexer_trust(paths: Paths, certs: Dir, report: Report, *, write: bool = True) -> None:
     """The indexer's CA, then the client pair checked against whichever CA is now in place (staged or imported)."""
     source = open_indexer_source(paths, report)
     # An export holding a single file root may not trust is suspect as a whole: nothing is imported from it in
@@ -1668,24 +1675,25 @@ def step_indexer_trust(paths: Paths, certs: Dir, report: Report) -> None:
     try:
         ca_path = certs.child(INDEXER_CA)
         ca_contents = _handle_unit(paths, certs, source, CA_UNIT,
-                                   lambda c: indexer_ca_problem(c[INDEXER_CA])[1], report)
+                                   lambda c: indexer_ca_problem(c[INDEXER_CA])[1], report, write=write)
         if ca_contents is None:
             if import_state(certs, PAIR_UNIT) == "absent" and read_source(source, PAIR_UNIT, report) is None:
                 report.problem(MISSING, certs.child(CONNECTOR), PAIR_UNIT.missing)
             return
         cas, _ = indexer_ca_problem(ca_contents[INDEXER_CA])
         _handle_unit(paths, certs, source, PAIR_UNIT,
-                     lambda c: connector_problem(c[CONNECTOR], c[CONNECTOR_KEY], cas, ca_path), report)
+                     lambda c: connector_problem(c[CONNECTOR], c[CONNECTOR_KEY], cas, ca_path), report, write=write)
     finally:
         if isinstance(source, Dir):
             source.close()
 
 
-def check_indexer_trust(paths: Paths, certs: Dir, report: Report) -> None:
-    """--check's part: validate what is in certs/ and the export's safety; never MISSING, no write."""
+def _check_indexer_current(paths: Paths, certs: Dir, report: Report) -> None:
+    """Validate the files currently in certs/ and the export's safety; never MISSING, no write."""
     source = open_indexer_source(paths, report)
     try:
         for unit in (CA_UNIT, PAIR_UNIT):
+            read_optional(certs, unit.marker, certs_file_spec(paths), report)
             read_source(source, unit, report)              # rule 1 on the export's files, reported if unsafe
         cas = None
         state = import_state(certs, CA_UNIT)
@@ -1715,6 +1723,25 @@ def check_indexer_trust(paths: Paths, certs: Dir, report: Report) -> None:
     finally:
         if isinstance(source, Dir):
             source.close()
+
+
+def check_indexer_trust(paths: Paths, certs: Dir, report: Report) -> None:
+    """A broken imported generation is recoverable only if the import rules produce a valid CA and pair.
+    This dry run uses the same validation and staged/imported distinction as --prestart, without writing."""
+    current = Report(quiet=True, out=io.StringIO(), err=io.StringIO())
+    _check_indexer_current(paths, certs, current)
+    if current.has(INVALID) and not current.has(UNSAFE):
+        recovery = Report(quiet=True, out=io.StringIO(), err=io.StringIO())
+        step_indexer_trust(paths, certs, recovery, write=False)
+        if not recovery.has():
+            report.progress("indexer trust: interrupted import can be recovered at --prestart")
+            return
+        # Do not hide safety failures found while reading the recovery inputs.
+        for kind, subject, reason in recovery.problems:
+            if kind == UNSAFE:
+                report.problem(kind, subject, reason)
+    for kind, subject, reason in current.problems:
+        report.problem(kind, subject, reason)
 
 
 # =============================================== Whole-tree checks =============================================
@@ -1795,15 +1822,24 @@ def check_swaps(conf: Dir, report: Report) -> None:
                 opened.close()
 
 
-def run_checks(paths: Paths, conf: Dir, lookup: Lookup, report: Report) -> None:
+def run_checks(paths: Paths, conf: Dir, lookup: Lookup, report: Report, *, indexer_validity: bool = True) -> None:
     """Every read-only test, as --check runs them and --prestart runs them before anything else. No lock, no
-    subprocess, nothing written. The steps report problems with the same texts, so each is printed once."""
+    subprocess, nothing written. --prestart defers indexer validity until after its import step; safety is
+    always checked before any writes. Other steps report the same texts, so each is printed once."""
     check_own_ca(paths, conf, lookup, report)
     check_export(conf, report)
     certs = _open_optional_dir(conf, CERTS_DIR, certs_spec(paths), report)
     if certs is not None:
         with certs:
             check_certs_entries(certs, report)
+            if indexer_validity:
+                check_indexer_trust(paths, certs, report)
+            else:
+                safety = Report(quiet=True, out=io.StringIO(), err=io.StringIO())
+                _check_indexer_current(paths, certs, safety)
+                for kind, subject, reason in safety.problems:
+                    if kind == UNSAFE:
+                        report.problem(kind, subject, reason)
     check_swaps(conf, report)
 
 
@@ -1871,9 +1907,10 @@ def _writing_mode(mode: str):
         conf, lookup = result
         with conf:
             # All writing modes must refuse an unsafe tree before creating even the lock directory. Only
-            # --prestart keeps the validity verdicts: --install may refresh stale publications and imports.
+            # --prestart keeps non-indexer validity verdicts; indexer imports are validated after recovery.
+            # --install may also refresh stale publications.
             checks = report if mode == "prestart" else Report(quiet=True, out=io.StringIO(), err=io.StringIO())
-            run_checks(paths, conf, lookup, checks)
+            run_checks(paths, conf, lookup, checks, indexer_validity=False)
             if checks is not report:
                 for kind, subject, reason in checks.problems:
                     if kind == UNSAFE:
@@ -1913,6 +1950,8 @@ def _writing_mode(mode: str):
                         if report.has(UNSAFE):
                             return report.exit_code(mode)
                         step_indexer_trust(paths, certs, report)
+                        if mode == "prestart":
+                            _check_indexer_current(paths, certs, report)
                 finally:
                     if certs is not None:
                         certs.close()

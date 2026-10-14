@@ -74,9 +74,133 @@ def test_marker_written_first(resolver, sandbox, monkeypatch):
     assert os.path.exists(certs(sandbox, ".indexer-connector.imported"))
     assert not os.path.exists(certs(sandbox, "indexer-connector.pem"))
     monkeypatch.setattr(resolver, "write_file", real)
+    assert check_without_writes(resolver, sandbox, monkeypatch)[0] == 0
     code, _, err = run(resolver, sandbox, "--prestart")
     assert code == 0, err
     assert os.path.exists(certs(sandbox, "indexer-connector.pem"))
+
+
+def interrupt_rotation(resolver, sandbox, monkeypatch, before="indexer-connector.pem"):
+    """Leave a mix of two generations, with the original import markers still present."""
+    assert run(resolver, sandbox, "--install")[0] == 0
+    original = {name: read(certs(sandbox, name)) for name in TRUST}
+    published = sandbox.make_indexer_trust()
+    real = resolver.write_file
+
+    def interrupt(parent, name, *args, **kwargs):
+        if name == before:
+            raise RuntimeError("interrupted rotation")
+        return real(parent, name, *args, **kwargs)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(resolver, "write_file", interrupt)
+        assert run(resolver, sandbox, "--prestart")[0] == 2
+    assert read(certs(sandbox, "indexer-connector.pem")) == original["indexer-connector.pem"]
+    return published
+
+
+def check_without_writes(resolver, sandbox, monkeypatch):
+    before = sandbox.tree_state()
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("--check must not write, lock or execute subprocesses")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(resolver, "write_file", forbidden)
+        patch.setattr(resolver, "acquire_lock", forbidden)
+        patch.setattr(resolver.subprocess, "run", forbidden)
+        result = run(resolver, sandbox, "--check")
+    assert sandbox.tree_state() == before
+    return result
+
+
+@pytest.mark.parametrize("before", ["indexer-connector-key.pem", "indexer-connector.pem"])
+@pytest.mark.parametrize("check_first", [True, False])
+def test_interrupted_rotation_recovers(resolver, sandbox, monkeypatch, before, check_first):
+    published = interrupt_rotation(resolver, sandbox, monkeypatch, before)
+    assert read(certs(sandbox, "indexer-ca.pem")) == published["ca"]
+    if before == "indexer-connector.pem":
+        assert read(certs(sandbox, "indexer-connector-key.pem")) == published["key"]
+    if check_first:
+        code, _, err = check_without_writes(resolver, sandbox, monkeypatch)
+        assert code == 0 and err == "", err
+    code, _, err = run(resolver, sandbox, "--prestart")
+    assert code == 0 and err == "", err
+    for name, key in zip(TRUST, ("ca", "client", "key")):
+        assert read(certs(sandbox, name)) == published[key]
+    assert check_without_writes(resolver, sandbox, monkeypatch)[0] == 0
+    inodes = {name: os.stat(certs(sandbox, name)).st_ino for name in TRUST}
+    assert run(resolver, sandbox, "--prestart")[0] == 0
+    assert {name: os.stat(certs(sandbox, name)).st_ino for name in TRUST} == inodes
+
+
+@pytest.mark.parametrize("case", ["missing export", "missing key", "invalid pair", "invalid ca", "unsafe export",
+                                  "staged pair", "staged half pair", "staged ca", "unsafe marker",
+                                  "symlink marker"])
+def test_interrupted_rotation_requires_valid_recovery(resolver, sandbox, monkeypatch, case):
+    interrupt_rotation(resolver, sandbox, monkeypatch)
+    if case == "missing export":
+        shutil.rmtree(sandbox.indexer_export)
+    elif case == "missing key":
+        os.unlink(os.path.join(sandbox.indexer_export, "manager-client-key.pem"))
+    elif case == "invalid pair":
+        sandbox.make_indexer_trust(key_mismatch=True)
+    elif case == "invalid ca":
+        sandbox.write(os.path.join(sandbox.indexer_export, "ca.pem"), b"invalid PEM", mode=0o644)
+    elif case == "unsafe export":
+        os.chmod(sandbox.indexer_export, 0o770)
+    elif case == "unsafe marker":
+        os.chmod(certs(sandbox, ".indexer-connector.imported"), 0o660)
+    elif case == "symlink marker":
+        os.unlink(certs(sandbox, ".indexer-connector.imported"))
+        os.symlink(".indexer-ca.imported", certs(sandbox, ".indexer-connector.imported"))
+    elif case in ("staged pair", "staged half pair"):
+        os.unlink(certs(sandbox, ".indexer-connector.imported"))
+        if case == "staged half pair":
+            os.unlink(certs(sandbox, "indexer-connector-key.pem"))
+    else:
+        os.unlink(certs(sandbox, ".indexer-ca.imported"))
+        sandbox.make_indexer_trust()  # a new pair cannot replace this operator's CA
+    expected = "UNSAFE " if case in ("unsafe export", "unsafe marker", "symlink marker") else "INVALID "
+    code, _, err = check_without_writes(resolver, sandbox, monkeypatch)
+    assert code == 1 and expected in err, err
+    operator_files = {name: read(certs(sandbox, name)) for name in TRUST if os.path.exists(certs(sandbox, name))}
+    code, _, err = run(resolver, sandbox, "--prestart")
+    assert code == 1 and expected in err, err
+    if case.startswith("staged"):
+        assert {name: read(certs(sandbox, name)) for name in operator_files} == operator_files
+
+
+def test_rotation_source_disappears_after_preflight(resolver, sandbox, monkeypatch):
+    interrupt_rotation(resolver, sandbox, monkeypatch)
+    assert check_without_writes(resolver, sandbox, monkeypatch)[0] == 0
+    real = resolver.acquire_lock
+
+    def acquire(*args, **kwargs):
+        shutil.rmtree(sandbox.indexer_export)
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(resolver, "acquire_lock", acquire)
+    code, _, err = run(resolver, sandbox, "--prestart")
+    assert code == 1 and "its key does not match it" in err, err
+
+
+def test_rotation_source_restored_after_preflight(resolver, sandbox, monkeypatch):
+    """A transient INVALID seen before the lock must not survive a successful repair."""
+    published = interrupt_rotation(resolver, sandbox, monkeypatch)
+    shutil.rmtree(sandbox.indexer_export)
+    real = resolver.acquire_lock
+
+    def acquire(*args, **kwargs):
+        os.mkdir(sandbox.indexer_export, 0o750)
+        for name, key in (("ca.pem", "ca"), ("manager-client.pem", "client"), ("manager-client-key.pem", "key")):
+            sandbox.write(os.path.join(sandbox.indexer_export, name), published[key], mode=0o600)
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(resolver, "acquire_lock", acquire)
+    code, _, err = run(resolver, sandbox, "--prestart")
+    assert code == 0 and err == "", err
+    assert check_without_writes(resolver, sandbox, monkeypatch)[0] == 0
 
 
 @pytest.mark.parametrize("unit", ["ca", "pair"])
