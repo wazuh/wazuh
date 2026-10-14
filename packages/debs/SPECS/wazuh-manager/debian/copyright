@@ -19,6 +19,11 @@ License:
     License, version 3 or (at your option) any later version.
     See "/usr/share/doc/wazuh-manager/LICENSE-engine".
 
+    The shared libraries built from src/shared_modules/utils, manager_config,
+    keystore and indexer_connector are dual-licensed under the GNU General
+    Public License version 2 or the GNU Affero General Public License,
+    version 3 or (at your option) any later version.
+
 The Debian packaging is:
 
     Copyright (C) 2015 Wazuh, Inc <info@wazuh.com>

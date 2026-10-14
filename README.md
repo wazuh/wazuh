@@ -192,4 +192,4 @@ Wazuh Copyright (C) 2015-2026 Wazuh Inc. (License GPLv2)
 
 Based on the OSSEC project started by Daniel Cid.
 
-The Wazuh engine (`src/engine/`, installed as `wazuh-manager-analysisd`) is licensed under the GNU Affero General Public License v3.0 or later. See [src/engine/COPYING-engine](src/engine/COPYING-engine) and [src/engine/LICENSE-engine](src/engine/LICENSE-engine). Everything else is licensed under GPLv2; see [LICENSE](LICENSE).
+The Wazuh engine (`src/engine/`, installed as `wazuh-manager-analysisd`) is licensed under the GNU Affero General Public License v3.0 or later. See [src/engine/COPYING-engine](src/engine/COPYING-engine) and [src/engine/LICENSE-engine](src/engine/LICENSE-engine). The shared libraries it links together with the rest of the manager and the agent (`src/shared_modules/utils`, `manager_config`, `keystore` and `indexer_connector`) are dual-licensed under GPLv2 or AGPLv3 (`GPL-2.0-only OR AGPL-3.0-or-later`). Everything else is licensed under GPLv2; see [LICENSE](LICENSE).
