@@ -375,6 +375,16 @@ def test_get_file_conf_invalid_group_id(group_id, raw):
             mock_open_fn.assert_not_called()
 
 
+@pytest.mark.parametrize('multigroup_id', [group_id for group_id in INVALID_GROUP_IDS if group_id != ''])
+def test_get_agent_conf_multigroup_invalid_multigroup_id(multigroup_id):
+    """Check that a multigroup_id that is not a plain group name is rejected before any path is built or read."""
+    with patch('wazuh.core.common.MULTI_GROUPS_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')):
+        with patch('wazuh.core.configuration.load_wazuh_xml') as mock_load:
+            with pytest.raises(WazuhError, match=".* 1722 .*"):
+                configuration.get_agent_conf_multigroup(multigroup_id=multigroup_id)
+            mock_load.assert_not_called()
+
+
 @pytest.mark.parametrize('group_id', ['my-group', 'my_group', 'my.group', 'group.1-a_B', '...', '.hidden',
                                       pytest.param('a' * 255, id='max_length')])
 def test_get_conf_valid_group_id_format(group_id):

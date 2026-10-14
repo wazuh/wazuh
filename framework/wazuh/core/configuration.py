@@ -800,6 +800,8 @@ def get_agent_conf_multigroup(multigroup_id: str = None, offset: int = 0, limit:
 
     Raises
     ------
+    WazuhError(1722)
+        Incorrect format for multigroup_id.
     WazuhResourceNotFound(1710)
         Group was not found.
     WazuhError(1006)
@@ -812,6 +814,8 @@ def get_agent_conf_multigroup(multigroup_id: str = None, offset: int = 0, limit:
     dict
         agent.conf as dictionary.
     """
+    if multigroup_id and not InputValidator().group(multigroup_id):
+        raise WazuhError(1722)
     # Check if a multigroup_id is provided and it exists
     if multigroup_id and not os_path.exists(os_path.join(common.MULTI_GROUPS_PATH, multigroup_id)) or not multigroup_id:
         raise WazuhResourceNotFound(1710, extra_message=multigroup_id if multigroup_id else "No multigroup provided")
