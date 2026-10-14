@@ -673,12 +673,16 @@ STATIC void w_remoted_check_tls_files(const remoted_module_config_t *rm_config) 
     }
 }
 
+/* The module config the preflight built, reused by HandleSecure(): building it again would repeat the
+ * builder's warnings (remoted_module_https_config()) at every start. Everything the builder reads (logr,
+ * the internal options, keyupdate_interval) is already final when the preflight runs. */
+static remoted_module_config_t preflight_module_config;
+static bool preflight_module_config_built = false;
+
 void w_remoted_preflight_tls_files(void) {
-    // Only the TLS paths and verification_mode matter to the probe; they are copied from logr as
-    // the configuration left them, so nothing HandleSecure() initializes is needed yet.
-    remoted_module_config_t rm_config;
-    w_remoted_build_module_config(&logr, &rm_config);
-    w_remoted_check_tls_files(&rm_config);
+    w_remoted_build_module_config(&logr, &preflight_module_config);
+    preflight_module_config_built = true;
+    w_remoted_check_tls_files(&preflight_module_config);
 }
 
 void w_remoted_validate_module_config(void) {
@@ -722,10 +726,12 @@ void HandleSecure()
 
     // Launch the remoted C++ module in its own thread, seeded with a config struct.
     {
-        remoted_module_config_t rm_config;
-        w_remoted_build_module_config(&logr, &rm_config);
+        // Built, and its TLS files probed, by w_remoted_preflight_tls_files() before CreatePID().
+        remoted_module_config_t rm_config = preflight_module_config;
+        if (!preflight_module_config_built) {
+            w_remoted_build_module_config(&logr, &rm_config);
+        }
         remoted_module_control_config(&rm_config);
-        // The TLS files were already probed by w_remoted_preflight_tls_files(), before CreatePID().
 
         char *rm_cluster_name = get_cluster_name();
         if (rm_cluster_name) {
