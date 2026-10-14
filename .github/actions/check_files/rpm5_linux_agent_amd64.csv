@@ -129,10 +129,10 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/etc/shared/cis_mysql5-6_enterprise_rcl.txt,root,wazuh,660,file,-rw-rw----,10297,0.1
 /var/ossec/active-response/bin/firewalld-drop,root,wazuh,750,file,-rwxr-x---,19528,0.1
 /var/ossec/active-response/bin/host-deny,root,wazuh,750,file,-rwxr-x---,20200,0.1
-/var/ossec/active-response/bin/kaspersky,root,wazuh,750,file,-rwxr-x---,17464,0.1
+/var/ossec/active-response/bin/kaspersky,root,wazuh,750,file,-rwxr-x---,19536,0.1
 /var/ossec/active-response/bin/firewall-drop,root,wazuh,750,file,-rwxr-x---,21992,0.1
 /var/ossec/active-response/bin/ipfw,root,wazuh,750,file,-rwxr-x---,19520,0.1
-/var/ossec/active-response/bin/restart-wazuh,root,wazuh,750,file,-rwxr-x---,17232,0.1
+/var/ossec/active-response/bin/restart-wazuh,root,wazuh,750,file,-rwxr-x---,19544,0.1
 /var/ossec/active-response/bin/default-firewall-drop,root,wazuh,750,file,-rwxr-x---,21992,0.1
 /var/ossec/active-response/bin/wazuh-slack,root,wazuh,750,file,-rwxr-x---,19504,0.1
 /var/ossec/active-response/bin/ip-customblock,root,wazuh,750,file,-rwxr-x---,18232,0.1
