@@ -232,16 +232,26 @@ case "$1" in
             install_file ${WAZUH_TMP_DIR}/client.keys 660 ${USER}:${GROUP} ${DIR}/etc/client.keys
     fi
 
-    # A link in logs/ is never a log file. The files are created by ${USER} itself.
+    # A link in logs/ is never a log file. A missing log is created empty in ${WAZUH_TMP_DIR} and
+    # renamed into place: on a fresh install logs/ is not writable by ${USER} yet (dh_fixperms
+    # leaves it root-owned without group write until restore-permissions.sh runs below). An
+    # existing one gets chown -h and a chmod run as ${USER}. Anything else at that name (a
+    # directory, for instance) is reported and left alone.
     for LOG_FILE in wazuh-manager.log wazuh-manager.json; do
         if [ -L "${DIR}/logs/${LOG_FILE}" ]; then
             rm -f "${DIR}/logs/${LOG_FILE}"
         fi
-        if [ -f "${DIR}/logs/${LOG_FILE}" ]; then
+        if [ ! -e "${DIR}/logs/${LOG_FILE}" ] && [ ! -L "${DIR}/logs/${LOG_FILE}" ]; then
+            mkdir -p ${WAZUH_TMP_DIR}
+            { : > ${WAZUH_TMP_DIR}/${LOG_FILE} && \
+                install_file ${WAZUH_TMP_DIR}/${LOG_FILE} 660 ${USER}:${GROUP} ${DIR}/logs/${LOG_FILE}; } || \
+                echo "Error: could not create ${DIR}/logs/${LOG_FILE}." >&2
+        elif [ -f "${DIR}/logs/${LOG_FILE}" ] && [ ! -L "${DIR}/logs/${LOG_FILE}" ]; then
             chown -h ${USER}:${GROUP} ${DIR}/logs/${LOG_FILE}
+            as_service_user chmod 0660 ${DIR}/logs/${LOG_FILE} || true
+        else
+            echo "Error: ${DIR}/logs/${LOG_FILE} is not a regular file; leaving it untouched." >&2
         fi
-        as_service_user touch ${DIR}/logs/${LOG_FILE} || true
-        as_service_user chmod 0660 ${DIR}/logs/${LOG_FILE} || true
     done
 
     # Restore preserved etc/ and data/ as the last content-restore/overwrite
