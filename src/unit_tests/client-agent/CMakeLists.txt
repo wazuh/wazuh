@@ -168,7 +168,7 @@ list(APPEND client-agent_flags "-Wl,--wrap,hc_fetch_cacerts -Wl,--wrap,hc_enroll
                                 -Wl,--wrap,chown -Wl,--wrap,chmod -Wl,--wrap,fchown \
                                 -Wl,--wrap,fchmod \
                                 -Wl,--wrap,w_move_file_nofollow -Wl,--wrap,isatty -Wl,--wrap,TempFile \
-                                -Wl,--wrap,rename \
+                                -Wl,--wrap,rename -Wl,--wrap,OPENSSL_cleanse \
                                 ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND client-agent_names "test_agent_auth_cli")

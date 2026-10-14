@@ -385,6 +385,23 @@ static void replace_keys_backup_with_a_link(void) {
     assert_int_equal(replaced, 1);
 }
 
+/* Whether OPENSSL_cleanse() was handed a buffer that starts with g_cleanse_watch, the token a test
+ * expects a reader to wipe. The real one runs either way. */
+static const char *g_cleanse_watch = NULL;
+static bool g_cleansed_watch = false;
+
+void __real_OPENSSL_cleanse(void *ptr, size_t len);
+
+void __wrap_OPENSSL_cleanse(void *ptr, size_t len) {
+    size_t watched = g_cleanse_watch ? strlen(g_cleanse_watch) : 0;
+
+    if (watched > 0 && len >= watched && memcmp(ptr, g_cleanse_watch, watched) == 0) {
+        g_cleansed_watch = true;
+    }
+
+    __real_OPENSSL_cleanse(ptr, len);
+}
+
 /* rename() refusing client.keys with EBUSY, as when it is a single-file bind mount */
 static bool g_busy_keys_rename = false;
 
@@ -522,6 +539,8 @@ static int setup_test(void **state) {
     g_enroll_transport_error = NULL;
     g_fail_anchor_move = false;
     g_busy_keys_rename = false;
+    g_cleanse_watch = NULL;
+    g_cleansed_watch = false;
     g_replace_keys_backup = false;
     g_backup_disk_full = false;
     g_spki_call_count = 0;
@@ -2362,6 +2381,38 @@ static void test_a_token_that_fills_the_buffer_exactly_is_read_whole(void **stat
     os_free(token);
 }
 
+/* The reader's scratch buffer holds the credential too: it is wiped before it is freed, so the
+ * copy handed back is the only one left. */
+static void test_the_token_file_reader_wipes_its_buffer(void **state) {
+    (void) state;
+
+    write_file("etc/enrollment_token", "TOKEN-TO-WIPE\n");
+    g_cleanse_watch = "TOKEN-TO-WIPE";
+
+    char *token = w_agent_token_read_file("etc/enrollment_token");
+
+    assert_string_equal(token, "TOKEN-TO-WIPE");
+    assert_true(g_cleansed_watch);
+    os_free(token);
+}
+
+/* The stream form does the same. */
+static void test_the_token_stream_reader_wipes_its_buffer(void **state) {
+    (void) state;
+    char input[] = "TOKEN-TO-WIPE\n";
+    FILE *in = fmemopen(input, strlen(input), "r");
+    char *token = NULL;
+
+    g_cleanse_watch = "TOKEN-TO-WIPE";
+
+    assert_int_equal(w_agent_token_read_stream(in, &token), W_TOKEN_READ_OK);
+    fclose(in);
+
+    assert_string_equal(token, "TOKEN-TO-WIPE");
+    assert_true(g_cleansed_watch);
+    os_free(token);
+}
+
 /* The stream form, shared by --show-token and wazuh-agent-auth. A shell pipe appends a newline and
  * an editor may leave trailing blanks; both go, and nothing inside the token is touched. */
 static void test_a_streamed_token_comes_back_trimmed(void **state) {
@@ -2538,6 +2589,8 @@ int main(void) {
                                         teardown_test),
         cmocka_unit_test_setup_teardown(test_a_token_that_fills_the_buffer_exactly_is_read_whole, setup_test,
                                         teardown_test),
+        cmocka_unit_test_setup_teardown(test_the_token_file_reader_wipes_its_buffer, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_the_token_stream_reader_wipes_its_buffer, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_embedded_ca_token_larger_than_the_old_cap_is_read, setup_test, teardown_test),
         cmocka_unit_test(test_a_streamed_token_comes_back_trimmed),
         cmocka_unit_test(test_an_empty_stream_reads_as_an_empty_token),

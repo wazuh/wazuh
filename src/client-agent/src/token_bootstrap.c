@@ -68,24 +68,22 @@ char *w_agent_token_read_file(const char *path) {
 
     fclose(fp);
 
-    if (!read_ok || truncated) {
-        os_free(buf);
-        return NULL;
+    char *token = NULL;
+
+    if (read_ok && !truncated) {
+        size_t len = strlen(buf);
+
+        while (len > 0 && (buf[len - 1] == '\n' || buf[len - 1] == '\r')) {
+            buf[--len] = '\0';
+        }
+
+        if (len > 0) {
+            os_strdup(buf, token);
+        }
     }
 
-    size_t len = strlen(buf);
-
-    while (len > 0 && (buf[len - 1] == '\n' || buf[len - 1] == '\r')) {
-        buf[--len] = '\0';
-    }
-
-    if (len == 0) {
-        os_free(buf);
-        return NULL;
-    }
-
-    char *token;
-    os_strdup(buf, token);
+    /* The token carries the credential; the copy handed back is the only one left */
+    OPENSSL_cleanse(buf, W_ETOKEN_MAX_FILE_BYTES);
     os_free(buf);
     return token;
 }
