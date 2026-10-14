@@ -584,6 +584,15 @@ STATIC char* build_limits_json(const module_limits_t *limits) {
         cJSON_AddItemToObject(limits_obj, "sca", sca);
     }
 
+    /* Container-wide limits: owned by neither FIM nor syscollector, because
+     * one decision has to serve both or the two disagree about which
+     * containers are visible. */
+    cJSON *containers = cJSON_CreateObject();
+    if (containers) {
+        cJSON_AddNumberToObject(containers, "synced", limits->containers.synced);
+        cJSON_AddItemToObject(limits_obj, "containers", containers);
+    }
+
     char *json_str = cJSON_PrintUnformatted(limits_obj);
     cJSON_Delete(limits_obj);
 

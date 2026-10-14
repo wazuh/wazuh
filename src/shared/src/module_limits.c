@@ -56,6 +56,13 @@ void sca_limits_init(sca_limits_t *sca) {
     sca->checks = DEFAULT_SCA_CHECKS_LIMIT;
 }
 
+void containers_limits_init(containers_limits_t *containers) {
+    if (!containers) {
+        return;
+    }
+    containers->synced = DEFAULT_CONTAINERS_SYNCED_LIMIT;
+}
+
 void module_limits_init(module_limits_t *limits) {
     if (!limits) {
         return;
@@ -63,6 +70,7 @@ void module_limits_init(module_limits_t *limits) {
     fim_limits_init(&limits->fim);
     syscollector_limits_init(&limits->syscollector);
     sca_limits_init(&limits->sca);
+    containers_limits_init(&limits->containers);
     limits->limits_received = false;
 }
 
@@ -113,6 +121,13 @@ bool module_limits_changed(const module_limits_t *limits1, const module_limits_t
 
     // Compare SCA limits
     if (limits1->sca.checks != limits2->sca.checks) {
+        return true;
+    }
+
+    // Compare container-wide limits. Omitting a field here is silent: the agent
+    // keeps the old value and never reloads, so the manager's change appears to
+    // have been accepted and simply does nothing.
+    if (limits1->containers.synced != limits2->containers.synced) {
         return true;
     }
 
