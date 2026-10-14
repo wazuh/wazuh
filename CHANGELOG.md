@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.14.11]
 
+### Manager
+
+#### Fixed
+
+- Fixed cluster workers accepting and deleting files listed in `excluded_files` when sent by the master, and removing directories that still contained an excluded file.
+
 ## [v4.14.10]
 
 ### Manager
