@@ -182,6 +182,7 @@ int wurl_request(const char * url, const char * dest, const char *header, const 
     const char * COMMAND = "download";
     char response[64];
     char * _url;
+    char * tmp_url;
     char * parsed_url;
     char * srequest;
     size_t zrequest;
@@ -200,9 +201,14 @@ int wurl_request(const char * url, const char * dest, const char *header, const 
 
     _url = wstr_replace(url, " ", "%20");
 
+    // Encode delimiter and escape character, the URL is not unescaped by the download module
+
+    tmp_url = wstr_replace(_url, "\\", "%5C");
+    parsed_url = wstr_replace(tmp_url, "|", "%7C");
+    os_free(tmp_url);
+
     // Escape delimiter
 
-    parsed_url = wstr_replace(_url, "|", "\\|");
     parsed_dest = wstr_replace(dest, "|", "\\|");
     if (header) {
         parsed_header = wstr_replace(header, "|", "\\|");

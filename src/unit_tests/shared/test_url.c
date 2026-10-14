@@ -799,9 +799,22 @@ void test_wurl_request_escape_delimiter(void **state)
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, 4);
 
-    expect_string(__wrap_send, buf, "download http://host/a\\|b\\|c%20d|var/download/x\\|y|H\\|1|d\\|2|5|");
+    expect_string(__wrap_send, buf, "download http://host/a%7Cb%7Cc%20d|var/download/x\\|y|H\\|1|d\\|2|5|");
 
     assert_int_equal(wurl_request("http://host/a|b|c d", "var/download/x|y", "H|1", "d|2", 5), 0);
+}
+
+// The escape character of the URL must not be able to hide the delimiter
+void test_wurl_request_encode_url_escape_char(void **state)
+{
+    expect_string(__wrap_OS_ConnectUnixDomain, path, WM_DOWNLOAD_SOCK);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
+    will_return(__wrap_OS_ConnectUnixDomain, 4);
+
+    expect_string(__wrap_send, buf, "download http://host/a%5C%7Cb%5C|var/download/f|||0|");
+
+    assert_int_equal(wurl_request("http://host/a\\|b\\", "var/download/f", NULL, NULL, 0), 0);
 }
 #endif
 
@@ -821,6 +834,7 @@ int main(void)
 #ifndef TEST_WINAGENT
         // Tests wurl_request
         cmocka_unit_test(test_wurl_request_escape_delimiter),
+        cmocka_unit_test(test_wurl_request_encode_url_escape_char),
 #endif
     };
 
