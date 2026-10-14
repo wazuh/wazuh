@@ -43,16 +43,43 @@ check_anti_tampering() {
   fi
 }
 
+# Prints the value file $1 gives KEY $2 on its last "[export ]KEY=value" line, without one pair of
+# surrounding quotes, or $3 when the file does not set it. Nothing in the file is run.
+env_file_value() {
+  local value
+  value=$(sed -n "s/^[[:space:]]*\(export[[:space:]][[:space:]]*\)\{0,1\}$2=//p" "$1" | tail -n 1 \
+    | sed -e 's/^"\(.*\)"[[:space:]]*$/\1/' -e "s/^'\(.*\)'[[:space:]]*\$/\1/")
+  printf '%s\n' "${value:-$3}"
+}
+
+# Takes the VALIDATION_* variables from etc/uninstall_validation.env, which overrides the
+# environment. etc/ is writable by the wazuh group, so the file is read as data, and only when it
+# is a regular file root owns and nobody else can write: checked on a copy taken without following
+# links, which is also what is read.
+load_uninstall_validation_env() {
+  local env_file="${DIR}/etc/uninstall_validation.env"
+  local copy_dir
+
+  if [ ! -e "${env_file}" ] && [ ! -L "${env_file}" ]; then
+    echo "INFO: Uninstall configuration file not found, using environment variables."
+    return
+  fi
+  copy_dir=$(mktemp -d) || exit 1
+  if ! cp -pP "${env_file}" "${copy_dir}/env" 2> /dev/null || [ -L "${copy_dir}/env" ] || [ ! -f "${copy_dir}/env" ] \
+      || [ -z "$(find "${copy_dir}/env" -user 0 ! -perm -0020 ! -perm -0002)" ]; then
+    echo "WARNING: ${env_file} is not a regular file owned by root and writable only by it; ignoring it and using environment variables."
+  else
+    VALIDATION_HOST=$(env_file_value "${copy_dir}/env" VALIDATION_HOST "${VALIDATION_HOST}")
+    VALIDATION_TOKEN=$(env_file_value "${copy_dir}/env" VALIDATION_TOKEN "${VALIDATION_TOKEN}")
+    VALIDATION_LOGIN=$(env_file_value "${copy_dir}/env" VALIDATION_LOGIN "${VALIDATION_LOGIN}")
+    VALIDATION_SSL_VERIFY=$(env_file_value "${copy_dir}/env" VALIDATION_SSL_VERIFY "${VALIDATION_SSL_VERIFY}")
+  fi
+  rm -rf "${copy_dir}"
+}
+
 # Function to validate uninstallation
 validate_uninstall() {
-  local validation_command
-
-  # Check if the configuration file exists
-  if [ -f "${DIR}/etc/uninstall_validation.env" ]; then
-    . "${DIR}/etc/uninstall_validation.env"
-  else
-    echo "INFO: Uninstall configuration file not found, using environment variables."
-  fi
+  load_uninstall_validation_env
 
   # Check if the VALIDATION_HOST variables are set
   if [ -z "$VALIDATION_HOST" ]; then
@@ -60,19 +87,19 @@ validate_uninstall() {
     exit 1
   fi
 
-  # Validate uninstallation
+  # Validate uninstallation. Each value is passed as one argument, never split into more.
   if [ -n "$VALIDATION_TOKEN" ] && [ -n "$VALIDATION_LOGIN" ]; then
-    validation_command="${DIR}/bin/wazuh-agentd --uninstall-auth-token=${VALIDATION_TOKEN} --uninstall-auth-login=${VALIDATION_LOGIN} --uninstall-auth-host=${VALIDATION_HOST} --uninstall-ssl-verify=${VALIDATION_SSL_VERIFY}"
+    set -- "--uninstall-auth-token=${VALIDATION_TOKEN}" "--uninstall-auth-login=${VALIDATION_LOGIN}"
   elif [ -n "$VALIDATION_TOKEN" ]; then
-    validation_command="${DIR}/bin/wazuh-agentd --uninstall-auth-token=${VALIDATION_TOKEN} --uninstall-auth-host=${VALIDATION_HOST} --uninstall-ssl-verify=${VALIDATION_SSL_VERIFY}"
+    set -- "--uninstall-auth-token=${VALIDATION_TOKEN}"
   elif [ -n "$VALIDATION_LOGIN" ]; then
-    validation_command="${DIR}/bin/wazuh-agentd --uninstall-auth-login=${VALIDATION_LOGIN} --uninstall-auth-host=${VALIDATION_HOST} --uninstall-ssl-verify=${VALIDATION_SSL_VERIFY}"
+    set -- "--uninstall-auth-login=${VALIDATION_LOGIN}"
   else
     echo "ERROR: Validation login or token not provided. Uninstallation cannot be continued."
     exit 1
   fi
 
-  if $validation_command; then
+  if "${DIR}/bin/wazuh-agentd" "$@" "--uninstall-auth-host=${VALIDATION_HOST}" "--uninstall-ssl-verify=${VALIDATION_SSL_VERIFY}"; then
     echo "INFO: Uninstallation authorized, continuing..."
   else
     echo "ERROR: Uninstallation not authorized, aborting..."
