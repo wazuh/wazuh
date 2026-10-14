@@ -8,7 +8,7 @@ Summary:     Wazuh helps you to gain security visibility into your infrastructur
 Name:        wazuh-manager
 Version:     %{_version}
 Release:     %{_release}
-License:     GPL
+License:     GPL-2.0-only AND AGPL-3.0-or-later
 Group:       System Environment/Daemons
 Source0:     %{name}-%{version}.tar.gz
 URL:         https://www.wazuh.com/
@@ -669,6 +669,7 @@ rm -fr %{buildroot}
 
 %files
 %defattr(-,root,wazuh-manager)
+%license LICENSE src/engine/LICENSE-engine src/engine/COPYING-engine
 %config(missingok) %{_initrddir}/wazuh-manager
 /usr/lib/systemd/system/wazuh-manager.service
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}

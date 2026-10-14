@@ -4,6 +4,12 @@
 > This documentation uses the term “engine” to refer to the decoding and enrichment engine;
 > this is the `wazuh-manager-analysisd` daemon.
 
+>[!IMPORTANT]
+> The engine (`src/engine/`, including the standalone bundle, the `wazuh-internal-tools` package and the
+> `engine-suite`/`engine-metrics` tools) is licensed under the GNU Affero General Public License, version 3 or
+> (at your option) any later version — see `src/engine/COPYING-engine` and `src/engine/LICENSE-engine`. The rest
+> of the manager is licensed under GPLv2.
+
 ## Introduction
 The engine is responsible for transforming raw data into standardized schema documents, enriching it with threat
 intelligence, and forwarding it to designated destinations (`wazuh-indexer`).
