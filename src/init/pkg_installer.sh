@@ -1170,12 +1170,21 @@ fi
 
 sleep 1
 
+# wazuh-agentd writes its state file after dropping privileges, into var/run, which the wazuh
+# group can write. Sourced as root, it would run whatever that group put there, so only the
+# status value is read from it. Prints nothing when the file holds no status.
+read_agent_status() {
+    sed -n "s/^status='\([a-z]*\)'\$/\1/p" ./var/run/wazuh-agentd.state 2>/dev/null | tail -n 1
+}
 
 # Wait connection
 status="pending"
 COUNTER=30
 while [ "$status" != "connected" -a $COUNTER -gt 0 ]; do
-    . ./var/run/wazuh-agentd.state >> ./logs/upgrade.log 2>&1
+    AGENT_STATUS=$(read_agent_status)
+    if [ -n "${AGENT_STATUS}" ]; then
+        status="${AGENT_STATUS}"
+    fi
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Waiting connection... Remaining attempts: ${COUNTER}." >> ./logs/upgrade.log
     sleep 1
     COUNTER=$[COUNTER - 1]
