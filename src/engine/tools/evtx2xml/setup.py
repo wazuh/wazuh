@@ -15,5 +15,6 @@ setup(
     },
     url='https://github.com/wazuh/wazuh',
     author='Wazuh  Inc.',
+    license='AGPL-3.0-or-later',
     description='A tool to convert EVTX files to XML',
 )
