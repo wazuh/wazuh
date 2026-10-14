@@ -977,6 +977,31 @@ TEST_F(IndexerConnectorTest, PublishDeletedByQuery)
 }
 
 /**
+ * @brief Test that a delete by query for an index that no longer exists is accepted instead of failing with a 404 and
+ * being retried, since a later bulk recreates the index.
+ *
+ */
+TEST_F(IndexerConnectorTest, PublishDeletedByQueryIgnoresAMissingIndex)
+{
+    m_indexerServers[A_IDX]->setIndexMissing(true);
+
+    std::atomic<bool> callbackCalled {false};
+    m_indexerServers[A_IDX]->setPublishCallback([&callbackCalled](const std::string&) { callbackCalled = true; });
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, nullptr, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    nlohmann::json publishData;
+    publishData["id"] = INDEX_ID_A;
+    publishData["operation"] = "DELETED_BY_QUERY";
+    ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
+    ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+}
+
+/**
  * @brief Test that deleting a shorter agent ID does not sweep a longer sibling agent ID's mirror
  * entries out via the raw prefix-scan `seek()`, by checking the sibling's entry is still readable from the
  * mirror afterwards - a later sync() that finds the index missing that document must reindex it.

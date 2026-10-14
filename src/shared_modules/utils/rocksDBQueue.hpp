@@ -107,35 +107,6 @@ public:
         uint64_t unreachableKeys = 0;
         auto scanStatus = scanKeys(unreachableKeys);
 
-        // A corruption that only shows when the keys are read is repaired like the one found when opening the
-        // database. The entries of the damaged files are lost, and the queue recovers instead of rejecting elements
-        // until its directory is removed.
-        if (scanStatus.IsCorruption())
-        {
-            logWarn(LOGGER_DEFAULT_TAG,
-                    "Queue '%s': the scan of the keys failed after reading %llu keys (%s). Repairing the database.",
-                    connectorName.c_str(),
-                    static_cast<unsigned long long>(m_size),
-                    scanStatus.ToString().c_str());
-
-            m_db.reset();
-            if (const auto repairStatus {rocksdb::RepairDB(connectorName, rocksdb::Options {})}; !repairStatus.ok())
-            {
-                logError(LOGGER_DEFAULT_TAG,
-                         "Queue '%s': failed to repair the database. Reason: %s",
-                         connectorName.c_str(),
-                         repairStatus.ToString().c_str());
-            }
-
-            if (const auto status = rocksdb::DB::Open(options, connectorName, &db); !status.ok())
-            {
-                throw std::runtime_error("Failed to open RocksDB database after repairing. Reason: " +
-                                         std::string {status.getState()});
-            }
-            m_db.reset(db);
-            scanStatus = scanKeys(unreachableKeys);
-        }
-
         // Valid() is false both at the end of the store and when the iteration fails, so the status tells them apart.
         // Bounds computed from a partial scan would make push() overwrite queued entries, so push() is refused.
         if (!scanStatus.ok())
@@ -143,7 +114,8 @@ public:
             m_unreliableBounds =
                 "the scan failed after reading " + std::to_string(m_size) + " keys: " + scanStatus.ToString();
             logError(LOGGER_DEFAULT_TAG,
-                     "Queue '%s': the bounds could not be established (%s). New elements are rejected.",
+                     "Queue '%s': the bounds could not be established (%s). New elements are rejected until the "
+                     "queue directory is removed with the manager stopped.",
                      connectorName.c_str(),
                      m_unreliableBounds.c_str());
         }
@@ -216,7 +188,7 @@ public:
         }
         else
         {
-            ++m_first;
+            m_first = index + 1;
             --m_size;
 
             // If the queue is empty, reset the first and last elements counters.
