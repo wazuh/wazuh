@@ -49,6 +49,8 @@ pid_t w_get_first_child(pid_t parent_pid);
 extern w_macos_log_vault_t macos_log_vault;
 
 extern char * macos_codename;
+extern bool macos_log_ndjson;
+bool w_macos_is_ndjson_supported(void);
 
 /* setup/teardown */
 
@@ -3339,6 +3341,55 @@ void test_w_macos_get_is_valid_data_ok(void ** state) {
     macos_log_vault.is_valid_data = bak_is_valid_data;
 }
 
+/* ndjson style */
+void test_w_macos_create_log_stream_array_ndjson(void ** state) {
+
+    macos_log_ndjson = true;
+    char ** ret = w_macos_create_log_stream_array(NULL, NULL, 0);
+    macos_log_ndjson = false;
+
+    assert_string_equal(ret[0], "/usr/bin/log");
+    assert_string_equal(ret[1], "stream");
+    assert_string_equal(ret[2], "--style");
+    assert_string_equal(ret[3], "ndjson");
+    assert_null(ret[4]);
+
+    free_strarray(ret);
+}
+
+void test_w_macos_create_log_show_array_ndjson(void ** state) {
+
+    char start_date[25] = "2021-04-27 12:29:25-0700";
+
+    macos_log_ndjson = true;
+    char ** ret = w_macos_create_log_show_array(start_date, NULL, NULL, 0);
+    macos_log_ndjson = false;
+
+    assert_string_equal(ret[0], "/usr/bin/log");
+    assert_string_equal(ret[1], "show");
+    assert_string_equal(ret[2], "--style");
+    assert_string_equal(ret[3], "ndjson");
+    assert_string_equal(ret[4], "--start");
+
+    free_strarray(ret);
+}
+
+void test_w_macos_log_is_ndjson(void ** state) {
+
+    assert_false(w_macos_log_is_ndjson());
+    macos_log_ndjson = true;
+    assert_true(w_macos_log_is_ndjson());
+    macos_log_ndjson = false;
+}
+
+void test_w_macos_is_ndjson_supported(void ** state) {
+
+    struct utsname name;
+    assert_int_equal(uname(&name), 0);
+
+    assert_int_equal(w_macos_is_ndjson_supported(), atoi(name.release) >= MACOS_NDJSON_MIN_DARWIN);
+}
+
 int main(void) {
 
     const struct CMUnitTest tests[] = {
@@ -3347,6 +3398,10 @@ int main(void) {
         cmocka_unit_test(test_w_macos_is_log_predicate_valid_existing),
         // Test w_macos_create_log_stream_array
         cmocka_unit_test(test_w_macos_create_log_stream_array_NULL),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_ndjson),
+        cmocka_unit_test(test_w_macos_create_log_show_array_ndjson),
+        cmocka_unit_test(test_w_macos_log_is_ndjson),
+        cmocka_unit_test(test_w_macos_is_ndjson_supported),
         cmocka_unit_test(test_w_macos_create_log_stream_array_level_default),
         cmocka_unit_test(test_w_macos_create_log_stream_array_level_info),
         cmocka_unit_test(test_w_macos_create_log_stream_array_level_debug),

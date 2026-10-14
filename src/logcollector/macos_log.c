@@ -25,6 +25,8 @@ STATIC w_macos_log_vault_t macos_log_vault = { .mutex = PTHREAD_RWLOCK_INITIALIZ
 
 STATIC char * macos_codename = NULL;
 
+STATIC bool macos_log_ndjson = false;
+
 STATIC w_sysinfo_helpers_t * sysinfo = NULL;
 /**
  * @brief Check if agent is running on macOS Sierra
@@ -37,6 +39,23 @@ bool w_is_macos_sierra() {
         return true;
     }
     return false;
+}
+
+bool w_macos_log_is_ndjson(void) {
+
+    return macos_log_ndjson;
+}
+
+/**
+ * @brief Check if `log` can print ndjson, whose events cannot be split by newlines in the message
+ *
+ * @return true if the Darwin release is the oldest validated one or newer. false otherwise
+ */
+STATIC bool w_macos_is_ndjson_supported(void) {
+
+    struct utsname name;
+
+    return uname(&name) == 0 && atoi(name.release) >= MACOS_NDJSON_MIN_DARWIN;
 }
 
 /**
@@ -183,7 +202,7 @@ STATIC INLINE char ** w_macos_create_log_show_array(char * start_date, char * qu
 
     /* Adding the style lines to the array (`--style syslog`) */
     w_strdup(STYLE_OPT_STR, log_cmd_array[log_cmd_array_idx++]);
-    w_strdup(SYSLOG_STR, log_cmd_array[log_cmd_array_idx++]);
+    w_strdup(macos_log_ndjson ? NDJSON_STR : SYSLOG_STR, log_cmd_array[log_cmd_array_idx++]);
 
     /* Adding the starting date lines to the array (`--start 2021-04-27 12:29:25-0700`) */
     w_strdup(SHOW_START_OPT_STR, log_cmd_array[log_cmd_array_idx++]);
@@ -282,7 +301,7 @@ STATIC char ** w_macos_create_log_stream_array(char * predicate, char * level, i
 
     /* Adding the style lines to the array (`--style syslog`) */
     w_strdup(STYLE_OPT_STR, log_cmd_array[log_cmd_array_idx++]);
-    w_strdup(SYSLOG_STR, log_cmd_array[log_cmd_array_idx++]);
+    w_strdup(macos_log_ndjson ? NDJSON_STR : SYSLOG_STR, log_cmd_array[log_cmd_array_idx++]);
 
     w_macos_log_stream_array_add_type(log_cmd_array, &log_cmd_array_idx, type);
 
@@ -432,6 +451,8 @@ void w_macos_create_log_env(logreader * lf, w_sysinfo_helpers_t * global_sysinfo
     sysinfo = global_sysinfo;
 
     macos_codename = w_get_os_codename(sysinfo);
+
+    macos_log_ndjson = w_macos_is_ndjson_supported();
 
     if (w_macos_is_log_executable()) {
 

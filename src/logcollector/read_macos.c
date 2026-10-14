@@ -105,6 +105,28 @@ STATIC bool w_macos_is_log_header(w_macos_log_config_t * macos_log_cfg, char * b
  */
 STATIC char * w_macos_trim_full_timestamp(const char * full_timestamp);
 
+/**
+ * @brief Gets a log from `log --style ndjson` output, one JSON event per line
+ *
+ * @param [out] buffer Contains the read log, rebuilt in `--style syslog` format
+ * @param length Buffer's max length
+ * @param stream File pointer to log stream's output pipe
+ * @param macos_log_cfg macOS log configuration structure
+ * @return  true if a new log was collected,
+ *          false otherwise
+ */
+STATIC bool w_macos_log_getlog_ndjson(char * buffer, int length, FILE * stream, w_macos_log_config_t * macos_log_cfg);
+
+/**
+ * @brief Rebuilds, in place, the `--style syslog` line of a `--style ndjson` event
+ *
+ * @param [in,out] buffer JSON event as input, syslog line as output
+ * @param length Buffer's max length
+ * @param is_show true for `log show` output, which also prints the parent activity
+ * @return true if the event was rebuilt, false if it is not a log event
+ */
+STATIC bool w_macos_log_ndjson_to_syslog(char * buffer, int length, bool is_show);
+
 void * read_macos(logreader * lf, int * rc, __attribute__((unused)) int drop_it) {
 
     char full_timestamp[OS_LOGCOLLECTOR_TIMESTAMP_FULL_LEN + 1] = {'\0'};
@@ -217,6 +239,10 @@ STATIC bool w_macos_log_getlog(char * buffer, int length, FILE * stream, w_macos
     bool is_buffer_full;     // Will be set to true if the buffer is full (forces data to be sent)
     bool is_endline;         // Will be set to true if the last read line ends with an '\n' character
     bool do_split;           // Indicates whether the buffer will be splited (two chunks at most)
+
+    if (w_macos_log_is_ndjson()) {
+        return w_macos_log_getlog_ndjson(buffer, length, stream, macos_log_cfg);
+    }
 
     *str = '\0';
 
@@ -359,6 +385,121 @@ STATIC bool w_macos_log_getlog(char * buffer, int length, FILE * stream, w_macos
     return retval;
 }
 
+STATIC bool w_macos_log_getlog_ndjson(char * buffer, int length, FILE * stream, w_macos_log_config_t * macos_log_cfg) {
+
+    int offset = 0;
+
+    *buffer = '\0';
+
+    /* Restores a line partially read by a previous call */
+    if (w_macos_log_ctxt_restore(buffer, &macos_log_cfg->ctxt)) {
+        if (w_macos_is_log_ctxt_expired((time_t) MACOS_LOG_TIMEOUT, &macos_log_cfg->ctxt)
+            || macos_log_cfg->ctxt.force_send) {
+            mdebug2("macOS ULS: Incomplete message discarded.");
+            w_macos_log_ctxt_clean(&macos_log_cfg->ctxt);
+            macos_log_cfg->ctxt.force_send = false;
+            *buffer = '\0';
+        } else {
+            offset = strlen(buffer);
+        }
+    }
+
+    while (can_read() && fgets(buffer + offset, length - offset, stream) != NULL) {
+
+        offset += strlen(buffer + offset);
+
+        if (offset == 0 || buffer[offset - 1] != '\n') {
+            if (offset + 1 < length) {
+                mdebug2("macOS ULS: Incomplete message.");
+                w_macos_log_ctxt_backup(buffer, &macos_log_cfg->ctxt);
+                continue;
+            }
+
+            int c;
+            do {
+                c = fgetc(stream);
+            } while (c != '\n' && c != EOF);
+            mdebug2("macOS ULS: Maximum message length reached. The message was discarded.");
+            w_macos_log_ctxt_clean(&macos_log_cfg->ctxt);
+            offset = 0;
+            continue;
+        }
+
+        w_macos_log_ctxt_clean(&macos_log_cfg->ctxt);
+
+        if (!macos_log_cfg->is_header_processed && w_macos_is_log_header(macos_log_cfg, buffer)) {
+            *buffer = '\0';
+            return true;
+        }
+
+        buffer[offset - 1] = '\0';
+        offset = 0;
+
+        if (w_macos_log_ndjson_to_syslog(buffer, length, macos_log_cfg->state == LOG_RUNNING_SHOW)) {
+            return true;
+        }
+
+        mdebug2("macOS ULS: Discarding non-log event: '%.*s'.", sample_log_length, buffer);
+    }
+
+    return false;
+}
+
+STATIC bool w_macos_log_ndjson_to_syslog(char * buffer, int length, bool is_show) {
+
+    cJSON * event = cJSON_Parse(buffer);
+    const char * timestamp = cJSON_GetStringValue(cJSON_GetObjectItem(event, "timestamp"));
+    const char * message = cJSON_GetStringValue(cJSON_GetObjectItem(event, "eventMessage"));
+    const char * type = cJSON_GetStringValue(cJSON_GetObjectItem(event, "eventType"));
+    const char * process = cJSON_GetStringValue(cJSON_GetObjectItem(event, "processImagePath"));
+    const char * sender = cJSON_GetStringValue(cJSON_GetObjectItem(event, "senderImagePath"));
+    const char * subsystem = cJSON_GetStringValue(cJSON_GetObjectItem(event, "subsystem"));
+    const char * category = cJSON_GetStringValue(cJSON_GetObjectItem(event, "category"));
+    cJSON * pid = cJSON_GetObjectItem(event, "processID");
+    char sender_str[OS_SIZE_256] = "";
+    char subsystem_str[OS_SIZE_512] = "";
+    char activity_str[OS_SIZE_128] = "";
+
+    if (timestamp == NULL || message == NULL || type == NULL || !cJSON_IsNumber(pid)) {
+        cJSON_Delete(event);
+        return false;
+    }
+
+    process = (process == NULL) ? "" : (strrchr(process, '/') ? strrchr(process, '/') + 1 : process);
+    sender = (sender == NULL) ? "" : (strrchr(sender, '/') ? strrchr(sender, '/') + 1 : sender);
+
+    /* Same layout as `--style syslog`: "(sender) [subsystem:category] message" */
+    if (*sender != '\0' && strcmp(sender, process) != 0) {
+        snprintf(sender_str, sizeof(sender_str), "(%s) ", sender);
+    }
+    if (subsystem != NULL && *subsystem != '\0') {
+        snprintf(subsystem_str, sizeof(subsystem_str), "[%s:%s] ", subsystem, category ? category : "");
+    }
+    if (strcmp(type, "activityCreateEvent") == 0) {
+        unsigned long long id =
+            (unsigned long long) cJSON_GetNumberValue(cJSON_GetObjectItem(event, "activityIdentifier"));
+        unsigned long long parent =
+            (unsigned long long) cJSON_GetNumberValue(cJSON_GetObjectItem(event, "parentActivityIdentifier"));
+
+        if (is_show && parent != 0) {
+            /* `log show` prints the parent with its top bit set, `log stream` omits it */
+            snprintf(activity_str, sizeof(activity_str),
+                     "Created Activity ID: 0x%llx, Parent ID: 0x%llx, Description: ", id,
+                     parent | 0x8000000000000000ULL);
+        } else {
+            snprintf(activity_str, sizeof(activity_str), "Created Activity ID: 0x%llx, Description: ", id);
+        }
+    } else if (strcmp(type, "stateEvent") == 0) {
+        snprintf(activity_str, sizeof(activity_str), " statedump:\n");
+    }
+
+    snprintf(buffer, length, "%s  localhost %s[%d]: %s%s%s%s", timestamp, process, pid->valueint, sender_str,
+             subsystem_str, activity_str, message);
+
+    cJSON_Delete(event);
+    return true;
+}
+
 STATIC bool w_macos_log_ctxt_restore(char * buffer, w_macos_log_ctxt_t * ctxt) {
 
     if (ctxt->buffer[0] == '\0') {
@@ -419,7 +560,8 @@ STATIC bool w_macos_is_log_header(w_macos_log_config_t * macos_log_cfg, char * b
     const ssize_t buffer_size = strlen(buffer);
 
     /* if the buffer contains a log, then there won't be headers anymore */
-    if (w_expression_match(macos_log_cfg->log_start_regex, buffer, NULL, NULL)) {
+    if (w_macos_log_is_ndjson() ? (*buffer == '{')
+                                 : w_expression_match(macos_log_cfg->log_start_regex, buffer, NULL, NULL)) {
         macos_log_cfg->is_header_processed = true;
         w_macos_set_is_valid_data(true);
         retval = false;
