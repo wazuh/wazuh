@@ -1,0 +1,99 @@
+name: 5.X - Operational - Delete old GHCR versions
+
+# Reusable: deletes from the listed container packages of the repository owner the versions created more than
+# max_age_days ago and the untagged ones, always keeping the newest version of each package (GitHub refuses to
+# delete the last one). The pkg_* packages (the package builder images) are refused. DELETE needs the calling
+# repository to hold the admin role on each package, which the first publish from its workflows grants.
+# Untagged versions are the per-platform manifests of a multi-platform image, so list single-platform packages only.
+
+on:
+  workflow_call:
+    inputs:
+      packages:
+        description: 'Space-separated container package names of the repository owner, e.g. api-its-integration_test_wazuh-manager'
+        type: string
+        required: true
+      max_age_days:
+        description: 'Delete the versions created more than this many days ago'
+        type: number
+        required: false
+        default: 4
+      dry_run:
+        description: 'Only list the versions that would be deleted'
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  delete_old_versions:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    name: Delete GHCR versions older than the retention
+    permissions:
+      packages: write
+
+    steps:
+      - name: Delete old versions
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OWNER: ${{ github.repository_owner }}
+          PACKAGES: ${{ inputs.packages }}
+          MAX_AGE_DAYS: ${{ inputs.max_age_days }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          if [[ ! "${MAX_AGE_DAYS}" =~ ^[1-9][0-9]*$ ]]; then
+            echo "::error::max_age_days must be a positive integer, got '${MAX_AGE_DAYS}': nothing deleted"
+            exit 1
+          fi
+          if [ -z "${PACKAGES// }" ]; then
+            echo "::error::No packages given: nothing deleted"
+            exit 1
+          fi
+          for package in ${PACKAGES}; do
+            if [[ "${package}" == pkg_* || "${package}" == */pkg_* ]]; then
+              echo "::error::${package} is a pkg_* package, which this workflow never cleans: nothing deleted"
+              exit 1
+            fi
+            if [[ ! "${package}" =~ ^[a-z0-9][a-z0-9._/-]*$ ]]; then
+              echo "::error::Invalid package name '${package}': nothing deleted"
+              exit 1
+            fi
+          done
+          if [ "$(gh api "/users/${OWNER}" --jq .type)" = Organization ]; then base="/orgs/${OWNER}"; else base="/users/${OWNER}"; fi
+          cutoff=$(date -u -d "-${MAX_AGE_DAYS} days" +%Y-%m-%dT%H:%M:%SZ)
+          echo "Deleting versions created before ${cutoff}, and untagged ones (dry run: ${DRY_RUN})"
+
+          err="${RUNNER_TEMP:-/tmp}/gh.err"
+          failed=0
+          for package in ${PACKAGES}; do
+            api="${base}/packages/container/${package//\//%2F}/versions"
+            if ! versions=$(gh api --paginate --slurp "${api}?per_page=100" 2>"${err}" | jq -c '[.[][]]'); then
+              if grep -q 'HTTP 404' "${err}"; then
+                echo "::notice::${package} does not exist yet: nothing to delete"
+                continue
+              fi
+              cat "${err}"
+              echo "::error::Could not list the versions of ${package}"
+              failed=1
+              continue
+            fi
+            delete=$(jq -r --arg cutoff "${cutoff}" '
+              sort_by(.created_at) | reverse | .[1:][]
+              | select(.created_at < $cutoff or ((.metadata.container.tags // []) | length == 0))
+              | [(.id | tostring), (.metadata.container.tags // [] | join(",")), .created_at] | @tsv' <<<"${versions}")
+            echo "${package}: $(jq length <<<"${versions}") versions, $(grep -c . <<<"${delete}" || true) to delete"
+            while IFS=$'\t' read -r id tags created; do
+              [ -n "${id}" ] || continue
+              echo "Delete ${package} version ${id} (${tags:-untagged}, created ${created})"
+              [ "${DRY_RUN}" = true ] && continue
+              if ! gh api -X DELETE "${api}/${id}" >/dev/null; then
+                echo "::error::Could not delete ${package} version ${id}"
+                failed=1
+              fi
+            done <<<"${delete}"
+          done
+          exit "${failed}"

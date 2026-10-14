@@ -1,0 +1,73 @@
+name: 5.X - API endpoints - Delete old integration test images
+
+# 5_testintegration_api-endpoints.yml pushes one image set per run to the private packages
+# ghcr.io/wazuh/api-its-<image>, tagged <YYMMDD><commit>. This deletes, through 5_operational_ghcr-cleanup.yml,
+# the versions older than max_age_days and the untagged ones a push of an existing tag leaves.
+#
+# The schedule only fires from the default branch. Until this file reaches it, or to free space at
+# once, run it with workflow_dispatch (dry_run lists what would be deleted).
+
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+    inputs:
+      max_age_days:
+        description: 'Delete the versions created more than this many days ago'
+        type: number
+        required: false
+        default: 4
+      dry_run:
+        description: 'Only list the versions that would be deleted'
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  list_packages:
+    if: ${{ github.repository == 'wazuh/wazuh' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    name: List the API endpoints integration test packages
+    outputs:
+      packages: ${{ steps.list.outputs.packages }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/workflows/5_testintegration_api-endpoints.yml
+          sparse-checkout-cone-mode: false
+
+      - name: List the packages
+        id: list
+        run: |
+          set -euo pipefail
+          # From the workflow that pushes them, so the list cannot drift
+          wf=.github/workflows/5_testintegration_api-endpoints.yml
+          images=$(sed -n 's/^  IT_IMAGES: //p' "${wf}")
+          registry=$(sed -n 's/^  IT_REGISTRY: //p' "${wf}")
+          if [ -z "${images}" ] || [[ ! "${registry}" =~ ^ghcr\.io/wazuh/[a-z0-9._-]+$ ]]; then
+            echo "::error::IT_IMAGES or IT_REGISTRY not found in ${wf}: nothing deleted"
+            exit 1
+          fi
+          echo "packages=$(printf "${registry#ghcr.io/wazuh/}%s " ${images})" >> "${GITHUB_OUTPUT}"
+
+  delete_old_images:
+    needs: list_packages
+    name: Delete API endpoints integration test images older than the retention
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/5_operational_ghcr-cleanup.yml
+    with:
+      packages: ${{ needs.list_packages.outputs.packages }}
+      max_age_days: ${{ inputs.max_age_days || 4 }}
+      dry_run: ${{ inputs.dry_run || false }}
