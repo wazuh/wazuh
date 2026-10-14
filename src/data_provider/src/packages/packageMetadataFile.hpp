@@ -28,6 +28,11 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <unistd.h>
+
+// CentOS 5 (legacy rpm packages) predates O_CLOEXEC; fall back to 0 as defs.h does for the C sources.
+#ifndef O_CLOEXEC
+#define O_CLOEXEC 0
+#endif
 #endif
 
 /**
