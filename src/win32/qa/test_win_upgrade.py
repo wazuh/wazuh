@@ -43,8 +43,6 @@ def test_win_upgrade():
     os.system(
         f"start /wait msiexec /i {str(released_msi.resolve())} /qn /l*v {RELEASED_PATH}win-agent-released.log")
 
-    # A copy an earlier uninstall left behind (RemoveAllScript.vbs keeps client.keys as client.keys.save),
-    # and a log the running agent had already written: both exist before the upgrade's grants run
     pathlib.Path(INSTALL_PATH, 'client.keys.save').write_text('probe')
     pathlib.Path(INSTALL_PATH, 'ossec.log').write_text('probe')
 
@@ -92,11 +90,9 @@ def test_win_upgrade():
     assert success, f"The following binaries have a hash mismatch: '{failed_keys}'"
 
 
-@pytest.mark.parametrize('name', ['shared', 'queue', 'logs', 'rids', 'bookmarks', 'client.keys.save', 'ossec.log'])
-def test_win_upgrade_private_permissions(name):
-    # Runs after test_win_upgrade, on the upgraded installation. These directories, every entry
-    # below them, the kept client.keys copy and the live log must carry only the Administrators
-    # and SYSTEM entries, like ossec.conf.
+def assert_private_permissions(name):
+    # The path, every entry below it, and a file newly created in it must carry only the
+    # Administrators and SYSTEM entries, like ossec.conf.
     root_path = INSTALL_PATH + name
     assert os.path.exists(root_path), f"'{root_path}' not found"
 
@@ -144,6 +140,18 @@ def test_win_upgrade_private_permissions(name):
 
     unexpected = {path: sorted(sids) for path, sids in sids_by_path.items() if sids != EXPECTED_PRIVATE_SIDS}
     assert not unexpected, f"Expected only {sorted(EXPECTED_PRIVATE_SIDS)}, found: {unexpected}"
+
+
+@pytest.mark.parametrize('name', ['shared', 'queue', 'logs', 'rids', 'bookmarks', 'client.keys.save', 'ossec.log'])
+def test_win_upgrade_private_permissions(name):
+    assert_private_permissions(name)
+
+
+def test_win_repair_private_permissions():
+    base_msi = list(pathlib.Path(BASE_PATH).glob('*.msi'))[0]
+    os.system(f"start /wait msiexec /fa {str(base_msi.resolve())} /qn /l*v {BASE_PATH}win-agent-repair.log")
+
+    assert_private_permissions('queue')
 
 
 def test_win_upgrade_start_menu():
