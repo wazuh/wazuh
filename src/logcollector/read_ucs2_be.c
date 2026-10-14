@@ -44,33 +44,28 @@ void *read_ucs2_be(logreader *lf, int *rc, int drop_it) {
             break;
         }
 
-        /* Get the last occurrence of \n */
-        if (str[rbytes - 1] == '\n') {
-            if (is_valid_context_file) {
-                OS_SHA1_Stream_Bytes(context, str, (size_t) rbytes);
-            }
-            str[rbytes - 1] = '\0';
+        bool newline = str[rbytes - 1] == '\n';
+        bool truncated = !newline && rbytes == OS_MAXSTR_BE - OS_LOG_HEADER - 1;
+
+        /* We may not have gotten a line feed because we reached EOF */
+        if (!newline && !truncated && feof(lf->fp)) {
+            /* Message not complete. Return. */
+            mdebug2("Message not complete from '%s'. Trying again: '%.*s'%s", lf->file, sample_log_length, str, rbytes > sample_log_length ? "..." : "");
+            w_fseek(lf->fp, current_position, SEEK_SET);
+            break;
         }
-        /* If we didn't get the new line, because the
-         * size is large, send what we got so far.
-         */
-        else if (rbytes == OS_MAXSTR_BE - OS_LOG_HEADER - 1) {
-            /* Message size > maximum allowed */
-            if (is_valid_context_file) {
-                OS_SHA1_Stream_Bytes(context, str, (size_t) rbytes);
-            }
+
+        /* Every byte the read moves past is part of the stored hash */
+        if (is_valid_context_file) {
+            OS_SHA1_Stream_Bytes(context, str, (size_t) rbytes);
+        }
+
+        if (newline) {
+            str[rbytes - 1] = '\0';
+        } else if (truncated) {
+            /* Message size > maximum allowed: send what we got so far */
             __ms = 1;
             str[rbytes - 1] = '\0';
-        } else {
-            /* We may not have gotten a line feed
-             * because we reached EOF.
-             */
-            if (lf->ucs2 == UCS2_LE && feof(lf->fp)) {
-                /* Message not complete. Return. */
-                mdebug2("Message not complete from '%s'. Trying again: '%.*s'%s", lf->file, sample_log_length, str, rbytes > sample_log_length ? "..." : "");
-                w_fseek(lf->fp, current_position, SEEK_SET);
-                break;
-            }
         }
 
         char * p;
@@ -119,6 +114,7 @@ void *read_ucs2_be(logreader *lf, int *rc, int drop_it) {
             if (!utf8_bytes) {
                 mdebug1("Couldn't transform read line to UTF-8: %lu.", GetLastError());
                 os_free(utf8_string);
+                current_position = w_ftell(lf->fp);
                 continue;
             }
 

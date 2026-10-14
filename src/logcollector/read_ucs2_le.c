@@ -44,34 +44,30 @@ void *read_ucs2_le(logreader *lf, int *rc, int drop_it) {
             break;
         }
 
-        wchar_t * n;
-        /* Get the last occurrence of \n */
-        if ((n = wcsrchr(str, L'\n')) != NULL) {
-            if (is_valid_context_file) {
-                OS_SHA1_Stream_Bytes(context, (const char *) str, (size_t) rbytes);
-            }
-            *n = '\0';
+        /* fgetws() stores one wchar_t per two bytes read, so lengths in str are wide characters */
+        size_t wchars = (size_t) rbytes / sizeof(wchar_t);
+        bool newline = wchars > 0 && str[wchars - 1] == L'\n';
+        bool truncated = !newline && wchars >= OS_MAXSTR - OS_LOG_HEADER - 1;
+
+        /* We may not have gotten a line feed because we reached EOF */
+        if (!newline && !truncated && feof(lf->fp)) {
+            /* Message not complete. Return. */
+            mdebug2("Message not complete from '%s'. Trying again: '%.*s'%s", lf->file, sample_log_length,(char* ) str, rbytes > sample_log_length ? "..." : "");
+            w_fseek(lf->fp, current_position, SEEK_SET);
+            break;
         }
-        /* If we didn't get the new line, because the
-         * size is large, send what we got so far.
-         */
-        if (rbytes == OS_MAXSTR - OS_LOG_HEADER - 1) {
-            /* Message size > maximum allowed */
-            if (is_valid_context_file && n == NULL) {
-                OS_SHA1_Stream_Bytes(context, (const char *) str, (size_t) rbytes);
-            }
+
+        /* Every byte the read moves past is part of the stored hash */
+        if (is_valid_context_file) {
+            OS_SHA1_Stream_Bytes(context, (const char *) str, (size_t) rbytes);
+        }
+
+        if (newline) {
+            str[wchars - 1] = L'\0';
+        } else if (truncated) {
+            /* Message size > maximum allowed: send what we got so far */
             __ms = 1;
-            str[rbytes - 1] = '\0';
-        } else {
-            /* We may not have gotten a line feed
-             * because we reached EOF.
-             */
-            if (lf->ucs2 == UCS2_LE && feof(lf->fp)) {
-                /* Message not complete. Return. */
-                mdebug2("Message not complete from '%s'. Trying again: '%.*s'%s", lf->file, sample_log_length,(char* ) str, rbytes > sample_log_length ? "..." : "");
-                w_fseek(lf->fp, current_position, SEEK_SET);
-                break;
-            }
+            str[wchars - 1] = L'\0';
         }
 
         wchar_t * p;
@@ -110,6 +106,7 @@ void *read_ucs2_le(logreader *lf, int *rc, int drop_it) {
             if (!utf8_bytes) {
                 mdebug1("Couldn't transform read line to UTF-8: %lu.", GetLastError());
                 os_free(utf8_string);
+                current_position = w_ftell(lf->fp);
                 continue;
             }
 
@@ -143,8 +140,9 @@ void *read_ucs2_le(logreader *lf, int *rc, int drop_it) {
                     OS_SHA1_Stream_Bytes(context, (const char *) str, (size_t) rbytes);
                 }
 
-                /* Get the last occurrence of \n */
-                if (str[rbytes - 2] == '\n') {
+                /* Stop at the end of the line */
+                size_t skipped = (size_t) rbytes / sizeof(wchar_t);
+                if (skipped > 0 && str[skipped - 1] == L'\n') {
                     break;
                 }
             }
