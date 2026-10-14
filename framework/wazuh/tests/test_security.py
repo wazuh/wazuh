@@ -237,6 +237,7 @@ def test_validate_password(db_setup, password, error_code):
         with pytest.raises(WazuhError, match=str(error_code)):
             security.validate_password(password)
 
+
 def test_rbac_catalog_getters_are_not_memoized(db_setup):
     """The RBAC catalog getters must not cache their own result.
 

@@ -7,6 +7,9 @@
  * Foundation.
  */
 
+#ifdef _WIN32
+#include "windowsHelper.h"
+#endif
 #include "chrome.hpp"
 #include <iostream>
 #include <fstream>
@@ -441,6 +444,15 @@ namespace chrome
                 const bool insideProfile = !m_fileSystemWrapper->is_absolute(extensionPath);
                 const std::filesystem::path extensionsDir = std::filesystem::path(profilePath) / EXTENSIONS_DIR;
                 const std::string relativePath = extensionPath;
+
+#ifdef _WIN32
+
+                if (!insideProfile && !Utils::isLocalFixedPath(extensionPath))
+                {
+                    continue;
+                }
+
+#endif
 
                 if (insideProfile)
                 {
