@@ -382,6 +382,20 @@ static void replace_keys_backup_with_a_link(void) {
     assert_int_equal(replaced, 1);
 }
 
+/* rename() refusing client.keys with EBUSY, as when it is a single-file bind mount */
+static bool g_busy_keys_rename = false;
+
+int __real_rename(const char *oldpath, const char *newpath);
+
+int __wrap_rename(const char *oldpath, const char *newpath) {
+    if (g_busy_keys_rename && strcmp(newpath, KEYS_FILE) == 0) {
+        errno = EBUSY;
+        return -1;
+    }
+
+    return __real_rename(oldpath, newpath);
+}
+
 int __wrap_OS_MoveFile(const char *src, const char *dst) {
     if (is_anchor_path(src) && g_anchor_chown_uid != (uid_t) -1) {
         g_anchor_chown_recorded_before_move = true;
@@ -504,6 +518,7 @@ static int setup_test(void **state) {
     g_fetch_transport_error = NULL;
     g_enroll_transport_error = NULL;
     g_fail_anchor_move = false;
+    g_busy_keys_rename = false;
     g_replace_keys_backup = false;
     g_backup_disk_full = false;
     g_spki_call_count = 0;
@@ -2073,6 +2088,56 @@ static void test_failed_commit_restores_the_previous_key(void **state) {
     free(token);
 }
 
+/* The same, with a client.keys that rename() can't replace, as when it is a single-file bind mount:
+ * the new key goes into it by copy, and the rollback has to put the previous one back into that
+ * same file. */
+static void test_failed_commit_restores_the_previous_key_into_a_bind_mounted_client_keys(void **state) {
+    (void) state;
+    w_token_enroll_opts_t opts = {0};
+    w_token_enroll_report_t report;
+    char *token = make_token(true, true, NULL);
+    char content[256] = {0};
+    int held;
+
+    write_file(KEYS_FILE, PREVIOUS_KEY_LINE);
+    write_file(AGENT_ANCHOR_CA, "OLD-CA");
+    /* The file a bind mount pins */
+    held = open(KEYS_FILE, O_RDONLY);
+    assert_int_not_equal(held, -1);
+
+    opts.token_text = token;
+    opts.uid = -1;
+    opts.gid = -1;
+    opts.transactional = true;
+
+    will_return(__wrap_hc_fetch_cacerts, 200L);
+    will_return(__wrap_hc_fetch_cacerts, "FAKE-CA-BODY");
+    will_return(__wrap_hc_fetch_cacerts, 1);
+    will_return(__wrap_hc_spki_pinned_certificate, PINNED_CERT);
+    will_return(__wrap_hc_enroll, 200L);
+    will_return(__wrap_hc_enroll, VALID_ENROLL_BODY);
+    will_return(__wrap_hc_enroll, 1);
+    expect_valid_ip("10.0.0.5");
+    expect_any_always(__wrap__minfo, formatted_msg);
+    expect_any_always(__wrap__merror, formatted_msg);
+    /* Each move onto client.keys logs that it is copying instead of renaming */
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_any_count(__wrap__mferror, formatted_msg, -2);
+
+    g_fail_anchor_move = true;
+    g_busy_keys_rename = true;
+
+    assert_int_equal(w_agent_token_enroll(&opts, &report), W_TOKEN_ENROLL_ERR_COMMIT);
+
+    assert_true(report.rolled_back);
+    assert_true(pread(held, content, sizeof(content) - 1, 0) > 0);
+    close(held);
+    assert_string_equal(content, PREVIOUS_KEY_LINE);
+    assert_string_equal(report.keys_backup, "");
+
+    free(token);
+}
+
 /* No backup is taken when there was nothing to save, and the report says so rather than claiming
  * a rollback that never happened. */
 static void test_failed_commit_without_a_previous_key_reports_no_rollback(void **state) {
@@ -2411,6 +2476,8 @@ int main(void) {
                                         teardown_test),
         cmocka_unit_test_setup_teardown(test_inferred_none_does_not_warn, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_failed_commit_restores_the_previous_key, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_failed_commit_restores_the_previous_key_into_a_bind_mounted_client_keys,
+                                        setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_failed_commit_without_a_previous_key_reports_no_rollback, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_failed_commit_leaves_no_staged_anchor, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_failed_commit_never_restores_a_replaced_backup, setup_test, teardown_test),

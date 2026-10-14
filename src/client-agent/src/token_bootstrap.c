@@ -666,10 +666,12 @@ static void token_snapshot_close(token_snapshot_t *snapshot) {
 /**
  * @brief Puts client.keys back after a commit that failed with the new key already written.
  *
- * Renames the backup back into place rather than copying it out. rename_ex() either moves it or
- * leaves both files as they were, so a restore that fails still leaves the backup for the
- * operator, and nothing is opened by name to make a copy. The backup's name is checked first:
- * whatever else stands there is neither restored nor reported as the backup.
+ * Moves the backup back into place with w_move_file_nofollow(): a rename, or, into a client.keys
+ * that can't be renamed over (a single-file bind mount), a copy that follows no link at either
+ * name. A restore that fails leaves the backup for the operator. On Windows that is MoveFileEx(),
+ * so client.keys gets the backup's own explicit Administrators/SYSTEM DACL (mkstemp_ex()), not
+ * the one of the file it replaces. The backup's name is checked first: whatever else stands there
+ * is neither restored nor reported as the backup.
  */
 static void token_rollback(const w_token_enroll_opts_t *opts, token_snapshot_t *snapshot,
                            w_token_enroll_report_t *report) {
@@ -685,7 +687,7 @@ static void token_rollback(const w_token_enroll_opts_t *opts, token_snapshot_t *
     /* Closed before the move: Windows will not move a file that still has a handle open on it. */
     token_snapshot_close(snapshot);
 
-    if (ours && rename_ex(snapshot->keys_backup, KEYS_FILE) == 0) {
+    if (ours && w_move_file_nofollow(snapshot->keys_backup, KEYS_FILE) == 0) {
         if (opts->gid != -1) {
             w_token_bootstrap_chown_keys_file(opts->gid, true);
         }
