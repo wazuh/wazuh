@@ -467,8 +467,8 @@ STATIC bool w_agent_auth_endpoint_written(const File *staged, const char **nodes
  * The last step before the move, so the name the move uses named this run's file a moment
  * earlier. It can still be swapped after this, and the move then installs whatever was put there;
  * that gives the account that can write etc/ nothing it can't do with mv. What matters is that
- * root never opens that name: the write, the read-back, the mode and the owner all go through
- * @p fd, and the move is a bare rename().
+ * root never opens that name through a link: the write, the read-back, the mode and the owner
+ * all go through @p fd, and the move is w_move_file_nofollow().
  */
 STATIC bool w_agent_auth_staged_is_ours(int fd, const char *path) {
     struct stat ours;
@@ -492,11 +492,12 @@ STATIC int w_agent_auth_copy_mode_and_owner(int fd, const struct stat *original)
 /**
  * @brief Moves the staged rewrite at @p path onto ossec.conf.
  *
- * A bare rename() on POSIX, never OS_MoveFile(): when rename() fails, that one falls back to
- * copying by name, which opens ossec.conf for writing. The account that can write etc/ can make
+ * w_move_file_nofollow() on POSIX, never OS_MoveFile(): when rename() fails, that one falls back
+ * to copying by name, which opens ossec.conf for writing. The account that can write etc/ can make
  * rename() fail after every check here has passed, by putting a directory at the staged name, and
- * can point ossec.conf at any file before that; root would then truncate that file. A failed move
- * here is only a failed install. ca_publication.c installs the trust store the same way.
+ * can point ossec.conf at any file before that; root would then truncate that file.
+ * w_move_file_nofollow() renames, or copies into an ossec.conf that can't be renamed over, such as
+ * a single-file bind mount, without following a link at either name.
  *
  * Windows keeps OS_MoveFile(), which replaces through MoveFileEx(): nothing less privileged can
  * write the install directory there.
@@ -511,7 +512,7 @@ STATIC int w_agent_auth_move_staged(const char *path, FILE *err) {
 
     fprintf(err, "%s: could not install the rewritten '%s'.\n", AGENT_AUTH_NAME, WAZUHCONF);
 #else
-    if (rename(path, WAZUHCONF) == 0) {
+    if (w_move_file_nofollow(path, WAZUHCONF) == 0) {
         return 0;
     }
 

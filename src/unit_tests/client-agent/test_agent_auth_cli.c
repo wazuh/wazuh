@@ -162,14 +162,21 @@ int __wrap_TempFile(File *file, const char *source, int copy) {
 }
 
 /* The same account, later: once every check on the staged copy has passed, it puts a directory at
- * the staged name, so rename() cannot move it, and points ossec.conf itself at SWAP_TARGET. A
- * failed move must stay a failure; anything that falls back to copying by name would open
+ * the staged name, so rename() cannot move it, and points ossec.conf itself at SWAP_TARGET. The
+ * install has to fail without going through ossec.conf's name: a copy by name would open
  * ossec.conf for writing and truncate the target as root. */
 static bool g_swap_at_rename = false;
+/* rename() refusing ossec.conf with EBUSY, as when it is a single-file bind mount */
+static bool g_busy_at_rename = false;
 
 int __real_rename(const char *oldpath, const char *newpath);
 
 int __wrap_rename(const char *oldpath, const char *newpath) {
+    if (g_busy_at_rename && strcmp(newpath, WAZUHCONF) == 0) {
+        errno = EBUSY;
+        return -1;
+    }
+
     if (g_swap_at_rename && strcmp(newpath, WAZUHCONF) == 0) {
         g_swap_at_rename = false;
         assert_int_equal(unlink(oldpath), 0);
@@ -420,6 +427,7 @@ static int setup_test(void **state) {
     g_swap_staged = false;
     g_staged_name[0] = '\0';
     g_swap_at_rename = false;
+    g_busy_at_rename = false;
     g_staged_reads_by_name = 0;
     g_lose_staged_write = false;
     unlink(SWAP_TARGET);
@@ -1001,8 +1009,9 @@ static void test_config_rewrite_sets_mode_and_owner_through_the_descriptor(void 
 }
 
 /* After every check on the staged copy has passed, the account that can write etc/ makes the move
- * fail and points ossec.conf at another file. The move has to fail as a move: copying into
- * ossec.conf by name instead would have root truncate that other file. */
+ * fail and points ossec.conf at another file. The install has to fail with that file untouched: the
+ * copy w_move_file_nofollow() falls back to refuses a staged name that isn't a regular file, where
+ * a copy by name would have root truncate that other file. */
 static void test_config_rewrite_install_never_writes_through_a_symlink(void **state) {
     (void) state;
     char err_buf[2048] = {0};
@@ -1028,6 +1037,38 @@ static void test_config_rewrite_install_never_writes_through_a_symlink(void **st
     assert_false(g_swap_at_rename);
     assert_file_content(SWAP_TARGET, SWAP_TARGET_CONTENT);
     assert_non_null(strstr(err_buf, "could not install"));
+}
+
+/* An ossec.conf that rename() can't replace, as when it is a single-file bind mount, still gets the
+ * rewrite: copied into it, by a copy that never follows a link at either name. */
+static void test_config_rewrite_copies_into_an_ossec_conf_rename_cannot_replace(void **state) {
+    (void) state;
+    char err_buf[2048] = {0};
+    FILE *err = fmemopen(err_buf, sizeof(err_buf), "w");
+    char content[2048] = {0};
+    int held;
+
+    write_file(WAZUHCONF, CONFIG_WITH_ENDPOINT);
+    /* The file a bind mount pins: the rewrite has to land in it, not in one renamed over its name */
+    held = open(WAZUHCONF, O_RDONLY);
+    assert_int_not_equal(held, -1);
+    g_busy_at_rename = true;
+
+    expect_any(__wrap__mdebug1, formatted_msg);
+
+    expect_string(__wrap_OS_WriteXMLToStream, newval, "new.example.local:1518");
+    will_return(__wrap_OS_WriteXMLToStream, REWRITTEN_CONFIG);
+    will_return(__wrap_OS_WriteXMLToStream, 0);
+
+    assert_int_equal(w_agent_auth_update_endpoint("new.example.local:1518", "siem.example.local", err), 0);
+
+    fclose(err);
+
+    assert_true(pread(held, content, sizeof(content) - 1, 0) > 0);
+    close(held);
+    assert_string_equal(content, REWRITTEN_CONFIG);
+    assert_file_content(WAZUHCONF, REWRITTEN_CONFIG);
+    assert_int_equal(IsFile(g_staged_name), -1);
 }
 
 /* The rewrite is read back to confirm the node changed. That read goes through the staged file's
@@ -1621,6 +1662,8 @@ int main(void) {
                                         teardown_test),
         cmocka_unit_test_setup_teardown(test_config_rewrite_install_never_writes_through_a_symlink, setup_test,
                                         teardown_test),
+        cmocka_unit_test_setup_teardown(test_config_rewrite_copies_into_an_ossec_conf_rename_cannot_replace,
+                                        setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_config_rewrite_reads_the_staged_copy_back_through_its_descriptor,
                                         setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_config_rewrite_refuses_a_rewrite_that_lost_a_write, setup_test,
