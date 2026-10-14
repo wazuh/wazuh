@@ -73,14 +73,18 @@ case "$1" in
         useradd --system --home-dir ${DIR} --shell ${OSMYSHELL} --gid ${GROUP} --no-create-home ${USER} > /dev/null 2>&1
     fi
 
+    # Generated in ${WAZUH_TMP_DIR} and moved into place. Not under the name ossec.conf there: that
+    # is preinst's copy of the current one, restored below.
+    mkdir -p ${WAZUH_TMP_DIR}
+    CONF_STAGE=${WAZUH_TMP_DIR}/ossec.conf.generated
     if [ -z "$2" ] || [ -f ${WAZUH_TMP_DIR}/create_conf ] ; then
 
-        ${SCRIPTS_DIR}/src/init/gen_wazuh.sh conf agent ${OS} ${VER} ${DIR} > ${DIR}/etc/ossec.conf
-        ${SCRIPTS_DIR}/src/init/add_localfiles.sh ${DIR} >> ${DIR}/etc/ossec.conf
-        chmod 640 ${DIR}/etc/ossec.conf
+        ${SCRIPTS_DIR}/src/init/gen_wazuh.sh conf agent ${OS} ${VER} ${DIR} > ${CONF_STAGE}
+        ${SCRIPTS_DIR}/src/init/add_localfiles.sh ${DIR} >> ${CONF_STAGE}
+        install_file ${CONF_STAGE} 640 root:${GROUP} ${DIR}/etc/ossec.conf
     else
-        ${SCRIPTS_DIR}/src/init/gen_wazuh.sh conf agent ${OS} ${VER} ${DIR} > ${DIR}/etc/ossec.conf.new
-        chmod 640 ${DIR}/etc/ossec.conf.new
+        ${SCRIPTS_DIR}/src/init/gen_wazuh.sh conf agent ${OS} ${VER} ${DIR} > ${CONF_STAGE}
+        install_file ${CONF_STAGE} 640 root:${GROUP} ${DIR}/etc/ossec.conf.new
     fi
 
     # For the etc dir

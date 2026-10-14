@@ -333,13 +333,15 @@ if [ $1 = 1 ]; then
 
   . %{_localstatedir}/packages_files/agent_installation_scripts/src/init/dist-detect.sh
 
-  # Generating ossec.conf file
-  %{_localstatedir}/packages_files/agent_installation_scripts/src/init/gen_wazuh.sh conf agent ${DIST_NAME} ${DIST_VER}.${DIST_SUBVER} %{_localstatedir} > %{_localstatedir}/etc/ossec.conf
-  chown root:wazuh %{_localstatedir}/etc/ossec.conf
-  chmod 640 %{_localstatedir}/etc/ossec.conf
-
-  # Add default local_files to ossec.conf
-  %{_localstatedir}/packages_files/agent_installation_scripts/src/init/add_localfiles.sh %{_localstatedir} >> %{_localstatedir}/etc/ossec.conf
+  # Generating ossec.conf file, with the default local_files, in packages_files/ (root only) and
+  # moving it into place: etc/ belongs to wazuh, and a rename replaces a link planted there
+  # instead of writing through it.
+  CONF_STAGE=%{_localstatedir}/packages_files/ossec.conf.generated
+  %{_localstatedir}/packages_files/agent_installation_scripts/src/init/gen_wazuh.sh conf agent ${DIST_NAME} ${DIST_VER}.${DIST_SUBVER} %{_localstatedir} > ${CONF_STAGE}
+  %{_localstatedir}/packages_files/agent_installation_scripts/src/init/add_localfiles.sh %{_localstatedir} >> ${CONF_STAGE}
+  chown root:wazuh ${CONF_STAGE}
+  chmod 640 ${CONF_STAGE}
+  mv -fT ${CONF_STAGE} %{_localstatedir}/etc/ossec.conf
 
   # Register and configure agent if Wazuh environment variables are defined
   %{_localstatedir}/packages_files/agent_installation_scripts/src/init/register_configure_agent.sh %{_localstatedir} > /dev/null || :
@@ -478,8 +480,16 @@ else
   fi
 fi
 
-# Restore ossec.conf permissions after upgrading
-chmod 0640 %{_localstatedir}/etc/ossec.conf
+# Restore ossec.conf permissions after upgrading. etc/ belongs to wazuh, so ossec.conf may be a link
+# it planted, and chmod has no -h: the mode is set on a copy taken without following links, in a
+# directory only root can enter, which is then renamed back over the file.
+if [ -f %{_localstatedir}/etc/ossec.conf ] && CONF_STAGE=$(mktemp -d %{_localstatedir}/.ossec-conf.XXXXXX); then
+  if cp -pP %{_localstatedir}/etc/ossec.conf ${CONF_STAGE}/ossec.conf && [ -f ${CONF_STAGE}/ossec.conf ] \
+      && [ ! -L ${CONF_STAGE}/ossec.conf ]; then
+    chmod 0640 ${CONF_STAGE}/ossec.conf && mv -fT ${CONF_STAGE}/ossec.conf %{_localstatedir}/etc/ossec.conf
+  fi
+  rm -rf ${CONF_STAGE}
+fi
 
 # Remove old ossec user and group if exists and change ownwership of files
 
