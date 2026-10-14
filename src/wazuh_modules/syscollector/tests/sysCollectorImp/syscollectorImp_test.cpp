@@ -709,8 +709,8 @@ TEST_F(SyscollectorImpTest, aLifecycleNotificationBringsTheContainerPassForward)
                                           100,    // host interval
                                           false,  // scan_on_start: nothing runs by itself
                                           true, true, true, true, true, true, true, true, true, true, true, true,
-                                          true,   // container_baseline
                                           false,  // notify_on_first_scan
+                                          true,   // container_baseline
                                           100);   // container interval, far beyond this test
 
             Syscollector::instance().start();
