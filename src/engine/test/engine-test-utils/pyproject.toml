@@ -6,6 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "engine-test-utils"
 version = "0.0.1"
 authors = [{ name = "Wazuh, Inc." }]
+license = { text = "AGPL-3.0-or-later" }
 description = "Test utilities for Wazuh Engine"
 readme = "README.md"
 requires-python = ">=3.8"

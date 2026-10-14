@@ -6,6 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "engine-bench"
 version = "1.0.0.dev0"
 authors = [{ name = "Wazuh, Inc." }]
+license = { text = "AGPL-3.0-or-later" }
 description = "A library for benchmarking Wazuh engine"
 requires-python = ">=3.12"
 classifiers = ["Programming Language :: Python :: 3"]
