@@ -14,9 +14,15 @@
 #include "../socketServer.hpp"
 #include <algorithm>
 #include <chrono>
+#include <cstring>
+#include <filesystem>
 #include <future>
 #include <mutex>
+#include <poll.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <thread>
+#include <unistd.h>
 #include <vector>
 
 TYPED_TEST_SUITE_P(SocketTest);
@@ -456,6 +462,62 @@ TYPED_TEST_P(SocketTest, NoRecoveredLogWhileBacklogIsPending)
     EXPECT_EQ(count("Recovered"), 1);
 }
 
+TYPED_TEST_P(SocketTest, ReconnectionDiscardsPartialFrame)
+{
+    std::string socketPath {std::string("/tmp/echo_sock/") +
+                            ::testing::UnitTest::GetInstance()->current_test_info()->name()};
+
+    std::filesystem::create_directories(std::filesystem::path(socketPath).parent_path());
+    std::filesystem::remove(socketPath);
+    auto listenFD {::socket(AF_UNIX, SOCK_STREAM, 0)};
+    ASSERT_NE(listenFD, -1);
+    sockaddr_un address {};
+    address.sun_family = AF_UNIX;
+    std::strncpy(address.sun_path, socketPath.c_str(), sizeof(address.sun_path) - 1);
+    ASSERT_EQ(::bind(listenFD, reinterpret_cast<sockaddr*>(&address), sizeof(address)), 0);
+    ASSERT_EQ(::listen(listenFD, 1), 0);
+
+    std::promise<std::string> received;
+    std::atomic<bool> delivered {false};
+    SocketClient<Socket<OSPrimitives, TypeParam>, EpollWrapper> client {socketPath};
+    client.connect(
+        [&](const char* body, uint32_t size, const char*, uint32_t)
+        {
+            if (!delivered.exchange(true))
+            {
+                received.set_value(std::string(body, size));
+            }
+        });
+
+    // The peer announces a 100 byte frame, sends 3 bytes of it and half-closes, so the client aborts mid-frame
+    // with EPOLLIN and no EPOLLHUP.
+    auto peerFD {::accept(listenFD, nullptr, nullptr)};
+    ASSERT_NE(peerFD, -1);
+    ::close(listenFD);
+    std::filesystem::remove(socketPath);
+    const uint32_t announcedSize {100};
+    ASSERT_EQ(::send(peerFD, &announcedSize, sizeof(announcedSize), 0), static_cast<ssize_t>(sizeof(announcedSize)));
+    ASSERT_EQ(::send(peerFD, "abc", 3, 0), 3);
+    ::shutdown(peerFD, SHUT_WR);
+    pollfd peer {peerFD, POLLIN, 0};
+    const auto ready {::poll(&peer, 1, 5000)};
+    ::close(peerFD);
+    ASSERT_EQ(ready, 1);
+
+    SocketServer<Socket<OSPrimitives, TypeParam>, EpollWrapper> server {socketPath};
+    server.listen([&](const int fd, const char*, uint32_t, const char*, uint32_t) { server.send(fd, "pong", 4); });
+
+    // The client keeps resending until the reconnection completes.
+    auto future {received.get_future()};
+    for (int i {0}; i < 100 && future.wait_for(std::chrono::milliseconds(100)) != std::future_status::ready; ++i)
+    {
+        client.send("ping", 4);
+    }
+
+    ASSERT_EQ(future.wait_for(std::chrono::seconds(0)), std::future_status::ready);
+    EXPECT_EQ(future.get(), "pong");
+}
+
 // All tests must be registered
 
 REGISTER_TYPED_TEST_SUITE_P(SocketTest,
@@ -465,7 +527,8 @@ REGISTER_TYPED_TEST_SUITE_P(SocketTest,
                             SingleDelayedClientWithReconnectionSendMessageOffline,
                             SingleDelayedClientWithReconnectionOnline,
                             SingleDelayedClientWithReconnectionServerReset,
-                            NoRecoveredLogWhileBacklogIsPending);
+                            NoRecoveredLogWhileBacklogIsPending,
+                            ReconnectionDiscardsPartialFrame);
 
 // Configuring typed-tests
 using ProtocolTypes = ::testing::Types<AppendHeaderProtocol, SizeHeaderProtocol>;
