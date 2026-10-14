@@ -667,6 +667,13 @@ external/tzdata.tar.gz:
 	cd external && $(GUNZIP) $(patsubst external/%,%,$@) && $(TAR) $(patsubst external/%.gz,%,$@) && rm $(patsubst external/%.gz,%,$@))
 	rm -f external/tzdata/tzdata.tar.gz
 
+# libbpf-bootstrap has no sources/: build_ebpf.sh builds it outside the Wazuh build, so a sources-only
+# fetch skips it and the agent is installed without libbpf.so and modern.bpf.o (no eBPF whodata).
+ifeq (,$(PRECOMPILED_RES))
+external/libbpf-bootstrap.tar.gz:
+	@printf "\033[33m[!] Dependency libbpf-bootstrap skipped: it has no sources (built by build_ebpf.sh); the agent runs without eBPF\033[0m\n"
+endif
+
 # Remaining dependencies
 ifneq (,$(PRECOMPILED_RES))
 external/%.tar.gz: external-precompiled/%.tar.gz
