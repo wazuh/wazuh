@@ -109,8 +109,8 @@ w_token_read_status_t w_agent_token_read_stream(FILE *in, char **text) {
         return W_TOKEN_READ_TTY;
     }
 
-    /* Heap, not stack: since #39321 this bound is sized for an embedded-CA token, and 96 KB is far
-     * too much to put on a frame. */
+    /* Heap, not stack: the bound is sized for a token that embeds a CA, and 96 KB is far too much
+     * to put on a frame. */
     os_calloc(W_ETOKEN_MAX_FILE_BYTES + 1, sizeof(char), buf);
     length = fread(buf, 1, W_ETOKEN_MAX_FILE_BYTES, in);
     /* fread() never terminates what it reads */
