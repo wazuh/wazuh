@@ -1545,6 +1545,27 @@ def test_make_pool_cpython_tzdata_urls(tmp_path):
         assert f"{pool.as_uri()}/{url}" in result.stdout
 
 
+@needs_make_pool
+def test_make_src_only_skips_libbpf(tmp_path):
+    (tmp_path / "pool").mkdir()
+    result, external = make_src(tmp_path, tmp_path / "pool", "external/libbpf-bootstrap.tar.gz", "TARGET=agent",
+                                "EXTERNAL_SRC_ONLY=yes")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "Dependency libbpf-bootstrap skipped: it has no sources" in result.stdout
+    assert not list(external.iterdir())
+    dry, _ = make_src(tmp_path, tmp_path / "pool", "external/libbpf-bootstrap.tar.gz", "TARGET=agent",
+                      "EXTERNAL_SRC_ONLY=yes", dry_run=True)
+    assert LOCK_REFS["libbpf-bootstrap"] not in dry.stdout
+
+
+@needs_make_pool
+def test_make_libbpf_precompiled_unchanged(tmp_path):
+    pool = tmp_path / "pool"
+    result, _ = make_src(tmp_path, pool, "external/libbpf-bootstrap.tar.gz", "TARGET=agent", dry_run=True)
+    assert result.returncode == 0, result.stderr
+    assert f"{pool.as_uri()}/{LOCK_REFS['libbpf-bootstrap']}/linux/amd64/libbpf-bootstrap.tar.gz" in result.stdout
+
+
 def pool_mirror(root, **inputs_hash):
     """A file:// pool with the manifest.json of every ref the inventory keys; `name=None` leaves one out."""
     document = deps.load(deps.DEFAULT_INVENTORY)

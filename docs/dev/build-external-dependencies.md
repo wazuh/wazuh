@@ -73,7 +73,7 @@ make -C src deps TARGET=manager DEPS_POOL_URL=file:///tmp/pool
 
 `mirror` copies the refs the target needs from the pool (only `sources/` and the given platform) and checks every file against its manifest. `--local DIR` takes the refs from a local pool tree first, `--without cpython` leaves entries out, `--target` accepts `agent`, `manager` and `winagent`. It stops if the lock is stale.
 
-`make deps TARGET=agent EXTERNAL_SRC_ONLY=yes` on Linux cannot fetch `libbpf-bootstrap`, which has no sources in the pool. No build uses that combination.
+`make deps TARGET=agent EXTERNAL_SRC_ONLY=yes` on Linux skips `libbpf-bootstrap`, which has no sources, with a warning: the agent is installed without `libbpf.so` and `modern.bpf.o` and runs without eBPF whodata. `cpython` always comes built, from `sources/`.
 
 ## Bumping a dependency
 
