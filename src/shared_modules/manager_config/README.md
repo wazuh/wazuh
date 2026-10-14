@@ -172,3 +172,7 @@ it is the reference for the Python framework and the seed of the 5.0→5.1 conve
 | file missing, unreadable or larger than 1 MiB | plain message, empty JSON pointer (`configuration file not found: <path>`, `… cannot be read: …`, `… larger than 1048576 bytes: …`). The CLI checks the file itself first and reports a missing one as `(1239): Configuration file not found: '<path>'.`; the C daemons render the loader's message under `(1244)` |
 | malformed XML, raw `&`, `--` in a comment, second root, wrong root | `invalid XML: … (line N)` / specific message with the line, empty JSON pointer |
 | schema / semantics | JSON pointer + violated keyword (`/remote/https/port: does not satisfy 'maximum' … [schema …]`). `bin/wazuh-manager-conf` renders it as `(1244): Invalid configuration at '<pointer>': <reason>.` (`'/'` for an empty pointer); the C daemons put the file path in the subject and `Error::what()` (`<pointer>: <reason>`) in the reason |
+
+## License
+
+Dual-licensed under `GPL-2.0-only OR AGPL-3.0-or-later`: the C daemons use it under GPLv2 and the engine under AGPLv3. See [COPYING](COPYING).
