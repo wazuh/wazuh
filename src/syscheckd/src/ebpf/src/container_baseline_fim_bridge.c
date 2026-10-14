@@ -548,20 +548,98 @@ void fim_container_doc_budget_release(const char* container_id)
     synced_docs_unlock();
 }
 
+/* Containers allowed to report, as a set. NULL means "not told yet", which
+ * reads as admit-everything -- see fim_container_is_admitted().
+ *
+ * Guarded by synced_docs_mutex, like the counts above, so a reconcile cannot
+ * replace the set while a row is being decided against it. */
+static OSHash* container_admitted = NULL;
+static int container_admission_known = 0;
+
+void fim_container_set_admitted(const char** container_ids, size_t count)
+{
+    if (container_ids == NULL && count > 0) {
+        return;
+    }
+
+    OSHash* replacement = OSHash_Create();
+    if (replacement == NULL) {
+        /* Fail OPEN. A set we could not build is not grounds for silencing
+         * every container -- the same reasoning as the count slot below. */
+        return;
+    }
+    OSHash_SetFreeDataPointer(replacement, free);
+
+    for (size_t i = 0; i < count; ++i) {
+        if (container_ids[i] == NULL || *container_ids[i] == '\0') {
+            continue;
+        }
+
+        int* marker = NULL;
+        os_calloc(1, sizeof(int), marker);
+        *marker = 1;
+        if (OSHash_Add(replacement, container_ids[i], marker) != 2) {
+            os_free(marker);
+        }
+    }
+
+    synced_docs_lock();
+    OSHash* previous = container_admitted;
+    container_admitted = replacement;
+    container_admission_known = 1;
+    synced_docs_unlock();
+
+    if (previous != NULL) {
+        OSHash_Free(previous);
+    }
+}
+
+int fim_container_is_admitted(const char* container_id)
+{
+    if (container_id == NULL || *container_id == '\0') {
+        return 1; /* Not a container row; nothing to withhold. */
+    }
+
+    synced_docs_lock();
+    const int admitted = (container_admission_known == 0 || container_admitted == NULL)
+                         ? 1
+                         : (OSHash_Get(container_admitted, container_id) != NULL);
+    synced_docs_unlock();
+
+    return admitted;
+}
+
 /* Applies container_budget_decide() to one row, owning the lock and the count
  * it decides against. The rule itself lives in container_doc_budget.h so it can
  * be tested without a daemon; this is only the plumbing. */
 static int container_row_sync_flag(const cJSON* row, int operation)
 {
+    const cJSON* id_json = cJSON_GetObjectItem(row, "container_id");
+    const int has_container = (id_json != NULL && cJSON_IsString(id_json)
+                               && id_json->valuestring != NULL && *id_json->valuestring != '\0');
+
+    /* Whether this container may report AT ALL, which is a different question
+     * from how much it may report -- and it is asked first, because it holds
+     * even when no document limit is configured. Putting it after the limit
+     * check below would make the container cap silently depend on
+     * container_file_limit being set, which is not what configures it.
+     *
+     * Deletes are exempt: container_budget_decide() answers a delete with the
+     * row's own stored flag, so a row the manager never saw still reports no
+     * deletion, and one it did see is still withdrawn. Suppressing that would
+     * strand the row on the manager with nothing left to remove it. */
+    if (has_container && operation != OPERATION_DELETE
+            && !fim_container_is_admitted(id_json->valuestring)) {
+        return 0;
+    }
+
     const int limit = (host_config() != NULL) ? host_config()->container_file_limit : 0;
 
     if (limit <= 0) {
         return 1; /* Unlimited: today's behaviour, and the default. */
     }
 
-    const cJSON* id_json = cJSON_GetObjectItem(row, "container_id");
-    if (id_json == NULL || !cJSON_IsString(id_json) || id_json->valuestring == NULL
-            || *id_json->valuestring == '\0') {
+    if (!has_container) {
         /* No container to charge it to. Report it rather than withhold it: a row
          * we cannot attribute is not evidence that a budget was exceeded. */
         return 1;

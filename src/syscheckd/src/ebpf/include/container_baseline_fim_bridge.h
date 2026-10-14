@@ -90,6 +90,32 @@ int fim_container_baseline_node_row_limit(void);  /* the whole file_entry table 
  */
 void fim_container_doc_budget_release(const char* container_id);
 
+/**
+ * @brief Record which containers may report to the manager (#37532).
+ *
+ * A different question from the document budget above: that one bounds how much
+ * one container reports, this one bounds how many containers report at all.
+ * A container left out of this set still exists, is still walked, and keeps its
+ * stored rows -- only its reporting stops.
+ *
+ * Call ONLY when the connector actually answered. A failed query lists no
+ * containers, and applying that would withhold every container's rows on a
+ * momentary blip. Until the first call, everything reports.
+ *
+ * @param container_ids Ids allowed to report. Copied; the caller keeps ownership.
+ * @param count         How many. Zero is a real answer -- no container reports.
+ */
+void fim_container_set_admitted(const char** container_ids, size_t count);
+
+/**
+ * @brief Whether a container may report. Non-zero when it may.
+ *
+ * True for every container until fim_container_set_admitted() has been called,
+ * so an agent that has not reached the connector keeps reporting rather than
+ * going silently quiet.
+ */
+int fim_container_is_admitted(const char* container_id);
+
 void fim_persist_baseline_row(const char* id,
                               int operation,
                               const char* index,
