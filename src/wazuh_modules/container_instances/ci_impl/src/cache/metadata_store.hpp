@@ -141,6 +141,11 @@ namespace wazuh::container_instances
         std::set<std::string> m_admitted;
         int m_syncLimit {0};
 
+        /// How many containers the last recompute withheld, so the count is
+        /// reported when it changes rather than on every reconcile. SIZE_MAX
+        /// means "nothing said yet", so the first real answer always speaks.
+        std::size_t m_withheldFromSyncReported {SIZE_MAX};
+
         /// Set by journalTransitionLocked, consumed by notifyLifecycleUnlocked.
         /// Guarded by m_mutex like everything else it sits beside.
         bool m_lifecycleDirty {false};
