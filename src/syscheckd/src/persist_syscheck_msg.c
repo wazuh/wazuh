@@ -21,7 +21,19 @@ void persist_syscheck_msg(const char *id, Operation_t operation, const char *ind
 
         // Validation is now done before DBSync insertion in the callbacks
         // This function just persists the already-validated data
-        asp_persist_diff(syscheck.sync_handle, id, operation, index, msg, version);
+        //
+        // Under the handle lock, and only when a handle is actually there. Both
+        // matter: fim_stop_sync_protocol() destroys the handle and NULLs it, so an
+        // event still in flight at shutdown would otherwise hand asp_persist_diff()
+        // a NULL handle, and reading syscheck.sync_handle unlocked races the
+        // writer that replaces it.
+        w_rwlock_rdlock(&fim_sync_handle_rwlock);
+
+        if (syscheck.sync_handle) {
+            asp_persist_diff(syscheck.sync_handle, id, operation, index, msg, version);
+        }
+
+        w_rwlock_unlock(&fim_sync_handle_rwlock);
 
         os_free(msg);
     } else {
