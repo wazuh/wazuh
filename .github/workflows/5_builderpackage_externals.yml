@@ -15,7 +15,9 @@ name: 5.X - Package - Build external dependencies
 #   cpython      the embedded Python of each Linux architecture, linked against the
 #                pool tree of this run (framework/cpython/compile.sh)
 #   pool         consolidate + cpython: the pool-new artifact
-#   smoke        agent, manager and windows agent builds against pool-new + the pool
+#   smoke        smoke-build: agent and manager on Linux amd64/arm64, the windows agent and
+#                the macOS agent against pool-new + the pool; smoke-sources: agent and
+#                manager with every dependency built from its sources, in Debug
 #   publish      pool-new to s3://<bucket>/deps/pool/, with the approval of the
 #                deps-publish environment; disabled until the DEPS_POOL_PUBLISH
 #                repository variable is 'true'
@@ -442,7 +444,9 @@ jobs:
     # host-side tools shipped under windows/ (flatbuffers' flatc) run on the
     # glibc the windows agent build sees. The log is uploaded; the analysis step
     # flags a dependency recompiled from source, the sign of a binary packed at
-    # the wrong path.
+    # the wrong path. The macOS agent builds natively on the runners of its
+    # package, prepared like the package job and with the runner's default
+    # Xcode, not the one the legs pin.
     needs: [check, pool]
     if: always() && needs.pool.result == 'success'
     permissions:
@@ -458,6 +462,8 @@ jobs:
           - { architecture: arm64, runner: wz-linux-arm64, target: agent,    image: pkg_rpm_agent_builder_arm64,   platform: linux/aarch64 }
           - { architecture: arm64, runner: wz-linux-arm64, target: manager,  image: pkg_rpm_manager_builder_arm64, platform: linux/aarch64 }
           - { architecture: i686,  runner: wz-linux-amd64, target: winagent, image: compile_windows_agent,         platform: windows }
+          - { architecture: macos-intel64, runner: macos-14-large, target: agent, system: macos, platform: darwin/amd64 }
+          - { architecture: macos-arm64,   runner: macos-14,       target: agent, system: macos, platform: darwin/aarch64 }
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
     name: Smoke build (${{ matrix.target }}-${{ matrix.architecture }})
@@ -466,6 +472,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Pull the pinned builder image
+        if: matrix.system != 'macos'
         env:
           GHCR_TOKEN: ${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }}
         run: |
@@ -484,6 +491,7 @@ jobs:
           aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Build ${{ matrix.target }} against the new refs
+        if: matrix.system != 'macos'
         timeout-minutes: 75
         run: |
           set -o pipefail
@@ -511,6 +519,28 @@ jobs:
             "${{ matrix.image }}:${BUILDER_TAG}" \
             /wazuh-local-src/packages/externals/smoke_build.sh 2>&1 | tee "${log}"
 
+      - name: Build the macOS agent against the new refs
+        if: matrix.system == 'macos'
+        timeout-minutes: 75
+        run: |
+          set -o pipefail
+          bash packages/macos/generate_wazuh_packages.sh -i
+          xcodebuild -version
+          mkdir -p smoke-logs
+          log="smoke-logs/smoke-build-${{ matrix.target }}-${{ matrix.architecture }}.log"
+
+          echo "${{ needs.pool.outputs.sha256 }}  consolidated-deps/pool-new.tar.gz" | shasum -a 256 -c -
+          tar -xzf consolidated-deps/pool-new.tar.gz -C consolidated-deps
+          rm -f consolidated-deps/pool-new.tar.gz
+          python3 packages/externals/deps.py mirror --local consolidated-deps/pool \
+            --target agent --platform "${{ matrix.platform }}" --dest smoke-deps/pool
+
+          # Only for the build, as packages/macos/package_files/build.sh passes it
+          # to make; brew and python3 above must not inherit it.
+          DYLD_FORCE_FLAT_NAMESPACE=1 BUILD_TARGET=agent ARCHITECTURE_TARGET="${{ matrix.architecture }}" WAZUH_SRC="${GITHUB_WORKSPACE}" \
+            DEPS_DIR="${GITHUB_WORKSPACE}/smoke-deps" JOBS="$(sysctl -n hw.ncpu)" WAZUH_VERBOSE="yes" \
+            bash packages/externals/smoke_build.sh 2>&1 | tee "${log}"
+
       - name: Analyze dependency usage
         if: always()
         run: |
@@ -536,14 +566,18 @@ jobs:
           #    add_library(ext_<dep> STATIC <dep>.c), which compiles into
           #    ext_<dep>.dir/. (wazuhext is Wazuh's own aggregation lib, not a
           #    dep — its target is `wazuhext`, never `ext_<name>`, so the
-          #    \bext_ word boundary below does not match it.)
-          # Both should be empty, except for the entries the pool only has as sources.
+          #    /ext_ below does not match it; `/` and not `\b`, which the BSD
+          #    grep of the macOS runners does not support.)
+          # Both must be empty: a recompiled dependency means its precompiled archive is not where
+          # src/external/CMakeLists.txt expects it, and that pool must not be published.
+          recompiled=0
           ep="$(grep -nE "(Performing build step for|Creating directories for) '[^']+_external'" "${log}" || true)"
-          pb="$(grep -nE 'Building (C|CXX) object .*\bext_[a-z0-9_]+\.dir/' "${log}" || true)"
+          pb="$(grep -nE 'Building (C|CXX) object .*/ext_[a-z0-9_]+\.dir/' "${log}" || true)"
           if [ -n "${ep}${pb}" ]; then
             [ -n "${ep}" ] && printf '%s\n' "${ep}"
             [ -n "${pb}" ] && printf '%s\n' "${pb}"
-            echo "::warning::one or more external dependencies were recompiled from source — check whether their precompiled archive was packed at the path src/external/CMakeLists.txt expects"
+            echo "::error::one or more external dependencies were recompiled from source — check whether their precompiled archive was packed at the path src/external/CMakeLists.txt expects"
+            recompiled=1
           else
             echo "  (none — every external dependency was consumed precompiled)"
           fi
@@ -551,6 +585,7 @@ jobs:
           echo "## Build errors (first 50)"
           grep -niE 'error:|fatal error|undefined reference|No rule to make target|recipe for target .* failed' "${log}" | head -50 \
             || echo "  (none)"
+          exit "${recompiled}"
 
       - name: Upload smoke build log
         if: always()
@@ -562,11 +597,109 @@ jobs:
           aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           aws_region: ${{ secrets.CI_AWS_REGION }}
 
+  smoke-sources:
+    # Build the agent and the manager with every dependency compiled from its
+    # sources/ (make deps EXTERNAL_SRC_ONLY=yes), dependencies and product as
+    # Debug and without sanitizers, so a source that no longer builds blocks
+    # publish. The dependencies are built before the product (see
+    # smoke_build.sh). cpython comes built from sources/ by design, and
+    # libbpf-bootstrap has no sources/ and is skipped.
+    needs: [check, pool]
+    if: always() && needs.pool.result == 'success'
+    permissions:
+      contents: read
+      packages: read
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { architecture: amd64, runner: wz-linux-amd64, target: agent,   image: pkg_rpm_agent_builder_amd64 }
+          - { architecture: amd64, runner: wz-linux-amd64, target: manager, image: pkg_rpm_manager_builder_amd64 }
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 150
+    name: Smoke sources (${{ matrix.target }}-${{ matrix.architecture }})
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Pull the pinned builder image
+        env:
+          GHCR_TOKEN: ${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }}
+        run: bash packages/externals/pull_builder_image.sh "${{ matrix.image }}" linux "${{ matrix.target }}" "${{ matrix.architecture }}"
+
+      - name: Download the new refs
+        uses: ./.github/actions/download_s3_artifact
+        with:
+          name: pool-new
+          path: consolidated-deps
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+
+      - name: Build ${{ matrix.target }} from sources
+        timeout-minutes: 135
+        run: |
+          set -o pipefail
+          mkdir -p smoke-logs
+          log="smoke-logs/smoke-sources-${{ matrix.target }}-${{ matrix.architecture }}.log"
+
+          echo "${{ needs.pool.outputs.sha256 }}  consolidated-deps/pool-new.tar.gz" | sha256sum -c -
+          tar -xzf consolidated-deps/pool-new.tar.gz -C consolidated-deps
+          rm -f consolidated-deps/pool-new.tar.gz
+          # Without --platform only sources/ is downloaded from the published
+          # pool, but --local copies each new ref whole: keep sources/ alone.
+          python3 packages/externals/deps.py mirror --local consolidated-deps/pool \
+            --target "${{ matrix.target }}" --dest smoke-deps/pool
+          find smoke-deps/pool -mindepth 3 -maxdepth 3 ! -name sources ! -name manifest.json -exec rm -rf {} +
+
+          jobs="$(nproc 2>/dev/null || echo 2)"
+          docker run --rm -t \
+            -v "${GITHUB_WORKSPACE}:/wazuh-local-src:Z" \
+            -e BUILD_TARGET="${{ matrix.target }}" \
+            -e ARCHITECTURE_TARGET="${{ matrix.architecture }}" \
+            -e DEPS_DIR="/wazuh-local-src/smoke-deps" \
+            -e JOBS="${jobs}" \
+            -e SOURCES_ONLY="yes" \
+            -e DEBUG="yes" \
+            -e WAZUH_VERBOSE="yes" \
+            --entrypoint /bin/bash \
+            "${{ matrix.image }}:${BUILDER_TAG}" \
+            /wazuh-local-src/packages/externals/smoke_build.sh 2>&1 | tee "${log}"
+
+      - name: Check that nothing came precompiled
+        run: |
+          log="smoke-logs/smoke-sources-${{ matrix.target }}-${{ matrix.architecture }}.log"
+          # Only the dependency phase of smoke_build.sh counts: the product
+          # build after it consumes what that phase built.
+          phase="$(sed -n "/\[smoke\] building the dependencies of /,/\[smoke\] building '[^']*' from source/p" "${log}")"
+          if [ -z "${phase}" ]; then
+            echo "::error::no dependency phase in the log"
+            exit 1
+          fi
+          # src/external/CMakeLists.txt prints this when it finds a prebuilt
+          # archive instead of building the dependency.
+          if grep -nE 'Using precompiled' <<<"${phase}"; then
+            echo "::error::a dependency was consumed precompiled in a sources-only build"
+            exit 1
+          fi
+          echo "every dependency of src/external was compiled from its sources"
+
+      - name: Upload smoke sources log
+        if: always()
+        uses: ./.github/actions/upload_s3_artifact
+        with:
+          name: smoke-sources-${{ matrix.target }}-${{ matrix.architecture }}
+          path: smoke-logs/
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+
   publish:
     # Whoever approves the deps-publish environment reviews the whole diff of the
     # PR, this file included, at the SHA being published. Publishing is
     # idempotent per ref (publish_pool.sh), so runs queue instead of cancelling.
-    needs: [check, pool, smoke-build]
+    needs: [check, pool, smoke-build, smoke-sources]
     if: vars.DEPS_POOL_PUBLISH == 'true'
     runs-on: ubuntu-24.04
     environment: deps-publish
