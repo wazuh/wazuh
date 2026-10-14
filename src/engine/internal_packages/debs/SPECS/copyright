@@ -14,6 +14,8 @@ License:
 
     GNU Affero General Public License, version 3 or (at your option) any
     later version. See "/usr/share/doc/wazuh-internal-tools/LICENSE-engine".
+    The licenses of the bundled third-party Python packages are in
+    "/usr/share/doc/wazuh-internal-tools/THIRD-PARTY-NOTICES".
 
 The Debian packaging is:
 

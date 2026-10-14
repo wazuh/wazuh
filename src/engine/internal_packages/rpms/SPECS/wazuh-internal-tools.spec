@@ -244,6 +244,9 @@ rm -rf %{buildroot}
 install -d %{buildroot}%{wheelsd}
 cp -a dist/wheels/* %{buildroot}%{wheelsd}/ 2>/dev/null || :
 
+# 1b) Third-party notices of the bundled Python wheels
+python3 tools/third-party-notices/generate.py wheels dist/wheels -o THIRD-PARTY-NOTICES
+
 # 2) CLI wrappers under /usr/bin → run modules inside the venv
 install -d %{buildroot}%{_bindir}
 
@@ -435,7 +438,7 @@ exit 0
 # == FILES ============
 # =====================
 %files
-%license LICENSE-engine COPYING-engine
+%license LICENSE-engine COPYING-engine THIRD-PARTY-NOTICES
 %{_bindir}/engine-public
 %{_bindir}/engine-event-dumper
 %{_bindir}/engine-router
