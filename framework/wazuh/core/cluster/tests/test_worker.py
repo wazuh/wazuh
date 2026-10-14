@@ -1426,7 +1426,10 @@ def test_worker_handler_update_master_files_in_worker_excluded_files(os_remove_m
 
 @patch("wazuh.core.cluster.worker.safe_move")
 @patch("os.remove")
-def test_worker_handler_update_master_files_in_worker_allows_client_keys(os_remove_mock, safe_move_mock):
+@patch("wazuh.core.common.wazuh_uid", return_value="wazuh_uid")
+@patch("wazuh.core.common.wazuh_gid", return_value="wazuh_gid")
+def test_worker_handler_update_master_files_in_worker_allows_client_keys(wazuh_gid_mock, wazuh_uid_mock,
+                                                                         os_remove_mock, safe_move_mock):
     """Verify that a file declared in the item but not excluded, such as client.keys, is still synchronized."""
     worker_handler = get_worker_handler(MagicMock())
     sec_cluster_items = {
