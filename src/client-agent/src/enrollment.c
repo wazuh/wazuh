@@ -702,9 +702,10 @@ STATIC int w_enrollment_store_key_entry(const char *line) {
         return -1;
     }
 
-    /* The mode and the key go through the descriptor TempFile() returned, and the staged copy is
-     * installed with a bare rename: nothing is done to it by name but the rename, and a rename
-     * that fails is a failed store, never a copy into client.keys by name. */
+    /* The mode and the key go through the descriptor TempFile() returned, and nothing is done to
+     * the staged copy by name but the move: w_move_file_nofollow() renames it, or copies it into a
+     * client.keys that can't be renamed over, such as a single-file bind mount, without following
+     * a link at either name. */
     if (fchmod(fileno(file.fp), 0640) == -1) {
         merror(CHMOD_ERROR, file.name, errno, strerror(errno));
         fclose(file.fp);
@@ -723,7 +724,7 @@ STATIC int w_enrollment_store_key_entry(const char *line) {
         return -1;
     }
 
-    if (rename_ex(file.name, KEYS_FILE) != 0) {
+    if (w_move_file_nofollow(file.name, KEYS_FILE) != 0) {
         unlink(file.name);
         os_free(file.name);
         return -1;

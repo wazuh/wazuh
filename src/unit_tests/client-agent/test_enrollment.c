@@ -36,6 +36,7 @@ static char g_staged_name[PATH_MAX] = {0};
 static int g_staged_chmods = 0;
 static bool g_staged_disk_full = false;
 static bool g_fail_staged_rename = false;
+static bool g_busy_staged_rename = false;
 
 #define SWAP_TARGET "etc/swap-target"
 #define SWAP_TARGET_CONTENT "not client.keys\n"
@@ -71,11 +72,17 @@ int __wrap_chmod(const char *path, mode_t mode) {
     return __real_chmod(path, mode);
 }
 
-/* Makes the move of the staged copy fail, with a directory at its name, and points the
- * destination's name at SWAP_TARGET, which has to come through untouched. */
+/* Makes the move of the staged copy fail: with a directory at its name, pointing the destination's
+ * name at SWAP_TARGET, which has to come through untouched; or with EBUSY, as when client.keys is
+ * a single-file bind mount. */
 int __real_rename(const char *oldpath, const char *newpath);
 
 int __wrap_rename(const char *oldpath, const char *newpath) {
+    if (g_busy_staged_rename && strcmp(oldpath, g_staged_name) == 0) {
+        errno = EBUSY;
+        return -1;
+    }
+
     if (g_fail_staged_rename && strcmp(oldpath, g_staged_name) == 0) {
         g_fail_staged_rename = false;
         assert_int_equal(unlink(oldpath), 0);
@@ -97,6 +104,7 @@ static void reset_staged_hooks(void) {
     g_staged_chmods = 0;
     g_staged_disk_full = false;
     g_fail_staged_rename = false;
+    g_busy_staged_rename = false;
 }
 
 /* setup/teardown */
@@ -1097,9 +1105,10 @@ static void test_store_key_entry_sets_the_mode_through_the_descriptor(void **sta
     assert_string_equal(read_file_line(KEYS_FILE), STORED_KEY_LINE "\n");
 }
 
-/* A move that fails is a failed store. Nothing is copied into client.keys by name instead, so
- * whatever that name points at comes through untouched. */
-static void test_store_key_entry_never_copies_over_a_failed_move(void **state) {
+/* A staged copy that can be neither moved nor copied, here because its name no longer holds a
+ * regular file, is a failed store, and nothing goes through client.keys' name: whatever that name
+ * points at comes through untouched. */
+static void test_store_key_entry_never_writes_through_a_swapped_name(void **state) {
     (void)state;
 
     write_text_file(KEYS_FILE, PREVIOUS_KEY_LINE "\n");
@@ -1115,6 +1124,30 @@ static void test_store_key_entry_never_copies_over_a_failed_move(void **state) {
 
     assert_false(g_fail_staged_rename);
     assert_string_equal(read_file_line(SWAP_TARGET), SWAP_TARGET_CONTENT);
+}
+
+/* A client.keys that rename() can't replace, as when it is a single-file bind mount, still gets the
+ * key: copied into it, by a copy that never follows a link at either name. */
+static void test_store_key_entry_copies_into_a_client_keys_rename_cannot_replace(void **state) {
+    char content[128] = {0};
+    int held;
+    (void)state;
+
+    write_text_file(KEYS_FILE, PREVIOUS_KEY_LINE "\n");
+    /* The file a bind mount pins: the key has to land in it, not in one renamed over its name */
+    held = open(KEYS_FILE, O_RDONLY);
+    assert_int_not_equal(held, -1);
+    g_busy_staged_rename = true;
+
+    expect_any(__wrap__mdebug1, formatted_msg);
+
+    assert_int_equal(w_enrollment_store_key_entry(STORED_KEY_LINE), 0);
+
+    assert_true(pread(held, content, sizeof(content) - 1, 0) > 0);
+    close(held);
+    assert_string_equal(content, STORED_KEY_LINE "\n");
+    assert_string_equal(read_file_line(KEYS_FILE), STORED_KEY_LINE "\n");
+    assert_int_equal(IsFile(g_staged_name), -1);
 }
 
 #ifdef __linux__
@@ -1184,8 +1217,10 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_policy_treats_an_empty_password_file_as_no_credential, setup_200_test, teardown_200_test),
         cmocka_unit_test_setup_teardown(test_store_key_entry_sets_the_mode_through_the_descriptor, setup_200_test,
                                         teardown_200_test),
-        cmocka_unit_test_setup_teardown(test_store_key_entry_never_copies_over_a_failed_move, setup_200_test,
+        cmocka_unit_test_setup_teardown(test_store_key_entry_never_writes_through_a_swapped_name, setup_200_test,
                                         teardown_200_test),
+        cmocka_unit_test_setup_teardown(test_store_key_entry_copies_into_a_client_keys_rename_cannot_replace,
+                                        setup_200_test, teardown_200_test),
 #ifdef __linux__
         cmocka_unit_test_setup_teardown(test_store_key_entry_keeps_the_previous_key_when_the_write_fails,
                                         setup_200_test, teardown_200_test),
