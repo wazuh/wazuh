@@ -2379,6 +2379,11 @@ static void test_startup_result_first_time_applies_without_reload(void **state)
     /* Loosen the first log's exact-match: use expect_any since the raw JSON
      * body is long and not the point of this test. */
     expect_any(__wrap__mdebug1, formatted_msg); /* "https_client startup accepted: <json>" */
+    /* bridge_parse_limits() logs this first: "syscollector_containers" is optional, and
+     * FULL_LIMITS_JSON_FMT predates it, so every one of these handshakes takes the
+     * older-manager branch. */
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "Handshake carries no 'syscollector_containers' limits; container inventory stays unlimited.");
     expect_string(__wrap__mdebug1, formatted_msg, "https_client: module limits received from manager.");
     /* limits_received was false (fresh global): no changed-check, no reload. */
     expect_string(__wrap__mdebug1, formatted_msg, "https_client: cluster identity -> name='demo-cluster'.");
@@ -2406,12 +2411,16 @@ static void test_startup_result_limits_changed_reloads_under_auto_restart(void *
     start_client_successfully();
 
     expect_any(__wrap__mdebug1, formatted_msg);
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "Handshake carries no 'syscollector_containers' limits; container inventory stays unlimited.");
     expect_string(__wrap__mdebug1, formatted_msg, "https_client: module limits received from manager.");
     expect_string(__wrap__mdebug1, formatted_msg, "https_client: cluster identity -> name='demo-cluster'.");
     expect_string(__wrap__mdebug1, formatted_msg, "https_client: agent groups -> default,linux.");
     g_captured_callbacks.on_startup_result(true, body_v1, g_captured_callbacks.user_data); /* Establishes previous_limits. */
 
     expect_any(__wrap__mdebug1, formatted_msg);
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "Handshake carries no 'syscollector_containers' limits; container inventory stays unlimited.");
     expect_string(__wrap__mdebug1, formatted_msg, "https_client: module limits received from manager.");
     expect_string(__wrap__minfo, formatted_msg, "Agent is reloading due to module limits changes.");
     will_return(__wrap_reloadAgent, true);
@@ -2437,12 +2446,16 @@ static void test_startup_result_limits_changed_no_reload_without_auto_restart(vo
     start_client_successfully();
 
     expect_any(__wrap__mdebug1, formatted_msg);
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "Handshake carries no 'syscollector_containers' limits; container inventory stays unlimited.");
     expect_string(__wrap__mdebug1, formatted_msg, "https_client: module limits received from manager.");
     expect_string(__wrap__mdebug1, formatted_msg, "https_client: cluster identity -> name='demo-cluster'.");
     expect_string(__wrap__mdebug1, formatted_msg, "https_client: agent groups -> default,linux.");
     g_captured_callbacks.on_startup_result(true, body_v1, g_captured_callbacks.user_data);
 
     expect_any(__wrap__mdebug1, formatted_msg);
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "Handshake carries no 'syscollector_containers' limits; container inventory stays unlimited.");
     expect_string(__wrap__mdebug1, formatted_msg, "https_client: module limits received from manager.");
     expect_string(__wrap__mdebug1, formatted_msg, "Module limits have been updated.");
     /* No reloadAgent expectation: must not be reached. */
@@ -2464,6 +2477,8 @@ static void test_startup_result_limits_unchanged_no_reload(void **state)
     start_client_successfully();
 
     expect_any(__wrap__mdebug1, formatted_msg);
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "Handshake carries no 'syscollector_containers' limits; container inventory stays unlimited.");
     expect_string(__wrap__mdebug1, formatted_msg, "https_client: module limits received from manager.");
     expect_string(__wrap__mdebug1, formatted_msg, "https_client: cluster identity -> name='demo-cluster'.");
     expect_string(__wrap__mdebug1, formatted_msg, "https_client: agent groups -> default,linux.");
@@ -2471,6 +2486,8 @@ static void test_startup_result_limits_unchanged_no_reload(void **state)
 
     /* Same body again: module_limits_changed() must see no difference. */
     expect_any(__wrap__mdebug1, formatted_msg);
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "Handshake carries no 'syscollector_containers' limits; container inventory stays unlimited.");
     expect_string(__wrap__mdebug1, formatted_msg, "https_client: module limits received from manager.");
     /* No reload/"updated" log: unchanged skips the whole changed-branch. */
     expect_string(__wrap__mdebug1, formatted_msg, "https_client: cluster identity -> name='demo-cluster'.");
