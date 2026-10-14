@@ -456,30 +456,26 @@ STATIC bool w_macos_log_ndjson_to_syslog(char * buffer, int length, bool is_show
     const char * subsystem = cJSON_GetStringValue(cJSON_GetObjectItem(event, "subsystem"));
     const char * category = cJSON_GetStringValue(cJSON_GetObjectItem(event, "category"));
     cJSON * pid = cJSON_GetObjectItem(event, "processID");
-    char sender_str[OS_SIZE_256] = "";
-    char subsystem_str[OS_SIZE_512] = "";
     char activity_str[OS_SIZE_128] = "";
+    const char * slash;
 
     if (timestamp == NULL || message == NULL || type == NULL || !cJSON_IsNumber(pid)) {
         cJSON_Delete(event);
         return false;
     }
 
-    process = (process == NULL) ? "" : (strrchr(process, '/') ? strrchr(process, '/') + 1 : process);
-    sender = (sender == NULL) ? "" : (strrchr(sender, '/') ? strrchr(sender, '/') + 1 : sender);
+    process = (process == NULL) ? "" : ((slash = strrchr(process, '/')) ? slash + 1 : process);
+    sender = (sender == NULL) ? "" : ((slash = strrchr(sender, '/')) ? slash + 1 : sender);
+    category = (category == NULL) ? "" : category;
 
-    /* Same layout as `--style syslog`: "(sender) [subsystem:category] message" */
-    if (*sender != '\0' && strcmp(sender, process) != 0) {
-        snprintf(sender_str, sizeof(sender_str), "(%s) ", sender);
-    }
-    if (subsystem != NULL && *subsystem != '\0') {
-        snprintf(subsystem_str, sizeof(subsystem_str), "[%s:%s] ", subsystem, category ? category : "");
-    }
+    const bool has_sender = *sender != '\0' && strcmp(sender, process) != 0;
+    const bool has_subsystem = subsystem != NULL && *subsystem != '\0';
+
     if (strcmp(type, "activityCreateEvent") == 0) {
-        unsigned long long id =
-            (unsigned long long) cJSON_GetNumberValue(cJSON_GetObjectItem(event, "activityIdentifier"));
-        unsigned long long parent =
-            (unsigned long long) cJSON_GetNumberValue(cJSON_GetObjectItem(event, "parentActivityIdentifier"));
+        cJSON * id_item = cJSON_GetObjectItem(event, "activityIdentifier");
+        cJSON * parent_item = cJSON_GetObjectItem(event, "parentActivityIdentifier");
+        unsigned long long id = cJSON_IsNumber(id_item) ? (unsigned long long) id_item->valuedouble : 0;
+        unsigned long long parent = cJSON_IsNumber(parent_item) ? (unsigned long long) parent_item->valuedouble : 0;
 
         if (is_show && parent != 0) {
             /* `log show` prints the parent with its top bit set, `log stream` omits it */
@@ -493,8 +489,11 @@ STATIC bool w_macos_log_ndjson_to_syslog(char * buffer, int length, bool is_show
         snprintf(activity_str, sizeof(activity_str), " statedump:\n");
     }
 
-    snprintf(buffer, length, "%s  localhost %s[%d]: %s%s%s%s", timestamp, process, pid->valueint, sender_str,
-             subsystem_str, activity_str, message);
+    /* Same layout as `--style syslog`: "(sender) [subsystem:category] message" */
+    snprintf(buffer, length, "%s  localhost %s[%d]: %s%s%s%s%s%s%s%s%s%s", timestamp, process, pid->valueint,
+             has_sender ? "(" : "", has_sender ? sender : "", has_sender ? ") " : "",
+             has_subsystem ? "[" : "", has_subsystem ? subsystem : "", has_subsystem ? ":" : "",
+             has_subsystem ? category : "", has_subsystem ? "] " : "", activity_str, message);
 
     cJSON_Delete(event);
     return true;

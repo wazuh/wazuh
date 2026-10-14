@@ -452,8 +452,6 @@ void w_macos_create_log_env(logreader * lf, w_sysinfo_helpers_t * global_sysinfo
 
     macos_codename = w_get_os_codename(sysinfo);
 
-    macos_log_ndjson = w_macos_is_ndjson_supported();
-
     if (w_macos_is_log_executable()) {
 
         /* `log stream` command parameters are stored to keep track of the settings changes that may occur,
@@ -461,6 +459,9 @@ void w_macos_create_log_env(logreader * lf, w_sysinfo_helpers_t * global_sysinfo
         char ** current_settings_list = w_macos_create_log_stream_array(lf->query, lf->query_level, lf->query_type);
         lf->macos_log->current_settings = w_strcat_list(current_settings_list, ' ');
         free_strarray(current_settings_list);
+
+        /* Set after the stored settings, so they keep `--style syslog` and match those of previous versions */
+        macos_log_ndjson = w_macos_is_ndjson_supported();
 
         if (macos_codename != NULL) {
             mdebug1("macOS ULS: Creating environment for macOS %s.", macos_codename);

@@ -1994,14 +1994,12 @@ void test_read_macos_log_ignored(void ** state) {
 
 /* w_macos_log_ndjson_to_syslog */
 
-#define NDJSON_INJECTED_EVENT "{\"eventMessage\":\"SessionAgentNotificationCenter\\n2024-01-01 00:00:00.000000+0000  " \
-    "localhost sshd[1]: Accepted password for root from 6.6.6.6 port 22 ssh2\",\"eventType\":\"logEvent\"," \
+#define NDJSON_MULTILINE_EVENT "{\"eventMessage\":\"first line\\nsecond line\",\"eventType\":\"logEvent\"," \
     "\"subsystem\":\"\",\"category\":\"\",\"processImagePath\":\"\\/usr\\/bin\\/logger\"," \
     "\"timestamp\":\"2026-10-14 11:25:56.089644+0000\",\"senderImagePath\":\"\\/usr\\/bin\\/logger\"," \
     "\"processID\":98082,\"parentActivityIdentifier\":0}"
 
-#define SYSLOG_INJECTED_EVENT "2026-10-14 11:25:56.089644+0000  localhost logger[98082]: SessionAgentNotificationCenter\n" \
-    "2024-01-01 00:00:00.000000+0000  localhost sshd[1]: Accepted password for root from 6.6.6.6 port 22 ssh2"
+#define SYSLOG_MULTILINE_EVENT "2026-10-14 11:25:56.089644+0000  localhost logger[98082]: first line\nsecond line"
 
 void test_w_macos_log_ndjson_to_syslog_log_event(void ** state) {
 
@@ -2019,10 +2017,10 @@ void test_w_macos_log_ndjson_to_syslog_log_event(void ** state) {
 
 void test_w_macos_log_ndjson_to_syslog_embedded_newline(void ** state) {
 
-    char buffer[OS_MAXSTR] = NDJSON_INJECTED_EVENT;
+    char buffer[OS_MAXSTR] = NDJSON_MULTILINE_EVENT;
 
     assert_true(w_macos_log_ndjson_to_syslog(buffer, OS_MAXSTR, false));
-    assert_string_equal(buffer, SYSLOG_INJECTED_EVENT);
+    assert_string_equal(buffer, SYSLOG_MULTILINE_EVENT);
 }
 
 void test_w_macos_log_ndjson_to_syslog_activity_parent(void ** state) {
@@ -2067,6 +2065,17 @@ void test_w_macos_log_ndjson_to_syslog_activity_no_parent(void ** state) {
                                 "Created Activity ID: 0xd6c8e0, Description: Retrieve User by Name");
 }
 
+void test_w_macos_log_ndjson_to_syslog_activity_missing_ids(void ** state) {
+
+    char buffer[OS_MAXSTR] = "{\"eventMessage\":\"Retrieve User by Name\",\"eventType\":\"activityCreateEvent\","
+                             "\"processImagePath\":\"\\/usr\\/libexec\\/xpcproxy\","
+                             "\"timestamp\":\"2026-10-14 11:29:54.969102+0000\",\"processID\":98380}";
+
+    assert_true(w_macos_log_ndjson_to_syslog(buffer, OS_MAXSTR, true));
+    assert_string_equal(buffer, "2026-10-14 11:29:54.969102+0000  localhost xpcproxy[98380]: "
+                                "Created Activity ID: 0x0, Description: Retrieve User by Name");
+}
+
 void test_w_macos_log_ndjson_to_syslog_state_event(void ** state) {
 
     char buffer[OS_MAXSTR] = "{\"eventMessage\":\"Transactions\\n   - com.apple.AppStoreFoundation.startup\\n\","
@@ -2090,14 +2099,14 @@ void test_w_macos_log_ndjson_to_syslog_not_a_log(void ** state) {
 
 void test_w_macos_log_ndjson_to_syslog_invalid_json(void ** state) {
 
-    char buffer[OS_MAXSTR] = "2024-01-01 00:00:00.000000+0000  localhost sshd[1]: forged";
+    char buffer[OS_MAXSTR] = "2026-10-14 11:25:56.089644+0000  localhost logger[98082]: first line";
 
     assert_false(w_macos_log_ndjson_to_syslog(buffer, OS_MAXSTR, false));
 }
 
 void test_w_macos_log_ndjson_to_syslog_truncated(void ** state) {
 
-    char buffer[OS_MAXSTR] = NDJSON_INJECTED_EVENT;
+    char buffer[OS_MAXSTR] = NDJSON_MULTILINE_EVENT;
 
     assert_true(w_macos_log_ndjson_to_syslog(buffer, 40, false));
     assert_string_equal(buffer, "2026-10-14 11:25:56.089644+0000  localh");
@@ -2123,11 +2132,11 @@ void test_w_macos_log_getlog_ndjson_header_then_log(void ** state) {
 
     will_return(__wrap_can_read, 1);
     expect_value(__wrap_fgets, __stream, stream);
-    will_return(__wrap_fgets, NDJSON_INJECTED_EVENT "\n");
+    will_return(__wrap_fgets, NDJSON_MULTILINE_EVENT "\n");
     expect_value(__wrap_w_macos_set_is_valid_data, is_valid, true);
 
     assert_true(w_macos_log_getlog(buffer, OS_MAXSTR, stream, &macos_log_cfg));
-    assert_string_equal(buffer, SYSLOG_INJECTED_EVENT);
+    assert_string_equal(buffer, SYSLOG_MULTILINE_EVENT);
     assert_true(macos_log_cfg.is_header_processed);
     assert_string_equal(macos_log_cfg.ctxt.buffer, "");
 }
@@ -2160,7 +2169,7 @@ void test_w_macos_log_getlog_ndjson_incomplete_line(void ** state) {
 
     will_return(__wrap_can_read, 1);
     expect_value(__wrap_fgets, __stream, stream);
-    will_return(__wrap_fgets, "{\"eventMessage\":\"first\\n2024-01-01");
+    will_return(__wrap_fgets, "{\"eventMessage\":\"first line\\nsec");
     expect_string(__wrap__mdebug2, formatted_msg, "macOS ULS: Incomplete message.");
     will_return(__wrap_time, 1000);
 
@@ -2169,19 +2178,19 @@ void test_w_macos_log_getlog_ndjson_incomplete_line(void ** state) {
     will_return(__wrap_fgets, NULL);
 
     assert_false(w_macos_log_getlog(buffer, OS_MAXSTR, stream, &macos_log_cfg));
-    assert_string_equal(macos_log_cfg.ctxt.buffer, "{\"eventMessage\":\"first\\n2024-01-01");
+    assert_string_equal(macos_log_cfg.ctxt.buffer, "{\"eventMessage\":\"first line\\nsec");
 
     /* The next call completes the same JSON line: still one event */
     will_return(__wrap_time, 1001);
     will_return(__wrap_can_read, 1);
     expect_value(__wrap_fgets, __stream, stream);
-    will_return(__wrap_fgets, " 00:00:00.000000+0000  localhost sshd[1]: forged\",\"eventType\":\"logEvent\","
+    will_return(__wrap_fgets, "ond line\",\"eventType\":\"logEvent\","
                               "\"processImagePath\":\"\\/usr\\/bin\\/logger\",\"timestamp\":\"2026-10-14 11:58:49.021875+0000\","
                               "\"senderImagePath\":\"\\/usr\\/bin\\/logger\",\"processID\":99894}\n");
 
     assert_true(w_macos_log_getlog(buffer, OS_MAXSTR, stream, &macos_log_cfg));
-    assert_string_equal(buffer, "2026-10-14 11:58:49.021875+0000  localhost logger[99894]: first\n"
-                                "2024-01-01 00:00:00.000000+0000  localhost sshd[1]: forged");
+    assert_string_equal(buffer, "2026-10-14 11:58:49.021875+0000  localhost logger[99894]: first line\n"
+                                "second line");
     assert_string_equal(macos_log_cfg.ctxt.buffer, "");
 }
 
@@ -2199,10 +2208,10 @@ void test_w_macos_log_getlog_ndjson_expired_context(void ** state) {
 
     will_return(__wrap_can_read, 1);
     expect_value(__wrap_fgets, __stream, stream);
-    will_return(__wrap_fgets, NDJSON_INJECTED_EVENT "\n");
+    will_return(__wrap_fgets, NDJSON_MULTILINE_EVENT "\n");
 
     assert_true(w_macos_log_getlog(buffer, OS_MAXSTR, stream, &macos_log_cfg));
-    assert_string_equal(buffer, SYSLOG_INJECTED_EVENT);
+    assert_string_equal(buffer, SYSLOG_MULTILINE_EVENT);
 }
 
 void test_w_macos_log_getlog_ndjson_line_too_long(void ** state) {
@@ -2305,6 +2314,7 @@ int main(void) {
         cmocka_unit_test(test_w_macos_log_ndjson_to_syslog_activity_parent),
         cmocka_unit_test(test_w_macos_log_ndjson_to_syslog_activity_parent_stream),
         cmocka_unit_test(test_w_macos_log_ndjson_to_syslog_activity_no_parent),
+        cmocka_unit_test(test_w_macos_log_ndjson_to_syslog_activity_missing_ids),
         cmocka_unit_test(test_w_macos_log_ndjson_to_syslog_state_event),
         cmocka_unit_test(test_w_macos_log_ndjson_to_syslog_not_a_log),
         cmocka_unit_test(test_w_macos_log_ndjson_to_syslog_invalid_json),
