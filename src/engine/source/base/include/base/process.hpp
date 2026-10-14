@@ -10,6 +10,10 @@
 #include <stdexcept>
 #include <string>
 
+#include <grp.h>
+#include <pwd.h>
+#include <sys/types.h>
+
 #include <fmt/format.h>
 
 #include <base/error.hpp>
@@ -22,12 +26,17 @@ constexpr auto WAZUH_USER = "wazuh-manager";  ///< User the engine drops to in m
 constexpr auto WAZUH_GROUP = "wazuh-manager"; ///< Group the engine drops to in manager-integrated mode
 
 /**
- * @brief Transforms the current process into a daemon (double fork + detach).
+ * @brief Transforms the current process into a daemon.
+ *
+ * fork (the parent exits with _exit), setsid, fork again (the first child exits with _exit), umask(027) and
+ * stdin, stdout and stderr redirected to /dev/null.
+ *
+ * @throws std::runtime_error if any step fails.
  */
 void goDaemon();
 
 /**
- * @brief Creates a PID file for the specified service name.
+ * @brief Creates (or truncates) the PID file <path>/<name>-<pid>.pid with mode 0640 and content "<pid>\n".
  *
  * @param path Directory where the PID file will be written.
  * @param name Service name (used in filename).
@@ -37,95 +46,68 @@ void goDaemon();
 OptError createPID(const std::string& path, const std::string& name, int pid);
 
 /**
- * @brief Thread-safe wrapper for retrieving user account information by username.
+ * @brief Reentrant user lookup with the getpwnam_r(3) contract (injectable for tests).
  *
- * This function provides a simplified interface to getpwnam_r() by handling the
- * result parameter internally and setting errno appropriately on failure.
- *
- * @param name The username to look up in the password database
- * @param pwd Pointer to a passwd structure to store the result
- * @param buf Buffer to store string fields of the passwd structure
- * @param buflen Size of the buffer in bytes
- *
- * @return Pointer to the passwd structure on success, NULL on failure.
- *         On failure, errno is set to indicate the error condition.
- *
- * @note The caller must provide a sufficiently large buffer to store all
- *       string fields. If the buffer is too small, the function will fail
- *       and errno will be set to ERANGE.
- *
- * @warning This function modifies errno on failure. Check errno to determine
- *          the specific error condition when NULL is returned.
+ * Returns 0 and sets *found to entry (or to nullptr when the name does not exist), or an errno-style code
+ * (ERANGE: buffer too small).
  */
-struct passwd* getpwnam(const char* name, struct passwd* pwd, char* buf, size_t buflen);
+using UserLookup =
+    std::function<int(const char* name, struct passwd* entry, char* buf, size_t len, struct passwd** found)>;
 
 /**
- * @brief Thread-safe wrapper for retrieving group information by name.
+ * @brief Reentrant group lookup with the getgrnam_r(3) contract (injectable for tests).
  *
- * This function provides a simplified interface to getgrnam_r() by handling
- * the result pointer internally and setting errno appropriately on failure.
- *
- * @param name The name of the group to look up
- * @param grp Pointer to a group structure to store the result
- * @param buf Buffer to store string data referenced by the group structure
- * @param buflen Size of the buffer in bytes
- *
- * @return Pointer to the group structure on success, NULL on failure.
- *         On failure, errno is set to indicate the error.
- *
- * @note This function is thread-safe and reentrant.
- * @note The caller must provide a sufficiently large buffer to hold all
- *       string data associated with the group entry.
+ * Returns 0 and sets *found to entry (or to nullptr when the name does not exist), or an errno-style code
+ * (ERANGE: buffer too small).
  */
-struct group* getgrnam(const char* name, struct group* grp, char* buf, int buflen);
+using GroupLookup =
+    std::function<int(const char* name, struct group* entry, char* buf, size_t len, struct group** found)>;
 
 /**
- * @brief Lookup a group’s GID by group name.
- *        Automatically grows the buffer on ERANGE.
- * @param groupname  The name of the group to look up.
- * @return GID if found.
- * @throws std::runtime_error if the group is not found or on other errors.
+ * @brief Resolves a user name to its UID.
+ *
+ * The buffer starts at sysconf(_SC_GETPW_R_SIZE_MAX) (1024 when undefined) and doubles on every ERANGE returned
+ * by the lookup, up to 65536 bytes. Only the return code is inspected, never errno.
+ *
+ * @param name User name.
+ * @param lookup Lookup function (getpwnam_r in production).
+ * @return uid_t The user ID.
+ * @throws std::runtime_error if the user does not exist, the lookup fails or the entry exceeds 65536 bytes.
  */
-gid_t privSepGetGroup(const std::string& groupname);
+uid_t lookupUid(const std::string& name, const UserLookup& lookup = ::getpwnam_r);
 
 /**
- * @brief Sets the group ID and supplementary groups for privilege separation.
+ * @brief Resolves a group name to its GID.
  *
- * This function performs privilege separation by setting the process group ID
- * and clearing supplementary groups, leaving only the specified group.
+ * The buffer starts at sysconf(_SC_GETGR_R_SIZE_MAX) (1024 when undefined) and doubles on every ERANGE returned
+ * by the lookup, up to 65536 bytes. Only the return code is inspected, never errno.
  *
- * @param gid The group ID to set for the current process
- *
- * @throws std::runtime_error if any system call fails, with a descriptive error message.
- * @warning This function modifies the process's group IDs and should be used with caution.
- *          It is typically called in a privileged context before dropping privileges.
+ * @param name Group name.
+ * @param lookup Lookup function (getgrnam_r in production).
+ * @return gid_t The group ID.
+ * @throws std::runtime_error if the group does not exist, the lookup fails or the entry exceeds 65536 bytes.
  */
-void privSepSetGroup(gid_t gid);
+gid_t lookupGid(const std::string& name, const GroupLookup& lookup = ::getgrnam_r);
 
 /**
- * @brief Lookup a user’s UID by username.
- *        Automatically grows the buffer on ERANGE.
- * @param username  The name of the user to look up.
- * @return UID if found.
- * @throws std::runtime_error if the user is not found or on other errors.
+ * @brief Makes gid the only group of the process: setgroups(1, &gid), then setgid(gid).
+ *
+ * Must run before dropToUser(): once the process is no longer root, the group cannot be changed.
+ *
+ * @param gid Group ID.
+ * @throws std::runtime_error if a system call fails.
  */
-uid_t privSepGetUser(const std::string& username);
+void dropToGroup(gid_t gid);
 
 /**
- * @brief Sets the user ID of the current process for privilege separation.
+ * @brief Sets the real and effective user IDs: setuid(uid), then seteuid(uid).
  *
- * This function drops user privileges by setting both the real and effective
- * user IDs to the given value. It must be called after privSepSetGroup(),
- * since changing the group is no longer permitted once the process is not
- * running as root.
+ * Irreversible when leaving root. Call it after dropToGroup().
  *
- * @param uid The user ID to set for the current process
- *
- * @throws std::runtime_error if any system call fails, with a descriptive error message.
- * @warning This operation is irreversible: once the process drops to an
- *          unprivileged user it cannot regain root privileges.
+ * @param uid User ID.
+ * @throws std::runtime_error if a system call fails.
  */
-void privSepSetUser(uid_t uid);
+void dropToUser(uid_t uid);
 
 /**
  * @brief Resolves the manager home directory.

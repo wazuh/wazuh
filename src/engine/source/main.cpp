@@ -296,11 +296,11 @@ int main(int argc, char* argv[])
         // is not permitted anymore.
         if (!base::process::isStandaloneModeEnable() && confManager.get<bool>(conf::key::DROP_PRIVILEGES))
         {
-            const auto gid = base::process::privSepGetGroup(base::process::WAZUH_GROUP);
-            base::process::privSepSetGroup(gid);
+            const auto gid = base::process::lookupGid(base::process::WAZUH_GROUP);
+            base::process::dropToGroup(gid);
 
-            const auto uid = base::process::privSepGetUser(base::process::WAZUH_USER);
-            base::process::privSepSetUser(uid);
+            const auto uid = base::process::lookupUid(base::process::WAZUH_USER);
+            base::process::dropToUser(uid);
         }
 
         // Set new log level if it is different from the default
