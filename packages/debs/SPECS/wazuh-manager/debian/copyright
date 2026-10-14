@@ -20,7 +20,8 @@ License:
     See "/usr/share/doc/wazuh-manager/LICENSE-engine".
 
     The shared libraries built from src/shared_modules/utils, manager_config,
-    keystore and indexer_connector are dual-licensed under the GNU General
+    keystore, indexer_connector and http-request (git submodule
+    wazuh/wazuh-http-request) are dual-licensed under the GNU General
     Public License version 2 or the GNU Affero General Public License,
     version 3 or (at your option) any later version.
 
