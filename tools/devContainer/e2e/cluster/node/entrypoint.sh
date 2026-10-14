@@ -16,12 +16,18 @@ CLUSTER_NAME="${CLUSTER_NAME:-wazuh}"
 MASTER_ADDR="${MASTER_ADDR:-host.docker.internal}"
 INDEXER_HOST="${INDEXER_HOST:-wazuh-indexer}"
 INDEXER_PORT="${INDEXER_PORT:-9200}"
-# OBSOLETE default: admin/admin no longer authenticates against the main e2e stack
-# (its credentials are generated into ../../.credentials.env). The cluster overlay was
-# not migrated; pass INDEXER_USER/INDEXER_PASSWORD explicitly when the indexer needs them.
-INDEXER_USER="${INDEXER_USER:-admin}"
-INDEXER_PASSWORD="${INDEXER_PASSWORD:-admin}"
-: "${CLUSTER_KEY:?CLUSTER_KEY is required and must match the master}"
+# The indexer user the e2e indexer provisions for the managers (its password is
+# WAZUH_INDEXER_MANAGER_PASSWORD in e2e/.credentials.env).
+INDEXER_USER="${INDEXER_USER:-wazuh-manager}"
+# The two secrets arrive as files (compose secrets:, mounted under /run/secrets),
+# never through the environment, so docker inspect and docker compose config show
+# only their paths. cluster.sh writes them.
+CLUSTER_KEY_FILE="${CLUSTER_KEY_FILE:-/run/secrets/cluster_key}"
+INDEXER_PASSWORD_FILE="${INDEXER_PASSWORD_FILE:-/run/secrets/indexer_password}"
+for f in "$CLUSTER_KEY_FILE" "$INDEXER_PASSWORD_FILE"; do
+  [[ -s $f ]] || { echo "ERROR: secret file $f is missing or empty (bring the workers up with cluster/cluster.sh up)" >&2; exit 1; }
+done
+CLUSTER_KEY="$(tr -d '\r\n' < "$CLUSTER_KEY_FILE")"
 
 # The runtime user comes from the package or, in source mode, from the image
 # build, which creates it with the host's numeric ids before extracting the tree
@@ -67,7 +73,9 @@ install -o wazuh-manager -g wazuh-manager -m 640 "$CERT_SRC/${NODE_CERT}-remoted
 
 # Indexer credentials live in the manager keystore, not in the config file.
 "$BIN/wazuh-manager-keystore" -f indexer -k username -v "$INDEXER_USER"
-printf '%s' "$INDEXER_PASSWORD" | "$BIN/wazuh-manager-keystore" -f indexer -k password
+# The password goes from the secret file to the keystore through stdin: it is never
+# an argument (ps) nor an environment variable.
+tr -d '\r\n' < "$INDEXER_PASSWORD_FILE" | "$BIN/wazuh-manager-keystore" -f indexer -k password
 # The keystore tool runs as root here: hand what it wrote back to the runtime
 # user, as on an installed manager.
 chown -R wazuh-manager:wazuh-manager queue/keystore

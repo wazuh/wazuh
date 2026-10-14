@@ -124,10 +124,10 @@
 
 /* Fallback when remote.https.ca_certificate is unset. The C side leaves it NULL in that case --
  * the default is applied by the C++ module (httpServerConfig.cpp, DEFAULT_CA_CERTIFICATE_PATH), so
- * this poller has to apply the same one rather than read a NULL. Keep the two in sync: they must
- * name the same file, or an agent bootstrapped by upgrade and one bootstrapped from GET /cacerts
- * would end up trusting different anchors. */
-#define LEGACY_TASK_CA_DEFAULT_PATH "etc/certs/root-ca.pem"
+ * this poller has to apply the same one rather than read a NULL. Both come from remoted_module.h:
+ * they must name the same file, or an agent bootstrapped by upgrade and one bootstrapped from
+ * GET /cacerts would end up trusting different anchors. */
+#define LEGACY_TASK_CA_DEFAULT_PATH REMOTED_MODULE_DEFAULT_CA_CERTIFICATE_PATH
 
 /* Bound on how large a file this poller will read and push as a CA. A root CA PEM is 1-2 KiB and a
  * bundle of a handful still fits easily; anything at this size is not a CA file and is far more

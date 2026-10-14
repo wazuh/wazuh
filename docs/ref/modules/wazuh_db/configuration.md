@@ -180,6 +180,8 @@ These examples show only the `<wdb>` section; a real `wazuh-manager.conf` also c
 | MITRE database | `/var/wazuh-manager/var/db/mitre.db` |
 | Backups | `/var/wazuh-manager/backup/db/` |
 
+SQLite's temporary files (large sorts, `VACUUM`) go to the installation directory's `tmp/` (`/var/wazuh-manager/tmp`): `wazuh-manager-db` sets `SQLITE_TMPDIR` to it at startup. `wazuh-manager-control start` empties that directory before starting the daemons.
+
 ---
 
 ## Backup Management

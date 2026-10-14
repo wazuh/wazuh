@@ -29,6 +29,7 @@
 #include "auth/keystore.hpp"
 #include "auth/passwordKeySource.hpp"
 #include "auth/tokenKeySource.hpp"
+#include "common/installPaths.hpp"
 #include "common/requestOutcomeMetrics.hpp"
 #include "common/vdClient.hpp"
 #include "control/agentRegistry.hpp"
@@ -137,7 +138,7 @@ constexpr int REMOTED_MODULE_DEFAULT_MAX_DEFERRED {128};
 constexpr int REMOTED_MODULE_DEFAULT_MAX_REQUESTS_PER_AGENT {6};
 
 // Fixed path of the module's LOCAL admin socket (GET / + GET /metrics + GET /status + GET /tls). RELATIVE on
-// purpose: remoted chroot()s into the install dir, so the bind lands at $WAZUH_HOME/queue/sockets/.
+// purpose: remoted's cwd is the installation directory, so the bind lands at $WAZUH_HOME/queue/sockets/.
 // Named "-admin" (not "-http"/"-stats"): remoted's HTTP identity is the public listener, this is
 // a management plane, and it must not collide with remcom's legacy "queue/sockets/remote.sock". No
 // config knob -- internal options only carry ints, the same criterion that fixed inventory
@@ -830,7 +831,7 @@ private:
         // lane that never occupies a server thread), not by socket separation.
         m_scanVdHandler = std::make_unique<remoted::scanvd::ScanVdHandlerImpl>(vdClient,
                                                                                m_scanVdMetrics,
-                                                                               "/queue/sockets/vd-http.sock",
+                                                                               remoted::paths::kVdSocket,
                                                                                m_config.vd_scan_read_timeout_sec,
                                                                                m_config.vd_scan_write_timeout_sec);
 

@@ -167,8 +167,8 @@ all connections would serialize (this comment is load-bearing; see `Session` in 
   PIC; your `.so` must define its own `Log::GLOBAL_LOG_FUNCTION` (every module already does).
 - **Identity**: fill `logTag`, `serverName`, `serverHeader` and — if your capacity knobs are
   internal options — the two hint fields, so diagnostics name YOUR module and YOUR options.
-- **Socket path**: no default; empty makes `start()` throw. Use a relative path (daemons
-  `chdir()`/`chroot()` into the install dir).
+- **Socket path**: no default; empty makes `start()` throw. Use a relative path (relative to
+  the installation directory, which is the working directory of remoted and modulesd).
 - **Handlers never block** (RNF-5): enqueue to your executor, reply via the responder. The
   request `shared_ptr` carries the byte reservation — keep it alive exactly as long as you
   need the payload, drop it before replying if you are done with the bytes.

@@ -252,7 +252,8 @@ Path to the TLS certificate chain (PEM) presented by the server.
   `wazuh-manager:wazuh-manager 640` before the first start. Missing: `wazuh-manager-control start`
   refuses with `(1244): Invalid configuration at '/remote/https/certificate': file not found: …`.
   Present but unreadable by the service user: `wazuh-manager-remoted` exits with
-  `Cannot start the HTTPS agent listener: …`.
+  `Cannot start the HTTPS agent listener: …`. The same message names the CA certificate
+  (`remote.https.ca`) when `verification_mode` is `certificate` or `full` and that file is missing or unreadable.
 - **Note:** at startup the manager warns if this certificate has expired or expires within 30 days,
   so a silent outage for verifying agents can be prevented before it happens.
 
@@ -303,8 +304,10 @@ A file it cannot parse to the end is refused whole rather than served up to its 
   `ca_certificate` is what agents use to verify the manager. An empty value is rejected at startup
   (`(1244): Invalid configuration at '/remote/https/ca_certificate': does not satisfy 'minLength'`).
   A missing file stops `wazuh-manager-control start` like a missing certificate
-  (`(1244) … '/remote/https/ca_certificate': file not found`); if it disappears while remoted is
-  running, `GET /cacerts` answers 404. Replacing it needs no restart — the manager notices a change in the file's content
+  (`(1244) … '/remote/https/ca_certificate': file not found`); a file the `wazuh-manager` user
+  cannot read stops `wazuh-manager-remoted` at startup (`Cannot start the HTTPS agent listener: the
+  CA certificate '…' that remoted publishes on /cacerts for agent enrollment is missing or unreadable
+  by the service user. …`); if it disappears while remoted is running, `GET /cacerts` answers 404. Replacing it needs no restart — the manager notices a change in the file's content
   (not its timestamp or size) and revalidates it in the very request that reads it.
 
 ### https.verification_mode

@@ -17,11 +17,12 @@ ENV_FILE="${SCRIPT_DIR}/.env"
 test -f "$CONF" || { echo "ERROR: manager config not found at $CONF" >&2; exit 1; }
 
 # Settings the master and the workers must share (cluster key and name) have one
-# source of truth, cluster/.env, which compose reads with --env-file. An exported
-# value replaces the stored one (compose gives the exported variable precedence
-# over the env file, so the master must use it too); otherwise the stored value is
-# reused; otherwise <default> is stored. The file is written 0600 (it holds the
-# key). cluster/init.sh and setup-master.sh resolve them with this same function.
+# source of truth, cluster/.env, which cluster.sh reads to start the workers (the
+# key as a secret file, never through the container's environment). An exported
+# value replaces the stored one (cluster.sh gives it the same precedence, so the
+# master must use it too); otherwise the stored value is reused; otherwise
+# <default> is stored. The file is written 0600 (it holds the key).
+# cluster/init.sh and setup-master.sh resolve them with this same function.
 function resolve_cluster_setting() {  # resolve_cluster_setting <env file> <VAR> <default>  → REPLY
   local env_file="$1" var="$2" default="$3" stored=""
   [[ -f "$env_file" ]] && stored="$(grep -m1 "^${var}=" "$env_file" | cut -d= -f2-)" || true
@@ -100,4 +101,4 @@ if ! grep -q '^wazuh-manager-clusterd is running' <<<"$STATUS"; then
   echo "       The previous config is in ${CONF}.bak." >&2
   exit 1
 fi
-echo "==> Done. Bring up workers with docker compose (see README)."
+echo "==> Done. Bring up the workers with ./cluster/cluster.sh up (see README)."

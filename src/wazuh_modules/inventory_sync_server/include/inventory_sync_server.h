@@ -66,8 +66,8 @@ extern "C"
 
         /* ---- Transport: the listening socket ---- */
         /**
-         * UDS path to listen on, RELATIVE to the install dir (modulesd chdir()s there and remoted
-         * chroot()s into it, so a relative path is the only form both resolve identically).
+         * UDS path to listen on, RELATIVE to the installation directory, which is the working
+         * directory of remoted and modulesd, so both resolve it identically.
          *
          * NOT CONFIGURABLE, and modulesd always leaves it empty: internal options can only carry
          * ints, so there is no mechanism to set a path. The field stays because it is how a test --

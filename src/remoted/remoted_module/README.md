@@ -325,10 +325,11 @@ src/http_server/
        `certificate_path`/`private_key_path` are file paths (not PEM content) opened by the
        module itself, after `remoted` has already dropped root privileges (`Privsep_SetUser()`)
        -- so both files (and `ca_path`, when configured) must be readable by the unprivileged
-       user `remoted` runs as. `secure.c` probes the pair with `access(R_OK)`
-       (`w_remoted_check_tls_files()`) right before `remoted_module_start()` and exits with a
-       deterministic ERROR when either is missing or unreadable, so this module's own load
-       failure only fires for files that exist and are readable but unusable.
+       user `remoted` runs as. `secure.c` probes the pair, `ca_path` when client-certificate
+       verification is on, and `ca_certificate_path` (the CA published on `/cacerts`) with
+       `access(R_OK)` (`w_remoted_check_tls_files()`) right after the privilege drop, before remoted writes its PID file, and
+       exits with a deterministic ERROR when one is missing or unreadable, so this module's own
+       load failure only fires for files that exist and are readable but unusable.
     3. Memory-management: `max_inflight_bytes` (bytes; default 256 MiB),
        `max_parallel_connections` (default 256), `max_handshakes_per_source` (default 32; 0 is a
        real setting, "no cap", so it travels with a `_set` flag like `jwt_clock_skew`),
@@ -865,7 +866,7 @@ objects (id, type, payload JSON). Uses the same bounded queue + deadline + error
 
 #### MergedMgWatcher (`mergedMgWatcher.hpp/.cpp`)
 
-Watches `merged.mg` inside each group directory of `etc/shared/` and `var/multigroups/<hash8>/` for changes to detect group shared file updates, using **inotify
+Watches `merged.mg` inside each group directory of `etc/shared/` and `var/multigroups/<sha256(resource_id)[:32]>/` (the first 32 hex characters of the SHA-256 of the group selector) for changes to detect group shared file updates, using **inotify
 exclusively**: it opens an `inotify_init1(IN_NONBLOCK | IN_CLOEXEC)` fd, watches the shared-groups
 and multigroups roots for `IN_CREATE | IN_MOVED_TO | IN_DELETE | IN_MOVED_FROM` (new/removed group
 dirs) and each group dir for `IN_CLOSE_WRITE | IN_MOVED_TO` (a finished rewrite or an atomic
@@ -927,8 +928,8 @@ from C-ABI struct fields in `remoted_module_config_t`; the tunable ones are fed 
 | `tmConcurrency` | 4 | `remoted.control_tm_concurrency` (1–64) |
 | `tmDeadlineMs` | 2000 ms | `remoted.control_tm_deadline` (100–30000) |
 | `tmMaxQueueSize` | 10000 | `remoted.control_tm_max_queue_size` (100–1000000) |
-| `wdbSocketPath` | `/queue/sockets/wdb.sock` | — (fixed) |
-| `taskSocketPath` | `/queue/sockets/task-http.sock` | — (fixed) |
+| `wdbSocketPath` | `queue/sockets/wdb.sock` (`remoted::paths::kWdbSocket`, relative to the installation directory) | — (fixed) |
+| `taskSocketPath` | `queue/sockets/task-http.sock` (`remoted::paths::kTaskSocket`, relative to the installation directory) | — (fixed) |
 | `registryEvictionTtlSec` | 21600 s (6 h) | — **not configurable** (compile-time constant; never assigned from the C-ABI) |
 | — eviction cadence | 300 s | — **not configurable** (`kRegistryEvictionIntervalSec`, used as a literal by the eviction thread) |
 | `keepaliveThrottleSec` | 60 s | `remoted.control_keepalive_throttle` (1–3600) |
@@ -1622,8 +1623,8 @@ listener pair the operator provisions. The manager generates no certificate at a
 `etc/certs`, re-applies the pair's ownership and prints a `NOTICE` when it is missing, and the
 manager fails closed without it — `wazuh-manager-conf validate` (run by `wazuh-manager-control
 start`) rejects a missing file with `(1244) … file not found`, and remoted itself probes both paths
-with `access(R_OK)` after dropping privileges (`w_remoted_check_tls_files()` in `secure.c`, right
-before `remoted_module_start()`) and exits with a deterministic message, so this module's own
+(plus the client CA in verification modes and the CA published on `/cacerts`) with `access(R_OK)` after dropping privileges (`w_remoted_check_tls_files()` in `secure.c`, right
+after the privilege drop and before remoted writes its PID file) and exits with a deterministic message, so this module's own
 exception on an unreadable pair is the last resort, not the first line (see
 [Certificate provisioning and fail-closed start](../../../docs/ref/modules/remoted/https-events-api.md#certificate-provisioning-and-fail-closed-start)).
 Explicit `<auth>` certificate overrides in `etc/wazuh-manager.conf` keep working unchanged — only the generated
@@ -2491,7 +2492,7 @@ Response shape (`http_server/tlsInventory.cpp` renders it, keys in this order):
 Contract points:
 
 - **Fixed path, no knob**: the constant `queue/sockets/remote-admin-http.sock` is **relative** on
-  purpose — remoted `chroot()`s into the install dir, so the socket lands at
+  purpose — remoted's working directory is the installation directory, so the socket lands at
   `$WAZUH_HOME/queue/sockets/remote-admin-http.sock` (mode 0660). Internal options only carry ints,
   so a path knob has nowhere to live — the same criterion that fixed inventory sync's path.
 - **Warn-on-failure**: a failed bind/start is a `WARN` and the module continues without the

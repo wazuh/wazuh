@@ -447,7 +447,7 @@ Deploys the certificates issued by `init.sh` into an existing wazuh-manager inst
 `wazuh_install_manager.sh` is an unattended install of the manager from this checkout (mode `fresh` purges the manager at `--dir` first; it refuses to run without `--yes`), with the certificates and the credentials of the E2E stack, a start and a verification. `wazuh_verify_manager.sh` is the verification on its own: one `PASS|FAIL|SKIP` line per check and an exit status of 0 only when nothing failed. VS Code tasks: "E2E Scripts: [Manager] Fresh install from branch (purge!)" and "E2E Scripts: [Manager] Verify installed manager".
 
 ### cluster/
-An opt-in overlay that turns the host manager into a cluster master and runs worker managers in containers; see [cluster/README.md](e2e/cluster/README.md).
+An opt-in compose project (`dev-env-cluster`, on the E2E network) that turns the host manager into a cluster master and runs worker managers in containers, with `cluster.sh up|down`; see [cluster/README.md](e2e/cluster/README.md).
 
 ### dashboard/
 Reproducible dashboard captures with Playwright; see [dashboard/README.md](e2e/dashboard/README.md).

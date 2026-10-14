@@ -43,6 +43,10 @@ local_internal_options = {REMOTED_DEBUG: '2'}
 # Same directory as the certificate: the rename keeps the ownership and never crosses a mount.
 ASIDE_SUFFIX = '.aside'
 
+# The published CA certificate is a copy of the installation CA: root-ca.pem itself is read by other
+# daemons, which must keep starting.
+INSTALLATION_CA = os.path.join(WAZUH_PATH, 'etc', 'certs', 'root-ca.pem')
+
 
 @pytest.fixture
 def break_listener_tls_files(test_metadata):
@@ -51,8 +55,10 @@ def break_listener_tls_files(test_metadata):
 
     Nothing reissues a certificate at start, so whatever the mutation removes has to be put back by
     hand: `missing_certificate` moves the certificate aside (same directory), `unreadable_key` makes the
-    private key root-owned 0600 so only the validator (root) can read it. Ownership and mode are read
-    before touching anything and restored in `finally`, whatever the test outcome.
+    private key root-owned 0600 so only the validator (root) can read it, and `unreadable_ca_certificate`
+    creates the case's `ca_certificate` as a root-owned 0600 copy of etc/certs/root-ca.pem. Ownership and
+    mode are read before touching anything and restored in `finally` (the copy is removed), whatever the
+    test outcome.
     '''
     services.control_service('stop')
     # A manager started outside the service unit is not always stopped by the unit's stop: wait until
@@ -65,6 +71,7 @@ def break_listener_tls_files(test_metadata):
 
     certificate = os.path.join(WAZUH_PATH, test_metadata['certificate'])
     key = os.path.join(WAZUH_PATH, test_metadata['key'])
+    ca_certificate = os.path.join(WAZUH_PATH, test_metadata['ca_certificate'])
     mutation = test_metadata['mutation']
 
     if mutation == 'missing_certificate':
@@ -83,6 +90,27 @@ def break_listener_tls_files(test_metadata):
         finally:
             os.chown(key, original.st_uid, original.st_gid)
             os.chmod(key, stat.S_IMODE(original.st_mode))
+    elif mutation == 'unreadable_ca_certificate':
+        # The name is owned by this case: a regular file left there by an aborted run (killed before the
+        # `finally` below) is removed; anything else is not ours to delete.
+        if os.path.islink(ca_certificate):
+            pytest.fail(f'{ca_certificate} is a symbolic link, not a leftover of this test: remove it by hand '
+                        'or point the case at a free name, then rerun')
+        if os.path.isfile(ca_certificate):
+            os.remove(ca_certificate)
+        assert not os.path.lexists(ca_certificate), \
+            f'{ca_certificate} exists and is not a regular file: remove it by hand, then rerun'
+        with open(INSTALLATION_CA, 'rb') as source:
+            content = source.read()
+        descriptor = os.open(ca_certificate, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        try:
+            with os.fdopen(descriptor, 'wb') as copy:
+                copy.write(content)
+            os.chown(ca_certificate, 0, 0)
+            os.chmod(ca_certificate, 0o600)
+            yield
+        finally:
+            os.remove(ca_certificate)
     else:
         raise ValueError(f'unknown mutation {mutation!r}')
 
@@ -137,12 +165,14 @@ def test_https_cert_unreadable_by_service_user(test_configuration, test_metadata
                                                truncate_monitored_files, set_wazuh_configuration,
                                                break_listener_tls_files, restart_wazuh_expect_error):
     '''
-    description: Check that remoted refuses to start when the HTTPS agent listener's private key exists but
-                 the service user cannot read it. For this purpose, the test makes etc/certs/remoted-key.pem
-                 root-owned 0600 -- the configuration validator, which runs as root, still passes -- starts
-                 the service and checks the manager log with a FileMonitor for remoted's preflight error,
-                 which names the key and says it is missing or unreadable by the service user. remoted exits
-                 instead of coming up without the HTTPS transport.
+    description: Check that remoted refuses to start when a TLS file the HTTPS agent listener opens exists
+                 but the service user cannot read it: the private key, or the CA certificate it publishes on
+                 /cacerts. For this purpose, the test makes etc/certs/remoted-key.pem root-owned 0600, or
+                 points ca_certificate at a root-owned 0600 copy of etc/certs/root-ca.pem -- the
+                 configuration validator, which runs as root, still passes -- starts the service and checks
+                 the manager log with a FileMonitor for remoted's preflight error, which names the file and
+                 says it is missing or unreadable by the service user. remoted exits instead of coming up
+                 without the HTTPS transport or with an empty /cacerts.
 
     parameters:
         - test_configuration
@@ -162,8 +192,8 @@ def test_https_cert_unreadable_by_service_user(test_configuration, test_metadata
             brief: Apply the test configuration to wazuh-manager.conf and restore the original afterwards.
         - break_listener_tls_files:
             type: fixture
-            brief: Stop the manager, make the listener key unreadable by the service user and restore its
-                   ownership and mode afterwards.
+            brief: Stop the manager, make the listener key (or the published CA certificate) unreadable
+                   by the service user and restore it afterwards.
         - restart_wazuh_expect_error
             type: fixture
             brief: Start the service tolerating the failure, once the test finishes stops the daemons.

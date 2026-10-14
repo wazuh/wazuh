@@ -178,7 +178,6 @@ OSSEC_PIDFILE_PATH = os.path.join(WAZUH_PATH, 'var', 'run')
 OS_PIDFILE_PATH = os.path.join('var', 'run')
 WDB_PATH = os.path.join(WAZUH_PATH, 'queue', 'db')
 DEFAULT_RBAC_RESOURCES = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'rbac', 'default')
-WAZUH_LOCALTIME_PATH = os.path.join(WAZUH_PATH, 'etc', 'localtime')
 CLUSTERD_WORKINGDIR = os.path.join(WAZUH_PATH, 'queue', 'cluster')
 INDEXER_PLUGINS_PATH = os.path.join(WAZUH_PATH, 'etc', 'indexer-plugins')
 

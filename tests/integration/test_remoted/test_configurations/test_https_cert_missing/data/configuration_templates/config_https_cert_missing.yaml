@@ -7,3 +7,5 @@
                   value: 'CERTIFICATE'
               - key:
                   value: 'KEY'
+              - ca_certificate:
+                  value: 'CA_CERTIFICATE'

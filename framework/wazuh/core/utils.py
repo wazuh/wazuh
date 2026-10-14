@@ -1937,10 +1937,7 @@ def get_localtime() -> tzinfo:
     Returns
     -------
     timezone : tzinfo
-        The localtime timezone. Wazuh custom localtime has precedence over the
-        system one. If none is found, UTC is returned.   """
-    if (tz := gettz(common.WAZUH_LOCALTIME_PATH)) is not None:
-        return tz
+        The system's localtime timezone. If none is found, UTC is returned.   """
     if (tz := gettz()) is not None:
         return tz
 

@@ -512,7 +512,6 @@
 
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."
-#define PRIVSEP_MSG "Chrooted to directory: %s, using user: %s"
 #define MSG_SOCKET_SIZE "(unix_domain) Maximum send buffer set to: '%d'."
 
 #define CONN_TO     "Connected to '%s' (%s queue)"

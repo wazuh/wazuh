@@ -303,7 +303,7 @@ namespace remoted::control
         std::string m_settingsHash;
         bool m_settingsHashComputed;
 
-        // Config hash: keyed by resolved merged.mg absolute path, so the watcher's
+        // Config hash: keyed by resolved merged.mg path (relative to the installation directory), so the watcher's
         // invalidation path matches the read path (no CSV<->folder-hash mismatch).
         std::shared_mutex m_configMutex;
         std::unordered_map<std::string, std::string> m_configCache;
