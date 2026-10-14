@@ -225,7 +225,7 @@ five modes:
 
 `-H <dir>` points it at another installation directory (by default, the one it is installed in).
 An unknown option, or a helper library it cannot find, exits `2`. A DEB reinstall from the
-config-files state that finds neither `etc/certs/remoted.pem` nor `etc/certs/indexer-connector.pem`
+config-files state that finds neither `/etc/wazuh-manager/certs/remoted.pem` nor `/etc/wazuh-manager/certs/indexer-connector.pem`
 runs `--install`, not `--upgrade` — see [Upgrades and removal](#upgrades-and-removal).
 
 `install.sh` skips the resolver when `USER_RESOLVE_CREDENTIALS="n"` is set (the package builds use
@@ -260,8 +260,8 @@ Four things follow, and the last is why supplying the values yourself is worth t
 * **A database that already exists is never touched**, whatever the role says. The role only decides
   whether to *create* one; nothing removes `rbac.db`, which holds every user, role, policy and rule
   you have, not just the two default users.
-* **`rbac.db` is not replicated.** The cluster synchronizes `etc/` (`client.keys`, `authd.pass`,
-  `enrollment_tokens.json`), `etc/shared/` and `var/multigroups/` — nothing else. Each node's database
+* **`rbac.db` is not replicated.** The cluster synchronizes `/etc/wazuh-manager` (`client.keys`, `authd.pass`,
+  `enrollment_tokens.json`), `/etc/wazuh-manager/shared/` and `var/multigroups/` — nothing else. Each node's database
   is whatever that node was seeded with.
 * **Promotion uses that node's own database.** Change `cluster.node_type` to `master` and restart:
   a node that already holds an `rbac.db` serves it as it is; one that holds none has it seeded before
@@ -342,10 +342,10 @@ The manager needs three TLS pairs, all leaves of the same CA:
 
 | File | Used by |
 |------|---------|
-| `etc/certs/remoted.pem`, `remoted-key.pem` | the HTTPS agent listener on 1517, and `wazuh-manager-authd` on 1515 |
-| `etc/certs/indexer-connector.pem`, `indexer-connector-key.pem` | the client certificate presented to the indexer |
-| `etc/certs/apid.pem`, `apid-key.pem` | the certificate of the Server API (`wazuh-manager-apid`) |
-| `etc/certs/root-ca.pem` | the trust anchor for all of them, served to agents on `GET /cacerts` |
+| `/etc/wazuh-manager/certs/remoted.pem`, `remoted-key.pem` | the HTTPS agent listener on 1517, and `wazuh-manager-authd` on 1515 |
+| `/etc/wazuh-manager/certs/indexer-connector.pem`, `indexer-connector-key.pem` | the client certificate presented to the indexer |
+| `/etc/wazuh-manager/certs/apid.pem`, `apid-key.pem` | the certificate of the Server API (`wazuh-manager-apid`) |
+| `/etc/wazuh-manager/certs/root-ca.pem` | the trust anchor for all of them, served to agents on `GET /cacerts` |
 
 ### Issued at installation, and at no other moment
 
@@ -361,7 +361,7 @@ re-anchors or even re-examines them. Two reasons, and both matter in a distribut
   resolver owns; a certificate is rotated by whatever issues the rest of your estate's certificates.
 
 So `/etc/wazuh/ca` is a bootstrap handoff, not a standing dependency. **You can delete it** once the
-pairs are in `etc/certs`, and a manager provisioned entirely from outside never needs one at all.
+pairs are in `/etc/wazuh-manager/certs`, and a manager provisioned entirely from outside never needs one at all.
 
 What certificates the manager will accept is decided where it always was, against the files as they
 are at start — which is the only state that matters:
@@ -393,16 +393,16 @@ are at start — which is the only state that matters:
 Which flow applies is decided by what is in `$WAZUH_CA_DIR` (default `/etc/wazuh/ca`) — there is no
 mode flag, because the presence of a private key beside the anchor is the signal:
 
-| In the CA directory | Already in `etc/certs` | Result |
+| In the CA directory | Already in `/etc/wazuh-manager/certs` | Result |
 |---------------------|------------------------|--------|
 | nothing | nothing | mint a bootstrap CA, then issue the three pairs from it |
 | nothing | any of the seven files | **nothing issued**: no CA is minted, since its anchor would not match what is there |
 | anchor + key | no pair | install the anchor, issue the three pairs from the CA found |
 | anchor + key | some of the pairs | keep those pairs and issue only the missing ones, if the kept pairs were issued by that CA; **nothing issued** otherwise |
-| anchor + key, or anchor only | all three pairs | install the anchor if `etc/certs` lacks it, issue nothing; the three pairs must chain to that anchor |
+| anchor + key, or anchor only | all three pairs | install the anchor if `/etc/wazuh-manager/certs` lacks it, issue nothing; the three pairs must chain to that anchor |
 | anchor only | not all three pairs | install the anchor; **nothing issued** |
 
-A file already in `etc/certs` is never overwritten. A `root-ca.pem` already there must contain the CA
+A file already in `/etc/wazuh-manager/certs` is never overwritten. A `root-ca.pem` already there must contain the CA
 directory's anchor (it may carry more CAs, as `wazuh-manager-certs` leaves it), or nothing is issued.
 A partial pair — a certificate without its key, or the reverse — is refused, and so is a kept pair
 that is expired, has the wrong key, the wrong extended key usage, or the wrong owner or mode.
@@ -426,7 +426,7 @@ either, the manager refuses to start with the configuration validator's verdict 
 
 ```
 (1244): Invalid configuration at '/remote/https/certificate': file not found:
-/var/wazuh-manager/etc/certs/remoted.pem (issued by the credential resolver at installation, or
+/etc/wazuh-manager/certs/remoted.pem (issued by the credential resolver at installation, or
 provisioned externally, e.g. with wazuh-certs-tool)
 ```
 
@@ -438,9 +438,9 @@ start again: the next start shows the `(1244)` above, because no pair was issued
 stopped, issue the pair with `sudo /var/wazuh-manager/bin/wazuh-manager-resolve-credentials
 --install`, reinstall the package, or provision your own pair; then start the service.
 
-To supply pre-issued pairs (the three of them), place them in `etc/certs` **before** installing, or
-afterwards — either way they are used as they are and never replaced. The installer sets the owner of
-`remoted*` and `apid*` to `wazuh-manager`, and validates `apid.pem` (chain to the CA, `serverAuth`,
+To supply pre-issued pairs (the three of them), place them in `/etc/wazuh-manager/certs` **before** installing, or
+afterwards — either way they are used as they are and never replaced. The installer sets every `.pem` there
+to `root:wazuh-manager` `0640`, and validates `apid.pem` (chain to the CA, `serverAuth`,
 `CA:FALSE`, not expired, with a SAN extension, key, owner and mode). The file names, owners and modes are in
 [Using certificates issued elsewhere](installation.md#using-certificates-issued-elsewhere).
 
@@ -486,7 +486,7 @@ there:
 
 ```bash
 sudo systemctl stop wazuh-manager
-sudo rm /var/wazuh-manager/etc/certs/remoted.pem /var/wazuh-manager/etc/certs/remoted-key.pem
+sudo rm /etc/wazuh-manager/certs/remoted.pem /etc/wazuh-manager/certs/remoted-key.pem
 sudo /var/wazuh-manager/bin/wazuh-manager-resolve-credentials --install
 sudo systemctl start wazuh-manager
 ```
@@ -496,11 +496,11 @@ sudo systemctl start wazuh-manager
 > loopback-only certificate installs cleanly and then fails at the first peer connection, possibly
 > weeks later, because the pre-start step opens no network connections. If `ip -o addr show` cannot
 > run, supply the SANs explicitly. Check what a node actually presents with
-> `openssl x509 -in /var/wazuh-manager/etc/certs/remoted.pem -noout -text`.
+> `openssl x509 -in /etc/wazuh-manager/certs/remoted.pem -noout -text`.
 
 The bootstrap CA is local to the host and disposable. A host that minted its own and later joins a
 cluster keeps the certificates it issued, which no other node trusts: nothing reissues them. Replace
-the three pairs and `etc/certs/root-ca.pem` with material from the cluster's CA — provisioned directly, or
+the three pairs and `/etc/wazuh-manager/certs/root-ca.pem` with material from the cluster's CA — provisioned directly, or
 issued by `--install` as above after staging that CA in `$WAZUH_CA_DIR` and removing the seven files
 and the bootstrap CA.
 
@@ -526,14 +526,14 @@ RUN /var/wazuh-manager/bin/wazuh-manager-resolve-credentials --clear
 /var/wazuh-manager/bin/wazuh-manager-resolve-credentials --install
 ```
 
-`--clear` removes `rbac.db`, the keystore contents, the seven files in `etc/certs`
+`--clear` removes `rbac.db`, the keystore contents, the seven files in `/etc/wazuh-manager/certs`
 (`remoted.pem`, `remoted-key.pem`, `indexer-connector.pem`, `indexer-connector-key.pem`,
 `apid.pem`, `apid-key.pem`, `root-ca.pem`) and the bootstrap CA, and takes `WAZUH_MANAGER_API_PASSWORD` and
 `WAZUH_MANAGER_WUI_PASSWORD` out of the managed block of the credentials file. The two `*_CERT_SANS`
 keys stay.
 
 An image that bakes in certificates of its own — issued for the service names its containers will
-answer to — needs neither call for them: overwrite the files in `etc/certs` and nothing will ever
+answer to — needs neither call for them: overwrite the files in `/etc/wazuh-manager/certs` and nothing will ever
 look at where they came from.
 
 > [!WARNING]
@@ -568,22 +568,22 @@ Only a credential this host never resolved is read from the file or the environm
 credential on a running deployment is rotation, not installation.
 
 Certificates are not looked at at all. An upgrade never re-examines, re-anchors or reissues the pairs
-in `etc/certs`, so one you replaced with your own PKI's — and the absent CA directory that usually
+in `/etc/wazuh-manager/certs`, so one you replaced with your own PKI's — and the absent CA directory that usually
 goes with it — survives every upgrade untouched.
 
 > [!NOTE]
-> With one exception, on DEB only. `apt remove` (without `purge`) renames everything under `etc/` to
+> With one exception, on DEB only. `apt remove` (without `purge`) renames everything under `/etc/wazuh-manager` to
 > `*.save`, so a later reinstall finds no pair and must issue one — but dpkg reports that reinstall
-> the same way it reports an upgrade. The `postinst` therefore treats "no `etc/certs/remoted.pem`
-> **and** no `etc/certs/indexer-connector.pem`" as an install and issues.
+> the same way it reports an upgrade. The `postinst` therefore treats "no `/etc/wazuh-manager/certs/remoted.pem`
+> **and** no `/etc/wazuh-manager/certs/indexer-connector.pem`" as an install and issues.
 >
 > That test also matches a genuine upgrade on a host that keeps **both** certificates somewhere else
-> — `WAZUH_REMOTE_HTTPS_CERTIFICATE` pointed outside `etc/certs`, and `<indexer><ssl><certificate>`
-> likewise. On such a host an upgrade issues a pair into `etc/certs` that nothing reads, and mints a
+> — `WAZUH_REMOTE_HTTPS_CERTIFICATE` pointed outside `/etc/wazuh-manager/certs`, and `<indexer><ssl><certificate>`
+> likewise. On such a host an upgrade issues a pair into `/etc/wazuh-manager/certs` that nothing reads, and mints a
 > bootstrap CA in `/etc/wazuh/ca` if none is there. Nothing in use is touched or overwritten: a file
 > already in place is never replaced, and a `root-ca.pem` that differs from the CA's aborts the
 > issuance. If you run on your own PKI at non-default paths and want neither, keep a `root-ca.pem`
-> in `etc/certs` — the issuance then has an anchor it must match and stops — or remove the issued
+> in `/etc/wazuh-manager/certs` — the issuance then has an anchor it must match and stops — or remove the issued
 > files and `/etc/wazuh/ca` afterwards.
 
 What removal does depends on which package manager, because they do not offer the same operations:

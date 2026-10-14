@@ -25,13 +25,14 @@
 
 #include "common/logThrottle.hpp" // Safe in a header: LogThrottle deliberately does not log.
 #include "jwt/secureBytes.hpp"
+#include "managerConfDir.hpp"
 
 namespace remoted::auth
 {
 
     /**
      * @brief Read-only, in-memory replica of authd's enrollment token store
-     *        (etc/enrollment_tokens.json), keyed by token id, with the `wazuh-enroll+jwt` HS256 key of
+     *        (/etc/wazuh-manager/enrollment_tokens.json), keyed by token id, with the `wazuh-enroll+jwt` HS256 key of
      *        every credential-bearing token already derived. Backs the enrollment-token path of
      *        EnrollmentAuthenticator (issue #38993): a bearer whose `kid` names a token id is verified
      *        against the key cached here, and its status (expired / revoked) is answered from here too.
@@ -69,9 +70,10 @@ namespace remoted::auth
     class TokenKeySource
     {
     public:
-        /// Path to authd's enrollment token store, relative to the manager's home directory
-        /// (ENROLLMENT_TOKENS_FILE in os_auth's defs.h).
-        static constexpr const char* kDefaultPath = "etc/enrollment_tokens.json";
+        /// Path to authd's enrollment token store, in the manager's fixed configuration directory
+        /// (ENROLLMENT_TOKENS_FILE in defs.h).
+        static constexpr const char* kDefaultPath = "/etc/wazuh-manager/enrollment_tokens.json";
+        static_assert(Utils::isInManagerConfDir(kDefaultPath));
 
         /// Built-in refresh interval when the caller passes <=0 (matches PasswordKeySource's).
         static constexpr int kDefaultRefreshIntervalSeconds = 10;

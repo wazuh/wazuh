@@ -99,7 +99,7 @@ rm -f <scratch>/pinned.env
 ```
 
 Wait until the token reaches the worker before the agent enrolls (the master syncs
-`etc/enrollment_tokens.json` to the workers within seconds). The worker hands the
+`/etc/wazuh-manager/enrollment_tokens.json` to the workers within seconds). The worker hands the
 enrollment to the master (`Dispatching enrollment request to master node` in the
 worker's log) and the agent keeps reporting to the worker: the master lists it as
 `active`, and its events in the indexer carry the worker's node name in

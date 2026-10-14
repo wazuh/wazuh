@@ -8,8 +8,8 @@ configuration files into the structures each daemon consumes.
 | Consumer | File | Entry point | Format |
 |---|---|---|---|
 | Agent daemons (`-DCLIENT`) | `etc/ossec.conf`, `etc/shared/agent.conf` | `ReadConfig(modules, cfgfile, ...)` (`src/config.c`) | XML (`os_xml`) |
-| Manager, on behalf of agents (the `Test_*()` checks behind `verify-agent-conf`) | `etc/shared/<group>/agent.conf` (`CAGENT_CONFIG`) | `ReadConfig()` | XML |
-| Manager daemons | `etc/wazuh-manager.conf` | `w_mconf_load()` / `w_mconf_section()` (`src/mconf-config.c`, manager only) | strict XML validated against `etc/wazuh-manager.schema.json` |
+| Manager, on behalf of agents (the `Test_*()` checks behind `verify-agent-conf`) | `/etc/wazuh-manager/shared/<group>/agent.conf` (`CAGENT_CONFIG`) | `ReadConfig()` | XML |
+| Manager daemons | `/etc/wazuh-manager/wazuh-manager.conf` (`WAZUHCONF`, under `WAZUH_MANAGER_CONF_DIR`) | `w_mconf_load()` / `w_mconf_section()` (`src/mconf-config.c`, manager only) | strict XML validated against `/etc/wazuh-manager/wazuh-manager.schema.json` |
 
 `ReadConfig()` dispatches each XML top-level element to its reader (`Read_Syscheck`, `Read_Localfile`, `Read_Client`,
 `Read_WModule`...). The manager's own sections (`global`, `remote`, `auth`, `wdb`, `indexer`, `vulnerability-detection`,
@@ -19,7 +19,7 @@ ignored. `<logging>` and `<cluster>` are accepted and skipped without a message.
 and the only one: it is an **agent-only** section, so `Read_AgentUpgrade` is compiled for the agent alone and the
 manager build of `ReadConfig()` (which only ever parses a group's `agent.conf`) warns
 `agent-upgrade configuration is only set in the agent.` — a manager has no agent-upgrade module, and configures the
-upgrades it serves under `task-manager`; in `etc/wazuh-manager.conf` the element is an unknown option, rejected with
+upgrades it serves under `task-manager`; in `wazuh-manager.conf` the element is an unknown option, rejected with
 `(1244)` by the schema. Elements removed in 5.x are listed in `OBSOLETE_ELEMENTS` (`src/config.c`) and are ignored
 with a warning; anything else unknown is still fatal.
 

@@ -9,7 +9,7 @@ logs, and every C/C++ daemon writes its log lines through that code.
 
 | | Manager | Agent |
 |---|---|---|
-| Configuration | `<logging>` in `/var/wazuh-manager/etc/wazuh-manager.conf` (root `<wazuh_config>`) | `<logging>` in `/var/ossec/etc/ossec.conf` (root `<ossec_config>`) |
+| Configuration | `<logging>` in `/etc/wazuh-manager/wazuh-manager.conf` (root `<wazuh_config>`) | `<logging>` in `/var/ossec/etc/ossec.conf` (root `<ossec_config>`) |
 | Plain log | `/var/wazuh-manager/logs/wazuh-manager.log` | `/var/ossec/logs/ossec.log` |
 | JSON log | `/var/wazuh-manager/logs/wazuh-manager.json` | `/var/ossec/logs/ossec.json` |
 | Default | `plain` | `plain` |

@@ -77,7 +77,7 @@ authd -->|1,10| wdb
 vs -->|3| engine
 tm -->|9| wdb
 
-%% The database module keeps global.db's agents and groups in step with client.keys and etc/shared/
+%% The database module keeps global.db's agents and groups in step with client.keys and /etc/wazuh-manager/shared/
 dbm --> wdb
 
 %% Modulesd internal (in-process VD scan lane)
@@ -136,7 +136,7 @@ clients -->|1,5,6,7,8,10| api
 | **Wazuh DB**   | `wazuh-manager-db`        | SQLite-based database daemon for agent and global state                                                                      |
 | **Auth**       | `wazuh-manager-authd`     | Owns all agent registration logic. Reached by Remoted's `POST /enroll` over its local socket for 5.x agents; its own TLS listener on port 1515 serves 4.x agents, gated by `<auth><legacy_enrollment>`, which follows `<remote><legacy><enabled>` when it is not set |
 | **Server API** | `wazuh-manager-apid`      | REST API (Python/Starlette, HTTPS) with JWT auth and RBAC                                                                    |
-| **Modules**    | `wazuh-manager-modulesd`  | Hosts manager-side modules: vulnerability scanner, inventory sync server, keystore server, content manager, task manager (which also serves agent upgrades), database (keeps `global.db` in step with `client.keys` and `etc/shared/`), and control (restart/reload) |
+| **Modules**    | `wazuh-manager-modulesd`  | Hosts manager-side modules: vulnerability scanner, inventory sync server, keystore server, content manager, task manager (which also serves agent upgrades), database (keeps `global.db` in step with `client.keys` and `/etc/wazuh-manager/shared/`), and control (restart/reload) |
 | **Cluster**    | `wazuh-manager-clusterd`  | Multi-node master-worker synchronization (Python, asyncio)                                                                   |
 
 > **Note:** The manager also ships CLI tools (`wazuh-manager-control`, `wazuh-manager-conf`, `wazuh-manager-keystore`, etc.) listed in the [CLI Tools](#cli-tools) section below.
@@ -226,7 +226,7 @@ refused next, with `Unresolved credentials. Exiting` (`{"error":21,"message":"Un
 credentials."}` under `-j`) and the resolver's `INVALID|MISSING <key>` verdict in the same log; see
 [When the manager does not start](getting-started/credentials.md#when-the-manager-does-not-start).
 A configuration so broken that `cluster.node_type` cannot be read surfaces as `Invalid cluster
-configuration, check the /var/wazuh-manager/etc/wazuh-manager.conf file.`
+configuration, check the /etc/wazuh-manager/wazuh-manager.conf file.`
 
 An unknown action prints the usage and exits `1`. The daemons inherit the command's standard output,
 so redirect `start` to a file rather than piping it: a pipe never sees end-of-file and the command

@@ -28,7 +28,7 @@ typedef struct obsolete_element_t {
  * ignored with a warning instead of rejected. Anything not listed here is still
  * fatal: the point is to be lenient with settings that were removed on purpose,
  * not with typos. The manager's own configuration is not XML anymore
- * (etc/wazuh-manager.conf, read through libconfig's w_mconf_*()), so this table only
+ * (/etc/wazuh-manager/wazuh-manager.conf, read through libconfig's w_mconf_*()), so this table only
  * ever applies to agent files: ossec.conf on the agent and agent.conf everywhere. */
 static const obsolete_element_t OBSOLETE_ELEMENTS[] = {
     {"agent-key-polling", "The agent key polling module was removed in 5.0.0."},
@@ -102,7 +102,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
 #ifndef WIN32
     const char *anti_tampering = "anti_tampering";              /* Agent anti tampering Config */
 #endif
-    /* Sections of the manager's own configuration (etc/wazuh-manager.conf). They have no XML
+    /* Sections of the manager's own configuration (/etc/wazuh-manager/wazuh-manager.conf). They have no XML
      * parser anymore: an agent file that carries one is told so and the block is ignored. */
     const char *manager_sections[] = { "global", "remote", "auth", "wdb", "indexer", "vulnerability-detection",
                                        "vulnerability-detector", "task-manager", NULL };

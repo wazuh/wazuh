@@ -12,11 +12,15 @@
 #ifndef _REMOTED_COMMON_INSTALL_PATHS_HPP
 #define _REMOTED_COMMON_INSTALL_PATHS_HPP
 
+#include "managerConfDir.hpp"
+
 /**
- * @brief Installation paths the module opens, relative to the working directory.
+ * @brief Installation paths the module opens.
  *
- * remoted changes to the installation directory at startup (src/remoted/src/main.c), so every path here resolves
- * against it, like the C side's SHAREDCFG_DIR, MULTIGROUPS_DIR and WDB_LOCAL_SOCK (src/shared/include/defs.h).
+ * remoted changes to the installation directory at startup (src/remoted/src/main.c), so the relative paths here
+ * resolve against it, like the C side's MULTIGROUPS_DIR and WDB_LOCAL_SOCK (src/shared/include/defs.h). The shared
+ * group files live in the manager's fixed configuration directory instead, so kSharedDir is absolute, like
+ * SHAREDCFG_DIR.
  * They are installation details, not configuration: nothing reads them from the C-ABI struct. Each path is defined
  * once, here; consumers default to these constants and tests may override them.
  */
@@ -29,7 +33,8 @@ namespace remoted::paths
     /// The vulnerability detector's HTTP socket (modulesd): /offset and scan requests.
     inline constexpr const char* kVdSocket = "queue/sockets/vd-http.sock";
     /// Per-group shared files (merged.mg and the group's agent.conf).
-    inline constexpr const char* kSharedDir = "etc/shared";
+    inline constexpr const char* kSharedDir = "/etc/wazuh-manager/shared";
+    static_assert(Utils::isInManagerConfDir(kSharedDir));
     /// Merged files of agents that belong to several groups.
     inline constexpr const char* kMultigroupsDir = "var/multigroups";
     /// WPK packages served to agents for upgrades.

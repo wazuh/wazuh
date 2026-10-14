@@ -1937,7 +1937,8 @@ def get_localtime() -> tzinfo:
     Returns
     -------
     timezone : tzinfo
-        The system's localtime timezone. If none is found, UTC is returned.   """
+        The system localtime timezone. If none is found, UTC is returned.
+    """
     if (tz := gettz()) is not None:
         return tz
 

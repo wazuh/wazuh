@@ -46,12 +46,12 @@ using remoted::test::FakeVdServer;
 
 namespace
 {
-    std::vector<std::pair<const char*, const char*>> allPaths()
+    /// Every path under the installation directory; kSharedDir lives in the configuration directory instead.
+    std::vector<std::pair<const char*, const char*>> installationPaths()
     {
         return {{"kWdbSocket", paths::kWdbSocket},
                 {"kTaskSocket", paths::kTaskSocket},
                 {"kVdSocket", paths::kVdSocket},
-                {"kSharedDir", paths::kSharedDir},
                 {"kMultigroupsDir", paths::kMultigroupsDir},
                 {"kWpkDir", paths::kWpkDir}};
     }
@@ -96,15 +96,20 @@ protected:
     std::filesystem::path m_scratchDir;
 };
 
-TEST_F(InstallPathsTest, AllRelative)
+TEST_F(InstallPathsTest, InstallationPathsAreRelative)
 {
-    for (const auto& [name, value] : allPaths())
+    for (const auto& [name, value] : installationPaths())
     {
         ASSERT_NE(value, nullptr) << name;
         EXPECT_NE(std::string {value}, "") << name;
         EXPECT_NE(value[0], '/') << name << " = \"" << value
                                  << "\": installation paths resolve against remoted's cwd, never an absolute root";
     }
+}
+
+TEST_F(InstallPathsTest, SharedDirIsInTheConfigurationDirectory)
+{
+    EXPECT_TRUE(Utils::isInManagerConfDir(paths::kSharedDir)) << paths::kSharedDir;
 }
 
 TEST_F(InstallPathsTest, MatchInstallationLayout)
@@ -114,7 +119,7 @@ TEST_F(InstallPathsTest, MatchInstallationLayout)
     EXPECT_STREQ(paths::kWdbSocket, "queue/sockets/wdb.sock");
     EXPECT_STREQ(paths::kTaskSocket, "queue/sockets/task-http.sock");
     EXPECT_STREQ(paths::kVdSocket, "queue/sockets/vd-http.sock");
-    EXPECT_STREQ(paths::kSharedDir, "etc/shared");
+    EXPECT_STREQ(paths::kSharedDir, "/etc/wazuh-manager/shared");
     EXPECT_STREQ(paths::kMultigroupsDir, "var/multigroups");
     EXPECT_STREQ(paths::kWpkDir, "var/upgrade");
 }

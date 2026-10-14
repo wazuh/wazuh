@@ -14,7 +14,7 @@
 
 cJSON * indexer_config = NULL;
 
-/* Reader of the `indexer` section of the effective document (etc/wazuh-manager.conf, see
+/* Reader of the `indexer` section of the effective document (/etc/wazuh-manager/wazuh-manager.conf, see
  * mconf-config.h). The schema requires the section and a non-empty `hosts`, so a validated document
  * always reaches the copy below; the empty/absent guard only covers a caller handing in no document.
  * Every consumer treats a NULL indexer_config as "no indexer configured" (it hands `{}` down);

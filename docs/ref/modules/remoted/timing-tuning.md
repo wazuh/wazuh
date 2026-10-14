@@ -11,7 +11,7 @@ Defaults and ranges are the ones the product ships; every *measured* figure quot
 the #38284 campaign on the 4-core/8 GB reference pair (c5ad.xlarge, Amazon Linux 2023),
 cross-checked on a second architecture.
 
-**Where the options live.** Manager: `etc/wazuh-manager-internal-options.conf`
+**Where the options live.** Manager: `/etc/wazuh-manager/wazuh-manager-internal-options.conf`
 (`remoted.*`, `wazuh_modules.*`) and `wazuh-manager.conf` (the `<remote>`/`<global>` XML settings).
 Agent: `etc/local_internal_options.conf` (`agent.*`, `logcollector.*`) and the agent's own XML
 (`<client>`). Both internal-options files are **per node/host and never synchronized**: nothing in

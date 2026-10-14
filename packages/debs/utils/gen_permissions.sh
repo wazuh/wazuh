@@ -8,11 +8,11 @@
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
 #
-# This scripts take 2 parameters, source_dir and target_dir, and an optional
-# third one, --guard-writable (see below)
+# This scripts take 2 parameters, source_dir and target_dir, and two optional
+# ones, --guard-writable and --stage-dir=DIR (see below)
 # Remember: you must use gawk, be careful mawk is not compatible
 #
-# Usage: ./gen_permissions.sh /var/ossec/ ~/restore_permissions.sh [--guard-writable]
+# Usage: ./gen_permissions.sh /var/ossec/ ~/restore_permissions.sh [--guard-writable [--stage-dir=DIR]]
 
 set -euo pipefail
 
@@ -31,10 +31,24 @@ if [ "${3:-}" = "--guard-writable" ]; then
     GUARD_WRITABLE=1
 fi
 
+# --stage-dir=DIR: where the generated script creates its root-only staging
+# directory, the base directory by default. The staging directory must sit in a
+# directory nobody but root can write -- otherwise the service account could
+# rename it away and put a link in its place between the checks and the
+# chown/chmod -- and on the same filesystem as the tree (ln -P). A base directory
+# the service account can write (/etc/wazuh-manager) therefore stages in its
+# parent (/etc).
+STAGE_DIR=""
+case "${4:-}" in
+    --stage-dir=?*) STAGE_DIR="${4#--stage-dir=}" ;;
+    "") ;;
+    *) echo "Unknown option: ${4}" >&2; exit 1 ;;
+esac
+
 # Symlinks are excluded: find reports them as mode 777 and chmod/chown on a
 # symlink path dereference it, so restoring them would reset the target's
 # permissions to 777 whenever the symlink entry follows the target's own.
-find $1 -depth ! -type l -printf '%y:%m:%u:%g:%p\0' | awk -v RS='\0' -F: -v guard="${GUARD_WRITABLE}" '
+find $1 -depth ! -type l -printf '%y:%m:%u:%g:%p\0' | awk -v RS='\0' -F: -v guard="${GUARD_WRITABLE}" -v stagedir="${STAGE_DIR}" '
 BEGIN {
     q = "\047";
 }
@@ -59,7 +73,12 @@ END {
     if (guard) {
         print "BASE=" q base q;
         print "REAL=$(cd -P -- \"$BASE\" && pwd -P) || exit 1";
-        print "STAGE=$(mktemp -d \"$BASE/.restore-permissions.XXXXXX\") || exit 1";
+        if (stagedir != "") {
+            print "STAGE_PARENT=" q stagedir q;
+        } else {
+            print "STAGE_PARENT=\"$BASE\"";
+        }
+        print "STAGE=$(mktemp -d \"$STAGE_PARENT/.restore-permissions.XXXXXX\") || exit 1";
         print "trap '\''rm -rf \"$STAGE\"'\'' EXIT";
         print "fix() {";
         print "    rel=${3#\"$BASE\"}";

@@ -4175,13 +4175,13 @@ void test_remoted_module_control_config_silent_below_disconnection_time(void** s
 /* Tests w_remoted_check_tls_files: the preflight that fails closed before remoted writes its PID file. The
  * five messages are pinned verbatim (the integration test test_https_cert_missing matches them in the log). */
 
-#define TLS_FILES_TEST_CERT "etc/certs/remoted.pem"
-#define TLS_FILES_TEST_KEY "etc/certs/remoted-key.pem"
+#define TLS_FILES_TEST_CERT "/etc/wazuh-manager/certs/remoted.pem"
+#define TLS_FILES_TEST_KEY "/etc/wazuh-manager/certs/remoted-key.pem"
 #define TLS_FILES_TEST_HINT                                                                                  \
     " The pair is issued at installation and is never reissued at start: if the files are present, "      \
-    "check that they are owned by the service user and mode 0640, since remoted opens them after "        \
+    "check that they are root:wazuh-manager and mode 0640, since remoted opens them after "               \
     "dropping privileges; otherwise provision remoted.pem, remoted-key.pem and root-ca.pem under "        \
-    "etc/certs (see 'Credentials' in the installation guide)."
+    "/etc/wazuh-manager/certs (see 'Credentials' in the installation guide)."
 
 static void tls_files_config(remoted_module_config_t *rm_config)
 {
@@ -4219,7 +4219,7 @@ void test_w_remoted_check_tls_files_ok(void** state)
     // No expect_string for __wrap__merror_exit: exiting here fails the test. An empty
     // ca_certificate_path probes the module's default, never access("").
     expect_tls_files_access(0, 0);
-    expect_tls_ca_certificate_access("etc/certs/root-ca.pem", 0);
+    expect_tls_ca_certificate_access(REMOTED_MODULE_DEFAULT_CA_CERTIFICATE_PATH, 0);
 
     w_remoted_check_tls_files(&rm_config);
 }
@@ -4254,7 +4254,7 @@ void test_w_remoted_check_tls_files_cert_missing(void** state)
 
     expect_tls_files_access(-1, 0);
     expect_string(__wrap__merror_exit, formatted_msg,
-                  "Cannot start the HTTPS agent listener: the TLS certificate 'etc/certs/remoted.pem' is missing or "
+                  "Cannot start the HTTPS agent listener: the TLS certificate '/etc/wazuh-manager/certs/remoted.pem' is missing or "
                   "unreadable by the service user." TLS_FILES_TEST_HINT);
 
     expect_assert_failure(w_remoted_check_tls_files(&rm_config));
@@ -4268,7 +4268,7 @@ void test_w_remoted_check_tls_files_key_missing(void** state)
 
     expect_tls_files_access(0, -1);
     expect_string(__wrap__merror_exit, formatted_msg,
-                  "Cannot start the HTTPS agent listener: the TLS private key 'etc/certs/remoted-key.pem' is missing "
+                  "Cannot start the HTTPS agent listener: the TLS private key '/etc/wazuh-manager/certs/remoted-key.pem' is missing "
                   "or unreadable by the service user." TLS_FILES_TEST_HINT);
 
     expect_assert_failure(w_remoted_check_tls_files(&rm_config));
@@ -4282,8 +4282,8 @@ void test_w_remoted_check_tls_files_both_missing(void** state)
 
     expect_tls_files_access(-1, -1);
     expect_string(__wrap__merror_exit, formatted_msg,
-                  "Cannot start the HTTPS agent listener: the TLS certificate 'etc/certs/remoted.pem' and private key "
-                  "'etc/certs/remoted-key.pem' are missing or unreadable by the service user." TLS_FILES_TEST_HINT);
+                  "Cannot start the HTTPS agent listener: the TLS certificate '/etc/wazuh-manager/certs/remoted.pem' and private key "
+                  "'/etc/wazuh-manager/certs/remoted-key.pem' are missing or unreadable by the service user." TLS_FILES_TEST_HINT);
 
     expect_assert_failure(w_remoted_check_tls_files(&rm_config));
 }
@@ -4326,8 +4326,8 @@ void test_w_remoted_check_tls_files_ca_default_full(void** state)
     // An empty ca_path probes the module's default, never access(""). No expect_string for
     // __wrap__merror_exit: exiting here fails the test.
     expect_tls_files_access(0, 0);
-    expect_tls_ca_access("etc/certs/root-ca.pem", 0);
-    expect_tls_ca_certificate_access("etc/certs/root-ca.pem", 0);
+    expect_tls_ca_access(REMOTED_MODULE_DEFAULT_CA_PATH, 0);
+    expect_tls_ca_certificate_access(REMOTED_MODULE_DEFAULT_CA_CERTIFICATE_PATH, 0);
 
     w_remoted_check_tls_files(&rm_config);
 }
@@ -4342,7 +4342,7 @@ void test_w_remoted_check_tls_files_ca_none(void** state)
     // The pair and the published CA certificate are probed, never the verification CA: a fourth
     // access() call would find no expectation and fail the test.
     expect_tls_files_access(0, 0);
-    expect_tls_ca_certificate_access("etc/certs/root-ca.pem", 0);
+    expect_tls_ca_certificate_access(REMOTED_MODULE_DEFAULT_CA_CERTIFICATE_PATH, 0);
 
     w_remoted_check_tls_files(&rm_config);
 }
@@ -4357,7 +4357,7 @@ void test_w_remoted_check_tls_files_ca_unset(void** state)
     // UNSET resolves to no verification in the module, so the CA is not probed either; the published
     // CA certificate still is.
     expect_tls_files_access(0, 0);
-    expect_tls_ca_certificate_access("etc/certs/root-ca.pem", 0);
+    expect_tls_ca_certificate_access(REMOTED_MODULE_DEFAULT_CA_CERTIFICATE_PATH, 0);
 
     w_remoted_check_tls_files(&rm_config);
 }
@@ -4395,7 +4395,7 @@ void test_w_remoted_check_tls_files_ca_certificate_ok(void** state)
 
     // No expect_string for __wrap__merror_exit: exiting here fails the test.
     expect_tls_files_access(0, 0);
-    expect_tls_ca_access("etc/certs/root-ca.pem", 0);
+    expect_tls_ca_access(REMOTED_MODULE_DEFAULT_CA_PATH, 0);
     expect_tls_ca_certificate_access("/etc/pki/wazuh/ca.pem", 0);
 
     w_remoted_check_tls_files(&rm_config);

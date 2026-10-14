@@ -110,9 +110,14 @@ def build_source(root):
 def build_target(root):
     """Enough of a 5.0 installation for the version check and the rbac.db placement."""
     os.makedirs(os.path.join(root, "api/configuration/security"), exist_ok=True)
-    os.makedirs(os.path.join(root, "etc"), exist_ok=True)
     with open(os.path.join(root, "VERSION.json"), "w") as handle:
         json.dump({"version": "5.0.0"}, handle)
+    return root
+
+
+def build_target_conf(root):
+    """The 5.0 configuration directory, which lives outside the installation home."""
+    os.makedirs(root, exist_ok=True)
     return root
 
 
@@ -229,6 +234,7 @@ class MigrationToolTest(unittest.TestCase):
         base = self.workspace.name
         self.source = build_source(os.path.join(base, "source"))
         self.target = build_target(os.path.join(base, "target"))
+        self.target_conf = build_target_conf(os.path.join(base, "target-conf"))
         self.bundle = os.path.join(base, "bundle")
         self.password = os.path.join(base, "pw")
         with open(self.password, "w") as handle:
@@ -244,12 +250,12 @@ class MigrationToolTest(unittest.TestCase):
 
     def do_import(self, *extra):
         return tool.main(["import", self.bundle, "--target-dir", self.target,
-                          "--api-url", self.api_url, "--api-password-file", self.password]
+                          "--target-conf-dir", self.target_conf, "--api-url", self.api_url, "--api-password-file", self.password]
                          + list(extra))
 
     def check(self, *extra):
         return tool.main(["check", self.bundle, "--target-dir", self.target,
-                          "--api-url", self.api_url, "--api-password-file", self.password]
+                          "--target-conf-dir", self.target_conf, "--api-url", self.api_url, "--api-password-file", self.password]
                          + list(extra))
 
     def manifest(self):
@@ -326,9 +332,9 @@ class MigrationToolTest(unittest.TestCase):
 
     def test_import_writes_no_manager_files(self):
         self.assertEqual(0, self.export())
-        before = sorted(os.listdir(os.path.join(self.target, "etc")))
+        before = sorted(os.listdir(self.target_conf))
         self.assertEqual(0, self.do_import())
-        self.assertEqual(before, sorted(os.listdir(os.path.join(self.target, "etc"))),
+        self.assertEqual(before, sorted(os.listdir(self.target_conf)),
                          "the API owns client.keys and the registry, not this tool")
 
     def test_import_dry_run_calls_nothing_that_writes(self):
@@ -374,6 +380,19 @@ class MigrationToolTest(unittest.TestCase):
         self.assertFalse(os.path.exists(
             os.path.join(self.target, "api/configuration/security/rbac.db")),
             "exported is not imported: the import flag gates it too")
+
+    def test_the_password_lands_in_the_configuration_directory(self):
+        self.assertEqual(0, self.export("--with-password"))
+        self.assertEqual(0, self.do_import("--with-password"))
+        with open(os.path.join(self.target_conf, "authd.pass")) as handle:
+            self.assertEqual("MigrationLab2026\n", handle.read())
+        self.assertFalse(os.path.exists(os.path.join(self.target, "etc", "authd.pass")),
+                         "a 5.0 manager reads authd.pass from its configuration directory only")
+
+    def test_a_missing_configuration_directory_is_refused(self):
+        self.assertEqual(0, self.export("--with-password"))
+        os.rmdir(self.target_conf)
+        self.assertEqual(2, self.do_import("--with-password"))
 
     def test_rbac_import_stages_the_api_upgrade(self):
         self.assertEqual(0, self.export("--with-rbac"))
@@ -499,7 +518,7 @@ class MigrationToolTest(unittest.TestCase):
 
     def call_api(self, command, url, *extra):
         return tool.main([command, self.bundle, "--target-dir", self.target,
-                          "--api-url", url, "--api-password-file", self.password] + list(extra))
+                          "--target-conf-dir", self.target_conf, "--api-url", url, "--api-password-file", self.password] + list(extra))
 
     def test_loopback_detection(self):
         for host in ("localhost", "LOCALHOST", "127.0.0.1", "127.8.9.10", "::1"):
@@ -525,10 +544,11 @@ class MigrationToolTest(unittest.TestCase):
     def test_ca_resolution(self):
         def resolve(url, ca=None):
             return tool.resolve_api_ca(tool.build_parser().parse_args(
-                ["check", self.bundle, "--target-dir", self.target, "--api-url", url]
+                ["check", self.bundle, "--target-dir", self.target,
+                 "--target-conf-dir", self.target_conf, "--api-url", url]
                 + (["--api-ca", ca] if ca else [])))
 
-        root_ca = os.path.join(self.target, "etc", "certs", "root-ca.pem")
+        root_ca = os.path.join(self.target_conf, "certs", "root-ca.pem")
         with self.assertRaises(tool.MigrationError, msg="loopback with no root-ca.pem to trust"):
             resolve("https://localhost:55000")
         os.makedirs(os.path.dirname(root_ca))
@@ -566,7 +586,7 @@ class MigrationToolTest(unittest.TestCase):
         url = "https://localhost:%d" % server.server_port
 
         self.assertEqual(0, self.export())
-        root_ca = os.path.join(self.target, "etc", "certs", "root-ca.pem")
+        root_ca = os.path.join(self.target_conf, "certs", "root-ca.pem")
         os.makedirs(os.path.dirname(root_ca))
         shutil.copy(other_ca, root_ca)
         self.assertEqual(2, self.call_api("import", url),

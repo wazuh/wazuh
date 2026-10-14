@@ -399,8 +399,8 @@ static void test_Read_Remote_JSON_effective_defaults(void **state) {
         "{\"legacy\":{\"enabled\":true,\"port\":1514,\"protocol\":[\"tcp\"],\"ipv6\":false,\"local_ip\":\"127.0.0.1\","
         "\"queue_size\":131072,\"rids_closing_time\":\"5m\",\"connection_overtake_time\":60},"
         "\"https\":{\"port\":1517,\"bind_addr\":\"127.0.0.1\",\"global_prefix\":\"/wazuh-manager/\","
-        "\"certificate\":\"etc/certs/remoted.pem\",\"key\":\"etc/certs/remoted-key.pem\",\"ca\":\"\","
-        "\"ca_certificate\":\"etc/certs/root-ca.pem\"},"
+        "\"certificate\":\"/etc/wazuh-manager/certs/remoted.pem\",\"key\":\"/etc/wazuh-manager/certs/remoted-key.pem\",\"ca\":\"\","
+        "\"ca_certificate\":\"/etc/wazuh-manager/certs/root-ca.pem\"},"
         "\"agents\":{\"allow_higher_versions\":false}}");
 
     expect_valid_ip("127.0.0.1"); // legacy.local_ip
@@ -419,10 +419,10 @@ static void test_Read_Remote_JSON_effective_defaults(void **state) {
     assert_int_equal(ts->logr->https.port, 1517);
     assert_string_equal(ts->logr->https.bind_addr, "127.0.0.1");
     assert_string_equal(ts->logr->https.global_prefix, "/wazuh-manager/");
-    assert_string_equal(ts->logr->https.certificate, "etc/certs/remoted.pem");
-    assert_string_equal(ts->logr->https.key, "etc/certs/remoted-key.pem");
+    assert_string_equal(ts->logr->https.certificate, "/etc/wazuh-manager/certs/remoted.pem");
+    assert_string_equal(ts->logr->https.key, "/etc/wazuh-manager/certs/remoted-key.pem");
     assert_null(ts->logr->https.ca);
-    assert_string_equal(ts->logr->https.ca_certificate, "etc/certs/root-ca.pem");
+    assert_string_equal(ts->logr->https.ca_certificate, "/etc/wazuh-manager/certs/root-ca.pem");
     assert_int_equal(ts->logr->https.verification_mode, REMOTED_HTTPS_VERIFY_UNSET);
     assert_null(ts->logr->https.ciphers);
     assert_int_equal(ts->logr->https.max_body_size, 0);
@@ -757,7 +757,7 @@ int main(void)
         cmocka_unit_test(test_w_remoted_validate_tls13_ciphers_accepts_and_rejects),
         cmocka_unit_test(test_w_remoted_https_check_max_len_boundary),
 
-        /* Read_Remote_JSON() -- the effective `remote` section of etc/wazuh-manager.conf */
+        /* Read_Remote_JSON() -- the effective `remote` section of wazuh-manager.conf */
         cmocka_unit_test_setup_teardown(test_Read_Remote_JSON_effective_defaults, setup, teardown),
         cmocka_unit_test_setup_teardown(test_Read_Remote_JSON_ca_delivery, setup, teardown),
         cmocka_unit_test_setup_teardown(test_Read_Remote_JSON_ca_certificate_absent_is_null, setup, teardown),

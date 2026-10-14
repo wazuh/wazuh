@@ -37,9 +37,9 @@ This README covers the library's interface and internals.
         "indexer": {
             "hosts": ["https://127.0.0.1:9200"],
             "ssl": {
-                "certificate_authorities": ["etc/certs/root-ca.pem"],
-                "certificate": "etc/certs/indexer-connector.pem",
-                "key": "etc/certs/indexer-connector-key.pem"
+                "certificate_authorities": ["/etc/wazuh-manager/certs/root-ca.pem"],
+                "certificate": "/etc/wazuh-manager/certs/indexer-connector.pem",
+                "key": "/etc/wazuh-manager/certs/indexer-connector-key.pem"
             },
             "index": ".wazuh-threatintel-vulnerabilities",
             "consumerStatusIndex": ".wazuh-cti-consumers",

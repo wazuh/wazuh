@@ -14,9 +14,9 @@ This guide covers the four configuration files that changed between versions:
 | Area | 4.x | 5.0 |
 |------|-----|-----|
 | Installation path | `/var/ossec/` | `/var/wazuh-manager/` |
-| Main configuration file | `etc/ossec.conf` | `etc/wazuh-manager.conf` |
+| Main configuration file | `etc/ossec.conf` | `/etc/wazuh-manager/wazuh-manager.conf` |
 | Root XML element | `<ossec_config>` | `<wazuh_config>` |
-| Internal options file | `etc/internal_options.conf` + `etc/local_internal_options.conf` | `etc/wazuh-manager-internal-options.conf` |
+| Internal options file | `etc/internal_options.conf` + `etc/local_internal_options.conf` | `/etc/wazuh-manager/wazuh-manager-internal-options.conf` |
 | System user / group | `wazuh` | `wazuh-manager` |
 | Manager log file | `logs/ossec.log` | `logs/wazuh-manager.log` |
 | Manager JSON log file | `logs/ossec.json` | `logs/wazuh-manager.json` |
@@ -85,7 +85,7 @@ Replace `<ossec_config>` with `<wazuh_config>` throughout the file.
 ### Strict XML
 
 5.0 parses `wazuh-manager.conf` as **well-formed XML** validated against a JSON Schema
-(`etc/wazuh-manager.schema.json`; `bin/wazuh-manager-conf validate` reports the same verdict the
+(`/etc/wazuh-manager/wazuh-manager.schema.json`; `bin/wazuh-manager-conf validate` reports the same verdict the
 daemons apply). Constructs the 4.x parser tolerated are now rejected at startup, each reported as
 `(1244): Invalid configuration at '<pointer or file>': <detail>`:
 
@@ -231,16 +231,16 @@ The section is preserved, but `wazuh-manager-authd` now enforces TLS 1.3 as the 
 ```xml
 <auth>
   ...
-  <ssl_manager_cert>/var/wazuh-manager/etc/certs/remoted.pem</ssl_manager_cert>
-  <ssl_manager_key>/var/wazuh-manager/etc/certs/remoted-key.pem</ssl_manager_key>
+  <ssl_manager_cert>/etc/wazuh-manager/certs/remoted.pem</ssl_manager_cert>
+  <ssl_manager_key>/etc/wazuh-manager/certs/remoted-key.pem</ssl_manager_key>
   <ciphers>TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256</ciphers>
   ...
 </auth>
 ```
 
 `ssl_manager_cert`/`ssl_manager_key` now point at the same certificate the HTTPS agent listener of
-`wazuh-manager-remoted` presents (schema defaults `etc/certs/remoted.pem` and
-`etc/certs/remoted-key.pem`), not a separate pair of its own. The package issues that pair at
+`wazuh-manager-remoted` presents (schema defaults `/etc/wazuh-manager/certs/remoted.pem` and
+`/etc/wazuh-manager/certs/remoted-key.pem`), not a separate pair of its own. The package issues that pair at
 installation (see
 [Credentials and certificates](../../ref/getting-started/installation.md#credentials-and-certificates)),
 or you supply it from your own PKI (see
@@ -336,17 +336,18 @@ In 4.x the certificates pointed to Filebeat's certificate directory. In 5.0, Fil
   </hosts>
   <ssl>
     <certificate_authorities>
-      <ca>/var/wazuh-manager/etc/certs/root-ca.pem</ca>
+      <ca>/etc/wazuh-manager/certs/root-ca.pem</ca>
     </certificate_authorities>
-    <certificate>/var/wazuh-manager/etc/certs/indexer-connector.pem</certificate>
-    <key>/var/wazuh-manager/etc/certs/indexer-connector-key.pem</key>
+    <certificate>/etc/wazuh-manager/certs/indexer-connector.pem</certificate>
+    <key>/etc/wazuh-manager/certs/indexer-connector-key.pem</key>
   </ssl>
 </indexer>
 ```
 
 > [!NOTE]
-> The 5.0 installer generates the `<indexer>` section with these certificates as paths relative to
-> `/var/wazuh-manager` (`etc/certs/root-ca.pem`, …); relative and absolute paths are equivalent. See
+> The 5.0 installer generates the `<indexer>` section with these absolute paths, in the manager's
+> configuration directory `/etc/wazuh-manager`. A relative path you write resolves against the installation
+> directory `/var/wazuh-manager`. See
 > [Configure the indexer address](../../ref/getting-started/installation.md#configure-the-indexer-address).
 
 ### `<cluster>` section
@@ -542,7 +543,7 @@ Apply your 4.x customizations to the 5.0 default file using the changes describe
 
 ### SSL certificate names
 
-The API certificates moved to the unified `etc/certs` directory and were renamed after the daemon (`apid`). The default file names are resolved relative to `etc/certs`.
+The API certificates moved to the unified `/etc/wazuh-manager/certs` directory and were renamed after the daemon (`apid`). The default file names are resolved in `/etc/wazuh-manager/certs`.
 
 | Option | 4.x default | 5.0 default |
 |--------|------------|------------|
@@ -550,10 +551,10 @@ The API certificates moved to the unified `etc/certs` directory and were renamed
 | `https.cert` | `server.crt` | `apid.pem` |
 | `https.ca` | `ca.crt` | `root-ca.pem` |
 
-The 5.0 defaults resolve to `/var/wazuh-manager/etc/certs/apid.pem`, `apid-key.pem` and
+The 5.0 defaults resolve to `/etc/wazuh-manager/certs/apid.pem`, `apid-key.pem` and
 `root-ca.pem`. The three values are **file names only** (letters, digits, `_`, `-`, `.`; a directory
-is rejected with error `2000`) and are always looked up in `etc/certs/`. To keep your 4.x API
-certificates, copy them into `/var/wazuh-manager/etc/certs/` under other file names, readable by `wazuh-manager`,
+is rejected with error `2000`) and are always looked up in `/etc/wazuh-manager/certs/`. To keep your 4.x API
+certificates, copy them into `/etc/wazuh-manager/certs/` under other file names, as `root:wazuh-manager` `0640`,
 and set `https.key`/`https.cert`/`https.ca` to those names. The names `apid.pem` and `apid-key.pem` are
 those of the pair the installer issues, or that you provide signed by the manager's CA, which the
 installer validates (chain to the CA, `serverAuth`, `CA:FALSE`, not expired, with a SAN extension, key, owner and mode). `wazuh-manager-apid`
@@ -647,8 +648,8 @@ The list of paths synchronized from master to worker nodes has changed.
 - `etc/decoders/` — Same as above
 - `etc/lists/` — Same as above
 
-**Synchronized in 5.0:** `etc/client.keys`, `etc/authd.pass`, `etc/enrollment_tokens.json`, everything
-under `etc/shared/`, and `var/multigroups/merged.mg` files.
+**Synchronized in 5.0:** `/etc/wazuh-manager/client.keys`, `/etc/wazuh-manager/authd.pass`, `/etc/wazuh-manager/enrollment_tokens.json`, everything
+under `/etc/wazuh-manager/shared/`, and `var/multigroups/merged.mg` files.
 
 **`excluded_files` list updated:**
 

@@ -475,7 +475,7 @@ TEST(DownloadLocateTest, ConfigResolvesUnderTheSharedDirectoryUsingTheRequestedG
     const auto result = locateResource(configRequest("web-servers"), {});
 
     EXPECT_EQ(result.error, LocateError::None);
-    EXPECT_EQ(result.path, "etc/shared/web-servers/merged.mg");
+    EXPECT_EQ(result.path, std::string {remoted::paths::kSharedDir} + "/web-servers/merged.mg");
 }
 
 TEST(DownloadLocateTest, AnyRequestedGroupResolvesRegardlessOfTheAgent)
@@ -487,7 +487,7 @@ TEST(DownloadLocateTest, AnyRequestedGroupResolvesRegardlessOfTheAgent)
     {
         const auto result = locateResource(configRequest(group), {});
         EXPECT_EQ(result.error, LocateError::None);
-        EXPECT_EQ(result.path, std::string {"etc/shared/"} + group + "/merged.mg");
+        EXPECT_EQ(result.path, std::string {remoted::paths::kSharedDir} + "/" + group + "/merged.mg");
     }
 }
 

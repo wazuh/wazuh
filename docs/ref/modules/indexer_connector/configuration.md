@@ -10,7 +10,7 @@ For module overview and architecture, see [Indexer Connector Module](README.md).
 
 ## Manager Configuration
 
-**Configuration file:** `/var/wazuh-manager/etc/wazuh-manager.conf`
+**Configuration file:** `/etc/wazuh-manager/wazuh-manager.conf`
 
 **XML Section:** `<indexer>`
 
@@ -27,10 +27,10 @@ The installer writes this section:
   </hosts>
   <ssl>
     <certificate_authorities>
-      <ca>etc/certs/root-ca.pem</ca>
+      <ca>/etc/wazuh-manager/certs/root-ca.pem</ca>
     </certificate_authorities>
-    <certificate>etc/certs/indexer-connector.pem</certificate>
-    <key>etc/certs/indexer-connector-key.pem</key>
+    <certificate>/etc/wazuh-manager/certs/indexer-connector.pem</certificate>
+    <key>/etc/wazuh-manager/certs/indexer-connector-key.pem</key>
   </ssl>
 </indexer>
 ```
@@ -112,7 +112,7 @@ retry settings belong to each consumer:
 - Vulnerability Scanner: `wazuh_modules.indexer_*` — see [Internal Options](../vulnerability-scanner/configuration.md#internal-options)
 - Inventory Sync Server: `wazuh_modules.inventory_sync_server_indexer_*` — see its [configuration reference](../inventory-sync-server/configuration.md)
 
-All of them are set in `/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`.
+All of them are set in `/etc/wazuh-manager/wazuh-manager-internal-options.conf`.
 
 ---
 
@@ -129,10 +129,10 @@ All of them are set in `/var/wazuh-manager/etc/wazuh-manager-internal-options.co
   </hosts>
   <ssl>
     <certificate_authorities>
-      <ca>etc/certs/root-ca.pem</ca>
+      <ca>/etc/wazuh-manager/certs/root-ca.pem</ca>
     </certificate_authorities>
-    <certificate>etc/certs/indexer-connector.pem</certificate>
-    <key>etc/certs/indexer-connector-key.pem</key>
+    <certificate>/etc/wazuh-manager/certs/indexer-connector.pem</certificate>
+    <key>/etc/wazuh-manager/certs/indexer-connector-key.pem</key>
   </ssl>
 </indexer>
 ```
@@ -149,11 +149,11 @@ If the Indexer nodes' certificates come from different CAs:
   </hosts>
   <ssl>
     <certificate_authorities>
-      <ca>/var/wazuh-manager/etc/certs/root-ca-1.pem</ca>
-      <ca>/var/wazuh-manager/etc/certs/root-ca-2.pem</ca>
+      <ca>/etc/wazuh-manager/certs/root-ca-1.pem</ca>
+      <ca>/etc/wazuh-manager/certs/root-ca-2.pem</ca>
     </certificate_authorities>
-    <certificate>etc/certs/indexer-connector.pem</certificate>
-    <key>etc/certs/indexer-connector-key.pem</key>
+    <certificate>/etc/wazuh-manager/certs/indexer-connector.pem</certificate>
+    <key>/etc/wazuh-manager/certs/indexer-connector-key.pem</key>
   </ssl>
 </indexer>
 ```
@@ -184,9 +184,9 @@ Check that the Indexer accepts the manager's certificate and credentials, using 
 account the connector uses:
 
 ```bash
-curl --cacert /var/wazuh-manager/etc/certs/root-ca.pem \
-     --cert   /var/wazuh-manager/etc/certs/indexer-connector.pem \
-     --key    /var/wazuh-manager/etc/certs/indexer-connector-key.pem \
+curl --cacert /etc/wazuh-manager/certs/root-ca.pem \
+     --cert   /etc/wazuh-manager/certs/indexer-connector.pem \
+     --key    /etc/wazuh-manager/certs/indexer-connector-key.pem \
      -u "wazuh-manager:$(/var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -g)" \
      https://127.0.0.1:9200/_cluster/health
 ```
@@ -216,9 +216,9 @@ The installation issues the client certificate and key from the manager's CA, on
 
 | File | Owner:group | Mode |
 |---|---|---|
-| `/var/wazuh-manager/etc/certs/root-ca.pem` | root:wazuh-manager | 0640 |
-| `/var/wazuh-manager/etc/certs/indexer-connector.pem` | root:wazuh-manager | 0640 |
-| `/var/wazuh-manager/etc/certs/indexer-connector-key.pem` | root:wazuh-manager | 0640 |
+| `/etc/wazuh-manager/certs/root-ca.pem` | root:wazuh-manager | 0640 |
+| `/etc/wazuh-manager/certs/indexer-connector.pem` | root:wazuh-manager | 0640 |
+| `/etc/wazuh-manager/certs/indexer-connector-key.pem` | root:wazuh-manager | 0640 |
 
 The daemons read them as `wazuh-manager`, so a replacement file must stay readable by that group.
 

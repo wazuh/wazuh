@@ -138,7 +138,7 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     /* Setting default values for global parameters */
     cfg->global.agents_disconnection_time = 900;
 
-    /* etc/wazuh-manager.conf: loaded once per process (schema + defaults applied), then each section
+    /* /etc/wazuh-manager/wazuh-manager.conf: loaded once per process (schema + defaults applied), then each section
      * of the effective document is read as cJSON (mconf-config.h). */
     if (w_mconf_load(cfgfile) < 0) {
         return (OS_INVALID);
@@ -189,7 +189,7 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
 }
 
 
-/* getconfig "remote": the effective `remote` section of etc/wazuh-manager.conf (schema defaults
+/* getconfig "remote": the effective `remote` section of /etc/wazuh-manager/wazuh-manager.conf (schema defaults
  * applied, native types), exactly what RemotedConfig() loaded. Feeds one endpoint:
  * GET /cluster/.../configuration/request/remote, which asks the daemon over its socket. */
 cJSON *getRemoteConfig(void) {
@@ -250,7 +250,7 @@ cJSON *getRemoteInternalConfig(void) {
 
 }
 
-/* getconfig "global": the effective `global` section of etc/wazuh-manager.conf. */
+/* getconfig "global": the effective `global` section of /etc/wazuh-manager/wazuh-manager.conf. */
 cJSON *getRemoteGlobalConfig(void) {
     cJSON *root = cJSON_CreateObject();
     cJSON *global = w_mconf_section("global");

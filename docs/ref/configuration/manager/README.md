@@ -8,9 +8,9 @@ parser).
 
 | File | Location | Mode | Description |
 |------|----------|------|-------------|
-| `wazuh-manager.conf` | `/var/wazuh-manager/etc/` | 660 `root:wazuh-manager` | Main configuration: a single `<wazuh_config>` root with one element per section (see [the generated reference](reference.md)) |
-| `wazuh-manager.schema.json` | `/var/wazuh-manager/etc/` | 640 `root:wazuh-manager` | JSON Schema (draft-04) the file is validated against; installed copy of `src/shared_modules/manager_config/schema/wazuh-manager.schema.json`, replaced on every install and upgrade (product, not configuration) |
-| `wazuh-manager-internal-options.conf` | `/var/wazuh-manager/etc/` | 640 `root:wazuh-manager` | Internal tuning parameters (`key=value`); ships with comments only, the defaults are compiled in, and an existing file is kept |
+| `wazuh-manager.conf` | `/etc/wazuh-manager` | 660 `root:wazuh-manager` | Main configuration: a single `<wazuh_config>` root with one element per section (see [the generated reference](reference.md)) |
+| `wazuh-manager.schema.json` | `/etc/wazuh-manager` | 640 `root:wazuh-manager` | JSON Schema (draft-04) the file is validated against; installed copy of `src/shared_modules/manager_config/schema/wazuh-manager.schema.json`, replaced on every install and upgrade (product, not configuration) |
+| `wazuh-manager-internal-options.conf` | `/etc/wazuh-manager` | 640 `root:wazuh-manager` | Internal tuning parameters (`key=value`); ships with comments only, the defaults are compiled in, and an existing file is kept |
 | `api.yaml` | `/var/wazuh-manager/api/configuration/` | 660 `root:wazuh-manager` | REST API configuration (see [Server API configuration](../../modules/server-api/configuration.md)) |
 
 `wazuh-manager.conf` is **generated, not shipped**: the installer and the packages write it once
@@ -30,7 +30,8 @@ element is rejected as a duplicate.
 ## Validation and tools
 
 - `bin/wazuh-manager-conf [-f <file>] [-H <home>] [--skip-file-checks] <command>` reads
-  `<home>/etc/wazuh-manager.conf` unless `-f` names another file; `-H` defaults to
+  `/etc/wazuh-manager/wazuh-manager.conf` unless `-f` names another file (`-H` never moves it: it sets the
+  home that relative paths inside the file resolve against); `-H` defaults to
   `$WAZUH_MANAGER_HOME`, else the parent of the `bin/` directory holding the program. `-V` prints the
   version. Exit status: `0` success, `1` invalid configuration, missing file or usage error, `2` key not
   set (`get`).
@@ -109,7 +110,7 @@ Scanner) also read the process-wide `wazuh_modules.*` options documented in
 ## Common Internal Options
 
 These internal options apply to every module of `wazuh-manager-modulesd`, or to every C daemon. Set
-them in `/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`; an absent key takes the default
+them in `/etc/wazuh-manager/wazuh-manager-internal-options.conf`; an absent key takes the default
 below, and a value outside the range stops the daemon at start with
 `(2302): Invalid definition for <name>: '<value>'.`
 

@@ -6,7 +6,7 @@ Active Response (AR) is rebuilt in 5.x. The 4.x XML in `ossec.conf`, the agent-s
 
 ## Breaking changes at a glance
 
-- The 4.x **manager's** `<command>` / `<active-response>` blocks have no 5.x equivalent: the manager reads `etc/wazuh-manager.conf`, where an unknown section such as `<active-response>` is a configuration error that stops the start. `ar.conf` is gone.
+- The 4.x **manager's** `<command>` / `<active-response>` blocks have no 5.x equivalent: the manager reads `/etc/wazuh-manager/wazuh-manager.conf`, where an unknown section such as `<active-response>` is a configuration error that stops the start. `ar.conf` is gone.
 - The **agent's** local `ossec.conf` keeps an `<active-response>` block: `wazuh-execd` still reads `<disabled>` and `<repeated_offenders>` from it, plus the new `<allowlist>` (see the [agent configuration reference](../../ref/modules/active-response/configuration.md#agent-configuration)). A `<command>` block left in an agent's `ossec.conf` or `agent.conf` is ignored with `(1223): 'command' is no longer supported and will be ignored. Active Response commands are not defined in the configuration file.`
 - AR is created under **Explore → Active Responses**. Each channel carries `name`, `description`, `enabled`, `executable`, `extra_arguments`, `type` (`stateful` / `stateless`), `stateful_timeout` (default `180s`), `location` (`local` / `defined-agent` / `all`), `agent_id`.
 - Matching (`<rules_id>` / `<level>` / `<rules_group>`) moves to the query of an Alerting monitor of type **Active Response**.

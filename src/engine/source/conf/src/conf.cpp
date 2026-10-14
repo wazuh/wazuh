@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <unistd.h>
 
+#include <base/managerConfig.hpp>
 #include <base/process.hpp>
 #include <fmt/format.h>
 
@@ -36,8 +37,12 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     // Store module
     addUnit<std::string>(key::STORE_PATH, "WAZUH_STORE_PATH", (wazuhRoot / "data/store").c_str());
 
-    // Default outputs
-    addUnit<std::string>(key::OUTPUTS_PATH, "WAZUH_OUTPUTS_PATH", (wazuhRoot / "etc/outputs/").c_str());
+    // Default outputs: in the fixed configuration directory on a manager; relative to the cwd standalone.
+    const std::filesystem::path outputsPath =
+        base::process::isStandaloneModeEnable()
+            ? wazuhRoot / "etc/outputs/"
+            : std::filesystem::path(std::string(base::managerConfig::MANAGER_CONF_DIR)) / "outputs/";
+    addUnit<std::string>(key::OUTPUTS_PATH, "WAZUH_OUTPUTS_PATH", outputsPath.c_str());
 
     // Default kvdb ioc
     addUnit<std::string>(key::KVDB_IOC_PATH, "WAZUH_KVDB_IOC_PATH", (wazuhRoot / "data/kvdb-ioc").c_str());

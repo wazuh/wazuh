@@ -418,7 +418,7 @@ def test_enrollment_token_master(test_configuration, test_metadata, clean_enroll
         consuming a token with an 'add' and revoking it, refusing an address the listener
         certificate does not name, and warning about an endpoint given as an IP address.
 
-        'clean_enrollment_tokens' is requested first on purpose: it removes 'etc/enrollment_tokens.json'
+        'clean_enrollment_tokens' is requested first on purpose: it removes '/etc/wazuh-manager/enrollment_tokens.json'
         while authd is still stopped, so every case starts from a daemon that has loaded no tokens.
 
     wazuh_min_version:

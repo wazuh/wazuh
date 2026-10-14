@@ -41,12 +41,13 @@ extern "C"
     /**
      * @brief The CA files the module loads when ca_path / ca_certificate_path are left empty.
      *
-     * Relative to remoted's working directory, the installation directory. Defined here, once, because
-     * remoted's TLS preflight (w_remoted_check_tls_files(), src/remoted/src/secure.c) must probe the very
-     * files the module opens (httpServerConfig.cpp).
+     * Absolute, under the manager's fixed configuration directory (WAZUH_MANAGER_CONF_DIR in defs.h,
+     * Utils::MANAGER_CONF_DIR in C++; httpServerConfig.cpp static_asserts the prefix). Defined here, once,
+     * because remoted's TLS preflight (w_remoted_check_tls_files(), src/remoted/src/secure.c) must probe the
+     * very files the module opens (httpServerConfig.cpp).
      */
-#define REMOTED_MODULE_DEFAULT_CA_PATH "etc/certs/root-ca.pem"
-#define REMOTED_MODULE_DEFAULT_CA_CERTIFICATE_PATH "etc/certs/root-ca.pem"
+#define REMOTED_MODULE_DEFAULT_CA_PATH "/etc/wazuh-manager/certs/root-ca.pem"
+#define REMOTED_MODULE_DEFAULT_CA_CERTIFICATE_PATH "/etc/wazuh-manager/certs/root-ca.pem"
 
     /**
      * @brief remote.https.verification_mode values.
@@ -259,7 +260,7 @@ extern "C"
                                               ///< deliberately NOT the allow_higher_versions field
                                               ///< above, which is a separate, independently
                                               ///< configured remote setting used by /control.
-        int enroll_password_refresh_interval; ///< Seconds between etc/authd.pass change checks
+        int enroll_password_refresh_interval; ///< Seconds between /etc/wazuh-manager/authd.pass change checks
                                               ///< (hot-reload poll fallback). <=0 -> module default.
         int authd_connect_timeout;            ///< Seconds to wait for the authd local-socket connect. <=0 -> default.
         int authd_response_timeout;           ///< Seconds to wait for authd's reply to an enrollment request.

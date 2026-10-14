@@ -22,7 +22,7 @@ sequenceDiagram
     autonumber
     participant OP as Operator
     participant CLI as authd CLI<br/>(master)
-    participant TS as etc/enrollment_tokens.json
+    participant TS as /etc/wazuh-manager/enrollment_tokens.json
     participant AG as Agent
     participant RM as remoted<br/>POST /enroll (1517)
     participant AD as authd<br/>auth.sock
@@ -79,7 +79,7 @@ Two artifacts come out of one mint, and they go to different places:
 | Artifact | Where it goes | Lifetime |
 |---|---|---|
 | The **token string** | stdout at creation; no CLI command retrieves it later | the operator's to distribute |
-| The **record** (`id`, `secret`, `adr`, anchor, `expires`, `max_uses`, `uses`, `revoked`) | `etc/enrollment_tokens.json` on the master | until purged |
+| The **record** (`id`, `secret`, `adr`, anchor, `expires`, `max_uses`, `uses`, `revoked`) | `/etc/wazuh-manager/enrollment_tokens.json` on the master | until purged |
 
 The record is what the manager keeps. The token string is what the agent gets. Listing omits the
 secret and token text, but the stored record retains the material needed to reconstruct the token;
@@ -129,7 +129,7 @@ The CLI prints the same 32 bytes in hexadecimal as `pin:` on stderr so an operat
 against a CA out of band, with the installed default CA path:
 
 ```bash
-sudo openssl x509 -in /var/wazuh-manager/etc/certs/root-ca.pem -pubkey -noout | openssl pkey -pubin -outform DER | openssl dgst -sha256
+sudo openssl x509 -in /etc/wazuh-manager/certs/root-ca.pem -pubkey -noout | openssl pkey -pubin -outform DER | openssl dgst -sha256
 ```
 
 If the configured CA file is a bundle, run this command on the signing certificate extracted
@@ -201,7 +201,7 @@ key = HKDF-SHA256(
 
 | Credential | IKM | `info` label |
 |---|---|---|
-| Shared enrollment password | the first line of `etc/authd.pass`, with trailing CR/LF removed | `WAZUH-ENROLL-JWT-KEY` |
+| Shared enrollment password | the first line of `/etc/wazuh-manager/authd.pass`, with trailing CR/LF removed | `WAZUH-ENROLL-JWT-KEY` |
 | Enrollment token | the token's 16-byte secret | `WAZUH-ENROLL-TOKEN-KEY` |
 | Re-enrollment | the agent's 32-byte `reenroll_secret`, decoded from its 64 hex characters | `WAZUH-REENROLL-KEY` |
 
@@ -275,7 +275,7 @@ happens to be in open mode would turn a deliberate restriction into decoration. 
 `use_password` decides only what happens to a request that presents **no** token: with it on, the
 shared-password bearer is required; with it off, the endpoint is open.
 
-A re-enrollment `kid` likewise takes its own path in every mode, including when `etc/authd.pass` is
+A re-enrollment `kid` likewise takes its own path in every mode, including when `/etc/wazuh-manager/authd.pass` is
 missing on that node — the password key is simply not involved.
 
 > Mutual TLS is independent of both. If the listener requires a client certificate *and*
@@ -546,9 +546,9 @@ fetches remain unauthenticated.
 
 | Artifact | Ends up in | Replicated to workers |
 |---|---|---|
-| The agent's key | `etc/client.keys` and the `agent` row | yes, by the cluster sync |
+| The agent's key | `/etc/wazuh-manager/client.keys` and the `agent` row | yes, by the cluster sync |
 | The agent's `reenroll_secret` | the `agent` row in `global.db`, only | no |
-| The token record, with its use count | `etc/enrollment_tokens.json` on the master | yes, read-only |
+| The token record, with its use count | `/etc/wazuh-manager/enrollment_tokens.json` on the master | yes, read-only |
 | The token string | wherever the operator put it | never stored again |
 | The identity-journal line | dropped once committed | no, node-local |
 

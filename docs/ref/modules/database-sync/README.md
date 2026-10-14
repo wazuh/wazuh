@@ -2,7 +2,7 @@
 
 The `database` module of `wazuh-manager-modulesd` keeps the agent and group tables of `global.db`
 (owned by [`wazuh-manager-db`](../wazuh_db/README.md)) in step with two files on disk: the agent
-registry `etc/client.keys` and the group directories under `etc/shared/`. It is a client of
+registry `/etc/wazuh-manager/client.keys` and the group directories under `/etc/wazuh-manager/shared/`. It is a client of
 `wazuh-manager-db`, not part of it.
 
 **Daemon:** `wazuh-manager-modulesd` (log tag `wazuh-manager-modulesd:database`)
@@ -20,13 +20,13 @@ registry `etc/client.keys` and the group directories under `etc/shared/`. It is 
   re-enroll with a secret until it enrolls again. Every agent in `global.db` with no line in
   `client.keys` is deleted, together with its message-counter file `queue/rids/<id>` and its line in
   `queue/agents-timestamp`.
-- **Group reconciliation.** Every group in `global.db` whose directory under `etc/shared/` no longer
-  exists is deleted, and every directory under `etc/shared/` not yet in `global.db` is inserted as a
+- **Group reconciliation.** Every group in `global.db` whose directory under `/etc/wazuh-manager/shared/` no longer
+  exists is deleted, and every directory under `/etc/wazuh-manager/shared/` not yet in `global.db` is inserted as a
   group.
 
 **While running:**
 
-- **Groups** are kept in step on every node: a directory created, moved or removed under `etc/shared/`
+- **Groups** are kept in step on every node: a directory created, moved or removed under `/etc/wazuh-manager/shared/`
   inserts or deletes that group.
 - **Agents** are re-reconciled after `client.keys` changes **only on worker nodes**, where the file
   arrives from the master through the cluster. On the master, `wazuh-manager-authd` writes agent
@@ -34,9 +34,9 @@ registry `etc/client.keys` and the group directories under `etc/shared/`. It is 
   start.
 
 How changes are noticed depends on `wazuh_database.real_time`: in real-time mode (the default) through
-inotify watches on `etc/` (for `client.keys`) and `etc/shared/`, whose events go through an internal
+inotify watches on `/etc/wazuh-manager` (for `client.keys`) and `/etc/wazuh-manager/shared/`, whose events go through an internal
 queue of pending paths; in interval mode by checking `client.keys` for a new modification time or inode
-and rescanning `etc/shared/` every `wazuh_database.interval` seconds.
+and rescanning `/etc/wazuh-manager/shared/` every `wazuh_database.interval` seconds.
 
 The module does **not** write agent connection status, keepalives or the group assignments of
 individual agents; other components write those.

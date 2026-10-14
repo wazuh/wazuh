@@ -95,7 +95,7 @@ must run as root (the credentials directory is root-only) and exits 2 otherwise.
 
 Each caller already knows which of the first two applies: `$2` is empty in a DEB `postinst
 configure` on a fresh install, `$1` is `1` in an RPM `%post`, and `install.sh` has `update_only`.
-The DEB `postinst` adds one case: `apt remove` renames `etc/` files to `*.save`, so a reinstall
+The DEB `postinst` adds one case: `apt remove` renames the files in `/etc/wazuh-manager` to `*.save`, so a reinstall
 from the config-files state passes the old version in `$2` but finds no pair, and runs `--install`.
 Every caller appends `|| true`; the resolver exits 2 only on an unknown option (or `-H` without a
 directory) or a helper it cannot find, and `-H <home>` overrides the installation directory it

@@ -18,7 +18,7 @@ and docs/ref/modules/remoted/https-events-api.md#enrollment-endpoint-post-enroll
 
 Unlike every other tool in this directory, there is no agent already enrolled to borrow a key
 from: for Password mode, pass the manager's actual enrollment password (--password, or
---password-file to read it from wherever the operator copied /var/wazuh-manager/etc/authd.pass).
+--password-file to read it from wherever the operator copied /etc/wazuh-manager/authd.pass).
 
 Requires: pip install requests   (the token is pure stdlib via wire_jwt.py)
 
@@ -43,7 +43,7 @@ from wire_jwt import (CLOCK_SKEW_SECONDS, EXPIRED_IAT_OFFSET, FUTURE_IAT_OFFSET,
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-DEFAULT_PASSWORD_FILE = "/var/wazuh-manager/etc/authd.pass"
+DEFAULT_PASSWORD_FILE = "/etc/wazuh-manager/authd.pass"
 
 # The only value the manager accepts (remoted::auth::kSupportedProtocolVersion). Validated before
 # the bearer, in every mode.
@@ -60,7 +60,7 @@ def derive_key(password: str) -> bytes:
     return derive_enroll_key(password)
 
 
-DEFAULT_MANAGER_CONF = "/var/wazuh-manager/etc/wazuh-manager.conf"
+DEFAULT_MANAGER_CONF = "/etc/wazuh-manager/wazuh-manager.conf"
 GLOBAL_PREFIX = ""
 
 

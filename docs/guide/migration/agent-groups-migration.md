@@ -2,7 +2,7 @@
 
 In Wazuh 4.x, agent group assignments were stored in the manager's `global.db` database and shared group configurations lived under `/var/ossec/etc/shared/`. Each group folder contained an `agent.conf` and a compiled `merged.mg` file that the manager pushed to agents on check-in.
 
-Starting with Wazuh 5.0, the manager installation path changed from `/var/ossec/` to `/var/wazuh-manager/`. Group configurations still reside under the same relative path (`etc/shared/`), but the absolute paths have changed. Group membership is also no longer inferred by the manager: the agent declares its group during the **enrollment handshake**, and the manager stores that assignment in `global.db`. This means an agent will only be placed in its original group if that group is configured on the agent **before** it (re)enrolls. There is no automatic checksum-based group guessing in Wazuh 5.0. The full mechanism is covered in [How group assignment works](#how-group-assignment-works) below.
+Starting with Wazuh 5.0, the manager installation path changed from `/var/ossec/` to `/var/wazuh-manager/`. Group configurations moved from `/var/ossec/etc/shared/` to `/etc/wazuh-manager/shared/`, outside the installation directory. Group membership is also no longer inferred by the manager: the agent declares its group during the **enrollment handshake**, and the manager stores that assignment in `global.db`. This means an agent will only be placed in its original group if that group is configured on the agent **before** it (re)enrolls. There is no automatic checksum-based group guessing in Wazuh 5.0. The full mechanism is covered in [How group assignment works](#how-group-assignment-works) below.
 
 > There is no automatic migration tooling for agent groups. You must manually transfer your group configuration files to the new manager before reconnecting any agents.
 
@@ -13,7 +13,7 @@ Starting with Wazuh 5.0, the manager installation path changed from `/var/ossec/
 
 Group assignment in Wazuh 5.0 is driven by the agent's enrollment:
 
-1. **Enrollment (the handshake that carries the group).** When an agent enrolls (registers) with the manager, it includes the group(s) configured in its `ossec.conf` under `<enrollment><groups>`. The manager's enrollment service (`wazuh-manager-authd`) validates the group and writes the assignment into `global.db`; an enrollment that declares no group is recorded in `default`. If a declared group has no folder under `etc/shared/` on the manager, **enrollment is rejected and the agent cannot connect**; the agent keeps retrying with a backoff, so it enrolls on its own once the group exists.
+1. **Enrollment (the handshake that carries the group).** When an agent enrolls (registers) with the manager, it includes the group(s) configured in its `ossec.conf` under `<enrollment><groups>`. The manager's enrollment service (`wazuh-manager-authd`) validates the group and writes the assignment into `global.db`; an enrollment that declares no group is recorded in `default`. If a declared group has no folder under `/etc/wazuh-manager/shared/` on the manager, **enrollment is rejected and the agent cannot connect**; the agent keeps retrying with a backoff, so it enrolls on its own once the group exists.
 2. **Persistence.** The assignment persists in `global.db` and survives agent and manager restarts, so it does not need to be resent on every connection.
 3. **Reconnection.** On each keepalive, the manager looks up the agent's groups in `global.db` and sends the agent the merged shared configuration (`merged.mg`) of those groups when the agent's copy differs.
 
@@ -70,19 +70,19 @@ After installing Wazuh 5.0, copy the backup archive back onto the manager host. 
 
 ```bash
 systemctl stop wazuh-manager
-tar -xvzf /tmp/wazuh_groups_backup.tar.gz -C /var/wazuh-manager/etc/
-chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/etc/shared/*/
+tar -xvzf /tmp/wazuh_groups_backup.tar.gz -C /etc/wazuh-manager
+chown -R wazuh-manager:wazuh-manager /etc/wazuh-manager/shared/*/
 systemctl start wazuh-manager
 ```
 
-The `chown` covers the group folders only: `etc/shared/` itself stays `root:wazuh-manager`, mode `0770`, as the package installs it.
+The `chown` covers the group folders only: `/etc/wazuh-manager/shared/` itself stays `root:wazuh-manager`, mode `0770`, as the package installs it.
 
-Extract with the manager stopped: the extracted folders carry the 4.x owner until the `chown` runs, and a running `wazuh-manager-modulesd` that checks a group folder it cannot read in that window logs `Couldn't open directory 'etc/shared/<group>' ... a 'delete-group' will be sent anyway` and removes the group from the database until the next synchronization.
+Extract with the manager stopped: the extracted folders carry the 4.x owner until the `chown` runs, and a running `wazuh-manager-modulesd` that checks a group folder it cannot read in that window logs `Couldn't open directory '/etc/wazuh-manager/shared/<group>' ... a 'delete-group' will be sent anyway` and removes the group from the database until the next synchronization.
 
 Verify the group folders were restored:
 
 ```bash
-ls /var/wazuh-manager/etc/shared/
+ls /etc/wazuh-manager/shared/
 ```
 
 > [!WARNING]
@@ -113,7 +113,7 @@ With the group folders in place and each agent's group configured, start each ag
 >
 > ```bash
 > # On the manager
-> sudo cat /var/wazuh-manager/etc/authd.pass
+> sudo cat /etc/wazuh-manager/authd.pass
 >
 > # On each agent
 > echo "<password>" | sudo tee /var/ossec/etc/authd.pass
@@ -298,11 +298,11 @@ drwx------ wazuh/wazuh       0 2026-06-02 18:39 shared/linux-servers/
 ### Step 2: Restore on 5.x
 
 ```bash
-# tar -xvzf /tmp/wazuh_groups_backup.tar.gz -C /var/wazuh-manager/etc/
+# tar -xvzf /tmp/wazuh_groups_backup.tar.gz -C /etc/wazuh-manager
 shared/linux-servers/
 shared/linux-servers/agent.conf
-# chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/etc/shared/*/
-# ls -la /var/wazuh-manager/etc/shared/linux-servers/
+# chown -R wazuh-manager:wazuh-manager /etc/wazuh-manager/shared/*/
+# ls -la /etc/wazuh-manager/shared/linux-servers/
 total 8
 drwx------ 1 wazuh-manager wazuh-manager  38 Jun  2 19:31 .
 drwxrwx--- 1 root          wazuh-manager  78 Jun  2 19:31 ..

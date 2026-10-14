@@ -17,11 +17,6 @@ std::unique_ptr<manager_config::Document> g_document;
 using ParseFn = void* (*)(const char*);
 ParseFn g_parseFn = nullptr;
 
-std::filesystem::path filePath(const std::filesystem::path& home)
-{
-    return home / std::string(base::managerConfig::FILE_RELATIVE_PATH);
-}
-
 manager_config::LoadOptions loadOptions(const std::filesystem::path& home, bool checkFiles)
 {
     manager_config::LoadOptions options;
@@ -57,9 +52,14 @@ void* sectionProvider(const char* section)
 namespace base::managerConfig
 {
 
-void load(const std::filesystem::path& home)
+std::filesystem::path filePath()
 {
-    auto result = manager_config::Document::load(filePath(home), loadOptions(home, false));
+    return std::filesystem::path(std::string(MANAGER_CONF_DIR)) / std::string(FILE_NAME);
+}
+
+void load(const std::filesystem::path& home, const std::filesystem::path& file)
+{
+    auto result = manager_config::Document::load(file, loadOptions(home, false));
     if (const auto* error = std::get_if<manager_config::Error>(&result))
     {
         throw std::runtime_error(error->what());
@@ -68,9 +68,9 @@ void load(const std::filesystem::path& home)
     g_document = std::make_unique<manager_config::Document>(std::move(std::get<manager_config::Document>(result)));
 }
 
-std::optional<std::string> validate(const std::filesystem::path& home)
+std::optional<std::string> validate(const std::filesystem::path& home, const std::filesystem::path& file)
 {
-    if (const auto error = manager_config::validateFile(filePath(home), loadOptions(home, true)))
+    if (const auto error = manager_config::validateFile(file, loadOptions(home, true)))
     {
         return error->what();
     }

@@ -47,11 +47,13 @@ BUNDLE_VERSION = 2
 
 DEFAULT_SOURCE_DIR = "/var/ossec"
 DEFAULT_TARGET_DIR = "/var/wazuh-manager"
+# A 5.0 manager keeps its configuration in a fixed directory outside the installation home.
+DEFAULT_TARGET_CONF_DIR = "/etc/wazuh-manager"
 DEFAULT_API_URL = "https://localhost:55000"
 
-# The CA the manager issued apid.pem from at install, relative to the 5.0 installation. The default
-# trust anchor for --api-ca: apid.pem carries localhost, 127.0.0.1 and ::1 among its SANs.
-TARGET_ROOT_CA = os.path.join("etc", "certs", "root-ca.pem")
+# The CA the manager issued apid.pem from at install, relative to the 5.0 configuration directory.
+# The default trust anchor for --api-ca: apid.pem carries localhost, 127.0.0.1 and ::1 among its SANs.
+TARGET_ROOT_CA = os.path.join("certs", "root-ca.pem")
 
 # Where a 5.0 manager publishes the Server API password it generated at install (#39554). Read
 # as data, never sourced; the last assignment of the key wins, as the manager's own reader does.
@@ -66,13 +68,17 @@ SOURCE_DB_VERSIONS_CHECKED = (7, 8, 9, 10, 11, 12)
 RESERVED_GROUPS = ("default",)
 
 # The two credentials no endpoint can express, so they stay file copies. Both are opt-in.
-#   key: bundle name -> (source relative path, target relative path, owner, group, mode)
+#   key: bundle name -> (source relative path, target root, target relative path, owner, group, mode)
+# The source path is relative to the 4.x installation. The target root names what the target path is
+# relative to: TARGET_CONF for the 5.0 configuration directory, TARGET_HOME for the 5.0 installation.
 # Both belong to the service account: authd creates authd.pass itself and the API rewrites
 # rbac.db, each after dropping privileges.
+TARGET_CONF = "conf"
+TARGET_HOME = "home"
 SECRET_FILES = {
-    "authd.pass": ("etc/authd.pass", "etc/authd.pass",
+    "authd.pass": ("etc/authd.pass", TARGET_CONF, "authd.pass",
                    "wazuh-manager", "wazuh-manager", 0o640),
-    "rbac.db": ("api/configuration/security/rbac.db", "api/configuration/security/rbac.db",
+    "rbac.db": ("api/configuration/security/rbac.db", TARGET_HOME, "api/configuration/security/rbac.db",
                 "wazuh-manager", "wazuh-manager", 0o640),
 }
 
@@ -216,8 +222,8 @@ def resolve_api_ca(args):
         raise MigrationError(
             "--api-url %s is not a loopback address, so --api-ca is required: name the CA that"
             " issued the API certificate (on that manager, %s)."
-            % (args.api_url, os.path.join(DEFAULT_TARGET_DIR, TARGET_ROOT_CA)))
-    ca_path = os.path.join(args.target_dir, TARGET_ROOT_CA)
+            % (args.api_url, os.path.join(DEFAULT_TARGET_CONF_DIR, TARGET_ROOT_CA)))
+    ca_path = os.path.join(args.target_conf_dir, TARGET_ROOT_CA)
     if not os.path.isfile(ca_path):
         raise MigrationError(
             "%s is missing, so the API certificate cannot be verified. Pass --api-ca with the CA"
@@ -407,7 +413,7 @@ def command_export(args):
                  % (group["name"], ", ".join(group["extra_files"])))
 
     secrets = []
-    for name, (relative, _, _, _, _) in SECRET_FILES.items():
+    for name, (relative, _, _, _, _, _) in SECRET_FILES.items():
         asked = args.with_password if name == "authd.pass" else args.with_rbac
         path = os.path.join(source, relative)
         if not asked:
@@ -620,14 +626,16 @@ def import_memberships(api, manifest, inserted, dry_run):
     return assigned, failed
 
 
-def install_secret(bundle, name, target_dir, dry_run):
+def install_secret(bundle, name, target_dir, target_conf_dir, dry_run):
     """The two credentials no endpoint can express."""
-    _, relative, owner, group, mode = SECRET_FILES[name]
+    _, root, relative, owner, group, mode = SECRET_FILES[name]
     source = os.path.join(bundle, name)
-    destination = os.path.join(target_dir, relative)
+    base = target_conf_dir if root == TARGET_CONF else target_dir
+    destination = os.path.join(base, relative)
     if not os.path.isdir(os.path.dirname(destination)):
-        raise MigrationError("'%s' does not exist; is '%s' a 5.0 installation?"
-                             % (os.path.dirname(destination), target_dir))
+        raise MigrationError("'%s' does not exist; is '%s' a 5.0 %s?"
+                             % (os.path.dirname(destination), base,
+                                "configuration directory" if root == TARGET_CONF else "installation"))
 
     backup = None
     if os.path.exists(destination):
@@ -704,7 +712,7 @@ def command_import(args):
             log("  skip     %-20s (--with-%s not given)"
                 % (name, "password" if name == "authd.pass" else "rbac"))
             continue
-        install_secret(args.bundle, name, target, args.dry_run)
+        install_secret(args.bundle, name, target, args.target_conf_dir, args.dry_run)
         if name == "rbac.db":
             stage_rbac(target, args.dry_run)
             if os.path.isfile(CREDENTIALS_ENV):
@@ -849,6 +857,9 @@ def build_parser():
     for subparser in (import_parser, check_parser):
         subparser.add_argument("--target-dir", default=DEFAULT_TARGET_DIR,
                                help="5.0 installation directory (default: %(default)s)")
+        subparser.add_argument("--target-conf-dir", default=DEFAULT_TARGET_CONF_DIR,
+                               help="5.0 configuration directory, which holds authd.pass and"
+                                    " certs/root-ca.pem (default: %(default)s)")
         subparser.add_argument("--api-url", default=DEFAULT_API_URL,
                                help="manager API (default: %(default)s)")
         subparser.add_argument("--api-user", default="wazuh",
@@ -859,7 +870,7 @@ def build_parser():
         subparser.add_argument("--api-ca",
                                help="CA bundle to verify the API certificate with. Required for a"
                                     " non-loopback --api-url; a loopback one defaults to the"
-                                    " target's %s" % TARGET_ROOT_CA)
+                                    " target's <--target-conf-dir>/%s" % TARGET_ROOT_CA)
 
     return parser
 

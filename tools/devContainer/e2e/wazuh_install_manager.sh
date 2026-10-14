@@ -7,7 +7,7 @@
 # tools/purge_wazuh.sh; mode sandbox removes --dir. It refuses to run without --yes.
 #
 # Steps (each one is marked "=== <step> <ISO-8601>" in --out/install.log):
-#   0. provenance of the installed manager (etc/.install-provenance) and, with --before-hook, that
+#   0. provenance of the installed manager (/etc/wazuh-manager/.install-provenance) and, with --before-hook, that
 #      script run against it — the "before" of a before/after comparison; --snapshot tars bin/ lib/
 #   1. build-tree guard: src/build must not carry UNIT_TEST / ENGINE_ENABLE_*SAN / ENGINE_BUILD_TEST
 #      (an ASAN engine installs fine and then fails with a misleading libwazuhshared.so dlopen error)
@@ -23,7 +23,7 @@
 #      e2e/init.sh --certs-only (reusing certs/ and its CA) + wazuh_copy_certs.sh; init.sh also opens the remoted listeners to 0.0.0.0 for docker agents
 #   5b. indexer credential in the keystore: manual override only (INDEXER_USER/INDEXER_PASSWORD); the
 #      default path is 3b — the resolver stores the env-supplied WAZUH_INDEXER_MANAGER_PASSWORD itself
-#   6. etc/.install-provenance written; start.mark = byte offset of the log before `start`
+#   6. /etc/wazuh-manager/.install-provenance written; start.mark = byte offset of the log before `start`
 #   7. wazuh-manager-control start, output to a FILE (never a pipe: the daemons inherit it)
 #   8. wazuh_verify_manager.sh, then --before-hook again as the "after"
 #   9. --out/manifest.md
@@ -114,6 +114,8 @@ CTRL="$DIR/bin/wazuh-manager-control"
 CONF="$DIR/bin/wazuh-manager-conf"
 LOGF="$DIR/logs/wazuh-manager.log"
 E2E="$SCRIPT_DIR"
+# The manager configuration directory is fixed: --dir moves the home only, never the configuration.
+CONF_DIR="/etc/wazuh-manager"
 
 HEAD=$(git -C "$REPO_DIR" rev-parse --short=10 HEAD 2>/dev/null || echo unknown)
 BRANCH=$(git -C "$REPO_DIR" branch --show-current 2>/dev/null || echo unknown)
@@ -129,8 +131,8 @@ log "# branch=$BRANCH head=$HEAD base=origin/$BASE merge_base=$MERGE_BASE out=$O
 step "before"
 BEFORE_PROV="none (no manager at $DIR)"
 if [ -x "$CTRL" ]; then
-  if [ -f "$DIR/etc/.install-provenance" ]; then
-    BEFORE_PROV=$(tr '\n' ' ' < "$DIR/etc/.install-provenance")
+  if [ -f "$CONF_DIR/.install-provenance" ]; then
+    BEFORE_PROV=$(tr '\n' ' ' < "$CONF_DIR/.install-provenance")
   else
     BEFORE_PROV="head=unknown installed=$(stat -c %y "$DIR/bin/wazuh-manager-remoted" 2>/dev/null | cut -d. -f1 | tr ' ' T) (no .install-provenance; NOT necessarily the merge-base)"
   fi
@@ -240,7 +242,7 @@ else
   WAZUH_MANAGER_HOME="$DIR" "$E2E/init.sh" --certs-only --regen-certs >>"$LOG" 2>&1 || die "init.sh --certs-only --regen-certs failed"
 fi
 WAZUH_MANAGER_HOME="$DIR" "$E2E/wazuh_copy_certs.sh" >>"$LOG" 2>&1 || die "wazuh_copy_certs.sh failed"
-certs_line=$(openssl x509 -in "$DIR/etc/certs/remoted.pem" -noout -subject -issuer -enddate 2>/dev/null | tr '\n' ' ')
+certs_line=$(openssl x509 -in "$CONF_DIR/certs/remoted.pem" -noout -subject -issuer -enddate 2>/dev/null | tr '\n' ' ')
 log "remoted.pem: $certs_line"
 
 # ---------------------------------------------------------------- 5b. indexer credential
@@ -270,7 +272,7 @@ chown -R wazuh-manager:wazuh-manager "$DIR/queue/keystore"
 
 # ---------------------------------------------------------------- 6. provenance + start mark
 step "provenance"
-PROV="$DIR/etc/.install-provenance"
+PROV="$CONF_DIR/.install-provenance"
 {
   echo "head=$HEAD"; echo "branch=$BRANCH"; echo "merge_base=$MERGE_BASE"; echo "base=origin/$BASE"
   echo "date=$(now)"; echo "mode=$MODE"; echo "installer=wazuh_install_manager.sh"; echo "build_tree=src/build"

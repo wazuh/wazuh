@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-CONF=/var/wazuh-manager/etc/wazuh-manager.conf
+# The manager configuration directory is fixed: it lives outside the installation home.
+CONF_DIR=/etc/wazuh-manager
+CONF="$CONF_DIR/wazuh-manager.conf"
 CERT_SRC=/certs
-CERT_DST=/var/wazuh-manager/etc/certs
+CERT_DST="$CONF_DIR/certs"
 BIN=/var/wazuh-manager/bin
 
 # The manager binaries resolve paths such as queue/keystore relative to the
@@ -53,23 +55,23 @@ skel 750 root:wazuh-manager var
 skel 770 root:wazuh-manager var/db var/download var/run var/upgrade
 skel 770 wazuh-manager:wazuh-manager var/multigroups
 
-# Certificates from the mounted bundle, issued by e2e/init.sh with the unified
-# manager layout (wazuh/wazuh#38278): dir root:wazuh-manager 1770 (sticky); the
-# externally provisioned indexer material root:wazuh-manager 0640; the agent
-# listener pair wazuh-manager-owned, since remoted opens it after dropping
-# privileges, and so is the Server API pair (apid, opened by apid after it drops
-# privileges). The e2e PKI replaces the installer's, so the worker deploys the manager
-# node's <name>-remoted leaf as both, as wazuh_copy_certs.sh does on the host (the
-# installer issues apid.pem with the profile of remoted.pem).
+# Certificates from the mounted bundle, issued by e2e/init.sh with the installed
+# manager layout: dir root:wazuh-manager 0750, every PEM root:wazuh-manager 0640.
+# The daemons (remoted and authd for the agent listener pair, apid for the Server
+# API pair, the indexer connector) read them through the group after dropping
+# privileges, and cannot rewrite them. The e2e PKI replaces the installer's, so the
+# worker deploys the manager node's <name>-remoted leaf as both, as
+# wazuh_copy_certs.sh does on the host (the installer issues apid.pem with the
+# profile of remoted.pem).
 NODE_CERT="${MANAGER_NODE_NAME:-wazuh-1}"
-install -d -o root -g wazuh-manager -m 1770 "$CERT_DST"
+install -d -o root -g wazuh-manager -m 750 "$CERT_DST"
 install -o root -g wazuh-manager -m 640 "$CERT_SRC/root-ca.pem"                  "$CERT_DST/root-ca.pem"
 install -o root -g wazuh-manager -m 640 "$CERT_SRC/${NODE_CERT}.pem"             "$CERT_DST/indexer-connector.pem"
 install -o root -g wazuh-manager -m 640 "$CERT_SRC/${NODE_CERT}-key.pem"         "$CERT_DST/indexer-connector-key.pem"
-install -o wazuh-manager -g wazuh-manager -m 640 "$CERT_SRC/${NODE_CERT}-remoted.pem"     "$CERT_DST/remoted.pem"
-install -o wazuh-manager -g wazuh-manager -m 640 "$CERT_SRC/${NODE_CERT}-remoted-key.pem" "$CERT_DST/remoted-key.pem"
-install -o wazuh-manager -g wazuh-manager -m 640 "$CERT_SRC/${NODE_CERT}-remoted.pem"     "$CERT_DST/apid.pem"
-install -o wazuh-manager -g wazuh-manager -m 640 "$CERT_SRC/${NODE_CERT}-remoted-key.pem" "$CERT_DST/apid-key.pem"
+install -o root -g wazuh-manager -m 640 "$CERT_SRC/${NODE_CERT}-remoted.pem"     "$CERT_DST/remoted.pem"
+install -o root -g wazuh-manager -m 640 "$CERT_SRC/${NODE_CERT}-remoted-key.pem" "$CERT_DST/remoted-key.pem"
+install -o root -g wazuh-manager -m 640 "$CERT_SRC/${NODE_CERT}-remoted.pem"     "$CERT_DST/apid.pem"
+install -o root -g wazuh-manager -m 640 "$CERT_SRC/${NODE_CERT}-remoted-key.pem" "$CERT_DST/apid-key.pem"
 
 # Indexer credentials live in the manager keystore, not in the config file.
 "$BIN/wazuh-manager-keystore" -f indexer -k username -v "$INDEXER_USER"

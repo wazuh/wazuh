@@ -84,7 +84,7 @@ sudo ./send_delete_agent.py --agent-id 900 --verify --witness 901
 Options: `--socket`, `--agent-id` (default `900`), `--timeout` (default 60 s — the deletion does
 indexer I/O), `--verify`, `--witness`, `--indexer` (default `https://127.0.0.1:9200`), `--cert` /
 `--key` (default the indexer's `admin.pem` / `admin-key.pem` under `/etc/wazuh-indexer/certs/`),
-`--client-keys` (default `etc/client.keys`), `--force`. It exits `0` on a `200` (with `--verify`, only when no document is left), `1` otherwise, and
+`--client-keys` (default `/etc/wazuh-manager/client.keys`), `--force`. It exits `0` on a `200` (with `--verify`, only when no document is left), `1` otherwise, and
 `2` when it refuses to run or cannot read the indexer.
 
 Three guards worth knowing, all of them there because their absence produces a *reassuring* wrong

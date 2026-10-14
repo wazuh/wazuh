@@ -191,7 +191,7 @@ namespace remoted::endpoints::download
      *                      would therefore be followed.
      *
      * That last case is not agent-exploitable -- planting it requires write access to the manager's
-     * own etc/shared, at which point the configuration being served is already the attacker's --
+     * own /etc/wazuh-manager/shared, at which point the configuration being served is already the attacker's --
      * so it is called out as a limit of the mechanism rather than treated as a hole. Adding a
      * realpath() containment check is what would close it if that assumption ever weakens.
      *

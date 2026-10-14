@@ -69,13 +69,26 @@ unset __cp_test_dir
 # source upgrades keep the ownership and modes assigned by the installer.
 UPGRADE_PRESERVE_RESTORE_CP="cp -R"
 
+# The configuration directory: fixed for the manager (CONF_DIR, see src/init/shared.sh), under the
+# installation directory for the agent.
+InstalledEtcDir()
+{
+    if [ "X${INSTYPE}" = "Xmanager" ]; then
+        echo "${CONF_DIR}"
+    else
+        echo "${INSTALLDIR}/etc"
+    fi
+}
+
 PrepareUpgradePreserve()
 {
     UPGRADE_PRESERVE_DIR=$(mktemp -d "${TMPDIR:-/tmp}/wazuh-${INSTYPE}-upgrade-preserve.XXXXXX" 2>/dev/null) || return 1
     [ -n "${UPGRADE_PRESERVE_DIR}" ] && [ -d "${UPGRADE_PRESERVE_DIR}" ] || return 1
 
-    if [ -d "${INSTALLDIR}/etc" ]; then
-        ${UPGRADE_PRESERVE_CP} "${INSTALLDIR}/etc" "${UPGRADE_PRESERVE_DIR}/" || return 1
+    PRESERVE_ETC_DIR=$(InstalledEtcDir)
+    if [ -d "${PRESERVE_ETC_DIR}" ]; then
+        mkdir -p "${UPGRADE_PRESERVE_DIR}/etc" || return 1
+        ${UPGRADE_PRESERVE_CP} "${PRESERVE_ETC_DIR}/." "${UPGRADE_PRESERVE_DIR}/etc/" || return 1
     fi
 
     if [ "X${INSTYPE}" = "Xmanager" ] && [ -d "${INSTALLDIR}/data" ]; then
@@ -95,8 +108,9 @@ RestoreUpgradePreserve()
     [ -n "${UPGRADE_PRESERVE_DIR}" ] || return 0
 
     if [ -d "${UPGRADE_PRESERVE_DIR}/etc" ]; then
-        mkdir -p "${INSTALLDIR}/etc" || return 1
-        ${UPGRADE_PRESERVE_RESTORE_CP} "${UPGRADE_PRESERVE_DIR}/etc/." "${INSTALLDIR}/etc/" || return 1
+        PRESERVE_ETC_DIR=$(InstalledEtcDir)
+        mkdir -p "${PRESERVE_ETC_DIR}" || return 1
+        ${UPGRADE_PRESERVE_RESTORE_CP} "${UPGRADE_PRESERVE_DIR}/etc/." "${PRESERVE_ETC_DIR}/" || return 1
     fi
 
     if [ "X${INSTYPE}" = "Xmanager" ] && [ -d "${UPGRADE_PRESERVE_DIR}/data" ]; then
@@ -645,6 +659,14 @@ askForDelete()
                 if [ $? -ne 0 ]; then
                     echo "Error deleting ${INSTALLDIR}"
                     exit 2;
+                fi
+                # The manager's configuration lives outside the installation directory.
+                if [ "X${INSTYPE}" = "Xmanager" ] && [ -d "${CONF_DIR}" ]; then
+                    rm -rf -- "${CONF_DIR}"
+                    if [ $? -ne 0 ]; then
+                        echo "Error deleting ${CONF_DIR}"
+                        exit 2;
+                    fi
                 fi
                 ;;
         esac
@@ -1226,7 +1248,7 @@ main()
     echo " - ${tostop}:"
     echo "      $INSTALLDIR/bin/${control_script} stop"
     echo ""
-    echo " - ${configat} $INSTALLDIR/etc/${WAZUH_CONF}"
+    echo " - ${configat} $(InstalledEtcDir)/${WAZUH_CONF}"
     echo ""
     if [ "X${INSTALLER_BRIEF_FLOW}" != "Xyes" ]; then
         catMsg "0x103-thanksforusing"

@@ -42,14 +42,15 @@ RUN /wazuh/install.sh
 # profile (serverAuth, leaf followed by the CA, the same SANs, localhost among them).
 COPY base/manager/certs-config.yml /wazuh/certs-config.yml
 RUN bash /wazuh/tools/devContainer/scripts/wazuh-certs-tool.sh -A -c /wazuh/certs-config.yml -o /tmp/wazuh-certificates && \
-    mkdir -p /var/wazuh-manager/etc/certs && \
-    install -o root -g wazuh-manager -m 640 /tmp/wazuh-certificates/root-ca.pem /var/wazuh-manager/etc/certs/root-ca.pem && \
-    install -o root -g wazuh-manager -m 640 /tmp/wazuh-certificates/wazuh-manager.pem /var/wazuh-manager/etc/certs/indexer-connector.pem && \
-    install -o root -g wazuh-manager -m 640 /tmp/wazuh-certificates/wazuh-manager-key.pem /var/wazuh-manager/etc/certs/indexer-connector-key.pem && \
-    install -o wazuh-manager -g wazuh-manager -m 640 /tmp/wazuh-certificates/wazuh-manager-remoted.pem /var/wazuh-manager/etc/certs/remoted.pem && \
-    install -o wazuh-manager -g wazuh-manager -m 640 /tmp/wazuh-certificates/wazuh-manager-remoted-key.pem /var/wazuh-manager/etc/certs/remoted-key.pem && \
-    install -o wazuh-manager -g wazuh-manager -m 640 /tmp/wazuh-certificates/wazuh-manager-remoted.pem /var/wazuh-manager/etc/certs/apid.pem && \
-    install -o wazuh-manager -g wazuh-manager -m 640 /tmp/wazuh-certificates/wazuh-manager-remoted-key.pem /var/wazuh-manager/etc/certs/apid-key.pem && \
+    install -d -o root -g wazuh-manager -m 750 /etc/wazuh-manager/certs && \
+    install -o root -g wazuh-manager -m 640 /tmp/wazuh-certificates/root-ca.pem /etc/wazuh-manager/certs/root-ca.pem && \
+    install -o root -g wazuh-manager -m 640 /tmp/wazuh-certificates/wazuh-manager.pem /etc/wazuh-manager/certs/indexer-connector.pem && \
+    install -o root -g wazuh-manager -m 640 /tmp/wazuh-certificates/wazuh-manager-key.pem /etc/wazuh-manager/certs/indexer-connector-key.pem && \
+    install -o root -g wazuh-manager -m 640 /tmp/wazuh-certificates/wazuh-manager-remoted.pem /etc/wazuh-manager/certs/remoted.pem && \
+    install -o root -g wazuh-manager -m 640 /tmp/wazuh-certificates/wazuh-manager-remoted-key.pem /etc/wazuh-manager/certs/remoted-key.pem && \
+    install -o root -g wazuh-manager -m 640 /tmp/wazuh-certificates/wazuh-manager-remoted.pem /etc/wazuh-manager/certs/apid.pem && \
+    install -o root -g wazuh-manager -m 640 /tmp/wazuh-certificates/wazuh-manager-remoted-key.pem /etc/wazuh-manager/certs/apid-key.pem && \
+    chown root:wazuh-manager /etc/wazuh-manager/certs && chmod 0750 /etc/wazuh-manager/certs && \
     rm -rf /tmp/wazuh-certificates /etc/wazuh/ca
 COPY base/manager/entrypoint.sh /scripts/entrypoint.sh
 

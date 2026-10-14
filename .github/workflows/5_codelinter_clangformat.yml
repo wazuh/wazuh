@@ -140,7 +140,7 @@ jobs:
           path: src/remoted/remoted_module
           id: remoted_module
 
-      # Manager configuration (etc/wazuh-manager.conf reader and CLI)
+      # Manager configuration (/etc/wazuh-manager/wazuh-manager.conf reader and CLI)
       - name: Manager config - Coding style
         id: manager_config_style
         continue-on-error: true

@@ -32,12 +32,15 @@ class ManagerConfigTest : public ::testing::Test
 {
 protected:
     fs::path m_home;
+    // The real file lives in the fixed /etc/wazuh-manager: tests pass their own to load()/validate().
+    fs::path m_file;
 
     void SetUp() override
     {
         m_home = fs::temp_directory_path() / ("base_managerConfig_test_" + std::to_string(::getpid()));
+        m_file = m_home / "wazuh-manager.conf";
         fs::remove_all(m_home);
-        fs::create_directories(m_home / "etc");
+        fs::create_directories(m_home);
         base::managerConfig::reset();
     }
 
@@ -49,11 +52,16 @@ protected:
 
     void writeConfig(const std::string& body) const
     {
-        std::ofstream file(m_home / "etc" / "wazuh-manager.conf");
+        std::ofstream file(m_file);
         file << "<wazuh_config>\n" << body << "</wazuh_config>\n";
     }
 };
 } // namespace
+
+TEST_F(ManagerConfigTest, DefaultFileIsInTheFixedConfigurationDirectory)
+{
+    EXPECT_EQ(base::managerConfig::filePath(), fs::path("/etc/wazuh-manager/wazuh-manager.conf"));
+}
 
 TEST_F(ManagerConfigTest, NotLoadedIsEmpty)
 {
@@ -70,7 +78,7 @@ TEST_F(ManagerConfigTest, LoadsSectionsFromHome)
     writeConfig(VALID_XML);
 
     // The certificate files do not exist: a normal start does not require them (only -t does).
-    ASSERT_NO_THROW(base::managerConfig::load(m_home));
+    ASSERT_NO_THROW(base::managerConfig::load(m_home, m_file));
     EXPECT_TRUE(base::managerConfig::isLoaded());
 
     const auto indexer = base::managerConfig::sectionJson("indexer");
@@ -90,28 +98,32 @@ TEST_F(ManagerConfigTest, ValidateReportsPointer)
 {
     writeConfig(VALID_XML + "  <vulnerability-detection>\n    <pageSize>0</pageSize>\n  </vulnerability-detection>\n");
 
-    auto error = base::managerConfig::validate(m_home);
+    auto error = base::managerConfig::validate(m_home, m_file);
     ASSERT_TRUE(error.has_value());
     EXPECT_EQ(error->rfind("/vulnerability-detection/pageSize", 0), 0u) << *error;
 
     // Valid document, but -t also requires the referenced certificate files to exist (the first one
-    // checked is the remoted HTTPS certificate the schema defaults fill in).
-    writeConfig(VALID_XML);
-    error = base::managerConfig::validate(m_home);
+    // checked is the remoted HTTPS certificate). Named relative here, so it resolves against the home
+    // instead of the build host's real /etc/wazuh-manager/certs the schema default points at.
+    writeConfig(VALID_XML
+                + "  <remote>\n    <https>\n      <certificate>etc/certs/remoted.pem</certificate>\n"
+                  "      <key>etc/certs/remoted-key.pem</key>\n    </https>\n  </remote>\n");
+    error = base::managerConfig::validate(m_home, m_file);
     ASSERT_TRUE(error.has_value());
     EXPECT_NE(error->find("file not found"), std::string::npos) << *error;
+    EXPECT_NE(error->find((m_home / "etc/certs/remoted.pem").string()), std::string::npos) << *error;
     EXPECT_EQ(error->rfind("/remote/https/certificate", 0), 0u) << *error;
 
     // load() succeeds on the same document and validate() does not touch what is loaded.
-    ASSERT_NO_THROW(base::managerConfig::load(m_home));
+    ASSERT_NO_THROW(base::managerConfig::load(m_home, m_file));
     EXPECT_TRUE(base::managerConfig::isLoaded());
 }
 
 TEST_F(ManagerConfigTest, LoadMissingFileThrows)
 {
-    EXPECT_THROW(base::managerConfig::load(m_home), std::runtime_error);
+    EXPECT_THROW(base::managerConfig::load(m_home, m_file), std::runtime_error);
     EXPECT_FALSE(base::managerConfig::isLoaded());
 
-    const auto error = base::managerConfig::validate(m_home);
+    const auto error = base::managerConfig::validate(m_home, m_file);
     ASSERT_TRUE(error.has_value());
 }

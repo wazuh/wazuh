@@ -26,9 +26,29 @@ sudo dpkg -i wazuh-manager_*.deb
 sudo rpm -ivh wazuh-manager-*.rpm
 ```
 
+The package refuses to install, even as a fresh installation, on a host that still carries a pre-5.0
+installation: an `/etc/ossec-init.conf` naming a version below 5, or a `/var/ossec` server installation
+whose `VERSION.json` does. Migrate it as
+described in [Migrating a 4.x manager](../../guide/migration/manager-4x-to-5x.md) instead.
+
+#### Installed layout
+
+The manager uses two directories, with no link between them:
+
+| Directory | Holds | Owner:group, mode |
+|---|---|---|
+| `/etc/wazuh-manager` | `wazuh-manager.conf`, `wazuh-manager-internal-options.conf`, `client.keys`, the agent groups under `shared/`, the enrollment password and token store | `root:wazuh-manager`, `0770` |
+| `/etc/wazuh-manager/certs` | every TLS certificate and key of the manager (see [Credentials and certificates](#credentials-and-certificates)) | `root:wazuh-manager`, `0750`; every file `root:wazuh-manager`, `0640` |
+| `/var/wazuh-manager` | binaries, the Server API, databases, queues, logs and detection content | `root:wazuh-manager`, `0750` |
+
+The configuration directory is fixed: a source installation with a custom installation directory
+(`USER_DIR`) moves `/var/wazuh-manager` only. A relative path written in `wazuh-manager.conf` still
+resolves against the installation directory. No daemon writes `certs/`; only root does (the installer, and `wazuh-manager-certs` for the CA bundle). What
+`dpkg --purge` and `rpm -e` remove from each directory is described in [Uninstall](../uninstall.md).
+
 ### Installation variables
 
-The `<remote>` block of the generated `/var/wazuh-manager/etc/wazuh-manager.conf` can be customized at installation time through environment variables. They are honored by the DEB and RPM packages and by the source installer (`install.sh`, also through `etc/preloaded-vars.conf`). When a variable is not set, the default value is used.
+The `<remote>` block of the generated `/etc/wazuh-manager/wazuh-manager.conf` can be customized at installation time through environment variables. They are honored by the DEB and RPM packages and by the source installer (`install.sh`, also through `etc/preloaded-vars.conf`). When a variable is not set, the default value is used.
 
 ```bash
 sudo WAZUH_REMOTE_HTTPS_BIND_ADDR='0.0.0.0' WAZUH_REMOTE_HTTPS_PORT='1517' dpkg -i wazuh-manager_*.deb
@@ -39,7 +59,7 @@ sudo WAZUH_REMOTE_HTTPS_BIND_ADDR='0.0.0.0' WAZUH_REMOTE_HTTPS_PORT='1517' rpm -
 ```
 
 > [!NOTE]
-> When using `sudo`, the variables must be placed after `sudo` (as in the examples above) so they reach the package scriptlets. An invalid value aborts a fresh installation with `ERROR: Invalid value '<value>' for installation variable <NAME>: <reason>`, before any configuration is written. A value that passes those checks is then validated with the generated file as a whole, and a fresh installation whose generated `wazuh-manager.conf` the validator refuses is aborted as well (`ERROR: the generated /var/wazuh-manager/etc/wazuh-manager.conf is not a valid manager configuration.` from the packages).
+> When using `sudo`, the variables must be placed after `sudo` (as in the examples above) so they reach the package scriptlets. An invalid value aborts a fresh installation with `ERROR: Invalid value '<value>' for installation variable <NAME>: <reason>`, before any configuration is written. A value that passes those checks is then validated with the generated file as a whole, and a fresh installation whose generated `wazuh-manager.conf` the validator refuses is aborted as well (`ERROR: the generated /etc/wazuh-manager/wazuh-manager.conf is not a valid manager configuration.` from the packages).
 >
 > The variables apply whenever the configuration file is generated. On a fresh installation that is `wazuh-manager.conf`. On an RPM upgrade nothing is generated, so the variables have no effect. On a DEB upgrade the active configuration is never modified, but the variables do shape the regenerated `wazuh-manager.conf.new`; see [Upgrade](../upgrade.md).
 
@@ -48,9 +68,9 @@ sudo WAZUH_REMOTE_HTTPS_BIND_ADDR='0.0.0.0' WAZUH_REMOTE_HTTPS_PORT='1517' rpm -
 | `WAZUH_REMOTE_HTTPS_PORT` | `remote.https.port` | `1517` |
 | `WAZUH_REMOTE_HTTPS_BIND_ADDR` | `remote.https.bind_addr` | `0.0.0.0` |
 | `WAZUH_REMOTE_HTTPS_GLOBAL_PREFIX` | `remote.https.global_prefix` | `/wazuh-manager/` |
-| `WAZUH_REMOTE_HTTPS_CERTIFICATE` | `remote.https.certificate` | `etc/certs/remoted.pem` |
-| `WAZUH_REMOTE_HTTPS_KEY` | `remote.https.key` | `etc/certs/remoted-key.pem` |
-| `WAZUH_REMOTE_HTTPS_CA_CERTIFICATE` | `remote.https.ca_certificate` | `etc/certs/root-ca.pem` |
+| `WAZUH_REMOTE_HTTPS_CERTIFICATE` | `remote.https.certificate` | `/etc/wazuh-manager/certs/remoted.pem` |
+| `WAZUH_REMOTE_HTTPS_KEY` | `remote.https.key` | `/etc/wazuh-manager/certs/remoted-key.pem` |
+| `WAZUH_REMOTE_HTTPS_CA_CERTIFICATE` | `remote.https.ca_certificate` | `/etc/wazuh-manager/certs/root-ca.pem` |
 | `WAZUH_REMOTE_HTTPS_CA` | `remote.https.ca` | not set |
 | `WAZUH_REMOTE_HTTPS_VERIFICATION_MODE` | `remote.https.verification_mode` | not set (`certificate` when `WAZUH_REMOTE_HTTPS_CA` is set, `none` otherwise) |
 | `WAZUH_REMOTE_HTTPS_CIPHERS` | `remote.https.ciphers` | not set (library default) |
@@ -72,12 +92,12 @@ The generated configuration always contains a `<legacy>` block with `<enabled>ye
 
 Write `WAZUH_REMOTE_HTTPS_MAX_BODY_SIZE` as the configuration accepts it — a byte count with an optional single-letter suffix (`B`, `K`, `M`, `G`), such as `20M`. The installer's own check also lets a two-letter suffix such as `20MB` through, which the configuration validator then refuses, aborting a fresh installation.
 
-`WAZUH_REMOTE_HTTPS_CERTIFICATE` and `WAZUH_REMOTE_HTTPS_KEY` must be provided together. Pointing them anywhere other than the default `etc/certs/remoted.pem`/`remoted-key.pem` opts out of the certificates the manager issues for itself: the referenced files are then provisioned and managed by the administrator (see [Using certificates issued elsewhere](#using-certificates-issued-elsewhere) and [Credentials](credentials.md#certificates)). `WAZUH_REMOTE_HTTPS_VERIFICATION_MODE` values `certificate` and `full` require `WAZUH_REMOTE_HTTPS_CA`.
+`WAZUH_REMOTE_HTTPS_CERTIFICATE` and `WAZUH_REMOTE_HTTPS_KEY` must be provided together. Pointing them anywhere other than the default `/etc/wazuh-manager/certs/remoted.pem`/`remoted-key.pem` opts out of the certificates the manager issues for itself: the referenced files are then provisioned and managed by the administrator (see [Using certificates issued elsewhere](#using-certificates-issued-elsewhere) and [Credentials](credentials.md#certificates)). `WAZUH_REMOTE_HTTPS_VERIFICATION_MODE` values `certificate` and `full` require `WAZUH_REMOTE_HTTPS_CA`.
 
 `WAZUH_REMOTE_HTTPS_GLOBAL_PREFIX` is the URL path every HTTPS endpoint is served under (for example, `/stateless` is exposed as `/wazuh-manager/stateless`). Set it to `/` to serve the endpoints unprefixed. Agents must be configured with the same prefix: the request signature covers the full request path exactly as sent, so a proxy in between must forward it untouched, and a prefix mismatch between agent and manager surfaces as `404`.
 
 > [!IMPORTANT]
-> `WAZUH_REMOTE_HTTPS_CERTIFICATE`, `WAZUH_REMOTE_HTTPS_KEY`, `WAZUH_REMOTE_HTTPS_CA_CERTIFICATE` and `WAZUH_REMOTE_HTTPS_CA` must be paths relative to the installation directory, such as `etc/certs/remoted.crt`, or absolute paths such as `/etc/pki/wazuh/server.crt`. Every daemon runs with the installation directory as its working directory, so `wazuh-manager-remoted` opens a path exactly as `wazuh-manager-conf validate` checked it. Under the systemd unit (`ProtectHome=yes`, `PrivateTmp=yes`) only paths visible to the unit work: a file under `/home`, `/root`, `/run/user` or the host's `/tmp` is not visible and fails validation with the `(1244)` error below. The manager fails closed on them: when a file is missing, `wazuh-manager-control start` refuses to start anything (`(1244): Invalid configuration at '/remote/https/certificate': file not found: …`), and when it exists but the `wazuh-manager` user cannot read it, `wazuh-manager-remoted` exits at startup (`Cannot start the HTTPS agent listener: …`) for the certificate and key always, and for `WAZUH_REMOTE_HTTPS_CA` when `verification_mode` is `certificate` or `full`, and for `WAZUH_REMOTE_HTTPS_CA_CERTIFICATE` always, since 5.x agents bootstrap their trust in the manager from `GET /cacerts`. The files must exist and be readable by the `wazuh-manager` user before the manager is started. The credential resolver issues the default `etc/certs/remoted.pem`/`remoted-key.pem` pair and fixes its ownership; a pair at any other path is yours to provision.
+> `WAZUH_REMOTE_HTTPS_CERTIFICATE`, `WAZUH_REMOTE_HTTPS_KEY`, `WAZUH_REMOTE_HTTPS_CA_CERTIFICATE` and `WAZUH_REMOTE_HTTPS_CA` are best given as absolute paths in the configuration directory, such as `/etc/wazuh-manager/certs/remoted.crt`, as the defaults are; a relative path is resolved against the installation directory `/var/wazuh-manager` (every daemon runs with it as its working directory), not against `/etc/wazuh-manager`, so `wazuh-manager-remoted` opens a path exactly as `wazuh-manager-conf validate` checked it. Under the systemd unit (`ProtectHome=yes`, `PrivateTmp=yes`) only paths visible to the unit work: a file under `/home`, `/root`, `/run/user` or the host's `/tmp` is not visible and fails validation with the `(1244)` error below. The manager fails closed on them: when a file is missing, `wazuh-manager-control start` refuses to start anything (`(1244): Invalid configuration at '/remote/https/certificate': file not found: …`), and when it exists but the `wazuh-manager` user cannot read it, `wazuh-manager-remoted` exits at startup (`Cannot start the HTTPS agent listener: …`) for the certificate and key always, and for `WAZUH_REMOTE_HTTPS_CA` when `verification_mode` is `certificate` or `full`, and for `WAZUH_REMOTE_HTTPS_CA_CERTIFICATE` always, since 5.x agents bootstrap their trust in the manager from `GET /cacerts`. The files must exist and be readable by the `wazuh-manager` user before the manager is started. The credential resolver issues the default `/etc/wazuh-manager/certs/remoted.pem`/`remoted-key.pem` pair and fixes its ownership; a pair at any other path is yours to provision.
 
 ### Configuration
 
@@ -135,7 +155,7 @@ post-install step sets the owners and modes shown below on every file of the tab
 before the credential resolver runs.
 
 You do not need to keep a copy of your root CA on the host: `/etc/wazuh/ca` exists so that a manager
-given nothing can still come up, and once a pair is in `etc/certs` nothing consults it. If the
+given nothing can still come up, and once a pair is in `/etc/wazuh-manager/certs` nothing consults it. If the
 install minted a bootstrap CA before you replaced the pair, delete the directory — a signing key on a
 node that does not sign is exposure with no purpose:
 
@@ -146,40 +166,40 @@ sudo rm -rf /etc/wazuh/ca
 The manager uses three pairs, all of which must be leaves of the same `root-ca.pem`: the HTTPS agent
 listener served by `wazuh-manager-remoted` and reused by `wazuh-manager-authd` on port 1515, the
 client certificate it presents to the indexer, and the certificate of the Server API
-(`wazuh-manager-apid`). Whatever issues them, they go in `etc/certs` under
+(`wazuh-manager-apid`). Whatever issues them, they go in `/etc/wazuh-manager/certs` under
 these names:
 
-| File in `/var/wazuh-manager/etc/certs/` | Content | Owner:group, mode |
+| File in `/etc/wazuh-manager/certs/` | Content | Owner:group, mode |
 |---|---|---|
-| `remoted.pem`, `remoted-key.pem` | the certificate chain the agent listener presents (a `serverAuth` leaf; the one the install issues is followed by the CA) and its key | `wazuh-manager:wazuh-manager`, `0640` |
+| `remoted.pem`, `remoted-key.pem` | the certificate chain the agent listener presents (a `serverAuth` leaf; the one the install issues is followed by the CA) and its key | `root:wazuh-manager`, `0640` |
 | `indexer-connector.pem`, `indexer-connector-key.pem` | the indexer client leaf (`clientAuth`) and its key | `root:wazuh-manager`, `0640` |
-| `apid.pem`, `apid-key.pem` | the Server API certificate chain (a `serverAuth` leaf, `CA:FALSE`, not expired, with a SAN extension; the one the install issues carries the `WAZUH_MANAGER_APID_CERT_SANS` list or the discovered one, and is followed by the CA) and its key | `wazuh-manager:wazuh-manager`, `0640` |
+| `apid.pem`, `apid-key.pem` | the Server API certificate chain (a `serverAuth` leaf, `CA:FALSE`, not expired, with a SAN extension; the one the install issues carries the `WAZUH_MANAGER_APID_CERT_SANS` list or the discovered one, and is followed by the CA) and its key | `root:wazuh-manager`, `0640` |
 | `root-ca.pem` | the CA all the leaves chain to | `root:wazuh-manager`, `0640` |
 
 ```bash
 # <node>-remoted.pem, <node>.pem, ... stand for the files your PKI issued for this node.
 sudo install -m 0640 -o root -g wazuh-manager root-ca.pem \
-    /var/wazuh-manager/etc/certs/root-ca.pem
-sudo install -m 0640 -o wazuh-manager -g wazuh-manager <node>-remoted.pem \
-    /var/wazuh-manager/etc/certs/remoted.pem
-sudo install -m 0640 -o wazuh-manager -g wazuh-manager <node>-remoted-key.pem \
-    /var/wazuh-manager/etc/certs/remoted-key.pem
+    /etc/wazuh-manager/certs/root-ca.pem
+sudo install -m 0640 -o root -g wazuh-manager <node>-remoted.pem \
+    /etc/wazuh-manager/certs/remoted.pem
+sudo install -m 0640 -o root -g wazuh-manager <node>-remoted-key.pem \
+    /etc/wazuh-manager/certs/remoted-key.pem
 sudo install -m 0640 -o root -g wazuh-manager <node>.pem \
-    /var/wazuh-manager/etc/certs/indexer-connector.pem
+    /etc/wazuh-manager/certs/indexer-connector.pem
 sudo install -m 0640 -o root -g wazuh-manager <node>-key.pem \
-    /var/wazuh-manager/etc/certs/indexer-connector-key.pem
-sudo install -m 0640 -o wazuh-manager -g wazuh-manager <node>-apid.pem \
-    /var/wazuh-manager/etc/certs/apid.pem
-sudo install -m 0640 -o wazuh-manager -g wazuh-manager <node>-apid-key.pem \
-    /var/wazuh-manager/etc/certs/apid-key.pem
+    /etc/wazuh-manager/certs/indexer-connector-key.pem
+sudo install -m 0640 -o root -g wazuh-manager <node>-apid.pem \
+    /etc/wazuh-manager/certs/apid.pem
+sudo install -m 0640 -o root -g wazuh-manager <node>-apid-key.pem \
+    /etc/wazuh-manager/certs/apid-key.pem
 ```
 
-The three pairs do not share an owner. The indexer trust material is root-owned and group-readable, so
-the manager reads it after dropping privileges but cannot replace its own trust anchor;
-`wazuh-manager-remoted` and `wazuh-manager-authd` open the listener pair after dropping privileges, so
-that pair belongs to `wazuh-manager`, and so does the Server API pair. The installer normalizes the
-owner of `remoted*` and `apid*` to `wazuh-manager`. To serve another certificate on the API, use other
-file names in `etc/certs` and point `https.key` and `https.cert` at them, readable by `wazuh-manager`.
+Every file in `/etc/wazuh-manager/certs` is `root:wazuh-manager` `0640`, in a `root:wazuh-manager`
+`0750` directory: the daemons read their pairs after dropping privileges, through the group, but
+cannot replace or loosen them, and no daemon writes the directory. The installer normalizes
+the owner and mode of every `.pem` there. To serve another certificate on the API, use other file
+names in `/etc/wazuh-manager/certs` and point `https.key` and `https.cert` at them, with the same
+owner and mode.
 
 A wrong certificate is not caught at start: nothing re-examines the pair, and no network connection
 is opened, so it fails at the first peer connection instead. What *is* caught at start is an
@@ -189,11 +209,11 @@ it) or unreadable by the `wazuh-manager` user (`wazuh-manager-remoted`, after it
 and refuses to start (error `2003` on the terminal and in `logs/api.log`) when it is missing,
 unreadable by `wazuh-manager`, mismatched or encrypted. The indexer pair is not checked at start at all — see
 [Certificates](credentials.md#issued-at-installation-and-at-no-other-moment). Check what a node
-presents with `openssl x509 -in /var/wazuh-manager/etc/certs/remoted.pem -noout -text`.
+presents with `openssl x509 -in /etc/wazuh-manager/certs/remoted.pem -noout -text`.
 
 #### Configure the indexer address
 
-Update the `<indexer>` block of `/var/wazuh-manager/etc/wazuh-manager.conf` with the indexer address.
+Update the `<indexer>` block of `/etc/wazuh-manager/wazuh-manager.conf` with the indexer address.
 The credentials are not configured here — they live in the manager's keystore, written by the
 credential resolver. The installer generates this block:
 
@@ -204,16 +224,16 @@ credential resolver. The installer generates this block:
   </hosts>
   <ssl>
     <certificate_authorities>
-      <ca>etc/certs/root-ca.pem</ca>
+      <ca>/etc/wazuh-manager/certs/root-ca.pem</ca>
     </certificate_authorities>
-    <certificate>etc/certs/indexer-connector.pem</certificate>
-    <key>etc/certs/indexer-connector-key.pem</key>
+    <certificate>/etc/wazuh-manager/certs/indexer-connector.pem</certificate>
+    <key>/etc/wazuh-manager/certs/indexer-connector-key.pem</key>
   </ssl>
 </indexer>
 ```
 
 Replace `127.0.0.1` with your indexer IP address if it's running on a different host. The `<ssl>`
-paths are relative to `/var/wazuh-manager` unless absolute. See the
+paths are absolute; a relative path resolves against the installation directory `/var/wazuh-manager`. See the
 [indexer connector configuration](../modules/indexer_connector/configuration.md) for every option.
 
 ### Start the manager
@@ -298,7 +318,7 @@ See [Default users](../modules/server-api/authentication.md#default-users) for t
 ### Cluster configuration
 
 Every 5.x manager is a cluster node. The installer generates this block in
-`/var/wazuh-manager/etc/wazuh-manager.conf`, with a `<key>` of 32 random hexadecimal characters drawn
+`/etc/wazuh-manager/wazuh-manager.conf`, with a `<key>` of 32 random hexadecimal characters drawn
 for each installation (shown here as `GENERATED_KEY`):
 
 ```xml
@@ -323,7 +343,7 @@ draws its own key, copy the master's `<key>` to every worker. Before installing 
 same credentials and CA to all of them — see
 [Cluster deployments](credentials.md#cluster-deployments).
 
-1. **On the master node**, edit `/var/wazuh-manager/etc/wazuh-manager.conf`:
+1. **On the master node**, edit `/etc/wazuh-manager/wazuh-manager.conf`:
 
 ```xml
 <cluster>
@@ -343,7 +363,7 @@ same credentials and CA to all of them — see
 Keep the `<key>` the installer generated (shown here as `MASTER_KEY`), and replace `MASTER_NODE_IP`
 with the actual IP address of the master node.
 
-2. **On each worker node**, edit `/var/wazuh-manager/etc/wazuh-manager.conf`:
+2. **On each worker node**, edit `/etc/wazuh-manager/wazuh-manager.conf`:
 
 ```xml
 <cluster>

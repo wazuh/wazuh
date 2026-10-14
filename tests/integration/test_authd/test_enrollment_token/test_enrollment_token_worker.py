@@ -155,7 +155,7 @@ def _case_worker_reads_synced_store(sock, test_metadata, write_store):
     """A worker lists the tokens of a store that appeared under it, without being restarted.
 
     This is how a worker learns about the master's tokens: the cluster renames a freshly downloaded
-    copy over 'etc/enrollment_tokens.json', and authd notices by modification time on the next
+    copy over '/etc/wazuh-manager/enrollment_tokens.json', and authd notices by modification time on the next
     request. Planting the file while the daemon is already running is therefore the case itself, not
     just its setup.
     """

@@ -11,7 +11,7 @@ Three things are needed by both the master and the worker suite, and by `conftes
 * the client side of the token codec, to prove from the outside that the token an operator is
   handed decodes to exactly the fields the format defines and that neither the listing nor
   `--show-token` ever echoes its credential;
-* the store file `etc/enrollment_tokens.json`, read as an operator would to check what was
+* the store file `/etc/wazuh-manager/enrollment_tokens.json`, read as an operator would to check what was
   persisted (and written, in the worker suite, to stand in for a cluster sync).
 """
 import base64
@@ -21,14 +21,15 @@ import os
 import pwd
 import subprocess
 
-from wazuh_testing.constants.paths import WAZUH_PATH
 from wazuh_testing.constants.paths.binaries import BIN_PATH
 from wazuh_testing.constants.paths.sockets import AUTHD_SOCKET_PATH
 from wazuh_testing.tools.socket_controller import SocketController
 
 
 # The store authd persists the tokens in. Not created until the first token is minted.
-ENROLLMENT_TOKENS_PATH = os.path.join(WAZUH_PATH, 'etc', 'enrollment_tokens.json')
+# The manager configuration directory: fixed, independent of the installation home.
+MANAGER_CONF_DIR = '/etc/wazuh-manager'
+ENROLLMENT_TOKENS_PATH = os.path.join(MANAGER_CONF_DIR, 'enrollment_tokens.json')
 
 # authd writes the store after dropping privileges, and the secrets in it must never be world
 # readable: the daemon user owns it, group readable at most.

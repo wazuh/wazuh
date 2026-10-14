@@ -288,7 +288,7 @@ if(TARGET test_agent_auth_cli)
 
     # The agent library is built with -DCLIENT (src/CMakeLists.txt), and several path macros in
     # defs.h are conditional on it -- WAZUHCONF is "etc/ossec.conf" with it and
-    # "etc/wazuh-manager.conf" without. Without this the test writes one file and the code under
+    # "/etc/wazuh-manager/wazuh-manager.conf" without. Without this the test writes one file and the code under
     # test looks for another, and the failure reads as "the file does not exist" from inside a
     # function the test just proved could see it.
     target_compile_definitions(test_agent_auth_cli PRIVATE CLIENT)
@@ -305,6 +305,17 @@ if(TARGET test_token_bootstrap)
     # hc_enroll_*), same as test_enrollment/test_https_client_bridge above.
     target_include_directories(test_token_bootstrap PRIVATE ${SRC_FOLDER}/client-agent/https_client/include)
 endif()
+
+# The agent library is built with -DCLIENT (src/CMakeLists.txt) and the unit-test build is not, while
+# the file macros these suites expect or write through are conditional on it: without CLIENT,
+# KEYS_FILE, AUTHD_PASS and SHAREDCFG_DIR/SHAREDCFG_FILE expand to the manager's absolute
+# /etc/wazuh-manager paths instead of the agent's relative etc/ ones, so the test would expect (or
+# create) one path while the code under test uses another.
+foreach(client_test test_https_client_bridge test_startup_gate test_enrollment test_token_bootstrap test_shred_file)
+    if(TARGET ${client_test})
+        target_compile_definitions(${client_test} PRIVATE CLIENT)
+    endif()
+endforeach()
 
 # Component test for the durable dedup + IPC round-trip: wires the
 # REAL client (task_registry_client.c, via CLIENT-AGENT, unwrapped) to the

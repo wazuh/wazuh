@@ -56,8 +56,8 @@ MAX_RESOURCE_ID_SIZE = 255
 class ManagerPaths:
     def __init__(self, home):
         self.home = home.rstrip("/")
-        self.client_keys = f"{self.home}/etc/client.keys"
-        self.shared_dir = f"{self.home}/etc/shared"
+        self.client_keys = "/etc/wazuh-manager/client.keys"
+        self.shared_dir = "/etc/wazuh-manager/shared"
         self.multigroups_dir = f"{self.home}/var/multigroups"
         self.wpk_dir = f"{self.home}/var/upgrade"
 
@@ -73,7 +73,7 @@ class ManagerPaths:
 # instead of making every invocation repeat it -- a default installation needs no flag. An
 # explicit value always wins; pass '/' to force the unprefixed paths against a prefixed manager.
 
-DEFAULT_MANAGER_CONF = "/var/wazuh-manager/etc/wazuh-manager.conf"
+DEFAULT_MANAGER_CONF = "/etc/wazuh-manager/wazuh-manager.conf"
 
 GLOBAL_PREFIX = ""
 

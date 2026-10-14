@@ -60,7 +60,7 @@ services:
         ports:
             - "55050:55000"
         volumes:
-            - wazuh-certs:/var/wazuh-manager/etc/certs
+            - wazuh-certs:/etc/wazuh-manager/certs
             - ${WAZUH_LOCAL_PATH}/framework/scripts:/var/wazuh-manager/framework/scripts
             - ${WAZUH_LOCAL_PATH}/api/scripts:/var/wazuh-manager/api/scripts
             - ${WAZUH_LOCAL_PATH}/framework/wazuh:/var/wazuh-manager/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh
@@ -90,7 +90,7 @@ services:
                 aliases:
                     - wazuh.worker
         volumes:
-            - wazuh-certs:/var/wazuh-manager/etc/certs
+            - wazuh-certs:/etc/wazuh-manager/certs
             - ${WAZUH_LOCAL_PATH}/framework/scripts:/var/wazuh-manager/framework/scripts
             - ${WAZUH_LOCAL_PATH}/api/scripts:/var/wazuh-manager/api/scripts
             - ${WAZUH_LOCAL_PATH}/framework/wazuh:/var/wazuh-manager/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh
@@ -118,7 +118,7 @@ services:
                 aliases:
                     - wazuh2.worker
         volumes:
-            - wazuh-certs:/var/wazuh-manager/etc/certs
+            - wazuh-certs:/etc/wazuh-manager/certs
             - ${WAZUH_LOCAL_PATH}/framework/scripts:/var/wazuh-manager/framework/scripts
             - ${WAZUH_LOCAL_PATH}/api/scripts:/var/wazuh-manager/api/scripts
             - ${WAZUH_LOCAL_PATH}/framework/wazuh:/var/wazuh-manager/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh
