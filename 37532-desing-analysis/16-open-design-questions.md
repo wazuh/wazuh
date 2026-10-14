@@ -453,8 +453,23 @@ that down as a supported figure.
 the agent degrade (longer intervals), cap (budgets, already present), or refuse? "Untested above N"
 is an acceptable answer only if N is written down.
 
-**Answerable by:** ~~item 39~~ — run, 2026-10-08 — **then a product statement, which is all that is
-left.**
+**Updated 2026-10-14 — the agent now has a knob for the answer, whatever product picks.**
+`containers.synced_limit` caps how many containers report to the manager at all, which is the
+mechanism this question has always lacked: the per-container budgets bound how much each container
+reports and multiply by however many are running, so the node total stayed unbounded no matter what
+they were set to. Decided once in `container_instances` and published to both consumers, so FIM and
+syscollector withhold the same containers rather than disagreeing.
+
+It ships at **0 — unlimited** — because it binds as soon as it is set, and a non-zero default would
+make an upgrade stop showing containers an operator can see today. So this does **not** answer the
+question; it makes the answer expressible. Product still has to say whether v1 supports 10, 50 or
+100, and that number is now something an operator can configure rather than only hope for.
+
+Withheld containers are still monitored, still stored locally and still counted as existing — only
+their reporting stops. Nothing is deleted, which is the one way this could have gone badly wrong.
+
+**Answerable by:** ~~item 39~~ — run, 2026-10-08 — ~~then a product statement~~ — **the mechanism
+exists as of 2026-10-14; the stated number is all that is left.**
 
 ### Q17 — Which shipped defaults are still placeholders?
 
