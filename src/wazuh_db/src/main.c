@@ -56,6 +56,13 @@ int main(int argc, char ** argv)
         merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
     }
 
+    // Keep SQLite's temporary files (sorts, VACUUM) under the installation directory's tmp/ instead of the
+    // host's /var/tmp or /tmp. SQLite reads the variable once, on its first initialization, so this must run
+    // before any sqlite3 call; the path is relative because the working directory stays here.
+    if (setenv("SQLITE_TMPDIR", "tmp", 1) != 0) {
+        mwarn("Could not set SQLITE_TMPDIR: %s (%d). SQLite will use the system temporary directory.", strerror(errno), errno);
+    }
+
     // Get options
 
     {
