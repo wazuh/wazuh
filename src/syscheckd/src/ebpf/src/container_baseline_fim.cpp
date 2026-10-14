@@ -528,10 +528,28 @@ void status_sink(const cb_container_status_t* status, void* user_data)
     static_cast<BaselineDriver*>(user_data)->onStatus(*status);
 }
 
-void container_id_sink(const char* container_id, void* user_data)
+/// Collects every known container and, separately, the ones allowed to report.
+///
+/// Both halves come from one reply deliberately. `known` is what authorises
+/// deletions, so it must hold EVERY container -- a withheld one has not been
+/// removed, and leaving it out would delete the rows the cap is holding back.
+/// `admitted` is the subset whose rows may still be offered upward.
+struct ContainerListing
+{
+    std::set<std::string> known;
+    std::set<std::string> admitted;
+};
+
+void container_id_sink(const char* container_id, int synced, void* user_data)
 {
     if (!container_id || !user_data) return;
-    static_cast<std::set<std::string>*>(user_data)->insert(container_id);
+
+    auto* listing = static_cast<ContainerListing*>(user_data);
+    listing->known.insert(container_id);
+
+    if (synced != 0) {
+        listing->admitted.insert(container_id);
+    }
 }
 
 
@@ -778,8 +796,21 @@ extern "C" void fim_run_container_baseline(void)
         // this distinction a container restart would delete all of its FIM
         // state and re-create it — a false-positive flood on exactly the event
         // that must be reported accurately.
-        std::set<std::string> known;
-        const int listed = cbaseline_list_containers(CB_DEFAULT_CONNECTOR_SOCKET_PATH, container_id_sink, &known);
+        ContainerListing listing;
+        const int listed = cbaseline_list_containers(CB_DEFAULT_CONNECTOR_SOCKET_PATH, container_id_sink, &listing);
+        const std::set<std::string>& known = listing.known;
+
+        // Only when the connector actually answered. A failed query reports no
+        // containers at all, and taking that as "nothing may report" would
+        // withhold every container's rows on a momentary blip.
+        if (listed >= 0) {
+            std::vector<const char*> admitted;
+            admitted.reserve(listing.admitted.size());
+            for (const auto& id : listing.admitted) {
+                admitted.push_back(id.c_str());
+            }
+            fim_container_set_admitted(admitted.data(), admitted.size());
+        }
 
         // A negative count means the connector never answered, so `known` is
         // empty for want of an answer rather than for want of containers.
