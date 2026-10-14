@@ -91,68 +91,68 @@ install -m 0644 src/init/templates/wazuh-agent.service ${RPM_BUILD_ROOT}/usr/lib
 rm -f ${RPM_BUILD_ROOT}%{_localstatedir}/ruleset/sca/*
 
 # Install configuration assesment files and files templates
-mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/{generic}
-mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/amzn/{1,2,2023}
-mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/{10,9,8,7,6}
-mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/ol/{9,10}
-mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/{9,8,7,6}
-mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/sles/{12,15,16}
-mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/suse/12
-mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/fedora/{29,30,31,32,33,34,41}
-mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/almalinux/{8,9,10}
-mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rocky/{8,9,10}
+mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/{generic}
+mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/amzn/{1,2,2023}
+mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/centos/{10,9,8,7,6}
+mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/ol/{9,10}
+mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/rhel/{9,8,7,6}
+mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/sles/{12,15,16}
+mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/suse/12
+mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/fedora/{29,30,31,32,33,34,41}
+mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/almalinux/{8,9,10}
+mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/rocky/{8,9,10}
 
-cp -r ruleset/sca/{generic,centos,rhel,ol,sles,amazon,rocky,almalinux} ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp
+cp -r ruleset/sca/{generic,centos,rhel,ol,sles,amazon,rocky,almalinux} ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca
 
-cp etc/templates/config/generic/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/generic
+cp etc/templates/config/generic/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/generic
 
-cp etc/templates/config/amzn/1/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/amzn/1
-cp etc/templates/config/amzn/2/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/amzn/2
-cp etc/templates/config/amzn/2023/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/amzn/2023
+cp etc/templates/config/amzn/1/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/amzn/1
+cp etc/templates/config/amzn/2/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/amzn/2
+cp etc/templates/config/amzn/2023/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/amzn/2023
 
-cp etc/templates/config/centos/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos
-cp etc/templates/config/centos/10/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/10
-cp etc/templates/config/centos/9/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/9
-cp etc/templates/config/centos/8/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/8
-cp etc/templates/config/centos/7/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/7
-cp etc/templates/config/centos/6/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/6
+cp etc/templates/config/centos/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/centos
+cp etc/templates/config/centos/10/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/centos/10
+cp etc/templates/config/centos/9/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/centos/9
+cp etc/templates/config/centos/8/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/centos/8
+cp etc/templates/config/centos/7/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/centos/7
+cp etc/templates/config/centos/6/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/centos/6
 
-cp etc/templates/config/ol/9/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/ol/9
-cp etc/templates/config/ol/10/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/ol/10
+cp etc/templates/config/ol/9/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/ol/9
+cp etc/templates/config/ol/10/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/ol/10
 
-cp etc/templates/config/rhel/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel
-cp etc/templates/config/rhel/10/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/10
-cp etc/templates/config/rhel/9/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/9
-cp etc/templates/config/rhel/8/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/8
-cp etc/templates/config/rhel/7/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/7
-cp etc/templates/config/rhel/6/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/6
+cp etc/templates/config/rhel/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/rhel
+cp etc/templates/config/rhel/10/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/rhel/10
+cp etc/templates/config/rhel/9/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/rhel/9
+cp etc/templates/config/rhel/8/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/rhel/8
+cp etc/templates/config/rhel/7/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/rhel/7
+cp etc/templates/config/rhel/6/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/rhel/6
 
-cp etc/templates/config/sles/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/sles
-cp etc/templates/config/sles/12/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/sles/12
-cp etc/templates/config/sles/15/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/sles/15
-cp etc/templates/config/sles/16/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/sles/16
+cp etc/templates/config/sles/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/sles
+cp etc/templates/config/sles/12/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/sles/12
+cp etc/templates/config/sles/15/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/sles/15
+cp etc/templates/config/sles/16/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/sles/16
 
-cp etc/templates/config/suse/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/suse
-cp etc/templates/config/suse/12/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/suse/12
+cp etc/templates/config/suse/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/suse
+cp etc/templates/config/suse/12/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/suse/12
 
-cp etc/templates/config/fedora/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/fedora
-cp etc/templates/config/fedora/29/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/fedora/29
-cp etc/templates/config/fedora/30/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/fedora/30
-cp etc/templates/config/fedora/31/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/fedora/31
-cp etc/templates/config/fedora/32/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/fedora/32
-cp etc/templates/config/fedora/33/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/fedora/33
-cp etc/templates/config/fedora/34/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/fedora/34
-cp etc/templates/config/fedora/41/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/fedora/41
+cp etc/templates/config/fedora/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/fedora
+cp etc/templates/config/fedora/29/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/fedora/29
+cp etc/templates/config/fedora/30/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/fedora/30
+cp etc/templates/config/fedora/31/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/fedora/31
+cp etc/templates/config/fedora/32/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/fedora/32
+cp etc/templates/config/fedora/33/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/fedora/33
+cp etc/templates/config/fedora/34/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/fedora/34
+cp etc/templates/config/fedora/41/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/fedora/41
 
-cp etc/templates/config/almalinux/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/almalinux
-cp etc/templates/config/almalinux/8/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/almalinux/8
-cp etc/templates/config/almalinux/9/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/almalinux/9
-cp etc/templates/config/almalinux/10/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/almalinux/10
+cp etc/templates/config/almalinux/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/almalinux
+cp etc/templates/config/almalinux/8/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/almalinux/8
+cp etc/templates/config/almalinux/9/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/almalinux/9
+cp etc/templates/config/almalinux/10/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/almalinux/10
 
-cp etc/templates/config/rocky/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rocky
-cp etc/templates/config/rocky/8/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rocky/8
-cp etc/templates/config/rocky/9/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rocky/9
-cp etc/templates/config/rocky/10/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rocky/10
+cp etc/templates/config/rocky/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/rocky
+cp etc/templates/config/rocky/8/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/rocky/8
+cp etc/templates/config/rocky/9/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/rocky/9
+cp etc/templates/config/rocky/10/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca/rocky/10
 
 # Add configuration scripts
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/
@@ -348,9 +348,6 @@ if [[ -d /run/systemd/system ]]; then
   rm -f %{_initrddir}/wazuh-agent
 fi
 
-# Delete the installation files used to configure the agent
-rm -rf %{_localstatedir}/packages_files
-
 # Remove unnecessary files from shared directory
 rm -f %{_localstatedir}/etc/shared/*.rpmnew
 
@@ -421,7 +418,7 @@ else
 fi
 
 SCA_DIR="${DIST_NAME}/${DIST_VER}"
-SCA_BASE_DIR="%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp"
+SCA_BASE_DIR="%{_localstatedir}/packages_files/agent_installation_scripts/sca"
 mkdir -p %{_localstatedir}/ruleset/sca
 
 
@@ -442,12 +439,20 @@ if [ -r ${SCA_TMP_FILE} ]; then
 
   rm -f %{_localstatedir}/ruleset/sca/* || true
 
+  # Staged in packages_files/ (root only). Each entry must still name a plain file inside the
+  # staging tree: no absolute path, no "..", no link.
   for sca_file in $(cat ${SCA_TMP_FILE}); do
-    if [ -f ${SCA_BASE_DIR}/${sca_file} ]; then
+    case "${sca_file}" in
+      /*|..|../*|*/..|*/../*) continue ;;
+    esac
+    if [ -f ${SCA_BASE_DIR}/${sca_file} ] && [ ! -L ${SCA_BASE_DIR}/${sca_file} ]; then
       mv ${SCA_BASE_DIR}/${sca_file} %{_localstatedir}/ruleset/sca
     fi
   done
 fi
+
+# Delete the installation files used to configure the agent
+rm -rf %{_localstatedir}/packages_files
 
 # Set the proper selinux context
 if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ "${DIST_VER}" == "5" ]; then
@@ -790,63 +795,63 @@ rm -fr %{buildroot}
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/logcollector
 %dir %attr(750, root, wazuh) %{_localstatedir}/ruleset/
 %dir %attr(750, root, wazuh) %{_localstatedir}/ruleset/sca
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/generic
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/generic/*
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/amzn
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/amzn/1
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/amzn/1/*
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/amzn/2
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/amzn/2/*
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/amzn/2023
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/amzn/2023/*
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/sca.files
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/6
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/6/*
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/7
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/7/*
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/8
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/8/*
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/9
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/9/*
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/10
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/10/*
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/ol/9
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/ol/9/*
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/ol/10
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/ol/10/*
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/sca.files
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/6
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/6/*
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/7
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/7/*
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/8
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/8/*
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/9
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/9/*
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/10
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/10/*
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/sles
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/sles/sca.files
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/sles/12
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/sles/12/*
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/sles/15
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/sles/15/*
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/sles/16
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/sles/16/*
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/suse/sca.files
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/suse/12
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/suse/12/*
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/amazon
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/amazon/*
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/fedora
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/fedora/*
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/almalinux
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/almalinux/*
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rocky
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rocky/*
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/generic
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/generic/*
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/amzn
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/amzn/1
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/amzn/1/*
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/amzn/2
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/amzn/2/*
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/amzn/2023
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/amzn/2023/*
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/centos
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/centos/sca.files
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/centos/6
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/centos/6/*
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/centos/7
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/centos/7/*
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/centos/8
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/centos/8/*
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/centos/9
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/centos/9/*
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/centos/10
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/centos/10/*
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/ol/9
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/ol/9/*
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/ol/10
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/ol/10/*
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/rhel
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/rhel/sca.files
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/rhel/6
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/rhel/6/*
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/rhel/7
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/rhel/7/*
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/rhel/8
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/rhel/8/*
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/rhel/9
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/rhel/9/*
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/rhel/10
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/rhel/10/*
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/sles
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/sles/sca.files
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/sles/12
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/sles/12/*
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/sles/15
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/sles/15/*
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/sles/16
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/sles/16/*
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/suse/sca.files
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/suse/12
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/suse/12/*
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/amazon
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/amazon/*
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/fedora
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/fedora/*
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/almalinux
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/almalinux/*
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/rocky
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca/rocky/*
 %dir %attr(1770, root, wazuh) %{_localstatedir}/tmp
 %dir %attr(750, root, wazuh) %{_localstatedir}/var
 %dir %attr(770, root, wazuh) %{_localstatedir}/var/incoming
