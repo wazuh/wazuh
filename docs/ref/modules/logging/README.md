@@ -3,9 +3,11 @@
 ## Overview
 
 The `logging` section selects the format of the Wazuh daemons' own log: human-readable plain text,
-one JSON object per line, or both at once. It is not a daemon: the shared logging code in
-`src/shared/src/debug_op.c` (part of `libwazuhshared`) reads the setting the first time a process
-logs, and every C/C++ daemon writes its log lines through that code.
+one JSON object per line, or both at once. It is not a daemon: the C daemons write their log lines
+through the shared logging code in `src/shared/src/debug_op.c`, which reads the setting the first time
+a process logs, and the engine (`wazuh-manager-analysisd`) writes them with its own log sink
+(`src/engine/source/base/include/base/managerLogSink.hpp`), which reads the same setting at start-up and
+produces the same line formats in the same files.
 
 | | Manager | Agent |
 |---|---|---|

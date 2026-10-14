@@ -15,7 +15,6 @@
 #include <api/status/handlers.hpp>
 #include <base/eventParser.hpp>
 #include <base/json.hpp>
-#include <base/libwazuhshared.hpp>
 #include <base/logging.hpp>
 #include <base/managerConfig.hpp>
 #include <base/process.hpp>
@@ -151,18 +150,8 @@ int main(int argc, char* argv[])
     }
     else
     {
-        // Use wazuh-shared logging
-        try
-        {
-            base::libwazuhshared::init();
-            exitHandler.add([]() { base::libwazuhshared::shutdown(); });
-        }
-        catch (const std::exception& e)
-        {
-            fprintf(stderr, "Error initializing wazuh-shared: %s\n", e.what());
-            return EXIT_FAILURE;
-        }
-
+        // Manager mode: home resolved like the other manager daemons (exits when it is not a directory)
+        base::process::setManagerMode();
         const auto wazuhHome = base::process::getWazuhHome();
         if (chdir(wazuhHome.string().c_str()) == -1)
         {
@@ -172,9 +161,7 @@ int main(int argc, char* argv[])
 
         // Manager configuration (/etc/wazuh-manager/wazuh-manager.conf; relative paths inside it resolve
         // against the home). -t validates it, including the files it references; a normal start loads it
-        // once (no file checks) and registers it as the section provider of libwazuhshared.so before the
-        // first log, so the logging format and the cluster getters inside the shared library read the same
-        // document.
+        // once (no file checks) before the first log.
         if (opts.testConfig)
         {
             if (const auto error = base::managerConfig::validate(wazuhHome))
@@ -188,7 +175,6 @@ int main(int argc, char* argv[])
         try
         {
             base::managerConfig::load(wazuhHome);
-            base::managerConfig::registerSharedHook();
         }
         catch (const std::exception& e)
         {
@@ -196,15 +182,14 @@ int main(int argc, char* argv[])
             return EXIT_FAILURE;
         }
 
-        try
-        {
-            logging::init();
-        }
-        catch (const std::exception& e)
-        {
-            std::cerr << e.what() << '\n';
-            return EXIT_FAILURE;
-        }
+        // Manager log (logs/wazuh-manager.log|.json, relative to the home), before the first log line and
+        // goDaemon(); the debug level is applied later, with the internal options.
+        const auto logFormat = base::managerConfig::logFormat();
+        base::logging::initManager(
+            {"logs/wazuh-manager.log", "logs/wazuh-manager.json", logFormat.plain, logFormat.json});
+        // Shared-library lines logged through Log::GLOBAL_LOG_FUNCTION (e.g. indexer_connector's monitoring) go to
+        // the same sink, as the removed logging::init() did.
+        Log::assignLogFunction(logging::createStandaloneLogFunction());
     }
 
     // Raise the soft file descriptor limit; the hard limit belongs to whoever started the manager
