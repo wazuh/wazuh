@@ -8,6 +8,8 @@ import io
 import os
 import shutil
 
+import pytest
+
 
 def run(resolver, sandbox, *argv):
     out, err = io.StringIO(), io.StringIO()
@@ -56,3 +58,138 @@ def test_check_changes_nothing(resolver, sandbox):
     assert run(resolver, sandbox, "--check")[0] == 0
     assert sandbox.tree_state() == before
     assert not os.path.exists(os.path.join(sandbox.conf, "ca"))
+
+
+# ---------------------------------------------------------------- the whole tree
+
+IDX = {"WAZUH_INDEXER_MANAGER_PASSWORD": "Idx.Passw0rd-789"}
+
+
+def run_env(resolver, sandbox, *argv):
+    out, err = io.StringIO(), io.StringIO()
+    code = resolver.main(list(argv), paths=sandbox.paths, environ=dict(IDX), out=out, err=err)
+    return code, out.getvalue(), err.getvalue()
+
+
+def installed(resolver, sandbox):
+    code, _, err = run_env(resolver, sandbox, "--install")
+    assert code == 0 and err == "", err
+
+
+@pytest.mark.parametrize("case,expected", [
+    ("export 0750", "UNSAFE {conf}/export: mode is 0750, not 0700"),
+    ("export account-owned", "UNSAFE {conf}/export: owned by uid"),
+    ("credentials.env 0640", "UNSAFE {conf}/export/credentials.env: mode is 0640, not 0600"),
+    ("ca.pem group-writable", "UNSAFE {conf}/export/ca.pem: group-writable"),
+    ("bad line", "INVALID {conf}/export/credentials.env:4: not a NAME=value line"),
+])
+def test_check_export(resolver, sandbox, case, expected):
+    installed(resolver, sandbox)
+    export = os.path.join(sandbox.conf, "export")
+    if case == "export 0750":
+        os.chmod(export, 0o750)
+    elif case == "export account-owned":
+        os.chown(export, sandbox.account_uid, 0)
+    elif case == "credentials.env 0640":
+        os.chmod(os.path.join(export, "credentials.env"), 0o640)
+    elif case == "ca.pem group-writable":
+        os.chmod(os.path.join(export, "ca.pem"), 0o664)
+    else:
+        with open(os.path.join(export, "credentials.env"), "a") as handle:
+            handle.write("not a line\n")
+    before = sandbox.tree_state()
+    code, _, err = run_env(resolver, sandbox, "--check")
+    assert code == 1 and expected.format(conf=sandbox.conf) in err
+    assert sandbox.tree_state() == before
+
+
+@pytest.mark.parametrize("case,flagged", [("account file", True), ("account dir", True), ("root lock", False)])
+def test_certs_foreign_entry(resolver, sandbox, case, flagged):
+    installed(resolver, sandbox)
+    if case == "account file":
+        sandbox.plant(os.path.join(sandbox.certs, "extra.pem"))
+    elif case == "account dir":
+        os.mkdir(os.path.join(sandbox.certs, "extra"))
+        os.chown(os.path.join(sandbox.certs, "extra"), sandbox.account_uid, sandbox.account_gid)
+    else:
+        sandbox.write(os.path.join(sandbox.certs, "root-ca.pem.lock"), b"", mode=0o600)
+    code, _, err = run_env(resolver, sandbox, "--check")
+    assert (code == 1 and "UNSAFE " in err and "not by root" in err) if flagged else (code == 0 and err == "")
+
+
+def test_swap_ca_export(resolver, sandbox):
+    installed(resolver, sandbox)
+    ca, export = os.path.join(sandbox.conf, "ca"), os.path.join(sandbox.conf, "export")
+    os.rename(ca, ca + ".x")
+    os.rename(export, ca)
+    os.rename(ca + ".x", export)
+    before = sandbox.tree_state()
+    for mode in ("--check", "--prestart"):
+        code, _, err = run_env(resolver, sandbox, mode)
+        assert code == 1 and f"UNSAFE {ca}: holds" in err and f"UNSAFE {export}: holds" in err, (mode, err)
+    assert sandbox.tree_state() == before
+
+
+def test_swap_certs_ca(resolver, sandbox):
+    installed(resolver, sandbox)
+    ca = os.path.join(sandbox.conf, "ca")
+    os.rename(sandbox.certs, ca + ".x")
+    os.rename(ca, sandbox.certs)
+    os.rename(ca + ".x", ca)
+    before = sandbox.tree_state()
+    code, _, err = run_env(resolver, sandbox, "--prestart")
+    assert code == 1 and f"UNSAFE {sandbox.certs}: " in err and f"UNSAFE {ca}: " in err
+    assert sandbox.tree_state() == before
+
+
+def test_export_ca_stale(resolver, sandbox):
+    """The CA staged again by hand: the publication is stale, not attacked. --install publishes it again."""
+    installed(resolver, sandbox)
+    os.unlink(os.path.join(sandbox.conf, "ca", ".wazuh-manager-bootstrap-ca"))
+    with open(os.path.join(sandbox.conf, "export", "ca.pem"), "ab") as handle:
+        handle.write(b"\n")
+    code, _, err = run_env(resolver, sandbox, "--prestart")
+    assert code == 1 and "differs from" in err and "run --install to publish it again" in err
+    assert run_env(resolver, sandbox, "--install")[0] == 0
+    assert run_env(resolver, sandbox, "--prestart")[0] == 0
+
+
+def _break_five_ways(resolver, sandbox):
+    installed(resolver, sandbox)
+    sandbox.write(os.path.join(sandbox.conf, "local.env"), "WAZUH_MANAGER_APID_CERT_SANS=DNS:bad_name\nnope\n")
+    os.chmod(os.path.join(sandbox.conf, "export", "credentials.env"), 0o644)
+    sandbox.plant(os.path.join(sandbox.certs, "planted.pem"))
+    os.unlink(os.path.join(sandbox.certs, "apid-key.pem"))
+    os.chmod(sandbox.indexer_export, 0o770)
+
+
+def test_each_problem_once(resolver, sandbox):
+    _break_five_ways(resolver, sandbox)
+    code, _, err = run_env(resolver, sandbox, "--prestart")
+    lines = [line for line in err.splitlines() if line.split(" ", 1)[0] in ("MISSING", "INVALID", "UNSAFE")]
+    assert code == 1 and len(lines) >= 5
+    assert len(lines) == len(set(lines)), err
+
+
+def test_check_equals_prestart(resolver, sandbox):
+    _break_five_ways(resolver, sandbox)
+    _, _, check_err = run_env(resolver, sandbox, "--check")
+    _, _, prestart_err = run_env(resolver, sandbox, "--prestart")
+    problems = lambda text: {line for line in text.splitlines() if line.split(" ", 1)[0] in ("INVALID", "UNSAFE")}
+    assert "MISSING" not in check_err
+    assert problems(check_err) <= problems(prestart_err)
+
+
+def test_prestart_checks_first(resolver, sandbox):
+    """A first start with certs/ already replaced by the account's directory: --prestart refuses, and nothing is
+    minted, issued or imported through it."""
+    os.mkdir(sandbox.certs + ".account", 0o770)
+    os.chown(sandbox.certs + ".account", sandbox.account_uid, sandbox.account_gid)
+    shutil.rmtree(sandbox.certs)
+    os.rename(sandbox.certs + ".account", sandbox.certs)
+    sandbox.plant(os.path.join(sandbox.certs, "root-ca.pem"))
+    code, _, err = run_env(resolver, sandbox, "--prestart")
+    assert code == 1 and f"UNSAFE {sandbox.certs}: owned by uid" in err, err
+    assert os.listdir(sandbox.certs) == ["root-ca.pem"]
+    assert not os.path.exists(os.path.join(sandbox.conf, "ca", "root-ca.pem"))
+    assert not os.path.exists(os.path.join(sandbox.conf, "export", "ca.pem"))

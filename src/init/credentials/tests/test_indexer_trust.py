@@ -124,7 +124,6 @@ def test_kept_when_source_gone(resolver, sandbox):
     run(resolver, sandbox, "--install")
     before = digests(sandbox)
     shutil.rmtree(sandbox.indexer_export)
-    sandbox.stage_ca()
     code, _, err = run(resolver, sandbox, "--prestart")
     assert code == 0, err
     assert digests(sandbox) == before

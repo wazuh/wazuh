@@ -1701,6 +1701,89 @@ def check_indexer_trust(paths: Paths, certs: Dir, report: Report) -> None:
             source.close()
 
 
+# =============================================== Whole-tree checks =============================================
+
+EXPORT_FILES = (CREDENTIALS_ENV, EXPORT_CA)
+CA_FILES = (CA_CERT, CA_KEY, CA_MARKER)
+
+
+def _open_optional_dir(conf: Dir, name: str, spec: Spec, report: Report) -> Optional[Dir]:
+    try:
+        return open_dir(conf, name, spec)
+    except FileNotFoundError:
+        return None
+    except UnsafeEntry as exc:
+        report.unsafe(exc)
+        return None
+
+
+def check_export(conf: Dir, report: Report) -> None:
+    """export/: root's 0700 directory; credentials.env root's 0600 and well formed; ca.pem root's."""
+    export = _open_optional_dir(conf, EXPORT_DIR, EXPORT_SPEC, report)
+    if export is None:
+        return
+    with export:
+        present, data = read_optional(export, CREDENTIALS_ENV, Spec("file", mode=0o600), report)
+        if present and data is not None:
+            try:
+                parse_env(data, export.child(CREDENTIALS_ENV))
+            except EnvSyntaxError as exc:
+                report.problem(INVALID, f"{exc.path}:{exc.line}", "not a NAME=value line")
+        read_optional(export, EXPORT_CA, ROOT_FILE, report)
+
+
+def check_certs_entries(certs: Dir, report: Report) -> None:
+    """Nothing in certs/ may belong to anyone but root: certs/ itself is root's, so such an entry could only have
+    come from a planted directory. Root-owned entries the resolver does not manage (wazuh-manager-certs' lock and
+    temporaries) are left alone."""
+    for name in sorted(os.listdir(certs.fd)):
+        try:
+            st = os.stat(name, dir_fd=certs.fd, follow_symlinks=False)
+        except FileNotFoundError:
+            continue
+        if st.st_uid != 0:
+            report.problem(UNSAFE, certs.child(name), f"owned by uid {st.st_uid}, not by root")
+
+
+def check_swaps(conf: Dir, report: Report) -> None:
+    """ca/ and export/ are both root:root 0700, so a swap between them passes their specs: their contents tell them
+    apart. A publication that merely went stale (the CA was staged again by hand) is not a swap: it is INVALID, with
+    the remedy."""
+    ca = _open_optional_dir(conf, CA_DIR, CA_SPEC, report)
+    export = _open_optional_dir(conf, EXPORT_DIR, EXPORT_SPEC, report)
+    try:
+        for opened, foreign, owner in ((ca, EXPORT_FILES, EXPORT_DIR), (export, CA_FILES, CA_DIR)):
+            if opened is None:
+                continue
+            for name in sorted(set(os.listdir(opened.fd)) & set(foreign)):
+                report.problem(UNSAFE, opened.path, f"holds {name}, which belongs in {owner}/")
+        if ca is not None and export is not None and _exists(ca, CA_CERT) and _exists(export, EXPORT_CA):
+            try:
+                own = read_file(ca, CA_CERT, CA_CERT_SPEC)
+                published = read_file(export, EXPORT_CA, ROOT_FILE)
+            except UnsafeEntry:
+                return                                       # already reported by the other checks
+            if own != published:
+                report.problem(INVALID, export.child(EXPORT_CA),
+                               f"differs from {ca.child(CA_CERT)}; run --install to publish it again")
+    finally:
+        for opened in (ca, export):
+            if opened is not None:
+                opened.close()
+
+
+def run_checks(paths: Paths, conf: Dir, lookup: Lookup, report: Report) -> None:
+    """Every read-only test, as --check runs them and --prestart runs them before anything else. No lock, no
+    subprocess, nothing written. The steps report problems with the same texts, so each is printed once."""
+    check_own_ca(paths, conf, lookup, report)
+    check_export(conf, report)
+    certs = _open_optional_dir(conf, CERTS_DIR, certs_spec(paths), report)
+    if certs is not None:
+        with certs:
+            check_certs_entries(certs, report)
+    check_swaps(conf, report)
+
+
 # ==================================================== Lock =====================================================
 
 CA_SPEC = Spec("dir", uid=0, gid=0, mode=0o700)
@@ -1751,7 +1834,7 @@ def mode_check(paths: Paths, report: Report, environ: Mapping[str, str]) -> int:
     result = preflight(paths, report, environ)
     if result is not None:
         with result[0] as conf:
-            check_own_ca(paths, conf, result[1], report)
+            run_checks(paths, conf, result[1], report)
     if not report.has():
         report.progress("check: no problem found")
     return report.exit_code("check")
@@ -1764,6 +1847,9 @@ def _writing_mode(mode: str):
             return report.exit_code(mode)
         conf, lookup = result
         with conf:
+            if mode == "prestart":
+                # Every --check test first, on every start, whether or not anything is left to complete.
+                run_checks(paths, conf, lookup, report)
             try:
                 ca = acquire_lock(conf)
             except UnsafeEntry as exc:

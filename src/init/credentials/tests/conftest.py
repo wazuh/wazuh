@@ -32,6 +32,21 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
 
+# Test fixtures need many RSA keys and generating them dominated the suite's time. They come from a pool built once
+# per session; draws are consecutive, so the keys of one fixture are always distinct. The program's own minting and
+# issuing, in the code under test, still generate fresh keys.
+_KEY_POOL = []
+_KEY_DRAWS = [0]
+
+
+def pool_key():
+    if not _KEY_POOL:
+        _KEY_POOL.extend(rsa.generate_private_key(public_exponent=65537, key_size=2048) for _ in range(8))
+    key = _KEY_POOL[_KEY_DRAWS[0] % len(_KEY_POOL)]
+    _KEY_DRAWS[0] += 1
+    return key
+
+
 PROGRAM = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                        "wazuh-manager-resolve-credentials.py")
 ACCOUNT = "daemon"
@@ -185,7 +200,7 @@ class Sandbox:
         issued (export/manager-client.pem, leaf then CA, and its key). The keyword arguments break one property.
         Returns {"ca": ca_pem, "client": client_pem, "key": key_pem}."""
         now = datetime.datetime.now(datetime.timezone.utc)
-        ca_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        ca_key = pool_key()
         ca_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "wazuh-indexer-ca")])
         ca = (x509.CertificateBuilder().subject_name(ca_name).issuer_name(ca_name).public_key(ca_key.public_key())
               .serial_number(x509.random_serial_number())
@@ -194,8 +209,8 @@ class Sandbox:
               .sign(ca_key, hashes.SHA256()))
         signer, issuer = ca_key, ca_name
         if foreign:
-            signer = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-        key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+            signer = pool_key()
+        key = pool_key()
         window = (now - datetime.timedelta(days=60), now - datetime.timedelta(days=1)) if expired else \
                  (now - datetime.timedelta(days=1), now + datetime.timedelta(days=3650))
         builder = (x509.CertificateBuilder()
@@ -209,7 +224,7 @@ class Sandbox:
             builder = builder.add_extension(x509.ExtendedKeyUsage([ExtendedKeyUsageOID.SERVER_AUTH]), critical=False)
         leaf = builder.sign(signer, hashes.SHA256())
         pem = lambda c: c.public_bytes(serialization.Encoding.PEM)
-        key_pem = (rsa.generate_private_key(public_exponent=65537, key_size=2048) if key_mismatch else key) \
+        key_pem = (pool_key() if key_mismatch else key) \
             .private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption())
         os.makedirs(self.indexer_export, exist_ok=True)
         os.chown(self.indexer_export, 0, 0)
@@ -223,6 +238,15 @@ class Sandbox:
     def stage_ca(self, node="node1", key=True, bundle=True, pairs=True):
         """What a finished --install leaves, made with the program itself: the CA (without the mint marker, so it
         counts as staged), certs/root-ca.pem and both server pairs. Returns the CA certificate's PEM bytes."""
+        r = self.resolver
+        generate = r.rsa.generate_private_key
+        r.rsa.generate_private_key = lambda **_: pool_key()         # only while staging; restored below
+        try:
+            return self._stage_ca(node, key, bundle, pairs)
+        finally:
+            r.rsa.generate_private_key = generate
+
+    def _stage_ca(self, node, key, bundle, pairs):
         r = self.resolver
         with r.open_top(self.conf, r.conf_spec(self.paths)) as conf:
             with r.ensure_dir(conf, "ca", r.CA_SPEC) as ca:
