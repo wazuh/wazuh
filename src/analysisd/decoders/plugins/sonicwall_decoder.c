@@ -110,6 +110,7 @@ void *SonicWall_Decoder_Exec(Eventinfo *lf, __attribute__((unused)) OSHash *rule
 
         /* Get category */
         strncpy(category, decoder_match->sub_strings[1], 7);
+        category[sizeof(category)-1] = '\0';
 
         /* Clear all substrings */
         decoder_match->sub_strings[0] = NULL;
