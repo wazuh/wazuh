@@ -99,13 +99,22 @@ else()
     dl
     agent_sync_protocol
     agent_metadata
-    schema_validator
-    # syscollectorImp.cpp calls cbaseline_run_syscollector_dbsync() and
-    # cbaseline_list_containers() directly (#37532), so this target has needed
-    # the module since that landed — it was compiling the calls without
-    # linking anything that defines them.
-    container_baseline)
+    schema_validator)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+
+# syscollectorImp.cpp calls cbaseline_run_syscollector_dbsync() and
+# cbaseline_list_containers() directly (#37532), so this target has needed the
+# module since that landed — it was compiling the calls without linking
+# anything that defines them.
+#
+# Linux-only, and guarded exactly like the module's own target in
+# wazuh_modules/syscollector/CMakeLists.txt: container_baseline is only added
+# as a subdirectory on Linux, so naming it anywhere else leaves the linker
+# hunting for a library nobody built. The calls themselves are behind the same
+# __linux__ guard, so there is nothing to resolve off Linux either.
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  target_link_libraries(syscollectorimp_unit_test container_baseline)
+endif()
 
 add_test(NAME syscollectorimp_unit_test COMMAND syscollectorimp_unit_test)
 
