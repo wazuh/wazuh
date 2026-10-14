@@ -124,9 +124,7 @@ def test_export_swapped_after_open(resolver, sandbox, monkeypatch):
 
 
 def test_certs_swapped_before_rename(resolver, sandbox, monkeypatch):
-    certs = os.path.join(sandbox.conf, "certs")
-    os.mkdir(certs, 0o750)
-    os.chown(certs, 0, sandbox.account_gid)
+    certs = sandbox.certs                            # 0750 root:<group>, as the installer leaves it
     real_rename = os.rename
 
     def attack(src, dst, *, src_dir_fd=None, dst_dir_fd=None):
@@ -200,6 +198,8 @@ def test_ca_replaced_while_created(resolver, sandbox, monkeypatch):
 
 @pytest.mark.parametrize("mode", ["--install", "--upgrade", "--prestart"])
 def test_only_ca_and_export_are_created(resolver, sandbox, mode):
+    if mode != "--install":
+        sandbox.stage_ca()                           # --upgrade/--prestart need the CA an install leaves
     sandbox.write(os.path.join(sandbox.conf, "local.env"), "A=1\nWAZUH_INDEXER_MANAGER_PASSWORD=Idx.Passw0rd-123\n")
     before = set(os.listdir(sandbox.conf))
     code, _, _ = run(resolver, sandbox, mode)

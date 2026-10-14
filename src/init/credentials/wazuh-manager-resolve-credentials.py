@@ -17,6 +17,7 @@ os.environ["OPENSSL_armcap"] = "0"
 
 import argparse  # noqa: E402
 import dataclasses  # noqa: E402
+import datetime  # noqa: E402
 import errno  # noqa: E402
 import fcntl  # noqa: E402
 import grp  # noqa: E402
@@ -24,12 +25,19 @@ import json  # noqa: E402
 import pwd  # noqa: E402
 import re  # noqa: E402
 import secrets  # noqa: E402
+import socket  # noqa: E402
 import stat  # noqa: E402
 # Only Wazuh's own programs are run, by absolute path, with a fixed argv and an empty environment.
 import subprocess  # noqa: E402 # nosec B404
 import sys  # noqa: E402
 import time  # noqa: E402
 from typing import Dict, List, Mapping, Optional, Tuple  # noqa: E402
+
+from cryptography import x509  # noqa: E402
+from cryptography.exceptions import InvalidSignature, UnsupportedAlgorithm  # noqa: E402
+from cryptography.hazmat.primitives import hashes, serialization  # noqa: E402
+from cryptography.hazmat.primitives.asymmetric import rsa  # noqa: E402
+from cryptography.x509.oid import NameOID  # noqa: E402
 
 # ================================================== Constants ==================================================
 
@@ -82,6 +90,18 @@ PASSWORD_LENGTH = 32
 PASSWORD_MIN_LENGTH = 12
 PASSWORD_MAX_LENGTH = 64
 PUBLISHED_HEADER = "# Published by wazuh-manager. Read by the dashboard on this host. Do not edit."
+
+CA_CERT = "root-ca.pem"
+CA_KEY = "root-ca.key"
+# Present only when this installation minted the CA: --clear removes a CA it minted, never one staged by the operator.
+CA_MARKER = ".wazuh-manager-bootstrap-ca"
+EXPORT_CA = "ca.pem"
+BUNDLE = "root-ca.pem"                    # certs/root-ca.pem: the agents' CA bundle, which remoted serves
+SERVER_PAIR_FILES = ("remoted.pem", "remoted-key.pem", "apid.pem", "apid-key.pem")
+NODE_NAME_VAR = "WAZUH_MANAGER_NODE_NAME"
+CA_COMMON_NAME_PREFIX = "wazuh-manager-"
+CERT_VALIDITY_DAYS = 3650
+CERT_BACKDATE = datetime.timedelta(days=1)
 
 MISSING = "MISSING"
 INVALID = "INVALID"
@@ -809,6 +829,287 @@ def step_indexer_password(paths: Paths, lookup: Lookup, report: Report) -> None:
     report.progress(f"stored the indexer password from {source} in the keystore")
 
 
+# ==================================================== Own CA ===================================================
+
+CA_CERT_SPEC = Spec("file")                       # rule 1
+CA_KEY_SPEC = Spec("file", forbid=0o077)          # root's private file: no group or other bit at all
+
+
+def certs_spec(paths: Paths) -> Spec:
+    """certs/: a real directory owned by root (rule 4), readable through the service group, never writable by it."""
+    return Spec("dir", uid=0, gid=paths.service_gid(), forbid=0o022)
+
+
+def certs_file_spec(paths: Paths) -> Spec:
+    """What root writes in certs/: root:<service group> 0640. The daemons read it after dropping their
+    supplementary groups (clusterd, apid), so the group has to be exactly the service group."""
+    return Spec("file", uid=0, gid=paths.service_gid(), mode=0o640)
+
+
+_DNS_LABEL = re.compile(r"[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?")
+
+
+def valid_dns_name(name: str) -> bool:
+    """The shell resolver's DNS rules: at most 253 characters, labels of 1 to 63 letters, digits and inner hyphens."""
+    return 0 < len(name) <= 253 and all(_DNS_LABEL.fullmatch(label) for label in name.split("."))
+
+
+def node_name(lookup: Lookup, report: Report) -> Optional[str]:
+    """The name certificates carry: WAZUH_MANAGER_NODE_NAME when supplied, else the short host name."""
+    found = lookup.get(NODE_NAME_VAR)
+    if found is not None:
+        name, source = found
+        if valid_dns_name(name):
+            return name
+        report.problem(INVALID, NODE_NAME_VAR, f"not a valid DNS name (set in {source})")
+        return None
+    host = socket.gethostname().split(".")[0]
+    if valid_dns_name(host):
+        return host
+    report.problem(INVALID, NODE_NAME_VAR, f"unset, and the host name {host!r} is not a valid DNS name; set it")
+    return None
+
+
+def read_optional(parent: Dir, name: str, spec: Spec, report: Report) -> Tuple[bool, Optional[bytes]]:
+    """(present, content). An entry that is present but unsafe is reported and comes back as (True, None)."""
+    try:
+        return True, read_file(parent, name, spec)
+    except FileNotFoundError:
+        return False, None
+    except UnsafeEntry as exc:
+        report.unsafe(exc)
+        return True, None
+
+
+@dataclasses.dataclass
+class CaState:
+    """kind: "absent", "signing" (certificate and key) or "anchor-only" (certificate, no key: pairs are staged)."""
+
+    kind: str
+    cert: Optional[x509.Certificate] = None
+    key: Optional[rsa.RSAPrivateKey] = None
+    cert_bytes: bytes = b""
+
+
+def _now() -> datetime.datetime:
+    return datetime.datetime.now(datetime.timezone.utc)
+
+
+def _spki(public_key) -> bytes:
+    return public_key.public_bytes(serialization.Encoding.DER, serialization.PublicFormat.SubjectPublicKeyInfo)
+
+
+def ca_certificate_problem(data: bytes) -> Tuple[Optional[x509.Certificate], Optional[str]]:
+    """Parse a CA file: exactly one certificate, self-signed, CA:TRUE, inside its validity window."""
+    try:
+        certs = x509.load_pem_x509_certificates(data)
+    except ValueError:
+        return None, "not a PEM certificate"
+    if len(certs) != 1:
+        return None, f"holds {len(certs)} certificates, not one"
+    cert = certs[0]
+    try:
+        if cert.subject != cert.issuer:
+            raise InvalidSignature
+        cert.verify_directly_issued_by(cert)
+    except (InvalidSignature, ValueError, TypeError):
+        return None, "not self-signed"
+    try:
+        is_ca = cert.extensions.get_extension_for_class(x509.BasicConstraints).value.ca
+    except x509.ExtensionNotFound:
+        is_ca = False
+    if not is_ca:
+        return None, "not a CA certificate (basicConstraints CA:TRUE missing)"
+    now = _now()
+    if now < cert.not_valid_before_utc:
+        return None, "not valid yet"
+    if now > cert.not_valid_after_utc:
+        return None, "expired"
+    return cert, None
+
+
+def ca_key_problem(data: bytes, cert: x509.Certificate):
+    """Load an unencrypted private key and check it is the certificate's."""
+    try:
+        key = serialization.load_pem_private_key(data, password=None)
+    except TypeError:
+        return None, "encrypted; it has to be unencrypted to issue certificates"
+    except (ValueError, UnsupportedAlgorithm):
+        return None, "not a PEM private key"
+    if _spki(key.public_key()) != _spki(cert.public_key()):
+        return None, f"does not match {CA_CERT}"
+    return key, None
+
+
+def load_ca(ca: Dir, report: Report) -> Optional[CaState]:
+    """The CA in <CONF>/ca, validated. None when something there is unsafe or invalid (reported)."""
+    has_cert, cert_bytes = read_optional(ca, CA_CERT, CA_CERT_SPEC, report)
+    has_key, key_bytes = read_optional(ca, CA_KEY, CA_KEY_SPEC, report)
+    if (has_cert and cert_bytes is None) or (has_key and key_bytes is None):
+        return None
+    if not has_cert and not has_key:
+        return CaState("absent")
+    if not has_cert:
+        report.problem(INVALID, ca.child(CA_KEY), f"no certificate beside it ({CA_CERT})")
+        return None
+    cert, problem = ca_certificate_problem(cert_bytes)
+    if problem:
+        report.problem(INVALID, ca.child(CA_CERT), problem)
+        return None
+    if not has_key:
+        return CaState("anchor-only", cert, None, cert_bytes)
+    key, problem = ca_key_problem(key_bytes, cert)
+    if problem:
+        report.problem(INVALID, ca.child(CA_KEY), problem)
+        return None
+    return CaState("signing", cert, key, cert_bytes)
+
+
+def ca_name(node: str) -> x509.Name:
+    """In ASN.1 order C, L, O, OU, CN, like the server pairs."""
+    return x509.Name([x509.NameAttribute(NameOID.COUNTRY_NAME, "US"),
+                      x509.NameAttribute(NameOID.LOCALITY_NAME, "California"),
+                      x509.NameAttribute(NameOID.ORGANIZATION_NAME, "Wazuh"),
+                      x509.NameAttribute(NameOID.ORGANIZATIONAL_UNIT_NAME, "Wazuh"),
+                      x509.NameAttribute(NameOID.COMMON_NAME, CA_COMMON_NAME_PREFIX + node)])
+
+
+def mint_ca(ca: Dir, node: str) -> CaState:
+    """Mint the manager's CA: RSA 2048, SHA-256, ten years backdated one day. The key goes first and the marker
+    last: a crash leaves either a lone key (refused at the next run) or an unmarked CA, which --clear keeps."""
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    name = ca_name(node)
+    now = _now()
+    cert = (x509.CertificateBuilder()
+            .subject_name(name).issuer_name(name)
+            .public_key(key.public_key())
+            .serial_number(x509.random_serial_number())
+            .not_valid_before(now - CERT_BACKDATE)
+            .not_valid_after(now + datetime.timedelta(days=CERT_VALIDITY_DAYS))
+            .add_extension(x509.BasicConstraints(ca=True, path_length=None), critical=True)
+            .add_extension(x509.KeyUsage(digital_signature=False, content_commitment=False, key_encipherment=False,
+                                         data_encipherment=False, key_agreement=False, key_cert_sign=True,
+                                         crl_sign=True, encipher_only=False, decipher_only=False), critical=True)
+            .add_extension(x509.SubjectKeyIdentifier.from_public_key(key.public_key()), critical=False)
+            .add_extension(x509.AuthorityKeyIdentifier.from_issuer_public_key(key.public_key()), critical=False)
+            .sign(key, hashes.SHA256()))
+    key_bytes = key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
+                                  serialization.NoEncryption())
+    cert_bytes = cert.public_bytes(serialization.Encoding.PEM)
+    write_file(ca, CA_KEY, key_bytes, 0o400, 0, 0)
+    write_file(ca, CA_CERT, cert_bytes, 0o644, 0, 0)
+    write_file(ca, CA_MARKER, b"", 0o600, 0, 0)
+    return CaState("signing", cert, key, cert_bytes)
+
+
+def server_material_present(certs: Dir) -> bool:
+    """Whether any server pair file or the bundle is already in certs/: a CA is never minted beside them."""
+    for name in SERVER_PAIR_FILES + (BUNDLE,):
+        try:
+            os.stat(name, dir_fd=certs.fd, follow_symlinks=False)
+            return True
+        except FileNotFoundError:
+            continue
+    return False
+
+
+def bundle_contains(data: bytes, cert: x509.Certificate) -> bool:
+    """Whether a bundle holds `cert` among its certificates. The publication block wazuh-manager-certs writes (`##`
+    lines) and any rotation CA are tolerated: the bytes are never rewritten."""
+    try:
+        certs = x509.load_pem_x509_certificates(data)
+    except ValueError:
+        return False
+    der = cert.public_bytes(serialization.Encoding.DER)
+    return any(candidate.public_bytes(serialization.Encoding.DER) == der for candidate in certs)
+
+
+def open_certs(paths: Paths, conf: Dir, report: Report) -> Optional[Dir]:
+    try:
+        return open_dir(conf, CERTS_DIR, certs_spec(paths))
+    except FileNotFoundError:
+        report.problem(INVALID, conf.child(CERTS_DIR), "no such directory (the installer creates it)")
+    except UnsafeEntry as exc:
+        report.unsafe(exc)
+    return None
+
+
+def check_bundle(paths: Paths, certs: Dir, state: CaState, report: Report, mode: str) -> None:
+    """certs/root-ca.pem: created from the CA when absent at --install, otherwise validated and kept as it is."""
+    present, data = read_optional(certs, BUNDLE, certs_file_spec(paths), report)
+    if present and data is None:
+        return
+    if not present:
+        if mode == "install":
+            write_file(certs, BUNDLE, state.cert_bytes, 0o640, 0, paths.service_gid())
+            report.progress(f"wrote {certs.child(BUNDLE)} (the manager's CA)")
+        elif mode != "check":
+            report.problem(MISSING, certs.child(BUNDLE), "the agents' CA bundle is missing; reinstall, or stage it")
+        return
+    if not bundle_contains(data, state.cert):
+        report.problem(INVALID, certs.child(BUNDLE), f"does not contain {os.path.join(paths.conf, CA_DIR, CA_CERT)}")
+
+
+def step_own_ca(paths: Paths, conf: Dir, ca: Dir, lookup: Lookup, report: Report, mode: str) -> Optional[CaState]:
+    """--install mints or validates the CA and publishes it; --upgrade and --prestart only validate."""
+    certs = open_certs(paths, conf, report)
+    if certs is None:
+        return None
+    with certs:
+        state = load_ca(ca, report)
+        if state is None:
+            return None
+        if state.kind == "absent":
+            if mode != "install":
+                report.problem(MISSING, ca.child(CA_CERT), "the manager's CA is missing; stage it there "
+                                                           f"(and {CA_KEY} to issue certificates), or reinstall")
+                return None
+            if server_material_present(certs):
+                report.problem(MISSING, ca.child(CA_CERT), "stage the CA that issued the pairs")
+                return None
+            node = node_name(lookup, report)
+            if node is None:
+                return None
+            if len(CA_COMMON_NAME_PREFIX + node) > 64:
+                report.problem(INVALID, NODE_NAME_VAR, "too long for the CA's common name (64 characters at most)")
+                return None
+            state = mint_ca(ca, node)
+            origin = "minted"
+        else:
+            origin = "staged" if state.kind == "signing" else "staged without its key (pairs cannot be issued here)"
+        report.progress(f"CA {state.cert.subject.rfc4514_string()}: {origin}")
+        if mode == "install":
+            try:
+                with ensure_dir(conf, EXPORT_DIR, EXPORT_SPEC) as export:
+                    present, current = read_optional(export, EXPORT_CA, ROOT_FILE, report)
+                    if current != state.cert_bytes and not (present and current is None):
+                        write_file(export, EXPORT_CA, state.cert_bytes, 0o644, 0, 0)
+            except UnsafeEntry as exc:
+                report.unsafe(exc)
+        check_bundle(paths, certs, state, report, mode)
+        return state
+
+
+def check_own_ca(paths: Paths, conf: Dir, report: Report) -> None:
+    """--check's part: validate whatever CA and bundle exist, without creating ca/ or writing anything."""
+    try:
+        ca = open_dir(conf, CA_DIR, CA_SPEC)
+    except FileNotFoundError:
+        ca = None
+    except UnsafeEntry as exc:
+        report.unsafe(exc)
+        return
+    certs = open_certs(paths, conf, report)
+    try:
+        state = load_ca(ca, report) if ca is not None else CaState("absent")
+        if certs is not None and state is not None and state.kind != "absent":
+            check_bundle(paths, certs, state, report, "check")
+    finally:
+        for opened in (ca, certs):
+            if opened is not None:
+                opened.close()
+
+
 # ==================================================== Lock =====================================================
 
 CA_SPEC = Spec("dir", uid=0, gid=0, mode=0o700)
@@ -857,7 +1158,8 @@ def mode_check(paths: Paths, report: Report, environ: Mapping[str, str]) -> int:
     MISSING: what is absent is --prestart's to complete and to judge."""
     result = preflight(paths, report, environ)
     if result is not None:
-        result[0].close()
+        with result[0] as conf:
+            check_own_ca(paths, conf, report)
     if not report.has():
         report.progress("check: no problem found")
     return report.exit_code("check")
@@ -878,7 +1180,8 @@ def _writing_mode(mode: str):
             with ca:
                 step_api_passwords(paths, conf, lookup, report)
                 step_indexer_password(paths, lookup, report)
-                # The CA, the server pairs and the indexer trust are added by later stages.
+                step_own_ca(paths, conf, ca, lookup, report, mode)
+                # The server pairs and the indexer trust are added by later stages.
         return report.exit_code(mode)
     return run
 

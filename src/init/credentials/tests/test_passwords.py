@@ -160,6 +160,7 @@ def test_empty_rbac_db_is_unseeded(resolver, sandbox):
 ])
 def test_worker(resolver, sandbox, calls, role, conf_exit, seeded, invalid):
     """test_resolve_credentials.sh:456-526 (cluster role); an unreadable role now fails closed: nothing is seeded."""
+    sandbox.stage_ca()
     sandbox.control(role=role, conf_exit=conf_exit)
     code, out, err = run(resolver, sandbox, "--prestart", environ={IDX: GOOD_IDX})
     assert (len(sandbox.seed_calls()) == 1) is seeded
@@ -181,6 +182,7 @@ def test_worker_probe_missing_binary(resolver, sandbox):
 
 def test_seed_failure_then_recovery(resolver, sandbox):
     """Publication comes first, so a seed that fails is retried with the same values."""
+    sandbox.stage_ca()
     sandbox.control(rbac_fail_times=1)
     code, out, err = run(resolver, sandbox, "--prestart", environ={IDX: GOOD_IDX})
     assert code == 1 and f"MISSING {sandbox.rbac_db}: the Server API database could not be created" in err
@@ -222,6 +224,7 @@ def test_export_planted(resolver, sandbox):
 @pytest.mark.parametrize("source", ["environment", "local.env", "indexer export"])
 def test_indexer_password_stored(resolver, sandbox, source):
     """test_resolve_credentials.sh:201-243 (key supplied later lets the start pass, lands in the keystore)."""
+    sandbox.stage_ca()
     environ = {}
     if source == "environment":
         environ[IDX] = GOOD_IDX
@@ -253,6 +256,7 @@ def test_indexer_password_kept(resolver, sandbox, calls):
 
 def test_username_backfill(resolver, sandbox):
     """test_resolve_credentials.sh:527-546: a password with no username gets wazuh-manager."""
+    sandbox.stage_ca()
     import json
     with open(os.path.join(sandbox.home, "keystore.json"), "w") as handle:
         json.dump({"indexer/password": GOOD_IDX}, handle)

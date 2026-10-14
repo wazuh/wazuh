@@ -6,6 +6,7 @@
 
 import io
 import os
+import shutil
 
 
 def run(resolver, sandbox, *argv):
@@ -43,7 +44,7 @@ def test_check_unsafe_conf(resolver, sandbox):
 
 
 def test_check_absent_conf(resolver, sandbox):
-    os.rmdir(sandbox.conf)
+    shutil.rmtree(sandbox.conf)
     code, _, err = run(resolver, sandbox, "--check")
     assert code == 1 and err == f"INVALID {sandbox.conf}: no such directory\n"
 

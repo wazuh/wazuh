@@ -141,9 +141,29 @@ class Sandbox:
         os.chown(self.conf, 0, self.account_gid)
         os.chmod(self.conf, 0o770)
         os.mkdir(self.home, 0o750)
+        # certs/ as the installer leaves it (src/init/inst-functions.sh SetCertsOwnership): the resolver never creates it.
+        self.certs = os.path.join(self.conf, "certs")
+        os.mkdir(self.certs)
+        os.chown(self.certs, 0, self.account_gid)
+        os.chmod(self.certs, 0o750)
+        self.resolver = resolver
         self.paths = resolver.Paths(home=self.home, conf=self.conf, indexer_export=self.indexer_export,
                                     service_user=ACCOUNT, service_group=ACCOUNT)
         install_stubs(self)
+
+    def stage_ca(self, node="node1", key=True, bundle=True):
+        """A CA as a finished --install leaves it (minted by the program itself), and certs/root-ca.pem. Returns
+        the CA certificate's PEM bytes."""
+        r = self.resolver
+        with r.open_top(self.conf, r.conf_spec(self.paths)) as conf:
+            with r.ensure_dir(conf, "ca", r.CA_SPEC) as ca:
+                state = r.mint_ca(ca, node)
+        os.unlink(os.path.join(self.conf, "ca", r.CA_MARKER))       # staged, not minted by this install
+        if not key:
+            os.unlink(os.path.join(self.conf, "ca", r.CA_KEY))
+        if bundle:
+            self.write(os.path.join(self.certs, "root-ca.pem"), state.cert_bytes, mode=0o640, gid=self.account_gid)
+        return state.cert_bytes
 
     def control(self, **settings):
         """Set the stubs' behaviour: role, conf_exit, keystore_fail, rbac_fail_times."""

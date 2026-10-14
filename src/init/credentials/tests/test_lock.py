@@ -17,6 +17,7 @@ def run(resolver, sandbox, *argv):
 
 
 def test_second_run_times_out(resolver, sandbox, monkeypatch):
+    sandbox.stage_ca()
     with resolver.open_top(sandbox.conf, resolver.conf_spec(sandbox.paths)) as conf:
         held = resolver.acquire_lock(conf)
         try:
