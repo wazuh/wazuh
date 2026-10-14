@@ -108,6 +108,13 @@ LimitNOFILE=131072
 For a SysV start, raise the limit with `ulimit -n` before the init script, and in a container set
 `ulimits.nofile`.
 
+The agent's configuration report and logcollector's local `getconfig internal` reply carry
+`logcollector.rlimit_nofile` as configured. The limit in force can be higher, because a daemon never
+lowers the soft limit it inherits, or lower, when the hard limit caps the raise (the warning above)
+or the system call that raises it fails (logged as an error). On Linux, read it from `Max open files` in `/proc/<pid>/limits`. When the limit
+in force leaves fewer than 100 descriptors above `logcollector.max_files`, logcollector logs a
+warning naming both values.
+
 Note for agents upgraded from a release before the unit declared `LimitNOFILE`: hosts whose systemd
 granted a higher hard limit (512K on EL8+, Fedora, Debian 10+ and Ubuntu 20.04+) now start with
 `65536`. That is far above what any agent daemon requests by default, but an installation that

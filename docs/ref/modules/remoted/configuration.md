@@ -592,7 +592,8 @@ Soft file descriptor limit remoted raises itself to at start.
   logged once as a warning; raise that limit first to go higher. HTTPS connections are bounded by
   `remoted.max_parallel_connections` (default `256`), far below this value; only a large 4.x fleet
   on the legacy TCP listener needs more.
-  `GET /cluster/{node_id}/configuration/request/internal` reports the effective value.
+  `GET /cluster/{node_id}/configuration/request/internal` reports the configured value, not the
+  limit in force.
   See [File descriptor limits](../../configuration/manager/README.md#file-descriptor-limits).
 
 ### remoted.send_chunk

@@ -47,6 +47,17 @@
 /* Read logcollector config */
 int LogCollectorConfig(const char* cfgfile);
 
+#ifndef WIN32
+/**
+ * @brief Warn when logcollector.max_files does not fit under the file descriptor limit in force
+ *
+ * LogCollectorConfig() checks max_files against the configured logcollector.rlimit_nofile, before
+ * the soft limit is raised. When the hard limit caps that raise, the limit in force can be lower.
+ * @param effective Soft limit in force, as returned by w_raise_nofile_limit().
+ */
+void w_logcollector_check_max_files(long effective);
+#endif
+
 /* Parse read config into JSON format */
 cJSON* getLocalfileConfig(void);
 cJSON* getSocketConfig(void);

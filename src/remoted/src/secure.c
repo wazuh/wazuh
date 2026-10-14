@@ -920,11 +920,11 @@ STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_storag
 
 void rem_check_unauthenticated_cap(void)
 {
-    if ((rlim_t)unauthenticated_max > nofile / 2) {
+    if ((rlim_t)unauthenticated_max > nofile_effective / 2) {
         mwarn("remoted.unauthenticated_max (%d) is above half the file descriptor limit (%lu): connections "
               "that never authenticate could take the descriptors registered agents need.",
               unauthenticated_max,
-              (unsigned long)nofile);
+              (unsigned long)nofile_effective);
     }
 }
 

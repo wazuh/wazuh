@@ -113,8 +113,12 @@ int Privsep_Chroot(const char *path) __attribute__((nonnull));
  *
  * @param target Soft limit wanted.
  * @param option_name Internal option that carries `target`, named in the warning.
- * @return Effective soft limit.
- * @retval -1 getrlimit() or setrlimit() failed.
+ * @return Soft limit in force after the call: `target` when it was raised to it, the hard limit
+ *         when that caps the raise, the inherited soft limit when it was already at or above
+ *         `target` (never lowered), or `target` when the soft limit is unlimited, as a lower bound
+ *         that fits in a long. Callers use it for their own checks; the configured option keeps
+ *         its value, so what a daemon reports does not depend on how it was started.
+ * @retval -1 getrlimit() or setrlimit() failed; the inherited limit is kept.
  */
 long w_raise_nofile_limit(long target, const char *option_name) __attribute__((nonnull));
 

@@ -27,11 +27,12 @@ void HandleRemote(int uid)
 {
     // Raise the soft file descriptor limit; the hard limit belongs to whoever started the manager
 
+    // nofile keeps the configured value, which is what getconfig reports as remoted.rlimit_nofile
     {
         const long effective = w_raise_nofile_limit((long)nofile, "remoted.rlimit_nofile");
 
         if (effective >= 0) {
-            nofile = (rlim_t)effective;
+            nofile_effective = (rlim_t)effective;
         }
     }
 

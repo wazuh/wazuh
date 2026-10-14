@@ -157,8 +157,11 @@ naming both values, for example
 `wazuh-manager-control` runs first. To go higher, raise the limit the process is started with: a
 drop-in with `LimitNOFILE=` for the service unit, `ulimit -n` before the init script, or
 `ulimits.nofile` in the container definition. An option above the hard limit never fails and never
-logs an error. `GET /cluster/{node_id}/configuration/request/internal` reports the effective value
-for remoted (`internal.remoted.rlimit_nofile`, after the cap); no other daemon reports it.
+logs an error. `GET /cluster/{node_id}/configuration/request/internal` reports remoted's value as
+configured (`internal.remoted.rlimit_nofile`); no other daemon reports it. The limit in force can be
+higher, because a daemon never lowers the soft limit it inherits, or lower, when the hard limit caps
+the raise (the warning above) or the system call that raises it fails (logged as an error). On Linux, read it from `Max open files` in
+`/proc/<pid>/limits`.
 
 `wazuh_modules.rlimit_nofile` cannot go below `8192`: a lower value is rejected at start with
 `Invalid definition` and `wazuh-manager-modulesd` does not run.

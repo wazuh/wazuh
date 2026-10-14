@@ -2975,6 +2975,32 @@ void check_ignore_and_restrict_restricted(void ** state) {
     assert_true(ret);
 }
 
+/* w_logcollector_check_max_files */
+
+void test_w_logcollector_check_max_files_fits(void ** state) {
+    maximum_files = 1000;
+
+    w_logcollector_check_max_files(1100);
+}
+
+void test_w_logcollector_check_max_files_above_limit_in_force_warns(void ** state) {
+    maximum_files = 90000;
+
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "Definition 'logcollector.max_files' (90000) leaves fewer than 100 spare descriptors under the file "
+                  "descriptor limit in force (65536). Lower 'logcollector.max_files' or raise the limit the process is "
+                  "started with.");
+
+    w_logcollector_check_max_files(65536);
+}
+
+void test_w_logcollector_check_max_files_raise_failed(void ** state) {
+    maximum_files = 90000;
+
+    // w_raise_nofile_limit() already logged why it failed; nothing to compare against
+    w_logcollector_check_max_files(-1);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         // Test w_get_hash_context
@@ -3092,7 +3118,12 @@ int main(void) {
         cmocka_unit_test_setup_teardown(check_ignore_and_restrict_not_ignored, setup_regex, teardown_regex),
         cmocka_unit_test_setup_teardown(check_ignore_and_restrict_ignored, setup_regex, teardown_regex),
         cmocka_unit_test_setup_teardown(check_ignore_and_restrict_not_restricted, setup_regex, teardown_regex),
-        cmocka_unit_test_setup_teardown(check_ignore_and_restrict_restricted, setup_regex, teardown_regex)
+        cmocka_unit_test_setup_teardown(check_ignore_and_restrict_restricted, setup_regex, teardown_regex),
+
+        // Test w_logcollector_check_max_files
+        cmocka_unit_test(test_w_logcollector_check_max_files_fits),
+        cmocka_unit_test(test_w_logcollector_check_max_files_above_limit_in_force_warns),
+        cmocka_unit_test(test_w_logcollector_check_max_files_raise_failed)
 
     };
 

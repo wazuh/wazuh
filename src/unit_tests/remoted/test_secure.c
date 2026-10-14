@@ -3318,7 +3318,7 @@ void test_close_sock_ebadf_leaves_slots_alone(void** state)
 
 void test_rem_check_unauthenticated_cap_within_limit(void** state)
 {
-    nofile = 65536;
+    nofile_effective = 65536;
     unauthenticated_max = 32768; // exactly half: no warning
 
     rem_check_unauthenticated_cap();
@@ -3326,7 +3326,7 @@ void test_rem_check_unauthenticated_cap_within_limit(void** state)
 
 void test_rem_check_unauthenticated_cap_above_half_warns(void** state)
 {
-    nofile = 1024;
+    nofile_effective = 1024;
     unauthenticated_max = 16384;
 
     expect_string(__wrap__mwarn,

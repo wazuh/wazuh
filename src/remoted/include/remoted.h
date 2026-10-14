@@ -92,7 +92,7 @@ void HandleRemote(int uid) __attribute__((noreturn));
 /* Handle Secure connections */
 void HandleSecure() __attribute__((noreturn));
 
-/* Warn when remoted.unauthenticated_max is above half the effective file descriptor limit (nofile) */
+/* Warn when remoted.unauthenticated_max is above half the file descriptor limit in force (nofile_effective) */
 void rem_check_unauthenticated_cap(void);
 
 /* Resolve every internal option the C++ module config owns, so 'remoted -t' refuses the same
@@ -352,6 +352,7 @@ extern int request_timeout;
 extern int response_timeout;
 extern int disk_storage;
 extern rlim_t nofile;
+extern rlim_t nofile_effective;
 extern unsigned receive_chunk;
 extern unsigned send_chunk;
 extern int buffer_relax;
