@@ -120,6 +120,10 @@ class TestConfigurator:
             # RemotedSimulator's self-signed cert fails -- opt out explicitly since this
             # suite is not testing TLS trust. <endpoint> is repeated because
             # set_section_wazuh_conf() clears the <agent> section before repopulating it.
+            # The first test of a session enrolls the freshly installed agent, and agentd
+            # then waits delay_after_enrollment (20 s by default) before answering the
+            # startup gate that holds every module back, so "Module AWS started" comes
+            # later than the 20 s the tests wait for it. Keep that wait short.
             agent_conf = {
                 "section": "agent",
                 "elements": [
@@ -127,6 +131,13 @@ class TestConfigurator:
                         "manager": {
                             "elements": [
                                 {"endpoint": {"value": "127.0.0.1:1517"}},
+                            ]
+                        }
+                    },
+                    {
+                        "enrollment": {
+                            "elements": [
+                                {"delay_after_enrollment": {"value": "1"}},
                             ]
                         }
                     },
