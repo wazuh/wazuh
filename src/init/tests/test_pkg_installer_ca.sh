@@ -158,11 +158,32 @@ present() {
 
 }
 
+mode_of() {
+
+    stat -c '%a' "$1" 2>/dev/null || stat -f '%Lp' "$1"
+
+}
+
 # var/upgrade is where the snapshot used to go. Read-only here, so a CA that still validates and
 # installs shows the snapshot is taken somewhere else.
 read_only_upgrade_dir() {
 
     chmod 555 "$1/var/upgrade"
+
+}
+
+# etc/ is writable by the wazuh group, which can turn etc/certs into a link to any directory.
+link_certs_elsewhere() {
+
+    mkdir -m 700 "${WORK}/elsewhere"
+    ln -s "${WORK}/elsewhere" "$1/etc/certs"
+
+}
+
+# The agent keeps etc/certs 01770 so it can replace the anchor at runtime (#39321).
+sticky_certs_dir() {
+
+    mkdir -m 1770 "$1/etc/certs"
 
 }
 
@@ -278,6 +299,21 @@ CASE_SETUP=read_only_upgrade_dir run_case snapshot "${LEGACY_CONF}" yes 4.14.7 n
 chmod 755 "${WORK}/snapshot/var/upgrade"
 check "the CA validates without writing to var/upgrade" "0" "$(log_count snapshot "could not be read")"
 check "and it is installed" "yes" "$(present snapshot etc/certs/root-ca.pem)"
+
+# A link at etc/certs is not followed: the directory it points to is neither written nor re-moded.
+CASE_SETUP=link_certs_elsewhere run_case certs_link "${LEGACY_CONF}" yes 4.14.7 no
+check "a CA is not installed through a linked etc/certs" "" "$(ls -A "${WORK}/elsewhere")"
+check "the linked directory keeps its mode" "700" "$(mode_of "${WORK}/elsewhere")"
+check "the refusal is logged" "1" "$(log_count certs_link "Not installing the delivered CA at ./etc/certs/root-ca.pem")"
+check "the link is left in place" "yes" "$([ -L "${WORK}/certs_link/etc/certs" ] && echo yes || echo no)"
+
+# An existing etc/certs keeps its mode; one created here gets 750, as before.
+CASE_SETUP=sticky_certs_dir run_case certs_sticky "${LEGACY_CONF}" yes 4.14.7 no
+check "an existing 01770 etc/certs keeps its mode" "1770" "$(mode_of "${WORK}/certs_sticky/etc/certs")"
+check "and the CA is installed in it" "yes" "$(present certs_sticky etc/certs/root-ca.pem)"
+check "a created etc/certs is 750" "750" "$(mode_of "${WORK}/verified/etc/certs")"
+check "the installed CA is 640" "640" "$(mode_of "${WORK}/verified/etc/certs/root-ca.pem")"
+check "no temporary file is left in etc/certs" "root-ca.pem" "$(ls -A "${WORK}/verified/etc/certs")"
 
 echo
 echo "${checks} checks, ${failures} failed"

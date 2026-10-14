@@ -987,6 +987,47 @@ case "${SSL_VERIFICATION_MODE}" in
         ;;
 esac
 
+# in_dir DIR COMMAND...: runs COMMAND in a subshell whose working directory is DIR (relative to
+# the installation), only when no link leads there. A name COMMAND resolves relative to it then
+# stays in that directory, whatever happens to DIR's path afterwards.
+REAL_HOME="$(pwd -P)"
+in_dir() {
+    (cd -P -- "$1" 2>/dev/null && [ "$(pwd -P)" = "${REAL_HOME}/${1#./}" ] && shift && "$@")
+}
+
+# Fails unless the working directory belongs to this script's user. Write access for anyone else
+# is then removed, unless the sticky bit already keeps them to their own entries (the agent keeps
+# etc/certs 01770 so it can replace the anchor at runtime): a file created here afterwards cannot be
+# renamed, replaced or linked over by anybody else.
+ensure_cwd_is_ours() {
+    [ -n "$(find . -maxdepth 0 -user "$(id -u)" 2>/dev/null)" ] || return 1
+    if [ -n "$(find . -maxdepth 0 \( -perm -0002 -o \( -perm -0020 ! -perm -1000 \) \) 2>/dev/null)" ]; then
+        chmod go-w . || return 1
+    fi
+}
+
+# The agent reads its anchor as the wazuh group, so the working directory is handed to that group
+# and made readable by it. Its other bits, the sticky one included, are left as they are.
+let_agent_group_read_cwd() {
+    chgrp wazuh . 2>/dev/null
+    chmod g+rx . 2>/dev/null
+}
+
+# install_ca_anchor SNAPSHOT: installs SNAPSHOT as root-ca.pem in the working directory. Written to a
+# temporary file renamed over the target, so a reader never sees half an anchor and a link planted
+# at the name is replaced rather than written through. root:wazuh 640, like wpk_root.pem.
+install_ca_anchor() {
+    ensure_cwd_is_ours || return 1
+    let_agent_group_read_cwd
+    CA_TMP=$(mktemp ./.root-ca.pem.XXXXXX 2>/dev/null) || return 1
+    chown root:wazuh "${CA_TMP}" 2>/dev/null
+    if chmod 640 "${CA_TMP}" && cat "$1" > "${CA_TMP}" && mv -f "${CA_TMP}" root-ca.pem; then
+        return 0
+    fi
+    rm -f "${CA_TMP}"
+    return 1
+}
+
 # Installed only past the last gate that can abort: with <verification_mode> unset the
 # anchor's mere presence flips the agent to 'full' on its next restart, so writing it
 # earlier left an aborted upgrade with a changed trust posture on the old version.
@@ -1023,28 +1064,19 @@ if [ "${CA_VALIDATED}" = "1" ]; then
         CA_INSTALL_VERB="Installed the delivered"
     fi
 
+    # etc/ is writable by the wazuh group, which can turn etc/certs into a link, or into a
+    # directory of its own, and chown, chmod and cp would follow either as root. So etc/certs is
+    # only created when nothing is there (mkdir -m sets the mode as it creates it, and chown -h
+    # never follows a link), an existing one keeps its mode, and the anchor is written from
+    # inside the directory (see in_dir()).
     DEFAULT_CA_DIR="$(dirname "${DEFAULT_CA_FILE}")"
-    mkdir -p "${DEFAULT_CA_DIR}" 2>/dev/null
-    # mkdir -p's mode is whatever the umask leaves it -- looser than the rest
-    # of etc/, which is root:wazuh 0770. Match that convention explicitly
-    # rather than let a first-ever delivery leave a world-traversable certs
-    # directory.
-    chown root:wazuh "${DEFAULT_CA_DIR}" 2>/dev/null
-    chmod 750 "${DEFAULT_CA_DIR}" 2>/dev/null
+    if [ ! -e "${DEFAULT_CA_DIR}" ] && [ ! -L "${DEFAULT_CA_DIR}" ]; then
+        mkdir -m 750 "${DEFAULT_CA_DIR}" 2>/dev/null && chown -h root:wazuh "${DEFAULT_CA_DIR}" 2>/dev/null
+    fi
 
-    # Install atomically: write to a temp file in the same directory, then
-    # rename over the target, so a reader never observes a partially-written
-    # anchor, and a failed cp/mv is caught here instead of silently logging
-    # success with nothing actually installed. Sourced from the snapshot, not
-    # INCOMING_CA_FILE, for the same TOCTOU reason noted above.
-    CA_TMP="${DEFAULT_CA_DIR}/.root-ca.pem.$$"
-    if cp "${CA_SNAPSHOT}" "${CA_TMP}" 2>/dev/null && mv -f "${CA_TMP}" "${DEFAULT_CA_FILE}" 2>/dev/null; then
-        # root:wazuh 640, matching the existing wpk_root.pem trust anchor: readable by
-        # the wazuh group the daemon runs under, but owned (and only writable) by root
-        # -- a daemon that can rewrite its own anchor is not a boundary at all.
-        chown root:wazuh "${DEFAULT_CA_FILE}" 2>/dev/null
-        chmod 640 "${DEFAULT_CA_FILE}" 2>/dev/null
-
+    if ! in_dir "${DEFAULT_CA_DIR}" ensure_cwd_is_ours; then
+        echo "$(date +"%Y/%m/%d %H:%M:%S") - Not installing the delivered CA at ${DEFAULT_CA_FILE}: ${DEFAULT_CA_DIR} is missing, is a link, or belongs to another user; leaving any existing anchor untouched and continuing the upgrade." >> ./logs/upgrade.log
+    elif in_dir "${DEFAULT_CA_DIR}" install_ca_anchor "${CA_SNAPSHOT}"; then
         # Only a real bundle says how many certificates it carried: a one-certificate
         # delivery is what the manager sends and what every install has logged until
         # now, so that line stays exactly as it was and stays greppable.
@@ -1059,7 +1091,6 @@ if [ "${CA_VALIDATED}" = "1" ]; then
         echo "$(date +"%Y/%m/%d %H:%M:%S") - ${CA_INSTALL_VERB} CA at ${DEFAULT_CA_FILE}${CA_COUNT_SUFFIX}. ossec.conf is not modified, but this alone is sufficient to activate certificate verification: the agent resolves an unset <verification_mode> to 'full' against a present, readable anchor at this path." >> ./logs/upgrade.log
     else
         echo "$(date +"%Y/%m/%d %H:%M:%S") - Could not install the delivered CA at ${DEFAULT_CA_FILE} (write failure); leaving any existing anchor untouched and continuing the upgrade." >> ./logs/upgrade.log
-        rm -f "${CA_TMP}" 2>/dev/null
     fi
 
     rm -f "${CA_SNAPSHOT}"
