@@ -130,6 +130,112 @@ def test_swap_ca_export(resolver, sandbox):
     assert sandbox.tree_state() == before
 
 
+def swap_private_dirs(sandbox):
+    ca, export = os.path.join(sandbox.conf, "ca"), os.path.join(sandbox.conf, "export")
+    os.rename(ca, ca + ".swapping")
+    os.rename(export, ca)
+    os.rename(ca + ".swapping", export)
+
+
+@pytest.mark.parametrize("mode,expected", [("--install", 0), ("--upgrade", 0), ("--prestart", 1)])
+def test_swapped_private_dirs_do_not_seed_or_write(resolver, sandbox, mode, expected):
+    """An unseeded RBAC database must not turn a refused directory swap into a password publication."""
+    sandbox.stage_ca()
+    os.mkdir(os.path.join(sandbox.conf, "export"), 0o700)
+    swap_private_dirs(sandbox)
+    before = sandbox.tree_state()
+    code, _, err = run_env(resolver, sandbox, mode)
+    assert code == expected and "UNSAFE " in err, err
+    assert sandbox.tree_state() == before
+    assert sandbox.seed_calls() == [] and sandbox.keystore() == {}
+
+
+@pytest.mark.parametrize("mode,expected", [("--install", 0), ("--upgrade", 0), ("--prestart", 1)])
+@pytest.mark.parametrize("boundary,staged_ca", [
+    ("before lock", True), ("after lock", True), ("before publication", True),
+    ("after lock", False), ("before publication", False),
+])
+def test_private_dirs_swapped_after_checks(resolver, sandbox, monkeypatch, mode, expected, boundary, staged_ca):
+    """A successful path-based preflight cannot authorize a different directory opened for writing later."""
+    if staged_ca:
+        sandbox.stage_ca()
+    else:
+        os.mkdir(os.path.join(sandbox.conf, "ca"), 0o700)
+    os.mkdir(os.path.join(sandbox.conf, "export"), 0o700)
+    before = []
+
+    def attack():
+        swap_private_dirs(sandbox)
+        before.append(sandbox.tree_state())
+
+    if boundary == "before lock":
+        real = resolver.acquire_lock
+
+        def acquire(*args, **kwargs):
+            attack()
+            return real(*args, **kwargs)
+        monkeypatch.setattr(resolver, "acquire_lock", acquire)
+    elif boundary == "after lock":
+        real = resolver.acquire_lock
+
+        def acquire(*args, **kwargs):
+            directory = real(*args, **kwargs)
+            attack()
+            return directory
+        monkeypatch.setattr(resolver, "acquire_lock", acquire)
+    else:
+        real = resolver.ensure_dir
+
+        def ensure(parent, name, spec):
+            if name == "export" and not before:
+                attack()
+            return real(parent, name, spec)
+        monkeypatch.setattr(resolver, "ensure_dir", ensure)
+
+    code, _, err = run_env(resolver, sandbox, mode)
+    assert before and code == expected and "UNSAFE " in err, err
+    assert sandbox.tree_state() == before[0]
+    assert sandbox.seed_calls() == [] and sandbox.keystore() == {}
+
+
+@pytest.mark.parametrize("mode,expected", [("--install", 0), ("--upgrade", 0), ("--prestart", 1)])
+@pytest.mark.parametrize("entry", ["local.env", "certs", "indexer export", "published passwords"])
+def test_unsafe_tree_does_not_initialize_state(resolver, sandbox, mode, expected, entry):
+    """An unsafe input is refused before lock creation, password publication or any keystore operation."""
+    if entry == "local.env":
+        sandbox.plant(os.path.join(sandbox.conf, "local.env"), "A=1\n")
+    elif entry == "certs":
+        os.chown(sandbox.certs, sandbox.account_uid, sandbox.account_gid)
+    elif entry == "indexer export":
+        os.chmod(sandbox.indexer_export, 0o770)
+    else:
+        export = os.path.join(sandbox.conf, "export")
+        os.mkdir(export, 0o700)
+        sandbox.write(os.path.join(export, "credentials.env"), "A=1\n", mode=0o640)
+    before = sandbox.tree_state()
+    code, _, err = run_env(resolver, sandbox, mode)
+    assert code == expected and "UNSAFE " in err, err
+    assert sandbox.tree_state() == before
+    assert sandbox.seed_calls() == [] and sandbox.keystore() == {}
+
+
+def test_private_dirs_swapped_before_ca_publication(resolver, sandbox, monkeypatch):
+    """When RBAC is already seeded, CA publication must still check its own export descriptor."""
+    installed(resolver, sandbox)
+    real = resolver.ensure_dir
+    before = []
+
+    def ensure(parent, name, spec):
+        if name == "export" and not before:
+            swap_private_dirs(sandbox)
+            before.append(sandbox.tree_state())
+        return real(parent, name, spec)
+    monkeypatch.setattr(resolver, "ensure_dir", ensure)
+    code, _, err = run_env(resolver, sandbox, "--install")
+    assert before and code == 0 and "UNSAFE " in err, err
+    assert sandbox.tree_state() == before[0]
+
+
 def test_swap_certs_ca(resolver, sandbox):
     installed(resolver, sandbox)
     ca = os.path.join(sandbox.conf, "ca")

@@ -736,13 +736,16 @@ def node_role(paths: Paths, report: Report) -> Optional[str]:
 
 def read_published(export: Dir, report: Report) -> Dict[str, str]:
     """The passwords already published, if they are valid: what a seed that failed after publishing left behind.
-    Anything unreadable here is replaced by the next publication, so it is a warning, never a stop."""
+    Malformed content can be published again, but an unsafe file must never be replaced."""
     try:
-        data = read_file(export, CREDENTIALS_ENV, ROOT_FILE)
+        data = read_file(export, CREDENTIALS_ENV, Spec("file", mode=0o600))
         parsed = parse_env(data, export.child(CREDENTIALS_ENV))
     except FileNotFoundError:
         return {}
-    except (UnsafeEntry, EnvSyntaxError) as exc:
+    except UnsafeEntry as exc:
+        report.unsafe(exc)
+        return {}
+    except EnvSyntaxError as exc:
         report.warning(f"ignoring {export.child(CREDENTIALS_ENV)} ({exc}); it will be published again")
         return {}
     return {name: value for name, (value, _) in parsed.items()
@@ -774,7 +777,7 @@ def seed_rbac(paths: Paths, values: Mapping[str, str], report: Report) -> bool:
     return False
 
 
-def step_api_passwords(paths: Paths, conf: Dir, lookup: Lookup, report: Report) -> None:
+def step_api_passwords(paths: Paths, conf: Dir, ca: Dir, lookup: Lookup, report: Report) -> None:
     if rbac_seeded(paths):
         report.progress(f"{paths.rbac_db} is already seeded; the Server API passwords are left as they are")
         return
@@ -793,7 +796,12 @@ def step_api_passwords(paths: Paths, conf: Dir, lookup: Lookup, report: Report) 
         report.unsafe(exc)
         return
     with export:
+        check_private_dir_roles(ca, export, report)
+        if report.has(UNSAFE):
+            return
         published = read_published(export, report)
+        if report.has(UNSAFE):
+            return
         values = {}
         for name, (state, value, source) in supplied.items():
             if state == "ok":
@@ -1102,11 +1110,16 @@ def step_own_ca(paths: Paths, conf: Dir, certs: Dir, ca: Dir, lookup: Lookup, re
     if mode == "install":
         try:
             with ensure_dir(conf, EXPORT_DIR, EXPORT_SPEC) as export:
+                check_private_dir_roles(ca, export, report)
+                if report.has(UNSAFE):
+                    return None
                 present, current = read_optional(export, EXPORT_CA, ROOT_FILE, report)
                 if current != state.cert_bytes and not (present and current is None):
                     write_file(export, EXPORT_CA, state.cert_bytes, 0o644, 0, 0)
         except UnsafeEntry as exc:
             report.unsafe(exc)
+        if report.has(UNSAFE):
+            return None
     check_bundle(paths, certs, state, report, mode)
     return state
 
@@ -1431,7 +1444,7 @@ def step_server_pairs(paths: Paths, certs: Dir, ca: CaState, lookup: Lookup, rep
                                                f"{os.path.join(paths.conf, CA_DIR)}")
         else:
             to_issue.append(name)
-    if not to_issue:
+    if not to_issue or report.has(UNSAFE):
         return
     node = node_name(lookup, report)
     if node is None:
@@ -1748,6 +1761,17 @@ def check_certs_entries(certs: Dir, report: Report) -> None:
             report.problem(UNSAFE, certs.child(name), f"owned by uid {st.st_uid}, not by root")
 
 
+def check_private_dir_roles(ca: Optional[Dir], export: Optional[Dir], report: Report) -> None:
+    """Check the identities of already-open private directories before using their descriptors to write.
+    Their ownership and mode are identical, so only their contents reveal a ca/ and export/ swap."""
+    if ca is not None and export is not None and (ca.st.st_dev, ca.st.st_ino) == (export.st.st_dev, export.st.st_ino):
+        report.problem(UNSAFE, export.path, f"the same directory as the opened {ca.path}")
+    for opened, foreign, owner in ((ca, EXPORT_FILES, EXPORT_DIR), (export, CA_FILES, CA_DIR)):
+        if opened is not None:
+            for name in sorted(set(os.listdir(opened.fd)) & set(foreign)):
+                report.problem(UNSAFE, opened.path, f"holds {name}, which belongs in {owner}/")
+
+
 def check_swaps(conf: Dir, report: Report) -> None:
     """ca/ and export/ are both root:root 0700, so a swap between them passes their specs: their contents tell them
     apart. A publication that merely went stale (the CA was staged again by hand) is not a swap: it is INVALID, with
@@ -1755,11 +1779,7 @@ def check_swaps(conf: Dir, report: Report) -> None:
     ca = _open_optional_dir(conf, CA_DIR, CA_SPEC, report)
     export = _open_optional_dir(conf, EXPORT_DIR, EXPORT_SPEC, report)
     try:
-        for opened, foreign, owner in ((ca, EXPORT_FILES, EXPORT_DIR), (export, CA_FILES, CA_DIR)):
-            if opened is None:
-                continue
-            for name in sorted(set(os.listdir(opened.fd)) & set(foreign)):
-                report.problem(UNSAFE, opened.path, f"holds {name}, which belongs in {owner}/")
+        check_private_dir_roles(ca, export, report)
         if ca is not None and export is not None and _exists(ca, CA_CERT) and _exists(export, EXPORT_CA):
             try:
                 own = read_file(ca, CA_CERT, CA_CERT_SPEC)
@@ -1850,24 +1870,52 @@ def _writing_mode(mode: str):
             return report.exit_code(mode)
         conf, lookup = result
         with conf:
-            if mode == "prestart":
-                # Every --check test first, on every start, whether or not anything is left to complete.
-                run_checks(paths, conf, lookup, report)
+            # All writing modes must refuse an unsafe tree before creating even the lock directory. Only
+            # --prestart keeps the validity verdicts: --install may refresh stale publications and imports.
+            checks = report if mode == "prestart" else Report(quiet=True, out=io.StringIO(), err=io.StringIO())
+            run_checks(paths, conf, lookup, checks)
+            if checks is not report:
+                for kind, subject, reason in checks.problems:
+                    if kind == UNSAFE:
+                        report.problem(kind, subject, reason)
+            if report.has(UNSAFE):
+                return report.exit_code(mode)
             try:
                 ca = acquire_lock(conf)
             except UnsafeEntry as exc:
                 report.unsafe(exc)
                 return report.exit_code(mode)
             with ca:
-                step_api_passwords(paths, conf, lookup, report)
-                step_indexer_password(paths, lookup, report)
+                # The account can rename entries of <CONF> after preflight. Check the locked CA itself,
+                # and check export again through its actual write descriptor in each publication step.
+                export = _open_optional_dir(conf, EXPORT_DIR, EXPORT_SPEC, report)
+                try:
+                    check_private_dir_roles(ca, export, report)
+                finally:
+                    if export is not None:
+                        export.close()
                 certs = open_certs(paths, conf, report)
-                if certs is not None:
-                    with certs:
+                try:
+                    if certs is not None:
+                        check_certs_entries(certs, report)
+                    if report.has(UNSAFE):
+                        return report.exit_code(mode)
+                    step_api_passwords(paths, conf, ca, lookup, report)
+                    if report.has(UNSAFE):
+                        return report.exit_code(mode)
+                    step_indexer_password(paths, lookup, report)
+                    if certs is not None:
                         state = step_own_ca(paths, conf, certs, ca, lookup, report, mode)
+                        if report.has(UNSAFE):
+                            return report.exit_code(mode)
                         if state is not None:
                             step_server_pairs(paths, certs, state, lookup, report, mode)
+                        if report.has(UNSAFE):
+                            return report.exit_code(mode)
                         step_indexer_trust(paths, certs, report)
+                finally:
+                    if certs is not None:
+                        certs.close()
         return report.exit_code(mode)
     return run
 
@@ -2027,10 +2075,7 @@ def clear_preconditions(paths: Paths, conf: Dir, ca: Dir, export: Optional[Dir],
     for kind, subject, reason in scratch.problems:
         if kind == UNSAFE:
             report.problem(kind, subject, reason)
-    for opened, foreign, owner in ((ca, EXPORT_FILES, EXPORT_DIR), (export, CA_FILES, CA_DIR)):
-        if opened is not None:
-            for name in sorted(set(os.listdir(opened.fd)) & set(foreign)):
-                report.problem(UNSAFE, opened.path, f"holds {name}, which belongs in {owner}/")
+    check_private_dir_roles(ca, export, report)
     if certs is not None:
         check_certs_entries(certs, report)
 
