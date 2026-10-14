@@ -14,12 +14,14 @@ Debian, Ubuntu and RHEL alike, so CI runners need no wazuh-manager account.
 """
 
 import hashlib
+import json
 import importlib.machinery
 import importlib.util
 import os
 import pwd
 import shutil
 import stat
+import sys
 import tempfile
 
 import pytest
@@ -48,6 +50,81 @@ def resolver():
     return load_program()
 
 
+# Stand-ins for the three Wazuh programs the resolver drives. They read their behaviour from <home>/stub-control.json
+# and record what they were given, so tests can assert on it. Values on stdin are recorded too: the stubs are the
+# only place a test may look at a password.
+KEYSTORE_STUB = """
+import json, os, sys
+home = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
+control = json.load(open(os.path.join(home, "stub-control.json")))
+store_path = os.path.join(home, "keystore.json")
+store = json.load(open(store_path)) if os.path.exists(store_path) else {}
+args = sys.argv[1:]
+family, key, get = args[args.index("-f") + 1], args[args.index("-k") + 1], "-g" in args
+entry = f"{family}/{key}"
+if get:
+    if store.get(entry):
+        print(store[entry])
+        sys.exit(0)
+    sys.exit(1)
+if control.get("keystore_fail"):
+    print("Error storing the value.", file=sys.stderr)
+    sys.exit(1)
+value = sys.stdin.readline().rstrip("\\n")
+if not value:
+    print("Error reading from stdin.", file=sys.stderr)
+    sys.exit(1)
+store[entry] = value
+json.dump(store, open(store_path, "w"))
+"""
+
+CONF_STUB = """
+import json, os, sys
+home = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
+control = json.load(open(os.path.join(home, "stub-control.json")))
+with open(os.path.join(home, "conf-calls.log"), "a") as log:
+    log.write(json.dumps(sys.argv[1:]) + "\\n")
+code = control.get("conf_exit", 0)
+if code == 0:
+    print(control.get("role", "master"))
+sys.exit(code)
+"""
+
+RBAC_STUB = """
+import json, os, sys
+home = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0]))))
+control_path = os.path.join(home, "stub-control.json")
+control = json.load(open(control_path))
+assert sys.argv[1:] == ["seed", "--passwords-file", "-"], sys.argv
+received = json.loads(sys.stdin.read())
+with open(os.path.join(home, "seed-calls.json"), "a") as log:
+    log.write(json.dumps(received) + "\\n")
+if control.get("rbac_fail_times", 0) > 0:
+    control["rbac_fail_times"] -= 1
+    json.dump(control, open(control_path, "w"))
+    print("\\tInternal error: database is locked")
+    sys.exit(1)
+db = os.path.join(home, "api", "configuration", "security", "rbac.db")
+os.makedirs(os.path.dirname(db), exist_ok=True)
+with open(db, "w") as handle:
+    handle.write("seeded")
+print(f"\\t{db} created")
+"""
+
+
+def install_stubs(sandbox):
+    """Put the three stand-ins where Paths expects the real programs."""
+    home = sandbox.home
+    for directory in ("bin", "framework/python/bin", "framework/scripts"):
+        os.makedirs(os.path.join(home, directory), exist_ok=True)
+    shebang = f"#!{sys.executable} -I\n"
+    sandbox.write(os.path.join(home, "bin", "wazuh-manager-keystore"), shebang + KEYSTORE_STUB, mode=0o750)
+    sandbox.write(os.path.join(home, "bin", "wazuh-manager-conf"), shebang + CONF_STUB, mode=0o750)
+    os.symlink(sys.executable, os.path.join(home, "framework", "python", "bin", "python3"))
+    sandbox.write(os.path.join(home, "framework", "scripts", "rbac_control.py"), RBAC_STUB, mode=0o640)
+    sandbox.control()
+
+
 class Sandbox:
     """A private tree: <base>/conf (<CONF>, 0770 root:daemon), <base>/home, <base>/indexer-export (absent until a
     test creates it)."""
@@ -66,6 +143,28 @@ class Sandbox:
         os.mkdir(self.home, 0o750)
         self.paths = resolver.Paths(home=self.home, conf=self.conf, indexer_export=self.indexer_export,
                                     service_user=ACCOUNT, service_group=ACCOUNT)
+        install_stubs(self)
+
+    def control(self, **settings):
+        """Set the stubs' behaviour: role, conf_exit, keystore_fail, rbac_fail_times."""
+        with open(os.path.join(self.home, "stub-control.json"), "w") as handle:
+            json.dump(settings, handle)
+
+    def keystore(self):
+        path = os.path.join(self.home, "keystore.json")
+        return json.load(open(path)) if os.path.exists(path) else {}
+
+    def seed_calls(self):
+        path = os.path.join(self.home, "seed-calls.json")
+        return [json.loads(line) for line in open(path)] if os.path.exists(path) else []
+
+    def conf_calls(self):
+        path = os.path.join(self.home, "conf-calls.log")
+        return [json.loads(line) for line in open(path)] if os.path.exists(path) else []
+
+    @property
+    def rbac_db(self):
+        return os.path.join(self.home, "api", "configuration", "security", "rbac.db")
 
     def path(self, *parts):
         return os.path.join(self.base, *parts)

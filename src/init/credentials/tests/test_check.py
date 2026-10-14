@@ -50,7 +50,7 @@ def test_check_absent_conf(resolver, sandbox):
 
 def test_check_changes_nothing(resolver, sandbox):
     sandbox.write(os.path.join(sandbox.conf, "local.env"), "A=1\n")
-    sandbox.make_indexer_export(credentials="WAZUH_INDEXER_MANAGER_PASSWORD=x\n")
+    sandbox.make_indexer_export(credentials="WAZUH_INDEXER_MANAGER_PASSWORD=Idx.Passw0rd-123\n")
     before = sandbox.tree_state()
     assert run(resolver, sandbox, "--check")[0] == 0
     assert sandbox.tree_state() == before

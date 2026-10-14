@@ -199,12 +199,12 @@ def test_ca_replaced_while_created(resolver, sandbox, monkeypatch):
 
 
 @pytest.mark.parametrize("mode", ["--install", "--upgrade", "--prestart"])
-def test_only_ca_is_created(resolver, sandbox, mode):
-    sandbox.write(os.path.join(sandbox.conf, "local.env"), "A=1\n")
+def test_only_ca_and_export_are_created(resolver, sandbox, mode):
+    sandbox.write(os.path.join(sandbox.conf, "local.env"), "A=1\nWAZUH_INDEXER_MANAGER_PASSWORD=Idx.Passw0rd-123\n")
     before = set(os.listdir(sandbox.conf))
     code, _, _ = run(resolver, sandbox, mode)
     assert code == 0
-    assert set(os.listdir(sandbox.conf)) - before == {"ca"}
+    assert set(os.listdir(sandbox.conf)) - before <= {"ca", "export"}      # nothing else, ever
     st = os.lstat(os.path.join(sandbox.conf, "ca"))
     assert stat.S_IMODE(st.st_mode) == 0o700 and (st.st_uid, st.st_gid) == (0, 0)
     assert not [n for n in os.listdir(sandbox.conf) if n.startswith(".")]

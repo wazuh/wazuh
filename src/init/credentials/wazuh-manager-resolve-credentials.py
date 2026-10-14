@@ -20,8 +20,10 @@ import dataclasses  # noqa: E402
 import errno  # noqa: E402
 import fcntl  # noqa: E402
 import grp  # noqa: E402
+import json  # noqa: E402
 import pwd  # noqa: E402
 import re  # noqa: E402
+import secrets  # noqa: E402
 import stat  # noqa: E402
 # Only Wazuh's own programs are run, by absolute path, with a fixed argv and an empty environment.
 import subprocess  # noqa: E402 # nosec B404
@@ -62,6 +64,24 @@ SUBPROCESS_PATH = "/usr/sbin:/usr/bin:/sbin:/bin"
 
 LOG_TAG = "resolve-credentials"
 MODES = ("install", "upgrade", "prestart", "check", "clear")
+
+API_VAR = "WAZUH_MANAGER_API_PASSWORD"          # user `wazuh` (ID 1)
+WUI_VAR = "WAZUH_MANAGER_WUI_PASSWORD"          # user `wazuh-internal-client` (ID 2), the dashboard's
+INDEXER_VAR = "WAZUH_INDEXER_MANAGER_PASSWORD"  # stored in the keystore, never generated
+API_USERS = {API_VAR: "wazuh", WUI_VAR: "wazuh-internal-client"}
+INDEXER_USERNAME = "wazuh-manager"
+
+# The alphabet the three central packages share for passwords: what they generate and what they accept when one
+# is supplied. Every value it allows also meets the Server API's own rule (framework/wazuh/security.py).
+CHARS_LOWER = "abcdefghijklmnopqrstuvwxyz"
+CHARS_UPPER = CHARS_LOWER.upper()
+CHARS_DIGITS = "0123456789"
+CHARS_SYMBOLS = ".,_+:@%^=~-"
+PASSWORD_ALPHABET = CHARS_UPPER + CHARS_LOWER + CHARS_DIGITS + CHARS_SYMBOLS
+PASSWORD_LENGTH = 32
+PASSWORD_MIN_LENGTH = 12
+PASSWORD_MAX_LENGTH = 64
+PUBLISHED_HEADER = "# Published by wazuh-manager. Read by the dashboard on this host. Do not edit."
 
 MISSING = "MISSING"
 INVALID = "INVALID"
@@ -585,6 +605,210 @@ def run_wazuh(paths: Paths, argv: List[str], stdin: Optional[bytes] = None,
         check=False)
 
 
+# ================================================== Passwords ==================================================
+
+
+def generate_password() -> str:
+    """32 characters from the shared alphabet with each of the four classes present, from `secrets`."""
+    rng = secrets.SystemRandom()
+    chars = [secrets.choice(PASSWORD_ALPHABET) for _ in range(PASSWORD_LENGTH)]
+    for position, pool in zip(rng.sample(range(PASSWORD_LENGTH), 4),
+                              (CHARS_LOWER, CHARS_UPPER, CHARS_DIGITS, CHARS_SYMBOLS)):
+        chars[position] = secrets.choice(pool)
+    password = "".join(chars)
+    if password_problem(password) is not None:  # Impossible by construction; never hand out a bad one.
+        raise RuntimeError("generated password does not meet the policy")
+    return password
+
+
+def password_problem(value: str) -> Optional[str]:
+    """Return the rule a supplied password breaks, or None. The text never includes the value."""
+    if not PASSWORD_MIN_LENGTH <= len(value) <= PASSWORD_MAX_LENGTH:
+        return f"must be {PASSWORD_MIN_LENGTH} to {PASSWORD_MAX_LENGTH} characters"
+    if any(char not in PASSWORD_ALPHABET for char in value):
+        return f"may only use A-Z a-z 0-9 and {' '.join(CHARS_SYMBOLS)}"
+    if not all(any(char in pool for char in value)
+               for pool in (CHARS_LOWER, CHARS_UPPER, CHARS_DIGITS, CHARS_SYMBOLS)):
+        return f"needs a lowercase letter, an uppercase letter, a digit and one of {' '.join(CHARS_SYMBOLS)}"
+    return None
+
+
+def supplied_password(lookup: Lookup, name: str, report: Report) -> Tuple[str, Optional[str], str]:
+    """The value the lookup supplies for `name`.
+
+    Returns
+    -------
+    tuple
+        (state, value, source) with state "absent", "invalid" or "ok". An invalid value is reported once, naming the
+        rule and where it came from, and is never replaced by a generated one.
+    """
+    found = lookup.get(name)
+    if found is None:
+        return "absent", None, ""
+    value, source = found
+    rule = password_problem(value)
+    if rule is not None:
+        report.problem(INVALID, name, f"{rule} (set in {source})")
+        return "invalid", None, source
+    return "ok", value, source
+
+
+def validate_supplied(lookup: Lookup, report: Report) -> None:
+    """--check's and every mode's test of the supplied passwords: the value each lookup would use. No subprocess,
+    so neither the node's role nor the keystore is consulted."""
+    for name in (API_VAR, WUI_VAR, INDEXER_VAR):
+        supplied_password(lookup, name, report)
+
+
+# ================================================ Server API passwords ==========================================
+
+EXPORT_SPEC = Spec("dir", uid=0, gid=0, mode=0o700)
+
+
+def rbac_seeded(paths: Paths) -> bool:
+    """The test rbac_control and apid apply: rbac.db exists and is not empty (an empty file is a failed creation)."""
+    try:
+        st = os.stat(paths.rbac_db, follow_symlinks=False)
+    except FileNotFoundError:
+        return False
+    return stat.S_ISREG(st.st_mode) and st.st_size > 0
+
+
+def node_role(paths: Paths, report: Report) -> Optional[str]:
+    """"worker" or "master", or None (reported) when the configuration cannot answer: then nothing is seeded,
+    because seeding a worker would publish passwords for an API that runs on the master."""
+    conf_file = os.path.join(paths.conf, "wazuh-manager.conf")
+    if not os.access(paths.conf_bin, os.X_OK):
+        report.problem(INVALID, conf_file, f"cannot read cluster.node_type ({paths.conf_bin} is missing)")
+        return None
+    # --skip-file-checks: at install time the certificates the file names do not exist yet, and without it the
+    # whole document is refused (exit 1), which made the shell resolver read a worker as a master.
+    result = run_wazuh(paths, [paths.conf_bin, "-H", paths.home, "-f", conf_file, "--skip-file-checks", "get",
+                               "cluster.node_type"], want_stdout=True)
+    if result.returncode == 0:
+        return "worker" if result.stdout.decode(errors="replace").strip() == "worker" else "master"
+    if result.returncode == 2:  # Not set: the schema default is master.
+        return "master"
+    report.problem(INVALID, conf_file, "cannot read cluster.node_type")
+    return None
+
+
+def read_published(export: Dir, report: Report) -> Dict[str, str]:
+    """The passwords already published, if they are valid: what a seed that failed after publishing left behind.
+    Anything unreadable here is replaced by the next publication, so it is a warning, never a stop."""
+    try:
+        data = read_file(export, CREDENTIALS_ENV, ROOT_FILE)
+        parsed = parse_env(data, export.child(CREDENTIALS_ENV))
+    except FileNotFoundError:
+        return {}
+    except (UnsafeEntry, EnvSyntaxError) as exc:
+        report.warning(f"ignoring {export.child(CREDENTIALS_ENV)} ({exc}); it will be published again")
+        return {}
+    return {name: value for name, (value, _) in parsed.items()
+            if name in API_USERS and password_problem(value) is None}
+
+
+def publish_api_passwords(export: Dir, values: Mapping[str, str]) -> None:
+    lines = [PUBLISHED_HEADER] + [f"{name}={values[name]}" for name in (API_VAR, WUI_VAR)]
+    write_file(export, CREDENTIALS_ENV, ("\n".join(lines) + "\n").encode(), 0o600, 0, 0)
+
+
+def seed_rbac(paths: Paths, values: Mapping[str, str], report: Report) -> bool:
+    """Seed rbac.db through the bundled interpreter running rbac_control.py directly: bin/rbac_control is a shell
+    wrapper that runs dirname, basename and sed. The passwords travel on stdin only."""
+    missing = [p for p in (paths.python_bin, paths.rbac_control_script) if not os.path.exists(p)]
+    if missing:
+        report.problem(MISSING, paths.rbac_db, f"the Server API database could not be created ({missing[0]} is missing)")
+        return False
+    payload = json.dumps({API_USERS[name]: values[name] for name in (API_VAR, WUI_VAR)}).encode()
+    result = run_wazuh(paths, [paths.python_bin, "-I", paths.rbac_control_script, "seed", "--passwords-file", "-"],
+                       stdin=payload, want_stdout=True)
+    if result.returncode == 0:
+        return True
+    # rbac_control prints user names, paths and rules, never a password.
+    for line in (result.stdout + result.stderr).decode(errors="replace").splitlines():
+        if line.strip():
+            print(f"{LOG_TAG}: rbac_control: {line.strip()}", file=report.err)
+    report.problem(MISSING, paths.rbac_db, "the Server API database could not be created")
+    return False
+
+
+def step_api_passwords(paths: Paths, conf: Dir, lookup: Lookup, report: Report) -> None:
+    if rbac_seeded(paths):
+        report.progress(f"{paths.rbac_db} is already seeded; the Server API passwords are left as they are")
+        return
+    role = node_role(paths, report)
+    if role is None:
+        return
+    if role == "worker":
+        report.progress("cluster worker: the Server API runs on the master, nothing to seed or publish here")
+        return
+    supplied = {name: supplied_password(lookup, name, report) for name in (API_VAR, WUI_VAR)}
+    if any(state == "invalid" for state, _, _ in supplied.values()):
+        return  # Never fall back to a generated value: the operator meant to set this one.
+    try:
+        export = ensure_dir(conf, EXPORT_DIR, EXPORT_SPEC)
+    except UnsafeEntry as exc:
+        report.unsafe(exc)
+        return
+    with export:
+        published = read_published(export, report)
+        values = {}
+        for name, (state, value, source) in supplied.items():
+            if state == "ok":
+                values[name], origin = value, f"supplied ({source})"
+            elif name in published:
+                values[name], origin = published[name], "kept from an earlier publication"
+            else:
+                values[name], origin = generate_password(), "generated"
+            report.progress(f"{name}: {origin}")
+        if values != published:
+            publish_api_passwords(export, values)
+        if seed_rbac(paths, values, report):
+            report.progress(f"seeded {paths.rbac_db}; the passwords are in {export.child(CREDENTIALS_ENV)}")
+
+
+# ================================================ Indexer password =============================================
+
+
+def keystore_has(paths: Paths, key: str) -> bool:
+    """Whether the keystore holds a non-empty value. `-g` prints the secret: its output is discarded."""
+    return run_wazuh(paths, [paths.keystore_bin, "-f", "indexer", "-k", key, "-g"]).returncode == 0
+
+
+def keystore_set(paths: Paths, key: str, value: str) -> bool:
+    return run_wazuh(paths, [paths.keystore_bin, "-f", "indexer", "-k", key],
+                     stdin=(value + "\n").encode()).returncode == 0
+
+
+def step_indexer_password(paths: Paths, lookup: Lookup, report: Report) -> None:
+    if not os.access(paths.keystore_bin, os.X_OK):
+        report.problem(MISSING, INDEXER_VAR, f"cannot reach the keystore ({paths.keystore_bin} is missing)")
+        return
+    if keystore_has(paths, "password"):
+        if not keystore_has(paths, "username") and not keystore_set(paths, "username", INDEXER_USERNAME):
+            report.problem(MISSING, INDEXER_VAR, "the keystore did not accept the indexer username")
+            return
+        report.progress("the indexer password is in the keystore")
+        return
+    state, value, source = supplied_password(lookup, INDEXER_VAR, report)
+    if state == "invalid":
+        return
+    if state == "absent":
+        report.problem(MISSING, INDEXER_VAR,
+                       f"set it in {os.path.join(paths.conf, LOCAL_ENV)} (copy it from the indexer's "
+                       f"{os.path.join(paths.indexer_export, CREDENTIALS_ENV)}), or install wazuh-indexer on this "
+                       "host first")
+        return
+    if not keystore_has(paths, "username") and not keystore_set(paths, "username", INDEXER_USERNAME):
+        report.problem(MISSING, INDEXER_VAR, "the keystore did not accept the indexer username")
+        return
+    if not keystore_set(paths, "password", value):
+        report.problem(MISSING, INDEXER_VAR, "the keystore did not accept it")
+        return
+    report.progress(f"stored the indexer password from {source} in the keystore")
+
+
 # ==================================================== Lock =====================================================
 
 CA_SPEC = Spec("dir", uid=0, gid=0, mode=0o700)
@@ -623,7 +847,9 @@ def preflight(paths: Paths, report: Report, environ: Mapping[str, str]) -> Optio
     conf = open_conf(paths, report)
     if conf is None:
         return None
-    return conf, build_lookup(paths, conf, report, environ)
+    lookup = build_lookup(paths, conf, report, environ)
+    validate_supplied(lookup, report)
+    return conf, lookup
 
 
 def mode_check(paths: Paths, report: Report, environ: Mapping[str, str]) -> int:
@@ -642,7 +868,7 @@ def _writing_mode(mode: str):
         result = preflight(paths, report, environ)
         if result is None:
             return report.exit_code(mode)
-        conf, _lookup = result
+        conf, lookup = result
         with conf:
             try:
                 ca = acquire_lock(conf)
@@ -650,7 +876,9 @@ def _writing_mode(mode: str):
                 report.unsafe(exc)
                 return report.exit_code(mode)
             with ca:
-                pass  # The steps (passwords, keystore, CA, pairs, indexer trust) are added by later stages.
+                step_api_passwords(paths, conf, lookup, report)
+                step_indexer_password(paths, lookup, report)
+                # The CA, the server pairs and the indexer trust are added by later stages.
         return report.exit_code(mode)
     return run
 

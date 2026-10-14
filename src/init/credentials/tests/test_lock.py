@@ -5,6 +5,7 @@
 """One writing run at a time: the lock on <CONF>/ca."""
 
 import io
+import os
 
 import pytest
 
@@ -26,4 +27,5 @@ def test_second_run_times_out(resolver, sandbox, monkeypatch):
             assert code == 2 and f"another resolve-credentials run holds {sandbox.conf}/ca" in err
         finally:
             held.close()
+    sandbox.write(os.path.join(sandbox.conf, "local.env"), "WAZUH_INDEXER_MANAGER_PASSWORD=Idx.Passw0rd-123\n")
     assert run(resolver, sandbox, "--prestart")[0] == 0          # released with its descriptor
