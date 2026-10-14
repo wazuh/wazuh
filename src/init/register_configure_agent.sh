@@ -166,6 +166,35 @@ get_deprecated_vars () {
 
 }
 
+# The deployment variables file lives in the world-writable /tmp and is sourced as root,
+# so only trust a regular, single-link file owned by root or an administrator that nobody
+# else can write. The type, link, owner and mode checks all read one lstat snapshot:
+# separate stat calls would let another user swap the entry between them. Once the
+# snapshot shows a trusted owner, the sticky bit on /tmp keeps other users from replacing
+# the entry before it is sourced. Succeeds only for a trusted file; otherwise prints why.
+trusted_deployment_vars () {
+
+    file="$1"
+    snapshot="$(stat -f '%p %Lp %l %u %Su' "${file}")" || { echo "it could not be inspected"; return 1; }
+    set -- ${snapshot}
+
+    if [ $(( 0$1 & 0170000 )) -eq $(( 0120000 )) ]; then
+        echo "it is a symbolic link"
+    elif [ $(( 0$1 & 0170000 )) -ne $(( 0100000 )) ] || [ "$3" != "1" ]; then
+        echo "it is not a regular file with a single link"
+    elif [ "$4" != "0" ] && ! dseditgroup -o checkmember -m "$5" admin > /dev/null 2>&1; then
+        echo "its owner '$5' is neither root nor an administrator"
+    elif [ $(( 0$2 & 022 )) -ne 0 ]; then
+        echo "it is writable by users other than its owner (mode $2)"
+    elif [ -n "$(ls -led "${file}" | sed -n '2p')" ]; then
+        echo "it has an access control list"
+    else
+        return 0
+    fi
+    return 1
+
+}
+
 set_vars () {
 
     export WAZUH_MANAGER
@@ -194,8 +223,19 @@ set_vars () {
     export WAZUH_PEM
 
     if [ -r "${WAZUH_MACOS_AGENT_DEPLOYMENT_VARS}" ]; then
-        . ${WAZUH_MACOS_AGENT_DEPLOYMENT_VARS}
-        rm -rf "${WAZUH_MACOS_AGENT_DEPLOYMENT_VARS}"
+        if untrusted_reason="$(trusted_deployment_vars "${WAZUH_MACOS_AGENT_DEPLOYMENT_VARS}")"; then
+            . "${WAZUH_MACOS_AGENT_DEPLOYMENT_VARS}"
+        else
+            message="$(date '+%Y/%m/%d %H:%M:%S') register_configure_agent: Ignoring ${WAZUH_MACOS_AGENT_DEPLOYMENT_VARS}: ${untrusted_reason:-it could not be checked}. The agent was not configured from it."
+            echo "${message}" >&2
+            if [ ! -f "${INSTALLDIR}/logs/ossec.log" ]; then
+                touch -f "${INSTALLDIR}/logs/ossec.log"
+                chmod 660 "${INSTALLDIR}/logs/ossec.log"
+                chown root:wazuh "${INSTALLDIR}/logs/ossec.log"
+            fi
+            echo "${message}" >> "${INSTALLDIR}/logs/ossec.log"
+        fi
+        rm -f "${WAZUH_MACOS_AGENT_DEPLOYMENT_VARS}"
     fi
 
 }

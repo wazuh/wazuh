@@ -395,6 +395,7 @@ w_logtest_session_t * w_logtest_initialize_session(OSList * list_msg) {
 
     w_logtest_session_t * session = NULL;
     _Config ruleset_config = {0};
+    w_rule_tree_build_t rule_tree_build;
     bool retval = true;
 
     char ** files = NULL;
@@ -462,11 +463,13 @@ w_logtest_session_t * w_logtest_initialize_session(OSList * list_msg) {
     /* Load rules */
     session->rule_list = NULL;
 
+    w_rule_tree_build_init(&rule_tree_build, list_msg);
+
     files = ruleset_config.includes;
 
     while (files != NULL && *files != NULL) {
         if (Rules_OP_ReadRules(*files, &session->rule_list, &session->cdblistnode,
-                            &session->eventlist, &session->decoder_store, list_msg, false) < 0) {
+                            &session->eventlist, &session->decoder_store, list_msg, false, &rule_tree_build) < 0) {
             goto cleanup;
         }
         files++;

@@ -14,7 +14,7 @@ from os.path import abspath, dirname, exists, getsize, join
 from typing import Any, Dict, Optional, Union
 
 from dateutil.parser import ParserError, parse
-from sqlalchemy import Column, String, Text, UniqueConstraint, create_engine, update
+from sqlalchemy import Column, Integer, String, Text, UniqueConstraint, create_engine, delete, update
 from sqlalchemy.exc import IntegrityError, OperationalError, StatementError
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.sql.expression import select
@@ -60,6 +60,16 @@ class LogAnalytics(AzureTable, Base):
 class Storage(AzureTable, Base):
     __tablename__ = 'storage'
     __table_args__ = (UniqueConstraint('md5', name='md5_restriction'),)
+
+
+class StorageBlobOffset(Base):
+    """Bytes already processed from each append blob, so later runs only read what was appended since."""
+    __tablename__ = 'storage_blob_offset'
+    md5 = Column(Text, primary_key=True)
+    container = Column(Text, primary_key=True)
+    blob = Column(Text, primary_key=True)
+    creation_time = Column(Text, nullable=False)
+    processed_bytes = Column(Integer, nullable=False)
 
 
 class AzureORMError(Exception):
@@ -198,6 +208,100 @@ def update_row(table: Base, md5: str, min_date: str, max_date: str, query: str =
         if query:
             row_data['query'] = query
         session.execute(update(table).where(table.md5 == md5).values(row_data))
+        session.commit()
+    except (IntegrityError, OperationalError, StatementError) as e:
+        session.rollback()
+        raise AzureORMError(str(e))
+
+
+def get_blob_offset(md5: str, container: str, blob: str) -> Optional[StorageBlobOffset]:
+    """Get the offset stored for a blob.
+
+    Parameters
+    ----------
+    md5 : str
+        md5 value of the storage account name.
+    container : str
+        Name of the container holding the blob.
+    blob : str
+        Name of the blob.
+
+    Returns
+    -------
+    Optional[StorageBlobOffset]
+        The row object if present, None otherwise.
+
+    Raises
+    ------
+    AzureORMError
+    """
+    try:
+        return session.scalars(
+            select(StorageBlobOffset).filter_by(md5=md5, container=container, blob=blob)
+        ).first()
+    except (IntegrityError, OperationalError, AttributeError) as e:
+        raise AzureORMError(str(e))
+
+
+def set_blob_offset(md5: str, container: str, blob: str, creation_time: str, processed_bytes: int):
+    """Store the number of bytes already processed from a blob.
+
+    Parameters
+    ----------
+    md5 : str
+        md5 value of the storage account name.
+    container : str
+        Name of the container holding the blob.
+    blob : str
+        Name of the blob.
+    creation_time : str
+        Creation time of the blob, to tell it apart from a blob created again with the same name.
+    processed_bytes : int
+        Number of bytes processed.
+
+    Raises
+    ------
+    AzureORMError
+    """
+    try:
+        session.merge(
+            StorageBlobOffset(
+                md5=md5, container=container, blob=blob, creation_time=creation_time, processed_bytes=processed_bytes
+            )
+        )
+        session.commit()
+    except (IntegrityError, OperationalError, StatementError) as e:
+        session.rollback()
+        raise AzureORMError(str(e))
+
+
+def delete_stale_blob_offsets(md5: str, container: str, prefix: Optional[str], keep: set):
+    """Delete the offsets stored for the blobs under the prefix that are not in the given set.
+
+    Parameters
+    ----------
+    md5 : str
+        md5 value of the storage account name.
+    container : str
+        Name of the container holding the blobs.
+    prefix : Optional[str]
+        Only offsets of blobs whose name starts with this prefix are considered.
+    keep : set
+        Names of the blobs whose offsets must be kept.
+
+    Raises
+    ------
+    AzureORMError
+    """
+    try:
+        stored = session.scalars(
+            select(StorageBlobOffset.blob).filter_by(md5=md5, container=container)
+        ).all()
+        for blob in stored:
+            if blob.startswith(prefix or '') and blob not in keep:
+                session.execute(
+                    delete(StorageBlobOffset).filter_by(md5=md5, container=container, blob=blob)
+                )
         session.commit()
     except (IntegrityError, OperationalError, StatementError) as e:
         session.rollback()

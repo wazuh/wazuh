@@ -298,6 +298,22 @@ static bool os_ip_family_matches(const os_ip *entry, bool query_is_ipv6)
     return (entry->is_ipv6 == query_is_ipv6) || (strcmp(entry->ip, "any") == 0);
 }
 
+char *getDefine_String(const char *high_name, const char *low_name)
+{
+    char *value;
+
+    /* Try to read from the local define file */
+    value = _read_file(high_name, low_name, OSSEC_LDEFINES);
+    if (!value) {
+        value = _read_file(high_name, low_name, OSSEC_DEFINES);
+        if (!value) {
+            merror_exit(DEF_NOT_FOUND, high_name, low_name);
+        }
+    }
+
+    return value;
+}
+
 /* Check if IP_address is present at that_IP
  * Returns 1 on success or 0 on failure
  */

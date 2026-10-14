@@ -521,6 +521,8 @@ int main_analysisd(int argc, char **argv)
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
 
+    w_rule_tree_read_config();
+
     /* Chroot */
     if (Privsep_Chroot(home_path) < 0) {
         merror_exit(CHROOT_ERROR, home_path, errno, strerror(errno));
@@ -713,6 +715,10 @@ int main_analysisd(int argc, char **argv)
                 OSListNode * node_log_msg;
                 int error_exit = 0;
 
+                w_rule_tree_build_t rule_tree_build;
+                /* list_msg is written to the log after each file: the warning is logged directly */
+                w_rule_tree_build_init(&rule_tree_build, NULL);
+
                 char **rulesfiles;
                 rulesfiles = Config.includes;
                 while (rulesfiles && *rulesfiles) {
@@ -722,7 +728,7 @@ int main_analysisd(int argc, char **argv)
 
                     if (Rules_OP_ReadRules(*rulesfiles, &os_analysisd_rulelist,
                                            &os_analysisd_cdblists, &os_analysisd_last_events,
-                                           &os_analysisd_decoder_store, list_msg, true) < 0) {
+                                           &os_analysisd_decoder_store, list_msg, true, &rule_tree_build) < 0) {
                         error_exit = 1;
                     }
 
@@ -848,6 +854,9 @@ int main_analysisd(int argc, char **argv)
     pthread_rwlockattr_setkind_np(&rwlock_attr, PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP);
     pthread_rwlock_init(&g_hotreload_ruleset_mutex, &rwlock_attr);
     pthread_rwlockattr_destroy(&rwlock_attr);
+
+    /* Load the logtest config before the socket that serves it (getconfig) is published */
+    w_logtest_init_parameters();
 
     // Start com request thread
     w_create_thread(asyscom_main, NULL);
@@ -2689,10 +2698,12 @@ w_hotreload_ruleset_data_t * w_hotreload_create_ruleset(OSList * list_msg) {
     /* Load rules */
     {
         char ** files = ruleset_config.includes;
+        w_rule_tree_build_t rule_tree_build;
+        w_rule_tree_build_init(&rule_tree_build, list_msg);
 
         while (files != NULL && *files != NULL) {
             if (Rules_OP_ReadRules(*files, &ruleset->rule_list, &ruleset->cdblistnode, &ruleset->eventlist,
-                                   &ruleset->decoder_store, list_msg, true) < 0) {
+                                   &ruleset->decoder_store, list_msg, true, &rule_tree_build) < 0) {
                 w_hotreload_clean_ruleset(&ruleset);
                 return NULL;
             }
