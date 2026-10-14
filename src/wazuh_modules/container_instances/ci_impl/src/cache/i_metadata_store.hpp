@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <functional>
 #include <optional>
+#include <set>
 #include <string>
 #include <unordered_set>
 #include <vector>
@@ -68,6 +69,22 @@ namespace wazuh::container_instances
                                                                 const std::string& containerName) const = 0;
         [[nodiscard]] virtual StoreStats stats() const = 0;
         [[nodiscard]] virtual std::vector<ContainerRecordPtr> listContainers() const = 0;
+
+        /// Which containers may report to the manager, a subset of the ids
+        /// listContainers() publishes.
+        ///
+        /// Deliberately a SEPARATE query rather than a field on the record.
+        /// recordEquals() compares every field, so an admission flag living on
+        /// the record would make each admission shift look like a container
+        /// change and journal a `changed` event for a container that did not
+        /// change. It is also why listContainers() still returns everything: the
+        /// consumers' stale sweeps delete on absence from that list, so dropping
+        /// a container from it would delete its rows rather than withhold them.
+        [[nodiscard]] virtual std::set<std::string> admittedIds() const = 0;
+
+        /// How many containers may report; <= 0 means unlimited, which is the
+        /// shipped default. Pushed by the manager, so it changes at runtime.
+        virtual void setSyncLimit(int limit) = 0;
 
         /// Transitions of the listContainers() set after `from`.
         ///
