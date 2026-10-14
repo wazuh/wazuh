@@ -101,8 +101,8 @@ void syscollector_init(const unsigned int inverval,
                                       users,
                                       services,
                                       browserExtensions,
-                                      containerBaseline,
                                       notifyOnFirstScan,
+                                      containerBaseline,
                                       containerBaselineInterval);
     }
     catch (const std::exception& ex)

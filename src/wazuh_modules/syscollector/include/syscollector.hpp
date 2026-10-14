@@ -75,12 +75,16 @@ class EXPORTED Syscollector final
                   const bool users = true,
                   const bool services = true,
                   const bool browserExtensions = true,
-                  const bool containerBaseline = true,
                   const bool notifyOnFirstScan = false,
+                  // Appended after notifyOnFirstScan, never inserted before it.
+                  // Every caller here passes these positionally, so slotting a
+                  // new parameter in front of an existing one silently rebinds
+                  // every argument after it -- which is exactly how
+                  // notifyOnFirstScan once ended up reading containerBaseline's
+                  // value and left the first scan reporting no deltas at all.
+                  const bool containerBaseline = true,
                   // 0 = share the host scan interval, which is what the
                   // container pass did before it had a cadence of its own.
-                  // Defaulted so this file's ~100 test call sites keep the
-                  // behaviour they were written against.
                   const unsigned int containerBaselineInterval = 0);
 
         /**
