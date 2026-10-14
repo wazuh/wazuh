@@ -1932,16 +1932,19 @@ void test_w_initialize_file_status_fopen_fail(void ** state) {
     expect_function_call(__wrap_OSHash_SetFreeDataPointer);
     will_return(__wrap_OSHash_SetFreeDataPointer, 1);
 
-    expect_string(__wrap_wfopen, path, LOCALFILE_STATUS);
-    expect_string(__wrap_wfopen, mode, "r");
-    will_return(__wrap_wfopen, NULL);
+    expect_w_get_file_content(NULL);
 
+    expect_string(__wrap_stat, __file, LOCALFILE_STATUS);
+    will_return(__wrap_stat, NULL);
+    will_return(__wrap_stat, -1);
+
+    errno = 0;
     expect_string(__wrap__merror, formatted_msg, "(1103): Could not open file 'queue/logcollector/file_status.json' due to [(0)-(Success)].");
 
     w_initialize_file_status();
 }
 
-void test_w_initialize_file_status_fread_fail(void ** state) {
+void test_w_initialize_file_status_not_found(void ** state) {
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, 1);
 
@@ -1950,20 +1953,56 @@ void test_w_initialize_file_status_fread_fail(void ** state) {
     expect_function_call(__wrap_OSHash_SetFreeDataPointer);
     will_return(__wrap_OSHash_SetFreeDataPointer, 1);
 
-    expect_string(__wrap_wfopen, path, LOCALFILE_STATUS);
-    expect_string(__wrap_wfopen, mode, "r");
-    will_return(__wrap_wfopen, "test");
+    expect_w_get_file_content(NULL);
 
-    will_return(__wrap_fread, "test");
-    will_return(__wrap_fread, 0);
+    expect_string(__wrap_stat, __file, LOCALFILE_STATUS);
+    will_return(__wrap_stat, NULL);
+    will_return(__wrap_stat, -1);
 
-    expect_string(__wrap__merror, formatted_msg, "(1115): Could not read from file 'queue/logcollector/file_status.json' due to [(0)-(Success)].");
+    errno = ENOENT;
 
-    expect_function_call(__wrap_clearerr);
-    expect_string(__wrap_clearerr, __stream, "test");
+    w_initialize_file_status();
 
-    expect_value(__wrap_fclose, _File, "test");
-    will_return(__wrap_fclose, 1);
+    errno = 0;
+}
+
+void test_w_initialize_file_status_read_fail(void ** state) {
+    struct stat stat_buf = { .st_size = LOCALFILE_STATUS_MAX_SIZE + 1 };
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, 1);
+
+    will_return(__wrap_OSHash_setSize, 1);
+
+    expect_function_call(__wrap_OSHash_SetFreeDataPointer);
+    will_return(__wrap_OSHash_SetFreeDataPointer, 1);
+
+    expect_w_get_file_content(NULL);
+
+    expect_string(__wrap_stat, __file, LOCALFILE_STATUS);
+    will_return(__wrap_stat, &stat_buf);
+    will_return(__wrap_stat, 0);
+
+    expect_string(__wrap__mwarn, formatted_msg, "(8023): Could not load the last read positions from 'queue/logcollector/file_status.json'. Files will be read from their end.");
+
+    w_initialize_file_status();
+}
+
+void test_w_initialize_file_status_parse_fail(void ** state) {
+    char * content = NULL;
+    os_strdup("{\"files\":[{\"path\":\"/var/log/test.log\",", content);
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, 1);
+
+    will_return(__wrap_OSHash_setSize, 1);
+
+    expect_function_call(__wrap_OSHash_SetFreeDataPointer);
+    will_return(__wrap_OSHash_SetFreeDataPointer, 1);
+
+    expect_w_get_file_content(content);
+
+    will_return(__wrap_cJSON_Parse, NULL);
+
+    expect_string(__wrap__mwarn, formatted_msg, "(8023): Could not load the last read positions from 'queue/logcollector/file_status.json'. Files will be read from their end.");
 
     w_initialize_file_status();
 }
@@ -1989,12 +2028,14 @@ void test_w_initialize_file_status_OK(void ** state) {
     expect_function_call(__wrap_OSHash_SetFreeDataPointer);
     will_return(__wrap_OSHash_SetFreeDataPointer, 1);
 
-    expect_string(__wrap_wfopen, path, LOCALFILE_STATUS);
-    expect_string(__wrap_wfopen, mode, "r");
-    will_return(__wrap_wfopen, "test");
+    // A status file larger than OS_MAXSTR is passed to the parser whole
+    size_t content_len = OS_MAXSTR + 1024;
+    char * content = NULL;
+    os_calloc(content_len + 1, sizeof(char), content);
+    memset(content, ' ', content_len);
+    expect_w_get_file_content(content);
 
-    will_return(__wrap_fread, "test");
-    will_return(__wrap_fread, 1);
+    will_return(__wrap_cJSON_Parse, (cJSON *) 1);
 
     //w_load_files_status
 
@@ -2041,10 +2082,14 @@ void test_w_initialize_file_status_OK(void ** state) {
 
     will_return(__wrap_cJSON_GetStringValue, NULL);
 
-    expect_function_call(__wrap_cJSON_Delete);
+    //w_journald_set_status_from_JSON
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
 
-    expect_value(__wrap_fclose, _File, "test");
-    will_return(__wrap_fclose, 1);
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetStringValue, NULL);
+
+    expect_function_call(__wrap_cJSON_Delete);
 
     w_initialize_file_status();
 }
@@ -2804,7 +2849,9 @@ int main(void) {
         cmocka_unit_test(test_w_initialize_file_status_OSHash_Create_fail),
         cmocka_unit_test(test_w_initialize_file_status_OSHash_setSize_fail),
         cmocka_unit_test(test_w_initialize_file_status_fopen_fail),
-        cmocka_unit_test(test_w_initialize_file_status_fread_fail),
+        cmocka_unit_test(test_w_initialize_file_status_not_found),
+        cmocka_unit_test(test_w_initialize_file_status_read_fail),
+        cmocka_unit_test(test_w_initialize_file_status_parse_fail),
         cmocka_unit_test_setup_teardown(test_w_initialize_file_status_OK, setup_local_hashmap, teardown_local_hashmap),
 
         // Test w_update_hash_node
