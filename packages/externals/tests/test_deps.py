@@ -883,6 +883,76 @@ def test_smoke_build_uses_pool():
     assert "exit 1" not in text[:text.index('make -C "${SRC_DIR}" deps')]
 
 
+@pytest.mark.skipif(shutil.which("bash") is None, reason="needs bash")
+@pytest.mark.parametrize("env,deps_args,build_args", [
+    ({}, [], []),
+    ({"SOURCES_ONLY": "yes"}, ["EXTERNAL_SRC_ONLY=yes"], []),
+    ({"DEBUG": "yes"}, ["DEBUG=yes"], ["DEBUG=yes"]),
+    ({"SOURCES_ONLY": "yes", "DEBUG": "yes"}, ["EXTERNAL_SRC_ONLY=yes", "DEBUG=yes"], ["DEBUG=yes"]),
+], ids=["default", "sources", "debug", "both"])
+def test_smoke_build_args(env, deps_args, build_args, tmp_path):
+    bin_dir, calls = tmp_path / "bin", tmp_path / "calls"
+    bin_dir.mkdir()
+    (bin_dir / "make").write_text(f'#!/bin/sh\nprintf "%s\\n" "$*" >> {calls}\n')
+    (bin_dir / "make").chmod(0o755)
+    (tmp_path / "deps/pool").mkdir(parents=True)
+    environ = {"PATH": f"{bin_dir}:{os.environ['PATH']}", "BUILD_TARGET": "agent", "DEPS_DIR": str(tmp_path / "deps"),
+               "WAZUH_SRC": str(tmp_path / "src"), "JOBS": "2", **env}
+    result = subprocess.run(["bash", str(HERE.parent / "smoke_build.sh")], env=environ, capture_output=True, text=True)
+    assert result.returncode == 0, result.stdout + result.stderr
+    src = tmp_path / "src/src"
+    external = [" ".join([f"-j2 -C {src} build-external TARGET=agent", *build_args])] if "SOURCES_ONLY" in env else []
+    assert calls.read_text().splitlines() == [
+        " ".join([f"-C {src} deps TARGET=agent DEPS_POOL_URL=file://{tmp_path / 'deps'}/pool", *deps_args]),
+        *external,
+        " ".join([f"-j2 -C {src} TARGET=agent", *build_args])]
+
+
+@pytest.mark.skipif(shutil.which("bash") is None, reason="needs bash")
+@pytest.mark.parametrize("lines,rc", [
+    (["[smoke] building the dependencies of 'agent' from sources", "-- built zlib",
+      "[smoke] building 'agent' from source", "-- Using precompiled zlib library"], 0),
+    (["[smoke] building the dependencies of 'agent' from sources", "-- Using precompiled zlib library",
+      "[smoke] building 'agent' from source"], 1),
+    (["[smoke] building 'agent' from source"], 1),
+], ids=["product-phase-only", "dependency-phase", "no-phase"])
+def test_smoke_sources_check(lines, rc, tmp_path):
+    job = jobs(EXTERNALS_WORKFLOW.read_text(encoding="utf-8"))["smoke-sources"]
+    run = next(step["run"] for step in job_steps(job) if step["run"] and "Using precompiled" in step["run"])
+    run = run.replace("${{ matrix.target }}", "agent").replace("${{ matrix.architecture }}", "amd64")
+    (tmp_path / "smoke-logs").mkdir()
+    (tmp_path / "smoke-logs/smoke-sources-agent-amd64.log").write_text("\n".join(lines) + "\n")
+    assert subprocess.run(["bash", "-e", "-c", run], cwd=tmp_path, capture_output=True).returncode == rc
+
+
+def test_smoke_build_prepares_like_the_legs():
+    """smoke-sources builds the dependencies in the same builder images as the legs, so it needs their tooling."""
+    smoke = (HERE.parent / "smoke_build.sh").read_text(encoding="utf-8")
+    legs = (HERE.parent / "build_external.sh").read_text(encoding="utf-8")
+    yum = re.compile(r'^\s*YUM_TOOLS="([^"]+)"$', re.M)
+    assert yum.findall(smoke) == yum.findall(legs) and len(yum.findall(legs)) == 1
+    for line in ('export EXPAT_CFLAGS="-I/usr/include"', 'export EXPAT_LIBS="-lexpat"',
+                 'export CC_FOR_BUILD="${CC:-gcc}"', 'export CXX_FOR_BUILD="${CXX:-g++}"',
+                 "if [ -f /usr/include/expat.h ] && ! pkg-config --exists expat 2>/dev/null; then"):
+        assert line in legs and line in smoke, line
+    prepare = smoke.index('if [ "${SOURCES_ONLY}" = "yes" ]; then\n    # The builder images')
+    assert prepare < smoke.index('make -C "${SRC_DIR}" deps')
+
+
+@pytest.mark.skipif(shutil.which("bash") is None, reason="needs bash")
+def test_smoke_build_stops_when_the_dependencies_fail(tmp_path):
+    bin_dir, calls = tmp_path / "bin", tmp_path / "calls"
+    bin_dir.mkdir()
+    (bin_dir / "make").write_text(f'#!/bin/sh\nprintf "%s\\n" "$*" >> {calls}\ncase "$*" in *build-external*) exit 3 ;; esac\n')
+    (bin_dir / "make").chmod(0o755)
+    (tmp_path / "deps/pool").mkdir(parents=True)
+    environ = {"PATH": f"{bin_dir}:{os.environ['PATH']}", "BUILD_TARGET": "manager", "DEPS_DIR": str(tmp_path / "deps"),
+               "WAZUH_SRC": str(tmp_path / "src"), "JOBS": "2", "SOURCES_ONLY": "yes"}
+    result = subprocess.run(["bash", str(HERE.parent / "smoke_build.sh")], env=environ, capture_output=True, text=True)
+    assert result.returncode == 3 and "build of the dependencies of 'server' failed" in result.stderr
+    assert [c.split()[-2:] for c in calls.read_text().splitlines()][1:] == [["build-external", "TARGET=server"]]
+
+
 def spec_path(spec):
     return spec.partition("#")[0]
 
@@ -1694,7 +1764,7 @@ def test_workflow_images_by_digest(tmp_path):
         docker_jobs += 1
         pulls = [i for i, step in enumerate(steps) if step["run"] and "pull_builder_image.sh" in step["run"]]
         assert pulls and pulls[0] < runs_docker[0], name
-    assert docker_jobs == 3
+    assert docker_jobs == 4
 
     log = tmp_path / "docker.log"
     bin_dir = fake_tools(tmp_path / "bin", {"docker": f'echo "$*" >> {shlex.quote(str(log))}; cat > /dev/null'})
@@ -1718,7 +1788,7 @@ def test_publish_gated():
     assert re.search(r"^    if: vars\.DEPS_POOL_PUBLISH == 'true'$", publish, re.M)
     assert re.search(r"^    environment: deps-publish$", publish, re.M)
     assert re.search(r"^    concurrency:\n(?:      .*\n)*?      cancel-in-progress: false$", publish, re.M)
-    assert "smoke-build" in job_needs(publish)
+    assert {"smoke-build", "smoke-sources"} <= set(job_needs(publish))
     steps = job_steps(publish)
     role = [i for i, step in enumerate(steps) if (step["uses"] or "").startswith("aws-actions/configure-aws-credentials")]
     downloads = [i for i, step in enumerate(steps) if re.search(r"/download_(s3_artifact|package)$", step["uses"] or "")]
@@ -1726,6 +1796,81 @@ def test_publish_gated():
     checks = [i for i, step in enumerate(steps) if step["run"] and "deps.py verify --lock" in step["run"]]
     assert len(checks) == 1 and checks[0] < role[0]
     assert job_needs(workflow["verify"]) == ["pool", "publish"]
+
+
+def smoke_build_matrix():
+    job = jobs(EXTERNALS_WORKFLOW.read_text(encoding="utf-8"))["smoke-build"]
+    return job, [dict(re.findall(r"(\w+): ([^,}]+?)\s*(?=,|\})", line))
+                 for line in re.findall(r"^          - (\{.*\})$", job, re.M)]
+
+
+def test_smoke_build_macos_entries():
+    _, matrix = smoke_build_matrix()
+    macos = [e for e in matrix if e.get("system") == "macos"]
+    assert [(e["architecture"], e["runner"], e["target"], e["platform"]) for e in macos] == [
+        ("macos-intel64", "macos-14-large", "agent", "darwin/amd64"), ("macos-arm64", "macos-14", "agent", "darwin/aarch64")]
+    legs = jobs(EXTERNALS_WORKFLOW.read_text(encoding="utf-8"))["build-externals"]
+    leg_runners = {leg: runner for runner, leg in re.findall(r"system: macos, .*runner: ([\w-]+), +leg: ([\w-]+),", legs)}
+    assert {e["architecture"]: e["runner"] for e in macos} == leg_runners
+    images = json.loads((HERE.parent / "builder-images.json").read_text(encoding="utf-8"))
+    assert sorted(leg_runners.values()) == sorted(images["darwin"]["runners"])
+
+
+def test_smoke_build_entries_have_unique_names():
+    """The job name and the log artifact are <target>-<architecture>: two entries must not share them."""
+    _, matrix = smoke_build_matrix()
+    names = [f'{e["target"]}-{e["architecture"]}' for e in matrix]
+    assert len(names) == 7 and len(set(names)) == len(names)
+
+
+def test_smoke_build_macos_step():
+    job, _ = smoke_build_matrix()
+    steps = job_steps(job)
+    docker = [s for s in steps if s["run"] and ("docker run" in s["run"] or "pull_builder_image.sh" in s["run"])]
+    assert len(docker) == 2 and all(s["if"] == "matrix.system != 'macos'" for s in docker)
+    macos = [s for s in steps if s["if"] == "matrix.system == 'macos'"]
+    assert len(macos) == 1
+    run = macos[0]["run"]
+    assert "bash packages/macos/generate_wazuh_packages.sh -i" in run and "xcode-select" not in run
+    assert '--target agent --platform "${{ matrix.platform }}"' in run
+    assert 'JOBS="$(sysctl -n hw.ncpu)"' in run and "bash packages/externals/smoke_build.sh" in run
+    assert "env:" not in macos[0]["text"] and re.search(r"^DYLD_FORCE_FLAT_NAMESPACE=1 BUILD_TARGET=agent ", run, re.M)
+
+
+@pytest.mark.skipif(shutil.which("bash") is None, reason="needs bash")
+@pytest.mark.parametrize("line,recompiled", [
+    ("[  7%] Building C object external/CMakeFiles/ext_cjson.dir/cJSON/cJSON.c.o", True),
+    ("[ 50%] Building C object external/CMakeFiles/wazuhext.dir/wazuhext.c.o", False),
+    ("[ 12%] Performing build step for 'zlib_external'", True),
+], ids=["pattern-b", "wazuhext", "external-project"])
+def test_smoke_build_analysis(line, recompiled, tmp_path):
+    # A pool whose precompiled archives the build does not pick up must not reach publish.
+    job, _ = smoke_build_matrix()
+    run = next(s["run"] for s in job_steps(job) if s["name"] == "Analyze dependency usage")
+    run = run.replace("${{ matrix.target }}", "agent").replace("${{ matrix.architecture }}", "arm64")
+    (tmp_path / "smoke-logs").mkdir()
+    (tmp_path / "smoke-logs/smoke-build-agent-arm64.log").write_text(f"-- Using precompiled zlib library\n{line}\n")
+    result = subprocess.run(["bash", "-e", "-c", run], cwd=tmp_path, capture_output=True, text=True)
+    assert result.returncode == int(recompiled)
+    assert ("::error::one or more external dependencies" in result.stdout) == recompiled
+
+
+def test_smoke_sources_job():
+    job = jobs(EXTERNALS_WORKFLOW.read_text(encoding="utf-8"))["smoke-sources"]
+    matrix = re.findall(r"^          - \{ architecture: (\w+), runner: \S+, target: (\w+), +image: (\S+) \}$", job, re.M)
+    assert matrix == [("amd64", "agent", "pkg_rpm_agent_builder_amd64"), ("amd64", "manager", "pkg_rpm_manager_builder_amd64")]
+    assert job_needs(job) == ["check", "pool"]
+    build = next(step["run"] for step in job_steps(job) if step["run"] and "smoke_build.sh" in step["run"])
+    mirror = re.search(r"deps\.py mirror (?:.*\\\n)*.*\n", build).group(0)
+    assert "--local consolidated-deps/pool" in mirror and "--platform" not in mirror
+    prune = "find smoke-deps/pool -mindepth 3 -maxdepth 3 ! -name sources ! -name manifest.json -exec rm -rf {} +"
+    assert build.index(mirror) < build.index(prune) < build.index("docker run")
+    assert '-e SOURCES_ONLY="yes"' in build and '-e DEBUG="yes"' in build
+    assert not re.search(r"SANITIZE", job)
+    check = next(step for step in job_steps(job) if step["run"] and "Using precompiled" in step["run"])
+    assert check["if"] is None
+    assert re.search(r"if grep -nE 'Using precompiled' <<<\"\$\{phase\}\"; then\n(?:.*\n)*?\s+exit 1\n", check["run"])
+    assert re.search(r'if \[ -z "\$\{phase\}" \]; then\n(?:.*\n)*?\s+exit 1\n', check["run"])
 
 
 def test_publish_job_passes_the_pull_request():
@@ -1739,10 +1884,10 @@ def test_publish_job_passes_the_pull_request():
 def test_pool_new_sealed_between_jobs():
     workflow = jobs(EXTERNALS_WORKFLOW.read_text(encoding="utf-8"))
     assert re.search(r"^    outputs:\n      sha256: \$\{\{ steps\.merge\.outputs\.sha256 \}\}$", workflow["pool"], re.M)
-    for name in ("smoke-build", "publish", "verify"):
+    for name in ("smoke-build", "smoke-sources", "publish", "verify"):
         assert "pool" in job_needs(workflow[name]), name
         runs = [step["run"] for step in job_steps(workflow[name]) if step["run"] and "tar -xzf" in step["run"]]
-        assert runs and all(re.search(r'echo "\$\{\{ needs\.pool\.outputs\.sha256 \}\}  (\S+)" \| sha256sum -c -\n(?:.*\n)*?.*tar -xzf \1 ', run)
+        assert runs and all(re.search(r'echo "\$\{\{ needs\.pool\.outputs\.sha256 \}\}  (\S+)" \| (?:sha256sum|shasum -a 256) -c -\n(?:.*\n)*?.*tar -xzf \1 ', run)
                             for run in runs), name
 
 
