@@ -663,6 +663,23 @@ static void token_snapshot_close(token_snapshot_t *snapshot) {
     }
 }
 
+/** Closes the staged anchor's stream before its move: Windows will not move a file that still
+ *  has a handle open on it. */
+static void token_anchor_close(File *anchor) {
+    fclose(anchor->fp);
+    anchor->fp = NULL;
+}
+
+/** Drops the staged anchor: closes its stream if it is still open, removes it, frees its name. */
+static void token_anchor_discard(File *anchor) {
+    if (anchor->fp != NULL) {
+        token_anchor_close(anchor);
+    }
+
+    unlink(anchor->name);
+    os_free(anchor->name);
+}
+
 /**
  * @brief Puts client.keys back after a commit that failed with the new key already written.
  *
@@ -1125,27 +1142,24 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
      * the inherited ACL of the directory w_token_bootstrap_ensure_parent_dir() created (see
      * its own comment), not a mode. */
 #ifndef WIN32
-    if (chmod(anchor_file.name, 0640) == -1) {
+    if (fchmod(fileno(anchor_file.fp), 0640) == -1) {
         merror("Could not set permissions on '%s': %s (%d).", anchor_file.name,
                strerror(errno), errno);
-        fclose(anchor_file.fp);
-        unlink(anchor_file.name);
-        os_free(anchor_file.name);
+        token_anchor_discard(&anchor_file);
         w_etoken_free(&token);
         return W_TOKEN_ENROLL_ERR_ANCHOR;
     }
 #endif /* !WIN32 */
 
-    if (fwrite(candidate_pem, 1, candidate_len, anchor_file.fp) != candidate_len) {
+    /* Flushed now, because the enrollment below reads the anchor by name. The stream stays open:
+     * the owner is set through its descriptor, and only once the enrollment has gone through. */
+    if (fwrite(candidate_pem, 1, candidate_len, anchor_file.fp) != candidate_len ||
+            fflush(anchor_file.fp) != 0) {
         merror("Could not write the trust anchor to '%s'.", anchor_file.name);
-        fclose(anchor_file.fp);
-        unlink(anchor_file.name);
-        os_free(anchor_file.name);
+        token_anchor_discard(&anchor_file);
         w_etoken_free(&token);
         return W_TOKEN_ENROLL_ERR_ANCHOR;
     }
-
-    fclose(anchor_file.fp);
 
     /* --certs-only stops here. The anchor is committed straight away rather than after an
      * enrollment, because there is no enrollment to wait for: the whole point of this mode is to
@@ -1156,20 +1170,21 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
 #ifndef WIN32
         /* uid, not root: under the sticky etc/certs only the file's owner may rename over it,
          * so an anchor this path installs root-owned is one the runtime refresh (#39321) could
-         * never replace. chown() reads -1 as "leave this one alone", which is exactly what the
+         * never replace. fchown() reads -1 as "leave this one alone", which is exactly what the
          * opts contract already means by it. */
         if ((opts->uid != -1 || opts->gid != -1) &&
-                chown(anchor_file.name, opts->uid, opts->gid) != 0) {
+                fchown(fileno(anchor_file.fp), opts->uid, opts->gid) != 0) {
             merror("Could not change ownership of '%s': %s (%d).",
                    anchor_file.name, strerror(errno), errno);
         }
 #endif
 
-        if (OS_MoveFile(anchor_file.name, AGENT_ANCHOR_CA) < 0) {
+        token_anchor_close(&anchor_file);
+
+        if (w_move_file_nofollow(anchor_file.name, AGENT_ANCHOR_CA) < 0) {
             merror("Could not install the trust anchor at '%s'.",
                    AGENT_ANCHOR_CA);
-            unlink(anchor_file.name);
-            os_free(anchor_file.name);
+            token_anchor_discard(&anchor_file);
             w_etoken_free(&token);
             return W_TOKEN_ENROLL_ERR_ANCHOR;
         }
@@ -1188,16 +1203,14 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
     }
 
     if (!token_client_identity_usable(report)) {
-        unlink(anchor_file.name);
-        os_free(anchor_file.name);
+        token_anchor_discard(&anchor_file);
         w_etoken_free(&token);
         return W_TOKEN_ENROLL_ERR_REQUEST;
     }
 
     if (w_enrollment_build_request(&built_request) != 0) {
         /* w_enrollment_build_request() already logged the specific reason. */
-        unlink(anchor_file.name);
-        os_free(anchor_file.name);
+        token_anchor_discard(&anchor_file);
         w_etoken_free(&token);
         return W_TOKEN_ENROLL_ERR_REQUEST;
     }
@@ -1257,8 +1270,7 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
 
         if (!credential_ready) {
             w_enroll_request_destroy(&built_request);
-            unlink(anchor_file.name);
-            os_free(anchor_file.name);
+            token_anchor_discard(&anchor_file);
             w_etoken_free(&token);
             return W_TOKEN_ENROLL_ERR_CREDENTIAL;
         }
@@ -1278,8 +1290,7 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
         token_report_fail(report, "Could not copy the current agent key aside before enrolling, "
                           "so the enrollment was not attempted: %s (%d).", strerror(errno), errno);
         w_enroll_request_destroy(&built_request);
-        unlink(anchor_file.name);
-        os_free(anchor_file.name);
+        token_anchor_discard(&anchor_file);
         w_etoken_free(&token);
         return W_TOKEN_ENROLL_ERR_ANCHOR;
     }
@@ -1309,8 +1320,7 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
         }
 
         w_enroll_request_destroy(&built_request);
-        unlink(anchor_file.name);
-        os_free(anchor_file.name);
+        token_anchor_discard(&anchor_file);
         token_snapshot_discard(&snapshot);
         w_etoken_free(&token);
         return (enroll_result.http_code == 200) ? W_TOKEN_ENROLL_ERR_STORE
@@ -1364,8 +1374,7 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
         }
 
         w_enroll_request_destroy(&built_request);
-        unlink(anchor_file.name);
-        os_free(anchor_file.name);
+        token_anchor_discard(&anchor_file);
 
         /* A 200 means the manager accepted and it is the LOCAL store that failed -- and by then
          * client.keys may already be gone: enrollment.c's Windows branch opens it "w" outright.
@@ -1387,9 +1396,10 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
 
     /* Written while still root; without fixing the ownership, the unprivileged `wazuh` user can't
      * read it after AgentdStart()'s privilege drop, breaking the first restart. Fixed up on the
-     * temp file, before the rename below: a crash between them would leave AGENT_ANCHOR_CA on
-     * disk with the wrong owner, and IsFile(AGENT_ANCHOR_CA) == 0 unconditionally latches the
-     * bootstrap off on every later boot, so it must land before the rename, never after.
+     * temp file, through its descriptor, before the rename below: a crash between them would
+     * leave AGENT_ANCHOR_CA on disk with the wrong owner, and IsFile(AGENT_ANCHOR_CA) == 0
+     * unconditionally latches the bootstrap off on every later boot, so it must land before the
+     * rename, never after.
      *
      * uid:gid rather than root:gid since #39321. The mode stays 0640; what changes is who owns
      * it, and it changes because etc/certs is sticky (see w_token_bootstrap_ensure_parent_dir):
@@ -1400,20 +1410,21 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
      * Skipped on Windows for the same reason as the mode above: one service account throughout,
      * nothing to hand the file over to. */
 #ifndef WIN32
-    if (chown(anchor_file.name, opts->uid, opts->gid) != 0) {
+    if (fchown(fileno(anchor_file.fp), opts->uid, opts->gid) != 0) {
         merror("Could not change ownership of '%s': %s (%d).", anchor_file.name,
                strerror(errno), errno);
     }
 #endif
 
-    if (OS_MoveFile(anchor_file.name, AGENT_ANCHOR_CA) < 0) {
+    token_anchor_close(&anchor_file);
+
+    if (w_move_file_nofollow(anchor_file.name, AGENT_ANCHOR_CA) < 0) {
         merror("Could not install the trust anchor at '%s'.", AGENT_ANCHOR_CA);
         token_rollback(opts, &snapshot, report);
         /* The rename is what failed, so the staged anchor is still on disk holding the new CA.
          * Every other failure branch in this function removes it; this one did not, leaving one
          * behind in the certs directory on each attempt. */
-        unlink(anchor_file.name);
-        os_free(anchor_file.name);
+        token_anchor_discard(&anchor_file);
         w_etoken_free(&token);
         return W_TOKEN_ENROLL_ERR_COMMIT;
     }

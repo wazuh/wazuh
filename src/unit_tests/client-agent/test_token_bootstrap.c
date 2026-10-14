@@ -149,6 +149,8 @@ static gid_t g_keys_chown_gid = (gid_t) -1;
 static bool g_anchor_chown_via_fd = false;
 static bool g_dir_chown_via_fd = false;
 static bool g_dir_chmod_via_fd = false;
+/* Set only by __wrap_fchmod(): __wrap_chmod() records the anchor's mode in the same variable */
+static bool g_anchor_chmod_via_fd = false;
 
 /* The anchor's chown() target is the TempFile()-created temporary file
  * ("etc/certs/root-ca.pem.XXXXXX", a random mkstemp() suffix appended to the destination name --
@@ -336,6 +338,7 @@ int __wrap_fchmod(int fd, mode_t mode) {
             g_dir_chmod_via_fd = true;
         } else if (is_anchor_path(path)) {
             g_anchor_chmod_mode = mode;
+            g_anchor_chmod_via_fd = true;
         } else if (is_secret_path(path)) {
             g_secret_chmod_mode = mode;
         }
@@ -344,11 +347,11 @@ int __wrap_fchmod(int fd, mode_t mode) {
     return 0;
 }
 
-/* Regression guard: the anchor's chown() must land on the temporary file before OS_MoveFile()
- * renames it into place, never after. __real_OS_MoveFile() (resolved by the linker's --wrap
- * because this test binary is not itself the true entry point) preserves the real rename so the
- * rest of the suite keeps exercising a real file on disk. */
-extern int __real_OS_MoveFile(const char *src, const char *dst);
+/* Regression guard: the anchor's chown() must land on the temporary file before
+ * w_move_file_nofollow() moves it into place, never after. __real_w_move_file_nofollow()
+ * (resolved by the linker's --wrap because this test binary is not itself the true entry point)
+ * preserves the real move so the rest of the suite keeps exercising a real file on disk. */
+extern int __real_w_move_file_nofollow(const char *src, const char *dst);
 static bool g_anchor_chown_recorded_before_move = false;
 
 /* Set by the rollback tests: the anchor's rename is the last step of the commit, and making it
@@ -396,7 +399,7 @@ int __wrap_rename(const char *oldpath, const char *newpath) {
     return __real_rename(oldpath, newpath);
 }
 
-int __wrap_OS_MoveFile(const char *src, const char *dst) {
+int __wrap_w_move_file_nofollow(const char *src, const char *dst) {
     if (is_anchor_path(src) && g_anchor_chown_uid != (uid_t) -1) {
         g_anchor_chown_recorded_before_move = true;
     }
@@ -409,7 +412,7 @@ int __wrap_OS_MoveFile(const char *src, const char *dst) {
         return -1;
     }
 
-    return __real_OS_MoveFile(src, dst);
+    return __real_w_move_file_nofollow(src, dst);
 }
 
 /* Set by the test of a backup that can't be written: TempFile()'s copy of client.keys is pointed
@@ -538,6 +541,7 @@ static int setup_test(void **state) {
     g_anchor_chown_via_fd = false;
     g_dir_chown_via_fd = false;
     g_dir_chmod_via_fd = false;
+    g_anchor_chmod_via_fd = false;
 
     return 0;
 }
@@ -719,7 +723,7 @@ static void test_already_enrolled_skips_and_discards_the_token(void **state) {
 
     /* Regression guard: this latch must still repair client.keys's group every time it fires,
      * not just skip out -- a prior boot's enrollment call can replace client.keys (via
-     * TempFile()+OS_MoveFile() in enrollment.c) and die before the chown below ever runs,
+     * TempFile()+w_move_file_nofollow() in enrollment.c) and die before the chown below ever runs,
      * leaving it root:root until a later boot passes through here again. */
     assert_int_equal(g_keys_chown_uid, 0);
     assert_int_equal(g_keys_chown_gid, getgid());
@@ -1262,7 +1266,7 @@ static void test_full_happy_path_via_pin(void **state) {
     assert_int_equal(g_anchor_chown_uid, getuid());
     assert_int_equal(g_anchor_chown_gid, getgid());
 
-    /* Regression guard: the anchor's chown() must land before OS_MoveFile() renames the temp
+    /* Regression guard: the anchor's chown() must land before w_move_file_nofollow() moves the temp
      * file into place, closing the window where a crash between the two left a wrong-group
      * AGENT_ANCHOR_CA permanently latching the bootstrap off. */
     assert_true(g_anchor_chown_recorded_before_move);
@@ -1274,12 +1278,16 @@ static void test_full_happy_path_via_pin(void **state) {
     assert_int_equal(g_anchor_chmod_mode, 0640);
     assert_int_equal(g_dir_chmod_mode, 01770);
 
+    /* The staged anchor's mode and owner go through its descriptor, never its name */
+    assert_true(g_anchor_chmod_via_fd);
+    assert_true(g_anchor_chown_via_fd);
+
     /* The parent directory itself stays root-owned: only its group gains write. */
     assert_int_equal(g_dir_chown_uid, 0);
     assert_int_equal(g_dir_chown_gid, getgid());
 
     /* client.keys is handed to root:gid too -- not uid:gid -- restoring the group that
-     * enrollment.c's own TempFile()+OS_MoveFile() replace just dropped, without handing
+     * enrollment.c's own TempFile()+w_move_file_nofollow() replace just dropped, without handing
      * ownership to the runtime user. */
     assert_int_equal(g_keys_chown_uid, 0);
     assert_int_equal(g_keys_chown_gid, getgid());
@@ -1515,6 +1523,8 @@ static void test_full_happy_path_via_ca_pem(void **state) {
     /* Same regression guards as the pin-path happy test: the anchor's chown() must land before
      * the rename that installs it, and client.keys goes to root:gid. */
     assert_true(g_anchor_chown_recorded_before_move);
+    assert_true(g_anchor_chmod_via_fd);
+    assert_true(g_anchor_chown_via_fd);
     assert_int_equal(g_keys_chown_uid, 0);
     assert_int_equal(g_keys_chown_gid, getgid());
 }
@@ -1954,9 +1964,9 @@ static void test_bootstrap_stores_the_reenroll_secret_from_the_root_path(void **
  * whatever it points at. A linked path must be refused, not followed.
  *
  * Driven with a manager response that carries no secret, so the link planted below is still in
- * place when the chown runs: a response WITH a secret would have TempFile()+OS_MoveFile() replace
- * the link with a real file first, which is the very thing that makes the real-world window a
- * race rather than a standing hole. */
+ * place when the chown runs: a response WITH a secret would have TempFile() and
+ * w_move_file_nofollow() replace the link with a real file first, which is the very thing that
+ * makes the real-world window a race rather than a standing hole. */
 static void test_reenroll_secret_link_is_not_chowned(void **state) {
     (void) state;
     /* A *valid* store ("<id> <secret>\n", see w_reenroll_secret_store()), not arbitrary bytes:

@@ -153,7 +153,7 @@ list(APPEND client-agent_flags "${DEBUG_OP_WRAPPERS}")
 # w_agent_token_bootstrap(): mocks only the https_client module boundary it calls
 # through (hc_fetch_cacerts/hc_enroll/hc_spki_pinned_certificate), the same
 # convention test_https_client_bridge uses for that boundary below -- everything else
-# (IsFile/TempFile/OS_MoveFile/w_etoken_*, w_enrollment_build_request/process_response) runs
+# (IsFile/TempFile/w_move_file_nofollow/w_etoken_*, w_enrollment_build_request/process_response) runs
 # for real against temp files relative to the working directory, same style as
 # test_client_conf_ssl_resolution above.
 # chown/chmod/fchown are wrapped rather than left to run for real because what the bootstrap
@@ -167,19 +167,19 @@ list(APPEND client-agent_flags "-Wl,--wrap,hc_fetch_cacerts -Wl,--wrap,hc_enroll
                                 -Wl,--wrap,hc_spki_pinned_certificate -Wl,--wrap,OS_IsValidIP \
                                 -Wl,--wrap,chown -Wl,--wrap,chmod -Wl,--wrap,fchown \
                                 -Wl,--wrap,fchmod \
-                                -Wl,--wrap,OS_MoveFile -Wl,--wrap,isatty -Wl,--wrap,TempFile \
+                                -Wl,--wrap,w_move_file_nofollow -Wl,--wrap,isatty -Wl,--wrap,TempFile \
                                 -Wl,--wrap,rename \
                                 ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND client-agent_names "test_agent_auth_cli")
 # kill() is wrapped for the running-agentd probe only; the wrapper forwards every real signal
 # to __real_kill, or cmocka's own failure handling would go through it too.
-# OS_MoveFile is wrapped for one thing the enrollment core cannot be asked for any other way: a
+# w_move_file_nofollow is wrapped for one thing the enrollment core cannot be asked for any other way: a
 # commit that fails after the manager has already accepted. That is the state the command has the
 # most to say about, and the branch it says it in is chosen here rather than in the core.
 list(APPEND client-agent_flags "-Wl,--wrap,kill -Wl,--wrap,hc_fetch_cacerts \
                                 -Wl,--wrap,hc_enroll -Wl,--wrap,hc_spki_pinned_certificate \
-                                -Wl,--wrap,OS_WriteXMLToStream -Wl,--wrap,OS_MoveFile \
+                                -Wl,--wrap,OS_WriteXMLToStream -Wl,--wrap,w_move_file_nofollow \
                                 -Wl,--wrap,Privsep_GetUser -Wl,--wrap,Privsep_GetGroup \
                                 -Wl,--wrap,chown -Wl,--wrap,fchown -Wl,--wrap,fchmodat \
                                 -Wl,--wrap,TempFile -Wl,--wrap,rename -Wl,--wrap,OS_ReadXML \

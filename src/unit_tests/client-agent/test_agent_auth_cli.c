@@ -282,9 +282,9 @@ bool __wrap_hc_enroll(const hc_config_t *config, const hc_enroll_request_t *requ
  * already accepted -- the only way to reach the command's most serious warning. */
 static bool g_fail_anchor_move = false;
 
-int __real_OS_MoveFile(const char *src, const char *dst);
+int __real_w_move_file_nofollow(const char *src, const char *dst);
 
-int __wrap_OS_MoveFile(const char *src, const char *dst) {
+int __wrap_w_move_file_nofollow(const char *src, const char *dst) {
     const char *base = src ? strrchr(src, '/') : NULL;
 
     base = base ? base + 1 : src;
@@ -293,7 +293,7 @@ int __wrap_OS_MoveFile(const char *src, const char *dst) {
         return -1;
     }
 
-    return __real_OS_MoveFile(src, dst);
+    return __real_w_move_file_nofollow(src, dst);
 }
 
 /* Set by the test of a write that fails and then recovers. stdio drops a buffer it could not write
