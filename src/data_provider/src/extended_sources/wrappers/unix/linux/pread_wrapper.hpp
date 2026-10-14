@@ -14,6 +14,11 @@
 
 #include "ipread_wrapper.hpp"
 
+// CentOS 5 (legacy rpm packages) predates O_CLOEXEC; fall back to 0 as defs.h does for the C sources.
+#ifndef O_CLOEXEC
+#define O_CLOEXEC 0
+#endif
+
 /// PreadWrapper class
 /// This class is responsible for providing an interface to the file read functions.
 class PreadWrapper : public IPreadWrapper
