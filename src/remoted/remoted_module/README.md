@@ -866,7 +866,7 @@ objects (id, type, payload JSON). Uses the same bounded queue + deadline + error
 
 #### MergedMgWatcher (`mergedMgWatcher.hpp/.cpp`)
 
-Watches `merged.mg` inside each group directory of `etc/shared/` and `var/multigroups/<hash8>/` for changes to detect group shared file updates, using **inotify
+Watches `merged.mg` inside each group directory of `etc/shared/` and `var/multigroups/<sha256(resource_id)[:32]>/` (the first 32 hex characters of the SHA-256 of the group selector) for changes to detect group shared file updates, using **inotify
 exclusively**: it opens an `inotify_init1(IN_NONBLOCK | IN_CLOEXEC)` fd, watches the shared-groups
 and multigroups roots for `IN_CREATE | IN_MOVED_TO | IN_DELETE | IN_MOVED_FROM` (new/removed group
 dirs) and each group dir for `IN_CLOSE_WRITE | IN_MOVED_TO` (a finished rewrite or an atomic
