@@ -84,6 +84,14 @@ namespace wazuh::container_instances
                 response.listReply = true;
                 response.connectorName = m_connectorName;
 
+                // Read once for the whole reply, before either branch below
+                // builds its record set, so every record in one reply is
+                // stamped against the same decision. Reading it per record
+                // would let a reconcile land mid-serialisation and ship a reply
+                // that admits a container in one key and withholds it in
+                // another.
+                response.admitted = m_store.admittedIds();
+
                 if (!request.since)
                 {
                     // No cursor: the reply this op has always given.
