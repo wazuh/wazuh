@@ -1734,6 +1734,111 @@ TEST_F(AgentInfoCoordinationTest, RefusedFlushWhileRunningLogsWarning)
     EXPECT_EQ(refusedFimQueryLogLevel("flush", "Failed to trigger flush for fim", false), LOG_WARNING);
 }
 
+// modulesd raises its shutdown flag a second before stop() reaches agent-info. A coordination
+// already running then must end on the flag alone: no more module queries, no WARNING or ERROR,
+// and no coordination reported as done.
+TEST_F(AgentInfoCoordinationTest, ShutdownFlagAbortsCoordinationWithoutWarnings)
+{
+    // As expectMetadataSyncNeeded(), but with recent integrity checks: a zero timestamp makes the
+    // loop store a new one through the real DBSync API, which rejects the mock's handle with an
+    // ERROR unrelated to the coordination.
+    const auto now = std::chrono::duration_cast<std::chrono::seconds>(
+                         std::chrono::system_clock::now().time_since_epoch()).count();
+    int selectRowsCalls = 0;
+
+    EXPECT_CALL(*m_mockDBSync, handle())
+    .WillRepeatedly(::testing::Return(reinterpret_cast<void*>(0x1)));
+
+    EXPECT_CALL(*m_mockDBSync, addTableRelationship(::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Invoke([&selectRowsCalls, now](const nlohmann::json& /* query */,
+                                                              std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+    {
+        if (selectRowsCalls++ == 0)
+        {
+            nlohmann::json flagData;
+            flagData["should_sync_metadata"] = 1;
+            flagData["should_sync_groups"] = 0;
+            flagData["last_metadata_integrity"] = now;
+            flagData["last_groups_integrity"] = now;
+            flagData["is_first_run"] = 0;
+            flagData["is_first_groups_run"] = 0;
+            callback(SELECTED, flagData);
+        }
+    }));
+
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(false));
+
+    nlohmann::json osData = {{"os_name", "TestOS"}};
+    EXPECT_CALL(*m_mockSysInfo, os())
+    .WillRepeatedly(::testing::Return(osData));
+
+    std::vector<std::pair<modules_log_level_t, std::string>> logs;
+    bool shuttingDown = false;
+    size_t logsBeforeShutdown = 0;
+    int queriesAfterShutdown = 0;
+    std::shared_ptr<AgentInfoImpl> agentInfo;
+
+    auto logFunc = [&logs](modules_log_level_t level, const std::string & msg)
+    {
+        logs.emplace_back(level, msg);
+    };
+
+    auto queryModuleFunc = [&](const std::string & module_name, const std::string & query, char** response) -> int
+    {
+        if (shuttingDown)
+        {
+            ++queriesAfterShutdown;
+        }
+
+        const auto command = nlohmann::json::parse(query)["command"].get<std::string>();
+        nlohmann::json responseJson = {{"error", 0}, {"message", "Success"}};
+
+        if (module_name == "fim" && command == "is_pause_completed")
+        {
+            // FIM is still pausing when SIGTERM reaches modulesd.
+            responseJson["data"] = {{"status", "in_progress"}, {"first_sync_completed", true}};
+            shuttingDown = true;
+            logsBeforeShutdown = logs.size();
+        }
+        else if (command == "get_version")
+        {
+            responseJson["data"]["version"] = 5;
+        }
+
+        * response = strdup(responseJson.dump().c_str());
+        return 0;
+    };
+
+    agentInfo = std::make_shared<AgentInfoImpl>(
+                    ":memory:", nullptr, logFunc, queryModuleFunc, m_mockDBSync,
+                    m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+    agentInfo->setIsShuttingDownFunction([&shuttingDown]()
+    {
+        return shuttingDown;
+    });
+    agentInfo->setPausePollDelayMs(0);
+
+    agentInfo->start(1, 86400, []()
+    {
+        return false;
+    });
+    agentInfo.reset();
+
+    ASSERT_TRUE(shuttingDown) << "the coordination never reached the FIM pause poll";
+    EXPECT_EQ(queriesAfterShutdown, 0);
+
+    for (size_t i = logsBeforeShutdown; i < logs.size(); ++i)
+    {
+        EXPECT_NE(logs[i].first, LOG_WARNING) << logs[i].second;
+        EXPECT_NE(logs[i].first, LOG_ERROR) << logs[i].second;
+        EXPECT_EQ(logs[i].second.find("Successfully coordinated"), std::string::npos) << logs[i].second;
+    }
+}
+
 // Deferral: FIM reports first_sync_completed=false -> coordination is deferred with
 // an INFO log, no timeout/abort ERROR, and the sync flag is retained (no success).
 TEST_F(AgentInfoCoordinationTest, DeferCoordinationWhenFimFirstSyncNotCompleted)
