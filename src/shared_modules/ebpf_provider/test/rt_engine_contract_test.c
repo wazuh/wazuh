@@ -25,9 +25,14 @@
 
 #include "rt_engine.h"
 
+#include "cgroup_host_mode.h"
+
 #include <stddef.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 static int g_failures = 0;
 
@@ -157,6 +162,334 @@ static void test_null_handle_contracts(void)
     printf("  (this host reports cgroup %s)\n", v1 ? "v1" : "v2");
 }
 
+/* ---------------------------------------------------------------------------
+ * The cgroup hierarchy probe.
+ *
+ * Every host this tree builds and tests on is unified, so two of the probe's
+ * three branches would otherwise ship having never once executed — which is
+ * exactly how a v1 host ends up being the first thing to run them. The probe
+ * takes a root parameter for this reason and no other, and these build the
+ * three layouts as directories.
+ * ------------------------------------------------------------------------- */
+
+static int touch_(const char* path)
+{
+    FILE* f = fopen(path, "w");
+    if (f == NULL)
+    {
+        return 0;
+    }
+    fclose(f);
+    return 1;
+}
+
+static int join_(char* out, size_t len, const char* a, const char* b)
+{
+    const int n = snprintf(out, len, "%s%s", a, b);
+    return n > 0 && (size_t)n < len;
+}
+
+/* Builds <tmp>/<name>/ with the requested markers and returns it in `out`.
+ * `root_marker` is the unified case, `unified_marker` the hybrid one; a
+ * fixture with neither is the legacy case. */
+static int make_fixture_(char* out, size_t len, const char* tmp, const char* name, int root_marker, int unified_marker)
+{
+    char path[512];
+
+    if (!join_(out, len, tmp, "/") || !join_(path, sizeof(path), out, name))
+    {
+        return 0;
+    }
+    if (!join_(out, len, path, "") || mkdir(out, 0700) != 0)
+    {
+        return 0;
+    }
+
+    if (root_marker)
+    {
+        if (!join_(path, sizeof(path), out, "/cgroup.controllers") || !touch_(path))
+        {
+            return 0;
+        }
+    }
+    if (unified_marker)
+    {
+        if (!join_(path, sizeof(path), out, "/unified") || mkdir(path, 0700) != 0)
+        {
+            return 0;
+        }
+        if (!join_(path, sizeof(path), out, "/unified/cgroup.controllers") || !touch_(path))
+        {
+            return 0;
+        }
+    }
+
+    /* Every layout has controller directories; only the markers differ. A
+     * fixture without them would let a probe that keyed on "is there anything
+     * here at all" pass for the wrong reason. */
+    if (!join_(path, sizeof(path), out, "/memory") || mkdir(path, 0700) != 0)
+    {
+        return 0;
+    }
+    return 1;
+}
+
+static void rmtree_(const char* root)
+{
+    char path[512];
+
+    if (join_(path, sizeof(path), root, "/unified/cgroup.controllers"))
+    {
+        remove(path);
+    }
+    if (join_(path, sizeof(path), root, "/unified"))
+    {
+        remove(path);
+    }
+    if (join_(path, sizeof(path), root, "/cgroup.controllers"))
+    {
+        remove(path);
+    }
+    if (join_(path, sizeof(path), root, "/memory"))
+    {
+        remove(path);
+    }
+    remove(root);
+}
+
+static void test_cgroup_mode_probe(void)
+{
+    char tmp[] = "/tmp/rt_cgroup_probe_XXXXXX";
+    char fixture[512];
+
+    if (mkdtemp(tmp) == NULL)
+    {
+        CHECK(0, "mkdtemp failed; cannot exercise the cgroup probe");
+        return;
+    }
+
+    if (make_fixture_(fixture, sizeof(fixture), tmp, "unified", 1, 0))
+    {
+        CHECK(wz_cgroup_mode_at(fixture) == WZ_CGROUP_MODE_UNIFIED,
+              "a root cgroup.controllers must read as unified, got %s",
+              wz_cgroup_mode_name(wz_cgroup_mode_at(fixture)));
+        rmtree_(fixture);
+    }
+    else
+    {
+        CHECK(0, "could not build the unified fixture");
+    }
+
+    if (make_fixture_(fixture, sizeof(fixture), tmp, "hybrid", 0, 1))
+    {
+        CHECK(wz_cgroup_mode_at(fixture) == WZ_CGROUP_MODE_HYBRID,
+              "v2 mounted only at <root>/unified must read as hybrid, got %s",
+              wz_cgroup_mode_name(wz_cgroup_mode_at(fixture)));
+
+        /* The reason hybrid is a separate mode rather than a separate
+         * behaviour: it is named differently in logs and treated as v2 for
+         * correlation, because the helper returns unified-hierarchy ids. */
+        CHECK(wz_cgroup_mode_has_usable_cgroup_id(WZ_CGROUP_MODE_HYBRID), "hybrid must count as having a usable key");
+        rmtree_(fixture);
+    }
+    else
+    {
+        CHECK(0, "could not build the hybrid fixture");
+    }
+
+    if (make_fixture_(fixture, sizeof(fixture), tmp, "legacy", 0, 0))
+    {
+        CHECK(wz_cgroup_mode_at(fixture) == WZ_CGROUP_MODE_LEGACY,
+              "controller directories with no v2 marker must read as legacy, got %s",
+              wz_cgroup_mode_name(wz_cgroup_mode_at(fixture)));
+        CHECK(!wz_cgroup_mode_has_usable_cgroup_id(WZ_CGROUP_MODE_LEGACY), "legacy must not count as having a key");
+        rmtree_(fixture);
+    }
+    else
+    {
+        CHECK(0, "could not build the legacy fixture");
+    }
+
+    /* Both markers present. Real on a host mid-migration, and the order the
+     * probe tests them is what decides the answer — pin it, because swapping
+     * the two branches is an invisible edit that changes a host's mode. */
+    if (make_fixture_(fixture, sizeof(fixture), tmp, "both", 1, 1))
+    {
+        CHECK(wz_cgroup_mode_at(fixture) == WZ_CGROUP_MODE_UNIFIED,
+              "a root marker must win over a /unified one, got %s",
+              wz_cgroup_mode_name(wz_cgroup_mode_at(fixture)));
+        rmtree_(fixture);
+    }
+    else
+    {
+        CHECK(0, "could not build the both-markers fixture");
+    }
+
+    /* The default direction, which is the safety property: anything not
+     * positively identified as v2 reads legacy, because a legacy host
+     * misreported as unified attributes every container to one bogus cgroup
+     * and says nothing. */
+    CHECK(wz_cgroup_mode_at("/nonexistent/cgroup/root") == WZ_CGROUP_MODE_LEGACY, "an absent root must read as legacy");
+    CHECK(wz_cgroup_mode_at(NULL) == WZ_CGROUP_MODE_LEGACY, "a NULL root must read as legacy");
+    CHECK(wz_cgroup_mode_at("") == WZ_CGROUP_MODE_LEGACY, "an empty root must read as legacy");
+
+    /* The truncation guard.
+     *
+     * An earlier version of this check just passed a 2 KB root and asserted
+     * "legacy" — which passes whether or not the guard exists, because a
+     * truncated path that names nothing fails its stat anyway. The hazard is
+     * specifically a truncated path that names something REAL, so that is what
+     * this builds: a root long enough that "<root>/cgroup.controllers" is cut
+     * short, with a file sitting at exactly the cut-short name. Without the
+     * guard the probe stats that file and reports a v1 host as unified. */
+    {
+        const size_t target = 495; /* 495 + strlen("/cgroup.controllers") > 511 */
+        char root[600];
+        char decoy[700];
+        size_t len;
+
+        /* Two nested components rather than one: each stays well under
+         * NAME_MAX, which a single 468-character directory name would not. */
+        len = (size_t)snprintf(root, sizeof(root), "%s/", tmp);
+        memset(root + len, 'a', 233);
+        root[len + 233] = '\0';
+
+        if (mkdir(root, 0700) != 0)
+        {
+            CHECK(0, "could not build the long-root fixture");
+        }
+        else
+        {
+            len = strlen(root);
+            root[len] = '/';
+            memset(root + len + 1, 'b', target - len - 1);
+            root[target] = '\0';
+
+            if (mkdir(root, 0700) != 0)
+            {
+                CHECK(0, "could not build the long-root fixture's leaf");
+            }
+            else
+            {
+                CHECK(strlen(root) == target, "long root is %zu chars, expected %zu", strlen(root), target);
+
+                snprintf(decoy, sizeof(decoy), "%s/cgroup.controllers", root);
+                decoy[511] = '\0'; /* exactly what the probe's snprintf would leave */
+
+                if (!touch_(decoy))
+                {
+                    CHECK(0, "could not create the truncation decoy");
+                }
+                else
+                {
+                    CHECK(wz_cgroup_mode_at(root) == WZ_CGROUP_MODE_LEGACY,
+                          "the probe stat'd a truncated path: '%s' exists, the real marker does not",
+                          decoy);
+                    remove(decoy);
+                }
+                remove(root);
+            }
+
+            root[len] = '\0';
+            remove(root);
+        }
+    }
+
+    remove(tmp);
+}
+
+/* ---------------------------------------------------------------------------
+ * Reading container cgroup ids from a v1 controller.
+ *
+ * The refusal is the part worth pinning. On a unified or hybrid host
+ * css_set.subsys[i] points at the nearest ANCESTOR cgroup where controller i
+ * is enabled, which need not be the task's own — so this read would attribute
+ * a container's events to its parent slice, with a number that looks entirely
+ * reasonable and nothing to flag it. The engine refuses rather than leaving
+ * that to the caller.
+ * ------------------------------------------------------------------------- */
+static void test_v1_subsys_configuration(void)
+{
+    /* NULL handle: the documented contract for every setter. */
+    CHECK(rt_set_cgroup_v1_subsys(NULL, 4) == -1, "rt_set_cgroup_v1_subsys(NULL) must fail");
+    CHECK(rt_cgroup_id_is_usable(NULL) == 0, "a NULL handle has no usable cgroup id");
+
+    /* The index this host would configure, resolved the way the engine's
+     * callers must resolve it — from /proc/cgroups, never hardcoded, because
+     * enum cgroup_subsys_id is ordered by what the kernel was built with. */
+    const int memory = wz_cgroup_subsys_index("memory");
+    CHECK(memory >= 0, "memory should be listed in /proc/cgroups on any Linux host, got %d", memory);
+    printf("  (memory is subsystem %d on this host)\n", memory);
+
+    /* A named hierarchy has no controller, so it has no subsystem slot and the
+     * BPF program has nothing to read. Userspace can still stat its
+     * directories, which is why it remains in the resolver's priority list and
+     * not in the engine's. */
+    CHECK(wz_cgroup_subsys_index("systemd") == -1,
+          "name=systemd is not a subsystem; the engine cannot key on it");
+    CHECK(wz_cgroup_subsys_index("no_such_controller") == -1, "an unknown controller must not resolve");
+
+    /* THE REFUSAL. Asserted through the pure predicate rather than through the
+     * setter, because the setter needs a loaded handle this test has no way to
+     * build — and an assertion that cannot reach the decision is not an
+     * assertion. An earlier version of this test checked only the NULL-handle
+     * path and passed happily with the refusal removed. */
+    CHECK(wz_cgroup_v1_subsys_read_allowed(WZ_CGROUP_MODE_UNIFIED, 4) == 0,
+          "a unified host must refuse the controller read: subsys[i] can resolve to an ancestor cgroup");
+    CHECK(wz_cgroup_v1_subsys_read_allowed(WZ_CGROUP_MODE_HYBRID, 4) == 0,
+          "a hybrid host must refuse it too — the helper is correct there");
+    CHECK(wz_cgroup_v1_subsys_read_allowed(WZ_CGROUP_MODE_LEGACY, 4) == 1,
+          "a legacy host is exactly where the controller read is correct");
+    CHECK(wz_cgroup_v1_subsys_read_allowed(WZ_CGROUP_MODE_LEGACY, -1) == 0,
+          "a controller with no subsystem slot gives the program nothing to read");
+
+    /* The chooser. Both tests have to pass for a controller to serve, and on
+     * this (unified) host neither can: nothing is mounted as a v1 hierarchy,
+     * so the selector correctly finds nothing rather than picking a controller
+     * that is merely compiled in. */
+    {
+        const char* chosen = NULL;
+        const int selected = wz_cgroup_v1_select_subsys(&chosen);
+        const int unified = wz_cgroup_mode_has_usable_cgroup_id(wz_cgroup_mode());
+
+        if (unified)
+        {
+            CHECK(selected == -1, "a unified host has no v1 hierarchy to key by, got index %d", selected);
+            CHECK(chosen == NULL, "nothing should have been chosen");
+            CHECK(wz_cgroup_v1_controller_mounted("memory") == 0,
+                  "memory is bound to the unified hierarchy here, not to a v1 one");
+        }
+        else
+        {
+            CHECK(selected < 0 || chosen != NULL, "a selected index must come with the controller's name");
+        }
+        CHECK(wz_cgroup_v1_controller_mounted("no_such_controller") == 0, "an unknown controller is not mounted");
+        CHECK(wz_cgroup_v1_controller_mounted(NULL) == 0, "a NULL controller must not crash or match");
+    }
+
+    /* One list, read by both the resolver and the engine, so the two cannot
+     * choose different controllers and key on unrelated hierarchies. */
+    CHECK(wz_cgroup_v1_priority(0) != NULL && strcmp(wz_cgroup_v1_priority(0), "memory") == 0,
+          "memory must be tried first");
+    CHECK(wz_cgroup_v1_priority(WZ_CGROUP_V1_PRIORITY_COUNT) == NULL, "the priority list must be bounded");
+}
+
+/* The anti-drift assertion, and the reason the probe was made shared at all:
+ * the engine's public answer and the shared probe must be the same answer on
+ * this host. If these two ever disagree, a second copy of the probe has grown
+ * back somewhere. */
+static void test_engine_agrees_with_the_shared_probe(void)
+{
+    const wz_cgroup_mode_t mode = wz_cgroup_mode();
+    const int expected = wz_cgroup_mode_has_usable_cgroup_id(mode) ? 0 : 1;
+
+    CHECK(rt_host_cgroup_v1(NULL) == expected,
+          "rt_host_cgroup_v1(NULL) returned %d but the shared probe reads %s",
+          rt_host_cgroup_v1(NULL),
+          wz_cgroup_mode_name(mode));
+    printf("  (shared probe reports %s)\n", wz_cgroup_mode_name(mode));
+}
+
 int main(void)
 {
     printf("rt_engine contract tests\n");
@@ -164,6 +497,9 @@ int main(void)
     test_abi_accessors();
     test_rt_open_rejects_useless_filters();
     test_null_handle_contracts();
+    test_cgroup_mode_probe();
+    test_v1_subsys_configuration();
+    test_engine_agrees_with_the_shared_probe();
 
     if (g_failures != 0)
     {

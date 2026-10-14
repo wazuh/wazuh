@@ -45,6 +45,7 @@
  */
 
 #include "container_baseline_fim_bridge.h"
+#include "container_baseline_host_api.h"
 #include "shared.h"
 #include "syscheck.h"
 
@@ -332,6 +333,20 @@ static void CaseTaggedEntryWinsOverLongerHostEntry(void)
 
 int main(void)
 {
+    /* The bridge borrows these rather than calling them, so stubbing the
+     * symbols is no longer enough on its own -- without this the stubs below
+     * are simply never reached and every case would read as silent.
+     * See container_baseline_host_api.h. */
+    const fim_container_host_api_t host_api = {
+        .config = &syscheck,
+        .rate_limit = check_max_fps,
+        .attributes_json = fim_attributes_json,
+        .calculate_dbsync_difference = fim_calculate_dbsync_difference,
+        .send_event = send_syscheck_msg,
+        .validate_and_persist = validate_and_persist_fim_event,
+    };
+    fim_container_baseline_set_host_api(&host_api);
+
     ConfigureDirectories();
 
     CaseBaselineIsSilent();

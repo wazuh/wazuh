@@ -174,6 +174,36 @@ int rt_deny_cgroup(rt_handle_t handle, unsigned long long cgroup_id);
  * leaves a window in which the allowlist is empty and so nothing is delivered. */
 int rt_set_cgroup_mode(rt_handle_t handle, int mode);
 
+/* Read container cgroup ids from a v1 controller hierarchy instead of from
+ * bpf_get_current_cgroup_id().
+ *
+ * ONLY for a host with no unified hierarchy. There, the helper reports nothing
+ * useful, but the v1 controllers' cgroups carry ids of the same kind and the
+ * program can read one directly — so cgroup_id becomes a real per-container
+ * value and the allowlist filters exactly as it does elsewhere.
+ *
+ * `subsys_index` is the controller's position in the kernel's
+ * `enum cgroup_subsys_id`, which is build-dependent and must be resolved at
+ * runtime — wz_cgroup_subsys_index() in shared_modules/common does it from
+ * /proc/cgroups. It MUST name the same controller the caller resolves
+ * container paths under, or the two will key on different hierarchies.
+ *
+ * MUST NOT be called on a unified or hybrid host: there a controller is only
+ * enabled where an ancestor enabled it, so the read can return an ancestor's
+ * cgroup and attribute a container's events to its parent slice. Refused when
+ * rt_host_cgroup_v1() is zero rather than left to the caller.
+ *
+ * Returns 0 on success, -1 otherwise. */
+int rt_set_cgroup_v1_subsys(rt_handle_t handle, unsigned int subsys_index);
+
+/* Non-zero when this handle's events carry a cgroup_id that identifies a
+ * container: always on a unified or hybrid host, and on a legacy host once
+ * rt_set_cgroup_v1_subsys() has succeeded.
+ *
+ * Consumers should branch on THIS rather than on rt_host_cgroup_v1(), which
+ * reports the host's hierarchy and not whether attribution is available. */
+int rt_cgroup_id_is_usable(rt_handle_t handle);
+
 /* Reports one cgroup's dropped-event count. `drops` is the number lost since
  * the previous drain for that cgroup, never a running total. */
 typedef void (*rt_drop_fn)(unsigned long long cgroup_id, unsigned int drops, void* user);
@@ -215,10 +245,16 @@ int rt_drain_drops(rt_handle_t handle, rt_drop_fn cb, void* user);
 int rt_abi_major(void);
 int rt_abi_minor(void);
 
-/* Non-zero when this host uses cgroup v1, i.e. when bpf_get_current_cgroup_id()
- * — and therefore every event's cgroup_id — is not a usable correlation key
- * and mnt_ns must be used instead (spike #37396 ADR-002). Determined once at
- * rt_open() from the cgroup mount layout, not from the events.
+/* Non-zero when this host has no unified cgroup hierarchy, i.e. when
+ * bpf_get_current_cgroup_id() — which reports the task's cgroup in THAT
+ * hierarchy — identifies nothing (spike #37396 ADR-002; measured on a pure v1
+ * host, where it returns 1 for every task). Determined once at rt_open() from
+ * the cgroup mount layout, not from the events.
+ *
+ * This reports the HOST'S HIERARCHY, not whether attribution is available:
+ * rt_set_cgroup_v1_subsys() makes cgroup_id usable on exactly these hosts.
+ * Consumers deciding whether they can attribute events want
+ * rt_cgroup_id_is_usable() instead.
  *
  * NOTE: the per-event RT_F_CGROUP_V1 flag is NOT yet set by the BPF program;
  * this accessor is currently the only reliable source. See rt_engine.c. */

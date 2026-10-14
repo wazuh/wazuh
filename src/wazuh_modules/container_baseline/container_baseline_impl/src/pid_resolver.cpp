@@ -36,18 +36,42 @@ bool IsHexId(std::string_view s, std::size_t min_len, std::size_t max_len) noexc
     return true;
 }
 
+// Returns a cgroup path for `pid` that a container id can be read from.
+//
+// Prefers the unified line, which is the only one a v2 host has. A pure cgroup
+// v1 host has NO "0::" line at all -- measured on Ubuntu 22.04 booted with
+// systemd.unified_cgroup_hierarchy=0 systemd.legacy_systemd_cgroup_controller=1,
+// where every line is a numbered v1 hierarchy -- so reading only "0::" found
+// nothing, no PID mapped to any container, and the baseline reported zero
+// containers scanned while the connector was reporting one known. Any v1
+// controller line carries the same container path, so fall back to the first
+// one rather than giving up.
 std::string ReadProcCgroupV2Path(const std::string& pid)
 {
     std::ifstream f("/proc/" + pid + "/cgroup");
     if (!f) return {};
 
+    std::string fallback;
     std::string line;
     while (std::getline(f, line)) {
         if (line.size() >= 3 && line[0] == '0' && line[1] == ':' && line[2] == ':') {
             return line.substr(3);
         }
+
+        // "<hierarchy-id>:<controllers>:<path>" -- take the path after the
+        // second colon. Skipped when the controller field is empty, which is
+        // what the unified line looks like and is handled above.
+        if (fallback.empty()) {
+            const auto first = line.find(':');
+            if (first != std::string::npos) {
+                const auto second = line.find(':', first + 1);
+                if (second != std::string::npos && second > first + 1) {
+                    fallback = line.substr(second + 1);
+                }
+            }
+        }
     }
-    return {};
+    return fallback;
 }
 
 // Invokes `visit(container_id, pid)` once for every PID on the host whose cgroup
@@ -79,12 +103,13 @@ void SweepProc(Visitor&& visit)
 
 } // namespace
 
-std::string ExtractContainerIdFromCgroupPath(const std::string& cgroup_path)
+namespace {
+
+/// Matches ONE cgroup path component. Split out of
+/// ExtractContainerIdFromCgroupPath() so the path can be scanned component by
+/// component; the rules themselves are unchanged.
+std::string MatchContainerIdComponent(std::string_view leaf)
 {
-    const auto last_slash = cgroup_path.find_last_of('/');
-    std::string_view leaf =
-        (last_slash == std::string::npos) ? std::string_view{cgroup_path}
-                                          : std::string_view{cgroup_path}.substr(last_slash + 1);
     if (leaf.empty()) return {};
 
     // systemd cgroup driver: "<runtime-prefix><hex-id>.scope".
@@ -107,6 +132,38 @@ std::string ExtractContainerIdFromCgroupPath(const std::string& cgroup_path)
 
     // cgroupfs driver: the leaf is the bare container id.
     if (IsHexId(leaf, 32, 128)) return std::string{leaf};
+
+    return {};
+}
+
+} // namespace
+
+std::string ExtractContainerIdFromCgroupPath(const std::string& cgroup_path)
+{
+    // Scan components INNERMOST FIRST, stopping at the first match. A matching
+    // leaf still wins, so an outer-Docker wrap (kind/k3d) still cannot mask the
+    // inner container; this only adds a result where the leaf alone gave none —
+    // notably a container whose PID 1 is an init system, which places every
+    // process in a CHILD cgroup of the container's own. Mirrors
+    // container_instances' extractContainerId(); the two must agree.
+    std::size_t end = cgroup_path.size();
+
+    while (end > 0) {
+        if (cgroup_path[end - 1] == '/') {
+            --end;
+            continue;
+        }
+
+        const auto slash = cgroup_path.find_last_of('/', end - 1);
+        const std::size_t begin = (slash == std::string::npos) ? 0U : slash + 1U;
+
+        auto id = MatchContainerIdComponent(
+            std::string_view{cgroup_path}.substr(begin, end - begin));
+        if (!id.empty()) return id;
+
+        if (begin == 0U) break;
+        end = begin - 1U;
+    }
 
     return {};
 }

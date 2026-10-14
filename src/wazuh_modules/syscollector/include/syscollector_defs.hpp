@@ -48,7 +48,10 @@
     FRIEND_TEST(SyscollectorIdentityTest, DeferredVDRecoveryDoesNotAttachContext);                                     \
     FRIEND_TEST(SyscollectorImpTest, SyncModule_LocalTransportUnavailableWithinToleranceLogsDeferred);                 \
     FRIEND_TEST(SyscollectorImpTest, SyncModule_LocalTransportUnavailableAtToleranceLogsDeferred);                     \
-    FRIEND_TEST(SyscollectorImpTest, SyncModule_LocalTransportUnavailablePastToleranceLogsWarning)
+    FRIEND_TEST(SyscollectorImpTest, SyncModule_LocalTransportUnavailablePastToleranceLogsWarning);                   \
+    FRIEND_TEST(SyscollectorImpTest, SweepContainerRowsNotInKeepsEverythingWhenThereAreNoContainerRows);               \
+    FRIEND_TEST(SyscollectorImpTest, OrderingFieldsAreTableSpecificAndUnknownTablesHaveNone);                          \
+    FRIEND_TEST(SyscollectorImpTest, AnOrderByClauseSplitsEveryFieldAndCarriesTheDirection)
 #else
 #define SYSCOLLECTOR_FRIEND_TEST_DECLARATIONS
 #endif // SYSCOLLECTOR_UNIT_TESTING

@@ -14,6 +14,16 @@
 #include "stringHelper.h"
 #include "hashHelper.h"
 #include "timeHelper.h"
+#include "defs.h"
+#if defined(__linux__)
+// Container lifecycle notifications are a Linux-only path, and this include has
+// to say so: the socket helper reaches for <sys/socket.h>, <sys/un.h> and the
+// SOCK_NONBLOCK / SOCK_CLOEXEC flags, none of which exist on Windows and the
+// last two of which do not exist on macOS either. Guarded exactly like
+// container_baseline.h a few lines below, for the same reason.
+#include "container_instances_notify_socket.hpp"
+#include <poll.h>
+#endif
 #include <algorithm>
 #include <cstdint>
 #include <iostream>
@@ -555,6 +565,9 @@ Syscollector::Syscollector()
     , m_containerBaseline { false }
     , m_containerBaselineInterval { 0 }
     , m_containerRowsPurged { false }
+    , m_containerScanRequested { false }
+    , m_containerCursorEpoch { 0 }
+    , m_containerCursorSeq { 0 }
     , m_vdSyncEnabled { false }
     , m_failedItems { nullptr }
     , m_itemsToUpdateSync { nullptr }
@@ -796,8 +809,22 @@ void Syscollector::start()
         }
     }
 
+    // Only when the container baseline is enabled: with it off there is no
+    // pass to bring forward, so the thread and its socket would be pure cost.
+    if (m_containerBaseline)
+    {
+        m_containerNotifyThread = std::thread{[this] { containerNotifyLoop(); }};
+    }
+
     std::unique_lock<std::mutex> scan_lock{m_scan_mutex};
     syncLoop(scan_lock);
+
+    // syncLoop only returns once m_stopping is set, which is also what ends the
+    // watcher, so joining here needs no additional signal.
+    if (m_containerNotifyThread.joinable())
+    {
+        m_containerNotifyThread.join();
+    }
 }
 
 bool Syscollector::handleNotifyDataClean()
@@ -2224,7 +2251,133 @@ std::size_t Syscollector::sweepContainerRowsNotIn(const std::set<std::string>& k
 #endif
 }
 
-void Syscollector::runContainerBaselinePass()
+std::size_t Syscollector::sweepContainerRows(const std::vector<std::string>& container_ids)
+{
+#if defined(__linux__)
+    std::size_t swept = 0;
+
+    for (const auto& containerId : container_ids)
+    {
+        if (containerId.empty())
+        {
+            continue;
+        }
+
+        // An empty scoped sync per table emits that container's rows as
+        // DELETED, each one self-contained through its container_json column.
+        for (const auto& table : CONTAINER_BASELINE_TABLES)
+        {
+            updateChanges(table, nlohmann::json::array(), containerId);
+        }
+
+        m_knownContainerIds.erase(containerId);
+        ++swept;
+    }
+
+    return swept;
+#else
+    (void)container_ids;
+    return 0;
+#endif
+}
+
+bool Syscollector::scanContainerBaselineDelta()
+{
+#if defined(__linux__)
+
+    // What the module reports, split by what this consumer must do about it.
+    struct Collected
+    {
+        std::vector<std::string> rescan;
+        std::vector<std::string> removed;
+    };
+
+    Collected collected;
+
+    const auto sink = [](const cb_lifecycle_event_t* event, void* userData)
+    {
+        auto* out = static_cast<Collected*>(userData);
+
+        if (out == nullptr || event == nullptr || event->container_id == nullptr)
+        {
+            return;
+        }
+
+        if (event->kind == CB_LIFECYCLE_REMOVED)
+        {
+            out->removed.emplace_back(event->container_id);
+            return;
+        }
+
+        if (event->kind == CB_LIFECYCLE_ADDED)
+        {
+            out->rescan.emplace_back(event->container_id);
+            return;
+        }
+
+        // A change. Metadata alone — labels, annotations, pod identity — moves
+        // nothing this module stores, and re-walking eleven data classes for a
+        // relabelled pod would cost more than the delta saves. Anything else,
+        // including a class this build has no name for, earns a re-scan.
+        if ((event->changed & ~static_cast<unsigned int>(CB_CHANGED_METADATA)) != 0)
+        {
+            out->rescan.emplace_back(event->container_id);
+        }
+    };
+
+    const int result = cbaseline_lifecycle_since(CB_DEFAULT_CONNECTOR_SOCKET_PATH,
+                                                 &m_containerCursorEpoch,
+                                                 &m_containerCursorSeq,
+                                                 sink,
+                                                 &collected);
+
+    if (result == CB_DELTA_UNAVAILABLE)
+    {
+        // Nothing was learned, so nothing may be concluded — in particular not
+        // that any container has gone. The cursor is untouched, so whatever
+        // happened meanwhile is still waiting when the connector returns.
+        m_logFunction(LOG_DEBUG,
+                      "Container inventory: lifecycle delta unavailable; leaving stored rows untouched.");
+        return false;
+    }
+
+    if (result == CB_DELTA_RESYNC)
+    {
+        // The cursor could not be served. Everything known was reported as
+        // added, but a resync says nothing about what has GONE, and acting on
+        // the additions alone would leave removed containers' rows for ever.
+        // The caller's full pass settles both.
+        m_logFunction(LOG_DEBUG, "Container inventory: lifecycle cursor needs a resync; running a full pass.");
+        return false;
+    }
+
+    if (collected.rescan.empty() && collected.removed.empty())
+    {
+        return true; // nothing changed; the common case, and it costs one round trip
+    }
+
+    if (!collected.rescan.empty())
+    {
+        // Same walk as a full pass, over fewer containers — and explicitly
+        // without the absence sweep, which only a whole-node list can justify.
+        scanContainerBaseline(collected.rescan, /*sweep_absent=*/false);
+    }
+
+    // Only on an explicit removal. Absence is never enough here: the delta
+    // names what has gone, which is the whole reason this path may delete rows
+    // without first establishing what still exists.
+    const auto swept = sweepContainerRows(collected.removed);
+
+    m_logFunction(LOG_DEBUG_VERBOSE,
+                  "Container inventory delta applied (" + std::to_string(collected.rescan.size()) +
+                  " rescanned, " + std::to_string(swept) + " container(s) removed).");
+    return true;
+#else
+    return false;
+#endif
+}
+
+void Syscollector::runContainerBaselinePass(bool delta_only)
 {
     // syncLoop() dispatches the container pass on its own deadline, so it no
     // longer borrows scan()'s stopping/paused checks or its ScanGuard.
@@ -2263,7 +2416,13 @@ void Syscollector::runContainerBaselinePass()
     std::vector<std::pair<std::string, nlohmann::json>> failedItems;
     m_failedItems = &failedItems;
 
-    scanContainerBaseline();
+    // A delta pass that cannot be served falls back to the full one rather than
+    // skipping: "I could not read what changed" is not "nothing changed", and
+    // the cheap path declining is exactly when the thorough one is needed.
+    if (!delta_only || !scanContainerBaselineDelta())
+    {
+        scanContainerBaseline();
+    }
 
     // Same order scan() uses: mark what passed, then fill any freed slots, then
     // drop the pointers, then delete the rows that failed validation.
@@ -2276,7 +2435,7 @@ void Syscollector::runContainerBaselinePass()
     deleteFailedItemsFromDB(failedItems);
 }
 
-void Syscollector::scanContainerBaseline()
+void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_these, bool sweep_absent)
 {
 #if defined(__linux__)
 
@@ -2376,7 +2535,8 @@ void Syscollector::scanContainerBaseline()
             // behaviour; every sync after that follows m_notify normally.
             const bool isFirstSync = self->m_knownContainerIds.insert(current).second;
             const std::optional<bool> notifyOverride =
-                isFirstSync ? std::optional<bool> {false} : std::nullopt;
+                isFirstSync ? std::optional<bool> {false} :
+                std::nullopt;
 
             for (const auto& table : CONTAINER_BASELINE_TABLES)
             {
@@ -2499,8 +2659,32 @@ void Syscollector::scanContainerBaseline()
         }
     };
 
-    const int baselined =
-        cbaseline_run_syscollector_dbsync(CB_DEFAULT_CONNECTOR_SOCKET_PATH, sink, statusSink, &acc);
+    // Empty selection means the whole node; a delta pass passes the containers
+    // it was told changed. One call site either way, so the row-contiguity and
+    // one-status-per-container handling above cannot drift between them.
+    int baselined = 0;
+
+    if (only_these.empty())
+    {
+        baselined = cbaseline_run_syscollector_dbsync(CB_DEFAULT_CONNECTOR_SOCKET_PATH, sink, statusSink, &acc);
+    }
+    else
+    {
+        std::vector<const char*> ids;
+        ids.reserve(only_these.size());
+
+        for (const auto& id : only_these)
+        {
+            ids.push_back(id.c_str());
+        }
+
+        baselined = cbaseline_run_syscollector_dbsync_for(CB_DEFAULT_CONNECTOR_SOCKET_PATH,
+                                                          ids.data(),
+                                                          static_cast<int>(ids.size()),
+                                                          sink,
+                                                          statusSink,
+                                                          &acc);
+    }
 
     acc.flush(Accumulator::Absence {}); // defensive: nothing should remain pending
 
@@ -2552,7 +2736,16 @@ void Syscollector::scanContainerBaseline()
     // cycle is strictly cheaper than that false-delete flood.
     std::size_t staleCount = 0;
 
-    if (listed < 0)
+    if (!sweep_absent)
+    {
+        // A partial scan cannot authorise this sweep, and the reason is the
+        // whole point: "delete everything absent from this list" is only sound
+        // when the list is the whole node. A delta pass walks the containers it
+        // was told about, so every container it did NOT visit would look absent
+        // — which is most of them. Removals on that path come from the delta
+        // naming them, never from absence.
+    }
+    else if (listed < 0)
     {
         m_logFunction(LOG_WARNING,
                       "Container connector unavailable; skipping stale-container cleanup "
@@ -2683,6 +2876,59 @@ void Syscollector::scan()
     m_logFunction(LOG_INFO, "Evaluation finished.");
 }
 
+#if defined(__linux__)
+void Syscollector::containerNotifyLoop()
+{
+    wazuh::container_instances_client::NotifySocket notify;
+
+    if (!notify.bind(CI_NOTIFY_SYSCOLLECTOR))
+    {
+        // Not a failure worth reporting above debug: the interval still covers
+        // everything, so this costs latency rather than coverage, and on a host
+        // where container_instances is absent it is simply the normal state.
+        m_logFunction(LOG_DEBUG, "Container inventory: lifecycle notifications unavailable; the scan "
+                      "interval remains the only trigger.");
+        return;
+    }
+
+    m_logFunction(LOG_DEBUG, "Container inventory: listening for container lifecycle notifications.");
+
+    while (!m_stopping.load())
+    {
+        pollfd fds[1];
+        fds[0].fd      = notify.fd();
+        fds[0].events  = POLLIN;
+        fds[0].revents = 0;
+
+        // Bounded rather than indefinite: this thread has no second descriptor
+        // to be woken through on shutdown, so the timeout IS the shutdown
+        // latency. A second of it is imperceptible next to a scan interval.
+        const int ready = ::poll(fds, 1, 1000);
+
+        if (ready <= 0)
+        {
+            continue; // timeout, or EINTR; re-check m_stopping either way.
+        }
+
+        // Drained and discarded. The payload names a cursor, but this consumer
+        // re-reads the whole container set anyway, and a burst of changes
+        // deserves one scan rather than one each.
+        static_cast<void>(notify.drain());
+
+        m_containerScanRequested.store(true);
+        m_cv.notify_all();
+    }
+}
+#else
+void Syscollector::containerNotifyLoop()
+{
+    // Nothing to be notified about: container monitoring is Linux-only, so no
+    // container_instances runs here to send a hint. Returning leaves the scan
+    // interval as the only trigger, which is the same state a Linux host with
+    // no container_instances socket ends up in.
+}
+#endif
+
 void Syscollector::syncLoop(std::unique_lock<std::mutex>& scan_lock)
 {
     // Coupled cadence (<container_baseline_interval> = 0, the default): the
@@ -2732,10 +2978,15 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& scan_lock)
     {
         const auto wakeAt = nextHostScan < nextContainerScan ? nextHostScan : nextContainerScan;
 
-        if (m_cv.wait_until(scan_lock, wakeAt, [&]()
+        // The request flag joins the predicate so a notification wakes the loop
+        // immediately rather than at the next deadline — which, on a long
+        // container interval, is most of the point.
+        m_cv.wait_until(scan_lock, wakeAt, [&]()
         {
-            return m_stopping.load();
-        }))
+            return m_stopping.load() || m_containerScanRequested.load();
+        });
+
+        if (m_stopping.load())
         {
             break;
         }
@@ -2760,6 +3011,11 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& scan_lock)
                 nextContainerScan = now + std::chrono::seconds{m_containerBaselineInterval};
             }
 
+            // Drop any request that arrived while paused. Keeping it would make
+            // resuming fire an immediate pass for a change the pause already
+            // outlasted, and the deadline above covers it regardless.
+            m_containerScanRequested.store(false);
+
             continue;
         }
 
@@ -2769,9 +3025,18 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& scan_lock)
             nextHostScan = now + std::chrono::seconds{m_intervalValue};
         }
 
-        if (now >= nextContainerScan)
+        // exchange, not load: the request is consumed here, so a change
+        // arriving DURING the pass sets it again and is served by the next
+        // iteration rather than being swallowed by this one.
+        const auto pass = decideContainerPass(now >= nextContainerScan, m_containerScanRequested.exchange(false));
+
+        if (pass.run)
         {
-            runContainerBaselinePass();
+            runContainerBaselinePass(pass.delta_only);
+        }
+
+        if (pass.advance_deadline)
+        {
             nextContainerScan = now + std::chrono::seconds{m_containerBaselineInterval};
         }
     }
@@ -4786,7 +5051,10 @@ void Syscollector::initializeDocumentCounts()
             // Once per scope: host and container rows live in the same table and
             // the same sync index, so one COUNT(*) would credit the host budget
             // with every container row already reported.
-            for (const auto scope : {LimitScope::host, LimitScope::container})
+            for (const auto scope :
+                    {
+                        LimitScope::host, LimitScope::container
+                    })
             {
                 auto selectQuery = SelectQuery::builder()
                                    .table(table)

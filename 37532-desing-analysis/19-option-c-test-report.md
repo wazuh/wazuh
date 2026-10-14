@@ -316,7 +316,7 @@ Stated plainly, because a test report that only lists passes is not a test repor
 | Gap | Risk |
 | --- | --- |
 | **No end-to-end run with real containers.** The drain's own allowlist bookkeeping was never exercised against live KinD/Docker traffic — only its policy layer in unit tests and the engine beneath it on a kernel | The highest-value gap. The seams between `install()`, `syncAllowlist()` and the kernel are covered by construction, not by observation |
-| **Discovery latency was not measured.** §4.3's "≤ 5 s" is derived from `resolver_interval_ms`, not timed from `docker run` to the walk | The claim is structural rather than empirical |
+| ~~**Discovery latency was not measured.**~~ **Closed 2026-10-05** — see §7 | — |
 | **The map-full fallback never ran.** `disableAllowlist()` — which turns filtering off for the whole handle — has no test. The BPF map holds 4,096 entries against a `max_containers` of 512, so it is hard to reach and correspondingly easy to get wrong | A node with thousands of containers would take an untested path |
 | **The stale-object retry never ran.** `rt_open()` refuses allowlist mode on a BPF object without the filtering maps; the drain retries unfiltered. Not exercised | `rt_file.bpf.o` is in no packaging manifest, so a stale object is a real configuration, not a hypothetical — this path is likelier than it looks |
 | **cgroup v1 untested** | Out of scope: the drain already refuses v1 hosts before reaching any of this |
@@ -375,3 +375,35 @@ The cost case is now settled on both `file_open` variants and needs no further b
 remains thin is integration evidence: every layer has been tested in isolation and the seams
 between them have not been observed working together against live container traffic. That
 asymmetry, not the performance, is what should gate the merge.
+
+---
+
+## 7. Discovery latency, measured (2026-10-05)
+
+§5 listed this as reasoned about rather than observed. It has now been timed, on the same VM, with
+the full agent built from `37532-container-lifecycle-notify`.
+
+The probe measures `docker run` → the container actually **walked**, read from the harness's own
+`PERSIST CREATE <cid>` lines. That is stricter than timing the cgroup being admitted: under the
+allowlist the drain only walks what it has admitted, and only admits what it has discovered, so a
+CREATE row proves the whole chain. Timed from the shell either side, so nothing is inferred from
+internal state.
+
+| | min | **median** | max | discovered |
+| --- | ---: | ---: | ---: | ---: |
+| Notifications active | 667 ms | **1262 ms** | 1428 ms | 5/5 |
+| Notifications suppressed | 3859 ms | **5202 ms** | 5532 ms | 5/5 |
+
+**4.1× faster, and the distributions do not overlap** — the worst notified run beats the best
+floor-only run by 2.4 s. The control was the notification socket alone: removing it makes the
+module's `sendto` fail while the drain keeps polling, and restoring it returned the fast path
+(929/1219 ms), so the difference is the channel rather than drift.
+
+The suppressed figures clustering at ~5.2 s match `resolver_interval_ms = 5000` plus walk time,
+which confirms §4.3's mechanism and not merely its outcome: without notifications, discovery really
+is bounded by the poll, because with the kernel filter on nothing else can admit a new container.
+
+**The sub-second target in the original plan is not met.** The measurement is end to end and
+includes the 500 ms reconcile debounce, an IPC round trip and a walk of 47 files; discovery alone is
+earlier than the figure shown. Reported as measured rather than quoting a more flattering internal
+milestone.

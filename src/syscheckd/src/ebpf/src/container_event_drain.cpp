@@ -15,12 +15,18 @@
 #include "container_baseline_fim_bridge.h"
 #include "container_event_router.hpp"
 #include "container_event_staging.hpp"
+#include "resolver_wait.hpp"
 #include "container_instances_client.hpp"
+#include "container_instances_notify_socket.hpp"
+#include "defs.h"
 
 #include "rt_engine.h"
 
+#include "cgroup_host_mode.h"
+
 #include <json.hpp>
 
+#include <algorithm>
 #include <atomic>
 #include <cerrno>
 #include <chrono>
@@ -28,6 +34,10 @@
 #include <thread>
 #include <utility>
 #include <vector>
+
+#include <poll.h>
+#include <sys/eventfd.h>
+#include <unistd.h>
 
 namespace fim_container_events
 {
@@ -113,6 +123,39 @@ struct ContainerEventDrain::Impl
 
     rt_handle_t      handle{nullptr};
     ReconcileHandler handler;
+
+    /* Where the drain has read up to in container_instances' journal.
+     *
+     * In memory only, and that is not a shortcut: on restart the drain reopens
+     * the engine with an empty kernel allowlist and has to re-admit every
+     * container anyway, so a persisted cursor would describe a world it no
+     * longer has. Zero means "no cursor", which the module answers with the
+     * full set — the seeding path, reached without a special case. */
+    std::uint64_t cursor_epoch{0};
+    std::uint64_t cursor_seq{0};
+
+    /* Previous values of the counters that record work being shed.
+     *
+     * Every bound on this path -- the per-container path budget, the container
+     * budget, the unknown-cgroup set, the kernel ring -- escalates or discards
+     * SILENTLY. The counters were already collected and thread-safe, and nothing
+     * ever read them: a container that recorded a quarter of its file changes
+     * looked exactly like one that recorded all of them. Diffed once per
+     * resolver pass so a steady state stays quiet and movement gets one line. */
+    StagingStats    last_staging{};
+    RouterStats     last_router{};
+    CgroupMapStats  last_map{};
+    bool            stats_primed{false};
+
+    /* Woken by container_instances when its container list changes. Unbound is
+     * a supported state, not a failure: fd() is then -1 and the resolver falls
+     * back to its interval, which is what it did before this existed. */
+    wazuh::container_instances_client::NotifySocket notify;
+
+    /* Wakes the resolver out of poll() on shutdown. A short poll timeout would
+     * do the same job only while the interval stays small, and it is on its way
+     * to tens of seconds. */
+    int stop_event_fd{-1};
 
     std::atomic<bool> stop{false};
 
@@ -220,6 +263,75 @@ struct ContainerEventDrain::Impl
                      "accounting, so lost events cannot be attributed to a container. "
                      "Falling back to re-baselining every container on any loss.");
         }
+
+        /* The successful path logged nothing, so the only visible drop message
+         * was the one saying drops could not be attributed. Events lost while
+         * accounting worked perfectly were invisible. */
+        if (reported > 0)
+        {
+            LogWarn("Container eBPF drain: the kernel dropped events for " + std::to_string(reported) +
+                    " container(s) since the last check; each is being re-baselined, so its file state "
+                    "stays correct but the individual changes are gone.");
+        }
+    }
+
+    /* One line when work is being shed, nothing while the numbers hold still. */
+    void reportShedWork()
+    {
+        const auto st = staging.stats();
+        const auto rt = router.stats();
+        const auto mp = map.stats();
+
+        if (!stats_primed)
+        {
+            last_staging = st;
+            last_router = rt;
+            last_map = mp;
+            stats_primed = true;
+            return;
+        }
+
+        const auto moved = [](unsigned long long now, unsigned long long before) -> unsigned long long
+        {
+            return (now > before) ? (now - before) : 0ULL;
+        };
+
+        const auto pathOverflows = moved(st.path_overflows, last_staging.path_overflows);
+        const auto containerOverflows = moved(st.unknown_overflows, last_staging.unknown_overflows);
+        const auto dropEscalations = moved(st.drop_escalations, last_staging.drop_escalations);
+        const auto unattributed = moved(rt.unattributed, last_router.unattributed);
+        const auto globalEscalations = moved(rt.global_escalations, last_router.global_escalations);
+        const auto mapOverflows = moved(mp.unknown_overflows, last_map.unknown_overflows);
+        const auto negativeResets = moved(mp.negative_cache_resets, last_map.negative_cache_resets);
+
+        last_staging = st;
+        last_router = rt;
+        last_map = mp;
+
+        if ((pathOverflows | containerOverflows | dropEscalations | unattributed | globalEscalations |
+             mapOverflows | negativeResets) == 0ULL)
+        {
+            return;
+        }
+
+        std::string line = "Container eBPF drain: shedding work -";
+        const auto add = [&line](const char* what, unsigned long long n)
+        {
+            if (n > 0)
+            {
+                line += " " + std::string{what} + "=" + std::to_string(n);
+            }
+        };
+        add("containers_over_path_budget", pathOverflows);
+        add("containers_over_budget", containerOverflows);
+        add("escalated_on_loss", dropEscalations);
+        add("events_unattributed", unattributed);
+        add("full_rewalks", globalEscalations);
+        add("unknown_cgroups_dropped", mapOverflows);
+        add("negative_cache_resets", negativeResets);
+        line += ". Affected containers are re-walked, so their recorded state stays correct, but the "
+                "individual changes in between are not reported.";
+        LogWarn(line);
     }
 
     void resolverLoop()
@@ -233,32 +345,145 @@ struct ContainerEventDrain::Impl
             if (now >= next_list)
             {
                 refreshContainerList();
+                reportShedWork();
                 next_list = now + std::chrono::milliseconds(config.resolver_interval_ms);
             }
 
             resolvePending();
             router.pumpUnknownOverflow();
 
-            /* Sleep in slices so stop() is not held up for a whole interval. */
-            for (int slept = 0; slept < 200 && !stop.load(std::memory_order_relaxed); slept += 50)
+            if (waitForWork(next_list))
             {
-                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                /* container_instances says its list moved. Refreshing on the
+                 * next pass rather than here keeps one call site for the
+                 * refresh, and the loop head is one statement away. */
+                next_list = std::chrono::steady_clock::now();
             }
         }
     }
 
+    /* Blocks until container_instances reports a change, the next scheduled
+     * refresh is due, or stop() fires. Returns true only for the first.
+     *
+     * The interval this replaces is now a FLOOR rather than the way changes are
+     * noticed. Discovery used to cost up to a full interval because nothing
+     * else could report a new container; with the kernel filter in place that
+     * was also the only thing admitting its cgroup, so the wait was the
+     * detection latency. Now the common case is a datagram arriving in
+     * milliseconds, and the interval only has to cover what no notification can
+     * report — a container the module itself never learned about.
+     *
+     * Three fds, and each is load-bearing:
+     *   notify   the wake. Absent (unbound) it is -1, which poll() skips, so
+     *            the loop degrades to exactly its previous behaviour.
+     *   stop     an eventfd, not a short timeout. The floor is heading for tens
+     *            of seconds, and without this, shutdown would wait out whatever
+     *            remained of it.
+     *   timeout  bounded by resolvePending()'s pacing while cgroups are still
+     *            unresolved, since those need revisiting on their own cadence
+     *            and no notification is coming for them. */
+    bool waitForWork(std::chrono::steady_clock::time_point next_list)
+    {
+        const auto until_refresh =
+            std::chrono::duration_cast<std::chrono::milliseconds>(next_list - std::chrono::steady_clock::now());
+        const int timeout_ms = resolverWaitMs(until_refresh, map.unresolvedCount() > 0);
+
+        struct pollfd fds[2];
+        fds[0].fd      = notify.fd();
+        fds[0].events  = POLLIN;
+        fds[0].revents = 0;
+        fds[1].fd      = stop_event_fd;
+        fds[1].events  = POLLIN;
+        fds[1].revents = 0;
+
+        const int ready = ::poll(fds, 2, timeout_ms);
+
+        if (ready <= 0)
+        {
+            return false; /* timed out, or EINTR: treat both as "carry on". */
+        }
+
+        if ((fds[1].revents & POLLIN) != 0)
+        {
+            return false; /* stopping; the loop condition picks it up. */
+        }
+
+        if ((fds[0].revents & POLLIN) != 0)
+        {
+            /* Drained and discarded. The payload names a cursor, but acting on
+             * it would make a hint into authority: what actually changed is
+             * read from the query socket. Draining collapses a burst — a
+             * ten-container deploy is one refresh, not ten. */
+            static_cast<void>(notify.drain());
+            return true;
+        }
+
+        return false;
+    }
+
+    /* Bring the cgroup map up to date with container_instances.
+     *
+     * Reads forward from a cursor where it can, and falls back to the whole
+     * list where it cannot. The three ways it cannot are not interchangeable:
+     *
+     *   unreachable        nothing was obtained. Change NOTHING — install()
+     *                      replaces the positive map, so applying an empty list
+     *                      from a connector that simply did not answer would
+     *                      un-attribute every container at once and turn the
+     *                      next event from each into an escalation. C15's
+     *                      failure shape one level down.
+     *   deltas unsupported an older container_instances, which ignored the
+     *                      cursor and answered with the set. Exactly today's
+     *                      behaviour, reached without an error path.
+     *   resync required    the cursor is from another store lifetime, or its
+     *                      position has been evicted. The set rides the same
+     *                      reply, so this costs no extra round trip. */
     void refreshContainerList()
     {
-        bool       reachable = false;
-        const auto refs      = client.listContainers(&reachable);
+        const auto delta = client.listContainersSince(cursor_epoch, cursor_seq);
 
-        /* GATED on reachability, and this is not defensive coding for its own
-         * sake: install() REPLACES the positive map, so applying an unreachable
-         * connector's empty list would un-attribute every container at once and
-         * turn the next event from each into an escalation. That is C15's
-         * failure shape one level down. */
-        if (!reachable) return;
+        if (!delta.available) return;
 
+        if (!delta.deltaSupported || delta.resyncRequired)
+        {
+            applyFullList(delta.containers);
+        }
+        else
+        {
+            std::vector<CgroupDeltaEvent> events;
+            events.reserve(delta.events.size());
+
+            for (const auto& event : delta.events)
+            {
+                CgroupDeltaEvent translated;
+                translated.container_id = event.containerId;
+                translated.cgroup_id    = event.cgroupId;
+
+                switch (event.kind)
+                {
+                    using Kind = wazuh::container_instances_client::ContainerEventRef::Kind;
+                    case Kind::added: translated.kind = CgroupDeltaEvent::Kind::added; break;
+                    case Kind::removed: translated.kind = CgroupDeltaEvent::Kind::removed; break;
+                    case Kind::changed:
+                    default: translated.kind = CgroupDeltaEvent::Kind::changed; break;
+                }
+
+                events.push_back(std::move(translated));
+            }
+
+            syncAllowlist(router.applyContainerDelta(events));
+        }
+
+        /* Advanced only after the events have been applied. A crash in between
+         * replays them, which is harmless — the map converges to the same place
+         * and a repeated walk costs time, not correctness — whereas advancing
+         * first would drop them silently. */
+        cursor_epoch = delta.epoch;
+        cursor_seq   = delta.seq;
+    }
+
+    void applyFullList(const std::vector<wazuh::container_instances_client::ContainerRef>& refs)
+    {
         std::vector<std::pair<std::uint64_t, std::string>> containers;
         containers.reserve(refs.size());
 
@@ -553,15 +778,81 @@ bool ContainerEventDrain::start(const DrainConfig& config, ReconcileHandler hand
 
     if (rt_host_cgroup_v1(impl->handle) != 0)
     {
-        /* bpf_get_current_cgroup_id() collapses to a fixed value on cgroup v1
-         * (spike #37396 ADR-002), so every container shares one cgroup_id and
-         * attribution would file every container's events under whichever
-         * resolved first. Wrong attribution is worse than none. */
-        LogError("Container eBPF drain: this host uses cgroup v1, where an event's cgroup_id "
-                 "cannot identify a container; disabling the event-driven reconcile.");
+        /* A host with no unified hierarchy. bpf_get_current_cgroup_id() reports
+         * the task's cgroup in THAT hierarchy, so here it reports nothing that
+         * identifies a container (spike #37396 ADR-002) — which is why this
+         * used to refuse outright.
+         *
+         * It refuses no longer, because the helper was the limit and not the
+         * kernel: the v1 controllers' cgroups are kernfs nodes carrying ids of
+         * exactly the same kind, and the engine can be pointed at one. The
+         * controller is chosen by the shared selector, so this and the resolver
+         * cannot settle on different hierarchies and then miss every lookup
+         * between them. */
+        const char* controller = nullptr;
+        const int subsys = wz_cgroup_v1_select_subsys(&controller);
+
+        if (subsys < 0 || rt_set_cgroup_v1_subsys(impl->handle, static_cast<unsigned int>(subsys)) != 0)
+        {
+            /* The floor the old refusal existed to provide, kept: a host where
+             * no controller can serve as a key gets no attribution rather than
+             * wrong attribution. Reached when none of the candidates is mounted
+             * as a v1 hierarchy, or when the only one that is has no subsystem
+             * slot to read — `name=systemd` is the realistic case. */
+            LogError("Container eBPF drain: this host has no unified cgroup hierarchy and no controller "
+                     "that can identify a container, so an event's cgroup_id cannot be attributed; "
+                     "disabling the event-driven reconcile.");
+            rt_close(impl->handle);
+            delete impl;
+            return false;
+        }
+
+        /* Worth a line on the healthy path: "which hierarchy did the agent
+         * think it was on, and what did it key by?" is the first question
+         * asked of any attribution bug, and an answer that appears only when
+         * something is wrong leaves the working case indistinguishable from
+         * the probe never having run. */
+        LogWarn(std::string{"Container eBPF drain: no unified cgroup hierarchy on this host; reading "
+                            "container cgroup ids from the '"} +
+                (controller != nullptr ? controller : "?") + "' controller instead.");
+    }
+
+    if (rt_cgroup_id_is_usable(impl->handle) == 0)
+    {
+        /* Belt and braces, and cheap: every path above either configured a
+         * usable key or returned. Asking the engine rather than re-deriving the
+         * answer here keeps one source of truth for whether attribution works,
+         * which is the question this consumer exists to answer. */
+        LogError("Container eBPF drain: the engine reports no usable container identifier; "
+                 "disabling the event-driven reconcile.");
         rt_close(impl->handle);
         delete impl;
         return false;
+    }
+
+    /* The two sides choose their key independently -- the producer from the
+     * cgroup layout, this consumer from what the engine can read -- and they are
+     * meant to reach the same answer through the same shared selector. When they
+     * did not, nothing said so: the store held mount-namespace inodes, the
+     * events carried controller cgroup ids, every lookup missed, and both halves
+     * logged success. Ask once at startup, because a mismatch makes the whole
+     * feature a no-op and is otherwise invisible.
+     *
+     * This consumer always keys on a cgroup id: the helper on a unified host,
+     * the configured v1 controller on a legacy one. Anything else disagrees. */
+    if (const auto producerKind = impl->client.hostKeyKind())
+    {
+        if (*producerKind != WZ_CONTAINER_KEY_CGROUP)
+        {
+            LogError(std::string{"Container eBPF drain: container_instances is publishing '"} +
+                     wz_container_key_kind_name(*producerKind) +
+                     "' keys while this consumer reads cgroup ids, so no event can ever be attributed. "
+                     "Disabling the event-driven reconcile rather than running with a key space the "
+                     "producer does not serve.");
+            rt_close(impl->handle);
+            delete impl;
+            return false;
+        }
     }
 
     impl->handler = std::move(handler);
@@ -603,6 +894,22 @@ bool ContainerEventDrain::start(const DrainConfig& config, ReconcileHandler hand
     impl->refreshContainerList();
     impl->router.setFiltering(impl->allowlist_active);
 
+    /* Bound before the resolver thread starts, so a container created during
+     * the baseline walk is announced rather than waiting out an interval.
+     *
+     * Failure here is not a startup failure. Without it the resolver polls as
+     * it always did and nothing is lost but latency — and refusing to start
+     * container FIM because a convenience socket could not be bound would trade
+     * a bounded delay for an outage. */
+    if (!impl->notify.bind(CI_NOTIFY_SYSCHECK))
+    {
+        LogDebug("Container eBPF drain: could not bind the container lifecycle notification socket; "
+                 "container discovery falls back to polling every " +
+                 std::to_string(config.resolver_interval_ms) + " ms.");
+    }
+
+    impl->stop_event_fd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+
     m_impl = impl;
 
     impl->drain_thread    = std::thread([impl] { impl->drainLoop(); });
@@ -632,6 +939,15 @@ void ContainerEventDrain::stop()
     impl->stop.store(true, std::memory_order_relaxed);
     impl->staging.stop();
 
+    /* Wakes the resolver out of poll() immediately rather than at the end of
+     * whatever remained of its interval. Written after the stop flag so the
+     * thread cannot wake, see no stop, and go back to waiting. */
+    if (impl->stop_event_fd >= 0)
+    {
+        const std::uint64_t one = 1;
+        static_cast<void>(::write(impl->stop_event_fd, &one, sizeof(one)));
+    }
+
     if (impl->drain_thread.joinable()) impl->drain_thread.join();
     if (impl->resolver_thread.joinable()) impl->resolver_thread.join();
     if (impl->consumer_thread.joinable()) impl->consumer_thread.join();
@@ -640,6 +956,12 @@ void ContainerEventDrain::stop()
      * the handle owns, and the drain thread is inside rt_poll() on it. */
     rt_close(impl->handle);
     impl->handle = nullptr;
+
+    if (impl->stop_event_fd >= 0)
+    {
+        ::close(impl->stop_event_fd);
+        impl->stop_event_fd = -1;
+    }
 
     delete impl;
 }

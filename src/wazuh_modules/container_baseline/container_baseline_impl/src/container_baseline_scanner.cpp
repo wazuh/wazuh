@@ -22,6 +22,8 @@
 #include <atomic>
 #include <chrono>
 #include <thread>
+#include <memory>
+#include <set>
 #include <unordered_set>
 #include <utility>
 
@@ -423,9 +425,11 @@ int RunSyscollectorDbsyncBaselineFrom(const ContainerDiscoverer& discover,
 {
     int baselined = 0;
 
-    // Per-run state that is not the PID index: the image-content cache, and the
-    // shared-netns grouping derived from the index.
-    ImageContentCache  imageContent;
+    // The image-content cache is process-wide, not per-run. Reuse across
+    // replicas of one image is the entire point of it, and a delta-driven pass
+    // may scan a single container — so a cache that died with each invocation
+    // would give that back exactly when scans became smaller and more frequent.
+    auto&              imageContent = SharedImageContentCache();
     const auto         sharedNetns = SharedNetnsContainers(pidIndex.all());
 
     for (const auto& identity : discover()) {
@@ -470,11 +474,7 @@ int RunSyscollectorDbsyncBaselineFrom(const ContainerDiscoverer& discover,
         const auto imageDigest = identity.context ? identity.context->image_digest : std::string {};
         const auto fingerprint = FingerprintImageSources(pid);
 
-        // Holds the rows when this container is not cacheable (no resolved
-        // image digest), so there is exactly one scan path either way.
-        ImageContentCache::Entry standalone;
-
-        const auto* content = imageContent.find(imageDigest, fingerprint);
+        auto content = imageContent.find(imageDigest, fingerprint);
 
         if (content == nullptr) {
             ImageContentCache::Entry fresh;
@@ -485,11 +485,18 @@ int RunSyscollectorDbsyncBaselineFrom(const ContainerDiscoverer& discover,
             fresh.os          = ScanContainerOs(pid);
 
             if (imageDigest.empty()) {
-                standalone = std::move(fresh);
-                content    = &standalone;
+                // Not cacheable — no resolved image digest — so it is held
+                // locally instead. Same shape either way, so there is exactly
+                // one scan path below.
+                content = std::make_shared<const ImageContentCache::Entry>(std::move(fresh));
             } else {
                 imageContent.store(imageDigest, std::move(fresh));
                 content = imageContent.find(imageDigest, fingerprint);
+
+                // An immediate eviction, or a fingerprint that moved under us
+                // between the store and the read. Vanishingly unlikely and not
+                // worth a retry; scanning again next cycle is the cost.
+                if (content == nullptr) continue;
             }
         }
 
@@ -626,6 +633,49 @@ int RunSyscollectorDbsyncBaseline(const std::string&         connector_socket_pa
     return RunSyscollectorDbsyncBaselineFrom(
         [&connector_socket_path]() { return DiscoverContainers(connector_socket_path); },
         pids, sink, status_sink);
+}
+
+int RunSyscollectorDbsyncBaselineForContainers(const std::string&              connector_socket_path,
+                                               const std::vector<std::string>& container_ids,
+                                               const DbsyncRowSink&            sink,
+                                               const ContainerStatusSink&      status_sink)
+{
+    if (container_ids.empty())
+    {
+        return 0;
+    }
+
+    bool reachable = false;
+    const auto all = DiscoverContainers(connector_socket_path, &reachable);
+
+    // -1 for the same reason the whole-node entry points return it: the caller
+    // is about to act on what this reports, and an unreachable connector must
+    // not present as "none of those containers exist any more".
+    if (!reachable)
+    {
+        return -1;
+    }
+
+    const std::set<std::string> wanted(container_ids.begin(), container_ids.end());
+
+    std::vector<ContainerIdentity> selected;
+    selected.reserve(container_ids.size());
+
+    for (const auto& identity : all)
+    {
+        if (wanted.count(identity.container_id) > 0)
+        {
+            selected.push_back(identity);
+        }
+    }
+
+    // A filtered discoverer rather than a second orchestrator: scanning a
+    // subset differs from scanning everything only in WHICH containers are
+    // visited, and duplicating the walk would be two places for the
+    // row-contiguity and one-status-per-container contracts to drift apart.
+    const auto pids = PidIndex::Build();
+
+    return RunSyscollectorDbsyncBaselineFrom([&selected]() { return selected; }, pids, sink, status_sink);
 }
 
 int ListContainers(const std::string& connector_socket_path, const ContainerIdSink& sink)

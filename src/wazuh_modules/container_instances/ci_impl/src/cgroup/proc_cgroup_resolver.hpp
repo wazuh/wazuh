@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../core/logger.hpp"
+#include "cgroup_host_mode.h"
 #include "i_cgroup_resolver.hpp"
 #include "i_inode_reader.hpp"
 #include "ifile_io_utils.hpp"
@@ -21,10 +22,15 @@ namespace wazuh::container_instances
                            const IInodeReader& inodeReader,
                            Logger logger,
                            std::string procRoot = "/proc",
-                           std::string cgroupRoot = "/sys/fs/cgroup");
+                           std::string cgroupRoot = "/sys/fs/cgroup",
+                           // A host constant, read once. Never per record and never
+                           // inferred from an event: mixing hierarchies within one
+                           // store would reintroduce the ambiguity that keying by
+                           // host mode exists to remove.
+                           wz_cgroup_mode_t cgroupMode = wz_cgroup_mode());
 
         [[nodiscard]] CgroupScan scan() const override;
-        [[nodiscard]] std::optional<CgroupEntry> scanOne(std::uint64_t cgroupInode) const override;
+        [[nodiscard]] std::optional<CgroupEntry> scanOne(std::uint64_t hostKey) const override;
 
     private:
         const IFileSystemWrapper& m_filesystem;
@@ -33,6 +39,14 @@ namespace wazuh::container_instances
         Logger m_logger;
         std::string m_procRoot;
         std::string m_cgroupRoot;
+        wz_cgroup_mode_t m_cgroupMode;
+
+        /// On legacy, the controller the SHARED selector picked — the same one
+        /// the eBPF program is configured to read. Resolved once at construction
+        /// because it is a host constant, and passed to selectCanonicalCgroup so
+        /// the resolver cannot settle on a different hierarchy than the engine.
+        /// Empty on unified and hybrid, where the unified id is used instead.
+        std::string m_v1Controller;
     };
 
 } // namespace wazuh::container_instances

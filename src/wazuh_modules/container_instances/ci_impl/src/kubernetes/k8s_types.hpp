@@ -19,6 +19,18 @@ namespace wazuh::container_instances
         std::string imageDigest;
         int restartCount {0};
         std::vector<OciMount> mounts;
+
+        /// From containerStatuses[].state. A completed Job or a container in
+        /// CrashLoopBackOff stays in the pod list with no process, which is the
+        /// Kubernetes shape of the same problem a stopped Docker container
+        /// poses: without this it is indistinguishable from one that was
+        /// deleted, and its rows get swept.
+        ContainerState state {ContainerState::unknown};
+
+        /// From containerStatuses[].state.running.startedAt. The restart
+        /// discriminator: a restart keeps the container id, so without this a
+        /// container that restarted looks like one that never moved.
+        std::string startedAt;
     };
 
     struct PodSnapshot

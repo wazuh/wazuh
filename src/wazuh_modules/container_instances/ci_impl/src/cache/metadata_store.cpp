@@ -2,8 +2,8 @@
 
 #include "reconciler.hpp"
 
-#include <unordered_set>
 #include <mutex>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -35,19 +35,28 @@ namespace wazuh::container_instances
 
     } // namespace
 
-    MetadataStore::MetadataStore(Logger logger)
+    MetadataStore::MetadataStore(Logger logger, KeyKind keyKind)
         : m_logger(std::move(logger))
+        , m_keyKind(keyKind)
     {
     }
 
-    LookupResult MetadataStore::lookupByCgroup(std::uint64_t cgroupInode) const
+    LookupResult MetadataStore::lookup(HostKey key) const
     {
-        if (cgroupInode == 0)
+        if (key.value == 0)
         {
             return {};
         }
+        if (key.kind != m_keyKind)
+        {
+            // Refused rather than looked up. The two kinds are both 64-bit
+            // inode numbers, so a mismatched one would simply not be found and
+            // the caller would be told the container is unknown — which it is
+            // not, and which sends it off re-resolving something already here.
+            return {};
+        }
         std::shared_lock lock(m_mutex);
-        const auto it = m_byCgroup.find(cgroupInode);
+        const auto it = m_byCgroup.find(key.value);
         return (it == m_byCgroup.end()) ? LookupResult {} : toLookupResult(it->second);
     }
 
@@ -110,16 +119,51 @@ namespace wazuh::container_instances
         std::shared_lock lock(m_mutex);
         std::vector<ContainerRecordPtr> result;
         std::unordered_set<std::string> seen;
+        std::size_t withheld = 0;
+        std::string withheldExample;
 
         for (const auto& [source, records] : m_bySource)
         {
             for (const auto& [containerId, record] : records)
             {
-                if (!record || record->cgroupId == 0 || !seen.insert(containerId).second)
+                if (record && record->hostKey == 0 && isRunning(record->state))
+                {
+                    ++withheld;
+                    if (withheldExample.empty())
+                    {
+                        withheldExample = containerId;
+                    }
+                }
+                // Hide only UNRESOLVED RUNNING records. A running container with
+                // no inode yet is one the resolver has not caught up with, and
+                // publishing it would let a consumer act on an attribution key
+                // that is about to change. A container that is not running has
+                // no inode to wait for and is published as it is — otherwise a
+                // stop would read, to every consumer, exactly like a deletion.
+                if (!record || (record->hostKey == 0 && isRunning(record->state)) || !seen.insert(containerId).second)
                 {
                     continue;
                 }
                 result.push_back(record);
+            }
+        }
+
+        // Say so when the number changes. A container stuck here forever is the
+        // signature of one the resolver can never key -- see the comment on
+        // m_withheldReported -- and it used to be indistinguishable from absence.
+        if (m_withheldReported.exchange(withheld) != withheld && m_logger)
+        {
+            if (withheld == 0)
+            {
+                m_logger(LogLevel::debug, "All running containers are resolved; none withheld from the list.");
+            }
+            else
+            {
+                m_logger(LogLevel::debug,
+                         "Withholding " + std::to_string(withheld) +
+                             " running container(s) from the list until the resolver keys them (e.g. '" +
+                             withheldExample.substr(0, 12) +
+                             "'). A container that stays here is one whose cgroup no process reports.");
             }
         }
 
@@ -149,11 +193,11 @@ namespace wazuh::container_instances
         // record is byte-identical to the stored one: clear any grace mark.
         for (const auto& record : snapshot)
         {
-            if (record.cgroupId == 0)
+            if (record.hostKey == 0)
             {
                 continue;
             }
-            const auto entryIt = m_byCgroup.find(record.cgroupId);
+            const auto entryIt = m_byCgroup.find(record.hostKey);
             if (entryIt != m_byCgroup.end())
             {
                 if (auto* resolved = std::get_if<ResolvedEntry>(&entryIt->second);
@@ -174,12 +218,12 @@ namespace wazuh::container_instances
                 continue;
             }
             const auto& record = it->second;
-            if (record->cgroupId == 0)
+            if (record->hostKey == 0)
             {
                 eraseResolvedLocked(source, containerId);
                 continue;
             }
-            const auto entryIt = m_byCgroup.find(record->cgroupId);
+            const auto entryIt = m_byCgroup.find(record->hostKey);
             if (entryIt != m_byCgroup.end())
             {
                 if (auto* resolved = std::get_if<ResolvedEntry>(&entryIt->second);
@@ -232,6 +276,12 @@ namespace wazuh::container_instances
         }
 
         m_lastReconcile = now;
+
+        // Released before the notify on purpose: an observer's natural first
+        // move is to read the store back, which would deadlock under this lock,
+        // and a slow one would stall every reader for as long as it ran.
+        lock.unlock();
+        notifyLifecycleUnlocked();
     }
 
     void MetadataStore::upsertPending(std::uint64_t cgroupInode, int attempts, TimePoint now)
@@ -279,11 +329,18 @@ namespace wazuh::container_instances
     {
         std::unique_lock lock(m_mutex);
         insertResolvedLocked(source, std::move(record));
+
+        // The cold path publishes containers too — one first seen through an
+        // on-demand resolve is as new to consumers as one the connector found,
+        // and skipping the notify here would make its discovery wait for the
+        // next unrelated reconcile.
+        lock.unlock();
+        notifyLifecycleUnlocked();
     }
 
-    void MetadataStore::insertResolvedLocked(const SourceId& source, ContainerRecord record)
+    void MetadataStore::insertResolvedRawLocked(const SourceId& source, ContainerRecord record)
     {
-        eraseResolvedLocked(source, record.containerId);
+        eraseResolvedRawLocked(source, record.containerId);
 
         auto shared = std::make_shared<const ContainerRecord>(std::move(record));
 
@@ -292,15 +349,15 @@ namespace wazuh::container_instances
         {
             m_byPodContainer[podContainerKey(shared->podUid, shared->containerName)] = shared;
         }
-        if (shared->cgroupId != 0)
+        if (shared->hostKey != 0)
         {
-            const auto it = m_byCgroup.find(shared->cgroupId);
+            const auto it = m_byCgroup.find(shared->hostKey);
             if (it != m_byCgroup.end())
             {
                 if (std::holds_alternative<VerdictEntry>(it->second))
                 {
                     m_logger(LogLevel::info,
-                             "Verdict for cgroup inode " + std::to_string(shared->cgroupId) +
+                             "Verdict for cgroup inode " + std::to_string(shared->hostKey) +
                                  " superseded by container " + shared->containerId);
                 }
                 else if (const auto* resolved = std::get_if<ResolvedEntry>(&it->second))
@@ -317,11 +374,11 @@ namespace wazuh::container_instances
             ResolvedEntry entry;
             entry.record = shared;
             entry.source = source;
-            m_byCgroup[shared->cgroupId] = std::move(entry);
+            m_byCgroup[shared->hostKey] = std::move(entry);
         }
     }
 
-    void MetadataStore::eraseResolvedLocked(const SourceId& source, const std::string& containerId)
+    void MetadataStore::eraseResolvedRawLocked(const SourceId& source, const std::string& containerId)
     {
         const auto sourceIt = m_bySource.find(source);
         if (sourceIt == m_bySource.end())
@@ -343,9 +400,9 @@ namespace wazuh::container_instances
                 m_byPodContainer.erase(podIt);
             }
         }
-        if (record->cgroupId != 0)
+        if (record->hostKey != 0)
         {
-            const auto cgroupIt = m_byCgroup.find(record->cgroupId);
+            const auto cgroupIt = m_byCgroup.find(record->hostKey);
             if (cgroupIt != m_byCgroup.end())
             {
                 if (const auto* resolved = std::get_if<ResolvedEntry>(&cgroupIt->second);
@@ -356,6 +413,152 @@ namespace wazuh::container_instances
             }
         }
         sourceIt->second.erase(it);
+    }
+
+    ContainerRecordPtr MetadataStore::visibleRecordLocked(const std::string& containerId) const
+    {
+        // Mirrors listContainers()' filter, across every source, because the
+        // journal logs transitions of the set that call returns. A container
+        // known to two sources (cri-dockerd reports the same container through
+        // both APIs) is one member, so it appears here once.
+        for (const auto& [source, records] : m_bySource)
+        {
+            const auto it = records.find(containerId);
+            if (it == records.end() || !it->second)
+            {
+                continue;
+            }
+            if (it->second->hostKey == 0 && isRunning(it->second->state))
+            {
+                continue; // Running but unresolved: not published yet.
+            }
+            return it->second;
+        }
+        return nullptr;
+    }
+
+    void MetadataStore::journalTransitionLocked(const std::string& containerId,
+                                                const ContainerRecordPtr& before,
+                                                const ContainerRecordPtr& after)
+    {
+        if (!before && !after)
+        {
+            // Invisible before, invisible after. The commonest case by far: an
+            // unresolved running record being rewritten while the resolver
+            // catches up. Nothing a consumer could act on happened.
+            return;
+        }
+
+        LifecycleEvent event;
+        event.containerId = containerId;
+
+        if (!before)
+        {
+            event.kind = LifecycleKind::added;
+            event.hostKey = after->hostKey;
+            event.record = after;
+        }
+        else if (!after)
+        {
+            event.kind = LifecycleKind::removed;
+            // The inode it had when it left: a consumer keyed on cgroup id
+            // cannot act on a removal it cannot map back to one.
+            event.hostKey = before->hostKey;
+        }
+        else
+        {
+            const auto mask = lifecycleChangeMask(*before, *after);
+
+            if (mask == 0 || mask == LIFECYCLE_METADATA)
+            {
+                // Nothing changed, or only labels/annotations did. Dropped at
+                // append time rather than filtered by the reader: Kubernetes
+                // annotation churn marks records changed on every reconcile, and
+                // letting that into the ring would evict real transitions long
+                // before a consumer's next poll.
+                return;
+            }
+
+            event.kind = LifecycleKind::changed;
+            event.hostKey = after->hostKey;
+            event.changed = mask;
+            event.record = after;
+        }
+
+        m_journal.append(std::move(event));
+        m_lifecycleDirty = true;
+    }
+
+    void MetadataStore::insertResolvedLocked(const SourceId& source, ContainerRecord record)
+    {
+        const auto containerId = record.containerId;
+        const auto before = visibleRecordLocked(containerId);
+
+        insertResolvedRawLocked(source, std::move(record));
+
+        journalTransitionLocked(containerId, before, visibleRecordLocked(containerId));
+    }
+
+    void MetadataStore::eraseResolvedLocked(const SourceId& source, const std::string& containerId)
+    {
+        const auto before = visibleRecordLocked(containerId);
+
+        eraseResolvedRawLocked(source, containerId);
+
+        journalTransitionLocked(containerId, before, visibleRecordLocked(containerId));
+    }
+
+    void MetadataStore::notifyLifecycleUnlocked()
+    {
+        bool dirty = false;
+        LifecycleCursor cursor;
+
+        {
+            std::unique_lock lock(m_mutex);
+            dirty = m_lifecycleDirty;
+            m_lifecycleDirty = false;
+            cursor = m_journal.cursor();
+        }
+
+        if (dirty && m_onLifecycleChange)
+        {
+            m_onLifecycleChange(cursor);
+        }
+    }
+
+    LifecycleDelta MetadataStore::lifecycleSince(const LifecycleCursor& from) const
+    {
+        std::shared_lock lock(m_mutex);
+
+        // listContainers() would take the lock again; build the resync set here
+        // under the one we already hold.
+        std::vector<ContainerRecordPtr> current;
+        std::unordered_set<std::string> seen;
+
+        for (const auto& [source, records] : m_bySource)
+        {
+            for (const auto& [containerId, record] : records)
+            {
+                if (!record || (record->hostKey == 0 && isRunning(record->state)) || !seen.insert(containerId).second)
+                {
+                    continue;
+                }
+                current.push_back(record);
+            }
+        }
+
+        return m_journal.since(from, current);
+    }
+
+    LifecycleCursor MetadataStore::lifecycleCursor() const
+    {
+        std::shared_lock lock(m_mutex);
+        return m_journal.cursor();
+    }
+
+    void MetadataStore::setOnLifecycleChange(std::function<void(LifecycleCursor)> callback)
+    {
+        m_onLifecycleChange = std::move(callback);
     }
 
 } // namespace wazuh::container_instances
