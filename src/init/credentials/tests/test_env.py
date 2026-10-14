@@ -90,13 +90,13 @@ def test_local_beats_indexer_export(resolver, sandbox):
 def test_unsafe_local_env_not_read(resolver, sandbox):
     sandbox.write(os.path.join(sandbox.conf, "local.env"), f"A={SECRET}\n", mode=0o620)
     lookup, report = build(resolver, sandbox, {})
-    assert lookup.get("A") is None
+    assert lookup.get("A") is None and not lookup.inputs_accepted
     assert report.problems == [("UNSAFE", f"{sandbox.conf}/local.env", "group-writable")]
 
 
 def test_malformed_file_contributes_nothing(resolver, sandbox):
     lookup, report = build(resolver, sandbox, {}, local="A=1\nbroken\n")
-    assert lookup.get("A") is None
+    assert lookup.get("A") is None and not lookup.inputs_accepted
     assert report.problems == [("INVALID", f"{sandbox.conf}/local.env:2", "not a NAME=value line")]
 
 
@@ -109,3 +109,11 @@ def test_indexer_export_may_have_its_group_but_not_group_write(resolver, sandbox
     lookup, report = build(resolver, sandbox, {})
     assert lookup.get("WAZUH_INDEXER_MANAGER_PASSWORD") is None
     assert report.problems == [("UNSAFE", sandbox.indexer_export, "group-writable")]
+
+
+def test_rejected_local_does_not_fall_back_to_indexer(resolver, sandbox):
+    lookup, report = build(resolver, sandbox, {}, local="broken\n",
+                           indexer="WAZUH_INDEXER_MANAGER_PASSWORD=from-indexer\n")
+    assert report.has(resolver.INVALID)
+    assert not lookup.inputs_accepted
+    assert lookup.get("WAZUH_INDEXER_MANAGER_PASSWORD") is None

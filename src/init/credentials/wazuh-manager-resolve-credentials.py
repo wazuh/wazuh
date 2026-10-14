@@ -548,6 +548,9 @@ class Lookup:
     def __init__(self, environ: Mapping[str, str], local: Optional[Dict[str, Tuple[str, int]]],
                  indexer: Optional[Dict[str, Tuple[str, int]]], local_path: str, indexer_path: str):
         self.environ = environ
+        # An absent file contributes an empty dict; None means the entire input was rejected.
+        self.local_accepted = local is not None
+        self.inputs_accepted = self.local_accepted and indexer is not None
         self.local = local or {}
         self.indexer = indexer or {}
         self.local_path = local_path
@@ -557,6 +560,8 @@ class Lookup:
         """Return (value, source) or None. `source` names the environment or the file, for messages."""
         if name in self.environ and (self.environ[name] or not empty_is_unset):
             return self.environ[name], "the environment"
+        if not self.local_accepted:
+            return None  # Never fall through a rejected override file to the indexer export.
         if name in self.local and (self.local[name][0] or not empty_is_unset):
             return self.local[name][0], f"{self.local_path}:{self.local[name][1]}"
         if name in INDEXER_EXPORTED and name in self.indexer and (self.indexer[name][0] or not empty_is_unset):
@@ -589,12 +594,12 @@ def open_conf(paths: Paths, report: Report) -> Optional[Dir]:
 
 
 def load_env_file(parent: Dir, name: str, report: Report) -> Optional[Dict[str, Tuple[str, int]]]:
-    """Read and parse one .env file below `parent`. An absent file is no values; an unsafe or malformed one is
-    reported and none of its values is used."""
+    """Read and parse one .env file below `parent`. An absent file returns {}; an unsafe or malformed one
+    is reported and returns None. Rejected input must never be treated as permission to generate defaults."""
     try:
         data = read_file(parent, name, ROOT_FILE)
     except FileNotFoundError:
-        return None
+        return {}
     except UnsafeEntry as exc:
         report.unsafe(exc)
         return None
@@ -610,7 +615,7 @@ def load_indexer_env(paths: Paths, report: Report) -> Optional[Dict[str, Tuple[s
     try:
         export = open_top(paths.indexer_export, INDEXER_EXPORT)
     except FileNotFoundError:
-        return None
+        return {}
     except UnsafeEntry as exc:
         report.unsafe(exc)
         return None
@@ -1915,7 +1920,9 @@ def _writing_mode(mode: str):
                 for kind, subject, reason in checks.problems:
                     if kind == UNSAFE:
                         report.problem(kind, subject, reason)
-            if report.has(UNSAFE):
+            # A rejected .env may contain passwords or certificate settings we could not accept.
+            # Preserve the diagnostic and installer exit contract, but do not initialize from defaults.
+            if report.has(UNSAFE) or not lookup.inputs_accepted:
                 return report.exit_code(mode)
             try:
                 ca = acquire_lock(conf)

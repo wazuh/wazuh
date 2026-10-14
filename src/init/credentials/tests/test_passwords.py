@@ -126,6 +126,63 @@ def test_invalid_supplied_no_fallback(resolver, sandbox, bad):
     assert_no_secret([out, err, out2, err2], bad)
 
 
+@pytest.mark.parametrize("mode,expected", [("--install", 0), ("--upgrade", 0), ("--prestart", 1)])
+@pytest.mark.parametrize("bad_line", [b"broken", b"OTHER='unclosed", b"OTHER=\xff", API.encode() + b"=Duplicate.Passw0rd-1"])
+def test_malformed_local_env_does_not_initialize(resolver, sandbox, monkeypatch, calls, mode, expected, bad_line):
+    """Reject the entire input, then seed the requested passwords once the operator repairs it."""
+    sandbox.stage_ca()
+    local = os.path.join(sandbox.conf, "local.env")
+    requested = f"{API}={GOOD_API}\n{WUI}={GOOD_WUI}\n{IDX}={GOOD_IDX}\n".encode()
+    sandbox.write(local, requested + bad_line + b"\n")
+    sandbox.make_indexer_export(credentials=f"{IDX}=Other.Passw0rd-123\n")
+    before = sandbox.tree_state()
+
+    def forbidden():
+        raise AssertionError("a rejected input must not generate alternative passwords")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(resolver, "generate_password", forbidden)
+        code, out, err = run(resolver, sandbox, mode)
+    assert code == expected and f"INVALID {local}:4: " in err, err
+    assert sandbox.tree_state() == before
+    assert published(sandbox) is None and sandbox.seed_calls() == [] and sandbox.keystore() == {}
+    assert calls == []
+    assert_no_secret([out, err], GOOD_API, GOOD_WUI, GOOD_IDX)
+
+    sandbox.write(local, requested)
+    code, _, err = run(resolver, sandbox, "--install")
+    assert code == 0 and err == "", err
+    assert published(sandbox)[1] == {API: GOOD_API, WUI: GOOD_WUI}
+    assert sandbox.seed_calls() == [{"wazuh": GOOD_API, "wazuh-internal-client": GOOD_WUI}]
+    assert sandbox.keystore()["indexer/password"] == GOOD_IDX
+
+
+@pytest.mark.parametrize("source", ["local", "indexer"])
+def test_rejected_env_does_not_seed_from_other_sources(resolver, sandbox, source):
+    """An explicit environment or an earlier publication must not bypass rejected input files."""
+    sandbox.stage_ca()
+    sandbox.control(rbac_fail_times=1)
+    run(resolver, sandbox, "--install", environ={API: GOOD_API, WUI: GOOD_WUI, IDX: GOOD_IDX})
+    if source == "local":
+        sandbox.write(os.path.join(sandbox.conf, "local.env"), "broken\n")
+    else:
+        sandbox.make_indexer_export(credentials="broken\n")
+    before, seeds = sandbox.tree_state(), sandbox.seed_calls()
+    code, _, err = run(resolver, sandbox, "--install", environ={API: GOOD_API, WUI: GOOD_WUI, IDX: GOOD_IDX})
+    assert code == 0 and "INVALID " in err
+    assert sandbox.tree_state() == before and sandbox.seed_calls() == seeds
+
+
+@pytest.mark.parametrize("text", [None, "", "# No overrides\n"])
+def test_absent_or_empty_local_env_allows_generation(resolver, sandbox, text):
+    if text is not None:
+        sandbox.write(os.path.join(sandbox.conf, "local.env"), text)
+    code, _, err = run(resolver, sandbox, "--install", environ={IDX: GOOD_IDX})
+    assert code == 0 and err == "", err
+    assert len(sandbox.seed_calls()) == 1
+    assert all(resolver.password_problem(value) is None for value in published(sandbox)[1].values())
+
+
 def test_seeded_untouched(resolver, sandbox, calls):
     """A re-run over a seeded database changes nothing."""
     run(resolver, sandbox, "--install", environ={IDX: GOOD_IDX})
