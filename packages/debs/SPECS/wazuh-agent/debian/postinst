@@ -19,6 +19,27 @@ case "$1" in
 
     OSMYSHELL="/sbin/nologin"
 
+    # etc/ and etc/shared/ are writable by ${GROUP} and logs/ belongs to ${USER}, so anything in them
+    # may be a link the service account planted, and cp, chmod and chown follow links. A file root
+    # writes there is built in ${WAZUH_TMP_DIR} (root only) and renamed into place: a rename
+    # replaces a link instead of following it.
+
+    # install_file SOURCE MODE OWNER:GROUP DEST: moves SOURCE, already in ${WAZUH_TMP_DIR}, to DEST.
+    install_file() {
+        chmod "$2" "$1" && chown "$3" "$1" && mv -fT "$1" "$4"
+    }
+
+    # restore_conf_file NAME: puts back the copy of etc/NAME preinst took, root:${GROUP} 0640. A link
+    # in its place is one swapped in while preinst copied, and is dropped.
+    restore_conf_file() {
+        if [ -L ${WAZUH_TMP_DIR}/$1 ]; then
+            rm -f ${WAZUH_TMP_DIR}/$1
+        elif [ -f ${WAZUH_TMP_DIR}/$1 ]; then
+            install_file ${WAZUH_TMP_DIR}/$1 640 root:${GROUP} ${DIR}/etc/$1 \
+                || echo "WARNING: could not restore ${DIR}/etc/$1 from ${WAZUH_TMP_DIR}/$1." >&2
+        fi
+    }
+
     if [ -d /run/systemd/system ]; then
         rm -f /etc/init.d/wazuh-agent
     fi
@@ -77,19 +98,10 @@ case "$1" in
         echo "wazuh-agent: removed the fleet-wide enrollment password at ${DIR}/etc/authd.pass. 5.0 enrols with an enrollment token (WAZUH_ENROLLMENT_TOKEN); an agent enrolled before the upgrade holds no re-enrollment secret and must be re-pointed with a token if the manager stops recognising its key."
     fi
 
-    # Restore the local rules, client.keys and local_decoder
-    if [ -f ${WAZUH_TMP_DIR}/client.keys ]; then
-        cp ${WAZUH_TMP_DIR}/client.keys ${DIR}/etc/client.keys
-    fi
-    # Restore ossec.conf configuration
-    if [ -f ${WAZUH_TMP_DIR}/ossec.conf ]; then
-        mv ${WAZUH_TMP_DIR}/ossec.conf ${DIR}/etc/ossec.conf
-        chmod 640 ${DIR}/etc/ossec.conf
-    fi
-    # Restore internal options configuration
-    if [ -f ${WAZUH_TMP_DIR}/local_internal_options.conf ]; then
-        mv ${WAZUH_TMP_DIR}/local_internal_options.conf ${DIR}/etc/local_internal_options.conf
-    fi
+    # Restore client.keys, ossec.conf and the internal options
+    for CONF_FILE in client.keys ossec.conf local_internal_options.conf; do
+        restore_conf_file ${CONF_FILE}
+    done
 
     # Install the SCA files
     if [ -d "${SCA_BASE_DIR}" ]; then

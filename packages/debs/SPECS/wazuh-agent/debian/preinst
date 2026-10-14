@@ -123,16 +123,14 @@ EOF
             rm /etc/init.d/ossec
         fi
 
-        # back up the current user rules
-        if [ -f ${DIR}/etc/client.keys ]; then
-            cp ${DIR}/etc/client.keys ${WAZUH_TMP_DIR}/client.keys
-        fi
-        if [ -f ${DIR}/etc/local_internal_options.conf ]; then
-            cp -p ${DIR}/etc/local_internal_options.conf ${WAZUH_TMP_DIR}/local_internal_options.conf
-        fi
-        if [ -f ${DIR}/etc/ossec.conf ]; then
-            cp -p ${DIR}/etc/ossec.conf ${WAZUH_TMP_DIR}/ossec.conf
-        fi
+        # Back up the configuration files postinst restores. etc/ is writable by the wazuh group: a
+        # link there is not ours to back up, and cp would carry its target's content into the
+        # restored file. -P keeps one swapped in after the check a link, which postinst skips.
+        for CONF_FILE in client.keys local_internal_options.conf ossec.conf; do
+            if [ -f ${DIR}/etc/${CONF_FILE} ] && [ ! -L ${DIR}/etc/${CONF_FILE} ]; then
+                cp -fpP ${DIR}/etc/${CONF_FILE} ${WAZUH_TMP_DIR}/${CONF_FILE}
+            fi
+        done
 
         if [ -d "${DIR}/etc/shared" ]; then
             if [ "$(ls -A "${DIR}/etc/shared")" ]; then
