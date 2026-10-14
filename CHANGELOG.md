@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.14.11]
 
+### Manager
+
+#### Fixed
+
+- Fixed `wazuh-authd` keeping the connection open when a request has no newline terminator. ([#38184](https://github.com/wazuh/wazuh/issues/38184))
+
 ## [v4.14.10]
 
 ### Manager
