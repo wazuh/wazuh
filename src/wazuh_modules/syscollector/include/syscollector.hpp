@@ -429,12 +429,20 @@ class EXPORTED Syscollector final
         bool recoveryIntervalHasEllapsed(const std::string& tableName, int64_t integrityInterval);
 
         /**
-         * @brief Get the configured document limit for a given index, thread-safely.
+         * @brief Whether a re-send of this index must be restricted to sync=1.
          *
-         * @param index Index name to look up (e.g. "wazuh-states-inventory-packages").
-         * @return The configured limit, or 0 if unlimited/not configured.
+         * The three paths that re-send an index wholesale -- the data-context
+         * fetch, the checksum, and the recovery resync -- have to withhold the
+         * same rows the scan withheld, or a row that was deliberately never
+         * reported reaches the manager by the back door, and the cap holds only
+         * until the next checksum mismatch.
+         *
+         * True when ANY mechanism can leave a row at sync=0: the host budget,
+         * the per-container budget, or the container-count cap. Asking only the
+         * host budget was the defect -- it ships at 0, so these paths took the
+         * unfiltered branch on exactly the default configuration.
          */
-        size_t getDocumentLimit(const std::string& index);
+        bool syncFilterRequired(const std::string& index);
 
         /**
          * @brief Which population of rows a document limit applies to.
@@ -891,6 +899,12 @@ class EXPORTED Syscollector final
         // answer must keep reporting rather than go quiet.
         std::set<std::string>                                                    m_admittedContainers;
         bool                                                                     m_admissionKnown {false};
+
+        // True when at least one known container is being withheld, i.e. the
+        // cap is actually biting. Kept separately because the re-send paths
+        // need to know that SOMETHING can hold a row at sync=0 without having
+        // a container id in hand to ask about.
+        bool                                                                     m_containerAdmissionWithholding {false};
 
         // Mutex for thread-safe access to limits and counts
         std::mutex                                                               m_limitsMutex;
