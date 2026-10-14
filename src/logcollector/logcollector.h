@@ -30,6 +30,9 @@
 #define LOCALFILE_STATUS        "queue/logcollector/file_status.json"
 #endif
 
+///< Maximum size of the status file loaded at start
+#define LOCALFILE_STATUS_MAX_SIZE (10 * 1024 * 1024)
+
 ///< JSON fields for file_status
 #define OS_LOGCOLLECTOR_JSON_FILES      "files"
 #define OS_LOGCOLLECTOR_JSON_PATH       "path"

@@ -2683,24 +2683,29 @@ STATIC void w_initialize_file_status() {
     OSHash_SetFreeDataPointer(files_status, (void (*)(void *))free_files_status_data);
 
     /* Read json file to load last read positions */
-    FILE * fd = NULL;
+    char * status_str = w_get_file_content(LOCALFILE_STATUS, LOCALFILE_STATUS_MAX_SIZE);
 
-    if (fd = wfopen(LOCALFILE_STATUS, "r"), fd != NULL) {
-        char str[OS_MAXSTR] = {0};
+    if (status_str == NULL) {
+        struct stat stat_buf;
 
-        if (fread(str, 1, OS_MAXSTR - 1, fd) < 1) {
-            merror(FREAD_ERROR, LOCALFILE_STATUS, errno, strerror(errno));
-            clearerr(fd);
-        } else {
-            cJSON * global_json = cJSON_Parse(str);
-            w_load_files_status(global_json);
-            cJSON_Delete(global_json);
+        if (w_stat(LOCALFILE_STATUS, &stat_buf) == 0) {
+            mwarn(LOGCOLLECTOR_STATUS_LOAD_FAIL, LOCALFILE_STATUS);
+        } else if (errno != ENOENT) {
+            merror(FOPEN_ERROR, LOCALFILE_STATUS, errno, strerror(errno));
         }
-
-        fclose(fd);
-    } else if (errno != ENOENT) {
-        merror(FOPEN_ERROR, LOCALFILE_STATUS, errno, strerror(errno));
+        return;
     }
+
+    cJSON * global_json = cJSON_Parse(status_str);
+
+    if (global_json == NULL) {
+        mwarn(LOGCOLLECTOR_STATUS_LOAD_FAIL, LOCALFILE_STATUS);
+    } else {
+        w_load_files_status(global_json);
+        cJSON_Delete(global_json);
+    }
+
+    os_free(status_str);
 }
 
 STATIC void w_save_file_status() {

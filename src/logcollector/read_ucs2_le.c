@@ -48,7 +48,7 @@ void *read_ucs2_le(logreader *lf, int *rc, int drop_it) {
         /* Get the last occurrence of \n */
         if ((n = wcsrchr(str, L'\n')) != NULL) {
             if (is_valid_context_file) {
-                OS_SHA1_Stream(context, NULL, (char *) str);
+                OS_SHA1_Stream_Bytes(context, (const char *) str, (size_t) rbytes);
             }
             *n = '\0';
         }
@@ -57,8 +57,8 @@ void *read_ucs2_le(logreader *lf, int *rc, int drop_it) {
          */
         if (rbytes == OS_MAXSTR - OS_LOG_HEADER - 1) {
             /* Message size > maximum allowed */
-            if (is_valid_context_file) {
-                OS_SHA1_Stream(context, NULL, (char *) str);
+            if (is_valid_context_file && n == NULL) {
+                OS_SHA1_Stream_Bytes(context, (const char *) str, (size_t) rbytes);
             }
             __ms = 1;
             str[rbytes - 1] = '\0';
@@ -140,7 +140,7 @@ void *read_ucs2_le(logreader *lf, int *rc, int drop_it) {
                 }
 
                 if (is_valid_context_file) {
-                    OS_SHA1_Stream(context, NULL, (char *) str);
+                    OS_SHA1_Stream_Bytes(context, (const char *) str, (size_t) rbytes);
                 }
 
                 /* Get the last occurrence of \n */
