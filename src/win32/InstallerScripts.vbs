@@ -767,9 +767,10 @@ Public Function SetWazuhPermissions()
 
         ' The agent's own data gets the same treatment as shared: queue holds the FIM report_changes
         ' copies of monitored files and every module database, logs the rotated ossec.log, rids and
-        ' bookmarks the agentd and eventchannel state. Nothing unprivileged reads them (win32ui
-        ' requires elevation), and what the agent creates below them later inherits only the
-        ' Administrators and SYSTEM entries.
+        ' bookmarks the agentd and eventchannel state, and active-response the log of every alert
+        ' that triggered a response. Nothing unprivileged reads them (win32ui requires elevation),
+        ' and what the agent creates below them later inherits only the Administrators and SYSTEM
+        ' entries.
         remAuthenticatedUsersPermsQueueDir = "icacls """ & home_dir & "queue" & """ /remove:g *S-1-5-11 /t /c /q"
         WshShell.run remAuthenticatedUsersPermsQueueDir, 0, True
 
@@ -781,6 +782,9 @@ Public Function SetWazuhPermissions()
 
         remAuthenticatedUsersPermsBookmarksDir = "icacls """ & home_dir & "bookmarks" & """ /remove:g *S-1-5-11 /t /c /q"
         WshShell.run remAuthenticatedUsersPermsBookmarksDir, 0, True
+
+        remAuthenticatedUsersPermsActiveResponseDir = "icacls """ & home_dir & "active-response" & """ /remove:g *S-1-5-11 /t /c /q"
+        WshShell.run remAuthenticatedUsersPermsActiveResponseDir, 0, True
 
         ' The live log sits in the root, so on an upgrade it already exists and gets the grants above.
         remAuthenticatedUsersPermsLog = "icacls """ & home_dir & "ossec.log" & """ /remove *S-1-5-11 /q"

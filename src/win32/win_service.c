@@ -171,8 +171,10 @@ int CheckServiceRunning()
 }
 
 /* Takes the lock that serializes service-restart invocations: tmp\service-restart.lock, opened with no
- * sharing and deleted on close, so it is held exactly as long as the process that opened it and released
- * by the system if that process dies. Only Administrators and SYSTEM can create or open files in tmp\
+ * sharing, so it is held exactly as long as the process that opened it and released by the system if
+ * that process dies. The file is left in place: deleting it on close would leave it delete-pending while
+ * another handle (an antivirus scan) stays open, and an open in that window fails with
+ * ERROR_ACCESS_DENIED instead of ERROR_SHARING_VIOLATION. Only Administrators and SYSTEM can create or open files in tmp\
  * (SetWazuhPermissions), so no other account can hold it -- unlike a named object, whose name any
  * account can take first.
  *
@@ -188,7 +190,7 @@ HANDLE acquire_restart_lock(DWORD wait_ms, int *timed_out)
 
     for (;;) {
         HANDLE lock = CreateFile("tmp\\service-restart.lock", GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_ALWAYS,
-                                 FILE_ATTRIBUTE_NORMAL | FILE_FLAG_DELETE_ON_CLOSE, NULL);
+                                 FILE_ATTRIBUTE_NORMAL, NULL);
 
         if (lock != INVALID_HANDLE_VALUE || GetLastError() != ERROR_SHARING_VIOLATION) {
             return lock;

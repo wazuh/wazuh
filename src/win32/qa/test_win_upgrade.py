@@ -142,16 +142,32 @@ def assert_private_permissions(name):
     assert not unexpected, f"Expected only {sorted(EXPECTED_PRIVATE_SIDS)}, found: {unexpected}"
 
 
-@pytest.mark.parametrize('name', ['shared', 'queue', 'logs', 'rids', 'bookmarks', 'client.keys.save', 'ossec.log'])
+@pytest.mark.parametrize('name', ['shared', 'queue', 'logs', 'rids', 'bookmarks', 'active-response',
+                                  'client.keys.save', 'ossec.log'])
 def test_win_upgrade_private_permissions(name):
     assert_private_permissions(name)
 
 
-def test_win_repair_private_permissions():
+def repair_base_msi(log_name):
     base_msi = list(pathlib.Path(BASE_PATH).glob('*.msi'))[0]
-    os.system(f"start /wait msiexec /fa {str(base_msi.resolve())} /qn /l*v {BASE_PATH}win-agent-repair.log")
+    return os.system(f"start /wait msiexec /fa {str(base_msi.resolve())} /qn /l*v {BASE_PATH}{log_name}")
+
+
+def test_win_repair_private_permissions():
+    assert repair_base_msi('win-agent-repair.log') in (0, 3010)
 
     assert_private_permissions('queue')
+
+
+def test_win_repair_recreated_config_permissions():
+    config_path = INSTALL_PATH + 'ossec.conf'
+    os.replace(config_path, config_path + '.test')
+
+    try:
+        assert repair_base_msi('win-agent-repair-config.log') in (0, 3010)
+        assert_private_permissions('ossec.conf')
+    finally:
+        os.replace(config_path + '.test', config_path)
 
 
 def test_win_upgrade_start_menu():
