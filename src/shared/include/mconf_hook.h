@@ -12,7 +12,7 @@
  * without depending on libconfig/manager_config: libconfig registers a provider at load time
  * (src/config/src/mconf-config.c) and the readers that live in libwazuh -- the cluster getters
  * (cluster_utils.c) and the logging format (debug_op.c) -- ask for their section through it.
- * Without a provider (libwazuhshared.so as loaded by the engine, the agent, unit tests) every
+ * Without a provider (unit tests) every
  * lookup returns NULL and the callers keep their "no configuration" behaviour. Manager only.
  */
 

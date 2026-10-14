@@ -2572,12 +2572,12 @@ component that produced the message:
 2026/04/14 20:09:46 wazuh-manager-analysisd: WARNING: [IOC::Sync] Synchronization cycle failed: No available server
 ```
 
-When debug level is active, additional diagnostic messages appear with the same format:
+When debug level is active, additional diagnostic messages appear and **every** line (not only the
+debug ones) carries the source location: the `<component>:` tag is replaced by
+`<component>[<pid>] <file>:<line> at <function>():`, followed by `LEVEL: message`:
 
 ```
-2026/04/14 20:09:16 wazuh-manager-analysisd: DEBUG: Geo sync scheduled with interval: 360 seconds.
-2026/04/14 20:09:16 wazuh-manager-analysisd: DEBUG: Remote configuration synchronize scheduled with interval: 120 seconds.
-2026/04/14 20:09:16 wazuh-manager-analysisd: DEBUG: IOC Sync task scheduled with interval: 360 seconds, 3 max retries.
+2026/04/14 20:09:16 wazuh-manager-analysisd[<pid>] <file>:<line> at <function>(): DEBUG: <message>
 ```
 
 ### Log types
@@ -2593,6 +2593,11 @@ are written to the log file.
 | `WARNING`  | Something unexpected happened but the Engine kept working. |
 | `ERROR`    | Something went wrong and may have affected event processing. |
 | `CRITICAL` | A serious failure. The Engine may have stopped. |
+
+> [!NOTE]
+> In manager mode the Engine writes only `DEBUG`, `INFO`, `WARNING` and `ERROR` to
+> `wazuh-manager.log`: its `TRACE` messages are written as `DEBUG` and its `CRITICAL` messages
+> as `ERROR`, so the six-level table above does not apply as is.
 
 ### How to enable debug logging
 

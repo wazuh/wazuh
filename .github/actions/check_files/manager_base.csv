@@ -105,7 +105,6 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/wazuh-manager/lib/libtask_manager.so,root,wazuh-manager,750,file,-rwxr-x---,,
 /var/wazuh-manager/lib/libvulnerability_scanner.so,root,wazuh-manager,750,file,-rwxr-x---,,
 /var/wazuh-manager/lib/libwazuhext.so,root,wazuh-manager,750,file,-rwxr-x---,,
-/var/wazuh-manager/lib/libwazuhshared.so,root,wazuh-manager,750,file,-rwxr-x---,,
 /var/wazuh-manager/lib/wazuh-credentials.sh,root,wazuh-manager,640,file,-rw-r-----,,
 /var/wazuh-manager/lib/wazuh-manager-certificates.sh,root,wazuh-manager,640,file,-rw-r-----,,
 /var/wazuh-manager/logs,wazuh-manager,wazuh-manager,770,directory,drwxrwx---,,

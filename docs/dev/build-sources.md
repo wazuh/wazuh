@@ -78,7 +78,7 @@ See [Module signature verification](package-generation.md#windows-agent-package)
 After a successful build, the artifacts are located in the single CMake build tree under `src/`:
 
 - **Executables** (daemons, CLIs, Windows `.exe` files): `src/build/bin/`
-- **Shared libraries** (`libwazuhshared`, `libwazuhext`, module libraries): `src/build/lib/`
+- **Shared libraries** (`libwazuhext`, module libraries): `src/build/lib/`
 - **Engine**: `src/build/engine/wazuh-engine`, installed on the manager as `bin/wazuh-manager-analysisd`
 - **Windows agent**: besides the executables in `src/build/bin/`, `make TARGET=winagent` writes the configuration files the MSI packs (`default-ossec.conf`, `internal_options.conf`, `help_win.txt`, …) into `src/win32/`
 
