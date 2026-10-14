@@ -121,6 +121,9 @@ int send_msg(const char *msg, ssize_t msg_length);
  * The caller must hold the send mutex. */
 void send_set_poll_timeout(int seconds);
 
+/* poll() timeout in seconds for TCP receives when SO_RCVTIMEO is unsupported; 0 otherwise. */
+extern atomic_int_t recv_poll_timeout;
+
 /* Acquire/release the same mutex send_msg() uses around agt->sock, so
  * connect_server() can mutate agt->sock without racing a concurrent sender. */
 void send_mutex_lock(void);

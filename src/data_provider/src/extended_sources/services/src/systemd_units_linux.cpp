@@ -163,7 +163,7 @@ bool SystemdUnitsProvider::getSystemdUnits(std::vector<SystemdUnit>& output)
         const char* str = nullptr;
         uint32_t jobId;
 
-        // ssssssou → 8 elements
+        // (ssssssouso) → 10 elements
         m_dbusWrapper->message_iter_get_basic(&structIter, &str);
         unit.id = str;
         m_dbusWrapper->message_iter_next(&structIter);
@@ -194,6 +194,18 @@ bool SystemdUnitsProvider::getSystemdUnits(std::vector<SystemdUnit>& output)
         m_dbusWrapper->message_iter_get_basic(&structIter, &str);
         unit.jobPath = str;
 
+        // Filter before the per-unit property queries, which cost one D-Bus round trip each.
+        // Inactive not-found units are placeholders only referenced by other units' dependencies.
+        const bool isPlaceholder = unit.loadState == "not-found" && unit.activeState == "inactive";
+
+        if (isPlaceholder || !Utils::endsWith(unit.id, ".service"))
+        {
+            m_dbusWrapper->message_iter_next(&arrayIter);
+            continue;
+        }
+
+        Utils::replaceLast(unit.id, ".service", "");
+
         // Extra properties
         for (const auto& query : m_propertyQueryList)
         {
@@ -221,10 +233,7 @@ bool SystemdUnitsProvider::getSystemdUnits(std::vector<SystemdUnit>& output)
             }
         }
 
-        if (Utils::endsWith(unit.id, ".service") && Utils::replaceLast(unit.id, ".service", ""))
-        {
-            output.emplace_back(std::move(unit));
-        }
+        output.emplace_back(std::move(unit));
 
         m_dbusWrapper->message_iter_next(&arrayIter);
     }

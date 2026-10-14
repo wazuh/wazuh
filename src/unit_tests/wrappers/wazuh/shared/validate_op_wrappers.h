@@ -21,6 +21,8 @@
 
 int __wrap_getDefine_Int(const char *high_name, const char *low_name, int min, int max);
 
+char *__wrap_getDefine_String(const char *high_name, const char *low_name);
+
 int __wrap_OS_IsValidIP(const char *ip_address, os_ip *final_ip);
 
 int __wrap_OS_GetIPv4FromIPv6(char *ip_address, size_t size);

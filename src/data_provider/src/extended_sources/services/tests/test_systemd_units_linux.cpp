@@ -9,6 +9,9 @@
 
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <string>
+#include <tuple>
+#include <vector>
 #include "idbus_wrapper.hpp"
 #include "systemd_units_linux.hpp"
 
@@ -261,41 +264,8 @@ void SetUpTestMock(std::shared_ptr<MockDBusWrapper>& mockDbusWrapper)
                             _))
     .WillOnce(DoAll(SetArgReferee<5>(std::string("enabled")), Return(true)));
 
-    EXPECT_CALL(*mockDbusWrapper,
-                getProperty(conn,
-                            "org.freedesktop.systemd1",
-                            devicePath,
-                            "org.freedesktop.systemd1.Unit",
-                            "FragmentPath",
-                            _))
-    .WillOnce(DoAll(SetArgReferee<5>(std::string("/lib/systemd/system/test_device.device")), Return(true)));
-
-    EXPECT_CALL(*mockDbusWrapper,
-                getProperty(conn,
-                            "org.freedesktop.systemd1",
-                            devicePath,
-                            "org.freedesktop.systemd1.Unit",
-                            "SourcePath",
-                            _))
-    .WillOnce(DoAll(SetArgReferee<5>(std::string("/etc/systemd/system/test_device.device")), Return(true)));
-
-    EXPECT_CALL(*mockDbusWrapper,
-                getProperty(conn,
-                            "org.freedesktop.systemd1",
-                            devicePath,
-                            "org.freedesktop.systemd1.Service",
-                            "User",
-                            _))
-    .WillOnce(DoAll(SetArgReferee<5>(std::string("root")), Return(true)));
-
-    EXPECT_CALL(*mockDbusWrapper,
-                getProperty(conn,
-                            "org.freedesktop.systemd1",
-                            devicePath,
-                            "org.freedesktop.systemd1.Unit",
-                            "UnitFileState",
-                            _))
-    .WillOnce(DoAll(SetArgReferee<5>(std::string("enabled")), Return(true)));
+    // Non-service units are discarded before their properties are queried.
+    EXPECT_CALL(*mockDbusWrapper, getProperty(_, _, devicePath, _, _, _)).Times(0);
 
     EXPECT_CALL(*mockDbusWrapper,
                 getProperty(conn,
@@ -419,6 +389,131 @@ TEST(SystemdUnitsProviderTest, CollectsUnitsSuccessfully)
     EXPECT_EQ(unitsJson[1]["user"],           "root");
     EXPECT_EQ(unitsJson[1]["unit_file_state"], "enabled");
 }
+
+void SetUpSingleUnitMock(std::shared_ptr<MockDBusWrapper>& mockDbusWrapper,
+                         const std::string& loadState,
+                         const std::string& activeState,
+                         const std::string& subState,
+                         bool expectProperties)
+{
+    DBusConnection* conn  = reinterpret_cast<DBusConnection*>(0x1);
+    DBusMessage*    msg   = reinterpret_cast<DBusMessage*>(0x2);
+    DBusMessage*    reply = reinterpret_cast<DBusMessage*>(0x3);
+
+    EXPECT_CALL(*mockDbusWrapper, error_init(_));
+    EXPECT_CALL(*mockDbusWrapper, bus_get_private(DBUS_BUS_SYSTEM, _)).WillOnce(Return(conn));
+    EXPECT_CALL(*mockDbusWrapper, connection_close(conn)).Times(1);
+    EXPECT_CALL(*mockDbusWrapper, connection_unref(conn)).Times(1);
+    EXPECT_CALL(*mockDbusWrapper, error_is_set(_)).WillRepeatedly(Return(false));
+    EXPECT_CALL(*mockDbusWrapper, message_new_method_call(_, _, _, "ListUnits")).WillOnce(Return(msg));
+    EXPECT_CALL(*mockDbusWrapper, connection_send_with_reply_and_block(conn, msg, -1, _)).WillOnce(Return(reply));
+    EXPECT_CALL(*mockDbusWrapper, message_iter_init(reply, _)).WillOnce(Return(true));
+
+    EXPECT_CALL(*mockDbusWrapper, message_iter_get_arg_type(_))
+    .WillOnce(Return(DBUS_TYPE_ARRAY))
+    .WillOnce(Return(DBUS_TYPE_STRUCT))
+    .WillOnce(Return(DBUS_TYPE_INVALID));
+
+    EXPECT_CALL(*mockDbusWrapper, message_iter_recurse(_, _)).WillRepeatedly(Return());
+
+    // ssssssouso: the job id (index 7) is the only non-string field.
+    auto fields = std::make_shared<std::vector<std::string>>(std::vector<std::string>
+    {
+        "apt-daily.service", "apt-daily.service", loadState, activeState, subState, "", servicePath, "", "", "/"
+    });
+    auto index = std::make_shared<size_t>(0);
+
+    EXPECT_CALL(*mockDbusWrapper, message_iter_get_basic(_, _))
+    .Times(10)
+    .WillRepeatedly(Invoke([fields, index](DBusMessageIter*, void* v)
+    {
+        const auto i = (*index)++;
+
+        if (i == 7)
+        {
+            *(uint32_t*)v = 0;
+        }
+        else
+        {
+            *(const char**)v = (*fields)[i].c_str();
+        }
+    }));
+
+    if (expectProperties)
+    {
+        const std::vector<std::tuple<std::string, std::string, std::string>> properties
+        {
+            {"org.freedesktop.systemd1.Unit", "FragmentPath", "/lib/systemd/system/apt-daily.service"},
+            {"org.freedesktop.systemd1.Unit", "SourcePath", "/etc/systemd/system/apt-daily.service"},
+            {"org.freedesktop.systemd1.Service", "User", "root"},
+            {"org.freedesktop.systemd1.Unit", "UnitFileState", "enabled"}
+        };
+
+        for (const auto& [interface, name, value] : properties)
+        {
+            EXPECT_CALL(*mockDbusWrapper, getProperty(conn, "org.freedesktop.systemd1", servicePath, interface, name, _))
+            .WillOnce(DoAll(SetArgReferee<5>(value), Return(true)));
+        }
+    }
+    else
+    {
+        EXPECT_CALL(*mockDbusWrapper, getProperty(_, _, _, _, _, _)).Times(0);
+    }
+
+    EXPECT_CALL(*mockDbusWrapper, message_iter_next(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*mockDbusWrapper, message_unref(_)).WillRepeatedly(Return());
+    EXPECT_CALL(*mockDbusWrapper, error_free(_)).WillRepeatedly(Return());
+}
+
+TEST(SystemdUnitsProviderTest, SkipsInactiveNotFoundUnits)
+{
+    auto mockDbusWrapper = std::make_shared<MockDBusWrapper>();
+
+    SetUpSingleUnitMock(mockDbusWrapper, "not-found", "inactive", "dead", false);
+
+    SystemdUnitsProvider provider(mockDbusWrapper);
+
+    EXPECT_TRUE(provider.collect().empty());
+}
+
+// load_state, active_state, sub_state of units that must still be reported.
+class SystemdUnitsKeptStatesTest : public ::testing::TestWithParam<std::tuple<std::string, std::string, std::string>>
+{
+};
+
+TEST_P(SystemdUnitsKeptStatesTest, ReportsUnitWithItsProperties)
+{
+    const auto& [loadState, activeState, subState] = GetParam();
+    auto mockDbusWrapper = std::make_shared<MockDBusWrapper>();
+
+    SetUpSingleUnitMock(mockDbusWrapper, loadState, activeState, subState, true);
+
+    SystemdUnitsProvider provider(mockDbusWrapper);
+
+    nlohmann::json unitsJson = provider.collect();
+    ASSERT_EQ(unitsJson.size(), 1u);
+    EXPECT_EQ(unitsJson[0]["id"],              "apt-daily");
+    EXPECT_EQ(unitsJson[0]["load_state"],      loadState);
+    EXPECT_EQ(unitsJson[0]["active_state"],    activeState);
+    EXPECT_EQ(unitsJson[0]["sub_state"],       subState);
+    EXPECT_EQ(unitsJson[0]["fragment_path"],   "/lib/systemd/system/apt-daily.service");
+    EXPECT_EQ(unitsJson[0]["source_path"],     "/etc/systemd/system/apt-daily.service");
+    EXPECT_EQ(unitsJson[0]["user"],            "root");
+    EXPECT_EQ(unitsJson[0]["unit_file_state"], "enabled");
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    SystemdUnitsProviderTest,
+    SystemdUnitsKeptStatesTest,
+    ::testing::Values(
+        // Installed but stopped services.
+        std::make_tuple("loaded", "inactive", "dead"),
+        std::make_tuple("masked", "inactive", "dead"),
+        // Unit file removed while the process is still around.
+        std::make_tuple("not-found", "active", "running"),
+        std::make_tuple("not-found", "failed", "failed"),
+        std::make_tuple("not-found", "activating", "start"),
+        std::make_tuple("not-found", "deactivating", "stop-sigterm")));
 
 TEST(SystemdUnitsProviderTest, FailsWhenBusConnectionFails)
 {

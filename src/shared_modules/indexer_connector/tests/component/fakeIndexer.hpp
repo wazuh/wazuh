@@ -38,6 +38,7 @@ private:
     std::function<void(const std::string&)> m_publishCallback = {};
     std::function<std::string(const std::string&)> m_publishResponseCallback = {};
     std::function<std::string(const std::string&)> m_deleteByQueryResponseCallback = {};
+    std::atomic<bool> m_indexMissing = false;
     std::function<std::string(const std::string&)> m_searchCallback = {};
     std::function<void(const std::string&)> m_deleteScrollCallback = {};
 
@@ -125,6 +126,17 @@ public:
     void setDeleteByQueryResponseCallback(std::function<std::string(const std::string&)> callback)
     {
         m_deleteByQueryResponseCallback = std::move(callback);
+    }
+
+    /**
+     * @brief Makes `_delete_by_query` answer 404 unless the request ignores unavailable indices, as an indexer does
+     * when the index was deleted.
+     *
+     * @param missing True to simulate a missing index.
+     */
+    void setIndexMissing(bool missing)
+    {
+        m_indexMissing = missing;
     }
 
     /**
@@ -287,6 +299,13 @@ public:
                       {
                           try
                           {
+                              if (m_indexMissing && req.get_param_value("ignore_unavailable") != "true")
+                              {
+                                  res.status = 404;
+                                  res.set_content(R"({"error":{"type":"index_not_found_exception"},"status":404})",
+                                                  "application/json");
+                                  return;
+                              }
                               if (m_publishCallback)
                               {
                                   m_publishCallback(req.body);

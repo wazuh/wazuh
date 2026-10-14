@@ -68,7 +68,7 @@ list(APPEND shared_tests_flags "${VALIDATE_OP_FLAGS} -Wl,--wrap,syscom_dispatch 
                                 -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
                                 -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown ${DEBUG_OP_WRAPPERS}")
 else()
-list(APPEND shared_tests_flags "${VALIDATE_OP_FLAGS}")
+list(APPEND shared_tests_flags "${VALIDATE_OP_FLAGS} -Wl,--wrap,_merror_exit")
 endif()
 
 list(APPEND shared_tests_names "test_string_op")

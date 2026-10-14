@@ -106,7 +106,7 @@ target_link_libraries(
 
 target_link_libraries(
     test_main-server
-    "${DEBUG_OP_WRAPPERS} -Wl,--wrap,w_get_monotonic_time"
+    "${DEBUG_OP_WRAPPERS} -Wl,--wrap,w_get_monotonic_time -Wl,--wrap,OS_IsValidIP"
 )
 
 add_test(NAME test_main-server COMMAND test_main-server)
