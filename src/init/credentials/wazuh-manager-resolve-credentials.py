@@ -107,6 +107,16 @@ CERT_BACKDATE = datetime.timedelta(days=1)
 REMOTED_SANS_VAR = "WAZUH_MANAGER_REMOTED_CERT_SANS"   # the agent listener's pair
 APID_SANS_VAR = "WAZUH_MANAGER_APID_CERT_SANS"         # the Server API's pair; never inherits remoted's list
 OLD_SANS_VAR = "WAZUH_MANAGER_CERT_SANS"               # named the indexer pair, which the manager no longer issues
+# The indexer's CA and the client pair it issues for this manager: their names in certs/, the import markers, and
+# the files the indexer publishes in its export/.
+INDEXER_CA = "indexer-ca.pem"
+CONNECTOR = "indexer-connector.pem"
+CONNECTOR_KEY = "indexer-connector-key.pem"
+INDEXER_CA_MARKER = ".indexer-ca.imported"
+CONNECTOR_MARKER = ".indexer-connector.imported"
+SOURCE_CA = "ca.pem"
+SOURCE_CLIENT = "manager-client.pem"
+SOURCE_CLIENT_KEY = "manager-client-key.pem"
 # Read with ioctl(2) per interface: the primary IPv4 address. socket does not export the constant.
 SIOCGIFADDR = 0x8915
 # /proc/net/if_inet6 flags of addresses a certificate must not name.
@@ -1114,6 +1124,7 @@ def check_own_ca(paths: Paths, conf: Dir, lookup: Lookup, report: Report) -> Non
             check_bundle(paths, certs, state, report, "check")
         if certs is not None:
             check_server_pairs(paths, certs, state, lookup, report)
+            check_indexer_trust(paths, certs, report)
     finally:
         for opened in (ca, certs):
             if opened is not None:
@@ -1463,6 +1474,233 @@ def validate_san_lists(lookup: Lookup, report: Report) -> None:
                 report.problem(INVALID, var, f"{problem} (set in {found[1]})")
 
 
+# ================================================= Indexer trust ===============================================
+
+
+@dataclasses.dataclass(frozen=True)
+class ImportUnit:
+    """Files imported together from the indexer's export: `files[i]` in certs/ comes from `sources[i]`, in the
+    order they are written (a key before its certificate). The marker says this manager imported them."""
+
+    label: str
+    files: Tuple[str, ...]
+    sources: Tuple[str, ...]
+    marker: str
+    missing: str
+
+
+CA_UNIT = ImportUnit("the indexer CA", (INDEXER_CA,), (SOURCE_CA,), INDEXER_CA_MARKER,
+                     "install wazuh-indexer on this host first, or stage the indexer's export/ca.pem there")
+PAIR_UNIT = ImportUnit("the indexer client pair", (CONNECTOR_KEY, CONNECTOR), (SOURCE_CLIENT_KEY, SOURCE_CLIENT),
+                       CONNECTOR_MARKER, "install wazuh-indexer on this host first, or stage a pair issued by the "
+                                         "indexer's CA for this node")
+
+
+def indexer_ca_problem(data: bytes) -> Tuple[Optional[List[x509.Certificate]], Optional[str]]:
+    """The indexer's CA file: one or more CA certificates, each inside its validity window."""
+    try:
+        certs = x509.load_pem_x509_certificates(data)
+    except ValueError:
+        return None, "not a PEM certificate"
+    now = _now()
+    for cert in certs:
+        try:
+            is_ca = cert.extensions.get_extension_for_class(x509.BasicConstraints).value.ca
+        except x509.ExtensionNotFound:
+            is_ca = False
+        if not is_ca:
+            return None, "not a CA certificate (basicConstraints CA:TRUE missing)"
+        if not cert.not_valid_before_utc <= now <= cert.not_valid_after_utc:
+            return None, "expired" if now > cert.not_valid_after_utc else "not valid yet"
+    return certs, None
+
+
+def connector_problem(cert_data: bytes, key_data: bytes, cas: List[x509.Certificate],
+                      ca_path: str) -> Optional[str]:
+    """The client pair the manager presents to the indexer: directly issued by the indexer's CA, inside its window,
+    not a CA, with an extendedKeyUsage that includes clientAuth, and matching its key. Checked here because nothing
+    else looks at it before the first handshake."""
+    try:
+        leaf = x509.load_pem_x509_certificates(cert_data)[0]
+    except ValueError:
+        return "not a PEM certificate"
+    _, problem = ca_key_problem(key_data, leaf)
+    if problem:
+        return "its key does not match it" if "match" in problem else f"its key is {problem}"
+    now = _now()
+    if not leaf.not_valid_before_utc <= now <= leaf.not_valid_after_utc:
+        return "expired" if now > leaf.not_valid_after_utc else "not valid yet"
+    try:
+        if leaf.extensions.get_extension_for_class(x509.BasicConstraints).value.ca:
+            return "a CA certificate, not a client certificate"
+    except x509.ExtensionNotFound:
+        pass
+    try:
+        usages = leaf.extensions.get_extension_for_class(x509.ExtendedKeyUsage).value
+    except x509.ExtensionNotFound:
+        usages = []
+    if ExtendedKeyUsageOID.CLIENT_AUTH not in usages:
+        return "has no extendedKeyUsage with clientAuth"
+    if not any(_issued_by(leaf, ca) for ca in cas):
+        return f"not issued by {ca_path}"
+    return None
+
+
+def open_indexer_source(paths: Paths, report: Report):
+    """The indexer's export/ as a Dir; None when it does not exist; "unsafe" (reported) when root may not trust it."""
+    try:
+        return open_top(paths.indexer_export, INDEXER_EXPORT)
+    except FileNotFoundError:
+        return None
+    except UnsafeEntry as exc:
+        report.unsafe(exc)
+        return "unsafe"
+
+
+def read_source(source, unit: ImportUnit, report: Report):
+    """The unit's files from the export, keyed by their names in certs/: None when any is absent, "unsafe" when any
+    fails rule 1 (reported)."""
+    if source is None or source == "unsafe":
+        return source
+    contents = {}
+    for name, target in zip(unit.sources, unit.files):
+        try:
+            contents[target] = read_file(source, name, ROOT_FILE)
+        except FileNotFoundError:
+            return None
+        except UnsafeEntry as exc:
+            report.unsafe(exc)
+            return "unsafe"
+    return contents
+
+
+def import_state(certs: Dir, unit: ImportUnit) -> str:
+    """imported (the marker is there) · staged (every file, no marker) · half (some files, no marker) · absent."""
+    if _exists(certs, unit.marker):
+        return "imported"
+    present = [_exists(certs, name) for name in unit.files]
+    if all(present):
+        return "staged"
+    return "half" if any(present) else "absent"
+
+
+def _write_unit(paths: Paths, certs: Dir, unit: ImportUnit, contents: Dict[str, bytes], marker_present: bool) -> None:
+    """The marker first: a run interrupted after it finds a marked, incomplete unit and imports it again, where an
+    unmarked one would pass for staged and never be replaced."""
+    gid = paths.service_gid()
+    if not marker_present:
+        write_file(certs, unit.marker, b"", 0o640, 0, gid)
+    for name in unit.files:
+        write_file(certs, name, contents[name], 0o640, 0, gid)
+
+
+def _handle_unit(paths: Paths, certs: Dir, source, unit: ImportUnit, validate, report: Report):
+    """Apply the import rule to one unit. Returns its validated contents in certs/ (name -> bytes), or None."""
+    state = import_state(certs, unit)
+    if state == "half":
+        present = [n for n in unit.files if _exists(certs, n)][0]
+        missing = [n for n in unit.files if not _exists(certs, n)][0]
+        report.problem(INVALID, certs.child(present), f"half a pair ({missing} is missing)")
+        return None
+    complete = all(_exists(certs, name) for name in unit.files)
+    current = None
+    if complete:
+        try:
+            current = {name: read_file(certs, name, certs_file_spec(paths)) for name in unit.files}
+        except UnsafeEntry as exc:
+            report.unsafe(exc)
+            return None
+    blamed = certs.child(unit.files[-1])
+    if state == "staged":
+        problem = validate(current)
+        if problem:
+            report.problem(INVALID, blamed, problem)
+            return None
+        report.progress(f"{blamed}: staged; kept as it is")
+        return current
+    incoming = read_source(source, unit, report)
+    source_cert = os.path.join(paths.indexer_export, unit.sources[-1])
+    if complete and state == "imported" and (not isinstance(incoming, dict) or incoming == current):
+        problem = validate(current)
+        if problem:
+            report.problem(INVALID, blamed, problem)
+            return None
+        report.progress(f"{blamed}: imported earlier; unchanged")
+        return current
+    if isinstance(incoming, dict):
+        problem = validate(incoming)
+        if problem:
+            report.problem(INVALID, source_cert, problem)
+            return None
+        _write_unit(paths, certs, unit, incoming, state == "imported")
+        report.progress(f"{blamed}: {'re-imported' if complete else 'imported'} from {paths.indexer_export}")
+        return incoming
+    if incoming is None:
+        report.problem(MISSING, blamed, unit.missing)
+    return None
+
+
+def step_indexer_trust(paths: Paths, certs: Dir, report: Report) -> None:
+    """The indexer's CA, then the client pair checked against whichever CA is now in place (staged or imported)."""
+    source = open_indexer_source(paths, report)
+    # An export holding a single file root may not trust is suspect as a whole: nothing is imported from it in
+    # this run, and what is already in certs/ stays (a CA imported alone could leave the kept pair without its issuer).
+    if isinstance(source, Dir) and "unsafe" in (read_source(source, CA_UNIT, report),
+                                                 read_source(source, PAIR_UNIT, report)):
+        source.close()
+        source = "unsafe"
+    try:
+        ca_path = certs.child(INDEXER_CA)
+        ca_contents = _handle_unit(paths, certs, source, CA_UNIT,
+                                   lambda c: indexer_ca_problem(c[INDEXER_CA])[1], report)
+        if ca_contents is None:
+            if import_state(certs, PAIR_UNIT) == "absent" and read_source(source, PAIR_UNIT, report) is None:
+                report.problem(MISSING, certs.child(CONNECTOR), PAIR_UNIT.missing)
+            return
+        cas, _ = indexer_ca_problem(ca_contents[INDEXER_CA])
+        _handle_unit(paths, certs, source, PAIR_UNIT,
+                     lambda c: connector_problem(c[CONNECTOR], c[CONNECTOR_KEY], cas, ca_path), report)
+    finally:
+        if isinstance(source, Dir):
+            source.close()
+
+
+def check_indexer_trust(paths: Paths, certs: Dir, report: Report) -> None:
+    """--check's part: validate what is in certs/ and the export's safety; never MISSING, no write."""
+    source = open_indexer_source(paths, report)
+    try:
+        for unit in (CA_UNIT, PAIR_UNIT):
+            read_source(source, unit, report)              # rule 1 on the export's files, reported if unsafe
+        cas = None
+        state = import_state(certs, CA_UNIT)
+        if state in ("staged", "imported") and _exists(certs, INDEXER_CA):
+            try:
+                cas, problem = indexer_ca_problem(read_file(certs, INDEXER_CA, certs_file_spec(paths)))
+            except UnsafeEntry as exc:
+                report.unsafe(exc)
+                problem = None
+            if problem:
+                report.problem(INVALID, certs.child(INDEXER_CA), problem)
+        state = import_state(certs, PAIR_UNIT)
+        if state == "half":
+            present = [n for n in PAIR_UNIT.files if _exists(certs, n)][0]
+            missing = [n for n in PAIR_UNIT.files if not _exists(certs, n)][0]
+            report.problem(INVALID, certs.child(present), f"half a pair ({missing} is missing)")
+        elif cas is not None and all(_exists(certs, n) for n in PAIR_UNIT.files):
+            try:
+                spec = certs_file_spec(paths)
+                problem = connector_problem(read_file(certs, CONNECTOR, spec), read_file(certs, CONNECTOR_KEY, spec),
+                                            cas, certs.child(INDEXER_CA))
+            except UnsafeEntry as exc:
+                report.unsafe(exc)
+                problem = None
+            if problem:
+                report.problem(INVALID, certs.child(CONNECTOR), problem)
+    finally:
+        if isinstance(source, Dir):
+            source.close()
+
+
 # ==================================================== Lock =====================================================
 
 CA_SPEC = Spec("dir", uid=0, gid=0, mode=0o700)
@@ -1540,7 +1778,7 @@ def _writing_mode(mode: str):
                         state = step_own_ca(paths, conf, certs, ca, lookup, report, mode)
                         if state is not None:
                             step_server_pairs(paths, certs, state, lookup, report, mode)
-                # The indexer trust is added by a later stage.
+                        step_indexer_trust(paths, certs, report)
         return report.exit_code(mode)
     return run
 

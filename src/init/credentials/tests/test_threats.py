@@ -12,6 +12,7 @@ entry, the use of content it wrote, or a secret.
 
 import io
 import os
+import shutil
 import stat
 
 import pytest
@@ -84,6 +85,7 @@ def test_indexer_export_unsafe(resolver, sandbox, variant):
         real = sandbox.path("real-export")
         os.mkdir(real, 0o750)
         sandbox.write(os.path.join(real, "credentials.env"), secret_line)
+        shutil.rmtree(sandbox.indexer_export)          # the sandbox's default export, replaced by the link
         os.symlink(real, sandbox.indexer_export)
     else:
         sandbox.make_indexer_export(mode=0o770 if variant == "group-writable dir" else 0o750)

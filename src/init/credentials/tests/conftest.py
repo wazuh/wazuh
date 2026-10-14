@@ -24,7 +24,13 @@ import stat
 import sys
 import tempfile
 
+import datetime
+
 import pytest
+from cryptography import x509
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
 
 PROGRAM = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                        "wazuh-manager-resolve-credentials.py")
@@ -152,6 +158,7 @@ class Sandbox:
         self.paths = resolver.Paths(home=self.home, conf=self.conf, indexer_export=self.indexer_export,
                                     service_user=ACCOUNT, service_group=ACCOUNT, proc=self.proc)
         install_stubs(self)
+        self.make_indexer_trust()
 
     def write_proc(self, route=None, ipv6_route=None, if_inet6=None):
         """/proc/net fixtures. Default: eth0 carries both default routes and has one global IPv6 address; docker0
@@ -171,6 +178,47 @@ class Sandbox:
                            ("if_inet6", default_inet6 if if_inet6 is None else if_inet6)):
             with open(os.path.join(net, name), "w") as handle:
                 handle.write(text)
+
+    def make_indexer_trust(self, eku="client", ca_is_ca=True, foreign=False, expired=False, key_mismatch=False,
+                           mode=0o750):
+        """What wazuh-indexer publishes on this host for the manager: its CA (export/ca.pem) and a client pair it
+        issued (export/manager-client.pem, leaf then CA, and its key). The keyword arguments break one property.
+        Returns {"ca": ca_pem, "client": client_pem, "key": key_pem}."""
+        now = datetime.datetime.now(datetime.timezone.utc)
+        ca_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        ca_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "wazuh-indexer-ca")])
+        ca = (x509.CertificateBuilder().subject_name(ca_name).issuer_name(ca_name).public_key(ca_key.public_key())
+              .serial_number(x509.random_serial_number())
+              .not_valid_before(now - datetime.timedelta(days=1)).not_valid_after(now + datetime.timedelta(days=3650))
+              .add_extension(x509.BasicConstraints(ca=ca_is_ca, path_length=None), critical=True)
+              .sign(ca_key, hashes.SHA256()))
+        signer, issuer = ca_key, ca_name
+        if foreign:
+            signer = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        window = (now - datetime.timedelta(days=60), now - datetime.timedelta(days=1)) if expired else \
+                 (now - datetime.timedelta(days=1), now + datetime.timedelta(days=3650))
+        builder = (x509.CertificateBuilder()
+                   .subject_name(x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "wazuh-manager")]))
+                   .issuer_name(issuer).public_key(key.public_key()).serial_number(x509.random_serial_number())
+                   .not_valid_before(window[0]).not_valid_after(window[1])
+                   .add_extension(x509.BasicConstraints(ca=False, path_length=None), critical=True))
+        if eku == "client":
+            builder = builder.add_extension(x509.ExtendedKeyUsage([ExtendedKeyUsageOID.CLIENT_AUTH]), critical=False)
+        elif eku == "server":
+            builder = builder.add_extension(x509.ExtendedKeyUsage([ExtendedKeyUsageOID.SERVER_AUTH]), critical=False)
+        leaf = builder.sign(signer, hashes.SHA256())
+        pem = lambda c: c.public_bytes(serialization.Encoding.PEM)
+        key_pem = (rsa.generate_private_key(public_exponent=65537, key_size=2048) if key_mismatch else key) \
+            .private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption())
+        os.makedirs(self.indexer_export, exist_ok=True)
+        os.chown(self.indexer_export, 0, 0)
+        os.chmod(self.indexer_export, mode)
+        files = {"ca": pem(ca), "client": pem(leaf) + pem(ca), "key": key_pem}
+        self.write(os.path.join(self.indexer_export, "ca.pem"), files["ca"], mode=0o644)
+        self.write(os.path.join(self.indexer_export, "manager-client.pem"), files["client"], mode=0o600)
+        self.write(os.path.join(self.indexer_export, "manager-client-key.pem"), files["key"], mode=0o600)
+        return files
 
     def stage_ca(self, node="node1", key=True, bundle=True, pairs=True):
         """What a finished --install leaves, made with the program itself: the CA (without the mint marker, so it
