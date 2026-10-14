@@ -109,11 +109,6 @@ def test_internal_error_prints_no_value(resolver, sandbox, monkeypatch):
     assert secret not in out + err
 
 
-def test_clear_not_implemented_yet(resolver, sandbox):
-    code, _, err = run_main(resolver, ["--clear"], sandbox)
-    assert code == 2 and "not implemented" in err
-
-
 @pytest.mark.parametrize("mode,expected", [("install", 0), ("upgrade", 0), ("prestart", 1), ("check", 1)])
 def test_exit_contract_with_a_problem(resolver, sandbox, mode, expected):
     sandbox.write(os.path.join(sandbox.conf, "local.env"), "X\n")

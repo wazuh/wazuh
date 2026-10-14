@@ -258,7 +258,7 @@ def test_username_backfill(resolver, sandbox):
     """test_resolve_credentials.sh:527-546: a password with no username gets wazuh-manager."""
     sandbox.stage_ca()
     import json
-    with open(os.path.join(sandbox.home, "keystore.json"), "w") as handle:
+    with open(os.path.join(sandbox.keystore_dir, "keystore.json"), "w") as handle:
         json.dump({"indexer/password": GOOD_IDX}, handle)
     assert run(resolver, sandbox, "--prestart")[0] == 0
     assert sandbox.keystore() == {"indexer/password": GOOD_IDX, "indexer/username": "wazuh-manager"}

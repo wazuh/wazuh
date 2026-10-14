@@ -21,6 +21,7 @@ import datetime  # noqa: E402
 import errno  # noqa: E402
 import fcntl  # noqa: E402
 import grp  # noqa: E402
+import io  # noqa: E402
 import ipaddress  # noqa: E402
 import json  # noqa: E402
 import pwd  # noqa: E402
@@ -1869,9 +1870,243 @@ def _writing_mode(mode: str):
     return run
 
 
+# ==================================================== Clear ====================================================
+#
+# --clear resets a host, or an image built by installing the package, so that the next --install resolves from
+# nothing. It removes what the resolver made and keeps what it was given. Below the home it crosses directories
+# the service account can write: there it only deletes, which gives the account nothing it could not do itself,
+# so their owner is not checked; what must never happen is following a link out of the tree, and every
+# directory is entered through its parent's descriptor with O_NOFOLLOW.
+
+PIDFILE = re.compile(r"^.+-([0-9]{1,7})\.pid$")       # <daemon>-<pid>.pid, as the daemons name them
+PID_MAX = 4194304                                     # the kernel's ceiling for pid_max
+RBAC_FILES = ("rbac.db", "rbac.db.tmp")
+SECURITY_DIR = ("api", "configuration", "security")
+KEYSTORE_DIR = ("queue", "keystore")
+RUN_DIR = ("var", "run")
+
+
+def walk_dir(parent: Dir, name: str) -> Dir:
+    """Open the directory `name` below `parent`, whoever owns it, never through a symbolic link.
+
+    Raises
+    ------
+    FileNotFoundError
+        It does not exist.
+    UnsafeEntry
+        It is a symbolic link or not a directory.
+    """
+    path = parent.child(name)
+    fd = _open_dir_fd(name, parent.fd, path)
+    return Dir(fd, path, os.fstat(fd))
+
+
+def walk_path(top: Dir, parts: Tuple[str, ...]) -> Optional[Dir]:
+    """`walk_dir` component by component; None when one is absent."""
+    current = top
+    try:
+        for name in parts:
+            child = walk_dir(current, name)
+            if current is not top:
+                current.close()
+            current = child
+    except FileNotFoundError:
+        if current is not top:
+            current.close()
+        return None
+    except BaseException:
+        if current is not top:
+            current.close()
+        raise
+    return current
+
+
+def running_daemons(paths: Paths, home: Dir) -> List[Tuple[str, int]]:
+    """The pidfiles in <home>/var/run that name a live process. Only names are read: the pid is the one in the
+    file name, so nothing in that service-writable directory is opened. A planted pidfile can only block --clear.
+
+    Raises
+    ------
+    UnsafeEntry
+        var/run, or a directory above it, is a symbolic link or not a directory.
+    """
+    run = walk_path(home, RUN_DIR)
+    if run is None:
+        return []
+    with run:
+        names = sorted(os.listdir(run.fd))
+    live = []
+    for name in names:
+        match = PIDFILE.match(name)
+        if match is None:
+            continue
+        pid = int(match.group(1))
+        if not 1 <= pid <= PID_MAX:            # never kill(0) or kill(-1): those name process groups
+            continue
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            continue
+        except PermissionError:
+            pass                               # it exists, it is just not ours to signal
+        if os.path.isdir(os.path.join(paths.proc, str(pid))):
+            live.append((os.path.join(run.path, name), pid))
+    return live
+
+
+def _remove(parent: Dir, name: str, report: Report) -> bool:
+    """Remove one entry and say so. A failure is a problem: a clear that did not happen is never claimed."""
+    try:
+        if remove_entry(parent, name):
+            report.progress(f"removed {parent.child(name)}")
+        return True
+    except OSError as exc:
+        report.problem(INVALID, parent.child(name), f"could not remove it ({exc.strerror})")
+        return False
+
+
+def empty_dir(directory: Dir, report: Report) -> int:
+    """Remove every entry of `directory` through its descriptor, subdirectories included; the directory stays.
+    Returns how many entries were removed; failures are reported."""
+    removed = 0
+    for name in sorted(os.listdir(directory.fd)):
+        path = directory.child(name)
+        try:
+            st = os.stat(name, dir_fd=directory.fd, follow_symlinks=False)
+            if stat.S_ISDIR(st.st_mode):
+                with walk_dir(directory, name) as sub:
+                    removed += empty_dir(sub, report)
+                os.rmdir(name, dir_fd=directory.fd)
+            else:
+                os.unlink(name, dir_fd=directory.fd)
+            removed += 1
+        except FileNotFoundError:
+            continue
+        except UnsafeEntry as exc:
+            report.unsafe(exc)
+        except OSError as exc:
+            report.problem(INVALID, path, f"could not remove it ({exc.strerror})")
+    return removed
+
+
+def clear_certs(certs: Dir, report: Report) -> None:
+    """The server pairs and the agents' bundle always; the indexer's files only when this manager imported them."""
+    for name in SERVER_PAIR_FILES + (BUNDLE,):
+        _remove(certs, name, report)
+    for unit in (CA_UNIT, PAIR_UNIT):
+        if import_state(certs, unit) == "imported":
+            # Files first, the marker last: an interrupted clear leaves a marked unit, which the next clear finishes.
+            if all([_remove(certs, name, report) for name in unit.files]):
+                _remove(certs, unit.marker, report)
+            continue
+        for name in unit.files:
+            if _exists(certs, name):
+                report.progress(f"kept {certs.child(name)}: staged, no import marker")
+
+
+def clear_ca(ca: Dir, report: Report) -> None:
+    """The CA this host minted (its marker says so); a CA the operator staged is not ours to destroy."""
+    if _exists(ca, CA_MARKER):
+        if all([_remove(ca, name, report) for name in (CA_KEY, CA_CERT)]):
+            _remove(ca, CA_MARKER, report)
+        return
+    for name in (CA_CERT, CA_KEY):
+        if _exists(ca, name):
+            report.progress(f"kept {ca.child(name)}: staged by the operator, no mint marker")
+
+
+def clear_preconditions(paths: Paths, conf: Dir, ca: Dir, export: Optional[Dir], certs: Optional[Dir],
+                        environ: Mapping[str, str], report: Report) -> None:
+    """--check's safety tests, keeping only UNSAFE: invalid material is about to go, and is no reason to refuse.
+    The swap and ownership tests are repeated on the descriptors the removals will use, because ca/ and export/ can
+    be renamed in <CONF> between a test by name and the opening of the lock."""
+    scratch = Report(quiet=True, out=io.StringIO(), err=io.StringIO())
+    run_checks(paths, conf, build_lookup(paths, conf, scratch, environ), scratch)
+    for kind, subject, reason in scratch.problems:
+        if kind == UNSAFE:
+            report.problem(kind, subject, reason)
+    for opened, foreign, owner in ((ca, EXPORT_FILES, EXPORT_DIR), (export, CA_FILES, CA_DIR)):
+        if opened is not None:
+            for name in sorted(set(os.listdir(opened.fd)) & set(foreign)):
+                report.problem(UNSAFE, opened.path, f"holds {name}, which belongs in {owner}/")
+    if certs is not None:
+        check_certs_entries(certs, report)
+
+
 def mode_clear(paths: Paths, report: Report, environ: Mapping[str, str]) -> int:
-    print(f"{LOG_TAG}: --clear is not implemented yet", file=report.err)
-    return 2
+    try:
+        home = open_top(paths.home, Spec("dir"))
+    except FileNotFoundError:
+        report.problem(INVALID, paths.home, "no such directory")
+        return 1
+    except UnsafeEntry as exc:
+        report.unsafe(exc)
+        return 1
+    opened: List[Dir] = [home]
+    try:
+        try:
+            live = running_daemons(paths, home)
+        except UnsafeEntry as exc:
+            report.unsafe(exc)
+            return 1
+        if live:
+            for pidfile, pid in live:
+                print(f"{LOG_TAG}: --clear refused: {pidfile} names the running process {pid}", file=report.err)
+            print(f"{LOG_TAG}: stop the manager first: wazuh-manager-control stop", file=report.err)
+            return 1
+        conf = open_conf(paths, report)
+        if conf is None:
+            return 1
+        opened.append(conf)
+        try:
+            ca = acquire_lock(conf)
+        except UnsafeEntry as exc:
+            report.unsafe(exc)
+            return 1
+        opened.append(ca)
+        export = _open_optional_dir(conf, EXPORT_DIR, EXPORT_SPEC, report)
+        certs = _open_optional_dir(conf, CERTS_DIR, certs_spec(paths), report)
+        opened.extend(d for d in (export, certs) if d is not None)
+        security = keystore = None
+        try:
+            security = walk_path(home, SECURITY_DIR)
+            if security is not None:
+                opened.append(security)
+            keystore = walk_path(home, KEYSTORE_DIR)
+            if keystore is not None:
+                opened.append(keystore)
+        except UnsafeEntry as exc:
+            report.unsafe(exc)
+        clear_preconditions(paths, conf, ca, export, certs, environ, report)
+        if report.has(UNSAFE):
+            report.progress("nothing was removed")
+            return 1
+
+        if certs is not None:
+            clear_certs(certs, report)
+        clear_ca(ca, report)
+        if export is not None:
+            for name in sorted(os.listdir(export.fd)):
+                _remove(export, name, report)
+        if security is not None:
+            for name in RBAC_FILES:
+                if _exists(security, name):
+                    if _remove(security, name, report) and name == RBAC_FILES[0]:
+                        report.progress("every Server API user, role and policy it held is gone, not only the "
+                                        "default users")
+        if keystore is not None:
+            count = empty_dir(keystore, report)
+            if count:
+                report.progress(f"emptied {keystore.path} ({count} entries): the indexer password is gone")
+        if _exists(conf, LOCAL_ENV):
+            report.progress(f"kept {conf.child(LOCAL_ENV)}")
+        if report.has():
+            return 1
+        report.progress("cleared; the next --install resolves from nothing")
+        return 0
+    finally:
+        for directory in reversed(opened):
+            directory.close()
 
 
 MODE_HANDLERS = {

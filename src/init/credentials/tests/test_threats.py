@@ -11,6 +11,7 @@ entry, the use of content it wrote, or a secret.
 """
 
 import io
+import json
 import os
 import shutil
 import stat
@@ -340,4 +341,4 @@ def test_planted_drill(resolver, sandbox):
     code, _, err = run_env(resolver, sandbox, "--prestart")
     assert code == 0, err
     assert fingerprints(sandbox) == reference
-    assert "Planted.Passw0rd-1" not in open(os.path.join(sandbox.home, "keystore.json")).read()
+    assert "Planted.Passw0rd-1" not in json.dumps(sandbox.keystore())

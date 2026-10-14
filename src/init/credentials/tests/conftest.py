@@ -78,7 +78,7 @@ KEYSTORE_STUB = """
 import json, os, sys
 home = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
 control = json.load(open(os.path.join(home, "stub-control.json")))
-store_path = os.path.join(home, "keystore.json")
+store_path = os.path.join(home, "queue", "keystore", "keystore.json")
 store = json.load(open(store_path)) if os.path.exists(store_path) else {}
 args = sys.argv[1:]
 family, key, get = args[args.index("-f") + 1], args[args.index("-k") + 1], "-g" in args
@@ -162,6 +162,15 @@ class Sandbox:
         os.chown(self.conf, 0, self.account_gid)
         os.chmod(self.conf, 0o770)
         os.mkdir(self.home, 0o750)
+        # The home-side directories --clear walks, owned as the installer leaves them.
+        for parts, uid, gid, mode in ((("queue",), "account", "account", 0o770),
+                                      (("queue", "keystore"), "account", "account", 0o750),
+                                      (("var",), 0, "account", 0o750),
+                                      (("var", "run"), 0, "account", 0o770)):
+            path = os.path.join(self.home, *parts)
+            os.mkdir(path)
+            os.chown(path, self.account_uid if uid == "account" else uid, self.account_gid)
+            os.chmod(path, mode)
         # certs/ as the installer leaves it (src/init/inst-functions.sh SetCertsOwnership): the resolver never creates it.
         self.certs = os.path.join(self.conf, "certs")
         os.mkdir(self.certs)
@@ -269,8 +278,12 @@ class Sandbox:
         with open(os.path.join(self.home, "stub-control.json"), "w") as handle:
             json.dump(settings, handle)
 
+    @property
+    def keystore_dir(self):
+        return os.path.join(self.home, "queue", "keystore")
+
     def keystore(self):
-        path = os.path.join(self.home, "keystore.json")
+        path = os.path.join(self.keystore_dir, "keystore.json")
         return json.load(open(path)) if os.path.exists(path) else {}
 
     def seed_calls(self):
