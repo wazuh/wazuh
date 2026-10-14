@@ -1981,7 +1981,7 @@ void test_wm_office365_get_content_blobs_response_max_size_reached(void **state)
     os_calloc(1, sizeof(curl_response), data->response);
     data->response->status_code = 200;
     os_strdup("{\"access_token\":\"wazuh\"}", data->response->body);
-    // The headers arrive in full even when the body is over the limit
+    // Only the body is over the limit here, so the headers, and the next page link, are complete
     os_strdup("Content-Type: application/json\r\n"
               "NextPageUri: https://manage.office.com/api/v1.0/tenant/activity/feed/subscriptions/content?nextPage=abc123\r\n",
               data->response->header);
@@ -2020,6 +2020,58 @@ void test_wm_office365_get_content_blobs_response_max_size_reached(void **state)
     os_free(data->response->body);
     os_free(data->response->header);
     os_free(data->response);
+}
+
+// An error answer larger than curl_max_size is reported as an error, not as an oversized page,
+// so the caller fails the scan and retries the window.
+void test_wm_office365_get_content_blobs_error_max_size_reached(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    size_t max_size = OS_SIZE_8192;
+
+    const char* url = "test_url";
+    const char* token = "test_token";
+    char *next_page_value = NULL;
+    char **next_page = &next_page_value;
+    bool buffer_size_reached = 0;
+    char *error_msg = NULL;
+
+    os_calloc(1, sizeof(curl_response), data->response);
+    data->response->status_code = 400;
+    data->response->max_size_reached = 1;
+    os_strdup("{\"response\":\"test\"}", data->response->body);
+    os_strdup("test", data->response->header);
+
+    expect_any(__wrap_wurl_http_request, method);
+    expect_string(__wrap_wurl_http_request, header, "Content-Type: application/json");
+
+    char expHeader[OS_SIZE_8192];
+    snprintf(expHeader, OS_SIZE_8192 -1, "Authorization: Bearer %s", token);
+
+    expect_string(__wrap_wurl_http_request, header, expHeader);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
+    expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
+    will_return(__wrap_wurl_http_request, data->response);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
+    expect_any(__wrap__mtdebug1, formatted_msg);
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Error while getting content blobs: '{\"response\":\"test\"}'");
+
+    expect_value(__wrap_wurl_free_response, response, data->response);
+
+    cJSON *blob = wm_office365_get_content_blobs(url, token, next_page, max_size, &buffer_size_reached, &error_msg);
+    assert_null(blob);
+    assert_int_equal(buffer_size_reached, 0);
+    assert_null(next_page_value);
+    assert_string_equal(error_msg, data->response->body);
+
+    os_free(data->response->body);
+    os_free(data->response->header);
+    os_free(data->response);
+    os_free(error_msg);
 }
 
 void test_wm_office365_get_content_blobs_error_json_response(void **state) {
@@ -2580,6 +2632,56 @@ void test_wm_office365_get_logs_from_blob_response_code_400(void **state) {
     os_free(data->response);
     os_free(error_msg);
 
+}
+
+// Same for a content blob: an error answer of any size is an error, not a blob to skip.
+void test_wm_office365_get_logs_from_blob_error_max_size_reached(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    cJSON *logs_array = NULL;
+
+    size_t max_size = OS_SIZE_8192;
+    char *token = "test_token";
+    char *url = "https://test_url.com";
+    bool buffer_size_reached = false;
+    char *error_msg = NULL;
+
+    os_calloc(1, sizeof(curl_response), data->response);
+    data->response->status_code = 400;
+    data->response->max_size_reached = true;
+    os_strdup("[{\"test\":{\"code\":\"test\"}}]", data->response->body);
+    os_strdup("test", data->response->header);
+
+    expect_string(__wrap_wurl_http_request, header, "Content-Type: application/json");
+    expect_any(__wrap_wurl_http_request, method);
+
+    char expHeader[OS_SIZE_8192];
+    snprintf(expHeader, OS_SIZE_8192 -1, "Authorization: Bearer %s", token);
+
+    expect_string(__wrap_wurl_http_request, header, expHeader);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
+    expect_value(__wrap_wurl_http_request, timeout, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
+    will_return(__wrap_wurl_http_request, data->response);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
+    expect_any(__wrap__mtdebug1, formatted_msg);
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Error while getting logs from blob: '[{\"test\":{\"code\":\"test\"}}]'");
+
+    expect_value(__wrap_wurl_free_response, response, data->response);
+
+    logs_array = wm_office365_get_logs_from_blob(url, token, max_size, &buffer_size_reached, &error_msg);
+
+    assert_null(logs_array);
+    assert_false(buffer_size_reached);
+    assert_string_equal(error_msg, data->response->body);
+
+    os_free(data->response->body);
+    os_free(data->response->header);
+    os_free(data->response);
+    os_free(error_msg);
 }
 
 void test_wm_office365_get_logs_from_blob_response_no_array(void **state) {
@@ -3711,6 +3813,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_office365_get_fail_by_tenant_and_subscription_not_null, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_get_content_blobs_response_null, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_get_content_blobs_response_max_size_reached, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_office365_get_content_blobs_error_max_size_reached, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_get_content_blobs_error_json_response, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_get_content_blobs_bad_response, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_get_content_blobs_400_code_AF20055, setup_conf, teardown_conf),
@@ -3723,6 +3826,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_office365_scan_failure_action_not_null_error_msg, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_get_logs_from_blob_response_null, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_get_logs_from_blob_response_max_size_reached, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_office365_get_logs_from_blob_error_max_size_reached, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_get_logs_from_blob_response_parsing_error, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_get_logs_from_blob_response_code_400, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_get_logs_from_blob_response_no_array, setup_conf, teardown_conf),

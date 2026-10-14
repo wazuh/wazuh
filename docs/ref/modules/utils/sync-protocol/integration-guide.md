@@ -237,7 +237,7 @@ bool should_perform_full_sync(const char* index) {
 
 ### Step 4: Process Manager Responses
 
-The manager's answer (an `EndAck`, or the HTTPS transport's own result code) needs to reach `parseResponseBuffer()` for the in-flight `synchronizeModule()`/`notifyDataClean()`/`requiresFullSync()`/`synchronizeMetadataOrGroups()` call to unblock. In practice, this is wired up once by the transport that delivers the manager's HTTPS response back to the module, not called ad hoc by each module.
+The manager's answer (the HTTPS transport's `HCRESULT:<session>:<code>:<body>` string) needs to reach `parseResponseBuffer()` for the in-flight `synchronizeModule()`/`notifyDataClean()`/`requiresFullSync()`/`synchronizeMetadataOrGroups()` call to unblock. In practice, this is wired up once by the transport that delivers the manager's HTTPS response back to the module, not called ad hoc by each module.
 
 #### C++ Example
 ```cpp
@@ -585,8 +585,9 @@ auto protocol = std::make_unique<AgentSyncProtocol>(
     nullptr,     // default persistent queue
     transport);
 
-// ... trigger a sync on another thread, then feed a synthetic EndAck back in:
-protocol->parseResponseBuffer(endAckBytes, endAckLength);
+// ... trigger a sync on another thread, then feed the result for the session it sent:
+const std::string result = "HCRESULT:" + std::to_string(sessionSent) + ":200:{}";
+protocol->parseResponseBuffer(reinterpret_cast<const uint8_t*>(result.data()), result.size());
 ```
 
 ## Troubleshooting

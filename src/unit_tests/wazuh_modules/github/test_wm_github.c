@@ -722,6 +722,70 @@ void test_github_execute_scan_max_size_reached(void **state) {
 
 }
 
+// An error answer larger than curl_max_size is not a page of events: it fails the scan, so the
+// window is retried, instead of being skipped with the bookmark moved past it.
+void test_github_execute_scan_max_size_reached_error_status(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    data->github_config->enabled = 1;
+    data->github_config->only_future_events = 1;
+    data->github_config->interval = 10;
+    data->github_config->time_delay = 1;
+    data->github_config->curl_max_size = 2;
+    os_calloc(1, sizeof(wm_github_auth), data->github_config->auth);
+    os_strdup("test_token", data->github_config->auth->api_token);
+    os_strdup("test_org", data->github_config->auth->org_name);
+    data->github_config->auth->next = NULL;
+    os_strdup("web", data->github_config->event_type);
+    os_calloc(1, sizeof(curl_response), data->response);
+    data->response->status_code = 502;
+    data->response->max_size_reached = true;
+    data->response->body = NULL;
+
+    int initial_scan = 0;
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Scanning organization: 'test_org'");
+
+    expect_string(__wrap_wm_state_io, tag, "github-test_org-web");
+    expect_value(__wrap_wm_state_io, op, WM_IO_READ);
+    expect_any(__wrap_wm_state_io, state);
+    expect_any(__wrap_wm_state_io, size);
+    will_return(__wrap_wm_state_io, 1);
+
+#ifndef WIN32
+    will_return(__wrap_gmtime_r, 1);
+#endif
+
+    will_return(__wrap_strftime,"2021-05-07 12:24:56");
+    will_return(__wrap_strftime, 20);
+
+#ifndef WIN32
+    will_return(__wrap_gmtime_r, 1);
+#endif
+
+    will_return(__wrap_strftime,"2021-05-07T12:34:56Z");
+    will_return(__wrap_strftime, 20);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");
+    expect_any(__wrap__mtdebug1, formatted_msg);
+
+    expect_any(__wrap_wurl_http_request, method);
+    expect_any(__wrap_wurl_http_request, header);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, max_size);
+    expect_value(__wrap_wurl_http_request, timeout, WM_GITHUB_DEFAULT_CURL_REQUEST_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
+    will_return(__wrap_wurl_http_request, data->response);
+
+    // No "Skipped a page" warning and no bookmark write: the failure is counted instead
+
+    wm_github_execute_scan(data->github_config, initial_scan);
+
+    assert_non_null(data->github_config->fails);
+    assert_int_equal(data->github_config->fails->fails, 1);
+    assert_string_equal(data->github_config->fails->org_name, "test_org");
+}
+
 // Only the page over curl_max_size is skipped: the scan follows the next page link, which arrives
 // in the headers, and still collects the rest of the window.
 void test_github_execute_scan_max_size_reached_follows_next_page(void **state) {
@@ -1579,6 +1643,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_github_execute_scan_status_code_200_null, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_github_execute_scan_max_size_reached, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_github_execute_scan_max_size_reached_follows_next_page, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_github_execute_scan_max_size_reached_error_status, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_github_execute_scan_next_page_out_of_host, setup_conf, teardown_conf),
     };
     const struct CMUnitTest tests_configuration[] = {

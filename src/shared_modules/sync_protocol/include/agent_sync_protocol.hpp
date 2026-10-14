@@ -293,7 +293,7 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @param expectedSession Session that this result belongs to. It must match the
         ///        session in flight, so 0 never does. The check is performed under
         ///        m_syncState.mtx so it is race-free with a concurrent session start.
-        bool applyHttpResult(int httpCode, std::string_view body, uint64_t expectedSession = 0);
+        bool applyHttpResult(int httpCode, std::string_view body, uint64_t expectedSession);
 
         /// @brief Picks the id for a new session. The agent chooses it because the
         ///        single-message exchange has no StartAck to carry one back; a retry

@@ -201,7 +201,9 @@ void * wmcom_main(__attribute__((unused)) void * arg) {
         }
 
         // The thread serves one client at a time, so a client that connects and then stalls must
-        // not hold it: bound both reading the request and writing the reply.
+        // not hold it: bound every wait for the client, while reading the request and while
+        // writing the reply. Each wait is bounded, not the request as a whole; the socket is
+        // only open to root and the daemon's own group.
         if (OS_SetRecvTimeout(peer, wm_socket_timeout, 0) < 0 || OS_SetSendTimeout(peer, wm_socket_timeout) < 0) {
             mdebug1("At wmcom_main(): could not set the socket timeout: %s (%d)", strerror(errno), errno);
         }
@@ -214,7 +216,7 @@ void * wmcom_main(__attribute__((unused)) void * arg) {
 
         case -1:
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                mwarn("At wmcom_main(): a local client did not send a complete request within %d seconds.",
+                mwarn("At wmcom_main(): a local client sent nothing for %d seconds before completing its request.",
                       wm_socket_timeout);
             } else {
                 merror("At wmcom_main(): OS_RecvSecureTCP(): %s", strerror(errno));

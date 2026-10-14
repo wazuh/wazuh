@@ -302,11 +302,13 @@ STATIC void wm_github_execute_scan(wm_github *github_config, int initial_scan) {
                     response = wurl_http_request(WURL_GET_METHOD, headers, url, NULL, github_config->curl_max_size, WM_GITHUB_DEFAULT_CURL_REQUEST_TIMEOUT, NULL, true);
 
                     if (response) {
-                        if (response->max_size_reached) {
+                        if (response->max_size_reached && response->status_code == 200) {
                             mtdebug1(WM_GITHUB_LOGTAG, "Libcurl error, reached maximum response size.");
                             // Skip only this page: the rest of the window is still collected, and
-                            // retrying would fail the same way on every scan. The headers arrive in
-                            // full before the body, so the next page link is still available.
+                            // retrying would fail the same way on every scan. An error answer of any
+                            // size is a failure instead, retried on the next scan. The next page link
+                            // is read from the headers, which count against the same limit: if they
+                            // alone exceed it, the link is lost and the window ends with this page.
                             mtwarn(WM_GITHUB_LOGTAG, "Skipped a page of audit events of organization '%s' and event type '%s' between '%s' and '%s': "
                                 "it is larger than curl_max_size (%ld bytes).", current->org_name, event_types[event_types_it],
                                 last_scan_time_str, new_scan_time_str, (long)github_config->curl_max_size);

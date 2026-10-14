@@ -176,7 +176,7 @@ static void test_wmcom_main_closes_client_that_does_not_send(void **state) {
     will_return(__wrap_OS_RecvSecureTCP, -1);
 
     expect_string(__wrap__mwarn, formatted_msg,
-                  "At wmcom_main(): a local client did not send a complete request within 7 seconds.");
+                  "At wmcom_main(): a local client sent nothing for 7 seconds before completing its request.");
     expect_string(__wrap__mdebug1, formatted_msg, "Local server thread finished.");
 
     wmcom_main(NULL);

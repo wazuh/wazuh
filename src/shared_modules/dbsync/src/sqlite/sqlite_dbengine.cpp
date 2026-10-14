@@ -2100,45 +2100,6 @@ void SQLiteDBEngine::getFieldValueFromTuple(const Field& value,
     }
 }
 
-void SQLiteDBEngine::getFieldValueFromTuple(const Field& value,
-                                            std::string& resultValue,
-                                            const bool quotationMarks)
-{
-    const auto rowType { std::get<GenericTupleIndex::GenType>(value.second) };
-
-    if (ColumnType::BigInt == rowType)
-    {
-        resultValue.append(std::to_string(std::get<ColumnType::BigInt>(value.second)));
-    }
-    else if (ColumnType::UnsignedBigInt == rowType)
-    {
-        resultValue.append(std::to_string(std::get<ColumnType::UnsignedBigInt>(value.second)));
-    }
-    else if (ColumnType::Integer == rowType)
-    {
-        resultValue.append(std::to_string(std::get<ColumnType::Integer>(value.second)));
-    }
-    else if (ColumnType::Text == rowType)
-    {
-        if (quotationMarks)
-        {
-            resultValue.append("'" + std::get<ColumnType::Text>(value.second) + "'");
-        }
-        else
-        {
-            resultValue.append(std::get<ColumnType::Text>(value.second));
-        }
-    }
-    else if (ColumnType::Double == rowType)
-    {
-        resultValue.append(std::to_string(std::get<ColumnType::Double>(value.second)));
-    }
-    else
-    {
-        throw dbengine_error { DATATYPE_NOT_IMPLEMENTED };
-    }
-}
-
 std::shared_ptr<SQLite::IStatement>const SQLiteDBEngine::getStatement(const std::string& sql)
 {
     std::lock_guard<std::mutex> lock(m_stmtMutex);

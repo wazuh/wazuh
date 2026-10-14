@@ -688,10 +688,13 @@ STATIC cJSON* wm_office365_get_content_blobs(const char* url, const char* token,
     if (response) {
         cJSON *response_json = NULL;
 
-        if (response->max_size_reached) {
+        if (response->max_size_reached && response->status_code == 200) {
+            // Only a successful answer is skipped; an error answer of any size is a failure,
+            // retried on the next scan.
             *buffer_size_reached = true;
             mtdebug1(WM_OFFICE365_LOGTAG, "Libcurl error, reached maximum response size.");
-            // The headers arrive in full before the body, so the caller can still skip to the next page
+            // The next page link is read from the headers, which count against the same limit:
+            // if they alone exceed it, the link is lost and the window ends with this page.
             *next_page = wm_read_http_header_element(response->header, WM_OFFICE365_NEXT_PAGE_REGEX);
         } else if (response_json = cJSON_Parse(response->body), response_json) {
             cJSON *code_json = cJSON_GetObjectItem(cJSON_GetObjectItem(response_json, "error"), "code");
@@ -747,7 +750,8 @@ STATIC cJSON* wm_office365_get_logs_from_blob(const char* url, const char* token
     if (response) {
         cJSON *response_json = NULL;
 
-        if (response->max_size_reached) {
+        if (response->max_size_reached && response->status_code == 200) {
+            // Only a successful answer is skipped; an error answer of any size is a failure.
             *buffer_size_reached = true;
             mtdebug1(WM_OFFICE365_LOGTAG, "Libcurl error, reached maximum response size.");
         } else if (response_json = cJSON_Parse(response->body), response_json) {

@@ -8,6 +8,11 @@
  * Foundation.
  */
 
+// pipe2(), on Linux
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
 #include "wmodules.h"
 
 #ifdef WAZUH_UNIT_TESTING
@@ -412,6 +417,35 @@ static pid_t wm_exec_stop_command(pid_t pid, int * status) {
 }
 
 /**
+ * @brief Wait for a command to exit, up to a deadline.
+ *
+ * @param pid Process ID of the command.
+ * @param status Filled in with the exit status of the command once reaped.
+ * @param deadline Absolute time, as gettime() reports it, to give up at.
+ * @return pid once reaped, 0 if it is still running at the deadline, or -1 if waitpid() failed.
+ */
+static pid_t wm_exec_wait_child(pid_t pid, int * status, const struct timespec * deadline) {
+    static const struct timespec step = { 0, 100000000 }; // 100 ms
+    struct timespec now;
+
+    for (;;) {
+        const pid_t reaped = waitpid(pid, status, WNOHANG);
+
+        if (reaped != 0) {
+            return reaped;
+        }
+
+        gettime(&now);
+
+        if (now.tv_sec > deadline->tv_sec || (now.tv_sec == deadline->tv_sec && now.tv_nsec >= deadline->tv_nsec)) {
+            return 0;
+        }
+
+        nanosleep(&step, NULL);
+    }
+}
+
+/**
  * @brief Translate a raw waitpid() status into the exit code callers see
  * @param status Raw status as filled in by waitpid()
  * @return The process' own exit code if it exited normally, or 128 + the
@@ -450,15 +484,24 @@ int wm_exec_env(char *command, char **output, int *exitcode, int secs, const cha
     // Create pipe for child's stdout
 
     if (output) {
+        // Both ends close on exec: a command another thread launches meanwhile must not inherit
+        // the write end, or this command's reader would not see end of file until that one exits
+        // too. The child still gets a usable stdout and stderr, since dup2() clears the flag on
+        // the copies. pipe2() sets the flag atomically; where it is missing, a fork in another
+        // thread between pipe() and the fcntl() calls can still leak the ends.
+#ifdef __linux__
+        if (pipe2(pipe_fd, O_CLOEXEC) < 0) {
+            merror("At wm_exec(): pipe2(): %s", strerror(errno));
+            return -1;
+        }
+#else
         if (pipe(pipe_fd) < 0) {
             merror("At wm_exec(): pipe(): %s", strerror(errno));
             return -1;
         }
-        // Both ends: a command another thread launches meanwhile must not inherit the write end,
-        // or this command's reader would not see end of file until that one exits too. The child
-        // still gets a usable stdout and stderr, since dup2() clears the flag on the copies.
         w_descriptor_cloexec(pipe_fd[0]);
         w_descriptor_cloexec(pipe_fd[1]);
+#endif
     }
 
     // Fork
@@ -609,9 +652,22 @@ int wm_exec_env(char *command, char **output, int *exitcode, int secs, const cha
             w_mutex_destroy(&tinfo.mutex);
             w_cond_destroy(&tinfo.finished);
 
-            // Wait for child process
+            // Wait for child process. End of file on the pipe does not mean the command is gone:
+            // it may have sent its output elsewhere and kept running, or ignored SIGTERM while
+            // the processes holding the pipe died. Bound the wait by what is left of the timeout.
 
-            switch (waitpid(pid, &status, 0)) {
+            pid_t reaped = waitpid(pid, &status, WNOHANG);
+
+            if (reaped == 0 && secs) {
+                if (reaped = wm_exec_wait_child(pid, &status, &timeout), reaped == 0) {
+                    retval = WM_ERROR_TIMEOUT;
+                    reaped = wm_exec_stop_command(pid, &status);
+                }
+            } else if (reaped == 0) {
+                reaped = waitpid(pid, &status, 0);
+            }
+
+            switch (reaped) {
             case -1:
                 merror("waitpid()");
                 retval = -1;
@@ -746,19 +802,21 @@ void* reader(void *args) {
 
     for (;;) {
         struct pollfd pfd = { .fd = tinfo->pipe, .events = POLLIN };
+        bool abandon;
+
+        // Checked on every pass, not only when the pipe is idle: a process that left the
+        // command's group may keep writing, and the caller has killed the command by then.
+        w_mutex_lock(&tinfo->mutex);
+        abandon = tinfo->abandon;
+        w_mutex_unlock(&tinfo->mutex);
+
+        if (abandon) {
+            break;
+        }
+
         const int ready = poll(&pfd, 1, WM_EXEC_READER_POLL_MS);
 
         if (ready == 0 || (ready < 0 && errno == EINTR)) {
-            bool abandon;
-
-            w_mutex_lock(&tinfo->mutex);
-            abandon = tinfo->abandon;
-            w_mutex_unlock(&tinfo->mutex);
-
-            if (abandon) {
-                break;
-            }
-
             continue;
         }
 

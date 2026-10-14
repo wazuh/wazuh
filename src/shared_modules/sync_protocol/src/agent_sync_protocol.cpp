@@ -1409,7 +1409,7 @@ bool AgentSyncProtocol::applyHttpResult(int httpCode, std::string_view body, uin
     // session in flight, such as one for a previous (timed-out) session. Every session
     // id the agent picks is non-zero (nextSessionId()) and the bridge always forwards
     // it, so a result for session 0 cannot be a real answer and is rejected as well.
-    if (m_syncState.currentSession != 0 && expectedSession != m_syncState.currentSession)
+    if (expectedSession != m_syncState.currentSession)
     {
         m_logger(LOG_DEBUG,
                  "Discarded stale HCRESULT: received session " +

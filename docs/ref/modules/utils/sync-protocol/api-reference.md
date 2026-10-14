@@ -235,7 +235,7 @@ bool shouldStop() const
 bool parseResponseBuffer(const uint8_t* data, size_t length)
 ```
 
-Processes a response from the manager. Accepts either a FlatBuffer-encoded `Message` wrapping an `EndAck` (the response format used by `SyncSocketTransport`/the on-disk sync path), or the newer `"HCRESULT:<session>:<code>"` string format the HTTPS transport uses to route an HTTP status code back to the originating session (`"HCRESULT:<code>"`, without a session number, is accepted for backward compatibility and skips the session-correlation check).
+Processes a response from the manager: the `"HCRESULT:<session>:<code>:<body>"` string the HTTPS transport uses to route an HTTP status code back to the originating session. A payload without the `HCRESULT:` prefix, or without the session and code fields, is rejected as malformed. A result whose session is not the one in flight, session 0 included, is discarded as stale.
 
 **Parameters:**
 - `data`: Pointer to the response buffer
