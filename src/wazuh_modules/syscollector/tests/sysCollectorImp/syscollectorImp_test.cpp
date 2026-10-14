@@ -6577,3 +6577,101 @@ TEST_F(SyscollectorImpTest, SyncModule_LocalTransportUnavailablePastToleranceLog
 
     Syscollector::instance().destroy();
 }
+
+/* --- container row sweeps, and the ordering helpers they share the module with
+ *
+ * Two ways to decide that a container's stored rows must go, and the difference
+ * between them is the whole safety argument: sweepContainerRows() is TOLD which
+ * containers went, while sweepContainerRowsNotIn() infers it from absence in a
+ * whole-node list. Neither had any coverage, which is an uncomfortable place to
+ * be for a pair of functions whose failure mode is deleting inventory that
+ * should have been kept.
+ */
+
+TEST_F(SyscollectorImpTest, SweepContainerRowsCountsOnlyTheContainersItWasNamed)
+{
+#ifndef __linux__
+    GTEST_SKIP() << "Container row sweeps are Linux-only";
+#else
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    Syscollector::instance().init(spInfoWrapper, reportFunction, persistFunction, logFunction,
+                                  SYSCOLLECTOR_DB_PATH, "", "",
+                                  3600, false, false, false, false, false, false, false,
+                                  false, false, false, false, false, false, false);
+
+    // An empty id names no container, and the scope it would produce is the
+    // HOST's own rows -- container_id is "" for those. So it is skipped, and
+    // not counted either: the return value is what the caller logs as the
+    // number of containers removed.
+    EXPECT_EQ(Syscollector::instance().sweepContainerRows({"", "gone-1", "gone-2"}), 2u);
+
+    // Nothing named is not an error, and nothing stored is not either: a
+    // container whose rows this agent never held sweeps cleanly.
+    EXPECT_EQ(Syscollector::instance().sweepContainerRows({}), 0u);
+
+    Syscollector::instance().destroy();
+#endif
+}
+
+TEST_F(SyscollectorImpTest, SweepContainerRowsNotInKeepsEverythingWhenThereAreNoContainerRows)
+{
+#ifndef __linux__
+    GTEST_SKIP() << "Container row sweeps are Linux-only";
+#else
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    Syscollector::instance().init(spInfoWrapper, reportFunction, persistFunction, logFunction,
+                                  SYSCOLLECTOR_DB_PATH, "", "",
+                                  3600, false, false, false, false, false, false, false,
+                                  false, false, false, false, false, false, false);
+
+    // No container has ever been inventoried here, so there is nothing absent
+    // from the list to delete. The host's own rows carry container_id = "" and
+    // the query excludes them explicitly -- without that, a node running no
+    // containers at all would sweep its entire host inventory on every pass.
+    EXPECT_EQ(Syscollector::instance().sweepContainerRowsNotIn({"still-here"}), 0u);
+
+    // Same answer for an empty keep set, which is what a whole-node list
+    // returns on a host whose last container just went.
+    EXPECT_EQ(Syscollector::instance().sweepContainerRowsNotIn({}), 0u);
+
+    Syscollector::instance().destroy();
+#endif
+}
+
+TEST_F(SyscollectorImpTest, TheScanMutexCanBeHeldFromOutsideTheModule)
+{
+    // wm_sync_module takes this around a synchronization so a scan cannot start
+    // half way through one. Nothing else covered the pair.
+    Syscollector::instance().lockScanMutex();
+    EXPECT_FALSE(Syscollector::instance().isScanning()) << "no scan is running, so holding the lock cannot report one";
+    Syscollector::instance().unlockScanMutex();
+}
+
+TEST_F(SyscollectorImpTest, OrderingFieldsAreTableSpecificAndUnknownTablesHaveNone)
+{
+    EXPECT_EQ(Syscollector::instance().getFirstPrimaryKeyField(OS_TABLE), std::string {OS_ORDER_BY});
+
+    // Packages order by more than one field: name alone is not stable enough to
+    // page through, which is what the ordering exists for.
+    EXPECT_EQ(Syscollector::instance().getFirstPrimaryKeyField(PACKAGES_TABLE), std::string {PACKAGES_ORDER_BY});
+
+    // An unknown table yields no ordering rather than a guess, so the caller
+    // builds no ORDER BY at all instead of one naming a column that is not there.
+    EXPECT_TRUE(Syscollector::instance().getFirstPrimaryKeyField("dbsync_not_a_table").empty());
+}
+
+TEST_F(SyscollectorImpTest, AnOrderByClauseSplitsEveryFieldAndCarriesTheDirection)
+{
+    EXPECT_EQ(Syscollector::instance().buildOrderByClause(PACKAGES_ORDER_BY, true),
+              "name COLLATE NOCASE ASC, type COLLATE NOCASE ASC");
+
+    EXPECT_EQ(Syscollector::instance().buildOrderByClause(OS_ORDER_BY, false),
+              "os_name COLLATE NOCASE DESC");
+
+    // No fields means no clause -- not "ORDER BY", which would not parse.
+    EXPECT_TRUE(Syscollector::instance().buildOrderByClause("", true).empty());
+}
