@@ -100,7 +100,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/lib/libsyscollector.so,root,wazuh,750,file,-rwxr-x---,579192,0.1
 /var/ossec/lib/libgcc_s.so.1,root,wazuh,750,file,-rwxr-x---,109494,0.1
 /var/ossec/lib/librsync.so,root,wazuh,750,file,-rwxr-x---,397040,0.1
-/var/ossec/etc/internal_options.conf,root,wazuh,640,file,-rw-r-----,14480,0.1
+/var/ossec/etc/internal_options.conf,root,wazuh,640,file,-rw-r-----,16286,0.1
 /var/ossec/etc/wpk_root.pem,root,wazuh,640,file,-rw-r-----,1367,0.1
 /var/ossec/etc/localtime,root,wazuh,640,file,-rw-r-----,118,0.1
 /var/ossec/etc/client.keys,root,wazuh,640,file,-rw-r-----,0,0.1
@@ -152,7 +152,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/wodles/gcloud/gcloud,root,wazuh,750,file,-rwxr-x---,4741,0.1
 /var/ossec/wodles/gcloud/exceptions.py,root,wazuh,750,file,-rwxr-x---,4704,0.1
 /var/ossec/wodles/gcloud/integration.py,root,wazuh,750,file,-rwxr-x---,3119,0.1
-/var/ossec/wodles/gcloud/pubsub/subscriber.py,root,wazuh,750,file,-rwxr-x---,6085,0.1
+/var/ossec/wodles/gcloud/pubsub/subscriber.py,root,wazuh,750,file,-rwxr-x---,7202,0.1
 /var/ossec/wodles/gcloud/buckets/bucket.py,root,wazuh,750,file,-rwxr-x---,12735,0.1
 /var/ossec/wodles/gcloud/buckets/access_logs.py,root,wazuh,750,file,-rwxr-x---,1870,0.1
 /var/ossec/wodles/aws/aws_tools.py,root,wazuh,750,file,-rwxr-x---,17341,0.1
@@ -180,10 +180,10 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/wodles/docker/DockerListener,root,wazuh,750,file,-rwxr-x---,5111,0.1
 /var/ossec/wodles/azure/azure-logs,root,wazuh,750,file,-rwxr-x---,1466,0.1
 /var/ossec/wodles/azure/azure_utils.py,root,wazuh,750,file,-rwxr-x---,13823,0.1
-/var/ossec/wodles/azure/db/utils.py,root,wazuh,750,file,-rwxr-x---,4014,0.1
-/var/ossec/wodles/azure/db/orm.py,root,wazuh,750,file,-rwxr-x---,10600,0.1
+/var/ossec/wodles/azure/db/utils.py,root,wazuh,750,file,-rwxr-x---,6839,0.1
+/var/ossec/wodles/azure/db/orm.py,root,wazuh,750,file,-rwxr-x---,14641,0.1
 /var/ossec/wodles/azure/db/__init__.py,root,wazuh,750,file,-rwxr-x---,0,0.1
 /var/ossec/wodles/azure/azure_services/analytics.py,root,wazuh,750,file,-rwxr-x---,8961,0.1
 /var/ossec/wodles/azure/azure_services/__init__.py,root,wazuh,750,file,-rwxr-x---,0,0.1
 /var/ossec/wodles/azure/azure_services/graph.py,root,wazuh,750,file,-rwxr-x---,8678,0.1
-/var/ossec/wodles/azure/azure_services/storage.py,root,wazuh,750,file,-rwxr-x---,11550,0.1
+/var/ossec/wodles/azure/azure_services/storage.py,root,wazuh,750,file,-rwxr-x---,13320,0.1
