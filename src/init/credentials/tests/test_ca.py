@@ -153,8 +153,12 @@ def test_staged_anchor_only(resolver, sandbox):
     _, cert = make_cert("external-ca")
     stage(sandbox, cert)
     code, out, err = run(resolver, sandbox, "--install")
-    assert code == 0 and err == "" and "staged without its key" in out
+    assert code == 0 and "staged without its key" in out
     assert open(os.path.join(sandbox.certs, "root-ca.pem"), "rb").read() == cert
+    # It cannot issue: the pairs have to be staged (the issue's own MISSING example).
+    for name in ("remoted", "apid"):
+        assert (f"MISSING {sandbox.certs}/{name}.pem: no CA key to issue it; stage the pair or the CA in "
+                f"{sandbox.conf}/ca\n") in err
 
 
 def test_key_only(resolver, sandbox):
@@ -323,7 +327,8 @@ def test_ca_hidden_nothing_else(resolver, sandbox):
     run(resolver, sandbox, "--install")
     first = open(ca_path(sandbox, "root-ca.pem"), "rb").read()
     shutil.rmtree(os.path.join(sandbox.conf, "ca"))
-    os.unlink(os.path.join(sandbox.certs, "root-ca.pem"))
+    for name in ("root-ca.pem", "remoted.pem", "remoted-key.pem", "apid.pem", "apid-key.pem"):
+        os.unlink(os.path.join(sandbox.certs, name))
     run(resolver, sandbox, "--install")
     assert open(ca_path(sandbox, "root-ca.pem"), "rb").read() != first
 

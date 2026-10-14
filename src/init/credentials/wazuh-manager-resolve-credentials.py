@@ -21,12 +21,14 @@ import datetime  # noqa: E402
 import errno  # noqa: E402
 import fcntl  # noqa: E402
 import grp  # noqa: E402
+import ipaddress  # noqa: E402
 import json  # noqa: E402
 import pwd  # noqa: E402
 import re  # noqa: E402
 import secrets  # noqa: E402
 import socket  # noqa: E402
 import stat  # noqa: E402
+import struct  # noqa: E402
 # Only Wazuh's own programs are run, by absolute path, with a fixed argv and an empty environment.
 import subprocess  # noqa: E402 # nosec B404
 import sys  # noqa: E402
@@ -37,7 +39,7 @@ from cryptography import x509  # noqa: E402
 from cryptography.exceptions import InvalidSignature, UnsupportedAlgorithm  # noqa: E402
 from cryptography.hazmat.primitives import hashes, serialization  # noqa: E402
 from cryptography.hazmat.primitives.asymmetric import rsa  # noqa: E402
-from cryptography.x509.oid import NameOID  # noqa: E402
+from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID  # noqa: E402
 
 # ================================================== Constants ==================================================
 
@@ -102,6 +104,13 @@ NODE_NAME_VAR = "WAZUH_MANAGER_NODE_NAME"
 CA_COMMON_NAME_PREFIX = "wazuh-manager-"
 CERT_VALIDITY_DAYS = 3650
 CERT_BACKDATE = datetime.timedelta(days=1)
+REMOTED_SANS_VAR = "WAZUH_MANAGER_REMOTED_CERT_SANS"   # the agent listener's pair
+APID_SANS_VAR = "WAZUH_MANAGER_APID_CERT_SANS"         # the Server API's pair; never inherits remoted's list
+OLD_SANS_VAR = "WAZUH_MANAGER_CERT_SANS"               # named the indexer pair, which the manager no longer issues
+# Read with ioctl(2) per interface: the primary IPv4 address. socket does not export the constant.
+SIOCGIFADDR = 0x8915
+# /proc/net/if_inet6 flags of addresses a certificate must not name.
+IFA_F_DEPRECATED, IFA_F_TENTATIVE, IFA_F_DADFAILED = 0x20, 0x40, 0x08
 
 MISSING = "MISSING"
 INVALID = "INVALID"
@@ -120,6 +129,7 @@ class Paths:
     indexer_export: str = INDEXER_EXPORT_DIR
     service_user: str = SERVICE_USER
     service_group: str = SERVICE_GROUP
+    proc: str = "/proc"
 
     @property
     def keystore_bin(self) -> str:
@@ -1050,47 +1060,45 @@ def check_bundle(paths: Paths, certs: Dir, state: CaState, report: Report, mode:
         report.problem(INVALID, certs.child(BUNDLE), f"does not contain {os.path.join(paths.conf, CA_DIR, CA_CERT)}")
 
 
-def step_own_ca(paths: Paths, conf: Dir, ca: Dir, lookup: Lookup, report: Report, mode: str) -> Optional[CaState]:
-    """--install mints or validates the CA and publishes it; --upgrade and --prestart only validate."""
-    certs = open_certs(paths, conf, report)
-    if certs is None:
+def step_own_ca(paths: Paths, conf: Dir, certs: Dir, ca: Dir, lookup: Lookup, report: Report,
+                mode: str) -> Optional[CaState]:
+    """--install mints or validates the CA and publishes it; --upgrade and --prestart only validate. `certs` is opened
+    once by the caller and shared with the server pairs step."""
+    state = load_ca(ca, report)
+    if state is None:
         return None
-    with certs:
-        state = load_ca(ca, report)
-        if state is None:
+    if state.kind == "absent":
+        if mode != "install":
+            report.problem(MISSING, ca.child(CA_CERT), "the manager's CA is missing; stage it there "
+                                                       f"(and {CA_KEY} to issue certificates), or reinstall")
             return None
-        if state.kind == "absent":
-            if mode != "install":
-                report.problem(MISSING, ca.child(CA_CERT), "the manager's CA is missing; stage it there "
-                                                           f"(and {CA_KEY} to issue certificates), or reinstall")
-                return None
-            if server_material_present(certs):
-                report.problem(MISSING, ca.child(CA_CERT), "stage the CA that issued the pairs")
-                return None
-            node = node_name(lookup, report)
-            if node is None:
-                return None
-            if len(CA_COMMON_NAME_PREFIX + node) > 64:
-                report.problem(INVALID, NODE_NAME_VAR, "too long for the CA's common name (64 characters at most)")
-                return None
-            state = mint_ca(ca, node)
-            origin = "minted"
-        else:
-            origin = "staged" if state.kind == "signing" else "staged without its key (pairs cannot be issued here)"
-        report.progress(f"CA {state.cert.subject.rfc4514_string()}: {origin}")
-        if mode == "install":
-            try:
-                with ensure_dir(conf, EXPORT_DIR, EXPORT_SPEC) as export:
-                    present, current = read_optional(export, EXPORT_CA, ROOT_FILE, report)
-                    if current != state.cert_bytes and not (present and current is None):
-                        write_file(export, EXPORT_CA, state.cert_bytes, 0o644, 0, 0)
-            except UnsafeEntry as exc:
-                report.unsafe(exc)
-        check_bundle(paths, certs, state, report, mode)
-        return state
+        if server_material_present(certs):
+            report.problem(MISSING, ca.child(CA_CERT), "stage the CA that issued the pairs")
+            return None
+        node = node_name(lookup, report)
+        if node is None:
+            return None
+        if len(CA_COMMON_NAME_PREFIX + node) > 64:
+            report.problem(INVALID, NODE_NAME_VAR, "too long for the CA's common name (64 characters at most)")
+            return None
+        state = mint_ca(ca, node)
+        origin = "minted"
+    else:
+        origin = "staged" if state.kind == "signing" else "staged without its key (pairs cannot be issued here)"
+    report.progress(f"CA {state.cert.subject.rfc4514_string()}: {origin}")
+    if mode == "install":
+        try:
+            with ensure_dir(conf, EXPORT_DIR, EXPORT_SPEC) as export:
+                present, current = read_optional(export, EXPORT_CA, ROOT_FILE, report)
+                if current != state.cert_bytes and not (present and current is None):
+                    write_file(export, EXPORT_CA, state.cert_bytes, 0o644, 0, 0)
+        except UnsafeEntry as exc:
+            report.unsafe(exc)
+    check_bundle(paths, certs, state, report, mode)
+    return state
 
 
-def check_own_ca(paths: Paths, conf: Dir, report: Report) -> None:
+def check_own_ca(paths: Paths, conf: Dir, lookup: Lookup, report: Report) -> None:
     """--check's part: validate whatever CA and bundle exist, without creating ca/ or writing anything."""
     try:
         ca = open_dir(conf, CA_DIR, CA_SPEC)
@@ -1104,10 +1112,355 @@ def check_own_ca(paths: Paths, conf: Dir, report: Report) -> None:
         state = load_ca(ca, report) if ca is not None else CaState("absent")
         if certs is not None and state is not None and state.kind != "absent":
             check_bundle(paths, certs, state, report, "check")
+        if certs is not None:
+            check_server_pairs(paths, certs, state, lookup, report)
     finally:
         for opened in (ca, certs):
             if opened is not None:
                 opened.close()
+
+
+# ================================================= Server pairs ================================================
+
+
+@dataclasses.dataclass(frozen=True)
+class San:
+    """One subject alternative name: kind "DNS" or "IP", and its value (an IP in its canonical text form)."""
+
+    kind: str
+    value: str
+
+    def __str__(self) -> str:
+        return f"{self.kind}:{self.value}"
+
+    def key(self):
+        return (self.kind, self.value.lower() if self.kind == "DNS" else ipaddress.ip_address(self.value))
+
+    def general_name(self) -> x509.GeneralName:
+        if self.kind == "DNS":
+            return x509.DNSName(self.value)
+        return x509.IPAddress(ipaddress.ip_address(self.value))
+
+
+LOOPBACK_SANS = (San("DNS", "localhost"), San("IP", "127.0.0.1"), San("IP", "::1"))
+
+
+def parse_san_entry(text: str) -> Tuple[Optional[San], Optional[str]]:
+    """`DNS:name`, `IP:address`, or a bare one classified as the shell resolver did: an address when it holds a colon
+    or only digits and dots, a DNS name otherwise. Zone ids, prefixes, leading zeros and wildcards are refused."""
+    entry = text.strip()
+    if not entry:
+        return None, "empty SAN entry"
+    if entry[:4] in ("DNS:", "dns:"):
+        kind, value = "DNS", entry[4:]
+    elif entry[:3] in ("IP:", "ip:"):
+        kind, value = "IP", entry[3:]
+    elif ":" in entry or re.fullmatch(r"[0-9.]+", entry):
+        kind, value = "IP", entry
+    else:
+        kind, value = "DNS", entry
+    if kind == "DNS":
+        return (San("DNS", value), None) if valid_dns_name(value) else (None, f"{entry}: not a valid DNS name")
+    if "%" in value or "/" in value:
+        return None, f"{entry}: not a valid IP address"
+    try:
+        return San("IP", str(ipaddress.ip_address(value))), None
+    except ValueError:
+        return None, f"{entry}: not a valid IP address"
+
+
+def finish_sans(sans: List[San]) -> List[San]:
+    """Append the loopback names and drop duplicates (DNS case-insensitively, addresses by value), keeping order."""
+    seen, result = set(), []
+    for san in list(sans) + list(LOOPBACK_SANS):
+        if san.key() not in seen:
+            seen.add(san.key())
+            result.append(san)
+    return result
+
+
+def parse_san_list(value: str) -> Tuple[Optional[List[San]], Optional[str]]:
+    if not value.strip():
+        return None, "empty"
+    sans = []
+    for entry in value.split(","):
+        san, problem = parse_san_entry(entry)
+        if problem:
+            return None, problem
+        sans.append(san)
+    return finish_sans(sans), None
+
+
+def interface_ipv4(name: str) -> Optional[str]:
+    """The primary IPv4 address of an interface, or None. Secondary addresses are not seen: name them in the list."""
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+        try:
+            data = fcntl.ioctl(sock.fileno(), SIOCGIFADDR, struct.pack("256s", name.encode()[:15]))
+        except OSError:
+            return None
+    return socket.inet_ntoa(data[20:24])
+
+
+def canonical_name(host: str) -> Optional[str]:
+    """What `hostname -f` prints: the canonical name of the host from the resolver, or None."""
+    try:
+        return socket.getaddrinfo(host, None, flags=socket.AI_CANONNAME)[0][3] or None
+    except (OSError, IndexError):
+        return None
+
+
+def _proc_lines(paths: Paths, name: str) -> List[List[str]]:
+    try:
+        with open(os.path.join(paths.proc, "net", name)) as handle:
+            return [line.split() for line in handle if line.strip()]
+    except OSError:
+        return []
+
+
+def default_route_interfaces(paths: Paths) -> Tuple[List[str], List[str]]:
+    """The interfaces that carry a default route, IPv4 and IPv6, in the order the kernel lists them."""
+    v4 = []
+    for fields in _proc_lines(paths, "route")[1:]:
+        if len(fields) >= 8 and fields[1] == "00000000" and fields[7] == "00000000" and fields[0] not in v4:
+            v4.append(fields[0])
+    v6 = []
+    for fields in _proc_lines(paths, "ipv6_route"):
+        if len(fields) >= 10 and fields[0] == "0" * 32 and fields[1] == "00" and fields[9] != "lo" \
+                and fields[9] not in v6:
+            v6.append(fields[9])
+    return v4, v6
+
+
+def discover_sans(paths: Paths, node: str) -> Tuple[List[San], bool]:
+    """Node name, FQDN when it differs, every global address of the default-route interfaces, then loopback.
+    Returns the list and whether any address was found."""
+    sans = [San("DNS", node)]
+    fqdn = canonical_name(socket.gethostname())
+    if fqdn and fqdn.lower() != node.lower() and valid_dns_name(fqdn):
+        sans.append(San("DNS", fqdn))
+    v4, v6 = default_route_interfaces(paths)
+    addresses = []
+    for name in v4:
+        address = interface_ipv4(name)
+        # The kernel's "global" scope, as `ip addr` showed it to the shell resolver: private networks included (most
+        # managers live on one); only loopback and link-local addresses are left out.
+        if address and not (ipaddress.ip_address(address).is_loopback or ipaddress.ip_address(address).is_link_local):
+            addresses.append(San("IP", address))
+    for fields in _proc_lines(paths, "if_inet6"):
+        if len(fields) < 6 or fields[5] not in v6 or fields[3] != "00":
+            continue
+        if int(fields[4], 16) & (IFA_F_DEPRECATED | IFA_F_TENTATIVE | IFA_F_DADFAILED):
+            continue
+        addresses.append(San("IP", str(ipaddress.IPv6Address(int(fields[0], 16)))))
+    return finish_sans(sans + addresses), bool(addresses)
+
+
+def resolve_san_lists(paths: Paths, lookup: Lookup, node: str, pairs: List[str],
+                      report: Report) -> Optional[Dict[str, List[San]]]:
+    """Each pair's list: explicit, or discovered. Every explicit list is validated before any leaf is issued; one
+    bad list stops them all."""
+    if lookup.get(OLD_SANS_VAR, empty_is_unset=False) is not None:
+        report.warning(f"{OLD_SANS_VAR} is ignored: it named the indexer client pair, which now comes from the indexer")
+    lists, discovered_for, ok = {}, [], True
+    for pair, var in (("remoted", REMOTED_SANS_VAR), ("apid", APID_SANS_VAR)):
+        found = lookup.get(var, empty_is_unset=False)
+        if found is None:
+            discovered_for.append((pair, var))
+            continue
+        sans, problem = parse_san_list(found[0])
+        if problem:
+            report.problem(INVALID, var, f"{problem} (set in {found[1]})")
+            ok = False
+        else:
+            lists[pair] = sans
+    if not ok:
+        return None
+    needed = [(pair, var) for pair, var in discovered_for if pair in pairs]
+    if needed:
+        sans, found_address = discover_sans(paths, node)
+        if not found_address:
+            report.warning("no global address on a default-route interface; the certificates name this node only by "
+                           f"name and loopback. Set {' and '.join(var for _, var in needed)} to add its addresses")
+        for pair, _ in needed:
+            lists[pair] = sans
+    return lists
+
+
+def server_name(node: str) -> x509.Name:
+    return x509.Name([x509.NameAttribute(NameOID.COUNTRY_NAME, "US"),
+                      x509.NameAttribute(NameOID.LOCALITY_NAME, "California"),
+                      x509.NameAttribute(NameOID.ORGANIZATION_NAME, "Wazuh"),
+                      x509.NameAttribute(NameOID.ORGANIZATIONAL_UNIT_NAME, "Wazuh"),
+                      x509.NameAttribute(NameOID.COMMON_NAME, node)])
+
+
+def issue_server_pair(ca: CaState, node: str, sans: List[San]) -> Tuple[bytes, bytes]:
+    """One function, one profile for both server pairs, as the shell's _wmc_generate_server_pair: the certificate
+    file carries the leaf, a blank line, then the CA file."""
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    now = _now()
+    cert = (x509.CertificateBuilder()
+            .subject_name(server_name(node)).issuer_name(ca.cert.subject)
+            .public_key(key.public_key())
+            .serial_number(x509.random_serial_number())
+            .not_valid_before(now - CERT_BACKDATE)
+            .not_valid_after(now + datetime.timedelta(days=CERT_VALIDITY_DAYS))
+            .add_extension(x509.AuthorityKeyIdentifier.from_issuer_public_key(ca.cert.public_key()), critical=False)
+            .add_extension(x509.SubjectKeyIdentifier.from_public_key(key.public_key()), critical=False)
+            .add_extension(x509.BasicConstraints(ca=False, path_length=None), critical=True)
+            .add_extension(x509.KeyUsage(digital_signature=True, content_commitment=False, key_encipherment=True,
+                                         data_encipherment=False, key_agreement=False, key_cert_sign=False,
+                                         crl_sign=False, encipher_only=False, decipher_only=False), critical=True)
+            .add_extension(x509.ExtendedKeyUsage([ExtendedKeyUsageOID.SERVER_AUTH]), critical=False)
+            .add_extension(x509.SubjectAlternativeName([san.general_name() for san in sans]), critical=False)
+            .sign(ca.key, hashes.SHA256()))
+    key_bytes = key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
+                                  serialization.NoEncryption())
+    return cert.public_bytes(serialization.Encoding.PEM) + b"\n" + ca.cert_bytes, key_bytes
+
+
+def describe_leaf(cert: x509.Certificate) -> str:
+    try:
+        names = cert.extensions.get_extension_for_class(x509.SubjectAlternativeName).value
+        sans = ", ".join(f"DNS:{n.value}" if isinstance(n, x509.DNSName) else f"IP:{n.value}" for n in names)
+    except x509.ExtensionNotFound:
+        sans = "none"
+    return f"DN {cert.subject.rfc4514_string()}; SANs {sans}"
+
+
+def pair_problem(paths: Paths, certs: Dir, name: str,
+                 anchors: Optional[List[x509.Certificate]]) -> Tuple[Optional[x509.Certificate], Optional[str]]:
+    """Whether a present pair is usable. Raises UnsafeEntry for a file root may not trust. `anchors` None skips the
+    chain test (--check with no CA to test against)."""
+    spec = certs_file_spec(paths)
+    cert_data = read_file(certs, f"{name}.pem", spec)
+    key_data = read_file(certs, f"{name}-key.pem", spec)
+    try:
+        leaf = x509.load_pem_x509_certificates(cert_data)[0]
+    except ValueError:
+        return None, "not a PEM certificate"
+    key, problem = ca_key_problem(key_data, leaf)
+    if problem:
+        return leaf, problem.replace(CA_CERT, f"{name}.pem") if "match" in problem else f"the key is {problem}"
+    now = _now()
+    if not leaf.not_valid_before_utc <= now <= leaf.not_valid_after_utc:
+        return leaf, "expired" if now > leaf.not_valid_after_utc else "not valid yet"
+    try:
+        if leaf.extensions.get_extension_for_class(x509.BasicConstraints).value.ca:
+            return leaf, "a CA certificate, not a server certificate"
+    except x509.ExtensionNotFound:
+        return leaf, "needs an explicit basicConstraints CA:FALSE"
+    try:
+        if ExtendedKeyUsageOID.SERVER_AUTH not in leaf.extensions.get_extension_for_class(x509.ExtendedKeyUsage).value:
+            return leaf, "its extendedKeyUsage does not include serverAuth"
+    except x509.ExtensionNotFound:
+        pass
+    try:
+        leaf.extensions.get_extension_for_class(x509.SubjectAlternativeName)
+    except x509.ExtensionNotFound:
+        return leaf, "has no subjectAltName"
+    if anchors is not None and not any(_issued_by(leaf, anchor) for anchor in anchors):
+        return leaf, "not issued by the manager's CA"
+    return leaf, None
+
+
+def _issued_by(leaf: x509.Certificate, issuer: x509.Certificate) -> bool:
+    try:
+        return leaf.issuer == issuer.subject and leaf.verify_directly_issued_by(issuer) is None
+    except (InvalidSignature, ValueError, TypeError):
+        return False
+
+
+def _exists(parent: Dir, name: str) -> bool:
+    try:
+        os.stat(name, dir_fd=parent.fd, follow_symlinks=False)
+        return True
+    except FileNotFoundError:
+        return False
+
+
+def pair_anchors(paths: Paths, certs: Dir, ca: CaState) -> Dict[str, List[x509.Certificate]]:
+    """remoted must chain to a certificate of the agents' bundle (it may hold rotation CAs); apid to the manager's
+    CA, the one export/ca.pem hands the dashboard."""
+    remoted = [ca.cert]
+    try:
+        remoted = x509.load_pem_x509_certificates(read_file(certs, BUNDLE, certs_file_spec(paths))) or remoted
+    except (FileNotFoundError, UnsafeEntry, ValueError):
+        pass
+    return {"remoted": remoted, "apid": [ca.cert]}
+
+
+def step_server_pairs(paths: Paths, certs: Dir, ca: CaState, lookup: Lookup, report: Report, mode: str) -> None:
+    """Keep a usable pair, refuse a broken or half one, issue an absent one at --install with a signing CA."""
+    anchors = pair_anchors(paths, certs, ca)
+    to_issue = []
+    for name in ("remoted", "apid"):
+        cert_path = certs.child(f"{name}.pem")
+        has_cert, has_key = _exists(certs, f"{name}.pem"), _exists(certs, f"{name}-key.pem")
+        if has_cert and has_key:
+            try:
+                leaf, problem = pair_problem(paths, certs, name, anchors[name])
+            except UnsafeEntry as exc:
+                report.unsafe(exc)
+                continue
+            if problem:
+                report.problem(INVALID, cert_path, problem)
+            else:
+                report.progress(f"{cert_path}: kept; {describe_leaf(leaf)}")
+        elif has_cert or has_key:
+            present, other = (f"{name}.pem", f"{name}-key.pem") if has_cert else (f"{name}-key.pem", f"{name}.pem")
+            report.problem(INVALID, certs.child(present), f"half a pair ({other} is missing)")
+        elif mode != "install":
+            report.problem(MISSING, cert_path, "run --install to issue it, or stage the pair")
+        elif ca.kind != "signing":
+            report.problem(MISSING, cert_path, f"no CA key to issue it; stage the pair or the CA in "
+                                               f"{os.path.join(paths.conf, CA_DIR)}")
+        else:
+            to_issue.append(name)
+    if not to_issue:
+        return
+    node = node_name(lookup, report)
+    if node is None:
+        return
+    lists = resolve_san_lists(paths, lookup, node, to_issue, report)
+    if lists is None:
+        return
+    gid = paths.service_gid()
+    for name in to_issue:
+        cert_bytes, key_bytes = issue_server_pair(ca, node, lists[name])
+        write_file(certs, f"{name}-key.pem", key_bytes, 0o640, 0, gid)
+        write_file(certs, f"{name}.pem", cert_bytes, 0o640, 0, gid)
+        leaf = x509.load_pem_x509_certificates(cert_bytes)[0]
+        report.progress(f"{certs.child(f'{name}.pem')}: issued; {describe_leaf(leaf)}")
+
+
+def check_server_pairs(paths: Paths, certs: Dir, ca: Optional[CaState], lookup: Lookup, report: Report) -> None:
+    """--check's part: validate present pairs; never MISSING, no write."""
+    anchors = pair_anchors(paths, certs, ca) if ca is not None and ca.kind != "absent" else None
+    for name in ("remoted", "apid"):
+        has_cert, has_key = _exists(certs, f"{name}.pem"), _exists(certs, f"{name}-key.pem")
+        if has_cert and has_key:
+            try:
+                _, problem = pair_problem(paths, certs, name, anchors[name] if anchors else None)
+            except UnsafeEntry as exc:
+                report.unsafe(exc)
+                continue
+            if problem:
+                report.problem(INVALID, certs.child(f"{name}.pem"), problem)
+        elif has_cert or has_key:
+            present, other = (f"{name}.pem", f"{name}-key.pem") if has_cert else (f"{name}-key.pem", f"{name}.pem")
+            report.problem(INVALID, certs.child(present), f"half a pair ({other} is missing)")
+
+
+def validate_san_lists(lookup: Lookup, report: Report) -> None:
+    """Every mode's test of the explicit SAN lists, whether or not a pair is about to be issued: --prestart runs the
+    same tests as --check."""
+    for var in (REMOTED_SANS_VAR, APID_SANS_VAR):
+        found = lookup.get(var, empty_is_unset=False)
+        if found is not None:
+            _, problem = parse_san_list(found[0])
+            if problem:
+                report.problem(INVALID, var, f"{problem} (set in {found[1]})")
 
 
 # ==================================================== Lock =====================================================
@@ -1150,6 +1503,7 @@ def preflight(paths: Paths, report: Report, environ: Mapping[str, str]) -> Optio
         return None
     lookup = build_lookup(paths, conf, report, environ)
     validate_supplied(lookup, report)
+    validate_san_lists(lookup, report)
     return conf, lookup
 
 
@@ -1159,7 +1513,7 @@ def mode_check(paths: Paths, report: Report, environ: Mapping[str, str]) -> int:
     result = preflight(paths, report, environ)
     if result is not None:
         with result[0] as conf:
-            check_own_ca(paths, conf, report)
+            check_own_ca(paths, conf, result[1], report)
     if not report.has():
         report.progress("check: no problem found")
     return report.exit_code("check")
@@ -1180,8 +1534,13 @@ def _writing_mode(mode: str):
             with ca:
                 step_api_passwords(paths, conf, lookup, report)
                 step_indexer_password(paths, lookup, report)
-                step_own_ca(paths, conf, ca, lookup, report, mode)
-                # The server pairs and the indexer trust are added by later stages.
+                certs = open_certs(paths, conf, report)
+                if certs is not None:
+                    with certs:
+                        state = step_own_ca(paths, conf, certs, ca, lookup, report, mode)
+                        if state is not None:
+                            step_server_pairs(paths, certs, state, lookup, report, mode)
+                # The indexer trust is added by a later stage.
         return report.exit_code(mode)
     return run
 

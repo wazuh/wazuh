@@ -147,22 +147,49 @@ class Sandbox:
         os.chown(self.certs, 0, self.account_gid)
         os.chmod(self.certs, 0o750)
         self.resolver = resolver
+        self.proc = os.path.join(base, "proc")
+        self.write_proc()
         self.paths = resolver.Paths(home=self.home, conf=self.conf, indexer_export=self.indexer_export,
-                                    service_user=ACCOUNT, service_group=ACCOUNT)
+                                    service_user=ACCOUNT, service_group=ACCOUNT, proc=self.proc)
         install_stubs(self)
 
-    def stage_ca(self, node="node1", key=True, bundle=True):
-        """A CA as a finished --install leaves it (minted by the program itself), and certs/root-ca.pem. Returns
-        the CA certificate's PEM bytes."""
+    def write_proc(self, route=None, ipv6_route=None, if_inet6=None):
+        """/proc/net fixtures. Default: eth0 carries both default routes and has one global IPv6 address; docker0
+        has addresses but no default route."""
+        net = os.path.join(self.proc, "net")
+        os.makedirs(net, exist_ok=True)
+        default_route = ("Iface\tDestination\tGateway\tFlags\tRefCnt\tUse\tMetric\tMask\n"
+                         "eth0\t00000000\t010011AC\t0003\t0\t0\t0\t00000000\n"
+                         "docker0\t000012AC\t00000000\t0001\t0\t0\t0\t0000FFFF\n")
+        default_v6 = ("00000000000000000000000000000000 00 00000000000000000000000000000000 00 "
+                      "fe800000000000000000000000000001 00000400 00000001 00000000 00000003 eth0\n")
+        default_inet6 = ("20010db8000000000000000000000010 02 40 00 00 eth0\n"
+                         "fe800000000000000000000000000002 02 40 20 80 eth0\n"
+                         "20010db8000000000000000000000099 03 40 00 00 docker0\n")
+        for name, text in (("route", default_route if route is None else route),
+                           ("ipv6_route", default_v6 if ipv6_route is None else ipv6_route),
+                           ("if_inet6", default_inet6 if if_inet6 is None else if_inet6)):
+            with open(os.path.join(net, name), "w") as handle:
+                handle.write(text)
+
+    def stage_ca(self, node="node1", key=True, bundle=True, pairs=True):
+        """What a finished --install leaves, made with the program itself: the CA (without the mint marker, so it
+        counts as staged), certs/root-ca.pem and both server pairs. Returns the CA certificate's PEM bytes."""
         r = self.resolver
         with r.open_top(self.conf, r.conf_spec(self.paths)) as conf:
             with r.ensure_dir(conf, "ca", r.CA_SPEC) as ca:
                 state = r.mint_ca(ca, node)
-        os.unlink(os.path.join(self.conf, "ca", r.CA_MARKER))       # staged, not minted by this install
-        if not key:
-            os.unlink(os.path.join(self.conf, "ca", r.CA_KEY))
+        os.unlink(os.path.join(self.conf, "ca", r.CA_MARKER))
         if bundle:
             self.write(os.path.join(self.certs, "root-ca.pem"), state.cert_bytes, mode=0o640, gid=self.account_gid)
+        if pairs:
+            sans = r.finish_sans([r.San("DNS", node)])
+            for name in ("remoted", "apid"):
+                cert, key_bytes = r.issue_server_pair(state, node, sans)
+                self.write(os.path.join(self.certs, f"{name}-key.pem"), key_bytes, mode=0o640, gid=self.account_gid)
+                self.write(os.path.join(self.certs, f"{name}.pem"), cert, mode=0o640, gid=self.account_gid)
+        if not key:
+            os.unlink(os.path.join(self.conf, "ca", r.CA_KEY))
         return state.cert_bytes
 
     def control(self, **settings):
@@ -225,6 +252,19 @@ class Sandbox:
                 state[os.path.relpath(full, self.base)] = (stat.S_IFMT(st.st_mode), st.st_uid, st.st_gid,
                                                            stat.S_IMODE(st.st_mode), digest)
         return state
+
+
+# Host facts the resolver reads, made deterministic for every test: the host name, its canonical name, and the
+# primary IPv4 address of each interface (the /proc/net fixtures name the interfaces).
+HOST_NAME = "node1.example.com"
+INTERFACE_IPV4 = {"eth0": "192.0.2.10", "docker0": "172.18.0.1", "lo": "127.0.0.1"}
+
+
+@pytest.fixture(autouse=True)
+def deterministic_host(resolver, monkeypatch):
+    monkeypatch.setattr(resolver.socket, "gethostname", lambda: HOST_NAME)
+    monkeypatch.setattr(resolver, "canonical_name", lambda host: HOST_NAME)
+    monkeypatch.setattr(resolver, "interface_ipv4", lambda name: INTERFACE_IPV4.get(name))
 
 
 @pytest.fixture
