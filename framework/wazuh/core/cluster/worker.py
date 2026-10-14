@@ -821,6 +821,8 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 if not os.path.commonpath([full_filename_path, expected_base]).startswith(expected_base):
                     raise WazuhClusterError(3022,
                         extra_message=f"File path outside allowed directory: {filename_}")
+                if os.path.basename(full_filename_path) in cluster_items['files'].get('excluded_files', []):
+                    raise WazuhClusterError(3022, extra_message=f"File is in excluded list: {filename_}")
                 # Create destination dir if it doesn't exist.
                 if not os.path.exists(os.path.dirname(full_filename_path)):
                     utils.mkdir_with_mode(os.path.dirname(full_filename_path))
@@ -860,6 +862,9 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                         if not os.path.commonpath([file_path, expected_base]).startswith(expected_base):
                             raise WazuhClusterError(3022,
                                 extra_message=f"File path outside allowed directory: {file_to_remove}")
+                        if os.path.basename(file_path) in cluster_items['files'].get('excluded_files', []):
+                            raise WazuhClusterError(3022,
+                                extra_message=f"File is in excluded list: {file_to_remove}")
                         try:
                             os.remove(file_path)
                             validated_extra[file_to_remove] = file_data
@@ -883,9 +888,8 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         for directory in directories_to_check:
             try:
                 full_path = safe_join(common.WAZUH_PATH, directory)
-                dir_files = set(os.listdir(full_path))
-                if not dir_files or dir_files.issubset(set(cluster_items['files']['excluded_files'])):
-                    shutil.rmtree(full_path)
+                if not os.listdir(full_path):
+                    os.rmdir(full_path)
             except Exception as e:
                 errors['extra'] += 1
                 result_logs["debug2"][directory].append(f"Error removing directory '{directory}': {e}")
