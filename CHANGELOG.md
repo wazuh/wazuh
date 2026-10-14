@@ -48,6 +48,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the single-agent vulnerability re-scan aborting on a NULL agent column after its state had been cleared. ([#39607](https://github.com/wazuh/wazuh/issues/39607))
 - Fixed the indexer connector waiting for the initialization of the indexer before applying operations that do not call it, and looking for the mappings backup index by listing every index of the cluster, which needed a cluster-wide permission and left an orphan backup behind. ([#39607](https://github.com/wazuh/wazuh/issues/39607))
 - Fixed `wazuh-monitord` not compressing the rotated `-NNN` archive and alert files when they rotate more than once a day. ([#40148](https://github.com/wazuh/wazuh/pull/40148))
+- Fixed `wurl_request()` not escaping the `|` delimiter in the URL, so a URL containing `|` was split into extra fields by the download module, truncating the URL and replacing the destination, header and data of the request. ([#38046](https://github.com/wazuh/wazuh/issues/38046))
 
 #### Changed
 

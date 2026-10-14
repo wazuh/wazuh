@@ -117,6 +117,7 @@ void * wm_download_main(wm_download_t * data) {
 void wm_download_dispatch(char * buffer) {
     char * command;
     char * url;
+    char * unsc_url = NULL;
     char * fpath;
     char * unsc_fpath = NULL;
     char * header;
@@ -205,6 +206,7 @@ void wm_download_dispatch(char * buffer) {
 unsc:
     // Unescape
 
+    unsc_url = wstr_replace(url, "\\|", "|");
     unsc_fpath = wstr_replace(fpath, "\\|", "|");
     if (header && *header) {
         unsc_header = wstr_replace(header, "\\|", "|");
@@ -228,11 +230,11 @@ unsc:
     }
 
     // Run download
-    mdebug1("Downloading '%s' to '%s'", url, jpath);
+    mdebug1("Downloading '%s' to '%s'", unsc_url, jpath);
 
-    switch (wurl_get(url, jpath, unsc_header, unsc_data, timeout)) {
+    switch (wurl_get(unsc_url, jpath, unsc_header, unsc_data, timeout)) {
     case OS_CONNERR:
-        mdebug1(WURL_DOWNLOAD_FILE_ERROR, jpath, url);
+        mdebug1(WURL_DOWNLOAD_FILE_ERROR, jpath, unsc_url);
         snprintf(buffer, OS_MAXSTR, "err connecting to url");
         break;
 
@@ -242,16 +244,17 @@ unsc:
         break;
 
     case OS_TIMEOUT:
-        mdebug1(WURL_TIMEOUT_ERROR, jpath, url);
+        mdebug1(WURL_TIMEOUT_ERROR, jpath, unsc_url);
         snprintf(buffer, OS_MAXSTR, "err timeout");
         break;
 
     default:
         snprintf(buffer, OS_MAXSTR, "ok");
-        mdebug2("Download of '%s' finished.", url);
+        mdebug2("Download of '%s' finished.", unsc_url);
     }
 
 end:
+    os_free(unsc_url);
     os_free(unsc_fpath);
     os_free(unsc_header);
     os_free(unsc_data);
