@@ -587,8 +587,10 @@ does not start.
 ### Removed options
 
 5.0 validates `api.yaml` against a closed schema: a key it does not know makes `wazuh-manager-apid`
-refuse the file with error `2000` (`Some parameters are not expected in the configuration file`) and
-the API does not start. Remove these 4.x options:
+refuse the file with error `2000` (`Some parameters are not expected in the configuration file`).
+`wazuh-manager-control start` checks it before starting any daemon, so the start is refused
+(`wazuh-manager-apid: Configuration error. Exiting`) and nothing runs; `restart` refuses it while the
+manager is still up and leaves it running. Remove these 4.x options:
 
 | Option | Notes |
 |--------|-------|

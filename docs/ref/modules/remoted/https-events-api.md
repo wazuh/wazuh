@@ -105,7 +105,7 @@ Without a usable pair the manager **fails closed**, in three layers, from the ou
    /var/wazuh-manager/etc/certs/remoted.pem (issued by the credential resolver at installation, or
    provisioned externally, e.g. with wazuh-certs-tool).`
 2. **`wazuh-manager-remoted`**, after dropping privileges and before remoted writes its PID file
-   (so `wazuh-manager-control` never sees a remoted that is about to exit), probes both paths with `access(R_OK)` and exits with exactly one of
+   (so `wazuh-manager-control status` never reports as running a remoted that is about to exit), probes both paths with `access(R_OK)` and exits with exactly one of
    `Cannot start the HTTPS agent listener: the TLS certificate '<c>' and private key '<k>' are missing
    or unreadable by the service user.`, `… the TLS certificate '<c>' is missing or unreadable by the
    service user.` or `… the TLS private key '<k>' is missing or unreadable by the service user.`,
