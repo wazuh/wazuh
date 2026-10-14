@@ -610,6 +610,19 @@ gzFile w_gzopen_nofollow(const char * basedir, const char * filename, const char
  * @return A vetted file descriptor, with O_NONBLOCK already cleared, on success; -1 on error (sets errno).
  */
 int w_openat_nofollow_vetted(const char * basedir, const char * filename, int oflags, mode_t mode);
+
+/**
+ * @brief Whether @p path names the regular file open on @p fd, and only that: not through a symlink,
+ *        and with no second hard link.
+ *
+ * For a file staged under a name an unprivileged account can replace, checked right before the name
+ * is used.
+ *
+ * @param path Name to check.
+ * @param fd Descriptor of the file it should name.
+ * @return true if @p path names that file.
+ */
+bool w_path_names_fd(const char *path, int fd);
 #endif
 
 

@@ -3039,6 +3039,15 @@ int w_openat_nofollow_vetted(const char * basedir, const char * filename, int of
 
     return fd;
 }
+
+bool w_path_names_fd(const char *path, int fd) {
+    struct stat opened;
+    struct stat named;
+
+    return fstat(fd, &opened) == 0 && lstat(path, &named) == 0 && S_ISREG(named.st_mode) &&
+           named.st_nlink == 1 && named.st_dev == opened.st_dev && named.st_ino == opened.st_ino;
+}
+
 #endif
 
 

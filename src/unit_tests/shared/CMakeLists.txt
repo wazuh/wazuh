@@ -187,6 +187,12 @@ list(APPEND shared_tests_names "test_http_op")
 list(APPEND shared_tests_flags " ")
 endif()
 
+# w_path_names_fd(), on real files: test_file_op mocks the lstat() it needs.
+if(NOT ${TARGET} STREQUAL "winagent")
+list(APPEND shared_tests_names "test_file_op_names")
+list(APPEND shared_tests_flags " ")
+endif()
+
 # manager_task_op.c reaches the Task Manager over http_op, so it is server-only for the same
 # reason. Only the manager has producers for it: authd and, through modulesd's callback, the
 # vulnerability scanner.
