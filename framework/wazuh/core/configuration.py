@@ -19,6 +19,7 @@ from typing import List, Union
 from defusedxml.ElementTree import tostring
 from defusedxml.minidom import parseString
 from wazuh.core import common, wazuh_socket
+from wazuh.core.InputValidator import InputValidator
 from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.utils import cut_array, load_wazuh_xml, safe_move
 
@@ -736,6 +737,8 @@ def get_agent_conf(group_id: str = None, offset: int = 0, limit: int = common.DA
 
     Raises
     ------
+    WazuhError(1722)
+        Incorrect format for group_id.
     WazuhResourceNotFound(1710)
         Group was not found.
     WazuhError(1006)
@@ -748,6 +751,8 @@ def get_agent_conf(group_id: str = None, offset: int = 0, limit: int = common.DA
     dict or str
         agent.conf as dictionary.
     """
+    if not InputValidator().group(group_id):
+        raise WazuhError(1722)
     if not os_path.exists(os_path.join(common.SHARED_PATH, group_id)):
         raise WazuhResourceNotFound(1710, group_id)
     agent_conf = os_path.join(common.SHARED_PATH, group_id if group_id is not None else '', filename)
@@ -845,6 +850,8 @@ def get_file_conf(filename: str, group_id: str = None, type_conf: str = None, ra
 
     Raises
     ------
+    WazuhError(1722)
+        Incorrect format for group_id.
     WazuhResourceNotFound(1710)
         Group was not found.
     WazuhError(1006)
@@ -857,6 +864,8 @@ def get_file_conf(filename: str, group_id: str = None, type_conf: str = None, ra
     dict or str
         File content as plain text or dictionary.
     """
+    if not InputValidator().group(group_id):
+        raise WazuhError(1722)
     if not os_path.exists(os_path.join(common.SHARED_PATH, group_id)):
         raise WazuhResourceNotFound(1710, group_id)
 
@@ -1016,6 +1025,8 @@ def upload_group_configuration(group_id: str, file_content: str) -> str:
 
     Raises
     ------
+    WazuhError(1722)
+        Incorrect format for group_id.
     WazuhResourceNotFound(1710)
         Group was not found.
     WazuhError(1113)
@@ -1034,6 +1045,8 @@ def upload_group_configuration(group_id: str, file_content: str) -> str:
     str
         Confirmation message.
     """
+    if not InputValidator().group(group_id):
+        raise WazuhError(1722)
     if not os_path.exists(os_path.join(common.SHARED_PATH, group_id)):
         raise WazuhResourceNotFound(1710, group_id)
     # path of temporary files for parsing xml input
@@ -1125,6 +1138,8 @@ def upload_group_file(group_id: str, file_data: str, file_name: str = 'agent.con
 
     Raises
     ------
+    WazuhError(1722)
+        Incorrect format for group_id.
     WazuhResourceNotFound(1710)
         Group was not found.
     WazuhError(1112)
@@ -1137,6 +1152,8 @@ def upload_group_file(group_id: str, file_data: str, file_name: str = 'agent.con
     str
         Confirmation message in string.
     """
+    if not InputValidator().group(group_id):
+        raise WazuhError(1722)
     # Check if the group exists
     if not os_path.exists(os_path.join(common.SHARED_PATH, group_id)):
         raise WazuhResourceNotFound(1710, group_id)

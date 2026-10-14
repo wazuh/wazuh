@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.14.11]
 
+### Manager
+
+#### Fixed
+
+- Fixed the validation of `group_id` when reading and writing group configuration files, rejecting values that are not a valid group name.
+
 ## [v4.14.10]
 
 ### Manager
