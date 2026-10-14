@@ -84,6 +84,7 @@ All notable changes to this project will be documented in this file.
 - Fixed logcollector reading files that contain NUL bytes again from the start, and sending their events again, after every agent restart. ([#40134](https://github.com/wazuh/wazuh/pull/40134))
 - Fixed logcollector validating monitored paths on Solaris 10, HP-UX and AIX 6.1, which lack part of the `openat()` family, and a race on Windows where a directory switched in place to a junction could redirect an open. ([#40019](https://github.com/wazuh/wazuh/pull/40019))
 - Fixed the macOS agent package loading `/tmp/wazuh_envs` without checking its owner, permissions and file type. ([#40248](https://github.com/wazuh/wazuh/pull/40248))
+- Fixed `wazuh-modulesd` crashing on a malformed legacy Berkeley DB RPM package record by validating the offsets and counts of each header entry. ([#40368](https://github.com/wazuh/wazuh/pull/40368))
 
 ### Ruleset
 
