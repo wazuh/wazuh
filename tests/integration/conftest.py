@@ -40,6 +40,7 @@ import wazuh_testing.utils.configuration as wazuh_configuration
 from wazuh_testing.utils.services import control_service
 
 WAZUH_MERGED_MG_PATH = os.path.join(SHARED_CONFIGURATIONS_PATH, 'merged.mg')
+WAZUH_SHARED_AGENT_CONF_PATH = os.path.join(SHARED_CONFIGURATIONS_PATH, 'agent.conf')
 AUTHD_PENDING_PURGES_PATH = os.path.join(WAZUH_PATH, 'queue', 'authd', 'pending-purges')
 
 # - - - - - - - - - - - - - - - - - - - - - - - - -Pytest configuration - - - - - - - - - - - - - - - - - - - - - - -
@@ -843,21 +844,29 @@ def ensure_merged_mg() -> None:
     (startup_gate_check_manager_config_hash()) can release immediately on the first
     /control notify instead of waiting for a /download round trip.
 
-    On Linux the file is created with group-writable permissions (0o660) and
-    owned by root:wazuh so that wazuh-agentd can overwrite it when receiving
+    It also writes an empty agent.conf when there is none, as a real unmerge leaves one next to
+    merged.mg: wazuh-agentd validates it at startup and discards merged.mg when it is missing.
+
+    On Linux the files are created with group-writable permissions (0o660) and
+    owned by root:wazuh so that wazuh-agentd can overwrite them when receiving
     a new merged.mg from the manager (or simulator).
     """
     os.makedirs(os.path.dirname(WAZUH_MERGED_MG_PATH), exist_ok=True)
-    with open(WAZUH_MERGED_MG_PATH, 'wb') as f:
-        f.write(RemotedSimulator.DEFAULT_MERGED_MG_CONTENT)
-    if sys.platform != platforms.WINDOWS:
-        import grp
-        os.chmod(WAZUH_MERGED_MG_PATH, 0o660)
-        try:
-            wazuh_gid = grp.getgrnam('wazuh').gr_gid
-            os.chown(WAZUH_MERGED_MG_PATH, -1, wazuh_gid)
-        except (KeyError, PermissionError):
-            pass
+    files = {WAZUH_MERGED_MG_PATH: RemotedSimulator.DEFAULT_MERGED_MG_CONTENT}
+    if not os.path.exists(WAZUH_SHARED_AGENT_CONF_PATH):
+        files[WAZUH_SHARED_AGENT_CONF_PATH] = b'<agent_config>\n</agent_config>\n'
+
+    for path, content in files.items():
+        with open(path, 'wb') as f:
+            f.write(content)
+        if sys.platform != platforms.WINDOWS:
+            import grp
+            os.chmod(path, 0o660)
+            try:
+                wazuh_gid = grp.getgrnam('wazuh').gr_gid
+                os.chown(path, -1, wazuh_gid)
+            except (KeyError, PermissionError):
+                pass
 
 
 @pytest.fixture()
