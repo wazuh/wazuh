@@ -171,7 +171,8 @@ TEST_F(SyscollectorVDTest, PersistDifference_VDTableRoutesToVDProtocol)
                                   false,   // users
                                   false,   // services
                                   false,   // browserExtensions
-                                  false);  // notifyOnFirstScan
+                                  false,  // notifyOnFirstScan
+                                  false);  // containerBaseline -- these tests drive the host lanes only
 
     // Initialize sync protocols
     EXPECT_NO_THROW(
@@ -249,7 +250,8 @@ TEST_F(SyscollectorVDTest, PersistDifference_NonVDTableRoutesToRegularProtocol)
                                   false,   // users
                                   false,   // services
                                   false,   // browserExtensions
-                                  false);  // notifyOnFirstScan
+                                  false,  // notifyOnFirstScan
+                                  false);  // containerBaseline -- these tests drive the host lanes only
 
     // Initialize sync protocols
     EXPECT_NO_THROW(
@@ -327,7 +329,8 @@ TEST_F(SyscollectorVDTest, PersistDifference_WithoutSyncProtocol)
                                   false,   // users
                                   false,   // services
                                   false,   // browserExtensions
-                                  false);  // notifyOnFirstScan
+                                  false,  // notifyOnFirstScan
+                                  false);  // containerBaseline -- these tests drive the host lanes only
 
     // Do NOT initialize sync protocols - test behavior without them
 
@@ -385,7 +388,8 @@ TEST_F(SyscollectorVDTest, ParseResponseBuffer_RoutesToRegularProtocol)
                                   false,   // users
                                   false,   // services
                                   false,   // browserExtensions
-                                  false);  // notifyOnFirstScan
+                                  false,  // notifyOnFirstScan
+                                  false);  // containerBaseline -- these tests drive the host lanes only
 
     // Initialize sync protocols
     EXPECT_NO_THROW(
@@ -444,7 +448,8 @@ TEST_F(SyscollectorVDTest, ParseResponseBuffer_WithoutSyncProtocol)
                                   false,   // users
                                   false,   // services
                                   false,   // browserExtensions
-                                  false);  // notifyOnFirstScan
+                                  false,  // notifyOnFirstScan
+                                  false);  // containerBaseline -- these tests drive the host lanes only
 
     // Do NOT initialize sync protocols
 
@@ -496,7 +501,8 @@ TEST_F(SyscollectorVDTest, ParseResponseBufferVD_RoutesToVDProtocol)
                                   false,   // users
                                   false,   // services
                                   false,   // browserExtensions
-                                  false);  // notifyOnFirstScan
+                                  false,  // notifyOnFirstScan
+                                  false);  // containerBaseline -- these tests drive the host lanes only
 
     // Initialize sync protocols
     EXPECT_NO_THROW(
@@ -555,7 +561,8 @@ TEST_F(SyscollectorVDTest, ParseResponseBufferVD_WithoutSyncProtocol)
                                   false,   // users
                                   false,   // services
                                   false,   // browserExtensions
-                                  false);  // notifyOnFirstScan
+                                  false,  // notifyOnFirstScan
+                                  false);  // containerBaseline -- these tests drive the host lanes only
 
     // Do NOT initialize sync protocols
 

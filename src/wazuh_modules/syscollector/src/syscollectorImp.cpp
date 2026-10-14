@@ -634,8 +634,8 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
                         const bool users,
                         const bool services,
                         const bool browserExtensions,
-                        const bool containerBaseline,
                         const bool notifyOnFirstScan,
+                        const bool containerBaseline,
                         const unsigned int containerBaselineInterval)
 {
     auto dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, dbPath, getCreateStatement(), DbManagement::PERSISTENT,
