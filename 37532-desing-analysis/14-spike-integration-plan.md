@@ -416,6 +416,12 @@ What landed:
   to `0` = unlimited) through remoted's handshake JSON, `getDefine_Int_default` on the manager side,
   the agent's parse, and a `syscollector_containers` branch in `agcom`. Additive and optional on both
   sides, so an older manager cannot fail the handshake.
+  **SUPERSEDED 2026-10-13 ([23](23-nfr3-container-limits.md), O10).** Three properties of this
+  paragraph are no longer true: the separate module and its `agcom` branch are gone (the values ride
+  inside the existing `syscollector` object and are split on a `container_` prefix, which retires a
+  second `getdoclimits` query that could silently answer nothing); the dimension set is **eleven**,
+  derived from `CONTAINER_BASELINE_TABLES` rather than hand-kept, which adds `services`; and the
+  default is **30000 per container**, not `0` = unlimited shared across all of them.
 - **A bug of ours, fixed.** `f689f33094`'s independent `<container_baseline_interval>` pass skipped
   `scan()`'s sync bookkeeping, so container rows stayed `sync=0` and could be re-emitted as duplicate
   CREATEs. `runContainerBaselinePass()` now does the same `updateSyncFlagInDB` / `promoteItemsAfterScan`

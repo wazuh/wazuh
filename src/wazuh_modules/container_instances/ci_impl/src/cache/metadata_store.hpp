@@ -6,6 +6,7 @@
 #include <atomic>
 #include <chrono>
 #include <cstdint>
+#include <set>
 #include <shared_mutex>
 #include <string>
 #include <unordered_map>
@@ -42,6 +43,8 @@ namespace wazuh::container_instances
                                                         const std::string& containerName) const override;
         [[nodiscard]] StoreStats stats() const override;
         [[nodiscard]] std::vector<ContainerRecordPtr> listContainers() const override;
+        [[nodiscard]] std::set<std::string> admittedIds() const override;
+        void setSyncLimit(int limit) override;
 
         void applySnapshot(const SourceId& source,
                            std::vector<ContainerRecord> snapshot,
@@ -77,6 +80,18 @@ namespace wazuh::container_instances
         /// Visibility, not existence — that distinction is the whole contract.
         [[nodiscard]] ContainerRecordPtr visibleRecordLocked(const std::string& containerId) const;
 
+        /// Every id listContainers() would publish, ordered. The admission rule
+        /// is fed from visibility rather than existence so that a running record
+        /// the resolver has not keyed yet cannot hold a slot it is not using.
+        [[nodiscard]] std::set<std::string> visibleIdsLocked() const;
+
+        /// Re-runs the admission rule over the current visible set. Cheap and
+        /// idempotent, so it is called after any batch that can change
+        /// visibility rather than tracked incrementally — the rule is a pure
+        /// function of (visible, admitted, limit), and recomputing it is how a
+        /// slot freed by a departure is handed on in the same pass.
+        void recomputeAdmittedLocked();
+
         /// Appends the transition between two visibility states, dropping the
         /// ones no consumer acts on.
         void journalTransitionLocked(const std::string& containerId,
@@ -102,6 +117,23 @@ namespace wazuh::container_instances
         KeyKind m_keyKind;
 
         LifecycleJournal m_journal;
+
+        /// Which containers may report, and the ceiling that decided it. Both
+        /// guarded by m_mutex like everything beside them.
+        ///
+        /// There is no database here to seed stickiness from, so after an agent
+        /// restart this is re-derived as "the lowest `m_syncLimit` ids that
+        /// exist". That can differ from the set in flight before the restart,
+        /// which shows up as a one-time shift in what the manager is told —
+        /// deterministic, bounded to restarts, and written down rather than
+        /// discovered.
+        std::set<std::string> m_admitted;
+        int m_syncLimit {0};
+
+        /// How many containers the last recompute withheld, so the count is
+        /// reported when it changes rather than on every reconcile. SIZE_MAX
+        /// means "nothing said yet", so the first real answer always speaks.
+        std::size_t m_withheldFromSyncReported {SIZE_MAX};
 
         /// Set by journalTransitionLocked, consumed by notifyLifecycleUnlocked.
         /// Guarded by m_mutex like everything else it sits beside.

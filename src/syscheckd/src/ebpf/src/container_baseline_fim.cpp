@@ -30,6 +30,8 @@
  */
 
 #include "container_baseline_fim.h"
+
+#include "container_row_budget.h"
 #include "container_baseline.h"
 #include "container_baseline_fim_bridge.h"
 #include "container_event_drain.hpp"
@@ -76,6 +78,14 @@ void LogDebug(const char* fmt, Args... args)
     char buffer[512];
     std::snprintf(buffer, sizeof(buffer), fmt, args...);
     fim_container_baseline_log_debug(buffer);
+}
+
+template <typename... Args>
+void LogWarn(const char* fmt, Args... args)
+{
+    char buffer[512];
+    std::snprintf(buffer, sizeof(buffer), fmt, args...);
+    fim_container_baseline_log_warn(buffer);
 }
 
 template <typename... Args>
@@ -188,15 +198,40 @@ class ScopedContainerTxn {
 
         [[nodiscard]] bool valid() const { return m_txn != nullptr; }
 
-        void syncRow(const std::string& row_json)
+        /// Stores one row, subject to this container's own row ceiling.
+        ///
+        /// A baseline rewrites the container's whole row set, so the count of
+        /// rows synced in this transaction IS the container's row count — no
+        /// persistent counter is needed, and none can drift.
+        ///
+        /// Two refusals are possible and both matter. The per-container cap is
+        /// refused here. The NODE ceiling is refused by dbsync underneath
+        /// (max_rows on file_entry), and used to be swallowed by the LogDebug
+        /// below — measured on a real node, 8,643 rows were refused that way
+        /// while the scan reported "0 partial scan(s)". Either way the row set
+        /// is now incomplete, and rowsRefused() is how onStatus() learns that.
+        bool syncRow(const std::string& row_json, int perContainerLimit)
         {
-            if (!m_txn) return;
+            if (!m_txn) return false;
+
+            if (!container_row_admitted(perContainerLimit, m_synced)) {
+                ++m_refused;
+                return false;
+            }
 
             if (fim_db_transaction_sync_row_json(m_txn, "file_entry", row_json.c_str()) != FIMDB_OK) {
+                ++m_refused;
                 LogDebug("Container FIM baseline: failed to sync a row for container '%s'.",
                         m_ctx.container_id.c_str());
+                return false;
             }
+
+            ++m_synced;
+            return true;
         }
+
+        [[nodiscard]] size_t rowsSynced() const { return m_synced; }
+        [[nodiscard]] size_t rowsRefused() const { return m_refused; }
 
         /// @param detect_deletions false for an incomplete scan: the rows this
         ///        transaction did NOT refresh are missing because the walk was
@@ -220,6 +255,8 @@ class ScopedContainerTxn {
     private:
         ContainerTxnCtx m_ctx;
         TXN_HANDLE      m_txn{nullptr};
+        std::size_t     m_synced{0};
+        std::size_t     m_refused{0};
 };
 
 /// Streams the baseline into per-container transactions.
@@ -285,8 +322,16 @@ class BaselineDriver {
             beginContainer(container_id);
             if (!m_txn || !m_txn->valid()) return;
 
-            m_txn->syncRow(row.dump());
-            ++m_rows;
+            // m_rows counts rows the database KEPT, not rows handed to it.
+            // Counting the latter is what let a baseline report 100,063 rows
+            // while the table held 91,420 -- the shortfall appeared in no
+            // counter and no log line (23.4). A total that cannot be wrong in
+            // that direction is the whole point of reporting one.
+            if (m_txn->syncRow(row.dump(), fim_container_baseline_row_limit())) {
+                ++m_rows;
+            } else {
+                ++m_refused;
+            }
         }
 
         void onStatus(const cb_container_status_t& status)
@@ -308,7 +353,25 @@ class BaselineDriver {
             // so previously-stored rows for this container age out as DELETED.
             beginContainer(id);
 
-            const bool partial = status.partial != 0;
+            // status.partial is the WALKER's verdict, reached before a single
+            // row touches the database. A row the database refused is just as
+            // missing, and until now nothing carried that back: measured on a
+            // real node, 8,643 rows were refused while every scan in the window
+            // reported "0 partial scan(s)". Suppressing deletions on it is D11
+            // rule 4 — never let a partial view delete.
+            const std::size_t refused = (m_txn && m_current == id) ? m_txn->rowsRefused() : 0;
+            const bool partial = container_scan_is_partial(status.partial != 0, refused);
+
+            if (refused > 0) {
+                LogWarn("Container FIM baseline: container '%s' stored %zu row(s) and %zu were refused "
+                        "(per-container limit %d, node limit %d). Its file state is incomplete, so "
+                        "delete detection is suppressed for it this pass.",
+                        id.c_str(),
+                        m_txn ? m_txn->rowsSynced() : 0,
+                        refused,
+                        fim_container_baseline_row_limit(),
+                        fim_container_baseline_node_row_limit());
+            }
 
             if (partial) {
                 // D17: each reason is named, because they are not equally
@@ -380,12 +443,19 @@ class BaselineDriver {
                         id.c_str());
                 ScopedContainerTxn txn{id, m_origin};
                 txn.finish(true); // no rows synced -> every stored row becomes DELETED
+
+                // After the rows are gone, not before: the DELETEs above run
+                // through container_txn_callback and decrement the very count
+                // being released, so releasing first would drop a map entry
+                // that the sweep then re-creates and leaves non-zero.
+                fim_container_doc_budget_release(id.c_str());
             }
 
             m_stale = stale.size();
         }
 
         [[nodiscard]] size_t rows() const { return m_rows; }
+        [[nodiscard]] size_t refused() const { return m_refused; }
         [[nodiscard]] size_t scanned() const { return m_scanned.size(); }
         [[nodiscard]] size_t partial() const { return m_partial; }
         [[nodiscard]] size_t stale() const { return m_stale; }
@@ -435,7 +505,8 @@ class BaselineDriver {
         std::unique_ptr<ScopedContainerTxn> m_txn;
         std::string                          m_current;
         std::set<std::string>                m_scanned;
-        size_t                               m_rows{0};
+        size_t                               m_rows{0};     // stored
+        size_t                               m_refused{0};  // offered and turned away
         size_t                               m_partial{0};
         size_t                               m_stale{0};
         size_t                               m_malformed_rows{0};
@@ -457,10 +528,28 @@ void status_sink(const cb_container_status_t* status, void* user_data)
     static_cast<BaselineDriver*>(user_data)->onStatus(*status);
 }
 
-void container_id_sink(const char* container_id, void* user_data)
+/// Collects every known container and, separately, the ones allowed to report.
+///
+/// Both halves come from one reply deliberately. `known` is what authorises
+/// deletions, so it must hold EVERY container -- a withheld one has not been
+/// removed, and leaving it out would delete the rows the cap is holding back.
+/// `admitted` is the subset whose rows may still be offered upward.
+struct ContainerListing
+{
+    std::set<std::string> known;
+    std::set<std::string> admitted;
+};
+
+void container_id_sink(const char* container_id, int synced, void* user_data)
 {
     if (!container_id || !user_data) return;
-    static_cast<std::set<std::string>*>(user_data)->insert(container_id);
+
+    auto* listing = static_cast<ContainerListing*>(user_data);
+    listing->known.insert(container_id);
+
+    if (synced != 0) {
+        listing->admitted.insert(container_id);
+    }
 }
 
 
@@ -707,8 +796,21 @@ extern "C" void fim_run_container_baseline(void)
         // this distinction a container restart would delete all of its FIM
         // state and re-create it — a false-positive flood on exactly the event
         // that must be reported accurately.
-        std::set<std::string> known;
-        const int listed = cbaseline_list_containers(CB_DEFAULT_CONNECTOR_SOCKET_PATH, container_id_sink, &known);
+        ContainerListing listing;
+        const int listed = cbaseline_list_containers(CB_DEFAULT_CONNECTOR_SOCKET_PATH, container_id_sink, &listing);
+        const std::set<std::string>& known = listing.known;
+
+        // Only when the connector actually answered. A failed query reports no
+        // containers at all, and taking that as "nothing may report" would
+        // withhold every container's rows on a momentary blip.
+        if (listed >= 0) {
+            std::vector<const char*> admitted;
+            admitted.reserve(listing.admitted.size());
+            for (const auto& id : listing.admitted) {
+                admitted.push_back(id.c_str());
+            }
+            fim_container_set_admitted(admitted.data(), admitted.size());
+        }
 
         // A negative count means the connector never answered, so `known` is
         // empty for want of an answer rather than for want of containers.
@@ -729,9 +831,11 @@ extern "C" void fim_run_container_baseline(void)
 
         fim_report_container_baseline_result(baselined,
                                              driver.rows(),
+                                             driver.refused(),
                                              driver.partial(),
                                              driver.stale(),
-                                             known.size());
+                                             known.size(),
+                                             known.size() - listing.admitted.size());
     } catch (const std::exception& err) {
         LogError("Container FIM baseline failed: %s", err.what());
     } catch (...) {

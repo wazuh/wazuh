@@ -107,3 +107,39 @@ target_link_libraries(resolver_wait_test
 
 add_test(NAME resolver_wait_test
          COMMAND resolver_wait_test)
+
+# The container FIM document budget's decision rule (#37532 / O10). Split out of
+# the bridge for the same reason as everything above it: the rule otherwise sits
+# beside a process-global counter and a pthread mutex inside a .c, reachable only
+# by running the daemon — and a budget nobody can test is how the host path's own
+# accounting drifted.
+add_executable(container_doc_budget_test container_doc_budget_test.cpp)
+
+target_link_libraries(container_doc_budget_test
+    debug gtestd
+    debug gtest_maind
+    optimized gtest
+    optimized gtest_main
+    pthread
+)
+
+add_test(NAME container_doc_budget_test
+         COMMAND container_doc_budget_test)
+
+# The per-container row ceiling and the delete-safety rule it enables
+# (#37532 / O10). Split out of the baseline transaction for the same reason as
+# everything above: the rules otherwise run only against a real database, and
+# the one that decides whether deletions are suppressed is the one that must
+# never silently change.
+add_executable(container_row_budget_test container_row_budget_test.cpp)
+
+target_link_libraries(container_row_budget_test
+    debug gtestd
+    debug gtest_maind
+    optimized gtest
+    optimized gtest_main
+    pthread
+)
+
+add_test(NAME container_row_budget_test
+         COMMAND container_row_budget_test)

@@ -1,5 +1,6 @@
 #include "metadata_store.hpp"
 
+#include "container_admission.hpp"
 #include "reconciler.hpp"
 
 #include <mutex>
@@ -277,6 +278,13 @@ namespace wazuh::container_instances
 
         m_lastReconcile = now;
 
+        // After the sweeps, not before: a container still inside its removal
+        // grace is still visible and still holds its slot, and one erased above
+        // has just freed its slot for whoever was waiting. Recomputing earlier
+        // would hand a slot to a newcomer a beat before the departure that
+        // freed it, and hand it back on the next pass.
+        recomputeAdmittedLocked();
+
         // Released before the notify on purpose: an observer's natural first
         // move is to read the store back, which would deadlock under this lock,
         // and a slow one would stall every reader for as long as it ran.
@@ -329,6 +337,12 @@ namespace wazuh::container_instances
     {
         std::unique_lock lock(m_mutex);
         insertResolvedLocked(source, std::move(record));
+
+        // The cold path can publish a container that was not visible a moment
+        // ago, so it can also fill a free slot. Without this a container first
+        // seen through an on-demand resolve would stay unadmitted until the
+        // next unrelated reconcile, for the same reason the notify below exists.
+        recomputeAdmittedLocked();
 
         // The cold path publishes containers too — one first seen through an
         // on-demand resolve is as new to consumers as one the connector found,
@@ -413,6 +427,79 @@ namespace wazuh::container_instances
             }
         }
         sourceIt->second.erase(it);
+    }
+
+    std::set<std::string> MetadataStore::admittedIds() const
+    {
+        std::shared_lock lock(m_mutex);
+        return m_admitted;
+    }
+
+    void MetadataStore::setSyncLimit(int limit)
+    {
+        std::unique_lock lock(m_mutex);
+
+        if (m_syncLimit == limit)
+        {
+            return;
+        }
+
+        m_syncLimit = limit;
+        recomputeAdmittedLocked();
+    }
+
+    std::set<std::string> MetadataStore::visibleIdsLocked() const
+    {
+        std::set<std::string> visible;
+
+        for (const auto& [source, records] : m_bySource)
+        {
+            for (const auto& [containerId, record] : records)
+            {
+                if (!record || (record->hostKey == 0 && isRunning(record->state)))
+                {
+                    continue; // Running but unresolved: not published yet.
+                }
+                visible.insert(containerId);
+            }
+        }
+
+        return visible;
+    }
+
+    void MetadataStore::recomputeAdmittedLocked()
+    {
+        const auto visible = visibleIdsLocked();
+        m_admitted = admitContainers(visible, m_admitted, m_syncLimit);
+
+        // Say how many are NOT reporting, on change rather than per pass.
+        //
+        // An analyst shown ten containers when fifty exist, with nothing saying
+        // so, is being told something false about coverage -- and silence here
+        // is indistinguishable from a node that really runs ten. This is the
+        // only place that knows both numbers.
+        const std::size_t withheld = visible.size() - m_admitted.size();
+
+        if (m_withheldFromSyncReported == withheld || !m_logger)
+        {
+            return;
+        }
+
+        m_withheldFromSyncReported = withheld;
+
+        if (withheld == 0)
+        {
+            m_logger(LogLevel::debug, "Every container is reporting to the manager; none withheld by the limit.");
+        }
+        else
+        {
+            m_logger(LogLevel::info,
+                     "Reporting " + std::to_string(m_admitted.size()) + " of " + std::to_string(visible.size()) +
+                         " container(s) to the manager; " + std::to_string(withheld) +
+                         " withheld by containers.synced_limit=" + std::to_string(m_syncLimit) +
+                         ". The withheld containers are still monitored and their data is still stored locally -- "
+                         "it is not sent. Raise the limit to report more.");
+        }
     }
 
     ContainerRecordPtr MetadataStore::visibleRecordLocked(const std::string& containerId) const

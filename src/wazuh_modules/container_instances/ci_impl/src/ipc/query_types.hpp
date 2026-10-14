@@ -8,6 +8,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -86,6 +87,17 @@ namespace wazuh::container_instances
         /// indistinguishable from "no connector" for every client, because the
         /// client can only report reachability on a key it can find (C28).
         bool listReply {false};
+
+        /// Which of `containers` may report to the manager. Travels beside the
+        /// records rather than inside them: an admission flag on the record
+        /// would be compared by recordEquals() and so would journal a `changed`
+        /// event every time a slot moved, for a container nothing had changed
+        /// about. Under the default unlimited cap this holds every visible id
+        /// rather than being left empty, so membership is the single question
+        /// the serialiser has to ask and there is no second code path to get
+        /// wrong when no cap is configured.
+        std::set<std::string> admitted;
+
         std::optional<VerdictReason> reason; ///< notContainer.
         int retryAfterMs {0};                ///< pending.
         std::optional<StoreStats> stats;     ///< ok.
