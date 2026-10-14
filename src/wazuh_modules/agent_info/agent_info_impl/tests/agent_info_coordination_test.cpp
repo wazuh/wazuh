@@ -1613,6 +1613,125 @@ namespace
             }
         }));
     }
+
+    // Runs one coordination in which FIM accepts the pause and then refuses refusedCommand
+    // ("is_pause_completed" or "flush") the way wm_fim_query_json() reports a stopped syscheckd.
+    // With shutdownFirst, the shutdown predicate turns true just before that query, as modulesd's
+    // flag does when a stop or reload lands then; stop() reaches agent-info on a second refusal, as
+    // it does after the grace second. SCA and syscollector are not configured.
+    // Returns the level of the first log containing logText.
+    modules_log_level_t refusedFimQueryLogLevel(const std::string& refusedCommand, const std::string& logText,
+                                                bool shutdownFirst)
+    {
+        auto mockDBSync = std::make_shared<MockDBSync>();
+        auto mockSysInfo = std::make_shared<MockSysInfo>();
+        auto mockFileIO = std::make_shared<MockFileIOUtils>();
+        auto mockFileSystem = std::make_shared<MockFileSystemWrapper>();
+
+        int selectRowsCalls = 0;
+        expectMetadataSyncNeeded(mockDBSync, selectRowsCalls);
+
+        EXPECT_CALL(*mockFileSystem, exists(::testing::_))
+        .WillRepeatedly(::testing::Return(false));
+
+        nlohmann::json osData = {{"os_name", "TestOS"}};
+        EXPECT_CALL(*mockSysInfo, os())
+        .WillRepeatedly(::testing::Return(osData));
+
+        std::vector<std::pair<modules_log_level_t, std::string>> logs;
+        bool shuttingDown = false;
+        int refusals = 0;
+        std::shared_ptr<AgentInfoImpl> agentInfo;
+
+        auto logFunc = [&logs](modules_log_level_t level, const std::string & msg)
+        {
+            logs.emplace_back(level, msg);
+        };
+
+        auto queryModuleFunc = [&](const std::string & module_name, const std::string & query, char** response) -> int
+        {
+            const auto command = nlohmann::json::parse(query)["command"].get<std::string>();
+            nlohmann::json responseJson = {{"error", 0}, {"message", "Success"}};
+            int result = 0;
+
+            if (module_name != "fim")
+            {
+                responseJson = {{"error", MQ_ERR_MODULE_NOT_FOUND}, {"message", "Module not found or not configured"}};
+                result = -1;
+            }
+            else if (command == refusedCommand)
+            {
+                shuttingDown = shutdownFirst;
+
+                if (++refusals > 1)
+                {
+                    agentInfo->stop();
+                }
+
+                responseJson = {{"error", MQ_ERR_MODULE_NOT_RUNNING},
+                    {"message", "Syscheck module refused connection. The component might be disabled"}
+                };
+                result = -1;
+            }
+            else if (command == "is_pause_completed")
+            {
+                responseJson["data"] = {{"status", "completed"}, {"result", "success"}, {"first_sync_completed", true}};
+            }
+            else if (command == "get_version")
+            {
+                responseJson["data"]["version"] = 5;
+            }
+
+            * response = strdup(responseJson.dump().c_str());
+            return result;
+        };
+
+        agentInfo = std::make_shared<AgentInfoImpl>(
+                        ":memory:", nullptr, logFunc, queryModuleFunc, mockDBSync,
+                        mockSysInfo, mockFileIO, mockFileSystem);
+        agentInfo->setIsShuttingDownFunction([&shuttingDown]()
+        {
+            return shuttingDown;
+        });
+        agentInfo->setPausePollDelayMs(0);
+
+        agentInfo->start(1, 86400, []()
+        {
+            return false;
+        });
+        agentInfo.reset();
+
+        const auto it = std::find_if(logs.begin(), logs.end(), [&logText](const auto & log)
+        {
+            return log.second.find(logText) != std::string::npos;
+        });
+        EXPECT_NE(it, logs.end()) << "no log contains: " << logText;
+        return it != logs.end() ? it->first : LOG_INFO;
+    }
+}
+
+// A stop or reload that lands while agent-info polls FIM for pause completion: syscheckd is
+// already gone, but stop() has not reached agent-info yet. Part of the shutdown, not a WARNING.
+TEST_F(AgentInfoCoordinationTest, RefusedPausePollDuringShutdownLogsDebug)
+{
+    EXPECT_EQ(refusedFimQueryLogLevel("is_pause_completed", "Failed to poll pause status for fim", true), LOG_DEBUG);
+}
+
+// The same refusal while the agent runs means syscheckd died: still a WARNING.
+TEST_F(AgentInfoCoordinationTest, RefusedPausePollWhileRunningLogsWarning)
+{
+    EXPECT_EQ(refusedFimQueryLogLevel("is_pause_completed", "Failed to poll pause status for fim", false), LOG_WARNING);
+}
+
+// The same stop or reload landing between FIM's pause and the flush trigger.
+TEST_F(AgentInfoCoordinationTest, RefusedFlushDuringShutdownLogsDebug)
+{
+    EXPECT_EQ(refusedFimQueryLogLevel("flush", "Failed to trigger flush for fim", true), LOG_DEBUG);
+}
+
+TEST_F(AgentInfoCoordinationTest, RefusedFlushWhileRunningLogsWarning)
+{
+    EXPECT_EQ(refusedFimQueryLogLevel("flush", "Failed to trigger flush for fim", false), LOG_WARNING);
 }
 
 // Deferral: FIM reports first_sync_completed=false -> coordination is deferred with

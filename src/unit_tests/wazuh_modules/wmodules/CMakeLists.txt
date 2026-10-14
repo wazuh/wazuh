@@ -39,6 +39,12 @@ list(APPEND wmodules_names "test_wmcom")
 list(APPEND wmodules_flags "-Wl,--wrap,getModulesConfig -Wl,--wrap,getModulesInternalOptions \
                             -Wl,--wrap,w_query_agentd -Wl,--wrap,_merror -Wl,--wrap,_mdebug1")
 
+# wm_handler() lives in main.c, which WMODULES_O leaves out: the test includes it.
+if(${TARGET} STREQUAL "agent")
+    list(APPEND wmodules_names "test_wm_main")
+    list(APPEND wmodules_flags "-Wl,--wrap,sleep -Wl,--wrap,exit")
+endif()
+
 # Compilig tests
 list(LENGTH wmodules_names count)
 math(EXPR count "${count} - 1")
@@ -65,17 +71,7 @@ foreach(counter RANGE ${count})
     add_test(NAME ${test_name} COMMAND ${test_name})
 endforeach()
 
-# wm_handler() lives in main.c, which WMODULES_O leaves out: the test includes it, built as CLIENT like the agent.
-if(${TARGET} STREQUAL "agent")
-    add_executable(test_wm_main test_wm_main.c)
+if(TARGET test_wm_main)
+    # main.c has to be built as CLIENT, like the agent's WMODULES_O objects.
     target_compile_definitions(test_wm_main PRIVATE CLIENT)
-    target_link_libraries(
-        test_wm_main
-        ${WAZUHLIB}
-        ${WAZUHEXT}
-        WMODULES_O
-        ${TEST_DEPS}
-        "-Wl,--wrap,_merror -Wl,--wrap,_mdebug1 -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,sleep -Wl,--wrap,getpid"
-    )
-    add_test(NAME test_wm_main COMMAND test_wm_main)
 endif()

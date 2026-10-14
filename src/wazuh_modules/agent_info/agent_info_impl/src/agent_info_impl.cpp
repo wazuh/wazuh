@@ -437,9 +437,9 @@ bool AgentInfoImpl::parseResponseBuffer(const uint8_t* data, size_t length)
         return m_spSyncProtocol->parseResponseBuffer(data, length);
     }
 
-    // A late manager response can arrive after stop() has torn the sync protocol
-    // down; that is expected during shutdown, so don't raise it to WARNING then.
-    m_logFunction(m_stopped ? LOG_DEBUG : LOG_WARNING, "Sync protocol not initialized or invalid data");
+    // A late manager response can arrive after the sync protocol was torn down, also by a run
+    // loop that ended on the shutdown flag before stop(); expected then, so don't raise it to WARNING.
+    m_logFunction(isShutdownInProgress() ? LOG_DEBUG : LOG_WARNING, "Sync protocol not initialized or invalid data");
     return false;
 }
 
@@ -1374,7 +1374,8 @@ AgentInfoImpl::PauseProbeResult AgentInfoImpl::pollFimPauseCompletion(const std:
 
         if (!pollResponse.success)
         {
-            m_logFunction(LOG_WARNING,
+            // A shutdown stops syscheckd before stop() reaches this module: expected then.
+            m_logFunction(isShutdownInProgress() ? LOG_DEBUG : LOG_WARNING,
                           "Failed to poll pause status for " + moduleName + " (attempt " + std::to_string(attempt) +
                           "/" + std::to_string(MAX_PAUSE_POLL_ATTEMPTS) + ")");
 
@@ -1825,7 +1826,8 @@ bool AgentInfoImpl::triggerModuleFlush(const std::set<std::string>& pausedModule
 
         if (!response.success)
         {
-            m_logFunction(LOG_WARNING,
+            // Same as the pause poll: a shutdown stops syscheckd before stop() reaches this module.
+            m_logFunction(isShutdownInProgress() ? LOG_DEBUG : LOG_WARNING,
                           "Failed to trigger flush for " + module + " (error " + std::to_string(response.errorCode) +
                           "), aborting coordination");
             return false;
