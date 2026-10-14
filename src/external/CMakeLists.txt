@@ -56,8 +56,8 @@ if(IS_WINDOWS)
   # directories compiled into libcrypto land under C:\usr\local, which any user can
   # create on most hosts (CVE-2019-1552). All three derive from --prefix, and only
   # administrators can create folders in C:\Program Files, on 32- and 64-bit Windows
-  # alike. Configure takes a non-POSIX prefix only when cross-compiling, hence the
-  # cross prefix instead of a prefixed CC.
+  # alike, as long as C: is the system drive. Configure takes a non-POSIX prefix only
+  # when cross-compiling, hence the cross prefix instead of a prefixed CC.
   set(OPENSSL_CONFIGURE_CMD ${EXTERNAL_DIR}/openssl/Configure ${OPENSSL_FLAGS}
                             mingw --cross-compile-prefix=${MINGW_PREFIX}
                             "--prefix=C:/Program Files/ossec-agent")

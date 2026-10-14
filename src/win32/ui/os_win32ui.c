@@ -12,7 +12,6 @@
 #include "os_win32ui.h"
 #include "../os_win.h"
 #include "dll_load_notify.h"
-#include <openssl/crypto.h>
 
 ossec_config config_inst;
 HWND hStatus;
@@ -255,8 +254,6 @@ int WINAPI WinMain(HINSTANCE hInstance, __attribute__((unused))HINSTANCE hPrevIn
 {
     // This must be always the first instruction
     enable_dll_verification();
-    // Never read an openssl.cnf; the first init decides for the whole process
-    OPENSSL_init_crypto(OPENSSL_INIT_NO_LOAD_CONFIG, NULL);
 
     WSADATA wsaData;
 

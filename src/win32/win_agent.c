@@ -39,7 +39,9 @@ extern void wm_lifecycle_lock_init(void);
 /**************************************************************************************
     WARNING: all the logging functions of this file must use the plain_ variant
     to avoid calling any external library that could be loaded before the signature
-    verification can be executed in local_start.
+    verification can be executed in local_start. The one exception is the
+    OPENSSL_init_crypto() call at the top of main(): libwazuhext.dll is a load-time
+    import, already mapped before main() runs, and local_start() still verifies it.
 **************************************************************************************/
 
 /* Help message */
