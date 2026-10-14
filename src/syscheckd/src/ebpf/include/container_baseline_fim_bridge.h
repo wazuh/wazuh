@@ -38,7 +38,8 @@ void fim_report_container_baseline_result(int baselined,
                                           size_t refused,  /* offered and turned away */
                                           size_t partial,
                                           size_t stale,
-                                          size_t known);
+                                          size_t known,
+                                          size_t withheld); /* known but not allowed to report */
 
 /* Logging shims. The C++ driver deliberately does not include shared.h (whose
  * macros clash with the C++ headers it needs), so it routes its messages
