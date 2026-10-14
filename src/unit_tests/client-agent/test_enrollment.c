@@ -35,6 +35,7 @@ int w_enrollment_store_key_entry(const char *line);
 static char g_staged_name[PATH_MAX] = {0};
 static int g_staged_chmods = 0;
 static bool g_staged_disk_full = false;
+static int g_staged_fd = -1;
 static bool g_fail_staged_rename = false;
 static bool g_busy_staged_rename = false;
 
@@ -48,14 +49,24 @@ int __wrap_TempFile(File *file, const char *source, int copy) {
 
     if (result == 0) {
         snprintf(g_staged_name, sizeof(g_staged_name), "%s", file->name);
+        g_staged_fd = fileno(file->fp);
     }
 
-    if (result == 0 && g_staged_disk_full) {
-        /* Every write through the staged stream fails from here on, as on a full disk. */
+    return result;
+}
+
+/* The disk fills once the staged copy has its mode: every write through its stream fails from
+ * then on. After the real fchmod(), which would otherwise land on /dev/full instead. */
+int __real_fchmod(int fd, mode_t mode);
+
+int __wrap_fchmod(int fd, mode_t mode) {
+    int result = __real_fchmod(fd, mode);
+
+    if (g_staged_disk_full && fd == g_staged_fd) {
         int full = open("/dev/full", O_WRONLY);
 
         assert_true(full >= 0);
-        assert_int_equal(dup2(full, fileno(file->fp)), fileno(file->fp));
+        assert_int_equal(dup2(full, fd), fd);
         close(full);
     }
 
@@ -103,6 +114,7 @@ static void reset_staged_hooks(void) {
     g_staged_name[0] = '\0';
     g_staged_chmods = 0;
     g_staged_disk_full = false;
+    g_staged_fd = -1;
     g_fail_staged_rename = false;
     g_busy_staged_rename = false;
 }
