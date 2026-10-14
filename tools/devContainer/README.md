@@ -313,7 +313,7 @@ Located at `tools/purge_wazuh.sh` (Wazuh repository root), this script provides 
 - Cleans up all Wazuh-related files and directories, including the manager configuration directory `/etc/wazuh-manager`, which lives outside the installation directory
 - Removes Wazuh user and group from the system
 - Falls back to a full filesystem cleanup when the installation was created from sources instead of packages
-- Deletes `/etc/wazuh` (`credentials.env` and the bootstrap CA) unconditionally, even when an indexer or dashboard on the same host shares it
+- Leaves `/etc/wazuh` alone: the manager no longer writes there, and an indexer or dashboard on the same host may still use it
 
 ## E2E Testing Environment
 

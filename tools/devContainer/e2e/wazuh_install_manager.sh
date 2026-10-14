@@ -17,8 +17,9 @@
 #      (the package resolver validates and stores them; API+WUI published, indexer password keystore-only;
 #      missing file = degraded, the installer generates its own as before)
 #   4. certificates: the e2e PKI replaces whatever the install's credential resolver issued (it issues
-#      the manager's certificates only at install, and only from a CA handed over in /etc/wazuh/ca):
-#      e2e/init.sh --certs-only (reusing certs/ and its CA) + wazuh_copy_certs.sh; init.sh also opens the remoted listeners to 0.0.0.0 for docker agents
+#      the manager's pairs only at install, from the CA in /etc/wazuh-manager/ca, and checks them at every
+#      start): e2e/init.sh --certs-only (reusing certs/ and its CA) + wazuh_copy_certs.sh, which also puts the
+#      e2e CA's certificate in ca/ and republishes it; init.sh also opens the remoted listeners to 0.0.0.0 for docker agents
 #   4b. indexer credential in the keystore: manual override only (INDEXER_USER/INDEXER_PASSWORD); the
 #      default path is 3b — the resolver stores the env-supplied WAZUH_INDEXER_MANAGER_PASSWORD itself
 #   5. /etc/wazuh-manager/.install-provenance written; start.mark = byte offset of the log before `start`

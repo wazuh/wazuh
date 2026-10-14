@@ -62,16 +62,22 @@ skel 770 wazuh-manager:wazuh-manager var/multigroups
 # privileges, and cannot rewrite them. The e2e PKI replaces the installer's, so the
 # worker deploys the manager node's <name>-remoted leaf as both, as
 # wazuh_copy_certs.sh does on the host (the installer issues apid.pem with the
-# profile of remoted.pem).
+# profile of remoted.pem). The e2e CA is also the indexer's CA, and its certificate
+# alone (no key) is the manager's CA in ca/, which the credential resolver checks
+# the Server API pair against at every start.
 NODE_CERT="${MANAGER_NODE_NAME:-wazuh-1}"
 install -d -o root -g wazuh-manager -m 750 "$CERT_DST"
 install -o root -g wazuh-manager -m 640 "$CERT_SRC/root-ca.pem"                  "$CERT_DST/root-ca.pem"
+install -o root -g wazuh-manager -m 640 "$CERT_SRC/root-ca.pem"                  "$CERT_DST/indexer-ca.pem"
 install -o root -g wazuh-manager -m 640 "$CERT_SRC/${NODE_CERT}.pem"             "$CERT_DST/indexer-connector.pem"
 install -o root -g wazuh-manager -m 640 "$CERT_SRC/${NODE_CERT}-key.pem"         "$CERT_DST/indexer-connector-key.pem"
 install -o root -g wazuh-manager -m 640 "$CERT_SRC/${NODE_CERT}-remoted.pem"     "$CERT_DST/remoted.pem"
 install -o root -g wazuh-manager -m 640 "$CERT_SRC/${NODE_CERT}-remoted-key.pem" "$CERT_DST/remoted-key.pem"
 install -o root -g wazuh-manager -m 640 "$CERT_SRC/${NODE_CERT}-remoted.pem"     "$CERT_DST/apid.pem"
 install -o root -g wazuh-manager -m 640 "$CERT_SRC/${NODE_CERT}-remoted-key.pem" "$CERT_DST/apid-key.pem"
+install -d -o root -g root -m 700 "$CONF_DIR/ca"
+rm -f "$CONF_DIR/ca/root-ca.key" "$CONF_DIR/ca/.wazuh-manager-bootstrap-ca"
+install -o root -g root -m 644 "$CERT_SRC/root-ca.pem"                           "$CONF_DIR/ca/root-ca.pem"
 
 # Indexer credentials live in the manager keystore, not in the config file.
 "$BIN/wazuh-manager-keystore" -f indexer -k username -v "$INDEXER_USER"
@@ -81,6 +87,11 @@ tr -d '\r\n' < "$INDEXER_PASSWORD_FILE" | "$BIN/wazuh-manager-keystore" -f index
 # The keystore tool runs as root here: hand what it wrote back to the runtime
 # user, as on an installed manager.
 chown -R wazuh-manager:wazuh-manager queue/keystore
+
+# The image's export/ca.pem names whatever CA its installation had; publish the e2e
+# CA staged above instead, or the start's credentials check refuses the stale copy.
+# On a worker this seeds nothing and issues nothing: it only republishes.
+"$BIN/wazuh-manager-resolve-credentials" --install
 
 # Point the indexer connection at the indexer container.
 sed -i "s#<host>https://[^<]*</host>#<host>https://${INDEXER_HOST}:${INDEXER_PORT}</host>#" "$CONF"

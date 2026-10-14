@@ -55,9 +55,11 @@ DEFAULT_API_URL = "https://localhost:55000"
 # The default trust anchor for --api-ca: apid.pem carries localhost, 127.0.0.1 and ::1 among its SANs.
 TARGET_ROOT_CA = os.path.join("certs", "root-ca.pem")
 
-# Where a 5.0 manager publishes the Server API password it generated at install (#39554). Read
-# as data, never sourced; the last assignment of the key wins, as the manager's own reader does.
-CREDENTIALS_ENV = "/etc/wazuh/credentials.env"
+# Where a 5.0 manager publishes the Server API password it generated at install (#39554): the
+# credential resolver writes it to export/credentials.env in the configuration directory, root-only
+# (#40339). Read as data, never sourced; the last assignment of the key wins, as the manager's own
+# reader does.
+CREDENTIALS_ENV = "/etc/wazuh-manager/export/credentials.env"
 CREDENTIALS_KEY = "WAZUH_MANAGER_API_PASSWORD"
 
 # 4.x stamps PRAGMA user_version 0 and tracks its own schema in metadata.db_version. Only the

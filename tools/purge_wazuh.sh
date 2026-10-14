@@ -249,17 +249,6 @@ remove_manager_conf_dir() {
     fi
 }
 
-# The shared credentials file and the trust material live outside every install directory, so
-# nothing above removes them. This is a wipe tool, not a package: it takes the whole of /etc/wazuh
-# rather than only the manager's keys, which is the point of running it.
-remove_shared_credentials() {
-    local cred_dir="${WAZUH_CRED_DIR:-/etc/wazuh}"
-
-    if [ -d "${cred_dir}" ]; then
-        echo " - Removing shared credentials and trust material: ${cred_dir}"
-        rm -rf "${cred_dir}"
-    fi
-}
 
 remove_users_groups() {
     local user_name=""
@@ -286,7 +275,6 @@ cleanup_system() {
     remove_manager_conf_dir
     remove_service_units
     remove_misc_files
-    remove_shared_credentials
     remove_users_groups
 }
 
