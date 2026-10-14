@@ -460,14 +460,15 @@ fi
 rm -f ${CONF_DIR}/shared/merged.mg  >/dev/null 2>&1
 
 # Resolve every credential the manager owns or consumes: seed rbac.db with generated or supplied
-# Server API passwords, store the indexer credential in the keystore, and -- on a fresh install
-# only -- issue the TLS pairs.
+# Server API passwords, store the indexer password in the keystore, import the indexer's CA and
+# client pair from /etc/wazuh-indexer/export when it is installed here, and -- on a fresh install
+# only -- mint the manager's CA and issue its two server pairs.
 #
 # $1 is 1 on a fresh install and >= 2 on an upgrade. That distinction is the whole reason the two
-# modes exist: --upgrade resolves the passwords and the keystore (each a no-op once resolved, so it
-# can only fill in a value this host never had) and leaves the certificates entirely alone. An
-# operator who replaced the shipped pair with their own PKI must not find it re-examined or
-# reissued by a package upgrade.
+# modes exist: --upgrade completes the passwords, the keystore and the indexer trust (each a no-op
+# once in place) and only validates the manager's CA and server pairs: it never mints a CA or
+# issues a pair. An operator who replaced them with their own PKI must not find them reissued by a
+# package upgrade.
 #
 # Neither mode may abort this scriptlet, so both always exit 0 and simply leave unresolved whatever
 # they could not resolve. The service refuses to start and names what is missing; that is where the
@@ -710,8 +711,6 @@ rm -fr %{buildroot}
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/rbac_control
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-keystore
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-resolve-credentials
-%attr(640, root, wazuh-manager) %{_localstatedir}/lib/wazuh-credentials.sh
-%attr(640, root, wazuh-manager) %{_localstatedir}/lib/wazuh-manager-certificates.sh
 %dir %attr(770, root, wazuh-manager) %{_sysconfdir}/wazuh-manager
 %attr(660, root, wazuh-manager) %ghost %{_sysconfdir}/wazuh-manager/wazuh-manager.conf
 %dir %attr(750, root, wazuh-manager) %{_sysconfdir}/wazuh-manager/certs

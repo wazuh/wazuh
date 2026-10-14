@@ -253,19 +253,19 @@ status()
     fi
 }
 
-# The credentials file itself, checked before anything else on the start and restart paths.
+# The credentials and certificates, checked before anything else on the start and restart paths.
 #
-# Read-only: the resolver's --check asks the shared helper whether the credentials file, its
-# directory and every directory above it are acceptable, and touches neither the keystore nor the
-# credentials lock. That is what lets it run ahead of testconfig() -- and so ahead of the stop on the
-# restart path -- where resolvecredentials() cannot (see below). It has to come first: an install
-# that met an unsafe file issued no certificates, and testconfig() would otherwise stop the start on
-# "(1244) file not found" for remoted.pem without ever naming the file that caused it. It refuses
-# the file even when this start would not read it (everything already resolved), as the indexer and
-# the dashboard do: an unsafe credentials file is a problem whether or not anything needs it today.
+# Read-only: the resolver's --check tests every entry it trusts -- local.env, ca/, export/, certs/
+# and every file in them, the indexer's export -- for ownership, type and mode, and validates what is
+# already there (the .env syntax, supplied values, the CA, the server pairs, the indexer trust). It
+# takes no lock, starts no subprocess and never reports something as missing: completing is
+# --prestart's job. That is what lets it run ahead of testconfig() -- and so ahead of the stop on the
+# restart path -- where resolvecredentials() cannot (see below). It has to come first: testconfig()
+# would otherwise stop the start on "(1244) file not found" for a certificate without ever naming the
+# entry that caused it.
 #
-# Any non-zero answer refuses the start, including the resolver failing to find its helpers: a
-# verdict we could not obtain is not a reason to start.
+# Any non-zero answer refuses the start, including the resolver failing to run: a verdict we could
+# not obtain is not a reason to start.
 checkcredentials()
 {
     # Each marker is a verdict from a previous run, and this run's verdict replaces them; testconfig()
@@ -278,7 +278,7 @@ checkcredentials()
     fi
 
     # Captured and relayed on stderr, as in resolvecredentials(), so that `-j` keeps writing a single
-    # JSON document to stdout. The helper names the rule and the path, never a value.
+    # JSON document to stdout. The resolver names the rule and the path, never a value.
     CHECK_VERDICT=$(${DIR}/bin/wazuh-manager-resolve-credentials --check -H ${DIR} 2>&1)
     if [ $? = 0 ]; then
         return 0
@@ -286,12 +286,14 @@ checkcredentials()
     if [ -n "${CHECK_VERDICT}" ]; then
         echo "${CHECK_VERDICT}" >&2
     fi
-    # The resolver says UNSAFE when the helper refused the file; anything else (its helpers missing,
-    # not run as root) means the check itself could not run, which refuses the start just the same
-    # but must not be reported as a verdict about the file.
+    # UNSAFE: an entry root may not trust (owner, type, mode, a link). INVALID: something in place
+    # that is wrong (a bad local.env line, an expired or mismatched certificate). Anything else (not
+    # run as root, an internal error) means the check itself could not run, which refuses the start
+    # just the same but must not be reported as a verdict about the credentials.
     case "${CHECK_VERDICT}" in
-        *UNSAFE*) CHECK_REASON="Unsafe credentials file"; CHECK_LOG="unsafe credentials file" ;;
-        *)        CHECK_REASON="Cannot check the credentials file"; CHECK_LOG="cannot check the credentials file" ;;
+        *UNSAFE*)  CHECK_REASON="Unsafe credentials"; CHECK_LOG="unsafe credentials" ;;
+        *INVALID*) CHECK_REASON="Invalid credentials"; CHECK_LOG="invalid credentials" ;;
+        *)         CHECK_REASON="Cannot check the credentials"; CHECK_LOG="cannot check the credentials" ;;
     esac
     echo "$(date '+%Y/%m/%d %H:%M:%S') wazuh-manager-control: ERROR: ${CHECK_LOG}" >> ${DIR}/logs/wazuh-manager.log 2>/dev/null
     if [ -n "${CHECK_VERDICT}" ]; then
@@ -321,19 +323,15 @@ checkcredentials()
 # process has open. restart_service() therefore calls this AFTER stop_service(), and the start path
 # calls it with nothing running.
 #
-# --prestart does NOT touch the certificates: those are issued once, at installation, and an
-# operator who replaced them with their own PKI must not have them re-examined at every start
-# (issuing one is a signature, not a lookup, so re-deriving the chain would make the shared CA
-# directory a standing dependency of the manager). Missing or unreadable certificates are caught by
-# checkSemantics() in testconfig() and by remoted's own access(R_OK) preflight after it drops
-# privileges; the resolver only answers for the passwords and the keystore.
+# --prestart runs every --check test again, then completes what a start needs: the Server API
+# passwords and rbac.db, the indexer password in the keystore, the indexer's CA and client pair
+# imported from /etc/wazuh-indexer/export when it changed or was never imported. It never mints a CA
+# or issues a server pair -- those happen once, at installation -- and validates the ones in place,
+# so an operator who replaced them with their own PKI keeps them untouched.
 #
-# The credentials file's ownership and mode are not this function's job: checkcredentials() has
-# already refused an unsafe one before testconfig().
-#
-# Unresolved credentials fail here rather than at the daemon's own -t: a missing indexer password is
-# not a configuration error and has no JSON pointer to report, and the resolver has already named
-# the key and where to set it.
+# Unresolved credentials fail here rather than at the daemon's own -t: a missing indexer password or
+# CA is not a configuration error and has no JSON pointer to report, and the resolver has already
+# named what is missing and where to put it.
 resolvecredentials()
 {
     if [ ! -x ${DIR}/bin/wazuh-manager-resolve-credentials ]; then

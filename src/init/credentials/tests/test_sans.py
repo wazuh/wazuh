@@ -33,7 +33,7 @@ LOOPBACK = ["DNS:localhost", "IP:127.0.0.1", "IP:::1"]
 @pytest.mark.parametrize("value", ["", "IP:999.1.1.1", "IP:2001:::1", "IP:fe80::1%eth0", "IP:010.1.1.1",
                                    "DNS:*.test", "DNS:foo,", "DNS:foo,,DNS:bar"])
 def test_invalid_sans(resolver, sandbox, value):
-    """test-wazuh-helpers.sh:272-280: the eight lists the shell refused, refused before any leaf is issued."""
+    """Eight malformed lists, each refused before any leaf is issued."""
     code, _, err = run(resolver, sandbox, "--install", environ={"WAZUH_MANAGER_REMOTED_CERT_SANS": value})
     assert code == 0 and "INVALID WAZUH_MANAGER_REMOTED_CERT_SANS: " in err
     assert not os.path.exists(os.path.join(sandbox.certs, "remoted.pem"))

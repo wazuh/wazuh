@@ -51,7 +51,7 @@ on:
       # which reads ruleset/mitre/enterprise-attack.json (mitredb.py:754).
       - "tools/mitre/**"
       - "ruleset/mitre/**"
-      # `make deps` resolves every download (wazuh-credentials.sh, indexer templates, WCS files)
+      # `make deps` resolves every download (indexer templates, WCS files)
       # through this script (src/Makefile GIT_REFS_LIST).
       - "tools/get_git_refs.sh"
       # CI plumbing: this workflow, the reusable build and integration workflows it calls, and every
