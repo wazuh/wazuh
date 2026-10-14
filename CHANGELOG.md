@@ -9,7 +9,9 @@ All notable changes to this project will be documented in this file.
 
 #### Added
 
+- Added a warning to the log when a queue of the indexer connector or of the vulnerability scanner holds 100000 elements or more, and each time its size doubles. ([#39607](https://github.com/wazuh/wazuh/issues/39607))
 - Added the `tcp_sessions_unassociated` counter to the `wazuh-remoted` statistics, reporting TCP connections not yet associated with an agent. ([#39799](https://github.com/wazuh/wazuh/pull/39799))
+- Added rule tree memory thresholds to `wazuh-analysisd` to warn about and reject rulesets whose rule tree grows too large. `analysisd.rule_tree_memory_warning` and `analysisd.rule_tree_memory_limit` accept a size or a percentage of the available memory, including cgroup limits. ([#39930](https://github.com/wazuh/wazuh/issues/39930))
 
 #### Fixed
 
@@ -27,6 +29,30 @@ All notable changes to this project will be documented in this file.
 - Fixed `run_as` authorization-context regex rules without a closing quote being evaluated as a partial expression, and rejected such rules when creating or updating security rules. ([#39855](https://github.com/wazuh/wazuh/pull/39855))
 - Fixed `MATCH` and `MATCH$` security rules granting a role when a rule item was not satisfied, because matches were counted instead of checked per rule item. ([#39855](https://github.com/wazuh/wazuh/pull/39855))
 - Fixed `GET /groups` returning no results for users restricted by RBAC to groups whose name is made of digits with leading zeros, such as `007`. ([#40161](https://github.com/wazuh/wazuh/pull/40161))
+- Fixed the SonicWall decoder leaving its `category` field unterminated for a `c=` value of 7 or more digits. ([#40010](https://github.com/wazuh/wazuh/pull/40010))
+- Fixed `OS_IPFound`/`OS_IPFoundList` comparing an IP against a rule of a different family, reading past the end of an IPv4 rule's allocation for an IPv6 query. ([#40010](https://github.com/wazuh/wazuh/pull/40010))
+- Fixed `wazuh-remoted`'s syslog-TCP listener advancing its buffer length after a failed `recv()`, writing one byte before the buffer on a reset connection. ([#40010](https://github.com/wazuh/wazuh/pull/40010))
+- Fixed a path traversal in analysisd's diff-folder path construction via an unvalidated syslog hostname. ([#40010](https://github.com/wazuh/wazuh/pull/40010))
+- Fixed an agent overriding the trusted agent ID in its own upgrade status report by supplying its own `agents` field. ([#40010](https://github.com/wazuh/wazuh/pull/40010))
+- Fixed an integer wrap in the shared modules' socket wrapper that could request an unbounded `recv()` on a length-prefixed read. ([#40010](https://github.com/wazuh/wazuh/pull/40010))
+- Fixed an inverted bounds check in the shared modules' socket wrapper letting a malformed header length move its read offset past the message. ([#40010](https://github.com/wazuh/wazuh/pull/40010))
+- Fixed an integer underflow in the keystore's AES decryption of a ciphertext shorter than its key and IV. ([#40010](https://github.com/wazuh/wazuh/pull/40010))
+- Fixed a zip-slip guard allowing extraction into a sibling directory sharing the target directory's name prefix. ([#40010](https://github.com/wazuh/wazuh/pull/40010))
+- Fixed the Azure Log Analytics wodle logging its OAuth bearer token at debug level. ([#40010](https://github.com/wazuh/wazuh/pull/40010))
+- Fixed a GCP Pub/Sub message being spliced unescaped into the event JSON sent to analysisd, letting a crafted message add or override event fields. ([#40010](https://github.com/wazuh/wazuh/pull/40010))
+- Fixed the AWS wodle decompressing gzip objects twice before processing them, doubling memory and CPU use per object. ([#40010](https://github.com/wazuh/wazuh/pull/40010))
+- Fixed a quadratic-time loop in the AWS Macie/custom-bucket JSON parser caused by re-slicing the remaining buffer on every object, and its zero-matching regex backtracking quadratically on long runs of zeros. ([#40010](https://github.com/wazuh/wazuh/pull/40010))
+- Fixed the Maltiverse integration sending an unvalidated alert hostname unescaped in the request path, allowing path or query manipulation within the Maltiverse API. ([#40010](https://github.com/wazuh/wazuh/pull/40010))
+- Fixed the shared modules socket client stopping for good instead of reconnecting when the peer half-closed the connection before closing it. ([#38347](https://github.com/wazuh/wazuh/issues/38347))
+- Fixed the Azure Storage integration resending every record of an append blob each time new records were appended to it. ([#40177](https://github.com/wazuh/wazuh/pull/40177))
+- Fixed the vulnerability scanner outbox queue hanging with a busy thread and no log when its stored keys mix the plain and the padded formats: the queue now reads and removes each key in the format it is stored in, the dispatcher reports failures through the logger, rejects new elements when the scan is still incomplete, and the startup reports keys it cannot read. ([#39607](https://github.com/wazuh/wazuh/issues/39607))
+- Fixed the vulnerability scanner re-scan leaving findings in the local mirror that its inventory no longer tracks: each agent is now cleared by prefix, and the master node of a cluster clears the agents that report to another node instead of scanning them. ([#39607](https://github.com/wazuh/wazuh/issues/39607))
+- Fixed the single-agent vulnerability re-scan aborting on a NULL agent column after its state had been cleared. ([#39607](https://github.com/wazuh/wazuh/issues/39607))
+- Fixed the indexer connector waiting for the initialization of the indexer before applying operations that do not call it, and looking for the mappings backup index by listing every index of the cluster, which needed a cluster-wide permission and left an orphan backup behind. ([#39607](https://github.com/wazuh/wazuh/issues/39607))
+
+#### Changed
+
+- Changed the full vulnerability re-scan to scan only the agents that are connected or that the start of the manager disconnected, and to leave the stored state of the others untouched. ([#39607](https://github.com/wazuh/wazuh/issues/39607))
 
 ### Agent
 
@@ -37,6 +63,7 @@ All notable changes to this project will be documented in this file.
 - Fixed one-byte buffer overflows in whodata, logcollector and FIM config parsing. ([#39705](https://github.com/wazuh/wazuh/pull/39705))
 - Fixed syscollector dropping process and port inventory on names with invalid UTF-8. ([#39956](https://github.com/wazuh/wazuh/pull/39956))
 - Fixed `wazuh-agentd` crashing intermittently at startup on macOS 26 when the manager address is a hostname. ([#40133](https://github.com/wazuh/wazuh/pull/40133))
+- Fixed macOS `wazuh-modulesd` leaking memory and Mach ports in the syscollector users inventory. ([#40327](https://github.com/wazuh/wazuh/pull/40327))
 - Fixed FIM crash on first scan when inotify cannot be initialized. ([#39707](https://github.com/wazuh/wazuh/pull/39707))
 - Fixed `force_reconnect_interval` from centralized configuration not applied on agent hot reload. ([#39573](https://github.com/wazuh/wazuh/pull/39573))
 - Fixed the `report_changes` snapshot following symbolic links and accepting non-regular files on Linux and macOS. ([#39476](https://github.com/wazuh/wazuh/pull/39476))
@@ -45,6 +72,7 @@ All notable changes to this project will be documented in this file.
 - Fixed logcollector memory usage growing with the length of a line read with the `multi-line-regex` format. ([#39800](https://github.com/wazuh/wazuh/pull/39800))
 - Fixed the syscollector browser extensions inventory reading non-regular or oversized files from user profiles. ([#39802](https://github.com/wazuh/wazuh/pull/39802))
 - Fixed the syscollector browser extensions inventory following symbolic links and reading files not owned by the profile owner on Linux and macOS. ([#39802](https://github.com/wazuh/wazuh/pull/39802))
+- Fixed the Windows syscollector handling of paths and keys read from the registry and browser profiles. ([#40113](https://github.com/wazuh/wazuh/pull/40113))
 - Fixed logcollector following junctions and symbolic links and opening non-regular files without validating them on Windows. ([#39781](https://github.com/wazuh/wazuh/pull/39781))
 - Added macOS support to the disable-account active response. ([#39463](https://github.com/wazuh/wazuh/pull/39463))
 - Fixed the macOS ULS reader losing the stored timestamp after log lines shorter than 31 characters. ([#39171](https://github.com/wazuh/wazuh/issues/39171))
@@ -57,6 +85,8 @@ All notable changes to this project will be documented in this file.
 - Fixed FIM `report_changes` following directory symbolic links when saving file snapshots on UNIX systems. ([#40110](https://github.com/wazuh/wazuh/pull/40110))
 - Fixed logcollector reading files that contain NUL bytes again from the start, and sending their events again, after every agent restart. ([#40134](https://github.com/wazuh/wazuh/pull/40134))
 - Fixed logcollector validating monitored paths on Solaris 10, HP-UX and AIX 6.1, which lack part of the `openat()` family, and a race on Windows where a directory switched in place to a junction could redirect an open. ([#40019](https://github.com/wazuh/wazuh/pull/40019))
+- Fixed the macOS agent package loading `/tmp/wazuh_envs` without checking its owner, permissions and file type. ([#40248](https://github.com/wazuh/wazuh/pull/40248))
+- Fixed `wazuh-modulesd` crashing on a malformed legacy Berkeley DB RPM package record by validating the offsets and counts of each header entry. ([#40368](https://github.com/wazuh/wazuh/pull/40368))
 
 ### Ruleset
 
@@ -78,6 +108,9 @@ All notable changes to this project will be documented in this file.
 - Fixed configuration masking not applying to XML tags written with whitespace or attributes. ([#39663](https://github.com/wazuh/wazuh/pull/39663))
 - Fixed `wazuh-apid` staying alive without its PID file when it receives `SIGTERM` during startup. ([#39922](https://github.com/wazuh/wazuh/pull/39922))
 - Fixed the API login attempt counter refreshing its time window on every request to the login endpoints, which let sporadic failed logins from a client that logs in frequently accumulate until the IP was blocked. ([#39361](https://github.com/wazuh/wazuh/issues/39361))
+- Fixed rule and decoder uploads reporting any ruleset validation failure as an XML syntax error. The error now includes the `wazuh-analysisd` details, and the new error 1132 reports a ruleset that exceeds the rule tree node limit. ([#39930](https://github.com/wazuh/wazuh/issues/39930))
+- Fixed rule and decoder uploads leaving the uploaded file installed when the validation could not be completed or the file had no previous version. ([#39930](https://github.com/wazuh/wazuh/issues/39930))
+- Fixed `GET /security/resources` and `GET /security/actions` returning the RBAC catalog to users without `security:read_config` after an authorized user had requested it. Those users now always receive `403`. ([#39357](https://github.com/wazuh/wazuh/issues/39357))
 
 ## [v4.14.9]
 

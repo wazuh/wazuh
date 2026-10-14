@@ -103,7 +103,7 @@ list(APPEND remoted_names "test_remote-config")
 list(APPEND remoted_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,ReadConfig -Wl,--wrap,getDefine_Int -Wl,--wrap,get_node_name")
 
 list(APPEND remoted_names "test_syslogtcp")
-list(APPEND remoted_flags "-W")
+list(APPEND remoted_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,recv -Wl,--wrap,CreatePID -Wl,--wrap,DeletePID")
 
 list(APPEND remoted_names "test_remote-state")
 list(APPEND remoted_flags "-Wl,--wrap,time -Wl,--wrap,rem_get_qsize -Wl,--wrap,rem_get_tsize \

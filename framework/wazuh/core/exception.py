@@ -130,6 +130,12 @@ class WazuhException(Exception):
                               'To solve this, check your connection to the Virus Total API or disable the public key'
                               ' protection in the API settings: '
                               f"https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/configuration.html"},
+        1132: {'message': 'The ruleset exceeds the rule tree node limit',
+               'remediation': 'Review the rules that are added as children of many other rules, for example with '
+                              'broad "if_group", "if_sid" or "if_level" conditions, or adjust '
+                              '"analysisd.rule_tree_memory_limit" in "local_internal_options.conf". It accepts a '
+                              'memory size, such as 2G, or a percentage of memory, such as 50%'
+               },
         # Rule: 1200 - 1299
         1200: {'message': 'Error reading rules from `WAZUH_HOME/etc/ossec.conf`',
                'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'

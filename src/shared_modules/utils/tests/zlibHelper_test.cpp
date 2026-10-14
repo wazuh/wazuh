@@ -190,6 +190,23 @@ TEST_F(ZlibHelperTest, ZipDecompressNotCompressedFile)
 }
 
 /**
+ * @brief The zip-slip guard must reject an entry that escapes into a sibling directory sharing
+ * outputDir's textual prefix (OUTPUT_DIR is ".../zlibHelper"; the entry targets
+ * ".../zlibHelper-evil/pwned.txt"), not just ordinary ../ traversal out of the tree entirely.
+ *
+ */
+TEST_F(ZlibHelperTest, ZipDecompressRejectsSiblingDirectoryEscape)
+{
+    const auto ZIP_SLIP {INPUT_FILES_DIR / "zipslip.zip"};
+    const auto siblingEscape {OUTPUT_DIR.parent_path() / "zlibHelper-evil"};
+
+    EXPECT_THROW(Utils::ZlibHelper::zipDecompress(ZIP_SLIP, OUTPUT_DIR), std::runtime_error);
+    EXPECT_FALSE(std::filesystem::exists(siblingEscape));
+
+    std::filesystem::remove_all(siblingEscape);
+}
+
+/**
  * @brief Tests the correct ZIP decompression of a compressed folder.
  *
  */

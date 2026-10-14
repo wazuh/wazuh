@@ -60,6 +60,22 @@ def test_get_ip(example_ip):
         mock_get.assert_called_once_with(f'https://api.maltiverse.com/ip/{example_ip}')
 
 
+def test_get_ip_encodes_path_breaking_characters_but_keeps_ipv6_colons():
+    """Test `ip_get` percent-encodes path-breaking characters (defense in depth) without
+    breaking IPv6 literals, which legitimately contain colons."""
+    testing_maltiverse = maltiverse.Maltiverse(auth_token='example_token')
+
+    with patch('maltiverse.requests.Session.get') as mock_get:
+        mock_get.return_value.json.return_value = response_example
+        testing_maltiverse.ip_get('2001:4860:4860::8888')
+        mock_get.assert_called_once_with('https://api.maltiverse.com/ip/2001:4860:4860::8888')
+
+    with patch('maltiverse.requests.Session.get') as mock_get:
+        mock_get.return_value.json.return_value = response_example
+        testing_maltiverse.ip_get('../admin/secret')
+        mock_get.assert_called_once_with('https://api.maltiverse.com/ip/..%2Fadmin%2Fsecret')
+
+
 def test_get_hostname():
     """Test the `hostname_get` method of the Maltiverse class."""
     example_token = 'example_token'
@@ -73,6 +89,23 @@ def test_get_hostname():
         result = testing_maltiverse.hostname_get(example_hostname)
         assert_expected_schema(result)
         mock_get.assert_called_once_with(f'https://api.maltiverse.com/hostname/{example_hostname}')
+
+
+@pytest.mark.parametrize('hostname, expected_url', [
+    # path traversal: percent-encoded, not resolved into a different path
+    ('../admin/secret', 'https://api.maltiverse.com/hostname/..%2Fadmin%2Fsecret'),
+    # query-string injection: percent-encoded, not interpreted as query syntax
+    ('foo?x=1&evil_param=injected', 'https://api.maltiverse.com/hostname/foo%3Fx%3D1%26evil_param%3Dinjected'),
+])
+def test_get_hostname_encodes_path_breaking_characters(hostname, expected_url):
+    """Test `hostname_get` percent-encodes characters that would otherwise change the request's
+    path or add query parameters, even when called directly (defense in depth)."""
+    testing_maltiverse = maltiverse.Maltiverse(auth_token='example_token')
+
+    with patch('maltiverse.requests.Session.get') as mock_get:
+        mock_get.return_value.json.return_value = response_example
+        testing_maltiverse.hostname_get(hostname)
+        mock_get.assert_called_once_with(expected_url)
 
 
 def test_get_url():
@@ -156,6 +189,28 @@ def test_is_valid_url(url, expected):
     """Test the `test_is_valid_url` function works as expected."""
     result = maltiverse.is_valid_url(url)
     assert result == expected
+
+
+@pytest.mark.parametrize('hostname, expected', [
+    ('example.com', True),
+    ('sub.example-1.co', True),
+    ('localhost', True),
+    ('paypal.com-information-update-activity-account.gq', True),
+    ('../admin/secret', False),
+    ('foo?x=1&evil_param=injected', False),
+    ('/etc/passwd', False),
+    ('-bad.com', False),
+    ('bad-.com', False),
+    ('evil.com#frag', False),
+    ('evil.com:8080', False),
+    ('', False),
+    ('a' * 64 + '.com', False),
+    (None, False),
+])
+def test_is_valid_hostname(hostname, expected):
+    """Test the `is_valid_hostname` function rejects anything that could change the request path
+    or add query parameters when built into the Maltiverse API URL."""
+    assert maltiverse.is_valid_hostname(hostname) == expected
 
 
 @pytest.mark.parametrize('number_of_arguments', [1, 2, 3])
@@ -352,6 +407,35 @@ def test_get_hostname_in_alert(alert, expected):
         result = maltiverse.get_hostname_in_alert(alert, testing_maltiverse)
 
     assert len(result) == expected
+
+
+@pytest.mark.parametrize('hostname', ['../admin/secret', 'foo?x=1&evil_param=injected', '/etc/passwd'])
+def test_get_hostname_in_alert_rejects_malicious_hostname(hostname):
+    """Test get_hostname_in_alert rejects a malformed hostname before ever calling the Maltiverse
+    API -- no request is sent at all for a path-traversal or query-injection hostname."""
+    testing_maltiverse = maltiverse.Maltiverse('example_token')
+    alert = {'data': {'hostname': hostname}, 'id': 1}
+
+    with patch('maltiverse.requests.Session.get') as mock_get:
+        result = maltiverse.get_hostname_in_alert(alert, testing_maltiverse)
+
+    assert result == []
+    mock_get.assert_not_called()
+
+
+def test_get_hostname_in_alert_still_works_for_a_legitimate_hostname():
+    """Test get_hostname_in_alert still queries the API normally for a well-formed hostname."""
+    testing_maltiverse = maltiverse.Maltiverse('example_token')
+    alert = {'data': {'hostname': 'example.com'}, 'id': 1}
+
+    with patch('maltiverse.requests.Session.get') as mock_get, \
+            patch('maltiverse.maltiverse_alert') as alert_mock:
+        mock_get.return_value.json.return_value = response_example
+        alert_mock.return_value = {}
+        result = maltiverse.get_hostname_in_alert(alert, testing_maltiverse)
+
+    mock_get.assert_called_once_with('https://api.maltiverse.com/hostname/example.com')
+    assert len(result) == 1
 
 
 @pytest.mark.parametrize('alert, expected', [({}, 0), ({'data': {}}, 0), ({'data': {'url': 'someurl'}, 'id': 1}, 1)])

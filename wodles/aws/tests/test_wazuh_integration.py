@@ -332,36 +332,104 @@ def test_wazuh_integration_send_msg_socket_error(error_code, expected_exit_code)
             instance.send_msg(utils.TEST_MESSAGE)
 
 
+def _mock_context_manager(mock_obj):
+    """Make a MagicMock usable as a 'with ... as x:' target where x is the mock itself, and where
+    an exception raised inside the 'with' block is NOT swallowed (MagicMock's default __exit__
+    return value is itself a truthy MagicMock, which would otherwise suppress it)."""
+    mock_obj.__enter__.return_value = mock_obj
+    mock_obj.__exit__.return_value = False
+    return mock_obj
+
+
 @patch('io.BytesIO')
 def test_wazuh_integration_decompress_file(mock_io):
-    """Test 'decompress_file' method calls the expected function for a determined file type."""
+    """Test 'decompress_file' method calls the expected function for a determined file type, and
+    that it does not eagerly read/discard the decompressed content itself -- the content is
+    read exactly once, by the caller, inside the 'with' block."""
     integration = utils.get_mocked_wazuh_integration()
     integration.client = MagicMock()
     # Instance that inherits from WazuhIntegration sets the attribute bucket in its constructor
     integration.bucket = utils.TEST_BUCKET
 
-    with patch('gzip.open', return_value=MagicMock()) as mock_gzip_open:
-        gzip_mock = mock_gzip_open.return_value
-        integration.decompress_file(integration.bucket, 'test.gz')
+    with patch('gzip.open') as mock_gzip_open:
+        gzip_mock = _mock_context_manager(mock_gzip_open.return_value)
+        with integration.decompress_file(integration.bucket, 'test.gz') as f:
+            assert f is gzip_mock
+            gzip_mock.read.assert_not_called()  # nothing read yet before the caller's own read
+            f.read()
 
     integration.client.get_object.assert_called_once()
     mock_gzip_open.assert_called_once()
-    gzip_mock.read.assert_called_once()
-    gzip_mock.seek.assert_called_with(0)
+    gzip_mock.read.assert_called_once()  # read exactly once -- no discarded pre-read, no re-read
+    gzip_mock.seek.assert_not_called()  # no rewind-after-discard needed anymore
 
-    with patch('zipfile.ZipFile', return_value=MagicMock()) as mock_zip, \
-            patch('io.TextIOWrapper') as mock_io_text:
-        zip_mock = mock_zip.return_value
+    with patch('zipfile.ZipFile') as mock_zip, patch('io.TextIOWrapper') as mock_io_text:
+        zip_mock = _mock_context_manager(mock_zip.return_value)
         zip_mock.namelist.return_value = ['name']
         zip_mock.open.return_value = "file contents"
-        integration.decompress_file(integration.bucket, 'test.zip')
+        text_mock = _mock_context_manager(mock_io_text.return_value)
+        with integration.decompress_file(integration.bucket, 'test.zip') as f:
+            assert f is text_mock
     zip_mock.namelist.assert_called_once()
     zip_mock.open.assert_called_with('name')
     mock_io_text.assert_called_with("file contents")
 
     with patch('io.TextIOWrapper') as mock_io_text:
-        integration.decompress_file(integration.bucket, 'test.tar')
+        text_mock = _mock_context_manager(mock_io_text.return_value)
+        with integration.decompress_file(integration.bucket, 'test.tar') as f:
+            assert f is text_mock
         mock_io_text.assert_called_once()
+
+
+@patch('io.BytesIO')
+def test_wazuh_integration_decompress_file_catches_corruption_raised_by_the_caller(mock_io):
+    """Test decompress_file() catches gzip.BadGzipFile/zipfile.BadZipFile raised by the CALLER's
+    own read inside the 'with' block, not only failures from opening the stream. The corruption
+    check used to be a discarded pre-read done by decompress_file() itself; it is now the
+    caller's real read, and this proves that corruption is still handled gracefully instead of
+    crashing the wodle with an uncaught exception three call frames away.
+    """
+    integration = utils.get_mocked_wazuh_integration()
+    integration.client = MagicMock()
+    integration.bucket = utils.TEST_BUCKET
+
+    with patch('gzip.open') as mock_gzip_open, pytest.raises(SystemExit) as e:
+        gzip_mock = _mock_context_manager(mock_gzip_open.return_value)
+        gzip_mock.read.side_effect = gzip.BadGzipFile('CRC check failed')
+        with integration.decompress_file(integration.bucket, 'test.gz') as f:
+            f.read()  # mirrors e.g. json.load(f) in a real caller, far from decompress_file()
+    assert e.value.code == utils.DECOMPRESS_FILE_ERROR_CODE
+
+    with patch('zipfile.ZipFile') as mock_zip, patch('io.TextIOWrapper') as mock_io_text, \
+            pytest.raises(SystemExit) as e:
+        zip_mock = _mock_context_manager(mock_zip.return_value)
+        zip_mock.namelist.return_value = ['name']
+        zip_mock.open.return_value = "file contents"
+        text_mock = _mock_context_manager(mock_io_text.return_value)
+        text_mock.read.side_effect = zipfile.BadZipFile('Bad magic number for file header')
+        with integration.decompress_file(integration.bucket, 'test.zip') as f:
+            f.read()
+    assert e.value.code == utils.DECOMPRESS_FILE_ERROR_CODE
+
+
+@patch('io.BytesIO')
+def test_wazuh_integration_decompress_file_reraises_corruption_when_skip_on_error(mock_io):
+    """Test decompress_file() lets a corruption error raised while the caller reads propagate when
+    skip_on_error is set, so get_log_file() can still send the error event for the corrupt file."""
+    integration = utils.get_mocked_wazuh_integration()
+    integration.client = MagicMock()
+    integration.bucket = utils.TEST_BUCKET
+    integration.skip_on_error = True
+
+    with patch('gzip.open') as mock_gzip_open, pytest.raises(gzip.BadGzipFile):
+        gzip_mock = _mock_context_manager(mock_gzip_open.return_value)
+        gzip_mock.read.side_effect = gzip.BadGzipFile('CRC check failed')
+        with integration.decompress_file(integration.bucket, 'test.gz') as f:
+            f.read()
+
+    with patch('zipfile.ZipFile', side_effect=zipfile.BadZipFile), pytest.raises(zipfile.BadZipFile):
+        with integration.decompress_file(integration.bucket, 'test.zip'):
+            pass
 
 
 @patch('io.BytesIO')
@@ -377,16 +445,19 @@ def test_aws_wazuh_integration_decompress_file_handles_exceptions_when_decompres
 
     with patch('gzip.open', side_effect=[gzip.BadGzipFile, zlib.error, TypeError]), \
             pytest.raises(SystemExit) as e:
-        integration.decompress_file(integration.bucket, 'test.gz')
+        with integration.decompress_file(integration.bucket, 'test.gz'):
+            pass
     assert e.value.code == utils.DECOMPRESS_FILE_ERROR_CODE
 
     with patch('zipfile.ZipFile', side_effect=zipfile.BadZipFile), \
             pytest.raises(SystemExit) as e:
-        integration.decompress_file(integration.bucket, 'test.zip')
+        with integration.decompress_file(integration.bucket, 'test.zip'):
+            pass
     assert e.value.code == utils.DECOMPRESS_FILE_ERROR_CODE
 
     with pytest.raises(SystemExit) as e:
-        integration.decompress_file(integration.bucket, 'test.snappy')
+        with integration.decompress_file(integration.bucket, 'test.snappy'):
+            pass
     assert e.value.code == utils.DECOMPRESS_FILE_ERROR_CODE
 
 

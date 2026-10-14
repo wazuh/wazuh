@@ -125,7 +125,8 @@ int receive_msg()
                 break;
             }
 
-            recv_b = OS_RecvSecureTCP(sock, buffer, OS_MAXSTR);
+            /* poll() bound for sockets where SO_RCVTIMEO is unsupported */
+            recv_b = OS_RecvSecureTCPTimeout(sock, buffer, OS_MAXSTR, atomic_int_get(&recv_poll_timeout));
 
             // Manager disconnected or error
 

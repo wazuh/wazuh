@@ -441,6 +441,12 @@ public:
             T::close(m_sock);
         }
 
+        // Drop any partially read frame from the previous connection.
+        m_status = SocketStatus::HEADER;
+        m_readPosition = 0;
+        m_readSize = PACKET_FIELD_SIZE;
+        m_totalReadSize = 0;
+
         // Create socket.
         m_sock = T::socket(connInfo.type == SocketType::UNIX ? AF_UNIX : AF_INET, type, 0);
         if (m_sock != INVALID_SOCKET)
@@ -520,6 +526,15 @@ public:
 
                             if (m_totalReadSize > BUFFER_MAX_SIZE)
                             {
+                                if (m_totalReadSize == UINT32_MAX)
+                                {
+                                    // m_totalReadSize + 1 would wrap to 0, resizing the buffer down
+                                    // to BUFFER_MAX_SIZE while m_readSize (below) still asks recv()
+                                    // for up to UINT32_MAX bytes. Reject it instead of silently
+                                    // reading into an undersized buffer.
+                                    throw std::runtime_error {"Declared message length is invalid."};
+                                }
+
                                 m_recvDataBuffer.resize(m_totalReadSize + 1);
                             }
 
@@ -569,6 +584,19 @@ public:
                             auto headerDataSize = TCommunicationProtocol::getHeaderSize(m_recvDataBuffer);
                             auto dataOffset = TCommunicationProtocol::getDataOffset(headerDataSize);
                             auto headerOffset = TCommunicationProtocol::getHeaderOffset();
+
+                            // dataOffset's type depends on TCommunicationProtocol (size_t for
+                            // AppendHeaderProtocol, int for SizeHeaderProtocol/NoHeaderProtocol,
+                            // which always return 0) — widen to 64 bits so a size_t offset of 2^32
+                            // or more is not truncated before the comparison.
+                            if (static_cast<uint64_t>(dataOffset) > m_totalReadSize)
+                            {
+                                // A declared header size that pushes the body offset past the
+                                // message length would make m_totalReadSize - dataOffset wrap to
+                                // a huge value, and the body pointer would move past the buffer.
+                                throw std::runtime_error {
+                                    "Declared header size moves the body offset past the message length."};
+                            }
 
                             callback(m_sock,
                                      m_recvDataBuffer.data() + dataOffset,

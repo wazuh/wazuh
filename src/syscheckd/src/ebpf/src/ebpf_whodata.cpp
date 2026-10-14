@@ -161,7 +161,7 @@ static char* get_cached_name(id_cache_t<std::string>& cache, uint32_t id, char* 
 {
     const auto name = resolve_cached(cache,
                                      id,
-                                     [resolve](uint32_t value)
+                                     [resolve](uint32_t value) -> std::string
                                      {
                                          const std::unique_ptr<char, decltype(&free)> resolved(
                                              resolve(static_cast<int>(value)), free);

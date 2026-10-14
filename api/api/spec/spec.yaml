@@ -18401,6 +18401,8 @@ paths:
       summary: 'List RBAC actions'
       description: 'Get all RBAC actions, including the potential related resources and endpoints.'
       operationId: api.controllers.security_controller.get_rbac_actions
+      x-rbac-actions:
+        - $ref: "#/x-rbac-catalog/actions/security:read_config"
       parameters:
         - $ref: '#/components/parameters/endpoint'
         - $ref: '#/components/parameters/pretty'
@@ -18458,6 +18460,8 @@ paths:
       summary: 'List RBAC resources'
       description: 'This method should be called to get all current defined RBAC resources.'
       operationId: api.controllers.security_controller.get_rbac_resources
+      x-rbac-actions:
+        - $ref: "#/x-rbac-catalog/actions/security:read_config"
       parameters:
         - $ref: '#/components/parameters/resource_list'
         - $ref: '#/components/parameters/pretty'
