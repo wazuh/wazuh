@@ -483,7 +483,37 @@ namespace wazuh::container_instances
 
     void MetadataStore::recomputeAdmittedLocked()
     {
-        m_admitted = admitContainers(visibleIdsLocked(), m_admitted, m_syncLimit);
+        const auto visible = visibleIdsLocked();
+        m_admitted = admitContainers(visible, m_admitted, m_syncLimit);
+
+        // Say how many are NOT reporting, on change rather than per pass.
+        //
+        // An analyst shown ten containers when fifty exist, with nothing saying
+        // so, is being told something false about coverage -- and silence here
+        // is indistinguishable from a node that really runs ten. This is the
+        // only place that knows both numbers.
+        const std::size_t withheld = visible.size() - m_admitted.size();
+
+        if (m_withheldFromSyncReported == withheld || !m_logger)
+        {
+            return;
+        }
+
+        m_withheldFromSyncReported = withheld;
+
+        if (withheld == 0)
+        {
+            m_logger(LogLevel::debug, "Every container is reporting to the manager; none withheld by the limit.");
+        }
+        else
+        {
+            m_logger(LogLevel::info,
+                     "Reporting " + std::to_string(m_admitted.size()) + " of " + std::to_string(visible.size()) +
+                         " container(s) to the manager; " + std::to_string(withheld) +
+                         " withheld by containers.synced_limit=" + std::to_string(m_syncLimit) +
+                         ". The withheld containers are still monitored and their data is still stored locally -- "
+                         "it is not sent. Raise the limit to report more.");
+        }
     }
 
     ContainerRecordPtr MetadataStore::visibleRecordLocked(const std::string& containerId) const
