@@ -151,6 +151,83 @@ static void test_wm_exec_abandons_pipe_held_outside_group(void **state) {
     os_free(output);
 }
 
+// Same, when the process holding the pipe keeps writing to it: the pipe is never idle, and
+// wm_exec() must still stop reading.
+static void test_wm_exec_abandons_pipe_written_outside_group(void **state) {
+    (void)state;
+    // The detached shell prints its own pid every 0.2 s, so the last line read is its pid.
+    char command[] = "sh -c \"setsid sh -c 'while :; do echo $$; sleep 0.2; done' &\"";
+    char *output = NULL;
+    int status = 0;
+    const time_t start = time(NULL);
+
+    wm_kill_timeout = 0;
+
+    expect_any(__wrap__mdebug1, formatted_msg); // Did not stop after SIGTERM
+    expect_any(__wrap__mdebug1, formatted_msg); // Pipe still open: abandoning it
+
+    const int ret = wm_exec(command, &output, &status, 1, NULL);
+
+    assert_int_equal(ret, WM_ERROR_TIMEOUT);
+    assert_true(elapsed_since(start) < 10);
+    assert_non_null(output);
+
+    const pid_t escaped = (pid_t)strtol(last_line(output), NULL, 10);
+    assert_true(escaped > 0);
+    __real_kill(escaped, SIGKILL);
+
+    os_free(output);
+}
+
+// A command that sends its output elsewhere closes the pipe right away, and the reader sees end
+// of file long before the command exits. Its timeout must still apply.
+static void test_wm_exec_kills_command_that_closed_its_output(void **state) {
+    (void)state;
+    char command[] = "sh -c \"exec >/dev/null 2>&1; trap '' TERM; sleep 60\"";
+    char *output = NULL;
+    int status = 0;
+    const time_t start = time(NULL);
+
+    expect_any(__wrap__mdebug1, formatted_msg); // Did not stop after SIGTERM
+
+    const int ret = wm_exec(command, &output, &status, 1, NULL);
+
+    assert_int_equal(ret, WM_ERROR_TIMEOUT);
+    assert_true(elapsed_since(start) < 10);
+    assert_int_equal(status, 128 + SIGKILL);
+    assert_group_terminated_then_killed();
+
+    os_free(output);
+}
+
+// On timeout, SIGTERM can end the only processes holding the pipe while the command itself
+// ignores it. End of file then comes without SIGKILL, and the command must not be waited for.
+static void test_wm_exec_kills_command_ignoring_sigterm_after_pipe_closed(void **state) {
+    (void)state;
+    // The background sleep is started before the trap, so SIGTERM ends it and closes the pipe.
+    char command[] = "sh -c \"sleep 60 & trap '' TERM; exec >/dev/null 2>&1; while :; do sleep 1; done\"";
+    char *output = NULL;
+    int status = 0;
+    const time_t start = time(NULL);
+
+    expect_any(__wrap__mdebug1, formatted_msg); // Did not stop after SIGTERM
+
+    const int ret = wm_exec(command, &output, &status, 1, NULL);
+
+    assert_int_equal(ret, WM_ERROR_TIMEOUT);
+    assert_true(elapsed_since(start) < 10);
+    assert_int_equal(status, 128 + SIGKILL);
+    assert_int_equal(kills_count, 3);
+    assert_true(kills[0].pid < 0);
+    assert_int_equal(kills[0].sig, SIGTERM);
+    assert_int_equal(kills[1].pid, kills[0].pid);
+    assert_int_equal(kills[1].sig, SIGTERM);
+    assert_int_equal(kills[2].pid, kills[0].pid);
+    assert_int_equal(kills[2].sig, SIGKILL);
+
+    os_free(output);
+}
+
 // A command that finishes in time is not signalled at all.
 static void test_wm_exec_does_not_signal_command_finishing_in_time(void **state) {
     (void)state;
@@ -173,6 +250,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_exec_kills_command_ignoring_sigterm, setup, teardown),
         cmocka_unit_test_setup_teardown(test_wm_exec_kills_command_ignoring_sigterm_without_output, setup, teardown),
         cmocka_unit_test_setup_teardown(test_wm_exec_abandons_pipe_held_outside_group, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_wm_exec_abandons_pipe_written_outside_group, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_wm_exec_kills_command_that_closed_its_output, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_wm_exec_kills_command_ignoring_sigterm_after_pipe_closed, setup, teardown),
         cmocka_unit_test_setup_teardown(test_wm_exec_does_not_signal_command_finishing_in_time, setup, teardown),
     };
 
