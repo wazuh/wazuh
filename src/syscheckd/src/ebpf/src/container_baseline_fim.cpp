@@ -834,7 +834,8 @@ extern "C" void fim_run_container_baseline(void)
                                              driver.refused(),
                                              driver.partial(),
                                              driver.stale(),
-                                             known.size());
+                                             known.size(),
+                                             known.size() - listing.admitted.size());
     } catch (const std::exception& err) {
         LogError("Container FIM baseline failed: %s", err.what());
     } catch (...) {

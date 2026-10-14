@@ -368,7 +368,8 @@ void fim_report_container_baseline_result(int baselined,
                                           size_t refused,
                                           size_t partial,
                                           size_t stale,
-                                          size_t known)
+                                          size_t known,
+                                          size_t withheld)
 {
     minfo("Container FIM baseline finished: %d container(s) scanned, %zu row(s) stored, "
           "%zu row(s) refused, %zu partial scan(s), %zu stale container(s) cleaned, "
@@ -408,6 +409,46 @@ void fim_report_container_baseline_result(int baselined,
                                     fim_container_baseline_row_limit());
             cJSON_AddNumberToObject(event, "file_entry_limit",
                                     fim_container_baseline_node_row_limit());
+
+            char* plain = cJSON_PrintUnformatted(event);
+
+            if (plain != NULL) {
+                char alert_msg[OS_SIZE_256];
+                snprintf(alert_msg, OS_SIZE_256, "wazuh: FIM DB: %s", plain);
+                if (g_host.send_log != NULL) {
+                    g_host.send_log(alert_msg);
+                }
+                os_free(plain);
+            }
+
+            cJSON_Delete(event);
+        }
+    }
+
+    if (withheld > 0) {
+        /* Which containers the manager is NOT being told about. Silence here
+         * reads, to anyone looking at the dashboard, exactly like a node that
+         * runs only the containers it can see -- so the count has to be said
+         * out loud even though nothing is wrong. */
+        minfo("Container FIM: %zu of %zu container(s) are reporting; %zu withheld by containers.synced_limit. "
+              "The withheld containers are still monitored and their file state is still stored locally -- "
+              "it is not sent to the manager. Raise the limit to report more.",
+              known - withheld, known, withheld);
+
+        /* Upward, in the same envelope and with the same caveat as the refusal
+         * above: no decoder or rule exists for it in this repository, so it
+         * reaches archives and nothing acts on it. Sent because an agent whose
+         * coverage is deliberately partial should not be the only thing that
+         * knows. */
+        cJSON* event = cJSON_CreateObject();
+
+        if (event != NULL) {
+            cJSON_AddStringToObject(event, "fim_db_table", "file_entry");
+            cJSON_AddStringToObject(event, "scope", "container");
+            cJSON_AddStringToObject(event, "alert_type", "containers_withheld");
+            cJSON_AddNumberToObject(event, "containers_withheld", (double)withheld);
+            cJSON_AddNumberToObject(event, "containers_reporting", (double)(known - withheld));
+            cJSON_AddNumberToObject(event, "containers_known", (double)known);
 
             char* plain = cJSON_PrintUnformatted(event);
 
