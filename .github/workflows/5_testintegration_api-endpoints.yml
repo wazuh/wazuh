@@ -160,13 +160,21 @@ jobs:
       - name: Build and store Docker images
         run: |
           cd api/test/integration/env
+          # An image left out of IT_IMAGES would not be stored, and docker compose up would rebuild it in every
+          # test job without WAZUH_BRANCH; images compose pulls from a registry are not stored
+          built=$(docker compose config --format json | jq -r '.services[] | select(.build) | .image' | sort -u)
+          listed=$(printf '%s\n' ${IT_IMAGES} | sort -u)
+          if [ "${built}" != "${listed}" ]; then
+            echo "::error::IT_IMAGES ($(echo ${listed})) does not match the images docker compose builds ($(echo ${built}))"
+            exit 1
+          fi
           # The commit under test: on a pull request, the merge commit, which the tarball
           # endpoint also serves for a fork
           docker compose build --build-arg WAZUH_BRANCH=${{ github.sha }} --no-cache
           mkdir -p /tmp/docker-images
           pids=(); names=()
           for image in ${IT_IMAGES}; do
-            docker image inspect "${image}:latest" >/dev/null
+            docker image inspect "${image}:latest" >/dev/null 2>&1 || { echo "::error::compose did not build ${image}:latest"; exit 1; }
             if [ "${IT_STORE}" = ghcr ]; then
               docker tag "${image}:latest" "${IT_REGISTRY}${image}:${IT_TAG}"
               docker push --quiet "${IT_REGISTRY}${image}:${IT_TAG}" &
