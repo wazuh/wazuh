@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 
 #### Added
 
+- Added a warning to the log when a queue of the indexer connector or of the vulnerability scanner holds 100000 elements or more, and each time its size doubles. ([#39607](https://github.com/wazuh/wazuh/issues/39607))
 - Added the `tcp_sessions_unassociated` counter to the `wazuh-remoted` statistics, reporting TCP connections not yet associated with an agent. ([#39799](https://github.com/wazuh/wazuh/pull/39799))
 - Added rule tree memory thresholds to `wazuh-analysisd` to warn about and reject rulesets whose rule tree grows too large. `analysisd.rule_tree_memory_warning` and `analysisd.rule_tree_memory_limit` accept a size or a percentage of the available memory, including cgroup limits. ([#39930](https://github.com/wazuh/wazuh/issues/39930))
 
@@ -42,6 +43,14 @@ All notable changes to this project will be documented in this file.
 - Fixed the Maltiverse integration sending an unvalidated alert hostname unescaped in the request path, allowing path or query manipulation within the Maltiverse API. ([#40010](https://github.com/wazuh/wazuh/pull/40010))
 - Fixed the shared modules socket client stopping for good instead of reconnecting when the peer half-closed the connection before closing it. ([#38347](https://github.com/wazuh/wazuh/issues/38347))
 - Fixed the Azure Storage integration resending every record of an append blob each time new records were appended to it. ([#40177](https://github.com/wazuh/wazuh/pull/40177))
+- Fixed the vulnerability scanner outbox queue hanging with a busy thread and no log when its stored keys mix the plain and the padded formats: the queue now reads and removes each key in the format it is stored in, the dispatcher reports failures through the logger, rejects new elements when the scan is still incomplete, and the startup reports keys it cannot read. ([#39607](https://github.com/wazuh/wazuh/issues/39607))
+- Fixed the vulnerability scanner re-scan leaving findings in the local mirror that its inventory no longer tracks: each agent is now cleared by prefix, and the master node of a cluster clears the agents that report to another node instead of scanning them. ([#39607](https://github.com/wazuh/wazuh/issues/39607))
+- Fixed the single-agent vulnerability re-scan aborting on a NULL agent column after its state had been cleared. ([#39607](https://github.com/wazuh/wazuh/issues/39607))
+- Fixed the indexer connector waiting for the initialization of the indexer before applying operations that do not call it, and looking for the mappings backup index by listing every index of the cluster, which needed a cluster-wide permission and left an orphan backup behind. ([#39607](https://github.com/wazuh/wazuh/issues/39607))
+
+#### Changed
+
+- Changed the full vulnerability re-scan to scan only the agents that are connected or that the start of the manager disconnected, and to leave the stored state of the others untouched. ([#39607](https://github.com/wazuh/wazuh/issues/39607))
 
 ### Agent
 
