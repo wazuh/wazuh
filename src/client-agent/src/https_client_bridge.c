@@ -386,6 +386,24 @@ static bool bridge_parse_sca_limits(const cJSON *limits_obj, sca_limits_t *sca)
     return bridge_get_required_int(module, "checks", &sca->checks);
 }
 
+/* The whole object is optional, not just the field inside it.
+ *
+ * Every other block here is required because every manager that speaks this
+ * contract sends it. This one is newer than the contract, so a manager that
+ * predates it sends no "containers" key at all -- and treating that as a parse
+ * failure would reject the ENTIRE limits payload, leaving the agent with no
+ * limits whatsoever rather than with one fewer. The caller's initialised
+ * default (unlimited) stands instead. */
+static void bridge_parse_containers_limits(const cJSON *limits_obj, containers_limits_t *containers)
+{
+    cJSON *module = cJSON_GetObjectItem(limits_obj, "containers");
+    if (!module || !cJSON_IsObject(module)) {
+        return;
+    }
+
+    bridge_get_optional_int(module, "synced", &containers->synced);
+}
+
 static bool bridge_parse_limits(const cJSON *root, module_limits_t *limits)
 {
     cJSON *limits_obj = cJSON_GetObjectItem(root, "limits");
@@ -398,6 +416,8 @@ static bool bridge_parse_limits(const cJSON *root, module_limits_t *limits)
         !bridge_parse_sca_limits(limits_obj, &limits->sca)) {
         return false;
     }
+
+    bridge_parse_containers_limits(limits_obj, &limits->containers);
 
     limits->limits_received = true;
     return true;
