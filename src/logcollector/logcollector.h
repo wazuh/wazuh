@@ -26,12 +26,11 @@
 ///< JSON path wich contains the files position of last read
 #ifdef WIN32
 #define LOCALFILE_STATUS   "queue\\logcollector\\file_status.json"
+#define LOCALFILE_STATUS_TMP   "queue\\logcollector\\file_status.json.tmp"
 #else
 #define LOCALFILE_STATUS        "queue/logcollector/file_status.json"
+#define LOCALFILE_STATUS_TMP    "queue/logcollector/file_status.json.tmp"
 #endif
-
-///< Maximum size of the status file loaded at start
-#define LOCALFILE_STATUS_MAX_SIZE (10 * 1024 * 1024)
 
 ///< JSON fields for file_status
 #define OS_LOGCOLLECTOR_JSON_FILES      "files"
