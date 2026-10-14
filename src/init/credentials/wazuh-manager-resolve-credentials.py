@@ -1094,6 +1094,8 @@ def step_own_ca(paths: Paths, conf: Dir, certs: Dir, ca: Dir, lookup: Lookup, re
             return None
         state = mint_ca(ca, node)
         origin = "minted"
+    elif _exists(ca, CA_MARKER):
+        origin = "minted earlier"              # by this host: --clear removes it
     else:
         origin = "staged" if state.kind == "signing" else "staged without its key (pairs cannot be issued here)"
     report.progress(f"CA {state.cert.subject.rfc4514_string()}: {origin}")

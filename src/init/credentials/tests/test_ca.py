@@ -136,6 +136,16 @@ def test_install_idempotent(resolver, sandbox):
     assert sandbox.tree_state() == before
 
 
+
+def test_minted_label(resolver, sandbox):
+    """After the run that minted it, the CA is reported as this host's, which --clear removes, never as staged."""
+    code, out, _ = run(resolver, sandbox, "--install")
+    assert code == 0 and ": minted" in out
+    for mode in ("--prestart", "--upgrade", "--install"):
+        code, out, err = run(resolver, sandbox, mode)
+        assert code == 0 and ": minted earlier" in out and ": staged" not in out, (mode, out, err)
+
+
 # ---------------------------------------------------------------- staged CAs
 
 def test_staged_signing(resolver, sandbox):
