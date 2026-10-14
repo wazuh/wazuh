@@ -1,6 +1,7 @@
 # 23 — NFR3 limit values for the container scopes (O10 / #40097)
 
 Status: **complete.** Measured (23.1–23.5), implemented and validated end to end (23.6–23.7), defaults shipped (23.8).
+Extended 2026-10-14 with the cap on how many containers report at all (23.10).
 
 #37203's NFR3 asks for configurable limits on what FIM and IT Hygiene track, with values derived
 "based on benchmarking and capacity planning". Roadmap item 39 — the node-level benchmark those
@@ -366,3 +367,56 @@ These implications were written before the implementation. Five of the six were 
 recorded in 23.6–23.8. The exception is point 3: the 12-hour sweep cadence is unchanged, and is
 filed as [#40329](https://github.com/wazuh/wazuh/issues/40329). The values that resulted are the
 shipped defaults in 23.8, not proposals.
+
+---
+
+## 23.10 The limit this document did not have: how many containers report (2026-10-14)
+
+Everything above bounds **how much each container reports**. Nothing bounded **how many containers
+do**, so the node total was still `containers × budget`, and the agent had no way to express a
+supported container count. `containers.synced_limit` is that third layer.
+
+**Where it is enforced, and why not anywhere else.** It gates the `sync` flag, exactly as
+`syscollector.packages_limit` does: every container is still walked, still stored and still counted
+as known — only the offer to the manager stops. The decision is made once in `container_instances`
+and published on the `list` reply, because syscheckd and modulesd are separate processes and two
+independent answers would show a container's packages while hiding its files.
+
+**The failure mode this design exists to avoid.** The obvious implementation is to shorten the
+container list, and it is catastrophic. `sweepStale()` and `sweepContainerRowsNotIn()` delete the
+rows of every container absent from that list, and `MetadataStore` erases a container that stops
+appearing after `REMOVAL_GRACE`, emitting a `removed` event consumers treat as authority to delete.
+Capping the list would therefore **delete** each withheld container's data rather than withhold it,
+and re-create it the moment the cap moved. Withholding and deleting are opposite outcomes reached
+by one plausible shortcut, so it is pinned by a test that fails if anyone takes it.
+
+**How the containers are chosen.** Sticky, with the lowest id filling free slots. There is no
+creation time anywhere in the record to rank by — `startedAt` is the start of the *current* run, it
+resets on restart, and it is absent for a stopped Kubernetes container — and walk order is
+`unordered_map` order, which is the very thing 23.4 measured deciding coverage. Sticky admission
+means a new container never evicts an incumbent: ids are random hex, so ranking the whole set every
+pass would evict one on roughly `N/M` of all container creations — one in five at N=10, M=50 — and
+each eviction costs a delete and a create.
+
+**Stated rather than hidden:** `container_instances` has no database to seed stickiness from, so an
+agent restart re-derives the set as "the lowest N that exist". That can differ from the set in
+flight beforehand, producing a one-time shift. Deterministic, bounded to restarts, written down.
+
+**It ships at 0 — unlimited — and is the only limit here that does.** The others bound quantities
+rarely reached, so a number is harmless. This one binds the moment it is set, and a non-zero default
+would make an upgrade silently stop showing containers an operator can see today. That reads as data
+loss, not as a cap working, so it is opt-in until product states a supported number (Q16).
+
+**Two defects found and fixed while building it**, both of which would have made the cap porous:
+
+- The three paths that re-send an index wholesale — data-context fetch, checksum, recovery resync —
+  decided whether to filter on `sync=1` by reading the **host** document limit alone. That limit
+  ships at 0, so on the default configuration all three re-sent rows the per-container budget had
+  deliberately withheld. The cap held until the first checksum mismatch and then stopped holding.
+- A container removed through the delta path never had its document counts released; only the
+  whole-list sweep did that. Its rows went, the budget they had spent did not.
+
+**What it still does not bound.** The agent's disk. Every container is stored locally whatever the
+cap says, so `file_entry_limit` (300000) and `container_file_entry_limit` (30000) remain the only
+ceilings on storage. A cap of N containers bounds the *sync* volume, not the database — and it does
+not reduce scan cost either, since withheld containers are still walked.
