@@ -617,8 +617,15 @@ static int token_snapshot(const w_token_enroll_opts_t *opts, token_snapshot_t *s
         return -1;
     }
 
-    if (fflush(backup.fp) != 0 || ferror(backup.fp)) {
-        saved_errno = errno;
+    /* fflush() sets errno. A write stdio lost before it leaves only the stream's error flag, with
+     * no errno of its own, so that one is reported as EIO rather than with whatever errno held. */
+    if (fflush(backup.fp) != 0) {
+        saved_errno = (errno != 0) ? errno : EIO;
+    } else {
+        saved_errno = ferror(backup.fp) ? EIO : 0;
+    }
+
+    if (saved_errno != 0) {
         merror("Could not copy the current agent key aside: %s (%d).",
                strerror(saved_errno), saved_errno);
         fclose(backup.fp);

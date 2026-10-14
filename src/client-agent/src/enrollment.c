@@ -714,11 +714,18 @@ STATIC int w_enrollment_store_key_entry(const char *line) {
         return -1;
     }
 
-    /* A short write would install a cut-off key. */
-    bool written = (fprintf(file.fp, "%s\n", line) >= 0);
+    /* A short write would install a cut-off key. errno is read right after the call that failed:
+     * the fclose() that follows a failed fprintf() may change it. */
+    bool failed = (fprintf(file.fp, "%s\n", line) < 0);
+    int error = errno;
 
-    if (fclose(file.fp) != 0 || !written) {
-        merror(FWRITE_ERROR, file.name, errno, strerror(errno));
+    if (fclose(file.fp) != 0 && !failed) {
+        failed = true;
+        error = errno;
+    }
+
+    if (failed) {
+        merror(FWRITE_ERROR, file.name, error, strerror(error));
         unlink(file.name);
         os_free(file.name);
         return -1;

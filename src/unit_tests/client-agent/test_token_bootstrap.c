@@ -2279,6 +2279,11 @@ static void test_failed_commit_never_restores_a_replaced_backup(void **state) {
 }
 
 #ifdef __linux__
+/* For expect_check() on a log line: whether it carries @p check_data, the part a test pins */
+static int log_line_contains(const LargestIntegralType value, const LargestIntegralType check_data) {
+    return strstr((const char *) value, (const char *) check_data) != NULL;
+}
+
 /* A copy of client.keys that could not be written in full is no backup. The enrollment is not
  * attempted -- no request is queued for hc_enroll() here -- and client.keys stays as it was. */
 static void test_a_key_backup_that_cannot_be_written_stops_the_enrollment(void **state) {
@@ -2301,6 +2306,9 @@ static void test_a_key_backup_that_cannot_be_written_stops_the_enrollment(void *
     will_return(__wrap_hc_spki_pinned_certificate, PINNED_CERT);
     expect_any_count(__wrap__mdebug1, formatted_msg, -2);
     expect_any_always(__wrap__minfo, formatted_msg);
+    /* The first error is the backup's, with the errno of the flush that failed */
+    expect_check(__wrap__merror, formatted_msg, log_line_contains,
+                 (LargestIntegralType)(uintptr_t)"aside: No space left on device (28).");
     expect_any_always(__wrap__merror, formatted_msg);
 
     g_backup_disk_full = true;

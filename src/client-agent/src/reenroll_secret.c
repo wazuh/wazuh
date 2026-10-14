@@ -70,11 +70,18 @@ int w_reenroll_secret_store(const char *id, const char *secret) {
         return -1;
     }
 
-    /* A short write would install a cut-off secret. */
-    bool written = (fprintf(file.fp, "%s %s\n", id, secret) >= 0);
+    /* A short write would install a cut-off secret. errno is read right after the call that
+     * failed: the fclose() that follows a failed fprintf() may change it. */
+    bool failed = (fprintf(file.fp, "%s %s\n", id, secret) < 0);
+    int error = errno;
 
-    if (fclose(file.fp) != 0 || !written) {
-        merror(FWRITE_ERROR, file.name, errno, strerror(errno));
+    if (fclose(file.fp) != 0 && !failed) {
+        failed = true;
+        error = errno;
+    }
+
+    if (failed) {
+        merror(FWRITE_ERROR, file.name, error, strerror(error));
         unlink(file.name);
         os_free(file.name);
         return -1;

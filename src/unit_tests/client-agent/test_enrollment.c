@@ -119,6 +119,11 @@ static void reset_staged_hooks(void) {
     g_busy_staged_rename = false;
 }
 
+/* For expect_check() on a log line: whether it carries @p check_data, the part a test pins */
+static int log_line_contains(const LargestIntegralType value, const LargestIntegralType check_data) {
+    return strstr((const char *) value, (const char *) check_data) != NULL;
+}
+
 /* setup/teardown */
 
 static int setup_test(void **state) {
@@ -1170,7 +1175,9 @@ static void test_store_key_entry_keeps_the_previous_key_when_the_write_fails(voi
     write_text_file(KEYS_FILE, PREVIOUS_KEY_LINE "\n");
     g_staged_disk_full = true;
 
-    expect_any(__wrap__merror, formatted_msg);
+    /* With the errno of the write that failed */
+    expect_check(__wrap__merror, formatted_msg, log_line_contains,
+                 (LargestIntegralType)(uintptr_t)"[(28)-(No space left on device)]");
 
     assert_int_equal(w_enrollment_store_key_entry(STORED_KEY_LINE), -1);
 
