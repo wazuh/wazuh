@@ -5,10 +5,8 @@ set -e
 case "$1" in
     configure)
 
-    if command -v lsb_release > /dev/null 2>&1; then
-        OS=$(lsb_release -si)
-        VER=$(lsb_release -sr)
-    elif [ -r /etc/os-release ]; then
+    # The distribution and version only name the generated configuration's header comment.
+    if [ -r /etc/os-release ]; then
         . /etc/os-release
         OS=${ID:-linux}
         VER=${VERSION_ID:-0}
@@ -116,19 +114,6 @@ case "$1" in
             rm -f ${WAZUH_TMP_DIR}/wazuh-manager.conf
             echo "ERROR: could not install ${CONF_DIR}/wazuh-manager.conf." >&2
             exit 1
-        fi
-
-        passlist="${DIR}/agentless/.passlist"
-
-        if [ -f $passlist ] && ! base64 -d $passlist > /dev/null 2>&1; then
-            cp $passlist $passlist.bak
-            base64 $passlist.bak > $passlist
-            if [ $? = 0 ]; then
-                rm -f $passlist.bak
-            else
-                echo "ERROR: Couldn't encode Agentless passlist."
-                mv $passlist.bak $passlist
-            fi
         fi
     else
         # A reference file for the administrator, not the active configuration: a rejected

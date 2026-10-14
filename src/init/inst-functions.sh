@@ -280,22 +280,62 @@ WriteLogs()
 }
 
 ##########
+# ReplaceAll <text> <from> <to>
+# Sets REPLACE_ALL_RESULT to <text> with every occurrence of <from> replaced by <to>, left to right.
+# Plain strings: nothing in <from> or <to> is a pattern. The package scripts run the configuration
+# generator on hosts that may not have sed, so its substitutions are done here, in the shell.
+##########
+ReplaceAll()
+{
+    _ra_rest="$1"
+    _ra_done=""
+    if [ -n "$2" ]; then
+        while :; do
+            case "$_ra_rest" in
+                *"$2"*)
+                    _ra_done="${_ra_done}${_ra_rest%%"$2"*}$3"
+                    _ra_rest="${_ra_rest#*"$2"}"
+                    ;;
+                *)
+                    break
+                    ;;
+            esac
+        done
+    fi
+    REPLACE_ALL_RESULT="${_ra_done}${_ra_rest}"
+}
+
+##########
+# SubstituteFile <file> [<from> <to>]...
+# Prints <file> with each pair replaced in turn, as `sed -e 's|from|to|g' ... <file>` printed it,
+# trailing newlines included (the content never goes through a command substitution on the way out).
+##########
+SubstituteFile()
+{
+    _sf_text=$(cat "$1" && echo x) || return 1
+    _sf_text="${_sf_text%x}"
+    shift
+    while [ "$#" -ge 2 ]; do
+        ReplaceAll "$_sf_text" "$1" "$2"
+        _sf_text="$REPLACE_ALL_RESULT"
+        shift 2
+    done
+    printf '%s' "$_sf_text"
+}
+
+##########
 # SetHeaders() 1-agent|manager
 ##########
 SetHeaders()
 {
-    HEADERS_TMP="/tmp/wazuh-headers.tmp"
     if [ "$DIST_VER" = "0" ]; then
-        sed -e "s/TYPE/$1/g; s/DISTRIBUTION/${DIST_NAME}/g; s/VERSION//g" "$HEADER_TEMPLATE" > $HEADERS_TMP
+        HEADER_DIST_VERSION=""
+    elif [ "$DIST_SUBVER" = "0" ]; then
+        HEADER_DIST_VERSION="${DIST_VER}"
     else
-      if [ "$DIST_SUBVER" = "0" ]; then
-        sed -e "s/TYPE/$1/g; s/DISTRIBUTION/${DIST_NAME}/g; s/VERSION/${DIST_VER}/g" "$HEADER_TEMPLATE" > $HEADERS_TMP
-      else
-        sed -e "s/TYPE/$1/g; s/DISTRIBUTION/${DIST_NAME}/g; s/VERSION/${DIST_VER}.${DIST_SUBVER}/g" "$HEADER_TEMPLATE" > $HEADERS_TMP
-      fi
+        HEADER_DIST_VERSION="${DIST_VER}.${DIST_SUBVER}"
     fi
-    cat $HEADERS_TMP
-    rm -f $HEADERS_TMP
+    SubstituteFile "$HEADER_TEMPLATE" TYPE "$1" DISTRIBUTION "${DIST_NAME}" VERSION "${HEADER_DIST_VERSION}"
 }
 
 ##########
@@ -757,22 +797,19 @@ WriteManager()
         # to stay hardcoded to the default certs/remoted.pem regardless.
         WAZUH_AUTHD_SSL_MANAGER_CERT="${WAZUH_REMOTE_HTTPS_CERTIFICATE:-${CONF_DIR}/certs/remoted.pem}"
         WAZUH_AUTHD_SSL_MANAGER_KEY="${WAZUH_REMOTE_HTTPS_KEY:-${CONF_DIR}/certs/remoted-key.pem}"
-        sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" \
-            -e "s|\${WAZUH_AUTHD_SSL_MANAGER_CERT}|$WAZUH_AUTHD_SSL_MANAGER_CERT|g" \
-            -e "s|\${WAZUH_AUTHD_SSL_MANAGER_KEY}|$WAZUH_AUTHD_SSL_MANAGER_KEY|g" \
-            "${AUTH_TEMPLATE}" >> $NEWCONFIG
+        SubstituteFile "${AUTH_TEMPLATE}" \
+            '${INSTALLDIR}' "$INSTALLDIR" \
+            '${WAZUH_AUTHD_SSL_MANAGER_CERT}' "$WAZUH_AUTHD_SSL_MANAGER_CERT" \
+            '${WAZUH_AUTHD_SSL_MANAGER_KEY}' "$WAZUH_AUTHD_SSL_MANAGER_KEY" >> $NEWCONFIG
         echo "" >> $NEWCONFIG
     else
         DisableAuthd
     fi
 
-    if command -v openssl >/dev/null 2>&1; then
-        CLUSTER_KEY=$(openssl rand -hex 16)
-    else
-        CLUSTER_KEY=$(head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n')
-    fi
+    # 16 random bytes as 32 hex digits, with coreutils only.
+    CLUSTER_KEY=$(head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n')
     # Writting cluster configuration
-    sed -e "s|\${CLUSTER_KEY}|$CLUSTER_KEY|g" "${CLUSTER_TEMPLATE}" >> $NEWCONFIG
+    SubstituteFile "${CLUSTER_TEMPLATE}" '${CLUSTER_KEY}' "$CLUSTER_KEY" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     echo "</wazuh_config>" >> $NEWCONFIG
