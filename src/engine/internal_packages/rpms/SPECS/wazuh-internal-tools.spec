@@ -2,7 +2,7 @@ Name:           wazuh-internal-tools
 Version:        0.1.0
 Release:        1
 Summary:        Wazuh Internal Engine Tools (runtime venv + offline wheels)
-License:        GPL-2.0-only
+License:        AGPL-3.0-or-later
 URL:            https://wazuh.com
 Source0:        %{name}-%{version}.tar.gz
 
@@ -435,6 +435,7 @@ exit 0
 # == FILES ============
 # =====================
 %files
+%license LICENSE-engine COPYING-engine
 %{_bindir}/engine-public
 %{_bindir}/engine-event-dumper
 %{_bindir}/engine-router

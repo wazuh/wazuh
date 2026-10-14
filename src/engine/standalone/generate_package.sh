@@ -239,6 +239,9 @@ build_standalone() {
     chmod +x ${TEMP_DIR}/run_engine.sh
     cp ${WAZUH_PATH}/src/engine/standalone/README.md ${TEMP_DIR}/
 
+    # Copy the license texts (AGPLv3)
+    cp ${WAZUH_PATH}/src/engine/LICENSE-engine ${WAZUH_PATH}/src/engine/COPYING-engine ${TEMP_DIR}/
+
     # Copy libraries and binaries
     cp ${WAZUH_PATH}/src/external/rocksdb/build/librocksdb.so.8 ${TEMP_DIR}/bin/lib
     cp ${WAZUH_PATH}/src/external/jemalloc/lib/libjemalloc.so.2 ${TEMP_DIR}/bin/lib

@@ -1,4 +1,18 @@
 
+ Wazuh is distributed under two licenses:
+
+  * The Wazuh engine, the source code under src/engine/ (installed as
+    bin/wazuh-manager-analysisd, and also distributed as the standalone
+    wazuh-engine bundle and the wazuh-internal-tools package), is licensed
+    under the GNU Affero General Public License, version 3 or (at your
+    option) any later version. See src/engine/COPYING-engine for the notice
+    and src/engine/LICENSE-engine for the full license text.
+
+  * Everything else is licensed under the GNU General Public License
+    (version 2), under the terms stated below.
+
+-----------------------------------------------------------------------------
+
  Portions Copyright (C) 2015, Wazuh Inc.
  Based on work Copyright (C) 2003 - 2013 Trend Micro, Inc.
 

@@ -191,3 +191,5 @@ Stay up to date on news, releases, engineering articles and more.
 Wazuh Copyright (C) 2015-2026 Wazuh Inc. (License GPLv2)
 
 Based on the OSSEC project started by Daniel Cid.
+
+The Wazuh engine (`src/engine/`, installed as `wazuh-manager-analysisd`) is licensed under the GNU Affero General Public License v3.0 or later. See [src/engine/COPYING-engine](src/engine/COPYING-engine) and [src/engine/LICENSE-engine](src/engine/LICENSE-engine). Everything else is licensed under GPLv2; see [LICENSE](LICENSE).

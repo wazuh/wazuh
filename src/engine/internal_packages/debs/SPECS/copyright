@@ -8,15 +8,17 @@ It was downloaded from:
 
 Copyright:
 
-    GNU General Public License version 2.
+    Copyright (C) 2023, Wazuh Inc.
 
 License:
 
-    GNU General Public License version 2.
+    GNU Affero General Public License, version 3 or (at your option) any
+    later version. See "/usr/share/doc/wazuh-internal-tools/LICENSE-engine".
 
 The Debian packaging is:
 
     Copyright (C) 2015 Wazuh, Inc <info@wazuh.com>
 
-and is licensed under the GPL version 2,
-see "/usr/share/common-licenses/GPL-2".
+and is licensed under the GNU Affero General Public License,
+version 3 or (at your option) any later version,
+see "/usr/share/doc/wazuh-internal-tools/LICENSE-engine".
