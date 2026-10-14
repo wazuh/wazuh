@@ -103,6 +103,7 @@ EOF
 # Runs the target against a fresh tree and leaves it at ${WORK}/<case>.
 #   $1 case name   $2 ossec.conf   $3 with openssl (yes|no)   $4 installed version
 #   $5 pre-existing anchor (yes|no)
+# CASE_SETUP, when set, names a command run with the tree's path just before the target.
 run_case() {
 
     local name="$1" conf="$2" with_openssl="$3" version="$4" anchor="$5"
@@ -116,6 +117,9 @@ run_case() {
         cp "${WORK}/ca.pem" "${dir}/etc/certs/root-ca.pem"
     fi
     make_path "${with_openssl}" "${version}" "${dir}/bin"
+    if [ -n "${CASE_SETUP}" ]; then
+        "${CASE_SETUP}" "${dir}"
+    fi
 
     (cd "${dir}" && env -i PATH="${dir}/bin" HOME="${dir}" INSTALLDIR="${dir}" STUB_STATE="${dir}/state" \
         STUB_CACERT_RC="${STUB_CACERT_RC:-0}" STUB_RETRY_RC="${STUB_RETRY_RC:-0}" \
@@ -151,6 +155,14 @@ log_count() {
 present() {
 
     [ -e "${WORK}/$1/$2" ] && echo yes || echo no
+
+}
+
+# var/upgrade is where the snapshot used to go. Read-only here, so a CA that still validates and
+# installs shows the snapshot is taken somewhere else.
+read_only_upgrade_dir() {
+
+    chmod 555 "$1/var/upgrade"
 
 }
 
@@ -260,6 +272,12 @@ check "the existing anchor is kept" "yes" "$(present no_openssl_anchor etc/certs
 run_case no_openssl_5x "${LEGACY_CONF}" no 5.0.0 no
 check "a 5.x agent with no anchor aborts and points back to the hint" "1" \
       "$(log_count no_openssl_5x "Upgrade failed. The system trust store does not verify.*See the 'No trust anchor' line above")"
+
+# The snapshot is validated outside var/upgrade, which the wazuh group could write.
+CASE_SETUP=read_only_upgrade_dir run_case snapshot "${LEGACY_CONF}" yes 4.14.7 no
+chmod 755 "${WORK}/snapshot/var/upgrade"
+check "the CA validates without writing to var/upgrade" "0" "$(log_count snapshot "could not be read")"
+check "and it is installed" "yes" "$(present snapshot etc/certs/root-ca.pem)"
 
 echo
 echo "${checks} checks, ${failures} failed"

@@ -502,7 +502,14 @@ elif [ -f "${INCOMING_CA_FILE}" ]; then
 
     CA_REJECT_REASON=""
     CA_TOOL_MISSING=0
-    CA_SNAPSHOT="./var/upgrade/.root-ca.pem.incoming-snapshot.$$"
+    # A directory only this script's user can enter, with a name nobody can guess. The wazuh group
+    # can write var/incoming, and var/upgrade on installs older than this script, so a fixed name
+    # there could be a link that group planted, and cp would write through it.
+    CA_WORK_DIR=$(mktemp -d 2>/dev/null)
+    if [ -n "${CA_WORK_DIR}" ]; then
+        trap 'rm -rf "${CA_WORK_DIR}"' EXIT
+    fi
+    CA_SNAPSHOT="${CA_WORK_DIR}/root-ca.pem"
 
     # var/incoming is not exclusively Wazuh-controlled: a file that validated as a
     # legitimate CA a moment ago could be swapped for a symlink to a sensitive
@@ -515,11 +522,12 @@ elif [ -f "${INCOMING_CA_FILE}" ]; then
     # default (physical/lstat) mode would see a freshly-swapped-in symlink's
     # own link count (usually 1), not catch it via -links alone, so both checks
     # run together, immediately before the cp, rather than relying on either
-    # alone. Snapshot into our own copy under var/upgrade (not
-    # attacker-writable) and validate/install from that snapshot alone from
-    # here on, so nothing after this point ever re-opens the attacker-
-    # influenced path.
-    if [ -L "${INCOMING_CA_FILE}" ] || [ -n "$(find "${INCOMING_CA_FILE}" -links +1 2>/dev/null)" ]; then
+    # alone. Snapshot into our own copy in CA_WORK_DIR and validate/install
+    # from that snapshot alone from here on, so nothing after this point ever
+    # re-opens the attacker-influenced path.
+    if [ -z "${CA_WORK_DIR}" ]; then
+        CA_REJECT_REASON="could not be copied for validation (no private temporary directory)"
+    elif [ -L "${INCOMING_CA_FILE}" ] || [ -n "$(find "${INCOMING_CA_FILE}" -links +1 2>/dev/null)" ]; then
         CA_REJECT_REASON="is a symlink or has more than one hard link"
     elif ! cp "${INCOMING_CA_FILE}" "${CA_SNAPSHOT}" 2>/dev/null; then
         CA_REJECT_REASON="could not be read"
