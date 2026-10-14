@@ -248,3 +248,4 @@
 | [#40179](https://github.com/wazuh/wazuh/issues/40179) | Fixed the agent downloading and discarding the shared configuration when the manager advertises the `0` config hash. |
 | [#39869](https://github.com/wazuh/wazuh/pull/39869) | Fixed FIM scan hanging when a monitored file is replaced by a FIFO. |
 | [#39998](https://github.com/wazuh/wazuh/pull/39998) | Fixed the Debian 13 SCA policy reusing the Debian 12 check IDs, renumbering it to a dedicated 42000+ range. |
+| [#40307](https://github.com/wazuh/wazuh/pull/40307) | Fixed MITRE ATT&CK mappings across 64 SCA policies: removed Windows-only and cloud-only techniques from Linux and macOS checks, removed the reconnaissance technique `T1595` from all of them, updated revoked technique IDs to their current successors, and added missing parent techniques. |
