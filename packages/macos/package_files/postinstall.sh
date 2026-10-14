@@ -73,6 +73,9 @@ chmod 640 ${DIR}/etc/wpk_root.pem
 # For the /var/run
 chmod -R 770 ${DIR}/var
 chown -R root:${GROUP} ${DIR}/var
+# Only root writes the WPK files root then installs, so the group cannot swap one after the
+# signature check.
+chmod 750 ${DIR}/var/upgrade
 
 # VERSION.json
 chmod -R 440 ${DIR}/VERSION.json
