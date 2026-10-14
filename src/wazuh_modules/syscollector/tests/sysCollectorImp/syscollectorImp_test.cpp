@@ -644,8 +644,8 @@ TEST_F(SyscollectorImpTest, containerBaselineRunsOnItsOwnIntervalNotTheHostOne)
                                           100,    // host interval
                                           true,   // scan_on_start
                                           true, true, true, true, true, true, true, true, true, true, true, true,
-                                          true,   // container_baseline
                                           false,  // notify_on_first_scan
+                                          true,   // container_baseline
                                           1);     // container_baseline_interval
 
             Syscollector::instance().start();
@@ -3847,7 +3847,8 @@ TEST_F(SyscollectorImpTest, initSyncProtocol_AllModulesEnabled)
                                   false,   // users
                                   false,   // services
                                   false,   // browserExtensions
-                                  false);  // notifyOnFirstScan
+                                  false,  // notifyOnFirstScan
+                                  false);  // containerBaseline -- these tests drive the host lanes only
 
     // Test initSyncProtocol - should not throw
     EXPECT_NO_THROW(
@@ -3893,7 +3894,8 @@ TEST_F(SyscollectorImpTest, initSyncProtocol_PackagesDisabled)
                                   false,   // users
                                   false,   // services
                                   false,   // browserExtensions
-                                  false);  // notifyOnFirstScan
+                                  false,  // notifyOnFirstScan
+                                  false);  // containerBaseline -- these tests drive the host lanes only
 
     // Test initSyncProtocol - should not throw
     EXPECT_NO_THROW(
@@ -3939,7 +3941,8 @@ TEST_F(SyscollectorImpTest, initSyncProtocol_OsDisabled)
                                   false,   // users
                                   false,   // services
                                   false,   // browserExtensions
-                                  false);  // notifyOnFirstScan
+                                  false,  // notifyOnFirstScan
+                                  false);  // containerBaseline -- these tests drive the host lanes only
 
     // Test initSyncProtocol - should not throw
     EXPECT_NO_THROW(
@@ -3985,7 +3988,8 @@ TEST_F(SyscollectorImpTest, initSyncProtocol_DifferentParameters)
                                   false,   // users
                                   false,   // services
                                   false,   // browserExtensions
-                                  false);  // notifyOnFirstScan
+                                  false,  // notifyOnFirstScan
+                                  false);  // containerBaseline -- these tests drive the host lanes only
 
     // Test with different parameter values
     EXPECT_NO_THROW(

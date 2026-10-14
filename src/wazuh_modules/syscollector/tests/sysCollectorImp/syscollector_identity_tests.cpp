@@ -159,7 +159,8 @@ class SyscollectorIdentityTest : public ::testing::Test
             users,      // users     -> plain lane
             false,      // services
             false,      // browserExtensions
-            false);     // notifyOnFirstScan
+            false,     // notifyOnFirstScan
+            false);     // containerBaseline -- these tests drive the host lanes only
 
             // start() computes this, and these cases do not call it -- they inject protocols
             // instead of letting the module build real ones. Set here so that no case can model
