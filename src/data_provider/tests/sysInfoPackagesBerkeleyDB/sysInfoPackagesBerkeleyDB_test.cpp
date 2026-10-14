@@ -262,9 +262,10 @@ TEST_F(SysInfoPackagesBerkeleyDBTest, TableTwoCallsCheckOutputNoHeader)
 
     const auto& dbWrapper { std::make_shared<BerkeleyDbWrapperMock>() };
     EXPECT_CALL(*dbWrapper, getRow(_, _))
-    .Times(2)
+    .Times(3)
     .WillOnce(DoAll(SetArgReferee<0>(key), SetArgReferee<1>(data), Return(0)))
-    .WillOnce(DoAll(SetArgReferee<0>(key), SetArgReferee<1>(data), Return(0)));
+    .WillOnce(DoAll(SetArgReferee<0>(key), SetArgReferee<1>(data), Return(0)))
+    .WillOnce(Return(1));
     BerkeleyRpmDBReader reader(dbWrapper);
     EXPECT_TRUE(reader.getNext().empty());
 }
@@ -296,9 +297,10 @@ TEST_F(SysInfoPackagesBerkeleyDBTest, TableTwoCallsCheckOutputHeaderWithNoData)
 
     const auto& dbWrapper { std::make_shared<BerkeleyDbWrapperMock>() };
     EXPECT_CALL(*dbWrapper, getRow(_, _))
-    .Times(2)
+    .Times(3)
     .WillOnce(DoAll(SetArgReferee<0>(key), SetArgReferee<1>(data), Return(0)))
-    .WillOnce(DoAll(SetArgReferee<0>(key), SetArgReferee<1>(data), Return(0)));
+    .WillOnce(DoAll(SetArgReferee<0>(key), SetArgReferee<1>(data), Return(0)))
+    .WillOnce(Return(1));
     BerkeleyRpmDBReader reader(dbWrapper);
     EXPECT_TRUE(reader.getNext().empty());
 }
@@ -817,13 +819,33 @@ TEST_F(SysInfoPackagesBerkeleyDBTest, NegativeOffsetIsIgnored)
     EXPECT_EQ("\t\t\t\t\t\t\t\t\t\t\n", reader.getNext());
 }
 
-TEST_F(SysInfoPackagesBerkeleyDBTest, NegativeDataSizeIsRejected)
+TEST_F(SysInfoPackagesBerkeleyDBTest, NegativeDataSizeRecordIsSkippedAndScanContinues)
 {
     const std::string region { std::string("Wazuh\0", 6) };
-    auto record { buildRecord({{TAG_NAME, STRING_TYPE, 0, 1}}, region) };
+    auto bad { buildRecord({{TAG_NAME, STRING_TYPE, 0, 1}}, region) };
     const auto be { __builtin_bswap32(static_cast<uint32_t>(-1)) };
-    memcpy(record.data() + 4, &be, sizeof(be));
-    BerkeleyRpmDBReader reader(mockRow(record, recordSize(1, region)));
+    memcpy(bad.data() + 4, &be, sizeof(be));
+    auto good { buildRecord({{TAG_NAME, STRING_TYPE, 0, 1}}, region) };
+
+    DBT key, badData, goodData;
+    memset(&key, 0, sizeof(key));
+    memset(&badData, 0, sizeof(badData));
+    memset(&goodData, 0, sizeof(goodData));
+    badData.data = bad.data();
+    badData.size = static_cast<u_int32_t>(recordSize(1, region));
+    goodData.data = good.data();
+    goodData.size = static_cast<u_int32_t>(recordSize(1, region));
+
+    const auto dbWrapper { std::make_shared<BerkeleyDbWrapperMock>() };
+    EXPECT_CALL(*dbWrapper, getRow(_, _))
+    .Times(4)
+    .WillOnce(DoAll(SetArgReferee<0>(key), SetArgReferee<1>(badData), Return(0)))
+    .WillOnce(DoAll(SetArgReferee<0>(key), SetArgReferee<1>(badData), Return(0)))
+    .WillOnce(DoAll(SetArgReferee<0>(key), SetArgReferee<1>(goodData), Return(0)))
+    .WillOnce(Return(1));
+
+    BerkeleyRpmDBReader reader(dbWrapper);
+    EXPECT_EQ("Wazuh\t\t\t\t\t\t\t\t\t\t\n", reader.getNext());
     EXPECT_TRUE(reader.getNext().empty());
 }
 

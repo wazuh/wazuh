@@ -338,9 +338,16 @@ class BerkeleyRpmDBReader final
                 }
             }
 
-            if (cursorRet = m_dbWrapper->getRow(key, data), cursorRet == 0)
+            // An unparseable record is skipped: an empty result would be read as the end of the database.
+            while (cursorRet = m_dbWrapper->getRow(key, data), cursorRet == 0)
             {
-                retVal = parseBody(parseHeader(data, TAG_PACKAGE_NAMES), data);
+                const auto header { parseHeader(data, TAG_PACKAGE_NAMES) };
+
+                if (!header.empty())
+                {
+                    retVal = parseBody(header, data);
+                    break;
+                }
             }
 
             return retVal;
