@@ -255,15 +255,18 @@ if [ $1 = 2 ]; then
     exit 1
   fi
 
+  # tmp/ is writable by the wazuh group and touch follows a link planted there, creating its target.
+  # The marker is created with noclobber (O_EXCL), which fails on any link instead of following it.
+  rm -f %{_localstatedir}/tmp/wazuh.restart
   if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 && systemctl is-active --quiet wazuh-agent > /dev/null 2>&1; then
     systemctl stop wazuh-agent.service > /dev/null 2>&1
-    touch %{_localstatedir}/tmp/wazuh.restart
+    ( set -C; : > %{_localstatedir}/tmp/wazuh.restart ) 2> /dev/null || true
   # Check for SysV
   elif command -v service > /dev/null 2>&1 && service wazuh-agent status 2>/dev/null | grep "is running" > /dev/null 2>&1; then
     service wazuh-agent stop > /dev/null 2>&1
-    touch %{_localstatedir}/tmp/wazuh.restart
+    ( set -C; : > %{_localstatedir}/tmp/wazuh.restart ) 2> /dev/null || true
   elif %{_localstatedir}/bin/wazuh-control status 2>/dev/null | grep "is running" > /dev/null 2>&1; then
-    touch %{_localstatedir}/tmp/wazuh.restart
+    ( set -C; : > %{_localstatedir}/tmp/wazuh.restart ) 2> /dev/null || true
   fi
   %{_localstatedir}/bin/wazuh-control stop > /dev/null 2>&1
 fi
