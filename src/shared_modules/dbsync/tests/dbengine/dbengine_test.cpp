@@ -191,9 +191,19 @@ TEST_F(DBEngineTest, InitializeStatusField)
     .WillOnce(Return(ByMove(std::move(mockColumn_3))));
     EXPECT_CALL(*mockStatement_2, column(5))
     .WillOnce(Return(ByMove(std::move(mockColumn_4))));
+    // Adding the status column invalidates the cached column list, so
+    // initializeStatusField() drops it and re-reads table_info afterwards --
+    // the scope column it then has to validate is looked up in that list.
+    // Without a second statement here the mock returns null and loadFieldData()
+    // dereferences it, which is a segfault rather than a failed expectation.
+    auto mockStatement_2Reload { std::make_unique<MockStatement>() };
+    EXPECT_CALL(*mockStatement_2Reload, step())
+    .WillOnce(Return(SQLITE_DONE));
+
     EXPECT_CALL(*mockFactory,
                 createStatement(_, "PRAGMA table_info(dummy);"))
-    .WillOnce(Return(ByMove(std::move(mockStatement_2))));
+    .WillOnce(Return(ByMove(std::move(mockStatement_2))))
+    .WillOnce(Return(ByMove(std::move(mockStatement_2Reload))));
 
     auto mockStatement_3 { std::make_unique<MockStatement>() };
     EXPECT_CALL(*mockStatement_3,
