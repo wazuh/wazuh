@@ -321,9 +321,15 @@ fi
 # If the package is being installed
 if [ $1 = 1 ]; then
 
-  touch %{_localstatedir}/logs/active-responses.log
-  chown wazuh:wazuh %{_localstatedir}/logs/active-responses.log
-  chmod 0660 %{_localstatedir}/logs/active-responses.log
+  # logs/ belongs to wazuh, which could leave a link at the log's name, and touch, chown and chmod
+  # follow links as root. A link is removed, the file is created only when missing (with its mode
+  # already set, and with noclobber, which fails on a link instead of following it), and its owner
+  # is set with chown -h, which never follows one.
+  if [ -L %{_localstatedir}/logs/active-responses.log ]; then
+    rm -f %{_localstatedir}/logs/active-responses.log
+  fi
+  ( umask 0117; set -C; : > %{_localstatedir}/logs/active-responses.log ) 2> /dev/null || true
+  chown -h wazuh:wazuh %{_localstatedir}/logs/active-responses.log 2> /dev/null || true
 
   . %{_localstatedir}/packages_files/agent_installation_scripts/src/init/dist-detect.sh
 
