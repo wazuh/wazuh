@@ -24,11 +24,12 @@
 
 /* main-server.c is compiled with WAZUH_UNIT_TESTING, which turns its file-scope
  * `static` declarations into externally-linkable ones (see auth.c for the same
- * pattern). g_client_pool, sweep_idle_clients() and enqueue_pending_key() have no
- * header of their own, so they are declared here directly. */
+ * pattern). g_client_pool, sweep_idle_clients(), enqueue_pending_key() and
+ * handle_ssl_read() have no header of their own, so they are declared here directly. */
 extern struct client * g_client_pool[AUTH_POOL];
 extern void sweep_idle_clients(void);
 extern void enqueue_pending_key(int ret, uint32_t index_client);
+extern int handle_ssl_read(struct client * client);
 
 /* Same minimal reimplementation of keys_init() as test_auth_add.c: it's a
  * file-local helper in auth.c with no header, so every test file that needs a
@@ -227,6 +228,26 @@ static void test_enqueue_pending_key_rollback_keeps_other_key(void ** state) {
     assert_null(g_client_pool[TEST_SLOT]);
 }
 
+static void test_handle_ssl_read_short_read_without_newline_closes_client(void ** state) {
+    /* A read shorter than the buffer space that carries no '\n' must make handle_ssl_read()
+     * fail, so the caller deletes the client instead of leaving its pool slot occupied. */
+    struct client * client = make_client(TRUE, 1000, 0, 0);
+    os_calloc(MAX_SSL_MSG_SIZE + 1, sizeof(char), client->read_buffer);
+    g_client_pool[TEST_SLOT] = client;
+
+    expect_any(__wrap_SSL_read, ssl);
+    expect_value(__wrap_SSL_read, buf, client->read_buffer);
+    expect_value(__wrap_SSL_read, num, MAX_SSL_MSG_SIZE);
+    will_return(__wrap_SSL_read, "OSSEC A:'agent'");
+    will_return(__wrap_SSL_read, 15);
+    expect_string(__wrap__merror, formatted_msg,
+                  "Newline terminator not found in message request for 127.0.0.1");
+
+    assert_int_equal(handle_ssl_read(client), -1);
+
+    os_free(client->read_buffer);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_teardown(test_sweep_idle_clients_closes_stale_pre_handshake, teardown_pool),
@@ -236,6 +257,7 @@ int main(void) {
         cmocka_unit_test_teardown(test_sweep_idle_clients_closes_completed_handshake_with_partial_request, teardown_pool),
         cmocka_unit_test_setup_teardown(test_enqueue_pending_key_inserts_own_key, setup_pending_key, teardown_pending_key),
         cmocka_unit_test_setup_teardown(test_enqueue_pending_key_rollback_keeps_other_key, setup_pending_key, teardown_pending_key),
+        cmocka_unit_test_teardown(test_handle_ssl_read_short_read_without_newline_closes_client, teardown_pool),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

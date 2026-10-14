@@ -809,7 +809,7 @@ static int handle_ssl_read(struct client *client) {
 
         if (ret < (MAX_SSL_MSG_SIZE - client->read_offset) && ret < MAX_SSL_PACKET_SIZE) {
             merror("Newline terminator not found in message request for %s", client->ip);
-            break;
+            return -1;
         }
     }
 
