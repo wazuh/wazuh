@@ -20,7 +20,9 @@
 
 #ifdef WAZUH_UNIT_TESTING
 #include "unit_tests/wrappers/windows/winsvc_wrappers.h"
-#include "unit_tests/wrappers/windows/aclapi_wrappers.h"
+#include "unit_tests/wrappers/windows/fileapi_wrappers.h"
+#include "unit_tests/wrappers/windows/synchapi_wrappers.h"
+#include "unit_tests/wrappers/windows/errhandlingapi_wrappers.h"
 #endif
 
 /**************************************************************************************
@@ -168,25 +170,38 @@ int CheckServiceRunning()
     return (rc);
 }
 
-/* Any user can create a name in Global\ first, so an existing restart mutex
- * only counts as another restart in progress when SYSTEM or Administrators own
- * it: a real restart runs as one of them, and nobody else can make either the
- * owner of an object they create.
+/* Takes the lock that serializes service-restart invocations: tmp\service-restart.lock, opened with no
+ * sharing and deleted on close, so it is held exactly as long as the process that opened it and released
+ * by the system if that process dies. Only Administrators and SYSTEM can create or open files in tmp\
+ * (SetWazuhPermissions), so no other account can hold it -- unlike a named object, whose name any
+ * account can take first.
  *
- * Returns 1 if the owner is SYSTEM or Administrators, or 0 otherwise or if the
- * owner cannot be read. */
-int restart_mutex_owner_trusted(HANDLE mutex)
+ * Retries every 500 ms while another restart holds it. Returns the handle, or INVALID_HANDLE_VALUE with
+ * *timed_out set if it was still held after wait_ms, or INVALID_HANDLE_VALUE with *timed_out clear (and
+ * the error in GetLastError()) if it could not be opened for any other reason. */
+HANDLE acquire_restart_lock(DWORD wait_ms, int *timed_out)
 {
-    PSID owner = NULL;
-    PSECURITY_DESCRIPTOR sd = NULL;
-    int trusted = 0;
+    const DWORD retryMs = 500;
+    DWORD waited = 0;
 
-    if (GetSecurityInfo(mutex, SE_KERNEL_OBJECT, OWNER_SECURITY_INFORMATION, &owner, NULL, NULL, NULL, &sd) == ERROR_SUCCESS) {
-        trusted = IsWellKnownSid(owner, WinLocalSystemSid) || IsWellKnownSid(owner, WinBuiltinAdministratorsSid);
+    *timed_out = 0;
+
+    for (;;) {
+        HANDLE lock = CreateFile("tmp\\service-restart.lock", GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_ALWAYS,
+                                 FILE_ATTRIBUTE_NORMAL | FILE_FLAG_DELETE_ON_CLOSE, NULL);
+
+        if (lock != INVALID_HANDLE_VALUE || GetLastError() != ERROR_SHARING_VIOLATION) {
+            return lock;
+        }
+
+        if (waited >= wait_ms) {
+            *timed_out = 1;
+            return INVALID_HANDLE_VALUE;
+        }
+
+        Sleep(retryMs);
+        waited += retryMs;
     }
-
-    LocalFree(sd);
-    return trusted;
 }
 
 /* Install the OSSEC-HIDS agent service */

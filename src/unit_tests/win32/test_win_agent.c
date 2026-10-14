@@ -14,7 +14,10 @@
 
 #include "os_win.h"
 #include "../wrappers/windows/winsvc_wrappers.h"
-#include "../wrappers/windows/aclapi_wrappers.h"
+#include "../wrappers/common.h"
+#include "../wrappers/windows/fileapi_wrappers.h"
+#include "../wrappers/windows/synchapi_wrappers.h"
+#include "../wrappers/windows/errhandlingapi_wrappers.h"
 
 #ifdef TEST_WINAGENT
 
@@ -60,43 +63,72 @@ static void test_check_service_running_false_when_service_missing(void **state) 
     assert_int_equal(CheckServiceRunning(), 0);
 }
 
-/* --- restart_mutex_owner_trusted() ---------------------------------------- */
+/* --- acquire_restart_lock() ---------------------------------------------- */
 
-static PSID well_known_sid(WELL_KNOWN_SID_TYPE type, BYTE *buffer, DWORD size) {
-    assert_true(CreateWellKnownSid(type, NULL, buffer, &size));
-    return (PSID)buffer;
+#define RESTART_LOCK "tmp\\service-restart.lock"
+
+static int setup_test_mode(void **state) {
+    (void)state;
+    test_mode = 1;
+    return 0;
 }
 
-static void test_restart_mutex_owner_trusted_system(void **state) {
+static int teardown_test_mode(void **state) {
     (void)state;
-    BYTE buffer[SECURITY_MAX_SID_SIZE];
-    expect_GetSecurityInfo_call(well_known_sid(WinLocalSystemSid, buffer, sizeof(buffer)), NULL, ERROR_SUCCESS);
-    assert_int_equal(restart_mutex_owner_trusted((HANDLE)0x1), 1);
+    test_mode = 0;
+    return 0;
 }
 
-static void test_restart_mutex_owner_trusted_administrators(void **state) {
-    (void)state;
-    BYTE buffer[SECURITY_MAX_SID_SIZE];
-    expect_GetSecurityInfo_call(well_known_sid(WinBuiltinAdministratorsSid, buffer, sizeof(buffer)), NULL, ERROR_SUCCESS);
-    assert_int_equal(restart_mutex_owner_trusted((HANDLE)0x1), 1);
+static void expect_restart_lock_open(HANDLE result, DWORD error) {
+    expect_string(wrap_CreateFile, lpFileName, RESTART_LOCK);
+    will_return(wrap_CreateFile, result);
+    if (result == INVALID_HANDLE_VALUE) {
+        expect_GetLastError_call(error);
+    }
 }
 
-static void test_restart_mutex_owner_untrusted_user(void **state) {
+static void test_acquire_restart_lock_free(void **state) {
     (void)state;
-    SID_IDENTIFIER_AUTHORITY nt_authority = SECURITY_NT_AUTHORITY;
-    PSID user = NULL;
-    /* A local account, S-1-5-21-1-2-3-1001: what a standard user's token sets as owner */
-    assert_true(AllocateAndInitializeSid(&nt_authority, 5, SECURITY_NT_NON_UNIQUE, 1, 2, 3, 1001, 0, 0, 0, &user));
-    expect_GetSecurityInfo_call(user, NULL, ERROR_SUCCESS);
-    assert_int_equal(restart_mutex_owner_trusted((HANDLE)0x1), 0);
-    FreeSid(user);
+    int timed_out = -1;
+    expect_restart_lock_open((HANDLE)0x10, 0);
+
+    assert_ptr_equal(acquire_restart_lock(60000, &timed_out), (HANDLE)0x10);
+    assert_int_equal(timed_out, 0);
 }
 
-static void test_restart_mutex_owner_unreadable(void **state) {
+static void test_acquire_restart_lock_waits_for_holder(void **state) {
     (void)state;
-    BYTE buffer[SECURITY_MAX_SID_SIZE];
-    expect_GetSecurityInfo_call(well_known_sid(WinLocalSystemSid, buffer, sizeof(buffer)), NULL, ERROR_ACCESS_DENIED);
-    assert_int_equal(restart_mutex_owner_trusted((HANDLE)0x1), 0);
+    int timed_out = -1;
+    expect_restart_lock_open(INVALID_HANDLE_VALUE, ERROR_SHARING_VIOLATION);
+    expect_value(wrap_Sleep, dwMilliseconds, 500);
+    expect_restart_lock_open(INVALID_HANDLE_VALUE, ERROR_SHARING_VIOLATION);
+    expect_value(wrap_Sleep, dwMilliseconds, 500);
+    expect_restart_lock_open((HANDLE)0x10, 0);
+
+    assert_ptr_equal(acquire_restart_lock(60000, &timed_out), (HANDLE)0x10);
+    assert_int_equal(timed_out, 0);
+}
+
+static void test_acquire_restart_lock_times_out(void **state) {
+    (void)state;
+    int timed_out = -1;
+    expect_restart_lock_open(INVALID_HANDLE_VALUE, ERROR_SHARING_VIOLATION);
+    expect_value(wrap_Sleep, dwMilliseconds, 500);
+    expect_restart_lock_open(INVALID_HANDLE_VALUE, ERROR_SHARING_VIOLATION);
+    expect_value(wrap_Sleep, dwMilliseconds, 500);
+    expect_restart_lock_open(INVALID_HANDLE_VALUE, ERROR_SHARING_VIOLATION);
+
+    assert_ptr_equal(acquire_restart_lock(1000, &timed_out), INVALID_HANDLE_VALUE);
+    assert_int_equal(timed_out, 1);
+}
+
+static void test_acquire_restart_lock_other_error(void **state) {
+    (void)state;
+    int timed_out = -1;
+    expect_restart_lock_open(INVALID_HANDLE_VALUE, ERROR_PATH_NOT_FOUND);
+
+    assert_ptr_equal(acquire_restart_lock(60000, &timed_out), INVALID_HANDLE_VALUE);
+    assert_int_equal(timed_out, 0);
 }
 
 int main(void) {
@@ -106,10 +138,10 @@ int main(void) {
         cmocka_unit_test(test_check_service_running_true_for_start_pending),
         cmocka_unit_test(test_check_service_running_false_for_stopped),
         cmocka_unit_test(test_check_service_running_false_when_service_missing),
-        cmocka_unit_test(test_restart_mutex_owner_trusted_system),
-        cmocka_unit_test(test_restart_mutex_owner_trusted_administrators),
-        cmocka_unit_test(test_restart_mutex_owner_untrusted_user),
-        cmocka_unit_test(test_restart_mutex_owner_unreadable),
+        cmocka_unit_test_setup_teardown(test_acquire_restart_lock_free, setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_acquire_restart_lock_waits_for_holder, setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_acquire_restart_lock_times_out, setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_acquire_restart_lock_other_error, setup_test_mode, teardown_test_mode),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
