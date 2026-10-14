@@ -606,9 +606,16 @@ if [ $1 = 0 ]; then
 fi
 
 %triggerin -- glibc
-[ -r %{_sysconfdir}/localtime ] && cp -fpL %{_sysconfdir}/localtime %{_localstatedir}/etc
- chown root:wazuh %{_localstatedir}/etc/localtime
- chmod 0640 %{_localstatedir}/etc/localtime
+# etc/ belongs to wazuh, which could leave a link at etc/localtime for cp, chown and chmod to
+# follow as root. The copy is made in a directory only root can enter, under the installation
+# directory (which wazuh cannot write), and renamed into place: a rename replaces a link.
+if [ -r %{_sysconfdir}/localtime ] && LOCALTIME_STAGE=$(mktemp -d %{_localstatedir}/.localtime.XXXXXX); then
+  cp -fpL %{_sysconfdir}/localtime ${LOCALTIME_STAGE}/localtime \
+    && chown root:wazuh ${LOCALTIME_STAGE}/localtime \
+    && chmod 0640 ${LOCALTIME_STAGE}/localtime \
+    && mv -fT ${LOCALTIME_STAGE}/localtime %{_localstatedir}/etc/localtime
+  rm -rf ${LOCALTIME_STAGE}
+fi
 
 %postun
 

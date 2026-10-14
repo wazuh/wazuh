@@ -77,9 +77,9 @@ case "$1" in
 
     # For the etc dir
     if [ -f /etc/localtime ]; then
-        cp -pL /etc/localtime ${DIR}/etc/;
-        chmod 640 ${DIR}/etc/localtime
-        chown root:${GROUP} ${DIR}/etc/localtime
+        mkdir -p ${WAZUH_TMP_DIR}
+        cp -pL /etc/localtime ${WAZUH_TMP_DIR}/localtime && \
+            install_file ${WAZUH_TMP_DIR}/localtime 640 root:${GROUP} ${DIR}/etc/localtime
     fi
 
     # Remove deprecated binaries
