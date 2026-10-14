@@ -470,6 +470,12 @@ list(APPEND shared_tests_names "test_logging_config")
 list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
 endif()
 
+if(NOT ${TARGET} STREQUAL "winagent")
+list(APPEND shared_tests_names "test_log_rotate")
+list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,time -Wl,--wrap,IsDir -Wl,--wrap,IsFile -Wl,--wrap,FileSize \
+                                -Wl,--wrap,rename_ex -Wl,--wrap,wfopen -Wl,--wrap,OS_CompressLog -Wl,--wrap,wopendir")
+endif()
+
 # Compiling tests
 list(LENGTH shared_tests_names count)
 math(EXPR count "${count} - 1")
