@@ -646,12 +646,7 @@ static bool token_backup_is_ours(const token_snapshot_t *snapshot) {
     (void)snapshot;
     return true;
 #else
-    struct stat taken;
-    struct stat named;
-
-    return fstat(fileno(snapshot->keys_backup_fp), &taken) == 0 &&
-           lstat(snapshot->keys_backup, &named) == 0 && S_ISREG(named.st_mode) &&
-           named.st_nlink == 1 && named.st_dev == taken.st_dev && named.st_ino == taken.st_ino;
+    return w_path_names_fd(snapshot->keys_backup, fileno(snapshot->keys_backup_fp));
 #endif
 }
 

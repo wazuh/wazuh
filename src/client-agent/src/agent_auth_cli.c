@@ -461,23 +461,6 @@ STATIC bool w_agent_auth_endpoint_written(const File *staged, const char **nodes
 }
 
 #ifndef WIN32
-/**
- * @brief Whether @p path still names the regular file open on @p fd.
- *
- * The last step before the move, so the name the move uses named this run's file a moment
- * earlier. It can still be swapped after this, and the move then installs whatever was put there;
- * that gives the account that can write etc/ nothing it can't do with mv. What matters is that
- * root never opens that name through a link: the write, the read-back, the mode and the owner
- * all go through @p fd, and the move is w_move_file_nofollow().
- */
-STATIC bool w_agent_auth_staged_is_ours(int fd, const char *path) {
-    struct stat ours;
-    struct stat named;
-
-    return fstat(fd, &ours) == 0 && lstat(path, &named) == 0 && S_ISREG(named.st_mode) &&
-           named.st_nlink == 1 && named.st_dev == ours.st_dev && named.st_ino == ours.st_ino;
-}
-
 /** Gives the file open on @p fd the mode and ownership of @p original, through the descriptor. */
 STATIC int w_agent_auth_copy_mode_and_owner(int fd, const struct stat *original) {
     if (fchmod(fd, original->st_mode & 07777) != 0 ||
@@ -577,7 +560,12 @@ STATIC int w_agent_auth_update_endpoint(const char *adr, const char *configured,
         goto done;
     }
 
-    if (!w_agent_auth_staged_is_ours(fileno(staged.fp), staged.name)) {
+    /* The last step before the move, so the name the move uses named this run's file a moment
+     * earlier. It can still be swapped after this, and the move then installs whatever was put
+     * there; that gives the account that can write etc/ nothing it can't do with mv. What matters
+     * is that root never opens that name through a link: the write, the read-back, the mode and
+     * the owner all go through the descriptor, and the move is w_move_file_nofollow(). */
+    if (!w_path_names_fd(staged.name, fileno(staged.fp))) {
         fprintf(err, "%s: the staged copy of '%s' was replaced while it was being written; "
                 "refusing to install it.\n", AGENT_AUTH_NAME, WAZUHCONF);
         goto done;
