@@ -237,6 +237,7 @@
 | [#38829](https://github.com/wazuh/wazuh/issues/38829) | Fixed Coverity findings across agent components (`syscheckd`, `sca`, `agent-info`, `https_client`, `agent-upgrade`, and `shared`). |
 | [#38766](https://github.com/wazuh/wazuh/issues/38766) | Fixed `wazuh-agentd` crashing with `SIGSEGV` on every service stop, which also cut the shutdown drain short before the `/control` shutdown notification was sent. |
 | [#38850](https://github.com/wazuh/wazuh/issues/38850) | Fixed missing `<manager>` block on Debian 10 unattended DEB installs. |
+| [#40356](https://github.com/wazuh/wazuh/issues/40356) | Fixed `make deps` reporting a failed `http-request` download as successful. |
 | [#38975](https://github.com/wazuh/wazuh/pull/38975) | Fixed SCA PCI-DSS compliance mappings, updated from v3.2.1 to v4.0 numbering. |
 | [#38840](https://github.com/wazuh/wazuh/issues/38840) | Fixed the agent's reported `/config` snapshot staying stale for up to an hour after a group's shared configuration (e.g. `agent.conf`) changed; the manager now sees the update as soon as the agent's reload actually completes, instead of waiting out the periodic report's regular cadence. |
 | [#38928](https://github.com/wazuh/wazuh/issues/38928) | Fixed the CIS Amazon Linux 2023 SCA policy: check 31170 was named for the GID 0 default group control it does not test (its rule actually tests the root password), and check 31172 was a byte-identical duplicate of 31171, both testing `/etc/passwd` permissions and inflating compliance scores. |
