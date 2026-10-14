@@ -247,7 +247,14 @@ int RunSyscollectorDbsyncBaselineForContainers(const std::string&              c
                                                 const DbsyncRowSink&            sink,
                                                 const ContainerStatusSink&      status_sink = {});
 
-using ContainerIdSink = std::function<void(const std::string&)>;
+/// Reports one known container and whether it may report to the manager.
+///
+/// The admission flag rides this sink rather than a second query because the
+/// two must be read from the SAME reply: a caller that listed containers and
+/// then asked separately about admission could be handed a decision taken
+/// after a reconcile that changed the set, and would attribute one container's
+/// verdict to another.
+using ContainerIdSink = std::function<void(const std::string&, bool)>;
 
 /// @brief Lists every container currently known to container_instances,
 /// independent of whether it has a resolvable live PID right now — unlike the
