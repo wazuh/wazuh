@@ -216,6 +216,65 @@ def test_remoted_chain_to_bundle(resolver, sandbox):
     assert code == 0, err
 
 
+def rotation_ca(key, *, days=(-1, 90), is_ca=True, key_cert_sign=True):
+    now = datetime.datetime.now(datetime.timezone.utc)
+    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "rotation-ca")])
+    return (x509.CertificateBuilder().subject_name(name).issuer_name(name).public_key(key.public_key())
+            .serial_number(x509.random_serial_number())
+            .not_valid_before(now + datetime.timedelta(days=days[0]))
+            .not_valid_after(now + datetime.timedelta(days=days[1]))
+            .add_extension(x509.BasicConstraints(ca=is_ca, path_length=None), critical=True)
+            .add_extension(x509.KeyUsage(digital_signature=True, content_commitment=False, key_encipherment=False,
+                                        data_encipherment=False, key_agreement=False, key_cert_sign=key_cert_sign,
+                                        crl_sign=key_cert_sign, encipher_only=False, decipher_only=False), critical=True)
+            .sign(key, hashes.SHA256()))
+
+
+@pytest.mark.parametrize("mode", ["--check", "--prestart"])
+@pytest.mark.parametrize("used", [True, False])
+@pytest.mark.parametrize("options,reason", [
+    ({"days": (-90, -1)}, "expired"),
+    ({"days": (1, 90)}, "not valid yet"),
+    ({"is_ca": False}, "not a CA certificate"),
+    ({"key_cert_sign": False}, "keyUsage does not include keyCertSign"),
+])
+def test_rotation_issuer_must_be_usable(resolver, sandbox, mode, used, options, reason):
+    """Historical entries can remain in the bundle, but cannot authorize the active server certificate."""
+    assert run(resolver, sandbox, "--install")[0] == 0
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    rotation = rotation_ca(key, **options)
+    pem = rotation.public_bytes(serialization.Encoding.PEM)
+    own = ca_cert(sandbox).public_bytes(serialization.Encoding.PEM)
+    sandbox.write(os.path.join(sandbox.certs, "root-ca.pem"), own + pem, mode=0o640, gid=sandbox.account_gid)
+    if used:
+        _replace_remoted(sandbox, issuer_name=rotation.subject, sign_with=key, ca_bytes=pem)
+    before = sandbox.tree_state()
+    code, _, err = run(resolver, sandbox, mode)
+    if used:
+        assert code == 1 and f"INVALID {sandbox.certs}/remoted.pem: issuer CA: {reason}" in err, err
+    else:
+        assert code == 0 and err == "", err
+    assert sandbox.tree_state() == before
+
+
+@pytest.mark.parametrize("mode", ["--check", "--prestart"])
+def test_rotation_issuer_uses_valid_candidate(resolver, sandbox, mode):
+    """A renewed CA certificate can share the subject and key of a historical expired certificate."""
+    assert run(resolver, sandbox, "--install")[0] == 0
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    expired = rotation_ca(key, days=(-90, -1)).public_bytes(serialization.Encoding.PEM)
+    valid = rotation_ca(key)
+    pem = valid.public_bytes(serialization.Encoding.PEM)
+    own = ca_cert(sandbox).public_bytes(serialization.Encoding.PEM)
+    sandbox.write(os.path.join(sandbox.certs, "root-ca.pem"), own + expired + pem,
+                  mode=0o640, gid=sandbox.account_gid)
+    _replace_remoted(sandbox, issuer_name=valid.subject, sign_with=key, ca_bytes=pem)
+    before = sandbox.tree_state()
+    code, _, err = run(resolver, sandbox, mode)
+    assert code == 0 and err == "", err
+    assert sandbox.tree_state() == before
+
+
 def test_anchor_only_missing(resolver, sandbox):
     sandbox.stage_ca(key=False, pairs=False)
     code, _, err = run(resolver, sandbox, "--install")

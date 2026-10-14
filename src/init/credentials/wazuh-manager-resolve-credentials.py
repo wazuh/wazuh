@@ -1390,9 +1390,34 @@ def pair_problem(paths: Paths, certs: Dir, name: str,
         leaf.extensions.get_extension_for_class(x509.SubjectAlternativeName)
     except x509.ExtensionNotFound:
         return leaf, "has no subjectAltName"
-    if anchors is not None and not any(_issued_by(leaf, anchor) for anchor in anchors):
-        return leaf, "not issued by the manager's CA"
+    if anchors is not None:
+        issuers = [anchor for anchor in anchors if _issued_by(leaf, anchor)]
+        if not issuers:
+            return leaf, "not issued by the manager's CA"
+        # Historical CAs may remain in the bundle. At least one actual signer must be usable now;
+        # do not reject a renewed CA just because an expired certificate with the same key comes first.
+        problems = [server_issuer_problem(issuer, now) for issuer in issuers]
+        if all(problem is not None for problem in problems):
+            return leaf, f"issuer CA: {problems[0]}"
     return leaf, None
+
+
+def server_issuer_problem(issuer: x509.Certificate, now: datetime.datetime) -> Optional[str]:
+    """A direct server issuer must be a currently valid CA authorized to sign certificates."""
+    if not issuer.not_valid_before_utc <= now <= issuer.not_valid_after_utc:
+        return "expired" if now > issuer.not_valid_after_utc else "not valid yet"
+    try:
+        is_ca = issuer.extensions.get_extension_for_class(x509.BasicConstraints).value.ca
+    except x509.ExtensionNotFound:
+        is_ca = False
+    if not is_ca:
+        return "not a CA certificate (basicConstraints CA:TRUE missing)"
+    try:
+        if not issuer.extensions.get_extension_for_class(x509.KeyUsage).value.key_cert_sign:
+            return "keyUsage does not include keyCertSign"
+    except x509.ExtensionNotFound:
+        pass
+    return None
 
 
 def _issued_by(leaf: x509.Certificate, issuer: x509.Certificate) -> bool:
