@@ -239,8 +239,11 @@ build_standalone() {
     chmod +x ${TEMP_DIR}/run_engine.sh
     cp ${WAZUH_PATH}/src/engine/standalone/README.md ${TEMP_DIR}/
 
-    # Copy the license texts (AGPLv3)
+    # Copy the license texts (AGPLv3) and the third-party notices
     cp ${WAZUH_PATH}/src/engine/LICENSE-engine ${WAZUH_PATH}/src/engine/COPYING-engine ${TEMP_DIR}/
+    python3 ${WAZUH_PATH}/src/engine/tools/third-party-notices/generate.py notices \
+        --artefact standalone --external ${WAZUH_PATH}/src/external \
+        -o ${TEMP_DIR}/THIRD-PARTY-NOTICES || return 1
 
     # Copy libraries and binaries
     cp ${WAZUH_PATH}/src/external/rocksdb/build/librocksdb.so.8 ${TEMP_DIR}/bin/lib

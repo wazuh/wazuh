@@ -669,7 +669,7 @@ rm -fr %{buildroot}
 
 %files
 %defattr(-,root,wazuh-manager)
-%license LICENSE src/engine/LICENSE-engine src/engine/COPYING-engine
+%license LICENSE src/engine/LICENSE-engine src/engine/COPYING-engine THIRD-PARTY-NOTICES
 %config(missingok) %{_initrddir}/wazuh-manager
 /usr/lib/systemd/system/wazuh-manager.service
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}

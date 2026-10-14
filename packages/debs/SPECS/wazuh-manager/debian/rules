@@ -109,7 +109,7 @@ override_dh_install:
 
 	# Install the license texts: GPLv2 for the manager, AGPLv3 for the engine (wazuh-manager-analysisd)
 	mkdir -p ${TARGET_DIR}/usr/share/doc/wazuh-manager
-	install -m 0644 LICENSE src/engine/LICENSE-engine src/engine/COPYING-engine ${TARGET_DIR}/usr/share/doc/wazuh-manager/
+	install -m 0644 LICENSE src/engine/LICENSE-engine src/engine/COPYING-engine THIRD-PARTY-NOTICES ${TARGET_DIR}/usr/share/doc/wazuh-manager/
 
 override_dh_fixperms:
 	dh_fixperms
