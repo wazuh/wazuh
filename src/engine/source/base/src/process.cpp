@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <atomic>
 #include <cerrno>
 #include <cstdlib>
 #include <cstring>
@@ -23,7 +24,7 @@
 #include <fmt/format.h>
 
 #include <base/error.hpp>
-#include <base/libwazuhshared.hpp>
+#include <base/managerLogSink.hpp>
 #include <base/process.hpp>
 
 constexpr auto MAX_RBUFFER_SIZE = 65536;
@@ -229,33 +230,103 @@ void privSepSetUser(uid_t uid)
     }
 }
 
-std::filesystem::path getWazuhHome()
+namespace
 {
-    // Manager mode: libwazuhshared is loaded before this is called (see main.cpp).
-    // Delegate to w_homedir(), the canonical function used by every other Wazuh daemon.
-    // It resolves the home via /proc/self/exe internally.
-    if (base::libwazuhshared::getLibPtr())
+std::atomic<bool> g_managerMode {false};
+
+/// dirname(3) of a path without touching it; "" stays "" (unresolvable executable => no home).
+std::string dirName(const std::string& path)
+{
+    if (path.empty())
     {
-        // Force if we want to avoid the /proc lookup
-        if (std::getenv("WAZUH_MANAGER_FORCE_HOME"))
+        return {};
+    }
+
+    auto end = path.find_last_not_of('/');
+    if (end == std::string::npos)
+    {
+        return "/";
+    }
+    const auto slash = path.rfind('/', end);
+    if (slash == std::string::npos)
+    {
+        return ".";
+    }
+    end = path.find_last_not_of('/', slash);
+    return end == std::string::npos ? std::string("/") : path.substr(0, end + 1);
+}
+
+[[noreturn]] void exitHomeNotFound()
+{
+    const auto line = base::logging::formatPlainLine(base::logging::localTimestamp(),
+                                                     "wazuh-manager-analysisd",
+                                                     "CRITICAL",
+                                                     "(1108): Unable to find Wazuh install directory. Export it to "
+                                                     "WAZUH_MANAGER_HOME environment variable.");
+    // Best effort: the process exits right after, so a failed write has nowhere to be reported.
+    const ssize_t written = ::write(STDERR_FILENO, line.data(), line.size());
+    static_cast<void>(written);
+    std::exit(EXIT_FAILURE);
+}
+} // namespace
+
+std::filesystem::path resolveManagerHome(const std::function<const char*(const char*)>& getenv,
+                                         const std::string& exePath,
+                                         const std::function<bool(const std::string&)>& isDirectory)
+{
+    // Forced home: returned as is, without any check
+    if (const char* forced = getenv("WAZUH_MANAGER_FORCE_HOME"))
+    {
+        return std::filesystem::path(forced);
+    }
+
+    std::string home;
+    if (const char* env = getenv("WAZUH_MANAGER_HOME"); env != nullptr && env[0] != '\0')
+    {
+        home = env;
+    }
+    else
+    {
+        // <home>/bin/<executable>: cut the executable's directory at the first "/bin"
+        home = dirName(exePath);
+        if (const auto pos = home.find("/bin"); pos != std::string::npos)
         {
-            return std::filesystem::path(std::getenv("WAZUH_MANAGER_FORCE_HOME"));
-        }
-
-        using WHDir = char* (*)(const char*);
-        const char executablePath[] = "/proc/self/exe";
-
-        std::unique_ptr<char, decltype(&std::free)> home(
-            base::libwazuhshared::getFunction<WHDir>("w_homedir")(executablePath), &std::free);
-
-        if (home)
-        {
-            return std::filesystem::path(home.get());
+            home.resize(pos);
         }
     }
 
-    // Standalone mode / unit tests: libwazuhshared is not loaded.
-    // conf::Conf may still use this value to build default paths when the
+    if (!isDirectory(home))
+    {
+        exitHomeNotFound();
+    }
+    return std::filesystem::path(home);
+}
+
+void setManagerMode()
+{
+    g_managerMode.store(true);
+}
+
+std::filesystem::path getWazuhHome()
+{
+    if (g_managerMode.load())
+    {
+        static const std::filesystem::path home = []()
+        {
+            std::error_code ec;
+            const auto exePath = std::filesystem::read_symlink("/proc/self/exe", ec);
+            return resolveManagerHome([](const char* name) -> const char* { return std::getenv(name); },
+                                      ec ? std::string() : exePath.string(),
+                                      [](const std::string& path)
+                                      {
+                                          std::error_code dirEc;
+                                          return !path.empty() && std::filesystem::is_directory(path, dirEc);
+                                      });
+        }();
+        return home;
+    }
+
+    // Standalone mode / unit tests: conf::Conf may still use this value to build default paths when the
     // dedicated environment variables are not set.
     return std::filesystem::current_path();
 }

@@ -4,6 +4,7 @@
 #include <cerrno>
 #include <cstring>
 #include <filesystem>
+#include <functional>
 #include <optional>
 #include <pthread.h>
 #include <stdexcept>
@@ -127,18 +128,43 @@ uid_t privSepGetUser(const std::string& username);
 void privSepSetUser(uid_t uid);
 
 /**
+ * @brief Resolves the manager home directory.
+ *
+ * Steps 2 and 3 follow the home lookup of the C daemons (src/shared/src/file_op.c) on Linux, with /proc/self/exe
+ * only and none of its other fallbacks; step 1 is the engine's own override.
+ *
+ * 1. WAZUH_MANAGER_FORCE_HOME defined (even empty or not a directory): returned as is, never checked.
+ * 2. Otherwise WAZUH_MANAGER_HOME, when not empty, as is (not cut at "/bin").
+ * 3. Otherwise dirname(exePath) cut at the first "/bin" substring (the whole dirname when there is none),
+ *    e.g. /var/wazuh-manager/bin/wazuh-manager-analysisd -> /var/wazuh-manager.
+ *
+ * When the result of 2 or 3 is not a directory, it writes
+ * "<now> wazuh-manager-analysisd: CRITICAL: (1108): Unable to find Wazuh install directory. Export it to
+ * WAZUH_MANAGER_HOME environment variable." to stderr and exits with status 1 (no log file is written).
+ *
+ * @param getenv Environment lookup (std::getenv in production).
+ * @param exePath Resolved path of the running executable (/proc/self/exe in production; "" if it cannot be read).
+ * @param isDirectory Whether a path is an existing directory.
+ * @return std::filesystem::path The home directory.
+ */
+std::filesystem::path resolveManagerHome(const std::function<const char*(const char*)>& getenv,
+                                         const std::string& exePath,
+                                         const std::function<bool(const std::string&)>& isDirectory);
+
+/**
+ * @brief Enables manager mode for getWazuhHome() (process-wide and irreversible; main() in manager mode).
+ */
+void setManagerMode();
+
+/**
  * @brief Gets the Wazuh installation home directory path.
  *
- * It delegates the functionality to w_homedir() when manager is not standalone
- * (libwazuhshared already loaded), the canonical Wazuh function used by
- * every other daemon. It resolves the path via /proc/self/exe
- * (e.g. /var/wazuh-manager/bin/wazuh-engine -> /var/wazuh-manager).
+ * In manager mode (after setManagerMode()) it resolves the home once with resolveManagerHome() from the real
+ * environment and /proc/self/exe, and caches it; an invalid home ends the process (see resolveManagerHome()).
  *
- * It returns the current working directory when the manager is in standalone
- * mode or during unit tests (libwazuhshared not loaded). In standalone mode,
- * runtime paths are expected to come from dedicated environment variables;
- * this fallback can still be used to build defaults when those variables are
- * not set.
+ * Otherwise (standalone mode or unit tests) it returns the current working directory. In standalone mode,
+ * runtime paths are expected to come from dedicated environment variables; this fallback can still be used
+ * to build defaults when those variables are not set.
  *
  * @return std::filesystem::path The path to the Wazuh home directory.
  *

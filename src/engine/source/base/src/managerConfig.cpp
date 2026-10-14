@@ -7,15 +7,9 @@
 #include <manager_config/manager_config.hpp>
 #include <rapidjson/document.h>
 
-#include <base/libwazuhshared.hpp>
-
 namespace
 {
 std::unique_ptr<manager_config::Document> g_document;
-
-/// cJSON_Parse of libwazuhext.so (dependency of libwazuhshared.so), resolved by registerSharedHook().
-using ParseFn = void* (*)(const char*);
-ParseFn g_parseFn = nullptr;
 
 manager_config::LoadOptions loadOptions(const std::filesystem::path& home, bool checkFiles)
 {
@@ -33,19 +27,6 @@ std::string stringMember(const rapidjson::Document& object, const char* key)
         return {};
     }
     return std::string(it->value.GetString(), it->value.GetStringLength());
-}
-
-// Section provider handed to libwazuhshared.so: the cJSON it returns is allocated by the shared
-// library's own cJSON (libwazuhext.so), which is what its callers release with cJSON_Delete().
-void* sectionProvider(const char* section)
-{
-    if (g_parseFn == nullptr || section == nullptr)
-    {
-        return nullptr;
-    }
-
-    const auto json = base::managerConfig::sectionJson(section);
-    return json.empty() ? nullptr : g_parseFn(json.c_str());
 }
 } // namespace
 
@@ -108,12 +89,47 @@ std::pair<std::string, std::string> clusterNames()
     return {stringMember(cluster, "name"), stringMember(cluster, "node_name")};
 }
 
-void registerSharedHook()
+LogFormat logFormat()
 {
-    using HookSetFn = void (*)(void* (*)(const char*));
-    const auto hookSet = base::libwazuhshared::getFunction<HookSetFn>("w_mconf_hook_set");
-    g_parseFn = base::libwazuhshared::getFunction<ParseFn>("cJSON_Parse");
-    hookSet(&sectionProvider);
+    constexpr LogFormat DEFAULT_FORMAT {true, false};
+
+    const auto json = sectionJson("logging");
+    if (json.empty())
+    {
+        return DEFAULT_FORMAT;
+    }
+
+    rapidjson::Document section;
+    if (section.Parse(json.c_str()).HasParseError() || !section.IsObject())
+    {
+        return DEFAULT_FORMAT;
+    }
+
+    const auto it = section.FindMember("log_format");
+    if (it == section.MemberEnd() || !it->value.IsArray())
+    {
+        return DEFAULT_FORMAT;
+    }
+
+    LogFormat format {false, false};
+    for (const auto& value : it->value.GetArray())
+    {
+        if (!value.IsString())
+        {
+            continue;
+        }
+        const std::string_view name(value.GetString(), value.GetStringLength());
+        if (name == "plain")
+        {
+            format.plain = true;
+        }
+        else if (name == "json")
+        {
+            format.json = true;
+        }
+    }
+
+    return (format.plain || format.json) ? format : DEFAULT_FORMAT;
 }
 
 void reset()
