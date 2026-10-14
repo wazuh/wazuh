@@ -29,6 +29,14 @@ case "$1" in
         chmod "$2" "$1" && chown "$3" "$1" && mv -fT "$1" "$4"
     }
 
+    # in_dir DIR COMMAND...: runs COMMAND in a subshell whose working directory is DIR, only when no
+    # link leads there. A name COMMAND resolves relative to it then stays in that directory,
+    # whatever happens to DIR's path afterwards.
+    REAL_DIR=$(cd -P ${DIR} && pwd -P)
+    in_dir() {
+        (cd -P -- "$1" 2> /dev/null && [ "$(pwd -P)" = "${REAL_DIR}${1#"${DIR}"}" ] && shift && "$@")
+    }
+
     # restore_conf_file NAME: puts back the copy of etc/NAME preinst took, root:${GROUP} 0640. A link
     # in its place is one swapped in while preinst copied, and is dropped.
     restore_conf_file() {
@@ -143,9 +151,15 @@ case "$1" in
 
     fi
 
-    # Restore group files
+    # Restore the etc/shared/ files preinst copied, from inside the directory as preinst did.
+    # --remove-destination replaces a link planted at a destination instead of writing (and, with
+    # -a, chowning) through it.
+    restore_shared_files() {
+        cp -a --remove-destination ${WAZUH_TMP_DIR}/group/* .
+    }
     if [ -d ${WAZUH_TMP_DIR}/group ]; then
-        cp -rfp ${WAZUH_TMP_DIR}/group/* ${DIR}/etc/shared
+        in_dir ${DIR}/etc/shared restore_shared_files \
+            || echo "WARNING: could not restore ${DIR}/etc/shared from ${WAZUH_TMP_DIR}/group." >&2
         rm -rf ${WAZUH_TMP_DIR}/group
     fi
 
