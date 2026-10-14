@@ -1,5 +1,6 @@
 #include "metadata_store.hpp"
 
+#include "container_admission.hpp"
 #include "reconciler.hpp"
 
 #include <mutex>
@@ -291,6 +292,13 @@ namespace wazuh::container_instances
 
         m_lastReconcile = now;
 
+        // After the sweeps, not before: a container still inside its removal
+        // grace is still visible and still holds its slot, and one erased above
+        // has just freed its slot for whoever was waiting. Recomputing earlier
+        // would hand a slot to a newcomer a beat before the departure that
+        // freed it, and hand it back on the next pass.
+        recomputeAdmittedLocked();
+
         // Released before the notify on purpose: an observer's natural first
         // move is to read the store back, which would deadlock under this lock,
         // and a slow one would stall every reader for as long as it ran.
@@ -343,6 +351,12 @@ namespace wazuh::container_instances
     {
         std::unique_lock lock(m_mutex);
         insertResolvedLocked(source, std::move(record));
+
+        // The cold path can publish a container that was not visible a moment
+        // ago, so it can also fill a free slot. Without this a container first
+        // seen through an on-demand resolve would stay unadmitted until the
+        // next unrelated reconcile, for the same reason the notify below exists.
+        recomputeAdmittedLocked();
 
         // The cold path publishes containers too — one first seen through an
         // on-demand resolve is as new to consumers as one the connector found,
@@ -427,6 +441,49 @@ namespace wazuh::container_instances
             }
         }
         sourceIt->second.erase(it);
+    }
+
+    std::set<std::string> MetadataStore::admittedIds() const
+    {
+        std::shared_lock lock(m_mutex);
+        return m_admitted;
+    }
+
+    void MetadataStore::setSyncLimit(int limit)
+    {
+        std::unique_lock lock(m_mutex);
+
+        if (m_syncLimit == limit)
+        {
+            return;
+        }
+
+        m_syncLimit = limit;
+        recomputeAdmittedLocked();
+    }
+
+    std::set<std::string> MetadataStore::visibleIdsLocked() const
+    {
+        std::set<std::string> visible;
+
+        for (const auto& [source, records] : m_bySource)
+        {
+            for (const auto& [containerId, record] : records)
+            {
+                if (!record || (record->hostKey == 0 && isRunning(record->state)))
+                {
+                    continue; // Running but unresolved: not published yet.
+                }
+                visible.insert(containerId);
+            }
+        }
+
+        return visible;
+    }
+
+    void MetadataStore::recomputeAdmittedLocked()
+    {
+        m_admitted = admitContainers(visibleIdsLocked(), m_admitted, m_syncLimit);
     }
 
     ContainerRecordPtr MetadataStore::visibleRecordLocked(const std::string& containerId) const
