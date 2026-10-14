@@ -811,7 +811,14 @@ void test_fim_copy_directory_null(void **state) {
 }
 
 void test_fim_copy_directory_return_dir_copied(void **state) {
-    directory_t directory_copied;
+    /* Zero-initialised, and it has to be: fim_copy_directory() reads every field
+     * of what it is handed, and `container` joined directory_t after this test
+     * was written (#37532). Left to whatever the stack held, container.name came
+     * out non-NULL and the copy strdup'd a garbage pointer -- an access violation
+     * on Windows, and silently harmless on Linux only because the stack there
+     * happened to be zero. Setting the fields one by one is what let a newly
+     * added one go unnoticed. */
+    directory_t directory_copied = {0};
     directory_t *new_entry;
     directory_copied.filerestrict = NULL;
     directory_copied.path = "mock_path";
@@ -820,6 +827,7 @@ void test_fim_copy_directory_return_dir_copied(void **state) {
     directory_copied.tag = "mock_tag";
     directory_copied.diff_size_limit = 10;
     directory_copied.is_wildcard = 0;
+    directory_copied.container.name = "mock_container";
     entry_struct_t *test_struct = *state;
 
     new_entry = fim_copy_directory(&directory_copied);
@@ -828,6 +836,13 @@ void test_fim_copy_directory_return_dir_copied(void **state) {
     assert_string_equal(directory_copied.tag, new_entry->tag);
     assert_string_equal(directory_copied.path, new_entry->path);
     assert_int_equal(directory_copied.is_wildcard, new_entry->is_wildcard);
+
+    /* The container scope travels with the copy, and as the copy's OWN string:
+     * free_directory() frees it, so sharing the source's pointer would be a
+     * double free the moment the original went too. */
+    assert_string_equal(directory_copied.container.name, new_entry->container.name);
+    assert_true(directory_copied.container.name != new_entry->container.name);
+
     test_struct->dir1 = new_entry;
 }
 
