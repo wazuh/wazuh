@@ -41,6 +41,7 @@ static const char* CS_XML_SYSCOLLECTOR = "syscollector";
 static const char* CS_XML_ENABLED = "enabled";
 static const char* CS_XML_DIRECTORIES = "directories";
 static const char* CS_XML_FILE_LIMIT = "file_limit";
+static const char* CS_XML_RECONCILE_INTERVAL = "reconcile_interval";
 
 static const char* CS_ATTR_CONTAINER_NAME = "container_name";
 static const char* CS_ATTR_RESTRICT = "restrict";
@@ -403,6 +404,37 @@ static int cs_read_syscheck_block(const OS_XML* xml, xml_node* node, syscheck_co
             }
 
             syscheck->container_file_entry_limit = (int)value;
+        }
+        else if (strcmp(children[i]->element, CS_XML_RECONCILE_INTERVAL) == 0)
+        {
+            /* How often the stored rows are reconciled against the containers
+             * that still exist, in SECONDS; 0 disables it (#40329). The removal
+             * notifications are the fast path and this is the floor under them,
+             * for removals that never reached one — see
+             * fim_sweep_absent_containers(). */
+            if (children[i]->content == NULL)
+            {
+                mwarn("Empty <%s> in <container_security><syscheck>.", CS_XML_RECONCILE_INTERVAL);
+                continue;
+            }
+
+            char* end = NULL;
+            const long value = strtol(children[i]->content, &end, 10);
+
+            if (end == children[i]->content || (end && *end != '\0') || value < 0 || value > INT_MAX)
+            {
+                /* Fail OPEN, like <file_limit> above: an unreadable interval
+                 * must not silently become 0, because 0 here means "never
+                 * reconcile" — the exact state #40329 exists to end. The
+                 * default stands instead. */
+                mwarn("Invalid <%s> value '%s' in <container_security><syscheck>. Container file "
+                      "monitoring continues with the default reconciliation interval.",
+                      CS_XML_RECONCILE_INTERVAL,
+                      children[i]->content);
+                continue;
+            }
+
+            syscheck->container_reconcile_interval = (int)value;
         }
         else
         {

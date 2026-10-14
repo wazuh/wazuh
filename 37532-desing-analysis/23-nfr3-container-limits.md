@@ -1,6 +1,6 @@
 # 23 — NFR3 limit values for the container scopes (O10 / #40097)
 
-Status: **complete.** Measured (23.1–23.5), implemented and validated end to end (23.6–23.7), defaults shipped (23.8).
+Status: **complete.** Measured (23.1–23.5), implemented and validated end to end (23.6–23.7), defaults shipped (23.8). Finding 3's own fix landed under #40329; see 23.5.
 
 #37203's NFR3 asks for configurable limits on what FIM and IT Hygiene track, with values derived
 "based on benchmarking and capacity planning". Roadmap item 39 — the node-level benchmark those
@@ -153,7 +153,7 @@ accepted, so even the row total cannot be used to detect the condition.
 
 ---
 
-## 23.5 Finding 3 — a saturated table stays saturated for up to 12 hours
+## 23.5 Finding 3 — a saturated table stays saturated until the agent restarts
 
 The 50 bench containers were deleted at 18:38. Two hours later:
 
@@ -162,9 +162,16 @@ The 50 bench containers were deleted at 18:38. Two hours later:
 | Syscollector inventory | recovered — 6 containers, 578 rows, `0 stale containers cleaned` |
 | FIM `file_entry` | **still 100,000 rows**, 49 distinct `container_id`s, 48 of them for containers that no longer exist |
 
-FIM's `sweepStale()` runs only inside the container FIM baseline pass, and that pass is on the
-syscheck frequency — `<frequency>43200</frequency>`, **12 hours**. The last one had run at 18:33,
-triggered by `scan_on_start`.
+FIM's `sweepStale()` runs only inside the container FIM baseline pass. This section first recorded
+that pass as running on the syscheck frequency — `<frequency>43200</frequency>`, **12 hours** — which
+was an inference from the log, and it was wrong. `fim_run_container_baseline()` is called from
+exactly one place, `main.c`, **once at startup**; the only other thing that re-runs it is the drain's
+own `rebaselineAll`, on unattributable event loss. The pass seen at 18:33 was the startup one, and on
+this node nothing would have run another.
+
+So the exposure was not bounded by an interval at all: those rows would have been held **until
+syscheckd restarted**. The measurement stands exactly as recorded; only the explanation of the
+cadence was wrong, and in the direction that understated it.
 
 So while the table is full, `updateTableRowCounter` refuses **every** insert, host and container
 alike, and the agent records no new file state at all. The sole diagnostic remains the single
@@ -179,6 +186,65 @@ alike, and the agent records no new file state at all. The sole diagnostic remai
 
 91,416 rows deleted in **under 40 seconds**, table back to 8,584. That also answers #37837's angle 2
 ("a pod with thousands of tracked files produces that many deletes at once"): mass deletion is fast.
+
+### Fixed — [#40329](https://github.com/wazuh/wazuh/issues/40329)
+
+Both halves, because the fast path alone would have left the gap this finding actually measured:
+
+- **The notification.** `container_instances` already publishes a lifecycle journal, and FIM already
+  reads it forward from a cursor — it was translating `removed` into a kernel-allowlist withdrawal
+  and throwing the container id away. It now also stages a row purge, which the reconcile consumer
+  executes as the same scoped-transaction-with-no-rows `sweepStale()` uses per container. A removed
+  container's rows go within the producer's 60 s removal grace plus one resolver cycle. This is D5 in
+  `10-container-instances-delta-plan.md` §10.6, which syscollector had implemented and FIM had not.
+- **The floor.** `fim_sweep_absent_containers()` runs the absence sweep on its own interval —
+  `<container_security><syscheck><reconcile_interval>`, default 1 h, `0` disables — without a walk.
+  It covers what no notification can report: a removal while the agent was down (the journal is in
+  memory), one swallowed by a cursor resync (a resync says what exists, never what has gone), or one
+  the producer never saw. It keeps the existing `listed < 0` gate, so an unreachable connector still
+  never presents as "no containers exist".
+
+The purge is deliberately served ahead of every other kind of reconcile work, including a whole-node
+re-baseline, and this finding is why: at a saturated table every insert that re-baseline attempts is
+refused, which marks each container's scan partial and suppresses delete detection for all of them —
+and the pass only reaches its own sweep at the very end, after the refusals the purge would have
+prevented.
+
+#### Validated on `wazuh_manager`, 2026-10-13
+
+Against the real Docker, the real `container_instances` and the real eBPF engine, with the FIM
+database stood in by a printing store (the scoped-transaction behaviour itself is pinned separately
+against the real `libfimdb`):
+
+| | |
+| --- | --- |
+| One container removed | purged **106 s** later — 60 s removal grace, the Docker connector's 10 s idle reconcile floor, then the resolver. 200 rows, exactly that container's file count, **0** rows of any other container |
+| Budget release ordering | the `release` follows the last `DELETE` of the same container, as `PurgeContainerRows()` requires |
+| `docker stop`, watched for 180 s (3x the grace) | **0** purges, **0** deletes; the sweep kept counting it as known, and `docker start` produced **0** false creates |
+| Connector stopped | the sweep refused to run and deleted nothing, for the whole time it was down |
+| Removed with the connector down, then the connector restarted | the resync was noticed, the sweep deferred, then **1** stale container cleaned, 200 rows, **0** collateral |
+| 50 containers x 2,000 files removed at once | **50** purges, **100,000** deletes, 149 s from the first purge to the last, **no** work shed (no path-budget overflows, no escalations), and the next sweep reported nothing stale |
+
+**It also found a defect, which is why the resync path looks the way it does.** The first
+implementation ran the sweep as soon as it saw the cursor resync. That is the worst possible moment:
+`container_instances` answers `list` as soon as its socket is bound, *before* its first enumeration
+has finished. Measured — the connector replied 8 ms after the module came back, with 5 of 11
+containers, so the sweep deleted **six** containers' rows, 801 of them belonging to containers that
+were still running.
+
+A two-poll stability check inside the sweep did not fix it: 500 ms apart, both polls returned the
+same incomplete list and agreed with each other. The guards that protect the startup baseline —
+`g_everSawContainers`, `g_warmupWindowClosed`, `g_containersStable` in `container_baseline_scanner.cpp`
+— are process-global latches, deliberately spent on the FIRST discovery so a recurring caller does
+not pay their latency for ever, so a later sweep inherits none of them.
+
+What works is waiting for the producer to go **quiet** rather than waiting a guessed number of
+seconds: a sweep owed to a resync runs only once the container list has been unchanged for 60 s,
+which is the same scale on which the producer itself decides a container is gone. While it is still
+discovering, each newly reported container pushes that deadline out. Only the resync path waits this
+way — an ordinary scheduled sweep meets a connector that warmed up long ago, and making it wait for
+silence would starve it on a node with steady churn. Re-measured: the sweep was deferred, ran 62 s
+later, and cleaned exactly the one container that had been removed.
 
 ---
 
@@ -352,7 +418,7 @@ a 100,000 node budget -- would have been a knob that could never bind first.
    invisible containers with no signal of any kind. A cap that cannot say which containers it dropped
    is not a limit.
 3. **Recovery is not a substitute for not reaching the cap.** 23.5 shows the ceiling, once reached,
-   holds for up to 12 hours, during which the agent records no new file state at all. Nothing
+   holding until the agent restarts, during which it records no new file state at all. Nothing
    downstream undoes that quickly, so the control has to act before the ceiling, not after.
 4. **`services` needs a container cap**, and `syscollector_containers_limits_t` needs the dimension its
    own comment says has nothing behind it.
@@ -363,6 +429,9 @@ a 100,000 node budget -- would have been a knob that could never bind first.
    own row count hides the shortfall.
 
 These implications were written before the implementation. Five of the six were acted on and are
-recorded in 23.6–23.8. The exception is point 3: the 12-hour sweep cadence is unchanged, and is
-filed as [#40329](https://github.com/wazuh/wazuh/issues/40329). The values that resulted are the
-shipped defaults in 23.8, not proposals.
+recorded in 23.6–23.8. Point 3 was filed separately as
+[#40329](https://github.com/wazuh/wazuh/issues/40329) and has since been fixed — a removed
+container's rows now go on the lifecycle notification, with a configurable absence sweep as the
+floor under it; see 23.5. Its premise needed correcting first: there was no 12-hour cadence, because
+there was no scheduled container baseline at all. The values that resulted are the shipped defaults
+in 23.8, not proposals.

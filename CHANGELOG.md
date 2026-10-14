@@ -59,6 +59,7 @@
 | [#37396](https://github.com/wazuh/wazuh/issues/37396) | Corrected the user and group reported by the container file monitoring engine, which were interchanged. |
 | [#37532](https://github.com/wazuh/wazuh/issues/37532) | Started monitoring containers that were created moments apart on an otherwise idle host, which were previously never detected. |
 | [#37532](https://github.com/wazuh/wazuh/issues/37532) | Kept the file and inventory data of a stopped container instead of discarding it as if the container had been deleted. |
+| [#40329](https://github.com/wazuh/wazuh/issues/40329) | Deleted the file monitoring data of a removed container within seconds instead of keeping it until the agent restarted. |
 
 ## Prior versions
 

@@ -438,6 +438,13 @@ void fim_container_baseline_log_debug(const char* message)
     }
 }
 
+void fim_container_baseline_log_info(const char* message)
+{
+    if (message != NULL) {
+        minfo("%s", message);
+    }
+}
+
 void fim_container_baseline_log_warn(const char* message)
 {
     if (message != NULL) {
@@ -476,6 +483,11 @@ int fim_container_baseline_row_limit(void)
 int fim_container_baseline_node_row_limit(void)
 {
     return (host_config() != NULL) ? host_config()->file_entry_limit : 0;
+}
+
+int fim_container_baseline_reconcile_interval(void)
+{
+    return (host_config() != NULL) ? host_config()->container_reconcile_interval : 0;
 }
 
 void fim_container_baseline_rate_limit(void)

@@ -39,6 +39,16 @@
  * calls fim_db_transaction_deleted_rows() for a scan reported complete, and
  * closes plainly otherwise, so a partial walk cannot delete either. This flag
  * decides whether delete detection is on the table at all.
+ *
+ * Three things may authorise removing a row, and they are different in kind:
+ *
+ *   a walk              completed, so absence inside it means absence.
+ *   RT_EV_FILE_UNLINK   the kernel STATED that one path is gone.
+ *   a lifecycle event   container_instances STATED that one container is gone.
+ *
+ * None of them is "a read found nothing", which is the one D15 forbids. The
+ * third arrives from outside the event stream entirely, which is why it does
+ * not travel through may_detect_deletions: see purgeContainer below.
  */
 
 #ifndef _CONTAINER_RECONCILE_PLAN_HPP
@@ -77,6 +87,31 @@ enum class ReconcileMode
      * and then re-deriving "deleted" from a read that finds nothing — which is
      * what the spike branch did — is exactly backwards. */
     deletePaths,
+
+    /* This container no longer exists: delete every row it still holds.
+     *
+     * The same distinction as deletePaths, one level up. D15 forbids inferring
+     * a removal from a read that found nothing; container_instances STATING
+     * that a container has gone is not an inference, and it is not a read at
+     * all. It fires only at erase — for a running container that is removal-
+     * grace expiry, not the moment it dropped out of a snapshot — so a merely
+     * STOPPED container never reaches here, and its rows are left alone to be
+     * diffed against when it starts again.
+     *
+     * container_id is mandatory. An empty one is the HOST's scope, not "no
+     * container": see empty() below. */
+    purgeContainer,
+
+    /* Reconcile the whole stored set against what container_instances still
+     * knows, and delete the rows of anything absent from it. No walk.
+     *
+     * The floor under purgeContainer, for the removals no notification can
+     * report: one that happened while the agent was down, one swallowed by a
+     * cursor resync, or a producer that never noticed. Unlike purgeContainer
+     * this DOES act on absence, which is why it is the one deletion path gated
+     * on the connector having actually answered — an unreachable connector must
+     * not present as "no containers exist". Carries no container_id. */
+    sweepAbsent,
 };
 
 struct ReconcileRequest
@@ -100,6 +135,18 @@ struct ReconcileRequest
      * exact inference D15 forbids. */
     bool empty() const
     {
+        /* A purge names its scope by container_id, so an empty one is not a
+         * harmless no-op that falls through: the host's own FIM rows are stored
+         * with container_id = '' — that string IS the scope value of the host
+         * transaction — so a purge with no id would delete every file the agent
+         * monitors on the host. Second of four guards; the others are in
+         * ContainerEventStaging::onContainerRemoved(), ReconcileBatch() and
+         * PurgeContainerRows(). */
+        if (mode == ReconcileMode::purgeContainer)
+        {
+            return container_id.empty();
+        }
+
         return (mode == ReconcileMode::rereadPaths || mode == ReconcileMode::deletePaths) && paths.empty();
     }
 };
@@ -107,6 +154,29 @@ struct ReconcileRequest
 inline ReconcileRequest PlanFor(const Batch& batch)
 {
     ReconcileRequest request;
+
+    /* Before `suspect`, so a container that is BOTH gone and suspect is purged
+     * rather than walked. Walking it cannot succeed — the walker keeps the rows
+     * of a container it cannot reach — so the stronger, and the only correct,
+     * action wins. */
+    if (batch.removed)
+    {
+        /* True because the purge does exactly what this flag announces: it
+         * removes rows it did not refresh. Nothing reads it on this path —
+         * ReconcileBatch() dispatches on the mode — but leaving it false would
+         * state the opposite of what happens. */
+        request.may_detect_deletions = true;
+        request.container_id = batch.container_id;
+        request.mode = ReconcileMode::purgeContainer;
+        return request;
+    }
+
+    if (batch.sweep_absent)
+    {
+        request.may_detect_deletions = true;
+        request.mode = ReconcileMode::sweepAbsent;
+        return request;
+    }
 
     if (batch.suspect)
     {

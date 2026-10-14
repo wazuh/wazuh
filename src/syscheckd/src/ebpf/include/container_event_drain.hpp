@@ -69,6 +69,22 @@ struct DrainConfig
     int poll_timeout_ms{200};
     int resolver_interval_ms{5000};
 
+    /* How often the whole stored set is reconciled against what
+     * container_instances still knows, deleting the rows of anything absent
+     * from it (#40329). 0 disables it.
+     *
+     * Not the same job as `resolver_interval_ms`, which keeps the cgroup map
+     * current and is measured in seconds. This is the floor under the removal
+     * notifications, and it only has to cover what no notification can report:
+     * a container removed while the agent was down, a removal swallowed by a
+     * cursor resync, or one the producer never saw. Minutes-to-hours, not
+     * seconds — the sweep costs one list round trip plus one DISTINCT over
+     * file_entry when nothing is stale.
+     *
+     * The real value comes from <container_security><syscheck>; this default
+     * only matters to a caller that builds a DrainConfig by hand. */
+    int reconcile_interval_ms{3600000};
+
     /* D16's settle bound (12-blocking-decisions.md): how long a staged path is
      * held before it is re-read, when the pid that triggered it has not exited
      * first. RT_EV_FILE_OPEN fires BEFORE the write, so reconciling immediately

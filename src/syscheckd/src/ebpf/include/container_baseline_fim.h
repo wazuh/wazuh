@@ -42,6 +42,29 @@ extern "C" {
 void fim_run_container_baseline(void);
 
 /**
+ * @brief Delete the FIM rows of every container container_instances no longer
+ *        knows about, without walking anything (#40329).
+ *
+ * The reconciliation floor under the lifecycle notifications. Those report a
+ * removal within a resolver cycle and are the fast path; they cannot report a
+ * removal that happened while the agent was down, one swallowed by a cursor
+ * resync, or one the producer never observed. Before this existed, the only
+ * thing that swept those rows was the startup baseline, so they survived until
+ * syscheckd was restarted — and while file_entry sits at its ceiling every
+ * insert is refused, host rows included.
+ *
+ * Skips the sweep entirely, keeping the rows, when the container connector does
+ * not answer: an unreachable connector must never present as "no containers
+ * exist". A stale row costs one interval of accuracy; deleting a live
+ * container's whole baseline costs a false-delete flood plus a full re-seed.
+ *
+ * Runs on the drain's reconcile consumer, which is the only thread allowed to
+ * touch file_entry once the startup baseline has committed. Driven by
+ * <container_security><syscheck><reconcile_interval>; 0 disables it.
+ */
+void fim_sweep_absent_containers(void);
+
+/**
  * @brief Start draining container file events from the eBPF engine (#37396).
  *
  * MUST be called BEFORE fim_run_container_baseline(). That ordering is the

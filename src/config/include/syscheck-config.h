@@ -503,6 +503,17 @@ typedef struct _config {
      * container's scan be marked partial so its deletions are suppressed.
      * PER CONTAINER. 0 = unlimited. */
     int container_file_entry_limit;
+    /* How often container FIM reconciles its stored rows against the containers
+     * container_instances still knows, deleting the rows of anything absent
+     * (#40329). SECONDS. 0 = never.
+     *
+     * The floor under the lifecycle notifications, which report a removal
+     * within seconds but cannot report one that happened while the agent was
+     * down, one swallowed by a cursor resync, or one the producer never saw.
+     * Before this existed the only thing that swept those rows was the startup
+     * baseline, so they survived until syscheckd restarted -- and a full
+     * file_entry refuses every insert, host rows included. */
+    int container_reconcile_interval;
     int registry_key_limit;
     int registry_value_limit;
 } syscheck_config;

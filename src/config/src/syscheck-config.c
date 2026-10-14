@@ -98,6 +98,13 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
      * guards against one pathological container rather than bounding a normal
      * one; the node ceiling above is what bounds the agent. */
     syscheck->container_file_entry_limit      = 30000;
+    /* One hour (#40329). The lifecycle notifications already clear a removed
+     * container within seconds, so this only covers what never reached them,
+     * and a pass over a node with nothing stale costs one list round trip plus
+     * one DISTINCT over file_entry. An hour is well inside the window that
+     * matters, because the thing a stale row holds is a ceiling that refuses
+     * the HOST's inserts too once it is reached. */
+    syscheck->container_reconcile_interval    = 3600;
     syscheck->directories                     = OSList_Create();
 
     if (syscheck->directories == NULL) {

@@ -30,6 +30,10 @@
  *  4. ... and leaves every other container's rows alone. This is the property
  *     the per-container transaction model, C15's fix and the whole
  *     stopped-vs-gone distinction rest on.
+ *  8. A scope that syncs NOTHING and then asks for its deleted rows reports
+ *     every stored row in that scope as DELETED — the mechanism behind the
+ *     removal-driven row purge (#40329) — while leaving another container's
+ *     rows and, critically, the HOST's rows (container_id = '') untouched.
  *
  * Deliberately plain C++ with a hand-rolled harness rather than gtest, for the
  * same reason as the eBPF Module's contract tests: it has to be runnable
@@ -153,6 +157,13 @@ bool Check(const char* name, bool condition, const char* detail)
 constexpr int kContainerARows = 500;
 constexpr int kContainerBRows = 10;
 constexpr int kContainerAReported = 5;
+
+/* Case 8's three populations: the container being purged, a bystander, and the
+ * host — whose rows are stored with container_id = '', which is exactly why it
+ * has to be in this test. */
+constexpr int kPurgedRows = 20;
+constexpr int kBystanderRows = 7;
+constexpr int kHostRows = 4;
 
 } // namespace
 
@@ -309,6 +320,78 @@ int main()
 
         std::snprintf(detail, sizeof(detail), "INSERTED=%d (want 0)", g_inserted);
         ok &= Check("direct upsert leaves untouched rows in place", g_inserted == 0, detail);
+    }
+
+    /* 8. The purge: a scope that syncs NOTHING and then asks for its deleted
+     *    rows turns every stored row in that scope into a DELETE.
+     *
+     *    This is the whole mechanism behind #40329's row purge, and the count
+     *    is the point rather than the rows' absence. dbsync removes unrefreshed
+     *    rows on a plain close too (case 6), but a plain close emits no
+     *    callbacks: no alert, and no stateful delete document, so the rows
+     *    would vanish locally while the manager's index kept the container's
+     *    files for ever. DELETED == N is what proves every row was reported.
+     *
+     *    The containment half is guard 4 of #40329: the HOST's own rows live at
+     *    container_id = '' — that string IS the scope value of the host
+     *    transaction — so a purge that leaked out of its scope would delete
+     *    every file the agent monitors on the host. */
+    {
+        /* Seed the container being purged, a bystander container, and the host. */
+        ResetCounters();
+        const auto scope = TxnScope("cid-e");
+        TXN_HANDLE txn = fim_db_transaction_start(scope.c_str(), RowCallback, nullptr);
+        SyncPaths(txn, "cid-e", 0, kPurgedRows);
+        fim_db_transaction_deleted_rows(txn, RowCallback, nullptr);
+
+        const auto bystander = TxnScope("cid-f");
+        txn = fim_db_transaction_start(bystander.c_str(), RowCallback, nullptr);
+        SyncPaths(txn, "cid-f", 0, kBystanderRows);
+        fim_db_transaction_deleted_rows(txn, RowCallback, nullptr);
+
+        const auto host = TxnScope("");
+        txn = fim_db_transaction_start(host.c_str(), RowCallback, nullptr);
+        SyncPaths(txn, "", 0, kHostRows);
+        fim_db_transaction_deleted_rows(txn, RowCallback, nullptr);
+
+        /* The purge itself: open the scope, sync nothing, ask for deletions. */
+        ResetCounters();
+        txn = fim_db_transaction_start(scope.c_str(), RowCallback, nullptr);
+        fim_db_transaction_deleted_rows(txn, RowCallback, nullptr);
+
+        std::snprintf(detail, sizeof(detail), "DELETED=%d (want %d)", g_deleted, kPurgedRows);
+        ok &= Check("a zero-row scope reports every row DELETED", g_deleted == kPurgedRows, detail);
+
+        std::snprintf(detail, sizeof(detail), "INSERTED=%d MODIFIED=%d (want 0/0)", g_inserted, g_modified);
+        ok &= Check("and reports nothing else", g_inserted == 0 && g_modified == 0, detail);
+
+        /* Re-reporting the same rows must INSERT them all: they really left. */
+        ResetCounters();
+        txn = fim_db_transaction_start(scope.c_str(), RowCallback, nullptr);
+        SyncPaths(txn, "cid-e", 0, kPurgedRows);
+        fim_db_transaction_close(txn);
+
+        std::snprintf(detail, sizeof(detail), "INSERTED=%d (want %d)", g_inserted, kPurgedRows);
+        ok &= Check("the rows really left the table", g_inserted == kPurgedRows, detail);
+
+        /* Containment: the bystander and the HOST are untouched. Re-reporting
+         * their rows yields no INSERTED, which it would not if the purge had
+         * reached them. */
+        ResetCounters();
+        txn = fim_db_transaction_start(bystander.c_str(), RowCallback, nullptr);
+        SyncPaths(txn, "cid-f", 0, kBystanderRows);
+        fim_db_transaction_close(txn);
+
+        std::snprintf(detail, sizeof(detail), "INSERTED=%d (want 0)", g_inserted);
+        ok &= Check("another container's rows survive the purge", g_inserted == 0, detail);
+
+        ResetCounters();
+        txn = fim_db_transaction_start(host.c_str(), RowCallback, nullptr);
+        SyncPaths(txn, "", 0, kHostRows);
+        fim_db_transaction_close(txn);
+
+        std::snprintf(detail, sizeof(detail), "INSERTED=%d (want 0)", g_inserted);
+        ok &= Check("the HOST's rows survive the purge", g_inserted == 0, detail);
     }
 
     std::printf("\n%s\n", ok ? "ALL OK" : "FAILURES");

@@ -204,6 +204,29 @@ interval wants item 39's numbers; the floor's *existence* does not.
 **Blocks:** any claim that container state converges. Also blocks Q8/Q11 being safe to build on —
 a lifecycle delta without a floor is strictly worse than the rescan it replaces.
 
+**ANSWERED (2026-10-13).** Both halves are in, and they landed in three places rather than one:
+
+- **C16 is fixed** — the Docker connector has an idle reconcile floor, so grace expiry happens on a
+  quiet host (#40096, see [15](15-spike-resume.md)).
+- **Syscollector's floor is every scheduled pass**, which re-walks the node regardless of what the
+  delta reported ([10](10-container-instances-delta-plan.md) §10.14).
+- **Container FIM's floor is its own interval**,
+  `<container_security><syscheck><reconcile_interval>`, default **1 h**, `0` disables (#40329). It
+  needed a separate answer because container FIM has no scheduled walk to hang a floor on: the
+  whole-node baseline runs once, at startup. So its floor is an absence sweep with no walk —
+  cheap enough to run hourly, which is what makes the short interval affordable.
+
+The interval did not, in the end, want item 39's numbers. What it wanted was the cost of a sweep
+that finds nothing (one list round trip plus one `SELECT DISTINCT`) weighed against what a stale row
+holds: a ceiling that refuses the **host's** inserts too once it is reached
+([23](23-nfr3-container-limits.md) §23.5). That asymmetry is why 1 h rather than the 24 h
+placeholder.
+
+So an event-driven path is now a latency optimisation everywhere, which is what the question asked
+for. One gap stays open and is deliberately not this one: container FIM still has no periodic
+**re-walk**, so a file changed inside a container while its events were lost is corrected only by an
+escalation, never by a schedule.
+
 ### Q6 — Which id space do `uid` and `gid` mean on a container row?
 
 *(owner: this project + indexer · issue: #37837 / #37534)*

@@ -18,6 +18,7 @@
 #include "resolver_wait.hpp"
 #include "container_instances_client.hpp"
 #include "container_instances_notify_socket.hpp"
+#include "reconcile_floor.hpp"
 #include "defs.h"
 
 #include "rt_engine.h"
@@ -133,6 +134,45 @@ struct ContainerEventDrain::Impl
      * full set — the seeding path, reached without a special case. */
     std::uint64_t cursor_epoch{0};
     std::uint64_t cursor_seq{0};
+
+    /* The journal lifetime the cursor above belongs to, tracked separately so a
+     * CHANGE of lifetime can be distinguished from the first sight of one.
+     *
+     * The distinction is load-bearing. The very first refresh always reports
+     * resyncRequired — a zero cursor can never match a journal epoch, which is
+     * random and non-zero by construction — so a rule that reacted to "resync"
+     * alone would fire on the seeding refresh at startup, i.e. immediately
+     * after the baseline walk that just read every container. Only a SECOND,
+     * different epoch means the producer restarted and took its record of what
+     * has gone with it. */
+    std::uint64_t last_epoch{0};
+    bool          epoch_primed{false};
+
+    /* A stale-container sweep owed because container_instances restarted, and
+     * when its list last moved.
+     *
+     * These exist because the sweep cannot simply be run when the resync is
+     * seen. The module answers `list` as soon as its socket is bound, BEFORE
+     * its first enumeration has finished, so the obvious moment to sweep is
+     * exactly the moment its answer is least complete — and a sweep deletes on
+     * absence. Measured on the VM: the connector replied 8 ms after the module
+     * came back with 5 of 11 containers, and twice in a row 500 ms apart, so
+     * even a two-poll stability check inside the sweep agreed with itself and
+     * deleted six containers' rows, 801 of them still running.
+     *
+     * So the sweep waits for the producer to go QUIET instead of waiting a
+     * guessed number of seconds: while it is still discovering, every new
+     * container moves the list and pushes the deadline out. Only the resync
+     * path waits this way — an ordinary scheduled sweep runs against a
+     * connector that has long since warmed up, and making it wait for silence
+     * would starve it on a node with steady churn. */
+    bool                                  floor_after_resync{false};
+    std::chrono::steady_clock::time_point last_list_change{};
+
+    /* Compared in applyFullList to notice the list growing while the producer
+     * is still enumerating. A size is enough: the only thing being detected is
+     * movement, and the sweep itself re-reads the real set. */
+    std::size_t last_full_list_size{0};
 
     /* Previous values of the counters that record work being shed.
      *
@@ -336,7 +376,16 @@ struct ContainerEventDrain::Impl
 
     void resolverLoop()
     {
+        const bool floor_enabled = config.reconcile_interval_ms > 0;
+        const auto floor_interval = std::chrono::milliseconds(config.reconcile_interval_ms);
+
+        last_list_change = std::chrono::steady_clock::now();
+
         auto next_list = std::chrono::steady_clock::now();
+
+        /* One interval from now, not immediately: the startup baseline has just
+         * swept, so a pass here would re-read the same answer for nothing. */
+        auto next_floor = next_list + floor_interval;
 
         while (!stop.load(std::memory_order_relaxed))
         {
@@ -349,10 +398,48 @@ struct ContainerEventDrain::Impl
                 next_list = now + std::chrono::milliseconds(config.resolver_interval_ms);
             }
 
+            /* Both triggers, and the silence the resync debt waits for, are
+             * decided in reconcile_floor.hpp — where they can be tested, which
+             * matters more here than anywhere else on this path because what
+             * they authorise is a deletion. */
+            const auto floor = planReconcileFloor(floor_enabled,
+                                                  floor_after_resync,
+                                                  now,
+                                                  next_floor,
+                                                  last_list_change,
+                                                  floor_interval,
+                                                  std::chrono::duration_cast<std::chrono::milliseconds>(
+                                                      RESYNC_SETTLE));
+
+            if (floor.sweep)
+            {
+                /* Staged rather than run here: this thread must not touch
+                 * file_entry. The consumer owns every write to it once the
+                 * baseline has committed, and a transaction opened from a
+                 * second thread is the 502-of-504 row loss again. */
+                staging.onReconcileFloorDue();
+            }
+
+            if (floor.clear_resync_debt)
+            {
+                floor_after_resync = false;
+            }
+
+            next_floor = floor.next_floor;
+
             resolvePending();
             router.pumpUnknownOverflow();
 
-            if (waitForWork(next_list))
+            /* Whichever deadline comes first; the poll must not sleep past the
+             * floor just because the list refresh is further out. */
+            auto next_wake = next_list;
+
+            if (floor_enabled && next_floor < next_wake)
+            {
+                next_wake = next_floor;
+            }
+
+            if (waitForWork(next_wake))
             {
                 /* container_instances says its list moved. Refreshing on the
                  * next pass rather than here keeps one call site for the
@@ -447,6 +534,27 @@ struct ContainerEventDrain::Impl
         if (!delta.deltaSupported || delta.resyncRequired)
         {
             applyFullList(delta.containers);
+
+            /* A resync carries what EXISTS and says nothing about what has
+             * GONE, so the removals that happened across the gap are not in
+             * this reply and never will be. The floor sweep is the only thing
+             * that can settle them, so ask for one.
+             *
+             * Both halves of the condition are mandatory rather than cautious.
+             * `deltaSupported` is excluded because an older container_instances
+             * reports it on EVERY refresh, which would schedule a sweep every
+             * resolver interval for the life of the process. `epoch_primed`
+             * excludes the seeding refresh, which always resyncs because its
+             * cursor is zero — without it, every startup would run a sweep
+             * moments after the baseline walk. */
+            if (delta.resyncRequired && epoch_primed && delta.epoch != last_epoch)
+            {
+                /* Owed, not run: see floor_after_resync. */
+                LogDebug("Container eBPF drain: container_instances restarted, so what was removed "
+                         "while it was gone is not in its journal; a stale-container sweep is owed "
+                         "once its list stops moving.");
+                floor_after_resync = true;
+            }
         }
         else
         {
@@ -471,6 +579,11 @@ struct ContainerEventDrain::Impl
                 events.push_back(std::move(translated));
             }
 
+            if (!events.empty())
+            {
+                last_list_change = std::chrono::steady_clock::now();
+            }
+
             syncAllowlist(router.applyContainerDelta(events));
         }
 
@@ -480,10 +593,20 @@ struct ContainerEventDrain::Impl
          * first would drop them silently. */
         cursor_epoch = delta.epoch;
         cursor_seq   = delta.seq;
+        last_epoch   = delta.epoch;
+        epoch_primed = true;
     }
 
     void applyFullList(const std::vector<wazuh::container_instances_client::ContainerRef>& refs)
     {
+        /* Any difference from the set we were holding means the picture moved,
+         * which is what the resync-owed sweep waits to stop happening. */
+        if (refs.size() != last_full_list_size)
+        {
+            last_full_list_size = refs.size();
+            last_list_change    = std::chrono::steady_clock::now();
+        }
+
         std::vector<std::pair<std::uint64_t, std::string>> containers;
         containers.reserve(refs.size());
 

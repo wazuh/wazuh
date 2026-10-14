@@ -42,12 +42,14 @@
 
 #include <json.hpp>
 
+#include <chrono>
 #include <climits>
 #include <cstdio>
 #include <cstdlib>
 #include <memory>
 #include <set>
 #include <string>
+#include <thread>
 #include <vector>
 
 namespace {
@@ -78,6 +80,14 @@ void LogDebug(const char* fmt, Args... args)
     char buffer[512];
     std::snprintf(buffer, sizeof(buffer), fmt, args...);
     fim_container_baseline_log_debug(buffer);
+}
+
+template <typename... Args>
+void LogInfo(const char* fmt, Args... args)
+{
+    char buffer[512];
+    std::snprintf(buffer, sizeof(buffer), fmt, args...);
+    fim_container_baseline_log_info(buffer);
 }
 
 template <typename... Args>
@@ -258,6 +268,46 @@ class ScopedContainerTxn {
         std::size_t     m_synced{0};
         std::size_t     m_refused{0};
 };
+
+/// Deletes every row one container still holds.
+///
+/// A scoped transaction that syncs NOTHING and then asks for its deleted rows:
+/// each stored row in the scope is unrefreshed, so each becomes a DELETE, and
+/// each DELETE travels through container_txn_callback to produce its alert and
+/// its stateful delete document. That last part is why finish(true) is not
+/// interchangeable with finish(false) here — dbsync removes the unrefreshed
+/// rows either way, but a plain close emits no callbacks at all, so the rows
+/// would vanish locally while the manager's index kept the container's files
+/// for ever.
+///
+/// Both callers go through this one function so the ordering below cannot drift
+/// apart: the sweep inside the baseline and the purge driven by a lifecycle
+/// event are the same three steps.
+///
+/// @param container_id MUST be non-empty. The host's own FIM rows are stored
+///        with container_id = '' — that string is the scope value of the host
+///        transaction — so an empty id would not purge "nothing", it would purge
+///        every file the agent monitors on the host. Last of four guards; the
+///        others are in ContainerEventStaging::onContainerRemoved(), PlanFor()
+///        and ReconcileBatch().
+void PurgeContainerRows(const std::string& container_id, int origin)
+{
+    if (container_id.empty()) return;
+
+    {
+        ScopedContainerTxn txn{container_id, origin};
+
+        if (!txn.valid()) return;
+
+        txn.finish(true); // nothing synced -> every stored row becomes DELETED
+    }
+
+    // After the rows are gone, not before: the DELETEs above run through
+    // container_txn_callback and decrement the very count being released, so
+    // releasing first would drop a map entry that the sweep then re-creates and
+    // leaves non-zero.
+    fim_container_doc_budget_release(container_id.c_str());
+}
 
 /// Streams the baseline into per-container transactions.
 class BaselineDriver {
@@ -441,14 +491,7 @@ class BaselineDriver {
             for (const auto& id : stale) {
                 LogDebug("Container FIM baseline: container '%s' is gone; ageing out its FIM rows.",
                         id.c_str());
-                ScopedContainerTxn txn{id, m_origin};
-                txn.finish(true); // no rows synced -> every stored row becomes DELETED
-
-                // After the rows are gone, not before: the DELETEs above run
-                // through container_txn_callback and decrement the very count
-                // being released, so releasing first would drop a map entry
-                // that the sweep then re-creates and leaves non-zero.
-                fim_container_doc_budget_release(id.c_str());
+                PurgeContainerRows(id, m_origin);
             }
 
             m_stale = stale.size();
@@ -663,7 +706,47 @@ void ReconcileBatch(const fim_container_events::ReconcileRequest& request)
         return;
     }
 
+    if (request.mode == ReconcileMode::sweepAbsent) {
+        // The reconciliation floor: no walk, just the absence sweep, carrying
+        // its own gate on the connector having answered.
+        fim_sweep_absent_containers();
+        return;
+    }
+
+    // Third of the four guards on an empty container id: everything below acts
+    // on one named container, and for a purge an empty name is the HOST's row
+    // scope rather than no scope at all.
     if (request.container_id.empty()) return;
+
+    if (request.mode == ReconcileMode::purgeContainer) {
+        // Deliberately BEFORE the monitored-path collection below. A purge is
+        // scoped by container_id, not by directory, so it needs no configured
+        // path — and an operator who removes <directories> from the
+        // configuration would otherwise make every subsequent removal
+        // unpurgeable while its rows sat in the table.
+        //
+        // Its own try/catch because the one below starts after that collection.
+        try {
+            LogDebug("Container FIM reconcile: container '%s' is gone; deleting its FIM rows.",
+                     request.container_id.c_str());
+
+            // CB_FIM_ORIGIN_SCAN, not _EVENT, although a lifecycle event
+            // triggered this: the origin becomes the alert's `mode` field, and
+            // a purge observed no file access and has no "who" to report. The
+            // floor sweep reports the same thing as a scan, and the two must
+            // not disagree about what a container-gone deletion looks like
+            // depending on which of them noticed first.
+            PurgeContainerRows(request.container_id, CB_FIM_ORIGIN_SCAN);
+        } catch (const std::exception& err) {
+            LogError("Container FIM reconcile: failed to delete the rows of container '%s': %s",
+                     request.container_id.c_str(), err.what());
+        } catch (...) {
+            LogError("Container FIM reconcile: failed to delete the rows of container '%s'.",
+                     request.container_id.c_str());
+        }
+
+        return;
+    }
 
     cb_monitored_path_t* paths      = nullptr;
     size_t               path_count = 0;
@@ -741,7 +824,112 @@ void ReconcileBatch(const fim_container_events::ReconcileRequest& request)
     fim_free_container_monitored_paths(paths);
 }
 
+/// How hard the stale sweep tries to see the same container set twice before
+/// it deletes anything on the strength of absence. Bounded: a node with steady
+/// churn never settles, and deferring to the next pass is the right answer
+/// there. 500 ms matches the baseline scanner's own retry spacing.
+constexpr int kSweepStabilityAttempts = 5;
+constexpr auto kSweepStabilityDelay = std::chrono::milliseconds{500};
+
 } // namespace
+
+extern "C" void fim_sweep_absent_containers(void)
+{
+    // The second half of fim_run_container_baseline() without the walk.
+    //
+    // The notifications in front of this are the fast path, and they cover the
+    // common case within a resolver cycle. They cannot cover what never reached
+    // them: a container removed while the agent was down (the producer's
+    // lifecycle journal is in memory and does not survive a restart), a removal
+    // swallowed by a cursor resync (a resync reports what EXISTS, never what has
+    // gone), or a producer that never noticed in the first place. Without this
+    // pass those rows stay until syscheckd restarts, because the startup
+    // baseline is the only other thing that sweeps.
+    //
+    // No monitored-path collection and no walk: this deletes rows, it does not
+    // read files, so it costs one list round trip plus one DISTINCT over
+    // file_entry when nothing is stale.
+    try {
+        // The list has to be STABLE, not merely answered, and this pass has to
+        // establish that for itself.
+        //
+        // cbaseline_list_containers() does protect the startup baseline against
+        // a mid-enumeration answer — it retries a still-warming connector and
+        // polls until two consecutive replies report the same set — but those
+        // guards are latched in process-global flags (g_everSawContainers,
+        // g_warmupWindowClosed, g_containersStable) and are deliberately spent
+        // on the FIRST discovery of the process, so that a recurring caller
+        // does not pay their latency for ever. Every later call is one
+        // unretried poll.
+        //
+        // That is fine for a caller that only reads. It is not fine here: this
+        // is the one path that deletes rows because a container is ABSENT, and
+        // it is scheduled precisely when a mid-enumeration answer is most
+        // likely — right after container_instances restarts. Measured on the
+        // VM before this check existed: one container had actually been
+        // removed, the connector answered 8 ms after the module came back with
+        // 5 of 11 containers, and the sweep deleted SIX containers' rows, 801
+        // of them belonging to containers that were still running.
+        std::set<std::string> known;
+        bool stable = false;
+
+        for (int attempt = 0; attempt < kSweepStabilityAttempts && !stable; ++attempt) {
+            std::set<std::string> again;
+
+            if (attempt > 0) {
+                std::this_thread::sleep_for(kSweepStabilityDelay);
+            }
+
+            known.clear();
+
+            // Same gate, and the same reasoning, as the baseline's own sweep:
+            // an unreachable connector must never present as "no containers
+            // exist".
+            if (cbaseline_list_containers(CB_DEFAULT_CONNECTOR_SOCKET_PATH, container_id_sink, &known) < 0) {
+                LogDebug("Container FIM reconcile: container connector unavailable, "
+                         "skipping the stale-container sweep to avoid false deletions.");
+                return;
+            }
+
+            std::this_thread::sleep_for(kSweepStabilityDelay);
+
+            if (cbaseline_list_containers(CB_DEFAULT_CONNECTOR_SOCKET_PATH, container_id_sink, &again) < 0) {
+                LogDebug("Container FIM reconcile: container connector became unavailable, "
+                         "skipping the stale-container sweep to avoid false deletions.");
+                return;
+            }
+
+            // Sets, not counts, so that one container starting as another stops
+            // cannot look like quiescence.
+            stable = (known == again);
+        }
+
+        if (!stable) {
+            // Not an error: a node with steady churn legitimately never
+            // settles. Skipping costs one interval of accuracy, which is what
+            // this pass is for, whereas sweeping against a list still being
+            // built costs a live container its whole baseline.
+            LogDebug("Container FIM reconcile: the container list did not settle, "
+                     "deferring the stale-container sweep to the next pass.");
+            return;
+        }
+
+        BaselineDriver driver;
+        driver.sweepStale(known);
+
+        if (driver.stale() > 0) {
+            LogInfo("Container FIM reconcile: %zu stale container(s) cleaned, %zu container(s) known.",
+                    driver.stale(), known.size());
+        } else {
+            LogDebug("Container FIM reconcile: no stale containers (%zu container(s) known).",
+                     known.size());
+        }
+    } catch (const std::exception& err) {
+        LogError("Container FIM stale-container sweep failed: %s", err.what());
+    } catch (...) {
+        LogError("Container FIM stale-container sweep failed with an unknown error.");
+    }
+}
 
 extern "C" void fim_run_container_baseline(void)
 {
@@ -835,6 +1023,24 @@ extern "C" void fim_container_events_start(void)
     fim_container_events::DrainConfig config;
     config.connector_socket_path = CB_DEFAULT_CONNECTOR_SOCKET_PATH;
 
+    // Seconds in the configuration, milliseconds in the drain. Clamped rather
+    // than trusted: a value large enough to overflow the conversion would wrap
+    // into a short interval or a negative one, and a negative one disables the
+    // floor — the opposite of what a very large number asks for.
+    const int reconcile_seconds = fim_container_baseline_reconcile_interval();
+    constexpr int kMaxReconcileSeconds = INT_MAX / 1000;
+
+    config.reconcile_interval_ms =
+        (reconcile_seconds <= 0) ? 0
+                                 : ((reconcile_seconds > kMaxReconcileSeconds) ? INT_MAX
+                                                                               : reconcile_seconds * 1000);
+
+    if (config.reconcile_interval_ms == 0) {
+        LogWarn("Container FIM: the stale-container sweep is disabled, so the rows of a container "
+                "removed while the agent is down, or missed by a lifecycle notification, are kept "
+                "until syscheckd restarts.");
+    }
+
     // A daemonised agent's CWD is not its install directory, so the engine's
     // CWD-relative fallback would not find the object.
     char resolved[PATH_MAX] = {0};
@@ -855,9 +1061,23 @@ extern "C" void fim_container_events_start(void)
             // rule survived to 1bdfb0990e unnoticed, and the object still has
             // no supply in the packaging pipeline (see 14 §14.6), so the
             // degradation has to be visible in ossec.log.
+            //
+            // It also costs the stale-container sweep (#40329), and that is
+            // worth naming separately because its symptom is unrelated to the
+            // one above: both the lifecycle purge and the periodic sweep are
+            // driven from the drain's resolver thread, so without the drain
+            // nothing ever removes the rows of a container that no longer
+            // exists. On a node that churns containers those rows accumulate
+            // until `file_entry` reaches its ceiling, at which point dbsync
+            // refuses EVERY insert — the host's own rows included. The sweep is
+            // not reinstated elsewhere for this case on purpose: in this mode
+            // nothing writes container rows after startup either, so the set
+            // cannot grow, and a second writer outside the consumer thread is
+            // the race that already cost 502 of 504 rows on a real node.
             LogWarn("Container FIM: the eBPF event engine could not start, so container file "
-                    "changes will NOT be detected after the initial baseline. Container "
-                    "directories are configured, so this is a degradation, not a no-op.");
+                    "changes will NOT be detected after the initial baseline, and the rows of "
+                    "containers that are removed will NOT be cleaned up. Container directories "
+                    "are configured, so this is a degradation, not a no-op.");
             return;
         }
     } catch (const std::exception& err) {

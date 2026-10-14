@@ -108,6 +108,32 @@ target_link_libraries(resolver_wait_test
 add_test(NAME resolver_wait_test
          COMMAND resolver_wait_test)
 
+# When the container FIM stale-row sweep may run (#40329). Split out of the
+# drain and tested here because what it authorises is a DELETION: the sweep
+# removes a container's rows because it is ABSENT from a list, so a wrong "yes"
+# costs a live container its whole baseline. It was wrong once already --
+# sweeping the moment a cursor resync was seen deleted six containers' rows on
+# a real node, 801 of them still running.
+add_executable(reconcile_floor_test reconcile_floor_test.cpp)
+
+target_link_libraries(reconcile_floor_test
+    debug gtestd
+    debug gtest_maind
+    optimized gtest
+    optimized gtest_main
+    pthread
+)
+
+if(FSANITIZE)
+    target_link_libraries(reconcile_floor_test
+        -fsanitize=address
+        -fsanitize=undefined
+    )
+endif(FSANITIZE)
+
+add_test(NAME reconcile_floor_test
+         COMMAND reconcile_floor_test)
+
 # The container FIM document budget's decision rule (#37532 / O10). Split out of
 # the bridge for the same reason as everything above it: the rule otherwise sits
 # beside a process-global counter and a pthread mutex inside a .c, reachable only

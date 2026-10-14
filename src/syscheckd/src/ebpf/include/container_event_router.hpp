@@ -90,6 +90,7 @@ struct RouterStats
     unsigned long long late_escalations{0};   /* containers identified after their events */
     unsigned long long renames_routed{0};     /* renames escalated (source path is never reported) */
     unsigned long long discovery_escalations{0}; /* containers walked because the kernel filter had not reached them */
+    unsigned long long removals_routed{0};       /* containers reported gone, staged for a row purge */
 };
 
 class ContainerEventRouter
@@ -283,10 +284,33 @@ class ContainerEventRouter
          *
          * Shares escalateDelta() with applyContainerList deliberately: which
          * way the list arrived is a transport detail, and the rule for what has
-         * to be re-walked must not be able to drift between the two. */
+         * to be re-walked must not be able to drift between the two.
+         *
+         * This is also where a REMOVAL becomes a row purge, and it has to happen
+         * here rather than one layer down: the returned delta's `removed` holds
+         * cgroup inodes, and the map deliberately merges "deleted" with
+         * "stopped" there, because both lose their key. Acting on that would
+         * delete a stopped container's rows — the state it needs to diff
+         * against when it starts again. The event's own kind is the only place
+         * the two are still distinguishable. */
         CgroupListDelta applyContainerDelta(const std::vector<CgroupDeltaEvent>& events)
         {
-            return escalateDelta(m_map.applyDelta(events));
+            auto delta = escalateDelta(m_map.applyDelta(events));
+
+            /* After escalateDelta, not before: a container discovered and then
+             * removed within the same refresh must end up purged, not walked. */
+            for (const auto& event : events)
+            {
+                if (event.kind != CgroupDeltaEvent::Kind::removed || event.container_id.empty())
+                {
+                    continue;
+                }
+
+                bump(m_stats.removals_routed);
+                m_staging.onContainerRemoved(event.container_id);
+            }
+
+            return delta;
         }
 
         /* Apply one on-demand resolution.
@@ -342,6 +366,7 @@ class ContainerEventRouter
             out.discovery_escalations = m_stats.discovery_escalations.load(std::memory_order_relaxed);
             out.late_escalations = m_stats.late_escalations.load(std::memory_order_relaxed);
             out.renames_routed = m_stats.renames_routed.load(std::memory_order_relaxed);
+            out.removals_routed = m_stats.removals_routed.load(std::memory_order_relaxed);
             return out;
         }
 
@@ -362,6 +387,7 @@ class ContainerEventRouter
             std::atomic<unsigned long long> late_escalations{0};
             std::atomic<unsigned long long> renames_routed{0};
             std::atomic<unsigned long long> discovery_escalations{0};
+            std::atomic<unsigned long long> removals_routed{0};
         };
 
         void bump(std::atomic<unsigned long long>& counter)

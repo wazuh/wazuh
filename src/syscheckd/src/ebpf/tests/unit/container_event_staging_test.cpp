@@ -401,3 +401,243 @@ TEST(ContainerEventStaging, EveryStagedPathIsServedExactlyOnceUnderContention)
     EXPECT_EQ(staging.stats().path_overflows, 0u);
     EXPECT_EQ(staging.pendingContainers(), 0u);
 }
+
+/* --- removals (#40329) -----------------------------------------------------
+ *
+ * A container container_instances reports GONE has every row it still holds
+ * deleted. Before this existed the only thing that swept those rows was the
+ * startup baseline, so they survived until syscheckd restarted — and a full
+ * `file_entry` refuses EVERY insert, host rows included.
+ */
+
+TEST(ContainerEventStaging, ARemovalIsServedBeforeEverythingElse)
+{
+    ContainerEventStaging staging(1024, 128);
+    staging.release();
+
+    staging.onEvent("c2", "/etc/issue");
+    staging.onUnlink("c3", "/etc/hosts");
+    staging.onDrops("c4");
+    staging.onUnattributedDrops();
+    staging.onContainerRemoved("c1");
+
+    Batch batch;
+    ASSERT_TRUE(staging.nextBatch(batch, kNoWait));
+
+    /* Ahead of even a whole-node re-baseline: at a full table every insert that
+     * re-baseline attempts is refused, which marks every container partial and
+     * suppresses delete detection for all of them — and it only reaches its own
+     * stale sweep at the very end, after the refusals this purge prevents. */
+    EXPECT_TRUE(batch.removed);
+    EXPECT_EQ(batch.container_id, "c1");
+
+    ASSERT_TRUE(staging.nextBatch(batch, kNoWait));
+    EXPECT_TRUE(batch.suspect);
+    EXPECT_TRUE(batch.container_id.empty()) << "the node re-baseline should come second, not first";
+}
+
+TEST(ContainerEventStaging, ARemovalSupersedesThatContainersPendingWork)
+{
+    ContainerEventStaging staging(1024, 128);
+    staging.release();
+
+    staging.onEvent("c1", "/etc/issue");
+    staging.onUnlink("c1", "/etc/hosts");
+    staging.onDrops("c1");
+    staging.onContainerRemoved("c1");
+
+    const auto batches = drainAll(staging);
+
+    ASSERT_EQ(batches.size(), 1u) << "a walk queued behind a purge cannot reach the container, and "
+                                     "the walker KEEPS the rows of a container it cannot reach";
+    EXPECT_TRUE(batches[0].removed);
+    EXPECT_FALSE(batches[0].suspect);
+    EXPECT_TRUE(batches[0].paths.empty());
+    EXPECT_TRUE(batches[0].unlinked.empty());
+    EXPECT_EQ(staging.pendingContainers(), 0u);
+}
+
+TEST(ContainerEventStaging, ARemovalDoesNotSupersedeAnotherContainersWork)
+{
+    ContainerEventStaging staging(1024, 128);
+    staging.release();
+
+    staging.onEvent("c2", "/etc/issue");
+    staging.onContainerRemoved("c1");
+
+    const auto batches = drainAll(staging);
+
+    ASSERT_EQ(batches.size(), 2u);
+    EXPECT_TRUE(batches[0].removed);
+    EXPECT_EQ(batches[0].container_id, "c1");
+    EXPECT_FALSE(batches[1].removed);
+    EXPECT_EQ(batches[1].container_id, "c2");
+    ASSERT_EQ(batches[1].paths.size(), 1u);
+    EXPECT_EQ(batches[1].paths[0], "/etc/issue");
+}
+
+TEST(ContainerEventStaging, NothingIsStagedWhileARemovalIsQueued)
+{
+    ContainerEventStaging staging(1024, 128);
+    staging.release();
+
+    staging.onContainerRemoved("c1");
+
+    const auto before = staging.stats();
+
+    staging.onEvent("c1", "/etc/issue");
+    staging.onUnlink("c1", "/etc/hosts");
+    staging.onDrops("c1");
+
+    const auto after = staging.stats();
+
+    EXPECT_EQ(after.staged, before.staged);
+    EXPECT_EQ(after.unlinked, before.unlinked);
+    EXPECT_EQ(after.drop_escalations, before.drop_escalations);
+    EXPECT_EQ(after.deduplicated, before.deduplicated + 3);
+
+    const auto batches = drainAll(staging);
+    ASSERT_EQ(batches.size(), 1u);
+    EXPECT_TRUE(batches[0].removed);
+}
+
+TEST(ContainerEventStaging, RemovalsAreNotChargedToTheContainerBudget)
+{
+    /* Both container slots taken by staged paths. A purge RELEASES budget, so
+     * refusing it under budget pressure would refuse the one action that
+     * relieves the pressure. */
+    ContainerEventStaging staging(1024, 2);
+    staging.release();
+
+    staging.onEvent("c2", "/etc/issue");
+    staging.onEvent("c3", "/etc/issue");
+
+    const auto before = staging.stats();
+    ASSERT_EQ(before.unknown_overflows, 0u);
+
+    staging.onContainerRemoved("c1");
+
+    EXPECT_EQ(staging.stats().containers_removed, 1u);
+    EXPECT_EQ(staging.stats().unknown_overflows, before.unknown_overflows);
+
+    Batch batch;
+    ASSERT_TRUE(staging.nextBatch(batch, kNoWait));
+    EXPECT_TRUE(batch.removed);
+    EXPECT_EQ(batch.container_id, "c1");
+}
+
+TEST(ContainerEventStaging, TooManyQueuedRemovalsEscalateRatherThanDrop)
+{
+    ContainerEventStaging staging(1024, 2);
+    staging.release();
+
+    staging.onContainerRemoved("c1");
+    staging.onContainerRemoved("c2");
+    staging.onContainerRemoved("c3"); /* does not fit */
+
+    EXPECT_EQ(staging.stats().removal_overflows, 1u);
+
+    const auto batches = drainAll(staging);
+
+    /* c3 is not silently dropped: the node re-baseline it forced ends in the
+     * whole-node stale sweep, which covers exactly the ids that did not fit —
+     * and that sweep is gated on the connector answering, so this pressure
+     * cannot become a false delete. */
+    bool node_rebaseline = false;
+
+    for (const auto& batch : batches)
+    {
+        if (batch.suspect && batch.container_id.empty())
+        {
+            node_rebaseline = true;
+        }
+    }
+
+    EXPECT_TRUE(node_rebaseline);
+}
+
+TEST(ContainerEventStaging, AnEmptyContainerIdIsNeverStagedAsARemoval)
+{
+    ContainerEventStaging staging(1024, 128);
+    staging.release();
+
+    staging.onContainerRemoved("");
+
+    /* The host's own FIM rows are stored with container_id = '', so an empty id
+     * is not "no container" — it is every file the agent monitors on the host. */
+    EXPECT_TRUE(drainAll(staging).empty());
+    EXPECT_EQ(staging.stats().containers_removed, 0u);
+    EXPECT_EQ(staging.pendingContainers(), 0u);
+}
+
+TEST(ContainerEventStaging, ARemovalIsServedOnceAndTheIdStagesNormallyAfterwards)
+{
+    ContainerEventStaging staging(1024, 128);
+    staging.release();
+
+    staging.onContainerRemoved("c1");
+
+    Batch batch;
+    ASSERT_TRUE(staging.nextBatch(batch, kNoWait));
+    EXPECT_TRUE(batch.removed);
+    EXPECT_FALSE(staging.nextBatch(batch, kNoWait));
+
+    /* No tombstone is kept, so nothing silently swallows later work. */
+    staging.onEvent("c1", "/etc/issue");
+    ASSERT_TRUE(staging.nextBatch(batch, kNoWait));
+    EXPECT_FALSE(batch.removed);
+    EXPECT_EQ(batch.paths.size(), 1u);
+}
+
+TEST(ContainerEventStaging, TheRemovalFlagDoesNotLeakIntoTheNextBatch)
+{
+    ContainerEventStaging staging(1024, 128);
+    staging.release();
+
+    staging.onContainerRemoved("c1");
+    staging.onEvent("c2", "/etc/issue");
+
+    /* ONE Batch, reused — which is exactly what the consumer loop does. A
+     * `removed` flag surviving into the next batch would purge a LIVE
+     * container's entire row set. */
+    Batch batch;
+
+    ASSERT_TRUE(staging.nextBatch(batch, kNoWait));
+    ASSERT_TRUE(batch.removed);
+
+    ASSERT_TRUE(staging.nextBatch(batch, kNoWait));
+    EXPECT_FALSE(batch.removed);
+    EXPECT_EQ(batch.container_id, "c2");
+}
+
+TEST(ContainerEventStaging, TheReconciliationFloorIsAContainerLessSweep)
+{
+    ContainerEventStaging staging(1024, 128);
+    staging.release();
+
+    staging.onReconcileFloorDue();
+    staging.onReconcileFloorDue(); /* idempotent: two requests are one pass */
+
+    const auto batches = drainAll(staging);
+
+    ASSERT_EQ(batches.size(), 1u);
+    EXPECT_TRUE(batches[0].sweep_absent);
+    EXPECT_FALSE(batches[0].removed);
+    EXPECT_FALSE(batches[0].suspect);
+    EXPECT_TRUE(batches[0].container_id.empty());
+}
+
+TEST(ContainerEventStaging, APendingRemovalIsWorkEnoughToWakeTheConsumer)
+{
+    /* hasWorkLocked() has to know about removals: without it nextBatch() would
+     * return false with a purge queued and only serve it once some OTHER work
+     * happened to arrive. */
+    ContainerEventStaging staging(1024, 128);
+    staging.release();
+
+    staging.onContainerRemoved("c1");
+
+    Batch batch;
+    EXPECT_TRUE(staging.nextBatch(batch, kShortWait));
+    EXPECT_TRUE(batch.removed);
+}

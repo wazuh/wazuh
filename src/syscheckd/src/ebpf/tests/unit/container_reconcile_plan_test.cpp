@@ -131,3 +131,82 @@ TEST(ContainerReconcilePlanTest, AWalkIsNeverEmptyEvenWithNoPaths)
     EXPECT_FALSE(PlanFor(SuspectBatch("container-a")).empty());
     EXPECT_FALSE(PlanFor(SuspectBatch("")).empty());
 }
+
+/* --- a container that is gone (#40329) -------------------------------------
+ *
+ * The third authority for removing a row, and the only one from outside the
+ * event stream: container_instances STATING that a container no longer exists.
+ * Not the inference D15 forbids — that is reading a FAILED READ as a removal —
+ * and not a read at all.
+ */
+
+TEST(ContainerReconcilePlanTest, ARemovedBatchPlansAContainerPurge)
+{
+    Batch batch;
+    batch.container_id = "c1";
+    batch.removed = true;
+
+    const auto plan = PlanFor(batch);
+
+    EXPECT_EQ(plan.mode, ReconcileMode::purgeContainer);
+    EXPECT_EQ(plan.container_id, "c1");
+    EXPECT_TRUE(plan.paths.empty());
+    EXPECT_TRUE(plan.may_detect_deletions) << "a purge removes rows it did not refresh, which is "
+                                              "exactly what this flag announces";
+    EXPECT_FALSE(plan.empty());
+}
+
+TEST(ContainerReconcilePlanTest, APurgeWithNoContainerIdIsANoOp)
+{
+    /* The single most important assertion in this file. The host's own FIM rows
+     * are stored with container_id = '' — that string IS the scope value of the
+     * host transaction — so a purge with no id would not delete "nothing", it
+     * would delete every file the agent monitors on the host. */
+    Batch batch;
+    batch.removed = true;
+    batch.container_id.clear();
+
+    const auto plan = PlanFor(batch);
+
+    EXPECT_EQ(plan.mode, ReconcileMode::purgeContainer);
+    EXPECT_TRUE(plan.empty()) << "an empty container id must never reach the database";
+}
+
+TEST(ContainerReconcilePlanTest, ARemovedBatchIsAPurgeEvenWhenSuspectIsAlsoSet)
+{
+    /* A container that is both gone and suspect must be purged, not walked:
+     * walking it cannot succeed, and the walker keeps the rows of a container
+     * it cannot reach. */
+    Batch batch;
+    batch.container_id = "c1";
+    batch.removed = true;
+    batch.suspect = true;
+
+    EXPECT_EQ(PlanFor(batch).mode, ReconcileMode::purgeContainer);
+}
+
+TEST(ContainerReconcilePlanTest, APathBatchIsStillNeverAPurge)
+{
+    /* D15, restated against the new mode: nothing derived from reading files
+     * may ever escalate to deleting a whole container. */
+    EXPECT_EQ(PlanFor(PathBatch("c1", {"/etc/issue"})).mode, ReconcileMode::rereadPaths);
+    EXPECT_EQ(PlanFor(SuspectBatch("c1")).mode, ReconcileMode::rewalkContainer);
+
+    Batch unlinks;
+    unlinks.container_id = "c1";
+    unlinks.unlinked = {"/etc/issue"};
+    EXPECT_EQ(PlanFor(unlinks).mode, ReconcileMode::deletePaths);
+}
+
+TEST(ContainerReconcilePlanTest, ASweepBatchPlansAnAbsenceSweepWithNoContainer)
+{
+    Batch batch;
+    batch.sweep_absent = true;
+
+    const auto plan = PlanFor(batch);
+
+    EXPECT_EQ(plan.mode, ReconcileMode::sweepAbsent);
+    EXPECT_TRUE(plan.container_id.empty());
+    EXPECT_FALSE(plan.empty()) << "a sweep carries no container id BY DESIGN and must not be "
+                                  "mistaken for an empty batch";
+}

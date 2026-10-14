@@ -191,6 +191,61 @@ static void CaseBadEnabledFailsClosed(void)
 /* The reason container entries live in their own list: fim_insert_directory()
  * keys on the bare path, so in syscheck->directories the second of these would
  * have replaced the first. */
+/* #40329. The interval under <container_security><syscheck> that decides how
+ * often container FIM reconciles its stored rows against the containers that
+ * still exist. */
+static void CaseReconcileIntervalDefault(void)
+{
+    printf("case 5b: the reconciliation interval has a working default\n");
+    log_reset();
+    syscheck_config* c = ParseXml("<container_security><syscheck>"
+                                  "  <directories>/data</directories>"
+                                  "</syscheck></container_security>");
+    Check(c && c->container_reconcile_interval == 3600, "defaults to one hour when absent");
+    Check(c && c->container_reconcile_interval > 0, "and is ENABLED by default, which is the point");
+    Check(g_warn_count == 0, "silently");
+}
+
+static void CaseReconcileIntervalParsed(void)
+{
+    printf("case 5c: an explicit reconciliation interval is taken\n");
+    log_reset();
+    syscheck_config* c = ParseXml("<container_security><syscheck>"
+                                  "  <directories>/data</directories>"
+                                  "  <reconcile_interval>120</reconcile_interval>"
+                                  "</syscheck></container_security>");
+    Check(c && c->container_reconcile_interval == 120, "120 seconds");
+    Check(g_warn_count == 0, "no warnings");
+    Check(g_error_count == 0, "no errors");
+}
+
+static void CaseReconcileIntervalZeroDisables(void)
+{
+    printf("case 5d: 0 disables the sweep, and is a valid answer\n");
+    log_reset();
+    syscheck_config* c = ParseXml("<container_security><syscheck>"
+                                  "  <directories>/data</directories>"
+                                  "  <reconcile_interval>0</reconcile_interval>"
+                                  "</syscheck></container_security>");
+    Check(c && c->container_reconcile_interval == 0, "taken as written");
+    Check(g_warn_count == 0, "without a warning: it is a choice, not a mistake");
+}
+
+static void CaseBadReconcileIntervalFailsOpen(void)
+{
+    printf("case 5e: an unreadable reconciliation interval keeps the default\n");
+    log_reset();
+    syscheck_config* c = ParseXml("<container_security><syscheck>"
+                                  "  <directories>/data</directories>"
+                                  "  <reconcile_interval>soon</reconcile_interval>"
+                                  "</syscheck></container_security>");
+    /* Fails OPEN, like <file_limit>: silently becoming 0 would mean "never
+     * reconcile", which is the exact state #40329 exists to end. */
+    Check(c && c->container_reconcile_interval == 3600, "the default stands");
+    Check(g_warn_count > 0, "and the operator is told");
+    Check(c && c->container_enabled == 1, "container file monitoring is not disabled over it");
+}
+
 static void CaseSamePathTwoContainers(void)
 {
     printf("case 6: the same path scoped to two containers is two entries\n");
@@ -387,6 +442,10 @@ int main(void)
     CaseDisabledKeepsDirectories();
     CaseTrueIsAccepted();
     CaseBadEnabledFailsClosed();
+    CaseReconcileIntervalDefault();
+    CaseReconcileIntervalParsed();
+    CaseReconcileIntervalZeroDisables();
+    CaseBadReconcileIntervalFailsOpen();
     CaseSamePathTwoContainers();
     CaseSamePathSameSelector();
     CaseCatchAllAndScopedCoexist();

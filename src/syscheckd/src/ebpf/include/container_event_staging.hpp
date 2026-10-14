@@ -103,6 +103,23 @@ struct Batch
      * lost for it (kernel ring, or this buffer's own budget), so the set of
      * changed paths is not known to be complete. */
     bool suspect{false};
+
+    /* This container no longer exists: delete every row it still holds.
+     *
+     * The only discriminator here whose authority comes from outside the event
+     * stream — container_instances STATED the removal — which is why it carries
+     * no paths and supersedes every other kind of work for the same container.
+     * A re-walk of a container that is gone cannot succeed, and the walker
+     * KEEPS the rows when it cannot reach one, so a walk left queued behind a
+     * removal is not merely wasted: it is the shape that reinstates the leak. */
+    bool removed{false};
+
+    /* Not about one container: reconcile the whole stored set against what
+     * container_instances still knows, and delete the rows of anything absent
+     * from it. The floor under the removal notifications, for what no delta can
+     * report — a removal while the agent was down, one swallowed by a resync,
+     * or a producer that never noticed. Carries no container_id. */
+    bool sweep_absent{false};
 };
 
 /* Counters for diagnostics; none of these are needed for correctness, but a
@@ -117,6 +134,8 @@ struct StagingStats
     unsigned long long settle_early{0};  /* paths released early: the writer had exited */
     unsigned long long settle_expired{0};/* paths released on the settle delay instead */
     unsigned long long unlinked{0};      /* paths the kernel reported unlinked */
+    unsigned long long containers_removed{0}; /* containers staged for a row purge */
+    unsigned long long removal_overflows{0};  /* purges that did not fit, escalated instead */
 };
 
 /* Is this pid still alive? Injected so the buffer stays testable without
@@ -175,6 +194,16 @@ class ContainerEventStaging
         {
             {
                 std::lock_guard<std::mutex> lock(m_mutex);
+
+                if (m_removed.count(container_id) != 0)
+                {
+                    /* The container is gone and its rows are about to be
+                     * deleted wholesale. Staging a path here would queue a
+                     * re-read that can only find nothing, behind a purge that
+                     * makes it moot either way. */
+                    ++m_stats.deduplicated;
+                    return;
+                }
 
                 if (m_suspect.count(container_id) != 0)
                 {
@@ -262,6 +291,14 @@ class ContainerEventStaging
             {
                 std::lock_guard<std::mutex> lock(m_mutex);
 
+                if (m_removed.count(container_id) != 0)
+                {
+                    /* Every row of this container is about to go, this one
+                     * included. */
+                    ++m_stats.deduplicated;
+                    return;
+                }
+
                 if (m_suspect.count(container_id) != 0)
                 {
                     /* A re-walk sees whole directories, so it finds this
@@ -329,6 +366,15 @@ class ContainerEventStaging
             {
                 std::lock_guard<std::mutex> lock(m_mutex);
 
+                if (m_removed.count(container_id) != 0)
+                {
+                    /* Nothing to re-walk: the container is gone. Escalating
+                     * here would queue a walk that cannot reach it, and the
+                     * walker keeps the rows of a container it cannot reach. */
+                    ++m_stats.deduplicated;
+                    return;
+                }
+
                 if (m_suspect.insert(container_id).second)
                 {
                     ++m_stats.drop_escalations;
@@ -339,6 +385,73 @@ class ContainerEventStaging
                  * for pending unlinks: a walk finds those deletions itself. */
                 m_pending.erase(container_id);
                 m_unlinked.erase(container_id);
+            }
+
+            notify();
+        }
+
+        /* container_instances says this container no longer exists, so every
+         * row it still holds has to go (D5, 10-container-instances-delta-plan.md
+         * §10.6). Called from the resolver thread, which must not touch the
+         * database itself: this stages the purge for the consumer.
+         *
+         * An empty id is refused and not merely ignored. The HOST's own FIM rows
+         * are stored with `container_id = ''` — it is the scope value of the
+         * host transaction — so an empty id here would not purge "nothing", it
+         * would purge every file the agent monitors on the host. This is the
+         * first of four independent guards against that; see PlanFor(),
+         * ReconcileBatch() and PurgeContainerRows() for the rest.
+         *
+         * Supersedes this container's staged paths, pending unlinks and suspect
+         * mark: see Batch::removed for why a queued walk is actively harmful
+         * rather than merely redundant. */
+        void onContainerRemoved(const std::string& container_id)
+        {
+            {
+                std::lock_guard<std::mutex> lock(m_mutex);
+
+                if (container_id.empty())
+                {
+                    return;
+                }
+
+                if (m_removed.size() >= m_max_containers)
+                {
+                    /* Deliberately an escalation and not a drop: a re-baseline
+                     * ends in the whole-node stale sweep, which covers exactly
+                     * the ids that did not fit here — and that sweep is gated on
+                     * the connector being reachable, so it cannot turn this
+                     * pressure into a false delete. */
+                    m_all_suspect = true;
+                    ++m_stats.removal_overflows;
+                    notifyLocked();
+                    return;
+                }
+
+                if (!m_removed.insert(container_id).second)
+                {
+                    ++m_stats.deduplicated;
+                    return;
+                }
+
+                ++m_stats.containers_removed;
+
+                m_pending.erase(container_id);
+                m_unlinked.erase(container_id);
+                m_suspect.erase(container_id);
+            }
+
+            notify();
+        }
+
+        /* The reconciliation floor is due: reconcile the whole stored set
+         * against what container_instances still knows. Idempotent — a second
+         * call before the first is served is the same one pass. */
+        void onReconcileFloorDue()
+        {
+            {
+                std::lock_guard<std::mutex> lock(m_mutex);
+                m_sweep_absent_due = true;
             }
 
             notify();
@@ -395,6 +508,10 @@ class ContainerEventStaging
 
         /* Takes one container's SETTLED work, waiting up to `timeout_ms` for
          * some to appear. Returns false on timeout or after stop().
+         *
+         * Order of service, strongest action first: purges, then the
+         * reconciliation floor, then Suspect, then unlinks, then staged paths.
+         * takeSettledLocked() carries the reasoning for the first two.
          *
          * Suspect containers are served before path batches: a container that
          * needs re-walking is both more urgent and cheaper to hand over, and
@@ -470,7 +587,7 @@ class ContainerEventStaging
         std::size_t pendingContainers() const
         {
             std::lock_guard<std::mutex> lock(m_mutex);
-            return m_pending.size() + m_unlinked.size() + m_suspect.size();
+            return m_pending.size() + m_unlinked.size() + m_suspect.size() + m_removed.size();
         }
 
     private:
@@ -501,7 +618,8 @@ class ContainerEventStaging
 
         bool hasWorkLocked() const
         {
-            return m_all_suspect || !m_suspect.empty() || !m_unlinked.empty() || !m_pending.empty();
+            return !m_removed.empty() || m_sweep_absent_due || m_all_suspect || !m_suspect.empty() ||
+                   !m_unlinked.empty() || !m_pending.empty();
         }
 
         /* True when this path may be read now: its deadline has passed (the
@@ -541,8 +659,50 @@ class ContainerEventStaging
                 return false;
             }
 
+            /* Every discriminator is reset HERE, at the one entry point, rather
+             * than on each return path below. The consumer reuses a single
+             * Batch across calls, so a flag left set from the previous batch
+             * would be read as this batch's instruction — and for `removed`
+             * that instruction is "delete every row this container owns",
+             * applied to whichever container happened to come next. */
             out.paths.clear();
             out.unlinked.clear();
+            out.suspect = false;
+            out.removed = false;
+            out.sweep_absent = false;
+
+            /* Purges first, ahead of even a whole-node re-baseline.
+             *
+             * Not merely because they are cheap: at a full file_entry every
+             * insert a re-baseline attempts is refused, which the driver counts
+             * as a partial scan and which therefore suppresses delete detection
+             * for every container in that pass — and the pass only reaches its
+             * own stale sweep at the very end, after all the refusals a purge
+             * would have prevented. Serving purges first strictly dominates: it
+             * makes the re-baseline cheaper AND makes its sweep a no-op.
+             *
+             * Nothing starves behind them. m_all_suspect is a sticky flag, so it
+             * is delayed and never lost, while m_removed refills only when a
+             * container actually goes away. */
+            if (!m_removed.empty())
+            {
+                const auto it = m_removed.begin();
+                out.container_id = *it;
+                out.removed = true;
+                m_removed.erase(it);
+                return true;
+            }
+
+            if (m_sweep_absent_due)
+            {
+                /* Before m_all_suspect for the same reason as above, and because
+                 * a re-baseline ends in this same sweep anyway. Cleared here so
+                 * it is served once per time it falls due. */
+                m_sweep_absent_due = false;
+                out.container_id.clear();
+                out.sweep_absent = true;
+                return true;
+            }
 
             if (m_all_suspect)
             {
@@ -650,6 +810,19 @@ class ContainerEventStaging
 
         std::set<std::string> m_suspect;
 
+        /* Containers container_instances has reported gone. Ids only: a purge
+         * is scoped by container_id and needs nothing else.
+         *
+         * Deliberately NOT counted against m_max_containers alongside m_pending
+         * and m_unlinked. Those budgets exist to bound work that holds
+         * resources; a purge RELEASES them, so charging it against a budget
+         * already under pressure would let the agent refuse the one action that
+         * relieves the pressure. It also cannot inflate that budget on its own:
+         * staging a removal only ever shrinks m_pending and m_unlinked. Its own
+         * ceiling, in onContainerRemoved(), is what bounds this set. */
+        std::set<std::string> m_removed;
+
+        bool m_sweep_absent_due{false};
         bool m_all_suspect{false};
         bool m_released{false};
         bool m_stopped{false};

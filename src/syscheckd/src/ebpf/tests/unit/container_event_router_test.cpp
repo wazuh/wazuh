@@ -544,3 +544,84 @@ TEST(ContainerEventRouterTest, UnfilteredADeltaAddedContainerIsNotWalked)
     EXPECT_TRUE(DrainBatches(f.staging).empty());
     EXPECT_EQ(0u, f.router.stats().discovery_escalations);
 }
+
+/* --- removals become row purges (#40329) -----------------------------------
+ *
+ * The decision has to be taken HERE, on the event's own kind. One layer down,
+ * CgroupContainerMap deliberately merges a removal with a stop — both lose
+ * their key — so CgroupListDelta::removed cannot tell them apart, and acting
+ * on it would delete a stopped container's rows: the very state it needs to be
+ * diffed against when it starts again.
+ */
+
+TEST(ContainerEventRouterTest, ARemovedDeltaEventStagesARowPurge)
+{
+    Fixture f;
+    f.router.applyContainerDelta({CgroupDeltaEvent {CgroupDeltaEvent::Kind::added, 400, "container-gone"}});
+    f.staging.release();
+    DrainBatches(f.staging); // the add
+
+    const auto delta =
+        f.router.applyContainerDelta({CgroupDeltaEvent {CgroupDeltaEvent::Kind::removed, 400, "container-gone"}});
+
+    EXPECT_EQ(1u, delta.removed.size()) << "the kernel must stop admitting the cgroup too";
+
+    const auto batches = DrainBatches(f.staging);
+    ASSERT_EQ(1u, batches.size());
+    EXPECT_TRUE(batches[0].removed);
+    EXPECT_FALSE(batches[0].suspect) << "a container that is gone cannot be walked";
+    EXPECT_EQ("container-gone", batches[0].container_id);
+    EXPECT_EQ(1u, f.router.stats().removals_routed);
+}
+
+TEST(ContainerEventRouterTest, AStoppedContainerIsNeverPurged)
+{
+    // The regression test for the distinction C15 cost. A stop arrives as a
+    // `changed` with no cgroup; it must deny the cgroup, re-walk nothing, and
+    // above all delete nothing.
+    Fixture f;
+    f.router.setFiltering(true);
+
+    f.router.applyContainerDelta({CgroupDeltaEvent {CgroupDeltaEvent::Kind::added, 410, "container-stopped"}});
+    f.staging.release();
+    ASSERT_EQ(1u, DrainBatches(f.staging).size());
+
+    const auto delta =
+        f.router.applyContainerDelta({CgroupDeltaEvent {CgroupDeltaEvent::Kind::changed, 0, "container-stopped"}});
+
+    ASSERT_EQ(1u, delta.removed.size());
+    EXPECT_EQ(410u, delta.removed.front());
+    EXPECT_TRUE(DrainBatches(f.staging).empty()) << "a stop must produce no purge and no re-walk";
+    EXPECT_EQ(0u, f.router.stats().removals_routed);
+}
+
+TEST(ContainerEventRouterTest, ARemovalInTheSameDeltaAsItsDiscoverySupersedesTheWalk)
+{
+    // Harvesting the removals AFTER escalateDelta() is what makes this work: a
+    // container discovered and removed inside one refresh ends up purged, not
+    // walked.
+    Fixture f;
+    f.router.setFiltering(true);
+    f.staging.release();
+
+    f.router.applyContainerDelta({CgroupDeltaEvent {CgroupDeltaEvent::Kind::added, 420, "container-brief"},
+                                  CgroupDeltaEvent {CgroupDeltaEvent::Kind::removed, 420, "container-brief"}});
+
+    const auto batches = DrainBatches(f.staging);
+    ASSERT_EQ(1u, batches.size());
+    EXPECT_TRUE(batches[0].removed);
+    EXPECT_FALSE(batches[0].suspect);
+    EXPECT_EQ("container-brief", batches[0].container_id);
+}
+
+TEST(ContainerEventRouterTest, ARemovalWithNoContainerIdIsIgnored)
+{
+    // An empty id is the HOST's row scope, not "no container".
+    Fixture f;
+    f.staging.release();
+
+    f.router.applyContainerDelta({CgroupDeltaEvent {CgroupDeltaEvent::Kind::removed, 430, ""}});
+
+    EXPECT_TRUE(DrainBatches(f.staging).empty());
+    EXPECT_EQ(0u, f.router.stats().removals_routed);
+}

@@ -44,6 +44,7 @@ void fim_report_container_baseline_result(int baselined,
  * macros clash with the C++ headers it needs), so it routes its messages
  * through these. */
 void fim_container_baseline_log_debug(const char* message);
+void fim_container_baseline_log_info(const char* message);
 void fim_container_baseline_log_warn(const char* message);
 void fim_container_baseline_log_error(const char* message);
 
@@ -77,6 +78,13 @@ void fim_container_baseline_rate_limit(void);
  * host API is registered. */
 int fim_container_baseline_row_limit(void);       /* per container */
 int fim_container_baseline_node_row_limit(void);  /* the whole file_entry table */
+
+/* How often the stale-container sweep runs, in SECONDS; 0 disables it
+ * (#40329). Same shim reasoning as the ceilings above: the C++ drain cannot
+ * include syscheck.h. Returns 0 before the host API is registered, which is
+ * safe to read as "disabled" -- the drain is only started from a path that has
+ * already registered it. */
+int fim_container_baseline_reconcile_interval(void);
 
 /**
  * @brief Release a container's per-container document count (#37532 / O10).

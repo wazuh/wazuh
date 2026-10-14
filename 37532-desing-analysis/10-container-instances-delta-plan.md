@@ -1029,3 +1029,33 @@ whole node; only a notification-driven pass uses the delta. D4 said the floor is
 is the strongest reading of that: the delta makes the response to change fast, and takes nothing
 away from the periodic reconciliation. A notification never moves the scheduled deadline, or a host
 with steady churn would postpone the floor for ever.
+
+### FIM's half of D5, added under #40329 (2026-10-13)
+
+D5 said a `removed` event sweeps that container's rows. Syscollector did it from the start;
+**FIM did not** — it consumed the same journal, translated `removed` into a kernel-allowlist
+withdrawal and dropped the container id on the floor. Its only row deletion was `sweepStale()`
+inside the whole-node baseline, and since that baseline runs **once, at startup**, a removed
+container's FIM rows survived until syscheckd restarted. Measured in `23-nfr3-container-limits.md`
+§23.5: 48 dead `container_id`s and 91,416 rows still present two hours after the containers were
+deleted, with `file_entry` at its ceiling refusing every insert, host rows included.
+
+Three things are worth recording because they are not obvious from D5 itself:
+
+- **The decision has to be taken on the event kind, not on the cgroup delta.** FIM's
+  `CgroupContainerMap` deliberately merges a removal with a *stop* — both lose their key — so
+  `CgroupListDelta::removed` cannot tell them apart. Acting on it would delete a stopped container's
+  rows, which is the one thing open question 2 above exists to prevent.
+- **The purge runs on the reconcile consumer, not the resolver.** Nothing serialises a dbsync
+  transaction against another writer; the consumer is the only post-release writer by construction,
+  and a second writer is the 502-of-504 row loss that `fim_container_events_release()` exists for.
+- **An empty container id is the HOST's row scope**, not "no container", so it is refused at four
+  independent layers. A purge that lost its id would delete every file the agent monitors on the
+  host.
+
+FIM's floor is now `<container_security><syscheck><reconcile_interval>`, default **1 h**, `0`
+disables. It is an absence sweep with no walk, which is the difference from syscollector's floor:
+syscollector's scheduled pass re-walks the node anyway, whereas container FIM has no scheduled walk
+at all, so a floor that implied one would have been a much larger change than D4 asks for. What
+remains absent — a periodic container *re-walk*, for missed content changes rather than stale rows —
+is a separate gap and not covered here.
