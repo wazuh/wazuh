@@ -39,6 +39,16 @@ extern "C"
 #include "commonDefs.h" // full_log_fnc_t
 
     /**
+     * @brief The CA files the module loads when ca_path / ca_certificate_path are left empty.
+     *
+     * Relative to remoted's working directory, the installation directory. Defined here, once, because
+     * remoted's TLS preflight (w_remoted_check_tls_files(), src/remoted/src/secure.c) must probe the very
+     * files the module opens (httpServerConfig.cpp).
+     */
+#define REMOTED_MODULE_DEFAULT_CA_PATH "etc/certs/root-ca.pem"
+#define REMOTED_MODULE_DEFAULT_CA_CERTIFICATE_PATH "etc/certs/root-ca.pem"
+
+    /**
      * @brief remote.https.verification_mode values.
      *
      * Kept in sync by hand with the config-parser mirror in

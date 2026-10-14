@@ -64,13 +64,13 @@ namespace
     constexpr std::size_t DEFAULT_MAX_HANDSHAKES_PER_SOURCE {32};
 
     // Relative to remoted's cwd, the installation directory (remoted changes to it at startup,
-    // before the HTTPS module starts), like remoted::paths (common/installPaths.hpp). The two CA defaults are
-    // mirrored in src/remoted/src/secure.c (REMOTED_TLS_DEFAULT_CA_PATH, REMOTED_TLS_DEFAULT_CA_CERTIFICATE_PATH),
-    // which probes the same files before the module starts: change both together.
+    // before the HTTPS module starts), like remoted::paths (common/installPaths.hpp). The two CA defaults come
+    // from remoted_module.h, shared with src/remoted/src/secure.c, which probes the same files before the module
+    // starts.
     constexpr auto DEFAULT_CERTIFICATE_PATH {"etc/certs/remoted.pem"};
     constexpr auto DEFAULT_PRIVATE_KEY_PATH {"etc/certs/remoted-key.pem"};
-    constexpr auto DEFAULT_CA_PATH {"etc/certs/root-ca.pem"};
-    constexpr auto DEFAULT_CA_CERTIFICATE_PATH {"etc/certs/root-ca.pem"};
+    constexpr auto DEFAULT_CA_PATH {REMOTED_MODULE_DEFAULT_CA_PATH};
+    constexpr auto DEFAULT_CA_CERTIFICATE_PATH {REMOTED_MODULE_DEFAULT_CA_CERTIFICATE_PATH};
     constexpr auto DEFAULT_CIPHERS {"TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"};
 
     // A positive caller value wins; otherwise the built-in default. remoted is expected to

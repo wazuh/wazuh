@@ -110,7 +110,7 @@ void rem_check_unauthenticated_cap(void);
 
 /* Exit with one deterministic message when a TLS file of the HTTPS agent listener is unreadable by the
  * service user. Called from HandleRemote() after the privilege drop and before CreatePID(), so
- * wazuh-manager-control never sees a remoted that is about to exit. */
+ * `wazuh-manager-control status` never reports as running a remoted that is about to exit. */
 void w_remoted_preflight_tls_files(void);
 
 /* Resolve every internal option the C++ module config owns, so 'remoted -t' refuses the same
