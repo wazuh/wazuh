@@ -322,6 +322,11 @@ cJSON *getDocumentLimits(const char *module) {
         cJSON_AddNumberToObject(cfg, "container_services", agent_module_limits.syscollector.container_services);
     } else if (strcmp(module, "sca") == 0) {
         cJSON_AddNumberToObject(cfg, "checks", agent_module_limits.sca.checks);
+    } else if (strcmp(module, "containers") == 0) {
+        /* Its own module name because it belongs to neither of the two that
+         * consume it: container_instances decides once, and syscheckd and
+         * modulesd both act on that one decision. */
+        cJSON_AddNumberToObject(cfg, "synced", agent_module_limits.containers.synced);
     } else {
         cJSON_Delete(cfg);
         return NULL;

@@ -10,6 +10,7 @@
 
 #if defined(__linux__)
 
+#include "agentd_query.h"
 #include "container_instances.h"
 #include "sym_load.h"
 #include "wmodules.h"
@@ -67,6 +68,52 @@ static cJSON* wm_container_instances_build_config(const wm_container_instances_t
     return config;
 }
 
+/* How many containers may report to the manager (#37532).
+ *
+ * Read here rather than inside the module because this is modulesd, where
+ * w_query_agentd already lives; the module itself is a shared object loaded by
+ * symbol and would otherwise need its own link against the agent's query
+ * socket for one integer.
+ *
+ * Returns 0 (unlimited) when the answer is not available. Waiting for it would
+ * hold container discovery behind the manager handshake, and a cap nobody has
+ * configured is the default anyway. A limit that CHANGES restarts the agent --
+ * module_limits_changed() drives that -- so this value is re-read at the only
+ * moment it can differ.
+ */
+static int wm_container_instances_sync_limit(void)
+{
+    char json_buffer[OS_MAXSTR] = {0};
+
+    if (!w_query_agentd(WM_CONTAINER_INSTANCES_LOGTAG, "getdoclimits containers", json_buffer, sizeof(json_buffer)))
+    {
+        mtdebug1(WM_CONTAINER_INSTANCES_LOGTAG,
+                 "Document limits are not available yet; every container may report.");
+        return 0;
+    }
+
+    cJSON* root = cJSON_Parse(json_buffer);
+    if (!root)
+    {
+        mtdebug1(WM_CONTAINER_INSTANCES_LOGTAG, "Could not parse the getdoclimits containers reply.");
+        return 0;
+    }
+
+    int limit = 0;
+    cJSON* synced = cJSON_GetObjectItem(root, "synced");
+    if (synced && cJSON_IsNumber(synced))
+    {
+        const double value = cJSON_GetNumberValue(synced);
+        if (value >= 0)
+        {
+            limit = (int)value;
+        }
+    }
+
+    cJSON_Delete(root);
+    return limit;
+}
+
 void* wm_container_instances_main(wm_container_instances_t* data)
 {
     if (!data || !data->enabled)
@@ -86,6 +133,7 @@ void* wm_container_instances_main(wm_container_instances_t* data)
     if (container_instances_start_ptr)
     {
         cJSON* config = wm_container_instances_build_config(data);
+        cJSON_AddNumberToObject(config, "synced_container_limit", wm_container_instances_sync_limit());
         container_instances_start_ptr(mtLoggingFunctionsWrapper, config);
         cJSON_Delete(config);
     }
