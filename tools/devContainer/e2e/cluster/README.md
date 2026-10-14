@@ -61,7 +61,12 @@ The worker needs two secrets, and both reach it as files mounted by compose
 | `indexer_password` | `WAZUH_INDEXER_MANAGER_PASSWORD` in `../.credentials.env` | piped into the worker's keystore (`indexer`/`password`) |
 
 `cluster.sh up` writes them to `cluster/.secrets/` (directory 0700, files 0600,
-gitignored) and `cluster.sh down` deletes them. Only that one key is taken from the
+gitignored) and `cluster.sh down` deletes them. A worker reads them only when it
+starts, and compose does not notice a secret file's new content, so when an `up`
+finds workers running and the two files differ from the ones the last successful
+`up` deployed (recorded as a digest in `cluster/.secrets/deployed`), it recreates
+them (`--force-recreate`) and says so; a failed `up` is therefore retried by the
+next one. Only that one key is taken from the
 credentials file: the other four (indexer admin and kibanaserver, Server API, WUI)
 never reach the worker. This is why the worker does not use `env_file:` as the base
 stack's indexer and dashboard do (`../docker-compose.yml`): an env file hands every

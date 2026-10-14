@@ -72,6 +72,14 @@ write_secret() {  # write_secret <name> <value>
   mv "${SECRETS_DIR}/$1.new" "${SECRETS_DIR}/$1"
 }
 
+# Digest of the two secret files, hashed one by one so a value moving from one to the other still
+# changes it. Absent files (first `up`, or after `down`) give an empty input: `|| true` keeps
+# pipefail from ending the script. `up` records it in .secrets/deployed once the workers run with
+# those files and compares against that record, so a failed `up` is retried.
+secrets_digest() {
+  { sha256sum "${SECRETS_DIR}/cluster_key" "${SECRETS_DIR}/indexer_password" 2>/dev/null || true; } | sha256sum
+}
+
 port_range() {  # port_range <base> <n>
   if [[ $2 -eq 1 ]]; then echo "$1"; else echo "$1-$(( $1 + $2 - 1 ))"; fi
 }
@@ -123,10 +131,13 @@ cmd_up() {
     || die "WAZUH_INDEXER_MANAGER_PASSWORD is not in ${CREDENTIALS_FILE}"
   password="$REPLY"
 
+  local current deployed
   ( umask 077; mkdir -p "$SECRETS_DIR" ); chmod 700 "$SECRETS_DIR"
   write_secret cluster_key "$key"
   write_secret indexer_password "$password"
   unset key password REPLY
+  current="$(secrets_digest)"
+  deployed="$(cat "${SECRETS_DIR}/deployed" 2>/dev/null || true)"
   echo "==> Secrets written to ${SECRETS_DIR}/ (0600): cluster_key, indexer_password"
 
   export WAZUH_CLUSTER_NAME="$name"
@@ -134,8 +145,18 @@ cmd_up() {
   WAZUH_WORKER_HTTPS_PORTS="$(port_range "$HTTPS_BASE" "$n")"
   WAZUH_WORKER_AGENT_PORTS="$(port_range "$AGENT_BASE" "$n")"
   WAZUH_WORKER_AUTHD_PORTS="$(port_range "$AUTHD_BASE" "$n")"
+  # Compose does not notice a secret file's new content, the rename above leaves a running worker
+  # with the old file mounted, and the entrypoint reads both only at start: running workers
+  # would keep the old key or password. Recreate them unless the last successful `up` deployed
+  # these very files (also when a previous `up` wrote them and then failed).
+  local recreate=()
+  if [[ "$current" != "$deployed" && -n "$(compose ps -q "$SERVICE" 2>/dev/null)" ]]; then
+    recreate=(--force-recreate)
+    echo "==> The secrets changed: recreating the running workers"
+  fi
   echo "==> Starting ${n} worker(s) of cluster '${name}' (host ports: HTTPS ${WAZUH_WORKER_HTTPS_PORTS}, agent ${WAZUH_WORKER_AGENT_PORTS}, authd ${WAZUH_WORKER_AUTHD_PORTS})"
-  compose up -d --build --scale "${SERVICE}=${n}" --wait --wait-timeout 300
+  compose up -d --build "${recreate[@]}" --scale "${SERVICE}=${n}" --wait --wait-timeout 300
+  ( umask 077; printf '%s' "$current" > "${SECRETS_DIR}/deployed" )
   echo
   print_ports
 }
