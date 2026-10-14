@@ -882,10 +882,6 @@ cJSON* wm_sys_dump(const wm_sys_t* sys)
 
     if (sys->flags.browser_extensions) cJSON_AddStringToObject(wm_sys, "browser_extensions", "yes");
     else cJSON_AddStringToObject(wm_sys, "browser_extensions", "no");
-    if (sys->flags.container_baseline) cJSON_AddStringToObject(wm_sys, "container_baseline", "yes");
-    else cJSON_AddStringToObject(wm_sys, "container_baseline", "no");
-
-    cJSON_AddNumberToObject(wm_sys, "container_baseline_interval", sys->container_baseline_interval);
 
 #ifdef WIN32
 
@@ -893,6 +889,17 @@ cJSON* wm_sys_dump(const wm_sys_t* sys)
     else cJSON_AddStringToObject(wm_sys, "hotfixes", "no");
 
 #endif
+
+    /* Appended after the collector flags above, not inserted among them. This
+     * dump is matched literally by the integration suite's default-values check
+     * (tests/integration/test_syscollector), whose pattern lists the collectors
+     * in order and ends in a wildcard -- so a field added at the end is covered,
+     * while one slipped in between two it names makes it stop matching. That is
+     * what putting these before the Windows-only "hotfixes" did. */
+    if (sys->flags.container_baseline) cJSON_AddStringToObject(wm_sys, "container_baseline", "yes");
+    else cJSON_AddStringToObject(wm_sys, "container_baseline", "no");
+
+    cJSON_AddNumberToObject(wm_sys, "container_baseline_interval", sys->container_baseline_interval);
 
     // Database synchronization values
     cJSON* synchronization = cJSON_CreateObject();
