@@ -112,19 +112,20 @@ case "$1" in
       fi
       ${DIR}/bin/wazuh-control stop > /dev/null 2>&1
 
-      # Save the conffiles
-      mkdir -p ${DIR}/tmp/conffiles
-      # Save the client.keys
-      if [ -f ${DIR}/etc/client.keys ]; then
-        cp -p ${DIR}/etc/client.keys ${DIR}/tmp/conffiles
-      fi
-      # Save the local_internal_options.conf
-      if [ -f ${DIR}/etc/local_internal_options.conf ]; then
-        cp -p ${DIR}/etc/local_internal_options.conf ${DIR}/tmp/conffiles
-      fi
-      # Save the ossec.conf
-      if [ -f ${DIR}/etc/ossec.conf ]; then
-        cp -p ${DIR}/etc/ossec.conf ${DIR}/tmp/conffiles
+      # Save the conffiles, for postrm to keep as .save. tmp/ is writable by the wazuh group, which
+      # could leave a link at tmp/conffiles for mkdir -p and cp to follow: whatever is there goes,
+      # and a plain mkdir makes the directory anew, failing if anything took its place meanwhile.
+      # Root owns it, and the sticky bit on tmp/ keeps the group from replacing it until postrm.
+      rm -rf ${DIR}/tmp/conffiles
+      if mkdir -m 0750 ${DIR}/tmp/conffiles 2> /dev/null; then
+        # A link in etc/ is not ours to save: skipped, and -P keeps one swapped in meanwhile a link.
+        for CONF_FILE in client.keys local_internal_options.conf ossec.conf; do
+          if [ -f ${DIR}/etc/${CONF_FILE} ] && [ ! -L ${DIR}/etc/${CONF_FILE} ]; then
+            cp -pP ${DIR}/etc/${CONF_FILE} ${DIR}/tmp/conffiles
+          fi
+        done
+      else
+        echo "WARNING: could not create ${DIR}/tmp/conffiles; the configuration files will not be kept as .save." >&2
       fi
 
     ;;
