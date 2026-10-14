@@ -7,7 +7,7 @@ All notable changes to this project will be documented in this file.
 
 #### Fixed
 
-- Fixed the validation of `group_id` when reading and writing group configuration files, rejecting values that are not a valid group name.
+- Fixed the validation of `group_id` when reading and writing group configuration files, rejecting values that are not a valid group name. ([#40363](https://github.com/wazuh/wazuh/pull/40363))
 
 ## [v4.14.10]
 
