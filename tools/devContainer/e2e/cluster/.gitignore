@@ -1,4 +1,5 @@
 .env
+.secrets/
 node/pkg/*.deb
 node/pkg/*.tar.gz
 node/pkg/wazuh-manager.ids
