@@ -2176,7 +2176,7 @@ checks:
           - "Account Discovery"
     condition: all
     rules:
-      - 'c:powershell "$f = Join-Path $env:TEMP ([IO.Path]::GetRandomFileName()); $null = secedit /export /cfg $f; $(gc $f | Select-String \"LSAAnonymousNameLookup\").ToString().Split(\"=\")[1].Trim(); Remove-Item $f" -> r:^0$'
+      - 'c:powershell "$f = Join-Path $env:TEMP ([IO.Path]::GetRandomFileName()); $null = secedit /export /cfg $f; $(gc $f | Select-String \"LSAAnonymousNameLookup\").ToString().Split(\"=\")[1].Trim(); Remove-Item $f" -> r:^0\s*$'
 
   # 2.3.10.2 (L1) Ensure 'Network access: Do not allow anonymous enumeration of SAM accounts' is set to 'Enabled' (MS only). (Automated)
   - id: 27046
