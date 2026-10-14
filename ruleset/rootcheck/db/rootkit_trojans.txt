@@ -16,17 +16,17 @@
 # file_name !string_to_search!Description
 
 # Common binaries and public trojan entries
-ls          !bash|^/bin/sh|dev/[^clu]|\.tmp/lsfile|duarawkz|/prof|/security|file\.h!
-env         !bash|^/bin/sh|file\.h|proc\.h|/dev/|^/bin/.*sh!
-echo        !bash|^/bin/sh|file\.h|proc\.h|/dev/[^cl]|^/bin/.*sh!
-chown       !bash|^/bin/sh|file\.h|proc\.h|/dev/[^cl]|^/bin/.*sh!
-chmod       !bash|^/bin/sh|file\.h|proc\.h|/dev/[^cl]|^/bin/.*sh!
-chgrp       !bash|^/bin/sh|file\.h|proc\.h|/dev/[^cl]|^/bin/.*sh!
-cat         !bash|^/bin/sh|file\.h|proc\.h|/dev/[^cl]|^/bin/.*sh!
+ls          !bash([^a.]|$)|basha([^n]|$)|bashan([^s]|$)|^/bin/sh|/dev/[^cfhlnrstuw]|\.tmp/lsfile|duarawkz|/prof|/security|file\.h!
+env         !bash([^a.]|$)|basha([^n]|$)|bashan([^s]|$)|^/bin/sh|file\.h|proc\.h|/dev/[^cfhlnrstuw]|^/bin/.*sh!
+echo        !bash([^a.]|$)|basha([^n]|$)|bashan([^s]|$)|^/bin/sh|file\.h|proc\.h|/dev/[^cfhlnrstuw]|^/bin/.*sh!
+chown       !bash([^a.]|$)|basha([^n]|$)|bashan([^s]|$)|^/bin/sh|file\.h|proc\.h|/dev/[^cfhlnrstuw]|^/bin/.*sh!
+chmod       !bash([^a.]|$)|basha([^n]|$)|bashan([^s]|$)|^/bin/sh|file\.h|proc\.h|/dev/[^cfhlnrstuw]|^/bin/.*sh!
+chgrp       !bash([^a.]|$)|basha([^n]|$)|bashan([^s]|$)|^/bin/sh|file\.h|proc\.h|/dev/[^cfhlnrstuw]|^/bin/.*sh!
+cat         !bash([^a.]|$)|basha([^n]|$)|bashan([^s]|$)|^/bin/sh|file\.h|proc\.h|/dev/[^cfhlnrstuw]|^/bin/.*sh!
 bash        !proc\.h|/dev/[0-9]|/dev/[hijkz]!
 sh          !proc\.h|/dev/[0-9]|/dev/[hijkz]!
-uname       !bash|^/bin/sh|file\.h|proc\.h|^/bin/.*sh!
-date        !bash|^/bin/sh|file\.h|proc\.h|/dev/[^cfhlnrstuw]|^/bin/.*sh!
+uname       !bash([^a.]|$)|basha([^n]|$)|bashan([^s]|$)|^/bin/sh|file\.h|proc\.h|^/bin/.*sh!
+date        !bash([^a.]|$)|basha([^n]|$)|bashan([^s]|$)|^/bin/sh|file\.h|proc\.h|/dev/[^cfhlnrstuw]|^/bin/.*sh!
 du          !w0rm|/prof|file\.h!
 df          !bash|^/bin/sh|file\.h|proc\.h|/dev/[^clurdv]|^/bin/.*sh!
 login       !elite|SucKIT|xlogin|vejeta|porcao|lets_log|sukasuk!
@@ -34,14 +34,14 @@ passwd      !bash|file\.h|proc\.h|/dev/ttyo|/dev/[A-Z]|/dev/[b-mo-s,uvxz]!
 mingetty    !bash|Dimensioni|pacchetto!
 chfn        !file\.h|proc\.h|/dev/ttyo|/dev/[A-Z]|/dev/[a-mo-s,uvxz]!
 chsh        !file\.h|proc\.h|/dev/ttyo|/dev/[A-Z]|/dev/[a-mo-s,uvxz]!
-mail        !bash|file\.h|proc\.h|/dev/[^nu]!
+mail        !([^ ]|^)bash|(^|[^h]) bash|(^|[^s])h bash|(^|[^h])sh bash|(^|[^s])hsh bash|file\.h|proc\.h|/dev/[^nu]!
 su          !/dev/[d-s,abuvxz]|/dev/[A-D]|/dev/[F-Z]|/dev/[0-9]|satori|vejeta|conf\.inv!
 sudo        !satori|vejeta|conf\.inv!
 crond       !/dev/[^nt]|bash!
 gpm         !bash|mingetty!
 ifconfig    !bash|^/bin/sh|/dev/tux|session.null|/dev/[^cludisopt]!
 diff        !bash|^/bin/sh|file\.h|proc\.h|(/dev/($|[^nf]|n($|[^u])|nu($|[^l])|nul($|[^l])|null.+|f($|[^u])|fu($|[^l])|ful($|[^l])|full.+))|^/bin/.*sh!
-md5sum      !bash|^/bin/sh|file\.h|proc\.h|/dev/[^cfhlnrstuw]|^/bin/.*sh!
+md5sum      !bash([^a.]|$)|basha([^n]|$)|bashan([^s]|$)|^/bin/sh|file\.h|proc\.h|/dev/[^cfhlnrstuw]|^/bin/.*sh!
 hdparm      !bash|/dev/ida!
 ldd         !/dev/[^n]|proc\.h|libshow.so|libproc.a!
 
