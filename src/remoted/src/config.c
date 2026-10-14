@@ -107,6 +107,13 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     /* SCA limits */
     manager_module_limits.sca.checks = getDefine_Int_default("sca", "checks_limit", 0, INT_MAX, 30000);
 
+    /* How many containers report at all (#37532). The only limit here that
+     * defaults to 0, and deliberately: every other one bounds a quantity that
+     * rarely reaches it, while this one binds as soon as it is set. Shipping a
+     * number would make an upgrade stop showing containers an operator can see
+     * today, which reads as data loss rather than as a cap doing its job. */
+    manager_module_limits.containers.synced = getDefine_Int_default("containers", "synced_limit", 0, INT_MAX, 0);
+
 
     cfg->port = 0;
     cfg->queue_size = 131072;

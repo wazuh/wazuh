@@ -84,6 +84,25 @@
 /* SCA default values */
 #define DEFAULT_SCA_CHECKS_LIMIT                        0
 
+/* How many containers may report to the manager at all (#37532).
+ *
+ * A THIRD layer, above the two beside it. A row cap refuses the store; a
+ * document cap gates the sync flag per dimension; this one decides, per
+ * container, whether that container reports at all. Without it the per-container
+ * budgets simply multiply by however many containers the runtime is running, and
+ * the total the agent ships stays unbounded.
+ *
+ * It belongs to neither the fim nor the syscollector namespace because it
+ * governs both: one decision, so the dashboard shows the same containers for
+ * files and for inventory rather than two disagreeing sets.
+ *
+ * 0 = unlimited, and that default is deliberate. Every other limit here could
+ * ship with a number because exceeding it is rare; this one binds the moment it
+ * is set, and a non-zero default would make an upgrade silently stop showing
+ * containers an operator can see today. That reads as data loss, so the knob is
+ * opt-in until a measured value is chosen. */
+#define DEFAULT_CONTAINERS_SYNCED_LIMIT                 0
+
 /**
  * @brief FIM module limits structure
  */
@@ -135,12 +154,25 @@ typedef struct sca_limits_t {
 } sca_limits_t;
 
 /**
+ * @brief Container-wide limits, owned by neither FIM nor syscollector
+ */
+typedef struct containers_limits_t {
+    /* Containers that may report to the manager; 0 = unlimited.
+     *
+     * Bounds HOW MANY containers report, where the container_* limits above
+     * bound how much each one reports. Both are needed: either alone leaves the
+     * other's product unbounded. */
+    int synced;
+} containers_limits_t;
+
+/**
  * @brief Structure to hold all module limits
  */
 typedef struct module_limits_t {
     fim_limits_t fim;
     syscollector_limits_t syscollector;
     sca_limits_t sca;
+    containers_limits_t containers;
     bool limits_received;
 } module_limits_t;
 
@@ -173,6 +205,12 @@ void syscollector_limits_init(syscollector_limits_t *syscollector);
  * @param sca Pointer to structure to initialize
  */
 void sca_limits_init(sca_limits_t *sca);
+
+/**
+ * @brief Initialize container-wide limits with defaults
+ * @param containers Pointer to structure to initialize
+ */
+void containers_limits_init(containers_limits_t *containers);
 
 /**
  * @brief Compare two module limits structures
