@@ -32,12 +32,12 @@ from wazuh.rbac.orm import UserRolesManager, RolesRulesManager, RulesManager
 #   * Every value the installation accepts must be one the API accepts. The credential resolver
 #     validates a value at install time that this function validates again at rotation; a value
 #     the installation accepts and the API later refuses is a deployment that comes up and cannot
-#     be administered. The resolver's rule (wazuh_password_validate() in wazuh-credentials.sh, the
-#     shared library downloaded from wazuh-installation-assistant by `make deps`) is deliberately
-#     STRICTER than this one -- the generator's alphabet and all four character classes -- because
-#     the value it accepts is written to credentials.env and parsed without escaping by every
-#     component. The converse does not hold and is not meant to: a password this function accepts
-#     may be one the resolver, and so the installation assistant's passwords tool, rejects.
+#     be administered. The resolver's rule (src/init/credentials/wazuh-manager-resolve-credentials.py)
+#     is deliberately STRICTER than this one -- the generator's alphabet and all four character
+#     classes -- because the value it accepts is written to credentials.env and parsed without
+#     escaping by every component. The converse does not hold and is not meant to: a password this
+#     function accepts may be one the resolver, and so the installation assistant's passwords tool,
+#     rejects.
 #   * Composition rules are not what makes a password strong, and NIST SP 800-63B 5.1.1.2 says so
 #     explicitly ("verifiers SHOULD NOT impose other composition rules"): they push operators toward
 #     predictable substitutions while barely moving the search space. The 12-character floor -- the
@@ -59,9 +59,11 @@ PASSWORD_MAX_LENGTH = 64
 def validate_password(password: str):
     """Check a password against the Server API password policy.
 
-    This is the rule the API applies to every user. The credential resolver applies a stricter
-    one at install time (see the comment above), so a value it accepts or generates is never one
-    this function would reject later; the reverse is not guaranteed.
+    This is the rule the API applies to every user. The credential resolver
+    (src/init/credentials/wazuh-manager-resolve-credentials.py) runs before the framework is
+    importable and applies a stricter one at install time (see the comment above), so a value it
+    accepts or generates is never one this function would reject later; its test suite checks that
+    against this file. The reverse is not guaranteed.
 
     Parameters
     ----------

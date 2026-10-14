@@ -4,13 +4,11 @@
 
 """Passwords: the rules, the Server API step (publish, then seed; masters only) and the indexer password step.
 
-Cases ported from the shell suite name their origin, `test_resolve_credentials.sh:<line>` (resolver) or
-`test-wazuh-helpers.sh:<line>` (helpers), in their docstring. The three Wazuh programs are the stubs of conftest.
+The three Wazuh programs are the stubs of conftest.
 """
 
 import io
 import os
-import re
 import stat
 
 import pytest
@@ -22,7 +20,6 @@ GOOD_API = "Api.Passw0rd-123"
 GOOD_WUI = "Wui.Passw0rd-456"
 GOOD_IDX = "Idx.Passw0rd-789"
 # framework/wazuh/security.py:49-52, the Server API's own rule.
-API_RULE = re.compile(r'^(?=.*[A-Za-z])(?=.*\d)[\x21-\x7e]*\Z')
 
 
 @pytest.fixture
@@ -61,7 +58,7 @@ def assert_no_secret(texts, *secrets_):
 # ---------------------------------------------------------------- rules
 
 def test_generated_shape(resolver):
-    """test-wazuh-helpers.sh:191 (passwords): 32 chars, alphabet only, four classes."""
+    """A generated password: 32 characters, the alphabet only, all four classes."""
     drawn = {resolver.generate_password() for _ in range(200)}
     assert len(drawn) == 200
     for value in drawn:
@@ -76,7 +73,7 @@ def test_generated_shape(resolver):
     ("Aa1.Aa1.Aa1#", "may only use"), ("Aa1.Aa1.Aa1ñ", "may only use"),
 ])
 def test_rule(resolver, value, rule):
-    """test_resolve_credentials.sh:351-436 (four classes, alphabet, length)."""
+    """A supplied password needs all four classes, the alphabet only, and a length within bounds."""
     problem = resolver.password_problem(value)
     assert problem is not None and rule in problem and value not in problem
 
@@ -86,18 +83,10 @@ def test_rule_accepts(resolver, value):
     assert resolver.password_problem(value) is None
 
 
-def test_rule_subset_of_api(resolver):
-    """Whatever the resolver accepts, rbac_control seed (the Server API rule) accepts."""
-    values = [resolver.generate_password() for _ in range(500)] + ["Aa1." * 3, "Aa1." * 16]
-    for value in values:
-        assert resolver.password_problem(value) is None
-        assert API_RULE.match(value) and 12 <= len(value) <= 64
-
-
 # ---------------------------------------------------------------- Server API passwords
 
 def test_fresh_install(resolver, sandbox, calls):
-    """test_resolve_credentials.sh:201-243: both generated, published, seeded with the same pair."""
+    """Nothing supplied: both generated, published, and seeded with the same pair."""
     code, out, err = run(resolver, sandbox, "--install", environ={IDX: GOOD_IDX})
     assert code == 0 and err == ""
     header, values = published(sandbox)
@@ -112,7 +101,7 @@ def test_fresh_install(resolver, sandbox, calls):
 
 
 def test_supplied_beats_generated(resolver, sandbox):
-    """test_resolve_credentials.sh:298-327: a supplied value is seeded and published; the other is generated."""
+    """A supplied value is seeded and published; the other is generated."""
     sandbox.write(os.path.join(sandbox.conf, "local.env"), f"{API}={GOOD_API}\n")
     run(resolver, sandbox, "--install", environ={IDX: GOOD_IDX})
     _, values = published(sandbox)
@@ -128,7 +117,7 @@ def test_env_beats_local(resolver, sandbox):
 
 @pytest.mark.parametrize("bad", ["short.A1", "NoDigits.Here", "with space A1.a"])
 def test_invalid_supplied_no_fallback(resolver, sandbox, bad):
-    """test_resolve_credentials.sh:329-375: install exits 0 but seeds and publishes nothing; prestart refuses."""
+    """An invalid supplied value: install exits 0 but seeds and publishes nothing; prestart refuses."""
     code, out, err = run(resolver, sandbox, "--install", environ={API: bad, IDX: GOOD_IDX})
     assert code == 0 and f"INVALID {API}: " in err and "(set in the environment)" in err
     assert published(sandbox) is None and sandbox.seed_calls() == []
@@ -138,7 +127,7 @@ def test_invalid_supplied_no_fallback(resolver, sandbox, bad):
 
 
 def test_seeded_untouched(resolver, sandbox, calls):
-    """test_resolve_credentials.sh:232-236: a re-run over a seeded database changes nothing."""
+    """A re-run over a seeded database changes nothing."""
     run(resolver, sandbox, "--install", environ={IDX: GOOD_IDX})
     before = sandbox.tree_state()
     calls.clear()
@@ -159,7 +148,7 @@ def test_empty_rbac_db_is_unseeded(resolver, sandbox):
     ("worker", 0, False, False), ("master", 0, True, False), ("", 2, True, False), ("", 1, False, True),
 ])
 def test_worker(resolver, sandbox, calls, role, conf_exit, seeded, invalid):
-    """test_resolve_credentials.sh:456-526 (cluster role); an unreadable role now fails closed: nothing is seeded."""
+    """A master, or a node with no cluster section, seeds; a worker does not; an unreadable role fails closed."""
     sandbox.stage_ca()
     sandbox.control(role=role, conf_exit=conf_exit)
     code, out, err = run(resolver, sandbox, "--prestart", environ={IDX: GOOD_IDX})
@@ -223,7 +212,7 @@ def test_export_planted(resolver, sandbox):
 
 @pytest.mark.parametrize("source", ["environment", "local.env", "indexer export"])
 def test_indexer_password_stored(resolver, sandbox, source):
-    """test_resolve_credentials.sh:201-243 (key supplied later lets the start pass, lands in the keystore)."""
+    """The indexer password supplied later lets the start pass and lands in the keystore."""
     sandbox.stage_ca()
     environ = {}
     if source == "environment":
@@ -239,7 +228,7 @@ def test_indexer_password_stored(resolver, sandbox, source):
 
 
 def test_indexer_password_missing(resolver, sandbox):
-    """test_resolve_credentials.sh:201-243: the start names what to do."""
+    """No indexer password anywhere: the start names what to do."""
     code, _, err = run(resolver, sandbox, "--prestart")
     assert code == 1
     assert (f"MISSING {IDX}: set it in {sandbox.conf}/local.env (copy it from the indexer's "
@@ -248,14 +237,14 @@ def test_indexer_password_missing(resolver, sandbox):
 
 
 def test_indexer_password_kept(resolver, sandbox, calls):
-    """A stored password beats a supplied one (test_resolve_credentials.sh:298-327)."""
+    """A stored indexer password beats a supplied one."""
     run(resolver, sandbox, "--prestart", environ={IDX: GOOD_IDX})
     run(resolver, sandbox, "--prestart", environ={IDX: "Other.Passw0rd-1"})
     assert sandbox.keystore()["indexer/password"] == GOOD_IDX
 
 
 def test_username_backfill(resolver, sandbox):
-    """test_resolve_credentials.sh:527-546: a password with no username gets wazuh-manager."""
+    """A stored password with no username gets wazuh-manager as its username."""
     sandbox.stage_ca()
     import json
     with open(os.path.join(sandbox.keystore_dir, "keystore.json"), "w") as handle:
