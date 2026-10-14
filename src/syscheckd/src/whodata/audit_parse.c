@@ -392,6 +392,29 @@ char *gen_audit_path(char *cwd, char *path0, char *path1) {
 }
 
 
+// Keep the audited path when it belongs to a whodata directory. Otherwise, the operation went
+// through a followed symbolic link, so resolve it to match the path FIM stores.
+static char *audit_resolve_path(char *file_path) {
+    w_rwlock_rdlock(&syscheck.directories_lock);
+    const directory_t *configuration = fim_configuration_directory(file_path);
+    const bool whodata = configuration && (configuration->options & WHODATA_ACTIVE);
+    w_rwlock_unlock(&syscheck.directories_lock);
+
+    if (whodata) {
+        return file_path;
+    }
+
+    char *resolved = realpath(file_path, NULL);
+    if (resolved == NULL) {
+        mdebug1(FIM_CHECK_LINK_REALPATH, file_path); // LCOV_EXCL_LINE
+        return file_path;
+    }
+
+    free(file_path);
+    return resolved;
+}
+
+
 void get_parent_process_info(char *ppid, char **const parent_name, char **const parent_cwd) {
 
     char *slinkexe = NULL;
@@ -766,16 +789,7 @@ void audit_parse(char *buffer) {
                                 (w_evt->inode) ? w_evt->inode : "", (file_path) ? file_path : "",
                                 (w_evt->process_name) ? w_evt->process_name : "");
 
-                        // Resolve the path like the items=2 case below: when the operation is
-                        // performed through a monitored symbolic link, the kernel reports the
-                        // symlink path, which does not match the resolved path FIM stores.
-                        w_evt->path = realpath(file_path, NULL);
-                        if (w_evt->path == NULL) {
-                            os_strdup(file_path, w_evt->path);
-                            mdebug1(FIM_CHECK_LINK_REALPATH, w_evt->path); // LCOV_EXCL_LINE
-                        }
-
-                        free(file_path);
+                        w_evt->path = audit_resolve_path(file_path);
 
                         if (w_evt->inode) {
                             fim_whodata_event(w_evt);
@@ -793,13 +807,7 @@ void audit_parse(char *buffer) {
                                 (w_evt->inode) ? w_evt->inode : "", (file_path) ? file_path : "",
                                 (w_evt->process_name) ? w_evt->process_name : "");
 
-                        w_evt->path = realpath(file_path, NULL);
-                        if (w_evt->path == NULL) {
-                            os_strdup(file_path, w_evt->path);
-                            mdebug1(FIM_CHECK_LINK_REALPATH, w_evt->path); // LCOV_EXCL_LINE
-                        }
-
-                        free(file_path);
+                        w_evt->path = audit_resolve_path(file_path);
 
                         if (w_evt->inode) {
                             fim_whodata_event(w_evt);

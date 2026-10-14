@@ -580,6 +580,8 @@ void test_audit_parse(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg,
         "(6247): audit_event: uid=root, auid=, euid=root, gid=root, pid=44082, ppid=3211, inode=19, path=/root/test/test, pname=74657374C3B1");
 
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
     expect_string(__wrap_realpath, path, "/root/test/test");
     will_return(__wrap_realpath, strdup("/root/test/test"));
 
@@ -996,6 +998,8 @@ void test_audit_parse_chmod(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg,
         "(6247): audit_event: uid=user99, auid=lp, euid=user29, gid=, pid=58280, ppid=3211, inode=19, path=/root/test/file, pname=/usr/bin/chmod");
 
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
     expect_string(__wrap_realpath, path, "/root/test/file");
     will_return(__wrap_realpath, strdup("/root/test/file"));
 
@@ -1112,6 +1116,8 @@ void test_audit_parse_delete_folder(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6247): audit_event: uid=root, auid=root, euid=root, gid=root, pid=62845, ppid=4340, inode=110, path=/root/test, pname=/usr/bin/rm");
 
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
     expect_string(__wrap_realpath, path, "/root/test");
     will_return(__wrap_realpath, strdup("/root/test"));
 
@@ -1166,6 +1172,8 @@ void test_audit_parse_delete_folder_hex(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6247): audit_event: uid=root, auid=root, euid=root, gid=root, pid=62845, ppid=4340, inode=110, path=/root/test, pname=/usr/bin/rm");
 
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
     expect_string(__wrap_realpath, path, "/root/test");
     will_return(__wrap_realpath, strdup("/root/test"));
 
