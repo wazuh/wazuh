@@ -4172,8 +4172,8 @@ void test_remoted_module_control_config_silent_below_disconnection_time(void** s
     assert_int_equal(rm_config.vd_scan_write_timeout_sec, 5);
 }
 
-/* Tests w_remoted_check_tls_files: the preflight that fails closed before remoted_module_start(). The
- * messages are pinned verbatim (the integration test test_https_cert_missing matches them in the log). */
+/* Tests w_remoted_check_tls_files: the preflight that fails closed before remoted writes its PID file. The
+ * five messages are pinned verbatim (the integration test test_https_cert_missing matches them in the log). */
 
 #define TLS_FILES_TEST_CERT "etc/certs/remoted.pem"
 #define TLS_FILES_TEST_KEY "etc/certs/remoted-key.pem"
@@ -4201,14 +4201,25 @@ static void expect_tls_files_access(int certificate_result, int key_result)
     will_return(__wrap_access, key_result);
 }
 
+// The CA certificate published on /cacerts is always probed last, R_OK too: only the cases that get
+// past every earlier check reach it.
+static void expect_tls_ca_certificate_access(const char *ca_certificate, int ca_certificate_result)
+{
+    expect_string(__wrap_access, __name, ca_certificate);
+    expect_value(__wrap_access, __type, R_OK);
+    will_return(__wrap_access, ca_certificate_result);
+}
+
 void test_w_remoted_check_tls_files_ok(void** state)
 {
     (void) state;
     remoted_module_config_t rm_config;
     tls_files_config(&rm_config);
 
-    // No expect_string for __wrap__merror_exit: exiting here fails the test.
+    // No expect_string for __wrap__merror_exit: exiting here fails the test. An empty
+    // ca_certificate_path probes the module's default, never access("").
     expect_tls_files_access(0, 0);
+    expect_tls_ca_certificate_access("etc/certs/root-ca.pem", 0);
 
     w_remoted_check_tls_files(&rm_config);
 }
@@ -4316,6 +4327,7 @@ void test_w_remoted_check_tls_files_ca_default_full(void** state)
     // __wrap__merror_exit: exiting here fails the test.
     expect_tls_files_access(0, 0);
     expect_tls_ca_access("etc/certs/root-ca.pem", 0);
+    expect_tls_ca_certificate_access("etc/certs/root-ca.pem", 0);
 
     w_remoted_check_tls_files(&rm_config);
 }
@@ -4327,8 +4339,10 @@ void test_w_remoted_check_tls_files_ca_none(void** state)
     tls_files_config(&rm_config);
     rm_config.verification_mode = REMOTED_HTTPS_VERIFY_NONE;
 
-    // Only the pair is probed: a third access() call would find no expectation and fail the test.
+    // The pair and the published CA certificate are probed, never the verification CA: a fourth
+    // access() call would find no expectation and fail the test.
     expect_tls_files_access(0, 0);
+    expect_tls_ca_certificate_access("etc/certs/root-ca.pem", 0);
 
     w_remoted_check_tls_files(&rm_config);
 }
@@ -4340,8 +4354,49 @@ void test_w_remoted_check_tls_files_ca_unset(void** state)
     tls_files_config(&rm_config);
     rm_config.verification_mode = REMOTED_HTTPS_VERIFY_UNSET;
 
-    // UNSET resolves to no verification in the module, so the CA is not probed either.
+    // UNSET resolves to no verification in the module, so the CA is not probed either; the published
+    // CA certificate still is.
     expect_tls_files_access(0, 0);
+    expect_tls_ca_certificate_access("etc/certs/root-ca.pem", 0);
+
+    w_remoted_check_tls_files(&rm_config);
+}
+
+// The published CA certificate is required in every verification mode: 5.x agents bootstrap their
+// trust from GET /cacerts. It is reported as configured.
+void test_w_remoted_check_tls_files_ca_certificate_unreadable(void** state)
+{
+    (void) state;
+    remoted_module_config_t rm_config;
+    tls_files_config(&rm_config);
+    snprintf(rm_config.ca_certificate_path, sizeof(rm_config.ca_certificate_path), "%s", "etc/certs/publish.pem");
+    rm_config.verification_mode = REMOTED_HTTPS_VERIFY_NONE;
+
+    expect_tls_files_access(0, 0);
+    expect_tls_ca_certificate_access("etc/certs/publish.pem", -1);
+    expect_string(__wrap__merror_exit, formatted_msg,
+                  "Cannot start the HTTPS agent listener: the CA certificate 'etc/certs/publish.pem' that remoted "
+                  "publishes on /cacerts for agent enrollment is missing or unreadable by the service user. If the "
+                  "file is present, check that it is readable by the service user, since remoted opens it after "
+                  "dropping privileges; otherwise provision it, or point remote.https.ca_certificate at the CA "
+                  "certificate 5.x agents must trust (see 'Credentials' in the installation guide).");
+
+    expect_assert_failure(w_remoted_check_tls_files(&rm_config));
+}
+
+// An explicit, readable ca_certificate_path is probed as configured, after the verification CA.
+void test_w_remoted_check_tls_files_ca_certificate_ok(void** state)
+{
+    (void) state;
+    remoted_module_config_t rm_config;
+    tls_files_config(&rm_config);
+    snprintf(rm_config.ca_certificate_path, sizeof(rm_config.ca_certificate_path), "%s", "/etc/pki/wazuh/ca.pem");
+    rm_config.verification_mode = REMOTED_HTTPS_VERIFY_CERTIFICATE;
+
+    // No expect_string for __wrap__merror_exit: exiting here fails the test.
+    expect_tls_files_access(0, 0);
+    expect_tls_ca_access("etc/certs/root-ca.pem", 0);
+    expect_tls_ca_certificate_access("/etc/pki/wazuh/ca.pem", 0);
 
     w_remoted_check_tls_files(&rm_config);
 }
@@ -4529,6 +4584,8 @@ int main(void)
         cmocka_unit_test(test_w_remoted_check_tls_files_ca_default_full),
         cmocka_unit_test(test_w_remoted_check_tls_files_ca_none),
         cmocka_unit_test(test_w_remoted_check_tls_files_ca_unset),
+        cmocka_unit_test(test_w_remoted_check_tls_files_ca_certificate_unreadable),
+        cmocka_unit_test(test_w_remoted_check_tls_files_ca_certificate_ok),
         cmocka_unit_test(test_w_remoted_check_tls_files_absolute_paths)};
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

@@ -325,10 +325,11 @@ src/http_server/
        `certificate_path`/`private_key_path` are file paths (not PEM content) opened by the
        module itself, after `remoted` has already dropped root privileges (`Privsep_SetUser()`)
        -- so both files (and `ca_path`, when configured) must be readable by the unprivileged
-       user `remoted` runs as. `secure.c` probes the pair with `access(R_OK)`
-       (`w_remoted_check_tls_files()`) right before `remoted_module_start()` and exits with a
-       deterministic ERROR when either is missing or unreadable, so this module's own load
-       failure only fires for files that exist and are readable but unusable.
+       user `remoted` runs as. `secure.c` probes the pair, `ca_path` when client-certificate
+       verification is on, and `ca_certificate_path` (the CA published on `/cacerts`) with
+       `access(R_OK)` (`w_remoted_check_tls_files()`) right after the privilege drop, before remoted writes its PID file, and
+       exits with a deterministic ERROR when one is missing or unreadable, so this module's own
+       load failure only fires for files that exist and are readable but unusable.
     3. Memory-management: `max_inflight_bytes` (bytes; default 256 MiB),
        `max_parallel_connections` (default 256), `max_handshakes_per_source` (default 32; 0 is a
        real setting, "no cap", so it travels with a `_set` flag like `jwt_clock_skew`),
@@ -1622,8 +1623,8 @@ listener pair the operator provisions. The manager generates no certificate at a
 `etc/certs`, re-applies the pair's ownership and prints a `NOTICE` when it is missing, and the
 manager fails closed without it — `wazuh-manager-conf validate` (run by `wazuh-manager-control
 start`) rejects a missing file with `(1244) … file not found`, and remoted itself probes both paths
-with `access(R_OK)` after dropping privileges (`w_remoted_check_tls_files()` in `secure.c`, right
-before `remoted_module_start()`) and exits with a deterministic message, so this module's own
+(plus the client CA in verification modes and the CA published on `/cacerts`) with `access(R_OK)` after dropping privileges (`w_remoted_check_tls_files()` in `secure.c`, right
+after the privilege drop and before remoted writes its PID file) and exits with a deterministic message, so this module's own
 exception on an unreadable pair is the last resort, not the first line (see
 [Certificate provisioning and fail-closed start](../../../docs/ref/modules/remoted/https-events-api.md#certificate-provisioning-and-fail-closed-start)).
 Explicit `<auth>` certificate overrides in `etc/wazuh-manager.conf` keep working unchanged — only the generated

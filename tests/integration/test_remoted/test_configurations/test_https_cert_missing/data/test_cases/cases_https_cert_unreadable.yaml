@@ -3,12 +3,31 @@
   configuration_parameters:
     CERTIFICATE: 'etc/certs/remoted.pem'
     KEY: 'etc/certs/remoted-key.pem'
+    CA_CERTIFICATE: 'etc/certs/root-ca.pem'
   metadata:
     certificate: 'etc/certs/remoted.pem'
     key: 'etc/certs/remoted-key.pem'
+    ca_certificate: 'etc/certs/root-ca.pem'
     mutation: unreadable_key
     # Neither of the two layers that run as root can see an ownership problem: the credential
     # resolver does not look at certificates outside installation, and the configuration validator
     # only checks the file exists. remoted probes the pair after dropping privileges
     # (w_remoted_check_tls_files() in src/remoted/src/secure.c) and exits with this line.
     expected_error: ".*Cannot start the HTTPS agent listener: the TLS private key '.*remoted-key\\.pem' is missing or unreadable by the service user.*"
+- name: Published CA certificate unreadable by the service user
+  description: With the ca_certificate remoted publishes on /cacerts present but root-owned (0600), the validator passes and remoted refuses to start with its preflight error naming that file
+  configuration_parameters:
+    CERTIFICATE: 'etc/certs/remoted.pem'
+    KEY: 'etc/certs/remoted-key.pem'
+    CA_CERTIFICATE: 'etc/certs/cacerts-unreadable.pem'
+  metadata:
+    certificate: 'etc/certs/remoted.pem'
+    key: 'etc/certs/remoted-key.pem'
+    ca_certificate: 'etc/certs/cacerts-unreadable.pem'
+    mutation: unreadable_ca_certificate
+    # A dedicated copy of etc/certs/root-ca.pem, created by the fixture root-owned 0600 and removed
+    # afterwards: root-ca.pem itself is shared with other daemons, which must keep starting. The
+    # validator runs as root and only checks the file exists; remoted probes the published CA
+    # certificate after dropping privileges, in every verification mode, since 5.x agents bootstrap
+    # their trust from GET /cacerts (w_remoted_check_tls_files() in src/remoted/src/secure.c).
+    expected_error: ".*Cannot start the HTTPS agent listener: the CA certificate '.*cacerts-unreadable\\.pem' that remoted publishes on /cacerts for agent enrollment is missing or unreadable by the service user.*"

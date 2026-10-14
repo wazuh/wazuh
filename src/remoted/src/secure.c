@@ -65,6 +65,10 @@ _Static_assert(REMOTED_HTTPS_RATE_LIMIT_UNSET == REMOTED_MODULE_RATE_LIMIT_UNSET
 // must be made to the other.
 #define REMOTED_TLS_DEFAULT_CA_PATH "etc/certs/root-ca.pem"
 
+// The CA certificate the module publishes on GET /cacerts when ca_certificate_path is left empty.
+// It mirrors DEFAULT_CA_CERTIFICATE_PATH in the same httpServerConfig.cpp, under the same rule.
+#define REMOTED_TLS_DEFAULT_CA_CERTIFICATE_PATH "etc/certs/root-ca.pem"
+
 #ifdef WAZUH_UNIT_TESTING
 // Remove static qualifier when unit testing
 #define STATIC
@@ -618,20 +622,25 @@ STATIC void remoted_module_control_config(remoted_module_config_t *rm_config) {
 
 /**
  * @brief Refuse to start when a TLS file the HTTPS agent listener will open cannot be read: its
- *        certificate and private key always, and the CA bundle that verifies agent client
- *        certificates when verification is enabled. The manager does not generate these files: the
+ *        certificate and private key always, the CA bundle that verifies agent client certificates
+ *        when verification is enabled, and the CA certificate it publishes on GET /cacerts always
+ *        (5.x agents bootstrap their trust in the manager from it at enrollment; without it the
+ *        listener would run and answer 404). The manager does not generate these files: the
  *        operator provisions them. The configuration validator wazuh-manager-control runs first
  *        (wazuh-manager-conf validate) only checks that they exist, as root; this runs after remoted
- *        has dropped privileges (main.c, HandleRemote()), with the installation directory as its
- *        working directory, so access(R_OK) answers the question the C++ module would otherwise die
- *        on: can the service user open them? Exactly one deterministic message is logged (the paths
- *        as configured: relative to the installation directory, or absolute) and the daemon exits;
+ *        has dropped privileges and before the PID file is written, so wazuh-manager-control never
+ *        sees a remoted that is about to exit (w_remoted_preflight_tls_files(), called from
+ *        HandleRemote() in remoted.c), with the installation directory as its working directory, so
+ *        access(R_OK) answers the question the C++ module would otherwise die on: can the service
+ *        user open them? Exactly one deterministic message is logged (the paths as configured:
+ *        relative to the installation directory, or absolute) and the daemon exits;
  *        the module's own exception (RestinioHttpServer) stays as the last resort for files that
  *        exist but fail to load. certificate_path/private_key_path are always populated: the schema
  *        gives both options a non-empty default and w_remoted_build_module_config() copies them
  *        verbatim. The CA is probed only in the modes where the module loads it (UNSET and NONE both
  *        mean no verification, httpServerConfig.cpp), and an empty ca_path stands for the module's
- *        default, REMOTED_TLS_DEFAULT_CA_PATH, so access("") is never asked.
+ *        default, REMOTED_TLS_DEFAULT_CA_PATH, so access("") is never asked; likewise, an empty
+ *        ca_certificate_path stands for REMOTED_TLS_DEFAULT_CA_CERTIFICATE_PATH.
  */
 STATIC void w_remoted_check_tls_files(const remoted_module_config_t *rm_config) {
     const char *certificate = rm_config->certificate_path;
@@ -655,6 +664,21 @@ STATIC void w_remoted_check_tls_files(const remoted_module_config_t *rm_config) 
             merror_exit(REMOTED_TLS_FILES_MISSING_CA, ca);
         }
     }
+
+    const char *ca_certificate = rm_config->ca_certificate_path[0] != '\0' ? rm_config->ca_certificate_path
+                                                                           : REMOTED_TLS_DEFAULT_CA_CERTIFICATE_PATH;
+
+    if (access(ca_certificate, R_OK) != 0) {
+        merror_exit(REMOTED_TLS_FILES_MISSING_CA_CERTIFICATE, ca_certificate);
+    }
+}
+
+void w_remoted_preflight_tls_files(void) {
+    // Only the TLS paths and verification_mode matter to the probe; they are copied from logr as
+    // the configuration left them, so nothing HandleSecure() initializes is needed yet.
+    remoted_module_config_t rm_config;
+    w_remoted_build_module_config(&logr, &rm_config);
+    w_remoted_check_tls_files(&rm_config);
 }
 
 void w_remoted_validate_module_config(void) {
@@ -701,7 +725,7 @@ void HandleSecure()
         remoted_module_config_t rm_config;
         w_remoted_build_module_config(&logr, &rm_config);
         remoted_module_control_config(&rm_config);
-        w_remoted_check_tls_files(&rm_config);
+        // The TLS files were already probed by w_remoted_preflight_tls_files(), before CreatePID().
 
         char *rm_cluster_name = get_cluster_name();
         if (rm_cluster_name) {

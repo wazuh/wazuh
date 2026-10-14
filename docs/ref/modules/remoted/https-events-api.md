@@ -104,22 +104,23 @@ Without a usable pair the manager **fails closed**, in three layers, from the ou
    `(1244): Invalid configuration at '/remote/https/certificate': file not found:
    /var/wazuh-manager/etc/certs/remoted.pem (issued by the credential resolver at installation, or
    provisioned externally, e.g. with wazuh-certs-tool).`
-2. **`wazuh-manager-remoted`**, after dropping privileges and right before
-   starting this module, probes both paths with `access(R_OK)` and exits with exactly one of
+2. **`wazuh-manager-remoted`**, after dropping privileges and before remoted writes its PID file
+   (so `wazuh-manager-control` never sees a remoted that is about to exit), probes both paths with `access(R_OK)` and exits with exactly one of
    `Cannot start the HTTPS agent listener: the TLS certificate '<c>' and private key '<k>' are missing
    or unreadable by the service user.`, `… the TLS certificate '<c>' is missing or unreadable by the
    service user.` or `… the TLS private key '<k>' is missing or unreadable by the service user.`,
-   each followed by the hint `The pair is issued at installation and is never reissued at start: if the files are present, check that they are owned by the service user and mode 0640, since remoted opens them after dropping privileges; otherwise provision remoted.pem, remoted-key.pem and root-ca.pem under etc/certs (see 'Credentials' in the installation guide).` When `remote.https.verification_mode` is `certificate` or `full`, it also probes the CA that verifies agent client certificates (`remote.https.ca`; empty means `etc/certs/root-ca.pem`) and exits with `Cannot start the HTTPS agent listener: the CA certificate '<ca>', which verifies agent client certificates, is missing or unreadable by the service user.` followed by the hint ` remote.https.verification_mode requires it: if the file is present, check that it is readable by the service user, since remoted opens it after dropping privileges; otherwise point remote.https.ca at the CA that signs the agents' client certificates.` This is the layer a present-but-root-owned pair hits: the validator runs as
+   each followed by the hint `The pair is issued at installation and is never reissued at start: if the files are present, check that they are owned by the service user and mode 0640, since remoted opens them after dropping privileges; otherwise provision remoted.pem, remoted-key.pem and root-ca.pem under etc/certs (see 'Credentials' in the installation guide).` When `remote.https.verification_mode` is `certificate` or `full`, it also probes the CA that verifies agent client certificates (`remote.https.ca`; empty means `etc/certs/root-ca.pem`) and exits with `Cannot start the HTTPS agent listener: the CA certificate '<ca>', which verifies agent client certificates, is missing or unreadable by the service user.` followed by the hint ` remote.https.verification_mode requires it: if the file is present, check that it is readable by the service user, since remoted opens it after dropping privileges; otherwise point remote.https.ca at the CA that signs the agents' client certificates.` In every mode it then probes the CA certificate it publishes on `GET /cacerts` (`remote.https.ca_certificate`; empty means `etc/certs/root-ca.pem`) and exits with `Cannot start the HTTPS agent listener: the CA certificate '<ca_certificate>' that remoted publishes on /cacerts for agent enrollment is missing or unreadable by the service user.` followed by the hint ` If the file is present, check that it is readable by the service user, since remoted opens it after dropping privileges; otherwise provision it, or point remote.https.ca_certificate at the CA certificate 5.x agents must trust (see 'Credentials' in the installation guide).` This is the layer a present-but-root-owned pair hits: the validator runs as
    root and cannot tell. `wazuh-manager-authd` fails the same way on the same files (`SSL context
    setup failed (certificate '…', key '…'). authd reuses the HTTPS agent listener's pair, …`).
 3. **The module itself** fails to load a pair that passed both probes but is unusable (corrupt PEM,
    key/certificate mismatch): the ERROR names which of the two is the problem and, as with every
    other startup failure, `remoted` does not start.
 
-`remote.https.ca_certificate` must exist at start — the validator above refuses a missing
-`root-ca.pem` with the same `(1244) … file not found` verdict — but the listener itself does not need
-it: when the file exists and the service user cannot read it, or it disappears after the start,
-remoted still runs and `GET /cacerts` answers `404` (or keeps serving the last bundle it read).
+`remote.https.ca_certificate` must be readable at start — the validator above refuses a missing
+`root-ca.pem` with the same `(1244) … file not found` verdict, and remoted's probe (step 2) exits when
+the service user cannot read it, since 5.x agents bootstrap their trust from `GET /cacerts`. Only if
+it becomes unreadable or disappears after the start does remoted keep running: `GET /cacerts` then
+answers `404` (or keeps serving the last bundle it read).
 
 ### Renewing the listener certificate
 
@@ -744,8 +745,8 @@ Four more that are not about tuning:
   OpenSSL KDF provider is broken: every Password-mode enrollment fails closed until it is fixed,
   distinct from an unreadable or invalid password file (see above).
 - **`Cannot start the HTTPS agent listener: the TLS certificate '…' / private key '…' is missing
-  or unreadable by the service user.`** (ERROR, then `remoted` exits; with `verification_mode` `certificate` or `full` the same preflight also reports `the CA certificate '…', which verifies agent client certificates, is missing or unreadable by the service user.`) is remoted's own preflight,
-  run after it has dropped privileges and right before this module starts. A missing file rarely
+  or unreadable by the service user.`** (ERROR, then `remoted` exits; with `verification_mode` `certificate` or `full` the same preflight also reports `the CA certificate '…', which verifies agent client certificates, is missing or unreadable by the service user.`, and in every mode `the CA certificate '…' that remoted publishes on /cacerts for agent enrollment is missing or unreadable by the service user.`) is remoted's own preflight,
+  run after it has dropped privileges and before remoted writes its PID file. A missing file rarely
   gets this far — `wazuh-manager-control start` refuses first with the validator's `(1244) … file
   not found` verdict — so this almost always means an ownership/mode mismatch against the
   `wazuh-manager` user (the validator runs as root and cannot tell). Nothing reissues the pair at
