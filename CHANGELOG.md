@@ -42,6 +42,7 @@
 | Issue | Comment |
 |-------|---------|
 | [#38857](https://github.com/wazuh/wazuh/issues/38857) | Removed manager-probing dead code from the agent's execd. |
+| [#39305](https://github.com/wazuh/wazuh/issues/39305) | Removed dead C++ code from the agent modules. |
 
 #### Fixed
 

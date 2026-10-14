@@ -102,19 +102,6 @@ public:
     }
 
     /**
-     * @brief Checks if a key exists in the cache.
-     *
-     * This function checks if a given key exists in the cache.
-     *
-     * @param key The key to be checked.
-     * @return true if the key exists in the cache, false otherwise.
-     */
-    bool isHit(const KeyType& key) const
-    {
-        return m_map.find(key) != m_map.end();
-    }
-
-    /**
      * @brief Iterates over the cache data and applies a function to each key-value pair.
      *
      * @param handler The function to be applied to each key-value pair.

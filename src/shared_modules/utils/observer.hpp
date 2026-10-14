@@ -82,11 +82,6 @@ public:
         observers.erase(it);
     }
 
-    void setData(T newData)
-    {
-        notifyObservers(newData);
-    }
-
     void notifyObservers(T data)
     {
         std::lock_guard<std::mutex> lock(mutex);
