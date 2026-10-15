@@ -153,6 +153,17 @@ bool PersistentQueue::flushActiveBuffer()
     return true;
 }
 
+// A failed flush leaves its items buffered; drop the ones being cleared so they are not written after the delete.
+void PersistentQueue::discardBuffered(const std::function<bool(const PersistedData&)>& matches)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    for (auto& buffer : m_buffers)
+    {
+        buffer.erase(std::remove_if(buffer.begin(), buffer.end(), matches), buffer.end());
+    }
+}
+
 std::vector<PersistedData> PersistentQueue::fetchAndMarkForSync(size_t maxBytes)
 {
     flushActiveBuffer();
@@ -215,9 +226,16 @@ void PersistentQueue::resetSyncingItems()
 
 void PersistentQueue::clearItemsByIndex(const std::string& index)
 {
+    // Flush first so buffered rows reach storage before the delete.
+    flushActiveBuffer();
+
     try
     {
         std::lock_guard<std::mutex> storageLock(m_storageMutex);
+        discardBuffered([&index](const PersistedData & item)
+        {
+            return item.index == index;
+        });
         m_storage->removeByIndex(index);
     }
     catch (const std::exception& ex)
@@ -229,9 +247,16 @@ void PersistentQueue::clearItemsByIndex(const std::string& index)
 
 void PersistentQueue::clearAllDataContext()
 {
+    // Flush first so buffered rows reach storage before the delete.
+    flushActiveBuffer();
+
     try
     {
         std::lock_guard<std::mutex> storageLock(m_storageMutex);
+        discardBuffered([](const PersistedData & item)
+        {
+            return item.is_data_context;
+        });
         m_storage->removeAllDataContext();
     }
     catch (const std::exception& ex)
@@ -243,9 +268,16 @@ void PersistentQueue::clearAllDataContext()
 
 void PersistentQueue::deleteDatabase()
 {
+    // Flush first so buffered rows reach storage before the delete.
+    flushActiveBuffer();
+
     try
     {
         std::lock_guard<std::mutex> storageLock(m_storageMutex);
+        discardBuffered([](const PersistedData&)
+        {
+            return true;
+        });
         m_storage->deleteDatabase();
     }
     catch (const std::exception& ex)

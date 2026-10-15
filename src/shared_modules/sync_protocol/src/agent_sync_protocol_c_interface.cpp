@@ -4,7 +4,9 @@
 #include "agent_sync_protocol_c_wrapper.hpp"
 #include "sync_socket_transport.hpp"
 #include <chrono>
+#include <cstdint>
 #include <cstring>
+#include <limits>
 #include <memory>
 #include <string>
 
@@ -70,6 +72,23 @@ namespace
 
         return cResult;
     }
+
+    // Above this the value would wrap negative as int32_t (a negative WAL autocheckpoint disables
+    // checkpointing) or overflow the interval arithmetic of the flush wait.
+    constexpr uint64_t MAX_QUEUE_OPTION = std::numeric_limits<int32_t>::max();
+
+    // Out-of-range values are also reported.
+    std::optional<uint64_t> validQueueOption(uint64_t value, const char* name, const LoggerFunc& logger)
+    {
+        if (value > MAX_QUEUE_OPTION)
+        {
+            logger(LOG_WARNING, std::string("Value of ") + name + " (" + std::to_string(value) +
+                   ") exceeds the maximum of " + std::to_string(MAX_QUEUE_OPTION) + ". Using the default.");
+            return std::nullopt;
+        }
+
+        return value > 0 ? std::make_optional(value) : std::nullopt;
+    }
 } // namespace
 
 extern "C" {
@@ -105,12 +124,16 @@ extern "C" {
 
             std::optional<std::string> dbPathOpt = db_path ? std::make_optional(std::string(db_path)) : std::nullopt;
 
+            const auto flushBatchSize = validQueueOption(flush_batch_size, "flush_batch_size", logger_wrapper);
+            const auto flushInterval = validQueueOption(flush_interval_ms, "flush_interval_ms", logger_wrapper);
+            const auto walAutocheckpointPages = validQueueOption(wal_autocheckpoint_pages, "wal_autocheckpoint_pages", logger_wrapper);
+
             std::optional<std::size_t> flushBatchSizeOpt =
-                flush_batch_size > 0 ? std::make_optional(static_cast<std::size_t>(flush_batch_size)) : std::nullopt;
+                flushBatchSize ? std::make_optional(static_cast<std::size_t>(*flushBatchSize)) : std::nullopt;
             std::optional<std::chrono::milliseconds> flushIntervalOpt =
-                flush_interval_ms > 0 ? std::make_optional(std::chrono::milliseconds(flush_interval_ms)) : std::nullopt;
+                flushInterval ? std::make_optional(std::chrono::milliseconds(*flushInterval)) : std::nullopt;
             std::optional<int32_t> walAutocheckpointPagesOpt =
-                wal_autocheckpoint_pages > 0 ? std::make_optional(static_cast<int32_t>(wal_autocheckpoint_pages)) : std::nullopt;
+                walAutocheckpointPages ? std::make_optional(static_cast<int32_t>(*walAutocheckpointPages)) : std::nullopt;
 
             return reinterpret_cast<AgentSyncProtocolHandle*>(new AgentSyncProtocolWrapper(module, std::move(dbPathOpt), std::move(logger_wrapper), flushBatchSizeOpt, flushIntervalOpt,
                                                                                            walAutocheckpointPagesOpt));

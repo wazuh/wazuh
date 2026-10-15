@@ -297,6 +297,8 @@ Creates a new Agent Sync Protocol instance.
 - `flush_interval_ms`: Persistent queue flush interval override in milliseconds, or `0` to use the built-in default
 - `wal_autocheckpoint_pages`: WAL auto-checkpoint threshold override, in pages, for this instance's own database connection, or `0` to keep SQLite's own default (1000 pages)
 
+Each of the three overrides accepts `0` (use the default) or a value up to `2147483647` (`INT32_MAX`). A larger value is not applied: the built-in default is used instead and a warning is logged through `logger`.
+
 **Returns:** Opaque handle to the protocol instance, or NULL on failure
 
 #### `asp_destroy()`

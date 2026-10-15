@@ -24,6 +24,7 @@
 #include <optional>
 #include <thread>
 #include <iostream>
+#include <limits>
 #include <utility>
 
 using ::testing::_;
@@ -419,6 +420,40 @@ TEST_F(AgentSyncProtocolTest, CInterfacePropagatesStoppedFlag)
     EXPECT_TRUE(afterStop.stopped);
 
     asp_destroy(handle);
+}
+
+// Out-of-range queue options must not be applied: they would wrap negative as int32_t (turning
+// WAL checkpointing off) or overflow the flush wait. The handle is still created with defaults.
+TEST_F(AgentSyncProtocolTest, CInterfaceRejectsOutOfRangeQueueOptionsWithWarning)
+{
+    static std::vector<std::string> warnings;
+    warnings.clear();
+    const auto logger = +[](modules_log_level_t level, const char* msg)
+    {
+        if (level == LOG_WARNING)
+        {
+            warnings.emplace_back(msg);
+        }
+    };
+
+    const uint64_t overRange = static_cast<uint64_t>(std::numeric_limits<int32_t>::max()) + 1;
+
+    auto* handle = asp_create("test_module", ":memory:", logger, overRange, overRange, overRange);
+    ASSERT_NE(handle, nullptr);
+    asp_destroy(handle);
+
+    ASSERT_EQ(warnings.size(), 3u);
+    EXPECT_NE(warnings[0].find("flush_batch_size"), std::string::npos);
+    EXPECT_NE(warnings[1].find("flush_interval_ms"), std::string::npos);
+    EXPECT_NE(warnings[2].find("wal_autocheckpoint_pages"), std::string::npos);
+
+    // 0 (default) and the largest accepted value are not warned about.
+    warnings.clear();
+    const uint64_t maxValid = std::numeric_limits<int32_t>::max();
+    handle = asp_create("test_module", ":memory:", logger, 0, maxValid, maxValid);
+    ASSERT_NE(handle, nullptr);
+    asp_destroy(handle);
+    EXPECT_TRUE(warnings.empty());
 }
 
 // Exercises the C interface of the integrity check (asp_requires_full_sync ->

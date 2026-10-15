@@ -64,6 +64,9 @@ long asp_get_agent_id(void);
 /// @param flush_interval_ms Persistent queue flush interval override in milliseconds, or 0 to use the built-in default.
 /// @param wal_autocheckpoint_pages WAL auto-checkpoint threshold override, in pages, for this instance's own
 ///        database connection, or 0 to keep SQLite's own default (1000 pages) instead of overriding it.
+///
+/// Each override accepts 0 (use the default) or up to INT32_MAX; a larger value is not applied, the
+/// default is used instead and a warning is logged.
 /// @return A pointer to an opaque AgentSyncProtocol handle, or NULL on failure.
 AgentSyncProtocolHandle* asp_create(const char* module, const char* db_path, asp_logger_t logger,
                                     uint64_t flush_batch_size, uint64_t flush_interval_ms,

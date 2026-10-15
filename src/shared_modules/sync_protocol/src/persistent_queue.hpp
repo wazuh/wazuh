@@ -15,6 +15,7 @@
 #include "monotonicCondition.hpp"
 
 #include <string>
+#include <functional>
 #include <array>
 #include <map>
 #include <vector>
@@ -111,6 +112,10 @@ class PersistentQueue : public IPersistentQueue
 
         /// @brief Maximum time to wait before flushing a non-full buffer.
         const std::chrono::milliseconds FLUSH_INTERVAL;
+
+        /// @brief Drops buffered items matching the predicate from both slots.
+        ///        Must be called with m_storageMutex held.
+        void discardBuffered(const std::function<bool(const PersistedData&)>& matches);
 
         /// @brief Mutex protecting m_buffers.
         std::mutex m_mutex;
