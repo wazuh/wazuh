@@ -180,6 +180,16 @@ link_certs_elsewhere() {
 
 }
 
+# In the agent's 01770 etc/certs, wazuh can remove the anchor it owns and leave a link to a
+# directory under its name.
+anchor_links_to_dir() {
+
+    mkdir -m 1770 "$1/etc/certs"
+    mkdir -m 700 "${WORK}/anchor_dir_link_target"
+    ln -s "${WORK}/anchor_dir_link_target" "$1/etc/certs/root-ca.pem"
+
+}
+
 # The agent keeps etc/certs 01770 so it can replace the anchor at runtime (#39321).
 sticky_certs_dir() {
 
@@ -306,6 +316,13 @@ check "a CA is not installed through a linked etc/certs" "" "$(ls -A "${WORK}/el
 check "the linked directory keeps its mode" "700" "$(mode_of "${WORK}/elsewhere")"
 check "the refusal is logged" "1" "$(log_count certs_link "Not installing the delivered CA at ./etc/certs/root-ca.pem")"
 check "the link is left in place" "yes" "$([ -L "${WORK}/certs_link/etc/certs" ] && echo yes || echo no)"
+
+# A link to a directory at root-ca.pem is replaced by the anchor, not followed into it.
+CASE_SETUP=anchor_links_to_dir run_case anchor_dir_link "${LEGACY_CONF}" yes 4.14.7 no
+check "nothing is written into a directory root-ca.pem links to" "" "$(ls -A "${WORK}/anchor_dir_link_target")"
+check "the link is replaced by the anchor" "regular" \
+      "$([ -f "${WORK}/anchor_dir_link/etc/certs/root-ca.pem" ] && [ ! -L "${WORK}/anchor_dir_link/etc/certs/root-ca.pem" ] && echo regular)"
+check "no temporary file is left beside it" "root-ca.pem" "$(ls -A "${WORK}/anchor_dir_link/etc/certs")"
 
 # An existing etc/certs keeps its mode; one created here gets 750, as before.
 CASE_SETUP=sticky_certs_dir run_case certs_sticky "${LEGACY_CONF}" yes 4.14.7 no

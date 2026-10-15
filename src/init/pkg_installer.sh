@@ -1013,6 +1013,16 @@ let_agent_group_read_cwd() {
     chmod g+rx . 2>/dev/null
 }
 
+# rename_over SOURCE TARGET: renames SOURCE to TARGET. A link at TARGET is replaced, even one to a
+# directory, which plain mv -f would move SOURCE into instead; a directory at TARGET makes it fail.
+rename_over() {
+    if [ "${OS}" = "Darwin" ]; then
+        mv -fh "$1" "$2"
+    else
+        mv -fT "$1" "$2"
+    fi
+}
+
 # install_ca_anchor SNAPSHOT: installs SNAPSHOT as root-ca.pem in the working directory. Written to a
 # temporary file renamed over the target, so a reader never sees half an anchor and a link planted
 # at the name is replaced rather than written through. root:wazuh 640, like wpk_root.pem.
@@ -1021,7 +1031,7 @@ install_ca_anchor() {
     let_agent_group_read_cwd
     CA_TMP=$(mktemp ./.root-ca.pem.XXXXXX 2>/dev/null) || return 1
     chown root:wazuh "${CA_TMP}" 2>/dev/null
-    if chmod 640 "${CA_TMP}" && cat "$1" > "${CA_TMP}" && mv -f "${CA_TMP}" root-ca.pem; then
+    if chmod 640 "${CA_TMP}" && cat "$1" > "${CA_TMP}" && rename_over "${CA_TMP}" root-ca.pem; then
         return 0
     fi
     rm -f "${CA_TMP}"
