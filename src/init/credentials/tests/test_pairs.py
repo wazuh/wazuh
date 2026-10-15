@@ -17,6 +17,8 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import ExtendedKeyUsageOID, ExtensionOID, NameOID
 
+from conftest import intermediate, pool_key
+
 IDX = {"WAZUH_INDEXER_MANAGER_PASSWORD": "Idx.Passw0rd-789"}
 PAIRS = ("remoted", "apid")
 
@@ -273,6 +275,118 @@ def test_rotation_issuer_uses_valid_candidate(resolver, sandbox, mode):
     code, _, err = run(resolver, sandbox, mode)
     assert code == 0 and err == "", err
     assert sandbox.tree_state() == before
+
+
+# ---------------------------------------------------------------- intermediate CAs
+
+PEM = serialization.Encoding.PEM
+
+
+def _stage_pair(sandbox, name, issuer, issuer_key, chain=()):
+    """Stage `name` as a server leaf that `issuer` signed, followed in its file by the certificates of `chain`."""
+    key = pool_key()
+    now = datetime.datetime.now(datetime.timezone.utc)
+    leaf = (x509.CertificateBuilder()
+            .subject_name(x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "node1")]))
+            .issuer_name(issuer.subject).public_key(key.public_key()).serial_number(x509.random_serial_number())
+            .not_valid_before(now - datetime.timedelta(days=1)).not_valid_after(now + datetime.timedelta(days=30))
+            .add_extension(x509.BasicConstraints(ca=False, path_length=None), critical=True)
+            .add_extension(x509.ExtendedKeyUsage([ExtendedKeyUsageOID.SERVER_AUTH]), critical=False)
+            .add_extension(x509.SubjectAlternativeName([x509.DNSName("node1")]), critical=False)
+            .sign(issuer_key, hashes.SHA256()))
+    pem = b"".join(cert.public_bytes(PEM) for cert in (leaf, *chain))
+    sandbox.write(os.path.join(sandbox.certs, f"{name}.pem"), pem, mode=0o640, gid=sandbox.account_gid)
+    sandbox.write(os.path.join(sandbox.certs, f"{name}-key.pem"),
+                  key.private_bytes(PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()),
+                  mode=0o640, gid=sandbox.account_gid)
+
+
+@pytest.mark.parametrize("mode", ["--check", "--prestart"])
+@pytest.mark.parametrize("name", PAIRS)
+@pytest.mark.parametrize("with_root", [False, True])
+def test_pair_through_intermediate_kept(resolver, sandbox, mode, name, with_root):
+    """A pair issued by an intermediate CA is usable when its file carries the intermediate after the leaf, and
+    for remoted when the agents' bundle holds it too; the file may also end with the root, as the files --install
+    writes do."""
+    sandbox.stage_ca()
+    root, root_key = ca_cert(sandbox), ca_key(sandbox)
+    middle, middle_key = intermediate(root, root_key)
+    if name == "remoted":
+        sandbox.write(os.path.join(sandbox.certs, "root-ca.pem"), root.public_bytes(PEM) + middle.public_bytes(PEM),
+                      mode=0o640, gid=sandbox.account_gid)
+    _stage_pair(sandbox, name, middle, middle_key, chain=(middle, root) if with_root else (middle,))
+    before = sandbox.tree_state() if mode == "--check" else {n: digest(sandbox, n) for n in os.listdir(sandbox.certs)}
+    code, out, err = run(resolver, sandbox, mode)
+    assert code == 0 and err == "", err
+    if mode == "--check":
+        assert sandbox.tree_state() == before
+    else:
+        assert all(digest(sandbox, n) == before[n] for n in before)          # completed around, never rewritten
+        assert f"{sandbox.certs}/{name}.pem: kept; DN CN=node1; SANs DNS:node1" in out
+
+
+@pytest.mark.parametrize("mode", ["--check", "--prestart"])
+@pytest.mark.parametrize("case,reason", [
+    ("intermediate not in the file", "not issued by the manager's CA ("),
+    ("expired intermediate", "not issued by the manager's CA ("),
+    ("intermediate not a CA", "not issued by the manager's CA ("),
+    ("path length exceeded", "not issued by the manager's CA ("),
+    ("intermediate cannot sign", "issuer CA: keyUsage does not include keyCertSign"),
+    ("foreign root in the file", "not issued by the manager's CA ("),
+])
+def test_pair_through_intermediate_refused(resolver, sandbox, mode, case, reason):
+    """The path from the leaf must reach the manager's CA through usable CAs; certificates in the pair's own file
+    are only intermediates, never trusted on their own. (apid: remoted takes no intermediate from its file.)"""
+    sandbox.stage_ca()
+    root, root_key = ca_cert(sandbox), ca_key(sandbox)
+    if case == "intermediate not in the file":
+        middle, middle_key = intermediate(root, root_key)
+        _stage_pair(sandbox, "apid", middle, middle_key)
+    elif case == "path length exceeded":
+        middle, middle_key = intermediate(root, root_key, path_length=0)
+        lower, lower_key = intermediate(middle, middle_key, "lower-ca")
+        _stage_pair(sandbox, "apid", lower, lower_key, chain=(lower, middle))
+    elif case == "foreign root in the file":
+        foreign, foreign_key = intermediate(None, None, "foreign-root-ca")
+        _stage_pair(sandbox, "apid", foreign, foreign_key, chain=(foreign,))
+    else:
+        breaks = {"expired intermediate": {"days": (-90, -1)}, "intermediate not a CA": {"is_ca": False},
+                  "intermediate cannot sign": {"key_cert_sign": False}}[case]
+        middle, middle_key = intermediate(root, root_key, **breaks)
+        _stage_pair(sandbox, "apid", middle, middle_key, chain=(middle,))
+    before = {n: digest(sandbox, n) for n in ("apid.pem", "apid-key.pem")}
+    code, _, err = run(resolver, sandbox, mode)
+    assert code == 1 and f"INVALID {sandbox.certs}/apid.pem: {reason}" in err, err
+    assert {n: digest(sandbox, n) for n in before} == before                    # refused, never repaired
+
+
+def test_bundle_ca_anchors_remoted_only(resolver, sandbox):
+    """remoted may chain to any certificate of the agents' bundle, an intermediate kept there included; apid only to
+    ca/root-ca.pem, the CA the dashboard is handed."""
+    sandbox.stage_ca()
+    root, root_key = ca_cert(sandbox), ca_key(sandbox)
+    middle, middle_key = intermediate(root, root_key)
+    sandbox.write(os.path.join(sandbox.certs, "root-ca.pem"), root.public_bytes(PEM) + middle.public_bytes(PEM),
+                  mode=0o640, gid=sandbox.account_gid)
+    for name in PAIRS:
+        _stage_pair(sandbox, name, middle, middle_key)
+    code, _, err = run(resolver, sandbox, "--check")
+    assert code == 1 and f"INVALID {sandbox.certs}/apid.pem: not issued by the manager's CA (" in err, err
+    assert "remoted.pem" not in err
+
+
+@pytest.mark.parametrize("mode", ["--check", "--prestart"])
+def test_remoted_intermediate_only_in_its_file_refused(resolver, sandbox, mode):
+    """Agents are handed certs/root-ca.pem alone (GET /cacerts): a remoted leaf that chains to it only through an
+    intermediate carried in remoted.pem would serve TLS while no agent could bootstrap its trust from the bundle."""
+    sandbox.stage_ca()
+    root, root_key = ca_cert(sandbox), ca_key(sandbox)
+    middle, middle_key = intermediate(root, root_key)
+    _stage_pair(sandbox, "remoted", middle, middle_key, chain=(middle, root))
+    code, _, err = run(resolver, sandbox, mode)
+    assert code == 1, err
+    assert (f"INVALID {sandbox.certs}/remoted.pem: not issued by the manager's CA (agents are handed "
+            f"{sandbox.certs}/root-ca.pem alone: an intermediate CA that issued it belongs in that file)") in err
 
 
 def test_anchor_only_missing(resolver, sandbox):

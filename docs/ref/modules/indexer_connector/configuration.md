@@ -224,8 +224,9 @@ comes from the manager's own CA:
 When the indexer runs on the same host, the credential resolver imports them from `/etc/wazuh-indexer/export/`
 (`ca.pem`, `manager-client.pem`, `manager-client-key.pem`), records the import with a marker file, and imports them
 again when the indexer's files change. Otherwise stage them yourself under these names: files without a marker are
-validated at every start and never replaced. The client certificate must be issued directly by a certificate of
-`indexer-ca.pem`, match its key, be inside its validity window and carry an `extendedKeyUsage` with `clientAuth`.
+validated at every start and never replaced. The client certificate must chain to a certificate of `indexer-ca.pem`
+(an intermediate CA that issued it goes in `indexer-connector.pem`, after the leaf), match its key, be inside its
+validity window and carry an `extendedKeyUsage` with `clientAuth`.
 See [Indexer trust](../../getting-started/credentials.md#indexer-trust).
 
 The daemons read them as `wazuh-manager`, so a replacement file must stay readable by that group.

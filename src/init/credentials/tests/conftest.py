@@ -47,6 +47,28 @@ def pool_key():
     return key
 
 
+def intermediate(issuer_cert, issuer_key, cn="intermediate-ca", *, days=(-1, 3650), is_ca=True, key_cert_sign=True,
+                 path_length=None):
+    """A CA certificate signed by `issuer_cert`/`issuer_key`, or self-signed when both are None. The keyword arguments
+    break one property at a time. Returns (certificate, key)."""
+    key = pool_key()
+    now = datetime.datetime.now(datetime.timezone.utc)
+    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, cn)])
+    builder = (x509.CertificateBuilder().subject_name(name)
+               .issuer_name(issuer_cert.subject if issuer_cert is not None else name)
+               .public_key(key.public_key()).serial_number(x509.random_serial_number())
+               .not_valid_before(now + datetime.timedelta(days=days[0]))
+               .not_valid_after(now + datetime.timedelta(days=days[1]))
+               .add_extension(x509.BasicConstraints(ca=is_ca, path_length=path_length if is_ca else None),
+                              critical=True)
+               .add_extension(x509.KeyUsage(digital_signature=True, content_commitment=False, key_encipherment=False,
+                                            data_encipherment=False, key_agreement=False, key_cert_sign=key_cert_sign,
+                                            crl_sign=key_cert_sign, encipher_only=False, decipher_only=False),
+                              critical=True)
+               .add_extension(x509.SubjectKeyIdentifier.from_public_key(key.public_key()), critical=False))
+    return builder.sign(issuer_key if issuer_key is not None else key, hashes.SHA256()), key
+
+
 PROGRAM = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                        "wazuh-manager-resolve-credentials.py")
 ACCOUNT = "daemon"
@@ -204,10 +226,12 @@ class Sandbox:
                 handle.write(text)
 
     def make_indexer_trust(self, eku="client", ca_is_ca=True, foreign=False, expired=False, key_mismatch=False,
-                           mode=0o750):
+                           mode=0o750, via_intermediate=False):
         """What wazuh-indexer publishes on this host for the manager: its CA (export/ca.pem) and a client pair it
-        issued (export/manager-client.pem, leaf then CA, and its key). The keyword arguments break one property.
-        Returns {"ca": ca_pem, "client": client_pem, "key": key_pem}."""
+        issued (export/manager-client.pem, leaf then CA, and its key). The keyword arguments break one property;
+        `via_intermediate` has an intermediate CA issue the leaf, carried in the client file between leaf and CA.
+        Returns {"ca": ca_pem, "client": client_pem, "key": key_pem}, plus "leaf" and "intermediate" (PEM) with
+        `via_intermediate`."""
         now = datetime.datetime.now(datetime.timezone.utc)
         ca_key = pool_key()
         ca_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "wazuh-indexer-ca")])
@@ -217,6 +241,10 @@ class Sandbox:
               .add_extension(x509.BasicConstraints(ca=ca_is_ca, path_length=None), critical=True)
               .sign(ca_key, hashes.SHA256()))
         signer, issuer = ca_key, ca_name
+        middle = None
+        if via_intermediate:
+            middle, signer = intermediate(ca, ca_key, "wazuh-indexer-intermediate-ca")
+            issuer = middle.subject
         if foreign:
             signer = pool_key()
         key = pool_key()
@@ -238,7 +266,9 @@ class Sandbox:
         os.makedirs(self.indexer_export, exist_ok=True)
         os.chown(self.indexer_export, 0, 0)
         os.chmod(self.indexer_export, mode)
-        files = {"ca": pem(ca), "client": pem(leaf) + pem(ca), "key": key_pem}
+        files = {"ca": pem(ca), "client": pem(leaf) + (pem(middle) if middle else b"") + pem(ca), "key": key_pem}
+        if middle:
+            files.update(leaf=pem(leaf), intermediate=pem(middle))
         self.write(os.path.join(self.indexer_export, "ca.pem"), files["ca"], mode=0o644)
         self.write(os.path.join(self.indexer_export, "manager-client.pem"), files["client"], mode=0o600)
         self.write(os.path.join(self.indexer_export, "manager-client-key.pem"), files["key"], mode=0o600)

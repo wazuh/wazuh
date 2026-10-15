@@ -28,8 +28,8 @@ developer side.
 | RF-3 | Server API passwords: supplied values are validated and never replaced by generated ones; on a master with no `rbac.db`, publish to `<CONF>/export/credentials.env` first, then seed through `rbac_control.py`; a worker seeds nothing | kept |
 | RF-4 | Indexer password stored in the keystore when absent; never generated, never published | kept |
 | RF-5 | Own CA in `<CONF>/ca/`: minted at `--install` only when nothing exists, never beside existing pairs or a bundle; staged CAs (with or without key) used as they are; published in `export/ca.pem`; `certs/root-ca.pem` written only when absent | kept |
-| RF-6 | Server pairs issued at `--install` only, each with its own SAN list (explicit or discovered from the default-route interfaces); otherwise validated, never repaired | kept |
-| RF-7 | Indexer trust imported from the indexer's export with a marker written first, re-imported when the source changes; staged files (no marker) validated, never replaced; the client pair needs `clientAuth` | kept |
+| RF-6 | Server pairs issued at `--install` only, each with its own SAN list (explicit or discovered from the default-route interfaces); otherwise validated, never repaired; a staged `apid` pair may chain through intermediate CAs carried after the leaf, a `remoted` leaf through those kept in `certs/root-ca.pem` | kept |
+| RF-7 | Indexer trust imported from the indexer's export with a marker written first, re-imported when the source changes; staged files (no marker) validated, never replaced; the client pair needs `clientAuth` and may chain through intermediate CAs carried after the leaf | kept |
 | RF-8 | `--check` is read-only (no lock, no subprocess, no write) and reports `UNSAFE`/`INVALID`, never `MISSING`; `--prestart` runs the same tests first | kept |
 | RF-9 | `--clear` refuses while a daemon runs, removes what the resolver made, keeps what it was given | kept |
 | RNF-1 | No secret on argv, in output or in the environment of a subprocess; secrets travel on stdin | kept |
@@ -50,7 +50,8 @@ developer side.
 | D-7 | Never mint a CA beside existing pairs or a bundle | a second CA would leave the kept pairs without a trusted issuer |
 | D-8 | Import markers are written before the files | an interrupted import is then recognisable and finished, never mistaken for staged files |
 | D-9 | The client pair must carry `extendedKeyUsage` `clientAuth` | an EKU-less leaf is refused; the indexer issues the pair with it |
-| D-10 | A server pair is accepted only when an issuer that is valid now signs it | rotation CAs may stay in the bundle after they expire |
+| D-10 | A pair is accepted only when every CA on its path to an anchor is valid now, `CA:TRUE` and allowed to sign | rotation CAs may stay in the bundle after they expire; the path is built through a usable one |
+| D-14 | Paths are built by `x509.verification`'s client verifier with relaxed extension policies (CA: `basicConstraints` required; leaf: anything), then the resolver checks the leaf and `keyCertSign` on every CA of the path itself. Intermediates come only from the pair's own file, after the leaf, and never for remoted, whose leaf must chain to `certs/root-ca.pem` alone (an intermediate kept there is an anchor); anchors stay `ca/root-ca.pem` (apid), `certs/root-ca.pem` (remoted), `indexer-ca.pem` (connector) | the WebPKI defaults would demand an `authorityKeyIdentifier` and a `subjectAltName` that other tooling's certificates may lack, and a server verifier needs an expected name; the relaxed verifier checks neither `keyCertSign` nor the leaf, hence the resolver's own checks. remoted's `GET /cacerts` hands agents the bundle only when the leaf chains to it with no other certificate (partial chain), and the resolver makes the same judgement. No host tool (`openssl verify`) is run |
 | D-11 | `--clear` reads only pid file **names** in `var/run` | nothing in that service-writable directory is opened; a planted pid file can only block |
 | D-12 | A rejected `local.env` (unsafe or malformed) stops generation and seeding for that run | a password the operator meant to set must never be replaced by a generated one that then gets seeded |
 | D-13 | `OPENSSL_armcap=0` is set before anything imports OpenSSL | some arm64 hypervisors advertise SVE they do not implement; other entry points get it from `generic_wrapper.sh` |
@@ -93,7 +94,7 @@ by both packages, run by `postinst`/`%post`, `install.sh` and `src/init/wazuh-se
 | Consumer | Reads | Contract |
 |----------|-------|----------|
 | the dashboard on the same host | `<CONF>/export/credentials.env`, `export/ca.pem` | `NAME=value` lines `WAZUH_MANAGER_API_PASSWORD`, `WAZUH_MANAGER_WUI_PASSWORD`; `root:root 0600` in a `root:root 0700` directory; `ca.pem` is the manager's CA |
-| remoted, authd, apid | `certs/remoted.pem`, `apid.pem`, `root-ca.pem` | `root:wazuh-manager 0640`; leaf followed by the CA |
+| remoted, authd, apid | `certs/remoted.pem`, `apid.pem`, `root-ca.pem` | `root:wazuh-manager 0640`; the leaf, then its intermediates and optionally the root (what `--install` writes: leaf + CA); each daemon sends the whole file |
 | indexer connector, clusterd | `certs/indexer-ca.pem`, `indexer-connector.pem`, `indexer-connector-key.pem`; keystore `indexer` family | `root:wazuh-manager 0640` |
 | `wazuh-manager-control` | exit status and stderr of `--check` / `--prestart` | non-zero refuses the start; for `--check` the message follows the relayed lines: `UNSAFE` → unsafe, `INVALID` → invalid, neither → cannot check (error 22); `--prestart` → unresolved (error 21) |
 | the indexer (producer) | — | `/etc/wazuh-indexer/export/{credentials.env,ca.pem,manager-client.pem,manager-client-key.pem}`, root-owned, not group- or world-writable |
@@ -122,9 +123,9 @@ manager integration workflow.
 | `test_passwords.py` | password rules, publish-then-seed, worker role, indexer password and keystore |
 | `test_framework_parity.py` | the resolver's rule and generator against the Server API's (read from `framework/` as source) |
 | `test_ca.py` | the CA states, minting only when nothing exists, the bundle kept byte for byte |
-| `test_pairs.py` | server pair profile, keep / half / missing, issuer validity |
+| `test_pairs.py` | server pair profile, keep / half / missing, issuer validity, chains through intermediate CAs |
 | `test_sans.py` | explicit SAN lists and discovery from `/proc` fixtures |
-| `test_indexer_trust.py` | the import rule, markers, `clientAuth`, interrupted imports and their recovery |
+| `test_indexer_trust.py` | the import rule, markers, `clientAuth`, interrupted imports and their recovery, connector chains through intermediate CAs |
 | `test_check.py` | `--check` is read-only and never `MISSING`; the whole-tree checks; `--prestart` checks first |
 | `test_clear.py` | `--clear`: liveness, what goes and what stays, no link followed, nothing removed when unsafe |
 

@@ -229,8 +229,8 @@ discovered names). It never uses anything the account wrote, and never discloses
 
 ## Certificates
 
-The manager uses two server pairs of its own, both issued by its CA, plus the indexer's CA and a client pair the
-indexer issued for it:
+The manager uses two server pairs of its own, both issued by its CA (directly or through intermediate CAs), plus the
+indexer's CA and a client pair the indexer issued for it:
 
 | File | Role | Comes from |
 |------|------|------------|
@@ -251,7 +251,8 @@ indexer issued for it:
 | `root-ca.key` alone | `INVALID …/ca/root-ca.key: no certificate beside it` | same |
 
 The CA must be a single self-signed certificate with `CA:TRUE`, inside its validity window, with an unencrypted
-key that matches it. `--install` publishes it in `export/ca.pem` and writes `certs/root-ca.pem` only when that file
+key that matches it. An intermediate CA is not accepted here: it belongs in the pair files, after the leaf (see
+[Server pairs](#server-pairs)). `--install` publishes it in `export/ca.pem` and writes `certs/root-ca.pem` only when that file
 is absent. An existing bundle must contain the CA. Its bytes are never rewritten, so rotation CAs and the
 publication block `wazuh-manager-certs` adds survive.
 
@@ -265,9 +266,19 @@ At every other moment a pair is only checked:
 
 - it must parse, match its key, be inside its window, be `CA:FALSE`, carry `serverAuth` if it has an
   `extendedKeyUsage`, and have subject alternative names;
-- `remoted.pem` must be issued by a certificate of `certs/root-ca.pem`, and `apid.pem` by `ca/root-ca.pem`;
-- the issuer that accepts it must itself be valid now: a pair signed only by an expired rotation CA kept in the
-  bundle is refused.
+- `apid.pem` must chain to `ca/root-ca.pem`. When an intermediate CA issued the leaf, the file carries the leaf
+  first and then the intermediates, in order; they are used to build the path and are never trusted on their own;
+- `remoted.pem` must chain to a certificate of `certs/root-ca.pem` **on its own**: agents receive that file alone
+  (`GET /cacerts`), so an intermediate CA that issued the remoted leaf goes in `certs/root-ca.pem`, where it is
+  trusted as it is. The intermediates in `remoted.pem` are still sent in the handshake but do not count here;
+- every CA on that path must be valid now, `CA:TRUE` and allowed to sign certificates (`keyCertSign`, when it has a
+  `keyUsage`): a pair signed only by an expired rotation CA kept in the bundle is refused.
+
+A pair that does not chain is reported as `not issued by the manager's CA`, followed by the reason in brackets, for
+example `(no path to it from the certificates in the file)` when an intermediate is missing from `apid.pem`, or
+`(agents are handed /etc/wazuh-manager/certs/root-ca.pem alone: an intermediate CA that issued it belongs in that
+file)` for remoted. remoted, `authd` and the
+Server API send the whole file, so clients that trust the root verify the chain.
 
 A broken pair, or half of one, is reported and never repaired or reissued. To replace a pair, put the new files in
 place (`root:wazuh-manager 0640`); to have the resolver issue a new one, remove both files and run `--install`.
@@ -302,9 +313,11 @@ The indexer CA and the client pair follow one rule, decided by a marker file in 
 | present without a marker (staged by you) | validated, never replaced |
 | one file of the pair only | `INVALID … half a pair` |
 
-The CA file must hold CA certificates inside their validity window. The client pair must be issued directly by
-one of them, be inside its window, not be a CA, match its key, and carry an `extendedKeyUsage` with `clientAuth`.
-A pair without it is refused.
+The CA file must hold CA certificates inside their validity window; an intermediate CA kept there is trusted as it
+is. The client pair must chain to one of them, directly or through intermediate CAs that follow the leaf in
+`indexer-connector.pem`. Every CA on the path must be valid now and allowed to sign. The leaf must be inside its
+window, not be a CA, match its key, and carry an `extendedKeyUsage` with `clientAuth`. A pair without it is
+refused.
 
 An export that holds any file root may not trust is refused as a whole: nothing is imported from it in that run.
 An import interrupted halfway, with the marker written but not every file, is recognised: `--check` lets the start
@@ -319,7 +332,9 @@ To run the manager on your own PKI, stage the files before installing, or before
 
 1. the CA certificate in `<CONF>/ca/root-ca.pem` (`root:root 0644` in a `root:root 0700` directory), with its key
    `root-ca.key` (`0400`) only if this host should issue pairs;
-2. the server pairs and `certs/root-ca.pem` in `<CONF>/certs/` (`root:wazuh-manager 0640`);
+2. the server pairs and `certs/root-ca.pem` in `<CONF>/certs/` (`root:wazuh-manager 0640`). When your PKI issued
+   them from an intermediate CA, `apid.pem` carries the leaf followed by the intermediates, the intermediate that
+   issued the remoted leaf is added to `certs/root-ca.pem`, and `ca/root-ca.pem` stays the root;
 3. for an indexer on another host, its CA as `certs/indexer-ca.pem` and a client pair it issued for this node
    (with `clientAuth`) as `certs/indexer-connector.pem` and `indexer-connector-key.pem`, and the indexer password
    in `local.env`.

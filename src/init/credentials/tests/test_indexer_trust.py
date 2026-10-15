@@ -358,6 +358,37 @@ def test_staged_ca_imported_pair(resolver, sandbox):
     assert os.path.exists(certs(sandbox, ".indexer-connector.imported"))
 
 
+@pytest.mark.parametrize("staged", [False, True])
+def test_connector_through_intermediate(resolver, sandbox, staged):
+    """A client pair issued by an intermediate CA is accepted when the client file carries it after the leaf."""
+    published = sandbox.make_indexer_trust(via_intermediate=True)
+    if staged:
+        stage_trust(sandbox, published)
+    code, _, err = run(resolver, sandbox, "--install")
+    assert code == 0 and err == "", err
+    assert read(certs(sandbox, "indexer-connector.pem")) == published["client"]
+    assert os.path.exists(certs(sandbox, ".indexer-connector.imported")) is not staged
+    assert run(resolver, sandbox, "--check")[0] == 0
+
+
+def test_connector_under_intermediate_kept_as_indexer_ca(resolver, sandbox):
+    """An intermediate CA staged as indexer-ca.pem is trusted as it is: a leaf it issued needs nothing more."""
+    published = sandbox.make_indexer_trust(via_intermediate=True)
+    stage_trust(sandbox, {"ca": published["intermediate"], "client": published["leaf"], "key": published["key"]})
+    code, _, err = run(resolver, sandbox, "--check")
+    assert code == 0 and err == "", err
+
+
+def test_connector_intermediate_missing(resolver, sandbox):
+    published = sandbox.make_indexer_trust(via_intermediate=True)
+    stage_trust(sandbox, {"ca": published["ca"], "client": published["leaf"], "key": published["key"]})
+    before = sandbox.tree_state()
+    code, _, err = run(resolver, sandbox, "--check")
+    assert code == 1, err
+    assert f"INVALID {certs(sandbox, 'indexer-connector.pem')}: not issued by {certs(sandbox, 'indexer-ca.pem')} (" in err
+    assert sandbox.tree_state() == before
+
+
 def test_check_indexer_trust(resolver, sandbox):
     """--check validates what exists, never reports MISSING and writes nothing."""
     shutil.rmtree(sandbox.indexer_export)

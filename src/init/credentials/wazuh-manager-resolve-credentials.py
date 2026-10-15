@@ -41,6 +41,8 @@ from cryptography.exceptions import InvalidSignature, UnsupportedAlgorithm  # no
 from cryptography.hazmat.primitives import hashes, serialization  # noqa: E402
 from cryptography.hazmat.primitives.asymmetric import rsa  # noqa: E402
 from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID  # noqa: E402
+from cryptography.x509.verification import (Criticality, ExtensionPolicy, PolicyBuilder, Store,  # noqa: E402
+                                            VerificationError)
 
 # ================================================== Constants ==================================================
 
@@ -122,6 +124,13 @@ SOURCE_CLIENT_KEY = "manager-client-key.pem"
 SIOCGIFADDR = 0x8915
 # /proc/net/if_inet6 flags of addresses a certificate must not name.
 IFA_F_DEPRECATED, IFA_F_TENTATIVE, IFA_F_DADFAILED = 0x20, 0x40, 0x08
+
+# Chain building for a pair whose leaf an intermediate CA issued. The WebPKI defaults of x509.verification would
+# also demand an authorityKeyIdentifier and a subjectAltName, which the client certificates of other tooling may
+# lack; the verifier is only asked to build the path (signatures, validity windows, CA:TRUE, path lengths). What
+# the resolver requires of the leaf, and keyCertSign on every CA of the path, it checks itself.
+CHAIN_CA_POLICY = ExtensionPolicy.permit_all().require_present(x509.BasicConstraints, Criticality.AGNOSTIC, None)
+CHAIN_LEAF_POLICY = ExtensionPolicy.permit_all()
 
 MISSING = "MISSING"
 INVALID = "INVALID"
@@ -1361,13 +1370,14 @@ def describe_leaf(cert: x509.Certificate) -> str:
 
 def pair_problem(paths: Paths, certs: Dir, name: str,
                  anchors: Optional[List[x509.Certificate]]) -> Tuple[Optional[x509.Certificate], Optional[str]]:
-    """Whether a present pair is usable. Raises UnsafeEntry for a file root may not trust. `anchors` None skips the
-    chain test (--check with no CA to test against)."""
+    """Whether a present pair is usable. Raises UnsafeEntry for a file root may not trust. The apid file holds the
+    leaf, then any intermediate CAs that lead to one of `anchors`; remoted's leaf must chain to `anchors` (the
+    agents' bundle) on its own. `anchors` None skips the chain test (--check with no CA to test against)."""
     spec = certs_file_spec(paths)
     cert_data = read_file(certs, f"{name}.pem", spec)
     key_data = read_file(certs, f"{name}-key.pem", spec)
     try:
-        leaf = x509.load_pem_x509_certificates(cert_data)[0]
+        leaf, *intermediates = x509.load_pem_x509_certificates(cert_data)
     except ValueError:
         return None, "not a PEM certificate"
     key, problem = ca_key_problem(key_data, leaf)
@@ -1391,19 +1401,18 @@ def pair_problem(paths: Paths, certs: Dir, name: str,
     except x509.ExtensionNotFound:
         return leaf, "has no subjectAltName"
     if anchors is not None:
-        issuers = [anchor for anchor in anchors if _issued_by(leaf, anchor)]
-        if not issuers:
-            return leaf, "not issued by the manager's CA"
-        # Historical CAs may remain in the bundle. At least one actual signer must be usable now;
-        # do not reject a renewed CA just because an expired certificate with the same key comes first.
-        problems = [server_issuer_problem(issuer, now) for issuer in issuers]
-        if all(problem is not None for problem in problems):
-            return leaf, f"issuer CA: {problems[0]}"
+        if name == "remoted":
+            # remoted hands agents certs/root-ca.pem (GET /cacerts) only when the leaf chains to that bundle with
+            # nothing else, and an agent holds nothing else: the intermediates of the pair's file do not count.
+            return leaf, chain_problem(leaf, [], anchors, "the manager's CA", now,
+                                       no_path=f"agents are handed {certs.child(BUNDLE)} alone: an intermediate CA "
+                                               f"that issued it belongs in that file")
+        return leaf, chain_problem(leaf, intermediates, anchors, "the manager's CA", now)
     return leaf, None
 
 
-def server_issuer_problem(issuer: x509.Certificate, now: datetime.datetime) -> Optional[str]:
-    """A direct server issuer must be a currently valid CA authorized to sign certificates."""
+def issuer_problem(issuer: x509.Certificate, now: datetime.datetime) -> Optional[str]:
+    """A CA on a leaf's path must be valid now and authorized to sign certificates."""
     if not issuer.not_valid_before_utc <= now <= issuer.not_valid_after_utc:
         return "expired" if now > issuer.not_valid_after_utc else "not valid yet"
     try:
@@ -1417,6 +1426,37 @@ def server_issuer_problem(issuer: x509.Certificate, now: datetime.datetime) -> O
             return "keyUsage does not include keyCertSign"
     except x509.ExtensionNotFound:
         pass
+    return None
+
+
+def chain_problem(leaf: x509.Certificate, intermediates: List[x509.Certificate], anchors: List[x509.Certificate],
+                  issuer_label: str, now: datetime.datetime,
+                  no_path: str = "no path to it from the certificates in the file") -> Optional[str]:
+    """Whether `leaf` chains to one of `anchors`, directly or through `intermediates` (the certificates that follow
+    it in its file, never trusted on their own), with every CA of that path valid now and allowed to sign.
+    Historical CAs may remain among the anchors: the path is built through one that is usable now, so a renewed CA
+    is not refused because an expired certificate with the same name and key is listed too."""
+    verifier = (PolicyBuilder().store(Store(anchors)).time(now)
+                .extension_policies(ca_policy=CHAIN_CA_POLICY, ee_policy=CHAIN_LEAF_POLICY)
+                .build_client_verifier())
+    try:
+        chain = verifier.verify(leaf, intermediates).chain
+    except VerificationError as exc:
+        # No usable path. When an anchor signed the leaf itself, say what is wrong with that anchor: it is the
+        # certificate the operator has to replace.
+        signers = [anchor for anchor in anchors if _issued_by(leaf, anchor)]
+        problems = [problem for problem in (issuer_problem(signer, now) for signer in signers) if problem]
+        if problems:
+            return f"issuer CA: {problems[0]}"
+        reason = str(exc).split("validation failed: ", 1)[-1].split(" (encountered processing", 1)[0].strip()
+        reason = reason.removeprefix("candidates exhausted: ")
+        if not reason or reason.startswith("all candidates exhausted"):
+            reason = no_path
+        return f"not issued by {issuer_label} ({reason})"
+    for ca in chain[1:]:
+        problem = issuer_problem(ca, now)
+        if problem:
+            return f"issuer CA: {problem}"
     return None
 
 
@@ -1562,11 +1602,12 @@ def indexer_ca_problem(data: bytes) -> Tuple[Optional[List[x509.Certificate]], O
 
 def connector_problem(cert_data: bytes, key_data: bytes, cas: List[x509.Certificate],
                       ca_path: str) -> Optional[str]:
-    """The client pair the manager presents to the indexer: directly issued by the indexer's CA, inside its window,
-    not a CA, with an extendedKeyUsage that includes clientAuth, and matching its key. Checked here because nothing
-    else looks at it before the first handshake."""
+    """The client pair the manager presents to the indexer: the leaf, then any intermediate CAs, chaining to a
+    certificate of the indexer's CA file; the leaf inside its window, not a CA, with an extendedKeyUsage that
+    includes clientAuth, and matching its key. Checked here because nothing else looks at it before the first
+    handshake."""
     try:
-        leaf = x509.load_pem_x509_certificates(cert_data)[0]
+        leaf, *intermediates = x509.load_pem_x509_certificates(cert_data)
     except ValueError:
         return "not a PEM certificate"
     _, problem = ca_key_problem(key_data, leaf)
@@ -1586,9 +1627,7 @@ def connector_problem(cert_data: bytes, key_data: bytes, cas: List[x509.Certific
         usages = []
     if ExtendedKeyUsageOID.CLIENT_AUTH not in usages:
         return "has no extendedKeyUsage with clientAuth"
-    if not any(_issued_by(leaf, ca) for ca in cas):
-        return f"not issued by {ca_path}"
-    return None
+    return chain_problem(leaf, intermediates, cas, ca_path, now)
 
 
 def open_indexer_source(paths: Paths, report: Report):
