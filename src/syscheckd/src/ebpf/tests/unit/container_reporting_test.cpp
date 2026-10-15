@@ -446,7 +446,7 @@ TEST_F(ContainerReportingTest, ASilentSourcesOmittedContainersKeepTheirStoredRep
     const nlohmann::json withheld = {{"container_id", "c"}, {"path", "/etc/three"},
         {"version", 1}, {"sync", 0}, {"size", 1}};
     EXPECT_EQ(fim_persist_baseline_row("c:/etc/three", OPERATION_MODIFY, "wazuh-states-fim-files",
-                                      withheld.dump().c_str(), 1), 0)
+                                      cJSON_Parse(withheld.dump().c_str()), 1), 0)
             << "unknown admission must not promote an event-driven update either";
     EXPECT_EQ(persisted.size(), 1u);
 
@@ -1208,14 +1208,17 @@ TEST_F(ContainerReportingTest, AnUnadmittedContainersModificationNeverDemotesARe
     // and updateContainerReporting() retracts by selecting sync=1 -- so the row
     // would drop out of the only query that could ever withdraw it.
     const char* reported = R"({"container_id":"b","path":"/etc/one","version":1,"size":1,"sync":1})";
-    EXPECT_EQ(fim_persist_baseline_row("b:/etc/one", OPERATION_MODIFY, "wazuh-states-fim-files", reported, 2),
+    EXPECT_EQ(fim_persist_baseline_row("b:/etc/one", OPERATION_MODIFY, "wazuh-states-fim-files",
+                                      cJSON_Parse(reported), 2),
               FIM_CONTAINER_SYNC_UNCHANGED)
             << "the stored column must be left for the retraction to find";
     EXPECT_TRUE(persisted.empty()) << "a withheld container still reports nothing";
 
     // A row the manager never had is plainly withheld, exactly as before.
     const char* unreported = R"({"container_id":"b","path":"/etc/two","version":1,"size":1,"sync":0})";
-    EXPECT_EQ(fim_persist_baseline_row("b:/etc/two", OPERATION_MODIFY, "wazuh-states-fim-files", unreported, 2), 0)
+    EXPECT_EQ(
+        fim_persist_baseline_row("b:/etc/two", OPERATION_MODIFY, "wazuh-states-fim-files", cJSON_Parse(unreported), 2),
+        0)
             << "nothing is owed for a row the manager never saw";
     EXPECT_TRUE(persisted.empty());
 }
