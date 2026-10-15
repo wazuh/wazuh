@@ -37,6 +37,9 @@ mode: an entry that does not match is refused (see [File safety](#file-safety)).
 | `<CONF>/export/` | `root:root 0700` | resolver | what the manager publishes for the dashboard on the same host |
 | `<CONF>/export/credentials.env` | `root:root 0600` | resolver | the two Server API passwords |
 | `<CONF>/export/ca.pem` | `root:root 0644` | resolver | copy of `ca/root-ca.pem`: what clients verify the Server API with |
+| `<CONF>/export/dashboard-client.pem` | `root:root 0644` | resolver (masters) or you | the dashboard's client certificate, for a future import ([What the dashboard takes from the manager](#what-the-dashboard-takes-from-the-manager)) |
+| `<CONF>/export/dashboard-client-key.pem` | `root`, no group or other bit (the resolver writes `0600 root:root`) | resolver (masters) or you | its private key |
+| `<CONF>/export/.dashboard-client.issued` | `root`, no group or other bit (`0600 root:root`) | resolver | marker: the fingerprints of the pair the resolver wrote |
 | `<CONF>/certs/` | `root:wazuh-manager 0750`, exactly | installer | TLS material the daemons read |
 | `<CONF>/certs/root-ca.pem` | `root:wazuh-manager 0640` | resolver (only when absent) | the agents' CA bundle, served by remoted |
 | `<CONF>/certs/remoted.pem`, `remoted-key.pem` | `root:wazuh-manager 0640` | resolver or you | agent listener pair |
@@ -146,8 +149,33 @@ manager, both in `<CONF>/export/`:
 | `export/ca.pem` (`root:root 0644`) | the manager CA's **certificate**, its public part only | verifying the certificate `wazuh-manager-apid` presents (`certs/apid.pem`) |
 | `export/credentials.env` (`root:root 0600`), key `WAZUH_MANAGER_WUI_PASSWORD` | the `wazuh-internal-client` password | logging in to the Server API |
 
-No key is published. `ca/root-ca.key` stays in `ca/` (`root:root 0400`) and is never copied to the dashboard: the
-certificate alone is enough to verify the API.
+No key of the manager is published. `ca/root-ca.key` stays in `ca/` (`root:root 0400`) and is never copied to the
+dashboard: the certificate alone is enough to verify the API.
+
+**A client pair, prepared for later.** A master also publishes `export/dashboard-client.pem` (`root:root 0644`) and
+`export/dashboard-client-key.pem` (`root:root 0600`): a certificate issued by the manager's CA with
+`CN=wazuh-dashboard`, `CA:FALSE` and `extendedKeyUsage` `clientAuth` only, and a key of its own, never the CA's or
+`apid-key.pem`'s. Nothing uses it yet: the Server API does not ask for a client certificate (`https.use_ca` stays
+off) and the dashboard still logs in with the password, so the pair is there to be imported when that changes. A
+worker publishes none.
+
+- **When it is issued.** By every writing mode (`--install`, `--upgrade`, `--prestart`) when it is absent and `ca/`
+  holds the CA's key: `resolve-credentials: /etc/wazuh-manager/export/dashboard-client.pem: issued; DN …`.
+- **When it changes.** The pair the resolver issued is reissued by the next start when it no longer chains to
+  `ca/root-ca.pem` (the CA was staged again or rotated) or when it expired:
+  `… reissued (<why>); the dashboard must import it again`. Copy it again wherever the dashboard keeps it.
+- **Your own pair.** Put `dashboard-client.pem` (the leaf, then any intermediate CAs) and
+  `dashboard-client-key.pem` in `export/` with the modes above. The resolver tells its pair from yours with
+  `export/.dashboard-client.issued`, which records the fingerprints of what it wrote: a pair without it, or whose
+  content no longer matches it, is yours. Yours is checked (key, `CA:FALSE`, `clientAuth`, issued by the manager's
+  CA, inside its validity window, a key of its own) but never replaced; each defect is a `WARNING`, and none refuses
+  the start while client certificates are not required:
+  `WARNING: /etc/wazuh-manager/export/dashboard-client.pem: expired on …; provided by the operator, kept as it is (nothing uses it yet: …)`.
+  An unsafe entry (a key readable by others, a link, another owner) is `UNSAFE`, like any other.
+- **A CA without its key.** With only an external CA's certificate in `ca/`, the manager cannot issue the pair:
+  `WARNING: dashboard client pair not generated: /etc/wazuh-manager/ca has no key; provision it externally in /etc/wazuh-manager/export`.
+  Issue it from that CA and put it in `export/` as above.
+- **`--clear`** removes the resolver's pair with its marker, and keeps yours.
 
 **Dashboard on the same host.** It reads both files as root; nothing has to be copied.
 
@@ -518,11 +546,12 @@ It removes:
 - the two server pairs and `certs/root-ca.pem`;
 - the indexer files that carry an import marker, and their markers;
 - the CA in `ca/`, only when its mint marker is there;
-- the contents of `export/`;
+- the contents of `export/`, except a dashboard client pair you provided;
 - `rbac.db`;
 - the keystore's contents.
 
-It keeps a CA you staged, indexer files you staged and `local.env`, and says so for each:
+It keeps a CA you staged, indexer files you staged, a dashboard client pair you provided and `local.env`, and says
+so for each:
 
 ```text
 resolve-credentials: kept /etc/wazuh-manager/certs/indexer-ca.pem: staged, no import marker

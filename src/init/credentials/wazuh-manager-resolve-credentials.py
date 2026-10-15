@@ -21,6 +21,7 @@ import datetime  # noqa: E402
 import errno  # noqa: E402
 import fcntl  # noqa: E402
 import grp  # noqa: E402
+import hashlib  # noqa: E402
 import io  # noqa: E402
 import ipaddress  # noqa: E402
 import json  # noqa: E402
@@ -101,6 +102,10 @@ CA_KEY = "root-ca.key"
 # Present only when this installation minted the CA: --clear removes a CA it minted, never one staged by the operator.
 CA_MARKER = ".wazuh-manager-bootstrap-ca"
 EXPORT_CA = "ca.pem"
+DASHBOARD_CERT = "dashboard-client.pem"            # export/: a client pair for the dashboard to import later
+DASHBOARD_KEY = "dashboard-client-key.pem"
+DASHBOARD_MARKER = ".dashboard-client.issued"      # fingerprints of the pair the resolver wrote
+DASHBOARD_CN = "wazuh-dashboard"
 BUNDLE = "root-ca.pem"                    # certs/root-ca.pem: the agents' CA bundle, which remoted serves
 SERVER_PAIR_FILES = ("remoted.pem", "remoted-key.pem", "apid.pem", "apid-key.pem")
 NODE_NAME_VAR = "WAZUH_MANAGER_NODE_NAME"
@@ -935,6 +940,7 @@ class TlsNames:
     bundle: Optional[str]                 # None: the configured bundle was refused
     bundle_source: str
     indexer: IndexerNames
+    role: Optional[str] = "master"        # cluster.node_type; None when the configuration could not be read
 
     @property
     def names(self) -> Tuple[str, ...]:
@@ -1076,7 +1082,8 @@ def tls_names(paths: Paths, report: Report) -> TlsNames:
         elif on and not pairs[same].on:
             pairs[same] = pair
     bundle = configured("remote.https.ca_certificate", BUNDLE, paths.home, conf_file)
-    return TlsNames(tuple(pairs), bundle, conf_file, indexer_names(paths, document, conf_file, report))
+    role = (_conf_value(document, "cluster.node_type", str, "master") or "master") if document else None
+    return TlsNames(tuple(pairs), bundle, conf_file, indexer_names(paths, document, conf_file, report), role)
 
 
 def indexer_names(paths: Paths, document: dict, conf_file: str, report: Report) -> IndexerNames:
@@ -1421,6 +1428,252 @@ def check_own_ca(paths: Paths, conf: Dir, lookup: Lookup, report: Report, names:
             check_server_pairs(paths, certs, state, lookup, report, names)
     finally:
         for opened in (ca, certs):
+            if opened is not None:
+                opened.close()
+
+
+# ============================================ Dashboard client pair ============================================
+#
+# A client pair the dashboard will import later from export/, issued by the manager's CA on a master. Nothing uses it
+# yet: client certificates are not required anywhere, so its absence, or a defect in one the operator provided, is
+# never a reason to refuse a start. The marker records the fingerprints of the files the resolver wrote, so its own
+# pair (and only its own) is reissued when the CA changes or it expires, and removed by --clear; a pair whose content
+# matches no recorded fingerprint, or that has no marker, is the operator's and is never written.
+
+DASHBOARD_FILES = (DASHBOARD_KEY, DASHBOARD_CERT)          # written in this order, after the marker
+PRIVATE_FILE = Spec("file", forbid=0o077)                  # root's, no group or other bit at all
+DASHBOARD_SPECS = {DASHBOARD_KEY: PRIVATE_FILE, DASHBOARD_CERT: ROOT_FILE}
+DASHBOARD_NOT_USED = "nothing uses it yet: the dashboard does not present a client certificate"
+
+
+def issue_dashboard_pair(ca: CaState) -> Dict[str, bytes]:
+    """The server pairs' profile for a client: CN=wazuh-dashboard, clientAuth only, no subjectAltName, a fresh key.
+    The certificate file carries the leaf, a blank line, then the CA file."""
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    now = _now()
+    cert = (x509.CertificateBuilder()
+            .subject_name(server_name(DASHBOARD_CN)).issuer_name(ca.cert.subject)
+            .public_key(key.public_key())
+            .serial_number(x509.random_serial_number())
+            .not_valid_before(now - CERT_BACKDATE)
+            .not_valid_after(now + datetime.timedelta(days=CERT_VALIDITY_DAYS))
+            .add_extension(x509.AuthorityKeyIdentifier.from_issuer_public_key(ca.cert.public_key()), critical=False)
+            .add_extension(x509.SubjectKeyIdentifier.from_public_key(key.public_key()), critical=False)
+            .add_extension(x509.BasicConstraints(ca=False, path_length=None), critical=True)
+            .add_extension(x509.KeyUsage(digital_signature=True, content_commitment=False, key_encipherment=True,
+                                         data_encipherment=False, key_agreement=False, key_cert_sign=False,
+                                         crl_sign=False, encipher_only=False, decipher_only=False), critical=True)
+            .add_extension(x509.ExtendedKeyUsage([ExtendedKeyUsageOID.CLIENT_AUTH]), critical=False)
+            .sign(ca.key, hashes.SHA256()))
+    return {DASHBOARD_CERT: cert.public_bytes(serialization.Encoding.PEM) + b"\n" + ca.cert_bytes,
+            DASHBOARD_KEY: key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
+                                             serialization.NoEncryption())}
+
+
+def _digest(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def _marker_bytes(new: Mapping[str, bytes], previous: Mapping[str, Optional[bytes]]) -> bytes:
+    """One line per file: `<name> <sha256 of what is being written> <sha256 of what it replaces, or ->`. The previous
+    fingerprint keeps a rewrite that stops halfway recognisable: every file is replaced atomically, so each one holds
+    either the old or the new content."""
+    lines = []
+    for name in DASHBOARD_FILES:
+        old = previous.get(name)
+        lines.append(f"{name} {_digest(new[name])} {_digest(old) if old is not None else '-'}")
+    return ("\n".join(lines) + "\n").encode()
+
+
+def _parse_marker(data: bytes) -> Optional[Dict[str, Tuple[str, str]]]:
+    recorded = {}
+    for line in data.decode("ascii", errors="replace").splitlines():
+        parts = line.split()
+        if len(parts) != 3 or parts[0] not in DASHBOARD_FILES:
+            return None
+        recorded[parts[0]] = (parts[1], parts[2])
+    return recorded if set(recorded) == set(DASHBOARD_FILES) else None
+
+
+@dataclasses.dataclass
+class DashboardPair:
+    """owner: "none" (no file), "ours" (the marker accounts for every present file), "operator", or "unsafe"
+    (reported). `complete`: ours, both files present and the new fingerprints."""
+
+    owner: str
+    files: Dict[str, Optional[bytes]] = dataclasses.field(default_factory=dict)
+    complete: bool = False
+    marker: bool = False
+
+
+def dashboard_pair_state(export: Dir, report: Report) -> DashboardPair:
+    files: Dict[str, Optional[bytes]] = {}
+    for name in DASHBOARD_FILES:
+        present, data = read_optional(export, name, DASHBOARD_SPECS[name], report)
+        if present and data is None:
+            return DashboardPair("unsafe")
+        files[name] = data
+    marker_present, marker = read_optional(export, DASHBOARD_MARKER, PRIVATE_FILE, report)
+    if marker_present and marker is None:
+        return DashboardPair("unsafe")
+    recorded = _parse_marker(marker) if marker is not None else None
+    if recorded is None:
+        owner = "operator" if any(data is not None for data in files.values()) else "none"
+        return DashboardPair(owner, files, marker=marker_present)
+    for name, data in files.items():
+        if data is not None and _digest(data) not in recorded[name]:
+            return DashboardPair("operator", files, marker=True)
+    complete = all(data is not None and _digest(data) == recorded[name][0] for name, data in files.items())
+    return DashboardPair("ours", files, complete, marker=True)
+
+
+def dashboard_pair_problem(files: Mapping[str, Optional[bytes]], ca_cert: Optional[x509.Certificate],
+                           forbidden: Mapping[str, bytes]) -> Optional[str]:
+    """Why the pair could not serve the dashboard, or None: the files parse, the key matches, the leaf is no CA, has
+    clientAuth, is inside its window and chains to the manager's CA (through intermediates after it), and its key is
+    neither the CA's nor another one the manager uses (`forbidden`: label -> public key DER)."""
+    present = [name for name in DASHBOARD_FILES if files.get(name) is not None]
+    if len(present) == 1:
+        missing = [name for name in DASHBOARD_FILES if name not in present][0]
+        return f"half a pair ({missing} is missing)"
+    try:
+        leaf, *intermediates = x509.load_pem_x509_certificates(files[DASHBOARD_CERT])
+    except ValueError:
+        return "not a PEM certificate"
+    problem = parse_problem([leaf, *intermediates])
+    if problem:
+        return problem
+    _, problem = ca_key_problem(files[DASHBOARD_KEY], leaf)
+    if problem:
+        return "its key does not match it" if "match" in problem else f"its key is {problem}"
+    for label, spki in forbidden.items():
+        if _spki(leaf.public_key()) == spki:
+            return f"its key is {label}"
+    try:
+        if leaf.extensions.get_extension_for_class(x509.BasicConstraints).value.ca:
+            return "a CA certificate, not a client certificate"
+    except x509.ExtensionNotFound:
+        pass
+    try:
+        usages = leaf.extensions.get_extension_for_class(x509.ExtendedKeyUsage).value
+    except x509.ExtensionNotFound:
+        usages = []
+    if ExtendedKeyUsageOID.CLIENT_AUTH not in usages:
+        return "has no extendedKeyUsage with clientAuth"
+    now = _now()
+    if not leaf.not_valid_before_utc <= now <= leaf.not_valid_after_utc:
+        return f"expired on {_utc(leaf.not_valid_after_utc)}" if now > leaf.not_valid_after_utc \
+            else f"not valid until {_utc(leaf.not_valid_before_utc)}"
+    if ca_cert is None:
+        return None
+    return chain_problem(leaf, intermediates, [ca_cert], "the manager's CA", now, ExtendedKeyUsageOID.CLIENT_AUTH)
+
+
+def _forbidden_keys(paths: Paths, certs: Optional[Dir], ca_cert: Optional[x509.Certificate],
+                    names: TlsNames) -> Dict[str, bytes]:
+    """The keys the dashboard's pair must not share: the CA's and the Server API's (read, problems ignored: those
+    files are judged by their own steps)."""
+    keys = {}
+    if ca_cert is not None:
+        keys["the manager CA's key"] = _spki(ca_cert.public_key())
+    if certs is not None:
+        for pair in names.pairs:
+            if pair.anchors != "ca":
+                continue
+            try:
+                cert = x509.load_pem_x509_certificates(read_file(certs, pair.cert, certs_file_spec(paths)))[0]
+                keys[f"the Server API's key ({pair.key})"] = _spki(cert.public_key())
+            except (OSError, UnsafeEntry, ValueError):
+                pass
+    return keys
+
+
+def _operator_warning(export: Dir, problem: str) -> str:
+    return f"{export.child(DASHBOARD_CERT)}: {problem}; provided by the operator, kept as it is ({DASHBOARD_NOT_USED})"
+
+
+def step_dashboard_pair(paths: Paths, conf: Dir, ca_dir: Dir, certs: Optional[Dir], state: CaState, names: TlsNames,
+                        report: Report) -> None:
+    """On a master, keep or issue the dashboard's client pair: issue it when absent and the CA has its key, reissue
+    the resolver's own when it no longer serves (another CA, expired, an interrupted write), never write the
+    operator's. Nothing here refuses a start."""
+    if names.role != "master":
+        return
+    try:
+        with ensure_dir(conf, EXPORT_DIR, EXPORT_SPEC) as export:
+            check_private_dir_roles(ca_dir, export, report)
+            if report.has(UNSAFE):
+                return
+            pair = dashboard_pair_state(export, report)
+            if pair.owner == "unsafe":
+                return
+            cert_path = export.child(DASHBOARD_CERT)
+            forbidden = _forbidden_keys(paths, certs, state.cert, names)
+            if pair.owner == "operator":
+                problem = dashboard_pair_problem(pair.files, state.cert, forbidden)
+                if problem:
+                    report.warning(_operator_warning(export, problem))
+                report.progress(f"{cert_path}: provided by the operator; kept as it is")
+                return
+            reason = None
+            if pair.owner == "ours":
+                if not pair.complete:
+                    reason = "an earlier write was interrupted"
+                else:
+                    reason = dashboard_pair_problem(pair.files, state.cert, forbidden)
+                    if reason is None:
+                        report.progress(f"{cert_path}: kept")
+                        return
+            if state.kind != "signing":
+                if pair.owner == "none":
+                    report.warning(f"dashboard client pair not generated: {ca_dir.path} has no key; provision it "
+                                   f"externally in {export.path}")
+                else:
+                    report.warning(f"{cert_path}: {reason}; not reissued: {ca_dir.path} has no key")
+                return
+            new = issue_dashboard_pair(state)
+            write_file(export, DASHBOARD_MARKER, _marker_bytes(new, pair.files), 0o600, 0, 0)
+            write_file(export, DASHBOARD_KEY, new[DASHBOARD_KEY], 0o600, 0, 0)
+            write_file(export, DASHBOARD_CERT, new[DASHBOARD_CERT], 0o644, 0, 0)
+            leaf = x509.load_pem_x509_certificates(new[DASHBOARD_CERT])[0]
+            if any(data is not None for data in pair.files.values()):
+                report.progress(f"{cert_path}: reissued ({reason}); the dashboard must import it again")
+            else:
+                report.progress(f"{cert_path}: issued; DN {leaf.subject.rfc4514_string()}; the dashboard imports it "
+                                f"from here")
+    except UnsafeEntry as exc:
+        report.unsafe(exc)
+
+
+def check_dashboard_pair(paths: Paths, conf: Dir, report: Report, names: TlsNames) -> None:
+    """--check's part, read-only: an operator pair's defects are warnings, the resolver's own pair that needs
+    reissuing is said so, unsafe entries are UNSAFE; absence is never a problem."""
+    if names.role != "master":
+        return
+    export = _open_optional_dir(conf, EXPORT_DIR, EXPORT_SPEC, report)
+    if export is None:
+        return
+    ca_dir = _open_optional_dir(conf, CA_DIR, CA_SPEC, report)
+    certs = _open_optional_dir(conf, CERTS_DIR, certs_spec(paths), Report(quiet=True, out=io.StringIO(),
+                                                                          err=io.StringIO()))
+    try:
+        pair = dashboard_pair_state(export, report)
+        if pair.owner in ("none", "unsafe"):
+            return
+        state = load_ca(ca_dir, Report(quiet=True, out=io.StringIO(), err=io.StringIO())) if ca_dir else None
+        ca_cert = state.cert if state is not None else None
+        problem = dashboard_pair_problem(pair.files, ca_cert, _forbidden_keys(paths, certs, ca_cert, names)) \
+            if pair.owner == "operator" or pair.complete else "an earlier write was interrupted"
+        if problem is None:
+            return
+        if pair.owner == "operator":
+            report.warning(_operator_warning(export, problem))
+        elif state is not None and state.kind == "signing":
+            report.progress(f"{export.child(DASHBOARD_CERT)}: {problem}; the next start reissues it")
+        else:
+            report.warning(f"{export.child(DASHBOARD_CERT)}: {problem}; not reissued: {conf.child(CA_DIR)} has no key")
+    finally:
+        for opened in (export, ca_dir, certs):
             if opened is not None:
                 opened.close()
 
@@ -2349,7 +2602,7 @@ def check_indexer_trust(paths: Paths, certs: Dir, report: Report, names: Indexer
 
 # =============================================== Whole-tree checks =============================================
 
-EXPORT_FILES = (CREDENTIALS_ENV, EXPORT_CA)
+EXPORT_FILES = (CREDENTIALS_ENV, EXPORT_CA, DASHBOARD_CERT, DASHBOARD_KEY, DASHBOARD_MARKER)
 CA_FILES = (CA_CERT, CA_KEY, CA_MARKER)
 
 
@@ -2434,6 +2687,15 @@ def run_checks(paths: Paths, conf: Dir, lookup: Lookup, report: Report, *, index
     names = names if names is not None else default_tls_names(paths)
     check_own_ca(paths, conf, lookup, report, names)
     check_export(conf, report)
+    if indexer_validity:
+        check_dashboard_pair(paths, conf, report, names)
+    else:
+        # The writing modes judge the pair in their own step; only an unsafe entry stops them before any write.
+        safety = Report(quiet=True, out=io.StringIO(), err=io.StringIO())
+        check_dashboard_pair(paths, conf, safety, names)
+        for kind, subject, reason in safety.problems:
+            if kind == UNSAFE:
+                report.problem(kind, subject, reason)
     certs = _open_optional_dir(conf, CERTS_DIR, certs_spec(paths), report)
     if certs is not None:
         with certs:
@@ -2558,6 +2820,8 @@ def _writing_mode(mode: str):
                             return report.exit_code(mode)
                         if state is not None:
                             step_server_pairs(paths, certs, state, lookup, report, mode, names)
+                            if not report.has(UNSAFE):
+                                step_dashboard_pair(paths, conf, ca, certs, state, names, report)
                         if report.has(UNSAFE):
                             return report.exit_code(mode)
                         step_indexer_trust(paths, certs, report, names.indexer)
@@ -2783,7 +3047,14 @@ def mode_clear(paths: Paths, report: Report, environ: Mapping[str, str]) -> int:
             clear_certs(certs, report)
         clear_ca(ca, report)
         if export is not None:
+            # The dashboard's client pair goes only when it is the resolver's own; an operator's stays.
+            dashboard = dashboard_pair_state(export, report)
+            kept = DASHBOARD_FILES if dashboard.owner == "operator" else ()
             for name in sorted(os.listdir(export.fd)):
+                if name in kept:
+                    if _exists(export, name):
+                        report.progress(f"kept {export.child(name)} (provided by the operator)")
+                    continue
                 _remove(export, name, report)
         if security is not None:
             for name in RBAC_FILES:

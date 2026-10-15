@@ -25,6 +25,7 @@ MADE_BY_INSTALL = {
     "conf/certs/indexer-connector.pem", "conf/certs/indexer-connector-key.pem", "conf/certs/.indexer-connector.imported",
     "conf/ca/root-ca.pem", "conf/ca/root-ca.key", "conf/ca/.wazuh-manager-bootstrap-ca",
     "conf/export/credentials.env", "conf/export/ca.pem",
+    "conf/export/dashboard-client.pem", "conf/export/dashboard-client-key.pem", "conf/export/.dashboard-client.issued",
     "home/api/configuration/security/rbac.db",
     "home/queue/keystore/keystore.json",
 }
