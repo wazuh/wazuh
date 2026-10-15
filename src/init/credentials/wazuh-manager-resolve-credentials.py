@@ -1924,13 +1924,22 @@ def issue_server_pair(ca: CaState, node: str, sans: List[San]) -> Tuple[bytes, b
     return cert.public_bytes(serialization.Encoding.PEM) + b"\n" + ca.cert_bytes, key_bytes
 
 
+SAN_LABELS = ((x509.DNSName, "DNS"), (x509.IPAddress, "IP"), (x509.RFC822Name, "email"),
+              (x509.UniformResourceIdentifier, "URI"))
+
+
 def describe_leaf(cert: x509.Certificate) -> str:
+    """`DN <subject>; SANs <list>`, each name labelled by its type, or `SANs none`: a client certificate may have
+    no subjectAltName at all."""
     try:
         names = cert.extensions.get_extension_for_class(x509.SubjectAlternativeName).value
-        sans = ", ".join(f"DNS:{n.value}" if isinstance(n, x509.DNSName) else f"IP:{n.value}" for n in names)
     except x509.ExtensionNotFound:
-        sans = "none"
-    return f"DN {cert.subject.rfc4514_string()}; SANs {sans}"
+        names = []
+    labelled = []
+    for name in names:
+        label = next((text for kind, text in SAN_LABELS if isinstance(name, kind)), type(name).__name__)
+        labelled.append(f"{label}:{name.value}")
+    return f"DN {cert.subject.rfc4514_string()}; SANs {', '.join(labelled) or 'none'}"
 
 
 def pair_problem(paths: Paths, certs: Dir, pair: ServerPair, anchors: Optional[List[x509.Certificate]],
@@ -2583,6 +2592,13 @@ def step_indexer_trust(paths: Paths, certs: Dir, report: Report, names: IndexerN
                 if write:
                     _write_unit(paths, certs, unit, selection.contents, marker_present)
                 report.progress(line)
+        if pair is not None and pair.contents is not None:
+            # Which identity the connector will present, as the server pairs say theirs.
+            try:
+                leaf = x509.load_pem_x509_certificates(pair.contents[pair_unit.files[1]])[0]
+                report.progress(f"{certs.child(pair_unit.files[1])}: {describe_leaf(leaf)}")
+            except ValueError:
+                pass
     finally:
         if isinstance(source, Dir):
             source.close()

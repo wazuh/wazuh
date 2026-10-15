@@ -672,3 +672,34 @@ def test_check_counts_warnings(resolver, sandbox):
     code, out, err = run(resolver, sandbox, "--check")
     assert code == 0 and "check: no problem found (1 warnings)" in out and err.count("WARNING") == 1, (out, err)
     assert sandbox.tree_state() == before
+
+
+# ---------------------------------------------------------------- the identity the connector presents
+
+def test_selected_client_pair_is_described(resolver, sandbox):
+    """The pair finally in place is described as the server pairs are: its DN and its SANs, `none` when it has
+    none (a client certificate need not have any). A progress line: -q drops it."""
+    line = f"{certs(sandbox, 'indexer-connector.pem')}: DN CN=wazuh-manager; SANs none"
+    code, out, err = run(resolver, sandbox, "--install")
+    assert (code, err) == (0, "") and line in out, out
+    code, out, err = run(resolver, sandbox, "--prestart")         # kept, imported earlier
+    assert (code, err) == (0, "") and line in out, out
+    code, out, err = run(resolver, sandbox, "--prestart", "-q")
+    assert (code, out, err) == (0, "", "")
+
+
+def test_describe_leaf_names_each_san_type(resolver):
+    import ipaddress
+    key = pool_key()
+    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "client")])
+    now = datetime.datetime.now(datetime.timezone.utc)
+    cert = (x509.CertificateBuilder().subject_name(name).issuer_name(name).public_key(key.public_key())
+            .serial_number(1).not_valid_before(now).not_valid_after(now + datetime.timedelta(days=1))
+            .add_extension(x509.SubjectAlternativeName([
+                x509.DNSName("node1"), x509.IPAddress(ipaddress.ip_address("192.0.2.1")),
+                x509.RFC822Name("ops@example.com"), x509.UniformResourceIdentifier("spiffe://example/manager")]),
+                critical=False)
+            .sign(key, hashes.SHA256()))
+    assert resolver.describe_leaf(cert) == ("DN CN=client; SANs DNS:node1, IP:192.0.2.1, email:ops@example.com, "
+                                            "URI:spiffe://example/manager")
+

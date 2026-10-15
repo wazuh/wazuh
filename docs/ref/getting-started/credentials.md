@@ -478,6 +478,13 @@ itself refused), never over a pair valid now. A node that boots with its clock b
 indexer connection works once the clock is right. The connector still validates TLS itself, so such material is
 not used until it is valid.
 
+Every writing run then names the client pair in place, as it names the server pairs: its subject and its subject
+alternative names, `none` when it has none (a client certificate need not have any; `-q` drops the line):
+
+```text
+resolve-credentials: /etc/wazuh-manager/certs/indexer-connector.pem: DN CN=wazuh-manager,OU=Wazuh,O=Wazuh; SANs none
+```
+
 An export that holds any file root may not trust is refused as a whole: nothing is imported from it in that run.
 An import interrupted halfway, with the marker written but not every file, is recognised: `--check` lets the start
 through, and the `--prestart` that follows finishes it.
