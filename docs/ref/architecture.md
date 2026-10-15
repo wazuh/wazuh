@@ -184,7 +184,7 @@ Every tool is installed in `/var/wazuh-manager/bin/`.
 | `wazuh-manager-control`             | Start, stop, restart, reload and query the daemons                                                        | [below](#wazuh-manager-control) |
 | `wazuh-manager-conf`                | Validate, query (`get <key>`) and dump the effective manager configuration                                | [Validation and tools](configuration/manager/README.md#validation-and-tools) |
 | `wazuh-manager-certs`               | Inspect, check and rotate the CA bundle remoted publishes (`inspect`, `check`, `add`, `remove`, `prune-expired`, `stamp`, `--from-master`) | [CA Bundle Rotation Runbook](modules/remoted/ca-rotation.md) |
-| `wazuh-manager-resolve-credentials` | Resolve the manager's passwords, keystore entry and (on a fresh install only) certificates: `--install`, `--upgrade`, `--prestart`, `--clear`, and `--check` of the credentials file | [The resolver and its modes](getting-started/credentials.md#the-resolver-and-its-modes) |
+| `wazuh-manager-resolve-credentials` | Set up and check the manager's passwords, keystore entry, CA, server pairs and indexer trust: `--install`, `--upgrade`, `--prestart` (default), read-only `--check`, and `--clear` | [The resolver and its modes](getting-started/credentials.md#the-resolver-and-its-modes) |
 | `wazuh-manager-service-control`     | setuid-root (`4750`, `root:wazuh-manager`) helper that runs `restart` or `reload` of the manager service; `wm_control`'s only path to the service | [wazuh-manager-service-control](modules/control/README.md#wazuh-manager-service-control) |
 | `wazuh-manager-keystore`            | Manage secrets in the encrypted keystore (AES-256, RocksDB)                                               | [Keystore](modules/keystore/README.md) |
 | `verify-agent-conf`                 | Validate `agent.conf` syntax for shared group configurations                                              | [Centralized configuration](modules/agent-management/centralized-configuration.md) |
@@ -207,23 +207,24 @@ cluster.node_type` is `master`, and `wazuh-manager-authd` when `auth.disabled` i
 
 | Action | Behaviour |
 | ------ | --------- |
-| `start` | Checks the credentials file and validates the configuration (see below), resolves credentials with `bin/wazuh-manager-resolve-credentials --prestart` (skipped silently when the resolver is not installed), empties `tmp/`, then starts each daemon that is not already running. `wazuh-manager-analysisd` counts as started once its API answers on `queue/sockets/engine-api-http.sock`. A daemon that fails to start stops the sequence with `<daemon> did not start correctly.` and exit status `1`. |
+| `start` | Checks the credentials (`--check`) and validates the configuration (see below), resolves credentials with `bin/wazuh-manager-resolve-credentials --prestart` (skipped silently when the resolver is not installed), empties `tmp/`, then starts each daemon that is not already running. `wazuh-manager-analysisd` counts as started once its API answers on `queue/sockets/engine-api-http.sock`. A daemon that fails to start stops the sequence with `<daemon> did not start correctly.` and exit status `1`. |
 | `stop` | Stops every daemon. |
-| `restart` | Validates the configuration **while the manager is still running** (a refused configuration leaves it up), stops every daemon, resolves credentials, and starts them again. |
+| `restart` | Checks the credentials and validates the configuration **while the manager is still running** (a refusal leaves it up), stops every daemon, resolves credentials, and starts them again. |
 | `reload` | `restart` for every daemon except `wazuh-manager-remoted`, which keeps running, so agent connections stay up. |
 | `status` | Prints `<daemon> is running...` or `<daemon> not running...` per daemon (`refused its configuration...` or `failed to start...` when the last `start` left that verdict), and exits `1` when any daemon is down. |
 | `enable debug` / `disable debug` | Make every later start pass `-d` to the daemons (or stop doing so), recorded in `bin/.process_list`. `debug` is the only accepted option. |
 | `info` | Prints `WAZUH_VERSION`, `WAZUH_REVISION` and `WAZUH_TYPE` (`manager`); `-v`, `-r` and `-t` print one of them alone. |
 
 Before `start`, `restart` and `reload` touch any daemon, `bin/wazuh-manager-resolve-credentials --check`
-refuses an unsafe `/etc/wazuh/credentials.env` with `Unsafe credentials file. Exiting`
-(`{"error":22,…}` under `-j`). Then the configuration is validated twice:
+tests every credential file and certificate it trusts, read-only, and a problem is refused with
+`Unsafe credentials. Exiting`, `Invalid credentials. Exiting` or, when the check itself cannot run,
+`Cannot check the credentials. Exiting` (`{"error":22,…}` under `-j`). Then the configuration is validated twice:
 `bin/wazuh-manager-conf validate`, **with** the checks that the referenced certificate files exist,
 and then each daemon's own `-t`. A failure is refused with `wazuh-manager.conf: Configuration error.
 Exiting` (or `<daemon>: Configuration error. Exiting`), `{"error":20,…}` under `-j`; the first also
 writes a `wazuh-manager-control: ERROR: …` line to `logs/wazuh-manager.log`. An unresolved credential is
 refused next, with `Unresolved credentials. Exiting` (`{"error":21,"message":"Unresolved
-credentials."}` under `-j`) and the resolver's `INVALID|MISSING <key>` verdict in the same log; see
+credentials."}` under `-j`) and the resolver's `MISSING|INVALID|UNSAFE` lines in the same log; see
 [When the manager does not start](getting-started/credentials.md#when-the-manager-does-not-start).
 A configuration so broken that `cluster.node_type` cannot be read surfaces as `Invalid cluster
 configuration, check the /etc/wazuh-manager/wazuh-manager.conf file.`

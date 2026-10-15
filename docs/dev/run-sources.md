@@ -62,39 +62,38 @@ To move the system service to the new directory on purpose, pass
 
 ### Provision certificates
 
-`install.sh` resolves the manager's credentials at the end of the run: it seeds the
-Server API passwords, stores the indexer credential if one was supplied, and issues
-the three TLS pairs under `/etc/wazuh-manager/certs` from a bootstrap CA in `/etc/wazuh/ca`. So a plain
-source install already has certificates and you can skip this section.
+`install.sh` resolves the manager's credentials at the end of the run: it seeds the Server API passwords, stores
+the indexer password if one was supplied, mints the manager's CA in `/etc/wazuh-manager/ca`, and issues the agent
+listener and Server API pairs into `/etc/wazuh-manager/certs`. When a 5.x indexer runs on the same host it also
+imports the indexer's CA and the client pair it issued for this manager. So a plain source install next to an
+indexer has every certificate it needs, and you can skip this section.
 
-Two cases where you supply them instead:
+Cases where you supply them instead:
 
-* You want the pairs your deployment actually uses (an E2E environment, a node that
-  has to match certificates issued elsewhere).
-* You passed `USER_RESOLVE_CREDENTIALS="n"` — which you should for any install whose
-  tree is copied somewhere else, since a bootstrap CA private key generated once and
-  shared by every copy is worse than no certificate at all.
+* The indexer runs elsewhere: stage its CA as `indexer-ca.pem` and a client pair it issued for this node (with
+  `extendedKeyUsage` `clientAuth`) as `indexer-connector.pem` / `indexer-connector-key.pem`, and put
+  `WAZUH_INDEXER_MANAGER_PASSWORD` in `/etc/wazuh-manager/local.env`.
+* You want the pairs your deployment actually uses (an E2E environment, a node that has to match certificates
+  issued elsewhere).
+* You passed `USER_RESOLVE_CREDENTIALS="n"` — which you should for any install whose tree is copied somewhere
+  else, since a CA private key generated once and shared by every copy is worse than no certificate at all.
 
-Deploy under `/etc/wazuh-manager/certs` the indexer trust material — `root-ca.pem`,
-`indexer-connector.pem`, `indexer-connector-key.pem` — and
-the HTTPS agent listener pair — `remoted.pem`, `remoted-key.pem` — and the
-Server API pair — `apid.pem`, `apid-key.pem` (all
-`root:wazuh-manager 640`, in a `root:wazuh-manager 0750` directory) — issued by the Wazuh installation assistant's
-certificate tool (`wazuh-certs-tool`). The tool issues no apid pair: the listener pair serves as one
-(the installer issues `apid.pem` with the profile of `remoted.pem`), as long as its SAN carries the
-name the API is reached by — `localhost` in these environments.
-With `USER_RESOLVE_CREDENTIALS="n"` nothing issues `apid.pem` unless you provide it, and the Server
-API then stops with error `2003` in `logs/api.log`. Nothing re-examines them afterwards: overwriting
-a resolved pair is enough, and the CA directory can go with it. Until they exist,
-`wazuh-manager-control start` refuses to start
-(`(1244): Invalid configuration at '/remote/https/certificate': file not found: …`).
-See [Deploy certificates](../ref/getting-started/installation.md#using-certificates-issued-elsewhere)
+Staged files go under `/etc/wazuh-manager/certs` (`root:wazuh-manager 640`, in a `root:wazuh-manager 0750`
+directory): the agents' bundle `root-ca.pem`, the agent listener pair `remoted.pem` / `remoted-key.pem`, the Server
+API pair `apid.pem` / `apid-key.pem`, and the indexer trust above. The CA that issued the two server pairs goes,
+without its key unless this host should issue pairs, in `/etc/wazuh-manager/ca/root-ca.pem` (`root:root 644`, in a
+`root:root 0700` directory): the credential resolver checks the Server API pair against it at every start. A
+staged file is validated, never replaced. A missing or invalid one stops `wazuh-manager-control start` with a line
+naming it, or, for a missing listener pair, with
+`(1244): Invalid configuration at '/remote/https/certificate': file not found: …`.
+See [Using certificates issued elsewhere](../ref/getting-started/installation.md#using-certificates-issued-elsewhere)
 and [Credentials](../ref/getting-started/credentials.md).
 
 In the devcontainer, the E2E environment carries a copy of that tool
 (`tools/devContainer/scripts/wazuh-certs-tool.sh`, driven by
 `wazuh-certs-tool.yml` next to it) and a script that deploys its output with the
-names and ownership above:
+names and ownership above, puts that tool's CA in `/etc/wazuh-manager/ca/` (certificate only), and runs
+`--install` and `--check` (stop the manager first):
 
 ```bash
 cd $WAZUH_REPO/tools/devContainer/e2e
@@ -110,9 +109,11 @@ host share one configuration directory):
 sudo WAZUH_MANAGER_HOME=/tmp/clean_env/wazuh-manager ./wazuh_copy_certs.sh
 ```
 
-Or run the tool directly and `install` the five files it issues, with the listener pair installed
-a second time as `apid.pem` / `apid-key.pem`, as the CI does
-(`.github/workflows/5_testintegration_manager.yml`, step "Provision TLS certificates"):
+Or run the tool directly and stage what it issues as the CI does
+(`.github/workflows/5_testintegration_manager.yml`, steps "Provision TLS certificates" and "Supply the indexer
+credential and resolve"): the listener pair also as `apid.pem` / `apid-key.pem`, the manager node's certificate
+(issued with `clientAuth`) as the indexer client pair, the tool's `root-ca.pem` as `certs/root-ca.pem`,
+`certs/indexer-ca.pem` and `ca/root-ca.pem`, the indexer password in `local.env`, then `--install`:
 
 ```bash
 bash $WAZUH_REPO/tools/devContainer/scripts/wazuh-certs-tool.sh -A -c certs.yml -o ./certs

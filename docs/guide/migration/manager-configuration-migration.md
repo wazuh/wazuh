@@ -336,7 +336,7 @@ In 4.x the certificates pointed to Filebeat's certificate directory. In 5.0, Fil
   </hosts>
   <ssl>
     <certificate_authorities>
-      <ca>/etc/wazuh-manager/certs/root-ca.pem</ca>
+      <ca>/etc/wazuh-manager/certs/indexer-ca.pem</ca>
     </certificate_authorities>
     <certificate>/etc/wazuh-manager/certs/indexer-connector.pem</certificate>
     <key>/etc/wazuh-manager/certs/indexer-connector-key.pem</key>

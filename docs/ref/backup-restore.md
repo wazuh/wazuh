@@ -22,8 +22,12 @@ The following components should be included in your Wazuh manager backup strateg
   - Critical for agent communication
 
 - **SSL/TLS certificates**: `/etc/wazuh-manager/certs/`
-  - Manager certificates and keys
-  - Root CA certificates
+  - Manager certificates and keys, the agents' CA bundle, the indexer's CA and client pair
+  - The import markers `.indexer-ca.imported` and `.indexer-connector.imported` (keep them with the files)
+
+- **Credentials**: `/etc/wazuh-manager/ca/`, `/etc/wazuh-manager/export/`, `/etc/wazuh-manager/local.env`
+  - `ca/root-ca.key` is the manager's CA private key: protect the backup accordingly
+  - `export/credentials.env` holds the Server API passwords; `local.env` the values you supplied
 
 - **Global database**: `/var/wazuh-manager/queue/db/global.db`
   - Agent information (registration, metadata)
@@ -371,6 +375,15 @@ sudo sh -c 'cd /etc/wazuh-manager || exit 1
     done
     chmod 660 client.keys wazuh-manager.conf'
 
+# Credentials: the manager's CA (with its private key), what it publishes and your
+# local.env are root's alone. The chown above handed them to the service group, and
+# the next start would refuse them; put them back and let the resolver confirm.
+sudo sh -c 'cd /etc/wazuh-manager || exit 1
+    for D in ca export; do [ -d "$D" ] && chown -R root:root "$D" && chmod 700 "$D"; done
+    [ -f local.env ] && chown root:root local.env && chmod 600 local.env
+    exit 0'
+sudo /var/wazuh-manager/bin/wazuh-manager-resolve-credentials --check
+
 # Certificates: root-owned, readable by the service group. No daemon writes this
 # directory; a pair the service cannot read stops the daemon that
 # loads it (an unreadable apid pair stops the API with error 2003).
@@ -556,6 +569,7 @@ sudo chown root:wazuh-manager /etc/wazuh-manager/wazuh-manager.conf \
     /etc/wazuh-manager/wazuh-manager-internal-options.conf
 sudo sh -c 'cd /etc/wazuh-manager/certs || exit 1
     chown -R root:wazuh-manager . && chmod 750 . && chmod 640 *'
+sudo /var/wazuh-manager/bin/wazuh-manager-resolve-credentials --check
 
 sudo /var/wazuh-manager/bin/wazuh-manager-conf validate
 sudo systemctl start wazuh-manager
@@ -654,6 +668,8 @@ docker compose exec -u root wazuh.manager sh -c '
     chmod 660 /var/wazuh-manager/queue/db/global.db
     chmod 750 /etc/wazuh-manager/certs
     chmod 640 /etc/wazuh-manager/certs/*
+    for D in ca export; do [ -d "/etc/wazuh-manager/$D" ] && chown -R root:root "/etc/wazuh-manager/$D" && chmod 700 "/etc/wazuh-manager/$D"; done
+    [ -f /etc/wazuh-manager/local.env ] && chown root:root /etc/wazuh-manager/local.env && chmod 600 /etc/wazuh-manager/local.env
     chown -R root:wazuh-manager /var/wazuh-manager/api/configuration
     chown wazuh-manager:wazuh-manager /var/wazuh-manager/api/configuration/security/rbac.db
 '
@@ -874,7 +890,11 @@ sudo sh -c 'cd /etc/wazuh-manager || exit 1
         [ -f "$F" ] && chown wazuh-manager:wazuh-manager "$F"
     done
     chmod 660 client.keys wazuh-manager.conf
-    chmod 750 certs && chmod 640 certs/*'
+    chmod 750 certs && chmod 640 certs/*
+    for D in ca export; do [ -d "$D" ] && chown -R root:root "$D" && chmod 700 "$D"; done
+    [ -f local.env ] && chown root:root local.env && chmod 600 local.env
+    exit 0'
+sudo /var/wazuh-manager/bin/wazuh-manager-resolve-credentials --check
 
 # Check logs
 sudo tail -100 /var/wazuh-manager/logs/wazuh-manager.log

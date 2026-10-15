@@ -27,7 +27,7 @@ The installer writes this section:
   </hosts>
   <ssl>
     <certificate_authorities>
-      <ca>/etc/wazuh-manager/certs/root-ca.pem</ca>
+      <ca>/etc/wazuh-manager/certs/indexer-ca.pem</ca>
     </certificate_authorities>
     <certificate>/etc/wazuh-manager/certs/indexer-connector.pem</certificate>
     <key>/etc/wazuh-manager/certs/indexer-connector-key.pem</key>
@@ -87,9 +87,10 @@ part of `wazuh-manager.conf`: they are read from the `indexer` column family of 
 [keystore](../keystore/README.md), keys `username` and `password`.
 
 The credential resolver fills them in at installation and before every start: `username` defaults to
-`wazuh-manager` when it is not set, and `password` is taken from `WAZUH_INDEXER_MANAGER_PASSWORD` in
-`/etc/wazuh/credentials.env`. There is no default password: when the keystore holds no password and
-the variable is not supplied, the start is refused with `MISSING WAZUH_INDEXER_MANAGER_PASSWORD`. See
+`wazuh-manager` when it is not set, and `password` is taken from `WAZUH_INDEXER_MANAGER_PASSWORD` in the
+environment, in `/etc/wazuh-manager/local.env`, or in the indexer's `/etc/wazuh-indexer/export/credentials.env`
+when the indexer runs on the same host. There is no default password: when the keystore holds no password and
+none of them supplies one, the start is refused with `MISSING WAZUH_INDEXER_MANAGER_PASSWORD`. See
 [Credentials](../../getting-started/credentials.md).
 
 To change them by hand (as root):
@@ -129,7 +130,7 @@ All of them are set in `/etc/wazuh-manager/wazuh-manager-internal-options.conf`.
   </hosts>
   <ssl>
     <certificate_authorities>
-      <ca>/etc/wazuh-manager/certs/root-ca.pem</ca>
+      <ca>/etc/wazuh-manager/certs/indexer-ca.pem</ca>
     </certificate_authorities>
     <certificate>/etc/wazuh-manager/certs/indexer-connector.pem</certificate>
     <key>/etc/wazuh-manager/certs/indexer-connector-key.pem</key>
@@ -184,7 +185,7 @@ Check that the Indexer accepts the manager's certificate and credentials, using 
 account the connector uses:
 
 ```bash
-curl --cacert /etc/wazuh-manager/certs/root-ca.pem \
+curl --cacert /etc/wazuh-manager/certs/indexer-ca.pem \
      --cert   /etc/wazuh-manager/certs/indexer-connector.pem \
      --key    /etc/wazuh-manager/certs/indexer-connector-key.pem \
      -u "wazuh-manager:$(/var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -g)" \
@@ -211,23 +212,29 @@ grep -E "Indexer node|Health check failed|indexer credentials" /var/wazuh-manage
 
 ## Certificates
 
-The installation issues the client certificate and key from the manager's CA, once (see
-[Credentials](../../getting-started/credentials.md)). Installed ownership and modes:
+The connector trusts the indexer's CA and presents a client pair the indexer issued for this manager. Neither
+comes from the manager's own CA:
 
 | File | Owner:group | Mode |
 |---|---|---|
-| `/etc/wazuh-manager/certs/root-ca.pem` | root:wazuh-manager | 0640 |
+| `/etc/wazuh-manager/certs/indexer-ca.pem` | root:wazuh-manager | 0640 |
 | `/etc/wazuh-manager/certs/indexer-connector.pem` | root:wazuh-manager | 0640 |
 | `/etc/wazuh-manager/certs/indexer-connector-key.pem` | root:wazuh-manager | 0640 |
 
+When the indexer runs on the same host, the credential resolver imports them from `/etc/wazuh-indexer/export/`
+(`ca.pem`, `manager-client.pem`, `manager-client-key.pem`), records the import with a marker file, and imports them
+again when the indexer's files change. Otherwise stage them yourself under these names: files without a marker are
+validated at every start and never replaced. The client certificate must be issued directly by a certificate of
+`indexer-ca.pem`, match its key, be inside its validity window and carry an `extendedKeyUsage` with `clientAuth`.
+See [Indexer trust](../../getting-started/credentials.md#indexer-trust).
+
 The daemons read them as `wazuh-manager`, so a replacement file must stay readable by that group.
 
-`root-ca.pem` is not the connector's alone: it is also the default
-[`remote.https.ca_certificate`](../remoted/configuration.md#httpsca_certificate), the CA bundle
-remoted serves to agents on `GET /cacerts`. Replacing it changes the agent listener's trust anchor
-too (see the [CA rotation runbook](../remoted/ca-rotation.md)). To trust an Indexer signed by a
-different CA, put that CA in its own file and list it under
-[`certificate_authorities`](#certificate_authorities) instead.
+`/etc/wazuh-manager/certs/root-ca.pem` is not the connector's: it is the manager's own CA bundle, the default
+[`remote.https.ca_certificate`](../remoted/configuration.md#httpsca_certificate) that remoted serves to agents on
+`GET /cacerts`. To trust more than one indexer CA, put them all in `indexer-ca.pem`. Other files listed under
+[`certificate_authorities`](#certificate_authorities) widen what the connector trusts, but the credential resolver
+still requires `indexer-ca.pem` and checks the client pair against it.
 
 ---
 
