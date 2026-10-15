@@ -8,9 +8,11 @@
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
 
-# The manager's RPM sources this file from %post, on hosts that may not have sed or grep: the version
-# numbers it can reach there (os-release, CentOS, Fedora, Red Hat) are read with the shell only. Each
-# helper prints exactly what the sed expression in its comment printed.
+# The manager's and the agent's packages source this file from their scriptlets (and install.sh and the
+# macOS postinstall on bash 3.2), on hosts that may not have sed or grep, so every version number is
+# read with the shell only. Each helper prints exactly what the sed expression in its comment printed;
+# the ones that end in "Lines" filter standard input line by line as `sed -rn 's/.../\1/p'` did, so a
+# line that does not match prints nothing and every matching line prints its own result.
 
 # DistNumber <text>: sed -rn 's/[^0-9]*([0-9]+).*/\1/p' -- the first run of digits.
 DistNumber()
@@ -114,6 +116,146 @@ FedoraNumber()
     done < "$1"
 }
 
+# DistPut <value> <read status>: the value, then a newline unless the line it came from had none (sed
+# keeps a last line's missing newline).
+DistPut()
+{
+    if [ "$2" = 0 ]; then
+        printf '%s\n' "$1"
+    else
+        printf '%s' "$1"
+    fi
+}
+
+# NumberLines major|minor: DistNumber (major) or DistMinor (minor) on each line of standard input,
+# for the lines where the sed expression matched.
+NumberLines()
+{
+    while :; do
+        _nl_eol=0
+        IFS= read -r _nl_line || _nl_eol=1
+        if [ "$_nl_eol" != 0 ] && [ -z "$_nl_line" ]; then
+            break
+        fi
+        if [ "$1" = "major" ]; then
+            case "$_nl_line" in
+                *[0-9]*) DistPut "$(DistNumber "$_nl_line")" "$_nl_eol" ;;
+            esac
+        else
+            _nl_found=$(DistMinor "$_nl_line")
+            if [ -n "$_nl_found" ]; then
+                DistPut "$_nl_found" "$_nl_eol"
+            fi
+        fi
+    done
+}
+
+# PairLines major|minor: sed -rn 's/.*([0-9][0-9])\.[0-9][0-9].*/\1/p' (major) and
+# sed -rn 's/.*[0-9][0-9]\.([0-9][0-9]).*/\1/p' (minor) -- on each line, the last place holding two
+# digits, a dot and two digits: the digits before the dot, or the two after it.
+PairLines()
+{
+    while :; do
+        _pl_eol=0
+        IFS= read -r _pl_line || _pl_eol=1
+        if [ "$_pl_eol" != 0 ] && [ -z "$_pl_line" ]; then
+            break
+        fi
+        _pl_found=""
+        _pl_rest="$_pl_line"
+        while [ -n "$_pl_rest" ]; do
+            case "$_pl_rest" in
+                [0-9][0-9].[0-9][0-9]*) _pl_found="$_pl_rest" ;;
+            esac
+            _pl_rest="${_pl_rest#?}"
+        done
+        if [ -n "$_pl_found" ]; then
+            if [ "$1" = "major" ]; then
+                DistPut "${_pl_found%"${_pl_found#??}"}" "$_pl_eol"
+            else
+                _pl_found="${_pl_found#???}"
+                DistPut "${_pl_found%"${_pl_found#??}"}" "$_pl_eol"
+            fi
+        fi
+    done
+}
+
+# DottedLines major|minor <width>: on each line, the last space followed by one or two digits, a dot
+# and a digit; the digits before the dot (major), or up to <width> digits after it (minor). Width 2:
+# sed -rn 's/.* ([0-9]{1,2})\.[0-9]{1,2}.*/\1/p' and 's/.* [0-9]{1,2}\.([0-9]{1,2}).*/\1/p' (Gentoo);
+# width 1: sed -rn 's/.* ([0-9]{1,2})\.[0-9].*/\1/p' and 's/.* [0-9]{1,2}\.([0-9]).*/\1/p'
+# (Slackware).
+DottedLines()
+{
+    while :; do
+        _dl_eol=0
+        IFS= read -r _dl_line || _dl_eol=1
+        if [ "$_dl_eol" != 0 ] && [ -z "$_dl_line" ]; then
+            break
+        fi
+        _dl_found=""
+        _dl_rest="$_dl_line"
+        while :; do
+            case "$_dl_rest" in
+                *" "*) _dl_rest="${_dl_rest#* }" ;;
+                *) break ;;
+            esac
+            case "$_dl_rest" in
+                [0-9].[0-9]*|[0-9][0-9].[0-9]*) _dl_found="$_dl_rest" ;;
+            esac
+        done
+        if [ -z "$_dl_found" ]; then
+            continue
+        fi
+        _dl_major="${_dl_found%%.*}"
+        if [ "$1" = "major" ]; then
+            DistPut "$_dl_major" "$_dl_eol"
+        else
+            _dl_minor=$(DistTwoDigits "${_dl_found#"$_dl_major".}")
+            if [ "$2" = "1" ]; then
+                _dl_minor="${_dl_minor%"${_dl_minor#?}"}"
+            fi
+            DistPut "$_dl_minor" "$_dl_eol"
+        fi
+    done
+}
+
+# MarkerLines <marker> [dotted]: on each line, the last <marker> followed by a digit: its first one or
+# two digits -- sed -rn 's/.*VERSION = ([0-9]{1,2}).*/\1/p' with "VERSION = ". With "dotted", the
+# last <marker> followed by one or two digits, a dot and a digit, and again the digits before the dot:
+# sed -rn 's/.*VERSION = ([0-9]{1,2})\.([0-9]{1,2}).*/\1/p', which prints its first group, not the
+# second (SuSE's fallback for the patch level has always taken the major from that line).
+MarkerLines()
+{
+    while :; do
+        _ml_eol=0
+        IFS= read -r _ml_line || _ml_eol=1
+        if [ "$_ml_eol" != 0 ] && [ -z "$_ml_line" ]; then
+            break
+        fi
+        _ml_found=""
+        _ml_rest="$_ml_line"
+        while :; do
+            case "$_ml_rest" in
+                *"$1"*) _ml_rest="${_ml_rest#*"$1"}" ;;
+                *) break ;;
+            esac
+            if [ "$2" = "dotted" ]; then
+                case "$_ml_rest" in
+                    [0-9].[0-9]*|[0-9][0-9].[0-9]*) _ml_found="$_ml_rest" ;;
+                esac
+            else
+                case "$_ml_rest" in
+                    [0-9]*) _ml_found="$_ml_rest" ;;
+                esac
+            fi
+        done
+        if [ -n "$_ml_found" ]; then
+            DistPut "$(DistTwoDigits "$_ml_found")" "$_ml_eol"
+        fi
+    done
+}
+
 # Default values
 DIST_NAME="Linux"
 DIST_VER="0"
@@ -160,53 +302,53 @@ if [ ! -r "/etc/os-release" ] || [ "$DIST_NAME" = "centos" ]; then
     elif [ -r "/etc/lsb-release" ]; then
         . /etc/lsb-release
         DIST_NAME="ubuntu"
-        DIST_VER=$(echo $DISTRIB_RELEASE | sed -rn 's/.*([0-9][0-9])\.[0-9][0-9].*/\1/p')
-        DIST_SUBVER=$(echo $DISTRIB_RELEASE | sed -rn 's/.*[0-9][0-9]\.([0-9][0-9]).*/\1/p')
+        DIST_VER=$(echo $DISTRIB_RELEASE | PairLines major)
+        DIST_SUBVER=$(echo $DISTRIB_RELEASE | PairLines minor)
 
     # Gentoo
     elif [ -r "/etc/gentoo-release" ]; then
         DIST_NAME="gentoo"
-        DIST_VER=`sed -rn 's/.* ([0-9]{1,2})\.[0-9]{1,2}.*/\1/p' /etc/gentoo-release`
-        DIST_SUBVER=`sed -rn 's/.* [0-9]{1,2}\.([0-9]{1,2}).*/\1/p' /etc/gentoo-release`
+        DIST_VER=$(DottedLines major 2 < /etc/gentoo-release)
+        DIST_SUBVER=$(DottedLines minor 2 < /etc/gentoo-release)
 
     # SuSE
     elif [ -r "/etc/SuSE-release" ]; then
         DIST_NAME="suse"
-        DIST_VER=`sed -rn 's/.*VERSION = ([0-9]{1,2}).*/\1/p' /etc/SuSE-release`
-        DIST_SUBVER=`sed -rn 's/.*PATCHLEVEL = ([0-9]{1,2}).*/\1/p' /etc/SuSE-release`
+        DIST_VER=$(MarkerLines "VERSION = " < /etc/SuSE-release)
+        DIST_SUBVER=$(MarkerLines "PATCHLEVEL = " < /etc/SuSE-release)
         if [ "$DIST_SUBVER" = "" ]; then #openSuse
-          DIST_SUBVER=`sed -rn 's/.*VERSION = ([0-9]{1,2})\.([0-9]{1,2}).*/\1/p' /etc/SuSE-release`
+          DIST_SUBVER=$(MarkerLines "VERSION = " dotted < /etc/SuSE-release)
         fi
 
     # Arch
     elif [ -r "/etc/arch-release" ]; then
         DIST_NAME="arch"
-        DIST_VER=$(uname -r | sed -rn 's/[^0-9]*([0-9]+).*/\1/p')
-        DIST_SUBVER=$(uname -r | sed -rn 's/[^0-9]*[0-9]+\.([0-9]+).*/\1/p')
+        DIST_VER=$(uname -r | NumberLines major)
+        DIST_SUBVER=$(uname -r | NumberLines minor)
 
     # Debian
     elif [ -r "/etc/debian_version" ]; then
         DIST_NAME="debian"
-        DIST_VER=`sed -rn 's/[^0-9]*([0-9]+).*/\1/p' /etc/debian_version`
-        DIST_SUBVER=`sed -rn 's/[^0-9]*[0-9]+\.([0-9]+).*/\1/p' /etc/debian_version`
+        DIST_VER=$(NumberLines major < /etc/debian_version)
+        DIST_SUBVER=$(NumberLines minor < /etc/debian_version)
 
     # Slackware
     elif [ -r "/etc/slackware-version" ]; then
         DIST_NAME="slackware"
-        DIST_VER=`sed -rn 's/.* ([0-9]{1,2})\.[0-9].*/\1/p' /etc/slackware-version`
-        DIST_SUBVER=`sed -rn 's/.* [0-9]{1,2}\.([0-9]).*/\1/p' /etc/slackware-version`
+        DIST_VER=$(DottedLines major 1 < /etc/slackware-version)
+        DIST_SUBVER=$(DottedLines minor 1 < /etc/slackware-version)
 
     # Darwin
     elif [ "$(uname)" = "Darwin" ]; then
         DIST_NAME="darwin"
-        DIST_VER=$(uname -r | sed -En 's/[^0-9]*([0-9]+).*/\1/p')
-        DIST_SUBVER=$(uname -r | sed -En 's/[^0-9]*[0-9]+\.([0-9]+).*/\1/p')
+        DIST_VER=$(uname -r | NumberLines major)
+        DIST_SUBVER=$(uname -r | NumberLines minor)
 
     # BSD
     elif [ "X$(uname)" = "XOpenBSD" -o "X$(uname)" = "XNetBSD" -o "X$(uname)" = "XFreeBSD" -o "X$(uname)" = "XDragonFly" ]; then
         DIST_NAME="bsd"
-        DIST_VER=$(uname -r | sed -rn 's/[^0-9]*([0-9]+).*/\1/p')
-        DIST_SUBVER=$(uname -r | sed -rn 's/[^0-9]*[0-9]+\.([0-9]+).*/\1/p')
+        DIST_VER=$(uname -r | NumberLines major)
+        DIST_SUBVER=$(uname -r | NumberLines minor)
 
     elif [ "X$(uname)" = "XLinux" ]; then
         DIST_NAME="Linux"

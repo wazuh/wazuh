@@ -108,6 +108,102 @@ same "ReleaseNumber over several lines" \
     "$(sed -rn 's/.* ([0-9]{1,2})\.*[0-9]{0,2}.*/\1/p' "$TMP/release-multi")" \
     "$(in_repo dist ReleaseNumber "$TMP/release-multi" major)"
 
+# The fallbacks for hosts without /etc/os-release (lsb-release, Gentoo, SuSE, Arch, Debian, Slackware,
+# Darwin and the BSDs, reached by the agent's installers too) read files and `uname -r` line by line,
+# as `sed -rn 's/.../\1/p'` did. Every filter runs on every input below beside the sed expression it
+# replaced: the release files and `uname -r` forms of those systems, odd values, several lines, and a
+# last line without its newline.
+n=0
+while IFS= read -r line; do
+    n=$((n + 1))
+    printf '%s\n' "$line" > "$TMP/lines-$n"
+done <<'EOF'
+24.04
+22.04
+16.04
+8.04.1
+10.10
+12.34.56
+a 22.04 b 18.10
+2004
+rolling
+
+12.5
+11.9
+8.11
+10
+bookworm/sid
+trixie/sid
+Gentoo Base System release 2.14
+Gentoo Base System release 2.7
+Gentoo Base System release 123.4
+release 1.2 and 3.45 and 6.7
+x 1.
+x 12.345
+Slackware 15.0
+Slackware 14.2
+Slackware 15.0+
+Slackware 8.1.1
+Slackware current
+SUSE Linux Enterprise Server 12 (x86_64)
+VERSION = 12
+VERSION = 123
+VERSION = 42.3
+VERSION = 13.2
+PATCHLEVEL = 5
+XVERSION = 5 VERSION = 7
+VERSION = 1.2 VERSION = 34.56
+VERSION = x
+6.8.9-arch1-1
+5.15.0-105-generic
+2.6.32-754.el6.x86_64
+23.4.0
+14.0-RELEASE-p6
+7.5
+10.0
+6.4-RELEASE
+v1.2
+15-SP5.1
+1a22.3
+EOF
+printf 'SUSE Linux Enterprise Server 11 (x86_64)\nVERSION = 11\nPATCHLEVEL = 4\n' > "$TMP/lines-suse-11"
+printf 'openSUSE 13.2 (x86_64)\nVERSION = 13.2\nCODENAME = Harlequin\n' > "$TMP/lines-opensuse-13"
+printf 'Gentoo Base System release 2.14\nno digits\nSlackware 15.0\n24.04 and 22.10\n' > "$TMP/lines-several"
+printf 'VERSION = 12\nPATCHLEVEL = 3' > "$TMP/lines-no-eol"
+
+dist_stdin() { _input=$1; shift; . ./src/init/dist-detect.sh; "$@" < "$_input"; }
+
+# lines_like <sed expression> <filter and arguments...>: one check per filter, every input compared.
+lines_like() {
+    _expr=$1
+    shift
+    _bad=""
+    for _input in "$TMP"/lines-*; do
+        _expected=$(sed -rn "$_expr" "$_input"; echo x)
+        _actual=$(in_repo dist_stdin "$_input" "$@"; echo x)
+        if [ "$_expected" != "$_actual" ]; then
+            _bad="$_bad $(basename "$_input"): expected '$_expected', got '$_actual';"
+        fi
+    done
+    if [ -z "$_bad" ]; then
+        pass "$* on $(ls "$TMP"/lines-* | wc -l | tr -d ' ') inputs"
+    else
+        fail "$*" "$_bad"
+    fi
+}
+
+lines_like 's/[^0-9]*([0-9]+).*/\1/p' NumberLines major
+lines_like 's/[^0-9]*[0-9]+\.([0-9]+).*/\1/p' NumberLines minor
+lines_like 's/.*([0-9][0-9])\.[0-9][0-9].*/\1/p' PairLines major
+lines_like 's/.*[0-9][0-9]\.([0-9][0-9]).*/\1/p' PairLines minor
+lines_like 's/.* ([0-9]{1,2})\.[0-9]{1,2}.*/\1/p' DottedLines major 2
+lines_like 's/.* [0-9]{1,2}\.([0-9]{1,2}).*/\1/p' DottedLines minor 2
+lines_like 's/.* ([0-9]{1,2})\.[0-9].*/\1/p' DottedLines major 1
+lines_like 's/.* [0-9]{1,2}\.([0-9]).*/\1/p' DottedLines minor 1
+lines_like 's/.*VERSION = ([0-9]{1,2}).*/\1/p' MarkerLines "VERSION = "
+lines_like 's/.*PATCHLEVEL = ([0-9]{1,2}).*/\1/p' MarkerLines "PATCHLEVEL = "
+lines_like 's/.*VERSION = ([0-9]{1,2})\.([0-9]{1,2}).*/\1/p' MarkerLines "VERSION = " dotted
+
 # ------------------------------------------------------------------------------------- shared.sh
 values() { . ./src/init/shared.sh; "$@"; }
 version_values() { . ./src/init/shared.sh; printf '%s %s' "$VERSION" "$REVISION"; }
