@@ -386,4 +386,26 @@ TEST_F(WindowsHelperTest, getIpV6AddressZeroLengthBufferReturnsEmptyString)
     EXPECT_EQ(Utils::NetworkWindowsHelper::getIpV6Address(emptyAddr.data()), "");
 }
 
+TEST_F(WindowsHelperTest, isLocalFixedPathAcceptsLocalDrive)
+{
+    EXPECT_TRUE(Utils::isLocalFixedPath(R"(C:\Python312\)"));
+    EXPECT_TRUE(Utils::isLocalFixedPath("C:/Program Files/nodejs"));
+}
+
+TEST_F(WindowsHelperTest, isLocalFixedPathRejectsNetworkAndDevicePaths)
+{
+    EXPECT_FALSE(Utils::isLocalFixedPath(R"(\\h\s\)"));
+    EXPECT_FALSE(Utils::isLocalFixedPath("//h/s/"));
+    EXPECT_FALSE(Utils::isLocalFixedPath(R"(/\h\s)"));
+    EXPECT_FALSE(Utils::isLocalFixedPath(R"(\\?\UNC\h\s)"));
+    EXPECT_FALSE(Utils::isLocalFixedPath("//?/UNC/h/s"));
+    EXPECT_FALSE(Utils::isLocalFixedPath(R"(\\.\pipe\x)"));
+    EXPECT_FALSE(Utils::isLocalFixedPath(R"(\??\UNC\h)"));
+    EXPECT_FALSE(Utils::isLocalFixedPath(R"(\\?\C:\Python312)"));
+    EXPECT_FALSE(Utils::isLocalFixedPath("C:"));
+    EXPECT_FALSE(Utils::isLocalFixedPath("C:Python"));
+    EXPECT_FALSE(Utils::isLocalFixedPath(R"(1:\x)"));
+    EXPECT_FALSE(Utils::isLocalFixedPath(""));
+}
+
 #endif

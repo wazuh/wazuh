@@ -45,8 +45,11 @@ private:
         QUEUE_NUMBER = 1
     };
 
-    void initializeQueueData()
+    // Computes the metadata of every queue from the keys the store holds. The status it returns is the one of the
+    // iteration, which is not OK when the scan failed before the end of the store.
+    rocksdb::Status scanKeys()
     {
+        m_queueMetadata.clear();
         auto it = std::unique_ptr<rocksdb::Iterator>(m_db->NewIterator(rocksdb::ReadOptions()));
         it->SeekToFirst();
         while (it->Valid())
@@ -77,6 +80,8 @@ private:
 
             it->Next();
         }
+
+        return it->status();
     }
 
 public:
@@ -144,11 +149,29 @@ public:
         m_db.reset(dbRawPtr);
 
         // Initialize queue data.
-        initializeQueueData();
+        auto scanStatus = scanKeys();
+
+        // Valid() is false both at the end of the store and when the iteration fails, so the status tells them apart.
+        // Metadata computed from a partial scan would make push() overwrite queued entries, so push() is refused.
+        if (!scanStatus.ok())
+        {
+            m_unreliableBounds = "the scan failed: " + scanStatus.ToString();
+            LOGFN_ERROR(m_logFn,
+                        "Queue '%s': the bounds could not be established (%s). New elements are rejected until the "
+                        "queue directory is removed with the manager stopped.",
+                        path.c_str(),
+                        m_unreliableBounds.c_str());
+        }
     }
 
     void push(std::string_view id, const T& data)
     {
+        if (!m_unreliableBounds.empty())
+        {
+            throw std::runtime_error("Failed to enqueue element, the bounds of the queue are unreliable: " +
+                                     m_unreliableBounds);
+        }
+
         if (m_queueMetadata.find(id.data()) == m_queueMetadata.end())
         {
             m_queueMetadata.emplace(id, QueueMetadata {1, 0, 0, std::chrono::system_clock::now()});
@@ -361,6 +384,7 @@ private:
     std::shared_ptr<rocksdb::WriteBufferManager> m_writeManager;
     std::map<std::string, QueueMetadata> m_queueMetadata; ///< Map queue.
     LogFn m_logFn;
+    std::string m_unreliableBounds; ///< Why the bounds are not trustworthy; empty when they are.
 };
 
 #endif // _ROCKSDB_QUEUE_CF_HPP

@@ -28,3 +28,16 @@ TEST_F(EVPHelperTest, ValidEncryptionAndDecryption)
     EXPECT_NO_THROW(EVPHelper().decryptAES256(encryptedData, decryptedData));
     ASSERT_EQ(decryptedData, inputData);
 }
+
+/**
+ * @brief decryptAES256 must reject input too short to hold a key and IV instead of
+ * underflowing ciphertextLen (input.size() - CIPHER_KEY_SIZE - CIPHER_IV_SIZE) into a huge
+ * size_t and attempting an oversized allocation.
+ */
+TEST_F(EVPHelperTest, DecryptRejectsInputShorterThanKeyAndIV)
+{
+    std::vector<char> tooShort(10, 0);
+    std::string decryptedData;
+
+    EXPECT_THROW(EVPHelper().decryptAES256(tooShort, decryptedData), std::runtime_error);
+}
