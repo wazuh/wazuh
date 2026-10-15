@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.14.11]
 
+### Manager
+
+#### Fixed
+
+- Added type validation for the error details of cluster synchronization messages. ([#40367](https://github.com/wazuh/wazuh/pull/40367))
+
 ## [v4.14.10]
 
 ### Manager
