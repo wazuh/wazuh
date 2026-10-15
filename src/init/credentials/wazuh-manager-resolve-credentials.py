@@ -208,12 +208,17 @@ class Report:
         self.out = out if out is not None else sys.stdout
         self.err = err if err is not None else sys.stderr
         self.problems: List[Tuple[str, str, str]] = []
+        self.warnings: List[str] = []
 
     def progress(self, message: str) -> None:
         if not self.quiet:
             print(f"{LOG_TAG}: {message}", file=self.out, flush=True)
 
     def warning(self, message: str) -> None:
+        """A warning stops nothing and does not change the exit status; each one is printed once."""
+        if message in self.warnings:
+            return
+        self.warnings.append(message)
         print(f"{LOG_TAG}: WARNING: {message}", file=self.err, flush=True)
 
     def problem(self, kind: str, subject: str, reason: str) -> None:
@@ -1890,8 +1895,10 @@ PAIR_UNIT = ImportUnit("the indexer client pair", (CONNECTOR_KEY, CONNECTOR), (S
                                          "indexer's CA for this node")
 
 
-def indexer_ca_problem(data: bytes) -> Tuple[Optional[List[x509.Certificate]], Optional[str]]:
-    """The indexer's CA file: one or more CA certificates, each inside its validity window."""
+def indexer_ca_problem(data: bytes, now: Optional[datetime.datetime] = None,
+                       windows: bool = True) -> Tuple[Optional[List[x509.Certificate]], Optional[str]]:
+    """The indexer's CA file: one or more CA certificates, each inside its validity window at `now` (unless
+    `windows` is False, which tests everything but time)."""
     try:
         certs = x509.load_pem_x509_certificates(data)
     except ValueError:
@@ -1899,7 +1906,7 @@ def indexer_ca_problem(data: bytes) -> Tuple[Optional[List[x509.Certificate]], O
     problem = parse_problem(certs)
     if problem:
         return None, problem
-    now = _now()
+    now = now if now is not None else _now()
     for cert in certs:
         try:
             is_ca = cert.extensions.get_extension_for_class(x509.BasicConstraints).value.ca
@@ -1907,13 +1914,13 @@ def indexer_ca_problem(data: bytes) -> Tuple[Optional[List[x509.Certificate]], O
             is_ca = False
         if not is_ca:
             return None, "not a CA certificate (basicConstraints CA:TRUE missing)"
-        if not cert.not_valid_before_utc <= now <= cert.not_valid_after_utc:
+        if windows and not cert.not_valid_before_utc <= now <= cert.not_valid_after_utc:
             return None, "expired" if now > cert.not_valid_after_utc else "not valid yet"
     return certs, None
 
 
 def connector_problem(cert_data: bytes, key_data: bytes, cas: Optional[List[x509.Certificate]],
-                      ca_path: str) -> Optional[str]:
+                      ca_path: str, now: Optional[datetime.datetime] = None, leaf_window: bool = True) -> Optional[str]:
     """The client pair the manager presents to the indexer: the leaf, then any intermediate CAs, chaining to a
     certificate of the indexer's CA file; the leaf inside its window, not a CA, with an extendedKeyUsage that
     includes clientAuth, and matching its key. Checked here because nothing else looks at it before the first
@@ -1928,8 +1935,8 @@ def connector_problem(cert_data: bytes, key_data: bytes, cas: Optional[List[x509
     _, problem = ca_key_problem(key_data, leaf)
     if problem:
         return "its key does not match it" if "match" in problem else f"its key is {problem}"
-    now = _now()
-    if not leaf.not_valid_before_utc <= now <= leaf.not_valid_after_utc:
+    now = now if now is not None else _now()
+    if leaf_window and not leaf.not_valid_before_utc <= now <= leaf.not_valid_after_utc:
         return "expired" if now > leaf.not_valid_after_utc else "not valid yet"
     try:
         if leaf.extensions.get_extension_for_class(x509.BasicConstraints).value.ca:
@@ -1945,6 +1952,91 @@ def connector_problem(cert_data: bytes, key_data: bytes, cas: Optional[List[x509
     if cas is None:
         return None
     return chain_problem(leaf, intermediates, cas, ca_path, now, ExtendedKeyUsageOID.CLIENT_AUTH)
+
+
+# The indexer's material is judged twice: as it stands now, and as it would stand at a moment when every certificate
+# involved is inside its validity window. A defect that only the clock decides (expired, not valid yet, in the file or
+# on the path) does not stop the start: the connection fails until the material is renewed or the clock is right, and
+# the connector keeps validating TLS itself. Anything else is refused as before.
+
+TIME_ONLY_CONSEQUENCE = "the indexer connection fails until it is renewed or the clock is right"
+
+
+@dataclasses.dataclass(frozen=True)
+class Verdict:
+    """`problem` None: usable. `time_only`: the only defect is a validity window, reported as a WARNING."""
+
+    problem: Optional[str] = None
+    time_only: bool = False
+
+
+def _utc(moment: datetime.datetime) -> str:
+    return f"{moment:%Y-%m-%d %H:%M:%S} UTC"
+
+
+def _window_text(certs: List[x509.Certificate], now: datetime.datetime, first_is_leaf: bool) -> str:
+    """Which certificate is outside its window, and since or until when."""
+    for index, cert in enumerate(certs):
+        if now > cert.not_valid_after_utc:
+            what = f"expired on {_utc(cert.not_valid_after_utc)}"
+        elif now < cert.not_valid_before_utc:
+            what = f"not valid until {_utc(cert.not_valid_before_utc)}"
+        else:
+            continue
+        if index == 0 and first_is_leaf:
+            return what
+        return f"{'a CA on its path' if first_is_leaf else 'a CA it holds'} ({cert.subject.rfc4514_string()}) {what}"
+    return "outside its validity window"
+
+
+def _instants(certs: List[x509.Certificate]) -> List[datetime.datetime]:
+    """Moments just inside the edges of every window: if the material passes at one of them, only time refuses it."""
+    second = datetime.timedelta(seconds=1)
+    return [moment for cert in certs
+            for moment in (cert.not_valid_before_utc + second, cert.not_valid_after_utc - second)]
+
+
+def indexer_ca_verdict(data: bytes) -> Tuple[Optional[List[x509.Certificate]], Verdict]:
+    """The CA file's certificates (also when only time refuses them, so they still count as trust) and its verdict."""
+    cas, problem = indexer_ca_problem(data)
+    if problem is None:
+        return cas, Verdict()
+    timeless, structural = indexer_ca_problem(data, windows=False)
+    if structural is None:
+        return timeless, Verdict(_window_text(timeless, _now(), first_is_leaf=False), True)
+    return None, Verdict(structural)
+
+
+def connector_verdict(cert_data: bytes, key_data: bytes, cas: Optional[List[x509.Certificate]],
+                      ca_path: str) -> Verdict:
+    """The client pair's verdict. When it fails now, only time refuses it if it passes now with its own window left
+    out (an expired or not-yet-valid leaf under CAs valid now, which is also what a CA renewed after the leaf expired
+    looks like), or passes at the window edge of some certificate involved (every one of them valid then: a clock
+    behind or ahead of all of them, or a CA that expired before its leaf). Otherwise the reason given is the one with
+    the leaf's window left out, so a structural defect is named, not a date."""
+    problem = connector_problem(cert_data, key_data, cas, ca_path)
+    if problem is None:
+        return Verdict()
+    try:
+        leaf, *intermediates = x509.load_pem_x509_certificates(cert_data)
+    except ValueError:
+        return Verdict(problem)
+    now = _now()
+    structural = connector_problem(cert_data, key_data, cas, ca_path, now, leaf_window=False)
+    issuers = {cert.issuer for cert in (leaf, *intermediates)}
+    anchors = [ca for ca in (cas or []) if ca.subject in issuers]
+    involved = [leaf, *intermediates, *anchors]
+    if structural is None or any(connector_problem(cert_data, key_data, cas, ca_path, moment) is None
+                                 for moment in _instants(involved)):
+        return Verdict(_window_text(involved, now, first_is_leaf=True), True)
+    return Verdict(structural)
+
+
+def report_verdict(report: Report, path: str, verdict: Verdict) -> None:
+    if verdict.time_only:
+        report.warning(f"{path}: {verdict.problem}; {TIME_ONLY_CONSEQUENCE}")
+    elif verdict.problem:
+        report.problem(INVALID, path, verdict.problem)
 
 
 def open_indexer_source(paths: Paths, report: Report):
@@ -2010,7 +2102,9 @@ class Selection:
 
 def _select_unit(paths: Paths, certs: Dir, source, unit: ImportUnit, validate, report: Report) -> Selection:
     """Apply the import rule to one unit and report what it finds, without writing anything: the caller decides
-    which selections are written, once it knows they fit together."""
+    which selections are written, once it knows they fit together. `validate` returns a Verdict: material that only
+    time refuses is kept with a WARNING, and imported from the export only into a gap -- when nothing in place is
+    usable now -- never over material that is."""
     state = import_state(certs, unit)
     if state == "imported":
         try:
@@ -2033,25 +2127,32 @@ def _select_unit(paths: Paths, certs: Dir, source, unit: ImportUnit, validate, r
             return Selection(None, None)
     blamed = certs.child(unit.files[-1])
     if state == "staged":
-        problem = validate(current)
-        if problem:
-            report.problem(INVALID, blamed, problem)
+        verdict = validate(current)
+        report_verdict(report, blamed, verdict)
+        if verdict.problem and not verdict.time_only:
             return Selection(None, "staged", current)
         report.progress(f"{blamed}: staged; kept as it is")
         return Selection(current, "staged", current)
     incoming = read_source(source, unit, report)
     if complete and state == "imported" and (not isinstance(incoming, dict) or incoming == current):
-        problem = validate(current)
-        if problem:
-            report.problem(INVALID, blamed, problem)
+        verdict = validate(current)
+        report_verdict(report, blamed, verdict)
+        if verdict.problem and not verdict.time_only:
             return Selection(None, "kept", current)
         report.progress(f"{blamed}: imported earlier; unchanged")
         return Selection(current, "kept", current)
     if isinstance(incoming, dict):
-        problem = validate(incoming)
-        if problem:
-            report.problem(INVALID, os.path.join(paths.indexer_export, unit.sources[-1]), problem)
+        source_path = os.path.join(paths.indexer_export, unit.sources[-1])
+        verdict = validate(incoming)
+        if verdict.problem and not verdict.time_only:
+            report_verdict(report, source_path, verdict)
             return Selection(None, "incoming", incoming)
+        if verdict.time_only:
+            report_verdict(report, source_path, verdict)
+            if complete and validate(current).problem is None:
+                # Never over material that is usable now: an export the clock refuses must not break a connector.
+                report.progress(f"{blamed}: kept; the export is not imported over a pair valid now")
+                return Selection(current, "kept", current)
         verb = "re-imported" if complete else "imported"
         return Selection(incoming, "incoming", incoming,
                          (state == "imported", f"{blamed}: {verb} from {paths.indexer_export}"))
@@ -2092,11 +2193,10 @@ def extra_ca_trust(paths: Paths, certs: Dir, names: IndexerNames, extra: Tuple[s
             continue
         if data is None:
             continue                                     # unsafe, reported
-        cas, problem = indexer_ca_problem(data)
-        if problem:
-            report.problem(INVALID, certs.child(name), problem)
-            continue
-        trust.extend(cas)
+        cas, verdict = indexer_ca_verdict(data)
+        report_verdict(report, certs.child(name), verdict)
+        if cas is not None:
+            trust.extend(cas)
     return trust
 
 
@@ -2111,12 +2211,15 @@ def _chains_to_current_ca(paths: Paths, certs: Dir, pair: Dict[str, bytes], unit
     trust = list(extra_cas)
     if _exists(certs, INDEXER_CA):
         try:
-            cas, problem = indexer_ca_problem(read_file(certs, INDEXER_CA, certs_file_spec(paths)))
+            cas, _ = indexer_ca_verdict(read_file(certs, INDEXER_CA, certs_file_spec(paths)))
         except (UnsafeEntry, OSError):
-            cas, problem = None, "unreadable"
-        if problem is None:
+            cas = None
+        if cas is not None:
             trust.extend(cas)
-    return bool(trust) and connector_problem(pair[unit.files[1]], pair[unit.files[0]], trust, label) is None
+    if not trust:
+        return False
+    verdict = connector_verdict(pair[unit.files[1]], pair[unit.files[0]], trust, label)
+    return verdict.problem is None or verdict.time_only
 
 
 def step_indexer_trust(paths: Paths, certs: Dir, report: Report, names: IndexerNames, *, write: bool = True) -> None:
@@ -2141,9 +2244,9 @@ def step_indexer_trust(paths: Paths, certs: Dir, report: Report, names: IndexerN
         ca = None
         trust: Optional[List[x509.Certificate]] = None
         if ca_unit is not None:
-            ca = _select_unit(paths, certs, source, CA_UNIT, lambda c: indexer_ca_problem(c[INDEXER_CA])[1], report)
+            ca = _select_unit(paths, certs, source, CA_UNIT, lambda c: indexer_ca_verdict(c[INDEXER_CA])[1], report)
             if ca.contents is not None:
-                trust = indexer_ca_problem(ca.contents[INDEXER_CA])[0] + extra_cas
+                trust = (indexer_ca_verdict(ca.contents[INDEXER_CA])[0] or []) + extra_cas
         elif extra_cas:
             trust = extra_cas
         if names.listed and trust is None:
@@ -2157,7 +2260,7 @@ def step_indexer_trust(paths: Paths, certs: Dir, report: Report, names: IndexerN
             cert_name, key_name = pair_unit.files[1], pair_unit.files[0]
 
             def validate_pair(c):
-                return connector_problem(c[cert_name], c[key_name], trust, label)
+                return connector_verdict(c[cert_name], c[key_name], trust, label)
 
             if ca is not None and ca.pending:
                 # Decide before reporting: a pair in place that only the current CA issues is the new CA's problem.
@@ -2197,12 +2300,11 @@ def _check_indexer_current(paths: Paths, certs: Dir, report: Report, names: Inde
             state = import_state(certs, CA_UNIT)
             if state in ("staged", "imported") and _exists(certs, INDEXER_CA):
                 try:
-                    cas, problem = indexer_ca_problem(read_file(certs, INDEXER_CA, certs_file_spec(paths)))
+                    cas, verdict = indexer_ca_verdict(read_file(certs, INDEXER_CA, certs_file_spec(paths)))
                 except UnsafeEntry as exc:
                     report.unsafe(exc)
-                    problem = None
-                if problem:
-                    report.problem(INVALID, certs.child(INDEXER_CA), problem)
+                    verdict = Verdict()
+                report_verdict(report, certs.child(INDEXER_CA), verdict)
         extra_cas = extra_ca_trust(paths, certs, names, extra, report, missing=False)
         trust = None if cas is None and not extra_cas else (cas or []) + extra_cas
         if pair_unit is None:
@@ -2216,13 +2318,12 @@ def _check_indexer_current(paths: Paths, certs: Dir, report: Report, names: Inde
             key_name, cert_name = pair_unit.files
             try:
                 spec = certs_file_spec(paths)
-                problem = connector_problem(read_file(certs, cert_name, spec), read_file(certs, key_name, spec),
+                verdict = connector_verdict(read_file(certs, cert_name, spec), read_file(certs, key_name, spec),
                                             trust, _trust_label(certs, names))
             except UnsafeEntry as exc:
                 report.unsafe(exc)
-                problem = None
-            if problem:
-                report.problem(INVALID, certs.child(cert_name), problem)
+                verdict = Verdict()
+            report_verdict(report, certs.child(cert_name), verdict)
     finally:
         if isinstance(source, Dir):
             source.close()
@@ -2237,6 +2338,8 @@ def check_indexer_trust(paths: Paths, certs: Dir, report: Report, names: Indexer
     selection = Report(quiet=True, out=io.StringIO(), err=io.StringIO())
     step_indexer_trust(paths, certs, selection, names, write=False)
     refused = [problem for problem in selection.problems if problem[0] != MISSING]
+    for warning in current.warnings + selection.warnings:
+        report.warning(warning)
     if current.has(INVALID) and not current.has(UNSAFE) and not refused:
         report.progress("indexer trust: interrupted import can be recovered at --prestart")
         return
@@ -2399,7 +2502,8 @@ def mode_check(paths: Paths, report: Report, environ: Mapping[str, str]) -> int:
         with result[0] as conf:
             run_checks(paths, conf, result[1], report, names=tls_names(paths, report))
     if not report.has():
-        report.progress("check: no problem found")
+        warned = f" ({len(report.warnings)} warnings)" if report.warnings else ""
+        report.progress(f"check: no problem found{warned}")
     return report.exit_code("check")
 
 

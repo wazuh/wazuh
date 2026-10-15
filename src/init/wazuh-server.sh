@@ -329,6 +329,9 @@ checkcredentials()
 # or issues a server pair -- those happen once, at installation -- and validates the ones in place,
 # so an operator who replaced them with their own PKI keeps them untouched.
 #
+# A warning (indexer material that only the clock refuses) does not refuse the start; it is copied to
+# wazuh-manager.log. --check before it says nothing on success, so each warning is logged once.
+#
 # Unresolved credentials fail here rather than at the daemon's own -t: a missing indexer password or
 # CA is not a configuration error and has no JSON pointer to report, and the resolver has already
 # named what is missing and where to put it.
@@ -358,6 +361,18 @@ resolvecredentials()
     CREDENTIALS_STATUS=$?
     if [ -n "${CREDENTIALS_VERDICT}" ]; then
         echo "${CREDENTIALS_VERDICT}" >&2
+    fi
+    # A warning stops nothing (indexer material only the clock refuses: the connection fails until it is
+    # renewed or the clock is right), so the start goes on; it still belongs in the log operators read, not
+    # only in the journal. Shell builtins only: this script runs no grep.
+    if [ ${CREDENTIALS_STATUS} = 0 ] && [ -n "${CREDENTIALS_VERDICT}" ]; then
+        printf '%s\n' "${CREDENTIALS_VERDICT}" | while IFS= read -r line; do
+            case "${line}" in
+                "resolve-credentials: WARNING: "*)
+                    echo "$(date '+%Y/%m/%d %H:%M:%S') wazuh-manager-control: WARNING: ${line#resolve-credentials: WARNING: }" >> ${DIR}/logs/wazuh-manager.log 2>/dev/null
+                    ;;
+            esac
+        done
     fi
     if [ ${CREDENTIALS_STATUS} != 0 ]; then
         echo "$(date '+%Y/%m/%d %H:%M:%S') wazuh-manager-control: ERROR: unresolved credentials" >> ${DIR}/logs/wazuh-manager.log 2>/dev/null

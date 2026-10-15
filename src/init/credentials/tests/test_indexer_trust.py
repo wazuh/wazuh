@@ -318,15 +318,12 @@ def test_staged_pair_from_another_ca(resolver, sandbox):
 
 @pytest.mark.parametrize("case,source,reason", [
     ("ca not ca", "ca.pem", "not a CA certificate"),
-    ("expired pair", "manager-client.pem", "expired"),
     ("key mismatch", "manager-client.pem", "its key does not match it"),
     ("garbage ca", "ca.pem", "not a PEM certificate"),
 ])
 def test_invalid_sources(resolver, sandbox, case, source, reason):
     if case == "ca not ca":
         sandbox.make_indexer_trust(ca_is_ca=False)
-    elif case == "expired pair":
-        sandbox.make_indexer_trust(expired=True)
     elif case == "key mismatch":
         sandbox.make_indexer_trust(key_mismatch=True)
     else:
@@ -526,3 +523,152 @@ def test_unparsable_indexer_file_is_invalid(resolver, sandbox, which):
         assert f"INVALID {certs(sandbox, which)}: a certificate it holds cannot be parsed (" in err, err
         assert "internal error" not in err and code == (1 if mode == "--check" else 0), (mode, code, err)
 
+
+
+# ---------------------------------------------------------------- validity windows
+#
+# Material that only the clock refuses (expired, not valid yet) is reported as a WARNING and does not stop the start:
+# the indexer connection fails until it is renewed or the clock is right. Anything structural still refuses it.
+
+import datetime  # noqa: E402
+
+from cryptography import x509  # noqa: E402
+from cryptography.hazmat.primitives import hashes, serialization  # noqa: E402
+from cryptography.x509.oid import NameOID  # noqa: E402
+
+from conftest import intermediate, pool_key  # noqa: E402
+
+EXPIRED, FUTURE, VALID = (-60, -1), (1, 365), (-30, 365)
+WARNED = "the indexer connection fails until it is renewed or the clock is right"
+
+
+def _pem(cert):
+    return cert.public_bytes(serialization.Encoding.PEM)
+
+
+class Pki:
+    """An indexer CA (with its key) that issues client pairs with chosen validity windows, in days from now."""
+
+    def __init__(self, ca_days=(-90, 3650)):
+        self.ca, self.ca_key = intermediate(None, None, "wazuh-indexer-ca", days=ca_days)
+
+    def files(self, leaf_days=VALID, *, key_mismatch=False, foreign=False, middle_days=None):
+        signer, signer_key, chain = self.ca, self.ca_key, b""
+        if middle_days is not None:
+            middle, signer_key = intermediate(self.ca, self.ca_key, "wazuh-indexer-intermediate", days=middle_days)
+            signer, chain = middle, _pem(middle)
+        key = pool_key()
+        now = datetime.datetime.now(datetime.timezone.utc)
+        leaf = (x509.CertificateBuilder()
+                .subject_name(x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "wazuh-manager")]))
+                .issuer_name(signer.subject).public_key(key.public_key()).serial_number(x509.random_serial_number())
+                .not_valid_before(now + datetime.timedelta(days=leaf_days[0]))
+                .not_valid_after(now + datetime.timedelta(days=leaf_days[1]))
+                .add_extension(x509.BasicConstraints(ca=False, path_length=None), critical=True)
+                .add_extension(x509.ExtendedKeyUsage([ExtendedKeyUsageOID.CLIENT_AUTH]), critical=False)
+                .sign(pool_key() if foreign else signer_key, hashes.SHA256()))
+        key_pem = (pool_key() if key_mismatch else key).private_bytes(
+            serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption())
+        return {"ca": _pem(self.ca), "client": _pem(leaf) + chain + _pem(self.ca), "key": key_pem}
+
+
+def export(sandbox, files):
+    """What the indexer publishes on this host."""
+    for role, name, mode in (("ca", "ca.pem", 0o644), ("client", "manager-client.pem", 0o600),
+                             ("key", "manager-client-key.pem", 0o600)):
+        sandbox.write(os.path.join(sandbox.indexer_export, name), files[role], mode=mode)
+
+
+@pytest.mark.parametrize("window,said", [(EXPIRED, "expired on "), (FUTURE, "not valid until ")])
+def test_imported_pair_outside_its_window_warns(resolver, sandbox, window, said):
+    """An imported pair the clock refuses, with the export unchanged: kept, warned about, the start goes on."""
+    files = Pki().files(window)
+    export(sandbox, files)
+    run(resolver, sandbox, "--install")
+    assert read(certs(sandbox, "indexer-connector.pem")) == files["client"]
+    before = digests(sandbox)
+    for mode in ("--check", "--prestart"):
+        code, _, err = run(resolver, sandbox, mode)
+        assert code == 0, (mode, err)
+        assert f"WARNING: {certs(sandbox, 'indexer-connector.pem')}: {said}" in err and WARNED in err, (mode, err)
+        assert "INVALID" not in err
+    assert digests(sandbox) == before
+
+
+@pytest.mark.parametrize("case,blamed,said", [
+    ("expired pair", "indexer-connector.pem", "expired on "),
+    ("expired ca", "indexer-ca.pem", "a CA it holds (CN=wazuh-indexer-ca) expired on "),
+    ("expired intermediate", "indexer-connector.pem", "a CA on its path (CN=wazuh-indexer-intermediate) expired on "),
+])
+def test_staged_material_outside_its_window_warns(resolver, sandbox, case, blamed, said):
+    sandbox.stage_ca()
+    if case == "expired pair":
+        files = Pki().files(EXPIRED)
+    elif case == "expired ca":
+        files = Pki(ca_days=(-90, -1)).files((-60, 365))
+    else:
+        files = Pki().files((-30, 365), middle_days=(-60, -1))
+    stage_trust(sandbox, files)
+    before = digests(sandbox)
+    for mode in ("--check", "--prestart"):
+        code, _, err = run(resolver, sandbox, mode)
+        assert code == 0 and f"WARNING: {certs(sandbox, blamed)}: {said}" in err, (mode, err)
+    assert digests(sandbox) == before
+
+
+def test_extra_listed_ca_outside_its_window_warns(resolver, sandbox):
+    sandbox.stage_ca()
+    pki = Pki()
+    stage_trust(sandbox, pki.files())
+    sandbox.write(certs(sandbox, "old-indexer-ca.pem"), _pem(intermediate(None, None, "old-indexer-ca",
+                                                                          days=(-900, -1))[0]),
+                  mode=0o640, gid=sandbox.account_gid)
+    sandbox.control(conf_dump={"indexer.ssl.certificate_authorities": [certs(sandbox, "indexer-ca.pem"),
+                                                                       certs(sandbox, "old-indexer-ca.pem")]})
+    code, _, err = run(resolver, sandbox, "--prestart")
+    assert code == 0 and f"WARNING: {certs(sandbox, 'old-indexer-ca.pem')}: a CA it holds (CN=old-indexer-ca) " \
+                         f"expired on " in err, err
+
+
+@pytest.mark.parametrize("window", [EXPIRED, FUTURE])
+def test_first_import_outside_its_window(resolver, sandbox, window):
+    """Nothing in place: the export the clock refuses fills the gap, with a warning, and the start goes on."""
+    files = Pki().files(window)
+    export(sandbox, files)
+    code, out, err = run(resolver, sandbox, "--install")
+    assert code == 0 and f"WARNING: {sandbox.indexer_export}/manager-client.pem: " in err, err
+    assert read(certs(sandbox, "indexer-connector.pem")) == files["client"]
+    assert f"{certs(sandbox, 'indexer-connector.pem')}: imported from" in out
+    assert run(resolver, sandbox, "--prestart")[0] == 0
+
+
+def test_valid_pair_not_replaced_by_one_outside_its_window(resolver, sandbox):
+    pki = Pki()
+    valid = pki.files()
+    export(sandbox, valid)
+    assert run(resolver, sandbox, "--install")[0::2] == (0, "")
+    export(sandbox, pki.files(FUTURE))
+    for mode in ("--check", "--prestart"):
+        code, out, err = run(resolver, sandbox, mode)
+        assert code == 0 and f"WARNING: {sandbox.indexer_export}/manager-client.pem: not valid until " in err, err
+    assert f"{certs(sandbox, 'indexer-connector.pem')}: kept; the export is not imported over a pair valid now" in out
+    assert read(certs(sandbox, "indexer-connector.pem")) == valid["client"]
+
+
+@pytest.mark.parametrize("case,reason", [("key mismatch", "its key does not match it"),
+                                         ("wrong issuer", "not issued by ")])
+def test_structural_defect_wins_over_the_window(resolver, sandbox, case, reason):
+    files = Pki().files(EXPIRED, key_mismatch=case == "key mismatch", foreign=case == "wrong issuer")
+    stage_trust(sandbox, files)
+    for mode in ("--check", "--prestart"):
+        code, _, err = run(resolver, sandbox, mode)
+        assert code == 1 and f"INVALID {certs(sandbox, 'indexer-connector.pem')}: {reason}" in err, (mode, err)
+        assert "WARNING" not in err
+
+
+def test_check_counts_warnings(resolver, sandbox):
+    stage_trust(sandbox, Pki().files(EXPIRED))
+    before = sandbox.tree_state()
+    code, out, err = run(resolver, sandbox, "--check")
+    assert code == 0 and "check: no problem found (1 warnings)" in out and err.count("WARNING") == 1, (out, err)
+    assert sandbox.tree_state() == before

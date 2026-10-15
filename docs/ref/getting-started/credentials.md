@@ -233,6 +233,7 @@ ever carries a secret.
 | `MISSING` | something a start needs is absent; `--prestart` refuses, `--check` never says it | `MISSING WAZUH_INDEXER_MANAGER_PASSWORD: set it in /etc/wazuh-manager/local.env …` |
 | `INVALID` | something in place is wrong | `INVALID /etc/wazuh-manager/local.env:2: not a NAME=value line` · `INVALID WAZUH_INDEXER_MANAGER_PASSWORD: must be 12 to 64 characters (set in /etc/wazuh-manager/local.env:1)` · `INVALID /etc/wazuh-manager/certs/remoted.pem: expired` |
 | `UNSAFE` | an entry root may not trust: wrong owner or mode, a link, a directory where a file belongs | `UNSAFE /etc/wazuh-manager/local.env: group-writable` |
+| `WARNING` | indexer material that only the clock refuses: the indexer CA, a listed CA file, the client pair or a CA on its path is expired or not valid yet, and nothing else is wrong with it. It **does not** refuse the start; the indexer connection fails until the material is renewed or the clock is right | `resolve-credentials: WARNING: /etc/wazuh-manager/certs/indexer-connector.pem: expired on 2026-10-14 20:03:45 UTC; the indexer connection fails until it is renewed or the clock is right` |
 
 `wazuh-manager-control` relays those lines to standard error and to `logs/wazuh-manager.log`, starts nothing, and
 says why:
@@ -246,6 +247,12 @@ says why:
 
 `--check` runs before the configuration is validated, and on `restart` before anything is stopped. A refused
 `restart` therefore leaves the running daemons as they are.
+
+A `WARNING` refuses nothing: the start goes on, and each warning is also written to `logs/wazuh-manager.log` as
+`wazuh-manager-control: WARNING: <path>: …`. Only the indexer material's validity window is treated this way.
+Anything else wrong with it (a key that does not match, the wrong issuer, no `clientAuth`, not a CA, missing files,
+an unsafe export), and an expired or not-yet-valid server pair, bundle or manager CA, still refuses the whole start.
+`--check` with only warnings ends with `check: no problem found (<n> warnings)`.
 
 Run the check yourself to see the full list:
 
@@ -436,6 +443,12 @@ INVALID /etc/wazuh-indexer/export/ca.pem: does not issue the staged /etc/wazuh-m
 
 `--check` reports the same refusal, so a `restart` is refused before anything is stopped and the manager keeps
 running on the material in place. When no pair is in place at all, the CA is imported alone and the pair stays `MISSING`.
+
+A CA or client pair that only the clock refuses (expired, not valid yet) is a `WARNING`, never a refusal: in place,
+it is kept; in the export, it is imported only when nothing usable is in place (a first import, or material that is
+itself refused), never over a pair valid now. A node that boots with its clock behind therefore starts, and its
+indexer connection works once the clock is right. The connector still validates TLS itself, so such material is
+not used until it is valid.
 
 An export that holds any file root may not trust is refused as a whole: nothing is imported from it in that run.
 An import interrupted halfway, with the marker written but not every file, is recognised: `--check` lets the start

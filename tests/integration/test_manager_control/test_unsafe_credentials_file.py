@@ -16,7 +16,8 @@ brief: These tests check that 'wazuh-manager-control' refuses to start (or resta
        credentials. Exiting'; a check that cannot run 'Cannot check the credentials. Exiting'. With '-j' the
        answer is one JSON document with error 22. Nothing is started and, on 'restart', nothing is stopped.
        Regression tests for #39852: the refusal used to surface as an unrelated "Invalid configuration"
-       error, or not at all.
+       error, or not at all. The one exception is indexer material that only the clock refuses (expired, not
+       valid yet): it is a warning, written to the manager log, and the start goes on.
 
        The resolver's configuration directory is fixed by design (there is no variable to move it), so each
        case breaks one entry of the real /etc/wazuh-manager and puts it back exactly as it was - bytes, owner
@@ -40,6 +41,7 @@ references:
 tags:
     - manager_control
 '''
+import datetime
 import json
 import os
 import pwd
@@ -49,6 +51,10 @@ import time
 from pathlib import Path
 
 import pytest
+from cryptography import x509
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
 
 from wazuh_testing.constants.paths import MANAGER_CONF_DIR
 from wazuh_testing.constants.paths.binaries import WAZUH_CONTROL_PATH
@@ -63,6 +69,8 @@ CONF_DIR = Path(MANAGER_CONF_DIR)
 LOCAL_ENV = CONF_DIR / 'local.env'
 PLANTED_CERT = CONF_DIR / 'certs' / 'planted-by-test.pem'
 RUN_DIR = Path(VAR_PATH, 'run')
+INDEXER_TRUST = [CONF_DIR / 'certs' / name for name in ('indexer-ca.pem', 'indexer-connector.pem',
+                                                        'indexer-connector-key.pem')]
 RESOLVER = Path(VAR_PATH).parent / 'bin' / 'wazuh-manager-resolve-credentials'
 RESOLVER_ASIDE = RESOLVER.with_name(RESOLVER.name + '.moved-by-test')
 MANAGER_LOG = Path(WAZUH_LOG_PATH)
@@ -632,4 +640,127 @@ def test_refuses_when_the_check_cannot_run(json_output, breaker):
     else:
         assert VERDICTS['cannot'][0] in result.stdout, result.stdout
     assert 'Unsafe credentials' not in result.stdout and 'Invalid credentials' not in result.stdout
+    assert not _alive_pids(), f"A daemon was started: {_alive_pids()}"
+
+
+def _stage_indexer_trust(leaf_days, key_mismatch=False):
+    """Replace the indexer CA and client pair in certs/ with a throwaway CA and a pair it issued, valid between
+    `leaf_days` (days from now), owned and moded as the installer leaves them."""
+    now = datetime.datetime.now(datetime.timezone.utc)
+    ca_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    ca_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, 'test-indexer-ca')])
+    ca = (x509.CertificateBuilder().subject_name(ca_name).issuer_name(ca_name).public_key(ca_key.public_key())
+          .serial_number(x509.random_serial_number())
+          .not_valid_before(now - datetime.timedelta(days=90)).not_valid_after(now + datetime.timedelta(days=365))
+          .add_extension(x509.BasicConstraints(ca=True, path_length=None), critical=True)
+          .sign(ca_key, hashes.SHA256()))
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    leaf = (x509.CertificateBuilder().subject_name(x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, ACCOUNT)]))
+            .issuer_name(ca_name).public_key(key.public_key()).serial_number(x509.random_serial_number())
+            .not_valid_before(now + datetime.timedelta(days=leaf_days[0]))
+            .not_valid_after(now + datetime.timedelta(days=leaf_days[1]))
+            .add_extension(x509.BasicConstraints(ca=False, path_length=None), critical=True)
+            .add_extension(x509.ExtendedKeyUsage([ExtendedKeyUsageOID.CLIENT_AUTH]), critical=False)
+            .sign(ca_key, hashes.SHA256()))
+    if key_mismatch:
+        key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    contents = (ca.public_bytes(serialization.Encoding.PEM),
+                leaf.public_bytes(serialization.Encoding.PEM) + ca.public_bytes(serialization.Encoding.PEM),
+                key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
+                                  serialization.NoEncryption()))
+    gid = pwd.getpwnam(ACCOUNT).pw_gid
+    for path, data in zip(INDEXER_TRUST, contents):
+        if path.exists():
+            path.unlink()
+        path.write_bytes(data)
+        os.chown(path, 0, gid)
+        path.chmod(0o640)
+
+
+@pytest.fixture
+def indexer_trust():
+    """Swap the indexer CA and client pair for test material; put the originals back and restart on them."""
+    snapshots = [_Snapshot(path) for path in INDEXER_TRUST]
+    try:
+        yield _stage_indexer_trust
+    finally:
+        for snapshot in snapshots:
+            snapshot.restore()
+        _control('restart')
+        _ensure_running()
+
+
+def test_start_warns_on_expired_indexer_pair(indexer_trust):
+    '''
+    description: Check that an indexer client pair whose only defect is that it expired does not refuse the start:
+                 the resolver warns, the warning reaches the manager log, and every daemon starts. The connection
+                 to the indexer fails until the pair is renewed; nothing else depends on it.
+
+    wazuh_min_version: 5.0.0
+
+    test_phases:
+        - setup: Stop the manager and stage an indexer CA with a client pair it issued that expired yesterday.
+        - test: Run 'start'.
+        - teardown: Put the original indexer files back and restart the manager.
+
+    assertions:
+        - The exit code is zero and every daemon is running.
+        - stderr has the resolver's 'WARNING' line for the pair.
+        - The manager log gained 'wazuh-manager-control: WARNING: <pair>: expired on'.
+
+    input_description: An expired indexer client pair under a valid indexer CA.
+
+    expected_output:
+        - 'wazuh-manager-control: WARNING: /etc/wazuh-manager/certs/indexer-connector.pem: expired on'
+
+    tags:
+        - manager_control
+    '''
+    _stop()
+    indexer_trust((-60, -1))
+    offset = MANAGER_LOG.stat().st_size
+
+    result = _control('start')
+
+    assert result.returncode == 0, f"start failed:\n{result.stdout}\n{result.stderr}"
+    running, output = _all_running()
+    assert running, output
+    pair = INDEXER_TRUST[1]
+    assert f"resolve-credentials: WARNING: {pair}: expired on " in result.stderr, result.stderr
+    gained = _log_since(offset)
+    assert f"wazuh-manager-control: WARNING: {pair}: expired on " in gained, gained
+
+
+def test_start_refuses_indexer_pair_with_another_key(indexer_trust):
+    '''
+    description: Check that an indexer client pair whose key does not match still refuses the start: only the
+                 validity window is relaxed.
+
+    wazuh_min_version: 5.0.0
+
+    test_phases:
+        - setup: Stop the manager and stage an indexer CA with a valid client pair whose key is another one.
+        - test: Run 'start'.
+        - teardown: Put the original indexer files back and restart the manager.
+
+    assertions:
+        - The exit code is not zero and no daemon is alive.
+        - stderr has 'INVALID <pair>'; stdout has 'Invalid credentials. Exiting'.
+
+    input_description: An indexer client pair whose key does not match its certificate.
+
+    expected_output:
+        - 'INVALID /etc/wazuh-manager/certs/indexer-connector.pem: its key does not match it'
+        - 'Invalid credentials. Exiting'
+
+    tags:
+        - manager_control
+    '''
+    _stop()
+    indexer_trust((-1, 365), key_mismatch=True)
+
+    result = _control('start')
+
+    _assert_refused(result, 'invalid', INDEXER_TRUST[1])
+    assert 'its key does not match it' in result.stderr, result.stderr
     assert not _alive_pids(), f"A daemon was started: {_alive_pids()}"
