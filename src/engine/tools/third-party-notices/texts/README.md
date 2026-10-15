@@ -11,6 +11,7 @@ This file documents where each text comes from. It is not a license text and
 | `sqlite-blessing.txt` | The public-domain dedication and blessing from the header of `src/external/sqlite/sqlite3.c` (from line 35). |
 | `pypi-opensearch_protobufs.txt` | Canonical Apache License 2.0 text (same text as `src/external/flatbuffers/LICENSE`), lines 4-204, preceded by a one-line note; the wheel ships no license file. |
 | `pypi-flatbuffers.txt` | Same as the previous file, with the note naming flatbuffers (copyright Google Inc.); the wheel ships no license file. |
+| `pypi-behave.txt` | One-line note plus the `LICENSE` file of the behave 1.3.3 wheel (`behave-1.3.3.dist-info/licenses/LICENSE`, BSD 2-Clause); behave 1.2.6, which pip selects on Python 3.8, ships no license file. |
 | `pypi-defusedxml.txt` | Reconstructed: the distribution ships no license file; pending legal review. Lines 1-2 are a note, lines 4-52 the Python Software Foundation License version 2 text copied from CPython's `LICENSE.txt`, not defusedxml's own file. |
 | `pypi-content_size_limit_asgi.txt` | Reconstructed: the distribution ships no license file; pending legal review. Generic MIT text whose copyright holder was inferred from the `Author` field of the wheel METADATA. |
 
