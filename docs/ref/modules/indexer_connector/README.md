@@ -117,7 +117,11 @@ achieve leaves documents nothing will ever overwrite:
   so the base has to be 3s for the cumulative wait to clear a 5s segment on every draw), so the
   budget above stays intact for a 429 that follows; the wall bound is shared, and one allowance
   covers a whole flush rather than each index in it. Conflicts that outlive it fail the operation
-  like a shard failure, and so does a stop that cuts a retry wait short.
+  under `Category::ConflictsExhausted` rather than `DocumentRejected`: the documents left behind are
+  consistent, a competing writer of the same documents was still running (a duplicate of the
+  caller's own session, a late flush on another node), and the caller can answer a retryable status
+  with a delay instead of a failure. A stop that cuts a retry wait short fails it the same way. The
+  warning names the attempts actually made against the allowance.
 - **Staged queries are dropped when a flush fails**, so a later flush cannot re-fire them after the
   caller already retried and succeeded (which would delete documents written in between).
 - HTTP-level `404` is tolerated (a missing index has nothing to delete), `429` is retried with the

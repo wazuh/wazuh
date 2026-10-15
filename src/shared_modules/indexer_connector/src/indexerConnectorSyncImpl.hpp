@@ -440,9 +440,10 @@ class IndexerConnectorSyncImpl final
                                        : std::string {};
             LOGFN_WARN(m_logFn,
                        "%s left documents behind: %zu version conflict(s) survived its conflict retry "
-                       "allowance (%zu attempt(s)%s).",
+                       "allowance (%zu of %zu attempt(s)%s).",
                        operation,
                        conflicts,
+                       budget.attempts(),
                        CONFLICT_RETRY_ATTEMPTS,
                        wallBound.c_str());
             return false;
@@ -611,7 +612,9 @@ class IndexerConnectorSyncImpl final
                         !retryAfterVersionConflict(
                             deleteByQueryConflicts, conflictBackoff, conflictBudget, "deleteByQuery"))
                     {
-                        deleteByQueryLeftDocuments = true;
+                        throw IndexerConnectorException(
+                            "deleteByQuery left documents behind: its version-conflict allowance ran out",
+                            IndexerConnectorException::Category::ConflictsExhausted);
                     }
                     if (deleteByQueryLeftDocuments)
                     {
@@ -1374,7 +1377,10 @@ public:
             if (updateByQueryConflicts > 0 &&
                 !retryAfterVersionConflict(updateByQueryConflicts, conflictBackoff, conflictBudget, "Update by query"))
             {
-                updateByQueryFailed = true;
+                m_notify.clear();
+                throw IndexerConnectorException(
+                    "Update by query left documents behind: its version-conflict allowance ran out",
+                    IndexerConnectorException::Category::ConflictsExhausted);
             }
             if (updateByQueryFailed)
             {

@@ -1569,7 +1569,16 @@ TEST_P(IndexerConnectorSyncConflictRetryTest, ADeleteByQueryRetriesAVersionConfl
     }
     else
     {
-        EXPECT_THROW(connector.flush(), IndexerConnectorException);
+        try
+        {
+            connector.flush();
+            FAIL() << "an exhausted conflict allowance must fail the flush";
+        }
+        catch (const IndexerConnectorException& e)
+        {
+            EXPECT_EQ(IndexerConnectorException::Category::ConflictsExhausted, e.category())
+                << "the documents are consistent, a competing writer was still running: not a rejection";
+        }
     }
     EXPECT_EQ(expectedPosts, postCount.load());
 }
@@ -1577,6 +1586,46 @@ TEST_P(IndexerConnectorSyncConflictRetryTest, ADeleteByQueryRetriesAVersionConfl
 INSTANTIATE_TEST_SUITE_P(ConflictRetry,
                          IndexerConnectorSyncConflictRetryTest,
                          ::testing::Values(std::make_pair(true, 2), std::make_pair(false, 3)));
+
+/// A shard failure on the re-run is still a rejection: only the allowance running out is contention.
+TEST_F(IndexerConnectorSyncTest, AShardFailureAfterAClearedConflictIsStillARejection)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::atomic<int> postCount {0};
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [&postCount](RequestParamsVariant, auto postParams, ConfigurationParameters)
+            {
+                const std::string body =
+                    (++postCount == 1)
+                        ? R"({"took":5,"total":300,"deleted":0,"version_conflicts":300,"failures":[]})"
+                        : R"({"took":5,"total":300,"deleted":299,"version_conflicts":0,"failures":[{"shard":0}]})";
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(body);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::string(body));
+                }
+            }));
+
+    IndexerConnectorSyncImplNoConflictDelay connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.deleteByQuery("wazuh-states-inventory-packages", "007", "cluster01");
+
+    try
+    {
+        connector.flush();
+        FAIL() << "a shard failure must fail the flush";
+    }
+    catch (const IndexerConnectorException& e)
+    {
+        EXPECT_EQ(IndexerConnectorException::Category::DocumentRejected, e.category());
+    }
+    EXPECT_EQ(2, postCount.load());
+}
 
 TEST_F(IndexerConnectorSyncTest, DeleteByQueryWithoutBulkDataTriggersNotify)
 {
@@ -2544,6 +2593,53 @@ TEST_F(IndexerConnectorSyncTest, AnUpdateByQueryRetriesAVersionConflictUntilItCl
     EXPECT_EQ(1U, connector.takeBulkRequestStats().conflictRetries) << "a cleared conflict fails no flush";
     connector.invokePendingCallbacks();
     EXPECT_TRUE(notifyCalled) << "the retry that succeeded is the one that completes the session";
+}
+
+/// A writer that keeps conflicting through every attempt is contention, not a rejection: the
+/// caller answers a retryable status and the notify callbacks never fire for this call.
+TEST_F(IndexerConnectorSyncTest, AnUpdateByQueryThatExhaustsItsConflictAllowanceFailsAsContention)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::atomic<int> postCount {0};
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [&postCount](RequestParamsVariant, auto postParams, ConfigurationParameters)
+            {
+                ++postCount;
+                const std::string body = R"({"took":5,"updated":0,"total":10,"version_conflicts":10,"failures":[]})";
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(body);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::string(body));
+                }
+            }));
+
+    IndexerConnectorSyncImplNoConflictDelay connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    bool notifyCalled = false;
+    connector.registerNotify([&notifyCalled]() { notifyCalled = true; });
+
+    nlohmann::json updateQuery;
+    updateQuery["query"]["match_all"] = nlohmann::json::object();
+
+    try
+    {
+        connector.executeUpdateByQuery({"wazuh-states-sca"}, updateQuery);
+        FAIL() << "an exhausted conflict allowance must fail the call";
+    }
+    catch (const IndexerConnectorException& e)
+    {
+        EXPECT_EQ(IndexerConnectorException::Category::ConflictsExhausted, e.category());
+    }
+    EXPECT_EQ(3, postCount.load()) << "three attempts: the query and two re-runs";
+    EXPECT_EQ(2U, connector.takeBulkRequestStats().conflictRetries);
+    connector.invokePendingCallbacks();
+    EXPECT_FALSE(notifyCalled) << "nothing completed, so nothing is notified";
 }
 
 TEST_F(IndexerConnectorSyncTest, ExecuteSearchQuerySuccess)

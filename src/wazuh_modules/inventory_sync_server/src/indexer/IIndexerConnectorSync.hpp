@@ -36,9 +36,11 @@ namespace invsync::indexer
     public:
         enum class Cause
         {
-            Other,            ///< Hard rejection or unexpected state.
-            DocumentRejected, ///< The indexer answered but rejected documents or confirmed nothing.
-            RetryExhausted    ///< The retry budget ran out on a retryable condition (429, transport).
+            Other,             ///< Hard rejection or unexpected state.
+            DocumentRejected,  ///< The indexer answered but rejected documents or confirmed nothing.
+            RetryExhausted,    ///< The retry budget ran out on a retryable condition (429, transport).
+            ConflictsExhausted ///< A by-query's version-conflict allowance ran out against a competing
+                               ///< writer: the documents are consistent and the caller may retry later.
         };
 
         ConnectorError(const std::string& what, Cause cause)
