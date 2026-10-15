@@ -108,6 +108,50 @@ class ClassifyTest(unittest.TestCase):
                          (AGPL, "#"))
 
 
+    def test_new_slash_and_hash_extensions(self):
+        for ext in (".js", ".ts", ".rs", ".java", ".kt", ".c++", ".cxx", ".hh", ".hxx", ".ipp", ".tcc"):
+            self.assertEqual(spdx.classify("src/engine/a" + ext, b"x\n"), (AGPL, "//"), ext)
+        for ext in (".rb", ".bash", ".zsh", ".ps1"):
+            self.assertEqual(spdx.classify("src/engine/a" + ext, b"x\n"), (AGPL, "#"), ext)
+
+    def test_shebang_supported_interpreters_are_hash(self):
+        for sb in (b"#!/bin/bash\n", b"#!/usr/bin/env python3\n", b"#!/usr/bin/env -S python3 -u\n",
+                   b"#!/usr/bin/python3.11\n", b"#! /bin/sh\r\n", b"#!/usr/bin/make -f\n",
+                   b"#!/usr/bin/awk -f\n", b"#!/usr/bin/env perl\n"):
+            self.assertEqual(spdx.classify("src/engine/tool", sb + b"x\n"), (AGPL, "#"), sb)
+
+    def test_deb_rules_unchanged(self):
+        p = "src/engine/internal_packages/debs/SPECS/rules"
+        self.assertEqual(spdx.classify(p, b"#!/usr/bin/make -f\n"), (AGPL, "#"))
+        # HASH_PATHS wins over the shebang: an unsupported interpreter or no content keeps the `#` style
+        self.assertEqual(spdx.classify(p, b"#!/usr/bin/env node\n"), (AGPL, "#"))
+        self.assertEqual(spdx.classify(p, None), (AGPL, "#"))
+
+    def test_lua_and_node_shebang_are_unsupported(self):
+        self.assertIs(spdx.classify("src/engine/x.lua", b"x = 1\n"), spdx.UNSUPPORTED)
+        self.assertIs(spdx.classify("src/engine/tool", b"#!/usr/bin/env node\n"), spdx.UNSUPPORTED)
+        self.assertIs(spdx.classify("src/shared_modules/utils/x.bat", b"@echo off\n"), spdx.UNSUPPORTED)
+
+    def test_unsupported_only_in_scope_and_code(self):
+        self.assertIsNone(spdx.classify("docs/x.lua", b"x = 1\n"))
+        self.assertIsNone(spdx.classify("src/wazuh_modules/x.lua", b"x = 1\n"))
+        self.assertIsNone(spdx.classify("src/engine/tool", b"plain text\n"))
+        self.assertIsNone(spdx.classify("src/engine/tool", None))
+        # The shebang is consulted only for files without an extension
+        self.assertIsNone(spdx.classify("src/engine/run.in", b"#!/bin/sh\n"))
+        self.assertIsNone(spdx.classify("src/engine/notes.txt", b"#!/usr/bin/env node\n"))
+
+    def test_unsupported_after_exclusions(self):
+        self.assertIsNone(spdx.classify("src/engine/x.lua", b""))
+        self.assertIsNone(spdx.classify("src/engine/x.lua", b" \n"))
+        self.assertIsNone(spdx.classify("src/engine/test/t/fixtures/x.lua", b"x = 1\n"))
+        self.assertIsNone(spdx.classify("src/engine/test/t/data/tool", b"#!/usr/bin/env node\n"))
+
+    def test_apply_to_bytes_rejects_unsupported(self):
+        with self.assertRaises(spdx.SpdxError):
+            spdx.apply_to_bytes("src/engine/x.lua", b"x = 1\n")
+
+
 class FindIdentifierTest(unittest.TestCase):
     def test_none(self):
         self.assertIsNone(spdx.find_identifier(b"int x;\n"))
@@ -136,6 +180,10 @@ class ApplyToBytesTest(unittest.TestCase):
     def test_insert_line1_cpp(self):
         out = spdx.apply_to_bytes(ENGINE_CPP, b"#include <a>\n")
         self.assertEqual(out, line("//", AGPL) + b"#include <a>\n")
+
+    def test_insert_after_shebang_without_extension(self):
+        out = spdx.apply_to_bytes("src/engine/tool", b"#!/bin/bash\necho\n")
+        self.assertEqual(out, b"#!/bin/bash\n" + line("#", AGPL) + b"echo\n")
 
     def test_insert_hash_sh_without_shebang(self):
         out = spdx.apply_to_bytes("src/engine/a.sh", b"echo hi\n")
@@ -425,13 +473,32 @@ class CliTest(unittest.TestCase):
 
     def test_census_unlisted_code_is_informative(self):
         self.write("src/engine/a.cpp", line("//", AGPL) + b"int a;\n")
-        self.write("src/engine/web/app.js", b"var a;\n")
-        self.write("src/engine/bin/runner", b"#!/bin/sh\necho\n")
+        self.write("src/engine/web/app.lua", b"local a\n")
+        self.write("src/engine/bin/runner", b"#!/usr/bin/env node\nx\n")
+        self.write("src/shared_modules/utils/x.bat", b"@echo off\n")
         rc, out, _ = self.run_cli("census")
         self.assertEqual(rc, 0, out)
         self.assertIn("unlisted-code:", out)
-        self.assertIn("src/engine/web/app.js", out)
+        self.assertIn("src/engine/web/app.lua", out)
         self.assertIn("src/engine/bin/runner", out)
+        self.assertIn("src/shared_modules/utils/x.bat", out)
+        self.assertIn("unlisted-code=3", out)
+
+    def test_classify_list_apply_unsupported(self):
+        self.write("src/engine/a.cpp", b"int a;\n")
+        self.write("src/engine/x.lua", b"x = 1\n")
+        rows = self.classify_rows("src/engine/x.lua", "src/engine/a.cpp")
+        self.assertEqual(rows[0], ["src/engine/x.lua", "unsupported"])
+        rc, out, _ = self.run_cli("list")
+        self.assertEqual(rc, 0)
+        self.assertEqual(out.split(), ["src/engine/a.cpp"])
+        rc, out, err = self.run_cli("apply")
+        self.assertEqual(rc, 1)
+        self.assertIn("src/engine/x.lua: unsupported code type (.lua)", err)
+        self.assertNotIn("Traceback", err)
+        self.assertIn("applied 1, unchanged 0, unsupported 1", out)
+        self.assertEqual(self.read("src/engine/x.lua"), b"x = 1\n")
+        self.assertTrue(self.read("src/engine/a.cpp").startswith(b"// SPDX"))
 
     def test_census_scope_dual(self):
         self.write("src/engine/a.cpp", b"int a;\n")  # missing, but agpl scope
@@ -610,6 +677,91 @@ class CheckTest(unittest.TestCase):
         self.assertEqual(rc, 0, out + err)
         self.assertNotIn("Traceback", err)
         self.assertIn("checked 1, failed 0", out)
+
+    def test_ts_without_identifier_fails(self):
+        self.write("src/engine/web/x.ts", b"let a = 1;\n")
+        rc, out, _ = self.check("src/engine/web/x.ts")
+        self.assertEqual(rc, 1)
+        self.assertIn("src/engine/web/x.ts: missing %s" % AGPL, out.splitlines())
+
+    def test_ts_with_identifier_ok(self):
+        self.write("src/engine/web/x.ts", line("//", AGPL) + b"let a = 1;\n")
+        rc, out, err = self.check("src/engine/web/x.ts")
+        self.assertEqual(rc, 0, out + err)
+        self.assertIn("checked 1, failed 0", out)
+
+    def test_rb_without_identifier_fails(self):
+        self.write("src/engine/x.rb", b"puts 1\n")
+        rc, out, _ = self.check("src/engine/x.rb")
+        self.assertEqual(rc, 1)
+        self.assertIn("src/engine/x.rb: missing %s" % AGPL, out.splitlines())
+
+    def test_dual_rs_without_identifier_fails(self):
+        self.write("src/shared_modules/utils/x.rs", b"fn main() {}\n")
+        rc, out, _ = self.check("src/shared_modules/utils/x.rs")
+        self.assertEqual(rc, 1)
+        self.assertIn("src/shared_modules/utils/x.rs: missing %s" % DUAL, out.splitlines())
+
+    def test_shebang_bash_without_identifier_fails(self):
+        self.write("src/engine/tool", b"#!/bin/bash\necho\n")
+        rc, out, _ = self.check("src/engine/tool")
+        self.assertEqual(rc, 1)
+        self.assertIn("src/engine/tool: missing %s" % AGPL, out.splitlines())
+
+    def test_lua_is_unsupported(self):
+        self.write("src/engine/x.lua", b"x = 1\n")
+        rc, out, _ = self.check("src/engine/x.lua")
+        self.assertEqual(rc, 1)
+        self.assertIn("src/engine/x.lua: unsupported code type (.lua): add its comment style to "
+                      ".github/scripts/spdx_scope.py or exclude the file", out.splitlines())
+        self.assertIn("checked 1, failed 1", out)
+        self.assertIn(HINT, out)
+
+    def test_shebang_node_is_unsupported(self):
+        self.write("src/engine/tool", b"#!/usr/bin/env node\nconsole.log(1)\n")
+        rc, out, _ = self.check("src/engine/tool")
+        self.assertEqual(rc, 1)
+        self.assertIn("src/engine/tool: unsupported code type (#!node)", out)
+        self.assertIn(HINT, out)
+
+    def test_shebang_env_dash_s(self):
+        self.write("src/engine/tool", b"#!/usr/bin/env -S python3 -u\nx = 1\n")
+        rc, out, _ = self.check("src/engine/tool")
+        self.assertEqual(rc, 1)
+        self.assertIn("src/engine/tool: missing %s" % AGPL, out.splitlines())
+
+    def test_shebang_versioned_python(self):
+        self.write("src/engine/tool", b"#!/usr/bin/python3.11\nx = 1\n")
+        rc, out, _ = self.check("src/engine/tool")
+        self.assertEqual(rc, 1)
+        self.assertIn("src/engine/tool: missing %s" % AGPL, out.splitlines())
+
+    def test_shebang_space_crlf(self):
+        self.write("src/engine/tool", b"#! /bin/sh\r\necho\r\n")
+        rc, out, _ = self.check("src/engine/tool")
+        self.assertEqual(rc, 1)
+        self.assertIn("src/engine/tool: missing %s" % AGPL, out.splitlines())
+
+    def test_deb_rules_unchanged(self):
+        p = "src/engine/internal_packages/debs/SPECS/rules"
+        self.write(p, b"#!/usr/bin/make -f\n")
+        rc, out, _ = self.check(p)
+        self.assertEqual(rc, 1)
+        self.assertIn("%s: missing %s" % (p, AGPL), out.splitlines())
+
+    def test_unlisted_out_of_scope_ignored(self):
+        self.write("docs/x.ts", b"let a;\n")
+        self.write("src/wazuh_modules/x.lua", b"x = 1\n")
+        rc, out, _ = self.check("docs/x.ts", "src/wazuh_modules/x.lua")
+        self.assertEqual(rc, 0, out)
+        self.assertEqual(out.strip(), "checked 0, failed 0")
+
+    def test_unsupported_excluded_files_ignored(self):
+        self.write("src/engine/empty.lua", b"")
+        self.write("src/engine/test/t/fixtures/x.lua", b"x = 1\n")
+        rc, out, _ = self.check("src/engine/empty.lua", "src/engine/test/t/fixtures/x.lua")
+        self.assertEqual(rc, 0, out)
+        self.assertIn("checked 0, failed 0", out)
 
     def test_hint_only_when_failed(self):
         self.write(ENGINE_CPP, line("//", AGPL) + b"int x;\n")

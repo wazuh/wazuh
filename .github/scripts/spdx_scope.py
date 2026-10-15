@@ -8,6 +8,11 @@ Scope:
       keystore,indexer_connector,common}/**       -> GPL-2.0-only OR AGPL-3.0-or-later
   everything else                                 -> out of scope
 
+In scope, code whose comment style is known (`//` or `#`, by extension, name or shebang) is checked
+for its identifier. Code the script cannot write a comment for (.lua, .bat, .m4, .inc, or a shebang
+other than sh/bash/dash/ksh/zsh/python/perl/ruby/make/awk) is `unsupported`: `check` and `apply`
+fail on it and name it; add its comment style here or exclude the file. Excluded files stay ignored.
+
 Usage:
   spdx_scope.py [--repo DIR] classify <path>...
   spdx_scope.py [--repo DIR] list   [--scope agpl|dual]
@@ -32,8 +37,11 @@ ENGINE_PREFIX = "src/engine/"
 DUAL_DIRS = ("utils", "manager_config", "keystore", "indexer_connector", "common")
 DUAL_PREFIXES = tuple("src/shared_modules/%s/" % d for d in DUAL_DIRS)
 
-SLASH_EXT = {".cpp", ".cc", ".c", ".hpp", ".h", ".proto", ".go", ".fbs"}
-HASH_EXT = {".py", ".sh", ".cmake", ".pl"}
+SLASH_EXT = {
+    ".cpp", ".cc", ".c", ".hpp", ".h", ".proto", ".go", ".fbs",
+    ".js", ".ts", ".rs", ".java", ".kt", ".c++", ".cxx", ".hh", ".hxx", ".ipp", ".tcc",
+}
+HASH_EXT = {".py", ".sh", ".cmake", ".pl", ".rb", ".bash", ".zsh", ".ps1"}
 HASH_NAMES = {"CMakeLists.txt", "Dockerfile"}
 HASH_PATHS = {
     ENGINE_PREFIX + "internal_packages/debs/SPECS/" + n
@@ -50,15 +58,26 @@ THIRD_PARTY = {
     ENGINE_PREFIX + "tools/engine-bench/src/engine_bench/scripts/stackcollapse-perf.pl",
     "src/shared_modules/utils/makeUnique.h",
 }
-UNLISTED_EXT = {
-    ".js", ".ts", ".rb", ".lua", ".bash", ".zsh", ".ps1", ".bat", ".rs", ".java", ".kt",
-    ".c++", ".cxx", ".hh", ".hxx", ".inc", ".ipp", ".tcc", ".m4",
-}
+# Code extensions whose comment syntax the script cannot write.
+UNLISTED_EXT = {".lua", ".bat", ".m4", ".inc"}
+# Shebang interpreters whose comments are `#`.
+HASH_INTERPRETERS = {"sh", "bash", "dash", "ksh", "zsh", "python", "perl", "ruby", "make", "awk"}
+
+
+class _Unsupported:
+    """Sentinel returned by classify() for in-scope code with no known comment style."""
+
+    def __repr__(self) -> str:
+        return "UNSUPPORTED"
+
+
+UNSUPPORTED = _Unsupported()
 
 SCAN_LINES = 30
 # Only a comment line counts (`//`, `#`, `/*` or ` *`): the token inside a string literal is not an identifier.
 _ID_RE = re.compile(r"^\s*(?://|#|/?\*)\s*SPDX-License-Identifier:\s*(.+?)\s*(\*/)?\s*$")
 _CODING_RE = re.compile(r"^[ \t\f]*#.*?coding[:=]")
+_VERSION_SUFFIX_RE = re.compile(r"[0-9.]+$")
 
 
 class SpdxError(Exception):
@@ -85,16 +104,53 @@ def _comment_style(path: str) -> Optional[str]:
     return None
 
 
-def classify(path: str, content: Optional[bytes]) -> Optional[Tuple[str, str]]:
-    """Return (identifier, comment) for a file in scope, None otherwise.
+def _interpreter(content: Optional[bytes]) -> Optional[str]:
+    """Interpreter named by the shebang of `content` (versions stripped), None without a shebang."""
+    if not content or not content.startswith(b"#!"):
+        return None
+    # split() without a separator also drops the "\r" of a CRLF first line.
+    first = content.split(b"\n", 1)[0][2:].decode("latin-1").split()
+    if not first:
+        return ""
+    name = posixpath.basename(first[0])
+    if name == "env":
+        name = next((t for t in first[1:] if not t.startswith("-")), "env")
+        name = posixpath.basename(name)
+    return _VERSION_SUFFIX_RE.sub("", name)
+
+
+def _unsupported_label(path: str, content: Optional[bytes]) -> str:
+    ext = posixpath.splitext(posixpath.basename(path))[1]
+    if ext in UNLISTED_EXT:
+        return ext
+    return "#!%s" % _interpreter(content)
+
+
+def unsupported_message(path: str, content: Optional[bytes]) -> str:
+    return "%s: unsupported code type (%s)" % (path, _unsupported_label(path, content))
+
+
+def classify(path: str, content: Optional[bytes]):
+    """Return (identifier, comment) for a file in scope, None otherwise, UNSUPPORTED for in-scope code
+    whose comment style is unknown (not for excluded files).
 
     content=None classifies by path only (a file that does not exist on disk)."""
     ident = _expected_identifier(path)
     if ident is None:
         return None
+    unsupported = False
     comment = _comment_style(path)
     if comment is None:
-        return None
+        ext = posixpath.splitext(posixpath.basename(path))[1]
+        if ext in UNLISTED_EXT:
+            unsupported = True
+        elif not ext and (interp := _interpreter(content)) is not None:
+            if interp in HASH_INTERPRETERS:
+                comment = "#"
+            else:
+                unsupported = True
+        else:
+            return None
     if content is not None and not content.strip():
         return None
     base = posixpath.basename(path)
@@ -106,7 +162,7 @@ def classify(path: str, content: Optional[bytes]) -> Optional[Tuple[str, str]]:
         dirs = path[len(FIXTURE_ROOT):].split("/")[:-1]
         if any(d in FIXTURE_DIRS for d in dirs):
             return None
-    return ident, comment
+    return UNSUPPORTED if unsupported else (ident, comment)
 
 
 def find_identifier(content: bytes, limit: Optional[int] = SCAN_LINES) -> Optional[str]:
@@ -125,6 +181,8 @@ def apply_to_bytes(path: str, content: bytes) -> bytes:
     cls = classify(path, content)
     if cls is None:
         return content
+    if cls is UNSUPPORTED:
+        raise SpdxError("%s: %s" % (unsupported_message(path, content), UNSUPPORTED_HINT))
     ident, comment = cls
     found = find_identifier(content)
     if found is not None:
@@ -189,13 +247,16 @@ def _scope_ok(path: str, scope: Optional[str]) -> bool:
     return _expected_identifier(path) == (AGPL if scope == "agpl" else DUAL)
 
 
-def _in_scope(repo: str, scope: Optional[str]) -> Iterator[Tuple[str, str, bytes, str, str]]:
+def _in_scope(repo: str, scope: Optional[str]) -> Iterator[Tuple[str, str, bytes, object, Optional[str]]]:
+    """(path, full path, content, identifier, comment); identifier is UNSUPPORTED (comment None) for unsupported code."""
     for rel, full in _regular_files(repo):
         if not _scope_ok(rel, scope):
             continue
         content = _read(full)
         cls = classify(rel, content)
-        if cls is not None:
+        if cls is UNSUPPORTED:
+            yield rel, full, content, UNSUPPORTED, None
+        elif cls is not None:
             yield rel, full, content, cls[0], cls[1]
 
 
@@ -214,20 +275,30 @@ def cmd_classify(repo: str, args: argparse.Namespace) -> int:
         except OSError:
             content = None
         cls = classify(path, content)
-        print("%s\tnone" % path if cls is None else "%s\t%s\t%s" % (path, cls[0], cls[1]))
+        if cls is None:
+            print("%s\tnone" % path)
+        elif cls is UNSUPPORTED:
+            print("%s\tunsupported" % path)
+        else:
+            print("%s\t%s\t%s" % (path, cls[0], cls[1]))
     return 0
 
 
 def cmd_list(repo: str, args: argparse.Namespace) -> int:
-    for rel, _full, _c, _i, _s in _in_scope(repo, args.scope):
-        print(rel)
+    for rel, _full, _c, ident, _s in _in_scope(repo, args.scope):
+        if ident is not UNSUPPORTED:
+            print(rel)
     return 0
 
 
 def cmd_apply(repo: str, args: argparse.Namespace) -> int:
-    applied = unchanged = 0
+    applied = unchanged = unsupported = 0
     errors = 0
-    for rel, full, content, _i, _s in _in_scope(repo, args.scope):
+    for rel, full, content, ident, _s in _in_scope(repo, args.scope):
+        if ident is UNSUPPORTED:
+            print("%s: %s" % (unsupported_message(rel, content), UNSUPPORTED_HINT), file=sys.stderr)
+            unsupported += 1
+            continue
         try:
             new = apply_to_bytes(rel, content)
         except SpdxError as exc:
@@ -240,16 +311,8 @@ def cmd_apply(repo: str, args: argparse.Namespace) -> int:
             with open(full, "wb") as fh:  # truncating an existing file keeps its mode
                 fh.write(new)
             applied += 1
-    print("applied %d, unchanged %d" % (applied, unchanged))
-    return 1 if errors else 0
-
-
-def _is_unlisted_code(path: str, content: bytes) -> bool:
-    base = posixpath.basename(path)
-    ext = posixpath.splitext(base)[1]
-    if ext:
-        return ext in UNLISTED_EXT
-    return content.startswith(b"#!")
+    print("applied %d, unchanged %d, unsupported %d" % (applied, unchanged, unsupported))
+    return 1 if (errors or unsupported) else 0
 
 
 def cmd_census(repo: str, args: argparse.Namespace) -> int:
@@ -264,7 +327,10 @@ def cmd_census(repo: str, args: argparse.Namespace) -> int:
         content = _read(full)
         cls = classify(rel, content)
         found = find_identifier(content)
-        if cls is not None:
+        if cls is UNSUPPORTED:
+            if _scope_ok(rel, args.scope):
+                unlisted.append(rel)
+        elif cls is not None:
             if not _scope_ok(rel, args.scope):
                 continue
             if found is None:
@@ -277,8 +343,6 @@ def cmd_census(repo: str, args: argparse.Namespace) -> int:
             if (_scope_ok(rel, args.scope) and found in (AGPL, DUAL)
                     and _comment_style(rel) is not None):
                 excluded.append("%s\t%s" % (rel, found))
-            if exp == AGPL and _scope_ok(rel, args.scope) and _is_unlisted_code(rel, content):
-                unlisted.append(rel)
     for title, items in (("missing:", missing), ("wrong:", wrong),
                          ("excluded-with-identifier:", excluded), ("unlisted-code:", unlisted)):
         print(title)
@@ -289,8 +353,10 @@ def cmd_census(repo: str, args: argparse.Namespace) -> int:
     return 1 if (missing or wrong or excluded) else 0
 
 
+UNSUPPORTED_HINT = ("add its comment style to .github/scripts/spdx_scope.py or exclude the file")
 CHECK_HINT = ("add the line with `python3 .github/scripts/spdx_scope.py apply`, or list third-party "
-              "files in `THIRD_PARTY` of `.github/scripts/spdx_scope.py`")
+              "files in `THIRD_PARTY` of `.github/scripts/spdx_scope.py`; for an `unsupported code "
+              "type`, add its comment style to the script or exclude the file (`apply` cannot fix it)")
 
 
 def cmd_check(repo: str, args: argparse.Namespace) -> int:
@@ -315,6 +381,10 @@ def cmd_check(repo: str, args: argparse.Namespace) -> int:
         if cls is None:
             continue
         checked += 1
+        if cls is UNSUPPORTED:
+            print("%s: %s" % (unsupported_message(path, content), UNSUPPORTED_HINT), file=out)
+            failed += 1
+            continue
         found = find_identifier(content)
         if found is None:
             print("%s: missing %s" % (path, cls[0]), file=out)
