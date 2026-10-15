@@ -1200,6 +1200,24 @@ Seconds to wait for the inventory sync server's answer to a relayed `POST /state
   request cap too, or the HTTP server cuts the request off first (remoted warns at startup when
   the deadlines cannot be honored).
 
+#### remoted.downstream_stateful_retry_after
+
+`Retry-After`, in seconds, of the `503` answered when `remoted.downstream_stateful_response_timeout`
+elapses on a relayed `POST /stateful`.
+
+- **Default value:** `20`
+- **Allowed values:** Integer from `0` to `3600`; `0` sends no header
+- **Note:** The inventory sync server keeps applying the session after remoted stops waiting for
+  it, so the agent's re-send lands `downstream_stateful_response_timeout + this` seconds after its
+  first `POST`. Keep that sum above the sync server's immediate-session p99
+  ([`sync.session.duration.immediate`](../inventory-sync-server/metrics.md#sync-pipeline--syncpipeline-syncshardi-syncsessionduration)):
+  below it the re-send runs the same session a second time on the manager, where the two copies
+  race on the same documents and the loser is answered `503 indexer contention`
+  ([`sync.indexer.conflict.exhausted`](../inventory-sync-server/metrics.md#group-commit--syncbulk)).
+  Only the response timeout carries the header: a connect, write or transport failure means
+  nothing is running downstream, and the agent re-sends at once as before. The agent waits the
+  longer of this value and its own backoff.
+
 #### remoted.downstream_io_threads
 
 Number of threads running the downstream UDS client's `io_context`.

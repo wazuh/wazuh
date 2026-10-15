@@ -42,6 +42,10 @@ namespace remoted::downstream
         /// responseTimeoutMs override). Longer than responseTimeoutMs because a sync session is
         /// indexed and flushed within the request (see remoted.downstream_stateful_response_timeout).
         int statefulResponseTimeoutMs {20000};
+        /// `Retry-After` (seconds) of the 503 answered when statefulResponseTimeoutMs elapses: the
+        /// sync server is still applying the session, so the agent's re-send has to land after it
+        /// (see remoted.downstream_stateful_retry_after). 0 sends no header.
+        int statefulRetryAfterSec {20};
         std::size_t ioThreads {1};          ///< Threads running the client's io_context.
         std::size_t postProcessThreads {4}; ///< Threads running the per-endpoint post-processors.
         /// Cap on a downstream response body. Strictly larger than the 10 MiB agent-request cap:

@@ -36,7 +36,7 @@ Each hop has its own clock, and they are not nested inside one another:
 | Handling, once the request is fully read | [`remoted.http_request_timeout`](configuration.md#remotedhttp_request_timeout) | 30 s | request torn down |
 | Downstream connect | [`remoted.downstream_connect_timeout`](configuration.md#remoteddownstream_connect_timeout) | 2 s | `503` |
 | Downstream body write | [`remoted.downstream_write_timeout`](configuration.md#remoteddownstream_write_timeout) | 5 s | `503` |
-| Downstream answer | [`remoted.downstream_response_timeout`](configuration.md#remoteddownstream_response_timeout) / [`..._stateful_...`](configuration.md#remoteddownstream_stateful_response_timeout) | 5 s / 20 s | `503` |
+| Downstream answer | [`remoted.downstream_response_timeout`](configuration.md#remoteddownstream_response_timeout) / [`..._stateful_...`](configuration.md#remoteddownstream_stateful_response_timeout) | 5 s / 20 s | `503` (`/stateful`: with `Retry-After` [`..._stateful_retry_after`](configuration.md#remoteddownstream_stateful_retry_after), 20 s) |
 | Writing the response | [`remoted.http_write_timeout`](configuration.md#remotedhttp_write_timeout) | 10 s | connection closed. Rearmed per chunk on a streamed `POST /download`, which does **not** make a slow transfer safe: below ~1 Mbit/s it is what aborts WPK downloads (§5) |
 | The whole request, from the agent's side | `agent.https_request_timeout` / `agent.https_stateful_timeout` | 10 s / 90 s | attempt consumed, retry after backoff |
 
@@ -131,7 +131,11 @@ the last warning.`). Size it as
 `peak EPS × required outage window`: the default tolerates ≈100 s at 20 eps (measured: 33% of a
 3-minute outage's events lost).
 
-**Overloaded `/stateful`.** Under sustained overload, shedding is capacity-driven and roughly
+**Overloaded `/stateful`.** A session that outlives `downstream_stateful_response_timeout` is
+still applied by the sync server after remoted answered `503`; that `503` carries
+`Retry-After` (`downstream_stateful_retry_after`, 20 s) so the agent's re-send lands after it
+instead of running the same session twice on the manager. Under sustained overload, shedding is
+capacity-driven and roughly
 independent of `downstream_stateful_response_timeout`; what the knob bounds is the **latency
 tail** (saturated p99 ≈ 0.94 × knob, measured across six values). Keep the default 20 s — it sat
 at 3.4× the measured flush p99 under 3× overload — and never set it below 2× your deployment's
