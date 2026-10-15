@@ -110,6 +110,7 @@ All notable changes to this project will be documented in this file.
 - Fixed rule and decoder uploads reporting any ruleset validation failure as an XML syntax error. The error now includes the `wazuh-analysisd` details, and the new error 1132 reports a ruleset that exceeds the rule tree node limit. ([#39930](https://github.com/wazuh/wazuh/issues/39930))
 - Fixed rule and decoder uploads leaving the uploaded file installed when the validation could not be completed or the file had no previous version. ([#39930](https://github.com/wazuh/wazuh/issues/39930))
 - Fixed `GET /security/resources` and `GET /security/actions` returning the RBAC catalog to users without `security:read_config` after an authorized user had requested it. Those users now always receive `403`. ([#39357](https://github.com/wazuh/wazuh/issues/39357))
+- Fixed `wazuh-apid` and `wazuh-clusterd` logging an error at shutdown for a child process that had already exited. ([#39983](https://github.com/wazuh/wazuh/issues/39983))
 
 ## [v4.14.9]
 
