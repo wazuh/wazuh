@@ -40,6 +40,19 @@ struct DbsyncRow
 
 using DbsyncRowSink = std::function<void(const DbsyncRow&)>;
 
+/// Receives a container's context once, BEFORE any of that container's rows
+/// reach the row sink. Returns false to skip the container entirely, which the
+/// consumer does when it could not persist the context: rows referencing a
+/// context that was never stored describe a container nothing can identify.
+///
+/// Unlike the C entry points, where this sits next to the row sink, here it is
+/// a trailing defaulted parameter. That is deliberate and purely practical --
+/// the ordering contract lives in this comment either way, and placing it next
+/// to `sink` would have rewritten some forty call sites, nearly all of them
+/// tests that have no context to supply.
+using ContainerContextSink = std::function<bool(const std::string& container_id,
+                                                const std::string& context_json)>;
+
 /// @brief Per-container outcome, reported after all of that container's rows
 /// have been emitted.
 ///
@@ -133,7 +146,8 @@ int RunFimDbsyncBaseline(const std::string&                connector_socket_path
                           const std::vector<MonitoredPath>& paths,
                           const DbsyncRowSink&              sink,
                           const ContainerStatusSink&        status_sink = {},
-                          const std::function<void()>&      rate_limit = {});
+                          const std::function<void()>&      rate_limit = {},
+                          const ContainerContextSink&      context_sink = {});
 
 /// @brief Run the Syscollector inventory baseline (processes, ports, users,
 /// groups, packages, os, interfaces, addresses, routes, services, hardware) for
@@ -141,7 +155,8 @@ int RunFimDbsyncBaseline(const std::string&                connector_socket_path
 /// rows. Same return semantics as RunFimDbsyncBaseline().
 int RunSyscollectorDbsyncBaseline(const std::string&         connector_socket_path,
                                   const DbsyncRowSink&       sink,
-                                  const ContainerStatusSink& status_sink = {});
+                                  const ContainerStatusSink& status_sink = {},
+                                  const ContainerContextSink&      context_sink = {});
 
 /// @brief Container identity as the orchestrator consumes it. Declared here
 /// (rather than only in baseline_rows.hpp) so the seam below can be described
@@ -167,7 +182,8 @@ int RunFimDbsyncBaselineFrom(const ContainerDiscoverer&        discover,
                               const std::vector<MonitoredPath>& paths,
                               const DbsyncRowSink&              sink,
                               const ContainerStatusSink&        status_sink = {},
-                              const std::function<void()>&      rate_limit = {});
+                              const std::function<void()>&      rate_limit = {},
+                              const ContainerContextSink&      context_sink = {});
 
 /// @brief FIM baseline for ONE container, over the paths the caller supplies.
 ///
@@ -202,7 +218,8 @@ int RunFimDbsyncBaselineForContainer(const std::string&                connector
                                       const std::vector<MonitoredPath>& paths,
                                       const DbsyncRowSink&              sink,
                                       const ContainerStatusSink&        status_sink = {},
-                                      const std::function<void()>&      rate_limit = {});
+                                      const std::function<void()>&      rate_limit = {},
+                                      const ContainerContextSink&      context_sink = {});
 
 /// @brief Single-container FIM baseline over an explicit container list and PID
 /// index, so the selection, path validation and partial-reporting behaviour can
@@ -215,14 +232,16 @@ int RunFimDbsyncBaselineForContainerFrom(const ContainerDiscoverer&        disco
                                           const std::vector<MonitoredPath>& paths,
                                           const DbsyncRowSink&              sink,
                                           const ContainerStatusSink&        status_sink = {},
-                                          const std::function<void()>&      rate_limit = {});
+                                          const std::function<void()>&      rate_limit = {},
+                                          const ContainerContextSink&      context_sink = {});
 
 /// @brief Syscollector inventory baseline over an explicit container list and
 /// PID index. See RunFimDbsyncBaselineFrom().
 int RunSyscollectorDbsyncBaselineFrom(const ContainerDiscoverer& discover,
                                        const PidIndex&            pids,
                                        const DbsyncRowSink&       sink,
-                                       const ContainerStatusSink& status_sink = {});
+                                       const ContainerStatusSink& status_sink = {},
+                                       const ContainerContextSink&      context_sink = {});
 
 /// @brief Syscollector inventory baseline for ONLY the named containers.
 ///
@@ -245,7 +264,8 @@ int RunSyscollectorDbsyncBaselineFrom(const ContainerDiscoverer& discover,
 int RunSyscollectorDbsyncBaselineForContainers(const std::string&              connector_socket_path,
                                                 const std::vector<std::string>& container_ids,
                                                 const DbsyncRowSink&            sink,
-                                                const ContainerStatusSink&      status_sink = {});
+                                                const ContainerStatusSink&      status_sink = {},
+                                                const ContainerContextSink&      context_sink = {});
 
 /// Reports one known container and whether it may report to the manager.
 ///

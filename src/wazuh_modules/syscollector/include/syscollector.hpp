@@ -163,6 +163,15 @@ class EXPORTED Syscollector final
         /// gone is known directly rather than by absence from a list.
         std::size_t sweepContainerRows(const std::vector<std::string>& container_ids);
 
+        /// Stores one container's context so its rows can reference it rather
+        /// than each carrying a copy. Returns false if it could not be stored,
+        /// which makes the baseline skip that container entirely.
+        ///
+        /// Public for the same reason sweepContainerRows() is: the behaviour
+        /// that matters here is what reaches the database, and driving it
+        /// through a live connector to observe that is not a unit test.
+        bool storeContainerContext(const std::string& containerId, const std::string& contextJson);
+
         // Sync protocol methods
         void initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, const std::string& syncDbPathVD,
                               uint32_t integrityInterval);
@@ -974,6 +983,13 @@ class EXPORTED Syscollector final
         // path takes it through syscollector_lock_scan_mutex() before calling
         // in. A caller that reaches ecsData() without it would need its own
         // synchronisation here.
+        // Last context written per container, so an unchanged one is not
+        // rewritten every scan. Guarded because the baseline runs on the scan
+        // thread while the sweeps that erase entries can run from the
+        // container-cadence path.
+        std::mutex                                                               m_containerContextMutex;
+        std::map<std::string, std::string>                                       m_containerContexts;
+
         std::string                                                              m_lastContainerBlob;
         nlohmann::json                                                           m_lastContainerBlock;
 };
