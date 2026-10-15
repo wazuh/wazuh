@@ -139,7 +139,7 @@ configurator.configure_test(configuration_file='custom_bucket_configuration.yaml
                          ids=configurator.cases_ids)
 def test_custom_bucket_logs(
         test_configuration, metadata, create_test_bucket, set_test_sqs_queue, manage_bucket_files,
-        load_wazuh_basic_configuration, set_wazuh_configuration,
+        wait_sqs_upload_notification, load_wazuh_basic_configuration, set_wazuh_configuration,
         configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function,
         file_monitoring
 ):
@@ -180,6 +180,9 @@ def test_custom_bucket_logs(
         - manage_bucket_files:
             type: fixture
             brief: S3 buckets manager.
+        - wait_sqs_upload_notification:
+            type: fixture
+            brief: Wait for the uploaded file's notification in the SQS queue.
         - load_wazuh_basic_configuration:
             type: fixture
             brief: Load basic wazuh configuration.
