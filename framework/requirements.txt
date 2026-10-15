@@ -17,7 +17,7 @@ connexion==3.1.0
 content-size-limit-asgi==0.1.5
 cryptography==50.0.1
 Cython==0.29.36
-defusedxml==0.6.0
+defusedxml>=0.7.1
 docker==7.1.0
 docker-pycreds==0.4.0
 docutils==0.15.2
