@@ -754,7 +754,10 @@ def get_agent_conf(group_id: str = None, offset: int = 0, limit: int = common.DA
 
     # Ensure the resolved path stays inside the group directory.
     base_path = os_path.join(common.SHARED_PATH, group_id if group_id is not None else '')
-    if os_path.commonpath([os_path.realpath(agent_conf), os_path.realpath(base_path)]) != os_path.realpath(base_path):
+    shared_path = os_path.realpath(common.SHARED_PATH)
+    base_path = os_path.realpath(base_path)
+    if os_path.commonpath([base_path, shared_path]) != shared_path or \
+            os_path.commonpath([os_path.realpath(agent_conf), base_path]) != base_path:
         raise WazuhError(1006, agent_conf)
 
     if not os_path.exists(agent_conf):
@@ -814,6 +817,13 @@ def get_agent_conf_multigroup(multigroup_id: str = None, offset: int = 0, limit:
     agent_conf_name = filename if filename else 'agent.conf'
     agent_conf = os_path.join(common.MULTI_GROUPS_PATH, multigroup_id, agent_conf_name)
 
+    # Ensure the resolved path stays inside the multigroup directory.
+    multigroups_path = os_path.realpath(common.MULTI_GROUPS_PATH)
+    base_path = os_path.realpath(os_path.join(common.MULTI_GROUPS_PATH, multigroup_id))
+    if os_path.commonpath([base_path, multigroups_path]) != multigroups_path or \
+            os_path.commonpath([os_path.realpath(agent_conf), base_path]) != base_path:
+        raise WazuhError(1006, agent_conf)
+
     if not os_path.exists(agent_conf):
         raise WazuhError(1006, extra_message=os_path.join("WAZUH_PATH", "var", "multigroups", agent_conf))
 
@@ -864,7 +874,10 @@ def get_file_conf(filename: str, group_id: str = None, type_conf: str = None, ra
 
     # Ensure the resolved path stays inside the group directory.
     base_path = os_path.join(common.SHARED_PATH, group_id if not filename == 'ar.conf' else '')
-    if os_path.commonpath([os_path.realpath(file_path), os_path.realpath(base_path)]) != os_path.realpath(base_path):
+    shared_path = os_path.realpath(common.SHARED_PATH)
+    base_path = os_path.realpath(base_path)
+    if os_path.commonpath([base_path, shared_path]) != shared_path or \
+            os_path.commonpath([os_path.realpath(file_path), base_path]) != base_path:
         raise WazuhError(1006, file_path)
 
     if not os_path.exists(file_path):
@@ -1034,7 +1047,9 @@ def upload_group_configuration(group_id: str, file_content: str) -> str:
     str
         Confirmation message.
     """
-    if not os_path.exists(os_path.join(common.SHARED_PATH, group_id)):
+    shared_path = os_path.realpath(common.SHARED_PATH)
+    group_path = os_path.realpath(os_path.join(common.SHARED_PATH, group_id))
+    if not os_path.exists(group_path) or os_path.commonpath([group_path, shared_path]) != shared_path:
         raise WazuhResourceNotFound(1710, group_id)
     # path of temporary files for parsing xml input
     handle, tmp_file_path = tempfile.mkstemp(prefix='api_tmp_file_', suffix='.xml', dir=common.OSSEC_TMP_PATH)
