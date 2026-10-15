@@ -68,13 +68,10 @@ EXTERNAL_MAXMINDDB=external/libmaxminddb/
 EXTERNAL_PROTOBUF=external/protobuf/
 EXTERNAL_DATE=external/date/
 EXTERNAL_SIMDJSON=external/simdjson/
-EXTERNAL_LZMA=external/lzma/
 EXTERNAL_LUA=external/lua/
 EXTERNAL_LIBPCRE2=external/libpcre2/
-EXTERNAL_SIMDJSON=external/simdjson/
 EXTERNAL_PROCPS=external/procps/
 EXTERNAL_LIBDB=external/libdb/build_unix/
-EXTERNAL_LIBARCHIVE=external/libarchive/
 EXTERNAL_JEMALLOC=external/jemalloc/
 EXTERNAL_RPM=external/rpm/
 EXTERNAL_POPT=external/popt/
@@ -890,7 +887,6 @@ ifneq ($(wildcard external/*/*),)
 	rm -rf ${EXTERNAL_LUA}install/*
 	-cd ${EXTERNAL_DBUS} && test -f configure && ${MAKE} distclean 2>/dev/null || true
 	-cd ${EXTERNAL_LIBDB} && ${MAKE} realclean 2>/dev/null || true
-	-cd ${EXTERNAL_LIBARCHIVE} && ${MAKE} clean 2>/dev/null || true
 	-cd ${EXTERNAL_JEMALLOC} && ${MAKE} clean 2>/dev/null || true
 # CMake-based dependencies - remove build directories only
 	rm -rf $(EXTERNAL_GOOGLE_TEST)lib $(EXTERNAL_GOOGLE_TEST)build
@@ -907,7 +903,6 @@ ifneq ($(wildcard external/*/*),)
 	rm -rf $(EXTERNAL_MAXMINDDB)build
 	rm -rf $(EXTERNAL_RE2)build
 	rm -rf $(EXTERNAL_PROTOBUF)build
-	rm -rf $(EXTERNAL_LZMA)build
 	rm -rf $(EXTERNAL_POPT)build
 	rm -rf $(EXTERNAL_RPM)builddir
 	rm -rf $(EXTERNAL_LLHTTP)build
