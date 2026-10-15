@@ -19,7 +19,7 @@ from wazuh.core import cluster as metadata, common, exception, utils
 from wazuh.core.cluster import client, cluster, common as c_common
 from wazuh.core.cluster.common import IndexerTaskManager
 from wazuh.core.cluster.dapi import dapi
-from wazuh.core.cluster.utils import log_subprocess_execution, safe_join
+from wazuh.core.cluster.utils import local_path, log_subprocess_execution, safe_join
 from wazuh.core.configuration import get_manager_conf
 from wazuh.core.exception import WazuhException
 from wazuh.core.indexer.active_response import ActiveResponseFetchTask
@@ -847,7 +847,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             data_ : dict
                 File metadata such as modification time, whether it's a merged file or not, etc.
             """
-            full_filename_path = safe_join(common.WAZUH_PATH, filename)
+            full_filename_path = local_path(filename)
 
             if data_['merged']:  # worker nodes can only receive agent-groups files
                 item_key = data_['cluster_item_key']
@@ -855,12 +855,12 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                     raise exception.WazuhClusterError(3061, extra_message=item_key)
 
                 # Split merged file into individual files inside zipdir (directory containing unzipped files),
-                # and then move each one to the destination directory (<wazuh_path>/filename).
+                # and then move each one to the destination directory (local_path(filename)).
                 # The TYPE string used in the 'unmerge_info' function is a placeholder. It corresponds to the
                 # directory inside '{wazuh_path}/queue/' path.
                 for name, content, _ in cluster.unmerge_info('TYPE', zip_path, filename_):
-                    full_unmerged_name = safe_join(common.WAZUH_PATH, name)
-                    expected_base = safe_join(common.WAZUH_PATH, item_key)
+                    full_unmerged_name = local_path(name)
+                    expected_base = local_path(item_key)
                     if not os.path.commonpath([full_unmerged_name, expected_base]).startswith(expected_base):
                         raise exception.WazuhClusterError(3062,
                             extra_message=f"File path outside allowed directory: {name}")
@@ -875,14 +875,14 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 item_key = data_['cluster_item_key']
                 if item_key not in cluster_items['files']:
                     raise exception.WazuhClusterError(3061, extra_message=item_key)
-                expected_base = safe_join(common.WAZUH_PATH, item_key)
+                expected_base = local_path(item_key)
                 if not os.path.commonpath([full_filename_path, expected_base]).startswith(expected_base):
                     raise exception.WazuhClusterError(3062,
                         extra_message=f"File path outside allowed directory: {filename_}")
                 # Create destination dir if it doesn't exist.
                 if not os.path.exists(os.path.dirname(full_filename_path)):
                     utils.mkdir_with_mode(os.path.dirname(full_filename_path))
-                # Move the file from zipdir (directory containing unzipped files) to <wazuh_path>/filename.
+                # Move the file from zipdir (directory containing unzipped files) to local_path(filename).
                 safe_move(safe_join(zip_path, filename_), full_filename_path,
                           permissions=cluster_items['files'][item_key]['permissions'],
                           ownership=(common.wazuh_uid(), common.wazuh_gid())
@@ -912,8 +912,8 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                         item_key = file_data['cluster_item_key']
                         if item_key not in cluster_items['files']:
                             raise exception.WazuhClusterError(3061, extra_message=item_key)
-                        file_path = safe_join(common.WAZUH_PATH, file_to_remove)
-                        expected_base = safe_join(common.WAZUH_PATH, item_key)
+                        file_path = local_path(file_to_remove)
+                        expected_base = local_path(item_key)
                         if not os.path.commonpath([file_path, expected_base]).startswith(expected_base):
                             raise exception.WazuhClusterError(3062,
                                 extra_message=f"File path outside allowed directory: {file_to_remove}")
@@ -939,7 +939,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                                    if cluster_items['files'][data['cluster_item_key']]['remove_subdirs_if_empty'])
         for directory in directories_to_check:
             try:
-                full_path = safe_join(common.WAZUH_PATH, directory)
+                full_path = local_path(directory)
                 dir_files = set(os.listdir(full_path))
                 if not dir_files or dir_files.issubset(set(cluster_items['files']['excluded_files'])):
                     shutil.rmtree(full_path)

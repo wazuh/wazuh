@@ -7,7 +7,7 @@
  * Foundation.
  */
 
-/* The enrollment token store: the file etc/enrollment_tokens.json, and every rule that decides
+/* The enrollment token store: the file /etc/wazuh-manager/enrollment_tokens.json, and every rule that decides
  * whether a token an agent presents may still be used.
  *
  * These cases work on REAL files in a temporary directory, because the file is the point: it is the

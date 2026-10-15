@@ -1,0 +1,45 @@
+name: 5.X - Agent installer scripts - Unit tests
+
+on:
+  pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
+    paths:
+      - ".github/workflows/5_testunit_agent-installer-scripts.yml"
+      # The two scripts under test. Each suite runs its target in a throwaway install directory
+      # with stubbed binaries (wazuh-agentd --show-token, curl, rpm), so nothing else is built,
+      # installed or sourced.
+      - "src/init/register_configure_agent.sh"
+      - "src/init/pkg_installer.sh"
+      - "src/init/tests/test_enrollment_token.sh"
+      - "src/init/tests/test_register_configure_agent.sh"
+      - "src/init/tests/test_pkg_installer_ca.sh"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  agent-installer-shell-tests:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Each suite prints one line per check and exits non-zero on any failure. They run
+      # unprivileged on purpose: the packages call these scripts as root, but every case is built so
+      # that an unprivileged run reaches the decision it asserts.
+      - name: Enrollment token handling (register_configure_agent.sh)
+        run: bash src/init/tests/test_enrollment_token.sh
+
+      - name: ossec.conf rewriting (register_configure_agent.sh)
+        run: bash src/init/tests/test_register_configure_agent.sh
+
+      # Needs openssl on PATH to mint its test CA; the runner image ships it.
+      - name: Manager-delivered CA (pkg_installer.sh)
+        run: bash src/init/tests/test_pkg_installer_ca.sh

@@ -16,7 +16,8 @@ Three values are deliberately NOT configurable:
 
 - **The socket path** is fixed at `queue/sockets/inventory-sync-http.sock`, relative to the installation
   directory. Internal options can only carry integers, so there is no mechanism to set a path; remoted
-  resolves the same relative path through its chroot.
+  and modulesd both run with the installation directory as their working directory and resolve the same
+  relative path.
 - **The socket mode** is fixed at `0660`. It was an internal option and that was a trap: the value is a
   raw permission mode, but internal options are parsed as DECIMAL, so writing the documented `0660`
   produced decimal 660 -- out of range, killing the daemon -- while a value that did fit, say `440`, was
@@ -29,7 +30,7 @@ Three values are deliberately NOT configurable:
 
 ## Internal Options
 
-**Configuration file:** `/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`
+**Configuration file:** `/etc/wazuh-manager/wazuh-manager-internal-options.conf`
 
 **Internal Options prefix:** `wazuh_modules.inventory_sync_server_*`
 

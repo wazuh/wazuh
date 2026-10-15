@@ -32,7 +32,7 @@ void RouterWorker::start()
         return;
     }
 
-    // Cluster info from the manager configuration (etc/wazuh-manager.conf) when it is loaded; standalone
+    // Cluster info from the manager configuration (wazuh-manager.conf) when it is loaded; standalone
     // mode and unit tests run without it and do not enrich the events.
     std::string clusterName, nodeName;
     if (base::managerConfig::isLoaded())

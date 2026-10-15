@@ -32,7 +32,8 @@ int worker_pool;
 int merge_shared;
 size_t ctrl_msg_queue_size;
 int keyupdate_interval;
-rlim_t nofile;
+rlim_t nofile;          // remoted.rlimit_nofile as configured; what getconfig reports
+rlim_t nofile_effective; // Soft limit in force once HandleRemote() has raised it
 int sender_pool;
 int rto_sec;
 int rto_msec;
@@ -115,6 +116,7 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     ctrl_msg_queue_size = (size_t)getDefine_Int_default("remoted", "control_msg_queue_size", 4096, 0x1 << 20, 16384);
     keyupdate_interval = getDefine_Int_default("remoted", "keyupdate_interval", 1, 3600, 10);
     nofile = getDefine_Int_default("remoted", "rlimit_nofile", 1024, 1048576, 65536);
+    nofile_effective = nofile;
     sender_pool = getDefine_Int_default("remoted", "sender_pool", 1, 64, 8);
     request_pool = getDefine_Int_default("remoted", "request_pool", 1, 4096, 1024);
     request_timeout = getDefine_Int_default("remoted", "request_timeout", 1, 600, 10);
@@ -138,7 +140,7 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     /* Setting default values for global parameters */
     cfg->global.agents_disconnection_time = 900;
 
-    /* etc/wazuh-manager.conf: loaded once per process (schema + defaults applied), then each section
+    /* /etc/wazuh-manager/wazuh-manager.conf: loaded once per process (schema + defaults applied), then each section
      * of the effective document is read as cJSON (mconf-config.h). */
     if (w_mconf_load(cfgfile) < 0) {
         return (OS_INVALID);
@@ -189,7 +191,7 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
 }
 
 
-/* getconfig "remote": the effective `remote` section of etc/wazuh-manager.conf (schema defaults
+/* getconfig "remote": the effective `remote` section of /etc/wazuh-manager/wazuh-manager.conf (schema defaults
  * applied, native types), exactly what RemotedConfig() loaded. Feeds one endpoint:
  * GET /cluster/.../configuration/request/remote, which asks the daemon over its socket. */
 cJSON *getRemoteConfig(void) {
@@ -250,7 +252,7 @@ cJSON *getRemoteInternalConfig(void) {
 
 }
 
-/* getconfig "global": the effective `global` section of etc/wazuh-manager.conf. */
+/* getconfig "global": the effective `global` section of /etc/wazuh-manager/wazuh-manager.conf. */
 cJSON *getRemoteGlobalConfig(void) {
     cJSON *root = cJSON_CreateObject();
     cJSON *global = w_mconf_section("global");

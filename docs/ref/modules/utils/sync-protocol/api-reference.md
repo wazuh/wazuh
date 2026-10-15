@@ -114,17 +114,17 @@ SyncModuleResult synchronizeModuleBounded(Mode mode, size_t maxBlocks)
 ##### `requiresFullSync()`
 
 ```cpp
-bool requiresFullSync(const std::string& index,
-                      const std::string& checksum)
+IntegrityCheckResult requiresFullSync(const std::string& index,
+                                      const std::string& checksum)
 ```
 
-Checks if a module index requires full synchronization by sending one `FullSession` carrying a `ChecksumModule` payload and waiting for the manager's `EndAck`.
+Checks if a module index requires full synchronization by sending one `FullSession` carrying a `ChecksumModule` payload and waiting for the manager's answer. A `409` is only trusted as a mismatch once it repeats on every attempt (`CHECKSUM_MISMATCH_MAX_ATTEMPTS`), because the indexer may not have caught up with a recent write yet.
 
 **Parameters:**
 - `index`: The index/table to check
 - `checksum`: The calculated checksum for the index
 
-**Returns:** `true` if full sync is required (checksum mismatch, i.e. `EndAck.status != Ok`); `false` if integrity is valid or the transport is not currently reachable
+**Returns:** `IntegrityCheckResult` (see [Result Type](#integritycheckresult--integritycheckresult_t)): `VALID` when the manager confirmed the checksum, `MISMATCH` when it reported a mismatch on every attempt, and `NOT_CHECKED` when the check did not complete (the intake socket is unreachable, the manager answered `503`, there was no response, or the module is stopping). `NOT_CHECKED` says nothing about the checksum, so a caller must never report it as valid.
 
 ##### `synchronizeMetadataOrGroups()`
 
@@ -357,9 +357,9 @@ C wrapper for `synchronizeModuleBounded()`: `asp_sync_module()` with a tighter b
 #### `asp_requires_full_sync()`
 
 ```c
-bool asp_requires_full_sync(AgentSyncProtocolHandle* handle,
-                            const char* index,
-                            const char* checksum)
+IntegrityCheckResult_t asp_requires_full_sync(AgentSyncProtocolHandle* handle,
+                                              const char* index,
+                                              const char* checksum)
 ```
 
 C wrapper for `requiresFullSync()`. Checks if a module index requires full synchronization.
@@ -369,7 +369,7 @@ C wrapper for `requiresFullSync()`. Checks if a module index requires full synch
 - `index`: The index/table to check
 - `checksum`: The calculated checksum for the index
 
-**Returns:** `true` if full sync is required (checksum mismatch); `false` if integrity is valid
+**Returns:** `IntegrityCheckResult_t`, same meaning as `requiresFullSync()`. A `NULL` argument or an exception in the C++ layer is reported as `INTEGRITY_CHECK_NOT_CHECKED` with a reason.
 
 #### `asp_sync_metadata_or_groups()`
 
@@ -571,6 +571,44 @@ typedef struct SyncModuleResult_t {
 - `localTransportUnavailable`/`local_transport_unavailable`: `true` if the local `queue-sync` intake could not be reached (the `wazuh-agentd` HTTPS client is not up yet). Nothing reached the manager, so this is not a manager-side condition. In this case `consecutiveFailures` counts consecutive failures to reach the intake, a streak separate from the sync one.
 - `sessionSkipped` (C++ only): `true` if no session ran because another synchronization was already in flight on the same instance. Reported as a success, since the in-flight sync drains the same queue; do not record it as a completed session.
 - `sentAnything`/`sent_anything`: `true` if the manager accepted at least one block of queued items. `success` with `sentAnything == false` means the queue was empty or (C++ only, `sessionSkipped`) the session was skipped; the C struct cannot tell the two apart. Always `false` for metadata and group synchronizations and for `notifyDataClean()`.
+
+#### `IntegrityCheckResult` / `IntegrityCheckResult_t`
+
+```cpp
+enum class IntegrityCheckStatus { VALID, MISMATCH, NOT_CHECKED };
+
+struct IntegrityCheckResult {
+    IntegrityCheckStatus status{IntegrityCheckStatus::NOT_CHECKED};
+    std::string failureReason;
+    bool stopped{false};
+    bool managerNotReady{false};
+    bool localTransportUnavailable{false};
+    bool mismatchUnconfirmed{false};
+};
+```
+
+```c
+typedef enum {
+    INTEGRITY_CHECK_VALID = 0,
+    INTEGRITY_CHECK_MISMATCH = 1,
+    INTEGRITY_CHECK_NOT_CHECKED = 2
+} IntegrityCheckStatus_t;
+
+typedef struct IntegrityCheckResult_t {
+    IntegrityCheckStatus_t status;
+    char failure_reason[SYNC_FAILURE_REASON_MAX_LEN];
+    bool stopped;
+    bool manager_not_ready;
+    bool local_transport_unavailable;
+    bool mismatch_unconfirmed;
+} IntegrityCheckResult_t;
+```
+
+- `status`: `VALID`, `MISMATCH` or `NOT_CHECKED`.
+- `failureReason`/`failure_reason`: why the check did not complete. Empty unless `status` is `NOT_CHECKED`.
+- `stopped`: `true` if the check was abandoned because `stop()` was called. Expected during shutdown, so a caller should not report it as a failure, and should not count the table as checked.
+- `managerNotReady`/`manager_not_ready` and `localTransportUnavailable`/`local_transport_unavailable`: same meaning as in `SyncModuleResult`.
+- `mismatchUnconfirmed`/`mismatch_unconfirmed`: `true` if the manager had already answered `409` and the check ended (stopped or failed) before the mismatch was confirmed. The mismatch is not acted on, so a caller should say so in its message.
 
 ### Callback Types
 

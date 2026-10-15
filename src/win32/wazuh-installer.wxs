@@ -261,9 +261,7 @@
                         <File Id="LOCAL_INTERNAL_OPTIONS.CONF" Name="local_internal_options.conf" Source="default-local_internal_options.conf" KeyPath="yes" />
                     </Component>
                     <Component Id="OSSEC.CONF" DiskId="1" Guid="26C3265E-EFC8-488D-8D19-397A0C44C071" NeverOverwrite="yes" Permanent="yes">
-                        <File Id="OSSEC.CONF" Name="ossec.conf" Source="default-ossec.conf" KeyPath="yes">
-                            <util:PermissionEx User="Everyone" GenericRead="yes" GenericWrite="yes" />
-                        </File>
+                        <File Id="OSSEC.CONF" Name="ossec.conf" Source="default-ossec.conf" KeyPath="yes" />
                     </Component>
                     <Component Id="INTERNAL_OPTIONS.CONF" DiskId="1" Guid="D2F2A5B9-1A98-4BB8-8AC4-D948CA97DD0E">
                         <File Id="INTERNAL_OPTIONS.CONF" Name="internal_options.conf" Source="internal_options.conf"/>
@@ -470,16 +468,31 @@
                 </Directory>
             </Directory>
             <Directory Id="ProgramMenuFolder">
-                <Directory Id="ProgramMenuDir" Name="OSSEC">
-                    <Component Id="StartMenuShortcuts" Guid="6C151D64-A90E-48A0-853C-FDEE0BD628C5">
+                <!-- Both the folder and the agent GUI shortcut carry "Wazuh" so a Start menu search for it
+                     finds the GUI. The component moved out of the old "OSSEC" folder, so it takes a new GUID
+                     and a key path of its own instead of sharing the old component's unnamed value. -->
+                <Directory Id="ProgramMenuDir" Name="Wazuh">
+                    <Component Id="StartMenuShortcuts" Guid="902BBA86-B0B8-47D9-92AE-0CBF91248257">
                         <RemoveFolder Id="ProgramMenuDir" On="uninstall" />
-                        <RegistryValue Root="HKCU" Key="Software\[Manufacturer]\[ProductName]" Type="string" Value="[Version]" />
+                        <RegistryValue Root="HKCU" Key="Software\[Manufacturer]\[ProductName]" Name="StartMenuShortcuts" Type="string" Value="[Version]" KeyPath="yes" />
                         <Shortcut Id="EDIT_CONF" Name="Edit conf" Target="[APPLICATIONFOLDER]ossec.conf" WorkingDirectory="APPLICATIONFOLDER" />
                         <Shortcut Id="UninstallProduct" Name="Uninstall" Description="Uninstalls the application" Target="[System64Folder]msiexec.exe" Arguments="/x [ProductCode]" />
-                        <Shortcut Id="RUN_WIN32UI" Name="Manage Agent" Target="[APPLICATIONFOLDER]win32ui.exe" WorkingDirectory="APPLICATIONFOLDER" />
+                        <Shortcut Id="RUN_WIN32UI" Name="Wazuh Agent Manager" Target="[APPLICATIONFOLDER]win32ui.exe" WorkingDirectory="APPLICATIONFOLDER" />
                         <util:InternetShortcut Id="WebsiteShortcut" Name="Documentation" Target="https://documentation.wazuh.com" xmlns:util="http://schemas.microsoft.com/wix/UtilExtension" />
+                        <!-- Removing an older MSI already deletes its own "OSSEC" folder, but an agent first
+                             installed with the NSIS installer also has shortcuts the MSI never owned, which
+                             keep that folder alive. Only those known names are removed, so anything else a
+                             user put there stays, and the folder itself goes only once it is empty. -->
+                        <RemoveFile Id="LegacyManageAgent" Directory="LegacyProgramMenuDir" Name="Manage Agent.lnk" On="install" />
+                        <RemoveFile Id="LegacyEditConf" Directory="LegacyProgramMenuDir" Name="Edit conf.lnk" On="install" />
+                        <RemoveFile Id="LegacyEditConfig" Directory="LegacyProgramMenuDir" Name="Edit Config.lnk" On="install" />
+                        <RemoveFile Id="LegacyEdit" Directory="LegacyProgramMenuDir" Name="Edit.lnk" On="install" />
+                        <RemoveFile Id="LegacyDocumentation" Directory="LegacyProgramMenuDir" Name="Documentation.lnk" On="install" />
+                        <RemoveFile Id="LegacyUninstall" Directory="LegacyProgramMenuDir" Name="Uninstall.lnk" On="install" />
+                        <RemoveFolder Id="LegacyProgramMenuDir" Directory="LegacyProgramMenuDir" On="install" />
                     </Component>
                 </Directory>
+                <Directory Id="LegacyProgramMenuDir" Name="OSSEC" />
             </Directory>
         </Directory>
         <DirectoryRef Id="ACTIVE_RESPONSE">
@@ -537,18 +550,14 @@
         </DirectoryRef>
         <DirectoryRef Id="SCA_DB">
             <Component Id="CMP_SCA_DB" Guid="562a47a2-48ab-4b83-8303-2d8eff912970" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
-                <CreateFolder>
-                    <Permission User="Everyone" GenericAll="yes" />
-                </CreateFolder>
+                <CreateFolder />
                 <RemoveFile Id="purgue_sca_db" Name="*.*" On="uninstall" />
                 <RemoveFolder Id="purgue_sca_db_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
         <DirectoryRef Id="AGENT_INFO_DB">
             <Component Id="CMP_AGENT_INFO_DB" Guid="a3c4f5e6-78d9-4b2a-9c1e-2f3d4e5a6b7c" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
-                <CreateFolder>
-                    <Permission User="Everyone" GenericAll="yes" />
-                </CreateFolder>
+                <CreateFolder />
                 <RemoveFile Id="purgue_agent_info_db" Name="*.*" On="uninstall" />
                 <RemoveFolder Id="purgue_agent_info_db_dir" On="uninstall" />
             </Component>

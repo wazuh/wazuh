@@ -17,6 +17,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <dirent.h>
+#include <sys/stat.h>
 
 #include "shared.h"
 #include "sec.h"
@@ -290,6 +292,182 @@ static void test_valid_reenroll_secret_accepts_and_rejects_shapes(void **state) 
     assert_false(OS_IsValidReenrollSecret("0123456789abcdeg0123456789abcdef0123456789abcdef0123456789abcdef"));  /* g */
 }
 
+#ifndef TEST_WINAGENT
+/* OS_MoveFile() reaches the real one unless a test makes it fail. */
+static bool g_fail_move = false;
+
+int __real_OS_MoveFile(const char *src, const char *dst);
+
+int __wrap_OS_MoveFile(const char *src, const char *dst) {
+    if (g_fail_move) {
+        return -1;
+    }
+
+    return __real_OS_MoveFile(src, dst);
+}
+
+/* TempFile() reaches the real one unless a test needs every write to the staged copy to fail, as
+ * on a full disk: its stream is then pointed at /dev/full, and the file stays where it was made. */
+static bool g_staged_disk_full = false;
+
+int __real_TempFile(File *file, const char *source, int copy);
+
+int __wrap_TempFile(File *file, const char *source, int copy) {
+    int result = __real_TempFile(file, source, copy);
+
+    if (result == 0 && g_staged_disk_full) {
+        fclose(file->fp);
+        file->fp = fopen("/dev/full", "w");
+        assert_non_null(file->fp);
+    }
+
+    return result;
+}
+
+#define TIMESTAMPS "001 web-01 any 2026-10-07 10:00:00\n" \
+                   "002 db-01 any 2026-10-07 10:00:01\n" \
+                   "003 mail-01 any 2026-10-07 10:00:02\n"
+
+static void write_timestamps(const char *content) {
+    FILE *fp;
+
+    mkdir("queue", 0750);
+    fp = fopen(TIMESTAMP_FILE, "w");
+    assert_non_null(fp);
+    fputs(content, fp);
+    fclose(fp);
+}
+
+static void assert_timestamps(const char *expected) {
+    char buf[512] = {0};
+    FILE *fp = fopen(TIMESTAMP_FILE, "r");
+
+    assert_non_null(fp);
+    assert_true(fread(buf, 1, sizeof(buf) - 1, fp) > 0);
+    fclose(fp);
+    assert_string_equal(buf, expected);
+}
+
+/* TempFile() stages the rewrite beside TIMESTAMP_FILE, as "<name>.XXXXXX". */
+static bool is_staged_timestamp_file(const char *name) {
+    return strncmp(name, "agents-timestamp.", 17) == 0;
+}
+
+static int count_staged_timestamp_files(void) {
+    DIR *dir = opendir("queue");
+    struct dirent *entry;
+    int staged = 0;
+
+    assert_non_null(dir);
+
+    while ((entry = readdir(dir)) != NULL) {
+        if (is_staged_timestamp_file(entry->d_name)) {
+            staged++;
+        }
+    }
+
+    closedir(dir);
+    return staged;
+}
+
+/* A run that failed before cleaning up leaves its staged copies in queue/, and the next run would
+ * count them as its own. */
+static void remove_staged_timestamp_files(void) {
+    char path[PATH_MAX];
+    DIR *dir = opendir("queue");
+    struct dirent *entry;
+
+    if (dir == NULL) {
+        return;
+    }
+
+    while ((entry = readdir(dir)) != NULL) {
+        if (is_staged_timestamp_file(entry->d_name)) {
+            snprintf(path, sizeof(path), "queue/%s", entry->d_name);
+            unlink(path);
+        }
+    }
+
+    closedir(dir);
+}
+
+static int setup_timestamps(void **state) {
+    (void) state;
+    remove_staged_timestamp_files();
+    return 0;
+}
+
+static int teardown_timestamps(void **state) {
+    (void) state;
+    g_fail_move = false;
+    g_staged_disk_full = false;
+    unlink(TIMESTAMP_FILE);
+    rmdir(TIMESTAMP_FILE);
+    remove_staged_timestamp_files();
+    return 0;
+}
+
+static void test_remove_agent_timestamp_drops_only_that_agent(void **state) {
+    (void) state;
+    write_timestamps(TIMESTAMPS);
+
+    OS_RemoveAgentTimestamp("002");
+
+    assert_timestamps("001 web-01 any 2026-10-07 10:00:00\n003 mail-01 any 2026-10-07 10:00:02\n");
+    assert_int_equal(count_staged_timestamp_files(), 0);
+}
+
+/* When the staged copy can't be moved into place, the timestamps stay as they were and the copy
+ * is removed rather than left in queue/, one more for every agent removed. */
+static void test_remove_agent_timestamp_cleans_up_after_a_failed_move(void **state) {
+    (void) state;
+    write_timestamps(TIMESTAMPS);
+    g_fail_move = true;
+
+    OS_RemoveAgentTimestamp("002");
+
+    assert_timestamps(TIMESTAMPS);
+    assert_int_equal(count_staged_timestamp_files(), 0);
+}
+
+#ifdef __linux__
+/* A rewrite that couldn't be written in full is never moved into place: it would replace every
+ * remaining agent's timestamp with whatever made it to disk. */
+static void test_remove_agent_timestamp_keeps_the_file_when_the_rewrite_fails(void **state) {
+    (void) state;
+    write_timestamps(TIMESTAMPS);
+    g_staged_disk_full = true;
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1110): Could not write file 'queue/agents-timestamp' due to [(28)-(No space left on device)].");
+
+    OS_RemoveAgentTimestamp("002");
+
+    assert_timestamps(TIMESTAMPS);
+    assert_int_equal(count_staged_timestamp_files(), 0);
+}
+#endif
+
+/* Nor is a copy of a file that couldn't be read through. A directory where the file should be
+ * stands in for a read error: it opens, and every read from it fails. */
+static void test_remove_agent_timestamp_keeps_the_file_when_it_cannot_be_read(void **state) {
+    struct stat st;
+
+    (void) state;
+    mkdir("queue", 0750);
+    assert_int_equal(mkdir(TIMESTAMP_FILE, 0750), 0);
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1115): Could not read from file 'queue/agents-timestamp' due to [(21)-(Is a directory)].");
+
+    OS_RemoveAgentTimestamp("002");
+
+    assert_int_equal(stat(TIMESTAMP_FILE, &st), 0);
+    assert_true(S_ISDIR(st.st_mode));
+    assert_int_equal(count_staged_timestamp_files(), 0);
+}
+#endif
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_add_new_agent_generates_a_64_hex_key, setup_keys, teardown_keys),
@@ -307,6 +485,18 @@ int main(void) {
         cmocka_unit_test(test_new_reenroll_secret_is_64_lowercase_hex_and_fresh),
         cmocka_unit_test(test_new_agent_key_is_64_lowercase_hex_and_fresh),
         cmocka_unit_test(test_valid_reenroll_secret_accepts_and_rejects_shapes),
+#ifndef TEST_WINAGENT
+        cmocka_unit_test_setup_teardown(test_remove_agent_timestamp_drops_only_that_agent, setup_timestamps,
+                                        teardown_timestamps),
+        cmocka_unit_test_setup_teardown(test_remove_agent_timestamp_cleans_up_after_a_failed_move, setup_timestamps,
+                                        teardown_timestamps),
+#ifdef __linux__
+        cmocka_unit_test_setup_teardown(test_remove_agent_timestamp_keeps_the_file_when_the_rewrite_fails,
+                                        setup_timestamps, teardown_timestamps),
+#endif
+        cmocka_unit_test_setup_teardown(test_remove_agent_timestamp_keeps_the_file_when_it_cannot_be_read,
+                                        setup_timestamps, teardown_timestamps),
+#endif
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

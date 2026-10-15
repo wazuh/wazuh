@@ -1,7 +1,7 @@
 # Database Sync Configuration Reference
 
 Configuration reference for the `database` module of `wazuh-manager-modulesd`, which keeps the agent
-and group tables of `global.db` in step with `etc/client.keys` and `etc/shared/`. What the module does
+and group tables of `global.db` in step with `/etc/wazuh-manager/client.keys` and `/etc/wazuh-manager/shared/`. What the module does
 is described in [Database Sync](README.md).
 
 - **Component:** Manager-only
@@ -12,7 +12,7 @@ is described in [Database Sync](README.md).
 
 ## Configuration
 
-**Configuration file:** `/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`
+**Configuration file:** `/etc/wazuh-manager/wazuh-manager-internal-options.conf`
 
 **XML Section:** None
 
@@ -42,7 +42,7 @@ With `0` the module is not created: no reconciliation of agents or groups happen
 
 ### wazuh_database.real_time
 
-How changes to `client.keys` and `etc/shared/` are noticed.
+How changes to `client.keys` and `/etc/wazuh-manager/shared/` are noticed.
 
 ```ini
 wazuh_database.real_time=1
@@ -117,7 +117,7 @@ wazuh_database.interval=300
 wazuh_database.sync_agents=0
 ```
 
-**Warning:** With the module disabled, groups created or removed under `etc/shared/` and, on a
+**Warning:** With the module disabled, groups created or removed under `/etc/wazuh-manager/shared/` and, on a
 worker, agents added or removed in `client.keys` are not reflected in `global.db`.
 
 ---
@@ -149,7 +149,7 @@ agents.`, `Agents synchronization completed.`, and with `2` every file event).
 
 ## Troubleshooting
 
-### A group created under `etc/shared/` is missing from the database
+### A group created under `/etc/wazuh-manager/shared/` is missing from the database
 
 1. Verify `wazuh_database.sync_agents=1` (or that it is unset).
 2. In real-time mode, look for `Internal queue is full`, `Inotify event queue overflowed` or

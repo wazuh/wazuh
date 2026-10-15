@@ -67,7 +67,7 @@ DELETION_SCOPE = ("wazuh-states-*", "wazuh-agent-config", "wazuh-agent-stats")
 DEFAULT_INDEXER = "https://127.0.0.1:9200"
 DEFAULT_CERT = "/etc/wazuh-indexer/certs/admin.pem"
 DEFAULT_KEY = "/etc/wazuh-indexer/certs/admin-key.pem"
-DEFAULT_CLIENT_KEYS = "etc/client.keys"
+DEFAULT_CLIENT_KEYS = "/etc/wazuh-manager/client.keys"
 
 
 class UnixHTTPConnection(http.client.HTTPConnection):

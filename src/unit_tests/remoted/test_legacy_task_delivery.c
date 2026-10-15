@@ -60,7 +60,7 @@ static void drain_acks(void) {
 
 /* Must match the CA-delivery constants in legacy_task_delivery.c. */
 #define LEGACY_TASK_CA_FILE_NAME "root-ca.pem"
-#define LEGACY_TASK_CA_DEFAULT_PATH "etc/certs/root-ca.pem"
+#define LEGACY_TASK_CA_DEFAULT_PATH WAZUH_MANAGER_CONF_DIR "/certs/root-ca.pem"
 #define LEGACY_TASK_CA_MAX_ATTEMPTS 3
 
 /* A minimal but STRUCTURALLY VALID PEM: legacy_task_ca_read() requires both the BEGIN and the END

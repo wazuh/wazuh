@@ -7,7 +7,7 @@ Expect scripts, and forwarded results to the analysis pipeline.
 
 Starting with Wazuh 5.0, the Agentless module has been fully removed: no
 `wazuh-agentlessd` is built or installed, and the manager's configuration
-(`etc/wazuh-manager.conf`) has no `<agentless>` section. This
+(`/etc/wazuh-manager/wazuh-manager.conf`) has no `<agentless>` section. This
 guide describes what Agentless did, identifies the most common use cases, and
 maps each one to a supported alternative available in 5.0.
 

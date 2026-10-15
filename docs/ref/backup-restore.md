@@ -12,15 +12,16 @@ The following components should be included in your Wazuh manager backup strateg
 
 #### Essential Data
 
-- **Configuration files**: `/var/wazuh-manager/etc/`
+- **Configuration files**: `/etc/wazuh-manager/`
+  - Outside the installation directory: a custom installation directory moves `/var/wazuh-manager` only, never the configuration
   - `wazuh-manager.conf` - Main configuration file
   - `wazuh-manager-internal-options.conf` - Internal configuration overrides
 
-- **Agent keys**: `/var/wazuh-manager/etc/client.keys`
+- **Agent keys**: `/etc/wazuh-manager/client.keys`
   - Contains encryption keys for registered agents
   - Critical for agent communication
 
-- **SSL/TLS certificates**: `/var/wazuh-manager/etc/certs/`
+- **SSL/TLS certificates**: `/etc/wazuh-manager/certs/`
   - Manager certificates and keys
   - Root CA certificates
 
@@ -31,7 +32,7 @@ The following components should be included in your Wazuh manager backup strateg
 
   **Note**: `/var/wazuh-manager/var/db/` is not the global database. It holds only `mitre.db`, which is generated at installation time and does not need to be backed up. The manager also keeps its own periodic snapshots of the global database under `/var/wazuh-manager/backup/db/` (`wdb.backup.global`: enabled by default, daily, three files kept). Those snapshots are a useful fallback, but they cover this one database and nothing else.
 
-- **Agent groups**: `/var/wazuh-manager/etc/shared/`
+- **Agent groups**: `/etc/wazuh-manager/shared/`
   - Group-specific configurations and files
   - Shared files distributed to agents in each group
 
@@ -86,7 +87,7 @@ BACKUP_DIR="/backup/wazuh-manager-$(date +%Y%m%d-%H%M%S)"
 sudo mkdir -p $BACKUP_DIR
 
 # Backup configuration files
-sudo tar -czf $BACKUP_DIR/wazuh-etc.tar.gz -C /var/wazuh-manager etc/
+sudo tar -czf $BACKUP_DIR/wazuh-etc.tar.gz -C / etc/wazuh-manager/
 
 # Backup API configuration, credential store, pending agent deletions and detection content.
 # The databases are excluded here: they are copied below with the SQLite backup API.
@@ -132,9 +133,9 @@ sudo systemctl stop wazuh-manager
 
 # Backup essential directories. Whole directories rather than the database files
 # alone, so that any journal or write-ahead log left beside them is included.
+sudo tar -czf $BACKUP_DIR/wazuh-etc.tar.gz -C / etc/wazuh-manager/
 sudo tar -czf $BACKUP_DIR/wazuh-manager-backup.tar.gz \
     -C /var/wazuh-manager \
-    etc/ \
     api/configuration/ \
     queue/db/ \
     queue/tasks/ \
@@ -159,13 +160,13 @@ sudo chown -R $(whoami):$(whoami) $BACKUP_DIR
 **Configuration only:**
 
 ```bash
-sudo tar -czf wazuh-manager-config-$(date +%Y%m%d).tar.gz -C /var/wazuh-manager etc/
+sudo tar -czf wazuh-manager-config-$(date +%Y%m%d).tar.gz -C / etc/wazuh-manager/
 ```
 
 **Agent keys only:**
 
 ```bash
-sudo cp /var/wazuh-manager/etc/client.keys wazuh-client-keys-$(date +%Y%m%d).backup
+sudo cp /etc/wazuh-manager/client.keys wazuh-client-keys-$(date +%Y%m%d).backup
 ```
 
 **Global database only:**
@@ -198,9 +199,10 @@ du -sh $BACKUP_DIR
 tar -tzf $BACKUP_DIR/wazuh-etc.tar.gz | head -20
 ```
 
-**Option 2** — one archive holding whole directories, so the databases are inside it:
+**Option 2** — the configuration archive plus one archive holding whole directories, so the databases are inside it:
 
 ```bash
+tar -tzf $BACKUP_DIR/wazuh-etc.tar.gz > /dev/null && echo "Configuration backup verified" || echo "Backup verification failed"
 tar -tzf $BACKUP_DIR/wazuh-manager-backup.tar.gz > /dev/null && echo "Archive verified" || echo "Backup verification failed"
 tar -tzf $BACKUP_DIR/wazuh-manager-backup.tar.gz | grep -q '^queue/db/global.db$' \
   && echo "Agent registry present in the archive" || echo "MISSING: no queue/db/global.db in this archive"
@@ -247,7 +249,7 @@ if [ ! -f "$GLOBAL_DB" ]; then
 fi
 
 # Perform backup
-tar -czf $BACKUP_DIR/wazuh-etc.tar.gz -C /var/wazuh-manager etc/
+tar -czf $BACKUP_DIR/wazuh-etc.tar.gz -C / etc/wazuh-manager/
 tar -czf $BACKUP_DIR/wazuh-state.tar.gz -C /var/wazuh-manager \
     --exclude='api/configuration/security/rbac.db' \
     api/configuration/ queue/keystore/ queue/authd/ data/
@@ -317,7 +319,7 @@ Verify the backup before this step, with the commands in [Backup Verification](#
 
 ```bash
 SUFFIX=$(date +%Y%m%d-%H%M%S)
-sudo mv /var/wazuh-manager/etc /var/wazuh-manager/etc.old.$SUFFIX
+sudo mv /etc/wazuh-manager /etc/wazuh-manager.old.$SUFFIX
 sudo mv /var/wazuh-manager/queue/db/global.db /var/wazuh-manager/queue/db/global.db.old.$SUFFIX
 
 # Everything else Step 3 overwrites, so a failure there still has a fallback
@@ -330,11 +332,11 @@ sudo cp -a /var/wazuh-manager/data /var/wazuh-manager/data.old.$SUFFIX
 
 **Step 3: Restore from backup**
 
-If the backup was taken with Option 2, its single archive already holds every path below; extract it with `sudo tar -xzf $BACKUP_DIR/wazuh-manager-backup.tar.gz -C /var/wazuh-manager` and go to Step 4. For a backup taken with Option 1:
+If the backup was taken with Option 2, its two archives already hold every path below; extract them with `sudo tar -xzf $BACKUP_DIR/wazuh-etc.tar.gz -C /` and `sudo tar -xzf $BACKUP_DIR/wazuh-manager-backup.tar.gz -C /var/wazuh-manager`, and go to Step 4. For a backup taken with Option 1:
 
 ```bash
-# Restore configuration
-sudo tar -xzf $BACKUP_DIR/wazuh-etc.tar.gz -C /var/wazuh-manager
+# Restore configuration (the archive is rooted at /)
+sudo tar -xzf $BACKUP_DIR/wazuh-etc.tar.gz -C /
 
 # Restore API configuration, credential store, pending agent deletions and detection content
 sudo tar -xzf $BACKUP_DIR/wazuh-state.tar.gz -C /var/wazuh-manager
@@ -356,40 +358,24 @@ fi
 **Step 4: Set proper permissions**
 
 ```bash
-# Configuration and shared files
-sudo chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/etc
-
-# The files and directories the installer keeps root-owned, which the recursive
-# chown above takes: the internal options, the schema that validates the
-# configuration, the configuration itself, and the shared tree.
-sudo chown root:wazuh-manager /var/wazuh-manager/etc \
-    /var/wazuh-manager/etc/shared \
-    /var/wazuh-manager/etc/indexer-plugins \
-    /var/wazuh-manager/etc/wazuh-manager.conf \
-    /var/wazuh-manager/etc/wazuh-manager-internal-options.conf \
-    /var/wazuh-manager/etc/wazuh-manager.schema.json \
-    /var/wazuh-manager/etc/localtime
-
-# client.keys stays with the service account: authd appends to it after dropping
-# privileges, so root ownership would stop enrollment.
-sudo chown wazuh-manager:wazuh-manager /var/wazuh-manager/etc/client.keys
-sudo chmod 660 /var/wazuh-manager/etc/client.keys
-
-# Certificates, in the modes the installer applies: root-owned and sticky so the
-# service cannot replace the indexer material. The listener and Server API pairs
-# belong to wazuh-manager (an apid pair restored root:root, unreadable by the
-# service, stops the API with error 2003). The glob and the test run inside the root shell -- unprivileged
-# they expand to nothing.
-
-sudo sh -c 'cd /var/wazuh-manager/etc/certs || exit 1
-    chown root:wazuh-manager . && chmod 1770 .
-    chmod 640 * 2>/dev/null
-    for CERT in root-ca.pem indexer-connector.pem indexer-connector-key.pem; do
-        [ -f "$CERT" ] && chown root:wazuh-manager "$CERT"
+# Configuration directory, in the modes the installer applies: root-owned, with
+# the files the daemons write at run time (client.keys, enrollment_tokens.json,
+# the shared groups, the engine outputs) owned by the service account. The globs
+# run inside the root shell -- unprivileged they expand to nothing.
+sudo sh -c 'cd /etc/wazuh-manager || exit 1
+    chown -R root:wazuh-manager .
+    chmod 770 . shared
+    chown -R wazuh-manager:wazuh-manager shared/* outputs
+    for F in client.keys enrollment_tokens.json; do
+        [ -f "$F" ] && chown wazuh-manager:wazuh-manager "$F"
     done
-    for CERT in remoted.pem remoted-key.pem apid.pem apid-key.pem; do
-        [ -f "$CERT" ] && chown wazuh-manager:wazuh-manager "$CERT"
-    done'
+    chmod 660 client.keys wazuh-manager.conf'
+
+# Certificates: root-owned, readable by the service group. No daemon writes this
+# directory; a pair the service cannot read stops the daemon that
+# loads it (an unreadable apid pair stops the API with error 2003).
+sudo sh -c 'cd /etc/wazuh-manager/certs || exit 1
+    chown -R root:wazuh-manager . && chmod 750 . && chmod 640 *'
 
 # Databases, credential store, pending agent deletions and detection content
 sudo chown -R wazuh-manager:wazuh-manager \
@@ -447,8 +433,8 @@ sudo tail -f /var/wazuh-manager/logs/wazuh-manager.log
 ```bash
 sudo systemctl stop wazuh-manager
 # Run as root, tar restores the owners and modes recorded in the archive. Do not
-# chown etc/ recursively: it mixes root- and wazuh-manager-owned files.
-sudo tar -xzf wazuh-manager-config-YYYYMMDD.tar.gz -C /var/wazuh-manager
+# chown /etc/wazuh-manager recursively: it mixes root- and wazuh-manager-owned files.
+sudo tar -xzf wazuh-manager-config-YYYYMMDD.tar.gz -C /
 sudo systemctl start wazuh-manager
 ```
 
@@ -456,9 +442,9 @@ sudo systemctl start wazuh-manager
 
 ```bash
 sudo systemctl stop wazuh-manager
-sudo cp wazuh-client-keys-YYYYMMDD.backup /var/wazuh-manager/etc/client.keys
-sudo chown wazuh-manager:wazuh-manager /var/wazuh-manager/etc/client.keys
-sudo chmod 660 /var/wazuh-manager/etc/client.keys
+sudo cp wazuh-client-keys-YYYYMMDD.backup /etc/wazuh-manager/client.keys
+sudo chown wazuh-manager:wazuh-manager /etc/wazuh-manager/client.keys
+sudo chmod 660 /etc/wazuh-manager/client.keys
 sudo systemctl start wazuh-manager
 ```
 
@@ -501,7 +487,7 @@ sudo mkdir -p $BACKUP_DIR/db
 # Full backup of master node
 # Same archive names the full restore procedure expects in Step 3; the directory
 # name already says which node this is.
-sudo tar -czf $BACKUP_DIR/wazuh-etc.tar.gz -C /var/wazuh-manager etc/
+sudo tar -czf $BACKUP_DIR/wazuh-etc.tar.gz -C / etc/wazuh-manager/
 sudo tar -czf $BACKUP_DIR/wazuh-state.tar.gz -C /var/wazuh-manager \
     --exclude='api/configuration/security/rbac.db' \
     api/configuration/ \
@@ -533,11 +519,11 @@ sudo mkdir -p $BACKUP_DIR
 # Configuration, certificates and indexer credentials. The global database and the
 # shared files are synchronized from the master, but the credential store is not:
 # a worker restored without it cannot authenticate to the indexer.
-sudo tar -czf $BACKUP_DIR/wazuh-worker-config.tar.gz -C /var/wazuh-manager \
-    etc/wazuh-manager.conf \
-    etc/wazuh-manager-internal-options.conf \
-    etc/certs/ \
-    queue/keystore/
+sudo tar -czf $BACKUP_DIR/wazuh-worker-config.tar.gz -C / \
+    etc/wazuh-manager/wazuh-manager.conf \
+    etc/wazuh-manager/wazuh-manager-internal-options.conf \
+    etc/wazuh-manager/certs/
+sudo tar -czf $BACKUP_DIR/wazuh-worker-keystore.tar.gz -C /var/wazuh-manager queue/keystore/
 
 # Carries the certificates and the indexer credential store
 sudo chmod -R go-rwx $BACKUP_DIR
@@ -548,7 +534,7 @@ sudo chmod -R go-rwx $BACKUP_DIR
 #### Restore Master Node
 
 1. Follow the [full manager restore procedure](#full-manager-restore) with `BACKUP_DIR` set to the master backup directory. It produces the same `wazuh-etc.tar.gz`, `wazuh-state.tar.gz` and `db/` layout Step 3 expects.
-2. Verify the cluster configuration survived the `etc/` restore: `sudo grep -A10 "<cluster>" /var/wazuh-manager/etc/wazuh-manager.conf`
+2. Verify the cluster configuration survived the configuration restore: `sudo grep -A10 "<cluster>" /etc/wazuh-manager/wazuh-manager.conf`
 3. Start the manager and verify cluster status: `sudo /var/wazuh-manager/bin/cluster_control -l`
 
 #### Restore Worker Node
@@ -559,30 +545,17 @@ A worker's global database and shared files come from the master, but its creden
 BACKUP_DIR="/backup/wazuh-worker-$(hostname)-YYYYMMDD-HHMMSS"
 
 sudo systemctl stop wazuh-manager
-sudo tar -xzf $BACKUP_DIR/wazuh-worker-config.tar.gz -C /var/wazuh-manager
+sudo tar -xzf $BACKUP_DIR/wazuh-worker-config.tar.gz -C /
+sudo tar -xzf $BACKUP_DIR/wazuh-worker-keystore.tar.gz -C /var/wazuh-manager
 
-sudo chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/etc /var/wazuh-manager/queue/keystore
+sudo chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/queue/keystore
 
-# The files and directories the installer keeps root-owned, which the recursive
-# chown above takes: the internal options, the schema that validates the
-# configuration, the configuration itself, and the shared tree.
-sudo chown root:wazuh-manager /var/wazuh-manager/etc \
-    /var/wazuh-manager/etc/shared \
-    /var/wazuh-manager/etc/indexer-plugins \
-    /var/wazuh-manager/etc/wazuh-manager.conf \
-    /var/wazuh-manager/etc/wazuh-manager-internal-options.conf \
-    /var/wazuh-manager/etc/wazuh-manager.schema.json \
-    /var/wazuh-manager/etc/localtime
-
-sudo sh -c 'cd /var/wazuh-manager/etc/certs || exit 1
-    chown root:wazuh-manager . && chmod 1770 .
-    chmod 640 * 2>/dev/null
-    for CERT in root-ca.pem indexer-connector.pem indexer-connector-key.pem; do
-        [ -f "$CERT" ] && chown root:wazuh-manager "$CERT"
-    done
-    for CERT in remoted.pem remoted-key.pem apid.pem apid-key.pem; do
-        [ -f "$CERT" ] && chown wazuh-manager:wazuh-manager "$CERT"
-    done'
+# The configuration and the certificates are root-owned and group-readable, as
+# the installer leaves them.
+sudo chown root:wazuh-manager /etc/wazuh-manager/wazuh-manager.conf \
+    /etc/wazuh-manager/wazuh-manager-internal-options.conf
+sudo sh -c 'cd /etc/wazuh-manager/certs || exit 1
+    chown -R root:wazuh-manager . && chmod 750 . && chmod 640 *'
 
 sudo /var/wazuh-manager/bin/wazuh-manager-conf validate
 sudo systemctl start wazuh-manager
@@ -616,13 +589,13 @@ The procedures above assume a package or source installation. They cannot be run
 docker compose exec wazuh.manager sh -c 'command -v tar sqlite3 gzip' # prints nothing
 ```
 
-The installation path inside the container is the same `/var/wazuh-manager`, so the set of paths to back up does not change. Drive the copy from the host instead, and stop the manager first so the databases are copied in a consistent state.
+The paths inside the container are the same `/var/wazuh-manager` and `/etc/wazuh-manager`, so the set of paths to back up does not change. Drive the copy from the host instead, and stop the manager first so the databases are copied in a consistent state.
 
 #### Container Backup
 
 ```bash
 BACKUP_DIR="./wazuh-manager-backup-$(date +%Y%m%d-%H%M%S)"
-PATHS="etc api/configuration queue/db queue/tasks queue/keystore queue/authd data"
+PATHS="api/configuration queue/db queue/tasks queue/keystore queue/authd data"
 
 # Stop the manager: without sqlite3 in the image there is no way to take a
 # consistent copy of a database that is being written
@@ -632,6 +605,8 @@ for P in $PATHS; do
     mkdir -p "$BACKUP_DIR/$(dirname $P)"
     docker compose cp -a "wazuh.manager:/var/wazuh-manager/$P" "$BACKUP_DIR/$P"
 done
+# The configuration lives outside the installation directory
+docker compose cp -a "wazuh.manager:/etc/wazuh-manager" "$BACKUP_DIR/etc-wazuh-manager"
 
 docker compose start wazuh.manager
 ```
@@ -644,16 +619,17 @@ Verify the result with the commands in [Backup Verification](#backup-verificatio
 
 ```bash
 BACKUP_DIR="./wazuh-manager-backup-YYYYMMDD-HHMMSS"
-PATHS="etc api/configuration queue/db queue/tasks queue/keystore queue/authd data"
+PATHS="api/configuration queue/db queue/tasks queue/keystore queue/authd data"
 
 docker compose stop wazuh.manager
 
 # Note the trailing "/." : it copies the directory's *contents*. Without it,
 # docker cp puts the source directory inside the destination, producing
-# /var/wazuh-manager/etc/etc and leaving the real paths untouched.
+# /var/wazuh-manager/data/data and leaving the real paths untouched.
 for P in $PATHS; do
     docker compose cp -a "$BACKUP_DIR/$P/." "wazuh.manager:/var/wazuh-manager/$P"
 done
+docker compose cp -a "$BACKUP_DIR/etc-wazuh-manager/." "wazuh.manager:/etc/wazuh-manager"
 
 docker compose start wazuh.manager
 
@@ -661,23 +637,23 @@ docker compose start wazuh.manager
 # that took the backup, and the image's init only remaps ids from older versions.
 # Re-apply the ownership and modes, then restart so every daemon sees them.
 docker compose exec -u root wazuh.manager sh -c '
+    chown -R root:wazuh-manager /etc/wazuh-manager
+    chmod 770 /etc/wazuh-manager /etc/wazuh-manager/shared
+    chown -R wazuh-manager:wazuh-manager /etc/wazuh-manager/shared/* /etc/wazuh-manager/outputs
+    for F in client.keys enrollment_tokens.json; do
+        [ -f "/etc/wazuh-manager/$F" ] && chown wazuh-manager:wazuh-manager "/etc/wazuh-manager/$F"
+    done
+    chmod 660 /etc/wazuh-manager/wazuh-manager.conf
     chown -R wazuh-manager:wazuh-manager \
-        /var/wazuh-manager/etc \
         /var/wazuh-manager/queue/db \
         /var/wazuh-manager/queue/tasks \
         /var/wazuh-manager/queue/keystore \
         /var/wazuh-manager/queue/authd \
         /var/wazuh-manager/data
-    chmod 660 /var/wazuh-manager/etc/client.keys
+    chmod 660 /etc/wazuh-manager/client.keys
     chmod 660 /var/wazuh-manager/queue/db/global.db
-    chown root:wazuh-manager /var/wazuh-manager/etc/certs
-    chmod 1770 /var/wazuh-manager/etc/certs
-    for CERT in root-ca.pem indexer-connector.pem indexer-connector-key.pem; do
-        [ -f "/var/wazuh-manager/etc/certs/$CERT" ] && chown root:wazuh-manager "/var/wazuh-manager/etc/certs/$CERT"
-    done
-    for CERT in remoted.pem remoted-key.pem apid.pem apid-key.pem; do
-        [ -f "/var/wazuh-manager/etc/certs/$CERT" ] && chown wazuh-manager:wazuh-manager "/var/wazuh-manager/etc/certs/$CERT"
-    done
+    chmod 750 /etc/wazuh-manager/certs
+    chmod 640 /etc/wazuh-manager/certs/*
     chown -R root:wazuh-manager /var/wazuh-manager/api/configuration
     chown wazuh-manager:wazuh-manager /var/wazuh-manager/api/configuration/security/rbac.db
 '
@@ -888,35 +864,17 @@ sudo /Library/Ossec/bin/wazuh-control status
 
 ```bash
 # Re-apply the ownership and modes from Step 4 of the restore procedure. Do not
-# chown the whole installation: bin/ is root-owned and etc/certs holds root-owned
-# indexer trust material.
-sudo chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/etc
-
-# The files and directories the installer keeps root-owned, which the recursive
-# chown above takes: the internal options, the schema that validates the
-# configuration, the configuration itself, and the shared tree.
-sudo chown root:wazuh-manager /var/wazuh-manager/etc \
-    /var/wazuh-manager/etc/shared \
-    /var/wazuh-manager/etc/indexer-plugins \
-    /var/wazuh-manager/etc/wazuh-manager.conf \
-    /var/wazuh-manager/etc/wazuh-manager-internal-options.conf \
-    /var/wazuh-manager/etc/wazuh-manager.schema.json \
-    /var/wazuh-manager/etc/localtime
-
-# client.keys stays with the service account: authd appends to it after dropping
-# privileges, so root ownership would stop enrollment.
-sudo chown wazuh-manager:wazuh-manager /var/wazuh-manager/etc/client.keys
-sudo chmod 660 /var/wazuh-manager/etc/client.keys
-
-sudo sh -c 'cd /var/wazuh-manager/etc/certs || exit 1
-    chown root:wazuh-manager . && chmod 1770 .
-    chmod 640 * 2>/dev/null
-    for CERT in root-ca.pem indexer-connector.pem indexer-connector-key.pem; do
-        [ -f "$CERT" ] && chown root:wazuh-manager "$CERT"
+# chown /etc/wazuh-manager or the whole installation recursively to the service
+# account: bin/, the configuration and every certificate are root-owned.
+sudo sh -c 'cd /etc/wazuh-manager || exit 1
+    chown -R root:wazuh-manager .
+    chmod 770 . shared
+    chown -R wazuh-manager:wazuh-manager shared/* outputs
+    for F in client.keys enrollment_tokens.json; do
+        [ -f "$F" ] && chown wazuh-manager:wazuh-manager "$F"
     done
-    for CERT in remoted.pem remoted-key.pem apid.pem apid-key.pem; do
-        [ -f "$CERT" ] && chown wazuh-manager:wazuh-manager "$CERT"
-    done'
+    chmod 660 client.keys wazuh-manager.conf
+    chmod 750 certs && chmod 640 certs/*'
 
 # Check logs
 sudo tail -100 /var/wazuh-manager/logs/wazuh-manager.log
@@ -926,7 +884,7 @@ sudo tail -100 /var/wazuh-manager/logs/wazuh-manager.log
 
 ```bash
 # Verify client.keys was restored
-sudo ls -l /var/wazuh-manager/etc/client.keys
+sudo ls -l /etc/wazuh-manager/client.keys
 
 # Check global database
 sudo sqlite3 /var/wazuh-manager/queue/db/global.db "SELECT id, name FROM agent"
@@ -974,7 +932,7 @@ sudo systemctl start wazuh-manager
 
 ```bash
 # Verify cluster configuration
-sudo grep -A10 "<cluster>" /var/wazuh-manager/etc/wazuh-manager.conf
+sudo grep -A10 "<cluster>" /etc/wazuh-manager/wazuh-manager.conf
 
 # Restart cluster daemon
 sudo systemctl restart wazuh-manager

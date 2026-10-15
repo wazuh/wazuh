@@ -177,7 +177,8 @@ public:
                                 }
                                 catch (const std::exception& e)
                                 {
-                                    m_shouldStop = true;
+                                    handleConnect(type);
+                                    afterConnect = true;
                                     break;
                                 }
                             }

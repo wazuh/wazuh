@@ -17,6 +17,9 @@
 #include <map>
 #include <vector>
 #include <algorithm>
+#include <cstddef>
+#include <cstdint>
+#include <cstring>
 #include "byteArrayHelper.h"
 #include "berkeleyDbWrapper.h"
 
@@ -95,7 +98,7 @@ class BerkeleyRpmDBReader final
 
                 const auto estimatedHeaderTagSize { FIRST_ENTRY_OFFSET + indexSize* ENTRY_SIZE + dataSize };
 
-                if (indexSize > 0 && indexSize < HEADER_TAGS_MAX && estimatedHeaderTagSize <= data.size)
+                if (indexSize > 0 && indexSize < HEADER_TAGS_MAX && dataSize >= 0 && estimatedHeaderTagSize <= data.size)
                 {
                     bytes = &bytes[FIRST_ENTRY_OFFSET];
 
@@ -131,6 +134,12 @@ class BerkeleyRpmDBReader final
 
                             retVal[i].count = Utils::toInt32BE(ucp);
                             ucp += BYTE_SIZE_INT32;
+
+                            // Untrusted record: later code dereferences offset/count unchecked
+                            if (retVal[i].offset < 0 || retVal[i].offset >= dataSize || retVal[i].count < 0 || retVal[i].count > dataSize)
+                            {
+                                retVal[i] = BerkeleyHeaderEntry {};
+                            }
                         }
                         else
                         {
@@ -143,6 +152,45 @@ class BerkeleyRpmDBReader final
             return retVal;
         }
 
+        // Returns the end of the record's data region. Only valid for a header returned by parseHeader().
+        static const char* dataRegionEnd(const std::vector<BerkeleyHeaderEntry>& header, const DBT& data)
+        {
+            const auto start { reinterpret_cast<const char*>(data.data) + FIRST_ENTRY_OFFSET + (ENTRY_SIZE * header.size()) };
+            return start + Utils::toInt32BE(reinterpret_cast<const uint8_t*>(data.data) + sizeof(int32_t));
+        }
+
+        // Reads a NUL-terminated string without going past 'end'. Returns false if no terminator is found.
+        static bool readBoundedString(const char* begin, const char* end, std::string& value)
+        {
+            const auto nul { reinterpret_cast<const char*>(std::memchr(begin, '\0', end - begin)) };
+
+            if (nullptr == nul)
+            {
+                return false;
+            }
+
+            value.assign(begin, nul);
+            return true;
+        }
+
+        static bool readStringVector(const char* ucp, const char* end, int count, std::vector<std::string>& values)
+        {
+            for (int i = 0; i < count; ++i)
+            {
+                std::string value;
+
+                if (!readBoundedString(ucp, end, value))
+                {
+                    return false;
+                }
+
+                ucp += value.length() + 1;
+                values.push_back(std::move(value));
+            }
+
+            return true;
+        }
+
         std::string parseBody(const std::vector<BerkeleyHeaderEntry>& header, const DBT& data)
         {
             std::string retVal;
@@ -150,6 +198,7 @@ class BerkeleyRpmDBReader final
             if (!header.empty())
             {
                 auto bytes { reinterpret_cast<char*>(data.data) + FIRST_ENTRY_OFFSET + (ENTRY_SIZE * header.size()) };
+                const auto end { dataRegionEnd(header, data) };
 
                 for (const auto& TAG : TAG_PACKAGE_NAMES)
                 {
@@ -166,18 +215,21 @@ class BerkeleyRpmDBReader final
                     if (it != header.end())
                     {
                         auto ucp { &bytes[it->offset] };
+                        std::string value;
 
-                        if (STRING_TYPE == it->type)
+                        if (STRING_TYPE == it->type || STRING_VECTOR_TYPE == it->type)
                         {
-                            retVal += ucp;
+                            if (readBoundedString(ucp, end, value))
+                            {
+                                retVal += value;
+                            }
                         }
                         else if (INT32_TYPE == it->type)
                         {
-                            retVal += std::to_string(Utils::toInt32BE(reinterpret_cast<uint8_t*>(ucp)));
-                        }
-                        else if (STRING_VECTOR_TYPE == it->type)
-                        {
-                            retVal += ucp;
+                            if (end - ucp >= static_cast<std::ptrdiff_t>(sizeof(int32_t)))
+                            {
+                                retVal += std::to_string(Utils::toInt32BE(reinterpret_cast<uint8_t*>(ucp)));
+                            }
                         }
                     }
 
@@ -200,6 +252,7 @@ class BerkeleyRpmDBReader final
             if (!header.empty())
             {
                 auto bytes { reinterpret_cast<char*>(data.data) + FIRST_ENTRY_OFFSET + (ENTRY_SIZE * header.size()) };
+                const auto end { dataRegionEnd(header, data) };
 
                 for (const auto& TAG : TAG_FILE_NAMES)
                 {
@@ -219,37 +272,36 @@ class BerkeleyRpmDBReader final
 
                         if (TAG.first == TAG_NAME)
                         {
-                            std::string name(ucp);
+                            std::string name;
 
-                            if (name.rfind("python", 0) == 0 || name.rfind("platform-python", 0) == 0)
+                            if (readBoundedString(ucp, end, name) && (name.rfind("python", 0) == 0 || name.rfind("platform-python", 0) == 0))
                             {
                                 isPython = true;
                             }
                         }
                         else if (TAG.first == TAG_DIRINDEXES)
                         {
-                            for (int i = 0; i < it->count; ++i)
+                            if (static_cast<int64_t>(it->count) * static_cast<int64_t>(sizeof(int32_t)) <= end - ucp)
                             {
-                                dirindexes.push_back(Utils::toInt32BE(reinterpret_cast<uint8_t*>(ucp)));
-                                ucp += sizeof(int32_t);
+                                for (int i = 0; i < it->count; ++i)
+                                {
+                                    dirindexes.push_back(Utils::toInt32BE(reinterpret_cast<uint8_t*>(ucp)));
+                                    ucp += sizeof(int32_t);
+                                }
                             }
                         }
                         else if (TAG.first == TAG_BASENAMES)
                         {
-                            for (int i = 0; i < it->count; ++i)
+                            if (!readStringVector(ucp, end, it->count, basenames))
                             {
-                                std::string basename(ucp);
-                                basenames.push_back(basename);
-                                ucp += basename.length() + 1;
+                                basenames.clear();
                             }
                         }
                         else if (TAG.first == TAG_DIRNAMES)
                         {
-                            for (int i = 0; i < it->count; ++i)
+                            if (!readStringVector(ucp, end, it->count, dirnames))
                             {
-                                std::string dirname(ucp);
-                                dirnames.push_back(dirname);
-                                ucp += dirname.length() + 1;
+                                dirnames.clear();
                             }
                         }
                     }
@@ -257,7 +309,7 @@ class BerkeleyRpmDBReader final
 
                 if (isPython && !dirindexes.empty() && !dirnames.empty() && !basenames.empty())
                 {
-                    for (size_t i = 0; i < dirindexes.size(); ++i)
+                    for (size_t i = 0; i < dirindexes.size() && i < basenames.size(); ++i)
                     {
                         int index = dirindexes[i];
 
@@ -286,9 +338,16 @@ class BerkeleyRpmDBReader final
                 }
             }
 
-            if (cursorRet = m_dbWrapper->getRow(key, data), cursorRet == 0)
+            // An unparseable record is skipped: an empty result would be read as the end of the database.
+            while (cursorRet = m_dbWrapper->getRow(key, data), cursorRet == 0)
             {
-                retVal = parseBody(parseHeader(data, TAG_PACKAGE_NAMES), data);
+                const auto header { parseHeader(data, TAG_PACKAGE_NAMES) };
+
+                if (!header.empty())
+                {
+                    retVal = parseBody(header, data);
+                    break;
+                }
             }
 
             return retVal;

@@ -21,8 +21,10 @@ from wazuh import WazuhError, WazuhException, WazuhInternalError
 from wazuh.core import common
 from wazuh.core.cluster.utils import (
     get_cluster_items,
+    local_path,
     read_config,
     safe_join,
+    wire_path,
 )
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.utils import blake2b, get_date_from_timestamp, get_utc_now, mkdir_with_mode
@@ -146,7 +148,7 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
         previous_status = {}
     walk_files = {}
     result_logs = {'debug': defaultdict(list), 'error': defaultdict(list)}
-    full_dirname = path.join(common.WAZUH_PATH, dirname)
+    full_dirname = local_path(dirname)
     # Get list of all files and directories inside 'full_dirname'.
     try:
         for root_, _, files_ in walk(full_dirname, topdown=True):
@@ -159,7 +161,7 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
                     try:
                         #  If 'all' files have been requested or entry is in the specified files list.
                         if files == ['all'] or file_ in files:
-                            relative_file_path = path.join(path.relpath(root_, common.WAZUH_PATH), file_)
+                            relative_file_path = path.join(wire_path(root_), file_)
                             abs_file_path = path.join(root_, file_)
                             file_mod_time = path.getmtime(abs_file_path)
                             try:
@@ -311,11 +313,11 @@ def compress_files(name, list_path, cluster_control_json=None, max_zip_size=None
                 continue
 
             try:
-                with open(path.join(common.WAZUH_PATH, file), 'rb') as rf:
+                with open(local_path(file), 'rb') as rf:
                     new_file = rf.read()
                     if len(new_file) > max_zip_size:
                         result_logs['warning'][file].append(f'File too large to be synced: '
-                                                            f'{path.join(common.WAZUH_PATH, file)}')
+                                                            f'{local_path(file)}')
                         update_cluster_control(file, cluster_control_json)
                         continue
                     # Compress the content of each file and surrounds it with separators.

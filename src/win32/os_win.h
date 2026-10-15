@@ -28,6 +28,9 @@ typedef struct win_module_start_ctx {
 DWORD WINAPI skthread(LPVOID arg);
 DWORD WINAPI logcollector_thread(LPVOID arg);
 DWORD WINAPI win_module_thread(void *arg);
+
+/* Takes the service-restart lock file, retrying while another restart holds it */
+HANDLE acquire_restart_lock(DWORD wait_ms, int *timed_out);
 #endif
 
 /* Install the WAZUH-HIDS agent service */

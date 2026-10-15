@@ -875,6 +875,26 @@ static void test_WinExecdRun_json_err(void **state) {
     ExecdRun(message);
 }
 
+static void test_WinExecdRun_allowlisted_source(void **state) {
+    char *message = "{\"wazuh\":{\"active_response\":{\"name\":\"block-ip\",\"executable\":\"block-ip\","
+                    "\"type\":\"stateless\",\"location\":\"local\"}},\"source\":{\"ip\":\"::ffff:172.30.68.10\"}}";
+
+    os_calloc(2, sizeof(char *), ar_manager_hosts);
+    os_strdup("172.30.68.10", ar_manager_hosts[0]);
+
+    assert_true(ar_source_allowlisted("172.30.68.10"));
+    assert_false(ar_source_allowlisted("172.30.68.11"));
+
+    // No wfopen/wpopenv expectations: the executable must not run.
+    expect_string(__wrap__mwarn, formatted_msg, "Active response 'block-ip' not executed: source.ip "
+                                                "'::ffff:172.30.68.10' is the manager or in the allowlist.");
+
+    ExecdRun(message);
+
+    free_strarray(ar_manager_hosts);
+    ar_manager_hosts = NULL;
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_WinExecdRun_ok, test_setup_file, test_teardown_file),
@@ -885,6 +905,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_WinExecdRun_fgets_err, test_setup_file, test_teardown_file),
         cmocka_unit_test_setup_teardown(test_WinExecdRun_get_command_err, test_setup_file, test_teardown_file),
         cmocka_unit_test_setup_teardown(test_WinExecdRun_custom_ar_no_extension_appends_exe, test_setup_file, test_teardown_file),
+        cmocka_unit_test_setup_teardown(test_WinExecdRun_allowlisted_source, test_setup_file, test_teardown_file),
         cmocka_unit_test_setup_teardown(test_WinExecdRun_custom_ar_with_extension_not_duplicated, test_setup_file, test_teardown_file),
         cmocka_unit_test_setup_teardown(test_WinExecdRun_get_name_err, test_setup_file, test_teardown_file),
         cmocka_unit_test_setup_teardown(test_WinExecdRun_json_err, test_setup_file, test_teardown_file),

@@ -371,3 +371,37 @@ TEST(RateLimitGate, ConfiguredValuesAreCarriedThroughAndTheBucketIsDerived)
     EXPECT_DOUBLE_EQ(cacerts.ratePerSecond, 7.0);
     EXPECT_DOUBLE_EQ(cacerts.burst, 14.0);
 }
+
+TEST(RateLimitGate, AGateAdmitsThenRefusesOnTheResponderItIsHanded)
+{
+    // The handler-side form /enroll uses: the same refusal wrap() sends, but sent by admit() on the
+    // responder it is given, with admit() returning false so the caller stops there.
+    Fixture f;
+    const ratelimit::Gate gate {std::make_shared<EndpointRateLimiter>(settings(1.0, 1.0)),
+                                &remoted::enrollment::rateLimitedResponse,
+                                f.rateLimited,
+                                &f.http,
+                                "POST /enroll"};
+    ASSERT_TRUE(gate.enabled());
+
+    CapturingResponder first;
+    EXPECT_TRUE(gate.admit(first));
+    EXPECT_FALSE(first.sent()); // admitted: answering is the caller's job
+
+    CapturingResponder second;
+    EXPECT_FALSE(gate.admit(second));
+    ASSERT_TRUE(second.sent());
+    EXPECT_EQ(second.response().status, 429);
+    EXPECT_EQ(header(second.response(), "Retry-After"), "1");
+    EXPECT_EQ(f.rateLimited->get(), 1U);
+    EXPECT_EQ(f.http.responses.c429->get(), 1U);
+}
+
+TEST(RateLimitGate, AGateWithoutALimiterAdmitsEverything)
+{
+    const ratelimit::Gate gate {nullptr, nullptr, nullptr, nullptr, "POST /enroll"};
+    EXPECT_FALSE(gate.enabled());
+    CapturingResponder responder;
+    EXPECT_TRUE(gate.admit(responder));
+    EXPECT_FALSE(responder.sent());
+}

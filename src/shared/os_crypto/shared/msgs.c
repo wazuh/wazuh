@@ -322,7 +322,8 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
 
     /* The "#AES" prefix travels in clear, so it only selects the cipher for
      * this message. The manager records it on the key entry (used to encrypt
-     * the replies) once the message has been decrypted and authenticated. */
+     * the replies) once the message has been decrypted and authenticated. The
+     * agent always uses its configured method and records nothing. */
 #ifdef CLIENT
     method = keys->keyentries[id]->crypto_method;
 #endif
@@ -446,10 +447,8 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
                 rcv_count = 0;
             }
             rcv_count++;
-            keys->keyentries[id]->crypto_method = method;
-            w_mutex_unlock(&keys->keyentries[id]->mutex);
             *output = f_msg;
-            return KS_VALID;
+            goto authenticated;
         }
 
         if (rcv_count >= _s_recv_flush) {
@@ -467,10 +466,8 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
                 rcv_count = 0;
             }
             rcv_count++;
-            keys->keyentries[id]->crypto_method = method;
-            w_mutex_unlock(&keys->keyentries[id]->mutex);
             *output = f_msg;
-            return KS_VALID;
+            goto authenticated;
         }
 
         /* Check if it is a duplicated message */
@@ -530,9 +527,7 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
                 f_msg++;
                 *final_size = buffer_size - (f_msg - cleartext);
                 *output = f_msg;
-                keys->keyentries[id]->crypto_method = method;
-                w_mutex_unlock(&keys->keyentries[id]->mutex);
-                return KS_VALID;
+                goto authenticated;
             } else {
                 w_mutex_unlock(&keys->keyentries[id]->mutex);
                 merror(ENCFORMAT_ERROR, keys->keyentries[id]->id, srcip);
@@ -552,9 +547,7 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
                 f_msg++;
                 *final_size = buffer_size - (f_msg - cleartext);
                 *output = f_msg;
-                keys->keyentries[id]->crypto_method = method;
-                w_mutex_unlock(&keys->keyentries[id]->mutex);
-                return KS_VALID;
+                goto authenticated;
             } else {
                 w_mutex_unlock(&keys->keyentries[id]->mutex);
                 merror(ENCFORMAT_ERROR, keys->keyentries[id]->id, srcip);
@@ -584,6 +577,15 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
     }
     mwarn(ENCKEY_ERROR, keys->keyentries[id]->id, srcip);
     return KS_ENCKEY;
+
+authenticated:
+    /* Every message accepted above ends here: decrypted, its checksum and counters checked, the
+     * entry's mutex still held. Only the manager records the cipher, to answer the agent with it. */
+#ifndef CLIENT
+    keys->keyentries[id]->crypto_method = method;
+#endif
+    w_mutex_unlock(&keys->keyentries[id]->mutex);
+    return KS_VALID;
 }
 
 /* Create an encrypted message

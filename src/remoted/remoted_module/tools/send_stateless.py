@@ -37,7 +37,7 @@ import zstandard
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-DEFAULT_CLIENT_KEYS = "/var/wazuh-manager/etc/client.keys"
+DEFAULT_CLIENT_KEYS = "/etc/wazuh-manager/client.keys"
 
 
 # A JSON string escape for U+0000, kept as a constant so the literal two-character sequence is
@@ -84,7 +84,7 @@ CONN_CLOSED = "CONN_CLOSED"
 # instead of making every invocation repeat it -- a default installation needs no flag. An
 # explicit value always wins; pass '/' to force the unprefixed paths against a prefixed manager.
 
-DEFAULT_MANAGER_CONF = "/var/wazuh-manager/etc/wazuh-manager.conf"
+DEFAULT_MANAGER_CONF = "/etc/wazuh-manager/wazuh-manager.conf"
 
 GLOBAL_PREFIX = ""
 

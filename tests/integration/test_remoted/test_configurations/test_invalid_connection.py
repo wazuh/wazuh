@@ -4,11 +4,9 @@
  This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 """
 
-import os
 import pytest
 
 from pathlib import Path
-from wazuh_testing.constants.paths.configurations import WAZUH_CONF_PATH
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.utils.callbacks import generate_callback
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
@@ -67,7 +65,6 @@ def test_invalid_connection(test_configuration, test_metadata, configure_local_i
     '''
 
     log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    conf_path = os.path.join('etc', os.path.basename(WAZUH_CONF_PATH))
 
     # wazuh-manager-control validates the file first and fails fast: the CLI verdict (1244 with the
     # JSON pointer as the subject) is surfaced in the manager log; remoted never starts, so there is

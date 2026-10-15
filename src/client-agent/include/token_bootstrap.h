@@ -112,7 +112,8 @@ typedef struct {
     bool had_keys;                   /**< client.keys was non-empty before this call */
     bool anchor_changed;             /**< The committed anchor differs from what was there before */
     bool rolled_back;                /**< ERR_COMMIT only: the previous state was restored */
-    /** The failure may clear on its own: no response at all, or a 5xx, from /cacerts or /enroll.
+    /** The failure may clear on its own: no response at all, or a 5xx, from /cacerts or /enroll,
+     *  or a 429 from /cacerts.
      *  Meaningless when the status is OK. It is the whole of what w_agent_token_bootstrap()
      *  needs to decide between retrying and giving up (see w_token_bootstrap_result_t); an
      *  operator driving a single attempt from a terminal has no use for it. */
@@ -178,6 +179,27 @@ const char *w_agent_token_enroll_strerror(w_token_enroll_status_t status);
  */
 char *w_agent_token_read_file(const char *path);
 
+/** @brief Outcome of w_agent_token_read_stream(). */
+typedef enum {
+    W_TOKEN_READ_OK = 0,
+    W_TOKEN_READ_TTY,       ///< The stream is a terminal: a token never arrives that way
+    W_TOKEN_READ_IO,        ///< Reading the stream failed
+    W_TOKEN_READ_TOO_BIG    ///< W_ETOKEN_MAX_FILE_BYTES or more: refused, never truncated
+} w_token_read_status_t;
+
+/**
+ * @brief Reads an enrollment token from a stream: all of it, trailing whitespace trimmed,
+ *        bounded by W_ETOKEN_MAX_FILE_BYTES.
+ *
+ * The stdin form shared by --show-token and wazuh-agent-auth. An empty stream is not refused
+ * here: it reads as an empty token, and each caller says what is wrong with it in its own words.
+ *
+ * @param in Stream to read.
+ * @param text Receives newly allocated token text the caller must free; NULL unless OK.
+ * @return W_TOKEN_READ_OK, or the reason nothing was read.
+ */
+w_token_read_status_t w_agent_token_read_stream(FILE *in, char **text);
+
 /**
  * @brief Outcome of w_agent_token_bootstrap(): whether the caller should give up or retry.
  *
@@ -192,7 +214,8 @@ char *w_agent_token_read_file(const char *path);
  * token's pin, a 4xx from /cacerts or /enroll (the manager has already decided this request is
  * not going to succeed), or a local I/O failure writing the anchor/keys -- are not worth
  * retrying: the same token, dialled again, fails the same way. TRANSIENT causes -- the address
- * unreachable, a 5xx from /cacerts or /enroll, or the verified enroll's own transport failing --
+ * unreachable, a 5xx from /cacerts or /enroll, a 429 from /cacerts (its rate limit is the
+ * node's, not a verdict on this request), or the verified enroll's own transport failing --
  * may clear on their own, so the caller is expected to retry using the same backoff ramp
  * AgentdStart() already runs for the legacy enrollment loop (agt->enrollment.retry_delta/
  * retry_max), not to fall through to it: the legacy loop enrolls unverified, and the whole point

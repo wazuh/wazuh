@@ -10,7 +10,7 @@ For module overview and architecture, see [Remoted Module](README.md).
 
 ## Main Configuration
 
-**Configuration file:** `/var/wazuh-manager/etc/wazuh-manager.conf`
+**Configuration file:** `/etc/wazuh-manager/wazuh-manager.conf`
 
 **XML Section:** `<remote>`
 
@@ -246,13 +246,14 @@ Whether an IPv6 `bind_addr` (e.g. `::`) also accepts IPv4 clients on the same so
 
 Path to the TLS certificate chain (PEM) presented by the server.
 
-- **Default value:** `etc/certs/remoted.pem` (relative to the manager's home)
+- **Default value:** `/etc/wazuh-manager/certs/remoted.pem` (a relative path resolves against the manager's home, `/var/wazuh-manager`)
 - **Note:** the manager issues this file at installation and never reissues it. To use your own PKI, overwrite it — a leaf of the CA in
   `ca_certificate`, issued by the installation assistant's `wazuh-certs-tool` — as
-  `wazuh-manager:wazuh-manager 640` before the first start. Missing: `wazuh-manager-control start`
+  `root:wazuh-manager 640` before the first start. Missing: `wazuh-manager-control start`
   refuses with `(1244): Invalid configuration at '/remote/https/certificate': file not found: …`.
   Present but unreadable by the service user: `wazuh-manager-remoted` exits with
-  `Cannot start the HTTPS agent listener: …`.
+  `Cannot start the HTTPS agent listener: …`. The same message names the CA certificate
+  (`remote.https.ca`) when `verification_mode` is `certificate` or `full` and that file is missing or unreadable.
 - **Note:** at startup the manager warns if this certificate has expired or expires within 30 days,
   so a silent outage for verifying agents can be prevented before it happens.
 
@@ -260,7 +261,7 @@ Path to the TLS certificate chain (PEM) presented by the server.
 
 Path to the TLS private key (PEM) matching `certificate`.
 
-- **Default value:** `etc/certs/remoted-key.pem` (relative to the manager's home)
+- **Default value:** `/etc/wazuh-manager/certs/remoted-key.pem`
 - **Note:** provisioned together with `certificate`, same ownership and the same fail-closed
   behaviour when missing (`(1244) … '/remote/https/key': file not found`) or unreadable by the
   service user.
@@ -275,8 +276,7 @@ Path to a CA bundle (PEM) used to verify client (agent) certificates.
 - **Default value:** empty (not set). Empty means "no client-verification CA configured": no
   `verification_mode` is inferred from it, and verification stays off.
 - **Note:** Only read when `verification_mode` is `certificate` or `full`. If one of those modes is
-  set explicitly with no `ca`, the module falls back to `etc/certs/root-ca.pem` (relative to the
-  manager's home). Setting `ca` without `verification_mode` turns verification on — see the special
+  set explicitly with no `ca`, the module falls back to `/etc/wazuh-manager/certs/root-ca.pem`. Setting `ca` without `verification_mode` turns verification on — see the special
   case below.
 - **Note:** a configured `ca` that does not exist stops `wazuh-manager-control start`
   (`(1244) … '/remote/https/ca': file not found`).
@@ -295,7 +295,7 @@ X.509 blocks it found, so a PEM that also carries the CA's private key (a mispro
 hands out the certificate and nothing else, on `GET /cacerts` as well as in a `--embed-ca` token.
 A file it cannot parse to the end is refused whole rather than served up to its first bad block.
 
-- **Default value:** `etc/certs/root-ca.pem` (relative to the manager's home; the installer
+- **Default value:** `/etc/wazuh-manager/certs/root-ca.pem` (the installer
   writes the option explicitly). Like the listener certificate, the file is issued by the credential
   resolver at installation (`root:wazuh-manager 640`), or provisioned by the operator together with
   the listener certificate it signs.
@@ -303,8 +303,10 @@ A file it cannot parse to the end is refused whole rather than served up to its 
   `ca_certificate` is what agents use to verify the manager. An empty value is rejected at startup
   (`(1244): Invalid configuration at '/remote/https/ca_certificate': does not satisfy 'minLength'`).
   A missing file stops `wazuh-manager-control start` like a missing certificate
-  (`(1244) … '/remote/https/ca_certificate': file not found`); if it disappears while remoted is
-  running, `GET /cacerts` answers 404. Replacing it needs no restart — the manager notices a change in the file's content
+  (`(1244) … '/remote/https/ca_certificate': file not found`); a file the `wazuh-manager` user
+  cannot read stops `wazuh-manager-remoted` at startup (`Cannot start the HTTPS agent listener: the
+  CA certificate '…' that remoted publishes on /cacerts for agent enrollment is missing or unreadable
+  by the service user. …`); if it disappears while remoted is running, `GET /cacerts` answers 404. Replacing it needs no restart — the manager notices a change in the file's content
   (not its timestamp or size) and revalidates it in the very request that reads it.
 
 ### https.verification_mode
@@ -388,7 +390,9 @@ a `Retry-After`.
 
 > **The limit is a ceiling for the endpoint, not an allowance per agent.** One bucket per route,
 > shared by every caller: a single client asking fast enough can consume the whole route's budget,
-> and a fleet-wide burst is paced by the same number. Size these for the fleet — at
+> and a fleet-wide burst is paced by the same number. `/enroll` narrows who can do that: it charges
+> its bucket only once a request has passed its own checks, and keeps a separate bucket for
+> enrollments whose credential was verified (see [`https.enroll_rate_limit`](#httpsenroll_rate_limit)). Size these for the fleet — at
 > `enroll_rate_limit` `100`, a bootstrap of 10 000 agents needs at least ~100 seconds of `/enroll`
 > traffic. The agent retries with its own backoff ramp, so a paced rollout completes; it is slower,
 > not broken.
@@ -411,8 +415,8 @@ counts what was refused.
 
 ### https.enroll_rate_limit
 
-Sustained `POST /enroll` requests per second the manager serves, counted for the endpoint as a
-whole.
+Sustained `POST /enroll` requests per second the manager forwards to authd, counted for the node as
+a whole.
 
 - **Default value:** `100`
 - **Allowed values:** Integer from `0` to `100000`. `0` disables the limit.
@@ -420,6 +424,19 @@ whole.
 - **Effect:** Requests over the limit are answered `429` with `Retry-After` **without reaching
   authd**, so a peer with no usable credential can no longer turn `/enroll` into an amplifier onto
   the cluster's internal socket.
+- **When it is charged:** after the protocol version, body size and credential checks. A request
+  that fails them is answered `400`/`401`/`413` and spends nothing, so a flood of them cannot starve
+  the agents that pass them. The unverified bucket (below) is charged right then, before the body is
+  decoded or parsed; the verified one after the body and version policy checks, right before the
+  authd round trip.
+- **Two buckets of this rate:** enrollments whose password or enrollment token was **verified** by
+  remoted, with uses left for a token, are charged to one; re-enrollments (their bearer is only
+  verifiable on the master), enrollments without a credential (Open mode, or a listener requiring a
+  client certificate instead) and enrollment tokens with no uses left to the other. Anyone can produce the second kind, so exhausting it never refuses the first. authd
+  may therefore be asked up to twice this rate when both run at their ceiling at once; the authd
+  queue (`remoted.authd_max_queue_size`) still bounds what is in flight.
+- **Note:** Neither bucket is per caller. In Open mode, and for re-enrollments, one source can still
+  exhaust its bucket for everyone in it.
 - **Note:** Higher than `/cacerts`'s default even though it is the more expensive route: every agent
   must pass through it at least once (a bootstrap, or a mass re-enrollment after a credential
   rotation).
@@ -451,7 +468,7 @@ whole.
 
 ## Internal Options
 
-**Configuration file:** `/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`
+**Configuration file:** `/etc/wazuh-manager/wazuh-manager-internal-options.conf`
 
 **Internal Options prefix:** `remoted.*`
 
@@ -592,7 +609,8 @@ Soft file descriptor limit remoted raises itself to at start.
   logged once as a warning; raise that limit first to go higher. HTTPS connections are bounded by
   `remoted.max_parallel_connections` (default `256`), far below this value; only a large 4.x fleet
   on the legacy TCP listener needs more.
-  `GET /cluster/{node_id}/configuration/request/internal` reports the effective value.
+  `GET /cluster/{node_id}/configuration/request/internal` reports the configured value, not the
+  limit in force.
   See [File descriptor limits](../../configuration/manager/README.md#file-descriptor-limits).
 
 ### remoted.send_chunk
@@ -771,7 +789,7 @@ Interval in seconds for reloading shared configuration files.
 
 - **Default value:** `10`
 - **Allowed values:** Integer from `1` to `18000` (seconds)
-- **Note:** How often remoted re-reads `etc/shared/` and regenerates `merged.mg` files
+- **Note:** How often remoted re-reads `/etc/wazuh-manager/shared/` and regenerates `merged.mg` files
 
 ### remoted.disk_storage
 
@@ -1392,8 +1410,8 @@ High-water mark for queued task-manager requests.
 #### remoted.enroll_password_refresh_interval
 
 Seconds between fallback polls of the two `authd`-written secret files `POST /enroll` authenticates
-against: `etc/authd.pass` (the shared enrollment password, Password mode) and
-`etc/enrollment_tokens.json` (the enrollment token store, every mode). Both are also watched with
+against: `/etc/wazuh-manager/authd.pass` (the shared enrollment password, Password mode) and
+`/etc/wazuh-manager/enrollment_tokens.json` (the enrollment token store, every mode). Both are also watched with
 `inotify`, which normally reacts first; this interval only bounds how long a missed notification can
 go unnoticed.
 
@@ -1478,7 +1496,7 @@ Seconds to wait for the write side of the same inline `POST /scan/vd` relay to V
 
 ### Installed Configuration
 
-The `<remote>` block the installer writes into `etc/wazuh-manager.conf` (every value can be changed
+The `<remote>` block the installer writes into `/etc/wazuh-manager/wazuh-manager.conf` (every value can be changed
 at install time through the matching `WAZUH_REMOTE_*` variable):
 
 ```xml
@@ -1488,9 +1506,9 @@ at install time through the matching `WAZUH_REMOTE_*` variable):
       <port>1517</port>
       <bind_addr>0.0.0.0</bind_addr>
       <global_prefix>/wazuh-manager/</global_prefix>
-      <certificate>etc/certs/remoted.pem</certificate>
-      <key>etc/certs/remoted-key.pem</key>
-      <ca_certificate>etc/certs/root-ca.pem</ca_certificate>
+      <certificate>/etc/wazuh-manager/certs/remoted.pem</certificate>
+      <key>/etc/wazuh-manager/certs/remoted-key.pem</key>
+      <ca_certificate>/etc/wazuh-manager/certs/root-ca.pem</ca_certificate>
     </https>
 
     <legacy>
@@ -1561,10 +1579,10 @@ among the certificate's SAN entries):
     <port>1517</port>
     <bind_addr>0.0.0.0</bind_addr>
     <global_prefix>/wazuh-manager/</global_prefix>
-    <certificate>etc/certs/remoted.pem</certificate>
-    <key>etc/certs/remoted-key.pem</key>
-    <ca_certificate>etc/certs/root-ca.pem</ca_certificate>
-    <ca>etc/certs/root-ca.pem</ca>
+    <certificate>/etc/wazuh-manager/certs/remoted.pem</certificate>
+    <key>/etc/wazuh-manager/certs/remoted-key.pem</key>
+    <ca_certificate>/etc/wazuh-manager/certs/root-ca.pem</ca_certificate>
+    <ca>/etc/wazuh-manager/certs/root-ca.pem</ca>
     <verification_mode>certificate</verification_mode>
     <ciphers>TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256</ciphers>
     <max_body_size>20M</max_body_size>
@@ -1574,7 +1592,7 @@ among the certificate's SAN entries):
 
 ### Memory-Capped Legacy Queues
 
-Internal options (`/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`):
+Internal options (`/etc/wazuh-manager/wazuh-manager-internal-options.conf`):
 
 ```conf
 # Cap the legacy input queue at 128 MiB
@@ -1681,7 +1699,7 @@ range: it validates them and exits non-zero on the first bad one.
 
 ### Enable Debug Logging
 
-Enable verbose logging in `/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`:
+Enable verbose logging in `/etc/wazuh-manager/wazuh-manager-internal-options.conf`:
 
 ```conf
 remoted.debug=2

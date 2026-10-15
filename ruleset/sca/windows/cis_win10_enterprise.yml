@@ -79,7 +79,7 @@ checks:
           - "Pass the Hash"
     condition: all
     rules:
-      - 'c:powershell secedit /export /cfg $env:TEMP\secpol.cfg; Get-Content $env:TEMP\secpol.cfg | Select-String "PasswordHistorySize"; Remove-Item $env:TEMP\secpol.cfg -> n:PasswordHistorySize = (\d+) compare >= 24'
+      - 'c:powershell $f = Join-Path $env:TEMP ([IO.Path]::GetRandomFileName()); secedit /export /cfg $f; Get-Content $f | Select-String "PasswordHistorySize"; Remove-Item $f -> n:PasswordHistorySize = (\d+) compare >= 24'
 
   # 1.1.2 (L1) Ensure 'Maximum password age' is set to '365 or fewer days, but not 0'. (Automated)
   - id: 15501
@@ -134,8 +134,8 @@ checks:
           - "Pass the Hash"
     condition: all
     rules:
-      - 'c:powershell secedit /export /cfg $env:TEMP\secpol.cfg; Get-Content $env:TEMP\secpol.cfg | Select-String "MaximumPasswordAge"; Remove-Item $env:TEMP\secpol.cfg -> n:MaximumPasswordAge = (\d+) compare <= 365'
-      - 'c:powershell secedit /export /cfg $env:TEMP\secpol.cfg; Get-Content $env:TEMP\secpol.cfg | Select-String "MaximumPasswordAge"; Remove-Item $env:TEMP\secpol.cfg -> n:MaximumPasswordAge = (\d+) compare > 0'
+      - 'c:powershell $f = Join-Path $env:TEMP ([IO.Path]::GetRandomFileName()); secedit /export /cfg $f; Get-Content $f | Select-String "MaximumPasswordAge"; Remove-Item $f -> n:MaximumPasswordAge = (\d+) compare <= 365'
+      - 'c:powershell $f = Join-Path $env:TEMP ([IO.Path]::GetRandomFileName()); secedit /export /cfg $f; Get-Content $f | Select-String "MaximumPasswordAge"; Remove-Item $f -> n:MaximumPasswordAge = (\d+) compare > 0'
 
   # 1.1.3 (L1) Ensure 'Minimum password age' is set to '1 or more day(s)'. (Automated)
   - id: 15502
@@ -190,7 +190,7 @@ checks:
           - "Pass the Hash"
     condition: all
     rules:
-      - 'c:powershell secedit /export /cfg $env:TEMP\secpol.cfg; Get-Content $env:TEMP\secpol.cfg | Select-String "MinimumPasswordAge"; Remove-Item $env:TEMP\secpol.cfg -> n:MinimumPasswordAge = (\d+) compare >= 1'
+      - 'c:powershell $f = Join-Path $env:TEMP ([IO.Path]::GetRandomFileName()); secedit /export /cfg $f; Get-Content $f | Select-String "MinimumPasswordAge"; Remove-Item $f -> n:MinimumPasswordAge = (\d+) compare >= 1'
 
   # 1.1.4 (L1) Ensure 'Minimum password length' is set to '14 or more character(s)'. (Automated)
   - id: 15503
@@ -245,7 +245,7 @@ checks:
           - "Pass the Hash"
     condition: all
     rules:
-      - 'c:powershell secedit /export /cfg $env:TEMP\secpol.cfg; Get-Content $env:TEMP\secpol.cfg | Select-String "MinimumPasswordLength"; Remove-Item $env:TEMP\secpol.cfg -> n:MinimumPasswordLength = (\d+) compare >= 14'
+      - 'c:powershell $f = Join-Path $env:TEMP ([IO.Path]::GetRandomFileName()); secedit /export /cfg $f; Get-Content $f | Select-String "MinimumPasswordLength"; Remove-Item $f -> n:MinimumPasswordLength = (\d+) compare >= 14'
 
   # 1.1.5 (L1) Ensure 'Password must meet complexity requirements' is set to 'Enabled'. (Automated) - Not Implemented
   # 1.1.6 (L1) Ensure 'Relax minimum password length limits' is set to 'Enabled'. (Automated)
@@ -359,7 +359,7 @@ checks:
           - "Pass the Hash"
     condition: all
     rules:
-      - 'c:powershell secedit /export /cfg $env:TEMP\secpol.cfg; Get-Content $env:TEMP\secpol.cfg | Select-String "LockoutDuration"; Remove-Item $env:TEMP\secpol.cfg -> n:LockoutDuration = (\d+) compare >= 15'
+      - 'c:powershell $f = Join-Path $env:TEMP ([IO.Path]::GetRandomFileName()); secedit /export /cfg $f; Get-Content $f | Select-String "LockoutDuration"; Remove-Item $f -> n:LockoutDuration = (\d+) compare >= 15'
 
   # 1.2.2 (L1) Ensure 'Account lockout threshold' is set to '5 or fewer invalid logon attempt(s), but not 0'. (Automated)
   - id: 15507
@@ -413,8 +413,8 @@ checks:
           - "Pass the Hash"
     condition: all
     rules:
-      - 'c:powershell secedit /export /cfg $env:TEMP\secpol.cfg; Get-Content $env:TEMP\secpol.cfg | Select-String "LockoutBadCount"; Remove-Item $env:TEMP\secpol.cfg -> n:LockoutBadCount = (\d+) compare <= 5'
-      - 'c:powershell secedit /export /cfg $env:TEMP\secpol.cfg; Get-Content $env:TEMP\secpol.cfg | Select-String "LockoutBadCount"; Remove-Item $env:TEMP\secpol.cfg -> n:LockoutBadCount = (\d+) compare > 0'
+      - 'c:powershell $f = Join-Path $env:TEMP ([IO.Path]::GetRandomFileName()); secedit /export /cfg $f; Get-Content $f | Select-String "LockoutBadCount"; Remove-Item $f -> n:LockoutBadCount = (\d+) compare <= 5'
+      - 'c:powershell $f = Join-Path $env:TEMP ([IO.Path]::GetRandomFileName()); secedit /export /cfg $f; Get-Content $f | Select-String "LockoutBadCount"; Remove-Item $f -> n:LockoutBadCount = (\d+) compare > 0'
 
   # 1.2.3 (L1) Ensure 'Allow Administrator account lockout' is set to 'Enabled'. (Manual) - Not Implemented
   # 1.2.4 (L1) Ensure 'Reset account lockout counter after' is set to '15 or more minute(s)'. (Automated)
@@ -469,7 +469,7 @@ checks:
           - "Pass the Hash"
     condition: all
     rules:
-      - 'c:powershell secedit /export /cfg $env:TEMP\secpol.cfg; Get-Content $env:TEMP\secpol.cfg | Select-String "ResetLockoutCount"; Remove-Item $env:TEMP\secpol.cfg -> n:ResetLockoutCount = (\d+) compare >= 15'
+      - 'c:powershell $f = Join-Path $env:TEMP ([IO.Path]::GetRandomFileName()); secedit /export /cfg $f; Get-Content $f | Select-String "ResetLockoutCount"; Remove-Item $f -> n:ResetLockoutCount = (\d+) compare >= 15'
 
   # 2.3.1.1 (L1) Ensure 'Accounts: Block Microsoft accounts' is set to 'Users can't add or log on with Microsoft accounts'. (Automated)
   - id: 15510

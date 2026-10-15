@@ -177,7 +177,7 @@ TEST_F(ThreadEventDispatcherTest, CaptureWarningMsg)
                 // Compare expected message.
                 if (formattedMsg.find("ThreadEventDispatcher dispatch end.") == std::string::npos)
                 {
-                    EXPECT_EQ("Dispatch handler error, Test exception", formattedMsg);
+                    EXPECT_EQ("Queue 'test.db': dispatch handler error, Test exception", formattedMsg);
                 }
                 warningCaptured = true;
                 // Avoid multiple captures.

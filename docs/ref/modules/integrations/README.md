@@ -4,7 +4,7 @@ The cloud and third-party integrations collect logs from external services and f
 manager as events. They are **agent modules**: they run inside the agent's `wazuh-modulesd` (inside
 the `wazuh-agent` service on Windows) and are configured in the agent's `ossec.conf`. The manager has
 no integration modules: `wazuh-manager-modulesd` reads only its own sections of
-`etc/wazuh-manager.conf`, and the manager schema has no section for any integration, so an
+`/etc/wazuh-manager/wazuh-manager.conf`, and the manager schema has no section for any integration, so an
 integration block in `wazuh-manager.conf` fails validation (a `(1244): Invalid configuration` error)
 and the manager does not start. To monitor a service, install an agent on a host that can reach it.
 

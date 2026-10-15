@@ -10,6 +10,8 @@
 #include <ca_bundle/ca_bundle.hpp>
 #include <manager_config/manager_config.hpp>
 
+#include "managerConfDir.hpp"
+
 #include <rapidjson/document.h>
 #include <rapidjson/pointer.h>
 
@@ -49,7 +51,7 @@ namespace
 
     /// Same variable w_homedir() honours for the manager (defs.h WAZUH_HOME_ENV).
     constexpr const char* HOME_ENV = "WAZUH_MANAGER_HOME";
-    constexpr const char* DEFAULT_FILE = "etc/wazuh-manager.conf";
+    constexpr const char* DEFAULT_FILE_NAME = "wazuh-manager.conf";
 
     void usage(std::FILE* out)
     {
@@ -73,7 +75,8 @@ namespace
                    "                      takes no argument of its own.\n"
                    "\n"
                    "Options:\n"
-                   "  -f <file>           Configuration file (default: <home>/etc/wazuh-manager.conf).\n"
+                   "  -f <file>           Configuration file (default: /etc/wazuh-manager/wazuh-manager.conf,\n"
+                   "                      whatever the home).\n"
                    "  -H <home>           Manager home used to resolve relative paths (default: $WAZUH_MANAGER_HOME,\n"
                    "                      else the parent of the bin/ directory holding this program).\n"
                    "  --master <host>     Master to pull from (default: the first of cluster.nodes).\n"
@@ -525,7 +528,11 @@ namespace
         }
 
         const std::filesystem::path homePath = resolveHome(home);
-        const std::filesystem::path filePath = file.empty() ? homePath / DEFAULT_FILE : std::filesystem::path(file);
+        // The configuration directory is fixed: -H moves the home (relative paths inside the file), never
+        // the default file.
+        const std::filesystem::path filePath = file.empty()
+                                                   ? std::filesystem::path(Utils::MANAGER_CONF_DIR) / DEFAULT_FILE_NAME
+                                                   : std::filesystem::path(file);
         std::error_code ec;
         if (!std::filesystem::is_regular_file(filePath, ec))
         {
@@ -533,8 +540,8 @@ namespace
         }
 
         // File-existence checks are ours to do (bundle/leaf get their own, distinct messages below):
-        // manager_config's own checkFiles never looks at /remote/https/ca_certificate at all, and
-        // folding /remote/https/certificate's check into it would collapse "leaf missing" into
+        // manager_config's checkFiles covers /remote/https/ca_certificate and /remote/https/certificate
+        // too, but folding them into it would collapse "bundle missing" and "leaf missing" into
         // "configuration invalid".
         manager_config::LoadOptions options;
         options.checkFiles = false;

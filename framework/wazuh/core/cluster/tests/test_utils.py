@@ -463,3 +463,76 @@ def test_safe_join(base_dir, input_paths, should_raise):
         result = utils.safe_join(base_dir, *input_paths)
         norm_base = os.path.normpath(base_dir)
         assert os.path.commonpath([norm_base, result]) == norm_base
+
+
+INSTALLED_LAYOUT = {'wazuh.core.common.WAZUH_PATH': '/var/wazuh-manager', 'wazuh.core.common.CONF_PATH': '/etc/wazuh-manager'}
+CHECKOUT_LAYOUT = {'wazuh.core.common.WAZUH_PATH': '/repo', 'wazuh.core.common.CONF_PATH': '/repo/etc'}
+
+
+def _layout(layout):
+    """Patch WAZUH_PATH and CONF_PATH with the given layout."""
+    return patch.multiple('wazuh.core.common', **{k.rsplit('.', 1)[1]: v for k, v in layout.items()})
+
+
+@pytest.mark.parametrize('layout', [INSTALLED_LAYOUT, CHECKOUT_LAYOUT])
+@pytest.mark.parametrize('rel, conf_relative', [
+    ('etc', ''),
+    ('etc/', ''),
+    ('etc/client.keys', 'client.keys'),
+    ('etc/shared/', 'shared'),
+    ('etc/shared/default/agent.conf', 'shared/default/agent.conf'),
+    ('/etc/client.keys', 'client.keys'),
+])
+def test_local_path_maps_etc_to_conf_path(layout, rel, conf_relative):
+    """Check that wire paths under 'etc' are rooted at CONF_PATH."""
+    with _layout(layout):
+        expected = os.path.normpath(os.path.join(layout['wazuh.core.common.CONF_PATH'], conf_relative))
+        assert utils.local_path(rel) == expected
+
+
+@pytest.mark.parametrize('layout', [INSTALLED_LAYOUT, CHECKOUT_LAYOUT])
+@pytest.mark.parametrize('rel', ['var/multigroups/', 'var/multigroups/a/merged.mg', 'queue/cluster/x', 'etcetera/x',
+                                 'etc.d/x'])
+def test_local_path_maps_the_rest_to_wazuh_path(layout, rel):
+    """Check that every other wire path is rooted at WAZUH_PATH ('etcetera' is not 'etc')."""
+    with _layout(layout):
+        assert utils.local_path(rel) == os.path.normpath(os.path.join(layout['wazuh.core.common.WAZUH_PATH'], rel))
+
+
+@pytest.mark.parametrize('layout', [INSTALLED_LAYOUT, CHECKOUT_LAYOUT])
+@pytest.mark.parametrize('rel', ['etc/../x', 'etc/..', 'etc/shared/../../queue/x', '../etc/passwd',
+                                 'var/../../etc/passwd', 'etc/../../tmp/x'])
+def test_local_path_refuses_traversal(layout, rel):
+    """Check that a wire path escaping its root raises the same error safe_join() raises."""
+    with _layout(layout):
+        with pytest.raises(WazuhInternalError) as exc_info:
+            utils.local_path(rel)
+        assert exc_info.value.code == 3003
+
+
+@pytest.mark.parametrize('layout', [INSTALLED_LAYOUT, CHECKOUT_LAYOUT])
+@pytest.mark.parametrize('rel', ['etc', 'etc/', 'etc/client.keys', 'etc/shared/', 'etc/shared/default/agent.conf',
+                                 'var/multigroups/', 'var/multigroups/a/merged.mg', 'queue/cluster/x'])
+def test_wire_path_is_the_inverse_of_local_path(layout, rel):
+    """Check that wire_path(local_path(x)) gives x back, keeping a directory key's trailing slash."""
+    with _layout(layout):
+        local = utils.local_path(rel)
+        if rel.endswith('/'):
+            local += os.sep
+        assert utils.wire_path(local) == rel
+
+
+@pytest.mark.parametrize('layout', [INSTALLED_LAYOUT, CHECKOUT_LAYOUT])
+@pytest.mark.parametrize('abs_path', ['/tmp/x', '/', '/etc/passwd', '/var/wazuh-manager-other/x', '/repository/etc/x'])
+def test_wire_path_refuses_paths_outside_both_roots(layout, abs_path):
+    """Check that a path under neither CONF_PATH nor WAZUH_PATH has no wire path."""
+    with _layout(layout):
+        with pytest.raises(WazuhInternalError) as exc_info:
+            utils.wire_path(abs_path)
+        assert exc_info.value.code == 3003
+
+
+def test_wire_path_prefers_conf_path_in_a_checkout():
+    """In a repository checkout CONF_PATH is inside WAZUH_PATH; both resolve to the same 'etc' key."""
+    with _layout(CHECKOUT_LAYOUT):
+        assert utils.wire_path('/repo/etc/shared/default/agent.conf') == 'etc/shared/default/agent.conf'

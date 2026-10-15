@@ -1,5 +1,5 @@
 /*
- * wazuh-manager-conf: validate, query and dump the manager configuration (etc/wazuh-manager.conf).
+ * wazuh-manager-conf: validate, query and dump the manager configuration (/etc/wazuh-manager/wazuh-manager.conf).
  * Copyright (C) 2015, Wazuh Inc.
  *
  * This program is free software; you can redistribute it and/or modify it under the terms of GPLv2.
@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "error_messages.h"
+#include "managerConfDir.hpp"
 
 #ifndef WAZUH_MANAGER_CONF_VERSION
 #define WAZUH_MANAGER_CONF_VERSION "unknown"
@@ -35,7 +36,7 @@ namespace
 
     /// Same variable w_homedir() honours for the manager (defs.h WAZUH_HOME_ENV).
     constexpr const char* HOME_ENV = "WAZUH_MANAGER_HOME";
-    constexpr const char* DEFAULT_FILE = "etc/wazuh-manager.conf";
+    constexpr const char* DEFAULT_FILE_NAME = "wazuh-manager.conf";
 
     void usage(std::FILE* out)
     {
@@ -48,7 +49,8 @@ namespace
                    "  dump                Print the whole effective configuration as JSON.\n"
                    "\n"
                    "Options:\n"
-                   "  -f <file>           Configuration file (default: <home>/etc/wazuh-manager.conf).\n"
+                   "  -f <file>           Configuration file (default: /etc/wazuh-manager/wazuh-manager.conf,\n"
+                   "                      whatever the home).\n"
                    "  -H <home>           Manager home used to resolve relative paths (default: $WAZUH_MANAGER_HOME,\n"
                    "                      else the parent of the bin/ directory holding this program).\n"
                    "  --skip-file-checks  Do not require the certificate/key files named in the file to exist.\n"
@@ -226,7 +228,11 @@ namespace
         }
 
         const std::filesystem::path homePath = resolveHome(home);
-        const std::filesystem::path filePath = file.empty() ? homePath / DEFAULT_FILE : std::filesystem::path(file);
+        // The configuration directory is fixed: -H moves the home (relative paths inside the file), never
+        // the default file.
+        const std::filesystem::path filePath = file.empty()
+                                                   ? std::filesystem::path(Utils::MANAGER_CONF_DIR) / DEFAULT_FILE_NAME
+                                                   : std::filesystem::path(file);
         std::error_code ec;
         if (!std::filesystem::is_regular_file(filePath, ec))
         {

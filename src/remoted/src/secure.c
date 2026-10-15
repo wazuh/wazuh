@@ -58,6 +58,7 @@ _Static_assert(REMOTED_HTTPS_DUAL_STACK_NO == REMOTED_MODULE_HTTPS_DUAL_STACK_NO
 _Static_assert(REMOTED_HTTPS_RATE_LIMIT_UNSET == REMOTED_MODULE_RATE_LIMIT_UNSET,
                "REMOTED_HTTPS_RATE_LIMIT_UNSET must match REMOTED_MODULE_RATE_LIMIT_UNSET");
 
+
 #ifdef WAZUH_UNIT_TESTING
 // Remove static qualifier when unit testing
 #define STATIC
@@ -610,16 +611,26 @@ STATIC void remoted_module_control_config(remoted_module_config_t *rm_config) {
 }
 
 /**
- * @brief Refuse to start when the HTTPS agent listener's certificate or private key cannot be read.
- *        The manager does not generate these files: the operator provisions them. The configuration
- *        validator wazuh-manager-control runs first (wazuh-manager-conf validate) only checks that they
- *        exist, as root; this runs after remoted has entered its chroot and dropped privileges (main.c,
- *        HandleRemote()), so access(R_OK) answers the question the C++ module would otherwise die on:
- *        can the service user open them? Exactly one deterministic message is logged (the paths as
- *        configured, relative to the chroot) and the daemon exits; the module's own exception
- *        (RestinioHttpServer) stays as the last resort for files that exist but fail to load.
- *        certificate_path/private_key_path are always populated: the schema gives both options a
- *        non-empty default and w_remoted_build_module_config() copies them verbatim.
+ * @brief Refuse to start when a TLS file the HTTPS agent listener will open cannot be read: its
+ *        certificate and private key always, the CA bundle that verifies agent client certificates
+ *        when verification is enabled, and the CA certificate it publishes on GET /cacerts always
+ *        (5.x agents bootstrap their trust in the manager from it at enrollment; without it the
+ *        listener would run and answer 404). The manager does not generate these files: the
+ *        operator provisions them. The configuration validator wazuh-manager-control runs first
+ *        (wazuh-manager-conf validate) only checks that they exist, as root; this runs after remoted
+ *        has dropped privileges and before the PID file is written, so `wazuh-manager-control status`
+ *        never reports as running a remoted that is about to exit (w_remoted_preflight_tls_files(), called from
+ *        HandleRemote() in remoted.c), with the installation directory as its working directory, so
+ *        access(R_OK) answers the question the C++ module would otherwise die on: can the service
+ *        user open them? Exactly one deterministic message is logged (the paths as configured:
+ *        relative to the installation directory, or absolute) and the daemon exits;
+ *        the module's own exception (RestinioHttpServer) stays as the last resort for files that
+ *        exist but fail to load. certificate_path/private_key_path are always populated: the schema
+ *        gives both options a non-empty default and w_remoted_build_module_config() copies them
+ *        verbatim. The CA is probed only in the modes where the module loads it (UNSET and NONE both
+ *        mean no verification, httpServerConfig.cpp), and an empty ca_path stands for the module's
+ *        default, REMOTED_MODULE_DEFAULT_CA_PATH (remoted_module.h), so access("") is never asked;
+ *        likewise, an empty ca_certificate_path stands for REMOTED_MODULE_DEFAULT_CA_CERTIFICATE_PATH.
  */
 STATIC void w_remoted_check_tls_files(const remoted_module_config_t *rm_config) {
     const char *certificate = rm_config->certificate_path;
@@ -627,17 +638,41 @@ STATIC void w_remoted_check_tls_files(const remoted_module_config_t *rm_config) 
     const bool certificate_ok = access(certificate, R_OK) == 0;
     const bool key_ok = access(key, R_OK) == 0;
 
-    if (certificate_ok && key_ok) {
-        return;
-    }
-
     if (!certificate_ok && !key_ok) {
         merror_exit(REMOTED_TLS_FILES_MISSING_BOTH, certificate, key);
     } else if (!certificate_ok) {
         merror_exit(REMOTED_TLS_FILES_MISSING_CERT, certificate);
-    } else {
+    } else if (!key_ok) {
         merror_exit(REMOTED_TLS_FILES_MISSING_KEY, key);
     }
+
+    if (rm_config->verification_mode != REMOTED_HTTPS_VERIFY_UNSET &&
+        rm_config->verification_mode != REMOTED_HTTPS_VERIFY_NONE) {
+        const char *ca = rm_config->ca_path[0] != '\0' ? rm_config->ca_path : REMOTED_MODULE_DEFAULT_CA_PATH;
+
+        if (access(ca, R_OK) != 0) {
+            merror_exit(REMOTED_TLS_FILES_MISSING_CA, ca);
+        }
+    }
+
+    const char *ca_certificate = rm_config->ca_certificate_path[0] != '\0' ? rm_config->ca_certificate_path
+                                                                           : REMOTED_MODULE_DEFAULT_CA_CERTIFICATE_PATH;
+
+    if (access(ca_certificate, R_OK) != 0) {
+        merror_exit(REMOTED_TLS_FILES_MISSING_CA_CERTIFICATE, ca_certificate);
+    }
+}
+
+/* The module config the preflight built, reused by HandleSecure(): building it again would repeat the
+ * builder's warnings (remoted_module_https_config()) at every start. Everything the builder reads (logr,
+ * the internal options, keyupdate_interval) is already final when the preflight runs. */
+static remoted_module_config_t preflight_module_config;
+static bool preflight_module_config_built = false;
+
+void w_remoted_preflight_tls_files(void) {
+    w_remoted_build_module_config(&logr, &preflight_module_config);
+    preflight_module_config_built = true;
+    w_remoted_check_tls_files(&preflight_module_config);
 }
 
 void w_remoted_validate_module_config(void) {
@@ -681,10 +716,14 @@ void HandleSecure()
 
     // Launch the remoted C++ module in its own thread, seeded with a config struct.
     {
-        remoted_module_config_t rm_config;
-        w_remoted_build_module_config(&logr, &rm_config);
+        // Built, and its TLS files probed, by w_remoted_preflight_tls_files(), which HandleRemote() calls
+        // before CreatePID(). Should HandleSecure() ever be reached without it, run it here: the module
+        // must never start without that check.
+        if (!preflight_module_config_built) {
+            w_remoted_preflight_tls_files();
+        }
+        remoted_module_config_t rm_config = preflight_module_config;
         remoted_module_control_config(&rm_config);
-        w_remoted_check_tls_files(&rm_config);
 
         char *rm_cluster_name = get_cluster_name();
         if (rm_cluster_name) {
@@ -920,11 +959,11 @@ STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_storag
 
 void rem_check_unauthenticated_cap(void)
 {
-    if ((rlim_t)unauthenticated_max > nofile / 2) {
+    if ((rlim_t)unauthenticated_max > nofile_effective / 2) {
         mwarn("remoted.unauthenticated_max (%d) is above half the file descriptor limit (%lu): connections "
               "that never authenticate could take the descriptors registered agents need.",
               unauthenticated_max,
-              (unsigned long)nofile);
+              (unsigned long)nofile_effective);
     }
 }
 

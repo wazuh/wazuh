@@ -28,7 +28,7 @@ inputs:
     default: "/tmp/current.csv"
   installation_directory:
     required: false
-    description: "Path to the wazuh Installation directory"
+    description: "Paths to the wazuh installation directories, separated by commas"
     default: "/var/wazuh-manager"
   wazuh_uid:
     required: true

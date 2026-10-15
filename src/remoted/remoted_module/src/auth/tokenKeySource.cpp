@@ -91,8 +91,8 @@ namespace remoted::auth
         }
 
         /// A JSON number that is a non-negative integer fitting an int64 (the store writes epoch
-        /// seconds through cJSON's doubles, so an integral double is what actually arrives).
-        std::optional<std::int64_t> asUnixTime(const nlohmann::json& value)
+        /// seconds and use counts through cJSON's doubles, so an integral double is what arrives).
+        std::optional<std::int64_t> asNonNegativeInteger(const nlohmann::json& value)
         {
             if (!value.is_number())
             {
@@ -157,7 +157,7 @@ namespace remoted::auth
             }
 
             const auto expiresIt = item.find("expires");
-            const auto expires = expiresIt == item.end() ? std::nullopt : asUnixTime(*expiresIt);
+            const auto expires = expiresIt == item.end() ? std::nullopt : asNonNegativeInteger(*expiresIt);
             if (!expires)
             {
                 reason = "an entry has an invalid expires";
@@ -199,6 +199,14 @@ namespace remoted::auth
             parsed.entry.key = std::move(*key);
             parsed.entry.expires = *expires;
             parsed.entry.revoked = revokedIt->get<bool>();
+
+            // Optional on purpose: the entry is usable without them, and a missing or malformed count
+            // only means the replica cannot tell, which is what it assumed before it read them.
+            const auto maxUsesIt = item.find("max_uses");
+            const auto usesIt = item.find("uses");
+            const auto maxUses = maxUsesIt == item.end() ? std::nullopt : asNonNegativeInteger(*maxUsesIt);
+            const auto uses = usesIt == item.end() ? std::nullopt : asNonNegativeInteger(*usesIt);
+            parsed.entry.exhausted = maxUses && uses && *maxUses != 0 && *uses >= *maxUses;
             return parsed;
         }
 
@@ -743,6 +751,7 @@ namespace remoted::auth
         copy.key = jwt_profile::v1::SecureBytes(it->second.key.data(), it->second.key.size()); // wiped on destroy
         copy.expires = it->second.expires;
         copy.revoked = it->second.revoked;
+        copy.exhausted = it->second.exhausted;
         return copy;
     }
 

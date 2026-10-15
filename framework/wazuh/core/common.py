@@ -162,11 +162,43 @@ WPK_REPO_URL_4_X = "packages.wazuh.com/4.x/wpk/"
 
 
 # ================================================ Wazuh path - Config =================================================
-MANAGER_CONF = os.path.join(WAZUH_PATH, 'etc', 'wazuh-manager.conf')
-MANAGER_CONF_SCHEMA = os.path.join(WAZUH_PATH, 'etc', 'wazuh-manager.schema.json')
-INTERNAL_OPTIONS_CONF = os.path.join(WAZUH_PATH, 'etc', 'wazuh-manager-internal-options.conf')
-CLIENT_KEYS = os.path.join(WAZUH_PATH, 'etc', 'client.keys')
-SHARED_PATH = os.path.join(WAZUH_PATH, 'etc', 'shared')
+# The manager configuration directory is a fixed absolute path, outside the installation home. It is defined once per
+# language and the copies are kept identical: defs.h WAZUH_MANAGER_CONF_DIR, shared_modules/utils/managerConfDir.hpp,
+# the engine's base/managerConfig.hpp and src/init/shared.sh CONF_DIR.
+MANAGER_CONF_DIR = '/etc/wazuh-manager'
+
+
+def find_conf_path(wazuh_path: str) -> str:
+    """Get the manager configuration directory.
+
+    In a repository checkout (`wazuh_path` is then the repository root, see find_wazuh_path(); detected by the schema
+    source, as manager_conf.schema_path() does) the framework keeps using <repo>/etc, so tests never read the
+    configuration of a manager installed on the host. Everywhere else it is the fixed MANAGER_CONF_DIR.
+
+    Parameters
+    ----------
+    wazuh_path : str
+        The manager home (WAZUH_PATH).
+
+    Returns
+    -------
+    str
+        Absolute path of the configuration directory.
+    """
+    source_schema = os.path.join(wazuh_path, 'src', 'shared_modules', 'manager_config', 'schema',
+                                 'wazuh-manager.schema.json')
+    return os.path.join(wazuh_path, 'etc') if os.path.isfile(source_schema) else MANAGER_CONF_DIR
+
+
+CONF_PATH = find_conf_path(WAZUH_PATH)
+
+MANAGER_CONF = os.path.join(CONF_PATH, 'wazuh-manager.conf')
+MANAGER_CONF_SCHEMA = os.path.join(CONF_PATH, 'wazuh-manager.schema.json')
+INTERNAL_OPTIONS_CONF = os.path.join(CONF_PATH, 'wazuh-manager-internal-options.conf')
+CLIENT_KEYS = os.path.join(CONF_PATH, 'client.keys')
+SHARED_PATH = os.path.join(CONF_PATH, 'shared')
+AUTHD_PASS = os.path.join(CONF_PATH, 'authd.pass')
+CERTS_PATH = os.path.join(CONF_PATH, 'certs')
 
 
 # ================================================= Wazuh path - Misc ==================================================
@@ -178,9 +210,8 @@ OSSEC_PIDFILE_PATH = os.path.join(WAZUH_PATH, 'var', 'run')
 OS_PIDFILE_PATH = os.path.join('var', 'run')
 WDB_PATH = os.path.join(WAZUH_PATH, 'queue', 'db')
 DEFAULT_RBAC_RESOURCES = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'rbac', 'default')
-WAZUH_LOCALTIME_PATH = os.path.join(WAZUH_PATH, 'etc', 'localtime')
 CLUSTERD_WORKINGDIR = os.path.join(WAZUH_PATH, 'queue', 'cluster')
-INDEXER_PLUGINS_PATH = os.path.join(WAZUH_PATH, 'etc', 'indexer-plugins')
+INDEXER_PLUGINS_PATH = os.path.join(CONF_PATH, 'indexer-plugins')
 
 
 # ================================================ Wazuh path - Sockets ================================================

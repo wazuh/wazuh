@@ -8,7 +8,10 @@ RELEASED_PATH = 'C:\\win-agent-released\\'
 BASE_PATH = 'C:\\win-agent-base\\'
 INSTALL_PATH = 'C:\\Program Files (x86)\\ossec-agent\\'
 # Administrators and SYSTEM
-EXPECTED_SHARED_SIDS = {'S-1-5-32-544', 'S-1-5-18'}
+EXPECTED_PRIVATE_SIDS = {'S-1-5-32-544', 'S-1-5-18'}
+# The installer is per-machine, so its shortcuts live in the all-users Start menu.
+START_MENU_PATH = os.path.join(os.environ.get('PROGRAMDATA', 'C:\\ProgramData'),
+                               'Microsoft', 'Windows', 'Start Menu', 'Programs')
 
 
 def populate_dict(dict, files_list):
@@ -39,6 +42,9 @@ def test_win_upgrade():
     # Install the released .msi
     os.system(
         f"start /wait msiexec /i {str(released_msi.resolve())} /qn /l*v {RELEASED_PATH}win-agent-released.log")
+
+    pathlib.Path(INSTALL_PATH, 'client.keys.save').write_text('probe')
+    pathlib.Path(INSTALL_PATH, 'ossec.log').write_text('probe')
 
     # Upgrade Wazuh agent
     os.system(
@@ -84,18 +90,19 @@ def test_win_upgrade():
     assert success, f"The following binaries have a hash mismatch: '{failed_keys}'"
 
 
-def test_win_upgrade_shared_dir_permissions():
-    # Runs after test_win_upgrade, on the upgraded installation. The shared directory and every
-    # entry below it must carry only the Administrators and SYSTEM entries, like ossec.conf.
-    shared_path = INSTALL_PATH + 'shared'
-    assert os.path.isdir(shared_path), f"Directory '{shared_path}' not found"
+def assert_private_permissions(name):
+    # The path, every entry below it, and a file newly created in it must carry only the
+    # Administrators and SYSTEM entries, like ossec.conf.
+    root_path = INSTALL_PATH + name
+    assert os.path.exists(root_path), f"'{root_path}' not found"
 
-    # The agent creates the files it receives from the manager without an explicit security
-    # descriptor, so they take their entries from the directory. A file created here the same
-    # way checks what those files get.
-    probe_path = os.path.join(shared_path, 'test_win_upgrade_probe.txt')
-    with open(probe_path, 'w') as probe:
-        probe.write('probe')
+    # The agent creates its files without an explicit security descriptor, so they take their
+    # entries from the directory. A file created here the same way checks what those files get.
+    probe_path = None
+    if os.path.isdir(root_path):
+        probe_path = os.path.join(root_path, 'test_win_upgrade_probe.txt')
+        with open(probe_path, 'w') as probe:
+            probe.write('probe')
 
     try:
         # Compare by SID: account names are localized. The ACLs are read through .NET instead of
@@ -103,9 +110,10 @@ def test_win_upgrade_shared_dir_permissions():
         # Windows PowerShell is started from a PowerShell 7 session such as the runner's shell.
         script = (
             "$ErrorActionPreference = 'Stop'; "
-            f"$root = '{shared_path}'; "
-            "$paths = @($root) + @([System.IO.Directory]::GetFileSystemEntries("
-            "$root, '*', [System.IO.SearchOption]::AllDirectories)); "
+            f"$root = '{root_path}'; "
+            "$paths = @($root); "
+            "if ([System.IO.Directory]::Exists($root)) { $paths += @([System.IO.Directory]::GetFileSystemEntries("
+            "$root, '*', [System.IO.SearchOption]::AllDirectories)) }; "
             "foreach ($path in $paths) { "
             "if ([System.IO.Directory]::Exists($path)) { $acl = [System.IO.Directory]::GetAccessControl($path) } "
             "else { $acl = [System.IO.File]::GetAccessControl($path) }; "
@@ -116,9 +124,10 @@ def test_win_upgrade_shared_dir_permissions():
         result = subprocess.run(['powershell', '-NoProfile', '-NonInteractive', '-Command', script],
                                 capture_output=True, text=True)
     finally:
-        os.remove(probe_path)
+        if probe_path:
+            os.remove(probe_path)
 
-    assert result.returncode == 0, f"Failed to read the ACLs under '{shared_path}': {result.stderr}"
+    assert result.returncode == 0, f"Failed to read the ACLs under '{root_path}': {result.stderr}"
 
     sids_by_path = {}
     for line in result.stdout.splitlines():
@@ -126,7 +135,49 @@ def test_win_upgrade_shared_dir_permissions():
             path, sid = line.rsplit('\t', 1)
             sids_by_path.setdefault(path, set()).add(sid.strip())
 
-    assert probe_path in sids_by_path, f"No entries read for '{probe_path}': {sids_by_path}"
+    checked_path = probe_path or root_path
+    assert checked_path in sids_by_path, f"No entries read for '{checked_path}': {sids_by_path}"
 
-    unexpected = {path: sorted(sids) for path, sids in sids_by_path.items() if sids != EXPECTED_SHARED_SIDS}
-    assert not unexpected, f"Expected only {sorted(EXPECTED_SHARED_SIDS)}, found: {unexpected}"
+    unexpected = {path: sorted(sids) for path, sids in sids_by_path.items() if sids != EXPECTED_PRIVATE_SIDS}
+    assert not unexpected, f"Expected only {sorted(EXPECTED_PRIVATE_SIDS)}, found: {unexpected}"
+
+
+@pytest.mark.parametrize('name', ['shared', 'queue', 'logs', 'rids', 'bookmarks', 'active-response',
+                                  'client.keys.save', 'ossec.log'])
+def test_win_upgrade_private_permissions(name):
+    assert_private_permissions(name)
+
+
+def repair_base_msi(log_name):
+    base_msi = list(pathlib.Path(BASE_PATH).glob('*.msi'))[0]
+    return os.system(f"start /wait msiexec /fa {str(base_msi.resolve())} /qn /l*v {BASE_PATH}{log_name}")
+
+
+def test_win_repair_private_permissions():
+    assert repair_base_msi('win-agent-repair.log') in (0, 3010)
+
+    assert_private_permissions('queue')
+
+
+def test_win_repair_recreated_config_permissions():
+    config_path = INSTALL_PATH + 'ossec.conf'
+    os.replace(config_path, config_path + '.test')
+
+    try:
+        assert repair_base_msi('win-agent-repair-config.log') in (0, 3010)
+        assert_private_permissions('ossec.conf')
+    finally:
+        os.replace(config_path + '.test', config_path)
+
+
+def test_win_upgrade_start_menu():
+    # Runs after test_win_upgrade, on the upgraded installation. The agent GUI must be reachable
+    # from a Start menu search for "Wazuh", and the folder the released version used is gone.
+    # That folder is removed by the released MSI's own uninstall, which the upgrade runs, so this
+    # does not cover the new cleanup of shortcuts the NSIS installer left there.
+    gui_shortcut = os.path.join(START_MENU_PATH, 'Wazuh', 'Wazuh Agent Manager.lnk')
+    assert os.path.isfile(gui_shortcut), f"Shortcut '{gui_shortcut}' not found"
+
+    legacy_folder = os.path.join(START_MENU_PATH, 'OSSEC')
+    assert not os.path.exists(legacy_folder), \
+        f"Legacy Start menu folder '{legacy_folder}' still present: {os.listdir(legacy_folder)}"

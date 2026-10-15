@@ -67,8 +67,11 @@ else
     fail cli_validate_missing_file "exit $rc; err='$(cat "$TMP/err")'"
 fi
 
+# The installer emits absolute /etc/wazuh-manager/certs/... paths, which would make this check depend on
+# the build host; a relative copy is resolved against -H instead, which is the semantics under test.
 mkdir -p "$TMP/emptyhome"
-rc=$(run "$CLI" validate -H "$TMP/emptyhome" -f "$GEN")
+sed 's#/etc/wazuh-manager/certs/#etc/certs/#g' "$GEN" > "$TMP/relative-certs.conf"
+rc=$(run "$CLI" validate -H "$TMP/emptyhome" -f "$TMP/relative-certs.conf")
 if [ "$rc" = 1 ] && grep -q '(1244)' "$TMP/err" && grep -q '/remote/https/certificate' "$TMP/err"; then
     pass cli_validate_checks_files
 else
@@ -105,13 +108,23 @@ else
     fail cli_dump_defaults "exit $rc; interval='$(effective "$VALID/minimal-valid.conf" wdb.backup.global.interval)'"
 fi
 
+# The default file is the fixed /etc/wazuh-manager/wazuh-manager.conf: a home (here one that does hold
+# an etc/wazuh-manager.conf) never moves it. Asserted on the error path when this host has no installed
+# manager; on one that does, only that the home's copy was not the file read.
+DEFAULT_CONF=/etc/wazuh-manager/wazuh-manager.conf
 mkdir -p "$TMP/home/etc"
-cp "$GEN" "$TMP/home/etc/wazuh-manager.conf"
+cp "$INVALID/true-false-boolean.conf" "$TMP/home/etc/wazuh-manager.conf"
 rc=$( (export WAZUH_MANAGER_HOME="$TMP/home"; "$CLI" --skip-file-checks validate > "$TMP/out" 2> "$TMP/err"; echo $?) )
-if [ "$rc" = 0 ]; then
-    pass cli_default_home
+if [ -e "$DEFAULT_CONF" ]; then
+    if ! grep -q '/auth/use_password' "$TMP/err"; then
+        pass cli_default_file_is_fixed
+    else
+        fail cli_default_file_is_fixed "read the home's etc/wazuh-manager.conf; err='$(cat "$TMP/err")'"
+    fi
+elif [ "$rc" = 1 ] && grep -q '(1239)' "$TMP/err" && grep -q "$DEFAULT_CONF" "$TMP/err"; then
+    pass cli_default_file_is_fixed
 else
-    fail cli_default_home "exit $rc; err='$(cat "$TMP/err")'"
+    fail cli_default_file_is_fixed "exit $rc; err='$(cat "$TMP/err")'"
 fi
 
 # ------------------------------------------------------- installer output ------------------------------------

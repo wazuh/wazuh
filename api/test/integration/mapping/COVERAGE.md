@@ -33,7 +33,7 @@ One row per operation of `api/api/spec/spec.yaml`, one column per case the opera
 | 2xx | 100 | 100 |
 | 400 | 85 | 85 |
 | 401 | 100 | 100 |
-| 403 | 84 | 92 |
+| 403 | 86 | 94 |
 | 404 | 21 | 21 |
 | 405 | 100 | 100 |
 | 413 | 16 | 16 |
@@ -140,8 +140,8 @@ One row per operation of `api/api/spec/spec.yaml`, one column per case the opera
 | `GET /security/users/me/policies` | ✓ | · | ✓ | · | · | ✓ | · | · | auth_endpoints, security_GET_endpoints |
 | `PUT /security/user/revoke` | ✓ | · | ✓ | ✓ | · | ✓ | · | · | auth_endpoints, rbac_black_security_endpoints, rbac_white_all_endpoints, rbac_white_security_endpoints, security_PUT_endpoints |
 | `PUT /security/users/{user_id}/run_as` | ✓ | ✓ | ✓ | ✓ | · | ✓ | · | · | auth_endpoints, rbac_black_security_endpoints, rbac_white_all_endpoints, rbac_white_security_endpoints, security_PUT_endpoints |
-| `GET /security/actions` | ✓ | ✓ | ✓ | · | · | ✓ | · | · | auth_endpoints, security_GET_endpoints |
-| `GET /security/resources` | ✓ | ✓ | ✓ | · | · | ✓ | · | · | auth_endpoints, security_GET_endpoints |
+| `GET /security/actions` | ✓ | ✓ | ✓ | ✓ | · | ✓ | · | · | auth_endpoints, rbac_black_security_endpoints, rbac_white_all_endpoints, rbac_white_security_endpoints, security_GET_endpoints |
+| `GET /security/resources` | ✓ | ✓ | ✓ | ✓ | · | ✓ | · | · | auth_endpoints, rbac_black_security_endpoints, rbac_white_all_endpoints, rbac_white_security_endpoints, security_GET_endpoints |
 | `GET /security/users` | ✓ | ✓ | ✓ | ✓ | · | ✓ | · | · | auth_endpoints, rbac_black_security_endpoints, rbac_white_all_endpoints, rbac_white_security_endpoints, security_GET_endpoints |
 | `POST /security/users` | ✓ | ✓ | ✓ | ✓ | · | ✓ | ✓ | ✓ | auth_endpoints, hardening_endpoints, rbac_black_security_endpoints, rbac_white_all_endpoints, rbac_white_security_endpoints, security_POST_endpoints |
 | `DELETE /security/users` | ✓ | ✓ | ✓ | ✓ | · | ✓ | · | · | auth_endpoints, rbac_black_security_endpoints, rbac_white_all_endpoints, rbac_white_security_endpoints, security_DELETE_endpoints |

@@ -21,6 +21,8 @@ export TARGET_DIR=${CURDIR}/${PKG_DIR}
 
 # Package build options
 export INSTALLATION_DIR="/var/wazuh-manager"
+# The manager's configuration directory (CONF_DIR in src/init/shared.sh), outside the installation directory
+export CONF_DIR=/etc/wazuh-manager
 export INSTALLATION_SCRIPTS_DIR="${INSTALLATION_DIR}/packages_files/manager_installation_scripts"
 export JOBS="5"
 export DEBUG_ENABLED="no"
@@ -38,7 +40,7 @@ override_dh_auto_install:
 
 override_dh_install:
 
-	rm -rf $(INSTALLATION_DIR)/
+	rm -rf $(INSTALLATION_DIR)/ $(CONF_DIR)/
 	# Build the binaries
 	make -C src deps TARGET=manager
 	make -j$(JOBS) -C src/ TARGET=manager DEBUG=$(DEBUG_ENABLED)
@@ -59,7 +61,7 @@ override_dh_install:
 	# every deployment -- and dpkg has no equivalent of rpm's unpackaged-files check to catch it.
 	# postinst resolves them on the target host instead.
 	rm -f  $(INSTALLATION_DIR)/api/configuration/security/rbac.db
-	rm -f  $(INSTALLATION_DIR)/etc/certs/*.pem
+	rm -f  $(CONF_DIR)/certs/*.pem
 	rm -rf $(INSTALLATION_DIR)/queue/keystore/*
 
 	# Copying init.d script
@@ -80,10 +82,14 @@ override_dh_install:
 	rm -rf $(INSTALLATION_DIR)/logs/*.json
 
 	./gen_permissions.sh $(INSTALLATION_DIR)/ ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/restore-permissions.sh --guard-writable
+	# $(CONF_DIR) is writable by the service account: the generated script stages in its parent instead
+	./gen_permissions.sh $(CONF_DIR)/ ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/restore-permissions-conf.sh --guard-writable --stage-dir=$(dir $(CONF_DIR))
 
 	# Copying to target
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_DIR)/
 	cp -r $(INSTALLATION_DIR)/. $(TARGET_DIR)$(INSTALLATION_DIR)/
+	mkdir -p ${TARGET_DIR}$(CONF_DIR)/
+	cp -r $(CONF_DIR)/. $(TARGET_DIR)$(CONF_DIR)/
 
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/
 	cp VERSION.json ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/
@@ -113,12 +119,17 @@ override_dh_fixperms:
 	chmod 0640 ${TARGET_DIR}$(INSTALLATION_DIR)/framework/python/lib/pkgconfig/python3.pc
 
 # debian/conffiles is intentionally empty: the manager registers no dpkg
-# conffiles. preinst snapshots ${DIR}/etc into manager_upgrade_preserve/ and
-# postinst's restore_upgrade_preserve() copies it back as the last content step,
-# so dpkg's conffile prompt would ask about a file the postinst overwrites from
-# that snapshot anyway.
+# conffiles for its configuration. preinst snapshots ${CONF_DIR} into
+# manager_upgrade_preserve/ and postinst's restore_upgrade_preserve() copies it
+# back as the last content step, so dpkg's conffile prompt would ask about a file
+# the postinst overwrites from that snapshot anyway. dh_installdeb lists every
+# file under /etc as a conffile by itself (compat >= 3), so the configuration
+# directory's entries are taken out of the generated list; the init script in
+# /etc/init.d stays one.
 override_dh_installdeb:
 	dh_installdeb
+	[ ! -f $(TARGET_DIR)/DEBIAN/conffiles ] || sed -i '\#^$(CONF_DIR)/#d' $(TARGET_DIR)/DEBIAN/conffiles
+	[ -s $(TARGET_DIR)/DEBIAN/conffiles ] || rm -f $(TARGET_DIR)/DEBIAN/conffiles
 
 # The manager is installed neither enabled nor started; `systemctl enable --now wazuh-manager` is
 # the documented step, because the manager needs credentials it cannot always resolve at install

@@ -33,12 +33,12 @@ set -euo pipefail
 #      benchmark the limiter itself; the sender counts a 429 either way
 #      (docu/15-cacerts.md, docu/16-enroll-https.md).
 #
-# <use_password> and etc/authd.pass are left exactly as installed: the token
+# <use_password> and /etc/wazuh-manager/authd.pass are left exactly as installed: the token
 # bearer is verified in every mode, so a benchmark now runs against the same
 # enrollment policy a production manager has (issue #39054).
 #
 # --open-1515 additionally does the OLD flip -- <use_password>no</use_password>
-# and removing etc/authd.pass -- which the legacy bootstrap needs, since the
+# and removing /etc/wazuh-manager/authd.pass -- which the legacy bootstrap needs, since the
 # 1515 protocol carries no credential:
 #   sudo ./prepare_manager.sh --open-1515
 #   ./run_benchmark.sh --scenario ... --mode agent --bootstrap 1515
@@ -63,7 +63,9 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CONF="/var/wazuh-manager/etc/wazuh-manager.conf"
+# The manager configuration directory is fixed: a custom home never moves it.
+CONF_DIR="/etc/wazuh-manager"
+CONF="$CONF_DIR/wazuh-manager.conf"
 MAX_AGENTS=""
 RESTART=true
 OPEN_1515=false
@@ -96,9 +98,9 @@ if [[ ! -f "$CONF" ]]; then
     exit 1
 fi
 
-# The manager's home, and therefore its binaries, follow the config: --conf
-# pointing into a sandbox install must not drive /var/wazuh-manager's daemons.
-WAZUH_HOME="$(dirname "$(dirname "$CONF")")"
+# The manager's home (its binaries and sockets). The configuration no longer lives
+# under it, so it cannot be derived from --conf: WAZUH_MANAGER_HOME selects it.
+WAZUH_HOME="${WAZUH_MANAGER_HOME:-/var/wazuh-manager}"
 CONTROL="$WAZUH_HOME/bin/wazuh-manager-control"
 AUTHD="$WAZUH_HOME/bin/wazuh-manager-authd"
 
@@ -271,7 +273,7 @@ PY
 
 if $OPEN_1515; then
     echo "  --open-1515: use_password=no (unauthenticated enrollment on port 1515 is now open)"
-    PASS_FILE="$(dirname "$CONF")/authd.pass"
+    PASS_FILE="$CONF_DIR/authd.pass"
     if [[ -f "$PASS_FILE" ]]; then
         rm -f "$PASS_FILE"
         echo "  removed $PASS_FILE"
@@ -298,12 +300,12 @@ if ! $MINT; then
     exit 0
 fi
 
-# <remote><https><certificate>, scoped to the <https> block, relative to the home.
+# <remote><https><certificate>, scoped to the <https> block; a relative value resolves against the home.
 listener_cert() {
     local cert
     cert="$(sed -n '/<https>/,/<\/https>/p' "$CONF" 2>/dev/null \
         | sed -n "s:.*<certificate>\(.*\)</certificate>.*:\1:p" | head -1)" || true
-    [[ -n "$cert" ]] || cert="etc/certs/remoted.pem"
+    [[ -n "$cert" ]] || cert="$CONF_DIR/certs/remoted.pem"
     [[ "$cert" == /* ]] || cert="$WAZUH_HOME/$cert"
     printf '%s\n' "$cert"
 }

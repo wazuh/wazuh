@@ -2,13 +2,15 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import os
 from grp import getgrnam
 from pwd import getpwnam
 from unittest.mock import patch
 
 import pytest
 
-from wazuh.core.common import find_wazuh_path, wazuh_uid, wazuh_gid, context_cached, reset_context_cache
+from wazuh.core.common import find_conf_path, find_wazuh_path, wazuh_uid, wazuh_gid, context_cached, \
+    reset_context_cache
 
 
 @pytest.mark.parametrize('fake_path, expected', [
@@ -24,6 +26,28 @@ def test_find_wazuh_path(fake_path, expected):
 def test_find_wazuh_path_relative_path():
     with patch('os.path.abspath', return_value='~/framework'):
         assert (find_wazuh_path.__wrapped__() == '~')
+
+
+def test_find_conf_path_installed(tmp_path):
+    """An installed manager (no schema source under the home) uses the fixed configuration directory."""
+    assert find_conf_path(str(tmp_path)) == '/etc/wazuh-manager'
+
+
+def test_find_conf_path_repository_checkout(tmp_path):
+    """A repository checkout keeps <repo>/etc, so tests never read a configuration installed on the host."""
+    schema = tmp_path / 'src' / 'shared_modules' / 'manager_config' / 'schema' / 'wazuh-manager.schema.json'
+    schema.parent.mkdir(parents=True)
+    schema.write_text('{}')
+    assert find_conf_path(str(tmp_path)) == os.path.join(str(tmp_path), 'etc')
+
+
+def test_configuration_constants_are_under_conf_path():
+    """Every configuration file constant is rooted at CONF_PATH."""
+    from wazuh.core import common
+    for constant in ('MANAGER_CONF', 'MANAGER_CONF_SCHEMA', 'INTERNAL_OPTIONS_CONF', 'CLIENT_KEYS', 'SHARED_PATH',
+                     'AUTHD_PASS', 'CERTS_PATH', 'INDEXER_PLUGINS_PATH'):
+        assert os.path.dirname(getattr(common, constant)) == common.CONF_PATH, constant
+    assert not hasattr(common, 'WAZUH_LOCALTIME_PATH')
 
 
 def test_wazuh_uid():

@@ -2,7 +2,7 @@
 
 Complete configuration reference for the Wazuh manager cluster.
 
-**Configuration file:** `/var/wazuh-manager/etc/wazuh-manager.conf`
+**Configuration file:** `/etc/wazuh-manager/wazuh-manager.conf`
 
 **XML Section:** `<cluster>`
 
@@ -14,7 +14,7 @@ For module overview and architecture, see [Cluster Module](README.md).
 
 > **Important: how `<cluster>` is validated**
 > The `<cluster>` section is part of the manager configuration schema
-> (`etc/wazuh-manager.schema.json`) and is **mandatory**: a configuration without
+> (`/etc/wazuh-manager/wazuh-manager.schema.json`) and is **mandatory**: a configuration without
 > it is rejected (`(1244): Invalid configuration at '/': missing mandatory option
 > (does not satisfy 'required')`). Every consumer — the C daemons, the engine,
 > `wazuh-manager-clusterd` and the framework/API — receives the same **effective**
@@ -194,7 +194,7 @@ Use a custom port for cluster communications:
 
 ## Internal Options
 
-**Configuration file:** `/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`
+**Configuration file:** `/etc/wazuh-manager/wazuh-manager-internal-options.conf`
 
 The cluster daemon supports the following internal option:
 

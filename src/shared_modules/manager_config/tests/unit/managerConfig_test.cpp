@@ -77,6 +77,19 @@ namespace
         return "<wazuh_config>" + body + CLUSTER_SECTION + INDEXER_SECTION + "</wazuh_config>";
     }
 
+    /// The five checked certificate/key options, spelled out under `dir`. The defaults are absolute
+    /// (/etc/wazuh-manager/certs/...), so a file-checking test that relied on them would look at the build
+    /// host's real configuration directory.
+    std::string certificates(const std::string& dir,
+                             const std::string& certificate = "remoted.pem",
+                             const std::string& caCertificate = "root-ca.pem")
+    {
+        return "<remote><https><certificate>" + dir + "/" + certificate + "</certificate><key>" + dir +
+               "/remoted-key.pem</key><ca_certificate>" + dir + "/" + caCertificate +
+               "</ca_certificate></https></remote><auth><ssl_manager_cert>" + dir +
+               "/remoted.pem</ssl_manager_cert><ssl_manager_key>" + dir + "/remoted-key.pem</ssl_manager_key></auth>";
+    }
+
 } // namespace
 
 // ---------------------------------------------------------------------------------------------------
@@ -108,7 +121,15 @@ TEST(Load, EffectiveDefaultsFromMinimalDocument)
     EXPECT_EQ(rapidjson::Pointer("/remote/https/port").Get(effective)->GetInt(), 1517);
     EXPECT_STREQ(rapidjson::Pointer("/remote/https/global_prefix").Get(effective)->GetString(), "/wazuh-manager/");
     EXPECT_STREQ(rapidjson::Pointer("/remote/https/ca_certificate").Get(effective)->GetString(),
-                 "etc/certs/root-ca.pem");
+                 "/etc/wazuh-manager/certs/root-ca.pem");
+    EXPECT_STREQ(rapidjson::Pointer("/remote/https/certificate").Get(effective)->GetString(),
+                 "/etc/wazuh-manager/certs/remoted.pem");
+    EXPECT_STREQ(rapidjson::Pointer("/remote/https/key").Get(effective)->GetString(),
+                 "/etc/wazuh-manager/certs/remoted-key.pem");
+    EXPECT_STREQ(rapidjson::Pointer("/auth/ssl_manager_cert").Get(effective)->GetString(),
+                 "/etc/wazuh-manager/certs/remoted.pem");
+    EXPECT_STREQ(rapidjson::Pointer("/auth/ssl_manager_key").Get(effective)->GetString(),
+                 "/etc/wazuh-manager/certs/remoted-key.pem");
     EXPECT_EQ(rapidjson::Pointer("/remote/https/verification_mode").Get(effective), nullptr) << "no default: absent";
     // The rate limits are NOT written into the shipped file, but they do have defaults: an absent
     // option must arrive at remoted as a real value, never as "unlimited".
@@ -146,10 +167,12 @@ TEST(Load, GeneratedManagerFileKeepsUserValuesAndFillsTheRest)
     const auto remote = json(doc.sectionJson("remote"));
     EXPECT_TRUE(rapidjson::Pointer("/legacy/enabled").Get(remote)->GetBool());
     EXPECT_EQ(rapidjson::Pointer("/legacy/queue_size").Get(remote)->GetInt(), 131072) << "filled default";
-    EXPECT_STREQ(rapidjson::Pointer("/https/certificate").Get(remote)->GetString(), "etc/certs/remoted.pem");
-    EXPECT_STREQ(rapidjson::Pointer("/https/ca_certificate").Get(remote)->GetString(), "etc/certs/root-ca.pem");
+    EXPECT_STREQ(rapidjson::Pointer("/https/certificate").Get(remote)->GetString(),
+                 "/etc/wazuh-manager/certs/remoted.pem");
+    EXPECT_STREQ(rapidjson::Pointer("/https/ca_certificate").Get(remote)->GetString(),
+                 "/etc/wazuh-manager/certs/root-ca.pem");
     EXPECT_EQ(remote["https"].MemberCount(), 9u) << "port, bind_addr, global_prefix, certificate, key, ca, "
-                                                    "ca_certificate and the two rate limits (the three "
+                                                    "ca_certificate and the two rate limits (the four "
                                                     "no-default options stay absent)";
     const auto auth = json(doc.sectionJson("auth"));
     EXPECT_TRUE(auth["purge"].GetBool());
@@ -383,20 +406,23 @@ TEST(Semantics, CheckFilesResolvesRelativeToHome)
     }
     manager_config::LoadOptions options;
     options.home = dir;
-    auto ok = manager_config::Document::parse(wrap(""), options);
+    auto ok = manager_config::Document::parse(wrap(certificates("etc/certs")), options);
     EXPECT_TRUE(std::holds_alternative<manager_config::Document>(ok)) << std::get<manager_config::Error>(ok).what();
-    auto ko = manager_config::Document::parse(wrap("<remote><https>"
-                                                   "<certificate>etc/certs/missing.pem</certificate>"
-                                                   "<key>etc/certs/remoted-key.pem</key></https></remote>"),
-                                              options);
+    auto ko = manager_config::Document::parse(wrap(certificates("etc/certs", "missing.pem")), options);
     ASSERT_TRUE(std::holds_alternative<manager_config::Error>(ko));
     EXPECT_EQ(std::get<manager_config::Error>(ko).pointer, "/remote/https/certificate");
+    // An absolute path is used as is, never joined with the home.
+    manager_config::LoadOptions elsewhere;
+    elsewhere.home = dir / "elsewhere";
+    auto absoluteOk = manager_config::Document::parse(wrap(certificates((dir / "etc" / "certs").string())), elsewhere);
+    EXPECT_TRUE(std::holds_alternative<manager_config::Document>(absoluteOk))
+        << std::get<manager_config::Error>(absoluteOk).what();
     // indexer.ssl.* is never checked: the installer does not create those files.
     auto indexerOk =
         manager_config::Document::parse(std::string("<wazuh_config><indexer><hosts><host>https://h:9200</host></hosts>"
                                                     "<ssl><certificate>etc/certs/missing.pem</certificate></ssl>"
                                                     "</indexer>") +
-                                            CLUSTER_SECTION + "</wazuh_config>",
+                                            certificates("etc/certs") + CLUSTER_SECTION + "</wazuh_config>",
                                         options);
     EXPECT_TRUE(std::holds_alternative<manager_config::Document>(indexerOk))
         << std::get<manager_config::Error>(indexerOk).what();
@@ -413,10 +439,8 @@ TEST(Semantics, CaCertificateFileValidation)
     }
     manager_config::LoadOptions options;
     options.home = dir;
-    auto ko = manager_config::Document::parse(wrap("<remote><https>"
-                                                   "<ca_certificate>etc/certs/missing-ca.pem</ca_certificate>"
-                                                   "</https></remote>"),
-                                              options);
+    auto ko =
+        manager_config::Document::parse(wrap(certificates("etc/certs", "remoted.pem", "missing-ca.pem")), options);
     ASSERT_TRUE(std::holds_alternative<manager_config::Error>(ko));
     EXPECT_EQ(std::get<manager_config::Error>(ko).pointer, "/remote/https/ca_certificate");
     EXPECT_NE(std::get<manager_config::Error>(ko).message.find("file not found"), std::string::npos);
@@ -429,7 +453,6 @@ TEST(Semantics, CaCertificateFileValidation)
 
 TEST(CApi, LoadSectionDocumentValidateFree)
 {
-    const auto file = (VECTORS / "valid" / "generated-manager.conf").string();
     const auto home = std::filesystem::temp_directory_path() / "manager_config_utest_capi";
     std::filesystem::create_directories(home / "etc" / "certs");
     for (const char* name :
@@ -437,6 +460,16 @@ TEST(CApi, LoadSectionDocumentValidateFree)
     {
         std::ofstream(home / "etc" / "certs" / name) << "x";
     }
+    // The installer writes absolute /etc/wazuh-manager/certs/... paths; a copy with relative ones resolves
+    // against `home` instead of the build host's real configuration directory.
+    std::string generated = slurp(VECTORS / "valid" / "generated-manager.conf");
+    const std::string absoluteCerts {"/etc/wazuh-manager/certs/"};
+    for (auto at = generated.find(absoluteCerts); at != std::string::npos; at = generated.find(absoluteCerts, at))
+    {
+        generated.replace(at, absoluteCerts.size(), "etc/certs/");
+    }
+    const auto file = (home / "generated-manager.conf").string();
+    std::ofstream(file) << generated;
     char err[512] = {0};
     mconf_t* conf = nullptr;
     // check_files == 0: the daemons load without requiring the certificate files (`-t` checks them)

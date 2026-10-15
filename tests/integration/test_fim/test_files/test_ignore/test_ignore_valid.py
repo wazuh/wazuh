@@ -90,7 +90,7 @@ local_internal_options = {SYSCHECK_DEBUG: 2 }
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
 def test_ignore_subdirectory(test_configuration, test_metadata, configure_local_internal_options,
                              truncate_monitored_files, set_wazuh_configuration, folder_to_monitor, daemons_handler,
-                             file_to_monitor):
+                             detect_end_scan, file_to_monitor):
     '''
     description: Check if the 'wazuh-syscheckd' daemon ignores the files that are in a monitored subdirectory
                  when using the 'ignore' option. It also ensures that events for files tha are not being ignored
@@ -125,6 +125,9 @@ def test_ignore_subdirectory(test_configuration, test_metadata, configure_local_
         - daemons_handler:
             type: fixture
             brief: Handler of Wazuh daemons.
+        - detect_end_scan:
+            type: fixture
+            brief: Wait for the baseline scan to end and, in whodata mode, for the whodata engine to start.
         - file_to_monitor:
             type: str
             brief: File created for monitoring.

@@ -108,7 +108,7 @@ it, inventory-sync applies it — and all three depend on these:
 | `src/config.c` | loads the `auth` section through `Read_Authd_JSON()` (`src/config/src/authd-config.c`, shared with remoted) and resolves `legacy_enrollment`; reads the `authd.*` and `auth.timeout_*` internal options, `wazuh_modules.manager_task_max_pending_deletes`, and the two `remoted.jwt_*` ones the re-enrollment window is read from; `getAuthdConfig()` answers `getconfig auth` |
 | `src/token_cli.c` | the `--create/--list/--revoke-enrollment-token`, `--purge-enrollment-tokens` and `--show-token` utility mode: a client of the socket verbs, run by `main()` before the daemon starts (so before any configuration is read or privileges dropped). The minted token goes to stdout alone; everything describing it goes to stderr, so a script can capture one without parsing |
 | `src/enrollment_token_mint.c` | whether a token can be minted: the listener certificate's SAN, loopback and CA-signature checks, and the `adr` the token will carry |
-| `src/enrollment_token_store.c` | `etc/enrollment_tokens.json` and its in-memory replica: load (refused above either limit), mtime-driven reload, atomic rewrite, consume/release, revoke with its pending-write retry |
+| `src/enrollment_token_store.c` | `/etc/wazuh-manager/enrollment_tokens.json` and its in-memory replica: load (refused above either limit), mtime-driven reload, atomic rewrite, consume/release, revoke with its pending-write retry |
 | `src/reenroll_verify.cpp` | the one C++ file: an `extern "C"` bridge over the header-only verifier in `shared_modules/utils/jwt/` |
 | `include/auth.h` | everything the two servers and the threads share, including the identity journal's entry type and its two ceilings |
 | `include/enrollment_token_mint.h`, `include/enrollment_token_store.h`, `include/token_cli.h`, `include/reenroll_verify.h` | one header per unit above; `reenroll_verify.h` is the `extern "C"` surface the C callers see |
@@ -128,7 +128,7 @@ libcrypto next to the one `libwazuhext.so` already provides.
 | Local server | serves `queue/sockets/auth.sock`: `add` / `remove` / `get`, for the server API and for remoted's `/enroll` route, and the `token_*` verbs for the token CLI and the API. Each accepted connection is served on its own detached thread |
 | Remote server | TLS enrollment on port 1515, when `remote_enrollment` and `legacy_enrollment` are both on |
 | Writer | master only: the only thread that persists `client.keys`; also writes and removes rows in wazuh-db, commits and forgets identity-journal entries, and records each deletion as a Task Manager row |
-| authpass watcher | workers with `use_password` only: re-reads `etc/authd.pass` as the cluster syncs it down; the worker rejects port-1515 enrollments until it arrives |
+| authpass watcher | workers with `use_password` only: re-reads `/etc/wazuh-manager/authd.pass` as the cluster syncs it down; the worker rejects port-1515 enrollments until it arrives |
 
 The writer runs on the master only — a worker node has no keystore to persist, and therefore no
 deletions to record. **There is no longer a thread in this daemon that talks to the network.**
