@@ -42,10 +42,107 @@ std::string describeError(int code)
     return fmt::format("{} ({})", std::strerror(code), code);
 }
 
-/// Initial buffer size for a reentrant lookup: the sysconf hint, or the default; never above the cap.
-std::size_t initialLookupSize(int sysconfName)
+/// Copy of sys with every empty member set to the real system call.
+ProcessSysCalls withDefaults(ProcessSysCalls sys)
 {
-    const long hint = sysconf(sysconfName);
+    if (!sys.fork)
+    {
+        sys.fork = []()
+        {
+            return ::fork();
+        };
+    }
+    if (!sys.setsid)
+    {
+        sys.setsid = []()
+        {
+            return ::setsid();
+        };
+    }
+    if (!sys.umask)
+    {
+        sys.umask = [](mode_t mask)
+        {
+            return ::umask(mask);
+        };
+    }
+    if (!sys.open)
+    {
+        sys.open = [](const char* path, int flags, mode_t mode)
+        {
+            return ::open(path, flags, mode);
+        };
+    }
+    if (!sys.dup2)
+    {
+        sys.dup2 = [](int oldFd, int newFd)
+        {
+            return ::dup2(oldFd, newFd);
+        };
+    }
+    if (!sys.close)
+    {
+        sys.close = [](int fd)
+        {
+            return ::close(fd);
+        };
+    }
+    if (!sys.fchmod)
+    {
+        sys.fchmod = [](int fd, mode_t mode)
+        {
+            return ::fchmod(fd, mode);
+        };
+    }
+    if (!sys.write)
+    {
+        sys.write = [](int fd, const void* data, size_t size)
+        {
+            return ::write(fd, data, size);
+        };
+    }
+    if (!sys.setgroups)
+    {
+        sys.setgroups = [](size_t size, const gid_t* list)
+        {
+            return ::setgroups(size, list);
+        };
+    }
+    if (!sys.setgid)
+    {
+        sys.setgid = [](gid_t gid)
+        {
+            return ::setgid(gid);
+        };
+    }
+    if (!sys.setuid)
+    {
+        sys.setuid = [](uid_t uid)
+        {
+            return ::setuid(uid);
+        };
+    }
+    if (!sys.seteuid)
+    {
+        sys.seteuid = [](uid_t uid)
+        {
+            return ::seteuid(uid);
+        };
+    }
+    if (!sys.sysconf)
+    {
+        sys.sysconf = [](int name)
+        {
+            return ::sysconf(name);
+        };
+    }
+    return sys;
+}
+
+/// Initial buffer size for a reentrant lookup: the sysconf hint, or the default; never above the cap.
+std::size_t initialLookupSize(int sysconfName, const ProcessSysCalls& s)
+{
+    const long hint = s.sysconf(sysconfName);
     const auto size = hint > 0 ? static_cast<std::size_t>(hint) : LOOKUP_BUFFER_DEFAULT;
     return std::min(size, LOOKUP_BUFFER_CAP);
 }
@@ -57,9 +154,14 @@ std::size_t initialLookupSize(int sysconfName)
  * backs the entry's strings is still alive.
  */
 template<typename Entry, typename Lookup, typename IdOf>
-auto lookupId(const char* kind, const std::string& name, int sysconfName, const Lookup& lookup, IdOf idOf)
+auto lookupId(const char* kind,
+              const std::string& name,
+              int sysconfName,
+              const Lookup& lookup,
+              IdOf idOf,
+              const ProcessSysCalls& s)
 {
-    std::vector<char> buffer(initialLookupSize(sysconfName));
+    std::vector<char> buffer(initialLookupSize(sysconfName, s));
 
     while (true)
     {
@@ -91,9 +193,9 @@ auto lookupId(const char* kind, const std::string& name, int sysconfName, const 
 }
 
 /// fork(); the parent leaves with _exit (no atexit handlers, no static destructors), the child returns.
-void detach(const char* stage)
+void detach(const char* stage, const ProcessSysCalls& s)
 {
-    const pid_t pid = fork();
+    const pid_t pid = s.fork();
     if (pid < 0)
     {
         const int err = errno;
@@ -106,21 +208,23 @@ void detach(const char* stage)
 }
 } // namespace
 
-void goDaemon()
+void goDaemon(const ProcessSysCalls& sys)
 {
-    detach("first");
+    const auto s = withDefaults(sys);
 
-    if (setsid() < 0)
+    detach("first", s);
+
+    if (s.setsid() < 0)
     {
         const int err = errno;
         throw std::runtime_error {fmt::format("setsid failed: {}", describeError(err))};
     }
 
-    detach("second");
+    detach("second", s);
 
-    umask(027);
+    s.umask(027);
 
-    const int fd = open("/dev/null", O_RDWR | O_CLOEXEC);
+    const int fd = s.open("/dev/null", O_RDWR | O_CLOEXEC, 0);
     if (fd < 0)
     {
         const int err = errno;
@@ -129,12 +233,12 @@ void goDaemon()
 
     for (const int target : {STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO})
     {
-        if (dup2(fd, target) < 0)
+        if (s.dup2(fd, target) < 0)
         {
             const int err = errno;
             if (fd > STDERR_FILENO)
             {
-                close(fd);
+                s.close(fd);
             }
             throw std::runtime_error {
                 fmt::format("could not redirect fd {} to /dev/null: {}", target, describeError(err))};
@@ -143,15 +247,16 @@ void goDaemon()
 
     if (fd > STDERR_FILENO)
     {
-        close(fd);
+        s.close(fd);
     }
 }
 
-OptError createPID(const std::string& path, const std::string& name, int pid)
+OptError createPID(const std::string& path, const std::string& name, int pid, const ProcessSysCalls& sys)
 {
+    const auto s = withDefaults(sys);
     const auto file = (std::filesystem::path(path) / fmt::format("{}-{}.pid", name, pid)).string();
 
-    const int fd = open(file.c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0640);
+    const int fd = s.open(file.c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0640);
     if (fd < 0)
     {
         const int err = errno;
@@ -159,10 +264,10 @@ OptError createPID(const std::string& path, const std::string& name, int pid)
     }
 
     // The mode given to open() is filtered by the umask; fchmod sets it exactly.
-    if (fchmod(fd, 0640) != 0)
+    if (s.fchmod(fd, 0640) != 0)
     {
         const int err = errno;
-        close(fd);
+        s.close(fd);
         return Error {fmt::format("could not set mode 0640 on PID file {}: {}", file, describeError(err))};
     }
 
@@ -170,7 +275,7 @@ OptError createPID(const std::string& path, const std::string& name, int pid)
     std::size_t written = 0;
     while (written < content.size())
     {
-        const ssize_t rc = write(fd, content.data() + written, content.size() - written);
+        const ssize_t rc = s.write(fd, content.data() + written, content.size() - written);
         if (rc < 0)
         {
             const int err = errno;
@@ -178,18 +283,18 @@ OptError createPID(const std::string& path, const std::string& name, int pid)
             {
                 continue;
             }
-            close(fd);
+            s.close(fd);
             return Error {fmt::format("could not write PID file {}: {}", file, describeError(err))};
         }
         if (rc == 0)
         {
-            close(fd);
+            s.close(fd);
             return Error {fmt::format("could not write PID file {}: short write", file)};
         }
         written += static_cast<std::size_t>(rc);
     }
 
-    if (close(fd) != 0)
+    if (s.close(fd) != 0)
     {
         const int err = errno;
         return Error {fmt::format("could not close PID file {}: {}", file, describeError(err))};
@@ -198,42 +303,56 @@ OptError createPID(const std::string& path, const std::string& name, int pid)
     return std::nullopt;
 }
 
-uid_t lookupUid(const std::string& name, const UserLookup& lookup)
+uid_t lookupUid(const std::string& name, const UserLookup& lookup, const ProcessSysCalls& sys)
 {
     return lookupId<struct passwd>(
-        "user", name, _SC_GETPW_R_SIZE_MAX, lookup, [](const struct passwd& entry) { return entry.pw_uid; });
+        "user",
+        name,
+        _SC_GETPW_R_SIZE_MAX,
+        lookup,
+        [](const struct passwd& entry) { return entry.pw_uid; },
+        withDefaults(sys));
 }
 
-gid_t lookupGid(const std::string& name, const GroupLookup& lookup)
+gid_t lookupGid(const std::string& name, const GroupLookup& lookup, const ProcessSysCalls& sys)
 {
     return lookupId<struct group>(
-        "group", name, _SC_GETGR_R_SIZE_MAX, lookup, [](const struct group& entry) { return entry.gr_gid; });
+        "group",
+        name,
+        _SC_GETGR_R_SIZE_MAX,
+        lookup,
+        [](const struct group& entry) { return entry.gr_gid; },
+        withDefaults(sys));
 }
 
-void dropToGroup(gid_t gid)
+void dropToGroup(gid_t gid, const ProcessSysCalls& sys)
 {
-    if (setgroups(1, &gid) != 0)
+    const auto s = withDefaults(sys);
+
+    if (s.setgroups(1, &gid) != 0)
     {
         const int err = errno;
         throw std::runtime_error {fmt::format("could not drop supplementary groups: {}", describeError(err))};
     }
 
-    if (setgid(gid) != 0)
+    if (s.setgid(gid) != 0)
     {
         const int err = errno;
         throw std::runtime_error {fmt::format("could not set group ID {}: {}", gid, describeError(err))};
     }
 }
 
-void dropToUser(uid_t uid)
+void dropToUser(uid_t uid, const ProcessSysCalls& sys)
 {
-    if (setuid(uid) != 0)
+    const auto s = withDefaults(sys);
+
+    if (s.setuid(uid) != 0)
     {
         const int err = errno;
         throw std::runtime_error {fmt::format("could not set user ID {}: {}", uid, describeError(err))};
     }
 
-    if (seteuid(uid) != 0)
+    if (s.seteuid(uid) != 0)
     {
         const int err = errno;
         throw std::runtime_error {fmt::format("could not set effective user ID {}: {}", uid, describeError(err))};
