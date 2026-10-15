@@ -14,6 +14,8 @@
 #include "enrollment_token.h"
 #include "reenroll_secret.h"
 
+#include <openssl/crypto.h>
+
 #ifdef WAZUH_UNIT_TESTING
     // Remove static qualifier when unit testing
     #define STATIC
@@ -66,26 +68,69 @@ char *w_agent_token_read_file(const char *path) {
 
     fclose(fp);
 
-    if (!read_ok || truncated) {
-        os_free(buf);
-        return NULL;
+    char *token = NULL;
+
+    if (read_ok && !truncated) {
+        size_t len = strlen(buf);
+
+        while (len > 0 && (buf[len - 1] == '\n' || buf[len - 1] == '\r')) {
+            buf[--len] = '\0';
+        }
+
+        if (len > 0) {
+            os_strdup(buf, token);
+        }
     }
 
-    size_t len = strlen(buf);
-
-    while (len > 0 && (buf[len - 1] == '\n' || buf[len - 1] == '\r')) {
-        buf[--len] = '\0';
-    }
-
-    if (len == 0) {
-        os_free(buf);
-        return NULL;
-    }
-
-    char *token;
-    os_strdup(buf, token);
+    /* The token carries the credential; the copy handed back is the only one left */
+    OPENSSL_cleanse(buf, W_ETOKEN_MAX_FILE_BYTES);
     os_free(buf);
     return token;
+}
+
+/* Drops trailing newlines, carriage returns, spaces and tabs from the first `length` bytes */
+static void w_agent_token_trim(char *text, size_t length) {
+    while (length > 0 && (text[length - 1] == '\n' || text[length - 1] == '\r' ||
+                          text[length - 1] == ' ' || text[length - 1] == '\t')) {
+        text[--length] = '\0';
+    }
+}
+
+w_token_read_status_t w_agent_token_read_stream(FILE *in, char **text) {
+    w_token_read_status_t status = W_TOKEN_READ_OK;
+    char *buf;
+    size_t length;
+
+    *text = NULL;
+
+    /* A terminal will never produce a token, so blocking on it reads as a hang. Checked before
+     * the buffer exists, so the common mistake costs nothing. */
+    if (isatty(fileno(in))) {
+        return W_TOKEN_READ_TTY;
+    }
+
+    /* Heap, not stack: the bound is sized for a token that embeds a CA, and 96 KB is far too much
+     * to put on a frame. */
+    os_calloc(W_ETOKEN_MAX_FILE_BYTES + 1, sizeof(char), buf);
+    length = fread(buf, 1, W_ETOKEN_MAX_FILE_BYTES, in);
+    /* fread() never terminates what it reads */
+    buf[length] = '\0';
+
+    if (ferror(in)) {
+        status = W_TOKEN_READ_IO;
+    } else if (length == W_ETOKEN_MAX_FILE_BYTES) {
+        status = W_TOKEN_READ_TOO_BIG;
+    } else {
+        w_agent_token_trim(buf, length);
+        /* Handed back at its real size: a token is a few hundred bytes */
+        os_strdup(buf, *text);
+    }
+
+    /* The token carries the credential; the copy handed back is the only one left */
+    OPENSSL_cleanse(buf, length);
+    os_free(buf);
+
+    return status;
 }
 
 /**
@@ -533,7 +578,8 @@ static bool token_anchor_matches(const char *candidate, size_t candidate_len) {
  * the trust anchor at rest for no benefit.
  */
 typedef struct {
-    char *keys_backup;   /**< mkstemp()-chosen path, or NULL when nothing was copied aside */
+    char *keys_backup;      /**< mkstemp()-chosen path, or NULL when nothing was copied aside */
+    FILE *keys_backup_fp;   /**< Its stream, held open until the restore or the discard */
 } token_snapshot_t;
 
 /**
@@ -546,12 +592,18 @@ typedef struct {
  * mkstemp() closes that: the name is unpredictable and the file is created O_EXCL at 0600, so
  * there is no window in which the secret sits at the umask's mode either.
  *
+ * The copy is flushed and checked here: one cut short, by a full disk say, would otherwise only
+ * show once it had been restored as the only key left. Its stream stays open until the restore or
+ * the discard, so the restore can tell this copy from anything else put at its name since.
+ *
  * @return 0 on success, -1 when a backup was needed but could not be taken.
  */
 static int token_snapshot(const w_token_enroll_opts_t *opts, token_snapshot_t *snapshot) {
     File backup = {NULL, NULL};
+    int saved_errno;
 
     snapshot->keys_backup = NULL;
+    snapshot->keys_backup_fp = NULL;
 
     if (!opts->transactional || FileSize(KEYS_FILE) <= 0) {
         return 0;
@@ -563,45 +615,84 @@ static int token_snapshot(const w_token_enroll_opts_t *opts, token_snapshot_t *s
         return -1;
     }
 
-    fclose(backup.fp);
+    /* fflush() sets errno. A write stdio lost before it leaves only the stream's error flag, with
+     * no errno of its own, so that one is reported as EIO rather than with whatever errno held. */
+    if (fflush(backup.fp) != 0) {
+        saved_errno = (errno != 0) ? errno : EIO;
+    } else {
+        saved_errno = ferror(backup.fp) ? EIO : 0;
+    }
+
+    if (saved_errno != 0) {
+        merror("Could not copy the current agent key aside: %s (%d).",
+               strerror(saved_errno), saved_errno);
+        fclose(backup.fp);
+        unlink(backup.name);
+        os_free(backup.name);
+        errno = saved_errno;
+        return -1;
+    }
+
     snapshot->keys_backup = backup.name;
+    snapshot->keys_backup_fp = backup.fp;
 
     return 0;
 }
 
 /**
- * @brief Puts client.keys back after a commit that failed with the new key already written.
+ * @brief Whether the backup's name still holds the copy token_snapshot() took.
  *
- * Restores by copying out of the backup rather than renaming it in: OS_MoveFile() unlinks its
- * source on the copy fallback, so a restore that consumed the backup would destroy the last copy
- * of the old key if it then failed itself. The copy goes through TempFile()+OS_MoveFile() so
- * client.keys is replaced atomically, like every other write to it in this module.
+ * Compared against the stream token_snapshot() kept open, so the inode can't have been reused in
+ * the meantime. Always true on Windows, which has no inode to compare and whose staged files carry
+ * an explicit Administrators/SYSTEM DACL instead (mkstemp_ex()).
  */
-/**
- * @brief Whether @p path is still the file whose identity @p before recorded.
- *
- * A staged file is created through a descriptor and then handed to helpers that reopen it by
- * name; this is what makes that reopen safe in a directory the runtime user can write.
- * Always true on Windows, which has no inode to compare and whose staged files carry an explicit
- * Administrators/SYSTEM DACL instead (mkstemp_ex()).
- */
-static bool token_staged_file_is_ours(const char *path, const struct stat *before, bool known) {
+static bool token_backup_is_ours(const token_snapshot_t *snapshot) {
 #ifdef WIN32
-    (void)path;
-    (void)before;
-    (void)known;
+    (void)snapshot;
     return true;
 #else
-    struct stat after;
-
-    return known && lstat(path, &after) == 0 && S_ISREG(after.st_mode) && after.st_nlink == 1 &&
-           after.st_dev == before->st_dev && after.st_ino == before->st_ino;
+    return w_path_names_fd(snapshot->keys_backup, fileno(snapshot->keys_backup_fp));
 #endif
 }
 
+/** Closes the backup's stream, which only token_backup_is_ours() needed. */
+static void token_snapshot_close(token_snapshot_t *snapshot) {
+    if (snapshot->keys_backup_fp != NULL) {
+        fclose(snapshot->keys_backup_fp);
+        snapshot->keys_backup_fp = NULL;
+    }
+}
+
+/** Closes the staged anchor's stream before its move: Windows will not move a file that still
+ *  has a handle open on it. */
+static void token_anchor_close(File *anchor) {
+    fclose(anchor->fp);
+    anchor->fp = NULL;
+}
+
+/** Drops the staged anchor: closes its stream if it is still open, removes it, frees its name. */
+static void token_anchor_discard(File *anchor) {
+    if (anchor->fp != NULL) {
+        token_anchor_close(anchor);
+    }
+
+    unlink(anchor->name);
+    os_free(anchor->name);
+}
+
+/**
+ * @brief Puts client.keys back after a commit that failed with the new key already written.
+ *
+ * Moves the backup back into place with w_move_file_nofollow(): a rename, or, into a client.keys
+ * that can't be renamed over (a single-file bind mount), a copy that follows no link at either
+ * name. A restore that fails leaves the backup for the operator. On Windows that is MoveFileEx(),
+ * so client.keys gets the backup's own explicit Administrators/SYSTEM DACL (mkstemp_ex()), not
+ * the one of the file it replaces. The backup's name is checked first: whatever else stands there
+ * is neither restored nor reported as the backup.
+ */
 static void token_rollback(const w_token_enroll_opts_t *opts, token_snapshot_t *snapshot,
                            w_token_enroll_report_t *report) {
-    File restored = {NULL, NULL};
+    bool ours;
 
     if (snapshot->keys_backup == NULL) {
         /* Nothing was copied aside, so there is nothing to put back. The caller reports this as
@@ -609,56 +700,31 @@ static void token_rollback(const w_token_enroll_opts_t *opts, token_snapshot_t *
         return;
     }
 
-    if (TempFile(&restored, KEYS_FILE, 0) < 0) {
-        merror("Could not stage the previous agent key for restore: %s (%d).",
-               strerror(errno), errno);
-        goto keep_backup;
-    }
+    ours = token_backup_is_ours(snapshot);
+    /* Closed before the move: Windows will not move a file that still has a handle open on it. */
+    token_snapshot_close(snapshot);
 
-    /* Same window as the config rewrite in agent_auth_cli.c: w_copy_file() reopens by NAME, so
-     * the account that can write INSTALLDIR/etc could swap the staged file for a symlink between
-     * the close and that reopen and have root restore through it. Recorded from the descriptor
-     * TempFile() still holds, and checked below before the rename. */
-    struct stat restored_before;
-    bool restored_known = (fstat(fileno(restored.fp), &restored_before) == 0);
+    if (ours && w_move_file_nofollow(snapshot->keys_backup, KEYS_FILE) == 0) {
+        if (opts->gid != -1) {
+            w_token_bootstrap_chown_keys_file(opts->gid, true);
+        }
 
-    fclose(restored.fp);
-
-    if (w_copy_file(snapshot->keys_backup, restored.name, 'b', NULL, 1) != 0 ||
-        !token_staged_file_is_ours(restored.name, &restored_before, restored_known) ||
-        OS_MoveFile(restored.name, KEYS_FILE) < 0) {
+        if (report != NULL) {
+            report->rolled_back = true;
+        }
+    } else {
         merror("Could not restore the previous agent key. The agent now holds a "
                "key the configured manager does not know.");
-        unlink(restored.name);
-        os_free(restored.name);
-        goto keep_backup;
-    }
 
-    os_free(restored.name);
-
-    if (opts->gid != -1) {
-        w_token_bootstrap_chown_keys_file(opts->gid, true);
-    }
-
-    unlink(snapshot->keys_backup);
-    os_free(snapshot->keys_backup);
-    snapshot->keys_backup = NULL;
-
-    if (report != NULL) {
-        report->rolled_back = true;
-    }
-
-    return;
-
-keep_backup:
-    /* The backup outlives this process on purpose: it is the only remaining copy of a working
-     * credential, and the caller prints its path so an operator can put it back by hand. */
-    if (report != NULL) {
-        strncpy(report->keys_backup, snapshot->keys_backup, sizeof(report->keys_backup) - 1);
+        /* The backup outlives this process on purpose: it is the only remaining copy of a working
+         * credential, and the caller prints its path so an operator can put it back by hand --
+         * as long as that path still holds it. */
+        if (ours && report != NULL) {
+            strncpy(report->keys_backup, snapshot->keys_backup, sizeof(report->keys_backup) - 1);
+        }
     }
 
     os_free(snapshot->keys_backup);
-    snapshot->keys_backup = NULL;
 }
 
 /** Removes the backup once the enrollment has committed and it can no longer be needed. */
@@ -667,9 +733,9 @@ static void token_snapshot_discard(token_snapshot_t *snapshot) {
         return;
     }
 
+    token_snapshot_close(snapshot);
     unlink(snapshot->keys_backup);
     os_free(snapshot->keys_backup);
-    snapshot->keys_backup = NULL;
 }
 
 /**
@@ -1076,27 +1142,24 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
      * the inherited ACL of the directory w_token_bootstrap_ensure_parent_dir() created (see
      * its own comment), not a mode. */
 #ifndef WIN32
-    if (chmod(anchor_file.name, 0640) == -1) {
+    if (fchmod(fileno(anchor_file.fp), 0640) == -1) {
         merror("Could not set permissions on '%s': %s (%d).", anchor_file.name,
                strerror(errno), errno);
-        fclose(anchor_file.fp);
-        unlink(anchor_file.name);
-        os_free(anchor_file.name);
+        token_anchor_discard(&anchor_file);
         w_etoken_free(&token);
         return W_TOKEN_ENROLL_ERR_ANCHOR;
     }
 #endif /* !WIN32 */
 
-    if (fwrite(candidate_pem, 1, candidate_len, anchor_file.fp) != candidate_len) {
+    /* Flushed now, because the enrollment below reads the anchor by name. The stream stays open:
+     * the owner is set through its descriptor, and only once the enrollment has gone through. */
+    if (fwrite(candidate_pem, 1, candidate_len, anchor_file.fp) != candidate_len ||
+            fflush(anchor_file.fp) != 0) {
         merror("Could not write the trust anchor to '%s'.", anchor_file.name);
-        fclose(anchor_file.fp);
-        unlink(anchor_file.name);
-        os_free(anchor_file.name);
+        token_anchor_discard(&anchor_file);
         w_etoken_free(&token);
         return W_TOKEN_ENROLL_ERR_ANCHOR;
     }
-
-    fclose(anchor_file.fp);
 
     /* --certs-only stops here. The anchor is committed straight away rather than after an
      * enrollment, because there is no enrollment to wait for: the whole point of this mode is to
@@ -1107,20 +1170,21 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
 #ifndef WIN32
         /* uid, not root: under the sticky etc/certs only the file's owner may rename over it,
          * so an anchor this path installs root-owned is one the runtime refresh (#39321) could
-         * never replace. chown() reads -1 as "leave this one alone", which is exactly what the
+         * never replace. fchown() reads -1 as "leave this one alone", which is exactly what the
          * opts contract already means by it. */
         if ((opts->uid != -1 || opts->gid != -1) &&
-                chown(anchor_file.name, opts->uid, opts->gid) != 0) {
+                fchown(fileno(anchor_file.fp), opts->uid, opts->gid) != 0) {
             merror("Could not change ownership of '%s': %s (%d).",
                    anchor_file.name, strerror(errno), errno);
         }
 #endif
 
-        if (OS_MoveFile(anchor_file.name, AGENT_ANCHOR_CA) < 0) {
+        token_anchor_close(&anchor_file);
+
+        if (w_move_file_nofollow(anchor_file.name, AGENT_ANCHOR_CA) < 0) {
             merror("Could not install the trust anchor at '%s'.",
                    AGENT_ANCHOR_CA);
-            unlink(anchor_file.name);
-            os_free(anchor_file.name);
+            token_anchor_discard(&anchor_file);
             w_etoken_free(&token);
             return W_TOKEN_ENROLL_ERR_ANCHOR;
         }
@@ -1139,16 +1203,14 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
     }
 
     if (!token_client_identity_usable(report)) {
-        unlink(anchor_file.name);
-        os_free(anchor_file.name);
+        token_anchor_discard(&anchor_file);
         w_etoken_free(&token);
         return W_TOKEN_ENROLL_ERR_REQUEST;
     }
 
     if (w_enrollment_build_request(&built_request) != 0) {
         /* w_enrollment_build_request() already logged the specific reason. */
-        unlink(anchor_file.name);
-        os_free(anchor_file.name);
+        token_anchor_discard(&anchor_file);
         w_etoken_free(&token);
         return W_TOKEN_ENROLL_ERR_REQUEST;
     }
@@ -1208,8 +1270,7 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
 
         if (!credential_ready) {
             w_enroll_request_destroy(&built_request);
-            unlink(anchor_file.name);
-            os_free(anchor_file.name);
+            token_anchor_discard(&anchor_file);
             w_etoken_free(&token);
             return W_TOKEN_ENROLL_ERR_CREDENTIAL;
         }
@@ -1229,8 +1290,7 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
         token_report_fail(report, "Could not copy the current agent key aside before enrolling, "
                           "so the enrollment was not attempted: %s (%d).", strerror(errno), errno);
         w_enroll_request_destroy(&built_request);
-        unlink(anchor_file.name);
-        os_free(anchor_file.name);
+        token_anchor_discard(&anchor_file);
         w_etoken_free(&token);
         return W_TOKEN_ENROLL_ERR_ANCHOR;
     }
@@ -1260,8 +1320,7 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
         }
 
         w_enroll_request_destroy(&built_request);
-        unlink(anchor_file.name);
-        os_free(anchor_file.name);
+        token_anchor_discard(&anchor_file);
         token_snapshot_discard(&snapshot);
         w_etoken_free(&token);
         return (enroll_result.http_code == 200) ? W_TOKEN_ENROLL_ERR_STORE
@@ -1315,12 +1374,10 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
         }
 
         w_enroll_request_destroy(&built_request);
-        unlink(anchor_file.name);
-        os_free(anchor_file.name);
+        token_anchor_discard(&anchor_file);
 
         /* A 200 means the manager accepted and it is the LOCAL store that failed -- and by then
-         * client.keys may already be gone: enrollment.c's Windows branch opens it "w" outright,
-         * and OS_MoveFile()'s copy fallback truncates its destination before streaming into it.
+         * client.keys may already be gone: enrollment.c's Windows branch opens it "w" outright.
          * Discarding the backup there deletes the last copy of a working key and then reports
          * that none was ever taken. Anything else is the manager refusing, which writes nothing
          * locally, so the backup is genuinely surplus. */
@@ -1339,9 +1396,10 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
 
     /* Written while still root; without fixing the ownership, the unprivileged `wazuh` user can't
      * read it after AgentdStart()'s privilege drop, breaking the first restart. Fixed up on the
-     * temp file, before the rename below: a crash between them would leave AGENT_ANCHOR_CA on
-     * disk with the wrong owner, and IsFile(AGENT_ANCHOR_CA) == 0 unconditionally latches the
-     * bootstrap off on every later boot, so it must land before the rename, never after.
+     * temp file, through its descriptor, before the rename below: a crash between them would
+     * leave AGENT_ANCHOR_CA on disk with the wrong owner, and IsFile(AGENT_ANCHOR_CA) == 0
+     * unconditionally latches the bootstrap off on every later boot, so it must land before the
+     * rename, never after.
      *
      * uid:gid rather than root:gid since #39321. The mode stays 0640; what changes is who owns
      * it, and it changes because etc/certs is sticky (see w_token_bootstrap_ensure_parent_dir):
@@ -1352,20 +1410,21 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
      * Skipped on Windows for the same reason as the mode above: one service account throughout,
      * nothing to hand the file over to. */
 #ifndef WIN32
-    if (chown(anchor_file.name, opts->uid, opts->gid) != 0) {
+    if (fchown(fileno(anchor_file.fp), opts->uid, opts->gid) != 0) {
         merror("Could not change ownership of '%s': %s (%d).", anchor_file.name,
                strerror(errno), errno);
     }
 #endif
 
-    if (OS_MoveFile(anchor_file.name, AGENT_ANCHOR_CA) < 0) {
+    token_anchor_close(&anchor_file);
+
+    if (w_move_file_nofollow(anchor_file.name, AGENT_ANCHOR_CA) < 0) {
         merror("Could not install the trust anchor at '%s'.", AGENT_ANCHOR_CA);
         token_rollback(opts, &snapshot, report);
         /* The rename is what failed, so the staged anchor is still on disk holding the new CA.
          * Every other failure branch in this function removes it; this one did not, leaving one
          * behind in the certs directory on each attempt. */
-        unlink(anchor_file.name);
-        os_free(anchor_file.name);
+        token_anchor_discard(&anchor_file);
         w_etoken_free(&token);
         return W_TOKEN_ENROLL_ERR_COMMIT;
     }
@@ -1377,8 +1436,8 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
     w_token_bootstrap_mark_anchor_committed(opts->gid);
     token_discard_delivered_ca();
 
-    /* enrollment.c's TempFile()+OS_MoveFile() replace only chmod()s client.keys to a fixed 0640
-     * on the temp file, never its group, so it inherits this root process's group instead of
+    /* enrollment.c's TempFile()+rename_ex() replace only sets a fixed 0640 mode on the temp
+     * file, never its group, so client.keys inherits this root process's group instead of
      * root:wazuh -- chown to root:gid (not uid:gid, mirroring the anchor's ownership model)
      * restores read access without handing the credential to the runtime user. If this fails
      * (e.g. a namespaced container without CAP_CHOWN), the anchor above is already committed, so

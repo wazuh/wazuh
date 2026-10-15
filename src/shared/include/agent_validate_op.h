@@ -67,13 +67,10 @@ int OS_IsValidAgentInsertID(const char* id);
 // valid for OS_IsValidAgentInsertID() or does not fit `size`.
 int OS_CanonicalAgentInsertID(const char* id, char* out, size_t size);
 char* getNameById(const char* id);
-int IDExist(const char* id, int discard_removed);
 int OS_IsValidName(const char* u_name);
 void OS_ConvertToValidAgentName(char* u_name);
 int NameExist(const char* u_name);
 char* IPExist(const char* u_ip);
-void OS_AddAgentTimestamp(const char* id, const char* name, const char* ip, time_t now);
 void OS_RemoveAgentTimestamp(const char* id);
-void FormatID(char* id);
 
 #endif // AGENT_VALIDATE_OP_H

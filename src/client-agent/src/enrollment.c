@@ -676,9 +676,9 @@ STATIC char *w_enrollment_load_password(const char *path) {
 /**
  * @brief Stores one "ID NAME IP KEY" line to client.keys.
  *
- * Platform split preserved verbatim from the legacy
+ * Platform split preserved from the legacy
  * enrollment_op.c:w_enrollment_store_key_entry() (#38465 -- do not unify):
- * Linux writes atomically (temp file + chmod 0640 + rename); Windows writes
+ * Linux writes atomically (temp file + fchmod 0640 + rename); Windows writes
  * the file directly, without atomicity.
  */
 STATIC int w_enrollment_store_key_entry(const char *line) {
@@ -702,7 +702,11 @@ STATIC int w_enrollment_store_key_entry(const char *line) {
         return -1;
     }
 
-    if (chmod(file.name, 0640) == -1) {
+    /* The mode and the key go through the descriptor TempFile() returned, and nothing is done to
+     * the staged copy by name but the move: w_move_file_nofollow() renames it, or copies it into a
+     * client.keys that can't be renamed over, such as a single-file bind mount, without following
+     * a link at either name. */
+    if (fchmod(fileno(file.fp), 0640) == -1) {
         merror(CHMOD_ERROR, file.name, errno, strerror(errno));
         fclose(file.fp);
         unlink(file.name);
@@ -710,10 +714,25 @@ STATIC int w_enrollment_store_key_entry(const char *line) {
         return -1;
     }
 
-    fprintf(file.fp, "%s\n", line);
-    fclose(file.fp);
+    /* A short write would install a cut-off key. errno is read right after the call that failed:
+     * the fclose() that follows a failed fprintf() may change it. */
+    bool failed = (fprintf(file.fp, "%s\n", line) < 0);
+    int error = errno;
 
-    if (OS_MoveFile(file.name, KEYS_FILE) < 0) {
+    if (fclose(file.fp) != 0 && !failed) {
+        failed = true;
+        error = errno;
+    }
+
+    if (failed) {
+        merror(FWRITE_ERROR, file.name, error, strerror(error));
+        unlink(file.name);
+        os_free(file.name);
+        return -1;
+    }
+
+    if (w_move_file_nofollow(file.name, KEYS_FILE) != 0) {
+        unlink(file.name);
         os_free(file.name);
         return -1;
     }

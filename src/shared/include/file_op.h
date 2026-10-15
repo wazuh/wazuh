@@ -327,6 +327,24 @@ int OS_MoveFile(const char *src, const char *dst);
 
 
 /**
+ * @brief Moves @p src onto @p dst without following a link at either name.
+ *
+ * For a destination in a directory that an unprivileged account can write. It renames first. When
+ * the rename can't replace @p dst -- a single-file bind mount answers EBUSY, another filesystem
+ * EXDEV -- it copies @p src into @p dst instead, through descriptors w_openat_nofollow_vetted()
+ * opened, so a symlink or a hard link at either name is refused, never written through. @p src is
+ * removed once the copy is complete. OS_MoveFile()'s copy opens both names with fopen().
+ *
+ * On Windows it is MoveFileEx() replacing @p dst, without a copy fallback.
+ *
+ * @param src Source path.
+ * @param dst Destination path.
+ * @return 0 on success. -1 on failure, with @p src left in place and errno set (POSIX).
+ */
+int w_move_file_nofollow(const char *src, const char *dst);
+
+
+/**
  * @brief Copy file.
  *
  * @param src Source path.
@@ -610,6 +628,19 @@ gzFile w_gzopen_nofollow(const char * basedir, const char * filename, const char
  * @return A vetted file descriptor, with O_NONBLOCK already cleared, on success; -1 on error (sets errno).
  */
 int w_openat_nofollow_vetted(const char * basedir, const char * filename, int oflags, mode_t mode);
+
+/**
+ * @brief Whether @p path names the regular file open on @p fd, and only that: not through a symlink,
+ *        and with no second hard link.
+ *
+ * For a file staged under a name an unprivileged account can replace, checked right before the name
+ * is used.
+ *
+ * @param path Name to check.
+ * @param fd Descriptor of the file it should name.
+ * @return true if @p path names that file.
+ */
+bool w_path_names_fd(const char *path, int fd);
 #endif
 
 

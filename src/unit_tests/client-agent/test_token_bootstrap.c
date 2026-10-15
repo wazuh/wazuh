@@ -149,6 +149,8 @@ static gid_t g_keys_chown_gid = (gid_t) -1;
 static bool g_anchor_chown_via_fd = false;
 static bool g_dir_chown_via_fd = false;
 static bool g_dir_chmod_via_fd = false;
+/* Set only by __wrap_fchmod(): __wrap_chmod() records the anchor's mode in the same variable */
+static bool g_anchor_chmod_via_fd = false;
 
 /* The anchor's chown() target is the TempFile()-created temporary file
  * ("etc/certs/root-ca.pem.XXXXXX", a random mkstemp() suffix appended to the destination name --
@@ -317,8 +319,9 @@ int __wrap_chmod(const char *path, mode_t mode) {
 
 /* The descriptor-based half of the pair above, for the same reason __wrap_fchown() exists:
  * w_token_bootstrap_repair_anchor_ownership() sets the sticky group-writable mode on a directory
- * descriptor it opened with O_NOFOLLOW, never on the path. Wrapped rather than left real so an
- * unprivileged run behaves like a privileged one, exactly as __wrap_chmod() does. */
+ * descriptor it opened with O_NOFOLLOW, never on the path, and w_reenroll_secret_store() sets the
+ * secret's mode on its staged copy's descriptor. Wrapped rather than left real so an unprivileged
+ * run behaves like a privileged one, exactly as __wrap_chmod() does. */
 int __wrap_fchmod(int fd, mode_t mode) {
     char link[64];
     char path[PATH_MAX];
@@ -335,33 +338,128 @@ int __wrap_fchmod(int fd, mode_t mode) {
             g_dir_chmod_via_fd = true;
         } else if (is_anchor_path(path)) {
             g_anchor_chmod_mode = mode;
+            g_anchor_chmod_via_fd = true;
+        } else if (is_secret_path(path)) {
+            g_secret_chmod_mode = mode;
         }
     }
 
     return 0;
 }
 
-/* Regression guard: the anchor's chown() must land on the temporary file before OS_MoveFile()
- * renames it into place, never after. __real_OS_MoveFile() (resolved by the linker's --wrap
- * because this test binary is not itself the true entry point) preserves the real rename so the
- * rest of the suite keeps exercising a real file on disk. */
-extern int __real_OS_MoveFile(const char *src, const char *dst);
+/* Regression guard: the anchor's chown() must land on the temporary file before
+ * w_move_file_nofollow() moves it into place, never after. __real_w_move_file_nofollow()
+ * (resolved by the linker's --wrap because this test binary is not itself the true entry point)
+ * preserves the real move so the rest of the suite keeps exercising a real file on disk. */
+extern int __real_w_move_file_nofollow(const char *src, const char *dst);
 static bool g_anchor_chown_recorded_before_move = false;
 
 /* Set by the rollback tests: the anchor's rename is the last step of the commit, and making it
  * fail is the only way to reach the path where an enrollment has already replaced client.keys. */
 static bool g_fail_anchor_move = false;
 
-int __wrap_OS_MoveFile(const char *src, const char *dst) {
+/* Set by the rollback test whose backup is no longer the copy taken: by the time the anchor's
+ * rename fails, the backup's name holds a link to SWAP_TARGET instead. */
+#define SWAP_TARGET "etc/swap-target"
+#define SWAP_TARGET_CONTENT "not a key\n"
+
+static bool g_replace_keys_backup = false;
+
+static void replace_keys_backup_with_a_link(void) {
+    char **entries = wreaddir("etc");
+    char path[PATH_MAX];
+    int replaced = 0;
+
+    assert_non_null(entries);
+
+    for (int i = 0; entries[i] != NULL; i++) {
+        if (strncmp(entries[i], "client.keys.", 12) == 0) {
+            snprintf(path, sizeof(path), "etc/%s", entries[i]);
+            assert_int_equal(unlink(path), 0);
+            assert_int_equal(symlink("swap-target", path), 0);
+            replaced++;
+        }
+    }
+
+    free_strarray(entries);
+    assert_int_equal(replaced, 1);
+}
+
+/* Whether OPENSSL_cleanse() was handed a buffer that starts with g_cleanse_watch, the token a test
+ * expects a reader to wipe. The real one runs either way. */
+static const char *g_cleanse_watch = NULL;
+static bool g_cleansed_watch = false;
+
+void __real_OPENSSL_cleanse(void *ptr, size_t len);
+
+void __wrap_OPENSSL_cleanse(void *ptr, size_t len) {
+    size_t watched = g_cleanse_watch ? strlen(g_cleanse_watch) : 0;
+
+    if (watched > 0 && len >= watched && memcmp(ptr, g_cleanse_watch, watched) == 0) {
+        g_cleansed_watch = true;
+    }
+
+    __real_OPENSSL_cleanse(ptr, len);
+}
+
+/* rename() refusing client.keys with EBUSY, as when it is a single-file bind mount */
+static bool g_busy_keys_rename = false;
+
+int __real_rename(const char *oldpath, const char *newpath);
+
+int __wrap_rename(const char *oldpath, const char *newpath) {
+    if (g_busy_keys_rename && strcmp(newpath, KEYS_FILE) == 0) {
+        errno = EBUSY;
+        return -1;
+    }
+
+    return __real_rename(oldpath, newpath);
+}
+
+int __wrap_w_move_file_nofollow(const char *src, const char *dst) {
     if (is_anchor_path(src) && g_anchor_chown_uid != (uid_t) -1) {
         g_anchor_chown_recorded_before_move = true;
     }
 
     if (g_fail_anchor_move && is_anchor_path(src)) {
+        if (g_replace_keys_backup) {
+            replace_keys_backup_with_a_link();
+        }
+
         return -1;
     }
 
-    return __real_OS_MoveFile(src, dst);
+    return __real_w_move_file_nofollow(src, dst);
+}
+
+/* Set by the test of a backup that can't be written: TempFile()'s copy of client.keys is pointed
+ * at /dev/full before it is flushed, so writing it out fails as on a full disk. */
+static bool g_backup_disk_full = false;
+
+int __real_TempFile(File *file, const char *source, int copy);
+
+int __wrap_TempFile(File *file, const char *source, int copy) {
+    int result = __real_TempFile(file, source, copy);
+
+    if (result == 0 && copy && g_backup_disk_full && strcmp(source, KEYS_FILE) == 0) {
+        int full = open("/dev/full", O_WRONLY);
+
+        assert_true(full >= 0);
+        assert_int_equal(dup2(full, fileno(file->fp)), fileno(file->fp));
+        close(full);
+    }
+
+    return result;
+}
+
+/* Stands in for an operator's terminal on stdin, which a test can't open. Everything else reaches
+ * the real one. */
+static bool g_stream_is_a_tty = false;
+
+int __real_isatty(int fd);
+
+int __wrap_isatty(int fd) {
+    return g_stream_is_a_tty ? 1 : __real_isatty(fd);
 }
 
 /* ---- fixtures ---- */
@@ -402,6 +500,7 @@ static void remove_test_paths(void) {
     unlink("etc/certs/agent-key.pem");
     unlink(AGENT_REENROLL_SECRET);
     unlink(AGENT_DELIVERED_CA);
+    unlink(SWAP_TARGET);
     remove_staged_siblings("etc/certs", "root-ca.pem.");
     remove_staged_siblings("etc", "client.keys.");
 }
@@ -439,6 +538,11 @@ static int setup_test(void **state) {
     g_fetch_transport_error = NULL;
     g_enroll_transport_error = NULL;
     g_fail_anchor_move = false;
+    g_busy_keys_rename = false;
+    g_cleanse_watch = NULL;
+    g_cleansed_watch = false;
+    g_replace_keys_backup = false;
+    g_backup_disk_full = false;
     g_spki_call_count = 0;
     g_anchor_chown_uid = (uid_t) -1;
     g_anchor_chown_gid = (gid_t) -1;
@@ -456,6 +560,7 @@ static int setup_test(void **state) {
     g_anchor_chown_via_fd = false;
     g_dir_chown_via_fd = false;
     g_dir_chmod_via_fd = false;
+    g_anchor_chmod_via_fd = false;
 
     return 0;
 }
@@ -637,7 +742,7 @@ static void test_already_enrolled_skips_and_discards_the_token(void **state) {
 
     /* Regression guard: this latch must still repair client.keys's group every time it fires,
      * not just skip out -- a prior boot's enrollment call can replace client.keys (via
-     * TempFile()+OS_MoveFile() in enrollment.c) and die before the chown below ever runs,
+     * TempFile()+w_move_file_nofollow() in enrollment.c) and die before the chown below ever runs,
      * leaving it root:root until a later boot passes through here again. */
     assert_int_equal(g_keys_chown_uid, 0);
     assert_int_equal(g_keys_chown_gid, getgid());
@@ -1180,7 +1285,7 @@ static void test_full_happy_path_via_pin(void **state) {
     assert_int_equal(g_anchor_chown_uid, getuid());
     assert_int_equal(g_anchor_chown_gid, getgid());
 
-    /* Regression guard: the anchor's chown() must land before OS_MoveFile() renames the temp
+    /* Regression guard: the anchor's chown() must land before w_move_file_nofollow() moves the temp
      * file into place, closing the window where a crash between the two left a wrong-group
      * AGENT_ANCHOR_CA permanently latching the bootstrap off. */
     assert_true(g_anchor_chown_recorded_before_move);
@@ -1192,12 +1297,16 @@ static void test_full_happy_path_via_pin(void **state) {
     assert_int_equal(g_anchor_chmod_mode, 0640);
     assert_int_equal(g_dir_chmod_mode, 01770);
 
+    /* The staged anchor's mode and owner go through its descriptor, never its name */
+    assert_true(g_anchor_chmod_via_fd);
+    assert_true(g_anchor_chown_via_fd);
+
     /* The parent directory itself stays root-owned: only its group gains write. */
     assert_int_equal(g_dir_chown_uid, 0);
     assert_int_equal(g_dir_chown_gid, getgid());
 
     /* client.keys is handed to root:gid too -- not uid:gid -- restoring the group that
-     * enrollment.c's own TempFile()+OS_MoveFile() replace just dropped, without handing
+     * enrollment.c's own TempFile()+w_move_file_nofollow() replace just dropped, without handing
      * ownership to the runtime user. */
     assert_int_equal(g_keys_chown_uid, 0);
     assert_int_equal(g_keys_chown_gid, getgid());
@@ -1433,6 +1542,8 @@ static void test_full_happy_path_via_ca_pem(void **state) {
     /* Same regression guards as the pin-path happy test: the anchor's chown() must land before
      * the rename that installs it, and client.keys goes to root:gid. */
     assert_true(g_anchor_chown_recorded_before_move);
+    assert_true(g_anchor_chmod_via_fd);
+    assert_true(g_anchor_chown_via_fd);
     assert_int_equal(g_keys_chown_uid, 0);
     assert_int_equal(g_keys_chown_gid, getgid());
 }
@@ -1854,7 +1965,7 @@ static void test_bootstrap_stores_the_reenroll_secret_from_the_root_path(void **
     assert_string_equal(secret, REENROLL_SECRET);
 
     /* client.keys's mode, so the daemon can rewrite it after the drop. Read off the wrapper
-     * rather than stat(): __wrap_chmod() records the mode instead of applying it, so the file on
+     * rather than stat(): __wrap_fchmod() records the mode instead of applying it, so the file on
      * disk keeps mkstemp()'s 0600 and only the recorded value shows what the code asked for. */
     assert_int_equal(stat(AGENT_REENROLL_SECRET, &info), 0);
     assert_int_equal(g_secret_chmod_mode, 0640);
@@ -1872,9 +1983,9 @@ static void test_bootstrap_stores_the_reenroll_secret_from_the_root_path(void **
  * whatever it points at. A linked path must be refused, not followed.
  *
  * Driven with a manager response that carries no secret, so the link planted below is still in
- * place when the chown runs: a response WITH a secret would have TempFile()+OS_MoveFile() replace
- * the link with a real file first, which is the very thing that makes the real-world window a
- * race rather than a standing hole. */
+ * place when the chown runs: a response WITH a secret would have TempFile() and
+ * w_move_file_nofollow() replace the link with a real file first, which is the very thing that
+ * makes the real-world window a race rather than a standing hole. */
 static void test_reenroll_secret_link_is_not_chowned(void **state) {
     (void) state;
     /* A *valid* store ("<id> <secret>\n", see w_reenroll_secret_store()), not arbitrary bytes:
@@ -2006,6 +2117,56 @@ static void test_failed_commit_restores_the_previous_key(void **state) {
     free(token);
 }
 
+/* The same, with a client.keys that rename() can't replace, as when it is a single-file bind mount:
+ * the new key goes into it by copy, and the rollback has to put the previous one back into that
+ * same file. */
+static void test_failed_commit_restores_the_previous_key_into_a_bind_mounted_client_keys(void **state) {
+    (void) state;
+    w_token_enroll_opts_t opts = {0};
+    w_token_enroll_report_t report;
+    char *token = make_token(true, true, NULL);
+    char content[256] = {0};
+    int held;
+
+    write_file(KEYS_FILE, PREVIOUS_KEY_LINE);
+    write_file(AGENT_ANCHOR_CA, "OLD-CA");
+    /* The file a bind mount pins */
+    held = open(KEYS_FILE, O_RDONLY);
+    assert_int_not_equal(held, -1);
+
+    opts.token_text = token;
+    opts.uid = -1;
+    opts.gid = -1;
+    opts.transactional = true;
+
+    will_return(__wrap_hc_fetch_cacerts, 200L);
+    will_return(__wrap_hc_fetch_cacerts, "FAKE-CA-BODY");
+    will_return(__wrap_hc_fetch_cacerts, 1);
+    will_return(__wrap_hc_spki_pinned_certificate, PINNED_CERT);
+    will_return(__wrap_hc_enroll, 200L);
+    will_return(__wrap_hc_enroll, VALID_ENROLL_BODY);
+    will_return(__wrap_hc_enroll, 1);
+    expect_valid_ip("10.0.0.5");
+    expect_any_always(__wrap__minfo, formatted_msg);
+    expect_any_always(__wrap__merror, formatted_msg);
+    /* Each move onto client.keys logs that it is copying instead of renaming */
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_any_count(__wrap__mferror, formatted_msg, -2);
+
+    g_fail_anchor_move = true;
+    g_busy_keys_rename = true;
+
+    assert_int_equal(w_agent_token_enroll(&opts, &report), W_TOKEN_ENROLL_ERR_COMMIT);
+
+    assert_true(report.rolled_back);
+    assert_true(pread(held, content, sizeof(content) - 1, 0) > 0);
+    close(held);
+    assert_string_equal(content, PREVIOUS_KEY_LINE);
+    assert_string_equal(report.keys_backup, "");
+
+    free(token);
+}
+
 /* No backup is taken when there was nothing to save, and the report says so rather than claiming
  * a rollback that never happened. */
 static void test_failed_commit_without_a_previous_key_reports_no_rollback(void **state) {
@@ -2093,6 +2254,93 @@ static void test_failed_commit_leaves_no_staged_anchor(void **state) {
     free(token);
 }
 
+/* The backup sits beside client.keys for the whole enrollment. When its name no longer holds the
+ * copy that was taken, nothing is put back from it, and it is not reported as the backup either. */
+static void test_failed_commit_never_restores_a_replaced_backup(void **state) {
+    (void) state;
+    w_token_enroll_opts_t opts = {0};
+    w_token_enroll_report_t report;
+    char *token = make_token(true, true, NULL);
+
+    write_file(KEYS_FILE, PREVIOUS_KEY_LINE);
+    write_file(AGENT_ANCHOR_CA, "OLD-CA");
+    write_file(SWAP_TARGET, SWAP_TARGET_CONTENT);
+
+    opts.token_text = token;
+    opts.uid = -1;
+    opts.gid = -1;
+    opts.transactional = true;
+
+    will_return(__wrap_hc_fetch_cacerts, 200L);
+    will_return(__wrap_hc_fetch_cacerts, "FAKE-CA-BODY");
+    will_return(__wrap_hc_fetch_cacerts, 1);
+    will_return(__wrap_hc_spki_pinned_certificate, PINNED_CERT);
+    will_return(__wrap_hc_enroll, 200L);
+    will_return(__wrap_hc_enroll, VALID_ENROLL_BODY);
+    will_return(__wrap_hc_enroll, 1);
+    expect_valid_ip("10.0.0.5");
+    /* The subject is the on-disk outcome, as in the tests above. */
+    expect_any_count(__wrap__mdebug1, formatted_msg, -2);
+    expect_any_always(__wrap__minfo, formatted_msg);
+    expect_any_always(__wrap__merror, formatted_msg);
+
+    g_fail_anchor_move = true;
+    g_replace_keys_backup = true;
+
+    assert_int_equal(w_agent_token_enroll(&opts, &report), W_TOKEN_ENROLL_ERR_COMMIT);
+
+    assert_false(report.rolled_back);
+    assert_string_equal(report.keys_backup, "");
+    assert_string_not_equal(read_file(KEYS_FILE), SWAP_TARGET_CONTENT);
+    assert_string_equal(read_file(SWAP_TARGET), SWAP_TARGET_CONTENT);
+
+    free(token);
+}
+
+#ifdef __linux__
+/* For expect_check() on a log line: whether it carries @p check_data, the part a test pins */
+static int log_line_contains(const LargestIntegralType value, const LargestIntegralType check_data) {
+    return strstr((const char *) value, (const char *) check_data) != NULL;
+}
+
+/* A copy of client.keys that could not be written in full is no backup. The enrollment is not
+ * attempted -- no request is queued for hc_enroll() here -- and client.keys stays as it was. */
+static void test_a_key_backup_that_cannot_be_written_stops_the_enrollment(void **state) {
+    (void) state;
+    w_token_enroll_opts_t opts = {0};
+    w_token_enroll_report_t report;
+    char *token = make_token(true, true, NULL);
+
+    write_file(KEYS_FILE, PREVIOUS_KEY_LINE);
+    write_file(AGENT_ANCHOR_CA, "OLD-CA");
+
+    opts.token_text = token;
+    opts.uid = -1;
+    opts.gid = -1;
+    opts.transactional = true;
+
+    will_return(__wrap_hc_fetch_cacerts, 200L);
+    will_return(__wrap_hc_fetch_cacerts, "FAKE-CA-BODY");
+    will_return(__wrap_hc_fetch_cacerts, 1);
+    will_return(__wrap_hc_spki_pinned_certificate, PINNED_CERT);
+    expect_any_count(__wrap__mdebug1, formatted_msg, -2);
+    expect_any_always(__wrap__minfo, formatted_msg);
+    /* The first error is the backup's, with the errno of the flush that failed */
+    expect_check(__wrap__merror, formatted_msg, log_line_contains,
+                 (LargestIntegralType)(uintptr_t)"aside: No space left on device (28).");
+    expect_any_always(__wrap__merror, formatted_msg);
+
+    g_backup_disk_full = true;
+
+    assert_int_equal(w_agent_token_enroll(&opts, &report), W_TOKEN_ENROLL_ERR_ANCHOR);
+
+    assert_string_equal(read_file(KEYS_FILE), PREVIOUS_KEY_LINE);
+    assert_false(report.rolled_back);
+
+    free(token);
+}
+#endif
+
 /* A token longer than the reader's buffer used to come back silently cut short, and the caller
  * then refused it as malformed -- which points whoever reads that message at the token's contents
  * instead of its size. Refusing it outright is what lets both callers say so. */
@@ -2133,6 +2381,138 @@ static void test_a_token_that_fills_the_buffer_exactly_is_read_whole(void **stat
     os_free(token);
 }
 
+/* The reader's scratch buffer holds the credential too: it is wiped before it is freed, so the
+ * copy handed back is the only one left. */
+static void test_the_token_file_reader_wipes_its_buffer(void **state) {
+    (void) state;
+
+    write_file("etc/enrollment_token", "TOKEN-TO-WIPE\n");
+    g_cleanse_watch = "TOKEN-TO-WIPE";
+
+    char *token = w_agent_token_read_file("etc/enrollment_token");
+
+    assert_string_equal(token, "TOKEN-TO-WIPE");
+    assert_true(g_cleansed_watch);
+    os_free(token);
+}
+
+/* The stream form does the same. */
+static void test_the_token_stream_reader_wipes_its_buffer(void **state) {
+    (void) state;
+    char input[] = "TOKEN-TO-WIPE\n";
+    FILE *in = fmemopen(input, strlen(input), "r");
+    char *token = NULL;
+
+    g_cleanse_watch = "TOKEN-TO-WIPE";
+
+    assert_int_equal(w_agent_token_read_stream(in, &token), W_TOKEN_READ_OK);
+    fclose(in);
+
+    assert_string_equal(token, "TOKEN-TO-WIPE");
+    assert_true(g_cleansed_watch);
+    os_free(token);
+}
+
+/* The stream form, shared by --show-token and wazuh-agent-auth. A shell pipe appends a newline and
+ * an editor may leave trailing blanks; both go, and nothing inside the token is touched. */
+static void test_a_streamed_token_comes_back_trimmed(void **state) {
+    (void) state;
+    char input[] = "TOKEN with inner space \t\r\n";
+    FILE *in = fmemopen(input, strlen(input), "r");
+    char *token = NULL;
+
+    assert_int_equal(w_agent_token_read_stream(in, &token), W_TOKEN_READ_OK);
+    fclose(in);
+
+    assert_string_equal(token, "TOKEN with inner space");
+    os_free(token);
+}
+
+/* Empty is not this reader's to refuse: --show-token hands it to the decoder, which says what is
+ * wrong with it, and wazuh-agent-auth refuses it with its own message. */
+static void test_an_empty_stream_reads_as_an_empty_token(void **state) {
+    (void) state;
+    char input[] = "\n";
+    FILE *in = fmemopen(input, strlen(input), "r");
+    char *token = NULL;
+
+    assert_int_equal(w_agent_token_read_stream(in, &token), W_TOKEN_READ_OK);
+    fclose(in);
+
+    assert_string_equal(token, "");
+    os_free(token);
+}
+
+/* fread() never terminates what it reads. The longest token that fits comes back whole, at its
+ * own length and terminated. */
+static void test_a_streamed_token_that_fills_the_buffer_exactly_is_read_whole(void **state) {
+    (void) state;
+    const size_t longest = W_ETOKEN_MAX_FILE_BYTES - 1;
+    char *input;
+    char *token = NULL;
+
+    os_calloc(longest + 1, sizeof(char), input);
+    memset(input, 'A', longest);
+    FILE *in = fmemopen(input, longest, "r");
+
+    assert_int_equal(w_agent_token_read_stream(in, &token), W_TOKEN_READ_OK);
+    fclose(in);
+
+    assert_int_equal(strlen(token), longest);
+    assert_string_equal(token, input);
+    os_free(input);
+    os_free(token);
+}
+
+static void test_a_streamed_token_too_long_to_fit_is_refused(void **state) {
+    (void) state;
+    char *input;
+    char *token = NULL;
+
+    os_calloc(W_ETOKEN_MAX_FILE_BYTES + 1, sizeof(char), input);
+    memset(input, 'A', W_ETOKEN_MAX_FILE_BYTES);
+    FILE *in = fmemopen(input, W_ETOKEN_MAX_FILE_BYTES, "r");
+
+    assert_int_equal(w_agent_token_read_stream(in, &token), W_TOKEN_READ_TOO_BIG);
+    fclose(in);
+
+    assert_null(token);
+    os_free(input);
+}
+
+/* A stream that cannot be read is told apart from one that held nothing. */
+static void test_an_unreadable_stream_is_reported_as_such(void **state) {
+    (void) state;
+    char backing[16] = {0};
+    FILE *in = fmemopen(backing, sizeof(backing), "w");
+    char *token = NULL;
+
+    assert_int_equal(w_agent_token_read_stream(in, &token), W_TOKEN_READ_IO);
+    fclose(in);
+
+    assert_null(token);
+}
+
+/* A terminal never produces a token, and blocking on one reads as a hang. Refused before anything
+ * is read from it. */
+static void test_a_terminal_is_refused_before_it_is_read(void **state) {
+    (void) state;
+    char input[] = "TOKEN\n";
+    FILE *in = fmemopen(input, strlen(input), "r");
+    char *token = NULL;
+    w_token_read_status_t status;
+
+    g_stream_is_a_tty = true;
+    status = w_agent_token_read_stream(in, &token);
+    g_stream_is_a_tty = false;
+
+    assert_int_equal(status, W_TOKEN_READ_TTY);
+    assert_int_equal(ftell(in), 0);
+    fclose(in);
+
+    assert_null(token);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_no_token_file_is_noop, setup_test, teardown_test),
@@ -2165,8 +2545,15 @@ int main(void) {
                                         teardown_test),
         cmocka_unit_test_setup_teardown(test_inferred_none_does_not_warn, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_failed_commit_restores_the_previous_key, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_failed_commit_restores_the_previous_key_into_a_bind_mounted_client_keys,
+                                        setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_failed_commit_without_a_previous_key_reports_no_rollback, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_failed_commit_leaves_no_staged_anchor, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_failed_commit_never_restores_a_replaced_backup, setup_test, teardown_test),
+#ifdef __linux__
+        cmocka_unit_test_setup_teardown(test_a_key_backup_that_cannot_be_written_stops_the_enrollment, setup_test,
+                                        teardown_test),
+#endif
         cmocka_unit_test_setup_teardown(test_fresh_enrollment_keys_chown_failure_logs_merror, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_credential_less_token_enrolls_without_error, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_full_happy_path_via_ca_pem, setup_test, teardown_test),
@@ -2202,7 +2589,15 @@ int main(void) {
                                         teardown_test),
         cmocka_unit_test_setup_teardown(test_a_token_that_fills_the_buffer_exactly_is_read_whole, setup_test,
                                         teardown_test),
+        cmocka_unit_test_setup_teardown(test_the_token_file_reader_wipes_its_buffer, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_the_token_stream_reader_wipes_its_buffer, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_embedded_ca_token_larger_than_the_old_cap_is_read, setup_test, teardown_test),
+        cmocka_unit_test(test_a_streamed_token_comes_back_trimmed),
+        cmocka_unit_test(test_an_empty_stream_reads_as_an_empty_token),
+        cmocka_unit_test(test_a_streamed_token_that_fills_the_buffer_exactly_is_read_whole),
+        cmocka_unit_test(test_a_streamed_token_too_long_to_fit_is_refused),
+        cmocka_unit_test(test_an_unreadable_stream_is_reported_as_such),
+        cmocka_unit_test(test_a_terminal_is_refused_before_it_is_read),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);

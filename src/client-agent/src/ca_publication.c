@@ -64,8 +64,9 @@ int64_t w_ca_publication_read(const char *path) {
 
         /* Everything after the digits must be blank: a trailing token means this line was not
          * written by w_ca_publication_render() and reading a publication out of it would be
-         * guessing. */
-        if (errno != 0 || end == value || parsed <= 0 || parsed > INT64_MAX) {
+         * guessing. No upper bound to check: a long long can't exceed INT64_MAX, and strtoll()
+         * reports overflow through errno. */
+        if (errno != 0 || end == value || parsed <= 0) {
             break;
         }
 
@@ -132,6 +133,13 @@ int w_ca_publication_render(int64_t generation, char *out, size_t out_size) {
  * @param out_size Size of @p out.
  * @return An open stream positioned at the start, or NULL with errno set.
  */
+#ifndef WIN32
+/* Creates the staging file, failing rather than following or reusing anything already there. */
+static int w_ca_publication_create_staging(const char *path) {
+    return open(path, O_CREAT | O_EXCL | O_WRONLY | O_NOFOLLOW | O_CLOEXEC, 0640);
+}
+#endif
+
 static FILE *w_ca_publication_open_staging(const char *path, char *out, size_t out_size) {
     int written = snprintf(out, out_size, "%s%s", path, CA_PUBLICATION_TEMP_SUFFIX);
 
@@ -148,43 +156,37 @@ static FILE *w_ca_publication_open_staging(const char *path, char *out, size_t o
     return wfopen(out, "w");
 
 #else
-    int attempt;
+    FILE *fp;
+    int fd = w_ca_publication_create_staging(out);
 
-    for (attempt = 0; attempt < 2; attempt++) {
-        FILE *fp;
-        /* 0640 is what the anchor carries: the runtime user reads the authority it verifies
-         * against and never writes it. Applied with fchmod() rather than left to the create's
-         * mode, which umask() would narrow, and to the fd rather than the name, which nothing
-         * can substitute between the two calls. */
-        const int fd = open(out, O_CREAT | O_EXCL | O_WRONLY | O_NOFOLLOW | O_CLOEXEC, 0640);
-
-        if (fd < 0) {
-            if (errno != EEXIST || attempt != 0) {
-                return NULL;
-            }
-
-            /* Our own leftover, from an install this agent did not live to finish. Removed once,
-             * then the create is retried; ENOENT means someone else removed it first, which is
-             * the outcome this wanted anyway. */
-            if (unlink(out) != 0 && errno != ENOENT) {
-                return NULL;
-            }
-
-            continue;
-        }
-
-        if (fchmod(fd, 0640) != 0 || (fp = fdopen(fd, "w"), fp == NULL)) {
-            const int saved = errno;
-            close(fd);
-            unlink(out);
-            errno = saved;
+    if (fd < 0 && errno == EEXIST) {
+        /* Our own leftover, from an install this agent did not live to finish. Removed once,
+         * then the create is retried; ENOENT means someone else removed it first, which is the
+         * outcome this wanted anyway. */
+        if (unlink(out) != 0 && errno != ENOENT) {
             return NULL;
         }
 
-        return fp;
+        fd = w_ca_publication_create_staging(out);
     }
 
-    return NULL;
+    if (fd < 0) {
+        return NULL;
+    }
+
+    /* 0640 is what the anchor carries: the runtime user reads the authority it verifies against
+     * and never writes it. Applied with fchmod() rather than left to the create's mode, which
+     * umask() would narrow, and to the fd rather than the name, which nothing can substitute
+     * between the two calls. */
+    if (fchmod(fd, 0640) != 0 || (fp = fdopen(fd, "w"), fp == NULL)) {
+        const int saved = errno;
+        close(fd);
+        unlink(out);
+        errno = saved;
+        return NULL;
+    }
+
+    return fp;
 #endif
 }
 

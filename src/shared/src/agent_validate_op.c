@@ -277,58 +277,6 @@ char *getNameById(const char *id)
     return (NULL);
 }
 
-/* ID Search (is valid ID) */
-int IDExist(const char *id, int discard_removed)
-{
-    FILE *fp;
-    char line_read[FILE_SIZE + 1];
-    line_read[FILE_SIZE] = '\0';
-
-    /* ID must not be null */
-    if (!id) {
-        return (0);
-    }
-
-    fp = wfopen(KEYS_FILE, "r");
-
-    if (!fp) {
-        return (0);
-    }
-
-    fseek(fp, 0, SEEK_SET);
-    fgetpos(fp, &fp_pos);
-
-    while (fgets(line_read, FILE_SIZE - 1, fp) != NULL) {
-        char *name;
-
-        if (line_read[0] == '#') {
-            fgetpos(fp, &fp_pos);
-            continue;
-        }
-
-        name = strchr(line_read, ' ');
-        if (name) {
-            *name = '\0';
-            name++;
-
-            if (strcmp(line_read, id) == 0) {
-                if (discard_removed && (*name == '!' || *name == '#')) {
-                    fgetpos(fp, &fp_pos);
-                    continue;
-                }
-
-                fclose(fp);
-                return (1); /*(fp_pos);*/
-            }
-        }
-
-        fgetpos(fp, &fp_pos);
-    }
-
-    fclose(fp);
-    return (0);
-}
-
 /* Validate agent name */
 int OS_IsValidName(const char *u_name)
 {
@@ -479,30 +427,44 @@ char *IPExist(const char *u_ip)
     return NULL;
 }
 
-void OS_AddAgentTimestamp(const char *id, const char *name, const char *ip, time_t now)
+/* Copy every line of the timestamp file but the one for id. Returns 0, or -1 when either stream
+ * failed, which is logged. */
+static int copy_timestamps_without(FILE *fp, FILE *out, const char *id)
 {
-    File file;
-    char timestamp[40];
-    struct tm tm_result = { .tm_sec = 0 };
+    char line[OS_BUFFER_SIZE];
+    char * sep;
 
-    if (TempFile(&file, TIMESTAMP_FILE, 1) < 0) {
-        merror("Couldn't open timestamp file.");
-        return;
+    while (fgets(line, OS_BUFFER_SIZE, fp)) {
+        if (sep = strchr(line, ' '), sep) {
+            *sep = '\0';
+        } else {
+            continue;
+        }
+
+        if (strcmp(id, line) != 0) {
+            *sep = ' ';
+            fputs(line, out);
+        }
     }
 
-    strftime(timestamp, 40, "%Y-%m-%d %H:%M:%S", localtime_r(&now, &tm_result));
-    fprintf(file.fp, "%s %s %s %s\n", id, name, ip, timestamp);
-    fclose(file.fp);
-    OS_MoveFile(file.name, TIMESTAMP_FILE);
-    free(file.name);
+    if (ferror(fp)) {
+        merror(FREAD_ERROR, TIMESTAMP_FILE, errno, strerror(errno));
+        return -1;
+    }
+
+    if (fflush(out) != 0 || ferror(out)) {
+        merror(FWRITE_ERROR, TIMESTAMP_FILE, errno, strerror(errno));
+        return -1;
+    }
+
+    return 0;
 }
 
 void OS_RemoveAgentTimestamp(const char *id)
 {
     FILE *fp;
     File file;
-    char line[OS_BUFFER_SIZE];
-    char * sep;
+    int copied;
 
     fp = wfopen(TIMESTAMP_FILE, "r");
 
@@ -516,33 +478,20 @@ void OS_RemoveAgentTimestamp(const char *id)
         return;
     }
 
-    while (fgets(line, OS_BUFFER_SIZE, fp)) {
-        if (sep = strchr(line, ' '), sep) {
-            *sep = '\0';
-        } else {
-            continue;
-        }
-
-        if (strcmp(id, line) != 0) {
-            *sep = ' ';
-            fputs(line, file.fp);
-        }
-    }
-
+    copied = copy_timestamps_without(fp, file.fp, id);
     fclose(fp);
-    fclose(file.fp);
-    OS_MoveFile(file.name, TIMESTAMP_FILE);
-    free(file.name);
-}
 
-void FormatID(char *id) {
-    int number;
-    char *end;
-
-    if (id && *id) {
-        number = strtol(id, &end, 10);
-
-        if (!*end)
-            sprintf(id, "%03d", number);
+    if (fclose(file.fp) != 0 && copied == 0) {
+        merror(FWRITE_ERROR, TIMESTAMP_FILE, errno, strerror(errno));
+        copied = -1;
     }
+
+    /* Only a complete copy replaces the file: a short read or write would drop every remaining
+     * agent's timestamp. OS_MoveFile() says itself why it failed; on some of its failures the
+     * staged copy is still there, and nothing else would ever remove it. */
+    if (copied != 0 || OS_MoveFile(file.name, TIMESTAMP_FILE) < 0) {
+        unlink(file.name);
+    }
+
+    free(file.name);
 }
