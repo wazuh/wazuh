@@ -8,7 +8,7 @@ The Task Manager stores tasks addressed to agents (agent upgrades, active respon
 
 ## Manager Configuration
 
-**Configuration file:** `/var/wazuh-manager/etc/wazuh-manager.conf`
+**Configuration file:** `/etc/wazuh-manager/wazuh-manager.conf`
 
 **XML Section:** `<task-manager>`
 
@@ -258,7 +258,7 @@ at or above half of it).
 | `wazuh_modules.manager_task_log_daily_rotations` | internal option | 12 | 1–256 | rotated slots per day per file |
 
 **None of the internal options ships in a file.** The manager reads only
-`/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`, which ships comments only — there is no
+`/etc/wazuh-manager/wazuh-manager-internal-options.conf`, which ships comments only — there is no
 manager defaults file to consult. Every default above lives in code, so an option you have not written
 is at the value in this table, and writing one is the only way to change it. All are read once, when
 `wazuh-manager-modulesd` starts.

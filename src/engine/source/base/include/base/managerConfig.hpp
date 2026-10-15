@@ -8,7 +8,8 @@
 #include <utility>
 
 /**
- * @brief Manager configuration (etc/wazuh-manager.conf, strict XML) as seen by the engine in manager mode.
+ * @brief Manager configuration (/etc/wazuh-manager/wazuh-manager.conf, strict XML) as seen by the engine in manager
+ * mode.
  *
  * Thin process-wide wrapper over shared_modules/manager_config: the effective document (schema
  * defaults applied) is loaded once in main() before any thread starts and only read afterwards.
@@ -17,20 +18,38 @@
 namespace base::managerConfig
 {
 
-/// Configuration file, relative to the manager home.
-constexpr std::string_view FILE_RELATIVE_PATH = "etc/wazuh-manager.conf";
+/**
+ * @brief The manager's configuration directory. Fixed and absolute: a custom installation home moves the home
+ * only, never the configuration.
+ *
+ * Defined once per language and kept identical in all of them: here, WAZUH_MANAGER_CONF_DIR in
+ * src/shared/include/defs.h, Utils::MANAGER_CONF_DIR in src/shared_modules/utils/managerConfDir.hpp,
+ * framework/wazuh/core/common.py (CONF_PATH) and src/init/shared.sh (CONF_DIR). The engine keeps its own
+ * copy because it includes neither the C headers nor shared_modules/utils.
+ */
+constexpr std::string_view MANAGER_CONF_DIR = "/etc/wazuh-manager";
+
+/// Configuration file name, inside MANAGER_CONF_DIR.
+constexpr std::string_view FILE_NAME = "wazuh-manager.conf";
+
+/// @return MANAGER_CONF_DIR/FILE_NAME, the file load() and validate() read by default.
+std::filesystem::path filePath();
 
 /**
- * @brief Load <home>/etc/wazuh-manager.conf without checking the files it references (start-up).
+ * @brief Load @p file without checking the files it references (start-up).
+ * @param home Manager home: relative paths inside the document resolve against it.
+ * @param file Configuration file (default: filePath()); tests pass their own.
  * @throws std::runtime_error "<pointer>: <message>" when the file is missing or invalid.
  */
-void load(const std::filesystem::path& home);
+void load(const std::filesystem::path& home, const std::filesystem::path& file = filePath());
 
 /**
- * @brief Validate <home>/etc/wazuh-manager.conf, also checking that the referenced files exist (-t).
+ * @brief Validate @p file, also checking that the referenced files exist (-t).
+ * @param home Manager home: relative paths inside the document resolve against it.
+ * @param file Configuration file (default: filePath()); tests pass their own.
  * @return "<pointer>: <message>" of the first problem, or nullopt when the file is valid.
  */
-std::optional<std::string> validate(const std::filesystem::path& home);
+std::optional<std::string> validate(const std::filesystem::path& home, const std::filesystem::path& file = filePath());
 
 /// @return true after a successful load().
 bool isLoaded();

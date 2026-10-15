@@ -3028,7 +3028,7 @@ components:
           type: string
 
     WazuhManagerConfiguration:
-      description: "Effective manager configuration (etc/wazuh-manager.conf with the schema defaults applied). One property per top-level section of the schema."
+      description: "Effective manager configuration (/etc/wazuh-manager/wazuh-manager.conf with the schema defaults applied). One property per top-level section of the schema."
       type: object
       properties:
         global:
@@ -3287,32 +3287,32 @@ components:
         <tr>
         <td>auth</td>
         <td>auth</td>
-        <td><code>auth</code> section of <code>etc/wazuh-manager.conf</code></td>
+        <td><code>auth</code> section of <code>/etc/wazuh-manager/wazuh-manager.conf</code></td>
         </tr>
         <tr>
         <td>request</td>
         <td>global</td>
-        <td><code>global</code> section of <code>etc/wazuh-manager.conf</code></td>
+        <td><code>global</code> section of <code>/etc/wazuh-manager/wazuh-manager.conf</code></td>
         </tr>
         <tr>
         <td>request</td>
         <td>remote</td>
-        <td><code>remote</code> section of <code>etc/wazuh-manager.conf</code></td>
+        <td><code>remote</code> section of <code>/etc/wazuh-manager/wazuh-manager.conf</code></td>
         </tr>
         <tr>
         <td>request</td>
         <td>internal</td>
-        <td><code>remoted.*</code> keys of <code>etc/wazuh-manager-internal-options.conf</code></td>
+        <td><code>remoted.*</code> keys of <code>/etc/wazuh-manager/wazuh-manager-internal-options.conf</code></td>
         </tr>
         <tr>
         <td>wazuh-manager-db</td>
         <td>internal</td>
-        <td><code>wazuh_db.*</code> keys of <code>etc/wazuh-manager-internal-options.conf</code></td>
+        <td><code>wazuh_db.*</code> keys of <code>/etc/wazuh-manager/wazuh-manager-internal-options.conf</code></td>
         </tr>
         <tr>
         <td>wazuh-manager-db</td>
         <td>wdb</td>
-        <td><code>wdb</code> section of <code>etc/wazuh-manager.conf</code></td>
+        <td><code>wdb</code> section of <code>/etc/wazuh-manager/wazuh-manager.conf</code></td>
         </tr>
         <tr>
         <td>wmodules</td>
@@ -3816,7 +3816,7 @@ components:
     section:
       in: query
       name: section
-      description: "Indicates the manager configuration section (a top-level key of etc/wazuh-manager.conf)"
+      description: "Indicates the manager configuration section (a top-level key of /etc/wazuh-manager/wazuh-manager.conf)"
       schema:
         type: string
         enum:
@@ -6675,10 +6675,10 @@ paths:
                           request_timeout: 10
                         https:
                           enabled: true
-                          key: "/var/wazuh-manager/etc/certs/apid-key.pem"
-                          cert: "/var/wazuh-manager/etc/certs/apid.pem"
+                          key: "/etc/wazuh-manager/certs/apid-key.pem"
+                          cert: "/etc/wazuh-manager/certs/apid.pem"
                           use_ca: false
-                          ca: "/var/wazuh-manager/etc/certs/root-ca.pem"
+                          ca: "/etc/wazuh-manager/certs/root-ca.pem"
                           ssl_ciphers: ""
                         logs:
                           level: info
@@ -6715,10 +6715,10 @@ paths:
                           request_timeout: 10
                         https:
                           enabled: true
-                          key: "/var/wazuh-manager/etc/certs/apid-key.pem"
-                          cert: "/var/wazuh-manager/etc/certs/apid.pem"
+                          key: "/etc/wazuh-manager/certs/apid-key.pem"
+                          cert: "/etc/wazuh-manager/certs/apid.pem"
                           use_ca: false
-                          ca: "/var/wazuh-manager/etc/certs/root-ca.pem"
+                          ca: "/etc/wazuh-manager/certs/root-ca.pem"
                           ssl_ciphers: ""
                         logs:
                           level: info
@@ -6754,10 +6754,10 @@ paths:
                           request_timeout: 10
                         https:
                           enabled: true
-                          key: "/var/wazuh-manager/etc/certs/apid-key.pem"
-                          cert: "/var/wazuh-manager/etc/certs/apid.pem"
+                          key: "/etc/wazuh-manager/certs/apid-key.pem"
+                          cert: "/etc/wazuh-manager/certs/apid.pem"
                           use_ca: false
-                          ca: "/var/wazuh-manager/etc/certs/root-ca.pem"
+                          ca: "/etc/wazuh-manager/certs/root-ca.pem"
                           ssl_ciphers: ""
                         logs:
                           level: info
@@ -6945,7 +6945,7 @@ paths:
       tags:
         - Cluster
       summary: "Get node config"
-      description: "Return the manager configuration (etc/wazuh-manager.conf) used in node {node_id}: the effective document
+      description: "Return the manager configuration (/etc/wazuh-manager/wazuh-manager.conf) used in node {node_id}: the effective document
       (schema defaults applied) as JSON, or the file as XML text with 'raw'. The 'section' and 'field' parameters will be
       ignored if 'raw' parameter is provided."
       operationId: api.controllers.cluster_controller.get_configuration_node
@@ -6993,10 +6993,10 @@ paths:
                           port: 1517
                           bind_addr: 0.0.0.0
                           global_prefix: /wazuh-manager/
-                          certificate: etc/certs/remoted.pem
-                          key: etc/certs/remoted-key.pem
+                          certificate: /etc/wazuh-manager/certs/remoted.pem
+                          key: /etc/wazuh-manager/certs/remoted-key.pem
                           ca: ''
-                          ca_certificate: etc/certs/root-ca.pem
+                          ca_certificate: /etc/wazuh-manager/certs/root-ca.pem
                         agents:
                           allow_higher_versions: false
                       cluster:
@@ -7030,7 +7030,7 @@ paths:
       tags:
         - Cluster
       summary: "Update node configuration"
-      description: "Replace the manager configuration (etc/wazuh-manager.conf) of the given node with the XML text contained in the API request. The text is validated (syntax, schema, protected sections, secret options) before the file is written. A cluster key sent back masked (`*****`), as this API returns it to a caller without `cluster:read_secrets`, keeps the node's current key; changing the key to any other value requires `cluster:read_secrets` over that node and is refused with error 1132 otherwise. So is any change to the indexer section (hosts, TLS): every indexer host receives the manager's indexer credential."
+      description: "Replace the manager configuration (/etc/wazuh-manager/wazuh-manager.conf) of the given node with the XML text contained in the API request. The text is validated (syntax, schema, protected sections, secret options) before the file is written. A cluster key sent back masked (`*****`), as this API returns it to a caller without `cluster:read_secrets`, keeps the node's current key; changing the key to any other value requires `cluster:read_secrets` over that node and is refused with error 1132 otherwise. So is any change to the indexer section (hosts, TLS): every indexer host receives the manager's indexer credential."
       operationId: api.controllers.cluster_controller.update_configuration
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:update_config'
@@ -7040,7 +7040,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/node_id'
       requestBody:
-        description: "Content of etc/wazuh-manager.conf to be uploaded (XML text)"
+        description: "Content of /etc/wazuh-manager/wazuh-manager.conf to be uploaded (XML text)"
         required: true
         content:
           application/xml:
@@ -7303,11 +7303,11 @@ paths:
                         seconds_until_expiry: 9295200
                         fingerprint: x509-sha256:3f9c1e5a0b7d2c4e6f8a9b0c1d2e3f405162738495a6b7c8d9e0f1a2b3c4d5e6
                         serial: 0x1a2b3c4d
-                        path: etc/certs/remoted.pem
+                        path: /etc/wazuh-manager/certs/remoted.pem
                         loaded_at: 2026-09-14T08:12:31Z
                         loaded_at_ts: 1789373551
                       ca_bundle:
-                        path: etc/certs/root-ca.pem
+                        path: /etc/wazuh-manager/certs/root-ca.pem
                         publication: 0
                         publication_vouched: false
                         content_sha256: b7e1a2c3d4e5f60718293a4b5c6d7e8f9011223344556677889900aabbccddee
@@ -8531,6 +8531,8 @@ paths:
       summary: 'List RBAC actions'
       description: 'Get all RBAC actions, including the potential related resources and endpoints.'
       operationId: api.controllers.security_controller.get_rbac_actions
+      x-rbac-actions:
+        - $ref: "#/x-rbac-catalog/actions/security:read_config"
       parameters:
         - $ref: '#/components/parameters/endpoint'
         - $ref: '#/components/parameters/pretty'
@@ -8576,6 +8578,8 @@ paths:
       summary: 'List RBAC resources'
       description: 'This method should be called to get all current defined RBAC resources.'
       operationId: api.controllers.security_controller.get_rbac_resources
+      x-rbac-actions:
+        - $ref: "#/x-rbac-catalog/actions/security:read_config"
       parameters:
         - $ref: '#/components/parameters/resource_list'
         - $ref: '#/components/parameters/pretty'

@@ -34,7 +34,7 @@ sudo ./prepare_manager.sh                                    # one-time: reachab
 whose `cluster_name` is not its own, and the scenarios only ship a placeholder, so getting this wrong
 means 100 % `403` and a run that measures nothing. Rather than make every caller repeat it,
 `run_benchmark.sh` reads `<cluster><name>` from
-`/var/wazuh-manager/etc/wazuh-manager.conf` — `--conf` points it elsewhere — and prints which value it
+`/etc/wazuh-manager/wazuh-manager.conf` — `--conf` points it elsewhere — and prints which value it
 used. `--cluster` overrides it. There is no cluster **node** to send: the `Start` table of
 `inventorySync.fbs` has no `cluster_node` field any more, so there is no `--cluster-node` and
 nothing to detect.
@@ -232,7 +232,7 @@ nothing, and the third removes a rate ceiling deliberately:
    limiter itself; the sender counts a `429` as an ordinary outcome either way (`cacerts_429`,
    `enroll_https_429`, assertable as `s429`).
 
-`<use_password>` and `etc/authd.pass` are left exactly as installed. That is the point of issue
+`<use_password>` and `/etc/wazuh-manager/authd.pass` are left exactly as installed. That is the point of issue
 #39054: benchmarking used to require `use_password=no`, a configuration no production manager has,
 and a config flip the script had to apply and undo.
 
@@ -249,7 +249,7 @@ follows `<remote><legacy><enabled>` when it is not set, and the installer enable
 block. That protocol carries no credential, so it needs the old flip, which is now explicit:
 
 ```bash
-sudo ./prepare_manager.sh --open-1515      # ALSO sets use_password=no and removes etc/authd.pass
+sudo ./prepare_manager.sh --open-1515      # ALSO sets use_password=no and removes /etc/wazuh-manager/authd.pass
 ./run_benchmark.sh --scenario scenarios/real_syscollector_debian.json --mode agent --bootstrap 1515
 ```
 

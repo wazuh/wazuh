@@ -9,7 +9,7 @@ For the daemon overview, socket protocol and database tables, see [Wazuh DB](REA
 
 ## Manager Configuration
 
-**Configuration file:** `/var/wazuh-manager/etc/wazuh-manager.conf`
+**Configuration file:** `/etc/wazuh-manager/wazuh-manager.conf`
 
 **XML Section:** `<wdb>`
 
@@ -64,7 +64,7 @@ To see the effective values:
 
 ## Internal Options
 
-**Configuration file:** `/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`
+**Configuration file:** `/etc/wazuh-manager/wazuh-manager-internal-options.conf`
 
 The file ships with comments only; these keys take their defaults until set. Each value must be a plain
 non-negative integer inside its range: anything else makes `wazuh-manager-db` exit at start with
@@ -180,6 +180,8 @@ These examples show only the `<wdb>` section; a real `wazuh-manager.conf` also c
 | MITRE database | `/var/wazuh-manager/var/db/mitre.db` |
 | Backups | `/var/wazuh-manager/backup/db/` |
 
+SQLite's temporary files (large sorts, `VACUUM`) go to the installation directory's `tmp/` (`/var/wazuh-manager/tmp`): `wazuh-manager-db` sets `SQLITE_TMPDIR` to it at startup. `wazuh-manager-control start` empties that directory before starting the daemons.
+
 ---
 
 ## Backup Management
@@ -287,5 +289,5 @@ of the `wdb` section the daemon would refuse, a zero `wdb.backup.global.interval
 
 - [Wazuh DB](README.md) - Daemon overview, socket protocol, database tables
 - [Wazuh DB API Reference](api-reference.md) - Routes on `wdb-http.sock`
-- [Database Sync](../database-sync/README.md) - The modulesd module that keeps `global.db` in step with `client.keys` and `etc/shared/`
+- [Database Sync](../database-sync/README.md) - The modulesd module that keeps `global.db` in step with `client.keys` and `/etc/wazuh-manager/shared/`
 - [Manager Configuration Reference](../../configuration/manager/README.md) - All manager configuration options

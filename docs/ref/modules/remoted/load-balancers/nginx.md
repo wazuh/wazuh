@@ -301,7 +301,7 @@ curl -k https://wazuh-manager.example.com:8443/wazuh-manager/
 #    -> {"status":"ok","module":"remoted"}
 
 # 4. The manager's certificate has a usable SAN (the field hostname verification reads)
-openssl x509 -in /var/wazuh-manager/etc/certs/remoted.pem -noout -ext subjectAltName
+openssl x509 -in /etc/wazuh-manager/certs/remoted.pem -noout -ext subjectAltName
 #    (that is the default path; if <certificate> is set, read the file it names)
 ```
 

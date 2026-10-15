@@ -7,7 +7,7 @@ It serves two channels at once, and they share almost nothing:
 - The **HTTPS agent API** on port `1517` — the transport in 5.0. A 5.x agent enrolls, reports and receives work over it exclusively.
 - The **legacy AES-encrypted TCP/UDP channel** on port `1514` — kept only to serve 4.x agents. The
   schema leaves it off when `<remote><legacy>` is absent, but the installer writes
-  `<legacy><enabled>yes</enabled>` into `etc/wazuh-manager.conf`, so an installed manager listens on
+  `<legacy><enabled>yes</enabled>` into `/etc/wazuh-manager/wazuh-manager.conf`, so an installed manager listens on
   `1514` until an operator sets it to `no` (see [`legacy.enabled`](configuration.md#legacyenabled)).
 
 Every HTTPS route is served under the [`https.global_prefix`](configuration.md#httpsglobal_prefix),
@@ -61,7 +61,7 @@ agent-facing HTTPS endpoint — neither is ever exposed on the public listener.
 | `GET /` | `200` `{"status":"ok","module":"remoted_module"}` |
 | `GET /metrics` | `200` — JSON dump of every metric family the module keeps (request outcomes and latency per endpoint, auth-rejection and downstream-failure taxonomies, backpressure, keystore health, ...) — see [Metrics](metrics.md) for the full catalog and the settings each metric relates to |
 | `GET /tls` | `200` — validity of the TLS material served to agents: the listener certificate (dates, `x509-sha256` identity, `loaded_at`) and every certificate of the CA bundle `GET /cacerts` hands out, with whether it signs the served one. No thresholds. `503` while the HTTPS listener is not up. Field by field in [Certificate validity](certificate-validity.md); the Server API serves it per node as `GET /cluster/{node_id}/daemons/remoted/tls` |
-| `GET /status` | `200` — readiness, not bare liveness: `ready` reflects whether an enrollment password key is currently available, when enrollment is administratively enabled and Password-mode enrollment is on; it is `true` whenever remoted answers at all if either flag is off. `{"ready":true,"enrollment_password":{"ready":true},"keystore":{"readable":true,"agents_loaded":12,"entries_skipped":0},"enrollment_tokens":{"loaded":3,"last_reload_ok":true}}` (`enrollment_password` is omitted entirely unless both flags are on; `enrollment_tokens` is omitted when enrollment is off). `keystore` reports whether `client.keys` last reloaded successfully — informational only, it never gates `ready`, since remoted cannot tell an empty-but-fine `client.keys` apart from a stale one still serving the old table. `enrollment_tokens` does the same for the replica of `etc/enrollment_tokens.json` that verifies enrollment-token bearers (`loaded` = credential-bearing tokens in the replica; an absent file is a valid empty replica): informational, never gates `ready`. `503` before the module's keystore is up. `GET /cluster/{node_id}/status` embeds `ready`, `keystore` and `enrollment_password` from it under `wazuh-manager-remoted` |
+| `GET /status` | `200` — readiness, not bare liveness: `ready` reflects whether an enrollment password key is currently available, when enrollment is administratively enabled and Password-mode enrollment is on; it is `true` whenever remoted answers at all if either flag is off. `{"ready":true,"enrollment_password":{"ready":true},"keystore":{"readable":true,"agents_loaded":12,"entries_skipped":0},"enrollment_tokens":{"loaded":3,"last_reload_ok":true}}` (`enrollment_password` is omitted entirely unless both flags are on; `enrollment_tokens` is omitted when enrollment is off). `keystore` reports whether `client.keys` last reloaded successfully — informational only, it never gates `ready`, since remoted cannot tell an empty-but-fine `client.keys` apart from a stale one still serving the old table. `enrollment_tokens` does the same for the replica of `/etc/wazuh-manager/enrollment_tokens.json` that verifies enrollment-token bearers (`loaded` = credential-bearing tokens in the replica; an absent file is a valid empty replica): informational, never gates `ready`. `503` before the module's keystore is up. `GET /cluster/{node_id}/status` embeds `ready`, `keystore` and `enrollment_password` from it under `wazuh-manager-remoted` |
 
 ```bash
 curl --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock http://localhost/metrics
@@ -78,7 +78,7 @@ plane failing to come up is not the same as remoted being unready.
 A caller that needs Password-mode enrollment to be usable — not just remoted to be alive — should
 poll `/status` (or `/cluster/{node_id}/status`) until `ready: true` with a bounded timeout before
 proceeding, rather than assuming readiness the moment the process starts. On a joining worker,
-`ready` turns `true` once the cluster's `etc/` file group (`client.keys`, `authd.pass`,
+`ready` turns `true` once the cluster's `/etc/wazuh-manager` file group (`client.keys`, `authd.pass`,
 `enrollment_tokens.json`) has been synchronized from the master.
 
 That is a first-join effect of those files travelling in the same synchronization group, not a

@@ -24,6 +24,106 @@
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/validate_op_wrappers.h"
 
+/* Exported only under WAZUH_UNIT_TESTING (enrollment.c's STATIC). */
+int w_enrollment_store_key_entry(const char *line);
+
+/* ---- hooks on the staged client.keys ----
+ *
+ * The filesystem stays real. These record the name TempFile() chose and count chmod() calls on it
+ * and, when a test asks, make a step fail the way the disk or the directory could. */
+
+static char g_staged_name[PATH_MAX] = {0};
+static int g_staged_chmods = 0;
+static bool g_staged_disk_full = false;
+static int g_staged_fd = -1;
+static bool g_fail_staged_rename = false;
+static bool g_busy_staged_rename = false;
+
+#define SWAP_TARGET "etc/swap-target"
+#define SWAP_TARGET_CONTENT "not client.keys\n"
+
+int __real_TempFile(File *file, const char *source, int copy);
+
+int __wrap_TempFile(File *file, const char *source, int copy) {
+    int result = __real_TempFile(file, source, copy);
+
+    if (result == 0) {
+        snprintf(g_staged_name, sizeof(g_staged_name), "%s", file->name);
+        g_staged_fd = fileno(file->fp);
+    }
+
+    return result;
+}
+
+/* The disk fills once the staged copy has its mode: every write through its stream fails from
+ * then on. After the real fchmod(), which would otherwise land on /dev/full instead. */
+int __real_fchmod(int fd, mode_t mode);
+
+int __wrap_fchmod(int fd, mode_t mode) {
+    int result = __real_fchmod(fd, mode);
+
+    if (g_staged_disk_full && fd == g_staged_fd) {
+        int full = open("/dev/full", O_WRONLY);
+
+        assert_true(full >= 0);
+        assert_int_equal(dup2(full, fd), fd);
+        close(full);
+    }
+
+    return result;
+}
+
+int __real_chmod(const char *path, mode_t mode);
+
+int __wrap_chmod(const char *path, mode_t mode) {
+    if (g_staged_name[0] != '\0' && strcmp(path, g_staged_name) == 0) {
+        g_staged_chmods++;
+    }
+
+    return __real_chmod(path, mode);
+}
+
+/* Makes the move of the staged copy fail: with a directory at its name, pointing the destination's
+ * name at SWAP_TARGET, which has to come through untouched; or with EBUSY, as when client.keys is
+ * a single-file bind mount. */
+int __real_rename(const char *oldpath, const char *newpath);
+
+int __wrap_rename(const char *oldpath, const char *newpath) {
+    if (g_busy_staged_rename && strcmp(oldpath, g_staged_name) == 0) {
+        errno = EBUSY;
+        return -1;
+    }
+
+    if (g_fail_staged_rename && strcmp(oldpath, g_staged_name) == 0) {
+        g_fail_staged_rename = false;
+        assert_int_equal(unlink(oldpath), 0);
+        assert_int_equal(mkdir(oldpath, 0700), 0);
+        unlink(newpath);
+        assert_int_equal(symlink("swap-target", newpath), 0);
+    }
+
+    return __real_rename(oldpath, newpath);
+}
+
+static void reset_staged_hooks(void) {
+    if (g_staged_name[0] != '\0') {
+        rmdir(g_staged_name);
+    }
+
+    unlink(SWAP_TARGET);
+    g_staged_name[0] = '\0';
+    g_staged_chmods = 0;
+    g_staged_disk_full = false;
+    g_staged_fd = -1;
+    g_fail_staged_rename = false;
+    g_busy_staged_rename = false;
+}
+
+/* For expect_check() on a log line: whether it carries @p check_data, the part a test pins */
+static int log_line_contains(const LargestIntegralType value, const LargestIntegralType check_data) {
+    return strstr((const char *) value, (const char *) check_data) != NULL;
+}
+
 /* setup/teardown */
 
 static int setup_test(void **state) {
@@ -553,6 +653,19 @@ static void test_process_response_409_is_duplicate(void **state) {
     assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_ERR_DUPLICATE);
 }
 
+/* A 429 is the manager's node-wide enrollment rate limit, not a verdict on this request: retryable
+ * (W_ENROLL_ERR_SERVER, which both enrollment loops ramp on), and named at info level so a mass
+ * enrollment does not read as a failure of each agent. */
+static void test_process_response_429_is_rate_limited_and_retryable(void **state) {
+    (void)state;
+    hc_enroll_result_t result = {0};
+    result.http_code = 429;
+
+    expect_string(__wrap__minfo, formatted_msg, "Enrollment is being rate-limited by the manager; retrying.");
+
+    assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_ERR_SERVER);
+}
+
 static void test_process_response_unrecognized_status_is_server_error(void **state) {
     (void)state;
     hc_enroll_result_t result = {0};
@@ -595,6 +708,7 @@ static void test_process_response_200_missing_field_is_server_error(void **state
 #define VALID_SECRET "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 
 static void remove_200_paths(void) {
+    reset_staged_hooks();
     unlink(KEYS_FILE);
     unlink(AGENT_REENROLL_SECRET);
     unlink(AGENT_ENROLLMENT_TOKEN_FILE);
@@ -987,6 +1101,91 @@ static void test_policy_treats_an_empty_password_file_as_no_credential(void **st
     unlink(AUTHD_PASS);
 }
 
+/* ---- w_enrollment_store_key_entry(): the staged client.keys ---- */
+
+#define STORED_KEY_LINE "001 test-agent any 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+#define PREVIOUS_KEY_LINE "007 old-agent any fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"
+
+/* The staged copy gets client.keys's mode through the descriptor TempFile() returned, never by
+ * name: by then the name can point at another file. */
+static void test_store_key_entry_sets_the_mode_through_the_descriptor(void **state) {
+    (void)state;
+    struct stat info;
+
+    ignore_debug_lines();
+
+    assert_int_equal(w_enrollment_store_key_entry(STORED_KEY_LINE), 0);
+
+    assert_int_equal(g_staged_chmods, 0);
+    assert_int_equal(stat(KEYS_FILE, &info), 0);
+    assert_int_equal(info.st_mode & 0777, 0640);
+    assert_string_equal(read_file_line(KEYS_FILE), STORED_KEY_LINE "\n");
+}
+
+/* A staged copy that can be neither moved nor copied, here because its name no longer holds a
+ * regular file, is a failed store, and nothing goes through client.keys' name: whatever that name
+ * points at comes through untouched. */
+static void test_store_key_entry_never_writes_through_a_swapped_name(void **state) {
+    (void)state;
+
+    write_text_file(KEYS_FILE, PREVIOUS_KEY_LINE "\n");
+    write_text_file(SWAP_TARGET, SWAP_TARGET_CONTENT);
+    g_fail_staged_rename = true;
+
+    /* Allowed, not required: a regression should fail on the target below, not on a log line. */
+    expect_any_count(__wrap__mdebug1, formatted_msg, -2);
+    expect_any_count(__wrap__merror, formatted_msg, -2);
+    expect_any_count(__wrap__mferror, formatted_msg, -2);
+
+    assert_int_equal(w_enrollment_store_key_entry(STORED_KEY_LINE), -1);
+
+    assert_false(g_fail_staged_rename);
+    assert_string_equal(read_file_line(SWAP_TARGET), SWAP_TARGET_CONTENT);
+}
+
+/* A client.keys that rename() can't replace, as when it is a single-file bind mount, still gets the
+ * key: copied into it, by a copy that never follows a link at either name. */
+static void test_store_key_entry_copies_into_a_client_keys_rename_cannot_replace(void **state) {
+    char content[128] = {0};
+    int held;
+    (void)state;
+
+    write_text_file(KEYS_FILE, PREVIOUS_KEY_LINE "\n");
+    /* The file a bind mount pins: the key has to land in it, not in one renamed over its name */
+    held = open(KEYS_FILE, O_RDONLY);
+    assert_int_not_equal(held, -1);
+    g_busy_staged_rename = true;
+
+    expect_any(__wrap__mdebug1, formatted_msg);
+
+    assert_int_equal(w_enrollment_store_key_entry(STORED_KEY_LINE), 0);
+
+    assert_true(pread(held, content, sizeof(content) - 1, 0) > 0);
+    close(held);
+    assert_string_equal(content, STORED_KEY_LINE "\n");
+    assert_string_equal(read_file_line(KEYS_FILE), STORED_KEY_LINE "\n");
+    assert_int_equal(IsFile(g_staged_name), -1);
+}
+
+#ifdef __linux__
+/* A key that could not be written in full is not installed: client.keys keeps the key it had. */
+static void test_store_key_entry_keeps_the_previous_key_when_the_write_fails(void **state) {
+    (void)state;
+
+    write_text_file(KEYS_FILE, PREVIOUS_KEY_LINE "\n");
+    g_staged_disk_full = true;
+
+    /* With the errno of the write that failed */
+    expect_check(__wrap__merror, formatted_msg, log_line_contains,
+                 (LargestIntegralType)(uintptr_t)"[(28)-(No space left on device)]");
+
+    assert_int_equal(w_enrollment_store_key_entry(STORED_KEY_LINE), -1);
+
+    assert_string_equal(read_file_line(KEYS_FILE), PREVIOUS_KEY_LINE "\n");
+    assert_int_equal(IsFile(g_staged_name), -1);
+}
+#endif
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_build_request_minimal_body, setup_test, teardown_test),
@@ -1015,6 +1214,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_process_response_403_is_disabled_not_an_error, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_404_names_the_configured_path, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_409_is_duplicate, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_process_response_429_is_rate_limited_and_retryable, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_unrecognized_status_is_server_error, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_200_with_malformed_json_is_server_error, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_200_missing_field_is_server_error, setup_test, teardown_test),
@@ -1034,6 +1234,16 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_policy_falls_back_to_an_unconsumed_enrollment_token, setup_200_test, teardown_200_test),
         cmocka_unit_test_setup_teardown(test_policy_retries_credential_less_when_nothing_is_configured, setup_200_test, teardown_200_test),
         cmocka_unit_test_setup_teardown(test_policy_treats_an_empty_password_file_as_no_credential, setup_200_test, teardown_200_test),
+        cmocka_unit_test_setup_teardown(test_store_key_entry_sets_the_mode_through_the_descriptor, setup_200_test,
+                                        teardown_200_test),
+        cmocka_unit_test_setup_teardown(test_store_key_entry_never_writes_through_a_swapped_name, setup_200_test,
+                                        teardown_200_test),
+        cmocka_unit_test_setup_teardown(test_store_key_entry_copies_into_a_client_keys_rename_cannot_replace,
+                                        setup_200_test, teardown_200_test),
+#ifdef __linux__
+        cmocka_unit_test_setup_teardown(test_store_key_entry_keeps_the_previous_key_when_the_write_fails,
+                                        setup_200_test, teardown_200_test),
+#endif
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

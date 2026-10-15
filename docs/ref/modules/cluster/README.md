@@ -23,7 +23,7 @@ A Wazuh server cluster can have only one master node. During synchronization, da
 
 > **Note**
 > Configuration changes applied to the file
-> `/var/wazuh-manager/etc/wazuh-manager.conf`
+> `/etc/wazuh-manager/wazuh-manager.conf`
 > on the master node are **not synchronized** to worker nodes (the file is on the cluster's
 > exclusion list). You must replicate these changes manually and restart the nodes for them to
 > take effect.
@@ -61,12 +61,12 @@ the master to the workers:
 
 | Path | Files | Mode written on the worker |
 |---|---|---|
-| `etc/` | `client.keys`, `authd.pass`, `enrollment_tokens.json` | `0640` |
-| `etc/shared/` | everything, recursively (group configuration) | `0660` |
+| `/etc/wazuh-manager/` | `client.keys`, `authd.pass`, `enrollment_tokens.json` | `0640` |
+| `/etc/wazuh-manager/shared/` | everything, recursively (group configuration) | `0660` |
 | `var/multigroups/` | `merged.mg`, recursively | `0660` |
 
 `wazuh-manager.conf` is excluded, and so are files ending in `~`, `.tmp`, `.lock` or `.swp`. Nothing
-else is synchronized: not `etc/certs/`, not the RBAC database, not `var/upgrade/`, not
+else is synchronized: not `/etc/wazuh-manager/certs/`, not the RBAC database, not `var/upgrade/`, not
 `queue/tasks/`. What that means for agents reaching the cluster through a load balancer is
 described in [What the cluster replicates, and what it does not](lb.md#4-what-the-cluster-replicates-and-what-it-does-not).
 
@@ -143,7 +143,7 @@ command-line options, for running it by hand:
 | `-V` | Print the version and exit |
 | `-r` | Run as root instead of dropping privileges to `wazuh-manager` |
 | `-t` | Read and check the cluster configuration, then exit (`0` when valid, `1` otherwise) |
-| `-c <file>` | Configuration file to read (default `/var/wazuh-manager/etc/wazuh-manager.conf`) |
+| `-c <file>` | Configuration file to read (default `/etc/wazuh-manager/wazuh-manager.conf`) |
 
 The debug level can also be set with the `wazuh_clusterd.debug` internal option (see
 [Internal Options](configuration.md#internal-options)); when it is non-zero it takes precedence over

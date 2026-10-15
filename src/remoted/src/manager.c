@@ -1566,7 +1566,7 @@ void *wait_for_msgs(__attribute__((unused)) void *none)
 
             /* If the agent has multi group, change the shared path */
             char *multi_group = strchr(group,MULTIGROUP_SEPARATOR);
-            char sharedcfg_dir[128] = {0};
+            char sharedcfg_dir[PATH_MAX + 1] = {0};
 
             if (multi_group) {
                 strcpy(sharedcfg_dir, MULTIGROUPS_DIR);

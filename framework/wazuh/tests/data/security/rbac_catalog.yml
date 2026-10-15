@@ -540,6 +540,8 @@ get_rbac_actions:
             - "*:*:*"
           effect: allow
         related_endpoints:
+          - GET /security/actions
+          - GET /security/resources
           - GET /security/config
       security:update_config:
         description: Update current system security configuration

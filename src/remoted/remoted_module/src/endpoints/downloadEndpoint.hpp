@@ -12,6 +12,7 @@
 #ifndef _REMOTED_ENDPOINTS_DOWNLOAD_ENDPOINT_HPP
 #define _REMOTED_ENDPOINTS_DOWNLOAD_ENDPOINT_HPP
 
+#include "common/installPaths.hpp"     // remoted::paths
 #include "downloadMetrics.hpp"         // DownloadMetrics
 #include "endpoint.hpp"                // AuthenticatedHandler
 #include "http_server/IHttpServer.hpp" // HttpResponse, IByteSource
@@ -69,14 +70,14 @@ namespace remoted::endpoints::download
      * @brief Base directories a resource may be served from.
      *
      * A plain value rather than an interface: the only thing a test needs to vary is where the
-     * files live. Defaults are the production post-chroot locations (remoted chroots to
-     * /var/ossec): `SHAREDCFG_DIR`, `MULTIGROUPS_DIR` and `WM_UPGRADE_WPK_DEFAULT_PATH`.
+     * files live. Defaults are the production locations (remoted::paths), relative to the installation
+     * directory that is remoted's cwd: `SHAREDCFG_DIR`, `MULTIGROUPS_DIR` and `LEGACY_TASK_WPK_DEFAULT_PATH`.
      */
     struct ResourcePaths
     {
-        std::string sharedDir {"/etc/shared"};
-        std::string multigroupsDir {"/var/multigroups"};
-        std::string wpkDir {"/var/upgrade"};
+        std::string sharedDir {paths::kSharedDir};
+        std::string multigroupsDir {paths::kMultigroupsDir};
+        std::string wpkDir {paths::kWpkDir};
     };
 
     /**
@@ -158,7 +159,7 @@ namespace remoted::endpoints::download
     /// @brief Outcome of resolving a request to a concrete file.
     struct LocateResult
     {
-        std::string path; ///< Absolute path (post-chroot); empty unless error == None.
+        std::string path; ///< Under one of the ResourcePaths directories; empty unless error == None.
         LocateError error {LocateError::None};
     };
 
@@ -190,7 +191,7 @@ namespace remoted::endpoints::download
      *                      would therefore be followed.
      *
      * That last case is not agent-exploitable -- planting it requires write access to the manager's
-     * own etc/shared, at which point the configuration being served is already the attacker's --
+     * own /etc/wazuh-manager/shared, at which point the configuration being served is already the attacker's --
      * so it is called out as a limit of the mechanism rather than treated as a hole. Adding a
      * realpath() containment check is what would close it if that assumption ever weakens.
      *

@@ -219,6 +219,8 @@ promoteUnsyncedItems(index, tableName, availableSlots, reason);
 - Items are promoted in deterministic alphabetical order (COLLATE NOCASE)
 - Uses primary key fields for stable ordering (e.g., packages ordered by `name, type`)
 - Ensures consistent behavior across agent restarts
+- Decides which pending items fill free slots and which synchronized items a lowered limit returns to `sync=0` (the end of that order). Items already at `sync=1` are never displaced by new ones
+- Items a local user can create count toward the limit, such as per-user uninstall entries under `HKEY_USERS` on Windows and user-level PyPI and npm packages. A user who adds more items than the limit (`syscollector.<type>_limit`, `30000` per inventory type by default) can keep items collected later, or after the local database is rebuilt, out of the indexer
 
 **Dynamic Limit Updates:**
 - Limits can be updated during agent reconnection
@@ -496,7 +498,7 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock) {
 }
 ```
 
-The wodle's sync thread (`wm_sync_module`) runs the synchronization cycle and, after each successful one, the recovery process. The wait before each cycle restarts with every agent start, so the thread also asks whether the agent ID changed since the last full synchronization (for example after the agent was removed and re-enrolled): at startup, and every 30 seconds while it waits. On a change it runs its cycle at once, and the recovery process resends every table under the new ID. While that resend keeps failing (a failed synchronization counts, since the resend only follows a successful one), the 30 seconds double on each attempt, up to the synchronization interval; a cycle skipped because a flush was sending keeps the period.
+The wodle's sync thread (`wm_sync_module`) runs the synchronization cycle and, after each successful one, the recovery process. The wait before each cycle restarts with every agent start, so the thread also asks whether the agent ID changed since the last full synchronization (for example after the agent was removed and re-enrolled): at startup, and every 30 seconds while it waits. On a change it runs its cycle at once, and the recovery process resends every table under the new ID. Each table records the ID it was resent under, so a resend cut short by a restart or by a failed table resumes with the tables still pending instead of clearing and resending the ones already done; the vulnerability detection tables are still resent together, as one session. While that resend keeps failing (a failed synchronization counts, since the resend only follows a successful one), the 30 seconds double on each attempt, up to the synchronization interval; a cycle skipped because a flush was sending keeps the period.
 
 ### Manager Response Handling
 

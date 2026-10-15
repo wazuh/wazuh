@@ -55,11 +55,12 @@ is for when it is somewhere else.
 |---|---|---|---|
 | `--source-dir DIR` | `export` | `/var/ossec` | The 4.x installation to read |
 | `--target-dir DIR` | `import`, `check` | `/var/wazuh-manager` | The 5.0 installation |
+| `--target-conf-dir DIR` | `import`, `check` | `/etc/wazuh-manager` | The 5.0 configuration directory (outside the installation): where `authd.pass` is installed and `certs/root-ca.pem` is read |
 | `--api-url URL` | `import`, `check` | `https://localhost:55000` | The manager's Server API |
 | `--api-user USER` | `import`, `check` | `wazuh` | The API user |
 | `--api-password-file FILE` | `import`, `check` | — | File holding the API password, `-` for standard input |
-| `--api-ca FILE` | `import`, `check` | the target's `etc/certs/root-ca.pem`, for a loopback `--api-url` only | CA bundle to verify the API certificate with; required for any other `--api-url` |
-| `--with-password` | `export`, `import` | off | Carry `etc/authd.pass`, the shared enrollment password |
+| `--api-ca FILE` | `import`, `check` | the target's `certs/root-ca.pem` under `--target-conf-dir`, for a loopback `--api-url` only | CA bundle to verify the API certificate with; required for any other `--api-url` |
+| `--with-password` | `export`, `import` | off | Carry the shared enrollment password, from the source's `etc/authd.pass` to `authd.pass` under `--target-conf-dir` |
 | `--with-rbac` | `export`, `import` | off | Carry the API users, roles and policies |
 | `--dry-run` | `export`, `import` | off | Report what would happen and change nothing |
 | `--force` | `export`, `import` | off | Proceed past this tool's safety checks |
@@ -76,7 +77,7 @@ itself reads it.
 
 The connection to the API is always verified, chain and host name, because it carries that password
 and every agent key. Against a loopback `--api-url` the tool trusts the CA the manager issued
-`apid.pem` from at install, `etc/certs/root-ca.pem` under `--target-dir`; any other address needs
+`apid.pem` from at install, `certs/root-ca.pem` under `--target-conf-dir`; any other address needs
 `--api-ca`, and plain `http://` is accepted only on loopback.
 
 One consequence of `--with-rbac` is worth knowing before you use it: the manager never reseeds an

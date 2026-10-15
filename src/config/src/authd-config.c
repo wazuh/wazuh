@@ -139,9 +139,9 @@ static void w_authd_json_defaults(authd_config_t *config) {
     config->ciphers = strdup(DEFAULT_CIPHERS);
     config->flags.verify_host = 0;
     os_free(config->manager_cert);
-    config->manager_cert = strdup("etc/certs/remoted.pem");
+    config->manager_cert = strdup(CERTFILE);
     os_free(config->manager_key);
-    config->manager_key = strdup("etc/certs/remoted-key.pem");
+    config->manager_key = strdup(KEYFILE);
     config->flags.remote_enrollment = 1;
     config->flags.legacy_enrollment = 1;
     config->force_options.enabled = true;

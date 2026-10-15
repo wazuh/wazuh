@@ -10,7 +10,7 @@ as root only, and serializes its writes on a lock file next to the bundle (`<bun
 
 Two things rotate on different clocks, and the whole procedure exists to keep that difference safe:
 
-- **The CA bundle** (`remote.https.ca_certificate`, `etc/certs/root-ca.pem` by default) — hot-reloaded
+- **The CA bundle** (`remote.https.ca_certificate`, `/etc/wazuh-manager/certs/root-ca.pem` by default) — hot-reloaded
   on every read, no restart needed. `wazuh-manager-certs` is its only runtime writer (the installer
   creates `root-ca.pem` when it is absent, and never touches it again).
 - **The listener leaf** (`remote.https.certificate`) — loaded once, at `remoted` start. Only a

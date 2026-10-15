@@ -17,6 +17,8 @@ case "$1" in
         VER="0"
     fi
     DIR="/var/wazuh-manager"
+    # The configuration directory is fixed, outside the installation directory.
+    CONF_DIR="/etc/wazuh-manager"
     USER="wazuh-manager"
     GROUP="wazuh-manager"
     WAZUH_GLOBAL_TMP_DIR="${DIR}/packages_files"
@@ -25,13 +27,15 @@ case "$1" in
     OSMYSHELL="/sbin/nologin"
     SCRIPTS_DIR="${WAZUH_GLOBAL_TMP_DIR}/manager_installation_scripts"
 
-    # etc/, logs/, queue/db/ and api/configuration/ are writable by ${GROUP}, so anything in them
-    # may be a link the service account planted, and chmod has no -h. Nothing here changes a mode
-    # there as root: a file root creates is built in ${WAZUH_TMP_DIR} (root only) and renamed into
-    # place (rename replaces a link, never follows it); a file ${USER} owns gets chown -h and then
-    # a chmod run as ${USER}, which fails on anything else.
+    # ${CONF_DIR}, logs/, queue/db/ and api/configuration/ are writable by ${GROUP}, so anything in
+    # them may be a link the service account planted, and chmod has no -h. Nothing here changes a
+    # mode there as root: a file root creates is built in ${WAZUH_TMP_DIR} (root only) and renamed
+    # into place (rename replaces a link, never follows it); a file ${USER} owns gets chown -h and
+    # then a chmod run as ${USER}, which fails on anything else. chroot --userspec (coreutils)
+    # switches user; the command then re-enters the working directory in_dir() verified (by path:
+    # --skip-chdir needs coreutils 8.23, and a swapped path could only aim ${USER} at its own files).
     as_service_user() {
-        runuser -u ${USER} -- "$@"
+        chroot --userspec=${USER}:${GROUP} / sh -c 'cd -- "$1" && shift && exec "$@"' as_service_user "$(pwd -P)" "$@"
     }
 
     # install_file SOURCE MODE OWNER:GROUP DEST: moves SOURCE, already in ${WAZUH_TMP_DIR}, to DEST.
@@ -45,13 +49,19 @@ case "$1" in
     in_dir() {
         (cd -P -- "$1" 2> /dev/null && [ "$(pwd -P)" = "${REAL_DIR}${1#"${DIR}"}" ] && shift && "$@")
     }
+    # in_conf_dir DIR COMMAND...: in_dir() for a directory under ${CONF_DIR}.
+    REAL_CONF_DIR=$(cd -P ${CONF_DIR} 2> /dev/null && pwd -P) || REAL_CONF_DIR=""
+    in_conf_dir() {
+        [ -n "${REAL_CONF_DIR}" ] || return 1
+        (cd -P -- "$1" 2> /dev/null && [ "$(pwd -P)" = "${REAL_CONF_DIR}${1#"${CONF_DIR}"}" ] && shift && "$@")
+    }
 
-    # etc/ and data/ are writable by ${GROUP}: --remove-destination replaces a link planted at a
-    # destination instead of writing (and chowning, with -a) through it.
+    # ${CONF_DIR} and data/ are writable by ${GROUP}: --remove-destination replaces a link planted
+    # at a destination instead of writing (and chowning, with -a) through it.
     restore_upgrade_preserve() {
         if [ -d "${WAZUH_PRESERVE_DIR}/etc" ]; then
-            mkdir -p "${DIR}/etc"
-            cp -a --remove-destination "${WAZUH_PRESERVE_DIR}/etc/." "${DIR}/etc/"
+            mkdir -p "${CONF_DIR}"
+            cp -a --remove-destination "${WAZUH_PRESERVE_DIR}/etc/." "${CONF_DIR}/"
         fi
 
         if [ -d "${WAZUH_PRESERVE_DIR}/data" ]; then
@@ -79,10 +89,10 @@ case "$1" in
     fi
 
     if ! getent group ${GROUP} > /dev/null 2>&1; then
-        addgroup --system ${GROUP}  > /dev/null 2>&1
+        groupadd --system ${GROUP} > /dev/null 2>&1
     fi
     if ! getent passwd ${USER} > /dev/null 2>&1; then
-        adduser --system --home ${DIR} --shell ${OSMYSHELL} --ingroup ${GROUP} ${USER} > /dev/null 2>&1
+        useradd --system --gid ${GROUP} --home-dir ${DIR} --no-create-home --shell ${OSMYSHELL} ${USER} > /dev/null 2>&1
     fi
 
     if [ -z "$2" ] || [ -f ${WAZUH_TMP_DIR}/create_conf ] ; then
@@ -92,19 +102,19 @@ case "$1" in
         mkdir -p ${WAZUH_TMP_DIR}
         if ! ${SCRIPTS_DIR}/src/init/gen_wazuh.sh conf manager ${OS} ${VER} ${DIR} > ${WAZUH_TMP_DIR}/wazuh-manager.conf; then
             rm -f ${WAZUH_TMP_DIR}/wazuh-manager.conf
-            echo "ERROR: could not generate ${DIR}/etc/wazuh-manager.conf." >&2
+            echo "ERROR: could not generate ${CONF_DIR}/wazuh-manager.conf." >&2
             exit 1
         fi
         # The generated file must validate against the embedded schema (file existence is not
         # checked: the certificates it references are generated later).
         if ! ${DIR}/bin/wazuh-manager-conf --skip-file-checks validate -f ${WAZUH_TMP_DIR}/wazuh-manager.conf; then
             rm -f ${WAZUH_TMP_DIR}/wazuh-manager.conf
-            echo "ERROR: the generated ${DIR}/etc/wazuh-manager.conf is not a valid manager configuration." >&2
+            echo "ERROR: the generated ${CONF_DIR}/wazuh-manager.conf is not a valid manager configuration." >&2
             exit 1
         fi
-        if ! install_file ${WAZUH_TMP_DIR}/wazuh-manager.conf 660 root:${GROUP} ${DIR}/etc/wazuh-manager.conf; then
+        if ! install_file ${WAZUH_TMP_DIR}/wazuh-manager.conf 660 root:${GROUP} ${CONF_DIR}/wazuh-manager.conf; then
             rm -f ${WAZUH_TMP_DIR}/wazuh-manager.conf
-            echo "ERROR: could not install ${DIR}/etc/wazuh-manager.conf." >&2
+            echo "ERROR: could not install ${CONF_DIR}/wazuh-manager.conf." >&2
             exit 1
         fi
 
@@ -125,9 +135,9 @@ case "$1" in
         # variable must not abort the upgrade.
         mkdir -p ${WAZUH_TMP_DIR}
         if ! ${SCRIPTS_DIR}/src/init/gen_wazuh.sh conf manager ${OS} ${VER} ${DIR} > ${WAZUH_TMP_DIR}/wazuh-manager.conf.new \
-            || ! install_file ${WAZUH_TMP_DIR}/wazuh-manager.conf.new 660 root:${GROUP} ${DIR}/etc/wazuh-manager.conf.new; then
+            || ! install_file ${WAZUH_TMP_DIR}/wazuh-manager.conf.new 660 root:${GROUP} ${CONF_DIR}/wazuh-manager.conf.new; then
             rm -f ${WAZUH_TMP_DIR}/wazuh-manager.conf.new
-            echo "WARNING: could not generate ${DIR}/etc/wazuh-manager.conf.new. The current configuration is unchanged." >&2
+            echo "WARNING: could not generate ${CONF_DIR}/wazuh-manager.conf.new. The current configuration is unchanged." >&2
         fi
     fi
 
@@ -145,30 +155,14 @@ case "$1" in
     }
     in_dir ${DIR}/queue/db fix_global_db || true
 
-    # Delete uncompatible DBs versions
-    if [ ! -z $2 ]; then
-
-        PREVIOUS_VERSION=$(echo $2 | cut -d"-" -f1)
-
-        # Get the major and minor version
-        MAJOR=$(echo $PREVIOUS_VERSION | cut -d. -f1)
-        MINOR=$(echo $PREVIOUS_VERSION | cut -d. -f2)
-
-        if [ $MAJOR = 3 ] && [ $MINOR -lt 7 ]; then
-            rm -f ${DIR}/queue/db/*.db*
-            rm -f ${DIR}/queue/db/.template.db
-        fi
-    fi
-
     # Remove Vuln-detector database
     rm -f ${DIR}/queue/vulnerabilities/cve.db || true
 
-    # Unified certificate directory: root-owned and sticky. The service daemons read their
-    # certificates here after dropping privileges to ${USER}; the sticky bit keeps them from
-    # replacing the root-owned indexer trust material that shares the dir. The package ships it;
-    # it is only recreated when missing, with its mode set by mkdir itself.
-    if [ ! -e ${DIR}/etc/certs ] && [ ! -L ${DIR}/etc/certs ]; then
-        mkdir -m 1770 ${DIR}/etc/certs && chown -h root:${GROUP} ${DIR}/etc/certs
+    # Certificate directory: root's, readable through ${GROUP}. The daemons read their certificates
+    # here after dropping privileges to ${USER}, and nothing writes here at run time. The package
+    # ships it; it is only recreated when missing, with its mode set by mkdir itself.
+    if [ ! -e ${CONF_DIR}/certs ] && [ ! -L ${CONF_DIR}/certs ]; then
+        mkdir -m 0750 ${CONF_DIR}/certs && chown -h root:${GROUP} ${CONF_DIR}/certs
     fi
 
     # No install-time certificate check any more. The credential resolver invoked below issues the
@@ -176,33 +170,21 @@ case "$1" in
     # starts the service -- so the check belongs at start, where it is made. Warning here about a
     # state that no longer exists is what trains operators to ignore installer output.
 
-    # The certificates the service daemons read after dropping privileges (the provisioned
-    # listener pair and the Server API pair the installer issues) are owned by ${USER}.
-    # Re-applied unconditionally so upgrades that left them root-owned get corrected. The indexer
-    # trust material is root-owned and left alone: the resolver sets its mode when it issues it.
-    fix_service_certs() {
-        for CERT_FILE in remoted.pem remoted-key.pem apid.pem apid-key.pem; do
+    # Every certificate and key is root's and readable through ${GROUP}; re-applied so earlier
+    # ownerships get corrected. ${CONF_DIR} is writable by ${GROUP}, so the account could put its
+    # own directory (or a link to one) in place of certs/: in_conf_dir() refuses a link, and the
+    # owner check refuses a directory that is not root's. Inside a root-owned 0750 directory
+    # nobody else can swap an entry, so the chown and chmod below run as root.
+    fix_certs() {
+        [ "$(stat -c %u .)" = 0 ] || return 1
+        chmod 0750 .
+        for CERT_FILE in *.pem; do
             if [ -f "${CERT_FILE}" ] && [ ! -L "${CERT_FILE}" ]; then
-                chown -h ${USER}:${GROUP} "${CERT_FILE}" > /dev/null 2>&1 || true
-                as_service_user chmod 640 "${CERT_FILE}" > /dev/null 2>&1 || true
+                chown -h root:${GROUP} "${CERT_FILE}" > /dev/null 2>&1 || true
+                chmod 0640 "${CERT_FILE}" > /dev/null 2>&1 || true
             fi
         done
     }
-    in_dir ${DIR}/etc/certs fix_service_certs || true
-
-    if [ -z "$2" ]; then
-        # For the etc dir
-        mkdir -p ${WAZUH_TMP_DIR}
-        if [ -f /etc/localtime ]; then
-            cp -pL /etc/localtime ${WAZUH_TMP_DIR}/localtime && \
-                install_file ${WAZUH_TMP_DIR}/localtime 640 root:${GROUP} ${DIR}/etc/localtime
-        fi
-
-        if [ -f /etc/TIMEZONE ]; then
-            cp -p /etc/TIMEZONE ${WAZUH_TMP_DIR}/TIMEZONE && \
-                install_file ${WAZUH_TMP_DIR}/TIMEZONE 640 root:${GROUP} ${DIR}/etc/TIMEZONE
-        fi
-    fi
 
     for BIN in agent_groups agent_upgrade cluster_control rbac_control \
         wazuh-manager-analysisd wazuh-manager-apid wazuh-manager-authd \
@@ -240,32 +222,57 @@ case "$1" in
     fi
 
     # More files
-    if [ ! -e ${DIR}/etc/client.keys ] && [ ! -L ${DIR}/etc/client.keys ]; then
+    if [ ! -e ${CONF_DIR}/client.keys ] && [ ! -L ${CONF_DIR}/client.keys ]; then
         mkdir -p ${WAZUH_TMP_DIR}
         : > ${WAZUH_TMP_DIR}/client.keys && \
-            install_file ${WAZUH_TMP_DIR}/client.keys 660 ${USER}:${GROUP} ${DIR}/etc/client.keys
+            install_file ${WAZUH_TMP_DIR}/client.keys 660 ${USER}:${GROUP} ${CONF_DIR}/client.keys
     fi
 
-    # A link in logs/ is never a log file. The files are created by ${USER} itself.
+    # A link in logs/ is never a log file. A missing log is created empty in ${WAZUH_TMP_DIR} and
+    # renamed into place: on a fresh install logs/ is not writable by ${USER} yet (dh_fixperms
+    # leaves it root-owned without group write until restore-permissions.sh runs below). An
+    # existing one gets chown -h and a chmod run as ${USER}. Anything else at that name (a
+    # directory, for instance) is reported and left alone.
     for LOG_FILE in wazuh-manager.log wazuh-manager.json; do
         if [ -L "${DIR}/logs/${LOG_FILE}" ]; then
             rm -f "${DIR}/logs/${LOG_FILE}"
         fi
-        if [ -f "${DIR}/logs/${LOG_FILE}" ]; then
+        if [ ! -e "${DIR}/logs/${LOG_FILE}" ] && [ ! -L "${DIR}/logs/${LOG_FILE}" ]; then
+            mkdir -p ${WAZUH_TMP_DIR}
+            { : > ${WAZUH_TMP_DIR}/${LOG_FILE} && \
+                install_file ${WAZUH_TMP_DIR}/${LOG_FILE} 660 ${USER}:${GROUP} ${DIR}/logs/${LOG_FILE}; } || \
+                echo "Error: could not create ${DIR}/logs/${LOG_FILE}." >&2
+        elif [ -f "${DIR}/logs/${LOG_FILE}" ] && [ ! -L "${DIR}/logs/${LOG_FILE}" ]; then
             chown -h ${USER}:${GROUP} ${DIR}/logs/${LOG_FILE}
+            as_service_user chmod 0660 ${DIR}/logs/${LOG_FILE} || true
+        else
+            echo "Error: ${DIR}/logs/${LOG_FILE} is not a regular file; leaving it untouched." >&2
         fi
-        as_service_user touch ${DIR}/logs/${LOG_FILE} || true
-        as_service_user chmod 0660 ${DIR}/logs/${LOG_FILE} || true
     done
 
-    # Restore preserved etc/ and data/ as the last content-restore/overwrite
+    # Restore the preserved configuration and data/ as the last content-restore/overwrite
     # step for those trees, matching the RPM %posttrans ordering and the
-    # strict "etc/ MUST NOT be overwritten" contract from the upgrade rules.
+    # strict "the configuration MUST NOT be overwritten" contract from the upgrade rules.
     restore_upgrade_preserve
 
 
-    # Restoring file permissions
+    # Restoring file permissions, of the installation directory and of the configuration directory
     ${SCRIPTS_DIR}/restore-permissions.sh > /dev/null 2>&1 || true
+    ${SCRIPTS_DIR}/restore-permissions-conf.sh > /dev/null 2>&1 || true
+
+    # merged.mg is generated by remoted; it is read by agents through it, never written by them.
+    fix_merged_mg() {
+        for MERGED_FILE in merged.mg */merged.mg; do
+            if [ -f "${MERGED_FILE}" ] && [ ! -L "${MERGED_FILE}" ]; then
+                chown -h ${USER}:${GROUP} "${MERGED_FILE}" > /dev/null 2>&1 || true
+                as_service_user chmod 644 "${MERGED_FILE}" > /dev/null 2>&1 || true
+            fi
+        done
+    }
+    in_conf_dir ${CONF_DIR}/shared fix_merged_mg || true
+
+    # After the restore above, which keeps the preserved ownership (cp -a).
+    in_conf_dir ${CONF_DIR}/certs fix_certs || true
 
     # The engine (wazuh-manager-analysisd) now drops privileges to wazuh-manager:
     # runtime data created by root in previous versions must be reassigned.
@@ -297,9 +304,9 @@ case "$1" in
     # between these two moments and only the answer at start matters.
     if [ -x ${DIR}/bin/wazuh-manager-resolve-credentials ]; then
         # A reinstall from the config-files state also passes the old version, but postrm renamed
-        # every file in etc/ to *.save: with no pair in place there is nothing to keep, so it
+        # every file in ${CONF_DIR} to *.save: with no pair in place there is nothing to keep, so it
         # resolves as an install and issues the certificates.
-        if [ -z "$2" ] || { [ ! -e ${DIR}/etc/certs/remoted.pem ] && [ ! -e ${DIR}/etc/certs/indexer-connector.pem ]; }; then
+        if [ -z "$2" ] || { [ ! -e ${CONF_DIR}/certs/remoted.pem ] && [ ! -e ${CONF_DIR}/certs/indexer-connector.pem ]; }; then
             CRED_MODE="--install"
         else
             CRED_MODE="--upgrade"
@@ -354,7 +361,7 @@ case "$1" in
     # itself, and a reinstall -- also from the config-files state -- finds the passwords already set.
     # install.sh prints its own start hint, so this lives in the package only.
     if [ -z "$2" ]; then
-        echo "Server API passwords saved in ${WAZUH_BASE_DIR:-/etc/wazuh}/credentials.env (readable by root only)."
+        echo "Server API passwords saved in ${CONF_DIR}/export/credentials.env (readable by root only)."
         if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1; then
             echo "Start the manager and enable it at boot: systemctl enable --now wazuh-manager"
         else

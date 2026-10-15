@@ -32,6 +32,8 @@ extern time_t pending_upg;
 extern int is_disabled;
 extern int req_timeout;
 extern int max_restart_lock;
+extern os_ip **ar_allowlist;
+extern char **ar_manager_hosts;
 
 /** Function prototypes **/
 
@@ -41,6 +43,19 @@ cJSON *getClusterConfig(void);
 void ExecCmd(char *const *cmd) __attribute__((nonnull));
 void ExecCmd_Win32(char *cmd);
 int ExecdConfig(const char *cfgfile) __attribute__((nonnull));
+
+/**
+ * @brief Tell whether an active response must not target this address.
+ *
+ * @param srcip The response's source.ip, in any numeric form getaddrinfo() accepts.
+ * @return true if it is in ar_allowlist or is one of the manager's addresses.
+ */
+bool ar_source_allowlisted(const char *srcip);
+
+/**
+ * @brief Resolve ar_manager_hosts and add any new address to the known manager addresses.
+ */
+void ar_resolve_manager_hosts(void);
 
 #ifdef WIN32
 int WinExecdStart(void);

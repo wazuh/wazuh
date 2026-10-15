@@ -8,7 +8,7 @@ on the manager and on agents. For what it covers, see the [Logging module](READM
 ## Configuration
 
 **Configuration file:**
-- Manager: `/var/wazuh-manager/etc/wazuh-manager.conf`, section `<logging>` under `<wazuh_config>`
+- Manager: `/etc/wazuh-manager/wazuh-manager.conf`, section `<logging>` under `<wazuh_config>`
 - Agent: `/var/ossec/etc/ossec.conf`, section `<logging>` under `<ossec_config>`
 
 **Internal Options:** None

@@ -41,8 +41,8 @@
  * changed, and refusing to mint over that would be worse than minting for the documented default */
 #define ETOKEN_DEFAULT_HTTPS_PORT   1517
 #define ETOKEN_DEFAULT_HTTPS_PREFIX "/wazuh-manager/"
-#define ETOKEN_DEFAULT_CERTIFICATE  "etc/certs/remoted.pem"
-#define ETOKEN_DEFAULT_CA           "etc/certs/root-ca.pem"
+#define ETOKEN_DEFAULT_CERTIFICATE  WAZUH_MANAGER_CONF_DIR "/certs/remoted.pem"
+#define ETOKEN_DEFAULT_CA           WAZUH_MANAGER_CONF_DIR "/certs/root-ca.pem"
 
 /* Ceiling for an embedded CA. A CA certificate is a couple of kilobytes; this only exists so a
  * mistyped path pointing at something huge is refused instead of copied into every token */

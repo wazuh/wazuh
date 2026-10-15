@@ -10,7 +10,8 @@ set -euo pipefail
 #   local                Use a local .deb given in WAZUH_MANAGER_DEB.
 #   source               Package the manager already built and installed on this
 #                        host (WAZUH_HOME, default /var/wazuh-manager) into a tree
-#                        tarball. Build it first with the devContainer make tasks.
+#                        tarball, plus its configuration directory (/etc/wazuh-manager)
+#                        into a second one. Build it first with the devContainer make tasks.
 # ------------------------------------------------------------------------------
 OLD_DIR=$(pwd)
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
@@ -20,6 +21,8 @@ cd "$SCRIPT_DIR"
 SOURCE="${WAZUH_MANAGER_SOURCE:-manifest}"
 MANIFEST_URL="${WAZUH_MANIFEST_URL:-https://packages-staging.xdrsiem.wazuh.info/nightly-backup/artifact_urls_5.0.0-latest.yaml}"
 PKG_DIR="${SCRIPT_DIR}/node/pkg"
+# The manager configuration directory is fixed: it lives outside the installation home.
+CONF_DIR="/etc/wazuh-manager"
 
 function need_cmd() { command -v "$1" >/dev/null 2>&1 || { echo "ERROR: required command not found: $1" >&2; exit 1; }; }
 
@@ -102,19 +105,27 @@ function from_source() {
   local base; base="$(basename "$home")"
   tar -C "$(dirname "$home")" \
       --exclude="${base}/logs" --exclude="${base}/queue" --exclude="${base}/var" \
-      --exclude="${base}/etc/client.keys" --exclude="${base}/etc/authd.pass" \
       -czf "${PKG_DIR}/wazuh-manager-tree.tar.gz.tmp" "$base"
+  # The configuration directory is outside the home: archived on its own, without the
+  # master's identity (client.keys, authd.pass).
+  local conf_base; conf_base="$(basename "$CONF_DIR")"
+  [[ -d "$CONF_DIR" ]] || { echo "ERROR: no manager configuration directory at ${CONF_DIR}." >&2; exit 1; }
+  tar -C "$(dirname "$CONF_DIR")" \
+      --exclude="${conf_base}/client.keys" --exclude="${conf_base}/authd.pass" \
+      -czf "${PKG_DIR}/wazuh-manager-conf.tar.gz.tmp" "$conf_base"
   mv "${PKG_DIR}/wazuh-manager-tree.tar.gz.tmp" "${PKG_DIR}/wazuh-manager-tree.tar.gz"
+  mv "${PKG_DIR}/wazuh-manager-conf.tar.gz.tmp" "${PKG_DIR}/wazuh-manager-conf.tar.gz"
   # The image creates wazuh-manager with these ids before extracting the tree (node/Dockerfile).
   printf 'WAZUH_UID=%s\nWAZUH_GID=%s\n' "$(id -u wazuh-manager)" "$(id -g wazuh-manager)" > "${PKG_DIR}/wazuh-manager.ids"
 }
 
 # Settings the master and the workers must share (cluster key and name) have one
-# source of truth, cluster/.env, which compose reads with --env-file. An exported
-# value replaces the stored one (compose gives the exported variable precedence
-# over the env file, so the master must use it too); otherwise the stored value is
-# reused; otherwise <default> is stored. The file is written 0600 (it holds the
-# key). cluster/init.sh and setup-master.sh resolve them with this same function.
+# source of truth, cluster/.env, which cluster.sh reads to start the workers (the
+# key as a secret file, never through the container's environment). An exported
+# value replaces the stored one (cluster.sh gives it the same precedence, so the
+# master must use it too); otherwise the stored value is reused; otherwise
+# <default> is stored. The file is written 0600 (it holds the key).
+# cluster/init.sh and setup-master.sh resolve them with this same function.
 function resolve_cluster_setting() {  # resolve_cluster_setting <env file> <VAR> <default>  → REPLY
   local env_file="$1" var="$2" default="$3" stored=""
   [[ -f "$env_file" ]] && stored="$(grep -m1 "^${var}=" "$env_file" | cut -d= -f2-)" || true

@@ -158,6 +158,54 @@ static void test_modules_sync_failure_during_shutdown(void ** state) {
     assert_int_equal(ret, -1);
 }
 
+static void expect_fim_socket_refused(bool logged_as_error) {
+    static char refused_msg[OS_SIZE_128];
+    snprintf(refused_msg, sizeof(refused_msg), "WM_FIM_QUERY_JSON: Failed to connect to socket, errno=%d", ECONNREFUSED);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "WM_FIM_QUERY_JSON: Attempting to connect to socket: " SYS_LOCAL_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, SYS_LOCAL_SOCK);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
+    will_return(__wrap_OS_ConnectUnixDomain, OS_SOCKTERR);
+
+    if (logged_as_error) {
+        expect_string(__wrap__merror, formatted_msg, refused_msg);
+    } else {
+        expect_string(__wrap__mdebug1, formatted_msg, refused_msg);
+    }
+}
+
+// wazuh-syscheckd refusing the connection while the agent is running is a genuine fault: ERROR.
+static void test_fim_query_connect_refused_while_running(void ** state) {
+    (void)state;
+    char * response = NULL;
+
+    expect_fim_socket_refused(true);
+
+    errno = ECONNREFUSED;
+    size_t len = wm_fim_query_json("{\"command\":\"pause\"}", &response);
+
+    assert_true(len > 0);
+    assert_non_null(response);
+    free(response);
+}
+
+// The same refusal once modulesd is shutting down is expected (syscheckd stops first): DEBUG.
+static void test_fim_query_connect_refused_during_shutdown(void ** state) {
+    (void)state;
+    char * response = NULL;
+
+    wm_shutdown_requested = 1;
+    expect_fim_socket_refused(false);
+
+    errno = ECONNREFUSED;
+    size_t len = wm_fim_query_json("{\"command\":\"pause\"}", &response);
+
+    assert_true(len > 0);
+    assert_non_null(response);
+    free(response);
+}
+
 // docs/ref/configuration/manager/README.md documents wazuh_modules.debug,
 // wazuh_modules.max_eps, wazuh_modules.task_nice and wazuh_modules.kill_timeout
 // as "Common Internal Options", but none of them had any test coverage. They
@@ -296,6 +344,8 @@ int main() {
         cmocka_unit_test_setup_teardown(test_module_query_echo, setup_modules, teardown_modules),
         cmocka_unit_test_setup_teardown(test_modules_sync_failure_while_running, setup_modules, teardown_modules),
         cmocka_unit_test_setup_teardown(test_modules_sync_failure_during_shutdown, setup_modules, teardown_modules),
+        cmocka_unit_test_setup_teardown(test_fim_query_connect_refused_while_running, setup_modules, teardown_modules),
+        cmocka_unit_test_setup_teardown(test_fim_query_connect_refused_during_shutdown, setup_modules, teardown_modules),
         cmocka_unit_test(test_get_modules_internal_options_reports_all_common_options),
         cmocka_unit_test(test_url_is_allowed_null_url),
         cmocka_unit_test(test_url_is_allowed_matching_host),

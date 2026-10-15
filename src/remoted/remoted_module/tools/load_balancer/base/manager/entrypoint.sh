@@ -14,21 +14,25 @@ NODE_TYPE="$2"
 MASTER_ADDR="$3"
 
 DIR=/var/wazuh-manager
-CONF="$DIR/etc/wazuh-manager.conf"
+# The manager configuration directory is fixed, outside the installation home.
+CONF_DIR=/etc/wazuh-manager
+CONF="$CONF_DIR/wazuh-manager.conf"
 
 echo "[entrypoint] $NODE_NAME ($NODE_TYPE), master at $MASTER_ADDR"
 
 # ---------------------------------------------------------------- certificates
 # Mounted read-only at /lab-certs by the compose file. Each node has its OWN leaf,
-# which is what a real deployment has: cluster.json does not replicate etc/certs/.
+# which is what a real deployment has: cluster.json does not replicate certs/.
+# Installed layout: dir root:wazuh-manager 0750, every PEM root:wazuh-manager 0640 (the
+# daemons read them through the group after dropping privileges).
 CERTSRC="/lab-certs/$NODE_NAME"
 if [[ -d "$CERTSRC" ]]; then
-    install -d -m 1770 -o root -g wazuh-manager "$DIR/etc/certs"
-    install -o wazuh-manager -g wazuh-manager -m 640 "$CERTSRC/node.pem"     "$DIR/etc/certs/remoted.pem"
-    install -o wazuh-manager -g wazuh-manager -m 640 "$CERTSRC/node-key.pem" "$DIR/etc/certs/remoted-key.pem"
-    install -o root -g wazuh-manager -m 640 "/lab-certs/root-ca.pem"         "$DIR/etc/certs/root-ca.pem"
-    echo "[entrypoint] listener certificate: $(openssl x509 -in "$DIR/etc/certs/remoted.pem" -noout -subject | sed 's/.*CN *= *//')"
-    echo "[entrypoint] SANs: $(openssl x509 -in "$DIR/etc/certs/remoted.pem" -noout -ext subjectAltName | tail -1 | tr -s ' ')"
+    install -d -m 750 -o root -g wazuh-manager "$CONF_DIR/certs"
+    install -o root -g wazuh-manager -m 640 "$CERTSRC/node.pem"              "$CONF_DIR/certs/remoted.pem"
+    install -o root -g wazuh-manager -m 640 "$CERTSRC/node-key.pem"          "$CONF_DIR/certs/remoted-key.pem"
+    install -o root -g wazuh-manager -m 640 "/lab-certs/root-ca.pem"         "$CONF_DIR/certs/root-ca.pem"
+    echo "[entrypoint] listener certificate: $(openssl x509 -in "$CONF_DIR/certs/remoted.pem" -noout -subject | sed 's/.*CN *= *//')"
+    echo "[entrypoint] SANs: $(openssl x509 -in "$CONF_DIR/certs/remoted.pem" -noout -ext subjectAltName | tail -1 | tr -s ' ')"
 else
     echo "[entrypoint] !! no certificates at $CERTSRC" >&2
 fi
@@ -44,15 +48,15 @@ fi
 
 # ---------------------------------------------------------------- remoted HTTPS
 # ca_certificate is NOT in the shipped configuration, so it falls back to the schema
-# default (etc/certs/root-ca.pem). Written explicitly here so GET /cacerts is testable
+# default (/etc/wazuh-manager/certs/root-ca.pem). Written explicitly here so GET /cacerts is testable
 # and so the file the listener is validated against is unambiguous in the logs.
 #
 # GUARDED BY THE SCHEMA ON PURPOSE: the option exists on the 5.0.0 branch but not in
 # every 5.0.0 package. Writing it blindly makes a slightly older build refuse to start
 # with error 1244 ("unknown option ... additionalProperties"). See FINDINGS.md L-02.
-if grep -q '"ca_certificate"' "$DIR/etc/wazuh-manager.schema.json" 2>/dev/null; then
+if grep -q '"ca_certificate"' "$CONF_DIR/wazuh-manager.schema.json" 2>/dev/null; then
     if ! grep -q '<ca_certificate>' "$CONF"; then
-        sed -i "s|<key>etc/certs/remoted-key.pem</key>|<key>etc/certs/remoted-key.pem</key>\n      <ca_certificate>etc/certs/root-ca.pem</ca_certificate>|" "$CONF"
+        sed -i "s|\(<key>[^<]*remoted-key\.pem</key>\)|\1\n      <ca_certificate>$CONF_DIR/certs/root-ca.pem</ca_certificate>|" "$CONF"
         echo "[entrypoint] remote.https.ca_certificate set explicitly"
     fi
 else
@@ -74,12 +78,12 @@ sed -i "s|<host>https://127.0.0.1:9200</host>|<host>${INDEXER_HOST}</host>|" "$C
 # the one opensearch.yml pins as plugins.security.authcz.admin_dn. A single-host install
 # points <indexer><ssl> straight at /etc/wazuh-indexer/certs/{root-ca,admin,admin-key}.pem
 # because both services share the filesystem. Here they are separate containers, so the same
-# three files are copied into the manager's own etc/certs and referenced from there.
+# three files are copied into the manager's own certs/ and referenced from there.
 if [[ -d /lab-certs-indexer ]]; then
-    install -o wazuh-manager -g wazuh-manager -m 640 /lab-certs-indexer/admin.pem \
-        "$DIR/etc/certs/indexer-connector.pem"
-    install -o wazuh-manager -g wazuh-manager -m 640 /lab-certs-indexer/admin-key.pem \
-        "$DIR/etc/certs/indexer-connector-key.pem"
+    install -o root -g wazuh-manager -m 640 /lab-certs-indexer/admin.pem \
+        "$CONF_DIR/certs/indexer-connector.pem"
+    install -o root -g wazuh-manager -m 640 /lab-certs-indexer/admin-key.pem \
+        "$CONF_DIR/certs/indexer-connector-key.pem"
 fi
 
 # The engine REFUSES TO START if the indexer's TLS material is missing, even when the
@@ -89,9 +93,9 @@ fi
 # and without the engine, wazuh-manager-control aborts the startup before remoted.
 # So the connector is pointed at this lab's own material, which exists. See FINDINGS.md L-03.
 sed -i "/<indexer>/,/<\/indexer>/{
-    s|<ca>.*</ca>|<ca>etc/certs/root-ca.pem</ca>|
-    s|<certificate>.*</certificate>|<certificate>etc/certs/indexer-connector.pem</certificate>|
-    s|<key>.*</key>|<key>etc/certs/indexer-connector-key.pem</key>|
+    s|<ca>.*</ca>|<ca>$CONF_DIR/certs/root-ca.pem</ca>|
+    s|<certificate>.*</certificate>|<certificate>$CONF_DIR/certs/indexer-connector.pem</certificate>|
+    s|<key>.*</key>|<key>$CONF_DIR/certs/indexer-connector-key.pem</key>|
 }" "$CONF"
 
 # ---------------------------------------------------------------- enrollment password
@@ -99,9 +103,9 @@ sed -i "/<indexer>/,/<\/indexer>/{
 # so seeding it only on the master is deliberate: the propagation of this file to the
 # workers is one of the things under test.
 if [[ "$NODE_TYPE" == "master" && -n "${AUTHD_PASS:-}" ]]; then
-    printf '%s\n' "$AUTHD_PASS" > "$DIR/etc/authd.pass"
-    chown root:wazuh-manager "$DIR/etc/authd.pass"
-    chmod 640 "$DIR/etc/authd.pass"
+    printf '%s\n' "$AUTHD_PASS" > "$CONF_DIR/authd.pass"
+    chown root:wazuh-manager "$CONF_DIR/authd.pass"
+    chmod 640 "$CONF_DIR/authd.pass"
     echo "[entrypoint] authd.pass seeded on the master only"
 fi
 

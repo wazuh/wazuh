@@ -138,6 +138,8 @@ jobs:
       BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
       BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
       INSTALLATION_DIR: /var/wazuh-manager
+      # Fixed: a custom installation home never moves the manager configuration directory.
+      MANAGER_CONF_DIR: /etc/wazuh-manager
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -247,20 +249,21 @@ jobs:
                 ip: 127.0.0.1
           EOF
           bash tools/devContainer/scripts/wazuh-certs-tool.sh -A -c "$CERTS_YML" -o "$CERTS_OUT"
-          sudo mkdir -p "$INSTALLATION_DIR/etc/certs"
+          sudo install -d -o root -g wazuh-manager -m 750 "$MANAGER_CONF_DIR/certs"
           # Reproduce the deployment ownership model so startup exercises the privilege-dropped read
-          # (issue #38276): the indexer material is root:wazuh-manager 0640 and only group-readable,
-          # so a regression that leaves it root:root would make the dropped service fail to start.
-          # The listener pair is opened by remoted after dropping privileges, hence wazuh-manager-owned.
-          sudo install -o root -g wazuh-manager -m 640 "$CERTS_OUT/root-ca.pem" "$INSTALLATION_DIR/etc/certs/root-ca.pem"
-          sudo install -o root -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager.pem" "$INSTALLATION_DIR/etc/certs/indexer-connector.pem"
-          sudo install -o root -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager-key.pem" "$INSTALLATION_DIR/etc/certs/indexer-connector-key.pem"
-          sudo install -o wazuh-manager -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager-remoted.pem" "$INSTALLATION_DIR/etc/certs/remoted.pem"
-          sudo install -o wazuh-manager -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager-remoted-key.pem" "$INSTALLATION_DIR/etc/certs/remoted-key.pem"
-          sudo install -o wazuh-manager -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager-remoted.pem" "$INSTALLATION_DIR/etc/certs/apid.pem"
-          sudo install -o wazuh-manager -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager-remoted-key.pem" "$INSTALLATION_DIR/etc/certs/apid-key.pem"
-          sudo chown root:wazuh-manager "$INSTALLATION_DIR/etc/certs"
-          sudo chmod 1770 "$INSTALLATION_DIR/etc/certs"
+          # (issue #38276): every certificate and key is root:wazuh-manager 0640, only group-readable,
+          # in a root:wazuh-manager 0750 directory. remoted, authd and apid open their pairs after
+          # dropping privileges, so a regression that leaves any of them root:root (or the directory
+          # closed to the group) would make the dropped service fail to start.
+          sudo install -o root -g wazuh-manager -m 640 "$CERTS_OUT/root-ca.pem" "$MANAGER_CONF_DIR/certs/root-ca.pem"
+          sudo install -o root -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager.pem" "$MANAGER_CONF_DIR/certs/indexer-connector.pem"
+          sudo install -o root -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager-key.pem" "$MANAGER_CONF_DIR/certs/indexer-connector-key.pem"
+          sudo install -o root -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager-remoted.pem" "$MANAGER_CONF_DIR/certs/remoted.pem"
+          sudo install -o root -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager-remoted-key.pem" "$MANAGER_CONF_DIR/certs/remoted-key.pem"
+          sudo install -o root -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager-remoted.pem" "$MANAGER_CONF_DIR/certs/apid.pem"
+          sudo install -o root -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager-remoted-key.pem" "$MANAGER_CONF_DIR/certs/apid-key.pem"
+          sudo chown root:wazuh-manager "$MANAGER_CONF_DIR/certs"
+          sudo chmod 0750 "$MANAGER_CONF_DIR/certs"
           # The installation minted a bootstrap CA here, including its private key. Nothing consults it
           # once the pairs are in place, and leaving a signing key on a node that does not sign is the
           # exposure this whole mechanism exists to remove -- so it goes. Its absence is also part of

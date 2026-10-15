@@ -85,7 +85,9 @@ timeout = 15
 
 # The "Created Global database backup" event requires wazuh_db debug level 1, set in the
 # manager internal options file.
-internal_options_path = Path(WAZUH_PATH, 'etc', 'wazuh-manager-internal-options.conf')
+# The manager configuration directory: fixed, independent of the installation home.
+MANAGER_CONF_DIR = '/etc/wazuh-manager'
+internal_options_path = Path(MANAGER_CONF_DIR, 'wazuh-manager-internal-options.conf')
 wazuh_db_debug_option = 'wazuh_db.debug'
 
 

@@ -471,6 +471,9 @@ public:
             T::close(m_sock);
         }
 
+        // Drop any partially read frame from the previous connection.
+        resetReadState();
+
         // Create socket.
         m_sock = T::socket(connInfo.type == SocketType::UNIX ? AF_UNIX : AF_INET, type, 0);
         if (m_sock != INVALID_SOCKET)

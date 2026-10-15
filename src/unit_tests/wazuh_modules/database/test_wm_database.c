@@ -235,7 +235,7 @@ void test_wm_sync_shared_group_opendir_enoent(void **state) {
     will_return(__wrap_opendir, NULL);
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:database");
-    expect_string(__wrap__mtdebug2, formatted_msg, "Group directory 'etc/shared/test_group' no longer exists, removing group 'test_group' from the database.");
+    expect_string(__wrap__mtdebug2, formatted_msg, "Group directory '" SHAREDCFG_DIR "/test_group' no longer exists, removing group 'test_group' from the database.");
 
     expect_string(__wrap_wdb_remove_group_db, name, "test_group");
     will_return(__wrap_wdb_remove_group_db, 0);
@@ -256,7 +256,7 @@ void test_wm_sync_shared_group_opendir_eacces(void **state) {
     will_return(__wrap_strerror, "Permission denied");
 
     snprintf(expected_msg, OS_MAXSTR,
-        "Couldn't open directory 'etc/shared/test_group' to check group 'test_group': [(%d)-(Permission denied)]. "
+        "Couldn't open directory '" SHAREDCFG_DIR "/test_group' to check group 'test_group': [(%d)-(Permission denied)]. "
         "This is not a confirmed deletion, but a 'delete-group' will be sent anyway.", EACCES);
 
     expect_string(__wrap__mtwarn, tag, "wazuh-manager-modulesd:database");

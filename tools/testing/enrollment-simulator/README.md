@@ -14,7 +14,7 @@ registration counts as successful when the answer starts with `OSSEC K:`. It doe
 
 Against a 5.x manager the legacy listener must be up (`<auth><legacy_enrollment>`, which follows
 `<remote><legacy><enabled>` when unset), and the installer's configuration sets
-`<use_password>yes</use_password>`, so pass the password from `/var/wazuh-manager/etc/authd.pass`
+`<use_password>yes</use_password>`, so pass the password from `/etc/wazuh-manager/authd.pass`
 with `--password`. Every successful registration creates a real agent (random 12-character names);
 the simulator never deletes them, so remove them afterwards (for example through the server API's
 `DELETE /agents`).
@@ -107,7 +107,7 @@ Both `--connect-delay` and `--send-delay` support range specifications:
 ### Basic Load Test
 ```bash
 ./enrollment-simulator --host 192.168.1.100 --total 5000 --threads 8 \
-  --password "$(sudo cat /var/wazuh-manager/etc/authd.pass)"
+  --password "$(sudo cat /etc/wazuh-manager/authd.pass)"
 ```
 
 ### High-Load with Delays

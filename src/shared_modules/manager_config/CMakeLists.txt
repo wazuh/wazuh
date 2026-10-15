@@ -47,7 +47,8 @@ target_link_libraries(manager_config PRIVATE ext_pugixml ext_rapidjson)
 # bin/wazuh-manager-conf: validate / get / dump over the effective document (installed by InstallLocal()).
 # Built in every mode (also UNIT_TEST) so the CLI end-to-end test can run from the test tree.
 add_executable(wazuh-manager-conf cli/manager-conf.cpp)
-target_include_directories(wazuh-manager-conf PRIVATE ${SRC_FOLDER}/shared/include/error_messages)
+target_include_directories(wazuh-manager-conf PRIVATE ${SRC_FOLDER}/shared/include/error_messages
+                                                  ${SRC_FOLDER}/shared_modules/utils) # managerConfDir.hpp
 target_link_libraries(wazuh-manager-conf PRIVATE manager_config ext_rapidjson)
 if(DEFINED VERSION_FILE)
   target_compile_definitions(wazuh-manager-conf PRIVATE WAZUH_MANAGER_CONF_VERSION="${VERSION_FILE}")

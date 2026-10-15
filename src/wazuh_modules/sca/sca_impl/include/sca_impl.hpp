@@ -17,6 +17,7 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <shared_mutex>
 #include <string>
 #include <vector>
@@ -25,6 +26,24 @@
 using YamlToJsonFunc = std::function<nlohmann::json(const std::string&)>;
 
 class SCASyncManager;
+
+/// @brief How a recovery (DataClean + resend of the whole snapshot) ended.
+enum class RecoveryOutcome
+{
+    COMPLETED, ///< The manager received the whole snapshot.
+    QUEUED,    ///< The index was cleared and the snapshot queued, but sending it failed; the next
+    ///< regular synchronization delivers it.
+    FAILED     ///< Nothing was queued; the recovery is retried in the next integrity_interval.
+};
+
+/// @brief Result of SecurityConfigurationAssessment::synchronizeDatabaseSnapshot().
+struct SnapshotSyncResult
+{
+    SyncModuleResult sync;
+    /// @brief True once the index was cleared and the snapshot queued, so a failure after that
+    /// point is delivered by the next regular synchronization.
+    bool queued{false};
+};
 
 class SecurityConfigurationAssessment
 {
@@ -214,10 +233,10 @@ class SecurityConfigurationAssessment
         int executeFlushSync();
 
         /// @brief Perform full recovery: load all checks and resync
-        /// @return true on success, false on failure.
+        /// @return How the recovery ended; see RecoveryOutcome.
         /// @note Protected (rather than private) so test subclasses can drive recovery
         ///       deterministically, same reason as executeFlushSync() above.
-        bool performRecovery();
+        RecoveryOutcome performRecovery();
 
         /// @brief Handle case when all policies are removed from config
         /// Sends DataClean, clears DB, syncs, and signals exit
@@ -308,8 +327,8 @@ class SecurityConfigurationAssessment
         /// @brief Synchronize the current DB snapshot using FULL mode.
         /// @param increaseVersions Whether to bump versions before building the snapshot.
         /// @param syncReason Reason used in logs.
-        /// @return SyncModuleResult with success flag and an optional failure reason string.
-        SyncModuleResult synchronizeDatabaseSnapshot(bool increaseVersions, const std::string& syncReason);
+        /// @return The sync result, and whether the snapshot was queued before it ended.
+        SnapshotSyncResult synchronizeDatabaseSnapshot(bool increaseVersions, const std::string& syncReason);
 
         /// @brief Logs a failed SyncModuleResult at the right level: INFO for an expected
         /// shutdown/prerequisite/manager-not-ready-within-tolerance hiccup, WARNING (or
@@ -322,13 +341,21 @@ class SecurityConfigurationAssessment
         /// @param genericFailureLevel Level for the final fallback branch (a real failure unrelated
         /// to manager-not-ready/local-transport). executeFlushSync() keeps that case at LOG_ERROR,
         /// since it is an on-demand operation rather than a periodic cycle that retries on its own.
+        /// @param retryNote Sentence saying when the operation is retried. Unset keeps the periodic
+        /// cycle's "Will retry next cycle." on a deferral and says nothing on a failure; recovery sets it,
+        /// since it is retried in the next integrity_interval, not the next cycle.
         void logSyncFailure(const SyncModuleResult& result, const std::string& operationLabel,
-                            modules_log_level_t genericFailureLevel = LOG_WARNING);
+                            modules_log_level_t genericFailureLevel = LOG_WARNING,
+                            const std::optional<std::string>& retryNote = std::nullopt);
 
         /// @brief Check with manager if full sync required via checksum
         /// @param checksum Local checksum to validate
-        /// @return true if recovery needed
-        bool checkIfRecoveryRequired(const std::string& checksum);
+        /// @return MISMATCH if recovery is needed, VALID if the checksum matches, NOT_CHECKED (with the
+        ///         reason) if the check did not complete.
+        IntegrityCheckResult checkIfRecoveryRequired(const std::string& checksum);
+
+        /// @brief The configured integrity_interval in the largest whole unit that fits (86400 -> "24h").
+        std::string integrityIntervalText() const;
 
         /// @brief Check if DB has data (policies or checks)
         /// @return true if DB contains any policies or checks

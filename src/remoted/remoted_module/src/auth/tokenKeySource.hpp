@@ -25,13 +25,14 @@
 
 #include "common/logThrottle.hpp" // Safe in a header: LogThrottle deliberately does not log.
 #include "jwt/secureBytes.hpp"
+#include "managerConfDir.hpp"
 
 namespace remoted::auth
 {
 
     /**
      * @brief Read-only, in-memory replica of authd's enrollment token store
-     *        (etc/enrollment_tokens.json), keyed by token id, with the `wazuh-enroll+jwt` HS256 key of
+     *        (/etc/wazuh-manager/enrollment_tokens.json), keyed by token id, with the `wazuh-enroll+jwt` HS256 key of
      *        every credential-bearing token already derived. Backs the enrollment-token path of
      *        EnrollmentAuthenticator (issue #38993): a bearer whose `kid` names a token id is verified
      *        against the key cached here, and its status (expired / revoked) is answered from here too.
@@ -46,11 +47,13 @@ namespace remoted::auth
      *
      * What is replicated, per token: the id (the `kid` the agent presents), the HS256 key derived
      * ONCE per load from the 16-byte secret through the shared jwt/enrollKeyDerivation.hpp
-     * (`WAZUH-ENROLL-TOKEN-KEY`; authd replicates the same construction in C), `expires` and
-     * `revoked`. Tokens minted WITHOUT a credential (`secret: null` -- the operator chose a public
+     * (`WAZUH-ENROLL-TOKEN-KEY`; authd replicates the same construction in C), `expires`,
+     * `revoked`, and whether `uses` has reached `max_uses` (authd rewrites the store on every consumed
+     * and given-back use). Tokens minted WITHOUT a credential (`secret: null` -- the operator chose a public
      * token that only pins the manager's CA) carry nothing an agent could authenticate with, so
-     * they are not replicated at all: a `kid` naming one is simply unknown here. Uses/max_uses stay
-     * authd's business: remoted forwards `token_id` and authd consumes the use (9024 when exhausted).
+     * they are not replicated at all: a `kid` naming one is simply unknown here. Consuming a use stays
+     * authd's business: remoted forwards `token_id` and authd decides (9024 when exhausted); the
+     * replica's `exhausted` only picks the rate-limit bucket (EnrollmentGranted::credentialVerified).
      *
      * Failure modes, all fail-closed: an absent file is an EMPTY replica (not an error: no token has
      * been minted yet, or a worker has not received the sync); a malformed file keeps the PREVIOUS
@@ -67,9 +70,10 @@ namespace remoted::auth
     class TokenKeySource
     {
     public:
-        /// Path to authd's enrollment token store, relative to the manager's home directory
-        /// (ENROLLMENT_TOKENS_FILE in os_auth's defs.h).
-        static constexpr const char* kDefaultPath = "etc/enrollment_tokens.json";
+        /// Path to authd's enrollment token store, in the manager's fixed configuration directory
+        /// (ENROLLMENT_TOKENS_FILE in defs.h).
+        static constexpr const char* kDefaultPath = "/etc/wazuh-manager/enrollment_tokens.json";
+        static_assert(Utils::isInManagerConfDir(kDefaultPath));
 
         /// Built-in refresh interval when the caller passes <=0 (matches PasswordKeySource's).
         static constexpr int kDefaultRefreshIntervalSeconds = 10;
@@ -87,6 +91,10 @@ namespace remoted::auth
             jwt_profile::v1::SecureBytes key; ///< HKDF-derived 32-byte HS256 key (a wiped-on-destroy copy).
             std::int64_t expires {0};         ///< Absolute Unix time; the token is usable while now < expires.
             bool revoked {false};
+            /// `max_uses != 0 && uses >= max_uses` as of the last load; false when either field is absent or
+            /// malformed. A hint, not a verdict: authd counts a use before the enrollment commits and gives it
+            /// back if it fails, so a read in between can see a token as exhausted that is about to be usable.
+            bool exhausted {false};
         };
 
         /// @brief Store health behind the remoted.enroll.token_store.* pull metrics and GET /status.

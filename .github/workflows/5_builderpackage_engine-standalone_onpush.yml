@@ -93,7 +93,6 @@ jobs:
     uses: ./.github/workflows/5_builderpackage_engine-standalone.yml
     secrets: inherit
     with:
-      # The PR merge ref, as every other lane checks out: head_ref built the branch tip (not the
-      # result of merging into the base) and whatever was pushed last while the run was queued.
-      wazuh-branch: refs/pull/${{ github.event.pull_request.number }}/merge
+      # PR merge commit, as the other lanes test it, fixed for every job of the run.
+      wazuh-branch: ${{ github.sha }}
       build-type: 'release'

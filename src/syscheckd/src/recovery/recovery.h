@@ -54,12 +54,15 @@ typedef bool (*SynchronizeModuleCallback)(void);
  * @param table_name The table to resync
  * @param handle Sync Protocol handle
  * @param directories_list The OSList of directory_t objects to use for configuration lookup (must not be NULL)
+ * @param retry_note Appended to the message logged when the resync cannot be carried out, saying when the
+ *        caller will try again.
  * @return false when the table could not be resynced at all (version bump failed, rows could not be read,
  *         unknown table, or the manager refused the DataClean). true once the manager has accepted the
  *         DataClean -- a failure of the final synchronization still returns true, since the rows are
  *         already queued and the ordinary sync cycle will drain them.
  */
-EXPORTED bool fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHandle* handle, const OSList* directories_list);
+EXPORTED bool fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHandle* handle, const OSList* directories_list,
+                                                    const char* retry_note);
 
 /**
  * @brief Pseudo-key in table_metadata holding the agent id this module's data was last
@@ -67,6 +70,12 @@ EXPORTED bool fim_recovery_persist_table_and_resync(char* table_name, AgentSyncP
  *        which is what keeps an in-place upgrade of an existing fleet from resyncing at once.
  */
 #define FIM_SYNCED_AGENT_ID_METADATA_KEY "synced_agent_id"
+
+/**
+ * @brief Prefix of the per-table pseudo-key, followed by the table name, holding the agent id
+ *        that table was last resent under, so a resync cut short resumes with the pending tables.
+ */
+#define FIM_TABLE_SYNCED_AGENT_ID_METADATA_PREFIX "synced_agent_id:"
 
 /**
  * @brief Resends every monitored entry when this agent's id has changed since the last sync.
@@ -88,7 +97,8 @@ EXPORTED bool fim_recovery_persist_table_and_resync(char* table_name, AgentSyncP
  * @return true when the id had changed and every table was resent, so the caller should record
  *         the first-sync marker as current. false when there was nothing to do (unknown id,
  *         nothing recorded yet, or the id is unchanged) or when a table failed to resync, in
- *         which case nothing is recorded and the next cycle tries again.
+ *         which case the identity marker is not recorded and the next cycle tries again with
+ *         the tables not yet resent under this id.
  */
 EXPORTED bool fim_resync_on_agent_id_change(AgentSyncProtocolHandle* handle, char** table_names, int table_count, const OSList* directories_list);
 
@@ -96,9 +106,28 @@ EXPORTED bool fim_resync_on_agent_id_change(AgentSyncProtocolHandle* handle, cha
  * @brief Checks if a full sync is required by calculating the checksum-of-checksums for a table and comparing it with the manager's
  * @param table_name The table to check
  * @param handle Sync Protocol handle
- * @returns true if a full sync is required, false if a delta sync is sufficient
+ * @returns INTEGRITY_CHECK_MISMATCH if a full sync is required, INTEGRITY_CHECK_VALID if a delta sync is
+ *          sufficient, INTEGRITY_CHECK_NOT_CHECKED (with the reason) if the check did not complete.
  */
-EXPORTED bool fim_recovery_check_if_full_sync_required(char* table_name, AgentSyncProtocolHandle* handle);
+EXPORTED IntegrityCheckResult_t fim_recovery_check_if_full_sync_required(char* table_name, AgentSyncProtocolHandle* handle);
+
+/**
+ * @brief Runs the integrity check of every table whose integrity_interval has elapsed, and the
+ *        recovery of each one that mismatches.
+ *
+ * Any failure -- a check that could not run, or a recovery that could not start -- still counts the
+ * table as checked, so it is re-evaluated in the next integrity_interval; the tables left unchecked
+ * are reported in a single warning. A shutdown ends the pass and leaves the table being worked on,
+ * and every one after it, unchecked, so they are checked after the restart.
+ *
+ * @param handle Sync Protocol handle
+ * @param table_names Tables to check
+ * @param table_count Number of entries in table_names
+ * @param directories_list The OSList of directory_t objects to use for configuration lookup
+ * @param integrity_interval Seconds between integrity checks of a table
+ */
+EXPORTED void fim_recovery_run_integrity_checks(AgentSyncProtocolHandle* handle, char** table_names, int table_count,
+                                                const OSList* directories_list, int64_t integrity_interval);
 
 /**
  * @brief Checks if integrity_interval has elapsed for a table

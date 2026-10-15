@@ -175,7 +175,6 @@ int Privsep_Chroot(const char *path)
         return (OS_INVALID);
     }
 
-    nowChroot();
     return (OS_SUCCESS);
 }
 

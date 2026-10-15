@@ -1245,12 +1245,14 @@ async def test_master_handler_integrity_sync(set_date_end_mock, info_mock):
 
 
 @freeze_time("1970-01-01")
+@patch("wazuh.core.cluster.master.local_path", return_value="/some/path")
 @patch("wazuh.core.cluster.master.safe_join", return_value="/some/path")
 @patch('wazuh.core.cluster.master.utils.safe_move')
 @patch("os.path.basename", return_value="client.keys")
 @patch("wazuh.core.common.wazuh_uid", return_value="wazuh_uid")
 @patch("wazuh.core.common.wazuh_gid", return_value="wazuh_gid")
-def test_master_handler_process_files_from_worker_ok(gid_mock, uid_mock, basename_mock, safe_move_mock, path_join_mock):
+def test_master_handler_process_files_from_worker_ok(gid_mock, uid_mock, basename_mock, safe_move_mock, path_join_mock,
+                                                     local_path_mock):
     """Check if the local files are updated and the received iterated over."""
 
     master_handler = get_master_handler()
@@ -1268,7 +1270,7 @@ def test_master_handler_process_files_from_worker_ok(gid_mock, uid_mock, basenam
         for mock in data:
             mock.reset_mock()
 
-    all_mocks = [basename_mock, path_join_mock]
+    all_mocks = [basename_mock, path_join_mock, local_path_mock]
     decompressed_files_path = '/decompressed/files/path'
     worker_name = 'wazuh'
     timeout = 0
@@ -1281,7 +1283,8 @@ def test_master_handler_process_files_from_worker_ok(gid_mock, uid_mock, basenam
                                                       timeout=timeout)
 
     basename_mock.assert_called_with('/some/path')
-    path_join_mock.assert_called_once_with(common.WAZUH_PATH, "data")
+    local_path_mock.assert_called_once_with("data")
+    path_join_mock.assert_not_called()
     assert result == {'total_updated': 0, 'errors_per_folder': defaultdict(list), 'generic_errors':
                       ["Error updating worker files (extra valid): 'Error 3007 - Client.keys file received in master node'."]}
 
@@ -1300,10 +1303,8 @@ def test_master_handler_process_files_from_worker_ok(gid_mock, uid_mock, basenam
                                                                   timeout=timeout)
 
                 basename_mock.assert_has_calls([call('/some/path'), call('/file/path')])
-                path_join_mock.assert_has_calls([call(common.WAZUH_PATH, 'data'),
-                                                 call(common.WAZUH_PATH, '/file/path'),
-                                                 call(common.WAZUH_PATH, 'queue/testing/'),
-                                                 call(common.WAZUH_PATH, 'queue', 'cluster', 'wazuh',
+                local_path_mock.assert_has_calls([call('data'), call('/file/path'), call('queue/testing/')])
+                path_join_mock.assert_has_calls([call(common.WAZUH_PATH, 'queue', 'cluster', 'wazuh',
                                                       '/os/path/basename')])
                 unmerge_info_mock.assert_called_once_with('type', decompressed_files_path, 'name')
                 assert result == {'total_updated': 0, 'errors_per_folder': defaultdict(list), 'generic_errors': []}
@@ -1322,10 +1323,8 @@ def test_master_handler_process_files_from_worker_ok(gid_mock, uid_mock, basenam
                                                                   timeout=timeout)
 
                 basename_mock.assert_has_calls([call('/some/path'), call('/file/path')])
-                path_join_mock.assert_has_calls([call(common.WAZUH_PATH, 'data'),
-                                                 call(common.WAZUH_PATH, '/file/path'),
-                                                 call(common.WAZUH_PATH, 'queue/testing/'),
-                                                 call(common.WAZUH_PATH, 'queue', 'cluster', 'wazuh',
+                local_path_mock.assert_has_calls([call('data'), call('/file/path'), call('queue/testing/')])
+                path_join_mock.assert_has_calls([call(common.WAZUH_PATH, 'queue', 'cluster', 'wazuh',
                                                       '/os/path/basename')])
                 unmerge_info_mock.assert_called_once_with('type', decompressed_files_path, 'name')
                 assert result == {'total_updated': 0, 'errors_per_folder': defaultdict(list), 'generic_errors': []}
@@ -1349,10 +1348,8 @@ def test_master_handler_process_files_from_worker_ok(gid_mock, uid_mock, basenam
                 assert result == {'errors_per_folder': defaultdict(list),
                                   'generic_errors': [], 'total_updated': 1}
                 basename_mock.assert_has_calls([call('/some/path'), call('/file/path')])
-                path_join_mock.assert_has_calls([call(common.WAZUH_PATH, 'data'),
-                                                 call(common.WAZUH_PATH, '/file/path'),
-                                                 call(common.WAZUH_PATH, 'queue/testing/'),
-                                                 call(common.WAZUH_PATH, 'queue', 'cluster', 'wazuh',
+                local_path_mock.assert_has_calls([call('data'), call('/file/path'), call('queue/testing/')])
+                path_join_mock.assert_has_calls([call(common.WAZUH_PATH, 'queue', 'cluster', 'wazuh',
                                                       '/os/path/basename')])
                 unmerge_info_mock.assert_called_once_with('type', decompressed_files_path, 'name')
                 isfile_mock.assert_called_once_with(path_join_mock.return_value)
@@ -1397,9 +1394,8 @@ def test_master_handler_process_files_from_worker_ok(gid_mock, uid_mock, basenam
 
     assert result == {'errors_per_folder': defaultdict(list),
                       'generic_errors': [], 'total_updated': 0}
-    path_join_mock.assert_has_calls([call(common.WAZUH_PATH, 'data'),
-                                     call(common.WAZUH_PATH, 'queue/testing/'),
-                                     call(decompressed_files_path, 'data')])
+    local_path_mock.assert_has_calls([call('data'), call('queue/testing/')])
+    path_join_mock.assert_has_calls([call(decompressed_files_path, 'data')])
 
     safe_move_mock.side_effect = TimeoutError
     result = master_handler.process_files_from_worker(files_metadata=files_metadata,

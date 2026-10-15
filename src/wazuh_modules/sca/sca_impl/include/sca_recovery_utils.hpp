@@ -80,9 +80,9 @@ namespace sca
 
             if (check.contains("reason"))
             {
-                const auto reason = check["reason"].is_string()
-                                    ? sca::SanitizeReason(check["reason"].get<std::string>(), sca::REASON_MAX_LENGTH)
-                                    : std::string {};
+                const auto& reason = check["reason"].is_string()
+                                     ? sca::SanitizeReason(check["reason"].get<std::string>(), sca::REASON_MAX_LENGTH)
+                                     : std::string {};
 
                 if (reason.empty())
                 {

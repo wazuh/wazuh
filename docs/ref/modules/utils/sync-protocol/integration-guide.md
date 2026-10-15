@@ -219,16 +219,19 @@ bool should_perform_full_sync(const char* index) {
     char checksum[65];
     calculate_index_checksum(index, checksum);
 
-    // Sends one FullSession carrying a ChecksumModule payload and waits for the EndAck
-    bool needs_full_sync = asp_requires_full_sync(handle, index, checksum);
+    // Sends one FullSession carrying a ChecksumModule payload and waits for the manager's answer
+    IntegrityCheckResult_t result = asp_requires_full_sync(handle, index, checksum);
 
-    if (needs_full_sync) {
-        minfo("Checksum mismatch detected for index %s, full sync required", index);
+    if (result.status == INTEGRITY_CHECK_MISMATCH) {
+        minfo("Checksum mismatch confirmed for index %s, full sync required", index);
+    } else if (result.status == INTEGRITY_CHECK_VALID) {
+        mdebug1("Checksum valid for index %s, delta sync sufficient", index);
     } else {
-        minfo("Checksum valid for index %s, delta sync sufficient", index);
+        // Not a passed check: nothing is known about the checksum.
+        mwarn("Integrity check could not be performed for index %s (%s)", index, result.failure_reason);
     }
 
-    return needs_full_sync;
+    return result.status == INTEGRITY_CHECK_MISMATCH;
 }
 ```
 
@@ -548,7 +551,7 @@ public:
                 (const std::string&, Operation, const std::string&, const std::string&, uint64_t, bool),
                 (override));
     MOCK_METHOD(SyncModuleResult, synchronizeModule, (Mode, Option), (override));
-    MOCK_METHOD(bool, requiresFullSync, (const std::string&, const std::string&), (override));
+    MOCK_METHOD(IntegrityCheckResult, requiresFullSync, (const std::string&, const std::string&), (override));
     MOCK_METHOD(SyncModuleResult, notifyDataClean, (const std::vector<std::string>&, Option, bool), (override));
     MOCK_METHOD(bool, parseResponseBuffer, (const uint8_t*, size_t), (override));
     // ... plus every other pure virtual of IAgentSyncProtocol, or the mock cannot be instantiated.

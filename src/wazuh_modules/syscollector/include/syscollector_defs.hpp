@@ -43,6 +43,13 @@
     FRIEND_TEST(SyscollectorIdentityTest, ResyncStampsTheIntegrityClockPerTable);                                      \
     FRIEND_TEST(SyscollectorIdentityTest, PlainLaneFailureDoesNotRedoTheVDLaneNextCycle);                              \
     FRIEND_TEST(SyscollectorIdentityTest, DisabledVDLaneDoesNotClaimTheVDMarker);                                      \
+    FRIEND_TEST(SyscollectorIdentityTest, NextPassResendsOnlyThePendingTables);                                        \
+    FRIEND_TEST(SyscollectorIdentityTest, PassCutByStopResumesWithThePendingTables);                                   \
+    FRIEND_TEST(SyscollectorIdentityTest, PerTableMarkerFromAnotherIdIsIgnored);                                       \
+    FRIEND_TEST(SyscollectorIdentityTest, UnreadablePerTableMarkerCountsAsNotDone);                                    \
+    FRIEND_TEST(SyscollectorIdentityTest, PlainLaneMarkerDoesNotSkipTheVDLane);                                        \
+    FRIEND_TEST(SyscollectorIdentityTest, ProgressMarkersAreClearedOnceTheIdentityIsRecorded);                         \
+    FRIEND_TEST(SyscollectorIdentityTest, FailedVDTableKeepsTheVDLanePending);                                         \
     FRIEND_TEST(SyscollectorIdentityTest, VDRecoveryAttachesTheDataContext);                                           \
     FRIEND_TEST(SyscollectorIdentityTest, PlainRecoveryLeavesTheVDContextAlone);                                       \
     FRIEND_TEST(SyscollectorIdentityTest, DeferredVDRecoveryDoesNotAttachContext);                                     \
@@ -65,6 +72,12 @@
     FRIEND_TEST(SyscollectorIdentityTest, DisabledCollectorsDataCleanWaitsForAFlush);                                  \
     FRIEND_TEST(SyscollectorIdentityTest, DisabledCollectorsDataCleanWaitsForARecovery);                               \
     FRIEND_TEST(SyscollectorIdentityTest, NoDisabledCollectorsDataLeavesTheRecoverySlotAlone);                        \
+    FRIEND_TEST(SyscollectorIdentityTest, UncheckedTableIsStampedAndReportedOnce);                                     \
+    FRIEND_TEST(SyscollectorIdentityTest, CheckInterruptedByStopLeavesTheTableUnstamped);                              \
+    FRIEND_TEST(SyscollectorIdentityTest, UncheckedTablesShareOneWarningAndKeepAReportedMismatch);                     \
+    FRIEND_TEST(SyscollectorIdentityTest, RefusedRecoveryDataCleanStampsAndMovesOn);                                   \
+    FRIEND_TEST(SyscollectorIdentityTest, StopBetweenTablesLeavesTheRestUnstamped);                                    \
+    FRIEND_TEST(SyscollectorIdentityTest, RecoveryInterruptedByStopLeavesTheTableUnstamped);                           \
     FRIEND_TEST(SyscollectorImpTest, SyncModule_LocalTransportUnavailableWithinToleranceLogsDeferred);                 \
     FRIEND_TEST(SyscollectorImpTest, SyncModule_LocalTransportUnavailableAtToleranceLogsDeferred);                     \
     FRIEND_TEST(SyscollectorImpTest, SyncModule_LocalTransportUnavailablePastToleranceLogsWarning);                    \

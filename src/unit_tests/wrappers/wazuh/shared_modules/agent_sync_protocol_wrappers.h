@@ -48,9 +48,10 @@ long __wrap_asp_get_agent_id(void);
 /// that need to drive classification flags (e.g. local_transport_unavailable) call this with true.
 void __wrap_asp_sync_module_use_full_result(bool enable);
 
-bool __wrap_asp_requires_full_sync(AgentSyncProtocolHandle* handle,
-                                   const char* index,
-                                   const char* checksum);
+/// will_return(IntegrityCheckResult_t*) supplies the whole result.
+IntegrityCheckResult_t __wrap_asp_requires_full_sync(AgentSyncProtocolHandle* handle,
+                                                     const char* index,
+                                                     const char* checksum);
 
 bool __wrap_asp_parse_response_buffer(AgentSyncProtocolHandle* handle, const uint8_t* data, size_t length);
 

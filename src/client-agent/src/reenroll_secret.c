@@ -59,8 +59,10 @@ int w_reenroll_secret_store(const char *id, const char *secret) {
 
     /* Same mode as client.keys: this credential is the key's equal, not the anchor's (see
      * reenroll_secret.h). TempFile()'s mkstemp() creates 0600, so without this the daemon could
-     * not read back a secret written in the root window of w_agent_token_bootstrap(). */
-    if (chmod(file.name, 0640) == -1) {
+     * not read back a secret written in the root window of w_agent_token_bootstrap(). Set, and
+     * the secret written, through the descriptor TempFile() returned: nothing is done to the
+     * staged copy by name but the move below. */
+    if (fchmod(fileno(file.fp), 0640) == -1) {
         merror(CHMOD_ERROR, file.name, errno, strerror(errno));
         fclose(file.fp);
         unlink(file.name);
@@ -68,12 +70,28 @@ int w_reenroll_secret_store(const char *id, const char *secret) {
         return -1;
     }
 
-    fprintf(file.fp, "%s %s\n", id, secret);
-    fclose(file.fp);
+    /* A short write would install a cut-off secret. errno is read right after the call that
+     * failed: the fclose() that follows a failed fprintf() may change it. */
+    bool failed = (fprintf(file.fp, "%s %s\n", id, secret) < 0);
+    int error = errno;
 
-    if (OS_MoveFile(file.name, AGENT_REENROLL_SECRET) < 0) {
-        /* OS_MoveFile() logs the reason. The previous secret, if any, is untouched: that is the
-         * point of writing through a temporary file. */
+    if (fclose(file.fp) != 0 && !failed) {
+        failed = true;
+        error = errno;
+    }
+
+    if (failed) {
+        merror(FWRITE_ERROR, file.name, error, strerror(error));
+        unlink(file.name);
+        os_free(file.name);
+        return -1;
+    }
+
+    /* w_move_file_nofollow() renames it over the previous secret, or copies it in where the file
+     * can't be renamed over, such as a single-file bind mount, without following a link at either
+     * name. It logs why it failed. */
+    if (w_move_file_nofollow(file.name, AGENT_REENROLL_SECRET) != 0) {
+        unlink(file.name);
         os_free(file.name);
         return -1;
     }

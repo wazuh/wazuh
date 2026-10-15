@@ -64,20 +64,20 @@ Below are the typical Wazuh 4.x wodle blocks you may have in your `ossec.conf`. 
 Before proceeding, make sure you have:
 
 - Wazuh 5.0 or later deployed (indexer, manager, dashboard) and the agents upgraded.
-- Access to each agent's local `ossec.conf`, and to the Wazuh manager, where shared `agent.conf` files are edited (one per agent group, under `etc/shared/<group>/`) before being pushed to agents.
+- Access to each agent's local `ossec.conf`, and to the Wazuh manager, where shared `agent.conf` files are edited (one per agent group, under `/etc/wazuh-manager/shared/<group>/`) before being pushed to agents.
 - A list of the benchmarks and profiles you previously assessed with CIS-CAT and OpenSCAP, so you can match them to the equivalent SCA policies.
 
 > These steps remove the deprecated wodles and replace them with SCA. Apply them wherever the wodles were configured: in each agent's local `ossec.conf`, and in any shared `agent.conf` on the manager.
 
 ## 1. Inventory your CIS-CAT and OpenSCAP configuration
 
-Locate every `<wodle name="cis-cat">` and `<wodle name="open-scap">` block. Check the local `ossec.conf` on each agent **and** the shared `agent.conf` of each agent group on the manager (under `etc/shared/<group>/agent.conf`), since a single shared configuration is distributed to every agent in the group and can carry the deprecated wodles to many agents at once.
+Locate every `<wodle name="cis-cat">` and `<wodle name="open-scap">` block. Check the local `ossec.conf` on each agent **and** the shared `agent.conf` of each agent group on the manager (under `/etc/wazuh-manager/shared/<group>/agent.conf`), since a single shared configuration is distributed to every agent in the group and can carry the deprecated wodles to many agents at once.
 
 For each block, note the benchmark content and profile it referenced (the `<content>` `path` and `<profile>` values). You will use this to select the matching SCA policy in [Step 3](#3-map-your-benchmarks-to-sca-policies). For OpenSCAP, record any `<content type="oval">` entries separately — those map to Vulnerability Detection ([Step 6](#6-move-ovalcve-scanning-to-vulnerability-detection-openscap-only)), not SCA.
 
 ## 2. Remove the cis-cat and open-scap wodle blocks
 
-Delete the `<wodle name="cis-cat">` and `<wodle name="open-scap">` blocks. Edit the local `ossec.conf` directly on each agent, and edit any shared `agent.conf` on the manager (in the group's `etc/shared/<group>/` directory) — not on the agents, which receive that file from the manager.
+Delete the `<wodle name="cis-cat">` and `<wodle name="open-scap">` blocks. Edit the local `ossec.conf` directly on each agent, and edit any shared `agent.conf` on the manager (in the group's `/etc/wazuh-manager/shared/<group>/` directory) — not on the agents, which receive that file from the manager.
 
 Wazuh 5.0 no longer registers a runnable module under either name: leftover blocks are ignored with an INFO deprecation message and provide no assessment, so remove them to keep the configuration clean.
 

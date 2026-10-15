@@ -22,6 +22,7 @@ from tempfile import NamedTemporaryFile, TemporaryDirectory
 @patch('wazuh.core.pyDaemonModule.sys.stderr.write')
 @patch('wazuh.core.pyDaemonModule.sys.stdin.fileno')
 @patch('wazuh.core.pyDaemonModule.os.dup2')
+@patch('wazuh.core.pyDaemonModule.common.WAZUH_PATH', new='/var/wazuh-manager')
 @patch('wazuh.core.pyDaemonModule.os.chdir')
 def test_pyDaemon(mock_chdir, mock_dup, mock_fileno, mock_write, mock_setsid, mock_exit, effect):
     """Tests pyDaemon function works"""
@@ -34,7 +35,7 @@ def test_pyDaemon(mock_chdir, mock_dup, mock_fileno, mock_write, mock_setsid, mo
     else:
         mock_exit.assert_called_with(1)
     mock_setsid.assert_called_once_with()
-    mock_chdir.assert_called_once_with('/')
+    mock_chdir.assert_called_once_with('/var/wazuh-manager')
 
 
 @patch('wazuh.core.pyDaemonModule.common.WAZUH_PATH', new='/tmp')

@@ -22,8 +22,8 @@ install_cert() {
     docker cp "$cert" "$NODE:/tmp/leaf.pem" >/dev/null
     docker cp "$key"  "$NODE:/tmp/leaf-key.pem" >/dev/null
     docker exec "$NODE" sh -c '
-        install -o wazuh-manager -g wazuh-manager -m 640 /tmp/leaf.pem     /var/wazuh-manager/etc/certs/remoted.pem &&
-        install -o wazuh-manager -g wazuh-manager -m 640 /tmp/leaf-key.pem /var/wazuh-manager/etc/certs/remoted-key.pem &&
+        install -o root -g wazuh-manager -m 640 /tmp/leaf.pem     /etc/wazuh-manager/certs/remoted.pem &&
+        install -o root -g wazuh-manager -m 640 /tmp/leaf-key.pem /etc/wazuh-manager/certs/remoted-key.pem &&
         rm -f /tmp/leaf.pem /tmp/leaf-key.pem' >/dev/null
     docker exec "$NODE" /var/wazuh-manager/bin/wazuh-manager-control restart >/dev/null 2>&1
     local waited=0

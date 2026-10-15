@@ -35,6 +35,11 @@ NAME="Wazuh"
 INSTYPE="manager"
 # Default installation directory
 INSTALLDIR="/var/wazuh-manager";
+# The manager's configuration directory. Fixed: a custom installation directory moves the home only.
+# Kept identical with WAZUH_MANAGER_CONF_DIR in defs.h, Utils::MANAGER_CONF_DIR
+# (shared_modules/utils/managerConfDir.hpp), the engine's base/managerConfig.hpp, CONF_PATH in
+# framework/wazuh/core/common.py and CONF_DIR in wazuh-server.sh and the package scripts.
+CONF_DIR="/etc/wazuh-manager"
 PREINSTALLEDDIR=""
 CEXTRA=""
 WAZUH_CONF="wazuh-manager.conf"

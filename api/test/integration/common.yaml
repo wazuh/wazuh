@@ -110,7 +110,7 @@ variables:
     </agent_config>
 
   valid_wazuh_conf: |
-    <!-- etc/wazuh-manager.conf of worker1 (the whole file is replaced: cluster.key is mandatory) -->
+    <!-- /etc/wazuh-manager/wazuh-manager.conf of worker1 (the whole file is replaced: cluster.key is mandatory) -->
     <wazuh_config>
       <global>
         <agents_disconnection_time>20s</agents_disconnection_time>
@@ -152,17 +152,17 @@ variables:
         </hosts>
         <ssl>
           <certificate_authorities>
-            <ca>etc/certs/root-ca.pem</ca>
+            <ca>/etc/wazuh-manager/certs/root-ca.pem</ca>
           </certificate_authorities>
-          <certificate>etc/certs/indexer-connector.pem</certificate>
-          <key>etc/certs/indexer-connector-key.pem</key>
+          <certificate>/etc/wazuh-manager/certs/indexer-connector.pem</certificate>
+          <key>/etc/wazuh-manager/certs/indexer-connector-key.pem</key>
         </ssl>
       </indexer>
     </wazuh_config>
 
   # valid_wazuh_conf with another cluster key: only a caller with cluster:read_secrets may upload it
   valid_wazuh_conf_other_key: |
-    <!-- etc/wazuh-manager.conf of worker1 (the whole file is replaced: cluster.key is mandatory) -->
+    <!-- /etc/wazuh-manager/wazuh-manager.conf of worker1 (the whole file is replaced: cluster.key is mandatory) -->
     <wazuh_config>
       <global>
         <agents_disconnection_time>20s</agents_disconnection_time>
@@ -204,17 +204,17 @@ variables:
         </hosts>
         <ssl>
           <certificate_authorities>
-            <ca>etc/certs/root-ca.pem</ca>
+            <ca>/etc/wazuh-manager/certs/root-ca.pem</ca>
           </certificate_authorities>
-          <certificate>etc/certs/indexer-connector.pem</certificate>
-          <key>etc/certs/indexer-connector-key.pem</key>
+          <certificate>/etc/wazuh-manager/certs/indexer-connector.pem</certificate>
+          <key>/etc/wazuh-manager/certs/indexer-connector-key.pem</key>
         </ssl>
       </indexer>
     </wazuh_config>
 
   # valid_wazuh_conf with the key as the API returns it without cluster:read_secrets: keeps the current one
   valid_wazuh_conf_masked_key: |
-    <!-- etc/wazuh-manager.conf of worker1 (the whole file is replaced: cluster.key is mandatory) -->
+    <!-- /etc/wazuh-manager/wazuh-manager.conf of worker1 (the whole file is replaced: cluster.key is mandatory) -->
     <wazuh_config>
       <global>
         <agents_disconnection_time>20s</agents_disconnection_time>
@@ -256,10 +256,10 @@ variables:
         </hosts>
         <ssl>
           <certificate_authorities>
-            <ca>etc/certs/root-ca.pem</ca>
+            <ca>/etc/wazuh-manager/certs/root-ca.pem</ca>
           </certificate_authorities>
-          <certificate>etc/certs/indexer-connector.pem</certificate>
-          <key>etc/certs/indexer-connector-key.pem</key>
+          <certificate>/etc/wazuh-manager/certs/indexer-connector.pem</certificate>
+          <key>/etc/wazuh-manager/certs/indexer-connector-key.pem</key>
         </ssl>
       </indexer>
     </wazuh_config>
@@ -267,7 +267,7 @@ variables:
   # valid_wazuh_conf with another indexer host, which would receive the manager's indexer credential: only a
   # caller with cluster:read_secrets may upload it
   valid_wazuh_conf_other_indexer: |
-    <!-- etc/wazuh-manager.conf of worker1 (the whole file is replaced: cluster.key is mandatory) -->
+    <!-- /etc/wazuh-manager/wazuh-manager.conf of worker1 (the whole file is replaced: cluster.key is mandatory) -->
     <wazuh_config>
       <global>
         <agents_disconnection_time>20s</agents_disconnection_time>
@@ -309,10 +309,10 @@ variables:
         </hosts>
         <ssl>
           <certificate_authorities>
-            <ca>etc/certs/root-ca.pem</ca>
+            <ca>/etc/wazuh-manager/certs/root-ca.pem</ca>
           </certificate_authorities>
-          <certificate>etc/certs/indexer-connector.pem</certificate>
-          <key>etc/certs/indexer-connector-key.pem</key>
+          <certificate>/etc/wazuh-manager/certs/indexer-connector.pem</certificate>
+          <key>/etc/wazuh-manager/certs/indexer-connector-key.pem</key>
         </ssl>
       </indexer>
     </wazuh_config>

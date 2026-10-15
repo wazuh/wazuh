@@ -15,7 +15,7 @@ indexer.
 |---|---|---|
 | Agent identities: ids, names, keys (`client.keys`) | Kept. Agents reconnect without re-enrolling. | Step 3 |
 | Agent registry: registration date, last known version and OS, group membership (`global.db`) | Kept, including assignments made from the manager or the API that never reached the agent's `ossec.conf`. | Step 3 |
-| Group folders (`etc/shared/<group>/`) | Kept. `agent.conf` files must be valid for 5.0. | Step 3 |
+| Group folders (`/etc/wazuh-manager/shared/<group>/`) | Kept. `agent.conf` files must be valid for 5.0. | Step 3 |
 | Enrollment password (`authd.pass`) | Kept on the manager only if 4.x agents still have to enroll. 5.0 agents enroll with a token; the 5.0 package upgrade deletes the endpoint's default copy, and an agent uses a password only from a file placed there by hand. | [Step 3](#enrollment-password) |
 | API users, roles and policies (`rbac.db`) | Kept, including passwords, which then replace the ones the 5.0 install generated. | [Step 3](#api-users-roles-and-policies) |
 | Manager configuration | Rewritten by hand into `wazuh-manager.conf`. | Step 4 |
@@ -66,6 +66,10 @@ gives you both at once — the API answers on loopback while no agent can reach 
 
 Read this section either way: the decisions it describes are still yours, and the tool cannot carry
 what no endpoint accepts, which is listed in its README. Run it with `--dry-run` first.
+Its `import` and `check` commands address the 5.0 manager through two directories:
+`--target-dir` (the installation, default `/var/wazuh-manager`) and `--target-conf-dir` (the
+configuration directory, default `/etc/wazuh-manager`), which is where `authd.pass` is installed and
+`certs/root-ca.pem` is read from.
 
 Stop the 4.x manager so the files are consistent, then copy everything below off the host. The
 paths are the 4.x ones; the table says where each item lands on 5.0.
@@ -81,10 +85,10 @@ tar -czf /root/wazuh-4x-backup/ruleset.tar.gz -C /var/ossec/etc rules decoders l
 
 | 4.x file | Content | 5.0 destination |
 |---|---|---|
-| `etc/client.keys` | Agent ids, names, allowed addresses and keys | `/var/wazuh-manager/etc/client.keys` |
+| `etc/client.keys` | Agent ids, names, allowed addresses and keys | `/etc/wazuh-manager/client.keys` |
 | `queue/db/global.db` | Agent registry and group membership | Rows copied into `/var/wazuh-manager/queue/db/global.db` |
-| `etc/shared/<group>/` (custom groups only) | Group configuration and files | `/var/wazuh-manager/etc/shared/<group>/` |
-| `etc/authd.pass` | Enrollment password | `/var/wazuh-manager/etc/authd.pass` |
+| `etc/shared/<group>/` (custom groups only) | Group configuration and files | `/etc/wazuh-manager/shared/<group>/` |
+| `etc/authd.pass` | Enrollment password | `/etc/wazuh-manager/authd.pass` |
 | `api/configuration/security/rbac.db` | API users, roles, policies | `/var/wazuh-manager/api/configuration/security/rbac.db` |
 | `etc/ossec.conf`, `etc/local_internal_options.conf`, `api/configuration/api.yaml` | Configuration to translate by hand | See [Step 4](#4-migrate-the-configuration) |
 | `etc/rules/`, `etc/decoders/`, `etc/lists/` | Your content, to translate by hand | See the ruleset guides |
@@ -164,7 +168,7 @@ component is installed and running, not before.
 for the agent listener on `1517` and `wazuh-manager-authd` on `1515`, and
 `indexer-connector.pem`/`indexer-connector-key.pem`, the client certificate presented to the indexer, and
 `apid.pem`/`apid-key.pem`, the certificate of the Server API on `55000`.
-The install decides what to do about them from what it finds in `/etc/wazuh/ca` and in `etc/certs`
+The install decides what to do about them from what it finds in `/etc/wazuh/ca` and in `/etc/wazuh-manager/certs`
 ([What the install does](../../ref/getting-started/credentials.md#what-the-install-does) has every
 case). For a migration there are three choices:
 
@@ -173,7 +177,7 @@ case). For a migration there are three choices:
 - **A CA with its key in `/etc/wazuh/ca`** (`root-ca.pem` and `root-ca.key`, with the owners and
   modes that page lists, or the install refuses it and issues nothing). The install issues the three pairs
   from that CA.
-- **The three pairs and their `root-ca.pem` in `etc/certs`, issued elsewhere.** The install uses them as
+- **The three pairs and their `root-ca.pem` in `/etc/wazuh-manager/certs`, issued elsewhere.** The install uses them as
   they are and issues nothing.
 
 A cluster must give every node the same CA, through either of the last two, because certificates are
@@ -182,12 +186,12 @@ it.
 
 The last choice is the usual one for a migration that brings certificates issued with the assistant's
 `wazuh-certs-tool`. Place them before installing; they can be root-owned at this point, because the
-installer sets the ownership each daemon needs:
+installer sets them to `root:wazuh-manager` `0640`:
 
 ```bash
-sudo install -d -m 1770 -o root -g root /var/wazuh-manager/etc/certs
+sudo install -d -m 0750 -o root -g root /etc/wazuh-manager/certs
 sudo install -m 0640 -o root -g root root-ca.pem indexer-connector.pem indexer-connector-key.pem \
-    remoted.pem remoted-key.pem apid.pem apid-key.pem /var/wazuh-manager/etc/certs/
+    remoted.pem remoted-key.pem apid.pem apid-key.pem /etc/wazuh-manager/certs/
 ```
 
 With no CA directory the install still prints `the manager has no TLS certificates and this install
@@ -220,7 +224,7 @@ When the install issued nothing, the manager has no listener pair and refuses to
 daemon runs, with the configuration validator's verdict:
 
 ```console
-(1244): Invalid configuration at '/remote/https/certificate': file not found: /var/wazuh-manager/etc/certs/remoted.pem (issued by the credential resolver at installation, or provisioned externally, e.g. with wazuh-certs-tool).
+(1244): Invalid configuration at '/remote/https/certificate': file not found: /etc/wazuh-manager/certs/remoted.pem (issued by the credential resolver at installation, or provisioned externally, e.g. with wazuh-certs-tool).
 ```
 
 Place the pair and start it again; nothing has to be reinstalled. A pair that exists but is
@@ -306,13 +310,13 @@ sudo systemctl stop wazuh-manager
 Run everything in this step as root on the 5.0 host with the manager stopped. Ownership matters,
 because the accounts were renamed: what 4.x installed as `wazuh:wazuh` belongs to `wazuh-manager` on
 5.0, and `wazuh-manager-authd` reopens `client.keys` for append after dropping privileges. A
-`client.keys` left owned by root stops it with `ERROR: Unable to open etc/client.keys (key file)`.
+`client.keys` left owned by root stops it with `ERROR: Unable to open /etc/wazuh-manager/client.keys (key file)`.
 The commands below reproduce the ownership and modes a 5.0 installation ships.
 
 ### Agent keys
 
 ```bash
-install -m 660 -o wazuh-manager -g wazuh-manager /root/wazuh-4x-backup/client.keys /var/wazuh-manager/etc/client.keys
+install -m 660 -o wazuh-manager -g wazuh-manager /root/wazuh-4x-backup/client.keys /etc/wazuh-manager/client.keys
 ```
 
 The file format is unchanged and the 4.x key is exactly the key the 5.0 protocol uses, so no agent
@@ -356,8 +360,8 @@ have no counterpart in 5.0 (agent labels were removed). Columns dropped in 5.0 (
 ### Groups
 
 ```bash
-tar -xzf /root/wazuh-4x-backup/groups.tar.gz -C /var/wazuh-manager/etc/
-chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/etc/shared/
+tar -xzf /root/wazuh-4x-backup/groups.tar.gz -C /etc/wazuh-manager
+chown -R wazuh-manager:wazuh-manager /etc/wazuh-manager/shared/
 ```
 
 Group membership came with `global.db`: an agent assigned to a group from the dashboard, the API
@@ -371,7 +375,7 @@ back on the next synchronization, after a `delete-group` has already gone out to
 ### Enrollment password
 
 ```bash
-install -m 640 -o wazuh-manager -g wazuh-manager /root/wazuh-4x-backup/authd.pass /var/wazuh-manager/etc/authd.pass
+install -m 640 -o wazuh-manager -g wazuh-manager /root/wazuh-4x-backup/authd.pass /etc/wazuh-manager/authd.pass
 ```
 
 **This step is conditional.** Carry the password only if 4.x agents will still have to enroll
@@ -396,7 +400,7 @@ So carrying it extends the life of a fleet-wide shared secret that 5.0 is retiri
 nothing once the last 4.x agent is gone: an upgraded agent keeps the key it has and holds no secret of its own,
 and anything an operator needs is done with a token, as
 [What the upgrade does to the agent's credentials](#what-the-upgrade-does-to-the-agents-credentials)
-explains. Drop it at that point: delete `/var/wazuh-manager/etc/authd.pass` and restart
+explains. Drop it at that point: delete `/etc/wazuh-manager/authd.pass` and restart
 `wazuh-manager-authd` to get a fresh one, or set `<auth><use_password>no</use_password>` once
 nothing enrolls over `1515` any more.
 
@@ -518,7 +522,7 @@ grep -E "keystore|authd" /var/wazuh-manager/logs/wazuh-manager.log | tail
 ```
 
 Expected: every daemon running, `wazuh-manager-remoted:keystore: INFO: Loaded N agent key(s)
-from 'etc/client.keys'.` with your agent count, and authd `Accepting connections on port 1515.
+from '/etc/wazuh-manager/client.keys'.` with your agent count, and authd `Accepting connections on port 1515.
 Shared-password enrollment is required.`
 Then confirm the registry through the API, with the `wazuh` password published in
 `/etc/wazuh/credentials.env`, or the 4.x one if you carried `rbac.db`:
@@ -578,7 +582,7 @@ migrated fleet:
     wazuh-manager-remoted: INFO: legacy_task_delivery: successfully delivered remote_upgrade task '...' to agent '003' (wpk: '...')
     ```
   - **Package upgrade on the host.** Nothing is delivered. Place the manager's
-    `/var/wazuh-manager/etc/certs/root-ca.pem` at `/var/ossec/etc/certs/root-ca.pem` on Linux and
+    `/etc/wazuh-manager/certs/root-ca.pem` at `/var/ossec/etc/certs/root-ca.pem` on Linux and
     macOS, or `<installdir>\certs\root-ca.pem` on Windows, before upgrading:
 
     ```bash
@@ -609,9 +613,9 @@ An upgraded agent keeps its identity and never enrolls, which is the point of th
 it holds on disk still changes, and it is worth knowing before you upgrade a fleet:
 
 1. The manager delivers its CA (remote upgrades), the installer validates it and writes it to
-   `etc/certs/root-ca.pem`.
+   `/etc/wazuh-manager/certs/root-ca.pem`.
 2. The package preserves `client.keys`, `ossec.conf` and `local_internal_options.conf`.
-3. The package **deletes `etc/authd.pass`**, overwriting it first. The message is on the package
+3. The package **deletes `/etc/wazuh-manager/authd.pass`**, overwriting it first. The message is on the package
    manager's own output:
 
    ```console

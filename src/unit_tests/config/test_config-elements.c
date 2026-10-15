@@ -160,7 +160,7 @@ static void test_active_response_is_valid(void **state) {
     assert_int_equal(ReadConfig(CLOCALFILE, TEST_CONF_PATH, NULL, NULL), 0);
 }
 
-/* The manager's own sections have no XML reader anymore (etc/wazuh-manager.conf):
+/* The manager's own sections have no XML reader anymore (/etc/wazuh-manager/wazuh-manager.conf):
  * an agent file that still carries one is told so and the block is ignored. */
 static void test_manager_section_is_ignored_with_warning(void **state) {
     if (write_conf("<global>"

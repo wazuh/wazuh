@@ -31,7 +31,7 @@
 
 /* The generated password is CSPRNG output, so there is no literal to compare against: what the
  * tests pin is its shape (AUTHD_PASS_HEX_CHARS lowercase hex) and that the value written to
- * etc/authd.pass is the very value returned to the caller. */
+ * AUTHD_PASS is the very value returned to the caller. */
 static int is_lower_hex_pass(const char *s) {
     size_t i;
 
@@ -79,7 +79,7 @@ static int test_teardown(void **state) {
 
 /* Queue a successful open("r") -> fgets -> close of authd.pass returning `content`. */
 static void expect_pass_file_read(const char *content) {
-    expect_string(__wrap_wfopen, path, "etc/authd.pass");
+    expect_string(__wrap_wfopen, path, AUTHD_PASS);
     expect_string(__wrap_wfopen, mode, "r");
     will_return(__wrap_wfopen, FAKE_FP);
 
@@ -92,7 +92,7 @@ static void expect_pass_file_read(const char *content) {
 
 /* Queue an open("r") that fails: authd.pass does not exist. */
 static void expect_pass_file_open_fail(void) {
-    expect_string(__wrap_wfopen, path, "etc/authd.pass");
+    expect_string(__wrap_wfopen, path, AUTHD_PASS);
     expect_string(__wrap_wfopen, mode, "r");
     will_return(__wrap_wfopen, NULL);
 }
@@ -140,7 +140,7 @@ static void test_w_authd_load_password_from_file(void **state) {
 
     expect_pass_file_read("MyS3cret\n");
 
-    char *result = w_authd_load_password("etc/authd.pass", &generated);
+    char *result = w_authd_load_password(AUTHD_PASS, &generated);
 
     assert_non_null(result);
     assert_string_equal(result, "MyS3cret");
@@ -154,7 +154,7 @@ static void test_w_authd_load_password_strips_crlf(void **state) {
 
     expect_pass_file_read("MyS3cret\r\n");
 
-    char *result = w_authd_load_password("etc/authd.pass", &generated);
+    char *result = w_authd_load_password(AUTHD_PASS, &generated);
 
     assert_non_null(result);
     assert_string_equal(result, "MyS3cret");
@@ -171,18 +171,18 @@ static void test_w_authd_load_password_too_long_is_fatal(void **state) {
     longline[sizeof(longline) - 1] = '\0';
 
     expect_pass_file_read(longline);
-    expect_string(__wrap__merror_exit, formatted_msg, "Authentication password in 'etc/authd.pass' is too long.");
+    expect_string(__wrap__merror_exit, formatted_msg, "Authentication password in '" AUTHD_PASS "' is too long.");
 
-    expect_assert_failure(w_authd_load_password("etc/authd.pass", &generated));
+    expect_assert_failure(w_authd_load_password(AUTHD_PASS, &generated));
 }
 
 static void test_w_authd_load_password_empty_file_is_fatal(void **state) {
     bool generated = false;
 
     expect_pass_file_read("");   /* empty file content */
-    expect_string(__wrap__merror_exit, formatted_msg, "Invalid password provided in 'etc/authd.pass'.");
+    expect_string(__wrap__merror_exit, formatted_msg, "Invalid password provided in '" AUTHD_PASS "'.");
 
-    expect_assert_failure(w_authd_load_password("etc/authd.pass", &generated));
+    expect_assert_failure(w_authd_load_password(AUTHD_PASS, &generated));
 }
 
 static void test_w_authd_load_password_generate_and_persist(void **state) {
@@ -193,7 +193,7 @@ static void test_w_authd_load_password_generate_and_persist(void **state) {
     will_return(__wrap_RAND_bytes, 1); /* pass through to the real CSPRNG */
 
     /* Open for writing the new password */
-    expect_string(__wrap_wfopen, path, "etc/authd.pass");
+    expect_string(__wrap_wfopen, path, AUTHD_PASS);
     expect_string(__wrap_wfopen, mode, "w");
     will_return(__wrap_wfopen, FAKE_FP);
 
@@ -206,7 +206,7 @@ static void test_w_authd_load_password_generate_and_persist(void **state) {
 
     persisted_pass[0] = '\0';
 
-    char *result = w_authd_load_password("etc/authd.pass", &generated);
+    char *result = w_authd_load_password(AUTHD_PASS, &generated);
 
     assert_non_null(result);
     assert_true(is_lower_hex_pass(result));
@@ -216,7 +216,7 @@ static void test_w_authd_load_password_generate_and_persist(void **state) {
     os_free(result);
 }
 
-/* A CSPRNG failure must leave etc/authd.pass alone: no wfopen("w") is expected here, so any
+/* A CSPRNG failure must leave AUTHD_PASS alone: no wfopen("w") is expected here, so any
  * attempt to create the file fails the test before merror_exit() is even reached. */
 static void test_w_authd_load_password_csprng_failure_is_fatal(void **state) {
     bool generated = false;
@@ -229,7 +229,7 @@ static void test_w_authd_load_password_csprng_failure_is_fatal(void **state) {
                   "Unable to generate an enrollment password: the CSPRNG (RAND_bytes) failed.");
     expect_string(__wrap__merror_exit, formatted_msg, "Unable to generate random password. Exiting.");
 
-    expect_assert_failure(w_authd_load_password("etc/authd.pass", &generated));
+    expect_assert_failure(w_authd_load_password(AUTHD_PASS, &generated));
 }
 
 static void test_w_authd_load_password_persist_failure_is_fatal(void **state) {
@@ -240,13 +240,13 @@ static void test_w_authd_load_password_persist_failure_is_fatal(void **state) {
     will_return(__wrap_RAND_bytes, 1); /* pass through to the real CSPRNG */
 
     /* Open for writing fails */
-    expect_string(__wrap_wfopen, path, "etc/authd.pass");
+    expect_string(__wrap_wfopen, path, AUTHD_PASS);
     expect_string(__wrap_wfopen, mode, "w");
     will_return(__wrap_wfopen, NULL);
 
     expect_any(__wrap__merror_exit, formatted_msg);
 
-    expect_assert_failure(w_authd_load_password("etc/authd.pass", &generated));
+    expect_assert_failure(w_authd_load_password(AUTHD_PASS, &generated));
 }
 
 /* An existing file whose first line is too short must fail closed (never return NULL,
@@ -255,9 +255,9 @@ static void test_w_authd_load_password_short_line_is_fatal(void **state) {
     bool generated = false;
 
     expect_pass_file_read("x\n");   /* first line too short (strlen 2, not > 2) */
-    expect_string(__wrap__merror_exit, formatted_msg, "Invalid password provided in 'etc/authd.pass'.");
+    expect_string(__wrap__merror_exit, formatted_msg, "Invalid password provided in '" AUTHD_PASS "'.");
 
-    expect_assert_failure(w_authd_load_password("etc/authd.pass", &generated));
+    expect_assert_failure(w_authd_load_password(AUTHD_PASS, &generated));
 }
 
 /* An all-whitespace line passes the length check but must still fail closed: it would
@@ -266,9 +266,9 @@ static void test_w_authd_load_password_spaces_only_is_fatal(void **state) {
     bool generated = false;
 
     expect_pass_file_read("      \n");   /* only spaces after CR/LF trim */
-    expect_string(__wrap__merror_exit, formatted_msg, "Invalid password provided in 'etc/authd.pass'.");
+    expect_string(__wrap__merror_exit, formatted_msg, "Invalid password provided in '" AUTHD_PASS "'.");
 
-    expect_assert_failure(w_authd_load_password("etc/authd.pass", &generated));
+    expect_assert_failure(w_authd_load_password(AUTHD_PASS, &generated));
 }
 
 /* An existing, non-empty file that cannot be read (fgets fails) must fail closed too. */
@@ -276,9 +276,9 @@ static void test_w_authd_load_password_unreadable_is_fatal(void **state) {
     bool generated = false;
 
     expect_pass_file_read(NULL);   /* read error -> no usable password */
-    expect_string(__wrap__merror_exit, formatted_msg, "Invalid password provided in 'etc/authd.pass'.");
+    expect_string(__wrap__merror_exit, formatted_msg, "Invalid password provided in '" AUTHD_PASS "'.");
 
-    expect_assert_failure(w_authd_load_password("etc/authd.pass", &generated));
+    expect_assert_failure(w_authd_load_password(AUTHD_PASS, &generated));
 }
 
 /* w_authd_read_password (read-only loader used by cluster workers) */
@@ -286,7 +286,7 @@ static void test_w_authd_load_password_unreadable_is_fatal(void **state) {
 static void test_w_authd_read_password_from_file(void **state) {
     expect_pass_file_read("SyncedPass\n");
 
-    char *result = w_authd_read_password("etc/authd.pass");
+    char *result = w_authd_read_password(AUTHD_PASS);
 
     assert_non_null(result);
     assert_string_equal(result, "SyncedPass");
@@ -297,30 +297,30 @@ static void test_w_authd_read_password_from_file(void **state) {
 static void test_w_authd_read_password_missing_returns_null(void **state) {
     expect_pass_file_open_fail();
 
-    assert_null(w_authd_read_password("etc/authd.pass"));
+    assert_null(w_authd_read_password(AUTHD_PASS));
 }
 
 /* An existing file whose first line is too short yields NULL (the caller rejects, never bypasses). */
 static void test_w_authd_read_password_short_returns_null(void **state) {
     expect_pass_file_read("x\n");
-    expect_string(__wrap__mwarn, formatted_msg, "Authentication password in 'etc/authd.pass' is invalid or empty; ignoring.");
+    expect_string(__wrap__mwarn, formatted_msg, "Authentication password in '" AUTHD_PASS "' is invalid or empty; ignoring.");
 
-    assert_null(w_authd_read_password("etc/authd.pass"));
+    assert_null(w_authd_read_password(AUTHD_PASS));
 }
 
 /* On the worker an all-whitespace file must be ignored (NULL + warn), not synced as a secret. */
 static void test_w_authd_read_password_spaces_only_returns_null(void **state) {
     expect_pass_file_read("      \n");
-    expect_string(__wrap__mwarn, formatted_msg, "Authentication password in 'etc/authd.pass' is invalid or empty; ignoring.");
+    expect_string(__wrap__mwarn, formatted_msg, "Authentication password in '" AUTHD_PASS "' is invalid or empty; ignoring.");
 
-    assert_null(w_authd_read_password("etc/authd.pass"));
+    assert_null(w_authd_read_password(AUTHD_PASS));
 }
 
 /* CRLF-authored file: the worker reader must trim \r too, matching the master. */
 static void test_w_authd_read_password_strips_crlf(void **state) {
     expect_pass_file_read("SyncedPass\r\n");
 
-    char *result = w_authd_read_password("etc/authd.pass");
+    char *result = w_authd_read_password(AUTHD_PASS);
 
     assert_non_null(result);
     assert_string_equal(result, "SyncedPass");
@@ -335,9 +335,9 @@ static void test_w_authd_read_password_too_long_returns_null(void **state) {
     longline[sizeof(longline) - 1] = '\0';
 
     expect_pass_file_read(longline);
-    expect_string(__wrap__mwarn, formatted_msg, "Authentication password in 'etc/authd.pass' is too long; ignoring.");
+    expect_string(__wrap__mwarn, formatted_msg, "Authentication password in '" AUTHD_PASS "' is too long; ignoring.");
 
-    assert_null(w_authd_read_password("etc/authd.pass"));
+    assert_null(w_authd_read_password(AUTHD_PASS));
 }
 
 int main(void) {

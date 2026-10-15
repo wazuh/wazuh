@@ -11,6 +11,9 @@
 #include "manage_agents.h"
 #include <stdlib.h>
 #include "dll_load_notify.h"
+#ifdef WIN32
+#include <openssl/crypto.h>
+#endif
 
 #if defined(__MINGW32__) || defined(__hppa__)
 static int setenv(const char *name, const char *val, __attribute__((unused)) int overwrite)
@@ -69,6 +72,8 @@ int main(int argc, char **argv)
 #ifdef WIN32
     // This must be always the first instruction
     enable_dll_verification();
+    // Never read an openssl.cnf; the first init decides for the whole process
+    OPENSSL_init_crypto(OPENSSL_INIT_NO_LOAD_CONFIG, NULL);
 #endif
 
     int c = 0, json_output = 0;
@@ -146,9 +151,6 @@ int main(int argc, char **argv)
     }
 
     os_free(home_path);
-
-    /* Inside chroot now */
-    nowChroot();
 
     /* Start signal handler */
     StartSIG2(ARGV0, manage_shutdown);

@@ -1020,7 +1020,7 @@ def get_active_configuration(component: str, configuration: str) -> dict:
         # Include password if auth.use_password is enabled (a boolean in the effective section) and authd.pass exists
         if data.get('auth', {}).get('use_password') is True:
             try:
-                with open(os_path.join(common.WAZUH_PATH, "etc", "authd.pass"), 'r') as f:
+                with open(common.AUTHD_PASS, 'r') as f:
                     data['authd.pass'] = f.read().rstrip()
             except IOError:
                 pass

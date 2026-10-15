@@ -71,6 +71,11 @@ INVALID_CONFIG = 'Invalid configuration at'
 JSON_ERROR = {'error': 22, 'message': 'Unsafe credentials file.'}
 START_TIMEOUT = 300
 STOP_TIMEOUT = 120
+# The daemons wazuh-manager-control manages. Only their own pid files (<daemon>-<pid>.pid) are compared:
+# the auxiliary ones (clusterd's <daemon>_child_N-<pid>.pid, apid's _exec/_auth workers) are written
+# asynchronously after the daemon's own, so a snapshot taken right after a start may or may not have them.
+DAEMONS = ('wazuh-manager-clusterd', 'wazuh-manager-modulesd', 'wazuh-manager-remoted', 'wazuh-manager-analysisd',
+           'wazuh-manager-db', 'wazuh-manager-authd', 'wazuh-manager-apid')
 PLAIN_ENV_DROP = ('WAZUH_BASE_DIR', 'WAZUH_MANAGER_API_PASSWORD', 'WAZUH_MANAGER_WUI_PASSWORD',
                   'WAZUH_INDEXER_MANAGER_PASSWORD')
 
@@ -107,12 +112,15 @@ def _control(*args, env=None, timeout=START_TIMEOUT):
 
 
 def _pids():
-    """Return {pid file name: pid} of every daemon pid file."""
+    """Return {pid file name: pid} of the daemons' own pid files (auxiliary ones excluded)."""
     found = {}
     for pid_file in RUN_DIR.glob('*.pid'):
         try:
-            found[pid_file.name] = int(pid_file.stem.rsplit('-', 1)[1])
-        except (ValueError, IndexError):
+            daemon, pid = pid_file.stem.rsplit('-', 1)
+            if daemon not in DAEMONS:
+                continue
+            found[pid_file.name] = int(pid)
+        except ValueError:
             continue
     return found
 

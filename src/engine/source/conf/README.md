@@ -136,7 +136,7 @@ conf/
 | Element | Description |
 |---------|-------------|
 | `IFileLoader` | Interface with a protected `load()` method and a public `operator()()` |
-| `FileLoader` | Parses `analysisd.*` keys from a `.conf` file (default: `/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`) |
+| `FileLoader` | Parses `analysisd.*` keys from a `.conf` file (default: `/etc/wazuh-manager/wazuh-manager-internal-options.conf`; standalone mode never reads it) |
 | `OptionMap` | `std::unordered_map<std::string, std::string>` — flat key→value map |
 
 ### Configuration Keys (include/conf/keys.hpp)

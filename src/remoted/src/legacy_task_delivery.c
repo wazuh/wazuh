@@ -116,7 +116,7 @@
  * with the agent's own key, so the 4.x symmetric-key channel bootstraps the 5.0 asymmetric
  * anchor with no unauthenticated moment and no trust-on-first-use window.
  *
- * The name is the SAME at both ends: the manager reads etc/certs/root-ca.pem and the agent's
+ * The name is the SAME at both ends: the manager reads /etc/wazuh-manager/certs/root-ca.pem and the agent's
  * installer looks for the drop-in at its own etc/certs/root-ca.pem (pkg_installer.sh's
  * DEFAULT_CA_FILE; certs\root-ca.pem on Windows). Keeping it means the agent-side step is a copy
  * rather than a rename, and a hand-staged anchor and a delivered one produce identical layouts. */
@@ -124,10 +124,10 @@
 
 /* Fallback when remote.https.ca_certificate is unset. The C side leaves it NULL in that case --
  * the default is applied by the C++ module (httpServerConfig.cpp, DEFAULT_CA_CERTIFICATE_PATH), so
- * this poller has to apply the same one rather than read a NULL. Keep the two in sync: they must
- * name the same file, or an agent bootstrapped by upgrade and one bootstrapped from GET /cacerts
- * would end up trusting different anchors. */
-#define LEGACY_TASK_CA_DEFAULT_PATH "etc/certs/root-ca.pem"
+ * this poller has to apply the same one rather than read a NULL. Both come from remoted_module.h:
+ * they must name the same file, or an agent bootstrapped by upgrade and one bootstrapped from
+ * GET /cacerts would end up trusting different anchors. */
+#define LEGACY_TASK_CA_DEFAULT_PATH REMOTED_MODULE_DEFAULT_CA_CERTIFICATE_PATH
 
 /* Bound on how large a file this poller will read and push as a CA. A root CA PEM is 1-2 KiB and a
  * bundle of a handful still fits easily; anything at this size is not a CA file and is far more

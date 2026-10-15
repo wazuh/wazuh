@@ -42,6 +42,8 @@ EOF
 }
 
 HOME_DIR="${WAZUH_MANAGER_HOME:-/var/wazuh-manager}"
+# The manager configuration directory is fixed: --home moves the home only, never the configuration.
+CONF_DIR="/etc/wazuh-manager"
 OUT=""
 MARK=""
 API=0
@@ -157,7 +159,7 @@ if [ "$WRITE_MANIFEST" -eq 1 ]; then
     echo "mode: verify"
     echo "manager.home: $HOME_DIR"
     echo "remoted.https: port=$PORT prefix=${PFX:-/}"
-    [ -f "$HOME_DIR/etc/.install-provenance" ] && sed 's/^/installed./' "$HOME_DIR/etc/.install-provenance"
+    [ -f "$CONF_DIR/.install-provenance" ] && sed 's/^/installed./' "$CONF_DIR/.install-provenance"
     echo
     echo "| # | check | verdict | got / reason |"
     echo "|---|---|---|---|"

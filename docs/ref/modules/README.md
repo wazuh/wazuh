@@ -10,7 +10,7 @@
 - [Command](command/README.md) - Scheduled command execution through the command wodle
 - [Content Manager](content_manager/README.md) - CTI feed fetcher for Vulnerability Detection
 - [Control](control/README.md) - Manager control operations (restart, reload) via wm_control module
-- [Database Sync](database-sync/README.md) - modulesd `database` module that keeps `global.db` in step with `client.keys` and `etc/shared/`
+- [Database Sync](database-sync/README.md) - modulesd `database` module that keeps `global.db` in step with `client.keys` and `/etc/wazuh-manager/shared/`
 - [Engine](engine/README.md) - Event decoding, enrichment, and detection pipeline
 - [FIM](fim/README.md) - File Integrity Monitoring with persistent state synchronization
 - [Indexer Connector](indexer_connector/README.md) - OpenSearch indexing library (Filebeat replacement)

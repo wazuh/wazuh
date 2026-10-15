@@ -633,6 +633,30 @@ def require_role_update(role_ids) -> None:
                                    ids={int(role_id) for role_id in denied}, title="Permission Denied")
 
 
+def require_every_role_update() -> None:
+    """Refuse the request unless the caller holds 'security:update' over every role, future ones included.
+
+    A run_as login resolves to whatever role a custom rule is linked to when it logs in, not when its
+    flag was enabled, and any role can gain such a rule later (`set_role_rule`). An operation that opens
+    that road can therefore be bounded only by every role, including those not created yet: in white
+    mode that takes an explicit allow on `role:id:*`, and in both modes no deny on an existing role.
+
+    Raises
+    ------
+    WazuhPermissionError(4000)
+        If the caller lacks 'security:update' over an existing role, listing the missing ones, or, in
+        white mode, holds no allow over `role:id:*`.
+    """
+    with RolesManager() as rm:
+        roles = rm.get_roles()
+    require_role_update({role.id for role in roles} if isinstance(roles, list) else set())
+
+    if rbac.get()['rbac_mode'] == 'white' and \
+            rbac.get().get('security:update', dict()).get('role:id:*') != 'allow':
+        raise WazuhPermissionError(4000, extra_message='Resource type: role:id, resource: role:id:*',
+                                   title="Permission Denied")
+
+
 def can_read_secrets() -> bool:
     """Check whether the current user may read the sensitive configuration values of THIS node in clear.
 

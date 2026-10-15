@@ -1,35 +1,49 @@
-# Multi-node cluster overlay for the e2e environment. The master is the manager
-# running on the host; this overlay only adds worker container(s) that join it.
-# There is no load balancer. Run from the e2e/ directory (the project directory):
+# Worker managers for the e2e cluster. The master is the manager running on the
+# host; this project only adds worker container(s) that join it. There is no load
+# balancer. Drive it with cluster.sh, not with docker compose directly:
 #
-#   ./init.sh                          # certs + indexer/dashboard packages
 #   ./cluster/init.sh                  # worker manager artifact + cluster key (cluster/.env)
-#   ./cluster/setup-master.sh          # turn the host manager into the cluster master
-#   docker compose --env-file cluster/.env -f docker-compose.yml -f cluster/docker-compose.yml up -d --build
-#   docker compose --env-file cluster/.env -f docker-compose.yml -f cluster/docker-compose.yml up -d --build --scale wazuh-worker=3
+#   sudo ./cluster/setup-master.sh     # turn the host manager into the cluster master
+#   ./cluster/cluster.sh up [-n N]     # secrets, published ports, workers
+#   ./cluster/cluster.sh down          # removes the workers only
 #
-# Default single-node usage (base compose alone) is unchanged.
+# It is its own compose project (dev-env-cluster) on the base stack's network
+# (dev-env-engine_default, external here): it holds no indexer or dashboard
+# definition, so no up/down of this project can recreate or remove them.
+#
+# Secrets travel as files (secrets:, mounted under /run/secrets), never through
+# environment:, so docker inspect and docker compose config show their paths only.
+# cluster.sh writes the two files (0600, cluster/.secrets/, gitignored): the
+# cluster key from cluster/.env and WAZUH_INDEXER_MANAGER_PASSWORD, the only key
+# the worker needs, from ../.credentials.env.
+name: dev-env-cluster
 
 services:
   wazuh-worker:
     build:
-      context: ./cluster/node
+      context: ./node
     image: dev-wazuh-node
     pull_policy: build
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
-      CLUSTER_NAME: "${WAZUH_CLUSTER_NAME:-wazuh}"
-      CLUSTER_KEY: "${WAZUH_CLUSTER_KEY:?run ./cluster/init.sh to generate the cluster key}"
+      CLUSTER_NAME: "${WAZUH_CLUSTER_NAME:?run ./cluster/cluster.sh up}"
       NODE_TYPE: "worker"
       MASTER_ADDR: "host.docker.internal"
       INDEXER_HOST: "wazuh-indexer"
-      # OBSOLETE: admin/admin no longer authenticates against the main stack, whose
-      # credentials are generated into ../.credentials.env. This cluster overlay is still
-      # the old demo and was not moved to that model: export INDEXER_USER/INDEXER_PASSWORD
-      # by hand if you point it at an indexer with generated credentials.
-      INDEXER_USER: "${INDEXER_USER:-admin}"
-      INDEXER_PASSWORD: "${INDEXER_PASSWORD:-admin}"
+      INDEXER_USER: "wazuh-manager"
+    secrets:
+      - cluster_key
+      - indexer_password
+    # Published on the host so that agents in other compose projects can be pinned
+    # to a worker through host.docker.internal (a SAN of the shared listener
+    # certificate): 5.x agents through the HTTPS listener, 4.x agents through the
+    # legacy agent port and authd. cluster.sh sets one port per worker (a range
+    # when scaled) and prints which worker got which.
+    ports:
+      - "${WAZUH_WORKER_HTTPS_PORTS:-15171}:1517"
+      - "${WAZUH_WORKER_AGENT_PORTS:-15141}:1514"
+      - "${WAZUH_WORKER_AUTHD_PORTS:-15151}:1515"
     # Time for the entrypoint to run wazuh-manager-control stop on docker stop.
     stop_grace_period: 90s
     healthcheck:
@@ -39,6 +53,15 @@ services:
       start_period: 120s
       retries: 3
     volumes:
-      - ./certs:/certs:ro
-    depends_on:
-      - wazuh-indexer
+      - ../certs:/certs:ro
+
+networks:
+  default:
+    name: dev-env-engine_default
+    external: true
+
+secrets:
+  cluster_key:
+    file: ./.secrets/cluster_key
+  indexer_password:
+    file: ./.secrets/indexer_password

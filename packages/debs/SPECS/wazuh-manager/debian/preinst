@@ -4,6 +4,8 @@ set -e
 
 # configuration variables
 DIR="/var/wazuh-manager"
+# The configuration directory is fixed, outside the installation directory.
+CONF_DIR="/etc/wazuh-manager"
 WAZUH_TMP_DIR="${DIR}/packages_files/manager_config_files"
 WAZUH_PRESERVE_DIR="${DIR}/packages_files/manager_upgrade_preserve"
 prepare_tmp_dir() {
@@ -21,28 +23,28 @@ backup_upgrade_preserve() {
     fi
     mkdir -p "${WAZUH_PRESERVE_DIR}"
 
-    if [ -d "${DIR}/etc" ]; then
-        cp -a "${DIR}/etc" "${WAZUH_PRESERVE_DIR}/"
+    if [ -d "${CONF_DIR}" ]; then
+        mkdir -p "${WAZUH_PRESERVE_DIR}/etc"
+        cp -a "${CONF_DIR}/." "${WAZUH_PRESERVE_DIR}/etc/"
     fi
 
     if [ -d "${DIR}/data" ]; then
         mkdir -p "${WAZUH_PRESERVE_DIR}/data"
         for DATA_ENTRY in "${DIR}/data/"* "${DIR}/data/."[!.]* "${DIR}/data/"..?*; do
             [ -e "${DATA_ENTRY}" ] || continue
-            DATA_NAME=$(basename "${DATA_ENTRY}")
-            [ "${DATA_NAME}" = "tzdb" ] && continue
+            [ "${DATA_ENTRY##*/}" = "tzdb" ] && continue
             cp -a "${DATA_ENTRY}" "${WAZUH_PRESERVE_DIR}/data/"
         done
     fi
 }
 
 print_unsupported_manager_upgrade() {
-    DETECTED_VERSION=$(echo "${1:-unknown}" | sed 's/^v//')
+    DETECTED_VERSION="${1:-unknown}"
     cat <<EOF >&2
 ==============================================================
 ERROR: Upgrade from Wazuh manager versions prior to 5.x is not supported.
 
-Detected installed version: ${DETECTED_VERSION}
+Detected installed version: ${DETECTED_VERSION#v}
 
 A clean installation of Wazuh manager 5.x is required.
 Refer to the 5.x migration guide for more information.
@@ -50,44 +52,118 @@ Refer to the 5.x migration guide for more information.
 EOF
 }
 
+# major_of VERSION: the major number of a version such as v4.14.0 or 4.14.0-1.
+major_of() {
+    MAJOR_OF="${1#v}"
+    echo "${MAJOR_OF%%.*}"
+}
+
+# json_version FILE: the value of "version" in a VERSION.json.
+json_version() {
+    while IFS= read -r JSON_LINE || [ -n "${JSON_LINE}" ]; do
+        case "${JSON_LINE}" in
+            *'"version"'*)
+                JSON_LINE="${JSON_LINE#*\"version\"}"
+                JSON_LINE="${JSON_LINE#*\"}"
+                echo "${JSON_LINE%%\"*}"
+                return 0
+                ;;
+        esac
+    done < "$1"
+    return 1
+}
+
+# is_pre5 VERSION: true when VERSION names a major before 5.
+is_pre5() {
+    PRE5_MAJOR=$(major_of "$1")
+    case "${PRE5_MAJOR}" in
+        ''|*[!0-9]*) return 1 ;;
+    esac
+    [ "${PRE5_MAJOR}" -le 4 ]
+}
+
+# A 4.x manager on this host, whether or not this is a package upgrade: its init file (TYPE server or
+# local), or the version file of a /var/ossec install that reports itself as a server.
+installed_pre5_version() {
+    # Only a 4.x manager (TYPE server or local) blocks this one: a 4.x agent beside it is allowed.
+    if [ -f /etc/ossec-init.conf ]; then
+        OSSEC_INIT_TYPE=$(set +e; . /etc/ossec-init.conf > /dev/null 2>&1; echo "${TYPE}") || OSSEC_INIT_TYPE=""
+        OSSEC_INIT_VERSION=$(set +e; . /etc/ossec-init.conf > /dev/null 2>&1; echo "${VERSION}") || OSSEC_INIT_VERSION=""
+        case "${OSSEC_INIT_TYPE}" in
+            server|local) ;;
+            *) OSSEC_INIT_VERSION="" ;;
+        esac
+        if is_pre5 "${OSSEC_INIT_VERSION}"; then
+            echo "${OSSEC_INIT_VERSION}"
+            return 0
+        fi
+    fi
+    if [ -f /var/ossec/VERSION.json ] && [ -x /var/ossec/bin/wazuh-control ] \
+        && [ "$(/var/ossec/bin/wazuh-control info -t 2>/dev/null)" = "server" ]; then
+        OSSEC_JSON_VERSION=$(json_version /var/ossec/VERSION.json 2>/dev/null) || OSSEC_JSON_VERSION=""
+        if is_pre5 "${OSSEC_JSON_VERSION}"; then
+            echo "${OSSEC_JSON_VERSION}"
+            return 0
+        fi
+    fi
+    return 1
+}
+
+# The pids of every running wazuh-manager-authd, from /proc (no procps).
+authd_pids() {
+    for PROC_DIR in /proc/[0-9]*; do
+        [ -r "${PROC_DIR}/cmdline" ] || continue
+        IFS= read -r PROC_CMD < "${PROC_DIR}/cmdline" 2>/dev/null || [ -n "${PROC_CMD}" ] || continue
+        case "${PROC_CMD}" in
+            *wazuh-manager-authd*) echo "${PROC_DIR#/proc/}" ;;
+        esac
+        PROC_CMD=""
+    done
+}
+
+# running TEXT: true when a status text says the service is running.
+running() {
+    case "$1" in
+        *"is running"*) return 0 ;;
+    esac
+    return 1
+}
+
 case "$1" in
     install|upgrade)
 
-        # HARD BLOCK: Prevent upgrade from versions prior to 5.x.
-        if [ "$1" = "upgrade" ] && [ -n "$2" ]; then
-            # $2 contains the old version in upgrade scenarios
-            OLD_VERSION="$2"
-            OLD_MAJOR=$(echo "$OLD_VERSION" | sed 's/^v//' | cut -d. -f1)
+        # HARD BLOCK: no 4.x manager may be replaced or sit beside this one, on an upgrade or
+        # on a fresh install.
+        if PRE5_VERSION=$(installed_pre5_version); then
+            print_unsupported_manager_upgrade "${PRE5_VERSION}"
+            exit 1
+        fi
 
-            if [ -n "$OLD_MAJOR" ] && [ "$OLD_MAJOR" -le 4 ] 2>/dev/null; then
-                print_unsupported_manager_upgrade "$OLD_VERSION"
-                exit 1
-            fi
+        # $2 contains the old version in upgrade scenarios
+        if [ "$1" = "upgrade" ] && [ -n "$2" ] && is_pre5 "$2"; then
+            print_unsupported_manager_upgrade "$2"
+            exit 1
         fi
 
         if [ "$1" = "upgrade" ]; then
             # Get version information
+            OLD_VERSION=""
             if [ -f "${DIR}/bin/wazuh-manager-control" ]; then
-                OLD_VERSION=`${DIR}/bin/wazuh-manager-control info -v 2>/dev/null`
-                MAJOR_VER=$(echo $OLD_VERSION | cut -dv -f2 | cut -d. -f1)
+                OLD_VERSION=$(${DIR}/bin/wazuh-manager-control info -v 2>/dev/null) || OLD_VERSION=""
             elif [ -f ${DIR}/VERSION.json ]; then
-                OLD_VERSION=`grep -oP '(?<="version": ")[^"]*' ${DIR}/VERSION.json 2>/dev/null`
-                MAJOR_VER=$(echo $OLD_VERSION | cut -d. -f1)
+                OLD_VERSION=$(json_version ${DIR}/VERSION.json 2>/dev/null) || OLD_VERSION=""
             fi
-
-            # Validate upgrade constraints for Manager
-            ERROR_TYPE=""
+            MAJOR_VER=$(major_of "${OLD_VERSION}")
 
             # Determine if upgrade should be blocked
-            if [ -z "$MAJOR_VER" ]; then
-                ERROR_TYPE="no_version"
-            elif [ "$MAJOR_VER" -lt 5 ]; then
-                ERROR_TYPE="old_version"
-            fi
-
-            # If any error was detected, show message and block
-            if [ -n "$ERROR_TYPE" ]; then
-                print_unsupported_manager_upgrade "$OLD_VERSION"
+            case "${MAJOR_VER}" in
+                ''|*[!0-9]*)
+                    print_unsupported_manager_upgrade "${OLD_VERSION}"
+                    exit 1
+                    ;;
+            esac
+            if [ "${MAJOR_VER}" -lt 5 ]; then
+                print_unsupported_manager_upgrade "${OLD_VERSION}"
                 exit 1
             fi
 
@@ -98,53 +174,21 @@ case "$1" in
             if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 && systemctl is-active --quiet wazuh-manager > /dev/null 2>&1; then
                 systemctl stop wazuh-manager.service > /dev/null 2>&1
                 touch ${WAZUH_TMP_DIR}/wazuh.restart
-            elif command -v service > /dev/null 2>&1 && service wazuh-manager status 2>/dev/null | grep "is running" > /dev/null 2>&1; then
+            elif command -v service > /dev/null 2>&1 && running "$(service wazuh-manager status 2>/dev/null)"; then
                 service wazuh-manager stop > /dev/null 2>&1
                 touch ${WAZUH_TMP_DIR}/wazuh.restart
-            elif ${DIR}/bin/wazuh-manager-control status 2>/dev/null | grep "is running" > /dev/null 2>&1; then
-                touch ${WAZUH_TMP_DIR}/wazuh.restart
-            elif ${DIR}/bin/wazuh-control status 2>/dev/null | grep "is running" > /dev/null 2>&1; then
+            elif running "$(${DIR}/bin/wazuh-manager-control status 2>/dev/null)"; then
                 touch ${WAZUH_TMP_DIR}/wazuh.restart
             fi
             if [ -x "${DIR}/bin/wazuh-manager-control" ]; then
                 ${DIR}/bin/wazuh-manager-control stop > /dev/null 2>&1
-            elif [ -x "${DIR}/bin/wazuh-control" ]; then
-                ${DIR}/bin/wazuh-control stop > /dev/null 2>&1
             fi
-            if pgrep -f wazuh-manager-authd > /dev/null 2>&1; then
-                kill -15 $(pgrep -f wazuh-manager-authd)
+            AUTHD_PIDS=$(authd_pids)
+            if [ -n "${AUTHD_PIDS}" ]; then
+                kill -15 ${AUTHD_PIDS} > /dev/null 2>&1 || true
             fi
 
             backup_upgrade_preserve
-
-            if [ -d ${DIR}/logs/ossec ]; then
-                mv ${DIR}/logs/ossec ${DIR}/logs/wazuh
-            fi
-
-            if [ -d ${DIR}/queue/ossec ]; then
-                mv ${DIR}/queue/ossec ${DIR}/queue/sockets
-            fi
-
-            # Delete old API backups
-            if [ -d ${DIR}/~api ]; then
-                rm -rf ${DIR}/~api
-            fi
-
-            # Delete 3.X Wazuh API service
-            if [ "$MAJOR_VER" = "3" ] && [ -d ${DIR}/api ]; then
-                if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 && \
-                  systemctl list-unit-files --type service | grep wazuh-api; then
-                    systemctl stop wazuh-api.service > /dev/null 2>&1
-                    systemctl disable wazuh-api.service > /dev/null 2>&1
-                    rm -f /etc/systemd/system/wazuh-api.service || true
-                fi
-
-                if command -v service > /dev/null 2>&1 && service status wazuh-api > /dev/null 2>&1 ; then
-                    service wazuh-api stop > /dev/null 2>&1
-                    update-rc.d wazuh-api remove > /dev/null 2>&1
-                    rm -f /etc/rc.d/init.d/wazuh-api || true
-                fi
-            fi
 
             # api/configuration/ is writable by ${GROUP}: a link there is not ours to back up, and
             # cp would carry its target's content into the restored file.
@@ -163,7 +207,7 @@ case "$1" in
             prepare_tmp_dir
         fi
 
-        if [ ! -z "$2" ] && [ ! -f ${DIR}/etc/wazuh-manager.conf ] ; then
+        if [ ! -z "$2" ] && [ ! -f ${CONF_DIR}/wazuh-manager.conf ] ; then
             touch ${WAZUH_TMP_DIR}/create_conf
         fi
 

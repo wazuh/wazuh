@@ -99,10 +99,10 @@ class WazuhException(Exception):
                               f'exception: https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/'
                               f'configuration.html#remote-commands-localfile-and-wodle-command'},
         1125: {'message': 'Invalid manager configuration',
-               'remediation': 'Please, provide a valid manager configuration (etc/wazuh-manager.conf)'
+               'remediation': 'Please, provide a valid manager configuration (/etc/wazuh-manager/wazuh-manager.conf)'
                },
         1126: {'message': 'Error updating manager configuration',
-               'remediation': 'Please, ensure `WAZUH_PATH/etc/wazuh-manager.conf` has the proper permissions and ownership.'
+               'remediation': 'Please, ensure `/etc/wazuh-manager/wazuh-manager.conf` has the proper permissions and ownership.'
                },
         1127: {'message': 'Protected section was modified',
                'remediation': 'To solve this, either revert the changes made to this section or disable the protection '
@@ -115,7 +115,7 @@ class WazuhException(Exception):
                               f'configuration.html#agents'},
         1130: {'message': 'Configuration does not match the schema',
                'remediation': 'The message names the offending option as a JSON pointer (e.g. /auth/use_password). '
-                              'Fix it in `WAZUH_PATH/etc/wazuh-manager.conf`; `bin/wazuh-manager-conf validate` '
+                              'Fix it in `/etc/wazuh-manager/wazuh-manager.conf`; `bin/wazuh-manager-conf validate` '
                               'reports the same problem.'},
         1131: {'message': 'XML syntax error',
                'remediation': 'Please, provide a well-formed XML file with the single root <wazuh_config>: unescaped '
@@ -270,7 +270,7 @@ class WazuhException(Exception):
         1771: {'message': 'The enrollment token store could not be written',
                'remediation': 'The change is applied on this manager and will be written as soon as the '
                               'store file is writable again; check the disk and the permissions of '
-                              'etc/enrollment_tokens.json, then retry'
+                              '/etc/wazuh-manager/enrollment_tokens.json, then retry'
                },
         1772: {'message': 'The agent credentials could not be recorded',
                'remediation': 'The manager refused the enrollment instead of handing out credentials it '
