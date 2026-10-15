@@ -117,10 +117,21 @@ void fim_container_set_admitted(const char** container_ids, size_t count);
  */
 int fim_container_is_admitted(const char* container_id);
 
+/**
+ * @brief Build and persist the stateful document for one baseline row.
+ *
+ * TAKES OWNERSHIP of @p msg: it is mutated in place during normalisation and
+ * freed before return, on every path including the early ones.
+ *
+ * Takes the row already parsed rather than as text. The only caller holds a
+ * cJSON object already, and printing it here just to parse it straight back
+ * cost a full serialisation and a full tokenisation per row -- and sent every
+ * number through a decimal representation that need not survive the trip.
+ */
 void fim_persist_baseline_row(const char* id,
                               int operation,
                               const char* index,
-                              const char* json,
+                              cJSON* msg,
                               uint64_t version);
 
 /* Where a reconciled row came from, which is what the alert's "mode" field

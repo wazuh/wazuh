@@ -718,11 +718,10 @@ static int container_row_sync_flag(const cJSON* row, int operation)
     return granted;
 }
 
-void fim_persist_baseline_row(const char* id, int operation, const char* index, const char* json, uint64_t version)
+void fim_persist_baseline_row(const char* id, int operation, const char* index, cJSON* msg, uint64_t version)
 {
-    cJSON* msg = cJSON_Parse(json);
     if (msg == NULL) {
-        mdebug1("Container FIM baseline: dropping row '%s' - failed to parse JSON.", id);
+        mdebug1("Container FIM baseline: dropping row '%s' - no row object.", id);
         return;
     }
 

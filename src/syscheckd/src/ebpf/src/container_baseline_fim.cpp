@@ -150,10 +150,14 @@ void container_txn_callback(ReturnTypeCallback result_type, const cJSON* result_
     // it describes.
     fim_send_container_stateless_event(row_data, old_data, static_cast<int>(op), ctx->origin);
 
-    char* row_str = cJSON_PrintUnformatted(row_data);
-    if (!row_str) return;
-    fim_persist_baseline_row(id.c_str(), static_cast<int>(op), "wazuh-states-fim-files", row_str, version);
-    free(row_str);
+    // row_data belongs to DBSync and is const, so the persist path gets its own
+    // copy rather than normalising DBSync's tree in place. A duplicate is
+    // markedly cheaper than the print-and-reparse it replaces, which serialised
+    // the whole row -- container context blob included -- and tokenised it
+    // straight back, once per row.
+    cJSON* row_copy = cJSON_Duplicate(row_data, 1);
+    if (!row_copy) return;
+    fim_persist_baseline_row(id.c_str(), static_cast<int>(op), "wazuh-states-fim-files", row_copy, version);
 }
 
 /// Owns one container's scoped transaction for its lifetime.
