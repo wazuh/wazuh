@@ -395,6 +395,38 @@ void test_read_snortfull_date_with_year(void **state) {
 }
 
 /**
+ * Test: record with the AppID line written by Snort with OpenAppID.
+ */
+void test_read_snortfull_appid(void **state) {
+    logreader lf = {0};
+    lf.file = "test.log";
+    lf.fp = (FILE *) 1;
+    int rc;
+
+    char line1[] = "[**] [1:1054:7] WEB-MISC test [**]\n";
+    char line2[] = "[Classification: Web Application Attack] [Priority: 1] \n";
+    char line3[] = "[AppID: HTTP] \n";
+    char line4[] = "10/06-08:25:55.575491 10.4.12.26:43832 -> 10.4.10.231:8080\n";
+
+    expect_prologue();
+
+    expect_line(line1);
+    expect_line(line2);
+    expect_line(line3);
+    expect_line(line4);
+
+    const char *msg = "[**] [1:1054:7] WEB-MISC test [**] [Classification: Web Application Attack] [Priority: 1] "
+                      "[AppID: HTTP] 10.4.12.26:43832 -> 10.4.10.231:8080";
+    expect_queued(msg, strlen(msg) + 1);
+
+    expect_epilogue();
+
+    read_snortfull(&lf, &rc, 0);
+
+    assert_int_equal(rc, 0);
+}
+
+/**
  * Test: record with CRLF line endings.
  * The carriage returns are not queued.
  */
@@ -537,6 +569,7 @@ int main(void) {
         cmocka_unit_test(test_read_snortfull_ignored_record),
         cmocka_unit_test(test_read_snortfull_date_with_year),
         cmocka_unit_test(test_read_snortfull_crlf),
+        cmocka_unit_test(test_read_snortfull_appid),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);

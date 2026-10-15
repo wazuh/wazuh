@@ -105,8 +105,12 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
                     goto file_error;
                 }
             } else if (p == two) {
+                /* Snort with OpenAppID writes "[AppID: <name>] " before the date line */
+                if (strncmp(str, "[AppID: ", 8) == 0) {
+                    append_part(f_msg, sizeof(f_msg), str);
+                }
                 /* Third line has the 01/13-15 (date) */
-                if (is_date_line(str) && (q = strchr(str, ' '))) {
+                else if (is_date_line(str) && (q = strchr(str, ' '))) {
                     append_part(f_msg, sizeof(f_msg), ++q);
                     p = NULL;
 
