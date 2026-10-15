@@ -179,6 +179,7 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                 bucket_path=:bucket_path AND
                 aws_account_id=:aws_account_id AND
                 aws_region=:aws_region AND
+                log_key LIKE :prefix AND
                 log_key < :marker AND
                 log_key <= (SELECT log_key
                     FROM
@@ -329,15 +330,18 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
 
                 if self.db_table_name in LATE_ARRIVAL_LOG_TABLES:
                     # Keep the files of the rewound marker window, or the next fetch would list them again
-                    # and process them as new
+                    # and process them as new. Only the keys of this prefix are deleted, as other buckets with
+                    # the same path, such as an organization trail, keep their own window
+                    prefix = f'{self.get_full_prefix(aws_account_id, aws_region)}%'
                     last_key = self.db_cursor.execute(
                         self.sql_find_last_key_processed.format(table_name=self.db_table_name), {
                             'bucket_path': self.bucket_path,
                             'aws_account_id': aws_account_id,
                             'aws_region': aws_region,
-                            'prefix': f'{self.get_full_prefix(aws_account_id, aws_region)}%'}).fetchone()
+                            'prefix': prefix}).fetchone()
                     if last_key:
                         query = self.sql_db_maintenance_before_marker
+                        params['prefix'] = prefix
                         params['marker'] = self.rewind_marker_to_day_folder(last_key[0], aws_account_id,
                                                                             aws_region)
 

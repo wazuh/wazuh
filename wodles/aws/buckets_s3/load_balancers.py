@@ -78,7 +78,8 @@ class AWSLBBucket(AWSCustomBucket):
                 if region and region not in window_markers:
                     window_markers[region] = self.rewind_marker_to_day_folder(key, aws_account_id, region)
 
-                if index >= self.retain_db_records and (not region or key < window_markers[region]):
+                # Keys out of the service prefix belong to other buckets with the same path, which keep their own
+                if index >= self.retain_db_records and region and key < window_markers[region]:
                     keys_to_delete.append({**params, 'log_key': key})
 
             self.db_cursor.executemany(self.sql_delete_key.format(table_name=self.db_table_name), keys_to_delete)

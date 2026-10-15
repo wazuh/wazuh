@@ -229,7 +229,7 @@ def test_aws_nlb_bucket_load_information_from_file(mock_sts_client):
 @pytest.mark.parametrize('retain_db_records, expected_deleted_keys', [
     (0, ['eu-west-1/2019/03/29', 'eu-west-1/2019/03/30', 'us-east-1/2019/03/30', 'us-east-1/2019/03/31']),
     (5, ['eu-west-1/2019/03/29', 'eu-west-1/2019/03/30']),
-    (8, []),
+    (9, []),
 ])
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 def test_aws_lb_bucket_db_maintenance_keeps_late_arrival_window(mock_sts, custom_database, retain_db_records,
@@ -247,6 +247,8 @@ def test_aws_lb_bucket_db_maintenance_keeps_late_arrival_window(mock_sts, custom
             for region_day in ['eu-west-1/2019/03/29', 'eu-west-1/2019/03/30', 'eu-west-1/2019/03/31',
                                'eu-west-1/2019/04/01', 'us-east-1/2019/03/30', 'us-east-1/2019/03/31',
                                'us-east-1/2019/04/01', 'us-east-1/2019/04/02']}
+    # A key of another bucket with the same path, out of this service prefix, is never deleted
+    keys['other'] = f'AWSLogs/other/{utils.TEST_ACCOUNT_ID}/elasticloadbalancing/eu-west-1/2019/03/01/other.log.gz'
     for key in keys.values():
         instance.db_cursor.execute(instance.sql_mark_complete.format(table_name=instance.db_table_name), {
             'bucket_path': instance.bucket_path, 'aws_account_id': utils.TEST_ACCOUNT_ID,

@@ -309,6 +309,35 @@ def test_aws_bucket_db_maintenance_then_build_s3_filter_args_keeps_late_arrival_
     assert late_key > filter_args['StartAfter']
 
 
+def test_aws_bucket_db_maintenance_keeps_rows_of_other_prefixes(custom_database):
+    """Test 'db_maintenance' only deletes the rows of its own full prefix, so an account trail and an organization
+    trail of the same bucket, account and region do not delete each other's window."""
+    account_trail = utils.get_mocked_bucket(class_=AWSCloudTrailBucket, bucket=utils.TEST_BUCKET)
+    organization_trail = utils.get_mocked_bucket(class_=AWSCloudTrailBucket, bucket=utils.TEST_BUCKET,
+                                                 aws_organization_id='o-abc')
+    for bucket in (account_trail, organization_trail):
+        bucket.db_connector = custom_database
+        bucket.db_cursor = custom_database.cursor()
+        bucket.retain_db_records = 0
+    custom_database.execute(account_trail.sql_create_table.format(table_name=account_trail.db_table_name))
+
+    for bucket in (account_trail, organization_trail):
+        full_prefix = bucket.get_full_prefix(utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
+        for day in ['2019/03/30', '2019/04/01']:
+            bucket.mark_complete(utils.TEST_ACCOUNT_ID, utils.TEST_REGION, {
+                'Key': f'{full_prefix}{day}/{utils.TEST_ACCOUNT_ID}_CloudTrail_{utils.TEST_REGION}_'
+                       f'{day.replace("/", "")}T0000Z_a.json.gz'})
+
+    organization_trail.db_maintenance(aws_account_id=utils.TEST_ACCOUNT_ID, aws_region=utils.TEST_REGION)
+
+    remaining_keys = [row[0] for row in custom_database.execute('SELECT log_key FROM cloudtrail ORDER BY log_key')]
+    account_prefix = account_trail.get_full_prefix(utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
+    organization_prefix = organization_trail.get_full_prefix(utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
+    assert len([key for key in remaining_keys if key.startswith(account_prefix)]) == 2
+    assert [key for key in remaining_keys if key.startswith(organization_prefix)] == \
+        [f'{organization_prefix}2019/04/01/{utils.TEST_ACCOUNT_ID}_CloudTrail_{utils.TEST_REGION}_20190401T0000Z_a.json.gz']
+
+
 @patch('builtins.print')
 def test_aws_bucket_db_maintenance_handles_exceptions_when_db_fails(mock_print, custom_database):
     """Test 'db_maintenance' method handles exceptions raised when fails to make the DB maintenance."""
