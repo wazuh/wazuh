@@ -240,6 +240,51 @@ TEST_F(SysInfoParsersTest, UnixRhcosParsedTwice)
     EXPECT_FALSE(output.contains("version_id"));
 }
 
+TEST_F(SysInfoParsersTest, UnixRhcosHostOsReleaseOverContainerImage)
+{
+    // Containerized agent: /etc/os-release comes from the RHCOS host, /usr/lib/os-release from the image.
+    constexpr auto HOST_RELEASE_FILE
+    {
+        R"(
+        NAME="Red Hat Enterprise Linux CoreOS"
+        ID="rhcos"
+        ID_LIKE="rhel fedora"
+        VERSION="418.94.202602022246-0"
+        VERSION_ID="4.18"
+        PLATFORM_ID="platform:el9"
+        OPENSHIFT_VERSION="4.18"
+        RHEL_VERSION=9.4
+        OSTREE_VERSION="418.94.202602022246-0"
+        )"
+    };
+    constexpr auto IMAGE_RELEASE_FILE
+    {
+        R"os(
+        PRETTY_NAME="Ubuntu 24.04.1 LTS"
+        NAME="Ubuntu"
+        VERSION_ID="24.04"
+        VERSION="24.04.1 LTS (Noble Numbat)"
+        VERSION_CODENAME=noble
+        ID=ubuntu
+        ID_LIKE=debian
+        )os"
+    };
+    nlohmann::json output;
+    const auto spParser{FactorySysOsParser::create("unix")};
+    std::stringstream hostInfo{HOST_RELEASE_FILE};
+    EXPECT_TRUE(spParser->parseFile(hostInfo, output));
+    std::stringstream imageInfo{IMAGE_RELEASE_FILE};
+    EXPECT_TRUE(spParser->parseFile(imageInfo, output));
+    EXPECT_EQ("9.4", output["os_version"]);
+    EXPECT_EQ("Red Hat Enterprise Linux CoreOS", output["os_name"]);
+    EXPECT_EQ("rhcos", output["os_platform"]);
+    EXPECT_EQ("9", output["os_major"]);
+    EXPECT_EQ("4", output["os_minor"]);
+    EXPECT_FALSE(output.contains("os_patch"));
+    EXPECT_FALSE(output.contains("rhel_version"));
+    EXPECT_FALSE(output.contains("version_id"));
+}
+
 TEST_F(SysInfoParsersTest, UnixRhcosRhelVersionMajorOnly)
 {
     constexpr auto UNIX_RELEASE_FILE
