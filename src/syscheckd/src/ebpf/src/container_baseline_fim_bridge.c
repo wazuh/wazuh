@@ -772,21 +772,31 @@ static int container_row_sync_flag(const cJSON* row, int operation)
     return granted;
 }
 
-int fim_persist_baseline_row(const char* id, int operation, const char* index, const char* json, uint64_t version)
+int fim_persist_baseline_row(const char* id, int operation, const char* index, cJSON* msg, uint64_t version)
 {
-    if (g_host.validate_and_persist == NULL) {
-        merror("Container FIM: persistence API is not registered.");
+    if (msg == NULL) {
+        mdebug1("Container FIM baseline: dropping row '%s' - no row object.", id);
         return -1;
     }
-    cJSON* msg = cJSON_Parse(json);
-    if (msg == NULL) {
-        mdebug1("Container FIM baseline: dropping row '%s' - failed to parse JSON.", id);
+    if (g_host.validate_and_persist == NULL) {
+        merror("Container FIM: persistence API is not registered.");
+        cJSON_Delete(msg);
         return -1;
     }
 
     /* BEFORE normalisation: the stored row's own "sync" column is what the
      * accounting reads, and normalisation reshapes the row for the schema. */
     const int sync_flag = container_row_sync_flag(msg, operation);
+
+    /* Also before normalisation, which reshapes both: what a rejected document
+     * needs to return the budget it was charged. */
+    const cJSON* stored_sync = cJSON_GetObjectItem(msg, "sync");
+    const int previous_sync = cJSON_IsNumber(stored_sync) ? stored_sync->valueint : 0;
+    char* container_id = NULL;
+    const char* stored_container_id = cJSON_GetStringValue(cJSON_GetObjectItem(msg, "container_id"));
+    if (stored_container_id != NULL) {
+        os_strdup(stored_container_id, container_id);
+    }
 
     /* The integrity check compares the agent's checksum over the stored rows'
      * "checksum" column with the manager's over each document's
@@ -865,10 +875,6 @@ int fim_persist_baseline_row(const char* id, int operation, const char* index, c
          * validate_and_persist(). What is not logged anywhere else is that the
          * budget charged for a row the manager never saw, so say that and undo it:
          * a slot spent on a rejected document is a slot the cap can never return. */
-        cJSON* original = cJSON_Parse(json);
-        const cJSON* stored = cJSON_GetObjectItem(original, "sync");
-        const int previous_sync = cJSON_IsNumber(stored) ? stored->valueint : 0;
-        const char* container_id = cJSON_GetStringValue(cJSON_GetObjectItem(original, "container_id"));
         mdebug1("Container FIM: returning the budget charged for rejected row '%s'.", id);
         if (container_id && host_config() && host_config()->container_file_limit > 0) {
             const int delta = operation == OPERATION_DELETE ? (previous_sync ? -1 : 0)
@@ -880,11 +886,12 @@ int fim_persist_baseline_row(const char* id, int operation, const char* index, c
             }
             synced_docs_unlock();
         }
-        cJSON_Delete(original);
+        os_free(container_id);
         cJSON_Delete(msg);
         return -1;
     }
 
+    os_free(container_id);
     cJSON_Delete(msg);
     return sync_flag;
 }
@@ -909,8 +916,8 @@ int fim_container_recover_row(const cJSON* row)
         return 0;
     }
 
-    char* json = cJSON_PrintUnformatted(row);
-    if (json == NULL) {
+    cJSON* msg = cJSON_Duplicate(row, 1);
+    if (msg == NULL) {
         return -1;
     }
 
@@ -924,10 +931,9 @@ int fim_container_recover_row(const cJSON* row)
     const int result = fim_persist_baseline_row(id,
                                                 OPERATION_CREATE,
                                                 "wazuh-states-fim-files",
-                                                json,
+                                                msg,
                                                 (uint64_t)cJSON_GetNumberValue(version));
     os_free(id);
-    cJSON_free(json);
     return result;
 }
 

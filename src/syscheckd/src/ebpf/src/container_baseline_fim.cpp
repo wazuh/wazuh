@@ -200,14 +200,22 @@ namespace
         // it describes.
         fim_send_container_stateless_event(row_data, old_data, static_cast<int>(op), ctx->origin);
 
-        char* row_str = cJSON_PrintUnformatted(row_data);
-
-        if (!row_str) return;
-
-        const int sync =
-            fim_persist_baseline_row(id.c_str(), static_cast<int>(op), "wazuh-states-fim-files", row_str, version);
+        // The sync column is read before the persist path takes its copy, which it
+        // normalises in place and frees.
         const cJSON* stored_sync = cJSON_GetObjectItem(row_data, "sync");
         const int previous_sync = cJSON_IsNumber(stored_sync) ? stored_sync->valueint : 0;
+
+        // row_data belongs to DBSync and is const, so the persist path gets its own
+        // copy rather than normalising DBSync's tree in place. A duplicate is
+        // markedly cheaper than the print-and-reparse it replaces, which serialised
+        // the whole row -- container context blob included -- and tokenised it
+        // straight back, once per row.
+        cJSON* row_copy = cJSON_Duplicate(row_data, 1);
+
+        if (!row_copy) return;
+
+        const int sync =
+            fim_persist_baseline_row(id.c_str(), static_cast<int>(op), "wazuh-states-fim-files", row_copy, version);
 
         if (op != OPERATION_DELETE && sync >= 0 && sync != previous_sync)
         {
@@ -217,8 +225,6 @@ namespace
         {
             ctx->pending_sync.erase(cJSON_GetStringValue(path_json));
         }
-
-        free(row_str);
     }
 
     /// Owns one container's scoped transaction for its lifetime.
@@ -1086,18 +1092,18 @@ namespace
 
                 const auto version = static_cast<uint64_t>(cJSON_GetNumberValue(cJSON_GetObjectItem(row, "version")));
                 const std::string id = std::string(container_id) + ":" + path;
-                std::unique_ptr<char, decltype(&free)> plain {cJSON_PrintUnformatted(row), free};
+                cJSON* copy = cJSON_Duplicate(row, 1);
 
-                if (!plain)
+                if (!copy)
                 {
-                    LogError("Container FIM: could not serialize reporting row '%s'.", id.c_str());
+                    LogError("Container FIM: could not copy reporting row '%s'.", id.c_str());
                     continue;
                 }
 
                 const int granted = fim_persist_baseline_row(id.c_str(),
                                                              promote ? OPERATION_CREATE : OPERATION_DELETE,
                                                              "wazuh-states-fim-files",
-                                                             plain.get(),
+                                                             copy,
                                                              version);
 
                 if (granted >= 0 && (!promote || granted > 0))
