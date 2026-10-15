@@ -9,6 +9,7 @@
 from __future__ import division
 from collections import OrderedDict
 import xml.etree.ElementTree as ET
+from defusedxml.ElementTree import parse as safe_parse
 import configparser
 import subprocess
 import os
@@ -109,7 +110,7 @@ def disable_win_eventlog_test_actions(tree):
 def modify_win_eventlog_testing(action):
     win_base_rules_file = "/var/ossec/ruleset/rules/0575-win-base_rules.xml"
     actions = {"enable": enable_win_eventlog_test_actions, "disable": disable_win_eventlog_test_actions}
-    tree = ET.parse(win_base_rules_file)
+    tree = safe_parse(win_base_rules_file)
     actions[action](tree)
     tree.write(win_base_rules_file)
 
