@@ -365,6 +365,14 @@ void wm_handler(int signum)
 {
     static bool wm_sig_processing = false;
 
+    // Raised first and before the wait below: wazuh-control signals every daemon in the same
+    // pass, so syscheckd can already be gone during the wait. wm_fim_query_json() and
+    // modulesSync() read this flag to log that as part of the shutdown instead of an ERROR,
+    // and agent-info aborts its coordination on it. Module loops blocked in
+    // wm_sleep_interruptible / wm_select_interruptible leave on it, and the modules that check
+    // it while still starting up abort their start. A second, ignored signal sets it again.
+    wm_shutdown_requested = 1;
+
     w_mutex_lock(&sig_lock);
     if (wm_sig_processing) {
         mdebug2("Signal received: %d, but another one is being processed. Ignoring.", signum);
@@ -376,7 +384,8 @@ void wm_handler(int signum)
     }
     w_mutex_unlock(&sig_lock);
 
-    // We wait in case the modules haven't completed the initialization
+    // Grace time before the stop() callbacks, so the modules that don't read the flag can
+    // finish starting.
     sleep(1);
 
     wmodule * cur_module;
@@ -385,11 +394,6 @@ void wm_handler(int signum)
     case SIGINT:
     case SIGTERM:
         mdebug1("Shutting down Wazuh modules.");
-
-        // Signal all module loops to exit before calling their stop() callbacks
-        // so that modules blocked in wm_sleep_interruptible / wm_select_interruptible
-        // wake up immediately.
-        wm_shutdown_requested = 1;
 
         for (cur_module = wmodules; cur_module && cur_module->context && cur_module->context->name; cur_module = cur_module->next) {
             if (cur_module->context->stop) {
