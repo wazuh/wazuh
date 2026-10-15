@@ -8407,6 +8407,91 @@ TEST_F(SyscollectorImpTest, SweepContainerRowsNotInKeepsEverythingWhenThereAreNo
 #endif
 }
 
+TEST_F(SyscollectorImpTest, ADeletedContainerRowCarriesOneContainerBlockAndNoKubernetesSibling)
+{
+#ifndef __linux__
+    GTEST_SKIP() << "Container row sweeps are Linux-only";
+#else
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    // First init only to create the schema on disk, so the row below can be
+    // seeded into a table that exists.
+    Syscollector::instance().init(spInfoWrapper, reportFunction, persistFunction, logFunction,
+                                  SYSCOLLECTOR_TEST_DB_PATH, "", "",
+                                  3600, false, false, false, false, false, false, false,
+                                  false, false, false, false, false, false, false);
+    Syscollector::instance().destroy();
+
+    // The stored blob carries BOTH shapes at once: the nested one the producer
+    // emits today (D15), and the retired two-sibling one beside it. Only the
+    // nested block may reach the document. A top-level "kubernetes" is refused
+    // by every dynamic:strict wazuh-states-* template, so lifting one could
+    // only ever have produced a document the indexer drops -- which is why a
+    // reader that still handled it was worth deleting rather than keeping as
+    // harmless.
+    //
+    // sync = 1 because a DELETED row that was never synced is suppressed by the
+    // document-limit accounting and would never reach the persist callback.
+    sqlite3* db = nullptr;
+    ASSERT_EQ(sqlite3_open_v2(SYSCOLLECTOR_TEST_DB_PATH, &db, SQLITE_OPEN_READWRITE, nullptr), SQLITE_OK);
+
+    char* errMsg = nullptr;
+    ASSERT_EQ(sqlite3_exec(db,
+                           "INSERT INTO dbsync_processes "
+                           "(container_id, container_json, pid, name, sync, checksum) VALUES ('c1', "
+                           "'{\"container\":{\"id\":\"c1\",\"name\":\"web\","
+                           "\"kubernetes\":{\"pod\":{\"name\":\"web-0\"}}},"
+                           "\"kubernetes\":{\"pod\":{\"name\":\"retired-sibling\"}}}', "
+                           "'431625', 'nginx', 1, 'sum');",
+                           nullptr,
+                           nullptr,
+                           &errMsg),
+              SQLITE_OK)
+            << (errMsg ? errMsg : "");
+
+    if (errMsg)
+    {
+        sqlite3_free(errMsg);
+    }
+
+    sqlite3_close(db);
+
+    std::vector<std::string> persisted;
+    const auto capturePersist
+    {
+        [&persisted](const std::string&, Operation_t, const std::string&, const std::string& payload, uint64_t)
+        {
+            persisted.push_back(payload);
+        }
+    };
+
+    Syscollector::instance().init(spInfoWrapper, reportFunction, capturePersist, logFunction,
+                                  SYSCOLLECTOR_TEST_DB_PATH, "", "",
+                                  3600, false, false, false, false, false, false, false,
+                                  false, false, false, false, false, false, false);
+
+    // The container is gone, so its rows go -- and the DELETED event each one
+    // produces is exactly the case the stored blob exists to serve.
+    EXPECT_EQ(Syscollector::instance().sweepContainerRows({"c1"}), 1u);
+
+    ASSERT_EQ(persisted.size(), 1u) << "the swept row should have produced one stateful delete";
+
+    const auto document = nlohmann::json::parse(persisted.front());
+
+    EXPECT_FALSE(document.contains("kubernetes"))
+            << "a top-level kubernetes sibling is the retired shape and is refused by the index template";
+
+    ASSERT_TRUE(document.contains("container")) << "the delete must stay self-contained once the container is gone";
+    EXPECT_EQ(document["container"]["id"], "c1");
+    EXPECT_EQ(document["container"]["name"], "web");
+    EXPECT_EQ(document["container"]["kubernetes"]["pod"]["name"], "web-0")
+            << "the Kubernetes context belongs inside the container block, not beside it";
+
+    Syscollector::instance().destroy();
+#endif
+}
+
 TEST_F(SyscollectorImpTest, TheScanMutexCanBeHeldFromOutsideTheModule)
 {
     // wm_sync_module takes this around a synchronization so a scan cannot start
