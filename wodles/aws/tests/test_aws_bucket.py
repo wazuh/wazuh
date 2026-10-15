@@ -179,6 +179,41 @@ def test_aws_bucket_mark_complete_handles_exceptions_when_db_query_fails(mock_de
     mock_debug.assert_called_with(f'+++ Error marking log {utils.TEST_LOG_FULL_PATH_CLOUDTRAIL_1} as completed: ', 2)
 
 
+@pytest.mark.parametrize("prefix", ["", "archive/2024/01/01/"])
+@pytest.mark.parametrize("marker_suffix, expected_called",[
+        ("2026/01/30/00/test.json.gz", True),
+        ("no-date-here/test.json.gz", False),
+    ])
+def test_aws_bucket_rewind_marker_to_day_folder(marker_suffix, expected_called, prefix):
+    """Test 'rewind_marker_to_day_folder' rewinds the marker to the day folder (YYYY/MM/DD) when applicable,
+    ignoring any date in the configured prefix."""
+    bucket = utils.get_mocked_aws_bucket(bucket=utils.TEST_BUCKET)
+
+    bucket.date_regex = re.compile(r"(\d{4}/\d{2}/\d{2})")
+    full_prefix = f"{prefix}AWSLogs/{utils.TEST_ACCOUNT_ID}/CloudTrail/{utils.TEST_REGION}/"
+    marker = f"{full_prefix}{marker_suffix}"
+
+    with patch('aws_bucket.AWSBucket.marker_custom_date', return_value="rewound-marker") as mock_marker_custom_date, \
+            patch('aws_bucket.AWSBucket.get_full_prefix', return_value=full_prefix):
+        result = bucket.rewind_marker_to_day_folder(
+            marker=marker,
+            aws_account_id=utils.TEST_ACCOUNT_ID,
+            aws_region=utils.TEST_REGION
+        )
+
+    if expected_called:
+        assert result == "rewound-marker"
+        mock_marker_custom_date.assert_called_once()
+        args, _ = mock_marker_custom_date.call_args
+        assert args[0] == utils.TEST_REGION
+        assert args[1] == utils.TEST_ACCOUNT_ID
+        assert isinstance(args[2], datetime)
+        assert args[2].strftime(aws_bucket.PATH_DATE_FORMAT) == "2026/01/29"
+    else:
+        assert result == marker
+        mock_marker_custom_date.assert_not_called()
+
+
 @pytest.mark.parametrize('region', [utils.TEST_REGION, "invalid_region"])
 def test_aws_bucket_db_count_region(custom_database, region):
     """Test 'db_count_region' method counts the number of rows in DB for a region"""
@@ -205,11 +240,102 @@ def test_aws_bucket_db_maintenance(custom_database, expected_db_count):
     assert utils.database_execute_query(bucket.db_connector, utils.SQL_COUNT_ROWS.format(
         table_name=bucket.db_table_name)) == CLOUDTRAIL_SCHEMA_COUNT
 
-    with patch('aws_bucket.AWSBucket.db_count_region', return_value=CLOUDTRAIL_SCHEMA_COUNT):
+    with patch('aws_bucket.AWSBucket.db_count_region', return_value=CLOUDTRAIL_SCHEMA_COUNT), \
+            patch('aws_bucket.LATE_ARRIVAL_LOG_TABLES', set()):
         bucket.db_maintenance(aws_account_id=utils.TEST_ACCOUNT_ID, aws_region=utils.TEST_REGION)
 
     assert utils.database_execute_query(bucket.db_connector, utils.SQL_COUNT_ROWS.format(
         table_name=bucket.db_table_name)) == expected_db_count
+
+
+@pytest.mark.parametrize('retain_db_records, expected_deleted_days', [
+    (0, ['2019/03/29', '2019/03/30']),
+    (CLOUDTRAIL_SCHEMA_COUNT + 1, ['2019/03/29', '2019/03/30']),
+    (CLOUDTRAIL_SCHEMA_COUNT + 3, []),
+])
+def test_aws_bucket_db_maintenance_keeps_late_arrival_window(custom_database, retain_db_records,
+                                                             expected_deleted_days):
+    """Test 'db_maintenance' method keeps the rows inside the rewound marker window for the late arrival tables,
+    as the next fetch would list those files again."""
+    utils.database_execute_script(custom_database, TEST_CLOUDTRAIL_SCHEMA)
+    bucket = utils.get_mocked_aws_bucket()
+    bucket.db_connector = custom_database
+    bucket.db_cursor = bucket.db_connector.cursor()
+    bucket.db_table_name = utils.TEST_TABLE_NAME
+    bucket.retain_db_records = retain_db_records
+
+    # Every row of the schema is from 2019/04/01, so the window starts at 2019/03/31
+    full_prefix = 'AWSLogs/123456789/CloudTrail/us-east-1/'
+    old_keys = {day: f'{full_prefix}{day}/123456789_CloudTrail-us-east-1_{day.replace("/", "")}T0000Z_aaaa.json.gz'
+                for day in ['2019/03/29', '2019/03/30', '2019/03/31']}
+    for key in old_keys.values():
+        bucket.db_cursor.execute(bucket.sql_mark_complete.format(table_name=bucket.db_table_name), {
+            'bucket_path': bucket.bucket_path, 'aws_account_id': utils.TEST_ACCOUNT_ID,
+            'aws_region': utils.TEST_REGION, 'log_key': key, 'created_date': ''})
+
+    with patch('aws_bucket.AWSBucket.get_full_prefix', return_value=full_prefix):
+        bucket.db_maintenance(aws_account_id=utils.TEST_ACCOUNT_ID, aws_region=utils.TEST_REGION)
+
+    remaining_keys = {row[0] for row in bucket.db_cursor.execute(f'SELECT log_key FROM {bucket.db_table_name}')}
+    assert len(remaining_keys) == CLOUDTRAIL_SCHEMA_COUNT + len(old_keys) - len(expected_deleted_days)
+    for day, key in old_keys.items():
+        assert (key not in remaining_keys) == (day in expected_deleted_days)
+
+
+@patch('aws_tools.get_script_arguments')
+def test_aws_bucket_db_maintenance_then_build_s3_filter_args_keeps_late_arrival_window(mock_get_script_arguments,
+                                                                                     custom_database):
+    """Test the marker of the fetch after 'db_maintenance' still starts at the day before the last key processed, so
+    a late file of that day sorting before every key processed of the day is listed."""
+    mock_get_script_arguments.return_value.type = 'cloudtrail'
+    bucket = utils.get_mocked_bucket(class_=AWSCloudTrailBucket, bucket=utils.TEST_BUCKET)
+    bucket.db_connector = custom_database
+    bucket.db_cursor = custom_database.cursor()
+    bucket.db_cursor.execute(bucket.sql_create_table.format(table_name=bucket.db_table_name))
+
+    full_prefix = bucket.get_full_prefix(utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
+    for day in ['2019/03/30', '2019/03/31', '2019/04/01']:
+        for index in range(bucket.retain_db_records // 2):
+            bucket.mark_complete(utils.TEST_ACCOUNT_ID, utils.TEST_REGION, {
+                'Key': f'{full_prefix}{day}/{utils.TEST_ACCOUNT_ID}_CloudTrail_{utils.TEST_REGION}_'
+                       f'{day.replace("/", "")}T0000Z_b{index:04d}.json.gz'})
+
+    bucket.db_maintenance(aws_account_id=utils.TEST_ACCOUNT_ID, aws_region=utils.TEST_REGION)
+    filter_args = bucket.build_s3_filter_args(utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
+
+    assert bucket.db_count_region(utils.TEST_ACCOUNT_ID, utils.TEST_REGION) < bucket.retain_db_records // 2 * 3
+    assert filter_args['StartAfter'] == f'{full_prefix}2019/03/31'
+    late_key = f'{full_prefix}2019/03/31/{utils.TEST_ACCOUNT_ID}_CloudTrail_{utils.TEST_REGION}_20190331T0000Z_a.json.gz'
+    assert late_key > filter_args['StartAfter']
+
+
+def test_aws_bucket_db_maintenance_keeps_rows_of_other_prefixes(custom_database):
+    """Test 'db_maintenance' only deletes the rows of its own full prefix, so an account trail and an organization
+    trail of the same bucket, account and region do not delete each other's window."""
+    account_trail = utils.get_mocked_bucket(class_=AWSCloudTrailBucket, bucket=utils.TEST_BUCKET)
+    organization_trail = utils.get_mocked_bucket(class_=AWSCloudTrailBucket, bucket=utils.TEST_BUCKET,
+                                                 aws_organization_id='o-abc')
+    for bucket in (account_trail, organization_trail):
+        bucket.db_connector = custom_database
+        bucket.db_cursor = custom_database.cursor()
+        bucket.retain_db_records = 0
+    custom_database.execute(account_trail.sql_create_table.format(table_name=account_trail.db_table_name))
+
+    for bucket in (account_trail, organization_trail):
+        full_prefix = bucket.get_full_prefix(utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
+        for day in ['2019/03/30', '2019/04/01']:
+            bucket.mark_complete(utils.TEST_ACCOUNT_ID, utils.TEST_REGION, {
+                'Key': f'{full_prefix}{day}/{utils.TEST_ACCOUNT_ID}_CloudTrail_{utils.TEST_REGION}_'
+                       f'{day.replace("/", "")}T0000Z_a.json.gz'})
+
+    organization_trail.db_maintenance(aws_account_id=utils.TEST_ACCOUNT_ID, aws_region=utils.TEST_REGION)
+
+    remaining_keys = [row[0] for row in custom_database.execute('SELECT log_key FROM cloudtrail ORDER BY log_key')]
+    account_prefix = account_trail.get_full_prefix(utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
+    organization_prefix = organization_trail.get_full_prefix(utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
+    assert len([key for key in remaining_keys if key.startswith(account_prefix)]) == 2
+    assert [key for key in remaining_keys if key.startswith(organization_prefix)] == \
+        [f'{organization_prefix}2019/04/01/{utils.TEST_ACCOUNT_ID}_CloudTrail_{utils.TEST_REGION}_20190401T0000Z_a.json.gz']
 
 
 @patch('builtins.print')
@@ -427,6 +553,11 @@ def test_aws_bucket_build_s3_filter_args(mock_get_script_arguments, mock_get_ful
     if aws_region == 'region_for_empty_db':
         filter_marker = bucket.marker_only_logs_after(aws_region, aws_account_id) if bucket.only_logs_after \
             else bucket.marker_custom_date(aws_region, aws_account_id, bucket.default_date)
+
+    if (not bucket.reparse
+            and bucket.db_table_name in aws_bucket.LATE_ARRIVAL_LOG_TABLES
+            and aws_region != 'region_for_empty_db'):
+        filter_marker = bucket.rewind_marker_to_day_folder(filter_marker, aws_account_id, aws_region)
 
     mock_get_script_arguments.return_value.type = config_type
 
