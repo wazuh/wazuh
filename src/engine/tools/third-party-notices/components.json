@@ -790,6 +790,7 @@
     }
   ],
   "python_overrides": {
+    "behave": "texts/pypi-behave.txt",
     "content_size_limit_asgi": "texts/pypi-content_size_limit_asgi.txt",
     "defusedxml": "texts/pypi-defusedxml.txt",
     "flatbuffers": "texts/pypi-flatbuffers.txt",
