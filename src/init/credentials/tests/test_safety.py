@@ -191,3 +191,29 @@ def test_certs_spec(resolver, sandbox, mode, expected):
         with pytest.raises(resolver.UnsafeEntry, match=expected):
             resolver.open_dir(conf, "certs", resolver.certs_spec(sandbox.paths))
 
+
+# ---------------------------------------------------------------- secret inputs
+
+@pytest.mark.parametrize("which", ["local.env", "indexer credentials.env", "indexer client key"])
+@pytest.mark.parametrize("mode,accepted", [(0o600, True), (0o400, True), (0o640, False), (0o644, False),
+                                           (0o604, False)])
+def test_secret_inputs_have_no_group_or_other_bits(resolver, sandbox, which, mode, accepted):
+    """local.env, the indexer's credentials.env and the client key it exports are secrets: root's, and no bit for
+    the group or others (0600, or the stricter 0400)."""
+    import io
+    if which == "local.env":
+        path = sandbox.write(os.path.join(sandbox.conf, "local.env"),
+                             "WAZUH_INDEXER_MANAGER_PASSWORD=Idx.Passw0rd-789\n", mode=mode)
+    elif which == "indexer credentials.env":
+        path = sandbox.write(os.path.join(sandbox.indexer_export, "credentials.env"),
+                             "WAZUH_INDEXER_MANAGER_PASSWORD=Idx.Passw0rd-789\n", mode=mode)
+    else:
+        path = os.path.join(sandbox.indexer_export, "manager-client-key.pem")
+        os.chmod(path, mode)
+    out, err = io.StringIO(), io.StringIO()
+    code = resolver.main(["--check"], paths=sandbox.paths, environ={}, out=out, err=err)
+    if accepted:
+        assert code == 0 and "UNSAFE" not in err.getvalue(), err.getvalue()
+    else:
+        assert code == 1 and f"UNSAFE {path}: readable by others than root" in err.getvalue(), err.getvalue()
+

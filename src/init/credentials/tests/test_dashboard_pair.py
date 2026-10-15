@@ -145,13 +145,30 @@ def test_unreadable_configuration_issues_nothing(resolver, sandbox):
     assert not os.path.exists(export(sandbox, CERT))
 
 
-def test_no_ca_key_says_it_was_not_generated(resolver, sandbox):
+@pytest.mark.parametrize("mode", ["--check", "--prestart"])
+def test_no_ca_key_says_it_was_not_generated(resolver, sandbox, mode):
+    """The same diagnosis in both: --check says it as --prestart does."""
     sandbox.stage_ca(key=False)
-    code, _, err = run(resolver, sandbox, "--prestart")
+    place(sandbox, {})                                     # export/ exists, as after any earlier run
+    code, _, err = run(resolver, sandbox, mode)
     assert code == 0, err
     assert (f"WARNING: dashboard client pair not generated: {sandbox.conf}/ca has no key; provision it externally "
             f"in {sandbox.conf}/export") in err
     assert not os.path.exists(export(sandbox, CERT))
+
+
+def test_prestart_validates_what_it_wrote(resolver, sandbox, monkeypatch):
+    """After its steps, --prestart judges the result as --check would: a key the step left readable by the group is
+    refused, and the start with it."""
+    sandbox.stage_ca()
+    real = resolver.write_file
+
+    def lax(parent, name, data, mode, uid, gid):
+        return real(parent, name, data, 0o640 if name == KEY else mode, uid, gid)
+
+    monkeypatch.setattr(resolver, "write_file", lax)
+    code, _, err = run(resolver, sandbox, "--prestart")
+    assert code == 1 and f"UNSAFE {export(sandbox, KEY)}: readable by others than root" in err, err
 
 
 # ---------------------------------------------------------------- rotation and expiry

@@ -49,8 +49,9 @@ from cryptography.x509.verification import (Criticality, ExtensionPolicy, Policy
 
 # The manager's configuration directory. Fixed: a custom installation home moves the home only. Kept identical
 # with WAZUH_MANAGER_CONF_DIR in src/shared/include/defs.h, Utils::MANAGER_CONF_DIR in
-# src/shared_modules/utils/managerConfDir.hpp, the engine's base/managerConfig.hpp, CONF_PATH in
-# framework/wazuh/core/common.py and CONF_DIR in src/init/shared.sh.
+# src/shared_modules/utils/managerConfDir.hpp, the engine's base/managerConfig.hpp, MANAGER_CONF_DIR in
+# framework/wazuh/core/common.py (its CONF_PATH is computed, and points into a source tree when run from one) and
+# CONF_DIR in src/init/shared.sh. tests/test_framework_parity.py holds it equal to MANAGER_CONF_DIR.
 CONF_DIR = "/etc/wazuh-manager"
 DEFAULT_HOME = "/var/wazuh-manager"
 # What the indexer publishes for its consumers on this host (read only).
@@ -604,6 +605,7 @@ def conf_spec(paths: Paths) -> Spec:
 
 
 ROOT_FILE = Spec("file")                    # rule 1: root's, not group/world-writable, one link
+PRIVATE_FILE = Spec("file", forbid=0o077)   # a secret: root's, no group or other bit at all (0600 or 0400)
 INDEXER_EXPORT = Spec("dir")                # root-owned, any group (wazuh-indexer), not group/world-writable
 
 
@@ -621,10 +623,11 @@ def open_conf(paths: Paths, report: Report) -> Optional[Dir]:
 
 
 def load_env_file(parent: Dir, name: str, report: Report) -> Optional[Dict[str, Tuple[str, int]]]:
-    """Read and parse one .env file below `parent`. An absent file returns {}; an unsafe or malformed one
-    is reported and returns None. Rejected input must never be treated as permission to generate defaults."""
+    """Read and parse one .env file below `parent`: a secret, so root's with no group or other bit. An absent
+    file returns {}; an unsafe or malformed one is reported and returns None. Rejected input must never be treated
+    as permission to generate defaults."""
     try:
-        data = read_file(parent, name, ROOT_FILE)
+        data = read_file(parent, name, PRIVATE_FILE)
     except FileNotFoundError:
         return {}
     except UnsafeEntry as exc:
@@ -747,41 +750,47 @@ def rbac_seeded(paths: Paths) -> bool:
     return stat.S_ISREG(st.st_mode) and st.st_size > 0
 
 
-def node_role(paths: Paths, report: Report) -> Optional[str]:
-    """"worker" or "master", or None (reported) when the configuration cannot answer: then nothing is seeded,
-    because seeding a worker would publish passwords for an API that runs on the master."""
-    conf_file = os.path.join(paths.conf, "wazuh-manager.conf")
-    if not os.access(paths.conf_bin, os.X_OK):
-        report.problem(INVALID, conf_file, f"cannot read cluster.node_type ({paths.conf_bin} is missing)")
-        return None
-    # --skip-file-checks: at install time the certificates the file names do not exist yet, and without it the
-    # whole document is refused (exit 1), which made the shell resolver read a worker as a master.
-    result = run_wazuh(paths, [paths.conf_bin, "-H", paths.home, "-f", conf_file, "--skip-file-checks", "get",
-                               "cluster.node_type"], want_stdout=True)
-    if result.returncode == 0:
-        return "worker" if result.stdout.decode(errors="replace").strip() == "worker" else "master"
-    if result.returncode == 2:  # Not set: the schema default is master.
-        return "master"
-    report.problem(INVALID, conf_file, "cannot read cluster.node_type")
-    return None
+@dataclasses.dataclass(frozen=True)
+class Published:
+    """export/credentials.env as found: "absent", "valid" (with the passwords that pass the rule), "malformed" (with
+    the line that is not NAME=value), or "unsafe" (reported)."""
+
+    kind: str
+    values: Dict[str, str] = dataclasses.field(default_factory=dict)
+    line: int = 0
 
 
-def read_published(export: Dir, report: Report) -> Dict[str, str]:
-    """The passwords already published, if they are valid: what a seed that failed after publishing left behind.
-    Malformed content can be published again, but an unsafe file must never be replaced."""
+PUBLISHED_SPEC = Spec("file", mode=0o600)
+
+
+def published_passwords(export: Dir, report: Report) -> Published:
+    """The one reading of export/credentials.env that --check and the writing modes share."""
     try:
-        data = read_file(export, CREDENTIALS_ENV, Spec("file", mode=0o600))
-        parsed = parse_env(data, export.child(CREDENTIALS_ENV))
+        data = read_file(export, CREDENTIALS_ENV, PUBLISHED_SPEC)
     except FileNotFoundError:
-        return {}
+        return Published("absent")
     except UnsafeEntry as exc:
         report.unsafe(exc)
-        return {}
+        return Published("unsafe")
+    try:
+        parsed = parse_env(data, export.child(CREDENTIALS_ENV))
     except EnvSyntaxError as exc:
-        report.warning(f"ignoring {export.child(CREDENTIALS_ENV)} ({exc}); it will be published again")
-        return {}
-    return {name: value for name, (value, _) in parsed.items()
-            if name in API_USERS and password_problem(value) is None}
+        return Published("malformed", line=exc.line)
+    return Published("valid", {name: value for name, (value, _) in parsed.items()
+                               if name in API_USERS and password_problem(value) is None})
+
+
+def report_published(paths: Paths, export: Dir, published: Published, report: Report) -> None:
+    """The verdict on a malformed publication: while rbac.db is not seeded the next writing run publishes it again
+    (the seed has not happened, so the passwords are generated or supplied again); once it is seeded the passwords
+    cannot be recovered from it, and it is INVALID."""
+    if published.kind != "malformed":
+        return
+    path = export.child(CREDENTIALS_ENV)
+    if rbac_seeded(paths):
+        report.problem(INVALID, f"{path}:{published.line}", "not a NAME=value line")
+    else:
+        report.warning(f"ignoring {path} (line {published.line} is not NAME=value); it will be published again")
 
 
 def publish_api_passwords(export: Dir, values: Mapping[str, str]) -> None:
@@ -809,11 +818,14 @@ def seed_rbac(paths: Paths, values: Mapping[str, str], report: Report) -> bool:
     return False
 
 
-def step_api_passwords(paths: Paths, conf: Dir, ca: Dir, lookup: Lookup, report: Report) -> None:
+def step_api_passwords(paths: Paths, conf: Dir, ca: Dir, lookup: Lookup, report: Report, names: "TlsNames") -> None:
+    """Seed rbac.db on a master. The role is the configuration's, read once per run with every other setting; when
+    the configuration could not be read (already reported) nothing is seeded, because seeding a worker would publish
+    passwords for an API that runs on the master."""
     if rbac_seeded(paths):
         report.progress(f"{paths.rbac_db} is already seeded; the Server API passwords are left as they are")
         return
-    role = node_role(paths, report)
+    role = names.role
     if role is None:
         return
     if role == "worker":
@@ -831,9 +843,11 @@ def step_api_passwords(paths: Paths, conf: Dir, ca: Dir, lookup: Lookup, report:
         check_private_dir_roles(ca, export, report)
         if report.has(UNSAFE):
             return
-        published = read_published(export, report)
+        found = published_passwords(export, report)
+        report_published(paths, export, found, report)
         if report.has(UNSAFE):
             return
+        published = found.values
         values = {}
         for name, (state, value, source) in supplied.items():
             if state == "ok":
@@ -1363,6 +1377,17 @@ def check_bundle(paths: Paths, certs: Dir, state: CaState, report: Report, mode:
         report.problem(INVALID, certs.child(bundle), f"does not contain {os.path.join(paths.conf, CA_DIR, CA_CERT)}")
 
 
+def published_ca(export: Dir, own: bytes, report: Report) -> str:
+    """export/ca.pem against the CA's own bytes: "absent", "current", "stale" (the CA was staged again or rotated;
+    every writing mode publishes it again), or "unsafe" (reported, never replaced)."""
+    present, published = read_optional(export, EXPORT_CA, ROOT_FILE, report)
+    if not present:
+        return "absent"
+    if published is None:
+        return "unsafe"
+    return "current" if published == own else "stale"
+
+
 def step_own_ca(paths: Paths, conf: Dir, certs: Dir, ca: Dir, lookup: Lookup, report: Report,
                 mode: str, names: TlsNames) -> Optional[CaState]:
     """--install mints or validates the CA; every writing mode publishes it in export/ca.pem when the copy there is
@@ -1397,10 +1422,10 @@ def step_own_ca(paths: Paths, conf: Dir, certs: Dir, ca: Dir, lookup: Lookup, re
             check_private_dir_roles(ca, export, report)
             if report.has(UNSAFE):
                 return None
-            present, current = read_optional(export, EXPORT_CA, ROOT_FILE, report)
-            if current != state.cert_bytes and not (present and current is None):
+            publication = published_ca(export, state.cert_bytes, report)
+            if publication in ("absent", "stale"):
                 write_file(export, EXPORT_CA, state.cert_bytes, 0o644, 0, 0)
-                if present:
+                if publication == "stale":
                     report.progress(f"published {export.child(EXPORT_CA)} again: it differed from {ca.child(CA_CERT)}")
     except UnsafeEntry as exc:
         report.unsafe(exc)
@@ -1441,7 +1466,6 @@ def check_own_ca(paths: Paths, conf: Dir, lookup: Lookup, report: Report, names:
 # matches no recorded fingerprint, or that has no marker, is the operator's and is never written.
 
 DASHBOARD_FILES = (DASHBOARD_KEY, DASHBOARD_CERT)          # written in this order, after the marker
-PRIVATE_FILE = Spec("file", forbid=0o077)                  # root's, no group or other bit at all
 DASHBOARD_SPECS = {DASHBOARD_KEY: PRIVATE_FILE, DASHBOARD_CERT: ROOT_FILE}
 DASHBOARD_NOT_USED = "nothing uses it yet: the dashboard does not present a client certificate"
 
@@ -1592,11 +1616,52 @@ def _operator_warning(export: Dir, problem: str) -> str:
     return f"{export.child(DASHBOARD_CERT)}: {problem}; provided by the operator, kept as it is ({DASHBOARD_NOT_USED})"
 
 
+@dataclasses.dataclass
+class DashboardDiagnosis:
+    """What the dashboard pair needs, decided once for --check and the writing modes. action: "skip" (a worker, or
+    an unsafe entry, reported), "keep", "issue", "reissue" (the resolver's own pair no longer serves: `reason`),
+    "operator" (kept; `reason` is its defect, if any), "no-key" (absent, or `reason` for one that needs reissuing,
+    and the CA has no key)."""
+
+    action: str
+    pair: Optional[DashboardPair] = None
+    reason: Optional[str] = None
+
+
+def diagnose_dashboard_pair(paths: Paths, export: Dir, ca_state: Optional[CaState], certs: Optional[Dir],
+                            names: TlsNames, report: Report) -> DashboardDiagnosis:
+    if names.role != "master":
+        return DashboardDiagnosis("skip")
+    pair = dashboard_pair_state(export, report)
+    if pair.owner == "unsafe":
+        return DashboardDiagnosis("skip", pair)
+    ca_cert = ca_state.cert if ca_state is not None else None
+    signing = ca_state is not None and ca_state.kind == "signing"
+    forbidden = _forbidden_keys(paths, certs, ca_cert, names)
+    if pair.owner == "operator":
+        return DashboardDiagnosis("operator", pair, dashboard_pair_problem(pair.files, ca_cert, forbidden))
+    reason = None
+    if pair.owner == "ours":
+        reason = "an earlier write was interrupted" if not pair.complete \
+            else dashboard_pair_problem(pair.files, ca_cert, forbidden)
+        if reason is None:
+            return DashboardDiagnosis("keep", pair)
+    if not signing:
+        return DashboardDiagnosis("no-key", pair, reason)
+    return DashboardDiagnosis("reissue" if pair.owner == "ours" else "issue", pair, reason)
+
+
+def _no_key_warning(ca_dir_path: str, export: Dir, diagnosis: DashboardDiagnosis) -> str:
+    if diagnosis.reason is None:
+        return (f"dashboard client pair not generated: {ca_dir_path} has no key; provision it externally in "
+                f"{export.path}")
+    return f"{export.child(DASHBOARD_CERT)}: {diagnosis.reason}; not reissued: {ca_dir_path} has no key"
+
+
 def step_dashboard_pair(paths: Paths, conf: Dir, ca_dir: Dir, certs: Optional[Dir], state: CaState, names: TlsNames,
                         report: Report) -> None:
-    """On a master, keep or issue the dashboard's client pair: issue it when absent and the CA has its key, reissue
-    the resolver's own when it no longer serves (another CA, expired, an interrupted write), never write the
-    operator's. Nothing here refuses a start."""
+    """On a master, act on the pair's diagnosis: issue it, reissue the resolver's own, keep the operator's (warning
+    about its defects). Nothing here refuses a start."""
     if names.role != "master":
         return
     try:
@@ -1604,40 +1669,29 @@ def step_dashboard_pair(paths: Paths, conf: Dir, ca_dir: Dir, certs: Optional[Di
             check_private_dir_roles(ca_dir, export, report)
             if report.has(UNSAFE):
                 return
-            pair = dashboard_pair_state(export, report)
-            if pair.owner == "unsafe":
-                return
+            diagnosis = diagnose_dashboard_pair(paths, export, state, certs, names, report)
             cert_path = export.child(DASHBOARD_CERT)
-            forbidden = _forbidden_keys(paths, certs, state.cert, names)
-            if pair.owner == "operator":
-                problem = dashboard_pair_problem(pair.files, state.cert, forbidden)
-                if problem:
-                    report.warning(_operator_warning(export, problem))
+            if diagnosis.action == "skip":
+                return
+            if diagnosis.action == "keep":
+                report.progress(f"{cert_path}: kept")
+                return
+            if diagnosis.action == "operator":
+                if diagnosis.reason:
+                    report.warning(_operator_warning(export, diagnosis.reason))
                 report.progress(f"{cert_path}: provided by the operator; kept as it is")
                 return
-            reason = None
-            if pair.owner == "ours":
-                if not pair.complete:
-                    reason = "an earlier write was interrupted"
-                else:
-                    reason = dashboard_pair_problem(pair.files, state.cert, forbidden)
-                    if reason is None:
-                        report.progress(f"{cert_path}: kept")
-                        return
-            if state.kind != "signing":
-                if pair.owner == "none":
-                    report.warning(f"dashboard client pair not generated: {ca_dir.path} has no key; provision it "
-                                   f"externally in {export.path}")
-                else:
-                    report.warning(f"{cert_path}: {reason}; not reissued: {ca_dir.path} has no key")
+            if diagnosis.action == "no-key":
+                report.warning(_no_key_warning(ca_dir.path, export, diagnosis))
                 return
+            pair = diagnosis.pair
             new = issue_dashboard_pair(state)
             write_file(export, DASHBOARD_MARKER, _marker_bytes(new, pair.files), 0o600, 0, 0)
             write_file(export, DASHBOARD_KEY, new[DASHBOARD_KEY], 0o600, 0, 0)
             write_file(export, DASHBOARD_CERT, new[DASHBOARD_CERT], 0o644, 0, 0)
             leaf = x509.load_pem_x509_certificates(new[DASHBOARD_CERT])[0]
             if any(data is not None for data in pair.files.values()):
-                report.progress(f"{cert_path}: reissued ({reason}); the dashboard must import it again")
+                report.progress(f"{cert_path}: reissued ({diagnosis.reason}); the dashboard must import it again")
             else:
                 report.progress(f"{cert_path}: issued; DN {leaf.subject.rfc4514_string()}; the dashboard imports it "
                                 f"from here")
@@ -1646,32 +1700,25 @@ def step_dashboard_pair(paths: Paths, conf: Dir, ca_dir: Dir, certs: Optional[Di
 
 
 def check_dashboard_pair(paths: Paths, conf: Dir, report: Report, names: TlsNames) -> None:
-    """--check's part, read-only: an operator pair's defects are warnings, the resolver's own pair that needs
-    reissuing is said so, unsafe entries are UNSAFE; absence is never a problem."""
+    """--check's part, read-only: the same diagnosis, reported. Absence is said only when no pair can be issued."""
     if names.role != "master":
         return
     export = _open_optional_dir(conf, EXPORT_DIR, EXPORT_SPEC, report)
     if export is None:
         return
+    quiet = Report(quiet=True, out=io.StringIO(), err=io.StringIO())
     ca_dir = _open_optional_dir(conf, CA_DIR, CA_SPEC, report)
-    certs = _open_optional_dir(conf, CERTS_DIR, certs_spec(paths), Report(quiet=True, out=io.StringIO(),
-                                                                          err=io.StringIO()))
+    certs = _open_optional_dir(conf, CERTS_DIR, certs_spec(paths), quiet)
     try:
-        pair = dashboard_pair_state(export, report)
-        if pair.owner in ("none", "unsafe"):
-            return
-        state = load_ca(ca_dir, Report(quiet=True, out=io.StringIO(), err=io.StringIO())) if ca_dir else None
-        ca_cert = state.cert if state is not None else None
-        problem = dashboard_pair_problem(pair.files, ca_cert, _forbidden_keys(paths, certs, ca_cert, names)) \
-            if pair.owner == "operator" or pair.complete else "an earlier write was interrupted"
-        if problem is None:
-            return
-        if pair.owner == "operator":
-            report.warning(_operator_warning(export, problem))
-        elif state is not None and state.kind == "signing":
-            report.progress(f"{export.child(DASHBOARD_CERT)}: {problem}; the next start reissues it")
-        else:
-            report.warning(f"{export.child(DASHBOARD_CERT)}: {problem}; not reissued: {conf.child(CA_DIR)} has no key")
+        state = load_ca(ca_dir, quiet) if ca_dir is not None else None
+        diagnosis = diagnose_dashboard_pair(paths, export, state, certs, names, report)
+        cert_path = export.child(DASHBOARD_CERT)
+        if diagnosis.action == "operator" and diagnosis.reason:
+            report.warning(_operator_warning(export, diagnosis.reason))
+        elif diagnosis.action == "reissue":
+            report.progress(f"{cert_path}: {diagnosis.reason}; the next start reissues it")
+        elif diagnosis.action == "no-key" and state is not None and state.kind != "absent":
+            report.warning(_no_key_warning(conf.child(CA_DIR), export, diagnosis))
     finally:
         for opened in (export, ca_dir, certs):
             if opened is not None:
@@ -2311,7 +2358,8 @@ def read_source(source, unit: ImportUnit, report: Report):
     contents = {}
     for name, target in zip(unit.sources, unit.files):
         try:
-            contents[target] = read_file(source, name, ROOT_FILE)
+            # The client key is a secret: root's, no group or other bit; the certificates only must not be writable.
+            contents[target] = read_file(source, name, PRIVATE_FILE if name == SOURCE_CLIENT_KEY else ROOT_FILE)
         except FileNotFoundError:
             return None
         except UnsafeEntry as exc:
@@ -2616,18 +2664,14 @@ def _open_optional_dir(conf: Dir, name: str, spec: Spec, report: Report) -> Opti
         return None
 
 
-def check_export(conf: Dir, report: Report) -> None:
-    """export/: root's 0700 directory; credentials.env root's 0600 and well formed; ca.pem root's."""
+def check_export(paths: Paths, conf: Dir, report: Report) -> None:
+    """export/: root's 0700 directory; credentials.env root's 0600, judged as the writing modes judge it; ca.pem
+    root's."""
     export = _open_optional_dir(conf, EXPORT_DIR, EXPORT_SPEC, report)
     if export is None:
         return
     with export:
-        present, data = read_optional(export, CREDENTIALS_ENV, Spec("file", mode=0o600), report)
-        if present and data is not None:
-            try:
-                parse_env(data, export.child(CREDENTIALS_ENV))
-            except EnvSyntaxError as exc:
-                report.problem(INVALID, f"{exc.path}:{exc.line}", "not a NAME=value line")
+        report_published(paths, export, published_passwords(export, report), report)
         read_optional(export, EXPORT_CA, ROOT_FILE, report)
 
 
@@ -2663,13 +2707,13 @@ def check_swaps(conf: Dir, report: Report) -> None:
     export = _open_optional_dir(conf, EXPORT_DIR, EXPORT_SPEC, report)
     try:
         check_private_dir_roles(ca, export, report)
-        if ca is not None and export is not None and _exists(ca, CA_CERT) and _exists(export, EXPORT_CA):
+        if ca is not None and export is not None and _exists(ca, CA_CERT):
             try:
                 own = read_file(ca, CA_CERT, CA_CERT_SPEC)
-                published = read_file(export, EXPORT_CA, ROOT_FILE)
             except UnsafeEntry:
                 return                                       # already reported by the other checks
-            if own != published:
+            quiet = Report(quiet=True, out=io.StringIO(), err=io.StringIO())   # unsafe: reported by check_export
+            if published_ca(export, own, quiet) == "stale":
                 report.progress(f"{export.child(EXPORT_CA)} differs from {ca.child(CA_CERT)}; --prestart publishes it "
                                 f"again")
     finally:
@@ -2686,7 +2730,7 @@ def run_checks(paths: Paths, conf: Dir, lookup: Lookup, report: Report, *, index
     always checked before any writes. Other steps report the same texts, so each is printed once."""
     names = names if names is not None else default_tls_names(paths)
     check_own_ca(paths, conf, lookup, report, names)
-    check_export(conf, report)
+    check_export(paths, conf, report)
     if indexer_validity:
         check_dashboard_pair(paths, conf, report, names)
     else:
@@ -2810,7 +2854,7 @@ def _writing_mode(mode: str):
                         check_certs_entries(certs, report)
                     if report.has(UNSAFE):
                         return report.exit_code(mode)
-                    step_api_passwords(paths, conf, ca, lookup, report)
+                    step_api_passwords(paths, conf, ca, lookup, report, names)
                     if report.has(UNSAFE):
                         return report.exit_code(mode)
                     step_indexer_password(paths, lookup, report)
@@ -2830,6 +2874,15 @@ def _writing_mode(mode: str):
                 finally:
                     if certs is not None:
                         certs.close()
+                if mode == "prestart" and not report.has(UNSAFE):
+                    # What the steps completed is judged again by the read-only diagnosis --check runs, so a start
+                    # never goes on with material the check would refuse. Each line is printed once.
+                    result = Report(quiet=True, out=io.StringIO(), err=io.StringIO())
+                    run_checks(paths, conf, lookup, result, names=names)
+                    for kind, subject, reason in result.problems:
+                        report.problem(kind, subject, reason)
+                    for warning in result.warnings:
+                        report.warning(warning)
         return report.exit_code(mode)
     return run
 

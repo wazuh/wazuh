@@ -59,14 +59,17 @@ def test_local_env_planted(resolver, sandbox, variant):
     assert SECRET not in out + err
 
 
-def test_local_env_replaced_by_another_root_file(resolver, sandbox):
-    """The account renames a root-owned file of <CONF> (here, internal options) over local.env: it passes rule 1,
-    so its content decides, and it is not a .env file."""
+@pytest.mark.parametrize("mode,expected", [(0o640, "UNSAFE {conf}/local.env: readable by others than root"),
+                                           (0o600, "INVALID {conf}/local.env:2: ")])
+def test_local_env_replaced_by_another_root_file(resolver, sandbox, mode, expected):
+    """The account renames a root-owned file of <CONF> (here, internal options) over local.env. Readable by the
+    group, it fails the secret-file rule; root's alone, it passes, so its content decides, and it is not a .env
+    file."""
     other = sandbox.write(os.path.join(sandbox.conf, "wazuh-manager-internal-options.conf"),
-                          "# options\nremoted.debug=2\n", mode=0o640, gid=sandbox.account_gid)
+                          "# options\nremoted.debug=2\n", mode=mode, gid=sandbox.account_gid)
     os.rename(other, os.path.join(sandbox.conf, "local.env"))
     code, _, err = run(resolver, sandbox, "--check")
-    assert code == 1 and err.startswith(f"INVALID {sandbox.conf}/local.env:2: ")
+    assert code == 1 and err.startswith(expected.format(conf=sandbox.conf)), err
 
 
 def test_hard_link_as_local_env(resolver, sandbox):

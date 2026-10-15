@@ -36,7 +36,7 @@ developer side.
 | RF-8 | `--check` is read-only (no lock, no write, no subprocess but the configuration reader `wazuh-manager-conf --skip-file-checks dump`) and reports `UNSAFE`/`INVALID`, never `MISSING`; it refuses whatever `--prestart` would refuse, so a restart is refused before anything is stopped; `--prestart` runs the same tests first; warnings (exit 0) are copied to `wazuh-manager.log` by `wazuh-manager-control` | kept |
 | RF-9 | `--clear` refuses while a daemon runs, removes what the resolver made, keeps what it was given | kept |
 | RNF-1 | No secret on argv, in output or in the environment of a subprocess; secrets travel on stdin | kept |
-| RNF-2 | Every entry under `<CONF>`, the indexer export and the home is reached through its parent's descriptor without following links; a writing run that finds anything unsafe writes nothing | kept |
+| RNF-2 | Every entry under `<CONF>`, the indexer export and the home is reached through its parent's descriptor without following links; a writing run that finds anything unsafe writes nothing; secrets read (`local.env`, the indexer's `credentials.env` and `manager-client-key.pem`) are root's with no group or other bit | kept |
 | RNF-3 | One writing run at a time (lock on `<CONF>/ca`) | kept |
 | RNF-4 | Runs on the bundled interpreter with `cryptography` and PyYAML as pinned by `framework/requirements.txt`; no other dependency | kept |
 
@@ -64,6 +64,7 @@ developer side.
 | D-18 | The configuration is read with `wazuh-manager-conf --skip-file-checks dump` in every mode, `--check` included, and `api.yaml` with `yaml.safe_load`; one that cannot be read is `INVALID` and the default names are checked | the schema's defaults and path rules live in one place; `--check` must judge the same files as `--prestart` |
 | D-19 | Only the indexer material's validity window is a warning: a CA or client pair that would pass at some moment of its life (or now, but for the leaf's own window) does not refuse the start; it is kept in place and imported only into a gap, never over a pair valid now. Everything else, the server pairs included, still refuses the whole start | an expired client pair or a clock behind at boot stopped every daemon although only the indexer connection was affected, and the connector already refuses unusable material at the handshake and retries; a server pair is what the agents and the dashboard verify, so it stays a refusal |
 | D-20 | The dashboard pair's owner is decided by `export/.dashboard-client.issued`, which records each file's SHA-256 (the new one and, during a rewrite, the previous one) and is written before the files; a present file matching neither makes the pair the operator's | only the resolver's own pair may be reissued or removed; a pair replaced by hand keeps the old marker and must not be overwritten, and an interrupted reissue (each file is replaced atomically) must be finished, not taken for a manual replacement |
+| D-21 | Each judgement --check and the writing modes share is one function (the CA and bundle, the server pairs, the indexer trust, the published passwords, `export/ca.pem`, the dashboard pair, the node role read from the one configuration dump); --check reports its diagnosis, the writing modes act on it, and `--prestart` then runs the read-only checks again on what it wrote | a rule fixed in one path and not in the other let `--check` and the start disagree: a restart refused before the stop, or a start going on with material the check would refuse |
 
 ## Architecture
 
@@ -119,7 +120,7 @@ sudo python3 -m pytest -q src/init/credentials/tests
 ```
 
 CI: `.github/workflows/5_testunit_credentials.yml`, on the interpreter version in `framework/.python-version` with
-`cryptography==50.0.1` and `PyYAML==6.0.3`, plus a `py_compile` of the program and an `sh -n` of `src/init/wazuh-server.sh`. The
+`cryptography` and `PyYAML` at the versions `framework/requirements.txt` pins (installed with it as constraints), plus a `py_compile` of the program and an `sh -n` of `src/init/wazuh-server.sh`. The
 installed behaviour is covered by `tests/integration/test_manager_control/test_unsafe_credentials_file.py` in the
 manager integration workflow.
 
@@ -128,11 +129,11 @@ manager integration workflow.
 | `test_cli.py` | arguments, modes, exit codes, output streams, `-q`, `-H` |
 | `test_env.py` | the `.env` grammar and the lookup order |
 | `test_runner.py` | subprocesses: absolute programs, fixed environment, secrets on stdin only |
-| `test_safety.py` | the file-system primitives and the specification of `<CONF>` and `certs/` |
+| `test_safety.py` | the file-system primitives, the specification of `<CONF>` and `certs/`, and the secret inputs (no group or other bit) |
 | `test_threats.py` | the service account against the resolver: planted, swapped, linked and hidden entries |
 | `test_lock.py` | one writing run at a time |
-| `test_passwords.py` | password rules, publish-then-seed, worker role, indexer password and keystore |
-| `test_framework_parity.py` | the resolver's rule and generator against the Server API's (read from `framework/` as source) |
+| `test_passwords.py` | password rules, publish-then-seed, worker role, indexer password and keystore, a malformed publication judged by the seed |
+| `test_framework_parity.py` | the resolver's rule, generator and `CONF_DIR` against the framework's (read from `framework/` as source) |
 | `test_ca.py` | the CA states, minting only when nothing exists, the bundle kept byte for byte, an unparsable CA certificate |
 | `test_pairs.py` | server pair profile, keep / half / missing, issuer validity, chains through intermediate CAs, CA purpose, the common-name length of the node name, unparsable certificates in the pairs and the bundle |
 | `test_sans.py` | explicit SAN lists and discovery from `/proc` fixtures |

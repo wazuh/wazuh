@@ -29,7 +29,7 @@ mode: an entry that does not match is refused (see [File safety](#file-safety)).
 | Path | Owner, mode | Written by | Content |
 |------|-------------|------------|---------|
 | `<CONF>/` | `root:wazuh-manager 0770` (the group needs `rwx`; `1770` is accepted) | installer | the configuration directory |
-| `<CONF>/local.env` | `root`, not group- or world-writable (use `0600 root:root`) | you | values you supply ([The keys](#the-keys)) |
+| `<CONF>/local.env` | `root`, no group or other bit: `0600 root:root` (or `0400`) | you | values you supply ([The keys](#the-keys)) |
 | `<CONF>/ca/` | `root:root 0700` | resolver | the manager's CA |
 | `<CONF>/ca/root-ca.pem` | `root:root 0644` | resolver or you | the CA certificate |
 | `<CONF>/ca/root-ca.key` | `root:root 0400` | resolver or you | its private key; absent when you stage the certificate alone |
@@ -47,7 +47,7 @@ mode: an entry that does not match is refused (see [File safety](#file-safety)).
 | `<CONF>/certs/indexer-ca.pem` | `root:wazuh-manager 0640` | resolver (import) or you | the CA the indexer connector trusts |
 | `<CONF>/certs/indexer-connector.pem`, `indexer-connector-key.pem` | `root:wazuh-manager 0640` | resolver (import) or you | client pair the manager presents to the indexer |
 | `<CONF>/certs/.indexer-ca.imported`, `.indexer-connector.imported` | `root:wazuh-manager 0640` | resolver | markers: these files were imported, not staged |
-| `/etc/wazuh-indexer/export/` | `root`, any group, not group- or world-writable | `wazuh-indexer` | read only: `credentials.env`, `ca.pem`, `manager-client.pem`, `manager-client-key.pem` |
+| `/etc/wazuh-indexer/export/` | `root`, any group, not group- or world-writable; `credentials.env` and `manager-client-key.pem` root's with no group or other bit (`0600`) | `wazuh-indexer` | read only: `credentials.env`, `ca.pem`, `manager-client.pem`, `manager-client-key.pem` |
 | `/var/wazuh-manager/api/configuration/security/rbac.db` | | resolver (through `rbac_control.py`) | Server API users, roles and policies |
 | `/var/wazuh-manager/queue/keystore/` | | resolver (through `wazuh-manager-keystore`) | the indexer username and password |
 
@@ -260,7 +260,7 @@ ever carries a secret.
 |------|---------|----------|
 | `MISSING` | something a start needs is absent; `--prestart` refuses, `--check` never says it | `MISSING WAZUH_INDEXER_MANAGER_PASSWORD: set it in /etc/wazuh-manager/local.env …` |
 | `INVALID` | something in place is wrong | `INVALID /etc/wazuh-manager/local.env:2: not a NAME=value line` · `INVALID WAZUH_INDEXER_MANAGER_PASSWORD: must be 12 to 64 characters (set in /etc/wazuh-manager/local.env:1)` · `INVALID /etc/wazuh-manager/certs/remoted.pem: expired` |
-| `UNSAFE` | an entry root may not trust: wrong owner or mode, a link, a directory where a file belongs | `UNSAFE /etc/wazuh-manager/local.env: group-writable` |
+| `UNSAFE` | an entry root may not trust: wrong owner or mode (a secret readable by others than root), a link, a directory where a file belongs | `UNSAFE /etc/wazuh-manager/local.env: group-writable` |
 | `WARNING` | indexer material that only the clock refuses: the indexer CA, a listed CA file, the client pair or a CA on its path is expired or not valid yet, and nothing else is wrong with it. It **does not** refuse the start; the indexer connection fails until the material is renewed or the clock is right | `resolve-credentials: WARNING: /etc/wazuh-manager/certs/indexer-connector.pem: expired on 2026-10-14 20:03:45 UTC; the indexer connection fails until it is renewed or the clock is right` |
 
 `wazuh-manager-control` relays those lines to standard error and to `logs/wazuh-manager.log`, starts nothing, and
@@ -515,8 +515,8 @@ Every node resolves credentials for itself. The cluster synchronizes `client.key
   `ca/`, `export/`, `local.env` and `certs/` together, since the start checks the pairs against that CA. See the
   [worker node backup](../backup-restore.md#worker-node-backup).
 - **Only a master seeds `rbac.db`.** The Server API runs on the master, so a worker seeds and publishes nothing.
-  When the configuration cannot say which role the node has, nothing is seeded and the start refuses
-  (`INVALID … cannot read cluster.node_type`).
+  The role is read with every other setting (`wazuh-manager-conf --skip-file-checks dump`); when the configuration
+  cannot be read, nothing is seeded and the start refuses (`INVALID /etc/wazuh-manager/wazuh-manager.conf: cannot read the TLS paths (…)`).
 - **`rbac.db` is not replicated**, and an existing one is never touched. A node promoted to master serves its own
   database, seeded when it is promoted if it holds none. Supply the same `WAZUH_MANAGER_API_PASSWORD` and
   `WAZUH_MANAGER_WUI_PASSWORD` on every node, so a promoted node comes up with the passwords you already know.

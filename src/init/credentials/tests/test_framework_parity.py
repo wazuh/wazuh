@@ -2,9 +2,10 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-"""The resolver and the framework agree on passwords. The resolver seeds rbac.db before the framework is importable, so
-it carries its own rule and generator; every value it accepts or generates must pass the Server API's rule
-(framework/wazuh/security.py), and its generator must match the framework's (framework/wazuh/rbac/orm.py). Both files
+"""The resolver and the framework agree on passwords and on the configuration directory. The resolver seeds rbac.db
+before the framework is importable, so it carries its own rule, generator and directory: every value it accepts or
+generates must pass the Server API's rule (framework/wazuh/security.py), its generator must match the framework's
+(framework/wazuh/rbac/orm.py), and its CONF_DIR must be framework/wazuh/core/common.py's MANAGER_CONF_DIR. The files
 are read as source, never imported: the framework's dependencies are not installed here."""
 
 import ast
@@ -32,6 +33,12 @@ def constants(relative):
 
 API = constants("framework/wazuh/security.py")
 SEEDING = constants("framework/wazuh/rbac/orm.py")
+COMMON = constants("framework/wazuh/core/common.py")
+
+
+def test_configuration_directory_matches_framework(resolver):
+    """The resolver carries its own copy of the fixed configuration directory: it must be the framework's."""
+    assert resolver.CONF_DIR == COMMON["MANAGER_CONF_DIR"] == "/etc/wazuh-manager"
 
 
 def test_generator_matches_framework(resolver):

@@ -204,29 +204,28 @@ def test_empty_rbac_db_is_unseeded(resolver, sandbox):
     assert len(sandbox.seed_calls()) == 1
 
 
-@pytest.mark.parametrize("role,conf_exit,seeded,invalid", [
-    ("worker", 0, False, False), ("master", 0, True, False), ("", 2, True, False), ("", 1, False, True),
+@pytest.mark.parametrize("role,dump_exit,seeded,invalid", [
+    ("worker", 0, False, False), ("master", 0, True, False), ("", 0, True, False), ("", 1, False, True),
 ])
-def test_worker(resolver, sandbox, calls, role, conf_exit, seeded, invalid):
-    """A master, or a node with no cluster section, seeds; a worker does not; an unreadable role fails closed."""
+def test_worker(resolver, sandbox, calls, role, dump_exit, seeded, invalid):
+    """The role comes from the configuration read once per run: a master, or a node with no cluster section (the
+    schema's default is master), seeds; a worker does not; an unreadable configuration fails closed."""
     sandbox.stage_ca()
-    sandbox.control(role=role, conf_exit=conf_exit)
+    sandbox.control(role=role, dump_exit=dump_exit)
     code, out, err = run(resolver, sandbox, "--prestart", environ={IDX: GOOD_IDX})
     assert (len(sandbox.seed_calls()) == 1) is seeded
     assert (published(sandbox) is not None) is seeded
-    assert ("cannot read cluster.node_type" in err) is invalid
+    assert ("cannot read the TLS paths" in err) is invalid
     assert code == (1 if invalid else 0)
     if role == "worker":
         assert "cluster worker" in out
-    probe = sandbox.conf_calls()[0]
-    assert probe == ["-H", sandbox.home, "-f", os.path.join(sandbox.conf, "wazuh-manager.conf"),
-                     "--skip-file-checks", "get", "cluster.node_type"]
+    assert sandbox.conf_calls() == []                       # no second reading of the role
 
 
 def test_worker_probe_missing_binary(resolver, sandbox):
     os.unlink(os.path.join(sandbox.home, "bin", "wazuh-manager-conf"))
     code, _, err = run(resolver, sandbox, "--prestart", environ={IDX: GOOD_IDX})
-    assert code == 1 and "cannot read cluster.node_type" in err and sandbox.seed_calls() == []
+    assert code == 1 and "cannot read the TLS paths" in err and sandbox.seed_calls() == []
 
 
 def test_seed_failure_then_recovery(resolver, sandbox):
@@ -343,3 +342,32 @@ def test_only_wazuh_programs(resolver, sandbox, calls, mode):
         if argv[0] == sandbox.paths.python_bin:
             assert argv[1:] == ["-I", sandbox.paths.rbac_control_script, "seed", "--passwords-file", "-"]
             assert GOOD_API.encode() in stdin
+
+
+# ---------------------------------------------------------------- the publication, judged once
+
+@pytest.mark.parametrize("seeded", [False, True])
+def test_malformed_publication_follows_the_seed(resolver, sandbox, seeded):
+    """A malformed export/credentials.env is published again while rbac.db is not seeded, so --check lets the start
+    go on; once seeded its passwords cannot be recovered and both --check and --prestart refuse it."""
+    sandbox.stage_ca()
+    export = os.path.join(sandbox.conf, "export")
+    os.mkdir(export)
+    os.chmod(export, 0o700)
+    path = sandbox.write(os.path.join(export, "credentials.env"), "# header\nnot a pair\n", mode=0o600)
+    if seeded:
+        os.makedirs(os.path.dirname(sandbox.rbac_db), exist_ok=True)
+        sandbox.write(sandbox.rbac_db, "seeded")
+    code, _, err = run(resolver, sandbox, "--check", environ={IDX: GOOD_IDX})
+    if seeded:
+        assert code == 1 and f"INVALID {path}:2: not a NAME=value line" in err, err
+    else:
+        assert code == 0, err
+        assert f"WARNING: ignoring {path} (line 2 is not NAME=value); it will be published again" in err
+    code, _, err = run(resolver, sandbox, "--prestart", environ={IDX: GOOD_IDX})
+    if seeded:
+        assert code == 1 and f"INVALID {path}:2: not a NAME=value line" in err, err
+    else:
+        assert code == 0, err
+        assert published(sandbox) is not None and len(sandbox.seed_calls()) == 1
+
