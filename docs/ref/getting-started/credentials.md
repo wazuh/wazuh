@@ -370,6 +370,9 @@ Every node resolves credentials for itself. The cluster synchronizes `client.key
   pairs are issued). A node that mints its own CA trusts only itself, and an agent that reaches another node will
   not trust what it presents. Each node presents its own listener pair, which must name the addresses agents use
   to reach that node (behind a load balancer, the balancer's name as well).
+- **Back up each node's credentials with it.** The cluster does not restore them: a worker's backup must carry
+  `ca/`, `export/`, `local.env` and `certs/` together, since the start checks the pairs against that CA. See the
+  [worker node backup](../backup-restore.md#worker-node-backup).
 - **Only a master seeds `rbac.db`.** The Server API runs on the master, so a worker seeds and publishes nothing.
   When the configuration cannot say which role the node has, nothing is seeded and the start refuses
   (`INVALID … cannot read cluster.node_type`).
