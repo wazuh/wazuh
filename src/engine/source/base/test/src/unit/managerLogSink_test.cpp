@@ -832,6 +832,58 @@ TEST_F(ManagerLogSinkTest, CreateNoGroup)
     EXPECT_FALSE(sys2->contentOf(jsonPath()).empty());
 }
 
+// Without an injected groupId the sink resolves the group with the real lookup: an unknown group means no chown (the
+// line is still written and the fd closed), a known one is applied to the created file.
+TEST_F(ManagerLogSinkTest, DefaultGroupLookup)
+{
+    {
+        auto sys = std::make_shared<FakeSys>();
+        auto deps = fakeDeps(sys);
+        deps.isRoot = []()
+        {
+            return true;
+        };
+        deps.groupId = nullptr;
+        auto opts = options(true, false, false);
+        opts.groupName = "wazuh_test_nonexistent_group";
+        base::logging::initManager(opts, deps);
+
+        base::logging::write(Level::Info, TAG, "/a/x.cpp", 1, "f", "unknown group");
+
+        EXPECT_TRUE(sys->fchowns.empty());
+        EXPECT_EQ(sys->contentOf(plainPath()), plainLine("INFO", "unknown group"));
+        ASSERT_EQ(sys->fchmods.size(), 1u);
+        const int createdFd = sys->fchmods[0].first;
+        EXPECT_EQ(std::count(sys->closes.begin(), sys->closes.end(), createdFd), 1);
+    }
+
+    const struct group* grp = ::getgrgid(::getgid());
+    if (grp == nullptr)
+    {
+        GTEST_SKIP() << "gid " << ::getgid() << " has no group entry";
+    }
+    const std::string groupName = grp->gr_name;
+
+    auto sys = std::make_shared<FakeSys>();
+    auto deps = fakeDeps(sys);
+    deps.isRoot = []()
+    {
+        return true;
+    };
+    deps.groupId = nullptr;
+    auto opts = options(true, false, false);
+    opts.groupName = groupName;
+    base::logging::initManager(opts, deps);
+
+    base::logging::write(Level::Info, TAG, "/a/x.cpp", 1, "f", "known group");
+
+    ASSERT_EQ(sys->fchmods.size(), 1u);
+    const int createdFd = sys->fchmods[0].first;
+    EXPECT_EQ(sys->fchowns,
+              (std::vector<std::tuple<int, uid_t, gid_t>> {{createdFd, static_cast<uid_t>(-1), ::getgid()}}));
+    EXPECT_EQ(sys->contentOf(plainPath()), plainLine("INFO", "known group"));
+}
+
 TEST_F(ManagerLogSinkTest, CreateAsRootReal)
 {
     if (::getuid() != 0)

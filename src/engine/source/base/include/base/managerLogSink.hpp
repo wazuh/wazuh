@@ -52,15 +52,17 @@ struct ManagerLogOptions
  */
 struct ManagerLogDeps
 {
-    std::function<std::string()> now;                                ///< "YYYY/MM/DD HH:MM:SS", local time
-    std::function<int()> pid;                                        ///< getpid(), evaluated per line
-    std::function<bool()> isRoot;                                    ///< getuid() == 0
-    std::function<std::optional<gid_t>(const std::string&)> groupId; ///< getgrnam_r() of the group name
-    std::function<int(const char*, int, mode_t)> open;               ///< ::open
-    std::function<int(int, uid_t, gid_t)> fchown;                    ///< ::fchown
-    std::function<int(int, mode_t)> fchmod;                          ///< ::fchmod
-    std::function<ssize_t(int, const char*, size_t)> write;          ///< ::write (files and stderr = fd 2)
-    std::function<int(int)> close;                                   ///< ::close of the descriptors from open
+    std::function<std::string()> now; ///< "YYYY/MM/DD HH:MM:SS", local time
+    std::function<int()> pid;         ///< getpid(), evaluated per line
+    std::function<bool()> isRoot;     ///< getuid() == 0
+    std::function<std::optional<gid_t>(const std::string&)>
+        groupId; ///< Group of the name; default: base::process::lookupGid (64 KiB cap), std::nullopt when unknown or on
+                 ///< error
+    std::function<int(const char*, int, mode_t)> open;      ///< ::open
+    std::function<int(int, uid_t, gid_t)> fchown;           ///< ::fchown
+    std::function<int(int, mode_t)> fchmod;                 ///< ::fchmod
+    std::function<ssize_t(int, const char*, size_t)> write; ///< ::write (files and stderr = fd 2)
+    std::function<int(int)> close;                          ///< ::close of the descriptors from open
 };
 
 /**

@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cerrno>
+#include <cstdlib>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
@@ -478,6 +479,71 @@ TEST(GoDaemonFunctionalTest, StdioIsDevNull)
     EXPECT_EQ(got, "YYY");
 }
 
+namespace
+{
+int g_atexitFd = -1; ///< Write end of the pipe the atexit handler of ParentsSkipExitHandlers reports to
+
+void reportAtexit()
+{
+    const char msg = 'A';
+    (void)!write(g_atexitFd, &msg, 1);
+}
+} // namespace
+
+// Both intermediate parents leave with _exit: an atexit handler registered before goDaemon never runs, so only the
+// grandchild's 'G' reaches the pipe.
+TEST(GoDaemonFunctionalTest, ParentsSkipExitHandlers)
+{
+    int report[2];
+    ASSERT_EQ(pipe(report), 0);
+
+    pid_t pid = fork();
+    ASSERT_GE(pid, 0);
+    if (pid == 0)
+    {
+        close(report[0]);
+        g_atexitFd = report[1];
+        if (atexit(reportAtexit) != 0)
+        {
+            _exit(EXIT_WRITE_FAILURE);
+        }
+
+        try
+        {
+            goDaemon();
+        }
+        catch (...)
+        {
+            _exit(EXIT_DAEMON_FAILURE);
+        }
+
+        // Grandchild
+        const char msg = 'G';
+        if (write(report[1], &msg, 1) != 1)
+        {
+            _exit(EXIT_WRITE_FAILURE);
+        }
+        _exit(EXIT_SUCCESS);
+    }
+
+    close(report[1]);
+    std::string got;
+    char buf[8];
+    ssize_t n;
+    while ((n = read(report[0], buf, sizeof(buf))) > 0)
+    {
+        got.append(buf, static_cast<std::size_t>(n));
+    }
+    close(report[0]);
+
+    int status = 0;
+    ASSERT_EQ(waitpid(pid, &status, 0), pid);
+    EXPECT_TRUE(WIFEXITED(status));
+    EXPECT_EQ(WEXITSTATUS(status), EXIT_SUCCESS);
+
+    EXPECT_EQ(got, "G");
+}
+
 /*** lookupUid ***/
 
 TEST(LookupUid, CurrentUser)
@@ -608,6 +674,30 @@ TEST(LookupGid, NotFound)
     EXPECT_EQ(sizes.size(), 1u);
 }
 
+// The first buffer is the sysconf hint, 1024 without one, never above the cap.
+TEST(LookupGid, InitialSizeFromSysconf)
+{
+    const std::vector<std::pair<long, std::size_t>> cases {{4096, 4096}, {-1, 1024}, {1048576, LOOKUP_CAP}};
+    for (const auto& [hint, expected] : cases)
+    {
+        RecordingSys rec;
+        rec.sys().sysconf = [&rec, hint = hint](int name) -> long
+        {
+            rec.sysconfs.push_back(name);
+            errno = ENOSYS;
+            return hint;
+        };
+        ASSERT_TRUE(rec.allSet());
+        std::vector<size_t> sizes;
+
+        EXPECT_EQ(lookupGid("x", FakeGroupLookup {0, 0, true, 7, &sizes}, rec.sys()), static_cast<gid_t>(7));
+
+        ASSERT_FALSE(sizes.empty()) << "hint " << hint;
+        EXPECT_EQ(sizes.front(), expected) << "hint " << hint;
+        EXPECT_EQ(rec.sysconfs, std::vector<int> {_SC_GETGR_R_SIZE_MAX}) << "hint " << hint;
+    }
+}
+
 /*** dropToUser / dropToGroup ***/
 
 TEST(DropToUser, SameUidSucceeds)
@@ -615,15 +705,65 @@ TEST(DropToUser, SameUidSucceeds)
     EXPECT_NO_THROW(dropToUser(getuid()));
 }
 
+// Without root, directly; as root, in a child that first drops to nobody (the drop is irreversible).
 TEST(DropToUser, ThrowsWhenNotPermitted)
 {
-    if (getuid() == 0)
+    if (getuid() != 0)
     {
-        GTEST_SKIP() << "requires a non-root user";
+        const uid_t target = getuid() + 1;
+        EXPECT_EQ(thrownMessage([&] { dropToUser(target); }),
+                  "could not set user ID " + std::to_string(target) + ": Operation not permitted (1)");
+        return;
     }
-    const uid_t target = getuid() + 1;
-    EXPECT_EQ(thrownMessage([&] { dropToUser(target); }),
-              "could not set user ID " + std::to_string(target) + ": Operation not permitted (1)");
+
+    int report[2];
+    ASSERT_EQ(pipe(report), 0);
+
+    pid_t pid = fork();
+    ASSERT_GE(pid, 0);
+    if (pid == 0)
+    {
+        close(report[0]);
+        std::string out;
+        try
+        {
+            dropToGroup(65534);
+            dropToUser(65534);
+        }
+        catch (const std::exception& e)
+        {
+            out = std::string("setup: ") + e.what();
+        }
+        if (out.empty())
+        {
+            out = thrownMessage([] { dropToUser(65533); });
+        }
+        (void)!write(report[1], out.data(), out.size());
+        _exit(EXIT_SUCCESS);
+    }
+
+    close(report[1]);
+    std::string got;
+    char buf[256];
+    ssize_t n;
+    while ((n = read(report[0], buf, sizeof(buf))) > 0)
+    {
+        got.append(buf, static_cast<std::size_t>(n));
+    }
+    close(report[0]);
+
+    int status = 0;
+    ASSERT_EQ(waitpid(pid, &status, 0), pid);
+    ASSERT_TRUE(WIFEXITED(status));
+    ASSERT_EQ(WEXITSTATUS(status), EXIT_SUCCESS);
+
+    const std::string notPermitted = "Operation not permitted (1)";
+    if (got.rfind("setup: ", 0) == 0 && got.size() >= notPermitted.size()
+        && got.compare(got.size() - notPermitted.size(), notPermitted.size(), notPermitted) == 0)
+    {
+        GTEST_SKIP() << "cannot drop to nobody here: " << got;
+    }
+    EXPECT_EQ(got, "could not set user ID 65533: Operation not permitted (1)");
 }
 
 // Functional test: the drop is irreversible, so it runs in a forked child
@@ -984,6 +1124,55 @@ TEST(CreatePIDErrors, CloseFails)
     ASSERT_TRUE(isError(result));
     EXPECT_EQ(base::getError(result).message, "could not close PID file " + FAKE_PID_FILE + ": Input/output error (5)");
     EXPECT_EQ(rec.written, "1\n");
+    EXPECT_EQ(rec.closes, std::vector<int> {rec.fakeFd});
+}
+
+// An interrupted write is retried, not reported.
+TEST(CreatePIDTest, RetriesOnEintr)
+{
+    RecordingSys rec;
+    int calls = 0;
+    rec.sys().write = [&rec, &calls](int, const void* buf, size_t len) -> ssize_t
+    {
+        if (++calls == 1)
+        {
+            errno = EINTR;
+            return -1;
+        }
+        rec.written.append(static_cast<const char*>(buf), len);
+        errno = ENOSYS;
+        return static_cast<ssize_t>(len);
+    };
+    ASSERT_TRUE(rec.allSet());
+
+    const auto result = createPID(FAKE_PID_DIR, "svc", 777, rec.sys());
+
+    ASSERT_FALSE(isError(result)) << base::getError(result).message;
+    EXPECT_EQ(rec.written, "777\n");
+    EXPECT_EQ(calls, 2);
+    EXPECT_EQ(rec.closes, std::vector<int> {rec.fakeFd});
+}
+
+// A partial write continues with the rest of the content.
+TEST(CreatePIDTest, CompletesPartialWrites)
+{
+    RecordingSys rec;
+    int calls = 0;
+    rec.sys().write = [&rec, &calls](int, const void* buf, size_t len) -> ssize_t
+    {
+        ++calls;
+        EXPECT_GT(len, 0u);
+        rec.written.append(static_cast<const char*>(buf), 1);
+        errno = ENOSYS;
+        return 1;
+    };
+    ASSERT_TRUE(rec.allSet());
+
+    const auto result = createPID(FAKE_PID_DIR, "svc", 777, rec.sys());
+
+    ASSERT_FALSE(isError(result)) << base::getError(result).message;
+    EXPECT_EQ(rec.written, "777\n");
+    EXPECT_EQ(calls, 4);
     EXPECT_EQ(rec.closes, std::vector<int> {rec.fakeFd});
 }
 
