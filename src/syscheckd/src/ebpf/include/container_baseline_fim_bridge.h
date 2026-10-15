@@ -210,6 +210,14 @@ int fim_container_admission_is_stale(const char* container_id);
 /**
  * @brief Build one container row's stateful document and offer it to the manager.
  *
+ * TAKES OWNERSHIP of @p msg: it is mutated in place during normalisation and
+ * freed before return, on every path including the early ones.
+ *
+ * Takes the row already parsed rather than as text. The callers hold a cJSON
+ * object already, and printing it here just to parse it straight back cost a
+ * full serialisation and a full tokenisation per row -- and sent every number
+ * through a decimal representation that need not survive the trip.
+ *
  * @return The reporting decision -- 1 reported, 0 withheld by the budget -- which
  *         the caller writes back to the row's sync column once the transaction
  *         holding it has closed. -1 when the document could not be built or did
@@ -218,7 +226,7 @@ int fim_container_admission_is_stale(const char* container_id);
 int fim_persist_baseline_row(const char* id,
                              int operation,
                              const char* index,
-                             const char* json,
+                             cJSON* msg,
                              uint64_t version);
 
 /**
