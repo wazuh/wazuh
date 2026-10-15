@@ -99,12 +99,12 @@ TEST(LifecycleDeltaApiTest, ThePerContainerScanReportsUnreachableDistinctlyFromS
 {
     const char* ids[] = {"container-a", "container-b"};
 
-    EXPECT_EQ(-1, cbaseline_run_syscollector_dbsync_for(kDeadSocket, ids, 2, CountRow, nullptr, nullptr))
+    EXPECT_EQ(-1, cbaseline_run_syscollector_dbsync_for(kDeadSocket, ids, 2, CountRow, /*context_sink=*/nullptr, nullptr, nullptr))
         << "-1 so the caller cannot read 'I could not ask' as 'those containers are gone'";
 
     // A missing socket path is the same statement about the connector, so it
     // gets the same answer rather than a caller-bug code.
-    EXPECT_EQ(-1, cbaseline_run_syscollector_dbsync_for(nullptr, ids, 2, CountRow, nullptr, nullptr));
+    EXPECT_EQ(-1, cbaseline_run_syscollector_dbsync_for(nullptr, ids, 2, CountRow, /*context_sink=*/nullptr, nullptr, nullptr));
 }
 
 TEST(LifecycleDeltaApiTest, AnEmptyIdListIsACallerBugNotAConnectorFailure)
@@ -114,11 +114,11 @@ TEST(LifecycleDeltaApiTest, AnEmptyIdListIsACallerBugNotAConnectorFailure)
     // sweep it was entitled to perform.
     const char* ids[] = {"x"};
 
-    EXPECT_EQ(0, cbaseline_run_syscollector_dbsync_for(kDeadSocket, ids, 0, CountRow, nullptr, nullptr));
-    EXPECT_EQ(0, cbaseline_run_syscollector_dbsync_for(kDeadSocket, nullptr, 2, CountRow, nullptr, nullptr));
+    EXPECT_EQ(0, cbaseline_run_syscollector_dbsync_for(kDeadSocket, ids, 0, CountRow, /*context_sink=*/nullptr, nullptr, nullptr));
+    EXPECT_EQ(0, cbaseline_run_syscollector_dbsync_for(kDeadSocket, nullptr, 2, CountRow, /*context_sink=*/nullptr, nullptr, nullptr));
 
     const char* blanks[] = {"", nullptr};
-    EXPECT_EQ(0, cbaseline_run_syscollector_dbsync_for(kDeadSocket, blanks, 2, CountRow, nullptr, nullptr));
+    EXPECT_EQ(0, cbaseline_run_syscollector_dbsync_for(kDeadSocket, blanks, 2, CountRow, /*context_sink=*/nullptr, nullptr, nullptr));
 }
 
 TEST(LifecycleDeltaApiTest, TheScannerLayerAlsoReportsUnreachableAsMinusOne)

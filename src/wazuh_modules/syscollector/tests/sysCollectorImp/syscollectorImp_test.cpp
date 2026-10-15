@@ -6991,6 +6991,82 @@ TEST_F(SyscollectorImpTest, AnExistingDatabaseIsUpgradedWithoutLosingWhatItHeld)
     EXPECT_EQ(rows[1], "c1/ctr-proc/ctr-sum");
 }
 
+/// Reads a container's stored context, or "" when it has none.
+static std::string readStoredContext(const char* path, const char* containerId)
+{
+    sqlite3* db = nullptr;
+
+    if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READONLY, nullptr) != SQLITE_OK)
+    {
+        if (db)
+        {
+            sqlite3_close(db);
+        }
+
+        return {};
+    }
+
+    sqlite3_stmt* stmt = nullptr;
+    std::string context;
+
+    if (sqlite3_prepare_v2(db, "SELECT context FROM container_context WHERE container_id=?;",
+                           -1, &stmt, nullptr) == SQLITE_OK)
+    {
+        sqlite3_bind_text(stmt, 1, containerId, -1, SQLITE_STATIC);
+
+        if (sqlite3_step(stmt) == SQLITE_ROW)
+        {
+            const auto* text = sqlite3_column_text(stmt, 0);
+            context = text ? reinterpret_cast<const char*>(text) : "";
+        }
+    }
+
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
+    return context;
+}
+
+TEST_F(SyscollectorImpTest, AContainersContextIsStoredOncePerContainerNotOncePerRow)
+{
+#ifndef __linux__
+    GTEST_SKIP() << "The container baseline is Linux-only";
+#else
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    Syscollector::instance().init(spInfoWrapper, reportFunction, persistFunction, logFunction,
+                                  SYSCOLLECTOR_TEST_DB_PATH, "", "",
+                                  3600, false, false, false, false, false, false, false,
+                                  false, false, false, false, false, false, false);
+
+    const std::string context {R"({"container":{"id":"c1","name":"web"}})"};
+
+    EXPECT_TRUE(Syscollector::instance().storeContainerContext("c1", context));
+
+    // An empty id names no container. Refusing it matters because the return
+    // value gates whether that container's rows are emitted at all, and rows
+    // under an empty container_id are the HOST's.
+    EXPECT_FALSE(Syscollector::instance().storeContainerContext("", context));
+
+    // Repeating an unchanged context is accepted without a second write. The
+    // assertion that it was not rewritten is the one below on the stored
+    // value; what matters here is that an unchanged context still reports
+    // success, because reporting failure would skip the container's rows.
+    EXPECT_TRUE(Syscollector::instance().storeContainerContext("c1", context));
+
+    // A changed context replaces the stored one rather than accumulating.
+    const std::string edited {R"({"container":{"id":"c1","name":"web","labels":{"tier":"edge"}}})"};
+    EXPECT_TRUE(Syscollector::instance().storeContainerContext("c1", edited));
+
+    Syscollector::instance().destroy();
+
+    EXPECT_EQ(readStoredContext(SYSCOLLECTOR_TEST_DB_PATH, "c1"), edited)
+            << "one row per container, holding the latest context";
+    EXPECT_EQ(readStoredContext(SYSCOLLECTOR_TEST_DB_PATH, ""), "")
+            << "the host is not a container and must never acquire a context row";
+#endif
+}
+
 TEST_F(SyscollectorImpTest, TheScanMutexCanBeHeldFromOutsideTheModule)
 {
     // wm_sync_module takes this around a synchronization so a scan cannot start

@@ -2251,6 +2251,73 @@ namespace
 /// rows but must keep its state so a restart resumes diffing against it rather
 /// than re-seeding from empty. Passing an empty set therefore removes ALL
 /// container rows, which is what the disabled-collector path wants.
+/// Stores one container's context, so its rows can reference it instead of
+/// each carrying a copy. Returns false if it could not be stored.
+///
+/// Skipped when the context has not changed since this process last wrote it.
+/// Compared as a string rather than hashed: the comparison is a length check
+/// and a memcmp, which costs less than a digest of the same bytes and cannot
+/// collide. One comparison per container per scan, not per row.
+///
+/// Not written through a DBSync transaction. The table is never named in one,
+/// so it has no status column and no scoped sweep can reach it — its lifetime
+/// is managed explicitly, next to the sweeps that delete the rows pointing at
+/// it. table_metadata is driven the same way.
+bool Syscollector::storeContainerContext(const std::string& containerId, const std::string& contextJson)
+{
+#if defined(__linux__)
+
+    if (containerId.empty())
+    {
+        return false;
+    }
+
+    {
+        std::lock_guard<std::mutex> lock {m_containerContextMutex};
+        const auto it = m_containerContexts.find(containerId);
+
+        if (it != m_containerContexts.end() && it->second == contextJson)
+        {
+            return true;
+        }
+    }
+
+    try
+    {
+        nlohmann::json row;
+        row[CONTAINER_ID_COLUMN] = containerId;
+        row["context"] = contextJson;
+
+        nlohmann::json input;
+        input["table"] = CONTAINER_CONTEXT_TABLE;
+        input["data"] = nlohmann::json::array({row});
+
+        // A no-op callback: this table's changes are not events. Nothing
+        // downstream is told that a container's labels moved, which is the
+        // whole point of keeping the context out of the inventory rows.
+        m_spDBSync->syncRow(input, [](ReturnTypeCallback, const nlohmann::json&) {});
+    }
+    catch (const std::exception& e)
+    {
+        m_logFunction(LOG_ERROR,
+                      "Could not store the context for container '" + containerId + "': " + e.what() +
+                      ". Its rows are skipped this pass rather than stored without it.");
+
+        std::lock_guard<std::mutex> lock {m_containerContextMutex};
+        m_containerContexts.erase(containerId);
+        return false;
+    }
+
+    std::lock_guard<std::mutex> lock {m_containerContextMutex};
+    m_containerContexts[containerId] = contextJson;
+    return true;
+#else
+    (void)containerId;
+    (void)contextJson;
+    return false;
+#endif
+}
+
 std::size_t Syscollector::sweepContainerRowsNotIn(const std::set<std::string>& keep)
 {
 #if defined(__linux__)
@@ -2695,6 +2762,25 @@ void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_th
         }
     };
 
+    // The container's context, handed over once before any of its rows. Stored
+    // against the container id so its rows need not each carry a copy.
+    //
+    // Returning non-zero makes the baseline skip the container entirely. That
+    // is the right answer to a failed write: rows stored against a context
+    // that is not there would, when the container is eventually swept, produce
+    // DELETE events describing a container nothing can identify.
+    const auto contextSink = [](const char* containerId, const char* contextJson, void* userData) -> int
+    {
+        auto* a = static_cast<Accumulator*>(userData);
+
+        if (a == nullptr || a->self == nullptr || containerId == nullptr || contextJson == nullptr)
+        {
+            return 1;
+        }
+
+        return a->self->storeContainerContext(containerId, contextJson) ? 0 : 1;
+    };
+
     const auto statusSink = [](const cb_container_status_t* status, void* userData)
     {
         if (status == nullptr)
@@ -2722,7 +2808,7 @@ void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_th
 
     if (only_these.empty())
     {
-        baselined = cbaseline_run_syscollector_dbsync(CB_DEFAULT_CONNECTOR_SOCKET_PATH, sink, statusSink, &acc);
+        baselined = cbaseline_run_syscollector_dbsync(CB_DEFAULT_CONNECTOR_SOCKET_PATH, sink, contextSink, statusSink, &acc);
     }
     else
     {
@@ -2738,6 +2824,7 @@ void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_th
                                                           ids.data(),
                                                           static_cast<int>(ids.size()),
                                                           sink,
+                                                          contextSink,
                                                           statusSink,
                                                           &acc);
     }
