@@ -52,6 +52,10 @@ list(APPEND monitord_tests_flags "-Wl,--wrap,SendMSG -Wl,--wrap,wdb_find_agent\
                                   -Wl,--wrap,get_agent_id_from_name -Wl,--wrap,auth_remove_agent -Wl,--wrap,wdb_get_agents_by_connection_status\
                                   -Wl,--wrap,w_rotate_log -Wl,--wrap,stat ${HASH_OP_WRAPPERS} ${DEBUG_OP_WRAPPERS}")
 
+list(APPEND monitord_tests_names "test_manage_files")
+list(APPEND monitord_tests_flags "-Wl,--wrap,OS_SignLog -Wl,--wrap,OS_CompressLog -Wl,--wrap,IsFile -Wl,--wrap,FileSize\
+                                  -Wl,--wrap,wfopen")
+
 # Add extra compiling flags
 add_compile_options(-Wall)
 

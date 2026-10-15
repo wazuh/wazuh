@@ -47,6 +47,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the vulnerability scanner re-scan leaving findings in the local mirror that its inventory no longer tracks: each agent is now cleared by prefix, and the master node of a cluster clears the agents that report to another node instead of scanning them. ([#39607](https://github.com/wazuh/wazuh/issues/39607))
 - Fixed the single-agent vulnerability re-scan aborting on a NULL agent column after its state had been cleared. ([#39607](https://github.com/wazuh/wazuh/issues/39607))
 - Fixed the indexer connector waiting for the initialization of the indexer before applying operations that do not call it, and looking for the mappings backup index by listing every index of the cluster, which needed a cluster-wide permission and left an orphan backup behind. ([#39607](https://github.com/wazuh/wazuh/issues/39607))
+- Fixed `wazuh-monitord` not compressing the rotated `-NNN` archive and alert files when they rotate more than once a day. ([#40148](https://github.com/wazuh/wazuh/pull/40148))
 
 #### Changed
 
