@@ -207,6 +207,66 @@ def test_agent_get_agents_summary_os(connect_mock, send_mock):
     assert summary.affected_items == ['ubuntu'], f"Expected ['ubuntu'] OS but received '{summary['items']} instead."
 
 
+@pytest.mark.parametrize('agent_list, failed_ids', [
+    (['003', '004'], ['003', '004']),
+    (['000', '003'], ['003']),
+    (['000'], []),
+    ([], []),
+    (['999'], []),
+    (['003', '999'], ['003']),
+    (['001', '003'], [])
+])
+@patch('wazuh.agent.get_agents_info', return_value=set(short_agent_list))
+@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('socket.socket.connect')
+def test_agent_get_agents_summary_os_unknown_os(connect_mock, send_mock, agents_info_mock, agent_list, failed_ids):
+    """Test `get_agents_summary_os` when some of the agents have not reported their OS.
+
+    Parameters
+    ----------
+    agent_list : list
+        List of agent IDs.
+    failed_ids : list
+        Agent IDs expected in `failed_items`.
+    """
+    summary = get_agents_summary_os(agent_list)
+
+    assert summary.total_failed_items == len(failed_ids)
+    rendered = summary.render()
+    if failed_ids:
+        assert summary.affected_items == []
+        assert rendered['data']['failed_items'][0]['error']['code'] == 1761
+        assert rendered['data']['failed_items'][0]['id'] == failed_ids
+        assert rendered['error'] == 1
+    else:
+        assert rendered['data']['failed_items'] == []
+        assert rendered['error'] == 0
+
+
+@pytest.mark.parametrize('system_agents, message', [
+    ({'000'}, 'No agents are registered'),
+    (set(short_agent_list), 'Could not get the operative system of the agents')
+])
+@patch('wazuh.agent.WazuhDBQueryAgents.run', return_value={'items': [], 'totalItems': 0})
+@patch('socket.socket.connect')
+def test_agent_get_agents_summary_os_no_agents(connect_mock, run_mock, system_agents, message):
+    """Test the message of `get_agents_summary_os` when only the manager is in scope.
+
+    Parameters
+    ----------
+    system_agents : set
+        IDs of the agents registered in the system.
+    message : str
+        Expected message.
+    """
+    with patch('wazuh.agent.get_agents_info', return_value=system_agents):
+        rendered = get_agents_summary_os(['000']).render()
+
+    assert rendered['message'] == message
+    assert rendered['data']['failed_items'] == []
+    assert rendered['error'] == 0
+
+
 @pytest.mark.parametrize('agent_list, expected_items, error_code', [
     (['001', '002'], ['001', '002'], None),
     (['000'], [], 1703),
