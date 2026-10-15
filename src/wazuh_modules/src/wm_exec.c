@@ -317,14 +317,16 @@ void wm_kill_children() {
 #include <unistd.h>
 #include <poll.h>
 
-#ifndef _GNU_SOURCE
-extern char ** environ;
-#endif
-
 static void* reader(void *args);   // Reading thread's start point
 
 // How often the reader checks whether the caller has given up on it, in milliseconds
 #define WM_EXEC_READER_POLL_MS 1000
+
+// Shortest and longest step between checks for a command to exit, in milliseconds. A command
+// that just closed its output is usually still exiting, and becomes reapable within the first
+// short step; the steps double from there so a long wait does not spin.
+#define WM_EXEC_REAP_STEP_MIN_MS 1
+#define WM_EXEC_REAP_STEP_MAX_MS 100
 
 /**
  * @brief Wait for the reader thread to stop reading. The caller holds tinfo->mutex.
@@ -425,7 +427,7 @@ static pid_t wm_exec_stop_command(pid_t pid, int * status) {
  * @return pid once reaped, 0 if it is still running at the deadline, or -1 if waitpid() failed.
  */
 static pid_t wm_exec_wait_child(pid_t pid, int * status, const struct timespec * deadline) {
-    static const struct timespec step = { 0, 100000000 }; // 100 ms
+    long step_ms = WM_EXEC_REAP_STEP_MIN_MS;
     struct timespec now;
 
     for (;;) {
@@ -441,7 +443,10 @@ static pid_t wm_exec_wait_child(pid_t pid, int * status, const struct timespec *
             return 0;
         }
 
+        const struct timespec step = { step_ms / 1000, (step_ms % 1000) * 1000000 };
         nanosleep(&step, NULL);
+
+        step_ms = (step_ms * 2 < WM_EXEC_REAP_STEP_MAX_MS) ? step_ms * 2 : WM_EXEC_REAP_STEP_MAX_MS;
     }
 }
 
