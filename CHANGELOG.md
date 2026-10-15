@@ -59,7 +59,7 @@ All notable changes to this project will be documented in this file.
 
 #### Changed
 
-- Changed the agent to report the RHEL base release as the operating system version on Red Hat Enterprise Linux CoreOS nodes of OpenShift 4.19 and earlier, instead of the OpenShift build. ([#40369](https://github.com/wazuh/wazuh/issues/40369))
+- Changed the agent to report the RHEL base release as the operating system version on Red Hat Enterprise Linux CoreOS nodes of OpenShift 4.19 and earlier, instead of the OpenShift build. ([#40426](https://github.com/wazuh/wazuh/pull/40426))
 
 #### Fixed
 
