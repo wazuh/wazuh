@@ -212,6 +212,8 @@ def test_agent_get_agents_summary_os(connect_mock, send_mock):
     (['000', '003'], ['003']),
     (['000'], []),
     ([], []),
+    (['999'], []),
+    (['003', '999'], ['003']),
     (['001', '003'], [])
 ])
 @patch('wazuh.agent.get_agents_info', return_value=set(short_agent_list))
