@@ -349,6 +349,66 @@ def test_get_file_conf_path_traversal():
             mock_open_fn.assert_not_called()
 
 
+CONF_DIR = os.path.join(parent_directory, tmp_path, 'configuration')
+
+
+@pytest.mark.parametrize('group_id', ['..', CONF_DIR])
+def test_get_agent_conf_group_id_traversal(group_id):
+    """Check that a group_id resolving outside the shared directory is rejected and not read."""
+    with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(CONF_DIR, 'default')):
+        with patch('wazuh.core.configuration.load_wazuh_xml') as mock_load:
+            with pytest.raises(WazuhError, match=".* 1006 .*"):
+                configuration.get_agent_conf(group_id=group_id, filename='ossec.conf')
+            mock_load.assert_not_called()
+
+
+@pytest.mark.parametrize('group_id', ['..', CONF_DIR])
+def test_get_file_conf_group_id_traversal(group_id):
+    """Check that a group_id resolving outside the shared directory is rejected and not read."""
+    with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(CONF_DIR, 'default')):
+        with patch('builtins.open') as mock_open_fn:
+            with pytest.raises(WazuhError, match=".* 1006 .*"):
+                configuration.get_file_conf(filename='ossec.conf', group_id=group_id, raw=True)
+            mock_open_fn.assert_not_called()
+
+
+def test_group_id_symlink_outside_shared(tmp_path_factory):
+    """Check that a group directory that is a symlink to a directory outside the shared one is rejected."""
+    root = tmp_path_factory.mktemp('symlink')
+    (root / 'shared').mkdir()
+    (root / 'outside').mkdir()
+    (root / 'outside' / 'agent.conf').write_text('<agent_config></agent_config>')
+    os.symlink(root / 'outside', root / 'shared' / 'link')
+
+    with patch('wazuh.core.common.SHARED_PATH', new=str(root / 'shared')):
+        with pytest.raises(WazuhError, match=".* 1006 .*"):
+            configuration.get_agent_conf(group_id='link')
+        with pytest.raises(WazuhError, match=".* 1006 .*"):
+            configuration.get_file_conf(filename='agent.conf', group_id='link', raw=True)
+        with pytest.raises(WazuhError, match=".* 1710 .*"):
+            configuration.upload_group_configuration('link', '<agent_config></agent_config>')
+
+
+@pytest.mark.parametrize('multigroup_id, filename', [('..', 'ossec.conf'), ('.', '../ossec.conf')])
+def test_get_agent_conf_multigroup_traversal(multigroup_id, filename):
+    """Check that a multigroup_id or filename resolving outside the multigroup directory is rejected."""
+    with patch('wazuh.core.common.MULTI_GROUPS_PATH', new=os.path.join(CONF_DIR, 'default')):
+        with patch('wazuh.core.configuration.load_wazuh_xml') as mock_load:
+            with pytest.raises(WazuhError, match=".* 1006 .*"):
+                configuration.get_agent_conf_multigroup(multigroup_id=multigroup_id, filename=filename)
+            mock_load.assert_not_called()
+
+
+@pytest.mark.parametrize('group_id', ['..', CONF_DIR])
+def test_upload_group_configuration_group_id_traversal(group_id):
+    """Check that a group_id resolving outside the shared directory is rejected and nothing is written."""
+    with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(CONF_DIR, 'default')):
+        with patch('wazuh.core.configuration.tempfile.mkstemp') as mock_mkstemp:
+            with pytest.raises(WazuhError, match=".* 1710 .*"):
+                configuration.upload_group_configuration(group_id, '<agent_config></agent_config>')
+            mock_mkstemp.assert_not_called()
+
+
 def test_parse_internal_options():
     with patch('wazuh.core.common.INTERNAL_OPTIONS_CONF',
                new=os.path.join(parent_directory, tmp_path, 'configuration/noexists.conf')):

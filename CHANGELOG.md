@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.14.11]
 
+### RESTful API
+
+#### Fixed
+
+- Fixed the group and multigroup configuration readers, and the group configuration upload, accepting a group ID or file name that resolves outside their configuration directory. ([#36834](https://github.com/wazuh/wazuh/issues/36834))
+
 ## [v4.14.10]
 
 ### Manager
