@@ -348,6 +348,53 @@ EXPORTED cJSON* fim_db_get_every_element(const char* table_name, const char* row
 EXPORTED cJSON* fim_db_get_distinct_container_ids(const char* table_name);
 
 /**
+ * @brief Stores one container's context, so its file rows can reference it
+ *        rather than each carrying a copy.
+ *
+ * @param container_id Container the context belongs to. Must not be empty.
+ * @param context_json The context document, as the baseline produced it.
+ * @return FIMDB_OK, or FIMDB_ERR if it could not be stored -- in which case
+ *         the caller must NOT go on to store that container's rows.
+ */
+EXPORTED int fim_db_set_container_context(const char* container_id, const char* context_json);
+
+/**
+ * @brief The container block for @p container_id, or NULL if it has none.
+ *
+ * The caller OWNS the returned object and must cJSON_Delete() it, or attach it
+ * to something that will.
+ */
+EXPORTED cJSON* fim_db_get_container_context(const char* container_id);
+
+/**
+ * @brief Deletes one container's stored context.
+ *
+ * Call this only AFTER that container's rows have been deleted and their
+ * events emitted: the events are built from this context, and removing it
+ * first produces deletes that cannot say what they refer to.
+ */
+EXPORTED int fim_db_delete_container_context(const char* container_id);
+
+/**
+ * @brief Deletes every stored context whose container is not in @p keep.
+ *
+ * Recovers contexts orphaned by a crash between deleting a container's rows
+ * and deleting its context -- rows that are gone can never be found again by
+ * walking the file table, so only the live container list can identify them.
+ *
+ * @p keep MUST be an authoritative list of live containers. Passing a list
+ * that is merely incomplete deletes the contexts of containers that still
+ * exist.
+ */
+EXPORTED int fim_db_prune_container_contexts(const char* const* keep, int keep_count);
+
+/**
+ * @brief Drops every cached container context. Called when the database they
+ *        describe is torn down or recreated.
+ */
+EXPORTED void fim_db_clear_container_contexts(void);
+
+/**
  * @brief Calculate the checksum-of-checksums for a table.
  *
  * @param table_name The table to calculate checksum for.

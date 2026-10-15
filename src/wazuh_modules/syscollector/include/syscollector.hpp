@@ -172,6 +172,14 @@ class EXPORTED Syscollector final
         /// through a live connector to observe that is not a unit test.
         bool storeContainerContext(const std::string& containerId, const std::string& contextJson);
 
+        /// Deletes one container's stored context. Call only after that
+        /// container's rows are gone and their events emitted.
+        void dropContainerContext(const std::string& containerId);
+
+        /// Deletes every stored context whose container is not in `keep`.
+        /// Returns how many were removed. `keep` must be authoritative.
+        std::size_t pruneContainerContexts(const std::set<std::string>& keep);
+
         // Sync protocol methods
         void initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, const std::string& syncDbPathVD,
                               uint32_t integrityInterval);
@@ -207,6 +215,7 @@ class EXPORTED Syscollector final
 
         std::string getCreateStatement() const;
         std::vector<std::string> getUpgradeStatements() const;
+        nlohmann::json containerContextBlock(const std::string& containerId, const nlohmann::json& row);
         nlohmann::json getOSData();
         nlohmann::json getHardwareData();
         nlohmann::json getNetworkData();
@@ -993,19 +1002,18 @@ class EXPORTED Syscollector final
         // restart — same durability as m_notify itself.
         std::set<std::string>                                                    m_knownContainerIds;
 
-        // Memo for the container context blob, so ecsData() parses it once per
-        // container instead of once per row. The blob is the same string on
-        // every row of a container -- it is a copy of that container's context
-        // stamped onto each one -- and rows reach ecsData() grouped by
-        // container on every path: the scan flushes one container at a time,
-        // and every table is WITHOUT ROWID with container_id leading the
-        // primary key, so reads come back clustered too.
+        // Memo for containerContextBlock(), so a container's context is read
+        // once per flush instead of once per row. Rows reach ecsData() grouped
+        // by container on every path: the scan flushes one container at a
+        // time, and every table is WITHOUT ROWID with container_id leading the
+        // primary key, so rows read back out of the database arrive clustered
+        // too.
         //
-        // Compared by value rather than keyed by container_id, which makes
-        // correctness independent of the hit rate: a miss costs one parse, and
-        // a stale entry is impossible because the blob itself is the key. That
-        // is also why a label edit needs no invalidation protocol -- it simply
-        // produces a different string and misses.
+        // Keyed on the container id, which means it DOES need invalidating
+        // when a container's stored context changes. storeContainerContext()
+        // clears it, and it is cleared again when a container is swept. One
+        // entry rather than a map: a flush visits one container at a time, so
+        // a second entry would never be hit before being replaced.
         //
         // Not guarded by a mutex: all six ecsData() call sites run under
         // m_scan_mutex. syncLoop() holds it across scan(), and the recovery
@@ -1019,7 +1027,7 @@ class EXPORTED Syscollector final
         std::mutex                                                               m_containerContextMutex;
         std::map<std::string, std::string>                                       m_containerContexts;
 
-        std::string                                                              m_lastContainerBlob;
+        std::string                                                              m_lastContainerId;
         nlohmann::json                                                           m_lastContainerBlock;
 };
 

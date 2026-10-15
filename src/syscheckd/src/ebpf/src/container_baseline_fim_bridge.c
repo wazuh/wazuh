@@ -11,6 +11,7 @@
 #include "container_baseline_host_api.h"
 
 #include "container_doc_budget.h"
+#include "db.h"
 
 #include "db.h"
 #include "file.h"
@@ -120,28 +121,42 @@ static void normalize_container_fim_row(cJSON* msg)
         return;
     }
 
-    // Lift the container_json column to the top-level "container" block. Since
-    // D15 the Kubernetes context is nested INSIDE that block at
-    // container.kubernetes, so it rides along with this one detach -- there is
-    // no second block to lift. BuildContainerContextJson() is what wrote this
-    // column, so the shape here is whatever StampContainerContext() produced.
-    const cJSON* container_json_item = cJSON_GetObjectItem(msg, "container_json");
-    if (container_json_item != NULL && cJSON_IsString(container_json_item) &&
-        container_json_item->valuestring != NULL && container_json_item->valuestring[0] != '\0') {
-        cJSON* ctx = cJSON_Parse(container_json_item->valuestring);
-        if (ctx != NULL) {
-            cJSON* container_block = cJSON_DetachItemFromObject(ctx, "container");
-            if (container_block != NULL) {
-                cJSON_DeleteItemFromObject(msg, "container");
-                cJSON_AddItemToObject(msg, "container", container_block);
+    // Attach the container block, which is stored once per container rather
+    // than copied onto every row. Since D15 the Kubernetes context is nested
+    // INSIDE that block at container.kubernetes, so there is no second block.
+    //
+    // The container_json column is still read as a fallback, for rows an older
+    // build wrote before the context was stored separately. Those rows keep
+    // working until the column is dropped.
+    const cJSON* container_id_item = cJSON_GetObjectItem(msg, "container_id");
+    cJSON* container_block = NULL;
+
+    if (container_id_item != NULL && cJSON_IsString(container_id_item) &&
+        container_id_item->valuestring != NULL && container_id_item->valuestring[0] != '\0') {
+        container_block = fim_db_get_container_context(container_id_item->valuestring);
+    }
+
+    if (container_block == NULL) {
+        const cJSON* container_json_item = cJSON_GetObjectItem(msg, "container_json");
+        if (container_json_item != NULL && cJSON_IsString(container_json_item) &&
+            container_json_item->valuestring != NULL && container_json_item->valuestring[0] != '\0') {
+            cJSON* ctx = cJSON_Parse(container_json_item->valuestring);
+            if (ctx != NULL) {
+                container_block = cJSON_DetachItemFromObject(ctx, "container");
+                cJSON_Delete(ctx);
             }
-            // Defensive: a column written before D15 carries a sibling
-            // "kubernetes". Drop it rather than lift it, so a database that
-            // survived the change cannot emit the retired two-block shape.
-            cJSON_DeleteItemFromObject(msg, "kubernetes");
-            cJSON_Delete(ctx);
         }
     }
+
+    if (container_block != NULL) {
+        cJSON_DeleteItemFromObject(msg, "container");
+        cJSON_AddItemToObject(msg, "container", container_block);
+    }
+
+    // Defensive: a column written before D15 carries a sibling "kubernetes".
+    // Drop it rather than lift it, so a database that survived the change
+    // cannot emit the retired two-block shape.
+    cJSON_DeleteItemFromObject(msg, "kubernetes");
 
     cJSON* file_obj = cJSON_GetObjectItem(msg, "file");
     if (file_obj == NULL || !cJSON_IsObject(file_obj)) {
@@ -1041,24 +1056,37 @@ void fim_container_baseline_first_scan_done(void)
  * so an analyst reads the same field names on both sides. */
 static void add_container_context(const cJSON* row_data, cJSON* target)
 {
-    const cJSON* container_json_item = cJSON_GetObjectItem(row_data, "container_json");
+    // Stored once per container; the row references it by id. The
+    // container_json column is still read as a fallback for rows written
+    // before the context was stored separately.
+    const cJSON* container_id_item = cJSON_GetObjectItem(row_data, "container_id");
+    cJSON* container_block = NULL;
 
-    if (container_json_item == NULL || !cJSON_IsString(container_json_item) ||
-        container_json_item->valuestring == NULL || container_json_item->valuestring[0] == '\0') {
-        return;
+    if (container_id_item != NULL && cJSON_IsString(container_id_item) &&
+        container_id_item->valuestring != NULL && container_id_item->valuestring[0] != '\0') {
+        container_block = fim_db_get_container_context(container_id_item->valuestring);
     }
 
-    cJSON* ctx = cJSON_Parse(container_json_item->valuestring);
-    if (ctx == NULL) {
-        return;
+    if (container_block == NULL) {
+        const cJSON* container_json_item = cJSON_GetObjectItem(row_data, "container_json");
+
+        if (container_json_item == NULL || !cJSON_IsString(container_json_item) ||
+            container_json_item->valuestring == NULL || container_json_item->valuestring[0] == '\0') {
+            return;
+        }
+
+        cJSON* ctx = cJSON_Parse(container_json_item->valuestring);
+        if (ctx == NULL) {
+            return;
+        }
+
+        container_block = cJSON_DetachItemFromObject(ctx, "container");
+        cJSON_Delete(ctx);
     }
 
-    cJSON* container_block = cJSON_DetachItemFromObject(ctx, "container");
     if (container_block != NULL) {
         cJSON_AddItemToObject(target, "container", container_block);
     }
-
-    cJSON_Delete(ctx);
 }
 
 void fim_send_container_stateless_event(const cJSON* row_data,
