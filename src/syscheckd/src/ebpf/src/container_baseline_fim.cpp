@@ -638,7 +638,30 @@ namespace
                     // being released, so releasing first would drop a map entry
                     // that the sweep then re-creates and leaves non-zero.
                     fim_container_doc_budget_release(id.c_str());
+
+                    // Same ordering, same reason: the DELETE events emitted just
+                    // above are built from this context, so it cannot go first.
+                    fim_db_delete_container_context(id.c_str());
                 }
+
+                // Recovers contexts orphaned by a crash between deleting a
+                // container's rows and deleting its context. Once the rows are
+                // gone the row scan above can never find that container again, so
+                // only the live list can identify it.
+                //
+                // `known` is the whole-node container list, which the caller
+                // already established was answered -- an incomplete list here
+                // would delete the contexts of containers that still exist.
+                std::vector<const char*> live;
+                live.reserve(known.size());
+
+                for (const auto& id : known)
+                {
+                    live.push_back(id.c_str());
+                }
+
+                fim_db_prune_container_contexts(live.empty() ? nullptr : live.data(),
+                                                static_cast<int>(live.size()));
 
                 m_stale = stale.size();
             }
@@ -759,6 +782,27 @@ namespace
         if (!user_data) return;
 
         static_cast<BaselineDriver*>(user_data)->onRow(container_id, row_json);
+    }
+
+    /// Stores the container's context before any of its rows arrive.
+    ///
+    /// A non-zero return makes the baseline skip the container entirely, which is
+    /// the right answer to a failed write: file rows stored against a context that
+    /// is not there would, when the container is eventually swept, produce deletes
+    /// describing a container nothing can identify.
+    int context_sink(const char* container_id, const char* context_json, void* /*user_data*/)
+    {
+        if (!container_id || !context_json) return 1;
+
+        if (fim_db_set_container_context(container_id, context_json) != FIMDB_OK)
+        {
+            LogDebug("Container FIM baseline: could not store the context for container '%s'; "
+                     "its rows are skipped this pass rather than stored without it.",
+                     container_id);
+            return 1;
+        }
+
+        return 0;
     }
 
     void status_sink(const cb_container_status_t* status, void* user_data)
@@ -966,7 +1010,7 @@ namespace
                                                                        paths,
                                                                        static_cast<int>(path_count),
                                                                        dbsync_sink,
-                                                                       /*context_sink=*/nullptr,
+                                                                       context_sink,
                                                                        status_sink,
                                                                        fim_container_baseline_rate_limit,
                                                                        &driver);
@@ -1010,7 +1054,7 @@ namespace
                                                        selected.data(),
                                                        static_cast<int>(selected.size()),
                                                        dbsync_sink,
-                                                       /*context_sink=*/nullptr,
+                                                       context_sink,
                                                        status_sink,
                                                        fim_container_baseline_rate_limit,
                                                        &driver);
@@ -1174,7 +1218,7 @@ extern "C" void fim_run_container_baseline(void)
                                                        paths,
                                                        static_cast<int>(path_count),
                                                        dbsync_sink,
-                                                       /*context_sink=*/nullptr,
+                                                       context_sink,
                                                        status_sink,
                                                        fim_container_baseline_rate_limit,
                                                        &driver);
