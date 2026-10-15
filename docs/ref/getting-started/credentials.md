@@ -136,6 +136,56 @@ Seeding happens once: an existing, non-empty `rbac.db` is never reseeded, whatev
 seeds nothing ([Cluster deployments](#cluster-deployments)). `WAZUH_INDEXER_MANAGER_PASSWORD` is never published:
 the manager only consumes it.
 
+## What the dashboard takes from the manager
+
+The dashboard calls the Server API over TLS and logs in as `wazuh-internal-client`. It needs two things from the
+manager, both in `<CONF>/export/`:
+
+| File | What it is | Used for |
+|------|------------|----------|
+| `export/ca.pem` (`root:root 0644`) | the manager CA's **certificate**, its public part only | verifying the certificate `wazuh-manager-apid` presents (`certs/apid.pem`) |
+| `export/credentials.env` (`root:root 0600`), key `WAZUH_MANAGER_WUI_PASSWORD` | the `wazuh-internal-client` password | logging in to the Server API |
+
+No key is published. `ca/root-ca.key` stays in `ca/` (`root:root 0400`) and is never copied to the dashboard: the
+certificate alone is enough to verify the API.
+
+**Dashboard on the same host.** It reads both files as root; nothing has to be copied.
+
+**Dashboard on another host.** Copy the certificate to it, and put the password in the dashboard's
+`wazuh_core.hosts.<host>.password`. In a 5.0 package installation the dashboard verifies the Server API with
+`/etc/wazuh-dashboard/certs/manager-ca.pem`:
+
+```bash
+# on the manager
+sudo cat /etc/wazuh-manager/export/ca.pem > manager-ca.pem
+# on the dashboard host
+sudo install -o root -g wazuh-dashboard -m 640 manager-ca.pem /etc/wazuh-dashboard/certs/manager-ca.pem
+```
+
+The name the dashboard uses to reach the manager must be one of the names in `apid.pem`, which the resolver takes
+from `WAZUH_MANAGER_APID_CERT_SANS` or discovers ([Subject alternative names](#subject-alternative-names)).
+
+**Check it** on the dashboard host, with `<manager>` being that name:
+
+```bash
+# the same certificate on both sides
+openssl x509 -noout -subject -fingerprint -sha256 -in /etc/wazuh-dashboard/certs/manager-ca.pem
+# the Server API's certificate verifies against it, for that name
+openssl s_client -connect <manager>:55000 -CAfile /etc/wazuh-dashboard/certs/manager-ca.pem \
+    -verify_hostname <manager> -verify_return_error </dev/null 2>&1 | grep 'Verify return code'
+# and the password logs in (curl prompts for it, so it does not reach the process list)
+curl --cacert /etc/wazuh-dashboard/certs/manager-ca.pem -u wazuh-internal-client \
+    -X POST "https://<manager>:55000/security/user/authenticate"
+```
+
+The fingerprint must match `openssl x509 -noout -fingerprint -sha256 -in /etc/wazuh-manager/export/ca.pem` on the
+manager, the verification must end in `Verify return code: 0 (ok)`, and the login must return a token.
+
+**When it changes.** `export/ca.pem` changes only when the manager's CA does: a CA staged again or rotated, followed
+by `--install`, which publishes the new one ([Rotation](#rotation)). Copy it again to every dashboard on another
+host; until then their verification of the Server API fails. A new `wazuh-internal-client` password works the
+same way ([Rotation](#rotation)).
+
 ## The resolver and its modes
 
 ```text

@@ -97,7 +97,7 @@ Once a change goes through:
 - A client left with the old password — typically a dashboard whose stored copy was not updated — is counted against `max_login_attempts` (50) and its IP is then blocked for `block_time` (300 seconds), answering `403`. The block is lifted when that time elapses, not when the password is corrected.
 - No manager component authenticates with `wazuh` or `wazuh-internal-client`, so the keystore and the manager configuration files are unaffected. The only copy outside the manager is the dashboard's `wazuh_core.hosts.<host>.password`, which is why changing `wazuh-internal-client` — and only that user — needs the dashboard updated and restarted.
 
-The step-by-step procedure, including the dashboard side and the container variants, is in [Installation](../../getting-started/installation.md#server-api-users).
+The step-by-step procedure, including the dashboard side and the container variants, is in [Installation](../../getting-started/installation.md#server-api-users). The certificate the dashboard verifies the API with is covered in [What the dashboard takes from the manager](../../getting-started/credentials.md#what-the-dashboard-takes-from-the-manager).
 
 ---
 
