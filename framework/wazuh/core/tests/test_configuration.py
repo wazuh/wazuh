@@ -400,6 +400,37 @@ def test_get_conf_valid_group_id_format(group_id):
             configuration.upload_group_file(group_id, '<agent_config></agent_config>')
 
 
+def test_group_id_symlink_outside_shared(tmp_path_factory):
+    """Check that a group directory that is a symlink to a directory outside the shared one is rejected."""
+    root = tmp_path_factory.mktemp('symlink')
+    (root / 'shared').mkdir()
+    (root / 'outside').mkdir()
+    (root / 'outside' / 'agent.conf').write_text('<agent_config></agent_config>')
+    os.symlink(root / 'outside', root / 'shared' / 'link')
+
+    with patch('wazuh.core.common.SHARED_PATH', new=str(root / 'shared')):
+        with pytest.raises(WazuhError, match=".* 1006 .*"):
+            configuration.get_agent_conf(group_id='link')
+        with pytest.raises(WazuhError, match=".* 1006 .*"):
+            configuration.get_file_conf(filename='agent.conf', group_id='link', raw=True)
+        with pytest.raises(WazuhError, match=".* 1710 .*"):
+            configuration.upload_group_configuration('link', '<agent_config></agent_config>')
+
+    with patch('wazuh.core.common.MULTI_GROUPS_PATH', new=str(root / 'shared')):
+        with pytest.raises(WazuhError, match=".* 1006 .*"):
+            configuration.get_agent_conf_multigroup(multigroup_id='link')
+
+
+@pytest.mark.parametrize('filename', ['../ossec.conf', '../default/agent.conf'])
+def test_get_agent_conf_multigroup_filename_traversal(filename):
+    """Check that a filename resolving outside the multigroup directory is rejected and not read."""
+    with patch('wazuh.core.common.MULTI_GROUPS_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')):
+        with patch('wazuh.core.configuration.load_wazuh_xml') as mock_load:
+            with pytest.raises(WazuhError, match=".* 1006 .*"):
+                configuration.get_agent_conf_multigroup(multigroup_id='multigroup', filename=filename)
+            mock_load.assert_not_called()
+
+
 def test_parse_internal_options():
     with patch('wazuh.core.common.INTERNAL_OPTIONS_CONF',
                new=os.path.join(parent_directory, tmp_path, 'configuration/noexists.conf')):
