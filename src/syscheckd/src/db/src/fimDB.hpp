@@ -96,6 +96,19 @@ constexpr auto CREATE_REGISTRY_VALUE_DB_STATEMENT
     CREATE INDEX IF NOT EXISTS key_name_index ON registry_data (path, value);)"
 };
 
+// The container context, stored once per container instead of copied onto
+// every file row that container owns. Byte-identical to syscollector's own
+// container_context table on purpose: the same producer writes both, and a
+// shape that differed between the two databases would mean the same container
+// reaches the manager differently depending on which consumer emitted it.
+constexpr auto CREATE_CONTAINER_CONTEXT_DB_STATEMENT
+{
+    R"(CREATE TABLE IF NOT EXISTS container_context (
+    container_id TEXT PRIMARY KEY,
+    context TEXT NOT NULL DEFAULT ''
+    ) WITHOUT ROWID;)"
+};
+
 constexpr auto CREATE_TABLE_METADATA_DB_STATEMENT
 {
     R"(CREATE TABLE IF NOT EXISTS table_metadata (

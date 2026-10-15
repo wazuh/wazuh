@@ -56,6 +56,7 @@ class FIMDBCreator<OSType::WINDOWS> final
             ret += CREATE_REGISTRY_KEY_DB_STATEMENT;
             ret += CREATE_REGISTRY_VALUE_DB_STATEMENT;
             ret += CREATE_TABLE_METADATA_DB_STATEMENT;
+            ret += CREATE_CONTAINER_CONTEXT_DB_STATEMENT;
 
             return ret;
         }
@@ -81,6 +82,7 @@ class FIMDBCreator<OSType::OTHERS> final
         {
             std::string ret {CREATE_FILE_DB_STATEMENT};
             ret += CREATE_TABLE_METADATA_DB_STATEMENT;
+            ret += CREATE_CONTAINER_CONTEXT_DB_STATEMENT;
             return ret;
         }
 

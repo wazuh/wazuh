@@ -6805,6 +6805,192 @@ TEST_F(SyscollectorImpTest, EachContainersRowsCarryTheirOwnContextNotThePrevious
 #endif
 }
 
+/* --- schema migration
+ *
+ * DBSync only ever runs the create statement for a database it is creating
+ * from nothing. An existing one reports PRAGMA user_version and is handed the
+ * upgrade statements from that point on -- and until this branch, neither
+ * consumer passed any, so an upgraded agent silently kept whatever schema it
+ * already had and a newly added table was never created for it at all.
+ *
+ * These two tests are the pair that matters: the new database must come out
+ * at the current version, and the old one must arrive at the same schema by
+ * the other route, without losing what it was holding.
+ */
+
+/// Reads PRAGMA user_version from a closed database file.
+static int readUserVersion(const char* path)
+{
+    sqlite3* db = nullptr;
+
+    if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READONLY, nullptr) != SQLITE_OK)
+    {
+        if (db)
+        {
+            sqlite3_close(db);
+        }
+
+        return -1;
+    }
+
+    sqlite3_stmt* stmt = nullptr;
+    int version = -1;
+
+    if (sqlite3_prepare_v2(db, "PRAGMA user_version;", -1, &stmt, nullptr) == SQLITE_OK &&
+            sqlite3_step(stmt) == SQLITE_ROW)
+    {
+        version = sqlite3_column_int(stmt, 0);
+    }
+
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
+    return version;
+}
+
+/// Whether a table exists in a closed database file.
+static bool tableExists(const char* path, const char* table)
+{
+    sqlite3* db = nullptr;
+
+    if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READONLY, nullptr) != SQLITE_OK)
+    {
+        if (db)
+        {
+            sqlite3_close(db);
+        }
+
+        return false;
+    }
+
+    sqlite3_stmt* stmt = nullptr;
+    bool found = false;
+
+    if (sqlite3_prepare_v2(db, "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?;",
+                           -1, &stmt, nullptr) == SQLITE_OK)
+    {
+        sqlite3_bind_text(stmt, 1, table, -1, SQLITE_STATIC);
+        found = (sqlite3_step(stmt) == SQLITE_ROW);
+    }
+
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
+    return found;
+}
+
+TEST_F(SyscollectorImpTest, AFreshDatabaseIsCreatedAtTheCurrentSchemaVersion)
+{
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    Syscollector::instance().init(spInfoWrapper, reportFunction, persistFunction, logFunction,
+                                  SYSCOLLECTOR_TEST_DB_PATH, "", "",
+                                  3600, false, false, false, false, false, false, false,
+                                  false, false, false, false, false, false, false);
+    Syscollector::instance().destroy();
+
+    EXPECT_TRUE(tableExists(SYSCOLLECTOR_TEST_DB_PATH, "container_context"))
+            << "a database created from nothing takes the create statement, which must carry every table";
+
+    // One more than the number of upgrade statements, which is how DBSync
+    // derives the current version. A fresh database must land there directly,
+    // or it would be handed upgrades meant for older schemas on next start.
+    EXPECT_EQ(readUserVersion(SYSCOLLECTOR_TEST_DB_PATH), 2);
+}
+
+TEST_F(SyscollectorImpTest, AnExistingDatabaseIsUpgradedWithoutLosingWhatItHeld)
+{
+    // A version-1 database: the schema as it shipped, with no container_context
+    // table, built here with raw sqlite so DBSync cannot stamp a version onto
+    // it. This is the shape on every agent that upgrades rather than installs.
+    sqlite3* db = nullptr;
+    ASSERT_EQ(sqlite3_open_v2(SYSCOLLECTOR_TEST_DB_PATH, &db,
+                              SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, nullptr), SQLITE_OK);
+
+    std::string legacySchema;
+    legacySchema += OS_SQL_STATEMENT;
+    legacySchema += HW_SQL_STATEMENT;
+    legacySchema += PACKAGES_SQL_STATEMENT;
+    legacySchema += HOTFIXES_SQL_STATEMENT;
+    legacySchema += PROCESSES_SQL_STATEMENT;
+    legacySchema += PORTS_SQL_STATEMENT;
+    legacySchema += NETIFACE_SQL_STATEMENT;
+    legacySchema += NETPROTO_SQL_STATEMENT;
+    legacySchema += NETADDR_SQL_STATEMENT;
+    legacySchema += GROUPS_SQL_STATEMENT;
+    legacySchema += USERS_SQL_STATEMENT;
+    legacySchema += SERVICES_SQL_STATEMENT;
+    legacySchema += BROWSER_EXTENSIONS_SQL_STATEMENT;
+    legacySchema += TABLE_METADATA_SQL_STATEMENT;
+    legacySchema += "PRAGMA user_version = 1;";
+
+    char* errMsg = nullptr;
+    ASSERT_EQ(sqlite3_exec(db, legacySchema.c_str(), nullptr, nullptr, &errMsg), SQLITE_OK)
+            << (errMsg ? errMsg : "");
+
+    if (errMsg)
+    {
+        sqlite3_free(errMsg);
+    }
+
+    // A host row and a container row, so the assertions below cover both
+    // scopes rather than only the one this work touches.
+    ASSERT_EQ(sqlite3_exec(db,
+                           "INSERT INTO dbsync_processes (container_id, pid, name, checksum) "
+                           "VALUES ('', '1', 'host-proc', 'host-sum');"
+                           "INSERT INTO dbsync_processes (container_id, container_json, pid, name, checksum) "
+                           "VALUES ('c1', '{\"container\":{\"id\":\"c1\"}}', '2', 'ctr-proc', 'ctr-sum');",
+                           nullptr, nullptr, &errMsg), SQLITE_OK)
+            << (errMsg ? errMsg : "");
+
+    if (errMsg)
+    {
+        sqlite3_free(errMsg);
+    }
+
+    sqlite3_close(db);
+
+    ASSERT_EQ(readUserVersion(SYSCOLLECTOR_TEST_DB_PATH), 1) << "precondition: a version-1 database";
+    ASSERT_FALSE(tableExists(SYSCOLLECTOR_TEST_DB_PATH, "container_context"));
+
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    Syscollector::instance().init(spInfoWrapper, reportFunction, persistFunction, logFunction,
+                                  SYSCOLLECTOR_TEST_DB_PATH, "", "",
+                                  3600, false, false, false, false, false, false, false,
+                                  false, false, false, false, false, false, false);
+    Syscollector::instance().destroy();
+
+    EXPECT_EQ(readUserVersion(SYSCOLLECTOR_TEST_DB_PATH), 2) << "the upgrade must advance the recorded version";
+    EXPECT_TRUE(tableExists(SYSCOLLECTOR_TEST_DB_PATH, "container_context"))
+            << "the upgrade statement is the only route by which an existing database gains the table";
+
+    // The rows must survive, with their checksums untouched. A checksum that
+    // changed here would resync that agent's entire inventory on upgrade --
+    // which is the cost this whole approach exists to avoid paying.
+    ASSERT_EQ(sqlite3_open_v2(SYSCOLLECTOR_TEST_DB_PATH, &db, SQLITE_OPEN_READONLY, nullptr), SQLITE_OK);
+
+    sqlite3_stmt* stmt = nullptr;
+    ASSERT_EQ(sqlite3_prepare_v2(db, "SELECT container_id, name, checksum FROM dbsync_processes ORDER BY pid;",
+                                 -1, &stmt, nullptr), SQLITE_OK);
+
+    std::vector<std::string> rows;
+
+    while (sqlite3_step(stmt) == SQLITE_ROW)
+    {
+        rows.emplace_back(std::string(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0))) + "/" +
+                          reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1)) + "/" +
+                          reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2)));
+    }
+
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
+
+    ASSERT_EQ(rows.size(), 2u) << "an upgrade must not drop rows";
+    EXPECT_EQ(rows[0], "/host-proc/host-sum");
+    EXPECT_EQ(rows[1], "c1/ctr-proc/ctr-sum");
+}
+
 TEST_F(SyscollectorImpTest, TheScanMutexCanBeHeldFromOutsideTheModule)
 {
     // wm_sync_module takes this around a synchronization so a scan cannot start

@@ -335,6 +335,22 @@ constexpr auto BROWSER_EXTENSIONS_SQL_STATEMENT
         PRIMARY KEY (container_id, browser_name,user_id,browser_profile_path,package_name,package_version_)) WITHOUT ROWID;)"
 };
 
+// The container context, stored once per container instead of copied onto
+// every one of its rows.
+//
+// Deliberately NOT a container-scoped inventory table: it is never named in a
+// DBSync transaction, so it never gains a status column and no scoped sweep
+// can reach it. Its lifetime is managed explicitly alongside the sweeps that
+// delete the rows referring to it. table_metadata is the existing precedent
+// for a non-inventory table living inside this schema.
+constexpr auto CONTAINER_CONTEXT_SQL_STATEMENT
+{
+    R"(CREATE TABLE IF NOT EXISTS container_context (
+    container_id TEXT PRIMARY KEY,
+    context TEXT NOT NULL DEFAULT ''
+    ) WITHOUT ROWID;)"
+};
+
 constexpr auto TABLE_METADATA_SQL_STATEMENT
 {
     R"(CREATE TABLE IF NOT EXISTS table_metadata (
@@ -358,6 +374,7 @@ constexpr auto SERVICES_TABLE               { "dbsync_services"             };
 constexpr auto BROWSER_EXTENSIONS_TABLE     { "dbsync_browser_extensions"   };
 
 constexpr auto METADATA_TABLE               { "table_metadata"              };
+constexpr auto CONTAINER_CONTEXT_TABLE      { "container_context"           };
 
 // Primary key fields for each table (used for ORDER BY clauses)
 // These must match the PRIMARY KEY definitions in the CREATE TABLE statements above
