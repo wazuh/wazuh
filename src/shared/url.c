@@ -182,6 +182,8 @@ int wurl_request(const char * url, const char * dest, const char *header, const 
     const char * COMMAND = "download";
     char response[64];
     char * _url;
+    char * tmp_url;
+    char * parsed_url;
     char * srequest;
     size_t zrequest;
     ssize_t zrecv;
@@ -199,6 +201,12 @@ int wurl_request(const char * url, const char * dest, const char *header, const 
 
     _url = wstr_replace(url, " ", "%20");
 
+    // Encode delimiter and escape character, the URL is not unescaped by the download module
+
+    tmp_url = wstr_replace(_url, "\\", "%5C");
+    parsed_url = wstr_replace(tmp_url, "|", "%7C");
+    os_free(tmp_url);
+
     // Escape delimiter
 
     parsed_dest = wstr_replace(dest, "|", "\\|");
@@ -211,11 +219,12 @@ int wurl_request(const char * url, const char * dest, const char *header, const 
 
     // Build request
 
-    zrequest = strlen(_url) + strlen(parsed_dest) + strlen(COMMAND) +
+    zrequest = strlen(parsed_url) + strlen(parsed_dest) + strlen(COMMAND) +
                (parsed_header ? strlen(parsed_header) : 0) +
                (parsed_data ? strlen(parsed_data) : 0) + sizeof(long) + 7;
     os_calloc(1, zrequest, srequest);
-    snprintf(srequest, zrequest, "%s %s|%s|%s|%s|%ld|", COMMAND, _url, parsed_dest, parsed_header ? parsed_header : "", parsed_data ? parsed_data : "", timeout ? timeout : 0);
+    snprintf(srequest, zrequest, "%s %s|%s|%s|%s|%ld|", COMMAND, parsed_url, parsed_dest, parsed_header ? parsed_header : "", parsed_data ? parsed_data : "", timeout ? timeout : 0);
+    os_free(parsed_url);
     os_free(parsed_dest);
     os_free(parsed_header);
     os_free(parsed_data);
