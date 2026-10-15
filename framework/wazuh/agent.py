@@ -186,7 +186,8 @@ def get_agents_summary_os(agent_list: list[str] = None) -> AffectedItemsWazuhRes
                                       all_msg='Showing the operative system of all specified agents',
                                       some_msg='Could not get the operative system of some agents')
     if agent_list:
-        rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list)
+        system_agents = get_agents_info()
+        rbac_filters = get_rbac_filters(system_resources=system_agents, permitted_resources=agent_list)
 
         # We don't consider agent 000 in order to get the summary
         with WazuhDBQueryAgents(select=['os.platform'], default_sort_field='os_platform', min_select_fields=set(),
@@ -199,7 +200,9 @@ def get_agents_summary_os(agent_list: list[str] = None) -> AffectedItemsWazuhRes
 
         # The distinct query discards the agents without OS, so an empty result means none of them reported it
         if not result.affected_items:
-            for agent_id in (set(agent_list) & get_agents_info()) - {'000'}:
+            if system_agents == {'000'}:
+                result.none_msg = 'No agents are registered'
+            for agent_id in (set(agent_list) & system_agents) - {'000'}:
                 result.add_failed_item(id_=agent_id, error=WazuhError(1761))
 
     return result

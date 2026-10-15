@@ -243,6 +243,30 @@ def test_agent_get_agents_summary_os_unknown_os(connect_mock, send_mock, agents_
         assert rendered['error'] == 0
 
 
+@pytest.mark.parametrize('system_agents, message', [
+    ({'000'}, 'No agents are registered'),
+    (set(short_agent_list), 'Could not get the operative system of the agents')
+])
+@patch('wazuh.agent.WazuhDBQueryAgents.run', return_value={'items': [], 'totalItems': 0})
+@patch('socket.socket.connect')
+def test_agent_get_agents_summary_os_no_agents(connect_mock, run_mock, system_agents, message):
+    """Test the message of `get_agents_summary_os` when only the manager is in scope.
+
+    Parameters
+    ----------
+    system_agents : set
+        IDs of the agents registered in the system.
+    message : str
+        Expected message.
+    """
+    with patch('wazuh.agent.get_agents_info', return_value=system_agents):
+        rendered = get_agents_summary_os(['000']).render()
+
+    assert rendered['message'] == message
+    assert rendered['data']['failed_items'] == []
+    assert rendered['error'] == 0
+
+
 @pytest.mark.parametrize('agent_list, expected_items, error_code', [
     (['001', '002'], ['001', '002'], None),
     (['000'], [], 1703),
