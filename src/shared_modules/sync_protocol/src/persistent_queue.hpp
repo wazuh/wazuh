@@ -24,6 +24,7 @@
 #include <chrono>
 #include <memory>
 #include <atomic>
+#include <cstdint>
 
 /// @brief Implementation of IPersistentQueue with persistent storage backend.
 ///
@@ -40,7 +41,16 @@ class PersistentQueue : public IPersistentQueue
         /// @param logger Logger function
         /// @param storage Optional shared pointer to a custom storage backend.
         ///                If null, a default PersistentQueueStorage is used.
-        explicit PersistentQueue(const std::string& dbPath, LoggerFunc logger, std::shared_ptr<IPersistentQueueStorage> storage = nullptr);
+        /// @param flushBatchSize Maximum buffered events before an immediate flush. If unset, DEFAULT_FLUSH_BATCH_SIZE is used.
+        /// @param flushInterval Maximum time to wait before flushing a non-full buffer. If unset, DEFAULT_FLUSH_INTERVAL is used.
+        /// @param walAutocheckpointPages Optional override for the default storage backend's WAL auto-checkpoint
+        ///                               threshold, in pages. Ignored when an explicit @p storage is given.
+        explicit PersistentQueue(const std::string& dbPath,
+                                 LoggerFunc logger,
+                                 std::shared_ptr<IPersistentQueueStorage> storage = nullptr,
+                                 std::optional<std::size_t> flushBatchSize = std::nullopt,
+                                 std::optional<std::chrono::milliseconds> flushInterval = std::nullopt,
+                                 std::optional<int32_t> walAutocheckpointPages = std::nullopt);
 
         /// @brief Destructor.
         ~PersistentQueue() override;
@@ -87,11 +97,20 @@ class PersistentQueue : public IPersistentQueue
         void deleteDatabase() override;
 
     private:
+        /// @brief Used when no flush batch size override is given.
+        static constexpr std::size_t DEFAULT_FLUSH_BATCH_SIZE = 100;
+
+        /// @brief Used when no flush interval override is given.
+        static constexpr std::chrono::milliseconds DEFAULT_FLUSH_INTERVAL{500};
+
+        /// @brief Caps the upfront buffer reservation so a large configured batch size does not eagerly allocate that much.
+        static constexpr std::size_t MAX_RESERVE_HINT = 10000;
+
         /// @brief Maximum number of buffered events before triggering an immediate flush.
-        static constexpr std::size_t FLUSH_BATCH_SIZE = 100;
+        const std::size_t FLUSH_BATCH_SIZE;
 
         /// @brief Maximum time to wait before flushing a non-full buffer.
-        static constexpr std::chrono::milliseconds FLUSH_INTERVAL{500};
+        const std::chrono::milliseconds FLUSH_INTERVAL;
 
         /// @brief Mutex protecting m_buffers.
         std::mutex m_mutex;
