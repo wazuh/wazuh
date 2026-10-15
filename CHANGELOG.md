@@ -7,7 +7,7 @@ All notable changes to this project will be documented in this file.
 
 #### Fixed
 
-- Fixed `GET /agents/summary/os` returning `error: 0` with no failed items when none of the agents has reported its operative system. Those agents are now returned as failed items with error code 1761. ([#37539](https://github.com/wazuh/wazuh/issues/37539))
+- Fixed `GET /agents/summary/os` returning `error: 0` with no failed items when none of the agents has reported its operative system. Those agents are now returned as failed items with error code 1761, and the response states when there are no agents registered. ([#37539](https://github.com/wazuh/wazuh/issues/37539))
 
 ## [v4.14.10]
 
