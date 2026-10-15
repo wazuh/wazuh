@@ -1012,6 +1012,84 @@ void Syscollector::destroy()
     releaseResources();
 }
 
+/// The container block for a row, read from the context stored once per
+/// container rather than from a copy carried on the row itself.
+///
+/// Memoised on the container id. Rows reach here grouped by container on every
+/// path -- the scan flushes one container at a time, and every table is
+/// WITHOUT ROWID with container_id leading the primary key, so rows read back
+/// out of the database arrive clustered too. One lookup per container per
+/// flush, not one per row.
+///
+/// Falls back to the row's own container_json for rows an older build wrote,
+/// and seeds the memo from it, so an upgraded agent parses a given container's
+/// blob once rather than once per row. That fallback goes when the column does.
+///
+/// Not guarded by a mutex: every ecsData() call site runs under m_scan_mutex.
+nlohmann::json Syscollector::containerContextBlock(const std::string& containerId, const nlohmann::json& row)
+{
+    if (containerId == m_lastContainerId)
+    {
+        return m_lastContainerBlock;
+    }
+
+    nlohmann::json block;
+
+#if defined(__linux__)
+
+    try
+    {
+        auto selectQuery = SelectQuery::builder()
+                           .table(CONTAINER_CONTEXT_TABLE)
+                           .columnList({"context"})
+                           .rowFilter("WHERE container_id=?")
+                           .rowFilterBindText(containerId)
+                           .build();
+
+        const auto callback = [&block](ReturnTypeCallback result, const nlohmann::json & selected)
+        {
+            if (result == SELECTED && selected.contains("context") && selected.at("context").is_string())
+            {
+                const auto& stored = selected.at("context").get_ref<const std::string&>();
+                const auto parsed = nlohmann::json::parse(stored, nullptr, false);
+
+                if (parsed.is_object() && parsed.contains("container"))
+                {
+                    block = parsed["container"];
+                }
+            }
+        };
+
+        m_spDBSync->selectRows(selectQuery.query(), callback);
+    }
+    catch (const std::exception&)
+    {
+        // Leaves `block` null, which degrades to the fallback below and then
+        // to an event without a container block -- never to a malformed one.
+    }
+
+#endif
+
+    if (block.is_null() && row.contains(CONTAINER_JSON_COLUMN) && row[CONTAINER_JSON_COLUMN].is_string())
+    {
+        const auto& legacy = row[CONTAINER_JSON_COLUMN].get_ref<const std::string&>();
+
+        if (!legacy.empty())
+        {
+            const auto parsed = nlohmann::json::parse(legacy, nullptr, false);
+
+            if (parsed.is_object() && parsed.contains("container"))
+            {
+                block = parsed["container"];
+            }
+        }
+    }
+
+    m_lastContainerId = containerId;
+    m_lastContainerBlock = block;
+    return block;
+}
+
 std::pair<nlohmann::json, uint64_t> Syscollector::ecsData(const nlohmann::json& data, const std::string& table, bool createFields)
 {
     nlohmann::json ret;
@@ -1081,31 +1159,17 @@ std::pair<nlohmann::json, uint64_t> Syscollector::ecsData(const nlohmann::json& 
     // changed, and every wazuh-states-* template is dynamic:strict and rejects
     // a second top-level "kubernetes" sibling, so lifting one here could only
     // ever have produced a document the indexer refuses.
-    if (data.contains(CONTAINER_JSON_COLUMN) && data[CONTAINER_JSON_COLUMN].is_string())
+    if (data.contains(CONTAINER_ID_COLUMN) && data[CONTAINER_ID_COLUMN].is_string())
     {
-        const auto& contextBlob = data[CONTAINER_JSON_COLUMN].get_ref<const std::string&>();
+        const auto& containerId = data[CONTAINER_ID_COLUMN].get_ref<const std::string&>();
 
-        if (!contextBlob.empty())
+        if (!containerId.empty())
         {
-            // Parsed once per container rather than once per row -- see the
-            // memo's declaration for why comparing the blob by value is both
-            // sound and cheap here.
-            if (contextBlob != m_lastContainerBlob)
-            {
-                const auto context = nlohmann::json::parse(contextBlob, nullptr, false);
+            const auto block = containerContextBlock(containerId, data);
 
-                m_lastContainerBlob = contextBlob;
-                m_lastContainerBlock = (context.is_object() && context.contains("container"))
-                                       ? context["container"]
-                                       : nlohmann::json {};
-            }
-
-            // Null for a blob that parsed but carried no container block, which
-            // is a malformed row rather than a host one -- host rows have an
-            // empty column and never reach here.
-            if (!m_lastContainerBlock.is_null())
+            if (!block.is_null())
             {
-                ret["container"] = m_lastContainerBlock;
+                ret["container"] = block;
             }
         }
     }
@@ -2310,11 +2374,134 @@ bool Syscollector::storeContainerContext(const std::string& containerId, const s
 
     std::lock_guard<std::mutex> lock {m_containerContextMutex};
     m_containerContexts[containerId] = contextJson;
+
+    // The read memo is keyed on the id, so a context that just changed under
+    // that id must not keep being served from it.
+    if (m_lastContainerId == containerId)
+    {
+        m_lastContainerId.clear();
+        m_lastContainerBlock = nlohmann::json {};
+    }
+
     return true;
 #else
     (void)containerId;
     (void)contextJson;
     return false;
+#endif
+}
+
+/// Deletes one container's stored context, and forgets it.
+///
+/// Called only AFTER that container's rows have been deleted and their DELETE
+/// events emitted, because those events are built from this context. Removing
+/// it first produces deletes that cannot say what they refer to, which is the
+/// defect the stored context exists to prevent.
+void Syscollector::dropContainerContext(const std::string& containerId)
+{
+#if defined(__linux__)
+
+    if (containerId.empty())
+    {
+        return;
+    }
+
+    try
+    {
+        // Bound through the query's data rather than spliced into a filter
+        // string: container ids come from a runtime this code does not own,
+        // and a primary key is exactly what this builder binds.
+        auto deleteQuery = DeleteQuery::builder()
+                           .table(CONTAINER_CONTEXT_TABLE)
+                           .data({{CONTAINER_ID_COLUMN, containerId}})
+                           .rowFilter("")
+                           .build();
+
+        m_spDBSync->deleteRows(deleteQuery.query());
+    }
+    catch (const std::exception& e)
+    {
+        m_logFunction(LOG_DEBUG,
+                      "Could not delete the stored context for container '" + containerId + "': " + e.what());
+    }
+
+    {
+        std::lock_guard<std::mutex> lock {m_containerContextMutex};
+        m_containerContexts.erase(containerId);
+    }
+
+    if (m_lastContainerId == containerId)
+    {
+        m_lastContainerId.clear();
+        m_lastContainerBlock = nlohmann::json {};
+    }
+
+#else
+    (void)containerId;
+#endif
+}
+
+/// Deletes every stored context whose container is not in `keep`.
+///
+/// This is the crash-safety half of the lifecycle. After the sweep above, any
+/// id that legitimately owns a context is live; a container with rows that was
+/// not live has just been swept. So "delete every context whose container is
+/// not live" is exact, needs no timestamp and no reference count, and recovers
+/// a context orphaned by a crash between deleting a container's rows and
+/// deleting its context -- which the row scan can never find again, precisely
+/// because those rows are gone.
+///
+/// MUST be given an authoritative live set. A merely incomplete one deletes
+/// the contexts of containers that still exist.
+std::size_t Syscollector::pruneContainerContexts(const std::set<std::string>& keep)
+{
+#if defined(__linux__)
+    std::set<std::string> stored;
+
+    try
+    {
+        const auto callback = [&stored](ReturnTypeCallback result, const nlohmann::json & data)
+        {
+            if (result == SELECTED && data.contains(CONTAINER_ID_COLUMN) && data.at(CONTAINER_ID_COLUMN).is_string())
+            {
+                const auto& id = data.at(CONTAINER_ID_COLUMN).get_ref<const std::string&>();
+
+                if (!id.empty())
+                {
+                    stored.insert(id);
+                }
+            }
+        };
+
+        auto selectQuery = SelectQuery::builder()
+                           .table(CONTAINER_CONTEXT_TABLE)
+                           .columnList({CONTAINER_ID_COLUMN})
+                           .rowFilter("")
+                           .build();
+
+        m_spDBSync->selectRows(selectQuery.query(), callback);
+    }
+    catch (const std::exception& e)
+    {
+        m_logFunction(LOG_DEBUG, std::string("Could not list stored container contexts: ") + e.what());
+        return 0;
+    }
+
+    std::size_t pruned = 0;
+
+    for (const auto& id : stored)
+    {
+        if (keep.find(id) == keep.end())
+        {
+            dropContainerContext(id);
+            ++pruned;
+        }
+    }
+
+    return pruned;
+#else
+    (void)keep;
+    return 0;
 #endif
 }
 
@@ -2356,9 +2543,19 @@ std::size_t Syscollector::sweepContainerRowsNotIn(const std::set<std::string>& k
             updateChanges(table, nlohmann::json::array(), staleId);
         }
 
+        // After the DELETEs above, never before: those events are built from
+        // this context.
+        dropContainerContext(staleId);
+
         m_knownContainerIds.erase(staleId);
         releaseContainerCounts(staleId);
     }
+
+    // `keep` came from a whole-node list the caller already checked was
+    // answered, so it is authoritative and the prune is safe. It recovers
+    // contexts orphaned by a crash between the two steps above, which nothing
+    // else can find once the rows are gone.
+    pruneContainerContexts(keep);
 
     return staleIds.size();
 #else
@@ -2386,8 +2583,16 @@ std::size_t Syscollector::sweepContainerRows(const std::vector<std::string>& con
             updateChanges(table, nlohmann::json::array(), containerId);
         }
 
+        // After the DELETEs above, for the same reason as the whole-list sweep.
+        dropContainerContext(containerId);
+
         m_knownContainerIds.erase(containerId);
 
+        // Deliberately no prune pass here: this path is told which containers
+        // went and has no authoritative view of which still exist, so it
+        // cannot tell an orphaned context from a live one. The next whole-node
+        // sweep covers them.
+        //
         // The same release the whole-list sweep does. Omitting it here leaked
         // an entry per container removed through the delta path -- the rows
         // were gone, but the budget they had spent was never returned, so a

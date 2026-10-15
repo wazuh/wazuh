@@ -398,13 +398,19 @@ std::pair<std::string, std::string> BuildHardwareJson(const HardwareBaselineRow&
 
 namespace {
 
-/// Starts every dbsync row with the two container columns shared by all
-/// syscollector tables (syscollectorTablesDef.hpp).
+/// Starts every dbsync row with the container column shared by all syscollector
+/// tables (syscollectorTablesDef.hpp).
+///
+/// The row carries only the id. The context it refers to is handed to the
+/// consumer once per container, before any of that container's rows, and
+/// stored there -- rather than being copied onto each row, which cost 79x its
+/// own size in the file table and made one label edit rewrite every row of the
+/// container.
 nlohmann::json DbsyncRowBase(const std::string& container_id, const std::string& container_json)
 {
+    (void)container_json;
     nlohmann::json row;
-    row["container_id"]   = container_id;
-    row["container_json"] = container_json;
+    row["container_id"] = container_id;
     return row;
 }
 

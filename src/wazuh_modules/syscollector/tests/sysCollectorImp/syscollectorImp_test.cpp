@@ -7067,6 +7067,107 @@ TEST_F(SyscollectorImpTest, AContainersContextIsStoredOncePerContainerNotOncePer
 #endif
 }
 
+TEST_F(SyscollectorImpTest, ADeleteIsDescribedByTheContextStoredOnceNotByTheRow)
+{
+#ifndef __linux__
+    GTEST_SKIP() << "The container baseline is Linux-only";
+#else
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    Syscollector::instance().init(spInfoWrapper, reportFunction, persistFunction, logFunction,
+                                  SYSCOLLECTOR_TEST_DB_PATH, "", "",
+                                  3600, false, false, false, false, false, false, false,
+                                  false, false, false, false, false, false, false);
+
+    EXPECT_TRUE(Syscollector::instance().storeContainerContext(
+                    "c1", R"({"container":{"id":"c1","name":"web","kubernetes":{"pod":{"name":"web-0"}}}})"));
+    Syscollector::instance().destroy();
+
+    // The row carries NO context of its own -- an empty container_json is what
+    // the producer now writes. Everything the delete says about the container
+    // therefore has to come from the row stored once, which is the whole point.
+    sqlite3* db = nullptr;
+    ASSERT_EQ(sqlite3_open_v2(SYSCOLLECTOR_TEST_DB_PATH, &db, SQLITE_OPEN_READWRITE, nullptr), SQLITE_OK);
+
+    char* errMsg = nullptr;
+    ASSERT_EQ(sqlite3_exec(db,
+                           "INSERT INTO dbsync_processes (container_id, pid, name, sync, checksum) "
+                           "VALUES ('c1', '431625', 'nginx', 1, 'sum');",
+                           nullptr, nullptr, &errMsg), SQLITE_OK) << (errMsg ? errMsg : "");
+
+    if (errMsg)
+    {
+        sqlite3_free(errMsg);
+    }
+
+    sqlite3_close(db);
+
+    std::vector<std::string> persisted;
+    const auto capturePersist
+    {
+        [&persisted](const std::string&, Operation_t, const std::string&, const std::string& payload, uint64_t)
+        {
+            persisted.push_back(payload);
+        }
+    };
+
+    Syscollector::instance().init(spInfoWrapper, reportFunction, capturePersist, logFunction,
+                                  SYSCOLLECTOR_TEST_DB_PATH, "", "",
+                                  3600, false, false, false, false, false, false, false,
+                                  false, false, false, false, false, false, false);
+
+    EXPECT_EQ(Syscollector::instance().sweepContainerRows({"c1"}), 1u);
+
+    ASSERT_EQ(persisted.size(), 1u);
+    const auto document = nlohmann::json::parse(persisted.front());
+
+    ASSERT_TRUE(document.contains("container"))
+            << "the delete must still describe the container, with nothing on the row to describe it";
+    EXPECT_EQ(document["container"]["name"], "web");
+    EXPECT_EQ(document["container"]["kubernetes"]["pod"]["name"], "web-0");
+    EXPECT_FALSE(document.contains("kubernetes"));
+
+    Syscollector::instance().destroy();
+
+    // And the context goes only after the delete that needed it.
+    EXPECT_EQ(readStoredContext(SYSCOLLECTOR_TEST_DB_PATH, "c1"), "")
+            << "a swept container keeps no context behind it";
+#endif
+}
+
+TEST_F(SyscollectorImpTest, AContextOrphanedByACrashIsRecoveredByTheNextSweep)
+{
+#ifndef __linux__
+    GTEST_SKIP() << "The container baseline is Linux-only";
+#else
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    Syscollector::instance().init(spInfoWrapper, reportFunction, persistFunction, logFunction,
+                                  SYSCOLLECTOR_TEST_DB_PATH, "", "",
+                                  3600, false, false, false, false, false, false, false,
+                                  false, false, false, false, false, false, false);
+
+    // "orphan" is the state left by a crash between deleting a container's
+    // rows and deleting its context: a context with no rows anywhere. Walking
+    // the inventory tables can never find it again, precisely because the rows
+    // it would have been found by are gone -- only the live list can identify
+    // it, which is what the prune uses.
+    EXPECT_TRUE(Syscollector::instance().storeContainerContext("orphan", R"({"container":{"id":"orphan"}})"));
+    EXPECT_TRUE(Syscollector::instance().storeContainerContext("alive", R"({"container":{"id":"alive"}})"));
+
+    EXPECT_EQ(Syscollector::instance().pruneContainerContexts({"alive"}), 1u)
+            << "exactly the one context whose container is not live";
+
+    Syscollector::instance().destroy();
+
+    EXPECT_EQ(readStoredContext(SYSCOLLECTOR_TEST_DB_PATH, "orphan"), "");
+    EXPECT_EQ(readStoredContext(SYSCOLLECTOR_TEST_DB_PATH, "alive"), R"({"container":{"id":"alive"}})")
+            << "a live container must keep its context, or its next delete cannot describe it";
+#endif
+}
+
 TEST_F(SyscollectorImpTest, TheScanMutexCanBeHeldFromOutsideTheModule)
 {
     // wm_sync_module takes this around a synchronization so a scan cannot start
