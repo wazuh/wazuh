@@ -1,5 +1,23 @@
-- name: Listener key unreadable by the service user
-  description: With /etc/wazuh-manager/certs/remoted-key.pem present but root-owned (0600), the validator passes and remoted refuses to start with its preflight error naming the key
+- name: Listener key unreadable by the service user, remoted
+  description: With the listener key configured at a root-owned (0600) copy, the credential resolver and the validator pass and remoted refuses to start with its preflight error naming the key
+  configuration_parameters:
+    CERTIFICATE: '/etc/wazuh-manager/certs/remoted.pem'
+    KEY: '/etc/wazuh-manager/certs/listener-key-unreadable.pem'
+    CA_CERTIFICATE: '/etc/wazuh-manager/certs/root-ca.pem'
+  metadata:
+    certificate: '/etc/wazuh-manager/certs/remoted.pem'
+    key: '/etc/wazuh-manager/certs/listener-key-unreadable.pem'
+    ca_certificate: '/etc/wazuh-manager/certs/root-ca.pem'
+    mutation: unreadable_copy
+    copy_from: '/etc/wazuh-manager/certs/remoted-key.pem'
+    target: '/etc/wazuh-manager/certs/listener-key-unreadable.pem'
+    # A copy of the installed key under another name: the credential resolver only checks that a file
+    # it does not manage is root's, and the configuration validator (root) only that it exists. remoted
+    # probes the pair after dropping privileges (w_remoted_check_tls_files() in src/remoted/src/secure.c)
+    # and exits with this line.
+    expected_error: ".*Cannot start the HTTPS agent listener: the TLS private key '.*listener-key-unreadable\\.pem' is missing or unreadable by the service user.*"
+- name: Listener key unreadable by the service user, credential resolver
+  description: With the installed /etc/wazuh-manager/certs/remoted-key.pem itself root-owned (0600), the credential resolver's check refuses it before anything starts
   configuration_parameters:
     CERTIFICATE: '/etc/wazuh-manager/certs/remoted.pem'
     KEY: '/etc/wazuh-manager/certs/remoted-key.pem'
@@ -9,13 +27,11 @@
     key: '/etc/wazuh-manager/certs/remoted-key.pem'
     ca_certificate: '/etc/wazuh-manager/certs/root-ca.pem'
     mutation: unreadable_key
-    # Neither of the two layers that run as root can see an ownership problem: the credential
-    # resolver does not look at certificates outside installation, and the configuration validator
-    # only checks the file exists. remoted probes the pair after dropping privileges
-    # (w_remoted_check_tls_files() in src/remoted/src/secure.c) and exits with this line.
-    expected_error: ".*Cannot start the HTTPS agent listener: the TLS private key '.*remoted-key\\.pem' is missing or unreadable by the service user.*"
+    # The listener pair is the resolver's: it must be root:wazuh-manager 0640, so the first check that
+    # fails is the group, and the start is refused as unsafe.
+    expected_error: ".*UNSAFE .*/certs/remoted-key\\.pem: group is root, not wazuh-manager.*"
 - name: Published CA certificate unreadable by the service user
-  description: With the ca_certificate remoted publishes on /cacerts present but root-owned (0600), the validator passes and remoted refuses to start with its preflight error naming that file
+  description: With the ca_certificate remoted publishes on /cacerts present but root-owned (0600), the resolver and the validator pass and remoted refuses to start with its preflight error naming that file
   configuration_parameters:
     CERTIFICATE: '/etc/wazuh-manager/certs/remoted.pem'
     KEY: '/etc/wazuh-manager/certs/remoted-key.pem'
@@ -24,9 +40,11 @@
     certificate: '/etc/wazuh-manager/certs/remoted.pem'
     key: '/etc/wazuh-manager/certs/remoted-key.pem'
     ca_certificate: '/etc/wazuh-manager/certs/cacerts-unreadable.pem'
-    mutation: unreadable_ca_certificate
-    # A dedicated copy of /etc/wazuh-manager/certs/root-ca.pem, created by the fixture root-owned 0600 and removed
-    # afterwards: root-ca.pem itself is shared with other daemons, which must keep starting. The
+    mutation: unreadable_copy
+    copy_from: '/etc/wazuh-manager/certs/root-ca.pem'
+    target: '/etc/wazuh-manager/certs/cacerts-unreadable.pem'
+    # A dedicated copy of /etc/wazuh-manager/certs/root-ca.pem, created by the fixture root-owned 0600 and
+    # removed afterwards: root-ca.pem itself is shared with other daemons, which must keep starting. The
     # validator runs as root and only checks the file exists; remoted probes the published CA
     # certificate after dropping privileges, in every verification mode, since 5.x agents bootstrap
     # their trust from GET /cacerts (w_remoted_check_tls_files() in src/remoted/src/secure.c).

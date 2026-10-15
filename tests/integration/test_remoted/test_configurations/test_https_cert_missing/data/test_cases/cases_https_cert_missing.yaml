@@ -1,5 +1,22 @@
-- name: Missing listener certificate
-  description: With /etc/wazuh-manager/certs/remoted.pem absent, wazuh-manager-control refuses to start on the validator's 1244 verdict, which says where the file comes from
+- name: Missing listener certificate, configuration validator
+  description: With the listener certificate configured at a name nothing provides, wazuh-manager-control refuses to start on the validator's 1244 verdict, which says where the file comes from
+  configuration_parameters:
+    CERTIFICATE: '/etc/wazuh-manager/certs/listener-missing.pem'
+    KEY: '/etc/wazuh-manager/certs/remoted-key.pem'
+    CA_CERTIFICATE: '/etc/wazuh-manager/certs/root-ca.pem'
+  metadata:
+    certificate: '/etc/wazuh-manager/certs/listener-missing.pem'
+    key: '/etc/wazuh-manager/certs/remoted-key.pem'
+    ca_certificate: '/etc/wazuh-manager/certs/root-ca.pem'
+    mutation: absent_file
+    target: '/etc/wazuh-manager/certs/listener-missing.pem'
+    # The installed pair stays in place, so the credential resolver's check passes and
+    # wazuh-manager-control reaches `wazuh-manager-conf validate`, which dumps its verdict into the
+    # manager log with the 'wazuh-manager-control: ERROR: ' prefix (src/init/wazuh-server.sh,
+    # testconfig()). The pointer, the resolved path and the provisioning hint are all asserted.
+    expected_error: ".*wazuh-manager-control: ERROR: \\(1244\\): Invalid configuration at '/remote/https/certificate': file not found: .*listener-missing\\.pem.*wazuh-certs-tool.*"
+- name: Missing listener certificate, credential resolver
+  description: With the installed /etc/wazuh-manager/certs/remoted.pem moved aside, the credential resolver's check refuses the half pair before the configuration is validated
   configuration_parameters:
     CERTIFICATE: '/etc/wazuh-manager/certs/remoted.pem'
     KEY: '/etc/wazuh-manager/certs/remoted-key.pem'
@@ -9,9 +26,7 @@
     key: '/etc/wazuh-manager/certs/remoted-key.pem'
     ca_certificate: '/etc/wazuh-manager/certs/root-ca.pem'
     mutation: missing_certificate
-    # Nothing reissues the pair at start: the credential resolver runs before the validator but only
-    # answers for the passwords and the keystore (certificates are issued once, at installation). So
-    # wazuh-manager-control reaches `wazuh-manager-conf validate`, which dumps its verdict into the
-    # manager log with the 'wazuh-manager-control: ERROR: ' prefix (src/init/wazuh-server.sh,
-    # testconfig()). The pointer, the resolved path and the provisioning hint are all asserted.
-    expected_error: ".*wazuh-manager-control: ERROR: \\(1244\\): Invalid configuration at '/remote/https/certificate': file not found: .*remoted\\.pem.*wazuh-certs-tool.*"
+    # wazuh-manager-control runs `wazuh-manager-resolve-credentials --check` first (checkcredentials()
+    # in src/init/wazuh-server.sh) and appends its verdict to the manager log; the key left without its
+    # certificate is half a pair.
+    expected_error: ".*INVALID .*/certs/remoted-key\\.pem: half a pair \\(remoted\\.pem is missing\\).*"
