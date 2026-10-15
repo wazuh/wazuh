@@ -350,6 +350,8 @@ The resolver checks the files the daemons are configured to serve, under whateve
 | `auth.ssl_manager_cert`, `auth.ssl_manager_key` (enrollment) | `/etc/wazuh-manager/wazuh-manager.conf` | the agent listener's pair | `/var/wazuh-manager` |
 | `remote.https.ca_certificate` (the agents' bundle, `GET /cacerts`) | `/etc/wazuh-manager/wazuh-manager.conf` | `certs/root-ca.pem` | `/var/wazuh-manager` |
 | `https.cert`, `https.key` (Server API) | `/var/wazuh-manager/api/configuration/api.yaml` | `apid.pem`, `apid-key.pem` | `/etc/wazuh-manager/certs` |
+| `indexer.ssl.certificate_authorities` (the indexer's CAs) | `/etc/wazuh-manager/wazuh-manager.conf` | `certs/indexer-ca.pem` in the generated configuration | `/var/wazuh-manager` |
+| `indexer.ssl.certificate`, `indexer.ssl.key` (the client pair) | `/etc/wazuh-manager/wazuh-manager.conf` | `certs/indexer-connector.pem`, `certs/indexer-connector-key.pem` in the generated configuration | `/var/wazuh-manager` |
 
 - **Only directly in `/etc/wazuh-manager/certs`.** The service account can edit both configuration files, so a name
   anywhere else, or one with a `.` or `..` component, is refused and never opened:
@@ -369,7 +371,22 @@ The resolver checks the files the daemons are configured to serve, under whateve
   `INVALID /var/wazuh-manager/api/configuration/api.yaml: not valid YAML (line 3)`. An `api.yaml` replaced by a
   symbolic link is `UNSAFE`.
 
-The indexer connection's files (`indexer.ssl.*`) keep the fixed names of [Indexer trust](#indexer-trust).
+For the indexer connection:
+
+- **Only the default names are imported.** `indexer-ca.pem` is imported from the indexer's export only while
+  `certificate_authorities` lists it, and the client pair only while `certificate` and `key` name
+  `indexer-connector.pem` and `indexer-connector-key.pem` ([Indexer trust](#indexer-trust)). Any other listed or
+  configured file is yours to stage: checked, never written, and at `--prestart` an absent one is
+  `MISSING /etc/wazuh-manager/certs/manager-client.pem: configured as indexer.ssl.certificate in /etc/wazuh-manager/wazuh-manager.conf; stage a pair issued by the indexer's CA for this node (the resolver imports only indexer-connector.pem and indexer-connector-key.pem)`
+  or `MISSING …: configured in indexer.ssl.certificate_authorities in …; stage the indexer's CA there`.
+- **Every listed CA file counts.** The connector merges them, so the client pair may chain to any of them, and each
+  must hold only CA certificates.
+- **An empty CA list** makes the connector verify the indexer against the system's trust store: no CA file is
+  wanted, and the client pair gets the leaf checks only (key, validity, not a CA, `clientAuth`), with no chain test.
+- **No client pair** (`certificate` and `key` both empty) means none is wanted or imported. One set without the other
+  is refused: `INVALID indexer.ssl.key: must be set together with indexer.ssl.certificate (set in /etc/wazuh-manager/wazuh-manager.conf)`.
+- A configuration with no `<ssl>` block takes the schema's defaults, an empty CA list and no client pair, so nothing
+  is imported or required; the generated configuration always has the block.
 
 ### Subject alternative names
 
@@ -392,7 +409,8 @@ node and loopback only, and the resolver warns which variable to set.
 
 ### Indexer trust
 
-The indexer CA and the client pair follow one rule, decided by a marker file in `certs/`:
+The indexer CA and the client pair under their default names follow one rule, decided by a marker file in `certs/`
+(files under [configured names](#configured-file-names) are always staged):
 
 | State in `certs/` | What happens |
 |-------------------|--------------|

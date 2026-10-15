@@ -149,7 +149,7 @@ def _replace_remoted(sandbox, days=(-1, 30), issuer_name=None, sign_with=None, c
 @pytest.mark.parametrize("case,reason", [
     ("expired", "expired"),
     ("foreign chain", "not issued by the manager's CA"),
-    ("key mismatch", "does not match remoted.pem"),
+    ("key mismatch", "its key remoted-key.pem does not match it"),
     ("ca leaf", "a CA certificate, not a server certificate"),
     ("client only", "its extendedKeyUsage does not include serverAuth"),
     ("no san", "has no subjectAltName"),
