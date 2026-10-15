@@ -1,7 +1,6 @@
 /*
  * Wazuh remoted module - /download endpoint metrics
  * Copyright (C) Wazuh Inc.
- * August 19, 2026.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public

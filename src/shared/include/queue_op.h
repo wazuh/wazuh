@@ -1,7 +1,6 @@
 /*
  * Queue (abstract data type)
  * Copyright (C) Wazuh Inc.
- * October 2, 2017
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public

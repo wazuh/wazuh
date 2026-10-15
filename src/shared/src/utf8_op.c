@@ -6,7 +6,6 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * June 19, 2019
  * https://en.wikipedia.org/wiki/UTF-8
  */
 

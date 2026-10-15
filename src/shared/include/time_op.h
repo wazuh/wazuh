@@ -10,7 +10,6 @@
 /**
  * @file time_op.h
  * @brief Time operations header file
- * @date October 4, 2017
  */
 
 #ifndef TIME_OP_H

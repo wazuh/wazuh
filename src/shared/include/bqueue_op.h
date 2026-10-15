@@ -1,7 +1,6 @@
 /**
  * @file bqueue_op.h
  * @brief Binary queue type declaration
- * @date 2020-09-20
  *
  * @copyright Copyright (C) Wazuh Inc.
  */

@@ -1,7 +1,6 @@
 /*
  * Wazuh Module for Security Configuration Assessment
  * Copyright (C) Wazuh Inc.
- * January 25, 2019.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public

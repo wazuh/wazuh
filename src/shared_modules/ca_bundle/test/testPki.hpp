@@ -1,7 +1,6 @@
 /*
  * Wazuh CA bundle library - test certificate builders
  * Copyright (C) Wazuh Inc.
- * September 17, 2026.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public

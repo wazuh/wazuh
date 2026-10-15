@@ -1,6 +1,5 @@
 /* RSA-PKCS1-SHA256 signature
  * Copyright (C) Wazuh Inc.
- * July 3, 2017.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public

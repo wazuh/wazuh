@@ -10,7 +10,6 @@
 /**
  * @file time_op.c
  * @brief Time operations
- * @date October 4, 2017
  */
 
 #include "shared.h"

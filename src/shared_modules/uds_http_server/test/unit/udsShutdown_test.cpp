@@ -1,7 +1,6 @@
 /*
  * Wazuh shared UDS HTTP server library - unit tests
  * Copyright (C) Wazuh Inc.
- * July 28, 2026.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public

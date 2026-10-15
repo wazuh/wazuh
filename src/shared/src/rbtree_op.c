@@ -1,7 +1,6 @@
 /**
  * @file rbtree_op.c
  * @brief RB tree data structure definition
- * @date 2019-08-21
  *
  * @copyright Copyright (C) Wazuh Inc.
  */

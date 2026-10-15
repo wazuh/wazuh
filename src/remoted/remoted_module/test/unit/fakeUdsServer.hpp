@@ -1,7 +1,6 @@
 /*
  * Wazuh remoted module - Fake Unix Domain Socket server for tests
  * Copyright (C) Wazuh Inc.
- * July 31, 2026.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public

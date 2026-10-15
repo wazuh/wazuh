@@ -1,7 +1,6 @@
 /*
  * Wazuh Module Configuration
  * Copyright (C) Wazuh Inc.
- * October 26, 2017.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public

@@ -1,5 +1,4 @@
 /* Network buffer library for Remoted
- * November 26, 2018
  *
  * Copyright (C) Wazuh Inc.
  * All right reserved.

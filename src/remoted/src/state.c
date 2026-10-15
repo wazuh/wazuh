@@ -1,5 +1,4 @@
 /* Remoted state management functions
- * May 25, 2018
  *
  * Copyright (C) Wazuh Inc.
  * All right reserved.

@@ -1,7 +1,6 @@
 /*
  * Wazuh keystore
  * Copyright (C) Wazuh Inc.
- * July 1, 2024.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of either the GNU General Public License, version 2, or

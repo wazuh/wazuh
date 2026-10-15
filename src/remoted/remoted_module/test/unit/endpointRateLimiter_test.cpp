@@ -1,7 +1,6 @@
 /*
  * Wazuh remoted module - Endpoint rate limiter unit tests
  * Copyright (C) Wazuh Inc.
- * September 14, 2026.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public

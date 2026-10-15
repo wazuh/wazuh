@@ -1,7 +1,6 @@
 /*
  * Wazuh remoted module - ScanVdHandlerImpl unit tests
  * Copyright (C) Wazuh Inc.
- * August 10, 2026.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public

@@ -1,7 +1,6 @@
 /**
  * @file rwlock_op.h
  * @brief Read-write lock library declaration
- * @date 2022-09-02
  *
  * @copyright Copyright (C) Wazuh Inc.
  */

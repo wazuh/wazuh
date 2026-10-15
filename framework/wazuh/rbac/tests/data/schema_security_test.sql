@@ -1,7 +1,6 @@
 /*
  * SQL Schema security tests
  * Copyright (C) Wazuh Inc.
- * February 13, 2019.
  * This program is a free software, you can redistribute it
  * and/or modify it under the terms of GPLv2.
  */

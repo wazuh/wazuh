@@ -1,5 +1,4 @@
 /* Copyright (C) Wazuh Inc.
- * August 4, 2018
  * All rights reserved.
  *
  * This program is free software; you can redistribute it

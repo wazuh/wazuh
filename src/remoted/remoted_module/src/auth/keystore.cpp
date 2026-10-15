@@ -1,7 +1,6 @@
 /*
  * Wazuh auth middleware (framework-agnostic)
  * Copyright (C) Wazuh Inc.
- * July 20, 2026.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public

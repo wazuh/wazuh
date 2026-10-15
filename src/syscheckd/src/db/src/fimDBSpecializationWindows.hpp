@@ -1,7 +1,6 @@
 /*
  * Wazuh Syscheck
  * Copyright (C) Wazuh Inc.
- * March 6, 2022.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public

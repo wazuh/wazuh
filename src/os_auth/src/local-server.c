@@ -1,7 +1,6 @@
 /*
  * Local Authd server
  * Copyright (C) Wazuh Inc.
- * May 20, 2017.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public

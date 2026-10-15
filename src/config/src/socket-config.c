@@ -1,7 +1,6 @@
 /*
  * Socket settings manager
  * Copyright (C) Wazuh Inc.
- * Feb 7, 2018.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public

@@ -1,7 +1,6 @@
 /*
  * Wazuh Module for update content for modules.
  * Copyright (C) Wazuh Inc.
- * May 1, 2023
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public

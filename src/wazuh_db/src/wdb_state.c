@@ -1,5 +1,4 @@
 /* wazuhdb state management functions
- * May 27, 2022
  *
  * Copyright (C) Wazuh Inc.
  * All right reserved.

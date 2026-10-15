@@ -1,7 +1,6 @@
 /*
  * Wazuh DBSYNC
  * Copyright (C) Wazuh Inc.
- * June 11, 2020.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of either the GNU General Public License, version 2, or

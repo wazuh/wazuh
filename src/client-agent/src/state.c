@@ -1,5 +1,4 @@
 /* Agent state management functions
- * August 2, 2017
  *
  * Copyright (C) Wazuh Inc.
  * All right reserved.

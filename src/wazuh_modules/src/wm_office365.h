@@ -1,7 +1,6 @@
 /*
  * Wazuh Module for Office365 events
  * Copyright (C) Wazuh Inc.
- * May 18, 2021.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public

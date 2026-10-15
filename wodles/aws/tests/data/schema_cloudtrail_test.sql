@@ -1,7 +1,6 @@
 /*
  * SQL Schema AWS tests
  * Copyright (C) Wazuh Inc.
- * April 1, 2019.
  * This program is a free software, you can redistribute it
  * and/or modify it under the terms of GPLv2.
  */

@@ -1,7 +1,6 @@
 /*
  * Wazuh DB helper module for agents database
  * Copyright (C) Wazuh Inc.
- * February 10, 2021.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public

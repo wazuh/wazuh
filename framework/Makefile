@@ -1,6 +1,5 @@
 # Makefile for Wazuh Framework
 # Copyright (C) Wazuh Inc.
-# May 3, 2017
 #
 # Syntax: make [ all | build | install | examples | clean ]
 

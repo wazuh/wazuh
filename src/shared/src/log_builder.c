@@ -1,7 +1,6 @@
 /**
  * @file log_builder.c
  * @brief Definition of the shared log builder library
- * @date 2019-12-06
  *
  * @copyright Copyright (C) Wazuh Inc.
  */

@@ -1,7 +1,6 @@
 /**
  * @file indexed_queue_op.c
  * @brief Indexed Queue implementation
- * @date 2025-08-08
  *
  * @copyright Copyright (C) Wazuh Inc.
  */

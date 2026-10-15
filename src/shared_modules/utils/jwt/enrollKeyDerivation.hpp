@@ -1,7 +1,6 @@
 /*
  * Wazuh shared modules - JWT profile library
  * Copyright (C) Wazuh Inc.
- * August 26, 2026.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of either the GNU General Public License, version 2, or
