@@ -29,8 +29,8 @@ developer side.
 | RF-4 | Indexer password stored in the keystore when absent; never generated, never published | kept |
 | RF-5 | Own CA in `<CONF>/ca/`: minted at `--install` only when nothing exists, never beside existing pairs or a bundle; staged CAs (with or without key) used as they are; published in `export/ca.pem`; `certs/root-ca.pem` written only when absent | kept |
 | RF-6 | Server pairs issued at `--install` only, each with its own SAN list (explicit or discovered from the default-route interfaces); otherwise validated, never repaired; a staged `apid` pair may chain through intermediate CAs carried after the leaf, a `remoted` leaf through those kept in `certs/root-ca.pem` | kept |
-| RF-7 | Indexer trust imported from the indexer's export with a marker written first, re-imported when the source changes; staged files (no marker) validated, never replaced; the client pair needs `clientAuth` and may chain through intermediate CAs carried after the leaf | kept |
-| RF-8 | `--check` is read-only (no lock, no subprocess, no write) and reports `UNSAFE`/`INVALID`, never `MISSING`; `--prestart` runs the same tests first | kept |
+| RF-7 | Indexer trust imported from the indexer's export with a marker written first, re-imported when the source changes; staged files (no marker) validated, never replaced; the CA and the pair taken together or not at all (an export that would leave the pair in place without its issuer changes nothing); the client pair needs `clientAuth` and may chain through intermediate CAs carried after the leaf | kept |
+| RF-8 | `--check` is read-only (no lock, no subprocess, no write) and reports `UNSAFE`/`INVALID`, never `MISSING`; it refuses whatever `--prestart` would refuse, so a restart is refused before anything is stopped; `--prestart` runs the same tests first | kept |
 | RF-9 | `--clear` refuses while a daemon runs, removes what the resolver made, keeps what it was given | kept |
 | RNF-1 | No secret on argv, in output or in the environment of a subprocess; secrets travel on stdin | kept |
 | RNF-2 | Every entry under `<CONF>`, the indexer export and the home is reached through its parent's descriptor without following links; a writing run that finds anything unsafe writes nothing | kept |
@@ -51,10 +51,12 @@ developer side.
 | D-8 | Import markers are written before the files | an interrupted import is then recognisable and finished, never mistaken for staged files |
 | D-9 | The client pair must carry `extendedKeyUsage` `clientAuth` | an EKU-less leaf is refused; the indexer issues the pair with it |
 | D-10 | A pair is accepted only when every CA on its path to an anchor is valid now, `CA:TRUE` and allowed to sign | rotation CAs may stay in the bundle after they expire; the path is built through a usable one |
-| D-14 | Paths are built by `x509.verification`'s client verifier with relaxed extension policies (CA: `basicConstraints` required; leaf: anything), then the resolver checks the leaf and `keyCertSign` on every CA of the path itself. Intermediates come only from the pair's own file, after the leaf, and never for remoted, whose leaf must chain to `certs/root-ca.pem` alone (an intermediate kept there is an anchor); anchors stay `ca/root-ca.pem` (apid), `certs/root-ca.pem` (remoted), `indexer-ca.pem` (connector) | the WebPKI defaults would demand an `authorityKeyIdentifier` and a `subjectAltName` that other tooling's certificates may lack, and a server verifier needs an expected name; the relaxed verifier checks neither `keyCertSign` nor the leaf, hence the resolver's own checks. remoted's `GET /cacerts` hands agents the bundle only when the leaf chains to it with no other certificate (partial chain), and the resolver makes the same judgement. No host tool (`openssl verify`) is run |
 | D-11 | `--clear` reads only pid file **names** in `var/run` | nothing in that service-writable directory is opened; a planted pid file can only block |
 | D-12 | A rejected `local.env` (unsafe or malformed) stops generation and seeding for that run | a password the operator meant to set must never be replaced by a generated one that then gets seeded |
 | D-13 | `OPENSSL_armcap=0` is set before anything imports OpenSSL | some arm64 hypervisors advertise SVE they do not implement; other entry points get it from `generic_wrapper.sh` |
+| D-14 | Paths are built by `x509.verification`'s client verifier with relaxed extension policies (CA: `basicConstraints` required; leaf: anything), then the resolver checks the leaf, and on every CA of the path, the anchor included, `keyCertSign` and an `extendedKeyUsage` that allows the leaf's purpose (OpenSSL's rule: `anyExtendedKeyUsage` alone does not; agents, the dashboard and remoted's own check use OpenSSL). A self-signed certificate in the leaf's file is never offered as an intermediate. Intermediates come only from the pair's own file, after the leaf, and never for remoted, whose leaf must chain to `certs/root-ca.pem` alone (an intermediate kept there is an anchor); anchors stay `ca/root-ca.pem` (apid), `certs/root-ca.pem` (remoted), `indexer-ca.pem` (connector) | the WebPKI defaults would demand an `authorityKeyIdentifier` and a `subjectAltName` that other tooling's certificates may lack, and a server verifier needs an expected name; the relaxed verifier checks neither `keyCertSign` nor the leaf, hence the resolver's own checks. remoted's `GET /cacerts` hands agents the bundle only when the leaf chains to it with no other certificate (partial chain), and the resolver makes the same judgement. No host tool (`openssl verify`) is run |
+| D-15 | The indexer trust is selected without writing, the resulting pair is validated against the resulting CA, and only a passing combination is written; `--check` runs the same selection and reports its refusals | writing the CA first let an export with a bad pair, or a CA that did not issue the staged pair, break a working connector, and a restart ran `--check` before the stop but the import after it |
+| D-16 | `certs/` is exactly `0750` and `<CONF>` must leave its group `rwx` | a mode that locks the daemons out passed every other test and only failed later, in a daemon that could not open its certificate |
 
 ## Architecture
 
@@ -117,15 +119,15 @@ manager integration workflow.
 | `test_cli.py` | arguments, modes, exit codes, output streams, `-q`, `-H` |
 | `test_env.py` | the `.env` grammar and the lookup order |
 | `test_runner.py` | subprocesses: absolute programs, fixed environment, secrets on stdin only |
-| `test_safety.py` | the file-system primitives and the specification of `<CONF>` |
+| `test_safety.py` | the file-system primitives and the specification of `<CONF>` and `certs/` |
 | `test_threats.py` | the service account against the resolver: planted, swapped, linked and hidden entries |
 | `test_lock.py` | one writing run at a time |
 | `test_passwords.py` | password rules, publish-then-seed, worker role, indexer password and keystore |
 | `test_framework_parity.py` | the resolver's rule and generator against the Server API's (read from `framework/` as source) |
 | `test_ca.py` | the CA states, minting only when nothing exists, the bundle kept byte for byte |
-| `test_pairs.py` | server pair profile, keep / half / missing, issuer validity, chains through intermediate CAs |
+| `test_pairs.py` | server pair profile, keep / half / missing, issuer validity, chains through intermediate CAs, CA purpose |
 | `test_sans.py` | explicit SAN lists and discovery from `/proc` fixtures |
-| `test_indexer_trust.py` | the import rule, markers, `clientAuth`, interrupted imports and their recovery, connector chains through intermediate CAs |
+| `test_indexer_trust.py` | the import rule, markers, `clientAuth`, interrupted imports and their recovery, connector chains through intermediate CAs, the CA and pair imported together or not at all |
 | `test_check.py` | `--check` is read-only and never `MISSING`; the whole-tree checks; `--prestart` checks first |
 | `test_clear.py` | `--clear`: liveness, what goes and what stays, no link followed, nothing removed when unsafe |
 

@@ -16,6 +16,7 @@ import shutil
 import stat
 
 import pytest
+from cryptography.x509.oid import ExtendedKeyUsageOID
 
 IDX = {"WAZUH_INDEXER_MANAGER_PASSWORD": "Idx.Passw0rd-789"}
 TRUST = ("indexer-ca.pem", "indexer-connector.pem", "indexer-connector-key.pem")
@@ -411,3 +412,95 @@ def test_only_certs_written(resolver, sandbox):
     run(resolver, sandbox, "--install")
     assert set(os.listdir(sandbox.conf)) - before <= {"ca", "export"}
     assert set(TRUST + MARKERS) <= set(os.listdir(sandbox.certs))
+
+
+# ---------------------------------------------------------------- the CA and the pair, imported together
+
+def _markers(sandbox):
+    return {name: os.path.exists(certs(sandbox, name)) for name in MARKERS}
+
+
+def _refused_import(resolver, sandbox, line):
+    """Both --check and --prestart refuse the export with `line`, and nothing in certs/ changes: the working CA and
+    pair stay, so a restart is refused before the stop instead of leaving the manager down."""
+    before, markers = digests(sandbox), _markers(sandbox)
+    check = run(resolver, sandbox, "--check")
+    prestart = run(resolver, sandbox, "--prestart")
+    assert check[0] == 1 and line in check[2], check[2]
+    assert prestart[0] == 1 and line in prestart[2], prestart[2]
+    assert {l for l in check[2].splitlines() if l.startswith("INVALID")} == \
+        {l for l in prestart[2].splitlines() if l.startswith("INVALID")}
+    assert digests(sandbox) == before and _markers(sandbox) == markers
+    shutil.rmtree(sandbox.indexer_export)            # without the export, what is in place is still valid
+    assert run(resolver, sandbox, "--check") == (0, run(resolver, sandbox, "--check")[1], "")
+    return prestart
+
+
+def test_new_ca_with_refused_pair_imports_nothing(resolver, sandbox):
+    sandbox.make_indexer_trust()
+    assert run(resolver, sandbox, "--install")[0] == 0
+    sandbox.make_indexer_trust(key_mismatch=True)          # a new CA, and a pair whose key does not match it
+    _, out, _ = _refused_import(resolver, sandbox,
+                                f"INVALID {sandbox.indexer_export}/manager-client.pem: its key does not match it")
+    assert (f"{certs(sandbox, 'indexer-ca.pem')}: kept; the indexer's CA is imported only with a client pair it "
+            f"issued") in out
+
+
+def test_new_ca_that_does_not_issue_the_staged_pair_is_refused(resolver, sandbox):
+    sandbox.make_indexer_trust()
+    assert run(resolver, sandbox, "--install")[0] == 0
+    os.unlink(certs(sandbox, ".indexer-connector.imported"))       # the pair is now the operator's
+    sandbox.make_indexer_trust()
+    _refused_import(resolver, sandbox, f"INVALID {sandbox.indexer_export}/ca.pem: does not issue the staged "
+                                       f"{certs(sandbox, 'indexer-connector.pem')}; nothing was imported")
+
+
+def test_new_ca_that_does_not_issue_the_kept_pair_is_refused(resolver, sandbox):
+    sandbox.make_indexer_trust()
+    assert run(resolver, sandbox, "--install")[0] == 0
+    sandbox.make_indexer_trust()
+    for name in ("manager-client.pem", "manager-client-key.pem"):  # the export carries a new CA only
+        os.unlink(os.path.join(sandbox.indexer_export, name))
+    _refused_import(resolver, sandbox, f"INVALID {sandbox.indexer_export}/ca.pem: does not issue the kept "
+                                       f"{certs(sandbox, 'indexer-connector.pem')}; nothing was imported")
+
+
+def test_ca_alone_is_imported_when_no_pair_is_in_place(resolver, sandbox):
+    """Nothing to break: the CA is imported and the pair stays missing."""
+    published = sandbox.make_indexer_trust()
+    for name in ("manager-client.pem", "manager-client-key.pem"):
+        os.unlink(os.path.join(sandbox.indexer_export, name))
+    code, _, err = run(resolver, sandbox, "--install")
+    assert code == 0 and read(certs(sandbox, "indexer-ca.pem")) == published["ca"]
+    assert os.path.exists(certs(sandbox, ".indexer-ca.imported"))
+    assert f"MISSING {certs(sandbox, 'indexer-connector.pem')}" in err
+
+
+def test_self_signed_ca_in_the_connector_file_is_not_an_intermediate(resolver, sandbox):
+    """The imported client file ends with its CA. Against another CA of the same name, the refusal names the real
+    reason, instead of the path builder going round that self-signed certificate until it gives up."""
+    sandbox.make_indexer_trust()
+    assert run(resolver, sandbox, "--install")[0] == 0
+    for name in MARKERS:
+        os.unlink(certs(sandbox, name))                             # both staged now
+    other = sandbox.make_indexer_trust()
+    sandbox.write(certs(sandbox, "indexer-ca.pem"), other["ca"], mode=0o640, gid=sandbox.account_gid)
+    code, _, err = run(resolver, sandbox, "--check")
+    assert code == 1 and (f"INVALID {certs(sandbox, 'indexer-connector.pem')}: not issued by "
+                          f"{certs(sandbox, 'indexer-ca.pem')} (signature does not match)") in err, err
+    assert "max depth" not in err
+
+
+@pytest.mark.parametrize("eku,accepted", [([ExtendedKeyUsageOID.CLIENT_AUTH], True),
+                                          ([ExtendedKeyUsageOID.SERVER_AUTH], False)])
+def test_connector_intermediate_purpose(resolver, sandbox, eku, accepted):
+    """An intermediate CA that restricts its extended key usages must allow clientAuth, as OpenSSL requires."""
+    sandbox.make_indexer_trust(via_intermediate=True, intermediate_eku=eku)
+    code, _, err = run(resolver, sandbox, "--install")
+    if accepted:
+        assert code == 0 and err == "", err
+    else:
+        assert (f"INVALID {sandbox.indexer_export}/manager-client.pem: issuer CA: its extendedKeyUsage does not "
+                f"include clientAuth") in err
+        assert not os.path.exists(certs(sandbox, "indexer-connector.pem"))
+

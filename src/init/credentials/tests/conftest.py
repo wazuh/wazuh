@@ -48,9 +48,9 @@ def pool_key():
 
 
 def intermediate(issuer_cert, issuer_key, cn="intermediate-ca", *, days=(-1, 3650), is_ca=True, key_cert_sign=True,
-                 path_length=None):
+                 path_length=None, eku=None):
     """A CA certificate signed by `issuer_cert`/`issuer_key`, or self-signed when both are None. The keyword arguments
-    break one property at a time. Returns (certificate, key)."""
+    break one property at a time; `eku` restricts the CA to those extended key usages. Returns (certificate, key)."""
     key = pool_key()
     now = datetime.datetime.now(datetime.timezone.utc)
     name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, cn)])
@@ -66,6 +66,8 @@ def intermediate(issuer_cert, issuer_key, cn="intermediate-ca", *, days=(-1, 365
                                             crl_sign=key_cert_sign, encipher_only=False, decipher_only=False),
                               critical=True)
                .add_extension(x509.SubjectKeyIdentifier.from_public_key(key.public_key()), critical=False))
+    if eku is not None:
+        builder = builder.add_extension(x509.ExtendedKeyUsage(eku), critical=False)
     return builder.sign(issuer_key if issuer_key is not None else key, hashes.SHA256()), key
 
 
@@ -226,10 +228,11 @@ class Sandbox:
                 handle.write(text)
 
     def make_indexer_trust(self, eku="client", ca_is_ca=True, foreign=False, expired=False, key_mismatch=False,
-                           mode=0o750, via_intermediate=False):
+                           mode=0o750, via_intermediate=False, intermediate_eku=None):
         """What wazuh-indexer publishes on this host for the manager: its CA (export/ca.pem) and a client pair it
         issued (export/manager-client.pem, leaf then CA, and its key). The keyword arguments break one property;
-        `via_intermediate` has an intermediate CA issue the leaf, carried in the client file between leaf and CA.
+        `via_intermediate` has an intermediate CA issue the leaf, carried in the client file between leaf and CA, and
+        `intermediate_eku` restricts that intermediate's extended key usages.
         Returns {"ca": ca_pem, "client": client_pem, "key": key_pem}, plus "leaf" and "intermediate" (PEM) with
         `via_intermediate`."""
         now = datetime.datetime.now(datetime.timezone.utc)
@@ -243,7 +246,7 @@ class Sandbox:
         signer, issuer = ca_key, ca_name
         middle = None
         if via_intermediate:
-            middle, signer = intermediate(ca, ca_key, "wazuh-indexer-intermediate-ca")
+            middle, signer = intermediate(ca, ca_key, "wazuh-indexer-intermediate-ca", eku=intermediate_eku)
             issuer = middle.subject
         if foreign:
             signer = pool_key()

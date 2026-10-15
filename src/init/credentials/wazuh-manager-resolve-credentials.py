@@ -131,6 +131,7 @@ IFA_F_DEPRECATED, IFA_F_TENTATIVE, IFA_F_DADFAILED = 0x20, 0x40, 0x08
 # the resolver requires of the leaf, and keyCertSign on every CA of the path, it checks itself.
 CHAIN_CA_POLICY = ExtensionPolicy.permit_all().require_present(x509.BasicConstraints, Criticality.AGNOSTIC, None)
 CHAIN_LEAF_POLICY = ExtensionPolicy.permit_all()
+PURPOSE_NAMES = {ExtendedKeyUsageOID.SERVER_AUTH: "serverAuth", ExtendedKeyUsageOID.CLIENT_AUTH: "clientAuth"}
 
 MISSING = "MISSING"
 INVALID = "INVALID"
@@ -261,8 +262,9 @@ class Spec:
     """What an entry must be.
 
     kind: "dir" or "file". uid: owner. gid: exact group, or None for any. mode: exact permission bits, or None.
-    forbid: permission bits that must be clear (default: group and other write). For files, the link count must
-    be 1, so a hard link to another file cannot pass for this one.
+    forbid: permission bits that must be clear (default: group and other write). require: permission bits that must
+    be set, for a directory the daemons have to reach. For files, the link count must be 1, so a hard link to
+    another file cannot pass for this one.
     """
 
     kind: str
@@ -270,6 +272,7 @@ class Spec:
     gid: Optional[int] = None
     mode: Optional[int] = None
     forbid: int = 0o022
+    require: int = 0
 
 
 def _group_name(gid: int) -> str:
@@ -292,6 +295,9 @@ def check_stat(st: os.stat_result, spec: Spec, path: str) -> None:
     perms = stat.S_IMODE(st.st_mode)
     if spec.mode is not None and perms != spec.mode:
         raise UnsafeEntry(path, f"mode is {perms:04o}, not {spec.mode:04o}")
+    missing = spec.require & ~perms
+    if missing:
+        raise UnsafeEntry(path, f"mode is {perms:04o}, missing {missing:04o}")
     violated = perms & spec.forbid
     if violated & 0o002:
         raise UnsafeEntry(path, "world-writable")
@@ -581,8 +587,9 @@ class Lookup:
 def conf_spec(paths: Paths) -> Spec:
     """<CONF> is root:<service group>, group-writable by design (authd, remoted and the API write there), never
     world-writable. Being group-writable is the documented exception to rule 1 of #40339: nothing in it is
-    trusted unless it is root's and meets its own specification."""
-    return Spec("dir", uid=0, gid=paths.service_gid(), forbid=0o002)
+    trusted unless it is root's and meets its own specification. The group must keep rwx: without them the daemons
+    can neither write there nor reach certs/ (0770 as installed; 1770 passes too)."""
+    return Spec("dir", uid=0, gid=paths.service_gid(), forbid=0o002, require=0o070)
 
 
 ROOT_FILE = Spec("file")                    # rule 1: root's, not group/world-writable, one link
@@ -879,8 +886,9 @@ CA_KEY_SPEC = Spec("file", forbid=0o077)          # root's private file: no grou
 
 
 def certs_spec(paths: Paths) -> Spec:
-    """certs/: a real directory owned by root (rule 4), readable through the service group, never writable by it."""
-    return Spec("dir", uid=0, gid=paths.service_gid(), forbid=0o022)
+    """certs/: a real directory owned by root (rule 4), exactly 0750 as installed: the daemons open its files by name
+    through the service group, which must never write there."""
+    return Spec("dir", uid=0, gid=paths.service_gid(), mode=0o750)
 
 
 def certs_file_spec(paths: Paths) -> Spec:
@@ -1404,15 +1412,18 @@ def pair_problem(paths: Paths, certs: Dir, name: str,
         if name == "remoted":
             # remoted hands agents certs/root-ca.pem (GET /cacerts) only when the leaf chains to that bundle with
             # nothing else, and an agent holds nothing else: the intermediates of the pair's file do not count.
-            return leaf, chain_problem(leaf, [], anchors, "the manager's CA", now,
+            return leaf, chain_problem(leaf, [], anchors, "the manager's CA", now, ExtendedKeyUsageOID.SERVER_AUTH,
                                        no_path=f"agents are handed {certs.child(BUNDLE)} alone: an intermediate CA "
                                                f"that issued it belongs in that file")
-        return leaf, chain_problem(leaf, intermediates, anchors, "the manager's CA", now)
+        return leaf, chain_problem(leaf, intermediates, anchors, "the manager's CA", now,
+                                   ExtendedKeyUsageOID.SERVER_AUTH)
     return leaf, None
 
 
-def issuer_problem(issuer: x509.Certificate, now: datetime.datetime) -> Optional[str]:
-    """A CA on a leaf's path must be valid now and authorized to sign certificates."""
+def issuer_problem(issuer: x509.Certificate, now: datetime.datetime, purpose: x509.ObjectIdentifier) -> Optional[str]:
+    """A CA on a leaf's path must be valid now, authorized to sign certificates and, when it restricts its
+    extendedKeyUsage, allowed the leaf's purpose. That last rule is OpenSSL's, which every client of these
+    certificates applies along the chain: anyExtendedKeyUsage alone does not grant a purpose."""
     if not issuer.not_valid_before_utc <= now <= issuer.not_valid_after_utc:
         return "expired" if now > issuer.not_valid_after_utc else "not valid yet"
     try:
@@ -1426,16 +1437,28 @@ def issuer_problem(issuer: x509.Certificate, now: datetime.datetime) -> Optional
             return "keyUsage does not include keyCertSign"
     except x509.ExtensionNotFound:
         pass
+    try:
+        if purpose not in issuer.extensions.get_extension_for_class(x509.ExtendedKeyUsage).value:
+            return f"its extendedKeyUsage does not include {PURPOSE_NAMES[purpose]}"
+    except x509.ExtensionNotFound:
+        pass
     return None
 
 
+def _self_signed(cert: x509.Certificate) -> bool:
+    return cert.subject == cert.issuer and _issued_by(cert, cert)
+
+
 def chain_problem(leaf: x509.Certificate, intermediates: List[x509.Certificate], anchors: List[x509.Certificate],
-                  issuer_label: str, now: datetime.datetime,
+                  issuer_label: str, now: datetime.datetime, purpose: x509.ObjectIdentifier,
                   no_path: str = "no path to it from the certificates in the file") -> Optional[str]:
     """Whether `leaf` chains to one of `anchors`, directly or through `intermediates` (the certificates that follow
-    it in its file, never trusted on their own), with every CA of that path valid now and allowed to sign.
-    Historical CAs may remain among the anchors: the path is built through one that is usable now, so a renewed CA
-    is not refused because an expired certificate with the same name and key is listed too."""
+    it in its file, never trusted on their own), with every CA of that path, the anchor included, valid now, allowed
+    to sign and allowed `purpose`. Historical CAs may remain among the anchors: the path is built through one that is
+    usable now, so a renewed CA is not refused because an expired certificate with the same name and key is listed
+    too. A self-signed certificate in the file is not offered as an intermediate: it could only be an anchor, and
+    one with an anchor's name sends the path builder round in circles."""
+    intermediates = [cert for cert in intermediates if not _self_signed(cert)]
     verifier = (PolicyBuilder().store(Store(anchors)).time(now)
                 .extension_policies(ca_policy=CHAIN_CA_POLICY, ee_policy=CHAIN_LEAF_POLICY)
                 .build_client_verifier())
@@ -1445,7 +1468,7 @@ def chain_problem(leaf: x509.Certificate, intermediates: List[x509.Certificate],
         # No usable path. When an anchor signed the leaf itself, say what is wrong with that anchor: it is the
         # certificate the operator has to replace.
         signers = [anchor for anchor in anchors if _issued_by(leaf, anchor)]
-        problems = [problem for problem in (issuer_problem(signer, now) for signer in signers) if problem]
+        problems = [problem for problem in (issuer_problem(signer, now, purpose) for signer in signers) if problem]
         if problems:
             return f"issuer CA: {problems[0]}"
         reason = str(exc).split("validation failed: ", 1)[-1].split(" (encountered processing", 1)[0].strip()
@@ -1454,7 +1477,7 @@ def chain_problem(leaf: x509.Certificate, intermediates: List[x509.Certificate],
             reason = no_path
         return f"not issued by {issuer_label} ({reason})"
     for ca in chain[1:]:
-        problem = issuer_problem(ca, now)
+        problem = issuer_problem(ca, now, purpose)
         if problem:
             return f"issuer CA: {problem}"
     return None
@@ -1627,7 +1650,7 @@ def connector_problem(cert_data: bytes, key_data: bytes, cas: List[x509.Certific
         usages = []
     if ExtendedKeyUsageOID.CLIENT_AUTH not in usages:
         return "has no extendedKeyUsage with clientAuth"
-    return chain_problem(leaf, intermediates, cas, ca_path, now)
+    return chain_problem(leaf, intermediates, cas, ca_path, now, ExtendedKeyUsageOID.CLIENT_AUTH)
 
 
 def open_indexer_source(paths: Paths, report: Report):
@@ -1678,21 +1701,34 @@ def _write_unit(paths: Paths, certs: Dir, unit: ImportUnit, contents: Dict[str, 
         write_file(certs, name, contents[name], 0o640, 0, gid)
 
 
-def _handle_unit(paths: Paths, certs: Dir, source, unit: ImportUnit, validate, report: Report, *, write: bool = True):
-    """Apply the import rule to one unit and return its validated contents (name -> bytes), or None.
-    With write=False, select and validate the same contents without changing files or markers."""
+@dataclasses.dataclass(frozen=True)
+class Selection:
+    """What a unit will hold after this run. `contents` (name -> bytes) is None when the unit is refused or missing;
+    `candidate` is what was validated, kept even when it failed; `origin` says where it comes from: staged, kept
+    (imported earlier), incoming (from the export, still to be written), missing, or None (refused, unsafe);
+    `pending` holds the write still to do for an incoming unit, as (marker already present, progress line)."""
+
+    contents: Optional[Dict[str, bytes]]
+    origin: Optional[str]
+    candidate: Optional[Dict[str, bytes]] = None
+    pending: Optional[Tuple[bool, str]] = None
+
+
+def _select_unit(paths: Paths, certs: Dir, source, unit: ImportUnit, validate, report: Report) -> Selection:
+    """Apply the import rule to one unit and report what it finds, without writing anything: the caller decides
+    which selections are written, once it knows they fit together."""
     state = import_state(certs, unit)
     if state == "imported":
         try:
             read_file(certs, unit.marker, certs_file_spec(paths))
         except UnsafeEntry as exc:
             report.unsafe(exc)
-            return None
+            return Selection(None, None)
     if state == "half":
         present = [n for n in unit.files if _exists(certs, n)][0]
         missing = [n for n in unit.files if not _exists(certs, n)][0]
         report.problem(INVALID, certs.child(present), f"half a pair ({missing} is missing)")
-        return None
+        return Selection(None, None)
     complete = all(_exists(certs, name) for name in unit.files)
     current = None
     if complete:
@@ -1700,40 +1736,56 @@ def _handle_unit(paths: Paths, certs: Dir, source, unit: ImportUnit, validate, r
             current = {name: read_file(certs, name, certs_file_spec(paths)) for name in unit.files}
         except UnsafeEntry as exc:
             report.unsafe(exc)
-            return None
+            return Selection(None, None)
     blamed = certs.child(unit.files[-1])
     if state == "staged":
         problem = validate(current)
         if problem:
             report.problem(INVALID, blamed, problem)
-            return None
+            return Selection(None, "staged", current)
         report.progress(f"{blamed}: staged; kept as it is")
-        return current
+        return Selection(current, "staged", current)
     incoming = read_source(source, unit, report)
     source_cert = os.path.join(paths.indexer_export, unit.sources[-1])
     if complete and state == "imported" and (not isinstance(incoming, dict) or incoming == current):
         problem = validate(current)
         if problem:
             report.problem(INVALID, blamed, problem)
-            return None
+            return Selection(None, "kept", current)
         report.progress(f"{blamed}: imported earlier; unchanged")
-        return current
+        return Selection(current, "kept", current)
     if isinstance(incoming, dict):
         problem = validate(incoming)
         if problem:
             report.problem(INVALID, source_cert, problem)
-            return None
-        if write:
-            _write_unit(paths, certs, unit, incoming, state == "imported")
-        report.progress(f"{blamed}: {'re-imported' if complete else 'imported'} from {paths.indexer_export}")
-        return incoming
+            return Selection(None, "incoming", incoming)
+        verb = "re-imported" if complete else "imported"
+        return Selection(incoming, "incoming", incoming,
+                         (state == "imported", f"{blamed}: {verb} from {paths.indexer_export}"))
     if incoming is None:
         report.problem(MISSING, blamed, unit.missing)
-    return None
+        return Selection(None, "missing")
+    return Selection(None, None)
+
+
+def _chains_to_current_ca(paths: Paths, certs: Dir, pair: Dict[str, bytes]) -> bool:
+    """Whether `pair` is a valid client pair under the indexer-ca.pem in place now (read only, problems ignored)."""
+    if not _exists(certs, INDEXER_CA):
+        return False
+    try:
+        cas, problem = indexer_ca_problem(read_file(certs, INDEXER_CA, certs_file_spec(paths)))
+    except (UnsafeEntry, OSError):
+        return False
+    return problem is None and connector_problem(pair[CONNECTOR], pair[CONNECTOR_KEY], cas,
+                                                 certs.child(INDEXER_CA)) is None
 
 
 def step_indexer_trust(paths: Paths, certs: Dir, report: Report, *, write: bool = True) -> None:
-    """The indexer's CA, then the client pair checked against whichever CA is now in place (staged or imported)."""
+    """The indexer's CA and the client pair, selected first and written only as a combination that is valid: the
+    pair that will be in place must chain to the CA that will be in place. An export whose new CA does not issue the
+    pair in place, or whose own pair is refused, changes nothing, so a working connector is never broken by an
+    import. Each written unit still gets its marker before its files, so an interrupted import is finished later.
+    With write=False, the same selection and the same report, nothing written."""
     source = open_indexer_source(paths, report)
     # An export holding a single file root may not trust is suspect as a whole: nothing is imported from it in
     # this run, and what is already in certs/ stays (a CA imported alone could leave the kept pair without its issuer).
@@ -1743,15 +1795,35 @@ def step_indexer_trust(paths: Paths, certs: Dir, report: Report, *, write: bool 
         source = "unsafe"
     try:
         ca_path = certs.child(INDEXER_CA)
-        ca_contents = _handle_unit(paths, certs, source, CA_UNIT,
-                                   lambda c: indexer_ca_problem(c[INDEXER_CA])[1], report, write=write)
-        if ca_contents is None:
+        ca = _select_unit(paths, certs, source, CA_UNIT, lambda c: indexer_ca_problem(c[INDEXER_CA])[1], report)
+        if ca.contents is None:
             if import_state(certs, PAIR_UNIT) == "absent" and read_source(source, PAIR_UNIT, report) is None:
                 report.problem(MISSING, certs.child(CONNECTOR), PAIR_UNIT.missing)
             return
-        cas, _ = indexer_ca_problem(ca_contents[INDEXER_CA])
-        _handle_unit(paths, certs, source, PAIR_UNIT,
-                     lambda c: connector_problem(c[CONNECTOR], c[CONNECTOR_KEY], cas, ca_path), report, write=write)
+        cas, _ = indexer_ca_problem(ca.contents[INDEXER_CA])
+
+        def validate_pair(c):
+            return connector_problem(c[CONNECTOR], c[CONNECTOR_KEY], cas, ca_path)
+
+        if ca.pending:
+            # Decide before reporting: a pair in place that only the current CA issues is the new CA's problem.
+            probe = _select_unit(paths, certs, source, PAIR_UNIT, validate_pair,
+                                 Report(quiet=True, out=io.StringIO(), err=io.StringIO()))
+            if probe.contents is None and probe.origin in ("staged", "kept") \
+                    and _chains_to_current_ca(paths, certs, probe.candidate):
+                report.problem(INVALID, os.path.join(paths.indexer_export, SOURCE_CA),
+                               f"does not issue the {probe.origin} {certs.child(CONNECTOR)}; nothing was imported")
+                return
+        pair = _select_unit(paths, certs, source, PAIR_UNIT, validate_pair, report)
+        if ca.pending and pair.contents is None and pair.origin != "missing":
+            report.progress(f"{ca_path}: kept; the indexer's CA is imported only with a client pair it issued")
+            return
+        for unit, selection in ((CA_UNIT, ca), (PAIR_UNIT, pair)):
+            if selection.pending:
+                marker_present, line = selection.pending
+                if write:
+                    _write_unit(paths, certs, unit, selection.contents, marker_present)
+                report.progress(line)
     finally:
         if isinstance(source, Dir):
             source.close()
@@ -1795,21 +1867,18 @@ def _check_indexer_current(paths: Paths, certs: Dir, report: Report) -> None:
 
 
 def check_indexer_trust(paths: Paths, certs: Dir, report: Report) -> None:
-    """A broken imported generation is recoverable only if the import rules produce a valid CA and pair.
-    This dry run uses the same validation and staged/imported distinction as --prestart, without writing."""
+    """--check's verdict on the indexer trust equals --prestart's, minus MISSING: the same selection runs without
+    writing, and whatever it would refuse is refused here, before a restart stops anything. A broken imported
+    generation that the selection repairs (an interrupted import) is let through."""
     current = Report(quiet=True, out=io.StringIO(), err=io.StringIO())
     _check_indexer_current(paths, certs, current)
-    if current.has(INVALID) and not current.has(UNSAFE):
-        recovery = Report(quiet=True, out=io.StringIO(), err=io.StringIO())
-        step_indexer_trust(paths, certs, recovery, write=False)
-        if not recovery.has():
-            report.progress("indexer trust: interrupted import can be recovered at --prestart")
-            return
-        # Do not hide safety failures found while reading the recovery inputs.
-        for kind, subject, reason in recovery.problems:
-            if kind == UNSAFE:
-                report.problem(kind, subject, reason)
-    for kind, subject, reason in current.problems:
+    selection = Report(quiet=True, out=io.StringIO(), err=io.StringIO())
+    step_indexer_trust(paths, certs, selection, write=False)
+    refused = [problem for problem in selection.problems if problem[0] != MISSING]
+    if current.has(INVALID) and not current.has(UNSAFE) and not refused:
+        report.progress("indexer trust: interrupted import can be recovered at --prestart")
+        return
+    for kind, subject, reason in current.problems + refused:
         report.problem(kind, subject, reason)
 
 

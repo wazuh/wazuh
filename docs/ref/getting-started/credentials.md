@@ -28,7 +28,7 @@ mode: an entry that does not match is refused (see [File safety](#file-safety)).
 
 | Path | Owner, mode | Written by | Content |
 |------|-------------|------------|---------|
-| `<CONF>/` | `root:wazuh-manager 0770` | installer | the configuration directory |
+| `<CONF>/` | `root:wazuh-manager 0770` (the group needs `rwx`; `1770` is accepted) | installer | the configuration directory |
 | `<CONF>/local.env` | `root`, not group- or world-writable (use `0600 root:root`) | you | values you supply ([The keys](#the-keys)) |
 | `<CONF>/ca/` | `root:root 0700` | resolver | the manager's CA |
 | `<CONF>/ca/root-ca.pem` | `root:root 0644` | resolver or you | the CA certificate |
@@ -37,7 +37,7 @@ mode: an entry that does not match is refused (see [File safety](#file-safety)).
 | `<CONF>/export/` | `root:root 0700` | resolver | what the manager publishes for the dashboard on the same host |
 | `<CONF>/export/credentials.env` | `root:root 0600` | resolver | the two Server API passwords |
 | `<CONF>/export/ca.pem` | `root:root 0644` | resolver | copy of `ca/root-ca.pem`: what clients verify the Server API with |
-| `<CONF>/certs/` | `root:wazuh-manager 0750` | installer | TLS material the daemons read |
+| `<CONF>/certs/` | `root:wazuh-manager 0750`, exactly | installer | TLS material the daemons read |
 | `<CONF>/certs/root-ca.pem` | `root:wazuh-manager 0640` | resolver (only when absent) | the agents' CA bundle, served by remoted |
 | `<CONF>/certs/remoted.pem`, `remoted-key.pem` | `root:wazuh-manager 0640` | resolver or you | agent listener pair |
 | `<CONF>/certs/apid.pem`, `apid-key.pem` | `root:wazuh-manager 0640` | resolver or you | Server API pair |
@@ -210,8 +210,11 @@ resolver trusts nothing in it by name:
 
 - every entry is opened from its parent directory without following a link, and checked on the opened file;
 - a file it reads must be root's, not group- or world-writable, with a single link;
-- `ca/` and `export/` must be root's `0700` directories, and `certs/` root's, group `wazuh-manager`, not writable
-  by the group;
+- `ca/` and `export/` must be root's `0700` directories, and `certs/` root's, group `wazuh-manager`, mode exactly
+  `0750`: the daemons open its files by name through that group, which never writes there;
+- `<CONF>` itself must leave its group `rwx`: the daemons write there and cross it to reach `certs/`. A mode that
+  locks them out (`0750`, `0700`) is refused as `UNSAFE /etc/wazuh-manager: mode is 0750, missing 0020`, so the start stops on
+  the resolver's line instead of on a daemon that cannot read its certificate;
 - anything in `certs/` that root does not own is refused: only root can write there, so such an entry was
   planted;
 - `ca/` and `export/` have the same owner and mode, so they are told apart by what they hold. Either one holding
@@ -271,8 +274,11 @@ At every other moment a pair is only checked:
 - `remoted.pem` must chain to a certificate of `certs/root-ca.pem` **on its own**: agents receive that file alone
   (`GET /cacerts`), so an intermediate CA that issued the remoted leaf goes in `certs/root-ca.pem`, where it is
   trusted as it is. The intermediates in `remoted.pem` are still sent in the handshake but do not count here;
-- every CA on that path must be valid now, `CA:TRUE` and allowed to sign certificates (`keyCertSign`, when it has a
-  `keyUsage`): a pair signed only by an expired rotation CA kept in the bundle is refused.
+- every CA on that path, the root included, must be valid now, `CA:TRUE`, allowed to sign certificates
+  (`keyCertSign`, when it has a `keyUsage`) and, when it restricts its `extendedKeyUsage`, allowed `serverAuth`
+  (`anyExtendedKeyUsage` alone is not enough, as for OpenSSL, which agents and the dashboard use). A pair signed only
+  by an expired rotation CA kept in the bundle is refused, and so is one under a CA limited to `clientAuth`
+  (`issuer CA: its extendedKeyUsage does not include serverAuth`).
 
 A pair that does not chain is reported as `not issued by the manager's CA`, followed by the reason in brackets, for
 example `(no path to it from the certificates in the file)` when an intermediate is missing from `apid.pem`, or
@@ -315,9 +321,21 @@ The indexer CA and the client pair follow one rule, decided by a marker file in 
 
 The CA file must hold CA certificates inside their validity window; an intermediate CA kept there is trusted as it
 is. The client pair must chain to one of them, directly or through intermediate CAs that follow the leaf in
-`indexer-connector.pem`. Every CA on the path must be valid now and allowed to sign. The leaf must be inside its
-window, not be a CA, match its key, and carry an `extendedKeyUsage` with `clientAuth`. A pair without it is
-refused.
+`indexer-connector.pem`. Every CA on the path must be valid now, allowed to sign and, when it restricts its
+`extendedKeyUsage`, allowed `clientAuth`. The leaf must be inside its window, not be a CA, match its key, and carry
+an `extendedKeyUsage` with `clientAuth`. A pair without it is refused.
+
+The CA and the pair are taken from the export together or not at all: the pair that will be in place must chain
+to the CA that will be in place. An export whose new CA comes with a pair that is refused, or that does not issue the
+pair already in place, changes nothing, and is reported against the export:
+
+```text
+INVALID /etc/wazuh-indexer/export/manager-client.pem: its key does not match it
+INVALID /etc/wazuh-indexer/export/ca.pem: does not issue the staged /etc/wazuh-manager/certs/indexer-connector.pem; nothing was imported
+```
+
+`--check` reports the same refusal, so a `restart` is refused before anything is stopped and the manager keeps
+running on the material in place. When no pair is in place at all, the CA is imported alone and the pair stays `MISSING`.
 
 An export that holds any file root may not trust is refused as a whole: nothing is imported from it in that run.
 An import interrupted halfway, with the marker written but not every file, is recognised: `--check` lets the start

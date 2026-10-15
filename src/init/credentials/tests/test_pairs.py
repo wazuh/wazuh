@@ -389,6 +389,44 @@ def test_remoted_intermediate_only_in_its_file_refused(resolver, sandbox, mode):
             f"{sandbox.certs}/root-ca.pem alone: an intermediate CA that issued it belongs in that file)") in err
 
 
+ANY_EKU = x509.ObjectIdentifier("2.5.29.37.0")
+
+
+@pytest.mark.parametrize("mode", ["--check", "--prestart"])
+@pytest.mark.parametrize("eku,accepted", [
+    ([ExtendedKeyUsageOID.SERVER_AUTH], True),
+    ([ExtendedKeyUsageOID.SERVER_AUTH, ExtendedKeyUsageOID.CLIENT_AUTH], True),
+    ([ExtendedKeyUsageOID.CLIENT_AUTH], False),
+    ([ANY_EKU], False),                              # OpenSSL does not take anyExtendedKeyUsage as serverAuth
+])
+def test_intermediate_purpose(resolver, sandbox, mode, eku, accepted):
+    """A CA on the path that restricts its extended key usages must allow serverAuth."""
+    sandbox.stage_ca()
+    root, root_key = ca_cert(sandbox), ca_key(sandbox)
+    middle, middle_key = intermediate(root, root_key, eku=eku)
+    _stage_pair(sandbox, "apid", middle, middle_key, chain=(middle,))
+    code, _, err = run(resolver, sandbox, mode)
+    if accepted:
+        assert code == 0 and err == "", err
+    else:
+        assert code == 1 and (f"INVALID {sandbox.certs}/apid.pem: issuer CA: its extendedKeyUsage does not include "
+                              f"serverAuth") in err, err
+
+
+@pytest.mark.parametrize("mode", ["--check", "--prestart"])
+def test_anchor_purpose(resolver, sandbox, mode):
+    """The rule holds for the anchor too: a CA of the agents' bundle restricted to clientAuth cannot vouch for
+    remoted."""
+    sandbox.stage_ca()
+    restricted, restricted_key = intermediate(None, None, "client-only-root-ca", eku=[ExtendedKeyUsageOID.CLIENT_AUTH])
+    bundle = ca_cert(sandbox).public_bytes(PEM) + restricted.public_bytes(PEM)
+    sandbox.write(os.path.join(sandbox.certs, "root-ca.pem"), bundle, mode=0o640, gid=sandbox.account_gid)
+    _stage_pair(sandbox, "remoted", restricted, restricted_key)
+    code, _, err = run(resolver, sandbox, mode)
+    assert code == 1 and (f"INVALID {sandbox.certs}/remoted.pem: issuer CA: its extendedKeyUsage does not include "
+                          f"serverAuth") in err, err
+
+
 def test_anchor_only_missing(resolver, sandbox):
     sandbox.stage_ca(key=False, pairs=False)
     code, _, err = run(resolver, sandbox, "--install")

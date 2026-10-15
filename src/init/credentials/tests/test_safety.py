@@ -78,7 +78,10 @@ def test_read_refuses_oversized(resolver, sandbox):
 
 @pytest.mark.parametrize("mode,owner,group,link,expected", [
     (0o770, "root", "service", False, None),
-    (0o750, "root", "service", False, None),
+    (0o1770, "root", "service", False, None),
+    (0o750, "root", "service", False, "mode is 0750, missing 0020"),     # the daemons write in <CONF>
+    (0o710, "root", "service", False, "mode is 0710, missing 0060"),
+    (0o700, "root", "service", False, "mode is 0700, missing 0070"),     # nor could they reach certs/
     (0o777, "root", "service", False, "world-writable"),
     (0o770, "account", "service", False, "owned by uid"),
     (0o770, "root", "root", False, "group is root"),
@@ -169,3 +172,22 @@ def test_remove_entry_never_follows(resolver, sandbox):
         assert resolver.remove_entry(conf, "link") is True
         assert resolver.remove_entry(conf, "link") is False
     assert os.path.exists(target)
+
+
+@pytest.mark.parametrize("mode,expected", [
+    (0o750, None),
+    (0o700, "mode is 0700, not 0750"),               # the daemons could not open the pairs
+    (0o710, "mode is 0710, not 0750"),
+    (0o740, "mode is 0740, not 0750"),
+    (0o755, "mode is 0755, not 0750"),
+])
+def test_certs_spec(resolver, sandbox, mode, expected):
+    """certs/ is exactly 0750: the service group opens its files by name and never writes there."""
+    os.chmod(sandbox.certs, mode)
+    with open_conf(resolver, sandbox) as conf:
+        if expected is None:
+            resolver.open_dir(conf, "certs", resolver.certs_spec(sandbox.paths)).close()
+            return
+        with pytest.raises(resolver.UnsafeEntry, match=expected):
+            resolver.open_dir(conf, "certs", resolver.certs_spec(sandbox.paths))
+
