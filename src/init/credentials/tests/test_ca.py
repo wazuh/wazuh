@@ -350,3 +350,16 @@ def test_ca_hidden_with_material(resolver, sandbox):
     code, _, err = run(resolver, sandbox, "--install")
     assert "stage the CA that issued the pairs" in err
     assert os.listdir(os.path.join(sandbox.conf, "ca")) == []
+
+
+def test_unparsable_staged_ca_is_invalid(resolver, sandbox):
+    """A staged CA certificate whose extensions cannot be parsed is INVALID with its path, never an internal error."""
+    from conftest import unparsable_certificate
+    sandbox.stage_ca(key=False, pairs=False)
+    bad, _ = unparsable_certificate(None, None, "broken-staged-ca")
+    sandbox.write(ca_path(sandbox, "root-ca.pem"), bad, mode=0o644)
+    for mode in ("--check", "--install"):
+        code, _, err = run(resolver, sandbox, mode)
+        assert f"INVALID {ca_path(sandbox, 'root-ca.pem')}: a certificate it holds cannot be parsed (" in err, err
+        assert "internal error" not in err and code == (1 if mode == "--check" else 0), (mode, code, err)
+

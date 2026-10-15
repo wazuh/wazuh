@@ -30,7 +30,7 @@ import pytest
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
+from cryptography.x509.oid import ExtendedKeyUsageOID, ExtensionOID, NameOID
 
 # Test fixtures need many RSA keys and generating them dominated the suite's time. They come from a pool built once
 # per session; draws are consecutive, so the keys of one fixture are always distinct. The program's own minting and
@@ -69,6 +69,33 @@ def intermediate(issuer_cert, issuer_key, cn="intermediate-ca", *, days=(-1, 365
     if eku is not None:
         builder = builder.add_extension(x509.ExtendedKeyUsage(eku), critical=False)
     return builder.sign(issuer_key if issuer_key is not None else key, hashes.SHA256()), key
+
+
+def unparsable_certificate(issuer_cert=None, issuer_key=None, cn="unparsable", *, duplicate=False):
+    """A certificate whose extensions cannot be parsed: a basicConstraints holding garbage, or (`duplicate`) the same
+    extension twice, made by patching keyUsage's OID into subjectKeyIdentifier's in the DER (the signature no longer
+    matches, which does not matter: parsing fails first). Signed by `issuer_cert`/`issuer_key`, or self-signed.
+    Returns (PEM bytes, key)."""
+    key = pool_key()
+    now = datetime.datetime.now(datetime.timezone.utc)
+    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, cn)])
+    builder = (x509.CertificateBuilder().subject_name(name)
+               .issuer_name(issuer_cert.subject if issuer_cert is not None else name)
+               .public_key(key.public_key()).serial_number(x509.random_serial_number())
+               .not_valid_before(now - datetime.timedelta(days=1)).not_valid_after(now + datetime.timedelta(days=30)))
+    if duplicate:
+        builder = (builder.add_extension(x509.SubjectKeyIdentifier.from_public_key(key.public_key()), critical=False)
+                   .add_extension(x509.KeyUsage(digital_signature=True, content_commitment=False, key_encipherment=True,
+                                                data_encipherment=False, key_agreement=False, key_cert_sign=False,
+                                                crl_sign=False, encipher_only=False, decipher_only=False), critical=True))
+    else:
+        builder = builder.add_extension(x509.UnrecognizedExtension(ExtensionOID.BASIC_CONSTRAINTS, b"\x01\x02\x03"),
+                                        critical=True)
+    der = builder.sign(issuer_key if issuer_key is not None else key, hashes.SHA256()).public_bytes(
+        serialization.Encoding.DER)
+    if duplicate:
+        der = der.replace(b"\x06\x03\x55\x1d\x0f", b"\x06\x03\x55\x1d\x0e", 1)
+    return x509.load_der_x509_certificate(der).public_bytes(serialization.Encoding.PEM), key
 
 
 PROGRAM = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),

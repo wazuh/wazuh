@@ -105,6 +105,7 @@ BUNDLE = "root-ca.pem"                    # certs/root-ca.pem: the agents' CA bu
 SERVER_PAIR_FILES = ("remoted.pem", "remoted-key.pem", "apid.pem", "apid-key.pem")
 NODE_NAME_VAR = "WAZUH_MANAGER_NODE_NAME"
 CA_COMMON_NAME_PREFIX = "wazuh-manager-"
+COMMON_NAME_MAX = 64                       # X.520 ub-common-name: what cryptography accepts in a CN
 CERT_VALIDITY_DAYS = 3650
 CERT_BACKDATE = datetime.timedelta(days=1)
 REMOTED_SANS_VAR = "WAZUH_MANAGER_REMOTED_CERT_SANS"   # the agent listener's pair
@@ -950,6 +951,18 @@ def _spki(public_key) -> bytes:
     return public_key.public_bytes(serialization.Encoding.DER, serialization.PublicFormat.SubjectPublicKeyInfo)
 
 
+def parse_problem(certs: List[x509.Certificate]) -> Optional[str]:
+    """Whether every certificate parses completely. cryptography reads extensions lazily, so a malformed or
+    duplicated one only fails on first access; asking here turns that into a verdict on the file instead of an
+    exception in the middle of a step."""
+    for cert in certs:
+        try:
+            cert.extensions
+        except (ValueError, x509.DuplicateExtension) as exc:
+            return f"a certificate it holds cannot be parsed ({exc})"
+    return None
+
+
 def ca_certificate_problem(data: bytes) -> Tuple[Optional[x509.Certificate], Optional[str]]:
     """Parse a CA file: exactly one certificate, self-signed, CA:TRUE, inside its validity window."""
     try:
@@ -958,6 +971,9 @@ def ca_certificate_problem(data: bytes) -> Tuple[Optional[x509.Certificate], Opt
         return None, "not a PEM certificate"
     if len(certs) != 1:
         return None, f"holds {len(certs)} certificates, not one"
+    problem = parse_problem(certs)
+    if problem:
+        return None, problem
     cert = certs[0]
     try:
         if cert.subject != cert.issuer:
@@ -1097,7 +1113,13 @@ def check_bundle(paths: Paths, certs: Dir, state: CaState, report: Report, mode:
         elif mode != "check":
             report.problem(MISSING, certs.child(BUNDLE), "the agents' CA bundle is missing; reinstall, or stage it")
         return
-    if not bundle_contains(data, state.cert):
+    try:
+        problem = parse_problem(x509.load_pem_x509_certificates(data))
+    except ValueError:
+        problem = None                                   # bundle_contains reports a bundle with no certificate
+    if problem:
+        report.problem(INVALID, certs.child(BUNDLE), problem)
+    elif not bundle_contains(data, state.cert):
         report.problem(INVALID, certs.child(BUNDLE), f"does not contain {os.path.join(paths.conf, CA_DIR, CA_CERT)}")
 
 
@@ -1119,7 +1141,7 @@ def step_own_ca(paths: Paths, conf: Dir, certs: Dir, ca: Dir, lookup: Lookup, re
         node = node_name(lookup, report)
         if node is None:
             return None
-        if len(CA_COMMON_NAME_PREFIX + node) > 64:
+        if len(CA_COMMON_NAME_PREFIX + node) > COMMON_NAME_MAX:
             report.problem(INVALID, NODE_NAME_VAR, "too long for the CA's common name (64 characters at most)")
             return None
         state = mint_ca(ca, node)
@@ -1388,6 +1410,9 @@ def pair_problem(paths: Paths, certs: Dir, name: str,
         leaf, *intermediates = x509.load_pem_x509_certificates(cert_data)
     except ValueError:
         return None, "not a PEM certificate"
+    problem = parse_problem([leaf, *intermediates])
+    if problem:
+        return None, problem
     key, problem = ca_key_problem(key_data, leaf)
     if problem:
         return leaf, problem.replace(CA_CERT, f"{name}.pem") if "match" in problem else f"the key is {problem}"
@@ -1503,7 +1528,10 @@ def pair_anchors(paths: Paths, certs: Dir, ca: CaState) -> Dict[str, List[x509.C
     CA, the one export/ca.pem hands the dashboard."""
     remoted = [ca.cert]
     try:
-        remoted = x509.load_pem_x509_certificates(read_file(certs, BUNDLE, certs_file_spec(paths))) or remoted
+        bundle = x509.load_pem_x509_certificates(read_file(certs, BUNDLE, certs_file_spec(paths)))
+        # A certificate of the bundle that does not parse is left out (check_bundle reports the bundle), so the
+        # chain test never reads it.
+        remoted = [cert for cert in bundle if parse_problem([cert]) is None] or remoted
     except (FileNotFoundError, UnsafeEntry, ValueError):
         pass
     return {"remoted": remoted, "apid": [ca.cert]}
@@ -1540,6 +1568,13 @@ def step_server_pairs(paths: Paths, certs: Dir, ca: CaState, lookup: Lookup, rep
         return
     node = node_name(lookup, report)
     if node is None:
+        return
+    if len(node) > COMMON_NAME_MAX:
+        # Only WAZUH_MANAGER_NODE_NAME can get here: a discovered host name is one DNS label (63 at most).
+        found = lookup.get(NODE_NAME_VAR)
+        source = f"; set in {found[1]}" if found is not None else ""
+        report.problem(INVALID, NODE_NAME_VAR,
+                       f"too long for a certificate's common name ({COMMON_NAME_MAX} characters at most{source})")
         return
     lists = resolve_san_lists(paths, lookup, node, to_issue, report)
     if lists is None:
@@ -1610,6 +1645,9 @@ def indexer_ca_problem(data: bytes) -> Tuple[Optional[List[x509.Certificate]], O
         certs = x509.load_pem_x509_certificates(data)
     except ValueError:
         return None, "not a PEM certificate"
+    problem = parse_problem(certs)
+    if problem:
+        return None, problem
     now = _now()
     for cert in certs:
         try:
@@ -1633,6 +1671,9 @@ def connector_problem(cert_data: bytes, key_data: bytes, cas: List[x509.Certific
         leaf, *intermediates = x509.load_pem_x509_certificates(cert_data)
     except ValueError:
         return "not a PEM certificate"
+    problem = parse_problem([leaf, *intermediates])
+    if problem:
+        return problem
     _, problem = ca_key_problem(key_data, leaf)
     if problem:
         return "its key does not match it" if "match" in problem else f"its key is {problem}"

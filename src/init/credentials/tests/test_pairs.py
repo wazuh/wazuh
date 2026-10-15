@@ -17,7 +17,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import ExtendedKeyUsageOID, ExtensionOID, NameOID
 
-from conftest import intermediate, pool_key
+from conftest import intermediate, pool_key, unparsable_certificate
 
 IDX = {"WAZUH_INDEXER_MANAGER_PASSWORD": "Idx.Passw0rd-789"}
 PAIRS = ("remoted", "apid")
@@ -425,6 +425,69 @@ def test_anchor_purpose(resolver, sandbox, mode):
     code, _, err = run(resolver, sandbox, mode)
     assert code == 1 and (f"INVALID {sandbox.certs}/remoted.pem: issuer CA: its extendedKeyUsage does not include "
                           f"serverAuth") in err, err
+
+
+# ---------------------------------------------------------------- inputs that are verdicts, never internal errors
+
+PARSE_ERROR = "a certificate it holds cannot be parsed"
+
+
+def test_long_node_name_is_refused_before_issuance(resolver, sandbox):
+    """With a CA staged by the operator, a node name over 64 characters (a valid DNS name with dots) cannot be a
+    certificate's common name: nothing is issued, the variable is named, and the rest of the run still happens."""
+    sandbox.make_indexer_trust()
+    sandbox.stage_ca(pairs=False)
+    name = "a" * 40 + "." + "b" * 40
+    code, _, err = run(resolver, sandbox, "--install", environ={"WAZUH_MANAGER_NODE_NAME": name})
+    assert code == 0 and "internal error" not in err, err
+    assert ("INVALID WAZUH_MANAGER_NODE_NAME: too long for a certificate's common name (64 characters at most; "
+            "set in the environment)") in err, err
+    assert not any(os.path.exists(os.path.join(sandbox.certs, f)) for f in ("remoted.pem", "apid.pem"))
+    assert os.path.exists(os.path.join(sandbox.certs, "indexer-connector.pem"))
+
+
+def test_64_character_node_name_is_accepted(resolver, sandbox):
+    sandbox.make_indexer_trust()
+    sandbox.stage_ca(pairs=False)
+    name = "a" * 31 + "." + "b" * 32
+    assert len(name) == 64
+    code, _, err = run(resolver, sandbox, "--install", environ={"WAZUH_MANAGER_NODE_NAME": name})
+    assert code == 0 and err == "", err
+    for pair in PAIRS:
+        leaf = cert_of(sandbox, pair)[0]
+        assert leaf.subject.get_attributes_for_oid(NameOID.COMMON_NAME)[0].value == name
+
+
+@pytest.mark.parametrize("case", ["remoted leaf", "apid leaf", "apid intermediate", "remoted duplicated extension",
+                                  "bundle certificate"])
+def test_unparsable_certificate_is_invalid(resolver, sandbox, case):
+    """A certificate whose extensions cannot be parsed is INVALID with its path, under --check and --install alike,
+    and the install goes on with its other steps."""
+    sandbox.make_indexer_trust()
+    sandbox.stage_ca()
+    root, root_key = ca_cert(sandbox), ca_key(sandbox)
+    target = os.path.join(sandbox.certs, "remoted.pem")
+    if case in ("remoted leaf", "remoted duplicated extension", "apid leaf"):
+        name = "apid" if case == "apid leaf" else "remoted"
+        target = os.path.join(sandbox.certs, f"{name}.pem")
+        pem, key = unparsable_certificate(root, root_key, "node1", duplicate=case.endswith("extension"))
+        sandbox.write(target, pem, mode=0o640, gid=sandbox.account_gid)
+        sandbox.write(os.path.join(sandbox.certs, f"{name}-key.pem"),
+                      key.private_bytes(PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()),
+                      mode=0o640, gid=sandbox.account_gid)
+    elif case == "apid intermediate":
+        target = os.path.join(sandbox.certs, "apid.pem")
+        bad, _ = unparsable_certificate(root, root_key, "broken-intermediate")
+        sandbox.write(target, open(target, "rb").read() + bad, mode=0o640, gid=sandbox.account_gid)
+    else:
+        target = os.path.join(sandbox.certs, "root-ca.pem")
+        bad, _ = unparsable_certificate(None, None, "broken-rotation-ca")
+        sandbox.write(target, open(target, "rb").read() + bad, mode=0o640, gid=sandbox.account_gid)
+    code, _, err = run(resolver, sandbox, "--check")
+    assert code == 1 and f"INVALID {target}: {PARSE_ERROR} (" in err and "internal error" not in err, err
+    code, _, err = run(resolver, sandbox, "--install")
+    assert code == 0 and f"INVALID {target}: {PARSE_ERROR} (" in err and "internal error" not in err, err
+    assert os.path.exists(os.path.join(sandbox.certs, "indexer-connector.pem"))      # the later step still ran
 
 
 def test_anchor_only_missing(resolver, sandbox):

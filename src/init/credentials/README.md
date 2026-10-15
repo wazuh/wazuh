@@ -23,7 +23,7 @@ developer side.
 
 | ID | Requirement | Status |
 |----|-------------|--------|
-| RF-1 | Five modes: `--install`, `--upgrade` (both exit 0 whatever happens), `--prestart` (default) and `--check` (exit 1 on any problem), `--clear`; exit 2 for usage errors, a non-root caller, a held lock, an internal error | kept |
+| RF-1 | Five modes: `--install`, `--upgrade` (both exit 0 whatever happens), `--prestart` (default) and `--check` (exit 1 on any problem), `--clear`; exit 2 for usage errors, a non-root caller, a held lock, an internal error. A certificate the resolver cannot parse, or a node name too long for a common name, is `INVALID`, never an internal error | kept |
 | RF-2 | Values are looked up in the process environment, then `<CONF>/local.env`, then (indexer password only) `/etc/wazuh-indexer/export/credentials.env` | kept |
 | RF-3 | Server API passwords: supplied values are validated and never replaced by generated ones; on a master with no `rbac.db`, publish to `<CONF>/export/credentials.env` first, then seed through `rbac_control.py`; a worker seeds nothing | kept |
 | RF-4 | Indexer password stored in the keystore when absent; never generated, never published | kept |
@@ -124,10 +124,10 @@ manager integration workflow.
 | `test_lock.py` | one writing run at a time |
 | `test_passwords.py` | password rules, publish-then-seed, worker role, indexer password and keystore |
 | `test_framework_parity.py` | the resolver's rule and generator against the Server API's (read from `framework/` as source) |
-| `test_ca.py` | the CA states, minting only when nothing exists, the bundle kept byte for byte |
-| `test_pairs.py` | server pair profile, keep / half / missing, issuer validity, chains through intermediate CAs, CA purpose |
+| `test_ca.py` | the CA states, minting only when nothing exists, the bundle kept byte for byte, an unparsable CA certificate |
+| `test_pairs.py` | server pair profile, keep / half / missing, issuer validity, chains through intermediate CAs, CA purpose, the common-name length of the node name, unparsable certificates in the pairs and the bundle |
 | `test_sans.py` | explicit SAN lists and discovery from `/proc` fixtures |
-| `test_indexer_trust.py` | the import rule, markers, `clientAuth`, interrupted imports and their recovery, connector chains through intermediate CAs, the CA and pair imported together or not at all |
+| `test_indexer_trust.py` | the import rule, markers, `clientAuth`, interrupted imports and their recovery, connector chains through intermediate CAs, the CA and pair imported together or not at all, unparsable indexer CA and connector certificates |
 | `test_check.py` | `--check` is read-only and never `MISSING`; the whole-tree checks; `--prestart` checks first |
 | `test_clear.py` | `--clear`: liveness, what goes and what stays, no link followed, nothing removed when unsafe |
 

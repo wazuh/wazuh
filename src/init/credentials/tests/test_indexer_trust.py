@@ -504,3 +504,18 @@ def test_connector_intermediate_purpose(resolver, sandbox, eku, accepted):
                 f"include clientAuth") in err
         assert not os.path.exists(certs(sandbox, "indexer-connector.pem"))
 
+
+@pytest.mark.parametrize("which", ["indexer-ca.pem", "indexer-connector.pem"])
+def test_unparsable_indexer_file_is_invalid(resolver, sandbox, which):
+    """A staged indexer CA or connector certificate that cannot be parsed is INVALID with its path."""
+    from conftest import unparsable_certificate
+    published = sandbox.make_indexer_trust()
+    bad, _ = unparsable_certificate(None, None, "broken-indexer-file")
+    files = dict(published)
+    files["ca" if which == "indexer-ca.pem" else "client"] = bad
+    stage_trust(sandbox, files)
+    for mode in ("--check", "--install"):
+        code, _, err = run(resolver, sandbox, mode)
+        assert f"INVALID {certs(sandbox, which)}: a certificate it holds cannot be parsed (" in err, err
+        assert "internal error" not in err and code == (1 if mode == "--check" else 0), (mode, code, err)
+

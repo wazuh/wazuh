@@ -58,7 +58,7 @@ list: `ca/`, `export/` and `local.env` are root's.
 | `WAZUH_MANAGER_API_PASSWORD` | password of the Server API user `wazuh` | generated |
 | `WAZUH_MANAGER_WUI_PASSWORD` | password of `wazuh-internal-client`, the user the dashboard authenticates as | generated |
 | `WAZUH_INDEXER_MANAGER_PASSWORD` | password of the `wazuh-manager` user on the indexer | read from the indexer's `/etc/wazuh-indexer/export/credentials.env` when the indexer runs on this host; otherwise the start refuses (`MISSING`) |
-| `WAZUH_MANAGER_NODE_NAME` | common name of the CA and the pairs, first DNS name of both pairs | the host name up to its first dot |
+| `WAZUH_MANAGER_NODE_NAME` | common name of the CA and the pairs, first DNS name of both pairs; a DNS name of at most 64 characters (the limit of a certificate's common name: a longer one is `INVALID` and no pair is issued) | the host name up to its first dot |
 | `WAZUH_MANAGER_REMOTED_CERT_SANS` | subject alternative names of the agent listener pair | discovered ([Subject alternative names](#subject-alternative-names)) |
 | `WAZUH_MANAGER_APID_CERT_SANS` | subject alternative names of the Server API pair; never inherits remoted's list | discovered |
 
