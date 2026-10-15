@@ -101,7 +101,7 @@ static void test_ports(int proto, int *_errors, int *_total)
             }
 
 #ifdef OSSECHIDS
-            /* If we are in the context of OSSEC-HIDS, sleep here (no rush) */
+            /* If we are inside the Wazuh daemons, sleep here (no rush) */
 #ifdef WIN32
         Sleep(rootcheck.tsleep);
 #else

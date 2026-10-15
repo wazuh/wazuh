@@ -168,7 +168,7 @@ static void loop_all_pids(const char *ps, pid_t max_pid, int *_errors, int *_tot
             }
         }
 
-        /* If we are run in the context of OSSEC-HIDS, sleep here (no rush) */
+        /* If we are run inside the Wazuh daemons, sleep here (no rush) */
 #ifdef OSSECHIDS
 #ifdef WIN32
         Sleep(rootcheck.tsleep);

@@ -33,21 +33,21 @@ DWORD WINAPI win_module_thread(void *arg);
 HANDLE acquire_restart_lock(DWORD wait_ms, int *timed_out);
 #endif
 
-/* Install the WAZUH-HIDS agent service */
+/* Install the Wazuh agent service */
 int InstallService(char *path);
 
-/* Uninstall the WAZUH-HIDS agent service */
+/* Uninstall the Wazuh agent service */
 int UninstallService();
 
-/* Check if the WAZUH-HIDS agent service is running
+/* Check if the Wazuh agent service is running
  * Returns 1 on success (running) or 0 if not running
  */
 int CheckServiceRunning();
 
-/* Start WAZUH-HIDS service */
+/* Start the Wazuh agent service */
 int os_start_service();
 
-/* Stop WAZUH-HIDS service */
+/* Stop the Wazuh agent service */
 int os_stop_service();
 
 /* Start the process from the services */

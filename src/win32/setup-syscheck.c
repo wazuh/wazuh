@@ -33,7 +33,7 @@ int main(int argc, char **argv)
         return (0);
     }
 
-    /* Check if WAZUH-HIDS was installed already */
+    /* Check if the Wazuh agent was installed already */
     if (!fileexist(WAZUHCONF)) {
         printf("%s: WAZUH not installed yet. Exiting.\n", argv[0]);
         return (0);

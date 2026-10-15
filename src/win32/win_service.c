@@ -57,7 +57,7 @@ void report_stop_progress(DWORD checkpoint, DWORD wait_hint_ms)
     SetServiceStatus(ossecServiceStatusHandle, &ossecServiceStatus);
 }
 
-/* Start OSSEC-HIDS service */
+/* Start the agent service */
 int os_start_service()
 {
     int rc = 0;
@@ -86,7 +86,7 @@ int os_start_service()
     return (rc);
 }
 
-/* Stop OSSEC-HIDS service */
+/* Stop the agent service */
 int os_stop_service()
 {
     int rc = 0;
@@ -130,7 +130,7 @@ int os_stop_service()
     return (rc);
 }
 
-/* Check if the OSSEC-HIDS agent service is running, or in any state other
+/* Check if the agent service is running, or in any state other
  * than fully stopped.
  *
  * Returns 1 if the service exists and is anything other than SERVICE_STOPPED
@@ -206,7 +206,7 @@ HANDLE acquire_restart_lock(DWORD wait_ms, int *timed_out)
     }
 }
 
-/* Install the OSSEC-HIDS agent service */
+/* Install the agent service */
 int InstallService(char *path)
 {
     int ret;
@@ -282,7 +282,7 @@ install_error: {
     }
 }
 
-/* Uninstall the OSSEC-HIDS agent service */
+/* Uninstall the agent service */
 int UninstallService()
 {
     int ret;
@@ -415,7 +415,7 @@ void WinSetError()
     OssecServiceCtrlHandler(SERVICE_CONTROL_STOP);
 }
 
-/* Initialize OSSEC-HIDS dispatcher */
+/* Initialize the agent service dispatcher */
 int os_WinMain(__attribute__((unused)) int argc, __attribute__((unused)) char **argv)
 {
     SERVICE_TABLE_ENTRY   steDispatchTable[] = {
