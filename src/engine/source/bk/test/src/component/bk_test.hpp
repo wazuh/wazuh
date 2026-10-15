@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _BK_TEST_HPP
 #define _BK_TEST_HPP
 

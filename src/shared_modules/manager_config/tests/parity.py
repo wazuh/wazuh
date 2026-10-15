@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
 """Parity check: jsonschema.Draft4Validator vs the manager_config vectors.
 
 Usage: parity.py <schema.json> <vectors dir>

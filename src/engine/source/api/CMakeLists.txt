@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 add_subdirectory(adapter)
 add_subdirectory(metrics)
 add_subdirectory(geo)

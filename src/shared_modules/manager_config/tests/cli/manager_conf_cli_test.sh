@@ -1,4 +1,5 @@
 #!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
 # manager_conf_cli_test.sh — end-to-end checks of bin/wazuh-manager-conf over the vectors and over the
 # XML configuration the installer generates (src/init/gen_wazuh.sh -> WriteManager()). Runs from ctest
 # as `manager_config_cli`.
@@ -65,6 +66,14 @@ if [ "$rc" = 1 ] && grep -q '(1239)' "$TMP/err"; then
     pass cli_validate_missing_file
 else
     fail cli_validate_missing_file "exit $rc; err='$(cat "$TMP/err")'"
+fi
+
+rc=$(run "$CLI" validate -f "$TMP/does-not-exist.conf")
+if [ "$rc" = 1 ] && [ ! -s "$TMP/out" ] \
+    && [ "$(cat "$TMP/err")" = "(1239): Configuration file not found: '$TMP/does-not-exist.conf'." ]; then
+    pass cli_validate_missing_file_exact
+else
+    fail cli_validate_missing_file_exact "exit $rc; err='$(cat "$TMP/err")'"
 fi
 
 # The installer emits absolute /etc/wazuh-manager/certs/... paths, which would make this check depend on

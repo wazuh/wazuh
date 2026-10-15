@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # =============================================================================
 # acceptance_test.sh – Engine benchmark harness
 #

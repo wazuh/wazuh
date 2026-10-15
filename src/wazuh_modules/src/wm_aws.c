@@ -1,7 +1,6 @@
 /*
  * Wazuh Module for AWS S3 integration
- * Copyright (C) 2015, Wazuh Inc.
- * January 08, 2018.
+ * Copyright (C) Wazuh Inc.
  *
  * Updated by Jeremy Phillips <jeremy@uranusbytes.com>
  *

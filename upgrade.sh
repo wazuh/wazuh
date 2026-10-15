@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 
 # Testing-only flag to bypass the manager reachability check (used by WPK
 # smoke tests that upgrade without a real manager available).

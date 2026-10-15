@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _OP_BUILDER_HELPER_MAP_H
 #define _OP_BUILDER_HELPER_MAP_H
 

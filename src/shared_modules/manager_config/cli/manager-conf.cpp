@@ -1,8 +1,13 @@
 /*
  * wazuh-manager-conf: validate, query and dump the manager configuration (/etc/wazuh-manager/wazuh-manager.conf).
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  *
- * This program is free software; you can redistribute it and/or modify it under the terms of GPLv2.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of either the GNU General Public License, version 2, or
+ * the GNU Affero General Public License, version 3 or (at your option) any
+ * later version, both as published by the Free Software Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
 #include <manager_config/manager_config.hpp>
@@ -22,8 +27,12 @@
 #include <variant>
 #include <vector>
 
-#include "error_messages.h"
 #include "managerConfDir.hpp"
+
+// Operator-facing messages: same codes and text the manager daemons print. Macros, so that "\n" concatenates and the
+// compiler checks the format arguments.
+#define NO_CONFIG      "(1239): Configuration file not found: '%s'."
+#define CONFIG_INVALID "(1244): Invalid configuration at '%s': %s."
 
 #ifndef WAZUH_MANAGER_CONF_VERSION
 #define WAZUH_MANAGER_CONF_VERSION "unknown"

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 # Purge script for Wazuh
 #
 # Usage:

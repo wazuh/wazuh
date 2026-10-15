@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _API_ROUTER_HANDLERS_HPP
 #define _API_ROUTER_HANDLERS_HPP
 

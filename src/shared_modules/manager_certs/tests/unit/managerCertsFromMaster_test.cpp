@@ -1,7 +1,6 @@
 /*
  * Wazuh manager certs tool - unit tests for `--from-master`
- * Copyright (C) 2015, Wazuh Inc.
- * September 19, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _PARSEC_HPP_
 #define _PARSEC_HPP_
 

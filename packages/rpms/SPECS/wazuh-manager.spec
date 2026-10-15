@@ -8,7 +8,7 @@ Summary:     Wazuh helps you to gain security visibility into your infrastructur
 Name:        wazuh-manager
 Version:     %{_version}
 Release:     %{_release}
-License:     GPL
+License:     GPL-2.0-only AND AGPL-3.0-or-later
 Group:       System Environment/Daemons
 Source0:     %{name}-%{version}.tar.gz
 URL:         https://www.wazuh.com/
@@ -57,6 +57,10 @@ log analysis, file integrity monitoring, intrusions detection and policy and com
 # Don't generate build_id links to prevent conflicts with other
 # packages.
 %global _build_id_links none
+# The rpm of the builder image is built with prefix /usr/local: pin the license directory
+# to /usr/share/licenses/<name>, where %license files belong.
+%global _defaultlicensedir /usr/share/licenses
+%global _docdir_fmt %%{NAME}
 
 # Build debuginfo package
 %package -n wazuh-manager-debuginfo
@@ -669,6 +673,7 @@ rm -fr %{buildroot}
 
 %files
 %defattr(-,root,wazuh-manager)
+%license LICENSE src/engine/LICENSE-engine src/engine/COPYING-engine THIRD-PARTY-NOTICES
 %config(missingok) %{_initrddir}/wazuh-manager
 /usr/lib/systemd/system/wazuh-manager.service
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}
@@ -734,7 +739,6 @@ rm -fr %{buildroot}
 %attr(640, root, wazuh-manager) %{_localstatedir}/framework/wazuh/core/cluster/dapi/*.py
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/lib
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libwazuhext.so
-%attr(750, root, wazuh-manager) %{_localstatedir}/lib/libwazuhshared.so
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libschema_validator.so
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libjemalloc.so.2
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libstdc++.so.6

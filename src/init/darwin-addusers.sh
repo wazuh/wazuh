@@ -1,6 +1,6 @@
 #! /bin/bash
 
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 # By Spransy, Derek" <DSPRANS () emory ! edu> and Charlie Scott
 
 #####

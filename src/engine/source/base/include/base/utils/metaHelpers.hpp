@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef META_HELPERS_HPP
 #define META_HELPERS_HPP
 
