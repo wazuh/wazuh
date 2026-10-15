@@ -111,6 +111,10 @@ override_dh_install:
 	mkdir -p ${TARGET_DIR}/usr/share/doc/wazuh-manager
 	install -m 0644 LICENSE src/engine/LICENSE-engine src/engine/COPYING-engine THIRD-PARTY-NOTICES ${TARGET_DIR}/usr/share/doc/wazuh-manager/
 
+# Keep the license texts uncompressed: debian/copyright points to them by name.
+override_dh_compress:
+	dh_compress -XLICENSE -XLICENSE-engine -XCOPYING-engine -XTHIRD-PARTY-NOTICES
+
 override_dh_fixperms:
 	dh_fixperms
 	# Fix Python permissions

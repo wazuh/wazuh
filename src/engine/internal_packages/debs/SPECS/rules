@@ -29,6 +29,10 @@ PY3 := $(shell command -v python3)
 # - Call our helper to create the local venv under build/venv.
 # - Keep build logic outside of rules to simplify maintenance.
 # ---------------------------------------------------------------------------
+# Keep the license texts uncompressed: debian/copyright points to them by name.
+override_dh_compress:
+	dh_compress -XLICENSE -XLICENSE-engine -XCOPYING-engine -XTHIRD-PARTY-NOTICES
+
 override_dh_auto_build:
 	@echo "CURDIR=$(CURDIR)"
 	bash debian/build_venv.sh
