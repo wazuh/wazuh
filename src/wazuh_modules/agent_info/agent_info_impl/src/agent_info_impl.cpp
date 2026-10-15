@@ -437,9 +437,9 @@ bool AgentInfoImpl::parseResponseBuffer(const uint8_t* data, size_t length)
         return m_spSyncProtocol->parseResponseBuffer(data, length);
     }
 
-    // A late manager response can arrive after stop() has torn the sync protocol
-    // down; that is expected during shutdown, so don't raise it to WARNING then.
-    m_logFunction(m_stopped ? LOG_DEBUG : LOG_WARNING, "Sync protocol not initialized or invalid data");
+    // A late manager response can arrive after the sync protocol was torn down, also by a run
+    // loop that ended on the shutdown flag before stop(); expected then, so don't raise it to WARNING.
+    m_logFunction(isShutdownInProgress() ? LOG_DEBUG : LOG_WARNING, "Sync protocol not initialized or invalid data");
     return false;
 }
 
@@ -1218,7 +1218,7 @@ AgentInfoImpl::ModuleResponse AgentInfoImpl::queryModuleWithRetry(const std::str
         // down. On macOS the module thread is joined without a timeout (see the non-Linux
         // branch in src/wazuh_modules/src/main.c), so a non-interruptible retry here would
         // stall modulesd shutdown, leak its PID file and block the next start.
-        if (m_stopped)
+        if (isShutdownInProgress())
         {
             m_logFunction(LOG_INFO, "Agent stopping, aborting query to " + moduleName);
 
@@ -1289,7 +1289,7 @@ AgentInfoImpl::ModuleResponse AgentInfoImpl::queryModuleWithRetry(const std::str
 
             if (m_cv.wait_for(lock,
                               std::chrono::milliseconds(COORDINATION_RETRY_DELAY_MS),
-                              [this] { return m_stopped.load(); }))
+                              [this] { return isShutdownInProgress(); }))
             {
                 lock.unlock();
                 m_logFunction(LOG_INFO, "Agent stopping, aborting query to " + moduleName);
@@ -1336,7 +1336,7 @@ void AgentInfoImpl::resumePausedModules(const std::set<std::string>& pausedModul
 
         if (!response.success)
         {
-            if (!m_stopped && !response.isModuleUnavailable)
+            if (!isShutdownInProgress() && !response.isModuleUnavailable)
             {
                 m_logFunction(LOG_WARNING, "Failed to resume module " + module + ": " + response.response);
             }
@@ -1358,12 +1358,12 @@ AgentInfoImpl::PauseProbeResult AgentInfoImpl::pollFimPauseCompletion(const std:
     auto waitOrStopped = [this]() -> bool
     {
         std::unique_lock<std::mutex> lock(m_mutex);
-        return m_cv.wait_for(lock, std::chrono::milliseconds(m_pausePollDelayMs), [this] { return m_stopped.load(); });
+        return m_cv.wait_for(lock, std::chrono::milliseconds(m_pausePollDelayMs), [this] { return isShutdownInProgress(); });
     };
 
     for (int attempt = 1; attempt <= MAX_PAUSE_POLL_ATTEMPTS; ++attempt)
     {
-        if (m_stopped)
+        if (isShutdownInProgress())
         {
             m_logFunction(LOG_INFO, "Agent stopping, aborting FIM pause poll for " + moduleName);
             return PauseProbeResult::Failed;
@@ -1374,7 +1374,8 @@ AgentInfoImpl::PauseProbeResult AgentInfoImpl::pollFimPauseCompletion(const std:
 
         if (!pollResponse.success)
         {
-            m_logFunction(LOG_WARNING,
+            // A shutdown stops syscheckd before stop() reaches this module: expected then.
+            m_logFunction(isShutdownInProgress() ? LOG_DEBUG : LOG_WARNING,
                           "Failed to poll pause status for " + moduleName + " (attempt " + std::to_string(attempt) +
                           "/" + std::to_string(MAX_PAUSE_POLL_ATTEMPTS) + ")");
 
@@ -1500,7 +1501,7 @@ bool AgentInfoImpl::pollFlushCompletion(std::set<std::string> pendingModules)
         m_logFunction(LOG_DEBUG_VERBOSE, "Polling " + moduleName + " for flush completion (async flush)");
     }
 
-    while (!m_stopped && !pendingModules.empty())
+    while (!isShutdownInProgress() && !pendingModules.empty())
     {
         std::vector<std::string> completedModules;
 
@@ -1591,7 +1592,7 @@ bool AgentInfoImpl::pollFlushCompletion(std::set<std::string> pendingModules)
 
             if (m_cv.wait_for(lock,
                               std::chrono::milliseconds(FLUSH_POLL_DELAY_MS),
-                              [this] { return m_stopped.load(); }))
+                              [this] { return isShutdownInProgress(); }))
             {
                 break; // stop requested - exit the poll loop immediately
             }
@@ -1710,7 +1711,7 @@ AgentInfoImpl::PauseCoordinationResult AgentInfoImpl::pauseCoordinationModules(s
 {
     for (const auto& module : COORDINATION_MODULES)
     {
-        if (m_stopped)
+        if (isShutdownInProgress())
         {
             m_logFunction(LOG_INFO, "Agent stopping, aborting module coordination during pause phase");
             return PauseCoordinationResult::Failed;
@@ -1722,7 +1723,7 @@ AgentInfoImpl::PauseCoordinationResult AgentInfoImpl::pauseCoordinationModules(s
         ModuleResponse response = queryModuleWithRetry(module, pauseMessage);
         m_logFunction(LOG_DEBUG, "Response from " + module + " pause: " + response.response);
 
-        if (m_stopped)
+        if (isShutdownInProgress())
         {
             m_logFunction(LOG_INFO, "Agent stopping, aborting module coordination during pause phase");
             return PauseCoordinationResult::Failed;
@@ -1811,7 +1812,7 @@ bool AgentInfoImpl::triggerModuleFlush(const std::set<std::string>& pausedModule
 {
     for (const auto& module : pausedModules)
     {
-        if (m_stopped)
+        if (isShutdownInProgress())
         {
             m_logFunction(LOG_INFO, "Agent stopping, aborting module coordination during flush trigger phase");
             return false;
@@ -1825,7 +1826,8 @@ bool AgentInfoImpl::triggerModuleFlush(const std::set<std::string>& pausedModule
 
         if (!response.success)
         {
-            m_logFunction(LOG_WARNING,
+            // Same as the pause poll: a shutdown stops syscheckd before stop() reaches this module.
+            m_logFunction(isShutdownInProgress() ? LOG_DEBUG : LOG_WARNING,
                           "Failed to trigger flush for " + module + " (error " + std::to_string(response.errorCode) +
                           "), aborting coordination");
             return false;
@@ -1847,7 +1849,7 @@ int AgentInfoImpl::calculateNewVersion(const std::set<std::string>& pausedModule
     // Step 1: Get version from each module
     for (const auto& module : pausedModules)
     {
-        if (m_stopped)
+        if (isShutdownInProgress())
         {
             m_logFunction(LOG_INFO, "Agent stopping, aborting module coordination during version calculation");
             return -1;
@@ -1859,7 +1861,7 @@ int AgentInfoImpl::calculateNewVersion(const std::set<std::string>& pausedModule
 
         if (!response.success)
         {
-            if (!m_stopped && !response.isModuleUnavailable)
+            if (!isShutdownInProgress() && !response.isModuleUnavailable)
             {
                 m_logFunction(LOG_WARNING,
                               "Failed to get version from " + module + " (error " + std::to_string(response.errorCode) +
@@ -1912,7 +1914,7 @@ int AgentInfoImpl::calculateNewVersion(const std::set<std::string>& pausedModule
     // Step 3: Set new version on all modules
     for (const auto& module : pausedModules)
     {
-        if (m_stopped)
+        if (isShutdownInProgress())
         {
             m_logFunction(LOG_INFO, "Agent stopping, aborting module coordination during version update");
             return -1;
@@ -1924,7 +1926,7 @@ int AgentInfoImpl::calculateNewVersion(const std::set<std::string>& pausedModule
 
         if (!response.success)
         {
-            if (!m_stopped && !response.isModuleUnavailable)
+            if (!isShutdownInProgress() && !response.isModuleUnavailable)
             {
                 m_logFunction(LOG_WARNING,
                               "Failed to set version on " + module + " (error " + std::to_string(response.errorCode) +
@@ -2779,7 +2781,7 @@ bool AgentInfoImpl::performDeltaSync(const std::string& table)
     {
         std::lock_guard<std::mutex> lock(m_dbSyncMutex);
 
-        if (!m_dBSync || m_stopped)
+        if (!m_dBSync || isShutdownInProgress())
         {
             m_logFunction(LOG_DEBUG, "Skipping delta sync for " + table + " (module stopping or DB unavailable)");
             return false;
@@ -2827,7 +2829,7 @@ bool AgentInfoImpl::performIntegritySync(const std::string& table)
     {
         std::lock_guard<std::mutex> lock(m_dbSyncMutex);
 
-        if (!m_dBSync || m_stopped)
+        if (!m_dBSync || isShutdownInProgress())
         {
             m_logFunction(LOG_DEBUG, "Skipping integrity sync for " + table + " (module stopping or DB unavailable)");
             return false;

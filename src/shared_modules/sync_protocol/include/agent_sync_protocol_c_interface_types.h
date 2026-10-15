@@ -62,6 +62,26 @@ typedef struct SyncModuleResult_t
     bool sent_anything;
 } SyncModuleResult_t;
 
+/// @brief Outcome of a module integrity check. See IntegrityCheckStatus (agent_sync_protocol_types.hpp).
+typedef enum
+{
+    INTEGRITY_CHECK_VALID = 0,       ///< The manager confirmed the checksum matches.
+    INTEGRITY_CHECK_MISMATCH = 1,    ///< The manager confirmed a checksum mismatch; a resync is needed.
+    INTEGRITY_CHECK_NOT_CHECKED = 2  ///< The check did not complete; nothing is known about the checksum.
+} IntegrityCheckStatus_t;
+
+/// @brief Result of a module integrity check. See IntegrityCheckResult
+/// (agent_sync_protocol_types.hpp) for the meaning of each field.
+typedef struct IntegrityCheckResult_t
+{
+    IntegrityCheckStatus_t status;
+    char failure_reason[SYNC_FAILURE_REASON_MAX_LEN];
+    bool stopped;
+    bool manager_not_ready;
+    bool local_transport_unavailable;
+    bool mismatch_unconfirmed;
+} IntegrityCheckResult_t;
+
 /// @brief Defines the type of modification operation.
 typedef enum
 {

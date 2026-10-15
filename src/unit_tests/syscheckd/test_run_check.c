@@ -49,7 +49,6 @@ DWORD WINAPI __real_fim_run_integrity(__attribute__((unused)) void * args);
 void * fim_run_integrity(__attribute__((unused)) void * args);
 void * __real_fim_run_integrity(__attribute__((unused)) void * args);
 #endif
-bool __wrap_fim_recovery_integrity_interval_has_elapsed(char* table_name, int64_t integrity_interval);
 
 /* DataClean helper function prototypes */
 bool fim_has_configured_directories(void);
@@ -455,15 +454,8 @@ static void expect_fim_run_integrity_sync_body(AgentSyncProtocolHandle* handle, 
          * cases are about the integrity loop, not about a re-enrollment. */
         will_return(__wrap_asp_get_agent_id, 0);
 
-#ifdef TEST_WINAGENT
-        /* On Windows, fim_run_integrity checks 3 tables: file, registry key, and registry value */
-        expect_function_call(__wrap_fim_recovery_integrity_interval_has_elapsed);
-        will_return(__wrap_fim_recovery_integrity_interval_has_elapsed, false);
-        expect_function_call(__wrap_fim_recovery_integrity_interval_has_elapsed);
-        will_return(__wrap_fim_recovery_integrity_interval_has_elapsed, false);
-#endif
-        expect_function_call(__wrap_fim_recovery_integrity_interval_has_elapsed);
-        will_return(__wrap_fim_recovery_integrity_interval_has_elapsed, false);
+        /* The per-table pass itself is covered by test_recovery. */
+        expect_function_call(__wrap_fim_recovery_run_integrity_checks);
     }
 
     expect_string(__wrap__mdebug1,

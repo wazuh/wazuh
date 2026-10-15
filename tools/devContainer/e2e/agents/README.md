@@ -23,10 +23,10 @@ agents/
 | | 4.x | 5.x |
 |---|---|---|
 | Path | `agent-auth -A <name> -m host.docker.internal -p 1515 -P <password>` | `wazuh-agentd` token bootstrap: `GET /cacerts` → pin check → `POST /enroll` with a `wazuh-enroll+jwt` bearer (kid = token id) on 1517. **Never 1515.** |
-| Credential | the manager's `etc/authd.pass` (the installer's configuration sets `<auth><use_password>yes</use_password>`; the schema default is `no`) | an enrollment token minted with `wazuh-manager-authd --create-enrollment-token --address host.docker.internal` (the token carries host, port, prefix, the CA pin and the secret) |
+| Credential | the manager's `/etc/wazuh-manager/authd.pass` (the installer's configuration sets `<auth><use_password>yes</use_password>`; the schema default is `no`) | an enrollment token minted with `wazuh-manager-authd --create-enrollment-token --address host.docker.internal` (the token carries host, port, prefix, the CA pin and the secret) |
 | Configured by | `entrypoint.sh` (`<client><server>` address/port from `MANAGER_HOST`/`MANAGER_PORT`) | `entrypoint.sh`, with the same three effects as the packaged `register_configure_agent.sh` — which the postinst removes together with `/var/ossec/packages_files`, so it is absent at container start, and is used when present: `<agent><manager><endpoint>` from the token's address (decoded with `wazuh-agentd --show-token`), `<enrollment><agent_name>`, and `etc/enrollment_token` 0600 root, unlinked by the agent once the bootstrap succeeds |
 | Success (agent log) | `agent-auth: INFO: Valid key received` then `(4102): Connected to the server` | `INFO: Token bootstrap: enrollment succeeded; the manager's CA is now the agent's trust anchor.` |
-| Success (manager) | `etc/client.keys` + `global.db` (authd logs the 1515 path at debug level only) | `wazuh-manager-authd: INFO: Enrollment token '<id>' used by agent '<name>' (<uses>/unlimited).` and `Recorded credentials of agent '<name>' written to the database` |
+| Success (manager) | `/etc/wazuh-manager/client.keys` + `global.db` (authd logs the 1515 path at debug level only) | `wazuh-manager-authd: INFO: Enrollment token '<id>' used by agent '<name>' (<uses>/unlimited).` and `Recorded credentials of agent '<name>' written to the database` |
 
 Reference: `docs/ref/modules/authd/enrollment-lifecycle.md`, `docs/ref/modules/authd/README.md#enrollment-tokens`,
 `docs/ref/modules/remoted/https-events-api.md#enrollment-endpoint-post-enroll`.
@@ -61,7 +61,7 @@ here at all — the entrypoint refuses to start it unenrolled rather than fallin
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| 4.x: `Invalid password provided by …` in the manager log | `AUTHD_PASSWORD` empty or wrong | run `create_token.sh` (it copies `etc/authd.pass`) and start with `--env-file` |
+| 4.x: `Invalid password provided by …` in the manager log | `AUTHD_PASSWORD` empty or wrong | run `create_token.sh` (it copies `/etc/wazuh-manager/authd.pass`) and start with `--env-file` |
 | 5.x: `[entrypoint] ERROR: WAZUH_ENROLLMENT_TOKEN is empty` | compose started without `--env-file` | mint + `up` with `--env-file` |
 | 5.x: `[entrypoint] ERROR: wazuh-agentd --show-token refused the token` or `Deployment variables refused [ERR_BAD_TOKEN]` | the token was altered (quotes, line breaks), or the package predates the token bootstrap | re-mint; the env file must hold the raw token. For an old package: `init.sh --force`, then `down -v` and `up --build` — the volume keeps the old `/var/ossec` otherwise |
 | 5.x: `Enrollment-token bootstrap failed; refusing to enroll unverified` | `GET /cacerts` unreachable/404, or the served CA does not match the token's pin (CA rotated after minting) | `curl -sk https://127.0.0.1:1517/wazuh-manager/cacerts`; re-mint after a CA rotation |

@@ -119,6 +119,19 @@ def verify_installation(expected_version):
             print(f"Error: Wazuh agent not found at {agent_exe}")
             return False
 
+        start_menu = os.path.join(os.environ.get("PROGRAMDATA", r"C:\ProgramData"),
+                                  "Microsoft", "Windows", "Start Menu", "Programs")
+        gui_shortcut = os.path.join(start_menu, "Wazuh", "Wazuh Agent Manager.lnk")
+        if not os.path.isfile(gui_shortcut):
+            print(f"Error: agent GUI shortcut not found at {gui_shortcut}")
+            return False
+        # The released MSI's own uninstall, which the upgrade runs, removes this folder, so this
+        # does not cover the new cleanup of shortcuts the NSIS installer left there.
+        legacy_folder = os.path.join(start_menu, "OSSEC")
+        if os.path.exists(legacy_folder):
+            print(f"Error: legacy Start menu folder still present at {legacy_folder}: {os.listdir(legacy_folder)}")
+            return False
+
         print("Starting Wazuh service...")
         subprocess.run(["NET", "START", "Wazuh"], shell=True, check=True)
 

@@ -1,7 +1,7 @@
 # manager_certs — the `wazuh-manager-certs` CLI
 
 Manager-only C++17 module that builds `bin/wazuh-manager-certs`, the only runtime writer of the CA
-bundle the HTTPS listener serves (`etc/certs/root-ca.pem` by default, wherever
+bundle the HTTPS listener serves (`/etc/wazuh-manager/certs/root-ca.pem` by default, wherever
 `remote.https.ca_certificate` points; remoted reads it, and the installer's credential ladder
 creates the initial, unstamped copy — see [No writing command creates the bundle](#guards)). It
 ships two read-only commands — `inspect` (describe every certificate in the bundle plus its
@@ -113,7 +113,8 @@ src/shared_modules/manager_certs/
 | `--version` / `-V` | nothing | — | 0 |
 | `--help` / `-h` | nothing | — | 0 |
 
-`-f <file>` picks the configuration file directly (default `<home>/etc/wazuh-manager.conf`);
+`-f <file>` picks the configuration file directly (default `/etc/wazuh-manager/wazuh-manager.conf`,
+the fixed configuration directory, whatever the home);
 `-H <home>` overrides the manager home used to resolve relative `ca_certificate`/`certificate`
 paths (default `$WAZUH_MANAGER_HOME`, else the parent of the `bin/` directory holding the running
 binary — the same `resolveHome()` shape as `wazuh-manager-conf`). `--version`/`--help` short-circuit
@@ -296,7 +297,7 @@ nothing and takes no generation (D-11).
 
 No writing command creates the bundle: if `remote.https.ca_certificate` does not exist, they exit 2
 with `bundle not found at <path>; provision it and run 'wazuh-manager-certs stamp'`. On a fresh
-install the credential ladder creates `etc/certs/root-ca.pem` as a copy of the bootstrap CA's
+install the credential ladder creates `/etc/wazuh-manager/certs/root-ca.pem` as a copy of the bootstrap CA's
 `root-ca.pem` (`_wmc_install_ca_anchor()` in `src/init/credentials/wazuh-manager-certificates.sh`, `root:wazuh-manager`
 `0640`), as a plain PEM with no publication block — so the first `stamp` (or `add`) is what
 publishes it. Creating one here would invent a trust anchor nobody asked for.

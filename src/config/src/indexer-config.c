@@ -14,10 +14,11 @@
 
 cJSON * indexer_config = NULL;
 
-/* Reader of the `indexer` section of the effective document (etc/wazuh-manager.conf, see
- * mconf-config.h). The schema fills `hosts: []` when the section is absent and every consumer treats a
- * NULL indexer_config as "no indexer configured" (it hands `{}` down), so an empty host list keeps
- * that meaning; otherwise the section is copied as-is (same keys the XML reader used to produce). */
+/* Reader of the `indexer` section of the effective document (/etc/wazuh-manager/wazuh-manager.conf, see
+ * mconf-config.h). The schema requires the section and a non-empty `hosts`, so a validated document
+ * always reaches the copy below; the empty/absent guard only covers a caller handing in no document.
+ * Every consumer treats a NULL indexer_config as "no indexer configured" (it hands `{}` down);
+ * otherwise the section is copied as-is (same keys the XML reader used to produce). */
 int Read_Indexer_JSON(const cJSON *indexer)
 {
     if (indexer_config) {

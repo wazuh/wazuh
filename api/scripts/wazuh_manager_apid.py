@@ -103,7 +103,8 @@ def configure_ssl(params):
     ciphers = api_conf['https']['ssl_ciphers'] or DEFAULT_SSL_CIPHERS
 
     def _files(paths):
-        return ', '.join(f'WAZUH_PATH/{to_relative_path(path)}' for path in paths)
+        # The resolved paths: the certificates live under the configuration directory, outside WAZUH_PATH.
+        return ', '.join(os.path.abspath(path) for path in paths)
 
     def _not_found(paths):
         return APIError(2003, details=f'API certificate or key not found: {_files(paths)}. '

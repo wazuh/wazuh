@@ -12,7 +12,7 @@ is added to the local ones.
 
 ## How it works
 
-1. The administrator edits `/var/wazuh-manager/etc/shared/<GROUP_NAME>/agent.conf` (directly, or with
+1. The administrator edits `/etc/wazuh-manager/shared/<GROUP_NAME>/agent.conf` (directly, or with
    `PUT /groups/<GROUP_NAME>/configuration`).
 2. `wazuh-manager-remoted` re-reads the shared directory every
    [`remoted.shared_reload`](../remoted/configuration.md#remotedshared_reload) seconds (10 by
@@ -27,7 +27,7 @@ No manager restart is needed.
 ## File location
 
 ```text
-/var/wazuh-manager/etc/shared/<GROUP_NAME>/agent.conf
+/etc/wazuh-manager/shared/<GROUP_NAME>/agent.conf
 ```
 
 The default group is `default`; an agent enrolled without a group belongs to it.
@@ -133,15 +133,15 @@ On the manager, `verify-agent-conf` checks the syntax and the `<syscheck>`, `<ro
 ```
 
 ```text
-verify-agent-conf: Verifying [etc/shared/default/agent.conf]
+verify-agent-conf: Verifying [/etc/wazuh-manager/shared/default/agent.conf]
 verify-agent-conf: OK
 ```
 
 | Option | Effect |
 |--------|--------|
-| *(none)* | Check `agent.conf` in every directory under `etc/shared/`; a directory without one is reported as `File not found` |
+| *(none)* | Check `agent.conf` in every directory under `/etc/wazuh-manager/shared/`; a directory without one is reported as `File not found` |
 | `-f <file>` | Check only that file |
-| `-d` | Debug output. Any option turns the scan of `etc/shared/` off, so use it with `-f` |
+| `-d` | Debug output. Any option turns the scan of `/etc/wazuh-manager/shared/` off, so use it with `-f` |
 | `-V` | Print the version |
 | `-h` | Print the help and exit `1` |
 

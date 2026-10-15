@@ -16,7 +16,7 @@ legacy listener, kept only for agents still on 4.x.
 they can also be assigned afterwards from the manager.
 
 **`agent.conf`** — Shared configuration file distributed per agent group from
-`etc/shared/<group>/` on the manager; its values take precedence over the agent's
+`/etc/wazuh-manager/shared/<group>/` on the manager; its values take precedence over the agent's
 local `ossec.conf`.
 
 **Cluster** — Set of manager nodes (one master, multiple workers) that share
@@ -60,7 +60,7 @@ state indices, and hosts the Alerting and Notifications plugins.
 Wazuh Indexer, replacing the 4.x Filebeat sidecar.
 
 **Internal options** — Low-level tuning keys read from
-`etc/wazuh-manager-internal-options.conf` (manager) or
+`/etc/wazuh-manager/wazuh-manager-internal-options.conf` (manager) or
 `etc/internal_options.conf` overridden by `etc/local_internal_options.conf` (agent).
 
 **IT Hygiene** — Dashboard capability built on the Syscollector inventory
@@ -97,7 +97,7 @@ across 5.0 indices and event payloads, e.g. `source.ip`, `user.name`,
 `wazuh.integration.category`.
 
 **`wazuh-manager.conf`** — Main manager configuration file
-(`/var/wazuh-manager/etc/wazuh-manager.conf`, root tag `<wazuh_config>`); the
+(`/etc/wazuh-manager/wazuh-manager.conf`, root tag `<wazuh_config>`); the
 5.0 rename of the manager-side `ossec.conf`.
 
 **Wodle** — Agent module configured as `<wodle name="...">` in the agent's

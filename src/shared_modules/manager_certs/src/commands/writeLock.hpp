@@ -24,9 +24,10 @@
  * leave the next run locked out.
  *
  * The lock file's path is DERIVED from the configured bundle path (`<bundle>.lock`), never from a
- * literal `etc/certs/root-ca.pem` (C36a): the bundle is an operator-configurable path and the lock
- * has to sit beside whatever that turns out to be. Everything here is done through the directory
- * descriptor the caller already holds, so nothing re-resolves the path by name halfway through.
+ * literal `/etc/wazuh-manager/certs/root-ca.pem` (C36a): the bundle is an operator-configurable path
+ * and the lock has to sit beside whatever that turns out to be. Everything here is done through the
+ * directory descriptor the caller already holds, so nothing re-resolves the path by name halfway
+ * through.
  *
  * Two properties beyond "take a lock" (C36f), both of them attacks the certs directory makes
  * possible -- it is `1770 root:<group>` (src/init/inst-functions.sh:228-240), so a member of the

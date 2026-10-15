@@ -125,7 +125,7 @@ Maximum time in seconds for API request processing.
 
 ### https
 
-TLS settings of the listener. File names are resolved under `/var/wazuh-manager/etc/certs/` and may
+TLS settings of the listener. File names are resolved under `/etc/wazuh-manager/certs/` and may
 contain only letters, digits, `_`, `-` and `.`.
 
 | Option | Default | Description |
@@ -153,7 +153,7 @@ missing, not readable by `wazuh-manager`, or the key does not match the certific
 `2003` naming the files in `logs/api.log` and does not start.
 
 A client that verifies the API trusts `root-ca.pem` and checks any of those names or addresses. `use_ca` is
-unchanged: it requires a client certificate. To serve another certificate, place it in `etc/certs` under
+unchanged: it requires a client certificate. To serve another certificate, place it in `/etc/wazuh-manager/certs` under
 other file names and point `key` and `cert` at them; both must be readable by `wazuh-manager`.
 
 ### logs
@@ -302,7 +302,7 @@ logs:
   level: warning
 https:
   enabled: true
-  key: apid-key.pem    # file names only, resolved under etc/certs/
+  key: apid-key.pem    # file names only, resolved under /etc/wazuh-manager/certs/
   cert: apid.pem
   use_ca: true
   ca: root-ca.pem
@@ -347,10 +347,10 @@ curl -k -X PUT "https://localhost:55000/security/config" \
 ## Framework Configuration
 
 The framework reads, validates and writes the manager configuration file,
-`/var/wazuh-manager/etc/wazuh-manager.conf`, by running `bin/wazuh-manager-conf`
+`/etc/wazuh-manager/wazuh-manager.conf`, by running `bin/wazuh-manager-conf`
 (`framework/wazuh/core/manager_conf.py`), so the API applies exactly the validation the daemons do.
 It is served and changed through `/cluster/{node_id}/configuration`. Agent group configuration
-(`etc/shared/<group>/agent.conf`) is parsed with `defusedxml`. See the
+(`/etc/wazuh-manager/shared/<group>/agent.conf`) is parsed with `defusedxml`. See the
 [Manager Configuration Reference](../../configuration/manager/README.md) for the options.
 
 ---

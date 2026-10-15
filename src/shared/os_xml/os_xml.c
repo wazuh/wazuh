@@ -222,6 +222,17 @@ int OS_ReadXML(const char *file, OS_XML *_lxml) {
     return OS_ReadXML_Ex(file, _lxml, false);
 }
 
+/* Read XML from a stream the caller opened; ParseXML() closes it */
+int OS_ReadXMLFromStream(FILE *fp, OS_XML *_lxml) {
+    /* Initialize xml structure */
+    memset(_lxml, 0, sizeof(OS_XML));
+
+    _lxml->fp = fp;
+    _lxml->string = NULL;
+
+    return ParseXML(_lxml, false);
+}
+
 static int _oscomment(OS_XML *_lxml, int delim)
 {
     int c;

@@ -22,6 +22,7 @@
 #include "addressRule.hpp"        // Value type only; pulls no I/O headers.
 #include "common/logThrottle.hpp" // Safe in a header: LogThrottle deliberately does not log.
 #include "iAgentKeystore.hpp"
+#include "managerConfDir.hpp"
 
 namespace remoted::auth
 {
@@ -69,8 +70,9 @@ namespace remoted::auth
     class Keystore : public IAgentKeystore
     {
     public:
-        /// Path to client.keys, relative to the manager's home directory.
-        static constexpr const char* kDefaultPath = "etc/client.keys";
+        /// Path to client.keys, in the manager's fixed configuration directory (KEYS_FILE in defs.h).
+        static constexpr const char* kDefaultPath = "/etc/wazuh-manager/client.keys";
+        static_assert(Utils::isInManagerConfDir(kDefaultPath));
 
         /// Built-in refresh interval when the caller passes <=0 (matches remoted.keyupdate_interval's
         /// own built-in default in the legacy pipeline).

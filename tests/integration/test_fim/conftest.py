@@ -19,9 +19,9 @@ from pathlib import Path
 
 from wazuh_testing.constants.paths.databases import FIM_DB_PATH, FIM_SYNC_DB_DIR, FIM_SYNC_DB_FILES
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
-from wazuh_testing.constants.platforms import WINDOWS, MACOS, CENTOS, UBUNTU, DEBIAN
+from wazuh_testing.constants.platforms import WINDOWS, MACOS, LINUX, CENTOS, UBUNTU, DEBIAN
 from wazuh_testing.logger import logger
-from wazuh_testing.modules.fim.patterns import MONITORING_PATH, FIM_SCAN_END
+from wazuh_testing.modules.fim.patterns import MONITORING_PATH, FIM_SCAN_END, REALTIME_WHODATA_ENGINE_STARTED
 from wazuh_testing.modules.fim.utils import create_registry, delete_registry
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.utils import file, services
@@ -231,6 +231,11 @@ def detect_end_scan(test_metadata: dict) -> None:
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     wazuh_log_monitor.start(timeout=60, callback=generate_callback(FIM_SCAN_END))
     assert wazuh_log_monitor.callback_result
+
+    # Linux whodata (audit) only sees changes once its engine is up, after the baseline scan.
+    if sys.platform == LINUX and test_metadata.get('fim_mode') == 'whodata':
+        wazuh_log_monitor.start(timeout=60, callback=generate_callback(REALTIME_WHODATA_ENGINE_STARTED))
+        assert wazuh_log_monitor.callback_result
 
 
 @pytest.fixture()

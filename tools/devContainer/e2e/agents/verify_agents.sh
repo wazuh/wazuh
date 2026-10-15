@@ -6,7 +6,7 @@
 # Exit status is 0 iff failed=0.
 #
 # Evidence written under --out (never a key, a password or a token):
-#   client.keys.txt        "id name ip" columns of the manager's etc/client.keys (the key column is dropped)
+#   client.keys.txt        "id name ip" columns of the manager's /etc/wazuh-manager/client.keys (the key column is dropped)
 #   global-agents.txt      id, name, register_ip, connection_status, version, last_keepalive from global.db
 #   api-agents.json        GET /agents (with --api)
 #   <container>.log        docker logs tail per agent
@@ -43,6 +43,8 @@ EOF
 }
 
 HOME_DIR="${WAZUH_MANAGER_HOME:-/var/wazuh-manager}"
+# The manager configuration directory is fixed: --home moves the home only, never the configuration.
+CONF_DIR="/etc/wazuh-manager"
 EXPECT=""; WAIT=120; OUT=""; API=0; COMPOSE="$SCRIPT_DIR/docker-compose.yml"; SERVICES=""; MARK=""
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -63,7 +65,7 @@ die() { echo "ERROR: $*" >&2; exit 2; }
 [ "$(id -u)" -eq 0 ] || die "run as root (client.keys, global.db and the manager log are not world-readable)"
 command -v docker >/dev/null 2>&1 || die "docker not found"
 [ -f "$COMPOSE" ] || die "compose file not found: $COMPOSE"
-KEYS="$HOME_DIR/etc/client.keys"; GDB="$HOME_DIR/queue/db/global.db"; LOGF="$HOME_DIR/logs/wazuh-manager.log"
+KEYS="$CONF_DIR/client.keys"; GDB="$HOME_DIR/queue/db/global.db"; LOGF="$HOME_DIR/logs/wazuh-manager.log"
 [ -f "$GDB" ] || die "no global.db at $GDB (is the manager installed and started?)"
 
 OUT="${OUT:-${TMPDIR:-/tmp}/wazuh-e2e-evidence/$(date -u +%Y%m%dT%H%M%SZ)/agents}"

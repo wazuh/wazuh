@@ -205,8 +205,8 @@ Agent sends event → listener → decrypt and validate → classify:
   <https>
     <port>1517</port>
     <bind_addr>0.0.0.0</bind_addr>
-    <certificate>etc/certs/remoted.pem</certificate>
-    <key>etc/certs/remoted-key.pem</key>
+    <certificate>/etc/wazuh-manager/certs/remoted.pem</certificate>
+    <key>/etc/wazuh-manager/certs/remoted-key.pem</key>
   </https>
 
   <legacy>

@@ -1,6 +1,6 @@
 # ca_bundle — the CA bundle as a value
 
-Static C++17 library over the manager's CA bundle (`etc/certs/root-ca.pem`): what certificates it
+Static C++17 library over the manager's CA bundle (`/etc/wazuh-manager/certs/root-ca.pem`): what certificates it
 carries, what content they hash to, whether the certificate the HTTPS listener serves **chains** to
 any of them, and whether the bundle was stamped by `wazuh-manager-certs`. Pure functions over bytes and
 `X509` objects — **no file reads, no logging, no configuration, no OpenSSL API in its public

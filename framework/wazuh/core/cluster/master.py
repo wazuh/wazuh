@@ -20,7 +20,7 @@ from wazuh.core import cluster as metadata, common, exception, utils
 from wazuh.core.cluster import server, cluster, common as c_common
 from wazuh.core.cluster.common import IndexerTaskManager
 from wazuh.core.cluster.dapi import dapi
-from wazuh.core.cluster.utils import context_tag, log_subprocess_execution, safe_join
+from wazuh.core.cluster.utils import context_tag, local_path, log_subprocess_execution, safe_join
 from wazuh.core.common import DECIMALS_DATE_FORMAT
 from wazuh.core.configuration import get_manager_conf
 from wazuh.core.indexer.metrics_snapshot import MetricsSnapshotTasks
@@ -889,7 +889,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         try:
             with utils.Timeout(timeout):
                 for file_path, data in files_metadata.items():
-                    full_path = safe_join(common.WAZUH_PATH, file_path)
+                    full_path = local_path(file_path)
                     item_key = data['cluster_item_key']
 
                     if item_key not in cluster_items['files']:
@@ -911,8 +911,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                         ):
                             try:
                                 # Destination path.
-                                full_unmerged_name = safe_join(common.WAZUH_PATH, unmerged_file_path)
-                                expected_base = safe_join(common.WAZUH_PATH, item_key)
+                                full_unmerged_name = local_path(unmerged_file_path)
+                                expected_base = local_path(item_key)
                                 if not os.path.commonpath([full_unmerged_name, expected_base]).startswith(expected_base):
                                     raise exception.WazuhClusterError(3062,
                                         extra_message=f"File path outside allowed directory: {unmerged_file_path}")
@@ -951,7 +951,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                     # If the file is not 'merged' type, move it directly to the destination path.
                     else:
                         try:
-                            expected_base = safe_join(common.WAZUH_PATH, item_key)
+                            expected_base = local_path(item_key)
                             if not os.path.commonpath([full_path, expected_base]).startswith(expected_base):
                                 raise exception.WazuhClusterError(3062,
                                     extra_message=f"File path outside allowed directory: {file_path}")

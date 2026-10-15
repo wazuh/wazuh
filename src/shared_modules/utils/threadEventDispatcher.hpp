@@ -24,6 +24,9 @@
 #include "threadSafeMultiQueue.hpp"
 #include "threadSafeQueue.h"
 
+// Number of queued elements from which a queue is reported as growing.
+constexpr size_t QUEUE_SIZE_WARNING {100000};
+
 template<typename T,
          typename U,
          typename Functor,
@@ -40,6 +43,7 @@ public:
                                     const size_t flushInterval = 20,
                                     bool useSharedBuffers = false)
         : m_functor {std::move(functor)}
+        , m_name {dbPath}
         , m_maxQueueSize {maxQueueSize}
         , m_bulkSize {bulkSize}
         , m_retryDelay {retryDelay}
@@ -55,7 +59,8 @@ public:
                                     const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE,
                                     const size_t retryDelay = 1,
                                     const size_t flushInterval = 20)
-        : m_maxQueueSize {maxQueueSize}
+        : m_name {dbPath}
+        , m_maxQueueSize {maxQueueSize}
         , m_bulkSize {bulkSize}
         , m_retryDelay {retryDelay}
         , m_flushInterval {flushInterval}
@@ -81,9 +86,20 @@ public:
     {
         if constexpr (!std::is_same_v<Utils::TSafeMultiQueue<T, U, RocksDBQueueCF<T, U>>, TSafeQueueType>)
         {
-            if (m_running && (UNLIMITED_QUEUE_SIZE == m_maxQueueSize || m_queue->size() < m_maxQueueSize))
+            const auto queueSize = m_queue->size();
+            if (m_running && (UNLIMITED_QUEUE_SIZE == m_maxQueueSize || queueSize < m_maxQueueSize))
             {
-                m_queue->push(value);
+                try
+                {
+                    m_queue->push(value);
+                }
+                catch (const std::exception& ex)
+                {
+                    reportPushError(ex);
+                    return;
+                }
+                warnQueueSize(queueSize + 1);
+
                 // If we were previously discarding, log that we're accepting again
                 if (m_discardedCount.load() > 0)
                 {
@@ -147,7 +163,16 @@ public:
         {
             if (m_running && (UNLIMITED_QUEUE_SIZE == m_maxQueueSize || m_queue->size(prefix) < m_maxQueueSize))
             {
-                m_queue->push(prefix, value);
+                try
+                {
+                    m_queue->push(prefix, value);
+                }
+                catch (const std::exception& ex)
+                {
+                    reportPushError(ex);
+                    return;
+                }
+
                 // If we were previously discarding, log that we're accepting again
                 if (m_discardedCount.load() > 0)
                 {
@@ -296,6 +321,9 @@ public:
 private:
     void dispatch()
     {
+        // Starts one interval back so that the first error is logged at once, even right after the system boots.
+        auto lastErrorLog = std::chrono::steady_clock::now() - std::chrono::minutes(1);
+
         while (m_running)
         {
             try
@@ -335,13 +363,53 @@ private:
                 if (m_running)
                 {
                     std::this_thread::sleep_for(std::chrono::seconds(m_retryDelay));
-                    LOGFN_WARN(m_logFn, "Dispatch handler error, %s", ex.what());
+
+                    // The same batch is retried after every delay: log the first error at once and at most one per
+                    // minute after that, since the text of the error can change on every retry.
+                    const auto now = std::chrono::steady_clock::now();
+                    if (now - lastErrorLog >= std::chrono::minutes(1))
+                    {
+                        LOGFN_WARN(m_logFn, "Queue '%s': dispatch handler error, %s", m_name.c_str(), ex.what());
+                        lastErrorLog = now;
+                    }
                 }
                 else
                 {
                     LOGFN_DEBUG1(m_logFn, "ThreadEventDispatcher dispatch end.");
                 }
             }
+        }
+    }
+
+    // A queue that keeps growing means its consumer is not draining it. It is reported at QUEUE_SIZE_WARNING elements
+    // and every time it doubles the size it was reported at, and the report is re-armed once the queue falls under
+    // half of the first threshold, so a queue that hovers around it is not reported on every cycle.
+    void warnQueueSize(const size_t queueSize)
+    {
+        auto threshold = m_nextSizeWarning.load();
+        if (queueSize >= threshold && m_nextSizeWarning.compare_exchange_strong(threshold, queueSize * 2))
+        {
+            LOGFN_WARN(m_logFn,
+                       "Queue '%s' holds %llu elements and keeps growing. Check that its consumer is draining it.",
+                       m_name.c_str(),
+                       static_cast<unsigned long long>(queueSize));
+        }
+        else if (queueSize < QUEUE_SIZE_WARNING / 2)
+        {
+            m_nextSizeWarning = QUEUE_SIZE_WARNING;
+        }
+    }
+
+    // A push that fails drops its element, so that the callers, which do not expect an exception, keep working. The
+    // failure is reported at most once a minute.
+    void reportPushError(const std::exception& ex)
+    {
+        constexpr auto INTERVAL = std::chrono::steady_clock::duration(std::chrono::minutes(1)).count();
+        const auto now = std::chrono::steady_clock::now().time_since_epoch().count();
+        auto last = m_lastPushErrorLog.load();
+        if ((last == 0 || now - last >= INTERVAL) && m_lastPushErrorLog.compare_exchange_strong(last, now))
+        {
+            LOGFN_WARN(m_logFn, "Queue '%s': element dropped, %s", m_name.c_str(), ex.what());
         }
     }
 
@@ -355,6 +423,7 @@ private:
 
     // Keep this order to avoid warnings during compilation
     Functor m_functor;
+    const std::string m_name;
     const size_t m_maxQueueSize;
     std::atomic<uint64_t> m_bulkSize;
     const size_t m_retryDelay;
@@ -372,6 +441,8 @@ private:
     std::atomic_bool m_firstDiscardLogged {false};
     std::chrono::steady_clock::time_point m_lastSummaryLog;
     const size_t m_summaryInterval {30}; // Log summary every 30 seconds
+    std::atomic<size_t> m_nextSizeWarning {QUEUE_SIZE_WARNING};
+    std::atomic<std::chrono::steady_clock::rep> m_lastPushErrorLog {0};
 };
 
 template<typename Type, typename Functor>

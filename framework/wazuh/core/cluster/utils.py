@@ -272,6 +272,77 @@ def safe_join(base_path: str, *paths: str) -> str:
     return final_path
 
 
+
+# Prefix of the cluster wire paths (cluster.json keys and file names exchanged between nodes) that name a file of the
+# configuration directory. The wire keeps the historical '<home>/etc' layout byte-identical across versions, while the
+# directory itself is common.CONF_PATH (a fixed absolute path outside the home on an installed manager).
+_WIRE_CONF_PREFIX = 'etc'
+
+
+def local_path(rel: str) -> str:
+    """Translate a cluster wire path into the local absolute path.
+
+    Wire paths under 'etc' are rooted at common.CONF_PATH; every other one at common.WAZUH_PATH. Both are joined with
+    safe_join(), so a path escaping its root (e.g. 'etc/../x') is refused instead of being re-rooted elsewhere.
+
+    Parameters
+    ----------
+    rel : str
+        Wire path, relative to the manager home (a leading separator is ignored, as safe_join() does).
+
+    Raises
+    ------
+    WazuhInternalError(3003)
+        If the resulting path is outside its root.
+
+    Returns
+    -------
+    str
+        Normalized absolute local path.
+    """
+    stripped = rel.lstrip(os.sep).lstrip('/')
+    if stripped == _WIRE_CONF_PREFIX or stripped.startswith(_WIRE_CONF_PREFIX + '/'):
+        return safe_join(common.CONF_PATH, stripped[len(_WIRE_CONF_PREFIX):])
+    return safe_join(common.WAZUH_PATH, rel)
+
+
+def wire_path(abs_path: str) -> str:
+    """Translate a local absolute path into its cluster wire path (the inverse of local_path()).
+
+    A trailing separator in `abs_path` is kept in the result, so directory keys keep the 'etc/' and 'etc/shared/'
+    shape of cluster.json.
+
+    Parameters
+    ----------
+    abs_path : str
+        Absolute path under common.CONF_PATH or common.WAZUH_PATH.
+
+    Raises
+    ------
+    WazuhInternalError(3003)
+        If the path is under neither root.
+
+    Returns
+    -------
+    str
+        Wire path: 'etc[/<path relative to CONF_PATH>]' or the path relative to WAZUH_PATH.
+    """
+    trailing = '/' if abs_path.endswith(os.sep) else ''
+    target = os.path.normpath(abs_path)
+    conf_base = os.path.normpath(common.CONF_PATH)
+    home_base = os.path.normpath(common.WAZUH_PATH)
+
+    # The configuration directory is checked first: in a repository checkout it lies inside WAZUH_PATH.
+    if os.path.commonpath([conf_base, target]) == conf_base:
+        rel = os.path.relpath(target, conf_base)
+        wire = _WIRE_CONF_PREFIX if rel == '.' else f'{_WIRE_CONF_PREFIX}/{rel}'
+    elif os.path.commonpath([home_base, target]) == home_base and target != home_base:
+        wire = os.path.relpath(target, home_base)
+    else:
+        raise WazuhInternalError(3003, extra_message=f"unsafe path '{target}'")
+
+    return wire + trailing
+
 @lru_cache()
 def read_config(config_file=None):
     """Get the cluster configuration.

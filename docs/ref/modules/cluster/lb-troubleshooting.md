@@ -45,7 +45,7 @@ different errors in the same burst** — a `503`, a `401`, and possibly a TLS er
 ```bash
 # The key reached every node?
 for n in <node1> <node2> <node3>; do
-  echo -n "$n: "; ssh $n "grep -c '^<agent-id> ' /var/wazuh-manager/etc/client.keys"
+  echo -n "$n: "; ssh $n "grep -c '^<agent-id> ' /etc/wazuh-manager/client.keys"
 done
 ```
 
@@ -74,12 +74,12 @@ for n in <node1> <node2> <node3>; do echo -n "$n: "; ssh $n date -u +%s; done
 
 They must agree within a few seconds. Fix with NTP, and keep the `remoted.jwt_max_age` (default
 `60`) and `remoted.jwt_clock_skew` (default `30`) internal options identical across nodes, in
-`etc/wazuh-manager-internal-options.conf`.
+`/etc/wazuh-manager/wazuh-manager-internal-options.conf`.
 
 ### The key never replicated
 
 ```bash
-ssh <worker> grep -c '^<agent-id> ' /var/wazuh-manager/etc/client.keys
+ssh <worker> grep -c '^<agent-id> ' /etc/wazuh-manager/client.keys
 ```
 
 If it is still absent minutes later, look at the cluster link rather than the agent:
@@ -319,7 +319,7 @@ issued with only its own name refuses every agent that verifies.
 So for a SAN mismatch, inspect the certificate directly:
 
 ```bash
-openssl x509 -in /var/wazuh-manager/etc/certs/remoted.pem -noout -ext subjectAltName
+openssl x509 -in /etc/wazuh-manager/certs/remoted.pem -noout -ext subjectAltName
 ```
 
 Adding a node to an existing cluster is the usual way to introduce it: the new node is issued with

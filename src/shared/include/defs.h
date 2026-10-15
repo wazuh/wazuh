@@ -117,6 +117,16 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define WAZUH_HOME_ENV "WAZUH_MANAGER_HOME"
 #endif
 
+/* Manager configuration directory. Fixed: a custom installation home moves the home only, never the
+ * configuration. Defined once per language and kept identical in all of them: here,
+ * shared_modules/utils/managerConfDir.hpp, the engine's base/managerConfig.hpp,
+ * framework/wazuh/core/common.py (CONF_PATH) and src/init/shared.sh (CONF_DIR). */
+#ifndef CLIENT
+#ifndef WAZUH_MANAGER_CONF_DIR
+#define WAZUH_MANAGER_CONF_DIR "/etc/wazuh-manager"
+#endif
+#endif
+
 /* Default queue */
 #define DEFAULTQUEUE "queue/sockets/queue"
 
@@ -171,8 +181,13 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* Active Response files */
 #define AR_BINDIR      "active-response/bin"
 #ifndef WIN32
+#ifdef CLIENT
 #define AGENTCONFIG  "etc/shared/agent.conf"
 #define DEF_CA_STORE "etc/wpk_root.pem"
+#else
+#define AGENTCONFIG  WAZUH_MANAGER_CONF_DIR "/shared/agent.conf"
+#define DEF_CA_STORE WAZUH_MANAGER_CONF_DIR "/wpk_root.pem"
+#endif
 #else
 #define AGENTCONFIG  "shared/agent.conf"
 #define DEF_CA_STORE "wpk_root.pem"
@@ -263,7 +278,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #else
 /* Manager: defaults live in code via getDefine_Int_default(); only the
  * user-overrides file is needed. WAZUH_DEFINES is intentionally not defined. */
-#define WAZUH_LDEFINES "etc/wazuh-manager-internal-options.conf"
+#define WAZUH_LDEFINES WAZUH_MANAGER_CONF_DIR "/wazuh-manager-internal-options.conf"
 #endif
 #else
 #define WAZUH_DEFINES  "internal_options.conf"
@@ -272,9 +287,15 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 /* Authentication keys file */
 #ifndef WIN32
+#ifdef CLIENT
 #define KEYS_FILE  "etc/client.keys"
 #define AUTHD_PASS "etc/authd.pass"
 #define ENROLLMENT_TOKENS_FILE "etc/enrollment_tokens.json"
+#else
+#define KEYS_FILE  WAZUH_MANAGER_CONF_DIR "/client.keys"
+#define AUTHD_PASS WAZUH_MANAGER_CONF_DIR "/authd.pass"
+#define ENROLLMENT_TOKENS_FILE WAZUH_MANAGER_CONF_DIR "/enrollment_tokens.json"
+#endif
 #else
 #define KEYS_FILE  "client.keys"
 #define AUTHD_PASS "authd.pass"
@@ -374,7 +395,11 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 /* Shared config directory */
 #ifndef WIN32
+#ifdef CLIENT
 #define SHAREDCFG_DIR "etc/shared"
+#else
+#define SHAREDCFG_DIR WAZUH_MANAGER_CONF_DIR "/shared"
+#endif
 #else
 #define SHAREDCFG_DIR "shared"
 #endif
@@ -409,7 +434,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #ifdef CLIENT
 #define WAZUHCONF "etc/ossec.conf"
 #else
-#define WAZUHCONF "etc/wazuh-manager.conf"
+#define WAZUHCONF WAZUH_MANAGER_CONF_DIR "/wazuh-manager.conf"
 #endif
 #else
 #define WAZUHCONF "ossec.conf"

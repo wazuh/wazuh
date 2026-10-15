@@ -396,6 +396,18 @@ w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result
                    manager_message ? " " : "", manager_message ? manager_message : "");
             status = W_ENROLL_ERR_SERVER;
             break;
+        case 429:
+            /* The manager's enrollment rate limit ('remote.https.enroll_rate_limit'), not a fault
+             * of this agent's request: retrying IS the right response, which W_ENROLL_ERR_SERVER
+             * already produces (both enrollment loops ramp and retry). Named explicitly only so the
+             * log says why -- the ceiling is the whole node's, so during a mass enrollment many
+             * agents see this at once and it must not read as a failure of each. The manager's
+             * Retry-After is deliberately not honoured: the agent keeps its own retry ramp
+             * ('enrollment.retry_delta'/'retry_max'), as it does for every other retryable answer. */
+            minfo("Enrollment is being rate-limited by the manager; retrying.%s%s",
+                  manager_message ? " " : "", manager_message ? manager_message : "");
+            status = W_ENROLL_ERR_SERVER;
+            break;
         default:
             merror("Enrollment failed with unexpected HTTP status %ld.%s%s", result->http_code,
                    manager_message ? " " : "", manager_message ? manager_message : "");
@@ -664,9 +676,9 @@ STATIC char *w_enrollment_load_password(const char *path) {
 /**
  * @brief Stores one "ID NAME IP KEY" line to client.keys.
  *
- * Platform split preserved verbatim from the legacy
+ * Platform split preserved from the legacy
  * enrollment_op.c:w_enrollment_store_key_entry() (#38465 -- do not unify):
- * Linux writes atomically (temp file + chmod 0640 + rename); Windows writes
+ * Linux writes atomically (temp file + fchmod 0640 + rename); Windows writes
  * the file directly, without atomicity.
  */
 STATIC int w_enrollment_store_key_entry(const char *line) {
@@ -690,7 +702,11 @@ STATIC int w_enrollment_store_key_entry(const char *line) {
         return -1;
     }
 
-    if (chmod(file.name, 0640) == -1) {
+    /* The mode and the key go through the descriptor TempFile() returned, and nothing is done to
+     * the staged copy by name but the move: w_move_file_nofollow() renames it, or copies it into a
+     * client.keys that can't be renamed over, such as a single-file bind mount, without following
+     * a link at either name. */
+    if (fchmod(fileno(file.fp), 0640) == -1) {
         merror(CHMOD_ERROR, file.name, errno, strerror(errno));
         fclose(file.fp);
         unlink(file.name);
@@ -698,10 +714,25 @@ STATIC int w_enrollment_store_key_entry(const char *line) {
         return -1;
     }
 
-    fprintf(file.fp, "%s\n", line);
-    fclose(file.fp);
+    /* A short write would install a cut-off key. errno is read right after the call that failed:
+     * the fclose() that follows a failed fprintf() may change it. */
+    bool failed = (fprintf(file.fp, "%s\n", line) < 0);
+    int error = errno;
 
-    if (OS_MoveFile(file.name, KEYS_FILE) < 0) {
+    if (fclose(file.fp) != 0 && !failed) {
+        failed = true;
+        error = errno;
+    }
+
+    if (failed) {
+        merror(FWRITE_ERROR, file.name, error, strerror(error));
+        unlink(file.name);
+        os_free(file.name);
+        return -1;
+    }
+
+    if (w_move_file_nofollow(file.name, KEYS_FILE) != 0) {
+        unlink(file.name);
         os_free(file.name);
         return -1;
     }

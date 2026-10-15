@@ -28,9 +28,9 @@
       - ssl_verify_host:
           value: 'no'
       - ssl_manager_cert:
-          value: '/var/wazuh-manager/etc/certs/remoted.pem'
+          value: '/etc/wazuh-manager/certs/remoted.pem'
       - ssl_manager_key:
-          value: '/var/wazuh-manager/etc/certs/remoted-key.pem'
+          value: '/etc/wazuh-manager/certs/remoted-key.pem'
       - remote_enrollment:
           value: REMOTE_ENROLLMENT
     - section: cluster

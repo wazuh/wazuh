@@ -1249,15 +1249,16 @@ async def test_worker_handler_process_files_from_master_ko(send_request_mock,
 @patch("wazuh.core.cluster.worker.safe_move")
 @patch("wazuh.core.cluster.worker.utils.mkdir_with_mode")
 @patch("wazuh.core.cluster.worker.safe_join", return_value="queue/testing/")
+@patch("wazuh.core.cluster.worker.local_path", return_value="queue/testing/")
 @patch("wazuh.core.common.wazuh_uid", return_value="wazuh_uid")
 @patch("wazuh.core.common.wazuh_gid", return_value="wazuh_gid")
-async def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, wazuh_uid_mock, path_join_mock,
-                                                               mkdir_with_mode_mock, safe_move_mock, path_exists_mock,
-                                                               open_mock, event_loop):
+async def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, wazuh_uid_mock, local_path_mock,
+                                                               safe_join_mock, mkdir_with_mode_mock, safe_move_mock,
+                                                               path_exists_mock, open_mock, event_loop):
     """Check if the method is properly receiving and updating files."""
 
-    all_mocks = [wazuh_gid_mock, wazuh_uid_mock, path_join_mock, mkdir_with_mode_mock, safe_move_mock, open_mock,
-                 path_exists_mock]
+    all_mocks = [wazuh_gid_mock, wazuh_uid_mock, local_path_mock, safe_join_mock, mkdir_with_mode_mock,
+                 safe_move_mock, open_mock, path_exists_mock]
 
     worker_handler = get_worker_handler(event_loop)
 
@@ -1282,14 +1283,14 @@ async def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, w
                 assert result_logs['error'] == defaultdict(list)
             assert result_logs['debug2'] == {"filename1": ["Processing file filename1", "Processing file filename1"],
                                              "filename3": ["Remove file: 'filename3'"]}
-            path_join_mock.assert_has_calls([call(core_common.WAZUH_PATH, 'filename1'),
-                                             call(core_common.WAZUH_PATH, 'queue/TYPE/name'),
-                                             call(core_common.WAZUH_PATH, 'cluster_item_key'),
-                                             call(core_common.WAZUH_PATH, 'filename1'),
-                                             call(core_common.WAZUH_PATH, 'cluster_item_key'),
-                                             call('/zip/path', 'filename1'),
-                                             call(core_common.WAZUH_PATH, 'filename3'),
-                                             call(core_common.WAZUH_PATH, 'cluster_item_key')])
+            local_path_mock.assert_has_calls([call('filename1'),
+                                             call('queue/TYPE/name'),
+                                             call('cluster_item_key'),
+                                             call('filename1'),
+                                             call('cluster_item_key'),
+                                             call('filename3'),
+                                             call('cluster_item_key')])
+            safe_join_mock.assert_called_once_with('/zip/path', 'filename1')
             wazuh_uid_mock.assert_called_with()
             wazuh_gid_mock.assert_called_with()
             mkdir_with_mode_mock.assert_any_call("queue/testing")
@@ -1321,9 +1322,9 @@ async def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, w
                                      'filename2': ["Processing file filename2"]}
     assert result_logs['generic_errors'] == ["Found errors: 1 overwriting, 1 creating and 0 removing"]
 
-    path_join_mock.assert_has_calls([call(core_common.WAZUH_PATH, "filename1"),
-                                     call(core_common.WAZUH_PATH, "filename2"),
-                                     call(core_common.WAZUH_PATH, "filename3")])
+    local_path_mock.assert_has_calls([call("filename1"),
+                                     call("filename2"),
+                                     call("filename3")])
     wazuh_uid_mock.assert_not_called()
     wazuh_gid_mock.assert_not_called()
     mkdir_with_mode_mock.assert_not_called()
@@ -1337,7 +1338,7 @@ async def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, w
 
     # Test the first for: for -> if -> for -> except AND for -> elif -> for -> try -> except -> else AND
     # for -> elif -> for -> except
-    path_join_mock.return_value = "queue/testing_mock/"
+    local_path_mock.return_value = "queue/testing_mock/"
     with patch("os.path.commonpath", return_value="queue/testing_mock/"):
         result_logs = worker_handler.update_master_files_in_worker(
             {"shared": {"filename1": "data1"}, "missing": {"filename2": "data2"},
@@ -1355,9 +1356,9 @@ async def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, w
                                      'filename3': ["Remove file: 'filename3'", "File filename3 doesn't exist."]}
     assert result_logs['generic_errors'] == ["Found errors: 1 overwriting, 1 creating and 0 removing"]
 
-    path_join_mock.assert_has_calls([call(core_common.WAZUH_PATH, "filename1"),
-                                     call(core_common.WAZUH_PATH, "filename2"),
-                                     call(core_common.WAZUH_PATH, "filename3")])
+    local_path_mock.assert_has_calls([call("filename1"),
+                                     call("filename2"),
+                                     call("filename3")])
     wazuh_uid_mock.assert_not_called()
     wazuh_gid_mock.assert_not_called()
     mkdir_with_mode_mock.assert_not_called()
@@ -1388,9 +1389,9 @@ async def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, w
             assert result_logs['debug2'] == {'filename3': ["Remove file: 'filename3'",
                                                            "File filename3 doesn't exist."]}
             assert result_logs['generic_errors'] == []
-            path_join_mock.assert_has_calls([call(core_common.WAZUH_PATH, "filename3"),
-                                             call(core_common.WAZUH_PATH, "cluster_item_key"),
-                                             call(core_common.WAZUH_PATH, "")])
+            local_path_mock.assert_has_calls([call("filename3"),
+                                             call("cluster_item_key"),
+                                             call("")])
             wazuh_uid_mock.assert_not_called()
             wazuh_gid_mock.assert_not_called()
             mkdir_with_mode_mock.assert_not_called()
@@ -1415,9 +1416,9 @@ async def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, w
                                           "'queue/testing_mock/'"]}
     assert result_logs['generic_errors'] == ["Found errors: 0 overwriting, 0 creating and 1 removing"]
 
-    path_join_mock.assert_has_calls([call(core_common.WAZUH_PATH, "filename3"),
-                                     call(core_common.WAZUH_PATH, "cluster_item_key"),
-                                     call(core_common.WAZUH_PATH, "")])
+    local_path_mock.assert_has_calls([call("filename3"),
+                                     call("cluster_item_key"),
+                                     call("")])
     wazuh_uid_mock.assert_not_called()
     wazuh_gid_mock.assert_not_called()
     mkdir_with_mode_mock.assert_not_called()
@@ -1467,6 +1468,65 @@ def test_worker_handler_update_master_files_in_worker_security_checks():
     assert any("3062" in e and "outside allowed directory" in e
                for e in result['debug2']['active-response/bin/evil.sh'])
 
+
+
+@patch('wazuh.core.common.WAZUH_PATH', new='/var/wazuh-manager')
+@patch('wazuh.core.common.CONF_PATH', new='/etc/wazuh-manager')
+@patch('wazuh.core.common.wazuh_uid', return_value='wazuh_uid')
+@patch('wazuh.core.common.wazuh_gid', return_value='wazuh_gid')
+@patch('os.path.exists', return_value=True)
+@patch('wazuh.core.cluster.worker.safe_move')
+def test_worker_handler_update_master_files_in_worker_writes_etc_items_under_conf_path(safe_move_mock, exists_mock,
+                                                                                      gid_mock, uid_mock):
+    """Check that the 'etc' wire paths land in CONF_PATH and the confinement check compares local paths."""
+    worker_handler = get_worker_handler(MagicMock())
+    items = {
+        'files': {
+            'etc/': {'permissions': '0o640', 'remove_subdirs_if_empty': False},
+            'etc/shared/': {'permissions': '0o660', 'remove_subdirs_if_empty': True},
+            'var/multigroups/': {'permissions': '0o660', 'remove_subdirs_if_empty': True},
+            'excluded_files': EXCLUDED_FILES,
+        }
+    }
+
+    result = worker_handler.update_master_files_in_worker(
+        {'shared': {'etc/client.keys': {'merged': False, 'cluster_item_key': 'etc/'},
+                    'etc/shared/default/agent.conf': {'merged': False, 'cluster_item_key': 'etc/shared/'}},
+         'missing': {}, 'extra': {}},
+        '/zip', items)
+    assert result['error'] == defaultdict(list)
+    assert [c.args[:2] for c in safe_move_mock.call_args_list] == [
+        ('/zip/etc/client.keys', '/etc/wazuh-manager/client.keys'),
+        ('/zip/etc/shared/default/agent.conf', '/etc/wazuh-manager/shared/default/agent.conf'),
+    ]
+
+    # A file of another item is refused even when its wire path starts with 'etc'.
+    safe_move_mock.reset_mock()
+    result = worker_handler.update_master_files_in_worker(
+        {'shared': {'etc/shared/default/agent.conf': {'merged': False, 'cluster_item_key': 'var/multigroups/'}},
+         'missing': {}, 'extra': {}},
+        '/zip', items)
+    assert any('3062' in e and 'outside allowed directory' in e for e in result['error']['shared'])
+    safe_move_mock.assert_not_called()
+
+    # A wire path climbing out of the configuration directory is refused by local_path() itself.
+    result = worker_handler.update_master_files_in_worker(
+        {'shared': {'etc/../var/wazuh-manager/etc/x': {'merged': False, 'cluster_item_key': 'etc/'}},
+         'missing': {}, 'extra': {}},
+        '/zip', items)
+    assert any('3003' in e for e in result['error']['shared'])
+    safe_move_mock.assert_not_called()
+
+    # Extra files are removed from CONF_PATH, and their emptied subdirectory too.
+    with patch('os.remove') as remove_mock, patch('os.listdir', return_value=[]), \
+            patch('shutil.rmtree') as rmtree_mock:
+        result = worker_handler.update_master_files_in_worker(
+            {'shared': {}, 'missing': {},
+             'extra': {'etc/shared/old/agent.conf': {'cluster_item_key': 'etc/shared/'}}},
+            '/zip', items)
+    remove_mock.assert_called_once_with('/etc/wazuh-manager/shared/old/agent.conf')
+    rmtree_mock.assert_called_once_with('/etc/wazuh-manager/shared/old')
+    assert result['generic_errors'] == []
 
 @pytest.mark.asyncio
 async def test_worker_handler_get_logger(event_loop):

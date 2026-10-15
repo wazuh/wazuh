@@ -232,13 +232,6 @@ EXPORTED void fim_db_close_and_delete_database();
 EXPORTED int fim_db_increase_each_entry_version(const char* table_name);
 
 /**
- * @brief Update the last integrity check timestamp for a table.
- *
- * @param table_name Name of the table (e.g., "file_entry", "registry_key", "registry_data").
- */
-EXPORTED void fim_db_update_last_sync_time(const char* table_name);
-
-/**
  * @brief Get all elements from a table with optional filter.
  *
  * @param table_name Name of the table to query.
@@ -283,6 +276,15 @@ EXPORTED bool fim_db_try_get_last_sync_time(const char* table_name, int64_t* out
  * @param timestamp Timestamp in seconds since epoch.
  */
 EXPORTED void fim_db_update_last_sync_time_value(const char* table_name, int64_t timestamp);
+
+/**
+ * @brief Same as fim_db_update_last_sync_time_value(), but reports whether the write succeeded.
+ *
+ * @param table_name Pseudo-key to write.
+ * @param value Value to store.
+ * @return false when the write failed.
+ */
+EXPORTED bool fim_db_try_update_last_sync_time_value(const char* table_name, int64_t value);
 
 /**
  * @brief Set the sync flag for a file document.

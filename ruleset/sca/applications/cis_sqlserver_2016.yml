@@ -65,11 +65,9 @@ checks:
           - "Discovery"
       technique:
         id:
-          - "T1595"
           - "T1046"
           - "T1087"
         name:
-          - "Active Scanning"
           - "Network Service Discovery"
           - "Account Discovery"
     references:
@@ -108,11 +106,9 @@ checks:
           - "Discovery"
       technique:
         id:
-          - "T1595"
           - "T1046"
           - "T1087"
         name:
-          - "Active Scanning"
           - "Network Service Discovery"
           - "Account Discovery"
     references:
@@ -159,11 +155,9 @@ checks:
           - "Discovery"
       technique:
         id:
-          - "T1595"
           - "T1046"
           - "T1087"
         name:
-          - "Active Scanning"
           - "Network Service Discovery"
           - "Account Discovery"
     references:
@@ -209,11 +203,9 @@ checks:
           - "Discovery"
       technique:
         id:
-          - "T1595"
           - "T1046"
           - "T1087"
         name:
-          - "Active Scanning"
           - "Network Service Discovery"
           - "Account Discovery"
     references:
@@ -260,11 +252,9 @@ checks:
           - "Discovery"
       technique:
         id:
-          - "T1595"
           - "T1046"
           - "T1087"
         name:
-          - "Active Scanning"
           - "Network Service Discovery"
           - "Account Discovery"
     references:
@@ -310,11 +300,9 @@ checks:
           - "Discovery"
       technique:
         id:
-          - "T1595"
           - "T1046"
           - "T1087"
         name:
-          - "Active Scanning"
           - "Network Service Discovery"
           - "Account Discovery"
     references:
@@ -362,11 +350,9 @@ checks:
           - "Discovery"
       technique:
         id:
-          - "T1595"
           - "T1046"
           - "T1087"
         name:
-          - "Active Scanning"
           - "Network Service Discovery"
           - "Account Discovery"
     references:
@@ -414,11 +400,9 @@ checks:
           - "Discovery"
       technique:
         id:
-          - "T1595"
           - "T1046"
           - "T1087"
         name:
-          - "Active Scanning"
           - "Network Service Discovery"
           - "Account Discovery"
     references:
@@ -457,11 +441,9 @@ checks:
           - "Discovery"
       technique:
         id:
-          - "T1595"
           - "T1046"
           - "T1087"
         name:
-          - "Active Scanning"
           - "Network Service Discovery"
           - "Account Discovery"
     references:
@@ -515,11 +497,9 @@ checks:
           - "Discovery"
       technique:
         id:
-          - "T1595"
           - "T1046"
           - "T1087"
         name:
-          - "Active Scanning"
           - "Network Service Discovery"
           - "Account Discovery"
     references:
@@ -565,11 +545,9 @@ checks:
           - "Discovery"
       technique:
         id:
-          - "T1595"
           - "T1046"
           - "T1087"
         name:
-          - "Active Scanning"
           - "Network Service Discovery"
           - "Account Discovery"
     references:
@@ -612,11 +590,9 @@ checks:
           - "Discovery"
       technique:
         id:
-          - "T1595"
           - "T1046"
           - "T1087"
         name:
-          - "Active Scanning"
           - "Network Service Discovery"
           - "Account Discovery"
     references:
@@ -663,11 +639,9 @@ checks:
           - "Discovery"
       technique:
         id:
-          - "T1595"
           - "T1046"
           - "T1087"
         name:
-          - "Active Scanning"
           - "Network Service Discovery"
           - "Account Discovery"
     references:
@@ -711,11 +685,9 @@ checks:
           - "Discovery"
       technique:
         id:
-          - "T1595"
           - "T1046"
           - "T1087"
         name:
-          - "Active Scanning"
           - "Network Service Discovery"
           - "Account Discovery"
     references:
@@ -766,11 +738,9 @@ checks:
           - "Discovery"
       technique:
         id:
-          - "T1595"
           - "T1046"
           - "T1087"
         name:
-          - "Active Scanning"
           - "Network Service Discovery"
           - "Account Discovery"
     condition: all
@@ -822,11 +792,9 @@ checks:
           - "Discovery"
       technique:
         id:
-          - "T1595"
           - "T1046"
           - "T1087"
         name:
-          - "Active Scanning"
           - "Network Service Discovery"
           - "Account Discovery"
     references:
@@ -874,11 +842,9 @@ checks:
           - "Discovery"
       technique:
         id:
-          - "T1595"
           - "T1046"
           - "T1087"
         name:
-          - "Active Scanning"
           - "Network Service Discovery"
           - "Account Discovery"
     references:
@@ -923,11 +889,9 @@ checks:
           - "Discovery"
       technique:
         id:
-          - "T1595"
           - "T1046"
           - "T1087"
         name:
-          - "Active Scanning"
           - "Network Service Discovery"
           - "Account Discovery"
     condition: all
@@ -969,11 +933,9 @@ checks:
           - "Discovery"
       technique:
         id:
-          - "T1595"
           - "T1046"
           - "T1087"
         name:
-          - "Active Scanning"
           - "Network Service Discovery"
           - "Account Discovery"
     references:
@@ -1014,11 +976,9 @@ checks:
           - "Discovery"
       technique:
         id:
-          - "T1595"
           - "T1046"
           - "T1087"
         name:
-          - "Active Scanning"
           - "Network Service Discovery"
           - "Account Discovery"
     references:
@@ -1079,11 +1039,9 @@ checks:
           - "Discovery"
       technique:
         id:
-          - "T1595"
           - "T1046"
           - "T1087"
         name:
-          - "Active Scanning"
           - "Network Service Discovery"
           - "Account Discovery"
     references:
@@ -1127,11 +1085,9 @@ checks:
           - "Discovery"
       technique:
         id:
-          - "T1595"
           - "T1046"
           - "T1087"
         name:
-          - "Active Scanning"
           - "Network Service Discovery"
           - "Account Discovery"
     references:
@@ -1180,11 +1136,9 @@ checks:
           - "Discovery"
       technique:
         id:
-          - "T1595"
           - "T1046"
           - "T1087"
         name:
-          - "Active Scanning"
           - "Network Service Discovery"
           - "Account Discovery"
     references:

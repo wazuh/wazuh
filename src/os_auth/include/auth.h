@@ -240,7 +240,7 @@ cJSON* local_add_clustered(const char *name,
                            const char *reenroll_bearer,
                            const char *source);
 
-/* The shared enrollment password's size: 32 CSPRNG bytes, stored in etc/authd.pass as 64
+/* The shared enrollment password's size: 32 CSPRNG bytes, stored in /etc/wazuh-manager/authd.pass as 64
  * lowercase hex chars. Same shape and same discipline as the agent key (AGENT_KEY_BYTES). */
 #define AUTHD_PASS_BYTES     32
 #define AUTHD_PASS_HEX_CHARS 64
@@ -252,7 +252,7 @@ cJSON* local_add_clustered(const char *name,
  *        The result must be freed by the caller.
  *
  * @return char* The password, or NULL when RAND_bytes fails -- the caller must then refuse to
- *         write etc/authd.pass rather than fall back to a weaker generator (same rule as
+ *         write /etc/wazuh-manager/authd.pass rather than fall back to a weaker generator (same rule as
  *         OS_AddNewAgent()'s key).
  */
 char *w_generate_random_pass();

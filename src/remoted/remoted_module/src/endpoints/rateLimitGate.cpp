@@ -56,6 +56,71 @@ namespace remoted::endpoints::ratelimit
         return remoted::http::EndpointRateLimiter::Settings {rate, rate * BURST_MULTIPLIER};
     }
 
+    Gate::Gate(std::shared_ptr<remoted::http::EndpointRateLimiter> limiter,
+               std::function<remoted::http::HttpResponse()> rejection,
+               std::shared_ptr<wazuh::metrics::ICounter> rejected,
+               const remoted::metrics::EndpointHttpMetrics* httpMetrics,
+               const char* route)
+        : m_limiter {limiter && limiter->enabled() ? std::move(limiter) : nullptr}
+        , m_rejection {std::move(rejection)}
+        , m_rejected {std::move(rejected)}
+        , m_httpMetrics {httpMetrics}
+        , m_route {route != nullptr ? route : ""}
+        , m_retryAfter {m_limiter ? std::to_string(m_limiter->retryAfterSeconds()) : std::string {}}
+        // One throttle per gate, not a file-static: /enroll and /cacerts must not silence each
+        // other's line, and a static would also outlive a restart of the module within one process.
+        , m_throttle {std::make_shared<remoted::common::LogThrottle>()}
+    {
+    }
+
+    bool Gate::enabled() const noexcept
+    {
+        return m_limiter != nullptr;
+    }
+
+    bool Gate::admit(remoted::http::IHttpResponder& responder) const
+    {
+        if (!m_limiter || m_limiter->allow())
+        {
+            return true;
+        }
+
+        if (m_rejected)
+        {
+            m_rejected->add();
+        }
+
+        auto response =
+            m_rejection ? m_rejection() : remoted::http::HttpResponse::json(429, R"({"error":"too_many_requests"})");
+        response.headers.emplace_back("Retry-After", m_retryAfter);
+
+        // Counted directly, NOT through a MeteredResponder: that decorator also records the
+        // endpoint's latency histogram, and this request never reached the work the route exists
+        // for. /enroll's histogram is the evidence for sizing the authd timeouts, so feeding it
+        // microsecond-scale refusals would drag the percentiles down -- and during the very burst
+        // the limiter exists for, those samples would dominate and hide the latency of the requests
+        // that were actually served. The status cell is the only part of that family a refusal
+        // belongs in.
+        if (m_httpMetrics != nullptr)
+        {
+            m_httpMetrics->responses.count(response.status);
+        }
+
+        responder.send(std::move(response));
+
+        if (const auto decision = m_throttle->record())
+        {
+            LOGFN_WARN(logFn(),
+                       "%s refused %llu request(s) in the last %d s with 429: the endpoint is being asked "
+                       "faster than its configured rate, which is a ceiling for this whole node and not "
+                       "a per-agent one. Raise the matching 'remote.https' rate if this load is legitimate.",
+                       m_route.c_str(),
+                       static_cast<unsigned long long>(decision.total),
+                       remoted::common::LogThrottle::kDefaultWindowSeconds);
+        }
+        return false;
+    }
+
     remoted::http::RouteHandler wrap(remoted::http::RouteHandler inner,
                                      std::shared_ptr<remoted::http::EndpointRateLimiter> limiter,
                                      std::function<remoted::http::HttpResponse()> rejection,
@@ -63,70 +128,26 @@ namespace remoted::endpoints::ratelimit
                                      const remoted::metrics::EndpointHttpMetrics* httpMetrics,
                                      const char* route)
     {
+        auto gate = std::make_shared<const Gate>(
+            std::move(limiter), std::move(rejection), std::move(rejected), httpMetrics, route);
+
         // Nothing to gate: hand back the original handler so a disabled limit costs literally
         // nothing per request -- not even the wrapper's own indirection.
-        if (!limiter || !limiter->enabled())
+        if (!gate->enabled())
         {
             return inner;
         }
 
-        // One throttle per gate, not a file-static: /enroll and /cacerts must not silence each
-        // other's line, and a static would also outlive a restart of the module within one process.
-        const auto throttle = std::make_shared<remoted::common::LogThrottle>();
-        const std::string routeName {route != nullptr ? route : ""};
-        const auto retryAfter = std::to_string(limiter->retryAfterSeconds());
-
         return [inner = std::move(inner),
-                limiter = std::move(limiter),
-                rejection = std::move(rejection),
-                rejected = std::move(rejected),
-                httpMetrics,
-                throttle,
-                routeName,
-                retryAfter](std::shared_ptr<const remoted::http::HttpRequest> request,
-                            std::shared_ptr<remoted::http::IHttpResponder> responder)
+                gate = std::move(gate)](std::shared_ptr<const remoted::http::HttpRequest> request,
+                                        std::shared_ptr<remoted::http::IHttpResponder> responder)
         {
             // The caller is deliberately not consulted: the bucket belongs to the endpoint, so the
             // request's address, credential and body are all irrelevant to this decision -- which
             // is also why the decision can be made before any of them is read.
-            if (limiter->allow())
+            if (gate->admit(*responder))
             {
                 inner(std::move(request), std::move(responder));
-                return;
-            }
-
-            if (rejected)
-            {
-                rejected->add();
-            }
-
-            auto response =
-                rejection ? rejection() : remoted::http::HttpResponse::json(429, R"({"error":"too_many_requests"})");
-            response.headers.emplace_back("Retry-After", retryAfter);
-
-            // Counted directly, NOT through a MeteredResponder: that decorator also records the
-            // endpoint's latency histogram, and this request never entered the handler. /enroll's
-            // histogram is documented as handler-entry-to-response and is the evidence for sizing
-            // the authd timeouts, so feeding it microsecond-scale refusals would drag the
-            // percentiles down -- and during the very burst the limiter exists for, those samples
-            // would dominate and hide the latency of the requests that were actually served.
-            // The status cell is the only part of that family a refusal belongs in.
-            if (httpMetrics != nullptr)
-            {
-                httpMetrics->responses.count(response.status);
-            }
-
-            responder->send(std::move(response));
-
-            if (const auto decision = throttle->record())
-            {
-                LOGFN_WARN(logFn(),
-                           "%s refused %llu request(s) in the last %d s with 429: the endpoint is being asked "
-                           "faster than its configured rate, which is a ceiling for this whole node and not "
-                           "a per-agent one. Raise the matching 'remote.https' rate if this load is legitimate.",
-                           routeName.c_str(),
-                           static_cast<unsigned long long>(decision.total),
-                           remoted::common::LogThrottle::kDefaultWindowSeconds);
             }
         };
     }

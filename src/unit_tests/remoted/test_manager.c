@@ -786,10 +786,10 @@ void test_c_group_no_changes(void **state)
     will_return(__wrap_fprintf, 0);
 
     // Start validate_shared_files function
-    expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
+    expect_string(__wrap_wreaddir, name, SHAREDCFG_DIR "/test_default");
     will_return(__wrap_wreaddir, NULL);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory 'etc/shared/test_default'");
+    expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory '" SHAREDCFG_DIR "/test_default'");
     // End validate_shared_files function
 
     expect_value(__wrap_fclose, _File, (FILE *)1);
@@ -800,17 +800,17 @@ void test_c_group_no_changes(void **state)
     will_return(__wrap_OS_MD5_Str, "md5_test");
     will_return(__wrap_OS_MD5_Str, 0);
 
-    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg");
+    expect_string(__wrap_OS_MD5_File, fname, SHAREDCFG_DIR "/test_default/merged.mg");
     expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
     will_return(__wrap_OS_MD5_File, "md5_test");
     will_return(__wrap_OS_MD5_File, 0);
 
-    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg");
+    expect_string(__wrap_OS_MD5_File, fname, SHAREDCFG_DIR "/test_default/merged.mg");
     expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
     will_return(__wrap_OS_MD5_File, "md5_test");
     will_return(__wrap_OS_MD5_File, 0);
 
-    expect_string(__wrap_stat, __file, "etc/shared/test_default/merged.mg");
+    expect_string(__wrap_stat, __file, SHAREDCFG_DIR "/test_default/merged.mg");
     will_return(__wrap_stat, 0);
     will_return(__wrap_stat, 0);
 
@@ -839,7 +839,7 @@ void test_c_group_no_changes_disk(void **state)
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, (OSHash *)10);
 
-    expect_string(__wrap_wfopen, path, "etc/shared/test_default/merged.mg.tmp");
+    expect_string(__wrap_wfopen, path, SHAREDCFG_DIR "/test_default/merged.mg.tmp");
     expect_string(__wrap_wfopen, mode, "w");
     will_return(__wrap_wfopen, (FILE *)1);
 
@@ -848,34 +848,34 @@ void test_c_group_no_changes_disk(void **state)
     will_return(__wrap_fprintf, 0);
 
     // Start validate_shared_files function
-    expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
+    expect_string(__wrap_wreaddir, name, SHAREDCFG_DIR "/test_default");
     will_return(__wrap_wreaddir, NULL);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory 'etc/shared/test_default'");
+    expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory '" SHAREDCFG_DIR "/test_default'");
     // End validate_shared_files function
 
     expect_value(__wrap_fclose, _File, (FILE *)1);
     will_return(__wrap_fclose, 0);
 
-    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg.tmp");
+    expect_string(__wrap_OS_MD5_File, fname, SHAREDCFG_DIR "/test_default/merged.mg.tmp");
     expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
     will_return(__wrap_OS_MD5_File, "md5_test");
     will_return(__wrap_OS_MD5_File, 0);
 
-    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg");
+    expect_string(__wrap_OS_MD5_File, fname, SHAREDCFG_DIR "/test_default/merged.mg");
     expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
     will_return(__wrap_OS_MD5_File, "md5_test");
     will_return(__wrap_OS_MD5_File, 0);
 
-    expect_string(__wrap_unlink, file, "etc/shared/test_default/merged.mg.tmp");
+    expect_string(__wrap_unlink, file, SHAREDCFG_DIR "/test_default/merged.mg.tmp");
     will_return(__wrap_unlink, 0);
 
-    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg");
+    expect_string(__wrap_OS_MD5_File, fname, SHAREDCFG_DIR "/test_default/merged.mg");
     expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
     will_return(__wrap_OS_MD5_File, "md5_test");
     will_return(__wrap_OS_MD5_File, 0);
 
-    expect_string(__wrap_stat, __file, "etc/shared/test_default/merged.mg");
+    expect_string(__wrap_stat, __file, SHAREDCFG_DIR "/test_default/merged.mg");
     will_return(__wrap_stat, 0);
     will_return(__wrap_stat, 0);
 
@@ -913,10 +913,10 @@ void test_c_group_changes(void **state)
     will_return(__wrap_fprintf, 0);
 
     // Start validate_shared_files function
-    expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
+    expect_string(__wrap_wreaddir, name, SHAREDCFG_DIR "/test_default");
     will_return(__wrap_wreaddir, NULL);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory 'etc/shared/test_default'");
+    expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory '" SHAREDCFG_DIR "/test_default'");
     // End validate_shared_files function
 
     expect_value(__wrap_fclose, _File, (FILE *)1);
@@ -927,12 +927,12 @@ void test_c_group_changes(void **state)
     will_return(__wrap_OS_MD5_Str, "md5_test");
     will_return(__wrap_OS_MD5_Str, 0);
 
-    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg");
+    expect_string(__wrap_OS_MD5_File, fname, SHAREDCFG_DIR "/test_default/merged.mg");
     expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
     will_return(__wrap_OS_MD5_File, "md5_test2");
     will_return(__wrap_OS_MD5_File, 0);
 
-    expect_string(__wrap_wfopen, path, "etc/shared/test_default/merged.mg");
+    expect_string(__wrap_wfopen, path, SHAREDCFG_DIR "/test_default/merged.mg");
     expect_string(__wrap_wfopen, mode, "w");
     will_return(__wrap_wfopen, (FILE *)2);
 
@@ -941,16 +941,16 @@ void test_c_group_changes(void **state)
     expect_value(__wrap_fclose, _File, (FILE *)2);
     will_return(__wrap_fclose, 0);
 
-    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg");
+    expect_string(__wrap_OS_MD5_File, fname, SHAREDCFG_DIR "/test_default/merged.mg");
     expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
     will_return(__wrap_OS_MD5_File, "md5_test2");
     will_return(__wrap_OS_MD5_File, 0);
 
-    expect_string(__wrap_stat, __file, "etc/shared/test_default/merged.mg");
+    expect_string(__wrap_stat, __file, SHAREDCFG_DIR "/test_default/merged.mg");
     will_return(__wrap_stat, 0);
     will_return(__wrap_stat, -1);
 
-    expect_string(__wrap__merror, formatted_msg, "Unable to get entry attributes 'etc/shared/test_default/merged.mg'");
+    expect_string(__wrap__merror, formatted_msg, "Unable to get entry attributes '" SHAREDCFG_DIR "/test_default/merged.mg'");
 
     c_group(group_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, true, false);
 
@@ -970,7 +970,7 @@ void test_c_group_changes_disk(void **state)
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, (OSHash *)10);
 
-    expect_string(__wrap_wfopen, path, "etc/shared/test_default/merged.mg.tmp");
+    expect_string(__wrap_wfopen, path, SHAREDCFG_DIR "/test_default/merged.mg.tmp");
     expect_string(__wrap_wfopen, mode, "w");
     will_return(__wrap_wfopen, (FILE *)1);
 
@@ -979,39 +979,39 @@ void test_c_group_changes_disk(void **state)
     will_return(__wrap_fprintf, 0);
 
     // Start validate_shared_files function
-    expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
+    expect_string(__wrap_wreaddir, name, SHAREDCFG_DIR "/test_default");
     will_return(__wrap_wreaddir, NULL);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory 'etc/shared/test_default'");
+    expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory '" SHAREDCFG_DIR "/test_default'");
     // End validate_shared_files function
 
     expect_value(__wrap_fclose, _File, (FILE *)1);
     will_return(__wrap_fclose, 0);
 
-    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg.tmp");
+    expect_string(__wrap_OS_MD5_File, fname, SHAREDCFG_DIR "/test_default/merged.mg.tmp");
     expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
     will_return(__wrap_OS_MD5_File, "md5_test");
     will_return(__wrap_OS_MD5_File, 0);
 
-    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg");
+    expect_string(__wrap_OS_MD5_File, fname, SHAREDCFG_DIR "/test_default/merged.mg");
     expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
     will_return(__wrap_OS_MD5_File, "md5_test2");
     will_return(__wrap_OS_MD5_File, 0);
 
-    expect_string(__wrap_OS_MoveFile, src, "etc/shared/test_default/merged.mg.tmp");
-    expect_string(__wrap_OS_MoveFile, dst, "etc/shared/test_default/merged.mg");
+    expect_string(__wrap_OS_MoveFile, src, SHAREDCFG_DIR "/test_default/merged.mg.tmp");
+    expect_string(__wrap_OS_MoveFile, dst, SHAREDCFG_DIR "/test_default/merged.mg");
     will_return(__wrap_OS_MoveFile, 0);
 
-    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg");
+    expect_string(__wrap_OS_MD5_File, fname, SHAREDCFG_DIR "/test_default/merged.mg");
     expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
     will_return(__wrap_OS_MD5_File, "md5_test2");
     will_return(__wrap_OS_MD5_File, 0);
 
-    expect_string(__wrap_stat, __file, "etc/shared/test_default/merged.mg");
+    expect_string(__wrap_stat, __file, SHAREDCFG_DIR "/test_default/merged.mg");
     will_return(__wrap_stat, 0);
     will_return(__wrap_stat, -1);
 
-    expect_string(__wrap__merror, formatted_msg, "Unable to get entry attributes 'etc/shared/test_default/merged.mg'");
+    expect_string(__wrap__merror, formatted_msg, "Unable to get entry attributes '" SHAREDCFG_DIR "/test_default/merged.mg'");
 
     c_group(group_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, true, false);
 
@@ -1040,10 +1040,10 @@ void test_c_group_fail(void **state)
     will_return(__wrap_fprintf, 0);
 
     // Start validate_shared_files function
-    expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
+    expect_string(__wrap_wreaddir, name, SHAREDCFG_DIR "/test_default");
     will_return(__wrap_wreaddir, NULL);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory 'etc/shared/test_default'");
+    expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory '" SHAREDCFG_DIR "/test_default'");
     // End validate_shared_files function
 
     expect_value(__wrap_fclose, _File, (FILE *)1);
@@ -1054,12 +1054,12 @@ void test_c_group_fail(void **state)
     will_return(__wrap_OS_MD5_Str, "md5_test");
     will_return(__wrap_OS_MD5_Str, 0);
 
-    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg");
+    expect_string(__wrap_OS_MD5_File, fname, SHAREDCFG_DIR "/test_default/merged.mg");
     expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
     will_return(__wrap_OS_MD5_File, "md5_test");
     will_return(__wrap_OS_MD5_File, -1);
 
-    expect_string(__wrap_wfopen, path, "etc/shared/test_default/merged.mg");
+    expect_string(__wrap_wfopen, path, SHAREDCFG_DIR "/test_default/merged.mg");
     expect_string(__wrap_wfopen, mode, "w");
     will_return(__wrap_wfopen, (FILE *)2);
 
@@ -1068,12 +1068,12 @@ void test_c_group_fail(void **state)
     expect_value(__wrap_fclose, _File, (FILE *)2);
     will_return(__wrap_fclose, 0);
 
-    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg");
+    expect_string(__wrap_OS_MD5_File, fname, SHAREDCFG_DIR "/test_default/merged.mg");
     expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
     will_return(__wrap_OS_MD5_File, "md5_test");
     will_return(__wrap_OS_MD5_File, -1);
 
-    expect_string(__wrap__merror, formatted_msg, "Accessing file 'etc/shared/test_default/merged.mg'");
+    expect_string(__wrap__merror, formatted_msg, "Accessing file '" SHAREDCFG_DIR "/test_default/merged.mg'");
 
     c_group(group_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, true, false);
 
@@ -1093,7 +1093,7 @@ void test_c_group_fail_disk(void **state)
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, (OSHash *)10);
 
-    expect_string(__wrap_wfopen, path, "etc/shared/test_default/merged.mg.tmp");
+    expect_string(__wrap_wfopen, path, SHAREDCFG_DIR "/test_default/merged.mg.tmp");
     expect_string(__wrap_wfopen, mode, "w");
     will_return(__wrap_wfopen, (FILE *)1);
 
@@ -1102,21 +1102,21 @@ void test_c_group_fail_disk(void **state)
     will_return(__wrap_fprintf, 0);
 
     // Start validate_shared_files function
-    expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
+    expect_string(__wrap_wreaddir, name, SHAREDCFG_DIR "/test_default");
     will_return(__wrap_wreaddir, NULL);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory 'etc/shared/test_default'");
+    expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory '" SHAREDCFG_DIR "/test_default'");
     // End validate_shared_files function
 
     expect_value(__wrap_fclose, _File, (FILE *)1);
     will_return(__wrap_fclose, 0);
 
-    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg.tmp");
+    expect_string(__wrap_OS_MD5_File, fname, SHAREDCFG_DIR "/test_default/merged.mg.tmp");
     expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
     will_return(__wrap_OS_MD5_File, "md5_test");
     will_return(__wrap_OS_MD5_File, -1);
 
-    expect_string(__wrap__merror, formatted_msg, "Accessing file 'etc/shared/test_default/merged.mg.tmp'");
+    expect_string(__wrap__merror, formatted_msg, "Accessing file '" SHAREDCFG_DIR "/test_default/merged.mg.tmp'");
 
     c_group(group_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, true, false);
 
@@ -1145,10 +1145,10 @@ void test_c_group_invalid_share_file(void **state)
     will_return(__wrap_fprintf, 0);
 
     // Start validate_shared_files function
-    expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
+    expect_string(__wrap_wreaddir, name, SHAREDCFG_DIR "/test_default");
     will_return(__wrap_wreaddir, NULL);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory 'etc/shared/test_default'");
+    expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory '" SHAREDCFG_DIR "/test_default'");
     // End validate_shared_files function
 
     expect_value(__wrap_fclose, _File, (FILE *)1);
@@ -1159,19 +1159,19 @@ void test_c_group_invalid_share_file(void **state)
     will_return(__wrap_OS_MD5_Str, "md5_test");
     will_return(__wrap_OS_MD5_Str, 0);
 
-    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg");
+    expect_string(__wrap_OS_MD5_File, fname, SHAREDCFG_DIR "/test_default/merged.mg");
     expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
     will_return(__wrap_OS_MD5_File, "md5_test");
     will_return(__wrap_OS_MD5_File, -1);
 
-    expect_string(__wrap_wfopen, path, "etc/shared/test_default/merged.mg");
+    expect_string(__wrap_wfopen, path, SHAREDCFG_DIR "/test_default/merged.mg");
     expect_string(__wrap_wfopen, mode, "w");
     errno = 0;
     will_return(__wrap_wfopen, NULL);
 
     will_return(__wrap_strerror, "No such file or directory");
 
-    expect_string(__wrap__merror, formatted_msg, "Unable to open file: 'etc/shared/test_default/merged.mg' due to [(0)-(No such file or directory)].");
+    expect_string(__wrap__merror, formatted_msg, "Unable to open file: '" SHAREDCFG_DIR "/test_default/merged.mg' due to [(0)-(No such file or directory)].");
 
     c_group(group_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, true, false);
 }
@@ -1201,11 +1201,11 @@ void test_c_group_append_file_error(void **state)
     files[0] = strdup("test-file");
     files[1] = NULL;
 
-    expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
+    expect_string(__wrap_wreaddir, name, SHAREDCFG_DIR "/test_default");
     will_return(__wrap_wreaddir, files);
 
     struct stat stat_buf2 = { .st_mode = S_IFREG };
-    expect_string(__wrap_stat, __file, "etc/shared/test_default/test-file");
+    expect_string(__wrap_stat, __file, SHAREDCFG_DIR "/test_default/test-file");
     will_return(__wrap_stat, &stat_buf2);
     will_return(__wrap_stat, 0);
 
@@ -1214,14 +1214,14 @@ void test_c_group_append_file_error(void **state)
     invalid_files = OSHash_Create();
 
     expect_any(__wrap_OSHash_Get, self);
-    expect_string(__wrap_OSHash_Get, key, "etc/shared/test_default/test-file");
+    expect_string(__wrap_OSHash_Get, key, SHAREDCFG_DIR "/test_default/test-file");
     will_return(__wrap_OSHash_Get, NULL);
 
-    expect_string(__wrap_checkBinaryFile, f_name, "etc/shared/test_default/test-file");
+    expect_string(__wrap_checkBinaryFile, f_name, SHAREDCFG_DIR "/test_default/test-file");
     will_return(__wrap_checkBinaryFile, 0);
 
     expect_value(__wrap_MergeAppendFile, finalfp, (FILE *)1);
-    expect_value(__wrap_MergeAppendFile, path_offset, 0x18);
+    expect_value(__wrap_MergeAppendFile, path_offset, sizeof(SHAREDCFG_DIR "/test_default/") - 1);
     will_return(__wrap_MergeAppendFile, 0);
     // End validate_shared_files function
 
@@ -1264,13 +1264,13 @@ void test_c_group_truncate_error_disk(void **state)
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, (OSHash *)10);
 
-    expect_string(__wrap_wfopen, path, "etc/shared/test_default/merged.mg.tmp");
+    expect_string(__wrap_wfopen, path, SHAREDCFG_DIR "/test_default/merged.mg.tmp");
     expect_string(__wrap_wfopen, mode, "w");
     will_return(__wrap_wfopen, NULL);
 
     will_return(__wrap_strerror, "No such file or directory");
 
-    expect_string(__wrap__merror, formatted_msg, "Unable to create merged file: 'etc/shared/test_default/merged.mg.tmp' due to [(0)-(No such file or directory)].");
+    expect_string(__wrap__merror, formatted_msg, "Unable to create merged file: '" SHAREDCFG_DIR "/test_default/merged.mg.tmp' due to [(0)-(No such file or directory)].");
 
     c_group(group_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, true, false);
 }
@@ -1302,7 +1302,7 @@ void test_c_multi_group_open_directory_fail(void **state)
 
     will_return(__wrap_strerror, "No such file or directory");
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Opening directory: 'etc/shared': No such file or directory");
+    expect_string(__wrap__mdebug2, formatted_msg, "Opening directory: '" SHAREDCFG_DIR "': No such file or directory");
 
     c_multi_group(multi_group, &_f_time, &sum, hash_multigroup, true);
 
@@ -1325,11 +1325,11 @@ void test_c_multi_group_call_copy_directory(void **state)
 
     will_return(__wrap_opendir, 1);
 
-    expect_string(__wrap_wreaddir, name, "etc/shared/multi_group_test");
+    expect_string(__wrap_wreaddir, name, SHAREDCFG_DIR "/multi_group_test");
     will_return(__wrap_wreaddir, NULL);
     will_return(__wrap_closedir, 0);
 
-    expect_string(__wrap__mwarn, formatted_msg, "Could not open directory 'etc/shared/multi_group_test'. Group folder was deleted.");
+    expect_string(__wrap__mwarn, formatted_msg, "Could not open directory '" SHAREDCFG_DIR "/multi_group_test'. Group folder was deleted.");
 
     /* Open the multi-group files and generate merged */
     will_return(__wrap_opendir, 0);
@@ -1357,7 +1357,7 @@ void test_c_multi_group_read_dir_fail_no_entry(void **state)
 
     will_return(__wrap_opendir, 1);
 
-    expect_string(__wrap_wreaddir, name, "etc/shared/multi_group_test");
+    expect_string(__wrap_wreaddir, name, SHAREDCFG_DIR "/multi_group_test");
     will_return(__wrap_wreaddir, NULL);
 
     // Open the multi-group files and generate merged //
@@ -1399,16 +1399,16 @@ void test_c_multi_group_Ignore_hidden_files(void **state)
     os_strdup("ignore_file", files[3]);
     files[4] = NULL;
 
-    expect_string(__wrap_wreaddir, name, "etc/shared/multi_group_test");
+    expect_string(__wrap_wreaddir, name, SHAREDCFG_DIR "/multi_group_test");
     will_return(__wrap_wreaddir, files);
 
     will_return(__wrap_opendir, 0);
 
     expect_any(__wrap_OSHash_Get, self);
-    expect_string(__wrap_OSHash_Get, key, "etc/shared/multi_group_test/file_2");
+    expect_string(__wrap_OSHash_Get, key, SHAREDCFG_DIR "/multi_group_test/file_2");
     will_return(__wrap_OSHash_Get, NULL);
 
-    expect_string(__wrap_w_copy_file, src, "etc/shared/multi_group_test/file_2");
+    expect_string(__wrap_w_copy_file, src, SHAREDCFG_DIR "/multi_group_test/file_2");
     expect_string(__wrap_w_copy_file, dst, "var/multigroups/multi_group_hash/file_2");
     expect_value(__wrap_w_copy_file, mode, 0x63);
     expect_value(__wrap_w_copy_file, silent, 1);
@@ -1417,10 +1417,10 @@ void test_c_multi_group_Ignore_hidden_files(void **state)
     will_return(__wrap_opendir, 0);
 
     expect_any(__wrap_OSHash_Get, self);
-    expect_string(__wrap_OSHash_Get, key, "etc/shared/multi_group_test/agent.conf");
+    expect_string(__wrap_OSHash_Get, key, SHAREDCFG_DIR "/multi_group_test/agent.conf");
     will_return(__wrap_OSHash_Get, NULL);
 
-    expect_string(__wrap_w_copy_file, src, "etc/shared/multi_group_test/agent.conf");
+    expect_string(__wrap_w_copy_file, src, SHAREDCFG_DIR "/multi_group_test/agent.conf");
     expect_string(__wrap_w_copy_file, dst, "var/multigroups/multi_group_hash/agent.conf");
     expect_value(__wrap_w_copy_file, mode, 0x61);
     expect_value(__wrap_w_copy_file, silent, 1);
@@ -1433,7 +1433,7 @@ void test_c_multi_group_Ignore_hidden_files(void **state)
     will_return(__wrap_opendir, 0);
 
     expect_any(__wrap_OSHash_Get, self);
-    expect_string(__wrap_OSHash_Get, key, "etc/shared/multi_group_test/ignore_file");
+    expect_string(__wrap_OSHash_Get, key, SHAREDCFG_DIR "/multi_group_test/ignore_file");
     will_return(__wrap_OSHash_Get, last_modify);
 
     // Open the multi-group files and generate merged //
@@ -1466,11 +1466,11 @@ void test_c_multi_group_subdir_fail(void **state)
     will_return(__wrap_opendir, 1);
 
     // Start copy_directory function
-    expect_string(__wrap_wreaddir, name, "etc/shared/multi_group_test");
+    expect_string(__wrap_wreaddir, name, SHAREDCFG_DIR "/multi_group_test");
     will_return(__wrap_wreaddir, NULL);
 
     errno = 1;
-    expect_string(__wrap__mwarn, formatted_msg, "Could not open directory 'etc/shared/multi_group_test'. Group folder was deleted.");
+    expect_string(__wrap__mwarn, formatted_msg, "Could not open directory '" SHAREDCFG_DIR "/multi_group_test'. Group folder was deleted.");
 
     // End copy_directory function
 
@@ -1506,11 +1506,11 @@ void test_c_multi_group_call_c_group(void **state)
     will_return(__wrap_closedir, 0);
 
     // Start copy_directory function
-    expect_string(__wrap_wreaddir, name, "etc/shared/multi_group_test");
+    expect_string(__wrap_wreaddir, name, SHAREDCFG_DIR "/multi_group_test");
     will_return(__wrap_wreaddir, NULL);
 
     errno = 1;
-    expect_string(__wrap__mwarn, formatted_msg, "Could not open directory 'etc/shared/multi_group_test'. Group folder was deleted.");
+    expect_string(__wrap__mwarn, formatted_msg, "Could not open directory '" SHAREDCFG_DIR "/multi_group_test'. Group folder was deleted.");
 
     // End copy_directory function
 
@@ -2015,7 +2015,7 @@ void test_process_groups_open_directory_fail(void **state)
     will_return(__wrap_opendir, 0);
 
     will_return(__wrap_strerror, "No such file or directory");
-    expect_string(__wrap__mdebug1, formatted_msg, "Opening directory: 'etc/shared': No such file or directory");
+    expect_string(__wrap__mdebug1, formatted_msg, "Opening directory: '" SHAREDCFG_DIR "': No such file or directory");
 
     process_groups();
 }
@@ -2039,10 +2039,10 @@ void test_process_groups_subdir_null(void **state)
 
     will_return(__wrap_readdir, entry);
 
-    expect_string(__wrap_wreaddir, name, "etc/shared/test");
+    expect_string(__wrap_wreaddir, name, SHAREDCFG_DIR "/test");
     will_return(__wrap_wreaddir, NULL);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory 'etc/shared/test'");
+    expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory '" SHAREDCFG_DIR "/test'");
 
     will_return(__wrap_readdir, NULL);
     will_return(__wrap_closedir, 0);
@@ -2103,7 +2103,7 @@ void test_process_groups_find_group_null(void **state)
 
     will_return(__wrap_readdir, entry);
 
-    expect_string(__wrap_wreaddir, name, "etc/shared/test");
+    expect_string(__wrap_wreaddir, name, SHAREDCFG_DIR "/test");
     will_return(__wrap_wreaddir, subdir);
 
     expect_value(__wrap_OSHash_Get_ex, self, groups);
@@ -2128,10 +2128,10 @@ void test_process_groups_find_group_null(void **state)
     will_return(__wrap_fprintf, 0);
 
     // Start validate_shared_files function
-    expect_string(__wrap_wreaddir, name, "etc/shared/test");
+    expect_string(__wrap_wreaddir, name, SHAREDCFG_DIR "/test");
     will_return(__wrap_wreaddir, NULL);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory 'etc/shared/test'");
+    expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory '" SHAREDCFG_DIR "/test'");
     // End validate_shared_files function
 
     expect_value(__wrap_fclose, _File, (FILE *)1);
@@ -2142,19 +2142,19 @@ void test_process_groups_find_group_null(void **state)
     will_return(__wrap_OS_MD5_Str, "md5_test");
     will_return(__wrap_OS_MD5_Str, 0);
 
-    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test/merged.mg");
+    expect_string(__wrap_OS_MD5_File, fname, SHAREDCFG_DIR "/test/merged.mg");
     expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
     will_return(__wrap_OS_MD5_File, "md5_test");
     will_return(__wrap_OS_MD5_File, -1);
 
-    expect_string(__wrap_wfopen, path, "etc/shared/test/merged.mg");
+    expect_string(__wrap_wfopen, path, SHAREDCFG_DIR "/test/merged.mg");
     expect_string(__wrap_wfopen, mode, "w");
     errno = 0;
     will_return(__wrap_wfopen, NULL);
 
     will_return(__wrap_strerror, "No such file or directory");
 
-    expect_string(__wrap__merror, formatted_msg, "Unable to open file: 'etc/shared/test/merged.mg' due to [(0)-(No such file or directory)].");
+    expect_string(__wrap__merror, formatted_msg, "Unable to open file: '" SHAREDCFG_DIR "/test/merged.mg' due to [(0)-(No such file or directory)].");
     // End c_group function
 
     will_return(__wrap_readdir, NULL);
@@ -2184,7 +2184,7 @@ void test_process_groups_find_group_changed(void **state)
 
     will_return(__wrap_readdir, entry);
 
-    expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
+    expect_string(__wrap_wreaddir, name, SHAREDCFG_DIR "/test_default");
     will_return(__wrap_wreaddir, subdir);
 
     expect_value(__wrap_OSHash_Get_ex, self, groups);
@@ -2196,13 +2196,13 @@ void test_process_groups_find_group_changed(void **state)
     will_return(__wrap_OSHash_Create, (OSHash *)10);
 
     // Start validate_shared_files function
-    expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
+    expect_string(__wrap_wreaddir, name, SHAREDCFG_DIR "/test_default");
     will_return(__wrap_wreaddir, NULL);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory 'etc/shared/test_default'");
+    expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory '" SHAREDCFG_DIR "/test_default'");
     // End validate_shared_files function
 
-    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg");
+    expect_string(__wrap_OS_MD5_File, fname, SHAREDCFG_DIR "/test_default/merged.mg");
     expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
     will_return(__wrap_OS_MD5_File, "1212121212121");
     will_return(__wrap_OS_MD5_File, -1);
@@ -2231,10 +2231,10 @@ void test_process_groups_find_group_changed(void **state)
     will_return(__wrap_fprintf, 0);
 
     // Start validate_shared_files function
-    expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
+    expect_string(__wrap_wreaddir, name, SHAREDCFG_DIR "/test_default");
     will_return(__wrap_wreaddir, NULL);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory 'etc/shared/test_default'");
+    expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory '" SHAREDCFG_DIR "/test_default'");
     // End validate_shared_files function
 
     expect_value(__wrap_fclose, _File, (FILE *)1);
@@ -2245,19 +2245,19 @@ void test_process_groups_find_group_changed(void **state)
     will_return(__wrap_OS_MD5_Str, "md5_test");
     will_return(__wrap_OS_MD5_Str, 0);
 
-    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg");
+    expect_string(__wrap_OS_MD5_File, fname, SHAREDCFG_DIR "/test_default/merged.mg");
     expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
     will_return(__wrap_OS_MD5_File, "md5_test");
     will_return(__wrap_OS_MD5_File, -1);
 
-    expect_string(__wrap_wfopen, path, "etc/shared/test_default/merged.mg");
+    expect_string(__wrap_wfopen, path, SHAREDCFG_DIR "/test_default/merged.mg");
     expect_string(__wrap_wfopen, mode, "w");
     errno = 0;
     will_return(__wrap_wfopen, NULL);
 
     will_return(__wrap_strerror, "No such file or directory");
 
-    expect_string(__wrap__merror, formatted_msg, "Unable to open file: 'etc/shared/test_default/merged.mg' due to [(0)-(No such file or directory)].");
+    expect_string(__wrap__merror, formatted_msg, "Unable to open file: '" SHAREDCFG_DIR "/test_default/merged.mg' due to [(0)-(No such file or directory)].");
     // End c_group function
 
     expect_string(__wrap__mdebug2, formatted_msg, "Group 'test_default' has changed.");
@@ -2295,7 +2295,7 @@ void test_process_groups_find_group_not_changed(void **state)
 
     will_return(__wrap_readdir, entry);
 
-    expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
+    expect_string(__wrap_wreaddir, name, SHAREDCFG_DIR "/test_default");
     will_return(__wrap_wreaddir, subdir);
 
     expect_value(__wrap_OSHash_Get_ex, self, groups);
@@ -2307,13 +2307,13 @@ void test_process_groups_find_group_not_changed(void **state)
     will_return(__wrap_OSHash_Create, (OSHash *)10);
 
     // Start validate_shared_files function
-    expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
+    expect_string(__wrap_wreaddir, name, SHAREDCFG_DIR "/test_default");
     will_return(__wrap_wreaddir, NULL);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory 'etc/shared/test_default'");
+    expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory '" SHAREDCFG_DIR "/test_default'");
     // End validate_shared_files function
 
-    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg");
+    expect_string(__wrap_OS_MD5_File, fname, SHAREDCFG_DIR "/test_default/merged.mg");
     expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
     will_return(__wrap_OS_MD5_File, "1212121212121");
     will_return(__wrap_OS_MD5_File, -1);
@@ -2538,7 +2538,7 @@ void test_process_multi_groups_find_multi_group_null(void **state)
 
     will_return(__wrap_opendir, 0);
     will_return(__wrap_strerror, "No such file or directory");
-    expect_string(__wrap__mdebug2, formatted_msg, "Opening directory: 'etc/shared': No such file or directory");
+    expect_string(__wrap__mdebug2, formatted_msg, "Opening directory: '" SHAREDCFG_DIR "': No such file or directory");
 
     expect_value(__wrap_OSHash_Next, self, m_hash);
     will_return(__wrap_OSHash_Next, NULL);
@@ -2602,7 +2602,7 @@ void test_process_multi_groups_group_changed(void **state)
 
     will_return(__wrap_opendir, 0);
     will_return(__wrap_strerror, "No such file or directory");
-    expect_string(__wrap__mdebug2, formatted_msg, "Opening directory: 'etc/shared': No such file or directory");
+    expect_string(__wrap__mdebug2, formatted_msg, "Opening directory: '" SHAREDCFG_DIR "': No such file or directory");
 
     expect_string(__wrap__mdebug2, formatted_msg, "Multigroup 'group1,group2' has changed.");
 
@@ -2681,7 +2681,7 @@ void test_process_multi_groups_changed_outside(void **state)
 
     will_return(__wrap_opendir, 0);
     will_return(__wrap_strerror, "No such file or directory");
-    expect_string(__wrap__mdebug2, formatted_msg, "Opening directory: 'etc/shared': No such file or directory");
+    expect_string(__wrap__mdebug2, formatted_msg, "Opening directory: '" SHAREDCFG_DIR "': No such file or directory");
 
     expect_string(__wrap__mdebug2, formatted_msg, "Multigroup 'group1,group2' was modified from outside, so it was regenerated.");
 
@@ -2777,7 +2777,7 @@ void test_c_files(void **state)
 
     will_return(__wrap_opendir, 0);
     will_return(__wrap_strerror, "No such file or directory");
-    expect_string(__wrap__mdebug1, formatted_msg, "Opening directory: 'etc/shared': No such file or directory");
+    expect_string(__wrap__mdebug1, formatted_msg, "Opening directory: '" SHAREDCFG_DIR "': No such file or directory");
 
     will_return(__wrap_wdb_get_distinct_agent_groups, NULL);
 
@@ -2808,12 +2808,12 @@ void test_validate_shared_files_files_null(void **state)
     FILE * finalfp = (FILE *)5;
     OSHash *_f_time = (OSHash *)10;
 
-    expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
+    expect_string(__wrap_wreaddir, name, SHAREDCFG_DIR "/test_default");
     will_return(__wrap_wreaddir, NULL);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory 'etc/shared/test_default'");
+    expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory '" SHAREDCFG_DIR "/test_default'");
 
-    validate_shared_files("etc/shared/test_default", finalfp, &_f_time, false, false, -1);
+    validate_shared_files(SHAREDCFG_DIR "/test_default", finalfp, &_f_time, false, false, -1);
 }
 
 void test_validate_shared_files_hidden_file(void **state)
@@ -2827,10 +2827,10 @@ void test_validate_shared_files_hidden_file(void **state)
     files[0] = strdup(".hidden_file");
     files[1] = NULL;
 
-    expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
+    expect_string(__wrap_wreaddir, name, SHAREDCFG_DIR "/test_default");
     will_return(__wrap_wreaddir, files);
 
-    validate_shared_files("etc/shared/test_default", finalfp, &_f_time, false, false, -1);
+    validate_shared_files(SHAREDCFG_DIR "/test_default", finalfp, &_f_time, false, false, -1);
 }
 
 void test_validate_shared_files_merged_file(void **state)
@@ -2844,10 +2844,10 @@ void test_validate_shared_files_merged_file(void **state)
     files[0] = strdup("merged.mg");
     files[1] = NULL;
 
-    expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
+    expect_string(__wrap_wreaddir, name, SHAREDCFG_DIR "/test_default");
     will_return(__wrap_wreaddir, files);
 
-    validate_shared_files("etc/shared/test_default", finalfp, &_f_time, false, false, -1);
+    validate_shared_files(SHAREDCFG_DIR "/test_default", finalfp, &_f_time, false, false, -1);
 }
 
 void test_validate_shared_files_max_path_size_warning(void **state)
@@ -2953,11 +2953,11 @@ void test_validate_shared_files_still_invalid(void **state)
     files[0] = strdup("test-file");
     files[1] = NULL;
 
-    expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
+    expect_string(__wrap_wreaddir, name, SHAREDCFG_DIR "/test_default");
     will_return(__wrap_wreaddir, files);
 
     struct stat stat_buf = { .st_mode = S_IFREG };
-    expect_string(__wrap_stat, __file, "etc/shared/test_default/test-file");
+    expect_string(__wrap_stat, __file, SHAREDCFG_DIR "/test_default/test-file");
     will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, 0);
 
@@ -2970,20 +2970,20 @@ void test_validate_shared_files_still_invalid(void **state)
     *last_modify = 10000;
 
     expect_any(__wrap_OSHash_Get, self);
-    expect_string(__wrap_OSHash_Get, key, "etc/shared/test_default/test-file");
+    expect_string(__wrap_OSHash_Get, key, SHAREDCFG_DIR "/test_default/test-file");
     will_return(__wrap_OSHash_Get, last_modify);
 
-    expect_string(__wrap_checkBinaryFile, f_name, "etc/shared/test_default/test-file");
+    expect_string(__wrap_checkBinaryFile, f_name, SHAREDCFG_DIR "/test_default/test-file");
     will_return(__wrap_checkBinaryFile, 1);
 
     expect_any(__wrap_OSHash_Set, self);
-    expect_string(__wrap_OSHash_Set, key, "etc/shared/test_default/test-file");
+    expect_string(__wrap_OSHash_Set, key, SHAREDCFG_DIR "/test_default/test-file");
     expect_any(__wrap_OSHash_Set, data);
     will_return(__wrap_OSHash_Set, NULL);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "File 'etc/shared/test_default/test-file' modified but still invalid.");
+    expect_string(__wrap__mdebug1, formatted_msg, "File '" SHAREDCFG_DIR "/test_default/test-file' modified but still invalid.");
 
-    validate_shared_files("etc/shared/test_default", finalfp, &_f_time, false, false, -1);
+    validate_shared_files(SHAREDCFG_DIR "/test_default", finalfp, &_f_time, false, false, -1);
 
     os_free(last_modify);
 }
@@ -2999,11 +2999,11 @@ void test_validate_shared_files_valid_now(void **state)
     files[0] = strdup("test-file");
     files[1] = NULL;
 
-    expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
+    expect_string(__wrap_wreaddir, name, SHAREDCFG_DIR "/test_default");
     will_return(__wrap_wreaddir, files);
 
     struct stat stat_buf = { .st_mode = S_IFREG };
-    expect_string(__wrap_stat, __file, "etc/shared/test_default/test-file");
+    expect_string(__wrap_stat, __file, SHAREDCFG_DIR "/test_default/test-file");
     will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, 0);
 
@@ -3016,26 +3016,26 @@ void test_validate_shared_files_valid_now(void **state)
     *last_modify = 10000;
 
     expect_any(__wrap_OSHash_Get, self);
-    expect_string(__wrap_OSHash_Get, key, "etc/shared/test_default/test-file");
+    expect_string(__wrap_OSHash_Get, key, SHAREDCFG_DIR "/test_default/test-file");
     will_return(__wrap_OSHash_Get, last_modify);
 
-    expect_string(__wrap_checkBinaryFile, f_name, "etc/shared/test_default/test-file");
+    expect_string(__wrap_checkBinaryFile, f_name, SHAREDCFG_DIR "/test_default/test-file");
     will_return(__wrap_checkBinaryFile, 0);
 
     expect_any(__wrap_OSHash_Delete, self);
-    expect_string(__wrap_OSHash_Delete, key, "etc/shared/test_default/test-file");
+    expect_string(__wrap_OSHash_Delete, key, SHAREDCFG_DIR "/test_default/test-file");
     will_return(__wrap_OSHash_Delete, NULL);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "File 'etc/shared/test_default/test-file' is valid after last modification.");
+    expect_string(__wrap__mdebug1, formatted_msg, "File '" SHAREDCFG_DIR "/test_default/test-file' is valid after last modification.");
 
     OSHash_Add_ex_check_data = 0;
     expect_value(__wrap_OSHash_Add_ex, self, (OSHash *)10);
-    expect_string(__wrap_OSHash_Add_ex, key, "etc/shared/test_default/test-file");
+    expect_string(__wrap_OSHash_Add_ex, key, SHAREDCFG_DIR "/test_default/test-file");
     will_return(__wrap_OSHash_Add_ex, 1);
 
     expect_any(__wrap__merror, formatted_msg);
 
-    validate_shared_files("etc/shared/test_default", finalfp, &_f_time, false, false, -1);
+    validate_shared_files(SHAREDCFG_DIR "/test_default", finalfp, &_f_time, false, false, -1);
 }
 
 void test_validate_shared_files_valid_file(void **state)
@@ -3049,11 +3049,11 @@ void test_validate_shared_files_valid_file(void **state)
     files[0] = strdup("test-file");
     files[1] = NULL;
 
-    expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
+    expect_string(__wrap_wreaddir, name, SHAREDCFG_DIR "/test_default");
     will_return(__wrap_wreaddir, files);
 
     struct stat stat_buf = { .st_mode = S_IFREG };
-    expect_string(__wrap_stat, __file, "etc/shared/test_default/test-file");
+    expect_string(__wrap_stat, __file, SHAREDCFG_DIR "/test_default/test-file");
     will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, 0);
 
@@ -3062,20 +3062,20 @@ void test_validate_shared_files_valid_file(void **state)
     invalid_files = OSHash_Create();
 
     expect_any(__wrap_OSHash_Get, self);
-    expect_string(__wrap_OSHash_Get, key, "etc/shared/test_default/test-file");
+    expect_string(__wrap_OSHash_Get, key, SHAREDCFG_DIR "/test_default/test-file");
     will_return(__wrap_OSHash_Get, NULL);
 
-    expect_string(__wrap_checkBinaryFile, f_name, "etc/shared/test_default/test-file");
+    expect_string(__wrap_checkBinaryFile, f_name, SHAREDCFG_DIR "/test_default/test-file");
     will_return(__wrap_checkBinaryFile, 0);
 
     OSHash_Add_ex_check_data = 0;
     expect_value(__wrap_OSHash_Add_ex, self, (OSHash *)10);
-    expect_string(__wrap_OSHash_Add_ex, key, "etc/shared/test_default/test-file");
+    expect_string(__wrap_OSHash_Add_ex, key, SHAREDCFG_DIR "/test_default/test-file");
     will_return(__wrap_OSHash_Add_ex, 1);
 
     expect_any(__wrap__merror, formatted_msg);
 
-    validate_shared_files("etc/shared/test_default", finalfp, &_f_time, false, false, -1);
+    validate_shared_files(SHAREDCFG_DIR "/test_default", finalfp, &_f_time, false, false, -1);
 }
 
 void test_validate_shared_files_stat_error(void **state)
@@ -3090,18 +3090,18 @@ void test_validate_shared_files_stat_error(void **state)
     files[1] = strdup("test-file");
     files[2] = NULL;
 
-    expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
+    expect_string(__wrap_wreaddir, name, SHAREDCFG_DIR "/test_default");
     will_return(__wrap_wreaddir, files);
 
     struct stat stat_buf_err = { .st_mode = S_IFREG };
-    expect_string(__wrap_stat, __file, "etc/shared/test_default/stat-error-file");
+    expect_string(__wrap_stat, __file, SHAREDCFG_DIR "/test_default/stat-error-file");
     will_return(__wrap_stat, &stat_buf_err);
     will_return(__wrap_stat, -1);
 
-    expect_string(__wrap__merror, formatted_msg, "Unable to get entry attributes 'etc/shared/test_default/stat-error-file'");
+    expect_string(__wrap__merror, formatted_msg, "Unable to get entry attributes '" SHAREDCFG_DIR "/test_default/stat-error-file'");
 
     struct stat stat_buf = { .st_mode = S_IFREG };
-    expect_string(__wrap_stat, __file, "etc/shared/test_default/test-file");
+    expect_string(__wrap_stat, __file, SHAREDCFG_DIR "/test_default/test-file");
     will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, 0);
 
@@ -3110,20 +3110,20 @@ void test_validate_shared_files_stat_error(void **state)
     invalid_files = OSHash_Create();
 
     expect_any(__wrap_OSHash_Get, self);
-    expect_string(__wrap_OSHash_Get, key, "etc/shared/test_default/test-file");
+    expect_string(__wrap_OSHash_Get, key, SHAREDCFG_DIR "/test_default/test-file");
     will_return(__wrap_OSHash_Get, NULL);
 
-    expect_string(__wrap_checkBinaryFile, f_name, "etc/shared/test_default/test-file");
+    expect_string(__wrap_checkBinaryFile, f_name, SHAREDCFG_DIR "/test_default/test-file");
     will_return(__wrap_checkBinaryFile, 0);
 
     OSHash_Add_ex_check_data = 0;
     expect_value(__wrap_OSHash_Add_ex, self, (OSHash *)10);
-    expect_string(__wrap_OSHash_Add_ex, key, "etc/shared/test_default/test-file");
+    expect_string(__wrap_OSHash_Add_ex, key, SHAREDCFG_DIR "/test_default/test-file");
     will_return(__wrap_OSHash_Add_ex, 1);
 
     expect_any(__wrap__merror, formatted_msg);
 
-    validate_shared_files("etc/shared/test_default", finalfp, &_f_time, false, false, -1);
+    validate_shared_files(SHAREDCFG_DIR "/test_default", finalfp, &_f_time, false, false, -1);
 }
 
 void test_validate_shared_files_merge_file(void **state)
@@ -3137,11 +3137,11 @@ void test_validate_shared_files_merge_file(void **state)
     files[0] = strdup("test-file");
     files[1] = NULL;
 
-    expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
+    expect_string(__wrap_wreaddir, name, SHAREDCFG_DIR "/test_default");
     will_return(__wrap_wreaddir, files);
 
     struct stat stat_buf = { .st_mode = S_IFREG };
-    expect_string(__wrap_stat, __file, "etc/shared/test_default/test-file");
+    expect_string(__wrap_stat, __file, SHAREDCFG_DIR "/test_default/test-file");
     will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, 0);
 
@@ -3150,24 +3150,24 @@ void test_validate_shared_files_merge_file(void **state)
     invalid_files = OSHash_Create();
 
     expect_any(__wrap_OSHash_Get, self);
-    expect_string(__wrap_OSHash_Get, key, "etc/shared/test_default/test-file");
+    expect_string(__wrap_OSHash_Get, key, SHAREDCFG_DIR "/test_default/test-file");
     will_return(__wrap_OSHash_Get, NULL);
 
-    expect_string(__wrap_checkBinaryFile, f_name, "etc/shared/test_default/test-file");
+    expect_string(__wrap_checkBinaryFile, f_name, SHAREDCFG_DIR "/test_default/test-file");
     will_return(__wrap_checkBinaryFile, 0);
 
     expect_value(__wrap_MergeAppendFile, finalfp, finalfp);
-    expect_value(__wrap_MergeAppendFile, path_offset, 0x18);
+    expect_value(__wrap_MergeAppendFile, path_offset, sizeof(SHAREDCFG_DIR "/test_default/") - 1);
     will_return(__wrap_MergeAppendFile, 1);
 
     OSHash_Add_ex_check_data = 0;
     expect_value(__wrap_OSHash_Add_ex, self, (OSHash *)10);
-    expect_string(__wrap_OSHash_Add_ex, key, "etc/shared/test_default/test-file");
+    expect_string(__wrap_OSHash_Add_ex, key, SHAREDCFG_DIR "/test_default/test-file");
     will_return(__wrap_OSHash_Add_ex, 1);
 
     expect_any(__wrap__merror, formatted_msg);
 
-    validate_shared_files("etc/shared/test_default", finalfp, &_f_time, true, false, -1);
+    validate_shared_files(SHAREDCFG_DIR "/test_default", finalfp, &_f_time, true, false, -1);
 }
 
 void test_validate_shared_files_merge_file_append_fail(void **state)
@@ -3181,11 +3181,11 @@ void test_validate_shared_files_merge_file_append_fail(void **state)
     files[0] = strdup("test-file");
     files[1] = NULL;
 
-    expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
+    expect_string(__wrap_wreaddir, name, SHAREDCFG_DIR "/test_default");
     will_return(__wrap_wreaddir, files);
 
     struct stat stat_buf = { .st_mode = S_IFREG };
-    expect_string(__wrap_stat, __file, "etc/shared/test_default/test-file");
+    expect_string(__wrap_stat, __file, SHAREDCFG_DIR "/test_default/test-file");
     will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, 0);
 
@@ -3194,17 +3194,17 @@ void test_validate_shared_files_merge_file_append_fail(void **state)
     invalid_files = OSHash_Create();
 
     expect_any(__wrap_OSHash_Get, self);
-    expect_string(__wrap_OSHash_Get, key, "etc/shared/test_default/test-file");
+    expect_string(__wrap_OSHash_Get, key, SHAREDCFG_DIR "/test_default/test-file");
     will_return(__wrap_OSHash_Get, NULL);
 
-    expect_string(__wrap_checkBinaryFile, f_name, "etc/shared/test_default/test-file");
+    expect_string(__wrap_checkBinaryFile, f_name, SHAREDCFG_DIR "/test_default/test-file");
     will_return(__wrap_checkBinaryFile, 0);
 
     expect_value(__wrap_MergeAppendFile, finalfp, finalfp);
-    expect_value(__wrap_MergeAppendFile, path_offset, 0x18);
+    expect_value(__wrap_MergeAppendFile, path_offset, sizeof(SHAREDCFG_DIR "/test_default/") - 1);
     will_return(__wrap_MergeAppendFile, 0);
 
-    validate_shared_files("etc/shared/test_default", finalfp, &_f_time, true, false, -1);
+    validate_shared_files(SHAREDCFG_DIR "/test_default", finalfp, &_f_time, true, false, -1);
 }
 
 void test_validate_shared_files_fail_add(void **state)
@@ -3218,11 +3218,11 @@ void test_validate_shared_files_fail_add(void **state)
     files[0] = strdup("test-file");
     files[1] = NULL;
 
-    expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
+    expect_string(__wrap_wreaddir, name, SHAREDCFG_DIR "/test_default");
     will_return(__wrap_wreaddir, files);
 
     struct stat stat_buf = { .st_mode = S_IFREG };
-    expect_string(__wrap_stat, __file, "etc/shared/test_default/test-file");
+    expect_string(__wrap_stat, __file, SHAREDCFG_DIR "/test_default/test-file");
     will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, 0);
 
@@ -3231,18 +3231,18 @@ void test_validate_shared_files_fail_add(void **state)
     invalid_files = OSHash_Create();
 
     expect_any(__wrap_OSHash_Get, self);
-    expect_string(__wrap_OSHash_Get, key, "etc/shared/test_default/test-file");
+    expect_string(__wrap_OSHash_Get, key, SHAREDCFG_DIR "/test_default/test-file");
     will_return(__wrap_OSHash_Get, NULL);
 
-    expect_string(__wrap_checkBinaryFile, f_name, "etc/shared/test_default/test-file");
+    expect_string(__wrap_checkBinaryFile, f_name, SHAREDCFG_DIR "/test_default/test-file");
     will_return(__wrap_checkBinaryFile, 1);
 
-    expect_string(__wrap_OSHash_Add, key, "etc/shared/test_default/test-file");
+    expect_string(__wrap_OSHash_Add, key, SHAREDCFG_DIR "/test_default/test-file");
     will_return(__wrap_OSHash_Add, 0);
 
-    expect_string(__wrap__merror, formatted_msg, "Unable to add file 'etc/shared/test_default/test-file' to hash table of invalid files.");
+    expect_string(__wrap__merror, formatted_msg, "Unable to add file '" SHAREDCFG_DIR "/test_default/test-file' to hash table of invalid files.");
 
-    validate_shared_files("etc/shared/test_default", finalfp, &_f_time, false, false, -1);
+    validate_shared_files(SHAREDCFG_DIR "/test_default", finalfp, &_f_time, false, false, -1);
 }
 
 void test_validate_shared_files_subfolder_empty(void **state)
@@ -3256,20 +3256,20 @@ void test_validate_shared_files_subfolder_empty(void **state)
     files[0] = strdup("test-subfolder");
     files[1] = NULL;
 
-    expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
+    expect_string(__wrap_wreaddir, name, SHAREDCFG_DIR "/test_default");
     will_return(__wrap_wreaddir, files);
 
     struct stat stat_buf = { .st_mode = 0040000 };
-    expect_string(__wrap_stat, __file, "etc/shared/test_default/test-subfolder");
+    expect_string(__wrap_stat, __file, SHAREDCFG_DIR "/test_default/test-subfolder");
     will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, 0);
 
-    expect_string(__wrap_wreaddir, name, "etc/shared/test_default/test-subfolder");
+    expect_string(__wrap_wreaddir, name, SHAREDCFG_DIR "/test_default/test-subfolder");
     will_return(__wrap_wreaddir, NULL);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory 'etc/shared/test_default/test-subfolder'");
+    expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory '" SHAREDCFG_DIR "/test_default/test-subfolder'");
 
-    validate_shared_files("etc/shared/test_default", finalfp, &_f_time, false, false, -1);
+    validate_shared_files(SHAREDCFG_DIR "/test_default", finalfp, &_f_time, false, false, -1);
 }
 
 void test_validate_shared_files_subfolder_append_fail(void **state)
@@ -3287,19 +3287,19 @@ void test_validate_shared_files_subfolder_append_fail(void **state)
     files2[0] = strdup("test-file");
     files2[1] = NULL;
 
-    expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
+    expect_string(__wrap_wreaddir, name, SHAREDCFG_DIR "/test_default");
     will_return(__wrap_wreaddir, files);
 
     struct stat stat_buf = { .st_mode = 0040000 };
-    expect_string(__wrap_stat, __file, "etc/shared/test_default/test-subfolder");
+    expect_string(__wrap_stat, __file, SHAREDCFG_DIR "/test_default/test-subfolder");
     will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, 0);
 
-    expect_string(__wrap_wreaddir, name, "etc/shared/test_default/test-subfolder");
+    expect_string(__wrap_wreaddir, name, SHAREDCFG_DIR "/test_default/test-subfolder");
     will_return(__wrap_wreaddir, files2);
 
     struct stat stat_buf2 = { .st_mode = S_IFREG };
-    expect_string(__wrap_stat, __file, "etc/shared/test_default/test-subfolder/test-file");
+    expect_string(__wrap_stat, __file, SHAREDCFG_DIR "/test_default/test-subfolder/test-file");
     will_return(__wrap_stat, &stat_buf2);
     will_return(__wrap_stat, 0);
 
@@ -3308,17 +3308,17 @@ void test_validate_shared_files_subfolder_append_fail(void **state)
     invalid_files = OSHash_Create();
 
     expect_any(__wrap_OSHash_Get, self);
-    expect_string(__wrap_OSHash_Get, key, "etc/shared/test_default/test-subfolder/test-file");
+    expect_string(__wrap_OSHash_Get, key, SHAREDCFG_DIR "/test_default/test-subfolder/test-file");
     will_return(__wrap_OSHash_Get, NULL);
 
-    expect_string(__wrap_checkBinaryFile, f_name, "etc/shared/test_default/test-subfolder/test-file");
+    expect_string(__wrap_checkBinaryFile, f_name, SHAREDCFG_DIR "/test_default/test-subfolder/test-file");
     will_return(__wrap_checkBinaryFile, 0);
 
     expect_value(__wrap_MergeAppendFile, finalfp, finalfp);
-    expect_value(__wrap_MergeAppendFile, path_offset, 0x18);
+    expect_value(__wrap_MergeAppendFile, path_offset, sizeof(SHAREDCFG_DIR "/test_default/") - 1);
     will_return(__wrap_MergeAppendFile, 0);
 
-    validate_shared_files("etc/shared/test_default", finalfp, &_f_time, true, false, -1);
+    validate_shared_files(SHAREDCFG_DIR "/test_default", finalfp, &_f_time, true, false, -1);
 }
 
 void test_validate_shared_files_valid_file_subfolder_empty(void **state)
@@ -3333,11 +3333,11 @@ void test_validate_shared_files_valid_file_subfolder_empty(void **state)
     files[1] = strdup("test-subfolder");
     files[2] = NULL;
 
-    expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
+    expect_string(__wrap_wreaddir, name, SHAREDCFG_DIR "/test_default");
     will_return(__wrap_wreaddir, files);
 
     struct stat stat_buf = { .st_mode = S_IFREG };
-    expect_string(__wrap_stat, __file, "etc/shared/test_default/test-file");
+    expect_string(__wrap_stat, __file, SHAREDCFG_DIR "/test_default/test-file");
     will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, 0);
 
@@ -3346,30 +3346,30 @@ void test_validate_shared_files_valid_file_subfolder_empty(void **state)
     invalid_files = OSHash_Create();
 
     expect_any(__wrap_OSHash_Get, self);
-    expect_string(__wrap_OSHash_Get, key, "etc/shared/test_default/test-file");
+    expect_string(__wrap_OSHash_Get, key, SHAREDCFG_DIR "/test_default/test-file");
     will_return(__wrap_OSHash_Get, NULL);
 
-    expect_string(__wrap_checkBinaryFile, f_name, "etc/shared/test_default/test-file");
+    expect_string(__wrap_checkBinaryFile, f_name, SHAREDCFG_DIR "/test_default/test-file");
     will_return(__wrap_checkBinaryFile, 0);
 
     OSHash_Add_ex_check_data = 0;
     expect_value(__wrap_OSHash_Add_ex, self, (OSHash *)10);
-    expect_string(__wrap_OSHash_Add_ex, key, "etc/shared/test_default/test-file");
+    expect_string(__wrap_OSHash_Add_ex, key, SHAREDCFG_DIR "/test_default/test-file");
     will_return(__wrap_OSHash_Add_ex, 1);
 
     expect_any(__wrap__merror, formatted_msg);
 
     struct stat stat_buf_2 = { .st_mode = S_IFDIR };
-    expect_string(__wrap_stat, __file, "etc/shared/test_default/test-subfolder");
+    expect_string(__wrap_stat, __file, SHAREDCFG_DIR "/test_default/test-subfolder");
     will_return(__wrap_stat, &stat_buf_2);
     will_return(__wrap_stat, 0);
 
-    expect_string(__wrap_wreaddir, name, "etc/shared/test_default/test-subfolder");
+    expect_string(__wrap_wreaddir, name, SHAREDCFG_DIR "/test_default/test-subfolder");
     will_return(__wrap_wreaddir, NULL);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory 'etc/shared/test_default/test-subfolder'");
+    expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory '" SHAREDCFG_DIR "/test_default/test-subfolder'");
 
-    validate_shared_files("etc/shared/test_default", finalfp, &_f_time, false, false, -1);
+    validate_shared_files(SHAREDCFG_DIR "/test_default", finalfp, &_f_time, false, false, -1);
 }
 
 void test_validate_shared_files_subfolder_valid_file(void **state)
@@ -3383,11 +3383,11 @@ void test_validate_shared_files_subfolder_valid_file(void **state)
     files[0] = strdup("test-subfolder");
     files[1] = NULL;
 
-    expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
+    expect_string(__wrap_wreaddir, name, SHAREDCFG_DIR "/test_default");
     will_return(__wrap_wreaddir, files);
 
     struct stat stat_buf = { .st_mode = S_IFDIR };
-    expect_string(__wrap_stat, __file, "etc/shared/test_default/test-subfolder");
+    expect_string(__wrap_stat, __file, SHAREDCFG_DIR "/test_default/test-subfolder");
     will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, 0);
 
@@ -3397,11 +3397,11 @@ void test_validate_shared_files_subfolder_valid_file(void **state)
     files2[0] = strdup("test-file");
     files2[1] = NULL;
 
-    expect_string(__wrap_wreaddir, name, "etc/shared/test_default/test-subfolder");
+    expect_string(__wrap_wreaddir, name, SHAREDCFG_DIR "/test_default/test-subfolder");
     will_return(__wrap_wreaddir, files2);
 
     struct stat stat_buf_2 = { .st_mode = S_IFREG };
-    expect_string(__wrap_stat, __file, "etc/shared/test_default/test-subfolder/test-file");
+    expect_string(__wrap_stat, __file, SHAREDCFG_DIR "/test_default/test-subfolder/test-file");
     will_return(__wrap_stat, &stat_buf_2);
     will_return(__wrap_stat, 0);
 
@@ -3410,20 +3410,20 @@ void test_validate_shared_files_subfolder_valid_file(void **state)
     invalid_files = OSHash_Create();
 
     expect_any(__wrap_OSHash_Get, self);
-    expect_string(__wrap_OSHash_Get, key, "etc/shared/test_default/test-subfolder/test-file");
+    expect_string(__wrap_OSHash_Get, key, SHAREDCFG_DIR "/test_default/test-subfolder/test-file");
     will_return(__wrap_OSHash_Get, NULL);
 
-    expect_string(__wrap_checkBinaryFile, f_name, "etc/shared/test_default/test-subfolder/test-file");
+    expect_string(__wrap_checkBinaryFile, f_name, SHAREDCFG_DIR "/test_default/test-subfolder/test-file");
     will_return(__wrap_checkBinaryFile, 0);
 
     OSHash_Add_ex_check_data = 0;
     expect_value(__wrap_OSHash_Add_ex, self, (OSHash *)10);
-    expect_string(__wrap_OSHash_Add_ex, key, "etc/shared/test_default/test-subfolder/test-file");
+    expect_string(__wrap_OSHash_Add_ex, key, SHAREDCFG_DIR "/test_default/test-subfolder/test-file");
     will_return(__wrap_OSHash_Add_ex, 1);
 
     expect_any(__wrap__merror, formatted_msg);
 
-    validate_shared_files("etc/shared/test_default", finalfp, &_f_time, false, false, -1);
+    validate_shared_files(SHAREDCFG_DIR "/test_default", finalfp, &_f_time, false, false, -1);
 }
 
 void test_validate_shared_files_valid_file_subfolder_valid_file(void **state)
@@ -3438,11 +3438,11 @@ void test_validate_shared_files_valid_file_subfolder_valid_file(void **state)
     files[1] = strdup("test-file-main-folder");
     files[2] = NULL;
 
-    expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
+    expect_string(__wrap_wreaddir, name, SHAREDCFG_DIR "/test_default");
     will_return(__wrap_wreaddir, files);
 
     struct stat stat_buf = { .st_mode = S_IFDIR };
-    expect_string(__wrap_stat, __file, "etc/shared/test_default/test-subfolder");
+    expect_string(__wrap_stat, __file, SHAREDCFG_DIR "/test_default/test-subfolder");
     will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, 0);
 
@@ -3452,11 +3452,11 @@ void test_validate_shared_files_valid_file_subfolder_valid_file(void **state)
     files2[0] = strdup("test-file");
     files2[1] = NULL;
 
-    expect_string(__wrap_wreaddir, name, "etc/shared/test_default/test-subfolder");
+    expect_string(__wrap_wreaddir, name, SHAREDCFG_DIR "/test_default/test-subfolder");
     will_return(__wrap_wreaddir, files2);
 
     struct stat stat_buf_2 = { .st_mode = S_IFREG };
-    expect_string(__wrap_stat, __file, "etc/shared/test_default/test-subfolder/test-file");
+    expect_string(__wrap_stat, __file, SHAREDCFG_DIR "/test_default/test-subfolder/test-file");
     will_return(__wrap_stat, &stat_buf_2);
     will_return(__wrap_stat, 0);
 
@@ -3465,21 +3465,21 @@ void test_validate_shared_files_valid_file_subfolder_valid_file(void **state)
     invalid_files = OSHash_Create();
 
     expect_any(__wrap_OSHash_Get, self);
-    expect_string(__wrap_OSHash_Get, key, "etc/shared/test_default/test-subfolder/test-file");
+    expect_string(__wrap_OSHash_Get, key, SHAREDCFG_DIR "/test_default/test-subfolder/test-file");
     will_return(__wrap_OSHash_Get, NULL);
 
-    expect_string(__wrap_checkBinaryFile, f_name, "etc/shared/test_default/test-subfolder/test-file");
+    expect_string(__wrap_checkBinaryFile, f_name, SHAREDCFG_DIR "/test_default/test-subfolder/test-file");
     will_return(__wrap_checkBinaryFile, 0);
 
     OSHash_Add_ex_check_data = 0;
     expect_value(__wrap_OSHash_Add_ex, self, (OSHash *)10);
-    expect_string(__wrap_OSHash_Add_ex, key, "etc/shared/test_default/test-subfolder/test-file");
+    expect_string(__wrap_OSHash_Add_ex, key, SHAREDCFG_DIR "/test_default/test-subfolder/test-file");
     will_return(__wrap_OSHash_Add_ex, 1);
 
     expect_any(__wrap__merror, formatted_msg);
 
     struct stat stat_buf_3 = { .st_mode = S_IFREG };
-    expect_string(__wrap_stat, __file, "etc/shared/test_default/test-file-main-folder");
+    expect_string(__wrap_stat, __file, SHAREDCFG_DIR "/test_default/test-file-main-folder");
     will_return(__wrap_stat, &stat_buf_3);
     will_return(__wrap_stat, 0);
 
@@ -3488,20 +3488,20 @@ void test_validate_shared_files_valid_file_subfolder_valid_file(void **state)
     invalid_files = OSHash_Create();
 
     expect_any(__wrap_OSHash_Get, self);
-    expect_string(__wrap_OSHash_Get, key, "etc/shared/test_default/test-file-main-folder");
+    expect_string(__wrap_OSHash_Get, key, SHAREDCFG_DIR "/test_default/test-file-main-folder");
     will_return(__wrap_OSHash_Get, NULL);
 
-    expect_string(__wrap_checkBinaryFile, f_name, "etc/shared/test_default/test-file-main-folder");
+    expect_string(__wrap_checkBinaryFile, f_name, SHAREDCFG_DIR "/test_default/test-file-main-folder");
     will_return(__wrap_checkBinaryFile, 0);
 
     OSHash_Add_ex_check_data = 0;
     expect_value(__wrap_OSHash_Add_ex, self, (OSHash *)10);
-    expect_string(__wrap_OSHash_Add_ex, key, "etc/shared/test_default/test-file-main-folder");
+    expect_string(__wrap_OSHash_Add_ex, key, SHAREDCFG_DIR "/test_default/test-file-main-folder");
     will_return(__wrap_OSHash_Add_ex, 1);
 
     expect_any(__wrap__merror, formatted_msg);
 
-    validate_shared_files("etc/shared/test_default", finalfp, &_f_time, false, false, -1);
+    validate_shared_files(SHAREDCFG_DIR "/test_default", finalfp, &_f_time, false, false, -1);
 }
 
 void test_validate_shared_files_sub_subfolder_valid_file(void **state)
@@ -3515,11 +3515,11 @@ void test_validate_shared_files_sub_subfolder_valid_file(void **state)
     files[0] = strdup("test-subfolder");
     files[1] = NULL;
 
-    expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
+    expect_string(__wrap_wreaddir, name, SHAREDCFG_DIR "/test_default");
     will_return(__wrap_wreaddir, files);
 
     struct stat stat_buf = { .st_mode = S_IFDIR };
-    expect_string(__wrap_stat, __file, "etc/shared/test_default/test-subfolder");
+    expect_string(__wrap_stat, __file, SHAREDCFG_DIR "/test_default/test-subfolder");
     will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, 0);
 
@@ -3529,11 +3529,11 @@ void test_validate_shared_files_sub_subfolder_valid_file(void **state)
     files2[0] = strdup("test-subfolder2");
     files2[1] = NULL;
 
-    expect_string(__wrap_wreaddir, name, "etc/shared/test_default/test-subfolder");
+    expect_string(__wrap_wreaddir, name, SHAREDCFG_DIR "/test_default/test-subfolder");
     will_return(__wrap_wreaddir, files2);
 
     struct stat stat_buf_2 = { .st_mode = S_IFDIR };
-    expect_string(__wrap_stat, __file, "etc/shared/test_default/test-subfolder/test-subfolder2");
+    expect_string(__wrap_stat, __file, SHAREDCFG_DIR "/test_default/test-subfolder/test-subfolder2");
     will_return(__wrap_stat, &stat_buf_2);
     will_return(__wrap_stat, 0);
 
@@ -3543,11 +3543,11 @@ void test_validate_shared_files_sub_subfolder_valid_file(void **state)
     files3[0] = strdup("test-file");
     files3[1] = NULL;
 
-    expect_string(__wrap_wreaddir, name, "etc/shared/test_default/test-subfolder/test-subfolder2");
+    expect_string(__wrap_wreaddir, name, SHAREDCFG_DIR "/test_default/test-subfolder/test-subfolder2");
     will_return(__wrap_wreaddir, files3);
 
     struct stat stat_buf_3 = { .st_mode = S_IFREG };
-    expect_string(__wrap_stat, __file, "etc/shared/test_default/test-subfolder/test-subfolder2/test-file");
+    expect_string(__wrap_stat, __file, SHAREDCFG_DIR "/test_default/test-subfolder/test-subfolder2/test-file");
     will_return(__wrap_stat, &stat_buf_3);
     will_return(__wrap_stat, 0);
 
@@ -3556,20 +3556,20 @@ void test_validate_shared_files_sub_subfolder_valid_file(void **state)
     invalid_files = OSHash_Create();
 
     expect_any(__wrap_OSHash_Get, self);
-    expect_string(__wrap_OSHash_Get, key, "etc/shared/test_default/test-subfolder/test-subfolder2/test-file");
+    expect_string(__wrap_OSHash_Get, key, SHAREDCFG_DIR "/test_default/test-subfolder/test-subfolder2/test-file");
     will_return(__wrap_OSHash_Get, NULL);
 
-    expect_string(__wrap_checkBinaryFile, f_name, "etc/shared/test_default/test-subfolder/test-subfolder2/test-file");
+    expect_string(__wrap_checkBinaryFile, f_name, SHAREDCFG_DIR "/test_default/test-subfolder/test-subfolder2/test-file");
     will_return(__wrap_checkBinaryFile, 0);
 
     OSHash_Add_ex_check_data = 0;
     expect_value(__wrap_OSHash_Add_ex, self, (OSHash *)10);
-    expect_string(__wrap_OSHash_Add_ex, key, "etc/shared/test_default/test-subfolder/test-subfolder2/test-file");
+    expect_string(__wrap_OSHash_Add_ex, key, SHAREDCFG_DIR "/test_default/test-subfolder/test-subfolder2/test-file");
     will_return(__wrap_OSHash_Add_ex, 1);
 
     expect_any(__wrap__merror, formatted_msg);
 
-    validate_shared_files("etc/shared/test_default", finalfp, &_f_time, false, false, -1);
+    validate_shared_files(SHAREDCFG_DIR "/test_default", finalfp, &_f_time, false, false, -1);
 }
 
 void test_copy_directory_files_null(void **state)

@@ -74,7 +74,7 @@ ENROLL_TOKEN_FILE=""
 BOOTSTRAP="enroll-token"
 # Where prepare_manager.sh leaves the token it minted (gitignored).
 DEFAULT_TOKEN_FILE="$SCRIPT_DIR/.enrollment_token"
-MANAGER_CONF="/var/wazuh-manager/etc/wazuh-manager.conf"
+MANAGER_CONF="/etc/wazuh-manager/wazuh-manager.conf"   # fixed: a custom home never moves it
 ENROLL_SETTLE=""
 DO_METRICS=true
 DO_MONITOR=true

@@ -62,7 +62,7 @@ manifests. If a package is missing from the primary manifest, the script tries
 the nightly backup manifest.
 
 Unless --no-listeners is given, the script also edits <remote> in
-\$WAZUH_MANAGER_HOME/etc/wazuh-manager.conf so both agent listeners bind to
+/etc/wazuh-manager/wazuh-manager.conf so both agent listeners bind to
 0.0.0.0 (containerised agents reach the manager over the docker bridge) and
 resets the file's owner/group to root:wazuh-manager 660.
 
@@ -78,7 +78,7 @@ Options:
   --rotate-ca    Issue a new root CA instead of reusing certs/root-ca.{pem,key}.
                  Everything that trusts the current CA must be redeployed after
                  that (docker compose down -v && up -d, sudo ./wazuh_copy_certs.sh).
-  --no-listeners Do not touch \$WAZUH_MANAGER_HOME/etc/wazuh-manager.conf.
+  --no-listeners Do not touch /etc/wazuh-manager/wazuh-manager.conf.
   --help, -h     Show this help.
 
 Required tools:
@@ -126,6 +126,8 @@ DASHBOARD_PACKAGE_KEY="wazuh_dashboard_${WAZUH_ARCH}_deb"
 DASHBOARD_PACKAGE_FILE="wazuh-dashboard_5.0.0-latest.deb"
 
 WAZUH_MANAGER_HOME="${WAZUH_MANAGER_HOME:-/var/wazuh-manager}"
+# The manager configuration directory is fixed: a custom home never moves it.
+CONF_DIR="/etc/wazuh-manager"
 
 # Certificates: issued by the devcontainer copy of the installation assistant's
 # certificate tool, driven by the YAML next to it (its node names are load-bearing,
@@ -148,7 +150,7 @@ CERTS_DIR="${SCRIPT_DIR}/certs"
 # Containerised agents reach the devContainer host over the docker bridge, so
 # loopback-only listeners refuse them with "Transport endpoint is not connected".
 function open_manager_listeners() {
-    local conf="${WAZUH_MANAGER_HOME}/etc/wazuh-manager.conf"
+    local conf="${CONF_DIR}/wazuh-manager.conf"
 
     echo "==> Opening manager listeners for containerised agents..."
 
@@ -288,7 +290,7 @@ function upsert_certs() {
 
   echo "==> Certificates created successfully in ${CERTS_DIR}."
   echo "    Next steps:"
-  echo "      sudo ./wazuh_copy_certs.sh              # deploy into ${WAZUH_MANAGER_HOME}/etc/certs"
+  echo "      sudo ./wazuh_copy_certs.sh              # deploy into ${CONF_DIR}/certs"
   echo "      ${WAZUH_MANAGER_HOME}/bin/wazuh-manager-control restart"
   echo "      docker compose -f ${SCRIPT_DIR}/docker-compose.yml down && docker compose -f ${SCRIPT_DIR}/docker-compose.yml up -d"
   echo "        (the containers copy the certificates at start; not required while the CA is unchanged)"
@@ -707,7 +709,7 @@ upsert_certs
 if (( NO_LISTENERS == 0 )); then
   open_manager_listeners
 else
-  echo "==> --no-listeners: leaving ${WAZUH_MANAGER_HOME}/etc/wazuh-manager.conf untouched."
+  echo "==> --no-listeners: leaving ${CONF_DIR}/wazuh-manager.conf untouched."
 fi
 
 # Credentials file (.credentials.env, read by docker compose and wazuh_install_manager.sh)

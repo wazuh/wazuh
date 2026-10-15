@@ -24,7 +24,7 @@ name **your** module and **your** options.
 ## Socket path
 
 No default; an empty path makes `start()` throw. Use a relative path — daemons
-`chdir()`/`chroot()` into the install dir. Pre-flight bind feasibility with
+run with the install dir as their working directory. Pre-flight bind feasibility with
 `socketPathCheck.hpp` for fail-fast startups; the library refuses to unlink a
 non-socket and inode-guards the unlink at teardown.
 

@@ -31,11 +31,11 @@ curl -k -H "Authorization: Bearer $TOKEN" https://localhost:55000/cluster/master
     "not_after": "2027-01-01T00:00:00Z", "not_after_ts": 1798761600,
     "seconds_until_expiry": 9295200,
     "fingerprint": "x509-sha256:3f9c…", "serial": "0x1a2b…",
-    "path": "etc/certs/remoted.pem",
+    "path": "/etc/wazuh-manager/certs/remoted.pem",
     "loaded_at": "2026-09-14T08:12:31Z", "loaded_at_ts": 1789373551
   },
   "ca_bundle": {
-    "path": "etc/certs/root-ca.pem",
+    "path": "/etc/wazuh-manager/certs/root-ca.pem",
     "publication": 0, "publication_vouched": false,
     "content_sha256": "b7e1…",
     "certificates_count": 2, "certificates_limit": 6,
@@ -134,7 +134,7 @@ key is a different certificate and reads as one. It is **not** a public-key (SPK
 with what OpenSSL prints (uppercase, colon-separated):
 
 ```bash
-openssl x509 -in /var/wazuh-manager/etc/certs/remoted.pem -noout -fingerprint -sha256 \
+openssl x509 -in /etc/wazuh-manager/certs/remoted.pem -noout -fingerprint -sha256 \
   | cut -d= -f2 | tr -d ':' | tr 'A-F' 'a-f'
 ```
 

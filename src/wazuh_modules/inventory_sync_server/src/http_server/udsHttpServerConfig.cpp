@@ -18,8 +18,8 @@
 
 namespace
 {
-    // Relative on purpose: modulesd chdir()s to the install dir and remoted chroot()s into it, so a
-    // relative path is the only form both peers resolve to the same file. The name is the SERVICE's,
+    // Relative on purpose: relative to the installation directory, which is the working directory of
+    // remoted and modulesd, so both peers resolve it to the same file. The name is the SERVICE's,
     // not this transitional module's, so remoted's downstream configuration is written once and does
     // not have to change again when this module replaces inventory_sync.
     /* MUST equal INV_SYNC_SOCK in src/shared/include/defs.h, which is what the Task Manager's

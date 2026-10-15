@@ -447,7 +447,8 @@ if __name__ == "__main__":
     arg_parser.add_argument("-f", "--file_csv_path", type=str,
                             default="", help="Path of the csv file to be used for checking")
     arg_parser.add_argument("-d", "--directory", type=str, default="/var/wazuh-manager",
-                            help="Directory to scan and check, '/var/wazuh-manager' by default")
+                            help="Directories to scan and check, separated by commas, "
+                                 "'/var/wazuh-manager' by default")
     arg_parser.add_argument("-b", "--base_file", type=str, default="",
                             help="Creates a base csv in path, not to be used with --report")
     arg_parser.add_argument("-wg", "--wazuh_gid", type=int,
@@ -470,7 +471,7 @@ if __name__ == "__main__":
     wazuh_uid = args.wazuh_uid
     wazuh_group_name = args.wazuh_group_name
     wazuh_user_name = args.wazuh_user_name
-    installed_dir = args.directory
+    installed_dirs = [directory for directory in args.directory.split(',') if directory]
     size_check = args.size_check
     base_file_path = args.base_file
     ignore_names = args.ignore if args.ignore == [] else args.ignore.split(',')
@@ -480,7 +481,9 @@ if __name__ == "__main__":
         if args.report != '':
             sys.exit('Do not set csv file creation alongside report creation')
         print("Starting base csv creation...")
-        result = get_current_items(installed_dir, size_check, ignore_names, include_directories_base)
+        result = []
+        for installed_dir in installed_dirs:
+            result += get_current_items(installed_dir, size_check, ignore_names, include_directories_base)
         df = pd.DataFrame(result)
         df = df.reindex(columns=HEADERS)
         df.to_csv(base_file_path, index=False, header=True, sep=',')
@@ -495,8 +498,10 @@ if __name__ == "__main__":
         include_directories = any(
             item.get('type') == 'directory' for item in expected_items.values()
         )
-        current_items = get_current_items(
-            installed_dir, size_check, ignore_names, include_directories)
+        current_items = []
+        for installed_dir in installed_dirs:
+            current_items += get_current_items(
+                installed_dir, size_check, ignore_names, include_directories)
         # Dictionary to track matches
         matches = {key: False for key in expected_items.keys()}
 

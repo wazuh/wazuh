@@ -8,7 +8,7 @@ The Task Manager owns two kinds of work: **agent tasks**, which it stores for ag
 
 **Type:** Manager-only
 
-**Configuration file:** `/var/wazuh-manager/etc/wazuh-manager.conf`
+**Configuration file:** `/etc/wazuh-manager/wazuh-manager.conf`
 
 **XML Section:** `<task-manager>`
 

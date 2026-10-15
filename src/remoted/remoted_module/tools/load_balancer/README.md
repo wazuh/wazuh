@@ -19,7 +19,7 @@ than nothing, but it is configured in a way that **hides** everything this lab l
 | `mode tcp` only | passthrough **and** termination | Only termination balances per request; TCP balances per connection |
 | `1517` not published | published | — |
 | Keys pre-seeded, enrollment off | real enrollment with `authd.pass` | Without enrolling there is no propagation to measure |
-| One certificate shared by three nodes | one leaf per node | `cluster.json` does not replicate `etc/certs/` |
+| One certificate shared by three nodes | one leaf per node | `cluster.json` does not replicate `/etc/wazuh-manager/certs/` |
 | `verification_mode none` on agents | full CA validation | Otherwise SANs are never checked |
 
 ## Layout
@@ -55,7 +55,7 @@ inside it:
 
 ```bash
 strings /var/wazuh-manager/lib/libremoted_module.so | grep -c expectedSelectorFor   # /download authz
-grep -c '"ca_certificate"' /var/wazuh-manager/etc/wazuh-manager.schema.json
+grep -c '"ca_certificate"' /etc/wazuh-manager/wazuh-manager.schema.json
 ```
 
 ## Bring it up
@@ -168,7 +168,7 @@ the part that scales with cluster size.
 ### Enrollment credential modes
 
 ```bash
-docker exec wazuh-master cat /var/wazuh-manager/etc/enrollment_tokens.json > probe/store.json
+docker exec wazuh-master cat /etc/wazuh-manager/enrollment_tokens.json > probe/store.json
 docker exec lab-probe python3 /probe/enroll_modes.py --password labpassword
 ```
 
@@ -307,7 +307,7 @@ was removed and stops the node from starting.
 
 The managers reach it over `https://wazuh-indexer:9200` with `admin.pem`. A single-host install
 points `<indexer><ssl>` straight at `/etc/wazuh-indexer/certs/`; here the two are separate
-containers, so the same three files are copied into each manager's own `etc/certs`.
+containers, so the same three files are copied into each manager's own `/etc/wazuh-manager/certs`.
 
 The vulnerability feed does not load here. The manager reads it from the indexer's CTI
 catalogue, which nothing populates: the `wazuh-engine` binary shipped inside the indexer package

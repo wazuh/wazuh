@@ -1,0 +1,98 @@
+name: 5.X - Developer tools - Unit tests
+
+on:
+  pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
+    paths:
+      - ".github/workflows/5_testunit_dev-tools.yml"
+      # Benchmark scrapers and monitor (tests/ imports bench_samples, bench_collect and monitor)
+      # and the run collator, which imports bench_samples from there.
+      - "tools/devContainer/scripts/*.py"
+      - "tools/devContainer/scripts/tests/**"
+      - "tools/manager_benchmark/result_summary.py"
+      - "tools/manager_benchmark/tests/**"
+      # Dashboard capture tool: the tests read capture.py, capture_logic.py and views.json.
+      - "tools/devContainer/e2e/dashboard/*.py"
+      - "tools/devContainer/e2e/dashboard/views.json"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark-tooling:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # pandas and matplotlib are optional at runtime (only projections and graphs need them), and
+      # the suites skip the cases that use them when absent -- installed here so nothing skips.
+      - name: Install dependencies
+        run: python -m pip install pytest psutil pandas matplotlib
+
+      # -rs plus the grep: a case that skips here would be a case this lane never ran.
+      - name: Scrapers and monitor
+        working-directory: tools/devContainer/scripts
+        run: |
+          set -o pipefail
+          python -m pytest -vv -rs tests | tee /tmp/scripts.log
+          if grep -Eq '^=+ .*[0-9]+ skipped' /tmp/scripts.log; then
+            echo "::error::tools/devContainer/scripts tests skipped cases"; exit 1
+          fi
+
+      - name: Benchmark run collator
+        working-directory: tools/manager_benchmark
+        run: |
+          set -o pipefail
+          python -m pytest -vv -rs tests | tee /tmp/benchmark.log
+          if grep -Eq '^=+ .*[0-9]+ skipped' /tmp/benchmark.log; then
+            echo "::error::tools/manager_benchmark tests skipped cases"; exit 1
+          fi
+
+  dashboard-capture:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Built the way the tool's own --setup builds it (capture.py): a venv holding the pinned
+      # playwright (layout moves with the browser), with Chromium under <venv>/browsers.
+      # test_capture_dom skips every case unless DASHBOARD_VENV is an existing directory, and it
+      # SETS PLAYWRIGHT_BROWSERS_PATH to <venv>/browsers (capture_logic.browsers_env), so a
+      # playwright installed into the runner's Python with browsers in the default cache is
+      # invisible to it.
+      - name: Create the dashboard venv with playwright and Chromium
+        run: |
+          venv="${RUNNER_TEMP}/venv-dashboard"
+          python -m venv "${venv}"
+          "${venv}/bin/python" -m pip install playwright==1.63.0
+          PLAYWRIGHT_BROWSERS_PATH="${venv}/browsers" "${venv}/bin/python" -m playwright install --with-deps chromium
+          echo "DASHBOARD_VENV=${venv}" >> "${GITHUB_ENV}"
+
+      - name: Capture logic and DOM extraction
+        working-directory: tools/devContainer/e2e/dashboard
+        run: |
+          set -o pipefail
+          "${DASHBOARD_VENV}/bin/python" -m unittest -v test_capture_logic test_capture_dom 2>&1 | tee /tmp/dashboard.log
+          if grep -q 'skipped=' /tmp/dashboard.log; then
+            echo "::error::dashboard capture tests skipped cases"; exit 1
+          fi

@@ -72,7 +72,7 @@ def _json_auth_headers(agent_id, agent_key, **jwt_kwargs):
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-DEFAULT_CLIENT_KEYS = "/var/wazuh-manager/etc/client.keys"
+DEFAULT_CLIENT_KEYS = "/etc/wazuh-manager/client.keys"
 
 # Both endpoints take the agent's real shape: `modules` keyed by module name. /stats moves it
 # under `wazuh.agent.statistics`, /config under `wazuh.agent.configuration.content` -- unchanged
@@ -110,7 +110,7 @@ MAX_BODY_SIZE = 10 * 1024 * 1024
 # instead of making every invocation repeat it -- a default installation needs no flag. An
 # explicit value always wins; pass '/' to force the unprefixed paths against a prefixed manager.
 
-DEFAULT_MANAGER_CONF = "/var/wazuh-manager/etc/wazuh-manager.conf"
+DEFAULT_MANAGER_CONF = "/etc/wazuh-manager/wazuh-manager.conf"
 
 GLOBAL_PREFIX = ""
 

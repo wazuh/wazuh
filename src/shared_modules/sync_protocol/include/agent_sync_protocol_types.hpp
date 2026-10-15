@@ -103,3 +103,33 @@ struct SyncModuleResult
     /// construction.
     bool sentAnything{false};
 };
+
+/// @brief Outcome of a module integrity check (IAgentSyncProtocol::requiresFullSync()).
+enum class IntegrityCheckStatus
+{
+    VALID,       ///< The manager confirmed the checksum matches.
+    MISMATCH,    ///< The manager confirmed a checksum mismatch on every attempt; a resync is needed.
+    NOT_CHECKED, ///< The check did not complete, so nothing is known about the checksum.
+};
+
+/// @brief Result of a module integrity check.
+///
+/// NOT_CHECKED is kept apart from VALID so a caller never reports a check that did not happen as
+/// a passed one. Whether it still counts the table as checked for this interval is the caller's
+/// decision; the detail below lets it say why the check did not complete.
+struct IntegrityCheckResult
+{
+    IntegrityCheckStatus status{IntegrityCheckStatus::NOT_CHECKED};
+    /// @brief Why the check did not complete. Empty unless status is NOT_CHECKED.
+    std::string failureReason;
+    /// @brief True when the check was abandoned because a stop/shutdown was requested. Expected
+    /// during shutdown, so callers should not report it as a failure.
+    bool stopped{false};
+    /// @brief Same meaning as SyncModuleResult::managerNotReady.
+    bool managerNotReady{false};
+    /// @brief Same meaning as SyncModuleResult::localTransportUnavailable.
+    bool localTransportUnavailable{false};
+    /// @brief True when the manager had already reported a mismatch (409) that was still being
+    /// confirmed when the check stopped. That mismatch is not acted on, so a caller should say so.
+    bool mismatchUnconfirmed{false};
+};

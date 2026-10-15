@@ -97,7 +97,7 @@ typedef struct _remoted_https_config {
     char *global_prefix;       ///< NULL -> module default "/" (endpoints served unprefixed)
     char *certificate;         ///< NULL -> module default
     char *key;                 ///< NULL -> module default
-    char *ca;                  ///< NULL -> client-certificate verification disabled
+    char *ca;                  ///< NULL -> module default (/etc/wazuh-manager/certs/root-ca.pem), opened only in verification modes
     char *ca_certificate;      ///< NULL -> module default (CA that signs the listener certificate)
     char *ciphers;             ///< NULL -> library default cipher list
     int verification_mode;     ///< REMOTED_HTTPS_VERIFY_*

@@ -2,7 +2,7 @@
 
 set -e
 
-WAZUH_CERTS_DIR="/var/wazuh-manager/etc/certs"
+WAZUH_CERTS_DIR="/etc/wazuh-manager/certs"
 ROLE="$3"
 NODE_CERT="${WAZUH_CERTS_DIR}/${NODE_NAME}.pem"
 NODE_CERT_KEY="${WAZUH_CERTS_DIR}/${NODE_NAME}-key.pem"
@@ -21,22 +21,22 @@ echo 'wazuh-manager' | /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer 
 
 # Configure wazuh configuration file and api.yaml based on the Master role
 if [ "$ROLE" == "master" ]; then
-    python3 /scripts/xml_parser.py /var/wazuh-manager/etc/wazuh-manager.conf /scripts/master_wazuh-manager_conf.xml
+    python3 /scripts/xml_parser.py /etc/wazuh-manager/wazuh-manager.conf /scripts/master_wazuh-manager_conf.xml
     sed -i "s:# access:access:g" /var/wazuh-manager/api/configuration/api.yaml
     sed -i "s:#  max_request_per_minute\: 300:  max_request_per_minute\: 99999:g" /var/wazuh-manager/api/configuration/api.yaml
     sed -i "s:#  max_unauthenticated_request_per_minute\: 10:  max_unauthenticated_request_per_minute\: 99999:g" /var/wazuh-manager/api/configuration/api.yaml
 else
-    python3 /scripts/xml_parser.py /var/wazuh-manager/etc/wazuh-manager.conf /scripts/worker_wazuh-manager_conf.xml
+    python3 /scripts/xml_parser.py /etc/wazuh-manager/wazuh-manager.conf /scripts/worker_wazuh-manager_conf.xml
 fi
 
-echo "wazuh_db.debug=2" >> /var/wazuh-manager/etc/wazuh-manager-internal-options.conf
-echo "authd.debug=2" >> /var/wazuh-manager/etc/wazuh-manager-internal-options.conf
-echo "remoted.debug=2" >> /var/wazuh-manager/etc/wazuh-manager-internal-options.conf
+echo "wazuh_db.debug=2" >> /etc/wazuh-manager/wazuh-manager-internal-options.conf
+echo "authd.debug=2" >> /etc/wazuh-manager/wazuh-manager-internal-options.conf
+echo "remoted.debug=2" >> /etc/wazuh-manager/wazuh-manager-internal-options.conf
 
 # Set proper permissions
-chmod 500 /var/wazuh-manager/etc/certs
-chmod 400 /var/wazuh-manager/etc/certs/*
-chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/etc/certs
+chmod 500 /etc/wazuh-manager/certs
+chmod 400 /etc/wazuh-manager/certs/*
+chown -R wazuh-manager:wazuh-manager /etc/wazuh-manager/certs
 
 echo "Starting Wazuh..."
 /var/wazuh-manager/bin/wazuh-manager-control start

@@ -127,7 +127,7 @@ namespace remoted::http
 
         /**
          * @param path Where the record lives; relative paths resolve against remoted's cwd (the
-         *             chroot root), like every other path in HttpServerConfig.
+         *             installation directory), like every other path in HttpServerConfig.
          * @param io   Test seams for the write path; every empty field means the real syscall.
          */
         explicit CaPublicationRecord(std::string path, RecordIo io = {});

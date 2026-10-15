@@ -1,5 +1,5 @@
 /*
- * Wazuh manager configuration loader (etc/wazuh-manager.conf, strict XML).
+ * Wazuh manager configuration loader (/etc/wazuh-manager/wazuh-manager.conf, strict XML).
  * Copyright (C) 2015, Wazuh Inc.
  *
  * This program is free software; you can redistribute it and/or modify it under the terms of GPLv2.

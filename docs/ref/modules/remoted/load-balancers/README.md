@@ -371,7 +371,7 @@ everything below is.
 
 Everything else about a balanced cluster is on the cluster pages, which own it:
 
-* what is replicated between nodes and what is not (`etc/certs/`, `var/upgrade/`, remoted's
+* what is replicated between nodes and what is not (`/etc/wazuh-manager/certs/`, `var/upgrade/`, remoted's
   in-memory agent registry) — [What the cluster replicates](../../cluster/lb.md#4-what-the-cluster-replicates-and-what-it-does-not);
 * the brief `401`s after enrollment, the `403` on configuration download from a node that has not
   yet seen the agent's `/control`, and the values that must match across nodes (`global_prefix`, the

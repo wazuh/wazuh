@@ -38,7 +38,7 @@ TEST(DescribeRecordEvent, FirstTimeUnpublishedNamesTheRemedy)
 {
     CaRecordEvent event;
     event.kind = RecordEvent::first_time_unpublished;
-    event.bundlePath = "/var/wazuh-manager/etc/certs/root-ca.pem";
+    event.bundlePath = "/etc/wazuh-manager/certs/root-ca.pem";
 
     const auto line = describeRecordEvent(event);
     ASSERT_TRUE(line.has_value());
@@ -52,7 +52,7 @@ TEST(DescribeRecordEvent, ChangedOutsideToolNamesThePreviousPublication)
 {
     CaRecordEvent event;
     event.kind = RecordEvent::changed_outside_tool;
-    event.bundlePath = "/var/wazuh-manager/etc/certs/root-ca.pem";
+    event.bundlePath = "/etc/wazuh-manager/certs/root-ca.pem";
     event.previousPublication = 1789000000;
 
     const auto line = describeRecordEvent(event);
@@ -68,7 +68,7 @@ TEST(DescribeRecordEvent, RecordFailureNamesRecordPath)
     {
         CaRecordEvent event;
         event.kind = RecordEvent::record_unwritable;
-        event.bundlePath = "/var/wazuh-manager/etc/certs/root-ca.pem";
+        event.bundlePath = "/etc/wazuh-manager/certs/root-ca.pem";
         event.recordPath = "/var/wazuh-manager/var/run/remoted-ca-bundle/record.json";
         event.error = EACCES;
         event.stored = false;
@@ -85,7 +85,7 @@ TEST(DescribeRecordEvent, RecordFailureNamesRecordPath)
     {
         CaRecordEvent event;
         event.kind = RecordEvent::record_unwritable;
-        event.bundlePath = "/var/wazuh-manager/etc/certs/root-ca.pem";
+        event.bundlePath = "/etc/wazuh-manager/certs/root-ca.pem";
         event.recordPath = "/var/wazuh-manager/var/run/remoted-ca-bundle/record.json";
         event.error = EIO;
         event.stored = true;

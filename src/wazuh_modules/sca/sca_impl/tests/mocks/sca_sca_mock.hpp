@@ -103,8 +103,8 @@ class SCAMock : public SecurityConfigurationAssessment
         }
 
         /// @brief Testing helper to drive full recovery synchronously.
-        /// @return true on success, false on failure.
-        bool callPerformRecovery()
+        /// @return How the recovery ended.
+        RecoveryOutcome callPerformRecovery()
         {
             return performRecovery();
         }
