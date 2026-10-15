@@ -44,8 +44,11 @@ bool w_macos_is_log_header(w_macos_log_config_t * macos_log_cfg, char * buffer);
 bool w_macos_log_getlog(char * buffer, int length, FILE * stream, w_macos_log_config_t * macos_log_cfg);
 char * w_macos_trim_full_timestamp(char *);
 char * w_macos_get_last_log_timestamp(void);
+bool w_macos_log_ndjson_to_syslog(char * buffer, int length, bool is_show);
 
 /* Globals */
+
+extern bool macos_log_ndjson;
 
 extern w_macos_log_procceses_t * macos_processes;
 extern volatile sig_atomic_t macos_log_shutdown;
@@ -66,6 +69,16 @@ static int group_setup(void ** state) {
 static int group_teardown(void ** state) {
 
     test_mode = 0;
+    return 0;
+}
+
+static int setup_macos_log_ndjson(void ** state) {
+    macos_log_ndjson = true;
+    return 0;
+}
+
+static int teardown_macos_log_ndjson(void ** state) {
+    macos_log_ndjson = false;
     return 0;
 }
 
@@ -1979,6 +1992,274 @@ void test_read_macos_log_ignored(void ** state) {
     }
 }
 
+/* w_macos_log_ndjson_to_syslog */
+
+#define NDJSON_MULTILINE_EVENT "{\"eventMessage\":\"first line\\nsecond line\",\"eventType\":\"logEvent\"," \
+    "\"subsystem\":\"\",\"category\":\"\",\"processImagePath\":\"\\/usr\\/bin\\/logger\"," \
+    "\"timestamp\":\"2026-10-14 11:25:56.089644+0000\",\"senderImagePath\":\"\\/usr\\/bin\\/logger\"," \
+    "\"processID\":98082,\"parentActivityIdentifier\":0}"
+
+#define SYSLOG_MULTILINE_EVENT "2026-10-14 11:25:56.089644+0000  localhost logger[98082]: first line\nsecond line"
+
+void test_w_macos_log_ndjson_to_syslog_log_event(void ** state) {
+
+    char buffer[OS_MAXSTR] = "{\"eventMessage\":\"Name: <private>, Node: \\/Local\\/Default\",\"eventType\":\"logEvent\","
+                             "\"subsystem\":\"com.apple.opendirectoryd\",\"category\":\"libinfo\","
+                             "\"processImagePath\":\"\\/usr\\/libexec\\/opendirectoryd\","
+                             "\"timestamp\":\"2026-10-14 11:29:54.969589+0000\","
+                             "\"senderImagePath\":\"\\/System\\/Library\\/OpenDirectory\\/Modules\\/SystemCache\","
+                             "\"processID\":121}";
+
+    assert_true(w_macos_log_ndjson_to_syslog(buffer, OS_MAXSTR, false));
+    assert_string_equal(buffer, "2026-10-14 11:29:54.969589+0000  localhost opendirectoryd[121]: (SystemCache) "
+                                "[com.apple.opendirectoryd:libinfo] Name: <private>, Node: /Local/Default");
+}
+
+void test_w_macos_log_ndjson_to_syslog_embedded_newline(void ** state) {
+
+    char buffer[OS_MAXSTR] = NDJSON_MULTILINE_EVENT;
+
+    assert_true(w_macos_log_ndjson_to_syslog(buffer, OS_MAXSTR, false));
+    assert_string_equal(buffer, SYSLOG_MULTILINE_EVENT);
+}
+
+void test_w_macos_log_ndjson_to_syslog_activity_parent(void ** state) {
+
+    char buffer[OS_MAXSTR] = "{\"eventMessage\":\"SecTrustEvaluateIfNecessary\",\"eventType\":\"activityCreateEvent\","
+                             "\"activityIdentifier\":14075992,\"subsystem\":\"\",\"category\":\"\","
+                             "\"processImagePath\":\"\\/System\\/Library\\/PrivateFrameworks\\/TCC.framework\\/Resources\\/tccd\","
+                             "\"timestamp\":\"2026-10-14 11:30:05.102727+0000\","
+                             "\"senderImagePath\":\"\\/System\\/Library\\/Frameworks\\/Security.framework\\/Versions\\/A\\/Security\","
+                             "\"processID\":150,\"parentActivityIdentifier\":14075798}";
+
+    assert_true(w_macos_log_ndjson_to_syslog(buffer, OS_MAXSTR, true));
+    assert_string_equal(buffer, "2026-10-14 11:30:05.102727+0000  localhost tccd[150]: (Security) Created Activity ID: "
+                                "0xd6c858, Parent ID: 0x8000000000d6c796, Description: SecTrustEvaluateIfNecessary");
+}
+
+void test_w_macos_log_ndjson_to_syslog_activity_parent_stream(void ** state) {
+
+    char buffer[OS_MAXSTR] = "{\"eventMessage\":\"SecTrustEvaluateIfNecessary\",\"eventType\":\"activityCreateEvent\","
+                             "\"activityIdentifier\":14075992,\"subsystem\":\"\",\"category\":\"\","
+                             "\"processImagePath\":\"\\/System\\/Library\\/PrivateFrameworks\\/TCC.framework\\/Resources\\/tccd\","
+                             "\"timestamp\":\"2026-10-14 11:30:05.102727+0000\","
+                             "\"senderImagePath\":\"\\/System\\/Library\\/Frameworks\\/Security.framework\\/Versions\\/A\\/Security\","
+                             "\"processID\":150,\"parentActivityIdentifier\":14075798}";
+
+    assert_true(w_macos_log_ndjson_to_syslog(buffer, OS_MAXSTR, false));
+    assert_string_equal(buffer, "2026-10-14 11:30:05.102727+0000  localhost tccd[150]: (Security) Created Activity ID: "
+                                "0xd6c858, Description: SecTrustEvaluateIfNecessary");
+}
+
+void test_w_macos_log_ndjson_to_syslog_activity_no_parent(void ** state) {
+
+    char buffer[OS_MAXSTR] = "{\"eventMessage\":\"Retrieve User by Name\",\"eventType\":\"activityCreateEvent\","
+                             "\"activityIdentifier\":14076128,\"subsystem\":\"\",\"category\":\"\","
+                             "\"processImagePath\":\"\\/usr\\/libexec\\/xpcproxy\","
+                             "\"timestamp\":\"2026-10-14 11:29:54.969102+0000\","
+                             "\"senderImagePath\":\"\\/usr\\/lib\\/system\\/libsystem_info.dylib\","
+                             "\"processID\":98380,\"parentActivityIdentifier\":0}";
+
+    assert_true(w_macos_log_ndjson_to_syslog(buffer, OS_MAXSTR, false));
+    assert_string_equal(buffer, "2026-10-14 11:29:54.969102+0000  localhost xpcproxy[98380]: (libsystem_info.dylib) "
+                                "Created Activity ID: 0xd6c8e0, Description: Retrieve User by Name");
+}
+
+void test_w_macos_log_ndjson_to_syslog_activity_missing_ids(void ** state) {
+
+    char buffer[OS_MAXSTR] = "{\"eventMessage\":\"Retrieve User by Name\",\"eventType\":\"activityCreateEvent\","
+                             "\"processImagePath\":\"\\/usr\\/libexec\\/xpcproxy\","
+                             "\"timestamp\":\"2026-10-14 11:29:54.969102+0000\",\"processID\":98380}";
+
+    assert_true(w_macos_log_ndjson_to_syslog(buffer, OS_MAXSTR, true));
+    assert_string_equal(buffer, "2026-10-14 11:29:54.969102+0000  localhost xpcproxy[98380]: "
+                                "Created Activity ID: 0x0, Description: Retrieve User by Name");
+}
+
+void test_w_macos_log_ndjson_to_syslog_state_event(void ** state) {
+
+    char buffer[OS_MAXSTR] = "{\"eventMessage\":\"Transactions\\n   - com.apple.AppStoreFoundation.startup\\n\","
+                             "\"eventType\":\"stateEvent\",\"subsystem\":\"\",\"category\":\"\","
+                             "\"processImagePath\":\"\\/System\\/Library\\/PrivateFrameworks\\/AppStoreDaemon.framework\\/Support\\/appstoreagent\","
+                             "\"timestamp\":\"2026-10-14 11:30:05.126915+0000\","
+                             "\"senderImagePath\":\"\\/System\\/Library\\/PrivateFrameworks\\/AppStoreDaemon.framework\\/Support\\/appstoreagent\","
+                             "\"processID\":98390}";
+
+    assert_true(w_macos_log_ndjson_to_syslog(buffer, OS_MAXSTR, false));
+    assert_string_equal(buffer, "2026-10-14 11:30:05.126915+0000  localhost appstoreagent[98390]:  statedump:\n"
+                                "Transactions\n   - com.apple.AppStoreFoundation.startup\n");
+}
+
+void test_w_macos_log_ndjson_to_syslog_not_a_log(void ** state) {
+
+    char buffer[OS_MAXSTR] = "{\"count\":40,\"finished\":1}";
+
+    assert_false(w_macos_log_ndjson_to_syslog(buffer, OS_MAXSTR, false));
+}
+
+void test_w_macos_log_ndjson_to_syslog_invalid_json(void ** state) {
+
+    char buffer[OS_MAXSTR] = "2026-10-14 11:25:56.089644+0000  localhost logger[98082]: first line";
+
+    assert_false(w_macos_log_ndjson_to_syslog(buffer, OS_MAXSTR, false));
+}
+
+void test_w_macos_log_ndjson_to_syslog_truncated(void ** state) {
+
+    char buffer[OS_MAXSTR] = NDJSON_MULTILINE_EVENT;
+
+    assert_true(w_macos_log_ndjson_to_syslog(buffer, 40, false));
+    assert_string_equal(buffer, "2026-10-14 11:25:56.089644+0000  localh");
+}
+
+/* w_macos_log_getlog (ndjson) */
+
+void test_w_macos_log_getlog_ndjson_header_then_log(void ** state) {
+
+    char buffer[OS_MAXSTR + 1];
+    w_macos_log_config_t macos_log_cfg = {0};
+    FILE * stream = (FILE *) 1;
+
+    will_return(__wrap_can_read, 1);
+    expect_value(__wrap_fgets, __stream, stream);
+    will_return(__wrap_fgets, "Filtering the log data using \"process == \\\"logger\\\"\"\n");
+    expect_string(__wrap__mdebug2, formatted_msg,
+                  "macOS ULS: Reading other log headers or errors: 'Filtering the log data using \"process == \\\"logger\\\"\"'.");
+
+    assert_true(w_macos_log_getlog(buffer, OS_MAXSTR, stream, &macos_log_cfg));
+    assert_string_equal(buffer, "");
+    assert_false(macos_log_cfg.is_header_processed);
+
+    will_return(__wrap_can_read, 1);
+    expect_value(__wrap_fgets, __stream, stream);
+    will_return(__wrap_fgets, NDJSON_MULTILINE_EVENT "\n");
+    expect_value(__wrap_w_macos_set_is_valid_data, is_valid, true);
+
+    assert_true(w_macos_log_getlog(buffer, OS_MAXSTR, stream, &macos_log_cfg));
+    assert_string_equal(buffer, SYSLOG_MULTILINE_EVENT);
+    assert_true(macos_log_cfg.is_header_processed);
+    assert_string_equal(macos_log_cfg.ctxt.buffer, "");
+}
+
+void test_w_macos_log_getlog_ndjson_skips_non_log(void ** state) {
+
+    char buffer[OS_MAXSTR + 1];
+    w_macos_log_config_t macos_log_cfg = {0};
+    FILE * stream = (FILE *) 1;
+    macos_log_cfg.is_header_processed = true;
+
+    will_return(__wrap_can_read, 1);
+    expect_value(__wrap_fgets, __stream, stream);
+    will_return(__wrap_fgets, "{\"count\":40,\"finished\":1}\n");
+    expect_any(__wrap__mdebug2, formatted_msg);
+
+    will_return(__wrap_can_read, 1);
+    expect_value(__wrap_fgets, __stream, stream);
+    will_return(__wrap_fgets, NULL);
+
+    assert_false(w_macos_log_getlog(buffer, OS_MAXSTR, stream, &macos_log_cfg));
+}
+
+void test_w_macos_log_getlog_ndjson_incomplete_line(void ** state) {
+
+    char buffer[OS_MAXSTR + 1];
+    w_macos_log_config_t macos_log_cfg = {0};
+    FILE * stream = (FILE *) 1;
+    macos_log_cfg.is_header_processed = true;
+
+    will_return(__wrap_can_read, 1);
+    expect_value(__wrap_fgets, __stream, stream);
+    will_return(__wrap_fgets, "{\"eventMessage\":\"first line\\nsec");
+    expect_string(__wrap__mdebug2, formatted_msg, "macOS ULS: Incomplete message.");
+    will_return(__wrap_time, 1000);
+
+    will_return(__wrap_can_read, 1);
+    expect_value(__wrap_fgets, __stream, stream);
+    will_return(__wrap_fgets, NULL);
+
+    assert_false(w_macos_log_getlog(buffer, OS_MAXSTR, stream, &macos_log_cfg));
+    assert_string_equal(macos_log_cfg.ctxt.buffer, "{\"eventMessage\":\"first line\\nsec");
+
+    /* The next call completes the same JSON line: still one event */
+    will_return(__wrap_can_read, 1);
+    expect_value(__wrap_fgets, __stream, stream);
+    will_return(__wrap_fgets, "ond line\",\"eventType\":\"logEvent\","
+                              "\"processImagePath\":\"\\/usr\\/bin\\/logger\",\"timestamp\":\"2026-10-14 11:58:49.021875+0000\","
+                              "\"senderImagePath\":\"\\/usr\\/bin\\/logger\",\"processID\":99894}\n");
+
+    assert_true(w_macos_log_getlog(buffer, OS_MAXSTR, stream, &macos_log_cfg));
+    assert_string_equal(buffer, "2026-10-14 11:58:49.021875+0000  localhost logger[99894]: first line\n"
+                                "second line");
+    assert_string_equal(macos_log_cfg.ctxt.buffer, "");
+}
+
+void test_w_macos_log_getlog_ndjson_old_context_completed(void ** state) {
+
+    char buffer[OS_MAXSTR + 1];
+    w_macos_log_config_t macos_log_cfg = {0};
+    FILE * stream = (FILE *) 1;
+    macos_log_cfg.is_header_processed = true;
+    strcpy(macos_log_cfg.ctxt.buffer, "{\"eventMessage\":\"first line\\nsec");
+    macos_log_cfg.ctxt.timestamp = 1000;
+
+    will_return_maybe(__wrap_time, 1001 + MACOS_LOG_TIMEOUT);
+
+    will_return(__wrap_can_read, 1);
+    expect_value(__wrap_fgets, __stream, stream);
+    will_return(__wrap_fgets, "ond line\",\"eventType\":\"logEvent\","
+                              "\"processImagePath\":\"\\/usr\\/bin\\/logger\",\"timestamp\":\"2026-10-14 11:58:49.021875+0000\","
+                              "\"senderImagePath\":\"\\/usr\\/bin\\/logger\",\"processID\":99894}\n");
+
+    assert_true(w_macos_log_getlog(buffer, OS_MAXSTR, stream, &macos_log_cfg));
+    assert_string_equal(buffer, "2026-10-14 11:58:49.021875+0000  localhost logger[99894]: first line\n"
+                                "second line");
+    assert_string_equal(macos_log_cfg.ctxt.buffer, "");
+}
+
+void test_w_macos_log_getlog_ndjson_force_send_discards_context(void ** state) {
+
+    char buffer[OS_MAXSTR + 1];
+    w_macos_log_config_t macos_log_cfg = {0};
+    FILE * stream = (FILE *) 1;
+    macos_log_cfg.is_header_processed = true;
+    strcpy(macos_log_cfg.ctxt.buffer, "{\"eventMessage\":\"partial");
+    macos_log_cfg.ctxt.force_send = true;
+    macos_log_cfg.ctxt.timestamp = 1000;
+
+    will_return_maybe(__wrap_time, 1001);
+    expect_string(__wrap__mdebug2, formatted_msg, "macOS ULS: Incomplete message discarded.");
+
+    will_return(__wrap_can_read, 1);
+    expect_value(__wrap_fgets, __stream, stream);
+    will_return(__wrap_fgets, NDJSON_MULTILINE_EVENT "\n");
+
+    assert_true(w_macos_log_getlog(buffer, OS_MAXSTR, stream, &macos_log_cfg));
+    assert_string_equal(buffer, SYSLOG_MULTILINE_EVENT);
+    assert_false(macos_log_cfg.ctxt.force_send);
+}
+
+void test_w_macos_log_getlog_ndjson_line_too_long(void ** state) {
+
+    char buffer[OS_MAXSTR + 1];
+    w_macos_log_config_t macos_log_cfg = {0};
+    FILE * stream = (FILE *) 1;
+    macos_log_cfg.is_header_processed = true;
+
+    will_return(__wrap_can_read, 1);
+    expect_value(__wrap_fgets, __stream, stream);
+    will_return(__wrap_fgets, "{\"eventMessage\":\"too long");
+    will_return(__wrap_fgetc, 'x');
+    will_return(__wrap_fgetc, '\n');
+    expect_string(__wrap__mdebug2, formatted_msg, "macOS ULS: Maximum message length reached. The message was discarded.");
+
+    will_return(__wrap_can_read, 1);
+    expect_value(__wrap_fgets, __stream, stream);
+    will_return(__wrap_fgets, NULL);
+
+    assert_false(w_macos_log_getlog(buffer, 26, stream, &macos_log_cfg));
+    assert_string_equal(macos_log_cfg.ctxt.buffer, "");
+}
+
 int main(void) {
 
     maximum_lines = TESTING_MAXIMUM_LINES;
@@ -2051,6 +2332,24 @@ int main(void) {
         cmocka_unit_test_teardown(test_read_macos_shutdown_during_read, teardown_macos_log_shutdown),
         cmocka_unit_test(test_read_macos_faulty_waitpid),
         cmocka_unit_test(test_read_macos_log_ignored),
+        // Test w_macos_log_ndjson_to_syslog
+        cmocka_unit_test(test_w_macos_log_ndjson_to_syslog_log_event),
+        cmocka_unit_test(test_w_macos_log_ndjson_to_syslog_embedded_newline),
+        cmocka_unit_test(test_w_macos_log_ndjson_to_syslog_activity_parent),
+        cmocka_unit_test(test_w_macos_log_ndjson_to_syslog_activity_parent_stream),
+        cmocka_unit_test(test_w_macos_log_ndjson_to_syslog_activity_no_parent),
+        cmocka_unit_test(test_w_macos_log_ndjson_to_syslog_activity_missing_ids),
+        cmocka_unit_test(test_w_macos_log_ndjson_to_syslog_state_event),
+        cmocka_unit_test(test_w_macos_log_ndjson_to_syslog_not_a_log),
+        cmocka_unit_test(test_w_macos_log_ndjson_to_syslog_invalid_json),
+        cmocka_unit_test(test_w_macos_log_ndjson_to_syslog_truncated),
+        // Test w_macos_log_getlog (ndjson)
+        cmocka_unit_test_setup_teardown(test_w_macos_log_getlog_ndjson_header_then_log, setup_macos_log_ndjson, teardown_macos_log_ndjson),
+        cmocka_unit_test_setup_teardown(test_w_macos_log_getlog_ndjson_skips_non_log, setup_macos_log_ndjson, teardown_macos_log_ndjson),
+        cmocka_unit_test_setup_teardown(test_w_macos_log_getlog_ndjson_incomplete_line, setup_macos_log_ndjson, teardown_macos_log_ndjson),
+        cmocka_unit_test_setup_teardown(test_w_macos_log_getlog_ndjson_old_context_completed, setup_macos_log_ndjson, teardown_macos_log_ndjson),
+        cmocka_unit_test_setup_teardown(test_w_macos_log_getlog_ndjson_force_send_discards_context, setup_macos_log_ndjson, teardown_macos_log_ndjson),
+        cmocka_unit_test_setup_teardown(test_w_macos_log_getlog_ndjson_line_too_long, setup_macos_log_ndjson, teardown_macos_log_ndjson),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);

@@ -13,6 +13,7 @@
 #include <cmocka.h>
 #include <stdio.h>
 #include <time.h>
+#include <sys/utsname.h>
 
 #include "../../logcollector/logcollector.h"
 #include "../wrappers/posix/pthread_wrappers.h"
@@ -49,6 +50,18 @@ pid_t w_get_first_child(pid_t parent_pid);
 extern w_macos_log_vault_t macos_log_vault;
 
 extern char * macos_codename;
+extern bool macos_log_ndjson;
+bool w_macos_is_ndjson_supported(void);
+
+static const char * test_darwin_release = "18.7.0";
+
+int __wrap_uname(struct utsname * name) {
+    if (test_darwin_release == NULL) {
+        return -1;
+    }
+    snprintf(name->release, sizeof(name->release), "%s", test_darwin_release);
+    return 0;
+}
 
 /* setup/teardown */
 
@@ -3339,6 +3352,103 @@ void test_w_macos_get_is_valid_data_ok(void ** state) {
     macos_log_vault.is_valid_data = bak_is_valid_data;
 }
 
+/* ndjson style */
+static int teardown_ndjson(void ** state) {
+    macos_log_ndjson = false;
+    test_darwin_release = "18.7.0";
+    return 0;
+}
+
+void test_w_macos_create_log_stream_array_ndjson(void ** state) {
+
+    macos_log_ndjson = true;
+    char ** ret = w_macos_create_log_stream_array(NULL, NULL, 0);
+
+    assert_string_equal(ret[0], "/usr/bin/log");
+    assert_string_equal(ret[1], "stream");
+    assert_string_equal(ret[2], "--style");
+    assert_string_equal(ret[3], "ndjson");
+    assert_null(ret[4]);
+
+    free_strarray(ret);
+}
+
+void test_w_macos_create_log_show_array_ndjson(void ** state) {
+
+    char start_date[25] = "2021-04-27 12:29:25-0700";
+
+    macos_log_ndjson = true;
+    char ** ret = w_macos_create_log_show_array(start_date, NULL, NULL, 0);
+
+    assert_string_equal(ret[0], "/usr/bin/log");
+    assert_string_equal(ret[1], "show");
+    assert_string_equal(ret[2], "--style");
+    assert_string_equal(ret[3], "ndjson");
+    assert_string_equal(ret[4], "--start");
+
+    free_strarray(ret);
+}
+
+void test_w_macos_log_is_ndjson(void ** state) {
+
+    assert_false(w_macos_log_is_ndjson());
+    macos_log_ndjson = true;
+    assert_true(w_macos_log_is_ndjson());
+}
+
+void test_w_macos_is_ndjson_supported(void ** state) {
+
+    test_darwin_release = "19.0.0";
+    assert_true(w_macos_is_ndjson_supported());
+    test_darwin_release = "25.0.0";
+    assert_true(w_macos_is_ndjson_supported());
+    test_darwin_release = "18.7.0";
+    assert_false(w_macos_is_ndjson_supported());
+}
+
+void test_w_macos_is_ndjson_supported_uname_fail(void ** state) {
+
+    test_darwin_release = NULL;
+    assert_false(w_macos_is_ndjson_supported());
+}
+
+void test_w_macos_create_log_env_ndjson_keeps_stored_settings(void ** state) {
+
+    logreader *lf = NULL;
+    os_calloc(1, sizeof(logreader), lf);
+    os_calloc(1, sizeof(w_macos_log_config_t), lf->macos_log);
+
+    os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", lf->query);
+    os_strdup(MACOS_LOG_LEVEL_DEBUG_STR, lf->query_level);
+    lf->query_type = 0;
+    lf->future = 1; // No past events
+    test_darwin_release = "19.0.0";
+
+    will_return(__wrap_w_get_os_codename, NULL);
+
+    expect_string(__wrap_access, __name, "/usr/bin/log");
+    expect_value(__wrap_access, __type, 1);
+    will_return(__wrap_access, 0);
+
+    will_return(__wrap_wpopenv, NULL);
+
+    expect_string(__wrap__merror, formatted_msg, "(1974): An error ocurred while calling wpopenv(): Success (0).");
+    expect_string(__wrap__merror, formatted_msg, "(1606): Error while trying to execute `log stream` as follows: "
+                  "/usr/bin/log stream --style ndjson --level debug --predicate processImagePath CONTAINS[c] 'com.apple.geod'.");
+
+    w_macos_create_log_env(lf, NULL);
+
+    assert_true(macos_log_ndjson);
+    assert_string_equal(lf->macos_log->current_settings, "/usr/bin/log stream --style syslog --level debug "
+                                                         "--predicate processImagePath CONTAINS[c] 'com.apple.geod'");
+
+    os_free(lf->macos_log->current_settings);
+    os_free(lf->query_level);
+    os_free(lf->query);
+    os_free(lf->macos_log);
+    os_free(lf);
+}
+
 int main(void) {
 
     const struct CMUnitTest tests[] = {
@@ -3347,6 +3457,12 @@ int main(void) {
         cmocka_unit_test(test_w_macos_is_log_predicate_valid_existing),
         // Test w_macos_create_log_stream_array
         cmocka_unit_test(test_w_macos_create_log_stream_array_NULL),
+        cmocka_unit_test_teardown(test_w_macos_create_log_stream_array_ndjson, teardown_ndjson),
+        cmocka_unit_test_teardown(test_w_macos_create_log_show_array_ndjson, teardown_ndjson),
+        cmocka_unit_test_teardown(test_w_macos_log_is_ndjson, teardown_ndjson),
+        cmocka_unit_test_teardown(test_w_macos_is_ndjson_supported, teardown_ndjson),
+        cmocka_unit_test_teardown(test_w_macos_is_ndjson_supported_uname_fail, teardown_ndjson),
+        cmocka_unit_test_teardown(test_w_macos_create_log_env_ndjson_keeps_stored_settings, teardown_ndjson),
         cmocka_unit_test(test_w_macos_create_log_stream_array_level_default),
         cmocka_unit_test(test_w_macos_create_log_stream_array_level_info),
         cmocka_unit_test(test_w_macos_create_log_stream_array_level_debug),
