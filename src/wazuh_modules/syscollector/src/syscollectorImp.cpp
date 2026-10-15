@@ -2172,14 +2172,32 @@ void Syscollector::scanBrowserExtensions()
 #if defined(__linux__)
 namespace
 {
-    // Tables the container baseline covers; each container gets one scoped
-    // txn per table so absent rows (or absent containers) turn into DELETED
-    // events through the same pipeline as host rows.
+    // Tables the container baseline PRODUCES rows for; each container gets one
+    // scoped txn per table so absent rows turn into DELETED events through the
+    // same pipeline as host rows. Used by the per-container flush, where a
+    // table the scanner never fills must not be handed an empty row set --
+    // that would delete on every pass.
     const std::vector<std::string> CONTAINER_BASELINE_TABLES
     {
         PROCESSES_TABLE, PORTS_TABLE, USERS_TABLE, GROUPS_TABLE, PACKAGES_TABLE,
         OS_TABLE, NET_IFACE_TABLE, NET_ADDRESS_TABLE, NET_PROTOCOL_TABLE,
         SERVICES_TABLE, HW_TABLE
+    };
+
+    // Tables that CARRY container_id, which is a larger set than the one the
+    // baseline fills: hotfixes and browser extensions have the column and the
+    // scoped primary key, so a container's rows can exist there, but no
+    // scanner produces them on Linux today.
+    //
+    // The sweeps must use this list rather than the one above. A sweep is the
+    // answer to "this container is gone, remove what it left behind", and a
+    // row it does not visit is a row that outlives its container -- which is
+    // the context-less DELETE the container_json column exists to prevent.
+    const std::vector<std::string> CONTAINER_SCOPED_TABLES
+    {
+        PROCESSES_TABLE, PORTS_TABLE, USERS_TABLE, GROUPS_TABLE, PACKAGES_TABLE,
+        OS_TABLE, NET_IFACE_TABLE, NET_ADDRESS_TABLE, NET_PROTOCOL_TABLE,
+        SERVICES_TABLE, HW_TABLE, HOTFIXES_TABLE, BROWSER_EXTENSIONS_TABLE
     };
 }
 #endif
@@ -2198,7 +2216,7 @@ std::size_t Syscollector::sweepContainerRowsNotIn(const std::set<std::string>& k
 #if defined(__linux__)
     std::set<std::string> staleIds;
 
-    for (const auto& table : CONTAINER_BASELINE_TABLES)
+    for (const auto& table : CONTAINER_SCOPED_TABLES)
     {
         const auto selectCallback = [&staleIds, &keep](ReturnTypeCallback result, const nlohmann::json & data)
         {
@@ -2226,7 +2244,7 @@ std::size_t Syscollector::sweepContainerRowsNotIn(const std::set<std::string>& k
 
     for (const auto& staleId : staleIds)
     {
-        for (const auto& table : CONTAINER_BASELINE_TABLES)
+        for (const auto& table : CONTAINER_SCOPED_TABLES)
         {
             updateChanges(table, nlohmann::json::array(), staleId);
         }
@@ -2256,7 +2274,7 @@ std::size_t Syscollector::sweepContainerRows(const std::vector<std::string>& con
 
         // An empty scoped sync per table emits that container's rows as
         // DELETED, each one self-contained through its container_json column.
-        for (const auto& table : CONTAINER_BASELINE_TABLES)
+        for (const auto& table : CONTAINER_SCOPED_TABLES)
         {
             updateChanges(table, nlohmann::json::array(), containerId);
         }
