@@ -210,7 +210,7 @@ Stay up to date on news, releases, engineering articles and more.
 
 ## Authors
 
-Wazuh Copyright (C) 2015-2026 Wazuh Inc. (License GPLv2)
+Copyright (C) Wazuh Inc.
 
 Based on the OSSEC project started by Daniel Cid.
 
