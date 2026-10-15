@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Minimum 3.14 required by googletest discover tests
 # Todo find wich component is not working properly until 3.22.1 version
 cmake_minimum_required(VERSION 3.22.1 FATAL_ERROR)

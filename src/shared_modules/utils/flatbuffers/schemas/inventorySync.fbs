@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
 // Inventory synchronization schema (manager side) -- the FINAL wire contract
 // agreed with the agent team: a whole synchronization session travels as ONE
 // Message{FullSession} request over remoted's POST /stateful route, and the

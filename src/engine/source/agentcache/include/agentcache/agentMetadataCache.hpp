@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _AGENTCACHE_AGENT_METADATA_CACHE_HPP
 #define _AGENTCACHE_AGENT_METADATA_CACHE_HPP
 

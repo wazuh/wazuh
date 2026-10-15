@@ -17,6 +17,7 @@
       src/shared_modules/manager_config/
       src/shared_modules/keystore/
       src/shared_modules/indexer_connector/
+      src/shared_modules/common/
       src/shared_modules/http-request/ (git submodule wazuh/wazuh-http-request;
         its COPYING ships with the submodule)
     Each of these directories carries a COPYING file with this notice.

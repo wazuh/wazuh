@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 from helper_test.documentation_generator.html_generator import HTMLGenerator
 from helper_test.documentation_generator.pdf_generator import PDFGenerator
 from helper_test.documentation_generator.mark_down_generator import MarkdownGenerator

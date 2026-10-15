@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // TODO: Deprecated, remove once all tests are updated
 
 #ifndef _SCHEMF_MOCKS_EMPTY_SCHEMA_HPP

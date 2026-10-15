@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 from typing import Set, Tuple, Dict, Any, DefaultDict, List
 from collections import defaultdict
 from copy import deepcopy

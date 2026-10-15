@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
 
 # Wazuh package builder
 # Copyright (C) 2015, Wazuh Inc.

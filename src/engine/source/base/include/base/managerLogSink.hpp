@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _BASE_MANAGER_LOG_SINK_HPP
 #define _BASE_MANAGER_LOG_SINK_HPP
 

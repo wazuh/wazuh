@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 from engine_test.event_splitters.base_splitter import SplitterEvent
 
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _MOCKS_CMCRUD_CRUD_SERVICE_HPP
 #define _MOCKS_CMCRUD_CRUD_SERVICE_HPP
 #include <cmcrud/icmcrudservice.hpp>

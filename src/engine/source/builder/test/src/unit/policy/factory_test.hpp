@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _BUILDER_TEST_POLICY_FACTORY_TEST_HPP
 #define _BUILDER_TEST_POLICY_FACTORY_TEST_HPP
 

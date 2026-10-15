@@ -23,7 +23,7 @@ License:
     "/usr/share/doc/wazuh-manager/THIRD-PARTY-NOTICES".
 
     The shared libraries built from src/shared_modules/utils, manager_config,
-    keystore, indexer_connector and http-request (git submodule
+    keystore, indexer_connector, common and http-request (git submodule
     wazuh/wazuh-http-request) are dual-licensed under the GNU General
     Public License version 2 or the GNU Affero General Public License,
     version 3 or (at your option) any later version.

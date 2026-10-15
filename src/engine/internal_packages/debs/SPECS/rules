@@ -1,4 +1,5 @@
 #!/usr/bin/make -f
+# SPDX-License-Identifier: AGPL-3.0-or-later
 
 # Enable all standard hardening features for potential native artifacts.
 export DEB_BUILD_MAINT_OPTIONS = hardening=+all

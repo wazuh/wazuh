@@ -9,7 +9,8 @@
 > `engine-suite`/`engine-metrics` tools) is licensed under the GNU Affero General Public License, version 3 or
 > (at your option) any later version — see `src/engine/COPYING-engine` and `src/engine/LICENSE-engine`. The shared
 > libraries it links with the rest of the manager (`src/shared_modules/utils`, `manager_config`, `keystore`,
-> `indexer_connector` and the `http-request` submodule) are dual-licensed `GPL-2.0-only OR AGPL-3.0-or-later`; the rest of the manager is GPLv2.
+> `indexer_connector`, `common` and the `http-request` submodule) are dual-licensed
+> `GPL-2.0-only OR AGPL-3.0-or-later`; the rest of the manager is GPLv2.
 
 ## Introduction
 The engine is responsible for transforming raw data into standardized schema documents, enriching it with threat

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 FROM debian:12
 ENV DEBIAN_FRONTEND=noninteractive
 

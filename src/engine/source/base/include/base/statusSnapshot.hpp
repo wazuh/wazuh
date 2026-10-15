@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef BASE_STATUS_SNAPSHOT_HPP
 #define BASE_STATUS_SNAPSHOT_HPP
 

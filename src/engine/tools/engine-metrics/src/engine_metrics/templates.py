@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """HTML template for the engine-metrics live dashboard.
 
 The template receives METRICS_META_JSON injected by dashboard.py — a JSON object mapping
