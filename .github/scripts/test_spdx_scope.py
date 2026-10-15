@@ -214,6 +214,13 @@ class ApplyToBytesTest(unittest.TestCase):
         self.assertEqual(lines[2], line("#", AGPL).rstrip(b"\n"))
         self.assertEqual(lines[3], b"x = 1")
 
+    def test_python_shebang_then_coding_without_extension(self):
+        src = b"#!/usr/bin/env python3\n# -*- coding: latin-1 -*-\nx = '\xe9'\n"
+        out = spdx.apply_to_bytes("src/engine/tool", src)
+        self.assertEqual(out.splitlines()[1], b"# -*- coding: latin-1 -*-")
+        self.assertEqual(out.splitlines()[2], line("#", AGPL).rstrip(b"\n"))
+        compile(out, "tool", "exec")  # the latin-1 byte is still decoded with the declared encoding
+
     def test_python_shebang_without_coding(self):
         out = spdx.apply_to_bytes("src/engine/a.py", b"#!/usr/bin/env python3\nx = 1\n")
         self.assertEqual(out, b"#!/usr/bin/env python3\n" + line("#", AGPL) + b"x = 1\n")
