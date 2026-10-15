@@ -323,9 +323,13 @@ case "$1" in
     fi
 
     if [ ! -z "$2" ]; then
+        # Load the unit this package ships whatever the service state: a stopped one would
+        # otherwise start next with the previous unit definition.
+        if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1; then
+            systemctl daemon-reload > /dev/null 2>&1
+        fi
         if [ -f ${WAZUH_TMP_DIR}/wazuh.restart ] ; then
             if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1; then
-                systemctl daemon-reload > /dev/null 2>&1
                 systemctl restart wazuh-manager.service > /dev/null 2>&1
             elif command -v service > /dev/null 2>&1 ; then
                 service wazuh-manager restart > /dev/null 2>&1
