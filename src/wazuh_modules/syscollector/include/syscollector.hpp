@@ -197,6 +197,7 @@ class EXPORTED Syscollector final
         Syscollector& operator=(const Syscollector&) = delete;
 
         std::string getCreateStatement() const;
+        std::vector<std::string> getUpgradeStatements() const;
         nlohmann::json getOSData();
         nlohmann::json getHardwareData();
         nlohmann::json getNetworkData();

@@ -661,7 +661,35 @@ std::string Syscollector::getCreateStatement() const
     ret += SERVICES_SQL_STATEMENT;
     ret += BROWSER_EXTENSIONS_SQL_STATEMENT;
     ret += TABLE_METADATA_SQL_STATEMENT;
+    ret += CONTAINER_CONTEXT_SQL_STATEMENT;
     return ret;
+}
+
+/// Schema changes applied to a database that already exists, in order.
+///
+/// DBSync derives the schema version from this list: a database reports
+/// PRAGMA user_version, and every statement from that point on is applied to
+/// it, one prepared statement each. Two consequences, both load-bearing:
+///
+///  - ONE statement per entry. The upgrade step prepares and steps exactly
+///    once, so a string holding two statements silently applies only the first.
+///  - This list is APPEND-ONLY, permanently. An agent may skip releases, so it
+///    replays the vector from wherever its own database left off. Editing or
+///    removing an entry rewrites history that some installed agent still needs.
+///
+/// The create statement above must keep producing the same schema this list
+/// builds up to, because fresh databases take that path and never replay these.
+std::vector<std::string> Syscollector::getUpgradeStatements() const
+{
+    // The published steps come first and keep their numbers: a 5.0.0 database
+    // already reports the version they lead to.
+    auto statements {UPGRADE_SQL_STATEMENTS};
+
+    // v2 -> v3: store a container's context once, rather than stamping a
+    // copy of it onto every row that container owns.
+    statements.emplace_back(CONTAINER_CONTEXT_SQL_STATEMENT);
+
+    return statements;
 }
 
 
@@ -691,7 +719,7 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
                         const unsigned int containerBaselineInterval)
 {
     auto dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, dbPath, getCreateStatement(), DbManagement::PERSISTENT,
-                                           UPGRADE_SQL_STATEMENTS);
+                                           getUpgradeStatements());
 
     // Logged here, with this module's tag: a recreated database is why the next sync resends
     // the whole inventory.
