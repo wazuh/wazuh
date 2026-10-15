@@ -1,6 +1,6 @@
 /*
  * Wazuh inventory sync server module
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  * August 6, 2026.
  *
  * This program is free software; you can redistribute it

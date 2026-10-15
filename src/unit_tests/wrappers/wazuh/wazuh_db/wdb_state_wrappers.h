@@ -1,6 +1,6 @@
 /*
  * Wazuh Shared Configuration Manager
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  * Jun 1, 2022.
  *
  * This program is free software; you can redistribute it

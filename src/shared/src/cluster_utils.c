@@ -1,6 +1,6 @@
 /*
  * Cluster identity of this manager node, read from the effective etc/wazuh-manager.conf.
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  * October 26, 2018.
  *
  * This program is free software; you can redistribute it

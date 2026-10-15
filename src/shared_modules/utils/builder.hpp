@@ -1,6 +1,6 @@
 /*
  * Wazuh shared modules utils
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  * January 19, 2022.
  *
  * This program is free software; you can redistribute it and/or modify it

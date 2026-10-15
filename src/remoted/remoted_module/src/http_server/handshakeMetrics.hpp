@@ -1,6 +1,6 @@
 /*
  * Wazuh remoted module - TLS handshake guard metrics
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  * October 8, 2026.
  *
  * This program is free software; you can redistribute it

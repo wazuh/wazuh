@@ -1,6 +1,6 @@
 /*
  * Wazuh Syscheck
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  * October 22 2025.
  *
  * This program is free software; you can redistribute it

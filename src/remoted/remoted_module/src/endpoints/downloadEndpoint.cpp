@@ -1,6 +1,6 @@
 /*
  * Wazuh remoted module (C++ worker bridge)
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  * July 29, 2026.
  *
  * This program is free software; you can redistribute it

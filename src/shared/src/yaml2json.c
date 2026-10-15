@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * August 4, 2018
  * All rights reserved.
  *

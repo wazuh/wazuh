@@ -1,6 +1,6 @@
 /*
  * Wazuh agent HTTPS client (C++ transport module)
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  * July 17, 2026.
  *
  * This program is free software; you can redistribute it

@@ -1,6 +1,6 @@
 /*
  * wazuh-manager-conf: validate, query and dump the manager configuration (/etc/wazuh-manager/wazuh-manager.conf).
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of either the GNU General Public License, version 2, or

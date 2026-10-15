@@ -1,6 +1,6 @@
 /*
  * OS processes
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  * January 25, 2019
  *
  * This program is free software; you can redistribute it

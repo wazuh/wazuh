@@ -1,6 +1,6 @@
 /*
  * Wazuh SCA
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  * September 4, 2026.
  *
  * This program is free software; you can redistribute it

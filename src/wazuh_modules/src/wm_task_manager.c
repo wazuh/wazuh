@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for Task management
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  * September 1, 2026.
  *
  * This program is free software; you can redistribute it

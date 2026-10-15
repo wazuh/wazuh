@@ -1,6 +1,6 @@
 /*
  * Wazuh - Indexer Connector exponential backoff unit tests.
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  * July 16, 2026.
  *
  * This program is free software; you can redistribute it and/or modify it

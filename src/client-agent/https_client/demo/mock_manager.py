@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Wazuh agent HTTPS client — demo mock manager.
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 #
 # A tiny TLS "manager" that speaks the proposed #37732/#37733 contract just
 # enough to watch the REAL https_client module communicate: it verifies the

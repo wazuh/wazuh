@@ -1,5 +1,5 @@
 /* Auth Common
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  * Mar 22, 2018.
  *
  * This program is free software; you can redistribute it

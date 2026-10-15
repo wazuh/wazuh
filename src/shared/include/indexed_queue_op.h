@@ -3,7 +3,7 @@
  * @brief Indexed Queue (abstract data type)
  * @date 2025-08-08
  *
- * @copyright Copyright (C) 2015 Wazuh, Inc.
+ * @copyright Copyright (C) Wazuh Inc.
  */
 
 /*

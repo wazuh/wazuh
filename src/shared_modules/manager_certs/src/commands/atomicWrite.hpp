@@ -1,6 +1,6 @@
 /*
  * Wazuh manager certs tool - atomic bundle replacement
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  * September 19, 2026.
  *
  * This program is free software; you can redistribute it

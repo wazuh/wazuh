@@ -1,6 +1,6 @@
 /*
  * Wazuh remoted module - POST /enroll end-to-end tests
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  * August 19, 2026.
  *
  * This program is free software; you can redistribute it

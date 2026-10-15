@@ -1,6 +1,6 @@
 /*
  * Wazuh remoted module - header lookup unit tests
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  * August 19, 2026.
  *
  * This program is free software; you can redistribute it

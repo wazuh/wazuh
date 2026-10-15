@@ -1,6 +1,6 @@
 /*
  * Wazuh remoted module - Hash cache
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  * July 31, 2026.
  *
  * This program is free software; you can redistribute it

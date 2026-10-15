@@ -8,7 +8,7 @@ It was downloaded from:
 
 Copyright:
 
-    Copyright (C) 2023, Wazuh Inc.
+    Copyright (C) Wazuh Inc.
 
 License:
 
@@ -19,7 +19,7 @@ License:
 
 The Debian packaging is:
 
-    Copyright (C) 2015 Wazuh, Inc <info@wazuh.com>
+    Copyright (C) Wazuh Inc. <info@wazuh.com>
 
 and is licensed under the GNU Affero General Public License,
 version 3 or (at your option) any later version,

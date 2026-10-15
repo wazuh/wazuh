@@ -1,6 +1,6 @@
 /*
  * Wazuh Vulnerability scanner - Scan Orchestrator
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  * Nov 23, 2023.
  *
  * This program is free software; you can redistribute it and/or modify it

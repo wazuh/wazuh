@@ -1,6 +1,6 @@
 /*
  * Wazuh Indexer Connector - Fake Server
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  * September 15, 2023.
  *
  * This program is free software; you can redistribute it

@@ -1,5 +1,5 @@
 # Wazuh agent HTTPS client — self-contained demo image.
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 #
 # Compiles the REAL https_client module sources into a shared library against
 # the distro's libcurl + OpenSSL (no full Wazuh build needed), builds the demo

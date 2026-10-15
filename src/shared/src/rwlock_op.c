@@ -3,7 +3,7 @@
  * @brief Read-write lock library definition
  * @date 2022-09-02
  *
- * @copyright Copyright (C) 2015 Wazuh, Inc.
+ * @copyright Copyright (C) Wazuh Inc.
  */
 
 /*

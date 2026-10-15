@@ -1,6 +1,6 @@
 /*
  * Wazuh remoted module - Rate-limit route gate unit tests
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  * September 14, 2026.
  *
  * This program is free software; you can redistribute it

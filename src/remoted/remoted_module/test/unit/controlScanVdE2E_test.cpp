@@ -1,6 +1,6 @@
 /*
  * Wazuh remoted module - /control + /scan/vd end-to-end integration test
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  * August 10, 2026.
  *
  * This program is free software; you can redistribute it

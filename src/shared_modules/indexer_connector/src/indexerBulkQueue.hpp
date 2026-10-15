@@ -1,6 +1,6 @@
 /*
  * Wazuh - Indexer Connector Bulk Queue.
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  * June 29, 2026.
  *
  * This program is free software; you can redistribute it and/or modify it

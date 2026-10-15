@@ -1,6 +1,6 @@
 /*
  * Wazuh remoted module - CA bundle record events (mailbox + wording) unit tests
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  * September 18, 2026.
  *
  * This program is free software; you can redistribute it

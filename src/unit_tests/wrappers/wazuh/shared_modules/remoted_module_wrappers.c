@@ -1,6 +1,6 @@
 /*
  * Wazuh remoted_module wrappers
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  * July 22, 2026.
  *
  * This program is free software; you can redistribute it

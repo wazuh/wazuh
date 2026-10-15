@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Wazuh Configuration & Init Files Generator
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 # November 24, 2016.
 #
 # This program is free software; you can redistribute it

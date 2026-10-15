@@ -1,6 +1,6 @@
 /*
  * Wazuh Utils
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  * December 25, 2020.
  *
  * This program is free software; you can redistribute it and/or modify it

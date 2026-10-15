@@ -1,6 +1,6 @@
 /*
  * Wazuh Utils - rocksDB queue.
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  * Jun 2, 2023.
  *
  * This program is free software; you can redistribute it and/or modify it

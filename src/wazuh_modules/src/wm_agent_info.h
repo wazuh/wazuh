@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for Agent Information Management
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  * November 25, 2024.
  *
  * This program is free software; you can redistribute it

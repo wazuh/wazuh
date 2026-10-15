@@ -1,6 +1,6 @@
 /*
  * Wazuh - OS primitives
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  * May 1, 2023.
  *
  * This program is free software; you can redistribute it and/or modify it

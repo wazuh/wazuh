@@ -1,6 +1,6 @@
 /*
  * Wazuh remoted module - wazuh-enroll+jwt signer/verifier tests
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  * August 26, 2026.
  *
  * This program is free software; you can redistribute it

@@ -1,6 +1,6 @@
 /*
  * Socket DB Wrapper
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  * October 30, 2023.
  *
  * This program is free software; you can redistribute it and/or modify it

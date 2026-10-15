@@ -1,7 +1,7 @@
 #!/usr/bin/env /bin/bash
 #
 # Wazuh restore permissions script generator (ver 0.1)
-# Copyright (C) 2019 Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 #
 # This program is a free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public

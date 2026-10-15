@@ -1,6 +1,6 @@
 /*
  * Wazuh - Indexer connector.
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  * July 7, 2025.
  *
  * This program is free software; you can redistribute it and/or modify it

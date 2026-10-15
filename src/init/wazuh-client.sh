@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 # wazuh-control        This shell script takes care of starting
 #                      or stopping Wazuh
 # Author: Daniel B. Cid <daniel.cid@gmail.com>

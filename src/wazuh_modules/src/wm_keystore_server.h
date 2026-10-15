@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for the keystore server (UDS at queue/sockets/keystore.sock)
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  * August 5, 2026.
  *
  * This program is free software; you can redistribute it

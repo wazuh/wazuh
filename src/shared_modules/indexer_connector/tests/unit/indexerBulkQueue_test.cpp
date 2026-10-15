@@ -1,6 +1,6 @@
 /*
  * Wazuh - Indexer Connector Bulk Queue unit tests.
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  * July 15, 2026.
  *
  * This program is free software; you can redistribute it and/or modify it

@@ -1,6 +1,6 @@
 /*
  * Wazuh remoted module - Group selector helper unit tests
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  * September 7, 2026.
  *
  * This program is free software; you can redistribute it
