@@ -1140,9 +1140,15 @@ std::pair<nlohmann::json, uint64_t> Syscollector::ecsData(const nlohmann::json& 
 
     // Option A (container baseline): container-sourced rows carry their
     // serialized runtime context in the container_json column — surface it as
-    // the event's container/kubernetes blocks. Host rows have an empty column
-    // and are untouched. DELETED events keep the blocks because the column is
-    // part of the stored row, even after the container itself is gone.
+    // the event's container block. Host rows have an empty column and are
+    // untouched. DELETED events keep the block because the column is part of
+    // the stored row, even after the container itself is gone.
+    //
+    // One block, with the Kubernetes context nested inside it at
+    // container.kubernetes (D15). The producer has nested it since the shape
+    // changed, and every wazuh-states-* template is dynamic:strict and rejects
+    // a second top-level "kubernetes" sibling, so lifting one here could only
+    // ever have produced a document the indexer refuses.
     if (data.contains(CONTAINER_JSON_COLUMN) && data[CONTAINER_JSON_COLUMN].is_string())
     {
         const auto& contextBlob = data[CONTAINER_JSON_COLUMN].get_ref<const std::string&>();
@@ -1151,17 +1157,9 @@ std::pair<nlohmann::json, uint64_t> Syscollector::ecsData(const nlohmann::json& 
         {
             const auto context = nlohmann::json::parse(contextBlob, nullptr, false);
 
-            if (context.is_object())
+            if (context.is_object() && context.contains("container"))
             {
-                if (context.contains("container"))
-                {
-                    ret["container"] = context["container"];
-                }
-
-                if (context.contains("kubernetes"))
-                {
-                    ret["kubernetes"] = context["kubernetes"];
-                }
+                ret["container"] = context["container"];
             }
         }
     }
