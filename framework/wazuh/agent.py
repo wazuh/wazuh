@@ -197,6 +197,11 @@ def get_agents_summary_os(agent_list: list[str] = None) -> AffectedItemsWazuhRes
         result.affected_items = query_data['items']
         result.total_affected_items = len(result.affected_items)
 
+        # The distinct query discards the agents without OS, so an empty result means none of them reported it
+        if not result.affected_items:
+            for agent_id in filter(lambda agent_id: agent_id != '000', agent_list):
+                result.add_failed_item(id_=agent_id, error=WazuhError(1761))
+
     return result
 
 
