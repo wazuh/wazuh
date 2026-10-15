@@ -4,6 +4,7 @@
 
 import importlib.util
 import os
+import shutil
 import stat
 import subprocess
 import sys
@@ -475,6 +476,317 @@ class CliTest(unittest.TestCase):
         rc, out, _ = self.run_cli("census")
         self.assertEqual(rc, 1, out)
         self.assertIn("src/engine/late.cpp", out)
+
+
+CHECK_SH = os.path.join(HERE, "check_spdx.sh")
+HINT = "spdx_scope.py apply"
+GITENV = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t",
+          "GIT_COMMITTER_EMAIL": "t@t", "GIT_CONFIG_GLOBAL": os.devnull,
+          "GIT_CONFIG_SYSTEM": os.devnull}
+
+
+class CheckTest(unittest.TestCase):
+    """`spdx_scope.py check -` (NUL-separated paths on stdin) in a temp git repo."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.repo = self._tmp.name
+        git(self.repo, "init", "-q")
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def write(self, rel, content, mode=None):
+        p = os.path.join(self.repo, rel)
+        os.makedirs(os.path.dirname(p), exist_ok=True)
+        with open(p, "wb") as f:
+            f.write(content)
+        if mode is not None:
+            os.chmod(p, mode)
+        return p
+
+    def check(self, *paths):
+        stdin = b"".join((x if isinstance(x, bytes) else x.encode()) + b"\0" for x in paths)
+        r = subprocess.run([sys.executable, MODULE_PATH, "--repo", self.repo, "check", "-"],
+                           cwd=self.repo, input=stdin,
+                           stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        return r.returncode, r.stdout.decode(errors="replace"), r.stderr.decode(errors="replace")
+
+    def test_ok(self):
+        self.write(ENGINE_CPP, line("//", AGPL) + b"int x;\n")
+        self.write(DUAL_H, line("//", DUAL) + b"int u;\n")
+        rc, out, err = self.check(ENGINE_CPP, DUAL_H)
+        self.assertEqual(rc, 0, out + err)
+        self.assertIn("checked 2, failed 0", out)
+        self.assertNotIn(HINT, out + err)
+
+    def test_missing(self):
+        self.write(ENGINE_CPP, b"int x;\n")
+        rc, out, err = self.check(ENGINE_CPP)
+        self.assertEqual(rc, 1)
+        self.assertIn("%s: missing %s" % (ENGINE_CPP, AGPL), out.splitlines())
+        self.assertIn("checked 1, failed 1", out)
+
+    def test_missing_dual_expects_dual_id(self):
+        self.write(DUAL_H, b"int u;\n")
+        rc, out, _ = self.check(DUAL_H)
+        self.assertEqual(rc, 1)
+        self.assertIn("%s: missing %s" % (DUAL_H, DUAL), out.splitlines())
+
+    def test_wrong(self):
+        self.write(ENGINE_CPP, line("//", "GPL-2.0-only") + b"int x;\n")
+        self.write(DUAL_H, line("//", AGPL) + b"int u;\n")
+        rc, out, _ = self.check(ENGINE_CPP, DUAL_H)
+        self.assertEqual(rc, 1)
+        lines = out.splitlines()
+        self.assertIn("%s: wrong GPL-2.0-only (expected %s)" % (ENGINE_CPP, AGPL), lines)
+        self.assertIn("%s: wrong %s (expected %s)" % (DUAL_H, AGPL, DUAL), lines)
+        self.assertIn("checked 2, failed 2", out)
+
+    def test_out_of_scope_ignored_and_not_counted(self):
+        self.write("src/other/o.cpp", b"int o;\n")
+        self.write("src/engine/README.md", b"doc\n")
+        self.write(ENGINE_CPP, line("//", AGPL) + b"int x;\n")
+        rc, out, _ = self.check("src/other/o.cpp", "src/engine/README.md", ENGINE_CPP)
+        self.assertEqual(rc, 0, out)
+        self.assertIn("checked 1, failed 0", out)
+        self.assertNotIn("o.cpp", out)
+
+    def test_nonexistent_ignored(self):
+        rc, out, _ = self.check("src/engine/ghost.cpp")
+        self.assertEqual(rc, 0, out)
+        self.assertIn("checked 0, failed 0", out)
+        self.assertNotIn("ghost", out)
+
+    def test_symlink_ignored(self):
+        self.write(ENGINE_CPP, line("//", AGPL) + b"int x;\n")
+        os.symlink("x.cpp", os.path.join(self.repo, "src/engine/source/x/link.cpp"))
+        rc, out, _ = self.check("src/engine/source/x/link.cpp")
+        self.assertEqual(rc, 0, out)
+        self.assertIn("checked 0, failed 0", out)
+
+    def test_symlink_to_file_without_line_ignored(self):
+        self.write("src/other/t.cpp", b"int t;\n")
+        os.makedirs(os.path.join(self.repo, "src/engine"), exist_ok=True)
+        os.symlink("../other/t.cpp", os.path.join(self.repo, "src/engine/l.cpp"))
+        rc, out, _ = self.check("src/engine/l.cpp")
+        self.assertEqual(rc, 0, out)
+        self.assertIn("checked 0, failed 0", out)
+
+    def test_gitlink_ignored(self):
+        sha = "1" * 40
+        git(self.repo, "update-index", "--add", "--cacheinfo", "160000,%s,src/engine/sub.cpp" % sha)
+        # Also as an (empty) directory, as a checked-out submodule would be.
+        os.makedirs(os.path.join(self.repo, "src/engine/sub.cpp"))
+        rc, out, _ = self.check("src/engine/sub.cpp")
+        self.assertEqual(rc, 0, out)
+        self.assertIn("checked 0, failed 0", out)
+        self.assertNotIn("sub.cpp", out)
+
+    def test_gitlink_in_dual_dir_ignored(self):
+        git(self.repo, "update-index", "--add", "--cacheinfo",
+            "160000,%s,src/shared_modules/utils/mod" % ("2" * 40))
+        rc, out, _ = self.check("src/shared_modules/utils/mod")
+        self.assertEqual(rc, 0, out)
+        self.assertIn("checked 0, failed 0", out)
+
+    def test_non_utf8_filename_no_traceback(self):
+        name = b"src/engine/bad\xff.cpp"
+        os.makedirs(os.path.join(self.repo, "src/engine"), exist_ok=True)
+        with open(os.path.join(os.fsencode(self.repo), name), "wb") as f:
+            f.write(b"int x;\n")
+        rc, out, err = self.check(name)
+        self.assertEqual(rc, 1)
+        self.assertNotIn("Traceback", err)
+        self.assertIn("checked 1, failed 1", out)
+        self.assertIn("missing " + AGPL, out)
+
+    def test_non_utf8_filename_ok(self):
+        name = b"src/engine/ok\xff.cpp"
+        os.makedirs(os.path.join(self.repo, "src/engine"), exist_ok=True)
+        with open(os.path.join(os.fsencode(self.repo), name), "wb") as f:
+            f.write(line("//", AGPL) + b"int x;\n")
+        rc, out, err = self.check(name)
+        self.assertEqual(rc, 0, out + err)
+        self.assertNotIn("Traceback", err)
+        self.assertIn("checked 1, failed 0", out)
+
+    def test_hint_only_when_failed(self):
+        self.write(ENGINE_CPP, line("//", AGPL) + b"int x;\n")
+        rc, out, err = self.check(ENGINE_CPP)
+        self.assertEqual(rc, 0)
+        self.assertNotIn(HINT, out + err)
+        self.assertNotIn("THIRD_PARTY", out + err)
+        self.write("src/engine/source/y.cpp", b"int y;\n")
+        rc, out, err = self.check(ENGINE_CPP, "src/engine/source/y.cpp")
+        self.assertEqual(rc, 1)
+        self.assertIn(HINT, out + err)
+        self.assertIn("THIRD_PARTY", out + err)
+        self.assertIn("checked 2, failed 1", out)
+
+    def test_empty_stdin(self):
+        rc, out, _ = self.check()
+        self.assertEqual(rc, 0)
+        self.assertIn("checked 0, failed 0", out)
+
+    def test_late_identifier_counts_as_missing(self):
+        self.write(ENGINE_CPP, b"// filler\n" * 30 + line("//", AGPL) + b"int x;\n")
+        rc, out, err = self.check(ENGINE_CPP)
+        self.assertEqual(rc, 1, out + err)
+        self.assertIn("%s: missing %s" % (ENGINE_CPP, AGPL), out.splitlines())
+
+    def test_many_paths_via_stdin(self):
+        paths = []
+        for i in range(2000):
+            rel = "src/engine/source/m/f%04d.cpp" % i
+            self.write(rel, line("//", AGPL) + b"int x;\n")
+            paths.append(rel)
+        rc, out, err = self.check(*paths)
+        self.assertEqual(rc, 0, out + err)
+        self.assertIn("checked 2000, failed 0", out)
+
+
+class CheckScriptTest(unittest.TestCase):
+    """`check_spdx.sh [<base>]` end to end on a temp repo."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.repo = self._tmp.name
+        self.env = dict(os.environ, **GITENV)
+        self.git("init", "-q", "-b", "main")
+        sd = os.path.join(self.repo, ".github/scripts")
+        os.makedirs(sd)
+        for n in ("check_spdx.sh", "spdx_scope.py"):
+            shutil.copy(os.path.join(HERE, n), os.path.join(sd, n))
+        self.commit("scripts")
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def git(self, *args):
+        return subprocess.run(["git", "-C", self.repo] + list(args), check=True, env=self.env,
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE).stdout.decode().strip()
+
+    def write(self, rel, content, mode=None):
+        p = os.path.join(self.repo, rel)
+        os.makedirs(os.path.dirname(p), exist_ok=True)
+        with open(p, "wb") as f:
+            f.write(content)
+        if mode is not None:
+            os.chmod(p, mode)
+
+    def commit(self, msg):
+        self.git("add", "-A", "-f")
+        self.git("commit", "-q", "--allow-empty", "-m", msg)
+        return self.git("rev-parse", "HEAD")
+
+    def run_script(self, *args, cwd=None):
+        r = subprocess.run(["bash", os.path.join(self.repo, ".github/scripts/check_spdx.sh")]
+                           + list(args), cwd=cwd or self.repo, env=self.env,
+                           stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        return r.returncode, r.stdout.decode(errors="replace"), r.stderr.decode(errors="replace")
+
+    def test_base_range_rename_delete_mode_only(self):
+        body = b"int u;\n" * 20  # keep the similarity high so git detects the rename
+        self.write(DUAL_H, line("//", DUAL) + body)
+        self.write("src/engine/gone.cpp", b"int gone;\n")  # no line, will be deleted
+        self.write("src/engine/mode.sh", b"#!/bin/sh\n" + line("#", AGPL) + b"echo\n", mode=0o644)
+        base = self.commit("base")
+        os.makedirs(os.path.join(self.repo, "src/engine/source"), exist_ok=True)
+        self.git("mv", DUAL_H, "src/engine/source/stringHelper.h")
+        self.git("rm", "-q", "-f", "src/engine/gone.cpp")
+        os.chmod(os.path.join(self.repo, "src/engine/mode.sh"), 0o755)
+        self.commit("change")
+        rc, out, err = self.run_script(base)
+        new = "src/engine/source/stringHelper.h"
+        self.assertEqual(rc, 1, out + err)
+        self.assertIn("%s: wrong %s (expected %s)" % (new, DUAL, AGPL), out.splitlines())
+        self.assertNotIn("gone.cpp", out + err)
+        self.assertNotIn("mode.sh", out + err)
+        self.assertIn("checked 2, failed 1", out)
+
+    def test_no_in_scope_change_rc0(self):
+        base = self.commit("empty")
+        self.write("README.md", b"x\n")
+        self.write("src/other/o.cpp", b"int o;\n")
+        self.commit("noise")
+        rc, out, err = self.run_script(base)
+        self.assertEqual(rc, 0, out + err)
+        self.assertIn("checked 0, failed 0", out)
+
+    def test_fixed_file_passes_and_no_hint(self):
+        base = self.commit("empty")
+        self.write(ENGINE_CPP, line("//", AGPL) + b"int x;\n")
+        self.commit("add")
+        rc, out, err = self.run_script(base)
+        self.assertEqual(rc, 0, out + err)
+        self.assertIn("checked 1, failed 0", out)
+        self.assertNotIn(HINT, out + err)
+
+    def test_invalid_base_fails(self):
+        self.commit("empty")
+        rc, out, err = self.run_script("deadbeef")
+        self.assertNotEqual(rc, 0, out + err)
+        self.assertNotIn("checked 0, failed 0", out)
+
+    def test_runs_from_subdirectory(self):
+        base = self.commit("empty")
+        self.write(ENGINE_CPP, b"int x;\n")
+        self.commit("add")
+        sub = os.path.join(self.repo, "src/engine")
+        rc, out, err = self.run_script(base, cwd=sub)
+        self.assertEqual(rc, 1, out + err)
+        self.assertIn("%s: missing %s" % (ENGINE_CPP, AGPL), out.splitlines())
+        self.assertIn("checked 1, failed 1", out)
+        self.assertEqual((rc, out), self.run_script(base)[:2])
+
+    def test_type_change_symlink_to_file_is_checked(self):
+        link = "src/engine/source/link.cpp"
+        os.makedirs(os.path.join(self.repo, "src/engine/source"), exist_ok=True)
+        os.symlink("target.txt", os.path.join(self.repo, link))
+        base = self.commit("symlink")
+        self.assertTrue(self.git("ls-files", "-s", link).startswith("120000"))
+        os.unlink(os.path.join(self.repo, link))
+        self.write(link, b"int x;\n")
+        self.commit("now a file")
+        rc, out, err = self.run_script(base)
+        self.assertEqual(rc, 1, out + err)
+        self.assertIn("%s: missing %s" % (link, AGPL), out.splitlines())
+
+    def test_no_argument_uses_first_parent_of_merge(self):
+        self.write("README.md", b"base\n")
+        self.commit("base")
+        self.git("checkout", "-q", "-b", "feature")
+        self.write(ENGINE_CPP, b"int x;\n")  # missing line, added on the feature branch
+        self.commit("feature")
+        self.git("checkout", "-q", "main")
+        self.write("src/engine/source/onmain.cpp", b"int m;\n")  # also missing, but already in HEAD^1
+        self.commit("main moves")
+        self.git("merge", "--no-ff", "-q", "-m", "merge", "feature")
+        self.assertEqual(len(self.git("rev-list", "--parents", "-n1", "HEAD").split()), 3)
+        rc, out, err = self.run_script()
+        self.assertEqual(rc, 1, out + err)
+        self.assertIn("%s: missing %s" % (ENGINE_CPP, AGPL), out.splitlines())
+        self.assertNotIn("onmain.cpp", out + err)
+        self.assertIn("checked 1, failed 1", out)
+        self.assertIn(HINT, out + err)
+        # Same result with the explicit first parent.
+        rc2, out2, _ = self.run_script(self.git("rev-parse", "HEAD^1"))
+        self.assertEqual((rc2, out2), (rc, out))
+
+    def test_no_argument_merge_with_fixed_file_rc0(self):
+        self.write("README.md", b"base\n")
+        self.commit("base")
+        self.git("checkout", "-q", "-b", "feature")
+        self.write(ENGINE_CPP, line("//", AGPL) + b"int x;\n")
+        self.commit("feature")
+        self.git("checkout", "-q", "main")
+        self.write("other.txt", b"m\n")
+        self.commit("main moves")
+        self.git("merge", "--no-ff", "-q", "-m", "merge", "feature")
+        rc, out, err = self.run_script()
+        self.assertEqual(rc, 0, out + err)
+        self.assertIn("checked 1, failed 0", out)
 
 
 if __name__ == "__main__":

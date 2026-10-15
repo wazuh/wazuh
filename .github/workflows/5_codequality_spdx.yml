@@ -1,0 +1,38 @@
+run-name: Check SPDX headers on PR ${{ github.event.pull_request.number }}
+name: 5.X - Check SPDX headers
+
+on:
+  # No `paths`: the files in scope (src/engine and the dual-licensed libraries) are decided by
+  # .github/scripts/spdx_scope.py, not by a glob, and a PR that moves a file into scope can touch
+  # a path no filter lists. The job takes seconds, so it runs on every PR.
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-spdx:
+    if: ${{ !github.event.pull_request.draft && github.repository == 'wazuh/wazuh' }}
+    runs-on: ubuntu-24.04
+    steps:
+      # The default checkout of a pull_request is the merge commit (refs/pull/N/merge): its first
+      # parent, HEAD^1, is the base GitHub merged into, so depth 2 is enough for `git diff HEAD^1 HEAD`.
+      # Do not set `ref` to the head sha: that would drop the merge commit and HEAD^1 with it.
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Test the SPDX classifier
+        run: python3 -m unittest discover -s .github/scripts -p 'test_*.py'
+
+      - name: Check SPDX headers of the changed files
+        run: bash .github/scripts/check_spdx.sh
+
+      - name: Check the third-party notices table
+        run: python3 src/engine/tools/third-party-notices/generate.py readme --check README.md

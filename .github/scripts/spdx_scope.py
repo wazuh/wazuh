@@ -13,9 +13,11 @@ Usage:
   spdx_scope.py [--repo DIR] list   [--scope agpl|dual]
   spdx_scope.py [--repo DIR] apply  [--scope agpl|dual]
   spdx_scope.py [--repo DIR] census [--scope agpl|dual]
+  spdx_scope.py [--repo DIR] check  -     (NUL-separated repo-relative paths on stdin)
 """
 
 import argparse
+import io
 import os
 import posixpath
 import re
@@ -287,6 +289,46 @@ def cmd_census(repo: str, args: argparse.Namespace) -> int:
     return 1 if (missing or wrong or excluded) else 0
 
 
+CHECK_HINT = ("add the line with `python3 .github/scripts/spdx_scope.py apply`, or list third-party "
+              "files in `THIRD_PARTY` of `.github/scripts/spdx_scope.py`")
+
+
+def cmd_check(repo: str, args: argparse.Namespace) -> int:
+    """Verify the SPDX line of the given paths; out-of-scope, deleted, non-regular and symlinks are ignored."""
+    out = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="surrogateescape",
+                           newline="\n", write_through=True)
+    raw = sys.stdin.buffer.read()
+    checked = failed = 0
+    for item in raw.split(b"\0"):
+        if not item:
+            continue
+        path = posixpath.normpath(item.decode("utf-8", "surrogateescape").replace(os.sep, "/"))
+        full = os.path.join(repo, path)
+        # A symlink, a gitlink (a directory) or a deleted path has no regular file to read.
+        if os.path.islink(full) or not os.path.isfile(full):
+            continue
+        try:
+            content = _read(full)
+        except OSError:
+            continue
+        cls = classify(path, content)
+        if cls is None:
+            continue
+        checked += 1
+        found = find_identifier(content)
+        if found is None:
+            print("%s: missing %s" % (path, cls[0]), file=out)
+            failed += 1
+        elif found != cls[0]:
+            print("%s: wrong %s (expected %s)" % (path, found, cls[0]), file=out)
+            failed += 1
+    print("checked %d, failed %d" % (checked, failed), file=out)
+    if failed:
+        print(CHECK_HINT, file=out)
+    out.detach()
+    return 1 if failed else 0
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--repo", default=None, help="repository root (default: git toplevel)")
@@ -296,10 +338,12 @@ def main(argv: Optional[List[str]] = None) -> int:
     for name in ("list", "apply", "census"):
         p = sub.add_parser(name)
         p.add_argument("--scope", choices=("agpl", "dual"), default=None)
+    p = sub.add_parser("check")
+    p.add_argument("source", choices=("-",), help="'-': read NUL-separated paths from stdin")
     args = parser.parse_args(argv)
     repo = args.repo or _toplevel()
     handlers = {"classify": cmd_classify, "list": cmd_list, "apply": cmd_apply,
-                "census": cmd_census}
+                "census": cmd_census, "check": cmd_check}
     return handlers[args.mode](repo, args)
 
 
