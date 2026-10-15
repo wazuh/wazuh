@@ -104,12 +104,19 @@ def check_without_writes(resolver, sandbox, monkeypatch):
     before = sandbox.tree_state()
 
     def forbidden(*args, **kwargs):
-        raise AssertionError("--check must not write, lock or execute subprocesses")
+        raise AssertionError("--check must not write, lock or execute subprocesses but the configuration reader")
+
+    real_run = resolver.subprocess.run
+
+    def configuration_reader_only(argv, *args, **kwargs):
+        if argv[0] != sandbox.paths.conf_bin or argv[-1] != "dump":
+            forbidden()
+        return real_run(argv, *args, **kwargs)
 
     with monkeypatch.context() as patch:
         patch.setattr(resolver, "write_file", forbidden)
         patch.setattr(resolver, "acquire_lock", forbidden)
-        patch.setattr(resolver.subprocess, "run", forbidden)
+        patch.setattr(resolver.subprocess, "run", configuration_reader_only)
         result = run(resolver, sandbox, "--check")
     assert sandbox.tree_state() == before
     return result

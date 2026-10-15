@@ -7,6 +7,7 @@
 import io
 import os
 import shutil
+import stat
 
 import pytest
 
@@ -248,16 +249,27 @@ def test_swap_certs_ca(resolver, sandbox):
     assert sandbox.tree_state() == before
 
 
-def test_export_ca_stale(resolver, sandbox):
-    """The CA staged again by hand: the publication is stale, not attacked. --install publishes it again."""
+@pytest.mark.parametrize("mode", ["--prestart", "--upgrade"])
+def test_export_ca_stale(resolver, sandbox, mode):
+    """The CA staged again by hand: the publication is stale, not attacked. --check lets the start go on and every
+    writing mode publishes it again."""
     installed(resolver, sandbox)
     os.unlink(os.path.join(sandbox.conf, "ca", ".wazuh-manager-bootstrap-ca"))
-    with open(os.path.join(sandbox.conf, "export", "ca.pem"), "ab") as handle:
+    published = os.path.join(sandbox.conf, "export", "ca.pem")
+    with open(published, "ab") as handle:
         handle.write(b"\n")
-    code, _, err = run_env(resolver, sandbox, "--prestart")
-    assert code == 1 and "differs from" in err and "run --install to publish it again" in err
-    assert run_env(resolver, sandbox, "--install")[0] == 0
-    assert run_env(resolver, sandbox, "--prestart")[0] == 0
+    before = sandbox.tree_state()
+    code, out, err = run_env(resolver, sandbox, "--check")
+    assert (code, err) == (0, "") and f"{published} differs from" in out and "--prestart publishes it again" in out
+    assert sandbox.tree_state() == before
+    code, out, err = run_env(resolver, sandbox, mode)
+    assert (code, err) == (0, "") and f"published {published} again" in out
+    with open(os.path.join(sandbox.conf, "ca", "root-ca.pem"), "rb") as own, open(published, "rb") as copy:
+        assert copy.read() == own.read()
+    st = os.stat(published)
+    assert (st.st_uid, st.st_gid, stat.S_IMODE(st.st_mode)) == (0, 0, 0o644)
+    code, out, err = run_env(resolver, sandbox, "--check")
+    assert (code, err) == (0, "") and "differs from" not in out
 
 
 def _break_five_ways(resolver, sandbox):

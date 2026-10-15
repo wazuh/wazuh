@@ -154,8 +154,35 @@ CONF_STUB = """
 import json, os, sys
 home = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
 control = json.load(open(os.path.join(home, "stub-control.json")))
+args = sys.argv[1:]
+if args[-1] == "dump":
+    # The effective configuration with the schema's defaults, rooted at the sandbox's <CONF>; `conf_dump` overrides
+    # dotted keys, `dump_exit` fails the call, `dump_raw` replaces the output. Not logged: --check must leave the
+    # sandbox's tree as it found it.
+    certs = os.path.join(os.path.dirname(args[args.index("-f") + 1]), "certs")
+    document = {
+        "cluster": {"node_type": control.get("role") or "master"},
+        "remote": {"https": {"certificate": os.path.join(certs, "remoted.pem"),
+                             "key": os.path.join(certs, "remoted-key.pem"),
+                             "ca_certificate": os.path.join(certs, "root-ca.pem"), "ca": ""}},
+        "auth": {"disabled": False, "ssl_manager_cert": os.path.join(certs, "remoted.pem"),
+                 "ssl_manager_key": os.path.join(certs, "remoted-key.pem"), "ssl_agent_ca": ""},
+        "indexer": {"ssl": {"certificate_authorities": [os.path.join(certs, "indexer-ca.pem")],
+                            "certificate": os.path.join(certs, "indexer-connector.pem"),
+                            "key": os.path.join(certs, "indexer-connector-key.pem")}},
+    }
+    for dotted, value in control.get("conf_dump", {}).items():
+        *parents, last = dotted.split(".")
+        node = document
+        for part in parents:
+            node = node.setdefault(part, {})
+        node[last] = value
+    code = control.get("dump_exit", 0)
+    if code == 0:
+        print(control["dump_raw"] if "dump_raw" in control else json.dumps(document))
+    sys.exit(code)
 with open(os.path.join(home, "conf-calls.log"), "a") as log:
-    log.write(json.dumps(sys.argv[1:]) + "\\n")
+    log.write(json.dumps(args) + "\\n")
 code = control.get("conf_exit", 0)
 if code == 0:
     print(control.get("role", "master"))
@@ -334,9 +361,16 @@ class Sandbox:
         return state.cert_bytes
 
     def control(self, **settings):
-        """Set the stubs' behaviour: role, conf_exit, keystore_fail, rbac_fail_times."""
+        """Set the stubs' behaviour: role, conf_exit, conf_dump, dump_exit, dump_raw, keystore_fail,
+        rbac_fail_times."""
         with open(os.path.join(self.home, "stub-control.json"), "w") as handle:
             json.dump(settings, handle)
+
+    def api_yaml(self, text, mode=0o660):
+        """<home>/api/configuration/api.yaml as the installer leaves it: the account's group may write it."""
+        directory = os.path.join(self.home, "api", "configuration")
+        os.makedirs(directory, exist_ok=True)
+        return self.write(os.path.join(directory, "api.yaml"), text, mode=mode, gid=self.account_gid)
 
     @property
     def keystore_dir(self):

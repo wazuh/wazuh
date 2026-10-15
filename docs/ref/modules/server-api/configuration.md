@@ -158,7 +158,9 @@ A client that verifies the API trusts the manager's CA, published for clients on
 those names or addresses. What the dashboard takes from there, and how to copy it to a dashboard on another host, is
 in [What the dashboard takes from the manager](../../getting-started/credentials.md#what-the-dashboard-takes-from-the-manager). `use_ca` is
 unchanged: it requires a client certificate. To serve another certificate, place it in `/etc/wazuh-manager/certs` under
-other file names and point `key` and `cert` at them; both must be readable by `wazuh-manager`.
+other file names (`root:wazuh-manager 0640`) and point `key` and `cert` at them. The credential resolver checks the
+configured pair before every start and refuses a path outside that directory
+([Configured file names](../../getting-started/credentials.md#configured-file-names)).
 
 ### logs
 

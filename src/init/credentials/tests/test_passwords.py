@@ -29,7 +29,10 @@ def calls(resolver, monkeypatch):
     real = resolver.run_wazuh
 
     def spy(paths, argv, stdin=None, want_stdout=False):
-        recorded.append((list(argv), stdin))
+        # Every mode reads the configuration first (wazuh-manager-conf dump), which takes nothing on stdin and
+        # sets nothing up; only what comes after is recorded.
+        if argv[-1] != "dump":
+            recorded.append((list(argv), stdin))
         return real(paths, argv, stdin=stdin, want_stdout=want_stdout)
     monkeypatch.setattr(resolver, "run_wazuh", spy)
     return recorded
@@ -319,7 +322,8 @@ def test_keystore_refuses(resolver, sandbox):
 # ---------------------------------------------------------------- --check and process hygiene
 
 def test_check_validates_supplied(resolver, sandbox, calls):
-    """--check validates supplied values without a subprocess, even over a seeded database."""
+    """--check validates supplied values without a subprocess but the configuration reader, even over a seeded
+    database."""
     run(resolver, sandbox, "--install", environ={IDX: GOOD_IDX})
     calls.clear()
     sandbox.write(os.path.join(sandbox.conf, "local.env"), f"{WUI}=too.Short1\n")

@@ -88,10 +88,8 @@ tr -d '\r\n' < "$INDEXER_PASSWORD_FILE" | "$BIN/wazuh-manager-keystore" -f index
 # user, as on an installed manager.
 chown -R wazuh-manager:wazuh-manager queue/keystore
 
-# The image's export/ca.pem names whatever CA its installation had; publish the e2e
-# CA staged above instead, or the start's credentials check refuses the stale copy.
-# On a worker this seeds nothing and issues nothing: it only republishes.
-"$BIN/wazuh-manager-resolve-credentials" --install
+# The image's export/ca.pem names whatever CA its installation had; the start publishes the
+# e2e CA staged above in its place.
 
 # Point the indexer connection at the indexer container.
 sed -i "s#<host>https://[^<]*</host>#<host>https://${INDEXER_HOST}:${INDEXER_PORT}</host>#" "$CONF"

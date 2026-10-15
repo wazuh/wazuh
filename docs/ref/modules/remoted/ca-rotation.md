@@ -106,9 +106,9 @@ way around. There is no guard against this in the tool itself — the fix is fol
 > `wazuh-manager-certs` only validates the bundle against the certificate of remoted. Before retiring the
 > old CA (step 5), also reissue `apid.pem` (the Server API certificate) under the new CA, and stage the new CA
 > in `/etc/wazuh-manager/ca/root-ca.pem`: the credential resolver checks `apid.pem` against that file at every
-> start, and `bin/wazuh-manager-resolve-credentials --install` publishes it in `export/ca.pem`, which clients of
-> the API trust. The installer does not reissue the pair after the installation, so issue it with the new CA and
-> the profile in [Server pairs](../../getting-started/credentials.md#server-pairs), install it with the owners and
+> start, and the next start publishes it in `export/ca.pem`, which clients of the API trust. The installer
+> does not reissue the pair after the installation, so issue it with the new CA and the profile in
+> [Server pairs](../../getting-started/credentials.md#server-pairs), install it with the owners and
 > modes listed in [Installation](../../getting-started/installation.md), then restart the API
 > (`wazuh-manager-apid` loads its pair only at start). `indexer-connector.pem` is not part of this rotation: it
 > comes from the indexer's CA.

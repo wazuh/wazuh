@@ -181,8 +181,8 @@ curl --cacert /etc/wazuh-dashboard/certs/manager-ca.pem -u wazuh-internal-client
 The fingerprint must match `openssl x509 -noout -fingerprint -sha256 -in /etc/wazuh-manager/export/ca.pem` on the
 manager, the verification must end in `Verify return code: 0 (ok)`, and the login must return a token.
 
-**When it changes.** `export/ca.pem` changes only when the manager's CA does: a CA staged again or rotated, followed
-by `--install`, which publishes the new one ([Rotation](#rotation)). Copy it again to every dashboard on another
+**When it changes.** `export/ca.pem` changes only when the manager's CA does: a CA staged again or rotated. The
+next start publishes the new one ([Rotation](#rotation)). Copy it again to every dashboard on another
 host; until then their verification of the Server API fails. A new `wazuh-internal-client` password works the
 same way ([Rotation](#rotation)).
 
@@ -195,9 +195,9 @@ wazuh-manager-resolve-credentials [--install|--upgrade|--prestart|--check|--clea
 | Mode | Called by | Does | Exit |
 |------|-----------|------|------|
 | `--install` | DEB `postinst` and RPM `%post` on a fresh install, `install.sh` | seeds the passwords, stores the indexer password, mints the CA when nothing is there, issues the two server pairs, imports the indexer trust | always `0` |
-| `--upgrade` | DEB `postinst` and RPM `%post` on an upgrade | completes passwords, keystore and indexer trust; validates the CA and the pairs, never mints or issues | always `0` |
+| `--upgrade` | DEB `postinst` and RPM `%post` on an upgrade | completes passwords, keystore and indexer trust; publishes the CA in `export/ca.pem` again when the copy there differs; validates the CA and the pairs, never mints or issues | always `0` |
 | `--prestart` (default) | `wazuh-manager-control` before the daemons start, on `start`, `restart` and `reload` | every `--check` test, then what `--upgrade` does; refuses the start when anything is missing, invalid or unsafe | `0` or `1` |
-| `--check` | `wazuh-manager-control` first thing on `start`, `restart` and `reload` | read-only: no lock, no subprocess, nothing written; reports `UNSAFE` and `INVALID`, never `MISSING` | `0` or `1` |
+| `--check` | `wazuh-manager-control` first thing on `start`, `restart` and `reload` | read-only: no lock, nothing written, and no subprocess but `wazuh-manager-conf --skip-file-checks dump`, which reads the [configured file names](#configured-file-names); reports `UNSAFE` and `INVALID`, never `MISSING` | `0` or `1` |
 | `--clear` | you | removes what the resolver made ([Container images](#container-images)) | `0` or `1` |
 
 `-q` prints only problems. `-H` names a non-default installation directory; the configuration directory is
@@ -271,7 +271,8 @@ resolver trusts nothing in it by name:
   the other's files is refused as a swap.
 
 An `export/ca.pem` that differs from `ca/root-ca.pem` is not an attack: it means the CA was staged again by hand.
-It is reported as `INVALID … run --install to publish it again`.
+`--check` lets the start go on and says so (`… differs from …; --prestart publishes it again`), and `--prestart`
+publishes it again (`published /etc/wazuh-manager/export/ca.pem again: it differed from …`).
 
 A writing run that finds anything unsafe stops before it writes. It re-checks the directories it is about to
 write through on the very handles it writes with, so renaming entries in `<CONF>` mid-run redirects nothing.
@@ -305,9 +306,9 @@ indexer's CA and a client pair the indexer issued for it:
 
 The CA must be a single self-signed certificate with `CA:TRUE`, inside its validity window, with an unencrypted
 key that matches it. An intermediate CA is not accepted here: it belongs in the pair files, after the leaf (see
-[Server pairs](#server-pairs)). `--install` publishes it in `export/ca.pem` and writes `certs/root-ca.pem` only when that file
-is absent. An existing bundle must contain the CA. Its bytes are never rewritten, so rotation CAs and the
-publication block `wazuh-manager-certs` adds survive.
+[Server pairs](#server-pairs)). Every writing mode publishes it in `export/ca.pem` when the copy there is absent or
+differs, and `--install` writes `certs/root-ca.pem` only when that file is absent. An existing bundle must contain
+the CA. Its bytes are never rewritten, so rotation CAs and the publication block `wazuh-manager-certs` adds survive.
 
 ### Server pairs
 
@@ -338,6 +339,37 @@ Server API send the whole file, so clients that trust the root verify the chain.
 
 A broken pair, or half of one, is reported and never repaired or reissued. To replace a pair, put the new files in
 place (`root:wazuh-manager 0640`); to have the resolver issue a new one, remove both files and run `--install`.
+
+### Configured file names
+
+The resolver checks the files the daemons are configured to serve, under whatever name the configuration gives:
+
+| Options | Set in | Default | A relative path resolves against |
+|---------|--------|---------|----------------------------------|
+| `remote.https.certificate`, `remote.https.key` (agent listener) | `/etc/wazuh-manager/wazuh-manager.conf` | `certs/remoted.pem`, `certs/remoted-key.pem` | `/var/wazuh-manager` |
+| `auth.ssl_manager_cert`, `auth.ssl_manager_key` (enrollment) | `/etc/wazuh-manager/wazuh-manager.conf` | the agent listener's pair | `/var/wazuh-manager` |
+| `remote.https.ca_certificate` (the agents' bundle, `GET /cacerts`) | `/etc/wazuh-manager/wazuh-manager.conf` | `certs/root-ca.pem` | `/var/wazuh-manager` |
+| `https.cert`, `https.key` (Server API) | `/var/wazuh-manager/api/configuration/api.yaml` | `apid.pem`, `apid-key.pem` | `/etc/wazuh-manager/certs` |
+
+- **Only directly in `/etc/wazuh-manager/certs`.** The service account can edit both configuration files, so a name
+  anywhere else, or one with a `.` or `..` component, is refused and never opened:
+  `INVALID remote.https.certificate: /etc/ssl/listener.pem is outside /etc/wazuh-manager/certs, the only place the resolver checks (set in /etc/wazuh-manager/wazuh-manager.conf)`.
+- **The same checks** as for the default names: owner and mode (`root:wazuh-manager 0640`) and content. authd's
+  pair, like remoted's, must chain to the agents' bundle on its own.
+- **Only the default names are issued.** A pair under another name is yours to stage; at `--prestart` an absent one is
+  `MISSING /etc/wazuh-manager/certs/listener.pem: configured as remote.https.certificate in /etc/wazuh-manager/wazuh-manager.conf; stage the pair (the resolver issues only remoted.pem, remoted-key.pem, apid.pem, apid-key.pem)`.
+  While authd keeps the default names, `remoted.pem` is still issued for it. A bundle under another name is
+  never created either (`… stage the agents' CA bundle there`).
+- **A turned-off listener** (`auth.disabled` set to `yes`, `https.enabled: false` in `api.yaml`) has its pair
+  neither checked nor reported missing. `--install` still issues the default pairs whose names are configured.
+- **Reading the configuration.** Every mode, `--check` included, reads `wazuh-manager.conf` through
+  `wazuh-manager-conf --skip-file-checks dump` and parses `api.yaml`; an absent `api.yaml`, or an option it does
+  not set, means the Server API's default. When either cannot be read, the default names are checked and the start
+  is refused: `INVALID /etc/wazuh-manager/wazuh-manager.conf: cannot read the TLS paths (wazuh-manager-conf exited with 1); run wazuh-manager-conf validate`,
+  `INVALID /var/wazuh-manager/api/configuration/api.yaml: not valid YAML (line 3)`. An `api.yaml` replaced by a
+  symbolic link is `UNSAFE`.
+
+The indexer connection's files (`indexer.ssl.*`) keep the fixed names of [Indexer trust](#indexer-trust).
 
 ### Subject alternative names
 
@@ -408,8 +440,8 @@ To run the manager on your own PKI, stage the files before installing, or before
    in `local.env`.
 
 Staged files carry no marker, so the resolver validates them and never replaces them. If a CA was already minted
-here, replace `ca/root-ca.pem`, remove `ca/root-ca.key` and `ca/.wazuh-manager-bootstrap-ca`, and run `--install`
-once so that `export/ca.pem` names the new CA.
+here, replace `ca/root-ca.pem` and remove `ca/root-ca.key` and `ca/.wazuh-manager-bootstrap-ca`; the next start
+publishes the new CA in `export/ca.pem`.
 
 ## Cluster deployments
 
@@ -502,4 +534,4 @@ sudo /var/wazuh-manager/bin/rbac_control change-password
 Neither `rbac_control` nor the Server API (`PUT /security/users/{user_id}`) updates `<CONF>/export/credentials.env`,
 so the value there is stale after a change: `rbac.db` is the only authority once it is seeded.
 Rotating the manager's CA means staging the new one in `ca/`, adding it to `certs/root-ca.pem` for the agents (see
-[CA rotation](../modules/remoted/ca-rotation.md)), and running `--install` so that `export/ca.pem` follows.
+[CA rotation](../modules/remoted/ca-rotation.md)); the next start publishes it in `export/ca.pem`.

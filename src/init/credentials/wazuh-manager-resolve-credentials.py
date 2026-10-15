@@ -262,14 +262,14 @@ class LockTimeout(Exception):
 class Spec:
     """What an entry must be.
 
-    kind: "dir" or "file". uid: owner. gid: exact group, or None for any. mode: exact permission bits, or None.
-    forbid: permission bits that must be clear (default: group and other write). require: permission bits that must
-    be set, for a directory the daemons have to reach. For files, the link count must be 1, so a hard link to
-    another file cannot pass for this one.
+    kind: "dir" or "file". uid: owner, or None for any. gid: exact group, or None for any. mode: exact permission
+    bits, or None. forbid: permission bits that must be clear (default: group and other write). require: permission
+    bits that must be set, for a directory the daemons have to reach. For files, the link count must be 1, so a hard
+    link to another file cannot pass for this one.
     """
 
     kind: str
-    uid: int = 0
+    uid: Optional[int] = 0
     gid: Optional[int] = None
     mode: Optional[int] = None
     forbid: int = 0o022
@@ -289,7 +289,7 @@ def check_stat(st: os.stat_result, spec: Spec, path: str) -> None:
         raise UnsafeEntry(path, "not a directory")
     if spec.kind == "file" and not stat.S_ISREG(st.st_mode):
         raise UnsafeEntry(path, "not a regular file")
-    if st.st_uid != spec.uid:
+    if spec.uid is not None and st.st_uid != spec.uid:
         raise UnsafeEntry(path, f"owned by uid {st.st_uid}, not by {'root' if spec.uid == 0 else spec.uid}")
     if spec.gid is not None and st.st_gid != spec.gid:
         raise UnsafeEntry(path, f"group is {_group_name(st.st_gid)}, not {_group_name(spec.gid)}")
@@ -880,6 +880,186 @@ def step_indexer_password(paths: Paths, lookup: Lookup, report: Report) -> None:
     report.progress(f"stored the indexer password from {source} in the keystore")
 
 
+# ============================================= Configured TLS files ============================================
+#
+# The daemons serve the files their configuration names, so those are the files checked: remoted's and authd's pairs
+# and the agents' bundle (wazuh-manager.conf), the Server API's pair (api.yaml). Both configuration files are writable
+# by the service account, so a configured name is followed only directly inside <CONF>/certs, which only root
+# writes and whose files every step already checks; anything else is refused, never opened.
+
+CONF_FILE = "wazuh-manager.conf"
+CONF_DUMP_LIMIT = 1024 * 1024
+API_CONFIG_DIR = ("api", "configuration")
+API_YAML = "api.yaml"
+API_FILE = Spec("file", uid=None, forbid=0)    # the account's own file by design: only its type and size count
+DEFAULT_PAIRS = {"remoted": ("remoted.pem", "remoted-key.pem"), "apid": ("apid.pem", "apid-key.pem")}
+
+
+@dataclasses.dataclass(frozen=True)
+class ServerPair:
+    """One pair a listener serves: its file names in certs/, where they are configured, and what it chains to
+    ("bundle": the agents' bundle alone, like remoted's GET /cacerts; "ca": the manager's CA). `kind` is "remoted" or
+    "apid" when the names are the ones --install issues, with that pair's SAN list; None otherwise. `on` is False for
+    a listener that is turned off: its pair is issued when its names are the default ones, never checked."""
+
+    cert: str
+    key: str
+    keys: str
+    source: str
+    anchors: str
+    kind: Optional[str]
+    on: bool
+
+
+@dataclasses.dataclass(frozen=True)
+class TlsNames:
+    pairs: Tuple[ServerPair, ...]
+    bundle: Optional[str]                 # None: the configured bundle was refused
+    bundle_source: str
+
+    @property
+    def names(self) -> Tuple[str, ...]:
+        """Every configured name in certs/: a CA is never minted beside any of them."""
+        found = [name for pair in self.pairs for name in (pair.cert, pair.key)]
+        return tuple(dict.fromkeys(found + ([self.bundle] if self.bundle else [])))
+
+
+def default_tls_names(paths: Paths) -> TlsNames:
+    """The installed configuration's names: what --clear's safety pass uses, which reads no configuration."""
+    conf_file = os.path.join(paths.conf, CONF_FILE)
+    api_file = os.path.join(paths.home, *API_CONFIG_DIR, API_YAML)
+    return TlsNames((ServerPair(*DEFAULT_PAIRS["remoted"], "remote.https.certificate", conf_file, "bundle", "remoted",
+                                True),
+                     ServerPair(*DEFAULT_PAIRS["apid"], "https.cert", api_file, "ca", "apid", True)),
+                    BUNDLE, conf_file)
+
+
+def read_manager_conf(paths: Paths, report: Report) -> dict:
+    """The effective configuration, defaults applied, as wazuh-manager-conf prints it; {} (reported) when it cannot
+    be read, and the default names are then used. --skip-file-checks: the files it names are what is being checked."""
+    conf_file = os.path.join(paths.conf, CONF_FILE)
+    problem = None
+    if not os.access(paths.conf_bin, os.X_OK):
+        problem = f"{paths.conf_bin} is missing"
+    else:
+        result = run_wazuh(paths, [paths.conf_bin, "-H", paths.home, "-f", conf_file, "--skip-file-checks", "dump"],
+                           want_stdout=True)
+        if result.returncode != 0:
+            problem = f"wazuh-manager-conf exited with {result.returncode}"
+        elif len(result.stdout) > CONF_DUMP_LIMIT:
+            problem = f"its output is larger than {CONF_DUMP_LIMIT} bytes"
+        else:
+            try:
+                document = json.loads(result.stdout)
+            except ValueError:
+                document = None
+            if isinstance(document, dict):
+                return document
+            problem = "its output is not a JSON object"
+    report.problem(INVALID, conf_file, f"cannot read the TLS paths ({problem}); run wazuh-manager-conf validate")
+    return {}
+
+
+def read_api_https(paths: Paths, report: Report) -> Dict[str, object]:
+    """The Server API's https.enabled/cert/key from api.yaml, with the API's defaults (api/api/configuration.py) for
+    what it does not set. A file that is absent means the defaults; one that cannot be read means the defaults and a
+    verdict."""
+    values: Dict[str, object] = {"enabled": True, "cert": DEFAULT_PAIRS["apid"][0], "key": DEFAULT_PAIRS["apid"][1]}
+    path = os.path.join(paths.home, *API_CONFIG_DIR, API_YAML)
+    try:
+        fd = _open_dir_fd(paths.home, None, paths.home)
+        with Dir(fd, paths.home, os.fstat(fd)) as home:
+            directory = walk_path(home, API_CONFIG_DIR)
+            if directory is None:
+                return values
+            with directory:
+                data = read_file(directory, API_YAML, API_FILE)
+    except FileNotFoundError:
+        return values
+    except UnsafeEntry as exc:
+        report.unsafe(exc)
+        return values
+    import yaml  # PyYAML, bundled with the manager's interpreter (framework/requirements.txt)
+    try:
+        document = yaml.safe_load(data)
+    except yaml.YAMLError as exc:
+        mark = getattr(exc, "problem_mark", None)
+        report.problem(INVALID, path, "not valid YAML" + (f" (line {mark.line + 1})" if mark is not None else ""))
+        return values
+    https = document.get("https") if isinstance(document, dict) else None
+    if document is not None and not isinstance(document, dict) or https is not None and not isinstance(https, dict):
+        report.problem(INVALID, path, "not a mapping of options" if not isinstance(document, dict) else
+                                      "https: not a mapping of options")
+        return values
+    for name, kind in (("enabled", bool), ("cert", str), ("key", str)):
+        value = (https or {}).get(name)
+        if value is None:
+            continue
+        if not isinstance(value, kind) or kind is str and not value:
+            report.problem(INVALID, path, f"https.{name}: not {'true or false' if kind is bool else 'a file name'}")
+            return {"enabled": True, "cert": DEFAULT_PAIRS["apid"][0], "key": DEFAULT_PAIRS["apid"][1]}
+        values[name] = value
+    return values
+
+
+def certs_name(paths: Paths, key: str, value: str, base: str, source: str, report: Report) -> Optional[str]:
+    """The name in certs/ of a configured file, resolved the way its consumer resolves it (relative to `base`), or
+    None (reported) when it is not directly inside <CONF>/certs. No component may be empty, "." or "..": the kernel
+    would resolve those through directories the account can rename."""
+    path = value if value.startswith("/") else os.path.join(base, value)
+    certs = os.path.join(paths.conf, CERTS_DIR)
+    components = path.split("/")[1:]
+    if any(part in ("", ".", "..") for part in components) or os.path.dirname(path) != certs:
+        report.problem(INVALID, key, f"{path} is outside {certs}, the only place the resolver checks "
+                                     f"(set in {source})")
+        return None
+    return os.path.basename(path)
+
+
+def _conf_value(document: dict, dotted: str, kind: type, default):
+    value = document
+    for part in dotted.split("."):
+        value = value.get(part) if isinstance(value, dict) else None
+    return value if isinstance(value, kind) else default
+
+
+def tls_names(paths: Paths, report: Report) -> TlsNames:
+    """Read both configuration files once per run and resolve every configured name. A refused name leaves its pair
+    out (reported); a pair with one name refused is left out whole."""
+    conf_file = os.path.join(paths.conf, CONF_FILE)
+    api_file = os.path.join(paths.home, *API_CONFIG_DIR, API_YAML)
+    certs = os.path.join(paths.conf, CERTS_DIR)
+    document = read_manager_conf(paths, report)
+    api = read_api_https(paths, report)
+
+    def configured(key, default, base, source):
+        value = _conf_value(document, key, str, os.path.join(certs, default)) if source == conf_file \
+            else api[key.split(".")[1]]
+        return certs_name(paths, key, value, base, source, report)
+
+    pairs = []
+    remoted_on, authd_on = True, not _conf_value(document, "auth.disabled", bool, False)
+    for cert_key, key_key, defaults, source, anchors, on in (
+            ("remote.https.certificate", "remote.https.key", DEFAULT_PAIRS["remoted"], conf_file, "bundle", remoted_on),
+            ("auth.ssl_manager_cert", "auth.ssl_manager_key", DEFAULT_PAIRS["remoted"], conf_file, "bundle", authd_on),
+            ("https.cert", "https.key", DEFAULT_PAIRS["apid"], api_file, "ca", bool(api["enabled"]))):
+        base = paths.home if source == conf_file else certs
+        cert = configured(cert_key, defaults[0], base, source)
+        key = configured(key_key, defaults[1], base, source)
+        if cert is None or key is None:
+            continue
+        kind = next((name for name, names in DEFAULT_PAIRS.items() if names == (cert, key)), None)
+        pair = ServerPair(cert, key, cert_key, source, anchors, kind, on)
+        same = next((i for i, other in enumerate(pairs)
+                     if (other.cert, other.key, other.anchors) == (cert, key, anchors)), None)
+        if same is None:
+            pairs.append(pair)
+        elif on and not pairs[same].on:
+            pairs[same] = pair
+    bundle = configured("remote.https.ca_certificate", BUNDLE, paths.home, conf_file)
+    return TlsNames(tuple(pairs), bundle, conf_file)
+
+
 # ==================================================== Own CA ===================================================
 
 CA_CERT_SPEC = Spec("file")                       # rule 1
@@ -1069,9 +1249,10 @@ def mint_ca(ca: Dir, node: str) -> CaState:
     return CaState("signing", cert, key, cert_bytes)
 
 
-def server_material_present(certs: Dir) -> bool:
-    """Whether any server pair file or the bundle is already in certs/: a CA is never minted beside them."""
-    for name in SERVER_PAIR_FILES + (BUNDLE,):
+def server_material_present(certs: Dir, names: TlsNames) -> bool:
+    """Whether any server pair file or the bundle, by default or configured name, is already in certs/: a CA is never
+    minted beside them."""
+    for name in tuple(dict.fromkeys(SERVER_PAIR_FILES + (BUNDLE,) + names.names)):
         try:
             os.stat(name, dir_fd=certs.fd, follow_symlinks=False)
             return True
@@ -1101,15 +1282,22 @@ def open_certs(paths: Paths, conf: Dir, report: Report) -> Optional[Dir]:
     return None
 
 
-def check_bundle(paths: Paths, certs: Dir, state: CaState, report: Report, mode: str) -> None:
-    """certs/root-ca.pem: created from the CA when absent at --install, otherwise validated and kept as it is."""
-    present, data = read_optional(certs, BUNDLE, certs_file_spec(paths), report)
+def check_bundle(paths: Paths, certs: Dir, state: CaState, report: Report, mode: str, names: TlsNames) -> None:
+    """The agents' bundle (certs/root-ca.pem, or the configured name): the default one is created from the CA when
+    absent at --install; a present one is validated and kept as it is."""
+    bundle = names.bundle
+    if bundle is None:
+        return                                           # its configured name was refused
+    present, data = read_optional(certs, bundle, certs_file_spec(paths), report)
     if present and data is None:
         return
     if not present:
-        if mode == "install":
+        if mode == "install" and bundle == BUNDLE:
             write_file(certs, BUNDLE, state.cert_bytes, 0o640, 0, paths.service_gid())
             report.progress(f"wrote {certs.child(BUNDLE)} (the manager's CA)")
+        elif bundle != BUNDLE and mode != "check":
+            report.problem(MISSING, certs.child(bundle), f"configured as remote.https.ca_certificate in "
+                                                         f"{names.bundle_source}; stage the agents' CA bundle there")
         elif mode != "check":
             report.problem(MISSING, certs.child(BUNDLE), "the agents' CA bundle is missing; reinstall, or stage it")
         return
@@ -1118,15 +1306,16 @@ def check_bundle(paths: Paths, certs: Dir, state: CaState, report: Report, mode:
     except ValueError:
         problem = None                                   # bundle_contains reports a bundle with no certificate
     if problem:
-        report.problem(INVALID, certs.child(BUNDLE), problem)
+        report.problem(INVALID, certs.child(bundle), problem)
     elif not bundle_contains(data, state.cert):
-        report.problem(INVALID, certs.child(BUNDLE), f"does not contain {os.path.join(paths.conf, CA_DIR, CA_CERT)}")
+        report.problem(INVALID, certs.child(bundle), f"does not contain {os.path.join(paths.conf, CA_DIR, CA_CERT)}")
 
 
 def step_own_ca(paths: Paths, conf: Dir, certs: Dir, ca: Dir, lookup: Lookup, report: Report,
-                mode: str) -> Optional[CaState]:
-    """--install mints or validates the CA and publishes it; --upgrade and --prestart only validate. `certs` is opened
-    once by the caller and shared with the server pairs step."""
+                mode: str, names: TlsNames) -> Optional[CaState]:
+    """--install mints or validates the CA; every writing mode publishes it in export/ca.pem when the copy there is
+    absent or differs (the CA staged again by hand). `certs` is opened once by the caller and shared with the server
+    pairs step."""
     state = load_ca(ca, report)
     if state is None:
         return None
@@ -1135,7 +1324,7 @@ def step_own_ca(paths: Paths, conf: Dir, certs: Dir, ca: Dir, lookup: Lookup, re
             report.problem(MISSING, ca.child(CA_CERT), "the manager's CA is missing; stage it there "
                                                        f"(and {CA_KEY} to issue certificates), or reinstall")
             return None
-        if server_material_present(certs):
+        if server_material_present(certs, names):
             report.problem(MISSING, ca.child(CA_CERT), "stage the CA that issued the pairs")
             return None
         node = node_name(lookup, report)
@@ -1151,24 +1340,25 @@ def step_own_ca(paths: Paths, conf: Dir, certs: Dir, ca: Dir, lookup: Lookup, re
     else:
         origin = "staged" if state.kind == "signing" else "staged without its key (pairs cannot be issued here)"
     report.progress(f"CA {state.cert.subject.rfc4514_string()}: {origin}")
-    if mode == "install":
-        try:
-            with ensure_dir(conf, EXPORT_DIR, EXPORT_SPEC) as export:
-                check_private_dir_roles(ca, export, report)
-                if report.has(UNSAFE):
-                    return None
-                present, current = read_optional(export, EXPORT_CA, ROOT_FILE, report)
-                if current != state.cert_bytes and not (present and current is None):
-                    write_file(export, EXPORT_CA, state.cert_bytes, 0o644, 0, 0)
-        except UnsafeEntry as exc:
-            report.unsafe(exc)
-        if report.has(UNSAFE):
-            return None
-    check_bundle(paths, certs, state, report, mode)
+    try:
+        with ensure_dir(conf, EXPORT_DIR, EXPORT_SPEC) as export:
+            check_private_dir_roles(ca, export, report)
+            if report.has(UNSAFE):
+                return None
+            present, current = read_optional(export, EXPORT_CA, ROOT_FILE, report)
+            if current != state.cert_bytes and not (present and current is None):
+                write_file(export, EXPORT_CA, state.cert_bytes, 0o644, 0, 0)
+                if present:
+                    report.progress(f"published {export.child(EXPORT_CA)} again: it differed from {ca.child(CA_CERT)}")
+    except UnsafeEntry as exc:
+        report.unsafe(exc)
+    if report.has(UNSAFE):
+        return None
+    check_bundle(paths, certs, state, report, mode, names)
     return state
 
 
-def check_own_ca(paths: Paths, conf: Dir, lookup: Lookup, report: Report) -> None:
+def check_own_ca(paths: Paths, conf: Dir, lookup: Lookup, report: Report, names: TlsNames) -> None:
     """--check's part: validate whatever CA and bundle exist, without creating ca/ or writing anything."""
     try:
         ca = open_dir(conf, CA_DIR, CA_SPEC)
@@ -1181,9 +1371,9 @@ def check_own_ca(paths: Paths, conf: Dir, lookup: Lookup, report: Report) -> Non
     try:
         state = load_ca(ca, report) if ca is not None else CaState("absent")
         if certs is not None and state is not None and state.kind != "absent":
-            check_bundle(paths, certs, state, report, "check")
+            check_bundle(paths, certs, state, report, "check", names)
         if certs is not None:
-            check_server_pairs(paths, certs, state, lookup, report)
+            check_server_pairs(paths, certs, state, lookup, report, names)
     finally:
         for opened in (ca, certs):
             if opened is not None:
@@ -1398,14 +1588,15 @@ def describe_leaf(cert: x509.Certificate) -> str:
     return f"DN {cert.subject.rfc4514_string()}; SANs {sans}"
 
 
-def pair_problem(paths: Paths, certs: Dir, name: str,
-                 anchors: Optional[List[x509.Certificate]]) -> Tuple[Optional[x509.Certificate], Optional[str]]:
-    """Whether a present pair is usable. Raises UnsafeEntry for a file root may not trust. The apid file holds the
-    leaf, then any intermediate CAs that lead to one of `anchors`; remoted's leaf must chain to `anchors` (the
-    agents' bundle) on its own. `anchors` None skips the chain test (--check with no CA to test against)."""
+def pair_problem(paths: Paths, certs: Dir, pair: ServerPair, anchors: Optional[List[x509.Certificate]],
+                 bundle: str) -> Tuple[Optional[x509.Certificate], Optional[str]]:
+    """Whether a present pair is usable. Raises UnsafeEntry for a file root may not trust. The Server API's file holds
+    the leaf, then any intermediate CAs that lead to one of `anchors`; a leaf agents verify (remoted, authd) must chain
+    to `anchors` (the agents' bundle, file `bundle`) on its own. `anchors` None skips the chain test (--check with no
+    CA to test against)."""
     spec = certs_file_spec(paths)
-    cert_data = read_file(certs, f"{name}.pem", spec)
-    key_data = read_file(certs, f"{name}-key.pem", spec)
+    cert_data = read_file(certs, pair.cert, spec)
+    key_data = read_file(certs, pair.key, spec)
     try:
         leaf, *intermediates = x509.load_pem_x509_certificates(cert_data)
     except ValueError:
@@ -1415,7 +1606,7 @@ def pair_problem(paths: Paths, certs: Dir, name: str,
         return None, problem
     key, problem = ca_key_problem(key_data, leaf)
     if problem:
-        return leaf, problem.replace(CA_CERT, f"{name}.pem") if "match" in problem else f"the key is {problem}"
+        return leaf, problem.replace(CA_CERT, pair.cert) if "match" in problem else f"the key is {problem}"
     now = _now()
     if not leaf.not_valid_before_utc <= now <= leaf.not_valid_after_utc:
         return leaf, "expired" if now > leaf.not_valid_after_utc else "not valid yet"
@@ -1434,11 +1625,11 @@ def pair_problem(paths: Paths, certs: Dir, name: str,
     except x509.ExtensionNotFound:
         return leaf, "has no subjectAltName"
     if anchors is not None:
-        if name == "remoted":
-            # remoted hands agents certs/root-ca.pem (GET /cacerts) only when the leaf chains to that bundle with
-            # nothing else, and an agent holds nothing else: the intermediates of the pair's file do not count.
+        if pair.anchors == "bundle":
+            # remoted hands agents the bundle (GET /cacerts) only when the leaf chains to it with nothing else, and an
+            # agent holds nothing else: the intermediates of the pair's file do not count.
             return leaf, chain_problem(leaf, [], anchors, "the manager's CA", now, ExtendedKeyUsageOID.SERVER_AUTH,
-                                       no_path=f"agents are handed {certs.child(BUNDLE)} alone: an intermediate CA "
+                                       no_path=f"agents are handed {certs.child(bundle)} alone: an intermediate CA "
                                                f"that issued it belongs in that file")
         return leaf, chain_problem(leaf, intermediates, anchors, "the manager's CA", now,
                                    ExtendedKeyUsageOID.SERVER_AUTH)
@@ -1523,47 +1714,75 @@ def _exists(parent: Dir, name: str) -> bool:
         return False
 
 
-def pair_anchors(paths: Paths, certs: Dir, ca: CaState) -> Dict[str, List[x509.Certificate]]:
-    """remoted must chain to a certificate of the agents' bundle (it may hold rotation CAs); apid to the manager's
-    CA, the one export/ca.pem hands the dashboard."""
-    remoted = [ca.cert]
+def pair_anchors(paths: Paths, certs: Dir, ca: CaState, names: TlsNames) -> Dict[str, List[x509.Certificate]]:
+    """A pair agents verify must chain to a certificate of the agents' bundle (it may hold rotation CAs); the Server
+    API's to the manager's CA, the one export/ca.pem hands the dashboard."""
+    bundle = [ca.cert]
     try:
-        bundle = x509.load_pem_x509_certificates(read_file(certs, BUNDLE, certs_file_spec(paths)))
-        # A certificate of the bundle that does not parse is left out (check_bundle reports the bundle), so the
-        # chain test never reads it.
-        remoted = [cert for cert in bundle if parse_problem([cert]) is None] or remoted
+        if names.bundle is not None:
+            certificates = x509.load_pem_x509_certificates(read_file(certs, names.bundle, certs_file_spec(paths)))
+            # A certificate of the bundle that does not parse is left out (check_bundle reports the bundle), so the
+            # chain test never reads it.
+            bundle = [cert for cert in certificates if parse_problem([cert]) is None] or bundle
     except (FileNotFoundError, UnsafeEntry, ValueError):
         pass
-    return {"remoted": remoted, "apid": [ca.cert]}
+    return {"bundle": bundle, "ca": [ca.cert]}
 
 
-def step_server_pairs(paths: Paths, certs: Dir, ca: CaState, lookup: Lookup, report: Report, mode: str) -> None:
-    """Keep a usable pair, refuse a broken or half one, issue an absent one at --install with a signing CA."""
-    anchors = pair_anchors(paths, certs, ca)
+def _missing_pair(certs: Dir, pair: ServerPair, report: Report) -> None:
+    if pair.kind is None:
+        issued = ", ".join(DEFAULT_PAIRS["remoted"] + DEFAULT_PAIRS["apid"])
+        report.problem(MISSING, certs.child(pair.cert), f"configured as {pair.keys} in {pair.source}; stage the pair "
+                                                       f"(the resolver issues only {issued})")
+    else:
+        report.problem(MISSING, certs.child(pair.cert), "run --install to issue it, or stage the pair")
+
+
+def _judge_present(paths: Paths, certs: Dir, pair: ServerPair, anchors: Optional[Dict[str, List[x509.Certificate]]],
+                   names: TlsNames, report: Report, kept_line: bool = True) -> Optional[bool]:
+    """Report a present pair's verdict: True when it is complete and usable, False when it was refused, None when
+    neither of its files exists. `kept_line`: say what was kept (the writing modes do; --check does not)."""
+    has_cert, has_key = _exists(certs, pair.cert), _exists(certs, pair.key)
+    if has_cert and has_key:
+        try:
+            leaf, problem = pair_problem(paths, certs, pair, anchors[pair.anchors] if anchors else None,
+                                         names.bundle or BUNDLE)
+        except UnsafeEntry as exc:
+            report.unsafe(exc)
+            return False
+        if problem:
+            report.problem(INVALID, certs.child(pair.cert), problem)
+            return False
+        if kept_line:
+            report.progress(f"{certs.child(pair.cert)}: kept; {describe_leaf(leaf)}")
+        return True
+    if has_cert or has_key:
+        present, other = (pair.cert, pair.key) if has_cert else (pair.key, pair.cert)
+        report.problem(INVALID, certs.child(present), f"half a pair ({other} is missing)")
+        return False
+    return None
+
+
+def step_server_pairs(paths: Paths, certs: Dir, ca: CaState, lookup: Lookup, report: Report, mode: str,
+                      names: TlsNames) -> None:
+    """Keep a usable pair, refuse a broken or half one, issue an absent one at --install with a signing CA when its
+    names are the default ones. A turned-off listener's pair is issued like any other, never judged."""
+    anchors = pair_anchors(paths, certs, ca, names)
     to_issue = []
-    for name in ("remoted", "apid"):
-        cert_path = certs.child(f"{name}.pem")
-        has_cert, has_key = _exists(certs, f"{name}.pem"), _exists(certs, f"{name}-key.pem")
-        if has_cert and has_key:
-            try:
-                leaf, problem = pair_problem(paths, certs, name, anchors[name])
-            except UnsafeEntry as exc:
-                report.unsafe(exc)
-                continue
-            if problem:
-                report.problem(INVALID, cert_path, problem)
-            else:
-                report.progress(f"{cert_path}: kept; {describe_leaf(leaf)}")
-        elif has_cert or has_key:
-            present, other = (f"{name}.pem", f"{name}-key.pem") if has_cert else (f"{name}-key.pem", f"{name}.pem")
-            report.problem(INVALID, certs.child(present), f"half a pair ({other} is missing)")
-        elif mode != "install":
-            report.problem(MISSING, cert_path, "run --install to issue it, or stage the pair")
+    for pair in names.pairs:
+        if pair.on and _judge_present(paths, certs, pair, anchors, names, report) is not None:
+            continue
+        if _exists(certs, pair.cert) or _exists(certs, pair.key):
+            continue                                     # a turned-off listener's present files are not judged
+        if mode != "install" or pair.kind is None:
+            if pair.on:
+                _missing_pair(certs, pair, report)
         elif ca.kind != "signing":
-            report.problem(MISSING, cert_path, f"no CA key to issue it; stage the pair or the CA in "
-                                               f"{os.path.join(paths.conf, CA_DIR)}")
-        else:
-            to_issue.append(name)
+            if pair.on:
+                report.problem(MISSING, certs.child(pair.cert), f"no CA key to issue it; stage the pair or the CA in "
+                                                               f"{os.path.join(paths.conf, CA_DIR)}")
+        elif pair.kind not in to_issue:
+            to_issue.append(pair.kind)
     if not to_issue or report.has(UNSAFE):
         return
     node = node_name(lookup, report)
@@ -1581,29 +1800,21 @@ def step_server_pairs(paths: Paths, certs: Dir, ca: CaState, lookup: Lookup, rep
         return
     gid = paths.service_gid()
     for name in to_issue:
+        cert_name, key_name = DEFAULT_PAIRS[name]
         cert_bytes, key_bytes = issue_server_pair(ca, node, lists[name])
-        write_file(certs, f"{name}-key.pem", key_bytes, 0o640, 0, gid)
-        write_file(certs, f"{name}.pem", cert_bytes, 0o640, 0, gid)
+        write_file(certs, key_name, key_bytes, 0o640, 0, gid)
+        write_file(certs, cert_name, cert_bytes, 0o640, 0, gid)
         leaf = x509.load_pem_x509_certificates(cert_bytes)[0]
-        report.progress(f"{certs.child(f'{name}.pem')}: issued; {describe_leaf(leaf)}")
+        report.progress(f"{certs.child(cert_name)}: issued; {describe_leaf(leaf)}")
 
 
-def check_server_pairs(paths: Paths, certs: Dir, ca: Optional[CaState], lookup: Lookup, report: Report) -> None:
-    """--check's part: validate present pairs; never MISSING, no write."""
-    anchors = pair_anchors(paths, certs, ca) if ca is not None and ca.kind != "absent" else None
-    for name in ("remoted", "apid"):
-        has_cert, has_key = _exists(certs, f"{name}.pem"), _exists(certs, f"{name}-key.pem")
-        if has_cert and has_key:
-            try:
-                _, problem = pair_problem(paths, certs, name, anchors[name] if anchors else None)
-            except UnsafeEntry as exc:
-                report.unsafe(exc)
-                continue
-            if problem:
-                report.problem(INVALID, certs.child(f"{name}.pem"), problem)
-        elif has_cert or has_key:
-            present, other = (f"{name}.pem", f"{name}-key.pem") if has_cert else (f"{name}-key.pem", f"{name}.pem")
-            report.problem(INVALID, certs.child(present), f"half a pair ({other} is missing)")
+def check_server_pairs(paths: Paths, certs: Dir, ca: Optional[CaState], lookup: Lookup, report: Report,
+                       names: TlsNames) -> None:
+    """--check's part: validate the present pairs of the listeners that are on; never MISSING, no write."""
+    anchors = pair_anchors(paths, certs, ca, names) if ca is not None and ca.kind != "absent" else None
+    for pair in names.pairs:
+        if pair.on:
+            _judge_present(paths, certs, pair, anchors, names, report, kept_line=False)
 
 
 def validate_san_lists(lookup: Lookup, report: Report) -> None:
@@ -1980,8 +2191,8 @@ def check_private_dir_roles(ca: Optional[Dir], export: Optional[Dir], report: Re
 
 def check_swaps(conf: Dir, report: Report) -> None:
     """ca/ and export/ are both root:root 0700, so a swap between them passes their specs: their contents tell them
-    apart. A publication that merely went stale (the CA was staged again by hand) is not a swap: it is INVALID, with
-    the remedy."""
+    apart. A publication that merely went stale (the CA was staged again by hand) is not a swap, nor a problem: every
+    writing mode publishes it again."""
     ca = _open_optional_dir(conf, CA_DIR, CA_SPEC, report)
     export = _open_optional_dir(conf, EXPORT_DIR, EXPORT_SPEC, report)
     try:
@@ -1993,19 +2204,21 @@ def check_swaps(conf: Dir, report: Report) -> None:
             except UnsafeEntry:
                 return                                       # already reported by the other checks
             if own != published:
-                report.problem(INVALID, export.child(EXPORT_CA),
-                               f"differs from {ca.child(CA_CERT)}; run --install to publish it again")
+                report.progress(f"{export.child(EXPORT_CA)} differs from {ca.child(CA_CERT)}; --prestart publishes it "
+                                f"again")
     finally:
         for opened in (ca, export):
             if opened is not None:
                 opened.close()
 
 
-def run_checks(paths: Paths, conf: Dir, lookup: Lookup, report: Report, *, indexer_validity: bool = True) -> None:
+def run_checks(paths: Paths, conf: Dir, lookup: Lookup, report: Report, *, indexer_validity: bool = True,
+               names: Optional[TlsNames] = None) -> None:
     """Every read-only test, as --check runs them and --prestart runs them before anything else. No lock, no
-    subprocess, nothing written. --prestart defers indexer validity until after its import step; safety is
+    subprocess, nothing written; `names` are the configured file names, read by the caller (default: the installed
+    configuration's). --prestart defers indexer validity until after its import step; safety is
     always checked before any writes. Other steps report the same texts, so each is printed once."""
-    check_own_ca(paths, conf, lookup, report)
+    check_own_ca(paths, conf, lookup, report, names if names is not None else default_tls_names(paths))
     check_export(conf, report)
     certs = _open_optional_dir(conf, CERTS_DIR, certs_spec(paths), report)
     if certs is not None:
@@ -2067,12 +2280,13 @@ def preflight(paths: Paths, report: Report, environ: Mapping[str, str]) -> Optio
 
 
 def mode_check(paths: Paths, report: Report, environ: Mapping[str, str]) -> int:
-    """--check: read-only. No lock, no subprocess, nothing created or changed. Reports UNSAFE and INVALID, never
-    MISSING: what is absent is --prestart's to complete and to judge."""
+    """--check: read-only. No lock, nothing created or changed, and no subprocess but the configuration reader
+    (wazuh-manager-conf dump). Reports UNSAFE and INVALID, never MISSING: what is absent is --prestart's to complete
+    and to judge."""
     result = preflight(paths, report, environ)
     if result is not None:
         with result[0] as conf:
-            run_checks(paths, conf, result[1], report)
+            run_checks(paths, conf, result[1], report, names=tls_names(paths, report))
     if not report.has():
         report.progress("check: no problem found")
     return report.exit_code("check")
@@ -2089,7 +2303,8 @@ def _writing_mode(mode: str):
             # --prestart keeps non-indexer validity verdicts; indexer imports are validated after recovery.
             # --install may also refresh stale publications.
             checks = report if mode == "prestart" else Report(quiet=True, out=io.StringIO(), err=io.StringIO())
-            run_checks(paths, conf, lookup, checks, indexer_validity=False)
+            names = tls_names(paths, report)
+            run_checks(paths, conf, lookup, checks, indexer_validity=False, names=names)
             if checks is not report:
                 for kind, subject, reason in checks.problems:
                     if kind == UNSAFE:
@@ -2123,11 +2338,11 @@ def _writing_mode(mode: str):
                         return report.exit_code(mode)
                     step_indexer_password(paths, lookup, report)
                     if certs is not None:
-                        state = step_own_ca(paths, conf, certs, ca, lookup, report, mode)
+                        state = step_own_ca(paths, conf, certs, ca, lookup, report, mode, names)
                         if report.has(UNSAFE):
                             return report.exit_code(mode)
                         if state is not None:
-                            step_server_pairs(paths, certs, state, lookup, report, mode)
+                            step_server_pairs(paths, certs, state, lookup, report, mode, names)
                         if report.has(UNSAFE):
                             return report.exit_code(mode)
                         step_indexer_trust(paths, certs, report)
