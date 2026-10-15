@@ -1194,6 +1194,7 @@ namespace
                                                                        paths,
                                                                        static_cast<int>(path_count),
                                                                        dbsync_sink,
+                                                                       /*context_sink=*/nullptr,
                                                                        status_sink,
                                                                        fim_container_baseline_rate_limit,
                                                                        &driver);
@@ -1237,6 +1238,7 @@ namespace
                                                        selected.data(),
                                                        static_cast<int>(selected.size()),
                                                        dbsync_sink,
+                                                       /*context_sink=*/nullptr,
                                                        status_sink,
                                                        fim_container_baseline_rate_limit,
                                                        &driver);
@@ -1494,6 +1496,7 @@ extern "C" void fim_run_container_baseline(void)
                                                        paths,
                                                        static_cast<int>(path_count),
                                                        dbsync_sink,
+                                                       /*context_sink=*/nullptr,
                                                        status_sink,
                                                        fim_container_baseline_rate_limit,
                                                        &driver);
