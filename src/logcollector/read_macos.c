@@ -393,8 +393,8 @@ STATIC bool w_macos_log_getlog_ndjson(char * buffer, int length, FILE * stream, 
 
     /* Restores a line partially read by a previous call */
     if (w_macos_log_ctxt_restore(buffer, &macos_log_cfg->ctxt)) {
-        if (w_macos_is_log_ctxt_expired((time_t) MACOS_LOG_TIMEOUT, &macos_log_cfg->ctxt)
-            || macos_log_cfg->ctxt.force_send) {
+        /* `log` always completes the line, so drop it only when its process was replaced */
+        if (macos_log_cfg->ctxt.force_send) {
             mdebug2("macOS ULS: Incomplete message discarded.");
             w_macos_log_ctxt_clean(&macos_log_cfg->ctxt);
             macos_log_cfg->ctxt.force_send = false;

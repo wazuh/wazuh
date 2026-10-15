@@ -3353,11 +3353,16 @@ void test_w_macos_get_is_valid_data_ok(void ** state) {
 }
 
 /* ndjson style */
+static int teardown_ndjson(void ** state) {
+    macos_log_ndjson = false;
+    test_darwin_release = "18.7.0";
+    return 0;
+}
+
 void test_w_macos_create_log_stream_array_ndjson(void ** state) {
 
     macos_log_ndjson = true;
     char ** ret = w_macos_create_log_stream_array(NULL, NULL, 0);
-    macos_log_ndjson = false;
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -3374,7 +3379,6 @@ void test_w_macos_create_log_show_array_ndjson(void ** state) {
 
     macos_log_ndjson = true;
     char ** ret = w_macos_create_log_show_array(start_date, NULL, NULL, 0);
-    macos_log_ndjson = false;
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "show");
@@ -3390,7 +3394,6 @@ void test_w_macos_log_is_ndjson(void ** state) {
     assert_false(w_macos_log_is_ndjson());
     macos_log_ndjson = true;
     assert_true(w_macos_log_is_ndjson());
-    macos_log_ndjson = false;
 }
 
 void test_w_macos_is_ndjson_supported(void ** state) {
@@ -3407,7 +3410,6 @@ void test_w_macos_is_ndjson_supported_uname_fail(void ** state) {
 
     test_darwin_release = NULL;
     assert_false(w_macos_is_ndjson_supported());
-    test_darwin_release = "18.7.0";
 }
 
 void test_w_macos_create_log_env_ndjson_keeps_stored_settings(void ** state) {
@@ -3430,8 +3432,9 @@ void test_w_macos_create_log_env_ndjson_keeps_stored_settings(void ** state) {
 
     will_return(__wrap_wpopenv, NULL);
 
-    expect_any(__wrap__merror, formatted_msg);
-    expect_any(__wrap__merror, formatted_msg);
+    expect_string(__wrap__merror, formatted_msg, "(1974): An error ocurred while calling wpopenv(): Success (0).");
+    expect_string(__wrap__merror, formatted_msg, "(1606): Error while trying to execute `log stream` as follows: "
+                  "/usr/bin/log stream --style ndjson --level debug --predicate processImagePath CONTAINS[c] 'com.apple.geod'.");
 
     w_macos_create_log_env(lf, NULL);
 
@@ -3439,8 +3442,6 @@ void test_w_macos_create_log_env_ndjson_keeps_stored_settings(void ** state) {
     assert_string_equal(lf->macos_log->current_settings, "/usr/bin/log stream --style syslog --level debug "
                                                          "--predicate processImagePath CONTAINS[c] 'com.apple.geod'");
 
-    macos_log_ndjson = false;
-    test_darwin_release = "18.7.0";
     os_free(lf->macos_log->current_settings);
     os_free(lf->query_level);
     os_free(lf->query);
@@ -3456,12 +3457,12 @@ int main(void) {
         cmocka_unit_test(test_w_macos_is_log_predicate_valid_existing),
         // Test w_macos_create_log_stream_array
         cmocka_unit_test(test_w_macos_create_log_stream_array_NULL),
-        cmocka_unit_test(test_w_macos_create_log_stream_array_ndjson),
-        cmocka_unit_test(test_w_macos_create_log_show_array_ndjson),
-        cmocka_unit_test(test_w_macos_log_is_ndjson),
-        cmocka_unit_test(test_w_macos_is_ndjson_supported),
-        cmocka_unit_test(test_w_macos_is_ndjson_supported_uname_fail),
-        cmocka_unit_test(test_w_macos_create_log_env_ndjson_keeps_stored_settings),
+        cmocka_unit_test_teardown(test_w_macos_create_log_stream_array_ndjson, teardown_ndjson),
+        cmocka_unit_test_teardown(test_w_macos_create_log_show_array_ndjson, teardown_ndjson),
+        cmocka_unit_test_teardown(test_w_macos_log_is_ndjson, teardown_ndjson),
+        cmocka_unit_test_teardown(test_w_macos_is_ndjson_supported, teardown_ndjson),
+        cmocka_unit_test_teardown(test_w_macos_is_ndjson_supported_uname_fail, teardown_ndjson),
+        cmocka_unit_test_teardown(test_w_macos_create_log_env_ndjson_keeps_stored_settings, teardown_ndjson),
         cmocka_unit_test(test_w_macos_create_log_stream_array_level_default),
         cmocka_unit_test(test_w_macos_create_log_stream_array_level_info),
         cmocka_unit_test(test_w_macos_create_log_stream_array_level_debug),

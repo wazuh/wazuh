@@ -2181,7 +2181,6 @@ void test_w_macos_log_getlog_ndjson_incomplete_line(void ** state) {
     assert_string_equal(macos_log_cfg.ctxt.buffer, "{\"eventMessage\":\"first line\\nsec");
 
     /* The next call completes the same JSON line: still one event */
-    will_return(__wrap_time, 1001);
     will_return(__wrap_can_read, 1);
     expect_value(__wrap_fgets, __stream, stream);
     will_return(__wrap_fgets, "ond line\",\"eventType\":\"logEvent\","
@@ -2194,16 +2193,40 @@ void test_w_macos_log_getlog_ndjson_incomplete_line(void ** state) {
     assert_string_equal(macos_log_cfg.ctxt.buffer, "");
 }
 
-void test_w_macos_log_getlog_ndjson_expired_context(void ** state) {
+void test_w_macos_log_getlog_ndjson_old_context_completed(void ** state) {
+
+    char buffer[OS_MAXSTR + 1];
+    w_macos_log_config_t macos_log_cfg = {0};
+    FILE * stream = (FILE *) 1;
+    macos_log_cfg.is_header_processed = true;
+    strcpy(macos_log_cfg.ctxt.buffer, "{\"eventMessage\":\"first line\\nsec");
+    macos_log_cfg.ctxt.timestamp = 1000;
+
+    will_return_maybe(__wrap_time, 1001 + MACOS_LOG_TIMEOUT);
+
+    will_return(__wrap_can_read, 1);
+    expect_value(__wrap_fgets, __stream, stream);
+    will_return(__wrap_fgets, "ond line\",\"eventType\":\"logEvent\","
+                              "\"processImagePath\":\"\\/usr\\/bin\\/logger\",\"timestamp\":\"2026-10-14 11:58:49.021875+0000\","
+                              "\"senderImagePath\":\"\\/usr\\/bin\\/logger\",\"processID\":99894}\n");
+
+    assert_true(w_macos_log_getlog(buffer, OS_MAXSTR, stream, &macos_log_cfg));
+    assert_string_equal(buffer, "2026-10-14 11:58:49.021875+0000  localhost logger[99894]: first line\n"
+                                "second line");
+    assert_string_equal(macos_log_cfg.ctxt.buffer, "");
+}
+
+void test_w_macos_log_getlog_ndjson_force_send_discards_context(void ** state) {
 
     char buffer[OS_MAXSTR + 1];
     w_macos_log_config_t macos_log_cfg = {0};
     FILE * stream = (FILE *) 1;
     macos_log_cfg.is_header_processed = true;
     strcpy(macos_log_cfg.ctxt.buffer, "{\"eventMessage\":\"partial");
+    macos_log_cfg.ctxt.force_send = true;
     macos_log_cfg.ctxt.timestamp = 1000;
 
-    will_return(__wrap_time, 1001 + MACOS_LOG_TIMEOUT);
+    will_return_maybe(__wrap_time, 1001);
     expect_string(__wrap__mdebug2, formatted_msg, "macOS ULS: Incomplete message discarded.");
 
     will_return(__wrap_can_read, 1);
@@ -2212,6 +2235,7 @@ void test_w_macos_log_getlog_ndjson_expired_context(void ** state) {
 
     assert_true(w_macos_log_getlog(buffer, OS_MAXSTR, stream, &macos_log_cfg));
     assert_string_equal(buffer, SYSLOG_MULTILINE_EVENT);
+    assert_false(macos_log_cfg.ctxt.force_send);
 }
 
 void test_w_macos_log_getlog_ndjson_line_too_long(void ** state) {
@@ -2323,7 +2347,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_w_macos_log_getlog_ndjson_header_then_log, setup_macos_log_ndjson, teardown_macos_log_ndjson),
         cmocka_unit_test_setup_teardown(test_w_macos_log_getlog_ndjson_skips_non_log, setup_macos_log_ndjson, teardown_macos_log_ndjson),
         cmocka_unit_test_setup_teardown(test_w_macos_log_getlog_ndjson_incomplete_line, setup_macos_log_ndjson, teardown_macos_log_ndjson),
-        cmocka_unit_test_setup_teardown(test_w_macos_log_getlog_ndjson_expired_context, setup_macos_log_ndjson, teardown_macos_log_ndjson),
+        cmocka_unit_test_setup_teardown(test_w_macos_log_getlog_ndjson_old_context_completed, setup_macos_log_ndjson, teardown_macos_log_ndjson),
+        cmocka_unit_test_setup_teardown(test_w_macos_log_getlog_ndjson_force_send_discards_context, setup_macos_log_ndjson, teardown_macos_log_ndjson),
         cmocka_unit_test_setup_teardown(test_w_macos_log_getlog_ndjson_line_too_long, setup_macos_log_ndjson, teardown_macos_log_ndjson),
     };
 
