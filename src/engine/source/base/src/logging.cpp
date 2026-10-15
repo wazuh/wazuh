@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
  * Implementation of the logging module needs to be defined in a cpp file, as spdlog uses static variables that need to
  * be defined only once when included in multiple translation units. This issue occurs when the old logging.hpp is moved

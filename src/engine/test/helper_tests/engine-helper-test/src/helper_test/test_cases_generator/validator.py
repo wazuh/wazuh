@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: AGPL-3.0-or-later
 
 from helper_test.test_cases_generator.parser import Parser
 from helper_test.definition_types.utils import *

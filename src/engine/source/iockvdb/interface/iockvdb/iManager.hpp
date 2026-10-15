@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef IOCKVDB_IMANAGER_HPP
 #define IOCKVDB_IMANAGER_HPP
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include <cstdio>
 #include <filesystem>
 #include <fstream>

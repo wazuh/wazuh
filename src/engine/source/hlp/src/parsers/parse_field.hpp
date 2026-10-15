@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef WAZUH_ENGINE_PARSE_FIELD_HPP
 #define WAZUH_ENGINE_PARSE_FIELD_HPP
 

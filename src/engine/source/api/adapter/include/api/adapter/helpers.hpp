@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef API_ADAPTER_HELPERS_HPP
 #define API_ADAPTER_HELPERS_HPP
 

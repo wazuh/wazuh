@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include <base/timer.hpp>
 #include <gtest/gtest.h>
 #include <thread> // for std::this_thread::sleep_for

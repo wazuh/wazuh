@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 from google.protobuf.json_format import ParseDict
 
 from api_communication.client import APIClient

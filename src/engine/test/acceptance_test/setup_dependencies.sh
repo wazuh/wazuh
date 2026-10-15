@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # =============================================================================
 # setup_dependencies.sh – Install all dependencies for acceptance_test.sh
 #

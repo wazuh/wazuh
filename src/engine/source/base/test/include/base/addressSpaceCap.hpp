@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _BASE_TEST_ADDRESSSPACECAP_HPP
 #define _BASE_TEST_ADDRESSSPACECAP_HPP
 

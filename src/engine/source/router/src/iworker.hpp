@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef ROUTER_IWORKER_HPP
 #define ROUTER_IWORKER_HPP
 

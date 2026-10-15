@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _CONF_FILELOADER_HPP
 #define _CONF_FILELOADER_HPP
 

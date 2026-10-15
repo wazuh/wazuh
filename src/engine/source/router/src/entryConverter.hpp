@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef ROUTER_ENTRY_CONVERTER_HPP
 #define ROUTER_ENTRY_CONVERTER_HPP
 
