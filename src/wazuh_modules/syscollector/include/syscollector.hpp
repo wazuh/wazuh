@@ -953,6 +953,28 @@ class EXPORTED Syscollector final
         // interval instead of once. Reset only implicitly, by process
         // restart — same durability as m_notify itself.
         std::set<std::string>                                                    m_knownContainerIds;
+
+        // Memo for the container context blob, so ecsData() parses it once per
+        // container instead of once per row. The blob is the same string on
+        // every row of a container -- it is a copy of that container's context
+        // stamped onto each one -- and rows reach ecsData() grouped by
+        // container on every path: the scan flushes one container at a time,
+        // and every table is WITHOUT ROWID with container_id leading the
+        // primary key, so reads come back clustered too.
+        //
+        // Compared by value rather than keyed by container_id, which makes
+        // correctness independent of the hit rate: a miss costs one parse, and
+        // a stale entry is impossible because the blob itself is the key. That
+        // is also why a label edit needs no invalidation protocol -- it simply
+        // produces a different string and misses.
+        //
+        // Not guarded by a mutex: all six ecsData() call sites run under
+        // m_scan_mutex. syncLoop() holds it across scan(), and the recovery
+        // path takes it through syscollector_lock_scan_mutex() before calling
+        // in. A caller that reaches ecsData() without it would need its own
+        // synchronisation here.
+        std::string                                                              m_lastContainerBlob;
+        nlohmann::json                                                           m_lastContainerBlock;
 };
 
 

@@ -1121,11 +1121,25 @@ std::pair<nlohmann::json, uint64_t> Syscollector::ecsData(const nlohmann::json& 
 
         if (!contextBlob.empty())
         {
-            const auto context = nlohmann::json::parse(contextBlob, nullptr, false);
-
-            if (context.is_object() && context.contains("container"))
+            // Parsed once per container rather than once per row -- see the
+            // memo's declaration for why comparing the blob by value is both
+            // sound and cheap here.
+            if (contextBlob != m_lastContainerBlob)
             {
-                ret["container"] = context["container"];
+                const auto context = nlohmann::json::parse(contextBlob, nullptr, false);
+
+                m_lastContainerBlob = contextBlob;
+                m_lastContainerBlock = (context.is_object() && context.contains("container"))
+                                       ? context["container"]
+                                       : nlohmann::json {};
+            }
+
+            // Null for a blob that parsed but carried no container block, which
+            // is a malformed row rather than a host one -- host rows have an
+            // empty column and never reach here.
+            if (!m_lastContainerBlock.is_null())
+            {
+                ret["container"] = m_lastContainerBlock;
             }
         }
     }

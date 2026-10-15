@@ -7562,6 +7562,84 @@ TEST_F(SyscollectorImpTest, ADeletedContainerRowCarriesOneContainerBlockAndNoKub
 #endif
 }
 
+TEST_F(SyscollectorImpTest, EachContainersRowsCarryTheirOwnContextNotThePreviousContainers)
+{
+#ifndef __linux__
+    GTEST_SKIP() << "Container row sweeps are Linux-only";
+#else
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    Syscollector::instance().init(spInfoWrapper, reportFunction, persistFunction, logFunction,
+                                  SYSCOLLECTOR_TEST_DB_PATH, "", "",
+                                  3600, false, false, false, false, false, false, false,
+                                  false, false, false, false, false, false, false);
+    Syscollector::instance().destroy();
+
+    // ecsData() memoises the parsed blob so it parses once per container
+    // instead of once per row. The memo is keyed on the blob's own text, so
+    // the failure it has to be proved against is a stale hit: container b
+    // being handed container a's context because the memo was never refreshed.
+    //
+    // Two containers, two rows each, different blobs -- and the rows are
+    // interleaved in the table by primary key so a sweep cannot accidentally
+    // pass by visiting them in a convenient order.
+    sqlite3* db = nullptr;
+    ASSERT_EQ(sqlite3_open_v2(SYSCOLLECTOR_TEST_DB_PATH, &db, SQLITE_OPEN_READWRITE, nullptr), SQLITE_OK);
+
+    const char* seed =
+        "INSERT INTO dbsync_processes (container_id, container_json, pid, name, sync, checksum) VALUES "
+        "('a', '{\"container\":{\"id\":\"a\",\"name\":\"alpha\"}}', '1', 'p1', 1, 's'),"
+        "('a', '{\"container\":{\"id\":\"a\",\"name\":\"alpha\"}}', '2', 'p2', 1, 's'),"
+        "('b', '{\"container\":{\"id\":\"b\",\"name\":\"bravo\"}}', '1', 'p1', 1, 's'),"
+        "('b', '{\"container\":{\"id\":\"b\",\"name\":\"bravo\"}}', '2', 'p2', 1, 's');";
+
+    char* errMsg = nullptr;
+    ASSERT_EQ(sqlite3_exec(db, seed, nullptr, nullptr, &errMsg), SQLITE_OK) << (errMsg ? errMsg : "");
+
+    if (errMsg)
+    {
+        sqlite3_free(errMsg);
+    }
+
+    sqlite3_close(db);
+
+    std::vector<std::string> persisted;
+    const auto capturePersist
+    {
+        [&persisted](const std::string&, Operation_t, const std::string&, const std::string& payload, uint64_t)
+        {
+            persisted.push_back(payload);
+        }
+    };
+
+    Syscollector::instance().init(spInfoWrapper, reportFunction, capturePersist, logFunction,
+                                  SYSCOLLECTOR_TEST_DB_PATH, "", "",
+                                  3600, false, false, false, false, false, false, false,
+                                  false, false, false, false, false, false, false);
+
+    EXPECT_EQ(Syscollector::instance().sweepContainerRows({"a", "b"}), 2u);
+
+    ASSERT_EQ(persisted.size(), 4u) << "four rows went, so four stateful deletes";
+
+    std::map<std::string, int> namesById;
+
+    for (const auto& payload : persisted)
+    {
+        const auto document = nlohmann::json::parse(payload);
+        ASSERT_TRUE(document.contains("container"));
+        namesById[document["container"]["id"].get<std::string>() + "/" +
+                                document["container"]["name"].get<std::string>()]++;
+    }
+
+    EXPECT_EQ(namesById["a/alpha"], 2) << "both of a's rows must carry a's own context";
+    EXPECT_EQ(namesById["b/bravo"], 2) << "a memo that went stale would stamp alpha onto b's rows";
+    EXPECT_EQ(namesById.size(), 2u) << "no row should carry a context belonging to neither container";
+
+    Syscollector::instance().destroy();
+#endif
+}
+
 TEST_F(SyscollectorImpTest, TheScanMutexCanBeHeldFromOutsideTheModule)
 {
     // wm_sync_module takes this around a synchronization so a scan cannot start
