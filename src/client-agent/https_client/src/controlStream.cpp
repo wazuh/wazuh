@@ -546,13 +546,13 @@ void ControlStream::maybeDownloadConfig(const std::string& managerHash, const st
 {
     const std::string localHash = m_configHash.get();
 
-    if (managerHash.empty() || managerHash == localHash)
+    if (managerHash.empty() || managerHash == "0" || managerHash == localHash)
     {
         // Every notify reports a hash, so this is the steady state: DEBUG2 to
         // keep DEBUG1 for the notifies that actually make something happen.
         LOGFN_DEBUG2(m_logFn, "Shared agent configuration unchanged (manager=%s local=%s); "
                      "nothing to download.", managerHash.c_str(), localHash.c_str());
-        return; // Nothing reported, or already in sync.
+        return; // Nothing reported, not resolved yet, or already in sync.
     }
 
     LOGFN_DEBUG1(m_logFn, "Manager config hash %s differs from the local one (%s); downloading "

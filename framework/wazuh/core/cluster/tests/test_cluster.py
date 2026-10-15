@@ -122,10 +122,12 @@ def test_get_node():
 @patch('wazuh.core.cluster.cluster.blake2b', return_value="hash")
 @patch("wazuh.core.cluster.cluster.path.join", return_value="/mock/foo/bar")
 @patch('wazuh.core.cluster.cluster.walk', return_value=[('/foo/bar', (), ('spam', 'eggs', '.merged'))])
-def test_walk_dir(walk_mock, path_join_mock, blake2b_mock, getmtime_mock):
+@patch('wazuh.core.cluster.cluster.wire_path', return_value='foo/bar')
+@patch('wazuh.core.cluster.cluster.local_path', return_value='/mock/foo/bar')
+def test_walk_dir(local_path_mock, wire_path_mock, walk_mock, path_join_mock, blake2b_mock, getmtime_mock):
     """Check the different outputs of the walk_files function."""
 
-    all_mocks = [walk_mock, path_join_mock, blake2b_mock, getmtime_mock]
+    all_mocks = [local_path_mock, wire_path_mock, walk_mock, path_join_mock, blake2b_mock, getmtime_mock]
 
     def reset_mocks(mocks):
         """Auxiliary function to reset the necessary mocks."""
@@ -139,8 +141,9 @@ def test_walk_dir(walk_mock, path_join_mock, blake2b_mock, getmtime_mock):
                                                                                                    list),
                                                                                                 'error': defaultdict(
                                                                                                     list)})
-    walk_mock.assert_called_once_with(path_join_mock.return_value, topdown=True)
-    path_join_mock.assert_called_once_with(common.WAZUH_PATH, '/foo/bar')
+    walk_mock.assert_called_once_with(local_path_mock.return_value, topdown=True)
+    local_path_mock.assert_called_once_with('/foo/bar')
+    path_join_mock.assert_not_called()
     blake2b_mock.assert_not_called()
     getmtime_mock.assert_not_called()
 
@@ -154,9 +157,10 @@ def test_walk_dir(walk_mock, path_join_mock, blake2b_mock, getmtime_mock):
                {'debug': defaultdict(list), 'error': defaultdict(list)})
 
     walk_mock.assert_called_once_with(path_join_mock.return_value, topdown=True)
-    path_join_mock.assert_has_calls([call(common.WAZUH_PATH, '/foo/bar'),
-                                     call('/mock/foo/bar', 'eggs'), call('/foo/bar', 'eggs'),
-                                     call('/mock/foo/bar', '.merged'),
+    local_path_mock.assert_called_once_with('/foo/bar')
+    wire_path_mock.assert_called_with('/foo/bar')
+    path_join_mock.assert_has_calls([call('foo/bar', 'eggs'), call('/foo/bar', 'eggs'),
+                                     call('foo/bar', '.merged'),
                                      call('/foo/bar', '.merged')], any_order=True)
     blake2b_mock.assert_not_called()
     getmtime_mock.assert_has_calls([call(path_join_mock.return_value), call(path_join_mock.return_value)])
@@ -171,9 +175,10 @@ def test_walk_dir(walk_mock, path_join_mock, blake2b_mock, getmtime_mock):
                {'debug': defaultdict(list), 'error': defaultdict(list)})
 
     walk_mock.assert_called_once_with(path_join_mock.return_value, topdown=True)
-    path_join_mock.assert_has_calls([call(common.WAZUH_PATH, '/foo/bar'),
-                                     call('/mock/foo/bar', 'eggs'), call('/foo/bar', 'eggs'),
-                                     call('/mock/foo/bar', '.merged'),
+    local_path_mock.assert_called_once_with('/foo/bar')
+    wire_path_mock.assert_called_with('/foo/bar')
+    path_join_mock.assert_has_calls([call('foo/bar', 'eggs'), call('/foo/bar', 'eggs'),
+                                     call('foo/bar', '.merged'),
                                      call('/foo/bar', '.merged')], any_order=True)
     blake2b_mock.assert_has_calls([call(path_join_mock.return_value), call(path_join_mock.return_value)])
     getmtime_mock.assert_has_calls([call(path_join_mock.return_value), call(path_join_mock.return_value)])
@@ -189,17 +194,20 @@ def test_walk_dir(walk_mock, path_join_mock, blake2b_mock, getmtime_mock):
                {'debug': defaultdict(list), 'error': defaultdict(list)})
 
     walk_mock.assert_called_once_with(path_join_mock.return_value, topdown=True)
-    path_join_mock.assert_has_calls([call(common.WAZUH_PATH, '/foo/bar'),
-                                     call('/mock/foo/bar', 'eggs'), call('/foo/bar', 'eggs'),
-                                     call('/mock/foo/bar', '.merged'),
+    local_path_mock.assert_called_once_with('/foo/bar')
+    wire_path_mock.assert_called_with('/foo/bar')
+    path_join_mock.assert_has_calls([call('foo/bar', 'eggs'), call('/foo/bar', 'eggs'),
+                                     call('foo/bar', '.merged'),
                                      call('/foo/bar', '.merged')], any_order=True)
     blake2b_mock.assert_has_calls([call(path_join_mock.return_value), call(path_join_mock.return_value)])
     getmtime_mock.assert_has_calls([call(path_join_mock.return_value), call(path_join_mock.return_value)])
 
 
+@patch('wazuh.core.cluster.cluster.wire_path', return_value='foo/bar')
+@patch('wazuh.core.cluster.cluster.local_path', return_value='/foo/bar')
 @patch('wazuh.core.cluster.cluster.walk', return_value=[('/foo/bar', (), ['spam'])])
 @patch('os.path.join', return_value='/foo/bar')
-def test_walk_dir_ko(mock_path_join, mock_walk):
+def test_walk_dir_ko(mock_path_join, mock_walk, mock_local_path, mock_wire_path):
     """Check all errors that can be raised by the function walk_dir."""
 
     with patch('os.path.getmtime', side_effect=FileNotFoundError):
@@ -238,7 +246,7 @@ def test_cluster_json_excludes_the_manager_configuration():
 @patch('wazuh.core.cluster.cluster.walk')
 def test_walk_dir_skips_the_manager_configuration(walk_mock, getmtime_mock, blake2b_mock):
     """Check that walk_dir does not collect the file cluster.json excludes."""
-    walk_mock.return_value = [(os.path.join(common.WAZUH_PATH, 'etc'), (), [MANAGER_CONF_FILENAME, 'client.keys'])]
+    walk_mock.return_value = [(common.CONF_PATH, (), [MANAGER_CONF_FILENAME, 'client.keys'])]
 
     walk_files, _ = cluster.walk_dir(dirname='etc', recursive=False, files=['all'],
                                      excluded_files=EXCLUDED_FILES, excluded_extensions=[],
@@ -247,6 +255,35 @@ def test_walk_dir_skips_the_manager_configuration(walk_mock, getmtime_mock, blak
     collected = {os.path.basename(file_path) for file_path in walk_files}
     assert MANAGER_CONF_FILENAME not in collected
     assert 'client.keys' in collected
+    assert set(walk_files) == {'etc/client.keys'}
+
+
+@patch('wazuh.core.cluster.cluster.blake2b', return_value='hash')
+@patch('os.path.getmtime', return_value=45)
+@patch('wazuh.core.cluster.cluster.walk')
+@patch('wazuh.core.common.WAZUH_PATH', new='/var/wazuh-manager')
+@patch('wazuh.core.common.CONF_PATH', new='/etc/wazuh-manager')
+def test_walk_dir_reads_the_configuration_directory_under_its_wire_keys(walk_mock, getmtime_mock, blake2b_mock):
+    """Check that walk_dir walks CONF_PATH for the 'etc' items and keys the files with their wire paths."""
+    walk_mock.side_effect = lambda top, topdown: iter([
+        ('/etc/wazuh-manager/shared', ('default',), ['ar.conf']),
+        ('/etc/wazuh-manager/shared/default', (), ['agent.conf']),
+    ])
+
+    walk_files, _ = cluster.walk_dir(dirname='etc/shared/', recursive=True, files=['all'], excluded_files=[],
+                                     excluded_extensions=[], get_cluster_item_key='etc/shared/')
+
+    walk_mock.assert_called_once_with('/etc/wazuh-manager/shared', topdown=True)
+    assert set(walk_files) == {'etc/shared/ar.conf', 'etc/shared/default/agent.conf'}
+    assert all(meta['cluster_item_key'] == 'etc/shared/' for meta in walk_files.values())
+
+    walk_mock.reset_mock()
+    walk_mock.side_effect = lambda top, topdown: iter([('/var/wazuh-manager/var/multigroups', (), ['merged.mg'])])
+    walk_files, _ = cluster.walk_dir(dirname='var/multigroups/', recursive=True, files=['merged.mg'],
+                                     excluded_files=[], excluded_extensions=[],
+                                     get_cluster_item_key='var/multigroups/')
+    walk_mock.assert_called_once_with('/var/wazuh-manager/var/multigroups', topdown=True)
+    assert set(walk_files) == {'var/multigroups/merged.mg'}
 
 
 @patch('wazuh.core.cluster.cluster.get_cluster_items', return_value={
@@ -333,6 +370,27 @@ def test_compress_files_ok(mock_path_exists, mock_path_dirname, mock_mkdir_with_
             call(f'some/path{cluster.PATH_SEP}compressed_test_content{cluster.FILE_SEP}'.encode()),
             call(f'another/path{cluster.PATH_SEP}compressed_test_content{cluster.FILE_SEP}'.encode()),
             call(f'files_metadata.json{cluster.PATH_SEP}compressed_test_content'.encode())
+        ]
+
+
+@patch('zlib.compress', return_value=b'compressed_test_content')
+@patch('wazuh.core.cluster.cluster.get_cluster_items')
+@patch('wazuh.core.cluster.cluster.mkdir_with_mode')
+@patch('wazuh.core.cluster.cluster.path.exists', return_value=True)
+@patch('wazuh.core.common.WAZUH_PATH', new='/var/wazuh-manager')
+@patch('wazuh.core.common.CONF_PATH', new='/etc/wazuh-manager')
+def test_compress_files_reads_configuration_files_from_conf_path(mock_path_exists, mock_mkdir_with_mode,
+                                                                  mock_get_cluster_items, mock_zlib):
+    """Check that a wire path under 'etc' is read from CONF_PATH while the zip keeps the wire path."""
+    mock_get_cluster_items.return_value = {'intervals': {'communication': {'max_zip_size': 10000, 'compress_level': 0}}}
+
+    with patch('builtins.open', mock_open(read_data='test_content')) as open_mock:
+        cluster.compress_files('some_name', ['etc/client.keys', 'var/multigroups/a/merged.mg'], {})
+        assert open_mock.call_args_list[1:3] == [call('/etc/wazuh-manager/client.keys', 'rb'),
+                                                 call('/var/wazuh-manager/var/multigroups/a/merged.mg', 'rb')]
+        assert open_mock.return_value.write.call_args_list[:2] == [
+            call(f'etc/client.keys{cluster.PATH_SEP}compressed_test_content{cluster.FILE_SEP}'.encode()),
+            call(f'var/multigroups/a/merged.mg{cluster.PATH_SEP}compressed_test_content{cluster.FILE_SEP}'.encode()),
         ]
 
 

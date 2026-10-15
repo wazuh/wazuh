@@ -328,6 +328,19 @@ TEST_F(SysInfoWinAppxTest, PythonWithoutReadableExecutableKeepsMsixVersion)
     EXPECT_EQ("3.13.3824.0", wrapper.version());
 }
 
+TEST_F(SysInfoWinAppxTest, PythonOnNetworkPathNeverOpensExecutable)
+{
+    loadPythonStorePackage(PYTHON_PACKAGE, true);
+
+    const std::string networkRoot { std::string{ "\\\\10.0.0.5\\s\\C:\\Program Files\\WindowsApps\\" } + PYTHON_PACKAGE };
+    FakeRegistry::data[packagePath(PYTHON_PACKAGE)].strings["PackageRootFolder"] = networkRoot;
+    FakeExeVersionReader::versions[networkRoot + "\\python.exe"] = "9.9.9";
+
+    TestAppxWrapper wrapper(HKEY_USERS, TEST_USER_SID, PYTHON_PACKAGE, {});
+
+    EXPECT_EQ("3.13.3824.0", wrapper.version());
+}
+
 TEST_F(SysInfoWinAppxTest, NonPythonPackageNeverUsesExecutableVersion)
 {
     constexpr auto edgePackage { "Microsoft.MicrosoftEdge.Stable_120.0.2210.91_x64__8wekyb3d8bbwe" };

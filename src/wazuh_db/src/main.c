@@ -56,6 +56,13 @@ int main(int argc, char ** argv)
         merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
     }
 
+    // Keep SQLite's temporary files (sorts, VACUUM) under the installation directory's tmp/ instead of the
+    // host's /var/tmp or /tmp. SQLite reads the variable once, on its first initialization, so this must run
+    // before any sqlite3 call; the path is relative because the working directory stays here.
+    if (setenv("SQLITE_TMPDIR", "tmp", 1) != 0) {
+        mwarn("Could not set SQLITE_TMPDIR: %s (%d). SQLite will use the system temporary directory.", strerror(errno), errno);
+    }
+
     // Get options
 
     {
@@ -115,7 +122,7 @@ int main(int argc, char ** argv)
     // Allocating memory for configuration structures and setting default values
     wdb_init_conf();
 
-    // Read the manager configuration (etc/wazuh-manager.conf): loaded once, then the `wdb` section as cJSON.
+    // Read the manager configuration (/etc/wazuh-manager/wazuh-manager.conf): loaded once, then the `wdb` section as cJSON.
     if (w_mconf_load(cfg) < 0) {
         merror_exit("Invalid configuration block for Wazuh-DB.");
     }
@@ -175,11 +182,8 @@ int main(int argc, char ** argv)
             merror_exit(SETGID_ERROR, GROUPGLOBAL, errno, strerror(errno));
         }
 
-        // Change root
-
-        if (Privsep_Chroot(home_path) < 0) {
-            merror_exit(CHROOT_ERROR, home_path, errno, strerror(errno));
-        }
+        // The working directory is the installation directory since the chdir() above, like the other
+        // daemons, and every path below is relative to it.
 
         if (Privsep_SetUser(uid) < 0) {
             merror_exit(SETUID_ERROR, USER, errno, strerror(errno));

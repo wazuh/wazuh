@@ -20,6 +20,7 @@
 #include "execd.h"
 #include "md5_op.h"
 #include "external/cJSON/cJSON.h"
+#include <openssl/crypto.h>
 
 #ifndef ARGV0
 #define ARGV0 "wazuh-agent"
@@ -38,7 +39,9 @@ extern void wm_lifecycle_lock_init(void);
 /**************************************************************************************
     WARNING: all the logging functions of this file must use the plain_ variant
     to avoid calling any external library that could be loaded before the signature
-    verification can be executed in local_start.
+    verification can be executed in local_start. The one exception is the
+    OPENSSL_init_crypto() call at the top of main(): libwazuhext.dll is a load-time
+    import, already mapped before main() runs, and local_start() still verifies it.
 **************************************************************************************/
 
 /* Help message */
@@ -60,13 +63,13 @@ void agent_help()
  * reload) or directly as the "service-restart" CLI subcommand. Extracted out
  * of main() so it can be unit-tested without a real argv/process exit.
  *
- * Serializes concurrent invocations on a named, cross-process mutex: without
+ * Serializes concurrent invocations on a lock file (acquire_restart_lock()): without
  * this, N overlapping restarts each independently fall through
  * os_stop_service()'s "already stopping"/"already stopped" soft-success
  * cases into their own stop-wait-start sequence, with nothing coordinating
  * which one's stop/start actually wins. Observed live to leave the service
  * permanently SERVICE_STOPPED with no self-recovery and no error logged
- * anywhere (issue 38428). The mutex is held for the rest of this process's
+ * anywhere (issue 38428). The lock is held for the rest of this process's
  * life -- released automatically on exit, whichever return below is taken. */
 STATIC int run_service_restart(void)
 {
@@ -85,23 +88,18 @@ STATIC int run_service_restart(void)
     // ~2-3x the normal worst case for a single restart (20 s module-join budget
     // + 10 s SCA wait + overhead), so a second concurrent restart request only
     // ever times out here if something is already badly wrong (issue 38428).
-    const DWORD restartMutexWaitMs = 60000;  // 60 seconds
+    const DWORD restartLockWaitMs = 60000;   // 60 seconds
 
-    HANDLE restart_mutex = CreateMutex(NULL, FALSE, "Global\\WazuhAgentServiceRestart");
-    if (restart_mutex == NULL) {
-        plain_merror("service-restart: CreateMutex failed (error %lu); proceeding unsynchronized.", GetLastError());
-    } else {
-        const DWORD restart_mutex_wait_result = WaitForSingleObject(restart_mutex, restartMutexWaitMs);
-        if (restart_mutex_wait_result == WAIT_TIMEOUT) {
+    int restart_lock_timed_out = 0;
+    HANDLE restart_lock = acquire_restart_lock(restartLockWaitMs, &restart_lock_timed_out);
+    if (restart_lock == INVALID_HANDLE_VALUE) {
+        if (restart_lock_timed_out) {
             plain_merror("service-restart: another restart has been in progress for over %lu ms "
                          "(expected well under that) -- the agent may be stuck; not starting a "
-                         "second concurrent restart attempt.", restartMutexWaitMs);
-            CloseHandle(restart_mutex);
+                         "second concurrent restart attempt.", restartLockWaitMs);
             return 1;
         }
-        /* WAIT_ABANDONED: a previous restart's process exited (or crashed)
-         * while still holding the mutex -- treat that the same as a clean
-         * acquisition and proceed; it's ours now. */
+        plain_merror("service-restart: cannot open the restart lock (error %lu); proceeding unsynchronized.", GetLastError());
     }
 
     /* Sleep briefly so the calling service has time to send its "ok"
@@ -138,6 +136,12 @@ STATIC int run_service_restart(void)
 
 int main(int argc, char **argv)
 {
+    /* Never read an openssl.cnf: Wazuh ships none, and OpenSSL's compiled-in directory is not ours
+     * to trust. Configuration loads once per process, so this first call turns every later request
+     * (libcurl, the hash helpers, enrollment TLS) into a no-op. Ahead of everything below, because
+     * --show-token and the other early subcommands reach OpenSSL too. */
+    OPENSSL_init_crypto(OPENSSL_INIT_NO_LOAD_CONFIG, NULL);
+
     /* Decoding a token is a pure function of stdin, so it is answered before anything here looks
      * at the installation -- in particular before the chdir() below, which exits the process on
      * failure. The package installer calls this while it is still rewriting ossec.conf, and an

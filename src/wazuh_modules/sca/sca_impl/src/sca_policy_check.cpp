@@ -485,7 +485,7 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
                                 // say the pattern is absent. Its reason must not explain that match.
                                 if (result.value() == RuleResult::Invalid)
                                 {
-                                    unresolvedFileReason = m_lastUnresolvedReason;
+                                    unresolvedFileReason = std::move(m_lastUnresolvedReason);
                                 }
 
                                 m_lastUnresolvedReason.clear();

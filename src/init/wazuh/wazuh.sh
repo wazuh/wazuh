@@ -215,8 +215,17 @@ WazuhUpgrade()
         fi
     fi
 
-    # Set merged.mg permissions to new ones
-    find $PREINSTALLEDDIR/etc/shared/ -type f -name 'merged.mg' -exec chmod 644 {} \;
+    # Set merged.mg permissions to new ones. The manager's configuration lives in CONF_DIR.
+    if [ "X$1" = "Xmanager" ]; then
+        SHARED_ETC_DIR="${CONF_DIR}"
+    else
+        SHARED_ETC_DIR="$PREINSTALLEDDIR/etc"
+    fi
+    for MERGED_FILE in "${SHARED_ETC_DIR}"/shared/merged.mg "${SHARED_ETC_DIR}"/shared/*/merged.mg; do
+        if [ -f "${MERGED_FILE}" ] && [ ! -L "${MERGED_FILE}" ]; then
+            chmod 644 "${MERGED_FILE}"
+        fi
+    done
 
     # Removing  execq socket if exists
     if [ -S "$PREINSTALLEDDIR/queue/alerts/execq" ]; then

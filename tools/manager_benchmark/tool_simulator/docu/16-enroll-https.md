@@ -18,7 +18,7 @@ forwards the id as `token_id` so `authd` consumes one use.
 |---|---|
 | What it carries | `{"name": "<fresh agent name>", "version": "<agent version>"}` and `Authorization: Bearer <wazuh-enroll+jwt with kid = token id>`, `protocol-version: 1` |
 | What it returns | `200 {"id","name","ip","key","reenroll_secret"}` — the new agent's record, verbatim from `authd` |
-| Manager-side path | `EnrollmentAuthenticator` (token path: `TokenKeySource` replica of `etc/enrollment_tokens.json` → `verifyWithKid` → expiry/revocation) → `AuthdClient` with `token_id` → `authd` `add` (consumes a use, writes `client.keys`) — `src/remoted/remoted_module/src/enrollment/`, `src/os_auth/src/local-server.c` |
+| Manager-side path | `EnrollmentAuthenticator` (token path: `TokenKeySource` replica of `/etc/wazuh-manager/enrollment_tokens.json` → `verifyWithKid` → expiry/revocation) → `AuthdClient` with `token_id` → `authd` `add` (consumes a use, writes `client.keys`) — `src/remoted/remoted_module/src/enrollment/`, `src/os_auth/src/local-server.c` |
 | When a real agent does it | Once, on first contact, when the operator handed it a token instead of the shared password |
 | Sender step | `kind: "enroll_https"` (measured), and the fleet's own bootstrap (`--bootstrap enroll-token`, setup) |
 

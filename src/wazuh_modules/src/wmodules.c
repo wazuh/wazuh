@@ -32,7 +32,8 @@ int wm_max_eps;             // Maximum events per second
 int wm_kill_timeout;        // Time for a process to quit before killing it
 int wm_debug_level;
 #ifndef CLIENT
-const char *wm_config_path = WAZUHCONF;   // Manager configuration (etc/wazuh-manager.conf), -c overrides it.
+// Manager configuration (/etc/wazuh-manager/wazuh-manager.conf), -c overrides it.
+const char *wm_config_path = WAZUHCONF;
 #endif
 volatile sig_atomic_t wm_shutdown_requested = 0;
 
@@ -134,7 +135,7 @@ int wm_config() {
     agent_cfg = 1;
     ReadConfig(CWMODULE | CAGENT_CONFIG, AGENTCONFIG, &wmodules, &agent_cfg);
 #else
-    // Read the manager configuration (etc/wazuh-manager.conf): loaded once (the helper logs the error),
+    // Read the manager configuration (/etc/wazuh-manager/wazuh-manager.conf): loaded once (the helper logs the error),
     // then each section of the effective document as cJSON. task-manager always exists
     // (default_modules[]), and so does vulnerability-detection: the effective document always carries
     // its section (absent sections are inserted with their defaults), so `enabled` is the only switch.

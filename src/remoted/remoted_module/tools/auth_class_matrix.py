@@ -46,7 +46,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 DEFAULT_URL = "https://127.0.0.1:1517"
 DEFAULT_GLOBAL_PREFIX = "/wazuh-manager"
 DEFAULT_AUTH_SOCK = "/var/wazuh-manager/queue/sockets/auth.sock"
-DEFAULT_PASSWORD_FILE = "/var/wazuh-manager/etc/authd.pass"
+DEFAULT_PASSWORD_FILE = "/etc/wazuh-manager/authd.pass"
 DEFAULT_ADDRESS = "127.0.0.1"
 
 # Filled in by main() from the command line.

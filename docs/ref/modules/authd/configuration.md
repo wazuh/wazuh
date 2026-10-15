@@ -2,7 +2,7 @@
 
 Complete configuration reference for the Wazuh enrollment service (authd), which issues keys and registers new agents.
 
-**Configuration file:** `/var/wazuh-manager/etc/wazuh-manager.conf`
+**Configuration file:** `/etc/wazuh-manager/wazuh-manager.conf`
 
 **XML Section:** `<auth>`
 
@@ -90,11 +90,11 @@ Require agents to provide a shared enrollment password.
 - **Allowed values:** `yes`, `no`
 - **Note:** The `-P` [command-line flag](README.md#command-line-options) forces this to `yes`; no flag turns it off.
 
-When enabled, the password is read from `/var/wazuh-manager/etc/authd.pass` (its first line). If the file does not exist, the master's `wazuh-manager-authd` generates a random password on start (32 bytes straight from the CSPRNG, written as 64 lowercase hexadecimal characters), stores it in that file with mode `0640`, and reuses it on later starts. It does so only while [`remote_enrollment`](#remote_enrollment) is `yes`: with it off no enrollment path needs the password. A password written by hand is not held to that format: a first line of 3 to 4095 characters, not all whitespace, is accepted (trailing CR/LF removed). If the file exists but is empty, too long or otherwise invalid, the master's `wazuh-manager-authd` does not start. In a cluster, the password belongs to the master and is distributed to the workers automatically; a worker rejects enrollment until it receives the file.
+When enabled, the password is read from `/etc/wazuh-manager/authd.pass` (its first line). If the file does not exist, the master's `wazuh-manager-authd` generates a random password on start (32 bytes straight from the CSPRNG, written as 64 lowercase hexadecimal characters), stores it in that file with mode `0640`, and reuses it on later starts. It does so only while [`remote_enrollment`](#remote_enrollment) is `yes`: with it off no enrollment path needs the password. A password written by hand is not held to that format: a first line of 3 to 4095 characters, not all whitespace, is accepted (trailing CR/LF removed). If the file exists but is empty, too long or otherwise invalid, the master's `wazuh-manager-authd` does not start. In a cluster, the password belongs to the master and is distributed to the workers automatically; a worker rejects enrollment until it receives the file.
 
 **Agent-side setup:** a 5.0 agent registers with an [enrollment token](README.md#enrollment-tokens), which carries its own credential, and `use_password` has no bearing on a token enrollment. It still sends a password over `POST /enroll` when the file named by [`<enrollment><authorization_pass_path>`](../client/configuration.md#authorization_pass_path) (default `etc/authd.pass`) exists and it holds no re-enrollment secret, but nothing writes the endpoint's default `etc/authd.pass` any more: `WAZUH_REGISTRATION_PASSWORD` was removed, a fresh 5.0 install never creates the file, and the 5.0 package upgrade deletes one left by a 4.x install. A path an operator names explicitly in `<enrollment><authorization_pass_path>` is theirs and is left alone.
 
-**Password rotation:** The generated password persists across restarts. To rotate it (for example after a security incident), delete `/var/wazuh-manager/etc/authd.pass` on the master and restart `wazuh-manager-authd`. A new random password will be generated, persisted, and distributed to workers automatically. If the CSPRNG fails, `wazuh-manager-authd` exits instead of writing a weaker password. The reuse of an existing password is logged at `INFO` level on every start.
+**Password rotation:** The generated password persists across restarts. To rotate it (for example after a security incident), delete `/etc/wazuh-manager/authd.pass` on the master and restart `wazuh-manager-authd`. A new random password will be generated, persisted, and distributed to workers automatically. If the CSPRNG fails, `wazuh-manager-authd` exits instead of writing a weaker password. The reuse of an existing password is logged at `INFO` level on every start.
 
 ### remote_enrollment
 
@@ -145,7 +145,7 @@ Path to the CA certificate used to verify agent client certificates during mutua
 
 - **Default value:** empty (agent certificate verification disabled)
 - **Allowed values:** Path to a PEM-encoded CA certificate, absolute or relative to the Wazuh install
-  directory. Its existence is checked by `wazuh-manager-control start` before any daemon starts.
+  directory (`/var/wazuh-manager`). Its existence is checked by `wazuh-manager-control start` before any daemon starts.
 - **Note:** The `-v` [command-line flag](README.md#command-line-options) overrides this value.
 
 ### ssl_verify_host
@@ -164,7 +164,7 @@ Path to the manager's TLS certificate presented to agents during port-1515 enrol
 it is the HTTPS agent listener's certificate (`remote.https.certificate`), so both listeners
 present the same manager identity; `POST /enroll` itself is served with `remote.https.certificate`.
 
-- **Default value:** `etc/certs/remoted.pem` (resolved relative to the Wazuh install directory, e.g. `/var/wazuh-manager/etc/certs/remoted.pem`). The configuration generated by the installer writes the value of `remote.https.certificate` here. authd does not generate a certificate of its own: see [Manager certificate](README.md#manager-certificate)
+- **Default value:** `/etc/wazuh-manager/certs/remoted.pem` (absolute, in the manager's configuration directory). The configuration generated by the installer writes the value of `remote.https.certificate` here. authd does not generate a certificate of its own: see [Manager certificate](README.md#manager-certificate)
 - **Allowed values:** Path to a PEM-encoded certificate (relative paths resolved from the Wazuh install directory). Its existence is checked by `wazuh-manager-control start` before any daemon starts
 - **Note:** `ssl_manager_cert` and `ssl_manager_key` must be set together or not at all; setting only one is rejected by the configuration validator.
 - **Note:** The `-x` [command-line flag](README.md#command-line-options) overrides this value.
@@ -173,7 +173,7 @@ present the same manager identity; `POST /enroll` itself is served with `remote.
 
 Path to the private key corresponding to `ssl_manager_cert`.
 
-- **Default value:** `etc/certs/remoted-key.pem` (resolved relative to the Wazuh install directory)
+- **Default value:** `/etc/wazuh-manager/certs/remoted-key.pem`
 - **Allowed values:** Path to a PEM-encoded private key (relative paths resolved from the Wazuh install directory)
 - **Note:** The `-k` [command-line flag](README.md#command-line-options) overrides this value.
 
@@ -263,7 +263,7 @@ Every option below is read once at start with a compiled-in default. Three thing
   Put comments on separate lines beginning with `#`; an inline comment becomes part of the value.
 - **The file is per node and is never synchronized.** Nothing in a cluster propagates it.
 
-The options are set in `/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`. Every line
+The options are set in `/etc/wazuh-manager/wazuh-manager-internal-options.conf`. Every line
 below shows the compiled-in default:
 
 ```ini
@@ -418,10 +418,10 @@ Mutual TLS with client certificate verification:
   <disabled>no</disabled>
   <port>1515</port>
   <use_password>yes</use_password>
-  <ssl_agent_ca>/var/wazuh-manager/etc/rootCA.pem</ssl_agent_ca>
+  <ssl_agent_ca>/etc/wazuh-manager/rootCA.pem</ssl_agent_ca>
   <ssl_verify_host>yes</ssl_verify_host>
-  <ssl_manager_cert>/var/wazuh-manager/etc/certs/remoted.pem</ssl_manager_cert>
-  <ssl_manager_key>/var/wazuh-manager/etc/certs/remoted-key.pem</ssl_manager_key>
+  <ssl_manager_cert>/etc/wazuh-manager/certs/remoted.pem</ssl_manager_cert>
+  <ssl_manager_key>/etc/wazuh-manager/certs/remoted-key.pem</ssl_manager_key>
   <ciphers>TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256</ciphers>
   <force>
     <enabled>yes</enabled>

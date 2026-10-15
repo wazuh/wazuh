@@ -62,7 +62,8 @@ Method chains, commands and per-platform behaviour: [Executables Reference](exec
 What runs and when is configured in the Wazuh dashboard: a notification channel of the Active
 Response type says what to run, and an Alerting monitor says when. There is no `<active-response>`
 section in the manager configuration. On the agent, the `<active-response>` block of the local
-`ossec.conf` can disable execution or set `repeated_offenders`; see [Configuration](configuration.md).
+`ossec.conf` can disable execution, set `repeated_offenders` or add `allowlist` entries; see
+[Configuration](configuration.md).
 
 ## Restart and reload are not Active Response
 

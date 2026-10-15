@@ -162,15 +162,15 @@ The HTTPS listener requires a certificate and key. The manager issues a pair for
 distributed deployment normally replaces it: they are
 issued with the Wazuh installation assistant's `wazuh-certs-tool` — a `remoted.pem` leaf of the same
 `root-ca.pem` the assistant issues for the rest of the platform, so agents can pin that CA — and
-deployed under `etc/certs` before the first start (see
+deployed under `/etc/wazuh-manager/certs` before the first start (see
 [Deploy certificates](../../ref/getting-started/installation.md#using-certificates-issued-elsewhere)). Starting is
 **fail-closed**: without them `wazuh-manager-control start` refuses (`(1244): Invalid configuration at
 '/remote/https/certificate': file not found: …`), and a pair the service user cannot read stops
 `remoted` at startup (`Cannot start the HTTPS agent listener: …`) rather than coming up without the
 listener.
 
-`authd` and `remoted` now share one pair, `etc/certs/remoted.pem` and `etc/certs/remoted-key.pem`
-(with `etc/certs/root-ca.pem` as the CA). A 4.x configuration that pointed `<auth><ssl_manager_cert>`
+`authd` and `remoted` now share one pair, `/etc/wazuh-manager/certs/remoted.pem` and `/etc/wazuh-manager/certs/remoted-key.pem`
+(with `/etc/wazuh-manager/certs/root-ca.pem` as the CA). A 4.x configuration that pointed `<auth><ssl_manager_cert>`
 and `<ssl_manager_key>` at `authd.pem`/`authd-key.pem` should be repointed, or the overrides dropped
 so the defaults apply. See
 [Manager configuration migration](manager-configuration-migration.md#auth-section).

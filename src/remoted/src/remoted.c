@@ -79,6 +79,10 @@ void HandleRemote(int uid)
         merror_exit(SETUID_ERROR, USER, errno, strerror(errno));
     }
 
+    /* Probe the HTTPS listener's TLS files as the service user before the PID file exists: a remoted
+     * that is going to exit must never look running to `wazuh-manager-control status`. */
+    w_remoted_preflight_tls_files();
+
     /* Create PID */
     if (CreatePID(ARGV0, getpid()) < 0) {
         merror_exit(PID_ERROR);

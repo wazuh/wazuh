@@ -33,7 +33,7 @@ sudo mkdir -p $BACKUP_DIR/db
 # test`, since queue/db is not readable unprivileged -- because sqlite3 creates a
 # database when handed a path that does not exist, and the copy would then pass
 # the integrity check below while holding nothing.
-sudo tar -czf $BACKUP_DIR/wazuh-etc.tar.gz -C /var/wazuh-manager etc/
+sudo tar -czf $BACKUP_DIR/wazuh-etc.tar.gz -C / etc/wazuh-manager/
 sudo test -f /var/wazuh-manager/queue/db/global.db \
   && sudo sqlite3 /var/wazuh-manager/queue/db/global.db ".backup '$BACKUP_DIR/db/global.db'" \
   || echo "MISSING: /var/wazuh-manager/queue/db/global.db - nothing was backed up"
@@ -82,7 +82,7 @@ During a 5.x to 5.x upgrade, the package and source upgrade scripts apply a **pr
 
 | Path | Result after upgrade |
 |---|---|
-| `etc/` | Preserved from the previous installation, including `localtime`. |
+| `/etc/wazuh-manager` | Preserved from the previous installation. |
 | `data/*` (except `data/tzdb`) | Preserved from the previous installation. |
 | `data/tzdb` | Not preserved by the upgrade backup/restore flow; updated from the new package or source timezone database. |
 | `bin/`, libraries, assets | Replaced by the new package. |
@@ -91,10 +91,10 @@ This applies to `.deb`, `.rpm`, and source-based upgrades.
 
 File contents are preserved for the paths listed above. Ownership and modes depend on the stack:
 
-- **DEB and RPM** copy the preserved files back with `cp -a`, so their ownership and modes come back as they were. Both then re-own `data/ruleset/` and `data/kvdb-ioc/` to `wazuh-manager:wazuh-manager`, and the DEB `postinst` additionally re-applies the package's own ownership and modes to every path the package ships (`restore-permissions.sh`). Below a directory `wazuh-manager` can write (such as `etc/`, `logs/` or `queue/`), a path that is, or passes through, a symbolic link is left untouched, and so is a file with a second hard link.
+- **DEB and RPM** copy the preserved files back with `cp -a`, so their ownership and modes come back as they were. Both then re-own `data/ruleset/` and `data/kvdb-ioc/` to `wazuh-manager:wazuh-manager`, and the DEB `postinst` additionally re-applies the package's own ownership and modes to every path the package ships, with one script for the installation directory (`restore-permissions.sh`) and one for the configuration directory (`restore-permissions-conf.sh`). Below a directory `wazuh-manager` can write (such as `/etc/wazuh-manager`, `logs/` or `queue/`), a path that is, or passes through, a symbolic link is left untouched, and so is a file with a second hard link.
 - **Source** (`install.sh`) copies them back with `cp -R`, so the ownership and modes are the ones the installer assigns, not the ones the files had.
 
-**Seeing new defaults.** Because `etc/` is fully preserved, new default values shipped by the package are not automatically applied to existing files. On DEB manager upgrades a `wazuh-manager.conf.new` side-file is written alongside the live config so you can compare changes manually. On RPM no equivalent side-file is generated for the preserved paths; compare against the package defaults manually if needed.
+**Seeing new defaults.** Because `/etc/wazuh-manager` is fully preserved, new default values shipped by the package are not automatically applied to existing files. On DEB manager upgrades a `wazuh-manager.conf.new` side-file is written alongside the live config so you can compare changes manually. On RPM no equivalent side-file is generated for the preserved paths; compare against the package defaults manually if needed.
 
 The `WAZUH_REMOTE_*` installation variables described in [Installation](getting-started/installation.md) also shape that `wazuh-manager.conf.new`, so an upgrade run with them exported produces a side-file that already carries those values. If one of them holds an invalid value the side-file is not written and the upgrade reports a warning and continues: the live configuration is preserved either way.
 
@@ -146,7 +146,7 @@ BACKUP_DIR="/backup/wazuh-master-$(date +%Y%m%d-%H%M%S)"
 sudo mkdir -p $BACKUP_DIR/db
 
 # Full backup of master
-sudo tar -czf $BACKUP_DIR/wazuh-master-etc.tar.gz -C /var/wazuh-manager etc/
+sudo tar -czf $BACKUP_DIR/wazuh-master-etc.tar.gz -C / etc/wazuh-manager/
 sudo test -f /var/wazuh-manager/queue/db/global.db \
   && sudo sqlite3 /var/wazuh-manager/queue/db/global.db ".backup '$BACKUP_DIR/db/global.db'" \
   || echo "MISSING: /var/wazuh-manager/queue/db/global.db - nothing was backed up"
@@ -164,7 +164,7 @@ BACKUP_DIR="/backup/wazuh-worker-$(hostname)-$(date +%Y%m%d-%H%M%S)"
 sudo mkdir -p $BACKUP_DIR
 
 # Configuration backup only
-sudo tar -czf $BACKUP_DIR/wazuh-worker-config.tar.gz -C /var/wazuh-manager/etc wazuh-manager.conf wazuh-manager-internal-options.conf
+sudo tar -czf $BACKUP_DIR/wazuh-worker-config.tar.gz -C /etc/wazuh-manager wazuh-manager.conf wazuh-manager-internal-options.conf
 
 # Verify backup
 tar -tzf $BACKUP_DIR/wazuh-worker-config.tar.gz > /dev/null && echo "Worker backup successful"
@@ -416,7 +416,7 @@ Get-Service -Name WazuhSvc
 
 If the upgrade fails or causes issues, you can roll back to the previous version.
 
-Removing the package is not a neutral step. `dpkg -r` and `rpm -e` delete `queue/` (every wazuh-db database, the Task Manager's `tasks.db`, the keystore and authd's pending deletions), `var/`, `logs/`, `data/` and the API directory (including `rbac.db`), and leave `etc/` only partly in place (see [Uninstall](uninstall.md#server)). The minimal backup above restores only `etc/` and `global.db`; take the full backup described in [Back Up and Restore](backup-restore.md#creating-a-full-manager-backup) if the rollback must keep the API users, the keystore or the task history.
+Removing the package is not a neutral step. `dpkg -r` and `rpm -e` delete `queue/` (every wazuh-db database, the Task Manager's `tasks.db`, the keystore and authd's pending deletions), `var/`, `logs/`, `data/` and the API directory (including `rbac.db`), and leave `/etc/wazuh-manager` only partly in place (see [Uninstall](uninstall.md#server)). The minimal backup above restores only `/etc/wazuh-manager` and `global.db`; take the full backup described in [Back Up and Restore](backup-restore.md#creating-a-full-manager-backup) if the rollback must keep the API users, the keystore or the task history.
 
 ### Server rollback
 
@@ -444,14 +444,14 @@ sudo rpm -e wazuh-manager
 
 ```bash
 # Restore configuration
-sudo tar -xzf $BACKUP_DIR/wazuh-etc.tar.gz -C /var/wazuh-manager
+sudo tar -xzf $BACKUP_DIR/wazuh-etc.tar.gz -C /
 
 # Restore database
 sudo cp $BACKUP_DIR/db/global.db /var/wazuh-manager/queue/db/global.db
 
-# tar run as root restores the owners and modes recorded in the archive, so etc/
-# needs no chown (and must not get a recursive one: etc/certs/root-ca.pem and the
-# indexer-connector pair are root-owned). The copied database does need it.
+# tar run as root restores the owners and modes recorded in the archive, so
+# /etc/wazuh-manager needs no chown (and must not get a recursive one: the
+# configuration and every certificate are root-owned). The copied database does need it.
 sudo chown wazuh-manager:wazuh-manager /var/wazuh-manager/queue/db/global.db
 sudo chmod 660 /var/wazuh-manager/queue/db/global.db
 ```
@@ -483,7 +483,7 @@ sudo dpkg -r wazuh-manager
 sudo rpm -e wazuh-manager
 
 # Restore configuration
-sudo tar -xzf $BACKUP_DIR/wazuh-worker-config.tar.gz -C /var/wazuh-manager/etc
+sudo tar -xzf $BACKUP_DIR/wazuh-worker-config.tar.gz -C /etc/wazuh-manager
 
 # Reinstall previous version package
 
@@ -506,12 +506,12 @@ sudo dpkg -r wazuh-manager
 sudo rpm -e wazuh-manager
 
 # Restore configuration and database
-sudo tar -xzf $BACKUP_DIR/wazuh-master-etc.tar.gz -C /var/wazuh-manager
+sudo tar -xzf $BACKUP_DIR/wazuh-master-etc.tar.gz -C /
 sudo cp $BACKUP_DIR/db/global.db /var/wazuh-manager/queue/db/global.db
 
-# tar run as root restores the owners and modes recorded in the archive, so etc/
-# needs no chown (and must not get a recursive one: etc/certs/root-ca.pem and the
-# indexer-connector pair are root-owned). The copied database does need it.
+# tar run as root restores the owners and modes recorded in the archive, so
+# /etc/wazuh-manager needs no chown (and must not get a recursive one: the
+# configuration and every certificate are root-owned). The copied database does need it.
 sudo chown wazuh-manager:wazuh-manager /var/wazuh-manager/queue/db/global.db
 sudo chmod 660 /var/wazuh-manager/queue/db/global.db
 
@@ -537,8 +537,8 @@ sudo /var/wazuh-manager/bin/cluster_control -l
 sudo tail -100 /var/wazuh-manager/logs/wazuh-manager.log
 
 # Verify permissions against what the package installs: never chown the whole tree,
-# bin/ is root-owned and etc/certs holds root-owned files
-sudo ls -l /var/wazuh-manager/etc /var/wazuh-manager/etc/certs
+# bin/ is root-owned and /etc/wazuh-manager/certs holds root-owned files
+sudo ls -l /etc/wazuh-manager /etc/wazuh-manager/certs
 
 # Check database integrity. Guarded: an unguarded sqlite3 would create the very
 # database it is checking, and an integrity check passes on an empty one.
@@ -560,14 +560,14 @@ ps aux | grep wazuh-manager-remoted
 sudo tail -f /var/wazuh-manager/logs/wazuh-manager.log | grep remoted
 
 # Verify client.keys integrity
-sudo ls -l /var/wazuh-manager/etc/client.keys
+sudo ls -l /etc/wazuh-manager/client.keys
 ```
 
 **Issue: Cluster node not synchronizing after upgrade**
 
 ```bash
 # Check cluster configuration
-sudo grep -A10 "<cluster>" /var/wazuh-manager/etc/wazuh-manager.conf
+sudo grep -A10 "<cluster>" /etc/wazuh-manager/wazuh-manager.conf
 
 # Verify network connectivity
 ping <master_node_ip>
@@ -607,7 +607,7 @@ sudo systemctl start wazuh-manager
 If a previous package-based upgrade was interrupted, a preserve directory may still be present. DEB and RPM upgrades abort with `ERROR: Existing manager upgrade preserve backup found at <directory>.` Source upgrades use a new temporary preserve directory for each attempt, so older source preserve directories do not block retries. To recover:
 
 1. Inspect the preserve directory contents.
-2. Copy any needed files back to `etc/` or, for manager upgrades, `data/`.
+2. Copy any needed files back: for the manager, its `etc/` to `/etc/wazuh-manager` and its `data/` to `/var/wazuh-manager/data`; for the agent, to `/var/ossec/etc`.
 3. Remove the preserve directory, then retry the upgrade.
 
 ```bash

@@ -19,6 +19,7 @@
 #include "agent_sync_protocol_types.hpp"
 #include "logging_helper.hpp"
 #include "hashHelper.h"
+#include "stringHelper.h"
 #include "sca.h"
 #include "schemaValidator.hpp"
 
@@ -686,7 +687,7 @@ bool SecurityConfigurationAssessment::syncModule(Mode mode)
         LoggingHelper::getInstance().log(
             LOG_DEBUG,
             "SCA first synchronization is pending. Sending a full snapshot after scan completion.");
-        result = synchronizeDatabaseSnapshot(false, "initial synchronization");
+        result = synchronizeDatabaseSnapshot(false, "initial synchronization").sync;
     }
     else
     {
@@ -728,8 +729,11 @@ bool SecurityConfigurationAssessment::syncModule(Mode mode)
 }
 
 void SecurityConfigurationAssessment::logSyncFailure(const SyncModuleResult& result, const std::string& operationLabel,
-                                                     modules_log_level_t genericFailureLevel)
+                                                     modules_log_level_t genericFailureLevel,
+                                                     const std::optional<std::string>& retryNote)
 {
+    const std::string failureRetry = retryNote ? " " + *retryNote : "";
+
     if (result.stopped || !m_keepRunning.load())
     {
         // Not a real failure: the operation was aborted because the module is stopping.
@@ -749,7 +753,7 @@ void SecurityConfigurationAssessment::logSyncFailure(const SyncModuleResult& res
         // isn't reachable yet -- both mostly right after a restart -- and the operation has not
         // failed enough times in a row to suspect it will not clear. Not a WARNING yet.
         LoggingHelper::getInstance().log(LOG_INFO, "SCA " + operationLabel + " deferred: " + result.failureReason +
-                                         " Will retry next cycle.");
+                                         " " + retryNote.value_or("Will retry next cycle."));
     }
     else if (result.managerNotReady || result.localTransportUnavailable)
     {
@@ -757,12 +761,13 @@ void SecurityConfigurationAssessment::logSyncFailure(const SyncModuleResult& res
         // hiccup, so it must stay visible.
         LoggingHelper::getInstance().log(LOG_WARNING, "SCA " + operationLabel + " failed " +
                                          std::to_string(result.consecutiveFailures) + " times in a row: " +
-                                         result.failureReason);
+                                         result.failureReason + failureRetry);
     }
     else
     {
         LoggingHelper::getInstance().log(genericFailureLevel, "SCA " + operationLabel + " failed" +
-                                         (result.failureReason.empty() ? "." : ": " + result.failureReason));
+                                         (result.failureReason.empty() ? "." : ": " + result.failureReason) +
+                                         failureRetry);
     }
 }
 
@@ -1282,6 +1287,7 @@ std::string SecurityConfigurationAssessment::query(const std::string& jsonQuery)
             else if (intervalElapsed)
             {
                 LoggingHelper::getInstance().log(LOG_DEBUG, "Integrity interval elapsed, performing integrity check");
+                bool stampIntegrityCheck = true;
 
                 // Calculate local checksum
                 std::string checksum;
@@ -1307,12 +1313,58 @@ std::string SecurityConfigurationAssessment::query(const std::string& jsonQuery)
                 else
                 {
                     // Check with manager if recovery needed
-                    bool recoveryNeeded = checkIfRecoveryRequired(checksum);
+                    const auto check = checkIfRecoveryRequired(checksum);
 
-                    if (recoveryNeeded)
+                    if (check.status == IntegrityCheckStatus::NOT_CHECKED && (check.stopped || !m_keepRunning.load()))
                     {
+                        // Not a failed check: left unstamped, so it runs again after the restart.
+                        LoggingHelper::getInstance().log(
+                            LOG_INFO, "Integrity check for " + std::string(SCA_SYNC_INDEX) + " interrupted: module is stopping" +
+                            (check.mismatchUnconfirmed ? "; a checksum mismatch reported by the manager was not confirmed" : "") +
+                            ". It will be checked again after the restart.");
+                        stampIntegrityCheck = false;
+                        response["error"] = 1;
+                        response["message"] = "Integrity check interrupted: module is stopping";
+                        response["data"]["module"] = "sca";
+                        response["data"]["action"] = "check_integrity";
+                        response["data"]["recovery_performed"] = false;
+                    }
+                    else if (check.status == IntegrityCheckStatus::NOT_CHECKED)
+                    {
+                        // Sync-protocol reasons are full sentences; drop the trailing period inside the parentheses.
+                        const auto reason = Utils::rightTrim(check.failureReason, ".");
+
+                        LoggingHelper::getInstance().log(
+                            LOG_WARNING, "Integrity check could not be performed for " + std::string(SCA_SYNC_INDEX) + " (" + reason +
+                            (check.mismatchUnconfirmed ? ", after a checksum mismatch reported by the manager" : "") +
+                            "); it will be checked again in the next integrity_interval (" + integrityIntervalText() + ").");
+                        response["error"] = 1;
+                        response["message"] = "Integrity check could not be performed: " + check.failureReason;
+                        response["data"]["module"] = "sca";
+                        response["data"]["action"] = "check_integrity";
+                        response["data"]["recovery_performed"] = false;
+                    }
+                    else if (check.status == IntegrityCheckStatus::MISMATCH)
+                    {
+                        LoggingHelper::getInstance().log(LOG_INFO, "Checksum mismatch confirmed for " + std::string(SCA_SYNC_INDEX) +
+                                                         "; starting recovery (index cleanup and full resend).");
+
                         // Perform full recovery
-                        bool success = performRecovery();
+                        const auto outcome = performRecovery();
+                        const bool success = outcome == RecoveryOutcome::COMPLETED;
+
+                        if (success)
+                        {
+                            LoggingHelper::getInstance().log(LOG_INFO, "Recovery of index " + std::string(SCA_SYNC_INDEX) + " completed.");
+                        }
+                        else if (outcome == RecoveryOutcome::FAILED && !m_keepRunning.load())
+                        {
+                            // A confirmed mismatch whose recovery a stop cut short before the snapshot was
+                            // queued must not wait a whole integrity_interval: left unstamped, so it runs
+                            // again after the restart. Once queued, the next regular synchronization
+                            // delivers it, so the check is stamped as Syscollector and FIM do.
+                            stampIntegrityCheck = false;
+                        }
 
                         response["error"] = success ? 0 : 1;
                         response["message"] = success ? "Recovery completed successfully" : "Recovery failed";
@@ -1331,8 +1383,12 @@ std::string SecurityConfigurationAssessment::query(const std::string& jsonQuery)
                     }
                 }
 
-                // Update last check time regardless of outcome
-                updateLastIntegrityCheckTime(currentTime);
+                // Stamped whatever the outcome -- a failed check or recovery is re-evaluated in the
+                // next integrity_interval -- except when a stop cut it short.
+                if (stampIntegrityCheck)
+                {
+                    updateLastIntegrityCheckTime(currentTime);
+                }
             }
             else
             {
@@ -1364,54 +1420,81 @@ std::string SecurityConfigurationAssessment::query(const std::string& jsonQuery)
 }
 
 // Recovery methods implementation
-bool SecurityConfigurationAssessment::checkIfRecoveryRequired(const std::string& checksum)
+IntegrityCheckResult SecurityConfigurationAssessment::checkIfRecoveryRequired(const std::string& checksum)
 {
+    IntegrityCheckResult notChecked;
+
     if (!m_spSyncProtocol)
     {
         LoggingHelper::getInstance().log(LOG_DEBUG, "Sync protocol not initialized, cannot check recovery status");
-        return false;
+        notChecked.failureReason = "Sync protocol not initialized.";
+        return notChecked;
     }
 
     LoggingHelper::getInstance().log(LOG_DEBUG, "Checking with manager if recovery required");
 
     try
     {
-        // Use AgentSyncProtocol::requiresFullSync
-        // Note: returns true only if manager explicitly reports checksum mismatch
-        // Returns false for: success (checksums match) OR communication errors
-        // The sync protocol logs detailed messages for each case
-        bool needsRecovery = m_spSyncProtocol->requiresFullSync(SCA_SYNC_INDEX, checksum);
+        auto result = m_spSyncProtocol->requiresFullSync(SCA_SYNC_INDEX, checksum);
 
-        if (needsRecovery)
+        if (result.status == IntegrityCheckStatus::MISMATCH)
         {
             LoggingHelper::getInstance().log(LOG_DEBUG, "Checksum mismatch detected, full recovery required");
         }
 
-        return needsRecovery;
+        return result;
     }
     catch (const std::exception& err)
     {
         LoggingHelper::getInstance().log(LOG_ERROR, "Error checking recovery status: " + std::string(err.what()));
-        return false;
+        notChecked.failureReason = "Error checking recovery status: " + std::string(err.what());
+        return notChecked;
     }
 }
 
-bool SecurityConfigurationAssessment::performRecovery()
+std::string SecurityConfigurationAssessment::integrityIntervalText() const
 {
-    SyncModuleResult result = synchronizeDatabaseSnapshot(true, "recovery");
+    const auto seconds = m_integrityInterval.count();
 
-    if (!result.success)
+    if (seconds != 0 && seconds % 3600 == 0)
     {
-        // Unlike syncModule(), performRecovery() has no periodic-cycle caller to log this for it
-        // (it runs on demand from the check_integrity command), so it must log its own outcome. (#38579)
-        logSyncFailure(result, "recovery");
+        return std::to_string(seconds / 3600) + "h";
     }
 
-    return result.success;
+    if (seconds != 0 && seconds % 60 == 0)
+    {
+        return std::to_string(seconds / 60) + "m";
+    }
+
+    return std::to_string(seconds) + "s";
 }
 
-SyncModuleResult SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bool increaseVersions, const std::string& syncReason)
+RecoveryOutcome SecurityConfigurationAssessment::performRecovery()
 {
+    const auto [result, queued] = synchronizeDatabaseSnapshot(true, "recovery");
+
+    if (result.success)
+    {
+        return RecoveryOutcome::COMPLETED;
+    }
+
+    // Unlike syncModule(), performRecovery() has no periodic-cycle caller to log this for it
+    // (it runs on demand from the check_integrity command), so it must log its own outcome. (#38579)
+    // Once the index is cleared the snapshot is already queued, and the next regular
+    // synchronization delivers it; only a recovery that failed before that waits for the next
+    // integrity_interval.
+    logSyncFailure(result, "recovery", LOG_WARNING,
+                   queued ? std::string("The queued checks will be delivered by the next regular synchronization.")
+                   : "It will be retried in the next integrity_interval (" + integrityIntervalText() + ").");
+
+    return queued ? RecoveryOutcome::QUEUED : RecoveryOutcome::FAILED;
+}
+
+SnapshotSyncResult SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bool increaseVersions,
+                                                                                const std::string& syncReason)
+{
+    bool queued = false;
+
     LoggingHelper::getInstance().log(LOG_DEBUG, "Starting SCA " + syncReason + " full synchronization");
 
     try
@@ -1419,13 +1502,13 @@ SyncModuleResult SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bo
         if (!m_dBSync)
         {
             LoggingHelper::getInstance().log(LOG_ERROR, "DBSync is null, cannot synchronize SCA snapshot");
-            return {false, {}};
+            return {{false, {}}, false};
         }
 
         if (!m_spSyncProtocol)
         {
             LoggingHelper::getInstance().log(LOG_DEBUG, "Sync protocol not initialized, cannot synchronize SCA snapshot");
-            return {false, {}};
+            return {{false, {}}, false};
         }
 
         if (increaseVersions)
@@ -1474,7 +1557,7 @@ SyncModuleResult SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bo
             // the DELTA sync failure below. (#36724, #38579)
             LoggingHelper::getInstance().log(
                 LOG_DEBUG, "Failed to clear SCA index before " + syncReason + "; will retry later");
-            return dataCleanResult;
+            return {dataCleanResult, false};
         }
 
         for (const auto& check : checks)
@@ -1568,6 +1651,9 @@ SyncModuleResult SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bo
         }
 
         LoggingHelper::getInstance().log(LOG_DEBUG, "Triggering full synchronization for SCA " + syncReason);
+
+        queued = true;
+
         SyncModuleResult result = m_spSyncProtocol->synchronizeModule(Mode::DELTA);
 
         if (result.success)
@@ -1581,12 +1667,12 @@ SyncModuleResult SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bo
             LoggingHelper::getInstance().log(LOG_DEBUG, "SCA " + syncReason + " failed");
         }
 
-        return result;
+        return {result, queued};
     }
     catch (const std::exception& err)
     {
         LoggingHelper::getInstance().log(LOG_ERROR, "Error during SCA " + syncReason + ": " + std::string(err.what()));
-        return {false, {}};
+        return {{false, {}}, queued};
     }
 }
 
@@ -1720,7 +1806,7 @@ bool SecurityConfigurationAssessment::checkAgentIdentity()
     // the indexer has never seen and there is nothing of ours left to outrank. Recovery needs
     // true only because it is repairing documents written under this same id, where the stale
     // versions really are present.
-    const auto result = synchronizeDatabaseSnapshot(false, "agent id change");
+    const auto result = synchronizeDatabaseSnapshot(false, "agent id change").sync;
 
     if (!result.success || !m_keepRunning.load())
     {

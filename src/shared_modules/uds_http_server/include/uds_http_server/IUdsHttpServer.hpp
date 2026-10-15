@@ -221,9 +221,9 @@ namespace wazuh::uds_http
     struct UdsHttpServerConfig
     {
         /// No default: every consumer names its own socket. Empty makes start() throw with a
-        /// message naming the problem. Consumers use a RELATIVE path on purpose: modulesd
-        /// chdir()s to the install dir and remoted chroot()s into it, so a relative path is the
-        /// only form both resolve to the same file.
+        /// message naming the problem. Consumers use a RELATIVE path on purpose: it is
+        /// relative to the installation directory, which is the working directory of remoted and
+        /// modulesd, so both resolve it to the same file.
         std::string socketPath {};
         /// bind() applies the umask, so an explicit chmod after bind is mandatory, not belt-and-braces.
         std::uint32_t socketMode {0660};

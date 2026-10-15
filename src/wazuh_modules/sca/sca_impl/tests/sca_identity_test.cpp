@@ -87,6 +87,41 @@ class SCAIdentityTest : public ::testing::Test
             m_mockSyncProtocol.reset();
         }
 
+        /// Makes check_integrity due, with a 1h interval and the mock protocol, and counts in
+        /// @p stamps every time the check is stamped. updateMetadataValue() reads the whole
+        /// sca_metadata table, unfiltered, right before it writes the new check time: the only such
+        /// read, so counting it tells whether the check was stamped. Every other read finds nothing,
+        /// so a recovery resends an empty snapshot.
+        void prepareDueIntegrityCheck(int& stamps)
+        {
+            try
+            {
+                m_sca->initSyncProtocol("sca", ":memory:", std::chrono::seconds(3600));
+            }
+            catch (const std::exception&)
+            {
+                // Only the interval is needed; the protocol is the mock below.
+            }
+
+            m_sca->setSyncProtocol(m_mockSyncProtocol);
+
+            EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+            .WillRepeatedly(::testing::Invoke([&stamps](const nlohmann::json & query,
+                                                        std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+            {
+                const auto text = query.dump();
+
+                if (text.find("last_integrity_check") != std::string::npos)
+                {
+                    callback(SELECTED, nlohmann::json {{"value", 1}});
+                }
+                else if (text.find("sca_metadata") != std::string::npos && text.find("WHERE") == std::string::npos)
+                {
+                    ++stamps;
+                }
+            }));
+        }
+
         /// Publishes an agent id, the way agentd does after enrolling.
         static void publishAgentId(const char* agentId)
         {
@@ -738,4 +773,128 @@ TEST_F(SCAIdentityTest, IntegrityCheckStandsBackFromADataClean)
     EXPECT_NE(m_logOutput.find("SCA integrity check deferred - flush or DataClean in progress"), std::string::npos);
     EXPECT_TRUE(m_sca->recoveryInProgressForTest());
     m_sca->setRecoveryInProgressForTest(false);
+}
+
+// A check that could not run still counts as checked for this interval, but it must say so instead
+// of answering "Integrity check passed".
+TEST_F(SCAIdentityTest, IntegrityCheckNotPerformedIsReportedNotPassed)
+{
+    int stamps = 0;
+    prepareDueIntegrityCheck(stamps);
+
+    IntegrityCheckResult notChecked;
+    notChecked.failureReason = "Failed to communicate with the manager.";
+    notChecked.managerNotReady = true;
+    EXPECT_CALL(*m_mockSyncProtocol, requiresFullSync(::testing::_, ::testing::_)).WillOnce(::testing::Return(notChecked));
+    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_)).Times(0);
+
+    const auto response = nlohmann::json::parse(m_sca->query(R"({"command":"check_integrity"})"));
+
+    EXPECT_EQ(response["error"], 1);
+    EXPECT_EQ(response["message"], "Integrity check could not be performed: Failed to communicate with the manager.");
+    EXPECT_EQ(response["data"]["recovery_performed"], false);
+    EXPECT_NE(m_logOutput.find("Integrity check could not be performed for wazuh-states-sca (Failed to communicate with "
+                               "the manager); it will be checked again in the next integrity_interval (1h)."),
+              std::string::npos) << m_logOutput;
+    EXPECT_EQ(stamps, 1);
+}
+
+// A check that failed after the manager had already reported a mismatch (a 409, then a 503) says so,
+// instead of reporting only the last failure.
+TEST_F(SCAIdentityTest, IntegrityCheckNotPerformedAfterAMismatchSaysSo)
+{
+    int stamps = 0;
+    prepareDueIntegrityCheck(stamps);
+
+    IntegrityCheckResult notChecked;
+    notChecked.failureReason = "Failed to communicate with the manager.";
+    notChecked.managerNotReady = true;
+    notChecked.mismatchUnconfirmed = true;
+    EXPECT_CALL(*m_mockSyncProtocol, requiresFullSync(::testing::_, ::testing::_)).WillOnce(::testing::Return(notChecked));
+    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_)).Times(0);
+
+    const auto response = nlohmann::json::parse(m_sca->query(R"({"command":"check_integrity"})"));
+
+    EXPECT_EQ(response["error"], 1);
+    EXPECT_NE(m_logOutput.find("Integrity check could not be performed for wazuh-states-sca (Failed to communicate with "
+                               "the manager, after a checksum mismatch reported by the manager); it will be checked "
+                               "again in the next integrity_interval (1h)."),
+              std::string::npos) << m_logOutput;
+    EXPECT_EQ(stamps, 1);
+}
+
+// A stop that cuts the recovery short after the DataClean leaves the snapshot queued for the next
+// regular synchronization, so the check is stamped, as Syscollector and FIM do.
+TEST_F(SCAIdentityTest, RecoveryStoppedAfterQueueingIsStamped)
+{
+    int stamps = 0;
+    prepareDueIntegrityCheck(stamps);
+
+    IntegrityCheckResult mismatch;
+    mismatch.status = IntegrityCheckStatus::MISMATCH;
+    EXPECT_CALL(*m_mockSyncProtocol, requiresFullSync(::testing::_, ::testing::_)).WillOnce(::testing::Return(mismatch));
+    EXPECT_CALL(*m_mockDBSync, increaseEachEntryVersion("sca_check")).Times(1);
+    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, Option::SYNC, true))
+    .WillOnce(::testing::Return(SyncModuleResult{true, "", false, false, 0u}));
+    EXPECT_CALL(*m_mockSyncProtocol, stop()).Times(::testing::AnyNumber());
+    EXPECT_CALL(*m_mockSyncProtocol, synchronizeModule(Mode::DELTA, ::testing::_))
+    .WillOnce(::testing::Invoke([this](Mode, Option)
+    {
+        m_sca->quiesce();
+        return SyncModuleResult{false, "Module is stopping.", true, false, 0u};
+    }));
+
+    const auto response = nlohmann::json::parse(m_sca->query(R"({"command":"check_integrity"})"));
+
+    EXPECT_EQ(response["data"]["recovery_performed"], true);
+    EXPECT_EQ(response["data"]["recovery_success"], false);
+    EXPECT_EQ(stamps, 1);
+}
+
+// A stop that cuts the recovery short before anything was queued leaves the confirmed mismatch
+// unstamped, so it is recovered right after the restart instead of a whole interval later.
+TEST_F(SCAIdentityTest, RecoveryStoppedBeforeQueueingIsNotStamped)
+{
+    int stamps = 0;
+    prepareDueIntegrityCheck(stamps);
+
+    IntegrityCheckResult mismatch;
+    mismatch.status = IntegrityCheckStatus::MISMATCH;
+    EXPECT_CALL(*m_mockSyncProtocol, requiresFullSync(::testing::_, ::testing::_)).WillOnce(::testing::Return(mismatch));
+    EXPECT_CALL(*m_mockDBSync, increaseEachEntryVersion("sca_check")).Times(1);
+    EXPECT_CALL(*m_mockSyncProtocol, stop()).Times(::testing::AnyNumber());
+    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, Option::SYNC, true))
+    .WillOnce(::testing::Invoke([this](const std::vector<std::string>&, Option, bool)
+    {
+        m_sca->quiesce();
+        return SyncModuleResult{false, "Module is stopping.", true, false, 0u};
+    }));
+    EXPECT_CALL(*m_mockSyncProtocol, synchronizeModule(::testing::_, ::testing::_)).Times(0);
+
+    const auto response = nlohmann::json::parse(m_sca->query(R"({"command":"check_integrity"})"));
+
+    EXPECT_EQ(response["data"]["recovery_performed"], true);
+    EXPECT_EQ(response["data"]["recovery_success"], false);
+    EXPECT_EQ(stamps, 0);
+}
+
+// A stop in the middle of a check is not a failed check: it is left unstamped, so it runs again
+// after the restart, and a mismatch the manager had already reported is mentioned.
+TEST_F(SCAIdentityTest, IntegrityCheckInterruptedByStopIsNotStamped)
+{
+    int stamps = 0;
+    prepareDueIntegrityCheck(stamps);
+
+    IntegrityCheckResult stopped;
+    stopped.failureReason = "Module is stopping.";
+    stopped.stopped = true;
+    stopped.mismatchUnconfirmed = true;
+    EXPECT_CALL(*m_mockSyncProtocol, requiresFullSync(::testing::_, ::testing::_)).WillOnce(::testing::Return(stopped));
+
+    const auto response = nlohmann::json::parse(m_sca->query(R"({"command":"check_integrity"})"));
+
+    EXPECT_EQ(response["error"], 1);
+    EXPECT_NE(m_logOutput.find("a checksum mismatch reported by the manager was not confirmed"), std::string::npos)
+            << m_logOutput;
+    EXPECT_EQ(stamps, 0);
 }

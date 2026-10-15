@@ -26,19 +26,32 @@
 #define FD_LIST_INIT_VALUE 1024
 #define MAX_SHARED_PATH    224
 
-/* Preflight of the HTTPS agent listener's TLS files (w_remoted_check_tls_files() in secure.c): exactly
- * one of the three messages is logged, with the hint appended, and remoted exits. The texts are pinned
- * by src/unit_tests/remoted/test_secure.c and matched by the test_https_cert_missing integration test. */
+/* Preflight of the HTTPS agent listener's TLS files (w_remoted_check_tls_files() in secure.c, run before
+ * remoted writes its PID file): exactly one of the five messages is logged, with its hint appended, and
+ * remoted exits. The texts are pinned by src/unit_tests/remoted/test_secure.c; the test_https_cert_missing
+ * integration test matches the key one. */
 #define REMOTED_TLS_FILES_HINT " The pair is issued at installation and is never reissued at start: " \
-    "if the files are present, check that they are owned by the service user and mode 0640, since " \
+    "if the files are present, check that they are root:wazuh-manager and mode 0640, since " \
     "remoted opens them after dropping privileges; otherwise provision remoted.pem, remoted-key.pem " \
-    "and root-ca.pem under etc/certs (see 'Credentials' in the installation guide)."
+    "and root-ca.pem under /etc/wazuh-manager/certs (see 'Credentials' in the installation guide)."
 #define REMOTED_TLS_FILES_MISSING_BOTH "Cannot start the HTTPS agent listener: the TLS certificate '%s' and " \
     "private key '%s' are missing or unreadable by the service user." REMOTED_TLS_FILES_HINT
 #define REMOTED_TLS_FILES_MISSING_CERT "Cannot start the HTTPS agent listener: the TLS certificate '%s' is " \
     "missing or unreadable by the service user." REMOTED_TLS_FILES_HINT
 #define REMOTED_TLS_FILES_MISSING_KEY "Cannot start the HTTPS agent listener: the TLS private key '%s' is " \
     "missing or unreadable by the service user." REMOTED_TLS_FILES_HINT
+#define REMOTED_TLS_FILES_CA_HINT " remote.https.verification_mode requires it: if the file is present, check " \
+    "that it is readable by the service user, since remoted opens it after dropping privileges; otherwise " \
+    "point remote.https.ca at the CA that signs the agents' client certificates."
+#define REMOTED_TLS_FILES_MISSING_CA "Cannot start the HTTPS agent listener: the CA certificate '%s', which " \
+    "verifies agent client certificates, is missing or unreadable by the service user." REMOTED_TLS_FILES_CA_HINT
+#define REMOTED_TLS_FILES_CA_CERTIFICATE_HINT " If the file is present, check that it is readable by the " \
+    "service user, since remoted opens it after dropping privileges; otherwise provision it, or point " \
+    "remote.https.ca_certificate at the CA certificate 5.x agents must trust (see 'Credentials' in the " \
+    "installation guide)."
+#define REMOTED_TLS_FILES_MISSING_CA_CERTIFICATE "Cannot start the HTTPS agent listener: the CA certificate '%s' " \
+    "that remoted publishes on /cacerts for agent enrollment is missing or unreadable by the service user." \
+    REMOTED_TLS_FILES_CA_CERTIFICATE_HINT
 
 /* Pending data structure */
 
@@ -94,6 +107,11 @@ void HandleSecure() __attribute__((noreturn));
 
 /* Warn when remoted.unauthenticated_max is above half the file descriptor limit in force (nofile_effective) */
 void rem_check_unauthenticated_cap(void);
+
+/* Exit with one deterministic message when a TLS file of the HTTPS agent listener is unreadable by the
+ * service user. Called from HandleRemote() after the privilege drop and before CreatePID(), so
+ * `wazuh-manager-control status` never reports as running a remoted that is about to exit. */
+void w_remoted_preflight_tls_files(void);
 
 /* Resolve every internal option the C++ module config owns, so 'remoted -t' refuses the same
  * values the daemon would. RemotedConfig() only reaches the options resolved in config.c. */

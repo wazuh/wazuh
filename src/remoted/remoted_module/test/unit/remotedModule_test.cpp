@@ -95,9 +95,8 @@ namespace
     // remoted_module_start() brings up its HTTPS transport synchronously and fails fast (throws)
     // when the configured certificate/key is missing or unreadable -- see
     // RemotedModuleFacade::start(). The tests below that need a module which actually starts must
-    // therefore hand it a real, readable self-signed certificate/key pair; there is no built-in
-    // fallback that works outside of remoted's own chroot (the module default,
-    // "etc/certs/remoted.pem", only resolves once Privsep_Chroot() has chdir()'d to "/").
+    // therefore hand it a real, readable self-signed certificate/key pair; the module default,
+    // "/etc/wazuh-manager/certs/remoted.pem", is an installed manager's and never a test's.
     void writeSelfSignedTls(const std::string& certificatePath, const std::string& privateKeyPath)
     {
         using EvpPkeyPtr = std::unique_ptr<EVP_PKEY, decltype(&EVP_PKEY_free)>;
@@ -200,37 +199,6 @@ namespace
     private:
         std::string m_certificatePath;
         std::string m_privateKeyPath;
-    };
-
-    /// RAII throwaway TLS identity at the module's own built-in default path
-    /// ("etc/certs/remoted.pem"/"etc/certs/remoted-key.pem", relative to the test process's cwd) --
-    /// only for the one test that exercises the nullptr-configuration default-path fallback itself.
-    class DefaultPathTlsFiles
-    {
-    public:
-        DefaultPathTlsFiles()
-            : m_createdEtcDir(!std::filesystem::exists("etc"))
-        {
-            writeSelfSignedTls("etc/certs/remoted.pem", "etc/certs/remoted-key.pem");
-        }
-
-        ~DefaultPathTlsFiles()
-        {
-            std::error_code ec;
-            std::filesystem::remove("etc/certs/remoted.pem", ec);
-            std::filesystem::remove("etc/certs/remoted-key.pem", ec);
-            std::filesystem::remove("etc/certs", ec); // no-op if anything else landed in it meanwhile
-            if (m_createdEtcDir)
-            {
-                std::filesystem::remove("etc", ec);
-            }
-        }
-
-        DefaultPathTlsFiles(const DefaultPathTlsFiles&) = delete;
-        DefaultPathTlsFiles& operator=(const DefaultPathTlsFiles&) = delete;
-
-    private:
-        bool m_createdEtcDir;
     };
 
     remoted_module_config_t makeConfig(const TempTlsFiles& tls)
@@ -419,22 +387,21 @@ TEST_F(RemotedModuleTest, StopWithoutStartIsSafe)
 // path -- without crashing.
 TEST_F(RemotedModuleTest, StartWithNullConfig)
 {
-    DefaultPathTlsFiles defaultTls;
-
-    // The one test here that cannot be pointed at a free port: a null config means "use the
-    // module's own defaults", and the default port is part of what is being exercised. If that
-    // port happens to be taken on this machine -- a running manager, a parallel test run -- then
-    // start() throws while binding, which says nothing about the null-config path under test, so
-    // it is tolerated. What must hold either way is that the callback was reached: a null config
-    // is accepted and reported instead of crashing. stop() after a failed start is a documented
-    // no-op (see MissingCertificateIsReportedAsAnErrorNamingTheFile below).
+    // A null config means "use the module's own defaults": the default port, and the default
+    // certificate under the fixed configuration directory, which a test cannot create. So start()
+    // is expected to throw -- on the missing certificate, or, on a host with an installed manager,
+    // possibly while binding a port already taken -- and that is tolerated, since it says nothing
+    // about the null-config path under test. What must hold either way is that the callback was
+    // reached: a null config is accepted and reported instead of crashing. stop() after a failed
+    // start is a documented no-op (see MissingCertificateIsReportedAsAnErrorNamingTheFile below).
+    // The default paths themselves are pinned by HttpServerConfigTest.
     try
     {
         remoted_module_start(testLogCallback, nullptr);
     }
     catch (const std::exception& e)
     {
-        GTEST_LOG_(INFO) << "start() with the built-in defaults did not bind: " << e.what();
+        GTEST_LOG_(INFO) << "start() with the built-in defaults did not start: " << e.what();
     }
 
     remoted_module_stop();

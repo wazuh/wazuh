@@ -99,8 +99,8 @@ TEST_F(PopEventsTest, EbpfPopWithEvent) {
     ebpf_pop_events(mock_kernel_queue);
 }
 
-template <typename Check>
-static void pop_one_event(uint32_t login_uid, Check check) {
+template <typename Fill, typename Check>
+static void pop_one_event_with(Fill fill, Check check) {
     MockBoundedQueue<std::unique_ptr<dynamic_file_event>> mock_kernel_queue;
 
     EXPECT_CALL(MockFimebpf::GetInstance(), mock_fim_shutdown_process_on())
@@ -110,9 +110,9 @@ static void pop_one_event(uint32_t login_uid, Check check) {
     EXPECT_CALL(mock_kernel_queue, pop(::testing::_, ::testing::_))
        .WillOnce(::testing::DoAll(
         ::testing::Invoke(
-            [login_uid](std::unique_ptr<dynamic_file_event>& event_arg, [[maybe_unused]]int timeout_arg) {
+            [fill](std::unique_ptr<dynamic_file_event>& event_arg, [[maybe_unused]]int timeout_arg) {
                 event_arg = std::make_unique<dynamic_file_event>();
-                event_arg->login_uid = login_uid;
+                fill(*event_arg);
             }
         ),
         ::testing::Return(true)
@@ -122,6 +122,11 @@ static void pop_one_event(uint32_t login_uid, Check check) {
         .WillOnce(::testing::Invoke(check));
 
     ebpf_pop_events(mock_kernel_queue);
+}
+
+template <typename Check>
+static void pop_one_event(uint32_t login_uid, Check check) {
+    pop_one_event_with([login_uid](dynamic_file_event& event) { event.login_uid = login_uid; }, check);
 }
 
 TEST_F(PopEventsTest, EbpfPopUnsetLoginUidLeavesAuditAttributionUnset) {
@@ -177,6 +182,31 @@ TEST_F(PopEventsTest, EbpfPopCachesIdentityLookups) {
     ebpf_pop_events(mock_kernel_queue);
 
     EXPECT_EQ(g_user_lookups, 1);
+}
+
+static char* unresolved_name([[maybe_unused]] int id) {
+    return nullptr;
+}
+
+TEST_F(PopEventsTest, EbpfPopUnresolvedIdentityLeavesNamesUnset) {
+    MockFimebpf::mock_get_user = unresolved_name;
+    MockFimebpf::mock_get_group = unresolved_name;
+    MockFimebpf::SetMockFunctions();
+
+    // Ids no other test resolves: the name caches outlive each test.
+    pop_one_event_with(
+        [](dynamic_file_event& event) {
+            event.uid = 4343;
+            event.gid = 4343;
+            event.euid = 4343;
+            event.login_uid = (uint32_t)-1;
+        },
+        [](whodata_evt* w_evt) {
+            EXPECT_STREQ(w_evt->user_id, "4343");
+            EXPECT_EQ(w_evt->user_name, nullptr);
+            EXPECT_EQ(w_evt->group_name, nullptr);
+            EXPECT_EQ(w_evt->effective_name, nullptr);
+        });
 }
 
 void SetUpModule() {}

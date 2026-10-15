@@ -13,8 +13,8 @@ The listener is built on RESTinio + OpenSSL and authenticates every request with
 
 > The listener **requires** a TLS certificate and key to be present (see
 > [Transport and TLS](#transport-and-tls)). The credential resolver issues them at installation; to
-> use your own PKI, overwrite `etc/certs/remoted.pem`, `etc/certs/remoted-key.pem` and the CA that
-> signs them, `etc/certs/root-ca.pem`, with the Wazuh installation assistant's `wazuh-certs-tool` before the
+> use your own PKI, overwrite `/etc/wazuh-manager/certs/remoted.pem`, `/etc/wazuh-manager/certs/remoted-key.pem` and the CA that
+> signs them, `/etc/wazuh-manager/certs/root-ca.pem`, with the Wazuh installation assistant's `wazuh-certs-tool` before the
 > first start, and the manager fails closed until they are there (see
 > [Certificate provisioning and fail-closed start](#certificate-provisioning-and-fail-closed-start)).
 
@@ -36,16 +36,15 @@ The listener is built on RESTinio + OpenSSL and authenticates every request with
   (see [Bind address: IPv4, IPv6 and dual-stack](#bind-address-ipv4-ipv6-and-dual-stack) below).
 - **TLS:** minimum version TLS 1.3; the server loads a PEM certificate chain and private key and
   verifies that the key matches the certificate.
-- **TLS file paths (evaluated after `remoted` enters its chroot):**
-  `etc/certs/remoted.pem`, `etc/certs/remoted-key.pem`, and `etc/certs/root-ca.pem` — i.e. host paths
-  `/var/wazuh-manager/etc/certs/remoted.pem`, `/var/wazuh-manager/etc/certs/remoted-key.pem`, and
-  `/var/wazuh-manager/etc/certs/root-ca.pem`. These paths are opened by the module itself,
+- **TLS file paths:** `/etc/wazuh-manager/certs/remoted.pem`,
+  `/etc/wazuh-manager/certs/remoted-key.pem`, and `/etc/wazuh-manager/certs/root-ca.pem` by default
+  (absolute; a relative path written in the configuration resolves against `/var/wazuh-manager`). These paths are opened by the module itself,
   **after** `remoted` has already dropped root privileges (`Privsep_SetUser()`), so the private
   key (and the CA bundle, when `verification_mode` requires one) must be readable by the
   `wazuh-manager` user `remoted` runs as. The pair is provisioned by the operator (see
   [Certificate provisioning and fail-closed start](#certificate-provisioning-and-fail-closed-start))
-  and must be owned `wazuh-manager:wazuh-manager`, mode `640` — the installer re-applies that
-  ownership to the default pair on every install; anything the service user cannot read stops
+  and must be owned `root:wazuh-manager`, mode `640` — the installer re-applies that
+  ownership to every `.pem` in `/etc/wazuh-manager/certs` on every install; anything the service user cannot read stops
   `remoted` at startup (see
   [Diagnosing rejections and capacity problems](#diagnosing-rejections-and-capacity-problems)).
 - **Message limits and timeouts:** max URL 2048 B, max header name 256 B, max header value 8192 B,
@@ -86,11 +85,11 @@ reissues it afterwards. In a distributed deployment the listener
 pair is instead a leaf of the deployment's CA, issued by the Wazuh installation assistant's certificate tool
 (`wazuh-certs-tool`, the same tool that issues the indexer and dashboard certificates) as
 `<node>-remoted.pem`/`<node>-remoted-key.pem`, and deployed by the operator as
-`etc/certs/remoted.pem`/`etc/certs/remoted-key.pem` (`wazuh-manager:wazuh-manager 640`) next to the
-CA that signed it, `etc/certs/root-ca.pem` (`root:wazuh-manager 640`) — the CA served on
+`/etc/wazuh-manager/certs/remoted.pem`/`/etc/wazuh-manager/certs/remoted-key.pem` (`root:wazuh-manager 640`) next to the
+CA that signed it, `/etc/wazuh-manager/certs/root-ca.pem` (`root:wazuh-manager 640`) — the CA served on
 [`GET /cacerts`](#ca-certificate-endpoint-get-cacerts) and pinned by agents. The exact commands are in
 [Using certificates issued elsewhere](../../getting-started/installation.md#using-certificates-issued-elsewhere). The installer only
-creates `etc/certs` and re-applies the pair's ownership when it is already there; when it is absent
+creates `/etc/wazuh-manager/certs` and re-applies the pair's ownership when it is already there; when it is absent
 the installer prints nothing (the credential resolver issues it later in the same installation, and a
 start without it is refused, see below). An existing pair is never replaced, so upgrades keep theirs.
 
@@ -102,24 +101,25 @@ Without a usable pair the manager **fails closed**, in three layers, from the ou
    are skipped) — and refuses to start on the first missing one with, on the console and in
    `logs/wazuh-manager.log`:
    `(1244): Invalid configuration at '/remote/https/certificate': file not found:
-   /var/wazuh-manager/etc/certs/remoted.pem (issued by the credential resolver at installation, or
+   /etc/wazuh-manager/certs/remoted.pem (issued by the credential resolver at installation, or
    provisioned externally, e.g. with wazuh-certs-tool).`
-2. **`wazuh-manager-remoted`**, after entering its chroot and dropping privileges and right before
-   starting this module, probes both paths with `access(R_OK)` and exits with exactly one of
+2. **`wazuh-manager-remoted`**, after dropping privileges and before remoted writes its PID file
+   (so `wazuh-manager-control status` never reports as running a remoted that is about to exit), probes both paths with `access(R_OK)` and exits with exactly one of
    `Cannot start the HTTPS agent listener: the TLS certificate '<c>' and private key '<k>' are missing
    or unreadable by the service user.`, `… the TLS certificate '<c>' is missing or unreadable by the
    service user.` or `… the TLS private key '<k>' is missing or unreadable by the service user.`,
-   each followed by the hint `The pair is issued at installation and is never reissued at start: if the files are present, check that they are owned by the service user and mode 0640, since remoted opens them after dropping privileges; otherwise provision remoted.pem, remoted-key.pem and root-ca.pem under etc/certs (see 'Credentials' in the installation guide).` This is the layer a present-but-root-owned pair hits: the validator runs as
-   root and cannot tell. `wazuh-manager-authd` fails the same way on the same files (`SSL context
+   each followed by the hint `The pair is issued at installation and is never reissued at start: if the files are present, check that they are root:wazuh-manager and mode 0640, since remoted opens them after dropping privileges; otherwise provision remoted.pem, remoted-key.pem and root-ca.pem under /etc/wazuh-manager/certs (see 'Credentials' in the installation guide).` When `remote.https.verification_mode` is `certificate` or `full`, it also probes the CA that verifies agent client certificates (`remote.https.ca`; empty means `/etc/wazuh-manager/certs/root-ca.pem`) and exits with `Cannot start the HTTPS agent listener: the CA certificate '<ca>', which verifies agent client certificates, is missing or unreadable by the service user.` followed by the hint ` remote.https.verification_mode requires it: if the file is present, check that it is readable by the service user, since remoted opens it after dropping privileges; otherwise point remote.https.ca at the CA that signs the agents' client certificates.` In every mode it then probes the CA certificate it publishes on `GET /cacerts` (`remote.https.ca_certificate`; empty means `/etc/wazuh-manager/certs/root-ca.pem`) and exits with `Cannot start the HTTPS agent listener: the CA certificate '<ca_certificate>' that remoted publishes on /cacerts for agent enrollment is missing or unreadable by the service user.` followed by the hint ` If the file is present, check that it is readable by the service user, since remoted opens it after dropping privileges; otherwise provision it, or point remote.https.ca_certificate at the CA certificate 5.x agents must trust (see 'Credentials' in the installation guide).` This is the layer a present pair the service cannot read hits (a group other than
+   `wazuh-manager`, or no group read bit): the validator runs as root and cannot tell. `wazuh-manager-authd` fails the same way on the same files (`SSL context
    setup failed (certificate '…', key '…'). authd reuses the HTTPS agent listener's pair, …`).
 3. **The module itself** fails to load a pair that passed both probes but is unusable (corrupt PEM,
    key/certificate mismatch): the ERROR names which of the two is the problem and, as with every
    other startup failure, `remoted` does not start.
 
-`remote.https.ca_certificate` must exist at start — the validator above refuses a missing
-`root-ca.pem` with the same `(1244) … file not found` verdict — but the listener itself does not need
-it: when the file exists and the service user cannot read it, or it disappears after the start,
-remoted still runs and `GET /cacerts` answers `404` (or keeps serving the last bundle it read).
+`remote.https.ca_certificate` must be readable at start — the validator above refuses a missing
+`root-ca.pem` with the same `(1244) … file not found` verdict, and remoted's probe (step 2) exits when
+the service user cannot read it, since 5.x agents bootstrap their trust from `GET /cacerts`. Only if
+it becomes unreadable or disappears after the start does remoted keep running: `GET /cacerts` then
+answers `404` (or keeps serving the last bundle it read).
 
 ### Renewing the listener certificate
 
@@ -134,12 +134,12 @@ the countdown. Two cases:
 1. Issue a new `<node>-remoted.pem`/`<node>-remoted-key.pem` from the **same** `root-ca.pem` with the
    installation assistant's `wazuh-certs-tool` — or any tooling that signs with that CA's key and
    produces a leaf with `CA:FALSE`, `extendedKeyUsage serverAuth` and a SAN naming the address agents dial.
-2. Install them over `etc/certs/remoted.pem`/`etc/certs/remoted-key.pem` as `wazuh-manager:wazuh-manager 640`
+2. Install them over `/etc/wazuh-manager/certs/remoted.pem`/`/etc/wazuh-manager/certs/remoted-key.pem` as `root:wazuh-manager 640`
    (the `mv`/`chown`/`chmod` steps of
    [Using certificates issued elsewhere](../../getting-started/installation.md#using-certificates-issued-elsewhere)).
 3. `systemctl restart wazuh-manager` — the leaf is loaded once, when the listener starts.
 4. Check (substitute the certified hostname):
-   `sudo openssl s_client -connect mgr.example.com:1517 -servername mgr.example.com -verify_hostname mgr.example.com -verify_return_error -CAfile /var/wazuh-manager/etc/certs/root-ca.pem </dev/null` prints
+   `sudo openssl s_client -connect mgr.example.com:1517 -servername mgr.example.com -verify_hostname mgr.example.com -verify_return_error -CAfile /etc/wazuh-manager/certs/root-ca.pem </dev/null` prints
    `Verify return code: 0 (ok)`, `GET /cacerts` answers `200`, and `cert_expiry_days` is back to the new
    validity (the WARN is not logged again).
 
@@ -186,7 +186,7 @@ a token is either exactly this profile or it is rejected.
 | Signature | HMAC-SHA256 over `base64url(header) "." base64url(claims)` with the **32-byte key obtained by hex-decoding the 64-character `client.keys` secret** — never the ASCII text of the secret. The key is never transmitted |
 | Size | the whole token is at most 4096 bytes; it is parsed only after that bound holds |
 
-The manager resolves the agent key by reading `etc/client.keys` directly (the same id/name/ip/key
+The manager resolves the agent key by reading `/etc/wazuh-manager/client.keys` directly (the same id/name/ip/key
 format `OS_ReadKeys()` uses); the key column must be exactly **64 lowercase hex characters**
 (32 bytes) — the form `authd` generates. A shorter or upper-case key cannot authenticate: the agent
 is answered `401 invalid_signature` (so it does not re-enroll on its own) and remoted logs a warning
@@ -524,7 +524,7 @@ ships next to it in the book.
 
 Advanced RESTinio tuning knobs (threading, timeouts, message limits) resolve as **caller value →
 built-in default**. `remoted` populates the caller value by reading the `remoted.http_*` internal
-options (`etc/wazuh-manager-internal-options.conf`) in `secure.c` and passing the result to
+options (`/etc/wazuh-manager/wazuh-manager-internal-options.conf`) in `secure.c` and passing the result to
 `remoted_module` through its C-ABI struct; an option present in the file but out of range (or
 non-numeric) prevents `remoted` from starting, same as every other internal option. See
 [Internal Options](configuration.md#internal-options) for the full reference (allowed ranges,
@@ -572,10 +572,10 @@ above).
 | Port                                                                             | `port`              | `1517`                                                                                        |
 | Path prefix of every route                                                       | `global_prefix`     | `/wazuh-manager/`                                                                             |
 | Transport max body size                                                          | `max_body_size`     | `10 MiB`                                                                                      |
-| TLS certificate chain                                                            | `certificate`       | `etc/certs/remoted.pem`                                                                       |
-| TLS private key                                                                  | `key`               | `etc/certs/remoted-key.pem`                                                                   |
-| Client CA bundle                                                                 | `ca`                | unset (when `verification_mode` is `certificate`/`full` without it, `etc/certs/root-ca.pem`)  |
-| CA served on `GET /cacerts`                                                      | `ca_certificate`    | `etc/certs/root-ca.pem`                                                                       |
+| TLS certificate chain                                                            | `certificate`       | `/etc/wazuh-manager/certs/remoted.pem`                                                                       |
+| TLS private key                                                                  | `key`               | `/etc/wazuh-manager/certs/remoted-key.pem`                                                                   |
+| Client CA bundle                                                                 | `ca`                | unset (when `verification_mode` is `certificate`/`full` without it, `/etc/wazuh-manager/certs/root-ca.pem`)  |
+| CA served on `GET /cacerts`                                                      | `ca_certificate`    | `/etc/wazuh-manager/certs/root-ca.pem`                                                                       |
 | Client verification mode                                                         | `verification_mode` | `none` (auto-upgraded to `certificate` if `<ca>` is set in XML without `<verification_mode>`) |
 | TLS 1.3 ciphersuites                                                             | `ciphers`           | `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256`                  |
 | Rate limit of `POST /enroll` (requests/s)                                        | `enroll_rate_limit` | `100`                                                                                         |
@@ -648,7 +648,7 @@ reads each option and passes it through the C-ABI struct.
 
 | Setting                                     | Default                                                | Internal option                          |
 | -------------------------------------------- | ------------------------------------------------------ | ----------------------------------------- |
-| `etc/authd.pass` and `etc/enrollment_tokens.json` hot-reload poll interval | `10 s`                                                  | `remoted.enroll_password_refresh_interval` |
+| `/etc/wazuh-manager/authd.pass` and `/etc/wazuh-manager/enrollment_tokens.json` hot-reload poll interval | `10 s`                                                  | `remoted.enroll_password_refresh_interval` |
 | `authd` local-socket connect timeout          | `2 s`                                                   | `remoted.authd_connect_timeout`            |
 | `authd` local-socket response timeout         | `5 s` on a master, `15 s` on a cluster worker           | `remoted.authd_response_timeout`           |
 | Bridge request queue high-water mark          | `256`                                                   | `remoted.authd_max_queue_size`             |
@@ -735,17 +735,17 @@ Four more that are not about tuning:
   that can actually authenticate — a key that fails to decode is reported separately and is **not**
   counted, so this number can be trusted. If `client.keys` is unreadable, that is logged explicitly:
   otherwise it presents only as every agent being rejected as unknown, with nothing explaining why.
-- A missing or unreadable `etc/authd.pass`, at `remoted` startup or on a later poll, is normally a
+- A missing or unreadable `/etc/wazuh-manager/authd.pass`, at `remoted` startup or on a later poll, is normally a
   **WARNING** naming the file. The exception is a cluster worker within about a minute of starting:
   there, the file not having synced down from the master yet is expected, so it logs at **DEBUG1**
   instead ("waiting for the enrollment password to be synchronized from the master node"). A worker
   still missing the file past that window, or a master hitting this path at all, still warns.
-- **`Could not derive the enrollment key from 'etc/authd.pass' (HKDF unavailable)`** (ERROR) means the
+- **`Could not derive the enrollment key from '/etc/wazuh-manager/authd.pass' (HKDF unavailable)`** (ERROR) means the
   OpenSSL KDF provider is broken: every Password-mode enrollment fails closed until it is fixed,
   distinct from an unreadable or invalid password file (see above).
 - **`Cannot start the HTTPS agent listener: the TLS certificate '…' / private key '…' is missing
-  or unreadable by the service user.`** (ERROR, then `remoted` exits) is remoted's own preflight,
-  run after it has dropped privileges and right before this module starts. A missing file rarely
+  or unreadable by the service user.`** (ERROR, then `remoted` exits; with `verification_mode` `certificate` or `full` the same preflight also reports `the CA certificate '…', which verifies agent client certificates, is missing or unreadable by the service user.`, and in every mode `the CA certificate '…' that remoted publishes on /cacerts for agent enrollment is missing or unreadable by the service user.`) is remoted's own preflight,
+  run after it has dropped privileges and before remoted writes its PID file. A missing file rarely
   gets this far — `wazuh-manager-control start` refuses first with the validator's `(1244) … file
   not found` verdict — so this almost always means an ownership/mode mismatch against the
   `wazuh-manager` user (the validator runs as root and cannot tell). Nothing reissues the pair at
@@ -1215,8 +1215,8 @@ apart by their header's `kid`:
 
   | Header `kid` | Credential | `IKM` / `info` label | Who verifies it | When it applies |
   | --- | --- | --- | --- | --- |
-  | none | the **shared enrollment password** | the password (`etc/authd.pass`) / `WAZUH-ENROLL-JWT-KEY` | the manager the request reaches | required whenever `authd`'s [`use_password`](../authd/configuration.md#use_password) is enabled; with `use_password` off, a shared-key bearer (or no bearer at all) is ignored and the request passes |
-  | a 22-character base64url string — a 16-byte **enrollment token id** | an **enrollment token** minted by the operator | the token's 16-byte secret / `WAZUH-ENROLL-TOKEN-KEY` | the manager the request reaches, **in every mode** — a presented token is never ignored, `use_password` or not — against its replica of `authd`'s token store (`etc/enrollment_tokens.json`, written on the master and synchronized to every worker like `client.keys`); then `authd` on the master consumes one use of the token | whenever presented |
+  | none | the **shared enrollment password** | the password (`/etc/wazuh-manager/authd.pass`) / `WAZUH-ENROLL-JWT-KEY` | the manager the request reaches | required whenever `authd`'s [`use_password`](../authd/configuration.md#use_password) is enabled; with `use_password` off, a shared-key bearer (or no bearer at all) is ignored and the request passes |
+  | a 22-character base64url string — a 16-byte **enrollment token id** | an **enrollment token** minted by the operator | the token's 16-byte secret / `WAZUH-ENROLL-TOKEN-KEY` | the manager the request reaches, **in every mode** — a presented token is never ignored, `use_password` or not — against its replica of `authd`'s token store (`/etc/wazuh-manager/enrollment_tokens.json`, written on the master and synchronized to every worker like `client.keys`); then `authd` on the master consumes one use of the token | whenever presented |
   | the agent's canonical id (`001`) | **re-enrollment** — the agent's own re-enrollment secret | the 32-byte `reenroll_secret` the agent received when it enrolled / `WAZUH-REENROLL-KEY` | **`authd` on the master node only**: the secret is stored in the master's database and nowhere else, so the manager the request reaches forwards the bearer verbatim and unverified, and `authd` judges it | whenever presented, in every mode |
 
   An **enrollment token** is checked in a fixed order — lookup, signature, expiry, revocation — so
@@ -1241,9 +1241,9 @@ apart by their header's `kid`:
 
   A missing/unreadable/invalid password file fails **closed** — every shared-key request is
   rejected (`enrollment_key_unavailable`), never silently treated as if no password were required.
-  The password is re-derived on change (`etc/authd.pass` is hot-reloaded), so rotating it
+  The password is re-derived on change (`/etc/wazuh-manager/authd.pass` is hot-reloaded), so rotating it
   invalidates every token minted from the old one within seconds. The token store fails closed the
-  same way, with one deliberate difference: an **absent** `etc/enrollment_tokens.json` is an empty
+  same way, with one deliberate difference: an **absent** `/etc/wazuh-manager/enrollment_tokens.json` is an empty
   store (no token has been minted, or the worker has not received it yet — every token bearer is
   `token_unknown`), while a **malformed** one keeps the previously loaded tokens in service rather
   than revoking a fleet's enrollment over a corrupt or hand-edited file (visible as
@@ -1359,7 +1359,7 @@ master node's `authd` predates it.
 | `authd` refused a caller-supplied key or id (9019/9020) | `400` | unreachable from `/enroll` (self-enrollment never sends a key or an id); mapped for completeness |
 | Any other `authd` error code | `500` | Passed through with `authd`'s own code and message. |
 | `authd` `max_agents` reached (9013) | `503` | Server-wide capacity condition, not a rate limit — that one is the `429` row below. |
-| Endpoint rate limit exceeded | `429` | Decided by remoted before the body is decoded, the bearer is examined or `authd` is contacted. Carries `Retry-After` in whole seconds. The ceiling is fleet-wide, so during a mass enrollment many agents can see this at once; each retries with its own backoff. See [`https.enroll_rate_limit`](configuration.md#httpsenroll_rate_limit). |
+| Endpoint rate limit exceeded | `429` | Decided by remoted after the request passed its own checks (credential, body, version) and before `authd` is contacted, from the bucket of what the request proved: a verified password or enrollment token, or not (a re-enrollment, or no credential). Carries `Retry-After` in whole seconds. Each ceiling is node-wide, so during a mass enrollment many agents can see this at once; each retries with its own backoff. See [`https.enroll_rate_limit`](configuration.md#httpsenroll_rate_limit). |
 | Re-enrollment already in progress (9030) | `409` | Retry after the pending rotation is committed; no second rotation is performed. |
 | Identity transition could not be recorded (9031) | `503` | No credential is handed out. See [journal admission and recovery limitations](../authd/architecture.md#the-identity-journal). |
 | Worker rejected the request (9015), or its forward to the master failed (9016, new in 5.0) | `503` | Only reachable via the local-socket bridge — see [Authd's local socket protocol](../authd/README.md#local-socket-enrollment-protocol). |
@@ -1409,7 +1409,7 @@ limit, so an oversized or deeply nested blob costs nothing proportional to its s
 
 | `resource_type` | `resource_id` | Resolves to |
 | --- | --- | --- |
-| `config` | one group name | `etc/shared/<group>/merged.mg` |
+| `config` | one group name | `/etc/wazuh-manager/shared/<group>/merged.mg` |
 | `config` | several group names, comma-separated | `var/multigroups/<sha256(resource_id)[0..32)>/merged.mg` |
 | `wpk` | a package filename | `var/upgrade/<filename>` |
 
@@ -1608,7 +1608,7 @@ their own; see [Metrics](metrics.md).
 
 ## CA certificate endpoint (`GET /cacerts`)
 
-The listener's certificate is signed by the deployment's CA, `etc/certs/root-ca.pem`: the credential
+The listener's certificate is signed by the deployment's CA, `/etc/wazuh-manager/certs/root-ca.pem`: the credential
 resolver installs the CA and issues a CA-signed `remoted.pem` at installation, or the operator
 provisions both, for instance with the installation assistant's `wazuh-certs-tool` (see
 [Certificate provisioning and fail-closed start](#certificate-provisioning-and-fail-closed-start));
@@ -1789,7 +1789,7 @@ python3 send_enroll.py --name web-01 --client-cert agent.pem --client-key agent.
 # advance (body validation always; bearer/timing scenarios too if --password is given)
 python3 send_enroll.py --password Secret123 --all
 # options: --url (default https://127.0.0.1:1517), --version, --groups, --ip, --key-hash,
-#          --password-file /var/wazuh-manager/etc/authd.pass (requires an explicit path),
+#          --password-file /etc/wazuh-manager/authd.pass (requires an explicit path),
 #          --timeout (default 20 s)
 ```
 

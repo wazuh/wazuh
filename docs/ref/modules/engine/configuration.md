@@ -14,9 +14,9 @@ For module overview, architecture, and implementation details, see [Engine Modul
 
 ## Configuration
 
-**Configuration file:** `/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`
+**Configuration file:** `/etc/wazuh-manager/wazuh-manager-internal-options.conf`
 
-**XML Section:** `<indexer>` of `/var/wazuh-manager/etc/wazuh-manager.conf` (shared with the rest of the manager; not engine-specific)
+**XML Section:** `<indexer>` of `/etc/wazuh-manager/wazuh-manager.conf` (shared with the rest of the manager; not engine-specific)
 
 **YAML Section:** None
 
@@ -41,7 +41,7 @@ The engine has no `analysisd.indexer_username` or `analysisd.indexer_password` s
 
 ## Internal Options Reference
 
-The engine's own settings are internal options prefixed with `analysisd.*` in `/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`.
+The engine's own settings are internal options prefixed with `analysisd.*` in `/etc/wazuh-manager/wazuh-manager-internal-options.conf`.
 
 **Complete internal options documentation:** See [Internal options reference](README.md#internal-options-reference) in the Engine Module documentation — every setting with its environment variable, default and allowed values.
 
@@ -411,7 +411,7 @@ grep -i "queue.*full\|dropped" /var/wazuh-manager/logs/wazuh-manager.log
 **Check internal options syntax:**
 ```bash
 # Verify configuration file exists and is readable
-ls -l /var/wazuh-manager/etc/wazuh-manager-internal-options.conf
+ls -l /etc/wazuh-manager/wazuh-manager-internal-options.conf
 
 # Check for syntax errors in logs
 grep -i "error\|invalid" /var/wazuh-manager/logs/wazuh-manager.log | grep analysisd

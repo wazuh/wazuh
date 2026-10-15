@@ -23,10 +23,10 @@ namespace remoted::downstream
     /**
      * @brief Tunables for the deferred-forwarding subsystem.
      *
-     * The socket paths mirror the services they reach (relative to the chroot) and are not C-ABI
-     * driven -- they are installation details, not ops tuning knobs. Every other field is populated
-     * from the C-ABI struct by buildDownstreamConfig() below; the in-struct defaults here only apply
-     * to a default-constructed DownstreamConfig (e.g. in tests).
+     * The socket paths mirror the services they reach (relative to the installation directory, remoted's cwd) and are
+     * not C-ABI driven -- they are installation details, not ops tuning knobs. Every other field is populated from the
+     * C-ABI struct by buildDownstreamConfig() below; the in-struct defaults here only apply to a default-constructed
+     * DownstreamConfig (e.g. in tests).
      */
     struct DownstreamConfig
     {

@@ -31,7 +31,7 @@ static int teardown_test_read(void **state) {
     return 0;
 }
 
-/* Read_Indexer_JSON: the effective `indexer` section of etc/wazuh-manager.conf becomes indexer_config; an
+/* Read_Indexer_JSON: the effective `indexer` section of wazuh-manager.conf becomes indexer_config; an
  * empty host list (the schema default for an absent section) or a NULL section leaves it NULL. */
 
 void test_read_indexer_json_sets_global_config(void **state) {

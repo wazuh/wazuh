@@ -21,8 +21,8 @@ remoted_module/
 │   ├── remotedModule.cpp           # extern "C" shims + facade delegation + log sink definition
 │   ├── remotedModuleFacade.hpp     # worker thread + lifecycle; owns the HTTP server + auth + endpoints
 │   ├── auth/                       # ns remoted::auth — framework-agnostic JWT bearer auth (see below)
-│   │   ├── passwordKeySource.hpp/.cpp  # etc/authd.pass -> HKDF key of the shared-key wazuh-enroll+jwt, see Agent enrollment below
-│   │   └── tokenKeySource.hpp/.cpp     # etc/enrollment_tokens.json -> per-token HKDF keys (read-only replica of authd's store)
+│   │   ├── passwordKeySource.hpp/.cpp  # /etc/wazuh-manager/authd.pass -> HKDF key of the shared-key wazuh-enroll+jwt, see Agent enrollment below
+│   │   └── tokenKeySource.hpp/.cpp     # /etc/wazuh-manager/enrollment_tokens.json -> per-token HKDF keys (read-only replica of authd's store)
 │   ├── common/                     # ns remoted::common — leaf utilities with no layer of their own:
 │   │                               #   logThrottle.hpp (rate-limited logging), zstdDecoder.hpp/.cpp,
 │   │                               #   vdClient.hpp/.cpp (cached VD feed-offset UDS client, see below),
@@ -43,7 +43,7 @@ remoted_module/
 │   │   ├── cacertsMetrics.hpp          # remoted.cacerts.* + remoted.server.tls.* name catalog
 │   │   ├── controlEndpoint.hpp/.cpp    # POST /control JSON dispatch (see below)
 │   │   ├── downloadMetrics.hpp         # remoted.download.* catalog (POST /download)
-│   │   ├── rateLimitGate.hpp/.cpp      # wraps a route in an EndpointRateLimiter; 429 + Retry-After (see below)
+│   │   ├── rateLimitGate.hpp/.cpp      # EndpointRateLimiter admission (Gate) + route wrapper; 429 + Retry-After (see below)
 │   │   └── scanVdEndpoint.hpp/.cpp     # POST /scan/vd JSON dispatch (see below)
 │   ├── control/                    # ns remoted::control — 5.x agent control messages (/control);
 │   │                               #   metrics.hpp = remoted.control.* catalog
@@ -325,10 +325,11 @@ src/http_server/
        `certificate_path`/`private_key_path` are file paths (not PEM content) opened by the
        module itself, after `remoted` has already dropped root privileges (`Privsep_SetUser()`)
        -- so both files (and `ca_path`, when configured) must be readable by the unprivileged
-       user `remoted` runs as. `secure.c` probes the pair with `access(R_OK)`
-       (`w_remoted_check_tls_files()`) right before `remoted_module_start()` and exits with a
-       deterministic ERROR when either is missing or unreadable, so this module's own load
-       failure only fires for files that exist and are readable but unusable.
+       user `remoted` runs as. `secure.c` probes the pair, `ca_path` when client-certificate
+       verification is on, and `ca_certificate_path` (the CA published on `/cacerts`) with
+       `access(R_OK)` (`w_remoted_check_tls_files()`) right after the privilege drop, before remoted writes its PID file, and
+       exits with a deterministic ERROR when one is missing or unreadable, so this module's own
+       load failure only fires for files that exist and are readable but unusable.
     3. Memory-management: `max_inflight_bytes` (bytes; default 256 MiB),
        `max_parallel_connections` (default 256), `max_handshakes_per_source` (default 32; 0 is a
        real setting, "no cap", so it travels with a `_set` flag like `jwt_clock_skew`),
@@ -380,17 +381,25 @@ src/endpoints/
 ├── downloadEndpoint.hpp/.cpp # /download policy: request grammar + resource resolution + file streaming
 ├── iAgentGroupSource.hpp     # interface: the selector an authenticated agent may download
 ├── cacertsEndpoint.hpp/.cpp  # GET /cacerts: the CA the listener cert chains to, certificates only (no auth)
-├── rateLimitGate.hpp/.cpp    # per-endpoint rate limit in front of the two unauthenticated routes
+├── rateLimitGate.hpp/.cpp    # per-endpoint rate limit of the two unauthenticated routes
 └── agentRequestLimiter.hpp   # per-agent open-request cap + the AdmittedResponder that releases it
 ```
 
-- **`rateLimitGate.hpp/.cpp` (ns `remoted::endpoints::ratelimit`):** `wrap()` takes a
-  `RouteHandler` and returns one that consults an `EndpointRateLimiter`
-  (`http_server/endpointRateLimiter.hpp`) first, answering `429` + `Retry-After` when the bucket is
-  empty and otherwise calling straight through. Applied at route registration in the facade to
-  `POST /enroll` and `GET /cacerts` — **the two routes no credential can gate**: an enrolling agent
-  has no `client.keys` entry and a trust-bootstrapping one has no anchor, so neither can sit behind
-  the bearer-token gateway that bounds every other route.
+- **`rateLimitGate.hpp/.cpp` (ns `remoted::endpoints::ratelimit`):** `Gate` charges an
+  `EndpointRateLimiter` (`http_server/endpointRateLimiter.hpp`) and, when the bucket is empty, sends
+  `429` + `Retry-After` in the route's own envelope, counting it in both metric families. `wrap()`
+  puts a `Gate` in front of a whole `RouteHandler`. These are **the two routes no credential can
+  gate**: an enrolling agent has no `client.keys` entry and a trust-bootstrapping one has no anchor,
+  so neither can sit behind the bearer-token gateway that bounds every other route. `GET /cacerts`
+  is wrapped at registration. `POST /enroll` is not: its handler charges a `Gate` itself, only once
+  the request passed its credential check, from one of two buckets of the same rate — verified password or enrollment token with uses
+  left, or not (a re-enrollment bearer, which only the master can verify, Open mode, and a token the
+  store shows as spent: only authd can refuse it, and a found single-use token must not drain the
+  verified bucket). The unverified bucket is charged right
+  away, before the body is decoded (decoding a compressed body reserves shared in-flight budget); the
+  verified one after the body and version checks, right before the authd round trip. A caller without
+  a credential therefore neither spends the allowance by failing the credential check nor reaches the
+  bucket verified agents are served from (`enrollment::RateGates`).
 
   The bucket is per **endpoint**, not per caller: `allow()` takes no argument at all, so the
   configured rate is a ceiling on what the manager serves rather than an allowance each client gets.
@@ -655,7 +664,7 @@ src/control/
 │                             #   (answers "which selector may this agent download?", nullopt = deny)
 ├── wazuhDBClient.hpp/.cpp    # WazuhDBClient: async UDS client to wazuh-db (agent status/data updates)
 ├── taskClient.hpp/.cpp       # TaskClient: async HTTP-over-UDS client to task-manager (pending task fetch)
-├── mergedMgWatcher.hpp/.cpp  # MergedMgWatcher: inotify watcher for <group>/merged.mg under etc/shared and var/multigroups
+├── mergedMgWatcher.hpp/.cpp  # MergedMgWatcher: inotify watcher for <group>/merged.mg under /etc/wazuh-manager/shared and var/multigroups
 └── hashCache.hpp/.cpp        # HashCache: settings hash (compute-once) + merged.mg config hash cache
 ```
 
@@ -857,7 +866,7 @@ objects (id, type, payload JSON). Uses the same bounded queue + deadline + error
 
 #### MergedMgWatcher (`mergedMgWatcher.hpp/.cpp`)
 
-Watches `merged.mg` inside each group directory of `etc/shared/` and `var/multigroups/<hash8>/` for changes to detect group shared file updates, using **inotify
+Watches `merged.mg` inside each group directory of `/etc/wazuh-manager/shared/` and `var/multigroups/<sha256(resource_id)[:32]>/` (the first 32 hex characters of the SHA-256 of the group selector) for changes to detect group shared file updates, using **inotify
 exclusively**: it opens an `inotify_init1(IN_NONBLOCK | IN_CLOEXEC)` fd, watches the shared-groups
 and multigroups roots for `IN_CREATE | IN_MOVED_TO | IN_DELETE | IN_MOVED_FROM` (new/removed group
 dirs) and each group dir for `IN_CLOSE_WRITE | IN_MOVED_TO` (a finished rewrite or an atomic
@@ -919,8 +928,8 @@ from C-ABI struct fields in `remoted_module_config_t`; the tunable ones are fed 
 | `tmConcurrency` | 4 | `remoted.control_tm_concurrency` (1–64) |
 | `tmDeadlineMs` | 2000 ms | `remoted.control_tm_deadline` (100–30000) |
 | `tmMaxQueueSize` | 10000 | `remoted.control_tm_max_queue_size` (100–1000000) |
-| `wdbSocketPath` | `/queue/sockets/wdb.sock` | — (fixed) |
-| `taskSocketPath` | `/queue/sockets/task-http.sock` | — (fixed) |
+| `wdbSocketPath` | `queue/sockets/wdb.sock` (`remoted::paths::kWdbSocket`, relative to the installation directory) | — (fixed) |
+| `taskSocketPath` | `queue/sockets/task-http.sock` (`remoted::paths::kTaskSocket`, relative to the installation directory) | — (fixed) |
 | `registryEvictionTtlSec` | 21600 s (6 h) | — **not configurable** (compile-time constant; never assigned from the C-ABI) |
 | — eviction cadence | 300 s | — **not configurable** (`kRegistryEvictionIntervalSec`, used as a literal by the eviction thread) |
 | `keepaliveThrottleSec` | 60 s | `remoted.control_keepalive_throttle` (1–3600) |
@@ -1106,7 +1115,7 @@ offsets due to independent cache state. It owns no threads and no queue — tear
 ## Agent enrollment (`POST /enroll`) — `src/enrollment/`
 
 Every other authenticated route on this server requires the caller to already be a known agent with
-an entry in `etc/client.keys` — there is no such entry for an agent that has never enrolled. Today
+an entry in `/etc/wazuh-manager/client.keys` — there is no such entry for an agent that has never enrolled. Today
 that agent falls back to a second protocol on a second port: legacy `wazuh-manager-authd` on 1515, speaking
 the plaintext-inside-TLS `OSSEC A:'...'`/`OSSEC K:'...'` line format. `/enroll` lets it enroll over
 the same HTTPS channel (1517) it uses for everything else afterward.
@@ -1130,8 +1139,8 @@ sequenceDiagram
     participant Ag as Agent (new, or re-enrolling)
     participant EP as POST /enroll<br/>(enrollmentEndpoint)
     participant EA as EnrollmentAuthenticator
-    participant PK as PasswordKeySource<br/>(etc/authd.pass)
-    participant TK as TokenKeySource<br/>(etc/enrollment_tokens.json)
+    participant PK as PasswordKeySource<br/>(/etc/wazuh-manager/authd.pass)
+    participant TK as TokenKeySource<br/>(/etc/wazuh-manager/enrollment_tokens.json)
     participant AC as AuthdClient
     participant AD as authd<br/>(queue/sockets/auth.sock UDS)
 
@@ -1174,8 +1183,8 @@ The bearer itself comes in **three forms**, told apart by the JOSE header's `kid
 
 | Header `kid` | Credential | Key (`shared_modules/utils/jwt/enrollKeyDerivation.hpp`) | Verified by | When |
 |---|---|---|---|---|
-| none | the shared enrollment password | HKDF of `etc/authd.pass` (`PasswordKeySource`, `info` label `WAZUH-ENROLL-JWT-KEY`) | remoted | required when `requirePassword` (authd's `use_password`) is set; **ignored** otherwise |
-| 22 canonical base64url chars = a 16-byte **enrollment token id** (issue #38993) | an enrollment token minted by the operator (authd) | HKDF of that token's 16-byte secret (`TokenKeySource`'s replica of `etc/enrollment_tokens.json`, label `WAZUH-ENROLL-TOKEN-KEY`) | remoted, **always, in every mode** — a presented credential is never ignored — in this order: lookup → signature → expiry → revocation; then `token_id` travels to authd, which consumes one use | whenever presented |
+| none | the shared enrollment password | HKDF of `/etc/wazuh-manager/authd.pass` (`PasswordKeySource`, `info` label `WAZUH-ENROLL-JWT-KEY`) | remoted | required when `requirePassword` (authd's `use_password`) is set; **ignored** otherwise |
+| 22 canonical base64url chars = a 16-byte **enrollment token id** (issue #38993) | an enrollment token minted by the operator (authd) | HKDF of that token's 16-byte secret (`TokenKeySource`'s replica of `/etc/wazuh-manager/enrollment_tokens.json`, label `WAZUH-ENROLL-TOKEN-KEY`) | remoted, **always, in every mode** — a presented credential is never ignored — in this order: lookup → signature → expiry → revocation; then `token_id` travels to authd, which consumes one use | whenever presented |
 | the canonical **agent id** (`001`) | **re-enrollment** (issue #38993): the agent's own re-enrollment secret | HKDF of the 32-byte `reenroll_secret` (label `WAZUH-REENROLL-KEY`) — the secret lives in the master's `global.db` and nowhere else | **authd on the master** (`local_reenroll()`, `os_auth/src/local-server.c`): remoted does NOT verify it and forwards it verbatim as `arguments.reenroll = {kid, bearer}`; authd answers 9026/9027/9028 | whenever presented, in every mode |
 
 The two `kid` shapes are disjoint (a 22-character base64url string is never a canonical digit
@@ -1212,7 +1221,7 @@ is not a `wazuh-enroll+jwt` at all and is rejected before any key store is consu
   For a **re-enrollment** bearer, remoted checks only what it checks for every request (the
   protocol version and the body cap) and hands `{kid, bearer}` to the endpoint unverified: the
   secret it is signed with is the master's alone. This holds in Password mode too, even when
-  `etc/authd.pass` is unavailable on this node — the password key is simply not involved.
+  `/etc/wazuh-manager/authd.pass` is unavailable on this node — the password key is simply not involved.
 
   `EnrollmentAuthenticator::authenticate()` checks the `protocol-version` header first — before the
   body-size cap and before any credential, in **every** mode including the credential-less one — and
@@ -1284,9 +1293,9 @@ together (defense in depth for the endpoint that mints new agent identities and 
 configures both, and gets both. See `enrollmentMtlsE2E_test.cpp` for the combined case exercised
 end-to-end over a real TLS listener.
 
-A missing or unreadable `etc/authd.pass` while `requirePassword` is true fails **closed** — every
+A missing or unreadable `/etc/wazuh-manager/authd.pass` while `requirePassword` is true fails **closed** — every
 enrollment attempt gets `401`, never silently falls back to skipping the password check. This
-mirrors authd itself: `etc/authd.pass` is one of the files the cluster's own integrity sync already
+mirrors authd itself: `/etc/wazuh-manager/authd.pass` is one of the files the cluster's own integrity sync already
 replicates from master to every worker (`framework/wazuh/core/cluster/cluster.json`, alongside
 `client.keys`), and authd treats "password required but not yet synced" as a hard rejection, never
 as a fallback to the NULL-password path (`main-server.c:777-790`) — conflating the two would let an
@@ -1295,7 +1304,7 @@ or worker alike: only authd's master ever generates the password file (`w_authd_
 worker only reads it, exactly as authd's own `run_authpass_watcher` does.
 
 The token store follows the same discipline, with one deliberate difference in what "absent" means.
-`etc/enrollment_tokens.json` is written only by authd's master (`enrollment_token_store.c`,
+`/etc/wazuh-manager/enrollment_tokens.json` is written only by authd's master (`enrollment_token_store.c`,
 atomically — temp file + rename) and replicated to every worker by the cluster's own file sync
 (`framework/wazuh/core/cluster/cluster.json` lists it next to `client.keys` and `authd.pass`);
 `TokenKeySource` never creates, writes or repairs it. An **absent** file is an **empty replica**, not
@@ -1322,7 +1331,7 @@ request.
 
 #### `TokenKeySource` (`auth/tokenKeySource.hpp/.cpp`)
 
-Read-only, in-memory replica of authd's enrollment token store (`etc/enrollment_tokens.json`,
+Read-only, in-memory replica of authd's enrollment token store (`/etc/wazuh-manager/enrollment_tokens.json`,
 `ENROLLMENT_TOKENS_FILE` in os_auth's `defs.h`), keyed by token id, with the `wazuh-enroll+jwt`
 HS256 key of every **credential-bearing** token already derived (once per load, through the shared
 `deriveEnrollTokenKey()`). Same operational shape and the same watcher as `PasswordKeySource`
@@ -1418,7 +1427,7 @@ and — for every `add` — `reenroll_secret` (64 hex chars, generated next to t
 `global.db`); `AuthdResult::reenrollSecret` is empty when an older authd sent none.
 **`force`, `id`, and `key` are never sent** — self-enrollment always gets an auto-assigned ID and an
 authd-generated key, never a caller-supplied one; `force` stays a manager-config decision, exactly as
-authd's local path already falls back to `config.force_options` from `etc/wazuh-manager.conf` when it's absent.
+authd's local path already falls back to `config.force_options` from `wazuh-manager.conf` when it's absent.
 This matches 1515's own agent-facing protocol exactly, not a new restriction: `w_auth_parse_data`
 (`os_auth/src/auth.c`) recognizes only `PASS:`, `A:` (name), `V:` (version), `G:` (groups), `IP:`, and
 `K:` — a **key hash**, feeding only the force/key-mismatch decision, never a raw key. There is no
@@ -1601,8 +1610,8 @@ normal way, feed it the `auth` section of `wazuh-manager.conf` (`w_mconf_section
 ### Manager certificate unification
 
 authd used to serve its own certificate pair (`etc/certs/authd.pem`/`authd-key.pem`), a separate
-manager identity from the one this module's HTTPS server presents (`etc/certs/remoted.pem`/
-`remoted-key.pem`, CA `etc/certs/root-ca.pem`). Since a client certificate on `/enroll` (when the
+manager identity from the one this module's HTTPS server presents (`/etc/wazuh-manager/certs/remoted.pem`/
+`remoted-key.pem`, CA `/etc/wazuh-manager/certs/root-ca.pem`). Since a client certificate on `/enroll` (when the
 listener requires one) treats "this certificate validated" as an enrollment credential, both
 listeners now present the *same* identity: the install-time generation step
 (`GenerateAuthCert()` in `init/inst-functions.sh`, plus its RPM/DEB packaging equivalents) that used
@@ -1610,22 +1619,24 @@ to create `authd.pem`/`authd-key.pem` has been removed, and the generated `<auth
 (`auth.template`, and the `<disabled>yes</disabled>` fallback written by `DisableAuthd()`) now
 points `<ssl_manager_cert>`/`<ssl_manager_key>` at `remoted.pem`/`remoted-key.pem` instead — the
 listener pair the operator provisions. The manager generates no certificate at all any more:
-`CheckListenerCerts()` in `init/inst-functions.sh` (and the packaging equivalents) only creates
-`etc/certs`, re-applies the pair's ownership and prints a `NOTICE` when it is missing, and the
+`SetCertsOwnership()` in `init/inst-functions.sh` (and the packaging `fix_certs`) only creates
+`/etc/wazuh-manager/certs` (`root:wazuh-manager 0750`) and normalizes every `.pem` in it to
+`root:wazuh-manager 0640` — the daemons read the pair through the group, and no daemon writes the
+directory — and the
 manager fails closed without it — `wazuh-manager-conf validate` (run by `wazuh-manager-control
 start`) rejects a missing file with `(1244) … file not found`, and remoted itself probes both paths
-with `access(R_OK)` after dropping privileges (`w_remoted_check_tls_files()` in `secure.c`, right
-before `remoted_module_start()`) and exits with a deterministic message, so this module's own
+(plus the client CA in verification modes and the CA published on `/cacerts`) with `access(R_OK)` after dropping privileges (`w_remoted_check_tls_files()` in `secure.c`, right
+after the privilege drop and before remoted writes its PID file) and exits with a deterministic message, so this module's own
 exception on an unreadable pair is the last resort, not the first line (see
 [Certificate provisioning and fail-closed start](../../../docs/ref/modules/remoted/https-events-api.md#certificate-provisioning-and-fail-closed-start)).
-Explicit `<auth>` certificate overrides in `etc/wazuh-manager.conf` keep working unchanged — only the generated
+Explicit `<auth>` certificate overrides in `wazuh-manager.conf` keep working unchanged — only the generated
 defaults change. Port 1515 keeps running with the unified certificate.
 
-Two compiled-in defaults exist alongside the generated config, both now updated to match:
-`shared/include/ssl_op.h`'s `CERTFILE`/`KEYFILE` macros (read only by `main-server.c`'s `-h` help
-text) and `config/src/authd-config.c`'s `w_authd_json_defaults()`, which hardcodes the same path as the
-actual runtime default `<ssl_manager_cert>`/`<ssl_manager_key>` fall back to when absent from
-`etc/wazuh-manager.conf`. Both are manager-only in practice: `os_auth/CMakeLists.txt` builds exactly one
+One compiled-in default exists alongside the generated config: `shared/include/ssl_op.h`'s
+`CERTFILE`/`KEYFILE` macros (absolute, under `WAZUH_MANAGER_CONF_DIR`), read by `main-server.c`'s `-h`
+help text, by `config/src/authd-config.c`'s `w_authd_json_defaults()` — the runtime default
+`<ssl_manager_cert>`/`<ssl_manager_key>` fall back to when absent from `wazuh-manager.conf` — and by
+`os_ssl_keys()`'s fallback. All are manager-only in practice: `os_auth/CMakeLists.txt` builds exactly one
 executable (`wazuh-manager-authd`) from this module -- there is no separate agent-side `authd`
 binary, despite `ARGV0`/the CMake project name still being spelled `wazuh-authd` as a historical
 label, and every caller of `Read_Authd_JSON()` (`os_auth/src/config.c`,
@@ -1650,7 +1661,7 @@ fields with their own defaults, following this module's usual "`<=0` means defau
 *Two independent authentication gates* above's `403` discussion).
 
 The enrollment-token and re-enrollment paths add **no** option of their own: the store path is fixed
-(`etc/enrollment_tokens.json`, relative to the manager home like `etc/authd.pass`); the replica's
+(`/etc/wazuh-manager/enrollment_tokens.json`, in the fixed configuration directory like `/etc/wazuh-manager/authd.pass`); the replica's
 fallback poll reuses `remoted.enroll_password_refresh_interval`; and the accepted age / clock skew
 of all three bearer forms is the one `remoted.jwt_max_age` / `remoted.jwt_clock_skew` pair — for the
 re-enrollment bearer that policy is applied by authd on the master, which reads the **same** two
@@ -1741,7 +1752,7 @@ before the pump runs; the per-chunk loop is deliberately uninstrumented) — cat
   `write_was_not_executed` if the connection died first), so an aborted transfer always releases its
   descriptor — verified: 25 mid-transfer disconnects left the fd count unchanged.
 - **`resource_id` is what the agent asks for, and the manager serves exactly that.** A `config`
-  request names either one group (`etc/shared/<group>/merged.mg`) or several, comma-separated —
+  request names either one group (`/etc/wazuh-manager/shared/<group>/merged.mg`) or several, comma-separated —
   wazuh's own multigroup form — which resolves to `var/multigroups/<sha256(resource_id)[:32]>/merged.mg`.
   A `wpk` request names a filename and gets `var/upgrade/<filename>`. The multigroup form is what
   lets an agent in several groups fetch its *effective* configuration rather than one member
@@ -2116,7 +2127,7 @@ Unit tests under `test/unit/` (`jwtVerify_test.cpp`, `jwtSigner_test.cpp`, `jwtE
 against a scratch `client.keys` file it writes to `/tmp`, through `Keystore` -- there is no
 in-memory stand-in.
 
-**Agent key lookup:** `Keystore` reads `etc/client.keys` directly and parses it
+**Agent key lookup:** `Keystore` reads `/etc/wazuh-manager/client.keys` directly and parses it
 the same way the manager's own `OS_ReadKeys()` does (id/name/ip/key columns, `#`/`!`-marked removed
 entries skipped), independent of remoted's C `keystore`. This was a deliberate choice over reaching
 into remoted's live `keystore`: remoted loads it in `W_ENCRYPTION_KEY` mode (see `secure.c`), which
@@ -2282,11 +2293,11 @@ linked into the settings' own documentation — is the official docs page:
 | `remoted.server.budget.{available.bytes, inflight.bytes, inflight.requests, rejected.total}` (pulls) | is `remoted.max_inflight_bytes` sized right; how much did the byte budget shed | `IHttpServer::diagnostics()` over the transport's `InFlightBudget` |
 | `remoted.server.connections.{open, max}` (pulls) | how close the listener runs to `remoted.max_parallel_connections` — the only view of it, since reaching the cap postpones the accept instead of refusing | registered next to the budget pulls in `registerPublicTransportDiagnostics()`; `open` reads the transport's `HandshakeLedger` (counted from the start of the TLS handshake to the close) |
 | `remoted.server.connections.handshaking`, `remoted.server.handshake.{timeouts, rejected_per_source}.total` (pulls) | are slots being held by peers that never complete a TLS handshake — invisible to every request-level metric; what the deadline (`remoted.http_read_timeout`) and the per-source cap (`remoted.max_handshakes_per_source`) closed | `IHttpServer::diagnostics()` over the `HandshakeLedger`; names in `http_server/handshakeMetrics.hpp` |
-| `remoted.enroll.{accepted, rejected_auth, rejected_validation, disabled, authd_error, authd_unavailable, rate_limited}` | WHY each `/enroll` request ended that way (the status/latency view is the `enroll` families above). `rate_limited` is the odd one: the request was refused before the handler ran, so it has no outcome among the others | `enrollment/metrics.hpp`, counted in `enrollmentEndpoint.cpp`; `rate_limited` by the gate (`endpoints/rateLimitGate.cpp`) |
+| `remoted.enroll.{accepted, rejected_auth, rejected_validation, disabled, authd_error, authd_unavailable, rate_limited}` | WHY each `/enroll` request ended that way (the status/latency view is the `enroll` families above). `rate_limited` is the odd one: the request passed its local checks and was refused before the authd round trip, so it has no outcome among the others | `enrollment/metrics.hpp`, counted in `enrollmentEndpoint.cpp`; `rate_limited` by the gate (`endpoints/rateLimitGate.cpp`), which the handler charges |
 | `remoted.<enroll\|cacerts>.rate_limit.{limit, burst, available}` (pulls) | is the BUCKET's ceiling sized right: `available` pinned at 0 while `rate_limited` climbs is a rate below what the fleet needs, not necessarily an attack. Two buckets, two routes — `enroll` governs `POST /enroll`, `cacerts` governs `GET /cacerts` | `EndpointRateLimiter::diagnostics()` through `registerRateLimitDiagnostics()`; reads the bucket WITHOUT charging it, so scraping never costs an agent its enrollment |
 | `remoted.enroll.token.{accepted, rejected_unknown, rejected_expired, rejected_revoked, rejected_exhausted}` | the enrollment-token subset of the above, by what happened to the TOKEN: unknown/expired/revoked decided by remoted's replica (and by authd's 9022/9023 when the replica lagged), exhausted by authd alone (9024) | `countTokenRejection()` (remoted's own verdict) + `countTokenOutcome()` (authd's) in `enrollmentEndpoint.cpp` |
 | `remoted.enroll.reenroll.{accepted, rejected_unknown, rejected_signature, rejected_stale, rejected_in_progress}` | the re-enrollment subset (`kid` = agent id): authd's verdict on the master — 9026 / 9027 / 9028 / 9030 — since remoted forwards that bearer unverified; each rejection also lands in the `remoted.auth.reject.*` cell of the `AuthError` it maps to | `countReenrollOutcome()` in `enrollmentEndpoint.cpp` |
-| `remoted.enroll.token_store.{tokens, reloads.total, reload_failures.total}` (pulls) | does this node recognise the tokens the operator minted (an empty replica on a worker = the sync has not landed); is `etc/enrollment_tokens.json` being picked up, or is a corrupt/hand-edited store making the previous replica serve | `TokenKeySource::diagnostics()` through `registerTokenKeySourceDiagnostics()`; 0 while enrollment is disabled |
+| `remoted.enroll.token_store.{tokens, reloads.total, reload_failures.total}` (pulls) | does this node recognise the tokens the operator minted (an empty replica on a worker = the sync has not landed); is `/etc/wazuh-manager/enrollment_tokens.json` being picked up, or is a corrupt/hand-edited store making the previous replica serve | `TokenKeySource::diagnostics()` through `registerTokenKeySourceDiagnostics()`; 0 while enrollment is disabled |
 | `remoted.enroll.authd.queue.{depth, capacity, rejected.total}` (pulls) | is `remoted.authd_max_queue_size`/`authd_worker_threads` sized right, and how much of `authd_unavailable` was saturation rather than an unreachable authd | `AuthdClient::queueDiagnostics()` (same lock, dump cadence only); the counter is bumped ONLY on the queue-full branch, never on shutdown |
 | `remoted.forwarder.deferred.{inflight, capacity, rejected.total}` (pulls) | is `remoted.max_deferred_requests` sized right; how much did the limiter shed | the `DeferredWorkLimiter`'s own atomics |
 | `remoted.admin.server.*` (11 pulls) | the admin transport dogfooding itself: 7 levels plus the 4 `rejected.*` shed counters | `IUdsHttpServer::diagnostics()` |
@@ -2410,11 +2421,11 @@ Response shape (`http_server/tlsInventory.cpp` renders it, keys in this order):
     "not_after": "2027-01-01T00:00:00Z", "not_after_ts": 1798761600,
     "seconds_until_expiry": 9295200,
     "fingerprint": "x509-sha256:3f9c…", "serial": "0x1a2b…",
-    "path": "etc/certs/remoted.pem",
+    "path": "/etc/wazuh-manager/certs/remoted.pem",
     "loaded_at": "2026-09-14T08:12:31Z", "loaded_at_ts": 1789373551
   },
   "ca_bundle": {
-    "path": "etc/certs/root-ca.pem",
+    "path": "/etc/wazuh-manager/certs/root-ca.pem",
     "publication": 0, "publication_vouched": false,
     "content_sha256": "b7e1…",
     "certificates_count": 2, "certificates_limit": 6,
@@ -2483,7 +2494,7 @@ Response shape (`http_server/tlsInventory.cpp` renders it, keys in this order):
 Contract points:
 
 - **Fixed path, no knob**: the constant `queue/sockets/remote-admin-http.sock` is **relative** on
-  purpose — remoted `chroot()`s into the install dir, so the socket lands at
+  purpose — remoted's working directory is the installation directory, so the socket lands at
   `$WAZUH_HOME/queue/sockets/remote-admin-http.sock` (mode 0660). Internal options only carry ints,
   so a path knob has nowhere to live — the same criterion that fixed inventory sync's path.
 - **Warn-on-failure**: a failed bind/start is a `WARN` and the module continues without the
@@ -2551,7 +2562,8 @@ unanswered), `endpointRateLimiter_test.cpp` (the fourth limiter, a token
 bucket per endpoint: burst spent before the rate paces it, refill over time, saturation at the
 burst, one bucket shared by every caller, **the bucket starting full** — an empty one would refuse
 the first requests after every restart — a `diagnostics()` read that never charges it, and
-`Retry-After` rounded up and never 0), `rateLimitGate_test.cpp` (the wrapper around a route:
+`Retry-After` rounded up and never 0), `rateLimitGate_test.cpp` (a `Gate` admitting and then refusing
+on the responder it is handed, and the wrapper around a route:
 an admitted request reaching the inner handler untouched and a refused one **never reaching it at
 all** — asserted on the handler, not on the status code, which a gate doing the work first would
 satisfy too —, each route's own 429 envelope plus the gate's `Retry-After`, a refusal counted in
@@ -2928,8 +2940,8 @@ header is sent). Client certificates and password options can be combined when t
 
 ```bash
 python3 tools/send_enroll.py --name test-agent                 # Open mode -> 200 + id/key/reenroll_secret
-python3 tools/send_enroll.py --password-file /var/wazuh-manager/etc/authd.pass   # Password mode
-python3 tools/send_enroll.py --password-file /var/wazuh-manager/etc/authd.pass --tamper  # corrupted bearer -> 401
+python3 tools/send_enroll.py --password-file /etc/wazuh-manager/authd.pass   # Password mode
+python3 tools/send_enroll.py --password-file /etc/wazuh-manager/authd.pass --tamper  # corrupted bearer -> 401
 python3 tools/send_enroll.py --client-cert agent.pem --client-key agent-key.pem  # mTLS mode
 python3 tools/send_enroll.py --all                             # every scenario it can drive without
                                                                 #   knowing the configured mode in advance

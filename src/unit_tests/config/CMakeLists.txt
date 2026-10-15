@@ -74,9 +74,11 @@ if(${TARGET} STREQUAL "manager")
     list(APPEND config_names "test_wmodules-config")
     list(APPEND config_flags "${DEBUG_OP_WRAPPERS}")
 
-    # etc/wazuh-manager.conf loader (real manager_config library, temporary XML files).
+    # /etc/wazuh-manager/wazuh-manager.conf loader (real manager_config library, temporary XML files).
+    # mconf_load_ex is wrapped only to redirect the absolute default file (WAZUHCONF) into the
+    # working directory; every other path reaches the real loader.
     list(APPEND config_names "test_mconf-config")
-    list(APPEND config_flags "${DEBUG_OP_WRAPPERS}")
+    list(APPEND config_flags "-Wl,--wrap,mconf_load_ex ${DEBUG_OP_WRAPPERS}")
 endif()
 
 # Compiling tests

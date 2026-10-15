@@ -582,8 +582,8 @@ namespace manager_certs
         }
 
         // Everything is derived from the configured, already-resolved bundle path: its directory,
-        // its basename, its lock. Never etc/certs/root-ca.pem, which is only this option's default
-        // (C36a).
+        // its basename, its lock. Never /etc/wazuh-manager/certs/root-ca.pem, which is only this
+        // option's default (C36a).
         std::filesystem::path directory = request.bundlePath.parent_path();
         if (directory.empty())
         {

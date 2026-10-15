@@ -258,3 +258,56 @@ TEST_F(AgentInfoLoggingTest, ProcessEventErrorUsesLogFunction)
 
     EXPECT_TRUE(foundError);
 }
+
+// The run loop can end on modulesd's shutdown flag and release the sync protocol before stop()
+// runs: a late manager response is then part of the shutdown, not a WARNING.
+TEST_F(AgentInfoLoggingTest, ParseResponseBufferAfterShutdownReleaseLogsDebug)
+{
+    m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc, m_queryModuleFunc, m_mockDBSync);
+    m_agentInfo->initSyncProtocol("agent_info");
+    m_agentInfo->setIsShuttingDownFunction([]()
+    {
+        return true;
+    });
+    m_agentInfo->releaseResources();
+
+    m_logMessages.clear();
+    const uint8_t data[] = {0x01, 0x02, 0x03};
+    EXPECT_FALSE(m_agentInfo->parseResponseBuffer(data, sizeof(data)));
+
+    bool found = false;
+
+    for (const auto& [level, msg] : m_logMessages)
+    {
+        if (msg.find("Sync protocol not initialized") != std::string::npos)
+        {
+            found = true;
+            EXPECT_EQ(level, LOG_DEBUG);
+        }
+    }
+
+    EXPECT_TRUE(found);
+}
+
+// Without a shutdown, a response with no sync protocol to take it is still a WARNING.
+TEST_F(AgentInfoLoggingTest, ParseResponseBufferWithoutSyncProtocolLogsWarning)
+{
+    m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc, m_queryModuleFunc, m_mockDBSync);
+
+    m_logMessages.clear();
+    const uint8_t data[] = {0x01, 0x02, 0x03};
+    EXPECT_FALSE(m_agentInfo->parseResponseBuffer(data, sizeof(data)));
+
+    bool found = false;
+
+    for (const auto& [level, msg] : m_logMessages)
+    {
+        if (msg.find("Sync protocol not initialized") != std::string::npos)
+        {
+            found = true;
+            EXPECT_EQ(level, LOG_WARNING);
+        }
+    }
+
+    EXPECT_TRUE(found);
+}

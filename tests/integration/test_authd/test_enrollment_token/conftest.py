@@ -16,7 +16,7 @@ from . import utils
 
 @pytest.fixture()
 def clean_enrollment_tokens():
-    """Leave `etc/enrollment_tokens.json` absent before and after the test.
+    """Leave `/etc/wazuh-manager/enrollment_tokens.json` absent before and after the test.
 
     Every case states what the store must hold, so none of them may inherit tokens from the
     previous one. Removing the file rather than emptying it matters: an absent store is the only

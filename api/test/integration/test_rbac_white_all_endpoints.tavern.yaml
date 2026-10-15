@@ -5,8 +5,6 @@
 # - GET /security/users/me
 # - POST /security/user/authenticate/run_as
 # - GET /security/users/me/policies
-# - GET /security/actions
-# - GET /security/resources
 
 ---
 test_name: DELETE /agents
@@ -1422,6 +1420,34 @@ stages:
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{balanced_port:d}/security/config"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: GET /security/actions
+
+stages:
+  - name: Try to get RBAC actions
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/actions"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: GET /security/resources
+
+stages:
+  - name: Try to get RBAC resources
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/resources"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"

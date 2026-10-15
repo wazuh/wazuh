@@ -7,26 +7,28 @@ set -euo pipefail
 # Usage: sudo ./wazuh_copy_certs.sh
 #
 # Copies the files issued by ./init.sh (scripts/wazuh-certs-tool.sh) from certs/
-# into $WAZUH_MANAGER_HOME/etc/certs with the ownership the installer expects:
+# into /etc/wazuh-manager/certs (root:wazuh-manager 0750) with the ownership the
+# installer expects:
 #
-#   root-ca.pem             -> root-ca.pem                 root:wazuh-manager           640
-#   <node>.pem              -> indexer-connector.pem       root:wazuh-manager           640
-#   <node>-key.pem          -> indexer-connector-key.pem   root:wazuh-manager           640
-#   <node>-remoted.pem      -> remoted.pem                 wazuh-manager:wazuh-manager  640
-#   <node>-remoted-key.pem  -> remoted-key.pem             wazuh-manager:wazuh-manager  640
-#   <node>-remoted.pem      -> apid.pem                    wazuh-manager:wazuh-manager  640
-#   <node>-remoted-key.pem  -> apid-key.pem                wazuh-manager:wazuh-manager  640
+#   root-ca.pem             -> root-ca.pem                 root:wazuh-manager  640
+#   <node>.pem              -> indexer-connector.pem       root:wazuh-manager  640
+#   <node>-key.pem          -> indexer-connector-key.pem   root:wazuh-manager  640
+#   <node>-remoted.pem      -> remoted.pem                 root:wazuh-manager  640
+#   <node>-remoted-key.pem  -> remoted-key.pem             root:wazuh-manager  640
+#   <node>-remoted.pem      -> apid.pem                    root:wazuh-manager  640
+#   <node>-remoted-key.pem  -> apid-key.pem                root:wazuh-manager  640
 #
 # The Server API pair is the listener pair: the installer issues apid.pem with the
 # profile of remoted.pem, and the e2e reaches the API on localhost, which its SAN carries.
 #
-# remoted opens its certificate and key after dropping privileges, hence the
-# wazuh-manager owner; the indexer connector files are read as root. root-ca.key
-# is never copied. wazuh-manager.conf is NOT edited: the <remote><https> defaults
+# Every daemon opens its pair after dropping privileges, through the group: the
+# files stay root-owned so the service user can read them but never rewrite them.
+# root-ca.key is never copied. wazuh-manager.conf is NOT edited: the <remote><https> defaults
 # already point at these paths (the block is printed for review).
 #
 # Environment:
-#   WAZUH_MANAGER_HOME  manager install directory (default: /var/wazuh-manager)
+#   WAZUH_MANAGER_HOME  manager install directory (default: /var/wazuh-manager); the
+#                       configuration directory is always /etc/wazuh-manager
 #   MANAGER_NODE_NAME   <node> above (default: first "- name:" under "manager:" in
 #                       the certificates YAML)
 #   CERTS_DIR           source directory (default: certs/ next to this script)
@@ -39,12 +41,14 @@ trap 'cd "$OLD_DIR"' EXIT
 cd "$SCRIPT_DIR"
 
 WAZUH_MANAGER_HOME="${WAZUH_MANAGER_HOME:-/var/wazuh-manager}"
+# The manager configuration directory is fixed: a custom home never moves it.
+CONF_DIR="/etc/wazuh-manager"
 # ../scripts of this checkout, never $WAZUH_DEV_SCRIPTS (see init.sh: it can name
 # another checkout or the pre-move location).
 DEV_SCRIPTS="$(cd "${SCRIPT_DIR}/../scripts" && pwd)"
 CERTS_DIR="${CERTS_DIR:-${SCRIPT_DIR}/certs}"
 CERTS_CONFIG="${CERTS_CONFIG:-${DEV_SCRIPTS}/wazuh-certs-tool.yml}"
-DEST_DIR="${WAZUH_MANAGER_HOME}/etc/certs"
+DEST_DIR="${CONF_DIR}/certs"
 WAZUH_USER="wazuh-manager"
 WAZUH_GROUP="wazuh-manager"
 
@@ -90,15 +94,15 @@ if [ -z "${MANAGER_NODE_NAME:-}" ]; then
 fi
 echo "==> Manager node: ${MANAGER_NODE_NAME}"
 
-# src|dst|owner (group is always wazuh-manager, mode 640). root-ca.key is not listed on purpose.
+# src|dst (always root:wazuh-manager 640). root-ca.key is not listed on purpose.
 CERT_TABLE=(
-    "root-ca.pem|root-ca.pem|root"
-    "${MANAGER_NODE_NAME}.pem|indexer-connector.pem|root"
-    "${MANAGER_NODE_NAME}-key.pem|indexer-connector-key.pem|root"
-    "${MANAGER_NODE_NAME}-remoted.pem|remoted.pem|${WAZUH_USER}"
-    "${MANAGER_NODE_NAME}-remoted-key.pem|remoted-key.pem|${WAZUH_USER}"
-    "${MANAGER_NODE_NAME}-remoted.pem|apid.pem|${WAZUH_USER}"
-    "${MANAGER_NODE_NAME}-remoted-key.pem|apid-key.pem|${WAZUH_USER}"
+    "root-ca.pem|root-ca.pem"
+    "${MANAGER_NODE_NAME}.pem|indexer-connector.pem"
+    "${MANAGER_NODE_NAME}-key.pem|indexer-connector-key.pem"
+    "${MANAGER_NODE_NAME}-remoted.pem|remoted.pem"
+    "${MANAGER_NODE_NAME}-remoted-key.pem|remoted-key.pem"
+    "${MANAGER_NODE_NAME}-remoted.pem|apid.pem"
+    "${MANAGER_NODE_NAME}-remoted-key.pem|apid-key.pem"
 )
 
 for entry in "${CERT_TABLE[@]}"; do
@@ -110,12 +114,12 @@ for entry in "${CERT_TABLE[@]}"; do
 done
 
 echo "==> Deploying certificates to ${DEST_DIR}..."
-install -d -m 1770 -o root -g "${WAZUH_GROUP}" "${DEST_DIR}"
+install -d -m 750 -o root -g "${WAZUH_GROUP}" "${DEST_DIR}"
 
 for entry in "${CERT_TABLE[@]}"; do
-    IFS='|' read -r src dst owner <<< "$entry"
-    install -m 640 -o "${owner}" -g "${WAZUH_GROUP}" "${CERTS_DIR}/${src}" "${DEST_DIR}/${dst}"
-    echo "    ${src} -> ${dst} (${owner}:${WAZUH_GROUP} 640)"
+    IFS='|' read -r src dst <<< "$entry"
+    install -m 640 -o root -g "${WAZUH_GROUP}" "${CERTS_DIR}/${src}" "${DEST_DIR}/${dst}"
+    echo "    ${src} -> ${dst} (root:${WAZUH_GROUP} 640)"
 done
 
 echo "==> Verifying the deployed certificates..."
@@ -126,12 +130,12 @@ if ! openssl x509 -in "${DEST_DIR}/remoted.pem" -noout -checkend 0 >/dev/null; t
 fi
 ls -l "${DEST_DIR}" | sed 's/^/    /'
 
-CONF="${WAZUH_MANAGER_HOME}/etc/wazuh-manager.conf"
+CONF="${CONF_DIR}/wazuh-manager.conf"
 if [ -f "$CONF" ]; then
     echo "==> <remote><https> certificate settings in ${CONF} (not edited):"
     sed -n '/<remote>/,/<\/remote>/{/<https>/,/<\/https>/p}' "$CONF" \
         | grep -E '<(certificate|key|ca_certificate)>' | sed 's/^[[:space:]]*/    /' || true
-    echo "    (keys not listed use the defaults: etc/certs/remoted.pem, etc/certs/remoted-key.pem, etc/certs/root-ca.pem)"
+    echo "    (keys not listed use the defaults: ${DEST_DIR}/remoted.pem, ${DEST_DIR}/remoted-key.pem, ${DEST_DIR}/root-ca.pem)"
 fi
 
 echo "==> Done. Restart the manager to load them: ${WAZUH_MANAGER_HOME}/bin/wazuh-manager-control restart"

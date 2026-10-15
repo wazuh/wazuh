@@ -20,6 +20,9 @@
 
 #ifdef WAZUH_UNIT_TESTING
 #include "unit_tests/wrappers/windows/winsvc_wrappers.h"
+#include "unit_tests/wrappers/windows/fileapi_wrappers.h"
+#include "unit_tests/wrappers/windows/synchapi_wrappers.h"
+#include "unit_tests/wrappers/windows/errhandlingapi_wrappers.h"
 #endif
 
 /**************************************************************************************
@@ -165,6 +168,42 @@ int CheckServiceRunning()
     }
 
     return (rc);
+}
+
+/* Takes the lock that serializes service-restart invocations: tmp\service-restart.lock, opened with no
+ * sharing, so it is held exactly as long as the process that opened it and released by the system if
+ * that process dies. The file is left in place: deleting it on close would leave it delete-pending while
+ * another handle (an antivirus scan) stays open, and an open in that window fails with
+ * ERROR_ACCESS_DENIED instead of ERROR_SHARING_VIOLATION. Only Administrators and SYSTEM can create or open files in tmp\
+ * (SetWazuhPermissions), so no other account can hold it -- unlike a named object, whose name any
+ * account can take first.
+ *
+ * Retries every 500 ms while another restart holds it. Returns the handle, or INVALID_HANDLE_VALUE with
+ * *timed_out set if it was still held after wait_ms, or INVALID_HANDLE_VALUE with *timed_out clear (and
+ * the error in GetLastError()) if it could not be opened for any other reason. */
+HANDLE acquire_restart_lock(DWORD wait_ms, int *timed_out)
+{
+    const DWORD retryMs = 500;
+    DWORD waited = 0;
+
+    *timed_out = 0;
+
+    for (;;) {
+        HANDLE lock = CreateFile("tmp\\service-restart.lock", GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_ALWAYS,
+                                 FILE_ATTRIBUTE_NORMAL, NULL);
+
+        if (lock != INVALID_HANDLE_VALUE || GetLastError() != ERROR_SHARING_VIOLATION) {
+            return lock;
+        }
+
+        if (waited >= wait_ms) {
+            *timed_out = 1;
+            return INVALID_HANDLE_VALUE;
+        }
+
+        Sleep(retryMs);
+        waited += retryMs;
+    }
 }
 
 /* Install the OSSEC-HIDS agent service */

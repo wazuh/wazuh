@@ -424,6 +424,24 @@ def test_upload_group_file(mock_safe_move, mock_open, mock_wazuh_uid, mock_wazuh
         with pytest.raises(WazuhError, match=".* 1111 .*"):
             configuration.upload_group_file('default', [], 'a.conf')
 
+def test_get_active_configuration_reads_authd_pass_from_the_configuration_directory(tmp_path):
+    """The enrollment password comes from common.AUTHD_PASS (the configuration directory), not from WAZUH_PATH/etc."""
+    authd_pass = tmp_path / 'authd.pass'
+    authd_pass.write_text('secret\n')
+
+    with patch('wazuh.core.common.AUTHD_PASS', new=str(authd_pass)), \
+            patch('wazuh.core.common.WAZUH_PATH', new='/nonexistent-home'), \
+            patch('os.path.exists', return_value=True), \
+            patch('wazuh.core.wazuh_socket.WazuhSocket.__init__', return_value=None), \
+            patch('wazuh.core.wazuh_socket.WazuhSocket.send'), \
+            patch('wazuh.core.wazuh_socket.WazuhSocket.close'), \
+            patch('wazuh.core.wazuh_socket.WazuhSocket.receive',
+                  return_value=b'ok {"auth": {"use_password": true}}'):
+        result = configuration.get_active_configuration(component='auth', configuration='auth')
+
+    assert result['authd.pass'] == 'secret'
+
+
 @pytest.mark.parametrize("component, socket, socket_dir, rec_msg", [
     ('auth', 'auth.sock', 'sockets', 'ok {"auth": {"use_password": true}}'),
     ('auth', 'auth.sock', 'sockets', 'ok {"auth": {"use_password": false}}'),

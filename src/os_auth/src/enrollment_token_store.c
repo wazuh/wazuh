@@ -9,7 +9,7 @@
  * Foundation.
  */
 
-/* The enrollment token store: the file etc/enrollment_tokens.json and the in-memory replica of it.
+/* The enrollment token store: the file /etc/wazuh-manager/enrollment_tokens.json and the in-memory replica of it.
  *
  * Three properties shape every function below.
  *

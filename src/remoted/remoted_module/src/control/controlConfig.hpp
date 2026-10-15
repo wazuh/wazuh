@@ -12,6 +12,7 @@
 #ifndef _REMOTED_CONTROL_CONFIG_HPP
 #define _REMOTED_CONTROL_CONFIG_HPP
 
+#include "common/installPaths.hpp"
 #include "json.hpp"
 #include "remoted_module.h"
 #include <cstdint>
@@ -39,13 +40,13 @@ namespace remoted::control
     /// going to; a slow connect is really an absent task manager.
     inline constexpr int kTaskConnectTimeoutMs = 2000;
 
-    inline constexpr const char* kTaskSocketPath = "/queue/sockets/task-http.sock";
+    inline constexpr const char* kTaskSocketPath = paths::kTaskSocket;
 
     /// The task manager route that hands over an agent's pending tasks and marks them delivered.
     inline constexpr const char* kTaskPendingRoute = "/v1/tasks/pending";
-    inline constexpr const char* kWdbSocketPath = "/queue/sockets/wdb.sock";
-    inline constexpr const char* kSharedGroupsRoot = "/etc/shared";
-    inline constexpr const char* kMultiGroupsRoot = "/var/multigroups";
+    inline constexpr const char* kWdbSocketPath = paths::kWdbSocket;
+    inline constexpr const char* kSharedGroupsRoot = paths::kSharedDir;
+    inline constexpr const char* kMultiGroupsRoot = paths::kMultigroupsDir;
 
     struct Config
     {

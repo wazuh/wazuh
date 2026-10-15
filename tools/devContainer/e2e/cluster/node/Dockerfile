@@ -8,8 +8,9 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/*
 
 # node/pkg holds either a wazuh-manager .deb (manifest/local/ci-run sources) or a
-# wazuh-manager-tree.tar.gz snapshot of an existing install (source mode),
-# produced by cluster/init.sh. In source mode wazuh-manager is created with the
+# wazuh-manager-tree.tar.gz snapshot of an existing install plus
+# wazuh-manager-conf.tar.gz of its configuration directory, /etc/wazuh-manager
+# (source mode), produced by cluster/init.sh. In source mode wazuh-manager is created with the
 # host's uid/gid (wazuh-manager.ids) before the tree is extracted with its
 # numeric ownership, so the tree keeps the installer's owners and the setuid bit
 # of bin/wazuh-manager-service-control without any chown.
@@ -22,6 +23,7 @@ RUN set -e; \
       groupadd -r -g "$WAZUH_GID" wazuh-manager; \
       useradd -r -u "$WAZUH_UID" -g wazuh-manager -d /var/wazuh-manager -s /sbin/nologin wazuh-manager; \
       tar --numeric-owner -xzf /tmp/pkg/wazuh-manager-tree.tar.gz -C /var; \
+      tar --numeric-owner -xzf /tmp/pkg/wazuh-manager-conf.tar.gz -C /etc; \
     else \
       echo "no manager package or tree found in node/pkg; run cluster/init.sh first" >&2; exit 1; \
     fi; \

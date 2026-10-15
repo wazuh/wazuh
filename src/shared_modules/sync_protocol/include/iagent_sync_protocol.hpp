@@ -44,13 +44,14 @@ class IAgentSyncProtocol
         /// A 409 (checksum mismatch) is retried against the manager up to
         /// CHECKSUM_MISMATCH_MAX_ATTEMPTS times, spaced out, before being trusted as a
         /// genuine mismatch -- a recent bulk write may not be visible in the indexer yet.
-        /// Any other failure (communication error, manager offline) returns false
-        /// immediately without spending this retry budget.
+        /// Any other failure (communication error, manager offline, stop requested) ends
+        /// the check right away as NOT_CHECKED, without spending this retry budget.
         /// @param index The index/table to check
         /// @param checksum The calculated checksum for the index
-        /// @return true if full sync is required (checksum mismatch); false if integrity is valid.
-        virtual bool requiresFullSync(const std::string& index,
-                                      const std::string& checksum) = 0;
+        /// @return MISMATCH if full sync is required, VALID if the manager confirmed the
+        ///         checksum, NOT_CHECKED (with the reason) if the check did not complete.
+        virtual IntegrityCheckResult requiresFullSync(const std::string& index,
+                                                      const std::string& checksum) = 0;
 
         /// @brief Synchronizes metadata or groups with the server without sending data.
         ///

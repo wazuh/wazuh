@@ -70,8 +70,8 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         SyncModuleResult synchronizeModuleBounded(Mode mode, size_t maxBlocks);
 
         /// @copydoc IAgentSyncProtocol::requiresFullSync
-        bool requiresFullSync(const std::string& index,
-                              const std::string& checksum) override;
+        IntegrityCheckResult requiresFullSync(const std::string& index,
+                                              const std::string& checksum) override;
 
         /// @copydoc IAgentSyncProtocol::synchronizeMetadataOrGroups
         SyncModuleResult synchronizeMetadataOrGroups(Mode mode, const std::vector<std::string>& indices, uint64_t globalVersion) override;

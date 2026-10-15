@@ -113,8 +113,8 @@ static std::string determineSyncFailureReasonBasedOnSyncResult(SyncResult result
 
         // Reached by synchronizeModule()/synchronizeMetadataOrGroups() themselves, never by the
         // dedicated Mode::CHECK integrity flow (requiresFullSync(), which tracks its own
-        // isChecksumMismatch locally and never calls this function at all). Do NOT describe this
-        // as triggering a full resync -- that retry-budget mechanism belongs to requiresFullSync()
+        // isChecksumMismatch locally and only calls this function for the other results). Do NOT
+        // describe this as triggering a full resync -- that retry-budget mechanism belongs to requiresFullSync()
         // alone and is not what happens here: this session is simply dropped.
         //
         // The manager's own body tells us which of the (at least) two distinct causes this is --
@@ -570,12 +570,20 @@ unsigned int AgentSyncProtocol::trackLocalTransportFailure(bool stopped)
     return m_consecutiveLocalTransportFailures.fetch_add(1, std::memory_order_relaxed) + 1;
 }
 
-bool AgentSyncProtocol::requiresFullSync(const std::string& index,
-                                         const std::string& checksum)
+IntegrityCheckResult AgentSyncProtocol::requiresFullSync(const std::string& index,
+                                                         const std::string& checksum)
 {
     if (!m_syncTransport->checkStatus())
     {
-        return false; // Return false as this is not a checksum error from manager
+        // Nothing was sent, so this says nothing about the checksum or the manager.
+        m_logger(LOG_DEBUG, "Module integrity check not performed for index: " + index +
+                 " - sync intake socket unreachable");
+        return {.status = IntegrityCheckStatus::NOT_CHECKED,
+                .failureReason = "Failed to reach the sync intake socket.",
+                .stopped = shouldStop(),
+                .managerNotReady = false,
+                .localTransportUnavailable = true,
+                .mismatchUnconfirmed = false};
     }
 
 #ifdef WAZUH_UNIT_TESTING
@@ -589,9 +597,20 @@ bool AgentSyncProtocol::requiresFullSync(const std::string& index,
 
     for (unsigned int attempt = 1; attempt <= CHECKSUM_MISMATCH_MAX_ATTEMPTS; ++attempt)
     {
+        // Every attempt past the first one is only made after a 409, so stopping now leaves
+        // that mismatch unconfirmed.
+        const bool mismatchPending = attempt > 1;
+
         if (shouldStop())
         {
-            return false;
+            m_logger(LOG_DEBUG, "Module integrity check for index: " + index + " stopped (attempt " +
+                     std::to_string(attempt) + "/" + std::to_string(CHECKSUM_MISMATCH_MAX_ATTEMPTS) + ")");
+            return {.status = IntegrityCheckStatus::NOT_CHECKED,
+                    .failureReason = "Module is stopping.",
+                    .stopped = true,
+                    .managerNotReady = false,
+                    .localTransportUnavailable = false,
+                    .mismatchUnconfirmed = mismatchPending};
         }
 
         clearSyncState();
@@ -608,27 +627,60 @@ bool AgentSyncProtocol::requiresFullSync(const std::string& index,
                      " (attempt " + std::to_string(attempt) + "/" +
                      std::to_string(CHECKSUM_MISMATCH_MAX_ATTEMPTS) + ")");
             clearSyncState();
-            return false; // Integrity is valid, no sync required
+            return {.status = IntegrityCheckStatus::VALID,
+                    .failureReason = {},
+                    .stopped = false,
+                    .managerNotReady = false,
+                    .localTransportUnavailable = false,
+                    .mismatchUnconfirmed = false};
         }
 
         // Only spend the retry budget on an explicit checksum mismatch (409). Any other
-        // failure (communication error, manager offline, timeout) returns false right
-        // away -- it says nothing about whether the checksum actually matches.
+        // failure (communication error, manager offline, timeout, stop) ends the check as
+        // NOT_CHECKED right away -- it says nothing about whether the checksum actually matches.
         bool isChecksumMismatch = false;
+        std::string failureReason;
+        bool managerNotReady = false;
         {
             // Locked for the same reason as synchronizeDeltaByBlocks/
             // synchronizeMetadataOrGroups above: phase is still WaitingResponse
             // until clearSyncState() below, so a late response can still write
-            // this field concurrently. (CID 562605)
+            // these fields concurrently. (CID 562605)
             std::lock_guard<std::mutex> lock(m_syncState.mtx);
             isChecksumMismatch = (m_syncState.lastSyncResult == SyncResult::CHECKSUM_ERROR);
+
+            if (!isChecksumMismatch)
+            {
+                failureReason = determineSyncFailureReasonBasedOnSyncResult(m_syncState.lastSyncResult, m_isFeedBased,
+                                                                            m_syncState.lastSyncFailureBody);
+                managerNotReady = m_syncState.lastSyncManagerNotReady;
+            }
         }
         clearSyncState();
 
         if (!isChecksumMismatch)
         {
-            m_logger(LOG_DEBUG, "Module integrity check failed for index: " + index + " - Manager is offline");
-            return false;
+            // A session ended by stop() fails like any other; report it as the stop it is.
+            const bool stopped = shouldStop();
+
+            if (stopped)
+            {
+                failureReason = "Module is stopping.";
+            }
+            else if (failureReason.empty())
+            {
+                failureReason = "Integrity check session did not complete.";
+            }
+
+            m_logger(LOG_DEBUG, "Module integrity check not completed for index: " + index + " (attempt " +
+                     std::to_string(attempt) + "/" + std::to_string(CHECKSUM_MISMATCH_MAX_ATTEMPTS) + "): " +
+                     failureReason);
+            return {.status = IntegrityCheckStatus::NOT_CHECKED,
+                    .failureReason = std::move(failureReason),
+                    .stopped = stopped,
+                    .managerNotReady = !stopped && managerNotReady,
+                    .localTransportUnavailable = false,
+                    .mismatchUnconfirmed = mismatchPending};
         }
 
         if (attempt < CHECKSUM_MISMATCH_MAX_ATTEMPTS)
@@ -649,7 +701,12 @@ bool AgentSyncProtocol::requiresFullSync(const std::string& index,
         }
     }
 
-    return true;
+    return {.status = IntegrityCheckStatus::MISMATCH,
+            .failureReason = {},
+            .stopped = false,
+            .managerNotReady = false,
+            .localTransportUnavailable = false,
+            .mismatchUnconfirmed = false};
 }
 
 SyncModuleResult AgentSyncProtocol::synchronizeMetadataOrGroups(Mode mode,

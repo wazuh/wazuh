@@ -39,7 +39,7 @@ static void test_authd_read_config_loads_auth_section(void **state) {
     (void) state;
     memset(&config, 0, sizeof(config));
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Reading configuration 'etc/wazuh-manager.conf'");
+    expect_string(__wrap__mdebug2, formatted_msg, "Reading configuration '" WAZUHCONF "'");
     expect_string(__wrap_w_mconf_load, cfgfile, WAZUHCONF);
     will_return(__wrap_w_mconf_load, 0);
     expect_string(__wrap_w_mconf_section, section, "auth");
@@ -63,7 +63,7 @@ static void test_authd_read_config_loads_auth_section(void **state) {
     assert_int_equal(config.flags.remote_enrollment, 1); // reader default
     assert_int_equal(config.flags.legacy_enrollment, 0); // unset: follows remote.legacy.enabled
     assert_string_equal(config.ciphers, DEFAULT_CIPHERS);
-    assert_string_equal(config.manager_cert, "etc/certs/remoted.pem");
+    assert_string_equal(config.manager_cert, "/etc/wazuh-manager/certs/remoted.pem");
     assert_int_equal(config.timeout_sec, 1);
     assert_int_equal(config.max_agents, 7);
     assert_int_equal(config.purge_delay, 120);

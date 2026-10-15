@@ -358,6 +358,33 @@ stages:
       <<: *permission_denied
 
 ---
+test_name: GET RBAC CATALOG
+
+stages:
+
+  - name: Get RBAC actions (deny)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/actions"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        endpoint: "GET /security/actions"
+    response:
+      <<: *permission_denied
+
+  - name: Get RBAC resources (deny)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/resources"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      <<: *permission_denied
+
+---
 test_name: UPDATE SECURITY CONFIG
 
 stages:

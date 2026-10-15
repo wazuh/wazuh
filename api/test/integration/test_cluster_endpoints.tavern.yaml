@@ -692,7 +692,7 @@ stages:
       json:
         error: 0
         data:
-          # Asserts the SHAPE of the report -- the effective `remote` section of etc/wazuh-manager.conf
+          # Asserts the SHAPE of the report -- the effective `remote` section of /etc/wazuh-manager/wazuh-manager.conf
           # (schema defaults applied): its three blocks are always present, with native types.
           affected_items:
             - remote:

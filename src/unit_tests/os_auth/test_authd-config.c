@@ -63,7 +63,7 @@ static void test_w_authd_validate_ciphers_multiple_colons_only(void **state) {
     assert_int_equal(w_authd_validate_ciphers(":::"), OS_INVALID);
 }
 
-/* Read_Authd_JSON(): the effective `auth` section of etc/wazuh-manager.conf */
+/* Read_Authd_JSON(): the effective `auth` section of /etc/wazuh-manager/wazuh-manager.conf */
 
 static void free_authd_strings(authd_config_t *c) {
     os_free(c->ciphers);
@@ -78,8 +78,8 @@ static void test_Read_Authd_JSON_effective_defaults(void **state) {
     cJSON *auth = cJSON_Parse(
         "{\"disabled\":false,\"port\":1515,\"ipv6\":false,\"use_source_ip\":false,\"purge\":true,\"use_password\":true,"
         "\"ciphers\":\"TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256\","
-        "\"ssl_agent_ca\":\"\",\"ssl_verify_host\":false,\"ssl_manager_cert\":\"etc/certs/remoted.pem\","
-        "\"ssl_manager_key\":\"etc/certs/remoted-key.pem\",\"remote_enrollment\":true,\"legacy_enrollment\":true,"
+        "\"ssl_agent_ca\":\"\",\"ssl_verify_host\":false,\"ssl_manager_cert\":\"/etc/wazuh-manager/certs/remoted.pem\","
+        "\"ssl_manager_key\":\"/etc/wazuh-manager/certs/remoted-key.pem\",\"remote_enrollment\":true,\"legacy_enrollment\":true,"
         "\"force\":{\"enabled\":true,\"key_mismatch\":true,\"disconnected_time\":{\"enabled\":true,\"value\":\"1h\"},"
         "\"after_registration_time\":\"1h\"},\"agents\":{\"allow_higher_versions\":false}}");
     assert_non_null(auth);
@@ -95,8 +95,8 @@ static void test_Read_Authd_JSON_effective_defaults(void **state) {
     assert_string_equal(local_config.ciphers, DEFAULT_CIPHERS);
     assert_null(local_config.agent_ca);
     assert_int_equal(local_config.flags.verify_host, 0);
-    assert_string_equal(local_config.manager_cert, "etc/certs/remoted.pem");
-    assert_string_equal(local_config.manager_key, "etc/certs/remoted-key.pem");
+    assert_string_equal(local_config.manager_cert, "/etc/wazuh-manager/certs/remoted.pem");
+    assert_string_equal(local_config.manager_key, "/etc/wazuh-manager/certs/remoted-key.pem");
     assert_int_equal(local_config.flags.remote_enrollment, 1);
     assert_int_equal(local_config.flags.legacy_enrollment, 1);
     assert_true(local_config.force_options.enabled);

@@ -107,7 +107,7 @@ void test_Read_WazuhDB_JSON_rejects_zero_interval_and_max_files(void **state)
 int main(void)
 {
     const struct CMUnitTest tests[] = {
-        // Tests Read_WazuhDB_JSON (etc/wazuh-manager.conf)
+        // Tests Read_WazuhDB_JSON (/etc/wazuh-manager/wazuh-manager.conf)
         cmocka_unit_test(test_Read_WazuhDB_JSON_effective_defaults),
         cmocka_unit_test(test_Read_WazuhDB_JSON_interval_int_and_disabled),
         cmocka_unit_test(test_Read_WazuhDB_JSON_absent_keeps_defaults),
