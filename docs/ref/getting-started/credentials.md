@@ -618,6 +618,9 @@ To change a Server API password on its own:
 sudo /var/wazuh-manager/bin/rbac_control change-password
 ```
 
-`rbac_control` does not update `/etc/wazuh/credentials.env`, so a value left there after a change is
-stale. See [Server API users](installation.md#server-api-users) for where the change applies in a
-cluster.
+Neither `rbac_control` nor the Server API (`PUT /security/users/{user_id}`) updates
+`/etc/wazuh/credentials.env`, so a value left there after a change is stale: `rbac.db` is the only
+authority once it is seeded. Only the passwords tool records the change in the file, and it applies
+the stricter [supplied-password rule](#the-password-policy), so a password chosen through the API
+may be one it cannot store. See [Server API users](installation.md#server-api-users) for where the
+change applies in a cluster.

@@ -29,11 +29,15 @@ from wazuh.rbac.orm import UserRolesManager, RolesRulesManager, RulesManager
 # This REPLACES the previous rule, which additionally demanded an uppercase letter, a lowercase
 # letter and a symbol. Relaxing a password rule deserves its reasoning stated, so:
 #
-#   * The rule has to be one rule. The manager, the indexer and the dashboard all resolve against
-#     /etc/wazuh/credentials.env, and the credential resolver validates a value at install time that
-#     this function validates again at rotation. Two different rules means a value the installation
-#     accepts and the API later refuses -- a deployment that comes up and cannot be administered.
-#     PCI DSS 8.3.6 is the rule the other two components implement, so it is the one that is shared.
+#   * Every value the installation accepts must be one the API accepts. The credential resolver
+#     validates a value at install time that this function validates again at rotation; a value
+#     the installation accepts and the API later refuses is a deployment that comes up and cannot
+#     be administered. The resolver's rule (wazuh_password_validate() in wazuh-credentials.sh, the
+#     shared library downloaded from wazuh-installation-assistant by `make deps`) is deliberately
+#     STRICTER than this one -- the generator's alphabet and all four character classes -- because
+#     the value it accepts is written to credentials.env and parsed without escaping by every
+#     component. The converse does not hold and is not meant to: a password this function accepts
+#     may be one the resolver, and so the installation assistant's passwords tool, rejects.
 #   * Composition rules are not what makes a password strong, and NIST SP 800-63B 5.1.1.2 says so
 #     explicitly ("verifiers SHOULD NOT impose other composition rules"): they push operators toward
 #     predictable substitutions while barely moving the search space. The 12-character floor -- the
@@ -55,12 +59,9 @@ PASSWORD_MAX_LENGTH = 64
 def validate_password(password: str):
     """Check a password against the Server API password policy.
 
-    This is the single spelling of the rule. It is mirrored -- deliberately, since a shell script
-    cannot import it -- by wazuh_password_validate() in wazuh-credentials.sh, the shared credential
-    library downloaded from wazuh-installation-assistant by `make deps` into
-    src/external/wazuh-credentials/, so
-    that a value the credential resolver accepts or generates at install time is never one this
-    function would reject later.
+    This is the rule the API applies to every user. The credential resolver applies a stricter
+    one at install time (see the comment above), so a value it accepts or generates is never one
+    this function would reject later; the reverse is not guaranteed.
 
     Parameters
     ----------
