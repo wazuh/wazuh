@@ -122,6 +122,9 @@ list(APPEND client-agent_names "test_sendmsg")
 list(APPEND client-agent_flags "${DEBUG_OP_WRAPPERS} \
                                 -Wl,--wrap,CreateSecMSG -Wl,--wrap,sleep -Wl,--wrap,getpid -Wl,--wrap,w_agentd_state_update \
                                 -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,OS_SendSecureTCPTimeout -Wl,--wrap,OS_SendUDPbySize -Wl,--wrap,OS_CloseSocket")
+
+list(APPEND client-agent_names "test_request")
+list(APPEND client-agent_flags "${DEBUG_OP_WRAPPERS} ${HASH_OP_WRAPPERS} -Wl,--wrap,send_msg -Wl,--wrap,getDefine_Int")
 endif()
 
 list(LENGTH client-agent_names count)
