@@ -60,7 +60,7 @@ log analysis, file integrity monitoring, intrusions detection and policy and com
 # The rpm of the builder image is built with prefix /usr/local: pin the license directory
 # to /usr/share/licenses/<name>, where %license files belong.
 %global _defaultlicensedir /usr/share/licenses
-%global _docdir_fmt %{NAME}
+%global _docdir_fmt %%{NAME}
 
 # Build debuginfo package
 %package -n wazuh-manager-debuginfo
