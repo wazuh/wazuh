@@ -28,9 +28,14 @@ if(${TARGET} STREQUAL "winagent")
     list(APPEND logcollector_flags "-Wl,--wrap,wstr_split -Wl,--wrap=syscom_dispatch -Wl,--wrap=Start_win32_Syscheck \
                                     -Wl,--wrap=is_fim_shutdown -Wl,--wrap,convert_windows_string \
                                     ${DEBUG_OP_WRAPPERS}")
+
+    list(APPEND logcollector_names "test_read_ucs2")
+    list(APPEND logcollector_flags "-Wl,--wrap,can_read -Wl,--wrap,w_get_hash_context -Wl,--wrap,w_update_file_status \
+                                    -Wl,--wrap,w_msg_hash_queues_push -Wl,--wrap=syscom_dispatch \
+                                    -Wl,--wrap=Start_win32_Syscheck -Wl,--wrap=is_fim_shutdown -Wl,--wrap,_merror")
 else()
     list(APPEND logcollector_names "test_logcollector")
-    list(APPEND logcollector_flags "-Wl,--wrap,OS_SHA1_Stream -Wl,--wrap,merror_exit \
+    list(APPEND logcollector_flags "-Wl,--wrap,OS_SHA1_Stream -Wl,--wrap,merror_exit -Wl,--wrap,rename_ex \
                                     -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets -Wl,--wrap,fread -Wl,--wrap,fseek \
                                     -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fgetpos \
                                     -Wl,--wrap,cJSON_CreateObject -Wl,--wrap,cJSON_AddArrayToObject -Wl,--wrap,cJSON_AddStringToObject \
