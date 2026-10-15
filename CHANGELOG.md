@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 #### Fixed
 
 - Fixed the validation of `group_id` when reading and writing group configuration files, rejecting values that are not a valid group name. ([#40363](https://github.com/wazuh/wazuh/pull/40363))
+- Fixed the group configuration readers and upload accepting a group directory that resolves outside the shared directory, and the multigroup reader accepting a file name that resolves outside the multigroup directory. ([#36834](https://github.com/wazuh/wazuh/issues/36834))
 
 ### Agent
 
