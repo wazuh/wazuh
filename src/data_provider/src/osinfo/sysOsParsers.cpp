@@ -131,7 +131,8 @@ bool UnixOsParser::parseFile(std::istream& in, nlohmann::json& info)
         {"VERSION_ID",       "version_id"},
         {"ID",               "os_platform"},
         {"BUILD_ID",         "os_build"},
-        {"VERSION_CODENAME", "os_codename"}
+        {"VERSION_CODENAME", "os_codename"},
+        {"RHEL_VERSION",     "rhel_version"}
     };
     const auto ret {parseUnixFile(KEY_MAPPING, SEPARATOR, in, info)};
 
@@ -154,8 +155,25 @@ bool UnixOsParser::parseFile(std::istream& in, nlohmann::json& info)
             findMajorMinorVersionInString(info["os_version"], info);
         }
 
-        // Clean up temporary field
+        // RHCOS up to OpenShift 4.19 reports the OpenShift release in VERSION/VERSION_ID; the RHEL base is only in RHEL_VERSION.
+        if (info.contains("os_platform") && info.at("os_platform") == "rhcos" && info.contains("rhel_version"))
+        {
+            nlohmann::json rhelVersion;
+            findMajorMinorVersionInString(info["rhel_version"], rhelVersion);
+
+            if (rhelVersion.contains("os_major"))
+            {
+                info.erase("os_major");
+                info.erase("os_minor");
+                info.erase("os_patch");
+                info["os_version"] = info["rhel_version"];
+                info.update(rhelVersion);
+            }
+        }
+
+        // Clean up temporary fields
         info.erase("version_id");
+        info.erase("rhel_version");
     }
 
     return ret;
