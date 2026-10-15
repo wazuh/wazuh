@@ -12,7 +12,7 @@ import re
 from os import path
 from typing import Iterator
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import wazuh_integration
@@ -22,6 +22,7 @@ MAX_RECORD_RETENTION = 500
 PATH_DATE_FORMAT = "%Y/%m/%d"
 DB_DATE_FORMAT = "%Y%m%d"
 DEFAULT_DATABASE_NAME = "s3_cloudtrail"
+LATE_ARRIVAL_LOG_TABLES = {"cloudtrail", "alb", "clb", "nlb"}
 
 RETRY_CONFIGURATION_URL = 'https://documentation.wazuh.com/current/amazon/services/prerequisites/' \
                           'considerations.html#Connection-configuration-for-retries'
@@ -172,6 +173,25 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                     LIMIT 1
                     OFFSET :retain_db_records);"""
 
+        self.sql_db_maintenance_before_marker = """
+            DELETE FROM {table_name}
+            WHERE
+                bucket_path=:bucket_path AND
+                aws_account_id=:aws_account_id AND
+                aws_region=:aws_region AND
+                log_key < :marker AND
+                log_key <= (SELECT log_key
+                    FROM
+                        {table_name}
+                    WHERE
+                        bucket_path=:bucket_path AND
+                        aws_account_id=:aws_account_id AND
+                        aws_region=:aws_region
+                    ORDER BY
+                        log_key DESC
+                    LIMIT 1
+                    OFFSET :retain_db_records);"""
+
         self.sql_count_region = """
             SELECT
                 count(*)
@@ -259,6 +279,28 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
             except Exception as e:
                 aws_tools.debug("+++ Error marking log {} as completed: {}".format(log_file['Key'], e), 2)
 
+    def rewind_marker_to_day_folder(self, marker: str, aws_account_id: str, aws_region: str) -> str:
+        """
+        Rewind the S3 StartAfter marker to the beginning of the previous day folder (YYYY/MM/DD)
+        to catch late-arriving objects uploaded out of order (e.g. CloudTrail / ALB).
+        """
+        # Look for the date after the full prefix only, as the configured prefix could have one too
+        full_prefix = self.get_full_prefix(aws_account_id, aws_region)
+        date_match = self.date_regex.search(marker, len(full_prefix)) if marker.startswith(full_prefix) else None
+        if not date_match:
+            return marker
+
+        day_str = date_match.group(1)
+        try:
+            day = datetime.strptime(day_str, PATH_DATE_FORMAT)
+        except ValueError:
+            return marker
+
+        # Rewind one full day
+        rewind_day = day - timedelta(days=1)
+
+        return self.marker_custom_date(aws_region, aws_account_id, rewind_day)
+
     def db_count_region(self, aws_account_id, aws_region):
         """Counts the number of rows in DB for a region
         :param aws_account_id: AWS account ID
@@ -278,11 +320,28 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
         aws_tools.debug("+++ DB Maintenance", 1)
         try:
             if self.db_count_region(aws_account_id, aws_region) > self.retain_db_records:
-                self.db_cursor.execute(self.sql_db_maintenance.format(table_name=self.db_table_name), {
+                query = self.sql_db_maintenance
+                params = {
                     'bucket_path': self.bucket_path,
                     'aws_account_id': aws_account_id,
                     'aws_region': aws_region,
-                    'retain_db_records': self.retain_db_records})
+                    'retain_db_records': self.retain_db_records}
+
+                if self.db_table_name in LATE_ARRIVAL_LOG_TABLES:
+                    # Keep the files of the rewound marker window, or the next fetch would list them again
+                    # and process them as new
+                    last_key = self.db_cursor.execute(
+                        self.sql_find_last_key_processed.format(table_name=self.db_table_name), {
+                            'bucket_path': self.bucket_path,
+                            'aws_account_id': aws_account_id,
+                            'aws_region': aws_region,
+                            'prefix': f'{self.get_full_prefix(aws_account_id, aws_region)}%'}).fetchone()
+                    if last_key:
+                        query = self.sql_db_maintenance_before_marker
+                        params['marker'] = self.rewind_marker_to_day_folder(last_key[0], aws_account_id,
+                                                                            aws_region)
+
+                self.db_cursor.execute(query.format(table_name=self.db_table_name), params)
         except Exception as e:
             aws_tools.error(f"Failed to execute DB cleanup - AWS Account ID: {aws_account_id}  Region: {aws_region}: {e}")
 
@@ -394,16 +453,25 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
             else:
                 filter_marker = self.marker_custom_date(aws_region, aws_account_id, self.default_date)
         else:
+            db_prefix = f'{self.prefix}%'
+            if self.db_table_name in LATE_ARRIVAL_LOG_TABLES:
+                db_prefix = f'{self.get_full_prefix(aws_account_id, aws_region)}%'
+
             query_last_key = self.db_cursor.execute(
                 self.sql_find_last_key_processed.format(table_name=self.db_table_name), {
                     'bucket_path': self.bucket_path,
                     'aws_region': aws_region,
-                    'prefix': f'{self.prefix}%',
+                    'prefix': db_prefix,
                     'aws_account_id': aws_account_id,
                     **kwargs
                 })
             try:
                 filter_marker = query_last_key.fetchone()[0]
+
+                # Rewind marker to day folder to catch late-arriving logs
+                if filter_marker and self.db_table_name in LATE_ARRIVAL_LOG_TABLES:
+                    filter_marker = self.rewind_marker_to_day_folder(filter_marker, aws_account_id, aws_region)
+
             except (TypeError, IndexError):
                 # if DB is empty for a region
                 filter_marker = self.marker_only_logs_after(aws_region, aws_account_id) if self.only_logs_after \
@@ -933,7 +1001,7 @@ class AWSCustomBucket(AWSBucket):
     def already_processed(self, downloaded_file, aws_account_id, aws_region, **kwargs):
         cursor = self.db_cursor.execute(self.sql_already_processed.format(table_name=self.db_table_name), {
             'bucket_path': self.bucket_path,
-            'aws_account_id': self.aws_account_id,
+            'aws_account_id': aws_account_id if aws_account_id else self.aws_account_id,
             'log_key': downloaded_file})
         return cursor.fetchone()[0] > 0
 

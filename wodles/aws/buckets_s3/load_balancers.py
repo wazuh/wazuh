@@ -20,6 +20,24 @@ class AWSLBBucket(AWSCustomBucket):
         self.service = 'elasticloadbalancing'
         AWSCustomBucket.__init__(self, *args, **kwargs)
 
+        self.sql_find_keys_processed = """
+            SELECT
+                log_key
+            FROM
+                {table_name}
+            WHERE
+                bucket_path=:bucket_path AND
+                aws_account_id=:aws_account_id
+            ORDER BY
+                log_key DESC;"""
+
+        self.sql_delete_key = """
+            DELETE FROM {table_name}
+            WHERE
+                bucket_path=:bucket_path AND
+                aws_account_id=:aws_account_id AND
+                log_key=:log_key;"""
+
     def get_base_prefix(self):
         return f'{self.prefix}AWSLogs/{self.suffix}'
 
@@ -34,6 +52,38 @@ class AWSLBBucket(AWSCustomBucket):
 
     def mark_complete(self, aws_account_id, aws_region, log_file):
         AWSBucket.mark_complete(self, aws_account_id, aws_region, log_file)
+
+    def db_maintenance(self, aws_account_id=None, **kwargs):
+        """Delete the processed keys beyond the retention, except the ones inside the window of the rewound
+        marker of their region, as the next fetch would list them again and process them as new.
+
+        The table has no region column and holds every region of the bucket, so the window of each region is
+        taken from its own greatest key, which is the first one of its prefix in descending order.
+        """
+        aws_tools.debug("+++ DB Maintenance", 1)
+        aws_account_id = aws_account_id if aws_account_id else self.aws_account_id
+        try:
+            if self.db_count_custom(aws_account_id) <= self.retain_db_records:
+                return
+
+            params = {'bucket_path': self.bucket_path, 'aws_account_id': aws_account_id}
+            keys = [row[0] for row in self.db_cursor.execute(
+                self.sql_find_keys_processed.format(table_name=self.db_table_name), params).fetchall()]
+
+            service_prefix = self.get_service_prefix(aws_account_id)
+            window_markers = {}
+            keys_to_delete = []
+            for index, key in enumerate(keys):
+                region = key[len(service_prefix):].split('/', 1)[0] if key.startswith(service_prefix) else None
+                if region and region not in window_markers:
+                    window_markers[region] = self.rewind_marker_to_day_folder(key, aws_account_id, region)
+
+                if index >= self.retain_db_records and (not region or key < window_markers[region]):
+                    keys_to_delete.append({**params, 'log_key': key})
+
+            self.db_cursor.executemany(self.sql_delete_key.format(table_name=self.db_table_name), keys_to_delete)
+        except Exception as e:
+            aws_tools.error(f"ERROR: Failed to execute DB cleanup - Path: {self.bucket_path}: {e}")
 
 
 class AWSALBBucket(AWSLBBucket):
