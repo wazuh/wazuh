@@ -92,3 +92,27 @@ is not optimising a path whose output is thrown away.
   from the wrong distribution.
 - **The partial-table result above is not a finding**, only an observation that needs a node
   running containers that produce packages and services before it means anything.
+
+
+## Not done: the per-value metadata cap
+
+A cap on oversized label and annotation values was planned alongside this work, to stop a single
+`kubectl.kubernetes.io/last-applied-configuration` from dominating a container's context.
+
+**It is not implemented, and this measurement is why.** The annotation that motivated it was not
+present anywhere on the measured node, and nothing there came close to the proposed 512-byte
+threshold. A cap sized against this data would be sized against the wrong distribution: it would
+pass everything here and tell us nothing about the case it exists for.
+
+What it needs before it is worth writing:
+
+- Context sizes from a node running real Kubernetes workloads, not `kind`.
+- Confirmation from whoever owns the index templates (#37837) that annotation values may be
+  truncated at all, and at what length.
+- A decision on each of: drop or truncate; bytes or characters; whether a truncation marker
+  counts toward the limit; whether keys are capped as well as values; whether there is a cap on
+  entry count or total size; and how discarded metadata is reported.
+
+Note also that storing the context once already removes the *multiplicative* cost that made large
+annotations alarming. What a cap would still bound is the size of a single stored row, which is a
+much weaker motivation than the one originally filed.

@@ -988,3 +988,60 @@ Reaching that guard at all needed a fake socket that accepts and closes without 
 `modulesd` simply stopped, `fim_container_baseline_available()` skips the whole baseline on the
 missing socket file and the `listed < 0` path is never entered. Worth knowing before anyone tries to
 test container-connector failure handling by killing `modulesd`.
+
+---
+
+## C29 — One label edit re-emits a container's entire inventory
+
+**Severity: high.** `syscollectorImp.cpp` `updateChanges()`, `sqlite_dbengine.cpp` `getRowDiff()`
+**Status: fixed** by roadmap item 17 — see [24](24-container-context-measured.md).
+
+`updateChanges()` builds its sync input with `options.return_old_data` and nothing else:
+
+```cpp
+input["options"]["return_old_data"] = true;
+txn.syncTxnRow(input);
+```
+
+`getRowDiff()` compares **every column the caller supplied**. The caller supplied
+`container_json`, because until item 17 every row carried a copy of its container's context. So
+any change to that context — one edited label, one churning Kubernetes annotation — changed a
+column on *every row of that container, in every table*, and DBSync reported each as MODIFIED
+and bumped its `version`.
+
+`10-container-instances-delta-plan.md:994` records that Kubernetes annotations churn on every
+reconcile, so this was not hypothetical.
+
+**What makes it worth writing down even now it is fixed** is that the hazard was already known
+and had already been defended against — in the wrong place. `getRowChecksum()` strips both
+container columns, with a comment that names this exact failure:
+
+> Digesting it makes one label or annotation edit change the checksum of every row of that
+> container, in every table, and re-emit its entire inventory as MODIFIED.
+
+The checksum was protected. The **diff** was not, and the diff is what decides whether an event
+is emitted. A guard placed one layer away from the mechanism it is guarding reads as protection
+and is not.
+
+### The one-line fix is a trap
+
+Adding `container_json` to `options.ignore` looks correct and is not.
+`getRowDiff()` clears the entire update when only ignored columns differ:
+
+```cpp
+if (!haveDiffOnNonIgnored(oldData))
+{
+    updatedData.clear();
+    oldData.clear();
+}
+```
+
+The storm stops, and the stored context then **never updates again** — every row keeps whatever
+context it had when it was written. That trades a visible flood for silent, permanent staleness,
+which is the worse of the two.
+
+### Why normalisation fixes it structurally
+
+A row that does not contain the context cannot be diffed by a change to the context. There is no
+rule to remember and no list to maintain; the column the storm travelled through is simply not
+in the row any more.
