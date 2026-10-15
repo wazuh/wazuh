@@ -2787,10 +2787,8 @@ checks:
       technique:
         id:
           - "T1040"
-          - "T1552"
         name:
           - "Network Sniffing"
-          - "Unsecured Credentials"
     condition: all
     rules:
       - "c:dpkg -s nis -> r:package 'nis' is not installed"
@@ -2824,10 +2822,8 @@ checks:
       technique:
         id:
           - "T1040"
-          - "T1552"
         name:
           - "Network Sniffing"
-          - "Unsecured Credentials"
     condition: all
     rules:
       - "c:dpkg -s rsh-client -> r:package 'rsh-client' is not installed"

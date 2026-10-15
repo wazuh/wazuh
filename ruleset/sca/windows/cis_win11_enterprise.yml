@@ -11561,24 +11561,17 @@ checks:
       tactic:
         id:
           - "TA0011"
-          - "TA0003"
           - "TA0004"
         name:
           - "Command and Control"
-          - "Persistence"
           - "Privilege Escalation"
       technique:
         id:
           - "T1105"
-          - "T1547"
+          - "T1068"
         name:
           - "Ingress Tool Transfer"
-          - "Boot or Logon Autostart Execution"
-      subtechnique:
-        id:
-          - "T1547.012"
-        name:
-          - "Print Processors"
+          - "Exploitation for Privilege Escalation"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Printers'

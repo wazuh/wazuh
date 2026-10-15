@@ -1295,11 +1295,6 @@ checks:
           - "T1003"
         name:
           - "OS Credential Dumping"
-      subtechnique:
-        id:
-          - "T1003.007"
-        name:
-          - "Proc Filesystem"
     condition: all
     rules:
       - 'c:grep -Rh ^*[[:space:]]*hard[[:space:]][[:space:]]*core[[:space:]][[:space:]]* /etc/security/limits.conf /etc/security/limits.d -> r:\s*\t*0$'
@@ -2333,11 +2328,6 @@ checks:
           - "T1070"
         name:
           - "Indicator Removal"
-      subtechnique:
-        id:
-          - "T1070.006"
-        name:
-          - "Timestomp"
     condition: any
     rules:
       - "not c:rpm -q ntp -> r:^package ntp is not installed"
@@ -2371,11 +2361,6 @@ checks:
           - "T1070"
         name:
           - "Indicator Removal"
-      subtechnique:
-        id:
-          - "T1070.006"
-        name:
-          - "Timestomp"
     condition: all
     rules:
       - 'f:/etc/ntp.conf -> r:^restrict\s+-4\s+default|^restrict\s+default && r:\s+kod\s+ && r:\s+nomodify\s+ && r:\s+notrap\s+ && r:\s+nopeer\s+ && r:\s+noquery'
@@ -2411,11 +2396,6 @@ checks:
           - "T1070"
         name:
           - "Indicator Removal"
-      subtechnique:
-        id:
-          - "T1070.006"
-        name:
-          - "Timestomp"
     condition: all
     rules:
       - 'f:/etc/chrony.conf -> r:^server.+|^pool.+'
@@ -2967,10 +2947,8 @@ checks:
       technique:
         id:
           - "T1040"
-          - "T1552"
         name:
           - "Network Sniffing"
-          - "Unsecured Credentials"
     condition: all
     rules:
       - "c:rpm -q ypbind -> package ypbind is not installed"
@@ -3003,10 +2981,8 @@ checks:
       technique:
         id:
           - "T1040"
-          - "T1552"
         name:
           - "Network Sniffing"
-          - "Unsecured Credentials"
     condition: all
     rules:
       - "c:rpm -q rsh -> package rsh is not installed"
@@ -3039,10 +3015,8 @@ checks:
       technique:
         id:
           - "T1040"
-          - "T1552"
         name:
           - "Network Sniffing"
-          - "Unsecured Credentials"
     condition: all
     rules:
       - "c:rpm -q talk -> package talk is not installed"
@@ -3075,10 +3049,8 @@ checks:
       technique:
         id:
           - "T1040"
-          - "T1552"
         name:
           - "Network Sniffing"
-          - "Unsecured Credentials"
     condition: all
     rules:
       - "c:rpm -q telnet -> package telnet is not installed"
@@ -3111,10 +3083,8 @@ checks:
       technique:
         id:
           - "T1040"
-          - "T1552"
         name:
           - "Network Sniffing"
-          - "Unsecured Credentials"
     condition: all
     rules:
       - "c:rpm -q openldap-clients -> package openldap-clients is not installed"
@@ -3602,18 +3572,14 @@ checks:
         id:
           - "TA0006"
           - "TA0009"
-          - "TA0011"
         name:
           - "Credential Access"
           - "Collection"
-          - "Command and Control"
       technique:
         id:
           - "T1557"
-          - "T1090"
         name:
           - "Adversary-in-the-Middle"
-          - "Proxy"
     condition: none
     rules:
       - 'f:/boot/grub/grub.conf -> r:^\s*\t*kernel && !r:ipv6\.disable=1'

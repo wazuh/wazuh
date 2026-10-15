@@ -941,11 +941,6 @@ checks:
           - "T1003"
         name:
           - "OS Credential Dumping"
-      subtechnique:
-        id:
-          - "T1003.007"
-        name:
-          - "Proc Filesystem"
     condition: all
     rules:
       - 'c:sysctl fs.suid_dumpable -> r:=\s*0$'
@@ -1195,10 +1190,8 @@ checks:
       technique:
         id:
           - "T1040"
-          - "T1552"
         name:
           - "Network Sniffing"
-          - "Unsecured Credentials"
     condition: none
     rules:
       - "c:dpkg -s rsh-client -> r:install ok installed"
@@ -1266,10 +1259,8 @@ checks:
       technique:
         id:
           - "T1040"
-          - "T1552"
         name:
           - "Network Sniffing"
-          - "Unsecured Credentials"
     condition: none
     rules:
       - "c:dpkg -s talk -> r:install ok installed"
@@ -1716,11 +1707,6 @@ checks:
           - "T1070"
         name:
           - "Indicator Removal"
-      subtechnique:
-        id:
-          - "T1070.006"
-        name:
-          - "Timestomp"
     references:
       - http://www.ntp.org/
     condition: all
@@ -2580,18 +2566,14 @@ checks:
         id:
           - "TA0006"
           - "TA0009"
-          - "TA0011"
         name:
           - "Credential Access"
           - "Collection"
-          - "Command and Control"
       technique:
         id:
           - "T1557"
-          - "T1090"
         name:
           - "Adversary-in-the-Middle"
-          - "Proxy"
     condition: all
     rules:
       - "not c:ip addr -> r:inet6"

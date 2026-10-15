@@ -359,11 +359,6 @@ checks:
           - "T1070"
         name:
           - "Indicator Removal"
-      subtechnique:
-        id:
-          - "T1070.006"
-        name:
-          - "Timestomp"
     condition: any
     rules:
       - 'c:systemsetup -getusingnetworktime -> r:Network Time:\s*\t*On'
@@ -397,11 +392,6 @@ checks:
           - "T1070"
         name:
           - "Indicator Removal"
-      subtechnique:
-        id:
-          - "T1070.006"
-        name:
-          - "Timestomp"
     condition: all
     rules:
       - "c:systemsetup -getnetworktimeserver -> r:Network Time Server:"
@@ -1145,11 +1135,6 @@ checks:
           - "T1070"
         name:
           - "Indicator Removal"
-      subtechnique:
-        id:
-          - "T1070.006"
-        name:
-          - "Timestomp"
     references:
       - https://support.apple.com/en-us/HT204690
     condition: all

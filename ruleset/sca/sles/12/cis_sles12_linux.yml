@@ -516,11 +516,6 @@ checks:
           - "T1003"
         name:
           - "OS Credential Dumping"
-      subtechnique:
-        id:
-          - "T1003.007"
-        name:
-          - "Proc Filesystem"
     condition: all
     rules:
       - 'c:grep -Rh ^*[[:space:]]*hard[[:space:]][[:space:]]*core[[:space:]][[:space:]]* /etc/security/limits.conf /etc/security/limits.d -> r:\s*\t*0$'
@@ -964,11 +959,6 @@ checks:
           - "T1070"
         name:
           - "Indicator Removal"
-      subtechnique:
-        id:
-          - "T1070.006"
-        name:
-          - "Timestomp"
     condition: all
     rules:
       - 'f:/etc/ntp.conf -> r:^restrict\s+-4\s+default|^restrict\s+default && r:\s+kod && r:\s+nomodify && r:\s+notrap && r:\s+nopeer && r:\s+noquery'
@@ -1406,10 +1396,8 @@ checks:
       technique:
         id:
           - "T1040"
-          - "T1552"
         name:
           - "Network Sniffing"
-          - "Unsecured Credentials"
     condition: none
     rules:
       - "c:rpm -qa ypbind -> r:ypbind"

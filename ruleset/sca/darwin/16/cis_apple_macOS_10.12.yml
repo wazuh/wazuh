@@ -225,11 +225,6 @@ checks:
           - "T1070"
         name:
           - "Indicator Removal"
-      subtechnique:
-        id:
-          - "T1070.006"
-        name:
-          - "Timestomp"
     condition: all
     rules:
       - 'c:systemsetup -getusingnetworktime -> r:Network Time:\s*\t*On'

@@ -1640,11 +1640,6 @@ checks:
           - "T1003"
         name:
           - "OS Credential Dumping"
-      subtechnique:
-        id:
-          - "T1003.007"
-        name:
-          - "Proc Filesystem"
     condition: all
     rules:
       - 'f:/etc/systemd/coredump.conf -> r:^\s*Storage\s*=\s*none'
@@ -1679,11 +1674,6 @@ checks:
           - "T1003"
         name:
           - "OS Credential Dumping"
-      subtechnique:
-        id:
-          - "T1003.007"
-        name:
-          - "Proc Filesystem"
     condition: all
     rules:
       - 'f:/etc/systemd/coredump.conf -> r:^\s*ProcessSizeMax\s*=\s*0'

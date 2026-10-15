@@ -1032,11 +1032,6 @@ checks:
           - "T1003"
         name:
           - "OS Credential Dumping"
-      subtechnique:
-        id:
-          - "T1003.007"
-        name:
-          - "Proc Filesystem"
     condition: all
     rules:
       - 'c:sysctl fs.suid_dumpable -> r:=\s*\t*0$'
@@ -2052,11 +2047,6 @@ checks:
           - "T1070"
         name:
           - "Indicator Removal"
-      subtechnique:
-        id:
-          - "T1070.006"
-        name:
-          - "Timestomp"
     condition: any
     rules:
       - "c:dpkg -s ntp -> r:install ok installed"
@@ -2089,11 +2079,6 @@ checks:
           - "T1070"
         name:
           - "Indicator Removal"
-      subtechnique:
-        id:
-          - "T1070.006"
-        name:
-          - "Timestomp"
     references:
       - http://www.ntp.org/
     condition: all
@@ -2130,11 +2115,6 @@ checks:
           - "T1070"
         name:
           - "Indicator Removal"
-      subtechnique:
-        id:
-          - "T1070.006"
-        name:
-          - "Timestomp"
     condition: all
     rules:
       - 'f:/etc/chrony.conf -> r:^server.+|^pool.+'
@@ -2703,10 +2683,8 @@ checks:
       technique:
         id:
           - "T1040"
-          - "T1552"
         name:
           - "Network Sniffing"
-          - "Unsecured Credentials"
     condition: none
     rules:
       - "c:dpkg -s nis -> r:install ok installed"
@@ -2738,10 +2716,8 @@ checks:
       technique:
         id:
           - "T1040"
-          - "T1552"
         name:
           - "Network Sniffing"
-          - "Unsecured Credentials"
     condition: none
     rules:
       - "c:dpkg -s rsh-client -> r:install ok installed"
@@ -2774,10 +2750,8 @@ checks:
       technique:
         id:
           - "T1040"
-          - "T1552"
         name:
           - "Network Sniffing"
-          - "Unsecured Credentials"
     condition: none
     rules:
       - "c:dpkg -s talk -> r:install ok installed"
@@ -2809,10 +2783,8 @@ checks:
       technique:
         id:
           - "T1040"
-          - "T1552"
         name:
           - "Network Sniffing"
-          - "Unsecured Credentials"
     condition: none
     rules:
       - "c:dpkg -s telnet -> r:install ok installed"
@@ -2844,10 +2816,8 @@ checks:
       technique:
         id:
           - "T1040"
-          - "T1552"
         name:
           - "Network Sniffing"
-          - "Unsecured Credentials"
     condition: none
     rules:
       - "c:dpkg -s ldap-utils -> r:install ok installed"
@@ -3314,18 +3284,14 @@ checks:
         id:
           - "TA0006"
           - "TA0009"
-          - "TA0011"
         name:
           - "Credential Access"
           - "Collection"
-          - "Command and Control"
       technique:
         id:
           - "T1557"
-          - "T1090"
         name:
           - "Adversary-in-the-Middle"
-          - "Proxy"
     condition: none
     rules:
       - 'f:/boot/grub/grub.cfg -> r:^\s*linux && !r:ipv6\.disable=1'
