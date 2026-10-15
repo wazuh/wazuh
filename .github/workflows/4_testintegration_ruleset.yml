@@ -86,8 +86,9 @@ jobs:
       # Run ruleset integration tests.
       - name: Run ruleset integration tests
         run: |
+          python -m pip install defusedxml==0.7.1
           cd ruleset/testing
-          sudo python runtests.py --path /var/ossec
+          sudo "$(command -v python)" runtests.py --path /var/ossec
       - name: "Compilation cache statistics"
         if: always()
         run: sccache --show-stats 2>/dev/null | grep -viE "cache location|bucket" || true
