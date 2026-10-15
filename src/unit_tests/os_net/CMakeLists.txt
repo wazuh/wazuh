@@ -30,6 +30,9 @@ list(APPEND os_net_flags "-Wl,--wrap,socket -Wl,--wrap,listen -Wl,--wrap,bind -W
                           -Wl,--wrap,getaddrinfo -Wl,--wrap,OS_IsValidIP -Wl,--wrap,OS_GetIPv4FromIPv6 -Wl,--wrap,OS_ExpandIPv6 \
                           -Wl,--wrap,sleep -Wl,--wrap,getpid -Wl,--wrap,poll -Wl,--wrap,w_get_monotonic_time ${DEBUG_OP_WRAPPERS}")
 
+list(APPEND os_net_names "test_os_net_bind_perms")
+list(APPEND os_net_flags "-Wl,--wrap,bind")
+
 # Compiling tests
 list(LENGTH os_net_names count)
 math(EXPR count "${count} - 1")
