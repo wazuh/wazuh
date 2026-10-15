@@ -163,16 +163,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0005"
+          - "TA0040"
+          - "TA0004"
         name:
-          - "Stealth"
+          - "Impact"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1036"
-          - "T1564"
+          - "T1499"
+          - "T1548"
         name:
-          - "Masquerading"
-          - "Hide Artifacts"
+          - "Endpoint Denial of Service"
+          - "Abuse Elevation Control Mechanism"
+      subtechnique:
+        id:
+          - "T1548.001"
+        name:
+          - "Setuid and Setgid"
     condition: all
     rules:
       - 'c:mount -> r:\s/tmp\s'
@@ -197,16 +204,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0005"
+          - "TA0004"
         name:
-          - "Stealth"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1036"
-          - "T1564"
+          - "T1548"
         name:
-          - "Masquerading"
-          - "Hide Artifacts"
+          - "Abuse Elevation Control Mechanism"
     condition: none
     rules:
       - 'c:mount -> r:\s/tmp\s && !r:nodev'
@@ -231,39 +236,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0006"
-          - "TA0009"
-          - "TA0010"
-          - "TA0011"
+          - "TA0002"
         name:
-          - "Credential Access"
-          - "Collection"
-          - "Exfiltration"
-          - "Command and Control"
+          - "Execution"
       technique:
         id:
-          - "T1005"
-          - "T1025"
-          - "T1041"
-          - "T1567"
-          - "T1573"
-          - "T1048"
-          - "T1552"
+          - "T1204"
         name:
-          - "Data from Local System"
-          - "Data from Removable Media"
-          - "Exfiltration Over C2 Channel"
-          - "Exfiltration Over Web Service"
-          - "Encrypted Channel"
-          - "Exfiltration Over Alternative Protocol"
-          - "Unsecured Credentials"
+          - "User Execution"
       subtechnique:
         id:
-          - "T1048.003"
-          - "T1552.001"
+          - "T1204.002"
         name:
-          - "Exfiltration Over Unencrypted Non-C2 Protocol"
-          - "Credentials In Files"
+          - "Malicious File"
     condition: none
     rules:
       - 'c:mount -> r:\s/tmp\s && !r:noexec'
@@ -288,39 +273,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0006"
-          - "TA0009"
-          - "TA0010"
-          - "TA0011"
+          - "TA0004"
         name:
-          - "Credential Access"
-          - "Collection"
-          - "Exfiltration"
-          - "Command and Control"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1005"
-          - "T1025"
-          - "T1041"
-          - "T1567"
-          - "T1573"
-          - "T1048"
-          - "T1552"
+          - "T1548"
         name:
-          - "Data from Local System"
-          - "Data from Removable Media"
-          - "Exfiltration Over C2 Channel"
-          - "Exfiltration Over Web Service"
-          - "Encrypted Channel"
-          - "Exfiltration Over Alternative Protocol"
-          - "Unsecured Credentials"
+          - "Abuse Elevation Control Mechanism"
       subtechnique:
         id:
-          - "T1048.003"
-          - "T1552.001"
+          - "T1548.001"
         name:
-          - "Exfiltration Over Unencrypted Non-C2 Protocol"
-          - "Credentials In Files"
+          - "Setuid and Setgid"
     condition: none
     rules:
       - 'c:mount -> r:\s/tmp\s && !r:nosuid'
@@ -348,39 +313,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0006"
-          - "TA0009"
-          - "TA0010"
-          - "TA0011"
+          - "TA0040"
+          - "TA0004"
         name:
-          - "Credential Access"
-          - "Collection"
-          - "Exfiltration"
-          - "Command and Control"
+          - "Impact"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1005"
-          - "T1025"
-          - "T1041"
-          - "T1567"
-          - "T1573"
-          - "T1048"
-          - "T1552"
+          - "T1499"
+          - "T1548"
         name:
-          - "Data from Local System"
-          - "Data from Removable Media"
-          - "Exfiltration Over C2 Channel"
-          - "Exfiltration Over Web Service"
-          - "Encrypted Channel"
-          - "Exfiltration Over Alternative Protocol"
-          - "Unsecured Credentials"
+          - "Endpoint Denial of Service"
+          - "Abuse Elevation Control Mechanism"
       subtechnique:
         id:
-          - "T1048.003"
-          - "T1552.001"
+          - "T1548.001"
         name:
-          - "Exfiltration Over Unencrypted Non-C2 Protocol"
-          - "Credentials In Files"
+          - "Setuid and Setgid"
     condition: all
     rules:
       - 'c:mount -> r:\s/var\s'
@@ -405,39 +354,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0006"
-          - "TA0009"
-          - "TA0010"
-          - "TA0011"
+          - "TA0004"
         name:
-          - "Credential Access"
-          - "Collection"
-          - "Exfiltration"
-          - "Command and Control"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1005"
-          - "T1025"
-          - "T1041"
-          - "T1567"
-          - "T1573"
-          - "T1048"
-          - "T1552"
+          - "T1548"
         name:
-          - "Data from Local System"
-          - "Data from Removable Media"
-          - "Exfiltration Over C2 Channel"
-          - "Exfiltration Over Web Service"
-          - "Encrypted Channel"
-          - "Exfiltration Over Alternative Protocol"
-          - "Unsecured Credentials"
-      subtechnique:
-        id:
-          - "T1048.003"
-          - "T1552.001"
-        name:
-          - "Exfiltration Over Unencrypted Non-C2 Protocol"
-          - "Credentials In Files"
+          - "Abuse Elevation Control Mechanism"
     condition: none
     rules:
       - 'c:mount -> r:\s/var\s && !r:nodev'
@@ -462,39 +386,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0006"
-          - "TA0009"
-          - "TA0010"
-          - "TA0011"
+          - "TA0002"
         name:
-          - "Credential Access"
-          - "Collection"
-          - "Exfiltration"
-          - "Command and Control"
+          - "Execution"
       technique:
         id:
-          - "T1005"
-          - "T1025"
-          - "T1041"
-          - "T1567"
-          - "T1573"
-          - "T1048"
-          - "T1552"
+          - "T1204"
         name:
-          - "Data from Local System"
-          - "Data from Removable Media"
-          - "Exfiltration Over C2 Channel"
-          - "Exfiltration Over Web Service"
-          - "Encrypted Channel"
-          - "Exfiltration Over Alternative Protocol"
-          - "Unsecured Credentials"
+          - "User Execution"
       subtechnique:
         id:
-          - "T1048.003"
-          - "T1552.001"
+          - "T1204.002"
         name:
-          - "Exfiltration Over Unencrypted Non-C2 Protocol"
-          - "Credentials In Files"
+          - "Malicious File"
     condition: none
     rules:
       - 'c:mount -> r:\s/var\s && !r:noexec'
@@ -519,39 +423,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0006"
-          - "TA0009"
-          - "TA0010"
-          - "TA0011"
+          - "TA0004"
         name:
-          - "Credential Access"
-          - "Collection"
-          - "Exfiltration"
-          - "Command and Control"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1005"
-          - "T1025"
-          - "T1041"
-          - "T1567"
-          - "T1573"
-          - "T1048"
-          - "T1552"
+          - "T1548"
         name:
-          - "Data from Local System"
-          - "Data from Removable Media"
-          - "Exfiltration Over C2 Channel"
-          - "Exfiltration Over Web Service"
-          - "Encrypted Channel"
-          - "Exfiltration Over Alternative Protocol"
-          - "Unsecured Credentials"
+          - "Abuse Elevation Control Mechanism"
       subtechnique:
         id:
-          - "T1048.003"
-          - "T1552.001"
+          - "T1548.001"
         name:
-          - "Exfiltration Over Unencrypted Non-C2 Protocol"
-          - "Credentials In Files"
+          - "Setuid and Setgid"
     condition: none
     rules:
       - 'c:mount -> r:\s/var\s && !r:nosuid'
@@ -579,39 +463,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0006"
-          - "TA0009"
-          - "TA0010"
-          - "TA0011"
+          - "TA0040"
+          - "TA0004"
         name:
-          - "Credential Access"
-          - "Collection"
-          - "Exfiltration"
-          - "Command and Control"
+          - "Impact"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1005"
-          - "T1025"
-          - "T1041"
-          - "T1567"
-          - "T1573"
-          - "T1048"
-          - "T1552"
+          - "T1499"
+          - "T1548"
         name:
-          - "Data from Local System"
-          - "Data from Removable Media"
-          - "Exfiltration Over C2 Channel"
-          - "Exfiltration Over Web Service"
-          - "Encrypted Channel"
-          - "Exfiltration Over Alternative Protocol"
-          - "Unsecured Credentials"
+          - "Endpoint Denial of Service"
+          - "Abuse Elevation Control Mechanism"
       subtechnique:
         id:
-          - "T1048.003"
-          - "T1552.001"
+          - "T1548.001"
         name:
-          - "Exfiltration Over Unencrypted Non-C2 Protocol"
-          - "Credentials In Files"
+          - "Setuid and Setgid"
     condition: all
     rules:
       - 'c:mount -> r:\s/var/tmp\s'
@@ -636,39 +504,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0006"
-          - "TA0009"
-          - "TA0010"
-          - "TA0011"
+          - "TA0002"
         name:
-          - "Credential Access"
-          - "Collection"
-          - "Exfiltration"
-          - "Command and Control"
+          - "Execution"
       technique:
         id:
-          - "T1005"
-          - "T1025"
-          - "T1041"
-          - "T1567"
-          - "T1573"
-          - "T1048"
-          - "T1552"
+          - "T1204"
         name:
-          - "Data from Local System"
-          - "Data from Removable Media"
-          - "Exfiltration Over C2 Channel"
-          - "Exfiltration Over Web Service"
-          - "Encrypted Channel"
-          - "Exfiltration Over Alternative Protocol"
-          - "Unsecured Credentials"
+          - "User Execution"
       subtechnique:
         id:
-          - "T1048.003"
-          - "T1552.001"
+          - "T1204.002"
         name:
-          - "Exfiltration Over Unencrypted Non-C2 Protocol"
-          - "Credentials In Files"
+          - "Malicious File"
     condition: none
     rules:
       - 'c:mount -> r:\s/var/tmp\s && !r:noexec'
@@ -693,39 +541,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0006"
-          - "TA0009"
-          - "TA0010"
-          - "TA0011"
+          - "TA0004"
         name:
-          - "Credential Access"
-          - "Collection"
-          - "Exfiltration"
-          - "Command and Control"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1005"
-          - "T1025"
-          - "T1041"
-          - "T1567"
-          - "T1573"
-          - "T1048"
-          - "T1552"
+          - "T1548"
         name:
-          - "Data from Local System"
-          - "Data from Removable Media"
-          - "Exfiltration Over C2 Channel"
-          - "Exfiltration Over Web Service"
-          - "Encrypted Channel"
-          - "Exfiltration Over Alternative Protocol"
-          - "Unsecured Credentials"
+          - "Abuse Elevation Control Mechanism"
       subtechnique:
         id:
-          - "T1048.003"
-          - "T1552.001"
+          - "T1548.001"
         name:
-          - "Exfiltration Over Unencrypted Non-C2 Protocol"
-          - "Credentials In Files"
+          - "Setuid and Setgid"
     condition: none
     rules:
       - 'c:mount -> r:\s/var/tmp\s && !r:nosuid'
@@ -750,39 +578,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0006"
-          - "TA0009"
-          - "TA0010"
-          - "TA0011"
+          - "TA0004"
         name:
-          - "Credential Access"
-          - "Collection"
-          - "Exfiltration"
-          - "Command and Control"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1005"
-          - "T1025"
-          - "T1041"
-          - "T1567"
-          - "T1573"
-          - "T1048"
-          - "T1552"
+          - "T1548"
         name:
-          - "Data from Local System"
-          - "Data from Removable Media"
-          - "Exfiltration Over C2 Channel"
-          - "Exfiltration Over Web Service"
-          - "Encrypted Channel"
-          - "Exfiltration Over Alternative Protocol"
-          - "Unsecured Credentials"
-      subtechnique:
-        id:
-          - "T1048.003"
-          - "T1552.001"
-        name:
-          - "Exfiltration Over Unencrypted Non-C2 Protocol"
-          - "Credentials In Files"
+          - "Abuse Elevation Control Mechanism"
     condition: none
     rules:
       - 'c:mount -> r:\s/var/tmp\s && !r:nodev'
@@ -810,35 +613,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0002"
-          - "TA0005"
-          - "TA0006"
-          - "TA0007"
-          - "TA0112"
+          - "TA0040"
+          - "TA0004"
         name:
-          - "Execution"
-          - "Stealth"
-          - "Credential Access"
-          - "Discovery"
-          - "Defense Impairment"
+          - "Impact"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1685"
-          - "T1070"
-          - "T1059"
-          - "T1040"
+          - "T1499"
+          - "T1548"
         name:
-          - "Disable or Modify Tools"
-          - "Indicator Removal"
-          - "Command and Scripting Interpreter"
-          - "Network Sniffing"
+          - "Endpoint Denial of Service"
+          - "Abuse Elevation Control Mechanism"
       subtechnique:
         id:
-          - "T1685.004"
-          - "T1685.006"
+          - "T1548.001"
         name:
-          - "Disable or Modify Linux Audit System Log"
-          - "Clear Linux or Mac System Logs"
+          - "Setuid and Setgid"
     condition: all
     rules:
       - 'c:mount -> r:\s/var/log\s'
@@ -863,39 +654,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0006"
-          - "TA0009"
-          - "TA0010"
-          - "TA0011"
+          - "TA0004"
         name:
-          - "Credential Access"
-          - "Collection"
-          - "Exfiltration"
-          - "Command and Control"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1005"
-          - "T1025"
-          - "T1041"
-          - "T1567"
-          - "T1573"
-          - "T1048"
-          - "T1552"
+          - "T1548"
         name:
-          - "Data from Local System"
-          - "Data from Removable Media"
-          - "Exfiltration Over C2 Channel"
-          - "Exfiltration Over Web Service"
-          - "Encrypted Channel"
-          - "Exfiltration Over Alternative Protocol"
-          - "Unsecured Credentials"
-      subtechnique:
-        id:
-          - "T1048.003"
-          - "T1552.001"
-        name:
-          - "Exfiltration Over Unencrypted Non-C2 Protocol"
-          - "Credentials In Files"
+          - "Abuse Elevation Control Mechanism"
     condition: none
     rules:
       - 'c:mount -> r:\s/var/log\s && !r:nodev'
@@ -920,39 +686,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0006"
-          - "TA0009"
-          - "TA0010"
-          - "TA0011"
+          - "TA0002"
         name:
-          - "Credential Access"
-          - "Collection"
-          - "Exfiltration"
-          - "Command and Control"
+          - "Execution"
       technique:
         id:
-          - "T1005"
-          - "T1025"
-          - "T1041"
-          - "T1567"
-          - "T1573"
-          - "T1048"
-          - "T1552"
+          - "T1204"
         name:
-          - "Data from Local System"
-          - "Data from Removable Media"
-          - "Exfiltration Over C2 Channel"
-          - "Exfiltration Over Web Service"
-          - "Encrypted Channel"
-          - "Exfiltration Over Alternative Protocol"
-          - "Unsecured Credentials"
+          - "User Execution"
       subtechnique:
         id:
-          - "T1048.003"
-          - "T1552.001"
+          - "T1204.002"
         name:
-          - "Exfiltration Over Unencrypted Non-C2 Protocol"
-          - "Credentials In Files"
+          - "Malicious File"
     condition: none
     rules:
       - 'c:mount -> r:\s/var/log\s && !r:noexec'
@@ -977,39 +723,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0006"
-          - "TA0009"
-          - "TA0010"
-          - "TA0011"
+          - "TA0004"
         name:
-          - "Credential Access"
-          - "Collection"
-          - "Exfiltration"
-          - "Command and Control"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1005"
-          - "T1025"
-          - "T1041"
-          - "T1567"
-          - "T1573"
-          - "T1048"
-          - "T1552"
+          - "T1548"
         name:
-          - "Data from Local System"
-          - "Data from Removable Media"
-          - "Exfiltration Over C2 Channel"
-          - "Exfiltration Over Web Service"
-          - "Encrypted Channel"
-          - "Exfiltration Over Alternative Protocol"
-          - "Unsecured Credentials"
+          - "Abuse Elevation Control Mechanism"
       subtechnique:
         id:
-          - "T1048.003"
-          - "T1552.001"
+          - "T1548.001"
         name:
-          - "Exfiltration Over Unencrypted Non-C2 Protocol"
-          - "Credentials In Files"
+          - "Setuid and Setgid"
     condition: none
     rules:
       - 'c:mount -> r:\s/var/log\s && !r:noexec'
@@ -1037,35 +763,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0002"
-          - "TA0005"
-          - "TA0006"
-          - "TA0007"
-          - "TA0112"
+          - "TA0040"
+          - "TA0004"
         name:
-          - "Execution"
-          - "Stealth"
-          - "Credential Access"
-          - "Discovery"
-          - "Defense Impairment"
+          - "Impact"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1685"
-          - "T1070"
-          - "T1059"
-          - "T1040"
+          - "T1499"
+          - "T1548"
         name:
-          - "Disable or Modify Tools"
-          - "Indicator Removal"
-          - "Command and Scripting Interpreter"
-          - "Network Sniffing"
+          - "Endpoint Denial of Service"
+          - "Abuse Elevation Control Mechanism"
       subtechnique:
         id:
-          - "T1685.004"
-          - "T1685.006"
+          - "T1548.001"
         name:
-          - "Disable or Modify Linux Audit System Log"
-          - "Clear Linux or Mac System Logs"
+          - "Setuid and Setgid"
     condition: all
     rules:
       - 'c:mount -> r:\s/var/log/audit\s'
@@ -1090,39 +804,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0006"
-          - "TA0009"
-          - "TA0010"
-          - "TA0011"
+          - "TA0002"
         name:
-          - "Credential Access"
-          - "Collection"
-          - "Exfiltration"
-          - "Command and Control"
+          - "Execution"
       technique:
         id:
-          - "T1005"
-          - "T1025"
-          - "T1041"
-          - "T1567"
-          - "T1573"
-          - "T1048"
-          - "T1552"
+          - "T1204"
         name:
-          - "Data from Local System"
-          - "Data from Removable Media"
-          - "Exfiltration Over C2 Channel"
-          - "Exfiltration Over Web Service"
-          - "Encrypted Channel"
-          - "Exfiltration Over Alternative Protocol"
-          - "Unsecured Credentials"
+          - "User Execution"
       subtechnique:
         id:
-          - "T1048.003"
-          - "T1552.001"
+          - "T1204.002"
         name:
-          - "Exfiltration Over Unencrypted Non-C2 Protocol"
-          - "Credentials In Files"
+          - "Malicious File"
     condition: none
     rules:
       - 'c:mount -> r:\s/var/log/audit\s && !r:noexec'
@@ -1147,39 +841,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0006"
-          - "TA0009"
-          - "TA0010"
-          - "TA0011"
+          - "TA0004"
         name:
-          - "Credential Access"
-          - "Collection"
-          - "Exfiltration"
-          - "Command and Control"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1005"
-          - "T1025"
-          - "T1041"
-          - "T1567"
-          - "T1573"
-          - "T1048"
-          - "T1552"
+          - "T1548"
         name:
-          - "Data from Local System"
-          - "Data from Removable Media"
-          - "Exfiltration Over C2 Channel"
-          - "Exfiltration Over Web Service"
-          - "Encrypted Channel"
-          - "Exfiltration Over Alternative Protocol"
-          - "Unsecured Credentials"
-      subtechnique:
-        id:
-          - "T1048.003"
-          - "T1552.001"
-        name:
-          - "Exfiltration Over Unencrypted Non-C2 Protocol"
-          - "Credentials In Files"
+          - "Abuse Elevation Control Mechanism"
     condition: none
     rules:
       - 'c:mount -> r:\s/var/log/audit\s && !r:nodev'
@@ -1204,39 +873,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0006"
-          - "TA0009"
-          - "TA0010"
-          - "TA0011"
+          - "TA0004"
         name:
-          - "Credential Access"
-          - "Collection"
-          - "Exfiltration"
-          - "Command and Control"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1005"
-          - "T1025"
-          - "T1041"
-          - "T1567"
-          - "T1573"
-          - "T1048"
-          - "T1552"
+          - "T1548"
         name:
-          - "Data from Local System"
-          - "Data from Removable Media"
-          - "Exfiltration Over C2 Channel"
-          - "Exfiltration Over Web Service"
-          - "Encrypted Channel"
-          - "Exfiltration Over Alternative Protocol"
-          - "Unsecured Credentials"
+          - "Abuse Elevation Control Mechanism"
       subtechnique:
         id:
-          - "T1048.003"
-          - "T1552.001"
+          - "T1548.001"
         name:
-          - "Exfiltration Over Unencrypted Non-C2 Protocol"
-          - "Credentials In Files"
+          - "Setuid and Setgid"
     condition: none
     rules:
       - 'c:mount -> r:\s/var/log/audit\s && !r:nosuid'
@@ -1264,39 +913,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0006"
-          - "TA0009"
-          - "TA0010"
-          - "TA0011"
+          - "TA0040"
+          - "TA0004"
         name:
-          - "Credential Access"
-          - "Collection"
-          - "Exfiltration"
-          - "Command and Control"
+          - "Impact"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1005"
-          - "T1025"
-          - "T1041"
-          - "T1567"
-          - "T1573"
-          - "T1048"
-          - "T1552"
+          - "T1499"
+          - "T1548"
         name:
-          - "Data from Local System"
-          - "Data from Removable Media"
-          - "Exfiltration Over C2 Channel"
-          - "Exfiltration Over Web Service"
-          - "Encrypted Channel"
-          - "Exfiltration Over Alternative Protocol"
-          - "Unsecured Credentials"
+          - "Endpoint Denial of Service"
+          - "Abuse Elevation Control Mechanism"
       subtechnique:
         id:
-          - "T1048.003"
-          - "T1552.001"
+          - "T1548.001"
         name:
-          - "Exfiltration Over Unencrypted Non-C2 Protocol"
-          - "Credentials In Files"
+          - "Setuid and Setgid"
     condition: all
     rules:
       - 'c:mount -> r:\s/home\s'
@@ -1321,39 +954,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0006"
-          - "TA0009"
-          - "TA0010"
-          - "TA0011"
+          - "TA0004"
         name:
-          - "Credential Access"
-          - "Collection"
-          - "Exfiltration"
-          - "Command and Control"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1005"
-          - "T1025"
-          - "T1041"
-          - "T1567"
-          - "T1573"
-          - "T1048"
-          - "T1552"
+          - "T1548"
         name:
-          - "Data from Local System"
-          - "Data from Removable Media"
-          - "Exfiltration Over C2 Channel"
-          - "Exfiltration Over Web Service"
-          - "Encrypted Channel"
-          - "Exfiltration Over Alternative Protocol"
-          - "Unsecured Credentials"
-      subtechnique:
-        id:
-          - "T1048.003"
-          - "T1552.001"
-        name:
-          - "Exfiltration Over Unencrypted Non-C2 Protocol"
-          - "Credentials In Files"
+          - "Abuse Elevation Control Mechanism"
     condition: none
     rules:
       - 'c:mount -> r:\s/home\s && !r:nodev'
@@ -1378,39 +986,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0006"
-          - "TA0009"
-          - "TA0010"
-          - "TA0011"
+          - "TA0004"
         name:
-          - "Credential Access"
-          - "Collection"
-          - "Exfiltration"
-          - "Command and Control"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1005"
-          - "T1025"
-          - "T1041"
-          - "T1567"
-          - "T1573"
-          - "T1048"
-          - "T1552"
+          - "T1548"
         name:
-          - "Data from Local System"
-          - "Data from Removable Media"
-          - "Exfiltration Over C2 Channel"
-          - "Exfiltration Over Web Service"
-          - "Encrypted Channel"
-          - "Exfiltration Over Alternative Protocol"
-          - "Unsecured Credentials"
+          - "Abuse Elevation Control Mechanism"
       subtechnique:
         id:
-          - "T1048.003"
-          - "T1552.001"
+          - "T1548.001"
         name:
-          - "Exfiltration Over Unencrypted Non-C2 Protocol"
-          - "Credentials In Files"
+          - "Setuid and Setgid"
     condition: none
     rules:
       - 'c:mount -> r:\s/home\s && !r:nodev'
@@ -1435,39 +1023,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0006"
-          - "TA0009"
-          - "TA0010"
-          - "TA0011"
+          - "TA0040"
         name:
-          - "Credential Access"
-          - "Collection"
-          - "Exfiltration"
-          - "Command and Control"
+          - "Impact"
       technique:
         id:
-          - "T1005"
-          - "T1025"
-          - "T1041"
-          - "T1567"
-          - "T1573"
-          - "T1048"
-          - "T1552"
+          - "T1499"
         name:
-          - "Data from Local System"
-          - "Data from Removable Media"
-          - "Exfiltration Over C2 Channel"
-          - "Exfiltration Over Web Service"
-          - "Encrypted Channel"
-          - "Exfiltration Over Alternative Protocol"
-          - "Unsecured Credentials"
-      subtechnique:
-        id:
-          - "T1048.003"
-          - "T1552.001"
-        name:
-          - "Exfiltration Over Unencrypted Non-C2 Protocol"
-          - "Credentials In Files"
+          - "Endpoint Denial of Service"
     condition: none
     rules:
       - 'c:mount -> r:\s/home\s && !r:usrquota'
@@ -1493,39 +1056,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0006"
-          - "TA0009"
-          - "TA0010"
-          - "TA0011"
+          - "TA0040"
         name:
-          - "Credential Access"
-          - "Collection"
-          - "Exfiltration"
-          - "Command and Control"
+          - "Impact"
       technique:
         id:
-          - "T1005"
-          - "T1025"
-          - "T1041"
-          - "T1567"
-          - "T1573"
-          - "T1048"
-          - "T1552"
+          - "T1499"
         name:
-          - "Data from Local System"
-          - "Data from Removable Media"
-          - "Exfiltration Over C2 Channel"
-          - "Exfiltration Over Web Service"
-          - "Encrypted Channel"
-          - "Exfiltration Over Alternative Protocol"
-          - "Unsecured Credentials"
-      subtechnique:
-        id:
-          - "T1048.003"
-          - "T1552.001"
-        name:
-          - "Exfiltration Over Unencrypted Non-C2 Protocol"
-          - "Credentials In Files"
+          - "Endpoint Denial of Service"
     condition: all
     rules:
       - 'c:mount -> r:\s/home\s && !r:grpquota'
@@ -1551,39 +1089,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0006"
-          - "TA0009"
-          - "TA0010"
-          - "TA0011"
+          - "TA0004"
         name:
-          - "Credential Access"
-          - "Collection"
-          - "Exfiltration"
-          - "Command and Control"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1005"
-          - "T1025"
-          - "T1041"
-          - "T1567"
-          - "T1573"
-          - "T1048"
-          - "T1552"
+          - "T1548"
         name:
-          - "Data from Local System"
-          - "Data from Removable Media"
-          - "Exfiltration Over C2 Channel"
-          - "Exfiltration Over Web Service"
-          - "Encrypted Channel"
-          - "Exfiltration Over Alternative Protocol"
-          - "Unsecured Credentials"
-      subtechnique:
-        id:
-          - "T1048.003"
-          - "T1552.001"
-        name:
-          - "Exfiltration Over Unencrypted Non-C2 Protocol"
-          - "Credentials In Files"
+          - "Abuse Elevation Control Mechanism"
     condition: none
     rules:
       - 'c:mount -> r:\s/dev/shm\s && !r:nodev'
@@ -1608,39 +1121,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0006"
-          - "TA0009"
-          - "TA0010"
-          - "TA0011"
+          - "TA0002"
         name:
-          - "Credential Access"
-          - "Collection"
-          - "Exfiltration"
-          - "Command and Control"
+          - "Execution"
       technique:
         id:
-          - "T1005"
-          - "T1025"
-          - "T1041"
-          - "T1567"
-          - "T1573"
-          - "T1048"
-          - "T1552"
+          - "T1204"
         name:
-          - "Data from Local System"
-          - "Data from Removable Media"
-          - "Exfiltration Over C2 Channel"
-          - "Exfiltration Over Web Service"
-          - "Encrypted Channel"
-          - "Exfiltration Over Alternative Protocol"
-          - "Unsecured Credentials"
+          - "User Execution"
       subtechnique:
         id:
-          - "T1048.003"
-          - "T1552.001"
+          - "T1204.002"
         name:
-          - "Exfiltration Over Unencrypted Non-C2 Protocol"
-          - "Credentials In Files"
+          - "Malicious File"
     condition: none
     rules:
       - 'c:mount -> r:\s/dev/shm\s && !r:nodev'
@@ -1665,39 +1158,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0006"
-          - "TA0009"
-          - "TA0010"
-          - "TA0011"
+          - "TA0004"
         name:
-          - "Credential Access"
-          - "Collection"
-          - "Exfiltration"
-          - "Command and Control"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1005"
-          - "T1025"
-          - "T1041"
-          - "T1567"
-          - "T1573"
-          - "T1048"
-          - "T1552"
+          - "T1548"
         name:
-          - "Data from Local System"
-          - "Data from Removable Media"
-          - "Exfiltration Over C2 Channel"
-          - "Exfiltration Over Web Service"
-          - "Encrypted Channel"
-          - "Exfiltration Over Alternative Protocol"
-          - "Unsecured Credentials"
+          - "Abuse Elevation Control Mechanism"
       subtechnique:
         id:
-          - "T1048.003"
-          - "T1552.001"
+          - "T1548.001"
         name:
-          - "Exfiltration Over Unencrypted Non-C2 Protocol"
-          - "Credentials In Files"
+          - "Setuid and Setgid"
     condition: none
     rules:
       - 'c:mount -> r:\s/dev/shm\s && !r:nosuid'
@@ -1774,33 +1247,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0002"
-          - "TA0005"
-          - "TA0011"
-          - "TA0112"
+          - "TA0001"
+          - "TA0010"
         name:
-          - "Execution"
-          - "Stealth"
-          - "Command and Control"
-          - "Defense Impairment"
+          - "Initial Access"
+          - "Exfiltration"
       technique:
         id:
-          - "T1685"
-          - "T1070"
-          - "T1059"
-          - "T1105"
+          - "T1200"
+          - "T1052"
         name:
-          - "Disable or Modify Tools"
-          - "Indicator Removal"
-          - "Command and Scripting Interpreter"
-          - "Ingress Tool Transfer"
+          - "Hardware Additions"
+          - "Exfiltration Over Physical Medium"
       subtechnique:
         id:
-          - "T1685.004"
-          - "T1070.004"
+          - "T1052.001"
         name:
-          - "Disable or Modify Linux Audit System Log"
-          - "File Deletion"
+          - "Exfiltration over USB"
     condition: all
     rules:
       - "c:modprobe -n -v usb-storage -> r:install /bin/true"
@@ -1829,17 +1292,22 @@ checks:
       tactic:
         id:
           - "TA0001"
-          - "TA0002"
+          - "TA0112"
         name:
           - "Initial Access"
-          - "Execution"
+          - "Defense Impairment"
       technique:
         id:
-          - "T1190"
-          - "T1203"
+          - "T1195"
+          - "T1553"
         name:
-          - "Exploit Public-Facing Application"
-          - "Exploitation for Client Execution"
+          - "Supply Chain Compromise"
+          - "Subvert Trust Controls"
+      subtechnique:
+        id:
+          - "T1195.002"
+        name:
+          - "Compromise Software Supply Chain"
     condition: all
     rules:
       - 'f:/etc/dnf/dnf.conf -> r:^gpgcheck\s*\t*=\s*\t*1'
@@ -2164,16 +1632,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1003"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "OS Credential Dumping"
+      subtechnique:
+        id:
+          - "T1003.007"
+        name:
+          - "Proc Filesystem"
     condition: all
     rules:
       - 'f:/etc/systemd/coredump.conf -> r:^\s*Storage\s*=\s*none'
@@ -2200,16 +1671,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1003"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "OS Credential Dumping"
+      subtechnique:
+        id:
+          - "T1003.007"
+        name:
+          - "Proc Filesystem"
     condition: all
     rules:
       - 'f:/etc/systemd/coredump.conf -> r:^\s*ProcessSizeMax\s*=\s*0'
@@ -2234,33 +1708,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0002"
+          - "TA0004"
           - "TA0005"
-          - "TA0011"
-          - "TA0112"
         name:
-          - "Execution"
+          - "Privilege Escalation"
           - "Stealth"
-          - "Command and Control"
-          - "Defense Impairment"
       technique:
         id:
-          - "T1685"
-          - "T1070"
-          - "T1059"
-          - "T1105"
+          - "T1068"
+          - "T1211"
         name:
-          - "Disable or Modify Tools"
-          - "Indicator Removal"
-          - "Command and Scripting Interpreter"
-          - "Ingress Tool Transfer"
-      subtechnique:
-        id:
-          - "T1685.004"
-          - "T1070.004"
-        name:
-          - "Disable or Modify Linux Audit System Log"
-          - "File Deletion"
+          - "Exploitation for Privilege Escalation"
+          - "Exploitation for Stealth"
     condition: any
     rules:
       - 'c:sysctl kernel.randomize_va_space -> r:^\s*kernel\.randomize_va_space\s*=\s*2'
@@ -3055,16 +2514,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0005"
+          - "TA0007"
         name:
-          - "Stealth"
+          - "Discovery"
       technique:
         id:
-          - "T1036"
-          - "T1564"
+          - "T1087"
         name:
-          - "Masquerading"
-          - "Hide Artifacts"
+          - "Account Discovery"
+      subtechnique:
+        id:
+          - "T1087.001"
+        name:
+          - "Local Account"
     condition: all
     rules:
       - "f:/etc/dconf/profile/gdm"
@@ -6236,96 +5698,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0001"
-          - "TA0002"
-          - "TA0003"
-          - "TA0004"
+          - "TA0112"
           - "TA0005"
-          - "TA0006"
-          - "TA0007"
-          - "TA0008"
-          - "TA0010"
-          - "TA0011"
-          - "TA0040"
         name:
-          - "Initial Access"
-          - "Execution"
-          - "Persistence"
-          - "Privilege Escalation"
+          - "Defense Impairment"
           - "Stealth"
-          - "Credential Access"
-          - "Discovery"
-          - "Lateral Movement"
-          - "Exfiltration"
-          - "Command and Control"
-          - "Impact"
       technique:
         id:
-          - "T1110"
-          - "T1003"
-          - "T1072"
-          - "T1495"
-          - "T1485"
-          - "T1486"
-          - "T1491"
-          - "T1490"
-          - "T1133"
-          - "T1200"
-          - "T1176"
-          - "T1087"
-          - "T1098"
-          - "T1092"
-          - "T1136"
-          - "T1011"
-          - "T1053"
-          - "T1201"
-          - "T1078"
-          - "T1190"
-          - "T1210"
-          - "T1055"
-          - "T1505"
-          - "T1218"
+          - "T1685"
           - "T1070"
-          - "T1037"
-          - "T1036"
-          - "T1489"
-          - "T1080"
-          - "T1539"
-          - "T1199"
-          - "T1564"
         name:
-          - "Brute Force"
-          - "OS Credential Dumping"
-          - "Software Deployment Tools"
-          - "Firmware Corruption"
-          - "Data Destruction"
-          - "Data Encrypted for Impact"
-          - "Defacement"
-          - "Inhibit System Recovery"
-          - "External Remote Services"
-          - "Hardware Additions"
-          - "Software Extensions"
-          - "Account Discovery"
-          - "Account Manipulation"
-          - "Communication Through Removable Media"
-          - "Create Account"
-          - "Exfiltration Over Other Network Medium"
-          - "Scheduled Task/Job"
-          - "Password Policy Discovery"
-          - "Valid Accounts"
-          - "Exploit Public-Facing Application"
-          - "Exploitation of Remote Services"
-          - "Process Injection"
-          - "Server Software Component"
-          - "System Binary Proxy Execution"
+          - "Disable or Modify Tools"
           - "Indicator Removal"
-          - "Boot or Logon Initialization Scripts"
-          - "Masquerading"
-          - "Service Stop"
-          - "Taint Shared Content"
-          - "Steal Web Session Cookie"
-          - "Trusted Relationship"
-          - "Hide Artifacts"
+      subtechnique:
+        id:
+          - "T1685.004"
+        name:
+          - "Disable or Modify Linux Audit System Log"
     condition: all
     rules:
       - 'd:/etc/audit/rules.d -> r:.+\.rules$'
@@ -6470,16 +5859,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
+      subtechnique:
+        id:
+          - "T1685.004"
+        name:
+          - "Disable or Modify Linux Audit System Log"
     condition: all
     rules:
       - 'd:/etc/audit/rules.d -> r:.+\.rules$'
@@ -6785,96 +6181,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0001"
-          - "TA0002"
-          - "TA0003"
-          - "TA0004"
+          - "TA0112"
           - "TA0005"
-          - "TA0006"
-          - "TA0007"
-          - "TA0008"
-          - "TA0010"
-          - "TA0011"
-          - "TA0040"
         name:
-          - "Initial Access"
-          - "Execution"
-          - "Persistence"
-          - "Privilege Escalation"
+          - "Defense Impairment"
           - "Stealth"
-          - "Credential Access"
-          - "Discovery"
-          - "Lateral Movement"
-          - "Exfiltration"
-          - "Command and Control"
-          - "Impact"
       technique:
         id:
-          - "T1110"
-          - "T1003"
-          - "T1072"
-          - "T1495"
-          - "T1485"
-          - "T1486"
-          - "T1491"
-          - "T1490"
-          - "T1133"
-          - "T1200"
-          - "T1176"
-          - "T1087"
-          - "T1098"
-          - "T1092"
-          - "T1136"
-          - "T1011"
-          - "T1053"
-          - "T1201"
-          - "T1078"
-          - "T1190"
-          - "T1210"
-          - "T1055"
-          - "T1505"
-          - "T1218"
+          - "T1685"
           - "T1070"
-          - "T1037"
-          - "T1036"
-          - "T1489"
-          - "T1080"
-          - "T1539"
-          - "T1199"
-          - "T1564"
         name:
-          - "Brute Force"
-          - "OS Credential Dumping"
-          - "Software Deployment Tools"
-          - "Firmware Corruption"
-          - "Data Destruction"
-          - "Data Encrypted for Impact"
-          - "Defacement"
-          - "Inhibit System Recovery"
-          - "External Remote Services"
-          - "Hardware Additions"
-          - "Software Extensions"
-          - "Account Discovery"
-          - "Account Manipulation"
-          - "Communication Through Removable Media"
-          - "Create Account"
-          - "Exfiltration Over Other Network Medium"
-          - "Scheduled Task/Job"
-          - "Password Policy Discovery"
-          - "Valid Accounts"
-          - "Exploit Public-Facing Application"
-          - "Exploitation of Remote Services"
-          - "Process Injection"
-          - "Server Software Component"
-          - "System Binary Proxy Execution"
+          - "Disable or Modify Tools"
           - "Indicator Removal"
-          - "Boot or Logon Initialization Scripts"
-          - "Masquerading"
-          - "Service Stop"
-          - "Taint Shared Content"
-          - "Steal Web Session Cookie"
-          - "Trusted Relationship"
-          - "Hide Artifacts"
+      subtechnique:
+        id:
+          - "T1685.004"
+        name:
+          - "Disable or Modify Linux Audit System Log"
     condition: all
     rules:
       - 'd:/etc/audit/rules.d -> r:.+\.rules$'
@@ -8811,35 +8134,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0002"
-          - "TA0005"
           - "TA0006"
-          - "TA0007"
-          - "TA0112"
+          - "TA0040"
         name:
-          - "Execution"
-          - "Stealth"
           - "Credential Access"
-          - "Discovery"
-          - "Defense Impairment"
+          - "Impact"
       technique:
         id:
-          - "T1685"
-          - "T1070"
-          - "T1059"
-          - "T1040"
+          - "T1110"
+          - "T1499"
         name:
-          - "Disable or Modify Tools"
-          - "Indicator Removal"
-          - "Command and Scripting Interpreter"
-          - "Network Sniffing"
+          - "Brute Force"
+          - "Endpoint Denial of Service"
       subtechnique:
         id:
-          - "T1685.004"
-          - "T1685.006"
+          - "T1110.001"
         name:
-          - "Disable or Modify Linux Audit System Log"
-          - "Clear Linux or Mac System Logs"
+          - "Password Guessing"
     condition: all
     rules:
       - 'c:sshd -T -> n:^MaxAuthTries\s*\t*(\d+) compare <= 4'

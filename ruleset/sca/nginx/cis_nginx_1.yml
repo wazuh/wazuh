@@ -75,16 +75,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1190"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploit Public-Facing Application"
     references:
       - http://nginx.org/en/docs/configure.html
       - https://tools.ietf.org/html/rfc4918
@@ -112,16 +110,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1190"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploit Public-Facing Application"
     references:
       - http://nginx.org/en/docs/configure.html
       - http://nginx.org/en/docs/configure.html
@@ -149,16 +145,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1190"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploit Public-Facing Application"
     references:
       - http://nginx.org/en/docs/http/ngx_http_autoindex_module.htm
     condition: none
@@ -188,16 +182,22 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0004"
+          - "TA0005"
+          - "TA0003"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Privilege Escalation"
+          - "Stealth"
+          - "Persistence"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1068"
+          - "T1078"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploitation for Privilege Escalation"
+          - "Valid Accounts"
     references:
       - http://nginx.org/en/docs/ngx_core_module.html#user
     condition: all
@@ -226,16 +226,22 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0004"
+          - "TA0005"
+          - "TA0003"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Privilege Escalation"
+          - "Stealth"
+          - "Persistence"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1068"
+          - "T1078"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploitation for Privilege Escalation"
+          - "Valid Accounts"
     condition: all
     rules:
       - 'c:passwd -S nginx -> r:^nginx L.+'
@@ -260,16 +266,22 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0004"
+          - "TA0005"
+          - "TA0003"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Privilege Escalation"
+          - "Stealth"
+          - "Persistence"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1068"
+          - "T1078"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploitation for Privilege Escalation"
+          - "Valid Accounts"
     condition: all
     rules:
       - "c:grep nginx /etc/passwd -> r:/sbin/nologin"
@@ -296,16 +308,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
         name:
-          - "Discovery"
+          - "Defense Impairment"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1222"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "File and Directory Permissions Modification"
+      subtechnique:
+        id:
+          - "T1222.002"
+        name:
+          - "Linux and Mac Permissions"
     condition: all
     rules:
       - 'c:stat -L /etc/nginx -> r:Access:\s*(" && r:Uid:\s+\(.+root\)\s+Gid:\s+\(.+root\)$'
@@ -330,16 +345,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
         name:
-          - "Discovery"
+          - "Defense Impairment"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1222"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "File and Directory Permissions Modification"
+      subtechnique:
+        id:
+          - "T1222.002"
+        name:
+          - "Linux and Mac Permissions"
     references:
       - https://dev-sec.io/baselines/nginx/
     condition: none
@@ -367,16 +385,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
         name:
-          - "Discovery"
+          - "Defense Impairment"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1222"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "File and Directory Permissions Modification"
+      subtechnique:
+        id:
+          - "T1222.002"
+        name:
+          - "Linux and Mac Permissions"
     condition: all
     rules:
       - 'c:ls -l /var/run/nginx.pid -> r:^.+\S+\s+root\s+root\s+.+'
@@ -401,16 +422,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1003"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "OS Credential Dumping"
+      subtechnique:
+        id:
+          - "T1003.007"
+        name:
+          - "Proc Filesystem"
     references:
       - https://www.nginx.com/resources/wiki/start/topics/tutorials/debugging/#coredump
     condition: none
@@ -439,16 +463,24 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0112"
+          - "TA0003"
+          - "TA0001"
           - "TA0007"
         name:
+          - "Defense Impairment"
+          - "Persistence"
+          - "Initial Access"
           - "Discovery"
       technique:
         id:
+          - "T1686"
+          - "T1133"
           - "T1046"
-          - "T1087"
         name:
+          - "Disable or Modify System Firewall"
+          - "External Remote Services"
           - "Network Service Discovery"
-          - "Account Discovery"
     condition: all
     rules:
       - 'c:grep -ir " listen " /etc/nginx -> r:^.+listen\s+80\s+.*|^.+listen\s+443\s+.*|^.+:443\s+.*'
@@ -475,16 +507,21 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0040"
         name:
-          - "Discovery"
+          - "Impact"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1499"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Endpoint Denial of Service"
+      subtechnique:
+        id:
+          - "T1499.002"
+          - "T1499.003"
+        name:
+          - "Service Exhaustion Flood"
+          - "Application Exhaustion Flood"
     references:
       - http://nginx.org/en/docs/http/ngx_http_core_module.html#keepalive_timeout
     condition: any
@@ -512,16 +549,21 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0040"
         name:
-          - "Discovery"
+          - "Impact"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1499"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Endpoint Denial of Service"
+      subtechnique:
+        id:
+          - "T1499.002"
+          - "T1499.003"
+        name:
+          - "Service Exhaustion Flood"
+          - "Application Exhaustion Flood"
     references:
       - https://www.owasp.org/index.php/SCG_WS_nginx
       - http://nginx.org/en/docs/http/ngx_http_core_module.html#send_timeout
@@ -552,16 +594,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1190"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploit Public-Facing Application"
     condition: none
     rules:
       - 'c:curl -I 127.0.0.1 -> r:^.*Server:\s+nginx/.+'
@@ -586,16 +626,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1190"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploit Public-Facing Application"
     condition: none
     rules:
       - 'c:grep -i nginx /usr/share/nginx/html/index.html -> r:.+'
@@ -621,16 +659,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1190"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploit Public-Facing Application"
     references:
       - https://programming-review.com/nginx-disable-access-to-htaccess-file/
     condition: all
@@ -657,16 +693,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1190"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploit Public-Facing Application"
     references:
       - http://nginx.org/en/docs/http/ngx_http_proxy_module.html
     condition: all
@@ -698,16 +732,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     references:
       - http://nginx.org/en/docs/http/ngx_http_log_module.html#log_format
     condition: all
@@ -745,16 +781,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     references:
       - http://nginx.org/en/docs/http/ngx_http_log_module.html#log_format
     condition: none
@@ -781,16 +819,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: all
     rules:
       - 'f:/etc/nginx/nginx.conf -> r:^\s*error_log\s+/var/log/nginx/error\.log\s+info;'
@@ -815,16 +855,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: all
     rules:
       - 'f:/etc/logrotate.d/nginx -> r:^\s*rotate\s+13'
@@ -850,16 +892,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     references:
       - http://nginx.org/en/docs/syslog.html
     condition: all
@@ -886,16 +930,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     references:
       - http://nginx.org/en/docs/syslog.html
     condition: all
@@ -922,16 +968,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     references:
       - https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-For
       - http://nginx.org/en/docs/http/ngx_http_proxy_module.html
@@ -965,16 +1013,20 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0006"
           - "TA0007"
+          - "TA0009"
         name:
+          - "Credential Access"
           - "Discovery"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1040"
+          - "T1557"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Network Sniffing"
+          - "Adversary-in-the-Middle"
     references:
       - https://serversforhackers.com/c/redirect-http-to-https-nginx
     condition: any
@@ -1002,16 +1054,20 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0006"
           - "TA0007"
+          - "TA0009"
         name:
+          - "Credential Access"
           - "Discovery"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1040"
+          - "T1557"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Network Sniffing"
+          - "Adversary-in-the-Middle"
     references:
       - http://nginx.org/en/docs/http/configuring_https_servers.html#chains
       - https://www.digicert.com/csr-ssl-installation/nginx-openssl.htm
@@ -1041,16 +1097,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1552"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Unsecured Credentials"
+      subtechnique:
+        id:
+          - "T1552.004"
+        name:
+          - "Private Keys"
     condition: all
     rules:
       - "f:/etc/nginx/nginx.key"
@@ -1076,16 +1135,20 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0006"
           - "TA0007"
+          - "TA0009"
         name:
+          - "Credential Access"
           - "Discovery"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1040"
+          - "T1557"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Network Sniffing"
+          - "Adversary-in-the-Middle"
     references:
       - https://webkit.org/blog/8462/deprecation-of-legacy-tls-1-0-and-1-1-versions/
       - https://www.cloudflare.com/learning-resources/tls-1-3/
@@ -1113,16 +1176,20 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0006"
           - "TA0007"
+          - "TA0009"
         name:
+          - "Credential Access"
           - "Discovery"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1040"
+          - "T1557"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Network Sniffing"
+          - "Adversary-in-the-Middle"
     references:
       - CIS Apache HTTP Server Benchmark
       - https://ssllabs.com
@@ -1155,16 +1222,20 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0006"
           - "TA0007"
+          - "TA0009"
         name:
+          - "Credential Access"
           - "Discovery"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1040"
+          - "T1557"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Network Sniffing"
+          - "Adversary-in-the-Middle"
     references:
       - https://weakdh.org/sysadmin.html
     condition: all
@@ -1191,16 +1262,20 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0006"
           - "TA0007"
+          - "TA0009"
         name:
+          - "Credential Access"
           - "Discovery"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1040"
+          - "T1557"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Network Sniffing"
+          - "Adversary-in-the-Middle"
     references:
       - https://www.digicert.com/ssl-support/nginx-enable-ocsp-stapling-on-server.htm
     condition: all
@@ -1228,16 +1303,20 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0006"
           - "TA0007"
+          - "TA0009"
         name:
+          - "Credential Access"
           - "Discovery"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1040"
+          - "T1557"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Network Sniffing"
+          - "Adversary-in-the-Middle"
     references:
       - https://www.globalsign.com/en/blog/what-is-hsts-and-how-do-i-use-it/
       - https://mozilla.github.io/server-side-tls/ssl-config-generator/
@@ -1268,16 +1347,20 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0006"
           - "TA0007"
+          - "TA0009"
         name:
+          - "Credential Access"
           - "Discovery"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1040"
+          - "T1557"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Network Sniffing"
+          - "Adversary-in-the-Middle"
     references:
       - https://developer.mozilla.org/en-US/docs/Web/HTTP/Public_Key_Pinning
     condition: all
@@ -1304,16 +1387,20 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0006"
           - "TA0007"
+          - "TA0009"
         name:
+          - "Credential Access"
           - "Discovery"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1040"
+          - "T1557"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Network Sniffing"
+          - "Adversary-in-the-Middle"
     references:
       - https://docs.nginx.com/nginx/admin-guide/security-controls/securing-httptraffic-upstream/
       - http://www.staticshin.com/programming/proxy-ssl-cert-in-nginx.html
@@ -1343,16 +1430,20 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0006"
           - "TA0007"
+          - "TA0009"
         name:
+          - "Credential Access"
           - "Discovery"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1040"
+          - "T1557"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Network Sniffing"
+          - "Adversary-in-the-Middle"
     references:
       - https://docs.nginx.com/nginx/admin-guide/security-controls/securing-httptraffic-upstream/
       - http://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_ssl_trusted_certificate
@@ -1383,16 +1474,20 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0006"
           - "TA0007"
+          - "TA0009"
         name:
+          - "Credential Access"
           - "Discovery"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1040"
+          - "T1557"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Network Sniffing"
+          - "Adversary-in-the-Middle"
     references:
       - https://www.imperialviolet.org/2013/06/27/botchingpfs.html
       - https://scotthelme.co.uk/perfect-forward-secrecy/
@@ -1420,16 +1515,20 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0006"
           - "TA0007"
+          - "TA0009"
         name:
+          - "Credential Access"
           - "Discovery"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1040"
+          - "T1557"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Network Sniffing"
+          - "Adversary-in-the-Middle"
     references:
       - https://mozilla.github.io/server-side-tls/ssl-config-generator/
       - http://http2.github.io/http2-spec/
@@ -1463,16 +1562,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1190"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploit Public-Facing Application"
     references:
       - https://help.dreamhost.com/hc/en-us/articles/222784068-The-most-importantsteps-to-take-to-make-an-nginx-server-more-secure
       - http://nginx.org/en/docs/http/ngx_http_access_module.html
@@ -1506,16 +1603,21 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0040"
         name:
-          - "Discovery"
+          - "Impact"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1499"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Endpoint Denial of Service"
+      subtechnique:
+        id:
+          - "T1499.002"
+          - "T1499.003"
+        name:
+          - "Service Exhaustion Flood"
+          - "Application Exhaustion Flood"
     references:
       - https://www.owasp.org/index.php/SCG_WS_nginx
       - https://blog.qualys.com/securitylabs/2011/11/02/how-to-protect-against-slowhttp-attacks
@@ -1544,16 +1646,21 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0040"
         name:
-          - "Discovery"
+          - "Impact"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1499"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Endpoint Denial of Service"
+      subtechnique:
+        id:
+          - "T1499.002"
+          - "T1499.003"
+        name:
+          - "Service Exhaustion Flood"
+          - "Application Exhaustion Flood"
     references:
       - https://www.cyberciti.biz/tips/linux-unix-bsd-nginx-webserver-security.html
       - http://nginx.org/en/docs/http/ngx_http_core_module.html#client_body_temp_path
@@ -1583,16 +1690,21 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0040"
         name:
-          - "Discovery"
+          - "Impact"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1499"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Endpoint Denial of Service"
+      subtechnique:
+        id:
+          - "T1499.002"
+          - "T1499.003"
+        name:
+          - "Service Exhaustion Flood"
+          - "Application Exhaustion Flood"
     references:
       - https://www.cyberciti.biz/tips/linux-unix-bsd-nginx-webserver-security.html
       - https://www.owasp.org/index.php/Denial_of_Service_Cheat_Sheet
@@ -1621,16 +1733,21 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0040"
         name:
-          - "Discovery"
+          - "Impact"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1499"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Endpoint Denial of Service"
+      subtechnique:
+        id:
+          - "T1499.002"
+          - "T1499.003"
+        name:
+          - "Service Exhaustion Flood"
+          - "Application Exhaustion Flood"
     references:
       - https://www.nginx.com/resources/library/complete-nginx-cookbook/
       - http://nginx.org/en/docs/http/ngx_http_limit_conn_module.html
@@ -1660,16 +1777,21 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0040"
         name:
-          - "Discovery"
+          - "Impact"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1499"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Endpoint Denial of Service"
+      subtechnique:
+        id:
+          - "T1499.002"
+          - "T1499.003"
+        name:
+          - "Service Exhaustion Flood"
+          - "Application Exhaustion Flood"
     references:
       - https://scotthelme.co.uk/mitigating-http-get-dos-attack/
       - https://www.nginx.com/blog/rate-limiting-nginx/
@@ -1700,16 +1822,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1189"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Drive-by Compromise"
     references:
       - https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Frame-Options
       - https://scotthelme.co.uk/hardening-your-http-response-headers/
@@ -1739,16 +1859,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1189"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Drive-by Compromise"
     references:
       - https://scotthelme.co.uk/hardening-your-http-response-headers/
       - https://www.veracode.com/blog/2014/03/guidelines-for-setting-security-headers
@@ -1779,16 +1897,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1189"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Drive-by Compromise"
     references:
       - https://www.owasp.org/index.php/OWASP_Secure_Headers_Project
       - https://scotthelme.co.uk/hardening-your-http-response-headers/
@@ -1817,16 +1933,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1189"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Drive-by Compromise"
     references:
       - https://scotthelme.co.uk/hardening-your-http-response-headers/
       - https://www.owasp.org/index.php/OWASP_Secure_Headers_Project
@@ -1856,16 +1970,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1189"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Drive-by Compromise"
     references:
       - https://scotthelme.co.uk/a-new-security-header-referrer-policy/
       - https://www.w3.org/TR/referrer-policy/

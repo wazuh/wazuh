@@ -54,16 +54,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0003"
+          - "TA0002"
         name:
-          - "Discovery"
+          - "Persistence"
+          - "Execution"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1505"
+          - "T1059"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Server Software Component"
+          - "Command and Scripting Interpreter"
+      subtechnique:
+        id:
+          - "T1505.001"
+        name:
+          - "SQL Stored Procedures"
     condition: none
     rules:
       - "f:$listener_file -> r:extproc"
@@ -88,16 +95,20 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0008"
+          - "TA0003"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Lateral Movement"
+          - "Persistence"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1210"
+          - "T1133"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploitation of Remote Services"
+          - "External Remote Services"
     condition: any
     rules:
       - 'f:$listener_file -> r:.+admin_restrictions_.+ ON'
@@ -125,16 +136,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT UPPER(VALUE) FROM V\\"\$SYSTEM_PARAMETER" WHERE UPPER(NAME) = ''AUDIT_SYS_OPERATIONS'';\" | sqlplus / as sysdba | grep -A 1 ^- | grep -v ^-" -> TRUE'
@@ -159,16 +172,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT UPPER(VALUE) FROM V\\"\$SYSTEM_PARAMETER" WHERE UPPER(NAME)=''AUDIT_TRAIL'';\" | sqlplus / as sysdba | grep -A 1 ^- | grep -v ^-" -> r:^DB|^OS|^XML|^DB,EXTENDED|^XML,EXTENDED'
@@ -193,16 +208,20 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0008"
+          - "TA0003"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Lateral Movement"
+          - "Persistence"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1210"
+          - "T1133"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploitation of Remote Services"
+          - "External Remote Services"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT UPPER(VALUE) FROM V\\"\$SYSTEM_PARAMETER" WHERE UPPER(NAME)=''GLOBAL_NAMES'';\" | sqlplus / as sysdba | grep -A 1 ^- | grep -v ^-" -> TRUE'
@@ -228,16 +247,29 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0009"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1213"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Data from Information Repositories"
+      subtechnique:
+        id:
+          - "T1213.006"
+        name:
+          - "Databases"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT UPPER(VALUE) FROM V\\"\$SYSTEM_PARAMETER" WHERE UPPER(NAME)=''OS_ROLES'';\" | sqlplus / as sysdba| grep -A 1 ^- | grep -v ^-" -> FALSE'
@@ -263,16 +295,20 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0008"
+          - "TA0003"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Lateral Movement"
+          - "Persistence"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1210"
+          - "T1133"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploitation of Remote Services"
+          - "External Remote Services"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT UPPER(VALUE) FROM V\\"\$SYSTEM_PARAMETER" WHERE UPPER(NAME)=''REMOTE_LISTENER'' AND VALUE IS NOT NULL;\" | sqlplus / as sysdba | grep -A 1 \"^SQL>\" | grep -v \"^SQL>\"" -> r:no rows selected'
@@ -298,16 +334,24 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1110"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Brute Force"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT UPPER(VALUE) FROM V\\"\$SYSTEM_PARAMETER" WHERE UPPER(NAME)=''REMOTE_LOGIN_PASSWORDFILE'';\" | sqlplus / as sysdba | grep -A 1 ^- | grep -v ^-" -> r:^NONE|^EXCLUSIVE'
@@ -332,16 +376,24 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1110"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Brute Force"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT UPPER(VALUE) FROM V\\"\$SYSTEM_PARAMETER" WHERE UPPER(NAME)=''REMOTE_OS_AUTHENT'';\" | sqlplus / as sysdba | grep -A 1 ^- | grep -v ^-" -> FALSE'
@@ -366,16 +418,29 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0009"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1213"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Data from Information Repositories"
+      subtechnique:
+        id:
+          - "T1213.006"
+        name:
+          - "Databases"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT UPPER(VALUE) FROM V\\"\$SYSTEM_PARAMETER" WHERE UPPER(NAME)=''REMOTE_OS_ROLES'';\" | sqlplus / as sysdba | grep -A 1 ^- | grep -v ^-" -> FALSE'
@@ -400,16 +465,24 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1110"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Brute Force"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT UPPER(VALUE) FROM V\\"\$SYSTEM_PARAMETER" WHERE UPPER(NAME)=''SEC_CASE_SENSITIVE_LOGON'';\" | sqlplus / as sysdba | grep -A 1 ^- | grep -v ^-" -> TRUE'
@@ -434,16 +507,21 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1110"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Brute Force"
+      subtechnique:
+        id:
+          - "T1110.001"
+          - "T1110.003"
+        name:
+          - "Password Guessing"
+          - "Password Spraying"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT UPPER(VALUE) FROM V\\"\$SYSTEM_PARAMETER" WHERE UPPER(NAME)=''SEC_MAX_FAILED_LOGIN_ATTEMPTS'';\" | sqlplus / as sysdba | grep -A 1 ^- | grep -v ^-" -> n:(\d+) compare <= 3'
@@ -468,16 +546,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT UPPER(VALUE) FROM V\\"\$SYSTEM_PARAMETER" WHERE UPPER(NAME)=''SEC_PROTOCOL_ERROR_FURTHER_ACTION'';\" | sqlplus / as sysdba | grep -A 1 ^- | grep -v ^-" -> (DROP,3)'
@@ -502,16 +582,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT UPPER(VALUE) FROM V\\"\$SYSTEM_PARAMETER" WHERE UPPER(NAME)=''SEC_PROTOCOL_ERROR_TRACE_ACTION'';\" | sqlplus / as sysdba | grep -A 1 ^- | grep -v ^-" -> LOG'
@@ -541,11 +623,9 @@ checks:
           - "Discovery"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1082"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "System Information Discovery"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT UPPER(VALUE) FROM V\\"\$SYSTEM_PARAMETER" WHERE UPPER(NAME)=''SEC_RETURN_SERVER_RELEASE_BANNER'';\" | sqlplus / as sysdba | grep -A 1 ^- | grep -v ^-" -> FALSE'
@@ -570,16 +650,29 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0009"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1213"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Data from Information Repositories"
+      subtechnique:
+        id:
+          - "T1213.006"
+        name:
+          - "Databases"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT UPPER(VALUE) FROM V\\"\$SYSTEM_PARAMETER" WHERE UPPER(NAME)=''SQL92_SECURITY'';\" | sqlplus / as sysdba | grep -A 1 ^- | grep -v ^-" -> TRUE'
@@ -607,16 +700,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0040"
         name:
-          - "Discovery"
+          - "Impact"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1499"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Endpoint Denial of Service"
+      subtechnique:
+        id:
+          - "T1499.003"
+        name:
+          - "Application Exhaustion Flood"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT UPPER(VALUE) FROM V\\"\$SYSTEM_PARAMETER" WHERE UPPER(NAME)=''RESOURCE_LIMIT'';\" | sqlplus / as sysdba | grep -A 1 ^- | grep -v ^-" -> TRUE'
@@ -645,16 +741,21 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1110"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Brute Force"
+      subtechnique:
+        id:
+          - "T1110.001"
+          - "T1110.003"
+        name:
+          - "Password Guessing"
+          - "Password Spraying"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT P.PROFILE, P.RESOURCE_NAME, P.LIMIT FROM DBA_PROFILES P WHERE TO_NUMBER(DECODE(P.LIMIT, ''DEFAULT'',(SELECT DISTINCT DECODE(LIMIT,''UNLIMITED'',9999,LIMIT) FROM DBA_PROFILES WHERE PROFILE=''DEFAULT'' AND RESOURCE_NAME=''FAILED_LOGIN_ATTEMPTS''), ''UNLIMITED'',''9999'', P.LIMIT)) > 5 AND P.RESOURCE_NAME = ''FAILED_LOGIN_ATTEMPTS'' AND EXISTS ( SELECT ''X'' FROM DBA_USERS U WHERE U.PROFILE = P.PROFILE ) ;\" | sqlplus / as sysdba | grep -A 1 FAILED_LOGIN_ATTEMPTS | grep -v FAILED_LOGIN_ATTEMPTS" -> n:(\d+) compare <= 5'
@@ -680,16 +781,21 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1110"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Brute Force"
+      subtechnique:
+        id:
+          - "T1110.001"
+          - "T1110.003"
+        name:
+          - "Password Guessing"
+          - "Password Spraying"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT P.PROFILE, P.RESOURCE_NAME, P.LIMIT FROM DBA_PROFILES P WHERE TO_NUMBER(DECODE(P.LIMIT, ''DEFAULT'',(SELECT DISTINCT DECODE(LIMIT,''UNLIMITED'',9999,LIMIT) FROM DBA_PROFILES WHERE PROFILE=''DEFAULT'' AND RESOURCE_NAME=''PASSWORD_LOCK_TIME''), ''UNLIMITED'',''9999'', P.LIMIT)) < 1 AND P.RESOURCE_NAME = ''PASSWORD_LOCK_TIME'' AND EXISTS ( SELECT ''X'' FROM DBA_USERS U WHERE U.PROFILE = P.PROFILE );\" | sqlplus / as sysdba | grep -A 1 ^- | grep -v ^-" -> n:(\d+) compare >= 1'
@@ -717,16 +823,31 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1110"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Brute Force"
+      subtechnique:
+        id:
+          - "T1078.003"
+          - "T1110.004"
+        name:
+          - "Local Accounts"
+          - "Credential Stuffing"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT P.PROFILE, P.RESOURCE_NAME, P.LIMIT FROM DBA_PROFILES P WHERE TO_NUMBER(DECODE(P.LIMIT, ''DEFAULT'',(SELECT DISTINCT DECODE(LIMIT,''UNLIMITED'',9999,LIMIT) FROM DBA_PROFILES WHERE PROFILE=''DEFAULT'' AND RESOURCE_NAME=''PASSWORD_LIFE_TIME''), ''UNLIMITED'',''9999'',P.LIMIT)) > 90 AND P.RESOURCE_NAME = ''PASSWORD_LIFE_TIME'' AND EXISTS ( SELECT ''X'' FROM DBA_USERS U WHERE U.PROFILE = P.PROFILE );\" | sqlplus / as sysdba | grep -A 1 \"PASSWORD_LIFE_TIME\" | grep -v \"PASSWORD_LIFE_TIME\"" -> n:(\d+) compare <= 90'
@@ -754,16 +875,31 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1110"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Brute Force"
+      subtechnique:
+        id:
+          - "T1078.003"
+          - "T1110.004"
+        name:
+          - "Local Accounts"
+          - "Credential Stuffing"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT P.PROFILE, P.RESOURCE_NAME, P.LIMIT FROM DBA_PROFILES P WHERE TO_NUMBER(DECODE(P.LIMIT, ''DEFAULT'',(SELECT DISTINCT DECODE(LIMIT,''UNLIMITED'',9999,LIMIT) FROM DBA_PROFILES WHERE PROFILE=''DEFAULT'' AND RESOURCE_NAME=''PASSWORD_REUSE_MAX''), ''UNLIMITED'',''9999'',P.LIMIT)) < 20 AND P.RESOURCE_NAME = ''PASSWORD_REUSE_MAX'' AND EXISTS ( SELECT ''X'' FROM DBA_USERS U WHERE U.PROFILE = P.PROFILE );\" | sqlplus / as sysdba | grep -A 1 ^- | grep -v ^-" -> n:(\d+) compare >= 20'
@@ -791,16 +927,31 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1110"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Brute Force"
+      subtechnique:
+        id:
+          - "T1078.003"
+          - "T1110.004"
+        name:
+          - "Local Accounts"
+          - "Credential Stuffing"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT P.PROFILE, P.RESOURCE_NAME, P.LIMIT FROM DBA_PROFILES P WHERE TO_NUMBER(DECODE(P.LIMIT, ''DEFAULT'',(SELECT DISTINCT DECODE(LIMIT,''UNLIMITED'',9999,LIMIT) FROM DBA_PROFILES WHERE PROFILE=''DEFAULT'' AND RESOURCE_NAME=''PASSWORD_REUSE_TIME''), ''UNLIMITED'',''9999'',P.LIMIT)) < 365 AND P.RESOURCE_NAME = ''PASSWORD_REUSE_TIME'' AND EXISTS ( SELECT ''X'' FROM DBA_USERS U WHERE U.PROFILE = P.PROFILE );\" | sqlplus / as sysdba | grep -A 1 ^- | grep -v ^-" -> n:(\d+) compare >= 365'
@@ -828,16 +979,31 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1110"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Brute Force"
+      subtechnique:
+        id:
+          - "T1078.003"
+          - "T1110.004"
+        name:
+          - "Local Accounts"
+          - "Credential Stuffing"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT P.PROFILE, P.RESOURCE_NAME, P.LIMIT FROM DBA_PROFILES P WHERE TO_NUMBER(DECODE(P.LIMIT, ''DEFAULT'',(SELECT DISTINCT DECODE(LIMIT,''UNLIMITED'',9999,LIMIT) FROM DBA_PROFILES WHERE PROFILE=''DEFAULT'' AND RESOURCE_NAME=''PASSWORD_GRACE_TIME''), ''UNLIMITED'',''9999'',P.LIMIT)) > 5 AND P.RESOURCE_NAME = ''PASSWORD_GRACE_TIME'' AND EXISTS ( SELECT ''X'' FROM DBA_USERS U WHERE U.PROFILE = P.PROFILE );\" | sqlplus / as sysdba | grep -A 1 ^PASSWORD_GRACE_TIME | grep -v ^PASSWORD_GRACE_TIME" -> n:(\d+) compare <= 5'
@@ -865,16 +1031,21 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1110"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Brute Force"
+      subtechnique:
+        id:
+          - "T1110.001"
+          - "T1110.002"
+        name:
+          - "Password Guessing"
+          - "Password Cracking"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT P.PROFILE, P.RESOURCE_NAME, P.LIMIT FROM DBA_PROFILES P WHERE DECODE(P.LIMIT, ''DEFAULT'',(SELECT LIMIT FROM DBA_PROFILES WHERE PROFILE=''DEFAULT'' AND RESOURCE_NAME = P.RESOURCE_NAME), LIMIT) = ''NULL'' AND P.RESOURCE_NAME = ''PASSWORD_VERIFY_FUNCTION'' AND EXISTS ( SELECT ''X'' FROM DBA_USERS U WHERE U.PROFILE = P.PROFILE );\" | sqlplus / as sysdba | grep -A 1 ^PASSWORD_VERIFY_FUNCTION | grep -v ^PASSWORD_VERIFY_FUNCTION" -> NULL'
@@ -900,16 +1071,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0040"
         name:
-          - "Discovery"
+          - "Impact"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1499"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Endpoint Denial of Service"
+      subtechnique:
+        id:
+          - "T1499.003"
+        name:
+          - "Application Exhaustion Flood"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT P.PROFILE, P.RESOURCE_NAME, P.LIMIT, DECODE (P.CON_ID,0,(SELECT NAME FROM V\\"\$DATABASE"), 1,(SELECT NAME FROM V\\"\$DATABASE"), (SELECT NAME FROM V\\"\$PDBS" B WHERE P.CON_ID = B.CON_ID)) DATABASE FROM CDB_PROFILES P WHERE TO_NUMBER(DECODE(P.LIMIT, ''DEFAULT'',(SELECT DECODE(LIMIT,''UNLIMITED'',9999,LIMIT) FROM CDB_PROFILES WHERE PROFILE=''DEFAULT'' AND RESOURCE_NAME=''SESSIONS_PER_USER'' AND CON_ID = P.CON_ID), ''UNLIMITED'',''9999'',P.LIMIT)) > 10 AND P.RESOURCE_NAME = ''SESSIONS_PER_USER'' AND EXISTS ( SELECT ''X'' FROM CDB_USERS U WHERE U.PROFILE = P.PROFILE ) ORDER BY CON_ID, PROFILE, RESOURCE_NAME;\" | sqlplus / as sysdba | grep -A 1 ^SESSIONS_PER_USER | grep -v ^SESSIONS_PER_USER" -> n:(\d+) compare <= 10'
@@ -937,16 +1111,31 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1110"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Brute Force"
+      subtechnique:
+        id:
+          - "T1078.003"
+          - "T1110.004"
+        name:
+          - "Local Accounts"
+          - "Credential Stuffing"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT P.PROFILE, P.RESOURCE_NAME, P.LIMIT FROM DBA_PROFILES P WHERE TO_NUMBER(DECODE(P.LIMIT,''DEFAULT'',(SELECT DISTINCT DECODE(LIMIT,''UNLIMITED'',9999,LIMIT) FROM DBA_PROFILES WHERE PROFILE=''DEFAULT'' AND RESOURCE_NAME=''INACTIVE_ACCOUNT_TIME''), ''UNLIMITED'',''9999'', P.LIMIT)) > 120 AND P.RESOURCE_NAME = ''INACTIVE_ACCOUNT_TIME'' AND EXISTS ( SELECT ''X'' FROM DBA_USERS U WHERE U.PROFILE = P.PROFILE );\" | sqlplus / as sysdba | grep -A 1 ^INACTIVE_ACCOUNT_TIME | grep -v ^INACTIVE_ACCOUNT_TIME" -> n:(\d+) compare <= 120'
@@ -977,16 +1166,27 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+      subtechnique:
+        id:
+          - "T1078.001"
+          - "T1078.003"
+        name:
+          - "Default Accounts"
+          - "Local Accounts"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT DISTINCT A.USERNAME FROM DBA_USERS_WITH_DEFPWD A, DBA_USERS B WHERE A.USERNAME = B.USERNAME AND B.ACCOUNT_STATUS = ''OPEN'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> r:no rows selected'
@@ -1012,16 +1212,27 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+      subtechnique:
+        id:
+          - "T1078.001"
+          - "T1078.003"
+        name:
+          - "Default Accounts"
+          - "Local Accounts"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT USERNAME FROM DBA_USERS WHERE USERNAME IN (''BI'',''HR'',''IX'',''OE'',''PM'',''SCOTT'',''SH'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1047,16 +1258,24 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1110"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Brute Force"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT USERNAME FROM DBA_USERS WHERE AUTHENTICATION_TYPE = ''EXTERNAL'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1082,16 +1301,24 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0006"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Credential Access"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1110"
+          - "T1078"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Brute Force"
+          - "Valid Accounts"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT USERNAME FROM DBA_USERS WHERE PROFILE=''DEFAULT'' AND ACCOUNT_STATUS=''OPEN'' AND ORACLE_MAINTAINED = ''N'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1117,16 +1344,21 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1552"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Unsecured Credentials"
+      subtechnique:
+        id:
+          - "T1552.001"
+          - "T1552.003"
+        name:
+          - "Credentials In Files"
+          - "Shell History"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT OWNER, TABLE_NAME FROM DBA_TABLES WHERE TABLE_NAME=''USER\$MIG'' AND OWNER=''SYS'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1152,16 +1384,29 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0009"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1213"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Data from Information Repositories"
+      subtechnique:
+        id:
+          - "T1213.006"
+        name:
+          - "Databases"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT DB_LINK, HOST FROM DBA_DB_LINKS WHERE OWNER = ''PUBLIC'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1195,16 +1440,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0003"
+          - "TA0002"
         name:
-          - "Discovery"
+          - "Persistence"
+          - "Execution"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1505"
+          - "T1059"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Server Software Component"
+          - "Command and Scripting Interpreter"
+      subtechnique:
+        id:
+          - "T1505.001"
+        name:
+          - "SQL Stored Procedures"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT TABLE_NAME, PRIVILEGE, GRANTEE FROM DBA_TAB_PRIVS WHERE GRANTEE=''PUBLIC'' AND PRIVILEGE=''EXECUTE'' AND TABLE_NAME IN (''DBMS_LDAP'',''UTL_INADDR'',''UTL_TCP'',''UTL_MAIL'',''UTL_SMTP'',''UTL_DBWS'',''UTL_ORA MTS'',''UTL_HTTP'',''HTTPURITYPE'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1230,16 +1482,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0003"
+          - "TA0002"
         name:
-          - "Discovery"
+          - "Persistence"
+          - "Execution"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1505"
+          - "T1059"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Server Software Component"
+          - "Command and Scripting Interpreter"
+      subtechnique:
+        id:
+          - "T1505.001"
+        name:
+          - "SQL Stored Procedures"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT TABLE_NAME, PRIVILEGE, GRANTEE FROM DBA_TAB_PRIVS WHERE GRANTEE=''PUBLIC'' AND PRIVILEGE=''EXECUTE'' AND TABLE_NAME IN (''DBMS_ADVISOR'',''DBMS_LOB'',''UTL_FILE'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1265,16 +1524,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0003"
+          - "TA0002"
         name:
-          - "Discovery"
+          - "Persistence"
+          - "Execution"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1505"
+          - "T1059"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Server Software Component"
+          - "Command and Scripting Interpreter"
+      subtechnique:
+        id:
+          - "T1505.001"
+        name:
+          - "SQL Stored Procedures"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT TABLE_NAME, PRIVILEGE, GRANTEE FROM DBA_TAB_PRIVS WHERE GRANTEE=''PUBLIC'' AND PRIVILEGE=''EXECUTE'' AND TABLE_NAME IN (''DBMS_CRYPTO'',''DBMS_OBFUSCATION_TOOLKIT'', ''DBMS_RANDOM'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1300,16 +1566,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0003"
+          - "TA0002"
         name:
-          - "Discovery"
+          - "Persistence"
+          - "Execution"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1505"
+          - "T1059"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Server Software Component"
+          - "Command and Scripting Interpreter"
+      subtechnique:
+        id:
+          - "T1505.001"
+        name:
+          - "SQL Stored Procedures"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT TABLE_NAME, PRIVILEGE, GRANTEE FROM DBA_TAB_PRIVS WHERE GRANTEE=''PUBLIC'' AND PRIVILEGE=''EXECUTE'' AND TABLE_NAME IN (''DBMS_JAVA'',''DBMS_JAVA_TEST'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1335,16 +1608,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0003"
+          - "TA0002"
         name:
-          - "Discovery"
+          - "Persistence"
+          - "Execution"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1505"
+          - "T1059"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Server Software Component"
+          - "Command and Scripting Interpreter"
+      subtechnique:
+        id:
+          - "T1505.001"
+        name:
+          - "SQL Stored Procedures"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT TABLE_NAME, PRIVILEGE, GRANTEE FROM DBA_TAB_PRIVS WHERE GRANTEE=''PUBLIC'' AND PRIVILEGE=''EXECUTE'' AND TABLE_NAME IN (''DBMS_SCHEDULER'',''DBMS_JOB'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1370,16 +1650,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0003"
+          - "TA0002"
         name:
-          - "Discovery"
+          - "Persistence"
+          - "Execution"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1505"
+          - "T1059"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Server Software Component"
+          - "Command and Scripting Interpreter"
+      subtechnique:
+        id:
+          - "T1505.001"
+        name:
+          - "SQL Stored Procedures"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT TABLE_NAME, PRIVILEGE, GRANTEE FROM DBA_TAB_PRIVS WHERE GRANTEE=''PUBLIC'' AND PRIVILEGE=''EXECUTE'' AND TABLE_NAME IN (''DBMS_SQL'', ''DBMS_XMLGEN'', ''DBMS_XMLQUERY'',''DBMS_XMLSTORE'',''DBMS_XMLSAVE'',''DBMS_AW'',''OWA_UTIL'',''DBMS_RED ACT'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1408,16 +1695,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0003"
+          - "TA0002"
         name:
-          - "Discovery"
+          - "Persistence"
+          - "Execution"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1505"
+          - "T1059"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Server Software Component"
+          - "Command and Scripting Interpreter"
+      subtechnique:
+        id:
+          - "T1505.001"
+        name:
+          - "SQL Stored Procedures"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT TABLE_NAME, PRIVILEGE, GRANTEE FROM DBA_TAB_PRIVS WHERE GRANTEE=''PUBLIC'' AND PRIVILEGE=''EXECUTE'' AND TABLE_NAME IN (''DBMS_BACKUP_RESTORE'',''DBMS_FILE_TRANSFER'',''DBMS_SYS_SQL'',''DBMS_REPCAT_SQL_U TL'',''INITJVMAUX'', ''DBMS_AQADM_SYS'',''DBMS_STREAMS_RPC'',''DBMS_PRVTAQIM'',''LTADM'', ''DBMS_IJOB'',''DBMS_PDB_EXEC_SQL'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1446,16 +1740,29 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0009"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1213"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Data from Information Repositories"
+      subtechnique:
+        id:
+          - "T1213.006"
+        name:
+          - "Databases"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT GRANTEE, PRIVILEGE FROM DBA_TAB_PRIVS WHERE TABLE_NAME=''AUD\$'' AND OWNER = ''SYS'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1481,16 +1788,29 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0009"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1213"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Data from Information Repositories"
+      subtechnique:
+        id:
+          - "T1213.006"
+        name:
+          - "Databases"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT GRANTEE,TABLE_NAME FROM DBA_TAB_PRIVS WHERE TABLE_NAME LIKE ''DBA_%'' AND OWNER = ''SYS'' AND GRANTEE NOT IN (SELECT USERNAME FROM DBA_USERS WHERE ORACLE_MAINTAINED=''Y'') AND GRANTEE NOT IN (SELECT ROLE FROM DBA_ROLES WHERE ORACLE_MAINTAINED=''Y'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1516,16 +1836,29 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0009"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1213"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Data from Information Repositories"
+      subtechnique:
+        id:
+          - "T1213.006"
+        name:
+          - "Databases"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT GRANTEE, PRIVILEGE, TABLE_NAME FROM DBA_TAB_PRIVS WHERE TABLE_NAME in (''CDB_LOCAL_ADMINAUTH\$'',''DEFAULT_PWD\$'',''ENC\$'',''HISTGRM\$'',''HIST_HEAD\$'',''LINK\$'' ,''PDB_SYNC\$'',''SCHEDULER\$_CREDENTIAL'',''USER\$'',''USER_HISTORY\$'',''XS\$VERIFIERS'') AND OWNER = ''SYS'' AND GRANTEE NOT IN (SELECT USERNAME FROM DBA_USERS WHERE ORACLE_MAINTAINED=''Y'') AND GRANTEE NOT IN (SELECT ROLE FROM DBA_ROLES WHERE ORACLE_MAINTAINED=''Y'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1554,16 +1887,29 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0009"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1213"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Data from Information Repositories"
+      subtechnique:
+        id:
+          - "T1213.006"
+        name:
+          - "Databases"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT GRANTEE, PRIVILEGE FROM DBA_SYS_PRIVS WHERE PRIVILEGE LIKE ''%ANY%'' AND GRANTEE NOT IN (SELECT USERNAME FROM DBA_USERS WHERE ORACLE_MAINTAINED=''Y'') AND GRANTEE NOT IN (SELECT ROLE FROM DBA_ROLES WHERE ORACLE_MAINTAINED=''Y'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1589,16 +1935,29 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0009"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1213"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Data from Information Repositories"
+      subtechnique:
+        id:
+          - "T1213.006"
+        name:
+          - "Databases"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT GRANTEE, PRIVILEGE FROM DBA_SYS_PRIVS WHERE ADMIN_OPTION=''YES'' AND GRANTEE NOT IN (SELECT USERNAME FROM DBA_USERS WHERE ORACLE_MAINTAINED=''Y'') AND GRANTEE NOT IN (SELECT ROLE FROM DBA_ROLES WHERE ORACLE_MAINTAINED=''Y'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1624,16 +1983,29 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0009"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1213"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Data from Information Repositories"
+      subtechnique:
+        id:
+          - "T1213.006"
+        name:
+          - "Databases"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT GRANTEE, PRIVILEGE FROM DBA_SYS_PRIVS WHERE PRIVILEGE=''EXECUTE ANY PROCEDURE'' AND GRANTEE=''OUTLN'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1659,16 +2031,29 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0009"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1213"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Data from Information Repositories"
+      subtechnique:
+        id:
+          - "T1213.006"
+        name:
+          - "Databases"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT GRANTEE, PRIVILEGE FROM DBA_SYS_PRIVS WHERE PRIVILEGE=''EXECUTE ANY PROCEDURE'' AND GRANTEE=''DBSNMP'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1694,16 +2079,29 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0009"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1213"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Data from Information Repositories"
+      subtechnique:
+        id:
+          - "T1213.006"
+        name:
+          - "Databases"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT GRANTEE, PRIVILEGE FROM DBA_SYS_PRIVS WHERE PRIVILEGE=''SELECT ANY DICTIONARY'' AND GRANTEE NOT IN (SELECT USERNAME FROM DBA_USERS WHERE ORACLE_MAINTAINED=''Y'') AND GRANTEE NOT IN (SELECT ROLE FROM DBA_ROLES WHERE ORACLE_MAINTAINED=''Y'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1729,16 +2127,29 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0009"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1213"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Data from Information Repositories"
+      subtechnique:
+        id:
+          - "T1213.006"
+        name:
+          - "Databases"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT GRANTEE, PRIVILEGE FROM DBA_SYS_PRIVS WHERE PRIVILEGE=''SELECT ANY TABLE'' AND GRANTEE NOT IN (SELECT USERNAME FROM DBA_USERS WHERE ORACLE_MAINTAINED=''Y'') AND GRANTEE NOT IN (SELECT ROLE FROM DBA_ROLES WHERE ORACLE_MAINTAINED=''Y'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1764,16 +2175,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT GRANTEE, PRIVILEGE FROM DBA_SYS_PRIVS WHERE PRIVILEGE=''AUDIT SYSTEM'' AND GRANTEE NOT IN (SELECT USERNAME FROM DBA_USERS WHERE ORACLE_MAINTAINED=''Y'') AND GRANTEE NOT IN (SELECT ROLE FROM DBA_ROLES WHERE ORACLE_MAINTAINED=''Y'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1799,16 +2212,29 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0009"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1213"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Data from Information Repositories"
+      subtechnique:
+        id:
+          - "T1213.006"
+        name:
+          - "Databases"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT GRANTEE, PRIVILEGE FROM DBA_SYS_PRIVS WHERE PRIVILEGE=''EXEMPT ACCESS POLICY'' AND GRANTEE NOT IN (SELECT USERNAME FROM DBA_USERS WHERE ORACLE_MAINTAINED=''Y'') AND GRANTEE NOT IN (SELECT ROLE FROM DBA_ROLES WHERE ORACLE_MAINTAINED=''Y'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1834,16 +2260,29 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0009"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1213"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Data from Information Repositories"
+      subtechnique:
+        id:
+          - "T1213.006"
+        name:
+          - "Databases"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT GRANTEE, PRIVILEGE FROM DBA_SYS_PRIVS WHERE PRIVILEGE=''BECOME USER'' AND GRANTEE NOT IN (SELECT USERNAME FROM DBA_USERS WHERE ORACLE_MAINTAINED=''Y'') AND GRANTEE NOT IN (SELECT ROLE FROM DBA_ROLES WHERE ORACLE_MAINTAINED=''Y'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1869,16 +2308,29 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0009"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1213"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Data from Information Repositories"
+      subtechnique:
+        id:
+          - "T1213.006"
+        name:
+          - "Databases"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT GRANTEE, PRIVILEGE FROM DBA_SYS_PRIVS WHERE PRIVILEGE=''CREATE PROCEDURE'' AND GRANTEE NOT IN (SELECT USERNAME FROM DBA_USERS WHERE ORACLE_MAINTAINED=''Y'') AND GRANTEE NOT IN (SELECT ROLE FROM DBA_ROLES WHERE ORACLE_MAINTAINED=''Y'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1904,16 +2356,29 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0009"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1213"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Data from Information Repositories"
+      subtechnique:
+        id:
+          - "T1213.006"
+        name:
+          - "Databases"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT GRANTEE, PRIVILEGE FROM DBA_SYS_PRIVS WHERE PRIVILEGE=''ALTER SYSTEM'' AND GRANTEE NOT IN (SELECT USERNAME FROM DBA_USERS WHERE ORACLE_MAINTAINED=''Y'') AND GRANTEE NOT IN (SELECT ROLE FROM DBA_ROLES WHERE ORACLE_MAINTAINED=''Y'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1939,16 +2404,29 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0009"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1213"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Data from Information Repositories"
+      subtechnique:
+        id:
+          - "T1213.006"
+        name:
+          - "Databases"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT GRANTEE, PRIVILEGE FROM DBA_SYS_PRIVS WHERE PRIVILEGE=''CREATE ANY LIBRARY'' AND GRANTEE NOT IN (SELECT USERNAME FROM DBA_USERS WHERE ORACLE_MAINTAINED=''Y'') AND GRANTEE NOT IN (SELECT ROLE FROM DBA_ROLES WHERE ORACLE_MAINTAINED=''Y'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -1974,16 +2452,29 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0009"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1213"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Data from Information Repositories"
+      subtechnique:
+        id:
+          - "T1213.006"
+        name:
+          - "Databases"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT GRANTEE, PRIVILEGE FROM DBA_SYS_PRIVS WHERE PRIVILEGE=''CREATE LIBRARY'' AND GRANTEE NOT IN (SELECT USERNAME FROM DBA_USERS WHERE ORACLE_MAINTAINED=''Y'') AND GRANTEE NOT IN (SELECT ROLE FROM DBA_ROLES WHERE ORACLE_MAINTAINED=''Y'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -2009,16 +2500,29 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0009"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1213"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Data from Information Repositories"
+      subtechnique:
+        id:
+          - "T1213.006"
+        name:
+          - "Databases"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT GRANTEE, PRIVILEGE FROM DBA_SYS_PRIVS WHERE PRIVILEGE=''GRANT ANY OBJECT PRIVILEGE'' AND GRANTEE NOT IN (SELECT USERNAME FROM DBA_USERS WHERE ORACLE_MAINTAINED=''Y'') AND GRANTEE NOT IN (SELECT ROLE FROM DBA_ROLES WHERE ORACLE_MAINTAINED=''Y'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -2044,16 +2548,29 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0009"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1213"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Data from Information Repositories"
+      subtechnique:
+        id:
+          - "T1213.006"
+        name:
+          - "Databases"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT GRANTEE, PRIVILEGE FROM DBA_SYS_PRIVS WHERE PRIVILEGE=''GRANT ANY ROLE'' AND GRANTEE NOT IN (SELECT USERNAME FROM DBA_USERS WHERE ORACLE_MAINTAINED=''Y'') AND GRANTEE NOT IN (SELECT ROLE FROM DBA_ROLES WHERE ORACLE_MAINTAINED=''Y'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -2079,16 +2596,29 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0009"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1213"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Data from Information Repositories"
+      subtechnique:
+        id:
+          - "T1213.006"
+        name:
+          - "Databases"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT GRANTEE, PRIVILEGE FROM DBA_SYS_PRIVS WHERE PRIVILEGE=''GRANT ANY PRIVILEGE'' AND GRANTEE NOT IN (SELECT USERNAME FROM DBA_USERS WHERE ORACLE_MAINTAINED=''Y'') AND GRANTEE NOT IN (SELECT ROLE FROM DBA_ROLES WHERE ORACLE_MAINTAINED=''Y'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -2117,16 +2647,29 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0009"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1213"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Data from Information Repositories"
+      subtechnique:
+        id:
+          - "T1213.006"
+        name:
+          - "Databases"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT GRANTEE, GRANTED_ROLE FROM DBA_ROLE_PRIVS WHERE GRANTED_ROLE=''SELECT_CATALOG_ROLE'' AND GRANTEE NOT IN (SELECT USERNAME FROM DBA_USERS WHERE ORACLE_MAINTAINED=''Y'') AND GRANTEE NOT IN (SELECT ROLE FROM DBA_ROLES WHERE ORACLE_MAINTAINED=''Y'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -2152,16 +2695,29 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0009"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1213"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Data from Information Repositories"
+      subtechnique:
+        id:
+          - "T1213.006"
+        name:
+          - "Databases"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT GRANTEE, GRANTED_ROLE FROM DBA_ROLE_PRIVS WHERE GRANTED_ROLE=''EXECUTE_CATALOG_ROLE'' AND GRANTEE NOT IN (SELECT USERNAME FROM DBA_USERS WHERE ORACLE_MAINTAINED=''Y'') AND GRANTEE NOT IN (SELECT ROLE FROM DBA_ROLES WHERE ORACLE_MAINTAINED=''Y'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -2187,16 +2743,29 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0009"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1213"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Data from Information Repositories"
+      subtechnique:
+        id:
+          - "T1213.006"
+        name:
+          - "Databases"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT ''GRANT'' AS PATH, GRANTEE, GRANTED_ROLE FROM DBA_ROLE_PRIVS WHERE GRANTED_ROLE = ''DBA'' AND GRANTEE NOT IN (''SYS'', ''SYSTEM'') UNION SELECT ''PROXY'', PROXY || ''-'' || CLIENT, ''DBA'' FROM DBA_PROXIES WHERE CLIENT IN (SELECT GRANTEE FROM DBA_ROLE_PRIVS WHERE GRANTED_ROLE = ''DBA'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -2228,16 +2797,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: none
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT AUDIT_OPTION,SUCCESS,FAILURE FROM DBA_STMT_AUDIT_OPTS WHERE USER_NAME IS NULL AND PROXY_NAME IS NULL AND SUCCESS = ''BY ACCESS'' AND FAILURE = ''BY ACCESS'' AND AUDIT_OPTION=''USER'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -2263,16 +2834,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: none
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT AUDIT_OPTION,SUCCESS,FAILURE FROM DBA_STMT_AUDIT_OPTS WHERE USER_NAME IS NULL AND PROXY_NAME IS NULL AND SUCCESS = ''BY ACCESS'' AND FAILURE = ''BY ACCESS'' AND AUDIT_OPTION=''ROLE'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -2298,16 +2871,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: none
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT AUDIT_OPTION,SUCCESS,FAILURE FROM DBA_STMT_AUDIT_OPTS WHERE USER_NAME IS NULL AND PROXY_NAME IS NULL AND SUCCESS = ''BY ACCESS'' AND FAILURE = ''BY ACCESS'' AND AUDIT_OPTION=''SYSTEM GRANT'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -2333,16 +2908,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: none
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT AUDIT_OPTION,SUCCESS,FAILURE FROM DBA_STMT_AUDIT_OPTS WHERE USER_NAME IS NULL AND PROXY_NAME IS NULL AND SUCCESS = ''BY ACCESS'' AND FAILURE = ''BY ACCESS'' AND AUDIT_OPTION=''PROFILE'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -2368,16 +2945,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: none
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT AUDIT_OPTION,SUCCESS,FAILURE FROM DBA_STMT_AUDIT_OPTS WHERE USER_NAME IS NULL AND PROXY_NAME IS NULL AND SUCCESS = ''BY ACCESS'' AND FAILURE = ''BY ACCESS'' AND AUDIT_OPTION=''DATABASE LINK'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -2403,16 +2982,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: none
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT AUDIT_OPTION,SUCCESS,FAILURE FROM DBA_STMT_AUDIT_OPTS WHERE USER_NAME IS NULL AND PROXY_NAME IS NULL AND SUCCESS = ''BY ACCESS'' AND FAILURE = ''BY ACCESS'' AND AUDIT_OPTION=''PUBLIC DATABASE LINK'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -2438,16 +3019,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: none
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT AUDIT_OPTION,SUCCESS,FAILURE FROM DBA_STMT_AUDIT_OPTS WHERE USER_NAME IS NULL AND PROXY_NAME IS NULL AND SUCCESS = ''BY ACCESS'' AND FAILURE = ''BY ACCESS'' AND AUDIT_OPTION=''PUBLIC SYNONYM'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -2473,16 +3056,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: none
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT AUDIT_OPTION,SUCCESS,FAILURE FROM DBA_STMT_AUDIT_OPTS WHERE USER_NAME IS NULL AND PROXY_NAME IS NULL AND SUCCESS = ''BY ACCESS'' AND FAILURE = ''BY ACCESS'' AND AUDIT_OPTION=''SYNONYM'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -2508,16 +3093,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: none
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT AUDIT_OPTION,SUCCESS,FAILURE FROM DBA_STMT_AUDIT_OPTS WHERE USER_NAME IS NULL AND PROXY_NAME IS NULL AND SUCCESS = ''BY ACCESS'' AND FAILURE = ''BY ACCESS'' AND AUDIT_OPTION=''DIRECTORY'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -2543,16 +3130,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: none
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT AUDIT_OPTION,SUCCESS,FAILURE FROM DBA_STMT_AUDIT_OPTS WHERE USER_NAME IS NULL AND PROXY_NAME IS NULL AND SUCCESS = ''BY ACCESS'' AND FAILURE = ''BY ACCESS'' AND AUDIT_OPTION=''SELECT ANY DICTIONARY'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -2578,16 +3167,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: none
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT AUDIT_OPTION,SUCCESS,FAILURE FROM DBA_STMT_AUDIT_OPTS WHERE USER_NAME IS NULL AND PROXY_NAME IS NULL AND SUCCESS = ''BY ACCESS'' AND FAILURE = ''BY ACCESS'' AND AUDIT_OPTION=''GRANT ANY OBJECT PRIVILEGE'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -2613,16 +3204,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: none
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT AUDIT_OPTION,SUCCESS,FAILURE FROM DBA_STMT_AUDIT_OPTS WHERE USER_NAME IS NULL AND PROXY_NAME IS NULL AND SUCCESS = ''BY ACCESS'' AND FAILURE = ''BY ACCESS'' AND AUDIT_OPTION=''GRANT ANY PRIVILEGE'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -2648,16 +3241,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: none
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT AUDIT_OPTION,SUCCESS,FAILURE FROM DBA_STMT_AUDIT_OPTS WHERE USER_NAME IS NULL AND PROXY_NAME IS NULL AND SUCCESS = ''BY ACCESS'' AND FAILURE = ''BY ACCESS'' AND AUDIT_OPTION=''DROP ANY PROCEDURE'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -2683,16 +3278,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: none
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT * FROM CDB_OBJ_AUDIT_OPTS WHERE OBJECT_NAME=''AUD$'' AND ALT=''A/A'' AND AUD=''A/A'' AND COM=''A/A'' AND DEL=''A/A'' AND GRA=''A/A'' AND IND=''A/A'' AND INS=''A/A'' AND LOC=''A/A'' AND REN=''A/A'' AND SEL=''A/A'' AND UPD=''A/A'' AND FBK=''A/A'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -2717,16 +3314,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: none
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT AUDIT_OPTION,SUCCESS,FAILURE FROM DBA_STMT_AUDIT_OPTS WHERE USER_NAME IS NULL AND PROXY_NAME IS NULL AND SUCCESS = ''BY ACCESS'' AND FAILURE = ''BY ACCESS'' AND AUDIT_OPTION=''PROCEDURE'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -2752,16 +3351,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: none
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT AUDIT_OPTION,SUCCESS,FAILURE FROM DBA_STMT_AUDIT_OPTS WHERE USER_NAME IS NULL AND PROXY_NAME IS NULL AND SUCCESS = ''BY ACCESS'' AND FAILURE = ''BY ACCESS'' AND AUDIT_OPTION=''ALTER SYSTEM'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -2787,16 +3388,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: none
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT AUDIT_OPTION,SUCCESS,FAILURE FROM DBA_STMT_AUDIT_OPTS WHERE USER_NAME IS NULL AND PROXY_NAME IS NULL AND SUCCESS = ''BY ACCESS'' AND FAILURE = ''BY ACCESS'' AND AUDIT_OPTION=''TRIGGER'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -2822,16 +3425,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: none
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT AUDIT_OPTION,SUCCESS,FAILURE FROM DBA_STMT_AUDIT_OPTS WHERE USER_NAME IS NULL AND PROXY_NAME IS NULL AND SUCCESS = ''BY ACCESS'' AND FAILURE = ''BY ACCESS'' AND AUDIT_OPTION=''CREATE SESSION'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -2860,16 +3465,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY(''CREATE USER'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''CREATE USER'' ) AND AUD.AUDIT_OPTION_TYPE = ''STANDARD ACTION'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL ;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -2894,16 +3501,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY(''ALTER USER'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''ALTER USER'' ) AND AUD.AUDIT_OPTION_TYPE = ''STANDARD ACTION'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -2928,16 +3537,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY(''DROP USER'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''DROP USER'' ) AND AUD.AUDIT_OPTION_TYPE = ''STANDARD ACTION'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -2962,16 +3573,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY(''CREATE ROLE'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''CREATE ROLE'' ) AND AUD.AUDIT_OPTION_TYPE = ''STANDARD ACTION'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -2996,16 +3609,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY(''ALTER ROLE'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''ALTER ROLE'' ) AND AUD.AUDIT_OPTION_TYPE = ''STANDARD ACTION'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -3030,16 +3645,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY(''DROP ROLE'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''DROP ROLE'' ) AND AUD.AUDIT_OPTION_TYPE = ''STANDARD ACTION'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -3064,16 +3681,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY(''GRANT'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''GRANT'' ) AND AUD.AUDIT_OPTION_TYPE = ''STANDARD ACTION'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -3098,16 +3717,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY(''REVOKE'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''REVOKE'' ) AND AUD.AUDIT_OPTION_TYPE = ''STANDARD ACTION'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -3132,16 +3753,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: none
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY(''CREATE PROFILE'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''CREATE PROFILE'') AND AUD.AUDIT_OPTION_TYPE = ''STANDARD ACTION'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -3166,16 +3789,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY(''ALTER PROFILE'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''ALTER PROFILE'' ) AND AUD.AUDIT_OPTION_TYPE = ''STANDARD ACTION'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -3200,16 +3825,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY(''DROP PROFILE'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''DROP PROFILE'' ) AND AUD.AUDIT_OPTION_TYPE = ''STANDARD ACTION'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -3234,16 +3861,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY(''CREATE DATABASE LINK'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''CREATE DATABASE LINK'' ) AND AUD.AUDIT_OPTION_TYPE = ''STANDARD ACTION'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -3268,16 +3897,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY(''ALTER DATABASE LINK'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''ALTER DATABASE LINK'' ) AND AUD.AUDIT_OPTION_TYPE = ''STANDARD ACTION'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -3302,16 +3933,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS (SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY(''DROP DATABASE LINK'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''DROP DATABASE LINK'' ) AND AUD.AUDIT_OPTION_TYPE = ''STANDARD ACTION'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -3336,16 +3969,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY( ''CREATE SYNONYM'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''CREATE SYNONYM'' ) AND AUD.AUDIT_OPTION_TYPE = ''STANDARD ACTION'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -3370,16 +4005,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY(''ALTER SYNONYM'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''ALTER SYNONYM'' ) AND AUD.AUDIT_OPTION_TYPE = ''STANDARD ACTION'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -3404,16 +4041,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY( ''DROP SYNONYM'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''DROP SYNONYM'' ) AND AUD.AUDIT_OPTION_TYPE = ''STANDARD ACTION'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -3438,16 +4077,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY( ''SELECT ANY DICTIONARY'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''SELECT ANY DICTIONARY'' ) AND AUD.AUDIT_OPTION_TYPE = ''SYSTEM PRIVILEGE'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL ;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -3472,16 +4113,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY( ''AUD$UNIFIED'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT OBJECT_NAME FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''ALL'' ) AND AUD.AUDIT_OPTION_TYPE = ''OBJECT ACTION'' AND AUD.OBJECT_SCHEMA = ''AUDSYS'' AND AUD.OBJECT_NAME = ''AUD$UNIFIED'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.OBJECT_NAME WHERE E.OBJECT_NAME IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -3506,16 +4149,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY( ''CREATE PROCEDURE'',''CREATE FUNCTION'',''CREATE PACKAGE'',''CREATE PACKAGE BODY'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''CREATE PROCEDURE'',''CREATE FUNCTION'',''CREATE PACKAGE'',''CREATE PACKAGE BODY'' ) AND AUD.AUDIT_OPTION_TYPE = ''STANDARD ACTION'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -3540,16 +4185,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY( ''ALTER PROCEDURE'',''ALTER FUNCTION'',''ALTER PACKAGE'',''ALTER PACKAGE BODY'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''ALTER PROCEDURE'',''ALTER FUNCTION'',''ALTER PACKAGE'',''ALTER PACKAGE BODY'' ) AND AUD.AUDIT_OPTION_TYPE = ''STANDARD ACTION'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -3574,16 +4221,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS (SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY( ''DROP PROCEDURE'',''DROP FUNCTION'',''DROP PACKAGE'',''DROP PACKAGE BODY'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''DROP PROCEDURE'',''DROP FUNCTION'',''DROP PACKAGE'',''DROP PACKAGE BODY'' ) AND AUD.AUDIT_OPTION_TYPE = ''STANDARD ACTION'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -3608,16 +4257,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY( ''ALTER SYSTEM'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''ALTER SYSTEM'' ) AND AUD.AUDIT_OPTION_TYPE = ''SYSTEM PRIVILEGE'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -3642,16 +4293,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY( ''CREATE TRIGGER'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''CREATE TRIGGER'' ) AND AUD.AUDIT_OPTION_TYPE = ''STANDARD ACTION'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -3676,16 +4329,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY( ''ALTER TRIGGER'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''ALTER TRIGGER'' ) AND AUD.AUDIT_OPTION_TYPE = ''STANDARD ACTION'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -3710,16 +4365,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY( ''DROP TRIGGER'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''DROP TRIGGER'' ) AND AUD.AUDIT_OPTION_TYPE = ''STANDARD ACTION'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -3744,16 +4401,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"WITH CIS_AUDIT(AUDIT_OPTION) AS ( SELECT * FROM TABLE( DBMSOUTPUT_LINESARRAY( ''LOGON'',''LOGOFF'' ) ) ), AUDIT_ENABLED AS ( SELECT DISTINCT AUDIT_OPTION FROM AUDIT_UNIFIED_POLICIES AUD WHERE AUD.AUDIT_OPTION IN (''LOGON'',''LOGOFF'' ) AND AUD.AUDIT_OPTION_TYPE = ''STANDARD ACTION'' AND EXISTS (SELECT * FROM AUDIT_UNIFIED_ENABLED_POLICIES ENABLED WHERE ENABLED.SUCCESS = ''YES'' AND ENABLED.FAILURE = ''YES'' AND ENABLED.ENABLED_OPTION = ''BY USER'' AND ENABLED.ENTITY_NAME = ''ALL USERS'' AND ENABLED.POLICY_NAME = AUD.POLICY_NAME) ) SELECT C.AUDIT_OPTION FROM CIS_AUDIT C LEFT JOIN AUDIT_ENABLED E ON C.AUDIT_OPTION = E.AUDIT_OPTION WHERE E.AUDIT_OPTION IS NULL;\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
