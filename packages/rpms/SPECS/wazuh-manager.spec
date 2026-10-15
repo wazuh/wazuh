@@ -57,6 +57,10 @@ log analysis, file integrity monitoring, intrusions detection and policy and com
 # Don't generate build_id links to prevent conflicts with other
 # packages.
 %global _build_id_links none
+# The rpm of the builder image is built with prefix /usr/local: pin the license directory
+# to /usr/share/licenses/<name>, where %license files belong.
+%global _defaultlicensedir /usr/share/licenses
+%global _docdir_fmt %{NAME}
 
 # Build debuginfo package
 %package -n wazuh-manager-debuginfo
