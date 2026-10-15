@@ -378,6 +378,10 @@ class WazuhException(Exception):
                },
         1760: {'message': 'Feature only available for older agent versions, it doesn\'t apply for more recent ones.'
                },
+        1761: {'message': 'The operative system of the agent is unknown',
+               'remediation': 'The agent has not reported its operative system yet. Please, use `GET /agents?select='
+                              'id,name,status` to check whether it has ever connected'
+               },
 
         # CDB List: 1800 - 1899
         1800: {'message': 'Bad format in CDB list {path}'},
