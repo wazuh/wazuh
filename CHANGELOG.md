@@ -77,6 +77,7 @@ All notable changes to this project will be documented in this file.
 - Fixed a macOS logcollector crash on agent stop and `log stream` exits going undetected with `logcollector.max_lines=0`. ([#39597](https://github.com/wazuh/wazuh/issues/39597))
 - Fixed the Windows agent reporting the operating system it had before an in-place feature update. ([#39547](https://github.com/wazuh/wazuh/pull/39547))
 - Fixed the Windows agent installer not applying the configuration file permissions to the `shared` directory. ([#39734](https://github.com/wazuh/wazuh/pull/39734))
+- Fixed `make deps` silently ignoring a failed `http-request` download. ([#40365](https://github.com/wazuh/wazuh/pull/40365))
 - Fixed the Solaris 10 and AIX agent packages leaving files in `/var/ossec` after removal. ([#39807](https://github.com/wazuh/wazuh/pull/39807))
 - Fixed the browser extensions inventory dropping entries when an extension metadata file contains unexpected values. ([#39931](https://github.com/wazuh/wazuh/pull/39931))
 - Fixed active responses following symbolic links when writing their log file on UNIX systems. ([#40017](https://github.com/wazuh/wazuh/pull/40017))
