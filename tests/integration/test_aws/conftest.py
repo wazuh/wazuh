@@ -6,12 +6,15 @@
 This module contains all necessary components (fixtures, classes, methods) to configure the test for its execution.
 """
 
+import json
 import os
 import time
 import random
+import warnings
 import pytest
 import boto3
 from botocore.exceptions import ClientError
+from urllib.parse import unquote_plus
 
 # qa-integration-framework imports
 from wazuh_testing.logger import logger
@@ -227,7 +230,7 @@ def _set_run_bucket_notification(s3_resource, bucket_name, sqs_queue_arn, sqs_cl
             'Filter': {'Key': {'FilterRules': [{'Name': 'prefix', 'Value': f'{_RUN_ID}/'}]}}}
     if not _put_notification(client, bucket_name, sqs_client, want_rule=rule):
         # Fail setup loudly: a missing s3:GetBucketNotification permission looks exactly like this, and
-        # without the rule the test would upload, wait 30s and die on failed_sqs_message_retrieval.
+        # without the rule the upload notification would never reach the queue.
         raise RuntimeError(
             f"Could not persist the bucket notification rule for run {_RUN_ID} after retries; "
             "see the preceding warnings for the AWS error.")
@@ -997,6 +1000,8 @@ def set_test_sqs_queue(metadata: dict, sqs_manager, s3_client, create_test_bucke
                        sqs_queue_arn=sqs_queue_arn,
                        client=sqs_client)
         _set_run_bucket_notification(s3_client, bucket_name, sqs_queue_arn, sqs_client)
+        metadata['diag_rule_put'] = time.time()  # TEMP [DIAG40052]
+        metadata['diag_queue_arn'] = sqs_queue_arn  # TEMP [DIAG40052]
 
     except ClientError as error:
         if error.response['Error']['Code'] == 'ResourceNotFound':
@@ -1012,6 +1017,75 @@ def set_test_sqs_queue(metadata: dict, sqs_manager, s3_client, create_test_bucke
 
     # Remove only this run's notification rule so a concurrent run's rule survives.
     _remove_run_bucket_notification(s3_client, bucket_name, sqs_client)
+
+
+def _diag(msg):
+    """TEMP [DIAG40052]: printed in the warnings summary whether the test passes or fails."""
+    logger.warning("[DIAG40052] %s", msg)
+    warnings.warn(f"[DIAG40052] {msg}")
+
+
+def _wait_for_upload_notification(sqs_client, sqs_url, uploaded_keys, timeout=60, s3=None, bucket_name=None,
+                                  queue_arn=None, rule_put=None):
+    """Wait until the S3 notification of an uploaded key is in the queue, deleting any s3:TestEvent seen.
+
+    TEMP [DIAG40052]: waits up to 300 s, records every arrival and, if nothing arrived after `timeout`, dumps
+    this run's notification rule and re-uploads the object (CopyObject) to tell a late event from a lost one.
+    """
+    t0 = time.time()
+    if rule_put:
+        _diag(f"run={_RUN_ID} upload {t0 - rule_put:.1f}s after this run's rule PUT")
+    seen = {}
+    copied_at = None
+    while time.time() - t0 < 300:
+        response = sqs_client.receive_message(QueueUrl=sqs_url, MaxNumberOfMessages=10,
+                                              VisibilityTimeout=0, WaitTimeSeconds=5)
+        for message in response.get('Messages', []):
+            body = json.loads(message['Body'])
+            if body.get('Event') == 's3:TestEvent':
+                _diag(f"run={_RUN_ID} t={time.time() - t0:.1f}s s3:TestEvent Time={body.get('Time')}")
+                sqs_client.delete_message(QueueUrl=sqs_url, ReceiptHandle=message['ReceiptHandle'])
+                continue
+            for record in body.get('Records', []):
+                obj = record['s3']['object']
+                event_id = (record['eventName'], obj.get('sequencer'))
+                if unquote_plus(obj['key']) in uploaded_keys and event_id not in seen:
+                    seen[event_id] = record['eventName']
+                    _diag(f"run={_RUN_ID} t={time.time() - t0:.1f}s notification {record['eventName']} "
+                          f"eventTime={record.get('eventTime')} sequencer={obj.get('sequencer')}")
+        elapsed = time.time() - t0
+        if seen and (copied_at is None or len(seen) >= 2 or elapsed - copied_at > 120):
+            _diag(f"run={_RUN_ID} done t={elapsed:.1f}s events={sorted(seen.values())} reuploaded={copied_at is not None}")
+            return
+        if not seen and copied_at is None and elapsed > timeout and s3 is not None:
+            cfg = s3.meta.client.get_bucket_notification_configuration(Bucket=bucket_name)
+            rules = cfg.get('QueueConfigurations', [])
+            own = [q for q in rules if q.get('Id') == _notif_rule_id()]
+            _diag(f"run={_RUN_ID} t={elapsed:.1f}s no notification yet; rules={len(rules)} "
+                  f"own_rule={'present' if own else 'MISSING'} "
+                  f"own_queue_matches={bool(own) and own[0].get('QueueArn') == queue_arn} "
+                  f"own_prefix={_rule_prefix(own[0]) if own else None}")
+            attrs = sqs_client.get_queue_attributes(QueueUrl=sqs_url, AttributeNames=['All'])['Attributes']
+            _diag(f"run={_RUN_ID} queue visible={attrs.get('ApproximateNumberOfMessages')} "
+                  f"inflight={attrs.get('ApproximateNumberOfMessagesNotVisible')} policy={'Policy' in attrs}")
+            key = uploaded_keys
+            s3.Object(bucket_name, key).copy_from(CopySource={'Bucket': bucket_name, 'Key': key},
+                                                 MetadataDirective='REPLACE', Metadata={'diag40052': 'copy'})
+            copied_at = elapsed
+            _diag(f"run={_RUN_ID} t={elapsed:.1f}s re-uploaded the object with CopyObject")
+    _diag(f"run={_RUN_ID} timeout 300s events={sorted(seen.values())} reuploaded={copied_at is not None}")
+    raise RuntimeError(f"The S3 notification of {uploaded_keys} did not reach the SQS queue in 300s")
+
+
+@pytest.fixture
+def wait_sqs_upload_notification(metadata: dict, sqs_manager, s3_client, set_test_sqs_queue,
+                                 manage_bucket_files) -> None:
+    """Restart the manager only once the uploaded file's notification is in the queue (issue #40052)."""
+    _, sqs_client = sqs_manager
+    sqs_url = sqs_client.get_queue_url(QueueName=metadata['sqs_name'])['QueueUrl']
+    _wait_for_upload_notification(sqs_client, sqs_url, metadata['uploaded_file'], s3=s3_client,
+                                  bucket_name=metadata['bucket_name'], queue_arn=metadata.get('diag_queue_arn'),
+                                  rule_put=metadata.get('diag_rule_put'))
 
 
 """DB fixtures"""
