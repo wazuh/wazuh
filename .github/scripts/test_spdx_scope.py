@@ -120,6 +120,16 @@ class ClassifyTest(unittest.TestCase):
                    b"#!/usr/bin/awk -f\n", b"#!/usr/bin/env perl\n"):
             self.assertEqual(spdx.classify("src/engine/tool", sb + b"x\n"), (AGPL, "#"), sb)
 
+    def test_shebang_env_arguments(self):
+        # Assignments and the operands of -u/-C are not the interpreter
+        self.assertEqual(spdx.classify("src/engine/tool", b"#!/usr/bin/env -S PYTHONUTF8=1 python3\nx\n"), (AGPL, "#"))
+        self.assertEqual(spdx.classify("src/engine/tool", b"#!/usr/bin/env -i LANG=C bash\nx\n"), (AGPL, "#"))
+        self.assertIs(spdx.classify("src/engine/tool", b"#!/usr/bin/env -S -u python node\nx\n"), spdx.UNSUPPORTED)
+        self.assertIs(spdx.classify("src/engine/tool", b"#!/usr/bin/env -C /tmp node\nx\n"), spdx.UNSUPPORTED)
+        self.assertIs(spdx.classify("src/engine/tool", b"#!/usr/bin/env\nx\n"), spdx.UNSUPPORTED)
+        with self.assertRaises(spdx.SpdxError):
+            spdx.apply_to_bytes("src/engine/tool", b"#!/usr/bin/env -S -u python node\nconsole.log(1)\n")
+
     def test_deb_rules_unchanged(self):
         p = "src/engine/internal_packages/debs/SPECS/rules"
         self.assertEqual(spdx.classify(p, b"#!/usr/bin/make -f\n"), (AGPL, "#"))

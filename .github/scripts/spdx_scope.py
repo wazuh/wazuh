@@ -121,9 +121,23 @@ def _interpreter(content: Optional[bytes]) -> Optional[str]:
         return ""
     name = posixpath.basename(first[0])
     if name == "env":
-        name = next((t for t in first[1:] if not t.startswith("-")), "env")
-        name = posixpath.basename(name)
+        name = _env_command(first[1:])
     return _VERSION_SUFFIX_RE.sub("", name)
+
+
+def _env_command(args: List[str]) -> str:
+    """Command run by `env <args>` in a shebang: skips options (and the operand of -u/--unset and -C/--chdir), -S and
+    NAME=value assignments. "env" when there is none, so the file is not taken for a script of a known interpreter."""
+    i = 0
+    while i < len(args):
+        t = args[i]
+        if t in ("-u", "--unset", "-C", "--chdir"):
+            i += 2
+        elif t.startswith("-") or "=" in t:
+            i += 1
+        else:
+            return posixpath.basename(t)
+    return "env"
 
 
 def _unsupported_label(path: str, content: Optional[bytes]) -> str:
