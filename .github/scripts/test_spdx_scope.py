@@ -109,7 +109,7 @@ class ClassifyTest(unittest.TestCase):
 
 
     def test_new_slash_and_hash_extensions(self):
-        for ext in (".js", ".ts", ".rs", ".java", ".kt", ".c++", ".cxx", ".hh", ".hxx", ".ipp", ".tcc"):
+        for ext in (".js", ".ts", ".java", ".kt", ".c++", ".cxx", ".hh", ".hxx", ".ipp", ".tcc"):
             self.assertEqual(spdx.classify("src/engine/a" + ext, b"x\n"), (AGPL, "//"), ext)
         for ext in (".rb", ".bash", ".zsh", ".ps1"):
             self.assertEqual(spdx.classify("src/engine/a" + ext, b"x\n"), (AGPL, "#"), ext)
@@ -261,9 +261,12 @@ class ApplyToBytesTest(unittest.TestCase):
             out = spdx.apply_to_bytes("src/engine/completions/_wazuh.zsh", first + b"_wazuh() { }\n")
             self.assertEqual(out, first + line("#", AGPL) + b"_wazuh() { }\n", first)
 
-    def test_rust_inner_attribute_is_not_a_shebang(self):
-        src = b'#![doc = r"\nCrate docs.\n"]\nfn main() {}\n'
-        self.assertEqual(spdx.apply_to_bytes("src/engine/x.rs", src), line("//", AGPL) + src)
+    def test_rust_is_unsupported(self):
+        # A leading #! in Rust may be an inner attribute (`#![…]`, `#! […]`), so the script never writes into .rs files
+        src = b'#! [doc = r"\nCrate docs.\n"]\nfn main() {}\n'
+        self.assertIs(spdx.classify("src/engine/x.rs", src), spdx.UNSUPPORTED)
+        with self.assertRaises(spdx.SpdxError):
+            spdx.apply_to_bytes("src/engine/x.rs", src)
 
     def test_utf16_file_is_refused(self):
         src = "\ufeffWrite-Host 'x'\n".encode("utf-16-le")
@@ -782,11 +785,17 @@ class CheckTest(unittest.TestCase):
         self.assertEqual(rc, 1)
         self.assertIn("src/engine/x.rb: missing %s" % AGPL, out.splitlines())
 
-    def test_dual_rs_without_identifier_fails(self):
+    def test_dual_java_without_identifier_fails(self):
+        self.write("src/shared_modules/utils/X.java", b"class X {}\n")
+        rc, out, _ = self.check("src/shared_modules/utils/X.java")
+        self.assertEqual(rc, 1)
+        self.assertIn("src/shared_modules/utils/X.java: missing %s" % DUAL, out.splitlines())
+
+    def test_rs_is_unsupported_in_check(self):
         self.write("src/shared_modules/utils/x.rs", b"fn main() {}\n")
         rc, out, _ = self.check("src/shared_modules/utils/x.rs")
         self.assertEqual(rc, 1)
-        self.assertIn("src/shared_modules/utils/x.rs: missing %s" % DUAL, out.splitlines())
+        self.assertIn("src/shared_modules/utils/x.rs: unsupported code type (.rs)", out)
 
     def test_shebang_bash_without_identifier_fails(self):
         self.write("src/engine/tool", b"#!/bin/bash\necho\n")

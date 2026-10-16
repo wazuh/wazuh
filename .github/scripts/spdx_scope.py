@@ -9,7 +9,7 @@ Scope:
   everything else                                 -> out of scope
 
 In scope, code whose comment style is known (`//` or `#`, by extension, name or shebang) is checked
-for its identifier. Code the script cannot write a comment for (.lua, .bat, .m4, .inc, or a shebang
+for its identifier. Code the script cannot write a comment for (.lua, .bat, .m4, .inc, .rs, or a shebang
 other than sh/bash/dash/ksh/zsh/python/perl/ruby/make/awk) is `unsupported`: `check` and `apply`
 fail on it and name it; add its comment style here or exclude the file. Excluded files stay ignored.
 
@@ -39,7 +39,7 @@ DUAL_PREFIXES = tuple("src/shared_modules/%s/" % d for d in DUAL_DIRS)
 
 SLASH_EXT = {
     ".cpp", ".cc", ".c", ".hpp", ".h", ".proto", ".go", ".fbs",
-    ".js", ".ts", ".rs", ".java", ".kt", ".c++", ".cxx", ".hh", ".hxx", ".ipp", ".tcc",
+    ".js", ".ts", ".java", ".kt", ".c++", ".cxx", ".hh", ".hxx", ".ipp", ".tcc",
 }
 HASH_EXT = {".py", ".sh", ".cmake", ".pl", ".rb", ".bash", ".zsh", ".ps1"}
 HASH_NAMES = {"CMakeLists.txt", "Dockerfile"}
@@ -59,7 +59,7 @@ THIRD_PARTY = {
     "src/shared_modules/utils/makeUnique.h",
 }
 # Code extensions whose comment syntax the script cannot write.
-UNLISTED_EXT = {".lua", ".bat", ".m4", ".inc"}
+UNLISTED_EXT = {".lua", ".bat", ".m4", ".inc", ".rs"}  # .rs: a leading #! may be an inner attribute, not a shebang
 # Shebang interpreters whose comments are `#`.
 HASH_INTERPRETERS = {"sh", "bash", "dash", "ksh", "zsh", "python", "perl", "ruby", "make", "awk"}
 
@@ -229,8 +229,8 @@ def apply_to_bytes(path: str, content: bytes) -> bytes:
     bom = _UTF8_BOM if content.startswith(_UTF8_BOM) else b""
     lines = content[len(bom):].splitlines(True)
     idx = 0
-    if lines and lines[0].startswith(b"#!") and not lines[0].startswith(b"#!["):
-        idx = 1  # a shebang stays first; `#![` is a Rust inner attribute, not a shebang
+    if lines and lines[0].startswith(b"#!"):
+        idx = 1  # a shebang stays first
     elif lines and lines[0].startswith((b"#compdef", b"#autoload")):
         idx = 1  # zsh's compinit reads these completion directives only on the first line
     ext = posixpath.splitext(posixpath.basename(path))[1]
