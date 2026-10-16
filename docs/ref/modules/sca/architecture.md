@@ -712,7 +712,12 @@ Stores individual security checks:
 - `name`: Check name
 - `description`: Check description
 - `result`: Check result (Passed, Failed, Not applicable, Not run)
-- `reason`: Reason for result (optional)
+- `reason`: Why the check got its result, empty for `Passed`
+  - `Not applicable` / `Not run`: one line per rule that could not be evaluated, such as a missing
+    file or a command that timed out
+  - `Failed`: `Rules not satisfied (condition 'all'):` (or `'any'`), or `Rules satisfied (condition
+    'none'):`, followed by each failing rule exactly as the policy writes it, one per line
+  - Capped at 1024 bytes; a reason cut to fit ends with a `[truncated]` line
 - `version`: Document version for synchronization
 
 ### References
