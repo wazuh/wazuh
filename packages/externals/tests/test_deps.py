@@ -1173,19 +1173,19 @@ def edit_spec(repo, spec):
         parts = path.read_text(encoding="utf-8").split(f"# {marker}: end")
         index = int(nth or 0)
         assert len(parts) > index + 1, spec
-        parts[index] += "# edited\n"
+        parts[index] += "set(EDITED 1)\n"
         path.write_text(f"# {marker}: end".join(parts), encoding="utf-8")
     else:
         append_byte(repo / spec)
 
 
-def edit_external_block(repo, name):
-    """Add a comment inside the `# deps-entry <name>` block of the copied src/external/CMakeLists.txt."""
+def edit_external_block(repo, name, line="set(EDITED 1)"):
+    """Add a line, or a comment line, inside the `# deps-entry <name>` block of the copied src/external/CMakeLists.txt."""
     path = repo / deps.EXTERNAL_CMAKE
     text = path.read_text(encoding="utf-8")
     end = f"# deps-entry {name}: end\n"
     assert text.count(end) == 1, name
-    path.write_text(text.replace(end, f"# edited\n{end}"), encoding="utf-8")
+    path.write_text(text.replace(end, f"{line}\n{end}"), encoding="utf-8")
 
 
 @pytest.mark.parametrize("block,expected", [
@@ -1207,7 +1207,7 @@ def test_key_external_outside_the_blocks(key_repo):
     before = deps.keys(document, repo)
     path = repo / deps.EXTERNAL_CMAKE
     text = path.read_text(encoding="utf-8")
-    path.write_text(text.replace("include(ExternalProject)\n", "include(ExternalProject)\n# edited\n", 1),
+    path.write_text(text.replace("include(ExternalProject)\n", "include(ExternalProject)\nset(EDITED 1)\n", 1),
                     encoding="utf-8")
     built = {e["name"] for e in document["entries"] if e.get("built", True)} - {"libbpf-bootstrap"}
     assert changed(before, deps.keys(document, repo)) == built
@@ -1292,7 +1292,8 @@ def test_key_source_recipe(spec, key_repo):
 
 
 @pytest.mark.parametrize("spec", ["src/external/CMakeLists.txt", "src/CMakeLists.txt#deps-recipe",
-                                  "src/Makefile#deps-recipe:0", "src/Makefile#deps-recipe:1", "src/cmake/WazuhRpath.cmake",
+                                  "src/Makefile#deps-recipe:0", "src/Makefile#deps-recipe:1",
+                                  "src/cmake/WazuhExternalFlags.cmake",
                                   "KEY_EPOCH"])
 def test_key_common_recipe(spec, key_repo, monkeypatch):
     repo, document = key_repo
@@ -1343,6 +1344,83 @@ def test_key_propagation(name, expected, key_repo):
     assert changed(before, deps.keys(edited(document, name, version="9.9.9"), repo)) == expected
 
 
+@pytest.mark.parametrize("rel,old,new", [
+    ("src/external/CMakeLists.txt", "include(ExternalProject)\n", "# Copyright (C) Wazuh Inc.\ninclude(ExternalProject)\n  # indented\n"),
+    ("src/Makefile", "# deps-recipe: end\n", "\t# a recipe comment\n# deps-recipe: end\n"),
+    ("framework/cpython/compile.sh", "\n", "\n# edited\n"),
+    ("framework/requirements.txt", "\n", "\n# edited\n"),
+    ("packages/externals/build_external.sh", "\n", "\n    # edited\n"),
+    ("src/cmake/WazuhExternalFlags.cmake", "\n", "\n# edited\n"),
+], ids=["external-cmake", "makefile-block", "compile-sh", "requirements", "source-recipe", "flags-module"])
+def test_key_ignores_comment_lines(rel, old, new, key_repo):
+    """A whole-line comment, such as a copyright header, gives no new ref."""
+    repo, document = key_repo
+    before = deps.keys(document, repo)
+    path = repo / rel
+    text = path.read_text(encoding="utf-8")
+    assert old in text
+    path.write_text(text.replace(old, new, 1), encoding="utf-8")
+    assert changed(before, deps.keys(document, repo)) == set()
+
+
+def test_key_ignores_comment_in_external_block(key_repo):
+    repo, document = key_repo
+    before = deps.keys(document, repo)
+    edit_external_block(repo, "openssl", line="# edited")
+    assert changed(before, deps.keys(document, repo)) == set()
+
+
+@pytest.mark.parametrize("rel,old,new,expected", [
+    ("framework/cpython/compile.sh", "#!/bin/bash\n", "#!/bin/sh\n", {"cpython"}),
+    ("src/syscheckd/src/ebpf/src/modern.bpf.c", "\n", "\n#define EDITED 1\n", {"libbpf-bootstrap"}),
+    ("src/syscheckd/src/ebpf/src/modern.bpf.c", "\n", "\n// edited\n", {"libbpf-bootstrap"}),
+    ("src/Makefile", "# deps-recipe: end\n", "X := 1 # trailing comment\n# deps-recipe: end\n", None),
+], ids=["shebang", "c-directive", "c-comment", "trailing-comment"])
+def test_key_keeps_lines_that_are_not_comments(rel, old, new, expected, key_repo):
+    repo, document = key_repo
+    before = deps.keys(document, repo)
+    path = repo / rel
+    text = path.read_text(encoding="utf-8")
+    assert text.startswith(old) if old.startswith("#!") else old in text
+    path.write_text(text.replace(old, new, 1), encoding="utf-8")
+    built = {e["name"] for e in document["entries"] if e.get("built", True)} - {"libbpf-bootstrap"}
+    assert changed(before, deps.keys(document, repo)) == (built if expected is None else expected)
+
+
+def test_key_patch_comment_line_kept(key_repo):
+    repo, document = key_repo
+    before = deps.keys(document, repo)
+    entry = next(e for e in document["entries"] if e["patches"])
+    path = repo / "packages" / "externals" / "patches" / entry["patches"][0]
+    path.write_text("# edited\n" + path.read_text(encoding="utf-8"), encoding="utf-8")
+    assert entry["name"] in changed(before, deps.keys(document, repo))
+
+
+@pytest.mark.parametrize("rel,old,new", [
+    ("src/CMakeLists.txt", "include_directories(${SRC_FOLDER}/shared_modules/utils)\n",
+     "include_directories(${SRC_FOLDER}/shared_modules/utils)\ninclude_directories(${SRC_FOLDER}/shared_modules/new/include)\n"),
+    ("src/CMakeLists.txt", "include(WazuhJemalloc)\n", ""),
+    ("src/Makefile", "override USE_SELINUX := no\n", "override USE_SELINUX := yes\n"),
+    ("src/Makefile", "CMAKE_OPTS+=-DDISABLE_JEMALLOC=ON\n", "CMAKE_OPTS+=-DDISABLE_JEMALLOC=OFF\n"),
+], ids=["wazuh-include-dir", "jemalloc-module", "selinux", "jemalloc-option"])
+def test_key_ignores_product_lines_of_the_recipes(rel, old, new, key_repo):
+    # Only the `# deps-recipe` blocks reach the external build; the product settings around them do not.
+    repo, document = key_repo
+    before = deps.keys(document, repo)
+    path = repo / rel
+    text = path.read_text(encoding="utf-8")
+    assert text.count(old) == 1
+    path.write_text(text.replace(old, new), encoding="utf-8")
+    assert changed(before, deps.keys(document, repo)) == set()
+
+
+def test_key_ignores_unused_cmake_modules(key_repo):
+    repo, document = key_repo
+    before = deps.keys(document, repo)
+    (repo / "src" / "cmake" / "WazuhRpath.cmake").write_text("set(EDITED 1)\n", encoding="utf-8")
+    assert changed(before, deps.keys(document, repo)) == set()
+
+
 @pytest.mark.parametrize("spec,expected", [
     ("framework/cpython/compile.sh", {"cpython"}),
     ("framework/requirements.txt", {"cpython"}),
@@ -1360,7 +1438,7 @@ def test_key_own_recipe(spec, expected, key_repo):
         path = repo / rel
         text = path.read_text(encoding="utf-8")
         assert f"# {marker}: end" in text
-        path.write_text(text.replace(f"# {marker}: end", f"# edited\n# {marker}: end"), encoding="utf-8")
+        path.write_text(text.replace(f"# {marker}: end", f"EDITED := 1\n# {marker}: end"), encoding="utf-8")
     else:
         append_byte(repo / rel)
     assert changed(before, deps.keys(document, repo)) == expected
@@ -1532,7 +1610,7 @@ def test_key_paths_literal():
         "framework/requirements.txt", "packages/externals/build_external.sh", "packages/externals/builder-images.json",
         "packages/externals/consolidate.sh", "packages/externals/dependencies.json", "packages/externals/ebpf/build_ebpf.sh",
         "packages/externals/generate_external.sh", "packages/externals/overlay/**", "packages/externals/patches/**",
-        "src/CMakeLists.txt", "src/Makefile", "src/cmake/**", "src/external/CMakeLists.txt",
+        "src/CMakeLists.txt", "src/Makefile", "src/cmake/WazuhExternalFlags.cmake", "src/external/CMakeLists.txt",
         "src/syscheckd/src/ebpf/src/modern.bpf.c"])
 
 

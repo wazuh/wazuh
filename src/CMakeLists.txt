@@ -1,3 +1,5 @@
+# The `# deps-recipe` blocks hold what reaches the external dependencies build and go into their pool keys
+# (packages/externals/deps.py); a setting that changes how the dependencies compile goes inside one.
 # deps-recipe: begin
 cmake_minimum_required(VERSION 3.12.4)
 
@@ -59,6 +61,7 @@ if(TSANITIZE)
   set(CMAKE_CXX_FLAGS_DEBUG "-g -fsanitize=thread")
 endif(TSANITIZE)
 
+# deps-recipe: end
 # Function to link coverage libraries for unit tests Uses plain signature for
 # compatibility with existing plain signature usage
 function(add_coverage_libraries target_name)
@@ -74,6 +77,7 @@ function(add_coverage_libraries target_name)
     endif()
   endif()
 endfunction()
+# deps-recipe: begin
 
 # SRC_FOLDER should point to the src/ directory Sub-modules will try to redefine
 # it, so we set a guard variable
@@ -84,8 +88,10 @@ set(WAZUH_MAIN_PROJECT
 
 # Shared CMake helpers
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+# deps-recipe: end
 include(WazuhRpath)
 include(WazuhJemalloc)
+# deps-recipe: begin
 
 # Define CLIENT for agent builds
 if("${TARGET}" STREQUAL "winagent" OR "${TARGET}" STREQUAL "agent")
@@ -116,6 +122,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set(CMAKE_CXX_USE_RESPONSE_FILE_FOR_INCLUDES OFF)
   set(CMAKE_C_USE_RESPONSE_FILE_FOR_INCLUDES OFF)
 endif()
+# deps-recipe: end
 # Set Wine as crosscompiling emulator for Windows unit tests
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows" AND UNIT_TEST)
   find_program(WINE "wine")
@@ -124,6 +131,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows" AND UNIT_TEST)
   endif()
   set(CMAKE_CROSSCOMPILING_EMULATOR wine)
 endif()
+# deps-recipe: begin
 
 # Read the VERSION JSON file
 file(READ "${SRC_FOLDER}/../VERSION.json" VERSION_JSON)
@@ -160,6 +168,7 @@ set(BENCHMARK_ENABLE_TESTING "OFF")
 link_directories(${SRC_FOLDER})
 link_directories(${SRC_FOLDER}/build/lib)
 
+# deps-recipe: end
 # Wazuh headers
 include_directories(${SRC_FOLDER}/shared/include)
 
@@ -227,6 +236,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
       psapi crypt32 shlwapi
       CACHE INTERNAL "Common Windows libraries for all executables")
 endif()
+# deps-recipe: begin
 
 # Helper variables
 set(IS_AGENT FALSE)

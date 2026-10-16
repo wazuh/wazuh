@@ -97,6 +97,8 @@ IMAGE_TRUST_CHECKS?=1
 CA_NAME?=Microsoft Identity Verification Root Certificate Authority 2020
 HTTP_REQUEST_BRANCH?=803cab4347fe8b7f5cdbfa69949c22bd1ae35c49
 
+# The `# deps-recipe` blocks hold what reaches the external dependencies build and go into their pool keys
+# (packages/externals/deps.py); an option that changes how the dependencies compile goes inside one.
 # deps-recipe: begin
 ifeq (${TARGET},winagent)
 CMAKE_OPTS=-DCMAKE_SYSTEM_NAME=Windows -DCMAKE_C_COMPILER=${MING_BASE}${CC}$(if $(filter gcc,${CC}),-posix) -DCMAKE_CXX_COMPILER=${MING_BASE}${CXX} -DEVENTCHANNEL_SUPPORT=ON
@@ -121,6 +123,7 @@ endif
 ifneq (,$(filter ${EXTERNAL_SANITIZE},YES yes y Y 1))
 CMAKE_OPTS+=-DEXTERNAL_SANITIZE=ON
 endif
+# deps-recipe: end
 ifneq (,$(filter ${DISABLE_JEMALLOC},YES yes y Y 1))
 CMAKE_OPTS+=-DDISABLE_JEMALLOC=ON
 endif
@@ -145,9 +148,11 @@ CMAKE_OPTS+=-DENABLE_AUDIT=ON
 endif
 endif
 endif
+# deps-recipe: begin
 ifneq (,$(filter ${DEBUG},YES yes y Y 1))
 WAZUH_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=Debug
 endif
+# deps-recipe: end
 
 ifeq (${COVERITY}, YES)
 	export COVERITY_UNSUPPORTED_COMPILER_INVOCATION=1
@@ -166,6 +171,7 @@ endif
 ifeq (${TARGET},manager)
 override USE_SELINUX := no
 endif
+# deps-recipe: begin
 
 ifneq (${TARGET},winagent)
 ifeq (${uname_S},Linux)
@@ -195,6 +201,7 @@ ifneq (,$(SYMBOLS_IN_RELEASE))
 	CMAKE_OPTS+=-DCMAKE_SYMBOLS_IN_RELEASE=ON
 endif
 
+# deps-recipe: end
 MAKECOLOR="\033[32;1m"
 ENDCOLOR="\033[0m"
 
@@ -202,6 +209,7 @@ ifeq (,$(filter ${V},YES yes y Y 1))
 	QUIET_NOTICE  = @printf '%b' ${MAKECOLOR} 1>&2;
 	QUIET_ENDCOLOR= @printf '%b' ${ENDCOLOR} 1>&2;
 endif
+# deps-recipe: begin
 
 MING_BASE:=
 ifeq (${TARGET}, winagent)
