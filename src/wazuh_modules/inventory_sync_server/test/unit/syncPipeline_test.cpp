@@ -595,6 +595,26 @@ TEST(SyncPipelineTest, ADeleteFailureIsVisibleToTheCaller)
     ASSERT_TRUE(fixture.pipeline->enqueue(makeDeleteItem("005", responder)));
     EXPECT_EQ(500, responder->get().status) << "connector available but failing -> 500";
 
+    // The deletion's by-query ran out of its version-conflict allowance in the flush: the same
+    // contention an immediate session answers 503 + Retry-After, counted apart.
+    {
+        std::lock_guard<std::mutex> lock(fixture.events->m_mutex);
+        fixture.events->m_syncThrowOn = "flush";
+        fixture.events->m_syncThrowCause = invsync::indexer::ConnectorError::Cause::ConflictsExhausted;
+    }
+    auto contended = std::make_shared<FutureResponder>();
+    ASSERT_TRUE(fixture.pipeline->enqueue(makeDeleteItem("007", contended)));
+    const auto contention = contended->get();
+    EXPECT_EQ(503, contention.status);
+    EXPECT_EQ(R"({"error":"indexer contention","code":503,"reason":"version_conflicts"})", contention.body);
+    EXPECT_EQ("15", headerValue(contention, "Retry-After"));
+    EXPECT_EQ(1U,
+              fixture.metrics->getOrCreateCounter(invsync::metrics::INDEXER_CONFLICT_EXHAUSTED, "", "count")->get());
+    {
+        std::lock_guard<std::mutex> lock(fixture.events->m_mutex);
+        fixture.events->m_syncThrowCause.reset();
+    }
+
     fixture.events->m_syncThrowOn.clear();
     fixture.events->m_syncAvailable.store(false);
     auto second = std::make_shared<FutureResponder>();

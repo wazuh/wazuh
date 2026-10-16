@@ -516,9 +516,11 @@ namespace invsync::sync
                                "Deleting the state documents of agent %s failed: %s. The caller may retry.",
                                item.session.agentId.c_str(),
                                e.what());
+                    const auto* typed = dynamic_cast<const indexer::ConnectorError*>(&e);
                     std::vector<Item> just;
                     just.push_back(std::move(item));
-                    respondConnectorFailure(just, connector);
+                    respondConnectorFailure(
+                        just, connector, typed ? typed->cause() : indexer::ConnectorError::Cause::Other);
                 }
                 continue;
             }
