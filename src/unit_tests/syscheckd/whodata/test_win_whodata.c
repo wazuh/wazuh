@@ -3304,26 +3304,26 @@ void test_replace_device_path_device_found(void **state) {
     *state = path;
 
     assert_string_equal(path, "A:\\a\\path");
-    // Sized from the path length, not from its address
+    // The buffer fits the converted path exactly
     assert_int_equal(_msize(path), strlen("A:\\a\\path") + 1);
 }
 
 void test_replace_device_path_path_is_device(void **state) {
-    char *path = strdup("\\Device\\Floppy0");
-    syscheck.wdata.device[0] = strdup("\\Device\\Floppy0");
-    syscheck.wdata.drive[0] = strdup("A:");
+    char *path = strdup("\\Device\\HarddiskVolume5\\");
+    syscheck.wdata.device[0] = strdup("\\Device\\HarddiskVolume5\\");
+    syscheck.wdata.drive[0] = strdup("V:\\");
 
     expect_string(__wrap__mdebug2, formatted_msg,
-        "(6304): Find device '\\Device\\Floppy0' in path '\\Device\\Floppy0'");
+        "(6304): Find device '\\Device\\HarddiskVolume5\\' in path '\\Device\\HarddiskVolume5\\'");
     expect_string(__wrap__mdebug2, formatted_msg,
-        "(6305): Replacing '\\Device\\Floppy0' to 'A:'");
+        "(6305): Replacing '\\Device\\HarddiskVolume5\\' to 'V:\\'");
 
     replace_device_path(&path);
 
     *state = path;
 
-    assert_string_equal(path, "A:");
-    assert_int_equal(_msize(path), strlen("A:") + 1);
+    assert_string_equal(path, "V:\\");
+    assert_int_equal(_msize(path), strlen("V:\\") + 1);
 }
 
 void test_get_drive_names_access_denied_error(void **state) {
