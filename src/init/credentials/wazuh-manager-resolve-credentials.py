@@ -2637,6 +2637,60 @@ def _chains_to_current_ca(paths: Paths, certs: Dir, pair: Dict[str, bytes], unit
     return verdict.problem is None or verdict.time_only
 
 
+POSTPONED_ROTATION = "not imported over the indexer CA and client pair in place, which are valid now"
+
+
+def _postponed_rotation(paths: Paths, certs: Dir, source: "Dir", extra_cas: List[x509.Certificate], label: str,
+                        report: Report) -> bool:
+    """An export with a new CA is a rotation, judged as a set: the CA and pair in place against each other, and the
+    export's CA and pair against each other. While the set in place is usable now and the export's set is refused
+    only by the clock, none of the three files is replaced -- the CA alone would leave the pair in place without its
+    issuer, and the whole set would break a working connector until it is valid. Each refused file gets a WARNING
+    and the rotation happens on a later run, once the export's set is valid. False when this rule does not apply (no
+    new CA, a set incomplete, unsafe or refused for something other than time): the import rule decides."""
+    if import_state(certs, CA_UNIT) != "imported" or import_state(certs, PAIR_UNIT) != "imported" \
+            or not all(_exists(certs, name) for name in (*CA_UNIT.files, *PAIR_UNIT.files)):
+        return False                                      # an interrupted import is the import rule's to finish
+    quiet = Report(quiet=True, out=io.StringIO(), err=io.StringIO())
+    incoming_ca, incoming_pair = read_source(source, CA_UNIT, quiet), read_source(source, PAIR_UNIT, quiet)
+    if not isinstance(incoming_ca, dict) or not isinstance(incoming_pair, dict):
+        return False
+    spec = certs_file_spec(paths)
+    try:
+        for unit in (CA_UNIT, PAIR_UNIT):
+            read_file(certs, unit.marker, spec)
+        current_ca = {INDEXER_CA: read_file(certs, INDEXER_CA, spec)}
+        current_pair = {name: read_file(certs, name, spec) for name in PAIR_UNIT.files}
+    except (UnsafeEntry, FileNotFoundError):
+        return False                                      # the import rule reports it
+    if incoming_ca == current_ca:
+        return False
+    installed_cas, installed = indexer_ca_verdict(current_ca[INDEXER_CA])
+    if installed.problem or connector_verdict(current_pair[CONNECTOR], current_pair[CONNECTOR_KEY],
+                                              installed_cas + extra_cas, label).problem:
+        return False                                      # nothing usable in place: a gap, imported as such
+    new_cas, new_ca = indexer_ca_verdict(incoming_ca[INDEXER_CA])
+    new_pair = connector_verdict(incoming_pair[CONNECTOR], incoming_pair[CONNECTOR_KEY], (new_cas or []) + extra_cas,
+                                 label)
+    verdicts = ((SOURCE_CA, new_ca), (SOURCE_CLIENT, new_pair))
+    if any(verdict.problem and not verdict.time_only for _, verdict in verdicts) \
+            or not any(verdict.problem for _, verdict in verdicts):
+        return False                                      # refused outright, or usable now: the import rule decides
+    for source_name, verdict in verdicts:
+        if verdict.problem:
+            report.warning(f"{os.path.join(paths.indexer_export, source_name)}: {verdict.problem}; "
+                           f"{POSTPONED_ROTATION}")
+    for name in (INDEXER_CA, CONNECTOR):
+        report.progress(f"{certs.child(name)}: kept; the export's new CA and client pair are imported together "
+                        f"once both are valid")
+    try:
+        leaf = x509.load_pem_x509_certificates(current_pair[CONNECTOR])[0]
+        report.progress(f"{certs.child(CONNECTOR)}: {describe_leaf(leaf)}")
+    except ValueError:
+        pass
+    return True
+
+
 def step_indexer_trust(paths: Paths, certs: Dir, report: Report, names: IndexerNames, *, write: bool = True) -> None:
     """The indexer's CA and the client pair, selected first and written only as a combination that is valid: the
     pair that will be in place must chain to the CAs that will be in place. An export whose new CA does not issue the
@@ -2656,6 +2710,9 @@ def step_indexer_trust(paths: Paths, certs: Dir, report: Report, names: IndexerN
     try:
         extra_cas = extra_ca_trust(paths, certs, names, extra, report, missing=True)
         label = _trust_label(certs, names)
+        if ca_unit is not None and pair_unit is PAIR_UNIT and isinstance(source, Dir) \
+                and _postponed_rotation(paths, certs, source, extra_cas, label, report):
+            return
         ca = None
         trust: Optional[List[x509.Certificate]] = None
         if ca_unit is not None:

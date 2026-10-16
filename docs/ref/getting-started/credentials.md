@@ -490,8 +490,12 @@ running on the material in place. When no pair is in place at all, the CA is imp
 A CA or client pair that only the clock refuses (expired, not valid yet, including a pair that expired before its CA
 was renewed with the same key) is a `WARNING`, never a refusal: in place, it is kept; in the export, it is imported
 only when nothing usable is in place (a first import, or material that is itself refused), never over a pair valid
-now. A node that boots with its clock behind therefore starts, and its indexer connection works once the clock is
-right. The connector still validates TLS itself, so such material is not used until it is valid.
+now. An export with a new CA is a rotation and is judged as a set: while the CA and client pair in place are valid now
+and the export's new CA and pair are refused only by the clock, none of the three files is replaced; each refused
+export file gets a `WARNING` (`… not imported over the indexer CA and client pair in place, which are valid now`), and
+the rotation happens at the first start after the new set is valid. A node that boots with its clock behind therefore
+starts, and its indexer connection works once the clock is right. The connector still validates TLS itself, so such
+material is not used until it is valid.
 
 Every writing run then names the client pair in place, as it names the server pairs: its subject and its subject
 alternative names, `none` when it has none (a client certificate need not have any; `-q` drops the line):
