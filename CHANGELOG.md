@@ -251,3 +251,4 @@
 | [#39869](https://github.com/wazuh/wazuh/pull/39869) | Fixed FIM scan hanging when a monitored file is replaced by a FIFO. |
 | [#39998](https://github.com/wazuh/wazuh/pull/39998) | Fixed the Debian 13 SCA policy reusing the Debian 12 check IDs, renumbering it to a dedicated 42000+ range. |
 | [#40307](https://github.com/wazuh/wazuh/pull/40307) | Fixed MITRE ATT&CK mappings across 64 SCA policies: removed Windows-only and cloud-only techniques from Linux and macOS checks, removed the reconnaissance technique `T1595` from all of them, updated revoked technique IDs to their current successors, and added missing parent techniques. |
+| [#40413](https://github.com/wazuh/wazuh/pull/40413) | Fixed a stray trailing period in the `/etc/crontab` permissions remediation, duplicated across 25 SCA policies, and restored a missing command in the gfs2 kernel module remediation example in the CIS Ubuntu 24.04 and 26.04 policies. |
