@@ -420,6 +420,9 @@ typedef struct _config {
     OSMatch **nodiff_regex;                            /* regex of files/dirs to never output diff */
 
     uint32_t sync_interval;                            /* Synchronization interval */
+    int sync_flush_batch_size;                         /* Persistent sync queue: max buffered events before an immediate flush */
+    int sync_flush_interval_ms;                        /* Persistent sync queue: max time to wait before flushing a non-full buffer (ms) */
+    int sync_wal_autocheckpoint_pages;                 /* Persistent sync queue: WAL auto-checkpoint threshold (SQLite pages) */
     uint32_t integrity_interval;                       /* Integrity check interval */
     int max_eps;                                       /* Maximum events per second. */
     unsigned int notify_first_scan;                    /* Notify the first scan */

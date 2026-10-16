@@ -13,6 +13,7 @@
 #include "ipersistent_queue_storage.hpp"
 #include "persistent_queue.hpp"
 
+#include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <future>
@@ -20,7 +21,9 @@
 #include <thread>
 
 using ::testing::_;
+using ::testing::DoAll;
 using ::testing::Invoke;
+using ::testing::InvokeWithoutArgs;
 using ::testing::Return;
 using ::testing::SaveArg;
 
@@ -92,6 +95,109 @@ TEST(PersistentQueueTest, SubmitStoresInMemoryAndStorage)
 
     ASSERT_EQ(flushedBatch.size(), 1u);
     EXPECT_EQ(flushedBatch[0].id, "id1");
+}
+
+TEST(PersistentQueueTest, ConstructorHonorsCustomFlushBatchSizeOverride)
+{
+    auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
+
+    std::vector<PersistedData> flushedBatch;
+    std::atomic<bool> flushed{false};
+    EXPECT_CALL(*mockStorage, submitBatch(_))
+    .Times(1)
+    .WillOnce(DoAll(SaveArg<0>(&flushedBatch), InvokeWithoutArgs([&flushed]
+    {
+        flushed.store(true, std::memory_order_release);
+    })));
+
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+
+    // Interval is far above the test timeout, so a flush can only come from the count override.
+    PersistentQueue queue(":memory:", testLogger, mockStorage, 2, std::chrono::milliseconds(60000));
+    queue.submit("id1", "index1", "{}", Operation::CREATE, 1);
+    queue.submit("id2", "index2", "{}", Operation::CREATE, 1);
+
+    // Poll instead of a fixed sleep so this doesn't flake on a slow CI runner.
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+
+    while (!flushed.load(std::memory_order_acquire) && std::chrono::steady_clock::now() < deadline)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+
+    ASSERT_TRUE(flushed.load(std::memory_order_acquire));
+    ASSERT_EQ(flushedBatch.size(), 2u);
+}
+
+TEST(PersistentQueueTest, DefaultFlushBatchSizeIs100WhenOnlyIntervalIsOverridden)
+{
+    auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
+
+    std::vector<PersistedData> flushedBatch;
+    std::atomic<bool> flushed{false};
+    EXPECT_CALL(*mockStorage, submitBatch(_))
+    .Times(1)
+    .WillOnce(DoAll(SaveArg<0>(&flushedBatch), InvokeWithoutArgs([&flushed]
+    {
+        flushed.store(true, std::memory_order_release);
+    })));
+
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+
+    // The interval is far above the test duration, so only the count can trigger a flush.
+    PersistentQueue queue(":memory:", testLogger, mockStorage, std::nullopt, std::chrono::milliseconds(60000));
+
+    for (int i = 0; i < 99; ++i)
+    {
+        queue.submit("id" + std::to_string(i), "index", "{}", Operation::CREATE, 1);
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    ASSERT_FALSE(flushed.load(std::memory_order_acquire));
+
+    queue.submit("id99", "index", "{}", Operation::CREATE, 1);
+
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+
+    while (!flushed.load(std::memory_order_acquire) && std::chrono::steady_clock::now() < deadline)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+
+    ASSERT_TRUE(flushed.load(std::memory_order_acquire));
+    ASSERT_EQ(flushedBatch.size(), 100u);
+}
+
+TEST(PersistentQueueTest, DefaultFlushIntervalIsAbout500msWhenNotOverridden)
+{
+    auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
+
+    std::atomic<bool> flushed{false};
+    EXPECT_CALL(*mockStorage, submitBatch(_))
+    .Times(1)
+    .WillOnce(InvokeWithoutArgs([&flushed]
+    {
+        flushed.store(true, std::memory_order_release);
+    }));
+
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+
+    const auto start = std::chrono::steady_clock::now();
+    PersistentQueue queue(":memory:", testLogger, mockStorage);
+    queue.submit("id1", "index", "{}", Operation::CREATE, 1);
+
+    const auto deadline = start + std::chrono::seconds(10);
+
+    while (!flushed.load(std::memory_order_acquire) && std::chrono::steady_clock::now() < deadline)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+
+    const auto elapsed = std::chrono::steady_clock::now() - start;
+
+    // A slow runner can only delay the flush, so the lower bound is safe.
+    ASSERT_TRUE(flushed.load(std::memory_order_acquire));
+    EXPECT_GE(elapsed, std::chrono::milliseconds(400));
 }
 
 TEST(PersistentQueueTest, SubmitRollbackSequenceOnPersistError)
@@ -228,6 +334,93 @@ TEST(PersistentQueueTest, ClearItemsByIndexCallsStorageRemoveByIndex)
 
     queue.clearItemsByIndex("test_index");
     EXPECT_EQ(capturedIndex, "test_index");
+}
+
+// Batch/interval overrides are large enough that nothing flushes on its own, so any submitBatch
+// call comes from the clear.
+TEST(PersistentQueueTest, ClearItemsByIndexFlushesBufferedItemsBeforeRemoving)
+{
+    auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
+
+    {
+        testing::InSequence seq;
+        EXPECT_CALL(*mockStorage, submitBatch(_)).Times(1);
+        EXPECT_CALL(*mockStorage, removeByIndex("index1")).Times(1);
+    }
+
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    PersistentQueue queue(":memory:", testLogger, mockStorage, 1000, std::chrono::milliseconds(60000));
+
+    queue.submit("id1", "index1", "{}", Operation::CREATE, 1);
+    queue.clearItemsByIndex("index1");
+}
+
+TEST(PersistentQueueTest, ClearItemsByIndexDiscardsItemsKeptByFailedFlush)
+{
+    auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
+
+    // A failed flush keeps its items in the buffer and retries them on a later cycle; the clear
+    // must drop the cleared index's items so they are never written after it.
+    std::vector<PersistedData> secondBatch;
+    std::vector<PersistedData> thirdBatch;
+    {
+        testing::InSequence seq;
+        EXPECT_CALL(*mockStorage, submitBatch(_)).WillOnce(testing::Throw(std::runtime_error("db busy")));
+        EXPECT_CALL(*mockStorage, removeByIndex("index1")).Times(1);
+        EXPECT_CALL(*mockStorage, submitBatch(_)).WillOnce(SaveArg<0>(&secondBatch));
+        EXPECT_CALL(*mockStorage, submitBatch(_)).WillOnce(SaveArg<0>(&thirdBatch));
+    }
+
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    PersistentQueue queue(":memory:", testLogger, mockStorage, 1000, std::chrono::milliseconds(60000));
+
+    queue.submit("id1", "index1", "{}", Operation::CREATE, 1);
+    queue.clearItemsByIndex("index1");
+
+    // Two more flush cycles bring the slot that held the failed items back into use.
+    queue.submit("id2", "index2", "{}", Operation::CREATE, 1);
+    queue.fetchAndMarkForSync();
+    queue.submit("id3", "index2", "{}", Operation::CREATE, 1);
+    queue.fetchAndMarkForSync();
+
+    ASSERT_EQ(secondBatch.size(), 1u);
+    EXPECT_EQ(secondBatch[0].id, "id2");
+    ASSERT_EQ(thirdBatch.size(), 1u);
+    EXPECT_EQ(thirdBatch[0].id, "id3");
+}
+
+TEST(PersistentQueueTest, ClearAllDataContextFlushesBufferedItemsBeforeRemoving)
+{
+    auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
+
+    {
+        testing::InSequence seq;
+        EXPECT_CALL(*mockStorage, submitBatch(_)).Times(1);
+        EXPECT_CALL(*mockStorage, removeAllDataContext()).Times(1);
+    }
+
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    PersistentQueue queue(":memory:", testLogger, mockStorage, 1000, std::chrono::milliseconds(60000));
+
+    queue.submit("id1", "index1", "{}", Operation::CREATE, 1, true);
+    queue.clearAllDataContext();
+}
+
+TEST(PersistentQueueTest, DeleteDatabaseFlushesBufferedItemsBeforeDeleting)
+{
+    auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
+
+    {
+        testing::InSequence seq;
+        EXPECT_CALL(*mockStorage, submitBatch(_)).Times(1);
+        EXPECT_CALL(*mockStorage, deleteDatabase()).Times(1);
+    }
+
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    PersistentQueue queue(":memory:", testLogger, mockStorage, 1000, std::chrono::milliseconds(60000));
+
+    queue.submit("id1", "index1", "{}", Operation::CREATE, 1);
+    queue.deleteDatabase();
 }
 
 TEST(PersistentQueueTest, ClearItemsByIndexThrowsOnStorageError)

@@ -151,6 +151,7 @@
 | [#39064](https://github.com/wazuh/wazuh/issues/39064) | An agent whose re-enrollment secret the manager refuses falls back to the configured credential, so a rebuilt manager does not require visiting every endpoint. |
 | [#39407](https://github.com/wazuh/wazuh/issues/39407) | Added Enroll and Update CA actions to the Windows agent tray GUI (`win32ui`), enrolling or refreshing the trust anchor from a pasted token. |
 | [#40349](https://github.com/wazuh/wazuh/pull/40349) | Added the `wazuh_modules.socket_timeout` internal option (default 1 s), bounding how long a local client of `wazuh-modulesd` can stay silent while sending its request or reading the reply. |
+| [#37844](https://github.com/wazuh/wazuh/issues/37844) | The FIM synchronization queue flush batch size, flush interval and WAL auto-checkpoint threshold can now be set through internal options; the defaults are unchanged. |
 
 #### Changed
 

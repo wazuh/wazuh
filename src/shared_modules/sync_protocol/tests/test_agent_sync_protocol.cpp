@@ -24,6 +24,7 @@
 #include <optional>
 #include <thread>
 #include <iostream>
+#include <limits>
 #include <utility>
 
 using ::testing::_;
@@ -80,7 +81,7 @@ class AgentSyncProtocolTest : public ::testing::Test
             auto handle = asp_create("test_module", ":memory:", +[](modules_log_level_t, const char* s)
             {
                 std::cout << s << std::endl;
-            });
+            }, 0, 0, 0);
             asp_destroy(handle);
         }
 
@@ -404,7 +405,7 @@ TEST_F(AgentSyncProtocolTest, CInterfacePropagatesStoppedFlag)
     // exist here, so synchronizeModule() returns at the checkStatus early out
     // (no persistent-queue data needed).
 
-    auto* handle = asp_create("test_module", ":memory:", +[](modules_log_level_t, const char*) {});
+    auto* handle = asp_create("test_module", ":memory:", +[](modules_log_level_t, const char*) {}, 0, 0, 0);
     ASSERT_NE(handle, nullptr);
 
     // No stop requested: a real failure must not be flagged as shutdown-induced.
@@ -421,12 +422,46 @@ TEST_F(AgentSyncProtocolTest, CInterfacePropagatesStoppedFlag)
     asp_destroy(handle);
 }
 
+// Out-of-range queue options must not be applied: they would wrap negative as int32_t (turning
+// WAL checkpointing off) or overflow the flush wait. The handle is still created with defaults.
+TEST_F(AgentSyncProtocolTest, CInterfaceRejectsOutOfRangeQueueOptionsWithWarning)
+{
+    static std::vector<std::string> warnings;
+    warnings.clear();
+    const auto logger = +[](modules_log_level_t level, const char* msg)
+    {
+        if (level == LOG_WARNING)
+        {
+            warnings.emplace_back(msg);
+        }
+    };
+
+    const uint64_t overRange = static_cast<uint64_t>(std::numeric_limits<int32_t>::max()) + 1;
+
+    auto* handle = asp_create("test_module", ":memory:", logger, overRange, overRange, overRange);
+    ASSERT_NE(handle, nullptr);
+    asp_destroy(handle);
+
+    ASSERT_EQ(warnings.size(), 3u);
+    EXPECT_NE(warnings[0].find("flush_batch_size"), std::string::npos);
+    EXPECT_NE(warnings[1].find("flush_interval_ms"), std::string::npos);
+    EXPECT_NE(warnings[2].find("wal_autocheckpoint_pages"), std::string::npos);
+
+    // 0 (default) and the largest accepted value are not warned about.
+    warnings.clear();
+    const uint64_t maxValid = std::numeric_limits<int32_t>::max();
+    handle = asp_create("test_module", ":memory:", logger, 0, maxValid, maxValid);
+    ASSERT_NE(handle, nullptr);
+    asp_destroy(handle);
+    EXPECT_TRUE(warnings.empty());
+}
+
 // Exercises the C interface of the integrity check (asp_requires_full_sync ->
 // IntegrityCheckResult_t), the path FIM relies on: a check that did not run must cross it as
 // NOT_CHECKED with its reason and flags, and bad arguments must not reach the C++ layer.
 TEST_F(AgentSyncProtocolTest, CInterfaceIntegrityCheckCarriesTheResult)
 {
-    auto* handle = asp_create("test_module", ":memory:", +[](modules_log_level_t, const char*) {});
+    auto* handle = asp_create("test_module", ":memory:", +[](modules_log_level_t, const char*) {}, 0, 0, 0);
     ASSERT_NE(handle, nullptr);
 
     for (const auto& [h, index, checksum] : std::vector<std::tuple<AgentSyncProtocolHandle*, const char*, const char*>> {
