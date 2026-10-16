@@ -1039,6 +1039,10 @@ def read_api_https(paths: Paths, report: Report) -> Dict[str, object]:
         value = (https or {}).get(name)
         if value is None:
             continue
+        if isinstance(value, str) and value.lower() in ("yes", "no"):
+            # As the Server API reads the file (replace_bools() in api/api/configuration.py): the strings yes and no,
+            # in any case, are booleans, wherever they appear.
+            value = value.lower() == "yes"
         if not isinstance(value, kind) or kind is str and not value:
             report.problem(INVALID, path, f"https.{name}: not {'true or false' if kind is bool else 'a file name'}")
             return {"enabled": True, "cert": DEFAULT_PAIRS["apid"][0], "key": DEFAULT_PAIRS["apid"][1]}

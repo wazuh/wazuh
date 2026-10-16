@@ -406,8 +406,9 @@ The resolver checks the files the daemons are configured to serve, under whateve
   `MISSING /etc/wazuh-manager/certs/listener.pem: configured as remote.https.certificate in /etc/wazuh-manager/wazuh-manager.conf; stage the pair (the resolver issues only remoted.pem, remoted-key.pem, apid.pem, apid-key.pem)`.
   While authd keeps the default names, `remoted.pem` is still issued for it. A bundle under another name is
   never created either (`… stage the agents' CA bundle there`).
-- **A turned-off listener** (`auth.disabled` set to `yes`, `https.enabled: false` in `api.yaml`) has its pair
-  neither checked nor reported missing. `--install` still issues the default pairs whose names are configured.
+- **A turned-off listener** (`auth.disabled` set to `yes`, `https.enabled: false` in `api.yaml`, or `no` in any
+  case, quoted or not, as the Server API reads it) has its pair neither checked nor reported missing. `--install`
+  still issues the default pairs whose names are configured.
 - **Reading the configuration.** Every mode, `--check` included, reads `wazuh-manager.conf` through
   `wazuh-manager-conf --skip-file-checks dump` and parses `api.yaml`; an absent `api.yaml`, or an option it does
   not set, means the Server API's default. When either cannot be read (the reader fails, does not answer within 60
