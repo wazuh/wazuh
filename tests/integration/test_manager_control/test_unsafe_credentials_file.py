@@ -71,6 +71,7 @@ CONF_DIR = Path(MANAGER_CONF_DIR)
 LOCAL_ENV = CONF_DIR / 'local.env'
 PLANTED_CERT = CONF_DIR / 'certs' / 'planted-by-test.pem'
 CONF_COPY = CONF_DIR / 'wazuh-manager.copy-by-test.conf'
+API_YAML = Path(VAR_PATH).parent / 'api' / 'configuration' / 'api.yaml'
 RUN_DIR = Path(VAR_PATH, 'run')
 INDEXER_TRUST = [CONF_DIR / 'certs' / name for name in ('indexer-ca.pem', 'indexer-connector.pem',
                                                         'indexer-connector-key.pem')]
@@ -91,6 +92,8 @@ VERDICTS = {
                 'wazuh-manager-control: ERROR: invalid credentials', 'INVALID '),
     'cannot': ('Cannot check the credentials. Exiting', {'error': 22, 'message': 'Cannot check the credentials.'},
                'wazuh-manager-control: ERROR: cannot check the credentials', None),
+    'unresolved': ('Unresolved credentials. Exiting', {'error': 21, 'message': 'Unresolved credentials.'},
+                   'wazuh-manager-control: ERROR: unresolved credentials', 'MISSING '),
 }
 
 # One broken entry per case, and the path the resolver names for it.
@@ -272,7 +275,7 @@ def breaker():
     """Break entries of the real configuration directory on demand; put every one back and leave the manager
     running, whatever the test did."""
     _restore_moved_resolver()
-    snapshots = [_Snapshot(LOCAL_ENV), _Snapshot(PLANTED_CERT), _Snapshot(CONF_COPY)]
+    snapshots = [_Snapshot(LOCAL_ENV), _Snapshot(PLANTED_CERT), _Snapshot(CONF_COPY), _Snapshot(API_YAML)]
     try:
         yield _break
     finally:
@@ -392,6 +395,55 @@ def test_restart_refuses_before_stopping(breaker):
     gained = _log_since(offset)
     assert VERDICTS['unsafe'][2] in gained, f"Missing '{VERDICTS['unsafe'][2]}' in the log:\n{gained}"
     assert f"UNSAFE {LOCAL_ENV}" in gained, gained
+
+
+@pytest.mark.parametrize('action', ['restart', 'reload'])
+def test_restart_refuses_a_pair_nobody_provides_before_stopping(action, breaker):
+    '''
+    description: Check that 'restart' and 'reload' refuse, before they stop anything, a server pair that the start
+                 after the stop could not provide either: the Server API configured with a pair that is not staged
+                 (the resolver issues pairs at installation only). The credentials check reports it as missing, as
+                 the start would, so the running daemons are left as they are instead of all of them stopping and
+                 none coming back.
+
+    wazuh_min_version: 5.0.0
+
+    test_phases:
+        - setup: With the manager running, point api.yaml's https.cert and https.key at files that do not exist.
+        - test: Run the action.
+        - teardown: Put api.yaml back and leave the manager running.
+
+    assertions:
+        - The exit code is not zero and 'Unresolved credentials. Exiting' is reported, with the resolver's MISSING line
+          for the configured certificate.
+        - The daemons that were running are the same processes afterwards.
+
+    input_description: An api.yaml naming custom-by-test.pem and custom-by-test-key.pem, both absent from certs/.
+
+    expected_output:
+        - 'MISSING /etc/wazuh-manager/certs/custom-by-test.pem: configured as https.cert'
+
+    tags:
+        - manager_control
+    '''
+    _ensure_running()
+    certificate = CONF_DIR / 'certs' / 'custom-by-test.pem'
+    assert not certificate.exists(), f'{certificate} exists: the case needs a name nothing provides'
+    mode, owner = ((API_YAML.stat().st_mode & 0o7777, (API_YAML.stat().st_uid, API_YAML.stat().st_gid))
+                   if API_YAML.exists() else (0o660, (0, grp.getgrnam(ACCOUNT).gr_gid)))
+    # Bare names, as the Server API's schema requires (absolute paths are refused by its own configuration test,
+    # before the stop): resolved in certs/.
+    API_YAML.write_text("https:\n  cert: custom-by-test.pem\n  key: custom-by-test-key.pem\n")
+    os.chown(API_YAML, *owner)
+    API_YAML.chmod(mode)
+    before = _alive_pids()
+    assert before, 'The manager is not running'
+
+    result = _control(action)
+
+    _assert_refused(result, 'unresolved', certificate)
+    assert f"MISSING {certificate}: configured as https.cert" in result.stderr, result.stderr
+    assert _alive_pids() == before, f"The daemons changed during a refused {action}"
 
 
 def test_refusal_clears_stale_failed_markers(breaker):

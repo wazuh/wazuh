@@ -201,6 +201,7 @@ def test_secret_inputs_have_no_group_or_other_bits(resolver, sandbox, which, mod
     """local.env, the indexer's credentials.env and the client key it exports are secrets: root's, and no bit for
     the group or others (0600, or the stricter 0400)."""
     import io
+    sandbox.stage_ca()
     if which == "local.env":
         path = sandbox.write(os.path.join(sandbox.conf, "local.env"),
                              "WAZUH_INDEXER_MANAGER_PASSWORD=Idx.Passw0rd-789\n", mode=mode)

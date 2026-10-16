@@ -225,7 +225,7 @@ wazuh-manager-resolve-credentials [--install|--upgrade|--prestart|--check|--clea
 | `--install` | DEB `postinst` and RPM `%post` on a fresh install, `install.sh` | seeds the passwords, stores the indexer password, mints the CA when nothing is there, issues the two server pairs, imports the indexer trust | always `0` |
 | `--upgrade` | DEB `postinst` and RPM `%post` on an upgrade | completes passwords, keystore and indexer trust; publishes the CA in `export/ca.pem` again when the copy there differs; validates the CA and the pairs, never mints or issues | always `0` |
 | `--prestart` (default) | `wazuh-manager-control` before the daemons start, on `start`, `restart` and `reload` | every `--check` test, then what `--upgrade` does; refuses the start when anything is missing, invalid or unsafe | `0` or `1` |
-| `--check` | `wazuh-manager-control` on `start`, `restart` and `reload`, once the configuration file itself has been validated | read-only: no lock, nothing written, and no subprocess but `wazuh-manager-conf --skip-file-checks dump`, which reads the [configured file names](#configured-file-names); reports `UNSAFE` and `INVALID`, never `MISSING` | `0` or `1` |
+| `--check` | `wazuh-manager-control` on `start`, `restart` and `reload`, once the configuration file itself has been validated | read-only: no lock, nothing written, and no subprocess but `wazuh-manager-conf --skip-file-checks dump`, which reads the [configured file names](#configured-file-names); reports `UNSAFE` and `INVALID`, and `MISSING` only for what `--prestart` could not complete either (the CA, the bundle and the server pairs, created at `--install` only, and indexer files with nothing in the export to import) | `0` or `1` |
 | `--clear` | you | removes what the resolver made ([Container images](#container-images)) | `0` or `1` |
 
 `-q` prints only problems. `-H` names a non-default installation directory; the configuration directory is
@@ -270,6 +270,7 @@ says why:
 |------|--------|-----------|----------|
 | `--check` reports `UNSAFE` | `Unsafe credentials. Exiting` | `{"error":22,"message":"Unsafe credentials."}` | `wazuh-manager-control: ERROR: unsafe credentials` |
 | `--check` reports `INVALID` | `Invalid credentials. Exiting` | `{"error":22,"message":"Invalid credentials."}` | `wazuh-manager-control: ERROR: invalid credentials` |
+| `--check` reports `MISSING` | `Unresolved credentials. Exiting` | `{"error":21,"message":"Unresolved credentials."}` | `wazuh-manager-control: ERROR: unresolved credentials` |
 | the check itself cannot run | `Cannot check the credentials. Exiting` | `{"error":22,"message":"Cannot check the credentials."}` | `wazuh-manager-control: ERROR: cannot check the credentials` |
 | `--prestart` fails | `Unresolved credentials. Exiting` | `{"error":21,"message":"Unresolved credentials."}` | `wazuh-manager-control: ERROR: unresolved credentials` |
 
@@ -279,11 +280,15 @@ On `start`, `restart` and `reload`, `wazuh-manager-control` checks in this order
    validate`), so a configuration mistake is reported with the validator's `(1244)` verdict and the JSON pointer of
    the option, not as a credentials problem: `--check` reads the [configured file names](#configured-file-names)
    from that file;
-2. the credentials (`--check`);
+2. the credentials (`--check`), including what the start after the stop could not provide: a pair the configuration
+   names and nobody staged, the CA or the bundle outside `--install`, indexer files with nothing in the export to
+   import;
 3. the files the configuration names (`wazuh-manager-conf validate`), and each daemon's own `-t` test.
 
 All of it happens on `restart` before anything is stopped. A refused `restart` therefore leaves the running daemons
-as they are.
+as they are. `--prestart` runs after the stop and completes what it can (the Server API database, the keystore, an
+import from the indexer's export); the one thing it can still refuse that `--check` does not look for is the indexer
+password, kept in the keystore, which is not read while the daemons are running.
 
 A `WARNING` refuses nothing: the start goes on, and each warning is also written to `logs/wazuh-manager.log` as
 `wazuh-manager-control: WARNING: <path>: …`. Only the indexer material's validity window is treated this way.

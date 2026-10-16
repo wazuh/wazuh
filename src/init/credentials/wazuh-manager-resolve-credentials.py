@@ -1391,13 +1391,14 @@ def check_bundle(paths: Paths, certs: Dir, state: CaState, report: Report, mode:
     if present and data is None:
         return
     if not present:
+        # Only --install writes it; at --check this is the MISSING --prestart would report and cannot complete.
         if mode == "install" and bundle == BUNDLE:
             write_file(certs, BUNDLE, state.cert_bytes, 0o640, 0, paths.service_gid())
             report.progress(f"wrote {certs.child(BUNDLE)} (the manager's CA)")
-        elif bundle != BUNDLE and mode != "check":
+        elif bundle != BUNDLE:
             report.problem(MISSING, certs.child(bundle), f"configured as remote.https.ca_certificate in "
                                                          f"{names.bundle_source}; stage the agents' CA bundle there")
-        elif mode != "check":
+        else:
             report.problem(MISSING, certs.child(BUNDLE), "the agents' CA bundle is missing; reinstall, or stage it")
         return
     try:
@@ -1421,6 +1422,12 @@ def published_ca(export: Dir, own: bytes, report: Report) -> str:
     return "current" if published == own else "stale"
 
 
+def _missing_ca(path: str, report: Report) -> None:
+    """Only --install mints a CA, and only when nothing else is there: every other mode reports it missing."""
+    report.problem(MISSING, path, f"the manager's CA is missing; stage it there (and {CA_KEY} to issue certificates), "
+                                  f"or reinstall")
+
+
 def step_own_ca(paths: Paths, conf: Dir, certs: Dir, ca: Dir, lookup: Lookup, report: Report,
                 mode: str, names: TlsNames) -> Optional[CaState]:
     """--install mints or validates the CA; every writing mode publishes it in export/ca.pem when the copy there is
@@ -1431,8 +1438,7 @@ def step_own_ca(paths: Paths, conf: Dir, certs: Dir, ca: Dir, lookup: Lookup, re
         return None
     if state.kind == "absent":
         if mode != "install":
-            report.problem(MISSING, ca.child(CA_CERT), "the manager's CA is missing; stage it there "
-                                                       f"(and {CA_KEY} to issue certificates), or reinstall")
+            _missing_ca(ca.child(CA_CERT), report)
             return None
         if server_material_present(certs, names):
             report.problem(MISSING, ca.child(CA_CERT), "stage the CA that issued the pairs")
@@ -1469,7 +1475,9 @@ def step_own_ca(paths: Paths, conf: Dir, certs: Dir, ca: Dir, lookup: Lookup, re
 
 
 def check_own_ca(paths: Paths, conf: Dir, lookup: Lookup, report: Report, names: TlsNames) -> None:
-    """--check's part: validate whatever CA and bundle exist, without creating ca/ or writing anything."""
+    """--check's part: validate whatever CA and bundle exist, without creating ca/ or writing anything, and report
+    as MISSING what only --install creates (the CA, the bundle, the server pairs): --prestart would report it and
+    could not complete it, and on a restart --check is what runs before the daemons are stopped."""
     try:
         ca = open_dir(conf, CA_DIR, CA_SPEC)
     except FileNotFoundError:
@@ -1480,6 +1488,8 @@ def check_own_ca(paths: Paths, conf: Dir, lookup: Lookup, report: Report, names:
     certs = open_certs(paths, conf, report)
     try:
         state = load_ca(ca, report) if ca is not None else CaState("absent")
+        if state is not None and state.kind == "absent":
+            _missing_ca(os.path.join(paths.conf, CA_DIR, CA_CERT), report)
         if certs is not None and state is not None and state.kind != "absent":
             check_bundle(paths, certs, state, report, "check", names)
         if certs is not None:
@@ -2273,11 +2283,14 @@ def step_server_pairs(paths: Paths, certs: Dir, ca: CaState, lookup: Lookup, rep
 
 def check_server_pairs(paths: Paths, certs: Dir, ca: Optional[CaState], lookup: Lookup, report: Report,
                        names: TlsNames) -> None:
-    """--check's part: validate the present pairs of the listeners that are on; never MISSING, no write."""
+    """--check's part: validate the present pairs of the listeners that are on, and report an absent one as MISSING
+    as --prestart would (pairs are issued at --install only). With no CA, --prestart stops at the CA, and so does
+    this. No write."""
     anchors = pair_anchors(paths, certs, ca, names) if ca is not None and ca.kind != "absent" else None
     for pair in names.pairs:
-        if pair.on:
-            _judge_present(paths, certs, pair, anchors, names, report, kept_line=False)
+        if pair.on and _judge_present(paths, certs, pair, anchors, names, report, kept_line=False) is None \
+                and ca is not None and ca.kind != "absent":
+            _missing_pair(certs, pair, report)
 
 
 def validate_san_lists(lookup: Lookup, report: Report) -> None:
@@ -2809,14 +2822,16 @@ def _check_indexer_current(paths: Paths, certs: Dir, report: Report, names: Inde
 
 
 def check_indexer_trust(paths: Paths, certs: Dir, report: Report, names: IndexerNames) -> None:
-    """--check's verdict on the indexer trust equals --prestart's, minus MISSING: the same selection runs without
-    writing, and whatever it would refuse is refused here, before a restart stops anything. A broken imported
-    generation that the selection repairs (an interrupted import) is let through."""
+    """--check's verdict on the indexer trust equals --prestart's: the same selection runs without writing, and
+    whatever it would refuse is refused here, before a restart stops anything. Its MISSING lines included: the
+    selection reports a file missing only when the export has nothing to import into it, so --prestart could not
+    complete it either. A broken imported generation that the selection repairs (an interrupted import) is let
+    through."""
     current = Report(quiet=True, out=io.StringIO(), err=io.StringIO())
     _check_indexer_current(paths, certs, current, names)
     selection = Report(quiet=True, out=io.StringIO(), err=io.StringIO())
     step_indexer_trust(paths, certs, selection, names, write=False)
-    refused = [problem for problem in selection.problems if problem[0] != MISSING]
+    refused = list(selection.problems)
     for warning in current.warnings + selection.warnings:
         report.warning(warning)
     if current.has(INVALID) and not current.has(UNSAFE) and not refused:
@@ -2979,8 +2994,10 @@ def preflight(paths: Paths, report: Report, environ: Mapping[str, str]) -> Optio
 
 def mode_check(paths: Paths, report: Report, environ: Mapping[str, str]) -> int:
     """--check: read-only. No lock, nothing created or changed, and no subprocess but the configuration reader
-    (wazuh-manager-conf dump). Reports UNSAFE and INVALID, never MISSING: what is absent is --prestart's to complete
-    and to judge."""
+    (wazuh-manager-conf dump). Reports UNSAFE and INVALID, and MISSING only for what --prestart could not complete
+    either: the CA, the bundle and the server pairs (created at --install only) and indexer files with nothing in
+    the export to import. What --prestart completes (a seed, the keystore, an import) is left to it; the indexer
+    password, kept in the keystore, is not looked for, since the keystore is not read here."""
     result = preflight(paths, report, environ)
     if result is not None:
         with result[0] as conf:

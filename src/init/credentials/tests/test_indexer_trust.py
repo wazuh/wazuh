@@ -378,6 +378,7 @@ def test_connector_through_intermediate(resolver, sandbox, staged):
 
 def test_connector_under_intermediate_kept_as_indexer_ca(resolver, sandbox):
     """An intermediate CA staged as indexer-ca.pem is trusted as it is: a leaf it issued needs nothing more."""
+    sandbox.stage_ca()
     published = sandbox.make_indexer_trust(via_intermediate=True)
     stage_trust(sandbox, {"ca": published["intermediate"], "client": published["leaf"], "key": published["key"]})
     code, _, err = run(resolver, sandbox, "--check")
@@ -395,11 +396,13 @@ def test_connector_intermediate_missing(resolver, sandbox):
 
 
 def test_check_indexer_trust(resolver, sandbox):
-    """--check validates what exists, never reports MISSING and writes nothing."""
+    """--check validates what exists and writes nothing; with no export, what is absent cannot be imported, so it is
+    MISSING here as at --prestart."""
     shutil.rmtree(sandbox.indexer_export)
     before = sandbox.tree_state()
     code, _, err = run(resolver, sandbox, "--check")
-    assert code == 0 and "MISSING" not in err and sandbox.tree_state() == before
+    assert code == 1 and all(line.startswith("MISSING ") for line in err.splitlines()), err
+    assert sandbox.tree_state() == before
     good, other = sandbox.make_indexer_trust(), sandbox.make_indexer_trust()
     stage_trust(sandbox, {"ca": good["ca"], "client": other["client"], "key": other["key"]})
     before = sandbox.tree_state()
@@ -841,6 +844,7 @@ def test_rotation_not_valid_yet_fills_a_gap(resolver, sandbox):
 
 
 def test_check_counts_warnings(resolver, sandbox):
+    sandbox.stage_ca()
     stage_trust(sandbox, Pki().files(EXPIRED))
     before = sandbox.tree_state()
     code, out, err = run(resolver, sandbox, "--check")
