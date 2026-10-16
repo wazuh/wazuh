@@ -786,3 +786,22 @@ TEST_F(DirRuleEvaluatorTest, NamedPipeWithAnExactFileNameIsUnresolved)
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::Invalid);
     EXPECT_THAT(evaluator.GetUnresolvedReason(), ::testing::HasSubstr("not a regular file"));
 }
+
+TEST_F(DirRuleEvaluatorTest, ExactFileNameReadsTheListedEntry)
+{
+    // The directory listing gives full paths: the content must be read from the listed entry, not
+    // from the bare file name of the pattern, which would be looked up in the working directory
+    m_ctx.pattern = std::string("target.txt -> hello");
+    m_ctx.rule = "dir/";
+
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("dir/"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("dir/"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, list_directory(std::filesystem::path("dir/")))
+    .WillOnce(::testing::Return(std::vector<std::filesystem::path> {"dir/target.txt"}));
+    EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("dir/target.txt"))).WillOnce(::testing::Return(false));
+    EXPECT_CALL(*m_rawIoMock, getRegularFileContent(std::filesystem::path("dir/target.txt"), false, ::testing::_))
+    .WillOnce(ReturnContent("hello\n"));
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Found);
+}

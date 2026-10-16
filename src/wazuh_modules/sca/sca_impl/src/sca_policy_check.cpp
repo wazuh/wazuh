@@ -541,7 +541,7 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
                     const auto result = TryFunc([&]
                     {
                         return FindContentInFile(
-                            m_fileUtils, fileName, content.value(), m_ctx, m_lastUnresolvedReason, false);
+                            m_fileUtils, file.string(), content.value(), m_ctx, m_lastUnresolvedReason, false);
                     });
 
                     if (result.has_value())
@@ -557,7 +557,7 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
                     }
                     else
                     {
-                        m_lastUnresolvedReason = "Failed to read contents of file '" + fileName + "' in directory '" + rootPath.string() + "'";
+                        m_lastUnresolvedReason = "Failed to read contents of file '" + file.string() + "' in directory '" + rootPath.string() + "'";
                         return RuleResult::Invalid;
                     }
                 }
