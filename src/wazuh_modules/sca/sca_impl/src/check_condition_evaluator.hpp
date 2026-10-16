@@ -27,9 +27,14 @@ class CheckConditionEvaluator
         std::string GetUnresolvedReason() const;
 
     private:
+        /// @brief Notes a rule that could not be evaluated and keeps its reason.
+        void RecordUnresolvedRule(const RuleEvaluationResult& result);
+
+        /// @brief Settles the verdict when this rule decides it under the check's condition.
+        void UpdateVerdict(RuleResult result);
+
         ConditionType m_type;
         int m_totalRules {0};
-        int m_passedRules {0};
         std::optional<bool> m_result;
         bool m_hasInvalid = false;
         bool m_hasNotRun = false;
