@@ -174,7 +174,7 @@ TEST(CurlPerformerTest, AnInMemoryResponseWithoutACapStaysUnbounded)
     const auto config = makeConfig(HC_VERIFY_NONE);
 
     HttpRequestSpec spec;
-    spec.target = "/stateless";
+    spec.target = "/uncapped";
 
     EXPECT_CALL(*handle, captureResponseBody(NotNull(), 0u));
     EXPECT_CALL(*handle, perform()).WillOnce(Return(TransportStatus::Ok));

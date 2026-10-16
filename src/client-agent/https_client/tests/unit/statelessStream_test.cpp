@@ -124,6 +124,7 @@ TEST_F(StatelessStreamTest, FlushOnSizeThresholdSendsHeaderAndEvents)
     {
         sentBody.assign(reinterpret_cast<const char*>(spec.body), spec.bodyLength);
         EXPECT_EQ("/stateless", spec.target);
+        EXPECT_EQ(SHORT_REPLY_MAX_RESPONSE_BYTES, spec.maxResponseBytes);
         return response(TransportStatus::Ok, 200);
     }));
 
