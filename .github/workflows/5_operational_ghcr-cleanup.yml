@@ -1,9 +1,10 @@
 name: 5.X - Operational - Delete old GHCR versions
 
 # Reusable: deletes from the listed container packages of the repository owner the versions created more than
-# max_age_days ago and the untagged ones, always keeping the newest version of each package (GitHub refuses to
-# delete the last one). The pkg_* packages (the package builder images) are refused. DELETE needs the calling
-# repository to hold the admin role on each package, which the first publish from its workflows grants.
+# max_age_days ago and the untagged ones or, when tag_prefix is given, the versions with a tag that starts with it,
+# whatever their age. It always keeps the newest version of each package (GitHub refuses to delete the last one).
+# The pkg_* packages (the package builder images) are refused. DELETE needs the calling repository to hold the admin
+# role on each package, which the first publish from its workflows grants.
 # Untagged versions are the per-platform manifests of a multi-platform image, so list single-platform packages only.
 
 on:
@@ -18,6 +19,11 @@ on:
         type: number
         required: false
         default: 4
+      tag_prefix:
+        description: 'Delete only the versions with a tag that starts with this, whatever their age (e.g. pr40009-)'
+        type: string
+        required: false
+        default: ''
       dry_run:
         description: 'Only list the versions that would be deleted'
         type: boolean
@@ -42,11 +48,16 @@ jobs:
           OWNER: ${{ github.repository_owner }}
           PACKAGES: ${{ inputs.packages }}
           MAX_AGE_DAYS: ${{ inputs.max_age_days }}
+          TAG_PREFIX: ${{ inputs.tag_prefix }}
           DRY_RUN: ${{ inputs.dry_run }}
         run: |
           set -euo pipefail
           if [[ ! "${MAX_AGE_DAYS}" =~ ^[1-9][0-9]*$ ]]; then
             echo "::error::max_age_days must be a positive integer, got '${MAX_AGE_DAYS}': nothing deleted"
+            exit 1
+          fi
+          if [ -n "${TAG_PREFIX}" ] && [[ ! "${TAG_PREFIX}" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]*$ ]]; then
+            echo "::error::Invalid tag_prefix '${TAG_PREFIX}': nothing deleted"
             exit 1
           fi
           if [ -z "${PACKAGES// }" ]; then
@@ -65,7 +76,11 @@ jobs:
           done
           if [ "$(gh api "/users/${OWNER}" --jq .type)" = Organization ]; then base="/orgs/${OWNER}"; else base="/users/${OWNER}"; fi
           cutoff=$(date -u -d "-${MAX_AGE_DAYS} days" +%Y-%m-%dT%H:%M:%SZ)
-          echo "Deleting versions created before ${cutoff}, and untagged ones (dry run: ${DRY_RUN})"
+          if [ -n "${TAG_PREFIX}" ]; then
+            echo "Deleting versions with a tag starting with ${TAG_PREFIX} (dry run: ${DRY_RUN})"
+          else
+            echo "Deleting versions created before ${cutoff}, and untagged ones (dry run: ${DRY_RUN})"
+          fi
 
           err="${RUNNER_TEMP:-/tmp}/gh.err"
           failed=0
@@ -81,9 +96,10 @@ jobs:
               failed=1
               continue
             fi
-            delete=$(jq -r --arg cutoff "${cutoff}" '
+            delete=$(jq -r --arg cutoff "${cutoff}" --arg prefix "${TAG_PREFIX}" '
               sort_by(.created_at) | reverse | .[1:][]
-              | select(.created_at < $cutoff or ((.metadata.container.tags // []) | length == 0))
+              | select(if $prefix != "" then any((.metadata.container.tags // [])[]; startswith($prefix))
+                       else .created_at < $cutoff or ((.metadata.container.tags // []) | length == 0) end)
               | [(.id | tostring), (.metadata.container.tags // [] | join(",")), .created_at] | @tsv' <<<"${versions}")
             echo "${package}: $(jq length <<<"${versions}") versions, $(grep -c . <<<"${delete}" || true) to delete"
             while IFS=$'\t' read -r id tags created; do

@@ -62,8 +62,9 @@ env:
   IT_IMAGES: integration_test_wazuh-manager integration_test_wazuh-agent integration_test_wazuh-agent_old integration_test_haproxy-lb
   # Where the build job leaves the image set for the test jobs of the same run: the private packages
   # ghcr.io/wazuh/api-its-<image>, tagged by the build job (IT_TAG), kept 4 days for "Re-run failed jobs" and then
-  # deleted by 5_testintegration_api-endpoints-images-cleanup.yml. The token of a fork (a pull request from a fork,
-  # or a run in the fork itself) cannot push there, so those runs use a run artifact instead
+  # deleted by 5_testintegration_api-endpoints-images-cleanup.yml, or earlier when their pull request is closed. The
+  # token of a fork (a pull request from a fork, or a run in the fork itself) cannot push there, so those runs use a
+  # run artifact instead
   IT_STORE: ${{ github.repository == 'wazuh/wazuh' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && 'ghcr' || 'artifact' }}
   IT_REGISTRY: ghcr.io/wazuh/api-its-
 
@@ -133,15 +134,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # <YYMMDD><first 6 hex of the commit under review>, e.g. 261015cbf59d. Set once and passed to the test jobs,
-      # so "Re-run failed jobs" on a later day still finds the set; a second run of the same commit on the same day
-      # pushes the same tag again
+      # pr<number>-<run id>-<attempt> on a pull request (e.g. pr40009-38808554294-1), run-<run id>-<attempt> otherwise.
+      # Only this job of this attempt pushes it, so no other run (a workflow_dispatch of the same head, a new merge
+      # commit of the same head) can overwrite the set the test jobs pull. Set once and passed to the test jobs, so
+      # "Re-run failed jobs" reuses it; "Re-run all jobs" is a new attempt and builds a new set. The pr<number>- prefix
+      # lets 5_testintegration_api-endpoints-images-cleanup.yml delete the sets of a pull request when it is closed
       - name: Set the image tag
         id: tag
         env:
-          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          tag="$(date -u +%y%m%d)${HEAD_SHA:0:6}"
+          tag="${PR_NUMBER:+pr${PR_NUMBER}}"
+          tag="${tag:-run}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           echo "it_tag=${tag}" >> "${GITHUB_OUTPUT}"
           echo "IT_TAG=${tag}" >> "${GITHUB_ENV}"
 
@@ -171,13 +175,15 @@ jobs:
           # The commit under test: on a pull request, the merge commit, which the tarball
           # endpoint also serves for a fork
           docker compose build --build-arg WAZUH_BRANCH=${{ github.sha }} --no-cache
+          # ghcr.io answers 4 pushes at once: a transient error must not fail the build
+          retry() { for n in 1 2 3; do "$@" && return 0; [ "${n}" -lt 3 ] && { echo "::warning::'$*' failed (attempt ${n}/3), retrying in $((n * 15)) s"; sleep $((n * 15)); }; done; return 1; }
           mkdir -p /tmp/docker-images
           pids=(); names=()
           for image in ${IT_IMAGES}; do
             docker image inspect "${image}:latest" >/dev/null 2>&1 || { echo "::error::compose did not build ${image}:latest"; exit 1; }
             if [ "${IT_STORE}" = ghcr ]; then
               docker tag "${image}:latest" "${IT_REGISTRY}${image}:${IT_TAG}"
-              docker push --quiet "${IT_REGISTRY}${image}:${IT_TAG}" &
+              retry docker push --quiet "${IT_REGISTRY}${image}:${IT_TAG}" &
             else
               ( set -o pipefail; docker save "${image}:latest" | zstd -T0 -o "/tmp/docker-images/${image}.tar.zst" ) &
             fi
@@ -243,11 +249,13 @@ jobs:
 
       - name: Load Docker images
         run: |
+          # ghcr.io answers 27 jobs at once: a transient error must not fail a job
+          retry() { for n in 1 2 3; do "$@" && return 0; [ "${n}" -lt 3 ] && { echo "::warning::'$*' failed (attempt ${n}/3), retrying in $((n * 15)) s"; sleep $((n * 15)); }; done; return 1; }
           pids=(); names=()
           if [ "${IT_STORE}" = ghcr ]; then
             # Retagged to the names docker-compose.yml uses
             for image in ${IT_IMAGES}; do
-              ( docker pull --quiet "${IT_REGISTRY}${image}:${IT_TAG}" &&
+              ( retry docker pull --quiet "${IT_REGISTRY}${image}:${IT_TAG}" &&
                 docker tag "${IT_REGISTRY}${image}:${IT_TAG}" "${image}:latest" ) &
               pids+=("$!"); names+=("${IT_REGISTRY}${image}:${IT_TAG}")
             done
@@ -331,11 +339,13 @@ jobs:
 
       - name: Load Docker images
         run: |
+          # ghcr.io answers 27 jobs at once: a transient error must not fail a job
+          retry() { for n in 1 2 3; do "$@" && return 0; [ "${n}" -lt 3 ] && { echo "::warning::'$*' failed (attempt ${n}/3), retrying in $((n * 15)) s"; sleep $((n * 15)); }; done; return 1; }
           pids=(); names=()
           if [ "${IT_STORE}" = ghcr ]; then
             # Retagged to the names docker-compose.yml uses
             for image in ${IT_IMAGES}; do
-              ( docker pull --quiet "${IT_REGISTRY}${image}:${IT_TAG}" &&
+              ( retry docker pull --quiet "${IT_REGISTRY}${image}:${IT_TAG}" &&
                 docker tag "${IT_REGISTRY}${image}:${IT_TAG}" "${image}:latest" ) &
               pids+=("$!"); names+=("${IT_REGISTRY}${image}:${IT_TAG}")
             done
