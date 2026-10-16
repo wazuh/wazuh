@@ -438,8 +438,13 @@ void RSyncImplementation::sendAllData(const std::shared_ptr<DBSyncWrapper>& spDB
     auto& queryParam { selectData["query"] };
 
     auto rowFilter { querySelect.at("row_filter").get_ref<const std::string&>() } ;
-    Utils::replaceFirst(rowFilter, "?", syncData.begin);
-    Utils::replaceFirst(rowFilter, "?", syncData.end);
+    auto beginSanitized = syncData.begin;
+    auto endSanitized = syncData.end;
+
+    Utils::replaceAll(beginSanitized, "'", "''");
+    Utils::replaceAll(endSanitized, "'", "''");
+    Utils::replaceFirst(rowFilter, "?", beginSanitized);
+    Utils::replaceFirst(rowFilter, "?", endSanitized);
 
     queryParam["row_filter"] = rowFilter;
     queryParam["column_list"] = querySelect.at("column_list");

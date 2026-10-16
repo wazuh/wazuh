@@ -95,11 +95,8 @@ char *encode_base64(int size, const char *src)
     return out;
 }
 
-/* Decode the base64 encoded string 'src' into the memory pointed to by
- * 'dest'. The dest buffer is NUL terminated.
- * Returns NULL in case of error
- */
-char *decode_base64(const char *src)
+/* Same as decode_base64(), also storing the decoded byte count in 'len' if not NULL */
+char *decode_base64_len(const char *src, size_t *len)
 {
     if (src && *src) {
         char *dest;
@@ -165,9 +162,22 @@ char *decode_base64(const char *src)
 
         free(buf);
 
+        if (len) {
+            *len = (size_t)(p - (unsigned char *)dest);
+        }
+
         return (dest);
     }
     return (NULL);
+}
+
+/* Decode the base64 encoded string 'src' into the memory pointed to by
+ * 'dest'. The dest buffer is NUL terminated.
+ * Returns NULL in case of error
+ */
+char *decode_base64(const char *src)
+{
+    return decode_base64_len(src, NULL);
 }
 
 static char encode(unsigned char u)

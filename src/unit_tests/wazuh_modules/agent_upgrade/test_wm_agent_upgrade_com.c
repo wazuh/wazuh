@@ -551,7 +551,7 @@ int setup_write(void **state) {
     cJSON * command = cJSON_CreateObject();
     cJSON_AddStringToObject(command, "buffer", "ABCDABCD");
     cJSON_AddStringToObject(command, "file", "test_file");
-    cJSON_AddNumberToObject(command, "length", 8);
+    cJSON_AddNumberToObject(command, "length", 6);
     *state = command;
     test_mode = 1;
     return 0;
@@ -766,13 +766,58 @@ void test_wm_agent_upgrade_com_write_success(void **state) {
     expect_string(__wrap_w_ref_parent_folder, path, "test_file");
     will_return(__wrap_w_ref_parent_folder, 0);
 
-    will_return(__wrap_fwrite, 8);
+    will_return(__wrap_fwrite, 6);
 
     char *response = wm_agent_upgrade_com_write(command);
     cJSON *response_object = cJSON_Parse(response);
     assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "ok");
     cJSON_Delete(response_object);
     os_free(response);
+}
+
+static void expect_write_rejected(cJSON *command) {
+#ifdef TEST_WINAGENT
+    sprintf(file.path, "incoming\\test_file");
+#else
+    sprintf(file.path, "var/incoming/test_file");
+#endif
+
+    expect_string(__wrap_w_ref_parent_folder, path, "test_file");
+    will_return(__wrap_w_ref_parent_folder, 0);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+#ifdef TEST_WINAGENT
+    expect_string(__wrap__mterror, formatted_msg, "(8129): At write: Cannot write on 'incoming\\test_file'");
+#else
+    expect_string(__wrap__mterror, formatted_msg, "(8129): At write: Cannot write on 'var/incoming/test_file'");
+#endif
+
+    char *response = wm_agent_upgrade_com_write(command);
+    cJSON *response_object = cJSON_Parse(response);
+    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Cannot write file");
+    cJSON_Delete(response_object);
+    os_free(response);
+}
+
+void test_wm_agent_upgrade_com_write_missing_buffer(void **state) {
+    cJSON * command = *state;
+    cJSON_DeleteItemFromObject(command, "buffer");
+
+    expect_write_rejected(command);
+}
+
+void test_wm_agent_upgrade_com_write_length_exceeds_decoded(void **state) {
+    cJSON * command = *state;
+    cJSON_ReplaceItemInObject(command, "length", cJSON_CreateNumber(7));
+
+    expect_write_rejected(command);
+}
+
+void test_wm_agent_upgrade_com_write_negative_length(void **state) {
+    cJSON * command = *state;
+    cJSON_ReplaceItemInObject(command, "length", cJSON_CreateNumber(-1));
+
+    expect_write_rejected(command);
 }
 
 void test_wm_agent_upgrade_com_close_file_opened(void **state) {
@@ -1623,7 +1668,7 @@ int setup_process_write(void **state) {
     cJSON * parameters = cJSON_CreateObject();
     cJSON_AddStringToObject(parameters, "buffer", "ABCDABCD");
     cJSON_AddStringToObject(parameters, "file", "test_file");
-    cJSON_AddNumberToObject(parameters, "length", 8);
+    cJSON_AddNumberToObject(parameters, "length", 6);
     cJSON_AddItemToObject(command, "parameters", parameters);
     char *ptr = cJSON_PrintUnformatted(command);
     *state = ptr;
@@ -1766,7 +1811,7 @@ void test_wm_agent_upgrade_process_write_command(void **state) {
         expect_string(__wrap_w_ref_parent_folder, path, "test_file");
         will_return(__wrap_w_ref_parent_folder, 0);
 
-        will_return(__wrap_fwrite, 8);
+        will_return(__wrap_fwrite, 6);
     }
 
     size_t length = wm_agent_upgrade_process_command(buffer, &output);
@@ -1992,6 +2037,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_write_different_file_name, setup_write, teardown_commands),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_write_error, setup_write, teardown_commands),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_write_success, setup_write, teardown_commands),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_write_missing_buffer, setup_write, teardown_commands),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_write_length_exceeds_decoded, setup_write, teardown_commands),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_write_negative_length, setup_write, teardown_commands),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_close_file_opened, setup_write, teardown_commands),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_close_invalid_file_name, setup_write, teardown_commands),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_close_different_file_name, setup_write, teardown_commands),
