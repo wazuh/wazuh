@@ -14,6 +14,7 @@ All notable changes to this project will be documented in this file.
 - Hardened how cluster workers apply the files received from the master. ([#40366](https://github.com/wazuh/wazuh/pull/40366))
 - Fixed `wazuh-execd` keeping a local request connection open when the request could not be read, and not terminating a request of the maximum size. ([#40529](https://github.com/wazuh/wazuh/pull/40529))
 - Fixed `wazuh-logcollector` keeping a local request connection open when the request could not be read, and not terminating a request of the maximum size. ([#40537](https://github.com/wazuh/wazuh/pull/40537))
+- Fixed `PUT /agents/upgrade` and `PUT /agents/upgrade_custom` failing the whole request with an internal error when an agent is deleted or disconnected while its upgrade task is being created. ([#40427](https://github.com/wazuh/wazuh/pull/40427))
 
 ### Agent
 
