@@ -231,6 +231,8 @@ def apply_to_bytes(path: str, content: bytes) -> bytes:
     idx = 0
     if lines and lines[0].startswith(b"#!") and not lines[0].startswith(b"#!["):
         idx = 1  # a shebang stays first; `#![` is a Rust inner attribute, not a shebang
+    elif lines and lines[0].startswith((b"#compdef", b"#autoload")):
+        idx = 1  # zsh's compinit reads these completion directives only on the first line
     ext = posixpath.splitext(posixpath.basename(path))[1]
     keeps_coding = ext in (".py", ".rb") or (not ext and _interpreter(content) in ("python", "ruby"))
     if keeps_coding:

@@ -256,6 +256,11 @@ class ApplyToBytesTest(unittest.TestCase):
         out = spdx.apply_to_bytes("src/engine/x.rb", b"# encoding: ISO-8859-1\nputs '\xe9'\n")
         self.assertEqual(out, b"# encoding: ISO-8859-1\n" + line("#", AGPL) + b"puts '\xe9'\n")
 
+    def test_zsh_completion_directive_stays_first(self):
+        for first in (b"#compdef wazuh-tool\n", b"#autoload\n"):
+            out = spdx.apply_to_bytes("src/engine/completions/_wazuh.zsh", first + b"_wazuh() { }\n")
+            self.assertEqual(out, first + line("#", AGPL) + b"_wazuh() { }\n", first)
+
     def test_rust_inner_attribute_is_not_a_shebang(self):
         src = b'#![doc = r"\nCrate docs.\n"]\nfn main() {}\n'
         self.assertEqual(spdx.apply_to_bytes("src/engine/x.rs", src), line("//", AGPL) + src)
