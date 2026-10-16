@@ -175,12 +175,10 @@ void * wmcom_main(__attribute__((unused)) void * arg) {
 
         case 0:
             mdebug1("Empty message from local client.");
-            close(peer);
             break;
 
         case OS_MAXLEN:
             merror("Received message > %i", MAX_DYN_STR);
-            close(peer);
             break;
 
         default:
@@ -189,9 +187,15 @@ void * wmcom_main(__attribute__((unused)) void * arg) {
                 OS_SendSecureTCP(peer, length, response);
             }
             os_free(response);
-            close(peer);
         }
+
+        // Every outcome above ends the exchange, including a failed receive.
+        close(peer);
         os_free(buffer);
+
+#ifdef WAZUH_UNIT_TESTING
+        break;
+#endif
     }
 
     mdebug1("Local server thread finished.");

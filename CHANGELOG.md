@@ -96,6 +96,8 @@ All notable changes to this project will be documented in this file.
 - Fixed the macOS agent package loading `/tmp/wazuh_envs` without checking its owner, permissions and file type. ([#40248](https://github.com/wazuh/wazuh/pull/40248))
 - Fixed `wazuh-modulesd` crashing on a malformed legacy Berkeley DB RPM package record by validating the offsets and counts of each header entry. ([#40368](https://github.com/wazuh/wazuh/pull/40368))
 - Fixed the agent creating an empty `ossec-DD.json.gz` archive in the first daily log rotation after each install or upgrade when JSON logging is disabled, as on macOS. ([#40389](https://github.com/wazuh/wazuh/pull/40389))
+- Fixed `wazuh-modulesd` and `wazuh-syscheckd` keeping a local request connection open when the request could not be read. ([#40472](https://github.com/wazuh/wazuh/pull/40472))
+- Fixed `wazuh-modulesd` delivering a synchronization message to the wrong module when its data contains another module's name. ([#40472](https://github.com/wazuh/wazuh/pull/40472))
 
 ### Ruleset
 
