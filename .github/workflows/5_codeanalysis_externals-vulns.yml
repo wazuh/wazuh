@@ -1,0 +1,129 @@
+name: 5.X - External dependencies vulnerability checks
+
+# Scans the Python interpreter, the vendored C/C++ dependencies of the agent and the manager and the framework wheels of
+# every maintained branch with Grype. 5.x branches are described by packages/externals/dependencies.json;
+# older branches by the manifest.json of the set their DEPS_VERSION points at. Each
+# branch gets a code scanning analysis (category externals-vulns-<ref>), which the daily dependency report and
+# the weekly operational report of internal-devel-requests read through the code scanning API. A branch with
+# neither of the two descriptions is reported as not supported yet and the rest are scanned: it is included
+# by the next run after one of them exists.
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Every day at 08:00 UTC, after the daily Grype database (published around 07:30 UTC), so the
+    # 09:00 UTC report of internal-devel-requests reads the results of the same morning.
+    - cron: '0 8 * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  pick-branches:
+    name: Get branches to analyze
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate dynamic matrix
+        id: set-matrix
+        run: |
+          # 5.x and later with a one-digit minor too (5.0.0), without reopening the EOL 4.0-4.9 lines
+          VERSIONED_BRANCHES_REGEX="^main$|^[0-9]{1,3}\.[0-9]{2}\.[0-9]{1,2}$|^([5-9]|[0-9]{2,3})\.[0-9]\.[0-9]{1,2}$"
+
+          # A branch without commits for 120 days is no longer maintained (4.7.0, 6.0.0, ...).
+          CUTOFF=$(date -d '120 days ago' +%s)
+          BRANCHES=$(git branch -r | awk '{print $1}' | sed 's|origin/||' | grep -E "$VERSIONED_BRANCHES_REGEX" \
+            | while read -r ref; do
+                if [ "$(git log -1 --format=%ct "origin/$ref")" -ge "$CUTOFF" ]; then
+                  echo "$ref"
+                else
+                  echo "::notice::skipping $ref: no commits in 120 days" >&2
+                fi
+              done)
+          if [ -z "$BRANCHES" ]; then
+            echo "::error::no versioned branch with commits in 120 days"
+            exit 1
+          fi
+
+          JSON_ARRAY=$(printf '%s\n' "$BRANCHES" | while read -r ref; do
+            sha=$(git rev-parse "origin/$ref")
+            jq -c -n --arg ref "$ref" --arg sha "$sha" '{ref: $ref, sha: $sha}'
+          done | jq -c -s '{include: .}')
+
+          echo "matrix=$JSON_ARRAY" >> "$GITHUB_OUTPUT"
+          echo Picked branches: $JSON_ARRAY
+
+  checking-externals-vulns:
+    needs: pick-branches
+    name: Checking external dependencies vulnerabilities
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.pick-branches.outputs.matrix) }}
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    steps:
+      - name: Checkout the tooling
+        uses: actions/checkout@v4
+        with:
+          path: tools
+
+      # The commit the SARIF is uploaded against, not whatever the branch points to by now.
+      - name: Checkout the branch to scan
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.sha }}
+          path: branch
+
+      - name: Build the SBOM
+        id: sbom
+        run: |
+          deps="python3 tools/packages/externals/deps.py"
+          requirements="branch/framework/requirements.txt"
+          if [ -f branch/packages/externals/dependencies.json ]; then
+            $deps sbom --inventory branch/packages/externals/dependencies.json --requirements "$requirements" --output sbom.cdx.json
+          else
+            deps_version=$(sed -n 's/^DEPS_VERSION[[:space:]]*=[[:space:]]*\([^[:space:]]*\).*/\1/p' branch/src/Makefile | head -n1)
+            manifest="https://packages.wazuh.com/deps/${deps_version}/manifest.json"
+            # CloudFront answers 403 for a key that does not exist; anything else is a failure, not a missing set.
+            status=$(curl -sI --retry 2 -o /dev/null -w '%{http_code}' "$manifest" || true)
+            if [ "$status" != "200" ] && [ "$status" != "403" ] && [ "$status" != "404" ]; then
+              echo "::error::cannot read ${manifest}: HTTP ${status}"
+              exit 1
+            fi
+            if [ "$status" != "200" ]; then
+              echo "::warning::${{ matrix.ref }} is not supported yet: it has no dependencies.json and set ${deps_version} has no manifest.json"
+              echo "- \`${{ matrix.ref }}\` is not supported yet: no \`dependencies.json\` and set \`${deps_version}\` has no \`manifest.json\`" >> "$GITHUB_STEP_SUMMARY"
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            $deps sbom --manifest "$manifest" --requirements "$requirements" --output sbom.cdx.json
+          fi
+
+      - name: Scan the SBOM
+        if: steps.sbom.outputs.skip != 'true'
+        uses: anchore/scan-action@v6
+        with:
+          # scan-action@v6 defaults to Grype 0.97.1.
+          grype-version: v0.120.0
+          sbom: sbom.cdx.json
+          fail-build: false
+          output-format: sarif
+          output-file: grype.sarif
+
+      - name: Upload scan results to GitHub
+        if: steps.sbom.outputs.skip != 'true'
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          ref: refs/heads/${{ matrix.ref }}
+          sha: ${{ matrix.sha }}
+          sarif_file: grype.sarif
+          checkout_path: branch
+          category: externals-vulns-${{ matrix.ref }}

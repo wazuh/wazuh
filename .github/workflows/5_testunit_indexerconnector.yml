@@ -38,6 +38,7 @@ on:
       # this test also links as urlrequest (tests/unit/CMakeLists.txt:16). http-request is a
       # submodule: a bump changes only the gitlink path, which no '/**' pattern matches.
       - "src/Makefile"
+      - "src/deps.lock.mk"
       - "tools/get_git_refs.sh"
       - "src/shared_modules/http-request"
       # Result-affecting actions both jobs execute (setup-sccache wraps the compilers).
