@@ -92,6 +92,12 @@ add_test(NAME CheckConditionEvaluatorTest
 
 set_tests_properties(CheckConditionEvaluatorTest PROPERTIES LABELS "sca")
 
+add_executable(unique_lines_unit_test unique_lines_test.cpp)
+target_link_libraries(unique_lines_unit_test PRIVATE SCAImpl)
+add_test(NAME UniqueLinesTest COMMAND unique_lines_unit_test)
+
+set_tests_properties(UniqueLinesTest PROPERTIES LABELS "sca")
+
 add_executable(rule_creation_unit_test rule_creation_test.cpp)
 target_link_libraries(rule_creation_unit_test PRIVATE SCAImpl)
 add_test(NAME RuleCreationTest COMMAND rule_creation_unit_test)
