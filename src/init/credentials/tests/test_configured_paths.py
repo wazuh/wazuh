@@ -286,7 +286,8 @@ def test_configuration_reader_missing(resolver, sandbox):
     ("- https\n", "INVALID {api}: not a mapping of options"),
     ("https: on\n", "INVALID {api}: https: not a mapping of options"),
     ("https:\n  cert: 5\n", "INVALID {api}: https.cert: not a file name"),
-    ("https:\n  enabled: 'no'\n", "INVALID {api}: https.enabled: not true or false"),
+    ("https:\n  enabled: 'maybe'\n", "INVALID {api}: https.enabled: not true or false"),
+    ("https:\n  cert: 'yes'\n", "INVALID {api}: https.cert: not a file name"),
 ])
 def test_api_yaml(resolver, sandbox, text, expected):
     """An absent file or an absent option means the Server API's defaults; anything unreadable is refused (and the
@@ -296,6 +297,21 @@ def test_api_yaml(resolver, sandbox, text, expected):
         sandbox.api_yaml(text)
     code, _, err = run(resolver, sandbox, "--check")
     assert (code, err) == ((0, "") if expected is None else (1, expected.format(api=api_file(sandbox)) + "\n"))
+
+
+@pytest.mark.parametrize("spelling,on", [("no", False), ("'no'", False), ("'NO'", False), ("\"No\"", False),
+                                         ("false", False), ("yes", True), ("'yes'", True), ("'YES'", True),
+                                         ("true", True)])
+def test_api_https_enabled_spellings(resolver, sandbox, spelling, on):
+    """https.enabled read as the Server API reads it: a YAML boolean, or the string yes or no in any case. Off, the
+    API's pair is not checked; on, the pair it names is."""
+    sandbox.stage_ca()
+    sandbox.api_yaml(f"https:\n  enabled: {spelling}\n  cert: custom.pem\n  key: custom-key.pem\n")
+    code, _, err = run(resolver, sandbox, "--prestart")
+    if on:
+        assert code == 1 and f"MISSING {certs(sandbox, 'custom.pem')}: configured as https.cert" in err, err
+    else:
+        assert (code, err) == (0, ""), err
 
 
 def test_api_yaml_symlink_is_unsafe(resolver, sandbox):
