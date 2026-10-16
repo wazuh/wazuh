@@ -11,4 +11,8 @@ class MockFileIOUtils : public IFileIOUtils
                     (const, override));
         MOCK_METHOD(std::string, getFileContent, (const std::string& filePath), (const, override));
         MOCK_METHOD(std::vector<char>, getBinaryContent, (const std::string& filePath), (const, override));
+        MOCK_METHOD(RegularFileStatus,
+                    getRegularFileContent,
+                    (const std::filesystem::path& filePath, bool followSymlinks, std::string& content),
+                    (const, override));
 };

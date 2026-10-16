@@ -12,6 +12,7 @@
 
 #include "logging_helper.hpp"
 
+#include <sstream>
 #include <stack>
 #include <stdexcept>
 
@@ -34,15 +35,27 @@ namespace
                                  const std::string& filePath,
                                  const std::string& pattern,
                                  const PolicyEvaluationContext& ctx,
-                                 std::string& unresolvedReason)
+                                 std::string& unresolvedReason,
+                                 bool followSymlinks)
     {
         bool matchFound = false;
 
+        // The file type is checked on the opened file, so a named pipe or device put in place of a regular
+        // file is reported instead of blocking or exhausting the scan
+        std::string fileContent;
+        const auto status = fileUtils->getRegularFileContent(filePath, followSymlinks, fileContent);
+
+        if (status == RegularFileStatus::NotRegular)
+        {
+            unresolvedReason = "File '" + filePath + "' is not a regular file";
+            LoggingHelper::getInstance().log(LOG_DEBUG, unresolvedReason);
+            return RuleResult::Invalid;
+        }
+
         if (sca::IsRegexOrNumericPattern(pattern))
         {
-            const auto content = fileUtils->getFileContent(filePath);
-
-            if (const auto patternMatch = sca::PatternMatches(content, pattern, ctx.regexEngine))
+            // A file that cannot be opened is matched as empty, as it has always been for these patterns
+            if (const auto patternMatch = sca::PatternMatches(fileContent, pattern, ctx.regexEngine))
             {
                 matchFound = patternMatch.value();
             }
@@ -55,17 +68,22 @@ namespace
         }
         else
         {
-            fileUtils->readLineByLine(filePath,
-                                      [&pattern, &matchFound](const std::string & line)
+            if (status == RegularFileStatus::OpenFailed)
+            {
+                throw std::runtime_error("Could not open file");
+            }
+
+            std::istringstream lines(fileContent);
+            std::string line;
+
+            while (std::getline(lines, line))
             {
                 if (line == pattern)
                 {
                     matchFound = true;
-                    return false;
+                    break;
                 }
-
-                return true;
-            });
+            }
         }
 
         LoggingHelper::getInstance().log(LOG_DEBUG, "Pattern '" + pattern + "' " + (matchFound ? "was" : "was not") + " found in file '" + filePath + "'");
@@ -77,7 +95,8 @@ namespace
                                  const PolicyEvaluationContext& ctx,
                                  std::string& unresolvedReason)
     {
-        return FindContentInFile(fileUtils, ctx.rule, pattern, ctx, unresolvedReason);
+        // Policies rely on file rules following symbolic links (e.g. /etc/os-release is one on many systems)
+        return FindContentInFile(fileUtils, ctx.rule, pattern, ctx, unresolvedReason, true);
     }
 } // namespace
 
@@ -464,10 +483,16 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
                         // If we have content pattern, check file contents; otherwise just return found
                         if (content.has_value())
                         {
+                            // Symbolic links are skipped above; not following them on open applies the same rule
+                            // to the file that is actually read
                             const auto result = TryFunc([&]
                             {
-                                return FindContentInFile(
-                                    m_fileUtils, file.string(), content.value(), m_ctx, m_lastUnresolvedReason);
+                                return FindContentInFile(m_fileUtils,
+                                                         file.string(),
+                                                         content.value(),
+                                                         m_ctx,
+                                                         m_lastUnresolvedReason,
+                                                         false);
                             });
 
                             if (result.has_value())
@@ -516,7 +541,7 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
                     const auto result = TryFunc([&]
                     {
                         return FindContentInFile(
-                            m_fileUtils, fileName, content.value(), m_ctx, m_lastUnresolvedReason);
+                            m_fileUtils, fileName, content.value(), m_ctx, m_lastUnresolvedReason, false);
                     });
 
                     if (result.has_value())
