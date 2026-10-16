@@ -2,6 +2,26 @@
 
 #include <stdexcept>
 
+namespace
+{
+    std::string ConditionName(const ConditionType type)
+    {
+        switch (type)
+        {
+            case ConditionType::All:
+                return "all";
+
+            case ConditionType::Any:
+                return "any";
+
+            case ConditionType::None:
+                return "none";
+        }
+
+        return {}; // LCOV_EXCL_LINE - unreachable
+    }
+} // namespace
+
 CheckConditionEvaluator CheckConditionEvaluator::FromString(const std::string& str)
 {
     if (str == "all")
@@ -29,34 +49,48 @@ CheckConditionEvaluator::CheckConditionEvaluator(ConditionType type)
 
 void CheckConditionEvaluator::AddResult(const RuleEvaluationResult& result)
 {
+    // Every failing rule is listed, also those after the verdict is settled
+    RecordFailingRule(result);
+
     if (m_result.has_value())
     {
         return;
     }
 
-    if (result.result == RuleResult::Invalid || result.result == RuleResult::NotRun)
+    RecordUnresolvedRule(result);
+    ++m_totalRules;
+    UpdateVerdict(result.result);
+}
+
+void CheckConditionEvaluator::RecordFailingRule(const RuleEvaluationResult& result)
+{
+    // A "none" check fails on what was found, the others on what was not
+    const auto failing = (m_type == ConditionType::None) ? RuleResult::Found : RuleResult::NotFound;
+
+    if (result.result == failing)
     {
-        m_hasInvalid = m_hasInvalid || (result.result == RuleResult::Invalid);
-        m_hasNotRun = m_hasNotRun || (result.result == RuleResult::NotRun);
+        m_failingRules.Add(result.source);
+    }
+}
 
-        if (!result.reason.empty() && !HasReason(result.reason))
-        {
-            if (!m_unresolvedReason.empty())
-            {
-                m_unresolvedReason += "\n";
-            }
-
-            m_unresolvedReason += result.reason;
-        }
+void CheckConditionEvaluator::RecordUnresolvedRule(const RuleEvaluationResult& result)
+{
+    if (result.result != RuleResult::Invalid && result.result != RuleResult::NotRun)
+    {
+        return;
     }
 
-    ++m_totalRules;
-    m_passedRules += (RuleResult::Found == result.result) ? 1 : 0;
+    m_hasInvalid = m_hasInvalid || (result.result == RuleResult::Invalid);
+    m_hasNotRun = m_hasNotRun || (result.result == RuleResult::NotRun);
+    m_unresolvedReasons.Add(result.reason);
+}
 
+void CheckConditionEvaluator::UpdateVerdict(const RuleResult result)
+{
     switch (m_type)
     {
         case ConditionType::All:
-            if (RuleResult::NotFound == result.result)
+            if (RuleResult::NotFound == result)
             {
                 m_result = false;
             }
@@ -64,7 +98,7 @@ void CheckConditionEvaluator::AddResult(const RuleEvaluationResult& result)
             break;
 
         case ConditionType::Any:
-            if (RuleResult::Found == result.result)
+            if (RuleResult::Found == result)
             {
                 m_result = true;
             }
@@ -72,7 +106,7 @@ void CheckConditionEvaluator::AddResult(const RuleEvaluationResult& result)
             break;
 
         case ConditionType::None:
-            if (RuleResult::Found == result.result)
+            if (RuleResult::Found == result)
             {
                 m_result = false;
             }
@@ -116,11 +150,39 @@ sca::CheckResult CheckConditionEvaluator::Result() const
     }
 }
 
+std::string CheckConditionEvaluator::Reason() const
+{
+    const auto result = Result();
+
+    if (result == sca::CheckResult::Failed)
+    {
+        return FailingRulesReason();
+    }
+
+    if (result == sca::CheckResult::NotApplicable || result == sca::CheckResult::NotRun)
+    {
+        return GetUnresolvedReason();
+    }
+
+    return {};
+}
+
+std::string CheckConditionEvaluator::FailingRulesReason() const
+{
+    if (m_failingRules.Empty())
+    {
+        return {};
+    }
+
+    const std::string verdict = (m_type == ConditionType::None) ? "Rules satisfied" : "Rules not satisfied";
+    return verdict + " (condition '" + ConditionName(m_type) + "'):\n" + m_failingRules.Join();
+}
+
 std::string CheckConditionEvaluator::GetUnresolvedReason() const
 {
-    if (!m_unresolvedReason.empty())
+    if (!m_unresolvedReasons.Empty())
     {
-        return m_unresolvedReason;
+        return m_unresolvedReasons.Join();
     }
 
     if (m_totalRules == 0)
@@ -133,26 +195,5 @@ std::string CheckConditionEvaluator::GetUnresolvedReason() const
         return "Unknown reason";
     }
 
-    return m_unresolvedReason;
-}
-
-bool CheckConditionEvaluator::HasReason(const std::string& reason) const
-{
-    size_t position = m_unresolvedReason.find(reason);
-
-    while (position != std::string::npos)
-    {
-        const bool startsLine = position == 0 || m_unresolvedReason[position - 1] == '\n';
-        const auto end = position + reason.size();
-        const bool endsLine = end == m_unresolvedReason.size() || m_unresolvedReason[end] == '\n';
-
-        if (startsLine && endsLine)
-        {
-            return true;
-        }
-
-        position = m_unresolvedReason.find(reason, position + 1);
-    }
-
-    return false;
+    return {};
 }

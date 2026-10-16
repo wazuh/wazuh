@@ -14,10 +14,11 @@
 class DeferredReasonRule : public IRuleEvaluator
 {
     public:
-        DeferredReasonRule(RuleResult result, std::string reasonAfterEvaluation)
+        DeferredReasonRule(RuleResult result, std::string reasonAfterEvaluation, std::string source = {})
             : m_result(result)
             , m_reasonAfterEvaluation(std::move(reasonAfterEvaluation))
         {
+            m_ctx.source = std::move(source);
         }
 
         RuleResult Evaluate() override
@@ -43,6 +44,14 @@ class DeferredReasonRule : public IRuleEvaluator
         PolicyEvaluationContext m_ctx;
 };
 
+/// @brief What a fake rule returns, the reason it then reports, and the rule text it stands for.
+struct FakeRule
+{
+    RuleResult result;
+    std::string reason;
+    std::string source = {};
+};
+
 class SCAPolicyTest : public ::testing::Test
 {
     protected:
@@ -56,15 +65,15 @@ class SCAPolicyTest : public ::testing::Test
 
         static Check MakeCheck(const std::string& id,
                                const std::string& condition,
-                               std::vector<std::pair<RuleResult, std::string>> rules)
+                               std::vector<FakeRule> rules)
         {
             Check check;
             check.id = id;
             check.condition = condition;
 
-            for (auto& [result, reason] : rules)
+            for (auto& rule : rules)
             {
-                check.rules.push_back(std::make_unique<DeferredReasonRule>(result, reason));
+                check.rules.push_back(std::make_unique<DeferredReasonRule>(rule.result, rule.reason, rule.source));
             }
 
             return check;
@@ -117,23 +126,57 @@ TEST_F(SCAPolicyTest, EveryUnresolvedRuleContributesItsReasonInRuleOrder)
               "Path '/etc/modprobe.d/' does not exist");
 }
 
-TEST_F(SCAPolicyTest, ResolvedCheckReportsNoReason)
+TEST_F(SCAPolicyTest, PassedCheckReportsNoReason)
 {
     std::vector<Check> checks;
-    checks.push_back(MakeCheck("1002", "all", {{RuleResult::Found, ""}}));
-    checks.push_back(MakeCheck("1003", "all", {{RuleResult::NotFound, ""}}));
+    checks.push_back(MakeCheck("1002", "all", {{RuleResult::Found, "", "f:/etc/passwd"}}));
 
     const auto reported = RunPolicy(Check {}, std::move(checks));
 
-    ASSERT_EQ(reported.size(), 2U);
+    ASSERT_EQ(reported.size(), 1U);
     EXPECT_EQ(reported[0].result, "Passed");
     EXPECT_TRUE(reported[0].reason.empty());
-    EXPECT_EQ(reported[1].result, "Failed");
-    EXPECT_TRUE(reported[1].reason.empty());
 }
 
-// The event handler drops "Not run" checks before they reach the database event or the index, so
-// this pins the SCAPolicy contract rather than anything an operator can see today.
+TEST_F(SCAPolicyTest, FailedCheckReportsTheRulesItDidNotSatisfy)
+{
+    std::vector<Check> checks;
+    checks.push_back(MakeCheck("1003", "all",
+    {
+        {RuleResult::Found, "", "f:/etc/motd"},
+        {RuleResult::NotFound, "", "f:/etc/motd -> r:Authorized uses only"}
+    }));
+
+    const auto reported = RunPolicy(Check {}, std::move(checks));
+
+    ASSERT_EQ(reported.size(), 1U);
+    EXPECT_EQ(reported[0].result, "Failed");
+    EXPECT_EQ(reported[0].reason,
+              "Rules not satisfied (condition 'all'):\n"
+              "f:/etc/motd -> r:Authorized uses only");
+}
+
+TEST_F(SCAPolicyTest, RulesAfterTheVerdictAreStillEvaluatedAndListed)
+{
+    std::vector<Check> checks;
+    checks.push_back(MakeCheck("1005", "all",
+    {
+        {RuleResult::NotFound, "", "c:sysctl net.ipv4.ip_forward -> r:= 0"},
+        {RuleResult::NotFound, "", "c:sysctl net.ipv6.conf.all.forwarding -> r:= 0"}
+    }));
+
+    const auto reported = RunPolicy(Check {}, std::move(checks));
+
+    ASSERT_EQ(reported.size(), 1U);
+    EXPECT_EQ(reported[0].result, "Failed");
+    EXPECT_EQ(reported[0].reason,
+              "Rules not satisfied (condition 'all'):\n"
+              "c:sysctl net.ipv4.ip_forward -> r:= 0\n"
+              "c:sysctl net.ipv6.conf.all.forwarding -> r:= 0");
+}
+
+// The event handler stores a "Not run" result in the agent database but keeps it out of the events
+// and the index, so this pins the SCAPolicy contract rather than anything the console shows today.
 TEST_F(SCAPolicyTest, NotRunRequirementsReportTheirReasonOnEveryCheck)
 {
     auto requirements = MakeCheck("requirements", "all", {{RuleResult::NotRun, "Command timed out after 30 seconds: rpm -q"}});

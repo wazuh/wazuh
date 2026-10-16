@@ -21,14 +21,17 @@ enum class RuleResult
 
 struct RuleEvaluationResult
 {
-    RuleEvaluationResult(RuleResult r, const std::string& reasonValue = "")
+    RuleEvaluationResult(RuleResult r, const std::string& reasonValue = "", const std::string& sourceValue = "")
         : result(r)
         , reason(reasonValue)
+        , source(sourceValue)
     {
     }
 
     RuleResult result;
     std::string reason;
+    /// The rule as written in the policy, see PolicyEvaluationContext::source.
+    std::string source;
 };
 
 struct PolicyEvaluationContext
@@ -39,6 +42,8 @@ struct PolicyEvaluationContext
     int commandsTimeout = 30;
     bool commandsEnabled = true;
     sca::RegexEngineType regexEngine = sca::RegexEngineType::PCRE2;
+    /// The rule exactly as written in the policy, e.g. "not f:/etc/passwd -> r:^root".
+    std::string source = {};
 };
 
 class IRuleEvaluator

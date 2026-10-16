@@ -15,7 +15,7 @@
 #include <idbsync.hpp>
 #include <json.hpp>
 #include <sca_field_decoder.hpp>
-#include <sca_utils.hpp>
+#include <sca_reason_sanitizer.hpp>
 #include <string>
 
 #include "stringHelper.h"
