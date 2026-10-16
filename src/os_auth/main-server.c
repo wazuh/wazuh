@@ -911,12 +911,6 @@ void* run_remote_server(__attribute__((unused)) void *arg) {
 
     authd_sigblock();
 
-    if (config.timeout_sec || config.timeout_usec) {
-        minfo("Setting network timeout to %.6f sec.", config.timeout_sec + config.timeout_usec / 1000000.);
-    } else {
-        mdebug1("Network timeout is disabled.");
-    }
-
     mdebug1("Remote server ready.");
 
     while (running) {
