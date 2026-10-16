@@ -567,12 +567,16 @@ if [ $1 = 0 ]; then
     fi
   }
 
-  # Prints the value file $1 gives KEY $2 on its last "[export ]KEY=value" line, without one pair
-  # of surrounding quotes, or $3 when the file does not set it. Nothing in the file is run.
+  # Prints the value file $1 gives KEY $2 on its last "[export ]KEY=value" line, or $3 when the file
+  # does not set it. Read as the shell reads a plain assignment: a quoted value without its quotes,
+  # an unquoted one up to the first blank, and neither with a trailing comment. Nothing in the file
+  # is run.
   env_file_value() {
     local value
     value=$(sed -n "s/^[[:space:]]*\(export[[:space:]][[:space:]]*\)\{0,1\}$2=//p" "$1" | tail -n 1 \
-      | sed -e 's/^"\(.*\)"[[:space:]]*$/\1/' -e "s/^'\(.*\)'[[:space:]]*\$/\1/")
+      | sed -e 's/^"\(.*\)"[[:space:]]*\(#.*\)\{0,1\}$/\1/' -e t \
+            -e "s/^'\(.*\)'[[:space:]]*\(#.*\)\{0,1\}\$/\1/" -e t \
+            -e 's/[[:space:]].*$//')
     printf '%%s\n' "${value:-$3}"
   }
 
