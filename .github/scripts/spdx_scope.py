@@ -198,10 +198,11 @@ def apply_to_bytes(path: str, content: bytes) -> bytes:
     idx = 0
     if lines and lines[0].startswith(b"#!"):
         idx = 1
-    is_python = path.endswith(".py") or (
-        not posixpath.splitext(posixpath.basename(path))[1] and _interpreter(content) == "python")
-    if is_python:
-        # PEP 263: the encoding declaration must stay on line 1 or 2 (also for an extension-less python script).
+    ext = posixpath.splitext(posixpath.basename(path))[1]
+    keeps_coding = ext in (".py", ".rb") or (not ext and _interpreter(content) in ("python", "ruby"))
+    if keeps_coding:
+        # Python (PEP 263) and Ruby read an encoding declaration only on line 1, or line 2 after a shebang: keep it there,
+        # also for extension-less scripts.
         for n in (0, 1):
             if n < len(lines) and _CODING_RE.match(lines[n].decode("latin-1")):
                 idx = max(idx, n + 1)

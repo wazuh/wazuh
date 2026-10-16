@@ -221,6 +221,17 @@ class ApplyToBytesTest(unittest.TestCase):
         self.assertEqual(out.splitlines()[2], line("#", AGPL).rstrip(b"\n"))
         compile(out, "tool", "exec")  # the latin-1 byte is still decoded with the declared encoding
 
+    def test_ruby_encoding_kept_on_line_2(self):
+        for path, src in (("src/engine/x.rb", b"#!/usr/bin/env ruby\n# encoding: ISO-8859-1\nputs '\xe9'\n"),
+                          ("src/engine/tool", b"#!/usr/bin/ruby\n# encoding: ISO-8859-1\nputs '\xe9'\n")):
+            out = spdx.apply_to_bytes(path, src)
+            self.assertEqual(out.splitlines()[1], b"# encoding: ISO-8859-1", path)
+            self.assertEqual(out.splitlines()[2], line("#", AGPL).rstrip(b"\n"), path)
+
+    def test_ruby_encoding_line_1_without_shebang(self):
+        out = spdx.apply_to_bytes("src/engine/x.rb", b"# encoding: ISO-8859-1\nputs '\xe9'\n")
+        self.assertEqual(out, b"# encoding: ISO-8859-1\n" + line("#", AGPL) + b"puts '\xe9'\n")
+
     def test_python_shebang_without_coding(self):
         out = spdx.apply_to_bytes("src/engine/a.py", b"#!/usr/bin/env python3\nx = 1\n")
         self.assertEqual(out, b"#!/usr/bin/env python3\n" + line("#", AGPL) + b"x = 1\n")
