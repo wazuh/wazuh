@@ -157,8 +157,11 @@ control = json.load(open(os.path.join(home, "stub-control.json")))
 args = sys.argv[1:]
 if args[-1] == "dump":
     # The effective configuration with the schema's defaults, rooted at the sandbox's <CONF>; `conf_dump` overrides
-    # dotted keys, `dump_exit` fails the call, `dump_raw` replaces the output. Not logged: --check must leave the
-    # sandbox's tree as it found it.
+    # dotted keys, `dump_exit` fails the call, `dump_raw` replaces the output, `dump_sleep` delays it (seconds). Not
+    # logged: --check must leave the sandbox's tree as it found it.
+    if control.get("dump_sleep"):
+        import time
+        time.sleep(control["dump_sleep"])
     certs = os.path.join(os.path.dirname(args[args.index("-f") + 1]), "certs")
     document = {
         "cluster": {"node_type": control.get("role") or "master"},
@@ -361,7 +364,7 @@ class Sandbox:
         return state.cert_bytes
 
     def control(self, **settings):
-        """Set the stubs' behaviour: role, conf_exit, conf_dump, dump_exit, dump_raw, keystore_fail,
+        """Set the stubs' behaviour: role, conf_exit, conf_dump, dump_exit, dump_raw, dump_sleep, keystore_fail,
         rbac_fail_times."""
         with open(os.path.join(self.home, "stub-control.json"), "w") as handle:
             json.dump(settings, handle)

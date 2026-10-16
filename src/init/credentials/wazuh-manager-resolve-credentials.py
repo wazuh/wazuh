@@ -40,7 +40,7 @@ from typing import Dict, List, Mapping, Optional, Tuple  # noqa: E402
 from cryptography import x509  # noqa: E402
 from cryptography.exceptions import InvalidSignature, UnsupportedAlgorithm  # noqa: E402
 from cryptography.hazmat.primitives import hashes, serialization  # noqa: E402
-from cryptography.hazmat.primitives.asymmetric import rsa  # noqa: E402
+from cryptography.hazmat.primitives.asymmetric import dsa, ec, ed448, ed25519, rsa  # noqa: E402
 from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID  # noqa: E402
 from cryptography.x509.verification import (Criticality, ExtensionPolicy, PolicyBuilder, Store,  # noqa: E402
                                             VerificationError)
@@ -981,20 +981,25 @@ def read_manager_conf(paths: Paths, report: Report) -> dict:
     if not os.access(paths.conf_bin, os.X_OK):
         problem = f"{paths.conf_bin} is missing"
     else:
-        result = run_wazuh(paths, [paths.conf_bin, "-H", paths.home, "-f", conf_file, "--skip-file-checks", "dump"],
-                           want_stdout=True)
-        if result.returncode != 0:
-            problem = f"wazuh-manager-conf exited with {result.returncode}"
-        elif len(result.stdout) > CONF_DUMP_LIMIT:
-            problem = f"its output is larger than {CONF_DUMP_LIMIT} bytes"
+        try:
+            result = run_wazuh(paths, [paths.conf_bin, "-H", paths.home, "-f", conf_file, "--skip-file-checks", "dump"],
+                               want_stdout=True)
+        except subprocess.TimeoutExpired:
+            # subprocess.run() kills the reader before raising: one that hangs is one that did not answer.
+            problem = f"wazuh-manager-conf did not answer within {SUBPROCESS_TIMEOUT} seconds"
         else:
-            try:
-                document = json.loads(result.stdout)
-            except ValueError:
-                document = None
-            if isinstance(document, dict):
-                return document
-            problem = "its output is not a JSON object"
+            if result.returncode != 0:
+                problem = f"wazuh-manager-conf exited with {result.returncode}"
+            elif len(result.stdout) > CONF_DUMP_LIMIT:
+                problem = f"its output is larger than {CONF_DUMP_LIMIT} bytes"
+            else:
+                try:
+                    document = json.loads(result.stdout)
+                except ValueError:
+                    document = None
+                if isinstance(document, dict):
+                    return document
+                problem = "its output is not a JSON object"
     report.problem(INVALID, conf_file, f"cannot read the TLS paths ({problem}); run wazuh-manager-conf validate")
     return {}
 
@@ -1034,6 +1039,10 @@ def read_api_https(paths: Paths, report: Report) -> Dict[str, object]:
         value = (https or {}).get(name)
         if value is None:
             continue
+        if isinstance(value, str) and value.lower() in ("yes", "no"):
+            # As the Server API reads the file (replace_bools() in api/api/configuration.py): the strings yes and no,
+            # in any case, are booleans, wherever they appear.
+            value = value.lower() == "yes"
         if not isinstance(value, kind) or kind is str and not value:
             report.problem(INVALID, path, f"https.{name}: not {'true or false' if kind is bool else 'a file name'}")
             return {"enabled": True, "cert": DEFAULT_PAIRS["apid"][0], "key": DEFAULT_PAIRS["apid"][1]}
@@ -1209,8 +1218,29 @@ def parse_problem(certs: List[x509.Certificate]) -> Optional[str]:
     return None
 
 
+# The keys x509.verification accepts, and so the only ones a certificate the resolver checks may carry: any other
+# (Ed25519, Ed448, DSA, a short RSA key, another curve) fails every chain check it takes part in.
+ACCEPTED_KEY_TYPES = "use RSA of 2048 bits or more, or ECDSA on P-256, P-384 or P-521"
+ACCEPTED_CURVES = (ec.SECP256R1, ec.SECP384R1, ec.SECP521R1)
+
+
+def key_type_problem(public_key) -> Optional[str]:
+    """None for a key the certificate checks accept; otherwise what it is, in words."""
+    if isinstance(public_key, rsa.RSAPublicKey):
+        return None if public_key.key_size >= 2048 else f"an RSA key of {public_key.key_size} bits"
+    if isinstance(public_key, ec.EllipticCurvePublicKey):
+        return None if isinstance(public_key.curve, ACCEPTED_CURVES) else f"an ECDSA key on {public_key.curve.name}"
+    for kind, text in ((ed25519.Ed25519PublicKey, "an Ed25519 key"), (ed448.Ed448PublicKey, "an Ed448 key"),
+                       (dsa.DSAPublicKey, "a DSA key")):
+        if isinstance(public_key, kind):
+            return text
+    return f"a {type(public_key).__name__} key"
+
+
 def ca_certificate_problem(data: bytes) -> Tuple[Optional[x509.Certificate], Optional[str]]:
-    """Parse a CA file: exactly one certificate, self-signed, CA:TRUE, inside its validity window."""
+    """Parse a CA file: exactly one certificate, self-signed, CA:TRUE, on a key the certificate checks accept, inside
+    its validity window. The key type comes before anything is signed with it: a key the resolver cannot sign
+    certificates with, or that the checks of what it issues would refuse, makes the CA unusable."""
     try:
         certs = x509.load_pem_x509_certificates(data)
     except ValueError:
@@ -1233,6 +1263,9 @@ def ca_certificate_problem(data: bytes) -> Tuple[Optional[x509.Certificate], Opt
         is_ca = False
     if not is_ca:
         return None, "not a CA certificate (basicConstraints CA:TRUE missing)"
+    problem = key_type_problem(cert.public_key())
+    if problem:
+        return None, f"{problem}; {ACCEPTED_KEY_TYPES}"
     now = _now()
     if now < cert.not_valid_before_utc:
         return None, "not valid yet"
@@ -1358,13 +1391,14 @@ def check_bundle(paths: Paths, certs: Dir, state: CaState, report: Report, mode:
     if present and data is None:
         return
     if not present:
+        # Only --install writes it; at --check this is the MISSING --prestart would report and cannot complete.
         if mode == "install" and bundle == BUNDLE:
             write_file(certs, BUNDLE, state.cert_bytes, 0o640, 0, paths.service_gid())
             report.progress(f"wrote {certs.child(BUNDLE)} (the manager's CA)")
-        elif bundle != BUNDLE and mode != "check":
+        elif bundle != BUNDLE:
             report.problem(MISSING, certs.child(bundle), f"configured as remote.https.ca_certificate in "
                                                          f"{names.bundle_source}; stage the agents' CA bundle there")
-        elif mode != "check":
+        else:
             report.problem(MISSING, certs.child(BUNDLE), "the agents' CA bundle is missing; reinstall, or stage it")
         return
     try:
@@ -1388,6 +1422,12 @@ def published_ca(export: Dir, own: bytes, report: Report) -> str:
     return "current" if published == own else "stale"
 
 
+def _missing_ca(path: str, report: Report) -> None:
+    """Only --install mints a CA, and only when nothing else is there: every other mode reports it missing."""
+    report.problem(MISSING, path, f"the manager's CA is missing; stage it there (and {CA_KEY} to issue certificates), "
+                                  f"or reinstall")
+
+
 def step_own_ca(paths: Paths, conf: Dir, certs: Dir, ca: Dir, lookup: Lookup, report: Report,
                 mode: str, names: TlsNames) -> Optional[CaState]:
     """--install mints or validates the CA; every writing mode publishes it in export/ca.pem when the copy there is
@@ -1398,8 +1438,7 @@ def step_own_ca(paths: Paths, conf: Dir, certs: Dir, ca: Dir, lookup: Lookup, re
         return None
     if state.kind == "absent":
         if mode != "install":
-            report.problem(MISSING, ca.child(CA_CERT), "the manager's CA is missing; stage it there "
-                                                       f"(and {CA_KEY} to issue certificates), or reinstall")
+            _missing_ca(ca.child(CA_CERT), report)
             return None
         if server_material_present(certs, names):
             report.problem(MISSING, ca.child(CA_CERT), "stage the CA that issued the pairs")
@@ -1436,7 +1475,9 @@ def step_own_ca(paths: Paths, conf: Dir, certs: Dir, ca: Dir, lookup: Lookup, re
 
 
 def check_own_ca(paths: Paths, conf: Dir, lookup: Lookup, report: Report, names: TlsNames) -> None:
-    """--check's part: validate whatever CA and bundle exist, without creating ca/ or writing anything."""
+    """--check's part: validate whatever CA and bundle exist, without creating ca/ or writing anything, and report
+    as MISSING what only --install creates (the CA, the bundle, the server pairs): --prestart would report it and
+    could not complete it, and on a restart --check is what runs before the daemons are stopped."""
     try:
         ca = open_dir(conf, CA_DIR, CA_SPEC)
     except FileNotFoundError:
@@ -1447,6 +1488,8 @@ def check_own_ca(paths: Paths, conf: Dir, lookup: Lookup, report: Report, names:
     certs = open_certs(paths, conf, report)
     try:
         state = load_ca(ca, report) if ca is not None else CaState("absent")
+        if state is not None and state.kind == "absent":
+            _missing_ca(os.path.join(paths.conf, CA_DIR, CA_CERT), report)
         if certs is not None and state is not None and state.kind != "absent":
             check_bundle(paths, certs, state, report, "check", names)
         if certs is not None:
@@ -1990,11 +2033,12 @@ def pair_problem(paths: Paths, certs: Dir, pair: ServerPair, anchors: Optional[L
     return leaf, None
 
 
-def issuer_problem(issuer: x509.Certificate, now: datetime.datetime, purpose: x509.ObjectIdentifier) -> Optional[str]:
-    """A CA on a leaf's path must be valid now, authorized to sign certificates and, when it restricts its
-    extendedKeyUsage, allowed the leaf's purpose. That last rule is OpenSSL's, which every client of these
-    certificates applies along the chain: anyExtendedKeyUsage alone does not grant a purpose."""
-    if not issuer.not_valid_before_utc <= now <= issuer.not_valid_after_utc:
+def issuer_problem(issuer: x509.Certificate, now: datetime.datetime, purpose: x509.ObjectIdentifier,
+                   window: bool = True) -> Optional[str]:
+    """A CA on a leaf's path must be valid now (unless `window` is False), authorized to sign certificates and, when
+    it restricts its extendedKeyUsage, allowed the leaf's purpose. That last rule is OpenSSL's, which every client of
+    these certificates applies along the chain: anyExtendedKeyUsage alone does not grant a purpose."""
+    if window and not issuer.not_valid_before_utc <= now <= issuer.not_valid_after_utc:
         return "expired" if now > issuer.not_valid_after_utc else "not valid yet"
     try:
         is_ca = issuer.extensions.get_extension_for_class(x509.BasicConstraints).value.ca
@@ -2028,6 +2072,9 @@ def chain_problem(leaf: x509.Certificate, intermediates: List[x509.Certificate],
     usable now, so a renewed CA is not refused because an expired certificate with the same name and key is listed
     too. A self-signed certificate in the file is not offered as an intermediate: it could only be an anchor, and
     one with an anchor's name sends the path builder round in circles."""
+    problem = key_type_problem(leaf.public_key())
+    if problem:
+        return f"{problem}; {ACCEPTED_KEY_TYPES}"
     intermediates = [cert for cert in intermediates if not _self_signed(cert)]
     verifier = (PolicyBuilder().store(Store(anchors)).time(now)
                 .extension_policies(ca_policy=CHAIN_CA_POLICY, ee_policy=CHAIN_LEAF_POLICY)
@@ -2043,6 +2090,15 @@ def chain_problem(leaf: x509.Certificate, intermediates: List[x509.Certificate],
             return f"issuer CA: {problems[0]}"
         reason = str(exc).split("validation failed: ", 1)[-1].split(" (encountered processing", 1)[0].strip()
         reason = reason.removeprefix("candidates exhausted: ")
+        if "Forbidden public key algorithm" in reason or "RSA key is too weak" in reason:
+            # A CA of the path on a key the checks do not accept: name it, in words.
+            issuers = {leaf.issuer, *(cert.issuer for cert in intermediates)}
+            for ca in (*intermediates, *anchors):
+                problem = key_type_problem(ca.public_key()) if ca.subject in issuers else None
+                if problem:
+                    return f"issuer CA ({ca.subject.rfc4514_string()}): {problem}; {ACCEPTED_KEY_TYPES}"
+        # The verifier's own text may end in a Rust debug rendering of the algorithm: keep the sentence only.
+        reason = reason.split(": AlgorithmIdentifier", 1)[0]
         if not reason or reason.startswith("all candidates exhausted"):
             reason = no_path
         return f"not issued by {issuer_label} ({reason})"
@@ -2051,6 +2107,69 @@ def chain_problem(leaf: x509.Certificate, intermediates: List[x509.Certificate],
         if problem:
             return f"issuer CA: {problem}"
     return None
+
+
+# The longest path timeless_chain_problem() builds, CAs above the leaf: far more than any deployment uses, and a bound
+# on the search through a file of many intermediates.
+TIMELESS_PATH_DEPTH = 8
+
+
+def timeless_chain_problem(leaf: x509.Certificate, intermediates: List[x509.Certificate],
+                           anchors: List[x509.Certificate], issuer_label: str, now: datetime.datetime,
+                           purpose: x509.ObjectIdentifier,
+                           no_path: str = "no path to it from the certificates in the file") -> Optional[str]:
+    """chain_problem() with every validity window left out. The path builder of x509.verification judges every
+    certificate of a path against one moment, and no moment fits a CA renewed in place (same name and key) after the
+    leaf it issued expired: their windows do not overlap. So the path is built here, by name and signature, with
+    every CA of it a CA (basicConstraints CA:TRUE), allowed to sign certificates, allowed `purpose`, and its
+    pathLenConstraint not exceeded by the CAs below it; only the dates are not looked at."""
+    problem = key_type_problem(leaf.public_key())
+    if problem:
+        return f"{problem}; {ACCEPTED_KEY_TYPES}"
+    pool = [cert for cert in intermediates if not _self_signed(cert)]
+    found: List[str] = []
+
+    def ca_problem(ca: x509.Certificate, below: int) -> Optional[str]:
+        problem = issuer_problem(ca, now, purpose, window=False)
+        if problem:
+            return problem
+        problem = key_type_problem(ca.public_key())
+        if problem:
+            return f"{problem}; {ACCEPTED_KEY_TYPES}"
+        limit = ca.extensions.get_extension_for_class(x509.BasicConstraints).value.path_length
+        if limit is not None and below > limit:
+            return f"its pathLenConstraint ({limit}) does not allow the {below} CA(s) below it"
+        return None
+
+    def walk(cert: x509.Certificate, path: List[x509.Certificate]) -> bool:
+        # `path`: the CAs above the leaf so far; the next one has len(path) CAs below it.
+        for anchor in anchors:
+            if _issued_by(cert, anchor):
+                problem = ca_problem(anchor, len(path))
+                if problem is None:
+                    return True
+                found.append(problem)
+        if len(path) >= TIMELESS_PATH_DEPTH:
+            return False
+        for middle in pool:
+            if middle in path or not _issued_by(cert, middle):
+                continue
+            problem = ca_problem(middle, len(path))
+            if problem is not None:
+                found.append(problem)
+                continue
+            if walk(middle, [*path, middle]):
+                return True
+        return False
+
+    if walk(leaf, []):
+        return None
+    if found:
+        return f"issuer CA: {found[0]}"
+    if any(ca.subject == leaf.issuer for ca in (*anchors, *pool)):
+        # A CA of the leaf's issuer name is there, but its key did not sign the leaf.
+        return f"not issued by {issuer_label} (signature does not match)"
+    return f"not issued by {issuer_label} ({no_path})"
 
 
 def _issued_by(leaf: x509.Certificate, issuer: x509.Certificate) -> bool:
@@ -2164,11 +2283,14 @@ def step_server_pairs(paths: Paths, certs: Dir, ca: CaState, lookup: Lookup, rep
 
 def check_server_pairs(paths: Paths, certs: Dir, ca: Optional[CaState], lookup: Lookup, report: Report,
                        names: TlsNames) -> None:
-    """--check's part: validate the present pairs of the listeners that are on; never MISSING, no write."""
+    """--check's part: validate the present pairs of the listeners that are on, and report an absent one as MISSING
+    as --prestart would (pairs are issued at --install only). With no CA, --prestart stops at the CA, and so does
+    this. No write."""
     anchors = pair_anchors(paths, certs, ca, names) if ca is not None and ca.kind != "absent" else None
     for pair in names.pairs:
-        if pair.on:
-            _judge_present(paths, certs, pair, anchors, names, report, kept_line=False)
+        if pair.on and _judge_present(paths, certs, pair, anchors, names, report, kept_line=False) is None \
+                and ca is not None and ca.kind != "absent":
+            _missing_pair(certs, pair, report)
 
 
 def validate_san_lists(lookup: Lookup, report: Report) -> None:
@@ -2223,17 +2345,21 @@ def indexer_ca_problem(data: bytes, now: Optional[datetime.datetime] = None,
             is_ca = False
         if not is_ca:
             return None, "not a CA certificate (basicConstraints CA:TRUE missing)"
+        problem = key_type_problem(cert.public_key())
+        if problem:
+            return None, f"a CA it holds ({cert.subject.rfc4514_string()}) has {problem}; {ACCEPTED_KEY_TYPES}"
         if windows and not cert.not_valid_before_utc <= now <= cert.not_valid_after_utc:
             return None, "expired" if now > cert.not_valid_after_utc else "not valid yet"
     return certs, None
 
 
 def connector_problem(cert_data: bytes, key_data: bytes, cas: Optional[List[x509.Certificate]],
-                      ca_path: str, now: Optional[datetime.datetime] = None, leaf_window: bool = True) -> Optional[str]:
+                      ca_path: str, now: Optional[datetime.datetime] = None, windows: bool = True) -> Optional[str]:
     """The client pair the manager presents to the indexer: the leaf, then any intermediate CAs, chaining to a
     certificate of the indexer's CA file; the leaf inside its window, not a CA, with an extendedKeyUsage that
     includes clientAuth, and matching its key. Checked here because nothing else looks at it before the first
-    handshake. `cas` None: no CA is configured (the connector trusts the system store), so there is no chain to test."""
+    handshake. `cas` None: no CA is configured (the connector trusts the system store), so there is no chain to test.
+    `windows` False: everything but the validity windows, of the leaf and of every CA on its path."""
     try:
         leaf, *intermediates = x509.load_pem_x509_certificates(cert_data)
     except ValueError:
@@ -2245,7 +2371,7 @@ def connector_problem(cert_data: bytes, key_data: bytes, cas: Optional[List[x509
     if problem:
         return "its key does not match it" if "match" in problem else f"its key is {problem}"
     now = now if now is not None else _now()
-    if leaf_window and not leaf.not_valid_before_utc <= now <= leaf.not_valid_after_utc:
+    if windows and not leaf.not_valid_before_utc <= now <= leaf.not_valid_after_utc:
         return "expired" if now > leaf.not_valid_after_utc else "not valid yet"
     try:
         if leaf.extensions.get_extension_for_class(x509.BasicConstraints).value.ca:
@@ -2260,13 +2386,15 @@ def connector_problem(cert_data: bytes, key_data: bytes, cas: Optional[List[x509
         return "has no extendedKeyUsage with clientAuth"
     if cas is None:
         return None
+    if not windows:
+        return timeless_chain_problem(leaf, intermediates, cas, ca_path, now, ExtendedKeyUsageOID.CLIENT_AUTH)
     return chain_problem(leaf, intermediates, cas, ca_path, now, ExtendedKeyUsageOID.CLIENT_AUTH)
 
 
-# The indexer's material is judged twice: as it stands now, and as it would stand at a moment when every certificate
-# involved is inside its validity window. A defect that only the clock decides (expired, not valid yet, in the file or
-# on the path) does not stop the start: the connection fails until the material is renewed or the clock is right, and
-# the connector keeps validating TLS itself. Anything else is refused as before.
+# The indexer's material is judged twice: as it stands now, and with every validity window left out. A defect that
+# only the clock decides (expired, not valid yet, in the file or on the path) does not stop the start: the connection
+# fails until the material is renewed or the clock is right, and the connector keeps validating TLS itself. Anything
+# else is refused as before.
 
 TIME_ONLY_CONSEQUENCE = "the indexer connection fails until it is renewed or the clock is right"
 
@@ -2298,13 +2426,6 @@ def _window_text(certs: List[x509.Certificate], now: datetime.datetime, first_is
     return "outside its validity window"
 
 
-def _instants(certs: List[x509.Certificate]) -> List[datetime.datetime]:
-    """Moments just inside the edges of every window: if the material passes at one of them, only time refuses it."""
-    second = datetime.timedelta(seconds=1)
-    return [moment for cert in certs
-            for moment in (cert.not_valid_before_utc + second, cert.not_valid_after_utc - second)]
-
-
 def indexer_ca_verdict(data: bytes) -> Tuple[Optional[List[x509.Certificate]], Verdict]:
     """The CA file's certificates (also when only time refuses them, so they still count as trust) and its verdict."""
     cas, problem = indexer_ca_problem(data)
@@ -2318,11 +2439,10 @@ def indexer_ca_verdict(data: bytes) -> Tuple[Optional[List[x509.Certificate]], V
 
 def connector_verdict(cert_data: bytes, key_data: bytes, cas: Optional[List[x509.Certificate]],
                       ca_path: str) -> Verdict:
-    """The client pair's verdict. When it fails now, only time refuses it if it passes now with its own window left
-    out (an expired or not-yet-valid leaf under CAs valid now, which is also what a CA renewed after the leaf expired
-    looks like), or passes at the window edge of some certificate involved (every one of them valid then: a clock
-    behind or ahead of all of them, or a CA that expired before its leaf). Otherwise the reason given is the one with
-    the leaf's window left out, so a structural defect is named, not a date."""
+    """The client pair's verdict. When it fails now, only time refuses it if it passes with every validity window
+    left out: an expired or not-yet-valid leaf, intermediate or CA, a clock behind or ahead of all of them, or a CA
+    renewed in place after the leaf it issued expired, whose windows share no moment at all. Otherwise the reason
+    given is the one with the windows left out, so a structural defect is named, not a date."""
     problem = connector_problem(cert_data, key_data, cas, ca_path)
     if problem is None:
         return Verdict()
@@ -2331,13 +2451,11 @@ def connector_verdict(cert_data: bytes, key_data: bytes, cas: Optional[List[x509
     except ValueError:
         return Verdict(problem)
     now = _now()
-    structural = connector_problem(cert_data, key_data, cas, ca_path, now, leaf_window=False)
-    issuers = {cert.issuer for cert in (leaf, *intermediates)}
-    anchors = [ca for ca in (cas or []) if ca.subject in issuers]
-    involved = [leaf, *intermediates, *anchors]
-    if structural is None or any(connector_problem(cert_data, key_data, cas, ca_path, moment) is None
-                                 for moment in _instants(involved)):
-        return Verdict(_window_text(involved, now, first_is_leaf=True), True)
+    structural = connector_problem(cert_data, key_data, cas, ca_path, now, windows=False)
+    if structural is None:
+        issuers = {cert.issuer for cert in (leaf, *intermediates)}
+        anchors = [ca for ca in (cas or []) if ca.subject in issuers]
+        return Verdict(_window_text([leaf, *intermediates, *anchors], now, first_is_leaf=True), True)
     return Verdict(structural)
 
 
@@ -2532,6 +2650,60 @@ def _chains_to_current_ca(paths: Paths, certs: Dir, pair: Dict[str, bytes], unit
     return verdict.problem is None or verdict.time_only
 
 
+POSTPONED_ROTATION = "not imported over the indexer CA and client pair in place, which are valid now"
+
+
+def _postponed_rotation(paths: Paths, certs: Dir, source: "Dir", extra_cas: List[x509.Certificate], label: str,
+                        report: Report) -> bool:
+    """An export with a new CA is a rotation, judged as a set: the CA and pair in place against each other, and the
+    export's CA and pair against each other. While the set in place is usable now and the export's set is refused
+    only by the clock, none of the three files is replaced -- the CA alone would leave the pair in place without its
+    issuer, and the whole set would break a working connector until it is valid. Each refused file gets a WARNING
+    and the rotation happens on a later run, once the export's set is valid. False when this rule does not apply (no
+    new CA, a set incomplete, unsafe or refused for something other than time): the import rule decides."""
+    if import_state(certs, CA_UNIT) != "imported" or import_state(certs, PAIR_UNIT) != "imported" \
+            or not all(_exists(certs, name) for name in (*CA_UNIT.files, *PAIR_UNIT.files)):
+        return False                                      # an interrupted import is the import rule's to finish
+    quiet = Report(quiet=True, out=io.StringIO(), err=io.StringIO())
+    incoming_ca, incoming_pair = read_source(source, CA_UNIT, quiet), read_source(source, PAIR_UNIT, quiet)
+    if not isinstance(incoming_ca, dict) or not isinstance(incoming_pair, dict):
+        return False
+    spec = certs_file_spec(paths)
+    try:
+        for unit in (CA_UNIT, PAIR_UNIT):
+            read_file(certs, unit.marker, spec)
+        current_ca = {INDEXER_CA: read_file(certs, INDEXER_CA, spec)}
+        current_pair = {name: read_file(certs, name, spec) for name in PAIR_UNIT.files}
+    except (UnsafeEntry, FileNotFoundError):
+        return False                                      # the import rule reports it
+    if incoming_ca == current_ca:
+        return False
+    installed_cas, installed = indexer_ca_verdict(current_ca[INDEXER_CA])
+    if installed.problem or connector_verdict(current_pair[CONNECTOR], current_pair[CONNECTOR_KEY],
+                                              installed_cas + extra_cas, label).problem:
+        return False                                      # nothing usable in place: a gap, imported as such
+    new_cas, new_ca = indexer_ca_verdict(incoming_ca[INDEXER_CA])
+    new_pair = connector_verdict(incoming_pair[CONNECTOR], incoming_pair[CONNECTOR_KEY], (new_cas or []) + extra_cas,
+                                 label)
+    verdicts = ((SOURCE_CA, new_ca), (SOURCE_CLIENT, new_pair))
+    if any(verdict.problem and not verdict.time_only for _, verdict in verdicts) \
+            or not any(verdict.problem for _, verdict in verdicts):
+        return False                                      # refused outright, or usable now: the import rule decides
+    for source_name, verdict in verdicts:
+        if verdict.problem:
+            report.warning(f"{os.path.join(paths.indexer_export, source_name)}: {verdict.problem}; "
+                           f"{POSTPONED_ROTATION}")
+    for name in (INDEXER_CA, CONNECTOR):
+        report.progress(f"{certs.child(name)}: kept; the export's new CA and client pair are imported together "
+                        f"once both are valid")
+    try:
+        leaf = x509.load_pem_x509_certificates(current_pair[CONNECTOR])[0]
+        report.progress(f"{certs.child(CONNECTOR)}: {describe_leaf(leaf)}")
+    except ValueError:
+        pass
+    return True
+
+
 def step_indexer_trust(paths: Paths, certs: Dir, report: Report, names: IndexerNames, *, write: bool = True) -> None:
     """The indexer's CA and the client pair, selected first and written only as a combination that is valid: the
     pair that will be in place must chain to the CAs that will be in place. An export whose new CA does not issue the
@@ -2551,6 +2723,9 @@ def step_indexer_trust(paths: Paths, certs: Dir, report: Report, names: IndexerN
     try:
         extra_cas = extra_ca_trust(paths, certs, names, extra, report, missing=True)
         label = _trust_label(certs, names)
+        if ca_unit is not None and pair_unit is PAIR_UNIT and isinstance(source, Dir) \
+                and _postponed_rotation(paths, certs, source, extra_cas, label, report):
+            return
         ca = None
         trust: Optional[List[x509.Certificate]] = None
         if ca_unit is not None:
@@ -2647,14 +2822,16 @@ def _check_indexer_current(paths: Paths, certs: Dir, report: Report, names: Inde
 
 
 def check_indexer_trust(paths: Paths, certs: Dir, report: Report, names: IndexerNames) -> None:
-    """--check's verdict on the indexer trust equals --prestart's, minus MISSING: the same selection runs without
-    writing, and whatever it would refuse is refused here, before a restart stops anything. A broken imported
-    generation that the selection repairs (an interrupted import) is let through."""
+    """--check's verdict on the indexer trust equals --prestart's: the same selection runs without writing, and
+    whatever it would refuse is refused here, before a restart stops anything. Its MISSING lines included: the
+    selection reports a file missing only when the export has nothing to import into it, so --prestart could not
+    complete it either. A broken imported generation that the selection repairs (an interrupted import) is let
+    through."""
     current = Report(quiet=True, out=io.StringIO(), err=io.StringIO())
     _check_indexer_current(paths, certs, current, names)
     selection = Report(quiet=True, out=io.StringIO(), err=io.StringIO())
     step_indexer_trust(paths, certs, selection, names, write=False)
-    refused = [problem for problem in selection.problems if problem[0] != MISSING]
+    refused = list(selection.problems)
     for warning in current.warnings + selection.warnings:
         report.warning(warning)
     if current.has(INVALID) and not current.has(UNSAFE) and not refused:
@@ -2817,8 +2994,10 @@ def preflight(paths: Paths, report: Report, environ: Mapping[str, str]) -> Optio
 
 def mode_check(paths: Paths, report: Report, environ: Mapping[str, str]) -> int:
     """--check: read-only. No lock, nothing created or changed, and no subprocess but the configuration reader
-    (wazuh-manager-conf dump). Reports UNSAFE and INVALID, never MISSING: what is absent is --prestart's to complete
-    and to judge."""
+    (wazuh-manager-conf dump). Reports UNSAFE and INVALID, and MISSING only for what --prestart could not complete
+    either: the CA, the bundle and the server pairs (created at --install only) and indexer files with nothing in
+    the export to import. What --prestart completes (a seed, the keystore, an import) is left to it; the indexer
+    password, kept in the keystore, is not looked for, since the keystore is not read here."""
     result = preflight(paths, report, environ)
     if result is not None:
         with result[0] as conf:
