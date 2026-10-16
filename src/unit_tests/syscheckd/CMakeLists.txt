@@ -288,6 +288,15 @@ else()
                                      -Wl,--wrap,StartMQPredicated -Wl,--wrap,SendMSG")
 endif()
 
+# syscom.c listener loop, in its own binary so that wrapping close and accept does not reach the
+# other syscom tests. The listener does not exist on Windows.
+if(NOT ${TARGET} STREQUAL "winagent")
+  list(APPEND syscheckd_tests_names "syscom_main")
+  list(APPEND syscheckd_tests_flags "${FIM_SYSCOM_BASE_FLAGS} -Wl,--wrap,close -Wl,--wrap,accept -Wl,--wrap,select \
+                                     -Wl,--wrap,OS_BindUnixDomain -Wl,--wrap,OS_RecvSecureTCP \
+                                     -Wl,--wrap,OS_SendSecureTCP")
+endif()
+
 # Compiling tests
 list(LENGTH syscheckd_tests_names count)
 math(EXPR count "${count} - 1")
