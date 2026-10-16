@@ -74,7 +74,8 @@ CONF_COPY = CONF_DIR / 'wazuh-manager.copy-by-test.conf'
 RUN_DIR = Path(VAR_PATH, 'run')
 INDEXER_TRUST = [CONF_DIR / 'certs' / name for name in ('indexer-ca.pem', 'indexer-connector.pem',
                                                         'indexer-connector-key.pem')]
-RESOLVER = Path(VAR_PATH).parent / 'bin' / 'wazuh-manager-resolve-credentials'
+INDEXER_IMPORT_MARKERS = [CONF_DIR / 'certs' / name for name in ('.indexer-ca.imported', '.indexer-connector.imported')]
+RESOLVER =Path(VAR_PATH).parent / 'bin' / 'wazuh-manager-resolve-credentials'
 RESOLVER_ASIDE = RESOLVER.with_name(RESOLVER.name + '.moved-by-test')
 MANAGER_LOG = Path(WAZUH_LOG_PATH)
 INVALID_CONFIG = 'Invalid configuration at'
@@ -745,12 +746,18 @@ def _stage_indexer_trust(leaf_days, key_mismatch=False):
         path.write_bytes(data)
         os.chown(path, 0, gid)
         path.chmod(0o640)
+    # Without its import marker the material is the operator's: validated, never replaced from the indexer's export.
+    # With one, an indexer on this host whose export differs would have it re-imported over the test's files.
+    for marker in INDEXER_IMPORT_MARKERS:
+        if marker.exists():
+            marker.unlink()
 
 
 @pytest.fixture
 def indexer_trust():
-    """Swap the indexer CA and client pair for test material; put the originals back and restart on them."""
-    snapshots = [_Snapshot(path) for path in INDEXER_TRUST]
+    """Swap the indexer CA and client pair for test material, staged (no import marker); put the originals and their
+    markers back and restart on them."""
+    snapshots = [_Snapshot(path) for path in (*INDEXER_TRUST, *INDEXER_IMPORT_MARKERS)]
     try:
         yield _stage_indexer_trust
     finally:
