@@ -38,10 +38,6 @@
 #include <sys/socket.h>
 #endif
 
-// Constants for socket communication
-constexpr int SYSCOLLECTOR_OS_MAXSTR = 6144;
-constexpr int SYSCOLLECTOR_OS_SOCKTERR = -2;
-
 #define TRY_CATCH_TASK(task)                                            \
 do                                                                      \
 {                                                                       \
