@@ -78,6 +78,9 @@ SCAN_LINES = 30
 _ID_RE = re.compile(r"^\s*(?://|#|/?\*)\s*SPDX-License-Identifier:\s*(.+?)\s*(\*/)?\s*$")
 _CODING_RE = re.compile(r"^[ \t\f]*#.*?coding[:=]")
 _VERSION_SUFFIX_RE = re.compile(r"[0-9.]+$")
+_UTF8_BOM = b"\xef\xbb\xbf"
+# UTF-32 BOMs first: the UTF-32-LE BOM starts with the UTF-16-LE one.
+_WIDE_BOMS = (b"\xff\xfe\x00\x00", b"\x00\x00\xfe\xff", b"\xff\xfe", b"\xfe\xff")
 
 
 class SpdxError(Exception):
@@ -167,6 +170,8 @@ def classify(path: str, content: Optional[bytes]):
 
 def find_identifier(content: bytes, limit: Optional[int] = SCAN_LINES) -> Optional[str]:
     """Identifier of the first SPDX comment line within the first `limit` lines (all lines if None), if any."""
+    if content.startswith(_UTF8_BOM):
+        content = content[len(_UTF8_BOM):]
     lines = content.split(b"\n") if limit is None else content.split(b"\n", limit)[:limit]
     for raw in lines:
         line = raw.rstrip(b"\r").decode("utf-8", "replace")
@@ -189,12 +194,16 @@ def apply_to_bytes(path: str, content: bytes) -> bytes:
         if found == ident:
             return content
         raise SpdxError("%s: found SPDX identifier %r, expected %r" % (path, found, ident))
+    if content.startswith(_WIDE_BOMS):
+        # The line would be written in UTF-8 in front of a UTF-16/UTF-32 text: refuse instead of corrupting the file.
+        raise SpdxError("%s: UTF-16/UTF-32 file: add the SPDX line by hand in the file's own encoding" % path)
     late = find_identifier(content, None)
     if late is not None:
         # An identifier below the scanned lines: never add a second one.
         raise SpdxError("%s: SPDX identifier %r after line %d, expected it within the first lines" % (path, late, SCAN_LINES))
 
-    lines = content.splitlines(True)
+    bom = _UTF8_BOM if content.startswith(_UTF8_BOM) else b""
+    lines = content[len(bom):].splitlines(True)
     idx = 0
     if lines and lines[0].startswith(b"#!"):
         idx = 1
@@ -213,7 +222,7 @@ def apply_to_bytes(path: str, content: bytes) -> bytes:
     head = b"".join(lines[:idx])
     if head and not head.endswith(b"\n"):
         head += b"\n"  # preceding line lacked a terminator (file is only that line)
-    return head + new + b"".join(lines[idx:])
+    return bom + head + new + b"".join(lines[idx:])  # a UTF-8 BOM stays the first bytes of the file
 
 
 # --------------------------------------------------------------------------- repo

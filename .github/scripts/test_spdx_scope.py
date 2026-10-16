@@ -232,6 +232,21 @@ class ApplyToBytesTest(unittest.TestCase):
         out = spdx.apply_to_bytes("src/engine/x.rb", b"# encoding: ISO-8859-1\nputs '\xe9'\n")
         self.assertEqual(out, b"# encoding: ISO-8859-1\n" + line("#", AGPL) + b"puts '\xe9'\n")
 
+    def test_utf16_file_is_refused(self):
+        src = "\ufeffWrite-Host 'x'\n".encode("utf-16-le")
+        with self.assertRaises(spdx.SpdxError):
+            spdx.apply_to_bytes("src/engine/x.ps1", src)
+        with self.assertRaises(spdx.SpdxError):
+            spdx.apply_to_bytes("src/engine/x.ps1", "\ufeffx\n".encode("utf-16-be"))
+
+    def test_utf8_bom_stays_first(self):
+        out = spdx.apply_to_bytes(ENGINE_CPP, b"\xef\xbb\xbfint a;\n")
+        self.assertEqual(out, b"\xef\xbb\xbf" + line("//", AGPL) + b"int a;\n")
+        self.assertEqual(spdx.find_identifier(out), AGPL)
+        self.assertEqual(spdx.apply_to_bytes(ENGINE_CPP, out), out)  # idempotent
+        out = spdx.apply_to_bytes("src/engine/x.ps1", b"\xef\xbb\xbfWrite-Host x\n")
+        self.assertEqual(out, b"\xef\xbb\xbf" + line("#", AGPL) + b"Write-Host x\n")
+
     def test_python_shebang_without_coding(self):
         out = spdx.apply_to_bytes("src/engine/a.py", b"#!/usr/bin/env python3\nx = 1\n")
         self.assertEqual(out, b"#!/usr/bin/env python3\n" + line("#", AGPL) + b"x = 1\n")
