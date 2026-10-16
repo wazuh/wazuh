@@ -587,6 +587,54 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
         }
     }
 
+    /* Targets from the manager may only name sockets defined in the local configuration */
+    if (log_config->agent_cfg == 1 && log_config->accept_remote == 0) {
+        int kept = 0;
+
+        for (int t = 0; logf[pl].target[t]; t++) {
+            int found = strcmp(logf[pl].target[t], "agent") == 0;
+
+            for (int s = 0; !found && log_config->socket_list && log_config->socket_list[s].name; s++) {
+                found = strcmp(log_config->socket_list[s].name, logf[pl].target[t]) == 0;
+            }
+
+            if (found) {
+                logf[pl].target[kept++] = logf[pl].target[t];
+                continue;
+            }
+
+            merror("Socket '%s' is not defined in the local configuration. "
+                   "Ignoring it as a target of localfile '%s' on the agent.conf",
+                   logf[pl].target[t], logf[pl].file);
+
+            /* Drop the output formats bound to the ignored target */
+            if (logf[pl].out_format) {
+                int f_kept = 0;
+
+                for (int f = 0; logf[pl].out_format[f]; f++) {
+                    if (logf[pl].out_format[f]->target && strcmp(logf[pl].out_format[f]->target, logf[pl].target[t]) == 0) {
+                        os_free(logf[pl].out_format[f]->target);
+                        os_free(logf[pl].out_format[f]->format);
+                        os_free(logf[pl].out_format[f]);
+                    } else {
+                        logf[pl].out_format[f_kept++] = logf[pl].out_format[f];
+                    }
+                }
+
+                logf[pl].out_format[f_kept] = NULL;
+            }
+
+            free(logf[pl].target[t]);
+        }
+
+        logf[pl].target[kept] = NULL;
+
+        if (kept == 0) {
+            w_clean_logreader(&logf[pl]);
+            return 0;
+        }
+    }
+
     /* Verify journald log config*/
     if (strcmp(logf[pl].logformat, JOURNALD_LOG) == 0) {
 
