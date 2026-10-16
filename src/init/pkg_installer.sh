@@ -1015,9 +1015,11 @@ let_agent_group_read_cwd() {
 
 # rename_over SOURCE TARGET: renames SOURCE to TARGET. A link at TARGET is replaced, even one to a
 # directory, which plain mv -f would move SOURCE into instead; a directory at TARGET makes it fail.
+# BSD mv has no -T, and its -h still moves SOURCE into a real directory, so macOS checks for one
+# first: one created in between still receives SOURCE.
 rename_over() {
     if [ "${OS}" = "Darwin" ]; then
-        mv -fh "$1" "$2"
+        { [ ! -d "$2" ] || [ -L "$2" ]; } && mv -fh "$1" "$2"
     else
         mv -fT "$1" "$2"
     fi
