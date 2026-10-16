@@ -9,7 +9,8 @@ type: integration
 
 brief: These tests check that 'wazuh-manager-control' refuses to start (or restart, or reload) the manager when
        the credentials it would start with cannot be trusted, and that it says why. checkcredentials() in
-       src/init/wazuh-server.sh runs the credential resolver in '--check' mode before anything else. An entry
+       src/init/wazuh-server.sh runs the credential resolver in '--check' mode once the configuration file
+       itself has been validated, and before the validator checks the files the configuration names. An entry
        root may not trust (local.env not a regular root file without group or other write, a file in certs/
        that root does not own) must produce the resolver's 'UNSAFE <path>' line and 'Unsafe credentials.
        Exiting'; something in place that is wrong (a malformed local.env line) 'INVALID <path>' and 'Invalid
@@ -42,6 +43,7 @@ tags:
     - manager_control
 '''
 import datetime
+import grp
 import json
 import os
 import pwd
@@ -68,6 +70,7 @@ ACCOUNT = 'wazuh-manager'
 CONF_DIR = Path(MANAGER_CONF_DIR)
 LOCAL_ENV = CONF_DIR / 'local.env'
 PLANTED_CERT = CONF_DIR / 'certs' / 'planted-by-test.pem'
+CONF_COPY = CONF_DIR / 'wazuh-manager.copy-by-test.conf'
 RUN_DIR = Path(VAR_PATH, 'run')
 INDEXER_TRUST = [CONF_DIR / 'certs' / name for name in ('indexer-ca.pem', 'indexer-connector.pem',
                                                         'indexer-connector-key.pem')]
@@ -268,7 +271,7 @@ def breaker():
     """Break entries of the real configuration directory on demand; put every one back and leave the manager
     running, whatever the test did."""
     _restore_moved_resolver()
-    snapshots = [_Snapshot(LOCAL_ENV), _Snapshot(PLANTED_CERT)]
+    snapshots = [_Snapshot(LOCAL_ENV), _Snapshot(PLANTED_CERT), _Snapshot(CONF_COPY)]
     try:
         yield _break
     finally:
@@ -546,26 +549,48 @@ def test_environment_does_not_exempt(breaker):
     assert not _alive_pids()
 
 
+def _prepare(action):
+    """Stop the manager for 'start', make sure it runs for 'restart' and 'reload'."""
+    if action == 'start':
+        _stop()
+    else:
+        _ensure_running()
+
+
+def _env_with_config_copy(old, new):
+    """An environment whose WAZUH_CONF names a copy of the installed configuration with 'old' replaced by 'new'.
+    The control script validates WAZUH_CONF; the resolver always reads the installed wazuh-manager.conf."""
+    text = (CONF_DIR / 'wazuh-manager.conf').read_text()
+    assert text.count(old) == 1, f"'{old}' is not in the installed configuration exactly once"
+    CONF_COPY.write_text(text.replace(old, new))
+    os.chown(CONF_COPY, 0, grp.getgrnam(ACCOUNT).gr_gid)
+    CONF_COPY.chmod(0o640)
+    env = _plain_env()
+    env['WAZUH_CONF'] = CONF_COPY.name
+    return env
+
+
 @pytest.mark.parametrize('action', ['start', 'restart', 'reload'])
-def test_check_runs_before_configuration_validation(action, breaker):
+def test_check_runs_before_the_file_checks(action, breaker):
     '''
-    description: Check that the credentials are refused before the configuration is validated, so a refusal is
-                 never reported as a configuration error (the symptom of #39852).
+    description: Check that the credentials are refused before the configuration validator checks the files the
+                 configuration names, so a credentials refusal is never reported as a missing file (the symptom
+                 of #39852).
 
     wazuh_min_version: 5.0.0
 
     test_phases:
         - setup: Make local.env group-writable; stop the manager for 'start'.
-        - test: Run the action with WAZUH_CONF naming a file that does not exist, which the configuration
-                validator would refuse.
-        - teardown: Put local.env back and leave the manager running.
+        - test: Run the action with WAZUH_CONF naming a copy of the configuration whose listener certificate does
+                not exist, which the validator refuses ('file not found') once it checks the files.
+        - teardown: Put local.env back, remove the copy and leave the manager running.
 
     assertions:
         - The exit code is not zero and the resolver's 'UNSAFE' line is reported.
-        - No 'Configuration error' is reported.
+        - Neither 'Configuration error' nor the validator's 'Invalid configuration at' is reported.
         - On 'restart' and 'reload', the daemons that were running are the same processes afterwards.
 
-    input_description: A group-writable local.env and a missing configuration file.
+    input_description: A group-writable local.env and a configuration naming a missing certificate.
 
     expected_output:
         - 'UNSAFE /etc/wazuh-manager/local.env'
@@ -573,20 +598,65 @@ def test_check_runs_before_configuration_validation(action, breaker):
     tags:
         - manager_control
     '''
-    if action == 'start':
-        _stop()
-    else:
-        _ensure_running()
+    _prepare(action)
     breaker('local_env_group_writable')
     before = _alive_pids()
-    env = _plain_env()
-    env['WAZUH_CONF'] = 'missing-for-this-test.conf'
+    env = _env_with_config_copy(f'<certificate>{CONF_DIR}/certs/remoted.pem</certificate>',
+                                f'<certificate>{CONF_DIR}/certs/missing-for-this-test.pem</certificate>')
 
     result = _control(action, env=env)
 
-    assert result.returncode != 0, f"{action} was accepted:\n{result.stdout}\n{result.stderr}"
+    output = result.stdout + result.stderr
+    assert result.returncode != 0, f"{action} was accepted:\n{output}"
     assert f"UNSAFE {LOCAL_ENV}" in result.stderr, result.stderr
-    assert 'Configuration error' not in result.stdout + result.stderr, result.stdout + result.stderr
+    assert 'Configuration error' not in output and INVALID_CONFIG not in output, output
+    if action != 'start':
+        assert _alive_pids() == before, f"The daemons changed during a refused {action}"
+
+
+@pytest.mark.parametrize('action', ['start', 'restart', 'reload'])
+def test_configuration_is_validated_before_the_credentials(action, breaker):
+    '''
+    description: Check that a configuration the validator refuses is reported as such, with its 1244 verdict,
+                 before the credentials are checked: the resolver reads the TLS file names from the configuration
+                 and cannot from a file the validator refuses.
+
+    wazuh_min_version: 5.0.0
+
+    test_phases:
+        - setup: Make local.env group-writable; stop the manager for 'start'.
+        - test: Run the action with WAZUH_CONF naming a copy of the configuration whose listener port is not a
+                number.
+        - teardown: Put local.env back, remove the copy and leave the manager running.
+
+    assertions:
+        - The exit code is not zero and 'Configuration error' is reported.
+        - The validator's '(1244): Invalid configuration at '/remote/https/port'' is written to the manager log.
+        - No credentials verdict ('UNSAFE', 'Unsafe credentials') is reported.
+        - On 'restart' and 'reload', the daemons that were running are the same processes afterwards.
+
+    input_description: A group-writable local.env and a configuration with a wrong value type.
+
+    expected_output:
+        - "(1244): Invalid configuration at '/remote/https/port'"
+
+    tags:
+        - manager_control
+    '''
+    _prepare(action)
+    breaker('local_env_group_writable')
+    before = _alive_pids()
+    env = _env_with_config_copy('<port>1517</port>', '<port>not-a-port</port>')
+    offset = MANAGER_LOG.stat().st_size
+
+    result = _control(action, env=env)
+
+    output = result.stdout + result.stderr
+    assert result.returncode != 0, f"{action} was accepted:\n{output}"
+    assert 'Configuration error' in result.stdout, result.stdout
+    expected = "wazuh-manager-control: ERROR: (1244): Invalid configuration at '/remote/https/port'"
+    assert expected in _log_since(offset), _log_since(offset)
+    assert 'UNSAFE' not in output and 'Unsafe credentials' not in output, output
     if action != 'start':
         assert _alive_pids() == before, f"The daemons changed during a refused {action}"
 

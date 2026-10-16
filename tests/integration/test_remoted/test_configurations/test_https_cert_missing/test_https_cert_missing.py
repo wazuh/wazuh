@@ -136,13 +136,12 @@ def test_https_cert_missing(test_configuration, test_metadata, configure_local_i
                             restart_wazuh_expect_error):
     '''
     description: Check that the manager refuses to start when the HTTPS agent listener's certificate is
-                 missing, and that the verdict names the file. Two layers answer, so both are covered. With
-                 the configuration pointing at a certificate name nothing provides, the configuration
-                 validator refuses with its 1244 verdict (pointer '/remote/https/certificate', 'file not
-                 found' with the resolved path, and the provisioning hint). With the installed
-                 /etc/wazuh-manager/certs/remoted.pem moved aside, the credential resolver's check, which
-                 runs first, refuses the half pair ('INVALID … half a pair'). The test starts the service and
-                 checks the manager log with a FileMonitor; no daemon starts in either case.
+                 missing, and that the verdict names the file. The credential resolver's check follows the
+                 configured remote.https names and runs before the configuration validator checks the
+                 files, so it answers in both cases: with the configuration pointing at a certificate name
+                 nothing provides, and with the installed /etc/wazuh-manager/certs/remoted.pem moved aside,
+                 it refuses the key left without its certificate ('INVALID … half a pair'). The test starts
+                 the service and checks the manager log with a FileMonitor; no daemon starts in either case.
 
     parameters:
         - test_configuration
@@ -181,13 +180,12 @@ def test_https_cert_unreadable_by_service_user(test_configuration, test_metadata
                                                break_listener_tls_files, restart_wazuh_expect_error):
     '''
     description: Check that the manager refuses to start when a TLS file the HTTPS agent listener opens
-                 exists but the service user cannot read it. With the configuration pointing at a root-owned
-                 0600 copy of the private key, or of the CA certificate remoted publishes on /cacerts, the
-                 credential resolver and the configuration validator (both root) pass, and remoted refuses
-                 with its preflight error, which names the file and says it is missing or unreadable by the
-                 service user: it exits instead of coming up without the HTTPS transport or with an empty
-                 /cacerts. With the installed /etc/wazuh-manager/certs/remoted-key.pem itself made root-owned
-                 0600, the credential resolver's check refuses it first ('UNSAFE …'). The test starts the
+                 exists but the service user cannot read it. The credential resolver's check follows the
+                 configured remote.https names and holds the listener's files, under any name, to
+                 root:wazuh-manager 0640, so it refuses each case before anything starts ('UNSAFE … group is
+                 root, not wazuh-manager'): a root-owned 0600 copy of the private key or of the CA
+                 certificate remoted publishes on /cacerts named in the configuration, and the installed
+                 /etc/wazuh-manager/certs/remoted-key.pem itself made root-owned 0600. The test starts the
                  service and checks the manager log with a FileMonitor.
 
     parameters:

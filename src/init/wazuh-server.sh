@@ -253,14 +253,52 @@ status()
     fi
 }
 
-# The credentials and certificates, checked before anything else on the start and restart paths.
+# validateconfig [--skip-file-checks]: the whole configuration file (XML, schema, cross-field rules
+# and, unless told to skip them, the files it references). It fails fast with the JSON pointer of the
+# offending option before any daemon runs its own -t, and stays ahead of stop_service() on the
+# restart path, so a configuration mistake is refused while the manager is still up rather than after
+# it has been taken down.
+#
+# It runs twice. First with --skip-file-checks, ahead of checkcredentials(): the resolver reads the
+# TLS file names from the configuration, which it cannot do from a file the validator refuses, and
+# the operator is owed the validator's verdict on such a file, not a credentials one. Then whole, in
+# testconfig(), once the credentials check has named whatever is wrong with the files it trusts.
+validateconfig()
+{
+    # Each marker is a verdict from a previous run, and this run's verdict replaces them; this
+    # function may exit before checkcredentials() or testconfig() clears them.
+    rm -f ${DIR}/var/run/*.failed
+
+    MCONF_VERDICT=$(${MCONF} "$@" validate 2>&1)
+    if [ $? = 0 ]; then
+        return 0
+    fi
+    echo "${MCONF_VERDICT}" >&2
+    # With the fail-fast no daemon starts, so nothing else records the reason where operators (and
+    # the integration tests) look for it: surface the verdict in the manager log too.
+    echo "$(date '+%Y/%m/%d %H:%M:%S') wazuh-manager-control: ERROR: ${MCONF_VERDICT}" >> ${DIR}/logs/wazuh-manager.log 2>/dev/null
+    if [ $USE_JSON = true ]; then
+        echo -n '{"error":20,"message":"'${WAZUH_CONF}': Configuration error."}'
+    else
+        echo "${WAZUH_CONF}: Configuration error. Exiting"
+    fi
+    rm -f ${DIR}/var/run/*.start
+    rm -f ${DIR}/var/run/.restart
+    # Before lock() on both paths, like checkcredentials() and testconfig(): see the note there.
+    unlock;
+    exit 1;
+}
+
+# The credentials and certificates, checked right after the configuration file itself on the start
+# and restart paths (validateconfig --skip-file-checks), before the files it names.
 #
 # Read-only: the resolver's --check tests every entry it trusts -- local.env, ca/, export/, certs/
 # and every file in them, the indexer's export -- for ownership, type and mode, and validates what is
 # already there (the .env syntax, supplied values, the CA, the server pairs, the indexer trust). It
-# takes no lock, starts no subprocess and never reports something as missing: completing is
-# --prestart's job. That is what lets it run ahead of testconfig() -- and so ahead of the stop on the
-# restart path -- where resolvecredentials() cannot (see below). It has to come first: testconfig()
+# takes no lock, starts no subprocess but the configuration reader (wazuh-manager-conf dump, for the
+# configured TLS file names) and never reports something as missing: completing is --prestart's job.
+# That is what lets it run ahead of testconfig() -- and so ahead of the stop on the restart path --
+# where resolvecredentials() cannot (see below). It has to come before the file checks: testconfig()
 # would otherwise stop the start on "(1244) file not found" for a certificate without ever naming the
 # entry that caused it.
 #
@@ -400,26 +438,9 @@ testconfig()
     # may never run to clear a marker left by an earlier, unrelated one.
     rm -f ${DIR}/var/run/*.failed
 
-    # The whole configuration file (XML, schema, cross-field rules and the files it references):
-    # fails fast with the JSON pointer of the offending option before any daemon runs its own -t.
-    # This stays ahead of stop_service() on the restart path, so a configuration mistake is refused
-    # while the manager is still up rather than after it has been taken down.
-    MCONF_VERDICT=$(${MCONF} validate 2>&1)
-    if [ $? != 0 ]; then
-        echo "${MCONF_VERDICT}" >&2
-        # With the fail-fast no daemon starts, so nothing else records the reason where operators
-        # (and the integration tests) look for it: surface the verdict in the manager log too.
-        echo "$(date '+%Y/%m/%d %H:%M:%S') wazuh-manager-control: ERROR: ${MCONF_VERDICT}" >> ${DIR}/logs/wazuh-manager.log 2>/dev/null
-        if [ $USE_JSON = true ]; then
-            echo -n '{"error":20,"message":"'${WAZUH_CONF}': Configuration error."}'
-        else
-            echo "${WAZUH_CONF}: Configuration error. Exiting"
-        fi
-        rm -f ${DIR}/var/run/*.start
-        rm -f ${DIR}/var/run/.restart
-        unlock;
-        exit 1;
-    fi
+    # The whole configuration file again, now with the files it references: the certificates and
+    # keys checkcredentials() has already vouched for, and every other file the options name.
+    validateconfig
 
     # Then each daemon checks what is not configuration (files, sockets, keys).
     for i in ${SDAEMONS}; do
@@ -754,6 +775,7 @@ info()
 restart_service()
 {
     touch ${DIR}/var/run/.restart
+    validateconfig --skip-file-checks
     checkcredentials
     testconfig
     lock
@@ -783,6 +805,7 @@ fi
 
 case "$action" in
 start)
+    validateconfig --skip-file-checks
     checkcredentials
     testconfig
     resolvecredentials

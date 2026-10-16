@@ -225,7 +225,7 @@ wazuh-manager-resolve-credentials [--install|--upgrade|--prestart|--check|--clea
 | `--install` | DEB `postinst` and RPM `%post` on a fresh install, `install.sh` | seeds the passwords, stores the indexer password, mints the CA when nothing is there, issues the two server pairs, imports the indexer trust | always `0` |
 | `--upgrade` | DEB `postinst` and RPM `%post` on an upgrade | completes passwords, keystore and indexer trust; publishes the CA in `export/ca.pem` again when the copy there differs; validates the CA and the pairs, never mints or issues | always `0` |
 | `--prestart` (default) | `wazuh-manager-control` before the daemons start, on `start`, `restart` and `reload` | every `--check` test, then what `--upgrade` does; refuses the start when anything is missing, invalid or unsafe | `0` or `1` |
-| `--check` | `wazuh-manager-control` first thing on `start`, `restart` and `reload` | read-only: no lock, nothing written, and no subprocess but `wazuh-manager-conf --skip-file-checks dump`, which reads the [configured file names](#configured-file-names); reports `UNSAFE` and `INVALID`, never `MISSING` | `0` or `1` |
+| `--check` | `wazuh-manager-control` on `start`, `restart` and `reload`, once the configuration file itself has been validated | read-only: no lock, nothing written, and no subprocess but `wazuh-manager-conf --skip-file-checks dump`, which reads the [configured file names](#configured-file-names); reports `UNSAFE` and `INVALID`, never `MISSING` | `0` or `1` |
 | `--clear` | you | removes what the resolver made ([Container images](#container-images)) | `0` or `1` |
 
 `-q` prints only problems. `-H` names a non-default installation directory; the configuration directory is
@@ -273,8 +273,17 @@ says why:
 | the check itself cannot run | `Cannot check the credentials. Exiting` | `{"error":22,"message":"Cannot check the credentials."}` | `wazuh-manager-control: ERROR: cannot check the credentials` |
 | `--prestart` fails | `Unresolved credentials. Exiting` | `{"error":21,"message":"Unresolved credentials."}` | `wazuh-manager-control: ERROR: unresolved credentials` |
 
-`--check` runs before the configuration is validated, and on `restart` before anything is stopped. A refused
-`restart` therefore leaves the running daemons as they are.
+On `start`, `restart` and `reload`, `wazuh-manager-control` checks in this order, and refuses on the first failure:
+
+1. the configuration file itself — XML, schema and cross-field rules (`wazuh-manager-conf --skip-file-checks
+   validate`), so a configuration mistake is reported with the validator's `(1244)` verdict and the JSON pointer of
+   the option, not as a credentials problem: `--check` reads the [configured file names](#configured-file-names)
+   from that file;
+2. the credentials (`--check`);
+3. the files the configuration names (`wazuh-manager-conf validate`), and each daemon's own `-t` test.
+
+All of it happens on `restart` before anything is stopped. A refused `restart` therefore leaves the running daemons
+as they are.
 
 A `WARNING` refuses nothing: the start goes on, and each warning is also written to `logs/wazuh-manager.log` as
 `wazuh-manager-control: WARNING: <path>: …`. Only the indexer material's validity window is treated this way.

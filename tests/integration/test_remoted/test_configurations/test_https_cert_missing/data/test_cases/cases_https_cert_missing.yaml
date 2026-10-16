@@ -1,5 +1,5 @@
-- name: Missing listener certificate, configuration validator
-  description: With the listener certificate configured at a name nothing provides, wazuh-manager-control refuses to start on the validator's 1244 verdict, which says where the file comes from
+- name: Missing listener certificate under a configured name, credential resolver
+  description: With the listener certificate configured at a name nothing provides, the credential resolver's check refuses the configured key left without it before the configuration validator checks the files
   configuration_parameters:
     CERTIFICATE: '/etc/wazuh-manager/certs/listener-missing.pem'
     KEY: '/etc/wazuh-manager/certs/remoted-key.pem'
@@ -10,11 +10,11 @@
     ca_certificate: '/etc/wazuh-manager/certs/root-ca.pem'
     mutation: absent_file
     target: '/etc/wazuh-manager/certs/listener-missing.pem'
-    # The installed pair stays in place, so the credential resolver's check passes and
-    # wazuh-manager-control reaches `wazuh-manager-conf validate`, which dumps its verdict into the
-    # manager log with the 'wazuh-manager-control: ERROR: ' prefix (src/init/wazuh-server.sh,
-    # testconfig()). The pointer, the resolved path and the provisioning hint are all asserted.
-    expected_error: ".*wazuh-manager-control: ERROR: \\(1244\\): Invalid configuration at '/remote/https/certificate': file not found: .*listener-missing\\.pem.*wazuh-certs-tool.*"
+    # The resolver follows remote.https.certificate and remote.https.key, so the configured key, present,
+    # is half a pair. Its check runs before `wazuh-manager-conf validate` checks the files
+    # (checkcredentials() in src/init/wazuh-server.sh), so the validator's 'file not found' is never
+    # reached; the resolver's verdict follows the control script's line in the manager log.
+    expected_error: ".*INVALID .*/certs/remoted-key\\.pem: half a pair \\(listener-missing\\.pem is missing\\).*"
 - name: Missing listener certificate, credential resolver
   description: With the installed /etc/wazuh-manager/certs/remoted.pem moved aside, the credential resolver's check refuses the half pair before the configuration is validated
   configuration_parameters:
