@@ -58,7 +58,8 @@ struct ProcessSysCalls
  * stdin, stdout and stderr redirected to /dev/null.
  *
  * The parents always leave with the real _exit (no atexit handlers, no static destructors): it stays outside
- * ProcessSysCalls. With an empty umask member, umask(027) is applied to the calling process.
+ * ProcessSysCalls (GoDaemonFunctionalTest.ParentsSkipExitHandlers checks it). With an empty umask member, umask(027) is
+ * applied to the calling process.
  *
  * @param sys System calls (the real ones by default).
  * @throws std::runtime_error if any step fails.
