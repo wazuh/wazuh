@@ -256,6 +256,20 @@ def test_unreadable_configuration(resolver, sandbox, control, reason):
     assert run(resolver, sandbox, "--check")[0::2] == (1, expected)
 
 
+@pytest.mark.parametrize("mode", ["--check", "--prestart"])
+def test_configuration_reader_that_hangs(resolver, sandbox, monkeypatch, mode):
+    """A reader that does not answer in time is killed and reported like one that failed: an INVALID verdict about
+    the configuration, the default names used, not an internal error."""
+    sandbox.stage_ca()
+    monkeypatch.setattr(resolver, "SUBPROCESS_TIMEOUT", 1)
+    sandbox.control(dump_sleep=30)
+    code, _, err = run(resolver, sandbox, mode)
+    assert code == 1, err
+    assert (f"INVALID {conf_file(sandbox)}: cannot read the TLS paths (wazuh-manager-conf did not answer within 1 "
+            f"seconds); run wazuh-manager-conf validate\n") in err, err
+    assert "internal error" not in err and "Traceback" not in err, err
+
+
 def test_configuration_reader_missing(resolver, sandbox):
     sandbox.stage_ca()
     os.unlink(sandbox.paths.conf_bin)

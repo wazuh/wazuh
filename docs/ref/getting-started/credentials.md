@@ -410,7 +410,8 @@ The resolver checks the files the daemons are configured to serve, under whateve
   neither checked nor reported missing. `--install` still issues the default pairs whose names are configured.
 - **Reading the configuration.** Every mode, `--check` included, reads `wazuh-manager.conf` through
   `wazuh-manager-conf --skip-file-checks dump` and parses `api.yaml`; an absent `api.yaml`, or an option it does
-  not set, means the Server API's default. When either cannot be read, the default names are checked and the start
+  not set, means the Server API's default. When either cannot be read (the reader fails, does not answer within 60
+  seconds and is stopped, or prints something other than a JSON object), the default names are checked and the start
   is refused: `INVALID /etc/wazuh-manager/wazuh-manager.conf: cannot read the TLS paths (wazuh-manager-conf exited with 1); run wazuh-manager-conf validate`,
   `INVALID /var/wazuh-manager/api/configuration/api.yaml: not valid YAML (line 3)`. An `api.yaml` replaced by a
   symbolic link is `UNSAFE`.
