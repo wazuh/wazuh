@@ -14,6 +14,16 @@
 #include <request_op.h>
 #include <os_net/os_net.h>
 
+#ifdef WAZUH_UNIT_TESTING
+// Remove STATIC qualifier from tests
+#define STATIC
+#else
+#define STATIC static
+#endif
+
+// The manager numbers each request with an unsigned int written in hexadecimal.
+#define REQ_COUNTER_MAXLEN 8
+
 #ifdef WIN32
 #include "../os_execd/execd.h"
 #include "../client-agent/agentd.h"
@@ -105,6 +115,25 @@ ret:
     }
 }
 
+// Check that a request counter is 1 to REQ_COUNTER_MAXLEN hexadecimal digits.
+STATIC bool req_counter_is_valid(const char * counter) {
+    size_t i;
+
+    for (i = 0; counter[i] != '\0'; i++) {
+        if (i >= REQ_COUNTER_MAXLEN || !isxdigit((unsigned char)counter[i])) {
+            return false;
+        }
+    }
+
+    return i > 0;
+}
+
+// Write the response header for a counter. Return its length, or -1 if it does not fit.
+STATIC int req_build_header(const char * counter, char * output, size_t size) {
+    int length = snprintf(output, size, CONTROL_HEADER HC_REQUEST "%s ", counter);
+    return (length < 0 || (size_t)length >= size) ? -1 : length;
+}
+
 // Push a request message into dispatching queue. Return 0 on success or -1 on error.
 int req_push(char * buffer, size_t length) {
     char * counter;
@@ -125,7 +154,13 @@ int req_push(char * buffer, size_t length) {
 
     *(target++) = '\0';
 
+    if (!req_counter_is_valid(counter)) {
+        merror("Invalid request counter.");
+        return -1;
+    }
+
     if (IS_ACK(target)) {
+        length -= (target - buffer);
         w_mutex_lock(&mutex_table);
 
         if (node = OSHash_Get(req_table, counter), node) {
@@ -326,7 +361,11 @@ void * req_receiver(__attribute__((unused)) void * arg) {
 
         // Build response string
         // Example: #!-req 16 Hello World
-        rlen = snprintf(response, REQ_RESPONSE_LENGTH, CONTROL_HEADER HC_REQUEST "%s ", node->counter);
+        if (rlen = req_build_header(node->counter, response, REQ_RESPONSE_LENGTH), rlen < 0) {
+            merror("Request counter too long. Response discarded.");
+            goto release;
+        }
+
         length += rlen;
         os_realloc(buffer, length + 1, buffer);
         memmove(buffer + rlen, buffer, length - rlen);
@@ -370,6 +409,7 @@ void * req_receiver(__attribute__((unused)) void * arg) {
             merror("Couldn't send response to manager: number of attempts exceeded.");
         }
 
+release:
         w_mutex_unlock(&node->mutex);
 
         // Delete node from hash table
