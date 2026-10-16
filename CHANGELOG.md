@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.14.11]
 
+### Manager
+
+#### Fixed
+
+- Fixed cluster workers accepting and deleting files listed in `excluded_files` or matching `excluded_extensions` when sent by the master, and removing directories that still contained an excluded file. ([#40366](https://github.com/wazuh/wazuh/pull/40366))
+
 ## [v4.14.10]
 
 ### Manager
