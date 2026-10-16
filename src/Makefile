@@ -75,7 +75,6 @@ EXTERNAL_LIBDB=external/libdb/build_unix/
 EXTERNAL_JEMALLOC=external/jemalloc/
 EXTERNAL_RPM=external/rpm/
 EXTERNAL_POPT=external/popt/
-EXTERNAL_LIBBPF=external/libbpf-bootstrap/
 EXTERNAL_DBUS=external/dbus/
 EXTERNAL_LLHTTP=external/llhttp/
 # XXX Becareful NO EXTRA Spaces here
