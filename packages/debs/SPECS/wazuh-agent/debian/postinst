@@ -46,6 +46,14 @@ case "$1" in
         fi
     }
 
+    # restore_failed TARGET COPY: warns that TARGET could not be restored, and keeps ${WAZUH_TMP_DIR},
+    # which holds COPY, from being deleted at the end.
+    RESTORE_FAILED=""
+    restore_failed() {
+        echo "WARNING: could not restore $1; its copy is kept at $2." >&2
+        RESTORE_FAILED=yes
+    }
+
     # restore_conf_file NAME: puts back the copy of etc/NAME preinst took, root:${GROUP} 0640. A link
     # in its place is one swapped in while preinst copied, and is dropped.
     restore_conf_file() {
@@ -53,7 +61,7 @@ case "$1" in
             rm -f ${WAZUH_TMP_DIR}/$1
         elif [ -f ${WAZUH_TMP_DIR}/$1 ]; then
             install_file ${WAZUH_TMP_DIR}/$1 640 root:${GROUP} ${DIR}/etc/$1 \
-                || echo "WARNING: could not restore ${DIR}/etc/$1 from ${WAZUH_TMP_DIR}/$1." >&2
+                || restore_failed ${DIR}/etc/$1 ${WAZUH_TMP_DIR}/$1
         fi
     }
 
@@ -173,9 +181,11 @@ case "$1" in
         cp -a --remove-destination ${WAZUH_TMP_DIR}/group/* .
     }
     if [ -d ${WAZUH_TMP_DIR}/group ]; then
-        in_dir ${DIR}/etc/shared restore_shared_files \
-            || echo "WARNING: could not restore ${DIR}/etc/shared from ${WAZUH_TMP_DIR}/group." >&2
-        rm -rf ${WAZUH_TMP_DIR}/group
+        if in_dir ${DIR}/etc/shared restore_shared_files; then
+            rm -rf ${WAZUH_TMP_DIR}/group
+        else
+            restore_failed ${DIR}/etc/shared ${WAZUH_TMP_DIR}/group
+        fi
     fi
 
     # logs/ belongs to ${USER}, which could leave a link or a FIFO at the log's name: touch, chown
@@ -254,8 +264,8 @@ case "$1" in
         rm -rf ${SCRIPTS_DIR}
     fi
 
-    # Delete tmp directory
-    if [ -d ${WAZUH_TMP_DIR} ]; then
+    # Delete tmp directory, unless it holds the copy of something that could not be restored
+    if [ -d ${WAZUH_TMP_DIR} ] && [ -z "${RESTORE_FAILED}" ]; then
         rm -rf ${WAZUH_TMP_DIR}
     fi
 
