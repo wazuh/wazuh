@@ -5395,6 +5395,44 @@ namespace
         }
         return count;
     }
+
+    /// liveThreadCount() once it settles. A joined thread's tid can linger in /proc/self/task for a
+    /// moment after join() returns, so counts taken after a join or a destructor must wait for it.
+    /// Without `expected` (baseline): polls every 10ms until 5 consecutive equal reads (or the deadline)
+    /// and returns the MINIMUM seen -- a leftover tid can only disappear, never appear.
+    /// With `expected`: polls until it reads `expected` or the deadline passes, and returns the last read.
+    /// Limit: this asserts "the thread ends", not "the thread was joined" -- a detach with the stop
+    /// signalled is indistinguishable.
+    std::size_t waitForStableThreadCount(std::size_t expected = std::string::npos,
+                                         std::chrono::milliseconds deadline = std::chrono::seconds(2))
+    {
+        constexpr std::size_t QUIET_READS = 5;
+        constexpr auto POLL = std::chrono::milliseconds(10);
+        const auto until = std::chrono::steady_clock::now() + deadline;
+
+        auto last = liveThreadCount();
+        if (expected != std::string::npos)
+        {
+            while (last != expected && std::chrono::steady_clock::now() < until)
+            {
+                std::this_thread::sleep_for(POLL);
+                last = liveThreadCount();
+            }
+            return last;
+        }
+
+        auto minimum = last;
+        std::size_t equalReads = 1;
+        while (equalReads < QUIET_READS && std::chrono::steady_clock::now() < until)
+        {
+            std::this_thread::sleep_for(POLL);
+            const auto current = liveThreadCount();
+            equalReads = current == last ? equalReads + 1 : 1;
+            last = current;
+            minimum = std::min(minimum, current);
+        }
+        return minimum;
+    }
 } // namespace
 
 /// flush_interval_seconds = 0 means the CALLER owns every flush: no background thread exists,
@@ -5403,7 +5441,7 @@ TEST_F(IndexerConnectorSyncTest, ZeroFlushIntervalStartsNoBackgroundThread)
 {
     config["flush_interval_seconds"] = 0;
 
-    const auto baseline = liveThreadCount();
+    const auto baseline = waitForStableThreadCount();
     {
         IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest);
         EXPECT_EQ(baseline, liveThreadCount()) << "a zero interval must not start a flush thread";
@@ -5415,7 +5453,7 @@ TEST_F(IndexerConnectorSyncTest, ZeroFlushIntervalStartsNoBackgroundThread)
         }
         connector.flush();
     }
-    EXPECT_EQ(baseline, liveThreadCount()) << "destruction must not leak a thread either";
+    EXPECT_EQ(waitForStableThreadCount(baseline), baseline) << "destruction must not leak a thread either";
     EXPECT_EQ(callCount, 1) << "the explicit flush must have posted the staged document";
 }
 
@@ -5471,12 +5509,13 @@ TEST_F(IndexerConnectorSyncTest, TimerFlushFailureIsReportedToTheOwningCaller)
 /// which pins that liveThreadCount() can tell the two configurations apart.
 TEST_F(IndexerConnectorSyncTest, NonZeroFlushIntervalStartsTheBackgroundThread)
 {
-    const auto baseline = liveThreadCount();
+    const auto baseline = waitForStableThreadCount();
     {
         IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest); // default interval
         EXPECT_EQ(baseline + 1, liveThreadCount()) << "a non-zero interval must start one flush thread";
     }
-    EXPECT_EQ(baseline, liveThreadCount()) << "the destructor must join the flush thread";
+    // Asserts the flush thread ends after destruction (see waitForStableThreadCount's limit).
+    EXPECT_EQ(waitForStableThreadCount(baseline), baseline) << "the destructor must stop the flush thread";
 }
 
 // Empty-buffer guard tests
@@ -5975,7 +6014,7 @@ TEST_F(IndexerConnectorSyncTest, ReducedScaleTimerSoakDeliversEveryDocumentExact
                 respondBulkSuccess(postParams);
             }));
 
-    const auto baseline = liveThreadCount();
+    const auto baseline = waitForStableThreadCount();
     std::vector<std::string> expected;
     {
         IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
@@ -6009,7 +6048,7 @@ TEST_F(IndexerConnectorSyncTest, ReducedScaleTimerSoakDeliversEveryDocumentExact
             thread.join();
         }
 
-        EXPECT_EQ(baseline + 1, liveThreadCount()) << "the soak must not grow threads";
+        EXPECT_EQ(waitForStableThreadCount(baseline + 1), baseline + 1) << "the soak must not grow threads";
         EXPECT_GE(recorder.bodyCount(), static_cast<size_t>(soakSeconds) / 2)
             << "the 1s timer was expected to flush the continuously refilled buffer on most ticks";
 
@@ -6019,7 +6058,7 @@ TEST_F(IndexerConnectorSyncTest, ReducedScaleTimerSoakDeliversEveryDocumentExact
             expected.insert(expected.end(), perStager.begin(), perStager.end());
         }
     }
-    EXPECT_EQ(baseline, liveThreadCount()) << "destruction must join the timer thread";
+    EXPECT_EQ(waitForStableThreadCount(baseline), baseline) << "destruction must stop the timer thread";
     ASSERT_FALSE(expected.empty()) << "the stagers never staged anything; the soak never exercised the timer";
     expectExactlyOnce(recorder.deliveredIds(), expected);
 }
