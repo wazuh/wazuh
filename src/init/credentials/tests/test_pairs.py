@@ -14,7 +14,7 @@ import stat
 import pytest
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives.asymmetric import ed25519, rsa
 from cryptography.x509.oid import ExtendedKeyUsageOID, ExtensionOID, NameOID
 
 from conftest import intermediate, pool_key, unparsable_certificate
@@ -282,9 +282,10 @@ def test_rotation_issuer_uses_valid_candidate(resolver, sandbox, mode):
 PEM = serialization.Encoding.PEM
 
 
-def _stage_pair(sandbox, name, issuer, issuer_key, chain=()):
-    """Stage `name` as a server leaf that `issuer` signed, followed in its file by the certificates of `chain`."""
-    key = pool_key()
+def _stage_pair(sandbox, name, issuer, issuer_key, chain=(), key=None):
+    """Stage `name` as a server leaf that `issuer` signed, followed in its file by the certificates of `chain`; on
+    `key` when given (otherwise an RSA key from the pool)."""
+    key = key or pool_key()
     now = datetime.datetime.now(datetime.timezone.utc)
     leaf = (x509.CertificateBuilder()
             .subject_name(x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "node1")]))
@@ -293,7 +294,7 @@ def _stage_pair(sandbox, name, issuer, issuer_key, chain=()):
             .add_extension(x509.BasicConstraints(ca=False, path_length=None), critical=True)
             .add_extension(x509.ExtendedKeyUsage([ExtendedKeyUsageOID.SERVER_AUTH]), critical=False)
             .add_extension(x509.SubjectAlternativeName([x509.DNSName("node1")]), critical=False)
-            .sign(issuer_key, hashes.SHA256()))
+            .sign(issuer_key, None if isinstance(issuer_key, ed25519.Ed25519PrivateKey) else hashes.SHA256()))
     pem = b"".join(cert.public_bytes(PEM) for cert in (leaf, *chain))
     sandbox.write(os.path.join(sandbox.certs, f"{name}.pem"), pem, mode=0o640, gid=sandbox.account_gid)
     sandbox.write(os.path.join(sandbox.certs, f"{name}-key.pem"),
@@ -358,6 +359,38 @@ def test_pair_through_intermediate_refused(resolver, sandbox, mode, case, reason
     code, _, err = run(resolver, sandbox, mode)
     assert code == 1 and f"INVALID {sandbox.certs}/apid.pem: {reason}" in err, err
     assert {n: digest(sandbox, n) for n in before} == before                    # refused, never repaired
+
+
+def _ed25519_intermediate(root, root_key, cn="ed25519-intermediate-ca"):
+    key = ed25519.Ed25519PrivateKey.generate()
+    now = datetime.datetime.now(datetime.timezone.utc)
+    cert = (x509.CertificateBuilder().subject_name(x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, cn)]))
+            .issuer_name(root.subject).public_key(key.public_key()).serial_number(x509.random_serial_number())
+            .not_valid_before(now - datetime.timedelta(days=1)).not_valid_after(now + datetime.timedelta(days=365))
+            .add_extension(x509.BasicConstraints(ca=True, path_length=None), critical=True)
+            .sign(root_key, hashes.SHA256()))
+    return cert, key
+
+
+@pytest.mark.parametrize("mode", ["--check", "--prestart"])
+@pytest.mark.parametrize("case,reason", [
+    ("leaf key", "an Ed25519 key; use RSA of 2048 bits or more, or ECDSA on P-256, P-384 or P-521"),
+    ("intermediate key", "issuer CA (CN=ed25519-intermediate-ca): an Ed25519 key; use RSA of 2048 bits or more, or "
+                         "ECDSA on P-256, P-384 or P-521"),
+])
+def test_pair_on_an_unusable_key_type(resolver, sandbox, mode, case, reason):
+    """A staged pair whose leaf, or a CA on whose path, has a key the certificate checks do not accept is refused in
+    plain words, naming the certificate, not with the path builder's debug text."""
+    sandbox.stage_ca()
+    root, root_key = ca_cert(sandbox), ca_key(sandbox)
+    if case == "leaf key":
+        _stage_pair(sandbox, "apid", root, root_key, key=ed25519.Ed25519PrivateKey.generate())
+    else:
+        middle, middle_key = _ed25519_intermediate(root, root_key)
+        _stage_pair(sandbox, "apid", middle, middle_key, chain=(middle,))
+    code, _, err = run(resolver, sandbox, mode)
+    assert code == 1 and f"INVALID {sandbox.certs}/apid.pem: {reason}\n" in err, err
+    assert "AlgorithmIdentifier" not in err and "internal error" not in err, err
 
 
 def test_bundle_ca_anchors_remoted_only(resolver, sandbox):

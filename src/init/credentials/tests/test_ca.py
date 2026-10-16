@@ -171,6 +171,59 @@ def test_staged_anchor_only(resolver, sandbox):
                 f"{sandbox.conf}/ca\n") in err
 
 
+def _ca_with_key(kind):
+    """A self-signed CA on a key of `kind`; Ed25519 and Ed448 sign without a separate hash."""
+    from cryptography.hazmat.primitives.asymmetric import ec, ed448, ed25519
+    key = {"Ed25519": ed25519.Ed25519PrivateKey.generate, "Ed448": ed448.Ed448PrivateKey.generate,
+           "RSA 1024": lambda: rsa.generate_private_key(public_exponent=65537, key_size=1024),
+           "EC secp256k1": lambda: ec.generate_private_key(ec.SECP256K1()),
+           "EC P-384": lambda: ec.generate_private_key(ec.SECP384R1())}[kind]()
+    now = datetime.datetime.now(datetime.timezone.utc)
+    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "operator-ca")])
+    cert = (x509.CertificateBuilder().subject_name(name).issuer_name(name).public_key(key.public_key())
+            .serial_number(x509.random_serial_number()).not_valid_before(now - datetime.timedelta(days=1))
+            .not_valid_after(now + datetime.timedelta(days=3650))
+            .add_extension(x509.BasicConstraints(ca=True, path_length=None), critical=True)
+            .sign(key, None if kind.startswith("Ed") else hashes.SHA256()))
+    return key, cert.public_bytes(serialization.Encoding.PEM)
+
+
+UNUSABLE_CA_KEYS = {
+    "Ed25519": "an Ed25519 key",
+    "Ed448": "an Ed448 key",
+    "RSA 1024": "an RSA key of 1024 bits",
+    "EC secp256k1": "an ECDSA key on secp256k1",
+}
+ACCEPTED_KEYS = "use RSA of 2048 bits or more, or ECDSA on P-256, P-384 or P-521"
+
+
+@pytest.mark.parametrize("with_key", [True, False], ids=["with key", "without key"])
+@pytest.mark.parametrize("kind", sorted(UNUSABLE_CA_KEYS))
+def test_staged_ca_with_an_unusable_key_type(resolver, sandbox, kind, with_key):
+    """A CA whose key type the certificate checks do not accept is refused as INVALID, in plain words, before
+    anything is signed with it: never an internal error, never a pair issued from it."""
+    key, cert = _ca_with_key(kind)
+    stage(sandbox, cert, key_pem(key) if with_key else None)
+    expected = f"INVALID {ca_path(sandbox, 'root-ca.pem')}: {UNUSABLE_CA_KEYS[kind]}; {ACCEPTED_KEYS}\n"
+    for mode in ("--install", "--prestart", "--check"):
+        code, _, err = run(resolver, sandbox, mode)
+        assert code == (0 if mode == "--install" else 1), (mode, err)
+        assert expected in err, (mode, err)
+        assert "internal error" not in err and "AlgorithmIdentifier" not in err, (mode, err)
+    for name in ("remoted.pem", "apid.pem", "root-ca.pem"):
+        assert not os.path.exists(os.path.join(sandbox.certs, name)), name
+
+
+def test_staged_ec_ca_issues_pairs(resolver, sandbox):
+    """ECDSA on an accepted curve is a CA like any other: it issues both pairs, and they pass the start's checks."""
+    key, cert = _ca_with_key("EC P-384")
+    stage(sandbox, cert, key_pem(key))
+    code, out, err = run(resolver, sandbox, "--install")
+    assert code == 0 and err == "", err
+    assert "remoted.pem: issued" in out and "apid.pem: issued" in out
+    assert run(resolver, sandbox, "--check")[0::2] == (0, "")
+
+
 def test_key_only(resolver, sandbox):
     key, _ = make_cert("x")
     stage(sandbox, key=key_pem(key))

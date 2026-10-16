@@ -534,6 +534,7 @@ import datetime  # noqa: E402
 
 from cryptography import x509  # noqa: E402
 from cryptography.hazmat.primitives import hashes, serialization  # noqa: E402
+from cryptography.hazmat.primitives.asymmetric import ed25519  # noqa: E402
 from cryptography.x509.oid import NameOID  # noqa: E402
 
 from conftest import intermediate, pool_key  # noqa: E402
@@ -680,8 +681,8 @@ def _renewed(cert, key, days, *, path_length=None):
             .sign(key, hashes.SHA256()))
 
 
-def _leaf(signer, signer_key, days, *, eku=(ExtendedKeyUsageOID.CLIENT_AUTH,), is_ca=False):
-    key = pool_key()
+def _leaf(signer, signer_key, days, *, eku=(ExtendedKeyUsageOID.CLIENT_AUTH,), is_ca=False, key=None):
+    key = key or pool_key()
     now = datetime.datetime.now(datetime.timezone.utc)
     leaf = (x509.CertificateBuilder()
             .subject_name(x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "wazuh-manager")]))
@@ -690,9 +691,43 @@ def _leaf(signer, signer_key, days, *, eku=(ExtendedKeyUsageOID.CLIENT_AUTH,), i
             .not_valid_after(now + datetime.timedelta(days=days[1]))
             .add_extension(x509.BasicConstraints(ca=is_ca, path_length=None), critical=True)
             .add_extension(x509.ExtendedKeyUsage(list(eku)), critical=False)
-            .sign(signer_key, hashes.SHA256()))
+            .sign(signer_key, None if isinstance(signer_key, ed25519.Ed25519PrivateKey) else hashes.SHA256()))
     return leaf, key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
                                    serialization.NoEncryption())
+
+
+def _ed25519_ca(cn="wazuh-indexer-ca"):
+    key = ed25519.Ed25519PrivateKey.generate()
+    now = datetime.datetime.now(datetime.timezone.utc)
+    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, cn)])
+    cert = (x509.CertificateBuilder().subject_name(name).issuer_name(name).public_key(key.public_key())
+            .serial_number(x509.random_serial_number()).not_valid_before(now - datetime.timedelta(days=1))
+            .not_valid_after(now + datetime.timedelta(days=365))
+            .add_extension(x509.BasicConstraints(ca=True, path_length=None), critical=True).sign(key, None))
+    return cert, key
+
+
+@pytest.mark.parametrize("case,blamed,reason", [
+    ("indexer CA", "indexer-ca.pem", "a CA it holds (CN=wazuh-indexer-ca) has an Ed25519 key; use RSA of 2048 bits "
+                                     "or more, or ECDSA on P-256, P-384 or P-521"),
+    ("client leaf", "indexer-connector.pem", "an Ed25519 key; use RSA of 2048 bits or more, or ECDSA on P-256, P-384 "
+                                             "or P-521"),
+])
+def test_indexer_material_on_an_unusable_key_type(resolver, sandbox, case, blamed, reason):
+    """Indexer material on a key the certificate checks do not accept is refused in plain words, for what it is,
+    never as a matter of time."""
+    sandbox.stage_ca()
+    if case == "indexer CA":
+        ca, ca_key = _ed25519_ca()
+        leaf, key_pem = _leaf(ca, ca_key, VALID)
+    else:
+        ca, ca_key = intermediate(None, None, "wazuh-indexer-ca", days=(-90, 3650))
+        leaf, key_pem = _leaf(ca, ca_key, VALID, key=ed25519.Ed25519PrivateKey.generate())
+    stage_trust(sandbox, {"ca": _pem(ca), "client": _pem(leaf) + _pem(ca), "key": key_pem})
+    for mode in ("--check", "--prestart"):
+        code, _, err = run(resolver, sandbox, mode)
+        assert code == 1 and f"INVALID {certs(sandbox, blamed)}: {reason}\n" in err, (mode, err)
+        assert "AlgorithmIdentifier" not in err and "WARNING" not in err, (mode, err)
 
 
 # A CA renewed in place (same name and key) after the client pair it issued expired: the windows do not overlap, so
