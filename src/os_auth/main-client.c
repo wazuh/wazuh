@@ -307,6 +307,7 @@ int main(int argc, char **argv)
     OS_ReadKeys(&agent_keys, W_RAW_KEY, 0);
 
     w_enrollment_ctx *cfg = w_enrollment_init(target_cfg, cert_cfg, &agent_keys);
+    cfg->recv_timeout = getDefine_Int("agent", "recv_timeout", 1, 600);
     int ret = w_enrollment_request_key(cfg, server_address, network_interface);
 
     w_enrollment_target_destroy(target_cfg);

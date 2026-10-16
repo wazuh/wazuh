@@ -112,6 +112,7 @@ w_enrollment_ctx * w_enrollment_init(w_enrollment_target *target, w_enrollment_c
     cfg->ssl = NULL;
     cfg->allow_localhost = true;
     cfg->delay_after_enrollment = 20;
+    cfg->recv_timeout = 60;
     cfg->keys = keys;
     os_strdup(__ossec_version, cfg->agent_version);
     return cfg;
