@@ -259,6 +259,13 @@ int test_teardown_enrollment_load_pass(void **state) {
 }
 
 /**********************************************/
+/************* w_enrollment_init ****************/
+void test_w_enrollment_init_default_recv_timeout(void **state) {
+    w_enrollment_ctx *cfg = *state;
+    assert_int_equal(cfg->recv_timeout, 60);
+}
+
+/**********************************************/
 /************* w_enrollment_concat_src_ip ****************/
 void test_w_enrollment_concat_src_ip_invalid_ip(void **state) {
     char *buf = *state;
@@ -1289,6 +1296,8 @@ void test_w_enrollment_load_pass_file_with_content(void **state) {
 /**********************************************/
 int main() {
     const struct CMUnitTest tests[] = {
+        // w_enrollment_init
+        cmocka_unit_test_setup_teardown(test_w_enrollment_init_default_recv_timeout, test_setup_context, test_teardown_context),
         // w_enrollment_concat_src_ip
         cmocka_unit_test_setup_teardown(test_w_enrollment_concat_src_ip_invalid_ip, test_setup_concats, test_teardown_concats),
         cmocka_unit_test_setup_teardown(test_w_enrollment_concat_src_ip_valid_ip, test_setup_concats, test_teardown_concats),

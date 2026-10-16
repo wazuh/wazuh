@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.14.11]
 
+### Agent
+
+#### Fixed
+
+- Fixed `agent-auth` failing at random with `SSL error (2)` because it did not set the receive timeout of its enrollment socket. ([#40418](https://github.com/wazuh/wazuh/issues/40418))
+
 ## [v4.14.10]
 
 ### Manager
