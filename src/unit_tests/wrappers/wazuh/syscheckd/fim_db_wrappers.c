@@ -163,6 +163,11 @@ void __wrap_fim_db_teardown() {
     function_called();
 }
 
+char *__wrap_fim_db_utf8_sanitize(const char *input) {
+    check_expected(input);
+    return mock_type(char *);
+}
+
 void __wrap__imp__dbsync_initialize() {
     function_called();
 }
