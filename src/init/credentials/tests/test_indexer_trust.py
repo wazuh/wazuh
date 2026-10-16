@@ -785,6 +785,61 @@ def test_structural_defect_under_a_renewed_ca_still_refuses(resolver, sandbox, c
         assert "WARNING: " + certs(sandbox, "indexer-connector.pem") not in err, (mode, err)
 
 
+# A rotation the indexer published early: a new CA and a pair it issued, where only time refuses the new set. The
+# installed CA and pair are judged together, against each other, and the new CA and pair together: a set that works
+# now is never replaced by one the clock refuses, as a whole, CA included.
+POSTPONED = "not imported over the indexer CA and client pair in place, which are valid now"
+
+
+@pytest.mark.parametrize("case,blamed,said", [
+    ("pair not valid yet", "manager-client.pem", "not valid until "),
+    ("ca not valid yet", "ca.pem", "a CA it holds (CN=wazuh-indexer-ca) not valid until "),
+])
+def test_rotation_to_a_set_not_valid_yet_is_postponed(resolver, sandbox, case, blamed, said):
+    installed = Pki().files()
+    export(sandbox, installed)
+    assert run(resolver, sandbox, "--install")[0] == 0
+    before = digests(sandbox)
+    rotated = Pki().files(FUTURE) if case == "pair not valid yet" else Pki(ca_days=(1, 3650)).files((2, 365))
+    export(sandbox, rotated)
+    for mode in ("--check", "--prestart", "--upgrade"):
+        code, out, err = run(resolver, sandbox, mode)
+        assert code == 0, (mode, err)
+        assert f"WARNING: {sandbox.indexer_export}/{blamed}: {said}" in err and POSTPONED in err, (mode, err)
+        assert "INVALID" not in err and "MISSING" not in err, (mode, err)
+        assert digests(sandbox) == before, mode                       # all three files of the installed set
+        assert all(os.path.exists(certs(sandbox, m)) for m in MARKERS), mode
+    assert f"{certs(sandbox, 'indexer-ca.pem')}: kept; " in out, out
+
+
+def test_postponed_rotation_happens_once_the_new_set_is_valid(resolver, sandbox):
+    export(sandbox, Pki().files())
+    run(resolver, sandbox, "--install")
+    pki = Pki()
+    export(sandbox, pki.files(FUTURE))
+    run(resolver, sandbox, "--prestart")
+    valid = pki.files()                                    # the same new CA, its pair now valid
+    export(sandbox, valid)
+    code, out, err = run(resolver, sandbox, "--prestart")
+    assert code == 0 and err == "", err
+    assert read(certs(sandbox, "indexer-ca.pem")) == valid["ca"]
+    assert read(certs(sandbox, "indexer-connector.pem")) == valid["client"]
+    assert "re-imported" in out
+
+
+def test_rotation_not_valid_yet_fills_a_gap(resolver, sandbox):
+    """The installed set no longer works (its pair expired): the new set the clock refuses is imported, with a
+    warning, as material the clock refuses is into a gap."""
+    export(sandbox, Pki().files(EXPIRED))
+    run(resolver, sandbox, "--install")
+    rotated = Pki().files(FUTURE)
+    export(sandbox, rotated)
+    code, out, err = run(resolver, sandbox, "--prestart")
+    assert code == 0 and "INVALID" not in err, err
+    assert read(certs(sandbox, "indexer-ca.pem")) == rotated["ca"]
+    assert read(certs(sandbox, "indexer-connector.pem")) == rotated["client"]
+
+
 def test_check_counts_warnings(resolver, sandbox):
     stage_trust(sandbox, Pki().files(EXPIRED))
     before = sandbox.tree_state()
