@@ -87,7 +87,7 @@ while IFS= read -r dir; do
     prefix="deps/pool/${ref}"
     inputs="$(json_get "${manifest}" inputs_hash)"
 
-    if aws s3api get-object --bucket "${BUCKET}" --key "${prefix}/manifest.json" "${WORK}/remote.json" >/dev/null 2>&1; then
+    if aws s3api get-object --bucket "${BUCKET}" --key "${prefix}/manifest.json" "${WORK}/remote.json" >/dev/null 2>"${WORK}/get.err"; then
         if [ "$(json_get "${WORK}/remote.json" inputs_hash)" != "${inputs}" ]; then
             err "${ref} is published with other inputs"
             exit 1
@@ -95,6 +95,12 @@ while IFS= read -r dir; do
         log "${ref} is already published"
         skipped=$((skipped + 1))
         continue
+    fi
+    # Only a missing key means unpublished; any other error (a transient 403, a cut connection) stops the run
+    # before it uploads over a ref that may be complete.
+    if ! grep -q 'NoSuchKey' "${WORK}/get.err"; then
+        err "cannot read ${prefix}/manifest.json: $(cat "${WORK}/get.err")"
+        exit 1
     fi
 
     # Every file the manifest lists must be here, and nothing else may sit under the ref:

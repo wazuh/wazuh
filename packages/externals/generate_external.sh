@@ -197,11 +197,15 @@ if [ -z "${S3_PATH}" ]; then
     exit 0
 fi
 
-# macOS's /usr/bin/tar is BSD tar and rejects --owner/--group/--no-same-owner.
-# Workflow installs gnu-tar (gtar) via brew on macOS legs; everywhere else
-# `tar` already is GNU tar.
+# macOS's /usr/bin/tar is BSD tar: it rejects --owner/--group/--no-same-owner and
+# adds AppleDouble ._* entries that would reach the pool. The workflow installs
+# gnu-tar (gtar) via brew on macOS legs; everywhere else `tar` already is GNU tar.
+export COPYFILE_DISABLE=1
 if command -v gtar >/dev/null 2>&1; then
     TAR="gtar"
+elif [ "$(uname -s)" = "Darwin" ]; then
+    echo "[generate_external] ERROR: GNU tar (gtar) is required on macOS: brew install gnu-tar" >&2
+    exit 1
 else
     TAR="tar"
 fi

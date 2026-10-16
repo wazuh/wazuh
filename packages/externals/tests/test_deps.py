@@ -804,6 +804,15 @@ def test_publish_pool_upload_error_is_not_an_existing_key(tmp_path):
 
 
 @needs_publish
+def test_publish_pool_unreadable_manifest_is_not_unpublished(tmp_path):
+    # A transient error reading the published manifest.json must not start uploading over the ref.
+    refs = pool_tree(tmp_path / "pool", {"curl": CURL_FILES})
+    result, calls, store = run_publish(tmp_path, tmp_path / "pool", get_fails=f"{refs['curl']}/manifest.json")
+    assert result.returncode != 0 and "cannot read" in result.stderr and "connection reset" in result.stderr
+    assert puts(calls) == []
+
+
+@needs_publish
 def test_publish_pool_cli_without_if_none_match(tmp_path):
     # An AWS CLI without the option fails on the first upload and writes nothing.
     pool_tree(tmp_path / "pool", {"curl": CURL_FILES})
@@ -1869,11 +1878,64 @@ def test_scan_covers_every_target():
     assert any('--manifest "$manifest"' in call for call in calls)
 
 
+COMPILE_CPYTHON = deps.REPO / "framework" / "cpython" / "compile.sh"
+
+
+def run_download_cpython(tmp_path, sha256):
+    """Run download_cpython() of compile.sh with a curl that serves a local release tarball."""
+    root = tmp_path / "root"
+    (root / "packages" / "externals").mkdir(parents=True)
+    entry = {"name": "cpython", "version": "3.12.14", "revision": "v3.12.14", "upstream_sha256": sha256,
+             "url": "https://github.com/python/cpython/archive/refs/tags/v{version}.tar.gz"}
+    (root / "packages" / "externals" / "dependencies.json").write_text(json.dumps({"entries": [entry]}))
+    tarball = tmp_path / "release.tar.gz"
+    with tarfile.open(tarball, "w:gz") as archive:
+        info = tarfile.TarInfo("cpython-3.12.14/README.rst")
+        archive.addfile(info, io.BytesIO(b""))
+    fake = tmp_path / "bin"
+    fake.mkdir()
+    (fake / "curl").write_text(f'#!/bin/sh\nwhile [ "$1" != "-o" ]; do shift; done\ncp {shlex.quote(str(tarball))} "$2"\n')
+    (fake / "curl").chmod(0o755)
+    body = subprocess.run(["sed", "-n", "/^download_cpython() {/,/^}/p", str(COMPILE_CPYTHON)],
+                          capture_output=True, text=True, check=True).stdout
+    assert body
+    script = f"set -e\nWAZUH_ROOT_DIR={shlex.quote(str(root))}\nCPYTHON_DIR=$WAZUH_ROOT_DIR/src/external/cpython\n{body}\ndownload_cpython\n"
+    result = subprocess.run(["bash", "-c", script], capture_output=True, text=True,
+                            env={**os.environ, "PATH": f"{fake}:{os.environ['PATH']}"}, timeout=60)
+    return result, root / "src" / "external" / "cpython", hashlib.sha256(tarball.read_bytes()).hexdigest()
+
+
+@pytest.mark.skipif(shutil.which("sha256sum") is None, reason="needs sha256sum")
+def test_compile_cpython_checks_the_release_sha256(tmp_path):
+    # A tag can move: the sources must be the release tarball the inventory pins.
+    result, _, digest = run_download_cpython(tmp_path / "bad", "0" * 64)
+    assert result.returncode != 0 and "sha256 mismatch" in result.stderr
+    result, cpython, _ = run_download_cpython(tmp_path / "good", digest)
+    assert result.returncode == 0, result.stderr
+    assert (cpython / "README.rst").is_file()
+
+
+def test_sources_of_own_recipes_are_not_cloned_from_tags():
+    # cpython and libbpf come from the inventory URL, checked against upstream_sha256.
+    compile_sh = COMPILE_CPYTHON.read_text(encoding="utf-8")
+    ebpf = (HERE.parent / "ebpf" / "build_ebpf.sh").read_text(encoding="utf-8")
+    assert "github.com/python/cpython.git" not in compile_sh and "upstream_sha256" in compile_sh
+    assert "github.com/libbpf/libbpf.git" not in ebpf and "upstream_sha256" in ebpf
+    assert 'sha256sum "${TMP}/libbpf.tar.gz"' in ebpf
+
+
 def test_build_workflow_paths():
     blocks = paths_blocks(EXTERNALS_WORKFLOW.read_text(encoding="utf-8"))
     assert len(blocks) == 1, "the workflow needs one pull_request paths list"
     required = deps.key_paths() + ["src/deps.lock.mk", EXTERNALS_WORKFLOW.relative_to(deps.REPO).as_posix()]
     assert [rel for rel in required if not covered(rel, blocks[0])] == []
+    # The scripts and actions the jobs run trigger it too, not only the key paths.
+    text = EXTERNALS_WORKFLOW.read_text(encoding="utf-8")
+    scripts = sorted(set(re.findall(r"packages/externals/[\w/.-]+\.(?:sh|py)", text)))
+    actions = sorted(set(re.findall(r"uses: \./(\.github/actions/[\w-]+)", text)))
+    assert scripts and actions
+    assert [rel for rel in scripts + [f"{a}/action.yml" for a in actions] if not covered(rel, blocks[0])] == []
+    assert "!packages/externals/tests/**" in blocks[0]
 
 
 def test_lock_workflow_paths():
@@ -2233,7 +2295,7 @@ def zip_file(path, members):
             archive.writestr(member, content)
 
 
-def generate_pack(tmp_path, zips, toolchain=None):
+def generate_pack(tmp_path, zips, toolchain=None, env=None):
     """Run only the pack step of generate_external.sh over external_artifacts/<zip> on an rpm-amd64 manager leg."""
     artifacts = tmp_path / "out" / "external_artifacts"
     artifacts.mkdir(parents=True)
@@ -2247,7 +2309,8 @@ def generate_pack(tmp_path, zips, toolchain=None):
     script = tmp_path / "pack.sh"
     script.write_text(f"set -e\nSYSTEM=rpm ARCHITECTURE=amd64 TARGET=manager OUTDIR={shlex.quote(str(tmp_path / 'out'))} "
                       f"WAZUH_PATH={shlex.quote(str(deps.REPO))}\n" + body)
-    return subprocess.run(["bash", str(script)], capture_output=True, text=True, timeout=60), tmp_path / "out"
+    return subprocess.run(["bash", str(script)], capture_output=True, text=True, timeout=60,
+                          env=None if env is None else {**os.environ, **env}), tmp_path / "out"
 
 
 @needs_zip
@@ -2269,6 +2332,20 @@ def test_generate_pack_pool_layout(tmp_path):
     assert f"pool/{LOCK_REFS['curl']}/linux/amd64/curl.tar.gz" in names
     assert all(n.startswith(("pool", "toolchain")) for n in names)
     assert toolchain == b"leg: rpm-amd64-manager\ncmake: cmake version 3.31.6\n"
+
+
+@needs_zip
+@pytest.mark.skipif(shutil.which("gtar") is not None, reason="needs a host without gtar")
+def test_generate_pack_needs_gtar_on_macos(tmp_path):
+    # BSD tar adds AppleDouble ._* entries that would reach the pool.
+    fake = tmp_path / "bin"
+    fake.mkdir()
+    (fake / "uname").write_text("#!/bin/sh\necho Darwin\n")
+    (fake / "uname").chmod(0o755)
+    result, out = generate_pack(tmp_path, {"curl_src.zip": {"curl/a.c": "c"}},
+                                env={"PATH": f"{fake}:{os.environ['PATH']}"})
+    assert result.returncode != 0 and "GNU tar (gtar) is required on macOS" in result.stderr
+    assert not (out / "pool").exists()
 
 
 @needs_zip
