@@ -1,7 +1,12 @@
 #include <sca_reason_sanitizer.hpp>
 
+#include <string_view>
+
 namespace
 {
+    /// @brief Ends a reason that had to be cut, on a line of its own.
+    constexpr std::string_view TRUNCATION_MARKER {"\n[truncated]"};
+
     /// @brief Length of the UTF-8 sequence a lead byte starts, and the range allowed for the byte
     ///        after it. A length of 0 means the byte cannot start a sequence.
     struct SequenceShape
@@ -116,6 +121,19 @@ namespace sca
     {
         const auto valid = ReplaceInvalidUtf8(reason);
 
-        return valid.size() <= maxLength ? valid : CutToFit(valid, maxLength);
+        if (valid.size() <= maxLength)
+        {
+            return valid;
+        }
+
+        // The marker counts inside the cap; a cap too small to hold it gets a plain cut
+        if (maxLength <= TRUNCATION_MARKER.size())
+        {
+            return CutToFit(valid, maxLength);
+        }
+
+        auto cut = CutToFit(valid, maxLength - TRUNCATION_MARKER.size());
+        cut += TRUNCATION_MARKER;
+        return cut;
     }
 } // namespace sca

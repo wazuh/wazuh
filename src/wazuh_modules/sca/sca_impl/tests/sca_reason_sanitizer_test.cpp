@@ -30,11 +30,44 @@ TEST(SanitizeReasonTest, TruncatedMultibyteSequenceIsReplaced)
     EXPECT_NO_THROW(nlohmann::json({{"reason", sanitized}}).dump());
 }
 
-TEST(SanitizeReasonTest, OversizedReasonIsCutAtTheLastWholeLine)
+TEST(SanitizeReasonTest, OversizedReasonIsCutAtTheLastWholeLineAndMarked)
 {
     const std::string reason = "first reason line\nsecond reason line\nthird reason line";
 
-    EXPECT_EQ(SanitizeReason(reason, 30), "first reason line");
+    EXPECT_EQ(SanitizeReason(reason, 30), "first reason line\n[truncated]");
+}
+
+TEST(SanitizeReasonTest, OversizedSingleLineIsCutOutsideAMultibyteSequenceAndMarked)
+{
+    // 'é' straddles the room left once the marker is counted, so the whole character goes.
+    const std::string reason = "abcdefg\xc3\xa9" "hijklmnopqrstu";
+
+    const auto sanitized = SanitizeReason(reason, 20);
+
+    EXPECT_EQ(sanitized, "abcdefg\n[truncated]");
+    EXPECT_NO_THROW(nlohmann::json({{"reason", sanitized}}).dump());
+}
+
+TEST(SanitizeReasonTest, CapTooSmallForTheMarkerCutsWithoutIt)
+{
+    const std::string reason = "first reason line\nsecond reason line";
+
+    EXPECT_EQ(SanitizeReason(reason, 10), "first reas");
+}
+
+TEST(SanitizeReasonTest, SanitizingATruncatedReasonAgainChangesNothing)
+{
+    std::string reason;
+
+    for (int line = 0; line < 100; ++line)
+    {
+        reason += "f:/etc/ssh/sshd_config -> r:^\\s*Ciphers\n";
+    }
+
+    const auto once = SanitizeReason(reason, 1024);
+
+    EXPECT_LE(once.size(), 1024U);
+    EXPECT_EQ(SanitizeReason(once, 1024), once);
 }
 
 TEST(SanitizeReasonTest, OversizedSingleLineIsCutOutsideAMultibyteSequence)
