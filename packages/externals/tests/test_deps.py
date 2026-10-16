@@ -175,6 +175,13 @@ def test_pin_file_missing(tmp_path):
     assert result == ["cpython: cannot read framework/.python-version to check `version`"]
 
 
+def components(tmp_path, pointed, ignored=()):
+    path = tmp_path / "components.json"
+    path.write_text(json.dumps({"components": [{"name": n, "dependency": n} for n in pointed],
+                                "external_ignore": [{"dir": d, "reason": "test"} for d in ignored]}))
+    return path
+
+
 def test_cli_exit_codes(tmp_path):
     good = tmp_path / "good.json"
     good.write_text(json.dumps(minimal()))
@@ -182,10 +189,31 @@ def test_cli_exit_codes(tmp_path):
     broken = minimal()
     broken["entries"][0]["cpe"] = "cpe:2.3:a:haxx:curl:8.12.1:*:*:*:*:*:*:*"
     bad.write_text(json.dumps(broken))
-    assert run("check", "--no-make", "--inventory", str(good)).returncode == 0
-    result = run("check", "--no-make", "--inventory", str(bad))
+    manifest = str(components(tmp_path, ["curl", "openssl", "zlib"]))
+    assert run("check", "--no-make", "--inventory", str(good), "--components", manifest).returncode == 0
+    result = run("check", "--no-make", "--inventory", str(bad), "--components", manifest)
     assert result.returncode == 1 and "ERROR: curl: CPE" in result.stderr
     assert run().returncode == 2
+
+
+def test_check_components_real_tree():
+    assert deps.check_components(deps.load(deps.DEFAULT_INVENTORY)["entries"]) == []
+
+
+def test_check_components_ignored_dir(tmp_path):
+    assert deps.check_components(minimal()["entries"], components(tmp_path, ["curl", "zlib"], ["openssl"])) == []
+
+
+@pytest.mark.parametrize("pointed,message", [
+    (["curl", "zlib"], "openssl: no component in components.json"),
+    (["curl", "openssl", "zlib", "lua"], "lua: a component of components.json points at it, but it is not in the inventory"),
+], ids=["missing", "dangling"])
+def test_check_components_errors(pointed, message, tmp_path):
+    manifest = str(components(tmp_path, pointed))
+    good = tmp_path / "good.json"
+    good.write_text(json.dumps(minimal()))
+    result = run("check", "--no-make", "--inventory", str(good), "--components", manifest)
+    assert result.returncode == 1 and f"ERROR: {message}" in result.stderr
 
 
 def overlay_tree(root, name, files):
@@ -291,6 +319,61 @@ def test_flatten_rejects_invalid(tmp_path):
     bad.write_text(json.dumps(doc(entry("zlib", format="rar"))))
     result = run("flatten", "--inventory", str(bad))
     assert result.returncode == 1 and result.stdout == "" and "ERROR: zlib:" in result.stderr
+
+
+NOTICES = deps.REPO / "src" / "engine" / "tools" / "third-party-notices" / "generate.py"
+
+
+def notices_module(monkeypatch, manifest=None, inventory=None):
+    spec = importlib.util.spec_from_file_location("third_party_notices", NOTICES)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    if manifest is not None:
+        monkeypatch.setattr(module, "MANIFEST", str(manifest))
+    if inventory is not None:
+        monkeypatch.setattr(module, "INVENTORY", str(inventory))
+    return module
+
+
+def test_third_party_readme_matches_inventory():
+    # The README table and THIRD-PARTY-NOTICES take version, author, homepage and license from the inventory.
+    result = subprocess.run([sys.executable, str(NOTICES), "readme", "--check", str(deps.REPO / "README.md")],
+                            capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+
+
+def test_third_party_fields_from_inventory(tmp_path, monkeypatch):
+    manifest = tmp_path / "components.json"
+    manifest.write_text(json.dumps({"components": [
+        {"name": "zlib", "dependency": "zlib", "artefacts": ["manager"], "readme_license": "zlib License"}]}))
+    inventory = tmp_path / "deps.json"
+    inventory.write_text(json.dumps(minimal()))
+    module = notices_module(monkeypatch, manifest, inventory)
+    component = module.load_manifest()["components"][0]
+    assert (component["version"], component["author"], component["homepage"], component["spdx"]) == \
+        ("1.0.0", "upstream", "https://example.com/zlib", "MIT")
+
+
+@pytest.mark.parametrize("component,message", [
+    ({"name": "zlib", "dependency": "zlib", "version": "9.9", "artefacts": ["manager"]}, "version come from the inventory"),
+    ({"name": "zlib", "dependency": "nosuch", "artefacts": ["manager"]}, "dependency nosuch is not in"),
+], ids=["field-twice", "unknown-dependency"])
+def test_third_party_component_errors(component, message, tmp_path, monkeypatch):
+    manifest = tmp_path / "components.json"
+    manifest.write_text(json.dumps({"components": [component]}))
+    inventory = tmp_path / "deps.json"
+    inventory.write_text(json.dumps(minimal()))
+    module = notices_module(monkeypatch, manifest, inventory)
+    with pytest.raises(module.GenError, match=message):
+        module.load_manifest()
+
+
+def test_third_party_python_overrides_without_inventory(tmp_path, monkeypatch):
+    # The internal tools packages build from src/engine alone, without the inventory.
+    module = notices_module(monkeypatch, inventory=tmp_path / "missing.json")
+    assert module.python_overrides()
+    with pytest.raises(module.GenError, match="cannot load inventory"):
+        module.load_manifest()
 
 
 def test_sbom_real_tree(tmp_path):

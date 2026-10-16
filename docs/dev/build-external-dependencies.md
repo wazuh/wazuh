@@ -78,7 +78,7 @@ make -C src deps TARGET=manager DEPS_POOL_URL=file:///tmp/pool
 ## Bumping a dependency
 
 1. Edit `packages/externals/dependencies.json` (version, revision, `url`, sha256 of the downloaded archive, patches). For `libbpf-bootstrap` the revision must match `LIBBPF_TAG` in `ebpf/build_ebpf.sh`, for `cpython` the version must match `framework/.python-version`.
-2. Run `deps.py check`, `deps.py readme` and `deps.py lock`, and commit `dependencies.json`, `README.md` and `src/deps.lock.mk`.
+2. Run `deps.py check`, `deps.py lock` and `src/engine/tools/third-party-notices/generate.py readme --write README.md`, and commit `dependencies.json`, `src/deps.lock.mk` and `README.md`. After `make deps`, regenerate `THIRD-PARTY-NOTICES` with `generate.py notices --artefact manager --external src/external -o THIRD-PARTY-NOTICES`. A new dependency also needs its component in `src/engine/tools/third-party-notices/components.json`, with `dependency` set to its name and the paths of its license files.
 3. Open the PR in Draft. The build workflow runs on pull requests, drafts included, that touch a path of the keys. `deps.py plan` lists the entries whose ref the pool does not have, and only those are built; it fails if a published ref was built from other inputs. A change that gives no new ref, such as a license fix, builds nothing.
 4. When `pool`, `smoke-build`, `smoke-sources` and the rest are green, approve the `deps-publish` environment on the `publish` job. Whoever approves reviews the whole diff of the PR at that SHA, workflow included. `publish` is skipped until the `DEPS_POOL_PUBLISH` repository variable is `true`.
 5. Mark the PR ready for review after the refs are published: the rest of the CI downloads the refs of the lock from the pool and fails on one that is not published yet. The lock check (`deps.py pool-check`) stays red until every ref of the lock is in the pool with the inputs it was keyed on; re-run it after publishing. Merge once it is green.
@@ -159,7 +159,6 @@ It needs clang 7 or later with the BPF backend and Linux headers 4.13 or later, 
 |---------|---------|---------|
 | `check` | Schema, links, pins and names against `make print-EXTERNAL_RES` for each target. | no |
 | `flatten` | Inventory as bash arrays for `build_external.sh`. | no |
-| `readme` | Rewrites the dependency table of `README.md`; `--check` fails if it differs. | no |
 | `sbom` | CycloneDX SBOM; `--target`, `--manifest` (a 4.x set manifest). | no |
 | `lock` | Writes `src/deps.lock.mk`; `--check` fails if stale. | no |
 | `key [NAME...]` | Prints `<ref> <inputs sha256>`. | no |
@@ -217,7 +216,7 @@ Header-only libraries and data carry no compiled file, so they exist only under 
 | `cpe` | Versionless CPE 2.3 (`cpe:2.3:a:<vendor>:<product>:*:...`), a list of them, or `null` together with `scan: false`. The version always comes from `version`. |
 | `purl` | `pkg:github/<owner>/<repo>@<revision>` or `pkg:generic/<name>@<version>`, with a `/` in the version percent-encoded. |
 | `scan`, `reason` | `scan: false` needs a `reason`, usually "no CPE in NVD". |
-| `license`, `author`, `homepage` | Columns of the README table. |
+| `license`, `author`, `homepage` | `license` is an SPDX expression. With `version`, they fill the README third-party table, `THIRD-PARTY-NOTICES` and the SBOM; `components.json` only adds the license texts, the artefacts and the README license wording. |
 | `notes`, `prebuilt` | Informational; the build does not read them. |
 
 `build_external.sh` applies them in this order: extract, `subdir`, `overlay`, `patches`.
@@ -238,15 +237,14 @@ Only `geo_db`, which is data, stays a `source: snapshot`. `deps.py check` requir
 
 ## Pull request checks
 
-`5_codequality_externals-lock.yml` runs on pull requests that touch the key paths, `packages/externals/**`, `README.md` or the workflow itself:
+`5_codequality_externals-lock.yml` runs on pull requests that touch the key paths, `packages/externals/**`, `src/engine/tools/third-party-notices/components.json` or the workflow itself:
 
 1. The `deps.py` tests (`packages/externals/tests`), with MinGW installed so the Windows list is evaluated.
-2. `deps.py check`.
-3. `deps.py readme --check`: the README table must be the one generated from the inventory.
-4. `deps.py lock --check`: `src/deps.lock.mk` must be the one the inventory generates.
-5. `deps.py pool-check`: every ref of the lock must be published with the inputs it was keyed on.
+2. `deps.py check`, which also fails when an entry has no component in `components.json` (nor its directory in `external_ignore`) or a component points at no entry.
+3. `deps.py lock --check`: `src/deps.lock.mk` must be the one the inventory generates.
+4. `deps.py pool-check`: every ref of the lock must be published with the inputs it was keyed on.
 
-Step 5 is what keeps a bump from merging before its refs exist.
+Step 4 is what keeps a bump from merging before its refs exist.
 
 ## Daily vulnerability scan
 

@@ -2,7 +2,9 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 """Generate THIRD-PARTY-NOTICES and the README third-party table.
 
-Modes (see components.json for the manifest, texts/ for inline license texts):
+Modes (see components.json for the manifest, texts/ for inline license texts;
+a component with "dependency" takes version, author, homepage and license from
+that entry of packages/externals/dependencies.json):
 
   notices --artefact manager|standalone --external src/external -o FILE
   readme  --check|--write README.md
@@ -28,6 +30,11 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 MANIFEST = os.path.join(HERE, "components.json")
 BASE = HERE  # directory that texts/ paths are relative to (manifest dir)
 ROOT = os.path.abspath(os.path.join(HERE, "..", "..", "..", ".."))
+# Version, author, homepage and license of a component with "dependency" come
+# from its entry in the external dependencies inventory, never from here.
+INVENTORY = os.path.join(ROOT, "packages", "externals", "dependencies.json")
+FROM_INVENTORY = {"version": "version", "author": "author",
+                  "homepage": "homepage", "spdx": "license"}
 BEGIN = "<!-- third-party:begin -->"
 END = "<!-- third-party:end -->"
 HEADING = "## Software and libraries used"
@@ -60,13 +67,33 @@ ARTEFACTS = ("manager", "standalone", "agent", "readme-only")
 REQUIRED = ("name", "version", "spdx", "author", "homepage")
 
 
-def load_manifest():
-    """Return the validated manifest: components, external_ignore, python_overrides."""
+def load_json(path, what):
     try:
-        with open(MANIFEST, encoding="utf-8") as f:
-            doc = json.load(f)
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
     except (OSError, ValueError) as e:
-        raise GenError("cannot load manifest %s: %s" % (MANIFEST, e))
+        raise GenError("cannot load %s %s: %s" % (what, path, e))
+
+
+def resolve(comps):
+    """Fill the fields of every component with "dependency" from the inventory."""
+    entries = {e["name"]: e for e in load_json(INVENTORY, "inventory")["entries"]}
+    for c in comps:
+        name = c.get("dependency")
+        if name is None:
+            continue
+        if name not in entries:
+            raise GenError("component %s: dependency %s is not in %s"
+                           % (c.get("name"), name, INVENTORY))
+        for key, field in FROM_INVENTORY.items():
+            c[key] = entries[name][field]
+
+
+def load_manifest(inventory=True):
+    """Return the validated manifest: components, external_ignore, python_overrides.
+    Without `inventory`, the fields of the components with "dependency" stay empty:
+    the internal tools packages only read python_overrides and build from src/engine."""
+    doc = load_json(MANIFEST, "manifest")
     comps = doc.get("components")
     if not isinstance(comps, list) or not comps:
         raise GenError("manifest has no components")
@@ -75,7 +102,18 @@ def load_manifest():
             "component #%d" % (i + 1)
         if not isinstance(c, dict):
             raise GenError("%s is not an object" % who)
+        if "dependency" in c:
+            twice = sorted(k for k in FROM_INVENTORY if k in c)
+            if twice:
+                raise GenError("component %s: %s come from the inventory"
+                               % (who, ", ".join(twice)))
+    if inventory:
+        resolve(comps)
+    for i, c in enumerate(comps):
+        who = c.get("name") or "component #%d" % (i + 1)
         for key in REQUIRED:
+            if not inventory and "dependency" in c and key in FROM_INVENTORY:
+                continue
             v = c.get(key)
             if not isinstance(v, str) or not v.strip():
                 raise GenError("component %s: missing or empty '%s'" % (who, key))
@@ -96,7 +134,7 @@ def load_manifest():
 
 
 def python_overrides():
-    return {norm(k): v for k, v in load_manifest()["python_overrides"].items()}
+    return {norm(k): v for k, v in load_manifest(inventory=False)["python_overrides"].items()}
 
 
 def comp_dir(comp):

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Validate the external dependencies inventory and export it for the build scripts.
 
-    deps.py check [--inventory PATH] [--src DIR] [--no-make]
+    deps.py check [--inventory PATH] [--src DIR] [--no-make] [--components PATH]
     deps.py flatten [--inventory PATH]
     deps.py sbom [--inventory PATH | --manifest URL|PATH] [--requirements PATH] [--output PATH]
     deps.py manifest --pool DIR [--inventory PATH] [--wazuh-commit SHA] [--workflow-run ID]
@@ -50,6 +50,8 @@ DEFAULT_INVENTORY = REPO / "packages" / "externals" / "dependencies.json"
 PATCHES_DIR = REPO / "packages" / "externals" / "patches"
 OVERLAYS_DIR = REPO / "packages" / "externals" / "overlay"
 REQUIREMENTS = REPO / "framework" / "requirements.txt"
+# The third-party notices manifest: every entry needs a component pointing at it, or its directory ignored there.
+COMPONENTS = REPO / "src" / "engine" / "tools" / "third-party-notices" / "components.json"
 MIRROR = "https://packages.wazuh.com/deps"
 POOL = f"{MIRROR}/pool"
 # Fields that define what is built; metadata (license, CPE, notes) can be fixed without a new pool entry.
@@ -460,6 +462,20 @@ def validate(doc, external=None, patches_dir=PATCHES_DIR, repo_root=REPO, overla
             errors.append(f"{extra}: declared for {target}/{platform} but not in EXTERNAL_RES")
         for missing in sorted(expected - declared):
             errors.append(f"{missing}: in EXTERNAL_RES for {target}/{platform} but missing from inventory")
+    return errors
+
+
+def check_components(entries, path=COMPONENTS):
+    """Entries without a component in components.json (`dependency`) or a directory in its `external_ignore`, and
+    components whose `dependency` is no entry."""
+    manifest = load(path)
+    pointed = {c["dependency"] for c in manifest.get("components", []) if "dependency" in c}
+    ignored = {i["dir"] for i in manifest.get("external_ignore", [])}
+    names = {e["name"] for e in entries}
+    errors = [f"{name}: no component in {path.name} with `dependency` set to it, nor `external_ignore`"
+              for name in sorted(names - pointed - ignored)]
+    errors += [f"{name}: a component of {path.name} points at it, but it is not in the inventory"
+               for name in sorted(pointed - names)]
     return errors
 
 
@@ -1224,6 +1240,7 @@ def main(argv=None):
         command.add_argument("--inventory", default=str(DEFAULT_INVENTORY))
     commands["check"].add_argument("--src", default=str(REPO / "src"))
     commands["check"].add_argument("--no-make", action="store_true", help="skip the EXTERNAL_RES comparison")
+    commands["check"].add_argument("--components", default=str(COMPONENTS))
     commands["sbom"].add_argument("--manifest", help="take the entries from a set manifest (URL or path)")
     commands["sbom"].add_argument("--requirements", default=str(REQUIREMENTS))
     commands["sbom"].add_argument("--output")
@@ -1353,7 +1370,8 @@ def main(argv=None):
                 warnings.append(f"{BUILDER_IMAGES.name} has unpinned builders; pool keys do not identify their images")
             for warning in warnings:
                 print(f"WARNING: {warning}", file=sys.stderr)
-            return _report(validate(doc, external))
+            errors = validate(doc, external)
+            return _report(errors or check_components(doc["entries"], Path(args.components)))
     except (OSError, ValueError, RuntimeError, KeyError) as exc:
         return _report([f"<inventory>: {exc}"])
     return 0
