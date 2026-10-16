@@ -80,7 +80,9 @@ _CODING_RE = re.compile(r"^[ \t\f]*#.*?coding[:=]")
 _VERSION_SUFFIX_RE = re.compile(r"[0-9.]+$")
 _UTF8_BOM = b"\xef\xbb\xbf"
 # UTF-32 BOMs first: the UTF-32-LE BOM starts with the UTF-16-LE one.
-_WIDE_BOMS = (b"\xff\xfe\x00\x00", b"\x00\x00\xfe\xff", b"\xff\xfe", b"\xfe\xff")
+_WIDE_CODECS = ((b"\xff\xfe\x00\x00", "utf-32-le"), (b"\x00\x00\xfe\xff", "utf-32-be"), (b"\xff\xfe", "utf-16-le"),
+                (b"\xfe\xff", "utf-16-be"))
+_WIDE_BOMS = tuple(bom for bom, _codec in _WIDE_CODECS)
 
 
 class SpdxError(Exception):
@@ -168,13 +170,22 @@ def classify(path: str, content: Optional[bytes]):
     return UNSUPPORTED if unsupported else (ident, comment)
 
 
-def find_identifier(content: bytes, limit: Optional[int] = SCAN_LINES) -> Optional[str]:
-    """Identifier of the first SPDX comment line within the first `limit` lines (all lines if None), if any."""
+def _decode(content: bytes) -> str:
+    """Text of a file: UTF-16/UTF-32 when it starts with their BOM, UTF-8 otherwise (a UTF-8 BOM is dropped)."""
+    for bom, codec in _WIDE_CODECS:
+        if content.startswith(bom):
+            return content[len(bom):].decode(codec, "replace")
     if content.startswith(_UTF8_BOM):
         content = content[len(_UTF8_BOM):]
-    lines = content.split(b"\n") if limit is None else content.split(b"\n", limit)[:limit]
+    return content.decode("utf-8", "replace")
+
+
+def find_identifier(content: bytes, limit: Optional[int] = SCAN_LINES) -> Optional[str]:
+    """Identifier of the first SPDX comment line within the first `limit` lines (all lines if None), if any."""
+    text = _decode(content)
+    lines = text.split("\n") if limit is None else text.split("\n", limit)[:limit]
     for raw in lines:
-        line = raw.rstrip(b"\r").decode("utf-8", "replace")
+        line = raw.rstrip("\r")
         m = _ID_RE.search(line)
         if m:
             return m.group(1)
@@ -196,6 +207,7 @@ def apply_to_bytes(path: str, content: bytes) -> bytes:
         raise SpdxError("%s: found SPDX identifier %r, expected %r" % (path, found, ident))
     if content.startswith(_WIDE_BOMS):
         # The line would be written in UTF-8 in front of a UTF-16/UTF-32 text: refuse instead of corrupting the file.
+        # (an identifier already written there by hand is accepted above: find_identifier decodes these encodings)
         raise SpdxError("%s: UTF-16/UTF-32 file: add the SPDX line by hand in the file's own encoding" % path)
     late = find_identifier(content, None)
     if late is not None:

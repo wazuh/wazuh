@@ -239,6 +239,12 @@ class ApplyToBytesTest(unittest.TestCase):
         with self.assertRaises(spdx.SpdxError):
             spdx.apply_to_bytes("src/engine/x.ps1", "\ufeffx\n".encode("utf-16-be"))
 
+    def test_wide_encodings_with_identifier_pass(self):
+        for codec in ("utf-16-le", "utf-16-be", "utf-32-le", "utf-32-be"):
+            src = ("\ufeff# SPDX-License-Identifier: AGPL-3.0-or-later\r\nWrite-Host 'x'\r\n").encode(codec)
+            self.assertEqual(spdx.find_identifier(src), AGPL, codec)
+            self.assertEqual(spdx.apply_to_bytes("src/engine/x.ps1", src), src, codec)  # unchanged, no error
+
     def test_utf8_bom_stays_first(self):
         out = spdx.apply_to_bytes(ENGINE_CPP, b"\xef\xbb\xbfint a;\n")
         self.assertEqual(out, b"\xef\xbb\xbf" + line("//", AGPL) + b"int a;\n")
@@ -626,6 +632,20 @@ class CheckTest(unittest.TestCase):
         self.assertEqual(rc, 1)
         self.assertIn("%s: missing %s" % (ENGINE_CPP, AGPL), out.splitlines())
         self.assertIn("checked 1, failed 1", out)
+
+    def test_utf16_with_identifier_passes(self):
+        path = "src/engine/tools/x.ps1"
+        self.write(path, "\ufeff# SPDX-License-Identifier: AGPL-3.0-or-later\r\nWrite-Host 'x'\r\n".encode("utf-16-le"))
+        rc, out, err = self.check(path)
+        self.assertEqual(rc, 0, out + err)
+        self.assertIn("checked 1, failed 0", out)
+
+    def test_utf16_without_identifier_is_missing(self):
+        path = "src/engine/tools/x.ps1"
+        self.write(path, "\ufeffWrite-Host 'x'\r\n".encode("utf-16-le"))
+        rc, out, _ = self.check(path)
+        self.assertEqual(rc, 1)
+        self.assertIn("%s: missing %s" % (path, AGPL), out.splitlines())
 
     def test_missing_dual_expects_dual_id(self):
         self.write(DUAL_H, b"int u;\n")
