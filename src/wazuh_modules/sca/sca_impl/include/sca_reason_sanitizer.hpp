@@ -5,7 +5,8 @@
 
 namespace sca
 {
-    /// @brief Largest reason kept on a check, in bytes. Matches ignore_above on check.reason.
+    /// @brief Largest reason kept on a check, in bytes. Below ignore_above on check.reason in the
+    ///        index template, so a stored reason stays searchable.
     constexpr size_t REASON_MAX_LENGTH {1024};
 
     /// @brief Makes a check's unresolved reason safe to store and publish.
