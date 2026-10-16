@@ -229,8 +229,8 @@ def apply_to_bytes(path: str, content: bytes) -> bytes:
     bom = _UTF8_BOM if content.startswith(_UTF8_BOM) else b""
     lines = content[len(bom):].splitlines(True)
     idx = 0
-    if lines and lines[0].startswith(b"#!"):
-        idx = 1
+    if lines and lines[0].startswith(b"#!") and not lines[0].startswith(b"#!["):
+        idx = 1  # a shebang stays first; `#![` is a Rust inner attribute, not a shebang
     ext = posixpath.splitext(posixpath.basename(path))[1]
     keeps_coding = ext in (".py", ".rb") or (not ext and _interpreter(content) in ("python", "ruby"))
     if keeps_coding:
