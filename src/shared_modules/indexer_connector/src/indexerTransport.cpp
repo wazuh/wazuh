@@ -86,8 +86,8 @@ SecureCommunication buildSecureCommunication(const nlohmann::json& config, const
     {
         throw IndexerConnectorException(
             "No indexer credentials found in the keystore. Set them with 'wazuh-manager-keystore -f indexer -k "
-            "username' and '-k password', or supply WAZUH_INDEXER_MANAGER_PASSWORD in /etc/wazuh/credentials.env "
-            "and restart the manager.");
+            "username' and '-k password', or set WAZUH_INDEXER_MANAGER_PASSWORD in /etc/wazuh-manager/local.env "
+            "(the indexer publishes it in /etc/wazuh-indexer/export/credentials.env) and restart the manager.");
     }
 
     // The account name, never the password: which identity the manager presents is the thing an

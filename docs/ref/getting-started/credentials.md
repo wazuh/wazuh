@@ -1,127 +1,99 @@
 # Credentials
 
-The manager resolves every credential it needs through one order, applied when the package is
-installed and again immediately before the service starts. Nothing an operator can skip stands
-between a deployment and credentials unique to it.
+The manager sets up every credential it owns or consumes with one program,
+`/var/wazuh-manager/bin/wazuh-manager-resolve-credentials` (the *credential resolver*). It runs:
 
-Certificates are the exception, and it is worth knowing up front: they are issued **once, at
-installation**, and nothing examines them again — not a service start, not a package upgrade. See
-[Certificates](#certificates).
+- when the package is installed or upgraded, and from `install.sh`;
+- before every start, from `wazuh-manager-control`: a read-only check first, then a step that completes what is
+  missing.
 
-## The resolution order
+The resolver is a Python program run by the manager's bundled interpreter. It calls no tool from the host and
+keeps everything under the manager's configuration directory, `/etc/wazuh-manager` (written `<CONF>` below):
+nothing goes to `/etc/wazuh`.
 
-For each credential, in order:
+What it handles:
 
-1. **Already in the manager's own store** — leave it untouched.
-2. **A key is set**, in `/etc/wazuh/credentials.env` or in the environment (the environment wins) —
-   validate it, then use it.
-3. **The manager owns it** — generate a value and publish the key back to the shared file, so a
-   component installed later finds it.
-4. **None of the above** — the credential is unresolved.
+| Credential | Owned by the manager | Where it ends up |
+|------------|----------------------|------------------|
+| Server API passwords of `wazuh` and `wazuh-internal-client` | yes: supplied or generated | seeded into `rbac.db`, published in `<CONF>/export/credentials.env` |
+| Indexer password (`wazuh-manager` user on the indexer) | no: supplied or read from the indexer | the manager's keystore |
+| The manager's CA | yes: minted at installation, or staged by you | `<CONF>/ca/`, published in `<CONF>/export/ca.pem` |
+| Agent listener and Server API pairs | yes: issued at installation, or staged by you | `<CONF>/certs/remoted.pem`, `apid.pem` |
+| Indexer CA and client pair | no: imported from the indexer, or staged by you | `<CONF>/certs/indexer-ca.pem`, `indexer-connector.pem` |
 
-For the three passwords an empty value counts as not set: an empty environment variable falls
-through to the file rather than hiding it. (The two `*_CERT_SANS` settings are stricter: an
-explicitly empty one is an error.)
+## Files and modes
 
-An invalid value does not fall through. If step 2 finds a value that fails validation, resolution
-stops there rather than continuing to step 3: falling back to generation would discard your intent
-silently and leave the deployment holding a credential nobody else has.
+Everything the resolver reads or writes, with the owner and mode it requires. It never repairs an owner or a
+mode: an entry that does not match is refused (see [File safety](#file-safety)).
+
+| Path | Owner, mode | Written by | Content |
+|------|-------------|------------|---------|
+| `<CONF>/` | `root:wazuh-manager 0770` (the group needs `rwx`; `1770` is accepted) | installer | the configuration directory |
+| `<CONF>/local.env` | `root`, no group or other bit: `0600 root:root` (or `0400`) | you | values you supply ([The keys](#the-keys)) |
+| `<CONF>/ca/` | `root:root 0700` | resolver | the manager's CA |
+| `<CONF>/ca/root-ca.pem` | `root:root 0644` | resolver or you | the CA certificate |
+| `<CONF>/ca/root-ca.key` | `root:root 0400` | resolver or you | its private key; absent when you stage the certificate alone |
+| `<CONF>/ca/.wazuh-manager-bootstrap-ca` | `root:root 0600` | resolver | marker: this host minted the CA |
+| `<CONF>/export/` | `root:root 0700` | resolver | what the manager publishes for the dashboard on the same host |
+| `<CONF>/export/credentials.env` | `root:root 0600` | resolver | the two Server API passwords |
+| `<CONF>/export/ca.pem` | `root:root 0644` | resolver | copy of `ca/root-ca.pem`: what clients verify the Server API with |
+| `<CONF>/export/dashboard-client.pem` | `root:root 0644` | resolver (masters) or you | the dashboard's client certificate, for a future import ([What the dashboard takes from the manager](#what-the-dashboard-takes-from-the-manager)) |
+| `<CONF>/export/dashboard-client-key.pem` | `root`, no group or other bit (the resolver writes `0600 root:root`) | resolver (masters) or you | its private key |
+| `<CONF>/export/.dashboard-client.issued` | `root`, no group or other bit (`0600 root:root`) | resolver | marker: the fingerprints of the pair the resolver wrote |
+| `<CONF>/certs/` | `root:wazuh-manager 0750`, exactly | installer | TLS material the daemons read |
+| `<CONF>/certs/root-ca.pem` | `root:wazuh-manager 0640` | resolver (only when absent) | the agents' CA bundle, served by remoted |
+| `<CONF>/certs/remoted.pem`, `remoted-key.pem` | `root:wazuh-manager 0640` | resolver or you | agent listener pair |
+| `<CONF>/certs/apid.pem`, `apid-key.pem` | `root:wazuh-manager 0640` | resolver or you | Server API pair |
+| `<CONF>/certs/indexer-ca.pem` | `root:wazuh-manager 0640` | resolver (import) or you | the CA the indexer connector trusts |
+| `<CONF>/certs/indexer-connector.pem`, `indexer-connector-key.pem` | `root:wazuh-manager 0640` | resolver (import) or you | client pair the manager presents to the indexer |
+| `<CONF>/certs/.indexer-ca.imported`, `.indexer-connector.imported` | `root:wazuh-manager 0640` | resolver | markers: these files were imported, not staged |
+| `/etc/wazuh-indexer/export/` | `root`, any group, not group- or world-writable; `credentials.env` and `manager-client-key.pem` root's with no group or other bit (`0600`) | `wazuh-indexer` | read only: `credentials.env`, `ca.pem`, `manager-client.pem`, `manager-client-key.pem` |
+| `/var/wazuh-manager/api/configuration/security/rbac.db` | | resolver (through `rbac_control.py`) | Server API users, roles and policies |
+| `/var/wazuh-manager/queue/keystore/` | | resolver (through `wazuh-manager-keystore`) | the indexer username and password |
+
+The service account `wazuh-manager` can read the files in `certs/` through its group, and nothing else on the
+list: `ca/`, `export/` and `local.env` are root's.
 
 ## The keys
 
-| Key | Account | The manager… |
-|-----|---------|--------------|
-| `WAZUH_MANAGER_API_PASSWORD` | `wazuh` (Server API, in `rbac.db`) | **owns** it — generates one if you do not supply it, and publishes it |
-| `WAZUH_MANAGER_WUI_PASSWORD` | `wazuh-internal-client` (Server API, read by the dashboard) | **owns** it — generates one if you do not supply it, and publishes it |
-| `WAZUH_INDEXER_MANAGER_PASSWORD` | `wazuh-manager` (on the indexer) | **consumes** it — never generates it, never publishes it |
-| `WAZUH_MANAGER_CERT_SANS` | the indexer-connector certificate | **owns** it |
-| `WAZUH_MANAGER_REMOTED_CERT_SANS` | the agent-listener certificate | **owns** it |
-| `WAZUH_MANAGER_APID_CERT_SANS` | the Server API certificate | **owns** it |
-| `WAZUH_CA_DIR` | trust material, default `/etc/wazuh/ca` | path only, not a secret |
+| Key | Purpose | When unset |
+|-----|---------|------------|
+| `WAZUH_MANAGER_API_PASSWORD` | password of the Server API user `wazuh` | generated |
+| `WAZUH_MANAGER_WUI_PASSWORD` | password of `wazuh-internal-client`, the user the dashboard authenticates as | generated |
+| `WAZUH_INDEXER_MANAGER_PASSWORD` | password of the `wazuh-manager` user on the indexer | read from the indexer's `/etc/wazuh-indexer/export/credentials.env` when the indexer runs on this host; otherwise the start refuses (`MISSING`) |
+| `WAZUH_MANAGER_NODE_NAME` | common name of the CA and the pairs, first DNS name of both pairs; a DNS name of at most 64 characters (the limit of a certificate's common name: a longer one is `INVALID` and no pair is issued) | the host name up to its first dot |
+| `WAZUH_MANAGER_REMOTED_CERT_SANS` | subject alternative names of the agent listener pair | discovered ([Subject alternative names](#subject-alternative-names)) |
+| `WAZUH_MANAGER_APID_CERT_SANS` | subject alternative names of the Server API pair; never inherits remoted's list | discovered |
 
-A credential the manager *owns* lives in its own datastore, so generating one makes it true. A
-credential it *consumes* authenticates to somebody else, so inventing one would not make the peer
-accept it — which is why `WAZUH_INDEXER_MANAGER_PASSWORD` can only ever be supplied, and why it is
-the one key that commonly leaves a fresh manager unresolved until the indexer publishes it.
+`WAZUH_MANAGER_CERT_SANS` is gone: it named the indexer client pair, which now comes from the indexer. When it is
+set, the resolver prints `WARNING: WAZUH_MANAGER_CERT_SANS is ignored` and goes on.
 
-## The credentials file
+Each key is looked up in order, and the first value found wins:
 
-`/etc/wazuh/credentials.env` is shared by the manager, the indexer and the dashboard. It is at once
-the input, the handoff between components, and the record you read to find a generated password.
+1. the process environment;
+2. `<CONF>/local.env`;
+3. for `WAZUH_INDEXER_MANAGER_PASSWORD` only, the indexer's `/etc/wazuh-indexer/export/credentials.env`.
 
-* `0600 root:root`, in a `0700 root:root` directory. It is refused outright — with the reason
-  logged — when its owner or group is not root, when its mode is not `0600`, when it is a symlink or
-  not a regular file, when `/etc/wazuh` is not `0700`, or when `/etc/wazuh` or any directory above it
-  is a symlink, is not root-owned or is group- or world-writable. `$WAZUH_CA_DIR` is held to the same directory rule.
-* The manager checks it at every start, restart and reload, before it validates the configuration,
-  even when it no longer needs to read it (everything is already resolved), and refuses to start on
-  an unsafe one, as the indexer and the dashboard do. The check covers ownership, mode and shape,
-  not the syntax of the keys. A file that is absent (for example deleted after the installation) is fine, as long as
-  `/etc/wazuh`, if it is still there, passes the same directory rule.
-* One `KEY=VALUE` per line. The file is **parsed, never sourced**: nothing in it is ever executed.
-* The packages own a delimited block and nothing else. Lines you write outside it are never
-  touched, reordered or reformatted, even when they carry the same key.
-* Neither `/etc/wazuh` nor the file itself ships in any package.
+An empty value counts as unset for a password. A value that breaks a rule is reported (`INVALID`) and **never
+replaced by a generated one**: the start refuses until you fix it. A `local.env` that is unsafe or malformed is
+rejected as a whole, and then nothing is generated or seeded from defaults in that run either.
 
-An illustrative file:
-
-```sh
-# Written by the operator before installing
-WAZUH_INDEXER_MANAGER_PASSWORD='Str0ng.Pass+01'
-
-# >>> wazuh generated — do not edit <<<
-# Editing a value here does not change the deployment.
-# To rotate, use wazuh-passwords-tool.sh.
-WAZUH_MANAGER_API_PASSWORD="zL9dH…"
-WAZUH_MANAGER_WUI_PASSWORD="cF4nP…"
-# >>> end wazuh generated <<<
-```
-
-When a key appears more than once, the last assignment wins, including one inside the managed block.
-
-> [!IMPORTANT]
-> Editing a generated value here does not change the credential the manager already holds. Step 1
-> of the order wins over the file, so the manager keeps what is in its own store and your edit has
-> no effect. See [Rotation](#rotation) to change a credential in a running deployment.
-
-### Reading a value back
-
-Every value the packages write is **double-quoted**, with `\`, `"`, `$` and `` ` `` backslash-escaped
-inside the quotes. A value you write yourself may be double-quoted, single-quoted or bare; all three
-are read back identically, and the surrounding quotes are never part of the value.
-
-This matters because the quotes are removed by the *parser*, not by the file format. Anything that
-reads the file with `grep`/`cut`/`awk`, or hands it to a loader that does not unquote, gets the
-quotation marks as part of the password and fails to authenticate with no visible cause. Read a value
-through the same parser the manager uses, as root:
+`local.env` holds `NAME=value` lines. Surrounding whitespace is trimmed, blank lines and `#` comments are skipped,
+and one pair of matching single or double quotes around the value is removed. Nothing is expanded or unescaped. A
+name given twice, an unbalanced quote or any other line is an error naming the file and the line.
 
 ```bash
-# Wrong -- yields the value with its quotation marks
-grep '^WAZUH_MANAGER_API_PASSWORD=' /etc/wazuh/credentials.env | cut -d= -f2-
-
-# Right
-sudo sh -c '. /var/wazuh-manager/lib/wazuh-credentials.sh && wazuh_env_get WAZUH_MANAGER_API_PASSWORD'
-```
-
-> [!WARNING]
-> **Do not pass this file to `docker run --env-file` or `docker compose env_file`.** Docker does not
-> strip quotation marks: it treats them as part of the value, so the container receives a password
-> with literal `"` characters around it and every request it makes is rejected as `401`. Read the
-> value out and pass it with `-e KEY=value` instead.
-
-The file holds every plaintext password in the deployment, so delete it once every component is
-installed and running — not earlier, because until then it is how the components hand credentials to
-one another.
-
-```bash
-sudo rm /etc/wazuh/credentials.env
+sudo install -m 0600 -o root -g root /dev/null /etc/wazuh-manager/local.env
+sudo tee /etc/wazuh-manager/local.env > /dev/null <<'EOF'
+WAZUH_INDEXER_MANAGER_PASSWORD='<the wazuh-manager password on the indexer>'
+WAZUH_MANAGER_API_PASSWORD='<your value>'
+EOF
 ```
 
 ### Supplying a value through the environment
 
-The same key names are read from the process environment, which overrides the file. On a package
-install the value must be on the `sudo` command line: with `env_reset` active — the default on every
-distribution Wazuh supports — an exported variable never reaches the maintainer script.
+On a package install the variable must be on the `sudo` command line. With `env_reset` active (the default on
+every distribution Wazuh supports), an exported variable never reaches the maintainer script:
 
 ```bash
 # Correct
@@ -132,497 +104,510 @@ export WAZUH_INDEXER_MANAGER_PASSWORD='Str0ng.Pass+01'
 sudo apt-get install wazuh-manager
 ```
 
-That trap is why the file, not the command line, is the documented way to choose a value.
-
-> [!IMPORTANT]
-> Supplying `WAZUH_MANAGER_API_PASSWORD` or `WAZUH_MANAGER_WUI_PASSWORD` through the environment does
-> **not** keep it off disk. The manager publishes every credential it owns into
-> `/etc/wazuh/credentials.env` whether it generated the value or you supplied it, because the
-> dashboard authenticates as `wazuh-internal-client` and reads the value from there — publishing only generated
-> values would mean a deployment that chose its own passwords never hands them over. What protects
-> it is the file: `0600 root:root` inside a `0700 root:root` directory, refused outright on every
-> read, every write and every start when the owner, the mode, a symlink or any ancestor is wrong. Only root can
-> read it, and [deleting it](#the-credentials-file) once every component is running is the last step
-> of an installation, not an optional one.
->
-> `WAZUH_INDEXER_MANAGER_PASSWORD` is never published — the manager only consumes it.
+systemd starts the manager from a clean environment, so a value needed at start belongs in `local.env`.
 
 ## The password policy
 
-There are two rules, and the difference between them is deliberate.
+A supplied password must be 12 to 64 characters long, use only `A-Z a-z 0-9` and `. , _ + : @ % ^ = ~ -`, and
+contain a lowercase letter, an uppercase letter, a digit and one of those symbols. A generated one is 32
+characters drawn the same way.
 
-**A password supplied in `credentials.env` or the environment** must be 12 to 64 characters drawn
-only from `A-Z a-z 0-9 . , _ + : @ % ^ = ~ -`, and must contain at least one lowercase letter, one
-uppercase letter, one digit and one symbol from that set. Any other character — a non-ASCII letter,
-a space, a quote — makes it invalid, as does a missing class. This is the rule all three components
-apply to the shared file, so a value that satisfies it resolves everywhere.
+The Server API's own rule, applied when a password is changed later, is wider: 12 to 64 printable ASCII characters
+with a letter and a digit. Every value the resolver accepts or generates also passes it, and the resolver's tests
+check that against the Server API's code. The reverse is not guaranteed: a password chosen through the Server API
+may be one the resolver refuses.
 
-**The Server API** (`POST`/`PUT /security/users`, `rbac_control change-password`) keeps the same
-12–64 length but asks only for one letter and one digit, from any printable ASCII except the space.
-It is the looser of the two on purpose: it has to accept what rotation tools and other API clients
-send. Every value the supplied-password rule accepts is one the API accepts too, so a credential
-seeded at installation is never one the API later refuses.
+## The published passwords
 
-| | Supplied to the resolver | Server API |
-|---|---|---|
-| Length | 12–64 | 12–64 |
-| Characters | `A-Z a-z 0-9 . , _ + : @ % ^ = ~ -` | any printable ASCII except space |
-| Required | lowercase, uppercase, digit **and** symbol | a letter and a digit |
+The Server API passwords are seeded into `rbac.db` and published, generated or supplied, in
+`<CONF>/export/credentials.env`. The dashboard on the same host authenticates as `wazuh-internal-client` with the
+value it reads there. Only root can read the file:
 
-Generated passwords are 32 characters from the narrower set with all four classes guaranteed, so
-they satisfy both rules by construction. Quotes, backslash, backtick, `$`, `!` and `#` are left out
-deliberately, so a value is safe to paste through shell, YAML, JSON and docker-compose interpolation
-without escaping.
-
-> [!NOTE]
-> The Server API rejects a password outside its rule with error `5009` (length) or `5007`
-> (characters). The resolver reports a supplied value it refuses as `INVALID <KEY>` in the journal,
-> naming the rule and never the value.
-
-The Server API's rule replaces an earlier one that demanded an uppercase letter, a lowercase letter
-and a symbol of every password it accepted. Lowering that floor — while keeping the stricter rule for
-what the resolver is handed — was deliberate, for three reasons:
-
-* **Everything the installation accepts, the API must accept.** The resolver validates a value at
-  installation and the Server API validates it again at rotation; a value the installation accepts
-  and the API later refuses is a deployment that comes up and cannot be administered. The resolver's
-  rule is the stricter one because what it accepts is written to the shared file and parsed without
-  escaping by every component, so the API rule only has to contain it — the reverse is not required,
-  and a password chosen through the API may be one the resolver and the passwords tool reject.
-* **Composition rules are not what makes a password strong.** NIST SP 800-63B §5.1.1.2 advises
-  against them: they push operators toward predictable substitutions while barely enlarging the
-  search space. The 12-character minimum — the control that does — is unchanged.
-* **The weakness this release closes was not the shape of a chosen password.** It was that every
-  4.x installation shipped `wazuh`/`wazuh` and `wazuh-wui`/`wazuh-wui`. Where you supply nothing, a
-  32-character value is generated instead, which no composition rule would improve on.
-
-## Installing and starting
-
-The installer creates what it can and has no opinion about whether the manager can run: it exits `0`
-whatever it could not resolve, reports no missing password or indexer credential, and neither enables
-nor starts the service. The one thing it does report is certificates it could not issue, because the
-install is the only moment they are issued (see [What the install does](#what-the-install-does)).
-You start the service when you are ready:
-
-```bash
-sudo apt-get install wazuh-manager
-sudo systemctl enable --now wazuh-manager
+```text
+# Published by wazuh-manager. Read by the dashboard on this host. Do not edit.
+WAZUH_MANAGER_API_PASSWORD=<32 characters>
+WAZUH_MANAGER_WUI_PASSWORD=<32 characters>
 ```
 
-Install order does not matter. A manager installed before the indexer resolves nothing at install
-time; by the time you start it the indexer has published its key, and it resolves.
-
-### The resolver and its modes
-
-Every step above is `/var/wazuh-manager/bin/wazuh-manager-resolve-credentials`, run as root in one of
-five modes:
-
-| Mode | Run by | Passwords, keystore, `rbac.db` | Certificates | Exit status |
-|---|---|---|---|---|
-| `--install` | the DEB `postinst`, the RPM `%post` and `install.sh` on a fresh installation | resolve | **issue** | always `0` |
-| `--upgrade` | the same three on an upgrade | resolve | untouched | always `0` |
-| `--prestart` (the default) | every `wazuh-manager-control start`, `restart` and `reload` | resolve | untouched | `1` when any key is `MISSING` or `INVALID` |
-| `--clear` | nothing in the product; see [Container images](#container-images) | remove | remove | non-zero when it could not clear |
-| `--check` | every `wazuh-manager-control start`, `restart` and `reload`, before the configuration check | read-only check of the credentials file | untouched | `1` when the file is refused, `2` when not run as root |
-
-`-H <dir>` points it at another installation directory (by default, the one it is installed in).
-An unknown option, or a helper library it cannot find, exits `2`. A DEB reinstall from the
-config-files state that finds neither `/etc/wazuh-manager/certs/remoted.pem` nor `/etc/wazuh-manager/certs/indexer-connector.pem`
-runs `--install`, not `--upgrade` — see [Upgrades and removal](#upgrades-and-removal).
-
-`install.sh` skips the resolver when `USER_RESOLVE_CREDENTIALS="n"` is set (the package builds use
-it). A from-source manager installed that way has no certificates, and a start cannot issue them:
-run `--install` before the first start.
-
-## Cluster deployments
-
-Every node resolves credentials for itself, and nothing in the cluster shares the result. Supply the
-same values on every node **before** you install it:
+To read a value, parse the line; never `source` the file:
 
 ```bash
-# on each node, before installing
-sudo install -d -m 0700 -o root -g root /etc/wazuh
-sudo touch /etc/wazuh/credentials.env && sudo chmod 0600 /etc/wazuh/credentials.env
-sudo tee -a /etc/wazuh/credentials.env > /dev/null <<'EOF'
-WAZUH_MANAGER_API_PASSWORD='<the same value on every node>'
-WAZUH_MANAGER_WUI_PASSWORD='<the same value on every node>'
-WAZUH_INDEXER_MANAGER_PASSWORD='<the wazuh-manager password on the indexer>'
-EOF
+sudo sed -n 's/^WAZUH_MANAGER_API_PASSWORD=//p' /etc/wazuh-manager/export/credentials.env
 ```
 
-Four things follow, and the last is why supplying the values yourself is worth the trouble:
+Seeding happens once: an existing, non-empty `rbac.db` is never reseeded, whatever the keys say. A worker node
+seeds nothing ([Cluster deployments](#cluster-deployments)). `WAZUH_INDEXER_MANAGER_PASSWORD` is never published:
+the manager only consumes it.
 
-* **Only a node configured as master seeds `rbac.db`.** A worker never serves the Server API —
-  `wazuh-manager-control` starts `apid` only when `cluster.node_type` is `master` — so seeding a
-  database there would publish a password to that host's `credentials.env` that authenticates
-  nowhere. The resolver reads the node role for this and nothing else, and skips only on a definite
-  `worker`: a missing `wazuh-manager-conf`, an unreadable or invalid configuration seeds, rather than
-  silently skipping. The generated configuration makes every node a master, so a node installed with
-  it seeds at installation even if it becomes a worker later.
-* **A database that already exists is never touched**, whatever the role says. The role only decides
-  whether to *create* one; nothing removes `rbac.db`, which holds every user, role, policy and rule
-  you have, not just the two default users.
-* **`rbac.db` is not replicated.** The cluster synchronizes `/etc/wazuh-manager` (`client.keys`, `authd.pass`,
-  `enrollment_tokens.json`), `/etc/wazuh-manager/shared/` and `var/multigroups/` — nothing else. Each node's database
-  is whatever that node was seeded with.
-* **Promotion uses that node's own database.** Change `cluster.node_type` to `master` and restart:
-  a node that already holds an `rbac.db` serves it as it is; one that holds none has it seeded before
-  `apid` runs. If you supplied `WAZUH_MANAGER_API_PASSWORD` and `WAZUH_MANAGER_WUI_PASSWORD` on that
-  node before it seeded, it comes up with the credentials you already know. If you did not, it
-  generated fresh ones, and the password you recorded from the old master does not work there. That
-  is the whole reason to set them everywhere up front.
+## What the dashboard takes from the manager
 
-`rbac_control change-password` always changes the current master's database — run on a worker, it is
-forwarded to the master — so a change made with it does not reach the database a node would serve
-after a promotion. See [Server API authentication](../modules/server-api/authentication.md).
+The dashboard calls the Server API over TLS and logs in as `wazuh-internal-client`. It needs two things from the
+manager, both in `<CONF>/export/`:
 
-Certificates work the same way — each node issues its own at installation — so stage one CA in
-`/etc/wazuh/ca` on every node before installing, or provision each node's pairs from your own PKI.
-A node that mints its own bootstrap CA trusts only itself, and agents that reach a different node
-will not trust what it presents.
+| File | What it is | Used for |
+|------|------------|----------|
+| `export/ca.pem` (`root:root 0644`) | the manager CA's **certificate**, its public part only | verifying the certificate `wazuh-manager-apid` presents (`certs/apid.pem`) |
+| `export/credentials.env` (`root:root 0600`), key `WAZUH_MANAGER_WUI_PASSWORD` | the `wazuh-internal-client` password | logging in to the Server API |
+
+No key of the manager is published. `ca/root-ca.key` stays in `ca/` (`root:root 0400`) and is never copied to the
+dashboard: the certificate alone is enough to verify the API.
+
+**A client pair, prepared for later.** A master also publishes `export/dashboard-client.pem` (`root:root 0644`) and
+`export/dashboard-client-key.pem` (`root:root 0600`): a certificate issued by the manager's CA with
+`CN=wazuh-dashboard`, `CA:FALSE` and `extendedKeyUsage` `clientAuth` only, and a key of its own, never the CA's or
+`apid-key.pem`'s. Nothing uses it yet: the Server API does not ask for a client certificate (`https.use_ca` stays
+off) and the dashboard still logs in with the password, so the pair is there to be imported when that changes. A
+worker publishes none.
+
+- **When it is issued.** By every writing mode (`--install`, `--upgrade`, `--prestart`) when it is absent and `ca/`
+  holds the CA's key: `resolve-credentials: /etc/wazuh-manager/export/dashboard-client.pem: issued; DN …`.
+- **When it changes.** The pair the resolver issued is reissued by the next start when it no longer chains to
+  `ca/root-ca.pem` (the CA was staged again or rotated) or when it expired:
+  `… reissued (<why>); the dashboard must import it again`. Copy it again wherever the dashboard keeps it.
+- **Your own pair.** Put `dashboard-client.pem` (the leaf, then any intermediate CAs) and
+  `dashboard-client-key.pem` in `export/` with the modes above. The resolver tells its pair from yours with
+  `export/.dashboard-client.issued`, which records the fingerprints of what it wrote: a pair without it, or whose
+  content no longer matches it, is yours. Yours is checked (key, `CA:FALSE`, `clientAuth`, issued by the manager's
+  CA, inside its validity window, a key of its own) but never replaced; each defect is a `WARNING`, and none refuses
+  the start while client certificates are not required:
+  `WARNING: /etc/wazuh-manager/export/dashboard-client.pem: expired on …; provided by the operator, kept as it is (nothing uses it yet: …)`.
+  An unsafe entry (a key readable by others, a link, another owner) is `UNSAFE`, like any other.
+- **A CA without its key.** With only an external CA's certificate in `ca/`, the manager cannot issue the pair:
+  `WARNING: dashboard client pair not generated: /etc/wazuh-manager/ca has no key; provision it externally in /etc/wazuh-manager/export`.
+  Issue it from that CA and put it in `export/` as above.
+- **`--clear`** removes the resolver's pair with its marker, and keeps yours.
+
+**Dashboard on the same host.** It reads both files as root; nothing has to be copied.
+
+**Dashboard on another host.** Copy the certificate to it, and put the password in the dashboard's
+`wazuh_core.hosts.<host>.password`. In a 5.0 package installation the dashboard verifies the Server API with
+`/etc/wazuh-dashboard/certs/manager-ca.pem`:
+
+```bash
+# on the manager
+sudo cat /etc/wazuh-manager/export/ca.pem > manager-ca.pem
+# on the dashboard host
+sudo install -o root -g wazuh-dashboard -m 640 manager-ca.pem /etc/wazuh-dashboard/certs/manager-ca.pem
+```
+
+The name the dashboard uses to reach the manager must be one of the names in `apid.pem`, which the resolver takes
+from `WAZUH_MANAGER_APID_CERT_SANS` or discovers ([Subject alternative names](#subject-alternative-names)).
+
+**Check it** on the dashboard host, with `<manager>` being that name:
+
+```bash
+# the same certificate on both sides
+openssl x509 -noout -subject -fingerprint -sha256 -in /etc/wazuh-dashboard/certs/manager-ca.pem
+# the Server API's certificate verifies against it, for that name
+openssl s_client -connect <manager>:55000 -CAfile /etc/wazuh-dashboard/certs/manager-ca.pem \
+    -verify_hostname <manager> -verify_return_error </dev/null 2>&1 | grep 'Verify return code'
+# and the password logs in (curl prompts for it, so it does not reach the process list)
+curl --cacert /etc/wazuh-dashboard/certs/manager-ca.pem -u wazuh-internal-client \
+    -X POST "https://<manager>:55000/security/user/authenticate"
+```
+
+The fingerprint must match `openssl x509 -noout -fingerprint -sha256 -in /etc/wazuh-manager/export/ca.pem` on the
+manager, the verification must end in `Verify return code: 0 (ok)`, and the login must return a token.
+
+**When it changes.** `export/ca.pem` changes only when the manager's CA does: a CA staged again or rotated. The
+next start publishes the new one ([Rotation](#rotation)). Copy it again to every dashboard on another
+host; until then their verification of the Server API fails. A new `wazuh-internal-client` password works the
+same way ([Rotation](#rotation)).
+
+## The resolver and its modes
+
+```text
+wazuh-manager-resolve-credentials [--install|--upgrade|--prestart|--check|--clear] [-q] [-H <home>]
+```
+
+| Mode | Called by | Does | Exit |
+|------|-----------|------|------|
+| `--install` | DEB `postinst` and RPM `%post` on a fresh install, `install.sh` | seeds the passwords, stores the indexer password, mints the CA when nothing is there, issues the two server pairs, imports the indexer trust | always `0` |
+| `--upgrade` | DEB `postinst` and RPM `%post` on an upgrade | completes passwords, keystore and indexer trust; publishes the CA in `export/ca.pem` again when the copy there differs; validates the CA and the pairs, never mints or issues | always `0` |
+| `--prestart` (default) | `wazuh-manager-control` before the daemons start, on `start`, `restart` and `reload` | every `--check` test, then what `--upgrade` does; refuses the start when anything is missing, invalid or unsafe | `0` or `1` |
+| `--check` | `wazuh-manager-control` on `start`, `restart` and `reload`, once the configuration file itself has been validated | read-only: no lock, nothing written, and no subprocess but `wazuh-manager-conf --skip-file-checks dump`, which reads the [configured file names](#configured-file-names); reports `UNSAFE` and `INVALID`, never `MISSING` | `0` or `1` |
+| `--clear` | you | removes what the resolver made ([Container images](#container-images)) | `0` or `1` |
+
+`-q` prints only problems. `-H` names a non-default installation directory; the configuration directory is
+always `/etc/wazuh-manager`. Exit `2` means a usage error, a caller that is not root, another run holding the lock
+on `<CONF>/ca` for 60 seconds, or an internal error.
+
+The installer never fails the package transaction: what it cannot resolve at install time may be in place by the
+time you start the service, so the start is where the verdict counts. A DEB reinstall from the config-files state
+(after `apt remove`) runs as an install when `certs/remoted.pem` is missing.
+
+A fresh install with no indexer on the host:
+
+```text
+resolve-credentials: WAZUH_MANAGER_API_PASSWORD: generated
+resolve-credentials: WAZUH_MANAGER_WUI_PASSWORD: generated
+resolve-credentials: seeded /var/wazuh-manager/api/configuration/security/rbac.db; the passwords are in /etc/wazuh-manager/export/credentials.env
+resolve-credentials: CA CN=wazuh-manager-node1,OU=Wazuh,O=Wazuh,L=California,C=US: minted
+resolve-credentials: wrote /etc/wazuh-manager/certs/root-ca.pem (the manager's CA)
+resolve-credentials: /etc/wazuh-manager/certs/remoted.pem: issued; DN CN=node1,OU=Wazuh,O=Wazuh,L=California,C=US; SANs DNS:node1, IP:192.0.2.10, DNS:localhost, IP:127.0.0.1, IP:::1
+resolve-credentials: /etc/wazuh-manager/certs/apid.pem: issued; DN CN=node1,OU=Wazuh,O=Wazuh,L=California,C=US; SANs DNS:node1, IP:192.0.2.10, DNS:localhost, IP:127.0.0.1, IP:::1
+MISSING WAZUH_INDEXER_MANAGER_PASSWORD: set it in /etc/wazuh-manager/local.env (copy it from the indexer's /etc/wazuh-indexer/export/credentials.env), or install wazuh-indexer on this host first
+MISSING /etc/wazuh-manager/certs/indexer-ca.pem: install wazuh-indexer on this host first, or stage the indexer's export/ca.pem there
+MISSING /etc/wazuh-manager/certs/indexer-connector.pem: install wazuh-indexer on this host first, or stage a pair issued by the indexer's CA for this node
+```
 
 ## When the manager does not start
 
-Service start runs the password and keystore order again — not merely a check — so the manager picks
-up whatever became available since it was installed. When something is still missing it refuses to
-start and names it, and starts no daemon. There is no repair command: fix the key and start the
-service again.
+Every problem is one line on standard error, printed once, in the form `KIND <path or key>: <reason>`. No line
+ever carries a secret.
 
+| Kind | Meaning | Examples |
+|------|---------|----------|
+| `MISSING` | something a start needs is absent; `--prestart` refuses, `--check` never says it | `MISSING WAZUH_INDEXER_MANAGER_PASSWORD: set it in /etc/wazuh-manager/local.env …` |
+| `INVALID` | something in place is wrong | `INVALID /etc/wazuh-manager/local.env:2: not a NAME=value line` · `INVALID WAZUH_INDEXER_MANAGER_PASSWORD: must be 12 to 64 characters (set in /etc/wazuh-manager/local.env:1)` · `INVALID /etc/wazuh-manager/certs/remoted.pem: expired` |
+| `UNSAFE` | an entry root may not trust: wrong owner or mode (a secret readable by others than root), a link, a directory where a file belongs | `UNSAFE /etc/wazuh-manager/local.env: group-writable` |
+| `WARNING` | indexer material that only the clock refuses: the indexer CA, a listed CA file, the client pair or a CA on its path is expired or not valid yet, and nothing else is wrong with it. It **does not** refuse the start; the indexer connection fails until the material is renewed or the clock is right | `resolve-credentials: WARNING: /etc/wazuh-manager/certs/indexer-connector.pem: expired on 2026-10-14 20:03:45 UTC; the indexer connection fails until it is renewed or the clock is right` |
+
+`wazuh-manager-control` relays those lines to standard error and to `logs/wazuh-manager.log`, starts nothing, and
+says why:
+
+| When | stdout | With `-j` | Log line |
+|------|--------|-----------|----------|
+| `--check` reports `UNSAFE` | `Unsafe credentials. Exiting` | `{"error":22,"message":"Unsafe credentials."}` | `wazuh-manager-control: ERROR: unsafe credentials` |
+| `--check` reports `INVALID` | `Invalid credentials. Exiting` | `{"error":22,"message":"Invalid credentials."}` | `wazuh-manager-control: ERROR: invalid credentials` |
+| the check itself cannot run | `Cannot check the credentials. Exiting` | `{"error":22,"message":"Cannot check the credentials."}` | `wazuh-manager-control: ERROR: cannot check the credentials` |
+| `--prestart` fails | `Unresolved credentials. Exiting` | `{"error":21,"message":"Unresolved credentials."}` | `wazuh-manager-control: ERROR: unresolved credentials` |
+
+On `start`, `restart` and `reload`, `wazuh-manager-control` checks in this order, and refuses on the first failure:
+
+1. the configuration file itself — XML, schema and cross-field rules (`wazuh-manager-conf --skip-file-checks
+   validate`), so a configuration mistake is reported with the validator's `(1244)` verdict and the JSON pointer of
+   the option, not as a credentials problem: `--check` reads the [configured file names](#configured-file-names)
+   from that file;
+2. the credentials (`--check`);
+3. the files the configuration names (`wazuh-manager-conf validate`), and each daemon's own `-t` test.
+
+All of it happens on `restart` before anything is stopped. A refused `restart` therefore leaves the running daemons
+as they are.
+
+A `WARNING` refuses nothing: the start goes on, and each warning is also written to `logs/wazuh-manager.log` as
+`wazuh-manager-control: WARNING: <path>: …`. Only the indexer material's validity window is treated this way.
+Anything else wrong with it (a key that does not match, the wrong issuer, no `clientAuth`, not a CA, missing files,
+an unsafe export), and an expired or not-yet-valid server pair, bundle or manager CA, still refuses the whole start.
+`--check` with only warnings ends with `check: no problem found (<n> warnings)`.
+
+Run the check yourself to see the full list:
+
+```bash
+sudo /var/wazuh-manager/bin/wazuh-manager-resolve-credentials --check
 ```
-$ sudo systemctl enable --now wazuh-manager
-Job for wazuh-manager.service failed.
 
-$ systemctl status wazuh-manager
-  resolve-credentials: MISSING WAZUH_INDEXER_MANAGER_PASSWORD
-  resolve-credentials:         set it in /etc/wazuh/credentials.env, or install wazuh-indexer on this host first
-  Unresolved credentials. Exiting
-```
+## File safety
 
-The same verdict lands in `/var/wazuh-manager/logs/wazuh-manager.log`, after a
-`wazuh-manager-control: ERROR: unresolved credentials` line; `wazuh-manager-control -j start` answers
-`{"error":21,"message":"Unresolved credentials."}`. The verdicts are:
+`<CONF>` is writable by the service group, because `authd`, `remoted` and the Server API write there. So the
+resolver trusts nothing in it by name:
 
-| Line | Meaning |
-|---|---|
-| `MISSING WAZUH_INDEXER_MANAGER_PASSWORD` | the keystore does not hold it and nothing supplied it (or the credentials file could not be read), or `wazuh-manager-keystore` could not store it |
-| `MISSING WAZUH_MANAGER_API_PASSWORD` / `MISSING WAZUH_MANAGER_WUI_PASSWORD` | the credentials file could not be read (owner, mode, symlink or a malformed managed block), or no password could be generated |
-| `INVALID <KEY>` | a supplied value fails the [password policy](#the-password-policy) |
-| `MISSING rbac.db: the Server API database could not be created` | publishing the passwords or `rbac_control seed` failed; the lines before it carry `rbac_control`'s own reason |
+- every entry is opened from its parent directory without following a link, and checked on the opened file;
+- a file it reads must be root's, not group- or world-writable, with a single link;
+- `ca/` and `export/` must be root's `0700` directories, and `certs/` root's, group `wazuh-manager`, mode exactly
+  `0750`: the daemons open its files by name through that group, which never writes there;
+- `<CONF>` itself must leave its group `rwx`: the daemons write there and cross it to reach `certs/`. A mode that
+  locks them out (`0750`, `0700`) is refused as `UNSAFE /etc/wazuh-manager: mode is 0750, missing 0020`, so the start stops on
+  the resolver's line instead of on a daemon that cannot read its certificate;
+- anything in `certs/` that root does not own is refused: only root can write there, so such an entry was
+  planted;
+- `ca/` and `export/` have the same owner and mode, so they are told apart by what they hold. Either one holding
+  the other's files is refused as a swap.
 
-1. Read the journal: `journalctl -u wazuh-manager -n 50`.
-2. Set the missing key in `/etc/wazuh/credentials.env`.
-3. `sudo systemctl start wazuh-manager`.
+An `export/ca.pem` that differs from `ca/root-ca.pem` is not an attack: it means the CA was staged again by hand.
+`--check` lets the start go on and says so (`… differs from …; --prestart publishes it again`), and `--prestart`
+publishes it again (`published /etc/wazuh-manager/export/ca.pem again: it differed from …`).
 
-An unsafe credentials file is refused before anything else, with the helper's reason first:
+A writing run that finds anything unsafe stops before it writes. It re-checks the directories it is about to
+write through on the very handles it writes with, so renaming entries in `<CONF>` mid-run redirects nothing.
 
-```
-$ systemctl status wazuh-manager
-  wazuh-credentials: file must be owned by root:root: /etc/wazuh/credentials.env
-  resolve-credentials: UNSAFE /etc/wazuh/credentials.env: refused by the shared credentials helper (see the wazuh-credentials: line above, when there is one)
-  resolve-credentials:         it must be a regular file, 0600 root:root, in a 0700 root:root directory whose ancestors are root-owned and not group- or world-writable; fix it and start again
-  Unsafe credentials file. Exiting
-```
-
-`wazuh-manager-control -j` prints `{"error":22,"message":"Unsafe credentials file."}` instead of the
-last line, and `logs/wazuh-manager.log` gets `wazuh-manager-control: ERROR: unsafe credentials file`
-and the lines above. `systemctl restart` stops the manager first (`ExecStop`, then `ExecStart`), so a
-refusal leaves it stopped; `wazuh-manager-control restart` and `reload`, and `systemctl reload`, check
-before stopping and leave it running. When the check itself cannot run (its shared helper is
-missing), the start is refused all the same with `Cannot check the credentials file. Exiting`
-(`-j`: `{"error":22,"message":"Cannot check the credentials file."}`).
-
-Validation covers **presence and format only**. The pre-start step never opens a network connection,
-because making a service's start depend on reaching its peer would break boot ordering and cluster
-restarts. A credential that is present but wrong still fails as a `401` at runtime.
-
-No value is ever printed — not in the installer's output, not in the journal. An invalid value is
-reported by the name of its key and the rule it failed.
+What the service account can still do, because `<CONF>` has no sticky bit: rename or hide `local.env` or `ca/`.
+The resolver then refuses (`UNSAFE`), or carries on as if you had supplied nothing (generated passwords,
+discovered names). It never uses anything the account wrote, and never discloses a secret to it.
 
 ## Certificates
 
-The manager needs three TLS pairs, all leaves of the same CA:
+The manager uses two server pairs of its own, both issued by its CA (directly or through intermediate CAs), plus the
+indexer's CA and a client pair the indexer issued for it:
 
-| File | Used by |
-|------|---------|
-| `/etc/wazuh-manager/certs/remoted.pem`, `remoted-key.pem` | the HTTPS agent listener on 1517, and `wazuh-manager-authd` on 1515 |
-| `/etc/wazuh-manager/certs/indexer-connector.pem`, `indexer-connector-key.pem` | the client certificate presented to the indexer |
-| `/etc/wazuh-manager/certs/apid.pem`, `apid-key.pem` | the certificate of the Server API (`wazuh-manager-apid`) |
-| `/etc/wazuh-manager/certs/root-ca.pem` | the trust anchor for all of them, served to agents on `GET /cacerts` |
+| File | Role | Comes from |
+|------|------|------------|
+| `certs/remoted.pem` | the agent listener (remoted's HTTPS, `authd`) | the manager's CA |
+| `certs/apid.pem` | the Server API | the manager's CA |
+| `certs/root-ca.pem` | the bundle agents and remoted trust; may hold rotation CAs | the manager's CA, written once |
+| `certs/indexer-ca.pem` | what the indexer connector trusts | the indexer |
+| `certs/indexer-connector.pem` | what the manager presents to the indexer | the indexer |
 
-### Issued at installation, and at no other moment
+### The manager's CA
 
-The pairs are issued by the install, and neither a service start nor a package upgrade issues,
-re-anchors or even re-examines them. Two reasons, and both matter in a distributed deployment:
+| `<CONF>/ca/` holds | `--install` | `--upgrade` and `--prestart` |
+|--------------------|-------------|------------------------------|
+| nothing, and `certs/` holds no pair and no `root-ca.pem` | mints a CA (RSA 2048, SHA-256, ten years, `CN=wazuh-manager-<node>`) and the marker | `MISSING …/ca/root-ca.pem` |
+| nothing, but pairs or `root-ca.pem` are already in `certs/` | `MISSING …/ca/root-ca.pem: stage the CA that issued the pairs` (never a second CA beside existing material) | same |
+| `root-ca.pem` and `root-ca.key` | validated and used to issue what is missing | validated |
+| `root-ca.pem` alone | validated; nothing can be issued here, the pairs must be staged | validated |
+| `root-ca.key` alone | `INVALID …/ca/root-ca.key: no certificate beside it` | same |
 
-* **Issuing a certificate is a signature, not a lookup.** Re-deriving the chain at every start would
-  mean the CA directory has to still be there, still hold the anchor this manager's material was
-  issued from, and still match it byte for byte. A deployment running on its own PKI stages a pair
-  and nothing else — it has no reason to keep a copy of its root CA on every manager forever, and no
-  reason to accept a manager that refuses to boot because that copy drifted or was tidied away.
-* **They are the credential you legitimately replace out of band.** A password lives in one place the
-  resolver owns; a certificate is rotated by whatever issues the rest of your estate's certificates.
+The CA must be a single self-signed certificate with `CA:TRUE`, inside its validity window, with an unencrypted
+key that matches it. An intermediate CA is not accepted here: it belongs in the pair files, after the leaf (see
+[Server pairs](#server-pairs)). Every writing mode publishes it in `export/ca.pem` when the copy there is absent or
+differs, and `--install` writes `certs/root-ca.pem` only when that file is absent. An existing bundle must contain
+the CA. Its bytes are never rewritten, so rotation CAs and the publication block `wazuh-manager-certs` adds survive.
 
-So `/etc/wazuh/ca` is a bootstrap handoff, not a standing dependency. **You can delete it** once the
-pairs are in `/etc/wazuh-manager/certs`, and a manager provisioned entirely from outside never needs one at all.
+### Server pairs
 
-What certificates the manager will accept is decided where it always was, against the files as they
-are at start — which is the only state that matters:
+A pair is issued at **installation only**, when it is absent and the CA has its key. The profile is RSA 2048,
+SHA-256, ten years backdated one day, `CA:FALSE`, `serverAuth`, `CN=<node>` and the pair's own SAN list. The
+certificate file carries the leaf followed by the CA.
 
-* `wazuh-manager-conf validate` checks that the agent-listener files (`remote.https.certificate`,
-  `key`, `ca`, `ca_certificate`) and the `auth.ssl_*` files **exist**. It runs as root, so it does not
-  tell you whether the `wazuh-manager` user can read them.
-* `remoted` probes its own pair with `access(R_OK)` **after** dropping privileges, and refuses to
-  start the listener when it cannot read either file.
-* `wazuh-manager-apid` generates no certificate. When `https.enabled` is on and the configured pair is
-  missing, not readable by `wazuh-manager`, or its key does not match the certificate, it logs error
-  `2003` naming the files in `logs/api.log` and does not start.
-* The TLS handshake decides the rest.
+At every other moment a pair is only checked:
 
-> [!NOTE]
-> The Indexer Connector pair is not covered by either check. `<indexer><ssl>` is deliberately left
-> out of the configuration validator's file list, so that a manager with no indexer can still start.
-> The connector itself checks only `<certificate_authorities>` — and, when it names a single file,
-> only that the file exists; `<certificate>` and `<key>` are used without any check at all, and
-> nothing tests whether the service user can read them. An `indexer-connector-key.pem` that is
-> missing, or present but not readable by `wazuh-manager`, therefore passes everything that runs
-> before the daemons and surfaces from the TLS handshake at the first indexer request. The install
-> checks the ownership and mode of the pairs, so a pair the manager issued is correct by
-> construction — when you provision one by hand, take the owners and modes from
-> [Using certificates issued elsewhere](installation.md#using-certificates-issued-elsewhere).
+- it must parse, match its key, be inside its window, be `CA:FALSE`, carry `serverAuth` if it has an
+  `extendedKeyUsage`, and have subject alternative names;
+- `apid.pem` must chain to `ca/root-ca.pem`. When an intermediate CA issued the leaf, the file carries the leaf
+  first and then the intermediates, in order; they are used to build the path and are never trusted on their own;
+- `remoted.pem` must chain to a certificate of `certs/root-ca.pem` **on its own**: agents receive that file alone
+  (`GET /cacerts`), so an intermediate CA that issued the remoted leaf goes in `certs/root-ca.pem`, where it is
+  trusted as it is. The intermediates in `remoted.pem` are still sent in the handshake but do not count here;
+- every CA on that path, the root included, must be valid now, `CA:TRUE`, allowed to sign certificates
+  (`keyCertSign`, when it has a `keyUsage`) and, when it restricts its `extendedKeyUsage`, allowed `serverAuth`
+  (`anyExtendedKeyUsage` alone is not enough, as for OpenSSL, which agents and the dashboard use). A pair signed only
+  by an expired rotation CA kept in the bundle is refused, and so is one under a CA limited to `clientAuth`
+  (`issuer CA: its extendedKeyUsage does not include serverAuth`).
 
-### What the install does
+A pair that does not chain is reported as `not issued by the manager's CA`, followed by the reason in brackets, for
+example `(no path to it from the certificates in the file)` when an intermediate is missing from `apid.pem`, or
+`(agents are handed /etc/wazuh-manager/certs/root-ca.pem alone: an intermediate CA that issued it belongs in that
+file)` for remoted. remoted, `authd` and the
+Server API send the whole file, so clients that trust the root verify the chain.
 
-Which flow applies is decided by what is in `$WAZUH_CA_DIR` (default `/etc/wazuh/ca`) — there is no
-mode flag, because the presence of a private key beside the anchor is the signal:
+A broken pair, or half of one, is reported and never repaired or reissued. To replace a pair, put the new files in
+place (`root:wazuh-manager 0640`); to have the resolver issue a new one, remove both files and run `--install`.
 
-| In the CA directory | Already in `/etc/wazuh-manager/certs` | Result |
-|---------------------|------------------------|--------|
-| nothing | nothing | mint a bootstrap CA, then issue the three pairs from it |
-| nothing | any of the seven files | **nothing issued**: no CA is minted, since its anchor would not match what is there |
-| anchor + key | no pair | install the anchor, issue the three pairs from the CA found |
-| anchor + key | some of the pairs | keep those pairs and issue only the missing ones, if the kept pairs were issued by that CA; **nothing issued** otherwise |
-| anchor + key, or anchor only | all three pairs | install the anchor if `/etc/wazuh-manager/certs` lacks it, issue nothing; the three pairs must chain to that anchor |
-| anchor only | not all three pairs | install the anchor; **nothing issued** |
+### Configured file names
 
-A file already in `/etc/wazuh-manager/certs` is never overwritten. A `root-ca.pem` already there must contain the CA
-directory's anchor (it may carry more CAs, as `wazuh-manager-certs` leaves it), or nothing is issued.
-A partial pair — a certificate without its key, or the reverse — is refused, and so is a kept pair
-that is expired, has the wrong key, the wrong extended key usage, or the wrong owner or mode.
+The resolver checks the files the daemons are configured to serve, under whatever name the configuration gives:
 
-A CA you place yourself has to match what the resolver checks, or it is refused and nothing is
-issued: the directory `root:root 0700`, `root-ca.pem` `root:root 0644` and `root-ca.key`
-`root:root 0400`.
+| Options | Set in | Default | A relative path resolves against |
+|---------|--------|---------|----------------------------------|
+| `remote.https.certificate`, `remote.https.key` (agent listener) | `/etc/wazuh-manager/wazuh-manager.conf` | `certs/remoted.pem`, `certs/remoted-key.pem` | `/var/wazuh-manager` |
+| `auth.ssl_manager_cert`, `auth.ssl_manager_key` (enrollment) | `/etc/wazuh-manager/wazuh-manager.conf` | the agent listener's pair | `/var/wazuh-manager` |
+| `remote.https.ca_certificate` (the agents' bundle, `GET /cacerts`) | `/etc/wazuh-manager/wazuh-manager.conf` | `certs/root-ca.pem` | `/var/wazuh-manager` |
+| `https.cert`, `https.key` (Server API) | `/var/wazuh-manager/api/configuration/api.yaml` | `apid.pem`, `apid-key.pem` | `/etc/wazuh-manager/certs` |
+| `indexer.ssl.certificate_authorities` (the indexer's CAs) | `/etc/wazuh-manager/wazuh-manager.conf` | `certs/indexer-ca.pem` in the generated configuration | `/var/wazuh-manager` |
+| `indexer.ssl.certificate`, `indexer.ssl.key` (the client pair) | `/etc/wazuh-manager/wazuh-manager.conf` | `certs/indexer-connector.pem`, `certs/indexer-connector-key.pem` in the generated configuration | `/var/wazuh-manager` |
 
-```bash
-sudo install -d -m 0700 -o root -g root /etc/wazuh/ca
-sudo install -m 0644 -o root -g root root-ca.pem /etc/wazuh/ca/root-ca.pem
-sudo install -m 0400 -o root -g root root-ca.key /etc/wazuh/ca/root-ca.key
-```
+- **Only directly in `/etc/wazuh-manager/certs`.** The service account can edit both configuration files, so a name
+  anywhere else, or one with a `.` or `..` component, is refused and never opened:
+  `INVALID remote.https.certificate: /etc/ssl/listener.pem is outside /etc/wazuh-manager/certs, the only place the resolver checks (set in /etc/wazuh-manager/wazuh-manager.conf)`.
+- **The same checks** as for the default names: owner and mode (`root:wazuh-manager 0640`) and content. authd's
+  pair, like remoted's, must chain to the agents' bundle on its own.
+- **Only the default names are issued.** A pair under another name is yours to stage; at `--prestart` an absent one is
+  `MISSING /etc/wazuh-manager/certs/listener.pem: configured as remote.https.certificate in /etc/wazuh-manager/wazuh-manager.conf; stage the pair (the resolver issues only remoted.pem, remoted-key.pem, apid.pem, apid-key.pem)`.
+  While authd keeps the default names, `remoted.pem` is still issued for it. A bundle under another name is
+  never created either (`… stage the agents' CA bundle there`).
+- **A turned-off listener** (`auth.disabled` set to `yes`, `https.enabled: false` in `api.yaml`) has its pair
+  neither checked nor reported missing. `--install` still issues the default pairs whose names are configured.
+- **Reading the configuration.** Every mode, `--check` included, reads `wazuh-manager.conf` through
+  `wazuh-manager-conf --skip-file-checks dump` and parses `api.yaml`; an absent `api.yaml`, or an option it does
+  not set, means the Server API's default. When either cannot be read, the default names are checked and the start
+  is refused: `INVALID /etc/wazuh-manager/wazuh-manager.conf: cannot read the TLS paths (wazuh-manager-conf exited with 1); run wazuh-manager-conf validate`,
+  `INVALID /var/wazuh-manager/api/configuration/api.yaml: not valid YAML (line 3)`. An `api.yaml` replaced by a
+  symbolic link is `UNSAFE`.
 
-A host that was never given a CA private key cannot sign, and so cannot be where one leaks from.
+For the indexer connection:
 
-When the install issues nothing it says so — the certificate helper's reason, then
-`resolve-credentials: the manager has no TLS certificates and this install could not issue them` —
-and still exits `0`: there is no such thing as a failed install here. If the pairs are not in place
-either, the manager refuses to start with the configuration validator's verdict naming the file:
-
-```
-(1244): Invalid configuration at '/remote/https/certificate': file not found:
-/etc/wazuh-manager/certs/remoted.pem (issued by the credential resolver at installation, or
-provisioned externally, e.g. with wazuh-certs-tool)
-```
-
-Provision the pairs and start the service again; nothing has to be reinstalled.
-
-If the install issued nothing because the credentials file was unsafe, the first start names the
-file instead (see [When the manager does not start](#when-the-manager-does-not-start)). Fix it and
-start again: the next start shows the `(1244)` above, because no pair was issued. With the manager
-stopped, issue the pair with `sudo /var/wazuh-manager/bin/wazuh-manager-resolve-credentials
---install`, reinstall the package, or provision your own pair; then start the service.
-
-To supply pre-issued pairs (the three of them), place them in `/etc/wazuh-manager/certs` **before** installing, or
-afterwards — either way they are used as they are and never replaced. The installer sets every `.pem` there
-to `root:wazuh-manager` `0640`, and validates `apid.pem` (chain to the CA, `serverAuth`,
-`CA:FALSE`, not expired, with a SAN extension, key, owner and mode). The file names, owners and modes are in
-[Using certificates issued elsewhere](installation.md#using-certificates-issued-elsewhere).
+- **Only the default names are imported.** `indexer-ca.pem` is imported from the indexer's export only while
+  `certificate_authorities` lists it, and the client pair only while `certificate` and `key` name
+  `indexer-connector.pem` and `indexer-connector-key.pem` ([Indexer trust](#indexer-trust)). Any other listed or
+  configured file is yours to stage: checked, never written, and at `--prestart` an absent one is
+  `MISSING /etc/wazuh-manager/certs/manager-client.pem: configured as indexer.ssl.certificate in /etc/wazuh-manager/wazuh-manager.conf; stage a pair issued by the indexer's CA for this node (the resolver imports only indexer-connector.pem and indexer-connector-key.pem)`
+  or `MISSING …: configured in indexer.ssl.certificate_authorities in …; stage the indexer's CA there`.
+- **Every listed CA file counts.** The connector merges them, so the client pair may chain to any of them, and each
+  must hold only CA certificates.
+- **An empty CA list** makes the connector verify the indexer against the system's trust store: no CA file is
+  wanted, and the client pair gets the leaf checks only (key, validity, not a CA, `clientAuth`), with no chain test.
+- **No client pair** (`certificate` and `key` both empty) means none is wanted or imported. One set without the other
+  is refused: `INVALID indexer.ssl.key: must be set together with indexer.ssl.certificate (set in /etc/wazuh-manager/wazuh-manager.conf)`.
+- A configuration with no `<ssl>` block takes the schema's defaults, an empty CA list and no client pair, so nothing
+  is imported or required; the generated configuration always has the block.
 
 ### Subject alternative names
 
-The three leaves are configured independently, because they are presented to different peers: agents
-dial `remoted.pem`, API clients `apid.pem`, and the indexer verifies `indexer-connector.pem`:
+Each pair has its own list: `WAZUH_MANAGER_REMOTED_CERT_SANS` and `WAZUH_MANAGER_APID_CERT_SANS`. The Server API
+list never inherits remoted's. A list holds comma-separated entries: `DNS:name`, `IP:address`, or a bare value
+(an address when it has a colon or only digits and dots, a name otherwise). Zone ids, prefixes and wildcards are
+refused, and an invalid list stops the issuance of both pairs before any is written. `localhost`, `127.0.0.1` and
+`::1` are always appended.
 
-| Setting | Configures | Discovery when unset |
-|---------|------------|----------------------|
-| `WAZUH_MANAGER_CERT_SANS` | `indexer-connector.pem` | hostname, FQDN, `localhost`, loopback, and the global addresses on default-route interfaces |
-| `WAZUH_MANAGER_REMOTED_CERT_SANS` | `remoted.pem` | hostname, FQDN, `localhost`, loopback, and **every global-scope** address `ip -o addr show` reports — including addresses on interfaces that are not on the default route, that are virtual, or that are down |
-| `WAZUH_MANAGER_APID_CERT_SANS` | `apid.pem` | the same discovery as `remoted.pem`; it never inherits `WAZUH_MANAGER_REMOTED_CERT_SANS` |
+When a list is unset, the names are discovered:
 
-The Remoted and Server API discovery is deliberately wider than the connector's: agents reach the
-manager over whatever address the operator pointed them at, which is frequently not the one on the
-default route, and a manager issued a narrower certificate installs cleanly and then fails at the
-first peer connection.
+1. the node name, then the fully qualified name when it differs;
+2. the addresses of the interfaces that carry a default route: the primary IPv4 address of each (private networks
+   included, loopback and link-local left out) and their global IPv6 addresses (deprecated or tentative ones left
+   out);
+3. the loopback names.
 
-It is wider by *interface*, not by *scope*. Link-local (`fe80::`) and host-scope addresses are left
-out: no peer can match them, so they would be disclosure with no function — and a link-local address
-formed the classic way carries the interface's MAC into a certificate that is served to every client
-completing a handshake on port 1517. If a node must present an address discovery does not pick up,
-set that leaf's setting explicitly; it replaces the whole list.
+Secondary IPv4 addresses are not discovered: name them in the list. With no address found, the pairs name the
+node and loopback only, and the resolver warns which variable to set.
 
-An explicit value **replaces** discovery for that leaf; it does not extend it. `localhost`,
-`127.0.0.1` and `::1` are appended to it all the same. Wildcard DNS names,
-scoped IPv6 and CIDR notation are refused — under a shared CA, a node holding a wildcard could
-present a certificate for any other node — and equivalent textual IPv6 addresses are deduplicated.
+### Indexer trust
 
+The indexer CA and the client pair under their default names follow one rule, decided by a marker file in `certs/`
+(files under [configured names](#configured-file-names) are always staged):
 
-```sh
-WAZUH_MANAGER_CERT_SANS='DNS:wazuh.corp.local,IP:10.0.1.11'
-WAZUH_MANAGER_REMOTED_CERT_SANS='DNS:agents.corp.local,IP:10.0.1.11,IP:2001:db8::10'
-WAZUH_MANAGER_APID_CERT_SANS='DNS:api.corp.local,IP:10.0.1.11'
+| State in `certs/` | What happens |
+|-------------------|--------------|
+| absent | imported from `/etc/wazuh-indexer/export/` (`ca.pem`, `manager-client.pem`, `manager-client-key.pem`) when the indexer is on this host, the marker written first; otherwise `MISSING` |
+| present with its marker (imported) | imported again when the indexer's files change; kept when they do not, or when the export is gone |
+| present without a marker (staged by you) | validated, never replaced |
+| one file of the pair only | `INVALID … half a pair` |
+
+The CA file must hold CA certificates inside their validity window; an intermediate CA kept there is trusted as it
+is. The client pair must chain to one of them, directly or through intermediate CAs that follow the leaf in
+`indexer-connector.pem`. Every CA on the path must be valid now, allowed to sign and, when it restricts its
+`extendedKeyUsage`, allowed `clientAuth`. The leaf must be inside its window, not be a CA, match its key, and carry
+an `extendedKeyUsage` with `clientAuth`. A pair without it is refused.
+
+The CA and the pair are taken from the export together or not at all: the pair that will be in place must chain
+to the CA that will be in place. An export whose new CA comes with a pair that is refused, or that does not issue the
+pair already in place, changes nothing, and is reported against the export:
+
+```text
+INVALID /etc/wazuh-indexer/export/manager-client.pem: its key does not match it
+INVALID /etc/wazuh-indexer/export/ca.pem: does not issue the staged /etc/wazuh-manager/certs/indexer-connector.pem; nothing was imported
 ```
 
-Changing any of them afterwards renews nothing: a complete existing pair always wins, and a start
-issues nothing in any case. To reissue, stop the manager (the resolver opens the keystore, which
-`wazuh-manager-modulesd` holds while it runs), remove the pair and run the resolver's `--install`
-mode again. It issues from the CA in `$WAZUH_CA_DIR`, so the CA and its private key must still be
-there:
+`--check` reports the same refusal, so a `restart` is refused before anything is stopped and the manager keeps
+running on the material in place. When no pair is in place at all, the CA is imported alone and the pair stays `MISSING`.
 
-```bash
-sudo systemctl stop wazuh-manager
-sudo rm /etc/wazuh-manager/certs/remoted.pem /etc/wazuh-manager/certs/remoted-key.pem
-sudo /var/wazuh-manager/bin/wazuh-manager-resolve-credentials --install
-sudo systemctl start wazuh-manager
+A CA or client pair that only the clock refuses (expired, not valid yet) is a `WARNING`, never a refusal: in place,
+it is kept; in the export, it is imported only when nothing usable is in place (a first import, or material that is
+itself refused), never over a pair valid now. A node that boots with its clock behind therefore starts, and its
+indexer connection works once the clock is right. The connector still validates TLS itself, so such material is
+not used until it is valid.
+
+Every writing run then names the client pair in place, as it names the server pairs: its subject and its subject
+alternative names, `none` when it has none (a client certificate need not have any; `-q` drops the line):
+
+```text
+resolve-credentials: /etc/wazuh-manager/certs/indexer-connector.pem: DN CN=wazuh-manager,OU=Wazuh,O=Wazuh; SANs none
 ```
 
-> [!WARNING]
-> Discovery failing is an **error**, not a quiet fall back to loopback: a node issued a
-> loopback-only certificate installs cleanly and then fails at the first peer connection, possibly
-> weeks later, because the pre-start step opens no network connections. If `ip -o addr show` cannot
-> run, supply the SANs explicitly. Check what a node actually presents with
-> `openssl x509 -in /etc/wazuh-manager/certs/remoted.pem -noout -text`.
+An export that holds any file root may not trust is refused as a whole: nothing is imported from it in that run.
+An import interrupted halfway, with the marker written but not every file, is recognised: `--check` lets the start
+through, and the `--prestart` that follows finishes it.
 
-The bootstrap CA is local to the host and disposable. A host that minted its own and later joins a
-cluster keeps the certificates it issued, which no other node trusts: nothing reissues them. Replace
-the three pairs and `/etc/wazuh-manager/certs/root-ca.pem` with material from the cluster's CA — provisioned directly, or
-issued by `--install` as above after staging that CA in `$WAZUH_CA_DIR` and removing the seven files
-and the bootstrap CA.
+`<indexer><ssl><certificate_authorities><ca>` in the generated configuration names
+`/etc/wazuh-manager/certs/indexer-ca.pem`.
+
+### Using certificates issued elsewhere
+
+To run the manager on your own PKI, stage the files before installing, or before the next start:
+
+1. the CA certificate in `<CONF>/ca/root-ca.pem` (`root:root 0644` in a `root:root 0700` directory), with its key
+   `root-ca.key` (`0400`) only if this host should issue pairs;
+2. the server pairs and `certs/root-ca.pem` in `<CONF>/certs/` (`root:wazuh-manager 0640`). When your PKI issued
+   them from an intermediate CA, `apid.pem` carries the leaf followed by the intermediates, the intermediate that
+   issued the remoted leaf is added to `certs/root-ca.pem`, and `ca/root-ca.pem` stays the root;
+3. for an indexer on another host, its CA as `certs/indexer-ca.pem` and a client pair it issued for this node
+   (with `clientAuth`) as `certs/indexer-connector.pem` and `indexer-connector-key.pem`, and the indexer password
+   in `local.env`.
+
+Staged files carry no marker, so the resolver validates them and never replaces them. If a CA was already minted
+here, replace `ca/root-ca.pem` and remove `ca/root-ca.key` and `ca/.wazuh-manager-bootstrap-ca`; the next start
+publishes the new CA in `export/ca.pem`.
+
+## Cluster deployments
+
+Every node resolves credentials for itself. The cluster synchronizes `client.keys`, `authd.pass`,
+`enrollment_tokens.json`, `shared/` and `var/multigroups/`, and none of `ca/`, `export/`, `local.env` or `certs/`.
+
+- **Stage the same CA on every node before installing**, in `<CONF>/ca/` (`root-ca.pem`, and `root-ca.key` where
+  pairs are issued). A node that mints its own CA trusts only itself, and an agent that reaches another node will
+  not trust what it presents. Each node presents its own listener pair, which must name the addresses agents use
+  to reach that node (behind a load balancer, the balancer's name as well).
+- **Back up each node's credentials with it.** The cluster does not restore them: a worker's backup must carry
+  `ca/`, `export/`, `local.env` and `certs/` together, since the start checks the pairs against that CA. See the
+  [worker node backup](../backup-restore.md#worker-node-backup).
+- **Only a master seeds `rbac.db`.** The Server API runs on the master, so a worker seeds and publishes nothing.
+  The role is read with every other setting (`wazuh-manager-conf --skip-file-checks dump`); when the configuration
+  cannot be read, nothing is seeded and the start refuses (`INVALID /etc/wazuh-manager/wazuh-manager.conf: cannot read the TLS paths (…)`).
+- **`rbac.db` is not replicated**, and an existing one is never touched. A node promoted to master serves its own
+  database, seeded when it is promoted if it holds none. Supply the same `WAZUH_MANAGER_API_PASSWORD` and
+  `WAZUH_MANAGER_WUI_PASSWORD` on every node, so a promoted node comes up with the passwords you already know.
+
+`rbac_control change-password` changes the current master's database; see
+[Server API authentication](../modules/server-api/authentication.md).
 
 ## Container images
 
-A container image built by installing the package is a special case worth stating plainly: the
-package's `postinst` runs the resolver, so the image layer carries a seeded `rbac.db`, a bootstrap
-CA **including its private key**, and an issued certificate set. Every container started from that
-image would share all of it — which is worse than a shipped default password, because it looks
-random.
-
-Clear them so each container resolves from nothing. `--clear` and `--install` are a pair — the first
-wipes, the second resolves — because certificates are only ever issued at install:
+An image built by installing the package carries what its `postinst` resolved: a seeded `rbac.db`, a minted CA
+**with its private key**, and issued pairs. Every container started from it would share them. Clear them at the
+end of the build, and resolve each container's own before its first start:
 
 ```dockerfile
-# end of the Dockerfile: ship an image with no credentials at all
+# end of the Dockerfile: ship an image with no credentials of its own
 RUN /var/wazuh-manager/bin/wazuh-manager-resolve-credentials --clear
 ```
 
 ```bash
-# entrypoint, before the first start: resolve this container's own. Idempotent, so a restarted
-# container that already resolved changes nothing.
+# entrypoint, before the first start; a restarted container that already resolved changes nothing
 /var/wazuh-manager/bin/wazuh-manager-resolve-credentials --install
 ```
 
-`--clear` removes `rbac.db`, the keystore contents, the seven files in `/etc/wazuh-manager/certs`
-(`remoted.pem`, `remoted-key.pem`, `indexer-connector.pem`, `indexer-connector-key.pem`,
-`apid.pem`, `apid-key.pem`, `root-ca.pem`) and the bootstrap CA, and takes `WAZUH_MANAGER_API_PASSWORD` and
-`WAZUH_MANAGER_WUI_PASSWORD` out of the managed block of the credentials file. The two `*_CERT_SANS`
-keys stay.
+`--clear` refuses while any manager daemon runs: a pid file in `var/run` that names a live process blocks it.
+It removes:
 
-An image that bakes in certificates of its own — issued for the service names its containers will
-answer to — needs neither call for them: overwrite the files in `/etc/wazuh-manager/certs` and nothing will ever
-look at where they came from.
+- the two server pairs and `certs/root-ca.pem`;
+- the indexer files that carry an import marker, and their markers;
+- the CA in `ca/`, only when its mint marker is there;
+- the contents of `export/`, except a dashboard client pair you provided;
+- `rbac.db`;
+- the keystore's contents.
+
+It keeps a CA you staged, indexer files you staged, a dashboard client pair you provided and `local.env`, and says
+so for each:
+
+```text
+resolve-credentials: kept /etc/wazuh-manager/certs/indexer-ca.pem: staged, no import marker
+resolve-credentials: removed /etc/wazuh-manager/ca/root-ca.key
+resolve-credentials: removed /var/wazuh-manager/api/configuration/security/rbac.db
+resolve-credentials: every Server API user, role and policy it held is gone, not only the default users
+resolve-credentials: kept /etc/wazuh-manager/local.env
+resolve-credentials: cleared; the next --install resolves from nothing
+```
 
 > [!WARNING]
-> `--clear` is the one destructive operation here, and `rbac.db` holds **every** Server API user,
-> role, policy and rule — not only the two default users. On a deployment with custom RBAC, clearing
-> means recreating it. It refuses to run while the manager is running (`refusing to clear
-> credentials while the manager is running`); stop the service first.
-
-It deliberately leaves alone anything outside the managed block or belonging to another component,
-and **any CA this host did not mint** — including one that has its private key beside it. The
-installation records the mint in the CA directory at the moment it happens, and that record is the
-only thing that authorises removing a CA private key. So a CA you staged yourself survives, whether
-you gave the manager only an anchor or a full signing pair:
-
-| In the CA directory | `--clear` |
-|---------------------|-----------|
-| A CA this installation minted | removed, private key included |
-| A signing CA you staged (anchor **and** key) | kept — this host did not mint it |
-| An anchor you staged, no key | kept — it was issued elsewhere |
-
-If it cannot empty the keystore, or take its own keys out of `/etc/wazuh/credentials.env` — a wrong
-mode, a malformed file — it says so and exits non-zero rather than reporting a clearance it did not
-perform. Check the exit
-status when you run it from a `Dockerfile`: the point of the command is that the image ships no
-credentials, and a `RUN` that ignored the failure would ship them anyway.
+> `rbac.db` holds **every** Server API user, role, policy and rule, not only the two default users. Nothing is
+> removed when any entry is unsafe, and a removal that fails makes the run exit `1` without the `cleared` line:
+> check the exit status in a `Dockerfile`. The Server API's token signing keys
+> (`api/configuration/security/private_key.pem`, `public_key.pem`) are not credentials the resolver made and stay.
 
 ## Upgrades and removal
 
-An upgrade takes step 1 for everything already resolved: an existing `rbac.db` and a stored indexer
-credential are left untouched, and the matching keys in the file are ignored whatever they contain.
-Only a credential this host never resolved is read from the file or the environment. Replacing a
-credential on a running deployment is rotation, not installation.
+An upgrade (`--upgrade`) never reseeds an existing `rbac.db`, never replaces a stored indexer password, and never
+mints a CA or issues a pair. It completes what this host never had and imports the indexer's files when they
+changed. A pair you replaced with your own PKI's survives every upgrade.
 
-Certificates are not looked at at all. An upgrade never re-examines, re-anchors or reissues the pairs
-in `/etc/wazuh-manager/certs`, so one you replaced with your own PKI's — and the absent CA directory that usually
-goes with it — survives every upgrade untouched.
+| Command | `/etc/wazuh-manager` |
+|---------|----------------------|
+| `apt remove wazuh-manager` | kept, every file renamed to `<name>.save`: `ca/root-ca.key` and `local.env` included |
+| `apt purge wazuh-manager` | removed, with the service account |
+| `rpm -e wazuh-manager` / `dnf remove` | kept as `*.save`, owned by `root:root` |
 
-> [!NOTE]
-> With one exception, on DEB only. `apt remove` (without `purge`) renames everything under `/etc/wazuh-manager` to
-> `*.save`, so a later reinstall finds no pair and must issue one — but dpkg reports that reinstall
-> the same way it reports an upgrade. The `postinst` therefore treats "no `/etc/wazuh-manager/certs/remoted.pem`
-> **and** no `/etc/wazuh-manager/certs/indexer-connector.pem`" as an install and issues.
->
-> That test also matches a genuine upgrade on a host that keeps **both** certificates somewhere else
-> — `WAZUH_REMOTE_HTTPS_CERTIFICATE` pointed outside `/etc/wazuh-manager/certs`, and `<indexer><ssl><certificate>`
-> likewise. On such a host an upgrade issues a pair into `/etc/wazuh-manager/certs` that nothing reads, and mints a
-> bootstrap CA in `/etc/wazuh/ca` if none is there. Nothing in use is touched or overwritten: a file
-> already in place is never replaced, and a `root-ca.pem` that differs from the CA's aborts the
-> issuance. If you run on your own PKI at non-default paths and want neither, keep a `root-ca.pem`
-> in `/etc/wazuh-manager/certs` — the issuance then has an anchor it must match and stops — or remove the issued
-> files and `/etc/wazuh/ca` afterwards.
-
-What removal does depends on which package manager, because they do not offer the same operations:
-
-| Command | Effect on the credentials file |
-|---------|-------------------------------|
-| `apt remove wazuh-manager` | untouched |
-| `apt purge wazuh-manager` | the manager's own keys are removed from the managed block |
-| `rpm -e wazuh-manager` / `dnf remove` | the manager's own keys are removed from the managed block |
-
-RPM has no operation that removes a package while keeping its configuration, so an erase is the
-equivalent of a DEB purge and is treated as one. Both take exactly the same five keys
-(`WAZUH_MANAGER_API_PASSWORD`, `WAZUH_MANAGER_WUI_PASSWORD`, `WAZUH_MANAGER_CERT_SANS`,
-`WAZUH_MANAGER_REMOTED_CERT_SANS`, `WAZUH_MANAGER_APID_CERT_SANS`) and only from inside the managed block — lines you wrote are never
-touched, even when they carry the same key.
-
-The last component out then removes what is left, `/etc/wazuh` included. "Last" is asked of the
-package manager: the file, the CA directory and `/etc/wazuh` go only when neither `wazuh-indexer`
-nor `wazuh-dashboard` is still installed, so purging the manager on a host that also runs one of
-them cannot take the trust material out from under it. A CA relocated with `WAZUH_CA_DIR` is left
-alone, and `/etc/wazuh` is removed with `rmdir`, so anything of yours in it survives.
+The resolver never reads a `*.save` file. A reinstall after `apt remove` finds no `certs/remoted.pem` and resolves
+as an install. Delete the `.save` copies of the CA key and of `local.env` when you no longer need them.
 
 ## Rotation
 
-Use the Wazuh installation assistant's passwords tool for a coordinated change on a running
-deployment. A package must never reconfigure a sibling — it is invoked by the package manager as a
-side effect of an unrelated action — whereas the tool is invoked by you, at a moment of your choosing.
-
-To change a Server API password on its own:
+To change a Server API password on a running deployment:
 
 ```bash
 sudo /var/wazuh-manager/bin/rbac_control change-password
 ```
 
-Neither `rbac_control` nor the Server API (`PUT /security/users/{user_id}`) updates
-`/etc/wazuh/credentials.env`, so a value left there after a change is stale: `rbac.db` is the only
-authority once it is seeded. Only the passwords tool records the change in the file, and it applies
-the stricter [supplied-password rule](#the-password-policy), so a password chosen through the API
-may be one it cannot store. See [Server API users](installation.md#server-api-users) for where the
-change applies in a cluster.
+Neither `rbac_control` nor the Server API (`PUT /security/users/{user_id}`) updates `<CONF>/export/credentials.env`,
+so the value there is stale after a change: `rbac.db` is the only authority once it is seeded.
+Rotating the manager's CA means staging the new one in `ca/`, adding it to `certs/root-ca.pem` for the agents (see
+[CA rotation](../modules/remoted/ca-rotation.md)); the next start publishes it in `export/ca.pem`.

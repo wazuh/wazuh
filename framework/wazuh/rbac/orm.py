@@ -74,11 +74,10 @@ def _failed_check_floor() -> float:
         _failed_check_seconds = 1.5 * max(costs)
     return _failed_check_seconds
 
-# Generated-password shape. This is the same alphabet and length as wazuh_password_generate() in
-# wazuh-credentials.sh -- the shared credential library downloaded from wazuh-installation-assistant
-# by `make deps` into src/external/wazuh-credentials/ -- because the resolver and this module are two
-# entry points to the same seeding and a value from either must satisfy the same policy the Server
-# API enforces in wazuh/security.py. The omitted punctuation (quotes, backslash, backtick, $, ! and
+# Generated-password shape. This is the same alphabet and length as the credential resolver's
+# generator (src/init/credentials/wazuh-manager-resolve-credentials.py, whose tests check it against
+# this file), because the resolver and this module are two entry points to the same seeding and a
+# value from either must satisfy the same policy the Server API enforces in wazuh/security.py. The omitted punctuation (quotes, backslash, backtick, $, ! and
 # #) keeps a value safe to paste through shell, YAML, JSON and docker-compose interpolation without
 # escaping.
 _PASSWORD_SYMBOLS = '.,_+:@%^=~-'  # nosec B105 - the generator's symbol set, not a password

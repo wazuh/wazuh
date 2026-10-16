@@ -339,12 +339,12 @@ def start(params: dict):
     SystemExit
         A shutdown was requested before the server started, or the server never started.
     """
-    # `rbac.db` belongs to the credential resolver, which seeds it through `rbac_control seed` and
-    # publishes the two default users' passwords to /etc/wazuh/credentials.env. Creating it here
-    # instead -- which `check_database_integrity()` does when the file is absent -- seeds those users
-    # with generated passwords that are published NOWHERE: not to the credentials file, not to the
-    # log. The result is an API that starts cleanly and that nobody can authenticate against, with no
-    # record of the credential on the host.
+    # `rbac.db` belongs to the credential resolver, which seeds it through `rbac_control.py seed` and
+    # publishes the two default users' passwords to /etc/wazuh-manager/export/credentials.env.
+    # Creating it here instead -- which `check_database_integrity()` does when the file is absent --
+    # seeds those users with generated passwords that are published NOWHERE: not to the credentials
+    # file, not to the log. The result is an API that starts cleanly and that nobody can authenticate
+    # against, with no record of the credential on the host.
     #
     # An empty file is what a failed creation leaves behind, not a database, so it is treated as
     # absent -- the same test `rbac_control seed` applies.

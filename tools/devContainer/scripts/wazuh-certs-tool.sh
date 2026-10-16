@@ -43,6 +43,10 @@
 #      ${base_path}/wazuh-certificates output is replaced by output_dir validation
 #      (realpath -m; a non-empty directory needs -f), the six "mv ... wazuh-certificates"
 #      blocks by cert_moveToOutput(), and the temporary directory comes from mktemp -d.
+#   9. cert_generateManagercertificates(): the manager node's certificate (the manager's
+#      indexer client pair) is signed with a v3_manager_client section appended to its
+#      configuration: v3_req plus extendedKeyUsage clientAuth. Indexer and dashboard
+#      leaves keep v3_req.
 #
 # The installer helpers after main() (common_*) are kept verbatim.
 # ------------------------------------------------------------------------------
@@ -373,10 +377,17 @@ function cert_generateManagercertificates() {
                 manager_san+=("${mgr_dns[@]}")
             fi
             cert_generateCertificateconfiguration "${manager_name}" "${manager_san[@]}"
+            # DEVCONTAINER: (9) the manager node's certificate is its indexer client pair, and the
+            # manager only accepts one that carries extendedKeyUsage clientAuth: same extensions as
+            # v3_req plus that EKU, in a section of its own so the other nodes' leaves are unchanged.
+            printf '\n%s\n%s\n%s\n%s\n%s\n%s\n' "[ v3_manager_client ]" \
+                "authorityKeyIdentifier=keyid,issuer" "basicConstraints = CA:FALSE" \
+                "keyUsage = digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment" \
+                "extendedKeyUsage = clientAuth" "subjectAltName = @alt_names" >> "${cert_tmp_path}/${manager_name}.conf"
             common_logger -d "Creating the Wazuh manager tmp key pair."
             cert_executeAndValidate openssl req -new -nodes -newkey rsa:2048 -keyout "${cert_tmp_path}/${manager_name}-key.pem" -out "${cert_tmp_path}/${manager_name}.csr" -config "${cert_tmp_path}/${manager_name}.conf"
             common_logger -d "Creating the Wazuh manager certificates."
-            cert_executeAndValidate openssl x509 -req -in "${cert_tmp_path}/${manager_name}.csr" -CA "${cert_tmp_path}/root-ca.pem" -CAkey "${cert_tmp_path}/root-ca.key" -CAcreateserial -out "${cert_tmp_path}/${manager_name}.pem" -extfile "${cert_tmp_path}/${manager_name}.conf" -extensions v3_req -days 3650
+            cert_executeAndValidate openssl x509 -req -in "${cert_tmp_path}/${manager_name}.csr" -CA "${cert_tmp_path}/root-ca.pem" -CAkey "${cert_tmp_path}/root-ca.key" -CAcreateserial -out "${cert_tmp_path}/${manager_name}.pem" -extfile "${cert_tmp_path}/${manager_name}.conf" -extensions v3_manager_client -days 3650
             # DEVCONTAINER: (3) agent-facing listener leaf for this manager node (same SAN).
             cert_generateRemotedcertificate "${manager_name}" "${manager_san[@]}"
         done

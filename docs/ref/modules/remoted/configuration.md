@@ -256,6 +256,9 @@ Path to the TLS certificate chain (PEM) presented by the server.
   (`remote.https.ca`) when `verification_mode` is `certificate` or `full` and that file is missing or unreadable.
 - **Note:** at startup the manager warns if this certificate has expired or expires within 30 days,
   so a silent outage for verifying agents can be prevented before it happens.
+- **Note:** before every start the credential resolver checks the configured pair, which must be directly in
+  `/etc/wazuh-manager/certs` under any name; see
+  [Configured file names](../../getting-started/credentials.md#configured-file-names).
 
 ### https.key
 

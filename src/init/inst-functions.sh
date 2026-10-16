@@ -280,22 +280,62 @@ WriteLogs()
 }
 
 ##########
+# ReplaceAll <text> <from> <to>
+# Sets REPLACE_ALL_RESULT to <text> with every occurrence of <from> replaced by <to>, left to right.
+# Plain strings: nothing in <from> or <to> is a pattern. The package scripts run the configuration
+# generator on hosts that may not have sed, so its substitutions are done here, in the shell.
+##########
+ReplaceAll()
+{
+    _ra_rest="$1"
+    _ra_done=""
+    if [ -n "$2" ]; then
+        while :; do
+            case "$_ra_rest" in
+                *"$2"*)
+                    _ra_done="${_ra_done}${_ra_rest%%"$2"*}$3"
+                    _ra_rest="${_ra_rest#*"$2"}"
+                    ;;
+                *)
+                    break
+                    ;;
+            esac
+        done
+    fi
+    REPLACE_ALL_RESULT="${_ra_done}${_ra_rest}"
+}
+
+##########
+# SubstituteFile <file> [<from> <to>]...
+# Prints <file> with each pair replaced in turn, as `sed -e 's|from|to|g' ... <file>` printed it,
+# trailing newlines included (the content never goes through a command substitution on the way out).
+##########
+SubstituteFile()
+{
+    _sf_text=$(cat "$1" && echo x) || return 1
+    _sf_text="${_sf_text%x}"
+    shift
+    while [ "$#" -ge 2 ]; do
+        ReplaceAll "$_sf_text" "$1" "$2"
+        _sf_text="$REPLACE_ALL_RESULT"
+        shift 2
+    done
+    printf '%s' "$_sf_text"
+}
+
+##########
 # SetHeaders() 1-agent|manager
 ##########
 SetHeaders()
 {
-    HEADERS_TMP="/tmp/wazuh-headers.tmp"
     if [ "$DIST_VER" = "0" ]; then
-        sed -e "s/TYPE/$1/g; s/DISTRIBUTION/${DIST_NAME}/g; s/VERSION//g" "$HEADER_TEMPLATE" > $HEADERS_TMP
+        HEADER_DIST_VERSION=""
+    elif [ "$DIST_SUBVER" = "0" ]; then
+        HEADER_DIST_VERSION="${DIST_VER}"
     else
-      if [ "$DIST_SUBVER" = "0" ]; then
-        sed -e "s/TYPE/$1/g; s/DISTRIBUTION/${DIST_NAME}/g; s/VERSION/${DIST_VER}/g" "$HEADER_TEMPLATE" > $HEADERS_TMP
-      else
-        sed -e "s/TYPE/$1/g; s/DISTRIBUTION/${DIST_NAME}/g; s/VERSION/${DIST_VER}.${DIST_SUBVER}/g" "$HEADER_TEMPLATE" > $HEADERS_TMP
-      fi
+        HEADER_DIST_VERSION="${DIST_VER}.${DIST_SUBVER}"
     fi
-    cat $HEADERS_TMP
-    rm -f $HEADERS_TMP
+    SubstituteFile "$HEADER_TEMPLATE" TYPE "$1" DISTRIBUTION "${DIST_NAME}" VERSION "${HEADER_DIST_VERSION}"
 }
 
 ##########
@@ -757,22 +797,19 @@ WriteManager()
         # to stay hardcoded to the default certs/remoted.pem regardless.
         WAZUH_AUTHD_SSL_MANAGER_CERT="${WAZUH_REMOTE_HTTPS_CERTIFICATE:-${CONF_DIR}/certs/remoted.pem}"
         WAZUH_AUTHD_SSL_MANAGER_KEY="${WAZUH_REMOTE_HTTPS_KEY:-${CONF_DIR}/certs/remoted-key.pem}"
-        sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" \
-            -e "s|\${WAZUH_AUTHD_SSL_MANAGER_CERT}|$WAZUH_AUTHD_SSL_MANAGER_CERT|g" \
-            -e "s|\${WAZUH_AUTHD_SSL_MANAGER_KEY}|$WAZUH_AUTHD_SSL_MANAGER_KEY|g" \
-            "${AUTH_TEMPLATE}" >> $NEWCONFIG
+        SubstituteFile "${AUTH_TEMPLATE}" \
+            '${INSTALLDIR}' "$INSTALLDIR" \
+            '${WAZUH_AUTHD_SSL_MANAGER_CERT}' "$WAZUH_AUTHD_SSL_MANAGER_CERT" \
+            '${WAZUH_AUTHD_SSL_MANAGER_KEY}' "$WAZUH_AUTHD_SSL_MANAGER_KEY" >> $NEWCONFIG
         echo "" >> $NEWCONFIG
     else
         DisableAuthd
     fi
 
-    if command -v openssl >/dev/null 2>&1; then
-        CLUSTER_KEY=$(openssl rand -hex 16)
-    else
-        CLUSTER_KEY=$(head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n')
-    fi
+    # 16 random bytes as 32 hex digits, with coreutils only.
+    CLUSTER_KEY=$(head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n')
     # Writting cluster configuration
-    sed -e "s|\${CLUSTER_KEY}|$CLUSTER_KEY|g" "${CLUSTER_TEMPLATE}" >> $NEWCONFIG
+    SubstituteFile "${CLUSTER_TEMPLATE}" '${CLUSTER_KEY}' "$CLUSTER_KEY" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     echo "</wazuh_config>" >> $NEWCONFIG
@@ -1580,36 +1617,36 @@ InstallServer()
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/keystore
     ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-manager-keystore ${INSTALLDIR}/bin/wazuh-manager-keystore
 
-    # Credential resolution ladder. Installed inside the prefix rather than at a fixed system path
+    # Credential resolver. Installed inside the prefix rather than at a fixed system path
     # so that parallel installs under different USER_DIR values do not collide, which also keeps it
     # inside the tree .github/actions/check_files/manager_base.csv pins.
     #
-    # The scripts are INSTALLED here; whether install.sh then RUNS the resolver is decided by
+    # The resolver is INSTALLED here; whether install.sh then RUNS it is decided by
     # USER_RESOLVE_CREDENTIALS, which the DEB and RPM recipes set to "n". They invoke install.sh at
     # *package build* time and ship the resulting tree wholesale (`cp -r $(INSTALLATION_DIR)/.` in
     # debian/rules), so resolving there would seed one rbac.db, one bootstrap CA private key and one
     # certificate set inside the package, and every installation in the world would share them.
     # Their postinst/%post resolves on the target host instead.
     #
-    # wazuh-credentials.sh is not in this repository. It is the half of the ladder the manager, the
-    # indexer and the dashboard must agree on exactly, so it is owned by wazuh-installation-assistant
-    # and downloaded by `make deps` into external/wazuh-credentials/ (see CREDENTIALS_LIB_* in
-    # src/Makefile). The two halves are still a pair at runtime: wazuh-manager-certificates.sh
-    # checks for the credential half's functions at call time and refuses to run without them.
-    #
-    # A missing download is fatal rather than a warning: unlike the indexer templates, a manager
-    # without this file has a resolver that cannot source its own library, so it would fail in
-    # postinst and again at every single start -- an install that looks like it worked and cannot.
-    CREDENTIALS_LIB_SRC="external/wazuh-credentials/wazuh-credentials.sh"
-    if [ ! -f "${CREDENTIALS_LIB_SRC}" ]; then
-        echo "ERROR: ${CREDENTIALS_LIB_SRC} not found."
-        echo "       It is downloaded from wazuh-installation-assistant by 'make -C src deps TARGET=manager'."
-        exit 1
+    # The resolver is one Python file run by the bundled interpreter in isolated mode, named on its
+    # first line. That line names the default home; any other installation directory gets its own
+    # interpreter there, written by the shell (the package scripts never need sed for this).
+    RESOLVER_SRC="init/credentials/wazuh-manager-resolve-credentials.py"
+    RESOLVER_DST="${INSTALLDIR}/bin/wazuh-manager-resolve-credentials"
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} "${RESOLVER_SRC}" "${RESOLVER_DST}"
+    if [ "${INSTALLDIR}" != "/var/wazuh-manager" ]; then
+        {
+            echo "#!${INSTALLDIR}/framework/python/bin/python3 -I"
+            RESOLVER_FIRST_LINE="yes"
+            while IFS= read -r RESOLVER_LINE || [ -n "${RESOLVER_LINE}" ]; do
+                if [ "${RESOLVER_FIRST_LINE}" = "yes" ]; then
+                    RESOLVER_FIRST_LINE="no"
+                    continue
+                fi
+                printf '%s\n' "${RESOLVER_LINE}"
+            done < "${RESOLVER_SRC}"
+        } > "${RESOLVER_DST}"
     fi
-
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} init/credentials/resolve-credentials.sh ${INSTALLDIR}/bin/wazuh-manager-resolve-credentials
-    ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} "${CREDENTIALS_LIB_SRC}" ${INSTALLDIR}/lib/wazuh-credentials.sh
-    ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} init/credentials/wazuh-manager-certificates.sh ${INSTALLDIR}/lib/wazuh-manager-certificates.sh
 }
 
 InstallAgent()

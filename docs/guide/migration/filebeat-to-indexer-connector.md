@@ -27,7 +27,7 @@ Every other `filebeat.yml` setting is gone:
 
 ## Migration steps
 
-The 5.x installation already configures the connector: the installer writes an `<indexer>` section pointing at `https://127.0.0.1:9200` with the certificates under `/etc/wazuh-manager/certs`, issues those certificates, and stores in the keystore the indexer password supplied as `WAZUH_INDEXER_MANAGER_PASSWORD` in `/etc/wazuh/credentials.env` (see [Credentials](../../ref/getting-started/credentials.md)). The steps below carry over what differs in your 4.x deployment.
+The 5.x installation already configures the connector: the installer writes an `<indexer>` section pointing at `https://127.0.0.1:9200` with `certs/indexer-ca.pem` and the client pair `certs/indexer-connector.pem`, imports those files from a 5.x indexer on the same host, and stores in the keystore the indexer password supplied as `WAZUH_INDEXER_MANAGER_PASSWORD` in `/etc/wazuh-manager/local.env` or published by that indexer (see [Indexer trust](../../ref/getting-started/credentials.md#indexer-trust)). The steps below carry over what differs in your 4.x deployment.
 
 ### 1. Record your current Filebeat settings
 
@@ -39,23 +39,32 @@ From `/etc/filebeat/filebeat.yml`, note:
 
 ### 2. Deploy the certificates
 
-The connector presents `/etc/wazuh-manager/certs/indexer-connector.pem` to the indexer and verifies the indexer against the CA files listed in `<certificate_authorities>`. The installation's `/etc/wazuh-manager/certs/root-ca.pem` is also the CA of the agent listener: it signs `remoted.pem` and is what agents pin, so **do not overwrite it** with a different CA after the installation.
+The connector verifies the indexer against `/etc/wazuh-manager/certs/indexer-ca.pem` and presents
+`/etc/wazuh-manager/certs/indexer-connector.pem` with its key. `/etc/wazuh-manager/certs/root-ca.pem` is the
+manager's own CA bundle, the one agents pin: it is not the connector's, so **do not overwrite it** with the
+indexer's CA.
 
-- **The manager was installed with the certificates of your 4.x deployment** (placed in `/etc/wazuh-manager/certs` or `/etc/wazuh/ca` before the install, as [Certificates and credentials](manager-4x-to-5x.md#certificates-and-credentials) describes): nothing to do.
-- **Otherwise**, deploy the client pair Filebeat used under the connector's file names, and the indexer's CA under a name of its own. Run as root:
+- **The indexer runs on this host as 5.x**: nothing to do; the manager imported its CA and client pair.
+- **Otherwise**, stage the indexer's CA as `indexer-ca.pem`, and a client pair it issued for this manager as the
+  connector's files. The pair must carry `extendedKeyUsage` `clientAuth`, or the manager refuses it before
+  starting. The pair Filebeat used, as `wazuh-certs-tool` issues it, carries no `extendedKeyUsage`: issue a new
+  one with the same CA as shown in
+  [Certificates and credentials](manager-4x-to-5x.md#certificates-and-credentials). Run as root:
 
 ```bash
-NODE_NAME=manager  # Replace with your manager node name in wazuh-certificates.tar
 CERTS=/etc/wazuh-manager/certs
 
-tar -xf wazuh-certificates.tar -C /tmp ./$NODE_NAME.pem ./$NODE_NAME-key.pem ./root-ca.pem
-install -m 0640 -o root -g wazuh-manager /tmp/$NODE_NAME.pem     $CERTS/indexer-connector.pem
-install -m 0640 -o root -g wazuh-manager /tmp/$NODE_NAME-key.pem $CERTS/indexer-connector-key.pem
-install -m 0640 -o root -g wazuh-manager /tmp/root-ca.pem        $CERTS/indexer-root-ca.pem
-rm -f /tmp/$NODE_NAME.pem /tmp/$NODE_NAME-key.pem /tmp/root-ca.pem
+tar -xf wazuh-certificates.tar -C /tmp ./root-ca.pem
+install -m 0640 -o root -g wazuh-manager /tmp/root-ca.pem           $CERTS/indexer-ca.pem
+install -m 0640 -o root -g wazuh-manager indexer-connector.pem      $CERTS/indexer-connector.pem
+install -m 0640 -o root -g wazuh-manager indexer-connector-key.pem  $CERTS/indexer-connector-key.pem
+rm -f /tmp/root-ca.pem
 ```
 
-The files are `root:wazuh-manager` `0640`, the ownership and mode the installation gives the connector's files, so the daemons read them after dropping privileges. Nothing checks them before the daemons start: a file the `wazuh-manager` group cannot read fails only at the first indexer request.
+The files are `root:wazuh-manager` `0640`, the ownership and mode the installation gives the connector's files, so
+the daemons read them after dropping privileges. Staged without an import marker, they are checked before every
+start (a client pair not issued by `indexer-ca.pem`, expired, or without `clientAuth` stops it with an `INVALID`
+line naming the file) and never replaced.
 
 ### 3. Store the credentials in the keystore
 
@@ -66,7 +75,7 @@ printf '%s' '<your_username>' | sudo /var/wazuh-manager/bin/wazuh-manager-keysto
 printf '%s' '<your_password>' | sudo /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password
 ```
 
-A value already in the keystore is kept on every later start, whatever `/etc/wazuh/credentials.env` says. Each daemon reads the credentials once, so restart the manager after changing them (step 5).
+A value already in the keystore is kept on every later start, whatever `local.env` or the environment says. Each daemon reads the credentials once, so restart the manager after changing them (step 5).
 
 ### 4. Configure the `<indexer>` block
 
@@ -79,7 +88,7 @@ Edit the `<indexer>` section of `/etc/wazuh-manager/wazuh-manager.conf` with you
   </hosts>
   <ssl>
     <certificate_authorities>
-      <ca>/etc/wazuh-manager/certs/indexer-root-ca.pem</ca>
+      <ca>/etc/wazuh-manager/certs/indexer-ca.pem</ca>
     </certificate_authorities>
     <certificate>/etc/wazuh-manager/certs/indexer-connector.pem</certificate>
     <key>/etc/wazuh-manager/certs/indexer-connector-key.pem</key>
@@ -87,7 +96,7 @@ Edit the `<indexer>` section of `/etc/wazuh-manager/wazuh-manager.conf` with you
 </indexer>
 ```
 
-Use `/etc/wazuh-manager/certs/root-ca.pem` as the `<ca>` when you skipped step 2. Relative paths are resolved from the installation directory, `/var/wazuh-manager`, not from `/etc/wazuh-manager`. For a multi-node indexer cluster, list each node as a separate `<host>`:
+Relative paths are resolved from the installation directory, `/var/wazuh-manager`, not from `/etc/wazuh-manager`. For a multi-node indexer cluster, list each node as a separate `<host>`:
 
 ```xml
 <hosts>

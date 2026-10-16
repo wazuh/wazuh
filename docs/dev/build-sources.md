@@ -15,7 +15,7 @@ make -C src TARGET=manager deps
 make -C src TARGET=manager
 ```
 
-`deps` downloads the external libraries and, for the manager, the indexer templates, the WCS flat file and `wazuh-credentials.sh`, which the installer needs. Downloads are never refreshed until `make -C src clean-deps`.
+`deps` downloads the external libraries and, for the manager, the indexer templates and the WCS flat file. Downloads are never refreshed until `make -C src clean-deps`.
 
 `TARGET=server` is accepted as an alias and rewritten to `manager`. Running `make server`, `make agent` or `make winagent` as a goal (without `TARGET=`) stops with an error, and `make -C src` with no `TARGET` only prints the usage.
 

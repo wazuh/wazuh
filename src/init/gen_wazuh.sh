@@ -33,13 +33,16 @@ if [ "$1" = "conf" ] && [ "$#" -ge "4" ]; then
       INSTYPE="server"
   fi
   DIST_NAME=$(echo $3 | tr '[:upper:]' '[:lower:]')
-  if [ $(echo $4 | grep "\.") ]; then
-    DIST_VER=$(echo $4 | cut -d\. -f1)
-    DIST_SUBVER=$(echo $4 | cut -d\. -f2)
-  else
-    DIST_VER="$4"
-    DIST_SUBVER="0"
-  fi
+  case "$4" in
+    *.*)
+      DIST_VER=$(echo $4 | cut -d\. -f1)
+      DIST_SUBVER=$(echo $4 | cut -d\. -f2)
+      ;;
+    *)
+      DIST_VER="$4"
+      DIST_SUBVER="0"
+      ;;
+  esac
   if [ "$#" = "5" ]; then
     INSTALLDIR="$5"
   fi
