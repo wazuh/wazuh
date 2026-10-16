@@ -773,7 +773,7 @@ RuleEvaluatorFactory::CreateEvaluator(const std::string& input,
 
     auto [ruleType, cleanedRule] = ruleTypeAndValue.value();
 
-    PolicyEvaluationContext ctx {std::move(cleanedRule), pattern, isNegated, commandsTimeout, commandsEnabled, regexEngine};
+    PolicyEvaluationContext ctx {std::move(cleanedRule), pattern, isNegated, commandsTimeout, commandsEnabled, regexEngine, input};
 
     switch (ruleType)
     {
