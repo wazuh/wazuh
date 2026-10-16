@@ -59,8 +59,28 @@ get_wazuh_repo() {
     fi
 }
 
+# The release tarball of the inventory entry, checked against its upstream_sha256: a tag can move.
 download_cpython() {
-    git clone --branch "v$PYTHON_VERSION" --depth 1 https://github.com/python/cpython.git "$CPYTHON_DIR"
+    command -v python3 >/dev/null 2>&1 || yum install python3 -y
+    local url sha256 got
+    read -r url sha256 < <(python3 - "$WAZUH_ROOT_DIR/packages/externals/dependencies.json" <<'PY'
+import json, sys
+entry = next(e for e in json.load(open(sys.argv[1]))["entries"] if e["name"] == "cpython")
+url = entry["url"].replace("{version}", entry["version"]).replace("{revision}", entry["revision"])
+if "{" in url:
+    sys.exit("cpython: unexpanded placeholder in " + url)
+print(url, entry["upstream_sha256"])
+PY
+    )
+    curl -fsSL --retry 3 -o "$WAZUH_ROOT_DIR/cpython-src.tar.gz" "$url"
+    got="$(sha256sum "$WAZUH_ROOT_DIR/cpython-src.tar.gz" | cut -d' ' -f1)"
+    if [ "$got" != "$sha256" ]; then
+        echo "sha256 mismatch for $url: expected $sha256, got $got" >&2
+        exit 1
+    fi
+    mkdir -p "$CPYTHON_DIR"
+    tar -xzf "$WAZUH_ROOT_DIR/cpython-src.tar.gz" -C "$CPYTHON_DIR" --strip-components=1
+    rm -f "$WAZUH_ROOT_DIR/cpython-src.tar.gz"
 }
 
 customize_cpython() {
