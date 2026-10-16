@@ -1,100 +1,121 @@
 #include <sca_reason_sanitizer.hpp>
 
-namespace sca
+namespace
 {
-    std::string SanitizeReason(const std::string& reason, const size_t maxLength)
+    /// @brief Length of the UTF-8 sequence a lead byte starts, and the range allowed for the byte
+    ///        after it. A length of 0 means the byte cannot start a sequence.
+    struct SequenceShape
     {
-        // Replace whatever is not valid UTF-8, one '?' per offending byte.
-        std::string valid;
-        valid.reserve(reason.size());
+        size_t length = 0;
+        unsigned char secondMin = 0x80;
+        unsigned char secondMax = 0xBF;
+    };
 
-        for (size_t index = 0; index < reason.size();)
+    SequenceShape ShapeOf(const unsigned char lead)
+    {
+        // RFC 3629 narrows the byte after the lead for four lead values, which is what rules
+        // out overlong encodings, UTF-16 surrogate halves and code points above U+10FFFF.
+        // Counting continuation bytes alone accepts all three, and json::dump() rejects them.
+        if (lead < 0x80)
         {
-            const auto lead = static_cast<unsigned char>(reason[index]);
-            size_t sequenceLength = 0;
+            return {1};
+        }
 
-            // RFC 3629 narrows the byte after the lead for four lead values, which is what rules
-            // out overlong encodings, UTF-16 surrogate halves and code points above U+10FFFF.
-            // Counting continuation bytes alone accepts all three, and json::dump() rejects them.
-            unsigned char secondMin = 0x80;
-            unsigned char secondMax = 0xBF;
+        if (lead >= 0xC2 && lead <= 0xDF)
+        {
+            return {2};
+        }
 
-            if (lead < 0x80)
+        if ((lead & 0xF0) == 0xE0)
+        {
+            return {3, static_cast<unsigned char>(lead == 0xE0 ? 0xA0 : 0x80), static_cast<unsigned char>(lead == 0xED ? 0x9F : 0xBF)};
+        }
+
+        if (lead >= 0xF0 && lead <= 0xF4)
+        {
+            return {4, static_cast<unsigned char>(lead == 0xF0 ? 0x90 : 0x80), static_cast<unsigned char>(lead == 0xF4 ? 0x8F : 0xBF)};
+        }
+
+        return {};
+    }
+
+    /// @brief Length of the valid UTF-8 sequence starting at index, or 0 when there is none.
+    size_t ValidSequenceLength(const std::string& text, const size_t index)
+    {
+        const auto shape = ShapeOf(static_cast<unsigned char>(text[index]));
+
+        if (shape.length == 0 || index + shape.length > text.size())
+        {
+            return 0;
+        }
+
+        for (size_t offset = 1; offset < shape.length; ++offset)
+        {
+            const auto byte = static_cast<unsigned char>(text[index + offset]);
+            const auto low = (offset == 1) ? shape.secondMin : static_cast<unsigned char>(0x80);
+            const auto high = (offset == 1) ? shape.secondMax : static_cast<unsigned char>(0xBF);
+
+            if (byte < low || byte > high)
             {
-                sequenceLength = 1;
+                return 0;
             }
-            else if (lead >= 0xC2 && lead <= 0xDF)
-            {
-                sequenceLength = 2;
-            }
-            else if ((lead & 0xF0) == 0xE0)
-            {
-                sequenceLength = 3;
+        }
 
-                if (lead == 0xE0)
-                {
-                    secondMin = 0xA0;
-                }
-                else if (lead == 0xED)
-                {
-                    secondMax = 0x9F;
-                }
-            }
-            else if (lead >= 0xF0 && lead <= 0xF4)
-            {
-                sequenceLength = 4;
+        return shape.length;
+    }
 
-                if (lead == 0xF0)
-                {
-                    secondMin = 0x90;
-                }
-                else if (lead == 0xF4)
-                {
-                    secondMax = 0x8F;
-                }
-            }
+    /// @brief Copies text, replacing each byte that is not part of a valid UTF-8 sequence with '?'.
+    std::string ReplaceInvalidUtf8(const std::string& text)
+    {
+        std::string valid;
+        valid.reserve(text.size());
 
-            bool complete = sequenceLength != 0 && index + sequenceLength <= reason.size();
+        for (size_t index = 0; index < text.size();)
+        {
+            const auto length = ValidSequenceLength(text, index);
 
-            for (size_t offset = 1; complete && offset < sequenceLength; ++offset)
-            {
-                const auto continuation = static_cast<unsigned char>(reason[index + offset]);
-                const unsigned char low = (offset == 1) ? secondMin : static_cast<unsigned char>(0x80);
-                const unsigned char high = (offset == 1) ? secondMax : static_cast<unsigned char>(0xBF);
-                complete = continuation >= low && continuation <= high;
-            }
-
-            if (complete)
-            {
-                valid.append(reason, index, sequenceLength);
-                index += sequenceLength;
-            }
-            else
+            if (length == 0)
             {
                 valid.push_back('?');
                 ++index;
+                continue;
             }
+
+            valid.append(text, index, length);
+            index += length;
         }
 
-        if (valid.size() <= maxLength)
-        {
-            return valid;
-        }
+        return valid;
+    }
 
-        const auto lastLine = valid.rfind('\n', maxLength);
+    /// @brief Cuts valid UTF-8 text longer than maxLength to at most maxLength bytes: at its last line
+    ///        break within the limit when there is one, else outside a multibyte sequence.
+    std::string CutToFit(const std::string& text, const size_t maxLength)
+    {
+        const auto lastLine = text.rfind('\n', maxLength);
 
         if (lastLine != std::string::npos)
         {
-            return valid.substr(0, lastLine);
+            return text.substr(0, lastLine);
         }
 
         size_t end = maxLength;
 
-        while (end > 0 && (static_cast<unsigned char>(valid[end]) & 0xC0) == 0x80)
+        while (end > 0 && (static_cast<unsigned char>(text[end]) & 0xC0) == 0x80)
         {
             --end;
         }
 
-        return valid.substr(0, end);
+        return text.substr(0, end);
+    }
+} // namespace
+
+namespace sca
+{
+    std::string SanitizeReason(const std::string& reason, const size_t maxLength)
+    {
+        const auto valid = ReplaceInvalidUtf8(reason);
+
+        return valid.size() <= maxLength ? valid : CutToFit(valid, maxLength);
     }
 } // namespace sca
