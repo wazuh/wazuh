@@ -14,9 +14,10 @@
 #include "sharedDefs.h"
 #include "timeHelper.h"
 
-std::shared_ptr<IPackage> FactoryWindowsPackage::create(const HKEY key, const std::string& userId, const std::string& nameApp, const std::set<std::string>& cacheRegistry)
+std::shared_ptr<IPackage> FactoryWindowsPackage::create(const HKEY key, const std::string& userId, const std::string& nameApp, const std::set<std::string>& cacheRegistry,
+                                                        AppxSizeCache* sizeCache)
 {
-    return std::make_shared<WindowsPackageImpl>(std::make_shared<AppxWindowsWrapper>(key, userId, nameApp, cacheRegistry));
+    return std::make_shared<WindowsPackageImpl>(std::make_shared<AppxWindowsWrapper>(key, userId, nameApp, cacheRegistry, sizeCache));
 }
 
 WindowsPackageImpl::WindowsPackageImpl(const std::shared_ptr<IPackageWrapper>& packageWrapper)

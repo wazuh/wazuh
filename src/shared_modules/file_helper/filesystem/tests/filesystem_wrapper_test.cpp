@@ -166,3 +166,22 @@ TEST_F(FileSystemWrapperTest, DirectorySizeDoesNotFollowSymlinkedDirectory)
     // Following alias_dir would recurse into real_dir a second time and double the total.
     EXPECT_EQ(m_fs.directory_size(m_root, 1000, std::chrono::milliseconds(1000)), 55u);
 }
+
+TEST_F(FileSystemWrapperTest, DirectorySizeOfLinkedRootReturnsNoValue)
+{
+    std::filesystem::create_directories(m_root / "real_dir");
+    writeFile(m_root / "real_dir" / "inside.bin", 55);
+
+    std::error_code ec;
+    std::filesystem::create_directory_symlink(m_root / "real_dir", m_root / "alias_dir", ec);
+
+    if (ec)
+    {
+        GTEST_SKIP() << "symbolic links are not permitted here: " << ec.message();
+    }
+
+    // The link points at a tree that is not its own, as with a package installed by npm link
+    EXPECT_EQ(m_fs.directory_size(m_root / "alias_dir", 1000, std::chrono::milliseconds(1000)), std::nullopt);
+    EXPECT_TRUE(m_fs.is_symlink(m_root / "alias_dir"));
+    EXPECT_FALSE(m_fs.is_symlink(m_root / "real_dir"));
+}

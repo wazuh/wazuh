@@ -8,6 +8,7 @@
  * Foundation.
  */
 #include <ctime>
+#include <map>
 #include <optional>
 #include <algorithm>
 #include <stdexcept>
@@ -20,6 +21,8 @@
 #include "packagesWindowsParserHelper.h"
 #include "stringHelper.h"
 #include "sharedDefs.h"
+#include "filesystem_wrapper.hpp"
+#include "packagesWindows.h"
 
 constexpr auto APPLICATION_STORE_REGISTRY        {"SOFTWARE\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\CurrentVersion\\AppModel\\Repository\\Packages"};
 constexpr auto APPLICATION_INSTALL_TIME_REGISTRY {"SOFTWARE\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\CurrentVersion\\AppModel\\Repository\\Families"};
@@ -49,17 +52,30 @@ struct AppxExeVersionReader
     }
 };
 
-template <typename TRegistry = Utils::Registry, typename TExeVersionReader = AppxExeVersionReader>
+/*
+ * @brief Measures the installed size of a Store package from its root folder.
+ */
+struct AppxDirectorySize
+{
+    static std::optional<std::uintmax_t> measure(const std::string& path)
+    {
+        return file_system::FileSystemWrapper().directory_size(path, PACKAGE_SIZE_MAX_ENTRIES, PACKAGE_SIZE_DEADLINE);
+    }
+};
+
+template <typename TRegistry = Utils::Registry, typename TExeVersionReader = AppxExeVersionReader, typename TDirectorySize = AppxDirectorySize>
 class TAppxWindowsWrapper final : public IPackageWrapper
 {
     public:
 
-        explicit TAppxWindowsWrapper(const HKEY key, const std::string& userId, const std::string& appName, const std::set<std::string>& cacheRegistry)
+        explicit TAppxWindowsWrapper(const HKEY key, const std::string& userId, const std::string& appName, const std::set<std::string>& cacheRegistry,
+                                     AppxSizeCache* sizeCache = nullptr)
             : m_key{ key },
               m_userId{ userId },
               m_appName{ appName },
               m_format{ "win" },
-              m_cacheReg{ cacheRegistry }
+              m_cacheReg{ cacheRegistry },
+              m_sizeCache{ sizeCache }
         {
             getInformationPackages();
         }
@@ -118,9 +134,7 @@ class TAppxWindowsWrapper final : public IPackageWrapper
 
         std::optional<int64_t> size() const override
         {
-            // Store packages publish no installed size, so report it as unknown rather than
-            // as zero, which a consumer cannot tell apart from a package occupying nothing.
-            return std::nullopt;
+            return m_size;
         }
 
         std::string vendor() const override
@@ -150,6 +164,40 @@ class TAppxWindowsWrapper final : public IPackageWrapper
         std::string m_location;
         std::string m_installTime;
         std::set<std::string> m_cacheReg;
+        AppxSizeCache* m_sizeCache;
+        std::optional<int64_t> m_size;
+
+        /*
+         * @brief Measures the package root folder. Store packages publish no installed size, so
+         * the folder is walked; a walk that cannot establish a size leaves it unknown, never zero.
+         */
+        std::optional<int64_t> measureSize() const
+        {
+            if (m_sizeCache)
+            {
+                const auto cached { m_sizeCache->find(m_location) };
+
+                if (cached != m_sizeCache->end())
+                {
+                    return cached->second;
+                }
+            }
+
+            const auto measured { TDirectorySize::measure(m_location) };
+            std::optional<int64_t> size;
+
+            if (measured.has_value() && *measured > 0)
+            {
+                size = static_cast<int64_t>(*measured);
+            }
+
+            if (m_sizeCache)
+            {
+                m_sizeCache->emplace(m_location, size);
+            }
+
+            return size;
+        }
 
         bool isRegistryValid()
         {
@@ -216,6 +264,12 @@ class TAppxWindowsWrapper final : public IPackageWrapper
                     {
                         m_version = productVersion;
                     }
+                }
+
+                // Only a package that will be reported is worth walking, and only on a local fixed drive
+                if (!m_name.empty() && !m_location.empty() && Utils::isLocalFixedPath(m_location))
+                {
+                    m_size = measureSize();
                 }
             }
         }

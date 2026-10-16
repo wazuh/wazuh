@@ -470,7 +470,8 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, std::f
     }
 }
 
-static void getStorePackages(const HKEY key, const std::string& user, std::function<void(nlohmann::json&)> returnCallback)
+static void getStorePackages(const HKEY key, const std::string& user, std::function<void(nlohmann::json&)> returnCallback,
+                             AppxSizeCache& sizeCache)
 {
     std::set<std::string> cacheReg;
 
@@ -487,7 +488,7 @@ static void getStorePackages(const HKEY key, const std::string& user, std::funct
             {
                 nlohmann::json jsPackage;
 
-                FactoryWindowsPackage::create(key, user, nameApp, cacheReg)->buildPackageData(jsPackage);
+                FactoryWindowsPackage::create(key, user, nameApp, cacheReg, &sizeCache)->buildPackageData(jsPackage);
 
                 if (!jsPackage.at("name").get_ref<const std::string&>().empty())
                 {
@@ -930,10 +931,12 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
     getPackagesFromReg(HKEY_LOCAL_MACHINE, UNINSTALL_REGISTRY, fillList, KEY_WOW64_64KEY);
     getPackagesFromReg(HKEY_LOCAL_MACHINE, UNINSTALL_REGISTRY, fillList, KEY_WOW64_32KEY);
 
+    AppxSizeCache storeSizeCache;
+
     for (const auto& user : Utils::Registry {HKEY_USERS, "", KEY_READ | KEY_ENUMERATE_SUB_KEYS}.enumerate())
     {
         getPackagesFromReg(HKEY_USERS, user + "\\" + UNINSTALL_REGISTRY, fillList);
-        getStorePackages(HKEY_USERS, user, fillList);
+        getStorePackages(HKEY_USERS, user, fillList, storeSizeCache);
     }
 
     const std::map<std::string, std::set<std::string>> searchPaths =

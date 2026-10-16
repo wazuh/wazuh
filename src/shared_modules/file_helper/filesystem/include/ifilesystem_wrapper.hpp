@@ -118,9 +118,10 @@ class IFileSystemWrapper
         /// the path is not a directory, maxEntries is exceeded, the deadline elapses, or the walk errors.
         /// A partial sum is never returned. Callers must treat an empty result as "unknown" rather than
         /// zero, so a failed measurement does not overwrite a previously known size.
-        /// Symbolic links are skipped rather than followed, so a file or directory reachable through both
-        /// its real path and a symbolic link is counted once. Hard links are indistinguishable from
-        /// separate files and are counted once per link.
+        /// Symbolic links (and junctions on Windows) are skipped rather than followed, so a file or directory
+        /// reachable through both its real path and a link is counted once. A path that is itself a link
+        /// returns no value. Hard links are indistinguishable from separate files and are counted once per
+        /// link.
         virtual std::optional<std::uintmax_t> directory_size(const std::filesystem::path& path,
                                                              std::uintmax_t maxEntries,
                                                              std::chrono::milliseconds deadline) const = 0;
