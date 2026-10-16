@@ -255,18 +255,25 @@ if [ $1 = 2 ]; then
     exit 1
   fi
 
-  # tmp/ is writable by the wazuh group and touch follows a link planted there, creating its target.
-  # The marker is created with noclobber (O_EXCL), which fails on any link instead of following it.
+  # tmp/ is writable by the wazuh group, which could leave a link or a FIFO at the marker's name:
+  # touch follows a link as root, and opening a FIFO blocks rpm. The marker is made under the
+  # installation directory, which only root can write, and renamed into place: a rename replaces
+  # whatever is at the name without opening it.
+  mark_restart() {
+    local marker
+    marker=$(mktemp %{_localstatedir}/.wazuh.restart.XXXXXX) || return 0
+    mv -fT ${marker} %{_localstatedir}/tmp/wazuh.restart || rm -f ${marker}
+  }
   rm -f %{_localstatedir}/tmp/wazuh.restart
   if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 && systemctl is-active --quiet wazuh-agent > /dev/null 2>&1; then
     systemctl stop wazuh-agent.service > /dev/null 2>&1
-    ( set -C; : > %{_localstatedir}/tmp/wazuh.restart ) 2> /dev/null || true
+    mark_restart
   # Check for SysV
   elif command -v service > /dev/null 2>&1 && service wazuh-agent status 2>/dev/null | grep "is running" > /dev/null 2>&1; then
     service wazuh-agent stop > /dev/null 2>&1
-    ( set -C; : > %{_localstatedir}/tmp/wazuh.restart ) 2> /dev/null || true
+    mark_restart
   elif %{_localstatedir}/bin/wazuh-control status 2>/dev/null | grep "is running" > /dev/null 2>&1; then
-    ( set -C; : > %{_localstatedir}/tmp/wazuh.restart ) 2> /dev/null || true
+    mark_restart
   fi
   %{_localstatedir}/bin/wazuh-control stop > /dev/null 2>&1
 fi
