@@ -38,16 +38,7 @@ void CheckConditionEvaluator::AddResult(const RuleEvaluationResult& result)
     {
         m_hasInvalid = m_hasInvalid || (result.result == RuleResult::Invalid);
         m_hasNotRun = m_hasNotRun || (result.result == RuleResult::NotRun);
-
-        if (!result.reason.empty() && !HasReason(result.reason))
-        {
-            if (!m_unresolvedReason.empty())
-            {
-                m_unresolvedReason += "\n";
-            }
-
-            m_unresolvedReason += result.reason;
-        }
+        m_unresolvedReasons.Add(result.reason);
     }
 
     ++m_totalRules;
@@ -118,9 +109,9 @@ sca::CheckResult CheckConditionEvaluator::Result() const
 
 std::string CheckConditionEvaluator::GetUnresolvedReason() const
 {
-    if (!m_unresolvedReason.empty())
+    if (!m_unresolvedReasons.Empty())
     {
-        return m_unresolvedReason;
+        return m_unresolvedReasons.Join();
     }
 
     if (m_totalRules == 0)
@@ -133,26 +124,5 @@ std::string CheckConditionEvaluator::GetUnresolvedReason() const
         return "Unknown reason";
     }
 
-    return m_unresolvedReason;
-}
-
-bool CheckConditionEvaluator::HasReason(const std::string& reason) const
-{
-    size_t position = m_unresolvedReason.find(reason);
-
-    while (position != std::string::npos)
-    {
-        const bool startsLine = position == 0 || m_unresolvedReason[position - 1] == '\n';
-        const auto end = position + reason.size();
-        const bool endsLine = end == m_unresolvedReason.size() || m_unresolvedReason[end] == '\n';
-
-        if (startsLine && endsLine)
-        {
-            return true;
-        }
-
-        position = m_unresolvedReason.find(reason, position + 1);
-    }
-
-    return false;
+    return {};
 }
