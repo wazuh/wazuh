@@ -74,6 +74,7 @@ All notable changes to this project will be documented in this file.
 - Fixed `force_reconnect_interval` from centralized configuration not applied on agent hot reload. ([#39573](https://github.com/wazuh/wazuh/pull/39573))
 - Fixed the `report_changes` snapshot following symbolic links and accepting non-regular files on Linux and macOS. ([#39476](https://github.com/wazuh/wazuh/pull/39476))
 - Fixed a root-level OS command injection in the rootcheck promiscuous-interface check. ([#39622](https://github.com/wazuh/wazuh/pull/39622))
+- Limited the rootcheck system scan directory depth. ([#40459](https://github.com/wazuh/wazuh/pull/40459))
 - Fixed logcollector following symbolic links and opening non-regular files without validating them on Linux and macOS. ([#39649](https://github.com/wazuh/wazuh/pull/39649))
 - Fixed logcollector memory usage growing with the length of a line read with the `multi-line-regex` format. ([#39800](https://github.com/wazuh/wazuh/pull/39800))
 - Fixed the syscollector browser extensions inventory reading non-regular or oversized files from user profiles. ([#39802](https://github.com/wazuh/wazuh/pull/39802))
