@@ -981,20 +981,25 @@ def read_manager_conf(paths: Paths, report: Report) -> dict:
     if not os.access(paths.conf_bin, os.X_OK):
         problem = f"{paths.conf_bin} is missing"
     else:
-        result = run_wazuh(paths, [paths.conf_bin, "-H", paths.home, "-f", conf_file, "--skip-file-checks", "dump"],
-                           want_stdout=True)
-        if result.returncode != 0:
-            problem = f"wazuh-manager-conf exited with {result.returncode}"
-        elif len(result.stdout) > CONF_DUMP_LIMIT:
-            problem = f"its output is larger than {CONF_DUMP_LIMIT} bytes"
+        try:
+            result = run_wazuh(paths, [paths.conf_bin, "-H", paths.home, "-f", conf_file, "--skip-file-checks", "dump"],
+                               want_stdout=True)
+        except subprocess.TimeoutExpired:
+            # subprocess.run() kills the reader before raising: one that hangs is one that did not answer.
+            problem = f"wazuh-manager-conf did not answer within {SUBPROCESS_TIMEOUT} seconds"
         else:
-            try:
-                document = json.loads(result.stdout)
-            except ValueError:
-                document = None
-            if isinstance(document, dict):
-                return document
-            problem = "its output is not a JSON object"
+            if result.returncode != 0:
+                problem = f"wazuh-manager-conf exited with {result.returncode}"
+            elif len(result.stdout) > CONF_DUMP_LIMIT:
+                problem = f"its output is larger than {CONF_DUMP_LIMIT} bytes"
+            else:
+                try:
+                    document = json.loads(result.stdout)
+                except ValueError:
+                    document = None
+                if isinstance(document, dict):
+                    return document
+                problem = "its output is not a JSON object"
     report.problem(INVALID, conf_file, f"cannot read the TLS paths ({problem}); run wazuh-manager-conf validate")
     return {}
 
