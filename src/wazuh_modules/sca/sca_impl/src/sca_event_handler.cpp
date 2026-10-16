@@ -83,28 +83,9 @@ void SCAEventHandler::ReportPoliciesDelta(
         return checkData;
     };
 
-    const auto extractCheckId = [](const nlohmann::json & checkData)
-    {
-        if (checkData.contains("id"))
-        {
-            if (checkData["id"].is_string())
-            {
-                return checkData["id"].get<std::string>();
-            }
-
-            if (checkData["id"].is_number_integer())
-            {
-                return std::to_string(checkData["id"].get<int>());
-            }
-        }
-
-        return std::string {};
-    };
-
     for (const auto& event : events)
     {
         nlohmann::json checkDataForDelete = extractCheckData(event);
-        const std::string checkId = extractCheckId(checkDataForDelete);
 
         bool shouldPushStateful = true;
         std::vector<std::string> promotedIds;
