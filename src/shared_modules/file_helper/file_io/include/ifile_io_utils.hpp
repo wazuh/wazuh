@@ -12,11 +12,13 @@ enum class RegularFileStatus
 {
     /// The path is a regular file and its whole content was read.
     Read,
-    /// The path is not a regular file (named pipe, device, socket, directory), or it is a symbolic
-    /// link and links were not to be followed. Nothing was read.
+    /// The path is not a regular file (named pipe, device, socket, directory). Nothing was read.
     NotRegular,
     /// The file could not be opened or read (missing, permission denied, I/O error).
-    OpenFailed
+    OpenFailed,
+    /// Links were not to be followed and the last component of the path is a symbolic link (or, on
+    /// Windows, a junction or other name-redirecting reparse point). Nothing was read.
+    SymbolicLink
 };
 
 /// @brief Interface for file IO operations.
@@ -54,9 +56,10 @@ class IFileIOUtils
         /// for a writer, so a named pipe is rejected instead of blocking the caller.
         /// @param filePath The path to the file to read.
         /// @param followSymlinks When false, a path whose last component is a symbolic link (or, on
-        /// Windows, a junction or other name-redirecting reparse point) is rejected as not regular.
+        /// Windows, a junction or other name-redirecting reparse point) is not opened and
+        /// RegularFileStatus::SymbolicLink is returned.
         /// @param content Receives the content when RegularFileStatus::Read is returned; cleared otherwise.
-        /// @return Whether the file was read, was rejected as not regular, or could not be opened or read.
+        /// @return Whether the file was read, was rejected as not regular or as a link, or could not be opened or read.
         virtual RegularFileStatus getRegularFileContent(const std::filesystem::path& filePath,
                                                         bool followSymlinks,
                                                         std::string& content) const = 0;

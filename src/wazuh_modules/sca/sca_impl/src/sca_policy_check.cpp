@@ -36,14 +36,24 @@ namespace
                                  const std::string& pattern,
                                  const PolicyEvaluationContext& ctx,
                                  std::string& unresolvedReason,
-                                 bool followSymlinks)
+                                 bool followSymlinks,
+                                 bool& isSymbolicLink)
     {
         bool matchFound = false;
+        isSymbolicLink = false;
 
         // The file type is checked on the opened file, so a named pipe or device put in place of a regular
         // file is reported instead of blocking or exhausting the scan
         std::string fileContent;
         const auto status = fileUtils->getRegularFileContent(filePath, followSymlinks, fileContent);
+
+        // Only returned when links are not followed; the caller decides what a link means
+        if (status == RegularFileStatus::SymbolicLink)
+        {
+            isSymbolicLink = true;
+            LoggingHelper::getInstance().log(LOG_DEBUG, "File '" + filePath + "' is a symbolic link");
+            return RuleResult::NotFound;
+        }
 
         if (status == RegularFileStatus::NotRegular)
         {
@@ -96,7 +106,8 @@ namespace
                                  std::string& unresolvedReason)
     {
         // Policies rely on file rules following symbolic links (e.g. /etc/os-release is one on many systems)
-        return FindContentInFile(fileUtils, ctx.rule, pattern, ctx, unresolvedReason, true);
+        bool isSymbolicLink = false;
+        return FindContentInFile(fileUtils, ctx.rule, pattern, ctx, unresolvedReason, true, isSymbolicLink);
     }
 } // namespace
 
@@ -476,6 +487,7 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
 
                 if (patternMatch.has_value())
                 {
+                    const auto hadValueBeforeEntry = hadValue;
                     hadValue = true;
 
                     if (patternMatch.value())
@@ -484,7 +496,8 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
                         if (content.has_value())
                         {
                             // Symbolic links are skipped above; not following them on open applies the same rule
-                            // to the file that is actually read
+                            // to the file that is actually read, also where the check above cannot see links
+                            bool isSymbolicLink = false;
                             const auto result = TryFunc([&]
                             {
                                 return FindContentInFile(m_fileUtils,
@@ -492,8 +505,16 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
                                                          content.value(),
                                                          m_ctx,
                                                          m_lastUnresolvedReason,
-                                                         false);
+                                                         false,
+                                                         isSymbolicLink);
                             });
+
+                            if (result.has_value() && isSymbolicLink)
+                            {
+                                // Skipped as if the check above had caught it, so it does not count as evaluated
+                                hadValue = hadValueBeforeEntry;
+                                continue;
+                            }
 
                             if (result.has_value())
                             {
@@ -538,11 +559,23 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
 
                 if (file.filename().string() == fileName)
                 {
+                    bool isSymbolicLink = false;
                     const auto result = TryFunc([&]
                     {
-                        return FindContentInFile(
-                            m_fileUtils, file.string(), content.value(), m_ctx, m_lastUnresolvedReason, false);
+                        return FindContentInFile(m_fileUtils,
+                                                 file.string(),
+                                                 content.value(),
+                                                 m_ctx,
+                                                 m_lastUnresolvedReason,
+                                                 false,
+                                                 isSymbolicLink);
                     });
+
+                    // Skipped as if the symbolic link check above had caught it
+                    if (result.has_value() && isSymbolicLink)
+                    {
+                        continue;
+                    }
 
                     if (result.has_value())
                     {

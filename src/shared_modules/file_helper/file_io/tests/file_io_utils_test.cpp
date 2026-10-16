@@ -283,7 +283,7 @@ TEST_F(RegularFileContentTest, SymbolicLinkIsNotFollowedWhenNotRequested)
     std::filesystem::create_symlink(target, link);
     std::string content;
 
-    EXPECT_EQ(m_fileIO.getRegularFileContent(link, false, content), RegularFileStatus::NotRegular);
+    EXPECT_EQ(m_fileIO.getRegularFileContent(link, false, content), RegularFileStatus::SymbolicLink);
     EXPECT_TRUE(content.empty());
 }
 
@@ -294,7 +294,7 @@ TEST_F(RegularFileContentTest, DanglingSymbolicLink)
     std::string content;
 
     EXPECT_EQ(m_fileIO.getRegularFileContent(link, true, content), RegularFileStatus::OpenFailed);
-    EXPECT_EQ(m_fileIO.getRegularFileContent(link, false, content), RegularFileStatus::NotRegular);
+    EXPECT_EQ(m_fileIO.getRegularFileContent(link, false, content), RegularFileStatus::SymbolicLink);
 }
 
 TEST_F(RegularFileContentTest, NamedPipeIsRejectedWithoutBlocking)

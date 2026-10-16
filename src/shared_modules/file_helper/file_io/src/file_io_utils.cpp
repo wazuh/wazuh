@@ -30,13 +30,20 @@ namespace
     constexpr std::size_t READ_CHUNK_SIZE {64 * 1024};
 
 #ifdef _WIN32
-    // A reparse point that keeps the name (deduplication, compression, cloud files) redirects nothing;
-    // symbolic links, junctions and any third-party tag do.
+    constexpr DWORD MICROSOFT_TAG_BIT {0x80000000};
+    constexpr DWORD NAME_SURROGATE_BIT {0x20000000};
+
+    // Symbolic links, junctions and the like name another file
+    bool isNameSurrogateReparseTag(DWORD tag)
+    {
+        return (tag & NAME_SURROGATE_BIT) != 0;
+    }
+
+    // A reparse point that keeps the name (deduplication, compression, cloud files) redirects nothing.
+    // A third-party tag may do anything, so it is not treated as plain.
     bool isPlainReparseTag(DWORD tag)
     {
-        constexpr DWORD MICROSOFT_TAG_BIT {0x80000000};
-        constexpr DWORD NAME_SURROGATE_BIT {0x20000000};
-        return (tag & MICROSOFT_TAG_BIT) != 0 && (tag & NAME_SURROGATE_BIT) == 0;
+        return (tag & MICROSOFT_TAG_BIT) != 0 && !isNameSurrogateReparseTag(tag);
     }
 
     bool isSameFile(const BY_HANDLE_FILE_INFORMATION& lhs, const BY_HANDLE_FILE_INFORMATION& rhs)
@@ -73,27 +80,42 @@ namespace
 
         BY_HANDLE_FILE_INFORMATION info {};
 
-        if (GetFileType(handle) != FILE_TYPE_DISK || !GetFileInformationByHandle(handle, &info) ||
-                (info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0)
+        if (GetFileType(handle) != FILE_TYPE_DISK || !GetFileInformationByHandle(handle, &info))
         {
             CloseHandle(handle);
             status = RegularFileStatus::NotRegular;
             return INVALID_HANDLE_VALUE;
         }
 
-        if (followSymlinks || (info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) == 0)
-        {
-            return handle;
-        }
-
+        const bool isReparsePoint = !followSymlinks && (info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0;
         FILE_ATTRIBUTE_TAG_INFO tagInfo {};
 
-        if (!GetFileInformationByHandleEx(handle, FileAttributeTagInfo, &tagInfo, sizeof(tagInfo)) ||
-                !isPlainReparseTag(tagInfo.ReparseTag))
+        if (isReparsePoint && !GetFileInformationByHandleEx(handle, FileAttributeTagInfo, &tagInfo, sizeof(tagInfo)))
+        {
+            CloseHandle(handle);
+            status = RegularFileStatus::OpenFailed;
+            return INVALID_HANDLE_VALUE;
+        }
+
+        // Checked before the directory attribute, so a junction is reported as a link like on other systems
+        if (isReparsePoint && isNameSurrogateReparseTag(tagInfo.ReparseTag))
+        {
+            CloseHandle(handle);
+            status = RegularFileStatus::SymbolicLink;
+            return INVALID_HANDLE_VALUE;
+        }
+
+        if ((info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0 ||
+                (isReparsePoint && !isPlainReparseTag(tagInfo.ReparseTag)))
         {
             CloseHandle(handle);
             status = RegularFileStatus::NotRegular;
             return INVALID_HANDLE_VALUE;
+        }
+
+        if (!isReparsePoint)
+        {
+            return handle;
         }
 
         // The content of a deduplicated or compressed file is only served through its filter, so it is opened
@@ -242,8 +264,14 @@ namespace file_io
 
         if (fd < 0)
         {
-            // ELOOP: the last component is a symbolic link and O_NOFOLLOW was given. ENXIO: a socket.
-            if ((!followSymlinks && errno == ELOOP) || errno == ENXIO)
+            // ELOOP: the last component is a symbolic link and O_NOFOLLOW was given
+            if (!followSymlinks && errno == ELOOP)
+            {
+                return RegularFileStatus::SymbolicLink;
+            }
+
+            // ENXIO: a socket
+            if (errno == ENXIO)
             {
                 return RegularFileStatus::NotRegular;
             }
