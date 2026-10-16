@@ -92,7 +92,7 @@ void read_internal(int debug_level)
     syscheck.sym_checker_interval = getDefine_Int("syscheck", "symlink_scan_interval", 1, 2592000);
     syscheck.sync_flush_batch_size = getDefine_Int_default("syscheck", "sync_flush_batch_size", 1, 100000, 100);
     syscheck.sync_flush_interval_ms = getDefine_Int_default("syscheck", "sync_flush_interval_ms", 50, 3600000, 500);
-    syscheck.sync_wal_autocheckpoint_pages = getDefine_Int_default("syscheck", "sync_wal_autocheckpoint_pages", 100, 1000000, 1000);
+    syscheck.sync_wal_autocheckpoint_pages = getDefine_Int_default("syscheck", "sync_wal_autocheckpoint_pages", 100, 1000000, 8000);
 
 #ifndef WIN32
     syscheck.max_audit_entries = getDefine_Int("syscheck", "max_audit_entries", 1, 4096);
