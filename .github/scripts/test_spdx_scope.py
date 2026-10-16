@@ -121,9 +121,12 @@ class ClassifyTest(unittest.TestCase):
             self.assertEqual(spdx.classify("src/engine/tool", sb + b"x\n"), (AGPL, "#"), sb)
 
     def test_shebang_env_arguments(self):
-        # Assignments and the operands of -u/-C are not the interpreter
-        self.assertEqual(spdx.classify("src/engine/tool", b"#!/usr/bin/env -S PYTHONUTF8=1 python3\nx\n"), (AGPL, "#"))
-        self.assertEqual(spdx.classify("src/engine/tool", b"#!/usr/bin/env -i LANG=C bash\nx\n"), (AGPL, "#"))
+        # Only `env <command>` and `env -S <command>`; any other form is unsupported (never guessed)
+        self.assertEqual(spdx.classify("src/engine/tool", b"#!/usr/bin/env -S python3 -u\nx\n"), (AGPL, "#"))
+        self.assertIs(spdx.classify("src/engine/tool", b"#!/usr/bin/env -S PYTHONUTF8=1 python3\nx\n"), spdx.UNSUPPORTED)
+        self.assertIs(spdx.classify("src/engine/tool", b"#!/usr/bin/env -i LANG=C bash\nx\n"), spdx.UNSUPPORTED)
+        self.assertIs(spdx.classify("src/engine/tool", b'#!/usr/bin/env -S LABEL="a python b" node\nx\n'), spdx.UNSUPPORTED)
+        self.assertIs(spdx.classify("src/engine/tool", b"#!/usr/bin/env PATH=/usr/bin/python node\nx\n"), spdx.UNSUPPORTED)
         self.assertIs(spdx.classify("src/engine/tool", b"#!/usr/bin/env -S -u python node\nx\n"), spdx.UNSUPPORTED)
         self.assertIs(spdx.classify("src/engine/tool", b"#!/usr/bin/env -C /tmp node\nx\n"), spdx.UNSUPPORTED)
         self.assertIs(spdx.classify("src/engine/tool", b"#!/usr/bin/env\nx\n"), spdx.UNSUPPORTED)
