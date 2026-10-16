@@ -152,12 +152,32 @@ struct FakeExeVersionReader
 
 std::map<std::string, std::string> FakeExeVersionReader::versions;
 
+/*
+ * In-memory replacement of AppxDirectorySize: maps a package root folder to the size its walk
+ * would establish, and counts the walks. A folder not in the map cannot be measured.
+ */
+struct FakeDirectorySize
+{
+    static std::map<std::string, std::uintmax_t> sizes;
+    static int walks;
+
+    static std::optional<std::uintmax_t> measure(const std::string& path)
+    {
+        ++walks;
+        const auto it { sizes.find(path) };
+        return it == sizes.end() ? std::nullopt : std::optional<std::uintmax_t> { it->second };
+    }
+};
+
+std::map<std::string, std::uintmax_t> FakeDirectorySize::sizes;
+int FakeDirectorySize::walks { 0 };
+
 constexpr auto TEST_USER_SID { "S-1-5-21-1111111111-2222222222-3333333333-1001" };
 constexpr auto TEST_STORE_REGISTRY { "SOFTWARE\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\CurrentVersion\\AppModel\\Repository\\Packages" };
 constexpr auto TEST_CLASSES_REGISTRY { "SOFTWARE\\Classes" };
 constexpr auto TEST_CACHE_REGISTRY { "SOFTWARE\\Classes\\Local Settings\\MrtCache" };
 
-using TestAppxWrapper = TAppxWindowsWrapper<FakeRegistry, FakeExeVersionReader>;
+using TestAppxWrapper = TAppxWindowsWrapper<FakeRegistry, FakeExeVersionReader, FakeDirectorySize>;
 
 class SysInfoWinAppxTest : public ::testing::Test
 {
@@ -166,6 +186,8 @@ class SysInfoWinAppxTest : public ::testing::Test
         {
             FakeRegistry::data.clear();
             FakeExeVersionReader::versions.clear();
+            FakeDirectorySize::sizes.clear();
+            FakeDirectorySize::walks = 0;
         }
 
         std::string packagePath(const std::string& packageFullName) const
@@ -204,17 +226,57 @@ class SysInfoWinAppxTest : public ::testing::Test
 
 constexpr auto PYTHON_PACKAGE { "PythonSoftwareFoundation.Python.3.13_3.13.3824.0_x64__qbz5n2kfra8p0" };
 
+constexpr auto PYTHON_PACKAGE_ROOT { "C:\\Program Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.13_3.13.3824.0_x64__qbz5n2kfra8p0" };
+
+TEST_F(SysInfoWinAppxTest, SizeIsTheMeasuredPackageRootFolder)
+{
+    loadPythonStorePackage(PYTHON_PACKAGE, true);
+    FakeDirectorySize::sizes[PYTHON_PACKAGE_ROOT] = 123456;
+
+    TestAppxWrapper wrapper(HKEY_USERS, TEST_USER_SID, PYTHON_PACKAGE, {});
+
+    EXPECT_EQ(wrapper.size(), 123456);
+}
+
 TEST_F(SysInfoWinAppxTest, SizeIsUnknownRatherThanZero)
 {
     loadPythonStorePackage(PYTHON_PACKAGE, true);
 
     TestAppxWrapper wrapper(HKEY_USERS, TEST_USER_SID, PYTHON_PACKAGE, {});
 
-    // A Store package publishes no installed size. Reporting 0 would be indistinguishable
-    // from a package that genuinely occupies nothing, and writing it on every scan would
-    // overwrite whatever a future source establishes. Absent is the honest answer.
+    // The walk could not establish a size. Reporting 0 would be indistinguishable from a
+    // package that genuinely occupies nothing, and would overwrite a previously known size.
     EXPECT_EQ(wrapper.size(), std::nullopt);
     EXPECT_NE(wrapper.size(), 0);
+}
+
+TEST_F(SysInfoWinAppxTest, EmptyPackageRootFolderSizeIsUnknown)
+{
+    loadPythonStorePackage(PYTHON_PACKAGE, true);
+    FakeDirectorySize::sizes[PYTHON_PACKAGE_ROOT] = 0;
+
+    TestAppxWrapper wrapper(HKEY_USERS, TEST_USER_SID, PYTHON_PACKAGE, {});
+
+    EXPECT_EQ(wrapper.size(), std::nullopt);
+}
+
+TEST_F(SysInfoWinAppxTest, PackageSharedByUsersIsWalkedOnce)
+{
+    constexpr auto OTHER_USER_SID { "S-1-5-21-1111111111-2222222222-3333333333-1002" };
+    loadPythonStorePackage(PYTHON_PACKAGE, true);
+    const auto root { packagePath(PYTHON_PACKAGE) };
+    const auto otherRoot { std::string{ OTHER_USER_SID } + "\\" + TEST_STORE_REGISTRY + "\\" + PYTHON_PACKAGE };
+    FakeRegistry::data[otherRoot] = FakeRegistry::data[root];
+    FakeRegistry::data[otherRoot + "\\Python\\Capabilities"] = FakeRegistry::data[root + "\\Python\\Capabilities"];
+    FakeDirectorySize::sizes[PYTHON_PACKAGE_ROOT] = 123456;
+
+    AppxSizeCache cache;
+    TestAppxWrapper first(HKEY_USERS, TEST_USER_SID, PYTHON_PACKAGE, {}, &cache);
+    TestAppxWrapper second(HKEY_USERS, OTHER_USER_SID, PYTHON_PACKAGE, {}, &cache);
+
+    EXPECT_EQ(first.size(), 123456);
+    EXPECT_EQ(second.size(), 123456);
+    EXPECT_EQ(FakeDirectorySize::walks, 1);
 }
 
 TEST_F(SysInfoWinAppxTest, MultiApplicationPackageUsesDisplayName)
@@ -355,6 +417,21 @@ TEST_F(SysInfoWinAppxTest, PythonOnNetworkPathNeverOpensExecutable)
     EXPECT_EQ("3.13.3824.0", wrapper.version());
 }
 
+TEST_F(SysInfoWinAppxTest, PackageOnNetworkPathIsNeverWalked)
+{
+    loadPythonStorePackage(PYTHON_PACKAGE, true);
+
+    // Contains the WindowsApps text, so it passes the substring check, but it is a network share
+    const std::string networkRoot { std::string{ "\\\\10.0.0.5\\s\\C:\\Program Files\\WindowsApps\\" } + PYTHON_PACKAGE };
+    FakeRegistry::data[packagePath(PYTHON_PACKAGE)].strings["PackageRootFolder"] = networkRoot;
+    FakeDirectorySize::sizes[networkRoot] = 123456;
+
+    TestAppxWrapper wrapper(HKEY_USERS, TEST_USER_SID, PYTHON_PACKAGE, {});
+
+    EXPECT_EQ(wrapper.size(), std::nullopt);
+    EXPECT_EQ(FakeDirectorySize::walks, 0);
+}
+
 TEST_F(SysInfoWinAppxTest, NonPythonPackageNeverUsesExecutableVersion)
 {
     constexpr auto edgePackage { "Microsoft.MicrosoftEdge.Stable_120.0.2210.91_x64__8wekyb3d8bbwe" };
@@ -387,6 +464,8 @@ TEST_F(SysInfoWinAppxTest, PackageOutsideStoreDatabaseIsDiscarded)
     EXPECT_TRUE(wrapper.name().empty());
     EXPECT_TRUE(wrapper.version().empty());
     EXPECT_TRUE(wrapper.location().empty());
+    // A package that is not reported is not worth walking
+    EXPECT_EQ(FakeDirectorySize::walks, 0);
 }
 
 TEST_F(SysInfoWinAppxTest, MalformedPackageNameIsDiscarded)
