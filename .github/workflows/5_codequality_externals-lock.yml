@@ -20,6 +20,7 @@ on:
       - "src/external/CMakeLists.txt"
       - "src/cmake/**"
       - "src/syscheckd/src/ebpf/src/modern.bpf.c"
+      - "src/engine/tools/third-party-notices/components.json"
       - ".github/workflows/5_codequality_externals-lock.yml"
 
 permissions:

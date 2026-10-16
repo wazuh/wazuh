@@ -25,7 +25,7 @@
       "scan": false,
       "reason": "no CPE in NVD",
       "license": "Apache-2.0",
-      "author": "Microsoft Open Technologies",
+      "author": "RxCpp contributors",
       "homepage": "https://github.com/ReactiveX/RxCpp",
       "notes": "Tag v4.1.1 with one Wazuh patch: the on_error_notification assignment operator is deleted, since it does not compile with GCC 14."
     },
@@ -96,8 +96,8 @@
       ],
       "cpe": "cpe:2.3:a:audit-userspace_project:audit-userspace:*:*:*:*:*:*:*:*",
       "purl": "pkg:github/linux-audit/audit-userspace@v2.8.4",
-      "license": "GNU Lesser General Public License version 2.1",
-      "author": "Steve Grubb",
+      "license": "LGPL-2.1-only",
+      "author": "Rik Faith",
       "homepage": "https://github.com/linux-audit/audit-userspace",
       "notes": "Git archive of v2.8.4, which ships autogen.sh (the release tarball does not); the build runs autogen.sh, so the published tree only added its output."
     },
@@ -125,7 +125,7 @@
       "purl": "pkg:github/google/benchmark@v1.6.1",
       "scan": false,
       "reason": "no CPE in NVD",
-      "license": "Apache 2.0 License",
+      "license": "Apache-2.0",
       "author": "Google Inc.",
       "homepage": "https://github.com/google/benchmark"
     },
@@ -154,9 +154,9 @@
       ],
       "cpe": "cpe:2.3:a:bzip:bzip2:*:*:*:*:*:*:*:*",
       "purl": "pkg:github/libarchive/bzip2@bzip2-1.0.8",
-      "license": "BSD License",
+      "license": "bzip2-1.0.6",
       "author": "Julian Seward",
-      "homepage": "https://sourceware.org/bzip2/"
+      "homepage": "https://github.com/libarchive/bzip2"
     },
     {
       "name": "cJSON",
@@ -179,7 +179,7 @@
       ],
       "cpe": "cpe:2.3:a:cjson_project:cjson:*:*:*:*:*:*:*:*",
       "purl": "pkg:github/DaveGamble/cJSON@v1.7.18",
-      "license": "MIT License",
+      "license": "MIT",
       "author": "Dave Gamble",
       "homepage": "https://github.com/DaveGamble/cJSON"
     },
@@ -227,7 +227,7 @@
       "built": false,
       "cpe": "cpe:2.3:a:yhirose:cpp-httplib:*:*:*:*:*:*:*:*",
       "purl": "pkg:github/yhirose/cpp-httplib@v0.25.0",
-      "license": "MIT License",
+      "license": "MIT",
       "author": "yhirose",
       "homepage": "https://github.com/yhirose/cpp-httplib"
     },
@@ -261,7 +261,7 @@
       "cpe": "cpe:2.3:a:python:python:*:*:*:*:*:*:*:*",
       "purl": "pkg:github/python/cpython@v3.12.14",
       "license": "PSF-2.0",
-      "author": "Python Software Foundation",
+      "author": "Guido van Rossum",
       "homepage": "https://github.com/python/cpython",
       "notes": "Built by the cpython job of 5_builderpackage_externals.yml (framework/cpython/compile.sh with framework/cpython/custom/); published as cpython_<arch>.tar.gz."
     },
@@ -342,7 +342,7 @@
       ],
       "cpe": "cpe:2.3:a:freedesktop:dbus:*:*:*:*:*:*:*:*",
       "purl": "pkg:generic/dbus@1.14.10",
-      "license": "AFL-2.1 OR GPL-2.0-or-later",
+      "license": "GPL-2.0-only",
       "author": "freedesktop.org",
       "homepage": "https://gitlab.freedesktop.org/dbus/dbus"
     },
@@ -393,8 +393,8 @@
       "purl": "pkg:github/fastfloat/fast_float@v6.1.4",
       "scan": false,
       "reason": "no CPE in NVD",
-      "license": "Apache-2.0 OR MIT OR BSL-1.0",
-      "author": "Daniel Lemire",
+      "license": "Apache-2.0 OR BSL-1.0 OR MIT",
+      "author": "Daniel Lemire et al.",
       "homepage": "https://github.com/fastfloat/fast_float"
     },
     {
@@ -418,9 +418,9 @@
       ],
       "cpe": "cpe:2.3:a:google:flatbuffers:*:*:*:*:*:*:*:*",
       "purl": "pkg:github/google/flatbuffers@v23.5.26",
-      "license": "Apache 2.0 License",
+      "license": "Apache-2.0",
       "author": "Google Inc.",
-      "homepage": "https://github.com/google/flatbuffers",
+      "homepage": "https://github.com/google/flatbuffers/",
       "notes": "Tag v23.5.26 as released. The zero_on_float_to_int parser option the published tree carried is unused in 5.x."
     },
     {
@@ -493,7 +493,7 @@
       "built": false,
       "cpe": "cpe:2.3:a:google:google_test:*:*:*:*:*:*:*:*",
       "purl": "pkg:github/google/googletest@release-1.11.0",
-      "license": "3-Clause \"New\" BSD License",
+      "license": "BSD-3-Clause",
       "author": "Google Inc.",
       "homepage": "https://github.com/google/googletest"
     },
@@ -517,7 +517,7 @@
       "purl": "pkg:github/jemalloc/jemalloc@5.2.1",
       "scan": false,
       "reason": "no CPE in NVD",
-      "license": "2-Clause \"Simplified\" BSD License",
+      "license": "BSD-2-Clause",
       "author": "Jason Evans",
       "homepage": "https://github.com/jemalloc/jemalloc"
     },
@@ -546,7 +546,7 @@
       "purl": "pkg:github/Thalhammer/jwt-cpp@v0.7.2",
       "scan": false,
       "reason": "no CPE in NVD",
-      "license": "MIT License",
+      "license": "MIT",
       "author": "Dominik Thalhammer",
       "homepage": "https://github.com/Thalhammer/jwt-cpp",
       "notes": "Tag v0.7.2; its CMakeLists.txt still declares version 0.7.1."
@@ -569,7 +569,7 @@
       ],
       "cpe": "cpe:2.3:a:libbpf_project:libbpf:*:*:*:*:*:*:*:*",
       "purl": "pkg:github/libbpf/libbpf@v1.7.0",
-      "license": "LGPL-2.1 OR BSD-2-Clause",
+      "license": "LGPL-2.1-only",
       "author": "libbpf",
       "homepage": "https://github.com/libbpf/libbpf",
       "notes": "Built by packages/externals/ebpf/build_ebpf.sh (LIBBPF_TAG v1.7.0 = f5dcbae7, VMLINUX_H_COMMIT c32912840154a82205530cd6d498b346ac73a6d1). Its pool ref carries only the linux/<arch>/ tarballs, no sources/."
@@ -592,7 +592,7 @@
       ],
       "cpe": "cpe:2.3:a:oracle:berkeley_db:*:*:*:*:*:*:*:*",
       "purl": "pkg:github/yasuhirokimura/db18@18.1.40",
-      "license": "Affero GPL v3",
+      "license": "AGPL-3.0-only",
       "author": "Oracle Corporation",
       "homepage": "https://github.com/yasuhirokimura/db18"
     },
@@ -614,7 +614,7 @@
       ],
       "cpe": "cpe:2.3:a:libffi_project:libffi:*:*:*:*:*:*:*:*",
       "purl": "pkg:github/libffi/libffi@v3.2.1",
-      "license": "MIT License",
+      "license": "MIT",
       "author": "Anthony Green",
       "homepage": "https://github.com/libffi/libffi"
     },
@@ -637,7 +637,7 @@
       "cpe": "cpe:2.3:a:maxmind:libmaxminddb:*:*:*:*:*:*:*:*",
       "purl": "pkg:github/maxmind/libmaxminddb@1.9.1",
       "license": "Apache-2.0",
-      "author": "MaxMind Inc.",
+      "author": "MaxMind, Inc.",
       "homepage": "https://github.com/maxmind/libmaxminddb"
     },
     {
@@ -661,7 +661,7 @@
       ],
       "cpe": "cpe:2.3:a:pcre:pcre2:*:*:*:*:*:*:*:*",
       "purl": "pkg:github/PCRE2Project/pcre2@pcre2-10.42",
-      "license": "BSD License",
+      "license": "BSD-3-Clause",
       "author": "Philip Hazel",
       "homepage": "https://github.com/PCRE2Project/pcre2",
       "notes": "Release 10.42, built with make PROGRAMS= in src/external/CMakeLists.txt (library and headers only, as the published tree did): pcre2posix_test does not link with MinGW."
@@ -684,7 +684,7 @@
       ],
       "cpe": "cpe:2.3:a:libimobiledevice:libplist:*:*:*:*:*:*:*:*",
       "purl": "pkg:github/libimobiledevice/libplist@bf5aeec5005f93f3e5094a0c7df1e63ddf772196",
-      "license": "GNU Lesser General Public License version 2.1",
+      "license": "LGPL-2.1-only",
       "author": "Aaron Burghardt et al.",
       "homepage": "https://github.com/libimobiledevice/libplist",
       "notes": "Commit bf5aeec5 (4 commits after 2.2.0), configured with --without-cython in src/external/CMakeLists.txt."
@@ -710,7 +710,7 @@
       ],
       "cpe": "cpe:2.3:a:pyyaml:libyaml:*:*:*:*:*:*:*:*",
       "purl": "pkg:github/yaml/libyaml@0.2.1",
-      "license": "MIT License",
+      "license": "MIT",
       "author": "Kirill Simonov",
       "homepage": "https://github.com/yaml/libyaml",
       "notes": "Release tarball 0.2.1, which ships configure. The published tree was commit 01f3a878 with the same code, whose build files still declared 0.1.7; yaml_get_version_string() now reports 0.2.1."
@@ -755,7 +755,7 @@
       ],
       "cpe": "cpe:2.3:a:lua:lua:*:*:*:*:*:*:*:*",
       "purl": "pkg:github/lua/lua@v5.4.8",
-      "license": "MIT License",
+      "license": "MIT",
       "author": "PUC-Rio",
       "homepage": "https://github.com/lua/lua",
       "notes": "Tag v5.4.8, built in src/external/CMakeLists.txt with an explicit CFLAGS that drops -march=native from its makefile."
@@ -782,7 +782,7 @@
       "built": false,
       "cpe": "cpe:2.3:a:nlohmann:json:*:*:*:*:*:*:*:*",
       "purl": "pkg:github/nlohmann/json@v3.11.2",
-      "license": "MIT License",
+      "license": "MIT",
       "author": "Niels Lohmann",
       "homepage": "https://github.com/nlohmann/json"
     },
@@ -807,7 +807,7 @@
       ],
       "cpe": "cpe:2.3:a:openssl:openssl:*:*:*:*:*:*:*:*",
       "purl": "pkg:github/openssl/openssl@openssl-3.6.2",
-      "license": "Apache 2.0 License",
+      "license": "Apache-2.0",
       "author": "OpenSSL Software Foundation",
       "homepage": "https://github.com/openssl/openssl"
     },
@@ -830,7 +830,7 @@
       ],
       "cpe": "cpe:2.3:a:popt_project:popt:*:*:*:*:*:*:*:*",
       "purl": "pkg:github/rpm-software-management/popt@popt-1.18-release",
-      "license": "MIT License",
+      "license": "MIT",
       "author": "Jeff Johnson & Erik Troan",
       "homepage": "https://github.com/rpm-software-management/popt",
       "notes": "Release tarball 1.18 with a Wazuh CMakeLists.txt (overlay) that runs its configure."
@@ -857,7 +857,7 @@
       ],
       "cpe": "cpe:2.3:a:procps_project:procps:*:*:*:*:*:*:*:*",
       "purl": "pkg:generic/procps@3.2.8",
-      "license": "GNU Library General Public License version 2",
+      "license": "LGPL-2.0-only",
       "author": "Brian Edmonds et al.",
       "homepage": "https://gitlab.com/procps-ng/procps",
       "notes": "libprocps: proc/ of the procps-3.2.8 release tarball (procps-ng has no 3.2.x tags), with one Wazuh patch: constructor priorities, checked reads and a fixed procps_version string, as in the tree 5.0.0 ships."
@@ -929,7 +929,7 @@
       "cpe": "cpe:2.3:a:tencent:rapidjson:*:*:*:*:*:*:*:*",
       "purl": "pkg:github/Tencent/rapidjson@a95e013b97ca6523f32da23f5095fcc9dd6067e5",
       "license": "MIT",
-      "author": "Tencent and Milo Yip",
+      "author": "THL A29 Limited and Milo Yip",
       "homepage": "https://github.com/Tencent/rapidjson",
       "notes": "master at a95e013b, 731 commits after v1.1.0; the CVE-2024-38517 fix (8269bc2) is included."
     },
@@ -982,7 +982,7 @@
       "purl": "pkg:github/Stiffstream/restinio@v0.7.10",
       "scan": false,
       "reason": "no CPE in NVD",
-      "license": "BSD-3-Clause",
+      "license": "BSD-3-Clause AND BSL-1.0 AND MIT AND Zlib",
       "author": "Stiffstream",
       "homepage": "https://github.com/Stiffstream/restinio"
     },
@@ -1009,9 +1009,9 @@
       "purl": "pkg:github/facebook/rocksdb@v8.3.2",
       "scan": false,
       "reason": "no CPE in NVD",
-      "license": "Apache 2.0 License",
+      "license": "Apache-2.0 AND BSD-3-Clause",
       "author": "Facebook Inc.",
-      "homepage": "https://github.com/facebook/rocksdb"
+      "homepage": "https://github.com/facebook/rocksdb/"
     },
     {
       "name": "rpm",
@@ -1041,7 +1041,7 @@
       ],
       "cpe": "cpe:2.3:a:rpm:rpm:*:*:*:*:*:*:*:*",
       "purl": "pkg:github/rpm-software-management/rpm@rpm-4.20.1-release",
-      "license": "GPL-2.0 OR LGPL-2.0",
+      "license": "GPL-2.0-only",
       "author": "Marc Ewing & Erik Troan",
       "homepage": "https://github.com/rpm-software-management/rpm",
       "notes": "rpm-4.20.1-release with a Wazuh CMakeLists.txt (overlay) that trims optional dependencies, plus upstream commit f85845c26cc8 backported to the ndb backend. The LGPL-2.0 alternative covers lib and rpmio, which librpm is built from."
@@ -1064,7 +1064,7 @@
       ],
       "cpe": "cpe:2.3:a:simdjson_project:simdjson:*:*:*:*:*:*:*:*",
       "purl": "pkg:github/simdjson/simdjson@v3.13.0",
-      "license": "Apache License 2.0",
+      "license": "Apache-2.0 OR MIT",
       "author": "Daniel Lemire",
       "homepage": "https://github.com/simdjson/simdjson"
     },
@@ -1111,7 +1111,7 @@
       ],
       "cpe": "cpe:2.3:a:sqlite:sqlite:*:*:*:*:*:*:*:*",
       "purl": "pkg:github/sqlite/sqlite@version-3.53.1",
-      "license": "Public Domain (no restrictions)",
+      "license": "blessing",
       "author": "D. Richard Hipp",
       "homepage": "https://github.com/sqlite/sqlite",
       "notes": "build_external.sh deletes the VERSION file of the tree, which shadows the C++ <version> header on case-insensitive file systems; sqlite3.h keeps SQLITE_VERSION."
@@ -1162,9 +1162,9 @@
       "purl": "pkg:generic/tzdata@2026a",
       "scan": false,
       "reason": "no CPE in NVD",
-      "license": "LicenseRef-public-domain",
-      "author": "IANA",
-      "homepage": "https://www.iana.org/time-zones"
+      "license": "LicenseRef-tzdata-public-domain",
+      "author": "IANA / tz contributors",
+      "homepage": "https://data.iana.org/time-zones/"
     },
     {
       "name": "yaml-cpp",
@@ -1209,7 +1209,7 @@
       ],
       "cpe": "cpe:2.3:a:zlib:zlib:*:*:*:*:*:*:*:*",
       "purl": "pkg:github/madler/zlib@v1.3.1",
-      "license": "zlib/libpng License",
+      "license": "Zlib",
       "author": "Jean-loup Gailly & Mark Adler",
       "homepage": "https://github.com/madler/zlib"
     },
@@ -1234,8 +1234,8 @@
       ],
       "cpe": "cpe:2.3:a:facebook:zstandard:*:*:*:*:*:*:*:*",
       "purl": "pkg:github/facebook/zstd@v1.5.7",
-      "license": "BSD-3-Clause OR GPL-2.0-only",
-      "author": "Meta Platforms Inc.",
+      "license": "BSD-3-Clause",
+      "author": "Meta Platforms, Inc. (Facebook)",
       "homepage": "https://github.com/facebook/zstd"
     }
   ]
