@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.14.11]
 
+### Manager
+
+#### Fixed
+
+- Fixed `PUT /agents/upgrade` failing the whole request with an internal error when an agent is deleted during the upgrade. The agent is now reported as a failed item. ([#40427](https://github.com/wazuh/wazuh/pull/40427))
+
 ## [v4.14.10]
 
 ### Manager
