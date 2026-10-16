@@ -578,27 +578,28 @@ if [ $1 = 0 ]; then
 
   # Takes the VALIDATION_* variables from etc/uninstall_validation.env, which overrides the
   # environment. etc/ belongs to wazuh, so the file is read as data, and only when it is a regular
-  # file root owns and nobody else can write: checked on a copy taken without following links,
-  # which is also what is read.
+  # file root owns and nobody else can write. It is checked and read through a hard link made in a
+  # directory only root can enter: ln neither opens the file (cp would block on a FIFO) nor follows
+  # a link, and the file it pins cannot be swapped after the check.
   load_uninstall_validation_env() {
     local env_file="%{_localstatedir}/etc/uninstall_validation.env"
-    local copy_dir
+    local link_dir
 
     if [ ! -e "${env_file}" ] && [ ! -L "${env_file}" ]; then
       echo "INFO: Uninstall configuration file not found, using environment variables."
       return
     fi
-    copy_dir=$(mktemp -d) || exit 1
-    if ! cp -pP "${env_file}" "${copy_dir}/env" 2> /dev/null || [ -L "${copy_dir}/env" ] || [ ! -f "${copy_dir}/env" ] \
-        || [ -z "$(find "${copy_dir}/env" -user 0 ! -perm -0020 ! -perm -0002)" ]; then
+    link_dir=$(mktemp -d "%{_localstatedir}/.uninstall-validation.XXXXXX") || exit 1
+    if ! ln -P "${env_file}" "${link_dir}/env" 2> /dev/null || [ -L "${link_dir}/env" ] || [ ! -f "${link_dir}/env" ] \
+        || [ -z "$(find "${link_dir}/env" -user 0 ! -perm -0020 ! -perm -0002)" ]; then
       echo "WARNING: ${env_file} is not a regular file owned by root and writable only by it; ignoring it and using environment variables."
     else
-      VALIDATION_HOST=$(env_file_value "${copy_dir}/env" VALIDATION_HOST "${VALIDATION_HOST}")
-      VALIDATION_TOKEN=$(env_file_value "${copy_dir}/env" VALIDATION_TOKEN "${VALIDATION_TOKEN}")
-      VALIDATION_LOGIN=$(env_file_value "${copy_dir}/env" VALIDATION_LOGIN "${VALIDATION_LOGIN}")
-      VALIDATION_SSL_VERIFY=$(env_file_value "${copy_dir}/env" VALIDATION_SSL_VERIFY "${VALIDATION_SSL_VERIFY}")
+      VALIDATION_HOST=$(env_file_value "${link_dir}/env" VALIDATION_HOST "${VALIDATION_HOST}")
+      VALIDATION_TOKEN=$(env_file_value "${link_dir}/env" VALIDATION_TOKEN "${VALIDATION_TOKEN}")
+      VALIDATION_LOGIN=$(env_file_value "${link_dir}/env" VALIDATION_LOGIN "${VALIDATION_LOGIN}")
+      VALIDATION_SSL_VERIFY=$(env_file_value "${link_dir}/env" VALIDATION_SSL_VERIFY "${VALIDATION_SSL_VERIFY}")
     fi
-    rm -rf "${copy_dir}"
+    rm -rf "${link_dir}"
   }
 
   # Function to validate uninstallation
