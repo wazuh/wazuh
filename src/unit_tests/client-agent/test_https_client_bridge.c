@@ -46,6 +46,18 @@ static bool sigterm_blocked(void)
     return sigismember(&mask, SIGTERM) == 1;
 }
 
+void __wrap_wmcom_send(char *message, size_t length)
+{
+    check_expected(message);
+    check_expected(length);
+}
+
+void __wrap_ag_send_syscheck(char *message, size_t length)
+{
+    check_expected(message);
+    check_expected(length);
+}
+
 hc_handle *__wrap_hc_create(const hc_config_t *config, const hc_callbacks_t *callbacks)
 {
     g_sigterm_blocked_at_create = sigterm_blocked();
@@ -1295,6 +1307,46 @@ static void test_registered_state_maps_to_active(void **state)
 
     g_captured_callbacks.on_state_change(HC_STATE_REGISTERED, g_captured_callbacks.user_data);
 
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+/* on_sync_response: a /stateful answer is relayed to its module as one framed message. */
+static void test_sync_response_is_framed_for_the_module(void **state)
+{
+    (void)state;
+    static const char BODY[] = "{\"status\":\"ok\"}";
+    static const char FRAME[] = SYSCOLECTOR_SYNC_HEADER "HCRESULT:7:200:{\"status\":\"ok\"}";
+    start_client_successfully();
+
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client /stateful session=syscollector-7 result=200 (15 byte answer)");
+    expect_string(__wrap_wmcom_send, message, FRAME);
+    expect_value(__wrap_wmcom_send, length, strlen(FRAME));
+
+    g_captured_callbacks.on_sync_response("syscollector-7", 200, BODY, strlen(BODY), g_captured_callbacks.user_data);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+/* An answer whose frame would not fit OS_MAXSTR is dropped instead of sent to a socket that
+ * rejects it unread. */
+static void test_sync_response_too_large_to_frame_is_dropped(void **state)
+{
+    (void)state;
+    const size_t body_len = OS_MAXSTR;
+    char *body = NULL;
+    os_calloc(body_len, sizeof(char), body);
+    memset(body, 'x', body_len);
+    start_client_successfully();
+
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client /stateful session=fim-7 result=200 (65536 byte answer)");
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "https_client: the /stateful answer for session 'fim-7' is too large to relay (65536 bytes); dropping it.");
+
+    g_captured_callbacks.on_sync_response("fim-7", 200, body, body_len, g_captured_callbacks.user_data);
+
+    os_free(body);
     expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
     w_https_client_stop();
 }
@@ -3323,6 +3375,8 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_reenroll_thread_logs_error_when_new_key_fails_validation, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_registered_state_maps_to_active, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_registered_state_twice_clears_wait_file_each_time, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_sync_response_is_framed_for_the_module, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_sync_response_too_large_to_frame_is_dropped, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_producer_pause_with_a_reason_names_the_cause, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_producer_pause_without_a_reason_logs_the_bare_message, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_producer_pause_release_clears_the_lock_and_reports_connected, setup_test, teardown_test),
