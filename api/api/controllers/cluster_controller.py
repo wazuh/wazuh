@@ -13,7 +13,7 @@ import wazuh.core.common as common
 import wazuh.analysis as analysis
 import wazuh.manager as manager
 import wazuh.stats as stats
-from api.controllers.util import json_response, XML_CONTENT_TYPE
+from api.controllers.util import fill_master_uuid, json_response, XML_CONTENT_TYPE
 from api.models.base_model_ import Body
 from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deserialize_date, deprecate_endpoint
 from api.validator import check_component_configuration_pair
@@ -332,6 +332,8 @@ async def get_info_node(node_id: str, pretty: bool = False, wait_for_complete: b
                           nodes=nodes
                           )
     data = raise_if_exc(await dapi.distribute_function())
+
+    await fill_master_uuid(data)
 
     return json_response(data, pretty=pretty)
 

@@ -235,7 +235,8 @@ async def test_get_status_node(mock_exc, mock_dapi, mock_remove, mock_dfunc, moc
 @patch('api.controllers.cluster_controller.remove_nones_to_dict')
 @patch('api.controllers.cluster_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.cluster_controller.raise_if_exc', return_value=CustomAffectedItems())
-async def test_get_info_node(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
+@patch('api.controllers.cluster_controller.fill_master_uuid')
+async def test_get_info_node(mock_fill, mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'get_info_node' endpoint is working as expected."""
     with patch('api.controllers.cluster_controller.get_system_nodes', return_value=AsyncMock()) as mock_snodes:
         result = await get_info_node(node_id='001')
@@ -252,6 +253,7 @@ async def test_get_info_node(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
         mock_exc.assert_has_calls([call(mock_snodes.return_value),
                                    call(mock_dfunc.return_value)])
         assert mock_exc.call_count == 2
+        mock_fill.assert_called_once_with(mock_exc.return_value)
         mock_remove.assert_called_once_with(f_kwargs)
         assert isinstance(result, ConnexionResponse)
 
