@@ -2916,6 +2916,108 @@ TEST_F(SCAEventHandlerTest, ValidateAndHandleStatefulMessage_MitreAttackInCompli
     EXPECT_FALSE(failedChecks.empty());
 }
 
+TEST_F(SCAEventHandlerTest, ReportCheckResult_StoresAndPublishesTheRulesOfAFailedCheck)
+{
+    const std::string policyId = "test_policy";
+    const std::string checkId = "test_check";
+    const std::string reason = "Rules not satisfied (condition 'all'):\n"
+                               "f:/etc/ssh/sshd_config -> r:^\\s*PermitRootLogin\\s+no\n"
+                               "c:sshd -T -> r:^\\s*maxauthtries\\s+[1-4]";
+
+    nlohmann::json capturedQuery;
+
+    EXPECT_CALL(*mockDBSync, syncRow(testing::_, testing::_))
+    .WillOnce([&capturedQuery, reason](const nlohmann::json & query,
+                                       const std::function<void(ReturnTypeCallback, const nlohmann::json&)>& callback)
+    {
+        capturedQuery = query;
+
+        nlohmann::json returnData =
+        {
+            {"old", {{"id", "test_check"}, {"result", "Passed"}, {"reason", ""}}},
+            {"new", {{"id", "test_check"}, {"result", "Failed"}, {"reason", reason}}}
+        };
+        callback(MODIFIED, returnData);
+    });
+
+    std::vector<std::string> statefulMessages;
+
+    auto mockPushStateful = [&statefulMessages](const std::string&, Operation_t, const std::string&, const std::string & message, uint64_t) -> int
+    {
+        statefulMessages.push_back(message);
+        return 0;
+    };
+
+    auto newHandler = std::make_unique<sca_event_handler::SCAEventHandlerMock>(
+                          mockDBSync, [](const std::string&) -> int { return 0; }, mockPushStateful);
+
+    EXPECT_CALL(*newHandler, GetPolicyById(policyId))
+    .WillOnce(testing::Return(nlohmann::json {{"id", policyId}, {"name", "Test Policy"}}));
+
+    EXPECT_CALL(*newHandler, GetPolicyCheckById(checkId))
+    .WillOnce(testing::Return(nlohmann::json {{"id", checkId}, {"policy_id", policyId}, {"result", "Passed"}, {"reason", ""}}));
+
+    newHandler->ReportCheckResult(policyId, checkId, "Failed", reason);
+
+    ASSERT_TRUE(capturedQuery.contains("data"));
+    ASSERT_FALSE(capturedQuery["data"].empty());
+    EXPECT_EQ(capturedQuery["data"][0]["result"], "Failed");
+    EXPECT_EQ(capturedQuery["data"][0]["reason"], reason);
+
+    ASSERT_EQ(statefulMessages.size(), 1U);
+    const auto statefulMessage = nlohmann::json::parse(statefulMessages[0]);
+    EXPECT_EQ(statefulMessage["check"]["result"], "Failed");
+    EXPECT_EQ(statefulMessage["check"]["reason"], reason);
+}
+
+TEST_F(SCAEventHandlerTest, ReportCheckResult_PassedToFailedEventCarriesTheFailingRules)
+{
+    const std::string policyId = "test_policy";
+    const std::string checkId = "test_check";
+    const std::string reason = "Rules satisfied (condition 'none'):\n"
+                               "p:telnetd";
+
+    EXPECT_CALL(*mockDBSync, syncRow(testing::_, testing::_))
+    .WillOnce([reason](const nlohmann::json&, const std::function<void(ReturnTypeCallback, const nlohmann::json&)>& callback)
+    {
+        nlohmann::json returnData =
+        {
+            {"old", {{"id", "test_check"}, {"result", "Passed"}, {"reason", ""}}},
+            {"new", {{"id", "test_check"}, {"result", "Failed"}, {"reason", reason}}}
+        };
+        callback(MODIFIED, returnData);
+    });
+
+    std::vector<std::string> statelessMessages;
+
+    auto mockPushStateless = [&statelessMessages](const std::string & message) -> int
+    {
+        statelessMessages.push_back(message);
+        return 0;
+    };
+
+    auto newHandler = std::make_unique<sca_event_handler::SCAEventHandlerMock>(
+                          mockDBSync,
+                          mockPushStateless,
+                          [](const std::string&, Operation_t, const std::string&, const std::string&, uint64_t) -> int { return 0; });
+
+    EXPECT_CALL(*newHandler, GetPolicyById(policyId))
+    .WillOnce(testing::Return(nlohmann::json {{"id", policyId}, {"name", "Test Policy"}}));
+
+    EXPECT_CALL(*newHandler, GetPolicyCheckById(checkId))
+    .WillOnce(testing::Return(nlohmann::json {{"id", checkId}, {"policy_id", policyId}, {"result", "Passed"}, {"reason", ""}}));
+
+    newHandler->ReportCheckResult(policyId, checkId, "Failed", reason);
+
+    ASSERT_EQ(statelessMessages.size(), 1U);
+    const auto statelessMessage = nlohmann::json::parse(statelessMessages[0]);
+    EXPECT_EQ(statelessMessage["data"]["check"]["result"], "Failed");
+    EXPECT_EQ(statelessMessage["data"]["check"]["reason"], reason);
+    EXPECT_EQ(statelessMessage["data"]["check"]["previous"]["result"], "Passed");
+    EXPECT_FALSE(statelessMessage["data"]["check"]["previous"].contains("reason"));
+    EXPECT_EQ(statelessMessage["data"]["event"]["changed_fields"], nlohmann::json::array({"check.result"}));
+}
+
 int main(int argc, char** argv)
 {
     ::testing::InitGoogleTest(&argc, argv);
