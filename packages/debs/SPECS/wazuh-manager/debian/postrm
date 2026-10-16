@@ -62,20 +62,28 @@ case "$1" in
             mkdir -p ${CONF_DIR}/shared/default
         fi
 
-        # Move files from ${DIR}/tmp to ${CONF_DIR}
-        if [ -f ${DIR}/tmp/conffiles/shared/default/agent.conf ]; then
-            mv ${DIR}/tmp/conffiles/shared/default/agent.conf ${CONF_DIR}/shared/default/agent.conf.save
-        fi
+        # Only the directory prerm made, root's and not a link, is read back: tmp/ is writable by
+        # wazuh-manager.
+        if [ -d ${DIR}/tmp/conffiles ] && [ ! -L ${DIR}/tmp/conffiles ] \
+            && [ -n "$(find ${DIR}/tmp/conffiles -maxdepth 0 -user 0)" ]; then
+            # Move files from ${DIR}/tmp to ${CONF_DIR}
+            if [ -f ${DIR}/tmp/conffiles/shared/default/agent.conf ]; then
+                mv ${DIR}/tmp/conffiles/shared/default/agent.conf ${CONF_DIR}/shared/default/agent.conf.save
+            fi
 
-        # Move files from ${DIR}/tmp to ${DIR}/api
-        if [ -f ${DIR}/tmp/conffiles/api.yaml ]; then
-            mkdir -p ${DIR}/api/configuration
-            mv ${DIR}/tmp/conffiles/api.yaml ${DIR}/api/configuration/api.yaml
-        fi
+            # Move files from ${DIR}/tmp to ${DIR}/api
+            if [ -f ${DIR}/tmp/conffiles/api.yaml ]; then
+                mkdir -p ${DIR}/api/configuration
+                mv ${DIR}/tmp/conffiles/api.yaml ${DIR}/api/configuration/api.yaml
+            fi
 
-        # If the directory is not empty, copy the files into ${CONF_DIR}
-        if ls -A ${DIR}/tmp/conffiles > /dev/null 2>&1 ; then
-            cp -Rf ${DIR}/tmp/conffiles/* ${CONF_DIR}
+            # If the directory is not empty, copy the files into ${CONF_DIR}, which wazuh-manager
+            # can write: --remove-destination replaces a link planted at a destination instead of
+            # writing through it, and cp refuses to copy a directory onto a link.
+            if [ -n "$(ls -A ${DIR}/tmp/conffiles)" ]; then
+                cp -Rf --remove-destination ${DIR}/tmp/conffiles/* ${CONF_DIR} \
+                    || echo "WARNING: some configuration files could not be kept in ${CONF_DIR}." >&2
+            fi
         fi
         rm -rf ${DIR}/tmp
         if [ "$1" = "remove" ]; then

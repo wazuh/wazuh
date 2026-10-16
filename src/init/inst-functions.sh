@@ -1259,7 +1259,15 @@ InstallCommon()
 
   ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var
   ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/run
-  ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/upgrade
+
+  if [ "X${INSTYPE}" = "Xagent" ]; then
+    # Only root writes here on an agent (wazuh-modulesd unpacks the verified WPK, and root runs the
+    # installer it holds), so the group gets no write: it could otherwise swap a file between the
+    # signature check and its use.
+    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/upgrade
+  else
+    ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/upgrade
+  fi
 
   if [ "X${INSTYPE}" = "Xagent" ]; then
     ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/selinux

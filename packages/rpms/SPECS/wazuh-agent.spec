@@ -91,68 +91,68 @@ install -m 0644 src/init/templates/wazuh-agent.service ${RPM_BUILD_ROOT}/usr/lib
 rm -f ${RPM_BUILD_ROOT}%{_localstatedir}/ruleset/sca/*
 
 # Install configuration assesment files and files templates
-mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/{generic}
-mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/amzn/{1,2,2023}
-mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/{10,9,8,7,6}
-mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/ol/{9,10}
-mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/{9,8,7,6}
-mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/sles/{12,15,16}
-mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/suse/12
-mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/fedora/{29,30,31,32,33,34,41}
-mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/almalinux/{8,9,10}
-mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rocky/{8,9,10}
+mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/{generic}
+mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/amzn/{1,2,2023}
+mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/centos/{10,9,8,7,6}
+mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/ol/{9,10}
+mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/rhel/{9,8,7,6}
+mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/sles/{12,15,16}
+mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/suse/12
+mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/fedora/{29,30,31,32,33,34,41}
+mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/almalinux/{8,9,10}
+mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/rocky/{8,9,10}
 
-cp -r ruleset/sca/{generic,centos,rhel,ol,sles,amazon,rocky,almalinux} ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp
+cp -r ruleset/sca/{generic,centos,rhel,ol,sles,amazon,rocky,almalinux} ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}
 
-cp etc/templates/config/generic/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/generic
+cp etc/templates/config/generic/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/generic
 
-cp etc/templates/config/amzn/1/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/amzn/1
-cp etc/templates/config/amzn/2/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/amzn/2
-cp etc/templates/config/amzn/2023/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/amzn/2023
+cp etc/templates/config/amzn/1/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/amzn/1
+cp etc/templates/config/amzn/2/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/amzn/2
+cp etc/templates/config/amzn/2023/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/amzn/2023
 
-cp etc/templates/config/centos/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos
-cp etc/templates/config/centos/10/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/10
-cp etc/templates/config/centos/9/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/9
-cp etc/templates/config/centos/8/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/8
-cp etc/templates/config/centos/7/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/7
-cp etc/templates/config/centos/6/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/6
+cp etc/templates/config/centos/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/centos
+cp etc/templates/config/centos/10/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/centos/10
+cp etc/templates/config/centos/9/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/centos/9
+cp etc/templates/config/centos/8/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/centos/8
+cp etc/templates/config/centos/7/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/centos/7
+cp etc/templates/config/centos/6/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/centos/6
 
-cp etc/templates/config/ol/9/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/ol/9
-cp etc/templates/config/ol/10/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/ol/10
+cp etc/templates/config/ol/9/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/ol/9
+cp etc/templates/config/ol/10/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/ol/10
 
-cp etc/templates/config/rhel/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel
-cp etc/templates/config/rhel/10/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/10
-cp etc/templates/config/rhel/9/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/9
-cp etc/templates/config/rhel/8/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/8
-cp etc/templates/config/rhel/7/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/7
-cp etc/templates/config/rhel/6/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/6
+cp etc/templates/config/rhel/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/rhel
+cp etc/templates/config/rhel/10/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/rhel/10
+cp etc/templates/config/rhel/9/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/rhel/9
+cp etc/templates/config/rhel/8/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/rhel/8
+cp etc/templates/config/rhel/7/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/rhel/7
+cp etc/templates/config/rhel/6/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/rhel/6
 
-cp etc/templates/config/sles/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/sles
-cp etc/templates/config/sles/12/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/sles/12
-cp etc/templates/config/sles/15/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/sles/15
-cp etc/templates/config/sles/16/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/sles/16
+cp etc/templates/config/sles/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/sles
+cp etc/templates/config/sles/12/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/sles/12
+cp etc/templates/config/sles/15/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/sles/15
+cp etc/templates/config/sles/16/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/sles/16
 
-cp etc/templates/config/suse/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/suse
-cp etc/templates/config/suse/12/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/suse/12
+cp etc/templates/config/suse/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/suse
+cp etc/templates/config/suse/12/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/suse/12
 
-cp etc/templates/config/fedora/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/fedora
-cp etc/templates/config/fedora/29/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/fedora/29
-cp etc/templates/config/fedora/30/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/fedora/30
-cp etc/templates/config/fedora/31/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/fedora/31
-cp etc/templates/config/fedora/32/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/fedora/32
-cp etc/templates/config/fedora/33/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/fedora/33
-cp etc/templates/config/fedora/34/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/fedora/34
-cp etc/templates/config/fedora/41/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/fedora/41
+cp etc/templates/config/fedora/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/fedora
+cp etc/templates/config/fedora/29/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/fedora/29
+cp etc/templates/config/fedora/30/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/fedora/30
+cp etc/templates/config/fedora/31/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/fedora/31
+cp etc/templates/config/fedora/32/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/fedora/32
+cp etc/templates/config/fedora/33/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/fedora/33
+cp etc/templates/config/fedora/34/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/fedora/34
+cp etc/templates/config/fedora/41/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/fedora/41
 
-cp etc/templates/config/almalinux/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/almalinux
-cp etc/templates/config/almalinux/8/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/almalinux/8
-cp etc/templates/config/almalinux/9/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/almalinux/9
-cp etc/templates/config/almalinux/10/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/almalinux/10
+cp etc/templates/config/almalinux/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/almalinux
+cp etc/templates/config/almalinux/8/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/almalinux/8
+cp etc/templates/config/almalinux/9/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/almalinux/9
+cp etc/templates/config/almalinux/10/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/almalinux/10
 
-cp etc/templates/config/rocky/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rocky
-cp etc/templates/config/rocky/8/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rocky/8
-cp etc/templates/config/rocky/9/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rocky/9
-cp etc/templates/config/rocky/10/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rocky/10
+cp etc/templates/config/rocky/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/rocky
+cp etc/templates/config/rocky/8/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/rocky/8
+cp etc/templates/config/rocky/9/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/rocky/9
+cp etc/templates/config/rocky/10/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/rocky/10
 
 # Add configuration scripts
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/
@@ -255,15 +255,25 @@ if [ $1 = 2 ]; then
     exit 1
   fi
 
+  # tmp/ is writable by the wazuh group, which could leave a link or a FIFO at the marker's name:
+  # touch follows a link as root, and opening a FIFO blocks rpm. The marker is made under the
+  # installation directory, which only root can write, and renamed into place: a rename replaces
+  # whatever is at the name without opening it.
+  mark_restart() {
+    local marker
+    marker=$(mktemp %{_localstatedir}/.wazuh.restart.XXXXXX) || return 0
+    mv -fT ${marker} %{_localstatedir}/tmp/wazuh.restart || rm -f ${marker}
+  }
+  rm -f %{_localstatedir}/tmp/wazuh.restart
   if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 && systemctl is-active --quiet wazuh-agent > /dev/null 2>&1; then
     systemctl stop wazuh-agent.service > /dev/null 2>&1
-    touch %{_localstatedir}/tmp/wazuh.restart
+    mark_restart
   # Check for SysV
   elif command -v service > /dev/null 2>&1 && service wazuh-agent status 2>/dev/null | grep "is running" > /dev/null 2>&1; then
     service wazuh-agent stop > /dev/null 2>&1
-    touch %{_localstatedir}/tmp/wazuh.restart
+    mark_restart
   elif %{_localstatedir}/bin/wazuh-control status 2>/dev/null | grep "is running" > /dev/null 2>&1; then
-    touch %{_localstatedir}/tmp/wazuh.restart
+    mark_restart
   fi
   %{_localstatedir}/bin/wazuh-control stop > /dev/null 2>&1
 fi
@@ -292,12 +302,20 @@ if [ $1 = 2 ]; then
   # Upgrade only ($1 = 2), and once: this is a package decision, not a runtime one, so it must not
   # depend on the agent ever reaching a manager. Overwritten before it is unlinked, because the
   # bytes are a secret.
-  if [ -f %{_localstatedir}/etc/authd.pass ]; then
-    if [ -s %{_localstatedir}/etc/authd.pass ]; then
-      dd if=/dev/zero of=%{_localstatedir}/etc/authd.pass bs=1 count=$(wc -c < %{_localstatedir}/etc/authd.pass) conv=notrunc > /dev/null 2>&1 || true
+  #
+  # etc/ belongs to wazuh, which could leave a link at etc/authd.pass for dd to write zeros
+  # through. The entry is renamed first into a directory only root can enter, under the
+  # installation directory (a rename moves a link, never its target), and only zeroed there when
+  # it is a plain file with no other link.
+  if [ -f %{_localstatedir}/etc/authd.pass ] && AUTHD_PASS_STAGE=$(mktemp -d %{_localstatedir}/.authd-pass.XXXXXX); then
+    AUTHD_PASS=${AUTHD_PASS_STAGE}/authd.pass
+    if mv -f %{_localstatedir}/etc/authd.pass ${AUTHD_PASS}; then
+      if [ -f ${AUTHD_PASS} ] && [ ! -L ${AUTHD_PASS} ] && [ -n "$(find ${AUTHD_PASS} -links 1)" ] && [ -s ${AUTHD_PASS} ]; then
+        dd if=/dev/zero of=${AUTHD_PASS} bs=1 count=$(wc -c < ${AUTHD_PASS}) conv=notrunc > /dev/null 2>&1 || true
+      fi
+      echo "wazuh-agent: removed the fleet-wide enrollment password at %{_localstatedir}/etc/authd.pass. 5.0 enrols with an enrollment token (WAZUH_ENROLLMENT_TOKEN); an agent enrolled before the upgrade holds no re-enrollment secret and must be re-pointed with a token if the manager stops recognising its key."
     fi
-    rm -f %{_localstatedir}/etc/authd.pass
-    echo "wazuh-agent: removed the fleet-wide enrollment password at %{_localstatedir}/etc/authd.pass. 5.0 enrols with an enrollment token (WAZUH_ENROLLMENT_TOKEN); an agent enrolled before the upgrade holds no re-enrollment secret and must be re-pointed with a token if the manager stops recognising its key."
+    rm -rf ${AUTHD_PASS_STAGE}
   fi
 
   if [ -d %{_localstatedir}/logs/ossec ]; then
@@ -313,19 +331,30 @@ fi
 # If the package is being installed
 if [ $1 = 1 ]; then
 
-  touch %{_localstatedir}/logs/active-responses.log
-  chown wazuh:wazuh %{_localstatedir}/logs/active-responses.log
-  chmod 0660 %{_localstatedir}/logs/active-responses.log
+  # logs/ belongs to wazuh, which could leave a link or a FIFO at the log's name: touch, chown and
+  # chmod follow a link as root, and opening a FIFO blocks rpm. The name is never opened. A regular
+  # file only gets chown -h; anything else is replaced by an empty log built in packages_files/
+  # (root only) and renamed over it.
+  AR_LOG=%{_localstatedir}/logs/active-responses.log
+  if [ -f ${AR_LOG} ] && [ ! -L ${AR_LOG} ]; then
+    chown -h wazuh:wazuh ${AR_LOG} 2> /dev/null || true
+  else
+    AR_LOG_STAGE=%{_localstatedir}/packages_files/active-responses.log
+    { : > ${AR_LOG_STAGE} && chown wazuh:wazuh ${AR_LOG_STAGE} && chmod 0660 ${AR_LOG_STAGE} \
+        && mv -fT ${AR_LOG_STAGE} ${AR_LOG}; } || echo "WARNING: could not create ${AR_LOG}." >&2
+  fi
 
   . %{_localstatedir}/packages_files/agent_installation_scripts/src/init/dist-detect.sh
 
-  # Generating ossec.conf file
-  %{_localstatedir}/packages_files/agent_installation_scripts/src/init/gen_wazuh.sh conf agent ${DIST_NAME} ${DIST_VER}.${DIST_SUBVER} %{_localstatedir} > %{_localstatedir}/etc/ossec.conf
-  chown root:wazuh %{_localstatedir}/etc/ossec.conf
-  chmod 640 %{_localstatedir}/etc/ossec.conf
-
-  # Add default local_files to ossec.conf
-  %{_localstatedir}/packages_files/agent_installation_scripts/src/init/add_localfiles.sh %{_localstatedir} >> %{_localstatedir}/etc/ossec.conf
+  # Generating ossec.conf file, with the default local_files, in packages_files/ (root only) and
+  # moving it into place: etc/ belongs to wazuh, and a rename replaces a link planted there
+  # instead of writing through it.
+  CONF_STAGE=%{_localstatedir}/packages_files/ossec.conf.generated
+  %{_localstatedir}/packages_files/agent_installation_scripts/src/init/gen_wazuh.sh conf agent ${DIST_NAME} ${DIST_VER}.${DIST_SUBVER} %{_localstatedir} > ${CONF_STAGE}
+  %{_localstatedir}/packages_files/agent_installation_scripts/src/init/add_localfiles.sh %{_localstatedir} >> ${CONF_STAGE}
+  chown root:wazuh ${CONF_STAGE}
+  chmod 640 ${CONF_STAGE}
+  mv -fT ${CONF_STAGE} %{_localstatedir}/etc/ossec.conf
 
   # Register and configure agent if Wazuh environment variables are defined
   %{_localstatedir}/packages_files/agent_installation_scripts/src/init/register_configure_agent.sh %{_localstatedir} > /dev/null || :
@@ -339,9 +368,6 @@ fi
 if [[ -d /run/systemd/system ]]; then
   rm -f %{_initrddir}/wazuh-agent
 fi
-
-# Delete the installation files used to configure the agent
-rm -rf %{_localstatedir}/packages_files
 
 # Remove unnecessary files from shared directory
 rm -f %{_localstatedir}/etc/shared/*.rpmnew
@@ -413,7 +439,10 @@ else
 fi
 
 SCA_DIR="${DIST_NAME}/${DIST_VER}"
-SCA_BASE_DIR="%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp"
+# The version and release in the name keep this path out of the previous package. This script
+# removes what it stages, and on an upgrade rpm skips a missing missingok config file that both
+# packages ship, so a fixed name would leave every later upgrade without the policies to install.
+SCA_BASE_DIR="%{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}"
 mkdir -p %{_localstatedir}/ruleset/sca
 
 
@@ -434,12 +463,20 @@ if [ -r ${SCA_TMP_FILE} ]; then
 
   rm -f %{_localstatedir}/ruleset/sca/* || true
 
+  # Staged in packages_files/ (root only). Each entry must still name a plain file inside the
+  # staging tree: no absolute path, no "..", no link.
   for sca_file in $(cat ${SCA_TMP_FILE}); do
-    if [ -f ${SCA_BASE_DIR}/${sca_file} ]; then
+    case "${sca_file}" in
+      /*|..|../*|*/..|*/../*) continue ;;
+    esac
+    if [ -f ${SCA_BASE_DIR}/${sca_file} ] && [ ! -L ${SCA_BASE_DIR}/${sca_file} ]; then
       mv ${SCA_BASE_DIR}/${sca_file} %{_localstatedir}/ruleset/sca
     fi
   done
 fi
+
+# Delete the installation files used to configure the agent
+rm -rf %{_localstatedir}/packages_files
 
 # Set the proper selinux context
 if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ "${DIST_VER}" == "5" ]; then
@@ -459,8 +496,16 @@ else
   fi
 fi
 
-# Restore ossec.conf permissions after upgrading
-chmod 0640 %{_localstatedir}/etc/ossec.conf
+# Restore ossec.conf permissions after upgrading. etc/ belongs to wazuh, so ossec.conf may be a link
+# it planted, and chmod has no -h: the mode is set on a copy taken without following links, in a
+# directory only root can enter, which is then renamed back over the file.
+if [ -f %{_localstatedir}/etc/ossec.conf ] && CONF_STAGE=$(mktemp -d %{_localstatedir}/.ossec-conf.XXXXXX); then
+  if cp -pP %{_localstatedir}/etc/ossec.conf ${CONF_STAGE}/ossec.conf && [ -f ${CONF_STAGE}/ossec.conf ] \
+      && [ ! -L ${CONF_STAGE}/ossec.conf ]; then
+    chmod 0640 ${CONF_STAGE}/ossec.conf && mv -fT ${CONF_STAGE}/ossec.conf %{_localstatedir}/etc/ossec.conf
+  fi
+  rm -rf ${CONF_STAGE}
+fi
 
 # Remove old ossec user and group if exists and change ownwership of files
 
@@ -522,16 +567,48 @@ if [ $1 = 0 ]; then
     fi
   }
 
+  # Prints the value file $1 gives KEY $2 on its last "[export ]KEY=value" line, or $3 when the file
+  # does not set it. Read as the shell reads a plain assignment: a quoted value without its quotes,
+  # an unquoted one up to the first blank, and neither with a trailing comment. Nothing in the file
+  # is run.
+  env_file_value() {
+    local value
+    value=$(sed -n "s/^[[:space:]]*\(export[[:space:]][[:space:]]*\)\{0,1\}$2=//p" "$1" | tail -n 1 \
+      | sed -e 's/^"\(.*\)"[[:space:]]*\(#.*\)\{0,1\}$/\1/' -e t \
+            -e "s/^'\(.*\)'[[:space:]]*\(#.*\)\{0,1\}\$/\1/" -e t \
+            -e 's/[[:space:]].*$//')
+    printf '%%s\n' "${value:-$3}"
+  }
+
+  # Takes the VALIDATION_* variables from etc/uninstall_validation.env, which overrides the
+  # environment. etc/ belongs to wazuh, so the file is read as data, and only when it is a regular
+  # file root owns and nobody else can write. It is checked and read through a hard link made in a
+  # directory only root can enter: ln neither opens the file (cp would block on a FIFO) nor follows
+  # a link, and the file it pins cannot be swapped after the check.
+  load_uninstall_validation_env() {
+    local env_file="%{_localstatedir}/etc/uninstall_validation.env"
+    local link_dir
+
+    if [ ! -e "${env_file}" ] && [ ! -L "${env_file}" ]; then
+      echo "INFO: Uninstall configuration file not found, using environment variables."
+      return
+    fi
+    link_dir=$(mktemp -d "%{_localstatedir}/.uninstall-validation.XXXXXX") || exit 1
+    if ! ln -P "${env_file}" "${link_dir}/env" 2> /dev/null || [ -L "${link_dir}/env" ] || [ ! -f "${link_dir}/env" ] \
+        || [ -z "$(find "${link_dir}/env" -user 0 ! -perm -0020 ! -perm -0002)" ]; then
+      echo "WARNING: ${env_file} is not a regular file owned by root and writable only by it; ignoring it and using environment variables."
+    else
+      VALIDATION_HOST=$(env_file_value "${link_dir}/env" VALIDATION_HOST "${VALIDATION_HOST}")
+      VALIDATION_TOKEN=$(env_file_value "${link_dir}/env" VALIDATION_TOKEN "${VALIDATION_TOKEN}")
+      VALIDATION_LOGIN=$(env_file_value "${link_dir}/env" VALIDATION_LOGIN "${VALIDATION_LOGIN}")
+      VALIDATION_SSL_VERIFY=$(env_file_value "${link_dir}/env" VALIDATION_SSL_VERIFY "${VALIDATION_SSL_VERIFY}")
+    fi
+    rm -rf "${link_dir}"
+  }
+
   # Function to validate uninstallation
   validate_uninstall() {
-    local validation_command
-
-    # Check if the configuration file exists
-    if [ -f "%{_localstatedir}/etc/uninstall_validation.env" ]; then
-      . "%{_localstatedir}/etc/uninstall_validation.env"
-    else
-      echo "INFO: Uninstall configuration file not found, using environment variables."
-    fi
+    load_uninstall_validation_env
 
     # Check if the VALIDATION_HOST variables are set
     if [ -z "$VALIDATION_HOST" ]; then
@@ -539,19 +616,19 @@ if [ $1 = 0 ]; then
       exit 1
     fi
 
-    # Validate uninstallation
+    # Validate uninstallation. Each value is passed as one argument, never split into more.
     if [ -n "$VALIDATION_TOKEN" ] && [ -n "$VALIDATION_LOGIN" ]; then
-      validation_command="%{_localstatedir}/bin/wazuh-agentd --uninstall-auth-token=${VALIDATION_TOKEN} --uninstall-auth-login=${VALIDATION_LOGIN} --uninstall-auth-host=${VALIDATION_HOST} --uninstall-ssl-verify=${VALIDATION_SSL_VERIFY}"
+      set -- "--uninstall-auth-token=${VALIDATION_TOKEN}" "--uninstall-auth-login=${VALIDATION_LOGIN}"
     elif [ -n "$VALIDATION_TOKEN" ]; then
-      validation_command="%{_localstatedir}/bin/wazuh-agentd --uninstall-auth-token=${VALIDATION_TOKEN} --uninstall-auth-host=${VALIDATION_HOST} --uninstall-ssl-verify=${VALIDATION_SSL_VERIFY}"
+      set -- "--uninstall-auth-token=${VALIDATION_TOKEN}"
     elif [ -n "$VALIDATION_LOGIN" ]; then
-      validation_command="%{_localstatedir}/bin/wazuh-agentd --uninstall-auth-login=${VALIDATION_LOGIN} --uninstall-auth-host=${VALIDATION_HOST} --uninstall-ssl-verify=${VALIDATION_SSL_VERIFY}"
+      set -- "--uninstall-auth-login=${VALIDATION_LOGIN}"
     else
       echo "ERROR: Validation login or token not provided. Uninstallation cannot be continued."
       exit 1
     fi
 
-    if $validation_command; then
+    if "%{_localstatedir}/bin/wazuh-agentd" "$@" "--uninstall-auth-host=${VALIDATION_HOST}" "--uninstall-ssl-verify=${VALIDATION_SSL_VERIFY}"; then
       echo "INFO: Uninstallation authorized, continuing..."
     else
       echo "ERROR: Uninstallation not authorized, aborting..."
@@ -606,9 +683,16 @@ if [ $1 = 0 ]; then
 fi
 
 %triggerin -- glibc
-[ -r %{_sysconfdir}/localtime ] && cp -fpL %{_sysconfdir}/localtime %{_localstatedir}/etc
- chown root:wazuh %{_localstatedir}/etc/localtime
- chmod 0640 %{_localstatedir}/etc/localtime
+# etc/ belongs to wazuh, which could leave a link at etc/localtime for cp, chown and chmod to
+# follow as root. The copy is made in a directory only root can enter, under the installation
+# directory (which wazuh cannot write), and renamed into place: a rename replaces a link.
+if [ -r %{_sysconfdir}/localtime ] && LOCALTIME_STAGE=$(mktemp -d %{_localstatedir}/.localtime.XXXXXX); then
+  cp -fpL %{_sysconfdir}/localtime ${LOCALTIME_STAGE}/localtime \
+    && chown root:wazuh ${LOCALTIME_STAGE}/localtime \
+    && chmod 0640 ${LOCALTIME_STAGE}/localtime \
+    && mv -fT ${LOCALTIME_STAGE}/localtime %{_localstatedir}/etc/localtime
+  rm -rf ${LOCALTIME_STAGE}
+fi
 
 %postun
 
@@ -748,70 +832,70 @@ rm -fr %{buildroot}
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/logcollector
 %dir %attr(750, root, wazuh) %{_localstatedir}/ruleset/
 %dir %attr(750, root, wazuh) %{_localstatedir}/ruleset/sca
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/generic
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/generic/*
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/amzn
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/amzn/1
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/amzn/1/*
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/amzn/2
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/amzn/2/*
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/amzn/2023
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/amzn/2023/*
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/sca.files
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/6
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/6/*
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/7
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/7/*
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/8
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/8/*
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/9
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/9/*
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/10
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/centos/10/*
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/ol/9
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/ol/9/*
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/ol/10
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/ol/10/*
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/sca.files
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/6
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/6/*
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/7
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/7/*
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/8
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/8/*
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/9
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/9/*
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/10
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rhel/10/*
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/sles
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/sles/sca.files
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/sles/12
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/sles/12/*
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/sles/15
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/sles/15/*
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/sles/16
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/sles/16/*
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/suse/sca.files
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/suse/12
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/suse/12/*
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/amazon
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/amazon/*
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/fedora
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/fedora/*
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/almalinux
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/almalinux/*
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rocky
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rocky/*
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/generic
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/generic/*
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/amzn
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/amzn/1
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/amzn/1/*
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/amzn/2
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/amzn/2/*
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/amzn/2023
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/amzn/2023/*
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/centos
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/centos/sca.files
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/centos/6
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/centos/6/*
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/centos/7
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/centos/7/*
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/centos/8
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/centos/8/*
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/centos/9
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/centos/9/*
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/centos/10
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/centos/10/*
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/ol/9
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/ol/9/*
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/ol/10
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/ol/10/*
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/rhel
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/rhel/sca.files
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/rhel/6
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/rhel/6/*
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/rhel/7
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/rhel/7/*
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/rhel/8
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/rhel/8/*
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/rhel/9
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/rhel/9/*
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/rhel/10
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/rhel/10/*
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/sles
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/sles/sca.files
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/sles/12
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/sles/12/*
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/sles/15
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/sles/15/*
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/sles/16
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/sles/16/*
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/suse/sca.files
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/suse/12
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/suse/12/*
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/amazon
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/amazon/*
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/fedora
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/fedora/*
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/almalinux
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/almalinux/*
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/rocky
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/sca-%{version}-%{release}/rocky/*
 %dir %attr(1770, root, wazuh) %{_localstatedir}/tmp
 %dir %attr(750, root, wazuh) %{_localstatedir}/var
 %dir %attr(770, root, wazuh) %{_localstatedir}/var/incoming
 %dir %attr(770, root, wazuh) %{_localstatedir}/var/run
 %dir %attr(770, root, wazuh) %{_localstatedir}/var/selinux
 %attr(640, root, wazuh) %{_localstatedir}/var/selinux/*
-%dir %attr(770, root, wazuh) %{_localstatedir}/var/upgrade
+%dir %attr(750, root, wazuh) %{_localstatedir}/var/upgrade
 %dir %attr(770, root, wazuh) %{_localstatedir}/var/wodles
 %dir %attr(750, root, wazuh) %{_localstatedir}/wodles
 %attr(750, root, wazuh) %{_localstatedir}/wodles/*

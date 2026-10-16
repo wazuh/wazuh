@@ -13,6 +13,7 @@ on:
       - "src/init/tests/test_enrollment_token.sh"
       - "src/init/tests/test_register_configure_agent.sh"
       - "src/init/tests/test_pkg_installer_ca.sh"
+      - "src/init/tests/test_pkg_installer_state.sh"
   workflow_dispatch:
 
 concurrency:
@@ -43,3 +44,6 @@ jobs:
       # Needs openssl on PATH to mint its test CA; the runner image ships it.
       - name: Manager-delivered CA (pkg_installer.sh)
         run: bash src/init/tests/test_pkg_installer_ca.sh
+
+      - name: Agent state file (pkg_installer.sh)
+        run: bash src/init/tests/test_pkg_installer_state.sh
