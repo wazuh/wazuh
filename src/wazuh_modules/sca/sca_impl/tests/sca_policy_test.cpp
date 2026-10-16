@@ -132,8 +132,8 @@ TEST_F(SCAPolicyTest, ResolvedCheckReportsNoReason)
     EXPECT_TRUE(reported[1].reason.empty());
 }
 
-// The event handler drops "Not run" checks before they reach the database event or the index, so
-// this pins the SCAPolicy contract rather than anything an operator can see today.
+// The event handler stores a "Not run" result in the agent database but keeps it out of the events
+// and the index, so this pins the SCAPolicy contract rather than anything the console shows today.
 TEST_F(SCAPolicyTest, NotRunRequirementsReportTheirReasonOnEveryCheck)
 {
     auto requirements = MakeCheck("requirements", "all", {{RuleResult::NotRun, "Command timed out after 30 seconds: rpm -q"}});
