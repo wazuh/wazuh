@@ -65,12 +65,15 @@ KEY_EPOCH = 1
 KEY_FIELDS = tuple(f for f in CONTENT_FIELDS if f != "url") + ("format", "strip")
 LOCK = REPO / "src" / "deps.lock.mk"
 BUILDER_IMAGES = REPO / "packages" / "externals" / "builder-images.json"
-# What fetches, cuts, overlays, patches and packs the source tree of every entry not built by its own script.
-SOURCE_RECIPE = ("packages/externals/build_external.sh", "packages/externals/generate_external.sh",
-                 "packages/externals/consolidate.sh")
-# How every entry with binaries is compiled: the whole external CMakeLists.txt, since its blocks cannot be told
-# apart per library, plus the `# deps-recipe` blocks with the CMake options and compilers the Makefile passes.
-BUILD_RECIPE = ("src/external/CMakeLists.txt", "src/CMakeLists.txt#deps-recipe", "src/Makefile#deps-recipe", "src/cmake/**")
+# What fetches, cuts, overlays, patches, builds and packs every entry not built by its own script: the
+# `# deps-recipe` blocks of the pipeline scripts, without their logging, leg selection and argument handling. Their
+# `# deps-entry <name>` blocks go into the key of that entry only (script_entry_blocks()).
+SOURCE_RECIPE = ("packages/externals/build_external.sh#deps-recipe", "packages/externals/generate_external.sh#deps-recipe",
+                 "packages/externals/consolidate.sh#deps-recipe")
+# How every entry with binaries is compiled: the external CMakeLists.txt (split per library in keys()), the
+# `# deps-recipe` blocks with the CMake options and compilers the Makefile passes, and the flags module it includes.
+BUILD_RECIPE = ("src/external/CMakeLists.txt", "src/CMakeLists.txt#deps-recipe", "src/Makefile#deps-recipe",
+                "src/cmake/WazuhExternalFlags.cmake#deps-recipe")
 # Entries built by their own scripts. cpython also compiles libwazuhext, so it keeps the build and platform
 # recipes; libbpf-bootstrap is built on a GitHub runner by build_ebpf.sh alone.
 OWN_RECIPE = {
@@ -576,14 +579,39 @@ def overlay_hashes(entries, overlays_dir=OVERLAYS_DIR):
     return result
 
 
-def _text_sha256(path):
-    """sha256 with CRLF read as LF in text files, so a Windows checkout computes the same keys."""
+# A whole-line `#` comment of a recipe (CMake, Makefile, shell, requirements) does not change what it builds, so it
+# stays out of the keys; `#!` lines and C sources, where `#` starts a directive, are kept.
+COMMENT_LINE = re.compile(r"^[ \t]*#(?!!).*\n?", re.M)
+
+
+def _strip_comments(text):
+    return COMMENT_LINE.sub("", text)
+
+
+def _text_sha256(path, comments=True):
+    """sha256 with CRLF read as LF in text files, so a Windows checkout computes the same keys; without
+    `comments`, whole-line comments are left out of a text file that is not C."""
     data = Path(path).read_bytes()
-    return hashlib.sha256(data if b"\0" in data else data.replace(b"\r\n", b"\n")).hexdigest()
+    if b"\0" in data:
+        return hashlib.sha256(data).hexdigest()
+    data = data.replace(b"\r\n", b"\n")
+    if not comments and Path(path).suffix not in (".c", ".h"):
+        data = _strip_comments(data.decode("utf-8")).encode()
+    return hashlib.sha256(data).hexdigest()
+
+
+def _marked_sha256(text, marker, rel):
+    """sha256 of the `# <marker>: begin/end` blocks of `text`, without comment lines."""
+    blocks = re.findall(rf"^# {re.escape(marker)}: begin\n(.*?)^# {re.escape(marker)}: end$", text, re.M | re.S)
+    begins = len(re.findall(rf"^# {re.escape(marker)}: begin$", text, re.M))
+    ends = len(re.findall(rf"^# {re.escape(marker)}: end$", text, re.M))
+    if not blocks or not begins == ends == len(blocks):
+        raise ValueError(f"key input {rel} needs matching `# {marker}: begin/end` lines")
+    return hashlib.sha256("\0".join(map(_strip_comments, blocks)).encode()).hexdigest()
 
 
 def _recipe(specs, repo):
-    """{spec: sha256 | {path: sha256}} for files, `dir/**` globs and `file#marker` blocks."""
+    """{spec: sha256 | {path: sha256}} for files, `dir/**` globs and `file#marker` blocks, without comment lines."""
     result = {}
     for spec in specs:
         rel, _, marker = spec.partition("#")
@@ -593,19 +621,13 @@ def _recipe(specs, repo):
             files = sorted(p for p in root.rglob("*") if p.is_file())
             if not files:
                 raise ValueError(f"key input {rel} has no files")
-            result[spec] = {p.relative_to(root).as_posix(): _text_sha256(p) for p in files}
+            result[spec] = {p.relative_to(root).as_posix(): _text_sha256(p, comments=False) for p in files}
         elif marker:
-            text = path.read_text(encoding="utf-8").replace("\r\n", "\n")
-            blocks = re.findall(rf"^# {re.escape(marker)}: begin\n(.*?)^# {re.escape(marker)}: end$", text, re.M | re.S)
-            begins = len(re.findall(rf"^# {re.escape(marker)}: begin$", text, re.M))
-            ends = len(re.findall(rf"^# {re.escape(marker)}: end$", text, re.M))
-            if not blocks or not begins == ends == len(blocks):
-                raise ValueError(f"key input {rel} needs matching `# {marker}: begin/end` lines")
-            result[spec] = hashlib.sha256("\0".join(blocks).encode()).hexdigest()
+            result[spec] = _marked_sha256(path.read_text(encoding="utf-8").replace("\r\n", "\n"), marker, rel)
         else:
             if not path.is_file():
                 raise ValueError(f"key input {rel} not found")
-            result[spec] = _text_sha256(path)
+            result[spec] = _text_sha256(path, comments=False)
     return result
 
 
@@ -657,15 +679,56 @@ def external_blocks(text, names=None):
     return blocks, "".join(outside)
 
 
+def script_entry_blocks(text, names, rel):
+    """({name: [its `# deps-entry <name>: begin/end` blocks]}, the text without them) of a pipeline script. A name
+    may have several blocks; one that is no inventory entry is an error, since its block would leave every key."""
+    text = text.replace("\r\n", "\n")
+    blocks, rest, current, start, pos = {}, [], None, 0, 0
+    for match in EXTERNAL_BLOCK.finditer(text):
+        name, side = match.groups()
+        if side == "begin":
+            if current:
+                raise ValueError(f"{rel}: block {name} begins inside block {current}")
+            if name not in names:
+                raise ValueError(f"{rel}: block {name} names no inventory entry")
+            rest.append(text[pos:match.start()])
+            current, start = name, match.end()
+        else:
+            if name != current:
+                raise ValueError(f"{rel}: end of block {name} without its begin")
+            blocks.setdefault(name, []).append(text[start:match.start()])
+            current, pos = None, match.end()
+    if current:
+        raise ValueError(f"{rel}: block {current} is not closed")
+    rest.append(text[pos:])
+    return blocks, "".join(rest)
+
+
+def _source_recipe(repo, names):
+    """({spec: sha256} of the `# deps-recipe` blocks, {name: sha256 of its `# deps-entry` blocks}) of the scripts."""
+    common, own = {}, {}
+    for spec in SOURCE_RECIPE:
+        rel, _, marker = spec.partition("#")
+        blocks, rest = script_entry_blocks((Path(repo) / rel).read_text(encoding="utf-8"), names, rel)
+        common[spec] = _marked_sha256(rest, marker, rel)
+        for name, texts in blocks.items():
+            own.setdefault(name, []).extend(f"{rel}\0{_strip_comments(t)}" for t in texts)
+    return common, {name: hashlib.sha256("\0".join(texts).encode()).hexdigest() for name, texts in own.items()}
+
+
 def keys(doc, repo=REPO):
     """{name: (key, inputs_hash)}: the pool key of every entry and the full sha256 of its inputs."""
     entries = {e["name"]: e for e in doc["entries"]}
     images = load(Path(repo) / BUILDER_IMAGES.relative_to(REPO))
-    source, build = _recipe(SOURCE_RECIPE, repo), _recipe([s for s in BUILD_RECIPE if s != EXTERNAL_CMAKE], repo)
+    build = _recipe([s for s in BUILD_RECIPE if s != EXTERNAL_CMAKE], repo)
     # The names come from the inventory file, not from `doc`, so a key does not depend on which entries it is given.
-    named = {e["name"] for e in load(Path(repo) / DEFAULT_INVENTORY.relative_to(REPO))["entries"]} | {WAZUHEXT_BLOCK}
+    inventory_names = {e["name"] for e in load(Path(repo) / DEFAULT_INVENTORY.relative_to(REPO))["entries"]}
+    source, source_own = _source_recipe(repo, inventory_names)
+    for name in sorted(set(source_own) & set(OWN_RECIPE)):
+        raise ValueError(f"{name} is built by its own script: a `# deps-entry {name}` block of {SOURCE_RECIPE[0].partition('#')[0]} or the other pipeline scripts would go into no key")
+    named = inventory_names | {WAZUHEXT_BLOCK}
     blocks, outside = external_blocks((Path(repo) / EXTERNAL_CMAKE).read_text(encoding="utf-8"), named)
-    outside_sha256 = hashlib.sha256(outside.encode()).hexdigest()
+    outside_sha256 = hashlib.sha256(_strip_comments(outside).encode()).hexdigest()
     patches_dir = Path(repo) / PATCHES_DIR.relative_to(REPO)
     overlays_dir = Path(repo) / OVERLAYS_DIR.relative_to(REPO)
     result, open_ = {}, set()
@@ -690,12 +753,14 @@ def keys(doc, repo=REPO):
             inputs["own"] = _recipe(OWN_RECIPE[name], repo)
         else:
             inputs["source"] = source
+            if name in source_own:
+                inputs["source_entry"] = source_own[name]
         if built and name != "libbpf-bootstrap":
             block = WAZUHEXT_BLOCK if name == PYTHON_ENTRY else name
             if block not in blocks:
                 raise ValueError(f"{name}: no `# deps-entry {block}: begin/end` block in {EXTERNAL_CMAKE}")
             inputs["build"] = dict(build, **{EXTERNAL_CMAKE: {
-                "outside": outside_sha256, "block": hashlib.sha256(blocks[block].encode()).hexdigest()}})
+                "outside": outside_sha256, "block": hashlib.sha256(_strip_comments(blocks[block]).encode()).hexdigest()}})
             inputs["platforms"] = _platform_recipe(entry, images)
         digest = hashlib.sha256(json.dumps(inputs, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
         open_.discard(name)

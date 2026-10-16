@@ -9,11 +9,16 @@
 # The sanitizers need EXTERNAL_SANITIZE as well: the project instruments only
 # its C++, and its C executables link libwazuhext, which holds the
 # dependencies, without a sanitizer runtime.
+#
+# Only the `# deps-recipe` blocks go into the pool keys (packages/externals/deps.py):
+# the Debug branch never runs for the pool.
 
+# deps-recipe: begin
 set(DEPS_BUILD_TYPE Release)
 set(DEPS_CFLAGS_LIST "")
 string(TOUPPER "${CMAKE_BUILD_TYPE}" _deps_project_build_type)
 if(_deps_project_build_type STREQUAL "DEBUG" AND NOT IS_WINDOWS)
+# deps-recipe: end
   set(DEPS_BUILD_TYPE Debug)
   # Last on the command line, so it beats the -O2 that some recipes (bzip2, lua) set themselves.
   set(DEPS_CFLAGS_LIST -g -O0)
@@ -22,6 +27,7 @@ if(_deps_project_build_type STREQUAL "DEBUG" AND NOT IS_WINDOWS)
   elseif(EXTERNAL_SANITIZE AND TSANITIZE)
     list(APPEND DEPS_CFLAGS_LIST -fsanitize=thread)
   endif()
+# deps-recipe: begin
 endif()
 set(DEPS_CMAKE_ARGS -DCMAKE_BUILD_TYPE=${DEPS_BUILD_TYPE})
 set(DEPS_CFLAGS_ENV "")
@@ -33,3 +39,4 @@ if(DEPS_CFLAGS_LIST)
   set(DEPS_CFLAGS_ENV "CFLAGS=${DEPS_CFLAGS_JOINED}")
   set(DEPS_CFLAGS_EXTRA " ${DEPS_CFLAGS_JOINED}")
 endif()
+# deps-recipe: end

@@ -55,6 +55,10 @@ if [ "${WAZUH_VERBOSE}" = "yes" ]; then
     set -x
 fi
 
+# The `# deps-recipe` blocks hold what decides the bytes of a pool ref and go into the key of every library
+# (packages/externals/deps.py); a change to how a dependency is fetched, built or packed goes inside one. What
+# concerns one library goes in a `# deps-entry <name>` block instead, which only goes into that library's key.
+
 mkdir -p "${ARTIFACTS_DIR}" "${DOWNLOAD_DIR}"
 # Zips of an earlier run would be packed under this run's refs.
 rm -f "${ARTIFACTS_DIR}"/*.zip
@@ -92,10 +96,23 @@ done
 #     (apt's perl ships Time::Piece in core).
 # Per-package install: a single missing candidate would otherwise abort the
 # whole apt/yum transaction. Each package fails independently.
-APT_TOOLS="zip unzip clang libelf-dev pkg-config libexpat1-dev"
-YUM_TOOLS="zip unzip clang elfutils-libelf-devel pkgconfig perl-IPC-Cmd perl-Time-Piece expat-devel"
+# deps-recipe: begin
+APT_TOOLS="zip unzip clang libelf-dev pkg-config"
+YUM_TOOLS="zip unzip clang elfutils-libelf-devel pkgconfig"
 # bash and gnu-tar are installed by the workflow before this script runs.
-BREW_TOOLS="pkg-config libtool autoconf automake bash gnu-tar"
+BREW_TOOLS="pkg-config bash gnu-tar"
+# deps-recipe: end
+# deps-entry dbus: begin
+APT_TOOLS="${APT_TOOLS} libexpat1-dev"
+YUM_TOOLS="${YUM_TOOLS} expat-devel"
+# deps-entry dbus: end
+# deps-entry openssl: begin
+YUM_TOOLS="${YUM_TOOLS} perl-IPC-Cmd perl-Time-Piece"
+# deps-entry openssl: end
+# deps-entry libplist: begin
+BREW_TOOLS="${BREW_TOOLS} libtool autoconf automake"
+# deps-entry libplist: end
+# deps-recipe: begin
 if command -v apt-get >/dev/null 2>&1; then
     log "refreshing apt indices and installing tooling"
     apt-get update -y >/dev/null 2>&1 || apt-get update -y || true
@@ -123,11 +140,16 @@ elif command -v brew >/dev/null 2>&1; then
         brew install "${_pkg}" >/dev/null 2>&1 || brew install "${_pkg}" || \
         err "brew install ${_pkg} failed; downstream build may fail"
     done
+fi
+# deps-recipe: end
+# deps-entry libplist: begin
+if command -v brew >/dev/null 2>&1; then
     _brew_prefix="$(brew --prefix 2>/dev/null || true)"
     if [ -n "${_brew_prefix}" ] && [ -d "${_brew_prefix}/share/aclocal" ]; then
         export ACLOCAL_PATH="${_brew_prefix}/share/aclocal:${ACLOCAL_PATH:-}"
     fi
 fi
+# deps-entry libplist: end
 
 # None of the above is pinned, nor the runner image on macOS: record what this leg
 # used, for the manifest.json of the refs it builds (consolidate.sh).
@@ -157,11 +179,13 @@ fi
 # detect the headers are present but pkg-config can't find them. Harmless
 # on images where pkg-config does work — autoconf prefers explicit env
 # vars over re-querying pkg-config.
+# deps-entry dbus: begin
 if [ -f /usr/include/expat.h ] && ! pkg-config --exists expat 2>/dev/null; then
     log "expat headers present but pkg-config can't find them; setting EXPAT_CFLAGS/LIBS"
     export EXPAT_CFLAGS="-I/usr/include"
     export EXPAT_LIBS="-lexpat"
 fi
+# deps-entry dbus: end
 
 if [ ! -f "${DEPS_ENV:-}" ]; then
     err "DEPS_ENV '${DEPS_ENV:-}' not found (generate_external.sh writes it with deps.py flatten)"
@@ -187,6 +211,7 @@ download() {
     return 1
 }
 
+# deps-recipe: begin
 # Extract $1 (with format $2) into $3, stripping $4 leading components.
 extract() {
     local archive="$1" format="$2" dest="$3" strip="$4"
@@ -227,6 +252,7 @@ extract() {
             ;;
     esac
 }
+# deps-recipe: end
 
 # True when dependency $1 is built on this leg's platform.
 on_leg() {
@@ -244,6 +270,7 @@ sha256_of() {
     fi
 }
 
+# deps-recipe: begin
 # Download dependency $1 from its inventory URL, check its sha256, keep its
 # subdir, copy its overlay, apply its patches and install it as
 # src/external/<target_dir>/. Any failure is fatal:
@@ -302,7 +329,9 @@ fetch_dep() {
     rm -rf "${EXTERNAL_DIR:?}/${target_dir}"
     mv "${staging}" "${EXTERNAL_DIR}/${target_dir}"
 }
+# deps-recipe: end
 
+# deps-recipe: begin
 # Snapshot src/external/<dep>/ as <dep>_src.zip (pre-build).
 snapshot_source() {
     local name="$1"
@@ -328,6 +357,7 @@ snapshot_built() {
     log "snapshot built: ${name} -> ${out}"
     (cd "${EXTERNAL_DIR}" && zip -rq "${out}" "${target_dir}")
 }
+# deps-recipe: end
 
 # Print the dependency list make resolves for a given TARGET (agent / manager /
 # winagent), reading it straight from src/Makefile's `print-%` helper. make
@@ -351,11 +381,13 @@ log "BUILD_TARGET=${BUILD_TARGET} SYSTEM=${SYSTEM} ARCH=${ARCHITECTURE_TARGET} J
 # its TARGET variable. Windows agent uses TARGET=winagent (not 'agent') —
 # that flag turns on MinGW cross-compile and filters Linux-only deps from
 # the dep list (see src/Makefile:462-465). Linux/macOS pass through.
+# deps-recipe: begin
 if [ "${SYSTEM}" = "windows" ]; then
     MAKE_TARGET="winagent"
 else
     MAKE_TARGET="${BUILD_TARGET}"
 fi
+# deps-recipe: end
 case "${SYSTEM}" in
     deb|rpm) LEG_PLATFORM="linux" ;;
     macos)   LEG_PLATFORM="darwin" ;;
@@ -426,8 +458,10 @@ fi
 # snapshot_built into every per-leg tarball (6149 `._*` entries in the openssl
 # leg output, confirmed by raw byte-walk of the cached tarball at
 # `packages.wazuh.com/deps/99-29585/libraries/sources/openssl.tar.gz`).
+# deps-recipe: begin
 log "stripping AppleDouble (._*) files from extracted source trees"
 find "${SRC_DIR}/external" -name '._*' -delete
+# deps-recipe: end
 
 # sqlite's autoconf tarball ships a `VERSION` text file (just the version
 # string, e.g. "3.53.1"). src/external/CMakeLists.txt adds external/sqlite/
@@ -439,11 +473,14 @@ find "${SRC_DIR}/external" -name '._*' -delete
 # snapshotting so the per-leg tarball never ships it. Sources don't need
 # it at runtime — sqlite3.h carries SQLITE_VERSION as a #define.
 log "stripping case-collision files that shadow C++ standard headers"
+# deps-entry sqlite: begin
 rm -f "${SRC_DIR}/external/sqlite/VERSION" "${SRC_DIR}/external/sqlite/version" 2>/dev/null || true
+# deps-entry sqlite: end
 
 # Snapshots of what this leg built; cpython and libbpf-bootstrap come from their own jobs.
 built_here() { on_leg "$1" && in_build "$1" && [ "$1" != "cpython" ] && [ "$1" != "libbpf-bootstrap" ]; }
 
+# deps-recipe: begin
 # Pre-build source snapshots.
 for name in ${DEPS_FOR_LEG}; do
     if ! built_here "${name}"; then
@@ -452,6 +489,7 @@ for name in ${DEPS_FOR_LEG}; do
     fi
     snapshot_source "${name}"
 done
+# deps-recipe: end
 
 log "building externals via 'make build-external TARGET=${MAKE_TARGET}'"
 # `build-external` (defined at src/Makefile:372) configures cmake then builds
@@ -460,6 +498,7 @@ log "building externals via 'make build-external TARGET=${MAKE_TARGET}'"
 # host build will pin paths to the host filesystem and break the in-container
 # configure step ("source ... does not match the source ... used to generate
 # cache").
+# deps-recipe: begin
 rm -rf "${SRC_DIR}/build"
 # audit-userspace's lib/Makefile.am overrides CC for its gen_tables helpers
 # to $(CC_FOR_BUILD), which older autoconf (centos:6, wheezy) leaves empty
@@ -477,11 +516,14 @@ set +e
 env -u MAKEFLAGS -u MFLAGS -u CMAKE_OPTS -u CMAKE_ENGINE_OPTS -u WAZUH_TEST -u WAZUH_RELEASE_TYPE -u CMAKE_BUILD_TYPE \
     make -j"${JOBS}" -C "${SRC_DIR}" TARGET="${MAKE_TARGET}" DEBUG= FSANITIZE= TSANITIZE= EXTERNAL_SANITIZE= TEST= \
     ENGINE_TEST= build-external
+# deps-recipe: end
 build_external_rc=$?
 set -e
-if grep -Eqi '^(CMAKE_BUILD_TYPE:STRING=debug|(FSANITIZE|TSANITIZE|EXTERNAL_SANITIZE):[a-z]+=(on|true|yes|y|1))$' \
+# The pool keys leave out the test, Debug and sanitizer options of src/Makefile and src/CMakeLists.txt, so none may
+# reach a pool build.
+if grep -Eqi '^(CMAKE_BUILD_TYPE:STRING=debug|(FSANITIZE|TSANITIZE|EXTERNAL_SANITIZE|UNIT_TEST|WAZUH_ENGINE_TEST):[a-z]+=(on|true|yes|y|1))$' \
     "${SRC_DIR}/build/CMakeCache.txt" 2>/dev/null; then
-    err "the configured build is Debug or instrumented: pool artifacts must be built in Release"
+    err "the configured build is Debug, instrumented or has tests: pool artifacts must be built in Release"
     exit 1
 fi
 if [ "${build_external_rc}" -ne 0 ]; then
@@ -502,11 +544,17 @@ fi
 # Source for the (target, expected_path) pairs:
 #   src/external/CMakeLists.txt lines 1199 / 1217 / 1239 (detection)
 #                              lines 1206 / 1224 / 1247 (fallback)
-PATTERN_B_PAIRS=(
-    "ext_cjson:cJSON/libcjson.a"
-    "ext_sqlite:sqlite/libsqlite3.a"
-    "ext_procps:procps/libproc.a"
-)
+PATTERN_B_PAIRS=()
+# deps-entry cJSON: begin
+PATTERN_B_PAIRS+=("ext_cjson:cJSON/libcjson.a")
+# deps-entry cJSON: end
+# deps-entry sqlite: begin
+PATTERN_B_PAIRS+=("ext_sqlite:sqlite/libsqlite3.a")
+# deps-entry sqlite: end
+# deps-entry procps: begin
+PATTERN_B_PAIRS+=("ext_procps:procps/libproc.a")
+# deps-entry procps: end
+# deps-recipe: begin
 for pair in "${PATTERN_B_PAIRS[@]}"; do
     target="${pair%%:*}"
     dst_rel="${pair#*:}"
@@ -520,13 +568,16 @@ for pair in "${PATTERN_B_PAIRS[@]}"; do
         log "pattern-B archive missing in build tree: ${build_lib} (build-external probably failed for this target)"
     fi
 done
+# deps-recipe: end
 
+# deps-recipe: begin
 # Post-build snapshots.
 for name in ${DEPS_FOR_LEG}; do
     if built_here "${name}"; then
         snapshot_built "${name}"
     fi
 done
+# deps-recipe: end
 
 log "done. artifacts in ${ARTIFACTS_DIR}:"
 ls -la "${ARTIFACTS_DIR}"

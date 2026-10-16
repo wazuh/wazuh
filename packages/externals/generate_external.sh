@@ -14,6 +14,9 @@
 
 set -e
 
+# The `# deps-recipe` blocks hold what decides the bytes of a pool ref and go into its key
+# (packages/externals/deps.py); a change to how a dependency is fetched, built or packed goes inside one.
+
 CURRENT_PATH="$(cd "$(dirname "$0")"; pwd -P)"
 # This script lives in packages/externals/, so the repo root is two levels up.
 WAZUH_PATH="$(cd "${CURRENT_PATH}/../.."; pwd -P)"
@@ -139,11 +142,13 @@ if [ "${SYSTEM}" = "macos" ]; then
         WAZUH_VERBOSE="${VERBOSE}" \
         bash "${WAZUH_PATH}/packages/externals/build_external.sh"
 else
+# deps-recipe: begin
     if [ "${SYSTEM}" = "windows" ]; then
         CONTAINER_NAME="compile_windows_agent"
     else
         CONTAINER_NAME="pkg_${SYSTEM}_${TARGET}_builder_${ARCHITECTURE}"
     fi
+# deps-recipe: end
     echo "[generate_external] image=${CONTAINER_NAME}:${DOCKER_TAG}"
 
     # Run build_external.sh inside the builder image.
@@ -200,11 +205,13 @@ fi
 # macOS's /usr/bin/tar is BSD tar and rejects --owner/--group/--no-same-owner.
 # Workflow installs gnu-tar (gtar) via brew on macOS legs; everywhere else
 # `tar` already is GNU tar.
+# deps-recipe: begin
 if command -v gtar >/dev/null 2>&1; then
     TAR="gtar"
 else
     TAR="tar"
 fi
+# deps-recipe: end
 
 if [ ! -d "${OUTDIR}/external_artifacts" ]; then
     echo "[generate_external] no external_artifacts/ dir; nothing to pack"
@@ -217,6 +224,7 @@ rm -rf "${POOL_DIR}"
 # A leg that builds nothing still ships an (empty) pool/.
 mkdir -p "${POOL_DIR}"
 
+# deps-recipe: begin
 # Pack <zip>'s <dep>/ into <dest>/<dep>.tar.gz; with `compiled`, only if it holds a library.
 repack() {
     local zip="$1" dep="$2" dest="$3" only_compiled="${4:-}"
@@ -233,7 +241,9 @@ repack() {
     fi
     rm -rf "${tmp}"
 }
+# deps-recipe: end
 
+# deps-recipe: begin
 bin_suffix="_${SYSTEM}_${ARCHITECTURE}.zip"
 for zip in "${OUTDIR}/external_artifacts/"*.zip; do
     [ -f "${zip}" ] || continue
@@ -253,6 +263,7 @@ for zip in "${OUTDIR}/external_artifacts/"*.zip; do
         *)         repack "${zip}" "${dep}" "${POOL_DIR}/${ref}/${S3_PATH}" compiled ;;
     esac
 done
+# deps-recipe: end
 
 # What the leg installed on the fly, for the manifests (consolidate.sh).
 rm -rf "${OUTDIR}/toolchain"

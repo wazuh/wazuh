@@ -1500,16 +1500,21 @@ endif()
 # Section 4: Header-only libraries
 # ==============================================================================
 
+# deps-entry nlohmann: begin
 # nlohmann JSON
 add_library(ext_nlohmann INTERFACE)
 target_include_directories(ext_nlohmann SYSTEM
                            INTERFACE ${EXTERNAL_DIR}/nlohmann)
+# deps-entry nlohmann: end
 
+# deps-entry cpp-httplib: begin
 # cpp-httplib
 add_library(ext_httplib INTERFACE)
 target_include_directories(ext_httplib SYSTEM
                            INTERFACE ${EXTERNAL_DIR}/cpp-httplib)
+# deps-entry cpp-httplib: end
 
+# deps-entry jwt-cpp: begin
 # jwt-cpp (header-only; in the base EXTERNAL_RES list so agent, winagent and manager all get it).
 # ${EXTERNAL_DIR} is on the include path because traits/nlohmann-json/traits.h does
 # #include "nlohmann/json.hpp" and this tree vendors json.hpp directly under external/nlohmann/.
@@ -1529,7 +1534,9 @@ if(EXISTS ${EXTERNAL_DIR}/jwt-cpp)
     target_link_libraries(ext_jwt_cpp INTERFACE crypt32 ws2_32)
   endif()
 endif()
+# deps-entry jwt-cpp: end
 
+# deps-entry rapidjson: begin
 # rapidjson (header-only; in the base EXTERNAL_RES list since #38582: the shared wazuh-agent+jwt
 # verifier in shared_modules/utils/jwt/ parses tokens with its SAX reader, and the agent's
 # component tests run that verifier as their fake manager).
@@ -1538,36 +1545,45 @@ if(EXISTS ${EXTERNAL_DIR}/rapidjson)
   target_include_directories(ext_rapidjson SYSTEM
                              INTERFACE ${EXTERNAL_DIR}/rapidjson/include)
 endif()
+# deps-entry rapidjson: end
 
 # Header-only libs that are only downloaded for server builds
 if(NOT IS_AGENT)
+# deps-entry RxCpp: begin
   # RxCpp
   if(EXISTS ${EXTERNAL_DIR}/RxCpp)
     add_library(ext_rxcpp INTERFACE)
     target_include_directories(ext_rxcpp SYSTEM
                                INTERFACE ${EXTERNAL_DIR}/RxCpp/Rx/v2/src)
   endif()
+# deps-entry RxCpp: end
 
+# deps-entry taskflow: begin
   # taskflow
   if(EXISTS ${EXTERNAL_DIR}/taskflow)
     add_library(ext_taskflow INTERFACE)
     target_include_directories(ext_taskflow SYSTEM
                                INTERFACE ${EXTERNAL_DIR}/taskflow)
   endif()
+# deps-entry taskflow: end
 
+# deps-entry concurrentqueue: begin
   # concurrentqueue
   if(EXISTS ${EXTERNAL_DIR}/concurrentqueue)
     add_library(ext_concurrentqueue INTERFACE)
     target_include_directories(ext_concurrentqueue SYSTEM
                                INTERFACE ${EXTERNAL_DIR}/concurrentqueue)
   endif()
+# deps-entry concurrentqueue: end
 
+# deps-entry fast_float: begin
   # fast_float
   if(EXISTS ${EXTERNAL_DIR}/fast_float)
     add_library(ext_fast_float INTERFACE)
     target_include_directories(ext_fast_float SYSTEM
                                INTERFACE ${EXTERNAL_DIR}/fast_float/include)
   endif()
+# deps-entry fast_float: end
 endif()
 
 # deps-entry libwazuhext: begin

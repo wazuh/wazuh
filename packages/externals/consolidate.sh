@@ -16,6 +16,9 @@
 
 set -euo pipefail
 
+# The `# deps-recipe` blocks hold what decides the bytes of a pool ref and go into its key
+# (packages/externals/deps.py); a change to how a dependency is fetched, built or packed goes inside one.
+
 LEGS_DIR="$1"
 EBPF_DIR="$2"
 OUT_DIR="$3"
@@ -35,7 +38,9 @@ mkdir -p "${POOL}" "${TOOLCHAIN}"
 # agent set), the agent leg's copy is kept: its centos:6 / glibc-2.12 binaries
 # link in every Wazuh builder image, the manager's centos:7 ones do not. The
 # manager legs are merged first so the agent legs overwrite them.
+# deps-recipe: begin
 legs="$( (find "${LEGS_DIR}" -name 'externals-*.tar.gz' 2>/dev/null || true) | sort)"
+# deps-recipe: end
 ebpf="$( (find "${EBPF_DIR}" -path '*/*/libbpf-bootstrap.tar.gz' 2>/dev/null || true) | sort)"
 for leg in ${EXPECTED_LEGS:-}; do
     if ! grep -q -- "/externals-${leg}\.tar\.gz$" <<<"${legs}"; then
@@ -51,6 +56,7 @@ fi
 platforms="$(sed -E 's/.*externals-(deb|rpm)-amd64-.*/linux\/amd64/; s/.*externals-(deb|rpm)-arm64-.*/linux\/aarch64/;
                      s/.*externals-macos-intel64-.*/darwin\/amd64/; s/.*externals-macos-arm64-.*/darwin\/aarch64/;
                      s/.*externals-windows-.*/windows/' <<<"${legs}" | sed '/^$/d' | sort -u | paste -sd, -)"
+# deps-recipe: begin
 for leg in $(grep -- '-manager\.tar\.gz$' <<<"${legs}" || true) $(grep -v -- '-manager\.tar\.gz$' <<<"${legs}" || true); do
     dir="${staging}/$(basename "${leg}" .tar.gz)"
     mkdir -p "${dir}"
@@ -69,6 +75,7 @@ for leg in $(grep -- '-manager\.tar\.gz$' <<<"${legs}" || true) $(grep -v -- '-m
         cp "${file}" "${dst}"
     done < <(find "${dir}/pool" -type f -name '*.tar.gz')
 done
+# deps-recipe: end
 
 # build_ebpf.sh writes one tarball per Linux architecture; libbpf-bootstrap has no sources/.
 ebpf_ref="$(sed -n 's/^DEP_REF_libbpf-bootstrap := //p' "${REPO}/src/deps.lock.mk")"
