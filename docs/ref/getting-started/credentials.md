@@ -183,10 +183,12 @@ The Server API's rule replaces an earlier one that demanded an uppercase letter,
 and a symbol of every password it accepted. Lowering that floor — while keeping the stricter rule for
 what the resolver is handed — was deliberate, for three reasons:
 
-* **It has to be one rule.** The resolver validates a value at installation and the Server API
-  validates it again at rotation. Two different rules means a value the installation accepts and the
-  API later refuses — a deployment that comes up and cannot be administered. PCI DSS 8.3.6 is the
-  rule the indexer and the dashboard implement, so it is the one all three share.
+* **Everything the installation accepts, the API must accept.** The resolver validates a value at
+  installation and the Server API validates it again at rotation; a value the installation accepts
+  and the API later refuses is a deployment that comes up and cannot be administered. The resolver's
+  rule is the stricter one because what it accepts is written to the shared file and parsed without
+  escaping by every component, so the API rule only has to contain it — the reverse is not required,
+  and a password chosen through the API may be one the resolver and the passwords tool reject.
 * **Composition rules are not what makes a password strong.** NIST SP 800-63B §5.1.1.2 advises
   against them: they push operators toward predictable substitutions while barely enlarging the
   search space. The 12-character minimum — the control that does — is unchanged.
@@ -618,6 +620,9 @@ To change a Server API password on its own:
 sudo /var/wazuh-manager/bin/rbac_control change-password
 ```
 
-`rbac_control` does not update `/etc/wazuh/credentials.env`, so a value left there after a change is
-stale. See [Server API users](installation.md#server-api-users) for where the change applies in a
-cluster.
+Neither `rbac_control` nor the Server API (`PUT /security/users/{user_id}`) updates
+`/etc/wazuh/credentials.env`, so a value left there after a change is stale: `rbac.db` is the only
+authority once it is seeded. Only the passwords tool records the change in the file, and it applies
+the stricter [supplied-password rule](#the-password-policy), so a password chosen through the API
+may be one it cannot store. See [Server API users](installation.md#server-api-users) for where the
+change applies in a cluster.
