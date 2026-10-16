@@ -18,6 +18,25 @@ namespace
     {
         return ::testing::DoAll(::testing::SetArgReferee<2>(content), ::testing::Return(RegularFileStatus::Read));
     }
+
+    // Makes the line-by-line read succeed, passing the lines until the callback stops it
+    auto ReturnLines(std::vector<std::string> lines)
+    {
+        return [lines = std::move(lines)](const std::filesystem::path& /*filePath*/,
+                                          bool /*followSymlinks*/,
+                                          const std::function<bool(const std::string&)>& callback)
+        {
+            for (const auto& line : lines)
+            {
+                if (!callback(line))
+                {
+                    break;
+                }
+            }
+
+            return RegularFileStatus::Read;
+        };
+    }
 } // namespace
 
 class FileRuleEvaluatorTest : public ::testing::Test
@@ -118,8 +137,8 @@ TEST_F(FileRuleEvaluatorTest, PatternExactLineMatchesReturnsFound)
 
     EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("some/file"))).WillOnce(::testing::Return(true));
     EXPECT_CALL(*m_rawFsMock, is_regular_file(std::filesystem::path("some/file"))).WillOnce(::testing::Return(true));
-    EXPECT_CALL(*m_rawIoMock, getRegularFileContent(std::filesystem::path("some/file"), true, ::testing::_))
-    .WillOnce(ReturnContent("nope\nexact\n"));
+    EXPECT_CALL(*m_rawIoMock, readRegularFileLineByLine(std::filesystem::path("some/file"), true, ::testing::_))
+    .WillOnce(ReturnLines({"nope", "exact"}));
 
     auto evaluator = CreateEvaluator();
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::Found);
@@ -132,8 +151,8 @@ TEST_F(FileRuleEvaluatorTest, PatternExactLineNoMatchReturnsNotFound)
 
     EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("some/file"))).WillOnce(::testing::Return(true));
     EXPECT_CALL(*m_rawFsMock, is_regular_file(std::filesystem::path("some/file"))).WillOnce(::testing::Return(true));
-    EXPECT_CALL(*m_rawIoMock, getRegularFileContent(std::filesystem::path("some/file"), true, ::testing::_))
-    .WillOnce(ReturnContent("line1\nline2\n"));
+    EXPECT_CALL(*m_rawIoMock, readRegularFileLineByLine(std::filesystem::path("some/file"), true, ::testing::_))
+    .WillOnce(ReturnLines({"line1", "line2"}));
 
     auto evaluator = CreateEvaluator();
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::NotFound);
@@ -196,7 +215,7 @@ TEST_F(FileRuleEvaluatorTest, PatternGivenReadLineByLineThrowsReturnsInvalid)
 
     EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("some/file"))).WillOnce(::testing::Return(true));
     EXPECT_CALL(*m_rawFsMock, is_regular_file(std::filesystem::path("some/file"))).WillOnce(::testing::Return(true));
-    EXPECT_CALL(*m_rawIoMock, getRegularFileContent(std::filesystem::path("some/file"), true, ::testing::_))
+    EXPECT_CALL(*m_rawIoMock, readRegularFileLineByLine(std::filesystem::path("some/file"), true, ::testing::_))
     .WillOnce(::testing::Throw(std::runtime_error("Failed to open")));
 
     auto evaluator = CreateEvaluator();
@@ -331,7 +350,7 @@ TEST_F(FileRuleEvaluatorTest, NegatedRuleOnANamedPipeIsUnresolved)
 
     EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("some/file"))).WillOnce(::testing::Return(true));
     EXPECT_CALL(*m_rawFsMock, is_regular_file(std::filesystem::path("some/file"))).WillOnce(::testing::Return(true));
-    EXPECT_CALL(*m_rawIoMock, getRegularFileContent(std::filesystem::path("some/file"), true, ::testing::_))
+    EXPECT_CALL(*m_rawIoMock, readRegularFileLineByLine(std::filesystem::path("some/file"), true, ::testing::_))
     .WillOnce(::testing::Return(RegularFileStatus::NotRegular));
 
     auto evaluator = CreateEvaluator();
@@ -345,7 +364,7 @@ TEST_F(FileRuleEvaluatorTest, ExactLinePatternOnAFileThatCannotBeOpenedIsUnresol
 
     EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("some/file"))).WillOnce(::testing::Return(true));
     EXPECT_CALL(*m_rawFsMock, is_regular_file(std::filesystem::path("some/file"))).WillOnce(::testing::Return(true));
-    EXPECT_CALL(*m_rawIoMock, getRegularFileContent(std::filesystem::path("some/file"), true, ::testing::_))
+    EXPECT_CALL(*m_rawIoMock, readRegularFileLineByLine(std::filesystem::path("some/file"), true, ::testing::_))
     .WillOnce(::testing::Return(RegularFileStatus::OpenFailed));
 
     auto evaluator = CreateEvaluator();
@@ -365,4 +384,23 @@ TEST_F(FileRuleEvaluatorTest, RegexPatternOnAFileThatCannotBeOpenedMatchesEmptyC
 
     auto evaluator = CreateEvaluator();
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::NotFound);
+}
+
+TEST_F(FileRuleEvaluatorTest, ExactLineStopsReadingAtTheFirstMatch)
+{
+    m_ctx.pattern = std::string("exact");
+    m_ctx.rule = "some/file";
+
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("some/file"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, is_regular_file(std::filesystem::path("some/file"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawIoMock, readRegularFileLineByLine(std::filesystem::path("some/file"), true, ::testing::_))
+    .WillOnce([](const std::filesystem::path&, bool, const std::function<bool(const std::string&)>& callback)
+    {
+        EXPECT_TRUE(callback("other"));
+        EXPECT_FALSE(callback("exact"));
+        return RegularFileStatus::Read;
+    });
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Found);
 }

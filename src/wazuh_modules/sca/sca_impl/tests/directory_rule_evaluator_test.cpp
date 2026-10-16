@@ -18,6 +18,25 @@ namespace
     {
         return ::testing::DoAll(::testing::SetArgReferee<2>(content), ::testing::Return(RegularFileStatus::Read));
     }
+
+    // Makes the line-by-line read succeed, passing the lines until the callback stops it
+    auto ReturnLines(std::vector<std::string> lines)
+    {
+        return [lines = std::move(lines)](const std::filesystem::path& /*filePath*/,
+                                          bool /*followSymlinks*/,
+                                          const std::function<bool(const std::string&)>& callback)
+        {
+            for (const auto& line : lines)
+            {
+                if (!callback(line))
+                {
+                    break;
+                }
+            }
+
+            return RegularFileStatus::Read;
+        };
+    }
 } // namespace
 
 class DirRuleEvaluatorTest : public ::testing::Test
@@ -153,8 +172,8 @@ TEST_F(DirRuleEvaluatorTest, PatternWithArrowMatchesFileContentReturnsFound)
     EXPECT_CALL(*m_rawFsMock, list_directory(std::filesystem::path("dir/")))
     .WillOnce(::testing::Return(std::vector<std::filesystem::path> {"target.txt"}));
     EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("target.txt"))).WillOnce(::testing::Return(false));
-    EXPECT_CALL(*m_rawIoMock, getRegularFileContent(std::filesystem::path("target.txt"), false, ::testing::_))
-    .WillOnce(ReturnContent("not this\nhello\n"));
+    EXPECT_CALL(*m_rawIoMock, readRegularFileLineByLine(std::filesystem::path("target.txt"), false, ::testing::_))
+    .WillOnce(ReturnLines({"not this", "hello"}));
 
     auto evaluator = CreateEvaluator();
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::Found);
@@ -779,7 +798,7 @@ TEST_F(DirRuleEvaluatorTest, NamedPipeWithAnExactFileNameIsUnresolved)
     EXPECT_CALL(*m_rawFsMock, list_directory(std::filesystem::path("dir/")))
     .WillOnce(::testing::Return(std::vector<std::filesystem::path> {"target.txt"}));
     EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("target.txt"))).WillOnce(::testing::Return(false));
-    EXPECT_CALL(*m_rawIoMock, getRegularFileContent(std::filesystem::path("target.txt"), false, ::testing::_))
+    EXPECT_CALL(*m_rawIoMock, readRegularFileLineByLine(std::filesystem::path("target.txt"), false, ::testing::_))
     .WillOnce(::testing::Return(RegularFileStatus::NotRegular));
 
     auto evaluator = CreateEvaluator();
@@ -799,8 +818,8 @@ TEST_F(DirRuleEvaluatorTest, ExactFileNameReadsTheListedEntry)
     EXPECT_CALL(*m_rawFsMock, list_directory(std::filesystem::path("dir/")))
     .WillOnce(::testing::Return(std::vector<std::filesystem::path> {"dir/target.txt"}));
     EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("dir/target.txt"))).WillOnce(::testing::Return(false));
-    EXPECT_CALL(*m_rawIoMock, getRegularFileContent(std::filesystem::path("dir/target.txt"), false, ::testing::_))
-    .WillOnce(ReturnContent("hello\n"));
+    EXPECT_CALL(*m_rawIoMock, readRegularFileLineByLine(std::filesystem::path("dir/target.txt"), false, ::testing::_))
+    .WillOnce(ReturnLines({"hello"}));
 
     auto evaluator = CreateEvaluator();
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::Found);
@@ -902,10 +921,10 @@ TEST_F(DirRuleEvaluatorTest, SymbolicLinkWithAnExactFileNameFoundOnOpenIsSkipped
     EXPECT_CALL(*m_rawFsMock, list_directory(std::filesystem::path("dir/sub")))
     .WillOnce(::testing::Return(std::vector<std::filesystem::path> {"dir/sub/target.txt"}));
     EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("dir/sub/target.txt"))).WillOnce(::testing::Return(false));
-    EXPECT_CALL(*m_rawIoMock, getRegularFileContent(std::filesystem::path("dir/target.txt"), false, ::testing::_))
+    EXPECT_CALL(*m_rawIoMock, readRegularFileLineByLine(std::filesystem::path("dir/target.txt"), false, ::testing::_))
     .WillOnce(::testing::Return(RegularFileStatus::SymbolicLink));
-    EXPECT_CALL(*m_rawIoMock, getRegularFileContent(std::filesystem::path("dir/sub/target.txt"), false, ::testing::_))
-    .WillOnce(ReturnContent("hello\n"));
+    EXPECT_CALL(*m_rawIoMock, readRegularFileLineByLine(std::filesystem::path("dir/sub/target.txt"), false, ::testing::_))
+    .WillOnce(ReturnLines({"hello"}));
 
     auto evaluator = CreateEvaluator();
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::Found);

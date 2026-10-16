@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <fstream>
 #include <future>
+#include <iterator>
 #include <utility>
 #include <vector>
 
@@ -255,6 +256,83 @@ TEST_F(RegularFileContentTest, DirectoryIsNotRegular)
     EXPECT_EQ(m_fileIO.getRegularFileContent(m_dir, false, content), RegularFileStatus::NotRegular);
 }
 
+
+TEST_F(RegularFileContentTest, LinesAreSplitAsGetlineSplitsThem)
+{
+    const std::vector<std::pair<std::string, std::vector<std::string>>> cases
+    {
+        {"a\n\nb\nlast", {"a", "", "b", "last"}},
+        {"x\n", {"x"}},
+        {"\n", {""}},
+        {"", {}},
+    };
+
+    for (const auto& [text, expected] : cases)
+    {
+        const auto path {writeFile("lines", text)};
+        std::vector<std::string> lines;
+
+        EXPECT_EQ(m_fileIO.readRegularFileLineByLine(path,
+                                                     false,
+                                                     [&lines](const std::string & line)
+        {
+            lines.push_back(line);
+            return true;
+        }),
+        RegularFileStatus::Read);
+        EXPECT_EQ(lines, expected) << text;
+    }
+}
+
+TEST_F(RegularFileContentTest, LineLongerThanAReadChunkIsKeptWhole)
+{
+    const std::string longLine(200 * 1024, 'x');
+    const auto path {writeFile("long", longLine + "\nend\n")};
+    std::vector<std::string> lines;
+
+    EXPECT_EQ(m_fileIO.readRegularFileLineByLine(path,
+                                                 true,
+                                                 [&lines](const std::string & line)
+    {
+        lines.push_back(line);
+        return true;
+    }),
+    RegularFileStatus::Read);
+    EXPECT_EQ(lines, (std::vector<std::string> {longLine, "end"}));
+}
+
+TEST_F(RegularFileContentTest, LineByLineStopsWhenTheCallbackAsks)
+{
+    // Far larger than a read chunk, so reading the rest would show up as more lines
+    std::string text {"first\n"};
+
+    for (int i = 0; i < 100000; ++i)
+    {
+        text += "more\n";
+    }
+
+    const auto path {writeFile("big", text)};
+    int calls {0};
+
+    EXPECT_EQ(m_fileIO.readRegularFileLineByLine(path,
+                                                 false,
+                                                 [&calls](const std::string&)
+    {
+        ++calls;
+        return false;
+    }),
+    RegularFileStatus::Read);
+    EXPECT_EQ(calls, 1);
+}
+
+TEST_F(RegularFileContentTest, LineByLineOfAMissingFileFailsToOpen)
+{
+    EXPECT_EQ(m_fileIO.readRegularFileLineByLine(m_dir / "missing", true, [](const std::string&)
+    {
+        return true;
+    }),
+    RegularFileStatus::OpenFailed);
+}
 #ifdef _WIN32
 TEST_F(RegularFileContentTest, LineEndingsAreConvertedAsInTextMode)
 {
@@ -263,6 +341,22 @@ TEST_F(RegularFileContentTest, LineEndingsAreConvertedAsInTextMode)
 
     EXPECT_EQ(m_fileIO.getRegularFileContent(path, false, content), RegularFileStatus::Read);
     EXPECT_EQ(content, "line1\nline2\n");
+}
+
+TEST_F(RegularFileContentTest, LineByLineConvertsLineEndingsAsInTextMode)
+{
+    const auto path {writeFile("crlf-lines", "line1\r\nline2\r\n")};
+    std::vector<std::string> lines;
+
+    EXPECT_EQ(m_fileIO.readRegularFileLineByLine(path,
+                                                 false,
+                                                 [&lines](const std::string & line)
+    {
+        lines.push_back(line);
+        return true;
+    }),
+    RegularFileStatus::Read);
+    EXPECT_EQ(lines, (std::vector<std::string> {"line1", "line2"}));
 }
 #else
 TEST_F(RegularFileContentTest, SymbolicLinkIsFollowedWhenRequested)
@@ -327,6 +421,63 @@ TEST_F(RegularFileContentTest, NamedPipeIsRejectedWithoutBlocking)
         EXPECT_EQ(result.get(), RegularFileStatus::NotRegular) << path;
     }
 }
+
+TEST_F(RegularFileContentTest, LineByLineRejectsNamedPipesAndLinks)
+{
+    const auto pipe {m_dir / "pipe"};
+    ASSERT_EQ(::mkfifo(pipe.c_str(), 0600), 0);
+    const auto target {writeFile("target", "content\n")};
+    const auto link {m_dir / "link"};
+    std::filesystem::create_symlink(target, link);
+    int calls {0};
+    const auto count = [&calls](const std::string&)
+    {
+        ++calls;
+        return true;
+    };
+
+    auto result {std::async(std::launch::async, [&]
+        {
+            return m_fileIO.readRegularFileLineByLine(pipe, true, count);
+        })};
+
+    if (result.wait_for(std::chrono::seconds(5)) != std::future_status::ready)
+    {
+        const int writer {::open(pipe.c_str(), O_WRONLY | O_NONBLOCK)};
+        ::close(writer);
+        result.wait();
+        FAIL() << "Reading the named pipe line by line blocked";
+    }
+
+    EXPECT_EQ(result.get(), RegularFileStatus::NotRegular);
+    EXPECT_EQ(m_fileIO.readRegularFileLineByLine(link, false, count), RegularFileStatus::SymbolicLink);
+    EXPECT_EQ(calls, 0);
+}
+
+#ifdef __linux__
+TEST_F(RegularFileContentTest, ExceptionWhileReadingClosesTheFile)
+{
+    const auto openDescriptors = []
+    {
+        return std::distance(std::filesystem::directory_iterator("/proc/self/fd"), std::filesystem::directory_iterator {});
+    };
+    const auto path {writeFile("throws", "line\n")};
+    const auto before {openDescriptors()};
+
+    for (int i = 0; i < 50; ++i)
+    {
+        EXPECT_THROW(m_fileIO.readRegularFileLineByLine(path,
+                                                        false,
+                                                        [](const std::string&) -> bool
+        {
+            throw std::runtime_error("callback failure");
+        }),
+        std::runtime_error);
+    }
+
+    EXPECT_EQ(openDescriptors(), before);
+}
+#endif
 
 TEST_F(RegularFileContentTest, UnreadableFileFailsToOpen)
 {

@@ -63,5 +63,18 @@ class IFileIOUtils
         virtual RegularFileStatus getRegularFileContent(const std::filesystem::path& filePath,
                                                         bool followSymlinks,
                                                         std::string& content) const = 0;
+
+        /// @brief Reads a file line by line only if it is a regular file, stopping when the callback asks to.
+        ///
+        /// The file is opened and checked as getRegularFileContent does, and read in chunks, so memory does not
+        /// grow with the size of the file. Lines are split as std::getline splits them.
+        /// @param filePath The path to the file to read.
+        /// @param followSymlinks Same meaning as in getRegularFileContent.
+        /// @param callback Called for each line; returning false stops reading.
+        /// @return As getRegularFileContent. OpenFailed can follow lines already passed to the callback when the
+        /// read fails part way.
+        virtual RegularFileStatus readRegularFileLineByLine(const std::filesystem::path& filePath,
+                                                            bool followSymlinks,
+                                                            const std::function<bool(const std::string&)>& callback) const = 0;
 };
 // LCOV_EXCL_STOP

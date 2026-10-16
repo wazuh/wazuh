@@ -32,6 +32,11 @@ namespace file_io
                                                     bool followSymlinks,
                                                     std::string& content) const override;
 
+            /// @copydoc IFileIOUtils::readRegularFileLineByLine
+            RegularFileStatus readRegularFileLineByLine(const std::filesystem::path& filePath,
+                                                        bool followSymlinks,
+                                                        const std::function<bool(const std::string&)>& callback) const override;
+
         private:
             std::shared_ptr<IFileIOWrapper> m_fileIOWrapper;
     };

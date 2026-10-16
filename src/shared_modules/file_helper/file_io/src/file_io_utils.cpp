@@ -1,16 +1,20 @@
 #include <file_io_utils.hpp>
 #include <file_io_wrapper.hpp>
 
+#include <algorithm>
+#include <cstdint>
 #include <fstream>
 #include <sstream>
 
 #ifdef _WIN32
-// GetFileInformationByHandleEx needs Windows Vista
-#if !defined(_WIN32_WINNT) || _WIN32_WINNT < 0x0600
+// FILE_ID_INFO is declared from Windows 8 on. On older systems the call that uses it fails at run time and
+// the 64-bit file index is used instead, so only the declarations depend on this.
+#if !defined(_WIN32_WINNT) || _WIN32_WINNT < 0x0602
 #undef _WIN32_WINNT
-#define _WIN32_WINNT 0x0600
+#define _WIN32_WINNT 0x0602
 #endif
 #include <windows.h>
+#include <cstring>
 #include <fcntl.h>
 #include <io.h>
 #else
@@ -28,8 +32,67 @@
 namespace
 {
     constexpr std::size_t READ_CHUNK_SIZE {64 * 1024};
+    constexpr int INVALID_FD {-1};
+
+    /// @brief Closes a descriptor when it goes out of scope, so an exception thrown while reading cannot leak it.
+    template<typename T, T Invalid, int (*Close)(T)>
+    class UniqueDescriptor final
+    {
+        public:
+            explicit UniqueDescriptor(T value)
+                : m_value(value)
+            {
+            }
+
+            ~UniqueDescriptor()
+            {
+                if (m_value != Invalid)
+                {
+                    Close(m_value);
+                }
+            }
+
+            UniqueDescriptor(UniqueDescriptor&& other) noexcept
+                : m_value(other.release())
+            {
+            }
+
+            UniqueDescriptor(const UniqueDescriptor&) = delete;
+            UniqueDescriptor& operator=(const UniqueDescriptor&) = delete;
+            UniqueDescriptor& operator=(UniqueDescriptor&&) = delete;
+
+            T get() const
+            {
+                return m_value;
+            }
+
+            T release()
+            {
+                const auto value {m_value};
+                m_value = Invalid;
+                return value;
+            }
+
+            explicit operator bool() const
+            {
+                return m_value != Invalid;
+            }
+
+        private:
+            T m_value;
+    };
 
 #ifdef _WIN32
+    int closeHandle(HANDLE handle)
+    {
+        return CloseHandle(handle) ? 0 : -1;
+    }
+
+    // INVALID_HANDLE_VALUE is not a constant expression, so the invalid value is checked through nullptr and
+    // every handle is stored only after it has been checked against INVALID_HANDLE_VALUE
+    using UniqueHandle = UniqueDescriptor<HANDLE, nullptr, closeHandle>;
+    using UniqueCrtFd = UniqueDescriptor<int, INVALID_FD, _close>;
+
     constexpr DWORD MICROSOFT_TAG_BIT {0x80000000};
     constexpr DWORD NAME_SURROGATE_BIT {0x20000000};
 
@@ -46,71 +109,95 @@ namespace
         return (tag & MICROSOFT_TAG_BIT) != 0 && !isNameSurrogateReparseTag(tag);
     }
 
-    bool isSameFile(const BY_HANDLE_FILE_INFORMATION& lhs, const BY_HANDLE_FILE_INFORMATION& rhs)
+    bool isSameFile(HANDLE first, HANDLE second)
     {
-        return lhs.dwVolumeSerialNumber == rhs.dwVolumeSerialNumber && lhs.nFileIndexHigh == rhs.nFileIndexHigh &&
-               lhs.nFileIndexLow == rhs.nFileIndexLow;
+        FILE_ID_INFO firstId {};
+        FILE_ID_INFO secondId {};
+
+        if (GetFileInformationByHandleEx(first, FileIdInfo, &firstId, sizeof(firstId)) &&
+                GetFileInformationByHandleEx(second, FileIdInfo, &secondId, sizeof(secondId)))
+        {
+            return firstId.VolumeSerialNumber == secondId.VolumeSerialNumber &&
+                   std::memcmp(&firstId.FileId, &secondId.FileId, sizeof(firstId.FileId)) == 0;
+        }
+
+        // Before Windows 8 only the 64-bit index exists. It is not unique on ReFS, which reports all ones when it
+        // cannot give a unique one, so that value (and zero) never counts as the same file.
+        BY_HANDLE_FILE_INFORMATION firstInfo {};
+        BY_HANDLE_FILE_INFORMATION secondInfo {};
+
+        if (!GetFileInformationByHandle(first, &firstInfo) || !GetFileInformationByHandle(second, &secondInfo))
+        {
+            return false;
+        }
+
+        const auto index = [](const BY_HANDLE_FILE_INFORMATION & info)
+        {
+            return (static_cast<std::uint64_t>(info.nFileIndexHigh) << 32) | info.nFileIndexLow;
+        };
+        const auto firstIndex {index(firstInfo)};
+
+        return firstIndex != 0 && firstIndex != UINT64_MAX && firstIndex == index(secondInfo) &&
+               firstInfo.dwVolumeSerialNumber == secondInfo.dwVolumeSerialNumber;
     }
 
-    HANDLE openForRead(const std::string& path, bool openReparsePoint)
+    UniqueHandle openForRead(const std::string& path, bool openReparsePoint)
     {
         // Backup semantics lets a directory be opened, so it is reported as not regular instead of as an open failure
         const DWORD flags {FILE_ATTRIBUTE_NORMAL | FILE_FLAG_BACKUP_SEMANTICS |
                            (openReparsePoint ? static_cast<DWORD>(FILE_FLAG_OPEN_REPARSE_POINT) : 0)};
-        return CreateFileA(path.c_str(),
-                           GENERIC_READ,
-                           FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-                           nullptr,
-                           OPEN_EXISTING,
-                           flags,
-                           nullptr);
+        const HANDLE handle {CreateFileA(path.c_str(),
+                                         GENERIC_READ,
+                                         FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                                         nullptr,
+                                         OPEN_EXISTING,
+                                         flags,
+                                         nullptr)};
+        return UniqueHandle {handle == INVALID_HANDLE_VALUE ? nullptr : handle};
     }
 
-    // Opens the file and checks its type on the handle. Returns INVALID_HANDLE_VALUE with the status set on failure.
-    HANDLE openRegularFile(const std::string& path, bool followSymlinks, RegularFileStatus& status)
+    // Opens the file and checks its type on the handle. Returns an empty handle with the status set on failure.
+    UniqueHandle openRegularFile(const std::string& path, bool followSymlinks, RegularFileStatus& status)
     {
         // Without following, the handle refers to a symbolic link or junction itself and never to its target
-        HANDLE handle {openForRead(path, !followSymlinks)};
+        auto handle {openForRead(path, !followSymlinks)};
 
-        if (handle == INVALID_HANDLE_VALUE)
+        if (!handle)
         {
             status = RegularFileStatus::OpenFailed;
-            return INVALID_HANDLE_VALUE;
+            return UniqueHandle {nullptr};
         }
 
         BY_HANDLE_FILE_INFORMATION info {};
 
-        if (GetFileType(handle) != FILE_TYPE_DISK || !GetFileInformationByHandle(handle, &info))
+        if (GetFileType(handle.get()) != FILE_TYPE_DISK || !GetFileInformationByHandle(handle.get(), &info))
         {
-            CloseHandle(handle);
             status = RegularFileStatus::NotRegular;
-            return INVALID_HANDLE_VALUE;
+            return UniqueHandle {nullptr};
         }
 
         const bool isReparsePoint = !followSymlinks && (info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0;
         FILE_ATTRIBUTE_TAG_INFO tagInfo {};
 
-        if (isReparsePoint && !GetFileInformationByHandleEx(handle, FileAttributeTagInfo, &tagInfo, sizeof(tagInfo)))
+        if (isReparsePoint &&
+                !GetFileInformationByHandleEx(handle.get(), FileAttributeTagInfo, &tagInfo, sizeof(tagInfo)))
         {
-            CloseHandle(handle);
             status = RegularFileStatus::OpenFailed;
-            return INVALID_HANDLE_VALUE;
+            return UniqueHandle {nullptr};
         }
 
         // Checked before the directory attribute, so a junction is reported as a link like on other systems
         if (isReparsePoint && isNameSurrogateReparseTag(tagInfo.ReparseTag))
         {
-            CloseHandle(handle);
             status = RegularFileStatus::SymbolicLink;
-            return INVALID_HANDLE_VALUE;
+            return UniqueHandle {nullptr};
         }
 
         if ((info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0 ||
                 (isReparsePoint && !isPlainReparseTag(tagInfo.ReparseTag)))
         {
-            CloseHandle(handle);
             status = RegularFileStatus::NotRegular;
-            return INVALID_HANDLE_VALUE;
+            return UniqueHandle {nullptr};
         }
 
         if (!isReparsePoint)
@@ -120,29 +207,146 @@ namespace
 
         // The content of a deduplicated or compressed file is only served through its filter, so it is opened
         // again normally. The first handle stays open and both must be the same file, or the path was replaced.
-        HANDLE contentHandle {openForRead(path, false)};
-        BY_HANDLE_FILE_INFORMATION contentInfo {};
+        auto contentHandle {openForRead(path, false)};
 
-        if (contentHandle == INVALID_HANDLE_VALUE)
+        if (!contentHandle)
         {
-            CloseHandle(handle);
             status = RegularFileStatus::OpenFailed;
-            return INVALID_HANDLE_VALUE;
+            return UniqueHandle {nullptr};
         }
 
-        const BOOL gotInfo {GetFileInformationByHandle(contentHandle, &contentInfo)};
-        CloseHandle(handle);
-
-        if (!gotInfo || !isSameFile(info, contentInfo))
+        if (!isSameFile(handle.get(), contentHandle.get()))
         {
-            CloseHandle(contentHandle);
             status = RegularFileStatus::NotRegular;
-            return INVALID_HANDLE_VALUE;
+            return UniqueHandle {nullptr};
         }
 
         return contentHandle;
     }
+#else
+    using UniqueFd = UniqueDescriptor<int, INVALID_FD, ::close>;
 #endif
+
+    /// @brief Opens a regular file once, checks its type on the open file and passes its content in chunks.
+    /// @param onChunk Receives each chunk; returning false stops reading. An exception it throws closes the file.
+    /// @return Read when the whole file was passed or onChunk stopped it, otherwise why it was not read.
+    RegularFileStatus readRegularFile(const std::filesystem::path& filePath,
+                                      bool followSymlinks,
+                                      const std::function<bool(const char*, std::size_t)>& onChunk)
+    {
+#ifdef _WIN32
+        auto status {RegularFileStatus::OpenFailed};
+        auto handle {openRegularFile(filePath.string(), followSymlinks, status)};
+
+        if (!handle)
+        {
+            return status;
+        }
+
+        // Text mode, as std::ifstream reads it, so CRLF line endings are converted
+        const int fd {_open_osfhandle(reinterpret_cast<intptr_t>(handle.get()), _O_RDONLY | _O_TEXT)};
+
+        if (fd < 0)
+        {
+            return RegularFileStatus::OpenFailed;
+        }
+
+        // The descriptor owns the handle from here on
+        handle.release();
+        const UniqueCrtFd file {fd};
+        std::string chunk(READ_CHUNK_SIZE, '\0');
+
+        while (true)
+        {
+            const int bytes {_read(file.get(), chunk.data(), static_cast<unsigned int>(chunk.size()))};
+
+            if (bytes == 0)
+            {
+                return RegularFileStatus::Read;
+            }
+
+            if (bytes < 0)
+            {
+                return RegularFileStatus::OpenFailed;
+            }
+
+            if (!onChunk(chunk.data(), static_cast<std::size_t>(bytes)))
+            {
+                return RegularFileStatus::Read;
+            }
+        }
+
+#else
+        // O_NONBLOCK makes opening a named pipe return at once instead of waiting for a writer
+        const int flags {O_RDONLY | O_NONBLOCK | O_NOCTTY | O_CLOEXEC | (followSymlinks ? 0 : O_NOFOLLOW)};
+        const UniqueFd file {::open(filePath.c_str(), flags)};
+
+        if (!file)
+        {
+            // ELOOP: the last component is a symbolic link and O_NOFOLLOW was given
+            if (!followSymlinks && errno == ELOOP)
+            {
+                return RegularFileStatus::SymbolicLink;
+            }
+
+            // ENXIO: a socket
+            if (errno == ENXIO)
+            {
+                return RegularFileStatus::NotRegular;
+            }
+
+            return RegularFileStatus::OpenFailed;
+        }
+
+        struct stat fileStat {};
+
+        if (::fstat(file.get(), &fileStat) != 0)
+        {
+            return RegularFileStatus::OpenFailed;
+        }
+
+        if (!S_ISREG(fileStat.st_mode))
+        {
+            return RegularFileStatus::NotRegular;
+        }
+
+        // Back to blocking reads, which some network and FUSE file systems need on regular files
+        const int fdFlags {::fcntl(file.get(), F_GETFL)};
+
+        if (fdFlags < 0 || ::fcntl(file.get(), F_SETFL, fdFlags & ~O_NONBLOCK) < 0)
+        {
+            return RegularFileStatus::OpenFailed;
+        }
+
+        std::string chunk(READ_CHUNK_SIZE, '\0');
+
+        while (true)
+        {
+            const ssize_t bytes {::read(file.get(), chunk.data(), chunk.size())};
+
+            if (bytes == 0)
+            {
+                return RegularFileStatus::Read;
+            }
+
+            if (bytes < 0)
+            {
+                if (errno == EINTR)
+                {
+                    continue;
+                }
+
+                return RegularFileStatus::OpenFailed;
+            }
+
+            if (!onChunk(chunk.data(), static_cast<std::size_t>(bytes)))
+            {
+                return RegularFileStatus::Read;
+            }
+        }
+
+#endif
+    }
 } // namespace
 
 namespace file_io
@@ -229,102 +433,58 @@ namespace file_io
                                                          std::string& content) const
     {
         content.clear();
-        std::string chunk(READ_CHUNK_SIZE, '\0');
-#ifdef _WIN32
-        auto status {RegularFileStatus::OpenFailed};
-        const HANDLE handle {openRegularFile(filePath.string(), followSymlinks, status)};
-
-        if (handle == INVALID_HANDLE_VALUE)
+        const auto status {readRegularFile(filePath,
+                                           followSymlinks,
+                                           [&content](const char* data, std::size_t size)
         {
-            return status;
-        }
+            content.append(data, size);
+            return true;
+        })};
 
-        // Text mode, as std::ifstream reads it, so CRLF line endings are converted
-        const int fd {_open_osfhandle(reinterpret_cast<intptr_t>(handle), _O_RDONLY | _O_TEXT)};
-
-        if (fd < 0)
-        {
-            CloseHandle(handle);
-            return RegularFileStatus::OpenFailed;
-        }
-
-        int bytes {0};
-
-        while ((bytes = _read(fd, chunk.data(), static_cast<unsigned int>(chunk.size()))) > 0)
-        {
-            content.append(chunk.data(), static_cast<std::size_t>(bytes));
-        }
-
-        // Closes the handle as well
-        _close(fd);
-#else
-        // O_NONBLOCK makes opening a named pipe return at once instead of waiting for a writer
-        const int flags {O_RDONLY | O_NONBLOCK | O_NOCTTY | O_CLOEXEC | (followSymlinks ? 0 : O_NOFOLLOW)};
-        const int fd {::open(filePath.c_str(), flags)};
-
-        if (fd < 0)
-        {
-            // ELOOP: the last component is a symbolic link and O_NOFOLLOW was given
-            if (!followSymlinks && errno == ELOOP)
-            {
-                return RegularFileStatus::SymbolicLink;
-            }
-
-            // ENXIO: a socket
-            if (errno == ENXIO)
-            {
-                return RegularFileStatus::NotRegular;
-            }
-
-            return RegularFileStatus::OpenFailed;
-        }
-
-        struct stat fileStat {};
-
-        if (::fstat(fd, &fileStat) != 0)
-        {
-            ::close(fd);
-            return RegularFileStatus::OpenFailed;
-        }
-
-        if (!S_ISREG(fileStat.st_mode))
-        {
-            ::close(fd);
-            return RegularFileStatus::NotRegular;
-        }
-
-        // Back to blocking reads, which some network and FUSE file systems need on regular files
-        const int fdFlags {::fcntl(fd, F_GETFL)};
-
-        if (fdFlags < 0 || ::fcntl(fd, F_SETFL, fdFlags & ~O_NONBLOCK) < 0)
-        {
-            ::close(fd);
-            return RegularFileStatus::OpenFailed;
-        }
-
-        ssize_t bytes {0};
-
-        while ((bytes = ::read(fd, chunk.data(), chunk.size())) != 0)
-        {
-            if (bytes > 0)
-            {
-                content.append(chunk.data(), static_cast<std::size_t>(bytes));
-            }
-            else if (errno != EINTR)
-            {
-                break;
-            }
-        }
-
-        ::close(fd);
-#endif
-
-        if (bytes < 0)
+        if (status != RegularFileStatus::Read)
         {
             content.clear();
-            return RegularFileStatus::OpenFailed;
         }
 
-        return RegularFileStatus::Read;
+        return status;
+    }
+
+    RegularFileStatus FileIOUtils::readRegularFileLineByLine(const std::filesystem::path& filePath,
+                                                             bool followSymlinks,
+                                                             const std::function<bool(const std::string&)>& callback) const
+    {
+        // Lines are split as std::getline does: a last line without a newline still counts, an empty file has none
+        std::string line;
+        bool keepReading {true};
+        const auto status {readRegularFile(filePath,
+                                           followSymlinks,
+                                           [&](const char* data, std::size_t size)
+        {
+            const char* const end {data + size};
+
+            while (keepReading)
+            {
+                const char* const newline {std::find(data, end, '\n')};
+                line.append(data, newline);
+
+                if (newline == end)
+                {
+                    break;
+                }
+
+                keepReading = callback(line);
+                line.clear();
+                data = newline + 1;
+            }
+
+            return keepReading;
+        })};
+
+        if (status == RegularFileStatus::Read && keepReading && !line.empty())
+        {
+            callback(line);
+        }
+
+        return status;
     }
 }; // namespace file_io

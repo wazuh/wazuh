@@ -15,4 +15,10 @@ class MockFileIOUtils : public IFileIOUtils
                     getRegularFileContent,
                     (const std::filesystem::path& filePath, bool followSymlinks, std::string& content),
                     (const, override));
+        MOCK_METHOD(RegularFileStatus,
+                    readRegularFileLineByLine,
+                    (const std::filesystem::path& filePath,
+                     bool followSymlinks,
+                     const std::function<bool(const std::string&)>& callback),
+                    (const, override));
 };

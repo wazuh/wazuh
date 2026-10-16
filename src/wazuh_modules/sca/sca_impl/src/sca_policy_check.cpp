@@ -12,7 +12,6 @@
 
 #include "logging_helper.hpp"
 
-#include <sstream>
 #include <stack>
 #include <stdexcept>
 
@@ -43,9 +42,24 @@ namespace
         isSymbolicLink = false;
 
         // The file type is checked on the opened file, so a named pipe or device put in place of a regular
-        // file is reported instead of blocking or exhausting the scan
+        // file is reported instead of blocking or exhausting the scan. Regex and numeric patterns need the
+        // whole content; an exact line is looked for while reading, which stops at the first match.
+        const auto isRegexOrNumeric = sca::IsRegexOrNumericPattern(pattern);
         std::string fileContent;
-        const auto status = fileUtils->getRegularFileContent(filePath, followSymlinks, fileContent);
+        const auto status = isRegexOrNumeric
+                            ? fileUtils->getRegularFileContent(filePath, followSymlinks, fileContent)
+                            : fileUtils->readRegularFileLineByLine(filePath,
+                                                                   followSymlinks,
+                                                                   [&pattern, &matchFound](const std::string & line)
+        {
+            if (line == pattern)
+            {
+                matchFound = true;
+                return false;
+            }
+
+            return true;
+        });
 
         // Only returned when links are not followed; the caller decides what a link means
         if (status == RegularFileStatus::SymbolicLink)
@@ -62,7 +76,7 @@ namespace
             return RuleResult::Invalid;
         }
 
-        if (sca::IsRegexOrNumericPattern(pattern))
+        if (isRegexOrNumeric)
         {
             // A file that cannot be opened is matched as empty, as it has always been for these patterns
             if (const auto patternMatch = sca::PatternMatches(fileContent, pattern, ctx.regexEngine))
@@ -78,21 +92,10 @@ namespace
         }
         else
         {
+            // A file that could not be read is not evaluated. A match stops reading, so it is never followed by this.
             if (status == RegularFileStatus::OpenFailed)
             {
                 throw std::runtime_error("Could not open file");
-            }
-
-            std::istringstream lines(fileContent);
-            std::string line;
-
-            while (std::getline(lines, line))
-            {
-                if (line == pattern)
-                {
-                    matchFound = true;
-                    break;
-                }
             }
         }
 
