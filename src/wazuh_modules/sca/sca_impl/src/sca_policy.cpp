@@ -48,7 +48,7 @@ void SCAPolicy::Scan(
             }
 
             const auto ruleResult = rule->Evaluate();
-            resultEvaluator.AddResult(RuleEvaluationResult(ruleResult, rule->GetUnresolvedReason()));
+            resultEvaluator.AddResult(RuleEvaluationResult(ruleResult, rule->GetUnresolvedReason(), rule->GetContext().source));
         }
 
         requirementsOk = resultEvaluator.Result();
@@ -77,13 +77,11 @@ void SCAPolicy::Scan(
                 }
 
                 const auto ruleResult = rule->Evaluate();
-                resultEvaluator.AddResult(RuleEvaluationResult(ruleResult, rule->GetUnresolvedReason()));
+                resultEvaluator.AddResult(RuleEvaluationResult(ruleResult, rule->GetUnresolvedReason(), rule->GetContext().source));
             }
 
             const auto result = resultEvaluator.Result();
-            const auto& reason = (result == sca::CheckResult::NotApplicable || result == sca::CheckResult::NotRun)
-                                 ? resultEvaluator.GetUnresolvedReason()
-                                 : std::string{};
+            const auto reason = resultEvaluator.Reason();
 
             // NOLINTBEGIN(bugprone-unchecked-optional-access)
             LoggingHelper::getInstance().log(
