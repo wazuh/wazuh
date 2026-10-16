@@ -547,11 +547,14 @@ def test_upgrade_prestart_never_issue(resolver, sandbox, mode, code_expected):
 
 
 def test_check_pairs(resolver, sandbox):
-    """--check validates present pairs and explicit lists, never reports MISSING and writes nothing."""
+    """--check validates present pairs and explicit lists and writes nothing; an absent pair is reported as --prestart
+    reports it (only --install issues one)."""
     sandbox.stage_ca(pairs=False)
     before = sandbox.tree_state()
     code, _, err = run(resolver, sandbox, "--check")
-    assert code == 0 and "MISSING" not in err and sandbox.tree_state() == before
+    assert code == 1 and err == "".join(f"MISSING {sandbox.certs}/{name}.pem: run --install to issue it, or stage the "
+                                        f"pair\n" for name in ("remoted", "apid")), err
+    assert sandbox.tree_state() == before
     run(resolver, sandbox, "--install")
     _replace_remoted(sandbox, days=(-60, -1))
     before = sandbox.tree_state()

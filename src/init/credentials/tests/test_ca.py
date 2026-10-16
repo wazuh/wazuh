@@ -323,13 +323,15 @@ def test_prestart_missing_bundle(resolver, sandbox):
     assert not os.path.exists(os.path.join(sandbox.certs, "root-ca.pem"))
 
 
-# ---------------------------------------------------------------- --check (read-only, never MISSING), certs/, node name
+# ---------------------------------------------------------------- --check (read-only), certs/, node name
 
 def test_check_ca(resolver, sandbox):
+    """No CA: --check reports it missing, as --prestart would (only --install mints one), and creates nothing."""
     before = sandbox.tree_state()
     code, _, err = run(resolver, sandbox, "--check")
-    assert code == 0 and "MISSING" not in err and sandbox.tree_state() == before
-    assert not os.path.exists(os.path.join(sandbox.conf, "ca"))
+    assert code == 1 and err == (f"MISSING {ca_path(sandbox, 'root-ca.pem')}: the manager's CA is missing; stage it "
+                                 f"there (and root-ca.key to issue certificates), or reinstall\n")
+    assert sandbox.tree_state() == before and not os.path.exists(os.path.join(sandbox.conf, "ca"))
     _, cert = make_cert("ca", ca=False)
     stage(sandbox, cert)
     before = sandbox.tree_state()
