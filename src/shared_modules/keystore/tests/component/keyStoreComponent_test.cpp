@@ -46,3 +46,16 @@ TEST(KeyStoreComponentTest, TestPutGet)
     Keystore::get("default", "key2", out);
     ASSERT_EQ(out, "value2");
 }
+
+TEST(KeyStoreComponentTest, TestGetDoesNotCreateColumnFamily)
+{
+    std::filesystem::remove_all(DATABASE_PATH);
+
+    std::string out;
+    Keystore::get("missing", "key1", out);
+    ASSERT_EQ(out, "");
+    ASSERT_EQ(Keystore::get("missing", "key1"), "");
+
+    auto keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, false);
+    ASSERT_FALSE(keystoreDB.columnExists("missing"));
+}

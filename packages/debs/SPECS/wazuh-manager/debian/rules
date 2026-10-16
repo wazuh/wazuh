@@ -82,8 +82,7 @@ override_dh_install:
 	rm -rf $(INSTALLATION_DIR)/logs/*.json
 
 	./gen_permissions.sh $(INSTALLATION_DIR)/ ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/restore-permissions.sh --guard-writable
-	# $(CONF_DIR) is writable by the service account: the generated script stages in its parent instead
-	./gen_permissions.sh $(CONF_DIR)/ ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/restore-permissions-conf.sh --guard-writable --stage-dir=$(dir $(CONF_DIR))
+	./gen_permissions.sh $(CONF_DIR)/ ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/restore-permissions-conf.sh --guard-writable
 
 	# Copying to target
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_DIR)/
