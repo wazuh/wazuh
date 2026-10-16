@@ -2,6 +2,7 @@
 
 #include <sca_policy_check.hpp>
 #include <sca_utils.hpp>
+#include <unique_lines.hpp>
 
 #include <optional>
 #include <string>
@@ -26,9 +27,6 @@ class CheckConditionEvaluator
         std::string GetUnresolvedReason() const;
 
     private:
-        /// @brief Whether the accumulated reason already holds this exact line.
-        bool HasReason(const std::string& reason) const;
-
         ConditionType m_type;
         int m_totalRules {0};
         int m_passedRules {0};
@@ -36,8 +34,8 @@ class CheckConditionEvaluator
         bool m_hasInvalid = false;
         bool m_hasNotRun = false;
 
-        /// Concatenated reasons from rules that didn't resolve to Found/NotFound,
-        /// covering both Invalid (e.g. missing file, disabled commands) and NotRun
-        /// (command timeout) cases.
-        std::string m_unresolvedReason;
+        /// Reasons from rules that didn't resolve to Found/NotFound, covering both
+        /// Invalid (e.g. missing file, disabled commands) and NotRun (command timeout)
+        /// cases.
+        UniqueLines m_unresolvedReasons;
 };
