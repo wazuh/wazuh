@@ -2532,7 +2532,9 @@ TEST_F(SCAEventHandlerTest, ReportCheckResult_TruncatesAnOversizedReason)
 
     ASSERT_TRUE(capturedQuery.contains("data"));
     ASSERT_FALSE(capturedQuery["data"].empty());
-    EXPECT_EQ(capturedQuery["data"][0]["reason"].get<std::string>().size(), 1024U);
+    const auto storedReason = capturedQuery["data"][0]["reason"].get<std::string>();
+    EXPECT_EQ(storedReason.size(), 1024U);
+    EXPECT_EQ(storedReason.substr(storedReason.size() - 12), "\n[truncated]");
 }
 
 TEST_F(SCAEventHandlerTest, ReportCheckResult_DoesNotPublishAnEmptyReason)
