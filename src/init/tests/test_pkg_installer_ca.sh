@@ -190,6 +190,14 @@ anchor_links_to_dir() {
 
 }
 
+# Or a directory of its own.
+anchor_is_a_dir() {
+
+    mkdir -m 1770 "$1/etc/certs"
+    mkdir -m 700 "$1/etc/certs/root-ca.pem"
+
+}
+
 # The agent keeps etc/certs 01770 so it can replace the anchor at runtime (#39321).
 sticky_certs_dir() {
 
@@ -323,6 +331,12 @@ check "nothing is written into a directory root-ca.pem links to" "" "$(ls -A "${
 check "the link is replaced by the anchor" "regular" \
       "$([ -f "${WORK}/anchor_dir_link/etc/certs/root-ca.pem" ] && [ ! -L "${WORK}/anchor_dir_link/etc/certs/root-ca.pem" ] && echo regular)"
 check "no temporary file is left beside it" "root-ca.pem" "$(ls -A "${WORK}/anchor_dir_link/etc/certs")"
+
+# A directory at root-ca.pem is not installed into, and the failure is logged as one.
+CASE_SETUP=anchor_is_a_dir run_case anchor_dir "${LEGACY_CONF}" yes 4.14.7 no
+check "nothing is moved into a directory at root-ca.pem" "" "$(ls -A "${WORK}/anchor_dir/etc/certs/root-ca.pem")"
+check "the failure is logged" "1" "$(log_count anchor_dir "Could not install the delivered CA at ./etc/certs/root-ca.pem")"
+check "no temporary file is left in etc/certs" "root-ca.pem" "$(ls -A "${WORK}/anchor_dir/etc/certs")"
 
 # An existing etc/certs keeps its mode; one created here gets 750, as before.
 CASE_SETUP=sticky_certs_dir run_case certs_sticky "${LEGACY_CONF}" yes 4.14.7 no
