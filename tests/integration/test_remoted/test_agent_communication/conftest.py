@@ -54,18 +54,21 @@ def validate_agent_manager_protocol_communication():
                                         'manager_port': manager_port, 'agent': agent})
         thread.start()
 
-        alert_monitor.start(timeout=_NEGATIVE_TIMEOUT,
-                            callback=callbacks.generate_callback(_ALERT_PATTERN))
+        try:
+            alert_monitor.start(timeout=_NEGATIVE_TIMEOUT,
+                                callback=callbacks.generate_callback(_ALERT_PATTERN))
 
-        thread.join()
+            thread.join()
+        finally:
+            # Stop the simulated agents whatever the verdict: one left running polls global.db
+            # after the test and can restart wazuh-manager-db behind the next test's back.
+            for injector in injectors:
+                injector.stop_receive()
 
         assert not alert_monitor.callback_result, (
             f"An alert was generated for an event sent via {protocol} to port {manager_port} "
             f"even though the manager is configured for the opposite protocol — "
             f"the event should not have reached the engine."
         )
-
-        for injector in injectors:
-            injector.stop_receive()
 
     return _validate
