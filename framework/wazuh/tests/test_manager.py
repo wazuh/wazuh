@@ -381,6 +381,12 @@ def test_get_basic_info(mock_uid, mock_gid, mock_open_file, mock_exists, mock_ch
     assert result.render()['data']['total_failed_items'] == 0
 
 
+@patch('wazuh.core.common.get_installation_uid', return_value='master-uuid')
+def test_get_master_installation_uid(mock_uid):
+    """Test get_master_installation_uid() returns the installation uid of the node."""
+    assert get_master_installation_uid().render()['uuid'] == 'master-uuid'
+
+
 @patch('wazuh.manager.validate_ossec_conf', return_value={'status': 'OK'})
 @patch('wazuh.manager.write_ossec_conf')
 @patch('wazuh.manager.validate_wazuh_xml')
