@@ -105,6 +105,7 @@ All notable changes to this project will be documented in this file.
 - Fixed SCA content checks opening non-regular files without validating them on UNIX systems, which could block the scan. ([#40490](https://github.com/wazuh/wazuh/pull/40490))
 - Fixed `wazuh-modulesd` and `wazuh-syscheckd` keeping a local request connection open when the request could not be read. ([#40472](https://github.com/wazuh/wazuh/pull/40472))
 - Fixed `wazuh-modulesd` delivering a synchronization message to the wrong module when its data contains another module's name. ([#40472](https://github.com/wazuh/wazuh/pull/40472))
+- Fixed FIM eBPF whodata not reporting the old name of a renamed file as deleted. ([#40452](https://github.com/wazuh/wazuh/pull/40452))
 
 ### Ruleset
 
