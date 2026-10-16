@@ -104,7 +104,6 @@ int check_auditd_enabled(void) {
 int configure_audisp(const char *audisp_path, const char *abs_path_socket, const char *audisp_config) {
     FILE *fp;
     char tmp_file_path[PATH_MAX] = {'\0'};
-    struct stat st;
 
     minfo(FIM_AUDIT_SOCKET, AUDIT_CONF_FILE);
 

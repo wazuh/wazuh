@@ -9,6 +9,7 @@
  * Foundation.
  */
 #include <algorithm>
+#include <array>
 #include <fstream>
 #include <iostream>
 #include <regex>
@@ -62,7 +63,6 @@ static void parseLineAndFillMap(const std::string& line, const std::string& sepa
 
 static bool getSystemInfo(const std::string& fileName, const std::string& separator, std::map<std::string, std::string>& systemInfo)
 {
-    std::string info;
     std::fstream file{fileName, std::ios_base::in};
     const bool ret{file.is_open()};
 
@@ -279,9 +279,9 @@ nlohmann::json SysInfo::getPackages() const
 static bool getOsInfoFromFiles(nlohmann::json& info)
 {
     bool ret{false};
-    const std::vector<std::string> UNIX_RELEASE_FILES{"/etc/os-release", "/usr/lib/os-release"};
+    constexpr std::array UNIX_RELEASE_FILES{"/etc/os-release", "/usr/lib/os-release"};
     constexpr auto CENTOS_RELEASE_FILE{"/etc/centos-release"};
-    static const std::vector<std::pair<std::string, std::string>> PLATFORMS_RELEASE_FILES
+    constexpr std::pair<std::string_view, const char*> PLATFORMS_RELEASE_FILES[]
     {
         {"centos",      CENTOS_RELEASE_FILE     },
         {"fedora",      "/etc/fedora-release"   },
@@ -296,7 +296,7 @@ static bool getOsInfoFromFiles(nlohmann::json& info)
     };
     const auto parseFnc
     {
-        [&info](const std::string & fileName, const std::string & platform)
+        [&info](const char* fileName, std::string_view platform)
         {
             std::fstream file{fileName, std::ios_base::in};
 
@@ -614,8 +614,7 @@ nlohmann::json SysInfo::getPorts() const
 
 void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> callback) const
 {
-    const int flags = PROC_FILLMEM | PROC_FILLSTAT | PROC_FILLSTATUS | PROC_FILLARG
-                      | PROC_FILLGRP | PROC_FILLUSR | PROC_FILLCOM | PROC_FILLENV;
+    const int flags = PROC_FILLSTAT | PROC_FILLCOM;
 
     ProcpsWrapper::scanProcesses(flags, [&callback](const proc_t* process)
     {

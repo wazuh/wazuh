@@ -131,7 +131,6 @@ std::map<std::string, nlohmann::json> SysNormalizer::getTypeValues(const std::st
     try
     {
         std::ifstream config{ configFile };
-        nlohmann::json data;
 
         if (config.is_open())
         {
