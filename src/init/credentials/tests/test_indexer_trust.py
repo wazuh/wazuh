@@ -666,6 +666,90 @@ def test_structural_defect_wins_over_the_window(resolver, sandbox, case, reason)
         assert "WARNING" not in err
 
 
+def _renewed(cert, key, days, *, path_length=None):
+    """`cert` issued again with the same name and key and a new window (days from now): a CA renewed in place."""
+    now = datetime.datetime.now(datetime.timezone.utc)
+    return (x509.CertificateBuilder().subject_name(cert.subject).issuer_name(cert.subject)
+            .public_key(key.public_key()).serial_number(x509.random_serial_number())
+            .not_valid_before(now + datetime.timedelta(days=days[0]))
+            .not_valid_after(now + datetime.timedelta(days=days[1]))
+            .add_extension(x509.BasicConstraints(ca=True, path_length=path_length), critical=True)
+            .add_extension(x509.KeyUsage(digital_signature=True, content_commitment=False, key_encipherment=False,
+                                         data_encipherment=False, key_agreement=False, key_cert_sign=True,
+                                         crl_sign=True, encipher_only=False, decipher_only=False), critical=True)
+            .sign(key, hashes.SHA256()))
+
+
+def _leaf(signer, signer_key, days, *, eku=(ExtendedKeyUsageOID.CLIENT_AUTH,), is_ca=False):
+    key = pool_key()
+    now = datetime.datetime.now(datetime.timezone.utc)
+    leaf = (x509.CertificateBuilder()
+            .subject_name(x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "wazuh-manager")]))
+            .issuer_name(signer.subject).public_key(key.public_key()).serial_number(x509.random_serial_number())
+            .not_valid_before(now + datetime.timedelta(days=days[0]))
+            .not_valid_after(now + datetime.timedelta(days=days[1]))
+            .add_extension(x509.BasicConstraints(ca=is_ca, path_length=None), critical=True)
+            .add_extension(x509.ExtendedKeyUsage(list(eku)), critical=False)
+            .sign(signer_key, hashes.SHA256()))
+    return leaf, key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
+                                   serialization.NoEncryption())
+
+
+# A CA renewed in place (same name and key) after the client pair it issued expired: the windows do not overlap, so
+# there is no moment at which every certificate is valid, and only the leaf's dates refuse it. The CA file holds the
+# renewed CA; the client file still carries the CA as it was when the pair was issued.
+OLD_CA, OLD_LEAF, RENEWED_CA = (-900, -400), (-800, -500), (-300, 3650)
+
+
+@pytest.mark.parametrize("through_intermediate", [False, True], ids=["direct", "intermediate"])
+def test_pair_expired_before_its_ca_was_renewed_warns(resolver, sandbox, through_intermediate):
+    sandbox.stage_ca()
+    old_ca, ca_key = intermediate(None, None, "wazuh-indexer-ca", days=OLD_CA)
+    signer, signer_key, chain = old_ca, ca_key, b""
+    if through_intermediate:
+        signer, signer_key = intermediate(old_ca, ca_key, "wazuh-indexer-intermediate", days=OLD_CA)
+        chain = _pem(signer)
+    leaf, key_pem = _leaf(signer, signer_key, OLD_LEAF)
+    renewed = _renewed(old_ca, ca_key, RENEWED_CA)
+    stage_trust(sandbox, {"ca": _pem(renewed), "client": _pem(leaf) + chain + _pem(old_ca), "key": key_pem})
+    for mode in ("--check", "--prestart"):
+        code, _, err = run(resolver, sandbox, mode)
+        assert code == 0, (mode, err)
+        assert f"WARNING: {certs(sandbox, 'indexer-connector.pem')}: expired on " in err and WARNED in err, (mode, err)
+        assert "INVALID" not in err, (mode, err)
+
+
+@pytest.mark.parametrize("case,reason", [
+    ("wrong issuer", "not issued by "),
+    ("key mismatch", "its key does not match it"),
+    ("no clientAuth", "has no extendedKeyUsage with clientAuth"),
+    ("a CA", "a CA certificate, not a client certificate"),
+    ("path length", "issuer CA: its pathLenConstraint (0) does not allow the 1 CA(s) below it"),
+])
+def test_structural_defect_under_a_renewed_ca_still_refuses(resolver, sandbox, case, reason):
+    """Leaving the dates out of the judgement leaves everything else in it: signature, issuer, key, purpose, and the
+    CA constraints of the path."""
+    sandbox.stage_ca()
+    old_ca, ca_key = intermediate(None, None, "wazuh-indexer-ca", days=OLD_CA,
+                                  path_length=0 if case == "path length" else None)
+    signer, signer_key, chain = old_ca, ca_key, b""
+    if case == "path length":
+        signer, signer_key = intermediate(old_ca, ca_key, "wazuh-indexer-intermediate", days=OLD_CA)
+        chain = _pem(signer)
+    leaf, key_pem = _leaf(signer, pool_key() if case == "wrong issuer" else signer_key, OLD_LEAF,
+                          eku=(ExtendedKeyUsageOID.SERVER_AUTH,) if case == "no clientAuth"
+                          else (ExtendedKeyUsageOID.CLIENT_AUTH,), is_ca=case == "a CA")
+    if case == "key mismatch":
+        key_pem = pool_key().private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
+                                           serialization.NoEncryption())
+    renewed = _renewed(old_ca, ca_key, RENEWED_CA, path_length=0 if case == "path length" else None)
+    stage_trust(sandbox, {"ca": _pem(renewed), "client": _pem(leaf) + chain + _pem(old_ca), "key": key_pem})
+    for mode in ("--check", "--prestart"):
+        code, _, err = run(resolver, sandbox, mode)
+        assert code == 1 and f"INVALID {certs(sandbox, 'indexer-connector.pem')}: {reason}" in err, (mode, err)
+        assert "WARNING: " + certs(sandbox, "indexer-connector.pem") not in err, (mode, err)
+
+
 def test_check_counts_warnings(resolver, sandbox):
     stage_trust(sandbox, Pki().files(EXPIRED))
     before = sandbox.tree_state()

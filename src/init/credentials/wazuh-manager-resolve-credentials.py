@@ -1990,11 +1990,12 @@ def pair_problem(paths: Paths, certs: Dir, pair: ServerPair, anchors: Optional[L
     return leaf, None
 
 
-def issuer_problem(issuer: x509.Certificate, now: datetime.datetime, purpose: x509.ObjectIdentifier) -> Optional[str]:
-    """A CA on a leaf's path must be valid now, authorized to sign certificates and, when it restricts its
-    extendedKeyUsage, allowed the leaf's purpose. That last rule is OpenSSL's, which every client of these
-    certificates applies along the chain: anyExtendedKeyUsage alone does not grant a purpose."""
-    if not issuer.not_valid_before_utc <= now <= issuer.not_valid_after_utc:
+def issuer_problem(issuer: x509.Certificate, now: datetime.datetime, purpose: x509.ObjectIdentifier,
+                   window: bool = True) -> Optional[str]:
+    """A CA on a leaf's path must be valid now (unless `window` is False), authorized to sign certificates and, when
+    it restricts its extendedKeyUsage, allowed the leaf's purpose. That last rule is OpenSSL's, which every client of
+    these certificates applies along the chain: anyExtendedKeyUsage alone does not grant a purpose."""
+    if window and not issuer.not_valid_before_utc <= now <= issuer.not_valid_after_utc:
         return "expired" if now > issuer.not_valid_after_utc else "not valid yet"
     try:
         is_ca = issuer.extensions.get_extension_for_class(x509.BasicConstraints).value.ca
@@ -2051,6 +2052,63 @@ def chain_problem(leaf: x509.Certificate, intermediates: List[x509.Certificate],
         if problem:
             return f"issuer CA: {problem}"
     return None
+
+
+# The longest path timeless_chain_problem() builds, CAs above the leaf: far more than any deployment uses, and a bound
+# on the search through a file of many intermediates.
+TIMELESS_PATH_DEPTH = 8
+
+
+def timeless_chain_problem(leaf: x509.Certificate, intermediates: List[x509.Certificate],
+                           anchors: List[x509.Certificate], issuer_label: str, now: datetime.datetime,
+                           purpose: x509.ObjectIdentifier,
+                           no_path: str = "no path to it from the certificates in the file") -> Optional[str]:
+    """chain_problem() with every validity window left out. The path builder of x509.verification judges every
+    certificate of a path against one moment, and no moment fits a CA renewed in place (same name and key) after the
+    leaf it issued expired: their windows do not overlap. So the path is built here, by name and signature, with
+    every CA of it a CA (basicConstraints CA:TRUE), allowed to sign certificates, allowed `purpose`, and its
+    pathLenConstraint not exceeded by the CAs below it; only the dates are not looked at."""
+    pool = [cert for cert in intermediates if not _self_signed(cert)]
+    found: List[str] = []
+
+    def ca_problem(ca: x509.Certificate, below: int) -> Optional[str]:
+        problem = issuer_problem(ca, now, purpose, window=False)
+        if problem:
+            return problem
+        limit = ca.extensions.get_extension_for_class(x509.BasicConstraints).value.path_length
+        if limit is not None and below > limit:
+            return f"its pathLenConstraint ({limit}) does not allow the {below} CA(s) below it"
+        return None
+
+    def walk(cert: x509.Certificate, path: List[x509.Certificate]) -> bool:
+        # `path`: the CAs above the leaf so far; the next one has len(path) CAs below it.
+        for anchor in anchors:
+            if _issued_by(cert, anchor):
+                problem = ca_problem(anchor, len(path))
+                if problem is None:
+                    return True
+                found.append(problem)
+        if len(path) >= TIMELESS_PATH_DEPTH:
+            return False
+        for middle in pool:
+            if middle in path or not _issued_by(cert, middle):
+                continue
+            problem = ca_problem(middle, len(path))
+            if problem is not None:
+                found.append(problem)
+                continue
+            if walk(middle, [*path, middle]):
+                return True
+        return False
+
+    if walk(leaf, []):
+        return None
+    if found:
+        return f"issuer CA: {found[0]}"
+    if any(ca.subject == leaf.issuer for ca in (*anchors, *pool)):
+        # A CA of the leaf's issuer name is there, but its key did not sign the leaf.
+        return f"not issued by {issuer_label} (signature does not match)"
+    return f"not issued by {issuer_label} ({no_path})"
 
 
 def _issued_by(leaf: x509.Certificate, issuer: x509.Certificate) -> bool:
@@ -2229,11 +2287,12 @@ def indexer_ca_problem(data: bytes, now: Optional[datetime.datetime] = None,
 
 
 def connector_problem(cert_data: bytes, key_data: bytes, cas: Optional[List[x509.Certificate]],
-                      ca_path: str, now: Optional[datetime.datetime] = None, leaf_window: bool = True) -> Optional[str]:
+                      ca_path: str, now: Optional[datetime.datetime] = None, windows: bool = True) -> Optional[str]:
     """The client pair the manager presents to the indexer: the leaf, then any intermediate CAs, chaining to a
     certificate of the indexer's CA file; the leaf inside its window, not a CA, with an extendedKeyUsage that
     includes clientAuth, and matching its key. Checked here because nothing else looks at it before the first
-    handshake. `cas` None: no CA is configured (the connector trusts the system store), so there is no chain to test."""
+    handshake. `cas` None: no CA is configured (the connector trusts the system store), so there is no chain to test.
+    `windows` False: everything but the validity windows, of the leaf and of every CA on its path."""
     try:
         leaf, *intermediates = x509.load_pem_x509_certificates(cert_data)
     except ValueError:
@@ -2245,7 +2304,7 @@ def connector_problem(cert_data: bytes, key_data: bytes, cas: Optional[List[x509
     if problem:
         return "its key does not match it" if "match" in problem else f"its key is {problem}"
     now = now if now is not None else _now()
-    if leaf_window and not leaf.not_valid_before_utc <= now <= leaf.not_valid_after_utc:
+    if windows and not leaf.not_valid_before_utc <= now <= leaf.not_valid_after_utc:
         return "expired" if now > leaf.not_valid_after_utc else "not valid yet"
     try:
         if leaf.extensions.get_extension_for_class(x509.BasicConstraints).value.ca:
@@ -2260,13 +2319,15 @@ def connector_problem(cert_data: bytes, key_data: bytes, cas: Optional[List[x509
         return "has no extendedKeyUsage with clientAuth"
     if cas is None:
         return None
+    if not windows:
+        return timeless_chain_problem(leaf, intermediates, cas, ca_path, now, ExtendedKeyUsageOID.CLIENT_AUTH)
     return chain_problem(leaf, intermediates, cas, ca_path, now, ExtendedKeyUsageOID.CLIENT_AUTH)
 
 
-# The indexer's material is judged twice: as it stands now, and as it would stand at a moment when every certificate
-# involved is inside its validity window. A defect that only the clock decides (expired, not valid yet, in the file or
-# on the path) does not stop the start: the connection fails until the material is renewed or the clock is right, and
-# the connector keeps validating TLS itself. Anything else is refused as before.
+# The indexer's material is judged twice: as it stands now, and with every validity window left out. A defect that
+# only the clock decides (expired, not valid yet, in the file or on the path) does not stop the start: the connection
+# fails until the material is renewed or the clock is right, and the connector keeps validating TLS itself. Anything
+# else is refused as before.
 
 TIME_ONLY_CONSEQUENCE = "the indexer connection fails until it is renewed or the clock is right"
 
@@ -2298,13 +2359,6 @@ def _window_text(certs: List[x509.Certificate], now: datetime.datetime, first_is
     return "outside its validity window"
 
 
-def _instants(certs: List[x509.Certificate]) -> List[datetime.datetime]:
-    """Moments just inside the edges of every window: if the material passes at one of them, only time refuses it."""
-    second = datetime.timedelta(seconds=1)
-    return [moment for cert in certs
-            for moment in (cert.not_valid_before_utc + second, cert.not_valid_after_utc - second)]
-
-
 def indexer_ca_verdict(data: bytes) -> Tuple[Optional[List[x509.Certificate]], Verdict]:
     """The CA file's certificates (also when only time refuses them, so they still count as trust) and its verdict."""
     cas, problem = indexer_ca_problem(data)
@@ -2318,11 +2372,10 @@ def indexer_ca_verdict(data: bytes) -> Tuple[Optional[List[x509.Certificate]], V
 
 def connector_verdict(cert_data: bytes, key_data: bytes, cas: Optional[List[x509.Certificate]],
                       ca_path: str) -> Verdict:
-    """The client pair's verdict. When it fails now, only time refuses it if it passes now with its own window left
-    out (an expired or not-yet-valid leaf under CAs valid now, which is also what a CA renewed after the leaf expired
-    looks like), or passes at the window edge of some certificate involved (every one of them valid then: a clock
-    behind or ahead of all of them, or a CA that expired before its leaf). Otherwise the reason given is the one with
-    the leaf's window left out, so a structural defect is named, not a date."""
+    """The client pair's verdict. When it fails now, only time refuses it if it passes with every validity window
+    left out: an expired or not-yet-valid leaf, intermediate or CA, a clock behind or ahead of all of them, or a CA
+    renewed in place after the leaf it issued expired, whose windows share no moment at all. Otherwise the reason
+    given is the one with the windows left out, so a structural defect is named, not a date."""
     problem = connector_problem(cert_data, key_data, cas, ca_path)
     if problem is None:
         return Verdict()
@@ -2331,13 +2384,11 @@ def connector_verdict(cert_data: bytes, key_data: bytes, cas: Optional[List[x509
     except ValueError:
         return Verdict(problem)
     now = _now()
-    structural = connector_problem(cert_data, key_data, cas, ca_path, now, leaf_window=False)
-    issuers = {cert.issuer for cert in (leaf, *intermediates)}
-    anchors = [ca for ca in (cas or []) if ca.subject in issuers]
-    involved = [leaf, *intermediates, *anchors]
-    if structural is None or any(connector_problem(cert_data, key_data, cas, ca_path, moment) is None
-                                 for moment in _instants(involved)):
-        return Verdict(_window_text(involved, now, first_is_leaf=True), True)
+    structural = connector_problem(cert_data, key_data, cas, ca_path, now, windows=False)
+    if structural is None:
+        issuers = {cert.issuer for cert in (leaf, *intermediates)}
+        anchors = [ca for ca in (cas or []) if ca.subject in issuers]
+        return Verdict(_window_text([leaf, *intermediates, *anchors], now, first_is_leaf=True), True)
     return Verdict(structural)
 
 
