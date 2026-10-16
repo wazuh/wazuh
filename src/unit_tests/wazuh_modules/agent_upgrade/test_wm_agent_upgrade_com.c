@@ -782,9 +782,6 @@ static void expect_write_rejected(cJSON *command) {
     sprintf(file.path, "var/incoming/test_file");
 #endif
 
-    expect_string(__wrap_w_ref_parent_folder, path, "test_file");
-    will_return(__wrap_w_ref_parent_folder, 0);
-
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
 #ifdef TEST_WINAGENT
     expect_string(__wrap__mterror, formatted_msg, "(8129): At write: Cannot write on 'incoming\\test_file'");
