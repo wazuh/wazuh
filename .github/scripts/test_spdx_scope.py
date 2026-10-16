@@ -228,6 +228,17 @@ class ApplyToBytesTest(unittest.TestCase):
             self.assertEqual(out.splitlines()[1], b"# encoding: ISO-8859-1", path)
             self.assertEqual(out.splitlines()[2], line("#", AGPL).rstrip(b"\n"), path)
 
+    def test_ruby_encoding_spacing_and_case(self):
+        for path, src in (("src/engine/x.rb", b"# encoding : ISO-8859-1\nputs '\xe9'\n"),
+                          ("src/engine/x.rb", b"# Encoding: ISO-8859-1\nputs '\xe9'\n"),
+                          ("src/engine/x.rb", b"# -*- Coding : ISO-8859-1 -*-\nputs '\xe9'\n"),
+                          ("src/engine/tool", b"#!/usr/bin/env ruby\n# encoding : ISO-8859-1\nputs '\xe9'\n")):
+            out = spdx.apply_to_bytes(path, src)
+            first = src.splitlines(True)
+            keep = 2 if src.startswith(b"#!") else 1
+            self.assertEqual(out.splitlines(True)[:keep], first[:keep], src)
+            self.assertEqual(out.splitlines()[keep], line("#", AGPL).rstrip(b"\n"), src)
+
     def test_ruby_encoding_line_1_without_shebang(self):
         out = spdx.apply_to_bytes("src/engine/x.rb", b"# encoding: ISO-8859-1\nputs '\xe9'\n")
         self.assertEqual(out, b"# encoding: ISO-8859-1\n" + line("#", AGPL) + b"puts '\xe9'\n")

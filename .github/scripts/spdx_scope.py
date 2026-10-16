@@ -76,7 +76,9 @@ UNSUPPORTED = _Unsupported()
 SCAN_LINES = 30
 # Only a comment line counts (`//`, `#`, `/*` or ` *`): the token inside a string literal is not an identifier.
 _ID_RE = re.compile(r"^\s*(?://|#|/?\*)\s*SPDX-License-Identifier:\s*(.+?)\s*(\*/)?\s*$")
-_CODING_RE = re.compile(r"^[ \t\f]*#.*?coding[:=]")
+# Encoding declaration on line 1 or 2. Deliberately wider than PEP 263 to cover Ruby too (any case, blanks before the
+# separator): a comment taken for a declaration only moves the SPDX line one line down.
+_CODING_RE = re.compile(r"^[ \t\f]*#.*?coding[ \t]*[:=]", re.IGNORECASE)
 _VERSION_SUFFIX_RE = re.compile(r"[0-9.]+$")
 _UTF8_BOM = b"\xef\xbb\xbf"
 # UTF-32 BOMs first: the UTF-32-LE BOM starts with the UTF-16-LE one.
