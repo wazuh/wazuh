@@ -821,7 +821,8 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 if not os.path.commonpath([full_filename_path, expected_base]).startswith(expected_base):
                     raise WazuhClusterError(3022,
                         extra_message=f"File path outside allowed directory: {filename_}")
-                if os.path.basename(full_filename_path) in cluster_items['files'].get('excluded_files', []):
+                if cluster.is_excluded(os.path.basename(full_filename_path), cluster_items['files'].get('excluded_files', []),
+                                       cluster_items['files'].get('excluded_extensions', [])):
                     raise WazuhClusterError(3022, extra_message=f"File is in excluded list: {filename_}")
                 # Create destination dir if it doesn't exist.
                 if not os.path.exists(os.path.dirname(full_filename_path)):
@@ -862,7 +863,8 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                         if not os.path.commonpath([file_path, expected_base]).startswith(expected_base):
                             raise WazuhClusterError(3022,
                                 extra_message=f"File path outside allowed directory: {file_to_remove}")
-                        if os.path.basename(file_path) in cluster_items['files'].get('excluded_files', []):
+                        if cluster.is_excluded(os.path.basename(file_path), cluster_items['files'].get('excluded_files', []),
+                                           cluster_items['files'].get('excluded_extensions', [])):
                             raise WazuhClusterError(3022,
                                 extra_message=f"File is in excluded list: {file_to_remove}")
                         try:

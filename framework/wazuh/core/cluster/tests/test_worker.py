@@ -1400,19 +1400,27 @@ def test_worker_handler_update_master_files_in_worker_security_checks():
      ('debug2', 'etc/ossec.conf')),
     ({'shared': {}, 'missing': {}, 'extra': {'etc/shared/default/ar.conf': {'cluster_item_key': 'etc/shared/'}}},
      ('debug2', 'etc/shared/default/ar.conf')),
+    ({'shared': {}, 'missing': {'etc/x.swp': {'merged': False, 'cluster_item_key': 'etc/'}}, 'extra': {}},
+     ('error', 'missing')),
+    ({'shared': {'etc/x.tmp': {'merged': False, 'cluster_item_key': 'etc/'}}, 'missing': {}, 'extra': {}},
+     ('error', 'shared')),
+    ({'shared': {}, 'missing': {}, 'extra': {'etc/x.tmp': {'cluster_item_key': 'etc/'}}},
+     ('debug2', 'etc/x.tmp')),
 ])
 @patch("wazuh.core.cluster.worker.safe_move")
 @patch("wazuh.core.cluster.worker.utils.mkdir_with_mode")
 @patch("os.remove")
 def test_worker_handler_update_master_files_in_worker_excluded_files(os_remove_mock, mkdir_mock, safe_move_mock,
                                                                      ko_files, error_key):
-    """Verify that files in 'excluded_files' are rejected in the non-merged and extra branches."""
+    """Verify that files in 'excluded_files' or with an excluded extension are rejected in the non-merged and extra
+    branches."""
     worker_handler = get_worker_handler(MagicMock())
     sec_cluster_items = {
         'files': {
             'etc/': {'permissions': '0o640', 'remove_subdirs_if_empty': False},
             'etc/shared/': {'permissions': '0o660', 'remove_subdirs_if_empty': False},
             'excluded_files': ['ar.conf', 'ossec.conf'],
+            'excluded_extensions': ['.swp', '.tmp'],
         }
     }
 
