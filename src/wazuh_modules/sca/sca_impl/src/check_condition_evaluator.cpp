@@ -34,20 +34,29 @@ void CheckConditionEvaluator::AddResult(const RuleEvaluationResult& result)
         return;
     }
 
-    if (result.result == RuleResult::Invalid || result.result == RuleResult::NotRun)
+    RecordUnresolvedRule(result);
+    ++m_totalRules;
+    UpdateVerdict(result.result);
+}
+
+void CheckConditionEvaluator::RecordUnresolvedRule(const RuleEvaluationResult& result)
+{
+    if (result.result != RuleResult::Invalid && result.result != RuleResult::NotRun)
     {
-        m_hasInvalid = m_hasInvalid || (result.result == RuleResult::Invalid);
-        m_hasNotRun = m_hasNotRun || (result.result == RuleResult::NotRun);
-        m_unresolvedReasons.Add(result.reason);
+        return;
     }
 
-    ++m_totalRules;
-    m_passedRules += (RuleResult::Found == result.result) ? 1 : 0;
+    m_hasInvalid = m_hasInvalid || (result.result == RuleResult::Invalid);
+    m_hasNotRun = m_hasNotRun || (result.result == RuleResult::NotRun);
+    m_unresolvedReasons.Add(result.reason);
+}
 
+void CheckConditionEvaluator::UpdateVerdict(const RuleResult result)
+{
     switch (m_type)
     {
         case ConditionType::All:
-            if (RuleResult::NotFound == result.result)
+            if (RuleResult::NotFound == result)
             {
                 m_result = false;
             }
@@ -55,7 +64,7 @@ void CheckConditionEvaluator::AddResult(const RuleEvaluationResult& result)
             break;
 
         case ConditionType::Any:
-            if (RuleResult::Found == result.result)
+            if (RuleResult::Found == result)
             {
                 m_result = true;
             }
@@ -63,7 +72,7 @@ void CheckConditionEvaluator::AddResult(const RuleEvaluationResult& result)
             break;
 
         case ConditionType::None:
-            if (RuleResult::Found == result.result)
+            if (RuleResult::Found == result)
             {
                 m_result = false;
             }
