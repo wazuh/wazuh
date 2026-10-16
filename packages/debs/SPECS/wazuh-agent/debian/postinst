@@ -178,15 +178,17 @@ case "$1" in
         rm -rf ${WAZUH_TMP_DIR}/group
     fi
 
-    # logs/ belongs to ${USER}, which could leave a link at the log's name, and touch, chown and
-    # chmod follow links as root. A link is removed, the file is created only when missing (with its
-    # mode already set, and with noclobber, which fails on a link instead of following it), and its
-    # owner is set with chown -h, which never follows one.
-    if [ -L ${DIR}/logs/active-responses.log ]; then
-        rm -f ${DIR}/logs/active-responses.log
+    # logs/ belongs to ${USER}, which could leave a link or a FIFO at the log's name: touch, chown
+    # and chmod follow a link as root, and opening a FIFO blocks dpkg. The name is never opened. A
+    # regular file only gets chown -h; anything else is replaced by an empty log built in
+    # ${WAZUH_TMP_DIR} and renamed over it.
+    if [ -f ${DIR}/logs/active-responses.log ] && [ ! -L ${DIR}/logs/active-responses.log ]; then
+        chown -h ${USER}:${GROUP} ${DIR}/logs/active-responses.log 2> /dev/null || true
+    else
+        { : > ${WAZUH_TMP_DIR}/active-responses.log \
+            && install_file ${WAZUH_TMP_DIR}/active-responses.log 0660 ${USER}:${GROUP} ${DIR}/logs/active-responses.log; } \
+            || echo "WARNING: could not create ${DIR}/logs/active-responses.log." >&2
     fi
-    ( umask 0117; set -C; : > ${DIR}/logs/active-responses.log ) 2> /dev/null || true
-    chown -h ${USER}:${GROUP} ${DIR}/logs/active-responses.log 2> /dev/null || true
 
     # Check if SELinux is installed and enabled
     if command -v getenforce > /dev/null 2>&1 && command -v semodule > /dev/null 2>&1; then

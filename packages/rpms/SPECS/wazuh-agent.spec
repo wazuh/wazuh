@@ -324,15 +324,18 @@ fi
 # If the package is being installed
 if [ $1 = 1 ]; then
 
-  # logs/ belongs to wazuh, which could leave a link at the log's name, and touch, chown and chmod
-  # follow links as root. A link is removed, the file is created only when missing (with its mode
-  # already set, and with noclobber, which fails on a link instead of following it), and its owner
-  # is set with chown -h, which never follows one.
-  if [ -L %{_localstatedir}/logs/active-responses.log ]; then
-    rm -f %{_localstatedir}/logs/active-responses.log
+  # logs/ belongs to wazuh, which could leave a link or a FIFO at the log's name: touch, chown and
+  # chmod follow a link as root, and opening a FIFO blocks rpm. The name is never opened. A regular
+  # file only gets chown -h; anything else is replaced by an empty log built in packages_files/
+  # (root only) and renamed over it.
+  AR_LOG=%{_localstatedir}/logs/active-responses.log
+  if [ -f ${AR_LOG} ] && [ ! -L ${AR_LOG} ]; then
+    chown -h wazuh:wazuh ${AR_LOG} 2> /dev/null || true
+  else
+    AR_LOG_STAGE=%{_localstatedir}/packages_files/active-responses.log
+    { : > ${AR_LOG_STAGE} && chown wazuh:wazuh ${AR_LOG_STAGE} && chmod 0660 ${AR_LOG_STAGE} \
+        && mv -fT ${AR_LOG_STAGE} ${AR_LOG}; } || echo "WARNING: could not create ${AR_LOG}." >&2
   fi
-  ( umask 0117; set -C; : > %{_localstatedir}/logs/active-responses.log ) 2> /dev/null || true
-  chown -h wazuh:wazuh %{_localstatedir}/logs/active-responses.log 2> /dev/null || true
 
   . %{_localstatedir}/packages_files/agent_installation_scripts/src/init/dist-detect.sh
 
