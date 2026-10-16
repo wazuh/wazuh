@@ -150,6 +150,7 @@
 | [#39064](https://github.com/wazuh/wazuh/issues/39064) | An agent keeps its enrollment token when the manager reports only that enrollment is disabled. |
 | [#39064](https://github.com/wazuh/wazuh/issues/39064) | An agent whose re-enrollment secret the manager refuses falls back to the configured credential, so a rebuilt manager does not require visiting every endpoint. |
 | [#39407](https://github.com/wazuh/wazuh/issues/39407) | Added Enroll and Update CA actions to the Windows agent tray GUI (`win32ui`), enrolling or refreshing the trust anchor from a pasted token. |
+| [#40349](https://github.com/wazuh/wazuh/pull/40349) | Added the `wazuh_modules.socket_timeout` internal option (default 1 s), bounding how long a local client of `wazuh-modulesd` can stay silent while sending its request or reading the reply. |
 
 #### Changed
 
@@ -182,6 +183,7 @@
 | [#40121](https://github.com/wazuh/wazuh/issues/40121) | With no manager configured, **Manage** > **Start** and **Restart** in the Windows agent GUI report "check config" instead of starting an agent that exits at once. |
 | [#40121](https://github.com/wazuh/wazuh/issues/40121) | The Windows installer's no-token message points to **Manage** > **Enroll** in the agent GUI or to `wazuh-agent-auth.exe`. |
 | [#40121](https://github.com/wazuh/wazuh/issues/40121) | Windows installer lines in `ossec.log` use the agent's `yyyy/mm/dd hh:mm:ss` timestamp. |
+| [#40349](https://github.com/wazuh/wazuh/pull/40349) | Changed the AWS module to pass inline `access_key`/`secret_key` to its script through the environment instead of the command line. |
 
 #### Removed
 
@@ -197,6 +199,10 @@
 
 | Issue | Comment |
 |-------|---------|
+| [#40349](https://github.com/wazuh/wazuh/pull/40349) | Fixed `wazuh-modulesd` waiting indefinitely on a command that ignored its timeout; the command's process group is now stopped after `wazuh_modules.kill_timeout`. |
+| [#40349](https://github.com/wazuh/wazuh/pull/40349) | Fixed the Office 365 and GitHub modules skipping the rest of a collection window after a response larger than `curl_max_size`; only that response is now skipped, with a warning. |
+| [#40349](https://github.com/wazuh/wazuh/pull/40349) | Fixed the AWS and GCP modules stopping when a command could not be run. |
+| [#40349](https://github.com/wazuh/wazuh/pull/40349) | Fixed the agent upgrade reporting an installer that timed out as dispatched. |
 | [#40343](https://github.com/wazuh/wazuh/issues/40343) | Fixed token enrollment failing when the manager requires a client certificate. |
 | [#40343](https://github.com/wazuh/wazuh/issues/40343) | Fixed token enrollment reporting a manager that refuses the agent's client certificate as unreachable. |
 | [#40114](https://github.com/wazuh/wazuh/issues/40114) | Fixed RPM agent removal leaving the agent key and re-enrollment secret behind. |

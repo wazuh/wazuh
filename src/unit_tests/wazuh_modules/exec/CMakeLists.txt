@@ -48,6 +48,10 @@ if(${TARGET} STREQUAL "winagent")
                                -Wl,--wrap=fim_db_teardown -Wl,--wrap=Start_win32_Syscheck -Wl,--wrap=is_fim_shutdown")
 else()
     list(APPEND tests_flags "${WM_EXEC_BASE_FLAGS} -Wl,--wrap,fork -Wl,--wrap,kill -Wl,--wrap,exit -Wl,--wrap,sleep")
+
+    # Runs real commands to check how a timed-out one is stopped: only kill() is wrapped.
+    list(APPEND tests_names "test_wm_exec_timeout")
+    list(APPEND tests_flags "-Wl,--wrap,kill -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
 endif()
 
 # Compiling tests

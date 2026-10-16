@@ -477,16 +477,24 @@ def daemons_handler_implementation(request: pytest.FixtureRequest) -> None:
 
     yield
 
-    if all_daemons:
-        logger.debug("Stopping wazuh using wazuh-control")
-        services.control_service("stop")
-    else:
-        if daemons == API_DAEMONS_REQUIREMENTS:
-            daemons.reverse()  # Stop in reverse, otherwise the next start will fail
-        for daemon in daemons:
-            if daemon is not None:
-                logger.debug(f"Stopping {daemon}")
-                services.control_service("stop", daemon=daemon)
+    # Suites set ignore_errors because their cases start the service on configurations it
+    # rejects. Stopping a service left in that state can fail as well (systemctl reporting
+    # "Job for wazuh-agent.service canceled." and exiting 1), so the same tolerance applies.
+    try:
+        if all_daemons:
+            logger.debug("Stopping wazuh using wazuh-control")
+            services.control_service("stop")
+        else:
+            if daemons == API_DAEMONS_REQUIREMENTS:
+                daemons.reverse()  # Stop in reverse, otherwise the next start will fail
+            for daemon in daemons:
+                if daemon is not None:
+                    logger.debug(f"Stopping {daemon}")
+                    services.control_service("stop", daemon=daemon)
+    except (ValueError, subprocess.CalledProcessError) as stop_error:
+        logger.error(f"{str(stop_error)}")
+        if not ignore_errors:
+            raise stop_error
 
 
 @pytest.fixture()

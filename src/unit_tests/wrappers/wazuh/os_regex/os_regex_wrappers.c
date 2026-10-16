@@ -47,17 +47,21 @@ const char *__wrap_OSRegex_Execute(const char *str, OSRegex *reg) {
             check_expected(str);
         }
 
+        const char *ret = mock_type(const char *);
+
         reg->d_sub_strings = NULL;
         os_calloc(16, sizeof(char), reg->d_sub_strings);
 
         if(!strcmp(str, "test")) {
             reg->d_sub_strings[0] = NULL;
+        } else if (ret && !strncmp(ret, "https://", 8)) {
+            // A mocked URL is also what the pattern captured
+            os_strdup(ret, *reg->d_sub_strings);
         } else {
-            //reg->d_sub_strings[0] = "https://api.com/";
             os_strdup("https://api.com/", *reg->d_sub_strings);
         }
 
-        return mock_type(const char *);
+        return ret;
     }
 
     return __real_OSRegex_Execute(str, reg);

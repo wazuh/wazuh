@@ -17,6 +17,7 @@
 #include <condition_variable>
 #include <cstdint>
 #include <mutex>
+#include <optional>
 #include <vector>
 
 /**
@@ -92,17 +93,18 @@ class MockSyncTransport : public ISyncSessionTransport
 /// @brief Answers the session the protocol is waiting on, the way the manager does:
 ///        one HCRESULT carrying the raw HTTP status code (see
 ///        AgentSyncProtocol::applyHttpResult - there is no EndAck FlatBuffer message
-///        anymore). forSession=0 skips the protocol's session-correlation check.
+///        anymore). Unless @p forSession says otherwise, it answers the session the
+///        protocol handed to the transport.
 inline void answerSession(const std::shared_ptr<MockSyncTransport>& transport,
                           const std::function<void(const uint8_t*, size_t)>& feed,
-                          int httpCode = 200, uint64_t forSession = 0)
+                          int httpCode = 200, std::optional<uint64_t> forSession = std::nullopt)
 {
     if (!transport->waitForSession())
     {
         return; // The caller's assertions report the timeout.
     }
 
-    const std::string text = "HCRESULT:" + std::to_string(forSession) + ":" +
+    const std::string text = "HCRESULT:" + std::to_string(forSession.value_or(transport->session())) + ":" +
                              std::to_string(httpCode) + ":{}";
     feed(reinterpret_cast<const uint8_t*>(text.data()), text.size());
 }

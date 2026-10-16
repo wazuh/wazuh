@@ -8,6 +8,11 @@
  * Foundation.
  */
 
+// pipe2(), on Linux
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
 #include "wmodules.h"
 
 #ifdef WAZUH_UNIT_TESTING
@@ -41,6 +46,8 @@ typedef struct ThreadInfo {
     pthread_cond_t finished;
     int pipe;
     char * output;
+    bool done;      // The reader has stopped reading; guarded by mutex
+    bool abandon;   // The caller gave up waiting for end of file; guarded by mutex
 #endif
 } ThreadInfo;
 
@@ -308,12 +315,140 @@ void wm_kill_children() {
 // Unix version ----------------------------------------------------------------
 
 #include <unistd.h>
-
-#ifndef _GNU_SOURCE
-extern char ** environ;
-#endif
+#include <poll.h>
 
 static void* reader(void *args);   // Reading thread's start point
+
+// How often the reader checks whether the caller has given up on it, in milliseconds
+#define WM_EXEC_READER_POLL_MS 1000
+
+// Shortest and longest step between checks for a command to exit, in milliseconds. A command
+// that just closed its output is usually still exiting, and becomes reapable within the first
+// short step; the steps double from there so a long wait does not spin.
+#define WM_EXEC_REAP_STEP_MIN_MS 1
+#define WM_EXEC_REAP_STEP_MAX_MS 100
+
+/**
+ * @brief Wait for the reader thread to stop reading. The caller holds tinfo->mutex.
+ * @param tinfo Data shared with the reader thread.
+ * @param deadline Absolute time to give up at, or NULL to wait with no limit.
+ * @return 0 once the reader is done, ETIMEDOUT if the deadline passed first, or the error
+ *         pthread_cond_(timed)wait() reported.
+ */
+static int wm_exec_wait_reader(ThreadInfo * tinfo, const struct timespec * deadline) {
+    while (!tinfo->done) {
+        const int rc = deadline ? pthread_cond_timedwait(&tinfo->finished, &tinfo->mutex, deadline)
+                                : pthread_cond_wait(&tinfo->finished, &tinfo->mutex);
+
+        if (rc != 0) {
+            return tinfo->done ? 0 : rc;
+        }
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Stop a command whose output is still being read. The caller holds tinfo->mutex.
+ *
+ * SIGTERM goes to the whole process group first, so the command can exit cleanly. A group
+ * that is still holding the pipe after wazuh_modules.kill_timeout seconds gets SIGKILL. If the
+ * pipe stays open even then, a process that left the group holds it, and the reader is told
+ * to stop instead of waiting for an end of file that may never come.
+ *
+ * @param pid Process ID of the command, which leads its own process group.
+ * @param tinfo Data shared with the reader thread.
+ */
+static void wm_exec_stop_reading_command(pid_t pid, ThreadInfo * tinfo) {
+    struct timespec deadline;
+
+    kill(-pid, SIGTERM);
+
+    gettime(&deadline);
+    deadline.tv_sec += wm_kill_timeout;
+
+    if (wm_exec_wait_reader(tinfo, &deadline) == 0) {
+        return;
+    }
+
+    mdebug1("Process group %d did not stop %d seconds after SIGTERM. Killing it.", pid, wm_kill_timeout);
+    kill(-pid, SIGKILL);
+
+    gettime(&deadline);
+    deadline.tv_sec += 1;
+
+    if (wm_exec_wait_reader(tinfo, &deadline) != 0) {
+        mdebug1("The output pipe of process %d is still open after it was killed. Abandoning it.", pid);
+        tinfo->abandon = true;
+    }
+}
+
+/**
+ * @brief Stop a command run without output capture and reap it.
+ *
+ * Same escalation as wm_exec_stop_reading_command(): SIGTERM to the process group, then
+ * SIGKILL if the command has not exited after wazuh_modules.kill_timeout seconds.
+ *
+ * @param pid Process ID of the command, which leads its own process group.
+ * @param status Filled in with the exit status of the command.
+ * @return pid once reaped, or -1 if waitpid() failed.
+ */
+static pid_t wm_exec_stop_command(pid_t pid, int * status) {
+    kill(-pid, SIGTERM);
+
+    for (int waited = 0; waited < wm_kill_timeout; waited++) {
+        const pid_t reaped = waitpid(pid, status, WNOHANG);
+
+        if (reaped != 0) {
+            return reaped;
+        }
+
+        sleep(1);
+    }
+
+    const pid_t reaped = waitpid(pid, status, WNOHANG);
+
+    if (reaped != 0) {
+        return reaped;
+    }
+
+    mdebug1("Process group %d did not stop %d seconds after SIGTERM. Killing it.", pid, wm_kill_timeout);
+    kill(-pid, SIGKILL);
+
+    return waitpid(pid, status, 0);
+}
+
+/**
+ * @brief Wait for a command to exit, up to a deadline.
+ *
+ * @param pid Process ID of the command.
+ * @param status Filled in with the exit status of the command once reaped.
+ * @param deadline Absolute time, as gettime() reports it, to give up at.
+ * @return pid once reaped, 0 if it is still running at the deadline, or -1 if waitpid() failed.
+ */
+static pid_t wm_exec_wait_child(pid_t pid, int * status, const struct timespec * deadline) {
+    long step_ms = WM_EXEC_REAP_STEP_MIN_MS;
+    struct timespec now;
+
+    for (;;) {
+        const pid_t reaped = waitpid(pid, status, WNOHANG);
+
+        if (reaped != 0) {
+            return reaped;
+        }
+
+        gettime(&now);
+
+        if (now.tv_sec > deadline->tv_sec || (now.tv_sec == deadline->tv_sec && now.tv_nsec >= deadline->tv_nsec)) {
+            return 0;
+        }
+
+        const struct timespec step = { step_ms / 1000, (step_ms % 1000) * 1000000 };
+        nanosleep(&step, NULL);
+
+        step_ms = (step_ms * 2 < WM_EXEC_REAP_STEP_MAX_MS) ? step_ms * 2 : WM_EXEC_REAP_STEP_MAX_MS;
+    }
+}
 
 /**
  * @brief Translate a raw waitpid() status into the exit code callers see
@@ -331,10 +466,17 @@ STATIC int wm_exec_exit_code(int status) {
 
 int wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path)
 {
+    return wm_exec_env(command, output, exitcode, secs, add_path, NULL);
+}
+
+// Execute command with timeout of secs and extra environment variables
+
+int wm_exec_env(char *command, char **output, int *exitcode, int secs, const char * add_path, char * const * env)
+{
     char ** argv;
     pid_t pid;
     int pipe_fd[2];
-    ThreadInfo tinfo = { PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, NULL };
+    ThreadInfo tinfo = { PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, NULL, false, false };
     pthread_t thread;
     struct timespec timeout = { 0, 0 };
     int retval = -1;
@@ -347,11 +489,24 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
     // Create pipe for child's stdout
 
     if (output) {
+        // Both ends close on exec: a command another thread launches meanwhile must not inherit
+        // the write end, or this command's reader would not see end of file until that one exits
+        // too. The child still gets a usable stdout and stderr, since dup2() clears the flag on
+        // the copies. pipe2() sets the flag atomically; where it is missing, a fork in another
+        // thread between pipe() and the fcntl() calls can still leak the ends.
+#ifdef __linux__
+        if (pipe2(pipe_fd, O_CLOEXEC) < 0) {
+            merror("At wm_exec(): pipe2(): %s", strerror(errno));
+            return -1;
+        }
+#else
         if (pipe(pipe_fd) < 0) {
             merror("At wm_exec(): pipe(): %s", strerror(errno));
             return -1;
         }
         w_descriptor_cloexec(pipe_fd[0]);
+        w_descriptor_cloexec(pipe_fd[1]);
+#endif
     }
 
     // Fork
@@ -408,6 +563,13 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
             os_free(new_path);
         }
 
+        // Only this child's copy of the environment changes, and exec replaces it right away
+        for (char * const * var = env; var && *var; var++) {
+            if (putenv(*var) != 0) {
+                merror("at wm_exec(): Unable to set an environment variable (%s).", strerror(errno));
+            }
+        }
+
         argv = w_strtok(command);
 
         int fd = open("/dev/null", O_RDWR, 0);
@@ -455,10 +617,14 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
                 merror("Couldn't create reading thread.");
                 w_mutex_unlock(&tinfo.mutex);
 
-                if (output) {
-                    close(pipe_fd[0]);
-                    close(pipe_fd[1]);
-                }
+                // The write end was already closed above. Nobody will read the command's
+                // output, so do not leave it running nor unreaped. The child may not have
+                // made its own process group yet, so signal it directly as well.
+                close(pipe_fd[0]);
+                kill(-pid, SIGKILL);
+                kill(pid, SIGKILL);
+                waitpid(pid, &status, 0);
+                wm_remove_sid(pid);
 
                 return -1;
             }
@@ -468,18 +634,18 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
 
             // Wait for reading termination
 
-            switch (secs ? pthread_cond_timedwait(&tinfo.finished, &tinfo.mutex, &timeout) : pthread_cond_wait(&tinfo.finished, &tinfo.mutex)) {
+            switch (wm_exec_wait_reader(&tinfo, secs ? &timeout : NULL)) {
             case 0:
                 retval = 0;
                 break;
 
             case ETIMEDOUT:
                 retval = WM_ERROR_TIMEOUT;
-                kill(-pid, SIGTERM);
+                wm_exec_stop_reading_command(pid, &tinfo);
                 break;
 
             default:
-                kill(-pid, SIGTERM);
+                wm_exec_stop_reading_command(pid, &tinfo);
             }
             // Wait for thread
 
@@ -491,9 +657,22 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
             w_mutex_destroy(&tinfo.mutex);
             w_cond_destroy(&tinfo.finished);
 
-            // Wait for child process
+            // Wait for child process. End of file on the pipe does not mean the command is gone:
+            // it may have sent its output elsewhere and kept running, or ignored SIGTERM while
+            // the processes holding the pipe died. Bound the wait by what is left of the timeout.
 
-            switch (waitpid(pid, &status, 0)) {
+            pid_t reaped = waitpid(pid, &status, WNOHANG);
+
+            if (reaped == 0 && secs) {
+                if (reaped = wm_exec_wait_child(pid, &status, &timeout), reaped == 0) {
+                    retval = WM_ERROR_TIMEOUT;
+                    reaped = wm_exec_stop_command(pid, &status);
+                }
+            } else if (reaped == 0) {
+                reaped = waitpid(pid, &status, 0);
+            }
+
+            switch (reaped) {
             case -1:
                 merror("waitpid()");
                 retval = -1;
@@ -561,12 +740,11 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
             } while(secs >= 0);
 
             if(retval != 0) {
-                kill(pid,SIGTERM);
                 retval = WM_ERROR_TIMEOUT;
 
-                // Wait for child process
+                // Stop the whole process group and wait for the child process
 
-                switch (waitpid(pid, &status, 0)) {
+                switch (wm_exec_stop_command(pid, &status)) {
                 case -1:
                     merror("waitpid(): %s (%d)", strerror(errno), errno);
                     retval = -1;
@@ -627,7 +805,30 @@ void* reader(void *args) {
     int length = 0;
     int nbytes;
 
-    while ((nbytes = read(tinfo->pipe, buffer, WM_BUFFER_MAX)) > 0) {
+    for (;;) {
+        struct pollfd pfd = { .fd = tinfo->pipe, .events = POLLIN };
+        bool abandon;
+
+        // Checked on every pass, not only when the pipe is idle: a process that left the
+        // command's group may keep writing, and the caller has killed the command by then.
+        w_mutex_lock(&tinfo->mutex);
+        abandon = tinfo->abandon;
+        w_mutex_unlock(&tinfo->mutex);
+
+        if (abandon) {
+            break;
+        }
+
+        const int ready = poll(&pfd, 1, WM_EXEC_READER_POLL_MS);
+
+        if (ready == 0 || (ready < 0 && errno == EINTR)) {
+            continue;
+        }
+
+        if (ready < 0 || (nbytes = read(tinfo->pipe, buffer, WM_BUFFER_MAX)) <= 0) {
+            break;
+        }
+
         int nextsize = length + nbytes;
 
         if (nextsize <= WM_STRING_MAX) {
@@ -645,6 +846,7 @@ void* reader(void *args) {
     }
 
     w_mutex_lock(&tinfo->mutex);
+    tinfo->done = true;
     w_cond_signal(&tinfo->finished);
     w_mutex_unlock(&tinfo->mutex);
 
