@@ -40,13 +40,13 @@ Stateful events are persisted for reliable synchronization with the manager via 
         },
         "name": "Ensure SMBv1 is disabled.",
         "rationale": "SMBv1 is outdated and insecure.",
-        "reason": null,
+        "reason": "Rules not satisfied (condition 'all'):\nr:HKLM\\SYSTEM\\CurrentControlSet\\Services\\LanmanServer\\Parameters -> n:SMB1 compare == 0",
         "references":
         [
             "https://internal.docs/policies/windows"
         ],
         "remediation": "Set 'SMB1' registry key to 0.",
-        "result": "Not run",
+        "result": "Failed",
         "rules":
         [
             "r:HKLM\\SYSTEM\\CurrentControlSet\\Services\\LanmanServer\\Parameters -> n:SMB1 compare == 0"
@@ -114,13 +114,13 @@ Stateless events are sent immediately through the message queue for real-time al
             },
             "name": "Ensure SMBv1 is disabled.",
             "rationale": "SMBv1 is outdated and insecure.",
-            "reason": null,
+            "reason": "Rules not satisfied (condition 'all'):\nr:HKLM\\SYSTEM\\CurrentControlSet\\Services\\LanmanServer\\Parameters -> n:SMB1 compare == 0",
             "references":
             [
                 "https://internal.docs/policies/windows"
             ],
             "remediation": "Set 'SMB1' registry key to 0.",
-            "result": "failed",
+            "result": "Failed",
             "rules":
             [
                 "r:HKLM\\SYSTEM\\CurrentControlSet\\Services\\LanmanServer\\Parameters -> n:SMB1 compare == 0"
