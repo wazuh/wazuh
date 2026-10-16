@@ -1599,6 +1599,14 @@ static void bridge_on_sync_response(const char *session_id, int result, const ch
         }
 
         const size_t payload_len = (size_t)prefix_len + body_len;
+
+        /* The module's socket rejects a frame larger than OS_MAXSTR without reading it. */
+        if (header_len + payload_len > OS_MAXSTR) {
+            mwarn("https_client: the /stateful answer for session '%s' is too large to relay "
+                  "(%zu bytes); dropping it.", session_id, body_len);
+            return;
+        }
+
         char *framed = NULL;
         os_malloc(header_len + payload_len + 1, framed);
         memcpy(framed, SYNC_ROUTES[i].header, header_len);

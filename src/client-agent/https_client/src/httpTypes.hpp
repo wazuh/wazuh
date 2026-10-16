@@ -164,6 +164,15 @@ enum class HttpMethod
     Get   ///< No body; CurlPerformer sends CURLOPT_HTTPGET instead.
 };
 
+/// Caps on the responses read into memory. Each sits far above the largest answer a manager
+/// sends, because a transfer cut at its cap is retried like a network failure.
+/// /control carries the task batch, which the manager bounds at about 11 MiB.
+constexpr uint64_t CONTROL_MAX_RESPONSE_BYTES = 16ULL * 1024 * 1024;
+/// A /stateful answer is relayed to its module as one local frame, which must fit OS_MAXSTR.
+constexpr uint64_t STATEFUL_MAX_RESPONSE_BYTES = 63ULL * 1024;
+/// /stateless, /stats, /config and /scan/vd answer with a short status document.
+constexpr uint64_t SHORT_REPLY_MAX_RESPONSE_BYTES = 64ULL * 1024;
+
 /// One signed HTTP attempt, as handed to the performer. TLS settings and the
 /// base URL are the performer's own configuration; the spec carries only the
 /// per-request data.

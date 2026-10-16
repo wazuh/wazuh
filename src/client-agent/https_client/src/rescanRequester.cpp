@@ -33,6 +33,7 @@ namespace
         spec.contentType = "application/json";
         spec.body = reinterpret_cast<const uint8_t*>(body.data());
         spec.bodyLength = body.size();
+        spec.maxResponseBytes = SHORT_REPLY_MAX_RESPONSE_BYTES;
         spec.timeoutMs = timeoutMs;
         return spec;
     }

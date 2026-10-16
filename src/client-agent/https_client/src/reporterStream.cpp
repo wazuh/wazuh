@@ -154,6 +154,7 @@ void ReporterStream::runPath(Path& path, Backoff& backoff, Waiter& waiter, std::
     spec.target = path.target;
     spec.body = reinterpret_cast<const uint8_t*>(document->data());
     spec.bodyLength = document->size();
+    spec.maxResponseBytes = SHORT_REPLY_MAX_RESPONSE_BYTES;
     spec.timeoutMs = m_config.requestTimeoutMs;
 
     // Operational visibility (send-time debug log, mirroring statelessStream.cpp's
