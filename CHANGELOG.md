@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.10.6]
 
+### Manager
+
+#### Changed
+
+- Optimized wazuh-db startup by executing agent schema creation in a single transaction. ([#40458](https://github.com/wazuh/wazuh/pull/40458))
+
 ### Agent
 
 #### Fixed
