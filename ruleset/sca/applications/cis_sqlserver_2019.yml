@@ -51,16 +51,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0003"
+          - "TA0002"
         name:
-          - "Discovery"
+          - "Persistence"
+          - "Execution"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1505"
+          - "T1059"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Server Software Component"
+          - "Command and Scripting Interpreter"
+      subtechnique:
+        id:
+          - "T1505.001"
+        name:
+          - "SQL Stored Procedures"
     references:
       - "https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/ad-hoc-distributed-queries-server-configuration-option"
     condition: all
@@ -87,16 +94,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0003"
+          - "TA0002"
         name:
-          - "Discovery"
+          - "Persistence"
+          - "Execution"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1505"
+          - "T1059"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Server Software Component"
+          - "Command and Scripting Interpreter"
+      subtechnique:
+        id:
+          - "T1505.001"
+        name:
+          - "SQL Stored Procedures"
     references:
       - "https://docs.microsoft.com/en-us/sql/t-sql/statements/create-assembly-transact-sql"
     condition: all
@@ -123,16 +137,29 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0009"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1213"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Data from Information Repositories"
+      subtechnique:
+        id:
+          - "T1213.006"
+        name:
+          - "Databases"
     references:
       - "https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/cross-db-ownership-chaining-server-configuration-option"
     condition: all
@@ -159,16 +186,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0003"
+          - "TA0002"
         name:
-          - "Discovery"
+          - "Persistence"
+          - "Execution"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1505"
+          - "T1059"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Server Software Component"
+          - "Command and Scripting Interpreter"
+      subtechnique:
+        id:
+          - "T1505.001"
+        name:
+          - "SQL Stored Procedures"
     references:
       - "https://docs.microsoft.com/en-us/sql/relational-databases/database-mail/database-mail"
     condition: all
@@ -195,16 +229,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0003"
+          - "TA0002"
         name:
-          - "Discovery"
+          - "Persistence"
+          - "Execution"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1505"
+          - "T1059"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Server Software Component"
+          - "Command and Scripting Interpreter"
+      subtechnique:
+        id:
+          - "T1505.001"
+        name:
+          - "SQL Stored Procedures"
     references:
       - "https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/ole-automation-procedures-server-configuration-option"
     condition: all
@@ -231,16 +272,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0003"
+          - "TA0002"
         name:
-          - "Discovery"
+          - "Persistence"
+          - "Execution"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1505"
+          - "T1059"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Server Software Component"
+          - "Command and Scripting Interpreter"
+      subtechnique:
+        id:
+          - "T1505.001"
+        name:
+          - "SQL Stored Procedures"
     references:
       - "https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/configure-the-remote-access-server-configuration-option"
     condition: all
@@ -267,16 +315,20 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0008"
+          - "TA0003"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Lateral Movement"
+          - "Persistence"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1210"
+          - "T1133"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploitation of Remote Services"
+          - "External Remote Services"
     references:
       - "https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/remote-admin-connections-server-configuration-option"
     condition: all
@@ -303,16 +355,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0003"
+          - "TA0002"
         name:
-          - "Discovery"
+          - "Persistence"
+          - "Execution"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1505"
+          - "T1059"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Server Software Component"
+          - "Command and Scripting Interpreter"
+      subtechnique:
+        id:
+          - "T1505.001"
+        name:
+          - "SQL Stored Procedures"
     references:
       - "https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/configure-the-scan-for-startup-procs-server-configuration-option"
     condition: all
@@ -339,16 +398,29 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0009"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1213"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Data from Information Repositories"
+      subtechnique:
+        id:
+          - "T1213.006"
+        name:
+          - "Databases"
     references:
       - "https://docs.microsoft.com/en-us/sql/relational-databases/security/trustworthy-database-property"
       - "https://support.microsoft.com/it-it/help/2183687/guidelines-for-using-the-trustworthy-database-setting-in-sql-server"
@@ -412,16 +484,27 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+      subtechnique:
+        id:
+          - "T1078.001"
+          - "T1078.003"
+        name:
+          - "Default Accounts"
+          - "Local Accounts"
     references:
       - "https://docs.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-server-principals-transact-sql"
       - "https://docs.microsoft.com/en-us/sql/t-sql/statements/alter-login-transact-sql"
@@ -450,16 +533,27 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+      subtechnique:
+        id:
+          - "T1078.001"
+          - "T1078.003"
+        name:
+          - "Default Accounts"
+          - "Local Accounts"
     references:
       - "https://docs.microsoft.com/en-us/sql/relational-databases/security/choose-an-authentication-mode"
     condition: none
@@ -486,16 +580,29 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0009"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1213"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Data from Information Repositories"
+      subtechnique:
+        id:
+          - "T1213.006"
+        name:
+          - "Databases"
     references:
       - "https://docs.microsoft.com/en-us/sql/relational-databases/databases/security-best-practices-with-contained-databases"
     condition: all
@@ -522,16 +629,24 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1110"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Brute Force"
     condition: all
     rules:
       - 'c:sqlcmd -Q "SELECT principal_id, name FROM sys.server_principals WHERE name = ''sa'';" -> r:0 rows affected'
@@ -559,16 +674,24 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1110"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Brute Force"
     references:
       - "https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/server-properties-security-page"
     condition: all
@@ -595,16 +718,29 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0009"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1213"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Data from Information Repositories"
+      subtechnique:
+        id:
+          - "T1213.006"
+        name:
+          - "Databases"
     references:
       - "https://docs.microsoft.com/en-us/sql/relational-databases/security/authentication-access/server-level-roles"
       - "https://docs.microsoft.com/en-us/sql/relational-databases/security/authentication-access/server-level-roles#permissions-of-fixed-server-roles"
@@ -632,16 +768,24 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1110"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Brute Force"
     condition: all
     rules:
       - 'c:sqlcmd -Q "USE [master] SELECT pr.[name] AS LocalGroupName, pe.[permission_name], pe.[state_desc] FROM sys.server_principals pr JOIN sys.server_permissions pe ON pr.[principal_id] = pe.[grantee_principal_id] WHERE pr.[type_desc] = ''WINDOWS_GROUP'' AND pr.[name] like CAST(SERVERPROPERTY(''MachineName'') AS nvarchar) + ''%'';" -> r:0 rows affected'
@@ -669,16 +813,31 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1110"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Brute Force"
+      subtechnique:
+        id:
+          - "T1078.003"
+          - "T1110.004"
+        name:
+          - "Local Accounts"
+          - "Credential Stuffing"
     references:
       - "https://docs.microsoft.com/en-us/sql/relational-databases/security/password-policy"
     condition: all
@@ -705,16 +864,21 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1110"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Brute Force"
+      subtechnique:
+        id:
+          - "T1110.001"
+          - "T1110.002"
+        name:
+          - "Password Guessing"
+          - "Password Cracking"
     references:
       - "https://docs.microsoft.com/en-us/sql/relational-databases/security/password-policy"
     condition: all
@@ -744,16 +908,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     references:
       - "http://msdn.microsoft.com/en-us/library/ms177285(v=sql.120).aspx"
     condition: all
@@ -780,16 +946,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     references:
       - "https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/default-trace-enabled-server-configuration-option"
     condition: all
@@ -819,16 +987,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0003"
+          - "TA0002"
         name:
-          - "Discovery"
+          - "Persistence"
+          - "Execution"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1505"
+          - "T1059"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Server Software Component"
+          - "Command and Scripting Interpreter"
+      subtechnique:
+        id:
+          - "T1505.001"
+        name:
+          - "SQL Stored Procedures"
     references:
       - "https://docs.microsoft.com/en-us/sql/relational-databases/clr-integration/security/clr-integration-code-access-security"
       - "https://docs.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-assemblies-transact-sql"

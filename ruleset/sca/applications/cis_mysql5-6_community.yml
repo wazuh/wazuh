@@ -47,16 +47,21 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1552"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Unsecured Credentials"
+      subtechnique:
+        id:
+          - "T1552.001"
+          - "T1552.003"
+        name:
+          - "Credentials In Files"
+          - "Shell History"
     references:
       - https://dev.mysql.com/doc/refman/5.6/en/mysql-logging.html
       - https://bugs.mysql.com/bug.php?id=72158
@@ -84,16 +89,24 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1110"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Brute Force"
     condition: all
     rules:
       - "c:getent passwd mysql -> r:/bin/false|/sbin/nologin"
@@ -117,16 +130,21 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1552"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Unsecured Credentials"
+      subtechnique:
+        id:
+          - "T1552.001"
+          - "T1552.003"
+        name:
+          - "Credentials In Files"
+          - "Shell History"
     references:
       - https://dev.mysql.com/doc/refman/5.6/en/environment-variables.html
     condition: none
@@ -153,16 +171,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0003"
+          - "TA0002"
         name:
-          - "Discovery"
+          - "Persistence"
+          - "Execution"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1505"
+          - "T1059"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Server Software Component"
+          - "Command and Scripting Interpreter"
+      subtechnique:
+        id:
+          - "T1505.001"
+        name:
+          - "SQL Stored Procedures"
     references:
       - https://dev.mysql.com/doc/refman/5.6/en/udf-security.html
       - https://dev.mysql.com/doc/refman/5.6/en/server-options.html#option_mysqld_allow-suspicious-udfs
@@ -189,16 +214,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0009"
+          - "TA0040"
         name:
-          - "Discovery"
+          - "Collection"
+          - "Impact"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1005"
+          - "T1565"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Data from Local System"
+          - "Data Manipulation"
+      subtechnique:
+        id:
+          - "T1565.001"
+        name:
+          - "Stored Data Manipulation"
     references:
       - https://dev.mysql.com/doc/refman/5.6/en/string-functions.html#function_load-file
       - https://dev.mysql.com/doc/refman/5.6/en/load-data.html
@@ -225,16 +257,24 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1110"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Brute Force"
     references:
       - https://dev.mysql.com/doc/refman/5.6/en/server-options.html#option_mysqld_skip-grant-tables
     condition: all
@@ -260,16 +300,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0009"
+          - "TA0040"
         name:
-          - "Discovery"
+          - "Collection"
+          - "Impact"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1005"
+          - "T1565"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Data from Local System"
+          - "Data Manipulation"
+      subtechnique:
+        id:
+          - "T1565.001"
+        name:
+          - "Stored Data Manipulation"
     references:
       - https://dev.mysql.com/doc/refman/5.6/en/symbolic-links.html
       - https://dev.mysql.com/doc/refman/5.6/en/server-options.html#option_mysqld_symbolic-links
@@ -296,16 +343,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0009"
+          - "TA0040"
         name:
-          - "Discovery"
+          - "Collection"
+          - "Impact"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1005"
+          - "T1565"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Data from Local System"
+          - "Data Manipulation"
+      subtechnique:
+        id:
+          - "T1565.001"
+        name:
+          - "Stored Data Manipulation"
     references:
       - https://dev.mysql.com/doc/refman/5.6/en/server-system-variables.html#sysvar_secure_file_priv
     condition: all
@@ -331,16 +385,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0009"
+          - "TA0040"
         name:
-          - "Discovery"
+          - "Collection"
+          - "Impact"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1005"
+          - "T1565"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Data from Local System"
+          - "Data Manipulation"
+      subtechnique:
+        id:
+          - "T1565.001"
+        name:
+          - "Stored Data Manipulation"
     condition: all
     rules:
       - "c:grep -Rh strict_all_tables /etc/mysql/my.cnf /etc/mysql/my.ini /etc/mysql/mariadb.cnf /etc/mysql/conf.d /etc/mysql/mariadb.conf.d -> r:strict_all_tables"
@@ -365,16 +426,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     references:
       - https://dev.mysql.com/doc/refman/5.6/en/error-log.html
     condition: all
@@ -400,16 +463,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0040"
         name:
-          - "Discovery"
+          - "Impact"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1499"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Endpoint Denial of Service"
     references:
       - https://dev.mysql.com/doc/refman/5.6/en/binary-log.html
       - https://dev.mysql.com/doc/refman/5.6/en/replication-options-binary-log.html
@@ -436,16 +497,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     references:
       - https://dev.mysql.com/doc/refman/5.6/en/server-options.html#option_mysqld_log-warnings
     condition: all
@@ -471,16 +534,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     references:
       - https://dev.mysql.com/doc/refman/5.6/en/password-logging.html
       - https://dev.mysql.com/doc/refman/5.6/en/server-options.html#option_mysqld_log-raw
@@ -508,16 +573,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1110"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Brute Force"
+      subtechnique:
+        id:
+          - "T1110.002"
+        name:
+          - "Password Cracking"
     references:
       - https://dev.mysql.com/doc/refman/5.6/en/password-hashing.html
       - https://dev.mysql.com/doc/refman/5.6/en/sha256-authentication-plugin.html
@@ -547,16 +615,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1110"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Brute Force"
+      subtechnique:
+        id:
+          - "T1110.002"
+        name:
+          - "Password Cracking"
     references:
       - https://dev.mysql.com/doc/refman/5.6/en/server-options.html#option_mysqld_secure-auth
     condition: all
@@ -582,16 +653,21 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1552"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Unsecured Credentials"
+      subtechnique:
+        id:
+          - "T1552.001"
+          - "T1552.003"
+        name:
+          - "Credentials In Files"
+          - "Shell History"
     references:
       - https://dev.mysql.com/doc/refman/5.6/en/mysql-config-editor.html
     condition: none
@@ -617,16 +693,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0003"
         name:
-          - "Discovery"
+          - "Persistence"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1136"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Create Account"
     condition: all
     rules:
       - 'c:grep -Rh no_auto_create_user /etc/mysql/my.cnf /etc/mysql/mariadb.cnf /etc/mysql/conf.d /etc/mysql/mariadb.conf.d -> !r:^\s*\t*# && r:\s*no_auto_create_user\s*$'
@@ -650,16 +724,24 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0006"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Credential Access"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1110"
+          - "T1078"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Brute Force"
+          - "Valid Accounts"
     references:
       - https://dev.mysql.com/doc/refman/5.6/en/validate-password-plugin.html
     condition: all
@@ -692,16 +774,21 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1552"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Unsecured Credentials"
+      subtechnique:
+        id:
+          - "T1552.001"
+          - "T1552.003"
+        name:
+          - "Credentials In Files"
+          - "Shell History"
     references:
       - https://dev.mysql.com/doc/refman/5.6/en/replication-options-slave.html#sysvar_master_info_repository
     condition: all

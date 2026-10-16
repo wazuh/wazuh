@@ -71,16 +71,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0003"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Persistence"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1505"
+          - "T1190"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Server Software Component"
+          - "Exploit Public-Facing Application"
+      subtechnique:
+        id:
+          - "T1505.003"
+        name:
+          - "Web Shell"
     condition: none
     rules:
       - "d:$web_dirs -> ^.yop$"
@@ -101,16 +108,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0003"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Persistence"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1505"
+          - "T1190"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Server Software Component"
+          - "Exploit Public-Facing Application"
+      subtechnique:
+        id:
+          - "T1505.003"
+        name:
+          - "Web Shell"
     condition: none
     rules:
       - "d:$web_dirs -> ^id$"
@@ -131,16 +145,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0003"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Persistence"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1505"
+          - "T1190"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Server Software Component"
+          - "Exploit Public-Facing Application"
+      subtechnique:
+        id:
+          - "T1505.003"
+        name:
+          - "Web Shell"
     condition: none
     rules:
       - "d:$web_dirs -> ^.ssh$"
@@ -161,16 +182,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0003"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Persistence"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1505"
+          - "T1190"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Server Software Component"
+          - "Exploit Public-Facing Application"
+      subtechnique:
+        id:
+          - "T1505.003"
+        name:
+          - "Web Shell"
     condition: none
     rules:
       - "d:$web_dirs -> ^...$"
@@ -191,16 +219,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0003"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Persistence"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1505"
+          - "T1190"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Server Software Component"
+          - "Exploit Public-Facing Application"
+      subtechnique:
+        id:
+          - "T1505.003"
+        name:
+          - "Web Shell"
     condition: none
     rules:
       - "d:$web_dirs -> ^.shell$"
@@ -222,16 +257,22 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0004"
+          - "TA0001"
+          - "TA0002"
         name:
-          - "Discovery"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Execution"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1068"
+          - "T1190"
+          - "T1203"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploitation for Privilege Escalation"
+          - "Exploit Public-Facing Application"
+          - "Exploitation for Client Execution"
     condition: none
     rules:
       - 'd:$web_dirs -> ^version.php$ -> r:^.wp_version && r:4\.4\.2'
@@ -252,16 +293,22 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0004"
+          - "TA0001"
+          - "TA0002"
         name:
-          - "Discovery"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Execution"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1068"
+          - "T1190"
+          - "T1203"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploitation for Privilege Escalation"
+          - "Exploit Public-Facing Application"
+          - "Exploitation for Client Execution"
     condition: none
     rules:
       - 'd:$web_dirs -> ^version.php$ -> r:var .RELEASE && r:3\.4\.8'
@@ -282,16 +329,22 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0004"
+          - "TA0001"
+          - "TA0002"
         name:
-          - "Discovery"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Execution"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1068"
+          - "T1190"
+          - "T1203"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploitation for Privilege Escalation"
+          - "Exploit Public-Facing Application"
+          - "Exploitation for Client Execution"
     condition: none
     rules:
       - "d:$web_dirs -> ^application_top.php$ -> r:osCommerce && r:2\\.2-"
@@ -313,16 +366,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0003"
         name:
-          - "Discovery"
+          - "Persistence"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1505"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Server Software Component"
+      subtechnique:
+        id:
+          - "T1505.003"
+        name:
+          - "Web Shell"
     condition: none
     rules:
       - 'd:$web_dirs -> .php$ -> r:eval\(base64_decode\([*!+-]aWYo'
@@ -343,16 +399,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0003"
         name:
-          - "Discovery"
+          - "Persistence"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1505"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Server Software Component"
+      subtechnique:
+        id:
+          - "T1505.003"
+        name:
+          - "Web Shell"
     condition: none
     rules:
       - 'd:$web_dirs -> .php$ -> r:eval\(base64_decode\(\S_POST'
@@ -373,16 +432,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0003"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Persistence"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1505"
+          - "T1190"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Server Software Component"
+          - "Exploit Public-Facing Application"
+      subtechnique:
+        id:
+          - "T1505.003"
+        name:
+          - "Web Shell"
     references:
       - https://blog.sucuri.net/2011/05/understanding-htaccess-attacks-part-1.html
     condition: none
@@ -405,16 +471,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0003"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Persistence"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1505"
+          - "T1190"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Server Software Component"
+          - "Exploit Public-Facing Application"
+      subtechnique:
+        id:
+          - "T1505.003"
+        name:
+          - "Web Shell"
     references:
       - https://blog.sucuri.net/2011/05/understanding-htaccess-attacks-part-1.html
     condition: none

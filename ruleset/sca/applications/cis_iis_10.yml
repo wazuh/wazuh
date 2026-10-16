@@ -46,16 +46,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0040"
         name:
-          - "Discovery"
+          - "Impact"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1499"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Endpoint Denial of Service"
     condition: none
     rules:
       - 'c:%systemroot%\system32\inetsrv\appcmd list vdir -> r:SystemDrive'
@@ -82,16 +80,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1190"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploit Public-Facing Application"
     references:
       - http://blogs.iis.net/thomad/archive/2008/02/10/moving-the-iis7-inetpub-directory-to-a-different-drive.aspx
     condition: all
@@ -117,16 +113,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
+          - "TA0004"
         name:
-          - "Discovery"
+          - "Initial Access"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1190"
+          - "T1068"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploit Public-Facing Application"
+          - "Exploitation for Privilege Escalation"
     references:
       - http://technet.microsoft.com/en-us/library/cc771170%28WS.10%29.aspx
       - http://learn.iis.net/page.aspx/140/understanding-built-in-user-and-group-accounts-in-iis-7/
@@ -155,16 +153,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
+          - "TA0004"
         name:
-          - "Discovery"
+          - "Initial Access"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1190"
+          - "T1068"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploit Public-Facing Application"
+          - "Exploitation for Privilege Escalation"
     references:
       - http://technet.microsoft.com/en-us/library/cc753449%28WS.10%29.aspx
       - http://blogs.iis.net/tomwoolums/archive/2008/12/17/iis-7-0-application-pools.aspx
@@ -192,16 +192,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
+          - "TA0004"
         name:
-          - "Discovery"
+          - "Initial Access"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1190"
+          - "T1068"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploit Public-Facing Application"
+          - "Exploitation for Privilege Escalation"
     references:
       - http://learn.iis.net/page.aspx/202/application-pool-identity-as-anonymous-user/
       - http://learn.iis.net/page.aspx/624/application-pool-identities/
@@ -228,16 +230,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1190"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploit Public-Facing Application"
     condition: all
     rules:
       - "c:powershell.exe import-module servermanager;Get-WindowsFeature Web-DAV-Publishing -> r:available"
@@ -262,16 +262,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1190"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploit Public-Facing Application"
     references:
       - http://www.iis.net/learn/manage/configuring-security/understanding-iis-url-authorization
       - http://www.iis.net/learn/get-started/whats-new-in-iis-7/changes-in-security-between-iis-60-and-iis-7-and-above#Authorization
@@ -298,16 +296,24 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1110"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Brute Force"
     references:
       - http://learn.iis.net/page.aspx/377/using-aspnet-forms-authentication/rev/1
       - http://learn.iis.net/page.aspx/244/how-to-take-advantage-of-the-iis7-integrated-pipeline/
@@ -337,16 +343,20 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0006"
           - "TA0007"
+          - "TA0009"
         name:
+          - "Credential Access"
           - "Discovery"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1040"
+          - "T1557"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Network Sniffing"
+          - "Adversary-in-the-Middle"
     references:
       - http://technet.microsoft.com/en-us/library/cc771077(WS.10).aspx
     condition: all
@@ -372,16 +382,24 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1110"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Brute Force"
     references:
       - http://technet.microsoft.com/en-us/library/cc732830%28WS.10%29.aspx
     condition: all
@@ -442,16 +460,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
+          - "TA0004"
         name:
-          - "Discovery"
+          - "Initial Access"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1190"
+          - "T1068"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploit Public-Facing Application"
+          - "Exploitation for Privilege Escalation"
     references:
       - http://technet.microsoft.com/en-us/library/cc772271%28WS.10%29.aspx
       - http://technet.microsoft.com/en-us/library/cc772287%28WS.10%29.aspx
@@ -478,16 +498,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
+          - "TA0004"
         name:
-          - "Discovery"
+          - "Initial Access"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1190"
+          - "T1068"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploit Public-Facing Application"
+          - "Exploitation for Privilege Escalation"
     references:
       - http://www.iis.net/learn/get-started/whats-new-in-iis-8/iis-80-aspnet-configuration-management
     condition: all
@@ -513,16 +535,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
+          - "TA0004"
         name:
-          - "Discovery"
+          - "Initial Access"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1190"
+          - "T1068"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploit Public-Facing Application"
+          - "Exploitation for Privilege Escalation"
     references:
       - http://technet.microsoft.com/en-us/library/cc772237(WS.10).aspx
       - http://msdn.microsoft.com/en-us/library/ms691448%28VS.90%29.aspx
@@ -551,16 +575,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1190"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploit Public-Facing Application"
     references:
       - https://blogs.msdn.microsoft.com/jpsanders/2015/10/07/remove-server-and-x-powered-by-headers-from-your-azure-mobile-apps/
     condition: none
@@ -586,16 +608,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1190"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploit Public-Facing Application"
     references:
       - https://blogs.msdn.microsoft.com/jpsanders/2015/10/07/remove-server-and-x-powered-by-headers-from-your-azure-mobile-apps/
     condition: all
@@ -622,16 +642,21 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0040"
         name:
-          - "Discovery"
+          - "Impact"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1499"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Endpoint Denial of Service"
+      subtechnique:
+        id:
+          - "T1499.002"
+          - "T1499.003"
+        name:
+          - "Service Exhaustion Flood"
+          - "Application Exhaustion Flood"
     references:
       - http://www.iis.net/ConfigReference/system.webServer/security/requestFiltering/requestLimits
       - http://learn.iis.net/page.aspx/143/use-request-filtering/
@@ -658,16 +683,21 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0040"
         name:
-          - "Discovery"
+          - "Impact"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1499"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Endpoint Denial of Service"
+      subtechnique:
+        id:
+          - "T1499.002"
+          - "T1499.003"
+        name:
+          - "Service Exhaustion Flood"
+          - "Application Exhaustion Flood"
     references:
       - http://www.iis.net/ConfigReference/system.webServer/security/requestFiltering/requestLimits
       - http://learn.iis.net/page.aspx/143/use-request-filtering/
@@ -694,16 +724,21 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0040"
         name:
-          - "Discovery"
+          - "Impact"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1499"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Endpoint Denial of Service"
+      subtechnique:
+        id:
+          - "T1499.002"
+          - "T1499.003"
+        name:
+          - "Service Exhaustion Flood"
+          - "Application Exhaustion Flood"
     references:
       - http://www.iis.net/ConfigReference/system.webServer/security/requestFiltering/requestLimits
       - http://learn.iis.net/page.aspx/143/use-request-filtering/
@@ -730,16 +765,21 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0040"
         name:
-          - "Discovery"
+          - "Impact"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1499"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Endpoint Denial of Service"
+      subtechnique:
+        id:
+          - "T1499.002"
+          - "T1499.003"
+        name:
+          - "Service Exhaustion Flood"
+          - "Application Exhaustion Flood"
     references:
       - http://learn.iis.net/page.aspx/143/use-request-filtering/
       - http://learn.iis.net/page.aspx/936/urlscan-1-reference/
@@ -767,16 +807,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1190"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploit Public-Facing Application"
     references:
       - http://www.iis.net/ConfigReference/system.webServer/security/requestFiltering/requestLimits
       - http://learn.iis.net/page.aspx/143/use-request-filtering/
@@ -803,16 +841,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1190"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploit Public-Facing Application"
     references:
       - http://www.kb.cert.org/vuls/id/867593
       - http://www.iis.net/ConfigReference/system.webServer/security/requestFiltering/verbs
@@ -839,16 +875,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1190"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploit Public-Facing Application"
     references:
       - http://www.iis.net/ConfigReference/system.webServer/security/requestFiltering/requestLimits
       - http://www.iis.net/learn/manage/configuring-security/configure-request-filtering-in-iis
@@ -875,16 +909,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1190"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploit Public-Facing Application"
     references:
       - http://technet.microsoft.com/en-us/library/dd391910%28WS.10%29.aspx
       - http://blogs.iis.net/thomad/archive/2006/11/05/quo-vadis-accessflags.aspx
@@ -911,16 +943,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1190"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploit Public-Facing Application"
     references:
       - http://technet.microsoft.com/en-us/library/dd378846%28WS.10%29.aspx
       - http://www.iis.net/ConfigReference/system.webServer/security/isapiCgiRestriction
@@ -947,16 +977,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1190"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploit Public-Facing Application"
     references:
       - http://technet.microsoft.com/en-us/library/dd391919%28WS.10%29.aspx
     condition: all
@@ -982,16 +1010,21 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0040"
         name:
-          - "Discovery"
+          - "Impact"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1499"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Endpoint Denial of Service"
+      subtechnique:
+        id:
+          - "T1499.002"
+          - "T1499.003"
+        name:
+          - "Service Exhaustion Flood"
+          - "Application Exhaustion Flood"
     references:
       - http://www.iis.net/learn/get-started/whats-new-in-iis-8/iis-80-dynamic-ip-address-restrictions
     condition: all
@@ -1018,16 +1051,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     references:
       - https://technet.microsoft.com/en-us/library/cc770709(v=ws.10).aspx?
     condition: none
@@ -1060,16 +1095,20 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0006"
           - "TA0007"
+          - "TA0009"
         name:
+          - "Credential Access"
           - "Discovery"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1040"
+          - "T1557"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Network Sniffing"
+          - "Adversary-in-the-Middle"
     references:
       - http://www.windowsnetworking.com/articles_tutorials/IIS-FTP-Publishing-Service-Part3.html
       - http://learn.iis.net/page.aspx/304/using-ftp-over-ssl/#03
@@ -1097,16 +1136,21 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1110"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Brute Force"
+      subtechnique:
+        id:
+          - "T1110.001"
+          - "T1110.003"
+        name:
+          - "Password Guessing"
+          - "Password Spraying"
     references:
       - http://www.iis.net/learn/get-started/whats-new-in-iis-8/iis-80-ftp-logon-attempt-restrictions
     condition: all
@@ -1133,16 +1177,20 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0006"
           - "TA0007"
+          - "TA0009"
         name:
+          - "Credential Access"
           - "Discovery"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1040"
+          - "T1557"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Network Sniffing"
+          - "Adversary-in-the-Middle"
     condition: all
     references:
       - http://tools.ietf.org/html/rfc6797#section-5.1
@@ -1170,16 +1218,20 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0006"
           - "TA0007"
+          - "TA0009"
         name:
+          - "Credential Access"
           - "Discovery"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1040"
+          - "T1557"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Network Sniffing"
+          - "Adversary-in-the-Middle"
     references:
       - http://technet.microsoft.com/en-us/library/dn786419.aspx
       - http://technet.microsoft.com/en-us/library/dn786433.aspx
@@ -1211,16 +1263,20 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0006"
           - "TA0007"
+          - "TA0009"
         name:
+          - "Credential Access"
           - "Discovery"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1040"
+          - "T1557"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Network Sniffing"
+          - "Adversary-in-the-Middle"
     references:
       - https://www.openssl.org/~bodo/ssl-poodle.pdf
       - http://technet.microsoft.com/en-us/library/dn786419.aspx
@@ -1253,16 +1309,20 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0006"
           - "TA0007"
+          - "TA0009"
         name:
+          - "Credential Access"
           - "Discovery"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1040"
+          - "T1557"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Network Sniffing"
+          - "Adversary-in-the-Middle"
     references:
       - http://msdn.microsoft.com/en-us/library/aa374757%28v=vs.85%29.aspx
       - https://www.owasp.org/index.php/Testing_for_SSL-TLS_%28OWASP-CM-001%29
@@ -1294,16 +1354,20 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0006"
           - "TA0007"
+          - "TA0009"
         name:
+          - "Credential Access"
           - "Discovery"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1040"
+          - "T1557"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Network Sniffing"
+          - "Adversary-in-the-Middle"
     references:
       - http://technet.microsoft.com/en-us/library/dn786433.aspx
       - https://www.owasp.org/index.php/Testing_for_SSL-TLS_%28OWASP-CM-001%29
@@ -1336,16 +1400,20 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0006"
           - "TA0007"
+          - "TA0009"
         name:
+          - "Credential Access"
           - "Discovery"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1040"
+          - "T1557"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Network Sniffing"
+          - "Adversary-in-the-Middle"
     references:
       - http://msdn.microsoft.com/en-us/library/aa374757%28v=vs.85%29.aspx
       - https://www.owasp.org/index.php/Testing_for_SSL-TLS_%28OWASP-CM-001%29
@@ -1375,16 +1443,20 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0006"
           - "TA0007"
+          - "TA0009"
         name:
+          - "Credential Access"
           - "Discovery"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1040"
+          - "T1557"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Network Sniffing"
+          - "Adversary-in-the-Middle"
     references:
       - https://www.owasp.org/index.php/Testing_for_SSL-TLS_%28OWASP-CM-001%29
       - http://technet.microsoft.com/en-us/library/dn786419.aspx
@@ -1413,16 +1485,20 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0006"
           - "TA0007"
+          - "TA0009"
         name:
+          - "Credential Access"
           - "Discovery"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1040"
+          - "T1557"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Network Sniffing"
+          - "Adversary-in-the-Middle"
     references:
       - https://www.owasp.org/index.php/Testing_for_SSL-TLS_%28OWASP-CM-001%29
       - http://technet.microsoft.com/en-us/library/dn786419.aspx
@@ -1451,16 +1527,20 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0006"
           - "TA0007"
+          - "TA0009"
         name:
+          - "Credential Access"
           - "Discovery"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1040"
+          - "T1557"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Network Sniffing"
+          - "Adversary-in-the-Middle"
     references:
       - https://www.owasp.org/index.php/Testing_for_SSL-TLS_%28OWASP-CM-001%29
       - http://technet.microsoft.com/en-us/library/dn786419.aspx
@@ -1492,16 +1572,20 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0006"
           - "TA0007"
+          - "TA0009"
         name:
+          - "Credential Access"
           - "Discovery"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1040"
+          - "T1557"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Network Sniffing"
+          - "Adversary-in-the-Middle"
     references:
       - https://www.owasp.org/index.php/Testing_for_SSL-TLS_%28OWASP-CM-001%29
       - http://technet.microsoft.com/en-us/library/dn786419.aspx
@@ -1530,16 +1614,20 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0006"
           - "TA0007"
+          - "TA0009"
         name:
+          - "Credential Access"
           - "Discovery"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1040"
+          - "T1557"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Network Sniffing"
+          - "Adversary-in-the-Middle"
     references:
       - https://www.owasp.org/index.php/Testing_for_SSL-TLS_%28OWASP-CM-001%29
       - http://technet.microsoft.com/en-us/library/dn786419.aspx
@@ -1568,16 +1656,20 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0006"
           - "TA0007"
+          - "TA0009"
         name:
+          - "Credential Access"
           - "Discovery"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1040"
+          - "T1557"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Network Sniffing"
+          - "Adversary-in-the-Middle"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Cryptography\Configuration\SSL\00010002 -> Functions -> TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384,TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256,TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384,TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256.'
