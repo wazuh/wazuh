@@ -40,7 +40,7 @@ from typing import Dict, List, Mapping, Optional, Tuple  # noqa: E402
 from cryptography import x509  # noqa: E402
 from cryptography.exceptions import InvalidSignature, UnsupportedAlgorithm  # noqa: E402
 from cryptography.hazmat.primitives import hashes, serialization  # noqa: E402
-from cryptography.hazmat.primitives.asymmetric import rsa  # noqa: E402
+from cryptography.hazmat.primitives.asymmetric import dsa, ec, ed448, ed25519, rsa  # noqa: E402
 from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID  # noqa: E402
 from cryptography.x509.verification import (Criticality, ExtensionPolicy, PolicyBuilder, Store,  # noqa: E402
                                             VerificationError)
@@ -1218,8 +1218,29 @@ def parse_problem(certs: List[x509.Certificate]) -> Optional[str]:
     return None
 
 
+# The keys x509.verification accepts, and so the only ones a certificate the resolver checks may carry: any other
+# (Ed25519, Ed448, DSA, a short RSA key, another curve) fails every chain check it takes part in.
+ACCEPTED_KEY_TYPES = "use RSA of 2048 bits or more, or ECDSA on P-256, P-384 or P-521"
+ACCEPTED_CURVES = (ec.SECP256R1, ec.SECP384R1, ec.SECP521R1)
+
+
+def key_type_problem(public_key) -> Optional[str]:
+    """None for a key the certificate checks accept; otherwise what it is, in words."""
+    if isinstance(public_key, rsa.RSAPublicKey):
+        return None if public_key.key_size >= 2048 else f"an RSA key of {public_key.key_size} bits"
+    if isinstance(public_key, ec.EllipticCurvePublicKey):
+        return None if isinstance(public_key.curve, ACCEPTED_CURVES) else f"an ECDSA key on {public_key.curve.name}"
+    for kind, text in ((ed25519.Ed25519PublicKey, "an Ed25519 key"), (ed448.Ed448PublicKey, "an Ed448 key"),
+                       (dsa.DSAPublicKey, "a DSA key")):
+        if isinstance(public_key, kind):
+            return text
+    return f"a {type(public_key).__name__} key"
+
+
 def ca_certificate_problem(data: bytes) -> Tuple[Optional[x509.Certificate], Optional[str]]:
-    """Parse a CA file: exactly one certificate, self-signed, CA:TRUE, inside its validity window."""
+    """Parse a CA file: exactly one certificate, self-signed, CA:TRUE, on a key the certificate checks accept, inside
+    its validity window. The key type comes before anything is signed with it: a key the resolver cannot sign
+    certificates with, or that the checks of what it issues would refuse, makes the CA unusable."""
     try:
         certs = x509.load_pem_x509_certificates(data)
     except ValueError:
@@ -1242,6 +1263,9 @@ def ca_certificate_problem(data: bytes) -> Tuple[Optional[x509.Certificate], Opt
         is_ca = False
     if not is_ca:
         return None, "not a CA certificate (basicConstraints CA:TRUE missing)"
+    problem = key_type_problem(cert.public_key())
+    if problem:
+        return None, f"{problem}; {ACCEPTED_KEY_TYPES}"
     now = _now()
     if now < cert.not_valid_before_utc:
         return None, "not valid yet"
@@ -2038,6 +2062,9 @@ def chain_problem(leaf: x509.Certificate, intermediates: List[x509.Certificate],
     usable now, so a renewed CA is not refused because an expired certificate with the same name and key is listed
     too. A self-signed certificate in the file is not offered as an intermediate: it could only be an anchor, and
     one with an anchor's name sends the path builder round in circles."""
+    problem = key_type_problem(leaf.public_key())
+    if problem:
+        return f"{problem}; {ACCEPTED_KEY_TYPES}"
     intermediates = [cert for cert in intermediates if not _self_signed(cert)]
     verifier = (PolicyBuilder().store(Store(anchors)).time(now)
                 .extension_policies(ca_policy=CHAIN_CA_POLICY, ee_policy=CHAIN_LEAF_POLICY)
@@ -2053,6 +2080,15 @@ def chain_problem(leaf: x509.Certificate, intermediates: List[x509.Certificate],
             return f"issuer CA: {problems[0]}"
         reason = str(exc).split("validation failed: ", 1)[-1].split(" (encountered processing", 1)[0].strip()
         reason = reason.removeprefix("candidates exhausted: ")
+        if "Forbidden public key algorithm" in reason or "RSA key is too weak" in reason:
+            # A CA of the path on a key the checks do not accept: name it, in words.
+            issuers = {leaf.issuer, *(cert.issuer for cert in intermediates)}
+            for ca in (*intermediates, *anchors):
+                problem = key_type_problem(ca.public_key()) if ca.subject in issuers else None
+                if problem:
+                    return f"issuer CA ({ca.subject.rfc4514_string()}): {problem}; {ACCEPTED_KEY_TYPES}"
+        # The verifier's own text may end in a Rust debug rendering of the algorithm: keep the sentence only.
+        reason = reason.split(": AlgorithmIdentifier", 1)[0]
         if not reason or reason.startswith("all candidates exhausted"):
             reason = no_path
         return f"not issued by {issuer_label} ({reason})"
@@ -2077,6 +2113,9 @@ def timeless_chain_problem(leaf: x509.Certificate, intermediates: List[x509.Cert
     leaf it issued expired: their windows do not overlap. So the path is built here, by name and signature, with
     every CA of it a CA (basicConstraints CA:TRUE), allowed to sign certificates, allowed `purpose`, and its
     pathLenConstraint not exceeded by the CAs below it; only the dates are not looked at."""
+    problem = key_type_problem(leaf.public_key())
+    if problem:
+        return f"{problem}; {ACCEPTED_KEY_TYPES}"
     pool = [cert for cert in intermediates if not _self_signed(cert)]
     found: List[str] = []
 
@@ -2084,6 +2123,9 @@ def timeless_chain_problem(leaf: x509.Certificate, intermediates: List[x509.Cert
         problem = issuer_problem(ca, now, purpose, window=False)
         if problem:
             return problem
+        problem = key_type_problem(ca.public_key())
+        if problem:
+            return f"{problem}; {ACCEPTED_KEY_TYPES}"
         limit = ca.extensions.get_extension_for_class(x509.BasicConstraints).value.path_length
         if limit is not None and below > limit:
             return f"its pathLenConstraint ({limit}) does not allow the {below} CA(s) below it"
@@ -2290,6 +2332,9 @@ def indexer_ca_problem(data: bytes, now: Optional[datetime.datetime] = None,
             is_ca = False
         if not is_ca:
             return None, "not a CA certificate (basicConstraints CA:TRUE missing)"
+        problem = key_type_problem(cert.public_key())
+        if problem:
+            return None, f"a CA it holds ({cert.subject.rfc4514_string()}) has {problem}; {ACCEPTED_KEY_TYPES}"
         if windows and not cert.not_valid_before_utc <= now <= cert.not_valid_after_utc:
             return None, "expired" if now > cert.not_valid_after_utc else "not valid yet"
     return certs, None

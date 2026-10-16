@@ -348,11 +348,15 @@ indexer's CA and a client pair the indexer issued for it:
 | `root-ca.pem` alone | validated; nothing can be issued here, the pairs must be staged | validated |
 | `root-ca.key` alone | `INVALID …/ca/root-ca.key: no certificate beside it` | same |
 
-The CA must be a single self-signed certificate with `CA:TRUE`, inside its validity window, with an unencrypted
-key that matches it. An intermediate CA is not accepted here: it belongs in the pair files, after the leaf (see
-[Server pairs](#server-pairs)). Every writing mode publishes it in `export/ca.pem` when the copy there is absent or
-differs, and `--install` writes `certs/root-ca.pem` only when that file is absent. An existing bundle must contain
-the CA. Its bytes are never rewritten, so rotation CAs and the publication block `wazuh-manager-certs` adds survive.
+The CA must be a single self-signed certificate with `CA:TRUE`, on an RSA key of 2048 bits or more or an ECDSA key on
+P-256, P-384 or P-521, inside its validity window, with an unencrypted key that matches it. Any other key (Ed25519,
+Ed448, DSA, a shorter RSA key, another curve) is refused as `INVALID …/ca/root-ca.pem: an Ed25519 key; use RSA of 2048
+bits or more, or ECDSA on P-256, P-384 or P-521`, and so is a pair, an intermediate or indexer material on one: the
+certificate checks do not accept them. An intermediate CA is not accepted here: it belongs in the pair files, after
+the leaf (see [Server pairs](#server-pairs)). Every writing mode publishes it in `export/ca.pem` when the copy there
+is absent or differs, and `--install` writes `certs/root-ca.pem` only when that file is absent. An existing bundle
+must contain the CA. Its bytes are never rewritten, so rotation CAs and the publication block `wazuh-manager-certs`
+adds survive.
 
 ### Server pairs
 
