@@ -138,6 +138,11 @@ public:
         return m_timeBounded && (std::chrono::steady_clock::now() + nextDelay >= m_deadline);
     }
 
+    size_t attempts() const
+    {
+        return m_failedAttempts;
+    }
+
 private:
     size_t m_maxAttempts;
     std::chrono::steady_clock::time_point m_deadline;

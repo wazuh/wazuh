@@ -89,7 +89,14 @@ namespace invsync::indexer
 
         void executeUpdateByQuery(const std::vector<std::string>& indices, const nlohmann::json& updateQuery) override
         {
-            m_inner.executeUpdateByQuery(indices, updateQuery);
+            try
+            {
+                m_inner.executeUpdateByQuery(indices, updateQuery);
+            }
+            catch (const IndexerConnectorException& e)
+            {
+                throw ConnectorError {e.what(), causeOf(e.category())};
+            }
         }
 
         nlohmann::json executeSearchQuery(const std::string& index, const nlohmann::json& searchQuery) override
@@ -123,6 +130,8 @@ namespace invsync::indexer
                 case IndexerConnectorException::Category::DocumentRejected:
                     return ConnectorError::Cause::DocumentRejected;
                 case IndexerConnectorException::Category::RetryExhausted: return ConnectorError::Cause::RetryExhausted;
+                case IndexerConnectorException::Category::ConflictsExhausted:
+                    return ConnectorError::Cause::ConflictsExhausted;
                 case IndexerConnectorException::Category::Other: break;
             }
             return ConnectorError::Cause::Other;

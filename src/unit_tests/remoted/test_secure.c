@@ -3731,6 +3731,7 @@ void test_remoted_module_https_config_defaults(void** state)
     will_return(__wrap_getDefine_Int_default, 5);
     will_return(__wrap_getDefine_Int_default, 5);
     will_return(__wrap_getDefine_Int_default, 20); // downstream_stateful_response_timeout
+    will_return(__wrap_getDefine_Int_default, 20); // downstream_stateful_retry_after
     will_return(__wrap_getDefine_Int_default, 0); // downstream_io_threads (0 = auto)
     will_return(__wrap_getDefine_Int_default, 0); // downstream_post_process_threads (0 = auto)
     will_return(__wrap_getDefine_Int_default, 10485760);
@@ -3769,6 +3770,7 @@ void test_remoted_module_https_config_defaults(void** state)
     assert_int_equal(rm_config.downstream_write_timeout, 5);
     assert_int_equal(rm_config.downstream_response_timeout, 5);
     assert_int_equal(rm_config.downstream_stateful_response_timeout, 20);
+    assert_int_equal(rm_config.downstream_stateful_retry_after, 20);
     assert_int_equal(rm_config.downstream_io_threads, 0);
     assert_int_equal(rm_config.downstream_post_process_threads, 0);
     assert_int_equal(rm_config.downstream_max_response_body_size, 10485760);
@@ -3817,6 +3819,7 @@ void test_remoted_module_https_config_custom_values(void** state)
     will_return(__wrap_getDefine_Int_default, 11);
     will_return(__wrap_getDefine_Int_default, 13);
     will_return(__wrap_getDefine_Int_default, 45); // downstream_stateful_response_timeout
+    will_return(__wrap_getDefine_Int_default, 35); // downstream_stateful_retry_after
     will_return(__wrap_getDefine_Int_default, 6);
     will_return(__wrap_getDefine_Int_default, 9);
     will_return(__wrap_getDefine_Int_default, 20971520);
@@ -3855,6 +3858,7 @@ void test_remoted_module_https_config_custom_values(void** state)
     assert_int_equal(rm_config.downstream_write_timeout, 11);
     assert_int_equal(rm_config.downstream_response_timeout, 13);
     assert_int_equal(rm_config.downstream_stateful_response_timeout, 45);
+    assert_int_equal(rm_config.downstream_stateful_retry_after, 35);
     assert_int_equal(rm_config.downstream_io_threads, 6);
     assert_int_equal(rm_config.downstream_post_process_threads, 9);
     assert_int_equal(rm_config.downstream_max_response_body_size, 20971520);
@@ -3880,7 +3884,7 @@ void test_remoted_module_https_config_decoded_cap_below_wire_cap(void** state)
     for (int i = 0; i < 6; ++i) {
         will_return(__wrap_getDefine_Int_default, 1); // memory-management
     }
-    for (int i = 0; i < 7; ++i) {
+    for (int i = 0; i < 8; ++i) {
         will_return(__wrap_getDefine_Int_default, 1); // downstream_*
     }
     will_return(__wrap_getDefine_Int_default, 60);       // jwt_max_age
@@ -4057,6 +4061,7 @@ void test_w_remoted_build_module_config_all_fields_populated(void** state)
     will_return(__wrap_getDefine_Int_default, 5);
     will_return(__wrap_getDefine_Int_default, 5);
     will_return(__wrap_getDefine_Int_default, 20); // downstream_stateful_response_timeout
+    will_return(__wrap_getDefine_Int_default, 20); // downstream_stateful_retry_after
     will_return(__wrap_getDefine_Int_default, 0);
     will_return(__wrap_getDefine_Int_default, 0);
     will_return(__wrap_getDefine_Int_default, 10485760);
@@ -4435,6 +4440,7 @@ void test_w_remoted_build_module_config_null_https_strings_leave_buffers_empty(v
     will_return(__wrap_getDefine_Int_default, 5);
     will_return(__wrap_getDefine_Int_default, 5);
     will_return(__wrap_getDefine_Int_default, 20); // downstream_stateful_response_timeout
+    will_return(__wrap_getDefine_Int_default, 20); // downstream_stateful_retry_after
     will_return(__wrap_getDefine_Int_default, 0);
     will_return(__wrap_getDefine_Int_default, 0);
     will_return(__wrap_getDefine_Int_default, 10485760);

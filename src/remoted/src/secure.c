@@ -357,6 +357,10 @@ STATIC void remoted_module_https_config(remoted_module_config_t *rm_config) {
     // (the module warns at startup otherwise).
     rm_config->downstream_stateful_response_timeout =
         getDefine_Int_default("remoted", "downstream_stateful_response_timeout", 1, 3600, 20);
+    // The sync server keeps applying the session after that deadline; the header keeps the
+    // agent's re-send from overlapping it. 0 disables the header.
+    rm_config->downstream_stateful_retry_after =
+        getDefine_Int_default("remoted", "downstream_stateful_retry_after", 0, 3600, 20);
     rm_config->downstream_io_threads = getDefine_Int_default("remoted", "downstream_io_threads", 0, 256, 0);
     rm_config->downstream_post_process_threads = getDefine_Int_default("remoted", "downstream_post_process_threads", 0, 256, 0);
     rm_config->downstream_max_response_body_size =
