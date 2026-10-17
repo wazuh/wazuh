@@ -189,7 +189,8 @@ public:
         THttpRequest* httpRequest = nullptr,
         std::unique_ptr<TSelector> selector = nullptr,
         std::string callerName = "",
-        std::optional<SecureCommunication> secureCommunication = std::nullopt)
+        std::optional<SecureCommunication> secureCommunication = std::nullopt,
+        IndexerBulkQueue::PauseObserver pauseObserver = {})
         : m_httpRequest(httpRequest ? httpRequest : &THttpRequest::instance())
         , m_logFn {}
     {
@@ -623,7 +624,8 @@ public:
             m_bulkMaxBytes,
             m_flushInterval,
             RetryDelay,
-            m_maxRetryDelay);
+            m_maxRetryDelay,
+            std::move(pauseObserver));
     }
 
     void bulkIndex(std::string_view id, std::string_view index, std::string_view data)
