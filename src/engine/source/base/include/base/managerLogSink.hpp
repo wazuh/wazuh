@@ -18,15 +18,16 @@ enum class Level; // Defined in base/logging.hpp, which includes this header.
 /**
  * @brief Log writer of the engine in manager mode (logs/wazuh-manager.log and logs/wazuh-manager.json).
  *
- * Reproduces the observable contract of the manager's C logger: same plain and JSON lines, same order of the
- * destinations (JSON, plain, stderr), same level names and the same debug prefix. Each line is composed in memory and
- * written with a single write() per destination, under one process-wide mutex; files are opened per line with
- * O_APPEND, so a rename/rotation of the file is picked up by the next line.
+ * Reproduces the lines of the manager's C logger: same plain and JSON lines, same order of the destinations (JSON,
+ * plain, stderr), same level names and the same debug prefix. Each line is composed in memory and written with a single
+ * write() per destination, under one process-wide mutex; a short write drops the rest of that line (never retried).
+ * Files are opened per line with O_APPEND, so a rename/rotation of the file is picked up by the next line. A newly
+ * created file gets mode 0660 and, only when the process runs as root, the group in ManagerLogOptions::groupName.
  *
- * Life cycle: main() calls initManager() in manager mode right after loading etc/wazuh-manager.conf, before the
- * RLIMIT warnings and before goDaemon(). The mutex crosses the fork()s of goDaemon() only because no other thread
- * exists yet. The state (options, dependencies, mutex) is never destroyed, so lines emitted by the exit handlers or by
- * late threads after main() returns never touch a destroyed mutex.
+ * Life cycle: main() calls initManager() in manager mode right after loading /etc/wazuh-manager/wazuh-manager.conf,
+ * before the RLIMIT warnings and before goDaemon(). The mutex crosses the fork()s of goDaemon() only because no other
+ * thread exists yet. The state (options, dependencies, mutex) is never destroyed, so lines emitted by the exit handlers
+ * or by late threads after main() returns never touch a destroyed mutex.
  *
  * Before initManager() (unit tests, and main() before the call) write() is a no-op that neither throws nor touches the
  * file system.
@@ -52,15 +53,16 @@ struct ManagerLogOptions
  */
 struct ManagerLogDeps
 {
-    std::function<std::string()> now;                                ///< "YYYY/MM/DD HH:MM:SS", local time
-    std::function<int()> pid;                                        ///< getpid(), evaluated per line
-    std::function<bool()> isRoot;                                    ///< getuid() == 0
-    std::function<std::optional<gid_t>(const std::string&)> groupId; ///< getgrnam_r() of the group name
-    std::function<int(const char*, int, mode_t)> open;               ///< ::open
-    std::function<int(int, uid_t, gid_t)> fchown;                    ///< ::fchown
-    std::function<int(int, mode_t)> fchmod;                          ///< ::fchmod
-    std::function<ssize_t(int, const char*, size_t)> write;          ///< ::write (files and stderr = fd 2)
-    std::function<int(int)> close;                                   ///< ::close of the descriptors from open
+    std::function<std::string()> now; ///< "YYYY/MM/DD HH:MM:SS", local time
+    std::function<int()> pid;         ///< getpid(), evaluated per line
+    std::function<bool()> isRoot;     ///< getuid() == 0
+    /// GID of a group name, std::nullopt when unknown or on error (default: base::process::lookupGid, 64 KiB cap)
+    std::function<std::optional<gid_t>(const std::string&)> groupId;
+    std::function<int(const char*, int, mode_t)> open;      ///< ::open
+    std::function<int(int, uid_t, gid_t)> fchown;           ///< ::fchown
+    std::function<int(int, mode_t)> fchmod;                 ///< ::fchmod
+    std::function<ssize_t(int, const char*, size_t)> write; ///< ::write (files and stderr = fd 2)
+    std::function<int(int)> close;                          ///< ::close of the descriptors from open
 };
 
 /**

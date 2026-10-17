@@ -14,6 +14,7 @@
 #include <regex>
 #include <set>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <thread>
 #include <tuple>
@@ -40,12 +41,57 @@ constexpr auto TAG = "wazuh-manager-analysisd";
 constexpr int APPEND_FLAGS = O_WRONLY | O_APPEND | O_CLOEXEC;
 constexpr int CREATE_FLAGS = O_WRONLY | O_APPEND | O_CREAT | O_EXCL | O_CLOEXEC;
 
-/// Directory per test case (shared by a threadsafe death test child, which re-runs SetUp).
-fs::path caseDir()
+/// Per-case working directory. A threadsafe death test child re-executes the binary and re-runs SetUp with the parent's
+/// environment: only there is the directory the parent exported in BASE_MANAGER_UTEST_CASE_DIR adopted (and never
+/// removed). Everywhere else a unique directory is created under the temp directory and owned by the test.
+constexpr auto CASE_DIR_ENV = "BASE_MANAGER_UTEST_CASE_DIR";
+
+struct CaseDir
 {
+    fs::path path;
+    bool owned;
+};
+
+CaseDir enterCaseDir()
+{
+    // Every death test of this binary is threadsafe; set it before asking, since InDeathTestChild() reads the style and
+    // the test bodies only set it after SetUp.
+    ::testing::FLAGS_gtest_death_test_style = "threadsafe";
+    if (::testing::internal::InDeathTestChild())
+    {
+        const char* adopted = std::getenv(CASE_DIR_ENV);
+        if (adopted == nullptr || *adopted == '\0')
+        {
+            throw std::runtime_error(std::string("death test child without ") + CASE_DIR_ENV);
+        }
+        return {fs::path(adopted), false};
+    }
+
     const auto* info = ::testing::UnitTest::GetInstance()->current_test_info();
-    return fs::temp_directory_path()
-           / (std::string("base_manager_utest_") + info->test_suite_name() + "_" + info->name());
+    auto tmpl = (fs::temp_directory_path()
+                 / (std::string("base_manager_utest_") + info->test_suite_name() + "_" + info->name() + "_XXXXXX"))
+                    .string();
+    if (::mkdtemp(tmpl.data()) == nullptr)
+    {
+        throw std::runtime_error("mkdtemp failed: " + tmpl);
+    }
+    const auto dir = fs::canonical(tmpl);
+    fs::create_directories(dir / "logs");
+    ::setenv(CASE_DIR_ENV, dir.c_str(), 1);
+    return {dir, true};
+}
+
+void leaveCaseDir(const CaseDir& dir, const fs::path& oldCwd)
+{
+    ::unsetenv(CASE_DIR_ENV);
+    std::error_code ec;
+    fs::current_path(oldCwd, ec);
+    EXPECT_FALSE(ec) << "could not return to " << oldCwd << ": " << ec.message();
+    if (dir.owned)
+    {
+        fs::remove_all(dir.path, ec);
+        EXPECT_FALSE(ec) << "could not remove " << dir.path << ": " << ec.message();
+    }
 }
 
 std::string readFile(const fs::path& path)
@@ -251,15 +297,15 @@ void callLibrary(const Fn& fn, int level, const char* tag, const char* format, .
 class ManagerLogSinkTest : public ::testing::Test
 {
 protected:
+    CaseDir m_case;
     fs::path m_dir;
     fs::path m_oldCwd;
 
     void SetUp() override
     {
-        m_dir = caseDir();
-        fs::remove_all(m_dir);
-        fs::create_directories(m_dir / "logs");
         m_oldCwd = fs::current_path();
+        m_case = enterCaseDir();
+        m_dir = m_case.path;
         fs::current_path(m_dir);
         base::logging::setManagerDebugLevel(0);
     }
@@ -273,8 +319,7 @@ protected:
         inert.writeStderr = false;
         base::logging::initManager(inert);
         base::logging::setManagerDebugLevel(0);
-        fs::current_path(m_oldCwd);
-        fs::remove_all(m_dir);
+        leaveCaseDir(m_case, m_oldCwd);
     }
 
     std::string plainPath() const { return (m_dir / "logs" / "wazuh-manager.log").string(); }
@@ -787,6 +832,58 @@ TEST_F(ManagerLogSinkTest, CreateNoGroup)
     EXPECT_FALSE(sys2->contentOf(jsonPath()).empty());
 }
 
+// Without an injected groupId the sink resolves the group with the real lookup: an unknown group means no chown (the
+// line is still written and the fd closed), a known one is applied to the created file.
+TEST_F(ManagerLogSinkTest, DefaultGroupLookup)
+{
+    {
+        auto sys = std::make_shared<FakeSys>();
+        auto deps = fakeDeps(sys);
+        deps.isRoot = []()
+        {
+            return true;
+        };
+        deps.groupId = nullptr;
+        auto opts = options(true, false, false);
+        opts.groupName = "wazuh_test_nonexistent_group";
+        base::logging::initManager(opts, deps);
+
+        base::logging::write(Level::Info, TAG, "/a/x.cpp", 1, "f", "unknown group");
+
+        EXPECT_TRUE(sys->fchowns.empty());
+        EXPECT_EQ(sys->contentOf(plainPath()), plainLine("INFO", "unknown group"));
+        ASSERT_EQ(sys->fchmods.size(), 1u);
+        const int createdFd = sys->fchmods[0].first;
+        EXPECT_EQ(std::count(sys->closes.begin(), sys->closes.end(), createdFd), 1);
+    }
+
+    const struct group* grp = ::getgrgid(::getgid());
+    if (grp == nullptr)
+    {
+        GTEST_SKIP() << "gid " << ::getgid() << " has no group entry";
+    }
+    const std::string groupName = grp->gr_name;
+
+    auto sys = std::make_shared<FakeSys>();
+    auto deps = fakeDeps(sys);
+    deps.isRoot = []()
+    {
+        return true;
+    };
+    deps.groupId = nullptr;
+    auto opts = options(true, false, false);
+    opts.groupName = groupName;
+    base::logging::initManager(opts, deps);
+
+    base::logging::write(Level::Info, TAG, "/a/x.cpp", 1, "f", "known group");
+
+    ASSERT_EQ(sys->fchmods.size(), 1u);
+    const int createdFd = sys->fchmods[0].first;
+    EXPECT_EQ(sys->fchowns,
+              (std::vector<std::tuple<int, uid_t, gid_t>> {{createdFd, static_cast<uid_t>(-1), ::getgid()}}));
+    EXPECT_EQ(sys->contentOf(plainPath()), plainLine("INFO", "known group"));
+}
+
 TEST_F(ManagerLogSinkTest, CreateAsRootReal)
 {
     if (::getuid() != 0)
@@ -859,6 +956,7 @@ const char* const HOME_NOT_FOUND = "(1108): Unable to find Wazuh install directo
 class ManagerHome : public ::testing::Test
 {
 protected:
+    CaseDir m_case;
     fs::path m_dir;
     fs::path m_oldCwd;
     std::map<std::string, std::string> m_env;
@@ -866,18 +964,13 @@ protected:
 
     void SetUp() override
     {
-        m_dir = caseDir();
-        fs::remove_all(m_dir);
-        fs::create_directories(m_dir / "logs");
         m_oldCwd = fs::current_path();
+        m_case = enterCaseDir();
+        m_dir = m_case.path;
         fs::current_path(m_dir);
     }
 
-    void TearDown() override
-    {
-        fs::current_path(m_oldCwd);
-        fs::remove_all(m_dir);
-    }
+    void TearDown() override { leaveCaseDir(m_case, m_oldCwd); }
 
     fs::path resolve(const std::string& exePath)
     {
@@ -900,6 +993,13 @@ protected:
     {
         fs::create_directories(m_dir / rel);
         return (m_dir / rel).string();
+    }
+
+    /// Creates a directory relative to the case directory (the cwd) and returns it relative.
+    std::string rel(const std::string& path) const
+    {
+        fs::create_directories(m_dir / path);
+        return path;
     }
 
     /// The exit path: rc 1 and exactly one CRITICAL line on stderr (no log file, even with an active sink).
@@ -953,7 +1053,7 @@ TEST_F(ManagerHome, ManagerHomeEnvAsIs)
 TEST_F(ManagerHome, ManagerHomeEnvEmptyUsesExe)
 {
     m_env["WAZUH_MANAGER_HOME"] = "";
-    EXPECT_EQ(resolve(dir("h/bin") + "/wazuh-manager-analysisd"), fs::path(m_dir / "h"));
+    EXPECT_EQ(resolve(rel("h/bin") + "/wazuh-manager-analysisd"), fs::path("h"));
 }
 
 TEST_F(ManagerHome, ManagerHomeEnvNotDirectoryExits)
@@ -964,27 +1064,49 @@ TEST_F(ManagerHome, ManagerHomeEnvNotDirectoryExits)
 
 TEST_F(ManagerHome, ExeCutAtFirstBin)
 {
-    EXPECT_EQ(resolve(dir("h/bin") + "/wazuh-manager-analysisd"), fs::path(m_dir / "h"));
-    dir("x/bin/y/bin");
-    EXPECT_EQ(resolve((m_dir / "x/bin/y/bin/wazuh-manager-analysisd").string()), fs::path(m_dir / "x"));
+    EXPECT_EQ(resolve(rel("h/bin") + "/wazuh-manager-analysisd"), fs::path("h"));
+    EXPECT_EQ(resolve(rel("x/bin/y/bin") + "/wazuh-manager-analysisd"), fs::path("x"));
 }
 
 TEST_F(ManagerHome, ExeBinariesSubstring)
 {
     // "/bin" is a substring of "/binaries": the cut happens there (binary-copy case of the golden)
-    dir("binaries/x/bin");
-    EXPECT_EQ(resolve((m_dir / "binaries/x/bin/x").string()), fs::path(m_dir));
+    // The leading "./" makes the first "/bin" the one in "/binaries" (cut at index 1 => "."); without it the first one
+    // would be "x/bin" and the home "binaries/x".
+    EXPECT_EQ(resolve("./" + rel("binaries/x/bin") + "/x"), fs::path("."));
 }
 
 TEST_F(ManagerHome, ExeWithoutBin)
 {
-    dir("plain/sub");
-    EXPECT_EQ(resolve((m_dir / "plain/sub/wazuh-manager-analysisd").string()), fs::path(m_dir / "plain/sub"));
+    EXPECT_EQ(resolve(rel("plain/sub") + "/wazuh-manager-analysisd"), fs::path("plain/sub"));
+}
+
+// Absolute executable paths, as /proc/self/exe gives them, with a pure isDirectory fake (no disk, no $TMPDIR).
+TEST(ManagerHomeAbsolute, ExeCutAtFirstBin)
+{
+    std::vector<std::string> queries;
+    const auto resolveAbs = [&queries](const std::string& exePath, const std::string& home)
+    {
+        return base::process::resolveManagerHome([](const char*) -> const char* { return nullptr; },
+                                                 exePath,
+                                                 [&queries, &home](const std::string& path)
+                                                 {
+                                                     queries.push_back(path);
+                                                     return path == home;
+                                                 });
+    };
+
+    EXPECT_EQ(resolveAbs("/var/wazuh-manager/bin/wazuh-manager-analysisd", "/var/wazuh-manager"),
+              fs::path("/var/wazuh-manager"));
+    EXPECT_EQ(resolveAbs("/opt/x/bin/y/bin/wazuh-manager-analysisd", "/opt/x"), fs::path("/opt/x"));
+    EXPECT_EQ(resolveAbs("/opt/binaries/x/bin/x", "/opt"), fs::path("/opt"));
+    EXPECT_EQ(resolveAbs("/opt/plain/sub/wazuh-manager-analysisd", "/opt/plain/sub"), fs::path("/opt/plain/sub"));
+    EXPECT_EQ(queries, (std::vector<std::string> {"/var/wazuh-manager", "/opt/x", "/opt", "/opt/plain/sub"}));
 }
 
 TEST_F(ManagerHome, ExeNotDirectoryExits)
 {
-    expectExit((m_dir / "gone/bin/wazuh-manager-analysisd").string());
+    expectExit("gone/bin/wazuh-manager-analysisd");
 }
 
 TEST_F(ManagerHome, NoManagerModeIsCurrentPath)
