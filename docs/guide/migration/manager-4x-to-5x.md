@@ -643,10 +643,15 @@ sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --addr
 
 - **The agent cannot verify the manager**, because no anchor reached it. `--certs-only` installs the
   CA and the address from the token and leaves the identity alone, which is what you want for an
-  agent that is otherwise healthy:
+  agent that is otherwise healthy. It refuses to run while the agent is up
+  (`wazuh-agent-auth: stop the agent first (wazuh-agentd is running, pid N)`), so halt it
+  first and start it again afterwards, the way [remote-agent-upgrade.md](remote-agent-upgrade.md)
+  already instructs:
 
   ```bash
+  sudo systemctl stop wazuh-agent
   sudo /var/ossec/bin/wazuh-agent-auth --token-file /root/token --certs-only
+  sudo systemctl start wazuh-agent
   ```
 
 - **The identity is gone** from the manager. `--force-enroll`

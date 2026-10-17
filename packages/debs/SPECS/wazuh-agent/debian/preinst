@@ -123,26 +123,30 @@ EOF
             rm /etc/init.d/ossec
         fi
 
-        # back up the current user rules
-        if [ -f ${DIR}/etc/client.keys ]; then
+        # Back up the current user rules. An interrupted upgrade leaves the placeholders from
+        # the unpack step in ${DIR}/etc (an empty client.keys, an ossec.conf without a <client>
+        # block); re-running dpkg -i runs this script again and must not copy those placeholders
+        # over the backup taken by the first run (#40246). The first backup wins, and postinst
+        # removes it only after a successful restore.
+        if [ -f ${DIR}/etc/client.keys ] && [ ! -f ${WAZUH_TMP_DIR}/client.keys ]; then
             cp ${DIR}/etc/client.keys ${WAZUH_TMP_DIR}/client.keys
         fi
-        if [ -f ${DIR}/etc/local_internal_options.conf ]; then
+        if [ -f ${DIR}/etc/local_internal_options.conf ] && [ ! -f ${WAZUH_TMP_DIR}/local_internal_options.conf ]; then
             cp -p ${DIR}/etc/local_internal_options.conf ${WAZUH_TMP_DIR}/local_internal_options.conf
         fi
-        if [ -f ${DIR}/etc/ossec.conf ]; then
+        if [ -f ${DIR}/etc/ossec.conf ] && [ ! -f ${WAZUH_TMP_DIR}/ossec.conf ]; then
             cp -p ${DIR}/etc/ossec.conf ${WAZUH_TMP_DIR}/ossec.conf
         fi
 
-        if [ -d "${DIR}/etc/shared" ]; then
+        if [ -d "${DIR}/etc/shared" ] && [ ! -d "${WAZUH_TMP_DIR}/group" ]; then
             if [ "$(ls -A "${DIR}/etc/shared")" ]; then
                 files="$(ls -A ${DIR}/etc/shared/*)"
             fi
-        fi
 
-        if [ ! -z "$files" ]; then
-            mkdir -p ${WAZUH_TMP_DIR}/group
-            cp -rp ${DIR}/etc/shared/* ${WAZUH_TMP_DIR}/group/
+            if [ ! -z "$files" ]; then
+                mkdir -p ${WAZUH_TMP_DIR}/group
+                cp -rp ${DIR}/etc/shared/* ${WAZUH_TMP_DIR}/group/
+            fi
         fi
     ;;
 
