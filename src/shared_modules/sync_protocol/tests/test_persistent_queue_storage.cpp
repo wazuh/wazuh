@@ -667,3 +667,337 @@ TEST_F(PersistentQueueStorageBusyLockTest, ResetAllSyncingWaitsOutTransientLockI
 
     lockReleaser.join();
 }
+
+class PersistentQueueStorageDeferralTest : public ::testing::Test
+{
+protected:
+    std::unique_ptr<PersistentQueueStorage> storage;
+    LoggerFunc testLogger;
+    std::chrono::steady_clock::time_point currentTime;
+
+    void SetUp() override
+    {
+        testLogger = [](modules_log_level_t /*level*/, const std::string& /*msg*/) {};
+        storage = std::make_unique<PersistentQueueStorage>(":memory:", testLogger);
+        currentTime = std::chrono::steady_clock::now();
+        storage->setClockForTesting([this]() { return currentTime; });
+    }
+
+    void TearDown() override
+    {
+        storage.reset();
+    }
+};
+
+// TEST 1 — HEAD-OF-LINE UNBLOCKING
+TEST_F(PersistentQueueStorageDeferralTest, HeadOfLineUnblocking)
+{
+    storage->submitOrCoalesce(PersistedData {0, "A", "packages", "payloadA", Operation::CREATE, 1});
+    storage->submitOrCoalesce(PersistedData {0, "B", "packages", "payloadB", Operation::CREATE, 1});
+    storage->submitOrCoalesce(PersistedData {0, "C", "packages", "payloadC", Operation::CREATE, 1});
+
+    // Defer A
+    storage->deferItems({"A"});
+
+    // Call fetchAndMarkForSync(): B and C can be selected, A is skipped
+    auto fetched = storage->fetchAndMarkForSync();
+    ASSERT_EQ(fetched.size(), 2U);
+    EXPECT_EQ(fetched[0].id, "B");
+    EXPECT_EQ(fetched[1].id, "C");
+
+    // A remains safely stored in SQLite as PENDING
+    auto pending = storage->fetchPending(true);
+    ASSERT_EQ(pending.size(), 1U);
+    EXPECT_EQ(pending[0].id, "A");
+}
+
+// TEST 2 — DEFERRED ITEM RETRIES
+TEST_F(PersistentQueueStorageDeferralTest, DeferredItemRetriesAfterCooldownExpires)
+{
+    storage->submitOrCoalesce(PersistedData {0, "A", "packages", "payloadA", Operation::CREATE, 1});
+
+    // Defer A with initial cooldown (~30s)
+    storage->deferItems({"A"});
+
+    // Verify A is skipped before expiration
+    currentTime += std::chrono::seconds(15);
+    auto fetchedEarly = storage->fetchAndMarkForSync();
+    EXPECT_TRUE(fetchedEarly.empty());
+
+    // Allow cooldown to expire (past 30 seconds)
+    currentTime += std::chrono::seconds(20); // total 35s > 30s
+    auto fetchedExpired = storage->fetchAndMarkForSync();
+    ASSERT_EQ(fetchedExpired.size(), 1U);
+    EXPECT_EQ(fetchedExpired[0].id, "A");
+}
+
+// TEST 3 — SUCCESS REMOVES DEFERRAL
+TEST_F(PersistentQueueStorageDeferralTest, SuccessRemovesDeferral)
+{
+    storage->submitOrCoalesce(PersistedData {0, "A", "packages", "payloadA", Operation::CREATE, 1});
+
+    // Defer A
+    storage->deferItems({"A"});
+
+    // Expire cooldown so it can be fetched
+    currentTime += std::chrono::seconds(35);
+    auto fetched = storage->fetchAndMarkForSync();
+    ASSERT_EQ(fetched.size(), 1U);
+    EXPECT_EQ(fetched[0].id, "A");
+
+    // Successful sync removes all synced items
+    storage->removeAllSynced();
+
+    // Verify A is removed from queue
+    auto pending = storage->fetchPending(true);
+    EXPECT_TRUE(pending.empty());
+
+    // Re-insert A: verify no stale deferral suppresses it
+    storage->submitOrCoalesce(PersistedData {0, "A", "packages", "payloadA_new", Operation::CREATE, 2});
+    auto fetchedNew = storage->fetchAndMarkForSync();
+    ASSERT_EQ(fetchedNew.size(), 1U);
+    EXPECT_EQ(fetchedNew[0].id, "A");
+}
+
+// TEST 4 — COALESCING CLEARS DEFERRAL
+TEST_F(PersistentQueueStorageDeferralTest, CoalescingClearsDeferralImmediately)
+{
+    storage->submitOrCoalesce(PersistedData {0, "A", "packages", "payloadA_v1", Operation::CREATE, 1});
+
+    // Defer A (cooldown is 30s)
+    storage->deferItems({"A"});
+
+    // Verify A is skipped right now
+    auto fetchedEarly = storage->fetchAndMarkForSync();
+    EXPECT_TRUE(fetchedEarly.empty());
+
+    // Submit newer data for A (coalescing occurs)
+    storage->submitOrCoalesce(PersistedData {0, "A", "packages", "payloadA_v2", Operation::MODIFY, 2});
+
+    // Coalescing must clear deferral immediately without waiting for old cooldown
+    auto fetchedAfterCoalesce = storage->fetchAndMarkForSync();
+    ASSERT_EQ(fetchedAfterCoalesce.size(), 1U);
+    EXPECT_EQ(fetchedAfterCoalesce[0].id, "A");
+    EXPECT_EQ(fetchedAfterCoalesce[0].data, "payloadA_v2");
+}
+
+// TEST 5 — ALL ROWS DEFERRED
+TEST_F(PersistentQueueStorageDeferralTest, AllRowsDeferredReturnsEmptySafely)
+{
+    storage->submitOrCoalesce(PersistedData {0, "A", "packages", "payloadA", Operation::CREATE, 1});
+    storage->submitOrCoalesce(PersistedData {0, "B", "packages", "payloadB", Operation::CREATE, 1});
+
+    // Defer all pending rows
+    storage->deferItems({"A", "B"});
+
+    // Calling fetchAndMarkForSync must return empty, not spin, not error, not corrupt queue
+    auto fetched = storage->fetchAndMarkForSync();
+    EXPECT_TRUE(fetched.empty());
+
+    // Rows still remain PENDING in queue
+    auto pending = storage->fetchPending(true);
+    EXPECT_EQ(pending.size(), 2U);
+}
+
+// TEST 6 — MULTIPLE INDICES
+TEST_F(PersistentQueueStorageDeferralTest, MultipleIndicesHealthyProgress)
+{
+    storage->submitOrCoalesce(PersistedData {0, "pkg1", "packages", "pkg_data", Operation::CREATE, 1});
+    storage->submitOrCoalesce(PersistedData {0, "port1", "ports", "port_data", Operation::CREATE, 1});
+    storage->submitOrCoalesce(PersistedData {0, "proc1", "processes", "proc_data", Operation::CREATE, 1});
+
+    // Defer packages item
+    storage->deferItems({"pkg1"});
+
+    // Fetch batch: ports and processes must progress
+    auto fetched = storage->fetchAndMarkForSync();
+    ASSERT_EQ(fetched.size(), 2U);
+    EXPECT_EQ(fetched[0].id, "port1");
+    EXPECT_EQ(fetched[1].id, "proc1");
+
+    // Clear synced ports and processes
+    storage->removeAllSynced();
+
+    // Verify packages remains safely queued
+    auto pending = storage->fetchPending(true);
+    ASSERT_EQ(pending.size(), 1U);
+    EXPECT_EQ(pending[0].id, "pkg1");
+}
+
+// TEST 7 — SYNCING_UPDATED
+TEST_F(PersistentQueueStorageDeferralTest, SyncingUpdatedSemanticsPreserved)
+{
+    storage->submitOrCoalesce(PersistedData {0, "A", "packages", "v1", Operation::CREATE, 1});
+
+    // Fetch marks A as SYNCING
+    auto fetched = storage->fetchAndMarkForSync();
+    ASSERT_EQ(fetched.size(), 1U);
+    EXPECT_EQ(fetched[0].id, "A");
+
+    // Newer update arrives while A is SYNCING -> becomes SYNCING_UPDATED
+    storage->submitOrCoalesce(PersistedData {0, "A", "packages", "v2", Operation::MODIFY, 2});
+
+    // Transmission fails: resetAllSyncing()
+    storage->resetAllSyncing();
+
+    // Verify A returned to PENDING with updated data v2
+    auto pending = storage->fetchPending(true);
+    ASSERT_EQ(pending.size(), 1U);
+    EXPECT_EQ(pending[0].id, "A");
+    EXPECT_EQ(pending[0].data, "v2");
+}
+
+// TEST 7B — SYNCING_UPDATED ENTITY NOT DEFERRED ON PROTOCOL ERROR
+TEST_F(PersistentQueueStorageDeferralTest, SyncingUpdatedEntityNotDeferredOnProtocolError)
+{
+    storage->submitOrCoalesce(PersistedData {0, "A", "packages", "payloadA_v1", Operation::CREATE, 1});
+
+    // Fetch marks A as SYNCING
+    auto fetched = storage->fetchAndMarkForSync();
+    ASSERT_EQ(fetched.size(), 1U);
+    EXPECT_EQ(fetched[0].id, "A");
+
+    // Producer submits newer A' while transmission is in-flight -> A becomes SYNCING_UPDATED
+    storage->submitOrCoalesce(PersistedData {0, "A", "packages", "payloadA_v2", Operation::MODIFY, 2});
+
+    // Transmission fails with PROTOCOL_ERROR: deferItems is called with the in-flight IDs {"A"}
+    storage->deferItems({"A"});
+
+    // resetAllSyncing returns the row to PENDING
+    storage->resetAllSyncing();
+
+    // Invariant: fresh payload A' must NOT be deferred for the old failure;
+    // it must be immediately eligible on the next fetch without advancing clock!
+    auto fetchedImmediate = storage->fetchAndMarkForSync();
+    ASSERT_EQ(fetchedImmediate.size(), 1U);
+    EXPECT_EQ(fetchedImmediate[0].id, "A");
+    EXPECT_EQ(fetchedImmediate[0].data, "payloadA_v2");
+    EXPECT_EQ(fetchedImmediate[0].version, 2U);
+}
+
+// TEST 7C — DETERMINISTIC REGRESSION TEST FOR SYNCING_UPDATED RACE:
+// A is SYNCING -> deferral recorded -> A becomes SYNCING_UPDATED in SQLite ->
+// resetAllSyncing executes -> verify fresh A' is PENDING and NOT deferred.
+TEST_F(PersistentQueueStorageDeferralTest, SyncingUpdatedRecordClearedFromDeferralOnResetSyncing)
+{
+    const std::string testDb = (std::filesystem::temp_directory_path() / "wazuh_syncing_updated_race_test.db").string();
+    std::filesystem::remove(testDb);
+    std::filesystem::remove(testDb + "-wal");
+    std::filesystem::remove(testDb + "-shm");
+
+    {
+        PersistentQueueStorage fileStorage(testDb, testLogger);
+        fileStorage.setClockForTesting([this]() { return currentTime; });
+
+        fileStorage.submitOrCoalesce(PersistedData {0, "A", "packages", "payloadA_v1", Operation::CREATE, 1});
+        fileStorage.submitOrCoalesce(PersistedData {0, "B", "packages", "payloadB_v1", Operation::CREATE, 1});
+
+        // 1. Fetch marks both A and B as SYNCING in SQLite
+        auto fetched = fileStorage.fetchAndMarkForSync();
+        ASSERT_EQ(fetched.size(), 2U);
+        EXPECT_EQ(fetched[0].id, "A");
+        EXPECT_EQ(fetched[1].id, "B");
+
+        // 2. Transmission for old batch fails with PROTOCOL_ERROR: defer both A and B
+        fileStorage.deferItems({"A", "B"});
+
+        // Verify both are deferred in memory
+        auto checkDeferred = fileStorage.fetchAndMarkForSync();
+        EXPECT_TRUE(checkDeferred.empty());
+
+        // 3. Producer submits newer A' which transitions A to SYNCING_UPDATED in SQLite.
+        // B receives no update and remains SYNCING.
+        {
+            SQLite3Wrapper::Connection directConn(testDb);
+            directConn.execute("UPDATE persistent_queue SET sync_status = 2, data = 'payloadA_v2', version = 2 WHERE id = 'A';");
+        }
+
+        // 4. resetAllSyncing() executes
+        fileStorage.resetAllSyncing();
+
+        // 5. Invariant:
+        // - A (was SYNCING_UPDATED) must be PENDING and NOT deferred -> immediately eligible
+        // - B (was SYNCING) must be PENDING but REMAINS deferred -> suppressed by cooldown
+        auto fetchedAfterReset = fileStorage.fetchAndMarkForSync();
+        ASSERT_EQ(fetchedAfterReset.size(), 1U);
+        EXPECT_EQ(fetchedAfterReset[0].id, "A");
+        EXPECT_EQ(fetchedAfterReset[0].data, "payloadA_v2");
+        EXPECT_EQ(fetchedAfterReset[0].version, 2U);
+
+        // 6. When cooldown expires, B becomes eligible
+        currentTime += std::chrono::seconds(35);
+        auto fetchedB = fileStorage.fetchAndMarkForSync();
+        ASSERT_EQ(fetchedB.size(), 1U);
+        EXPECT_EQ(fetchedB[0].id, "B");
+        EXPECT_EQ(fetchedB[0].data, "payloadB_v1");
+    }
+
+    std::filesystem::remove(testDb);
+    std::filesystem::remove(testDb + "-wal");
+    std::filesystem::remove(testDb + "-shm");
+}
+
+// TEST 8 — DATA PRESERVATION
+TEST_F(PersistentQueueStorageDeferralTest, DataPreservationAfterRepeatedFailures)
+{
+    const std::string originalData = "{\"key\": \"valuable_inventory_data\"}";
+    storage->submitOrCoalesce(PersistedData {0, "A", "packages", originalData, Operation::CREATE, 1});
+
+    // Simulate multiple failed sync cycles with repeated deferrals
+    for (int cycle = 1; cycle <= 5; ++cycle)
+    {
+        storage->deferItems({"A"});
+        storage->resetAllSyncing();
+    }
+
+    // Direct SQLite verification: row still exists, sync_status is PENDING, data is unchanged
+    auto pending = storage->fetchPending(true);
+    ASSERT_EQ(pending.size(), 1U);
+    EXPECT_EQ(pending[0].id, "A");
+    EXPECT_EQ(pending[0].data, originalData);
+}
+
+// TEST 9 — RESTART-LIKE STATE RESET
+TEST_F(PersistentQueueStorageDeferralTest, RestartLikeStateResetPreservesQueueCorrectness)
+{
+    std::string dbFile = (std::filesystem::temp_directory_path() / "wazuh_restart_test.db").string();
+    std::filesystem::remove(dbFile);
+    std::filesystem::remove(dbFile + "-wal");
+    std::filesystem::remove(dbFile + "-shm");
+
+    {
+        PersistentQueueStorage instance1(dbFile, testLogger);
+        instance1.submitOrCoalesce(PersistedData {0, "A", "packages", "payloadA", Operation::CREATE, 1});
+        instance1.submitOrCoalesce(PersistedData {0, "B", "packages", "payloadB", Operation::CREATE, 1});
+
+        // Defer A in memory
+        instance1.deferItems({"A"});
+
+        // fetch in instance1: only B fetched
+        auto fetched = instance1.fetchAndMarkForSync();
+        ASSERT_EQ(fetched.size(), 1U);
+        EXPECT_EQ(fetched[0].id, "B");
+        instance1.resetAllSyncing();
+    }
+
+    // Instance 2 simulates process restart (in-memory deferrals cleared, SQLite queue intact)
+    {
+        PersistentQueueStorage instance2(dbFile, testLogger);
+
+        // Both rows exist in SQLite and are valid
+        auto pending = instance2.fetchPending(true);
+        ASSERT_EQ(pending.size(), 2U);
+        EXPECT_EQ(pending[0].id, "A");
+        EXPECT_EQ(pending[1].id, "B");
+
+        // Normal fetch succeeds according to rowid order
+        auto fetched = instance2.fetchAndMarkForSync();
+        ASSERT_EQ(fetched.size(), 2U);
+        EXPECT_EQ(fetched[0].id, "A");
+        EXPECT_EQ(fetched[1].id, "B");
+    }
+
+    std::filesystem::remove(dbFile);
+    std::filesystem::remove(dbFile + "-wal");
+    std::filesystem::remove(dbFile + "-shm");
+}

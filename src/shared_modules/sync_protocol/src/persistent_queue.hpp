@@ -82,6 +82,10 @@ class PersistentQueue : public IPersistentQueue
         /// @brief Clears all DataContext items (where is_data_context = true).
         void clearAllDataContext() override;
 
+        /// @brief Defers specific items from synchronization for a temporary cooldown period.
+        /// @param ids Vector of item IDs to defer.
+        void deferItems(const std::vector<std::string>& ids) override;
+
         /// @brief Deletes the database file.
         /// This method closes the database connection and removes the database file from disk.
         void deleteDatabase() override;
