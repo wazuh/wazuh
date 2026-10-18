@@ -100,6 +100,7 @@ namespace remoted::auth
     struct AuthenticatedRequest
     {
         std::string agentId;         ///< Verified agent id, canonical (the token's `sub`, never the raw header).
+        std::string sessionId;       ///< Value of the X-Session-Id header (for /stateful deduplication).
         std::string protocolVersion; ///< Value of the protocol-version header.
         std::string method;          ///< Uppercase HTTP method, e.g. "POST".
         std::string requestTarget;   ///< Raw path + query, exactly as received.

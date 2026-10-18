@@ -423,6 +423,11 @@ namespace invsync
                                                      "Sessions refused with 503 because their agent already had "
                                                      "'inventory_sync_server_max_sessions_per_agent' sessions pending",
                                                      "count");
+            const auto sessionDuplicateRejectedTotal =
+                m_metricsManager->getOrCreateCounter(invsync::metrics::SESSION_DUPLICATE_REJECTED,
+                                                     "Sessions refused with 503 because a copy of the same "
+                                                     "session is already in progress on this node",
+                                                     "count");
 
             // The ingestion route: everything past the strand-side validation runs on the
             // pipeline, or on the VD scan lane for vulnerability-detection data sessions.
@@ -443,7 +448,11 @@ namespace invsync
                                        // text that silently drifts.
                                        invsync::metrics::makeVdRetryAfterCounter(*m_metricsManager),
                                        agentSessions,
-                                       agentBusyTotal}),
+                                       agentBusyTotal,
+                                       sessionDuplicateRejectedTotal,
+                                       m_config.indexer_sync_max_retry_duration_seconds > 0
+                                           ? m_config.indexer_sync_max_retry_duration_seconds
+                                           : 15}),
                                    wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Data});
 
             // Reached through remoted's authenticated /stats and /config routes. Registered separately

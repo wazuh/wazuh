@@ -145,7 +145,7 @@ StatefulStream::SendResult StatefulStream::sendSession(const Session& session, W
     spec.bodyFilePath = session.spool->path(); // Streamed from disk (flat memory).
     spec.bodyFileSize = session.size;
     spec.timeoutMs = m_config.statefulTimeoutMs;
-    spec.headers.push_back("X-Session-Id: " + session.id); // Stable across retries (LRU dedup).
+    spec.headers.push_back("X-Session-Id: " + session.id); // Stable across retries: manager deduplicates concurrent in-flight copies (D31).
 
     // Compress once, up front -- not per retry attempt like the in-memory send
     // paths, since this body can be multi-MB and STATEFUL_MAX_ATTEMPTS allows

@@ -211,3 +211,46 @@ TEST(AdmittedSessionResponderTest, ConcurrentAnswersReleaseTheSlotExactlyOnce)
         ASSERT_EQ(0U, limiter->trackedAgents()) << "round " << round;
     }
 }
+
+TEST(AgentSessionLimiterTest, DuplicateSessionIdIsRefusedWhileActive)
+{
+    const auto limiter = std::make_shared<AgentSessionLimiter>(2);
+    AgentSessionLimiter::RejectionReason reason {};
+
+    auto s1 = limiter->tryAcquire("001", "session-uuid-1", &reason);
+    ASSERT_TRUE(s1.has_value());
+    EXPECT_TRUE(limiter->hasActiveSession("001", "session-uuid-1"));
+    EXPECT_FALSE(limiter->hasActiveSession("001", "session-uuid-2"));
+
+    // Second call with same sessionId while s1 is active is rejected as DuplicateInProgress
+    auto s2 = limiter->tryAcquire("001", "session-uuid-1", &reason);
+    EXPECT_FALSE(s2.has_value());
+    EXPECT_EQ(AgentSessionLimiter::RejectionReason::DuplicateInProgress, reason);
+    EXPECT_EQ(1U, limiter->duplicatesRejectedTotal());
+    EXPECT_EQ(0U, limiter->rejectedTotal()); // not counted as capacity rejection
+
+    // A different session for the same agent is admitted (up to capacity 2)
+    auto s3 = limiter->tryAcquire("001", "session-uuid-2", &reason);
+    ASSERT_TRUE(s3.has_value());
+    EXPECT_EQ(2U, limiter->pendingSessions("001"));
+
+    // Once s1 is released, retry of session-uuid-1 succeeds
+    s1->release();
+    EXPECT_FALSE(limiter->hasActiveSession("001", "session-uuid-1"));
+    auto s1_retry = limiter->tryAcquire("001", "session-uuid-1", &reason);
+    ASSERT_TRUE(s1_retry.has_value());
+}
+
+TEST(AgentSessionLimiterTest, SameSessionIdAcrossDifferentAgentsIsAllowed)
+{
+    const auto limiter = std::make_shared<AgentSessionLimiter>(1);
+    AgentSessionLimiter::RejectionReason reason {};
+
+    auto a1 = limiter->tryAcquire("001", "session-shared-id", &reason);
+    ASSERT_TRUE(a1.has_value());
+
+    // Different agent with same sessionId is permitted (scoped per-agent)
+    auto a2 = limiter->tryAcquire("002", "session-shared-id", &reason);
+    ASSERT_TRUE(a2.has_value());
+    EXPECT_EQ(0U, limiter->duplicatesRejectedTotal());
+}

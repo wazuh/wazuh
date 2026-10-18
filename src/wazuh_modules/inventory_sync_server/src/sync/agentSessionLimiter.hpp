@@ -22,6 +22,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 
 namespace invsync::sync
@@ -45,6 +46,13 @@ namespace invsync::sync
     class AgentSessionLimiter final : public std::enable_shared_from_this<AgentSessionLimiter>
     {
     public:
+        /// @brief Reason tryAcquire() refused admission.
+        enum class RejectionReason
+        {
+            CapacityExceeded,   ///< Agent reached max_sessions_per_agent (sync.agent_busy.total).
+            DuplicateInProgress ///< A session with the same X-Session-Id is already running (sync.session.duplicate.rejected).
+        };
+
         /// @brief RAII token for one pending session. Movable, non-copyable, releases exactly once.
         class Slot final
         {
@@ -59,6 +67,7 @@ namespace invsync::sync
             Slot(Slot&& other) noexcept
                 : m_owner {std::move(other.m_owner)}
                 , m_agentId {std::move(other.m_agentId)}
+                , m_sessionId {std::move(other.m_sessionId)}
             {
             }
 
@@ -69,6 +78,7 @@ namespace invsync::sync
                     release();
                     m_owner = std::move(other.m_owner);
                     m_agentId = std::move(other.m_agentId);
+                    m_sessionId = std::move(other.m_sessionId);
                 }
                 return *this;
             }
@@ -81,22 +91,29 @@ namespace invsync::sync
             {
                 if (m_owner != nullptr)
                 {
-                    m_owner->release(m_agentId);
+                    m_owner->release(m_agentId, m_sessionId);
                     m_owner.reset();
                 }
+            }
+
+            const std::string& sessionId() const noexcept
+            {
+                return m_sessionId;
             }
 
         private:
             friend class AgentSessionLimiter;
 
-            Slot(std::shared_ptr<AgentSessionLimiter> owner, std::string agentId)
+            Slot(std::shared_ptr<AgentSessionLimiter> owner, std::string agentId, std::string sessionId)
                 : m_owner {std::move(owner)}
                 , m_agentId {std::move(agentId)}
+                , m_sessionId {std::move(sessionId)}
             {
             }
 
             std::shared_ptr<AgentSessionLimiter> m_owner;
             std::string m_agentId;
+            std::string m_sessionId;
         };
 
         /// @param capacity Maximum pending sessions per agent. 0 disables the limit.
@@ -109,31 +126,65 @@ namespace invsync::sync
         AgentSessionLimiter& operator=(const AgentSessionLimiter&) = delete;
 
         /**
-         * @brief Try to admit one more session for @p agentId.
+         * @brief Try to admit one more session for @p agentId, deduplicating on @p sessionId (D31).
          *
          * @param agentId The validated, padded agent id (ValidatedSession::agentId).
-         * @return An engaged slot, or std::nullopt when the agent is at its cap. A disabled limiter
-         *         returns an empty Slot, which is still a success.
+         * @param sessionId The optional X-Session-Id header from the agent.
+         * @param outReason Optional pointer to store the rejection reason if admission fails.
+         * @return An engaged slot, or std::nullopt when the agent is at its cap or duplicate is in flight.
          */
-        std::optional<Slot> tryAcquire(std::string_view agentId)
+        std::optional<Slot> tryAcquire(std::string_view agentId,
+                                       std::string_view sessionId = {},
+                                       RejectionReason* outReason = nullptr)
         {
             if (m_capacity == 0)
             {
                 return Slot {};
             }
 
-            std::string key {agentId};
+            std::string agentKey {agentId};
+            std::string sessionKey {sessionId};
             {
                 std::lock_guard lock {m_mutex};
-                auto& pending = m_pending[key];
-                if (pending >= m_capacity)
+                auto& state = m_pending[agentKey];
+
+                // D31: A duplicate session with the same session id already in flight on this node
+                // is rejected so two copies never run the same by-query concurrently.
+                if (!sessionKey.empty() && state.activeSessions.find(sessionKey) != state.activeSessions.end())
                 {
-                    ++m_rejectedTotal;
+                    ++m_duplicatesRejectedTotal;
+                    if (outReason != nullptr)
+                    {
+                        *outReason = RejectionReason::DuplicateInProgress;
+                    }
+                    if (state.pendingCount == 0 && state.activeSessions.empty())
+                    {
+                        m_pending.erase(agentKey);
+                    }
                     return std::nullopt;
                 }
-                ++pending;
+
+                if (state.pendingCount >= m_capacity)
+                {
+                    ++m_rejectedTotal;
+                    if (outReason != nullptr)
+                    {
+                        *outReason = RejectionReason::CapacityExceeded;
+                    }
+                    if (state.pendingCount == 0 && state.activeSessions.empty())
+                    {
+                        m_pending.erase(agentKey);
+                    }
+                    return std::nullopt;
+                }
+
+                ++state.pendingCount;
+                if (!sessionKey.empty())
+                {
+                    state.activeSessions.insert(sessionKey);
+                }
             }
-            return Slot {shared_from_this(), std::move(key)};
+            return Slot {shared_from_this(), std::move(agentKey), std::move(sessionKey)};
         }
 
         /// @brief Sessions @p agentId has pending right now (0 when it has none).
@@ -141,7 +192,23 @@ namespace invsync::sync
         {
             std::lock_guard lock {m_mutex};
             const auto it = m_pending.find(std::string {agentId});
-            return it == m_pending.end() ? 0 : it->second;
+            return it == m_pending.end() ? 0 : it->second.pendingCount;
+        }
+
+        /// @brief Whether a session with @p sessionId is actively running for @p agentId.
+        bool hasActiveSession(std::string_view agentId, std::string_view sessionId) const
+        {
+            if (sessionId.empty())
+            {
+                return false;
+            }
+            std::lock_guard lock {m_mutex};
+            const auto it = m_pending.find(std::string {agentId});
+            if (it == m_pending.end())
+            {
+                return false;
+            }
+            return it->second.activeSessions.find(std::string {sessionId}) != it->second.activeSessions.end();
         }
 
         /// @brief Agents with at least one session pending -- the table's size.
@@ -151,11 +218,18 @@ namespace invsync::sync
             return m_pending.size();
         }
 
-        /// @brief Sessions tryAcquire() has refused since construction.
+        /// @brief Sessions tryAcquire() has refused due to capacity since construction.
         std::uint64_t rejectedTotal() const
         {
             std::lock_guard lock {m_mutex};
             return m_rejectedTotal;
+        }
+
+        /// @brief Duplicate sessions tryAcquire() has refused since construction (D31).
+        std::uint64_t duplicatesRejectedTotal() const
+        {
+            std::lock_guard lock {m_mutex};
+            return m_duplicatesRejectedTotal;
         }
 
         /// @brief Configured cap (0 == disabled).
@@ -165,20 +239,38 @@ namespace invsync::sync
         }
 
     private:
-        void release(const std::string& agentId) noexcept
+        void release(const std::string& agentId, const std::string& sessionId) noexcept
         {
             std::lock_guard lock {m_mutex};
             const auto it = m_pending.find(agentId);
-            if (it != m_pending.end() && --it->second == 0)
+            if (it != m_pending.end())
             {
-                m_pending.erase(it);
+                if (!sessionId.empty())
+                {
+                    it->second.activeSessions.erase(sessionId);
+                }
+                if (it->second.pendingCount > 0)
+                {
+                    --it->second.pendingCount;
+                }
+                if (it->second.pendingCount == 0 && it->second.activeSessions.empty())
+                {
+                    m_pending.erase(it);
+                }
             }
         }
 
+        struct AgentEntry
+        {
+            std::size_t pendingCount {0};
+            std::unordered_set<std::string> activeSessions;
+        };
+
         const std::size_t m_capacity;
         mutable std::mutex m_mutex;
-        std::unordered_map<std::string, std::size_t> m_pending; ///< Only agents with a session pending.
+        std::unordered_map<std::string, AgentEntry> m_pending; ///< Only agents with a session pending.
         std::uint64_t m_rejectedTotal {0};
+        std::uint64_t m_duplicatesRejectedTotal {0};
     };
 
     /**

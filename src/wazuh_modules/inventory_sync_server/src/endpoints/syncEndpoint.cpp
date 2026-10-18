@@ -44,6 +44,15 @@ namespace
     {
         return wazuh::uds_http::HttpResponse::json(503, R"({"error":"Service unavailable","code":503})");
     }
+
+    /// D31: Session already in progress on this manager node. Answer 503 + Retry-After.
+    wazuh::uds_http::HttpResponse duplicateResponse(int retryAfterSeconds)
+    {
+        auto response = wazuh::uds_http::HttpResponse::json(
+            503, R"({"error":"session already in progress","code":503,"reason":"session_already_running"})");
+        response.headers.emplace_back("Retry-After", std::to_string(retryAfterSeconds));
+        return response;
+    }
 } // namespace
 
 namespace invsync::endpoints::sync
@@ -64,6 +73,7 @@ namespace invsync::endpoints::sync
             static wazuh::uds_http::LogThrottle unavailableThrottle;
             static wazuh::uds_http::LogThrottle capacityThrottle;
             static wazuh::uds_http::LogThrottle agentBusyThrottle;
+            static wazuh::uds_http::LogThrottle duplicateThrottle;
 
             if (!request)
             {
@@ -124,16 +134,40 @@ namespace invsync::endpoints::sync
 
             auto& session = std::get<invsync::sync::ValidatedSession>(result);
 
-            // D28: one agent may have only so many sessions admitted and not yet answered. remoted
-            // frees its own per-agent slot when it gives up waiting (its downstream deadline), but
-            // the pipeline and the scan lane keep working on an admitted session -- so without this
-            // an agent could re-send into the shared queue on every timeout and fill it for
-            // everyone. From here on every answer, inline or from a worker, releases the slot.
+            // D28 / D31: one agent may have only so many sessions admitted and not yet answered,
+            // and an in-flight session (identified by X-Session-Id) is deduplicated on this manager.
             if (deps.agentSessions)
             {
-                auto slot = deps.agentSessions->tryAcquire(session.agentId);
+                const auto sessionIdIt = request->headers.find(sessionIdHeader());
+                const std::string_view sessionId =
+                    (sessionIdIt != request->headers.end()) ? std::string_view {sessionIdIt->second} : std::string_view {};
+
+                invsync::sync::AgentSessionLimiter::RejectionReason reason =
+                    invsync::sync::AgentSessionLimiter::RejectionReason::CapacityExceeded;
+                auto slot = deps.agentSessions->tryAcquire(session.agentId, sessionId, &reason);
                 if (!slot)
                 {
+                    if (reason == invsync::sync::AgentSessionLimiter::RejectionReason::DuplicateInProgress)
+                    {
+                        if (const auto decision = duplicateThrottle.record())
+                        {
+                            LOGFN_WARN(logFn(),
+                                       "Rejected %llu duplicate session(s) with 503 in the last %d s (last: agent '%s', "
+                                       "session '%s'): a copy of this session is already running on this manager.",
+                                       static_cast<unsigned long long>(decision.total),
+                                       wazuh::uds_http::LogThrottle::kDefaultWindowSeconds,
+                                       session.agentId.c_str(),
+                                       std::string(sessionId).c_str());
+                        }
+                        if (deps.sessionDuplicateRejectedTotal)
+                        {
+                            deps.sessionDuplicateRejectedTotal->add();
+                        }
+                        deps.requestCounters.count(503);
+                        responder->send(duplicateResponse(deps.conflictRetryAfterSeconds));
+                        return;
+                    }
+
                     if (const auto decision = agentBusyThrottle.record())
                     {
                         LOGFN_WARN(logFn(),

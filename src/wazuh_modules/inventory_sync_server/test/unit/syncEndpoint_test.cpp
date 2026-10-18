@@ -72,7 +72,21 @@ namespace
         bool m_resolved {false};
     };
 
-    std::shared_ptr<const HttpRequest> makeRequest(std::string body, const char* agentId = "001")
+    /// The value of @p name in the response, or "" when absent.
+    std::string headerValue(const HttpResponse& response, const std::string& name)
+    {
+        for (const auto& [key, value] : response.headers)
+        {
+            if (key == name)
+            {
+                return value;
+            }
+        }
+        return "";
+    }
+
+    std::shared_ptr<const HttpRequest>
+    makeRequest(std::string body, const char* agentId = "001", const char* sessionId = nullptr)
     {
         auto request = std::make_shared<HttpRequest>();
         request->method = Method::Post;
@@ -81,6 +95,10 @@ namespace
         if (agentId != nullptr)
         {
             request->headers.emplace(invsync::endpoints::sync::agentIdHeader(), agentId);
+        }
+        if (sessionId != nullptr)
+        {
+            request->headers.emplace(invsync::endpoints::sync::sessionIdHeader(), sessionId);
         }
         return request;
     }
@@ -121,7 +139,10 @@ namespace
                                                         scanner,
                                                         {},
                                                         {},
-                                                        std::move(agentSessions)});
+                                                        std::move(agentSessions),
+                                                        nullptr,
+                                                        nullptr,
+                                                        15});
         }
     };
 
@@ -518,4 +539,40 @@ TEST(SyncEndpointTest, ASessionShedAfterAdmissionGivesItsSlotBack)
     }
     EXPECT_EQ(0U, sessions->trackedAgents());
     EXPECT_EQ(0U, sessions->rejectedTotal()) << "every 503 was the queue's, none the agent cap's";
+}
+
+TEST(SyncEndpointTest, DuplicateSessionIdIsRejectedWith503AndRetryAfterWhileFirstIsRunning)
+{
+    invsync::vd::VdScanLaneConfig laneConfig;
+    laneConfig.workers = 1;
+    laneConfig.queueSlots = 4;
+    const auto sessions = std::make_shared<invsync::sync::AgentSessionLimiter>(2);
+    HandlerUnderTest fixture {{}, 60, laneConfig, sessions};
+    fixture.events->closeScanGate();
+
+    SessionSpec spec;
+    spec.option = invsync::test::fb::Option_VDFirst;
+    const auto body = invsync::test::buildSyncDataSession(spec, {invsync::test::ValueSpec {}});
+
+    auto first = std::make_shared<CapturingResponder>();
+    fixture.handler(makeRequest(body, "001", "session-uuid-100"), first);
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds {10};
+    while (fixture.events->m_scanEntered.load() < 1 && std::chrono::steady_clock::now() < deadline)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds {5});
+    }
+    ASSERT_EQ(1, fixture.events->m_scanEntered.load());
+
+    // Second request with SAME session id arriving while first is running is rejected as duplicate
+    auto duplicate = std::make_shared<CapturingResponder>();
+    fixture.handler(makeRequest(body, "001", "session-uuid-100"), duplicate);
+    ASSERT_TRUE(duplicate->captured.has_value());
+    EXPECT_EQ(503, duplicate->captured->status);
+    EXPECT_EQ(R"({"error":"session already in progress","code":503,"reason":"session_already_running"})",
+              duplicate->captured->body);
+    EXPECT_EQ("15", headerValue(*duplicate->captured, "Retry-After"));
+    EXPECT_EQ(1U, sessions->duplicatesRejectedTotal());
+
+    fixture.events->openScanGate();
+    EXPECT_EQ(200, first->await().status);
 }

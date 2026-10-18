@@ -39,6 +39,12 @@ namespace remoted::endpoints::stateful
      * within the request, so it is deliberately longer than the global default.
      */
     remoted::downstream::DownstreamTarget
+    target(const std::string& socketPath,
+           const std::string& agentId,
+           const std::string& sessionId,
+           int responseTimeoutMs);
+
+    remoted::downstream::DownstreamTarget
     target(const std::string& socketPath, const std::string& agentId, int responseTimeoutMs);
 
     /**

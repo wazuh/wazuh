@@ -55,6 +55,12 @@ namespace invsync::endpoints::sync
         return "x-wazuh-agent-id";
     }
 
+    /// @brief The header carrying the agent's stable X-Session-Id for deduplication (D31).
+    constexpr const char* sessionIdHeader()
+    {
+        return "x-session-id";
+    }
+
     /**
      * @brief Everything the handler needs, captured by value at registration.
      *
@@ -86,6 +92,11 @@ namespace invsync::endpoints::sync
         std::shared_ptr<invsync::sync::AgentSessionLimiter> agentSessions;
         /// D28: sessions refused by that cap (sync.agent_busy.total).
         std::shared_ptr<wazuh::metrics::ICounter> agentBusyTotal;
+        /// D31: sessions refused with 503 because a session with the same X-Session-Id is already running
+        /// (sync.session.duplicate.rejected).
+        std::shared_ptr<wazuh::metrics::ICounter> sessionDuplicateRejectedTotal;
+        /// D31: Retry-After delay attached to duplicate session 503s.
+        int conflictRetryAfterSeconds {15};
     };
 
     /**

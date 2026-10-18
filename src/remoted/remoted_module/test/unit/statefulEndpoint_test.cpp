@@ -63,11 +63,12 @@ namespace
         std::shared_ptr<std::string> buffer; // owns the payload bytes
     };
 
-    AuthReqFixture makeAuthReq(const std::string& body, const std::string& agentId)
+    AuthReqFixture makeAuthReq(const std::string& body, const std::string& agentId, const std::string& sessionId = "")
     {
         auto buffer = std::make_shared<std::string>(body);
         AuthenticatedRequest ar;
         ar.agentId = agentId;
+        ar.sessionId = sessionId;
         ar.method = "POST";
         ar.requestTarget = "/stateful";
         ar.payload = Payload {std::string_view {*buffer}, buffer};
@@ -403,6 +404,28 @@ TEST(StatefulMakeHandler, ForwardsTheOpaqueSessionWithAgentIdAndDedicatedTimeout
     const auto response = fut.get();
     EXPECT_EQ(response.status, 409); // the session result reaches the agent untouched
     EXPECT_EQ(response.body, R"({"status":"checksum_mismatch"})");
+}
+
+TEST(StatefulMakeHandler, ForwardsXSessionIdWhenPresent)
+{
+    auto client = std::make_shared<FakeDownstreamClient>();
+    auto limiter = std::make_shared<DeferredWorkLimiter>(4);
+    DeferredForwarder forwarder {client, limiter, 1};
+
+    auto handler = stateful::makeHandler(forwarder, "queue/sockets/inventory-sync-http.sock", 20000);
+    auto fixture = makeAuthReq("\x01\x02binary-fullsession-bytes", "1001", "session-xyz-123");
+    auto responder = std::make_shared<CapturingResponder>();
+    auto fut = responder->future();
+
+    handler(fixture.req, responder);
+
+    ASSERT_TRUE(client->called());
+    const auto req = client->request();
+    ASSERT_EQ(req.headers.size(), 2U);
+    EXPECT_EQ(req.headers[0].first, "X-Wazuh-Agent-Id");
+    EXPECT_EQ(req.headers[0].second, "1001");
+    EXPECT_EQ(req.headers[1].first, "X-Session-Id");
+    EXPECT_EQ(req.headers[1].second, "session-xyz-123");
 }
 
 // --- gateway + endpoint composition (doc 10 §3) ------------------------------------------------

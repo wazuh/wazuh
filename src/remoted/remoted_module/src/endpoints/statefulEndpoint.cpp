@@ -64,16 +64,29 @@ namespace remoted::endpoints::stateful
     } // namespace
 
     remoted::downstream::DownstreamTarget
-    target(const std::string& socketPath, const std::string& agentId, const int responseTimeoutMs)
+    target(const std::string& socketPath,
+           const std::string& agentId,
+           const std::string& sessionId,
+           const int responseTimeoutMs)
     {
         remoted::downstream::DownstreamTarget result {
             socketPath, remoted::http::Method::Post, "/stateful", "application/octet-stream"};
         // Written by us, never by the agent: the value comes from the Authorization header the
         // gateway already authenticated, so it cannot be used to inject headers downstream.
         result.headers.emplace_back("X-Wazuh-Agent-Id", agentId);
+        if (!sessionId.empty())
+        {
+            result.headers.emplace_back("X-Session-Id", sessionId);
+        }
         result.serviceName = "inventory sync server";
         result.responseTimeoutMs = responseTimeoutMs;
         return result;
+    }
+
+    remoted::downstream::DownstreamTarget
+    target(const std::string& socketPath, const std::string& agentId, const int responseTimeoutMs)
+    {
+        return target(socketPath, agentId, "", responseTimeoutMs);
     }
 
     remoted::http::HttpResponse postProcess(remoted::downstream::DownstreamError error,
@@ -140,8 +153,8 @@ namespace remoted::endpoints::stateful
             }
 
             // Built BEFORE the move: argument evaluation order is unspecified, so reading
-            // authReq->agentId in the same call that moves authReq could dereference a null pointer.
-            auto downstreamTarget = target(socketPath, authReq->agentId, responseTimeoutMs);
+            // authReq->agentId / authReq->sessionId in the same call that moves authReq could dereference a null pointer.
+            auto downstreamTarget = target(socketPath, authReq->agentId, authReq->sessionId, responseTimeoutMs);
             downstreamTarget.httpMetrics = metrics;
             forwarder.forward(std::move(authReq),
                               std::move(responder),

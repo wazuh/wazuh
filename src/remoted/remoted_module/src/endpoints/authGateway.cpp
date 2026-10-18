@@ -129,6 +129,7 @@ namespace remoted::endpoints
 
                     const std::string protocolVersion = headerValue(request->headers, "protocol-version");
                     const std::string authorization = headerValue(request->headers, "authorization");
+                    const std::string sessionId = headerValue(request->headers, "x-session-id");
                     // Parsed once here, acted on only AFTER authentication succeeds (see below): an
                     // unauthenticated peer never reaches a decoder.
                     const auto contentEncoding =
@@ -183,6 +184,7 @@ namespace remoted::endpoints
                     // frees the buffer and restores the budget while the responder lives on to reply.
                     remoted::auth::AuthenticatedRequest authRequest;
                     authRequest.agentId = std::move(agentId);
+                    authRequest.sessionId = sessionId;
                     authRequest.protocolVersion = protocolVersion;
                     authRequest.method = methodStr;
                     authRequest.requestTarget = request->target;
