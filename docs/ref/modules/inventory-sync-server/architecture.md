@@ -62,12 +62,14 @@ sequenceDiagram
     participant Q as SyncPipeline (the agent's shard worker)
     participant IDX as Indexer (the worker's own connector)
     participant VQ as VD scan lane
-    R->>S: POST /stateful (headers)
+    R->>S: POST /stateful (headers: X-Wazuh-Agent-Id, X-Session-Id)
     Note over S: admission: in-flight byte budget / connection cap → 503<br/>a session declaring more than the TOTAL budget → 413
     R->>S: body (FlatBuffer)
     Note over S: Verifier + FullSession type + identity + mode×payload matrix<br/>+ Start list caps + reachable-bytes budget + UTF-8 Start strings<br/>(O(bytes), CPU only — no I/O on the strand)
     alt validation fails
         S-->>R: 400 / 403
+    else duplicate session (agent_id, session_id) already in progress
+        S-->>R: 503 + Retry-After (nothing processed)
     else the agent already has max_sessions_per_agent sessions pending
         S-->>R: 503 (nothing processed)
     else VD session and the CVE feed is still downloading

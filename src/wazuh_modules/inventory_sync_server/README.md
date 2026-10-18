@@ -17,7 +17,7 @@ Three documentation layers cover this module, each with its own job:
 
 - **This README** — the developer's map: how the pieces fit, which invariants are load-bearing,
   where to touch what, and WHY it is built this way ([requirements](#requirements),
-  [design decisions](#design-decisions-d1d30), [developer FAQ](#developer-faq)).
+  [design decisions](#design-decisions-d1d31), [developer FAQ](#developer-faq)).
 - **[`docs/ref/modules/inventory-sync-server/`](../../../docs/ref/modules/inventory-sync-server/README.md)**
   — the operator- and integrator-facing reference:
   [architecture](../../../docs/ref/modules/inventory-sync-server/architecture.md),
@@ -38,7 +38,7 @@ purge means for enrollment.
 
 Distilled (and translated) from the migration's design corpus, where they were extracted from the
 legacy module's observable behavior before this rewrite. They are inlined here because the corpus
-is not part of the repository, and the D-numbers they cite are the [design decisions](#design-decisions-d1d30)
+is not part of the repository, and the D-numbers they cite are the [design decisions](#design-decisions-d1d31)
 below. Status: **kept** = the module provides it; **superseded by D-n** = deliberately replaced.
 
 ### Functional (RF)
@@ -105,7 +105,7 @@ pipeline satisfies it structurally rather than by discipline:
 | REQ-VDQ-9 | No RocksDB in the VD path (or at all) | kept (D9 — the module has NO local store) |
 | REQ-VDQ-10 | Queue observability: depth, ages, outcomes, durations | kept (`vd.lane.*`, `vd.scans.*` metrics — see [Statistics](#statistics-d18)) |
 
-## Design decisions (D1–D30)
+## Design decisions (D1–D31)
 
 The numbered decisions the requirements above refer to, in their original numbering. The
 [official architecture page](../../../docs/ref/modules/inventory-sync-server/architecture.md)
@@ -143,6 +143,7 @@ carries the narrative version of the load-bearing ones; this is the complete cat
 | D28 | One agent may have only `inventory_sync_server_max_sessions_per_agent` sessions (default 2) admitted and not yet answered, across the pipeline and the scan lane, counted by the validated agent id. One more is answered `503` and counted as `sync.agent_busy.total`. remoted caps what an agent has open on its side, but it gives up at its downstream deadline (`remoted.downstream_stateful_response_timeout`, 20 s) and frees the agent's slot there, while nothing here cancels admitted work. Without a count of its own, one agent could re-send on every timeout and fill the global `sync_queue_bytes` and the scan lane for everyone. The count is taken right after validation (`AgentSessionLimiter`) and released when the session is answered: the endpoint wraps the responder in an `AdmittedSessionResponder`, and the worker, the lane or a shutdown always answers through it, whether or not anyone is still listening. Two is the session being applied plus one re-send after such a timeout. The re-sends after that are refused instead of queued as duplicates of work already in progress. Kept as a count, not deduplicated by session: the server has no session id (D3) |
 | D29 | Nothing an agent sends can make `stageBulk()` throw. A throw there fails the worker's whole open batch, other agents' co-batched sessions included, because the pipeline cannot tell it from a connector failure (the buffer state is unknown after a failed `bulkIndex`). Two inputs did. A non-object value on the overlay's path (`"wazuh":"x"`, `"wazuh":{"agent":[1]}`, …) made `operator[]` throw, so the overlay is now built once per session and applied with `merge_patch()`, which replaces such a value; the agent's other `wazuh.*` fields survive, as before. `Start` strings that are not valid UTF-8 made every document's `dump()` throw (nlohmann checks UTF-8 when serializing, the Verifier never looks inside a string), so validation answers them `400` (step 9, after D25), with nlohmann's own `dump()` as the judge. As a backstop, any other `nlohmann::json::exception` while building a document skips that DOCUMENT with a WARN (D24's family). Only connector errors still leave `stageBulk()`, and those really do poison the batch |
 | D30 | A by-query (metadata, groups, a Cleans deletion, the by-query half of a whole-agent deletion) whose version-conflict allowance runs out is answered `503` with `Retry-After` and the reason body `indexer contention`, counted as `sync.indexer.conflict.exhausted`, not `500`. The connector reports it as `ConflictsExhausted`, apart from a shard failure: nothing was corrupted, every document the query reached is at the version a writer left it, and what kept the conflicts alive through three attempts is a competing writer of the same agent's documents, almost always a duplicate of the same session re-sent by the agent after remoted stopped waiting (D28). A `500` is read as a server failure by the agent, by remoted's counters and by the QA gates; the contention is retryable, so it is told apart and the delay (the connector's own `max_retry_duration_seconds`: the first copy cannot keep conflicting longer than its allowance) keeps the re-send from racing the first copy again. The rewrite the groups query does on every document of the agent stays: the version stamp it sets is the fence the bulk path's `external_gte` deltas are ordered against, so an unstamped document would let a stale delta through |
+| D31 | A `/stateful` session that arrives while another copy of the same session ((agent_id, session_id), with session_id passed via `X-Session-Id` from the agent and forwarded by remoted) is already admitted and executing on this manager node is refused with `503` and `Retry-After` (`{"error":"session already in progress","code":503,"reason":"session_already_running"}`), counted as `sync.session.duplicate.rejected`. This closes the gap left open by D3/D28: when an agent session takes longer than remoted's downstream deadline (`remoted.downstream_stateful_response_timeout`, 20 s), remoted returns 503 and frees its slot, but the manager continues applying the session. The agent re-POSTs the session with the same `X-Session-Id`. Without deduplication, D28 allows two concurrent sessions per agent, so the retry ran concurrently with the first copy over the same agent documents in OpenSearch, causing version conflict exhaustion (D30). Tracking in-flight session IDs in `AgentSessionLimiter` rejects duplicate in-flight arrivals cleanly at the admission gate before they can race in the pipeline or scan lane |
 
 ## Layout
 
@@ -323,11 +324,13 @@ sequenceDiagram
     participant Q as shard worker (SyncPipeline)
     participant IDX as indexer (worker's connector)
     participant VQ as VD scan lane
-    R->>S: POST /stateful + X-Wazuh-Agent-Id
+    R->>S: POST /stateful + X-Wazuh-Agent-Id + X-Session-Id
     Note over S: admission: in-flight byte budget (max_inflight_bytes) /<br/>connection cap → 503 declares > TOTAL budget → 413
     Note over S: validateFullSession(): verifier → FullSession →<br/>shape → identity (403) → mode×payload → per-payload
     alt invalid
         S-->>R: 400 / 403
+    else duplicate session (agent_id, session_id) already in flight (D31)
+        S-->>R: 503 + Retry-After (sync.session.duplicate.rejected)
     else agent already has max_sessions_per_agent pending (D28)
         S-->>R: 503 (sync.agent_busy.total)
     else VD data session
