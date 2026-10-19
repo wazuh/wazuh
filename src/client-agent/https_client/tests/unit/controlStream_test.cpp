@@ -1792,9 +1792,11 @@ TEST_F(ControlStreamTest, PendingRescanTriggersScanVdRequestAndClearsOnSuccess)
 
         if (spec.target == "/control")
         {
+            EXPECT_EQ(CONTROL_MAX_RESPONSE_BYTES, spec.maxResponseBytes);
             return response(TransportStatus::Ok, 200, notify);
         }
 
+        EXPECT_EQ(SHORT_REPLY_MAX_RESPONSE_BYTES, spec.maxResponseBytes);
         return response(TransportStatus::Ok, 200, "{}"); // /scan/vd accepted.
     }));
 

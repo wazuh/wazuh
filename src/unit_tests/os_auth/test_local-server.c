@@ -208,6 +208,43 @@ static void test_local_add_clustered_business_rejection_preserves_master_code(vo
     cJSON_Delete(response);
 }
 
+static void test_local_add_clustered_reenrollment_refusal_logs_at_debug(void **state) {
+    (void) state;
+    const int codes[] = { 9026, 9027, 9028, 9030 };
+    const char *messages[] = {
+        "ERROR: Unknown agent or no re-enrollment credential",
+        "ERROR: Invalid re-enrollment credential",
+        "ERROR: Re-enrollment credential outside the accepted time window",
+        "ERROR: Re-enrollment already in progress",
+    };
+
+    expect_any_always(__wrap__mdebug2, formatted_msg);
+    expect_any_always(__wrap__minfo, formatted_msg);
+
+    // The master's verdict on a re-enrollment bearer is logged at debug there, and the relay follows: one
+    // line, at debug, and no warning (the parser's own line is the caller's to emit when it asks for the code).
+    for (size_t i = 0; i < sizeof(codes) / sizeof(codes[0]); i++) {
+        char expected[OS_SIZE_256];
+        snprintf(expected, sizeof(expected), "Error %d: %s.", codes[i], messages[i] + 7);
+        expect_string(__wrap__mdebug1, formatted_msg, expected);
+        expect_string(__wrap_w_request_agent_add_clustered, name, "agent1");
+        expect_string(__wrap_w_request_agent_add_clustered, ip, "any");
+        expect_value(__wrap_w_request_agent_add_clustered, token_id, NULL);
+        expect_string(__wrap_w_request_agent_add_clustered, reenroll_kid, "001");
+        expect_string(__wrap_w_request_agent_add_clustered, reenroll_bearer, "bearer");
+        expect_value(__wrap_w_request_agent_add_clustered, source, NULL);
+        will_return(__wrap_w_request_agent_add_clustered, -1);
+        will_return(__wrap_w_request_agent_add_clustered, codes[i]);
+        will_return(__wrap_w_request_agent_add_clustered, messages[i]);
+
+        cJSON *response = local_add_clustered("agent1", "any", NULL, NULL, NULL, "001", "bearer", NULL);
+        assert_non_null(response);
+        assert_int_equal(cJSON_GetObjectItem(response, "error")->valueint, codes[i]);
+        assert_string_equal(cJSON_GetObjectItem(response, "message")->valuestring, messages[i] + 7);
+        cJSON_Delete(response);
+    }
+}
+
 static void test_local_add_clustered_transport_failure_maps_to_9016(void **state) {
     (void) state;
     cJSON *response;
@@ -2093,6 +2130,7 @@ int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_local_add_clustered_success),
         cmocka_unit_test(test_local_add_clustered_business_rejection_preserves_master_code),
+        cmocka_unit_test(test_local_add_clustered_reenrollment_refusal_logs_at_debug),
         cmocka_unit_test(test_local_add_clustered_transport_failure_maps_to_9016),
         cmocka_unit_test(test_local_add_rejects_a_malformed_explicit_key),
         cmocka_unit_test(test_local_add_rejects_an_out_of_range_or_reserved_id),

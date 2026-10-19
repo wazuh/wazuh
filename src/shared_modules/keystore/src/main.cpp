@@ -25,42 +25,42 @@
 
 namespace
 {
-constexpr auto RUNTIME_USER = "wazuh-manager";
-constexpr auto RUNTIME_GROUP = "wazuh-manager";
+    constexpr auto RUNTIME_USER = "wazuh-manager";
+    constexpr auto RUNTIME_GROUP = "wazuh-manager";
 
-void dropPrivilegesIfAvailable()
-{
-    if (geteuid() != 0)
+    void dropPrivilegesIfAvailable()
     {
-        return;
-    }
+        if (geteuid() != 0)
+        {
+            return;
+        }
 
-    const auto* user = getpwnam(RUNTIME_USER);
-    if (user == nullptr)
-    {
-        // Standalone build-tree QA environments do not install runtime accounts.
-        return;
-    }
-    const uid_t uid = user->pw_uid;
+        const auto* user = getpwnam(RUNTIME_USER);
+        if (user == nullptr)
+        {
+            // Standalone build-tree QA environments do not install runtime accounts.
+            return;
+        }
+        const uid_t uid = user->pw_uid;
 
-    const auto* group = getgrnam(RUNTIME_GROUP);
-    if (group == nullptr)
-    {
-        return;
-    }
-    const gid_t gid = group->gr_gid;
-    if (initgroups(RUNTIME_USER, gid) != 0 || setgid(gid) != 0 || setuid(uid) != 0)
-    {
-        throw std::runtime_error {"Cannot drop privileges to wazuh-manager."};
-    }
+        const auto* group = getgrnam(RUNTIME_GROUP);
+        if (group == nullptr)
+        {
+            return;
+        }
+        const gid_t gid = group->gr_gid;
+        if (initgroups(RUNTIME_USER, gid) != 0 || setgid(gid) != 0 || setuid(uid) != 0)
+        {
+            throw std::runtime_error {"Cannot drop privileges to wazuh-manager."};
+        }
 
-    if (getuid() != uid || geteuid() != uid || getgid() != gid || getegid() != gid)
-    {
-        throw std::runtime_error {"Cannot verify wazuh-manager identity."};
-    }
+        if (getuid() != uid || geteuid() != uid || getgid() != gid || getegid() != gid)
+        {
+            throw std::runtime_error {"Cannot verify wazuh-manager identity."};
+        }
 
-    umask(0007);
-}
+        umask(0007);
+    }
 } // namespace
 
 int main(int argc, char* argv[])

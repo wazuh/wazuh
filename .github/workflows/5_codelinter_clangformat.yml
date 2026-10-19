@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
-    # The action checks only `find <path> -name '*.cpp' -o -name '*.hpp'` in each of the twelve
+    # The action checks only `find <path> -name '*.cpp' -o -name '*.hpp'` in each of the fifteen
     # trees below (.github/actions/clang_format/action.yml), against the nearest .clang-format:
     # headers (.h), CMake files and docs in those trees cannot change its result.
     # upload_s3_artifact is not listed: it only uploads the error file of a failed check.
@@ -20,6 +20,9 @@ on:
       - src/shared_modules/manager_certs/**/*.[ch]pp
       - src/wazuh_modules/inventory_sync_server/**/*.[ch]pp
       - src/wazuh_modules/task_manager/**/*.[ch]pp
+      - src/wazuh_modules/keystore_server/**/*.[ch]pp
+      - src/shared_modules/keystore/**/*.[ch]pp
+      - src/shared_modules/uds_http_server/**/*.[ch]pp
       - src/wazuh_modules/vulnerability_scanner/**/*.[ch]pp
       - src/remoted/remoted_module/**/*.[ch]pp
       - src/engine/**/*.[ch]pp
@@ -173,6 +176,39 @@ jobs:
           path: src/shared_modules/manager_certs
           id: manager_certs
 
+      # Keystore server
+      - name: Keystore server - Coding style
+        id: keystore_server_style
+        continue-on-error: true
+        uses: ./.github/actions/clang_format
+        with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          path: src/wazuh_modules/keystore_server
+          id: keystore_server
+
+      # Keystore
+      - name: Keystore - Coding style
+        id: keystore_style
+        continue-on-error: true
+        uses: ./.github/actions/clang_format
+        with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          path: src/shared_modules/keystore
+          id: keystore
+
+      # UDS HTTP server
+      - name: UDS HTTP server - Coding style
+        id: uds_http_server_style
+        continue-on-error: true
+        uses: ./.github/actions/clang_format
+        with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          path: src/shared_modules/uds_http_server
+          id: uds_http_server
+
       # Engine (uses its own src/engine/.clang-format, the closest one to each file)
       - name: Engine - Coding style
         id: engine_style
@@ -231,6 +267,18 @@ jobs:
 
           if [ "${{ steps.manager_certs_style.outcome }}" != "success" ]; then
             FAILED_STEPS="$FAILED_STEPS ManagerCerts"
+          fi
+
+          if [ "${{ steps.keystore_server_style.outcome }}" != "success" ]; then
+            FAILED_STEPS="$FAILED_STEPS KeystoreServer"
+          fi
+
+          if [ "${{ steps.keystore_style.outcome }}" != "success" ]; then
+            FAILED_STEPS="$FAILED_STEPS Keystore"
+          fi
+
+          if [ "${{ steps.uds_http_server_style.outcome }}" != "success" ]; then
+            FAILED_STEPS="$FAILED_STEPS UdsHttpServer"
           fi
 
           if [ "${{ steps.engine_style.outcome }}" != "success" ]; then

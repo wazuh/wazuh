@@ -171,6 +171,7 @@ TEST(EnrollClientTest, OpenModeSendsOnlyProtocolVersion)
     {
         EXPECT_EQ("/enroll", spec.target);
         EXPECT_EQ("application/json", spec.contentType);
+        EXPECT_EQ(static_cast<uint64_t>(HC_MAX_ENROLL_BODY - 1), spec.maxResponseBytes);
         EXPECT_TRUE(hasHeader(spec.headers, "protocol-version: 1"));
         EXPECT_FALSE(hasHeader(spec.headers, "Authorization:"));
         EXPECT_FALSE(hasHeader(spec.headers, "Content-Encoding:"));

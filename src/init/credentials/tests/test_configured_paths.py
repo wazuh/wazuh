@@ -98,7 +98,7 @@ def test_configured_pair_absent(resolver, sandbox):
     expected = (f"MISSING {certs(sandbox, 'custom.pem')}: configured as https.cert in {api_file(sandbox)}; stage the "
                 f"pair (the resolver issues only {ISSUED})\n")
     assert run(resolver, sandbox, "--prestart")[0::2] == (1, expected)
-    assert run(resolver, sandbox, "--check")[0::2] == (0, "")
+    assert run(resolver, sandbox, "--check")[0::2] == (1, expected)       # before a restart stops anything
     assert run(resolver, sandbox, "--install")[0] == 0
     assert not os.path.exists(certs(sandbox, "custom.pem"))
 
@@ -256,6 +256,20 @@ def test_unreadable_configuration(resolver, sandbox, control, reason):
     assert run(resolver, sandbox, "--check")[0::2] == (1, expected)
 
 
+@pytest.mark.parametrize("mode", ["--check", "--prestart"])
+def test_configuration_reader_that_hangs(resolver, sandbox, monkeypatch, mode):
+    """A reader that does not answer in time is killed and reported like one that failed: an INVALID verdict about
+    the configuration, the default names used, not an internal error."""
+    sandbox.stage_ca()
+    monkeypatch.setattr(resolver, "SUBPROCESS_TIMEOUT", 1)
+    sandbox.control(dump_sleep=30)
+    code, _, err = run(resolver, sandbox, mode)
+    assert code == 1, err
+    assert (f"INVALID {conf_file(sandbox)}: cannot read the TLS paths (wazuh-manager-conf did not answer within 1 "
+            f"seconds); run wazuh-manager-conf validate\n") in err, err
+    assert "internal error" not in err and "Traceback" not in err, err
+
+
 def test_configuration_reader_missing(resolver, sandbox):
     sandbox.stage_ca()
     os.unlink(sandbox.paths.conf_bin)
@@ -272,7 +286,8 @@ def test_configuration_reader_missing(resolver, sandbox):
     ("- https\n", "INVALID {api}: not a mapping of options"),
     ("https: on\n", "INVALID {api}: https: not a mapping of options"),
     ("https:\n  cert: 5\n", "INVALID {api}: https.cert: not a file name"),
-    ("https:\n  enabled: 'no'\n", "INVALID {api}: https.enabled: not true or false"),
+    ("https:\n  enabled: 'maybe'\n", "INVALID {api}: https.enabled: not true or false"),
+    ("https:\n  cert: 'yes'\n", "INVALID {api}: https.cert: not a file name"),
 ])
 def test_api_yaml(resolver, sandbox, text, expected):
     """An absent file or an absent option means the Server API's defaults; anything unreadable is refused (and the
@@ -282,6 +297,21 @@ def test_api_yaml(resolver, sandbox, text, expected):
         sandbox.api_yaml(text)
     code, _, err = run(resolver, sandbox, "--check")
     assert (code, err) == ((0, "") if expected is None else (1, expected.format(api=api_file(sandbox)) + "\n"))
+
+
+@pytest.mark.parametrize("spelling,on", [("no", False), ("'no'", False), ("'NO'", False), ("\"No\"", False),
+                                         ("false", False), ("yes", True), ("'yes'", True), ("'YES'", True),
+                                         ("true", True)])
+def test_api_https_enabled_spellings(resolver, sandbox, spelling, on):
+    """https.enabled read as the Server API reads it: a YAML boolean, or the string yes or no in any case. Off, the
+    API's pair is not checked; on, the pair it names is."""
+    sandbox.stage_ca()
+    sandbox.api_yaml(f"https:\n  enabled: {spelling}\n  cert: custom.pem\n  key: custom-key.pem\n")
+    code, _, err = run(resolver, sandbox, "--prestart")
+    if on:
+        assert code == 1 and f"MISSING {certs(sandbox, 'custom.pem')}: configured as https.cert" in err, err
+    else:
+        assert (code, err) == (0, ""), err
 
 
 def test_api_yaml_symlink_is_unsafe(resolver, sandbox):
@@ -346,9 +376,9 @@ def test_configured_indexer_pair_absent(resolver, sandbox):
     expected = (f"MISSING {certs(sandbox, 'my-client.pem')}: configured as indexer.ssl.certificate in "
                 f"{conf_file(sandbox)}; stage a pair issued by the indexer's CA for this node (the resolver imports "
                 f"only indexer-connector.pem and indexer-connector-key.pem)\n")
-    assert run(resolver, sandbox, "--check")[0::2] == (0, "")
-    code, _, err = run(resolver, sandbox, "--prestart")
-    assert code == 1 and expected in err
+    for mode in ("--check", "--prestart"):                               # never imported: --prestart cannot fix it
+        code, _, err = run(resolver, sandbox, mode)
+        assert code == 1 and expected in err, (mode, err)
 
 
 def test_configured_indexer_pair_from_another_ca(resolver, sandbox):
@@ -381,11 +411,11 @@ def test_indexer_trust_is_the_union_of_the_listed_files(resolver, sandbox):
 
 def test_extra_indexer_ca_absent_or_invalid(resolver, sandbox):
     sandbox.control(conf_dump=indexer_conf(sandbox, cas=["indexer-ca.pem", "other-ca.pem"]))
-    assert run(resolver, sandbox, "--check")[0::2] == (0, "")
-    code, _, err = run(resolver, sandbox, "--prestart")
-    assert code == 1 and (f"MISSING {certs(sandbox, 'other-ca.pem')}: configured in "
-                          f"indexer.ssl.certificate_authorities in {conf_file(sandbox)}; stage the indexer's CA "
-                          f"there\n") in err
+    expected = (f"MISSING {certs(sandbox, 'other-ca.pem')}: configured in indexer.ssl.certificate_authorities in "
+                f"{conf_file(sandbox)}; stage the indexer's CA there\n")
+    for mode in ("--check", "--prestart"):                               # staged only: never imported
+        code, _, err = run(resolver, sandbox, mode)
+        assert code == 1 and expected in err, (mode, err)
     stage(sandbox, "other-ca.pem", export_files(sandbox)["client"].split(b"-----END CERTIFICATE-----")[0] +
           b"-----END CERTIFICATE-----\n")
     for mode in ("--check", "--prestart"):

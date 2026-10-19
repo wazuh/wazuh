@@ -194,7 +194,7 @@ Two requirements come from the fleet rather than from whoever signs:
 
 - **The subjectAltName must carry every address agents dial.** For a migration that is the address the 4.x agents
   already have in their `ossec.conf`, plus the cluster VIP and any NAT address. When the manager issues the
-  listener certificate itself it names the addresses of the host's default-route interfaces; set
+  listener certificate itself it names every global address of the host's interfaces; set
   `WAZUH_MANAGER_REMOTED_CERT_SANS` in `local.env` to name them yourself, which replaces the discovery rather than
   adding to it. Nothing checks the list against the fleet, and a certificate that lacks an address fails only when
   an agent dials it. A pair is never reissued on its own: to reissue one, remove both of its files and run

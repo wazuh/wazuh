@@ -1625,9 +1625,9 @@ InstallServer()
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/keystore
     ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-manager-keystore ${INSTALLDIR}/bin/wazuh-manager-keystore
 
-    # Credential resolver. Installed inside the prefix rather than at a fixed system path
-    # so that parallel installs under different USER_DIR values do not collide, which also keeps it
-    # inside the tree .github/actions/check_files/manager_base.csv pins.
+    # Credential resolver. Installed inside the prefix, next to the binaries it drives, which also keeps
+    # it inside the tree .github/actions/check_files/manager_base.csv pins. What it resolves lives in the
+    # fixed /etc/wazuh-manager, so installs under different USER_DIR values share those credentials.
     #
     # The resolver is INSTALLED here; whether install.sh then RUNS it is decided by
     # USER_RESOLVE_CREDENTIALS, which the DEB and RPM recipes set to "n". They invoke install.sh at

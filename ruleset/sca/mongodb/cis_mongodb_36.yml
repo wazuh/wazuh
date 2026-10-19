@@ -54,16 +54,24 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1110"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Brute Force"
     references:
       - https://docs.mongodb.com/v3.6/core/authentication/
     condition: all
@@ -90,16 +98,24 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1110"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Brute Force"
     references:
       - https://docs.mongodb.com/v3.6/reference/parameters/#param.enableLocalhostAuthBypass
     condition: all
@@ -126,16 +142,24 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1110"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Brute Force"
     references:
       - https://docs.mongodb.com/v3.6/tutorial/enforce-keyfile-access-control-in-existing-sharded-cluster-no-downtime/
       - https://docs.mongodb.com/v3.6/tutorial/enforce-keyfile-access-control-in-existing-sharded-cluster/
@@ -171,16 +195,24 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0112"
+          - "TA0003"
+          - "TA0001"
           - "TA0007"
         name:
+          - "Defense Impairment"
+          - "Persistence"
+          - "Initial Access"
           - "Discovery"
       technique:
         id:
+          - "T1686"
+          - "T1133"
           - "T1046"
-          - "T1087"
         name:
+          - "Disable or Modify System Firewall"
+          - "External Remote Services"
           - "Network Service Discovery"
-          - "Account Discovery"
     references:
       - https://docs.mongodb.com/v3.6/tutorial/configure-linux-iptables-firewall/
       - https://docs.mongodb.com/v3.6/tutorial/configure-windows-netsh-firewall/
@@ -209,16 +241,22 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0004"
+          - "TA0005"
+          - "TA0003"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Privilege Escalation"
+          - "Stealth"
+          - "Persistence"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1068"
+          - "T1078"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploitation for Privilege Escalation"
+          - "Valid Accounts"
     references:
       - https://docs.mongodb.com/v3.6/tutorial/manage-users-and-roles/
     condition: all
@@ -258,16 +296,20 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0006"
           - "TA0007"
+          - "TA0009"
         name:
+          - "Credential Access"
           - "Discovery"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1040"
+          - "T1557"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Network Sniffing"
+          - "Adversary-in-the-Middle"
     references:
       - https://docs.mongodb.com/v3.6/core/security-transport-encryption/
       - https://docs.mongodb.com/v3.6/tutorial/configure-ssl/
@@ -298,16 +340,20 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0006"
           - "TA0007"
+          - "TA0009"
         name:
+          - "Credential Access"
           - "Discovery"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1040"
+          - "T1557"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Network Sniffing"
+          - "Adversary-in-the-Middle"
     references:
       - https://docs.mongodb.com/v3.6/tutorial/configure-fips/
     condition: all
@@ -339,16 +385,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     references:
       - https://docs.mongodb.com/v3.6/tutorial/configure-auditing/
     condition: all
@@ -375,16 +423,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     references:
       - https://docs.mongodb.com/v3.6/reference/audit-message/
       - https://docs.mongodb.com/v3.6/tutorial/configure-audit-filters/
@@ -412,16 +462,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     references:
       - https://docs.mongodb.com/v3.6/reference/configuration-options/#systemLog.quiet
     condition: all
@@ -448,16 +500,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     references:
       - https://docs.mongodb.com/v3.6/reference/configuration-options/#systemLog.logAppend
     condition: all
@@ -525,16 +579,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1190"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploit Public-Facing Application"
     references:
       - https://docs.mongodb.com/v3.6/reference/configuration-options/#security.javascriptEnabled
     condition: all

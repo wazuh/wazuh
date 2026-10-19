@@ -124,6 +124,7 @@ TEST_F(ReporterStreamTest, StampsAgentIdAndClusterAndPostsToStats)
                   [&](const HttpRequestSpec & spec)
     {
         EXPECT_EQ("/stats", spec.target);
+        EXPECT_EQ(SHORT_REPLY_MAX_RESPONSE_BYTES, spec.maxResponseBytes);
         body.assign(reinterpret_cast<const char*>(spec.body), spec.bodyLength);
         return response(TransportStatus::Ok, 200);
     }));

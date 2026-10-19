@@ -225,7 +225,7 @@ wazuh-manager-resolve-credentials [--install|--upgrade|--prestart|--check|--clea
 | `--install` | DEB `postinst` and RPM `%post` on a fresh install, `install.sh` | seeds the passwords, stores the indexer password, mints the CA when nothing is there, issues the two server pairs, imports the indexer trust | always `0` |
 | `--upgrade` | DEB `postinst` and RPM `%post` on an upgrade | completes passwords, keystore and indexer trust; publishes the CA in `export/ca.pem` again when the copy there differs; validates the CA and the pairs, never mints or issues | always `0` |
 | `--prestart` (default) | `wazuh-manager-control` before the daemons start, on `start`, `restart` and `reload` | every `--check` test, then what `--upgrade` does; refuses the start when anything is missing, invalid or unsafe | `0` or `1` |
-| `--check` | `wazuh-manager-control` on `start`, `restart` and `reload`, once the configuration file itself has been validated | read-only: no lock, nothing written, and no subprocess but `wazuh-manager-conf --skip-file-checks dump`, which reads the [configured file names](#configured-file-names); reports `UNSAFE` and `INVALID`, never `MISSING` | `0` or `1` |
+| `--check` | `wazuh-manager-control` on `start`, `restart` and `reload`, once the configuration file itself has been validated | read-only: no lock, nothing written, and no subprocess but `wazuh-manager-conf --skip-file-checks dump`, which reads the [configured file names](#configured-file-names); reports `UNSAFE` and `INVALID`, and `MISSING` only for what `--prestart` could not complete either (the CA, the bundle and the server pairs, created at `--install` only, and indexer files with nothing in the export to import) | `0` or `1` |
 | `--clear` | you | removes what the resolver made ([Container images](#container-images)) | `0` or `1` |
 
 `-q` prints only problems. `-H` names a non-default installation directory; the configuration directory is
@@ -270,6 +270,7 @@ says why:
 |------|--------|-----------|----------|
 | `--check` reports `UNSAFE` | `Unsafe credentials. Exiting` | `{"error":22,"message":"Unsafe credentials."}` | `wazuh-manager-control: ERROR: unsafe credentials` |
 | `--check` reports `INVALID` | `Invalid credentials. Exiting` | `{"error":22,"message":"Invalid credentials."}` | `wazuh-manager-control: ERROR: invalid credentials` |
+| `--check` reports `MISSING` | `Unresolved credentials. Exiting` | `{"error":21,"message":"Unresolved credentials."}` | `wazuh-manager-control: ERROR: unresolved credentials` |
 | the check itself cannot run | `Cannot check the credentials. Exiting` | `{"error":22,"message":"Cannot check the credentials."}` | `wazuh-manager-control: ERROR: cannot check the credentials` |
 | `--prestart` fails | `Unresolved credentials. Exiting` | `{"error":21,"message":"Unresolved credentials."}` | `wazuh-manager-control: ERROR: unresolved credentials` |
 
@@ -279,11 +280,15 @@ On `start`, `restart` and `reload`, `wazuh-manager-control` checks in this order
    validate`), so a configuration mistake is reported with the validator's `(1244)` verdict and the JSON pointer of
    the option, not as a credentials problem: `--check` reads the [configured file names](#configured-file-names)
    from that file;
-2. the credentials (`--check`);
+2. the credentials (`--check`), including what the start after the stop could not provide: a pair the configuration
+   names and nobody staged, the CA or the bundle outside `--install`, indexer files with nothing in the export to
+   import;
 3. the files the configuration names (`wazuh-manager-conf validate`), and each daemon's own `-t` test.
 
 All of it happens on `restart` before anything is stopped. A refused `restart` therefore leaves the running daemons
-as they are.
+as they are. `--prestart` runs after the stop and completes what it can (the Server API database, the keystore, an
+import from the indexer's export); the one thing it can still refuse that `--check` does not look for is the indexer
+password, kept in the keystore, which is not read while the daemons are running.
 
 A `WARNING` refuses nothing: the start goes on, and each warning is also written to `logs/wazuh-manager.log` as
 `wazuh-manager-control: WARNING: <path>: …`. Only the indexer material's validity window is treated this way.
@@ -348,11 +353,15 @@ indexer's CA and a client pair the indexer issued for it:
 | `root-ca.pem` alone | validated; nothing can be issued here, the pairs must be staged | validated |
 | `root-ca.key` alone | `INVALID …/ca/root-ca.key: no certificate beside it` | same |
 
-The CA must be a single self-signed certificate with `CA:TRUE`, inside its validity window, with an unencrypted
-key that matches it. An intermediate CA is not accepted here: it belongs in the pair files, after the leaf (see
-[Server pairs](#server-pairs)). Every writing mode publishes it in `export/ca.pem` when the copy there is absent or
-differs, and `--install` writes `certs/root-ca.pem` only when that file is absent. An existing bundle must contain
-the CA. Its bytes are never rewritten, so rotation CAs and the publication block `wazuh-manager-certs` adds survive.
+The CA must be a single self-signed certificate with `CA:TRUE`, on an RSA key of 2048 bits or more or an ECDSA key on
+P-256, P-384 or P-521, inside its validity window, with an unencrypted key that matches it. Any other key (Ed25519,
+Ed448, DSA, a shorter RSA key, another curve) is refused as `INVALID …/ca/root-ca.pem: an Ed25519 key; use RSA of 2048
+bits or more, or ECDSA on P-256, P-384 or P-521`, and so is a pair, an intermediate or indexer material on one: the
+certificate checks do not accept them. An intermediate CA is not accepted here: it belongs in the pair files, after
+the leaf (see [Server pairs](#server-pairs)). Every writing mode publishes it in `export/ca.pem` when the copy there
+is absent or differs, and `--install` writes `certs/root-ca.pem` only when that file is absent. An existing bundle
+must contain the CA. Its bytes are never rewritten, so rotation CAs and the publication block `wazuh-manager-certs`
+adds survive.
 
 ### Server pairs
 
@@ -406,11 +415,13 @@ The resolver checks the files the daemons are configured to serve, under whateve
   `MISSING /etc/wazuh-manager/certs/listener.pem: configured as remote.https.certificate in /etc/wazuh-manager/wazuh-manager.conf; stage the pair (the resolver issues only remoted.pem, remoted-key.pem, apid.pem, apid-key.pem)`.
   While authd keeps the default names, `remoted.pem` is still issued for it. A bundle under another name is
   never created either (`… stage the agents' CA bundle there`).
-- **A turned-off listener** (`auth.disabled` set to `yes`, `https.enabled: false` in `api.yaml`) has its pair
-  neither checked nor reported missing. `--install` still issues the default pairs whose names are configured.
+- **A turned-off listener** (`auth.disabled` set to `yes`, `https.enabled: false` in `api.yaml`, or `no` in any
+  case, quoted or not, as the Server API reads it) has its pair neither checked nor reported missing. `--install`
+  still issues the default pairs whose names are configured.
 - **Reading the configuration.** Every mode, `--check` included, reads `wazuh-manager.conf` through
   `wazuh-manager-conf --skip-file-checks dump` and parses `api.yaml`; an absent `api.yaml`, or an option it does
-  not set, means the Server API's default. When either cannot be read, the default names are checked and the start
+  not set, means the Server API's default. When either cannot be read (the reader fails, does not answer within 60
+  seconds and is stopped, or prints something other than a JSON object), the default names are checked and the start
   is refused: `INVALID /etc/wazuh-manager/wazuh-manager.conf: cannot read the TLS paths (wazuh-manager-conf exited with 1); run wazuh-manager-conf validate`,
   `INVALID /var/wazuh-manager/api/configuration/api.yaml: not valid YAML (line 3)`. An `api.yaml` replaced by a
   symbolic link is `UNSAFE`.
@@ -443,13 +454,16 @@ refused, and an invalid list stops the issuance of both pairs before any is writ
 When a list is unset, the names are discovered:
 
 1. the node name, then the fully qualified name when it differs;
-2. the addresses of the interfaces that carry a default route: the primary IPv4 address of each (private networks
-   included, loopback and link-local left out) and their global IPv6 addresses (deprecated or tentative ones left
-   out);
+2. every global address of every interface, as `ip -o addr show scope global` lists them, whether or not the
+   interface carries the default route, is virtual or is down: every IPv4 address, secondary ones included (private
+   networks included, loopback and link-local left out), and the IPv6 addresses (deprecated or tentative ones left
+   out), ordered by interface, IPv4 first;
 3. the loopback names.
 
-Secondary IPv4 addresses are not discovered: name them in the list. With no address found, the pairs name the
-node and loopback only, and the resolver warns which variable to set.
+The addresses are read from the kernel over netlink; no tool is run. With no address found, or when the kernel
+cannot be asked, the pairs name the node and loopback only, and the resolver warns which variable to set (with the
+reason in the second case). An address you do not want in the certificates, such as a container bridge's, is left
+out only by setting the list yourself.
 
 ### Indexer trust
 
@@ -481,11 +495,15 @@ INVALID /etc/wazuh-indexer/export/ca.pem: does not issue the staged /etc/wazuh-m
 `--check` reports the same refusal, so a `restart` is refused before anything is stopped and the manager keeps
 running on the material in place. When no pair is in place at all, the CA is imported alone and the pair stays `MISSING`.
 
-A CA or client pair that only the clock refuses (expired, not valid yet) is a `WARNING`, never a refusal: in place,
-it is kept; in the export, it is imported only when nothing usable is in place (a first import, or material that is
-itself refused), never over a pair valid now. A node that boots with its clock behind therefore starts, and its
-indexer connection works once the clock is right. The connector still validates TLS itself, so such material is
-not used until it is valid.
+A CA or client pair that only the clock refuses (expired, not valid yet, including a pair that expired before its CA
+was renewed with the same key) is a `WARNING`, never a refusal: in place, it is kept; in the export, it is imported
+only when nothing usable is in place (a first import, or material that is itself refused), never over a pair valid
+now. An export with a new CA is a rotation and is judged as a set: while the CA and client pair in place are valid now
+and the export's new CA and pair are refused only by the clock, none of the three files is replaced; each refused
+export file gets a `WARNING` (`… not imported over the indexer CA and client pair in place, which are valid now`), and
+the rotation happens at the first start after the new set is valid. A node that boots with its clock behind therefore
+starts, and its indexer connection works once the clock is right. The connector still validates TLS itself, so such
+material is not used until it is valid.
 
 Every writing run then names the client pair in place, as it names the server pairs: its subject and its subject
 alternative names, `none` when it has none (a client certificate need not have any; `-q` drops the line):

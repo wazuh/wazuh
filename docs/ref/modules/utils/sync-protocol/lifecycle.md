@@ -114,7 +114,7 @@ bool applyHttpResult(int httpCode, std::string_view body, uint64_t expectedSessi
 - **`409`**: checksum mismatch (`SyncResult::CHECKSUM_ERROR`) — meaningful only as the answer to a `ChecksumModule` session; `requiresFullSync()` retries it and returns `MISMATCH` (full sync needed) only if every attempt answers `409`.
 - **`503`**: the manager cannot serve this agent right now (indexer down, at capacity, shutting down, or a VD feed still downloading) — `SyncResult::COMMUNICATION_ERROR`, `managerNotReady = true` on the result. Covers both a brief post-restart window and a lasting outage; see `SyncModuleResult::managerNotReady` / `consecutiveFailures` in the [API Reference](api-reference.md#result-type) for how callers tell them apart.
 - **`415`**: the manager rejected the compressed encoding — treated the same as `503` (`COMMUNICATION_ERROR`, `managerNotReady = true`), since the agent's own `RetrySender` already retries once uncompressed within the same send.
-- **`0`** (no HTTP response at all — timeout, connect failure, TLS failure, abort): also treated as `COMMUNICATION_ERROR` / `managerNotReady = true`.
+- **`0`** (no usable HTTP response — timeout, connect failure, TLS failure, abort, a transfer cut after the status line, or an answer too large for the agent to relay to the module): also treated as `COMMUNICATION_ERROR` / `managerNotReady = true`.
 - **`413`**: session rejected as larger than the manager's in-flight budget (`SyncResult::PAYLOAD_TOO_LARGE`) — the caller must split it.
 - **everything else** (`400`, `403`, `500`, ...): generic protocol failure (`SyncResult::PROTOCOL_ERROR`). Items are reset to `PENDING` for the next cycle.
 

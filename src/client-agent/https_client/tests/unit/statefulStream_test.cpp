@@ -155,6 +155,7 @@ TEST_F(StatefulStreamTest, SessionIsSpooledAtSubmitAndStreamedWithSessionHeader)
         EXPECT_EQ("/stateful", spec.target);
         EXPECT_EQ(path, spec.bodyFilePath); // Streamed from the spooled file.
         EXPECT_EQ(8u, spec.bodyFileSize);
+        EXPECT_EQ(STATEFUL_MAX_RESPONSE_BYTES, spec.maxResponseBytes);
         return response(TransportStatus::Ok, 200, R"({"itemsProcessed":42})");
     }));
     EXPECT_CALL(m_sink, onSyncResponse("sess-1", 200, R"({"itemsProcessed":42})"));
@@ -254,6 +255,19 @@ TEST_F(StatefulStreamTest, FailureOutcomeCrossesTheSink)
     EXPECT_CALL(m_sink, onSyncResponse("sess-perm", 413, _));
 
     submit("sess-perm", "body");
+    EXPECT_TRUE(m_stream.step(m_waiter));
+}
+
+// A transfer cut after the status line (response cap, timeout) still carries the HTTP code,
+// but only part of the body: the module must see it as no answer, not as the code.
+TEST_F(StatefulStreamTest, TransferCutAfterTheStatusLineCrossesTheSinkAsNoAnswer)
+{
+    const std::string path = ::testing::TempDir() + "hc_stateful_cut.tmp";
+    EXPECT_CALL(m_spoolFactory, spool(_, _)).WillOnce(Return(ByMove(makeSpoolAt(path, "body"))));
+    EXPECT_CALL(m_performer, perform(_)).WillOnce(Return(response(TransportStatus::OtherError, 200, R"({"sta)")));
+    EXPECT_CALL(m_sink, onSyncResponse("sess-cut", 0, ""));
+
+    submit("sess-cut", "body");
     EXPECT_TRUE(m_stream.step(m_waiter));
 }
 

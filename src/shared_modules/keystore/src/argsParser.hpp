@@ -105,23 +105,25 @@ public:
      */
     static void showHelp()
     {
-        std::cout << "\nUsage: wazuh-manager-keystore <option(s)>\n"
-                  << "Options:\n"
-                  << "\t-h \t\t\tShow this help message\n"
-                  << "\t-f COLUMN_FAMILY\tSpecifies the target column family for the insertion.\n"
-                  << "\t-k KEY\t\t\tSpecifies the key for the key-value pair.\n"
-                  << "\t-v VALUE\t\tSpecifies the value associated with the key. Only use one value option at the time.\n"
-                  << "\t-vp VALUE_PATH\t\tPath to a file containing the value to read (single line). Only use one value option at the time.\n"
-                  << "\tNOTE: if both value parameters are empty, stdin will be read.\n"
-                  << "\t-g \t\t\tPrint the value of the key instead of writing one, and exit non-zero when it is not set.\n"
-                  << "\nExample:"
-                  << "\n\t./wazuh-manager-keystore -f indexer -k username -v wazuh-manager\n"
-                  << "\n\t./wazuh-manager-keystore -f indexer -k password -vp /path/to/file.txt\n"
-                  << "\n\t./wazuh-manager-keystore -f indexer -k password < /path/to/file.txt\n"
-                  << "\n\techo 'pass' | ./wazuh-manager-keystore -f indexer -k password\n"
-                  << "\n\tcat /path/to/file.txt | ./wazuh-manager-keystore -f indexer -k password\n"
-                  << "\n\t./wazuh-manager-keystore -f indexer -k password -g\n"
-                  << std::endl;
+        std::cout
+            << "\nUsage: wazuh-manager-keystore <option(s)>\n"
+            << "Options:\n"
+            << "\t-h \t\t\tShow this help message\n"
+            << "\t-f COLUMN_FAMILY\tSpecifies the target column family for the insertion.\n"
+            << "\t-k KEY\t\t\tSpecifies the key for the key-value pair.\n"
+            << "\t-v VALUE\t\tSpecifies the value associated with the key. Only use one value option at the time.\n"
+            << "\t-vp VALUE_PATH\t\tPath to a file containing the value to read (single line). Only use one value "
+               "option at the time.\n"
+            << "\tNOTE: if both value parameters are empty, stdin will be read.\n"
+            << "\t-g \t\t\tPrint the value of the key instead of writing one, and exit non-zero when it is not set.\n"
+            << "\nExample:"
+            << "\n\t./wazuh-manager-keystore -f indexer -k username -v wazuh-manager\n"
+            << "\n\t./wazuh-manager-keystore -f indexer -k password -vp /path/to/file.txt\n"
+            << "\n\t./wazuh-manager-keystore -f indexer -k password < /path/to/file.txt\n"
+            << "\n\techo 'pass' | ./wazuh-manager-keystore -f indexer -k password\n"
+            << "\n\tcat /path/to/file.txt | ./wazuh-manager-keystore -f indexer -k password\n"
+            << "\n\t./wazuh-manager-keystore -f indexer -k password -g\n"
+            << std::endl;
     }
 
 private:

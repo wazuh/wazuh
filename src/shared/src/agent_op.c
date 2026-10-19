@@ -427,7 +427,8 @@ static int w_parse_agent_add_response(const char* buffer, char *err_response, ch
                 if (json_format) {
                     printf("%s", buffer);
                 }
-                else {
+                else if (!error_code) {
+                    // A caller that asks for the code reports the rejection itself, at the level it decides
                     mwarn("%d: %s", error->valueint, message ? message->valuestring : "(undefined)");
                 }
                 if (error_code) {
