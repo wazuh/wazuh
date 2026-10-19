@@ -62,8 +62,6 @@ class FileItem final : public DBItem
             m_uid = fim->file_entry.data->uid == NULL ? "" : fim->file_entry.data->uid;
             m_gid = fim->file_entry.data->gid == NULL ? "" : fim->file_entry.data->gid;
             m_containerId = fim->file_entry.data->container_id == NULL ? "" : fim->file_entry.data->container_id;
-            m_containerJson =
-                fim->file_entry.data->container_json == NULL ? "" : fim->file_entry.data->container_json;
             createJSON();
             createFimEntry();
         };
@@ -86,13 +84,12 @@ class FileItem final : public DBItem
             m_uid = fim.at("uid");
             m_owner = fim.at("owner");
             m_sync = fim.at("sync").get<int>() != 0;
-            // Unlike every other field above, these two are read as optional:
-            // getFile()'s SELECT column list doesn't include them (deliberately
+            // Unlike every other field above, this one is read as optional:
+            // getFile()'s SELECT column list doesn't include it (deliberately
             // out of scope -- see spike-37533/requirements-analysis.md), so this
-            // constructor's only production caller (the read path) never has
-            // them to give.
+            // constructor's only production caller (the read path) never has it
+            // to give.
             m_containerId = fim.value("container_id", "");
-            m_containerJson = fim.value("container_json", "");
 
             createFimEntry();
             m_statementConf = std::make_unique<nlohmann::json>(fim);
@@ -125,7 +122,6 @@ class FileItem final : public DBItem
         std::string m_sha256;
         std::string m_owner;
         std::string m_containerId;
-        std::string m_containerJson;
         std::unique_ptr<fim_entry, FimFileDataDeleter> m_fimEntry;
         std::unique_ptr<nlohmann::json> m_statementConf;
         bool m_sync;

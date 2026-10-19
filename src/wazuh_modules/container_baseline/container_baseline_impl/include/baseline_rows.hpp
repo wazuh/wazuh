@@ -106,33 +106,33 @@ std::pair<std::string, std::string> BuildHardwareJson(const HardwareBaselineRow&
 ///
 /// The Build*DbsyncRow() family renders a baseline row in syscollector's
 /// dbsync_* column format (syscollectorTablesDef.hpp), stamped with the
-/// `container_id` and `container_json` columns, so syscollector can sync it
+/// `container_id` column that names its container, so syscollector can sync it
 /// into the shared host tables through a per-container scoped DBSync
 /// transaction and let the existing notifyChange/processEvent pipeline emit
 /// both the stateless delta and the stateful document.
 
-/// @brief Serialize the container context block into the blob stored in every
-/// row's `container_json` column ({"container": {...}}, carrying a nested
-/// "kubernetes" object only for Kubernetes-origin containers). Built once per
-/// container and shared by all of its rows.
+/// @brief Serialize the container context block ({"container": {...}}, carrying
+/// a nested "kubernetes" object only for Kubernetes-origin containers). Built
+/// once per container and handed to the consumer once, which stores it under
+/// the container's id for all of that container's rows to share.
 std::string BuildContainerContextJson(const std::string& container_id, const ContainerContextPtr& ctx);
 
 /// @brief Build a file_entry dbsync row for a FIM baseline file.
 /// Shape matches the file_entry table schema (fimDB.hpp CREATE_FILE_DB_STATEMENT)
-/// field-for-field, stamped with container_id and container_json.
+/// field-for-field, stamped with container_id.
 /// Checksum must be computed by the caller (OS_SHA1_Str of this row's dump).
-std::string BuildFimFileDbsyncRow(const FileBaselineRow& row, const std::string& container_json);
+std::string BuildFimFileDbsyncRow(const FileBaselineRow& row);
 
-std::string BuildProcessDbsyncRow(const ProcessBaselineRow& row, const std::string& container_json);
-std::string BuildPortDbsyncRow(const PortBaselineRow& row, const std::string& container_json);
-std::string BuildUserDbsyncRow(const UserBaselineRow& row, const std::string& container_json);
-std::string BuildGroupDbsyncRow(const GroupBaselineRow& row, const std::string& container_json);
-std::string BuildPackageDbsyncRow(const PackageBaselineRow& row, const std::string& container_json);
-std::string BuildOsDbsyncRow(const OsBaselineRow& row, const std::string& container_json);
-std::string BuildInterfaceDbsyncRow(const InterfaceBaselineRow& row, const std::string& container_json);
-std::string BuildNetworkAddressDbsyncRow(const NetworkAddressBaselineRow& row, const std::string& container_json);
-std::string BuildProtocolDbsyncRow(const ProtocolBaselineRow& row, const std::string& container_json);
-std::string BuildServiceDbsyncRow(const ServiceBaselineRow& row, const std::string& container_json);
-std::string BuildHardwareDbsyncRow(const HardwareBaselineRow& row, const std::string& container_json);
+std::string BuildProcessDbsyncRow(const ProcessBaselineRow& row);
+std::string BuildPortDbsyncRow(const PortBaselineRow& row);
+std::string BuildUserDbsyncRow(const UserBaselineRow& row);
+std::string BuildGroupDbsyncRow(const GroupBaselineRow& row);
+std::string BuildPackageDbsyncRow(const PackageBaselineRow& row);
+std::string BuildOsDbsyncRow(const OsBaselineRow& row);
+std::string BuildInterfaceDbsyncRow(const InterfaceBaselineRow& row);
+std::string BuildNetworkAddressDbsyncRow(const NetworkAddressBaselineRow& row);
+std::string BuildProtocolDbsyncRow(const ProtocolBaselineRow& row);
+std::string BuildServiceDbsyncRow(const ServiceBaselineRow& row);
+std::string BuildHardwareDbsyncRow(const HardwareBaselineRow& row);
 
 } // namespace wazuh::container_baseline

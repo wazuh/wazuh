@@ -94,6 +94,35 @@ is not optimising a path whose output is thrown away.
   running containers that produce packages and services before it means anything.
 
 
+## The legacy column was removed outright, not deprecated
+
+The plan staged the column's removal for a later release. The reasoning was upgrade safety: leave
+`container_json` in place for one cycle so that rows written by an older agent keep describing
+their own container, and so no agent pays a `WITHOUT ROWID` table rebuild at upgrade time.
+
+That reasoning depended on there being agents in the field with rows in the old shape. There are
+none — none of this container work has been released. With no installed base, "one upgrade cycle"
+protects nobody, and the cost of waiting is real: every reader carries a fallback path that is
+unreachable by construction, and the column keeps being written as `DEFAULT ''` on every row.
+
+So the column is gone in the same release that introduced the dimension:
+
+- Dropped from all 14 create statements (13 syscollector tables, `file_entry`).
+- Dropped from existing databases by migration — `user_version` 2 → 15 for syscollector, 2 → 3 for
+  FIM. Development databases converge rather than keeping a vestigial column forever.
+- Both legacy fallback readers deleted, in `ecsData()` and in the FIM bridge's two lift sites.
+- The C round trip removed with it: `fim_file_data.container_json`, `FileItem`'s member, and the
+  column from `DB::getFile()`'s select list.
+
+The migration statements are spelled out one per table rather than generated from
+`CONTAINER_SCOPED_TABLES`. A migration that has already run on some database has to keep meaning
+what it meant when it ran, and a list that someone may later extend cannot promise that.
+
+The checksum is unaffected, which is what keeps this from re-syncing anything: `getRowChecksum()`
+already erased the column before digesting, so a row's checksum is the same before and after the
+drop. The erase is now gone too — there is no column left to erase.
+
+
 ## Not done: the per-value metadata cap
 
 A cap on oversized label and annotation values was planned alongside this work, to stop a single

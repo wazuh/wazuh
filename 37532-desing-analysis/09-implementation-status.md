@@ -534,3 +534,10 @@ Recording the wrong reason had a cost: it pointed at an owner who could not
 have unblocked the work, and it hid a defect — the MODIFIED storm in
 [03](03-findings-correctness.md) C29 — that was the strongest argument for
 doing it.
+
+Item 17 is now complete, including the half that was itself deferred a second
+time: the `container_json` column is removed rather than left in place for an
+upgrade cycle, since nothing on this branch has been released and so there is
+no installed base for a compatibility window to protect. See
+[24](24-container-context-measured.md) for what the column cost and what
+removing it required.

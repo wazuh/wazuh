@@ -215,7 +215,7 @@ class EXPORTED Syscollector final
 
         std::string getCreateStatement() const;
         std::vector<std::string> getUpgradeStatements() const;
-        nlohmann::json containerContextBlock(const std::string& containerId, const nlohmann::json& row);
+        nlohmann::json containerContextBlock(const std::string& containerId);
         nlohmann::json getOSData();
         nlohmann::json getHardwareData();
         nlohmann::json getNetworkData();

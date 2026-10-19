@@ -291,8 +291,8 @@ TEST(BuildProtocolJson, OmitsDhcpBecauseSchemaTypeIsBoolean)
 
 /* The container block reaches the manager by two different routes: inlined
  * into a stateless event by the Build*Json() builders, and serialized by
- * BuildContainerContextJson() into the container_json column that stateful
- * rows carry so their DELETE events survive the container.
+ * BuildContainerContextJson() into the context each consumer stores once per
+ * container, so a DELETE still describes a container that is already gone.
  *
  * baseline_rows.cpp says in a comment that the two must not drift, "or the
  * same row reaches the manager in two different shapes depending on which
