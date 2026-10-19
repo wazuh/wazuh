@@ -174,6 +174,8 @@ A manager-side module hosted by `wazuh-manager-modulesd` is three pieces, not on
 | **Keystore**          | `src/shared_modules/keystore`          | Indexer Connector, Keystore Server, `wazuh-manager-keystore` CLI                         | AES-256 encrypted credential store (RocksDB). Static library, in-process only; socket access is the Keystore Server module's job.                                          |
 | **UDS HTTP Server**   | `src/shared_modules/uds_http_server`   | Wazuh DB, Inventory Sync Server, Task Manager, Vulnerability Scanner, Remoted             | Asio-based HTTP/1.1 server over a Unix socket. The shared transport behind every HTTP socket listed below except the Engine's two, which the Engine serves itself.          |
 | **Metrics**           | `src/shared_modules/metrics`           | Remoted, Vulnerability Scanner, Inventory Sync Server, Task Manager                       | Counters, gauges, histograms, pull metrics and a sliding-window rate behind a thread-safe registry, with a deterministic JSON dump. Static library, STL-only public headers, and deliberately **not** a singleton: each daemon owns a `Manager` and injects it. Kept under its own target and namespace rather than sharing the Engine's `fastmetrics`, which lives in the same build tree — one `Manager` under both names would be a silent ODR trap. |
+| **Manager Config**    | `src/shared_modules/manager_config`    | Remoted, Authd, Wazuh DB, Modulesd (through libconfig's `w_mconf_*()`), Engine, `wazuh-manager-conf`, `wazuh-manager-certs` | Loader of `/etc/wazuh-manager/wazuh-manager.conf`: strict XML to canonical JSON, validated against the embedded schema, defaults filled, cross-field semantics checked. The single implementation of the manager configuration. |
+| **CA Bundle**         | `src/shared_modules/ca_bundle`         | Remoted, `wazuh-manager-certs`                                                           | Pure functions over the CA bundle (`/etc/wazuh-manager/certs/root-ca.pem`): its certificates, content hash, publication stamp, and whether the served leaf chains to it. No file reads, logging or configuration, so remoted and the tool judge a bundle with the same code. |
 
 ### CLI Tools
 
@@ -207,19 +209,21 @@ cluster.node_type` is `master`, and `wazuh-manager-authd` when `auth.disabled` i
 
 | Action | Behaviour |
 | ------ | --------- |
-| `start` | Checks the credentials (`--check`) and validates the configuration (see below), resolves credentials with `bin/wazuh-manager-resolve-credentials --prestart` (skipped silently when the resolver is not installed), empties `tmp/`, then starts each daemon that is not already running. `wazuh-manager-analysisd` counts as started once its API answers on `queue/sockets/engine-api-http.sock`. A daemon that fails to start stops the sequence with `<daemon> did not start correctly.` and exit status `1`. |
+| `start` | Validates the configuration file, checks the credentials (`--check`) and validates the configuration with its files (see below), resolves credentials with `bin/wazuh-manager-resolve-credentials --prestart` (skipped silently when the resolver is not installed), empties `tmp/`, then starts each daemon that is not already running. `wazuh-manager-analysisd` counts as started once its API answers on `queue/sockets/engine-api-http.sock`. A daemon that fails to start stops the sequence with `<daemon> did not start correctly.` and exit status `1`. |
 | `stop` | Stops every daemon. |
-| `restart` | Checks the credentials and validates the configuration **while the manager is still running** (a refusal leaves it up), stops every daemon, resolves credentials, and starts them again. |
+| `restart` | Validates the configuration and checks the credentials **while the manager is still running** (a refusal leaves it up), stops every daemon, resolves credentials, and starts them again. |
 | `reload` | `restart` for every daemon except `wazuh-manager-remoted`, which keeps running, so agent connections stay up. |
 | `status` | Prints `<daemon> is running...` or `<daemon> not running...` per daemon (`refused its configuration...` or `failed to start...` when the last `start` left that verdict), and exits `1` when any daemon is down. |
 | `enable debug` / `disable debug` | Make every later start pass `-d` to the daemons (or stop doing so), recorded in `bin/.process_list`. `debug` is the only accepted option. |
 | `info` | Prints `WAZUH_VERSION`, `WAZUH_REVISION` and `WAZUH_TYPE` (`manager`); `-v`, `-r` and `-t` print one of them alone. |
 
-Before `start`, `restart` and `reload` touch any daemon, `bin/wazuh-manager-resolve-credentials --check`
+Before `start`, `restart` and `reload` touch any daemon, `bin/wazuh-manager-conf validate
+--skip-file-checks` validates the configuration file alone (a failure is refused as below, error 20), so
+the credential check can read it. Then `bin/wazuh-manager-resolve-credentials --check`
 tests every credential file and certificate it trusts, read-only, and a problem is refused with
 `Unsafe credentials. Exiting`, `Invalid credentials. Exiting` or, when the check itself cannot run,
-`Cannot check the credentials. Exiting` (`{"error":22,…}` under `-j`). Then the configuration is validated twice:
-`bin/wazuh-manager-conf validate`, **with** the checks that the referenced certificate files exist,
+`Cannot check the credentials. Exiting` (`{"error":22,…}` under `-j`). Then the configuration is validated again:
+`bin/wazuh-manager-conf validate`, now **with** the checks that the referenced certificate files exist,
 and then each daemon's own `-t`. A failure is refused with `wazuh-manager.conf: Configuration error.
 Exiting` (or `<daemon>: Configuration error. Exiting`), `{"error":20,…}` under `-j`; the first also
 writes a `wazuh-manager-control: ERROR: …` line to `logs/wazuh-manager.log`. An unresolved credential is
