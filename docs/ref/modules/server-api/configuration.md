@@ -142,7 +142,7 @@ The installer (`wazuh-manager-resolve-credentials --install`, run by the package
 same profile as the agent listener's `remoted.pem`: subject `C=US, L=California, O=Wazuh, OU=Wazuh,
 CN=<node name>`, its own SANs (`WAZUH_MANAGER_APID_CERT_SANS` in the environment or in
 `/etc/wazuh-manager/local.env`, plus `localhost`, `127.0.0.1` and `::1`; when unset, discovered the way Remoted's
-are: the node's host names and the addresses of its default-route interfaces plus those three — it never
+are: the node's host names and every global address of its interfaces plus those three — it never
 inherits `WAZUH_MANAGER_REMOTED_CERT_SANS`), 2048-bit RSA, `serverAuth`, `notBefore` one day before issuance and
 `notAfter` 3650 days after it, the leaf followed by the CA, owned by `root:wazuh-manager` with mode `0640`. Before
 every start the resolver checks that the pair is issued by the CA in `/etc/wazuh-manager/ca/root-ca.pem`. Issuing it therefore needs

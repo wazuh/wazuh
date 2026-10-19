@@ -89,6 +89,7 @@ def test_default_paths(resolver):
 
 
 def test_quiet(resolver, sandbox):
+    sandbox.stage_ca()
     code, out, err = run_main(resolver, ["--check"], sandbox)
     assert code == 0 and out.startswith("resolve-credentials: ") and err == ""
     code, out, err = run_main(resolver, ["--check", "-q"], sandbox)

@@ -2,7 +2,8 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-"""--check: read-only, it reports UNSAFE and INVALID and never MISSING, which is --prestart's to judge."""
+"""--check: read-only, it reports UNSAFE and INVALID, and MISSING only for what --prestart could not complete either
+(it runs before a restart stops anything); what --prestart completes is left to it."""
 
 import io
 import os
@@ -18,8 +19,9 @@ def run(resolver, sandbox, *argv):
     return code, out.getvalue(), err.getvalue()
 
 
-def test_check_clean_sandbox(resolver, sandbox):
-    assert run(resolver, sandbox, "--check")[0] == 0
+def test_check_resolved_tree(resolver, sandbox):
+    sandbox.stage_ca()
+    assert run(resolver, sandbox, "--check")[0::2] == (0, "")
 
 
 def test_check_bad_local_env(resolver, sandbox):
@@ -29,15 +31,51 @@ def test_check_bad_local_env(resolver, sandbox):
 
 
 def test_check_unsafe_indexer_export(resolver, sandbox):
+    sandbox.stage_ca()
     sandbox.make_indexer_export(credentials="WAZUH_INDEXER_MANAGER_PASSWORD=x\n", mode=0o770)
     code, _, err = run(resolver, sandbox, "--check")
     assert code == 1 and err == f"UNSAFE {sandbox.indexer_export}: group-writable\n"
 
 
-def test_check_never_reports_missing(resolver, sandbox):
-    """Nothing supplied anywhere: --prestart will have things to complete, --check has nothing to say."""
-    code, _, err = run(resolver, sandbox, "--check")
-    assert code == 0 and "MISSING" not in err
+def _missing(err):
+    return {line for line in err.splitlines() if line.startswith("MISSING ")}
+
+
+def test_check_reports_only_what_prestart_cannot_complete(resolver, sandbox):
+    """Nothing supplied anywhere. --prestart will seed and store what it is given, so --check leaves the indexer
+    password to it (the keystore is not read before the daemons stop); the CA is created at --install only, so
+    --check reports it, with --prestart's own line."""
+    code, _, check = run(resolver, sandbox, "--check")
+    _, _, prestart = run(resolver, sandbox, "--prestart")
+    assert code == 1 and _missing(check) == {f"MISSING {sandbox.conf}/ca/root-ca.pem: the manager's CA is missing; "
+                                             f"stage it there (and root-ca.key to issue certificates), or reinstall"}
+    assert _missing(check) < _missing(prestart) and "WAZUH_INDEXER_MANAGER_PASSWORD" in prestart
+
+
+@pytest.mark.parametrize("name", ["remoted", "apid"])
+def test_check_reports_an_absent_server_pair(resolver, sandbox, name):
+    """Pairs are issued at --install only: an absent one is a MISSING --prestart would report and could not fix, so a
+    restart must refuse it before the daemons stop."""
+    sandbox.stage_ca()
+    for suffix in (".pem", "-key.pem"):
+        os.unlink(os.path.join(sandbox.certs, name + suffix))
+    code, _, check = run_env(resolver, sandbox, "--check")
+    _, _, prestart = run_env(resolver, sandbox, "--prestart")
+    assert code == 1 and _missing(check) == {f"MISSING {sandbox.certs}/{name}.pem: run --install to issue it, or "
+                                             f"stage the pair"}
+    assert _missing(check) <= _missing(prestart)
+
+
+def test_check_leaves_an_importable_indexer_trust_to_prestart(resolver, sandbox):
+    """The indexer's files are absent but its export holds them: --prestart imports them, so --check is quiet."""
+    sandbox.stage_ca()
+    sandbox.make_indexer_trust()
+    for name in ("indexer-ca.pem", "indexer-connector.pem", "indexer-connector-key.pem"):
+        path = os.path.join(sandbox.certs, name)
+        if os.path.exists(path):
+            os.unlink(path)
+    assert run_env(resolver, sandbox, "--check")[0::2] == (0, "")
+    assert run_env(resolver, sandbox, "--prestart")[0] == 0
 
 
 def test_check_unsafe_conf(resolver, sandbox):
@@ -56,7 +94,8 @@ def test_check_changes_nothing(resolver, sandbox):
     sandbox.write(os.path.join(sandbox.conf, "local.env"), "A=1\n")
     sandbox.make_indexer_export(credentials="WAZUH_INDEXER_MANAGER_PASSWORD=Idx.Passw0rd-123\n")
     before = sandbox.tree_state()
-    assert run(resolver, sandbox, "--check")[0] == 0
+    code, _, err = run(resolver, sandbox, "--check")
+    assert code == 1 and all(line.startswith("MISSING ") for line in err.splitlines()), err   # the CA, not created
     assert sandbox.tree_state() == before
     assert not os.path.exists(os.path.join(sandbox.conf, "ca"))
 

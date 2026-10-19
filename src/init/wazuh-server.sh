@@ -296,7 +296,10 @@ validateconfig()
 # and every file in them, the indexer's export -- for ownership, type and mode, and validates what is
 # already there (the .env syntax, supplied values, the CA, the server pairs, the indexer trust). It
 # takes no lock, starts no subprocess but the configuration reader (wazuh-manager-conf dump, for the
-# configured TLS file names) and never reports something as missing: completing is --prestart's job.
+# configured TLS file names) and reports as missing only what --prestart could not complete either
+# (the CA, the bundle and the server pairs, created at --install only, and indexer files with nothing
+# in the export to import): completing the rest is --prestart's job, and on the restart path a pair
+# nobody can provide must refuse the restart before the daemons are stopped, not after.
 # That is what lets it run ahead of testconfig() -- and so ahead of the stop on the restart path --
 # where resolvecredentials() cannot (see below). It has to come before the file checks: testconfig()
 # would otherwise stop the start on "(1244) file not found" for a certificate without ever naming the
@@ -325,12 +328,15 @@ checkcredentials()
         echo "${CHECK_VERDICT}" >&2
     fi
     # UNSAFE: an entry root may not trust (owner, type, mode, a link). INVALID: something in place
-    # that is wrong (a bad local.env line, an expired or mismatched certificate). Anything else (not
-    # run as root, an internal error) means the check itself could not run, which refuses the start
-    # just the same but must not be reported as a verdict about the credentials.
+    # that is wrong (a bad local.env line, an expired or mismatched certificate). MISSING: something
+    # --prestart could not provide either, reported as resolvecredentials() reports it. Anything else
+    # (not run as root, an internal error) means the check itself could not run, which refuses the
+    # start just the same but must not be reported as a verdict about the credentials.
+    CHECK_ERROR=22
     case "${CHECK_VERDICT}" in
         *UNSAFE*)  CHECK_REASON="Unsafe credentials"; CHECK_LOG="unsafe credentials" ;;
         *INVALID*) CHECK_REASON="Invalid credentials"; CHECK_LOG="invalid credentials" ;;
+        *MISSING*) CHECK_REASON="Unresolved credentials"; CHECK_LOG="unresolved credentials"; CHECK_ERROR=21 ;;
         *)         CHECK_REASON="Cannot check the credentials"; CHECK_LOG="cannot check the credentials" ;;
     esac
     echo "$(date '+%Y/%m/%d %H:%M:%S') wazuh-manager-control: ERROR: ${CHECK_LOG}" >> ${DIR}/logs/wazuh-manager.log 2>/dev/null
@@ -338,7 +344,7 @@ checkcredentials()
         echo "${CHECK_VERDICT}" >> ${DIR}/logs/wazuh-manager.log 2>/dev/null
     fi
     if [ $USE_JSON = true ]; then
-        echo -n '{"error":22,"message":"'"${CHECK_REASON}"'."}'
+        echo -n '{"error":'"${CHECK_ERROR}"',"message":"'"${CHECK_REASON}"'."}'
     else
         echo "${CHECK_REASON}. Exiting"
     fi
