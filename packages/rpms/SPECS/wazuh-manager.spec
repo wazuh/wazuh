@@ -8,7 +8,7 @@ Summary:     Wazuh helps you to gain security visibility into your infrastructur
 Name:        wazuh-manager
 Version:     %{_version}
 Release:     %{_release}
-License:     GPL
+License:     GPL-2.0-only AND AGPL-3.0-or-later
 Group:       System Environment/Daemons
 Source0:     %{name}-%{version}.tar.gz
 URL:         https://www.wazuh.com/
@@ -21,27 +21,21 @@ Conflicts:   ossec-hids ossec-hids-agent
 Obsoletes: wazuh-api < 4.0.0
 AutoReqProv: no
 
-# Credential resolution runs from the maintainer scripts and from the service's pre-start step, and
-# needs a set of tools a minimal install does not guarantee. AutoReqProv is off above, so each has
-# to be stated rather than inferred -- the authoritative list is _wmc_require_commands() in
-# lib/wazuh-manager-certificates.sh, which refuses to run when one is missing.
+# AutoReqProv is off above, so every dependency is stated rather than inferred, and each line below
+# names what still needs it.
 #
-#   openssl    The CLI, not the library the daemons link: lib/wazuh-manager-certificates.sh drives
-#              it to mint the bootstrap CA and issue the manager's two TLS pairs.
-#   iproute    Subject alternative names come from `ip -o addr show`. A failed enumeration is an
-#              error rather than a loopback-only fallback, precisely so a node cannot be issued a
-#              certificate that installs cleanly and then fails at the first peer connection.
-#   hostname   The CN and the DNS names come from hostname/FQDN lookup.
-#   gawk       Both helpers parse the credentials file, classify SANs and canonicalise IPv6 in awk.
-#              coreutils does not provide it and a minimal or container image frequently lacks it.
-#   util-linux `flock`, which serialises every write to the shared credentials file and the CA
-#              across the manager, the indexer and the dashboard.
-#   diffutils  `cmp`, which is how the shared helper matches a certificate against its private key.
-#   grep, sed  Used throughout both helpers and by the resolver.
-#   findutils  `find`, which is how `--clear` empties the keystore.
+#   coreutils  Every scriptlet and wazuh-manager-control (cp, mv, chown, chmod, mkdir, cat, head,
+#              od, tr, cut, date...). It also brings glibc, which the daemons and the bundled
+#              Python link and whose getent and ldconfig the scriptlets and the API call.
+#   zlib       Linked by the bundled Python's zlib and binascii modules, which the credential
+#              resolver, the cluster and the API import; not bundled in lib/.
 #
-# Without any of them a fresh host has no certificates and the service refuses to start.
-Requires: coreutils openssl iproute hostname gawk util-linux diffutils grep sed findutils
+# Requires(pre)/(postun) above cover the account tools. Not declared, on purpose: systemctl and
+# service (the init system the host runs, called only when present), /sbin/nologin (the service
+# account's shell, a path never executed) and ldconfig (part of glibc, above). The credential
+# resolver is Python run by the bundled interpreter and calls no host tool; libstdc++ and libgcc_s
+# ship in lib/.
+Requires: coreutils zlib
 BuildRequires: coreutils glibc-devel automake autoconf libtool policycoreutils-python curl perl
 
 ExclusiveOS: linux
@@ -57,6 +51,10 @@ log analysis, file integrity monitoring, intrusions detection and policy and com
 # Don't generate build_id links to prevent conflicts with other
 # packages.
 %global _build_id_links none
+# The rpm of the builder image is built with prefix /usr/local: pin the license directory
+# to /usr/share/licenses/<name>, where %license files belong.
+%global _defaultlicensedir /usr/share/licenses
+%global _docdir_fmt %%{NAME}
 
 # Build debuginfo package
 %package -n wazuh-manager-debuginfo
@@ -456,14 +454,15 @@ fi
 rm -f ${CONF_DIR}/shared/merged.mg  >/dev/null 2>&1
 
 # Resolve every credential the manager owns or consumes: seed rbac.db with generated or supplied
-# Server API passwords, store the indexer credential in the keystore, and -- on a fresh install
-# only -- issue the TLS pairs.
+# Server API passwords, store the indexer password in the keystore, import the indexer's CA and
+# client pair from /etc/wazuh-indexer/export when it is installed here, and -- on a fresh install
+# only -- mint the manager's CA and issue its two server pairs.
 #
 # $1 is 1 on a fresh install and >= 2 on an upgrade. That distinction is the whole reason the two
-# modes exist: --upgrade resolves the passwords and the keystore (each a no-op once resolved, so it
-# can only fill in a value this host never had) and leaves the certificates entirely alone. An
-# operator who replaced the shipped pair with their own PKI must not find it re-examined or
-# reissued by a package upgrade.
+# modes exist: --upgrade completes the passwords, the keystore and the indexer trust (each a no-op
+# once in place) and only validates the manager's CA and server pairs: it never mints a CA or
+# issues a pair. An operator who replaced them with their own PKI must not find them reissued by a
+# package upgrade.
 #
 # Neither mode may abort this scriptlet, so both always exit 0 and simply leave unresolved whatever
 # they could not resolve. The service refuses to start and names what is missing; that is where the
@@ -652,10 +651,15 @@ if [ -f %{_sysconfdir}/systemd/system/wazuh-manager.service ]; then
   systemctl daemon-reload > /dev/null 2>&1
 fi
 
+# Load the unit this package ships whatever the service state: a stopped one would otherwise
+# start next with the previous unit definition.
+if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 ; then
+  systemctl daemon-reload > /dev/null 2>&1
+fi
+
 if [ -f %{_localstatedir}/tmp/wazuh.restart ]; then
   rm -f %{_localstatedir}/tmp/wazuh.restart
   if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 ; then
-    systemctl daemon-reload > /dev/null 2>&1
     systemctl restart wazuh-manager.service > /dev/null 2>&1
   elif command -v service > /dev/null 2>&1 ; then
     service wazuh-manager restart > /dev/null 2>&1
@@ -669,6 +673,7 @@ rm -fr %{buildroot}
 
 %files
 %defattr(-,root,wazuh-manager)
+%license LICENSE src/engine/LICENSE-engine src/engine/COPYING-engine THIRD-PARTY-NOTICES
 %config(missingok) %{_initrddir}/wazuh-manager
 /usr/lib/systemd/system/wazuh-manager.service
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}
@@ -700,8 +705,6 @@ rm -fr %{buildroot}
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/rbac_control
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-keystore
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-resolve-credentials
-%attr(640, root, wazuh-manager) %{_localstatedir}/lib/wazuh-credentials.sh
-%attr(640, root, wazuh-manager) %{_localstatedir}/lib/wazuh-manager-certificates.sh
 %dir %attr(770, root, wazuh-manager) %{_sysconfdir}/wazuh-manager
 %attr(660, root, wazuh-manager) %ghost %{_sysconfdir}/wazuh-manager/wazuh-manager.conf
 %dir %attr(750, root, wazuh-manager) %{_sysconfdir}/wazuh-manager/certs
@@ -734,7 +737,6 @@ rm -fr %{buildroot}
 %attr(640, root, wazuh-manager) %{_localstatedir}/framework/wazuh/core/cluster/dapi/*.py
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/lib
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libwazuhext.so
-%attr(750, root, wazuh-manager) %{_localstatedir}/lib/libwazuhshared.so
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libschema_validator.so
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libjemalloc.so.2
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libstdc++.so.6

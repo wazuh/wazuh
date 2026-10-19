@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _LOGICEXPR_TOKENIZER_HPP
 #define _LOGICEXPR_TOKENIZER_HPP
 

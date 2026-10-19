@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include "first_of.hpp"
 
 #include <algorithm>

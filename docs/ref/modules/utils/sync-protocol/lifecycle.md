@@ -104,17 +104,17 @@ HCRESULT:<session>:<http_code>:<body>
 `AgentSyncProtocol::parseResponseBuffer(data, length)` is the entry point that receives this string. It verifies the `HCRESULT:` prefix, then splits on the first two colons to recover the session id, the HTTP status code, and the raw body (the body may itself contain colons, so only the first two are treated as delimiters). It then calls:
 
 ```cpp
-bool applyHttpResult(int httpCode, std::string_view body, uint64_t expectedSession = 0);
+bool applyHttpResult(int httpCode, std::string_view body, uint64_t expectedSession);
 ```
 
 `applyHttpResult()` (see `agent_sync_protocol.cpp`) is where the outcome is decided, entirely from `httpCode`; `body` is used only for logging:
 
-- **Wrong phase, or `expectedSession` doesn't match the in-flight session**: the result is stale (a previous, already-timed-out session, or nothing in flight) — discarded, logged at DEBUG, returns `true` without touching state. A zero `expectedSession` skips this correlation check (the legacy `HCRESULT:<code>` form with no session number).
+- **Wrong phase, or `expectedSession` doesn't match the in-flight session**: the result is stale (a previous, already-timed-out session, or nothing in flight) — discarded, logged at DEBUG, returns `true` without touching state. Session ids are never 0 (`nextSessionId()`), so a result for session 0 never matches and is discarded the same way.
 - **Any `2xx`**: success (`SyncResult::SUCCESS`). `synchronizeModule()`/`notifyDataClean()` delete the synced items from the persistent queue; `requiresFullSync()` returns `VALID`. Any 2xx counts, not just 200, since the `/stateful` contract already reserves 202 for a future queued-processing response.
 - **`409`**: checksum mismatch (`SyncResult::CHECKSUM_ERROR`) — meaningful only as the answer to a `ChecksumModule` session; `requiresFullSync()` retries it and returns `MISMATCH` (full sync needed) only if every attempt answers `409`.
 - **`503`**: the manager cannot serve this agent right now (indexer down, at capacity, shutting down, or a VD feed still downloading) — `SyncResult::COMMUNICATION_ERROR`, `managerNotReady = true` on the result. Covers both a brief post-restart window and a lasting outage; see `SyncModuleResult::managerNotReady` / `consecutiveFailures` in the [API Reference](api-reference.md#result-type) for how callers tell them apart.
 - **`415`**: the manager rejected the compressed encoding — treated the same as `503` (`COMMUNICATION_ERROR`, `managerNotReady = true`), since the agent's own `RetrySender` already retries once uncompressed within the same send.
-- **`0`** (no HTTP response at all — timeout, connect failure, TLS failure, abort): also treated as `COMMUNICATION_ERROR` / `managerNotReady = true`.
+- **`0`** (no usable HTTP response — timeout, connect failure, TLS failure, abort, a transfer cut after the status line, or an answer too large for the agent to relay to the module): also treated as `COMMUNICATION_ERROR` / `managerNotReady = true`.
 - **`413`**: session rejected as larger than the manager's in-flight budget (`SyncResult::PAYLOAD_TOO_LARGE`) — the caller must split it.
 - **everything else** (`400`, `403`, `500`, ...): generic protocol failure (`SyncResult::PROTOCOL_ERROR`). Items are reset to `PENDING` for the next cycle.
 

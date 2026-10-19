@@ -92,3 +92,7 @@ The following variables are custom extensions with no direct Log4j2 equivalent:
 | `WAZUH_STANDALONE_LOG_ROTATION_ENABLED` | `true` | Enable/disable the entire log rotation subsystem |
 | `WAZUH_STANDALONE_LOG_COMPRESSION_ENABLED` | `true` | Enable gzip compression of rotated files. Compression runs asynchronously; the active log file is never compressed |
 | `WAZUH_STANDALONE_LOG_COMPRESSION_LEVEL` | `5` | zlib compression level: `0` = store only, `1` = fastest, `9` = maximum compression |
+
+## License
+
+The Wazuh engine is licensed under the GNU Affero General Public License, version 3 or (at your option) any later version. The bundle ships the notice in `COPYING-engine` and the full license text in `LICENSE-engine`.

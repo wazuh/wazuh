@@ -1,7 +1,6 @@
 /*
  * Wazuh Module Manager
- * Copyright (C) 2015, Wazuh Inc.
- * April 27, 2016.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -30,6 +29,7 @@ int wm_task_nice = 0;       // Nice value for tasks.
 static gid_t wm_gid;               // Group ID.
 int wm_max_eps;             // Maximum events per second
 int wm_kill_timeout;        // Time for a process to quit before killing it
+int wm_socket_timeout;      // Longest a local client can stay silent, or not read the reply
 int wm_debug_level;
 #ifndef CLIENT
 // Manager configuration (/etc/wazuh-manager/wazuh-manager.conf), -c overrides it.
@@ -118,6 +118,9 @@ int wm_config() {
     wm_max_eps = getDefine_Int_default("wazuh_modules", "max_eps", 1, 1000, 100);
     wm_kill_timeout = getDefine_Int_default("wazuh_modules", "kill_timeout", 0, 3600, 10);
 #endif
+    // With a compiled-in default on both builds, so an agent that kept an internal_options.conf
+    // from before this option existed still starts.
+    wm_socket_timeout = getDefine_Int_default("wazuh_modules", "socket_timeout", 1, 60, 1);
 
     if(wm_initialize_default_modules(&wmodules) < 0) {
         return OS_INVALID;
@@ -419,6 +422,31 @@ cJSON *getModulesConfig(void) {
     return root;
 }
 
+/**
+ * @brief Tell whether a sync frame is addressed to a module.
+ *
+ * A sync frame starts with "<module>_sync " or, for the vulnerability detection stream of a
+ * module, "<module>_vd_sync ". Only that leading header names the destination: the payload that
+ * follows is arbitrary data and may contain any module name.
+ *
+ * @param frame Sync frame.
+ * @param name Module name.
+ * @return true if the frame header names the module.
+ */
+static bool wm_sync_frame_targets(const char * frame, const char * name) {
+    static const char VD_SYNC_HEADER[] = "_vd" SYNC_HEADER;
+    const size_t name_len = strlen(name);
+
+    if (strncmp(frame, name, name_len) != 0) {
+        return false;
+    }
+
+    frame += name_len;
+
+    return strncmp(frame, SYNC_HEADER, strlen(SYNC_HEADER)) == 0
+           || strncmp(frame, VD_SYNC_HEADER, strlen(VD_SYNC_HEADER)) == 0;
+}
+
 // sync data
 int modulesSync(char* args, size_t length) {
     int ret = -1;
@@ -432,9 +460,9 @@ int modulesSync(char* args, size_t length) {
         }
 
         for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
-            if (strstr(args, cur_module->context->name)) {
+            if (wm_sync_frame_targets(args, cur_module->context->name)) {
                 ret = 0;
-                if (strstr(args, "_sync ") && cur_module->context->sync != NULL) {
+                if (cur_module->context->sync != NULL) {
                     ret = cur_module->context->sync(args, length);
                 }
                 break;
@@ -694,6 +722,7 @@ cJSON *getModulesInternalOptions(void) {
     cJSON_AddNumberToObject(internals,"wazuh_modules.task_nice",wm_task_nice);
     cJSON_AddNumberToObject(internals,"wazuh_modules.max_eps",wm_max_eps);
     cJSON_AddNumberToObject(internals,"wazuh_modules.kill_timeout",wm_kill_timeout);
+    cJSON_AddNumberToObject(internals,"wazuh_modules.socket_timeout",wm_socket_timeout);
     cJSON_AddNumberToObject(internals,"wazuh_modules.debug",wm_debug_level);
 
     cJSON_AddItemToObject(root,"internal_options",internals);

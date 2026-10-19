@@ -15,7 +15,7 @@ make -C src TARGET=manager deps
 make -C src TARGET=manager
 ```
 
-`deps` downloads the external libraries and, for the manager, the indexer templates, the WCS flat file and `wazuh-credentials.sh`, which the installer needs. Downloads are never refreshed until `make -C src clean-deps`.
+`deps` downloads the external libraries and, for the manager, the indexer templates and the WCS flat file. Downloads are never refreshed until `make -C src clean-deps`.
 
 `TARGET=server` is accepted as an alias and rewritten to `manager`. Running `make server`, `make agent` or `make winagent` as a goal (without `TARGET=`) stops with an error, and `make -C src` with no `TARGET` only prints the usage.
 
@@ -78,7 +78,7 @@ See [Module signature verification](package-generation.md#windows-agent-package)
 After a successful build, the artifacts are located in the single CMake build tree under `src/`:
 
 - **Executables** (daemons, CLIs, Windows `.exe` files): `src/build/bin/`
-- **Shared libraries** (`libwazuhshared`, `libwazuhext`, module libraries): `src/build/lib/`
+- **Shared libraries** (`libwazuhext`, module libraries): `src/build/lib/`
 - **Engine**: `src/build/engine/wazuh-engine`, installed on the manager as `bin/wazuh-manager-analysisd`
 - **Windows agent**: besides the executables in `src/build/bin/`, `make TARGET=winagent` writes the configuration files the MSI packs (`default-ossec.conf`, `internal_options.conf`, `help_win.txt`, …) into `src/win32/`
 

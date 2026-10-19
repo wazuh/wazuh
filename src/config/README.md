@@ -27,11 +27,11 @@ with a warning; anything else unknown is still fatal.
 the XML (without the certificate-file checks; `w_mconf_validate()`, behind each daemon's `-t`, runs them), fills the
 schema defaults and keeps the loaded document, one per process; `w_mconf_section("remote")` returns a new cJSON copy of
 one section (the caller deletes it). The daemons hand that section to the JSON readers below. An invalid file is
-logged as `(1244): Invalid configuration at '<file>': <pointer>: <reason>.`. Inside `libwazuhshared.so`,
+logged as `(1244): Invalid configuration at '<file>': <pointer>: <reason>.`. Inside libwazuh,
 `cluster_utils.c` and `debug_op.c` read `cluster` and `logging` through `w_mconf_hook_section()`
-(`src/shared/src/mconf_hook.c`): `mconf-config.c` registers its own loader as that provider (a constructor), and the
-engine (`wazuh-manager-analysisd`), which does not link this library, reads the same file through `manager_config` and
-registers itself with `w_mconf_hook_set()`.
+(`src/shared/src/mconf_hook.c`): `mconf-config.c` registers its own loader as that provider (a constructor). The
+engine (`wazuh-manager-analysisd`) does not link this library nor libwazuh: it reads the same file through
+`manager_config` and uses its sections directly.
 
 ## Manager sections (effective document → struct)
 

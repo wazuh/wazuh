@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -674,6 +674,27 @@ static void test_parse_agent_add_response(void **state) {
     err = w_parse_agent_add_response(secret_response, err_response, new_id, new_key, NULL, FALSE, FALSE, NULL);
     assert_int_equal(err, 0);
 }
+
+static void test_parse_agent_add_response_logs_only_without_error_code(void **state) {
+    (void) state;
+    char* error_response = "{\"error\":9026,\"message\":\"Unknown agent or no re-enrollment credential\"}";
+    char err_response[OS_MAXSTR + 1];
+    int error_code = 0;
+
+    /* A caller that asks for the master's code reports the rejection itself: no warning here, or the
+     * rejection is logged twice on a worker (issue #40482) */
+    int err = w_parse_agent_add_response(error_response, err_response, NULL, NULL, NULL, FALSE, FALSE, &error_code);
+    assert_int_equal(err, -1);
+    assert_int_equal(error_code, 9026);
+    assert_string_equal(err_response, "ERROR: Unknown agent or no re-enrollment credential");
+
+    /* A caller that does not ask for it keeps the warning as its only log line (the 1515 path) */
+    expect_string(__wrap__mwarn, formatted_msg, "9026: Unknown agent or no re-enrollment credential");
+    err = w_parse_agent_add_response(error_response, err_response, NULL, NULL, NULL, FALSE, FALSE, NULL);
+    assert_int_equal(err, -1);
+    assert_string_equal(err_response, "ERROR: Unknown agent or no re-enrollment credential");
+}
+
 static void test_os_write_agent_info_success(void **state) {
     FILE *fp = (FILE*)0x1234;
 
@@ -966,6 +987,7 @@ int main(void) {
         cmocka_unit_test(test_create_agent_add_payload_carries_reenroll_credential),
         cmocka_unit_test(test_create_agent_add_payload_carries_source),
         cmocka_unit_test(test_parse_agent_add_response),
+        cmocka_unit_test(test_parse_agent_add_response_logs_only_without_error_code),
         cmocka_unit_test(test_os_write_agent_info_success),
         #ifndef WIN32
         cmocka_unit_test(test_create_agent_remove_payload),

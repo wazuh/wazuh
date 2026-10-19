@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include "opBuilderHelperMap.hpp"
 
 #include <algorithm>
@@ -14,12 +15,11 @@
 
 #include <date/date.h>
 #include <date/tz.h>
-#include <openssl/evp.h>
-#include <openssl/sha.h>
 #include <re2/re2.h>
 
 #include <base/error.hpp>
 #include <base/utils/communityId.hpp>
+#include <base/utils/hash.hpp>
 #include <base/utils/ipUtils.hpp>
 #include <base/utils/sanitizers.hpp>
 #include <base/utils/stringUtils.hpp>
@@ -615,49 +615,6 @@ MapOp opBuilderHelperFloatTransformation(NumberOperator op,
         result.setDouble(res);
         RETURN_SUCCESS(isTestMode, result, successTrace);
     };
-}
-
-std::optional<std::string> hashStringSHA1(std::string& input)
-{
-    // Sha1 digest len (20) * 2 (hex chars per byte)
-    constexpr int OS_SHA1_HEXDIGEST_SIZE = (SHA_DIGEST_LENGTH * 2);
-    constexpr int OS_SHA1_ARRAY_SIZE_LEN = OS_SHA1_HEXDIGEST_SIZE + 1;
-
-    char* parameter = nullptr;
-    unsigned char digest[EVP_MAX_MD_SIZE];
-    unsigned int digest_size;
-
-    EVP_MD_CTX* ctx = EVP_MD_CTX_create();
-    if (!ctx)
-    {
-        // Failed during hash context creation
-        return std::nullopt;
-    }
-
-    if (1 != EVP_DigestInit_ex(ctx, EVP_sha1(), nullptr))
-    {
-        // Failed during hash context initialization
-        EVP_MD_CTX_destroy(ctx);
-        return std::nullopt;
-    }
-
-    if (1 != EVP_DigestUpdate(ctx, input.c_str(), input.length()))
-    {
-        // Failed during hash context update
-        return std::nullopt;
-    }
-
-    EVP_DigestFinal_ex(ctx, digest, &digest_size);
-    EVP_MD_CTX_destroy(ctx);
-
-    // OS_SHA1_Hexdigest(digest, hexdigest);
-    char output[OS_SHA1_ARRAY_SIZE_LEN];
-    for (size_t n = 0; n < SHA_DIGEST_LENGTH; n++)
-    {
-        sprintf(&output[n * 2], "%02x", digest[n]);
-    }
-
-    return {output};
 }
 
 } // namespace
@@ -3386,14 +3343,14 @@ MapOp opBuilderHelperHashSHA1(const std::vector<OpArg>& opArgs, const std::share
             RETURN_FAILURE(isTestMode, json::Json {}, ret == json::RetGet::NotFound ? failureTrace1 : failureTrace2);
         }
 
-        auto resultHash = hashStringSHA1(str);
-        if (!resultHash.has_value() || resultHash.value().empty())
+        auto resultHash = base::utils::hash::sha1(str);
+        if (resultHash.empty())
         {
             RETURN_FAILURE(isTestMode, json::Json {}, failureTrace3);
         }
 
         json::Json resultJson;
-        resultJson.setString(std::move(resultHash.value()));
+        resultJson.setString(std::move(resultHash));
 
         RETURN_SUCCESS(isTestMode, resultJson, successTrace);
     };

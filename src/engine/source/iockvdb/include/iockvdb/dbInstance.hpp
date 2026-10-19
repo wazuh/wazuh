@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef IOCKVDB_DBINSTANCE_HPP
 #define IOCKVDB_DBINSTANCE_HPP
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef API_TEST_BASE_HANDLER_TEST_HPP
 #define API_TEST_BASE_HANDLER_TEST_HPP
 

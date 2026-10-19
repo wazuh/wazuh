@@ -1,7 +1,6 @@
 /*
  * Wazuh agent HTTPS client (C++ transport module)
- * Copyright (C) 2015, Wazuh Inc.
- * July 17, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -228,6 +227,7 @@ OutcomeClass StatelessStream::flushOnce(Waiter& waiter, uint32_t timeoutMs, uint
     const std::string body = headerLine + snapshot.body;
     spec.body = reinterpret_cast<const uint8_t*>(body.data());
     spec.bodyLength = body.size();
+    spec.maxResponseBytes = SHORT_REPLY_MAX_RESPONSE_BYTES;
     spec.timeoutMs = timeoutMs;
 
     // Operational visibility (send-time debug log, mirroring controlStream.cpp's

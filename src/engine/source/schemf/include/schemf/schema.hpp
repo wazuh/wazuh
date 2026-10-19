@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _SCHEMF_SCHEMA_HPP
 #define _SCHEMF_SCHEMA_HPP
 

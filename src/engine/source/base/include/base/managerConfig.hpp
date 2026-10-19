@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _BASE_MANAGERCONFIG_HPP
 #define _BASE_MANAGERCONFIG_HPP
 
@@ -60,15 +61,18 @@ std::string sectionJson(std::string_view section);
 /// @return cluster.name and cluster.node_name of the effective document; empty strings without document.
 std::pair<std::string, std::string> clusterNames();
 
+/// Formats of the manager log (logging.log_format).
+struct LogFormat
+{
+    bool plain; ///< Write logs/wazuh-manager.log
+    bool json;  ///< Write logs/wazuh-manager.json
+};
+
 /**
- * @brief Register the loaded document as the section provider of libwazuhshared.so (w_mconf_hook_set).
- *
- * os_logging_config() and the cluster getters that live inside the shared library then read the same
- * document as the engine. Requires base::libwazuhshared::init(); the cJSON objects handed to the library
- * are created with its own cJSON_Parse, so it frees them with the matching allocator.
- * @throws std::runtime_error if the symbols cannot be resolved.
+ * @brief logging.log_format of the effective document: an array of strings where only "plain" and "json" count.
+ * @return The formats found; {plain} when none is valid or there is no document or section.
  */
-void registerSharedHook();
+LogFormat logFormat();
 
 /// Forget the loaded document (tests).
 void reset();

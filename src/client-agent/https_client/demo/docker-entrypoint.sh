@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Wazuh agent HTTPS client — demo container entrypoint.
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 #
 # Runs inside the demo image: generate a self-signed cert + shared key, start
 # the python TLS mock, then run the demo driver (the real libhttps_client) at it.

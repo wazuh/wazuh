@@ -16,15 +16,11 @@ TimeoutStartSec=180
 # of them instead. NoNewPrivileges stays unset because wazuh-manager-service-control is setuid root (the
 # Server API's restart and reload go through it).
 ProtectSystem=full
-# Writable: the installation directory, the shared credentials directory that
-# wazuh-manager-resolve-credentials --prestart writes on a first start (it cannot create it here, so it
-# must already exist: the installer's credential resolver creates it; with USER_RESOLVE_CREDENTIALS=n,
-# create it 0700 root:root before the first start), and the configuration directory /etc/wazuh-manager. '-' skips a
-# missing path. A base relocated with WAZUH_BASE_DIR must exist and be added to ReadWritePaths in the
-# same drop-in, outside /home, /root, /run/user and /tmp. Otherwise --prestart fails with "mktemp: ...
-# Read-only file system" and "wazuh-credentials: cannot create a temporary value file"; without
-# /etc/wazuh, with "wazuh-credentials: cannot create directory: /etc/wazuh".
-ReadWritePaths=WAZUH_HOME_TMP -/etc/wazuh -/etc/wazuh-manager
+# Writable: the installation directory and the configuration directory /etc/wazuh-manager, the only
+# two places wazuh-manager-resolve-credentials --prestart writes (rbac.db and the keystore under the
+# first; ca/, export/ and certs/ under the second). It reads the indexer's /etc/wazuh-indexer/export,
+# which stays read-only here. '-' skips a missing path.
+ReadWritePaths=WAZUH_HOME_TMP -/etc/wazuh-manager
 PrivateTmp=yes
 # Hides /home, /root and /run/user: an installation under /home cannot run under this unit.
 ProtectHome=yes

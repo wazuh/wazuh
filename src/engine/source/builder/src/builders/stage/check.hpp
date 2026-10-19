@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _BUILDER_BUILDERS_STAGE_CHECK_HPP
 #define _BUILDER_BUILDERS_STAGE_CHECK_HPP
 

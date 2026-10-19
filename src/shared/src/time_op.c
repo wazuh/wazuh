@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -10,7 +10,6 @@
 /**
  * @file time_op.c
  * @brief Time operations
- * @date October 4, 2017
  */
 
 #include "shared.h"

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _HLP_ABS_PARSER_HPP
 #define _HLP_ABS_PARSER_HPP
 

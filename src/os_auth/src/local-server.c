@@ -1,7 +1,6 @@
 /*
  * Local Authd server
- * Copyright (C) 2015, Wazuh Inc.
- * May 20, 2017.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -1259,7 +1258,15 @@ cJSON* local_add_clustered(const char *name, const char *ip, const char *groups,
             message += 7;
         }
 
-        mwarn("Error %d: %s.", master_error_code, message);
+        // The master's own verdict on a re-enrollment bearer is debug there (local_reenroll(): remoted
+        // forwards it unverified, so anyone who can reach /enroll fires it at will), and so is "rotation in
+        // flight"; relaying them at warning would make this node the one that can be made to fill its log.
+        if (master_error_code == ERRORS[EREENROLLUNKNOWN].code || master_error_code == ERRORS[EREENROLLINVALID].code ||
+            master_error_code == ERRORS[EREENROLLSTALE].code || master_error_code == ERRORS[EREENROLLINPROGRESS].code) {
+            mdebug1("Error %d: %s.", master_error_code, message);
+        } else {
+            mwarn("Error %d: %s.", master_error_code, message);
+        }
         response = local_create_error_response(master_error_code, message);
     } else {
         // Transport failure, or an unparseable response: either way, no clean answer.

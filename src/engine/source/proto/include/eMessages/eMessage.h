@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _PROTO_EMESSAGE_EMESSAGE_HPP
 #define _PROTO_EMESSAGE_EMESSAGE_HPP
 

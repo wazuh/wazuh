@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 #
 # This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
@@ -103,6 +103,7 @@ EOF
 # Runs the target against a fresh tree and leaves it at ${WORK}/<case>.
 #   $1 case name   $2 ossec.conf   $3 with openssl (yes|no)   $4 installed version
 #   $5 pre-existing anchor (yes|no)
+# CASE_SETUP, when set, names a command run with the tree's path just before the target.
 run_case() {
 
     local name="$1" conf="$2" with_openssl="$3" version="$4" anchor="$5"
@@ -116,6 +117,9 @@ run_case() {
         cp "${WORK}/ca.pem" "${dir}/etc/certs/root-ca.pem"
     fi
     make_path "${with_openssl}" "${version}" "${dir}/bin"
+    if [ -n "${CASE_SETUP}" ]; then
+        "${CASE_SETUP}" "${dir}"
+    fi
 
     (cd "${dir}" && env -i PATH="${dir}/bin" HOME="${dir}" INSTALLDIR="${dir}" STUB_STATE="${dir}/state" \
         STUB_CACERT_RC="${STUB_CACERT_RC:-0}" STUB_RETRY_RC="${STUB_RETRY_RC:-0}" \
@@ -151,6 +155,53 @@ log_count() {
 present() {
 
     [ -e "${WORK}/$1/$2" ] && echo yes || echo no
+
+}
+
+mode_of() {
+
+    stat -c '%a' "$1" 2>/dev/null || stat -f '%Lp' "$1"
+
+}
+
+# var/upgrade is where the snapshot used to go. Read-only here, so a CA that still validates and
+# installs shows the snapshot is taken somewhere else.
+read_only_upgrade_dir() {
+
+    chmod 555 "$1/var/upgrade"
+
+}
+
+# etc/ is writable by the wazuh group, which can turn etc/certs into a link to any directory.
+link_certs_elsewhere() {
+
+    mkdir -m 700 "${WORK}/elsewhere"
+    ln -s "${WORK}/elsewhere" "$1/etc/certs"
+
+}
+
+# In the agent's 01770 etc/certs, wazuh can remove the anchor it owns and leave a link to a
+# directory under its name.
+anchor_links_to_dir() {
+
+    mkdir -m 1770 "$1/etc/certs"
+    mkdir -m 700 "${WORK}/anchor_dir_link_target"
+    ln -s "${WORK}/anchor_dir_link_target" "$1/etc/certs/root-ca.pem"
+
+}
+
+# Or a directory of its own.
+anchor_is_a_dir() {
+
+    mkdir -m 1770 "$1/etc/certs"
+    mkdir -m 700 "$1/etc/certs/root-ca.pem"
+
+}
+
+# The agent keeps etc/certs 01770 so it can replace the anchor at runtime (#39321).
+sticky_certs_dir() {
+
+    mkdir -m 1770 "$1/etc/certs"
 
 }
 
@@ -260,6 +311,40 @@ check "the existing anchor is kept" "yes" "$(present no_openssl_anchor etc/certs
 run_case no_openssl_5x "${LEGACY_CONF}" no 5.0.0 no
 check "a 5.x agent with no anchor aborts and points back to the hint" "1" \
       "$(log_count no_openssl_5x "Upgrade failed. The system trust store does not verify.*See the 'No trust anchor' line above")"
+
+# The snapshot is validated outside var/upgrade, which the wazuh group could write.
+CASE_SETUP=read_only_upgrade_dir run_case snapshot "${LEGACY_CONF}" yes 4.14.7 no
+chmod 755 "${WORK}/snapshot/var/upgrade"
+check "the CA validates without writing to var/upgrade" "0" "$(log_count snapshot "could not be read")"
+check "and it is installed" "yes" "$(present snapshot etc/certs/root-ca.pem)"
+
+# A link at etc/certs is not followed: the directory it points to is neither written nor re-moded.
+CASE_SETUP=link_certs_elsewhere run_case certs_link "${LEGACY_CONF}" yes 4.14.7 no
+check "a CA is not installed through a linked etc/certs" "" "$(ls -A "${WORK}/elsewhere")"
+check "the linked directory keeps its mode" "700" "$(mode_of "${WORK}/elsewhere")"
+check "the refusal is logged" "1" "$(log_count certs_link "Not installing the delivered CA at ./etc/certs/root-ca.pem")"
+check "the link is left in place" "yes" "$([ -L "${WORK}/certs_link/etc/certs" ] && echo yes || echo no)"
+
+# A link to a directory at root-ca.pem is replaced by the anchor, not followed into it.
+CASE_SETUP=anchor_links_to_dir run_case anchor_dir_link "${LEGACY_CONF}" yes 4.14.7 no
+check "nothing is written into a directory root-ca.pem links to" "" "$(ls -A "${WORK}/anchor_dir_link_target")"
+check "the link is replaced by the anchor" "regular" \
+      "$([ -f "${WORK}/anchor_dir_link/etc/certs/root-ca.pem" ] && [ ! -L "${WORK}/anchor_dir_link/etc/certs/root-ca.pem" ] && echo regular)"
+check "no temporary file is left beside it" "root-ca.pem" "$(ls -A "${WORK}/anchor_dir_link/etc/certs")"
+
+# A directory at root-ca.pem is not installed into, and the failure is logged as one.
+CASE_SETUP=anchor_is_a_dir run_case anchor_dir "${LEGACY_CONF}" yes 4.14.7 no
+check "nothing is moved into a directory at root-ca.pem" "" "$(ls -A "${WORK}/anchor_dir/etc/certs/root-ca.pem")"
+check "the failure is logged" "1" "$(log_count anchor_dir "Could not install the delivered CA at ./etc/certs/root-ca.pem")"
+check "no temporary file is left in etc/certs" "root-ca.pem" "$(ls -A "${WORK}/anchor_dir/etc/certs")"
+
+# An existing etc/certs keeps its mode; one created here gets 750, as before.
+CASE_SETUP=sticky_certs_dir run_case certs_sticky "${LEGACY_CONF}" yes 4.14.7 no
+check "an existing 01770 etc/certs keeps its mode" "1770" "$(mode_of "${WORK}/certs_sticky/etc/certs")"
+check "and the CA is installed in it" "yes" "$(present certs_sticky etc/certs/root-ca.pem)"
+check "a created etc/certs is 750" "750" "$(mode_of "${WORK}/verified/etc/certs")"
+check "the installed CA is 640" "640" "$(mode_of "${WORK}/verified/etc/certs/root-ca.pem")"
+check "no temporary file is left in etc/certs" "root-ca.pem" "$(ls -A "${WORK}/verified/etc/certs")"
 
 echo
 echo "${checks} checks, ${failures} failed"

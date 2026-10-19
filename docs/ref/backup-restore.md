@@ -22,8 +22,12 @@ The following components should be included in your Wazuh manager backup strateg
   - Critical for agent communication
 
 - **SSL/TLS certificates**: `/etc/wazuh-manager/certs/`
-  - Manager certificates and keys
-  - Root CA certificates
+  - Manager certificates and keys, the agents' CA bundle, the indexer's CA and client pair
+  - The import markers `.indexer-ca.imported` and `.indexer-connector.imported` (keep them with the files)
+
+- **Credentials**: `/etc/wazuh-manager/ca/`, `/etc/wazuh-manager/export/`, `/etc/wazuh-manager/local.env`
+  - `ca/root-ca.key` is the manager's CA private key: protect the backup accordingly
+  - `export/credentials.env` holds the Server API passwords; `local.env` the values you supplied
 
 - **Global database**: `/var/wazuh-manager/queue/db/global.db`
   - Agent information (registration, metadata)
@@ -371,6 +375,15 @@ sudo sh -c 'cd /etc/wazuh-manager || exit 1
     done
     chmod 660 client.keys wazuh-manager.conf'
 
+# Credentials: the manager's CA (with its private key), what it publishes and your
+# local.env are root's alone. The chown above handed them to the service group, and
+# the next start would refuse them; put them back and let the resolver confirm.
+sudo sh -c 'cd /etc/wazuh-manager || exit 1
+    for D in ca export; do [ -d "$D" ] && chown -R root:root "$D" && chmod 700 "$D"; done
+    [ -f local.env ] && chown root:root local.env && chmod 600 local.env
+    exit 0'
+sudo /var/wazuh-manager/bin/wazuh-manager-resolve-credentials --check
+
 # Certificates: root-owned, readable by the service group. No daemon writes this
 # directory; a pair the service cannot read stops the daemon that
 # loads it (an unreadable apid pair stops the API with error 2003).
@@ -516,16 +529,27 @@ The API users, roles and policies live on the master, so `rbac.db` is part of th
 BACKUP_DIR="/backup/wazuh-worker-$(hostname)-$(date +%Y%m%d-%H%M%S)"
 sudo mkdir -p $BACKUP_DIR
 
-# Configuration, certificates and indexer credentials. The global database and the
-# shared files are synchronized from the master, but the credential store is not:
-# a worker restored without it cannot authenticate to the indexer.
-sudo tar -czf $BACKUP_DIR/wazuh-worker-config.tar.gz -C / \
-    etc/wazuh-manager/wazuh-manager.conf \
-    etc/wazuh-manager/wazuh-manager-internal-options.conf \
-    etc/wazuh-manager/certs/
+# Configuration and the node's credentials. The global database and the shared
+# files are synchronized from the master; none of the following is:
+#   certs/     the node's pairs, the agents' CA bundle, the indexer trust and its
+#              import markers (the dot-files travel with the directory)
+#   ca/        the CA those pairs and that bundle come from; the start checks
+#              them against it, so certs/ alone cannot be restored
+#   export/    what the node publishes; local.env, the values you supplied
+# Run as root, tar keeps their owners and modes. Optional entries are archived
+# only when present.
+sudo sh -c 'cd / || exit 1
+    P="etc/wazuh-manager/wazuh-manager.conf etc/wazuh-manager/wazuh-manager-internal-options.conf"
+    for E in certs ca export local.env; do
+        [ -e "etc/wazuh-manager/$E" ] && P="$P etc/wazuh-manager/$E"
+    done
+    tar -czf "$1/wazuh-worker-config.tar.gz" $P' sh "$BACKUP_DIR"
+# The credential store is not synchronized either: a worker restored without it
+# cannot authenticate to the indexer.
 sudo tar -czf $BACKUP_DIR/wazuh-worker-keystore.tar.gz -C /var/wazuh-manager queue/keystore/
 
-# Carries the certificates and the indexer credential store
+# Carries the CA's private key (when this node issues pairs), the certificates and
+# the indexer credential store
 sudo chmod -R go-rwx $BACKUP_DIR
 ```
 
@@ -539,12 +563,24 @@ sudo chmod -R go-rwx $BACKUP_DIR
 
 #### Restore Worker Node
 
-A worker's global database and shared files come from the master, but its credential store does not: restore `queue/keystore/` or the node cannot authenticate to the indexer.
+A worker's global database and shared files come from the master, but its credential store and its credentials do not: restore `queue/keystore/` or the node cannot authenticate to the indexer, and restore `ca/` with `certs/`, because the start checks the pairs and the agents' bundle against that CA. A fresh installation minted a CA of its own, so the restore moves it aside instead of extracting over it.
+
+A backup taken without `ca/` (with an earlier version of this procedure) cannot be restored as it is: stage the CA that issued the node's pairs in `/etc/wazuh-manager/ca/` first, as described in [Cluster deployments](getting-started/credentials.md#cluster-deployments).
 
 ```bash
 BACKUP_DIR="/backup/wazuh-worker-$(hostname)-YYYYMMDD-HHMMSS"
 
 sudo systemctl stop wazuh-manager
+
+# Move what the fresh installation created aside: a newly minted root-ca.key or an
+# import marker left beside the restored files would no longer match them. The copy
+# holds a private key; delete it once the node is back.
+ASIDE="$BACKUP_DIR/replaced-$(date +%Y%m%d-%H%M%S)"
+sudo install -d -m 700 "$ASIDE"
+sudo sh -c 'cd /etc/wazuh-manager || exit 1
+    for D in ca export certs; do [ -e "$D" ] && mv "$D" "$1/"; done
+    exit 0' sh "$ASIDE"
+
 sudo tar -xzf $BACKUP_DIR/wazuh-worker-config.tar.gz -C /
 sudo tar -xzf $BACKUP_DIR/wazuh-worker-keystore.tar.gz -C /var/wazuh-manager
 
@@ -556,6 +592,12 @@ sudo chown root:wazuh-manager /etc/wazuh-manager/wazuh-manager.conf \
     /etc/wazuh-manager/wazuh-manager-internal-options.conf
 sudo sh -c 'cd /etc/wazuh-manager/certs || exit 1
     chown -R root:wazuh-manager . && chmod 750 . && chmod 640 *'
+# The credentials are root's alone, as Step 4 of the full restore leaves them.
+sudo sh -c 'cd /etc/wazuh-manager || exit 1
+    for D in ca export; do [ -d "$D" ] && chown -R root:root "$D" && chmod 700 "$D"; done
+    [ -f local.env ] && chown root:root local.env && chmod 600 local.env
+    exit 0'
+sudo /var/wazuh-manager/bin/wazuh-manager-resolve-credentials --check
 
 sudo /var/wazuh-manager/bin/wazuh-manager-conf validate
 sudo systemctl start wazuh-manager
@@ -654,6 +696,8 @@ docker compose exec -u root wazuh.manager sh -c '
     chmod 660 /var/wazuh-manager/queue/db/global.db
     chmod 750 /etc/wazuh-manager/certs
     chmod 640 /etc/wazuh-manager/certs/*
+    for D in ca export; do [ -d "/etc/wazuh-manager/$D" ] && chown -R root:root "/etc/wazuh-manager/$D" && chmod 700 "/etc/wazuh-manager/$D"; done
+    [ -f /etc/wazuh-manager/local.env ] && chown root:root /etc/wazuh-manager/local.env && chmod 600 /etc/wazuh-manager/local.env
     chown -R root:wazuh-manager /var/wazuh-manager/api/configuration
     chown wazuh-manager:wazuh-manager /var/wazuh-manager/api/configuration/security/rbac.db
 '
@@ -874,7 +918,11 @@ sudo sh -c 'cd /etc/wazuh-manager || exit 1
         [ -f "$F" ] && chown wazuh-manager:wazuh-manager "$F"
     done
     chmod 660 client.keys wazuh-manager.conf
-    chmod 750 certs && chmod 640 certs/*'
+    chmod 750 certs && chmod 640 certs/*
+    for D in ca export; do [ -d "$D" ] && chown -R root:root "$D" && chmod 700 "$D"; done
+    [ -f local.env ] && chown root:root local.env && chmod 600 local.env
+    exit 0'
+sudo /var/wazuh-manager/bin/wazuh-manager-resolve-credentials --check
 
 # Check logs
 sudo tail -100 /var/wazuh-manager/logs/wazuh-manager.log

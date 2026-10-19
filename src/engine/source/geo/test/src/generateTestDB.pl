@@ -1,4 +1,5 @@
 #!perl
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Script for creating a test MaxMind DB file.
 # Dependencies: MaxMind::DB::Writer (cpan)
 

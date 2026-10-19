@@ -313,7 +313,7 @@ Located at `tools/purge_wazuh.sh` (Wazuh repository root), this script provides 
 - Cleans up all Wazuh-related files and directories, including the manager configuration directory `/etc/wazuh-manager`, which lives outside the installation directory
 - Removes Wazuh user and group from the system
 - Falls back to a full filesystem cleanup when the installation was created from sources instead of packages
-- Deletes `/etc/wazuh` (`credentials.env` and the bootstrap CA) unconditionally, even when an indexer or dashboard on the same host shares it
+- Leaves `/etc/wazuh` alone: no 5.0 package writes there any more (each one keeps its credentials in its own `/etc/wazuh-<component>`), and a host may still carry it from an earlier build
 
 ## E2E Testing Environment
 
@@ -355,12 +355,15 @@ Orchestrates the E2E environment. Both images are **built locally** from their s
 - OpenSearch-based search and analytics engine
 - Exposed on port `9200` (HTTPS)
 - Mounts certificates from `./certs` (read-only) and takes its passwords from `./.credentials.env` (`env_file:`)
+- At start, the entrypoint stages the e2e pair in `/etc/wazuh-indexer/certs` (`root:wazuh-indexer 0640`) and runs the package's `resolve-credentials.sh`, which publishes `credentials.env` and `ca.pem` in `/etc/wazuh-indexer/export/`; then it loads the passwords into the security index with `indexer-security-init.sh`
 - Three named volumes: `wazuh-indexer-data`, `wazuh-indexer-config`, `wazuh-indexer-engine`
 
 **wazuh-dashboard**
 - Wazuh web interface for visualization and management
 - Exposed on port `443` (HTTPS)
 - Resolves `host.docker.internal` to the host gateway for engine communication
+- Mounts certificates from `./certs` (read-only) and takes its passwords from `./.credentials.env` (`env_file:`)
+- At start, the entrypoint stages the e2e CA as `certs/indexer-ca.pem` and `certs/manager-ca.pem` and the dashboard pair (all `root:wazuh-dashboard 0640`), then runs the package's `resolve-credentials --prestart`, which stores the kibanaserver and Server API passwords in its keystore
 - Depends on `wazuh-indexer`
 
 **Starting the environment:**

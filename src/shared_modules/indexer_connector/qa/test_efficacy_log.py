@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
 """End-to-end checks of the indexer connector against a real OpenSearch, driven by
 build/bin/indexer_connector_tool (testtool/main.cpp, push-events mode).
 

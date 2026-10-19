@@ -1,7 +1,6 @@
 /*
  * Wazuh content manager - Unit Tests
- * Copyright (C) 2015, Wazuh Inc.
- * Jun 07, 2023.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public

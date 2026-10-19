@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Search for the protoc compiler and source from the vcpkg directory
 set_proto_config() {
     ENGINE_DIR=$(readlink -f "${ENGINE_DIR}")

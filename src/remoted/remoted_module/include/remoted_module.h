@@ -1,7 +1,6 @@
 /*
  * Wazuh remoted module (C++ worker bridge)
- * Copyright (C) 2015, Wazuh Inc.
- * July 17, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -168,6 +167,8 @@ extern "C"
                                                      ///< dedicated (longer) deadline: inventory sync sessions are
                                                      ///< validated, indexed and flushed WITHIN the request, unlike
                                                      ///< the enqueue-and-answer endpoints the global default serves.
+        int downstream_stateful_retry_after;         ///< Retry-After (seconds) of the 503 answered when that deadline
+                                                     ///< elapses; 0 = no header, <0 -> module default (20).
         int downstream_io_threads;                   ///< Threads running the downstream client's io_context. <=0 ->
                                                      ///< cpp_get_nproc() (see shared_modules/utils/proc.hpp).
         int downstream_post_process_threads;         ///< Threads running the per-endpoint post-processors. <=0 ->

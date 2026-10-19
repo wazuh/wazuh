@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: AGPL-3.0-or-later
 
 from pathlib import Path
 from helper_test.test_cases_generator.test_data import TestData

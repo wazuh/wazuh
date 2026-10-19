@@ -1,7 +1,6 @@
 /*
  * Wazuh manager certs tool - atomic bundle replacement and the shared write transaction
- * Copyright (C) 2015, Wazuh Inc.
- * September 19, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -639,9 +638,9 @@ namespace manager_certs
             const int cause = errno;
             if (cause == ENOENT)
             {
-                // The credential ladder creates the bundle only at install time (it copies the CA as
-                // root-ca.pem when absent, src/init/credentials/wazuh-manager-certificates.sh) and
-                // never again, so reinstalling is not the fix: the honest instruction is to
+                // The credential resolver creates the bundle only at install time (it copies the CA as
+                // root-ca.pem when absent, src/init/credentials/wazuh-manager-resolve-credentials.py)
+                // and never again, so reinstalling is not the fix: the honest instruction is to
                 // provision it and stamp it (C36h).
                 return fail("bundle not found at " + request.bundlePath.string() +
                             "; provision it and run 'wazuh-manager-certs stamp'");

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
 #include "indexerConnectorSyncImpl.hpp"
 #include "mocks/MockHTTPRequest.hpp"
 #include "mocks/MockServerSelector.hpp"
@@ -1568,7 +1569,16 @@ TEST_P(IndexerConnectorSyncConflictRetryTest, ADeleteByQueryRetriesAVersionConfl
     }
     else
     {
-        EXPECT_THROW(connector.flush(), IndexerConnectorException);
+        try
+        {
+            connector.flush();
+            FAIL() << "an exhausted conflict allowance must fail the flush";
+        }
+        catch (const IndexerConnectorException& e)
+        {
+            EXPECT_EQ(IndexerConnectorException::Category::ConflictsExhausted, e.category())
+                << "the documents are consistent, a competing writer was still running: not a rejection";
+        }
     }
     EXPECT_EQ(expectedPosts, postCount.load());
 }
@@ -1576,6 +1586,46 @@ TEST_P(IndexerConnectorSyncConflictRetryTest, ADeleteByQueryRetriesAVersionConfl
 INSTANTIATE_TEST_SUITE_P(ConflictRetry,
                          IndexerConnectorSyncConflictRetryTest,
                          ::testing::Values(std::make_pair(true, 2), std::make_pair(false, 3)));
+
+/// A shard failure on the re-run is still a rejection: only the allowance running out is contention.
+TEST_F(IndexerConnectorSyncTest, AShardFailureAfterAClearedConflictIsStillARejection)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::atomic<int> postCount {0};
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [&postCount](RequestParamsVariant, auto postParams, ConfigurationParameters)
+            {
+                const std::string body =
+                    (++postCount == 1)
+                        ? R"({"took":5,"total":300,"deleted":0,"version_conflicts":300,"failures":[]})"
+                        : R"({"took":5,"total":300,"deleted":299,"version_conflicts":0,"failures":[{"shard":0}]})";
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(body);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::string(body));
+                }
+            }));
+
+    IndexerConnectorSyncImplNoConflictDelay connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.deleteByQuery("wazuh-states-inventory-packages", "007", "cluster01");
+
+    try
+    {
+        connector.flush();
+        FAIL() << "a shard failure must fail the flush";
+    }
+    catch (const IndexerConnectorException& e)
+    {
+        EXPECT_EQ(IndexerConnectorException::Category::DocumentRejected, e.category());
+    }
+    EXPECT_EQ(2, postCount.load());
+}
 
 TEST_F(IndexerConnectorSyncTest, DeleteByQueryWithoutBulkDataTriggersNotify)
 {
@@ -2543,6 +2593,53 @@ TEST_F(IndexerConnectorSyncTest, AnUpdateByQueryRetriesAVersionConflictUntilItCl
     EXPECT_EQ(1U, connector.takeBulkRequestStats().conflictRetries) << "a cleared conflict fails no flush";
     connector.invokePendingCallbacks();
     EXPECT_TRUE(notifyCalled) << "the retry that succeeded is the one that completes the session";
+}
+
+/// A writer that keeps conflicting through every attempt is contention, not a rejection: the
+/// caller answers a retryable status and the notify callbacks never fire for this call.
+TEST_F(IndexerConnectorSyncTest, AnUpdateByQueryThatExhaustsItsConflictAllowanceFailsAsContention)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::atomic<int> postCount {0};
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [&postCount](RequestParamsVariant, auto postParams, ConfigurationParameters)
+            {
+                ++postCount;
+                const std::string body = R"({"took":5,"updated":0,"total":10,"version_conflicts":10,"failures":[]})";
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(body);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::string(body));
+                }
+            }));
+
+    IndexerConnectorSyncImplNoConflictDelay connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    bool notifyCalled = false;
+    connector.registerNotify([&notifyCalled]() { notifyCalled = true; });
+
+    nlohmann::json updateQuery;
+    updateQuery["query"]["match_all"] = nlohmann::json::object();
+
+    try
+    {
+        connector.executeUpdateByQuery({"wazuh-states-sca"}, updateQuery);
+        FAIL() << "an exhausted conflict allowance must fail the call";
+    }
+    catch (const IndexerConnectorException& e)
+    {
+        EXPECT_EQ(IndexerConnectorException::Category::ConflictsExhausted, e.category());
+    }
+    EXPECT_EQ(3, postCount.load()) << "three attempts: the query and two re-runs";
+    EXPECT_EQ(2U, connector.takeBulkRequestStats().conflictRetries);
+    connector.invokePendingCallbacks();
+    EXPECT_FALSE(notifyCalled) << "nothing completed, so nothing is notified";
 }
 
 TEST_F(IndexerConnectorSyncTest, ExecuteSearchQuerySuccess)
@@ -5394,6 +5491,44 @@ namespace
         }
         return count;
     }
+
+    /// liveThreadCount() once it settles. A joined thread's tid can linger in /proc/self/task for a
+    /// moment after join() returns, so counts taken after a join or a destructor must wait for it.
+    /// Without `expected` (baseline): polls every 10ms until 5 consecutive equal reads (or the deadline)
+    /// and returns the MINIMUM seen -- a leftover tid can only disappear, never appear.
+    /// With `expected`: polls until it reads `expected` or the deadline passes, and returns the last read.
+    /// Limit: this asserts "the thread ends", not "the thread was joined" -- a detach with the stop
+    /// signalled is indistinguishable.
+    std::size_t waitForStableThreadCount(std::size_t expected = std::string::npos,
+                                         std::chrono::milliseconds deadline = std::chrono::seconds(2))
+    {
+        constexpr std::size_t QUIET_READS = 5;
+        constexpr auto POLL = std::chrono::milliseconds(10);
+        const auto until = std::chrono::steady_clock::now() + deadline;
+
+        auto last = liveThreadCount();
+        if (expected != std::string::npos)
+        {
+            while (last != expected && std::chrono::steady_clock::now() < until)
+            {
+                std::this_thread::sleep_for(POLL);
+                last = liveThreadCount();
+            }
+            return last;
+        }
+
+        auto minimum = last;
+        std::size_t equalReads = 1;
+        while (equalReads < QUIET_READS && std::chrono::steady_clock::now() < until)
+        {
+            std::this_thread::sleep_for(POLL);
+            const auto current = liveThreadCount();
+            equalReads = current == last ? equalReads + 1 : 1;
+            last = current;
+            minimum = std::min(minimum, current);
+        }
+        return minimum;
+    }
 } // namespace
 
 /// flush_interval_seconds = 0 means the CALLER owns every flush: no background thread exists,
@@ -5402,7 +5537,7 @@ TEST_F(IndexerConnectorSyncTest, ZeroFlushIntervalStartsNoBackgroundThread)
 {
     config["flush_interval_seconds"] = 0;
 
-    const auto baseline = liveThreadCount();
+    const auto baseline = waitForStableThreadCount();
     {
         IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest);
         EXPECT_EQ(baseline, liveThreadCount()) << "a zero interval must not start a flush thread";
@@ -5414,7 +5549,7 @@ TEST_F(IndexerConnectorSyncTest, ZeroFlushIntervalStartsNoBackgroundThread)
         }
         connector.flush();
     }
-    EXPECT_EQ(baseline, liveThreadCount()) << "destruction must not leak a thread either";
+    EXPECT_EQ(waitForStableThreadCount(baseline), baseline) << "destruction must not leak a thread either";
     EXPECT_EQ(callCount, 1) << "the explicit flush must have posted the staged document";
 }
 
@@ -5470,12 +5605,13 @@ TEST_F(IndexerConnectorSyncTest, TimerFlushFailureIsReportedToTheOwningCaller)
 /// which pins that liveThreadCount() can tell the two configurations apart.
 TEST_F(IndexerConnectorSyncTest, NonZeroFlushIntervalStartsTheBackgroundThread)
 {
-    const auto baseline = liveThreadCount();
+    const auto baseline = waitForStableThreadCount();
     {
         IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest); // default interval
         EXPECT_EQ(baseline + 1, liveThreadCount()) << "a non-zero interval must start one flush thread";
     }
-    EXPECT_EQ(baseline, liveThreadCount()) << "the destructor must join the flush thread";
+    // Asserts the flush thread ends after destruction (see waitForStableThreadCount's limit).
+    EXPECT_EQ(waitForStableThreadCount(baseline), baseline) << "the destructor must stop the flush thread";
 }
 
 // Empty-buffer guard tests
@@ -5974,7 +6110,7 @@ TEST_F(IndexerConnectorSyncTest, ReducedScaleTimerSoakDeliversEveryDocumentExact
                 respondBulkSuccess(postParams);
             }));
 
-    const auto baseline = liveThreadCount();
+    const auto baseline = waitForStableThreadCount();
     std::vector<std::string> expected;
     {
         IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
@@ -6008,7 +6144,7 @@ TEST_F(IndexerConnectorSyncTest, ReducedScaleTimerSoakDeliversEveryDocumentExact
             thread.join();
         }
 
-        EXPECT_EQ(baseline + 1, liveThreadCount()) << "the soak must not grow threads";
+        EXPECT_EQ(waitForStableThreadCount(baseline + 1), baseline + 1) << "the soak must not grow threads";
         EXPECT_GE(recorder.bodyCount(), static_cast<size_t>(soakSeconds) / 2)
             << "the 1s timer was expected to flush the continuously refilled buffer on most ticks";
 
@@ -6018,7 +6154,7 @@ TEST_F(IndexerConnectorSyncTest, ReducedScaleTimerSoakDeliversEveryDocumentExact
             expected.insert(expected.end(), perStager.begin(), perStager.end());
         }
     }
-    EXPECT_EQ(baseline, liveThreadCount()) << "destruction must join the timer thread";
+    EXPECT_EQ(waitForStableThreadCount(baseline), baseline) << "destruction must stop the timer thread";
     ASSERT_FALSE(expected.empty()) << "the stagers never staged anything; the soak never exercised the timer";
     expectExactlyOnce(recorder.deliveredIds(), expected);
 }

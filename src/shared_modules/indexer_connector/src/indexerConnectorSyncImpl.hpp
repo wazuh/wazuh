@@ -1,12 +1,13 @@
 /*
  * Wazuh - Indexer connector implementation.
- * Copyright (C) 2015, Wazuh Inc.
- * July 2, 2025.
+ * Copyright (C) Wazuh Inc.
  *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of either the GNU General Public License, version 2, or
+ * the GNU Affero General Public License, version 3 or (at your option) any
+ * later version, both as published by the Free Software Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
 #include "IURLRequest.hpp"
@@ -439,9 +440,10 @@ class IndexerConnectorSyncImpl final
                                        : std::string {};
             LOGFN_WARN(m_logFn,
                        "%s left documents behind: %zu version conflict(s) survived its conflict retry "
-                       "allowance (%zu attempt(s)%s).",
+                       "allowance (%zu of %zu attempt(s)%s).",
                        operation,
                        conflicts,
+                       budget.attempts(),
                        CONFLICT_RETRY_ATTEMPTS,
                        wallBound.c_str());
             return false;
@@ -610,7 +612,9 @@ class IndexerConnectorSyncImpl final
                         !retryAfterVersionConflict(
                             deleteByQueryConflicts, conflictBackoff, conflictBudget, "deleteByQuery"))
                     {
-                        deleteByQueryLeftDocuments = true;
+                        throw IndexerConnectorException(
+                            "deleteByQuery left documents behind: its version-conflict allowance ran out",
+                            IndexerConnectorException::Category::ConflictsExhausted);
                     }
                     if (deleteByQueryLeftDocuments)
                     {
@@ -1373,7 +1377,10 @@ public:
             if (updateByQueryConflicts > 0 &&
                 !retryAfterVersionConflict(updateByQueryConflicts, conflictBackoff, conflictBudget, "Update by query"))
             {
-                updateByQueryFailed = true;
+                m_notify.clear();
+                throw IndexerConnectorException(
+                    "Update by query left documents behind: its version-conflict allowance ran out",
+                    IndexerConnectorException::Category::ConflictsExhausted);
             }
             if (updateByQueryFailed)
             {

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 #
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -9,6 +9,7 @@
 
 import argparse
 import configparser
+import os
 from os import path
 from datetime import datetime
 from typing import Optional
@@ -16,6 +17,10 @@ import sys
 import re
 
 DEFAULT_AWS_CONFIG_PATH = path.join(path.expanduser('~'), '.aws', 'config')
+# wazuh-modulesd passes inline keys through these variables instead of the command line, which
+# any local user can read while the script runs. Kept in sync with wm_aws.h.
+ACCESS_KEY_ENV = 'WAZUH_AWS_ACCESS_KEY'
+SECRET_KEY_ENV = 'WAZUH_AWS_SECRET_KEY'  # nosec B105: name of an environment variable, not a secret
 CREDENTIALS_URL = 'https://documentation.wazuh.com/current/amazon/services/prerequisites/credentials.html'
 DEPRECATED_MESSAGE = 'The {name} authentication parameter was deprecated in {release}. ' \
                      'Please use another authentication method instead. Check {url} for more information.'
@@ -412,6 +417,12 @@ def get_script_arguments():
                         help='The duration, in seconds, of the role session. Value can range from 900s to the max'
                              ' session duration set for the role.')
     parsed_args = parser.parse_args()
+
+    # A key given on the command line wins over one given through the environment
+    if parsed_args.access_key is None:
+        parsed_args.access_key = os.environ.get(ACCESS_KEY_ENV) or None
+    if parsed_args.secret_key is None:
+        parsed_args.secret_key = os.environ.get(SECRET_KEY_ENV) or None
 
     if parsed_args.iam_role_duration is not None and parsed_args.iam_role_arn is None:
         raise argparse.ArgumentTypeError('Used --iam_role_duration argument but no --iam_role_arn provided.')

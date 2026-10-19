@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 set(SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/src)
 set(IFACE_DIR ${CMAKE_CURRENT_LIST_DIR}/interface)
 set(INCLUDE_DIR ${CMAKE_CURRENT_LIST_DIR}/include)

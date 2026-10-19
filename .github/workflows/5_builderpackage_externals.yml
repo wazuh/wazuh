@@ -256,7 +256,7 @@ jobs:
           # Precedence, highest first:
           #   1. a compiled copy beats a source-only copy — this is what
           #      keeps a server-only dep the agent leg couldn't build
-          #      (rocksdb, lzma: gated by `if(NOT IS_AGENT ...)` in
+          #      (rocksdb: gated by `if(NOT IS_AGENT ...)` in
           #      src/external/CMakeLists.txt) coming from the manager leg.
           #   2. between two compiled copies the agent leg wins — its
           #      centos:6 / glibc-2.12 binaries link in every Wazuh builder
@@ -448,7 +448,7 @@ jobs:
           echo "## Dependencies COMPILED from source"
           # A dependency that wasn't consumed precompiled shows up two ways in
           # src/external/CMakeLists.txt, so check both:
-          #  - ExternalProject deps (rocksdb, lzma, flatbuffers, openssl, ...):
+          #  - ExternalProject deps (rocksdb, flatbuffers, openssl, ...):
           #    a real run emits "Creating directories for '<dep>_external'" and
           #    "Performing build step for '<dep>_external'". The precompiled
           #    short-circuit instead defines a no-op add_custom_target — no

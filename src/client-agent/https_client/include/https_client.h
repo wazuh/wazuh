@@ -1,7 +1,6 @@
 /*
  * Wazuh agent HTTPS client (C++ transport module)
- * Copyright (C) 2015, Wazuh Inc.
- * July 17, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -606,6 +605,12 @@ typedef struct hc_enroll_result_t
  */
 HC_EXPORTED bool hc_enroll(const hc_config_t* config, const hc_enroll_request_t* request,
                            hc_enroll_result_t* result);
+
+/* ---- POST /stateful ---- */
+
+/// Limit on a /stateful answer. The bridge relays it to its module as one local frame
+/// (header + "HCRESULT:<n>:<code>:" + body), which must stay under OS_MAXSTR.
+#define HC_MAX_STATEFUL_RESPONSE_BODY (63 * 1024)
 
 /* ---- GET /cacerts (unverified bootstrap fetch) ---- */
 

@@ -635,7 +635,10 @@ paths:
         It also carries its own, longer response deadline
         (`remoted.downstream_stateful_response_timeout`, default 20 s), since a session is validated,
         indexed and flushed within the request rather than merely enqueued. Anything outside the
-        sync contract's status set -- and every transport failure -- collapses to a neutral `503`.
+        sync contract's status set -- and every transport failure -- collapses to a neutral `503`;
+        the one on that deadline carries `Retry-After` (`remoted.downstream_stateful_retry_after`,
+        default 20 s), because the sync server is still applying the session and a re-send before
+        it finishes runs the same session twice.
       requestBody:
         required: true
         content:
