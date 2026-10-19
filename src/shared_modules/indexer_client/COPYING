@@ -1,0 +1,17 @@
+Copyright (C) Wazuh Inc.
+
+The source code in this directory is dual-licensed. You may redistribute it
+and/or modify it under the terms of either:
+
+  * the GNU General Public License, version 2, as published by the Free
+    Software Foundation (see LICENSE at the root of the repository); or
+
+  * the GNU Affero General Public License, version 3 or (at your option) any
+    later version, as published by the Free Software Foundation (see
+    src/engine/LICENSE-engine).
+
+SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
+
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE. See the licenses above for more details.
