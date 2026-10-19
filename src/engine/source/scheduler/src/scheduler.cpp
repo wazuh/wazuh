@@ -199,7 +199,9 @@ void Scheduler::workerThread()
             {
                 LOG_DEBUG("[Scheduler] Rescheduling recurring task '{}'", task.name);
                 auto updatedTask = task;
-                updatedTask.nextRun = std::chrono::steady_clock::now() + std::chrono::seconds(task.config.interval);
+                const auto delay = task.config.nextInterval ? task.config.nextInterval() : 0;
+                updatedTask.nextRun =
+                    std::chrono::steady_clock::now() + std::chrono::seconds(delay > 0 ? delay : task.config.interval);
                 m_taskQueue.push(updatedTask);
             }
             // else: task was removed while executing — skip re-queue (RC-2 fix)
