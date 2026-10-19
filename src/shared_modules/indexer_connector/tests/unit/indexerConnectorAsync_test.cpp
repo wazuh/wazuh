@@ -2,6 +2,7 @@
 #include "indexerConnectorAsyncImpl.hpp"
 #include "mocks/MockHTTPRequest.hpp"
 #include "mocks/MockServerSelector.hpp"
+#include "scopedLogCapture.hpp"
 #include <algorithm>
 #include <atomic>
 #include <chrono>
@@ -15,6 +16,7 @@
 #include <memory>
 #include <mutex>
 #include <sstream>
+#include <string_view>
 #include <thread>
 
 using ::testing::_;
@@ -36,6 +38,67 @@ using IndexerConnectorAsyncImplSmallBulkNoFlushInterval =
     IndexerConnectorAsyncImpl<MockServerSelector, MockHTTPRequest, 5, 0, 1>;
 // Large template bulk (25000) with a 5-second flush timer and a minimal (1s) retry delay.
 using IndexerConnectorAsyncImplLargeBulk = IndexerConnectorAsyncImpl<MockServerSelector, MockHTTPRequest, 25000, 5, 1>;
+// One item per batch, and a batch is discarded after 2 consecutive HTTP 503 answers.
+using IndexerConnectorAsyncImplSmallBulkTwoUnavailable =
+    IndexerConnectorAsyncImpl<MockServerSelector, MockHTTPRequest, 5, 5, 1, 5, 15, 2>;
+// Bulk threshold far above a few small documents and a 1-second flush timer: documents pushed back
+// to back go out together in a single batch when the timer fires.
+using IndexerConnectorAsyncImplMultiItemBulk =
+    IndexerConnectorAsyncImpl<MockServerSelector, MockHTTPRequest, 100000, 1, 1>;
+
+namespace
+{
+    // Body of a mocked POST.
+    std::string postedData(const RequestParamsVariant& requestParams)
+    {
+        if (std::holds_alternative<TRequestParameters<std::string>>(requestParams))
+        {
+            return std::get<TRequestParameters<std::string>>(requestParams).data;
+        }
+        if (std::holds_alternative<TRequestParameters<std::string_view>>(requestParams))
+        {
+            return std::string(std::get<TRequestParameters<std::string_view>>(requestParams).data);
+        }
+        return std::get<TRequestParameters<nlohmann::json>>(requestParams).data.dump();
+    }
+
+    // Answers a mocked POST with an HTTP error.
+    void answerError(const PostRequestParametersVariant& postParams, const std::string& error, long statusCode)
+    {
+        if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+        {
+            std::get<TPostRequestParameters<const std::string&>>(postParams).onError(error, statusCode, "");
+        }
+        else
+        {
+            std::get<TPostRequestParameters<std::string&&>>(postParams).onError(error, statusCode, "");
+        }
+    }
+
+    // Answers a mocked POST with a clean bulk response.
+    void answerSuccess(const PostRequestParametersVariant& postParams)
+    {
+        if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+        {
+            std::get<TPostRequestParameters<const std::string&>>(postParams)
+                .onSuccess(R"({"took":1,"errors":false,"items":[]})");
+        }
+        else
+        {
+            std::get<TPostRequestParameters<std::string&&>>(postParams)
+                .onSuccess(R"({"took":1,"errors":false,"items":[]})");
+        }
+    }
+
+    // Number of posted bodies containing `needle`.
+    size_t countPostsWith(const std::vector<std::string>& posts, std::string_view needle)
+    {
+        return static_cast<size_t>(std::count_if(posts.begin(),
+                                                 posts.end(),
+                                                 [needle](const std::string& post)
+                                                 { return post.find(needle) != std::string::npos; }));
+    }
+} // namespace
 
 // Test fixture using GMock for async implementation
 class IndexerConnectorAsyncTest : public ::testing::Test
@@ -891,7 +954,7 @@ TEST_F(IndexerConnectorAsyncTest, HandleError429TooManyRequests)
 
 // cluster_block_exception arrives as HTTP 200 with a per-item error: the bulk send itself succeeded,
 // so IndexerBulkQueue has nothing to retry - the blocked item is discarded (logged + counted) and
-// only a future send is paused via requestBackoff(). Unlike a real transport failure (429/502/503/...),
+// only a future send is paused via requestBackoff(). Unlike a retried failure (429, 503, transport),
 // the blocked batch's data must never reappear in a later send.
 TEST_F(IndexerConnectorAsyncTest, ClusterBlockExceptionItemsAreDiscardedNotRetried)
 {
@@ -1174,68 +1237,59 @@ TEST_F(IndexerConnectorAsyncTest, AppliesBackoffToNextBulkAfterClusterBlockExcep
     EXPECT_NE(receivedData[2].find("value2"), std::string::npos);
 }
 
+// A 500 is not retried: each batch is sent once, discarded and counted.
 TEST_F(IndexerConnectorAsyncTest, HandleError500InternalServerError)
 {
+    constexpr int BATCHES {3};
+
     auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
     EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
 
-    std::promise<void> errorHandledPromise;
-    std::future<void> errorHandledFuture = errorHandledPromise.get_future();
+    std::promise<void> lastCallPromise;
+    std::future<void> lastCallFuture = lastCallPromise.get_future();
+    std::atomic<int> callIndex {0};
 
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
         .WillRepeatedly(Invoke(
-            [this, &errorHandledPromise](RequestParamsVariant requestParams, auto postParams, ConfigurationParameters)
+            [this, &lastCallPromise, &callIndex](
+                RequestParamsVariant requestParams, auto postParams, ConfigurationParameters)
             {
                 this->callCount++;
+                const int currentCall = ++callIndex;
+                this->receivedData.push_back(postedData(requestParams));
 
-                // Extract data from variant
-                std::string data;
-                if (std::holds_alternative<TRequestParameters<std::string>>(requestParams))
+                answerError(postParams, "Internal Server Error", 500);
+                // Fulfilled once, after onError returned (the discard is already counted).
+                if (currentCall == BATCHES)
                 {
-                    data = std::get<TRequestParameters<std::string>>(requestParams).data;
+                    lastCallPromise.set_value();
                 }
-                else if (std::holds_alternative<TRequestParameters<std::string_view>>(requestParams))
-                {
-                    data = std::get<TRequestParameters<std::string_view>>(requestParams).data;
-                }
-                else
-                {
-                    data = std::get<TRequestParameters<nlohmann::json>>(requestParams).data.dump();
-                }
-                this->receivedData.push_back(data);
-
-                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
-                {
-                    std::get<TPostRequestParameters<const std::string&>>(postParams)
-                        .onError("Internal Server Error", 500, "");
-                }
-                else
-                {
-                    std::get<TPostRequestParameters<std::string&&>>(postParams)
-                        .onError("Internal Server Error", 500, "");
-                }
-                errorHandledPromise.set_value();
             }));
 
+    // Small bulk threshold: each bulkIndex() below is sent as its own separate batch.
     IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
 
-    // Add data to trigger processing
-    for (int i = 0; i < 5; ++i)
+    for (int i = 0; i < BATCHES; ++i)
     {
-        std::string id = "id" + std::to_string(i);
-        std::string data = R"({"field":"value)" + std::to_string(i) + R"("})";
-        connector.bulkIndex(id, "index1", data);
+        connector.bulkIndex("id" + std::to_string(i), "index1", R"({"field":"value)" + std::to_string(i) + R"("})");
     }
 
-    // Wait for error to be handled
-    auto status = errorHandledFuture.wait_for(std::chrono::seconds(10));
-    EXPECT_EQ(status, std::future_status::ready) << "Timeout waiting for internal server error handling";
-    EXPECT_GT(callCount, 0);
+    ASSERT_EQ(lastCallFuture.wait_for(std::chrono::seconds(10)), std::future_status::ready)
+        << "Timeout waiting for the internal server error handling";
+
+    EXPECT_EQ(callCount, BATCHES);
+    for (int i = 0; i < BATCHES; ++i)
+    {
+        EXPECT_EQ(countPostsWith(receivedData, "value" + std::to_string(i)), 1u)
+            << "value" << i << " must be sent exactly once (a 500 is not retried)";
+    }
+    EXPECT_EQ(connector.getDroppedEvents(), static_cast<uint64_t>(BATCHES));
 }
 
-// 502 (like 408/503/504) commonly means OpenSearch actually processed the bulk but the response
-// never made it back - retrying would risk indexing the same documents twice, so it must NOT be
-// retried (unlike 429/connection errors, which mean the request was rejected before processing).
+// 502 (like 504) may mean OpenSearch actually processed the bulk but the response never made it
+// back - retrying would risk indexing the same documents twice (data streams have no _id to dedupe
+// on), so it must NOT be retried: the batch is discarded and counted. 503 (like 429 and connection
+// errors) means the request was rejected before processing, so it IS retried (up to a limit).
 TEST_F(IndexerConnectorAsyncTest, HandleBadGatewayIsNotRetried)
 {
     auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
@@ -1310,6 +1364,633 @@ TEST_F(IndexerConnectorAsyncTest, HandleBadGatewayIsNotRetried)
     EXPECT_NE(receivedData[0].find("value0"), std::string::npos);
     EXPECT_EQ(receivedData[1].find("value0"), std::string::npos) << "value0 should not have been retried after a 502";
     EXPECT_NE(receivedData[1].find("value1"), std::string::npos);
+    EXPECT_EQ(connector.getDroppedEvents(), 1u) << "the discarded 502 batch must be counted";
+}
+
+// 504, like 502, is discarded (and counted), never retried.
+TEST_F(IndexerConnectorAsyncTest, GatewayTimeoutIsNotRetried)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::promise<void> secondCallPromise;
+    std::future<void> secondCallFuture = secondCallPromise.get_future();
+    std::atomic<int> callIndex {0};
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [this, &secondCallPromise, &callIndex](
+                RequestParamsVariant requestParams, auto postParams, ConfigurationParameters)
+            {
+                this->callCount++;
+                const int currentCall = ++callIndex;
+                this->receivedData.push_back(postedData(requestParams));
+
+                if (currentCall == 1)
+                {
+                    answerError(postParams, "Gateway Timeout", 504);
+                }
+                else
+                {
+                    answerSuccess(postParams);
+                    if (currentCall == 2)
+                    {
+                        secondCallPromise.set_value();
+                    }
+                }
+            }));
+
+    // Small bulk threshold: each bulkIndex() below is sent as its own separate batch.
+    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    connector.bulkIndex("id0", "index1", R"({"field":"value0"})");
+    connector.bulkIndex("id1", "index1", R"({"field":"value1"})");
+
+    ASSERT_EQ(secondCallFuture.wait_for(std::chrono::seconds(10)), std::future_status::ready)
+        << "Timeout waiting for the second (unrelated) bulk";
+
+    EXPECT_EQ(callCount, 2);
+    ASSERT_GE(receivedData.size(), 2);
+    EXPECT_NE(receivedData[0].find("value0"), std::string::npos);
+    EXPECT_EQ(receivedData[1].find("value0"), std::string::npos) << "value0 should not have been retried after a 504";
+    EXPECT_NE(receivedData[1].find("value1"), std::string::npos);
+    EXPECT_EQ(connector.getDroppedEvents(), 1u) << "the discarded 504 batch must be counted";
+}
+
+// A 503 means the indexer rejected the bulk before processing it: the same batch is resent and
+// nothing is dropped once the indexer answers 200.
+TEST_F(IndexerConnectorAsyncTest, ServiceUnavailableIsRetriedUntilSuccess)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::promise<void> successPromise;
+    std::future<void> successFuture = successPromise.get_future();
+    std::atomic<int> callIndex {0};
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [this, &successPromise, &callIndex](
+                RequestParamsVariant requestParams, auto postParams, ConfigurationParameters)
+            {
+                this->callCount++;
+                const int currentCall = ++callIndex;
+                this->receivedData.push_back(postedData(requestParams));
+
+                if (currentCall == 1)
+                {
+                    answerError(postParams, "Service Unavailable", 503);
+                }
+                else
+                {
+                    answerSuccess(postParams);
+                    if (currentCall == 2)
+                    {
+                        successPromise.set_value();
+                    }
+                }
+            }));
+
+    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    connector.bulkIndex("id0", "index1", R"({"field":"value0"})");
+
+    ASSERT_EQ(successFuture.wait_for(std::chrono::seconds(10)), std::future_status::ready)
+        << "Timeout waiting for the 503 batch to be retried";
+
+    EXPECT_EQ(callCount, 2);
+    ASSERT_EQ(receivedData.size(), 2);
+    EXPECT_NE(receivedData[0].find("value0"), std::string::npos);
+    EXPECT_EQ(receivedData[1], receivedData[0]) << "the retry must resend the same body";
+    EXPECT_EQ(connector.getDroppedEvents(), 0u);
+}
+
+// After MaxUnavailableRetries (2 here) consecutive 503 answers the head batch is discarded and
+// counted, and the next batch goes out.
+TEST_F(IndexerConnectorAsyncTest, ServiceUnavailableIsDiscardedAfterRetryLimit)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::promise<void> otherBatchPromise;
+    std::future<void> otherBatchFuture = otherBatchPromise.get_future();
+    std::atomic<bool> otherBatchSent {false};
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [this, &otherBatchPromise, &otherBatchSent](
+                RequestParamsVariant requestParams, auto postParams, ConfigurationParameters)
+            {
+                this->callCount++;
+                const auto data = postedData(requestParams);
+                this->receivedData.push_back(data);
+
+                if (data.find("valueA") != std::string::npos)
+                {
+                    answerError(postParams, "Service Unavailable", 503);
+                }
+                else
+                {
+                    answerSuccess(postParams);
+                    if (!otherBatchSent.exchange(true))
+                    {
+                        otherBatchPromise.set_value();
+                    }
+                }
+            }));
+
+    IndexerConnectorAsyncImplSmallBulkTwoUnavailable connector(
+        config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    connector.bulkIndex("idA", "index1", R"({"field":"valueA"})");
+    connector.bulkIndex("idB", "index1", R"({"field":"valueB"})");
+
+    ASSERT_EQ(otherBatchFuture.wait_for(std::chrono::seconds(15)), std::future_status::ready)
+        << "Timeout waiting for the batch after the discarded one";
+
+    EXPECT_EQ(callCount, 3);
+    EXPECT_EQ(countPostsWith(receivedData, "valueA"), 2u) << "the 503 batch must be sent exactly twice";
+    EXPECT_EQ(countPostsWith(receivedData, "valueB"), 1u);
+    ASSERT_FALSE(receivedData.empty());
+    EXPECT_NE(receivedData.back().find("valueB"), std::string::npos) << "valueA must not be sent after valueB";
+    EXPECT_EQ(connector.getDroppedEvents(), 1u);
+}
+
+// Any non-503 HTTP outcome resets the consecutive-503 counter: 503, 200, 503, 200 with a limit of 2
+// discards nothing.
+TEST_F(IndexerConnectorAsyncTest, ServiceUnavailableCounterResetsOnOtherOutcome)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::promise<void> fourthCallPromise;
+    std::future<void> fourthCallFuture = fourthCallPromise.get_future();
+    std::atomic<int> callIndex {0};
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [this, &fourthCallPromise, &callIndex](
+                RequestParamsVariant requestParams, auto postParams, ConfigurationParameters)
+            {
+                this->callCount++;
+                const int currentCall = ++callIndex;
+                this->receivedData.push_back(postedData(requestParams));
+
+                if (currentCall == 1 || currentCall == 3)
+                {
+                    answerError(postParams, "Service Unavailable", 503);
+                }
+                else
+                {
+                    answerSuccess(postParams);
+                    if (currentCall == 4)
+                    {
+                        fourthCallPromise.set_value();
+                    }
+                }
+            }));
+
+    IndexerConnectorAsyncImplSmallBulkTwoUnavailable connector(
+        config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    connector.bulkIndex("id0", "index1", R"({"field":"value0"})");
+    connector.bulkIndex("id1", "index1", R"({"field":"value1"})");
+
+    ASSERT_EQ(fourthCallFuture.wait_for(std::chrono::seconds(15)), std::future_status::ready)
+        << "Timeout waiting for the fourth POST (the second batch was discarded?)";
+
+    EXPECT_EQ(callCount, 4);
+    ASSERT_EQ(receivedData.size(), 4);
+    EXPECT_NE(receivedData[0].find("value0"), std::string::npos);
+    EXPECT_EQ(receivedData[1], receivedData[0]);
+    EXPECT_NE(receivedData[2].find("value1"), std::string::npos);
+    EXPECT_EQ(receivedData[3], receivedData[2]);
+    EXPECT_EQ(connector.getDroppedEvents(), 0u);
+}
+
+namespace
+{
+    // Sends 4 one-item batches: the first is answered 503 twice (retries exhausted with the
+    // TwoUnavailable alias), the other three are answered 500. Returns once the 5th POST's
+    // onError has returned.
+    template<typename TConnector>
+    void runRepeatedDiscards(TConnector& connector, std::atomic<int>& callIndex, std::future<void>& lastCallFuture)
+    {
+        for (int i = 0; i < 4; ++i)
+        {
+            connector.bulkIndex("id" + std::to_string(i), "index1", R"({"field":"value)" + std::to_string(i) + R"("})");
+        }
+
+        ASSERT_EQ(lastCallFuture.wait_for(std::chrono::seconds(15)), std::future_status::ready)
+            << "Timeout waiting for the fifth POST";
+        EXPECT_EQ(callIndex.load(), 5);
+    }
+
+    auto repeatedDiscardsPost(std::atomic<int>& callIndex, std::promise<void>& lastCallPromise)
+    {
+        return [&callIndex, &lastCallPromise](RequestParamsVariant, auto postParams, ConfigurationParameters)
+        {
+            const int currentCall = ++callIndex;
+            if (currentCall <= 2)
+            {
+                answerError(postParams, "Service Unavailable", 503);
+            }
+            else
+            {
+                answerError(postParams, "Internal Server Error", 500);
+                if (currentCall == 5)
+                {
+                    lastCallPromise.set_value();
+                }
+            }
+        };
+    }
+} // namespace
+
+// Within the summary interval, a run of discards logs a single WARN (the first one); every discard
+// is still logged at DEBUG1 and counted.
+TEST_F(IndexerConnectorAsyncTest, RepeatedDiscardsLogOneWarning)
+{
+    // Installed before the connector: its threads log until the connector is destroyed.
+    ScopedLogCapture logs;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::promise<void> lastCallPromise;
+    std::future<void> lastCallFuture = lastCallPromise.get_future();
+    std::atomic<int> callIndex {0};
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(repeatedDiscardsPost(callIndex, lastCallPromise)));
+
+    IndexerConnectorAsyncImplSmallBulkTwoUnavailable connector(
+        config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    runRepeatedDiscards(connector, callIndex, lastCallFuture);
+
+    EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING,
+                                "Discarding 1 event(s): bulk request answered HTTP 503 on 2 consecutive attempts"),
+              1u);
+    EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, "Discarding"), 1u) << "no WARN per discarded batch";
+    EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, "Discards continue"), 0u);
+    EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_DEBUG, "Bulk request discarded: HTTP"), 4u);
+    EXPECT_EQ(connector.getDroppedEvents(), 4u);
+}
+
+// With a 0-second summary interval every discard after the first one is summarized, and the
+// per-cause counters restart after each summary.
+TEST_F(IndexerConnectorAsyncTest, RepeatedDiscardsSummaryEveryInterval)
+{
+    // Installed before the connector: its threads log until the connector is destroyed.
+    ScopedLogCapture logs;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::promise<void> lastCallPromise;
+    std::future<void> lastCallFuture = lastCallPromise.get_future();
+    std::atomic<int> callIndex {0};
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(repeatedDiscardsPost(callIndex, lastCallPromise)));
+
+    IndexerConnectorAsyncImplSmallBulkTwoUnavailable connector(
+        config, nullptr, &mockHttpRequest, std::move(mockSelector), "", std::nullopt, {}, 0);
+
+    runRepeatedDiscards(connector, callIndex, lastCallFuture);
+
+    EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, "Discarding"), 1u);
+    EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, "Discards continue"), 3u);
+    EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, "Discards continue: 1 event(s) in 1 batch(es)"), 3u);
+    EXPECT_EQ(
+        logs.countAtLevel(Log::LOGLEVEL_WARNING, "(HTTP 500: 1, 502: 0, 504: 0, 503 retries exhausted: 0, other: 0)."),
+        3u)
+        << "each summary (the last one included) must report only the discards since the previous one";
+    EXPECT_EQ(connector.getDroppedEvents(), 4u);
+}
+
+// A discarded batch counts every event it holds, not one per batch: 4 documents sent in a single
+// _bulk answered 500 add 4 to getDroppedEvents() and the WARN reports 4 events.
+TEST_F(IndexerConnectorAsyncTest, DiscardCountsEveryEventOfTheBatch)
+{
+    constexpr int EVENTS {4};
+
+    // Installed before the connector: its threads log until the connector is destroyed.
+    ScopedLogCapture logs;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::promise<void> firstCallPromise;
+    std::future<void> firstCallFuture = firstCallPromise.get_future();
+    std::atomic<int> callIndex {0};
+    // Written only by the first POST, read only after its promise: no race even if the flush
+    // timer split the documents into a second POST.
+    std::string firstPost;
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [&firstCallPromise, &callIndex, &firstPost](
+                RequestParamsVariant requestParams, auto postParams, ConfigurationParameters)
+            {
+                const int currentCall = ++callIndex;
+                if (currentCall == 1)
+                {
+                    firstPost = postedData(requestParams);
+                }
+
+                answerError(postParams, "Internal Server Error", 500);
+                // Fulfilled once, after onError returned (the discard is already counted).
+                if (currentCall == 1)
+                {
+                    firstCallPromise.set_value();
+                }
+            }));
+
+    IndexerConnectorAsyncImplMultiItemBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    for (int i = 0; i < EVENTS; ++i)
+    {
+        connector.bulkIndex("id" + std::to_string(i), "index1", R"({"field":"value)" + std::to_string(i) + R"("})");
+    }
+
+    ASSERT_EQ(firstCallFuture.wait_for(std::chrono::seconds(10)), std::future_status::ready)
+        << "Timeout waiting for the bulk request";
+
+    for (int i = 0; i < EVENTS; ++i)
+    {
+        ASSERT_NE(firstPost.find("value" + std::to_string(i)), std::string::npos)
+            << "value" << i << " missing from the first POST: the flush timer split the batch, the test "
+            << "premise (one POST with all " << EVENTS << " events) does not hold";
+    }
+    EXPECT_EQ(callIndex.load(), 1) << "all the events must go out in a single POST";
+    EXPECT_EQ(connector.getDroppedEvents(), static_cast<uint64_t>(EVENTS));
+    EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, "Discarding 4 event(s): bulk request answered HTTP 500"), 1u);
+}
+
+// A successful response after the summary interval with nothing pending closes the discard window:
+// the next discard logs a fresh WARN instead of a summary.
+TEST_F(IndexerConnectorAsyncTest, DiscardWindowClosesAfterAQuietInterval)
+{
+    // Installed before the connector: its threads log until the connector is destroyed.
+    ScopedLogCapture logs;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::promise<void> lastCallPromise;
+    std::future<void> lastCallFuture = lastCallPromise.get_future();
+    std::atomic<int> callIndex {0};
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [&lastCallPromise, &callIndex](RequestParamsVariant, auto postParams, ConfigurationParameters)
+            {
+                const int currentCall = ++callIndex;
+                if (currentCall == 2)
+                {
+                    answerSuccess(postParams);
+                }
+                else
+                {
+                    answerError(postParams, "Internal Server Error", 500);
+                    // Fulfilled once, after onError returned.
+                    if (currentCall == 3)
+                    {
+                        lastCallPromise.set_value();
+                    }
+                }
+            }));
+
+    // Small bulk threshold (one document per batch) and a 0-second summary interval.
+    IndexerConnectorAsyncImplSmallBulk connector(
+        config, nullptr, &mockHttpRequest, std::move(mockSelector), "", std::nullopt, {}, 0);
+
+    for (int i = 0; i < 3; ++i)
+    {
+        connector.bulkIndex("id" + std::to_string(i), "index1", R"({"field":"value)" + std::to_string(i) + R"("})");
+    }
+
+    ASSERT_EQ(lastCallFuture.wait_for(std::chrono::seconds(10)), std::future_status::ready)
+        << "Timeout waiting for the third POST";
+
+    EXPECT_EQ(callIndex.load(), 3);
+    EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, "Discarding"), 2u)
+        << "the 200 in between must close the window, so the second 500 opens a new one";
+    EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, "Discards continue"), 0u);
+    EXPECT_EQ(connector.getDroppedEvents(), 2u);
+}
+
+// A 429 (like 409, 413 and transport failures) also resets the consecutive-503 counter: 503, 429,
+// 503, 200 with a limit of 2 resends the same batch until the 200 and discards nothing.
+TEST_F(IndexerConnectorAsyncTest, ServiceUnavailableCounterResetsOnTooManyRequests)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::promise<void> fourthCallPromise;
+    std::future<void> fourthCallFuture = fourthCallPromise.get_future();
+    std::atomic<int> callIndex {0};
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [this, &fourthCallPromise, &callIndex](
+                RequestParamsVariant requestParams, auto postParams, ConfigurationParameters)
+            {
+                this->callCount++;
+                const int currentCall = ++callIndex;
+                this->receivedData.push_back(postedData(requestParams));
+
+                if (currentCall == 1 || currentCall == 3)
+                {
+                    answerError(postParams, "Service Unavailable", 503);
+                }
+                else if (currentCall == 2)
+                {
+                    answerError(postParams, "Too Many Requests", 429);
+                }
+                else
+                {
+                    answerSuccess(postParams);
+                    if (currentCall == 4)
+                    {
+                        fourthCallPromise.set_value();
+                    }
+                }
+            }));
+
+    IndexerConnectorAsyncImplSmallBulkTwoUnavailable connector(
+        config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    connector.bulkIndex("id0", "index1", R"({"field":"value0"})");
+
+    // Three backoff pauses (1-1.5 s, 1-2 s, 2-4 s) before the fourth POST.
+    ASSERT_EQ(fourthCallFuture.wait_for(std::chrono::seconds(20)), std::future_status::ready)
+        << "Timeout waiting for the fourth POST (the batch was discarded on the third, the 429 did not reset the "
+           "503 counter?)";
+
+    EXPECT_EQ(callCount, 4);
+    ASSERT_EQ(receivedData.size(), 4);
+    for (size_t i = 0; i < receivedData.size(); ++i)
+    {
+        EXPECT_NE(receivedData[i].find("value0"), std::string::npos) << "POST " << i + 1;
+    }
+    EXPECT_EQ(connector.getDroppedEvents(), 0u);
+}
+
+// The consecutive-503 counter restarts after a batch is discarded: the next batch that keeps getting
+// 503 is sent MaxUnavailableRetries times too, not discarded at its first 503.
+TEST_F(IndexerConnectorAsyncTest, ConsecutiveExhaustedBatchesEachGetTheFullRetryLimit)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::promise<void> lastBatchPromise;
+    std::future<void> lastBatchFuture = lastBatchPromise.get_future();
+    std::atomic<bool> lastBatchSent {false};
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [this, &lastBatchPromise, &lastBatchSent](
+                RequestParamsVariant requestParams, auto postParams, ConfigurationParameters)
+            {
+                this->callCount++;
+                const auto data = postedData(requestParams);
+                this->receivedData.push_back(data);
+
+                if (data.find("valueC") == std::string::npos)
+                {
+                    answerError(postParams, "Service Unavailable", 503);
+                }
+                else
+                {
+                    answerSuccess(postParams);
+                    if (!lastBatchSent.exchange(true))
+                    {
+                        lastBatchPromise.set_value();
+                    }
+                }
+            }));
+
+    IndexerConnectorAsyncImplSmallBulkTwoUnavailable connector(
+        config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    connector.bulkIndex("idA", "index1", R"({"field":"valueA"})");
+    connector.bulkIndex("idB", "index1", R"({"field":"valueB"})");
+    connector.bulkIndex("idC", "index1", R"({"field":"valueC"})");
+
+    // Two backoff pauses: 1-1.5 s before A's retry and 2-4 s before B's (the backoff is not reset
+    // by A's discard).
+    ASSERT_EQ(lastBatchFuture.wait_for(std::chrono::seconds(20)), std::future_status::ready)
+        << "Timeout waiting for the batch after the two discarded ones";
+
+    EXPECT_EQ(callCount, 5);
+    EXPECT_EQ(countPostsWith(receivedData, "valueA"), 2u) << "A must be sent exactly MaxUnavailableRetries times";
+    EXPECT_EQ(countPostsWith(receivedData, "valueB"), 2u)
+        << "B must get the full retry limit too, not inherit A's consecutive 503 count";
+    EXPECT_EQ(countPostsWith(receivedData, "valueC"), 1u);
+    EXPECT_EQ(connector.getDroppedEvents(), 2u);
+}
+
+// Each summary attributes the discards since the previous one to their cause: 503 retries
+// exhausted, 502, 504 and any other status each land in their own bucket.
+TEST_F(IndexerConnectorAsyncTest, DiscardSummaryCountsEachCause)
+{
+    // POSTs: 1-2 batch 0 (503 x2, exhausted: opens the window), 3-4 batch 1 (503 x2, exhausted),
+    // 5 batch 2 (502), 6 batch 3 (504), 7 batch 4 (400), 8 batch 5 (200).
+    constexpr int LAST_CALL {8};
+
+    // Installed before the connector: its threads log until the connector is destroyed.
+    ScopedLogCapture logs;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::promise<void> lastCallPromise;
+    std::future<void> lastCallFuture = lastCallPromise.get_future();
+    std::atomic<int> callIndex {0};
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [this, &lastCallPromise, &callIndex](
+                RequestParamsVariant requestParams, auto postParams, ConfigurationParameters)
+            {
+                const int currentCall = ++callIndex;
+                this->receivedData.push_back(postedData(requestParams));
+
+                if (currentCall <= 4)
+                {
+                    answerError(postParams, "Service Unavailable", 503);
+                }
+                else if (currentCall == 5)
+                {
+                    answerError(postParams, "Bad Gateway", 502);
+                }
+                else if (currentCall == 6)
+                {
+                    answerError(postParams, "Gateway Timeout", 504);
+                }
+                else if (currentCall == 7)
+                {
+                    answerError(postParams, "Bad Request", 400);
+                }
+                else
+                {
+                    answerSuccess(postParams);
+                    // Fulfilled once, after onSuccess returned.
+                    if (currentCall == LAST_CALL)
+                    {
+                        lastCallPromise.set_value();
+                    }
+                }
+            }));
+
+    // One document per batch, 2 consecutive 503 exhaust a batch, 0-second summary interval.
+    IndexerConnectorAsyncImplSmallBulkTwoUnavailable connector(
+        config, nullptr, &mockHttpRequest, std::move(mockSelector), "", std::nullopt, {}, 0);
+
+    for (int i = 0; i < 6; ++i)
+    {
+        connector.bulkIndex("id" + std::to_string(i), "index1", R"({"field":"value)" + std::to_string(i) + R"("})");
+    }
+
+    // Two backoff pauses (1-1.5 s and 2-4 s) before the second batch is discarded.
+    ASSERT_EQ(lastCallFuture.wait_for(std::chrono::seconds(20)), std::future_status::ready)
+        << "Timeout waiting for the eighth POST";
+
+    EXPECT_EQ(callIndex.load(), LAST_CALL);
+    ASSERT_EQ(receivedData.size(), static_cast<size_t>(LAST_CALL));
+    EXPECT_EQ(countPostsWith(receivedData, "value0"), 2u);
+    EXPECT_EQ(countPostsWith(receivedData, "value1"), 2u);
+    for (int i = 2; i < 6; ++i)
+    {
+        EXPECT_EQ(countPostsWith(receivedData, "value" + std::to_string(i)), 1u) << "value" << i;
+    }
+
+    EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING,
+                                "Discarding 1 event(s): bulk request answered HTTP 503 on 2 consecutive attempts"),
+              1u);
+    EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, "Discarding"), 1u);
+    EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, "Discards continue: 1 event(s) in 1 batch(es)"), 4u);
+    EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, "Discards continue"), 4u);
+    EXPECT_EQ(
+        logs.countAtLevel(Log::LOGLEVEL_WARNING, "(HTTP 500: 0, 502: 0, 504: 0, 503 retries exhausted: 1, other: 0)."),
+        1u)
+        << "batch 1 (503 retries exhausted)";
+    EXPECT_EQ(
+        logs.countAtLevel(Log::LOGLEVEL_WARNING, "(HTTP 500: 0, 502: 1, 504: 0, 503 retries exhausted: 0, other: 0)."),
+        1u)
+        << "batch 2 (502)";
+    EXPECT_EQ(
+        logs.countAtLevel(Log::LOGLEVEL_WARNING, "(HTTP 500: 0, 502: 0, 504: 1, 503 retries exhausted: 0, other: 0)."),
+        1u)
+        << "batch 3 (504)";
+    EXPECT_EQ(
+        logs.countAtLevel(Log::LOGLEVEL_WARNING, "(HTTP 500: 0, 502: 0, 504: 0, 503 retries exhausted: 0, other: 1)."),
+        1u)
+        << "batch 4 (400)";
+    EXPECT_EQ(connector.getDroppedEvents(), 5u);
 }
 
 // Test async queue processing with small bulk size

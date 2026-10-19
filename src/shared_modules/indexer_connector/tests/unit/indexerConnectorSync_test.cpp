@@ -2,6 +2,7 @@
 #include "indexerConnectorSyncImpl.hpp"
 #include "mocks/MockHTTPRequest.hpp"
 #include "mocks/MockServerSelector.hpp"
+#include "scopedLogCapture.hpp"
 #include <algorithm>
 #include <atomic>
 #include <chrono>
@@ -3888,66 +3889,6 @@ TEST_F(IndexerConnectorSyncTest, BulkResponseValidationVersionConflictWithDiffer
     EXPECT_THROW(connector.flush(), IndexerConnectorException);
     EXPECT_TRUE(postCalled);
 }
-
-// Captures the log lines written through the global log function while it is alive.
-class ScopedLogCapture
-{
-public:
-    ScopedLogCapture()
-        : m_previous(Log::GLOBAL_LOG_FUNCTION)
-    {
-        // assignLogFunction() is a no-op when a function is already installed, so drop the current one first.
-        Log::deassignLogFunction();
-        Log::assignLogFunction(
-            [this](const int level, const char*, const char*, const int, const char*, const char* format, va_list args)
-            {
-                char buffer[2048];
-                va_list copy;
-                va_copy(copy, args);
-                vsnprintf(buffer, sizeof(buffer), format, copy);
-                va_end(copy);
-                std::scoped_lock lock(m_mutex);
-                m_lines.push_back({level, buffer});
-            });
-    }
-
-    ~ScopedLogCapture()
-    {
-        Log::deassignLogFunction();
-        Log::assignLogFunction(m_previous);
-    }
-
-    ScopedLogCapture(const ScopedLogCapture&) = delete;
-    ScopedLogCapture& operator=(const ScopedLogCapture&) = delete;
-
-    bool contains(std::string_view needle) const
-    {
-        std::scoped_lock lock(m_mutex);
-        return std::any_of(m_lines.begin(),
-                           m_lines.end(),
-                           [needle](const Line& line) { return line.text.find(needle) != std::string::npos; });
-    }
-
-    bool containsAtLevel(int level, std::string_view needle) const
-    {
-        std::scoped_lock lock(m_mutex);
-        return std::any_of(m_lines.begin(),
-                           m_lines.end(),
-                           [level, needle](const Line& line)
-                           { return line.level == level && line.text.find(needle) != std::string::npos; });
-    }
-
-private:
-    struct Line
-    {
-        int level;
-        std::string text;
-    };
-
-    std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)> m_previous;
-    mutable std::mutex m_mutex;
-    std::vector<Line> m_lines;
-};
 
 // Answers a bulk POST with `body` through whichever postParams variant the connector used.
 template<typename PostParams>

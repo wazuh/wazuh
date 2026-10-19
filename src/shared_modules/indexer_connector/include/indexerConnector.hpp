@@ -562,7 +562,8 @@ public:
     /**
      * @brief Get the total number of dropped events.
      *
-     * @return The number of events that have been dropped.
+     * @return The number of events dropped by queue overflow or discarded after an indexer response
+     * (non-retryable status, or 503 retries exhausted).
      */
     uint64_t getDroppedEvents() const;
 
