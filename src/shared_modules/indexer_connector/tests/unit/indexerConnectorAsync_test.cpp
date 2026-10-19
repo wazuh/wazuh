@@ -2734,6 +2734,28 @@ TEST_F(IndexerConnectorAsyncTest, SearchByIndexServerErrorThrows)
     }
 }
 
+TEST_F(IndexerConnectorAsyncTest, PitAndSearchWithEveryNodeDownThrowIndexerConnectorException)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext())
+        .WillRepeatedly(Invoke(
+            []() -> std::string
+            { throw IndexerConnectorException("No available server. Unavailable nodes: mockserver:9200: down"); }));
+    EXPECT_CALL(mockHttpRequest, post(_, _, _)).Times(0);
+
+    IndexerConnectorAsyncImplTest connector(
+        config, nullptr, &mockHttpRequest, std::move(mockSelector), "test-no-server");
+    PointInTime pit("pit", 100, "5m");
+    nlohmann::json query = {{"match_all", nlohmann::json::object()}};
+    nlohmann::json sort = nlohmann::json::array({{{"_shard_doc", "asc"}}});
+
+    EXPECT_THROW(connector.createPointInTime(std::vector<std::string> {"index"}, "5m", false),
+                 IndexerConnectorException);
+    EXPECT_THROW(connector.search(pit, static_cast<std::size_t>(10), query, sort, std::nullopt, std::nullopt),
+                 IndexerConnectorException);
+    EXPECT_THROW(connector.search("index", 10, query, std::nullopt), IndexerConnectorException);
+}
+
 // =============================================================================
 // bulkIndexDataStream Tests — Async
 // =============================================================================
