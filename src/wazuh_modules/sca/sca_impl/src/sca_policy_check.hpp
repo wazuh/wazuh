@@ -42,7 +42,8 @@ struct PolicyEvaluationContext
     int commandsTimeout = 30;
     bool commandsEnabled = true;
     sca::RegexEngineType regexEngine = sca::RegexEngineType::PCRE2;
-    /// The rule exactly as written in the policy, e.g. "not f:/etc/passwd -> r:^root".
+    /// The rule as written in the policy, with policy variables already replaced, e.g.
+    /// "not f:/etc/passwd -> r:^root". The same text as the check's entry in "rules".
     std::string source = {};
 };
 

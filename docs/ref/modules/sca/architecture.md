@@ -722,8 +722,16 @@ Stores individual security checks:
 | `result` | `reason` |
 |----------|----------|
 | `Passed` | Empty. |
-| `Not applicable`, `Not run` | One line per rule that could not be evaluated, such as a missing file or a command that failed or timed out. `Policy requirements not met` when the policy does not apply to the host. |
-| `Failed` | A header, then the rules that made the check fail, each exactly as the policy writes it, once, in policy order. |
+| `Not applicable`, `Not run` | One line per rule that could not be evaluated, such as a missing file or a command that failed or timed out, or one of the fixed reasons below. |
+| `Failed` | A header, then the rules that made the check fail, once each, in policy order. Each rule reads as in the check's `rules`: as the policy writes it, with policy variables already replaced. |
+
+Fixed reasons:
+
+- `Policy requirements not met`: the policy does not apply to the host, so all its checks are
+  `Not applicable`.
+- `None of the check's rules could be evaluated on this system`: the check has no rule left to run,
+  because none of them could be parsed on this agent.
+- `Unknown reason`: a rule could not be evaluated and gave no reason.
 
 A rule is *satisfied* when it holds on the host as written, including a leading `not`. Which rules
 make a check fail depends on its `condition`:
@@ -748,7 +756,7 @@ Rules that are not listed either held or could not be evaluated: a `Failed` reas
 the lines that `Not applicable` uses for unevaluated rules.
 
 A reason longer than 1024 bytes is cut at the last whole line that fits and ends with a
-`[truncated]` line.
+`[truncated]` line. When that would leave only the header, the first rule is cut instead.
 
 ### References
 
