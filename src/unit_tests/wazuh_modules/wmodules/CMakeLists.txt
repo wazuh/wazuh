@@ -37,7 +37,7 @@ list(APPEND wmodules_flags "-Wl,--wrap,_merror -Wl,--wrap,_mdebug1")
 # The listener loop, in its own binary so that wrapping close and accept does not reach the
 # other wmodules tests.
 list(APPEND wmodules_names "test_wmcom_main")
-list(APPEND wmodules_flags "-Wl,--wrap,close -Wl,--wrap,accept -Wl,--wrap,select \
+list(APPEND wmodules_flags "-Wl,--wrap,close -Wl,--wrap,accept -Wl,--wrap,select -Wl,--wrap,FOREVER \
                             -Wl,--wrap,OS_BindUnixDomainWithPerms -Wl,--wrap,OS_RecvSecureTCP \
                             -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,_merror -Wl,--wrap,_mdebug1")
 

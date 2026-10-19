@@ -23,11 +23,13 @@
 static int closed_fds[2];
 static size_t closed_fds_count;
 
+// Counts every close, so an extra one fails the assertion; only the first two are kept.
 int __wrap_close(int fd) {
     if (closed_fds_count < sizeof(closed_fds) / sizeof(closed_fds[0])) {
-        closed_fds[closed_fds_count++] = fd;
+        closed_fds[closed_fds_count] = fd;
     }
 
+    closed_fds_count++;
     return 0;
 }
 
@@ -83,7 +85,10 @@ static int setup(void **state) {
     return 0;
 }
 
+// The listener runs one iteration.
 static void expect_client_accepted(void) {
+    will_return(__wrap_FOREVER, 1);
+    will_return(__wrap_FOREVER, 0);
     expect_string(__wrap__mdebug1, formatted_msg, "Local requests thread ready");
     expect_value(__wrap_accept, sock, TEST_SOCKET);
     expect_value(__wrap_OS_RecvSecureTCP, sock, TEST_PEER);
@@ -170,12 +175,52 @@ static void test_wmcom_main_answers_and_closes_client(void **state) {
     assert_client_and_socket_closed();
 }
 
+static void test_wmcom_main_terminates_a_full_size_request(void **state) {
+    (void)state;
+    static const char EXPECTED_REPLY[] = "err Unrecognized command";
+    char *request = NULL;
+    char *expected_sync = NULL;
+    char *expected_unrecognized = NULL;
+    os_calloc(OS_MAXSTR + 1, sizeof(char), request);
+    os_calloc(OS_MAXSTR, sizeof(char), expected_sync);
+    os_calloc(OS_MAXSTR, sizeof(char), expected_unrecognized);
+    memset(request, 'x', OS_MAXSTR);
+
+    expect_client_accepted();
+    will_return(__wrap_OS_RecvSecureTCP, request);
+    will_return(__wrap_OS_RecvSecureTCP, OS_MAXSTR);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "WModules is not ready. Retry 1");
+    expect_string(__wrap__mdebug1, formatted_msg, "WModules is not ready. Retry 2");
+    expect_string(__wrap__mdebug1, formatted_msg, "WModules is not ready. Retry 3");
+    expect_string(__wrap__merror, formatted_msg, "At modulesSync(): Unable to sync module '': (-1)");
+    // expect_string() keeps the pointer, so each expected message needs its own buffer.
+    snprintf(expected_sync, OS_MAXSTR, "At WMCOM sync: Could not sync '%s' buffer", request);
+    expect_string(__wrap__mdebug1, formatted_msg, expected_sync);
+    snprintf(expected_unrecognized, OS_MAXSTR, "WMCOM Unrecognized command '%s'.", request);
+    expect_string(__wrap__mdebug1, formatted_msg, expected_unrecognized);
+
+    expect_value(__wrap_OS_SendSecureTCP, sock, TEST_PEER);
+    expect_value(__wrap_OS_SendSecureTCP, size, strlen(EXPECTED_REPLY));
+    expect_string(__wrap_OS_SendSecureTCP, msg, EXPECTED_REPLY);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Local server thread finished.");
+
+    wmcom_main(NULL);
+
+    assert_client_and_socket_closed();
+    os_free(expected_unrecognized);
+    os_free(expected_sync);
+    os_free(request);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup(test_wmcom_main_closes_client_on_oversize_request, setup),
         cmocka_unit_test_setup(test_wmcom_main_closes_client_on_receive_error, setup),
         cmocka_unit_test_setup(test_wmcom_main_closes_client_on_empty_request, setup),
         cmocka_unit_test_setup(test_wmcom_main_answers_and_closes_client, setup),
+        cmocka_unit_test_setup(test_wmcom_main_terminates_a_full_size_request, setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
