@@ -1591,6 +1591,7 @@ static void bridge_on_sync_response(const char *session_id, int result, const ch
 
         char prefix[64];
         int prefix_len = snprintf(prefix, sizeof(prefix), "HCRESULT:%s:%d:", session_num, result);
+        size_t relayed_body_len = body_len;
 
         if (prefix_len <= 0 || (size_t)prefix_len >= sizeof(prefix)) {
             mdebug2("https_client: could not encode sync result for session '%s'; dropping it.",
@@ -1598,21 +1599,23 @@ static void bridge_on_sync_response(const char *session_id, int result, const ch
             return;
         }
 
-        const size_t payload_len = (size_t)prefix_len + body_len;
-
-        /* The module's socket rejects a frame larger than OS_MAXSTR without reading it. */
-        if (header_len + payload_len > OS_MAXSTR) {
+        /* A module's local socket takes frames shorter than OS_MAXSTR. Keep that limit on every
+         * platform; a larger answer reaches the module as no answer (code 0, no body). */
+        if (header_len + (size_t)prefix_len + body_len >= OS_MAXSTR) {
             mwarn("https_client: the /stateful answer for session '%s' is too large to relay "
-                  "(%zu bytes); dropping it.", session_id, body_len);
-            return;
+                  "(%zu bytes); relaying it as no answer.", session_id, body_len);
+            prefix_len = snprintf(prefix, sizeof(prefix), "HCRESULT:%s:0:", session_num);
+            relayed_body_len = 0;
         }
+
+        const size_t payload_len = (size_t)prefix_len + relayed_body_len;
 
         char *framed = NULL;
         os_malloc(header_len + payload_len + 1, framed);
         memcpy(framed, SYNC_ROUTES[i].header, header_len);
         memcpy(framed + header_len, prefix, (size_t)prefix_len);
-        if (body_len > 0) {
-            memcpy(framed + header_len + (size_t)prefix_len, body, body_len);
+        if (relayed_body_len > 0) {
+            memcpy(framed + header_len + (size_t)prefix_len, body, relayed_body_len);
         }
         framed[header_len + payload_len] = '\0';
 

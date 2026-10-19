@@ -726,7 +726,7 @@ void * syscom_main(__attribute__((unused)) void * arg) {
         return NULL;
     }
 
-    while (1) {
+    while (FOREVER()) {
 
         // Wait for socket
         FD_ZERO(&fdset);
@@ -752,7 +752,8 @@ void * syscom_main(__attribute__((unused)) void * arg) {
             continue;
         }
 
-        os_calloc(OS_MAXSTR, sizeof(char), buffer);
+        // One byte more than the limit, so a request of exactly OS_MAXSTR bytes stays terminated.
+        os_calloc(OS_MAXSTR + 1, sizeof(char), buffer);
         switch (length = OS_RecvSecureTCP(peer, buffer,OS_MAXSTR), length) {
         case OS_SOCKTERR:
             merror(FIM_ERROR_SYSCOM_RECV_TOOLONG);
@@ -782,10 +783,6 @@ void * syscom_main(__attribute__((unused)) void * arg) {
         // Every outcome above ends the exchange, including a failed receive.
         close(peer);
         free(buffer);
-
-#ifdef WAZUH_UNIT_TESTING
-        break;
-#endif
     }
 
     mdebug1(FIM_SYSCOM_THREAD_FINISED);

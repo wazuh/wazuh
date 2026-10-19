@@ -1329,24 +1329,60 @@ static void test_sync_response_is_framed_for_the_module(void **state)
     w_https_client_stop();
 }
 
-/* An answer whose frame would not fit OS_MAXSTR is dropped instead of sent to a socket that
- * rejects it unread. */
-static void test_sync_response_too_large_to_frame_is_dropped(void **state)
+/* Sends a FIM answer whose frame ("fim_sync HCRESULT:7:200:<body>") is frame_len bytes long. */
+static void send_fim_answer_of_frame_length(size_t frame_len)
 {
-    (void)state;
-    const size_t body_len = OS_MAXSTR;
+    const size_t body_len = frame_len - strlen(FIM_SYNC_HEADER "HCRESULT:7:200:");
     char *body = NULL;
     os_calloc(body_len, sizeof(char), body);
     memset(body, 'x', body_len);
+    g_captured_callbacks.on_sync_response("fim-7", 200, body, body_len, g_captured_callbacks.user_data);
+    os_free(body);
+}
+
+/* A frame of OS_MAXSTR bytes or more does not fit the module's receive buffer: the outcome is
+ * relayed as no answer (code 0, no body) instead of being lost. */
+static void test_sync_response_too_large_to_frame_is_relayed_as_no_answer(void **state)
+{
+    (void)state;
+    static const char FRAME[] = FIM_SYNC_HEADER "HCRESULT:7:0:";
+    char expected_debug[OS_SIZE_256];
+    char expected_warning[OS_SIZE_256];
+    const size_t body_len = OS_MAXSTR - strlen(FIM_SYNC_HEADER "HCRESULT:7:200:");
     start_client_successfully();
 
-    expect_string(__wrap__mdebug1, formatted_msg, "https_client /stateful session=fim-7 result=200 (65536 byte answer)");
-    expect_string(__wrap__mwarn, formatted_msg,
-                  "https_client: the /stateful answer for session 'fim-7' is too large to relay (65536 bytes); dropping it.");
+    snprintf(expected_debug, sizeof(expected_debug),
+             "https_client /stateful session=fim-7 result=200 (%zu byte answer)", body_len);
+    snprintf(expected_warning, sizeof(expected_warning),
+             "https_client: the /stateful answer for session 'fim-7' is too large to relay (%zu bytes); "
+             "relaying it as no answer.", body_len);
+    expect_string(__wrap__mdebug1, formatted_msg, expected_debug);
+    expect_string(__wrap__mwarn, formatted_msg, expected_warning);
+    expect_string(__wrap_ag_send_syscheck, message, FRAME);
+    expect_value(__wrap_ag_send_syscheck, length, strlen(FRAME));
 
-    g_captured_callbacks.on_sync_response("fim-7", 200, body, body_len, g_captured_callbacks.user_data);
+    send_fim_answer_of_frame_length(OS_MAXSTR);
 
-    os_free(body);
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+/* One byte under the limit, the answer is relayed whole. */
+static void test_sync_response_just_under_the_frame_limit_is_relayed_whole(void **state)
+{
+    (void)state;
+    char expected_debug[OS_SIZE_256];
+    const size_t body_len = OS_MAXSTR - 1 - strlen(FIM_SYNC_HEADER "HCRESULT:7:200:");
+    start_client_successfully();
+
+    snprintf(expected_debug, sizeof(expected_debug),
+             "https_client /stateful session=fim-7 result=200 (%zu byte answer)", body_len);
+    expect_string(__wrap__mdebug1, formatted_msg, expected_debug);
+    expect_any(__wrap_ag_send_syscheck, message);
+    expect_value(__wrap_ag_send_syscheck, length, OS_MAXSTR - 1);
+
+    send_fim_answer_of_frame_length(OS_MAXSTR - 1);
+
     expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
     w_https_client_stop();
 }
@@ -3376,7 +3412,8 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_registered_state_maps_to_active, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_registered_state_twice_clears_wait_file_each_time, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_sync_response_is_framed_for_the_module, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_sync_response_too_large_to_frame_is_dropped, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_sync_response_too_large_to_frame_is_relayed_as_no_answer, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_sync_response_just_under_the_frame_limit_is_relayed_whole, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_producer_pause_with_a_reason_names_the_cause, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_producer_pause_without_a_reason_logs_the_bare_message, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_producer_pause_release_clears_the_lock_and_reports_connected, setup_test, teardown_test),

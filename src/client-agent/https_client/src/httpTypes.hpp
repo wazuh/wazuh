@@ -166,8 +166,9 @@ enum class HttpMethod
 
 /// Caps on the responses read into memory. Each sits far above the largest answer a manager
 /// sends, because a transfer cut at its cap is retried like a network failure.
-/// /control carries the task batch, which the manager bounds at about 11 MiB.
-constexpr uint64_t CONTROL_MAX_RESPONSE_BYTES = 16ULL * 1024 * 1024;
+/// /control carries the task batch, which remoted bounds with
+/// remoted.downstream_max_response_body_size (64 MiB at most), plus the groups and hashes.
+constexpr uint64_t CONTROL_MAX_RESPONSE_BYTES = 65ULL * 1024 * 1024;
 /// A /stateful answer is relayed to its module as one local frame, which must fit OS_MAXSTR.
 constexpr uint64_t STATEFUL_MAX_RESPONSE_BYTES = 63ULL * 1024;
 /// /stateless, /stats, /config and /scan/vd answer with a short status document.
