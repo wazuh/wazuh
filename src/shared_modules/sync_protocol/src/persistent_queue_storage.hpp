@@ -102,6 +102,20 @@ class PersistentQueueStorage : public IPersistentQueueStorage
         /// @brief Path to the SQLite database file.
         std::string m_dbPath;
 
+        /// @brief Pages threshold driving maybeCheckpoint()'s own checkpoint call.
+        ///
+        /// The `PRAGMA wal_autocheckpoint` set alongside it in the constructor is otherwise inert
+        /// under this class's batched BEGIN IMMEDIATE/COMMIT pattern -- SQLite's internal
+        /// auto-checkpoint hook fires but makes no real progress -- and is kept only so
+        /// getWalAutocheckpoint() still reports the configured value.
+        std::optional<int32_t> m_walAutocheckpointPages;
+
+        /// @brief Checks the on-disk WAL file size against m_walAutocheckpointPages and, if it's
+        /// at or past the threshold, runs an explicit PASSIVE checkpoint on this connection.
+        /// Called after every committed write transaction. See m_walAutocheckpointPages for why
+        /// this replaces relying on SQLite's own automatic checkpoint hook.
+        void maybeCheckpoint();
+
         /// @brief Logger function
         LoggerFunc m_logger;
 

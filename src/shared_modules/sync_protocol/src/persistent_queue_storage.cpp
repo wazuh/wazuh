@@ -21,6 +21,10 @@ namespace
     /// @brief Consecutive cycles a lone oversized item is resent before it is dropped.
     constexpr unsigned int MAX_OVERSIZED_ATTEMPTS = 5U;
 
+    /// @brief SQLite's own default WAL page size, used to translate the on-disk WAL file's byte
+    /// size into an approximate frame count without issuing a statement to ask the connection.
+    constexpr long WAL_ASSUMED_PAGE_SIZE_BYTES = 4096L;
+
     size_t estimateSerializedItemBytes(const PersistedData& data)
     {
         return data.id.size()
@@ -34,6 +38,7 @@ PersistentQueueStorage::PersistentQueueStorage(const std::string& dbPath, Logger
                                                std::optional<int32_t> walAutocheckpointPages)
     : m_connection(createOrOpenDatabase(dbPath)),
       m_dbPath(dbPath),
+      m_walAutocheckpointPages(walAutocheckpointPages),
       m_logger(std::move(logger)),
       m_fileSystemWrapper(fileSystemWrapper ? std::move(fileSystemWrapper) : std::make_shared<file_system::FileSystemWrapper>())
 {
@@ -201,6 +206,35 @@ void PersistentQueueStorage::applyCoalesceLogic(const PersistedData& newData)
     }
 }
 
+void PersistentQueueStorage::maybeCheckpoint()
+{
+    if (!m_walAutocheckpointPages.has_value())
+    {
+        return;
+    }
+
+    std::error_code ec;
+    const auto walSizeBytes = std::filesystem::file_size(m_dbPath + "-wal", ec);
+
+    if (ec)
+    {
+        return;
+    }
+
+    const auto framesInWal = static_cast<int64_t>(walSizeBytes / WAL_ASSUMED_PAGE_SIZE_BYTES);
+
+    if (framesInWal < m_walAutocheckpointPages.value())
+    {
+        return;
+    }
+
+    if (const auto rc = sqlite3_wal_checkpoint_v2(m_connection.db(), nullptr, SQLITE_CHECKPOINT_PASSIVE, nullptr, nullptr);
+            rc != SQLITE_OK)
+    {
+        m_logger(LOG_WARNING, std::string("PersistentQueueStorage: Manual WAL checkpoint failed: ") + sqlite3_errstr(rc));
+    }
+}
+
 void PersistentQueueStorage::submitOrCoalesce(const PersistedData& newData)
 {
     m_connection.execute("BEGIN IMMEDIATE TRANSACTION;");
@@ -209,6 +243,7 @@ void PersistentQueueStorage::submitOrCoalesce(const PersistedData& newData)
     {
         applyCoalesceLogic(newData);
         m_connection.execute("COMMIT;");
+        maybeCheckpoint();
     }
     // LCOV_EXCL_START
     catch (const std::exception& e)
@@ -238,6 +273,7 @@ void PersistentQueueStorage::submitBatch(const std::vector<PersistedData>& batch
         }
 
         m_connection.execute("COMMIT;");
+        maybeCheckpoint();
     }
     // LCOV_EXCL_START
     catch (const std::exception& e)
