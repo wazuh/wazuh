@@ -62,12 +62,15 @@ void CheckConditionEvaluator::AddResult(const RuleEvaluationResult& result)
     UpdateVerdict(result.result);
 }
 
-void CheckConditionEvaluator::RecordFailingRule(const RuleEvaluationResult& result)
+RuleResult CheckConditionEvaluator::FailingResult() const
 {
     // A "none" check fails on what was found, the others on what was not
-    const auto failing = (m_type == ConditionType::None) ? RuleResult::Found : RuleResult::NotFound;
+    return (m_type == ConditionType::None) ? RuleResult::Found : RuleResult::NotFound;
+}
 
-    if (result.result == failing)
+void CheckConditionEvaluator::RecordFailingRule(const RuleEvaluationResult& result)
+{
+    if (result.result == FailingResult())
     {
         m_failingRules.Add(result.source);
     }
@@ -90,7 +93,8 @@ void CheckConditionEvaluator::UpdateVerdict(const RuleResult result)
     switch (m_type)
     {
         case ConditionType::All:
-            if (RuleResult::NotFound == result)
+        case ConditionType::None:
+            if (FailingResult() == result)
             {
                 m_result = false;
             }
@@ -101,14 +105,6 @@ void CheckConditionEvaluator::UpdateVerdict(const RuleResult result)
             if (RuleResult::Found == result)
             {
                 m_result = true;
-            }
-
-            break;
-
-        case ConditionType::None:
-            if (RuleResult::Found == result)
-            {
-                m_result = false;
             }
 
             break;

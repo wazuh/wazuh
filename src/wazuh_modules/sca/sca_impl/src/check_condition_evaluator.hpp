@@ -32,6 +32,9 @@ class CheckConditionEvaluator
         std::string GetUnresolvedReason() const;
 
     private:
+        /// @brief The rule result that counts against the check's condition.
+        RuleResult FailingResult() const;
+
         /// @brief Keeps the rule's source when its result counts against the check's condition.
         void RecordFailingRule(const RuleEvaluationResult& result);
 
