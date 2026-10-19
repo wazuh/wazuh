@@ -38,7 +38,6 @@ void FileItem::createFimEntry()
             data->owner = const_cast<char*>(m_owner.c_str());
             data->group = const_cast<char*>(m_group.c_str());
             data->container_id = const_cast<char*>(m_containerId.c_str());
-            data->container_json = const_cast<char*>(m_containerJson.c_str());
             data->mtime = m_time;
             data->inode = m_inode;
             data->device = m_device;
@@ -79,7 +78,6 @@ void FileItem::createJSON()
     // '' for host-scanned files, the owning container's id for container rows
     // (both now real values sourced from fim_file_data, not a hardcoded literal).
     data["container_id"] = m_containerId;
-    data["container_json"] = m_containerJson;
     data["path"] = m_identifier;
     data["checksum"] = m_checksum;
     data["device"] = m_device;

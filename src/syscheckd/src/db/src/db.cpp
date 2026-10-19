@@ -63,6 +63,10 @@ void DB::init(const int storage,
         // v1 -> v2: store a container's context once, rather than stamping a
         // copy of it onto every file row that container owns.
         CREATE_CONTAINER_CONTEXT_DB_STATEMENT,
+
+        // v2 -> v3: drop the per-row copy, now that every reader takes the
+        // context from container_context.
+        "ALTER TABLE file_entry DROP COLUMN container_json;",
     };
 
     auto dbsyncHandler {std::make_shared<DBSync>(HostType::AGENT,

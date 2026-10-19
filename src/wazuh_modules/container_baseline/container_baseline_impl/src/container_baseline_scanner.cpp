@@ -296,7 +296,7 @@ int RunFimDbsyncBaselineFrom(const ContainerDiscoverer&        discover,
         const auto pid = SelectAddressablePid(pids);
         if (pid == 0) continue; // every candidate has gone; same as "no live PID"
 
-        const auto containerJson = BuildContainerContextJson(identity.container_id, identity.context);
+        const auto containerContext = BuildContainerContextJson(identity.container_id, identity.context);
 
         // The context reaches the consumer BEFORE any of this container's
         // rows, and the consumer may refuse it. A refusal means it could not
@@ -305,7 +305,7 @@ int RunFimDbsyncBaselineFrom(const ContainerDiscoverer&        discover,
         // eventually produce is the very event that context exists to keep
         // self-contained. Skip the container whole, and do not count it
         // baselined, because it was not.
-        if (context_sink && !context_sink(identity.container_id, containerJson)) {
+        if (context_sink && !context_sink(identity.container_id, containerContext)) {
             continue;
         }
 
@@ -337,7 +337,7 @@ int RunFimDbsyncBaselineFrom(const ContainerDiscoverer&        discover,
             for (auto row : walk.rows) {
                 ApplyIdentity(row, identity);
                 sink(DbsyncRow{identity.container_id, "file_entry",
-                               BuildFimFileDbsyncRow(row, containerJson)});
+                               BuildFimFileDbsyncRow(row)});
             }
         }
 
@@ -459,11 +459,11 @@ int RunSyscollectorDbsyncBaselineFrom(const ContainerDiscoverer& discover,
         // Context serialized once per container and handed to the consumer
         // before any of this container's rows, so a DELETED event can still
         // describe the container after it is gone.
-        const auto containerJson = BuildContainerContextJson(identity.container_id, identity.context);
+        const auto containerContext = BuildContainerContextJson(identity.container_id, identity.context);
 
         // Same contract as the FIM path: context first, and a refusal means
         // this container contributes nothing on this pass.
-        if (context_sink && !context_sink(identity.container_id, containerJson)) {
+        if (context_sink && !context_sink(identity.container_id, containerContext)) {
             continue;
         }
 
@@ -479,7 +479,7 @@ int RunSyscollectorDbsyncBaselineFrom(const ContainerDiscoverer& discover,
 
         for (auto row : ScanContainerProcesses(identity.container_id, pids)) {
             ApplyIdentity(row, identity);
-            emit("dbsync_processes", BuildProcessDbsyncRow(row, containerJson));
+            emit("dbsync_processes", BuildProcessDbsyncRow(row));
         }
 
         // Network-namespace-scoped classes. ScanContainerNetwork itself declines
@@ -489,7 +489,7 @@ int RunSyscollectorDbsyncBaselineFrom(const ContainerDiscoverer& discover,
 
         for (auto row : ScanContainerNetwork(identity.container_id, pids, scope, netnsShared)) {
             ApplyIdentity(row, identity);
-            emit("dbsync_ports", BuildPortDbsyncRow(row, containerJson));
+            emit("dbsync_ports", BuildPortDbsyncRow(row));
         }
 
         // Users, groups, packages and the OS record are image-layer content, so
@@ -529,32 +529,32 @@ int RunSyscollectorDbsyncBaselineFrom(const ContainerDiscoverer& discover,
 
         for (auto row : content->users) {
             ApplyIdentity(row, identity);
-            emit("dbsync_users", BuildUserDbsyncRow(row, containerJson));
+            emit("dbsync_users", BuildUserDbsyncRow(row));
         }
 
         for (auto row : content->groups) {
             ApplyIdentity(row, identity);
-            emit("dbsync_groups", BuildGroupDbsyncRow(row, containerJson));
+            emit("dbsync_groups", BuildGroupDbsyncRow(row));
         }
 
         for (auto row : content->packages) {
             ApplyIdentity(row, identity);
-            emit("dbsync_packages", BuildPackageDbsyncRow(row, containerJson));
+            emit("dbsync_packages", BuildPackageDbsyncRow(row));
         }
 
         for (auto row : content->os) {
             ApplyIdentity(row, identity);
-            emit("dbsync_osinfo", BuildOsDbsyncRow(row, containerJson));
+            emit("dbsync_osinfo", BuildOsDbsyncRow(row));
         }
 
         auto ifscan = ScanContainerInterfaces(pid, scope);
         for (auto row : ifscan.interfaces) {
             ApplyIdentity(row, identity);
-            emit("dbsync_network_iface", BuildInterfaceDbsyncRow(row, containerJson));
+            emit("dbsync_network_iface", BuildInterfaceDbsyncRow(row));
         }
         for (auto row : ifscan.addresses) {
             ApplyIdentity(row, identity);
-            emit("dbsync_network_address", BuildNetworkAddressDbsyncRow(row, containerJson));
+            emit("dbsync_network_address", BuildNetworkAddressDbsyncRow(row));
         }
 
         // Routes come from /proc/<pid>/net/route, which is netns-relative — so
@@ -563,18 +563,18 @@ int RunSyscollectorDbsyncBaselineFrom(const ContainerDiscoverer& discover,
         if (!scope.netCollapsedToHost()) {
             for (auto row : ScanContainerProtocols(pid)) {
                 ApplyIdentity(row, identity);
-                emit("dbsync_network_protocol", BuildProtocolDbsyncRow(row, containerJson));
+                emit("dbsync_network_protocol", BuildProtocolDbsyncRow(row));
             }
         }
 
         for (auto row : ScanContainerServices(pid)) {
             ApplyIdentity(row, identity);
-            emit("dbsync_services", BuildServiceDbsyncRow(row, containerJson));
+            emit("dbsync_services", BuildServiceDbsyncRow(row));
         }
 
         for (auto row : ScanContainerHardware(pid)) {
             ApplyIdentity(row, identity);
-            emit("dbsync_hwinfo", BuildHardwareDbsyncRow(row, containerJson));
+            emit("dbsync_hwinfo", BuildHardwareDbsyncRow(row));
         }
 
         if (status_sink) {

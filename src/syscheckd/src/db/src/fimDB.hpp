@@ -35,7 +35,6 @@ constexpr auto CREATE_FILE_DB_STATEMENT
 {
     R"(CREATE TABLE IF NOT EXISTS file_entry (
     container_id TEXT NOT NULL DEFAULT '',
-    container_json TEXT NOT NULL DEFAULT '',
     path TEXT NOT NULL,
     checksum TEXT NOT NULL,
     device INTEGER,

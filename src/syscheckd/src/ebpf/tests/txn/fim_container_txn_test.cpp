@@ -101,7 +101,7 @@ std::string RowJson(const char* containerId, const char* path)
     char buffer[1024];
     std::snprintf(buffer,
                   sizeof(buffer),
-                  "{\"path\":\"%s\",\"container_id\":\"%s\",\"container_json\":\"\",\"mode\":0,"
+                  "{\"path\":\"%s\",\"container_id\":\"%s\",\"mode\":0,"
                   "\"size\":1,\"permissions\":\"0644\",\"uid\":\"0\",\"gid\":\"0\",\"owner\":\"root\","
                   "\"group\":\"root\",\"inode\":1,\"device\":1,\"mtime\":1,\"hash_md5\":\"\","
                   "\"hash_sha1\":\"\",\"hash_sha256\":\"\",\"checksum\":\"cs\",\"version\":1}",
@@ -117,7 +117,7 @@ std::string ChangedRowJson(const char* containerId, const char* path)
     char buffer[1024];
     std::snprintf(buffer,
                   sizeof(buffer),
-                  "{\"path\":\"%s\",\"container_id\":\"%s\",\"container_json\":\"\",\"mode\":0,"
+                  "{\"path\":\"%s\",\"container_id\":\"%s\",\"mode\":0,"
                   "\"size\":99,\"permissions\":\"0644\",\"uid\":\"0\",\"gid\":\"0\",\"owner\":\"root\","
                   "\"group\":\"root\",\"inode\":1,\"device\":1,\"mtime\":2,\"hash_md5\":\"\","
                   "\"hash_sha1\":\"\",\"hash_sha256\":\"\",\"checksum\":\"cs-changed\",\"version\":1}",
