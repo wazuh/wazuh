@@ -1303,8 +1303,13 @@ QUERY_REGEX = re.compile(
 )
 
 
-def validate_query_parentheses(q: str):
-    """Check that every group in a q query is closed, and closed after it was opened.
+def validate_query(q: str):
+    """Check that a q query is a sequence of terms joined by separators, and that every group in it is closed,
+    and closed after it was opened.
+
+    QUERY_REGEX describes a single term, and findall skips whatever it cannot match. A fragment that is not a term
+    (e.g. ` 2023` in `name~Linux, 2023`) would be dropped silently, leaving the previous term's separator dangling
+    in the SQL, so the terms must cover the whole query, each one but the last ending in a separator.
 
     WazuhDBQuery renders the q terms as one parenthesised group ANDed with the RBAC and legacy filters, and callers
     wrap the user's q the same way (e.g. `group=X;(q)`). A ')' closing a group the query never opened would close
@@ -1319,15 +1324,21 @@ def validate_query_parentheses(q: str):
     Raises
     ------
     WazuhError(1407)
-        If the parentheses of the query are not balanced.
+        If the query is not a sequence of terms or its parentheses are not balanced.
     """
     level = 0
-    for open_level, _, _, _, close_level, _ in QUERY_REGEX.findall(q):
+    end = 0
+    separator = ''
+    for term in QUERY_REGEX.finditer(q):
+        if term.start() != end or (end and not separator):
+            raise WazuhError(1407, q)
+        open_level, _, _, _, close_level, separator = term.groups(default='')
+        end = term.end()
         level += len(open_level) - len(close_level)
         if level < 0:
             raise WazuhError(1407, q)
 
-    if level != 0:
+    if end != len(q) or separator or level != 0:
         raise WazuhError(1407, q)
 
 
@@ -1509,9 +1520,7 @@ class WazuhDBQuery(object):
             * value can be anything
             * Separator can be either ; for 'and' or , for 'or'.
         """
-        if not self.query_regex.match(self.q):
-            raise WazuhError(1407, self.q)
-        validate_query_parentheses(self.q)
+        validate_query(self.q)
 
         level = 0
         allowed_query_fields = set(self.fields.keys()) - self.extra_fields

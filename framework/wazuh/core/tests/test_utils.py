@@ -1289,6 +1289,8 @@ def test_WazuhDBQuery_protected_parse_query_regex(mock_backend_connect, mock_exi
     ('os.name=debian;os.version>12e),(os.name=ubuntu;os.version>12e)', True, 1407),
     ('(os.name=debian;os.version>12e', True, 1407),
     ('bad_query', True, 1407),
+    ('os.name=Amazon Linux, 2023', True, 1407),
+    ('os.name=ubuntu;', True, 1407),
     ('os.bad_field=ubuntu', True, 1408),
     ('os.name=!ubuntu', True, 1409),
     ('internal_key=test', True, 1408)
@@ -1496,14 +1498,26 @@ def test_WazuhDBQuery_protected_add_filters_to_query_final_query(mock_conn_db, m
     ('(id=001', False),
     ('id=001)', False),
     ('(id=001));(status=active', False),
+    ('name~Amazon Linux', True),
+    ('name=[a,b];id=001', True),
+    ('name~Amazon Linux, 2023', False),
+    ('name=agent-1,foo', False),
+    ('name~ux;foo', False),
+    ('name~ux(,id~ux(', False),
+    ('id=001,', False),
+    ('id=001;', False),
+    ('(id=001)(id=002)', False),
+    (' id=001', False),
+    ('bad_query', False),
 ])
-def test_validate_query_parentheses(q, valid):
-    """Test that validate_query_parentheses rejects a q whose groups are not closed after being opened."""
+def test_validate_query(q, valid):
+    """Test that validate_query rejects a q that is not a sequence of terms joined by separators, or whose groups
+    are not closed after being opened."""
     if valid:
-        utils.validate_query_parentheses(q)
+        utils.validate_query(q)
     else:
         with pytest.raises(exception.WazuhError, match='.* 1407 .*'):
-            utils.validate_query_parentheses(q)
+            utils.validate_query(q)
 
 
 @pytest.mark.parametrize('filters, q, expected_where', [
