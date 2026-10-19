@@ -93,17 +93,10 @@ namespace
         return valid;
     }
 
-    /// @brief Cuts valid UTF-8 text longer than maxLength to at most maxLength bytes: at its last line
-    ///        break within the limit when there is one, else outside a multibyte sequence.
-    std::string CutToFit(const std::string& text, const size_t maxLength)
+    /// @brief Cuts valid UTF-8 text longer than maxLength to at most maxLength bytes outside a
+    ///        multibyte sequence, dropping any line break the cut leaves at the end.
+    std::string CutAtCharacter(const std::string& text, const size_t maxLength)
     {
-        const auto lastLine = text.rfind('\n', maxLength);
-
-        if (lastLine != std::string::npos)
-        {
-            return text.substr(0, lastLine);
-        }
-
         size_t end = maxLength;
 
         while (end > 0 && (static_cast<unsigned char>(text[end]) & 0xC0) == 0x80)
@@ -111,7 +104,27 @@ namespace
             --end;
         }
 
+        while (end > 0 && text[end - 1] == '\n')
+        {
+            --end;
+        }
+
         return text.substr(0, end);
+    }
+
+    /// @brief Cuts valid UTF-8 text longer than maxLength to at most maxLength bytes: at its last line
+    ///        break within the limit when that keeps more than the first line, else inside a line.
+    std::string CutToFit(const std::string& text, const size_t maxLength)
+    {
+        // The first line alone is not enough: in a Failed reason it is the header, which names no rule
+        const auto lastLine = text.rfind('\n', maxLength);
+
+        if (lastLine != std::string::npos && lastLine != text.find('\n'))
+        {
+            return text.substr(0, lastLine);
+        }
+
+        return CutAtCharacter(text, maxLength);
     }
 } // namespace
 

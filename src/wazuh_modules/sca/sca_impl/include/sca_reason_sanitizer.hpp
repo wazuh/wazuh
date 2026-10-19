@@ -11,7 +11,8 @@ namespace sca
 
     /// @brief Makes a check's reason safe to store and publish.
     /// @details Bytes that are not valid UTF-8 become '?'. A reason over maxLength is cut at its last
-    ///          whole line that fits and ends with a "[truncated]" line, both within maxLength.
+    ///          whole line that fits, or inside a line when that would keep only the first one, and
+    ///          ends with a "[truncated]" line, both within maxLength.
     /// @param reason The raw reason, one item per line.
     /// @param maxLength Largest result in bytes.
     /// @return A valid UTF-8 reason of at most maxLength bytes.

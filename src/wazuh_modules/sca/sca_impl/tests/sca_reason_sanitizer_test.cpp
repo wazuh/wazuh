@@ -32,7 +32,25 @@ TEST(SanitizeReasonTest, TruncatedMultibyteSequenceIsReplaced)
 
 TEST(SanitizeReasonTest, OversizedReasonIsCutAtTheLastWholeLineAndMarked)
 {
-    const std::string reason = "first reason line\nsecond reason line\nthird reason line";
+    const std::string reason = "first line\nsecond line\nthird reason line";
+
+    EXPECT_EQ(SanitizeReason(reason, 35), "first line\nsecond line\n[truncated]");
+}
+
+TEST(SanitizeReasonTest, FirstLineAloneIsNotEnoughSoTheSecondIsCutInside)
+{
+    // A Failed reason starts with a header, and keeping only the header would name no rule.
+    const std::string header = "Rules not satisfied (condition 'all'):\n";
+    const std::string reason = header + std::string(2000, 'r');
+
+    const auto sanitized = SanitizeReason(reason, 1024);
+
+    EXPECT_EQ(sanitized, header + std::string(1024 - header.size() - 12, 'r') + "\n[truncated]");
+}
+
+TEST(SanitizeReasonTest, NoRoomPastTheFirstLineKeepsItWithoutAnEmptyLine)
+{
+    const std::string reason = "first reason line\nsecond reason line";
 
     EXPECT_EQ(SanitizeReason(reason, 30), "first reason line\n[truncated]");
 }
