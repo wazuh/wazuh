@@ -235,7 +235,7 @@ bool shouldStop() const
 bool parseResponseBuffer(const uint8_t* data, size_t length)
 ```
 
-Processes a response from the manager. Accepts either a FlatBuffer-encoded `Message` wrapping an `EndAck` (the response format used by `SyncSocketTransport`/the on-disk sync path), or the newer `"HCRESULT:<session>:<code>"` string format the HTTPS transport uses to route an HTTP status code back to the originating session (`"HCRESULT:<code>"`, without a session number, is accepted for backward compatibility and skips the session-correlation check).
+Processes a response from the manager: the `"HCRESULT:<session>:<code>:<body>"` string the HTTPS transport uses to route an HTTP status code back to the originating session. A payload without the `HCRESULT:` prefix, or without the session and code fields, is rejected as malformed. A result whose session is not the one in flight, session 0 included, is discarded as stale.
 
 **Parameters:**
 - `data`: Pointer to the response buffer
@@ -281,7 +281,10 @@ C wrapper for `currentAgentId()`. Process-wide, takes no handle. Use it rather t
 ```c
 AgentSyncProtocolHandle* asp_create(const char* module,
                                    const char* db_path,
-                                   asp_logger_t logger)
+                                   asp_logger_t logger,
+                                   uint64_t flush_batch_size,
+                                   uint64_t flush_interval_ms,
+                                   uint64_t wal_autocheckpoint_pages)
 ```
 
 Creates a new Agent Sync Protocol instance.
@@ -290,6 +293,11 @@ Creates a new Agent Sync Protocol instance.
 - `module`: Module name string (e.g. `"fim"`, `"syscollector"`)
 - `db_path`: SQLite database file path for the persistent queue (`NULL` for in-memory only)
 - `logger`: Logging callback function
+- `flush_batch_size`: Persistent queue flush batch size override, or `0` to use the built-in default
+- `flush_interval_ms`: Persistent queue flush interval override in milliseconds, or `0` to use the built-in default
+- `wal_autocheckpoint_pages`: WAL auto-checkpoint threshold override, in pages, for this instance's own database connection, or `0` to keep SQLite's own default (1000 pages)
+
+Each of the three overrides accepts `0` (use the default) or a value up to `2147483647` (`INT32_MAX`). A larger value is not applied: the built-in default is used instead and a warning is logged through `logger`.
 
 **Returns:** Opaque handle to the protocol instance, or NULL on failure
 

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -311,6 +311,17 @@ class PersistentQueueStorageTest : public ::testing::Test
             storage.reset();
         }
 };
+
+TEST_F(PersistentQueueStorageTest, ConstructorKeepsSqliteDefaultWalAutocheckpointThresholdWithoutOverride)
+{
+    EXPECT_EQ(storage->getWalAutocheckpoint(), 1000);
+}
+
+TEST_F(PersistentQueueStorageTest, ConstructorHonorsWalAutocheckpointOverride)
+{
+    auto overriddenStorage = std::make_unique<PersistentQueueStorage>(":memory:", testLogger, nullptr, 4000);
+    EXPECT_EQ(overriddenStorage->getWalAutocheckpoint(), 4000);
+}
 
 TEST_F(PersistentQueueStorageTest, RemoveByIndexDeletesOnlySpecifiedIndex)
 {

@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
 
 set -e
 CURRENT_PATH="$( cd $(dirname $0) ; pwd -P )"
@@ -238,6 +239,12 @@ build_standalone() {
     cp -r ${WAZUH_PATH}/src/engine/standalone/run_engine.sh ${TEMP_DIR}/
     chmod +x ${TEMP_DIR}/run_engine.sh
     cp ${WAZUH_PATH}/src/engine/standalone/README.md ${TEMP_DIR}/
+
+    # Copy the license texts (AGPLv3) and the third-party notices
+    cp ${WAZUH_PATH}/src/engine/LICENSE-engine ${WAZUH_PATH}/src/engine/COPYING-engine ${TEMP_DIR}/
+    python3 ${WAZUH_PATH}/src/engine/tools/third-party-notices/generate.py notices \
+        --artefact standalone --external ${WAZUH_PATH}/src/external \
+        -o ${TEMP_DIR}/THIRD-PARTY-NOTICES || return 1
 
     # Copy libraries and binaries
     cp ${WAZUH_PATH}/src/external/rocksdb/build/librocksdb.so.8 ${TEMP_DIR}/bin/lib

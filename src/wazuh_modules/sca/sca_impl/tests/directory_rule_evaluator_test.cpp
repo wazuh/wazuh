@@ -11,6 +11,34 @@
 #include <filesystem>
 #include <memory>
 
+namespace
+{
+    // Makes the file read succeed with the given content
+    auto ReturnContent(const std::string& content)
+    {
+        return ::testing::DoAll(::testing::SetArgReferee<2>(content), ::testing::Return(RegularFileStatus::Read));
+    }
+
+    // Makes the line-by-line read succeed, passing the lines until the callback stops it
+    auto ReturnLines(std::vector<std::string> lines)
+    {
+        return [lines = std::move(lines)](const std::filesystem::path& /*filePath*/,
+                                          bool /*followSymlinks*/,
+                                          const std::function<bool(const std::string&)>& callback)
+        {
+            for (const auto& line : lines)
+            {
+                if (!callback(line))
+                {
+                    break;
+                }
+            }
+
+            return RegularFileStatus::Read;
+        };
+    }
+} // namespace
+
 class DirRuleEvaluatorTest : public ::testing::Test
 {
     protected:
@@ -144,13 +172,8 @@ TEST_F(DirRuleEvaluatorTest, PatternWithArrowMatchesFileContentReturnsFound)
     EXPECT_CALL(*m_rawFsMock, list_directory(std::filesystem::path("dir/")))
     .WillOnce(::testing::Return(std::vector<std::filesystem::path> {"target.txt"}));
     EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("target.txt"))).WillOnce(::testing::Return(false));
-    EXPECT_CALL(*m_rawIoMock, readLineByLine(std::filesystem::path("target.txt"), ::testing::_))
-    .WillOnce(
-        [](const auto&, const auto & callback)
-    {
-        callback("not this");
-        callback("hello"); // triggers return false
-    });
+    EXPECT_CALL(*m_rawIoMock, readRegularFileLineByLine(std::filesystem::path("target.txt"), false, ::testing::_))
+    .WillOnce(ReturnLines({"not this", "hello"}));
 
     auto evaluator = CreateEvaluator();
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::Found);
@@ -166,7 +189,7 @@ TEST_F(DirRuleEvaluatorTest, PatternWithArrowMatchesRegexFileContentReturnsFound
     EXPECT_CALL(*m_rawFsMock, list_directory(std::filesystem::path("dir/")))
     .WillOnce(::testing::Return(std::vector<std::filesystem::path> {"target.txt"}));
     EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("target.txt"))).WillOnce(::testing::Return(false));
-    EXPECT_CALL(*m_rawIoMock, getFileContent("target.txt")).WillOnce(::testing::Return("hello"));
+    EXPECT_CALL(*m_rawIoMock, getRegularFileContent(std::filesystem::path("target.txt"), false, ::testing::_)).WillOnce(ReturnContent("hello"));
 
     auto evaluator = CreateEvaluator();
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::Found);
@@ -182,7 +205,7 @@ TEST_F(DirRuleEvaluatorTest, PatternWithArrowMatchesRegexFileContentReturnsNotFo
     EXPECT_CALL(*m_rawFsMock, list_directory(std::filesystem::path("dir/")))
     .WillOnce(::testing::Return(std::vector<std::filesystem::path> {"target.txt"}));
     EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("target.txt"))).WillOnce(::testing::Return(false));
-    EXPECT_CALL(*m_rawIoMock, getFileContent("target.txt")).WillOnce(::testing::Return("bye"));
+    EXPECT_CALL(*m_rawIoMock, getRegularFileContent(std::filesystem::path("target.txt"), false, ::testing::_)).WillOnce(ReturnContent("bye"));
 
     auto evaluator = CreateEvaluator();
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::NotFound);
@@ -384,7 +407,7 @@ TEST_F(DirRuleEvaluatorTest, FileContentThrowsReturnsInvalid)
     EXPECT_CALL(*m_rawFsMock, list_directory(std::filesystem::path("dir/")))
     .WillOnce(::testing::Return(std::vector<std::filesystem::path> {"target.txt"}));
     EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("target.txt"))).WillOnce(::testing::Return(false));
-    EXPECT_CALL(*m_rawIoMock, getFileContent("target.txt"))
+    EXPECT_CALL(*m_rawIoMock, getRegularFileContent(std::filesystem::path("target.txt"), false, ::testing::_))
     .WillOnce(::testing::Throw(std::runtime_error("Read failure")));
 
     auto evaluator = CreateEvaluator();
@@ -486,7 +509,7 @@ TEST_F(DirRuleEvaluatorTest, RegexFilenameWithArrowAndSimpleContentFound)
     EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("file"))).WillOnce(::testing::Return(false));
 
     // Expect the file content to be read and evaluated
-    EXPECT_CALL(*m_rawIoMock, getFileContent("file")).WillOnce(::testing::Return(std::string("hello world\n")));
+    EXPECT_CALL(*m_rawIoMock, getRegularFileContent(std::filesystem::path("file"), false, ::testing::_)).WillOnce(ReturnContent(std::string("hello world\n")));
 
     auto evaluator = CreateEvaluator();
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::Found);
@@ -507,7 +530,7 @@ TEST_F(DirRuleEvaluatorTest, NegatedRegexFilenameWithArrowAndComplexContentFound
     EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("file"))).WillOnce(::testing::Return(false));
 
     // Expect the file content to be read and evaluated
-    EXPECT_CALL(*m_rawIoMock, getFileContent("file")).WillOnce(::testing::Return(std::string("hello world\n")));
+    EXPECT_CALL(*m_rawIoMock, getRegularFileContent(std::filesystem::path("file"), false, ::testing::_)).WillOnce(ReturnContent(std::string("hello world\n")));
 
     auto evaluator = CreateEvaluator();
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::Found);
@@ -528,7 +551,7 @@ TEST_F(DirRuleEvaluatorTest, NegatedRegexFilenameWithArrowAndSimpleContentFound)
     EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("file"))).WillOnce(::testing::Return(false));
 
     // Expect the file content to be read and evaluated
-    EXPECT_CALL(*m_rawIoMock, getFileContent("file")).WillOnce(::testing::Return(std::string("hello world\n")));
+    EXPECT_CALL(*m_rawIoMock, getRegularFileContent(std::filesystem::path("file"), false, ::testing::_)).WillOnce(ReturnContent(std::string("hello world\n")));
 
     auto evaluator = CreateEvaluator();
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::Found);
@@ -548,8 +571,8 @@ TEST_F(DirRuleEvaluatorTest, ContentFilenameWithArrowAndComplexContentFound)
     EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("file"))).WillOnce(::testing::Return(false));
 
     // For exact filename + content pattern, evaluator should read and evaluate file content.
-    EXPECT_CALL(*m_rawIoMock, getFileContent("file"))
-    .WillOnce(::testing::Return(
+    EXPECT_CALL(*m_rawIoMock, getRegularFileContent(std::filesystem::path("file"), false, ::testing::_))
+    .WillOnce(ReturnContent(
                   std::string("goodbye world\n")
               ));
 
@@ -572,8 +595,8 @@ TEST_F(DirRuleEvaluatorTest, NegatedContentFilenameWithArrowAndComplexContentNot
     EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("file"))).WillOnce(::testing::Return(false));
 
     // For exact filename + content pattern, evaluator should read and evaluate file content.
-    EXPECT_CALL(*m_rawIoMock, getFileContent("file"))
-    .WillOnce(::testing::Return(
+    EXPECT_CALL(*m_rawIoMock, getRegularFileContent(std::filesystem::path("file"), false, ::testing::_))
+    .WillOnce(ReturnContent(
                   std::string("goodbye world\n")
               ));
 
@@ -595,8 +618,8 @@ TEST_F(DirRuleEvaluatorTest, RegexFilenameWithArrowAndNumericContentFound)
     EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("file"))).WillOnce(::testing::Return(false));
 
     // For exact filename + content pattern, evaluator should read and evaluate file content.
-    EXPECT_CALL(*m_rawIoMock, getFileContent("file"))
-    .WillOnce(::testing::Return(
+    EXPECT_CALL(*m_rawIoMock, getRegularFileContent(std::filesystem::path("file"), false, ::testing::_))
+    .WillOnce(ReturnContent(
                   std::string("hola 10\n")
               ));
 
@@ -618,8 +641,8 @@ TEST_F(DirRuleEvaluatorTest, RegexFilenameWithArrowAndComplexNumericContentFound
     EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("file"))).WillOnce(::testing::Return(false));
 
     // For exact filename + content pattern, evaluator should read and evaluate file content.
-    EXPECT_CALL(*m_rawIoMock, getFileContent("file"))
-    .WillOnce(::testing::Return(
+    EXPECT_CALL(*m_rawIoMock, getRegularFileContent(std::filesystem::path("file"), false, ::testing::_))
+    .WillOnce(ReturnContent(
                   std::string("hola mundo 10\n")
               ));
 
@@ -645,8 +668,8 @@ TEST_F(DirRuleEvaluatorTest, PatternFailureOnAnEarlierFileDoesNotExplainALaterMa
     EXPECT_CALL(*m_rawFsMock, is_symlink(std::filesystem::path("second"))).WillOnce(::testing::Return(false));
     EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("second"))).WillOnce(::testing::Return(false));
 
-    EXPECT_CALL(*m_rawIoMock, getFileContent("first")).WillOnce(::testing::Return(std::string("value=abc\n")));
-    EXPECT_CALL(*m_rawIoMock, getFileContent("second")).WillOnce(::testing::Return(std::string("value=10\n")));
+    EXPECT_CALL(*m_rawIoMock, getRegularFileContent(std::filesystem::path("first"), false, ::testing::_)).WillOnce(ReturnContent(std::string("value=abc\n")));
+    EXPECT_CALL(*m_rawIoMock, getRegularFileContent(std::filesystem::path("second"), false, ::testing::_)).WillOnce(ReturnContent(std::string("value=10\n")));
 
     auto evaluator = CreateEvaluator();
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::Found);
@@ -669,8 +692,8 @@ TEST_F(DirRuleEvaluatorTest, UnevaluableFileWithNoLaterMatchIsUnresolved)
     EXPECT_CALL(*m_rawFsMock, is_symlink(std::filesystem::path("second"))).WillOnce(::testing::Return(false));
     EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("second"))).WillOnce(::testing::Return(false));
 
-    EXPECT_CALL(*m_rawIoMock, getFileContent("first")).WillOnce(::testing::Return(std::string("value=abc\n")));
-    EXPECT_CALL(*m_rawIoMock, getFileContent("second")).WillOnce(::testing::Return(std::string("value=7\n")));
+    EXPECT_CALL(*m_rawIoMock, getRegularFileContent(std::filesystem::path("first"), false, ::testing::_)).WillOnce(ReturnContent(std::string("value=abc\n")));
+    EXPECT_CALL(*m_rawIoMock, getRegularFileContent(std::filesystem::path("second"), false, ::testing::_)).WillOnce(ReturnContent(std::string("value=7\n")));
 
     auto evaluator = CreateEvaluator();
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::Invalid);
@@ -691,7 +714,7 @@ TEST_F(DirRuleEvaluatorTest, NegatedRuleWithAnUnevaluableFileIsUnresolved)
     EXPECT_CALL(*m_rawFsMock, is_symlink(std::filesystem::path("first"))).WillOnce(::testing::Return(false));
     EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("first"))).WillOnce(::testing::Return(false));
 
-    EXPECT_CALL(*m_rawIoMock, getFileContent("first")).WillOnce(::testing::Return(std::string("value=abc\n")));
+    EXPECT_CALL(*m_rawIoMock, getRegularFileContent(std::filesystem::path("first"), false, ::testing::_)).WillOnce(ReturnContent(std::string("value=abc\n")));
 
     auto evaluator = CreateEvaluator();
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::Invalid);
@@ -721,4 +744,188 @@ TEST_F(DirRuleEvaluatorTest, ReasonFromAPreviousEvaluationDoesNotSurvive)
 
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::Found);
     EXPECT_TRUE(evaluator.GetUnresolvedReason().empty());
+}
+
+TEST_F(DirRuleEvaluatorTest, NamedPipeInDirectoryIsUnresolved)
+{
+    // A named pipe is not a symbolic link nor a directory, so it reaches the content check, which must
+    // report it instead of reading it
+    m_ctx.pattern = std::string("r:. -> r:hello");
+    m_ctx.rule = "dir/";
+
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("dir/"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("dir/"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, list_directory(std::filesystem::path("dir/")))
+    .WillOnce(::testing::Return(std::vector<std::filesystem::path> {"pipe"}));
+    EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("pipe"))).WillOnce(::testing::Return(false));
+    EXPECT_CALL(*m_rawIoMock, getRegularFileContent(std::filesystem::path("pipe"), false, ::testing::_))
+    .WillOnce(::testing::Return(RegularFileStatus::NotRegular));
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Invalid);
+    EXPECT_THAT(evaluator.GetUnresolvedReason(), ::testing::HasSubstr("pipe"));
+    EXPECT_THAT(evaluator.GetUnresolvedReason(), ::testing::HasSubstr("not a regular file"));
+}
+
+TEST_F(DirRuleEvaluatorTest, NamedPipeDoesNotHideALaterMatch)
+{
+    m_ctx.pattern = std::string("r:. -> r:hello");
+    m_ctx.rule = "dir/";
+
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("dir/"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("dir/"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, list_directory(std::filesystem::path("dir/")))
+    .WillOnce(::testing::Return(std::vector<std::filesystem::path> {"pipe", "file"}));
+    EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("pipe"))).WillOnce(::testing::Return(false));
+    EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("file"))).WillOnce(::testing::Return(false));
+    EXPECT_CALL(*m_rawIoMock, getRegularFileContent(std::filesystem::path("pipe"), false, ::testing::_))
+    .WillOnce(::testing::Return(RegularFileStatus::NotRegular));
+    EXPECT_CALL(*m_rawIoMock, getRegularFileContent(std::filesystem::path("file"), false, ::testing::_))
+    .WillOnce(ReturnContent("hello\n"));
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Found);
+    EXPECT_TRUE(evaluator.GetUnresolvedReason().empty());
+}
+
+TEST_F(DirRuleEvaluatorTest, NamedPipeWithAnExactFileNameIsUnresolved)
+{
+    m_ctx.pattern = std::string("target.txt -> hello");
+    m_ctx.rule = "dir/";
+
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("dir/"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("dir/"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, list_directory(std::filesystem::path("dir/")))
+    .WillOnce(::testing::Return(std::vector<std::filesystem::path> {"target.txt"}));
+    EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("target.txt"))).WillOnce(::testing::Return(false));
+    EXPECT_CALL(*m_rawIoMock, readRegularFileLineByLine(std::filesystem::path("target.txt"), false, ::testing::_))
+    .WillOnce(::testing::Return(RegularFileStatus::NotRegular));
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Invalid);
+    EXPECT_THAT(evaluator.GetUnresolvedReason(), ::testing::HasSubstr("not a regular file"));
+}
+
+TEST_F(DirRuleEvaluatorTest, ExactFileNameReadsTheListedEntry)
+{
+    // The directory listing gives full paths: the content must be read from the listed entry, not
+    // from the bare file name of the pattern, which would be looked up in the working directory
+    m_ctx.pattern = std::string("target.txt -> hello");
+    m_ctx.rule = "dir/";
+
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("dir/"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("dir/"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, list_directory(std::filesystem::path("dir/")))
+    .WillOnce(::testing::Return(std::vector<std::filesystem::path> {"dir/target.txt"}));
+    EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("dir/target.txt"))).WillOnce(::testing::Return(false));
+    EXPECT_CALL(*m_rawIoMock, readRegularFileLineByLine(std::filesystem::path("dir/target.txt"), false, ::testing::_))
+    .WillOnce(ReturnLines({"hello"}));
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Found);
+}
+
+TEST_F(DirRuleEvaluatorTest, SymbolicLinkFoundOnOpenIsSkipped)
+{
+    // The link check by path did not see the link (as happens on Windows), but opening without
+    // following links does: the entry is skipped, not read, and leaves no reason behind
+    m_ctx.pattern = std::string("r:\\.conf$ -> r:secret");
+    m_ctx.rule = "dir/";
+
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("dir/"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("dir/"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, list_directory(std::filesystem::path("dir/")))
+    .WillOnce(::testing::Return(std::vector<std::filesystem::path> {"link.conf", "file.conf"}));
+    EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("link.conf"))).WillOnce(::testing::Return(false));
+    EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("file.conf"))).WillOnce(::testing::Return(false));
+    EXPECT_CALL(*m_rawIoMock, getRegularFileContent(std::filesystem::path("link.conf"), false, ::testing::_))
+    .WillOnce(::testing::Return(RegularFileStatus::SymbolicLink));
+    EXPECT_CALL(*m_rawIoMock, getRegularFileContent(std::filesystem::path("file.conf"), false, ::testing::_))
+    .WillOnce(ReturnContent("other\n"));
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::NotFound);
+    EXPECT_TRUE(evaluator.GetUnresolvedReason().empty());
+}
+
+TEST_F(DirRuleEvaluatorTest, SymbolicLinkFoundOnOpenDoesNotHideALaterMatch)
+{
+    m_ctx.pattern = std::string("r:\\.conf$ -> r:secret");
+    m_ctx.rule = "dir/";
+
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("dir/"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("dir/"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, list_directory(std::filesystem::path("dir/")))
+    .WillOnce(::testing::Return(std::vector<std::filesystem::path> {"link.conf", "file.conf"}));
+    EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("link.conf"))).WillOnce(::testing::Return(false));
+    EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("file.conf"))).WillOnce(::testing::Return(false));
+    EXPECT_CALL(*m_rawIoMock, getRegularFileContent(std::filesystem::path("link.conf"), false, ::testing::_))
+    .WillOnce(::testing::Return(RegularFileStatus::SymbolicLink));
+    EXPECT_CALL(*m_rawIoMock, getRegularFileContent(std::filesystem::path("file.conf"), false, ::testing::_))
+    .WillOnce(ReturnContent("secret\n"));
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Found);
+}
+
+TEST_F(DirRuleEvaluatorTest, SymbolicLinkFoundOnOpenGivesTheSameResultAsTheLinkCheck)
+{
+    // With the link as the only entry, the result must be the one the link check by path gives
+    const auto evaluate = [this](bool linkSeenByPath)
+    {
+        m_fsMock = std::make_unique<MockFileSystemWrapper>();
+        m_rawFsMock = m_fsMock.get();
+        m_ioMock = std::make_unique<MockFileIOUtils>();
+        m_rawIoMock = m_ioMock.get();
+        m_ctx.pattern = std::string("r:\\.conf$ -> r:secret");
+        m_ctx.rule = "dir/";
+
+        EXPECT_CALL(*m_rawFsMock, canonical(::testing::_)).WillRepeatedly(::testing::ReturnArg<0>());
+        EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("dir/"))).WillOnce(::testing::Return(true));
+        EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("dir/"))).WillOnce(::testing::Return(true));
+        EXPECT_CALL(*m_rawFsMock, list_directory(std::filesystem::path("dir/")))
+        .WillOnce(::testing::Return(std::vector<std::filesystem::path> {"link.conf"}));
+        EXPECT_CALL(*m_rawFsMock, is_symlink(std::filesystem::path("link.conf"))).WillOnce(::testing::Return(linkSeenByPath));
+
+        if (!linkSeenByPath)
+        {
+            EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("link.conf"))).WillOnce(::testing::Return(false));
+            EXPECT_CALL(*m_rawIoMock, getRegularFileContent(std::filesystem::path("link.conf"), false, ::testing::_))
+            .WillOnce(::testing::Return(RegularFileStatus::SymbolicLink));
+        }
+
+        auto evaluator = CreateEvaluator();
+        const auto result = evaluator.Evaluate();
+        return std::make_pair(result, evaluator.GetUnresolvedReason());
+    };
+
+    const auto byPath = evaluate(true);
+    const auto onOpen = evaluate(false);
+
+    EXPECT_EQ(onOpen.first, byPath.first);
+    EXPECT_EQ(onOpen.second, byPath.second);
+}
+
+TEST_F(DirRuleEvaluatorTest, SymbolicLinkWithAnExactFileNameFoundOnOpenIsSkipped)
+{
+    // The link is skipped, so the file with the same name in a subdirectory decides the result
+    m_ctx.pattern = std::string("target.txt -> hello");
+    m_ctx.rule = "dir/";
+
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("dir/"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("dir/"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, list_directory(std::filesystem::path("dir/")))
+    .WillOnce(::testing::Return(std::vector<std::filesystem::path> {"dir/target.txt", "dir/sub"}));
+    EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("dir/target.txt"))).WillOnce(::testing::Return(false));
+    EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("dir/sub"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, list_directory(std::filesystem::path("dir/sub")))
+    .WillOnce(::testing::Return(std::vector<std::filesystem::path> {"dir/sub/target.txt"}));
+    EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("dir/sub/target.txt"))).WillOnce(::testing::Return(false));
+    EXPECT_CALL(*m_rawIoMock, readRegularFileLineByLine(std::filesystem::path("dir/target.txt"), false, ::testing::_))
+    .WillOnce(::testing::Return(RegularFileStatus::SymbolicLink));
+    EXPECT_CALL(*m_rawIoMock, readRegularFileLineByLine(std::filesystem::path("dir/sub/target.txt"), false, ::testing::_))
+    .WillOnce(ReturnLines({"hello"}));
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Found);
 }

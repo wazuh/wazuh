@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -168,7 +168,7 @@ static void loop_all_pids(const char *ps, pid_t max_pid, int *_errors, int *_tot
             }
         }
 
-        /* If we are run in the context of OSSEC-HIDS, sleep here (no rush) */
+        /* If we are run inside the Wazuh daemons, sleep here (no rush) */
 #ifdef OSSECHIDS
 #ifdef WIN32
         Sleep(rootcheck.tsleep);

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _CMCRUD_CMCRUDSERVICE_HPP
 #define _CMCRUD_CMCRUDSERVICE_HPP
 

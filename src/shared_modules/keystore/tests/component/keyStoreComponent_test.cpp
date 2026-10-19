@@ -1,12 +1,13 @@
 /*
  * Wazuh keystore
- * Copyright (C) 2015, Wazuh Inc.
- * July 11, 2024.
+ * Copyright (C) Wazuh Inc.
  *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of either the GNU General Public License, version 2, or
+ * the GNU Affero General Public License, version 3 or (at your option) any
+ * later version, both as published by the Free Software Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
 #include "keyStoreComponent_test.hpp"
@@ -44,4 +45,17 @@ TEST(KeyStoreComponentTest, TestPutGet)
     ASSERT_EQ(out, "value1");
     Keystore::get("default", "key2", out);
     ASSERT_EQ(out, "value2");
+}
+
+TEST(KeyStoreComponentTest, TestGetDoesNotCreateColumnFamily)
+{
+    std::filesystem::remove_all(DATABASE_PATH);
+
+    std::string out;
+    Keystore::get("missing", "key1", out);
+    ASSERT_EQ(out, "");
+    ASSERT_EQ(Keystore::get("missing", "key1"), "");
+
+    auto keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, false);
+    ASSERT_FALSE(keystoreDB.columnExists("missing"));
 }

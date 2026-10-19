@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -17,6 +17,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <cstdint>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -42,10 +43,17 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         ///        the wording of a 409/CHECKSUM_ERROR failure reason (see
         ///        determineSyncFailureReasonBasedOnSyncResult()); every other instance (FIM, SCA,
         ///        agent-info, syscollector's own regular inventory sync) leaves this false.
+        /// @param flushBatchSize Optional override for the persistent queue's flush batch size (see PersistentQueue).
+        /// @param flushInterval Optional override for the persistent queue's flush interval (see PersistentQueue).
+        /// @param walAutocheckpointPages Optional override for the persistent queue's default storage backend's
+        ///                               WAL auto-checkpoint threshold, in pages (see PersistentQueue).
         explicit AgentSyncProtocol(const std::string& moduleName, std::optional<std::string> dbPath, LoggerFunc logger,
                                    std::shared_ptr<IPersistentQueue> queue = nullptr,
                                    std::shared_ptr<ISyncSessionTransport> syncTransport = nullptr,
-                                   bool isFeedBased = false);
+                                   bool isFeedBased = false,
+                                   std::optional<std::size_t> flushBatchSize = std::nullopt,
+                                   std::optional<std::chrono::milliseconds> flushInterval = std::nullopt,
+                                   std::optional<int32_t> walAutocheckpointPages = std::nullopt);
 
         /// @copydoc IAgentSyncProtocol::persistDifference
         void persistDifference(const std::string& id,
@@ -290,10 +298,10 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         ///        (timeout/connect/TLS failure/abort), handled like a 503.
         /// @param body Raw JSON response body (may be empty); used only for logging - the
         ///        HTTP code alone fully determines the outcome.
-        /// @param expectedSession Session that this result belongs to; 0 skips validation
-        ///        (legacy path). The check is performed under m_syncState.mtx so it is
-        ///        race-free with a concurrent session start.
-        bool applyHttpResult(int httpCode, std::string_view body, uint64_t expectedSession = 0);
+        /// @param expectedSession Session that this result belongs to. It must match the
+        ///        session in flight, so 0 never does. The check is performed under
+        ///        m_syncState.mtx so it is race-free with a concurrent session start.
+        bool applyHttpResult(int httpCode, std::string_view body, uint64_t expectedSession);
 
         /// @brief Picks the id for a new session. The agent chooses it because the
         ///        single-message exchange has no StartAck to carry one back; a retry

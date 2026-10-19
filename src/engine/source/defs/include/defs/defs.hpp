@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _DEFS_HPP_
 #define _DEFS_HPP_
 

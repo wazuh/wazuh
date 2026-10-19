@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _STREAMLOG_LOGGER_CHANNEL_HPP
 #define _STREAMLOG_LOGGER_CHANNEL_HPP
 

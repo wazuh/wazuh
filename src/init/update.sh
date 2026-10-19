@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 # Shell script update functions for Wazuh
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
 

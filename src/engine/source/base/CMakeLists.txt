@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 ####################################################################################################
 # BASE
 ####################################################################################################
@@ -15,7 +16,7 @@ add_library(base STATIC
     ${SRC_DIR}/json.cpp
     ${SRC_DIR}/logging.cpp
     ${SRC_DIR}/process.cpp
-    ${SRC_DIR}/libwazuhshared.cpp
+    ${SRC_DIR}/managerLogSink.cpp
     ${SRC_DIR}/managerConfig.cpp
 )
 target_include_directories(base
@@ -112,6 +113,23 @@ target_link_libraries(base_logger_utest
     GTest::gtest_main
 )
 gtest_discover_tests(base_logger_utest)
+
+# Manager log sink and manager home: process-global state (sink, manager mode), so they live in their own binary
+add_executable(base_manager_utest
+    ${UNIT_SRC_DIR}/managerLogSink_test.cpp
+)
+target_include_directories(base_manager_utest
+    PRIVATE
+    ${TEST_SRC_DIR}
+    ${INC_DIR}/base
+)
+target_link_libraries(base_manager_utest
+    PRIVATE
+    base
+    GTest::gtest_main
+    GTest::gmock
+)
+gtest_discover_tests(base_manager_utest)
 
 endif(ENGINE_BUILD_TEST)
 

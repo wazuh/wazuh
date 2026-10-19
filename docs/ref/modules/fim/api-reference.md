@@ -18,18 +18,27 @@ Creates and initializes an Agent Sync Protocol handle for FIM.
 ```c
 AgentSyncProtocolHandle* asp_create(const char* module,
                                    const char* db_path,
-                                   asp_logger_t logger);
+                                   asp_logger_t logger,
+                                   uint64_t flush_batch_size,
+                                   uint64_t flush_interval_ms,
+                                   uint64_t wal_autocheckpoint_pages);
 ```
 
 **Parameters:**
 - `module`: Module name (`"fim"`)
 - `db_path`: Path to sync protocol database (`FIM_SYNC_PROTOCOL_DB_PATH`)
 - `logger`: Logging callback function
+- `flush_batch_size`: Persistent queue flush batch size (`syscheck.sync_flush_batch_size`), or `0` to use the built-in default
+- `flush_interval_ms`: Persistent queue flush interval in milliseconds (`syscheck.sync_flush_interval_ms`), or `0` to use the built-in default
+- `wal_autocheckpoint_pages`: WAL auto-checkpoint threshold in pages (`syscheck.sync_wal_autocheckpoint_pages`), or `0` to keep SQLite's own default (1000 pages)
 
 **Usage Example:**
 ```c
 // FIM initializes sync protocol handle during startup
-syscheck.sync_handle = asp_create("fim", FIM_SYNC_PROTOCOL_DB_PATH, loggingFunction);
+syscheck.sync_handle = asp_create("fim", FIM_SYNC_PROTOCOL_DB_PATH, loggingFunction,
+                                  (uint64_t)syscheck.sync_flush_batch_size,
+                                  (uint64_t)syscheck.sync_flush_interval_ms,
+                                  (uint64_t)syscheck.sync_wal_autocheckpoint_pages);
 ```
 
 #### `asp_persist_diff()`

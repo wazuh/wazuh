@@ -70,7 +70,7 @@ is for when it is somewhere else.
 
 The API password is read, in order, from `--api-password-file` (`-` for standard input), from
 `WAZUH_API_PASSWORD` or `WAZUH_MANAGER_API_PASSWORD` in the environment, from the
-`WAZUH_MANAGER_API_PASSWORD` the manager published in `/etc/wazuh/credentials.env` when it generated
+`WAZUH_MANAGER_API_PASSWORD` the manager published in `/etc/wazuh-manager/export/credentials.env` when it generated
 one at install, or prompted for on a terminal. Never from the command line, because `ps` is
 world-readable. The credentials file is parsed as `KEY=VALUE` and never sourced, the way the manager
 itself reads it.

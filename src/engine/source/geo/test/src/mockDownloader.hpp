@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _GEO_MOCK_DOWNLOADER_HPP
 #define _GEO_MOCK_DOWNLOADER_HPP
 

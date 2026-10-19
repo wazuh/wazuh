@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -12,8 +12,15 @@
 
 #include <algorithm>
 
-PersistentQueue::PersistentQueue(const std::string& dbPath, LoggerFunc logger, std::shared_ptr<IPersistentQueueStorage> storage)
-    : m_storage(storage ? std::move(storage) : std::make_shared<PersistentQueueStorage>(dbPath, logger)),
+PersistentQueue::PersistentQueue(const std::string& dbPath,
+                                 LoggerFunc logger,
+                                 std::shared_ptr<IPersistentQueueStorage> storage,
+                                 std::optional<std::size_t> flushBatchSize,
+                                 std::optional<std::chrono::milliseconds> flushInterval,
+                                 std::optional<int32_t> walAutocheckpointPages)
+    : FLUSH_BATCH_SIZE(flushBatchSize.value_or(DEFAULT_FLUSH_BATCH_SIZE)),
+      FLUSH_INTERVAL(flushInterval.value_or(DEFAULT_FLUSH_INTERVAL)),
+      m_storage(storage ? std::move(storage) : std::make_shared<PersistentQueueStorage>(dbPath, logger, nullptr, walAutocheckpointPages)),
       m_logger(std::move(logger))
 {
     if (!m_logger)
@@ -31,8 +38,9 @@ PersistentQueue::PersistentQueue(const std::string& dbPath, LoggerFunc logger, s
         throw;
     }
 
-    m_buffers[0].reserve(FLUSH_BATCH_SIZE);
-    m_buffers[1].reserve(FLUSH_BATCH_SIZE);
+    const auto reserveHint = std::min(FLUSH_BATCH_SIZE, MAX_RESERVE_HINT);
+    m_buffers[0].reserve(reserveHint);
+    m_buffers[1].reserve(reserveHint);
     m_flushThread = std::thread(&PersistentQueue::flushLoop, this);
 }
 
@@ -145,6 +153,17 @@ bool PersistentQueue::flushActiveBuffer()
     return true;
 }
 
+// A failed flush leaves its items buffered; drop the ones being cleared so they are not written after the delete.
+void PersistentQueue::discardBuffered(const std::function<bool(const PersistedData&)>& matches)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    for (auto& buffer : m_buffers)
+    {
+        buffer.erase(std::remove_if(buffer.begin(), buffer.end(), matches), buffer.end());
+    }
+}
+
 std::vector<PersistedData> PersistentQueue::fetchAndMarkForSync(size_t maxBytes)
 {
     flushActiveBuffer();
@@ -207,9 +226,16 @@ void PersistentQueue::resetSyncingItems()
 
 void PersistentQueue::clearItemsByIndex(const std::string& index)
 {
+    // Flush first so buffered rows reach storage before the delete.
+    flushActiveBuffer();
+
     try
     {
         std::lock_guard<std::mutex> storageLock(m_storageMutex);
+        discardBuffered([&index](const PersistedData & item)
+        {
+            return item.index == index;
+        });
         m_storage->removeByIndex(index);
     }
     catch (const std::exception& ex)
@@ -221,9 +247,16 @@ void PersistentQueue::clearItemsByIndex(const std::string& index)
 
 void PersistentQueue::clearAllDataContext()
 {
+    // Flush first so buffered rows reach storage before the delete.
+    flushActiveBuffer();
+
     try
     {
         std::lock_guard<std::mutex> storageLock(m_storageMutex);
+        discardBuffered([](const PersistedData & item)
+        {
+            return item.is_data_context;
+        });
         m_storage->removeAllDataContext();
     }
     catch (const std::exception& ex)
@@ -235,9 +268,16 @@ void PersistentQueue::clearAllDataContext()
 
 void PersistentQueue::deleteDatabase()
 {
+    // Flush first so buffered rows reach storage before the delete.
+    flushActiveBuffer();
+
     try
     {
         std::lock_guard<std::mutex> storageLock(m_storageMutex);
+        discardBuffered([](const PersistedData&)
+        {
+            return true;
+        });
         m_storage->deleteDatabase();
     }
     catch (const std::exception& ex)

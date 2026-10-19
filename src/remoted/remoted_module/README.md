@@ -292,7 +292,10 @@ src/http_server/
        What this layer does **not** bound is downstream work remoted has given up on. At
        `downstream_stateful_response_timeout` remoted answers the agent `503` and frees its slot, but
        inventory-sync keeps the admitted session queued. So inventory-sync keeps its own per-agent
-       count of pending sessions (its D28) rather than relying on this one.
+       count of pending sessions (its D28) rather than relying on this one. That `503` carries
+       `Retry-After` (`downstream_stateful_retry_after`, 20 s): the agent re-sends the same session
+       on it, and without the delay the copy lands while the first one is still being applied, the
+       two race on the same documents and the loser is answered `503 indexer contention`.
 
        Both options are internal options rather than XML, because they bound a misbehaving agent,
        which is not something an operator tunes per deployment.

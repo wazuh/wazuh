@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * Copyright (C) 2009-2012 Trend Micro Inc.
  * All rights reserved.
  *

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -961,7 +961,8 @@ void test_wm_agent_upgrade_com_execute_error(void **state) {
 
     expect_value(__wrap_wm_exec, secs, 3600);
     expect_value(__wrap_wm_exec, add_path, NULL);
-    will_return(__wrap_wm_exec, "OUTPUT COMMAND");
+    // wm_exec() leaves the output untouched on a negative return
+    will_return(__wrap_wm_exec, NULL);
     will_return(__wrap_wm_exec, -1);
     will_return(__wrap_wm_exec, -1);
 
@@ -976,6 +977,108 @@ void test_wm_agent_upgrade_com_execute_error(void **state) {
     char *response = wm_agent_upgrade_com_upgrade(command);
     cJSON *response_object = cJSON_Parse(response);
     assert_string_equal(cJSON_GetObjectItem(response_object, upgrade_json_keys[WM_UPGRADE_ERROR_MESSAGE])->valuestring, "Error executing command");
+    cJSON_Delete(response_object);
+    os_free(response);
+}
+
+void test_wm_agent_upgrade_com_execute_timeout(void **state) {
+    cJSON * command = *state;
+
+    will_return(__wrap_getDefine_Int, 3600);
+    // Unsign
+    {
+
+        #ifdef TEST_WINAGENT
+            will_return(wrap_mktemp_s,  NULL);
+            expect_string(__wrap_w_wpk_unsign, source, "incoming\\test_file");
+        #else
+            expect_string(__wrap_w_wpk_unsign, source, "var/incoming/test_file");
+
+            will_return(__wrap_mkstemp, 8);
+            expect_value(__wrap_fchmod, fd, 8);
+            expect_value(__wrap_fchmod, mode, 0640);
+            will_return(__wrap_fchmod, 0);
+        #endif
+        will_return(__wrap_w_wpk_unsign, 0);
+        expect_any(__wrap_unlink, file);
+        will_return(__wrap_unlink, 0);
+    }
+    // Uncompress
+    {
+
+        expect_w_gzopen_nofollow(TMP_DIR, "test_file.gz.XXXXXX", "rb", (gzFile)4);
+
+#ifdef TEST_WINAGENT
+        will_return(wrap_mktemp_s, NULL);
+        expect_w_fopen_nofollow(TMP_DIR, "test_file.mg.XXXXXX", "wb", (FILE *)5);
+#else
+        will_return(__wrap_mkstemp, 8);
+        expect_value(__wrap_fchmod, fd, 8);
+        expect_value(__wrap_fchmod, mode, 0640);
+        will_return(__wrap_fchmod, 0);
+        expect_fdopen(8, "wb", (FILE *)5);
+#endif
+
+        expect_value(__wrap_gzread, gz_fd, 4);
+        will_return(__wrap_gzread, 4);
+        will_return(__wrap_gzread, "test");
+
+        will_return(__wrap_fwrite, 4);
+
+        expect_value(__wrap_gzread, gz_fd, 4);
+        will_return(__wrap_gzread, 0);
+
+        expect_value(__wrap_gzclose, file, 4);
+        will_return(__wrap_gzclose, 0);
+
+        expect_value(__wrap_fclose, _File, 5);
+        will_return(__wrap_fclose, 0);
+
+        expect_any(__wrap_unlink, file);
+        will_return(__wrap_unlink, 0);
+    }
+
+    will_return(__wrap_cldir_ex, 0);
+
+    expect_any(__wrap_UnmergeFiles, finalpath);
+    expect_any(__wrap_UnmergeFiles, optdir);
+    expect_value(__wrap_UnmergeFiles, mode, OS_BINARY);
+    will_return(__wrap_UnmergeFiles, UNMERGE_COMPLETE);
+
+    expect_any(__wrap_unlink, file);
+    will_return(__wrap_unlink, 0);
+
+    // Jailfile
+    {
+    }
+
+    #ifndef TEST_WINAGENT
+    expect_string(__wrap_chmod, path, "var/upgrade/install.sh");
+    will_return(__wrap_chmod, 0);
+    expect_string(__wrap_wm_exec, command, "var/upgrade/install.sh");
+
+    #else
+    expect_string(__wrap_wm_exec, command, "upgrade\\install.sh");
+    #endif
+
+    expect_value(__wrap_wm_exec, secs, 3600);
+    expect_value(__wrap_wm_exec, add_path, NULL);
+    will_return(__wrap_wm_exec, "OUTPUT COMMAND");
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, WM_ERROR_TIMEOUT);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+
+    #ifndef TEST_WINAGENT
+    expect_string(__wrap__mterror, formatted_msg, "(8142): At upgrade: Command [var/upgrade/install.sh] did not finish within 3600 seconds");
+    #else
+    expect_string(__wrap__mterror, formatted_msg, "(8142): At upgrade: Command [upgrade\\install.sh] did not finish within 3600 seconds");
+    #endif
+
+    char *response = wm_agent_upgrade_com_upgrade(command);
+    cJSON *response_object = cJSON_Parse(response);
+    assert_string_equal(cJSON_GetObjectItem(response_object, upgrade_json_keys[WM_UPGRADE_ERROR_MESSAGE])->valuestring, "Timeout executing command");
+    assert_int_not_equal(cJSON_GetObjectItem(response_object, upgrade_json_keys[WM_UPGRADE_ERROR])->valueint, 0);
     cJSON_Delete(response_object);
     os_free(response);
 }
@@ -1310,6 +1413,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_chmod_error, setup_upgrade, teardown_commands),
     #endif
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_execute_error, setup_upgrade, teardown_commands),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_execute_timeout, setup_upgrade, teardown_commands),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_success, setup_upgrade, teardown_commands),
         // Command dispatcher
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_process_upgrade_no_parameters, setup_process_upgrade_no_parameters, teardown_process),

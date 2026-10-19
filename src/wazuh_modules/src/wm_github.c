@@ -1,7 +1,6 @@
 /*
  * Wazuh Module for GitHub logs
- * Copyright (C) 2015, Wazuh Inc.
- * May 3, 2021.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -303,9 +302,28 @@ STATIC void wm_github_execute_scan(wm_github *github_config, int initial_scan) {
                     response = wurl_http_request(WURL_GET_METHOD, headers, url, NULL, github_config->curl_max_size, WM_GITHUB_DEFAULT_CURL_REQUEST_TIMEOUT, NULL, true);
 
                     if (response) {
-                        if (response->max_size_reached) {
+                        if (response->max_size_reached && response->status_code == 200) {
                             mtdebug1(WM_GITHUB_LOGTAG, "Libcurl error, reached maximum response size.");
-                            scan_finished = 1;
+                            // Skip only this page: the rest of the window is still collected, and
+                            // retrying would fail the same way on every scan. An error answer of any
+                            // size is a failure instead, retried on the next scan. The next page link
+                            // is read from the headers, which count against the same limit: if they
+                            // alone exceed it, the link is lost and the window ends with this page.
+                            mtwarn(WM_GITHUB_LOGTAG, "Skipped a page of audit events of organization '%s' and event type '%s' between '%s' and '%s': "
+                                "it is larger than curl_max_size (%ld bytes).", current->org_name, event_types[event_types_it],
+                                last_scan_time_str, new_scan_time_str, (long)github_config->curl_max_size);
+
+                            next_page = wm_read_http_header_element(response->header, GITHUB_NEXT_PAGE_REGEX);
+                            if ((next_page == NULL) || (strlen(next_page) >= OS_SIZE_8192)) {
+                                scan_finished = 1;
+                            } else if (!wm_url_is_allowed(next_page, GITHUB_API_HOST)) {
+                                mtwarn(WM_GITHUB_LOGTAG, "Ignoring next page URL out of '%s'.", GITHUB_API_HOST);
+                                scan_finished = 1;
+                                fail = 1;
+                            } else {
+                                snprintf(url, sizeof(url), "%s", next_page);
+                            }
+                            os_free(next_page);
                         } else if (response->status_code == 200) {
                             // Load body to json and sent as localfile
                             cJSON *array_logs_json = NULL;

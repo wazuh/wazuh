@@ -143,9 +143,7 @@
         "framework/wazuh/core/utils.py",
         "framework/scripts/wazuh_manager_clusterd.py",
         "src/init/wazuh-server.sh",
-        "src/init/credentials/resolve-credentials.sh",
-        "src/init/credentials/wazuh-manager-certificates.sh",
-        "tools/get_git_refs.sh",
+        "src/init/credentials/wazuh-manager-resolve-credentials.py",
         "install.sh",
         "src/init/inst-functions.sh",
         "src/init/templates/wazuh-manager.service",
@@ -155,7 +153,7 @@
         "tests/integration/pytest.ini",
         "tests/integration/test_manager_control/**"
       ],
-      "_comment_paths": "test_unsafe_credentials_file drives checkcredentials() in wazuh-server.sh, which runs the resolver (src/init/credentials/) in --check mode; the shared helper it sources is fetched by make deps through tools/get_git_refs.sh. This is also the install-and-start smoke for the .deb every suite installs: the package recipe (install.sh, inst-functions.sh, the DEB maintainer scripts) and the systemd unit `systemctl start` runs. Only the .deb is installed (5_testintegration_manager.yml dpkg -i), so the RPM spec is not listed."
+      "_comment_paths": "test_unsafe_credentials_file drives checkcredentials() in wazuh-server.sh, which runs the resolver (src/init/credentials/) in --check mode. This is also the install-and-start smoke for the .deb every suite installs: the package recipe (install.sh, inst-functions.sh, the DEB maintainer scripts) and the systemd unit `systemctl start` runs. Only the .deb is installed (5_testintegration_manager.yml dpkg -i), so the RPM spec is not listed."
     }
   ]
 }

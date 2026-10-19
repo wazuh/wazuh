@@ -1,7 +1,6 @@
 /*
  * Cluster identity of this manager node, read from the effective etc/wazuh-manager.conf.
- * Copyright (C) 2015, Wazuh Inc.
- * October 26, 2018.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -16,7 +15,7 @@
 #include "mconf_hook.h"
 
 /* The `cluster` section of the effective document through the hook libconfig registers
- * (mconf_hook.h). NULL without provider or document: libwazuhshared.so as the engine loads it, or a
+ * (mconf_hook.h). NULL without provider or document: unit tests, or a
  * process that never loaded its configuration -- the getters then answer as they always did when the
  * configuration file could not be read. */
 static cJSON *cluster_section(void) {

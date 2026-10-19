@@ -1,12 +1,13 @@
 /*
  * Wazuh - Indexer connector transport settings.
- * Copyright (C) 2015, Wazuh Inc.
- * July 30, 2026.
+ * Copyright (C) Wazuh Inc.
  *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of either the GNU General Public License, version 2, or
+ * the GNU Affero General Public License, version 3 or (at your option) any
+ * later version, both as published by the Free Software Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
 #include "indexerTransport.hpp"
@@ -85,8 +86,8 @@ SecureCommunication buildSecureCommunication(const nlohmann::json& config, const
     {
         throw IndexerConnectorException(
             "No indexer credentials found in the keystore. Set them with 'wazuh-manager-keystore -f indexer -k "
-            "username' and '-k password', or supply WAZUH_INDEXER_MANAGER_PASSWORD in /etc/wazuh/credentials.env "
-            "and restart the manager.");
+            "username' and '-k password', or set WAZUH_INDEXER_MANAGER_PASSWORD in /etc/wazuh-manager/local.env "
+            "(the indexer publishes it in /etc/wazuh-indexer/export/credentials.env) and restart the manager.");
     }
 
     // The account name, never the password: which identity the manager presents is the thing an

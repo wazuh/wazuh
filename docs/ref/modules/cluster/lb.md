@@ -169,7 +169,7 @@ is. Neither is wrong; the deployment has to know which one it picked.
 ## 6. Certificates
 
 `/etc/wazuh-manager/certs/` is **not** replicated, so every node needs its own listener pair, from one CA. Each
-node's installation issues its pair when that CA is staged in `/etc/wazuh/ca` beforehand (see
+node's installation issues its pair when that CA is staged in `/etc/wazuh-manager/ca/` beforehand (see
 [Cluster deployments](../../getting-started/credentials.md#cluster-deployments)); otherwise issue the
 pairs externally, for example with the Wazuh installation assistant's `wazuh-certs-tool`.
 
@@ -373,9 +373,9 @@ balancer and validates whichever node answered.
 
 #### Issued at installation
 
-When each node's installation issues its own pair from a shared CA staged in `/etc/wazuh/ca`, put
+When each node's installation issues its own pair from a shared CA staged in `/etc/wazuh-manager/ca/`, put
 the agent-facing address in the node's listener certificate by setting
-`WAZUH_MANAGER_REMOTED_CERT_SANS` in `/etc/wazuh/credentials.env` before installing. An explicit
+`WAZUH_MANAGER_REMOTED_CERT_SANS` in `/etc/wazuh-manager/local.env` before installing. An explicit
 value **replaces** address discovery, so list the node's own names and addresses as well:
 
 ```bash

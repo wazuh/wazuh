@@ -34,15 +34,52 @@ namespace
                                  const std::string& filePath,
                                  const std::string& pattern,
                                  const PolicyEvaluationContext& ctx,
-                                 std::string& unresolvedReason)
+                                 std::string& unresolvedReason,
+                                 bool followSymlinks,
+                                 bool& isSymbolicLink)
     {
         bool matchFound = false;
+        isSymbolicLink = false;
 
-        if (sca::IsRegexOrNumericPattern(pattern))
+        // The file type is checked on the opened file, so a named pipe or device put in place of a regular
+        // file is reported instead of blocking or exhausting the scan. Regex and numeric patterns need the
+        // whole content; an exact line is looked for while reading, which stops at the first match.
+        const auto isRegexOrNumeric = sca::IsRegexOrNumericPattern(pattern);
+        std::string fileContent;
+        const auto status = isRegexOrNumeric
+                            ? fileUtils->getRegularFileContent(filePath, followSymlinks, fileContent)
+                            : fileUtils->readRegularFileLineByLine(filePath,
+                                                                   followSymlinks,
+                                                                   [&pattern, &matchFound](const std::string & line)
         {
-            const auto content = fileUtils->getFileContent(filePath);
+            if (line == pattern)
+            {
+                matchFound = true;
+                return false;
+            }
 
-            if (const auto patternMatch = sca::PatternMatches(content, pattern, ctx.regexEngine))
+            return true;
+        });
+
+        // Only returned when links are not followed; the caller decides what a link means
+        if (status == RegularFileStatus::SymbolicLink)
+        {
+            isSymbolicLink = true;
+            LoggingHelper::getInstance().log(LOG_DEBUG, "File '" + filePath + "' is a symbolic link");
+            return RuleResult::NotFound;
+        }
+
+        if (status == RegularFileStatus::NotRegular)
+        {
+            unresolvedReason = "File '" + filePath + "' is not a regular file";
+            LoggingHelper::getInstance().log(LOG_DEBUG, unresolvedReason);
+            return RuleResult::Invalid;
+        }
+
+        if (isRegexOrNumeric)
+        {
+            // A file that cannot be opened is matched as empty, as it has always been for these patterns
+            if (const auto patternMatch = sca::PatternMatches(fileContent, pattern, ctx.regexEngine))
             {
                 matchFound = patternMatch.value();
             }
@@ -55,17 +92,11 @@ namespace
         }
         else
         {
-            fileUtils->readLineByLine(filePath,
-                                      [&pattern, &matchFound](const std::string & line)
+            // A file that could not be read is not evaluated. A match stops reading, so it is never followed by this.
+            if (status == RegularFileStatus::OpenFailed)
             {
-                if (line == pattern)
-                {
-                    matchFound = true;
-                    return false;
-                }
-
-                return true;
-            });
+                throw std::runtime_error("Could not open file");
+            }
         }
 
         LoggingHelper::getInstance().log(LOG_DEBUG, "Pattern '" + pattern + "' " + (matchFound ? "was" : "was not") + " found in file '" + filePath + "'");
@@ -77,7 +108,9 @@ namespace
                                  const PolicyEvaluationContext& ctx,
                                  std::string& unresolvedReason)
     {
-        return FindContentInFile(fileUtils, ctx.rule, pattern, ctx, unresolvedReason);
+        // Policies rely on file rules following symbolic links (e.g. /etc/os-release is one on many systems)
+        bool isSymbolicLink = false;
+        return FindContentInFile(fileUtils, ctx.rule, pattern, ctx, unresolvedReason, true, isSymbolicLink);
     }
 } // namespace
 
@@ -457,6 +490,7 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
 
                 if (patternMatch.has_value())
                 {
+                    const auto hadValueBeforeEntry = hadValue;
                     hadValue = true;
 
                     if (patternMatch.value())
@@ -464,11 +498,26 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
                         // If we have content pattern, check file contents; otherwise just return found
                         if (content.has_value())
                         {
+                            // Symbolic links are skipped above; not following them on open applies the same rule
+                            // to the file that is actually read, also where the check above cannot see links
+                            bool isSymbolicLink = false;
                             const auto result = TryFunc([&]
                             {
-                                return FindContentInFile(
-                                    m_fileUtils, file.string(), content.value(), m_ctx, m_lastUnresolvedReason);
+                                return FindContentInFile(m_fileUtils,
+                                                         file.string(),
+                                                         content.value(),
+                                                         m_ctx,
+                                                         m_lastUnresolvedReason,
+                                                         false,
+                                                         isSymbolicLink);
                             });
+
+                            if (result.has_value() && isSymbolicLink)
+                            {
+                                // Skipped as if the check above had caught it, so it does not count as evaluated
+                                hadValue = hadValueBeforeEntry;
+                                continue;
+                            }
 
                             if (result.has_value())
                             {
@@ -513,11 +562,23 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
 
                 if (file.filename().string() == fileName)
                 {
+                    bool isSymbolicLink = false;
                     const auto result = TryFunc([&]
                     {
-                        return FindContentInFile(
-                            m_fileUtils, fileName, content.value(), m_ctx, m_lastUnresolvedReason);
+                        return FindContentInFile(m_fileUtils,
+                                                 file.string(),
+                                                 content.value(),
+                                                 m_ctx,
+                                                 m_lastUnresolvedReason,
+                                                 false,
+                                                 isSymbolicLink);
                     });
+
+                    // Skipped as if the symbolic link check above had caught it
+                    if (result.has_value() && isSymbolicLink)
+                    {
+                        continue;
+                    }
 
                     if (result.has_value())
                     {
@@ -532,7 +593,7 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
                     }
                     else
                     {
-                        m_lastUnresolvedReason = "Failed to read contents of file '" + fileName + "' in directory '" + rootPath.string() + "'";
+                        m_lastUnresolvedReason = "Failed to read contents of file '" + file.string() + "' in directory '" + rootPath.string() + "'";
                         return RuleResult::Invalid;
                     }
                 }

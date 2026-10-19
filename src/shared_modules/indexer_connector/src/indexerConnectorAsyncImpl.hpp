@@ -1,12 +1,13 @@
 /*
  * Wazuh - Indexer connector implementation.
- * Copyright (C) 2015, Wazuh Inc.
- * July 2, 2025.
+ * Copyright (C) Wazuh Inc.
  *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of either the GNU General Public License, version 2, or
+ * the GNU Affero General Public License, version 3 or (at your option) any
+ * later version, both as published by the Free Software Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
 #include "IURLRequest.hpp"
@@ -188,7 +189,8 @@ public:
         THttpRequest* httpRequest = nullptr,
         std::unique_ptr<TSelector> selector = nullptr,
         std::string callerName = "",
-        std::optional<SecureCommunication> secureCommunication = std::nullopt)
+        std::optional<SecureCommunication> secureCommunication = std::nullopt,
+        IndexerBulkQueue::PauseObserver pauseObserver = {})
         : m_httpRequest(httpRequest ? httpRequest : &THttpRequest::instance())
         , m_logFn {}
     {
@@ -622,7 +624,8 @@ public:
             m_bulkMaxBytes,
             m_flushInterval,
             RetryDelay,
-            m_maxRetryDelay);
+            m_maxRetryDelay,
+            std::move(pauseObserver));
     }
 
     void bulkIndex(std::string_view id, std::string_view index, std::string_view data)

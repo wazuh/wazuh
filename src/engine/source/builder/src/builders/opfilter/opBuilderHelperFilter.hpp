@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef OP_BUILDER_HELPER_FILTER_H
 #define OP_BUILDER_HELPER_FILTER_H
 

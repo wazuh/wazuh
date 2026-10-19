@@ -1,4 +1,4 @@
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -35,7 +35,7 @@ def _load_effective_indexer_ssl():
 
 
 def test_resolve_wazuh_path_keeps_absolute_paths():
-    path = "/tmp/root-ca.pem"
+    path = "/tmp/indexer-ca.pem"
 
     assert resolve_wazuh_path(path) == path
 
@@ -43,8 +43,8 @@ def test_resolve_wazuh_path_keeps_absolute_paths():
 def test_resolve_wazuh_path_uses_wazuh_path_for_relative_paths():
     with patch("wazuh.core.indexer.indexer.common.WAZUH_PATH", "/var/wazuh-manager"):
         assert (
-            resolve_wazuh_path("etc/certs/root-ca.pem")
-            == "/var/wazuh-manager/etc/certs/root-ca.pem"
+            resolve_wazuh_path("etc/certs/indexer-ca.pem")
+            == "/var/wazuh-manager/etc/certs/indexer-ca.pem"
         )
 
 
@@ -62,7 +62,7 @@ async def test_get_indexer_client_resolves_relative_certificate_paths():
         "indexer": {
             "hosts": ["https://localhost:9200"],
             "ssl": {
-                "certificate_authorities": ["etc/certs/root-ca.pem"],
+                "certificate_authorities": ["etc/certs/indexer-ca.pem"],
                 "certificate": "etc/certs/indexer-connector.pem",
                 "key": "etc/certs/indexer-connector-key.pem",
             },
@@ -101,7 +101,7 @@ async def test_get_indexer_client_resolves_relative_certificate_paths():
     create_ssl_context.assert_called_once_with(
         "/var/wazuh-manager/etc/certs/indexer-connector.pem",
         "/var/wazuh-manager/etc/certs/indexer-connector-key.pem",
-        ["/var/wazuh-manager/etc/certs/root-ca.pem"],
+        ["/var/wazuh-manager/etc/certs/indexer-ca.pem"],
     )
 
     # Verify indexer was created with SSL context instead of cert paths
@@ -165,7 +165,7 @@ async def _run_get_indexer_client(indexer_extra, hosts=("https://localhost:9200"
 @pytest.mark.asyncio
 @pytest.mark.parametrize("ssl_section", [
     {},
-    {"certificate_authorities": ["etc/certs/root-ca.pem"]},
+    {"certificate_authorities": ["etc/certs/indexer-ca.pem"]},
     # Invalid for TLS (certificate without key), irrelevant without it.
     {"certificate": "etc/certs/indexer-connector.pem"},
 ], ids=["no-ssl", "ca-only", "certificate-without-key"])
@@ -239,11 +239,11 @@ async def test_get_indexer_client_with_schema_default_ssl_has_no_client_cert():
 @pytest.mark.asyncio
 async def test_get_indexer_client_with_only_certificate_authorities_has_no_client_cert():
     create_ssl_context = await _run_get_indexer_client(
-        {"ssl": {"certificate_authorities": ["etc/certs/root-ca.pem"]}}
+        {"ssl": {"certificate_authorities": ["etc/certs/indexer-ca.pem"]}}
     )
 
     create_ssl_context.assert_called_once_with(
-        None, None, ["/var/wazuh-manager/etc/certs/root-ca.pem"]
+        None, None, ["/var/wazuh-manager/etc/certs/indexer-ca.pem"]
     )
 
 
@@ -293,7 +293,7 @@ async def test_get_indexer_client_raises_on_a_mixed_empty_certificate_authority(
     not mask the blank one."""
     with pytest.raises(IndexerUnavailableError, match="must not contain empty entries"):
         await _run_get_indexer_client(
-            {"ssl": {"certificate_authorities": ["etc/certs/root-ca.pem", ""]}}
+            {"ssl": {"certificate_authorities": ["etc/certs/indexer-ca.pem", ""]}}
         )
 
 

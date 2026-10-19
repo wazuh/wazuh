@@ -1,6 +1,11 @@
 /*
- * Copyright (C) 2015, Wazuh Inc.
- * This program is free software; you can redistribute it and/or modify it under the terms of GPLv2.
+ * Copyright (C) Wazuh Inc.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of either the GNU General Public License, version 2, or
+ * the GNU Affero General Public License, version 3 or (at your option) any
+ * later version, both as published by the Free Software Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 #include "semantics.hpp"
 
@@ -123,9 +128,9 @@ namespace manager_config::detail
 
         // Nothing recreates these files at start: the credential resolver issues them once, at installation,
         // and the operator provisions or rotates them out of band thereafter (e.g. with wazuh-certs-tool). So a
-        // missing file is a fail-closed verdict here, before any daemon starts. indexer.ssl.* is deliberately
-        // not checked (the indexer connector reports those files at runtime), otherwise a manager without an
-        // indexer could not start.
+        // missing file is a fail-closed verdict here, before any daemon starts. indexer.ssl.* is not checked
+        // here: the credential resolver owns those files (imported from the indexer's export or staged by the
+        // operator) and refuses the start itself when they are missing or invalid.
         if (options.checkFiles)
         {
             for (const char* pointer : {"/remote/https/certificate",

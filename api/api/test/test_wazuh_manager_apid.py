@@ -1,4 +1,4 @@
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -68,8 +68,9 @@ def test_start_refuses_to_create_the_rbac_database(apid, tmp_path, exists):
     """`start()` must not create `rbac.db`: it would seed passwords published nowhere.
 
     Creating it here gives the two default users generated passwords that never reach
-    /etc/wazuh/credentials.env or the log, so the API starts and nobody can authenticate. The file
-    belongs to the credential resolver; an empty one is a failed creation, not a database.
+    /etc/wazuh-manager/export/credentials.env or the log, so the API starts and nobody can
+    authenticate. The file belongs to the credential resolver; an empty one is a failed creation,
+    not a database.
     """
     api_error = _prepare_start_without_rbac_db(apid, tmp_path)
     if exists:

@@ -1,7 +1,6 @@
 /*
  * Wazuh agent HTTPS client (C++ transport module)
- * Copyright (C) 2015, Wazuh Inc.
- * July 17, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -145,6 +144,7 @@ StatefulStream::SendResult StatefulStream::sendSession(const Session& session, W
     spec.target = "/stateful";
     spec.bodyFilePath = session.spool->path(); // Streamed from disk (flat memory).
     spec.bodyFileSize = session.size;
+    spec.maxResponseBytes = STATEFUL_MAX_RESPONSE_BYTES;
     spec.timeoutMs = m_config.statefulTimeoutMs;
     spec.headers.push_back("X-Session-Id: " + session.id); // Stable across retries (LRU dedup).
 
@@ -195,9 +195,17 @@ StatefulStream::SendResult StatefulStream::sendSession(const Session& session, W
     }
 
     const auto result = m_sender.send(spec, waiter, m_config.statefulMaxAttempts);
+
     // The /stateful contract is interpreted from the raw HTTP status code and body by
     // agent_sync_protocol, not from the shared D9 OutcomeClass (see SendResult::httpCode).
     // result.response.httpCode is 0 when no HTTP response was received (m_sender's retry
     // loop already exhausted its attempts via the OutcomeClass-driven retry decision).
+    // A transfer cut after the status line (response cap, timeout) keeps the code but
+    // carries only part of the body, so it is not an answer either.
+    if (result.response.status != TransportStatus::Ok)
+    {
+        return {0, {}};
+    }
+
     return {result.response.httpCode, result.response.body};
 }

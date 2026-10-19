@@ -1,7 +1,6 @@
 /*
  * Wazuh agent HTTPS client (C++ transport module)
- * Copyright (C) 2015, Wazuh Inc.
- * August 19, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -172,6 +171,7 @@ TEST(EnrollClientTest, OpenModeSendsOnlyProtocolVersion)
     {
         EXPECT_EQ("/enroll", spec.target);
         EXPECT_EQ("application/json", spec.contentType);
+        EXPECT_EQ(static_cast<uint64_t>(HC_MAX_ENROLL_BODY - 1), spec.maxResponseBytes);
         EXPECT_TRUE(hasHeader(spec.headers, "protocol-version: 1"));
         EXPECT_FALSE(hasHeader(spec.headers, "Authorization:"));
         EXPECT_FALSE(hasHeader(spec.headers, "Content-Encoding:"));

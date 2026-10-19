@@ -1,4 +1,4 @@
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 #
 # This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
@@ -44,6 +44,14 @@ if(${TARGET} STREQUAL "agent")
     list(APPEND wmodules_names "test_wm_main")
     list(APPEND wmodules_flags "-Wl,--wrap,sleep -Wl,--wrap,exit")
 endif()
+
+# The listener loop, in its own binary so that wrapping close and accept does not reach the
+# other wmcom tests.
+list(APPEND wmodules_names "test_wmcom_main")
+list(APPEND wmodules_flags "-Wl,--wrap,close -Wl,--wrap,accept -Wl,--wrap,wm_select_interruptible \
+                            -Wl,--wrap,OS_BindUnixDomainWithPerms -Wl,--wrap,OS_SetRecvTimeout \
+                            -Wl,--wrap,OS_SetSendTimeout -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,OS_SendSecureTCP \
+                            -Wl,--wrap,w_query_agentd -Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1")
 
 # Compilig tests
 list(LENGTH wmodules_names count)

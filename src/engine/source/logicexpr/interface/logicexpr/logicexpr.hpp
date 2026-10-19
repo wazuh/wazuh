@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _LOGIC_EXPRESSION_H
 #define _LOGIC_EXPRESSION_H
 

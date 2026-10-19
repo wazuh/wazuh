@@ -1,7 +1,6 @@
 /*
  * Wazuh DB pool handler headers
- * Copyright (C) 2015, Wazuh Inc.
- * February 16, 2024.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public

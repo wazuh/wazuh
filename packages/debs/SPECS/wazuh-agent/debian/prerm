@@ -43,16 +43,47 @@ check_anti_tampering() {
   fi
 }
 
+# Prints the value file $1 gives KEY $2 on its last "[export ]KEY=value" line, or $3 when the file
+# does not set it. Read as the shell reads a plain assignment: a quoted value without its quotes, an
+# unquoted one up to the first blank, and neither with a trailing comment. Nothing in the file is run.
+env_file_value() {
+  local value
+  value=$(sed -n "s/^[[:space:]]*\(export[[:space:]][[:space:]]*\)\{0,1\}$2=//p" "$1" | tail -n 1 \
+    | sed -e 's/^"\(.*\)"[[:space:]]*\(#.*\)\{0,1\}$/\1/' -e t \
+          -e "s/^'\(.*\)'[[:space:]]*\(#.*\)\{0,1\}\$/\1/" -e t \
+          -e 's/[[:space:]].*$//')
+  printf '%s\n' "${value:-$3}"
+}
+
+# Takes the VALIDATION_* variables from etc/uninstall_validation.env, which overrides the
+# environment. etc/ is writable by the wazuh group, so the file is read as data, and only when it
+# is a regular file root owns and nobody else can write. It is checked and read through a hard link
+# made in a directory only root can enter: ln neither opens the file (cp would block on a FIFO) nor
+# follows a link, and the file it pins cannot be swapped after the check.
+load_uninstall_validation_env() {
+  local env_file="${DIR}/etc/uninstall_validation.env"
+  local link_dir
+
+  if [ ! -e "${env_file}" ] && [ ! -L "${env_file}" ]; then
+    echo "INFO: Uninstall configuration file not found, using environment variables."
+    return
+  fi
+  link_dir=$(mktemp -d "${DIR}/.uninstall-validation.XXXXXX") || exit 1
+  if ! ln -P "${env_file}" "${link_dir}/env" 2> /dev/null || [ -L "${link_dir}/env" ] || [ ! -f "${link_dir}/env" ] \
+      || [ -z "$(find "${link_dir}/env" -user 0 ! -perm -0020 ! -perm -0002)" ]; then
+    echo "WARNING: ${env_file} is not a regular file owned by root and writable only by it; ignoring it and using environment variables."
+  else
+    VALIDATION_HOST=$(env_file_value "${link_dir}/env" VALIDATION_HOST "${VALIDATION_HOST}")
+    VALIDATION_TOKEN=$(env_file_value "${link_dir}/env" VALIDATION_TOKEN "${VALIDATION_TOKEN}")
+    VALIDATION_LOGIN=$(env_file_value "${link_dir}/env" VALIDATION_LOGIN "${VALIDATION_LOGIN}")
+    VALIDATION_SSL_VERIFY=$(env_file_value "${link_dir}/env" VALIDATION_SSL_VERIFY "${VALIDATION_SSL_VERIFY}")
+  fi
+  rm -rf "${link_dir}"
+}
+
 # Function to validate uninstallation
 validate_uninstall() {
-  local validation_command
-
-  # Check if the configuration file exists
-  if [ -f "${DIR}/etc/uninstall_validation.env" ]; then
-    . "${DIR}/etc/uninstall_validation.env"
-  else
-    echo "INFO: Uninstall configuration file not found, using environment variables."
-  fi
+  load_uninstall_validation_env
 
   # Check if the VALIDATION_HOST variables are set
   if [ -z "$VALIDATION_HOST" ]; then
@@ -60,19 +91,19 @@ validate_uninstall() {
     exit 1
   fi
 
-  # Validate uninstallation
+  # Validate uninstallation. Each value is passed as one argument, never split into more.
   if [ -n "$VALIDATION_TOKEN" ] && [ -n "$VALIDATION_LOGIN" ]; then
-    validation_command="${DIR}/bin/wazuh-agentd --uninstall-auth-token=${VALIDATION_TOKEN} --uninstall-auth-login=${VALIDATION_LOGIN} --uninstall-auth-host=${VALIDATION_HOST} --uninstall-ssl-verify=${VALIDATION_SSL_VERIFY}"
+    set -- "--uninstall-auth-token=${VALIDATION_TOKEN}" "--uninstall-auth-login=${VALIDATION_LOGIN}"
   elif [ -n "$VALIDATION_TOKEN" ]; then
-    validation_command="${DIR}/bin/wazuh-agentd --uninstall-auth-token=${VALIDATION_TOKEN} --uninstall-auth-host=${VALIDATION_HOST} --uninstall-ssl-verify=${VALIDATION_SSL_VERIFY}"
+    set -- "--uninstall-auth-token=${VALIDATION_TOKEN}"
   elif [ -n "$VALIDATION_LOGIN" ]; then
-    validation_command="${DIR}/bin/wazuh-agentd --uninstall-auth-login=${VALIDATION_LOGIN} --uninstall-auth-host=${VALIDATION_HOST} --uninstall-ssl-verify=${VALIDATION_SSL_VERIFY}"
+    set -- "--uninstall-auth-login=${VALIDATION_LOGIN}"
   else
     echo "ERROR: Validation login or token not provided. Uninstallation cannot be continued."
     exit 1
   fi
 
-  if $validation_command; then
+  if "${DIR}/bin/wazuh-agentd" "$@" "--uninstall-auth-host=${VALIDATION_HOST}" "--uninstall-ssl-verify=${VALIDATION_SSL_VERIFY}"; then
     echo "INFO: Uninstallation authorized, continuing..."
   else
     echo "ERROR: Uninstallation not authorized, aborting..."
@@ -112,19 +143,20 @@ case "$1" in
       fi
       ${DIR}/bin/wazuh-control stop > /dev/null 2>&1
 
-      # Save the conffiles
-      mkdir -p ${DIR}/tmp/conffiles
-      # Save the client.keys
-      if [ -f ${DIR}/etc/client.keys ]; then
-        cp -p ${DIR}/etc/client.keys ${DIR}/tmp/conffiles
-      fi
-      # Save the local_internal_options.conf
-      if [ -f ${DIR}/etc/local_internal_options.conf ]; then
-        cp -p ${DIR}/etc/local_internal_options.conf ${DIR}/tmp/conffiles
-      fi
-      # Save the ossec.conf
-      if [ -f ${DIR}/etc/ossec.conf ]; then
-        cp -p ${DIR}/etc/ossec.conf ${DIR}/tmp/conffiles
+      # Save the conffiles, for postrm to keep as .save. tmp/ is writable by the wazuh group, which
+      # could leave a link at tmp/conffiles for mkdir -p and cp to follow: whatever is there goes,
+      # and a plain mkdir makes the directory anew, failing if anything took its place meanwhile.
+      # Root owns it, and the sticky bit on tmp/ keeps the group from replacing it until postrm.
+      rm -rf ${DIR}/tmp/conffiles
+      if mkdir -m 0750 ${DIR}/tmp/conffiles 2> /dev/null; then
+        # A link in etc/ is not ours to save: skipped, and -P keeps one swapped in meanwhile a link.
+        for CONF_FILE in client.keys local_internal_options.conf ossec.conf; do
+          if [ -f ${DIR}/etc/${CONF_FILE} ] && [ ! -L ${DIR}/etc/${CONF_FILE} ]; then
+            cp -pP ${DIR}/etc/${CONF_FILE} ${DIR}/tmp/conffiles
+          fi
+        done
+      else
+        echo "WARNING: could not create ${DIR}/tmp/conffiles; the configuration files will not be kept as .save." >&2
       fi
 
     ;;

@@ -1,7 +1,6 @@
 /*
  * Wazuh CA bundle library
- * Copyright (C) 2015, Wazuh Inc.
- * September 17, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public

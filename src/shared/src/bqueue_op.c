@@ -1,9 +1,8 @@
 /**
  * @file bqueue_op.c
  * @brief Binary queue type definition
- * @date 2020-09-20
  *
- * @copyright Copyright (C) 2015 Wazuh, Inc.
+ * @copyright Copyright (C) Wazuh Inc.
  */
 
 /*
