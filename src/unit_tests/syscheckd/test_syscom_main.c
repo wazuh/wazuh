@@ -179,6 +179,7 @@ static void test_syscom_main_terminates_a_full_size_request(void **state) {
     os_calloc(OS_MAXSTR, sizeof(char), expected);
     memset(request, 'x', OS_MAXSTR);
 
+    // The unit tests build with ASan: without the extra byte, logging the request reads past its buffer.
     expect_client_accepted();
     will_return(__wrap_OS_RecvSecureTCP, request);
     will_return(__wrap_OS_RecvSecureTCP, OS_MAXSTR);

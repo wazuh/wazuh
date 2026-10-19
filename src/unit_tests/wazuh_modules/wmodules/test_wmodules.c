@@ -190,10 +190,38 @@ static void test_modules_sync_requires_dbsync_token(void ** state) {
     (void)state;
     char input[] = "syscollector_packages other {\"dbsync\":1}";
 
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "At modulesSync(): message for module 'syscollector' is not a dbsync command; ignoring it.");
+
     int ret = modulesSync(input);
 
     assert_int_equal(ret, 0);
     assert_int_equal(syscollector_sync_calls, 0);
+}
+
+// "dbsync" must be a whole token: a longer word is not a dbsync command.
+static void test_modules_sync_requires_whole_dbsync_token(void ** state) {
+    (void)state;
+    char input[] = "syscollector_packages dbsyncx checksum_fail {}";
+
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "At modulesSync(): message for module 'syscollector' is not a dbsync command; ignoring it.");
+
+    int ret = modulesSync(input);
+
+    assert_int_equal(ret, 0);
+    assert_int_equal(syscollector_sync_calls, 0);
+}
+
+// A dbsync token at the end of the message is still a dbsync command.
+static void test_modules_sync_accepts_trailing_dbsync_token(void ** state) {
+    (void)state;
+    char input[] = "syscollector_packages dbsync";
+
+    int ret = modulesSync(input);
+
+    assert_int_equal(ret, 0);
+    assert_int_equal(syscollector_sync_calls, 1);
 }
 
 static void test_url_is_allowed_null_url(void ** state) {
@@ -283,6 +311,8 @@ int main() {
         cmocka_unit_test_setup_teardown(test_modules_sync_ignores_name_outside_header, setup_modules, teardown_modules),
         cmocka_unit_test_setup_teardown(test_modules_sync_requires_component_separator, setup_modules, teardown_modules),
         cmocka_unit_test_setup_teardown(test_modules_sync_requires_dbsync_token, setup_modules, teardown_modules),
+        cmocka_unit_test_setup_teardown(test_modules_sync_requires_whole_dbsync_token, setup_modules, teardown_modules),
+        cmocka_unit_test_setup_teardown(test_modules_sync_accepts_trailing_dbsync_token, setup_modules, teardown_modules),
         cmocka_unit_test(test_url_is_allowed_null_url),
         cmocka_unit_test(test_url_is_allowed_matching_host),
         cmocka_unit_test(test_url_is_allowed_matching_host_no_path),

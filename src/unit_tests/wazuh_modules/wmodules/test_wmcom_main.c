@@ -94,6 +94,14 @@ static void expect_client_accepted(void) {
     expect_value(__wrap_OS_RecvSecureTCP, sock, TEST_PEER);
 }
 
+// No module takes the message, so modulesSync() retries before giving up.
+static void expect_sync_retries_exhausted(void) {
+    expect_string(__wrap__mdebug1, formatted_msg, "WModules is not ready. Retry 1");
+    expect_string(__wrap__mdebug1, formatted_msg, "WModules is not ready. Retry 2");
+    expect_string(__wrap__mdebug1, formatted_msg, "WModules is not ready. Retry 3");
+    expect_string(__wrap__merror, formatted_msg, "At modulesSync(): Unable to sync module '': (-1)");
+}
+
 static void assert_client_and_socket_closed(void) {
     assert_int_equal(closed_fds_count, 2);
     assert_int_equal(closed_fds[0], TEST_PEER);
@@ -157,10 +165,7 @@ static void test_wmcom_main_answers_and_closes_client(void **state) {
     will_return(__wrap_OS_RecvSecureTCP, 5);
 
     // An unknown command falls through to the sync dispatcher, which finds no module.
-    expect_string(__wrap__mdebug1, formatted_msg, "WModules is not ready. Retry 1");
-    expect_string(__wrap__mdebug1, formatted_msg, "WModules is not ready. Retry 2");
-    expect_string(__wrap__mdebug1, formatted_msg, "WModules is not ready. Retry 3");
-    expect_string(__wrap__merror, formatted_msg, "At modulesSync(): Unable to sync module '': (-1)");
+    expect_sync_retries_exhausted();
     expect_string(__wrap__mdebug1, formatted_msg, "At WMCOM sync: Could not sync 'bogus' buffer");
     expect_string(__wrap__mdebug1, formatted_msg, "WMCOM Unrecognized command 'bogus'.");
 
@@ -186,14 +191,12 @@ static void test_wmcom_main_terminates_a_full_size_request(void **state) {
     os_calloc(OS_MAXSTR, sizeof(char), expected_unrecognized);
     memset(request, 'x', OS_MAXSTR);
 
+    // The unit tests build with ASan: without the extra byte, logging the request reads past its buffer.
     expect_client_accepted();
     will_return(__wrap_OS_RecvSecureTCP, request);
     will_return(__wrap_OS_RecvSecureTCP, OS_MAXSTR);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "WModules is not ready. Retry 1");
-    expect_string(__wrap__mdebug1, formatted_msg, "WModules is not ready. Retry 2");
-    expect_string(__wrap__mdebug1, formatted_msg, "WModules is not ready. Retry 3");
-    expect_string(__wrap__merror, formatted_msg, "At modulesSync(): Unable to sync module '': (-1)");
+    expect_sync_retries_exhausted();
     // expect_string() keeps the pointer, so each expected message needs its own buffer.
     snprintf(expected_sync, OS_MAXSTR, "At WMCOM sync: Could not sync '%s' buffer", request);
     expect_string(__wrap__mdebug1, formatted_msg, expected_sync);

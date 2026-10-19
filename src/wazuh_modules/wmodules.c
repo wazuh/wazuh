@@ -373,10 +373,15 @@ static bool wm_sync_frame_targets(const char * frame, const char * name) {
  * @return true if the token after the header is "dbsync".
  */
 static bool wm_sync_frame_is_dbsync(const char * frame) {
-    static const char DBSYNC_TOKEN[] = "dbsync ";
+    static const char DBSYNC_TOKEN[] = "dbsync";
     const char * separator = strchr(frame, ' ');
 
-    return separator != NULL && strncmp(separator + 1, DBSYNC_TOKEN, sizeof(DBSYNC_TOKEN) - 1) == 0;
+    if (separator == NULL || strncmp(separator + 1, DBSYNC_TOKEN, sizeof(DBSYNC_TOKEN) - 1) != 0) {
+        return false;
+    }
+
+    const char next = separator[sizeof(DBSYNC_TOKEN)];
+    return next == ' ' || next == '\0';
 }
 
 // sync data
@@ -394,7 +399,10 @@ int modulesSync(char* args) {
         for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
             if (wm_sync_frame_targets(args, cur_module->context->name)) {
                 ret = 0;
-                if (wm_sync_frame_is_dbsync(args) && cur_module->context->sync != NULL) {
+                if (!wm_sync_frame_is_dbsync(args)) {
+                    mdebug1("At modulesSync(): message for module '%s' is not a dbsync command; ignoring it.",
+                            cur_module->context->name);
+                } else if (cur_module->context->sync != NULL) {
                     ret = cur_module->context->sync(args);
                 }
                 break;

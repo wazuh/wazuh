@@ -52,6 +52,8 @@ All notable changes to this project will be documented in this file.
 - Fixed `wurl_request()` sending `|` and `\` unencoded in the URL, so a URL containing `|` was split into extra fields by the download module, truncating the URL and replacing the destination, header and data of the request. ([#40357](https://github.com/wazuh/wazuh/pull/40357))
 - Fixed `wazuh-keystore` being built without the stack canary, FORTIFY_SOURCE and PIE hardening flags on Linux. ([#39982](https://github.com/wazuh/wazuh/issues/39982))
 - Fixed SCA content checks opening non-regular files without validating them on UNIX systems, which could block the scan. ([#40490](https://github.com/wazuh/wazuh/pull/40490))
+- Fixed `wazuh-modulesd` and `wazuh-syscheckd` keeping a local request connection open when the request could not be read. ([#40472](https://github.com/wazuh/wazuh/pull/40472))
+- Fixed `wazuh-modulesd` delivering a synchronization message to the wrong module when its data contains another module's name. ([#40472](https://github.com/wazuh/wazuh/pull/40472))
 
 #### Changed
 
