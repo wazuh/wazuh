@@ -651,9 +651,10 @@ public:
                         }
                         // Retries exhausted: discard. Note the queue's backoff stays high after this
                         // discard (only reportHealthyResponse() resets it, and a 503 is not a healthy
-                        // response), so under a persistent 503 each following batch takes about
-                        // (MaxUnavailableRetries - 1) x the max retry delay to be discarded, not the
-                        // ramp-up time of the first one.
+                        // response), and each retry also waits for the next flush (the requeued batch
+                        // does not fill the bulk threshold). Under a persistent 503 each following batch
+                        // takes about (MaxUnavailableRetries - 1) x (max retry delay + flush interval) to
+                        // be discarded, not the ramp-up time of the first one.
                         m_consecutiveUnavailable = 0;
                         discardBatch(statusCode, bulkSize, error, responseBody, true);
                         return;
