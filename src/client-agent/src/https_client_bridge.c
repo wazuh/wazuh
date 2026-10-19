@@ -1531,6 +1531,10 @@ static const struct {
     {"agent-info",      AGENT_INFO_SYNC_HEADER,     false},
 };
 
+/* The largest /stateful answer must fit a frame: header (under 32 bytes) + HCRESULT prefix (under 64). */
+_Static_assert(HC_MAX_STATEFUL_RESPONSE_BODY + 32 + 64 < OS_MAXSTR,
+               "HC_MAX_STATEFUL_RESPONSE_BODY does not leave room for the sync frame header");
+
 /* Session ids arrive as "<module>-<session>". Split on the LAST hyphen, not the
  * first: "agent-info" contains one of its own, and the session is always
  * decimal, so the last hyphen is unambiguous. */

@@ -606,6 +606,12 @@ typedef struct hc_enroll_result_t
 HC_EXPORTED bool hc_enroll(const hc_config_t* config, const hc_enroll_request_t* request,
                            hc_enroll_result_t* result);
 
+/* ---- POST /stateful ---- */
+
+/// Limit on a /stateful answer. The bridge relays it to its module as one local frame
+/// (header + "HCRESULT:<n>:<code>:" + body), which must stay under OS_MAXSTR.
+#define HC_MAX_STATEFUL_RESPONSE_BODY (63 * 1024)
+
 /* ---- GET /cacerts (unverified bootstrap fetch) ---- */
 
 /// Sized for a small chain (leaf + one intermediate) of PEM certificates;

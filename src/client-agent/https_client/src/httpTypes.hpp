@@ -166,11 +166,12 @@ enum class HttpMethod
 
 /// Caps on the responses read into memory. Each sits far above the largest answer a manager
 /// sends, because a transfer cut at its cap is retried like a network failure.
-/// /control carries the task batch, which remoted bounds with
-/// remoted.downstream_max_response_body_size (64 MiB at most), plus the groups and hashes.
+/// /control carries the task batch, which remoted's task client reads with an 11 MiB limit, plus
+/// the groups and hashes. 65 MiB also covers remoted.downstream_max_response_body_size (64 MiB at
+/// most), should the task client ever take that option.
 constexpr uint64_t CONTROL_MAX_RESPONSE_BYTES = 65ULL * 1024 * 1024;
 /// A /stateful answer is relayed to its module as one local frame, which must fit OS_MAXSTR.
-constexpr uint64_t STATEFUL_MAX_RESPONSE_BYTES = 63ULL * 1024;
+constexpr uint64_t STATEFUL_MAX_RESPONSE_BYTES = HC_MAX_STATEFUL_RESPONSE_BODY;
 /// /stateless, /stats, /config and /scan/vd answer with a short status document.
 constexpr uint64_t SHORT_REPLY_MAX_RESPONSE_BYTES = 64ULL * 1024;
 
