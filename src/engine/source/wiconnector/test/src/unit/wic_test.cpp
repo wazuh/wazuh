@@ -1069,11 +1069,11 @@ TEST_F(WIndexerConnectorMockTest, IsConsumerReadyForSyncReturnsFalseAfterShutdow
     EXPECT_FALSE(connector->isConsumerReadyForSync("my-consumer"));
 }
 
-TEST_F(WIndexerConnectorMockTest, IsConsumerReadyForSyncReturnsFalseOnException)
+TEST_F(WIndexerConnectorMockTest, IsConsumerReadyForSyncThrowsOnException)
 {
     EXPECT_CALL(*mock, search(An<std::string_view>(), 1U, _, _)).WillOnce(Throw(std::runtime_error("network error")));
     auto connector = makeConnector();
-    EXPECT_FALSE(connector->isConsumerReadyForSync("my-consumer"));
+    EXPECT_THROW(connector->isConsumerReadyForSync("my-consumer"), std::runtime_error);
 }
 
 /**************************
