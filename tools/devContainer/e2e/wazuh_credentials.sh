@@ -5,12 +5,12 @@
 # KEY=value lines (no quotes, no spaces) to a 0600 file, by default <this dir>/.credentials.env
 # (gitignored). docker compose reads it through env_file:, wazuh_install_manager.sh through ENVV.
 #
-# Password policy: this script generates and validates on its own and does NOT use the
-# wazuh-credentials library — that library does not guarantee the symbol class and its validator
-# accepts characters outside the transport alphabet (decision recorded in the plan's
-# 03-diseno-credenciales.md §1). Each password is 28 random characters of the transport alphabet
-# A-Za-z0-9.,_+:@%^=~- plus one lowercase, one uppercase, one digit and one symbol inserted at
-# random positions: exactly 32 characters, all four classes guaranteed. Randomness: openssl rand,
+# Password policy: this script generates and validates on its own, with the rule the manager's
+# credential resolver (bin/wazuh-manager-resolve-credentials) applies to supplied passwords: the
+# transport alphabet only and all four classes, so every value it writes is accepted. Each password
+# is 28 random characters of the transport alphabet A-Za-z0-9.,_+:@%^=~- plus one lowercase, one
+# uppercase, one digit and one symbol inserted at random positions: exactly 32 characters, all four
+# classes guaranteed. Randomness: openssl rand,
 # rejection sampling (no modulo bias).
 #
 # Output: one "PASS|FAIL|SKIP <check> — <detail>" line per check, then "# summary: N pass, M fail".

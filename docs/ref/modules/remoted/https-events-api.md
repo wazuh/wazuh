@@ -93,9 +93,19 @@ creates `/etc/wazuh-manager/certs` and re-applies the pair's ownership when it i
 the installer prints nothing (the credential resolver issues it later in the same installation, and a
 start without it is refused, see below). An existing pair is never replaced, so upgrades keep theirs.
 
-Without a usable pair the manager **fails closed**, in three layers, from the outside in:
+Without a usable pair the manager **fails closed**, in four layers, from the outside in:
 
-1. **`wazuh-manager-control start`** runs `wazuh-manager-conf validate` before any daemon; it
+1. **The credential resolver's check** (`wazuh-manager-resolve-credentials --check`, which
+   `wazuh-manager-control start` runs before the configuration validator checks any file) follows
+   `remote.https.certificate`, `key` and `ca_certificate` and authd's `ssl_manager_cert` and
+   `ssl_manager_key`, which must name files directly in `/etc/wazuh-manager/certs`. It refuses a
+   certificate or key present without its other half
+   (`INVALID /etc/wazuh-manager/certs/remoted-key.pem: half a pair (remoted.pem is missing)`), a file
+   that is not `root:wazuh-manager` mode `0640`
+   (`UNSAFE /etc/wazuh-manager/certs/remoted-key.pem: group is root, not wazuh-manager`), and a pair
+   or bundle that is not valid (key mismatch, issuer, validity window). A pair missing altogether is
+   left to the next layer. See [Credentials](../../getting-started/credentials.md).
+2. **`wazuh-manager-control start`** runs `wazuh-manager-conf validate` before any daemon; it
    checks that every file the listeners reference exists — `remote.https.certificate`, `key`, `ca`,
    `ca_certificate` and authd's `ssl_manager_cert`, `ssl_manager_key`, `ssl_agent_ca` (empty values
    are skipped) — and refuses to start on the first missing one with, on the console and in
@@ -103,21 +113,25 @@ Without a usable pair the manager **fails closed**, in three layers, from the ou
    `(1244): Invalid configuration at '/remote/https/certificate': file not found:
    /etc/wazuh-manager/certs/remoted.pem (issued by the credential resolver at installation, or
    provisioned externally, e.g. with wazuh-certs-tool).`
-2. **`wazuh-manager-remoted`**, after dropping privileges and before remoted writes its PID file
+3. **`wazuh-manager-remoted`**, after dropping privileges and before remoted writes its PID file
    (so `wazuh-manager-control status` never reports as running a remoted that is about to exit), probes both paths with `access(R_OK)` and exits with exactly one of
    `Cannot start the HTTPS agent listener: the TLS certificate '<c>' and private key '<k>' are missing
    or unreadable by the service user.`, `… the TLS certificate '<c>' is missing or unreadable by the
    service user.` or `… the TLS private key '<k>' is missing or unreadable by the service user.`,
-   each followed by the hint `The pair is issued at installation and is never reissued at start: if the files are present, check that they are root:wazuh-manager and mode 0640, since remoted opens them after dropping privileges; otherwise provision remoted.pem, remoted-key.pem and root-ca.pem under /etc/wazuh-manager/certs (see 'Credentials' in the installation guide).` When `remote.https.verification_mode` is `certificate` or `full`, it also probes the CA that verifies agent client certificates (`remote.https.ca`; empty means `/etc/wazuh-manager/certs/root-ca.pem`) and exits with `Cannot start the HTTPS agent listener: the CA certificate '<ca>', which verifies agent client certificates, is missing or unreadable by the service user.` followed by the hint ` remote.https.verification_mode requires it: if the file is present, check that it is readable by the service user, since remoted opens it after dropping privileges; otherwise point remote.https.ca at the CA that signs the agents' client certificates.` In every mode it then probes the CA certificate it publishes on `GET /cacerts` (`remote.https.ca_certificate`; empty means `/etc/wazuh-manager/certs/root-ca.pem`) and exits with `Cannot start the HTTPS agent listener: the CA certificate '<ca_certificate>' that remoted publishes on /cacerts for agent enrollment is missing or unreadable by the service user.` followed by the hint ` If the file is present, check that it is readable by the service user, since remoted opens it after dropping privileges; otherwise provision it, or point remote.https.ca_certificate at the CA certificate 5.x agents must trust (see 'Credentials' in the installation guide).` This is the layer a present pair the service cannot read hits (a group other than
-   `wazuh-manager`, or no group read bit): the validator runs as root and cannot tell. `wazuh-manager-authd` fails the same way on the same files (`SSL context
+   each followed by the hint `The pair is issued at installation and is never reissued at start: if the files are present, check that they are root:wazuh-manager and mode 0640, since remoted opens them after dropping privileges; otherwise provision remoted.pem, remoted-key.pem and root-ca.pem under /etc/wazuh-manager/certs (see 'Credentials' in the installation guide).` When `remote.https.verification_mode` is `certificate` or `full`, it also probes the CA that verifies agent client certificates (`remote.https.ca`; empty means `/etc/wazuh-manager/certs/root-ca.pem`) and exits with `Cannot start the HTTPS agent listener: the CA certificate '<ca>', which verifies agent client certificates, is missing or unreadable by the service user.` followed by the hint ` remote.https.verification_mode requires it: if the file is present, check that it is readable by the service user, since remoted opens it after dropping privileges; otherwise point remote.https.ca at the CA that signs the agents' client certificates.` In every mode it then probes the CA certificate it publishes on `GET /cacerts` (`remote.https.ca_certificate`; empty means `/etc/wazuh-manager/certs/root-ca.pem`) and exits with `Cannot start the HTTPS agent listener: the CA certificate '<ca_certificate>' that remoted publishes on /cacerts for agent enrollment is missing or unreadable by the service user.` followed by the hint ` If the file is present, check that it is readable by the service user, since remoted opens it after dropping privileges; otherwise provision it, or point remote.https.ca_certificate at the CA certificate 5.x agents must trust (see 'Credentials' in the installation guide).` For the files the credential resolver follows, a group other than `wazuh-manager` or a
+   missing group read bit is already refused by layer 1; this layer is what catches `remote.https.ca`,
+   which the resolver does not follow, and any other way the service user is denied a file that root
+   can read, since the validator runs as root and cannot tell. `wazuh-manager-authd` fails the same way on the same files (`SSL context
    setup failed (certificate '…', key '…'). authd reuses the HTTPS agent listener's pair, …`).
-3. **The module itself** fails to load a pair that passed both probes but is unusable (corrupt PEM,
+4. **The module itself** fails to load a pair that passed both probes but is unusable (corrupt PEM,
    key/certificate mismatch): the ERROR names which of the two is the problem and, as with every
    other startup failure, `remoted` does not start.
 
-`remote.https.ca_certificate` must be readable at start — the validator above refuses a missing
-`root-ca.pem` with the same `(1244) … file not found` verdict, and remoted's probe (step 2) exits when
-the service user cannot read it, since 5.x agents bootstrap their trust from `GET /cacerts`. Only if
+`remote.https.ca_certificate` must be readable at start, since 5.x agents bootstrap their trust from
+`GET /cacerts`: the credential resolver's check (step 1) refuses it when it is not
+`root:wazuh-manager` mode `0640` or does not contain the CA that issued the listener's certificate,
+the validator (step 2) refuses a missing one with the same `(1244) … file not found` verdict, and
+remoted's probe (step 3) exits when the service user still cannot read it. Only if
 it becomes unreadable or disappears after the start does remoted keep running: `GET /cacerts` then
 answers `404` (or keeps serving the last bundle it read).
 

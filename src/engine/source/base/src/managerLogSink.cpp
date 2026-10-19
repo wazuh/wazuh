@@ -6,14 +6,13 @@
 #include <cstring>
 #include <ctime>
 #include <mutex>
-#include <vector>
 
 #include <fcntl.h>
-#include <grp.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
 #include <base/logging.hpp>
+#include <base/process.hpp>
 
 namespace
 {
@@ -41,34 +40,6 @@ SinkState& sinkState()
 std::atomic<bool> g_initialized {false};
 std::atomic<int> g_debugLevel {0};
 
-std::optional<gid_t> realGroupId(const std::string& name)
-{
-    long bufSize = sysconf(_SC_GETGR_R_SIZE_MAX);
-    if (bufSize <= 0)
-    {
-        bufSize = 1024;
-    }
-
-    std::vector<char> buffer(static_cast<std::size_t>(bufSize));
-    struct group grp {};
-    struct group* result = nullptr;
-
-    while (true)
-    {
-        const int rc = getgrnam_r(name.c_str(), &grp, buffer.data(), buffer.size(), &result);
-        if (rc == ERANGE && buffer.size() < (1U << 20))
-        {
-            buffer.resize(buffer.size() * 2);
-            continue;
-        }
-        if (rc != 0 || result == nullptr)
-        {
-            return std::nullopt;
-        }
-        return result->gr_gid;
-    }
-}
-
 void fillDefaults(base::logging::ManagerLogDeps& deps)
 {
     if (!deps.now)
@@ -91,7 +62,19 @@ void fillDefaults(base::logging::ManagerLogDeps& deps)
     }
     if (!deps.groupId)
     {
-        deps.groupId = &realGroupId;
+        // Same reentrant lookup as the privilege drop (64 KiB cap); any failure means "no group": the file keeps the
+        // group of its creator.
+        deps.groupId = [](const std::string& name) -> std::optional<gid_t>
+        {
+            try
+            {
+                return base::process::lookupGid(name);
+            }
+            catch (const std::exception&)
+            {
+                return std::nullopt;
+            }
+        };
     }
     if (!deps.open)
     {

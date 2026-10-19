@@ -77,7 +77,8 @@ namespace remoted::endpoints::stateful
     }
 
     remoted::http::HttpResponse postProcess(remoted::downstream::DownstreamError error,
-                                            const remoted::downstream::DownstreamResponse& response)
+                                            const remoted::downstream::DownstreamResponse& response,
+                                            const int retryAfterSec)
     {
         using remoted::downstream::DownstreamError;
         using remoted::http::HttpResponse;
@@ -85,7 +86,13 @@ namespace remoted::endpoints::stateful
         if (error != DownstreamError::None)
         {
             // Could not reach the sync server / no timely answer -> the agent retries next cycle.
-            return HttpResponse::json(503, R"({"error":"Service unavailable","code":503})");
+            auto result = HttpResponse::json(503, R"({"error":"Service unavailable","code":503})");
+            if (error == DownstreamError::ResponseTimeout && retryAfterSec > 0)
+            {
+                // The session is still being applied downstream: hold the re-send until it is done.
+                result.headers.emplace_back("Retry-After", std::to_string(retryAfterSec));
+            }
+            return result;
         }
 
         if (isContractStatus(response.status))
@@ -111,9 +118,10 @@ namespace remoted::endpoints::stateful
     remoted::endpoints::AuthenticatedHandler makeHandler(remoted::downstream::DeferredForwarder& forwarder,
                                                          std::string socketPath,
                                                          const int responseTimeoutMs,
+                                                         const int retryAfterSec,
                                                          const remoted::metrics::EndpointHttpMetrics* metrics)
     {
-        return [&forwarder, socketPath = std::move(socketPath), responseTimeoutMs, metrics](
+        return [&forwarder, socketPath = std::move(socketPath), responseTimeoutMs, retryAfterSec, metrics](
                    std::shared_ptr<const remoted::auth::AuthenticatedRequest> authReq,
                    std::shared_ptr<remoted::http::IHttpResponder> responder)
         {
@@ -135,7 +143,12 @@ namespace remoted::endpoints::stateful
             // authReq->agentId in the same call that moves authReq could dereference a null pointer.
             auto downstreamTarget = target(socketPath, authReq->agentId, responseTimeoutMs);
             downstreamTarget.httpMetrics = metrics;
-            forwarder.forward(std::move(authReq), std::move(responder), std::move(downstreamTarget), postProcess);
+            forwarder.forward(std::move(authReq),
+                              std::move(responder),
+                              std::move(downstreamTarget),
+                              [retryAfterSec](const remoted::downstream::DownstreamError error,
+                                              const remoted::downstream::DownstreamResponse& response)
+                              { return postProcess(error, response, retryAfterSec); });
         };
     }
 

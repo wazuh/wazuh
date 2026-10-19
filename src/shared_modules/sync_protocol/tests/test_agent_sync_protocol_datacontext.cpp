@@ -82,11 +82,12 @@ class AgentSyncProtocolDataContextTest : public ::testing::Test
         }
 
         /// Feeds a /stateful HTTP result to the protocol, as https_client_bridge.c
-        /// would: "HCRESULT:<session>:<http_code>:<body>". forSession=0 skips the
-        /// protocol's session-correlation check.
-        bool feedHttpResult(int httpCode, const std::string& body = "{}", uint64_t forSession = 0)
+        /// would: "HCRESULT:<session>:<http_code>:<body>". Unless @p forSession says
+        /// otherwise, it answers the last session the protocol handed to the transport.
+        bool feedHttpResult(int httpCode, const std::string& body = "{}",
+                            std::optional<uint64_t> forSession = std::nullopt)
         {
-            const std::string text = "HCRESULT:" + std::to_string(forSession) + ":" +
+            const std::string text = "HCRESULT:" + std::to_string(forSession.value_or(mockSyncTransport->session())) + ":" +
                                      std::to_string(httpCode) + ":" + body;
             return protocol->parseResponseBuffer(reinterpret_cast<const uint8_t*>(text.data()), text.size());
         }

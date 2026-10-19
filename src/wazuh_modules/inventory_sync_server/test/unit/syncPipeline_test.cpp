@@ -123,9 +123,23 @@ namespace
         return false;
     }
 
+    /// The value of @p name in the response, or "" when absent.
+    std::string headerValue(const HttpResponse& response, const std::string& name)
+    {
+        for (const auto& [key, value] : response.headers)
+        {
+            if (key == name)
+            {
+                return value;
+            }
+        }
+        return "";
+    }
+
     struct PipelineUnderTest
     {
         std::shared_ptr<ConnectorEvents> events {std::make_shared<ConnectorEvents>()};
+        std::shared_ptr<wazuh::metrics::Manager> metrics {std::make_shared<wazuh::metrics::Manager>()};
         std::unique_ptr<SyncPipeline> pipeline;
 
         explicit PipelineUnderTest(std::size_t workers = 1, SyncPipelineConfig config = {})
@@ -136,7 +150,7 @@ namespace
             {
                 connectors.push_back(std::make_shared<FakeIndexerConnectorSync>(events, "sync"));
             }
-            pipeline = std::make_unique<SyncPipeline>(config, std::move(connectors), CLUSTER);
+            pipeline = std::make_unique<SyncPipeline>(config, std::move(connectors), CLUSTER, nullptr, metrics);
         }
     };
 } // namespace
@@ -306,14 +320,28 @@ TEST(SyncPipelineTest, FailedGroupCommitsAreCountedByCauseAndBlastRadius)
     ASSERT_TRUE(pipeline.enqueue(makeItem(deltaBody("doc-2"), second)));
     EXPECT_EQ(500, second->get().status);
 
+    // A flush whose delete-by-query ran out of its conflict allowance left documents behind, but
+    // it is contention: the sessions get a retryable 503 with the delay, not a 500.
+    {
+        std::lock_guard<std::mutex> lock(events->m_mutex);
+        events->m_syncThrowCause = invsync::indexer::ConnectorError::Cause::ConflictsExhausted;
+    }
+    auto third = std::make_shared<FutureResponder>();
+    ASSERT_TRUE(pipeline.enqueue(makeItem(deltaBody("doc-3"), third)));
+    const auto contention = third->get();
+    EXPECT_EQ(503, contention.status);
+    EXPECT_EQ(R"({"error":"indexer contention","code":503,"reason":"version_conflicts"})", contention.body);
+    EXPECT_EQ("15", headerValue(contention, "Retry-After"));
+
     const auto counter = [&metrics](const std::string& name)
     {
         return metrics->getOrCreateCounter(name, "", "count")->get();
     };
     EXPECT_EQ(1U, counter(std::string {invsync::metrics::BULK_FLUSH_FAILURES_PREFIX} + "exhausted"));
     EXPECT_EQ(1U, counter(std::string {invsync::metrics::BULK_FLUSH_FAILURES_PREFIX} + "other"));
-    EXPECT_EQ(0U, counter(std::string {invsync::metrics::BULK_FLUSH_FAILURES_PREFIX} + "documents"));
-    EXPECT_EQ(2U, counter(invsync::metrics::BULK_SESSIONS_FAILED));
+    EXPECT_EQ(1U, counter(std::string {invsync::metrics::BULK_FLUSH_FAILURES_PREFIX} + "documents"));
+    EXPECT_EQ(1U, counter(invsync::metrics::INDEXER_CONFLICT_EXHAUSTED));
+    EXPECT_EQ(3U, counter(invsync::metrics::BULK_SESSIONS_FAILED));
 }
 
 TEST(SyncPipelineTest, FlushFailureMapsTo503WhenTheConnectorIsUnavailable)
@@ -360,13 +388,43 @@ TEST(SyncPipelineTest, AnImmediateSessionFailureMapsByAvailability)
 
     auto healthy = std::make_shared<FutureResponder>();
     ASSERT_TRUE(fixture.pipeline->enqueue(makeItem(invsync::test::buildBareSession(spec), healthy)));
-    EXPECT_EQ(500, healthy->get().status);
+    const auto failed = healthy->get();
+    EXPECT_EQ(500, failed.status);
+    EXPECT_EQ("", headerValue(failed, "Retry-After"));
+
+    // The update-by-query ran out of its version-conflict allowance: a competing writer of this
+    // agent's documents was still running, so the agent is told to come back after the delay the
+    // config derives from the connector's own allowance (15 s by default), and it is counted apart.
+    {
+        std::lock_guard<std::mutex> lock(fixture.events->m_mutex);
+        fixture.events->m_syncThrowCause = invsync::indexer::ConnectorError::Cause::ConflictsExhausted;
+    }
+    auto contended = std::make_shared<FutureResponder>();
+    ASSERT_TRUE(fixture.pipeline->enqueue(makeItem(invsync::test::buildBareSession(spec), contended)));
+    const auto contention = contended->get();
+    EXPECT_EQ(503, contention.status);
+    EXPECT_EQ(R"({"error":"indexer contention","code":503,"reason":"version_conflicts"})", contention.body);
+    EXPECT_EQ("15", headerValue(contention, "Retry-After"));
+    EXPECT_EQ(1U,
+              fixture.metrics->getOrCreateCounter(invsync::metrics::INDEXER_CONFLICT_EXHAUSTED, "", "count")->get());
+    EXPECT_EQ(
+        1U,
+        fixture.metrics->getOrCreateCounter(std::string {invsync::metrics::REQUESTS_TOTAL_PREFIX} + "500", "", "count")
+            ->get());
+    EXPECT_EQ(
+        1U,
+        fixture.metrics->getOrCreateCounter(std::string {invsync::metrics::REQUESTS_TOTAL_PREFIX} + "503", "", "count")
+            ->get());
 
     fixture.events->m_syncAvailable.store(false);
-    // The dispatch gate now rejects before the processor runs; that is the 503 the agent sees.
+    // The dispatch gate now rejects before the processor runs; that is the generic 503 the agent
+    // sees, with no delay attached: an unavailable indexer outranks the contention cause.
     auto unavailable = std::make_shared<FutureResponder>();
     ASSERT_TRUE(fixture.pipeline->enqueue(makeItem(invsync::test::buildBareSession(spec), unavailable)));
-    EXPECT_EQ(503, unavailable->get().status);
+    const auto generic = unavailable->get();
+    EXPECT_EQ(503, generic.status);
+    EXPECT_EQ(R"({"error":"Service unavailable","code":503})", generic.body);
+    EXPECT_EQ("", headerValue(generic, "Retry-After"));
 }
 
 TEST(SyncPipelineTest, AProtocolErrorDoesNotPoisonTheOpenBatch)
@@ -536,6 +594,26 @@ TEST(SyncPipelineTest, ADeleteFailureIsVisibleToTheCaller)
     auto responder = std::make_shared<FutureResponder>();
     ASSERT_TRUE(fixture.pipeline->enqueue(makeDeleteItem("005", responder)));
     EXPECT_EQ(500, responder->get().status) << "connector available but failing -> 500";
+
+    // The deletion's by-query ran out of its version-conflict allowance in the flush: the same
+    // contention an immediate session answers 503 + Retry-After, counted apart.
+    {
+        std::lock_guard<std::mutex> lock(fixture.events->m_mutex);
+        fixture.events->m_syncThrowOn = "flush";
+        fixture.events->m_syncThrowCause = invsync::indexer::ConnectorError::Cause::ConflictsExhausted;
+    }
+    auto contended = std::make_shared<FutureResponder>();
+    ASSERT_TRUE(fixture.pipeline->enqueue(makeDeleteItem("007", contended)));
+    const auto contention = contended->get();
+    EXPECT_EQ(503, contention.status);
+    EXPECT_EQ(R"({"error":"indexer contention","code":503,"reason":"version_conflicts"})", contention.body);
+    EXPECT_EQ("15", headerValue(contention, "Retry-After"));
+    EXPECT_EQ(1U,
+              fixture.metrics->getOrCreateCounter(invsync::metrics::INDEXER_CONFLICT_EXHAUSTED, "", "count")->get());
+    {
+        std::lock_guard<std::mutex> lock(fixture.events->m_mutex);
+        fixture.events->m_syncThrowCause.reset();
+    }
 
     fixture.events->m_syncThrowOn.clear();
     fixture.events->m_syncAvailable.store(false);

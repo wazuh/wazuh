@@ -3,12 +3,15 @@
 
 #include <algorithm>
 #include <cerrno>
+#include <cstdlib>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <iterator>
 #include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <fcntl.h>
@@ -132,6 +135,136 @@ void expectDoublingToCap(const std::vector<size_t>& sizes, std::size_t base)
     // No call after the cap was offered once
     EXPECT_EQ(std::count(sizes.begin(), sizes.end(), LOOKUP_CAP), 1);
 }
+
+/// ProcessSysCalls with all 13 members set to fakes that succeed and record their arguments, so no real system call
+/// runs. A test overrides one member to make it fail. Like FakeLookup, every successful fake leaves errno = ENOSYS, so
+/// an implementation that reads errno after the wrong call fails. The fork fake never returns > 0: the real _exit of
+/// the parent would end the test runner.
+struct RecordingSys
+{
+    const int fakeFd; ///< Returned by open
+
+    int forks = 0;
+    int setsids = 0;
+    std::vector<mode_t> umasks;
+    std::vector<std::string> opens;
+    std::vector<std::pair<int, int>> dup2s; ///< (fd, target)
+    std::vector<int> closes;
+    std::vector<std::pair<int, mode_t>> fchmods;
+    std::string written; ///< Bytes accepted by write
+    std::vector<gid_t> setgroups;
+    std::vector<gid_t> setgids;
+    std::vector<uid_t> setuids;
+    std::vector<uid_t> seteuids;
+    std::vector<int> sysconfs;
+
+    RecordingSys()
+        : RecordingSys(5)
+    {
+    }
+
+    explicit RecordingSys(int fd)
+        : fakeFd(fd)
+    {
+        m_sys.fork = [this]() -> pid_t
+        {
+            ++forks;
+            errno = ENOSYS;
+            return 0;
+        };
+        m_sys.setsid = [this]() -> pid_t
+        {
+            ++setsids;
+            errno = ENOSYS;
+            return 1;
+        };
+        m_sys.umask = [this](mode_t mask) -> mode_t
+        {
+            umasks.push_back(mask);
+            errno = ENOSYS;
+            return 022;
+        };
+        m_sys.open = [this](const char* path, int, mode_t) -> int
+        {
+            opens.emplace_back(path);
+            errno = ENOSYS;
+            return fakeFd;
+        };
+        m_sys.dup2 = [this](int oldFd, int newFd) -> int
+        {
+            dup2s.emplace_back(oldFd, newFd);
+            errno = ENOSYS;
+            return newFd;
+        };
+        m_sys.close = [this](int closeFd) -> int
+        {
+            closes.push_back(closeFd);
+            errno = ENOSYS;
+            return 0;
+        };
+        m_sys.fchmod = [this](int modeFd, mode_t mode) -> int
+        {
+            fchmods.emplace_back(modeFd, mode);
+            errno = ENOSYS;
+            return 0;
+        };
+        m_sys.write = [this](int, const void* buf, size_t len) -> ssize_t
+        {
+            written.append(static_cast<const char*>(buf), len);
+            errno = ENOSYS;
+            return static_cast<ssize_t>(len);
+        };
+        m_sys.setgroups = [this](size_t count, const gid_t* list) -> int
+        {
+            setgroups.insert(setgroups.end(), list, list + count);
+            errno = ENOSYS;
+            return 0;
+        };
+        m_sys.setgid = [this](gid_t gid) -> int
+        {
+            setgids.push_back(gid);
+            errno = ENOSYS;
+            return 0;
+        };
+        m_sys.setuid = [this](uid_t uid) -> int
+        {
+            setuids.push_back(uid);
+            errno = ENOSYS;
+            return 0;
+        };
+        m_sys.seteuid = [this](uid_t uid) -> int
+        {
+            seteuids.push_back(uid);
+            errno = ENOSYS;
+            return 0;
+        };
+        m_sys.sysconf = [this](int name) -> long
+        {
+            sysconfs.push_back(name);
+            errno = ENOSYS;
+            return -1;
+        };
+    }
+
+    RecordingSys(const RecordingSys&) = delete;
+    RecordingSys& operator=(const RecordingSys&) = delete;
+
+    ProcessSysCalls& sys() { return m_sys; }
+
+    /// All 13 members are set: none falls back to the real call.
+    bool allSet() const
+    {
+        return m_sys.fork && m_sys.setsid && m_sys.umask && m_sys.open && m_sys.dup2 && m_sys.close && m_sys.fchmod
+               && m_sys.write && m_sys.setgroups && m_sys.setgid && m_sys.setuid && m_sys.seteuid && m_sys.sysconf;
+    }
+
+private:
+    ProcessSysCalls m_sys;
+};
+
+/// Directory of the createPID error cases: never created, open is fake.
+constexpr auto FAKE_PID_DIR = "/wazuh_test_fake_pid_dir";
+const std::string FAKE_PID_FILE = std::string(FAKE_PID_DIR) + "/svc-1.pid";
 } // namespace
 
 // Test createPID success scenario
@@ -163,12 +296,16 @@ TEST(CreatePIDTest, Success)
 // Test createPID failure scenario
 TEST(CreatePIDTest, Failure)
 {
-    std::string invalidPath = "/tmp/nonexistent_dir_abc";
-    fs::remove_all(invalidPath);
-    auto result = createPID(invalidPath, "svc", 1);
+    const fs::path tmpDir = freshDir("base_process_test_failure");
+    const fs::path missing = tmpDir / "missing";
+
+    auto result = createPID(missing.string(), "svc", 1);
+
     ASSERT_TRUE(isError(result));
     EXPECT_EQ(base::getError(result).message,
-              "could not create PID file /tmp/nonexistent_dir_abc/svc-1.pid: No such file or directory (2)");
+              "could not create PID file " + (missing / "svc-1.pid").string() + ": No such file or directory (2)");
+
+    fs::remove_all(tmpDir);
 }
 
 // The mode given to open() is filtered by the umask; only fchmod yields exactly 0640 under umask 077.
@@ -342,6 +479,71 @@ TEST(GoDaemonFunctionalTest, StdioIsDevNull)
     EXPECT_EQ(got, "YYY");
 }
 
+namespace
+{
+int g_atexitFd = -1; ///< Write end of the pipe the atexit handler of ParentsSkipExitHandlers reports to
+
+void reportAtexit()
+{
+    const char msg = 'A';
+    (void)!write(g_atexitFd, &msg, 1);
+}
+} // namespace
+
+// Both intermediate parents leave with _exit: an atexit handler registered before goDaemon never runs, so only the
+// grandchild's 'G' reaches the pipe.
+TEST(GoDaemonFunctionalTest, ParentsSkipExitHandlers)
+{
+    int report[2];
+    ASSERT_EQ(pipe(report), 0);
+
+    pid_t pid = fork();
+    ASSERT_GE(pid, 0);
+    if (pid == 0)
+    {
+        close(report[0]);
+        g_atexitFd = report[1];
+        if (atexit(reportAtexit) != 0)
+        {
+            _exit(EXIT_WRITE_FAILURE);
+        }
+
+        try
+        {
+            goDaemon();
+        }
+        catch (...)
+        {
+            _exit(EXIT_DAEMON_FAILURE);
+        }
+
+        // Grandchild
+        const char msg = 'G';
+        if (write(report[1], &msg, 1) != 1)
+        {
+            _exit(EXIT_WRITE_FAILURE);
+        }
+        _exit(EXIT_SUCCESS);
+    }
+
+    close(report[1]);
+    std::string got;
+    char buf[8];
+    ssize_t n;
+    while ((n = read(report[0], buf, sizeof(buf))) > 0)
+    {
+        got.append(buf, static_cast<std::size_t>(n));
+    }
+    close(report[0]);
+
+    int status = 0;
+    ASSERT_EQ(waitpid(pid, &status, 0), pid);
+    EXPECT_TRUE(WIFEXITED(status));
+    EXPECT_EQ(WEXITSTATUS(status), EXIT_SUCCESS);
+
+    EXPECT_EQ(got, "G");
+}
+
 /*** lookupUid ***/
 
 TEST(LookupUid, CurrentUser)
@@ -393,6 +595,30 @@ TEST(LookupUid, NotFound)
 
     EXPECT_EQ(thrownMessage([&] { lookupUid("x", FakeUserLookup {0, 0, false, 0, &sizes}); }), "user 'x' not found");
     EXPECT_EQ(sizes.size(), 1u);
+}
+
+// The first buffer is the sysconf hint, 1024 without one, never above the cap.
+TEST(LookupUid, InitialSizeFromSysconf)
+{
+    const std::vector<std::pair<long, std::size_t>> cases {{4096, 4096}, {-1, 1024}, {1048576, LOOKUP_CAP}};
+    for (const auto& [hint, expected] : cases)
+    {
+        RecordingSys rec;
+        rec.sys().sysconf = [&rec, hint = hint](int name) -> long
+        {
+            rec.sysconfs.push_back(name);
+            errno = ENOSYS;
+            return hint;
+        };
+        ASSERT_TRUE(rec.allSet());
+        std::vector<size_t> sizes;
+
+        EXPECT_EQ(lookupUid("x", FakeUserLookup {0, 0, true, 7, &sizes}, rec.sys()), static_cast<uid_t>(7));
+
+        ASSERT_FALSE(sizes.empty()) << "hint " << hint;
+        EXPECT_EQ(sizes.front(), expected) << "hint " << hint;
+        EXPECT_EQ(rec.sysconfs, std::vector<int> {_SC_GETPW_R_SIZE_MAX}) << "hint " << hint;
+    }
 }
 
 /*** lookupGid ***/
@@ -448,6 +674,30 @@ TEST(LookupGid, NotFound)
     EXPECT_EQ(sizes.size(), 1u);
 }
 
+// The first buffer is the sysconf hint, 1024 without one, never above the cap.
+TEST(LookupGid, InitialSizeFromSysconf)
+{
+    const std::vector<std::pair<long, std::size_t>> cases {{4096, 4096}, {-1, 1024}, {1048576, LOOKUP_CAP}};
+    for (const auto& [hint, expected] : cases)
+    {
+        RecordingSys rec;
+        rec.sys().sysconf = [&rec, hint = hint](int name) -> long
+        {
+            rec.sysconfs.push_back(name);
+            errno = ENOSYS;
+            return hint;
+        };
+        ASSERT_TRUE(rec.allSet());
+        std::vector<size_t> sizes;
+
+        EXPECT_EQ(lookupGid("x", FakeGroupLookup {0, 0, true, 7, &sizes}, rec.sys()), static_cast<gid_t>(7));
+
+        ASSERT_FALSE(sizes.empty()) << "hint " << hint;
+        EXPECT_EQ(sizes.front(), expected) << "hint " << hint;
+        EXPECT_EQ(rec.sysconfs, std::vector<int> {_SC_GETGR_R_SIZE_MAX}) << "hint " << hint;
+    }
+}
+
 /*** dropToUser / dropToGroup ***/
 
 TEST(DropToUser, SameUidSucceeds)
@@ -455,15 +705,65 @@ TEST(DropToUser, SameUidSucceeds)
     EXPECT_NO_THROW(dropToUser(getuid()));
 }
 
+// Without root, directly; as root, in a child that first drops to nobody (the drop is irreversible).
 TEST(DropToUser, ThrowsWhenNotPermitted)
 {
-    if (getuid() == 0)
+    if (getuid() != 0)
     {
-        GTEST_SKIP() << "requires a non-root user";
+        const uid_t target = getuid() + 1;
+        EXPECT_EQ(thrownMessage([&] { dropToUser(target); }),
+                  "could not set user ID " + std::to_string(target) + ": Operation not permitted (1)");
+        return;
     }
-    const uid_t target = getuid() + 1;
-    EXPECT_EQ(thrownMessage([&] { dropToUser(target); }),
-              "could not set user ID " + std::to_string(target) + ": Operation not permitted (1)");
+
+    int report[2];
+    ASSERT_EQ(pipe(report), 0);
+
+    pid_t pid = fork();
+    ASSERT_GE(pid, 0);
+    if (pid == 0)
+    {
+        close(report[0]);
+        std::string out;
+        try
+        {
+            dropToGroup(65534);
+            dropToUser(65534);
+        }
+        catch (const std::exception& e)
+        {
+            out = std::string("setup: ") + e.what();
+        }
+        if (out.empty())
+        {
+            out = thrownMessage([] { dropToUser(65533); });
+        }
+        (void)!write(report[1], out.data(), out.size());
+        _exit(EXIT_SUCCESS);
+    }
+
+    close(report[1]);
+    std::string got;
+    char buf[256];
+    ssize_t n;
+    while ((n = read(report[0], buf, sizeof(buf))) > 0)
+    {
+        got.append(buf, static_cast<std::size_t>(n));
+    }
+    close(report[0]);
+
+    int status = 0;
+    ASSERT_EQ(waitpid(pid, &status, 0), pid);
+    ASSERT_TRUE(WIFEXITED(status));
+    ASSERT_EQ(WEXITSTATUS(status), EXIT_SUCCESS);
+
+    const std::string notPermitted = "Operation not permitted (1)";
+    if (got.rfind("setup: ", 0) == 0 && got.size() >= notPermitted.size()
+        && got.compare(got.size() - notPermitted.size(), notPermitted.size(), notPermitted) == 0)
+    {
+        GTEST_SKIP() << "cannot drop to nobody here: " << got;
+    }
+    EXPECT_EQ(got, "could not set user ID 65533: Operation not permitted (1)");
 }
 
 // Functional test: the drop is irreversible, so it runs in a forked child
@@ -620,4 +920,292 @@ TEST(DropToGroup, SetGroupInChild)
     ASSERT_EQ(waitpid(pid, &status, 0), pid);
     ASSERT_TRUE(WIFEXITED(status));
     EXPECT_EQ(WEXITSTATUS(status), EXIT_SUCCESS);
+}
+
+/*** Error paths with injected system calls ***/
+
+TEST(RecordingSysTest, RecordingSysFakesEverything)
+{
+    RecordingSys rec {};
+
+    EXPECT_TRUE(rec.allSet());
+    EXPECT_EQ(rec.fakeFd, 5);
+    EXPECT_EQ(rec.sys().fork(), 0);
+    EXPECT_EQ(rec.sys().open("/dev/null", O_RDWR, 0), 5);
+    EXPECT_EQ(rec.sys().write(5, "ab", 2), 2);
+    EXPECT_EQ(rec.sys().sysconf(_SC_GETPW_R_SIZE_MAX), -1);
+    EXPECT_EQ(errno, ENOSYS);
+    EXPECT_EQ(rec.forks, 1);
+    EXPECT_EQ(rec.opens, std::vector<std::string> {"/dev/null"});
+    EXPECT_EQ(rec.written, "ab");
+}
+
+TEST(GoDaemonErrors, FirstForkFails)
+{
+    RecordingSys rec;
+    rec.sys().fork = [&rec]() -> pid_t
+    {
+        ++rec.forks;
+        errno = EAGAIN;
+        return -1;
+    };
+    ASSERT_TRUE(rec.allSet());
+
+    EXPECT_EQ(thrownMessage([&] { goDaemon(rec.sys()); }),
+              "fork failed (first): Resource temporarily unavailable (11)");
+    EXPECT_EQ(rec.forks, 1);
+    EXPECT_EQ(rec.setsids, 0);
+}
+
+TEST(GoDaemonErrors, SecondForkFails)
+{
+    RecordingSys rec;
+    rec.sys().fork = [&rec]() -> pid_t
+    {
+        if (++rec.forks == 1)
+        {
+            errno = ENOSYS;
+            return 0;
+        }
+        errno = EAGAIN;
+        return -1;
+    };
+    ASSERT_TRUE(rec.allSet());
+
+    EXPECT_EQ(thrownMessage([&] { goDaemon(rec.sys()); }),
+              "fork failed (second): Resource temporarily unavailable (11)");
+    EXPECT_EQ(rec.forks, 2);
+    EXPECT_EQ(rec.setsids, 1);
+    EXPECT_TRUE(rec.umasks.empty());
+}
+
+TEST(GoDaemonErrors, SetsidFails)
+{
+    RecordingSys rec;
+    rec.sys().setsid = [&rec]() -> pid_t
+    {
+        ++rec.setsids;
+        errno = EPERM;
+        return -1;
+    };
+    ASSERT_TRUE(rec.allSet());
+
+    EXPECT_EQ(thrownMessage([&] { goDaemon(rec.sys()); }), "setsid failed: Operation not permitted (1)");
+    EXPECT_EQ(rec.forks, 1);
+    EXPECT_EQ(rec.setsids, 1);
+}
+
+TEST(GoDaemonErrors, DevNullOpenFails)
+{
+    RecordingSys rec;
+    rec.sys().open = [&rec](const char* path, int, mode_t) -> int
+    {
+        rec.opens.emplace_back(path);
+        errno = ENOENT;
+        return -1;
+    };
+    ASSERT_TRUE(rec.allSet());
+
+    EXPECT_EQ(thrownMessage([&] { goDaemon(rec.sys()); }), "could not open /dev/null: No such file or directory (2)");
+    EXPECT_EQ(rec.forks, 2);
+    EXPECT_EQ(rec.umasks, std::vector<mode_t> {027});
+    EXPECT_EQ(rec.opens, std::vector<std::string> {"/dev/null"});
+    EXPECT_TRUE(rec.dup2s.empty());
+}
+
+TEST(GoDaemonErrors, Dup2FailsClosesFd)
+{
+    RecordingSys rec {7};
+    rec.sys().dup2 = [&rec](int fd, int target) -> int
+    {
+        rec.dup2s.emplace_back(fd, target);
+        if (target == STDOUT_FILENO)
+        {
+            errno = EBADF;
+            return -1;
+        }
+        errno = ENOSYS;
+        return target;
+    };
+    ASSERT_TRUE(rec.allSet());
+
+    EXPECT_EQ(thrownMessage([&] { goDaemon(rec.sys()); }),
+              "could not redirect fd 1 to /dev/null: Bad file descriptor (9)");
+    EXPECT_EQ(rec.dup2s, (std::vector<std::pair<int, int>> {{7, 0}, {7, 1}}));
+    EXPECT_EQ(rec.closes, std::vector<int> {7});
+}
+
+TEST(GoDaemonErrors, Dup2FailsLowFdNotClosed)
+{
+    RecordingSys rec {2};
+    rec.sys().dup2 = [&rec](int fd, int target) -> int
+    {
+        rec.dup2s.emplace_back(fd, target);
+        errno = EBADF;
+        return -1;
+    };
+    ASSERT_TRUE(rec.allSet());
+
+    EXPECT_EQ(thrownMessage([&] { goDaemon(rec.sys()); }),
+              "could not redirect fd 0 to /dev/null: Bad file descriptor (9)");
+    EXPECT_EQ(rec.dup2s, (std::vector<std::pair<int, int>> {{2, 0}}));
+    EXPECT_TRUE(rec.closes.empty());
+}
+
+TEST(CreatePIDErrors, FchmodFails)
+{
+    RecordingSys rec {5};
+    rec.sys().fchmod = [&rec](int fd, mode_t mode) -> int
+    {
+        rec.fchmods.emplace_back(fd, mode);
+        errno = EPERM;
+        return -1;
+    };
+    ASSERT_TRUE(rec.allSet());
+
+    const auto result = createPID(FAKE_PID_DIR, "svc", 1, rec.sys());
+
+    ASSERT_TRUE(isError(result));
+    EXPECT_EQ(base::getError(result).message,
+              "could not set mode 0640 on PID file " + FAKE_PID_FILE + ": Operation not permitted (1)");
+    EXPECT_EQ(rec.opens, std::vector<std::string> {FAKE_PID_FILE});
+    EXPECT_EQ(rec.fchmods, (std::vector<std::pair<int, mode_t>> {{5, 0640}}));
+    EXPECT_TRUE(rec.written.empty());
+    EXPECT_EQ(rec.closes, std::vector<int> {5});
+}
+
+TEST(CreatePIDErrors, WriteFails)
+{
+    RecordingSys rec;
+    rec.sys().write = [](int, const void*, size_t) -> ssize_t
+    {
+        errno = EIO;
+        return -1;
+    };
+    ASSERT_TRUE(rec.allSet());
+
+    const auto result = createPID(FAKE_PID_DIR, "svc", 1, rec.sys());
+
+    ASSERT_TRUE(isError(result));
+    EXPECT_EQ(base::getError(result).message, "could not write PID file " + FAKE_PID_FILE + ": Input/output error (5)");
+    EXPECT_EQ(rec.closes, std::vector<int> {rec.fakeFd});
+}
+
+TEST(CreatePIDErrors, ShortWrite)
+{
+    RecordingSys rec;
+    rec.sys().write = [](int, const void*, size_t) -> ssize_t
+    {
+        errno = ENOSYS;
+        return 0;
+    };
+    ASSERT_TRUE(rec.allSet());
+
+    const auto result = createPID(FAKE_PID_DIR, "svc", 1, rec.sys());
+
+    ASSERT_TRUE(isError(result));
+    EXPECT_EQ(base::getError(result).message, "could not write PID file " + FAKE_PID_FILE + ": short write");
+    EXPECT_EQ(rec.closes, std::vector<int> {rec.fakeFd});
+}
+
+TEST(CreatePIDErrors, CloseFails)
+{
+    RecordingSys rec;
+    rec.sys().close = [&rec](int fd) -> int
+    {
+        rec.closes.push_back(fd);
+        errno = EIO;
+        return -1;
+    };
+    ASSERT_TRUE(rec.allSet());
+
+    const auto result = createPID(FAKE_PID_DIR, "svc", 1, rec.sys());
+
+    ASSERT_TRUE(isError(result));
+    EXPECT_EQ(base::getError(result).message, "could not close PID file " + FAKE_PID_FILE + ": Input/output error (5)");
+    EXPECT_EQ(rec.written, "1\n");
+    EXPECT_EQ(rec.closes, std::vector<int> {rec.fakeFd});
+}
+
+// An interrupted write is retried, not reported.
+TEST(CreatePIDTest, RetriesOnEintr)
+{
+    RecordingSys rec;
+    int calls = 0;
+    rec.sys().write = [&rec, &calls](int, const void* buf, size_t len) -> ssize_t
+    {
+        if (++calls == 1)
+        {
+            errno = EINTR;
+            return -1;
+        }
+        rec.written.append(static_cast<const char*>(buf), len);
+        errno = ENOSYS;
+        return static_cast<ssize_t>(len);
+    };
+    ASSERT_TRUE(rec.allSet());
+
+    const auto result = createPID(FAKE_PID_DIR, "svc", 777, rec.sys());
+
+    ASSERT_FALSE(isError(result)) << base::getError(result).message;
+    EXPECT_EQ(rec.written, "777\n");
+    EXPECT_EQ(calls, 2);
+    EXPECT_EQ(rec.closes, std::vector<int> {rec.fakeFd});
+}
+
+// A partial write continues with the rest of the content.
+TEST(CreatePIDTest, CompletesPartialWrites)
+{
+    RecordingSys rec;
+    int calls = 0;
+    rec.sys().write = [&rec, &calls](int, const void* buf, size_t len) -> ssize_t
+    {
+        ++calls;
+        EXPECT_GT(len, 0u);
+        rec.written.append(static_cast<const char*>(buf), 1);
+        errno = ENOSYS;
+        return 1;
+    };
+    ASSERT_TRUE(rec.allSet());
+
+    const auto result = createPID(FAKE_PID_DIR, "svc", 777, rec.sys());
+
+    ASSERT_FALSE(isError(result)) << base::getError(result).message;
+    EXPECT_EQ(rec.written, "777\n");
+    EXPECT_EQ(calls, 4);
+    EXPECT_EQ(rec.closes, std::vector<int> {rec.fakeFd});
+}
+
+TEST(DropErrors, SetgidAfterSetgroups)
+{
+    RecordingSys rec;
+    rec.sys().setgid = [&rec](gid_t gid) -> int
+    {
+        rec.setgids.push_back(gid);
+        errno = EPERM;
+        return -1;
+    };
+    ASSERT_TRUE(rec.allSet());
+
+    EXPECT_EQ(thrownMessage([&] { dropToGroup(4242, rec.sys()); }),
+              "could not set group ID 4242: Operation not permitted (1)");
+    EXPECT_EQ(rec.setgroups, std::vector<gid_t> {4242});
+    EXPECT_EQ(rec.setgids, std::vector<gid_t> {4242});
+}
+
+TEST(DropErrors, SeteuidAfterSetuid)
+{
+    RecordingSys rec;
+    rec.sys().seteuid = [&rec](uid_t uid) -> int
+    {
+        rec.seteuids.push_back(uid);
+        errno = EPERM;
+        return -1;
+    };
+    ASSERT_TRUE(rec.allSet());
+
+    EXPECT_EQ(thrownMessage([&] { dropToUser(4242, rec.sys()); }),
+              "could not set effective user ID 4242: Operation not permitted (1)");
+    EXPECT_EQ(rec.setuids, std::vector<uid_t> {4242});
+    EXPECT_EQ(rec.seteuids, std::vector<uid_t> {4242});
 }

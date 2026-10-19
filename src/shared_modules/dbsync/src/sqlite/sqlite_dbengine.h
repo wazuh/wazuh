@@ -286,10 +286,6 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
                         const std::vector<Row>& rowKeysValue);
 
         void getFieldValueFromTuple(const Field& value,
-                                    std::string& resultValue,
-                                    const bool quotationMarks = false);
-
-        void getFieldValueFromTuple(const Field& value,
                                     nlohmann::json& object);
 
         SQLiteDBEngine(const SQLiteDBEngine&) = delete;

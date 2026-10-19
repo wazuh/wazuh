@@ -297,10 +297,11 @@ nothing and takes no generation (D-11).
 
 No writing command creates the bundle: if `remote.https.ca_certificate` does not exist, they exit 2
 with `bundle not found at <path>; provision it and run 'wazuh-manager-certs stamp'`. On a fresh
-install the credential ladder creates `/etc/wazuh-manager/certs/root-ca.pem` as a copy of the bootstrap CA's
-`root-ca.pem` (`_wmc_install_ca_anchor()` in `src/init/credentials/wazuh-manager-certificates.sh`, `root:wazuh-manager`
-`0640`), as a plain PEM with no publication block — so the first `stamp` (or `add`) is what
-publishes it. Creating one here would invent a trust anchor nobody asked for.
+install the credential resolver creates `/etc/wazuh-manager/certs/root-ca.pem`, only when it is absent,
+as a copy of the manager's CA `/etc/wazuh-manager/ca/root-ca.pem` (`check_bundle()` in
+`src/init/credentials/wazuh-manager-resolve-credentials.py`, `root:wazuh-manager` `0640`): a plain PEM
+with no publication block — so the first `stamp` (or `add`) is what publishes it. Creating one here
+would invent a trust anchor nobody asked for.
 
 Anything that runs while a write is in flight keeps working: `inspect`/`check` do not take the lock,
 and the publish is a rename, so a reader sees the whole old bundle or the whole new one.

@@ -86,6 +86,7 @@ extern wmodule *wmodules;       // Loaded modules.
 extern int wm_task_nice;        // Nice value for tasks.
 extern int wm_max_eps;          // Maximum events per second sent by Wazuh Module
 extern int wm_kill_timeout;     // Time for a process to quit before killing it
+extern int wm_socket_timeout;   // Longest a local client can stay silent, or not read the reply
 extern int wm_debug_level;
 extern volatile sig_atomic_t wm_shutdown_requested;
 
@@ -139,6 +140,15 @@ void wm_module_free(wmodule * config);
  * env_path is a pointer to an string to add to the PATH environment variable.
  */
 int wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path);
+
+#ifndef WIN32
+/**
+ * Same as wm_exec(), and adds variables to the environment of the command only.
+ * env is a NULL-terminated array of "NAME=value" strings, or NULL. Meant for values
+ * that must not appear on the command line, which any local user can read.
+ */
+int wm_exec_env(char *command, char **output, int *exitcode, int secs, const char * add_path, char * const * env);
+#endif
 
 #ifdef WIN32
 // Add process to pool

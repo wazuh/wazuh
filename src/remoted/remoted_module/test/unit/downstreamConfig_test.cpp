@@ -43,6 +43,9 @@ TEST(DownstreamConfigTest, DefaultsWhenEmpty)
     // /stateful's dedicated deadline: longer than the global 5 s (sessions index within the
     // request), while keeping the default budget (2+5+20 s) inside http_request_timeout's 30 s.
     EXPECT_EQ(config.statefulResponseTimeoutMs, 20000);
+    // 0 is a setting here ("no header"), so a zeroed struct keeps it; the 20 s default is
+    // secure.c's (remoted.downstream_stateful_retry_after), and only a negative falls back to it.
+    EXPECT_EQ(config.statefulRetryAfterSec, 0);
     EXPECT_EQ(config.ioThreads, static_cast<std::size_t>(cpp_get_nproc()));
     EXPECT_EQ(config.postProcessThreads, static_cast<std::size_t>(cpp_get_nproc()));
     // Strictly larger than the 10 MiB agent-request cap: /stats and /config echo the document back
@@ -57,6 +60,7 @@ TEST(DownstreamConfigTest, StructValuesWinAndTimeoutsConvertSecondsToMs)
     raw.downstream_write_timeout = 11;
     raw.downstream_response_timeout = 13;
     raw.downstream_stateful_response_timeout = 45;
+    raw.downstream_stateful_retry_after = 35;
     raw.downstream_io_threads = 3;
     raw.downstream_post_process_threads = 6;
     raw.downstream_max_response_body_size = 1048576;
@@ -67,6 +71,7 @@ TEST(DownstreamConfigTest, StructValuesWinAndTimeoutsConvertSecondsToMs)
     EXPECT_EQ(config.writeTimeoutMs, 11000);
     EXPECT_EQ(config.responseTimeoutMs, 13000);
     EXPECT_EQ(config.statefulResponseTimeoutMs, 45000);
+    EXPECT_EQ(config.statefulRetryAfterSec, 35);
     EXPECT_EQ(config.ioThreads, 3U);
     EXPECT_EQ(config.postProcessThreads, 6U);
     EXPECT_EQ(config.maxResponseBodySize, 1048576U);
@@ -80,9 +85,11 @@ TEST(DownstreamConfigTest, NegativeValuesFallBackToDefaults)
     auto raw = zeroedConfig();
     raw.downstream_connect_timeout = -1;
     raw.downstream_io_threads = -5;
+    raw.downstream_stateful_retry_after = -1;
 
     const auto config = buildDownstreamConfig(raw);
 
     EXPECT_EQ(config.connectTimeoutMs, 2000);
     EXPECT_EQ(config.ioThreads, static_cast<std::size_t>(cpp_get_nproc()));
+    EXPECT_EQ(config.statefulRetryAfterSec, 20);
 }

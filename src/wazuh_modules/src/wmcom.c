@@ -200,6 +200,14 @@ void * wmcom_main(__attribute__((unused)) void * arg) {
             continue;
         }
 
+        // The thread serves one client at a time, so a client that connects and then stalls must
+        // not hold it: bound every wait for the client, while reading the request and while
+        // writing the reply. Each wait is bounded, not the request as a whole; the socket is
+        // only open to root and the daemon's own group.
+        if (OS_SetRecvTimeout(peer, wm_socket_timeout, 0) < 0 || OS_SetSendTimeout(peer, wm_socket_timeout) < 0) {
+            mdebug1("At wmcom_main(): could not set the socket timeout: %s (%d)", strerror(errno), errno);
+        }
+
         os_calloc(OS_MAXSTR, sizeof(char), buffer);
         switch (length = OS_RecvSecureTCP(peer, buffer,OS_MAXSTR), length) {
         case OS_SOCKTERR:
@@ -207,17 +215,20 @@ void * wmcom_main(__attribute__((unused)) void * arg) {
             break;
 
         case -1:
-            merror("At wmcom_main(): OS_RecvSecureTCP(): %s", strerror(errno));
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                mwarn("At wmcom_main(): a local client sent nothing for %d seconds before completing its request.",
+                      wm_socket_timeout);
+            } else {
+                merror("At wmcom_main(): OS_RecvSecureTCP(): %s", strerror(errno));
+            }
             break;
 
         case 0:
             mdebug1("Empty message from local client.");
-            close(peer);
             break;
 
         case OS_MAXLEN:
             merror("Received message > %i", MAX_DYN_STR);
-            close(peer);
             break;
 
         default:
@@ -226,8 +237,10 @@ void * wmcom_main(__attribute__((unused)) void * arg) {
                 OS_SendSecureTCP(peer, length, response);
             }
             os_free(response);
-            close(peer);
         }
+
+        // Every outcome above ends the exchange: close the client here so no branch can leak it.
+        close(peer);
         os_free(buffer);
     }
 

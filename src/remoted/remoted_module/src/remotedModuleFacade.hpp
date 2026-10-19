@@ -725,6 +725,7 @@ private:
             remoted::endpoints::stateful::makeHandler(*m_forwarder,
                                                       inventorySyncSocketPath,
                                                       downstreamConfig.statefulResponseTimeoutMs,
+                                                      downstreamConfig.statefulRetryAfterSec,
                                                       &m_statefulHttpMetrics),
             remoted::http::ResponseMode::Buffered,
             statefulBodyDecoder);

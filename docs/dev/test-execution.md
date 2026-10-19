@@ -73,7 +73,7 @@ python -m pytest api/api --ignore=test        # 5_testunit_api.yml
 
 The suites under `tests/integration/` run against an **installed** manager and use the [QA integration framework](https://github.com/wazuh/qa-integration-framework). CI runs them with the Python version in `.github/workflows/.python-version-it`.
 
-1. Install the manager under test, from sources (see [Run from Sources](run-sources.md)) or from a package, and make sure it starts: the indexer credential `WAZUH_INDEXER_MANAGER_PASSWORD` must be in `/etc/wazuh/credentials.env` (see [Credentials](../ref/getting-started/credentials.md)).
+1. Install the manager under test, from sources (see [Run from Sources](run-sources.md)) or from a package, and make sure it starts: the indexer password `WAZUH_INDEXER_MANAGER_PASSWORD` must be in `/etc/wazuh-manager/local.env` unless a 5.x indexer on the same host publishes it, and the indexer's CA and client pair must be in `/etc/wazuh-manager/certs` (see [Credentials](../ref/getting-started/credentials.md)).
 
 2. Install the integration test framework from the branch that matches yours. CI tries the branch name, then the base branch, then the version in `VERSION.json`, then `main`:
 

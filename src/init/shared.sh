@@ -5,8 +5,73 @@
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
 
 ### Setting up variables
-VERSION="v$(awk -F'"' '/"version"[ \t]*:/ {print $4}' VERSION.json)"
-REVISION=$(awk -F'"' '/"stage"[ \t]*:/ {print $4}' VERSION.json)
+# The package scripts source this file on hosts that may not have awk, grep or hostname: every value
+# below is read with the shell and coreutils only.
+
+# JsonString <file> <key>: the string value of every `"key": "value"` line of <file>, one per line --
+# the fourth "-separated field of the lines where "<key>" is followed by blanks and a colon.
+JsonString()
+{
+    _js_tab=$(printf '\t')
+    while IFS= read -r _js_line || [ -n "$_js_line" ]; do
+        _js_after="${_js_line#*\"$2\"}"
+        if [ "$_js_after" = "$_js_line" ]; then
+            continue
+        fi
+        while :; do
+            case "$_js_after" in
+                " "*|"$_js_tab"*) _js_after="${_js_after#?}" ;;
+                *) break ;;
+            esac
+        done
+        case "$_js_after" in
+            :*) ;;
+            *) continue ;;
+        esac
+        # Fields 1-3 end at the first three quotes; the value is what follows, up to the next one.
+        case "$_js_line" in
+            *\"*\"*\"*) _js_value="${_js_line#*\"*\"*\"}" ;;
+            *) printf '\n'; continue ;;
+        esac
+        case "$_js_value" in
+            *\"*) printf '%s\n' "${_js_value%%\"*}" ;;
+            *) printf '%s\n' "$_js_value" ;;
+        esac
+    done < "$1"
+}
+
+# LineFields <file> <prefix> <delimiter>: for each line that starts with <prefix> and holds <delimiter>,
+# its second <delimiter>-separated field -- `grep "^<prefix>" <file> | cut -d <delimiter> -sf 2`.
+LineFields()
+{
+    while IFS= read -r _lf_line || [ -n "$_lf_line" ]; do
+        case "$_lf_line" in
+            "$2"*) ;;
+            *) continue ;;
+        esac
+        case "$_lf_line" in
+            *"$3"*)
+                _lf_field="${_lf_line#*"$3"}"
+                printf '%s\n' "${_lf_field%%"$3"*}"
+                ;;
+        esac
+    done < "$1"
+}
+
+# CountLines <file> <text>: how many lines of <file> contain <text> -- `grep <text> <file> | wc -l`.
+CountLines()
+{
+    _cl_count=0
+    while IFS= read -r _cl_line || [ -n "$_cl_line" ]; do
+        case "$_cl_line" in
+            *"$2"*) _cl_count=$((_cl_count + 1)) ;;
+        esac
+    done < "$1"
+    printf '%s\n' "$_cl_count"
+}
+
+VERSION="v$(JsonString VERSION.json version)"
+REVISION=$(JsonString VERSION.json stage)
 UNAME=`uname -snr`
 NUNAME=`uname`
 VUNAME=`uname -r`
@@ -21,15 +86,16 @@ else
     fi
 fi
 
-# If hostname does not exist, try 'uname -n'
-if command -v hostname > /dev/null 2>&1 ; then
-    HOST=`hostname`
-else
-    HOST=`uname -n`
-fi
+# The node name, which is what hostname(1) prints.
+HOST=`uname -n`
 
-NAMESERVERS=`cat /etc/resolv.conf | grep "^nameserver" | cut -d " " -sf 2`
-NAMESERVERS2=`cat /etc/resolv.conf | grep "^nameserver" | cut -sf 2`
+# The nameserver lines of resolv.conf, their second field split by a space and by a tab.
+NAMESERVERS=""
+NAMESERVERS2=""
+if [ -r /etc/resolv.conf ]; then
+    NAMESERVERS=$(LineFields /etc/resolv.conf nameserver " ")
+    NAMESERVERS2=$(LineFields /etc/resolv.conf nameserver "$(printf '\t')")
+fi
 HOST_CMD=`command -v host 2>/dev/null`
 NAME="Wazuh"
 INSTYPE="manager"
@@ -68,7 +134,7 @@ if [ -z "$THREADS" ]
 then
     case $(uname) in
     Linux)
-        THREADS=$(grep processor /proc/cpuinfo | wc -l)
+        THREADS=$(CountLines /proc/cpuinfo processor)
         ;;
     Darwin)
         THREADS=$(sysctl -n hw.ncpu)

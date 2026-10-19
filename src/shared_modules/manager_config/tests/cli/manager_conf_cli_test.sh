@@ -184,6 +184,32 @@ else
     fail gen_remote_vars_roundtrip "gen.err='$(cat "$TMP/gen.err" 2> /dev/null)' err='$(cat "$TMP/err" 2> /dev/null)' remote: $(sed -n '/<remote>/,/<\/remote>/p' "$TMP/v.conf" 2> /dev/null | tr '\n' ' ')"
 fi
 
+# The packages run the generator on hosts that may lack sed, grep, awk, openssl, hostname and
+# lsb_release: with none of them on PATH it still writes the same valid file (header, <auth>
+# certificate paths and a 32-hex-digit cluster key).
+NOTOOLS="$TMP/notools"
+mkdir -p "$NOTOOLS"
+for tool in /usr/bin/* /bin/*; do
+    case "$(basename "$tool")" in
+        sed|grep|egrep|fgrep|awk|gawk|mawk|nawk|openssl|hostname|lsb_release) continue ;;
+    esac
+    [ -e "$NOTOOLS/$(basename "$tool")" ] || ln -s "$tool" "$NOTOOLS/$(basename "$tool")"
+done
+if gen "$TMP/n.conf" "PATH=$NOTOOLS" WAZUH_REMOTE_HTTPS_CERTIFICATE=/opt/certs/server.pem \
+    WAZUH_REMOTE_HTTPS_KEY=/opt/certs/server-key.pem \
+    && ! PATH="$NOTOOLS" command -v sed > /dev/null && ! PATH="$NOTOOLS" command -v awk > /dev/null \
+    && [ ! -s "$TMP/gen.err" ] \
+    && "$CLI" --skip-file-checks validate -f "$TMP/n.conf" 2> "$TMP/err" \
+    && [ "$(sed -n 2p "$TMP/n.conf")" = "  Wazuh - Manager - Default configuration for ubuntu 24.04" ] \
+    && [ "$(effective "$TMP/n.conf" auth.ssl_manager_cert)" = "/opt/certs/server.pem" ] \
+    && [ "$(effective "$TMP/n.conf" auth.ssl_manager_key)" = "/opt/certs/server-key.pem" ] \
+    && key=$(effective "$TMP/n.conf" cluster.key) && [ "$(printf '%s' "$key" | tr -d '0-9a-f' | wc -c)" = 0 ] \
+    && [ "$(printf '%s' "$key" | wc -c)" = 32 ]; then
+    pass gen_without_text_tools
+else
+    fail gen_without_text_tools "gen.err='$(cat "$TMP/gen.err" 2> /dev/null)' err='$(cat "$TMP/err" 2> /dev/null)' header='$(sed -n 2p "$TMP/n.conf" 2> /dev/null)' key='${key:-}'"
+fi
+
 # An XML metacharacter in a free-text installer variable is rejected by CheckRemoteXmlSafe before any
 # file is written: the generator can never emit non-well-formed XML.
 gen "$TMP/u.conf" 'WAZUH_REMOTE_HTTPS_CIPHERS=a&b'

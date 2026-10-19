@@ -16,7 +16,7 @@ on:
       # the mirror holds only src/init/*.sh, etc/ and VERSION.json (manager_conf_cli_test.sh:121-127);
       # gen_wazuh.sh sources shared.sh and inst-functions.sh (gen_wazuh.sh:29-30), which sources
       # template-select.sh (inst-functions.sh:17); shared.sh reads VERSION.json (:8-9); WriteManager()
-      # (inst-functions.sh:764-823) reads only the seven generic templates below (:19-28).
+      # (inst-functions.sh:762-818) reads only the seven generic templates below (:19-29).
       - "src/init/gen_wazuh.sh"
       - "src/init/shared.sh"
       - "src/init/inst-functions.sh"
@@ -28,6 +28,13 @@ on:
       - "etc/templates/config/generic/wodle-indexer.manager.template"
       - "etc/templates/config/generic/auth.template"
       - "etc/templates/config/generic/cluster.template"
+      # The installer-scripts suite runs the shell helpers that replaced sed/grep/awk in the scripts
+      # above, in dist-detect.sh (RPM %post) and in the two Python wrappers, each beside the command it
+      # replaced.
+      - "src/init/dist-detect.sh"
+      - "src/init/tests/test_installer_text_tools.sh"
+      - "framework/wrappers/generic_wrapper.sh"
+      - "api/wrappers/generic_wrapper.sh"
       # Configure path: build_target_cpp configures src/ as one tree -- src/CMakeLists.txt (registers
       # this module at :289, includes src/cmake/*.cmake at :85-87 -- wazuh_set_runtime_rpath comes
       # from WazuhRpath.cmake -- and reads VERSION.json at :128) and src/external/CMakeLists.txt,
@@ -83,6 +90,13 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
+
+      # No build needed, so it runs first: the installer's text handling without sed, grep or awk,
+      # checked against those tools under both shells the packages may use.
+      - name: Installer scripts - text handling (dash and bash)
+        run: |
+          sh src/init/tests/test_installer_text_tools.sh
+          bash src/init/tests/test_installer_text_tools.sh
 
       - name: Install a compatible CMake
         uses: ./.github/actions/reinstall_cmake

@@ -1,6 +1,6 @@
 full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_error
 /var/ossec/var/selinux/wazuh.pp,root,wazuh,640,file,-rw-r-----,3535,0.1
-/var/ossec/bin/wazuh-syscheckd,root,root,750,file,-rwxr-x---,793392,0.1
+/var/ossec/bin/wazuh-syscheckd,root,root,750,file,-rwxr-x---,763136,0.1
 /var/ossec/bin/wazuh-execd,root,root,750,file,-rwxr-x---,561592,0.1
 /var/ossec/bin/wazuh-logcollector,root,root,750,file,-rwxr-x---,690248,0.1
 /var/ossec/bin/wazuh-control,root,root,750,file,-rwxr-x---,9331,0.1
@@ -10,7 +10,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/bin/wazuh-agentd,root,root,750,file,-rwxr-x---,730608,0.1
 /var/ossec/lib/libwazuhext.so,root,wazuh,750,file,-rwxr-x---,12374168,0.1
 /var/ossec/lib/libdbsync.so,root,wazuh,750,file,-rwxr-x---,505104,0.1
-/var/ossec/lib/libagent_sync_protocol.so,root,wazuh,750,file,-rwxr-x---,327648,0.1
+/var/ossec/lib/libagent_sync_protocol.so,root,wazuh,750,file,-rwxr-x---,352288,0.1
 /var/ossec/lib/libhttps_client.so,root,wazuh,750,file,-rwxr-x---,1281040,0.1
 /var/ossec/lib/libschema_validator.so,root,wazuh,750,file,-rwxr-x---,390232,0.1
 /var/ossec/lib/libsysinfo.so,root,wazuh,750,file,-rwxr-x---,2866400,0.1
@@ -24,7 +24,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/lib/libagent_info.so,root,wazuh,750,file,-rwxr-x---,389488,0.1
 /var/ossec/lib/libagent_metadata.so,root,wazuh,750,file,-rwxr-x---,14448,0.1
 /var/ossec/lib/libgcc_s.so.1,root,wazuh,750,file,-rwxr-x---,183248,0.1
-/var/ossec/etc/internal_options.conf,root,wazuh,640,file,-rw-r-----,9604,0.1
+/var/ossec/etc/internal_options.conf,root,wazuh,640,file,-rw-r-----,10117,0.1
 /var/ossec/etc/wpk_root.pem,root,wazuh,640,file,-rw-r-----,1367,0.1
 /var/ossec/etc/localtime,root,wazuh,640,file,-rw-r-----,118,0.1
 /var/ossec/etc/client.keys,root,wazuh,640,file,-rw-r-----,0,0.1

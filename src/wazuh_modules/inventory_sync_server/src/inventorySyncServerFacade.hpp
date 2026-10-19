@@ -961,6 +961,10 @@ namespace invsync
                                                     ? static_cast<std::size_t>(m_config.indexer_sync_max_bulk_size)
                                                     : DEFAULT_BULK_FLUSH_BYTES;
                 pipelineConfig.sessionQueryBatchSize = m_config.session_query_batch_size;
+                if (m_config.indexer_sync_max_retry_duration_seconds > 0)
+                {
+                    pipelineConfig.conflictRetryAfterSeconds = m_config.indexer_sync_max_retry_duration_seconds;
+                }
                 pipelineClusterName = invsync::common::buildClusterIdentity(m_config).clusterName;
 
                 if (needSession || needSync || needAsync || needPipeline || needLane)

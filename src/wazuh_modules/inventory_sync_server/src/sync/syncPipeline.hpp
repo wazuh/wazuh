@@ -47,6 +47,10 @@ namespace invsync::sync
         std::size_t bulkFlushBytes {10U * 1024U * 1024U};
         /// Indexer search page size the session processor uses while draining a session.
         int sessionQueryBatchSize {0}; ///< <=0 -> SessionProcessor's own default.
+        /// `Retry-After` of the 503 answered when a by-query's version-conflict allowance runs out:
+        /// the competing writer cannot keep the conflict alive longer than its own allowance, so
+        /// the facade feeds the connector's `max_retry_duration_seconds` here.
+        int conflictRetryAfterSeconds {15};
     };
 
     /**
@@ -161,12 +165,18 @@ namespace invsync::sync
         void workerLoop(std::size_t index);
         /// Sends the response AND releases the item's agent from the registry (a release of a
         /// never-acquired agent is a harmless no-op, so the stop() drain path may share this).
-        void respond(Item& item, int status, const std::string& body);
+        void respond(Item& item,
+                     int status,
+                     const std::string& body,
+                     const std::vector<std::pair<std::string, std::string>>& headers = {});
         /// Pops the first queued item whose agent the registry lets this lane take (front, when
         /// no registry). Returns false when nothing is dispatchable RIGHT NOW.
         bool popDispatchable(Shard& shard, Item& item);
-        /// 503 when the worker's connector reports unavailable (retriable), 500 otherwise.
-        void respondConnectorFailure(std::vector<Item>& items, indexer::IIndexerConnectorSync& connector);
+        /// 503 when the worker's connector reports unavailable (retriable), 503 + Retry-After when
+        /// a by-query ran out of its version-conflict allowance (retriable contention), 500 otherwise.
+        void respondConnectorFailure(std::vector<Item>& items,
+                                     indexer::IIndexerConnectorSync& connector,
+                                     indexer::ConnectorError::Cause cause = indexer::ConnectorError::Cause::Other);
         void
         flushAndRespond(std::vector<Item>& batch, std::size_t& batchBytes, indexer::IIndexerConnectorSync& connector);
         /// Moves the connector's own request and conflict counts into the metrics. Every path that
@@ -191,6 +201,7 @@ namespace invsync::sync
         std::shared_ptr<wazuh::metrics::ICounter> m_indexerBulkRequests;
         std::shared_ptr<wazuh::metrics::ICounter> m_indexerBulkBytes;
         std::shared_ptr<wazuh::metrics::ICounter> m_indexerConflictRetries;
+        std::shared_ptr<wazuh::metrics::ICounter> m_indexerConflictExhausted;
         std::shared_ptr<wazuh::metrics::ICounter> m_flushFailuresDocuments;
         std::shared_ptr<wazuh::metrics::ICounter> m_flushFailuresExhausted;
         std::shared_ptr<wazuh::metrics::ICounter> m_flushFailuresOther;

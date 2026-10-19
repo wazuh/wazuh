@@ -441,6 +441,10 @@ class MigrationToolTest(unittest.TestCase):
         self.assertIsNone(tool.read_credentials_env(path + ".missing"))
         self.assertIsNone(tool.read_credentials_env(path, key="NOT_THERE"))
 
+    def test_credentials_env_default_path(self):
+        self.assertEqual("/etc/wazuh-manager/export/credentials.env", tool.CREDENTIALS_ENV,
+                         "where the manager's credential resolver publishes the API password")
+
     def test_api_password_falls_back_to_credentials_env(self):
         path = os.path.join(self.workspace.name, "credentials.env")
         with open(path, "w") as handle:

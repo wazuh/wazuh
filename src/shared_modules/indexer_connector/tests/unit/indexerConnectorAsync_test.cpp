@@ -2,8 +2,10 @@
 #include "indexerConnectorAsyncImpl.hpp"
 #include "mocks/MockHTTPRequest.hpp"
 #include "mocks/MockServerSelector.hpp"
+#include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <condition_variable>
 #include <filesystem>
 #include <fstream>
 #include <future>
@@ -11,6 +13,7 @@
 #include <gtest/gtest.h>
 #include <json.hpp>
 #include <memory>
+#include <mutex>
 #include <sstream>
 #include <thread>
 
@@ -1006,12 +1009,14 @@ TEST_F(IndexerConnectorAsyncTest, ClusterBlockExceptionItemsAreDiscardedNotRetri
     EXPECT_NE(receivedData[1].find("value5"), std::string::npos);
 }
 
-// Verifies the next bulk after a cluster_block_exception is actually delayed by IndexerBulkQueue's
-// backoff, not just eventually sent. nextDelay() for a *first* occurrence is uniform in [0, baseDelay)
-// - by design, so it can legitimately land near zero - so asserting a lower bound there would be
-// statistically flaky. To get a deterministic floor, this drives the backoff to its *second*
-// occurrence (two consecutive cluster_block_exception responses): its lower bound is exactly
-// baseDelay (see IndexerExponentialBackoffTest), which is never zero.
+// Verifies a cluster_block_exception makes IndexerBulkQueue pause before the next bulk, and that the
+// pause is ordered before that next send. With this fixture's limits (RetryDelay = 1s, the default
+// MaxRetryDelay = 15s, at least twice the base) nextDelay() is never below baseDelay: a first occurrence is
+// uniform in [baseDelay, 1.5 * baseDelay] and later ones start at the previous exponential delay (see
+// IndexerExponentialBackoffTest), so the requested delay has a deterministic floor. That the pause really
+// sleeps is IndexerBulkQueueTest.ExternalBackoffPausesTheNextSendForTheRequestedDelay.
+// The pause is observed through IndexerBulkQueue's PauseObserver hook, not the wall clock. Limit: this
+// proves the pause was requested and ordered before the 3rd send, not that the wait_for actually slept.
 TEST_F(IndexerConnectorAsyncTest, AppliesBackoffToNextBulkAfterClusterBlockException)
 {
     auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
@@ -1034,6 +1039,18 @@ TEST_F(IndexerConnectorAsyncTest, AppliesBackoffToNextBulkAfterClusterBlockExcep
         ]
     })";
     static constexpr auto cleanResponse = R"({"took":1,"errors":false,"items":[]})";
+
+    // Pause history, written by the dispatcher thread through the observer. Declared before the connector so
+    // they outlive its queue (the observer captures them by reference).
+    struct PauseRecord
+    {
+        std::chrono::milliseconds delay;
+        bool external;
+        int posts;
+    };
+    std::vector<PauseRecord> pauses;
+    std::mutex pausesMutex;
+    std::condition_variable pausesCv;
 
     std::promise<void> firstCallPromise;
     std::future<void> firstCallFuture = firstCallPromise.get_future();
@@ -1092,7 +1109,19 @@ TEST_F(IndexerConnectorAsyncTest, AppliesBackoffToNextBulkAfterClusterBlockExcep
                 }
             }));
 
-    IndexerConnectorAsyncImplRetryableBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    // Records each pause together with the number of posts received so far.
+    IndexerBulkQueue::PauseObserver observer =
+        [&pauses, &pausesMutex, &pausesCv, &callIndex](std::chrono::milliseconds delay, bool externalRequest)
+    {
+        {
+            std::lock_guard<std::mutex> lock(pausesMutex);
+            pauses.push_back({delay, externalRequest, callIndex.load()});
+        }
+        pausesCv.notify_all();
+    };
+
+    IndexerConnectorAsyncImplRetryableBulk connector(
+        config, nullptr, &mockHttpRequest, std::move(mockSelector), "", std::nullopt, observer);
 
     // 1. Send a first bulk.
     connector.bulkIndexDataStream("wazuh-events-v5-system-activity", R"({"field":"value0"})");
@@ -1101,30 +1130,38 @@ TEST_F(IndexerConnectorAsyncTest, AppliesBackoffToNextBulkAfterClusterBlockExcep
     ASSERT_EQ(firstCallFuture.wait_for(std::chrono::seconds(10)), std::future_status::ready)
         << "Timeout waiting for the first (blocked) bulk";
 
-    // 3. Give the response logger time to classify it and call requestBackoff() before we enqueue
-    // more data - otherwise there's a race where the next send could go out before the signal lands.
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
-
-    // 4. Enqueue new, independent events - this becomes the second bulk, also reported as blocked
-    // to drive the backoff to its second (deterministic-floor) occurrence.
+    // 3. Enqueue new, independent events right away - this becomes the second bulk, also reported as
+    // blocked. Whether the first block's pause lands before or after it, an external pause must follow it.
     connector.bulkIndexDataStream("wazuh-events-v5-system-activity", R"({"field":"value1"})");
 
     ASSERT_EQ(secondCallFuture.wait_for(std::chrono::seconds(10)), std::future_status::ready)
         << "Timeout waiting for the second (also blocked) bulk";
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    // 4. Wait for the dispatcher to request an external pause after the second post. The block signal
+    // arrives through the response logger, so it may only be picked up a dispatcher loop later.
+    std::chrono::milliseconds pauseDelay {};
+    {
+        std::unique_lock<std::mutex> lock(pausesMutex);
+        const auto findPause = [&pauses]()
+        {
+            return std::find_if(pauses.begin(),
+                                pauses.end(),
+                                [](const PauseRecord& record) { return record.external && record.posts >= 2; });
+        };
+        ASSERT_TRUE(pausesCv.wait_for(lock, std::chrono::seconds(10), [&]() { return findPause() != pauses.end(); }))
+            << "Timeout waiting for the backoff pause after the second blocked bulk";
+        pauseDelay = findPause()->delay;
+    }
 
-    const auto thirdSendRequestedAt = std::chrono::steady_clock::now();
+    // 5. The requested pause has the RetryDelay (1s) floor.
+    EXPECT_GE(pauseDelay, std::chrono::milliseconds(1000))
+        << "The backoff pause after a cluster block should be at least baseDelay (1000ms)";
+
+    // Only now enqueue the third bulk: the pause above was ordered before it is sent.
     connector.bulkIndexDataStream("wazuh-events-v5-system-activity", R"({"field":"value2"})");
 
-    // 5. Verify the next (third) send is actually subject to the backoff: at least baseDelay
-    // (RetryDelay = 1s) must have elapsed, a hard floor guaranteed by the escalation above, not a
-    // random draw that could be near-zero.
     ASSERT_EQ(thirdCallFuture.wait_for(std::chrono::seconds(10)), std::future_status::ready)
         << "Timeout waiting for the third bulk";
-    const auto elapsed = std::chrono::steady_clock::now() - thirdSendRequestedAt;
-    EXPECT_GE(elapsed, std::chrono::milliseconds(900))
-        << "Third send should have been delayed by the escalated backoff (expected >= ~1000ms)";
 
     // 6. None of the earlier bulks' data was ever resent.
     EXPECT_EQ(callCount, 3);

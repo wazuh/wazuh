@@ -45,9 +45,13 @@ case "$1" in
             mkdir -p ${DIR}/etc
         fi
 
-        # If the directory is not empty, copy the files into ${DIR}/etc
-        if ls -A ${DIR}/tmp/conffiles > /dev/null 2>&1 ; then
-            mv ${DIR}/tmp/conffiles/* ${DIR}/etc
+        # If the directory is not empty, move the files into ${DIR}/etc. Only the directory prerm
+        # made, root's and not a link, is read back: tmp/ is writable by the wazuh group.
+        if [ -d ${DIR}/tmp/conffiles ] && [ ! -L ${DIR}/tmp/conffiles ] \
+            && [ -n "$(find ${DIR}/tmp/conffiles -maxdepth 0 -user 0)" ] \
+            && [ -n "$(ls -A ${DIR}/tmp/conffiles)" ]; then
+            mv ${DIR}/tmp/conffiles/* ${DIR}/etc \
+                || echo "WARNING: some configuration files could not be kept in ${DIR}/etc." >&2
         fi
         rm -rf ${DIR}/tmp
         if [ "$1" = "remove" ]; then

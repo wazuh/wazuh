@@ -38,6 +38,10 @@ class IndexerBulkQueue final
 {
 public:
     using Processor = std::function<void(uint64_t sequence, std::vector<std::string>&)>;
+    /// Test hook: called on the worker thread right before each backoff pause, with no lock held. `externalRequest` is
+    /// true for a requestBackoff() pause and false for a failed-send retry. It must return promptly and must not throw
+    /// (stop() joins the worker through it), and whatever it touches must outlive the queue.
+    using PauseObserver = std::function<void(std::chrono::milliseconds delay, bool externalRequest)>;
 
     /**
      * @param processor  Callback invoked on the worker thread with each batch.
@@ -46,14 +50,17 @@ public:
      * @param flushIntervalSec  Max seconds to wait before flushing a partial batch.
      * @param retryDelaySec     Base delay in seconds for exponential backoff after failed processor calls.
      * @param maxRetryDelaySec  Maximum delay in seconds for exponential backoff.
+     * @param pauseObserver     Optional test hook, see PauseObserver (empty in production).
      */
     IndexerBulkQueue(Processor processor,
                      size_t maxBytes,
                      size_t bulkMaxBytes,
                      size_t flushIntervalSec,
                      size_t retryDelaySec,
-                     size_t maxRetryDelaySec)
+                     size_t maxRetryDelaySec,
+                     PauseObserver pauseObserver = {})
         : m_processor(std::move(processor))
+        , m_pauseObserver(std::move(pauseObserver))
         , m_maxBytes(maxBytes)
         , m_bulkMaxBytes(bulkMaxBytes)
         , m_flushInterval(flushIntervalSec)
@@ -212,6 +219,10 @@ private:
             if (retryPending || externalBackoffRequested)
             {
                 retryPending = false;
+                if (m_pauseObserver)
+                {
+                    m_pauseObserver(delay, externalBackoffRequested);
+                }
                 logDebug1(LOGGER_DEFAULT_TAG,
                           "IndexerBulkQueue: pausing %lld ms before next send (%s).",
                           static_cast<long long>(delay.count()),
@@ -363,6 +374,9 @@ private:
 
     // Processor
     Processor m_processor;
+
+    // Test hook, set once before m_worker starts (see PauseObserver)
+    const PauseObserver m_pauseObserver;
 
     // Overflow tracking
     std::atomic<size_t> m_droppedCount {0};

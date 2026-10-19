@@ -68,17 +68,13 @@ EXTERNAL_MAXMINDDB=external/libmaxminddb/
 EXTERNAL_PROTOBUF=external/protobuf/
 EXTERNAL_DATE=external/date/
 EXTERNAL_SIMDJSON=external/simdjson/
-EXTERNAL_LZMA=external/lzma/
 EXTERNAL_LUA=external/lua/
 EXTERNAL_LIBPCRE2=external/libpcre2/
-EXTERNAL_SIMDJSON=external/simdjson/
 EXTERNAL_PROCPS=external/procps/
 EXTERNAL_LIBDB=external/libdb/build_unix/
-EXTERNAL_LIBARCHIVE=external/libarchive/
 EXTERNAL_JEMALLOC=external/jemalloc/
 EXTERNAL_RPM=external/rpm/
 EXTERNAL_POPT=external/popt/
-EXTERNAL_LIBBPF=external/libbpf-bootstrap/
 EXTERNAL_DBUS=external/dbus/
 EXTERNAL_LLHTTP=external/llhttp/
 # XXX Becareful NO EXTRA Spaces here
@@ -95,7 +91,7 @@ USE_AUDIT=no
 DISABLE_JEMALLOC?=no
 IMAGE_TRUST_CHECKS?=1
 CA_NAME?=Microsoft Identity Verification Root Certificate Authority 2020
-HTTP_REQUEST_BRANCH?=8bde1064b7bb0e9f8c9faf43debe64d53ccf5498
+HTTP_REQUEST_BRANCH?=803cab4347fe8b7f5cdbfa69949c22bd1ae35c49
 
 ifeq (${TARGET},winagent)
 CMAKE_OPTS=-DCMAKE_SYSTEM_NAME=Windows -DCMAKE_C_COMPILER=${MING_BASE}${CC}$(if $(filter gcc,${CC}),-posix) -DCMAKE_CXX_COMPILER=${MING_BASE}${CXX} -DEVENTCHANNEL_SUPPORT=ON
@@ -406,10 +402,10 @@ ifneq (,$(shell curl --help all 2>/dev/null | grep -F -- '--retry-all-errors'))
 	TZDATA_CURL_FLAGS += --retry-all-errors
 endif
 TZDATA_CURL := curl $(TZDATA_CURL_FLAGS) -o
-# Curl for every ref-based download below -- indexer templates, WCS flat files, the shared
-# credential library. Distinct from $(CURL) above in that it retries and fails on an HTTP error
-# status instead of writing the error page to the output file, which is what makes the ref-fallback
-# loops work: they depend on a 404 being a non-zero exit.
+# Curl for every ref-based download below -- indexer templates and WCS flat files. Distinct from
+# $(CURL) above in that it retries and fails on an HTTP error status instead of writing the error
+# page to the output file, which is what makes the ref-fallback loops work: they depend on a 404
+# being a non-zero exit.
 FETCH_CURL_FLAGS := -fsS --retry 5 --retry-delay 2 --connect-timeout 20 --max-time 300
 ifneq (,$(shell curl --help all 2>/dev/null | grep -F -- '--retry-connrefused'))
 	FETCH_CURL_FLAGS += --retry-connrefused
@@ -528,22 +524,6 @@ INDEXER_PLUGINS_BASE_URL := https://raw.githubusercontent.com/wazuh/wazuh-indexe
 INDEXER_PLUGINS_STATES_PATH := plugins/setup/src/main/resources/templates/states
 INDEXER_PLUGINS_STREAMS_PATH := plugins/setup/src/main/resources/templates/streams
 
-# Shared credential library
-#
-# wazuh-credentials.sh is the credential resolution ladder's shared half -- the credentials file
-# format, its locking convention, password generation and validation, and the CA. The manager, the
-# indexer and the dashboard all resolve credentials against the same /etc/wazuh/credentials.env, so
-# the three must agree on it exactly; it is owned by wazuh-installation-assistant and downloaded
-# here rather than vendored, because a copy in this repository is a copy that can drift.
-# The manager's own half stays in init/credentials/ (wazuh-manager-certificates.sh,
-# resolve-credentials.sh): those are not shared with anybody.
-CREDENTIALS_LIB_DIR := external/wazuh-credentials
-CREDENTIALS_LIB_BASE_URL := https://raw.githubusercontent.com/wazuh/wazuh-installation-assistant
-CREDENTIALS_LIB_PATH := credentials_lib
-
-CREDENTIALS_LIB_SERVER_FILES := \
-	wazuh-credentials.sh
-
 # Base templates (always downloaded)
 INDEXER_TEMPLATES_BASE := \
 	fim-files.json \
@@ -584,17 +564,13 @@ WCS_FLAT_YAML_FILES := wcs_flat.yml
 WCS_FLAT_FILES := $(WCS_FLAT_YAML_FILES:%=$(WCS_FLAT_DIR)/%)
 
 # Select templates based on TARGET
-# The credential library is server-only: the resolver that sources it is installed by
-# InstallServer(), and an agent resolves no credentials.
 ifneq (,$(filter agent winagent, ${TARGET}))
 INDEXER_TEMPLATES_STATES := $(INDEXER_TEMPLATES_BASE)
 INDEXER_TEMPLATES_STREAMS :=
 WCS_FLAT_FILES :=
-CREDENTIALS_LIB_FILES :=
 else
 INDEXER_TEMPLATES_STATES := $(INDEXER_TEMPLATES_BASE) $(INDEXER_TEMPLATES_SERVER_STATES)
 INDEXER_TEMPLATES_STREAMS := $(INDEXER_TEMPLATES_SERVER_STREAMS)
-CREDENTIALS_LIB_FILES := $(CREDENTIALS_LIB_SERVER_FILES:%=$(CREDENTIALS_LIB_DIR)/%)
 endif
 
 INDEXER_TEMPLATE_FILES := $(INDEXER_TEMPLATES_STATES:%=$(INDEXER_PLUGINS_DIR)/%) $(INDEXER_TEMPLATES_STREAMS:%=$(INDEXER_PLUGINS_DIR)/%)
@@ -607,7 +583,7 @@ print-%:
 	@echo '$($*)'
 
 .PHONY: deps
-deps: $(EXTERNAL_TAR) $(SHARED_TAR) $(INDEXER_TEMPLATE_FILES) $(WCS_FLAT_FILES) $(CREDENTIALS_LIB_FILES)
+deps: $(EXTERNAL_TAR) $(SHARED_TAR) $(INDEXER_TEMPLATE_FILES) $(WCS_FLAT_FILES)
 
 external/$(CPYTHON).tar.gz:
 # Python interpreter
@@ -744,32 +720,6 @@ $(INDEXER_PLUGINS_DIR)/%.json: | $(INDEXER_PLUGINS_DIR)
 	fi
 	@printf "\033[32m[+] Dependency %s installed successfully\033[0m\n" "$(notdir $@)"
 
-# Shared credential library download
-#
-# Same ref-fallback list as the indexer templates and the WCS flat files: get_git_refs.sh reports
-# THIS repository's refs, and the loop walks them until one resolves upstream. A branch that exists
-# only here 404s and falls through to refs/heads/<version> from VERSION.json, which is the ref a
-# release build wants anyway.
-$(CREDENTIALS_LIB_DIR):
-	@mkdir -p $(CREDENTIALS_LIB_DIR)
-
-$(CREDENTIALS_LIB_SERVER_FILES:%=$(CREDENTIALS_LIB_DIR)/%): | $(CREDENTIALS_LIB_DIR)
-	 @echo "[-] Downloading dependency $(notdir $@) ..."
-	 @success=0; \
-	for ref in $(GIT_REFS_LIST); do \
-		url="$(CREDENTIALS_LIB_BASE_URL)/$$ref/$(CREDENTIALS_LIB_PATH)/$(notdir $@)"; \
-		echo "$(FETCH_CURL) $@ $(CACERT_OPT) -f $$url"; \
-		if $(FETCH_CURL) $@ $(CACERT_OPT) -f "$$url"; then \
-			success=1; \
-			break; \
-		fi; \
-	done; \
-	if [ $$success -eq 0 ]; then \
-		printf "\033[31mERROR: Failed to download %s from any reference\033[0m\n" "$(notdir $@)" >&2; \
-		exit 1; \
-	fi
-	@printf "\033[32m[+] Dependency %s installed successfully\033[0m\n" "$(notdir $@)"
-
 # WCS flat files directory
 $(WCS_FLAT_DIR):
 	@mkdir -p $(WCS_FLAT_DIR)
@@ -890,7 +840,6 @@ ifneq ($(wildcard external/*/*),)
 	rm -rf ${EXTERNAL_LUA}install/*
 	-cd ${EXTERNAL_DBUS} && test -f configure && ${MAKE} distclean 2>/dev/null || true
 	-cd ${EXTERNAL_LIBDB} && ${MAKE} realclean 2>/dev/null || true
-	-cd ${EXTERNAL_LIBARCHIVE} && ${MAKE} clean 2>/dev/null || true
 	-cd ${EXTERNAL_JEMALLOC} && ${MAKE} clean 2>/dev/null || true
 # CMake-based dependencies - remove build directories only
 	rm -rf $(EXTERNAL_GOOGLE_TEST)lib $(EXTERNAL_GOOGLE_TEST)build
@@ -907,7 +856,6 @@ ifneq ($(wildcard external/*/*),)
 	rm -rf $(EXTERNAL_MAXMINDDB)build
 	rm -rf $(EXTERNAL_RE2)build
 	rm -rf $(EXTERNAL_PROTOBUF)build
-	rm -rf $(EXTERNAL_LZMA)build
 	rm -rf $(EXTERNAL_POPT)build
 	rm -rf $(EXTERNAL_RPM)builddir
 	rm -rf $(EXTERNAL_LLHTTP)build

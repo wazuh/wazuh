@@ -510,6 +510,9 @@ cJSON *getSyscheckInternalOptions(void) {
     cJSON_AddNumberToObject(syscheckd,"symlink_scan_interval",syscheck.sym_checker_interval);
     cJSON_AddNumberToObject(syscheckd,"debug",sys_debug_level);
     cJSON_AddNumberToObject(syscheckd,"file_max_size",syscheck.file_max_size);
+    cJSON_AddNumberToObject(syscheckd,"sync_flush_batch_size",syscheck.sync_flush_batch_size);
+    cJSON_AddNumberToObject(syscheckd,"sync_flush_interval_ms",syscheck.sync_flush_interval_ms);
+    cJSON_AddNumberToObject(syscheckd,"sync_wal_autocheckpoint_pages",syscheck.sync_wal_autocheckpoint_pages);
 #ifdef WIN32
     cJSON_AddNumberToObject(syscheckd,"max_fd_win_rt",syscheck.max_fd_win_rt);
 #else
