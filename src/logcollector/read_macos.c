@@ -415,14 +415,18 @@ STATIC bool w_macos_log_getlog_ndjson(char * buffer, int length, FILE * stream, 
                 continue;
             }
 
-            int c;
-            do {
-                c = fgetc(stream);
-            } while (c != '\n' && c != EOF);
-            mdebug2("macOS ULS: Maximum message length reached. The message was discarded.");
-            w_macos_log_ctxt_clean(&macos_log_cfg->ctxt);
-            offset = 0;
-            continue;
+            int c = fgetc(stream);
+            if (c != '\n') {
+                while (c != '\n' && c != EOF) {
+                    c = fgetc(stream);
+                }
+                mwarn("macOS ULS: Event longer than %d bytes discarded.", length - 1);
+                w_macos_log_ctxt_clean(&macos_log_cfg->ctxt);
+                offset = 0;
+                continue;
+            }
+            /* The line filled the buffer exactly and only its '\n' was left */
+            offset++;
         }
 
         w_macos_log_ctxt_clean(&macos_log_cfg->ctxt);
@@ -459,7 +463,7 @@ STATIC bool w_macos_log_ndjson_to_syslog(char * buffer, int length, bool is_show
     char activity_str[OS_SIZE_128] = "";
     const char * slash;
 
-    if (timestamp == NULL || message == NULL || type == NULL || !cJSON_IsNumber(pid)) {
+    if (timestamp == NULL || type == NULL) {
         cJSON_Delete(event);
         return false;
     }
@@ -467,6 +471,7 @@ STATIC bool w_macos_log_ndjson_to_syslog(char * buffer, int length, bool is_show
     process = (process == NULL) ? "" : ((slash = strrchr(process, '/')) ? slash + 1 : process);
     sender = (sender == NULL) ? "" : ((slash = strrchr(sender, '/')) ? slash + 1 : sender);
     category = (category == NULL) ? "" : category;
+    message = (message == NULL) ? "" : message;
 
     const bool has_sender = *sender != '\0' && strcmp(sender, process) != 0;
     const bool has_subsystem = subsystem != NULL && *subsystem != '\0';
@@ -490,7 +495,7 @@ STATIC bool w_macos_log_ndjson_to_syslog(char * buffer, int length, bool is_show
     }
 
     /* Same layout as `--style syslog`: "(sender) [subsystem:category] message" */
-    snprintf(buffer, length, "%s  localhost %s[%d]: %s%s%s%s%s%s%s%s%s%s", timestamp, process, pid->valueint,
+    snprintf(buffer, length, "%s  localhost %s[%d]: %s%s%s%s%s%s%s%s%s%s", timestamp, process, cJSON_IsNumber(pid) ? pid->valueint : 0,
              has_sender ? "(" : "", has_sender ? sender : "", has_sender ? ") " : "",
              has_subsystem ? "[" : "", has_subsystem ? subsystem : "", has_subsystem ? ":" : "",
              has_subsystem ? category : "", has_subsystem ? "] " : "", activity_str, message);

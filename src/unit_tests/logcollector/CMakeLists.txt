@@ -101,7 +101,7 @@ else()
                                     -Wl,--wrap,time -Wl,--wrap,so_get_function_sym -Wl,--wrap,so_get_module_handle \
                                     -Wl,--wrap,isDebug -Wl,--wrap,w_get_first_child -Wl,--wrap,w_is_macos_sierra \
                                     -Wl,--wrap,w_macos_set_log_settings -Wl,--wrap,w_macos_set_last_log_timestamp \
-                                    -Wl,--wrap,w_macos_set_is_valid_data -Wl,--wrap,wfopen")
+                                    -Wl,--wrap,w_macos_set_is_valid_data -Wl,--wrap,wfopen -Wl,--wrap,_mwarn")
 
     list(APPEND logcollector_names "test_read_multiline")
     list(APPEND logcollector_flags "-Wl,--wrap,fopen -Wl,--wrap,popen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets \

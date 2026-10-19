@@ -2090,6 +2090,15 @@ void test_w_macos_log_ndjson_to_syslog_state_event(void ** state) {
                                 "Transactions\n   - com.apple.AppStoreFoundation.startup\n");
 }
 
+void test_w_macos_log_ndjson_to_syslog_missing_fields(void ** state) {
+
+    char buffer[OS_MAXSTR] = "{\"eventType\":\"logEvent\",\"processImagePath\":\"\\/usr\\/bin\\/logger\","
+                             "\"timestamp\":\"2026-10-14 11:25:56.089644+0000\"}";
+
+    assert_true(w_macos_log_ndjson_to_syslog(buffer, OS_MAXSTR, false));
+    assert_string_equal(buffer, "2026-10-14 11:25:56.089644+0000  localhost logger[0]: ");
+}
+
 void test_w_macos_log_ndjson_to_syslog_not_a_log(void ** state) {
 
     char buffer[OS_MAXSTR] = "{\"count\":40,\"finished\":1}";
@@ -2250,13 +2259,30 @@ void test_w_macos_log_getlog_ndjson_line_too_long(void ** state) {
     will_return(__wrap_fgets, "{\"eventMessage\":\"too long");
     will_return(__wrap_fgetc, 'x');
     will_return(__wrap_fgetc, '\n');
-    expect_string(__wrap__mdebug2, formatted_msg, "macOS ULS: Maximum message length reached. The message was discarded.");
+    expect_string(__wrap__mwarn, formatted_msg, "macOS ULS: Event longer than 25 bytes discarded.");
 
     will_return(__wrap_can_read, 1);
     expect_value(__wrap_fgets, __stream, stream);
     will_return(__wrap_fgets, NULL);
 
     assert_false(w_macos_log_getlog(buffer, 26, stream, &macos_log_cfg));
+    assert_string_equal(macos_log_cfg.ctxt.buffer, "");
+}
+
+void test_w_macos_log_getlog_ndjson_line_fills_buffer(void ** state) {
+
+    char buffer[OS_MAXSTR + 1];
+    w_macos_log_config_t macos_log_cfg = {0};
+    FILE * stream = (FILE *) 1;
+    macos_log_cfg.is_header_processed = true;
+
+    will_return(__wrap_can_read, 1);
+    expect_value(__wrap_fgets, __stream, stream);
+    will_return(__wrap_fgets, NDJSON_MULTILINE_EVENT);
+    will_return(__wrap_fgetc, '\n');
+
+    assert_true(w_macos_log_getlog(buffer, sizeof(NDJSON_MULTILINE_EVENT), stream, &macos_log_cfg));
+    assert_string_equal(buffer, SYSLOG_MULTILINE_EVENT);
     assert_string_equal(macos_log_cfg.ctxt.buffer, "");
 }
 
@@ -2340,6 +2366,7 @@ int main(void) {
         cmocka_unit_test(test_w_macos_log_ndjson_to_syslog_activity_no_parent),
         cmocka_unit_test(test_w_macos_log_ndjson_to_syslog_activity_missing_ids),
         cmocka_unit_test(test_w_macos_log_ndjson_to_syslog_state_event),
+        cmocka_unit_test(test_w_macos_log_ndjson_to_syslog_missing_fields),
         cmocka_unit_test(test_w_macos_log_ndjson_to_syslog_not_a_log),
         cmocka_unit_test(test_w_macos_log_ndjson_to_syslog_invalid_json),
         cmocka_unit_test(test_w_macos_log_ndjson_to_syslog_truncated),
@@ -2350,6 +2377,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_w_macos_log_getlog_ndjson_old_context_completed, setup_macos_log_ndjson, teardown_macos_log_ndjson),
         cmocka_unit_test_setup_teardown(test_w_macos_log_getlog_ndjson_force_send_discards_context, setup_macos_log_ndjson, teardown_macos_log_ndjson),
         cmocka_unit_test_setup_teardown(test_w_macos_log_getlog_ndjson_line_too_long, setup_macos_log_ndjson, teardown_macos_log_ndjson),
+        cmocka_unit_test_setup_teardown(test_w_macos_log_getlog_ndjson_line_fills_buffer, setup_macos_log_ndjson, teardown_macos_log_ndjson),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);
