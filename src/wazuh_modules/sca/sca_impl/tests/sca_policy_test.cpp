@@ -5,6 +5,7 @@
 
 #include "logging_helper.hpp"
 
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <utility>
@@ -172,6 +173,38 @@ TEST_F(SCAPolicyTest, RulesAfterTheVerdictAreStillEvaluatedAndListed)
     EXPECT_EQ(reported[0].reason,
               "Rules not satisfied (condition 'all'):\n"
               "c:sysctl net.ipv4.ip_forward -> r:= 0\n"
+              "c:sysctl net.ipv6.conf.all.forwarding -> r:= 0");
+}
+
+TEST_F(SCAPolicyTest, CheckResultIsLoggedOnOneLine)
+{
+    // The agent log timestamps each line, so a reason's line breaks would leave bare lines in it
+    std::vector<std::string> logs;
+    LoggingHelper::setLogCallback([&logs](const modules_log_level_t /* level */, const char* log)
+    {
+        logs.emplace_back(log);
+    });
+
+    std::vector<Check> checks;
+    checks.push_back(MakeCheck("1006", "all",
+    {
+        {RuleResult::NotFound, "", "c:sysctl net.ipv4.ip_forward -> r:= 0"},
+        {RuleResult::NotFound, "", "c:sysctl net.ipv6.conf.all.forwarding -> r:= 0"}
+    }));
+
+    RunPolicy(Check {}, std::move(checks));
+    LoggingHelper::setLogCallback([](const modules_log_level_t /* level */, const char* /* log */) {});
+
+    const auto line = std::find_if(logs.begin(), logs.end(), [](const std::string & log)
+    {
+        return log.find("Policy check \"1006\"") != std::string::npos;
+    });
+
+    ASSERT_NE(line, logs.end());
+    EXPECT_EQ(*line,
+              "Policy check \"1006\" evaluation completed for policy \"test_policy\", result: Failed, "
+              "reason: Rules not satisfied (condition 'all'):\\n"
+              "c:sysctl net.ipv4.ip_forward -> r:= 0\\n"
               "c:sysctl net.ipv6.conf.all.forwarding -> r:= 0");
 }
 
