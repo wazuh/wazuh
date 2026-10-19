@@ -227,6 +227,7 @@ OutcomeClass StatelessStream::flushOnce(Waiter& waiter, uint32_t timeoutMs, uint
     const std::string body = headerLine + snapshot.body;
     spec.body = reinterpret_cast<const uint8_t*>(body.data());
     spec.bodyLength = body.size();
+    spec.maxResponseBytes = SHORT_REPLY_MAX_RESPONSE_BYTES;
     spec.timeoutMs = timeoutMs;
 
     // Operational visibility (send-time debug log, mirroring controlStream.cpp's

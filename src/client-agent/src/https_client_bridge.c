@@ -1531,6 +1531,10 @@ static const struct {
     {"agent-info",      AGENT_INFO_SYNC_HEADER,     false},
 };
 
+/* The largest /stateful answer must fit a frame: header (under 32 bytes) + HCRESULT prefix (under 64). */
+_Static_assert(HC_MAX_STATEFUL_RESPONSE_BODY + 32 + 64 < OS_MAXSTR,
+               "HC_MAX_STATEFUL_RESPONSE_BODY does not leave room for the sync frame header");
+
 /* Session ids arrive as "<module>-<session>". Split on the LAST hyphen, not the
  * first: "agent-info" contains one of its own, and the session is always
  * decimal, so the last hyphen is unambiguous. */
@@ -1591,6 +1595,7 @@ static void bridge_on_sync_response(const char *session_id, int result, const ch
 
         char prefix[64];
         int prefix_len = snprintf(prefix, sizeof(prefix), "HCRESULT:%s:%d:", session_num, result);
+        size_t relayed_body_len = body_len;
 
         if (prefix_len <= 0 || (size_t)prefix_len >= sizeof(prefix)) {
             mdebug2("https_client: could not encode sync result for session '%s'; dropping it.",
@@ -1598,13 +1603,23 @@ static void bridge_on_sync_response(const char *session_id, int result, const ch
             return;
         }
 
-        const size_t payload_len = (size_t)prefix_len + body_len;
+        /* A module's local socket takes frames shorter than OS_MAXSTR. Keep that limit on every
+         * platform; a larger answer reaches the module as no answer (code 0, no body). */
+        if (header_len + (size_t)prefix_len + body_len >= OS_MAXSTR) {
+            mwarn("https_client: the /stateful answer for session '%s' is too large to relay "
+                  "(%zu bytes); relaying it as no answer.", session_id, body_len);
+            prefix_len = snprintf(prefix, sizeof(prefix), "HCRESULT:%s:0:", session_num);
+            relayed_body_len = 0;
+        }
+
+        const size_t payload_len = (size_t)prefix_len + relayed_body_len;
+
         char *framed = NULL;
         os_malloc(header_len + payload_len + 1, framed);
         memcpy(framed, SYNC_ROUTES[i].header, header_len);
         memcpy(framed + header_len, prefix, (size_t)prefix_len);
-        if (body_len > 0) {
-            memcpy(framed + header_len + (size_t)prefix_len, body, body_len);
+        if (relayed_body_len > 0) {
+            memcpy(framed + header_len + (size_t)prefix_len, body, relayed_body_len);
         }
         framed[header_len + payload_len] = '\0';
 

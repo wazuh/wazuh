@@ -189,6 +189,7 @@ list(APPEND client-agent_names "test_https_client_bridge")
 list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_http_request \
                                 -Wl,--wrap,hc_create -Wl,--wrap,hc_start -Wl,--wrap,hc_destroy \
                                 -Wl,--wrap,hc_set_agent_identity -Wl,--wrap,hc_submit_event \
+                                -Wl,--wrap,wmcom_send -Wl,--wrap,ag_send_syscheck \
                                 -Wl,--wrap,hc_set_config_hash -Wl,--wrap,hc_enroll \
                                 -Wl,--wrap,try_enroll_to_server \
                                 -Wl,--wrap,CreateThread -Wl,--wrap,sleep -Wl,--wrap,getpid \

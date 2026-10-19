@@ -208,7 +208,8 @@ void * wmcom_main(__attribute__((unused)) void * arg) {
             mdebug1("At wmcom_main(): could not set the socket timeout: %s (%d)", strerror(errno), errno);
         }
 
-        os_calloc(OS_MAXSTR, sizeof(char), buffer);
+        // One byte more than the limit, so a request of exactly OS_MAXSTR bytes stays terminated.
+        os_calloc(OS_MAXSTR + 1, sizeof(char), buffer);
         switch (length = OS_RecvSecureTCP(peer, buffer,OS_MAXSTR), length) {
         case OS_SOCKTERR:
             merror("At wmcom_main(): OS_RecvSecureTCP(): response size is bigger than expected");
