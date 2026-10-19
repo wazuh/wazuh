@@ -51,6 +51,7 @@ All notable changes to this project will be documented in this file.
 - Fixed `wazuh-monitord` not compressing the rotated `-NNN` archive and alert files when they rotate more than once a day. ([#40148](https://github.com/wazuh/wazuh/pull/40148))
 - Fixed `wurl_request()` sending `|` and `\` unencoded in the URL, so a URL containing `|` was split into extra fields by the download module, truncating the URL and replacing the destination, header and data of the request. ([#40357](https://github.com/wazuh/wazuh/pull/40357))
 - Fixed `wazuh-keystore` being built without the stack canary, FORTIFY_SOURCE and PIE hardening flags on Linux. ([#39982](https://github.com/wazuh/wazuh/issues/39982))
+- Fixed SCA content checks opening non-regular files without validating them on UNIX systems, which could block the scan. ([#40490](https://github.com/wazuh/wazuh/pull/40490))
 
 #### Changed
 
@@ -97,6 +98,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the macOS agent package loading `/tmp/wazuh_envs` without checking its owner, permissions and file type. ([#40248](https://github.com/wazuh/wazuh/pull/40248))
 - Fixed `wazuh-modulesd` crashing on a malformed legacy Berkeley DB RPM package record by validating the offsets and counts of each header entry. ([#40368](https://github.com/wazuh/wazuh/pull/40368))
 - Fixed the agent creating an empty `ossec-DD.json.gz` archive in the first daily log rotation after each install or upgrade when JSON logging is disabled, as on macOS. ([#40389](https://github.com/wazuh/wazuh/pull/40389))
+- Fixed SCA content checks opening non-regular files without validating them on UNIX systems, which could block the scan. ([#40490](https://github.com/wazuh/wazuh/pull/40490))
 
 ### Ruleset
 
