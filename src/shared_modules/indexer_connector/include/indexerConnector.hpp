@@ -661,7 +661,7 @@ public:
         Other,             ///< Hard rejection or unexpected state (non-retryable status, bad split).
         DocumentRejected,  ///< The indexer answered but rejected documents, left them undeleted, or
                            ///< returned a body that confirms nothing.
-        RetryExhausted,    ///< The retry budget ran out on a retryable condition (429, transport).
+        RetryExhausted,    ///< The retry budget ran out on a retryable condition (429, 502/503/504, transport).
         ConflictsExhausted ///< A by-query's version-conflict allowance ran out: the documents it
                            ///< skipped are consistent, a competing writer was still running.
     };
