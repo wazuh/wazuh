@@ -139,9 +139,11 @@ public:
      * downloads the updated namespace, enriches it with local assets, and updates
      * the router accordingly.
      *
+     * @return true if a space ended the cycle without a route although its policy is not disabled (indexer
+     *         error, content not published or not ready yet), so an earlier retry is worthwhile.
      * @throws std::runtime_error if any step of the synchronization process fails
      */
-    void synchronize();
+    bool synchronize();
 
     /**
      * @copydoc ICMSync::requestShutdown

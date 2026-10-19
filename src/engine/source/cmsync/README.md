@@ -110,6 +110,10 @@ The target namespace gets a unique random ID (`cmsync_<space>_<hex4>`) to avoid 
 
 Remote operations (`existsPolicy`, `getPolicy`, `getPolicyHashAndEnabled`) are wrapped in `base::utils::executeWithRetry()`, which retries up to `m_attempts` times with `m_waitSeconds` between each attempt. The shutdown flag `m_shutdownRequested` is passed to `executeWithRetry`, which checks it before each attempt and splits inter-retry sleep into 1-second chunks for responsive cancellation.
 
+### Early Retry While a Space Has No Route
+
+When a space ends a cycle without a route and its policy is not disabled (the indexer failed, or the content is not published or the CTI consumer not ready yet), `synchronize()` returns `true`. The `cm-sync-task` in `main.cpp` then runs the next cycle after `analysisd.cm_sync_retry_interval` seconds (default 30) instead of `analysisd.cm_sync_interval` (default 120), until every space has a route or a disabled policy. A space that keeps its previous route after a failed cycle does not trigger it: the old route keeps processing events.
+
 ### Graceful Shutdown
 
 `CMSync` supports responsive shutdown via `requestShutdown()`:
@@ -183,8 +187,10 @@ public:
      *
      * Iterates each tracked space, checks for remote changes, downloads
      * updated content, enriches it, and updates the router routes.
+     *
+     * @return true if a space is left without a route although its policy is not disabled.
      */
-    void synchronize();
+    bool synchronize();
 
     /**
      * @brief Signal the module to abort as soon as possible.

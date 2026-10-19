@@ -524,7 +524,7 @@ void CMSync::dumpStateToStore()
     }
 }
 
-void CMSync::synchronize()
+bool CMSync::synchronize()
 {
 
     LOG_DEBUG("[{}] Checking for namespace updates to synchronize", LOG_MODULE_NAME);
@@ -545,6 +545,7 @@ void CMSync::synchronize()
         }
     };
 
+    std::set<std::string> disabledSpaces; // Spaces whose policy is disabled: no route is the expected state
     for (auto& nsState : m_namespacesState)
     {
         // Check abort at the start of each namespace iteration
@@ -552,7 +553,7 @@ void CMSync::synchronize()
         {
             LOG_INFO("[{}] Synchronization aborted during namespace iteration", LOG_MODULE_NAME);
             updateSpacesStatusSnapshot();
-            return;
+            return false;
         }
 
         try
@@ -585,7 +586,7 @@ void CMSync::synchronize()
                          LOG_MODULE_NAME,
                          nsState.getOriginSpace());
                 updateSpacesStatusSnapshot();
-                return;
+                return false;
             }
 
             // Pre-flight check: verify consumer is ready and has data (local_offset != 0)
@@ -707,6 +708,7 @@ void CMSync::synchronize()
                               LOG_MODULE_NAME,
                               nsState.getOriginSpace());
                 }
+                disabledSpaces.insert(nsState.getOriginSpace());
                 nsState.setRouteState(false, false, ""); // route removed / absent → not available
                 // The check succeeded: clear a FAILED left by an earlier check.
                 nsState.setSyncStatus(base::SyncStatus::READY);
@@ -744,7 +746,7 @@ void CMSync::synchronize()
                          nsState.getOriginSpace());
                 nsState.setSyncStatus(base::SyncStatus::READY);
                 updateSpacesStatusSnapshot();
-                return;
+                return false;
             }
 
             // Download and enrich the namespace (consumer validated again within PIT)
@@ -832,6 +834,13 @@ void CMSync::synchronize()
     LOG_DEBUG("[{}] Finished synchronization of spaces", LOG_MODULE_NAME);
 
     updateSpacesStatusSnapshot();
+
+    // A space with no route and no decision to have none: the indexer failed, or the content is not published or
+    // not ready yet. All of these can clear before the next regular cycle.
+    return std::any_of(m_namespacesState.begin(),
+                       m_namespacesState.end(),
+                       [&disabledSpaces](const SyncedNamespace& nsState)
+                       { return !nsState.getAvailable() && disabledSpaces.count(nsState.getOriginSpace()) == 0; });
 }
 
 void CMSync::requestShutdown()

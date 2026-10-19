@@ -263,7 +263,7 @@ TEST_F(CMSyncConstructorTest, ThrowsWhenStoredEntryHasEmptyOriginSpace)
 
 // ==================== Synchronize Tests ====================
 
-// Case: Space does not exist in remote — should skip
+// Case: Space does not exist in remote — should skip, and report the space as pending
 TEST_F(CMSyncSynchronizeTest, SkipsWhenSpaceDoesNotExistInRemote)
 {
     auto state = createStoredStateWithNs("standard", "dummy_ns_id");
@@ -271,7 +271,7 @@ TEST_F(CMSyncSynchronizeTest, SkipsWhenSpaceDoesNotExistInRemote)
 
     EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(false));
 
-    EXPECT_NO_THROW(sync->synchronize());
+    EXPECT_TRUE(sync->synchronize());
 }
 
 // Case 1: Policy disabled in indexer, route exists — deletes route and namespace
@@ -306,7 +306,7 @@ TEST_F(CMSyncSynchronizeTest, Case1_PolicyDisabledWithExistingRoute)
     EXPECT_CALL(*store, upsertDoc(STORE_NAME_CMSYNC, ::testing::_))
         .WillOnce(::testing::Return(store::mocks::storeOk()));
 
-    EXPECT_NO_THROW(sync->synchronize());
+    EXPECT_FALSE(sync->synchronize());
 }
 
 // Case 1: Policy disabled in indexer, no route — just skips
@@ -323,7 +323,7 @@ TEST_F(CMSyncSynchronizeTest, Case1_PolicyDisabledNoRoute)
     // No route
     EXPECT_CALL(*router, existsEntry("cmsync_standard")).WillOnce(::testing::Return(false));
 
-    EXPECT_NO_THROW(sync->synchronize());
+    EXPECT_FALSE(sync->synchronize());
 }
 
 // Case 2: Policy enabled, hash unchanged — skips synchronization
@@ -344,7 +344,7 @@ TEST_F(CMSyncSynchronizeTest, Case2_PolicyEnabledHashUnchanged)
         .WillOnce(::testing::Return(base::RespOrError<router::prod::Entry>(entry)));
 
     // No download, no route update
-    EXPECT_NO_THROW(sync->synchronize());
+    EXPECT_FALSE(sync->synchronize());
 }
 
 // Case 3: Policy enabled, no route exists — full sync (download + create route)
@@ -385,7 +385,7 @@ TEST_F(CMSyncSynchronizeTest, Case3_PolicyEnabledNoRouteExists)
     EXPECT_CALL(*store, upsertDoc(STORE_NAME_CMSYNC, ::testing::_))
         .WillOnce(::testing::Return(store::mocks::storeOk()));
 
-    EXPECT_NO_THROW(sync->synchronize());
+    EXPECT_FALSE(sync->synchronize());
 }
 
 // Case 4: Policy enabled, hash changed — hot-swap + delete old namespace
@@ -589,7 +589,52 @@ TEST_F(CMSyncSynchronizeTest, ContinuesWithNextSpaceAfterFailure)
     // Delete old namespace (stored_custom_ns != dummy_ns_id)
     EXPECT_CALL(*crud, deleteNamespace(cm::store::NamespaceId("stored_custom_ns"))).Times(1);
 
-    EXPECT_NO_THROW(sync->synchronize());
+    EXPECT_TRUE(sync->synchronize());
+}
+
+// A space without a route whose CTI consumer is not ready yet is pending
+TEST_F(CMSyncSynchronizeTest, ReportsPendingWhenConsumerNotReady)
+{
+    auto state = createStoredStateWithNs("standard", "dummy_ns_id");
+    auto sync = createSyncWithState(state);
+
+    EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*indexer, isConsumerReadyForSync(::testing::_)).WillOnce(::testing::Return(false));
+
+    EXPECT_TRUE(sync->synchronize());
+}
+
+// A space without a route whose sync fails on an indexer error is pending
+TEST_F(CMSyncSynchronizeTest, ReportsPendingWhenIndexerFailsWithoutRoute)
+{
+    auto state = createStoredStateWithNs("standard", "dummy_ns_id");
+    EXPECT_CALL(*store, existsDoc(STORE_NAME_CMSYNC)).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*store, readDoc(STORE_NAME_CMSYNC)).WillOnce(::testing::Return(store::mocks::storeReadDocResp(state)));
+    EXPECT_CALL(*router, existsEntry("cmsync_standard")).WillRepeatedly(::testing::Return(false));
+    cm::sync::CMSync sync {indexer, crud, store, router, 1U, 0U};
+
+    EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard")))
+        .WillOnce(::testing::Throw(std::runtime_error("429 Too Many Requests")));
+
+    EXPECT_TRUE(sync.synchronize());
+}
+
+// A failed cycle on a space that keeps its route is not pending: the old route keeps processing events
+TEST_F(CMSyncSynchronizeTest, NotPendingWhenFailedSpaceKeepsItsRoute)
+{
+    auto state = createStoredStateWithNs("standard", "current_ns");
+    EXPECT_CALL(*store, existsDoc(STORE_NAME_CMSYNC)).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*store, readDoc(STORE_NAME_CMSYNC)).WillOnce(::testing::Return(store::mocks::storeReadDocResp(state)));
+    EXPECT_CALL(*router, existsEntry("cmsync_standard")).WillRepeatedly(::testing::Return(true));
+    auto entry = makeRouterEntry("cmsync_standard", "current_ns", 1, router::env::State::ENABLED, "hash1");
+    EXPECT_CALL(*router, getEntry("cmsync_standard"))
+        .WillOnce(::testing::Return(base::RespOrError<router::prod::Entry>(entry)));
+    cm::sync::CMSync sync {indexer, crud, store, router, 1U, 0U};
+
+    EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard")))
+        .WillOnce(::testing::Throw(std::runtime_error("429 Too Many Requests")));
+
+    EXPECT_FALSE(sync.synchronize());
 }
 
 // Edge case: dummy namespace ID not deleted after sync (old=dummy)

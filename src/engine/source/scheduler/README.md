@@ -232,7 +232,7 @@ The scheduler is instantiated once in `main.cpp` as `std::make_shared<scheduler:
 
 | Task Name | Interval | Method | Consumer | Purpose |
 |-----------|----------|--------|----------|---------|
-| `cm-sync-task` | `CM_SYNC_INTERVAL` | `scheduleTask` | Content Manager | Synchronizes content manager data |
+| `cm-sync-task` | `CM_SYNC_INTERVAL` (`CM_SYNC_RETRY_INTERVAL` via `nextInterval` while a space has no route) | `scheduleTask` | Content Manager | Synchronizes content manager data |
 | `ioc-sync-task` | `IOC_SYNC_INTERVAL` | `scheduleTask` | IOC Sync | Indicator of Compromise synchronization |
 | `geo-sync-task` | `GEO_SYNC_INTERVAL` | `scheduleTask` | Geo Manager | Updates GeoIP databases (GeoLite2-City, GeoLite2-ASN) |
 | `remote-conf-sync` | `REMOTE_CONF_SYNC_INTERVAL` | `scheduleTask` | Remote Config | Remote configuration synchronization |

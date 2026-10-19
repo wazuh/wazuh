@@ -162,6 +162,7 @@ Control remote configuration and content synchronization:
 
 - **`analysisd.remote_conf_sync_interval`** - Remote configuration sync interval
 - **`analysisd.cm_sync_interval`** - Content Manager sync interval
+- **`analysisd.cm_sync_retry_interval`** - Content Manager sync interval while a space has no route yet (first start with the indexer unavailable or its content not ready)
 
 #### Database Synchronization
 
