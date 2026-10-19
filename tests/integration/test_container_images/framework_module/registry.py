@@ -317,7 +317,11 @@ class LocalRegistry:
         self._thread.start()
 
     def stop(self):
-        self._server.shutdown()
+        # shutdown() waits for serve_forever() to exit, so it would block forever if the
+        # server was never started.
+        if self._thread.is_alive():
+            self._server.shutdown()
+
         self._server.server_close()
 
     def add_repository(self, name: str, private: bool = False) -> Repository:
