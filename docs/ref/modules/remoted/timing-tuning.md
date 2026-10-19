@@ -134,7 +134,10 @@ the last warning.`). Size it as
 **Overloaded `/stateful`.** A session that outlives `downstream_stateful_response_timeout` is
 still applied by the sync server after remoted answered `503`; that `503` carries
 `Retry-After` (`downstream_stateful_retry_after`, 20 s) so the agent's re-send lands after it
-instead of running the same session twice on the manager. Under sustained overload, shedding is
+instead of running the same session twice on the manager. If a first copy runs past that window
+and overlaps with the re-send, the sync server deduplicates on the agent's `X-Session-Id` (D31),
+rejecting the second arrival with `503 session_already_running` instead of executing concurrent by-queries
+over the same agent documents. Under sustained overload, shedding is
 capacity-driven and roughly
 independent of `downstream_stateful_response_timeout`; what the knob bounds is the **latency
 tail** (saturated p99 ≈ 0.94 × knob, measured across six values). Keep the default 20 s — it sat

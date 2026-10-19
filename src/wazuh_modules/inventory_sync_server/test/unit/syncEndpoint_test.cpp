@@ -576,3 +576,50 @@ TEST(SyncEndpointTest, DuplicateSessionIdIsRejectedWith503AndRetryAfterWhileFirs
     fixture.events->openScanGate();
     EXPECT_EQ(200, first->await().status);
 }
+
+TEST(SyncEndpointTest, FirstCopyOutlivingDownstreamTimeoutAndRetryAfterBlocksDuplicateRetry)
+{
+    // Simulates #40469: a first session runs past downstream_stateful_response_timeout (20s) +
+    // downstream_stateful_retry_after (20s). When the agent's re-send lands, the first copy
+    // is still applying on the manager. D31 deduplication ensures the retry is rejected
+    // with 503 session_already_running and Retry-After: 15 rather than running concurrently.
+    invsync::vd::VdScanLaneConfig laneConfig;
+    laneConfig.workers = 1;
+    laneConfig.queueSlots = 4;
+    const auto sessions = std::make_shared<invsync::sync::AgentSessionLimiter>(2);
+    HandlerUnderTest fixture {{}, 60, laneConfig, sessions};
+    fixture.events->closeScanGate(); // Blocks first copy in-flight, simulating slow by-query / indexing
+
+    SessionSpec spec;
+    spec.option = invsync::test::fb::Option_VDFirst;
+    const auto body = invsync::test::buildSyncDataSession(spec, {invsync::test::ValueSpec {}});
+
+    auto firstCopy = std::make_shared<CapturingResponder>();
+    fixture.handler(makeRequest(body, "001", "session-long-running-uuid"), firstCopy);
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds {10};
+    while (fixture.events->m_scanEntered.load() < 1 && std::chrono::steady_clock::now() < deadline)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds {5});
+    }
+    ASSERT_EQ(1, fixture.events->m_scanEntered.load());
+
+    // Agent retry lands after 20s timeout + 20s retry-after while first copy is still executing
+    auto retryCopy = std::make_shared<CapturingResponder>();
+    fixture.handler(makeRequest(body, "001", "session-long-running-uuid"), retryCopy);
+    ASSERT_TRUE(retryCopy->captured.has_value());
+    EXPECT_EQ(503, retryCopy->captured->status);
+    EXPECT_EQ(R"({"error":"session already in progress","code":503,"reason":"session_already_running"})",
+              retryCopy->captured->body);
+    EXPECT_EQ("15", headerValue(*retryCopy->captured, "Retry-After"));
+    EXPECT_EQ(1U, sessions->duplicatesRejectedTotal());
+
+    // Once the first copy finally finishes, it answers 200 OK
+    fixture.events->openScanGate();
+    EXPECT_EQ(200, firstCopy->await().status);
+
+    // After first copy completes and releases the session ID, a subsequent re-send can be acquired
+    auto subsequentAttempt = std::make_shared<CapturingResponder>();
+    fixture.handler(makeRequest(body, "001", "session-long-running-uuid"), subsequentAttempt);
+    EXPECT_EQ(200, subsequentAttempt->await().status);
+}
+

@@ -621,11 +621,13 @@ paths:
       parameters:
         - $ref: "#/components/parameters/ProtocolVersion"
         - $ref: "#/components/parameters/ContentEncoding"
+        - $ref: "#/components/parameters/SessionId"
       description: |
         Carries one whole inventory synchronization session as a FlatBuffer `Message{FullSession}`.
         remoted holds **no session state**: the body is opaque to it and is relayed verbatim to the
         Inventory Sync Server over `queue/sockets/inventory-sync-http.sock`, stamped with the
-        authenticated identity as `X-Wazuh-Agent-Id`.
+        authenticated identity as `X-Wazuh-Agent-Id` and, when present, `X-Session-Id` for session
+        deduplication (D31).
 
         Because the downstream answer **is** the session result, this is the one route whose
         statuses and bodies are passed through as produced by the sync server, and the only route
@@ -638,7 +640,8 @@ paths:
         sync contract's status set -- and every transport failure -- collapses to a neutral `503`;
         the one on that deadline carries `Retry-After` (`remoted.downstream_stateful_retry_after`,
         default 20 s), because the sync server is still applying the session and a re-send before
-        it finishes runs the same session twice.
+        it finishes runs the same session twice (refused downstream with `503` `session_already_running`
+        if deduplicated by `X-Session-Id`).
       requestBody:
         required: true
         content:
@@ -1419,6 +1422,17 @@ components:
         type: string
         enum: ["zstd"]
       example: "zstd"
+
+    SessionId:
+      name: X-Session-Id
+      in: header
+      required: false
+      description: |
+        Stable session identifier across retries. Forwarded to the Inventory Sync Server to
+        prevent duplicate concurrent execution of the same session (D31).
+      schema:
+        type: string
+      example: "d1607ef8-8dc0-44ff-a0ff-07d0fce7c093"
 
   schemas:
     CodeOnlyError:

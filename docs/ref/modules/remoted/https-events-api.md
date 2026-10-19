@@ -491,7 +491,8 @@ manager-local Unix socket (`GET /`, `GET /metrics`, `GET /status`, `GET /tls` on
   wazuh-db is unreachable (a task-manager failure still answers `200`, with an empty `tasks`). See
   [Control endpoint](#control-endpoint-post-control) below for details.
 - **`POST /stateful`** — authenticated inventory synchronization. Once the signature is verified,
-  the module relays the body opaquely (stamping the authenticated identity as `X-Wazuh-Agent-Id`)
+  the module relays the body opaquely (stamping the authenticated identity as `X-Wazuh-Agent-Id`
+  and, if present in the agent request, `X-Session-Id` for session deduplication under D31)
   to the [Inventory Sync Server](../inventory-sync-server/README.md) over its Unix-domain socket
   (`queue/sockets/inventory-sync-http.sock`) and returns the downstream answer verbatim — the response
   IS the session result (see the server's

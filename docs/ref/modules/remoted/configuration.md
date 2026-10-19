@@ -1214,9 +1214,11 @@ elapses on a relayed `POST /stateful`.
   it, so the agent's re-send lands `downstream_stateful_response_timeout + this` seconds after its
   first `POST`. Keep that sum above the sync server's immediate-session p99
   ([`sync.session.duration.immediate`](../inventory-sync-server/metrics.md#sync-pipeline--syncpipeline-syncshardi-syncsessionduration)):
-  below it the re-send runs the same session a second time on the manager, where the two copies
-  race on the same documents and the loser is answered `503 indexer contention`
-  ([`sync.indexer.conflict.exhausted`](../inventory-sync-server/metrics.md#group-commit--syncbulk)).
+  below it the re-send arrives while the first copy is still executing. Under Design Decision D31,
+  the sync server deduplicates concurrent in-flight sessions using the agent's `X-Session-Id` header,
+  refusing the duplicate with `503 Service Unavailable` (`Retry-After: 15`, `session_already_running`)
+  and incrementing `sync.session.duplicate.rejected`, preventing concurrent races on the same documents
+  that would otherwise exhaust indexer conflicts ([`sync.indexer.conflict.exhausted`](../inventory-sync-server/metrics.md#group-commit--syncbulk)).
   Only the response timeout carries the header: a connect, write or transport failure means
   nothing is running downstream, and the agent re-sends at once as before. The agent waits the
   longer of this value and its own backoff.
