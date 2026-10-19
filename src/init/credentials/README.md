@@ -34,7 +34,7 @@ developer side.
 | RF-11 | On a master, every writing mode publishes `export/dashboard-client.pem` / `-key.pem` (`0644` / `0600`, `CN=wazuh-dashboard`, `clientAuth` only, issued by the manager's CA, a key of its own) when absent and the CA has its key; the resolver's own pair is reissued when it no longer chains to the CA or expired; an operator's pair is checked with warnings only and never written; `--clear` removes only the resolver's; nothing about it refuses a start | kept |
 | RF-7 | Indexer trust imported from the indexer's export with a marker written first, re-imported when the source changes; staged files (no marker) validated, never replaced; the CA and the pair taken together or not at all (an export that would leave the pair in place without its issuer changes nothing); the client pair needs `clientAuth` and may chain through intermediate CAs carried after the leaf; material only the clock refuses (expired, not valid yet) is a `WARNING` that does not refuse the start, and is imported from the export only into a gap | kept |
 | RF-8 | `--check` is read-only (no lock, no write, no subprocess but the configuration reader `wazuh-manager-conf --skip-file-checks dump`) and reports `UNSAFE`/`INVALID`, never `MISSING`; it refuses whatever `--prestart` would refuse, so a restart is refused before anything is stopped; `--prestart` runs the same tests first; warnings (exit 0) are copied to `wazuh-manager.log` by `wazuh-manager-control` | kept |
-| RF-9 | `--clear` refuses while a daemon runs, removes what the resolver made, keeps what it was given | kept |
+| RF-9 | `--clear` refuses while a daemon runs; it always removes the server pairs and the agents' bundle (`certs/root-ca.pem`), staged or issued, and removes the CA, indexer files and dashboard pair only when the resolver minted or imported them (their marker says so); a staged CA, staged indexer files and `local.env` are kept | kept |
 | RNF-1 | No secret on argv, in output or in the environment of a subprocess; secrets travel on stdin | kept |
 | RNF-2 | Every entry under `<CONF>`, the indexer export and the home is reached through its parent's descriptor without following links; a writing run that finds anything unsafe writes nothing; secrets read (`local.env`, the indexer's `credentials.env` and `manager-client-key.pem`) are root's with no group or other bit | kept |
 | RNF-3 | One writing run at a time (lock on `<CONF>/ca`) | kept |
@@ -116,8 +116,12 @@ by both packages, run by `postinst`/`%post`, `install.sh` and `src/init/wazuh-se
 Run as root (they refuse otherwise, so a case that could not run fails rather than skips):
 
 ```bash
-sudo python3 -m pytest -q src/init/credentials/tests
+python -m pip install -c framework/requirements.txt cryptography PyYAML "pytest==7.3.1"
+sudo env "PATH=$PATH" python -m pytest -p no:cacheprovider -q src/init/credentials/tests
 ```
+
+Keep `PATH`: a plain `sudo python3` runs root's system interpreter, which may lack the pinned `cryptography`
+and fail at import.
 
 CI: `.github/workflows/5_testunit_credentials.yml`, on the interpreter version in `framework/.python-version` with
 `cryptography` and `PyYAML` at the versions `framework/requirements.txt` pins (installed with it as constraints), plus a `py_compile` of the program and an `sh -n` of `src/init/wazuh-server.sh`. The

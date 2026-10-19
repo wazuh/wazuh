@@ -296,9 +296,9 @@ Install()
     # the keystore, and -- on a fresh install only -- issue the TLS pairs.
     #
     # This runs here and not at service start because issuing a certificate is a signature, not a
-    # lookup: repeating it at every start would make the shared CA directory a standing dependency
-    # of the manager, which a deployment that brings its own PKI has no reason to satisfy. So a
-    # from-source install has to resolve them here or the manager has none at all.
+    # lookup: repeating it at every start would make the CA's private key in /etc/wazuh-manager/ca a
+    # standing dependency of the manager, which a deployment that brings its own PKI has no reason to
+    # satisfy. So a from-source install has to resolve them here or the manager has none at all.
     #
     # USER_RESOLVE_CREDENTIALS="n" turns it off, and the DEB and RPM recipes MUST set it. They run
     # this installer to stage a tree they then copy into the package, so resolving here would bake
