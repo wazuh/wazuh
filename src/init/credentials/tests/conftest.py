@@ -20,6 +20,7 @@ import importlib.util
 import os
 import pwd
 import shutil
+import socket
 import stat
 import sys
 import tempfile
@@ -258,31 +259,12 @@ class Sandbox:
         os.chown(self.certs, 0, self.account_gid)
         os.chmod(self.certs, 0o750)
         self.resolver = resolver
-        self.proc = os.path.join(base, "proc")
-        self.write_proc()
+        self.proc = os.path.join(base, "proc")      # --clear looks for running daemons here
+        os.mkdir(self.proc)
         self.paths = resolver.Paths(home=self.home, conf=self.conf, indexer_export=self.indexer_export,
                                     service_user=ACCOUNT, service_group=ACCOUNT, proc=self.proc)
         install_stubs(self)
         self.make_indexer_trust()
-
-    def write_proc(self, route=None, ipv6_route=None, if_inet6=None):
-        """/proc/net fixtures. Default: eth0 carries both default routes and has one global IPv6 address; docker0
-        has addresses but no default route."""
-        net = os.path.join(self.proc, "net")
-        os.makedirs(net, exist_ok=True)
-        default_route = ("Iface\tDestination\tGateway\tFlags\tRefCnt\tUse\tMetric\tMask\n"
-                         "eth0\t00000000\t010011AC\t0003\t0\t0\t0\t00000000\n"
-                         "docker0\t000012AC\t00000000\t0001\t0\t0\t0\t0000FFFF\n")
-        default_v6 = ("00000000000000000000000000000000 00 00000000000000000000000000000000 00 "
-                      "fe800000000000000000000000000001 00000400 00000001 00000000 00000003 eth0\n")
-        default_inet6 = ("20010db8000000000000000000000010 02 40 00 00 eth0\n"
-                         "fe800000000000000000000000000002 02 40 20 80 eth0\n"
-                         "20010db8000000000000000000000099 03 40 00 00 docker0\n")
-        for name, text in (("route", default_route if route is None else route),
-                           ("ipv6_route", default_v6 if ipv6_route is None else ipv6_route),
-                           ("if_inet6", default_inet6 if if_inet6 is None else if_inet6)):
-            with open(os.path.join(net, name), "w") as handle:
-                handle.write(text)
 
     def make_indexer_trust(self, eku="client", ca_is_ca=True, foreign=False, expired=False, key_mismatch=False,
                            mode=0o750, via_intermediate=False, intermediate_eku=None):
@@ -437,16 +419,25 @@ class Sandbox:
 
 
 # Host facts the resolver reads, made deterministic for every test: the host name, its canonical name, and the
-# primary IPv4 address of each interface (the /proc/net fixtures name the interfaces).
+# addresses of its interfaces as the kernel's dump lists them, (index, address, scope, flags), ordered by interface:
+# lo (1), eth0 (2, the default route), docker0 (3, a bridge). Scope 254 is host, 253 link; flag 0x80 is permanent.
 HOST_NAME = "node1.example.com"
-INTERFACE_IPV4 = {"eth0": "192.0.2.10", "docker0": "172.18.0.1", "lo": "127.0.0.1"}
+INTERFACE_ADDRESSES = [(1, "127.0.0.1", 254, 0x80), (1, "::1", 254, 0x80),
+                       (2, "192.0.2.10", 0, 0x80), (2, "2001:db8::10", 0, 0x80), (2, "fe80::2", 253, 0x80),
+                       (3, "172.18.0.1", 0, 0x80), (3, "2001:db8::99", 0, 0x80)]
+
+
+def interface_addresses(resolver, entries):
+    """The resolver's InterfaceAddress for (index, address, scope, flags) tuples."""
+    return [resolver.InterfaceAddress(index, socket.AF_INET6 if ":" in address else socket.AF_INET, address, scope,
+                                      flags) for index, address, scope, flags in entries]
 
 
 @pytest.fixture(autouse=True)
 def deterministic_host(resolver, monkeypatch):
     monkeypatch.setattr(resolver.socket, "gethostname", lambda: HOST_NAME)
     monkeypatch.setattr(resolver, "canonical_name", lambda host: HOST_NAME)
-    monkeypatch.setattr(resolver, "interface_ipv4", lambda name: INTERFACE_IPV4.get(name))
+    monkeypatch.setattr(resolver, "interface_addresses", lambda: interface_addresses(resolver, INTERFACE_ADDRESSES))
 
 
 @pytest.fixture

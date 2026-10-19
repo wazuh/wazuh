@@ -454,13 +454,16 @@ refused, and an invalid list stops the issuance of both pairs before any is writ
 When a list is unset, the names are discovered:
 
 1. the node name, then the fully qualified name when it differs;
-2. the addresses of the interfaces that carry a default route: the primary IPv4 address of each (private networks
-   included, loopback and link-local left out) and their global IPv6 addresses (deprecated or tentative ones left
-   out);
+2. every global address of every interface, as `ip -o addr show scope global` lists them, whether or not the
+   interface carries the default route, is virtual or is down: every IPv4 address, secondary ones included (private
+   networks included, loopback and link-local left out), and the IPv6 addresses (deprecated or tentative ones left
+   out), ordered by interface, IPv4 first;
 3. the loopback names.
 
-Secondary IPv4 addresses are not discovered: name them in the list. With no address found, the pairs name the
-node and loopback only, and the resolver warns which variable to set.
+The addresses are read from the kernel over netlink; no tool is run. With no address found, or when the kernel
+cannot be asked, the pairs name the node and loopback only, and the resolver warns which variable to set (with the
+reason in the second case). An address you do not want in the certificates, such as a container bridge's, is left
+out only by setting the list yourself.
 
 ### Indexer trust
 

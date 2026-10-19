@@ -127,9 +127,19 @@ CONNECTOR_MARKER = ".indexer-connector.imported"
 SOURCE_CA = "ca.pem"
 SOURCE_CLIENT = "manager-client.pem"
 SOURCE_CLIENT_KEY = "manager-client-key.pem"
-# Read with ioctl(2) per interface: the primary IPv4 address. socket does not export the constant.
-SIOCGIFADDR = 0x8915
-# /proc/net/if_inet6 flags of addresses a certificate must not name.
+# Interface addresses: one RTM_GETADDR dump over NETLINK_ROUTE, the request `ip -o addr show` makes. socket exports
+# none of these numbers (linux/netlink.h, linux/rtnetlink.h, linux/if_addr.h).
+NLMSG_ERROR, NLMSG_DONE = 2, 3
+RTM_NEWADDR, RTM_GETADDR = 20, 22
+NLM_F_REQUEST, NLM_F_DUMP = 0x1, 0x300
+IFA_ADDRESS, IFA_LOCAL, IFA_FLAGS = 1, 2, 8
+RT_SCOPE_UNIVERSE = 0                                   # what `ip` prints as "scope global"
+NLMSG_HEADER = struct.Struct("=LHHLL")                  # length, type, flags, sequence, port
+IFADDRMSG = struct.Struct("=BBBBI")                     # family, prefix length, flags, scope, interface index
+RTATTR = struct.Struct("=HH")                           # length, type
+NETLINK_REPLY_MAX = 1 << 20                             # bytes of one dump's reply; hundreds of addresses fit
+NETLINK_TIMEOUT = 5                                     # seconds for each part of the reply
+# Address flags (ifa_flags, or IFA_FLAGS when present) of addresses a certificate must not name.
 IFA_F_DEPRECATED, IFA_F_TENTATIVE, IFA_F_DADFAILED = 0x20, 0x40, 0x08
 
 # Chain building for a pair whose leaf an intermediate CA issued. The WebPKI defaults of x509.verification would
@@ -1839,14 +1849,97 @@ def parse_san_list(value: str) -> Tuple[Optional[List[San]], Optional[str]]:
     return finish_sans(sans), None
 
 
-def interface_ipv4(name: str) -> Optional[str]:
-    """The primary IPv4 address of an interface, or None. Secondary addresses are not seen: name them in the list."""
-    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-        try:
-            data = fcntl.ioctl(sock.fileno(), SIOCGIFADDR, struct.pack("256s", name.encode()[:15]))
-        except OSError:
-            return None
-    return socket.inet_ntoa(data[20:24])
+@dataclasses.dataclass(frozen=True)
+class InterfaceAddress:
+    index: int                   # the interface's index
+    family: int                  # socket.AF_INET or socket.AF_INET6
+    address: str
+    scope: int                   # RT_SCOPE_UNIVERSE is global
+    flags: int                   # IFA_F_*
+
+
+def _netlink_align(length: int) -> int:
+    return (length + 3) & ~3
+
+
+def _malformed_reply() -> OSError:
+    return OSError(errno.EPROTO, "malformed netlink reply")
+
+
+def _parse_address(body: bytes) -> Optional[InterfaceAddress]:
+    """One RTM_NEWADDR body: ifaddrmsg, then attributes. The address is IFA_LOCAL when present (IFA_ADDRESS is the
+    peer on a point-to-point link), as `ip` prints it; the flags are IFA_FLAGS when present (ifa_flags holds 8 bits).
+    None for a family or an address length this resolver does not name."""
+    if len(body) < IFADDRMSG.size:
+        raise _malformed_reply()
+    family, _, flags, scope, index = IFADDRMSG.unpack_from(body)
+    attributes, offset = {}, IFADDRMSG.size
+    while offset + RTATTR.size <= len(body):
+        length, kind = RTATTR.unpack_from(body, offset)
+        if length < RTATTR.size or offset + length > len(body):
+            raise _malformed_reply()
+        attributes[kind] = body[offset + RTATTR.size:offset + length]
+        offset += _netlink_align(length)
+    if len(attributes.get(IFA_FLAGS, b"")) == 4:
+        flags = struct.unpack("=I", attributes[IFA_FLAGS])[0]
+    raw = attributes.get(IFA_LOCAL) or attributes.get(IFA_ADDRESS)
+    size = {socket.AF_INET: 4, socket.AF_INET6: 16}.get(family)
+    if size is None or raw is None or len(raw) != size:
+        return None
+    return InterfaceAddress(index, family, socket.inet_ntop(family, raw), scope, flags)
+
+
+def parse_address_messages(data: bytes, seq: int) -> Tuple[List[InterfaceAddress], bool]:
+    """The addresses in one buffer of an RTM_GETADDR dump's reply, and whether the buffer ends the dump. Messages of
+    another type or sequence are skipped; an error message, or a length that leaves the buffer, raises OSError."""
+    entries, offset = [], 0
+    while offset < len(data):
+        if len(data) - offset < NLMSG_HEADER.size:
+            raise _malformed_reply()
+        length, kind, _, sequence, _ = NLMSG_HEADER.unpack_from(data, offset)
+        if length < NLMSG_HEADER.size or offset + length > len(data):
+            raise _malformed_reply()
+        body = data[offset + NLMSG_HEADER.size:offset + length]
+        if sequence == seq:
+            if kind == NLMSG_DONE:
+                return entries, True
+            if kind == NLMSG_ERROR:
+                if len(body) < 4:
+                    raise _malformed_reply()
+                code = -struct.unpack_from("=i", body)[0]
+                if code:
+                    raise OSError(code, os.strerror(code))
+            elif kind == RTM_NEWADDR:
+                entry = _parse_address(body)
+                if entry is not None:
+                    entries.append(entry)
+        offset += _netlink_align(length)
+    return entries, False
+
+
+def interface_addresses() -> List[InterfaceAddress]:
+    """Every address of every interface, from one RTM_GETADDR dump over NETLINK_ROUTE (what `ip -o addr show` asks
+    the kernel), ordered by interface index, IPv4 before IPv6 within one, as `ip` prints them. Raises OSError when the
+    kernel cannot be asked or does not answer as expected."""
+    seq = 1
+    request = (NLMSG_HEADER.pack(NLMSG_HEADER.size + IFADDRMSG.size, RTM_GETADDR, NLM_F_REQUEST | NLM_F_DUMP, seq, 0)
+               + IFADDRMSG.pack(socket.AF_UNSPEC, 0, 0, 0, 0))
+    entries, received = [], 0
+    with socket.socket(socket.AF_NETLINK, socket.SOCK_RAW, socket.NETLINK_ROUTE) as sock:
+        sock.settimeout(NETLINK_TIMEOUT)
+        sock.bind((0, 0))
+        sock.send(request)
+        while True:
+            data = sock.recv(65536)
+            received += len(data)
+            if not data:
+                raise OSError(errno.EPROTO, "empty netlink reply")
+            if received > NETLINK_REPLY_MAX:
+                raise OSError(errno.EMSGSIZE, f"netlink reply over {NETLINK_REPLY_MAX} bytes")
+            found, done = parse_address_messages(data, seq)
+            entries.extend(found)
+            if done:
+                return sorted(entries, key=lambda entry: entry.index)
 
 
 def canonical_name(host: str) -> Optional[str]:
@@ -1857,53 +1950,33 @@ def canonical_name(host: str) -> Optional[str]:
         return None
 
 
-def _proc_lines(paths: Paths, name: str) -> List[List[str]]:
-    try:
-        with open(os.path.join(paths.proc, "net", name)) as handle:
-            return [line.split() for line in handle if line.strip()]
-    except OSError:
-        return []
-
-
-def default_route_interfaces(paths: Paths) -> Tuple[List[str], List[str]]:
-    """The interfaces that carry a default route, IPv4 and IPv6, in the order the kernel lists them."""
-    v4 = []
-    for fields in _proc_lines(paths, "route")[1:]:
-        if len(fields) >= 8 and fields[1] == "00000000" and fields[7] == "00000000" and fields[0] not in v4:
-            v4.append(fields[0])
-    v6 = []
-    for fields in _proc_lines(paths, "ipv6_route"):
-        if len(fields) >= 10 and fields[0] == "0" * 32 and fields[1] == "00" and fields[9] != "lo" \
-                and fields[9] not in v6:
-            v6.append(fields[9])
-    return v4, v6
-
-
-def discover_sans(paths: Paths, node: str) -> Tuple[List[San], bool]:
-    """Node name, FQDN when it differs, every global address of the default-route interfaces, then loopback.
-    Returns the list and whether any address was found."""
+def discover_sans(node: str) -> Tuple[List[San], bool, Optional[str]]:
+    """Node name, FQDN when it differs, every global address of every interface (also off the default route,
+    virtual or down, as the shell resolver named them from `ip -o addr show`), then loopback. Returns the list,
+    whether any address was found, and why the addresses could not be listed (None when they could)."""
     sans = [San("DNS", node)]
     fqdn = canonical_name(socket.gethostname())
     if fqdn and fqdn.lower() != node.lower() and valid_dns_name(fqdn):
         sans.append(San("DNS", fqdn))
-    v4, v6 = default_route_interfaces(paths)
+    try:
+        found = interface_addresses()
+    except OSError as err:
+        return finish_sans(sans), False, err.strerror or str(err)
     addresses = []
-    for name in v4:
-        address = interface_ipv4(name)
-        # The kernel's "global" scope, as `ip addr` showed it to the shell resolver: private networks included (most
-        # managers live on one); only loopback and link-local addresses are left out.
-        if address and not (ipaddress.ip_address(address).is_loopback or ipaddress.ip_address(address).is_link_local):
-            addresses.append(San("IP", address))
-    for fields in _proc_lines(paths, "if_inet6"):
-        if len(fields) < 6 or fields[5] not in v6 or fields[3] != "00":
+    for entry in found:
+        # The kernel's "global" scope: private networks included (most managers live on one). Loopback and
+        # link-local addresses are left out even when configured with that scope, and IPv6 addresses that are
+        # deprecated or not usable yet.
+        address = ipaddress.ip_address(entry.address)
+        if entry.scope != RT_SCOPE_UNIVERSE or address.is_loopback or address.is_link_local:
             continue
-        if int(fields[4], 16) & (IFA_F_DEPRECATED | IFA_F_TENTATIVE | IFA_F_DADFAILED):
+        if entry.family == socket.AF_INET6 and entry.flags & (IFA_F_DEPRECATED | IFA_F_TENTATIVE | IFA_F_DADFAILED):
             continue
-        addresses.append(San("IP", str(ipaddress.IPv6Address(int(fields[0], 16)))))
-    return finish_sans(sans + addresses), bool(addresses)
+        addresses.append(San("IP", str(address)))
+    return finish_sans(sans + addresses), bool(addresses), None
 
 
-def resolve_san_lists(paths: Paths, lookup: Lookup, node: str, pairs: List[str],
+def resolve_san_lists(lookup: Lookup, node: str, pairs: List[str],
                       report: Report) -> Optional[Dict[str, List[San]]]:
     """Each pair's list: explicit, or discovered. Every explicit list is validated before any leaf is issued; one
     bad list stops them all."""
@@ -1925,10 +1998,12 @@ def resolve_san_lists(paths: Paths, lookup: Lookup, node: str, pairs: List[str],
         return None
     needed = [(pair, var) for pair, var in discovered_for if pair in pairs]
     if needed:
-        sans, found_address = discover_sans(paths, node)
-        if not found_address:
-            report.warning("no global address on a default-route interface; the certificates name this node only by "
-                           f"name and loopback. Set {' and '.join(var for _, var in needed)} to add its addresses")
+        sans, found_address, problem = discover_sans(node)
+        if problem is not None or not found_address:
+            why = f"cannot list the interface addresses ({problem})" if problem is not None \
+                else "no global interface address"
+            report.warning(f"{why}; the certificates name this node only by name and loopback. "
+                           f"Set {' and '.join(var for _, var in needed)} to add its addresses")
         for pair, _ in needed:
             lists[pair] = sans
     return lists
@@ -2268,7 +2343,7 @@ def step_server_pairs(paths: Paths, certs: Dir, ca: CaState, lookup: Lookup, rep
         report.problem(INVALID, NODE_NAME_VAR,
                        f"too long for a certificate's common name ({COMMON_NAME_MAX} characters at most{source})")
         return
-    lists = resolve_san_lists(paths, lookup, node, to_issue, report)
+    lists = resolve_san_lists(lookup, node, to_issue, report)
     if lists is None:
         return
     gid = paths.service_gid()
