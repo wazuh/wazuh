@@ -7,7 +7,7 @@ The **wiconnector** module provides the **Wazuh Indexer Connector** — a thread
 - **Indexing events** — pushing alert / raw-event JSON documents into data-stream indices.
 - **Retrieving policy resources** — fetching the full content of a policy space (KVDBs, decoders, integrations, policy definition) for content synchronization.
 - **Policy metadata queries** — checking policy existence, retrieving the SHA-256 hash and enabled status.
-- **IOC operations** — checking whether the IOC index exists, reading hash manifests, and streaming IOC records by type with batched pagination.
+- **IOC operations** — checking whether the IOC index exists (`false` only on a 404; any other failure throws), reading hash manifests, and streaming IOC records by type with batched pagination.
 - **Remote engine configuration** — pulling runtime engine settings from `.wazuh-settings`.
 - **Queue introspection** — reporting the current size of the pending-event queue.
 

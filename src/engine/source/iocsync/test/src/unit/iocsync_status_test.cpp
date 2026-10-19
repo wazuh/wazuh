@@ -32,7 +32,7 @@ protected:
         std::make_shared<StrictMock<store::mocks::MockStore>>()};
 
     /// Create IocSync with no persisted state (first setup)
-    std::unique_ptr<IocSync> createFirstSetup()
+    std::unique_ptr<IocSync> createFirstSetup(std::size_t attempts = DEFAULT_RETRIES)
     {
         const auto numTypes = ioc::kvdb::details::getSupportedIocTypes().size();
 
@@ -40,7 +40,7 @@ protected:
         // 6 from addIOCTypeToSync + 1 explicit saveStateToStore in constructor
         EXPECT_CALL(*store, upsertDoc(_, _)).Times(numTypes + 1).WillRepeatedly(Return(store::mocks::storeOk()));
 
-        return std::make_unique<IocSync>(indexer, kvdb, store, DEFAULT_RETRIES, DEFAULT_WAIT, DEFAULT_BATCH);
+        return std::make_unique<IocSync>(indexer, kvdb, store, attempts, DEFAULT_WAIT, DEFAULT_BATCH);
     }
 };
 
@@ -96,6 +96,39 @@ TEST_F(IocSyncStatusTest, FailedSyncMarksUnsyncedTypesFailed)
     {
         EXPECT_EQ(s.status, base::SyncStatus::FAILED);
         EXPECT_FALSE(s.available);
+    }
+}
+
+TEST_F(IocSyncStatusTest, IndexCheckFailureIsRetriedThenFailsTheCycle)
+{
+    constexpr std::size_t attempts {3};
+    auto sync = createFirstSetup(attempts);
+
+    EXPECT_CALL(*indexer, isConsumerReadyForSync(_)).WillOnce(Return(true));
+    EXPECT_CALL(*indexer, existsIocDataIndex())
+        .Times(attempts)
+        .WillRepeatedly(Throw(std::runtime_error("No available server")));
+
+    sync->synchronize();
+
+    for (const auto& s : sync->getIocStatus())
+    {
+        EXPECT_EQ(s.status, base::SyncStatus::FAILED);
+    }
+}
+
+TEST_F(IocSyncStatusTest, MissingIocIndexIsNotRetried)
+{
+    auto sync = createFirstSetup(3);
+
+    EXPECT_CALL(*indexer, isConsumerReadyForSync(_)).WillOnce(Return(true));
+    EXPECT_CALL(*indexer, existsIocDataIndex()).WillOnce(Return(false));
+
+    sync->synchronize();
+
+    for (const auto& s : sync->getIocStatus())
+    {
+        EXPECT_EQ(s.status, base::SyncStatus::FAILED);
     }
 }
 

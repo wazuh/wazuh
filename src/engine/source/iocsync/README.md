@@ -54,7 +54,7 @@ The module runs as a periodic task and is designed so that readers of the IOC da
 ### Synchronization Flow
 
 1. **Lock resources**: Acquire `IKVDBManager` and `IWIndexerConnector` from weak pointers
-2. **Check remote index**: Verify the IOC data index exists in the Wazuh Indexer
+2. **Check remote index**: Verify the IOC data index exists in the Wazuh Indexer. A missing index (404) skips the cycle; any other error is retried and then fails the cycle
 3. **Fetch remote hashes**: Get per-type hash map from the indexer
 4. **For each IOC type**:
    - Compare remote hash against locally stored hash
