@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <cstring>
 #include "packages/packagesWindowsParserHelper.h"
+#include "osinfo/sysOsInfoWin.h"
 #include "sysInfoWin_test.h"
 #include <iostream>
 
@@ -586,4 +587,14 @@ TEST_F(SysInfoWinTest, BuildProcessRecordWithPartialHandleFields)
     EXPECT_FALSE(record.contains("start"));
     EXPECT_FALSE(record.contains("stime"));
     EXPECT_FALSE(record.contains("utime"));
+}
+
+TEST_F(SysInfoWinTest, MachineFromProcessorArchitecture)
+{
+    EXPECT_EQ("x86_64", SysOsInfoProviderWindows::machineFromProcessorArchitecture("AMD64"));
+    EXPECT_EQ("x86_64", SysOsInfoProviderWindows::machineFromProcessorArchitecture("IA64"));
+    EXPECT_EQ("arm64", SysOsInfoProviderWindows::machineFromProcessorArchitecture("ARM64"));
+    EXPECT_EQ("i686", SysOsInfoProviderWindows::machineFromProcessorArchitecture("x86"));
+    EXPECT_EQ(UNKNOWN_VALUE, SysOsInfoProviderWindows::machineFromProcessorArchitecture("ARM"));
+    EXPECT_EQ(UNKNOWN_VALUE, SysOsInfoProviderWindows::machineFromProcessorArchitecture(""));
 }

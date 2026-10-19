@@ -12,13 +12,27 @@
 #ifndef _SYS_OS_INFO_WINDOWS_H
 #define _SYS_OS_INFO_WINDOWS_H
 
+#include <map>
 #include "sysOsInfoInterface.h"
+#include "sharedDefs.h"
 
 class SysOsInfoProviderWindows final : public ISysOsInfoProvider
 {
     public:
         SysOsInfoProviderWindows();
         ~SysOsInfoProviderWindows() = default;
+        static std::string machineFromProcessorArchitecture(const std::string& processorArchitecture)
+        {
+            static const std::map<std::string, std::string> ARCH_MAP
+            {
+                {"AMD64",   "x86_64"},
+                {"IA64",    "x86_64"},
+                {"ARM64",   "arm64"},
+                {"x86",     "i686"},
+            };
+            const auto it{ARCH_MAP.find(processorArchitecture)};
+            return it != ARCH_MAP.end() ? it->second : UNKNOWN_VALUE;
+        }
         std::string name() const override;
         std::string version() const override;
         std::string majorVersion() const override;
