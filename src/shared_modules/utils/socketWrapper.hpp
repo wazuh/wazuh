@@ -393,30 +393,17 @@ private:
     std::mutex m_mutex;
 
     // Binds inside a private directory, sets the mode through a pinned descriptor and moves the socket into place.
-    void bindUnix(const sockaddr_un& addr, const mode_t mode)
+    void bindUnix(const sockaddr_un& addr)
     {
         const std::string path {addr.sun_path};
         const auto slash {path.rfind('/')};
-        const auto prefix {slash == std::string::npos ? std::string {} : path.substr(0, slash + 1)};
-        std::string tmpDir;
+        std::string tmpDir {(slash == std::string::npos ? std::string {} : path.substr(0, slash + 1)) + ".wXXXXXX"};
 
-        for (int i = 0;; ++i)
+        if (::mkdtemp(tmpDir.data()) == nullptr)
         {
-            if (i == 100)
-            {
-                closeSocket();
-                throw std::runtime_error {"Failed to create bind directory " + std::string(std::strerror(errno))};
-            }
-            tmpDir = prefix + ".w" + std::to_string(::getpid()) + "_" + std::to_string(i);
-            if (::mkdir(tmpDir.c_str(), 0700) == 0)
-            {
-                break;
-            }
-            if (errno != EEXIST)
-            {
-                closeSocket();
-                throw std::runtime_error {"Failed to create bind directory " + std::string(std::strerror(errno))};
-            }
+            const auto savedErrno {errno};
+            closeSocket();
+            throw std::runtime_error {"Failed to create bind directory " + std::string(std::strerror(savedErrno))};
         }
 
         const auto dirFd {::open(tmpDir.c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)};
@@ -437,7 +424,7 @@ private:
                 tmpAddr.sun_family = AF_UNIX;
                 std::snprintf(tmpAddr.sun_path, sizeof(tmpAddr.sun_path), "/proc/self/fd/%d/s", dirFd);
                 success = T::bind(m_sock, reinterpret_cast<const sockaddr*>(&tmpAddr), sizeof(tmpAddr)) == 0 &&
-                          ::fchmodat(dirFd, "s", mode, 0) == 0 && ::renameat(dirFd, "s", AT_FDCWD, path.c_str()) == 0;
+                          ::fchmodat(dirFd, "s", 0666, 0) == 0 && ::renameat(dirFd, "s", AT_FDCWD, path.c_str()) == 0;
             }
         }
 
@@ -828,7 +815,7 @@ public:
 
             if (connectInfo.type == SocketType::UNIX)
             {
-                bindUnix(*reinterpret_cast<const sockaddr_un*>(connectInfo.addr), 0666);
+                bindUnix(*reinterpret_cast<const sockaddr_un*>(connectInfo.addr));
             }
             else if (T::bind(m_sock, connectInfo.addr, connectInfo.addrSize) != 0)
             {
