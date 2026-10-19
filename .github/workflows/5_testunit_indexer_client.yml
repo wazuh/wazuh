@@ -5,11 +5,30 @@ on:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - ".github/workflows/5_testunit_indexer_client.yml"
+      # The library and its tests include nothing in-tree outside the module: asio, nlohmann,
+      # googletest and cpp-httplib come from src/external (CMakeLists.txt:36, tests/CMakeLists.txt:10-37).
       - "src/shared_modules/indexer_client/**"
+      # Configure path: build_target_cpp configures src/ as one tree -- src/CMakeLists.txt (includes
+      # src/cmake/*.cmake, reads VERSION.json, registers this module) and src/external/CMakeLists.txt,
+      # which defines ext_asio and ext_httplib linked here.
+      - "src/CMakeLists.txt"
+      - "src/cmake/**"
+      - "src/external/CMakeLists.txt"
+      - "VERSION.json"
+      # build_external_deps runs `make deps`/`make build-external` (src/Makefile; its ref list comes
+      # from tools/get_git_refs.sh) and builds the http-request submodule; a submodule bump changes
+      # only the gitlink path, which `http-request/**` would never match.
+      - "src/Makefile"
+      - "tools/get_git_refs.sh"
+      - "src/shared_modules/http-request"
+      # Result-affecting actions this workflow executes (upload_s3_artifact only reports, see the
+      # uds_http_server workflow).
       - ".github/actions/build_external_deps/**"
       - ".github/actions/build_target_cpp/**"
       - ".github/actions/coverage_cpp/**"
       - ".github/actions/test_cpp/**"
+      # Prose: no build or test reads it.
+      - "!src/shared_modules/indexer_client/README.md"
   workflow_dispatch:
 
 concurrency:
@@ -27,7 +46,7 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Cancel previous runs
-        uses: fkirc/skip-duplicate-actions@master
+        uses: fkirc/skip-duplicate-actions@v5.3.2
         with:
           cancel_others: 'true'
           github_token: ${{ secrets.GITHUB_TOKEN }}
