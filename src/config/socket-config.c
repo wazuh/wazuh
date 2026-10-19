@@ -29,6 +29,26 @@ int Read_LogCollecSocket(XML_NODE node, void *d1, __attribute__((unused)) void *
     unsigned int pl = 0;
     unsigned int i = 0;
 
+    /* We don't accept socket outputs from the manager - the location would let it write to any local socket */
+    if (log_config->agent_cfg == 1 && log_config->accept_remote == 0) {
+        const char *name = "";
+        const char *location = "";
+
+        for (i = 0; node[i]; i++) {
+            if (node[i]->element && node[i]->content) {
+                if (!strcmp(node[i]->element, socket_name)) {
+                    name = node[i]->content;
+                } else if (!strcmp(node[i]->element, socket_location)) {
+                    location = node[i]->content;
+                }
+            }
+        }
+
+        merror("Remote sockets are not accepted from the manager. "
+               "Ignoring socket '%s' (%s) on the agent.conf", name, location);
+        return 0;
+    }
+
     /* If config is not set, create it */
     if (!log_config->socket_list) {
         os_calloc(2, sizeof(socket_forwarder), log_config->socket_list);
