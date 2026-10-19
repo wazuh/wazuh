@@ -37,7 +37,10 @@
  * the tree builds. `make check` in this directory.
  *
  * send_syscheck_msg(), validate_and_persist_fim_event() and check_max_fps() are
- * stubbed below so the alert can be inspected instead of queued. Everything the
+ * stubbed below so the alert can be inspected instead of queued, as is
+ * fim_db_get_container_context() -- the real one needs a live FIMDB, and what
+ * this test pins is the shape of the alert built from a context, not where the
+ * context was stored. Everything the
  * alert's SHAPE comes from is real: fim_attributes_json() and
  * fim_calculate_dbsync_difference() are linked out of the built syscheckd
  * library, which is the point — an alert that drifts from a host FIM alert is
@@ -107,6 +110,28 @@ void check_max_fps(void)
 {
 }
 
+/* The container context, stored once per container by the baseline scanner and
+ * looked up here by id. Stubbed rather than driven through a real FIMDB: this
+ * test links no database, and resolving the symbol here keeps db.o out of the
+ * archive pull for the same reason the three stubs above do. */
+cJSON* fim_db_get_container_context(const char* container_id)
+{
+    if (container_id == NULL || strcmp(container_id, "cid-a") != 0) {
+        return NULL;
+    }
+
+    /* D15 shape: kubernetes nested inside container, never beside it. */
+    cJSON* wrapper = cJSON_Parse("{\"container\":{\"id\":\"cid-a\",\"name\":\"web\","
+                                 "\"kubernetes\":{\"pod\":{\"name\":\"web-0\"}}}}");
+    if (wrapper == NULL) {
+        return NULL;
+    }
+
+    cJSON* block = cJSON_DetachItemFromObject(wrapper, "container");
+    cJSON_Delete(wrapper);
+    return block;
+}
+
 /* -------------------------------------------------------------- harness ---- */
 
 static int g_failures = 0;
@@ -147,10 +172,6 @@ static cJSON* Row(const char* path, int size, const char* sha256)
     cJSON* row = cJSON_CreateObject();
     cJSON_AddStringToObject(row, "path", path);
     cJSON_AddStringToObject(row, "container_id", "cid-a");
-    cJSON_AddStringToObject(row, "container_json",
-                            /* D15 shape: kubernetes nested inside container. */
-                            "{\"container\":{\"id\":\"cid-a\",\"name\":\"web\","
-                            "\"kubernetes\":{\"pod\":{\"name\":\"web-0\"}}}}");
     cJSON_AddNumberToObject(row, "size", size);
     cJSON_AddStringToObject(row, "permissions", "rw-r--r--");
     cJSON_AddStringToObject(row, "uid", "0");
@@ -234,13 +255,14 @@ static void CaseCreate(void)
     Check(cJSON_GetObjectItem(hash, "sha256") != NULL,
           "data.file.hash.sha256 (CHECK_SHA256SUM is configured)");
 
-    /* The container-scope columns are enrichment, not file attributes. */
-    Check(AlertStringIs("container", "name", "web"), "data.container.name from container_json");
+    /* The container scope is enrichment, not a file attribute, and it is
+     * joined in by id rather than carried on the row. */
+    Check(AlertStringIs("container", "name", "web"), "data.container.name from the stored context");
     /* D15: the Kubernetes context is nested inside the container block, and is
      * NOT a second top-level block beside it. */
     Check(AlertNode("kubernetes", NULL) == NULL, "no top-level data.kubernetes block");
     Check(cJSON_GetObjectItem(AlertNode("container", "kubernetes"), "pod") != NULL,
-          "data.container.kubernetes.pod from container_json");
+          "data.container.kubernetes.pod from the stored context");
     Check(AlertNode("file", "container_id") == NULL, "container_id is NOT a file attribute");
 }
 

@@ -26,7 +26,7 @@ struct MonitoredPath
 
 /// @brief One baseline row rendered in syscollector's dbsync_* column format
 /// (Option A: baseline through the host event flow). `json` is a flat object of
-/// dbsync columns (including container_id/container_json); `table` is the
+/// dbsync columns, including container_id; `table` is the
 /// dbsync table name ("dbsync_processes", ...). The consumer (syscollector)
 /// groups rows per container per table and pushes them through per-container
 /// scoped DBSync transactions so the existing notifyChange/processEvent

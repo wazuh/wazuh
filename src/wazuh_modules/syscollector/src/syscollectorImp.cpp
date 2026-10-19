@@ -222,26 +222,18 @@ static std::string getItemChecksum(const nlohmann::json& item)
     return Utils::asciiToHex(hash.hash());
 }
 
-// The two container-scope columns are row *identity* and row *context*, never row
-// content, so neither may reach the checksum:
+// container_id is row *identity*, never row content, so it may not reach the
+// checksum. It is the leading PRIMARY KEY of every table in
+// syscollectorTablesDef.hpp, so rows are already told apart by it. Digesting it
+// changed every host row's checksum against a pre-container agent ('' is still
+// a value), which would have re-synced the whole host inventory of every
+// upgraded agent — including agents that run no containers at all.
 //
-//   container_id   is the leading PRIMARY KEY of every table in
-//                  syscollectorTablesDef.hpp, so rows are already told apart by
-//                  it. Digesting it changed every host row's checksum against a
-//                  pre-container agent ('' is still a value), which would have
-//                  re-synced the whole host inventory of every upgraded agent —
-//                  including agents that run no containers at all.
-//   container_json is a copy of the container's metadata blob stamped onto each
-//                  of its rows. Digesting it makes one label or annotation edit
-//                  change the checksum of every row of that container, in every
-//                  table, and re-emit its entire inventory as MODIFIED.
-//
-// Strip both here rather than at each call site: nothing about a future caller
-// stamping the scope earlier should be able to put them back into the digest.
+// Strip it here rather than at each call site: nothing about a future caller
+// stamping the scope earlier should be able to put it back into the digest.
 static std::string getRowChecksum(nlohmann::json item)
 {
     item.erase(std::string{CONTAINER_ID_COLUMN});
-    item.erase(std::string{CONTAINER_JSON_COLUMN});
     return getItemChecksum(item);
 }
 
@@ -651,9 +643,32 @@ std::vector<std::string> Syscollector::getUpgradeStatements() const
     // already reports the version they lead to.
     auto statements {UPGRADE_SQL_STATEMENTS};
 
-    // v2 -> v3: store a container's context once, rather than stamping a
-    // copy of it onto every row that container owns.
-    statements.emplace_back(CONTAINER_CONTEXT_SQL_STATEMENT);
+    statements.insert(statements.end(),
+    {
+        // v2 -> v3: store a container's context once, rather than stamping a
+        // copy of it onto every row that container owns.
+        CONTAINER_CONTEXT_SQL_STATEMENT,
+
+        // v3 -> v16: drop the per-row copy, now that every reader takes the
+        // context from container_context. One statement per table because the
+        // upgrade step runs exactly one, and spelled out in full rather than
+        // generated from a table list: a migration already applied must keep
+        // meaning what it meant, which a list someone may later extend cannot
+        // guarantee.
+        "ALTER TABLE dbsync_osinfo DROP COLUMN container_json;",
+        "ALTER TABLE dbsync_hwinfo DROP COLUMN container_json;",
+        "ALTER TABLE dbsync_hotfixes DROP COLUMN container_json;",
+        "ALTER TABLE dbsync_packages DROP COLUMN container_json;",
+        "ALTER TABLE dbsync_processes DROP COLUMN container_json;",
+        "ALTER TABLE dbsync_ports DROP COLUMN container_json;",
+        "ALTER TABLE dbsync_network_iface DROP COLUMN container_json;",
+        "ALTER TABLE dbsync_network_protocol DROP COLUMN container_json;",
+        "ALTER TABLE dbsync_network_address DROP COLUMN container_json;",
+        "ALTER TABLE dbsync_users DROP COLUMN container_json;",
+        "ALTER TABLE dbsync_groups DROP COLUMN container_json;",
+        "ALTER TABLE dbsync_services DROP COLUMN container_json;",
+        "ALTER TABLE dbsync_browser_extensions DROP COLUMN container_json;",
+    });
 
     return statements;
 }
@@ -1083,12 +1098,8 @@ void Syscollector::destroy()
 /// out of the database arrive clustered too. One lookup per container per
 /// flush, not one per row.
 ///
-/// Falls back to the row's own container_json for rows an older build wrote,
-/// and seeds the memo from it, so an upgraded agent parses a given container's
-/// blob once rather than once per row. That fallback goes when the column does.
-///
 /// Not guarded by a mutex: every ecsData() call site runs under m_scan_mutex.
-nlohmann::json Syscollector::containerContextBlock(const std::string& containerId, const nlohmann::json& row)
+nlohmann::json Syscollector::containerContextBlock(const std::string& containerId)
 {
     if (containerId == m_lastContainerId)
     {
@@ -1131,21 +1142,6 @@ nlohmann::json Syscollector::containerContextBlock(const std::string& containerI
     }
 
 #endif
-
-    if (block.is_null() && row.contains(CONTAINER_JSON_COLUMN) && row[CONTAINER_JSON_COLUMN].is_string())
-    {
-        const auto& legacy = row[CONTAINER_JSON_COLUMN].get_ref<const std::string&>();
-
-        if (!legacy.empty())
-        {
-            const auto parsed = nlohmann::json::parse(legacy, nullptr, false);
-
-            if (parsed.is_object() && parsed.contains("container"))
-            {
-                block = parsed["container"];
-            }
-        }
-    }
 
     m_lastContainerId = containerId;
     m_lastContainerBlock = block;
@@ -1210,11 +1206,12 @@ std::pair<nlohmann::json, uint64_t> Syscollector::ecsData(const nlohmann::json& 
         ret = ecsBrowserExtensionsData(data, createFields);
     }
 
-    // Option A (container baseline): container-sourced rows carry their
-    // serialized runtime context in the container_json column — surface it as
-    // the event's container block. Host rows have an empty column and are
-    // untouched. DELETED events keep the block because the column is part of
-    // the stored row, even after the container itself is gone.
+    // Option A (container baseline): container-sourced rows name their
+    // container, and its runtime context is stored once under that id — join
+    // the two and surface the result as the event's container block. Host rows
+    // have an empty container_id and are untouched. DELETED events keep the
+    // block because the context outlives the rows it describes: it is removed
+    // only after the last of them has been swept.
     //
     // One block, with the Kubernetes context nested inside it at
     // container.kubernetes (D15). The producer has nested it since the shape
@@ -1227,7 +1224,7 @@ std::pair<nlohmann::json, uint64_t> Syscollector::ecsData(const nlohmann::json& 
 
         if (!containerId.empty())
         {
-            const auto block = containerContextBlock(containerId, data);
+            const auto block = containerContextBlock(containerId);
 
             if (!block.is_null())
             {
@@ -2359,8 +2356,9 @@ namespace
     //
     // The sweeps must use this list rather than the one above. A sweep is the
     // answer to "this container is gone, remove what it left behind", and a
-    // row it does not visit is a row that outlives its container -- which is
-    // the context-less DELETE the container_json column exists to prevent.
+    // row it does not visit is a row that outlives its container -- it would
+    // be left pointing at a context that the sweep has already dropped, and
+    // emit the context-less DELETE this whole design exists to prevent.
     const std::vector<std::string> CONTAINER_SCOPED_TABLES
     {
         PROCESSES_TABLE, PORTS_TABLE, USERS_TABLE, GROUPS_TABLE, PACKAGES_TABLE,
@@ -2641,7 +2639,8 @@ std::size_t Syscollector::sweepContainerRows(const std::vector<std::string>& con
         }
 
         // An empty scoped sync per table emits that container's rows as
-        // DELETED, each one self-contained through its container_json column.
+        // DELETED. The context row is still present here -- it is dropped only
+        // once these are done -- so each event is still self-contained.
         for (const auto& table : CONTAINER_SCOPED_TABLES)
         {
             updateChanges(table, nlohmann::json::array(), containerId);
@@ -3157,8 +3156,8 @@ void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_th
 
     // Containers still in the DB but no longer known to container_instances
     // at all (genuinely removed, not merely stopped): an empty scoped sync
-    // per stale id emits their DELETED events — each row's container_json
-    // column keeps those self-contained. A container that's still known but
+    // per stale id emits their DELETED events, which still find the stored
+    // context and so stay self-contained. A container that's still known but
     // just has no live PID right now (stopped) is in `discoveredIds` and is
     // therefore left untouched here, so a later restart resumes diffing
     // against its retained rows instead of re-seeding from empty.

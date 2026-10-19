@@ -448,15 +448,15 @@ namespace
 
                 // Stable checksum so DBSync can detect row-level changes between runs.
                 //
-                // The container-scope columns are excluded deliberately:
-                // container_id is part of the row's primary key already, and
-                // container_json is a copy of the container's metadata blob. With
-                // the blob inside the digest, editing one label changed the checksum
-                // of every file row of that container and re-emitted the whole file
-                // set as MODIFIED — a metadata edit reported as file changes.
+                // container_id is excluded deliberately: it is part of the row's
+                // primary key already, so rows are told apart by it without the
+                // digest. The container's metadata is not here to exclude — it is
+                // stored once under that id rather than copied onto the row, which
+                // is what keeps editing one label from rewriting the checksum of
+                // every file row of that container and re-emitting the whole file
+                // set as MODIFIED.
                 auto checksumInput = row;
                 checksumInput.erase("container_id");
-                checksumInput.erase("container_json");
                 const std::string dump = checksumInput.dump();
                 char sha1[41] = {0};
                 fim_compute_row_checksum(dump.c_str(), sha1);
