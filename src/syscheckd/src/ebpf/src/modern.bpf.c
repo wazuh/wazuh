@@ -129,7 +129,7 @@ struct task_struct___local {
  * libbpf to use this definition instead of kernel BTF, avoiding CO-RE
  * failures on kernels where renamedata is not in BTF (e.g. 5.15).
  * new_mnt_userns must be present to keep new_dentry at the correct offset
- * (field layout stable across 5.12-6.3+).
+ * (field layout stable across 5.12-6.17).
  */
 struct renamedata___local {
     void          *old_mnt_userns;  /* user_namespace* on 5.12-5.15, mnt_idmap* on 6.3+ */
@@ -140,6 +140,15 @@ struct renamedata___local {
     struct inode  *new_dir;
     struct dentry *new_dentry;
 };
+
+/*
+ * 6.18+ renamedata: new_parent replaces new_dir and new_dentry moves, so it is
+ * read through CO-RE when the running kernel has that layout.
+ */
+struct renamedata___v618 {
+    struct dentry *new_parent;
+    struct dentry *new_dentry;
+} __attribute__((preserve_access_index));
 
 /*
 * Concatenates a directory path and a filename into a full path.
@@ -684,7 +693,11 @@ statfunc int vfs_rename_event(struct pt_regs *ctx, bool old)
         if (!rd)
             return 0;
         bpf_probe_read_kernel(&old_dentry, sizeof(old_dentry), &rd->old_dentry);
-        bpf_probe_read_kernel(&new_dentry, sizeof(new_dentry), &rd->new_dentry);
+        struct renamedata___v618 *rd618 = (void *)rd;
+        if (bpf_core_field_exists(rd618->new_parent))
+            new_dentry = BPF_CORE_READ(rd618, new_dentry);
+        else
+            bpf_probe_read_kernel(&new_dentry, sizeof(new_dentry), &rd->new_dentry);
     }
 
     if (!old_dentry || !new_dentry)
