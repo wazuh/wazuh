@@ -114,14 +114,13 @@ void DB::getFile(const std::string& path,
     std::string encodedPath = path;
     FIMDBCreator<OS_TYPE>::encodeString(encodedPath);
 
-    /* container_id and container_json are in the column list — unlike the
-     * path-only overload — because the caller builds a container-enriched FIM
-     * event out of this row, and the container blocks come from that blob. */
+    /* container_id is in the column list — unlike the path-only overload —
+     * because the caller builds a container-enriched FIM event out of this row,
+     * and the container's stored context is looked up by that id. */
     auto selectQuery {SelectQuery::builder()
                       .table(FIMDB_FILE_TABLE_NAME)
                       .columnList({"path",
                                    "container_id",
-                                   "container_json",
                                    "checksum",
                                    "device",
                                    "inode",

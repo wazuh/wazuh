@@ -93,9 +93,9 @@ std::optional<nlohmann::json> KubernetesBlock(const ContainerContextPtr& ctx)
 /// both today), so this is a free change now and a reindex later.
 ///
 /// Shared by every Build*Json() below AND by BuildContainerContextJson(), which
-/// is what FIM persists in its container_json column -- the two must not drift,
-/// or the same row reaches the manager in two different shapes depending on
-/// which consumer emitted it.
+/// is what both consumers persist in their container_context table -- the two
+/// must not drift, or the same row reaches the manager in two different shapes
+/// depending on which consumer emitted it.
 void StampContainerContext(nlohmann::json& data, const std::string& container_id, const ContainerContextPtr& ctx)
 {
     auto container = ContainerBlock(container_id, ctx);
@@ -406,9 +406,8 @@ namespace {
 /// stored there -- rather than being copied onto each row, which cost 79x its
 /// own size in the file table and made one label edit rewrite every row of the
 /// container.
-nlohmann::json DbsyncRowBase(const std::string& container_id, const std::string& container_json)
+nlohmann::json DbsyncRowBase(const std::string& container_id)
 {
-    (void)container_json;
     nlohmann::json row;
     row["container_id"] = container_id;
     return row;
@@ -423,9 +422,9 @@ std::string BuildContainerContextJson(const std::string& container_id, const Con
     return data.dump();
 }
 
-std::string BuildFimFileDbsyncRow(const FileBaselineRow& row, const std::string& container_json)
+std::string BuildFimFileDbsyncRow(const FileBaselineRow& row)
 {
-    auto data = DbsyncRowBase(row.container_id, container_json);
+    auto data = DbsyncRowBase(row.container_id);
     data["path"]        = row.path;
     data["device"]      = static_cast<int64_t>(row.device);
     data["inode"]       = static_cast<int64_t>(row.inode);
@@ -444,9 +443,9 @@ std::string BuildFimFileDbsyncRow(const FileBaselineRow& row, const std::string&
     return data.dump();
 }
 
-std::string BuildProcessDbsyncRow(const ProcessBaselineRow& row, const std::string& container_json)
+std::string BuildProcessDbsyncRow(const ProcessBaselineRow& row)
 {
-    auto data = DbsyncRowBase(row.container_id, container_json);
+    auto data = DbsyncRowBase(row.container_id);
     data["pid"]          = row.pid;
     data["name"]         = row.name;
     data["state"]        = row.state;
@@ -460,9 +459,9 @@ std::string BuildProcessDbsyncRow(const ProcessBaselineRow& row, const std::stri
     return data.dump();
 }
 
-std::string BuildPortDbsyncRow(const PortBaselineRow& row, const std::string& container_json)
+std::string BuildPortDbsyncRow(const PortBaselineRow& row)
 {
-    auto data = DbsyncRowBase(row.container_id, container_json);
+    auto data = DbsyncRowBase(row.container_id);
     data["network_transport"] = row.network_transport;
     data["source_ip"]         = row.source_ip;
     data["source_port"]       = row.source_port;
@@ -475,9 +474,9 @@ std::string BuildPortDbsyncRow(const PortBaselineRow& row, const std::string& co
     return data.dump();
 }
 
-std::string BuildUserDbsyncRow(const UserBaselineRow& row, const std::string& container_json)
+std::string BuildUserDbsyncRow(const UserBaselineRow& row)
 {
-    auto data = DbsyncRowBase(row.container_id, container_json);
+    auto data = DbsyncRowBase(row.container_id);
     data["user_name"]      = row.name;
     data["user_id"]        = row.uid;
     data["user_group_id"]  = row.gid;
@@ -487,9 +486,9 @@ std::string BuildUserDbsyncRow(const UserBaselineRow& row, const std::string& co
     return data.dump();
 }
 
-std::string BuildGroupDbsyncRow(const GroupBaselineRow& row, const std::string& container_json)
+std::string BuildGroupDbsyncRow(const GroupBaselineRow& row)
 {
-    auto data = DbsyncRowBase(row.container_id, container_json);
+    auto data = DbsyncRowBase(row.container_id);
     data["group_name"] = row.name;
     data["group_id"]   = row.gid;
     std::string users;
@@ -501,9 +500,9 @@ std::string BuildGroupDbsyncRow(const GroupBaselineRow& row, const std::string& 
     return data.dump();
 }
 
-std::string BuildPackageDbsyncRow(const PackageBaselineRow& row, const std::string& container_json)
+std::string BuildPackageDbsyncRow(const PackageBaselineRow& row)
 {
-    auto data = DbsyncRowBase(row.container_id, container_json);
+    auto data = DbsyncRowBase(row.container_id);
     data["name"]         = row.name;
     data["version_"]     = row.version;
     data["architecture"] = row.architecture;
@@ -518,9 +517,9 @@ std::string BuildPackageDbsyncRow(const PackageBaselineRow& row, const std::stri
     return data.dump();
 }
 
-std::string BuildOsDbsyncRow(const OsBaselineRow& row, const std::string& container_json)
+std::string BuildOsDbsyncRow(const OsBaselineRow& row)
 {
-    auto data = DbsyncRowBase(row.container_id, container_json);
+    auto data = DbsyncRowBase(row.container_id);
     data["os_name"]           = row.name;
     data["os_full"]           = row.full;
     data["os_version"]        = row.version;
@@ -531,9 +530,9 @@ std::string BuildOsDbsyncRow(const OsBaselineRow& row, const std::string& contai
     return data.dump();
 }
 
-std::string BuildInterfaceDbsyncRow(const InterfaceBaselineRow& row, const std::string& container_json)
+std::string BuildInterfaceDbsyncRow(const InterfaceBaselineRow& row)
 {
-    auto data = DbsyncRowBase(row.container_id, container_json);
+    auto data = DbsyncRowBase(row.container_id);
     data["interface_name"]  = row.name;
     data["interface_alias"] = ""; // PK member — containers have no alias.
     data["interface_type"]  = row.type;
@@ -551,9 +550,9 @@ std::string BuildInterfaceDbsyncRow(const InterfaceBaselineRow& row, const std::
     return data.dump();
 }
 
-std::string BuildNetworkAddressDbsyncRow(const NetworkAddressBaselineRow& row, const std::string& container_json)
+std::string BuildNetworkAddressDbsyncRow(const NetworkAddressBaselineRow& row)
 {
-    auto data = DbsyncRowBase(row.container_id, container_json);
+    auto data = DbsyncRowBase(row.container_id);
     data["interface_name"]    = row.interface_name;
     // dbsync_network_address.network_type is INTEGER: 0 = IPv4, 1 = IPv6 (same
     // convention sysinfo uses for host rows).
@@ -564,9 +563,9 @@ std::string BuildNetworkAddressDbsyncRow(const NetworkAddressBaselineRow& row, c
     return data.dump();
 }
 
-std::string BuildProtocolDbsyncRow(const ProtocolBaselineRow& row, const std::string& container_json)
+std::string BuildProtocolDbsyncRow(const ProtocolBaselineRow& row)
 {
-    auto data = DbsyncRowBase(row.container_id, container_json);
+    auto data = DbsyncRowBase(row.container_id);
     data["interface_name"]  = row.interface_name;
     data["network_type"]    = row.type;
     data["network_gateway"] = row.gateway;
@@ -575,9 +574,9 @@ std::string BuildProtocolDbsyncRow(const ProtocolBaselineRow& row, const std::st
     return data.dump();
 }
 
-std::string BuildServiceDbsyncRow(const ServiceBaselineRow& row, const std::string& container_json)
+std::string BuildServiceDbsyncRow(const ServiceBaselineRow& row)
 {
-    auto data = DbsyncRowBase(row.container_id, container_json);
+    auto data = DbsyncRowBase(row.container_id);
     data["service_id"]          = row.name;
     data["service_name"]        = row.name;
     data["service_description"] = row.description;
@@ -589,9 +588,9 @@ std::string BuildServiceDbsyncRow(const ServiceBaselineRow& row, const std::stri
     return data.dump();
 }
 
-std::string BuildHardwareDbsyncRow(const HardwareBaselineRow& row, const std::string& container_json)
+std::string BuildHardwareDbsyncRow(const HardwareBaselineRow& row)
 {
-    auto data = DbsyncRowBase(row.container_id, container_json);
+    auto data = DbsyncRowBase(row.container_id);
     // serial_number is the table's PK slot; a container's virtual hardware has
     // no board serial, so the container_id fills it (unique per container).
     data["serial_number"] = row.container_id;

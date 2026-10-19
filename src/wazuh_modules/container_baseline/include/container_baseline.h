@@ -79,7 +79,7 @@ typedef struct cb_monitored_path_t {
 
 /* Invoked once per raw dbsync-format baseline row. `table` is the dbsync table
  * name ("dbsync_processes", "file_entry", ...); `row_json` is a flat object of
- * that table's columns, already stamped with container_id and container_json.
+ * that table's columns, already stamped with container_id.
  * The caller groups rows per container per table and syncs them through
  * per-container scoped DBSync transactions. */
 typedef void (*cb_dbsync_row_sink_t)(const char* container_id,
@@ -170,8 +170,8 @@ typedef void (*cb_container_status_sink_t)(const cb_container_status_t* status, 
 typedef void (*cb_rate_limit_fn)(void);
 
 /* Baseline every container's FIM files as raw file_entry dbsync rows. Each row
- * is a flat file_entry column set (container_id, path, hash_md5, …,
- * container_json) ready for fim_db_transaction_sync_row_json().
+ * is a flat file_entry column set (container_id, path, hash_md5, …) ready for
+ * fim_db_transaction_sync_row_json().
  *
  * `status_sink` and `rate_limit` may be NULL.
  *

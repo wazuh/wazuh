@@ -87,6 +87,11 @@ __wrap_cbaseline_list_containers_ex(const char* socket, cb_container_id_sink_t s
 }
 #endif
 
+/// One more than the number of upgrade statements, which is how DBSync derives
+/// the current version: the container_context create, then one DROP COLUMN per
+/// table in LEGACY_CONTAINER_JSON_TABLES below.
+constexpr int CURRENT_SCHEMA_VERSION {15};
+
 // Mock SchemaValidatorEngine for dependency injection in tests
 class MockSchemaValidatorEngine : public SchemaValidator::ISchemaValidatorEngine
 {
@@ -135,6 +140,24 @@ void populateTestDb()
         if (db) sqlite3_close(db);
 
         throw std::runtime_error("Failed to open test DB");
+    }
+
+    // The create statements above are the CURRENT schema, so the database has
+    // to say so. DBSync's 5-argument constructor stamps version 1, which would
+    // send the next init() through every upgrade statement -- including the
+    // DROP COLUMNs for a column this schema was never built with.
+    {
+        char* versionErr = nullptr;
+
+        const std::string pragma {"PRAGMA user_version = " + std::to_string(CURRENT_SCHEMA_VERSION) + ";"};
+
+        if (sqlite3_exec(db, pragma.c_str(), nullptr, nullptr, &versionErr) != SQLITE_OK)
+        {
+            const std::string message {versionErr ? versionErr : "unknown error"};
+            sqlite3_free(versionErr);
+            sqlite3_close(db);
+            throw std::runtime_error("Failed to stamp the schema version: " + message);
+        }
     }
 
     // Insert dummy data to trigger "disabled collector with data" detection
@@ -8421,16 +8444,21 @@ TEST_F(SyscollectorImpTest, ADeletedContainerRowCarriesOneContainerBlockAndNoKub
                                   SYSCOLLECTOR_TEST_DB_PATH, "", "",
                                   3600, false, false, false, false, false, false, false,
                                   false, false, false, false, false, false, false);
+
+    // The stored context carries BOTH shapes at once: the nested one the
+    // producer emits today (D15), and the retired two-sibling one beside it.
+    // Only the nested block may reach the document. A top-level "kubernetes"
+    // is refused by every dynamic:strict wazuh-states-* template, so lifting
+    // one could only ever have produced a document the indexer drops -- which
+    // is why a reader that still handled it was worth deleting rather than
+    // keeping as harmless. Reading only context["container"] makes the sibling
+    // unreachable by construction; this pins that it stays so.
+    EXPECT_TRUE(Syscollector::instance().storeContainerContext(
+                    "c1",
+                    R"({"container":{"id":"c1","name":"web","kubernetes":{"pod":{"name":"web-0"}}},)"
+                    R"("kubernetes":{"pod":{"name":"retired-sibling"}}})"));
     Syscollector::instance().destroy();
 
-    // The stored blob carries BOTH shapes at once: the nested one the producer
-    // emits today (D15), and the retired two-sibling one beside it. Only the
-    // nested block may reach the document. A top-level "kubernetes" is refused
-    // by every dynamic:strict wazuh-states-* template, so lifting one could
-    // only ever have produced a document the indexer drops -- which is why a
-    // reader that still handled it was worth deleting rather than keeping as
-    // harmless.
-    //
     // sync = 1 because a DELETED row that was never synced is suppressed by the
     // document-limit accounting and would never reach the persist callback.
     sqlite3* db = nullptr;
@@ -8439,11 +8467,8 @@ TEST_F(SyscollectorImpTest, ADeletedContainerRowCarriesOneContainerBlockAndNoKub
     char* errMsg = nullptr;
     ASSERT_EQ(sqlite3_exec(db,
                            "INSERT INTO dbsync_processes "
-                           "(container_id, container_json, pid, name, sync, checksum) VALUES ('c1', "
-                           "'{\"container\":{\"id\":\"c1\",\"name\":\"web\","
-                           "\"kubernetes\":{\"pod\":{\"name\":\"web-0\"}}},"
-                           "\"kubernetes\":{\"pod\":{\"name\":\"retired-sibling\"}}}', "
-                           "'431625', 'nginx', 1, 'sum');",
+                           "(container_id, pid, name, sync, checksum) "
+                           "VALUES ('c1', '431625', 'nginx', 1, 'sum');",
                            nullptr,
                            nullptr,
                            &errMsg),
@@ -8472,7 +8497,7 @@ TEST_F(SyscollectorImpTest, ADeletedContainerRowCarriesOneContainerBlockAndNoKub
                                   false, false, false, false, false, false, false);
 
     // The container is gone, so its rows go -- and the DELETED event each one
-    // produces is exactly the case the stored blob exists to serve.
+    // produces is exactly the case the stored context exists to serve.
     EXPECT_EQ(Syscollector::instance().sweepContainerRows({"c1"}), 1u);
 
     ASSERT_EQ(persisted.size(), 1u) << "the swept row should have produced one stateful delete";
@@ -8504,25 +8529,31 @@ TEST_F(SyscollectorImpTest, EachContainersRowsCarryTheirOwnContextNotThePrevious
                                   SYSCOLLECTOR_TEST_DB_PATH, "", "",
                                   3600, false, false, false, false, false, false, false,
                                   false, false, false, false, false, false, false);
+
+    EXPECT_TRUE(Syscollector::instance().storeContainerContext(
+                    "a", R"({"container":{"id":"a","name":"alpha"}})"));
+    EXPECT_TRUE(Syscollector::instance().storeContainerContext(
+                    "b", R"({"container":{"id":"b","name":"bravo"}})"));
     Syscollector::instance().destroy();
 
-    // ecsData() memoises the parsed blob so it parses once per container
-    // instead of once per row. The memo is keyed on the blob's own text, so
-    // the failure it has to be proved against is a stale hit: container b
-    // being handed container a's context because the memo was never refreshed.
+    // ecsData() memoises the context it looked up so it reads and parses once
+    // per container instead of once per row. The memo is keyed on the
+    // container id, so the failure it has to be proved against is a stale hit:
+    // container b being handed container a's context because the memo was
+    // never refreshed.
     //
-    // Two containers, two rows each, different blobs -- and the rows are
-    // interleaved in the table by primary key so a sweep cannot accidentally
-    // pass by visiting them in a convenient order.
+    // Two containers, two rows each -- and the rows are interleaved in the
+    // table by primary key so a sweep cannot accidentally pass by visiting
+    // them in a convenient order.
     sqlite3* db = nullptr;
     ASSERT_EQ(sqlite3_open_v2(SYSCOLLECTOR_TEST_DB_PATH, &db, SQLITE_OPEN_READWRITE, nullptr), SQLITE_OK);
 
     const char* seed =
-        "INSERT INTO dbsync_processes (container_id, container_json, pid, name, sync, checksum) VALUES "
-        "('a', '{\"container\":{\"id\":\"a\",\"name\":\"alpha\"}}', '1', 'p1', 1, 's'),"
-        "('a', '{\"container\":{\"id\":\"a\",\"name\":\"alpha\"}}', '2', 'p2', 1, 's'),"
-        "('b', '{\"container\":{\"id\":\"b\",\"name\":\"bravo\"}}', '1', 'p1', 1, 's'),"
-        "('b', '{\"container\":{\"id\":\"b\",\"name\":\"bravo\"}}', '2', 'p2', 1, 's');";
+        "INSERT INTO dbsync_processes (container_id, pid, name, sync, checksum) VALUES "
+        "('a', '1', 'p1', 1, 's'),"
+        "('a', '2', 'p2', 1, 's'),"
+        "('b', '1', 'p1', 1, 's'),"
+        "('b', '2', 'p2', 1, 's');";
 
     char* errMsg = nullptr;
     ASSERT_EQ(sqlite3_exec(db, seed, nullptr, nullptr, &errMsg), SQLITE_OK) << (errMsg ? errMsg : "");
@@ -8642,6 +8673,55 @@ static bool tableExists(const char* path, const char* table)
     return found;
 }
 
+/// Whether `table` still has `column`, read from the table's own definition
+/// rather than from a SELECT -- a dropped column has to be gone from the
+/// schema, not merely absent from the rows.
+static bool columnExists(const char* path, const std::string& table, const std::string& column)
+{
+    sqlite3* db = nullptr;
+
+    if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READONLY, nullptr) != SQLITE_OK)
+    {
+        if (db)
+        {
+            sqlite3_close(db);
+        }
+
+        return false;
+    }
+
+    sqlite3_stmt* stmt = nullptr;
+    bool found = false;
+
+    // PRAGMA takes no bindings, and `table` is a literal from this file.
+    if (sqlite3_prepare_v2(db, ("PRAGMA table_info(" + table + ");").c_str(), -1, &stmt, nullptr) == SQLITE_OK)
+    {
+        while (sqlite3_step(stmt) == SQLITE_ROW)
+        {
+            const auto* name = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+
+            if (name != nullptr && column == name)
+            {
+                found = true;
+                break;
+            }
+        }
+    }
+
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
+    return found;
+}
+
+/// Every table that carried the retired per-row context copy.
+static const std::vector<std::string> LEGACY_CONTAINER_JSON_TABLES
+{
+    "dbsync_osinfo", "dbsync_hwinfo", "dbsync_hotfixes", "dbsync_packages",
+    "dbsync_processes", "dbsync_ports", "dbsync_network_iface",
+    "dbsync_network_protocol", "dbsync_network_address", "dbsync_users",
+    "dbsync_groups", "dbsync_services", "dbsync_browser_extensions"
+};
+
 TEST_F(SyscollectorImpTest, AFreshDatabaseIsCreatedAtTheCurrentSchemaVersion)
 {
     const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
@@ -8656,10 +8736,17 @@ TEST_F(SyscollectorImpTest, AFreshDatabaseIsCreatedAtTheCurrentSchemaVersion)
     EXPECT_TRUE(tableExists(SYSCOLLECTOR_TEST_DB_PATH, "container_context"))
             << "a database created from nothing takes the create statement, which must carry every table";
 
-    // One more than the number of upgrade statements, which is how DBSync
-    // derives the current version. A fresh database must land there directly,
-    // or it would be handed upgrades meant for older schemas on next start.
-    EXPECT_EQ(readUserVersion(SYSCOLLECTOR_TEST_DB_PATH), 2);
+    // A fresh database must land at the current version directly, or it would
+    // be handed upgrades meant for older schemas on next start.
+    EXPECT_EQ(readUserVersion(SYSCOLLECTOR_TEST_DB_PATH), CURRENT_SCHEMA_VERSION);
+
+    // And it must arrive without the retired column, since it never replays
+    // the DROP COLUMN upgrades that take it off an older database.
+    for (const auto& table : LEGACY_CONTAINER_JSON_TABLES)
+    {
+        EXPECT_FALSE(columnExists(SYSCOLLECTOR_TEST_DB_PATH, table, "container_json"))
+                << table << " was created carrying a column the create statement should no longer have";
+    }
 }
 
 TEST_F(SyscollectorImpTest, AnExistingDatabaseIsUpgradedWithoutLosingWhatItHeld)
@@ -8686,6 +8773,16 @@ TEST_F(SyscollectorImpTest, AnExistingDatabaseIsUpgradedWithoutLosingWhatItHeld)
     legacySchema += SERVICES_SQL_STATEMENT;
     legacySchema += BROWSER_EXTENSIONS_SQL_STATEMENT;
     legacySchema += TABLE_METADATA_SQL_STATEMENT;
+
+    // The create statements above no longer carry container_json, so a version-1
+    // schema has to be reconstituted rather than borrowed: put the column back
+    // on every table that had it. ADD COLUMN appends rather than restoring its
+    // original position, which DROP COLUMN does not care about.
+    for (const auto& table : LEGACY_CONTAINER_JSON_TABLES)
+    {
+        legacySchema += "ALTER TABLE " + table + " ADD COLUMN container_json TEXT DEFAULT '';";
+    }
+
     legacySchema += "PRAGMA user_version = 1;";
 
     char* errMsg = nullptr;
@@ -8698,7 +8795,8 @@ TEST_F(SyscollectorImpTest, AnExistingDatabaseIsUpgradedWithoutLosingWhatItHeld)
     }
 
     // A host row and a container row, so the assertions below cover both
-    // scopes rather than only the one this work touches.
+    // scopes rather than only the one this work touches. The container row
+    // carries a context copy, which is what an upgraded agent's rows hold.
     ASSERT_EQ(sqlite3_exec(db,
                            "INSERT INTO dbsync_processes (container_id, pid, name, checksum) "
                            "VALUES ('', '1', 'host-proc', 'host-sum');"
@@ -8716,6 +8814,8 @@ TEST_F(SyscollectorImpTest, AnExistingDatabaseIsUpgradedWithoutLosingWhatItHeld)
 
     ASSERT_EQ(readUserVersion(SYSCOLLECTOR_TEST_DB_PATH), 1) << "precondition: a version-1 database";
     ASSERT_FALSE(tableExists(SYSCOLLECTOR_TEST_DB_PATH, "container_context"));
+    ASSERT_TRUE(columnExists(SYSCOLLECTOR_TEST_DB_PATH, "dbsync_processes", "container_json"))
+            << "precondition: a version-1 database still copies the context onto every row";
 
     const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
     EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
@@ -8726,9 +8826,19 @@ TEST_F(SyscollectorImpTest, AnExistingDatabaseIsUpgradedWithoutLosingWhatItHeld)
                                   false, false, false, false, false, false, false);
     Syscollector::instance().destroy();
 
-    EXPECT_EQ(readUserVersion(SYSCOLLECTOR_TEST_DB_PATH), 2) << "the upgrade must advance the recorded version";
+    EXPECT_EQ(readUserVersion(SYSCOLLECTOR_TEST_DB_PATH), CURRENT_SCHEMA_VERSION)
+            << "the upgrade must advance the recorded version";
     EXPECT_TRUE(tableExists(SYSCOLLECTOR_TEST_DB_PATH, "container_context"))
             << "the upgrade statement is the only route by which an existing database gains the table";
+
+    // Every table loses the column, not just the one the rows below check.
+    // A table missed here would keep paying the per-row cost forever, since
+    // the upgrade that drops it never runs twice.
+    for (const auto& table : LEGACY_CONTAINER_JSON_TABLES)
+    {
+        EXPECT_FALSE(columnExists(SYSCOLLECTOR_TEST_DB_PATH, table, "container_json"))
+                << table << " kept the per-row context copy through the upgrade";
+    }
 
     // The rows must survive, with their checksums untouched. A checksum that
     // changed here would resync that agent's entire inventory on upgrade --
@@ -8849,9 +8959,9 @@ TEST_F(SyscollectorImpTest, ADeleteIsDescribedByTheContextStoredOnceNotByTheRow)
                     "c1", R"({"container":{"id":"c1","name":"web","kubernetes":{"pod":{"name":"web-0"}}}})"));
     Syscollector::instance().destroy();
 
-    // The row carries NO context of its own -- an empty container_json is what
-    // the producer now writes. Everything the delete says about the container
-    // therefore has to come from the row stored once, which is the whole point.
+    // The row carries NO context of its own -- there is no longer a column it
+    // could carry one in. Everything the delete says about the container
+    // therefore has to come from the context stored once, which is the point.
     sqlite3* db = nullptr;
     ASSERT_EQ(sqlite3_open_v2(SYSCOLLECTOR_TEST_DB_PATH, &db, SQLITE_OPEN_READWRITE, nullptr), SQLITE_OK);
 

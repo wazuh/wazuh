@@ -124,10 +124,6 @@ static void normalize_container_fim_row(cJSON* msg)
     // Attach the container block, which is stored once per container rather
     // than copied onto every row. Since D15 the Kubernetes context is nested
     // INSIDE that block at container.kubernetes, so there is no second block.
-    //
-    // The container_json column is still read as a fallback, for rows an older
-    // build wrote before the context was stored separately. Those rows keep
-    // working until the column is dropped.
     const cJSON* container_id_item = cJSON_GetObjectItem(msg, "container_id");
     cJSON* container_block = NULL;
 
@@ -136,26 +132,14 @@ static void normalize_container_fim_row(cJSON* msg)
         container_block = fim_db_get_container_context(container_id_item->valuestring);
     }
 
-    if (container_block == NULL) {
-        const cJSON* container_json_item = cJSON_GetObjectItem(msg, "container_json");
-        if (container_json_item != NULL && cJSON_IsString(container_json_item) &&
-            container_json_item->valuestring != NULL && container_json_item->valuestring[0] != '\0') {
-            cJSON* ctx = cJSON_Parse(container_json_item->valuestring);
-            if (ctx != NULL) {
-                container_block = cJSON_DetachItemFromObject(ctx, "container");
-                cJSON_Delete(ctx);
-            }
-        }
-    }
-
     if (container_block != NULL) {
         cJSON_DeleteItemFromObject(msg, "container");
         cJSON_AddItemToObject(msg, "container", container_block);
     }
 
-    // Defensive: a column written before D15 carries a sibling "kubernetes".
-    // Drop it rather than lift it, so a database that survived the change
-    // cannot emit the retired two-block shape.
+    // Defensive: the retired pre-D15 shape put "kubernetes" beside "container"
+    // rather than inside it. Drop any such sibling rather than lift it, so the
+    // two-block shape every dynamic:strict template rejects cannot be emitted.
     cJSON_DeleteItemFromObject(msg, "kubernetes");
 
     cJSON* file_obj = cJSON_GetObjectItem(msg, "file");
@@ -209,7 +193,6 @@ static void normalize_container_fim_row(cJSON* msg)
     cJSON_DeleteItemFromObject(msg, "is_symlink");
     // dbsync-only columns: not part of the stateful event schema.
     cJSON_DeleteItemFromObject(msg, "container_id");
-    cJSON_DeleteItemFromObject(msg, "container_json");
     cJSON_DeleteItemFromObject(msg, "checksum");
     cJSON_DeleteItemFromObject(msg, "sync");
     cJSON_DeleteItemFromObject(msg, "version");
@@ -1050,38 +1033,20 @@ void fim_container_baseline_first_scan_done(void)
     container_notify_scan = 1;
 }
 
-/* Lifts the container_json column onto `target` as the top-level "container"
- * block, Kubernetes context nested inside it at container.kubernetes (D15).
- * Same placement normalize_container_fim_row() uses for the stateful document,
- * so an analyst reads the same field names on both sides. */
+/* Looks the row's container context up by id and attaches it to `target` as
+ * the top-level "container" block, Kubernetes context nested inside it at
+ * container.kubernetes (D15). Same placement normalize_container_fim_row()
+ * uses for the stateful document, so an analyst reads the same field names on
+ * both sides. */
 static void add_container_context(const cJSON* row_data, cJSON* target)
 {
-    // Stored once per container; the row references it by id. The
-    // container_json column is still read as a fallback for rows written
-    // before the context was stored separately.
+    // Stored once per container; the row references it by id.
     const cJSON* container_id_item = cJSON_GetObjectItem(row_data, "container_id");
     cJSON* container_block = NULL;
 
     if (container_id_item != NULL && cJSON_IsString(container_id_item) &&
         container_id_item->valuestring != NULL && container_id_item->valuestring[0] != '\0') {
         container_block = fim_db_get_container_context(container_id_item->valuestring);
-    }
-
-    if (container_block == NULL) {
-        const cJSON* container_json_item = cJSON_GetObjectItem(row_data, "container_json");
-
-        if (container_json_item == NULL || !cJSON_IsString(container_json_item) ||
-            container_json_item->valuestring == NULL || container_json_item->valuestring[0] == '\0') {
-            return;
-        }
-
-        cJSON* ctx = cJSON_Parse(container_json_item->valuestring);
-        if (ctx == NULL) {
-            return;
-        }
-
-        container_block = cJSON_DetachItemFromObject(ctx, "container");
-        cJSON_Delete(ctx);
     }
 
     if (container_block != NULL) {
@@ -1173,7 +1138,7 @@ void fim_send_container_stateless_event(const cJSON* row_data,
      *
      * Container rows have no fim_file_data struct, so this always takes
      * fim_attributes_json()'s JSON-only mode (data == NULL) — which reads the
-     * named columns and ignores container_id/container_json. */
+     * named columns and ignores container_id. */
     cJSON* file_stateless = (operation == OPERATION_DELETE || g_host.attributes_json == NULL)
         ? cJSON_CreateObject()
         : g_host.attributes_json(row_data, NULL, config);

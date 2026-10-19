@@ -14,18 +14,17 @@
 
 // Every dbsync table carries container_id ('' for host rows) as the leading
 // primary-key member so host and container inventories can share tables while
-// scoped DBSync transactions diff them independently. container_json stores
-// the serialized container/kubernetes context so DELETED events remain
-// self-contained after the container is gone.
+// scoped DBSync transactions diff them independently. The container's runtime
+// context is stored once in container_context and joined by that id, so a
+// DELETED event is still self-contained after the container is gone without
+// every row carrying its own copy.
 constexpr auto CONTAINER_ID_COLUMN   { "container_id" };
-constexpr auto CONTAINER_JSON_COLUMN { "container_json" };
 constexpr auto HOST_CONTAINER_ID     { "" };
 
 constexpr auto OS_SQL_STATEMENT
 {
     R"(CREATE TABLE dbsync_osinfo (
     container_id TEXT DEFAULT '',
-    container_json TEXT DEFAULT '',
     hostname TEXT,
     architecture TEXT,
     os_name TEXT,
@@ -61,7 +60,6 @@ constexpr auto HW_SQL_STATEMENT
 {
     R"(CREATE TABLE dbsync_hwinfo (
     container_id TEXT DEFAULT '',
-    container_json TEXT DEFAULT '',
     serial_number TEXT,
     cpu_name TEXT,
     cpu_cores INTEGER,
@@ -79,7 +77,6 @@ constexpr auto HOTFIXES_SQL_STATEMENT
 {
     R"(CREATE TABLE dbsync_hotfixes(
     container_id TEXT DEFAULT '',
-    container_json TEXT DEFAULT '',
     hotfix_name TEXT,
     sync INTEGER DEFAULT 0,
     checksum TEXT,
@@ -91,7 +88,6 @@ constexpr auto PACKAGES_SQL_STATEMENT
 {
     R"(CREATE TABLE dbsync_packages(
     container_id TEXT DEFAULT '',
-    container_json TEXT DEFAULT '',
     name TEXT,
     version_ TEXT,
     vendor TEXT,
@@ -115,7 +111,6 @@ constexpr auto PROCESSES_SQL_STATEMENT
 {
     R"(CREATE TABLE dbsync_processes (
     container_id TEXT DEFAULT '',
-    container_json TEXT DEFAULT '',
     pid TEXT,
     name TEXT,
     state TEXT,
@@ -136,7 +131,6 @@ constexpr auto PORTS_SQL_STATEMENT
 {
     R"(CREATE TABLE dbsync_ports (
        container_id TEXT DEFAULT '',
-       container_json TEXT DEFAULT '',
        network_transport TEXT,
        source_ip TEXT,
        source_port BIGINT,
@@ -158,7 +152,6 @@ constexpr auto NETIFACE_SQL_STATEMENT
 {
     R"(CREATE TABLE dbsync_network_iface (
        container_id TEXT DEFAULT '',
-       container_json TEXT DEFAULT '',
        interface_name TEXT,
        interface_alias TEXT,
        interface_type TEXT,
@@ -183,7 +176,6 @@ constexpr auto NETPROTO_SQL_STATEMENT
 {
     R"(CREATE TABLE dbsync_network_protocol (
        container_id TEXT DEFAULT '',
-       container_json TEXT DEFAULT '',
        interface_name TEXT,
        network_type TEXT,
        network_gateway TEXT,
@@ -199,7 +191,6 @@ constexpr auto NETADDR_SQL_STATEMENT
 {
     R"(CREATE TABLE dbsync_network_address (
        container_id TEXT DEFAULT '',
-       container_json TEXT DEFAULT '',
        interface_name TEXT,
        network_type INTEGER,
        network_ip TEXT,
@@ -215,7 +206,6 @@ constexpr auto USERS_SQL_STATEMENT
 {
     R"(CREATE TABLE dbsync_users (
         container_id TEXT DEFAULT '',
-        container_json TEXT DEFAULT '',
         user_name TEXT,
         user_full_name TEXT,
         user_home TEXT,
@@ -257,7 +247,6 @@ constexpr auto GROUPS_SQL_STATEMENT
 {
     R"(CREATE TABLE dbsync_groups (
     container_id TEXT DEFAULT '',
-    container_json TEXT DEFAULT '',
     group_id BIGINT,
     group_name TEXT,
     group_description TEXT,
@@ -275,7 +264,6 @@ constexpr auto SERVICES_SQL_STATEMENT
 {
     R"(CREATE TABLE dbsync_services (
         container_id TEXT DEFAULT '',
-        container_json TEXT DEFAULT '',
         service_id TEXT,
         service_name TEXT,
         service_description TEXT,
@@ -318,7 +306,6 @@ constexpr auto BROWSER_EXTENSIONS_SQL_STATEMENT
 {
     R"(CREATE TABLE dbsync_browser_extensions (
         container_id TEXT DEFAULT '',
-        container_json TEXT DEFAULT '',
         browser_name TEXT,
         user_id TEXT,
         package_name TEXT,
