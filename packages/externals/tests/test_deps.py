@@ -1924,7 +1924,7 @@ def test_pool_check_cli(tmp_path):
 
 WORKFLOWS = deps.REPO / ".github/workflows"
 EXTERNALS_WORKFLOW = WORKFLOWS / "5_builderpackage_externals.yml"
-LOCK_WORKFLOW = WORKFLOWS / "5_codequality_externals-lock.yml"
+LOCK_WORKFLOW = WORKFLOWS / "5_codequality_externals.yml"
 
 
 def covered(rel, patterns):
@@ -2052,13 +2052,30 @@ def test_lock_workflow_paths():
     assert trigger and "ready_for_review" in [t.strip() for t in trigger.group(1).split(",")]
     blocks = paths_blocks(text)
     assert len(blocks) == 1, "the workflow needs one pull_request paths list"
-    required = deps.key_paths() + ["src/deps.lock.mk", LOCK_WORKFLOW.relative_to(deps.REPO).as_posix()]
+    # The workflows the tool tests check run them too.
+    checked = [w.relative_to(deps.REPO).as_posix() for w in (LOCK_WORKFLOW, EXTERNALS_WORKFLOW, WORKFLOWS / "5_codeanalysis_externals-vulns.yml")]
+    required = deps.key_paths() + ["src/deps.lock.mk"] + checked
     assert [rel for rel in required if not covered(rel, blocks[0])] == []
     assert not covered("src/foo.c", blocks[0])
     steps = [step for job in jobs(text).values() for step in job_steps(job)]
     for command in ("deps.py lock --check", "deps.py pool-check", "deps.py check"):
         assert [step for step in steps if step["run"] and command in step["run"]], command
     assert not (WORKFLOWS / "5_codequality_externals-drift.yml").exists()
+
+
+def test_lock_workflow_checks_notices_after_the_pool():
+    # The notices read the license files of the published refs, so they are checked only once pool-check passes,
+    # and on the precompiled tree, whose cpython.tar.gz is the installed interpreter they list.
+    text = LOCK_WORKFLOW.read_text(encoding="utf-8")
+    assert all(covered(rel, paths_blocks(text)[0]) for rel in
+               ("THIRD-PARTY-NOTICES", "src/engine/tools/third-party-notices/generate.py",
+                "src/engine/tools/third-party-notices/components.json"))
+    runs = [step["run"] or "" for job in jobs(text).values() for step in job_steps(job)]
+    pool = next(i for i, run in enumerate(runs) if "deps.py pool-check" in run)
+    make = next(i for i, run in enumerate(runs) if re.search(r"\bmake -C src deps TARGET=manager\b", run))
+    notices = next(i for i, run in enumerate(runs) if "generate.py check --external src/external" in run)
+    assert pool < make < notices
+    assert "EXTERNAL_SRC_ONLY" not in runs[make]
 
 
 def test_workflows_run_on_drafts():

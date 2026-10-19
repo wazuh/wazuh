@@ -18,7 +18,7 @@ Files:
 Workflows:
 
 - `5_builderpackage_externals.yml`: builds, tests and publishes the missing refs.
-- `5_codequality_externals-lock.yml`: checks the inventory and the lock on pull requests.
+- `5_codequality_externals.yml`: checks the inventory, the lock, the pool and `THIRD-PARTY-NOTICES` on pull requests.
 - `5_codeanalysis_externals-vulns.yml`: daily vulnerability scan.
 
 4.x branches are not covered here: they keep `DEPS_VERSION` and the numbered sets at `packages.wazuh.com/deps/<N>/`, see [4.x branches](#4x-branches).
@@ -36,7 +36,7 @@ Implementation details for whoever changes the scripts or the workflow are in [M
    ```
 3. Open the PR **in Draft**. The workflow builds only the refs the pool does not have (the library and the ones that link it), smoke-builds agent and manager against them, and waits for approval on `publish`. `pool-check` and the rest of the CI stay red until the refs are published.
 4. A `deps-publish` reviewer approves `publish` (see [Approve a publication](#approve-a-publication)). `publish` uploads the refs and `verify` reads them back.
-5. Re-run the lock check: `pool-check` turns green. Then run `make deps` and regenerate `THIRD-PARTY-NOTICES`, which reads the license files `make deps` leaves in `src/external`:
+5. Re-run `5_codequality_externals.yml`: `pool-check` turns green and the check of `THIRD-PARTY-NOTICES` runs. If it fails, run `make deps` and regenerate the file, which reads the license files `make deps` leaves in `src/external`:
    ```bash
    make -C src deps TARGET=manager
    python3 src/engine/tools/third-party-notices/generate.py notices --artefact manager --external src/external -o THIRD-PARTY-NOTICES
@@ -55,7 +55,7 @@ What catches a mistake:
 | Patch no longer applies | the build leg |
 | Entry without a component in `components.json` | `deps.py check` |
 | Merged before publishing | `deps.py pool-check` |
-| `THIRD-PARTY-NOTICES` not regenerated | nothing: regenerate it by hand |
+| `THIRD-PARTY-NOTICES` not regenerated | `generate.py check` in `5_codequality_externals.yml`, once the refs are published |
 
 ## Change how a dependency is built
 
@@ -188,12 +188,13 @@ A ref no branch uses stays in the pool. Every week the manager scan of internal-
 
 ### Pull request checks
 
-`5_codequality_externals-lock.yml` runs on pull requests (drafts included) that touch the key paths, `packages/externals/**` or `components.json`:
+`5_codequality_externals.yml` runs on pull requests (drafts included) that touch the key paths, `packages/externals/**`, `src/engine/tools/third-party-notices/**` or `THIRD-PARTY-NOTICES`:
 
 1. The `deps.py` tests.
 2. `deps.py check`: schema, links, pins, names against `make print-EXTERNAL_RES`, and a component in `components.json` for every entry.
 3. `deps.py lock --check`.
 4. `deps.py pool-check`: every ref of the lock is published with the inputs it was keyed on. This is what keeps a bump from merging before its refs exist.
+5. `make deps TARGET=manager` from the pool, precompiled, and `generate.py check --external src/external`: the committed `THIRD-PARTY-NOTICES` must be the one the license files of those refs give. It runs only once `pool-check` passes.
 
 ### Daily vulnerability scan
 

@@ -42,7 +42,7 @@ on:
       - "framework/cpython/compile.sh"
       - "framework/cpython/custom/**"
       - "framework/requirements.txt"
-      # Every script the jobs run, not only the key paths; its tests run in the lock check.
+      # Every script the jobs run, not only the key paths; its tests run in 5_codequality_externals.yml.
       - "packages/externals/**"
       - "!packages/externals/tests/**"
       - ".github/actions/download_package/**"
