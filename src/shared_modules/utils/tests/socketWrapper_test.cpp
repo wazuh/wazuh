@@ -479,42 +479,42 @@ TEST_F(SocketWrapperTest, DISABLED_ReadSuccessBufferIncrement)
 
 namespace
 {
-    std::filesystem::path gSwapPath;
-    std::filesystem::path gSwapTarget;
+    std::filesystem::path gSocketPath;
+    std::filesystem::path gOtherPath;
 } // namespace
 
-class SwapAfterBindPrimitives : public OSPrimitives
+class ChangePathAfterBindPrimitives : public OSPrimitives
 {
 protected:
     int bind(int sockfd, const struct sockaddr* addr, socklen_t addrlen)
     {
         const auto ret {OSPrimitives::bind(sockfd, addr, addrlen)};
-        std::filesystem::remove(gSwapPath);
-        std::filesystem::create_symlink(gSwapTarget, gSwapPath);
+        std::filesystem::remove(gSocketPath);
+        std::filesystem::create_symlink(gOtherPath, gSocketPath);
         return ret;
     }
 };
 
-TEST_F(SocketWrapperTest, ListenUnixDoesNotFollowPathReplacedAfterBind)
+TEST_F(SocketWrapperTest, ListenUnixSetsModeOnlyOnCreatedSocket)
 {
     namespace fs = std::filesystem;
     const auto dir {fs::temp_directory_path() / ("socketWrapperTest_" + std::to_string(::getpid()))};
     fs::remove_all(dir);
     fs::create_directories(dir);
-    gSwapPath = dir / "test.sock";
-    gSwapTarget = dir / "target";
-    std::ofstream {gSwapTarget};
-    fs::permissions(gSwapTarget, fs::perms::owner_read | fs::perms::owner_write);
+    gSocketPath = dir / "test.sock";
+    gOtherPath = dir / "other";
+    std::ofstream {gOtherPath};
+    fs::permissions(gOtherPath, fs::perms::owner_read | fs::perms::owner_write);
 
     {
-        Socket<SwapAfterBindPrimitives> socketWrapper;
+        Socket<ChangePathAfterBindPrimitives> socketWrapper;
         auto unixAddressBuilder {UnixAddress::builder()};
-        EXPECT_NO_THROW(socketWrapper.listen(unixAddressBuilder.address(gSwapPath.string()).data()));
+        EXPECT_NO_THROW(socketWrapper.listen(unixAddressBuilder.address(gSocketPath.string()).data()));
     }
 
-    EXPECT_EQ(fs::status(gSwapTarget).permissions(), fs::perms::owner_read | fs::perms::owner_write);
-    EXPECT_TRUE(fs::is_socket(fs::symlink_status(gSwapPath)));
-    EXPECT_EQ(fs::status(gSwapPath).permissions() & fs::perms::all, static_cast<fs::perms>(0666));
+    EXPECT_EQ(fs::status(gOtherPath).permissions(), fs::perms::owner_read | fs::perms::owner_write);
+    EXPECT_TRUE(fs::is_socket(fs::symlink_status(gSocketPath)));
+    EXPECT_EQ(fs::status(gSocketPath).permissions() & fs::perms::all, static_cast<fs::perms>(0666));
     EXPECT_EQ(std::distance(fs::directory_iterator(dir), fs::directory_iterator {}), 2);
 
     fs::remove_all(dir);
@@ -547,17 +547,17 @@ TEST_F(SocketWrapperTest, ListenUnixBindFailureLeavesNoEntries)
     fs::remove_all(dir);
 }
 
-class RenameDirBeforeBindPrimitives : public OSPrimitives
+class MoveBindDirectoryPrimitives : public OSPrimitives
 {
 protected:
     int bind(int sockfd, const struct sockaddr* addr, socklen_t addrlen)
     {
-        for (const auto& entry : std::filesystem::directory_iterator(gSwapPath.parent_path()))
+        for (const auto& entry : std::filesystem::directory_iterator(gSocketPath.parent_path()))
         {
             if (entry.path().filename().string().rfind(".w", 0) == 0)
             {
-                std::filesystem::rename(entry.path(), gSwapPath.parent_path() / "moved");
-                std::filesystem::create_directory_symlink(gSwapTarget, entry.path());
+                std::filesystem::rename(entry.path(), gSocketPath.parent_path() / "moved");
+                std::filesystem::create_directory_symlink(gOtherPath, entry.path());
                 break;
             }
         }
@@ -565,23 +565,23 @@ protected:
     }
 };
 
-TEST_F(SocketWrapperTest, ListenUnixDoesNotFollowRenamedBindDirectory)
+TEST_F(SocketWrapperTest, ListenUnixCreatesSocketInPinnedDirectory)
 {
     namespace fs = std::filesystem;
-    const auto dir {fs::temp_directory_path() / ("socketWrapperRenameTest_" + std::to_string(::getpid()))};
+    const auto dir {fs::temp_directory_path() / ("socketWrapperMoveTest_" + std::to_string(::getpid()))};
     fs::remove_all(dir);
-    fs::create_directories(dir / "decoy");
-    gSwapPath = dir / "test.sock";
-    gSwapTarget = dir / "decoy";
+    fs::create_directories(dir / "other");
+    gSocketPath = dir / "test.sock";
+    gOtherPath = dir / "other";
 
     {
-        Socket<RenameDirBeforeBindPrimitives> socketWrapper;
+        Socket<MoveBindDirectoryPrimitives> socketWrapper;
         auto unixAddressBuilder {UnixAddress::builder()};
-        EXPECT_NO_THROW(socketWrapper.listen(unixAddressBuilder.address(gSwapPath.string()).data()));
+        EXPECT_NO_THROW(socketWrapper.listen(unixAddressBuilder.address(gSocketPath.string()).data()));
     }
 
-    EXPECT_TRUE(fs::is_empty(gSwapTarget));
-    EXPECT_TRUE(fs::is_socket(fs::symlink_status(gSwapPath)));
+    EXPECT_TRUE(fs::is_empty(gOtherPath));
+    EXPECT_TRUE(fs::is_socket(fs::symlink_status(gSocketPath)));
 
     fs::remove_all(dir);
 }
