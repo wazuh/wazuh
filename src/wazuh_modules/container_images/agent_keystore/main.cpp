@@ -12,11 +12,18 @@
 
 #include <homedirHelper.hpp>
 
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <stdexcept>
 #include <string>
+
+#ifdef __APPLE__
+#include <libproc.h>
+#include <unistd.h>
+#endif
 
 namespace
 {
@@ -45,6 +52,50 @@ namespace
                "configuration backups, shared-configuration pushes and support bundles. The\n"
                "file's permissions are what protect it locally. It is not proof against anyone\n"
                "who already has root on this host.\n";
+    }
+
+    /// @brief Locate the installation directory.
+    ///
+    /// Utils::findHomeDirectory() resolves the executable through /proc, which macOS does
+    /// not have, so there the executable is resolved with proc_pidpath as the agent does.
+    std::filesystem::path findInstallationDirectory()
+    {
+#ifdef __APPLE__
+        const char* envHome = std::getenv("WAZUH_AGENT_HOME");
+        std::filesystem::path homeDir;
+
+        if (envHome != nullptr && *envHome != '\0')
+        {
+            homeDir = envHome;
+        }
+        else
+        {
+            char executable[PROC_PIDPATHINFO_MAXSIZE] {};
+
+            if (proc_pidpath(getpid(), executable, sizeof(executable)) <= 0)
+            {
+                throw std::runtime_error("Could not resolve the path of the executable");
+            }
+
+            homeDir = std::filesystem::path {executable}.parent_path();
+
+            if (homeDir.filename() == "bin")
+            {
+                homeDir.remove_filename();
+            }
+        }
+
+        std::error_code ec;
+
+        if (!std::filesystem::is_directory(homeDir, ec))
+        {
+            throw std::runtime_error(ec ? ec.message() : homeDir.string() + " is not a directory");
+        }
+
+        return homeDir;
+#else
+        return Utils::findHomeDirectory();
+#endif
     }
 
     /// @brief Read a whole stream, dropping one trailing newline.
@@ -155,7 +206,7 @@ int main(int argc, char* argv[])
     {
         try
         {
-            std::filesystem::current_path(Utils::findHomeDirectory());
+            std::filesystem::current_path(findInstallationDirectory());
         }
         catch (const std::exception& exception)
         {

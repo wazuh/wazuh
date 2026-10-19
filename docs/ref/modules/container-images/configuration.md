@@ -163,6 +163,8 @@ echo "owner" | /var/ossec/bin/wazuh-agent-keystore -f container_images -k ghcr_u
 echo "$GHCR_TOKEN" | /var/ossec/bin/wazuh-agent-keystore -f container_images -k ghcr_token
 ```
 
+The paths above are those of a Linux agent. On a macOS agent the installation directory is `/Library/Ossec`. In both cases the tool locates the installation from its own path, and `WAZUH_AGENT_HOME` overrides it.
+
 A registry with no entry in this block is attempted with no credential. A registry with an entry whose keys are not in the store is reported once and the remaining references are still scanned:
 
 ```sql
