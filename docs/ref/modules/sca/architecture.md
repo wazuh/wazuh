@@ -712,13 +712,43 @@ Stores individual security checks:
 - `name`: Check name
 - `description`: Check description
 - `result`: Check result (Passed, Failed, Not applicable, Not run)
-- `reason`: Why the check got its result, empty for `Passed`
-  - `Not applicable` / `Not run`: one line per rule that could not be evaluated, such as a missing
-    file or a command that timed out
-  - `Failed`: `Rules not satisfied (condition 'all'):` (or `'any'`), or `Rules satisfied (condition
-    'none'):`, followed by each failing rule exactly as the policy writes it, one per line
-  - Capped at 1024 bytes; a reason cut to fit ends with a `[truncated]` line
+- `reason`: Why the check got its result (see [Reading `reason`](#reading-reason))
 - `version`: Document version for synchronization
+
+#### Reading `reason`
+
+`reason` explains the check's `result`:
+
+| `result` | `reason` |
+|----------|----------|
+| `Passed` | Empty. |
+| `Not applicable`, `Not run` | One line per rule that could not be evaluated, such as a missing file or a command that failed or timed out. `Policy requirements not met` when the policy does not apply to the host. |
+| `Failed` | A header, then the rules that made the check fail, each exactly as the policy writes it, once, in policy order. |
+
+A rule is *satisfied* when it holds on the host as written, including a leading `not`. Which rules
+make a check fail depends on its `condition`:
+
+| `condition` | The check passes when | It fails because of | Header of the reason |
+|-------------|-----------------------|---------------------|----------------------|
+| `all` | every rule is satisfied | each rule that is not satisfied | `Rules not satisfied (condition 'all'):` |
+| `any` | at least one rule is satisfied | no rule being satisfied, so every rule is listed | `Rules not satisfied (condition 'any'):` |
+| `none` | no rule is satisfied | each rule that is satisfied | `Rules satisfied (condition 'none'):` |
+
+`Rules satisfied` is still a failure. Every rule of a `none` check describes something that must
+not be found, so the listed rules are the ones that were found. For example, check 28736 "Ensure
+pam_unix does not include nullok." looks for `nullok` in five PAM files and fails because one of
+them has it:
+
+```
+Rules satisfied (condition 'none'):
+f:/etc/pam.d/common-auth -> !r:^# && r:pam_unix\.so && r:nullok
+```
+
+Rules that are not listed either held or could not be evaluated: a `Failed` reason does not carry
+the lines that `Not applicable` uses for unevaluated rules.
+
+A reason longer than 1024 bytes is cut at the last whole line that fits and ends with a
+`[truncated]` line.
 
 ### References
 
