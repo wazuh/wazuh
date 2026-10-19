@@ -1,7 +1,7 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _LOGGING_HPP
 #define _LOGGING_HPP
 
-#include <dlfcn.h>
 #include <iostream>
 #include <map>
 
@@ -13,7 +13,7 @@
 #include "commonDefs.h"
 #include "loggerHelper.h"
 
-#include <base/libwazuhshared.hpp>
+#include <base/managerLogSink.hpp>
 #include <base/process.hpp>
 
 #define LAMBDA_SEPARATOR "::<lambda>"
@@ -278,28 +278,6 @@ inline std::string getLambdaName(const char* parentScope, const std::string& lam
 }
 
 /**
- * @brief Register a full log function callback for the shared library logging bridge.
- *
- * @param callback The logging function conforming to the GLOBAL_LOG_FUNCTION signature.
- */
-void initializeFullLogFunction(
-    const std::function<void(
-        const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>&
-        callback);
-
-#ifdef __cplusplus
-extern "C"
-{
-#endif
-    /**
-     * @brief Method to initialize the shared library with a full log function.
-     */
-    void init();
-#ifdef __cplusplus
-}
-#endif
-
-/**
  * @brief Get the default logging tag string.
  *
  * @return constexpr const char* The default tag ("wazuh-manager-analysisd").
@@ -311,7 +289,7 @@ constexpr inline const char* default_tag()
 
 /**
  * @brief Dispatches a fully composed log message to either spdlog (standalone)
- *        or the Wazuh logging callback (integrated mode).
+ *        or the manager log sink (manager mode, see base/managerLogSink.hpp).
  *
  * @param lvl      spdlog severity level (trace, debug, info, warn, err, critical).
  * @param file     Source file path of the logging call (typically `__FILE__`).
@@ -320,8 +298,8 @@ constexpr inline const char* default_tag()
  * @param text     Fully composed message to log; treated as literal data in both modes.
  *
  * @note This function assumes the logger has already been initialized in standalone mode
- *       (see `getDefaultLogger()`), and that the Wazuh logging symbols are available in
- *       callback mode. It does not perform formatting; callers should preformat when needed.
+ *       (see `getDefaultLogger()`); in manager mode the sink discards the line until
+ *       base::logging::initManager(). It does not perform formatting; callers should preformat when needed.
  *
  * @see isStandaloneModeEnable(), getDefaultLogger(), log_bridge()
  */
@@ -342,26 +320,7 @@ inline void backend_log(logging::Level lvl,
         return;
     }
 
-    switch (lvl)
-    {
-        case logging::Level::Trace:
-            Log::Logger::debugVerbose(effectiveTag, {file, line, funcName}, "%.*s", static_cast<int>(len), text);
-            break;
-        case logging::Level::Debug:
-            Log::Logger::debug(effectiveTag, {file, line, funcName}, "%.*s", static_cast<int>(len), text);
-            break;
-        case logging::Level::Info:
-            Log::Logger::info(effectiveTag, {file, line, funcName}, "%.*s", static_cast<int>(len), text);
-            break;
-        case logging::Level::Warn:
-            Log::Logger::warning(effectiveTag, {file, line, funcName}, "%.*s", static_cast<int>(len), text);
-            break;
-        case logging::Level::Err:
-        case logging::Level::Critical:
-            Log::Logger::error(effectiveTag, {file, line, funcName}, "%.*s", static_cast<int>(len), text);
-            break;
-        default: Log::Logger::info(effectiveTag, {file, line, funcName}, "%.*s", static_cast<int>(len), text); break;
-    }
+    base::logging::write(lvl, effectiveTag, file, line, funcName, std::string_view(text, len));
 }
 
 /**
@@ -380,23 +339,9 @@ inline bool should_log(logging::Level lvl)
         return getDefaultLogger()->should_log(SEVERITY_LEVEL.at(lvl));
     }
 
-    // If libwazuhshared is not loaded (e.g. unit tests that run in non-standalone mode),
-    // mirror backend_log()'s Log::Logger::* fallback: those functions already guard with
-    // if (GLOBAL_LOG_FUNCTION) and silently discard when unset, treating it as debug-level 0.
-    if (!base::libwazuhshared::isInitialized())
-    {
-        switch (lvl)
-        {
-            case logging::Level::Trace:
-            case logging::Level::Debug: return false;
-            default: return true;
-        }
-    }
-
-    // Cache the function pointer — calling getFunction() (dlsym) on every log check is too slow.
-    using IsDebugFnType = int (*)();
-    static const IsDebugFnType isDebugFn = base::libwazuhshared::getFunction<IsDebugFnType>("isDebug");
-    const int debugLevel = isDebugFn();
+    // Manager mode: debug level of the engine's own sink (0 until applyLevelWazuh(), also in unit tests that run in
+    // non-standalone mode without initManager()).
+    const int debugLevel = base::logging::managerDebugLevel();
 
     switch (lvl)
     {
@@ -479,13 +424,11 @@ constexpr logging::Level verbosityToLevel(int v)
 void applyLevelStandalone(logging::Level target, int debugCount);
 
 /**
- * @brief Applies the effective log level when running in Wazuh callback mode, honoring CLI -d priority.
+ * @brief Applies the effective log level of the manager log sink (manager mode), honoring CLI -d priority.
  *
  * @param target         Target log level when no -d is provided (i.e., when debugCount == 0). Typically
  *                       obtained from configuration; ignored if debugCount > 0.
  * @param debugCount     Number of times the -d flag was specified on the CLI (takes precedence over config).
- *
- * @throw std::runtime_error If the `nowDebug` symbol cannot be resolved when the effective level is Debug/Trace.
  */
 void applyLevelWazuh(logging::Level target, int debugCount);
 
@@ -507,40 +450,42 @@ createStandaloneLogFunction();
 
 // TRACE
 #define LOG_TRACE(msg, ...)                                                                                            \
-    ::logging::log_bridge(logging::Level::Trace, __FILE__, __LINE__, SPDLOG_FUNCTION, fmt::runtime(msg), ##__VA_ARGS__)
+    ::logging::log_bridge(                                                                                             \
+        ::logging::Level::Trace, __FILE__, __LINE__, SPDLOG_FUNCTION, fmt::runtime(msg), ##__VA_ARGS__)
 #define LOG_TRACE_L(functionName, msg, ...)                                                                            \
-    ::logging::log_bridge(logging::Level::Trace, __FILE__, __LINE__, (functionName), fmt::runtime(msg), ##__VA_ARGS__)
+    ::logging::log_bridge(::logging::Level::Trace, __FILE__, __LINE__, (functionName), fmt::runtime(msg), ##__VA_ARGS__)
 
 // DEBUG
 #define LOG_DEBUG(msg, ...)                                                                                            \
-    ::logging::log_bridge(logging::Level::Debug, __FILE__, __LINE__, SPDLOG_FUNCTION, fmt::runtime(msg), ##__VA_ARGS__)
+    ::logging::log_bridge(                                                                                             \
+        ::logging::Level::Debug, __FILE__, __LINE__, SPDLOG_FUNCTION, fmt::runtime(msg), ##__VA_ARGS__)
 #define LOG_DEBUG_L(functionName, msg, ...)                                                                            \
-    ::logging::log_bridge(logging::Level::Debug, __FILE__, __LINE__, (functionName), fmt::runtime(msg), ##__VA_ARGS__)
+    ::logging::log_bridge(::logging::Level::Debug, __FILE__, __LINE__, (functionName), fmt::runtime(msg), ##__VA_ARGS__)
 
 // INFO
 #define LOG_INFO(msg, ...)                                                                                             \
-    ::logging::log_bridge(logging::Level::Info, __FILE__, __LINE__, SPDLOG_FUNCTION, fmt::runtime(msg), ##__VA_ARGS__)
+    ::logging::log_bridge(::logging::Level::Info, __FILE__, __LINE__, SPDLOG_FUNCTION, fmt::runtime(msg), ##__VA_ARGS__)
 #define LOG_INFO_L(functionName, msg, ...)                                                                             \
-    ::logging::log_bridge(logging::Level::Info, __FILE__, __LINE__, (functionName), fmt::runtime(msg), ##__VA_ARGS__)
+    ::logging::log_bridge(::logging::Level::Info, __FILE__, __LINE__, (functionName), fmt::runtime(msg), ##__VA_ARGS__)
 
 // WARNING
 #define LOG_WARNING(msg, ...)                                                                                          \
-    ::logging::log_bridge(logging::Level::Warn, __FILE__, __LINE__, SPDLOG_FUNCTION, fmt::runtime(msg), ##__VA_ARGS__)
+    ::logging::log_bridge(::logging::Level::Warn, __FILE__, __LINE__, SPDLOG_FUNCTION, fmt::runtime(msg), ##__VA_ARGS__)
 #define LOG_WARNING_L(functionName, msg, ...)                                                                          \
-    ::logging::log_bridge(logging::Level::Warn, __FILE__, __LINE__, (functionName), fmt::runtime(msg), ##__VA_ARGS__)
+    ::logging::log_bridge(::logging::Level::Warn, __FILE__, __LINE__, (functionName), fmt::runtime(msg), ##__VA_ARGS__)
 
 // ERROR
 #define LOG_ERROR(msg, ...)                                                                                            \
-    ::logging::log_bridge(logging::Level::Err, __FILE__, __LINE__, SPDLOG_FUNCTION, fmt::runtime(msg), ##__VA_ARGS__)
+    ::logging::log_bridge(::logging::Level::Err, __FILE__, __LINE__, SPDLOG_FUNCTION, fmt::runtime(msg), ##__VA_ARGS__)
 #define LOG_ERROR_L(functionName, msg, ...)                                                                            \
-    ::logging::log_bridge(logging::Level::Err, __FILE__, __LINE__, (functionName), fmt::runtime(msg), ##__VA_ARGS__)
+    ::logging::log_bridge(::logging::Level::Err, __FILE__, __LINE__, (functionName), fmt::runtime(msg), ##__VA_ARGS__)
 
 // CRITICAL
 #define LOG_CRITICAL(msg, ...)                                                                                         \
     ::logging::log_bridge(                                                                                             \
-        logging::Level::Critical, __FILE__, __LINE__, SPDLOG_FUNCTION, fmt::runtime(msg), ##__VA_ARGS__)
+        ::logging::Level::Critical, __FILE__, __LINE__, SPDLOG_FUNCTION, fmt::runtime(msg), ##__VA_ARGS__)
 #define LOG_CRITICAL_L(functionName, msg, ...)                                                                         \
     ::logging::log_bridge(                                                                                             \
-        logging::Level::Critical, __FILE__, __LINE__, (functionName), fmt::runtime(msg), ##__VA_ARGS__)
+        ::logging::Level::Critical, __FILE__, __LINE__, (functionName), fmt::runtime(msg), ##__VA_ARGS__)
 
 #endif // _LOGGING_HPP

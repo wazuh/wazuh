@@ -1,7 +1,6 @@
 /*
  * Wazuh DBSYNC
- * Copyright (C) 2015, Wazuh Inc.
- * June 11, 2020.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -285,10 +284,6 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
         bool updateRows(const std::string& table,
                         const std::vector<std::string>& primaryKeyList,
                         const std::vector<Row>& rowKeysValue);
-
-        void getFieldValueFromTuple(const Field& value,
-                                    std::string& resultValue,
-                                    const bool quotationMarks = false);
 
         void getFieldValueFromTuple(const Field& value,
                                     nlohmann::json& object);

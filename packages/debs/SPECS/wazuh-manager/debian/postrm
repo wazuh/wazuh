@@ -57,45 +57,57 @@ case "$1" in
                 ;;
         esac
 
-        # Back up the old configuration files as .save
-        if [ ! -d ${CONF_DIR}/shared/default ]; then
-            mkdir -p ${CONF_DIR}/shared/default
+        # A failed or aborted upgrade leaves the old package installed and configured: its
+        # configuration stays in place, untouched. Only a removal keeps it aside as .save.
+        if [ "$1" != "failed-upgrade" ] && [ "$1" != "abort-upgrade" ]; then
+            # Back up the old configuration files as .save
+            if [ ! -d ${CONF_DIR}/shared/default ]; then
+                mkdir -p ${CONF_DIR}/shared/default
+            fi
+
+            # Only the directory prerm made, root's and not a link, is read back: tmp/ is writable by
+            # wazuh-manager.
+            if [ -d ${DIR}/tmp/conffiles ] && [ ! -L ${DIR}/tmp/conffiles ] \
+                && [ -n "$(find ${DIR}/tmp/conffiles -maxdepth 0 -user 0)" ]; then
+                # Move files from ${DIR}/tmp to ${CONF_DIR}
+                if [ -f ${DIR}/tmp/conffiles/shared/default/agent.conf ]; then
+                    mv ${DIR}/tmp/conffiles/shared/default/agent.conf ${CONF_DIR}/shared/default/agent.conf.save
+                fi
+
+                # Move files from ${DIR}/tmp to ${DIR}/api
+                if [ -f ${DIR}/tmp/conffiles/api.yaml ]; then
+                    mkdir -p ${DIR}/api/configuration
+                    mv ${DIR}/tmp/conffiles/api.yaml ${DIR}/api/configuration/api.yaml
+                fi
+
+                # If the directory is not empty, copy the files into ${CONF_DIR}, which wazuh-manager
+                # can write: --remove-destination replaces a link planted at a destination instead of
+                # writing through it, and cp refuses to copy a directory onto a link.
+                if [ -n "$(ls -A ${DIR}/tmp/conffiles)" ]; then
+                    cp -Rf --remove-destination ${DIR}/tmp/conffiles/* ${CONF_DIR} \
+                        || echo "WARNING: some configuration files could not be kept in ${CONF_DIR}." >&2
+                fi
+            fi
+            rm -rf ${DIR}/tmp
+            if [ "$1" = "remove" ]; then
+                rm -rf ${DIR}/ruleset
+                rm -rf ${DIR}/var
+                rm -rf ${DIR}/logs
+                rm -rf ${DIR}/data
+            fi
+
+            # Delete old .save
+            find ${CONF_DIR}/ -type f  -name "*save" -exec rm -f {} \;
+
+            # Rename the files
+            find ${CONF_DIR}/ -type f ! -name *shared* -exec mv {} {}.save \;
+
+            if [ -d "${DIR}/api" ]; then
+                find "${DIR}/api/" -type f -name "*save" -exec rm -f {} \;
+                find "${DIR}/api/" -type f -exec mv {} {}.save \;
+            fi
+
         fi
-
-        # Move files from ${DIR}/tmp to ${CONF_DIR}
-        if [ -f ${DIR}/tmp/conffiles/shared/default/agent.conf ]; then
-            mv ${DIR}/tmp/conffiles/shared/default/agent.conf ${CONF_DIR}/shared/default/agent.conf.save
-        fi
-
-        # Move files from ${DIR}/tmp to ${DIR}/api
-        if [ -f ${DIR}/tmp/conffiles/api.yaml ]; then
-            mkdir -p ${DIR}/api/configuration
-            mv ${DIR}/tmp/conffiles/api.yaml ${DIR}/api/configuration/api.yaml
-        fi
-
-        # If the directory is not empty, copy the files into ${CONF_DIR}
-        if ls -A ${DIR}/tmp/conffiles > /dev/null 2>&1 ; then
-            cp -Rf ${DIR}/tmp/conffiles/* ${CONF_DIR}
-        fi
-        rm -rf ${DIR}/tmp
-        if [ "$1" = "remove" ]; then
-            rm -rf ${DIR}/ruleset
-            rm -rf ${DIR}/var
-            rm -rf ${DIR}/logs
-            rm -rf ${DIR}/data
-        fi
-
-        # Delete old .save
-        find ${CONF_DIR}/ -type f  -name "*save" -exec rm -f {} \;
-
-        # Rename the files
-        find ${CONF_DIR}/ -type f ! -name *shared* -exec mv {} {}.save \;
-
-        if [ -d "${DIR}/api" ]; then
-            find "${DIR}/api/" -type f -name "*save" -exec rm -f {} \;
-            find "${DIR}/api/" -type f -exec mv {} {}.save \;
-        fi
-
     ;;
 
     purge)

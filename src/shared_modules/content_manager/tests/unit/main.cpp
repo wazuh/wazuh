@@ -1,7 +1,6 @@
 /*
  * Wazuh - Content Merge Tool
- * Copyright (C) 2015, Wazuh Inc.
- * January 10, 2023.
+ * Copyright (C) Wazuh Inc.
  *
  */
 

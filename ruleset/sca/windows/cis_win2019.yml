@@ -1,6 +1,6 @@
 # Security Configuration Assessment
 # CIS Checks for Windows 2019 RTM
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 #
 # This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
@@ -6785,71 +6785,31 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0006"
+          - "TA0005"
           - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0006"
         name:
-          - "Credential Access"
+          - "Stealth"
           - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Credential Access"
       technique:
         id:
-          - "T1110"
-          - "T1176"
-          - "T1530"
-          - "T1213"
-          - "T1482"
-          - "T1114"
-          - "T1484"
-          - "T1525"
-          - "T1053"
-          - "T1505"
-          - "T1528"
           - "T1078"
-          - "T1134"
-          - "T1197"
-          - "T1538"
-          - "T1185"
-          - "T1021"
-          - "T1489"
-          - "T1072"
-          - "T1537"
-          - "T1047"
-          - "T1098"
-          - "T1136"
-          - "T1556"
+          - "T1110"
         name:
-          - "Brute Force"
-          - "Software Extensions"
-          - "Data from Cloud Storage"
-          - "Data from Information Repositories"
-          - "Domain Trust Discovery"
-          - "Email Collection"
-          - "Domain or Tenant Policy Modification"
-          - "Implant Internal Image"
-          - "Scheduled Task/Job"
-          - "Server Software Component"
-          - "Steal Application Access Token"
           - "Valid Accounts"
-          - "Access Token Manipulation"
-          - "BITS Jobs"
-          - "Cloud Service Dashboard"
-          - "Browser Session Hijacking"
-          - "Remote Services"
-          - "Service Stop"
-          - "Software Deployment Tools"
-          - "Transfer Data to Cloud Account"
-          - "Windows Management Instrumentation"
-          - "Account Manipulation"
-          - "Create Account"
-          - "Modify Authentication Process"
+          - "Brute Force"
       subtechnique:
         id:
-          - "T1556.001"
-          - "T1550.001"
-          - "T1550.002"
+          - "T1078.003"
+          - "T1110.004"
         name:
-          - "Domain Controller Authentication"
-          - "Application Access Token"
-          - "Pass the Hash"
+          - "Local Accounts"
+          - "Credential Stuffing"
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd'

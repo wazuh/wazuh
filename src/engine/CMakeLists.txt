@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Minimum 3.14 required by googletest discover tests
 # Todo find wich component is not working properly until 3.22.1 version
 cmake_minimum_required(VERSION 3.22.1 FATAL_ERROR)
@@ -42,7 +43,6 @@ if(WAZUH_ENGINE_TEST)
 elseif(UNIT_TEST)
   set(ENGINE_BUILD_TEST ON CACHE BOOL "Generate tests" FORCE)
   set(ENGINE_ENABLE_ASAN ON CACHE BOOL "Enable AddressSanitizer for all targets" FORCE)
-  message(WARNING "When compiling with ASAN, you must specify in LD_LIBRARY_PATH the directory where it should look for libwazuhshared.so")
 endif()
 
 

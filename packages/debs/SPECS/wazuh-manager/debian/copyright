@@ -14,9 +14,23 @@ License:
 
     GNU General Public License version 2.
 
+    Exception: the Wazuh engine (/var/wazuh-manager/bin/wazuh-manager-analysisd,
+    built from src/engine/) is licensed under the GNU Affero General Public
+    License, version 3 or (at your option) any later version.
+    See "/usr/share/doc/wazuh-manager/LICENSE-engine".
+
+    The licenses of the third-party software bundled in the package are in
+    "/usr/share/doc/wazuh-manager/THIRD-PARTY-NOTICES".
+
+    The shared libraries built from src/shared_modules/utils, manager_config,
+    keystore, indexer_connector, common and http-request (git submodule
+    wazuh/wazuh-http-request) are dual-licensed under the GNU General
+    Public License version 2 or the GNU Affero General Public License,
+    version 3 or (at your option) any later version.
+
 The Debian packaging is:
 
-    Copyright (C) 2015 Wazuh, Inc <info@wazuh.com>
+    Copyright (C) Wazuh Inc. <info@wazuh.com>
 
 and is licensed under the GPL version 2,
 see "/usr/share/common-licenses/GPL-2".

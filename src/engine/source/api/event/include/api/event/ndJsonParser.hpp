@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _API_EVENT_NDJSONPARSER_HPP
 #define _API_EVENT_NDJSONPARSER_HPP
 

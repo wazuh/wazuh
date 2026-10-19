@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _BUILDER_IALLOWEDFIELDS_HPP
 #define _BUILDER_IALLOWEDFIELDS_HPP
 

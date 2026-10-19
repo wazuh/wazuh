@@ -1,7 +1,6 @@
 /*
  * Wazuh DBSYNC
- * Copyright (C) 2015, Wazuh Inc.
- * June 11, 2020.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -1790,25 +1789,22 @@ std::string SQLiteDBEngine::buildUpdateDataSqlQuery(const std::string& table,
                                                     const Row& row,
                                                     const std::pair<const std::string, TableField>& field)
 {
+    // Values are bound by updateRows(), never pasted into the SQL text: they come from the
+    // collected data, and a quote in one of them must not be able to change the statement.
     std::string sql{ "UPDATE " };
     sql.append(table);
     sql.append(" SET ");
     sql.append(field.first);
-    sql.append("=");
-    getFieldValueFromTuple(field, sql, true);
-    sql.append(" WHERE ");
+    sql.append("=? WHERE ");
 
     if (0 != primaryKeyList.size())
     {
         for (const auto& value : primaryKeyList)
         {
-            const auto it { row.find("PK_" + value) };
-
-            if (it != row.end())
+            if (row.find("PK_" + value) != row.end())
             {
                 sql.append(value);
-                sql.append("=");
-                getFieldValueFromTuple((*it), sql, true);
+                sql.append("=?");
             }
             else
             {
@@ -2040,7 +2036,32 @@ bool SQLiteDBEngine::updateRows(const std::string& table,
                                             row,
                                             field)
                 };
-                m_sqliteConnection->execute(sql);
+
+                if (sql.empty())
+                {
+                    continue;
+                }
+
+                const auto stmt { getStatement(sql) };
+                int32_t index { 1l };
+
+                bindFieldData(stmt, index, field.second);
+                ++index;
+
+                for (const auto& value : primaryKeyList)
+                {
+                    bindFieldData(stmt, index, row.at("PK_" + value));
+                    ++index;
+                }
+
+                // LCOV_EXCL_START
+                if (SQLITE_ERROR == stmt->step())
+                {
+                    throw dbengine_error{ BIND_FIELDS_DOES_NOT_MATCH };
+                }
+
+                // LCOV_EXCL_STOP
+                stmt->reset();
             }
         }
     }
@@ -2072,45 +2093,6 @@ void SQLiteDBEngine::getFieldValueFromTuple(const Field& value,
     else if (ColumnType::Double == rowType)
     {
         object[value.first] = std::get<ColumnType::Double>(value.second);
-    }
-    else
-    {
-        throw dbengine_error { DATATYPE_NOT_IMPLEMENTED };
-    }
-}
-
-void SQLiteDBEngine::getFieldValueFromTuple(const Field& value,
-                                            std::string& resultValue,
-                                            const bool quotationMarks)
-{
-    const auto rowType { std::get<GenericTupleIndex::GenType>(value.second) };
-
-    if (ColumnType::BigInt == rowType)
-    {
-        resultValue.append(std::to_string(std::get<ColumnType::BigInt>(value.second)));
-    }
-    else if (ColumnType::UnsignedBigInt == rowType)
-    {
-        resultValue.append(std::to_string(std::get<ColumnType::UnsignedBigInt>(value.second)));
-    }
-    else if (ColumnType::Integer == rowType)
-    {
-        resultValue.append(std::to_string(std::get<ColumnType::Integer>(value.second)));
-    }
-    else if (ColumnType::Text == rowType)
-    {
-        if (quotationMarks)
-        {
-            resultValue.append("'" + std::get<ColumnType::Text>(value.second) + "'");
-        }
-        else
-        {
-            resultValue.append(std::get<ColumnType::Text>(value.second));
-        }
-    }
-    else if (ColumnType::Double == rowType)
-    {
-        resultValue.append(std::to_string(std::get<ColumnType::Double>(value.second)));
     }
     else
     {

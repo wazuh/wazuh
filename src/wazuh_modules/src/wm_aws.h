@@ -1,7 +1,6 @@
 /*
  * Wazuh Module for AWS S3 integration
- * Copyright (C) 2015, Wazuh Inc.
- * January 08, 2018.
+ * Copyright (C) Wazuh Inc.
  *
  * Updated by Jeremy Phillips <jeremy@uranusbytes.com>
  *
@@ -17,6 +16,9 @@
 #define WM_AWS_LOGTAG ARGV0 ":aws-s3"
 #define WM_AWS_DEFAULT_INTERVAL 5
 #define WM_AWS_SCRIPT_PATH "wodles/aws/aws-s3"
+// Environment variables that carry inline keys to the AWS script, kept in sync with aws_tools.py
+#define WM_AWS_ACCESS_KEY_ENV "WAZUH_AWS_ACCESS_KEY"
+#define WM_AWS_SECRET_KEY_ENV "WAZUH_AWS_SECRET_KEY"
 
 typedef struct wm_aws_state_t {
     time_t next_time;               // Absolute time for next scan

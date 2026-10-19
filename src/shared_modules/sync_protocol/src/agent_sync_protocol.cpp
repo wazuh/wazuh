@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -237,7 +237,10 @@ long AgentSyncProtocol::currentAgentId()
 AgentSyncProtocol::AgentSyncProtocol(const std::string& moduleName, std::optional<std::string> dbPath, LoggerFunc logger,
                                      std::shared_ptr<IPersistentQueue> queue,
                                      std::shared_ptr<ISyncSessionTransport> syncTransport,
-                                     bool isFeedBased)
+                                     bool isFeedBased,
+                                     std::optional<std::size_t> flushBatchSize,
+                                     std::optional<std::chrono::milliseconds> flushInterval,
+                                     std::optional<int32_t> walAutocheckpointPages)
     : m_moduleName(moduleName),
       m_isFeedBased(isFeedBased),
       m_persistentQueue(nullptr), // Ensure initialized to nullptr
@@ -258,7 +261,7 @@ AgentSyncProtocol::AgentSyncProtocol(const std::string& moduleName, std::optiona
         }
         else if (dbPath.has_value())
         {
-            m_persistentQueue = std::make_shared<PersistentQueue>(dbPath.value(), m_logger);
+            m_persistentQueue = std::make_shared<PersistentQueue>(dbPath.value(), m_logger, nullptr, flushBatchSize, flushInterval, walAutocheckpointPages);
         }
 
         // else: m_persistentQueue remains nullptr for in-memory-only operation
@@ -1405,11 +1408,11 @@ bool AgentSyncProtocol::applyHttpResult(int httpCode, std::string_view body, uin
         return true;
     }
 
-    // Transport-level session correlation: reject responses that belong to a
-    // previous (timed-out) session.  A zero expectedSession means the caller
-    // comes from the legacy HCRESULT path (no session number) and skips this check.
-    if (expectedSession != 0 && m_syncState.currentSession != 0 &&
-            expectedSession != m_syncState.currentSession)
+    // Transport-level session correlation: reject responses that do not belong to the
+    // session in flight, such as one for a previous (timed-out) session. Every session
+    // id the agent picks is non-zero (nextSessionId()) and the bridge always forwards
+    // it, so a result for session 0 cannot be a real answer and is rejected as well.
+    if (expectedSession != m_syncState.currentSession)
     {
         m_logger(LOG_DEBUG,
                  "Discarded stale HCRESULT: received session " +

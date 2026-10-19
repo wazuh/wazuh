@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _CMSYNC_ICMSYNC
 #define _CMSYNC_ICMSYNC
 

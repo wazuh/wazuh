@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2015, Wazuh Inc.
+* Copyright (C) Wazuh Inc.
 * All rights reserved.
 *
 * This program is free software; you can redistribute it

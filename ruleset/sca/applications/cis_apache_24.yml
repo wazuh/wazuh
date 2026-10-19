@@ -1,6 +1,6 @@
 # Security Configuration Assessment
 # CIS Checks for Apache
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 #
 # This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
@@ -68,16 +68,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1190"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploit Public-Facing Application"
     references:
       - https://httpd.apache.org/docs/2.4/mod/mod_dav.html
     condition: none
@@ -104,16 +102,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1190"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploit Public-Facing Application"
     references:
       - https://httpd.apache.org/docs/2.4/mod/mod_status.html
     condition: none
@@ -140,16 +136,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1190"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploit Public-Facing Application"
     references:
       - https://httpd.apache.org/docs/2.4/mod/mod_autoindex.html
     condition: none
@@ -176,16 +170,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0011"
         name:
-          - "Discovery"
+          - "Command and Control"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1090"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Proxy"
     references:
       - https://httpd.apache.org/docs/2.4/mod/mod_proxy.html
     condition: none
@@ -212,16 +204,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1190"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploit Public-Facing Application"
     references:
       - https://httpd.apache.org/docs/2.4/mod/mod_userdir.html
     condition: none
@@ -248,16 +238,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1190"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploit Public-Facing Application"
     references:
       - https://httpd.apache.org/docs/2.4/mod/mod_info.html
     condition: none
@@ -284,16 +272,27 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+      subtechnique:
+        id:
+          - "T1078.001"
+          - "T1078.003"
+        name:
+          - "Default Accounts"
+          - "Local Accounts"
     condition: all
     rules:
       - "f:/etc/passwd -> r:apache && r:/sbin/nologin$|/dev/null$"
@@ -318,16 +317,27 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+      subtechnique:
+        id:
+          - "T1078.001"
+          - "T1078.003"
+        name:
+          - "Default Accounts"
+          - "Local Accounts"
     condition: any
     rules:
       - 'c:passwd -S apache -> r:apache && r:\s*\t*L|\s*\t*LK'
@@ -353,16 +363,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1190"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploit Public-Facing Application"
     references:
       - https://httpd.apache.org/docs/2.4/mod/core.html#allowoverride
       - https://httpd.apache.org/docs/2.4/mod/core.html#allowoverridelist
@@ -393,16 +401,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1190"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploit Public-Facing Application"
     references:
       - https://httpd.apache.org/docs/2.4/mod/core.html#options
       - https://httpd.apache.org/docs/2.4/mod/mod_include.html
@@ -431,16 +437,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1190"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploit Public-Facing Application"
     condition: none
     rules:
       - "d:/var/www -> index.html"
@@ -471,16 +475,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1190"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploit Public-Facing Application"
     condition: none
     rules:
       - "d:/var/www/cgi-bin -> printenv"
@@ -506,16 +508,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1190"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploit Public-Facing Application"
     condition: none
     rules:
       - "d:/var/www/cgi-bin -> test-cgi"
@@ -541,16 +541,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1190"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploit Public-Facing Application"
     references:
       - https://www.ietf.org/rfc/rfc2616.txt
       - https://httpd.apache.org/docs/2.4/mod/core.html#traceenable
@@ -578,16 +576,16 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0003"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Persistence"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1133"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "External Remote Services"
     references:
       - https://httpd.apache.org/docs/2.4/mod/mpm_common.html#listen
     condition: none
@@ -617,16 +615,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1189"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Drive-by Compromise"
     references:
       - https://httpd.apache.org/docs/2.4/mod/mod_headers.html#header
       - https://developer.mozilla.org/en/The_X-FRAME-OPTIONS_response_header
@@ -655,16 +651,20 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0006"
           - "TA0007"
+          - "TA0009"
         name:
+          - "Credential Access"
           - "Discovery"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1040"
+          - "T1557"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Network Sniffing"
+          - "Adversary-in-the-Middle"
     references:
       - https://httpd.apache.org/docs/2.4/mod/mod_ssl.html#sslinsecurerenegotiation
       - https://cve.mitre.org/cgi-bin/cvename.cgi?name=CAN-2009-3555
@@ -693,16 +693,20 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0006"
           - "TA0007"
+          - "TA0009"
         name:
+          - "Credential Access"
           - "Discovery"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1040"
+          - "T1557"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Network Sniffing"
+          - "Adversary-in-the-Middle"
     references:
       - https://httpd.apache.org/docs/2.4/mod/mod_ssl.html#sslcompression
       - https://en.wikipedia.org/wiki/CRIME
@@ -731,16 +735,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1190"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploit Public-Facing Application"
     references:
       - https://httpd.apache.org/docs/2.4/mod/core.html#servertokens
     condition: any
@@ -767,16 +769,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1190"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploit Public-Facing Application"
     references:
       - https://httpd.apache.org/docs/2.4/mod/core.html#serversignature
     condition: none
@@ -803,16 +803,21 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0040"
         name:
-          - "Discovery"
+          - "Impact"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1499"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Endpoint Denial of Service"
+      subtechnique:
+        id:
+          - "T1499.002"
+          - "T1499.003"
+        name:
+          - "Service Exhaustion Flood"
+          - "Application Exhaustion Flood"
     references:
       - https://httpd.apache.org/docs/2.4/mod/core.html#timeout
     condition: all
@@ -839,16 +844,21 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0040"
         name:
-          - "Discovery"
+          - "Impact"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1499"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Endpoint Denial of Service"
+      subtechnique:
+        id:
+          - "T1499.002"
+          - "T1499.003"
+        name:
+          - "Service Exhaustion Flood"
+          - "Application Exhaustion Flood"
     references:
       - https://httpd.apache.org/docs/2.4/mod/core.html#keepalive
     condition: none
@@ -875,16 +885,21 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0040"
         name:
-          - "Discovery"
+          - "Impact"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1499"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Endpoint Denial of Service"
+      subtechnique:
+        id:
+          - "T1499.002"
+          - "T1499.003"
+        name:
+          - "Service Exhaustion Flood"
+          - "Application Exhaustion Flood"
     references:
       - https://httpd.apache.org/docs/2.4/mod/core.html#maxkeepaliverequests
     condition: none
@@ -911,16 +926,21 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0040"
         name:
-          - "Discovery"
+          - "Impact"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1499"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Endpoint Denial of Service"
+      subtechnique:
+        id:
+          - "T1499.002"
+          - "T1499.003"
+        name:
+          - "Service Exhaustion Flood"
+          - "Application Exhaustion Flood"
     references:
       - https://httpd.apache.org/docs/2.4/mod/core.html#keepalivetimeout
     condition: all
@@ -947,16 +967,21 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0040"
         name:
-          - "Discovery"
+          - "Impact"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1499"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Endpoint Denial of Service"
+      subtechnique:
+        id:
+          - "T1499.002"
+          - "T1499.003"
+        name:
+          - "Service Exhaustion Flood"
+          - "Application Exhaustion Flood"
     references:
       - https://ha.ckers.org/slowloris/
       - https://www.owasp.org/index.php/H.....t.....t....p.......p....o....s....t
@@ -986,16 +1011,21 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0040"
         name:
-          - "Discovery"
+          - "Impact"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1499"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Endpoint Denial of Service"
+      subtechnique:
+        id:
+          - "T1499.002"
+          - "T1499.003"
+        name:
+          - "Service Exhaustion Flood"
+          - "Application Exhaustion Flood"
     references:
       - https://httpd.apache.org/docs/2.4/mod/mod_reqtimeout.html
     condition: any
@@ -1023,16 +1053,21 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0040"
         name:
-          - "Discovery"
+          - "Impact"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1499"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Endpoint Denial of Service"
+      subtechnique:
+        id:
+          - "T1499.002"
+          - "T1499.003"
+        name:
+          - "Service Exhaustion Flood"
+          - "Application Exhaustion Flood"
     references:
       - https://httpd.apache.org/docs/2.4/mod/core.html#limitrequestline
     condition: all
@@ -1059,16 +1094,21 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0040"
         name:
-          - "Discovery"
+          - "Impact"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1499"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Endpoint Denial of Service"
+      subtechnique:
+        id:
+          - "T1499.002"
+          - "T1499.003"
+        name:
+          - "Service Exhaustion Flood"
+          - "Application Exhaustion Flood"
     references:
       - https://httpd.apache.org/docs/2.4/mod/core.html#limitrequestfields
     condition: all
@@ -1095,16 +1135,21 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0040"
         name:
-          - "Discovery"
+          - "Impact"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1499"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Endpoint Denial of Service"
+      subtechnique:
+        id:
+          - "T1499.002"
+          - "T1499.003"
+        name:
+          - "Service Exhaustion Flood"
+          - "Application Exhaustion Flood"
     references:
       - https://httpd.apache.org/docs/2.4/mod/core.html#limitrequestfieldsize
     condition: all
@@ -1131,16 +1176,21 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0040"
         name:
-          - "Discovery"
+          - "Impact"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1499"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Endpoint Denial of Service"
+      subtechnique:
+        id:
+          - "T1499.002"
+          - "T1499.003"
+        name:
+          - "Service Exhaustion Flood"
+          - "Application Exhaustion Flood"
     references:
       - https://httpd.apache.org/docs/2.4/mod/core.html#limitrequestbody
     condition: all

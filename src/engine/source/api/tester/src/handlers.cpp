@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include "cmstore/icmstore.hpp"
 #include <algorithm>
 #include <memory>

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -671,7 +671,7 @@ void test_getSyscheckInternalOptions(void **state)
     cJSON *items = cJSON_GetObjectItem(ret, "internal");
     assert_int_equal(cJSON_GetArraySize(items), 2);
     cJSON *sys_items = cJSON_GetObjectItem(items, "syscheck");
-    assert_int_equal(cJSON_GetArraySize(sys_items), 6);
+    assert_int_equal(cJSON_GetArraySize(sys_items), 9);
     cJSON *root_items = cJSON_GetObjectItem(items, "rootcheck");
     assert_int_equal(cJSON_GetArraySize(root_items), 1);
 }

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef FASTMETRICS_METRIC_NAMES_HPP
 #define FASTMETRICS_METRIC_NAMES_HPP
 

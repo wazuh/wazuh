@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 from helper_test.documentation_generator.types import Documentation
 from helper_test.documentation_generator.exporter import *
 

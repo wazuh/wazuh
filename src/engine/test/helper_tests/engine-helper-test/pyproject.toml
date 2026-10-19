@@ -6,6 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "engine-helper-test"
 version = "1.0.0.dev0"
 authors = [{ name = "Wazuh, Inc." }]
+license = { text = "AGPL-3.0-or-later" }
 description = "A tool that allows you to generate automatic test cases for the helper functions"
 requires-python = ">=3.8"
 classifiers = ["Programming Language :: Python :: 3"]

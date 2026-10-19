@@ -8,8 +8,7 @@ Homepage: http://www.wazuh.com
 
 Package: wazuh-manager
 Architecture: any
-Depends: libc6 (>= 2.7), passwd, openssl, iproute2, hostname, util-linux, diffutils
-Suggests: expect
+Depends: libc6 (>= 2.18), passwd, zlib1g
 Conflicts: ossec-hids-agent, ossec-hids, wazuh-api
 Replaces: wazuh-api
 Description: Wazuh manager

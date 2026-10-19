@@ -73,7 +73,7 @@ The package manager will automatically:
 - Stop the current service
 - Preserve your configuration and runtime data (see [File preservation](#file-preservation))
 - Install the new binaries
-- Resolve credentials with `bin/wazuh-manager-resolve-credentials --upgrade`, which fills in a missing password or keystore entry and never touches the certificates (see [The resolver and its modes](getting-started/credentials.md#the-resolver-and-its-modes))
+- Resolve credentials with `bin/wazuh-manager-resolve-credentials --upgrade`, which fills in a missing password or keystore entry, imports the indexer's CA and client pair when they changed, and validates the manager's CA and server pairs without ever minting or issuing one (see [The resolver and its modes](getting-started/credentials.md#the-resolver-and-its-modes))
 - Restart the service, only if it was running before the upgrade
 
 ### File preservation
@@ -97,6 +97,8 @@ File contents are preserved for the paths listed above. Ownership and modes depe
 **Seeing new defaults.** Because `/etc/wazuh-manager` is fully preserved, new default values shipped by the package are not automatically applied to existing files. On DEB manager upgrades a `wazuh-manager.conf.new` side-file is written alongside the live config so you can compare changes manually. On RPM no equivalent side-file is generated for the preserved paths; compare against the package defaults manually if needed.
 
 The `WAZUH_REMOTE_*` installation variables described in [Installation](getting-started/installation.md) also shape that `wazuh-manager.conf.new`, so an upgrade run with them exported produces a side-file that already carries those values. If one of them holds an invalid value the side-file is not written and the upgrade reports a warning and continues: the live configuration is preserved either way.
+
+Note also the indexer connector's trust anchor: a fresh installation names `/etc/wazuh-manager/certs/indexer-ca.pem` in `<indexer><ssl><certificate_authorities>`, while a configuration preserved from an earlier 5.0 build still names `certs/root-ca.pem`, which is now the agents' CA bundle only. Change that `<ca>` to `/etc/wazuh-manager/certs/indexer-ca.pem` in the live configuration (see [Indexer trust](getting-started/credentials.md#indexer-trust)).
 
 Note in particular `remote.https.global_prefix`: its schema default, `/wazuh-manager/`, is applied to every configuration the manager loads, preserved or not. A preserved `wazuh-manager.conf` with no `<global_prefix>` element therefore serves routes under `/wazuh-manager/`, exactly like a fresh install. Agents use the same prefix by default; only an agent whose `<manager><endpoint>` ends in a bare `/` expects unprefixed routes (see [Client configuration](modules/client/configuration.md#endpoint)). To keep such agents working, add `<global_prefix>/</global_prefix>` to the live configuration (and, on DEB, to `wazuh-manager.conf.new` before adopting it), then move them to the prefixed path as a coordinated agent-side change.
 

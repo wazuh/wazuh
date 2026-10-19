@@ -9,6 +9,8 @@ on:
       - 'framework/**/*.py'
       - 'api/**/*.py'
       - 'wodles/**/*.py'
+      # The credential resolver, a Python program outside the three package trees.
+      - 'src/init/credentials/**/*.py'
       # setup-python reads it below
       - 'framework/.python-version'
       # Both scans exclude the test trees (-x '**/test/**,**/tests/**')
@@ -20,7 +22,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  PYTHON_DIRS: "api wodles framework"
+  PYTHON_DIRS: "api wodles framework src/init/credentials"
 
 jobs:
   bandit-scan:

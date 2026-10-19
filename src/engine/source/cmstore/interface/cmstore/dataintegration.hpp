@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _ICMSTORE_DATA_INTEGRATION
 #define _ICMSTORE_DATA_INTEGRATION
 

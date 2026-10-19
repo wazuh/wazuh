@@ -1,7 +1,6 @@
 /*
  * Wazuh agent HTTPS client (C++ transport module)
- * Copyright (C) 2015, Wazuh Inc.
- * July 21, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -155,6 +154,7 @@ void ReporterStream::runPath(Path& path, Backoff& backoff, Waiter& waiter, std::
     spec.target = path.target;
     spec.body = reinterpret_cast<const uint8_t*>(document->data());
     spec.bodyLength = document->size();
+    spec.maxResponseBytes = SHORT_REPLY_MAX_RESPONSE_BYTES;
     spec.timeoutMs = m_config.requestTimeoutMs;
 
     // Operational visibility (send-time debug log, mirroring statelessStream.cpp's

@@ -168,7 +168,7 @@ Under `src/wazuh_modules/task_manager/src/upgrade/`.
 | `deliveryGate.{hpp,cpp}` | The `remote.legacy.enabled` and `verification_mode` checks |
 | `wpkCache.{hpp,cpp}` | One download per file, stage-then-rename, digest memo |
 | `versionsCache.{hpp,cpp}` | One `versions` fetch per repository path, TTL-cached |
-| `httpWpkRepository.{hpp,cpp}` | The outbound HTTPS client, with peer verification that cannot be turned off |
+| `httpWpkRepository.{hpp,cpp}` | The outbound HTTPS client, with peer verification that cannot be turned off and a 1 MiB limit on a `versions` body |
 
 ---
 

@@ -1,7 +1,6 @@
 /*
  * Cryptography windows helper.
- * Copyright (C) 2015, Wazuh Inc.
- * November 16, 2022.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public

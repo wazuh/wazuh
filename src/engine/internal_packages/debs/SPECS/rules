@@ -1,4 +1,5 @@
 #!/usr/bin/make -f
+# SPDX-License-Identifier: AGPL-3.0-or-later
 
 # Enable all standard hardening features for potential native artifacts.
 export DEB_BUILD_MAINT_OPTIONS = hardening=+all
@@ -23,6 +24,10 @@ PY3 := $(shell command -v python3)
 %:
 	dh $@ --buildsystem=none --without autoreconf
 
+# Keep the license texts uncompressed: debian/copyright points to them by name.
+override_dh_compress:
+	dh_compress -XLICENSE -XLICENSE-engine -XCOPYING-engine -XTHIRD-PARTY-NOTICES
+
 # ---------------------------------------------------------------------------
 # Build phase
 # - Call our helper to create the local venv under build/venv.
@@ -41,6 +46,13 @@ override_dh_auto_build:
 #   correctly after installation.
 # ---------------------------------------------------------------------------
 override_dh_auto_install:
+	# Install the license texts (AGPLv3)
+	mkdir -p $(DESTDIR)/usr/share/doc/wazuh-internal-tools
+	install -m 0644 LICENSE-engine COPYING-engine $(DESTDIR)/usr/share/doc/wazuh-internal-tools/
+	# Third-party notices of the Python packages in the venv
+	python3 tools/third-party-notices/generate.py venv build/venv/lib/python3.*/site-packages -o build/THIRD-PARTY-NOTICES
+	install -m 0644 build/THIRD-PARTY-NOTICES $(DESTDIR)/usr/share/doc/wazuh-internal-tools/
+
 	# Copy the venv as-is into the package payload
 	mkdir -p $(DESTDIR)/opt/wazuh-internal-tools
 	cp -a build/venv $(DESTVENV)

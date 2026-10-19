@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef IOCKVDB_MOCK_READONLY_HANDLER_HPP
 #define IOCKVDB_MOCK_READONLY_HANDLER_HPP
 

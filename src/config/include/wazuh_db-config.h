@@ -1,7 +1,6 @@
 /*
  * Wazuh-DB settings manager
- * Copyright (C) 2015, Wazuh Inc.
- * Dec 17, 2021.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public

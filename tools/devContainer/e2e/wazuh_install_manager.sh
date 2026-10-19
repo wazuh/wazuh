@@ -10,23 +10,22 @@
 #   0. provenance of the installed manager (/etc/wazuh-manager/.install-provenance) and, with --before-hook, that
 #      script run against it — the "before" of a before/after comparison; --snapshot tars bin/ lib/
 #   1. build-tree guard: src/build must not carry UNIT_TEST / ENGINE_ENABLE_*SAN / ENGINE_BUILD_TEST
-#      (an ASAN engine installs fine and then fails with a misleading libwazuhshared.so dlopen error)
-#   2. stop + purge (fresh) or rm -rf of the sandbox dir (sandbox; never an existing dir — D44)
+#      (a test or sanitizer tree is never what gets installed)
+#   2. stop + purge (fresh) or rm -rf of the sandbox dir (sandbox; never an existing dir)
 #   3. ./install.sh unattended (USER_* variables, stdin from /dev/null; binary-install with --skip-build)
 #   3b. the three manager credentials from the e2e .credentials.env exported to install.sh's environment
 #      (the package resolver validates and stores them; API+WUI published, indexer password keystore-only;
 #      missing file = degraded, the installer generates its own as before)
-#   4. lib/libwazuhshared.so copied by hand when install.sh did not (inst-functions.sh only copies it
-#      from build/lib at that relative path)
-#   5. certificates: the e2e PKI replaces whatever the install's credential resolver issued (it issues
-#      the manager's certificates only at install, and only from a CA handed over in /etc/wazuh/ca):
-#      e2e/init.sh --certs-only (reusing certs/ and its CA) + wazuh_copy_certs.sh; init.sh also opens the remoted listeners to 0.0.0.0 for docker agents
-#   5b. indexer credential in the keystore: manual override only (INDEXER_USER/INDEXER_PASSWORD); the
+#   4. certificates: the e2e PKI replaces whatever the install's credential resolver issued (it issues
+#      the manager's pairs only at install, from the CA in /etc/wazuh-manager/ca, and checks them at every
+#      start): e2e/init.sh --certs-only (reusing certs/ and its CA) + wazuh_copy_certs.sh, which also puts the
+#      e2e CA's certificate in ca/ and republishes it; init.sh also opens the remoted listeners to 0.0.0.0 for docker agents
+#   4b. indexer credential in the keystore: manual override only (INDEXER_USER/INDEXER_PASSWORD); the
 #      default path is 3b — the resolver stores the env-supplied WAZUH_INDEXER_MANAGER_PASSWORD itself
-#   6. /etc/wazuh-manager/.install-provenance written; start.mark = byte offset of the log before `start`
-#   7. wazuh-manager-control start, output to a FILE (never a pipe: the daemons inherit it)
-#   8. wazuh_verify_manager.sh, then --before-hook again as the "after"
-#   9. --out/manifest.md
+#   5. /etc/wazuh-manager/.install-provenance written; start.mark = byte offset of the log before `start`
+#   6. wazuh-manager-control start, output to a FILE (never a pipe: the daemons inherit it)
+#   7. wazuh_verify_manager.sh, then --before-hook again as the "after"
+#   8. --out/manifest.md
 #
 # Used by the VS Code task "E2E Scripts: [Manager] Fresh install from branch (purge!)" and by the
 # stack-env skill (which asks the user before running it).
@@ -45,7 +44,7 @@ Usage: sudo $0 --yes [--mode fresh|sandbox] [--dir DIR] [--out DIR] [--before-ho
   --mode fresh        purge + install into --dir (default /var/wazuh-manager), system service registered
   --mode sandbox      install into --dir (default \$TMP_CLEAN_ENV/wazuh-manager) with USER_REGISTER_SERVICE=n;
                       the basename MUST be wazuh-manager; the dir must NOT exist (reinstalling into an
-                      existing sandbox wipes the registered manager's framework/ — D44)
+                      existing sandbox wipes the registered manager's framework/)
   --dir DIR           installation directory (see --mode)
   --out DIR           evidence directory (default \$TMPDIR/wazuh-e2e-evidence/<timestamp>)
   --before-hook S     script run with WAZUH_MANAGER_HOME=DIR against the installed manager BEFORE the
@@ -178,7 +177,7 @@ if [ "$MODE" = fresh ]; then
 else
   if [ -d "$DIR" ]; then
     [ -x "$CTRL" ] && { "$CTRL" stop >>"$LOG" 2>&1 || true; }
-    rm -rf "$DIR"   # a fresh dir never takes install.sh's UpdateStopWAZUH path (D44)
+    rm -rf "$DIR"   # a fresh dir never takes install.sh's UpdateStopWAZUH path
     log "removed previous sandbox $DIR"
   fi
 fi
@@ -225,15 +224,7 @@ asan_syms=$(ldd "$DIR/bin/wazuh-manager-analysisd" 2>/dev/null | grep -c asan ||
   echo "warnings=$warnings"; echo "asan_syms=$asan_syms"; } > "$OUT/build.log"
 log "build: warnings=$warnings asan_syms=$asan_syms"
 
-# ---------------------------------------------------------------- 4. libwazuhshared
-step "libwazuhshared"
-if [ ! -f "$DIR/lib/libwazuhshared.so" ] && [ -f "$REPO_DIR/src/build/lib/libwazuhshared.so" ]; then
-  install -m 0750 -o root -g wazuh-manager "$REPO_DIR/src/build/lib/libwazuhshared.so" "$DIR/lib/"
-  log "copied src/build/lib/libwazuhshared.so by hand"
-fi
-ls -l "$DIR/lib/libwazuhshared.so" >>"$LOG" 2>&1 || die "lib/libwazuhshared.so missing after install"
-
-# ---------------------------------------------------------------- 5. certificates
+# ---------------------------------------------------------------- 4. certificates
 step "certificates"
 if [ -f "$E2E/certs/root-ca.pem" ] && [ -f "$E2E/certs/root-ca.key" ]; then
   log "reusing $E2E/certs (CA kept; pass --rotate-ca to init.sh yourself to rotate it)"
@@ -245,7 +236,7 @@ WAZUH_MANAGER_HOME="$DIR" "$E2E/wazuh_copy_certs.sh" >>"$LOG" 2>&1 || die "wazuh
 certs_line=$(openssl x509 -in "$CONF_DIR/certs/remoted.pem" -noout -subject -issuer -enddate 2>/dev/null | tr '\n' ' ')
 log "remoted.pem: $certs_line"
 
-# ---------------------------------------------------------------- 5b. indexer credential
+# ---------------------------------------------------------------- 4b. indexer credential
 step "indexer-credential"
 KEYSTORE="$DIR/bin/wazuh-manager-keystore"
 # Default path: NOTHING to do here — step 3b handed WAZUH_INDEXER_MANAGER_PASSWORD
@@ -270,7 +261,7 @@ fi
 # and the runtime cannot read the credential (stateful queries would 503).
 chown -R wazuh-manager:wazuh-manager "$DIR/queue/keystore"
 
-# ---------------------------------------------------------------- 6. provenance + start mark
+# ---------------------------------------------------------------- 5. provenance + start mark
 step "provenance"
 PROV="$CONF_DIR/.install-provenance"
 {
@@ -278,7 +269,7 @@ PROV="$CONF_DIR/.install-provenance"
   echo "date=$(now)"; echo "mode=$MODE"; echo "installer=wazuh_install_manager.sh"; echo "build_tree=src/build"
   echo "skip_build=$SKIP_BUILD"
   for f in bin/wazuh-manager-remoted bin/wazuh-manager-analysisd bin/wazuh-manager-authd bin/wazuh-manager-db \
-           bin/wazuh-manager-modulesd lib/libremoted_module.so lib/libwazuhshared.so; do
+           bin/wazuh-manager-modulesd lib/libremoted_module.so; do
     [ -f "$DIR/$f" ] && echo "sha256.$f=$(sha256sum "$DIR/$f" | cut -d' ' -f1)"
   done
 } > "$PROV"
@@ -299,7 +290,7 @@ if [ "$NO_START" -eq 1 ]; then
   exit 0
 fi
 
-# ---------------------------------------------------------------- 7. start (to a file, never a pipe)
+# ---------------------------------------------------------------- 6. start (to a file, never a pipe)
 step "start"
 mark=$( [ -f "$LOGF" ] && wc -c < "$LOGF" || echo 0 )
 echo "$mark" > "$OUT/start.mark"
@@ -308,7 +299,7 @@ START_T=$(now)
 rc=$?
 log "start rc=$rc at $START_T (mark=$mark) → $OUT/start.log"
 
-# ---------------------------------------------------------------- 8. verify + after hook
+# ---------------------------------------------------------------- 7. verify + after hook
 step "verify"
 declare -a VARGS=(--home "$DIR" --out "$OUT" --start-mark "$OUT/start.mark" --no-manifest)
 [ "$API" -eq 0 ] || VARGS+=(--api)
@@ -320,7 +311,7 @@ if [ -n "$HOOK" ]; then
   log "after-hook rc=$? → $OUT/after-hook.log"
 fi
 
-# ---------------------------------------------------------------- 9. manifest
+# ---------------------------------------------------------------- 8. manifest
 step "manifest"
 summary=$(grep -E '^# summary:' "$OUT/verify-manager.log" | tail -1 | sed 's/^# //')
 {

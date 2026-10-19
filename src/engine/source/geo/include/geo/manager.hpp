@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef GEO_MANAGER_HPP
 #define GEO_MANAGER_HPP
 

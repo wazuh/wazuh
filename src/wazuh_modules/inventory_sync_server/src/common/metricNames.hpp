@@ -1,7 +1,6 @@
 /*
  * Wazuh inventory sync server module
- * Copyright (C) 2015, Wazuh Inc.
- * August 6, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -43,6 +42,7 @@ namespace invsync::metrics
     constexpr auto INDEXER_BULK_REQUESTS {"sync.indexer.bulk.requests"};
     constexpr auto INDEXER_BULK_BYTES {"sync.indexer.bulk.bytes.total"};
     constexpr auto INDEXER_CONFLICT_RETRIES {"sync.indexer.conflict.retries"};
+    constexpr auto INDEXER_CONFLICT_EXHAUSTED {"sync.indexer.conflict.exhausted"};
     constexpr auto BULK_FLUSH_FAILURES_PREFIX {"sync.bulk.flush.failures."}; ///< + documents/exhausted/other
     constexpr auto BULK_SESSIONS_FAILED {"sync.bulk.sessions.failed"};
 

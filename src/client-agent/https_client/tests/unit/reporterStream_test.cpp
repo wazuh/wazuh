@@ -1,7 +1,6 @@
 /*
  * Wazuh agent HTTPS client (C++ transport module)
- * Copyright (C) 2015, Wazuh Inc.
- * July 21, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -125,6 +124,7 @@ TEST_F(ReporterStreamTest, StampsAgentIdAndClusterAndPostsToStats)
                   [&](const HttpRequestSpec & spec)
     {
         EXPECT_EQ("/stats", spec.target);
+        EXPECT_EQ(SHORT_REPLY_MAX_RESPONSE_BYTES, spec.maxResponseBytes);
         body.assign(reinterpret_cast<const char*>(spec.body), spec.bodyLength);
         return response(TransportStatus::Ok, 200);
     }));

@@ -4,8 +4,9 @@ This guide provides instructions for uninstalling Wazuh server and agent compone
 
 The manager lives in two directories: the installation directory `/var/wazuh-manager` and the
 configuration directory `/etc/wazuh-manager` (configuration, `client.keys`, the agent groups under
-`shared/` and the certificates under `certs/`). Both belong to the package, and what each removal
-command leaves behind is described per platform below.
+`shared/`, the certificates under `certs/`, and the credentials: the manager's CA under `ca/` with its private
+key, the published passwords under `export/` and your `local.env`). Both belong to the package, and what each
+removal command leaves behind is described per platform below. The manager keeps nothing in `/etc/wazuh`.
 
 ## Server
 
@@ -17,10 +18,8 @@ Remove the package and everything it left behind:
 sudo dpkg --purge wazuh-manager
 ```
 
-`--purge` deletes `/var/wazuh-manager`, `/etc/wazuh-manager` and the `wazuh-manager` user and group. It also takes the
-manager's own keys out of the managed block of `/etc/wazuh/credentials.env`, and, when neither
-`wazuh-indexer` nor `wazuh-dashboard` is still installed, deletes `credentials.env`, the CA directory
-`/etc/wazuh/ca` and, if it is then empty, `/etc/wazuh` itself.
+`--purge` deletes `/var/wazuh-manager`, `/etc/wazuh-manager` (credentials included) and the `wazuh-manager` user
+and group.
 
 To remove the package but keep the configuration files:
 
@@ -30,8 +29,9 @@ sudo dpkg --remove wazuh-manager
 
 `--remove` deletes `queue/` (the wazuh-db databases, `tasks.db`, the keystore), `var/`, `logs/`,
 `data/` and the API directory, and keeps `/etc/wazuh-manager` with every file outside its `shared/` renamed to
-`<name>.save` (`api.yaml` is kept as `api/configuration/api.yaml.save`). The user, the group and
-`/etc/wazuh` are left untouched.
+`<name>.save` (`api.yaml` is kept as `api/configuration/api.yaml.save`): the CA's private key
+`ca/root-ca.key.save` and `local.env.save` among them. The manager never reads a `.save` file; delete those two
+when you no longer need them. The user and the group are left untouched.
 
 ### Red Hat-based platforms
 
@@ -41,13 +41,11 @@ Remove the package:
 sudo rpm -e wazuh-manager
 ```
 
-`rpm -e` removes the manager's keys from `/etc/wazuh/credentials.env` and, with no `wazuh-indexer` or
-`wazuh-dashboard` left, the credentials file and `/etc/wazuh/ca`, as `dpkg --purge` does. It deletes
-the `wazuh-manager` user and group and the state directories under `/var/wazuh-manager` (`queue/`,
-`var/`, `logs/`, `data/`, `api/`, `bin/` and the rest). Under `/etc/wazuh-manager`, RPM removes the
-files the package lists (`wazuh-manager.conf` and `client.keys` included), and the files it does not
-own, such as the certificates under `/etc/wazuh-manager/certs/`, are kept renamed to `<name>.save`
-(files under `shared/` keep their names). Everything kept, in `/etc/wazuh-manager` and in
+`rpm -e` deletes the `wazuh-manager` user and group and the state directories under `/var/wazuh-manager`
+(`queue/`, `var/`, `logs/`, `data/`, `api/`, `bin/` and the rest). Under `/etc/wazuh-manager`, RPM removes the
+files the package lists (`wazuh-manager.conf` and `client.keys` included), and the files it does not own, such as
+the certificates under `certs/`, the credentials under `ca/` and `export/` and `local.env`, are kept renamed to
+`<name>.save` (files under `shared/` keep their names). Everything kept, in `/etc/wazuh-manager` and in
 `/var/wazuh-manager`, is handed to `root:root` with no group or other access, because the account
 that owned part of it no longer exists. Back up anything you want to keep before running it, and
 delete `/etc/wazuh-manager` and `/var/wazuh-manager` by hand when the leftovers are no longer needed.

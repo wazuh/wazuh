@@ -1,6 +1,6 @@
 #!/sbin/runscript
 # Gentoo init script for Wazuh
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 # by gentuxx <gentuxx@gmail.com>
 
 opts="${opts} status configtest"

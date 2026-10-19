@@ -1,6 +1,6 @@
 # Security Configuration Assessment
 # CIS Checks for Ubuntu Linux 16.04 LTS
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 #
 # This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
@@ -48,16 +48,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0004"
         name:
-          - "Discovery"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1068"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploitation for Privilege Escalation"
     condition: all
     rules:
       - "c:modprobe -n -v cramfs -> r:^install /bin/true"
@@ -82,16 +80,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0004"
         name:
-          - "Discovery"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1068"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploitation for Privilege Escalation"
     condition: all
     rules:
       - "c:modprobe -n -v freevxfs -> r:^install /bin/true"
@@ -116,16 +112,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0004"
         name:
-          - "Discovery"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1068"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploitation for Privilege Escalation"
     condition: all
     rules:
       - "c:modprobe -n -v jffs2 -> r:^install /bin/true"
@@ -150,16 +144,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0004"
         name:
-          - "Discovery"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1068"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploitation for Privilege Escalation"
     condition: all
     rules:
       - "c:modprobe -n -v hfs -> r:^install /bin/true"
@@ -184,16 +176,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0004"
         name:
-          - "Discovery"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1068"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploitation for Privilege Escalation"
     condition: all
     rules:
       - "c:modprobe -n -v hfsplus -> r:^install /bin/true"
@@ -218,16 +208,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0004"
         name:
-          - "Discovery"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1068"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploitation for Privilege Escalation"
     condition: all
     rules:
       - "c:modprobe -n -v udf -> r:^install /bin/true"
@@ -253,16 +241,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0040"
+          - "TA0004"
         name:
-          - "Discovery"
+          - "Impact"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1499"
+          - "T1548"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Endpoint Denial of Service"
+          - "Abuse Elevation Control Mechanism"
+      subtechnique:
+        id:
+          - "T1548.001"
+        name:
+          - "Setuid and Setgid"
     references:
       - http://tldp.org/HOWTO/LVM-HOWTO/
       - https://www.freedesktop.org/wiki/Software/systemd/APIFileSystems/
@@ -289,16 +284,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0004"
         name:
-          - "Discovery"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1548"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Abuse Elevation Control Mechanism"
     condition: all
     rules:
       - 'c:mount -> r:\s/tmp\s && r:nodev'
@@ -322,16 +315,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0004"
         name:
-          - "Discovery"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1548"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Abuse Elevation Control Mechanism"
+      subtechnique:
+        id:
+          - "T1548.001"
+        name:
+          - "Setuid and Setgid"
     condition: all
     rules:
       - 'c:mount -> r:\s/tmp\s && r:nosuid'
@@ -355,16 +351,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0040"
+          - "TA0004"
         name:
-          - "Discovery"
+          - "Impact"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1499"
+          - "T1548"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Endpoint Denial of Service"
+          - "Abuse Elevation Control Mechanism"
+      subtechnique:
+        id:
+          - "T1548.001"
+        name:
+          - "Setuid and Setgid"
     references:
       - http://tldp.org/HOWTO/LVM-HOWTO/
     condition: all
@@ -390,16 +393,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0040"
+          - "TA0004"
         name:
-          - "Discovery"
+          - "Impact"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1499"
+          - "T1548"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Endpoint Denial of Service"
+          - "Abuse Elevation Control Mechanism"
+      subtechnique:
+        id:
+          - "T1548.001"
+        name:
+          - "Setuid and Setgid"
     references:
       - http://tldp.org/HOWTO/LVM-HOWTO/
     condition: all
@@ -425,16 +435,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0004"
         name:
-          - "Discovery"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1548"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Abuse Elevation Control Mechanism"
     condition: all
     rules:
       - 'c:mount -> r:\s/var/tmp\s && r:nodev'
@@ -458,16 +466,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0004"
         name:
-          - "Discovery"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1548"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Abuse Elevation Control Mechanism"
+      subtechnique:
+        id:
+          - "T1548.001"
+        name:
+          - "Setuid and Setgid"
     condition: all
     rules:
       - 'c:mount -> r:\s/var/tmp\s && r:nosuid'
@@ -491,16 +502,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0002"
         name:
-          - "Discovery"
+          - "Execution"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1204"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "User Execution"
+      subtechnique:
+        id:
+          - "T1204.002"
+        name:
+          - "Malicious File"
     condition: all
     rules:
       - 'c:mount -> r:\s/var/tmp\s && r:noexec'
@@ -524,16 +538,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0040"
+          - "TA0004"
         name:
-          - "Discovery"
+          - "Impact"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1499"
+          - "T1548"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Endpoint Denial of Service"
+          - "Abuse Elevation Control Mechanism"
+      subtechnique:
+        id:
+          - "T1548.001"
+        name:
+          - "Setuid and Setgid"
     references:
       - http://tldp.org/HOWTO/LVM-HOWTO/
     condition: all
@@ -559,16 +580,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0040"
+          - "TA0004"
         name:
-          - "Discovery"
+          - "Impact"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1499"
+          - "T1548"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Endpoint Denial of Service"
+          - "Abuse Elevation Control Mechanism"
+      subtechnique:
+        id:
+          - "T1548.001"
+        name:
+          - "Setuid and Setgid"
     references:
       - http://tldp.org/HOWTO/LVM-HOWTO/
     condition: all
@@ -594,16 +622,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0040"
+          - "TA0004"
         name:
-          - "Discovery"
+          - "Impact"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1499"
+          - "T1548"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Endpoint Denial of Service"
+          - "Abuse Elevation Control Mechanism"
+      subtechnique:
+        id:
+          - "T1548.001"
+        name:
+          - "Setuid and Setgid"
     references:
       - http://tldp.org/HOWTO/LVM-HOWTO/
     condition: all
@@ -629,16 +664,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0004"
         name:
-          - "Discovery"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1548"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Abuse Elevation Control Mechanism"
     condition: all
     rules:
       - 'c:mount -> r:\s/home\s && r:nodev'
@@ -662,16 +695,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0004"
         name:
-          - "Discovery"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1548"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Abuse Elevation Control Mechanism"
     condition: all
     rules:
       - 'c:mount -> r:\s/dev/shm\s && r:nodev'
@@ -695,16 +726,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0004"
         name:
-          - "Discovery"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1548"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Abuse Elevation Control Mechanism"
+      subtechnique:
+        id:
+          - "T1548.001"
+        name:
+          - "Setuid and Setgid"
     condition: all
     rules:
       - 'c:mount -> r:\s/dev/shm\s && r:nosuid'
@@ -728,16 +762,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0002"
         name:
-          - "Discovery"
+          - "Execution"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1204"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "User Execution"
+      subtechnique:
+        id:
+          - "T1204.002"
+        name:
+          - "Malicious File"
     condition: all
     rules:
       - 'c:mount -> r:\s/dev/shm\s && r:noexec'
@@ -761,16 +798,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
+          - "TA0010"
         name:
-          - "Discovery"
+          - "Initial Access"
+          - "Exfiltration"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1200"
+          - "T1052"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Hardware Additions"
+          - "Exfiltration Over Physical Medium"
+      subtechnique:
+        id:
+          - "T1052.001"
+        name:
+          - "Exfiltration over USB"
     condition: none
     rules:
       - "c:systemctl is-enabled autofs -> r:^enabled"
@@ -795,16 +839,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0040"
+          - "TA0003"
         name:
-          - "Discovery"
+          - "Impact"
+          - "Persistence"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1565"
+          - "T1554"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Data Manipulation"
+          - "Compromise Host Software Binary"
+      subtechnique:
+        id:
+          - "T1565.001"
+        name:
+          - "Stored Data Manipulation"
     reference:
       - "AIDE stable manual: http://aide.sourceforge.net/stable/manual.html"
     condition: all
@@ -830,16 +881,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0040"
+          - "TA0003"
         name:
-          - "Discovery"
+          - "Impact"
+          - "Persistence"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1565"
+          - "T1554"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Data Manipulation"
+          - "Compromise Host Software Binary"
+      subtechnique:
+        id:
+          - "T1565.001"
+        name:
+          - "Stored Data Manipulation"
     condition: all
     rules:
       - 'c:grep -Rh aide /etc/cron.d /etc/cron.daily /etc/cron.hourly /etc/cron.monthly /etc/cron.weekly /etc/crontab -> r:.+'
@@ -865,16 +923,16 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1542"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Pre-OS Boot"
     condition: all
     rules:
       - 'c:stat /boot/grub/grub.cfg -> r:Access:\s*\(0\d00/-[\w@-][\w@-]-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
@@ -898,16 +956,16 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1542"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Pre-OS Boot"
     condition: all
     rules:
       - 'f:/boot/grub/grub.cfg -> r:^\s*\t*set superusers'
@@ -932,16 +990,16 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1542"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Pre-OS Boot"
     condition: none
     rules:
       - "f:/etc/shadow -> r:^root:\\*:|^root:!:"
@@ -966,16 +1024,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1003"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "OS Credential Dumping"
     condition: all
     rules:
       - 'c:sysctl fs.suid_dumpable -> r:=\s*\t*0$'
@@ -1001,16 +1057,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0004"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Privilege Escalation"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1068"
+          - "T1211"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploitation for Privilege Escalation"
+          - "Exploitation for Stealth"
     condition: all
     rules:
       - 'c:dmesg -> r:NX \(Execute Disable\) protection: active'
@@ -1034,16 +1092,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0004"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Privilege Escalation"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1068"
+          - "T1211"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploitation for Privilege Escalation"
+          - "Exploitation for Stealth"
     condition: all
     rules:
       - 'c:grep -Rh ^kernel\.randomize_va_space /etc/sysctl.conf /etc/sysctl.d -> r:\s*\t*2$'
@@ -1068,16 +1128,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0004"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Privilege Escalation"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1068"
+          - "T1211"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploitation for Privilege Escalation"
+          - "Exploitation for Stealth"
     condition: none
     rules:
       - "c:dpkg -s prelink -> r:install ok installed"
@@ -1103,16 +1165,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0004"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1068"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Exploitation for Privilege Escalation"
     condition: none
     rules:
       - 'f:/boot/grub/grub.cfg -> r:^\s*\t*linux && r:selinux=0'
@@ -1137,16 +1201,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0004"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1068"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Exploitation for Privilege Escalation"
     condition: all
     rules:
       - 'c:sestatus -> r:^SELinux status:\s*enabled$'
@@ -1173,16 +1239,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0004"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1068"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Exploitation for Privilege Escalation"
     condition: all
     rules:
       - 'c:sestatus -> r:^Loaded policy name:\s+ubuntu|^Loaded policy name:\s+default|^Loaded policy name:\s+mls'
@@ -1207,16 +1275,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0004"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1068"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Exploitation for Privilege Escalation"
     condition: none
     rules:
       - "c:ps -eZ -> r:initrc && !r:tr|ps|egrep|bash|awk"
@@ -1240,16 +1310,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0004"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1068"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Exploitation for Privilege Escalation"
     condition: none
     rules:
       - 'f:/boot/grub/grub.cfg -> r:^\s*\t*linux && r:apparmor=0'
@@ -1273,16 +1345,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0004"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1068"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Exploitation for Privilege Escalation"
     condition: all
     rules:
       - "c:apparmor status -> r:0 profiles are in complain mode"
@@ -1308,16 +1382,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0004"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1068"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Exploitation for Privilege Escalation"
     condition: any
     rules:
       - "c:dpkg -s selinux-basics -> r:install ok installed"
@@ -1348,11 +1424,9 @@ checks:
           - "Discovery"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1082"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "System Information Discovery"
     condition: none
     rules:
       - 'f:/etc/motd -> r:\\v|\\r|\\m|\\s'
@@ -1381,11 +1455,9 @@ checks:
           - "Discovery"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1082"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "System Information Discovery"
     condition: none
     rules:
       - 'f:/etc/issue -> r:\\v|\\r|\\m|\\s'
@@ -1414,11 +1486,9 @@ checks:
           - "Discovery"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1082"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "System Information Discovery"
     condition: none
     rules:
       - 'f:/etc/issue.net -> r:\\v|\\r|\\m|\\s'
@@ -1442,16 +1512,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0040"
         name:
-          - "Discovery"
+          - "Impact"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1491"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Defacement"
+      subtechnique:
+        id:
+          - "T1491.001"
+        name:
+          - "Internal Defacement"
     condition: all
     rules:
       - 'c:stat /etc/motd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
@@ -1475,16 +1548,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0040"
         name:
-          - "Discovery"
+          - "Impact"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1491"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Defacement"
+      subtechnique:
+        id:
+          - "T1491.001"
+        name:
+          - "Internal Defacement"
     condition: all
     rules:
       - 'c:stat /etc/issue -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
@@ -1508,16 +1584,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0040"
         name:
-          - "Discovery"
+          - "Impact"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1491"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Defacement"
+      subtechnique:
+        id:
+          - "T1491.001"
+        name:
+          - "Internal Defacement"
     condition: all
     rules:
       - 'c:stat /etc/issue.net -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
@@ -1541,16 +1620,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
     condition: all
     rules:
       - "f:/etc/dconf/profile/gdm -> r:^user-db:user"
@@ -1962,16 +2039,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Indicator Removal"
     condition: any
     rules:
       - "c:dpkg -s ntp -> r:install ok installed"
@@ -1996,16 +2071,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Indicator Removal"
     references:
       - http://www.ntp.org/
     condition: all
@@ -2034,16 +2107,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Indicator Removal"
     condition: all
     rules:
       - 'f:/etc/chrony.conf -> r:^server.+|^pool.+'
@@ -2604,16 +2675,16 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0006"
           - "TA0007"
         name:
+          - "Credential Access"
           - "Discovery"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1040"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Network Sniffing"
     condition: none
     rules:
       - "c:dpkg -s nis -> r:install ok installed"
@@ -2637,16 +2708,16 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0006"
           - "TA0007"
         name:
+          - "Credential Access"
           - "Discovery"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1040"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Network Sniffing"
     condition: none
     rules:
       - "c:dpkg -s rsh-client -> r:install ok installed"
@@ -2671,16 +2742,16 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0006"
           - "TA0007"
         name:
+          - "Credential Access"
           - "Discovery"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1040"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Network Sniffing"
     condition: none
     rules:
       - "c:dpkg -s talk -> r:install ok installed"
@@ -2704,16 +2775,16 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0006"
           - "TA0007"
         name:
+          - "Credential Access"
           - "Discovery"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1040"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Network Sniffing"
     condition: none
     rules:
       - "c:dpkg -s telnet -> r:install ok installed"
@@ -2737,16 +2808,16 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0006"
           - "TA0007"
         name:
+          - "Credential Access"
           - "Discovery"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1040"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Network Sniffing"
     condition: none
     rules:
       - "c:dpkg -s ldap-utils -> r:install ok installed"
@@ -2774,16 +2845,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0011"
         name:
-          - "Discovery"
+          - "Command and Control"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1090"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Proxy"
     condition: all
     rules:
       - 'c:sysctl net.ipv4.ip_forward -> r:=\s*\t*0$'
@@ -2808,16 +2877,16 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0006"
+          - "TA0009"
         name:
-          - "Discovery"
+          - "Credential Access"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1557"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Adversary-in-the-Middle"
     condition: all
     rules:
       - 'c:sysctl net.ipv4.conf.all.send_redirects -> r:=\s*\t*0$'
@@ -2844,16 +2913,16 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0006"
+          - "TA0009"
         name:
-          - "Discovery"
+          - "Credential Access"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1557"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Adversary-in-the-Middle"
     condition: all
     rules:
       - 'c:sysctl net.ipv4.conf.all.accept_source_route -> r:=\s*\t*0$'
@@ -2880,16 +2949,16 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0006"
+          - "TA0009"
         name:
-          - "Discovery"
+          - "Credential Access"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1557"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Adversary-in-the-Middle"
     condition: all
     rules:
       - 'c:sysctl net.ipv4.conf.all.accept_redirects -> r:=\s*\t*0$'
@@ -2916,16 +2985,16 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0006"
+          - "TA0009"
         name:
-          - "Discovery"
+          - "Credential Access"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1557"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Adversary-in-the-Middle"
     condition: all
     rules:
       - 'c:sysctl net.ipv4.conf.all.secure_redirects -> r:=\s*\t*0$'
@@ -2952,16 +3021,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
+      subtechnique:
+        id:
+          - "T1685.006"
+        name:
+          - "Clear Linux or Mac System Logs"
     condition: all
     rules:
       - 'c:sysctl net.ipv4.conf.all.log_martians -> r:=\s*\t*1$'
@@ -2988,16 +3064,21 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0040"
         name:
-          - "Discovery"
+          - "Impact"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1498"
+          - "T1499"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Network Denial of Service"
+          - "Endpoint Denial of Service"
+      subtechnique:
+        id:
+          - "T1499.001"
+        name:
+          - "OS Exhaustion Flood"
     condition: all
     rules:
       - 'c:sysctl net.ipv4.icmp_echo_ignore_broadcasts -> r:=\s*\t*1$'
@@ -3022,16 +3103,21 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0040"
         name:
-          - "Discovery"
+          - "Impact"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1498"
+          - "T1499"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Network Denial of Service"
+          - "Endpoint Denial of Service"
+      subtechnique:
+        id:
+          - "T1499.001"
+        name:
+          - "OS Exhaustion Flood"
     condition: all
     rules:
       - 'c:sysctl net.ipv4.icmp_ignore_bogus_error_responses -> r:=\s*\t*1$'
@@ -3056,16 +3142,16 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0006"
+          - "TA0009"
         name:
-          - "Discovery"
+          - "Credential Access"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1557"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Adversary-in-the-Middle"
     condition: all
     rules:
       - 'c:sysctl net.ipv4.conf.all.rp_filter -> r:=\s*\t*1$'
@@ -3092,16 +3178,21 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0040"
         name:
-          - "Discovery"
+          - "Impact"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1498"
+          - "T1499"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Network Denial of Service"
+          - "Endpoint Denial of Service"
+      subtechnique:
+        id:
+          - "T1499.001"
+        name:
+          - "OS Exhaustion Flood"
     condition: all
     rules:
       - 'c:sysctl net.ipv4.tcp_syncookies -> r:=\s*\t*1$'
@@ -3126,16 +3217,16 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0006"
+          - "TA0009"
         name:
-          - "Discovery"
+          - "Credential Access"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1557"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Adversary-in-the-Middle"
     condition: all
     rules:
       - 'c:sysctl net.ipv6.conf.all.accept_ra -> r:=\s*\t*0$'
@@ -3162,16 +3253,16 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0006"
+          - "TA0009"
         name:
-          - "Discovery"
+          - "Credential Access"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1557"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Adversary-in-the-Middle"
     condition: all
     rules:
       - 'c:sysctl net.ipv6.conf.all.accept_redirects -> r:=\s*\t*0$'
@@ -3198,16 +3289,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0004"
+          - "TA0008"
         name:
-          - "Discovery"
+          - "Privilege Escalation"
+          - "Lateral Movement"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1068"
+          - "T1210"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploitation for Privilege Escalation"
+          - "Exploitation of Remote Services"
     condition: none
     rules:
       - 'f:/boot/grub/grub.cfg -> r:^\s*linux && !r:ipv6\.disable=1'
@@ -3231,16 +3324,20 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0003"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Persistence"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1686"
+          - "T1133"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify System Firewall"
+          - "External Remote Services"
     condition: all
     rules:
       - "c:dpkg -s tcpd -> r:install ok installed"
@@ -3264,16 +3361,20 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0003"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Persistence"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1686"
+          - "T1133"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify System Firewall"
+          - "External Remote Services"
     condition: all
     rules:
       - "f:/etc/hosts.allow"
@@ -3297,16 +3398,20 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0003"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Persistence"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1686"
+          - "T1133"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify System Firewall"
+          - "External Remote Services"
     condition: all
     rules:
       - "f:/etc/hosts.deny"
@@ -3331,16 +3436,20 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0003"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Persistence"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1686"
+          - "T1133"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify System Firewall"
+          - "External Remote Services"
     condition: all
     rules:
       - 'c:stat /etc/hosts.allow -> r:^Access: \(0644/-rw-r--r--\)\s*\t*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)$'
@@ -3364,16 +3473,20 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0003"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Persistence"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1686"
+          - "T1133"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify System Firewall"
+          - "External Remote Services"
     condition: all
     rules:
       - 'c:stat /etc/hosts.deny -> r:^Access: \(0644/-rw-r--r--\)\s*\t*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)$'
@@ -3397,16 +3510,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0004"
+          - "TA0008"
         name:
-          - "Discovery"
+          - "Privilege Escalation"
+          - "Lateral Movement"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1068"
+          - "T1210"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploitation for Privilege Escalation"
+          - "Exploitation of Remote Services"
     condition: none
     rules:
       - "not c:modprobe -n -v dccp -> r:install /bin/true"
@@ -3431,16 +3546,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0004"
+          - "TA0008"
         name:
-          - "Discovery"
+          - "Privilege Escalation"
+          - "Lateral Movement"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1068"
+          - "T1210"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploitation for Privilege Escalation"
+          - "Exploitation of Remote Services"
     condition: none
     rules:
       - "not c:modprobe -n -v sctp -> r:install /bin/true"
@@ -3465,16 +3582,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0004"
+          - "TA0008"
         name:
-          - "Discovery"
+          - "Privilege Escalation"
+          - "Lateral Movement"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1068"
+          - "T1210"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploitation for Privilege Escalation"
+          - "Exploitation of Remote Services"
     condition: none
     rules:
       - "not c:modprobe -n -v rds -> r:install /bin/true"
@@ -3499,16 +3618,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0004"
+          - "TA0008"
         name:
-          - "Discovery"
+          - "Privilege Escalation"
+          - "Lateral Movement"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1068"
+          - "T1210"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploitation for Privilege Escalation"
+          - "Exploitation of Remote Services"
     condition: none
     rules:
       - "not c:modprobe -n -v tipc -> r:install /bin/true"
@@ -3535,16 +3656,24 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0112"
+          - "TA0003"
+          - "TA0001"
           - "TA0007"
         name:
+          - "Defense Impairment"
+          - "Persistence"
+          - "Initial Access"
           - "Discovery"
       technique:
         id:
+          - "T1686"
+          - "T1133"
           - "T1046"
-          - "T1087"
         name:
+          - "Disable or Modify System Firewall"
+          - "External Remote Services"
           - "Network Service Discovery"
-          - "Account Discovery"
     condition: all
     rules:
       - "c:iptables -L -> r:^Chain INPUT && r:policy DROP"
@@ -3570,16 +3699,24 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0112"
+          - "TA0003"
+          - "TA0001"
           - "TA0007"
         name:
+          - "Defense Impairment"
+          - "Persistence"
+          - "Initial Access"
           - "Discovery"
       technique:
         id:
+          - "T1686"
+          - "T1133"
           - "T1046"
-          - "T1087"
         name:
+          - "Disable or Modify System Firewall"
+          - "External Remote Services"
           - "Network Service Discovery"
-          - "Account Discovery"
     condition: all
     rules:
       - 'c:iptables -L INPUT -v -n -> r:.*ACCEPT.*all.*lo.*\*.*0\.0\.0\.0/0.*0\.0\.0\.0/0'
@@ -3609,16 +3746,25 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
+      subtechnique:
+        id:
+          - "T1685.004"
+          - "T1685.006"
+        name:
+          - "Disable or Modify Linux Audit System Log"
+          - "Clear Linux or Mac System Logs"
     condition: all
     rules:
       - "d:/etc/audit"
@@ -3644,16 +3790,25 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
+      subtechnique:
+        id:
+          - "T1685.004"
+          - "T1685.006"
+        name:
+          - "Disable or Modify Linux Audit System Log"
+          - "Clear Linux or Mac System Logs"
     condition: all
     rules:
       - "d:/etc/audit"
@@ -3681,16 +3836,25 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
+      subtechnique:
+        id:
+          - "T1685.004"
+          - "T1685.006"
+        name:
+          - "Disable or Modify Linux Audit System Log"
+          - "Clear Linux or Mac System Logs"
     condition: all
     rules:
       - "d:/etc/audit"
@@ -3716,16 +3880,25 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
+      subtechnique:
+        id:
+          - "T1685.004"
+          - "T1685.006"
+        name:
+          - "Disable or Modify Linux Audit System Log"
+          - "Clear Linux or Mac System Logs"
     condition: all
     rules:
       - "c:systemctl is-enabled auditd -> enabled"
@@ -3749,16 +3922,25 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
+      subtechnique:
+        id:
+          - "T1685.004"
+          - "T1685.006"
+        name:
+          - "Disable or Modify Linux Audit System Log"
+          - "Clear Linux or Mac System Logs"
     condition: none
     rules:
       - 'f:/boot/grub/grub.cfg -> r:^\s*\t*linux && !r:audit=1'
@@ -3782,16 +3964,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
+      subtechnique:
+        id:
+          - "T1685.004"
+        name:
+          - "Disable or Modify Linux Audit System Log"
     condition: all
     rules:
       - "d:/etc/audit"
@@ -3819,16 +4008,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
+      subtechnique:
+        id:
+          - "T1685.004"
+        name:
+          - "Disable or Modify Linux Audit System Log"
     condition: all
     rules:
       - "d:/etc/audit"
@@ -3858,16 +4054,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
+      subtechnique:
+        id:
+          - "T1685.004"
+        name:
+          - "Disable or Modify Linux Audit System Log"
     condition: all
     rules:
       - "d:/etc/audit"
@@ -3897,16 +4100,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
+      subtechnique:
+        id:
+          - "T1685.004"
+        name:
+          - "Disable or Modify Linux Audit System Log"
     condition: all
     rules:
       - "d:/etc/audit"
@@ -3933,16 +4143,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
+      subtechnique:
+        id:
+          - "T1685.004"
+        name:
+          - "Disable or Modify Linux Audit System Log"
     condition: all
     rules:
       - "d:/etc/audit"
@@ -3970,16 +4187,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
+      subtechnique:
+        id:
+          - "T1685.004"
+        name:
+          - "Disable or Modify Linux Audit System Log"
     condition: all
     rules:
       - "d:/etc/audit"
@@ -4007,16 +4231,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
+      subtechnique:
+        id:
+          - "T1685.004"
+        name:
+          - "Disable or Modify Linux Audit System Log"
     condition: all
     rules:
       - "d:/etc/audit"
@@ -4044,16 +4275,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
+      subtechnique:
+        id:
+          - "T1685.004"
+        name:
+          - "Disable or Modify Linux Audit System Log"
     condition: all
     rules:
       - "d:/etc/audit"
@@ -4080,16 +4318,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
+      subtechnique:
+        id:
+          - "T1685.004"
+        name:
+          - "Disable or Modify Linux Audit System Log"
     condition: all
     rules:
       - "d:/etc/audit"
@@ -4115,16 +4360,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
+      subtechnique:
+        id:
+          - "T1685.004"
+        name:
+          - "Disable or Modify Linux Audit System Log"
     condition: all
     rules:
       - "d:/etc/audit"
@@ -4150,16 +4402,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
+      subtechnique:
+        id:
+          - "T1685.004"
+        name:
+          - "Disable or Modify Linux Audit System Log"
     condition: all
     rules:
       - "d:/etc/audit"
@@ -4186,16 +4445,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
+      subtechnique:
+        id:
+          - "T1685.004"
+        name:
+          - "Disable or Modify Linux Audit System Log"
     condition: all
     rules:
       - "d:/etc/audit"
@@ -4221,16 +4487,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
+      subtechnique:
+        id:
+          - "T1685.004"
+        name:
+          - "Disable or Modify Linux Audit System Log"
     condition: all
     rules:
       - "d:/etc/audit"
@@ -4259,16 +4532,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
+      subtechnique:
+        id:
+          - "T1685.004"
+        name:
+          - "Disable or Modify Linux Audit System Log"
     condition: all
     rules:
       - "d:/etc/audit"
@@ -4294,16 +4574,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
+      subtechnique:
+        id:
+          - "T1685.006"
+        name:
+          - "Clear Linux or Mac System Logs"
     condition: all
     rules:
       - "c:systemctl is-enabled rsyslog -> enabled"
@@ -4328,16 +4615,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
+      subtechnique:
+        id:
+          - "T1685.006"
+        name:
+          - "Clear Linux or Mac System Logs"
     condition: any
     rules:
       - 'f:/etc/rsyslog.conf -> r:^\$FileCreateMode 06\d0|^\$FileCreateMode 04\d0|^\$FileCreateMode 02\d0|^\$FileCreateMode 00\d0 && r:^\$FileCreateMode 0\d40|^\$FileCreateMode 0\d00'
@@ -4362,16 +4656,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
+      subtechnique:
+        id:
+          - "T1685.006"
+        name:
+          - "Clear Linux or Mac System Logs"
     references:
       - rsyslog.conf(5) man page
     condition: all
@@ -4397,16 +4698,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
+      subtechnique:
+        id:
+          - "T1685.006"
+        name:
+          - "Clear Linux or Mac System Logs"
     references:
       - rsyslog.conf(8) man page
     condition: all
@@ -4434,16 +4742,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
+      subtechnique:
+        id:
+          - "T1685.006"
+        name:
+          - "Clear Linux or Mac System Logs"
     condition: all
     rules:
       - "c:systemctl is-enabled syslog-ng -> enabled"
@@ -4468,16 +4783,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
+      subtechnique:
+        id:
+          - "T1685.006"
+        name:
+          - "Clear Linux or Mac System Logs"
     condition: all
     rules:
       - 'f:/etc/syslog-ng/syslog-ng.conf -> r:^options && r:perm\(06\d0\)|perm\(04\d0\)|perm\(02\d0\)|perm\(00\d0\) && r:perm\(0\d40\)|perm\(0\d00\)'
@@ -4502,16 +4824,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
+      subtechnique:
+        id:
+          - "T1685.006"
+        name:
+          - "Clear Linux or Mac System Logs"
     condition: all
     rules:
       - "f:/etc/syslog-ng/syslog-ng.conf -> r:destination logserver"
@@ -4537,16 +4866,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
+      subtechnique:
+        id:
+          - "T1685.006"
+        name:
+          - "Clear Linux or Mac System Logs"
     condition: any
     rules:
       - "c:dpkg -s rsyslog -> r:install ok installed"
@@ -4575,16 +4911,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
         name:
-          - "Discovery"
+          - "Defense Impairment"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
     condition: all
     rules:
       - "c:systemctl is-enabled cron -> enabled"
@@ -4609,16 +4943,25 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0002"
+          - "TA0003"
+          - "TA0004"
         name:
-          - "Discovery"
+          - "Execution"
+          - "Persistence"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1053"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Scheduled Task/Job"
+      subtechnique:
+        id:
+          - "T1053.003"
+          - "T1053.002"
+        name:
+          - "Cron"
+          - "At"
     condition: all
     rules:
       - 'c:stat /etc/crontab -> r:^Access: \(0\d00/[\w@-][\w@-][\w@-]-------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
@@ -4643,17 +4986,25 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0002"
+          - "TA0003"
+          - "TA0004"
         name:
-          - "Discovery"
+          - "Execution"
+          - "Persistence"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1053"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
-
+          - "Scheduled Task/Job"
+      subtechnique:
+        id:
+          - "T1053.003"
+          - "T1053.002"
+        name:
+          - "Cron"
+          - "At"
     condition: all
     rules:
       - 'c:stat /etc/cron.hourly -> r:^Access: \(0\d00/[\w@-][\w@-][\w@-][\w@-]------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
@@ -4678,16 +5029,25 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0002"
+          - "TA0003"
+          - "TA0004"
         name:
-          - "Discovery"
+          - "Execution"
+          - "Persistence"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1053"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Scheduled Task/Job"
+      subtechnique:
+        id:
+          - "T1053.003"
+          - "T1053.002"
+        name:
+          - "Cron"
+          - "At"
     condition: all
     rules:
       - 'c:stat /etc/cron.daily -> r:^Access: \(0\d00/[\w@-][\w@-][\w@-][\w@-]------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
@@ -4712,16 +5072,25 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0002"
+          - "TA0003"
+          - "TA0004"
         name:
-          - "Discovery"
+          - "Execution"
+          - "Persistence"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1053"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Scheduled Task/Job"
+      subtechnique:
+        id:
+          - "T1053.003"
+          - "T1053.002"
+        name:
+          - "Cron"
+          - "At"
     condition: all
     rules:
       - 'c:stat /etc/cron.weekly -> r:^Access: \(0\d00/[\w@-][\w@-][\w@-][\w@-]------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
@@ -4746,16 +5115,25 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0002"
+          - "TA0003"
+          - "TA0004"
         name:
-          - "Discovery"
+          - "Execution"
+          - "Persistence"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1053"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Scheduled Task/Job"
+      subtechnique:
+        id:
+          - "T1053.003"
+          - "T1053.002"
+        name:
+          - "Cron"
+          - "At"
     condition: all
     rules:
       - 'c:stat /etc/cron.monthly -> r:^Access: \(0\d00/[\w@-][\w@-][\w@-][\w@-]------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
@@ -4780,16 +5158,25 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0002"
+          - "TA0003"
+          - "TA0004"
         name:
-          - "Discovery"
+          - "Execution"
+          - "Persistence"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1053"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Scheduled Task/Job"
+      subtechnique:
+        id:
+          - "T1053.003"
+          - "T1053.002"
+        name:
+          - "Cron"
+          - "At"
     condition: all
     rules:
       - 'c:stat /etc/cron.d -> r:^Access: \(0\d00/[\w@-][\w@-][\w@-][\w@-]------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
@@ -4813,16 +5200,25 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0002"
+          - "TA0003"
+          - "TA0004"
         name:
-          - "Discovery"
+          - "Execution"
+          - "Persistence"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1053"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Scheduled Task/Job"
+      subtechnique:
+        id:
+          - "T1053.003"
+          - "T1053.002"
+        name:
+          - "Cron"
+          - "At"
     condition: all
     rules:
       - "f:/etc/cron.allow"
@@ -4853,16 +5249,22 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0003"
+          - "TA0006"
+          - "TA0004"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Persistence"
+          - "Credential Access"
+          - "Privilege Escalation"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1556"
+          - "T1098"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Modify Authentication Process"
+          - "Account Manipulation"
     condition: all
     rules:
       - 'c:stat /etc/ssh/sshd_config -> r:^Access: \(0\d00/[\w@-][\w@-][\w@-][\w@-]------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
@@ -4886,16 +5288,20 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0006"
           - "TA0007"
+          - "TA0009"
         name:
+          - "Credential Access"
           - "Discovery"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1040"
+          - "T1557"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Network Sniffing"
+          - "Adversary-in-the-Middle"
     condition: all
     rules:
       - 'f:/etc/ssh/sshd_config -> !r:^# && r:Protocol\s*\t*2'
@@ -4921,16 +5327,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
     condition: all
     rules:
       - 'f:/etc/ssh/sshd_config -> r:^\s*LogLevel\s+INFO'
@@ -4954,16 +5362,16 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0011"
         name:
-          - "Discovery"
+          - "Command and Control"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1572"
+          - "T1090"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Protocol Tunneling"
+          - "Proxy"
     condition: all
     rules:
       - 'f:/etc/ssh/sshd_config -> r:^\s*X11Forwarding\s+no'
@@ -4987,16 +5395,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0006"
+          - "TA0040"
         name:
-          - "Discovery"
+          - "Credential Access"
+          - "Impact"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1110"
+          - "T1499"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Brute Force"
+          - "Endpoint Denial of Service"
+      subtechnique:
+        id:
+          - "T1110.001"
+        name:
+          - "Password Guessing"
     condition: all
     rules:
       - 'f:/etc/ssh/sshd_config -> n:^\s*MaxAuthTries\s*\t*(\d+) compare <= 4'
@@ -5020,16 +5435,20 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
     condition: all
     rules:
       - 'f:/etc/ssh/sshd_config -> r:^\s*IgnoreRhosts\s+yes'
@@ -5053,16 +5472,20 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
     condition: all
     rules:
       - 'f:/etc/ssh/sshd_config -> r:^\s*HostbasedAuthentication\s+no'
@@ -5086,16 +5509,31 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0008"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Lateral Movement"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1021"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Remote Services"
+      subtechnique:
+        id:
+          - "T1078.003"
+          - "T1021.004"
+        name:
+          - "Local Accounts"
+          - "SSH"
     condition: all
     rules:
       - 'f:/etc/ssh/sshd_config -> r:^\s*PermitRootLogin\s+no'
@@ -5119,16 +5557,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1110"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Brute Force"
+      subtechnique:
+        id:
+          - "T1110.001"
+        name:
+          - "Password Guessing"
     condition: all
     rules:
       - 'f:/etc/ssh/sshd_config -> r:^\s*PermitEmptyPasswords\s+no'
@@ -5152,16 +5593,21 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0002"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Execution"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1574"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Hijack Execution Flow"
+      subtechnique:
+        id:
+          - "T1574.006"
+        name:
+          - "Dynamic Linker Hijacking"
     condition: all
     rules:
       - 'f:/etc/ssh/sshd_config -> r:^\s*PermitUserEnvironment\s+no'
@@ -5185,16 +5631,20 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0006"
           - "TA0007"
+          - "TA0009"
         name:
+          - "Credential Access"
           - "Discovery"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1040"
+          - "T1557"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Network Sniffing"
+          - "Adversary-in-the-Middle"
     reference:
       - "http://www.mitls.org/pages/attacks/SLOTH"
     condition: none
@@ -5220,16 +5670,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0008"
         name:
-          - "Discovery"
+          - "Lateral Movement"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1021"
+          - "T1563"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Remote Services"
+          - "Remote Service Session Hijacking"
+      subtechnique:
+        id:
+          - "T1021.004"
+          - "T1563.001"
+        name:
+          - "SSH"
+          - "SSH Hijacking"
     condition: all
     rules:
       - 'f:/etc/ssh/sshd_config -> n:ClientAliveInterval\s*\t*(\d+) compare <= 300 && n:ClientAliveInterval\s*\t*(\d+) compare != 0'
@@ -5254,16 +5711,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0006"
+          - "TA0040"
         name:
-          - "Discovery"
+          - "Credential Access"
+          - "Impact"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1110"
+          - "T1499"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Brute Force"
+          - "Endpoint Denial of Service"
+      subtechnique:
+        id:
+          - "T1110.001"
+        name:
+          - "Password Guessing"
     condition: all
     rules:
       - 'f:/etc/ssh/sshd_config -> n:LoginGraceTime\s*\t*(\d+) compare <= 60 && n:LoginGraceTime\s*\t*(\d+) compare != 0'
@@ -5287,16 +5751,29 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0008"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Lateral Movement"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1021"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Remote Services"
+      subtechnique:
+        id:
+          - "T1021.004"
+        name:
+          - "SSH"
     condition: all
     rules:
       - 'f:/etc/ssh/sshd_config -> r:AllowUsers\s+[\w@-]+|AllowGroups\s+[\w@-]+|DenyUsers\s+[\w@-]+|DenyGroups\s+[\w@-]+'
@@ -5325,11 +5802,9 @@ checks:
           - "Discovery"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1082"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "System Information Discovery"
     condition: all
     rules:
       - 'f:/etc/ssh/sshd_config -> r:Banner\s*\t*/etc/issue\.net'
@@ -5355,16 +5830,21 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1110"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Brute Force"
+      subtechnique:
+        id:
+          - "T1110.001"
+          - "T1110.002"
+        name:
+          - "Password Guessing"
+          - "Password Cracking"
     condition: all
     rules:
       - "c:dpkg -s libpam-pwquality -> r:install ok installed"
@@ -5390,16 +5870,21 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1110"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Brute Force"
+      subtechnique:
+        id:
+          - "T1110.001"
+          - "T1110.003"
+        name:
+          - "Password Guessing"
+          - "Password Spraying"
     condition: all
     rules:
       - 'f:/etc/pam.d/common-auth -> !r:^# && r:auth\s*\t*required\s*\t*pam_tally2\.so && r:onerr=fail && r:audit && r:silent && r:deny\s*=\s*\d+ && r:unlock_time\s*=\s*\d+'
@@ -5423,16 +5908,31 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1110"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Brute Force"
+      subtechnique:
+        id:
+          - "T1078.003"
+          - "T1110.004"
+        name:
+          - "Local Accounts"
+          - "Credential Stuffing"
     condition: none
     rules:
       - 'f:/etc/pam.d/common-password -> !r:^# && r:password\s*\t*required\s*\t*pam_pwhistory\.so && n:remember\s*\t*=\s*\t*(\d+) compare < 5'
@@ -5458,16 +5958,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1110"
+          - "T1003"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Brute Force"
+          - "OS Credential Dumping"
+      subtechnique:
+        id:
+          - "T1110.002"
+          - "T1003.008"
+        name:
+          - "Password Cracking"
+          - "/etc/passwd and /etc/shadow"
     condition: none
     rules:
       - 'f:/etc/pam.d/common-password -> r:^password.+pam_unix\.so && !r:sha512'
@@ -5493,16 +6000,31 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1110"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Brute Force"
+      subtechnique:
+        id:
+          - "T1078.003"
+          - "T1110.004"
+        name:
+          - "Local Accounts"
+          - "Credential Stuffing"
     condition: all
     rules:
       - 'f:/etc/login.defs -> n:^\s*\t*PASS_MAX_DAYS\s*\t*(\d+) compare <= 365'
@@ -5527,16 +6049,31 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1110"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Brute Force"
+      subtechnique:
+        id:
+          - "T1078.003"
+          - "T1110.004"
+        name:
+          - "Local Accounts"
+          - "Credential Stuffing"
     condition: all
     rules:
       - 'f:/etc/login.defs -> n:^\s*\t*PASS_MIN_DAYS\s*\t*(\d+) compare >= 7'
@@ -5560,16 +6097,31 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1110"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Brute Force"
+      subtechnique:
+        id:
+          - "T1078.003"
+          - "T1110.004"
+        name:
+          - "Local Accounts"
+          - "Credential Stuffing"
     condition: all
     rules:
       - 'f:/etc/login.defs -> n:^\s*\t*PASS_WARN_AGE\s*\t*(\d+) compare >= 7'
@@ -5593,16 +6145,31 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1110"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Brute Force"
+      subtechnique:
+        id:
+          - "T1078.003"
+          - "T1110.004"
+        name:
+          - "Local Accounts"
+          - "Credential Stuffing"
     condition: all
     rules:
       - 'c:useradd -D -> n:^INACTIVE=(\d+) compare <= 30'
@@ -5627,16 +6194,27 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+      subtechnique:
+        id:
+          - "T1078.001"
+          - "T1078.003"
+        name:
+          - "Default Accounts"
+          - "Local Accounts"
     condition: all
     rules:
       - 'f:/etc/passwd -> !r:^# && r:root:[\w@-]+:[\w@-]+:0:'
@@ -5660,16 +6238,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
         name:
-          - "Discovery"
+          - "Defense Impairment"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1222"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "File and Directory Permissions Modification"
+      subtechnique:
+        id:
+          - "T1222.002"
+        name:
+          - "Linux and Mac Permissions"
     condition: none
     rules:
       - 'f:/etc/bash.bashrc -> !r:^\s*\t*# && r:umask \d0\d|umask \d1\d|umask \d4\d|umask \d5\d'
@@ -5699,16 +6280,25 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+      subtechnique:
+        id:
+          - "T1078.003"
+        name:
+          - "Local Accounts"
     condition: all
     rules:
       - 'f:/etc/bashrc -> n:^\s*\t*TMOUT\s*\t*=\s*\t*(\d+) compare <= 900'
@@ -5733,16 +6323,27 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0004"
+          - "TA0005"
+          - "TA0003"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Privilege Escalation"
+          - "Stealth"
+          - "Persistence"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1548"
+          - "T1078"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Abuse Elevation Control Mechanism"
+          - "Valid Accounts"
+      subtechnique:
+        id:
+          - "T1078.003"
+        name:
+          - "Local Accounts"
     condition: all
     rules:
       - 'f:/etc/pam.d/su -> !r:^# && r:auth\s*\t*required\s*\t*pam_wheel\.so'
@@ -5771,16 +6372,31 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0006"
+          - "TA0003"
+          - "TA0004"
+          - "TA0112"
         name:
-          - "Discovery"
+          - "Credential Access"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Defense Impairment"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1003"
+          - "T1098"
+          - "T1222"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "OS Credential Dumping"
+          - "Account Manipulation"
+          - "File and Directory Permissions Modification"
+      subtechnique:
+        id:
+          - "T1003.008"
+          - "T1222.002"
+        name:
+          - "/etc/passwd and /etc/shadow"
+          - "Linux and Mac Permissions"
     condition: all
     rules:
       - 'c:stat /etc/passwd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
@@ -5804,16 +6420,31 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0006"
+          - "TA0003"
+          - "TA0004"
+          - "TA0112"
         name:
-          - "Discovery"
+          - "Credential Access"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Defense Impairment"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1003"
+          - "T1098"
+          - "T1222"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "OS Credential Dumping"
+          - "Account Manipulation"
+          - "File and Directory Permissions Modification"
+      subtechnique:
+        id:
+          - "T1003.008"
+          - "T1222.002"
+        name:
+          - "/etc/passwd and /etc/shadow"
+          - "Linux and Mac Permissions"
     condition: all
     rules:
       - 'c:stat /etc/shadow -> r:Access:\s*\(0\d\d0/-[\w@-][\w@-]-[\w@-]-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
@@ -5837,16 +6468,31 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0006"
+          - "TA0003"
+          - "TA0004"
+          - "TA0112"
         name:
-          - "Discovery"
+          - "Credential Access"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Defense Impairment"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1003"
+          - "T1098"
+          - "T1222"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "OS Credential Dumping"
+          - "Account Manipulation"
+          - "File and Directory Permissions Modification"
+      subtechnique:
+        id:
+          - "T1003.008"
+          - "T1222.002"
+        name:
+          - "/etc/passwd and /etc/shadow"
+          - "Linux and Mac Permissions"
     condition: all
     rules:
       - 'c:stat /etc/group -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
@@ -5870,16 +6516,31 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0006"
+          - "TA0003"
+          - "TA0004"
+          - "TA0112"
         name:
-          - "Discovery"
+          - "Credential Access"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Defense Impairment"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1003"
+          - "T1098"
+          - "T1222"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "OS Credential Dumping"
+          - "Account Manipulation"
+          - "File and Directory Permissions Modification"
+      subtechnique:
+        id:
+          - "T1003.008"
+          - "T1222.002"
+        name:
+          - "/etc/passwd and /etc/shadow"
+          - "Linux and Mac Permissions"
     condition: all
     rules:
       - 'c:stat /etc/gshadow -> r:Access:\s*\(0\d\d0/-[\w@-][\w@-]-[\w@-]-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
@@ -5903,16 +6564,31 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0006"
+          - "TA0003"
+          - "TA0004"
+          - "TA0112"
         name:
-          - "Discovery"
+          - "Credential Access"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Defense Impairment"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1003"
+          - "T1098"
+          - "T1222"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "OS Credential Dumping"
+          - "Account Manipulation"
+          - "File and Directory Permissions Modification"
+      subtechnique:
+        id:
+          - "T1003.008"
+          - "T1222.002"
+        name:
+          - "/etc/passwd and /etc/shadow"
+          - "Linux and Mac Permissions"
     condition: all
     rules:
       - 'c:stat /etc/passwd- -> r:Access:\s*\(0\d\d\d/-[\w@-][\w@-]-[\w@-]--[\w@-]--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
@@ -5936,16 +6612,31 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0006"
+          - "TA0003"
+          - "TA0004"
+          - "TA0112"
         name:
-          - "Discovery"
+          - "Credential Access"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Defense Impairment"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1003"
+          - "T1098"
+          - "T1222"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "OS Credential Dumping"
+          - "Account Manipulation"
+          - "File and Directory Permissions Modification"
+      subtechnique:
+        id:
+          - "T1003.008"
+          - "T1222.002"
+        name:
+          - "/etc/passwd and /etc/shadow"
+          - "Linux and Mac Permissions"
     condition: all
     rules:
       - 'c:stat /etc/shadow- -> r:Access:\s*\(0\d\d0/-[\w@-][\w@-]-[\w@-]-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
@@ -5969,16 +6660,31 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0006"
+          - "TA0003"
+          - "TA0004"
+          - "TA0112"
         name:
-          - "Discovery"
+          - "Credential Access"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Defense Impairment"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1003"
+          - "T1098"
+          - "T1222"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "OS Credential Dumping"
+          - "Account Manipulation"
+          - "File and Directory Permissions Modification"
+      subtechnique:
+        id:
+          - "T1003.008"
+          - "T1222.002"
+        name:
+          - "/etc/passwd and /etc/shadow"
+          - "Linux and Mac Permissions"
     condition: all
     rules:
       - 'c:stat /etc/group- -> r:Access:\s*\(0\d\d\d/-[\w@-][\w@-]-[\w@-]--[\w@-]--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
@@ -6002,16 +6708,31 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0006"
+          - "TA0003"
+          - "TA0004"
+          - "TA0112"
         name:
-          - "Discovery"
+          - "Credential Access"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Defense Impairment"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1003"
+          - "T1098"
+          - "T1222"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "OS Credential Dumping"
+          - "Account Manipulation"
+          - "File and Directory Permissions Modification"
+      subtechnique:
+        id:
+          - "T1003.008"
+          - "T1222.002"
+        name:
+          - "/etc/passwd and /etc/shadow"
+          - "Linux and Mac Permissions"
     condition: all
     rules:
       - 'c:stat /etc/gshadow- -> r:Access:\s*\(0\d\d0/-[\w@-][\w@-]-[\w@-]-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
@@ -6037,16 +6758,31 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0003"
+          - "TA0004"
+          - "TA0005"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Stealth"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1098"
+          - "T1078"
+          - "T1136"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Account Manipulation"
+          - "Valid Accounts"
+          - "Create Account"
+      subtechnique:
+        id:
+          - "T1078.003"
+          - "T1136.001"
+        name:
+          - "Local Accounts"
+          - "Local Account"
     condition: none
     rules:
       - 'f:/etc/shadow -> r:^[\w@-]+::'
@@ -6070,16 +6806,31 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0003"
+          - "TA0004"
+          - "TA0005"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Stealth"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1098"
+          - "T1078"
+          - "T1136"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Account Manipulation"
+          - "Valid Accounts"
+          - "Create Account"
+      subtechnique:
+        id:
+          - "T1078.003"
+          - "T1136.001"
+        name:
+          - "Local Accounts"
+          - "Local Account"
     condition: none
     rules:
       - "f:/etc/passwd -> !r:^# && r:^\\+:"
@@ -6103,16 +6854,31 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0003"
+          - "TA0004"
+          - "TA0005"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Stealth"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1098"
+          - "T1078"
+          - "T1136"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Account Manipulation"
+          - "Valid Accounts"
+          - "Create Account"
+      subtechnique:
+        id:
+          - "T1078.003"
+          - "T1136.001"
+        name:
+          - "Local Accounts"
+          - "Local Account"
     condition: none
     rules:
       - "f:/etc/shadow -> !r:^# && r:^\\+:"
@@ -6136,16 +6902,31 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0003"
+          - "TA0004"
+          - "TA0005"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Stealth"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1098"
+          - "T1078"
+          - "T1136"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Account Manipulation"
+          - "Valid Accounts"
+          - "Create Account"
+      subtechnique:
+        id:
+          - "T1078.003"
+          - "T1136.001"
+        name:
+          - "Local Accounts"
+          - "Local Account"
     condition: none
     rules:
       - "f:/etc/group -> !r:^# && r:^\\+:"
@@ -6169,16 +6950,31 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1098"
+          - "T1136"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Account Manipulation"
+          - "Create Account"
+      subtechnique:
+        id:
+          - "T1078.003"
+          - "T1136.001"
+        name:
+          - "Local Accounts"
+          - "Local Account"
     condition: none
     rules:
       - 'f:/etc/passwd -> !r:^# && !r:^root: && r:^[\w@-]+:[\w@-]+:0:'
@@ -6202,16 +6998,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1003"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "OS Credential Dumping"
+      subtechnique:
+        id:
+          - "T1003.008"
+        name:
+          - "/etc/passwd and /etc/shadow"
     condition: none
     rules:
       - 'f:/etc/group -> !r:^# && r:shadow:[\w@-]*:[\w@-]*:\S+'

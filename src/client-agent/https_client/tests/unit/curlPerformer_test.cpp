@@ -1,7 +1,6 @@
 /*
  * Wazuh agent HTTPS client (C++ transport module)
- * Copyright (C) 2015, Wazuh Inc.
- * July 17, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -175,7 +174,7 @@ TEST(CurlPerformerTest, AnInMemoryResponseWithoutACapStaysUnbounded)
     const auto config = makeConfig(HC_VERIFY_NONE);
 
     HttpRequestSpec spec;
-    spec.target = "/stateless";
+    spec.target = "/uncapped";
 
     EXPECT_CALL(*handle, captureResponseBody(NotNull(), 0u));
     EXPECT_CALL(*handle, perform()).WillOnce(Return(TransportStatus::Ok));

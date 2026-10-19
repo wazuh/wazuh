@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _MOCKS_ISTREAMLOG_HPP
 #define _MOCKS_ISTREAMLOG_HPP
 

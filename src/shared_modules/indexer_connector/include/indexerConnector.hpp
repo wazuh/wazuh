@@ -1,12 +1,13 @@
 /*
  * Wazuh - Indexer connector.
- * Copyright (C) 2015, Wazuh Inc.
- * June 2, 2023.
+ * Copyright (C) Wazuh Inc.
  *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of either the GNU General Public License, version 2, or
+ * the GNU Affero General Public License, version 3 or (at your option) any
+ * later version, both as published by the Free Software Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
 #ifndef _INDEXER_CONNECTOR_HPP
@@ -657,10 +658,12 @@ public:
      */
     enum class Category
     {
-        Other,            ///< Hard rejection or unexpected state (non-retryable status, bad split).
-        DocumentRejected, ///< The indexer answered but rejected documents, left them undeleted, or
-                          ///< returned a body that confirms nothing.
-        RetryExhausted    ///< The retry budget ran out on a retryable condition (429, transport).
+        Other,             ///< Hard rejection or unexpected state (non-retryable status, bad split).
+        DocumentRejected,  ///< The indexer answered but rejected documents, left them undeleted, or
+                           ///< returned a body that confirms nothing.
+        RetryExhausted,    ///< The retry budget ran out on a retryable condition (429, transport).
+        ConflictsExhausted ///< A by-query's version-conflict allowance ran out: the documents it
+                           ///< skipped are consistent, a competing writer was still running.
     };
 
 private:

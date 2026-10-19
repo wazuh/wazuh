@@ -1,7 +1,6 @@
 /*
  * Wazuh remoted module (C++ worker bridge)
- * Copyright (C) 2015, Wazuh Inc.
- * July 17, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -726,6 +725,7 @@ private:
             remoted::endpoints::stateful::makeHandler(*m_forwarder,
                                                       inventorySyncSocketPath,
                                                       downstreamConfig.statefulResponseTimeoutMs,
+                                                      downstreamConfig.statefulRetryAfterSec,
                                                       &m_statefulHttpMetrics),
             remoted::http::ResponseMode::Buffered,
             statefulBodyDecoder);

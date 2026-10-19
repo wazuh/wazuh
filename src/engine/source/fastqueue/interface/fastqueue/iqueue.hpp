@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _FASTQUEUE_IQUEUE_HPP
 #define _FASTQUEUE_IQUEUE_HPP
 

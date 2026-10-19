@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef IOCSYNC_IIOCSYNC_HPP
 #define IOCSYNC_IIOCSYNC_HPP
 

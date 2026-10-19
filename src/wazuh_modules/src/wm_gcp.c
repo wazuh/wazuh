@@ -1,7 +1,6 @@
 /*
  * Wazuh Module for Security Configuration Assessment
- * Copyright (C) 2015, Wazuh Inc.
- * January 25, 2019.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -95,6 +94,7 @@ cJSON *wm_gcp_bucket_dump(const wm_gcp_bucket_base *gcp_config);          // Rea
  * @param exit_status Exit code returned by the script
  */
 static void wm_gcp_parse_output(char *output, char *tag, int exit_status);
+static void wm_gcp_report_exec_failure(int status, const char *tag); // Log a command wm_exec() could not run
 
 
 /* Context definition */
@@ -313,18 +313,29 @@ void wm_gcp_pubsub_run(const wm_gcp_pubsub *data) {
 
     os_free(command);
 
-    if (wm_exec_ret_code != 0){
-        mterror(WM_GCP_PUBSUB_LOGTAG, "Internal error. Exiting...");
-        if (wm_exec_ret_code > 0) {
-            os_free(output);
-        }
-        pthread_exit(NULL);
+    if (wm_exec_ret_code != 0) {
+        wm_gcp_report_exec_failure(status, WM_GCP_PUBSUB_LOGTAG);
+        os_free(output);
+        return;
     } else if (status > 0) {
         mtwarn(WM_GCP_PUBSUB_LOGTAG, "Command returned exit code %d", status);
     }
 
     wm_gcp_parse_output(output, WM_GCP_PUBSUB_LOGTAG, status);
     os_free(output);
+}
+
+// Log a command that wm_exec() could not run. It is not fatal to the module: the next scan gets
+// its own attempt.
+
+static void wm_gcp_report_exec_failure(int status, const char *tag) {
+    // The script could not be run. /usr/bin/env, which runs it, also exits with this code when python3 is missing
+    if (status == EXECVE_ERROR) {
+        mterror(tag, "Could not execute '%s' (exit code %d). Check that it and the python3 interpreter it runs with are installed.",
+                WM_GCP_SCRIPT_PATH, status);
+    } else {
+        mterror(tag, "Internal error running the command.");
+    }
 }
 
 static void wm_gcp_parse_output(char *output, char *tag, int exit_status){
@@ -466,12 +477,10 @@ void wm_gcp_bucket_run(wm_gcp_bucket *exec_bucket) {
 
     os_free(command);
 
-    if (wm_exec_ret_code != 0){
-        mterror(WM_GCP_BUCKET_LOGTAG, "Internal error. Exiting...");
-        if (wm_exec_ret_code > 0) {
-            os_free(output);
-        }
-        pthread_exit(NULL);
+    if (wm_exec_ret_code != 0) {
+        wm_gcp_report_exec_failure(status, WM_GCP_BUCKET_LOGTAG);
+        os_free(output);
+        return;
     } else if (status > 0) {
         mtwarn(WM_GCP_BUCKET_LOGTAG, "Command returned exit code %d", status);
     }

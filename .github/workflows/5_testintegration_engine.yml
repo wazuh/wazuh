@@ -147,7 +147,6 @@ jobs:
           name: wazuh-shared-libraries
           path: |
             src/build/lib/libwazuhext.so
-            src/build/lib/libwazuhshared.so
             src/build/lib/libindexer_connector.so
             src/build/lib/libcontent_manager.so
           bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}

@@ -1,5 +1,33 @@
 
- Portions Copyright (C) 2015, Wazuh Inc.
+ Wazuh is distributed under two licenses:
+
+  * The Wazuh engine, the source code under src/engine/ (installed as
+    bin/wazuh-manager-analysisd, and also distributed as the standalone
+    wazuh-engine bundle and the wazuh-internal-tools package), is licensed
+    under the GNU Affero General Public License, version 3 or (at your
+    option) any later version. See src/engine/COPYING-engine for the notice
+    and src/engine/LICENSE-engine for the full license text.
+
+  * The shared libraries that the engine links together with the rest of
+    the manager and the agent are dual-licensed: you may use them under the
+    GNU General Public License (version 2), or under the GNU Affero General
+    Public License, version 3 or (at your option) any later version
+    (SPDX: GPL-2.0-only OR AGPL-3.0-or-later). They are:
+      src/shared_modules/utils/
+      src/shared_modules/manager_config/
+      src/shared_modules/keystore/
+      src/shared_modules/indexer_connector/
+      src/shared_modules/common/
+      src/shared_modules/http-request/ (git submodule wazuh/wazuh-http-request;
+        its COPYING ships with the submodule)
+    Each of these directories carries a COPYING file with this notice.
+
+  * Everything else is licensed under the GNU General Public License
+    (version 2), under the terms stated below.
+
+-----------------------------------------------------------------------------
+
+ Portions Copyright (C) Wazuh Inc.
  Based on work Copyright (C) 2003 - 2013 Trend Micro, Inc.
 
  This program is free software; you can redistribute it and/or modify
@@ -54,7 +82,7 @@
   * version.  If you delete this exception statement from all source
   * files in the program, then also delete it here.
 
- Wazuh HIDS is distributed in the hope that it will be useful, but WITHOUT
+ Wazuh is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  FITNESS FOR A PARTICULAR PURPOSE.
  See the GNU General Public License Version 2 below for more details.

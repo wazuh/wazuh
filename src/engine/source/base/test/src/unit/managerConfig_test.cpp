@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include <gtest/gtest.h>
 
 #include <filesystem>
@@ -126,4 +127,57 @@ TEST_F(ManagerConfigTest, LoadMissingFileThrows)
 
     const auto error = base::managerConfig::validate(m_home, m_file);
     ASSERT_TRUE(error.has_value());
+}
+
+TEST_F(ManagerConfigTest, LogFormatDefault)
+{
+    // No <logging> section: the schema default ["plain"] applies
+    writeConfig(VALID_XML);
+    ASSERT_NO_THROW(base::managerConfig::load(m_home, m_file));
+
+    const auto format = base::managerConfig::logFormat();
+    EXPECT_TRUE(format.plain);
+    EXPECT_FALSE(format.json);
+}
+
+TEST_F(ManagerConfigTest, LogFormatJsonOnly)
+{
+    writeConfig(VALID_XML + "  <logging>\n    <log_format>json</log_format>\n  </logging>\n");
+    ASSERT_NO_THROW(base::managerConfig::load(m_home, m_file));
+
+    const auto format = base::managerConfig::logFormat();
+    EXPECT_FALSE(format.plain);
+    EXPECT_TRUE(format.json);
+}
+
+TEST_F(ManagerConfigTest, LogFormatBoth)
+{
+    writeConfig(VALID_XML + "  <logging>\n    <log_format>json,plain</log_format>\n  </logging>\n");
+    ASSERT_NO_THROW(base::managerConfig::load(m_home, m_file));
+
+    const auto format = base::managerConfig::logFormat();
+    EXPECT_TRUE(format.plain);
+    EXPECT_TRUE(format.json);
+}
+
+TEST_F(ManagerConfigTest, LogFormatInvalid)
+{
+    // The schema only accepts plain/json: an unknown format makes load() fail, and without a document the
+    // default {plain} is answered.
+    writeConfig(VALID_XML + "  <logging>\n    <log_format>syslog</log_format>\n  </logging>\n");
+    EXPECT_THROW(base::managerConfig::load(m_home, m_file), std::runtime_error);
+
+    const auto format = base::managerConfig::logFormat();
+    EXPECT_TRUE(format.plain);
+    EXPECT_FALSE(format.json);
+}
+
+TEST_F(ManagerConfigTest, LogFormatNoSection)
+{
+    // Nothing loaded (standalone mode): no document, no section
+    ASSERT_FALSE(base::managerConfig::isLoaded());
+
+    const auto format = base::managerConfig::logFormat();
+    EXPECT_TRUE(format.plain);
+    EXPECT_FALSE(format.json);
 }

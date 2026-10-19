@@ -4,22 +4,24 @@ set -e
 CONFIG_FILE="/etc/wazuh-indexer/opensearch.yml"
 
 # ----------------------------------------------------------------------------
-# Credentials coherence (FIRST, before the certs are copied: --clear also
-# removes the pem files under /etc/wazuh-indexer/certs).
+# Credentials and TLS, per package: everything the indexer resolves lives under
+# /etc/wazuh-indexer -- its CA in ca/, its pairs in certs/, and what it publishes
+# for the manager and the dashboard in export/ (credentials.env, ca.pem).
 #
-# The image ships no credentials (Dockerfile: --clear + pristine
-# internal_users.yml + no credentials.env); the passwords come from the env
-# (env_file .credentials.env). The resolver's marker (.initialized) lives in the
-# data volume and survives a recreation, while internal_users.yml and
-# credentials.env do not -- so re-resolve whenever the container is new (no
-# credentials.env) or the env passwords changed since the last resolution (a
-# missing stored signature counts as changed). Only a SHA-256 of the KEY=value
-# lines is stored; no value is ever printed.
+# The image ships nothing resolved (Dockerfile: --clear); the passwords come from
+# the env (env_file .credentials.env), which the resolver reads before local.env.
+# The resolver's marker (.initialized) lives in the data volume and survives a
+# recreation, while export/credentials.env and internal_users.yml do not -- so
+# clear and re-resolve whenever the container is new (no export/credentials.env)
+# or the env passwords changed since the last resolution (a missing stored
+# signature counts as changed). Only a SHA-256 of the KEY=value lines is stored;
+# no value is ever printed.
 # ----------------------------------------------------------------------------
 RESOLVER="/usr/share/wazuh-indexer/bin/resolve-credentials.sh"
+CERTS_DIR="/etc/wazuh-indexer/certs"
 CREDS_SIG_FILE="/var/lib/wazuh-indexer/.e2e_creds.sig"
 CREDS_MARKER="/var/lib/wazuh-indexer/.initialized"
-CREDENTIALS_ENV="/etc/wazuh/credentials.env"
+CREDENTIALS_ENV="/etc/wazuh-indexer/export/credentials.env"
 
 creds_sig() {
     local k lines=""
@@ -39,9 +41,9 @@ CUR_CREDS_SIG="$(creds_sig)"
 STORED_CREDS_SIG="$(cat "${CREDS_SIG_FILE}" 2>/dev/null || true)"
 
 # The marker+signature disjunct is deliberate belt-and-braces: with the image
-# shipping no credentials.env, every new container already enters through the
-# second condition; the first one only fires if a future image change brings
-# the file back or a volume carries a stale signature.
+# shipping no export/credentials.env, every new container already enters through
+# the second condition; the first one only fires if a volume carries a stale
+# signature.
 if { [ -f "${CREDS_MARKER}" ] && [ "${STORED_CREDS_SIG}" != "${CUR_CREDS_SIG}" ]; } \
    || [ ! -f "${CREDENTIALS_ENV}" ]; then
     echo "Credentials: new container or env passwords changed; clearing the resolved state..."
@@ -49,6 +51,20 @@ if { [ -f "${CREDS_MARKER}" ] && [ "${STORED_CREDS_SIG}" != "${CUR_CREDS_SIG}" ]
         echo "WARN: resolve-credentials.sh --clear failed; continuing with the previous state"
     fi
 fi
+
+# Stage the e2e pairs BEFORE resolving (--clear above removes the pem files in
+# certs/). With an issued pair staged beside its root-ca.pem the resolver mints no
+# CA and issues nothing: it checks that the pair chains to that CA, writes the DNs
+# and publishes the CA in export/ca.pem. Staged files must be root's and readable
+# by the service group only (root:wazuh-indexer 0640 in a root:wazuh-indexer 0750
+# directory); anything else is refused as unsafe.
+echo "Staging the e2e certificates in ${CERTS_DIR}..."
+install -d -m 750 -o root -g wazuh-indexer "${CERTS_DIR}"
+install -m 640 -o root -g wazuh-indexer /certs/node-1.pem     "${CERTS_DIR}/indexer.pem"
+install -m 640 -o root -g wazuh-indexer /certs/node-1-key.pem "${CERTS_DIR}/indexer-key.pem"
+install -m 640 -o root -g wazuh-indexer /certs/root-ca.pem    "${CERTS_DIR}/root-ca.pem"
+install -m 640 -o root -g wazuh-indexer /certs/admin.pem      "${CERTS_DIR}/admin.pem"
+install -m 640 -o root -g wazuh-indexer /certs/admin-key.pem  "${CERTS_DIR}/admin-key.pem"
 
 if [ ! -f "${CREDENTIALS_ENV}" ] || [ ! -f "${CREDS_MARKER}" ]; then
     echo "Credentials: resolving from the environment (resolve-credentials.sh --prestart)..."
@@ -59,31 +75,16 @@ mkdir -p "$(dirname "${CREDS_SIG_FILE}")"
 ( umask 077; printf '%s\n' "${CUR_CREDS_SIG}" > "${CREDS_SIG_FILE}" )
 chmod 600 "${CREDS_SIG_FILE}"
 
-# Wait for certificates to be mounted
-echo "Checking for certificates..."
-
-# Set correct ownership and permissions for certificates in /etc/wazuh-indexer/certs/
-if [ -d "/etc/wazuh-indexer/certs" ]; then
-    echo "Setting up certificate permissions..."
-    cp /certs/node-1-key.pem /etc/wazuh-indexer/certs/indexer-key.pem
-    cp /certs/node-1.pem /etc/wazuh-indexer/certs/indexer.pem
-    cp /certs/root-ca.pem /etc/wazuh-indexer/certs/root-ca.pem
-    cp /certs/admin.pem /etc/wazuh-indexer/certs/admin.pem
-    cp /certs/admin-key.pem /etc/wazuh-indexer/certs/admin-key.pem
-    chown -R wazuh-indexer:wazuh-indexer /etc/wazuh-indexer/certs/
-    chmod 640 /etc/wazuh-indexer/certs/*
-fi
-
 # ----------------------------------------------------------------------------
-# Align admin_dn / nodes_dn with the MOUNTED certificates.
+# Align admin_dn / nodes_dn with the STAGED certificates.
 #
-# The credentials PR (indexer#1928) makes the package resolve TLS material at
-# build time, so the image ships admin_dn / nodes_dn matching the certs it
-# generated then (and nodes_dn carries the build host, e.g. CN=buildkitsandbox).
-# This e2e stack mounts its own certs (CN=admin, CN=node-1) instead, so those
-# baked DNs never match and securityadmin rejects the admin cert. Rewrite both
-# keys from the DN the mounted certs actually present (RFC2253 order, which is
-# what OpenSearch compares against) BEFORE the service reads opensearch.yml.
+# The resolver writes both DNs from the staged pair, but only into keys that are
+# empty (--clear empties them, --install alone overwrites them). A container that
+# is restarted rather than recreated keeps the DNs of the pair it first resolved,
+# so after a CA rotation (init.sh --rotate-ca) they would no longer match and
+# securityadmin would reject the admin cert. Rewrite both keys from the DN the
+# staged certs actually present (RFC2253 order, which is what OpenSearch compares
+# against) BEFORE the service reads opensearch.yml.
 # ----------------------------------------------------------------------------
 set_dn_list() {
     # $1 = yaml key (e.g. plugins.security.authcz.admin_dn), $2 = DN string.
@@ -144,10 +145,10 @@ fi
 # ----------------------------------------------------------------------------
 # Apply the generated credentials to the live security index.
 #
-# The coherence block above runs resolve-credentials.sh, which takes one password
+# The credentials block above runs resolve-credentials.sh, which takes one password
 # per account (admin, kibanaserver, wazuh-manager) from the env, writes their
 # bcrypt hashes into internal_users.yml and publishes the plaintext into
-# /etc/wazuh/credentials.env. Loading those hashes into the running security
+# /etc/wazuh-indexer/export/credentials.env. Loading those hashes into the running security
 # index still requires securityadmin (indexer-security-init.sh).
 #
 # Keyed on the CONTENT of internal_users.yml so it re-applies whenever the
@@ -186,8 +187,8 @@ auth_probe() {
     # a missing file or no published key WARNs and returns 1 (the signature is
     # then not recorded and the next start retries). Never prints a value.
     local l k v u cfg rc found=0
-    if [ ! -f /etc/wazuh/credentials.env ]; then
-        echo "WARN: auth probe: /etc/wazuh/credentials.env missing (resolution failed?)"
+    if [ ! -f "${CREDENTIALS_ENV}" ]; then
+        echo "WARN: auth probe: ${CREDENTIALS_ENV} missing (resolution failed?)"
         return 1
     fi
     while IFS= read -r l; do
@@ -207,7 +208,7 @@ auth_probe() {
             echo "WARN: auth probe: ${u} does not authenticate (HTTP ${rc})"
             return 1
         fi
-    done < /etc/wazuh/credentials.env
+    done < "${CREDENTIALS_ENV}"
     if [ "$found" = 0 ]; then
         echo "WARN: auth probe: no published indexer key found in credentials.env"
         return 1

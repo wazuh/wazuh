@@ -1,7 +1,6 @@
 /*
  * Wazuh Module for AWS S3 integration
- * Copyright (C) 2015, Wazuh Inc.
- * January 08, 2018.
+ * Copyright (C) Wazuh Inc.
  *
  * Updated by Jeremy Phillips <jeremy@uranusbytes.com>
  *
@@ -30,6 +29,8 @@ static void wm_aws_check();                             // Check configuration, 
 static void wm_aws_run_s3(wm_aws *aws_config, wm_aws_bucket *bucket);       // Run a s3 bucket
 static void wm_aws_run_service(wm_aws *aws_config, wm_aws_service *service);// Run a AWS service such as Inspector
 static void wm_aws_run_subscriber(wm_aws *aws_config, wm_aws_subscriber *subscriber); //Run an AWS subscriber
+static void wm_aws_report_exec_failure(int status, const char *title); // Log a command wm_exec() could not run
+static int wm_aws_exec(char *command, char **output, int *status, const char *access_key, const char *secret_key); // Run a command, keys out of its arguments
 cJSON *wm_aws_dump(const wm_aws *aws_config);
 
 // Command module context definition
@@ -392,6 +393,51 @@ static void wm_aws_add_quoted_arg(char **command, const char *value) {
     os_free(quoted);
 }
 
+// Run an AWS command with no timeout: a first scan of a large bucket can legitimately take hours.
+// Inline keys go to the command through its environment, where aws_tools.py reads them, and not
+// on its command line, which any local user can read while it runs and which is logged.
+
+int wm_aws_exec(char *command, char **output, int *status, const char *access_key, const char *secret_key) {
+#ifndef WIN32
+    char *env[3] = { NULL, NULL, NULL };
+    int n = 0;
+    int ret;
+
+    if (access_key) {
+        wm_strcat(&env[n++], WM_AWS_ACCESS_KEY_ENV "=", '\0');
+        wm_strcat(&env[n - 1], access_key, '\0');
+    }
+    if (secret_key) {
+        wm_strcat(&env[n++], WM_AWS_SECRET_KEY_ENV "=", '\0');
+        wm_strcat(&env[n - 1], secret_key, '\0');
+    }
+
+    ret = wm_exec_env(command, output, status, 0, NULL, env);
+
+    os_free(env[0]);
+    os_free(env[1]);
+    return ret;
+#else
+    // The AWS module does not run on Windows
+    (void)access_key;
+    (void)secret_key;
+    return wm_exec(command, output, status, 0, NULL);
+#endif
+}
+
+// Log a command that wm_exec() could not run. It is not fatal to the module: the next bucket,
+// service or subscriber, and the next scan, each get their own attempt.
+
+void wm_aws_report_exec_failure(int status, const char *title) {
+    // The script could not be run. /usr/bin/env, which runs it, also exits with this code when python3 is missing
+    if (status == EXECVE_ERROR) {
+        mterror(WM_AWS_LOGTAG, "%s Could not execute '%s' (exit code %d). Check that it and the python3 interpreter it runs with are installed.",
+                title, WM_AWS_SCRIPT_PATH, status);
+    } else {
+        mterror(WM_AWS_LOGTAG, "%s Internal error running the command.", title);
+    }
+}
+
 // Run a bucket parsing
 #ifdef WAZUH_UNIT_TESTING
 __attribute__((weak))
@@ -423,14 +469,6 @@ void wm_aws_run_s3(wm_aws *aws_config, wm_aws_bucket *exec_bucket) {
     // bucket arguments
     if (exec_bucket->remove_from_bucket) {
         wm_strcat(&command, "--remove", ' ');
-    }
-    if (exec_bucket->access_key) {
-        wm_strcat(&command, "--access_key", ' ');
-        wm_strcat(&command, exec_bucket->access_key, ' ');
-    }
-    if (exec_bucket->secret_key) {
-        wm_strcat(&command, "--secret_key", ' ');
-        wm_strcat(&command, exec_bucket->secret_key, ' ');
     }
     if (exec_bucket->aws_profile) {
         wm_strcat(&command, "--aws_profile", ' ');
@@ -522,17 +560,15 @@ void wm_aws_run_s3(wm_aws *aws_config, wm_aws_bucket *exec_bucket) {
 
     mtdebug1(WM_AWS_LOGTAG, "Launching S3 Command: %s", command);
 
-    const int wm_exec_ret_code = wm_exec(command, &output, &status, 0, NULL);
+    const int wm_exec_ret_code = wm_aws_exec(command, &output, &status, exec_bucket->access_key, exec_bucket->secret_key);
 
     os_free(command);
 
-    if (wm_exec_ret_code != 0){
-        mterror(WM_AWS_LOGTAG, "Internal error. Exiting...");
+    if (wm_exec_ret_code != 0) {
+        wm_aws_report_exec_failure(status, trail_title);
         os_free(trail_title);
-        if (wm_exec_ret_code > 0) {
-            os_free(output);
-        }
-        pthread_exit(NULL);
+        os_free(output);
+        return;
     } else if (status > 0) {
         mtwarn(WM_AWS_LOGTAG, "%s Returned exit code %d", trail_title, status);
         if(status == 1) {
@@ -600,14 +636,6 @@ void wm_aws_run_service(wm_aws *aws_config, wm_aws_service *exec_service) {
     wm_strcat(&command, exec_service->type, ' ');
 
     // service arguments
-    if (exec_service->access_key) {
-        wm_strcat(&command, "--access_key", ' ');
-        wm_strcat(&command, exec_service->access_key, ' ');
-    }
-    if (exec_service->secret_key) {
-        wm_strcat(&command, "--secret_key", ' ');
-        wm_strcat(&command, exec_service->secret_key, ' ');
-    }
     if (exec_service->aws_profile) {
         wm_strcat(&command, "--aws_profile", ' ');
         wm_aws_add_quoted_arg(&command, exec_service->aws_profile);
@@ -690,18 +718,15 @@ void wm_aws_run_service(wm_aws *aws_config, wm_aws_service *exec_service) {
 
     mtdebug1(WM_AWS_LOGTAG, "Launching S3 Command: %s", command);
 
-    const int wm_exec_ret_code = wm_exec(command, &output, &status, 0, NULL);
+    const int wm_exec_ret_code = wm_aws_exec(command, &output, &status, exec_service->access_key, exec_service->secret_key);
 
     os_free(command);
 
-    if (wm_exec_ret_code) {
-        mterror(WM_AWS_LOGTAG, "Internal error. Exiting...");
+    if (wm_exec_ret_code != 0) {
+        wm_aws_report_exec_failure(status, service_title);
         os_free(service_title);
-
-        if (wm_exec_ret_code > 0) {
-            os_free(output);
-        }
-        pthread_exit(NULL);
+        os_free(output);
+        return;
     } else if (status > 0) {
         mtwarn(WM_AWS_LOGTAG, "%s Returned exit code %d", service_title, status);
         if(status == 1) {
@@ -834,18 +859,15 @@ void wm_aws_run_subscriber(wm_aws *aws_config, wm_aws_subscriber *exec_subscribe
 
     mtdebug1(WM_AWS_LOGTAG, "Launching S3 Subscriber Command: %s", command);
 
-    const int wm_exec_ret_code = wm_exec(command, &output, &status, 0, NULL);
+    const int wm_exec_ret_code = wm_aws_exec(command, &output, &status, NULL, NULL);
 
     os_free(command);
 
-    if (wm_exec_ret_code) {
-        mterror(WM_AWS_LOGTAG, "Internal error. Exiting...");
+    if (wm_exec_ret_code != 0) {
+        wm_aws_report_exec_failure(status, subscriber_title);
         os_free(subscriber_title);
-
-        if (wm_exec_ret_code > 0) {
-            os_free(output);
-        }
-        pthread_exit(NULL);
+        os_free(output);
+        return;
     } else if (status > 0) {
         mtwarn(WM_AWS_LOGTAG, "%s Returned exit code %d", subscriber_title, status);
         if(status == 1) {

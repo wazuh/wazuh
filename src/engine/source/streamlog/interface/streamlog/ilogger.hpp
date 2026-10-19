@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 #ifndef STREAMLOG_ILOGGER_HPP
 #define STREAMLOG_ILOGGER_HPP

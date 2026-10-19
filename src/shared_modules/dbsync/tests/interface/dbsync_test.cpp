@@ -1,7 +1,6 @@
 /*
  * Wazuh DBSYNC
- * Copyright (C) 2015, Wazuh Inc.
- * July 11, 2020.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -2228,6 +2227,47 @@ TEST_F(DBSyncTest, UpdateDataCPP)
     };
 
     EXPECT_NO_THROW(dbSync->updateWithSnapshot(nlohmann::json::parse(insertionSqlStmt2), callbackData));
+}
+
+TEST_F(DBSyncTest, UpdateDataCPPQuotedValues)
+{
+    // Both the updated value and the primary key carry quotes: the snapshot update must store
+    // them verbatim instead of letting them alter the UPDATE statement.
+    const auto sql{ "CREATE TABLE packages(`name` TEXT, `version` TEXT, PRIMARY KEY (`name`)) WITHOUT ROWID;"};
+    const auto snapshot1{ R"({"table":"packages","data":[{"name":"O'Brien","version":"1"}]})"};
+    const auto snapshot2{ R"({"table":"packages","data":[{"name":"O'Brien","version":"2'; DROP TABLE packages; --"}]})"};
+    const auto selectData
+    {
+        R"({"table":"packages",
+           "query":{"column_list":["name","version"],
+           "row_filter":"",
+           "distinct_opt":false,
+           "order_by_opt":"",
+           "count_opt":100}})"
+    };
+
+    std::unique_ptr<DBSync> dbSync;
+    EXPECT_NO_THROW(dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql));
+
+    nlohmann::json jsResponse;
+    EXPECT_NO_THROW(dbSync->updateWithSnapshot(nlohmann::json::parse(snapshot1), jsResponse));
+
+    CallbackMock wrapper;
+    EXPECT_CALL(wrapper, callbackMock(MODIFIED, testing::_)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(SELECTED,
+                                      nlohmann::json::parse(R"({"name":"O'Brien","version":"2'; DROP TABLE packages; --"})")))
+    .Times(1);
+
+    ResultCallbackData callbackData
+    {
+        [&wrapper](ReturnTypeCallback type, const nlohmann::json & jsonResult)
+        {
+            wrapper.callbackMock(type, jsonResult);
+        }
+    };
+
+    EXPECT_NO_THROW(dbSync->updateWithSnapshot(nlohmann::json::parse(snapshot2), callbackData));
+    EXPECT_NO_THROW(dbSync->selectRows(nlohmann::json::parse(selectData), callbackData));
 }
 
 TEST_F(DBSyncTest, constructorWithHandle)

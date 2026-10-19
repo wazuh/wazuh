@@ -1,7 +1,6 @@
 /*
  * Wazuh remoted module (C++ worker bridge)
- * Copyright (C) 2015, Wazuh Inc.
- * August 5, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -153,10 +152,44 @@ TEST(StatefulEndpoint, PostProcessMapsEveryTransportFailureToANeutral503)
 
     for (const auto error : errors)
     {
-        const auto response = stateful::postProcess(error, DownstreamResponse {});
+        const auto response = stateful::postProcess(error, DownstreamResponse {}, 20);
         EXPECT_EQ(response.status, 503) << "error=" << static_cast<int>(error);
         EXPECT_EQ(response.body, R"({"error":"Service unavailable","code":503})");
+        if (error != DownstreamError::ResponseTimeout)
+        {
+            // Nothing is running downstream for these, so no delay is imposed on the re-send.
+            EXPECT_EQ(headerValue(response, "Retry-After"), std::nullopt) << "error=" << static_cast<int>(error);
+        }
     }
+}
+
+TEST(StatefulEndpoint, TheResponseTimeout503CarriesTheConfiguredRetryAfter)
+{
+    // The sync server is still applying the session after remoted stopped waiting: the agent's
+    // re-send must land after it, or the same session runs twice against itself.
+    const auto response = stateful::postProcess(DownstreamError::ResponseTimeout, DownstreamResponse {}, 20);
+    EXPECT_EQ(response.status, 503);
+    EXPECT_EQ(response.body, R"({"error":"Service unavailable","code":503})");
+    EXPECT_EQ(headerValue(response, "Retry-After"), std::optional<std::string> {"20"});
+}
+
+TEST(StatefulEndpoint, AZeroRetryAfterDisablesTheTimeoutHeader)
+{
+    const auto response = stateful::postProcess(DownstreamError::ResponseTimeout, DownstreamResponse {}, 0);
+    EXPECT_EQ(response.status, 503);
+    EXPECT_EQ(headerValue(response, "Retry-After"), std::nullopt);
+}
+
+TEST(StatefulEndpoint, ADownstream503RetryAfterIsRelayedNotReplaced)
+{
+    // The sync server's own delay (an exhausted conflict allowance, a feed still loading) is the
+    // one that applies when it did answer; the timeout value is only for when it did not.
+    DownstreamResponse downstream {503, R"({"error":"indexer contention","code":503})", {}};
+    downstream.headers.emplace_back("retry-after", "15");
+
+    const auto response = stateful::postProcess(DownstreamError::None, downstream, 20);
+    EXPECT_EQ(response.status, 503);
+    EXPECT_EQ(headerValue(response, "Retry-After"), std::optional<std::string> {"15"});
 }
 
 TEST(StatefulEndpoint, PostProcessCollapsesNonContractStatusesToANeutral503)
@@ -286,7 +319,7 @@ TEST(StatefulMakeHandler, EmptyBodyShortCircuitsBeforeForward)
     auto limiter = std::make_shared<DeferredWorkLimiter>(4);
     DeferredForwarder forwarder {client, limiter, 1};
 
-    auto handler = stateful::makeHandler(forwarder, "queue/sockets/inventory-sync-http.sock", 20000);
+    auto handler = stateful::makeHandler(forwarder, "queue/sockets/inventory-sync-http.sock", 20000, 20);
     auto fixture = makeAuthReq("", "1001");
     auto responder = std::make_shared<CapturingResponder>();
     auto fut = responder->future();
@@ -311,7 +344,7 @@ TEST(StatefulMakeHandler, MetricsCountBothTheLocal400AndTheDeliveredStatus)
     auto client = std::make_shared<FakeDownstreamClient>();
     auto limiter = std::make_shared<DeferredWorkLimiter>(4);
     DeferredForwarder forwarder {client, limiter, 1};
-    auto handler = stateful::makeHandler(forwarder, "queue/sockets/inventory-sync-http.sock", 20000, &metrics);
+    auto handler = stateful::makeHandler(forwarder, "queue/sockets/inventory-sync-http.sock", 20000, 20, &metrics);
 
     {
         auto fixture = makeAuthReq("", "1001"); // empty body: answered 400 by the handler itself
@@ -346,7 +379,7 @@ TEST(StatefulMakeHandler, ForwardsTheOpaqueSessionWithAgentIdAndDedicatedTimeout
     auto limiter = std::make_shared<DeferredWorkLimiter>(4);
     DeferredForwarder forwarder {client, limiter, 1};
 
-    auto handler = stateful::makeHandler(forwarder, "queue/sockets/inventory-sync-http.sock", 20000);
+    auto handler = stateful::makeHandler(forwarder, "queue/sockets/inventory-sync-http.sock", 20000, 20);
     // Deliberately NOT a valid FlatBuffer: remoted must forward it opaquely, without parsing.
     auto fixture = makeAuthReq("\x01\x02binary-fullsession-bytes", "1001");
     auto responder = std::make_shared<CapturingResponder>();
@@ -427,10 +460,11 @@ TEST(StatefulMakeHandler, AuthenticatedRequestFlowsThroughTheGatewayIntoTheForwa
     FakeHttpServer server;
     remoted::endpoints::AuthGateway gateway {
         remoted::auth::AuthConfig {}, std::make_shared<FakeKeystore>(), passthroughDecoder()};
-    gateway.addAuthenticatedRoute(server,
-                                  Method::Post,
-                                  "/stateful",
-                                  stateful::makeHandler(forwarder, "queue/sockets/inventory-sync-http.sock", 20000));
+    gateway.addAuthenticatedRoute(
+        server,
+        Method::Post,
+        "/stateful",
+        stateful::makeHandler(forwarder, "queue/sockets/inventory-sync-http.sock", 20000, 20));
 
     // A wazuh-agent+jwt bearer for 001, minted with FakeKeystore's key for it.
     const std::string body = "\x01\x02opaque-fullsession";

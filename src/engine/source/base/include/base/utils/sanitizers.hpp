@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _BASE_SANITIZERS_HPP
 #define _BASE_SANITIZERS_HPP
 
