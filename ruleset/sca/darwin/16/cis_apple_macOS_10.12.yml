@@ -50,16 +50,22 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0004"
+          - "TA0001"
+          - "TA0002"
         name:
-          - "Discovery"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Execution"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1068"
+          - "T1190"
+          - "T1203"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploitation for Privilege Escalation"
+          - "Exploit Public-Facing Application"
+          - "Exploitation for Client Execution"
     references:
       - https://macops.ca/os-x-admins-your-clients-are-not-getting-background-security-updates/
       - https://derflounder.wordpress.com/2014/12/17/forcing-xprotect-blacklist-updates-on-mavericks-and-yosemite/
@@ -87,16 +93,22 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0004"
+          - "TA0001"
+          - "TA0002"
         name:
-          - "Discovery"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Execution"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1068"
+          - "T1190"
+          - "T1203"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploitation for Privilege Escalation"
+          - "Exploit Public-Facing Application"
+          - "Exploitation for Client Execution"
     condition: all
     rules:
       - "c:defaults read /Library/Preferences/com.apple.commerce AutoUpdate -> 1"
@@ -121,16 +133,22 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0004"
+          - "TA0001"
+          - "TA0002"
         name:
-          - "Discovery"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Execution"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1068"
+          - "T1190"
+          - "T1203"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploitation for Privilege Escalation"
+          - "Exploit Public-Facing Application"
+          - "Exploitation for Client Execution"
     references:
       - https://www.thesafemac.com/tag/xprotect/
       - https://support.apple.com/en-us/HT202491
@@ -159,16 +177,22 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0004"
+          - "TA0001"
+          - "TA0002"
         name:
-          - "Discovery"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Execution"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1068"
+          - "T1190"
+          - "T1203"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploitation for Privilege Escalation"
+          - "Exploit Public-Facing Application"
+          - "Exploitation for Client Execution"
     condition: all
     rules:
       - "c:defaults read /Library/Preferences/com.apple.commerce AutoUpdateRestartRequired -> 1"
@@ -193,16 +217,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Indicator Removal"
     condition: all
     rules:
       - 'c:systemsetup -getusingnetworktime -> r:Network Time:\s*\t*On'
@@ -398,16 +420,16 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0009"
         name:
-          - "Discovery"
+          - "Collection"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1005"
+          - "T1025"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Data from Local System"
+          - "Data from Removable Media"
     condition: all
     rules:
       - "c:fdesetup status -> r:^FileVault is On"
@@ -432,16 +454,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1553"
+          - "T1014"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Subvert Trust Controls"
+          - "Rootkit"
+      subtechnique:
+        id:
+          - "T1553.001"
+        name:
+          - "Gatekeeper Bypass"
     condition: all
     rules:
       - 'c:spctl --status -> r:^assessments\s*\t*enabled$'
@@ -466,16 +495,24 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0112"
+          - "TA0003"
+          - "TA0001"
           - "TA0007"
         name:
+          - "Defense Impairment"
+          - "Persistence"
+          - "Initial Access"
           - "Discovery"
       technique:
         id:
+          - "T1686"
+          - "T1133"
           - "T1046"
-          - "T1087"
         name:
+          - "Disable or Modify System Firewall"
+          - "External Remote Services"
           - "Network Service Discovery"
-          - "Account Discovery"
     references:
       - https://support.apple.com/en-us/HT201642
     condition: all
@@ -502,16 +539,24 @@ checks:
     mitre:
       tactic:
         id:
+          - "TA0112"
+          - "TA0003"
+          - "TA0001"
           - "TA0007"
         name:
+          - "Defense Impairment"
+          - "Persistence"
+          - "Initial Access"
           - "Discovery"
       technique:
         id:
+          - "T1686"
+          - "T1133"
           - "T1046"
-          - "T1087"
         name:
+          - "Disable or Modify System Firewall"
+          - "External Remote Services"
           - "Network Service Discovery"
-          - "Account Discovery"
     references:
       - https://support.apple.com/en-us/HT201642
     condition: all
@@ -538,16 +583,21 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0009"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Collection"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1056"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Input Capture"
+      subtechnique:
+        id:
+          - "T1056.001"
+        name:
+          - "Keylogging"
     condition: all
     rules:
       - "c:defaults read -app Terminal SecureKeyboardEntry -> 1"
@@ -572,16 +622,22 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0004"
+          - "TA0001"
+          - "TA0002"
         name:
-          - "Discovery"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Execution"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1068"
+          - "T1190"
+          - "T1203"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Exploitation for Privilege Escalation"
+          - "Exploit Public-Facing Application"
+          - "Exploitation for Client Execution"
     condition: none
     rules:
       - "c:/usr/libexec/java_home -> r:1\\.6\\.0"
@@ -606,16 +662,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
+      subtechnique:
+        id:
+          - "T1685.006"
+        name:
+          - "Clear Linux or Mac System Logs"
     condition: all
     rules:
       - "c:launchctl list -> r:com\\.apple\\.auditd"
@@ -640,16 +703,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1685"
+          - "T1070"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
+      subtechnique:
+        id:
+          - "T1685.006"
+        name:
+          - "Clear Linux or Mac System Logs"
     condition: all
     rules:
       - "f:/etc/security/audit_control -> r:^flags && r:lo && r:ad && r:fd && r:fm && r:-all"
@@ -813,16 +883,27 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+      subtechnique:
+        id:
+          - "T1078.001"
+          - "T1078.003"
+        name:
+          - "Default Accounts"
+          - "Local Accounts"
     condition: all
     rules:
       - "c:dscl . -read /Users/root AuthenticationAuthority -> r:^No such key: AuthenticationAuthority"
@@ -847,16 +928,25 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+      subtechnique:
+        id:
+          - "T1078.003"
+        name:
+          - "Local Accounts"
     condition: none
     rules:
       - "c:defaults read /Library/Preferences/com.apple.loginwindow -> r:autoLoginUser"
@@ -881,16 +971,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1553"
+          - "T1014"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Subvert Trust Controls"
+          - "Rootkit"
+      subtechnique:
+        id:
+          - "T1553.001"
+        name:
+          - "Gatekeeper Bypass"
     condition: all
     rules:
       - "c:/usr/bin/csrutil status -> r:^System Integrity Protection status: enabled"
@@ -915,16 +1012,27 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+      subtechnique:
+        id:
+          - "T1078.001"
+          - "T1078.003"
+        name:
+          - "Default Accounts"
+          - "Local Accounts"
     condition: all
     rules:
       - "c:defaults read /Library/Preferences/com.apple.loginwindow.plist GuestEnabled -> 0"
@@ -949,16 +1057,27 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+      subtechnique:
+        id:
+          - "T1078.001"
+          - "T1078.003"
+        name:
+          - "Default Accounts"
+          - "Local Accounts"
     condition: none
     rules:
       - "d:/Users/Guest"
@@ -983,16 +1102,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
         name:
-          - "Discovery"
+          - "Stealth"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1036"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Masquerading"
     condition: all
     rules:
       - "c:defaults read NSGlobalDomain AppleShowAllExtensions -> 1"
@@ -1017,16 +1134,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0002"
         name:
-          - "Discovery"
+          - "Execution"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1204"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "User Execution"
+      subtechnique:
+        id:
+          - "T1204.002"
+        name:
+          - "Malicious File"
     condition: all
     rules:
       - "c:defaults read com.apple.Safari AutoOpenSafeDownloads -> 0"
