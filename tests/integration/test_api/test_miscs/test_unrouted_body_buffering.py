@@ -1,5 +1,5 @@
 """
-copyright: Copyright (C) 2015-2026, Wazuh Inc.
+copyright: Copyright (C) Wazuh Inc.
 
     Created by Wazuh, Inc. <info@wazuh.com>.
 

@@ -140,11 +140,12 @@ contain only letters, digits, `_`, `-` and `.`.
 The installer (`wazuh-manager-resolve-credentials --install`, run by the package post-install step or
 `install.sh` on a clean installation) issues `apid.pem` and `apid-key.pem` from the manager's CA with the
 same profile as the agent listener's `remoted.pem`: subject `C=US, L=California, O=Wazuh, OU=Wazuh,
-CN=<node name>`, its own SANs (`WAZUH_MANAGER_APID_CERT_SANS` in the credentials file, plus `localhost`,
-`127.0.0.1` and `::1`; when unset, discovered the way Remoted's are: the node's host names and
-global-scope addresses plus those three — it never inherits `WAZUH_MANAGER_REMOTED_CERT_SANS`), 2048-bit
-RSA, `serverAuth`, `notBefore` one day before issuance and `notAfter` 3650 days after it, the leaf
-followed by the CA, owned by `wazuh-manager:wazuh-manager` with mode `0640`. Issuing it therefore needs
+CN=<node name>`, its own SANs (`WAZUH_MANAGER_APID_CERT_SANS` in the environment or in
+`/etc/wazuh-manager/local.env`, plus `localhost`, `127.0.0.1` and `::1`; when unset, discovered the way Remoted's
+are: the node's host names and every global address of its interfaces plus those three — it never
+inherits `WAZUH_MANAGER_REMOTED_CERT_SANS`), 2048-bit RSA, `serverAuth`, `notBefore` one day before issuance and
+`notAfter` 3650 days after it, the leaf followed by the CA, owned by `root:wazuh-manager` with mode `0640`. Before
+every start the resolver checks that the pair is issued by the CA in `/etc/wazuh-manager/ca/root-ca.pem`. Issuing it therefore needs
 the node name and either that discovery or `WAZUH_MANAGER_APID_CERT_SANS`. See
 [Subject alternative names](../../getting-started/credentials.md#subject-alternative-names).
 
@@ -152,9 +153,14 @@ the node name and either that discovery or `WAZUH_MANAGER_APID_CERT_SANS`. See
 missing, not readable by `wazuh-manager`, or the key does not match the certificate, it logs error
 `2003` naming the files in `logs/api.log` and does not start.
 
-A client that verifies the API trusts `root-ca.pem` and checks any of those names or addresses. `use_ca` is
+A client that verifies the API trusts the manager's CA, published for clients on the same host in
+`/etc/wazuh-manager/export/ca.pem` (the same CA as in `ca/root-ca.pem` and `certs/root-ca.pem`), and checks any of
+those names or addresses. What the dashboard takes from there, and how to copy it to a dashboard on another host, is
+in [What the dashboard takes from the manager](../../getting-started/credentials.md#what-the-dashboard-takes-from-the-manager). `use_ca` is
 unchanged: it requires a client certificate. To serve another certificate, place it in `/etc/wazuh-manager/certs` under
-other file names and point `key` and `cert` at them; both must be readable by `wazuh-manager`.
+other file names (`root:wazuh-manager 0640`) and point `key` and `cert` at them. The credential resolver checks the
+configured pair before every start and refuses a path outside that directory
+([Configured file names](../../getting-started/credentials.md#configured-file-names)).
 
 ### logs
 

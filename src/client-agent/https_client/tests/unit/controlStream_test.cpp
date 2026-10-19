@@ -1,7 +1,6 @@
 /*
  * Wazuh agent HTTPS client (C++ transport module)
- * Copyright (C) 2015, Wazuh Inc.
- * July 17, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -1793,9 +1792,11 @@ TEST_F(ControlStreamTest, PendingRescanTriggersScanVdRequestAndClearsOnSuccess)
 
         if (spec.target == "/control")
         {
+            EXPECT_EQ(CONTROL_MAX_RESPONSE_BYTES, spec.maxResponseBytes);
             return response(TransportStatus::Ok, 200, notify);
         }
 
+        EXPECT_EQ(SHORT_REPLY_MAX_RESPONSE_BYTES, spec.maxResponseBytes);
         return response(TransportStatus::Ok, 200, "{}"); // /scan/vd accepted.
     }));
 

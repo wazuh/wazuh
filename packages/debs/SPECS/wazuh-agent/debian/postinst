@@ -19,6 +19,52 @@ case "$1" in
 
     OSMYSHELL="/sbin/nologin"
 
+    # etc/ and etc/shared/ are writable by ${GROUP} and logs/ belongs to ${USER}, so anything in them
+    # may be a link the service account planted, and cp, chmod and chown follow links. A file root
+    # writes there is built in ${WAZUH_TMP_DIR} (root only) and renamed into place: a rename
+    # replaces a link instead of following it.
+    mkdir -p ${WAZUH_TMP_DIR}
+
+    # install_file SOURCE MODE OWNER:GROUP DEST: moves SOURCE, already in ${WAZUH_TMP_DIR}, to DEST.
+    install_file() {
+        chmod "$2" "$1" && chown "$3" "$1" && mv -fT "$1" "$4"
+    }
+
+    # in_dir DIR COMMAND...: runs COMMAND in a subshell whose working directory is DIR, only when no
+    # link leads there. A name COMMAND resolves relative to it then stays in that directory,
+    # whatever happens to DIR's path afterwards.
+    REAL_DIR=$(cd -P ${DIR} && pwd -P)
+    in_dir() {
+        (cd -P -- "$1" 2> /dev/null && [ "$(pwd -P)" = "${REAL_DIR}${1#"${DIR}"}" ] && shift && "$@")
+    }
+
+    # zero_fill_plain_file FILE: overwrites FILE with zeros when it is a plain, non-empty file with no
+    # other link, so nothing but FILE's own bytes is touched.
+    zero_fill_plain_file() {
+        if [ -f "$1" ] && [ ! -L "$1" ] && [ -n "$(find "$1" -links 1)" ] && [ -s "$1" ]; then
+            dd if=/dev/zero of="$1" bs=1 count=$(wc -c < "$1") conv=notrunc > /dev/null 2>&1 || true
+        fi
+    }
+
+    # restore_failed TARGET COPY: warns that TARGET could not be restored, and keeps ${WAZUH_TMP_DIR},
+    # which holds COPY, from being deleted at the end.
+    RESTORE_FAILED=""
+    restore_failed() {
+        echo "WARNING: could not restore $1; its copy is kept at $2." >&2
+        RESTORE_FAILED=yes
+    }
+
+    # restore_conf_file NAME: puts back the copy of etc/NAME preinst took, root:${GROUP} 0640. A link
+    # in its place is one swapped in while preinst copied, and is dropped.
+    restore_conf_file() {
+        if [ -L ${WAZUH_TMP_DIR}/$1 ]; then
+            rm -f ${WAZUH_TMP_DIR}/$1
+        elif [ -f ${WAZUH_TMP_DIR}/$1 ]; then
+            install_file ${WAZUH_TMP_DIR}/$1 640 root:${GROUP} ${DIR}/etc/$1 \
+                || restore_failed ${DIR}/etc/$1 ${WAZUH_TMP_DIR}/$1
+        fi
+    }
+
     if [ -d /run/systemd/system ]; then
         rm -f /etc/init.d/wazuh-agent
     fi
@@ -36,21 +82,23 @@ case "$1" in
         useradd --system --home-dir ${DIR} --shell ${OSMYSHELL} --gid ${GROUP} --no-create-home ${USER} > /dev/null 2>&1
     fi
 
+    # Generated in ${WAZUH_TMP_DIR} and moved into place. Not under the name ossec.conf there: that
+    # is preinst's copy of the current one, restored below.
+    CONF_STAGE=${WAZUH_TMP_DIR}/ossec.conf.generated
     if [ -z "$2" ] || [ -f ${WAZUH_TMP_DIR}/create_conf ] ; then
 
-        ${SCRIPTS_DIR}/src/init/gen_wazuh.sh conf agent ${OS} ${VER} ${DIR} > ${DIR}/etc/ossec.conf
-        ${SCRIPTS_DIR}/src/init/add_localfiles.sh ${DIR} >> ${DIR}/etc/ossec.conf
-        chmod 640 ${DIR}/etc/ossec.conf
+        ${SCRIPTS_DIR}/src/init/gen_wazuh.sh conf agent ${OS} ${VER} ${DIR} > ${CONF_STAGE}
+        ${SCRIPTS_DIR}/src/init/add_localfiles.sh ${DIR} >> ${CONF_STAGE}
+        install_file ${CONF_STAGE} 640 root:${GROUP} ${DIR}/etc/ossec.conf
     else
-        ${SCRIPTS_DIR}/src/init/gen_wazuh.sh conf agent ${OS} ${VER} ${DIR} > ${DIR}/etc/ossec.conf.new
-        chmod 640 ${DIR}/etc/ossec.conf.new
+        ${SCRIPTS_DIR}/src/init/gen_wazuh.sh conf agent ${OS} ${VER} ${DIR} > ${CONF_STAGE}
+        install_file ${CONF_STAGE} 640 root:${GROUP} ${DIR}/etc/ossec.conf.new
     fi
 
     # For the etc dir
     if [ -f /etc/localtime ]; then
-        cp -pL /etc/localtime ${DIR}/etc/;
-        chmod 640 ${DIR}/etc/localtime
-        chown root:${GROUP} ${DIR}/etc/localtime
+        cp -pL /etc/localtime ${WAZUH_TMP_DIR}/localtime && \
+            install_file ${WAZUH_TMP_DIR}/localtime 640 root:${GROUP} ${DIR}/etc/localtime
     fi
 
     # Remove deprecated binaries
@@ -69,27 +117,22 @@ case "$1" in
     # Upgrade only ($2 is the previously configured version, empty on a fresh install), and once:
     # this is a package decision, not a runtime one, so it must not depend on the agent ever
     # reaching a manager. Overwritten before it is unlinked, because the bytes are a secret.
+    #
+    # etc/ is writable by ${GROUP}, which could leave a link at etc/authd.pass for dd to write
+    # zeros through. The entry is renamed into ${WAZUH_TMP_DIR} first (a rename moves a link, never
+    # its target), and only zeroed there when it is a plain file with no other link.
     if [ -n "$2" ] && [ -f ${DIR}/etc/authd.pass ]; then
-        if [ -s ${DIR}/etc/authd.pass ]; then
-            dd if=/dev/zero of=${DIR}/etc/authd.pass bs=1 count=$(wc -c < ${DIR}/etc/authd.pass) conv=notrunc > /dev/null 2>&1 || true
+        if mv -f ${DIR}/etc/authd.pass ${WAZUH_TMP_DIR}/authd.pass; then
+            zero_fill_plain_file ${WAZUH_TMP_DIR}/authd.pass
+            rm -f ${WAZUH_TMP_DIR}/authd.pass
+            echo "wazuh-agent: removed the fleet-wide enrollment password at ${DIR}/etc/authd.pass. 5.0 enrols with an enrollment token (WAZUH_ENROLLMENT_TOKEN); an agent enrolled before the upgrade holds no re-enrollment secret and must be re-pointed with a token if the manager stops recognising its key."
         fi
-        rm -f ${DIR}/etc/authd.pass
-        echo "wazuh-agent: removed the fleet-wide enrollment password at ${DIR}/etc/authd.pass. 5.0 enrols with an enrollment token (WAZUH_ENROLLMENT_TOKEN); an agent enrolled before the upgrade holds no re-enrollment secret and must be re-pointed with a token if the manager stops recognising its key."
     fi
 
-    # Restore the local rules, client.keys and local_decoder
-    if [ -f ${WAZUH_TMP_DIR}/client.keys ]; then
-        cp ${WAZUH_TMP_DIR}/client.keys ${DIR}/etc/client.keys
-    fi
-    # Restore ossec.conf configuration
-    if [ -f ${WAZUH_TMP_DIR}/ossec.conf ]; then
-        mv ${WAZUH_TMP_DIR}/ossec.conf ${DIR}/etc/ossec.conf
-        chmod 640 ${DIR}/etc/ossec.conf
-    fi
-    # Restore internal options configuration
-    if [ -f ${WAZUH_TMP_DIR}/local_internal_options.conf ]; then
-        mv ${WAZUH_TMP_DIR}/local_internal_options.conf ${DIR}/etc/local_internal_options.conf
-    fi
+    # Restore client.keys, ossec.conf and the internal options
+    for CONF_FILE in client.keys ossec.conf local_internal_options.conf; do
+        restore_conf_file ${CONF_FILE}
+    done
 
     # Install the SCA files
     if [ -d "${SCA_BASE_DIR}" ]; then
@@ -131,15 +174,31 @@ case "$1" in
 
     fi
 
-    # Restore group files
+    # Restore the etc/shared/ files preinst copied, from inside the directory as preinst did.
+    # --remove-destination replaces a link planted at a destination instead of writing (and, with
+    # -a, chowning) through it.
+    restore_shared_files() {
+        cp -a --remove-destination ${WAZUH_TMP_DIR}/group/* .
+    }
     if [ -d ${WAZUH_TMP_DIR}/group ]; then
-        cp -rfp ${WAZUH_TMP_DIR}/group/* ${DIR}/etc/shared
-        rm -rf ${WAZUH_TMP_DIR}/group
+        if in_dir ${DIR}/etc/shared restore_shared_files; then
+            rm -rf ${WAZUH_TMP_DIR}/group
+        else
+            restore_failed ${DIR}/etc/shared ${WAZUH_TMP_DIR}/group
+        fi
     fi
 
-    touch ${DIR}/logs/active-responses.log
-    chown wazuh:wazuh ${DIR}/logs/active-responses.log
-    chmod 0660 ${DIR}/logs/active-responses.log
+    # logs/ belongs to ${USER}, which could leave a link or a FIFO at the log's name: touch, chown
+    # and chmod follow a link as root, and opening a FIFO blocks dpkg. The name is never opened. A
+    # regular file only gets chown -h; anything else is replaced by an empty log built in
+    # ${WAZUH_TMP_DIR} and renamed over it.
+    if [ -f ${DIR}/logs/active-responses.log ] && [ ! -L ${DIR}/logs/active-responses.log ]; then
+        chown -h ${USER}:${GROUP} ${DIR}/logs/active-responses.log 2> /dev/null || true
+    else
+        { : > ${WAZUH_TMP_DIR}/active-responses.log \
+            && install_file ${WAZUH_TMP_DIR}/active-responses.log 0660 ${USER}:${GROUP} ${DIR}/logs/active-responses.log; } \
+            || echo "WARNING: could not create ${DIR}/logs/active-responses.log." >&2
+    fi
 
     # Check if SELinux is installed and enabled
     if command -v getenforce > /dev/null 2>&1 && command -v semodule > /dev/null 2>&1; then
@@ -205,8 +264,8 @@ case "$1" in
         rm -rf ${SCRIPTS_DIR}
     fi
 
-    # Delete tmp directory
-    if [ -d ${WAZUH_TMP_DIR} ]; then
+    # Delete tmp directory, unless it holds the copy of something that could not be restored
+    if [ -d ${WAZUH_TMP_DIR} ] && [ -z "${RESTORE_FAILED}" ]; then
         rm -rf ${WAZUH_TMP_DIR}
     fi
 

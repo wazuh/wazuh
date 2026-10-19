@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _FASTMETRICS_MOCK_COUNTER_HPP
 #define _FASTMETRICS_MOCK_COUNTER_HPP
 

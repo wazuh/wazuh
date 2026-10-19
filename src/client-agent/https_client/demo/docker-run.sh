@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Wazuh agent HTTPS client — Docker demo runner (host side).
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 #
 # Stages a minimal build context (the module sources + a few header-only deps),
 # builds the demo image, and runs it. No prior Wazuh build required; the module

@@ -22,8 +22,10 @@ RUN sed -i 's| url: .*| url: "https://host.docker.internal"|' /etc/wazuh-dashboa
 # Clean up installation files
 RUN rm -rf /tmp/wazuh-install
 
-# Unbake what the postinst resolved into this layer (AI assistant encryptionKey,
-# its own certs, the shared CA it minted): every container resolves at start.
+# Unbake what the postinst resolved into this layer (keystore entries, the AI
+# assistant encryptionKey, its pair in certs/, the CA it minted in
+# /etc/wazuh-dashboard/ca, the peer CAs it imported): every container stages the
+# e2e certificates and resolves at start (entrypoint.sh).
 RUN /usr/share/wazuh-dashboard/bin/resolve-credentials --clear
 
 # Set working directory

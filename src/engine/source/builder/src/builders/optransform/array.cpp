@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include "array.hpp"
 
 namespace builder::builders::optransform

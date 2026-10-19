@@ -55,7 +55,8 @@ done
 
 # The start resolves credentials first and refuses to run without them. The tavern suites log in as
 # wazuh-internal-client with a known password, and this environment has no indexer, so its value only has to be
-# present. Same values on every node: they share the api_security volume and any of them may seed it.
+# present. Same values on every node: they share the api_security volume, which the master seeds and the workers
+# never do.
 export WAZUH_MANAGER_API_PASSWORD='Wazuh-Integration1'
 export WAZUH_MANAGER_WUI_PASSWORD='WazuhWui-Integration1'
 export WAZUH_INDEXER_MANAGER_PASSWORD='Indexer-Integration1'

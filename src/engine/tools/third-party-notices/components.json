@@ -1,0 +1,799 @@
+{
+  "components": [
+    {
+      "name": "abseil-cpp",
+      "version": "LTS 20240116",
+      "spdx": "Apache-2.0",
+      "author": "Google Inc.",
+      "homepage": "https://github.com/abseil/abseil-cpp",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "Apache 2.0 License",
+      "dir": "abseil-cpp",
+      "files": [
+        "abseil-cpp/LICENSE"
+      ]
+    },
+    {
+      "name": "asio",
+      "version": "1.38.2",
+      "spdx": "BSL-1.0",
+      "author": "Christopher M. Kohlhoff",
+      "homepage": "https://github.com/chriskohlhoff/asio",
+      "artefacts": [
+        "manager"
+      ],
+      "readme_license": "Boost Software License 1.0",
+      "dir": "asio",
+      "files": [
+        "asio/LICENSE_1_0.txt"
+      ]
+    },
+    {
+      "name": "bzip2",
+      "version": "1.0.8",
+      "spdx": "bzip2-1.0.6",
+      "author": "Julian Seward",
+      "homepage": "https://github.com/libarchive/bzip2",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "BSD License",
+      "dir": "bzip2",
+      "files": [
+        "bzip2/LICENSE"
+      ]
+    },
+    {
+      "name": "cJSON",
+      "version": "1.7.18",
+      "spdx": "MIT",
+      "author": "Dave Gamble",
+      "homepage": "https://github.com/DaveGamble/cJSON",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "MIT License",
+      "dir": "cJSON",
+      "files": [
+        "cJSON/LICENSE"
+      ]
+    },
+    {
+      "name": "concurrentqueue",
+      "version": "unknown",
+      "spdx": "BSD-2-Clause OR BSL-1.0",
+      "author": "Cameron Desrochers",
+      "homepage": "https://github.com/cameron314/concurrentqueue",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "BSD 2-Clause or Boost Software License 1.0",
+      "dir": "concurrentqueue",
+      "files": [
+        "concurrentqueue/LICENSE.md"
+      ]
+    },
+    {
+      "name": "cpp-httplib",
+      "version": "0.25.0",
+      "spdx": "MIT",
+      "author": "yhirose",
+      "homepage": "https://github.com/yhirose/cpp-httplib",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "MIT License",
+      "dir": "cpp-httplib",
+      "files": [
+        "cpp-httplib/LICENSE"
+      ]
+    },
+    {
+      "name": "cPython",
+      "version": "3.12.14",
+      "spdx": "PSF-2.0",
+      "author": "Guido van Rossum",
+      "homepage": "https://github.com/python/cpython",
+      "artefacts": [
+        "manager"
+      ],
+      "readme_license": "Python Software Foundation License version 2",
+      "tarball": {
+        "archive": "cpython.tar.gz",
+        "member": "./lib/python3.12/LICENSE.txt"
+      },
+      "python-bundle": {
+        "archive": "cpython.tar.gz",
+        "site_packages": "./lib/python3.12/site-packages"
+      }
+    },
+    {
+      "name": "cURL",
+      "version": "8.20.0",
+      "spdx": "curl",
+      "author": "Daniel Stenberg",
+      "homepage": "https://github.com/curl/curl",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "curl License",
+      "dir": "curl",
+      "files": [
+        "curl/COPYING"
+      ]
+    },
+    {
+      "name": "dbus",
+      "version": "1.14.10",
+      "spdx": "GPL-2.0-only",
+      "author": "freedesktop.org",
+      "homepage": "https://gitlab.freedesktop.org/dbus/dbus",
+      "artefacts": [
+        "agent"
+      ],
+      "readme_license": "GNU Public License version 2"
+    },
+    {
+      "name": "expected-lite",
+      "version": "0.10.0",
+      "spdx": "BSL-1.0",
+      "author": "Martin Moene",
+      "homepage": "https://github.com/martinmoene/expected-lite",
+      "artefacts": [
+        "manager"
+      ],
+      "readme_license": "Boost Software License 1.0",
+      "dir": "expected-lite",
+      "files": [
+        "expected-lite/LICENSE.txt"
+      ]
+    },
+    {
+      "name": "fast_float",
+      "version": "6.1.4",
+      "spdx": "Apache-2.0 OR BSL-1.0 OR MIT",
+      "author": "Daniel Lemire et al.",
+      "homepage": "https://github.com/fastfloat/fast_float",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "Apache 2.0, Boost 1.0 or MIT License",
+      "dir": "fast_float",
+      "files": [
+        "fast_float/LICENSE-APACHE",
+        "fast_float/LICENSE-BOOST",
+        "fast_float/LICENSE-MIT"
+      ]
+    },
+    {
+      "name": "Flatbuffers",
+      "version": "23.5.26",
+      "spdx": "Apache-2.0",
+      "author": "Google Inc.",
+      "homepage": "https://github.com/google/flatbuffers/",
+      "artefacts": [
+        "manager"
+      ],
+      "readme_license": "Apache 2.0 License",
+      "dir": "flatbuffers",
+      "files": [
+        "flatbuffers/LICENSE"
+      ]
+    },
+    {
+      "name": "fmt",
+      "version": "8.1.1",
+      "spdx": "MIT",
+      "author": "Victor Zverovich",
+      "homepage": "https://github.com/fmtlib/fmt",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "MIT License",
+      "dir": "fmt",
+      "files": [
+        "fmt/LICENSE.rst"
+      ]
+    },
+    {
+      "name": "Google Benchmark",
+      "version": "1.6.1",
+      "spdx": "Apache-2.0",
+      "author": "Google Inc.",
+      "homepage": "https://github.com/google/benchmark",
+      "artefacts": [
+        "readme-only"
+      ],
+      "readme_license": "Apache 2.0 License"
+    },
+    {
+      "name": "GoogleTest",
+      "version": "1.11.0",
+      "spdx": "BSD-3-Clause",
+      "author": "Google Inc.",
+      "homepage": "https://github.com/google/googletest",
+      "artefacts": [
+        "readme-only"
+      ],
+      "readme_license": "3-Clause \"New\" BSD License"
+    },
+    {
+      "name": "Hinnant date",
+      "version": "3.0.1",
+      "spdx": "MIT",
+      "author": "Howard Hinnant",
+      "homepage": "https://github.com/HowardHinnant/date",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "MIT License",
+      "dir": "date",
+      "files": [
+        "date/LICENSE.txt"
+      ]
+    },
+    {
+      "name": "jemalloc",
+      "version": "5.2.1",
+      "spdx": "BSD-2-Clause",
+      "author": "Jason Evans",
+      "homepage": "https://github.com/jemalloc/jemalloc",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "2-Clause \"Simplified\" BSD License",
+      "dir": "jemalloc",
+      "files": [
+        "jemalloc/COPYING"
+      ]
+    },
+    {
+      "name": "jwt-cpp",
+      "version": "0.7.1",
+      "spdx": "MIT",
+      "author": "Dominik Thalhammer",
+      "homepage": "https://github.com/Thalhammer/jwt-cpp",
+      "artefacts": [
+        "manager"
+      ],
+      "readme_license": "MIT License",
+      "dir": "jwt-cpp",
+      "files": [
+        "jwt-cpp/LICENSE"
+      ]
+    },
+    {
+      "name": "libbpf",
+      "version": "1.7.0",
+      "spdx": "LGPL-2.1-only",
+      "author": "libbpf",
+      "homepage": "https://github.com/libbpf/libbpf",
+      "artefacts": [
+        "agent"
+      ],
+      "readme_license": "GNU Lesser General Public License version 2.1"
+    },
+    {
+      "name": "libdb",
+      "version": "18.1.40",
+      "spdx": "AGPL-3.0-only",
+      "author": "Oracle Corporation",
+      "homepage": "https://github.com/yasuhirokimura/db18",
+      "artefacts": [
+        "agent"
+      ],
+      "readme_license": "Affero GPL v3"
+    },
+    {
+      "name": "libffi",
+      "version": "3.2.1",
+      "spdx": "MIT",
+      "author": "Anthony Green",
+      "homepage": "https://github.com/libffi/libffi",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "MIT License",
+      "dir": "libffi",
+      "files": [
+        "libffi/LICENSE"
+      ]
+    },
+    {
+      "name": "libgcc_s",
+      "version": "GCC 14",
+      "spdx": "GPL-3.0-or-later WITH GCC-exception-3.1",
+      "author": "Free Software Foundation, Inc.",
+      "homepage": "https://gcc.gnu.org/",
+      "artefacts": [
+        "manager"
+      ],
+      "readme_license": "GNU Public License version 3 or later with the GCC Runtime Library Exception",
+      "inline": [
+        "texts/GPL-3.0.txt",
+        "texts/GCC-exception-3.1.txt"
+      ]
+    },
+    {
+      "name": "libmaxminddb",
+      "version": "1.9.1",
+      "spdx": "Apache-2.0",
+      "author": "MaxMind, Inc.",
+      "homepage": "https://github.com/maxmind/libmaxminddb",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "Apache 2.0 License",
+      "dir": "libmaxminddb",
+      "files": [
+        "libmaxminddb/LICENSE",
+        "libmaxminddb/NOTICE"
+      ]
+    },
+    {
+      "name": "libpcre2",
+      "version": "10.42",
+      "spdx": "BSD-3-Clause",
+      "author": "Philip Hazel",
+      "homepage": "https://github.com/PCRE2Project/pcre2",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "BSD License",
+      "dir": "libpcre2",
+      "files": [
+        "libpcre2/LICENCE"
+      ]
+    },
+    {
+      "name": "libplist",
+      "version": "2.2.0",
+      "spdx": "LGPL-2.1-only",
+      "author": "Aaron Burghardt et al.",
+      "homepage": "https://github.com/libimobiledevice/libplist",
+      "artefacts": [
+        "agent"
+      ],
+      "readme_license": "GNU Lesser General Public License version 2.1"
+    },
+    {
+      "name": "libstdc++",
+      "version": "GCC 14",
+      "spdx": "GPL-3.0-or-later WITH GCC-exception-3.1",
+      "author": "Free Software Foundation, Inc.",
+      "homepage": "https://gcc.gnu.org/",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "GNU Public License version 3 or later with the GCC Runtime Library Exception",
+      "inline": [
+        "texts/GPL-3.0.txt",
+        "texts/GCC-exception-3.1.txt"
+      ]
+    },
+    {
+      "name": "libYAML",
+      "version": "0.1.7",
+      "spdx": "MIT",
+      "author": "Kirill Simonov",
+      "homepage": "https://github.com/yaml/libyaml",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "MIT License",
+      "dir": "libyaml",
+      "files": [
+        "libyaml/LICENSE"
+      ]
+    },
+    {
+      "name": "Linux Audit userspace",
+      "version": "2.8.4",
+      "spdx": "LGPL-2.1-only",
+      "author": "Rik Faith",
+      "homepage": "https://github.com/linux-audit/audit-userspace",
+      "artefacts": [
+        "agent"
+      ],
+      "readme_license": "GNU Lesser General Public License version 2.1"
+    },
+    {
+      "name": "llhttp",
+      "version": "9.4.2",
+      "spdx": "MIT",
+      "author": "Fedor Indutny",
+      "homepage": "https://github.com/nodejs/llhttp",
+      "artefacts": [
+        "manager"
+      ],
+      "readme_license": "MIT License",
+      "dir": "llhttp",
+      "files": [
+        "llhttp/LICENSE",
+        "llhttp/LICENSE-MIT"
+      ]
+    },
+    {
+      "name": "Lua",
+      "version": "5.4.8",
+      "spdx": "MIT",
+      "author": "PUC-Rio",
+      "homepage": "https://github.com/lua/lua",
+      "artefacts": [
+        "agent"
+      ],
+      "readme_license": "MIT License"
+    },
+    {
+      "name": "nlohmann",
+      "version": "3.11.2",
+      "spdx": "MIT",
+      "author": "Niels Lohmann",
+      "homepage": "https://github.com/nlohmann/json",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "MIT License",
+      "inline": [
+        "texts/nlohmann-MIT.txt"
+      ],
+      "dir": "nlohmann"
+    },
+    {
+      "name": "OpenSSL",
+      "version": "3.6.2",
+      "spdx": "Apache-2.0",
+      "author": "OpenSSL Software Foundation",
+      "homepage": "https://github.com/openssl/openssl",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "Apache 2.0 License",
+      "dir": "openssl",
+      "files": [
+        "openssl/LICENSE.txt"
+      ]
+    },
+    {
+      "name": "popt",
+      "version": "1.16",
+      "spdx": "MIT",
+      "author": "Jeff Johnson & Erik Troan",
+      "homepage": "https://github.com/rpm-software-management/popt",
+      "artefacts": [
+        "agent"
+      ],
+      "readme_license": "MIT License"
+    },
+    {
+      "name": "procps",
+      "version": "2.8.3",
+      "spdx": "LGPL-2.0-only",
+      "author": "Brian Edmonds et al.",
+      "homepage": "https://gitlab.com/procps-ng/procps",
+      "artefacts": [
+        "agent"
+      ],
+      "readme_license": "GNU Library General Public License version 2"
+    },
+    {
+      "name": "protobuf",
+      "version": "3.21.12",
+      "spdx": "BSD-3-Clause",
+      "author": "Google Inc.",
+      "homepage": "https://github.com/protocolbuffers/protobuf",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "3-Clause \"New\" BSD License",
+      "dir": "protobuf",
+      "files": [
+        "protobuf/LICENSE"
+      ]
+    },
+    {
+      "name": "pugixml",
+      "version": "1.15",
+      "spdx": "MIT",
+      "author": "Arseny Kapoulkine",
+      "homepage": "https://github.com/zeux/pugixml",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "MIT License",
+      "dir": "pugixml",
+      "files": [
+        "pugixml/LICENSE.md"
+      ]
+    },
+    {
+      "name": "RapidJSON",
+      "version": "1.1.0",
+      "spdx": "MIT",
+      "author": "THL A29 Limited and Milo Yip",
+      "homepage": "https://github.com/Tencent/rapidjson",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "MIT License",
+      "dir": "rapidjson",
+      "files": [
+        "rapidjson/license.txt"
+      ]
+    },
+    {
+      "name": "RE2",
+      "version": "2024-06-01",
+      "spdx": "BSD-3-Clause",
+      "author": "The RE2 Authors",
+      "homepage": "https://github.com/google/re2",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "3-Clause \"New\" BSD License",
+      "dir": "re2",
+      "files": [
+        "re2/LICENSE"
+      ]
+    },
+    {
+      "name": "RESTinio",
+      "version": "0.7.10",
+      "spdx": "BSD-3-Clause AND BSL-1.0 AND MIT AND Zlib",
+      "author": "Stiffstream",
+      "homepage": "https://github.com/Stiffstream/restinio",
+      "artefacts": [
+        "manager"
+      ],
+      "readme_license": "BSD 3-Clause, Boost 1.0, MIT and zlib Licenses",
+      "dir": "restinio",
+      "files": [
+        "restinio/LICENSE",
+        "restinio/LICENSE.expected-lite",
+        "restinio/LICENSE.fmtlib",
+        "restinio/LICENSE.llhttp",
+        "restinio/LICENSE.zlib"
+      ]
+    },
+    {
+      "name": "RocksDB",
+      "version": "8.3.2",
+      "spdx": "Apache-2.0 AND BSD-3-Clause",
+      "author": "Facebook Inc.",
+      "homepage": "https://github.com/facebook/rocksdb/",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "Apache 2.0 License",
+      "dir": "rocksdb",
+      "files": [
+        "rocksdb/LICENSE.Apache",
+        "rocksdb/LICENSE.leveldb"
+      ]
+    },
+    {
+      "name": "rpm",
+      "version": "4.20.1",
+      "spdx": "GPL-2.0-only",
+      "author": "Marc Ewing & Erik Troan",
+      "homepage": "https://github.com/rpm-software-management/rpm",
+      "artefacts": [
+        "agent"
+      ],
+      "readme_license": "GNU Public License version 2"
+    },
+    {
+      "name": "RxCpp",
+      "version": "unknown",
+      "spdx": "Apache-2.0",
+      "author": "RxCpp contributors",
+      "homepage": "https://github.com/ReactiveX/RxCpp",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "Apache 2.0 License",
+      "dir": "RxCpp",
+      "files": [
+        "RxCpp/license.md"
+      ]
+    },
+    {
+      "name": "simdjson",
+      "version": "3.13.0",
+      "spdx": "Apache-2.0 OR MIT",
+      "author": "Daniel Lemire",
+      "homepage": "https://github.com/simdjson/simdjson",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "Apache License 2.0 or MIT License",
+      "dir": "simdjson",
+      "files": [
+        "simdjson/LICENSE",
+        "simdjson/LICENSE-MIT"
+      ]
+    },
+    {
+      "name": "spdlog",
+      "version": "1.14.1",
+      "spdx": "MIT",
+      "author": "Gabi Melman",
+      "homepage": "https://github.com/gabime/spdlog",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "MIT License",
+      "dir": "spdlog",
+      "files": [
+        "spdlog/LICENSE"
+      ]
+    },
+    {
+      "name": "sqlite",
+      "version": "3.53.1",
+      "spdx": "blessing",
+      "author": "D. Richard Hipp",
+      "homepage": "https://github.com/sqlite/sqlite",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "Public Domain (no restrictions)",
+      "inline": [
+        "texts/sqlite-blessing.txt"
+      ],
+      "dir": "sqlite"
+    },
+    {
+      "name": "Taskflow",
+      "version": "3.7.0",
+      "spdx": "MIT",
+      "author": "Tsung-Wei Huang",
+      "homepage": "https://github.com/taskflow/taskflow",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "MIT License",
+      "dir": "taskflow",
+      "files": [
+        "taskflow/LICENSE"
+      ]
+    },
+    {
+      "name": "IANA tzdata",
+      "version": "2026a",
+      "spdx": "LicenseRef-tzdata-public-domain",
+      "author": "IANA / tz contributors",
+      "homepage": "https://data.iana.org/time-zones/",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "Public Domain",
+      "dir": "tzdata",
+      "files": [
+        "tzdata/LICENSE"
+      ]
+    },
+    {
+      "name": "yaml-cpp",
+      "version": "0.8.0",
+      "spdx": "MIT",
+      "author": "Jesse Beder",
+      "homepage": "https://github.com/jbeder/yaml-cpp",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "MIT License",
+      "dir": "yaml-cpp",
+      "files": [
+        "yaml-cpp/LICENSE"
+      ]
+    },
+    {
+      "name": "zlib",
+      "version": "1.3.1",
+      "spdx": "Zlib",
+      "author": "Jean-loup Gailly & Mark Adler",
+      "homepage": "https://github.com/madler/zlib",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "zlib/libpng License",
+      "dir": "zlib",
+      "files": [
+        "zlib/LICENSE"
+      ]
+    },
+    {
+      "name": "zstd",
+      "version": "1.5.7",
+      "spdx": "BSD-3-Clause",
+      "author": "Meta Platforms, Inc. (Facebook)",
+      "homepage": "https://github.com/facebook/zstd",
+      "artefacts": [
+        "manager"
+      ],
+      "readme_license": "3-Clause \"New\" BSD License",
+      "dir": "zstd",
+      "files": [
+        "zstd/LICENSE"
+      ]
+    }
+  ],
+  "external_ignore": [
+    {
+      "dir": "audit-userspace",
+      "reason": "agent-only dependency, not shipped by the manager or the standalone bundle"
+    },
+    {
+      "dir": "benchmark",
+      "reason": "build and test only (Google Benchmark)"
+    },
+    {
+      "dir": "cpython",
+      "reason": "CPython built from source when the precompiled bundle is not available (src/Makefile); its license comes from the cPython component"
+    },
+    {
+      "dir": "geo_db",
+      "reason": "data files, not software"
+    },
+    {
+      "dir": "googletest",
+      "reason": "build and test only"
+    },
+    {
+      "dir": "indexer-plugins",
+      "reason": "Wazuh's own code"
+    },
+    {
+      "dir": "procps",
+      "reason": "agent-only dependency, not shipped by the manager or the standalone bundle"
+    },
+    {
+      "dir": "wazuh-credentials",
+      "reason": "Wazuh's own code"
+    },
+    {
+      "dir": "wcs-flat-files",
+      "reason": "data files (Wazuh Common Schema), not software"
+    }
+  ],
+  "python_overrides": {
+    "behave": "texts/pypi-behave.txt",
+    "content_size_limit_asgi": "texts/pypi-content_size_limit_asgi.txt",
+    "defusedxml": "texts/pypi-defusedxml.txt",
+    "flatbuffers": "texts/pypi-flatbuffers.txt",
+    "opensearch_protobufs": "texts/pypi-opensearch_protobufs.txt"
+  }
+}

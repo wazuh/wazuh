@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef WI_IINDEXER_CONNECTOR_ASYNC_HPP
 #define WI_IINDEXER_CONNECTOR_ASYNC_HPP
 

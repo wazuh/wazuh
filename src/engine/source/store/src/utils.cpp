@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include <store/utils.hpp>
 
 #include <base/logging.hpp>

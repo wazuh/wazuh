@@ -82,8 +82,7 @@ override_dh_install:
 	rm -rf $(INSTALLATION_DIR)/logs/*.json
 
 	./gen_permissions.sh $(INSTALLATION_DIR)/ ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/restore-permissions.sh --guard-writable
-	# $(CONF_DIR) is writable by the service account: the generated script stages in its parent instead
-	./gen_permissions.sh $(CONF_DIR)/ ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/restore-permissions-conf.sh --guard-writable --stage-dir=$(dir $(CONF_DIR))
+	./gen_permissions.sh $(CONF_DIR)/ ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/restore-permissions-conf.sh --guard-writable
 
 	# Copying to target
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_DIR)/
@@ -106,6 +105,14 @@ override_dh_install:
 
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/etc/templates/config/ubuntu
 	cp -r etc/templates/config/ubuntu ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/etc/templates/config/
+
+	# Install the license texts: GPLv2 for the manager, AGPLv3 for the engine (wazuh-manager-analysisd)
+	mkdir -p ${TARGET_DIR}/usr/share/doc/wazuh-manager
+	install -m 0644 LICENSE src/engine/LICENSE-engine src/engine/COPYING-engine THIRD-PARTY-NOTICES ${TARGET_DIR}/usr/share/doc/wazuh-manager/
+
+# Keep the license texts uncompressed: debian/copyright points to them by name.
+override_dh_compress:
+	dh_compress -XLICENSE -XLICENSE-engine -XCOPYING-engine -XTHIRD-PARTY-NOTICES
 
 override_dh_fixperms:
 	dh_fixperms

@@ -1,7 +1,6 @@
 /*
  * Wazuh Module for Office365 events
- * Copyright (C) 2015, Wazuh Inc.
- * May 18, 2021.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -434,6 +433,8 @@ STATIC void wm_office365_execute_scan(wm_office365* office365_config, int initia
                             } else if (content && (content->type == cJSON_String)) {
                                 cJSON *logs_array = NULL;
 
+                                buffer_size_reached = false;
+
                                 if (logs_array = wm_office365_get_logs_from_blob(content->valuestring, access_token, office365_config->curl_max_size, &buffer_size_reached, &error_msg), logs_array) {
                                     int size_logs = cJSON_GetArraySize(logs_array);
 
@@ -463,36 +464,42 @@ STATIC void wm_office365_execute_scan(wm_office365* office365_config, int initia
                                     }
 
                                     cJSON_Delete(logs_array);
+                                } else if (buffer_size_reached) {
+                                    // Skip only this blob: the rest of the window is still collected, and
+                                    // retrying would fail the same way on every scan.
+                                    mtwarn(WM_OFFICE365_LOGTAG, "Skipped a content blob of tenant '%s' and subscription '%s' between '%s' and '%s': "
+                                        "it is larger than curl_max_size (%ld bytes).", current_auth->tenant_id,
+                                        current_subscription->subscription_name, start_time_str, end_time_str, (long)office365_config->curl_max_size);
                                 } else {
                                     scan_finished = 1;
-                                    if (!buffer_size_reached) {
-                                        fail = 1;
-                                    }
+                                    fail = 1;
                                 }
                             }
                         }
 
-                        if (!scan_finished) {
-                            if ((next_page == NULL) || (strlen(next_page) >= OS_SIZE_8192)) {
-                                scan_finished = 1;
-                            } else if (!wm_url_is_allowed(next_page, current_auth->management_fqdn)) {
-                                mtwarn(WM_OFFICE365_LOGTAG, "Ignoring next page URL out of '%s'.", current_auth->management_fqdn);
-                                os_free(next_page);
-                                scan_finished = 1;
-                                fail = 1;
-                            } else {
-                                snprintf(url, sizeof(url), "%s", next_page);
-                                os_free(next_page);
-                            }
-                        }
-
                         cJSON_Delete(blobs_array);
+                    } else if (buffer_size_reached) {
+                        mtwarn(WM_OFFICE365_LOGTAG, "Skipped a page of content blobs of tenant '%s' and subscription '%s' between '%s' and '%s': "
+                            "it is larger than curl_max_size (%ld bytes).", current_auth->tenant_id,
+                            current_subscription->subscription_name, start_time_str, end_time_str, (long)office365_config->curl_max_size);
                     } else {
                         scan_finished = 1;
-                        if (!buffer_size_reached) {
+                        fail = 1;
+                    }
+
+                    if (!scan_finished) {
+                        if ((next_page == NULL) || (strlen(next_page) >= OS_SIZE_8192)) {
+                            scan_finished = 1;
+                        } else if (!wm_url_is_allowed(next_page, current_auth->management_fqdn)) {
+                            mtwarn(WM_OFFICE365_LOGTAG, "Ignoring next page URL out of '%s'.", current_auth->management_fqdn);
+                            scan_finished = 1;
                             fail = 1;
+                        } else {
+                            snprintf(url, sizeof(url), "%s", next_page);
                         }
                     }
+
+                    os_free(next_page);
                 }
 
                 if (fail) {
@@ -681,9 +688,14 @@ STATIC cJSON* wm_office365_get_content_blobs(const char* url, const char* token,
     if (response) {
         cJSON *response_json = NULL;
 
-        if (response->max_size_reached) {
+        if (response->max_size_reached && response->status_code == 200) {
+            // Only a successful answer is skipped; an error answer of any size is a failure,
+            // retried on the next scan.
             *buffer_size_reached = true;
             mtdebug1(WM_OFFICE365_LOGTAG, "Libcurl error, reached maximum response size.");
+            // The next page link is read from the headers, which count against the same limit:
+            // if they alone exceed it, the link is lost and the window ends with this page.
+            *next_page = wm_read_http_header_element(response->header, WM_OFFICE365_NEXT_PAGE_REGEX);
         } else if (response_json = cJSON_Parse(response->body), response_json) {
             cJSON *code_json = cJSON_GetObjectItem(cJSON_GetObjectItem(response_json, "error"), "code");
 
@@ -738,7 +750,8 @@ STATIC cJSON* wm_office365_get_logs_from_blob(const char* url, const char* token
     if (response) {
         cJSON *response_json = NULL;
 
-        if (response->max_size_reached) {
+        if (response->max_size_reached && response->status_code == 200) {
+            // Only a successful answer is skipped; an error answer of any size is a failure.
             *buffer_size_reached = true;
             mtdebug1(WM_OFFICE365_LOGTAG, "Libcurl error, reached maximum response size.");
         } else if (response_json = cJSON_Parse(response->body), response_json) {

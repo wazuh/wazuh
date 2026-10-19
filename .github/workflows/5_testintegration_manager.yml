@@ -219,17 +219,13 @@ jobs:
 
       - name: Provision TLS certificates
         run: |
-          # Provision the node the way a distributed deployment does: replace the pair the installation
-          # issued with one issued elsewhere, and keep no CA on the host at all. The credential resolver
-          # issues certificates at installation and never looks at them again -- not at service start,
-          # not on upgrade -- so overwriting them is the whole procedure, and a manager running on
-          # someone else's PKI is under no obligation to keep a copy of its root CA.
-          # The pairs come from the devcontainer copy of the installation assistant tool; the manager
-          # node's SAN carries DNS:wazuh-manager, which the integration tests assert on the listener
-          # certificate. All three pairs (indexer connector, remoted, apid) come from that PKI: the
-          # API no longer generates its own certificate, and the installation issues the apid pair
-          # with the remoted profile, so the listener pair is installed for the Server API as well
-          # (serverAuth, leaf followed by the CA, SAN including localhost, which the tests connect to).
+          # Provision the node the way a deployment on someone else's PKI does: the manager's pairs, its
+          # CA and the indexer's trust all come from one external PKI, and no CA private key stays on
+          # the host. The pairs come from the devcontainer copy of the installation assistant tool; the
+          # manager node's SAN carries DNS:wazuh-manager, which the integration tests assert on the
+          # listener certificate. The listener pair is installed for the Server API as well (serverAuth,
+          # leaf followed by the CA, SAN including localhost, which the tests connect to), and the
+          # manager node's own certificate, issued with clientAuth, is the indexer client pair.
           sudo systemctl stop wazuh-manager 2>/dev/null || true
           CERTS_YML="$RUNNER_TEMP/wazuh-certs.yml"
           CERTS_OUT="$RUNNER_TEMP/wazuh-certificates"
@@ -256,6 +252,7 @@ jobs:
           # dropping privileges, so a regression that leaves any of them root:root (or the directory
           # closed to the group) would make the dropped service fail to start.
           sudo install -o root -g wazuh-manager -m 640 "$CERTS_OUT/root-ca.pem" "$MANAGER_CONF_DIR/certs/root-ca.pem"
+          sudo install -o root -g wazuh-manager -m 640 "$CERTS_OUT/root-ca.pem" "$MANAGER_CONF_DIR/certs/indexer-ca.pem"
           sudo install -o root -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager.pem" "$MANAGER_CONF_DIR/certs/indexer-connector.pem"
           sudo install -o root -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager-key.pem" "$MANAGER_CONF_DIR/certs/indexer-connector-key.pem"
           sudo install -o root -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager-remoted.pem" "$MANAGER_CONF_DIR/certs/remoted.pem"
@@ -264,24 +261,26 @@ jobs:
           sudo install -o root -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager-remoted-key.pem" "$MANAGER_CONF_DIR/certs/apid-key.pem"
           sudo chown root:wazuh-manager "$MANAGER_CONF_DIR/certs"
           sudo chmod 0750 "$MANAGER_CONF_DIR/certs"
-          # The installation minted a bootstrap CA here, including its private key. Nothing consults it
-          # once the pairs are in place, and leaving a signing key on a node that does not sign is the
-          # exposure this whole mechanism exists to remove -- so it goes. Its absence is also part of
-          # what is under test: the manager must start with no CA directory at all.
-          sudo rm -rf /etc/wazuh/ca
+          # The installation minted a CA in ca/. The pairs above come from another one, so that CA is
+          # replaced by the external CA's certificate alone: the resolver checks at every start that the
+          # Server API pair chains to ca/root-ca.pem, and with no key beside it nothing can be issued here
+          # -- leaving a signing key on a node that does not sign is the exposure this mechanism removes.
+          sudo rm -f "$MANAGER_CONF_DIR/ca/root-ca.key" "$MANAGER_CONF_DIR/ca/.wazuh-manager-bootstrap-ca"
+          sudo install -o root -g root -m 644 "$CERTS_OUT/root-ca.pem" "$MANAGER_CONF_DIR/ca/root-ca.pem"
 
-      - name: Supply the indexer credential
+      - name: Supply the indexer credential and resolve
         run: |
-          # The unit resolves credentials before starting and refuses to run without the indexer's
-          # password. systemd starts it from a clean environment, so the key goes in the shared
-          # credentials file. There is no indexer here; the value only has to be valid. The key is
-          # appended: a package installation has already published the generated Server API
-          # passwords there, and the framework's get_default_api_password() reads them back.
-          sudo install -d -m 0700 -o root -g root /etc/wazuh
-          sudo touch /etc/wazuh/credentials.env
-          sudo chmod 0600 /etc/wazuh/credentials.env
-          sudo grep -q '^WAZUH_INDEXER_MANAGER_PASSWORD=' /etc/wazuh/credentials.env || \
-            echo "WAZUH_INDEXER_MANAGER_PASSWORD='Indexer-Integration1'" | sudo tee -a /etc/wazuh/credentials.env > /dev/null
+          # The start resolves credentials first and refuses to run without the indexer's password.
+          # systemd starts it from a clean environment, so the key goes in the operator's local.env.
+          # There is no indexer here; the value only has to be valid.
+          echo "WAZUH_INDEXER_MANAGER_PASSWORD=Indexer-Integration1" | sudo tee "$MANAGER_CONF_DIR/local.env" > /dev/null
+          sudo chown root:root "$MANAGER_CONF_DIR/local.env"
+          sudo chmod 0600 "$MANAGER_CONF_DIR/local.env"
+          # --install publishes the new CA in export/ca.pem (the framework's tests read the published
+          # passwords from export/credentials.env) and stores the indexer password; then the read-only
+          # check every start runs first must find nothing to refuse.
+          sudo /var/wazuh-manager/bin/wazuh-manager-resolve-credentials --install
+          sudo /var/wazuh-manager/bin/wazuh-manager-resolve-credentials --check
 
       - name: Start wazuh-manager and verify
         run: |

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -1116,8 +1116,9 @@ def test_update_manager_conf_cluster_key_needs_read_secrets(update_mocks, read_s
         update_mocks['write_manager_conf'].assert_called_once_with(_conf_with_key(sent_key))
 
 
-INDEXER = {'hosts': ['https://127.0.0.1:9200'], 'ssl': {'certificate_authorities': ['etc/certs/root-ca.pem'],
-                                                       'certificate': '', 'key': ''}}
+INDEXER = {'hosts': ['https://127.0.0.1:9200'],
+           'ssl': {'certificate_authorities': ['/etc/wazuh-manager/certs/indexer-ca.pem'],
+                   'certificate': '', 'key': ''}}
 
 
 @pytest.mark.parametrize('read_secrets, sent_hosts, expected_code', [

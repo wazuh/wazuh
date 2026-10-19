@@ -103,113 +103,79 @@ Write `WAZUH_REMOTE_HTTPS_MAX_BODY_SIZE` as the configuration accepts it — a b
 
 #### Credentials and certificates
 
-The manager resolves every credential it needs — the two Server API passwords, the indexer service
-account, and its own TLS material — through one order, applied when the package is installed and
-again immediately before the service starts. There is nothing to configure by hand for a
-single-host installation: the packages generate what the manager owns and issue its certificates
-from a bootstrap CA.
+The manager sets up every credential it needs with its credential resolver, when the package is installed and
+again before every start: the two Server API passwords, the indexer password, its own CA and two server pairs, and
+its trust in the indexer. On a single host where the indexer is already installed there is nothing to configure:
+the manager generates what it owns and imports the indexer's CA, client pair and password from
+`/etc/wazuh-indexer/export/`. Install order does not matter: what a component could not resolve at install time
+is resolved when it starts.
 
-The certificates are issued **at installation only**. Nothing re-examines or reissues them
-afterwards — not a service start, not a package upgrade — so a pair you provision yourself, and the
-absence of a CA directory that usually goes with it, survive untouched.
-
-The one credential the manager cannot invent is its account on the indexer, because inventing a
-password does not make the peer accept it. Supply it before starting the service:
+When the indexer runs on another host, give the manager what it cannot invent or import. Copy the indexer's
+`ca.pem` and the client pair it issued for this manager (`manager-client.pem`, `manager-client-key.pem`, from the
+indexer's `/etc/wazuh-indexer/export/`) into the manager's certificates directory under the names below, and put
+the password in `/etc/wazuh-manager/local.env`:
 
 ```bash
-sudo install -d -m 0700 -o root -g root /etc/wazuh
-sudo touch /etc/wazuh/credentials.env && sudo chmod 0600 /etc/wazuh/credentials.env
+sudo install -m 0640 -o root -g wazuh-manager ca.pem /etc/wazuh-manager/certs/indexer-ca.pem
+sudo install -m 0640 -o root -g wazuh-manager manager-client.pem /etc/wazuh-manager/certs/indexer-connector.pem
+sudo install -m 0640 -o root -g wazuh-manager manager-client-key.pem /etc/wazuh-manager/certs/indexer-connector-key.pem
+sudo install -m 0600 -o root -g root /dev/null /etc/wazuh-manager/local.env
 echo "WAZUH_INDEXER_MANAGER_PASSWORD='<the wazuh-manager password on the indexer>'" \
-    | sudo tee -a /etc/wazuh/credentials.env > /dev/null
+    | sudo tee /etc/wazuh-manager/local.env > /dev/null
 ```
 
-If the indexer is installed on the same host, it publishes that key itself and there is nothing to
-do. Install order does not matter: whatever a component could not resolve at install time is
-resolved when it starts.
+The generated Server API passwords are published, readable by root only, in
+`/etc/wazuh-manager/export/credentials.env`; the dashboard on the same host reads its own from there.
 
-The generated Server API passwords are in the same file once the manager is installed:
-
-```bash
-sudo cat /etc/wazuh/credentials.env
-```
-
-Delete the file once every component is installed and running — it holds every plaintext password in
-the deployment, and until then it is how the components hand credentials to one another.
-
-See **[Credentials](credentials.md)** for the full resolution order, the password policy, the
-certificate flows and what to do when the manager refuses to start.
+See **[Credentials](credentials.md)** for every file and key, the password policy, the certificate rules and what
+to do when the manager refuses to start.
 
 #### Using certificates issued elsewhere
 
-A distributed deployment, a corporate PKI, cert-manager or Vault all issue the manager's
-certificates outside the host. Place them in the manager's own certificates directory along with the
-CA that signs them — **before** installing the package, so the install issues nothing, or afterwards,
-overwriting the pair it issued. Either way nothing looks at them again.
+A distributed deployment, a corporate PKI, cert-manager or Vault all issue the manager's certificates outside the
+host. Stage them **before** installing the package, so the install issues nothing, or replace the pairs it issued
+afterwards. Staged files are validated at every start and never replaced.
 
-When the pairs are staged before installing and no CA is in `/etc/wazuh/ca`, the install refuses to
-mint a CA beside existing material and prints
-`resolve-credentials: the manager has no TLS certificates and this install could not issue them`.
-The message is about issuing: the staged pairs stay where they are and are the ones the manager uses.
-The `wazuh-manager` user and group do not exist until the package creates them; the package's
-post-install step sets the owners and modes shown below on every file of the table that it finds,
-before the credential resolver runs.
-
-You do not need to keep a copy of your root CA on the host: `/etc/wazuh/ca` exists so that a manager
-given nothing can still come up, and once a pair is in `/etc/wazuh-manager/certs` nothing consults it. If the
-install minted a bootstrap CA before you replaced the pair, delete the directory — a signing key on a
-node that does not sign is exposure with no purpose:
-
-```bash
-sudo rm -rf /etc/wazuh/ca
-```
-
-The manager uses three pairs, all of which must be leaves of the same `root-ca.pem`: the HTTPS agent
-listener served by `wazuh-manager-remoted` and reused by `wazuh-manager-authd` on port 1515, the
-client certificate it presents to the indexer, and the certificate of the Server API
-(`wazuh-manager-apid`). Whatever issues them, they go in `/etc/wazuh-manager/certs` under
-these names:
+The manager uses two server pairs of its own, issued by one CA, and the indexer's trust:
 
 | File in `/etc/wazuh-manager/certs/` | Content | Owner:group, mode |
 |---|---|---|
-| `remoted.pem`, `remoted-key.pem` | the certificate chain the agent listener presents (a `serverAuth` leaf; the one the install issues is followed by the CA) and its key | `root:wazuh-manager`, `0640` |
-| `indexer-connector.pem`, `indexer-connector-key.pem` | the indexer client leaf (`clientAuth`) and its key | `root:wazuh-manager`, `0640` |
-| `apid.pem`, `apid-key.pem` | the Server API certificate chain (a `serverAuth` leaf, `CA:FALSE`, not expired, with a SAN extension; the one the install issues carries the `WAZUH_MANAGER_APID_CERT_SANS` list or the discovered one, and is followed by the CA) and its key | `root:wazuh-manager`, `0640` |
-| `root-ca.pem` | the CA all the leaves chain to | `root:wazuh-manager`, `0640` |
+| `remoted.pem`, `remoted-key.pem` | the agent listener's chain (a `serverAuth` leaf, followed by its CA) and key, served by `wazuh-manager-remoted` and reused by `wazuh-manager-authd` on port 1515 | `root:wazuh-manager`, `0640` |
+| `apid.pem`, `apid-key.pem` | the Server API's chain (a `serverAuth` leaf, `CA:FALSE`, with a SAN extension, followed by its CA) and key | `root:wazuh-manager`, `0640` |
+| `root-ca.pem` | the agents' CA bundle; must contain the CA in `/etc/wazuh-manager/ca/root-ca.pem` | `root:wazuh-manager`, `0640` |
+| `indexer-ca.pem` | the indexer's CA | `root:wazuh-manager`, `0640` |
+| `indexer-connector.pem`, `indexer-connector-key.pem` | the client pair the indexer issued for this manager (`clientAuth`) and its key | `root:wazuh-manager`, `0640` |
+
+The CA that issued the two server pairs goes in `/etc/wazuh-manager/ca/root-ca.pem` (`root:root 0644` in a
+`root:root 0700` directory). Its key, `root-ca.key`, is only needed where the manager should issue pairs itself;
+without it nothing can be signed on this host. With pairs staged and no CA in `ca/`, the install does not mint a
+second one beside them: it reports `MISSING /etc/wazuh-manager/ca/root-ca.pem: stage the CA that issued the pairs`.
 
 ```bash
-# <node>-remoted.pem, <node>.pem, ... stand for the files your PKI issued for this node.
-sudo install -m 0640 -o root -g wazuh-manager root-ca.pem \
-    /etc/wazuh-manager/certs/root-ca.pem
-sudo install -m 0640 -o root -g wazuh-manager <node>-remoted.pem \
-    /etc/wazuh-manager/certs/remoted.pem
-sudo install -m 0640 -o root -g wazuh-manager <node>-remoted-key.pem \
-    /etc/wazuh-manager/certs/remoted-key.pem
-sudo install -m 0640 -o root -g wazuh-manager <node>.pem \
-    /etc/wazuh-manager/certs/indexer-connector.pem
-sudo install -m 0640 -o root -g wazuh-manager <node>-key.pem \
-    /etc/wazuh-manager/certs/indexer-connector-key.pem
-sudo install -m 0640 -o root -g wazuh-manager <node>-apid.pem \
-    /etc/wazuh-manager/certs/apid.pem
-sudo install -m 0640 -o root -g wazuh-manager <node>-apid-key.pem \
-    /etc/wazuh-manager/certs/apid-key.pem
+# <node>-remoted.pem, ... stand for the files your PKI issued for this node.
+sudo install -d -m 0700 -o root -g root /etc/wazuh-manager/ca
+sudo install -m 0644 -o root -g root root-ca.pem /etc/wazuh-manager/ca/root-ca.pem
+sudo install -m 0640 -o root -g wazuh-manager root-ca.pem /etc/wazuh-manager/certs/root-ca.pem
+sudo install -m 0640 -o root -g wazuh-manager <node>-remoted.pem /etc/wazuh-manager/certs/remoted.pem
+sudo install -m 0640 -o root -g wazuh-manager <node>-remoted-key.pem /etc/wazuh-manager/certs/remoted-key.pem
+sudo install -m 0640 -o root -g wazuh-manager <node>-apid.pem /etc/wazuh-manager/certs/apid.pem
+sudo install -m 0640 -o root -g wazuh-manager <node>-apid-key.pem /etc/wazuh-manager/certs/apid-key.pem
 ```
 
-Every file in `/etc/wazuh-manager/certs` is `root:wazuh-manager` `0640`, in a `root:wazuh-manager`
-`0750` directory: the daemons read their pairs after dropping privileges, through the group, but
-cannot replace or loosen them, and no daemon writes the directory. The installer normalizes
-the owner and mode of every `.pem` there. To serve another certificate on the API, use other file
-names in `/etc/wazuh-manager/certs` and point `https.key` and `https.cert` at them, with the same
-owner and mode.
+If the install already minted a CA before you staged yours, remove `ca/root-ca.key` and
+`ca/.wazuh-manager-bootstrap-ca`, put your CA in `ca/root-ca.pem`, and run
+`sudo /var/wazuh-manager/bin/wazuh-manager-resolve-credentials --install` once so that
+`/etc/wazuh-manager/export/ca.pem` names it.
 
-A wrong certificate is not caught at start: nothing re-examines the pair, and no network connection
-is opened, so it fails at the first peer connection instead. What *is* caught at start is an
-agent-listener file that is missing (`wazuh-manager-conf validate`, with the `(1244)` verdict naming
-it) or unreadable by the `wazuh-manager` user (`wazuh-manager-remoted`, after it drops privileges).
-`wazuh-manager-apid` loads its own pair at start, after dropping privileges and before daemonizing,
-and refuses to start (error `2003` on the terminal and in `logs/api.log`) when it is missing,
-unreadable by `wazuh-manager`, mismatched or encrypted. The indexer pair is not checked at start at all — see
-[Certificates](credentials.md#issued-at-installation-and-at-no-other-moment). Check what a node
-presents with `openssl x509 -in /etc/wazuh-manager/certs/remoted.pem -noout -text`.
+Every file in `/etc/wazuh-manager/certs` is `root:wazuh-manager` `0640`, in a `root:wazuh-manager` `0750`
+directory: the daemons read their pairs after dropping privileges, through the group, but cannot replace or loosen
+them. To serve another certificate on the API, use other file names in `/etc/wazuh-manager/certs` and point
+`https.key` and `https.cert` at them, with the same owner and mode.
+
+Before every start, the credential resolver checks each pair: that it parses, matches its key, is inside its
+validity window, is issued by its CA, and (for the indexer client pair) carries `clientAuth`. A problem stops the
+start with a line naming the file; see [When the manager does not start](credentials.md#when-the-manager-does-not-start).
+Check what a node presents with `openssl x509 -in /etc/wazuh-manager/certs/remoted.pem -noout -text`.
 
 #### Configure the indexer address
 
@@ -224,7 +190,7 @@ credential resolver. The installer generates this block:
   </hosts>
   <ssl>
     <certificate_authorities>
-      <ca>/etc/wazuh-manager/certs/root-ca.pem</ca>
+      <ca>/etc/wazuh-manager/certs/indexer-ca.pem</ca>
     </certificate_authorities>
     <certificate>/etc/wazuh-manager/certs/indexer-connector.pem</certificate>
     <key>/etc/wazuh-manager/certs/indexer-connector-key.pem</key>
@@ -281,9 +247,9 @@ The manager ships two Server API users, both linked to the `administrator` role:
 
 Neither ships with a password. Each is seeded on the first installation with the value supplied
 through `WAZUH_MANAGER_API_PASSWORD` / `WAZUH_MANAGER_WUI_PASSWORD`, or with a freshly generated one
-when nothing supplies it, and the result is written to `/etc/wazuh/credentials.env`. Two independent
-installations therefore never share a credential. An already-seeded `rbac.db` is never reseeded, so
-editing the file does not change a password the manager already holds. See
+when nothing supplies it, and the result is published in `/etc/wazuh-manager/export/credentials.env`. Two
+independent installations therefore never share a credential. An already-seeded `rbac.db` is never reseeded, so
+changing a supplied value later does not change a password the manager already holds. See
 [Credentials](credentials.md#the-keys) for the keys and
 [the password policy](credentials.md#the-password-policy).
 

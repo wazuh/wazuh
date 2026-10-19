@@ -1,12 +1,13 @@
 /*
  * Wazuh - Indexer Connector Bulk Queue unit tests.
- * Copyright (C) 2015, Wazuh Inc.
- * July 15, 2026.
+ * Copyright (C) Wazuh Inc.
  *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of either the GNU General Public License, version 2, or
+ * the GNU Affero General Public License, version 3 or (at your option) any
+ * later version, both as published by the Free Software Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
 #include "indexerBulkQueue.hpp"
@@ -111,6 +112,78 @@ TEST_F(IndexerBulkQueueTest, RequestBackoffDoesNotDropOrDuplicateData)
     ASSERT_EQ(received.size(), 2U);
     EXPECT_EQ(received[0], "first-batch");
     EXPECT_EQ(received[1], "second-batch");
+}
+
+// An external backoff really pauses the next send for the requested delay. Both timestamps are taken on the dispatch
+// thread: the pause observer runs right before the wait, and the wait (a predicate that only stop() satisfies) cannot
+// end early, so the lower bound does not depend on the scheduler. The second push happens only once the pause has
+// started, so the send it causes is necessarily the one after the pause.
+TEST_F(IndexerBulkQueueTest, ExternalBackoffPausesTheNextSendForTheRequestedDelay)
+{
+    using Clock = std::chrono::steady_clock;
+    std::promise<void> firstSentPromise;
+    std::future<void> firstSentFuture = firstSentPromise.get_future();
+    std::promise<void> secondSentPromise;
+    std::future<void> secondSentFuture = secondSentPromise.get_future();
+    std::promise<void> pausedPromise;
+    std::future<void> pausedFuture = pausedPromise.get_future();
+    std::mutex timesMutex;
+    Clock::time_point pausedAt {};
+    Clock::time_point secondSentAt {};
+    std::chrono::milliseconds pauseDelay {};
+    std::atomic<int> sendCount {0};
+    std::atomic<int> pauseCount {0};
+    std::atomic<uint64_t> firstSequence {0};
+
+    IndexerBulkQueue queue(
+        [&](uint64_t sequence, std::vector<std::string>&)
+        {
+            const auto count = ++sendCount;
+            if (count == 1)
+            {
+                firstSequence.store(sequence);
+                firstSentPromise.set_value();
+            }
+            else if (count == 2)
+            {
+                {
+                    std::lock_guard<std::mutex> lock(timesMutex);
+                    secondSentAt = Clock::now();
+                }
+                secondSentPromise.set_value();
+            }
+        },
+        UNLIMITED_BYTES,
+        SEND_ON_EVERY_PUSH,
+        FLUSH_INTERVAL_SEC,
+        RETRY_DELAY_SEC,
+        MAX_RETRY_DELAY_SEC,
+        [&](std::chrono::milliseconds delay, bool externalRequest)
+        {
+            if (externalRequest && ++pauseCount == 1)
+            {
+                {
+                    std::lock_guard<std::mutex> lock(timesMutex);
+                    pausedAt = Clock::now();
+                    pauseDelay = delay;
+                }
+                pausedPromise.set_value();
+            }
+        });
+
+    queue.push(std::string("first-batch"));
+    ASSERT_EQ(firstSentFuture.wait_for(std::chrono::seconds(5)), std::future_status::ready);
+
+    // The block reported for the first batch: the pause starts at the next loop of the dispatch thread
+    queue.requestBackoff(firstSequence.load());
+    ASSERT_EQ(pausedFuture.wait_for(std::chrono::seconds(10)), std::future_status::ready)
+        << "No external pause after requestBackoff()";
+    queue.push(std::string("second-batch"));
+    ASSERT_EQ(secondSentFuture.wait_for(std::chrono::seconds(10)), std::future_status::ready);
+
+    std::lock_guard<std::mutex> lock(timesMutex);
+    EXPECT_GE(pauseDelay, std::chrono::seconds(RETRY_DELAY_SEC));
+    EXPECT_GE(secondSentAt - pausedAt, pauseDelay) << "the send after an external backoff did not wait for the pause";
 }
 
 // Calling requestBackoff() repeatedly before the dispatch thread gets a chance to send again must

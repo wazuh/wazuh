@@ -1,7 +1,6 @@
 /*
  * Wazuh agent HTTPS client (C++ transport module)
- * Copyright (C) 2015, Wazuh Inc.
- * July 17, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -164,6 +163,17 @@ enum class HttpMethod
     Post, ///< The long-standing default: a fixed-size or streamed body.
     Get   ///< No body; CurlPerformer sends CURLOPT_HTTPGET instead.
 };
+
+/// Caps on the responses read into memory. Each sits far above the largest answer a manager
+/// sends, because a transfer cut at its cap is retried like a network failure.
+/// /control carries the task batch, which remoted's task client reads with an 11 MiB limit, plus
+/// the groups and hashes. 65 MiB also covers remoted.downstream_max_response_body_size (64 MiB at
+/// most), should the task client ever take that option.
+constexpr uint64_t CONTROL_MAX_RESPONSE_BYTES = 65ULL * 1024 * 1024;
+/// A /stateful answer is relayed to its module as one local frame, which must fit OS_MAXSTR.
+constexpr uint64_t STATEFUL_MAX_RESPONSE_BYTES = HC_MAX_STATEFUL_RESPONSE_BODY;
+/// /stateless, /stats, /config and /scan/vd answer with a short status document.
+constexpr uint64_t SHORT_REPLY_MAX_RESPONSE_BYTES = 64ULL * 1024;
 
 /// One signed HTTP attempt, as handed to the performer. TLS settings and the
 /// base URL are the performer's own configuration; the spec carries only the

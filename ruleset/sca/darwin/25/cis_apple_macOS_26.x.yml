@@ -1,4 +1,4 @@
-# Copyright (C) 2025, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 #
 # This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
@@ -2190,16 +2190,21 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1110"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Brute Force"
+      subtechnique:
+        id:
+          - "T1110.001"
+          - "T1110.003"
+        name:
+          - "Password Guessing"
+          - "Password Spraying"
     condition: all
     rules:
       - 'c:sh -c "pwpolicy -getaccountpolicies | grep -A1 policyAttributeMaximumFailedAuthentications" -> n:>(\d+)< compare <= 5'
@@ -2563,16 +2568,31 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0005"
+          - "TA0003"
+          - "TA0004"
+          - "TA0001"
+          - "TA0006"
         name:
-          - "Discovery"
+          - "Stealth"
+          - "Persistence"
+          - "Privilege Escalation"
+          - "Initial Access"
+          - "Credential Access"
       technique:
         id:
-          - "T1046"
-          - "T1087"
+          - "T1078"
+          - "T1110"
         name:
-          - "Network Service Discovery"
-          - "Account Discovery"
+          - "Valid Accounts"
+          - "Brute Force"
+      subtechnique:
+        id:
+          - "T1078.003"
+          - "T1110.004"
+        name:
+          - "Local Accounts"
+          - "Credential Stuffing"
     condition: all
     rules:
       - 'c:sh -c "pwpolicy -getaccountpolicies | grep -A1 policyAttributePasswordHistoryDepth" -> n:>(\d+)< compare >= 24'

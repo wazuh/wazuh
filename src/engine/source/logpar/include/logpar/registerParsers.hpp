@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef _REGISTER_PARSERS_HPP
 #define _REGISTER_PARSERS_HPP
 

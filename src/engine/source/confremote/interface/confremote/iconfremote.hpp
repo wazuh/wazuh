@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef CONFREMOTE_ICONFREMOTE_HPP
 #define CONFREMOTE_ICONFREMOTE_HPP
 

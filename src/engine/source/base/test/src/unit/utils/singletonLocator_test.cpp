@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include "base/mockSingletonManager.hpp"
 #include "base/utils/singletonLocator.hpp"
 

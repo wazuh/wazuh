@@ -1,4 +1,5 @@
 #!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
 # manager_conf_cli_test.sh — end-to-end checks of bin/wazuh-manager-conf over the vectors and over the
 # XML configuration the installer generates (src/init/gen_wazuh.sh -> WriteManager()). Runs from ctest
 # as `manager_config_cli`.
@@ -65,6 +66,14 @@ if [ "$rc" = 1 ] && grep -q '(1239)' "$TMP/err"; then
     pass cli_validate_missing_file
 else
     fail cli_validate_missing_file "exit $rc; err='$(cat "$TMP/err")'"
+fi
+
+rc=$(run "$CLI" validate -f "$TMP/does-not-exist.conf")
+if [ "$rc" = 1 ] && [ ! -s "$TMP/out" ] \
+    && [ "$(cat "$TMP/err")" = "(1239): Configuration file not found: '$TMP/does-not-exist.conf'." ]; then
+    pass cli_validate_missing_file_exact
+else
+    fail cli_validate_missing_file_exact "exit $rc; err='$(cat "$TMP/err")'"
 fi
 
 # The installer emits absolute /etc/wazuh-manager/certs/... paths, which would make this check depend on
@@ -173,6 +182,32 @@ if gen "$TMP/v.conf" \
     pass gen_remote_vars_roundtrip
 else
     fail gen_remote_vars_roundtrip "gen.err='$(cat "$TMP/gen.err" 2> /dev/null)' err='$(cat "$TMP/err" 2> /dev/null)' remote: $(sed -n '/<remote>/,/<\/remote>/p' "$TMP/v.conf" 2> /dev/null | tr '\n' ' ')"
+fi
+
+# The packages run the generator on hosts that may lack sed, grep, awk, openssl, hostname and
+# lsb_release: with none of them on PATH it still writes the same valid file (header, <auth>
+# certificate paths and a 32-hex-digit cluster key).
+NOTOOLS="$TMP/notools"
+mkdir -p "$NOTOOLS"
+for tool in /usr/bin/* /bin/*; do
+    case "$(basename "$tool")" in
+        sed|grep|egrep|fgrep|awk|gawk|mawk|nawk|openssl|hostname|lsb_release) continue ;;
+    esac
+    [ -e "$NOTOOLS/$(basename "$tool")" ] || ln -s "$tool" "$NOTOOLS/$(basename "$tool")"
+done
+if gen "$TMP/n.conf" "PATH=$NOTOOLS" WAZUH_REMOTE_HTTPS_CERTIFICATE=/opt/certs/server.pem \
+    WAZUH_REMOTE_HTTPS_KEY=/opt/certs/server-key.pem \
+    && ! PATH="$NOTOOLS" command -v sed > /dev/null && ! PATH="$NOTOOLS" command -v awk > /dev/null \
+    && [ ! -s "$TMP/gen.err" ] \
+    && "$CLI" --skip-file-checks validate -f "$TMP/n.conf" 2> "$TMP/err" \
+    && [ "$(sed -n 2p "$TMP/n.conf")" = "  Wazuh - Manager - Default configuration for ubuntu 24.04" ] \
+    && [ "$(effective "$TMP/n.conf" auth.ssl_manager_cert)" = "/opt/certs/server.pem" ] \
+    && [ "$(effective "$TMP/n.conf" auth.ssl_manager_key)" = "/opt/certs/server-key.pem" ] \
+    && key=$(effective "$TMP/n.conf" cluster.key) && [ "$(printf '%s' "$key" | tr -d '0-9a-f' | wc -c)" = 0 ] \
+    && [ "$(printf '%s' "$key" | wc -c)" = 32 ]; then
+    pass gen_without_text_tools
+else
+    fail gen_without_text_tools "gen.err='$(cat "$TMP/gen.err" 2> /dev/null)' err='$(cat "$TMP/err" 2> /dev/null)' header='$(sed -n 2p "$TMP/n.conf" 2> /dev/null)' key='${key:-}'"
 fi
 
 # An XML metacharacter in a free-text installer variable is rejected by CheckRemoteXmlSafe before any

@@ -1,4 +1,4 @@
-# Copyright (C) 2015, Wazuh Inc. External dependencies build orchestrator
+# Copyright (C) Wazuh Inc. External dependencies build orchestrator
 
 include(ExternalProject)
 

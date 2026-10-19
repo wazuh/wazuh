@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include "builders/baseBuilders_test.hpp"
 
 #include "builders/opmap/opBuilderHelperMap.hpp"
@@ -77,6 +78,16 @@ INSTANTIATE_TEST_SUITE_P(
              opBuilderHelperHashSHA1,
              {makeRef("ref")},
              SUCCESS(customRefExpected(json::Json(R"("da39a3ee5e6b4b0d3255bfef95601890afd80709")")))),
+        // FIPS 180 "abc" vector; expected hex computed independently with sha1sum
+        MapT(R"({"ref": "abc"})",
+             opBuilderHelperHashSHA1,
+             {makeRef("ref")},
+             SUCCESS(customRefExpected(json::Json(R"("a9993e364706816aba3e25717850c26c9cd0d89d")")))),
+        // 1 MiB of 'a' (crosses many 64-byte blocks); expected hex computed independently with sha1sum
+        MapT(std::string(R"({"ref": ")") + std::string(1024 * 1024, 'a') + R"("})",
+             opBuilderHelperHashSHA1,
+             {makeRef("ref")},
+             SUCCESS(customRefExpected(json::Json(R"("454027d64e3b855735552d42230eea1cbd645fa0")")))),
         MapT(R"({"notRef": "hello test!"})", opBuilderHelperHashSHA1, {makeRef("ref")}, FAILURE(customRefExpected())),
         MapT(R"({"ref": 1234})", opBuilderHelperHashSHA1, {makeRef("ref")}, FAILURE(customRefExpected())),
         MapT(R"({"ref": true})", opBuilderHelperHashSHA1, {makeRef("ref")}, FAILURE(customRefExpected())),

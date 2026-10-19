@@ -1,7 +1,7 @@
 #!/bin/bash
 # Program to build OSX wazuh-agent
 # Wazuh package generator
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 #
 # This program is a free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
@@ -53,6 +53,9 @@ function build() {
     ${SOURCES_PATH}/install.sh || { echo "install.sh failed! Aborting." >&2; exit 1; }
 
     find "${DESTINATION_PATH}/ruleset/sca/" -type f -exec rm -f {} \;
+
+    # Don't ship the empty JSON log placeholder; the agent creates it when JSON logging is enabled.
+    rm -f "${DESTINATION_PATH}/logs/ossec.json"
 
     # Add the auxiliar script used while installing the package
     mkdir -p ${INSTALLATION_SCRIPTS_DIR}/

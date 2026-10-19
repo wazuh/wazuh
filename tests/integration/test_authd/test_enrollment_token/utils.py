@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2024, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 """Helpers shared by the enrollment token tests (issue #38993) and their fixtures.

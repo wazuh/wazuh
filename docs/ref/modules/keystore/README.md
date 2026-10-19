@@ -92,8 +92,9 @@ credentials the framework's Indexer client needs.
 
 ## Format version
 
-The current keystore format is v2. Every `put()`/`get()` stamps a `version` key in the target column
-family so future format changes can key off it. There is no migration of older data: a 5.x manager is
+The current keystore format is v2. Every `put()` stamps a `version` key in the target column family
+so future format changes can key off it. A `get()` from a column family that does not exist returns
+an empty value without creating the family. There is no migration of older data: a 5.x manager is
 always a fresh installation, so no pre-5.0 keystore reaches this code (see the `upgrade()` comment in
 `src/shared_modules/keystore/src/keyStore.cpp`).
 

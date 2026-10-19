@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #ifndef MOCK_INDEXER_CONNECTOR_ASYNC_HPP
 #define MOCK_INDEXER_CONNECTOR_ASYNC_HPP
 

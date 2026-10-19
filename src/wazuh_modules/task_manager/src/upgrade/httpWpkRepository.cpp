@@ -1,7 +1,6 @@
 /*
  * Wazuh task manager module
- * Copyright (C) 2015, Wazuh Inc.
- * September 3, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -22,6 +21,9 @@
 
 namespace
 {
+    /// @brief Ceiling for a `versions` body, counted after content decoding. The real files are a few KiB.
+    constexpr size_t MAX_VERSIONS_SIZE {1024 * 1024};
+
     /**
      * @brief The cancellation flag handed to the library, with PROCESS lifetime.
      *
@@ -107,7 +109,8 @@ namespace task_manager::upgrade
                 }},
             ConfigurationParameters {.timeout = static_cast<long>(m_options.versionsTimeout.count()),
                                      .handlerType = CurlHandlerTypeEnum::MULTI,
-                                     .shouldRun = shouldRunFlag()});
+                                     .shouldRun = shouldRunFlag(),
+                                     .maxResponseSize = MAX_VERSIONS_SIZE});
 
         if (!failed)
         {

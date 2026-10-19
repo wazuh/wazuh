@@ -18,7 +18,7 @@ When creating custom SCA policy files, you need to consider the following four s
 ```yaml
 # Security Configuration Assessment
 # Audit for UNIX systems
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 #
 # This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public

@@ -129,38 +129,60 @@ Here you can find all the automation tools maintained by the Wazuh team.
 
 ## Software and libraries used
 
-| Software                                                                | Version | Author                        | License                                       |
-| ----------------------------------------------------------------------- | ------- | ----------------------------- | --------------------------------------------- |
-| [bzip2](https://github.com/libarchive/bzip2)                            | 1.0.8   | Julian Seward                 | BSD License                                   |
-| [cJSON](https://github.com/DaveGamble/cJSON)                            | 1.7.18  | Dave Gamble                   | MIT License                                   |
-| [cpp-httplib](https://github.com/yhirose/cpp-httplib)                   | 0.25.0  | yhirose                       | MIT License                                   |
-| [cPython](https://github.com/python/cpython)                            | 3.12.14 | Guido van Rossum              | Python Software Foundation License version 2  |
-| [cURL](https://github.com/curl/curl)                                    | 8.20.0  | Daniel Stenberg               | MIT License                                   |
-| [dbus](https://gitlab.freedesktop.org/dbus/dbus)                        | 1.14.10 | freedesktop.org               | GNU Public License version 2                  |
-| [Flatbuffers](https://github.com/google/flatbuffers/)                   | 23.5.26 | Google Inc.                   | Apache 2.0 License                            |
-| [Google Benchmark](https://github.com/google/benchmark)                 | 1.6.1   | Google Inc.                   | Apache 2.0 License                            |  |
-| [GoogleTest](https://github.com/google/googletest)                      | 1.11.0  | Google Inc.                   | 3-Clause "New" BSD License                    |
-| [jemalloc](https://github.com/jemalloc/jemalloc)                        | 5.2.1   | Jason Evans                   | 2-Clause "Simplified" BSD License             |
-| [jwt-cpp](https://github.com/Thalhammer/jwt-cpp)                        | 0.7.2   | Dominik Thalhammer            | MIT License                                   |
-| [libarchive](https://github.com/libarchive/libarchive)                  | 3.8.7   | Tim Kientzle                  | 3-Clause "New" BSD License                    |
-| [libbpf](https://github.com/libbpf/libbpf)                              | 1.7.0   | libbpf                        | GNU Lesser General Public License version 2.1 |
-| [libdb](https://github.com/yasuhirokimura/db18)                         | 18.1.40 | Oracle Corporation            | Affero GPL v3                                 |
-| [libffi](https://github.com/libffi/libffi)                              | 3.2.1   | Anthony Green                 | MIT License                                   |
-| [libpcre2](https://github.com/PCRE2Project/pcre2)                       | 10.42.0 | Philip Hazel                  | BSD License                                   |
-| [libplist](https://github.com/libimobiledevice/libplist)                | 2.2.0   | Aaron Burghardt et al.        | GNU Lesser General Public License version 2.1 |
-| [libYAML](https://github.com/yaml/libyaml)                              | 0.1.7   | Kirill Simonov                | MIT License                                   |
-| [liblzma](https://github.com/tukaani-project/xz)                        | 5.8.3   | Lasse Collin, Jia Tan et al.  | GNU Public License version 3                  |
-| [Linux Audit userspace](https://github.com/linux-audit/audit-userspace) | 2.8.4   | Rik Faith                     | GNU Lesser General Public License             |
-| [Lua](https://github.com/lua/lua)                                       | 5.4.8   | PUC-Rio                       | MIT License                                   |
-| [nlohmann](https://github.com/nlohmann/json)                            | 3.11.2  | Niels Lohmann                 | MIT License                                   |
-| [OpenSSL](https://github.com/openssl/openssl)                           | 3.6.2   | OpenSSL Software Foundation   | Apache 2.0 License                            |
-| [popt](https://github.com/rpm-software-management/popt)                 | 1.16    | Jeff Johnson & Erik Troan     | MIT License                                   |
-| [procps](https://gitlab.com/procps-ng/procps)                           | 2.8.3   | Brian Edmonds et al.          | GNU Lesser General Public License             |
-| [RocksDB](https://github.com/facebook/rocksdb/)                         | 8.3.2   | Facebook Inc.                 | Apache 2.0 License                            |
-| [rpm](https://github.com/rpm-software-management/rpm)                   | 4.20.1  | Marc Ewing & Erik Troan       | GNU Public License version 2                  |
-| [simdjson](https://github.com/simdjson/simdjson)                        | 3.13.0  | Daniel Lemire                 | Apache License 2.0                            |
-| [sqlite](https://github.com/sqlite/sqlite)                              | 3.53.1  | D. Richard Hipp               | Public Domain (no restrictions)               |
-| [zlib](https://github.com/madler/zlib)                                  | 1.3.1   | Jean-loup Gailly & Mark Adler | zlib/libpng License                           |
+<!-- third-party:begin -->
+| Software                                                                | Version      | Author                          | License                                                                      |
+| ----------------------------------------------------------------------- | ------------ | ------------------------------- | ---------------------------------------------------------------------------- |
+| [abseil-cpp](https://github.com/abseil/abseil-cpp)                      | LTS 20240116 | Google Inc.                     | Apache 2.0 License                                                           |
+| [asio](https://github.com/chriskohlhoff/asio)                           | 1.38.2       | Christopher M. Kohlhoff         | Boost Software License 1.0                                                   |
+| [bzip2](https://github.com/libarchive/bzip2)                            | 1.0.8        | Julian Seward                   | BSD License                                                                  |
+| [cJSON](https://github.com/DaveGamble/cJSON)                            | 1.7.18       | Dave Gamble                     | MIT License                                                                  |
+| [concurrentqueue](https://github.com/cameron314/concurrentqueue)        | unknown      | Cameron Desrochers              | BSD 2-Clause or Boost Software License 1.0                                   |
+| [cpp-httplib](https://github.com/yhirose/cpp-httplib)                   | 0.25.0       | yhirose                         | MIT License                                                                  |
+| [cPython](https://github.com/python/cpython)                            | 3.12.14      | Guido van Rossum                | Python Software Foundation License version 2                                 |
+| [cURL](https://github.com/curl/curl)                                    | 8.20.0       | Daniel Stenberg                 | curl License                                                                 |
+| [dbus](https://gitlab.freedesktop.org/dbus/dbus)                        | 1.14.10      | freedesktop.org                 | GNU Public License version 2                                                 |
+| [expected-lite](https://github.com/martinmoene/expected-lite)           | 0.10.0       | Martin Moene                    | Boost Software License 1.0                                                   |
+| [fast_float](https://github.com/fastfloat/fast_float)                   | 6.1.4        | Daniel Lemire et al.            | Apache 2.0, Boost 1.0 or MIT License                                         |
+| [Flatbuffers](https://github.com/google/flatbuffers/)                   | 23.5.26      | Google Inc.                     | Apache 2.0 License                                                           |
+| [fmt](https://github.com/fmtlib/fmt)                                    | 8.1.1        | Victor Zverovich                | MIT License                                                                  |
+| [Google Benchmark](https://github.com/google/benchmark)                 | 1.6.1        | Google Inc.                     | Apache 2.0 License                                                           |
+| [GoogleTest](https://github.com/google/googletest)                      | 1.11.0       | Google Inc.                     | 3-Clause "New" BSD License                                                   |
+| [Hinnant date](https://github.com/HowardHinnant/date)                   | 3.0.1        | Howard Hinnant                  | MIT License                                                                  |
+| [IANA tzdata](https://data.iana.org/time-zones/)                        | 2026a        | IANA / tz contributors          | Public Domain                                                                |
+| [jemalloc](https://github.com/jemalloc/jemalloc)                        | 5.2.1        | Jason Evans                     | 2-Clause "Simplified" BSD License                                            |
+| [jwt-cpp](https://github.com/Thalhammer/jwt-cpp)                        | 0.7.1        | Dominik Thalhammer              | MIT License                                                                  |
+| [libbpf](https://github.com/libbpf/libbpf)                              | 1.7.0        | libbpf                          | GNU Lesser General Public License version 2.1                                |
+| [libdb](https://github.com/yasuhirokimura/db18)                         | 18.1.40      | Oracle Corporation              | Affero GPL v3                                                                |
+| [libffi](https://github.com/libffi/libffi)                              | 3.2.1        | Anthony Green                   | MIT License                                                                  |
+| [libgcc_s](https://gcc.gnu.org/)                                        | GCC 14       | Free Software Foundation, Inc.  | GNU Public License version 3 or later with the GCC Runtime Library Exception |
+| [libmaxminddb](https://github.com/maxmind/libmaxminddb)                 | 1.9.1        | MaxMind, Inc.                   | Apache 2.0 License                                                           |
+| [libpcre2](https://github.com/PCRE2Project/pcre2)                       | 10.42        | Philip Hazel                    | BSD License                                                                  |
+| [libplist](https://github.com/libimobiledevice/libplist)                | 2.2.0        | Aaron Burghardt et al.          | GNU Lesser General Public License version 2.1                                |
+| [libstdc++](https://gcc.gnu.org/)                                       | GCC 14       | Free Software Foundation, Inc.  | GNU Public License version 3 or later with the GCC Runtime Library Exception |
+| [libYAML](https://github.com/yaml/libyaml)                              | 0.1.7        | Kirill Simonov                  | MIT License                                                                  |
+| [Linux Audit userspace](https://github.com/linux-audit/audit-userspace) | 2.8.4        | Rik Faith                       | GNU Lesser General Public License version 2.1                                |
+| [llhttp](https://github.com/nodejs/llhttp)                              | 9.4.2        | Fedor Indutny                   | MIT License                                                                  |
+| [Lua](https://github.com/lua/lua)                                       | 5.4.8        | PUC-Rio                         | MIT License                                                                  |
+| [nlohmann](https://github.com/nlohmann/json)                            | 3.11.2       | Niels Lohmann                   | MIT License                                                                  |
+| [OpenSSL](https://github.com/openssl/openssl)                           | 3.6.2        | OpenSSL Software Foundation     | Apache 2.0 License                                                           |
+| [popt](https://github.com/rpm-software-management/popt)                 | 1.16         | Jeff Johnson & Erik Troan       | MIT License                                                                  |
+| [procps](https://gitlab.com/procps-ng/procps)                           | 2.8.3        | Brian Edmonds et al.            | GNU Library General Public License version 2                                 |
+| [protobuf](https://github.com/protocolbuffers/protobuf)                 | 3.21.12      | Google Inc.                     | 3-Clause "New" BSD License                                                   |
+| [pugixml](https://github.com/zeux/pugixml)                              | 1.15         | Arseny Kapoulkine               | MIT License                                                                  |
+| [RapidJSON](https://github.com/Tencent/rapidjson)                       | 1.1.0        | THL A29 Limited and Milo Yip    | MIT License                                                                  |
+| [RE2](https://github.com/google/re2)                                    | 2024-06-01   | The RE2 Authors                 | 3-Clause "New" BSD License                                                   |
+| [RESTinio](https://github.com/Stiffstream/restinio)                     | 0.7.10       | Stiffstream                     | BSD 3-Clause, Boost 1.0, MIT and zlib Licenses                               |
+| [RocksDB](https://github.com/facebook/rocksdb/)                         | 8.3.2        | Facebook Inc.                   | Apache 2.0 License                                                           |
+| [rpm](https://github.com/rpm-software-management/rpm)                   | 4.20.1       | Marc Ewing & Erik Troan         | GNU Public License version 2                                                 |
+| [RxCpp](https://github.com/ReactiveX/RxCpp)                             | unknown      | RxCpp contributors              | Apache 2.0 License                                                           |
+| [simdjson](https://github.com/simdjson/simdjson)                        | 3.13.0       | Daniel Lemire                   | Apache License 2.0 or MIT License                                            |
+| [spdlog](https://github.com/gabime/spdlog)                              | 1.14.1       | Gabi Melman                     | MIT License                                                                  |
+| [sqlite](https://github.com/sqlite/sqlite)                              | 3.53.1       | D. Richard Hipp                 | Public Domain (no restrictions)                                              |
+| [Taskflow](https://github.com/taskflow/taskflow)                        | 3.7.0        | Tsung-Wei Huang                 | MIT License                                                                  |
+| [yaml-cpp](https://github.com/jbeder/yaml-cpp)                          | 0.8.0        | Jesse Beder                     | MIT License                                                                  |
+| [zlib](https://github.com/madler/zlib)                                  | 1.3.1        | Jean-loup Gailly & Mark Adler   | zlib/libpng License                                                          |
+| [zstd](https://github.com/facebook/zstd)                                | 1.5.7        | Meta Platforms, Inc. (Facebook) | 3-Clause "New" BSD License                                                   |
+<!-- third-party:end -->
 
 * [PyPi packages](framework/requirements.txt)
 
@@ -188,6 +210,8 @@ Stay up to date on news, releases, engineering articles and more.
 
 ## Authors
 
-Wazuh Copyright (C) 2015-2026 Wazuh Inc. (License GPLv2)
+Copyright (C) Wazuh Inc.
 
 Based on the OSSEC project started by Daniel Cid.
+
+The Wazuh engine (`src/engine/`, installed as `wazuh-manager-analysisd`) is licensed under the GNU Affero General Public License v3.0 or later. See [src/engine/COPYING-engine](src/engine/COPYING-engine) and [src/engine/LICENSE-engine](src/engine/LICENSE-engine). The shared libraries it links together with the rest of the manager and the agent (`src/shared_modules/utils`, `manager_config`, `keystore`, `indexer_connector`, `common` and the `http-request` submodule) are dual-licensed under GPLv2 or AGPLv3 (`GPL-2.0-only OR AGPL-3.0-or-later`). Everything else is licensed under GPLv2; see [LICENSE](LICENSE).

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include <api/geo/handlers.hpp>
 
 #include <eMessages/geo.pb.h>

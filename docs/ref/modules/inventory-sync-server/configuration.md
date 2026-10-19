@@ -512,7 +512,10 @@ wazuh_modules.inventory_sync_server_indexer_sync_max_retry_duration_seconds=15
   agent already gave up on. One in-flight request can still overshoot the deadline by up to
   `request_timeout_seconds`. `0` disables the deadline (retries are then limited only by
   `max_retry_attempts`); setting both to `0` makes retries fully unbounded and logs a startup
-  `WARNING`.
+  `WARNING`. It is also the `Retry-After` the server attaches to the `503` it answers when a
+  by-query's version-conflict allowance runs out (15 when the deadline is disabled): the competing
+  writer cannot keep the conflict alive longer than its own allowance, so a re-send after that
+  delay finds the documents free.
 
 #### Asynchronous connector
 

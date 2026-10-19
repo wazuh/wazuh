@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (C) 2015, Wazuh Inc.
+# Copyright (C) Wazuh Inc.
 #
 # This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
@@ -440,6 +440,10 @@ class MigrationToolTest(unittest.TestCase):
                          "last assignment wins and nothing inside is ever executed")
         self.assertIsNone(tool.read_credentials_env(path + ".missing"))
         self.assertIsNone(tool.read_credentials_env(path, key="NOT_THERE"))
+
+    def test_credentials_env_default_path(self):
+        self.assertEqual("/etc/wazuh-manager/export/credentials.env", tool.CREDENTIALS_ENV,
+                         "where the manager's credential resolver publishes the API password")
 
     def test_api_password_falls_back_to_credentials_env(self):
         path = os.path.join(self.workspace.name, "credentials.env")

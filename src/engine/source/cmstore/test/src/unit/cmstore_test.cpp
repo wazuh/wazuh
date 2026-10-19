@@ -1,8 +1,7 @@
-#include <cstdlib>
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #include <filesystem>
 #include <fstream>
 #include <memory>
-#include <unistd.h>
 
 #include <base/logging.hpp>
 #include <base/name.hpp>
@@ -129,9 +128,8 @@ class TempDir
 {
 public:
     TempDir()
-        : m_path(
-              std::filesystem::temp_directory_path()
-              / std::filesystem::path("cmstore_test_" + std::to_string(::getpid()) + "_" + std::to_string(std::rand())))
+        : m_path(std::filesystem::temp_directory_path()
+                 / std::filesystem::path("cmstore_test_" + base::utils::generators::generateUUIDv4()))
     {
         std::filesystem::create_directories(m_path);
     }

@@ -1,7 +1,6 @@
 /*
  * Wazuh agent HTTPS client (C++ transport module)
- * Copyright (C) 2015, Wazuh Inc.
- * August 19, 2026.
+ * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -214,6 +213,8 @@ HttpResponse EnrollClient::performOnce(const std::string& bodyJson, const std::s
     spec.headers = std::move(headers);
     spec.body = bodyPtr;
     spec.bodyLength = bodyLength;
+    // The reply is copied into a HC_MAX_ENROLL_BODY buffer; a larger one could only arrive truncated.
+    spec.maxResponseBytes = HC_MAX_ENROLL_BODY - 1;
     spec.timeoutMs = m_config.requestTimeoutMs;
 
     return m_performer.perform(spec);

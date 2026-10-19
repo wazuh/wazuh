@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -24,6 +24,7 @@
 #include <optional>
 #include <thread>
 #include <iostream>
+#include <limits>
 #include <utility>
 
 using ::testing::_;
@@ -80,7 +81,7 @@ class AgentSyncProtocolTest : public ::testing::Test
             auto handle = asp_create("test_module", ":memory:", +[](modules_log_level_t, const char* s)
             {
                 std::cout << s << std::endl;
-            });
+            }, 0, 0, 0);
             asp_destroy(handle);
         }
 
@@ -91,11 +92,9 @@ class AgentSyncProtocolTest : public ::testing::Test
         }
 
         /// Builds the wire format https_client_bridge.c sends for a /stateful outcome:
-        /// "HCRESULT:<session>:<http_code>:<body>". forSession=0 skips the protocol's
-        /// session-correlation check (matching how these tests never cared about it
-        /// before the HTTP-result contract existed).
-        static std::vector<uint8_t> buildHcResult(int httpCode, const std::string& body = "{}",
-                                                  uint64_t forSession = 0)
+        /// "HCRESULT:<session>:<http_code>:<body>".
+        static std::vector<uint8_t> buildHcResult(int httpCode, const std::string& body,
+                                                  uint64_t forSession)
         {
             const std::string text = "HCRESULT:" + std::to_string(forSession) + ":" +
                                      std::to_string(httpCode) + ":" + body;
@@ -103,9 +102,12 @@ class AgentSyncProtocolTest : public ::testing::Test
         }
 
         /// Feeds a /stateful HTTP result to the protocol, as https_client_bridge.c would.
-        bool feedHttpResult(int httpCode, const std::string& body = "{}", uint64_t forSession = 0)
+        /// Unless @p forSession says otherwise, it answers the last session the protocol
+        /// handed to the transport, as the real bridge does.
+        bool feedHttpResult(int httpCode, const std::string& body = "{}",
+                            std::optional<uint64_t> forSession = std::nullopt)
         {
-            const auto buf = buildHcResult(httpCode, body, forSession);
+            const auto buf = buildHcResult(httpCode, body, forSession.value_or(mockSyncTransport->session()));
             return protocol->parseResponseBuffer(buf.data(), buf.size());
         }
 
@@ -226,6 +228,42 @@ TEST_F(AgentSyncProtocolTest, PersistDifferenceCatchesException)
     .WillOnce(::testing::Throw(std::runtime_error("Test exception")));
 
     EXPECT_NO_THROW(protocol->persistDifference(testId, testOperation, testIndex, testData, testVersion));
+}
+
+// Only the answer for the session in flight may complete it. A result for session 0 (no real
+// session ever has that id) or for another session must be discarded, leaving the sync waiting.
+TEST_F(AgentSyncProtocolTest, SynchronizeModuleDiscardsResultForOtherSession)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+
+    std::vector<PersistedData> testData =
+    {
+        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
+    };
+    // After the session is acknowledged the cycle asks for more and finds the queue empty
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_))
+    .WillOnce(Return(testData))
+    .WillRepeatedly(Return(std::vector<PersistedData> {}));
+    EXPECT_CALL(*mockQueue, clearSyncedItems()).Times(1);
+
+    auto syncFuture = std::async(std::launch::async, [this]()
+    {
+        return protocol->synchronizeModule(Mode::DELTA);
+    });
+
+    ASSERT_TRUE(mockSyncTransport->waitForSession());
+    const uint64_t inFlight = mockSyncTransport->session();
+    ASSERT_NE(inFlight, 0u);
+
+    EXPECT_TRUE(feedHttpResult(200, "{}", 0));
+    EXPECT_TRUE(feedHttpResult(200, "{}", inFlight + 1));
+    EXPECT_EQ(syncFuture.wait_for(std::chrono::milliseconds(200)), std::future_status::timeout);
+
+    EXPECT_TRUE(feedHttpResult(200, "{}", inFlight));
+    ASSERT_EQ(syncFuture.wait_for(std::chrono::seconds(10)), std::future_status::ready);
+    EXPECT_TRUE(syncFuture.get().success);
 }
 
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleTransportUnavailable)
@@ -367,7 +405,7 @@ TEST_F(AgentSyncProtocolTest, CInterfacePropagatesStoppedFlag)
     // exist here, so synchronizeModule() returns at the checkStatus early out
     // (no persistent-queue data needed).
 
-    auto* handle = asp_create("test_module", ":memory:", +[](modules_log_level_t, const char*) {});
+    auto* handle = asp_create("test_module", ":memory:", +[](modules_log_level_t, const char*) {}, 0, 0, 0);
     ASSERT_NE(handle, nullptr);
 
     // No stop requested: a real failure must not be flagged as shutdown-induced.
@@ -384,12 +422,46 @@ TEST_F(AgentSyncProtocolTest, CInterfacePropagatesStoppedFlag)
     asp_destroy(handle);
 }
 
+// Out-of-range queue options must not be applied: they would wrap negative as int32_t (turning
+// WAL checkpointing off) or overflow the flush wait. The handle is still created with defaults.
+TEST_F(AgentSyncProtocolTest, CInterfaceRejectsOutOfRangeQueueOptionsWithWarning)
+{
+    static std::vector<std::string> warnings;
+    warnings.clear();
+    const auto logger = +[](modules_log_level_t level, const char* msg)
+    {
+        if (level == LOG_WARNING)
+        {
+            warnings.emplace_back(msg);
+        }
+    };
+
+    const uint64_t overRange = static_cast<uint64_t>(std::numeric_limits<int32_t>::max()) + 1;
+
+    auto* handle = asp_create("test_module", ":memory:", logger, overRange, overRange, overRange);
+    ASSERT_NE(handle, nullptr);
+    asp_destroy(handle);
+
+    ASSERT_EQ(warnings.size(), 3u);
+    EXPECT_NE(warnings[0].find("flush_batch_size"), std::string::npos);
+    EXPECT_NE(warnings[1].find("flush_interval_ms"), std::string::npos);
+    EXPECT_NE(warnings[2].find("wal_autocheckpoint_pages"), std::string::npos);
+
+    // 0 (default) and the largest accepted value are not warned about.
+    warnings.clear();
+    const uint64_t maxValid = std::numeric_limits<int32_t>::max();
+    handle = asp_create("test_module", ":memory:", logger, 0, maxValid, maxValid);
+    ASSERT_NE(handle, nullptr);
+    asp_destroy(handle);
+    EXPECT_TRUE(warnings.empty());
+}
+
 // Exercises the C interface of the integrity check (asp_requires_full_sync ->
 // IntegrityCheckResult_t), the path FIM relies on: a check that did not run must cross it as
 // NOT_CHECKED with its reason and flags, and bad arguments must not reach the C++ layer.
 TEST_F(AgentSyncProtocolTest, CInterfaceIntegrityCheckCarriesTheResult)
 {
-    auto* handle = asp_create("test_module", ":memory:", +[](modules_log_level_t, const char*) {});
+    auto* handle = asp_create("test_module", ":memory:", +[](modules_log_level_t, const char*) {}, 0, 0, 0);
     ASSERT_NE(handle, nullptr);
 
     for (const auto& [h, index, checksum] : std::vector<std::tuple<AgentSyncProtocolHandle*, const char*, const char*>> {
