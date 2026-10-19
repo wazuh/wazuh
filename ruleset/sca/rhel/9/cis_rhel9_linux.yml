@@ -5982,23 +5982,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0008"
+          - "TA0040"
         name:
-          - "Lateral Movement"
+          - "Impact"
       technique:
         id:
-          - "T1021"
-          - "T1563"
+          - "T1499"
         name:
-          - "Remote Services"
-          - "Remote Service Session Hijacking"
+          - "Endpoint Denial of Service"
       subtechnique:
         id:
-          - "T1021.004"
-          - "T1563.001"
+          - "T1499.002"
         name:
-          - "SSH"
-          - "SSH Hijacking"
+          - "Service Exhaustion Flood"
     condition: all
     rules:
       - 'c:sshd -T -C user=root -> n:^\s*ClientAliveInterval\s*\t*(\d+) compare > 0'

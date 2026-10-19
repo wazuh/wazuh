@@ -1928,14 +1928,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Initial Access"
       technique:
         id:
-          - "T1082"
+          - "T1078"
         name:
-          - "System Information Discovery"
+          - "Valid Accounts"
     condition: all
     rules:
       - "f:/etc/gdm3/greeter.dconf-defaults -> r:^\\[org/gnome/login-screen\\]"
@@ -8844,31 +8844,17 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0005"
-          - "TA0003"
-          - "TA0004"
-          - "TA0001"
-          - "TA0006"
           - "TA0112"
+          - "TA0003"
+          - "TA0006"
         name:
-          - "Stealth"
-          - "Persistence"
-          - "Privilege Escalation"
-          - "Initial Access"
-          - "Credential Access"
           - "Defense Impairment"
+          - "Persistence"
+          - "Credential Access"
       technique:
         id:
-          - "T1078"
-          - "T1098"
-          - "T1110"
-          - "T1136"
           - "T1556"
         name:
-          - "Valid Accounts"
-          - "Account Manipulation"
-          - "Brute Force"
-          - "Create Account"
           - "Modify Authentication Process"
       subtechnique:
         id:
@@ -9003,23 +8989,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0008"
+          - "TA0040"
         name:
-          - "Lateral Movement"
+          - "Impact"
       technique:
         id:
-          - "T1021"
-          - "T1563"
+          - "T1499"
         name:
-          - "Remote Services"
-          - "Remote Service Session Hijacking"
+          - "Endpoint Denial of Service"
       subtechnique:
         id:
-          - "T1021.004"
-          - "T1563.001"
+          - "T1499.002"
         name:
-          - "SSH"
-          - "SSH Hijacking"
+          - "Service Exhaustion Flood"
     condition: all
     rules:
       - 'c:sshd -T -> n:^maxsessions\s+(\d+) compare <= 10 && n:^maxsessions\s+(\d+) compare >= 1'

@@ -2050,14 +2050,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Initial Access"
       technique:
         id:
-          - "T1082"
+          - "T1078"
         name:
-          - "System Information Discovery"
+          - "Valid Accounts"
     condition: all
     rules:
       - "c:defaults read /Library/Preferences/com.apple.loginwindow.plist LoginwindowText -> !r:does not exist"
@@ -2082,14 +2082,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Initial Access"
       technique:
         id:
-          - "T1082"
+          - "T1078"
         name:
-          - "System Information Discovery"
+          - "Valid Accounts"
     condition: all
     rules:
       - "d:/Library/Security -> r:^PolicyBanner"
@@ -2116,25 +2116,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0005"
-          - "TA0003"
-          - "TA0004"
-          - "TA0001"
+          - "TA0007"
         name:
-          - "Stealth"
-          - "Persistence"
-          - "Privilege Escalation"
-          - "Initial Access"
+          - "Discovery"
       technique:
         id:
-          - "T1078"
+          - "T1057"
         name:
-          - "Valid Accounts"
-      subtechnique:
-        id:
-          - "T1078.003"
-        name:
-          - "Local Accounts"
+          - "Process Discovery"
     condition: any
     rules:
       - "c:defaults read /Library/Preferences/.GlobalPreferences.plist MultipleSessionEnabled -> r:does not exist"

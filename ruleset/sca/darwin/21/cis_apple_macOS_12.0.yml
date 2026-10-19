@@ -53,21 +53,13 @@ checks:
       tactic:
         id:
           - "TA0004"
-          - "TA0001"
-          - "TA0002"
         name:
           - "Privilege Escalation"
-          - "Initial Access"
-          - "Execution"
       technique:
         id:
           - "T1068"
-          - "T1190"
-          - "T1203"
         name:
           - "Exploitation for Privilege Escalation"
-          - "Exploit Public-Facing Application"
-          - "Exploitation for Client Execution"
     references:
       - https://macops.ca/os-x-admins-your-clients-are-not-getting-background-security-updates/
       - https://derflounder.wordpress.com/2014/12/17/forcing-xprotect-blacklist-updates-on-mavericks-and-yosemite/
@@ -97,21 +89,13 @@ checks:
       tactic:
         id:
           - "TA0004"
-          - "TA0001"
-          - "TA0002"
         name:
           - "Privilege Escalation"
-          - "Initial Access"
-          - "Execution"
       technique:
         id:
           - "T1068"
-          - "T1190"
-          - "T1203"
         name:
           - "Exploitation for Privilege Escalation"
-          - "Exploit Public-Facing Application"
-          - "Exploitation for Client Execution"
     references:
     condition: any
     rules:
@@ -139,21 +123,13 @@ checks:
       tactic:
         id:
           - "TA0004"
-          - "TA0001"
-          - "TA0002"
         name:
           - "Privilege Escalation"
-          - "Initial Access"
-          - "Execution"
       technique:
         id:
           - "T1068"
-          - "T1190"
-          - "T1203"
         name:
           - "Exploitation for Privilege Escalation"
-          - "Exploit Public-Facing Application"
-          - "Exploitation for Client Execution"
     condition: any
     rules:
       - "c:defaults read /Library/Preferences/com.apple.commerce AutoUpdate -> r:^1$"
@@ -180,21 +156,13 @@ checks:
       tactic:
         id:
           - "TA0004"
-          - "TA0001"
-          - "TA0002"
         name:
           - "Privilege Escalation"
-          - "Initial Access"
-          - "Execution"
       technique:
         id:
           - "T1068"
-          - "T1190"
-          - "T1203"
         name:
           - "Exploitation for Privilege Escalation"
-          - "Exploit Public-Facing Application"
-          - "Exploitation for Client Execution"
     references:
       - https://www.thesafemac.com/tag/xprotect/
       - https://support.apple.com/en-us/HT202491
@@ -224,21 +192,13 @@ checks:
       tactic:
         id:
           - "TA0004"
-          - "TA0001"
-          - "TA0002"
         name:
           - "Privilege Escalation"
-          - "Initial Access"
-          - "Execution"
       technique:
         id:
           - "T1068"
-          - "T1190"
-          - "T1203"
         name:
           - "Exploitation for Privilege Escalation"
-          - "Exploit Public-Facing Application"
-          - "Exploitation for Client Execution"
     condition: all
     rules:
       - "c:defaults read /Library/Preferences/com.apple.SoftwareUpdate AutomaticallyInstallMacOSUpdates -> r:^1$"
@@ -2315,14 +2275,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Initial Access"
       technique:
         id:
-          - "T1082"
+          - "T1078"
         name:
-          - "System Information Discovery"
+          - "Valid Accounts"
     condition: all
     rules:
       - "d:/Library/Security -> r:^PolicyBanner"
@@ -2349,25 +2309,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0005"
-          - "TA0003"
-          - "TA0004"
-          - "TA0001"
+          - "TA0007"
         name:
-          - "Stealth"
-          - "Persistence"
-          - "Privilege Escalation"
-          - "Initial Access"
+          - "Discovery"
       technique:
         id:
-          - "T1078"
+          - "T1057"
         name:
-          - "Valid Accounts"
-      subtechnique:
-        id:
-          - "T1078.003"
-        name:
-          - "Local Accounts"
+          - "Process Discovery"
     condition: any
     rules:
       - "c:defaults read /Library/Preferences/.GlobalPreferences.plist MultipleSessionEnabled -> r:^0$|does not exist"

@@ -1769,14 +1769,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Initial Access"
       technique:
         id:
-          - "T1082"
+          - "T1078"
         name:
-          - "System Information Discovery"
+          - "Valid Accounts"
     condition: all
     rules:
       - "c:defaults read /Library/Preferences/com.apple.loginwindow.plist LoginwindowText -> !r:does not exist"
@@ -1801,14 +1801,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Initial Access"
       technique:
         id:
-          - "T1082"
+          - "T1078"
         name:
-          - "System Information Discovery"
+          - "Valid Accounts"
     condition: all
     rules:
       - "d:/Library/Security -> r:^PolicyBanner"

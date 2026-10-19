@@ -398,29 +398,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0005"
           - "TA0003"
-          - "TA0004"
-          - "TA0001"
-          - "TA0009"
+          - "TA0002"
         name:
-          - "Stealth"
           - "Persistence"
-          - "Privilege Escalation"
-          - "Initial Access"
-          - "Collection"
+          - "Execution"
       technique:
         id:
-          - "T1078"
-          - "T1213"
+          - "T1505"
+          - "T1059"
         name:
-          - "Valid Accounts"
-          - "Data from Information Repositories"
+          - "Server Software Component"
+          - "Command and Scripting Interpreter"
       subtechnique:
         id:
-          - "T1213.006"
+          - "T1505.001"
         name:
-          - "Databases"
+          - "SQL Stored Procedures"
     references:
       - "https://docs.microsoft.com/en-us/sql/relational-databases/security/trustworthy-database-property"
       - "https://support.microsoft.com/it-it/help/2183687/guidelines-for-using-the-trustworthy-database-setting-in-sql-server"
@@ -624,29 +618,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0005"
-          - "TA0003"
-          - "TA0004"
-          - "TA0001"
-          - "TA0009"
+          - "TA0040"
         name:
-          - "Stealth"
-          - "Persistence"
-          - "Privilege Escalation"
-          - "Initial Access"
-          - "Collection"
+          - "Impact"
       technique:
         id:
-          - "T1078"
-          - "T1213"
+          - "T1499"
         name:
-          - "Valid Accounts"
-          - "Data from Information Repositories"
+          - "Endpoint Denial of Service"
       subtechnique:
         id:
-          - "T1213.006"
+          - "T1499.002"
         name:
-          - "Databases"
+          - "Service Exhaustion Flood"
     references:
       - "https://docs.microsoft.com/en-us/sql/relational-databases/databases/security-best-practices-with-contained-databases"
     condition: all

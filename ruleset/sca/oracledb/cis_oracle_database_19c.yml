@@ -1355,10 +1355,8 @@ checks:
       subtechnique:
         id:
           - "T1552.001"
-          - "T1552.003"
         name:
           - "Credentials In Files"
-          - "Shell History"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT OWNER, TABLE_NAME FROM DBA_TABLES WHERE TABLE_NAME=''USER\$MIG'' AND OWNER=''SYS'';\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -2260,29 +2258,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0005"
-          - "TA0003"
           - "TA0004"
-          - "TA0001"
-          - "TA0009"
         name:
-          - "Stealth"
-          - "Persistence"
           - "Privilege Escalation"
-          - "Initial Access"
-          - "Collection"
       technique:
         id:
-          - "T1078"
-          - "T1213"
+          - "T1548"
         name:
-          - "Valid Accounts"
-          - "Data from Information Repositories"
-      subtechnique:
-        id:
-          - "T1213.006"
-        name:
-          - "Databases"
+          - "Abuse Elevation Control Mechanism"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT GRANTEE, PRIVILEGE FROM DBA_SYS_PRIVS WHERE PRIVILEGE=''BECOME USER'' AND GRANTEE NOT IN (SELECT USERNAME FROM DBA_USERS WHERE ORACLE_MAINTAINED=''Y'') AND GRANTEE NOT IN (SELECT ROLE FROM DBA_ROLES WHERE ORACLE_MAINTAINED=''Y'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -2356,29 +2339,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0005"
-          - "TA0003"
-          - "TA0004"
-          - "TA0001"
-          - "TA0009"
+          - "TA0040"
         name:
-          - "Stealth"
-          - "Persistence"
-          - "Privilege Escalation"
-          - "Initial Access"
-          - "Collection"
+          - "Impact"
       technique:
         id:
-          - "T1078"
-          - "T1213"
+          - "T1489"
         name:
-          - "Valid Accounts"
-          - "Data from Information Repositories"
-      subtechnique:
-        id:
-          - "T1213.006"
-        name:
-          - "Databases"
+          - "Service Stop"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT GRANTEE, PRIVILEGE FROM DBA_SYS_PRIVS WHERE PRIVILEGE=''ALTER SYSTEM'' AND GRANTEE NOT IN (SELECT USERNAME FROM DBA_USERS WHERE ORACLE_MAINTAINED=''Y'') AND GRANTEE NOT IN (SELECT ROLE FROM DBA_ROLES WHERE ORACLE_MAINTAINED=''Y'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -2404,29 +2372,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0005"
           - "TA0003"
-          - "TA0004"
-          - "TA0001"
-          - "TA0009"
+          - "TA0002"
         name:
-          - "Stealth"
           - "Persistence"
-          - "Privilege Escalation"
-          - "Initial Access"
-          - "Collection"
+          - "Execution"
       technique:
         id:
-          - "T1078"
-          - "T1213"
+          - "T1505"
+          - "T1059"
         name:
-          - "Valid Accounts"
-          - "Data from Information Repositories"
+          - "Server Software Component"
+          - "Command and Scripting Interpreter"
       subtechnique:
         id:
-          - "T1213.006"
+          - "T1505.001"
         name:
-          - "Databases"
+          - "SQL Stored Procedures"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT GRANTEE, PRIVILEGE FROM DBA_SYS_PRIVS WHERE PRIVILEGE=''CREATE ANY LIBRARY'' AND GRANTEE NOT IN (SELECT USERNAME FROM DBA_USERS WHERE ORACLE_MAINTAINED=''Y'') AND GRANTEE NOT IN (SELECT ROLE FROM DBA_ROLES WHERE ORACLE_MAINTAINED=''Y'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'
@@ -2452,29 +2414,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0005"
           - "TA0003"
-          - "TA0004"
-          - "TA0001"
-          - "TA0009"
+          - "TA0002"
         name:
-          - "Stealth"
           - "Persistence"
-          - "Privilege Escalation"
-          - "Initial Access"
-          - "Collection"
+          - "Execution"
       technique:
         id:
-          - "T1078"
-          - "T1213"
+          - "T1505"
+          - "T1059"
         name:
-          - "Valid Accounts"
-          - "Data from Information Repositories"
+          - "Server Software Component"
+          - "Command and Scripting Interpreter"
       subtechnique:
         id:
-          - "T1213.006"
+          - "T1505.001"
         name:
-          - "Databases"
+          - "SQL Stored Procedures"
     condition: any
     rules:
       - 'c:sudo -u oracle bash -c ". ~/.bash_profile; echo \"SELECT GRANTEE, PRIVILEGE FROM DBA_SYS_PRIVS WHERE PRIVILEGE=''CREATE LIBRARY'' AND GRANTEE NOT IN (SELECT USERNAME FROM DBA_USERS WHERE ORACLE_MAINTAINED=''Y'') AND GRANTEE NOT IN (SELECT ROLE FROM DBA_ROLES WHERE ORACLE_MAINTAINED=''Y'');\" | sqlplus / as sysdba | grep \"no rows selected\"" -> no rows selected'

@@ -183,11 +183,6 @@ checks:
         name:
           - "Server Software Component"
           - "Command and Scripting Interpreter"
-      subtechnique:
-        id:
-          - "T1505.001"
-        name:
-          - "SQL Stored Procedures"
     references:
       - https://dev.mysql.com/doc/refman/5.6/en/udf-security.html
       - https://dev.mysql.com/doc/refman/5.6/en/server-options.html#option_mysqld_allow-suspicious-udfs
@@ -215,22 +210,13 @@ checks:
       tactic:
         id:
           - "TA0009"
-          - "TA0040"
         name:
           - "Collection"
-          - "Impact"
       technique:
         id:
           - "T1005"
-          - "T1565"
         name:
           - "Data from Local System"
-          - "Data Manipulation"
-      subtechnique:
-        id:
-          - "T1565.001"
-        name:
-          - "Stored Data Manipulation"
     references:
       - https://dev.mysql.com/doc/refman/5.6/en/string-functions.html#function_load-file
       - https://dev.mysql.com/doc/refman/5.6/en/load-data.html
@@ -344,22 +330,13 @@ checks:
       tactic:
         id:
           - "TA0009"
-          - "TA0040"
         name:
           - "Collection"
-          - "Impact"
       technique:
         id:
           - "T1005"
-          - "T1565"
         name:
           - "Data from Local System"
-          - "Data Manipulation"
-      subtechnique:
-        id:
-          - "T1565.001"
-        name:
-          - "Stored Data Manipulation"
     references:
       - https://dev.mysql.com/doc/refman/5.6/en/server-system-variables.html#sysvar_secure_file_priv
     condition: all

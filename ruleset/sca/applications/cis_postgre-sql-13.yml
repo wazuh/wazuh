@@ -861,18 +861,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0112"
-          - "TA0005"
+          - "TA0006"
         name:
-          - "Defense Impairment"
-          - "Stealth"
+          - "Credential Access"
       technique:
         id:
-          - "T1685"
-          - "T1070"
+          - "T1552"
         name:
-          - "Disable or Modify Tools"
-          - "Indicator Removal"
+          - "Unsecured Credentials"
+      subtechnique:
+        id:
+          - "T1552.001"
+        name:
+          - "Credentials In Files"
     references:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
     condition: all
@@ -913,18 +914,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0112"
-          - "TA0005"
+          - "TA0006"
         name:
-          - "Defense Impairment"
-          - "Stealth"
+          - "Credential Access"
       technique:
         id:
-          - "T1685"
-          - "T1070"
+          - "T1552"
         name:
-          - "Disable or Modify Tools"
-          - "Indicator Removal"
+          - "Unsecured Credentials"
+      subtechnique:
+        id:
+          - "T1552.001"
+        name:
+          - "Credentials In Files"
     references:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html+
     condition: all
@@ -964,18 +966,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0112"
-          - "TA0005"
+          - "TA0006"
         name:
-          - "Defense Impairment"
-          - "Stealth"
+          - "Credential Access"
       technique:
         id:
-          - "T1685"
-          - "T1070"
+          - "T1552"
         name:
-          - "Disable or Modify Tools"
-          - "Indicator Removal"
+          - "Unsecured Credentials"
+      subtechnique:
+        id:
+          - "T1552.001"
+        name:
+          - "Credentials In Files"
     references:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
     condition: all

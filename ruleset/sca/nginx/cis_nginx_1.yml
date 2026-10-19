@@ -458,24 +458,16 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0112"
           - "TA0003"
           - "TA0001"
-          - "TA0007"
         name:
-          - "Defense Impairment"
           - "Persistence"
           - "Initial Access"
-          - "Discovery"
       technique:
         id:
-          - "T1686"
           - "T1133"
-          - "T1046"
         name:
-          - "Disable or Modify System Firewall"
           - "External Remote Services"
-          - "Network Service Discovery"
     condition: all
     rules:
       - 'c:grep -ir " listen " /etc/nginx -> r:^.+listen\s+80\s+.*|^.+listen\s+443\s+.*|^.+:443\s+.*'

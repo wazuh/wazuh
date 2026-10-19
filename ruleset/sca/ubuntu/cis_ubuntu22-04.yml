@@ -4511,23 +4511,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0008"
+          - "TA0040"
         name:
-          - "Lateral Movement"
+          - "Impact"
       technique:
         id:
-          - "T1021"
-          - "T1563"
+          - "T1499"
         name:
-          - "Remote Services"
-          - "Remote Service Session Hijacking"
+          - "Endpoint Denial of Service"
       subtechnique:
         id:
-          - "T1021.004"
-          - "T1563.001"
+          - "T1499.002"
         name:
-          - "SSH"
-          - "SSH Hijacking"
+          - "Service Exhaustion Flood"
     condition: all
     rules:
       - 'c:sshd -T -> n:ClientAliveInterval\s*\t*(\d+) compare > 0'
@@ -4647,33 +4643,16 @@ checks:
           - "TA0003"
           - "TA0004"
           - "TA0001"
-          - "TA0006"
-          - "TA0112"
         name:
           - "Stealth"
           - "Persistence"
           - "Privilege Escalation"
           - "Initial Access"
-          - "Credential Access"
-          - "Defense Impairment"
       technique:
         id:
           - "T1078"
-          - "T1098"
-          - "T1110"
-          - "T1136"
-          - "T1556"
         name:
           - "Valid Accounts"
-          - "Account Manipulation"
-          - "Brute Force"
-          - "Create Account"
-          - "Modify Authentication Process"
-      subtechnique:
-        id:
-          - "T1556.003"
-        name:
-          - "Pluggable Authentication Modules"
     condition: all
     rules:
       - 'c:sshd -T -> r:\s*HostbasedAuthentication\s*\t*no'
@@ -5021,23 +5000,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0008"
+          - "TA0040"
         name:
-          - "Lateral Movement"
+          - "Impact"
       technique:
         id:
-          - "T1021"
-          - "T1563"
+          - "T1499"
         name:
-          - "Remote Services"
-          - "Remote Service Session Hijacking"
+          - "Endpoint Denial of Service"
       subtechnique:
         id:
-          - "T1021.004"
-          - "T1563.001"
+          - "T1499.002"
         name:
-          - "SSH"
-          - "SSH Hijacking"
+          - "Service Exhaustion Flood"
     condition: all
     rules:
       - 'c:sshd -T -> n:^\s*MaxSessions\s+(\d+) compare <= 10'

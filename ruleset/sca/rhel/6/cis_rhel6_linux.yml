@@ -1890,14 +1890,14 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0007"
+          - "TA0001"
         name:
-          - "Discovery"
+          - "Initial Access"
       technique:
         id:
-          - "T1082"
+          - "T1078"
         name:
-          - "System Information Discovery"
+          - "Valid Accounts"
     condition: all
     rules:
       - "f:/etc/dconf/profile/gdm -> r:user-db:user"
@@ -3299,16 +3299,23 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0006"
-          - "TA0009"
+          - "TA0112"
+          - "TA0005"
         name:
-          - "Credential Access"
-          - "Collection"
+          - "Defense Impairment"
+          - "Stealth"
       technique:
         id:
-          - "T1557"
+          - "T1685"
+          - "T1070"
         name:
-          - "Adversary-in-the-Middle"
+          - "Disable or Modify Tools"
+          - "Indicator Removal"
+      subtechnique:
+        id:
+          - "T1685.006"
+        name:
+          - "Clear Linux or Mac System Logs"
     condition: all
     rules:
       - 'c:sysctl net.ipv4.conf.all.log_martians -> r:^net\.ipv4\.conf\.all\.log_martians\s*=\s*1$'
@@ -3570,16 +3577,18 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0006"
-          - "TA0009"
+          - "TA0004"
+          - "TA0008"
         name:
-          - "Credential Access"
-          - "Collection"
+          - "Privilege Escalation"
+          - "Lateral Movement"
       technique:
         id:
-          - "T1557"
+          - "T1068"
+          - "T1210"
         name:
-          - "Adversary-in-the-Middle"
+          - "Exploitation for Privilege Escalation"
+          - "Exploitation of Remote Services"
     condition: none
     rules:
       - 'f:/boot/grub/grub.conf -> r:^\s*\t*kernel && !r:ipv6\.disable=1'
@@ -4883,10 +4892,8 @@ checks:
           - "Indicator Removal"
       subtechnique:
         id:
-          - "T1685.004"
           - "T1685.006"
         name:
-          - "Disable or Modify Linux Audit System Log"
           - "Clear Linux or Mac System Logs"
     condition: all
     rules:
@@ -4966,10 +4973,8 @@ checks:
           - "Indicator Removal"
       subtechnique:
         id:
-          - "T1685.004"
           - "T1685.006"
         name:
-          - "Disable or Modify Linux Audit System Log"
           - "Clear Linux or Mac System Logs"
     condition: all
     rules:
@@ -5009,10 +5014,8 @@ checks:
           - "Indicator Removal"
       subtechnique:
         id:
-          - "T1685.004"
           - "T1685.006"
         name:
-          - "Disable or Modify Linux Audit System Log"
           - "Clear Linux or Mac System Logs"
     condition: all
     rules:
@@ -5052,10 +5055,8 @@ checks:
           - "Indicator Removal"
       subtechnique:
         id:
-          - "T1685.004"
           - "T1685.006"
         name:
-          - "Disable or Modify Linux Audit System Log"
           - "Clear Linux or Mac System Logs"
     condition: all
     rules:
@@ -5095,10 +5096,8 @@ checks:
           - "Indicator Removal"
       subtechnique:
         id:
-          - "T1685.004"
           - "T1685.006"
         name:
-          - "Disable or Modify Linux Audit System Log"
           - "Clear Linux or Mac System Logs"
     condition: all
     rules:
@@ -5139,10 +5138,8 @@ checks:
           - "Indicator Removal"
       subtechnique:
         id:
-          - "T1685.004"
           - "T1685.006"
         name:
-          - "Disable or Modify Linux Audit System Log"
           - "Clear Linux or Mac System Logs"
     condition: any
     rules:
@@ -5578,11 +5575,6 @@ checks:
         name:
           - "Modify Authentication Process"
           - "Account Manipulation"
-      subtechnique:
-        id:
-          - "T1098.004"
-        name:
-          - "SSH Authorized Keys"
     condition: all
     rules:
       - 'c:stat -L /etc/ssh/sshd_config -> r:^Access: \(0\d00/[\w@-][\w@-][\w@-][\w@-]------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
@@ -5726,33 +5718,16 @@ checks:
           - "TA0003"
           - "TA0004"
           - "TA0001"
-          - "TA0006"
-          - "TA0112"
         name:
           - "Stealth"
           - "Persistence"
           - "Privilege Escalation"
           - "Initial Access"
-          - "Credential Access"
-          - "Defense Impairment"
       technique:
         id:
           - "T1078"
-          - "T1098"
-          - "T1110"
-          - "T1136"
-          - "T1556"
         name:
           - "Valid Accounts"
-          - "Account Manipulation"
-          - "Brute Force"
-          - "Create Account"
-          - "Modify Authentication Process"
-      subtechnique:
-        id:
-          - "T1556.003"
-        name:
-          - "Pluggable Authentication Modules"
     condition: all
     rules:
       - 'f:$sshd_file -> !r:^# && r:IgnoreRhosts\s*\t*yes'
@@ -5781,33 +5756,16 @@ checks:
           - "TA0003"
           - "TA0004"
           - "TA0001"
-          - "TA0006"
-          - "TA0112"
         name:
           - "Stealth"
           - "Persistence"
           - "Privilege Escalation"
           - "Initial Access"
-          - "Credential Access"
-          - "Defense Impairment"
       technique:
         id:
           - "T1078"
-          - "T1098"
-          - "T1110"
-          - "T1136"
-          - "T1556"
         name:
           - "Valid Accounts"
-          - "Account Manipulation"
-          - "Brute Force"
-          - "Create Account"
-          - "Modify Authentication Process"
-      subtechnique:
-        id:
-          - "T1556.003"
-        name:
-          - "Pluggable Authentication Modules"
     condition: all
     rules:
       - 'f:$sshd_file -> !r:^# && r:HostbasedAuthentication\s*\t*no'
@@ -5881,37 +5839,19 @@ checks:
     mitre:
       tactic:
         id:
-          - "TA0005"
-          - "TA0003"
-          - "TA0004"
-          - "TA0001"
           - "TA0006"
-          - "TA0112"
         name:
-          - "Stealth"
-          - "Persistence"
-          - "Privilege Escalation"
-          - "Initial Access"
           - "Credential Access"
-          - "Defense Impairment"
       technique:
         id:
-          - "T1078"
-          - "T1098"
           - "T1110"
-          - "T1136"
-          - "T1556"
         name:
-          - "Valid Accounts"
-          - "Account Manipulation"
           - "Brute Force"
-          - "Create Account"
-          - "Modify Authentication Process"
       subtechnique:
         id:
-          - "T1556.003"
+          - "T1110.001"
         name:
-          - "Pluggable Authentication Modules"
+          - "Password Guessing"
     condition: all
     rules:
       - 'f:$sshd_file -> !r:^# && r:PermitEmptyPasswords\s*\t*no'
