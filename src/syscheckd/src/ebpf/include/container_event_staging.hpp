@@ -103,6 +103,23 @@ struct Batch
      * lost for it (kernel ring, or this buffer's own budget), so the set of
      * changed paths is not known to be complete. */
     bool suspect{false};
+
+    /* Reconciliation work, as opposed to the collection work above. Mutually
+     * exclusive by construction, hence one enum rather than two more flags.
+     *
+     *   containerGone  the runtime states `container_id` no longer exists;
+     *                  delete its rows and then its context.
+     *   sweepAbsent    the periodic floor is due; obtain the whole-node
+     *                  container list and reconcile against it. Carries no
+     *                  container_id -- the list is the input. */
+    enum class Lifecycle
+    {
+        none,
+        containerGone,
+        sweepAbsent
+    };
+
+    Lifecycle lifecycle{Lifecycle::none};
 };
 
 /* Counters for diagnostics; none of these are needed for correctness, but a
@@ -344,6 +361,51 @@ class ContainerEventStaging
             notify();
         }
 
+        /* container_instances states this container no longer exists.
+         *
+         * Supersedes every other pending action for it, by the same "stronger
+         * action wins" rule onDrops() uses above: a re-read would find nothing,
+         * a re-walk returns 0 for a container the connector no longer lists,
+         * and the sweep removes the very rows all of them describe. Dropping
+         * them also keeps the consumer from walking a container that is gone.
+         *
+         * Note this does NOT clear m_suspect for the id -- it replaces it, by
+         * erasing it here and queueing the sweep instead. */
+        void onGone(const std::string& container_id)
+        {
+            if (container_id.empty())
+            {
+                return;
+            }
+
+            {
+                std::lock_guard<std::mutex> lock(m_mutex);
+
+                m_gone.insert(container_id);
+                m_pending.erase(container_id);
+                m_unlinked.erase(container_id);
+                m_suspect.erase(container_id);
+            }
+
+            notify();
+        }
+
+        /* The periodic reconciliation floor is due.
+         *
+         * Separate from onGone() because it answers a different question: that
+         * one is told which container went, this one has to find out. Needed
+         * because a resync carries no removal events at all, and because no
+         * notification can report a container the module never learned about. */
+        void requestSweep()
+        {
+            {
+                std::lock_guard<std::mutex> lock(m_mutex);
+                m_sweep_absent = true;
+            }
+
+            notify();
+        }
+
         /* Events were lost but could not be attributed to a cgroup — the
          * engine's global counter without per-cgroup accounting, or a BPF object
          * too old to attribute. Nothing is known about what changed, so every
@@ -501,7 +563,8 @@ class ContainerEventStaging
 
         bool hasWorkLocked() const
         {
-            return m_all_suspect || !m_suspect.empty() || !m_unlinked.empty() || !m_pending.empty();
+            return !m_gone.empty() || m_sweep_absent || m_all_suspect || !m_suspect.empty()
+                   || !m_unlinked.empty() || !m_pending.empty();
         }
 
         /* True when this path may be read now: its deadline has passed (the
@@ -543,6 +606,37 @@ class ContainerEventStaging
 
             out.paths.clear();
             out.unlinked.clear();
+            out.lifecycle = Batch::Lifecycle::none;
+
+            /* Removals first. They are the cheapest batch -- no walk, no settle
+             * -- and the only one with a latency requirement: until it is
+             * served, a container that no longer exists still holds rows and a
+             * context. Serving it ahead of a re-walk also avoids walking a
+             * container the connector has already said is gone. */
+            if (!m_gone.empty())
+            {
+                const auto it = m_gone.begin();
+                out.container_id = *it;
+                out.suspect = false;
+                out.lifecycle = Batch::Lifecycle::containerGone;
+                m_gone.erase(it);
+                return true;
+            }
+
+            /* The floor next, deliberately ABOVE the collection work below. A
+             * node whose m_pending never drains would otherwise starve it, and
+             * the floor is what recovers removals that no notification carried
+             * -- the case it exists for is precisely the one where something
+             * else is already going wrong. One cheap pass every few minutes
+             * cannot meaningfully delay a path reconcile. */
+            if (m_sweep_absent)
+            {
+                m_sweep_absent = false;
+                out.container_id.clear();
+                out.suspect = false;
+                out.lifecycle = Batch::Lifecycle::sweepAbsent;
+                return true;
+            }
 
             if (m_all_suspect)
             {
@@ -650,7 +744,18 @@ class ContainerEventStaging
 
         std::set<std::string> m_suspect;
 
+        /* Containers the runtime states are gone, awaiting a sweep. A set, so a
+         * removal repeated across a replayed delta costs one sweep rather than
+         * several -- the sweep is idempotent, but doing it once is cheaper. */
+        std::set<std::string> m_gone;
+
         bool m_all_suspect{false};
+
+        /* The periodic floor is due. Sticky and idempotent: several requests
+         * before the consumer gets to it collapse into the one pass they would
+         * each have performed. */
+        bool m_sweep_absent{false};
+
         bool m_released{false};
         bool m_stopped{false};
 

@@ -77,6 +77,28 @@ enum class ReconcileMode
      * and then re-deriving "deleted" from a read that finds nothing — which is
      * what the spike branch did — is exactly backwards. */
     deletePaths,
+
+    /* container_instances states this container no longer exists. Delete every
+     * row it still holds, and then the context describing it — in that order,
+     * because the DELETE events are built from that context.
+     *
+     * Not the inference D15 forbids, and it rests on the same ground as
+     * deletePaths above: the connector is STATING the removal, after its own
+     * removal grace has expired. Nothing is derived from a read that found
+     * nothing. `may_detect_deletions` stays false, because that flag governs
+     * whether a WALK may treat absent rows as deletions and there is no walk
+     * here. */
+    containerGone,
+
+    /* The periodic reconciliation floor. Obtain the whole-node container list
+     * and, only if the connector answered, sweep rows and contexts for
+     * containers absent from it, then prune contexts an interrupted sweep left
+     * behind.
+     *
+     * Carries no container_id: the list is the input. Needed in addition to
+     * containerGone because a resync carries no removal events, and because no
+     * notification can report a container the module never learned about. */
+    sweepAbsent,
 };
 
 struct ReconcileRequest
@@ -107,6 +129,25 @@ struct ReconcileRequest
 inline ReconcileRequest PlanFor(const Batch& batch)
 {
     ReconcileRequest request;
+
+    /* Reconciliation before collection. A removal supersedes anything else
+     * staged for that container (the staging buffer drops it on the way in),
+     * and neither of these may ever authorise a WALK to derive deletions:
+     * `may_detect_deletions` stays false for both, which is what keeps
+     * "only a walk may authorise deletion" true. The deletions these perform
+     * are stated by the connector, not inferred from a read. */
+    if (batch.lifecycle == Batch::Lifecycle::containerGone)
+    {
+        request.mode = ReconcileMode::containerGone;
+        request.container_id = batch.container_id;
+        return request;
+    }
+
+    if (batch.lifecycle == Batch::Lifecycle::sweepAbsent)
+    {
+        request.mode = ReconcileMode::sweepAbsent;
+        return request;
+    }
 
     if (batch.suspect)
     {
