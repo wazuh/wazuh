@@ -140,3 +140,65 @@ jobs:
       - name: "Compilation cache statistics"
         if: always()
         run: sccache --show-stats 2>/dev/null | grep -viE "cache location|bucket" || true
+
+  tsan:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    name: Build Manager (ThreadSanitizer)
+    runs-on: ubuntu-24.04
+    permissions:
+      id-token: write
+      contents: read
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install CMake
+        uses: ./.github/actions/reinstall_cmake
+      - name: "Configure AWS credentials for the compilation cache"
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws-region: ${{ secrets.CI_AWS_REGION }}
+          role-duration-seconds: 7200
+      - name: "Set up sccache"
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: ./.github/actions/setup-sccache
+        with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          region: ${{ secrets.CI_AWS_REGION }}
+          key-prefix: sccache/5.0.0
+
+      # The sanitizer runtime of the runner's GCC aborts at start ("FATAL: ThreadSanitizer: unexpected memory
+      # mapping") with the 32-bit ASLR entropy of the runner kernel (actions/runner-images#9491). CMake runs the
+      # test binaries while building (gtest_discover_tests), so this goes before the build, not only before ctest.
+      - name: Lower the ASLR entropy for ThreadSanitizer
+        run: sudo sysctl vm.mmap_rnd_bits=28
+
+      # ENGINE_TSAN=y sets ENGINE_ENABLE_TSAN at configure time (src/Makefile): the engine, its tests and the
+      # protobuf it links (src/engine/CMakeLists.txt, protobuf/build-tsan) are all built with the sanitizer.
+      - name: Build Wazuh manager
+        run: |
+          make deps -C src TARGET=manager -j$(nproc)
+          make -C src TARGET=manager ENGINE_TEST=y ENGINE_TSAN=y -j$(nproc)
+
+      - name: Unit Test
+        working-directory: ${{env.BUILD_DIR}}/engine
+        env:
+          # halt_on_error=0: every report of a run is logged; the process still exits 66 so ctest marks the test failed
+          TSAN_OPTIONS: log_path=${{ runner.temp }}/tsan:halt_on_error=0:second_deadlock_stack=1
+        run: ctest -T test --output-on-failure --no-tests=error -j$(nproc)
+
+      - name: Upload TSAN logs
+        if: always()
+        uses: ./.github/actions/upload_s3_artifact
+        with:
+          name: sanitizer-logs-tsan
+          path: |
+            ${{ runner.temp }}/tsan*
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+      - name: "Compilation cache statistics"
+        if: always()
+        run: sccache --show-stats 2>/dev/null | grep -viE "cache location|bucket" || true

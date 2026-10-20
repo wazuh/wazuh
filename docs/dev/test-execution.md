@@ -59,6 +59,15 @@ Do not combine `ENGINE_TEST` with `TEST`: with any `TEST` value set, the engine 
 
 CI (`5_testunit_engine.yml`) builds the engine tests with AddressSanitizer by editing the default of the `ENGINE_ENABLE_ASAN` option in `src/engine/CMakeLists.txt` to `ON` before configuring. To run the same tests locally, configure once with `-DENGINE_ENABLE_ASAN=ON` (`cmake -S src -B src/build -DENGINE_ENABLE_ASAN=ON`) and build again; like the other options it stays in the cache until set back to `OFF`.
 
+ThreadSanitizer (the `tsan` job of `5_testunit_engine.yml`) is a separate build: it cannot be combined with AddressSanitizer, and protobuf is rebuilt with the sanitizer into `src/external/protobuf/build-tsan` by `src/engine/CMakeLists.txt`, because the engine inlines its `Map` code (the pool-built library stays untouched).
+
+```bash
+make -C src TARGET=manager ENGINE_TEST=1 ENGINE_TSAN=1
+cd src/build/engine && TSAN_OPTIONS=log_path=/tmp/tsan ctest --output-on-failure
+```
+
+On a kernel with `vm.mmap_rnd_bits=32` (GitHub runners, recent Ubuntu) the sanitizer runtime of GCC aborts at start with `unexpected memory mapping`; run `sudo sysctl vm.mmap_rnd_bits=28` before building, since CMake runs the test binaries to discover their tests.
+
 ### Framework and API
 
 The framework and API workflows run Python 3.12 and need `wazuh-manager-conf`, which `wazuh.core.manager_conf` runs (from `src/build/bin` in a checkout):
