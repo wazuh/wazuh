@@ -40,6 +40,7 @@ constexpr std::size_t HASH_QUERY_SIZE {1};                        ///< Size for 
 constexpr std::size_t SAFE_STREAM_PAGE_SIZE {1000};               ///< Hard cap for streaming page size
 constexpr std::string_view REMOTE_CONF_INDEX {".wazuh-settings"}; ///< remote conf index name
 constexpr std::string_view CTI_CONSUMERS_INDEX {".wazuh-cti-consumers"}; ///< CTI consumers index name
+constexpr long HTTP_NOT_FOUND {404};                                     ///< Status of a search on a missing index
 const std::array<std::string_view, 12> IOC_SOURCE_FILTER_INCLUDES = {"document.name",
                                                                      "document.type",
                                                                      "document.id",
@@ -807,69 +808,76 @@ bool WIndexerConnector::isConsumerReadyForSync(std::string_view consumerId)
         return false;
     }
 
+    nlohmann::json query = {{"ids", {{"values", {consumerId}}}}};
+    nlohmann::json source = {{"includes", {"status", "local_offset"}}, {"excludes", nlohmann::json::array()}};
+
+    nlohmann::json hits;
     try
     {
-        nlohmann::json query = {{"ids", {{"values", {consumerId}}}}};
-        nlohmann::json source = {{"includes", {"status", "local_offset"}}, {"excludes", nlohmann::json::array()}};
-
-        nlohmann::json hits = m_indexerConnectorAsync->search(CTI_CONSUMERS_INDEX, SINGLE_RESULT_SIZE, query, source);
-
-        size_t totalHits = getTotalHits(hits);
-        if (totalHits == 0)
-        {
-            LOG_DEBUG("[indexer-connector] Consumer document '{}' not found", std::string(consumerId));
-            return false;
-        }
-
-        const auto& hitArray = hits["hits"];
-        if (!hitArray.is_array() || hitArray.empty() || !hitArray[0].contains("_source"))
-        {
-            LOG_DEBUG("[indexer-connector] Invalid consumer hit for '{}'", std::string(consumerId));
-            return false;
-        }
-
-        const auto& src = hitArray[0]["_source"];
-
-        // Check status == "ready"
-        if (!src.contains("status") || !src["status"].is_string())
-        {
-            LOG_DEBUG("[indexer-connector] Consumer '{}' missing 'status' field", std::string(consumerId));
-            return false;
-        }
-
-        const auto status = src["status"].get<std::string>();
-        if (status != "ready")
-        {
-            LOG_DEBUG("[indexer-connector] Consumer '{}' is not ready (status: {})", std::string(consumerId), status);
-            return false;
-        }
-
-        // Check local_offset != 0
-        if (!src.contains("local_offset") || !src["local_offset"].is_number())
-        {
-            LOG_DEBUG("[indexer-connector] Consumer '{}' missing or non-numeric 'local_offset' field",
-                      std::string(consumerId));
-            return false;
-        }
-
-        const auto localOffset = src["local_offset"].get<int64_t>();
-        if (localOffset == 0)
-        {
-            LOG_DEBUG("[indexer-connector] Consumer '{}' has local_offset=0, data not yet available",
-                      std::string(consumerId));
-            return false;
-        }
-
-        LOG_DEBUG("[indexer-connector] Consumer '{}' is ready for sync (ready, local_offset={})",
-                  std::string(consumerId),
-                  localOffset);
-        return true;
+        hits = m_indexerConnectorAsync->search(CTI_CONSUMERS_INDEX, SINGLE_RESULT_SIZE, query, source);
     }
-    catch (const std::exception& e)
+    catch (const IndexerConnectorException& e)
     {
-        LOG_DEBUG("[indexer-connector] Error checking consumer '{}' readiness: {}", std::string(consumerId), e.what());
+        if (e.statusCode() != HTTP_NOT_FOUND)
+        {
+            throw;
+        }
+        LOG_DEBUG("[indexer-connector] Index '{}' not found, consumer '{}' not ready",
+                  CTI_CONSUMERS_INDEX,
+                  std::string(consumerId));
         return false;
     }
+
+    size_t totalHits = getTotalHits(hits);
+    if (totalHits == 0)
+    {
+        LOG_DEBUG("[indexer-connector] Consumer document '{}' not found", std::string(consumerId));
+        return false;
+    }
+
+    const auto& hitArray = hits["hits"];
+    if (!hitArray.is_array() || hitArray.empty() || !hitArray[0].contains("_source"))
+    {
+        LOG_DEBUG("[indexer-connector] Invalid consumer hit for '{}'", std::string(consumerId));
+        return false;
+    }
+
+    const auto& src = hitArray[0]["_source"];
+
+    // Check status == "ready"
+    if (!src.contains("status") || !src["status"].is_string())
+    {
+        LOG_DEBUG("[indexer-connector] Consumer '{}' missing 'status' field", std::string(consumerId));
+        return false;
+    }
+
+    const auto status = src["status"].get<std::string>();
+    if (status != "ready")
+    {
+        LOG_DEBUG("[indexer-connector] Consumer '{}' is not ready (status: {})", std::string(consumerId), status);
+        return false;
+    }
+
+    // Check local_offset != 0
+    if (!src.contains("local_offset") || !src["local_offset"].is_number())
+    {
+        LOG_DEBUG("[indexer-connector] Consumer '{}' missing or non-numeric 'local_offset' field",
+                  std::string(consumerId));
+        return false;
+    }
+
+    const auto localOffset = src["local_offset"].get<int64_t>();
+    if (localOffset == 0)
+    {
+        LOG_DEBUG("[indexer-connector] Consumer '{}' has local_offset=0, data not yet available",
+                  std::string(consumerId));
+        return false;
+    }
+
+    LOG_DEBUG("[indexer-connector] Consumer '{}' is ready for sync (ready, local_offset={})",
+              std::string(consumerId),
+              localOffset);
+    return true;
 }
 
 std::optional<std::unordered_map<std::string, std::string>>

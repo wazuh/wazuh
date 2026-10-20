@@ -167,8 +167,9 @@ public:
      * hashes or data, to avoid unnecessary network calls when the consumer has no data yet.
      *
      * @param consumerId The `_id` of the consumer document (e.g. `STANDARD_RULESET_CONSUMER_ID`).
-     * @return true if the consumer is ready and has a non-zero local_offset; false otherwise
-     *         (including on any error — safe default to skip sync).
+     * @return true if the consumer is ready and has a non-zero local_offset; false otherwise, also when
+     *         the consumers index does not exist yet.
+     * @throws std::exception if the query fails, so the caller's retry covers transient indexer errors.
      */
     virtual bool isConsumerReadyForSync(std::string_view consumerId) = 0;
 

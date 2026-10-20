@@ -1111,7 +1111,9 @@ public:
         auto onError = [](const std::string& error, const long statusCode, const std::string& responseBody)
         {
             throw IndexerConnectorException("Search request failed with status " + std::to_string(statusCode) + ": " +
-                                            error + ". Response: " + responseBody);
+                                                error + ". Response: " + responseBody,
+                                            IndexerConnectorException::Category::Other,
+                                            statusCode);
         };
 
         // Execute the POST request synchronously

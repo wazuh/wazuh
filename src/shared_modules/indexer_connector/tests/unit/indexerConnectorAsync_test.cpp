@@ -2723,7 +2723,15 @@ TEST_F(IndexerConnectorAsyncTest, SearchByIndexServerErrorThrows)
         config, nullptr, &mockHttpRequest, std::move(mockSelector), "test-search-err2");
 
     nlohmann::json query = {{"match_all", nlohmann::json::object()}};
-    EXPECT_THROW(connector.search("missing-index", 10, query, std::nullopt), IndexerConnectorException);
+    try
+    {
+        connector.search("missing-index", 10, query, std::nullopt);
+        FAIL() << "search() returned on a 404";
+    }
+    catch (const IndexerConnectorException& e)
+    {
+        EXPECT_EQ(e.statusCode(), 404);
+    }
 }
 
 // =============================================================================

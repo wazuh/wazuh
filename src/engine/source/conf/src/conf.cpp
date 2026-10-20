@@ -52,6 +52,7 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     // Content Manager
     addUnit<std::string>(key::CM_RULESET_PATH, "WAZUH_CM_RULESET_PATH", (wazuhRoot / "data/ruleset").c_str());
     addUnit<size_t>(key::CM_SYNC_INTERVAL, "WAZUH_CM_SYNC_INTERVAL", 120);
+    addUnit<size_t>(key::CM_SYNC_RETRY_INTERVAL, "WAZUH_CM_SYNC_RETRY_INTERVAL", 30);
     addUnit<size_t>(key::IOC_SYNC_INTERVAL, "WAZUH_IOC_SYNC_INTERVAL", 360);
 
     // Geo module
