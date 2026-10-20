@@ -506,7 +506,8 @@ def local_registry(request: pytest.FixtureRequest, test_metadata: dict, test_con
 
       - starts the registry on 127.0.0.1:443 with a certificate issued for `ghcr.io` by a
         throwaway authority,
-      - adds a hosts entry so the name resolves locally, removing it afterwards,
+      - adds a hosts entry so both names resolve locally (the registry redirects every layer to
+        the content host), removing it afterwards,
       - points `<ca_bundle>` at that authority, which also exercises the certificate
         resolution the module performs at run time,
       - deposits, corrupts or omits the credential in the agent store according to the case.
@@ -514,7 +515,7 @@ def local_registry(request: pytest.FixtureRequest, test_metadata: dict, test_con
     Requires root, like the rest of this suite: it binds a privileged port, edits `/etc/hosts`
     and runs the agent's own keystore tool.
     """
-    from framework_module.registry import LocalRegistry, REGISTRY_HOST
+    from framework_module.registry import CONTENT_HOST, LocalRegistry, REGISTRY_HOST
 
     local = LocalRegistry()
     hosts = Path('/etc/hosts')
@@ -526,7 +527,7 @@ def local_registry(request: pytest.FixtureRequest, test_metadata: dict, test_con
                                      test_metadata.get('private', False),
                                      test_metadata.get('platforms', ['amd64']))
 
-        hosts.write_text(original_hosts + f'\n127.0.0.1 {REGISTRY_HOST}\n')
+        hosts.write_text(original_hosts + f'\n127.0.0.1 {REGISTRY_HOST} {CONTENT_HOST}\n')
 
         # The generated authority is what the agent must trust, so the configuration is rewritten
         # with its real path rather than the placeholder the template carries.

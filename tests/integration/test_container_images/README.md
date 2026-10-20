@@ -153,7 +153,7 @@ server *be* `ghcr.io` for the duration of a case:
 
 - it listens on `127.0.0.1:443`, with a certificate issued for `ghcr.io` by a throwaway
   authority generated per run,
-- it adds a `127.0.0.1 ghcr.io` line to `/etc/hosts` and removes it afterwards,
+- it adds a `127.0.0.1 ghcr.io pkg-containers.githubusercontent.com` line to `/etc/hosts` and removes it afterwards, since the registry redirects every layer to the second name,
 - it points `<ca_bundle>` at that authority, which also exercises the certificate resolution
   the module performs at run time.
 
