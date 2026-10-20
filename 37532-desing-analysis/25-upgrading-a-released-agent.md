@@ -307,6 +307,51 @@ tables. The migration cost is real, and it is buying something.
 
 ---
 
+## 25.7b Measured on a real upgrade
+
+Run on `wazuh_manager`, 2026-10-20. A released **5.0.0-beta5** agent was unpacked and run from an
+isolated home until it had scanned the VM's own inventory — 1,859 packages, 342 processes, 194
+services, 85 groups, 55 users, 5,197 file entries, both databases at `user_version` 1. Its
+binaries were then replaced with this branch's and the same databases, host and configuration
+reused: an upgrade, not a reinstall.
+
+Two runs were measured identically, each from the same pristine database with an emptied sync
+backlog, so the counts are one scan's output alone. The control is the *old* agent rescanning the
+same unchanged inventory, which is what "no burst" has to be measured against — it is not zero,
+because processes and interface counters move between any two scans.
+
+| | control: 5.0.0 → 5.0.0 | upgrade: 5.0.0 → 5.1.0 | second 5.1.0 scan |
+| --- | --- | --- | --- |
+| syscollector documents queued | 71 | **326** | 222 |
+| FIM documents queued | 0 | **0** | 0 |
+| `user_version` (local / fim) | 1 / 1 | **15 / 3** | 15 / 3 |
+
+**No burst.** A full re-sync would be ~7,400 documents. The upgrade queued 326, and FIM queued
+**nothing at all** — not one of the 5,197 file documents.
+
+**Rows whose stored `checksum|version` changed across the upgrade**, against the pristine 5.0.0
+database:
+
+| unchanged | changed |
+| --- | --- |
+| `dbsync_packages` 1,859 · `dbsync_services` 194 · `dbsync_groups` 85 · `dbsync_ports` 32 · `dbsync_network_address` 13 · `dbsync_network_protocol` 11 · `dbsync_osinfo` 1 · **`file_entry` 5,197** | `dbsync_processes` ~215 · `dbsync_users` 55 · `dbsync_network_iface` 5 · `dbsync_hwinfo` 1 |
+
+7,392 rows — every stable table, and the whole of FIM — pass through the migration untouched.
+
+Of the four that moved, three are ordinary volatility: processes churn, interface byte counters
+advance, `memory_free` changes. All three move the same way on a second 5.1.0 scan, so they are
+not upgrade effects.
+
+**`dbsync_users` is different and worth knowing about.** All 55 rows re-synced at the upgrade and
+**zero** on the next scan — a one-time event. The cause is not the migration: comparing a row
+column by column, the stored data survives intact and `user_is_remote` is *collected* differently
+by 5.1.0 (`1` on 5.0.0, `0` on 5.1.0, from `data_provider/src/sysInfoLinux.cpp`). The checksum
+follows the data, as it should. So every upgraded agent re-sends its user inventory once,
+for a reason that predates and is independent of this schema work — but it will look like a
+migration effect to anyone watching the upgrade, and it should be attributed correctly.
+
+---
+
 ## 25.8 Open questions for the team
 
 > **Four of these are now answered, by the implementation on
