@@ -12,6 +12,8 @@
 
 #include "indexer_client/keyValueConfigSource.hpp"
 
+#include "transport/tlsMaterial.hpp"
+
 #include <algorithm>
 #include <string>
 #include <string_view>
@@ -40,7 +42,8 @@ namespace indexer_client
         }
     } // namespace
 
-    Outcome<KeyValueConfigSource> KeyValueConfigSource::parse(std::string_view text, std::string indexerSectionJson)
+    Outcome<KeyValueConfigSource>
+    KeyValueConfigSource::parse(std::string_view text, std::string indexerSectionJson, Credentials credentials)
     {
         try
         {
@@ -97,6 +100,7 @@ namespace indexer_client
                 source.m_values.emplace(std::string {key}, std::string {value});
             }
             source.m_indexerSectionJson = std::move(indexerSectionJson);
+            source.m_credentials = std::move(credentials);
             return Outcome<KeyValueConfigSource>::success(std::move(source));
         }
         catch (const std::exception& e)
@@ -147,5 +151,15 @@ namespace indexer_client
     std::string KeyValueConfigSource::indexerSectionJson() const
     {
         return m_indexerSectionJson;
+    }
+
+    KeyValueConfigSource::~KeyValueConfigSource()
+    {
+        detail::cleanseString(m_credentials.password);
+    }
+
+    Credentials KeyValueConfigSource::credentials() const
+    {
+        return m_credentials;
     }
 } // namespace indexer_client

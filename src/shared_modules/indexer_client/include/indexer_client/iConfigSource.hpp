@@ -53,6 +53,10 @@ namespace indexer_client
         /// `wiconnector::Config::toJson()` is NOT valid input (it adds `max_queue_bytes` and
         /// `max_retry_delay_seconds`).
         virtual std::string indexerSectionJson() const = 0;
+
+        /// The indexer user and password (I42). RuntimeOwner::start copies them and fails with InvalidConfig, before
+        /// creating any thread, when either is empty (RF-19, D24). The library never reads a keystore itself.
+        virtual Credentials credentials() const = 0;
     };
 } // namespace indexer_client
 

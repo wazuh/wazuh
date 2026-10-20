@@ -289,6 +289,9 @@ TEST_F(TransportTest, ConcurrentStopsJoinOnce)
     {
         EXPECT_EQ(collector->count(one.key), 1);
         EXPECT_EQ(collector->result(one.key)->cause, TransportCause::Shutdown);
+        // The contract fills the timings also for Shutdown: each request reached the fake over a real connection.
+        EXPECT_GT(collector->result(one.key)->timings.connect.count(), 0);
+        EXPECT_GT(collector->result(one.key)->timings.total.count(), 0);
     }
     EXPECT_EQ(transport->stats().shutdown, IN_FLIGHT);
 

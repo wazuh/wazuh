@@ -49,18 +49,18 @@ namespace indexer_client::detail
             return false; // Any other value (a cast, a future PATCH) is not admitted.
         }
 
-        /// Scheme `http` only until E2a-2 (case-insensitive, as RFC 3986 says), with something after "//".
-        bool admittedUrl(std::string_view url)
+        /// `url` starts with `prefix`, ASCII case-insensitively (RFC 3986 schemes), with something after it (the same
+        /// comparison as tlsMaterial.cpp's hasScheme).
+        bool startsWithScheme(std::string_view url, std::string_view prefix)
         {
-            constexpr std::string_view PREFIX {"http://"};
-            if (url.size() <= PREFIX.size())
+            if (url.size() <= prefix.size())
             {
                 return false;
             }
-            for (std::size_t i = 0; i < PREFIX.size(); ++i)
+            for (std::size_t i = 0; i < prefix.size(); ++i)
             {
                 const char c = url[i];
-                if ((c >= 'A' && c <= 'Z' ? static_cast<char>(c + 32) : c) != PREFIX[i])
+                if ((c >= 'A' && c <= 'Z' ? static_cast<char>(c + 32) : c) != prefix[i])
                 {
                     return false;
                 }
@@ -68,15 +68,30 @@ namespace indexer_client::detail
             return true;
         }
 
+        /// Schemes `http` and `https` (E2a-2); CURLOPT_PROTOCOLS_STR enforces the same set inside curl.
+        /// http always; https only when a CA is configured: without one there is no trust anchor (I48), and curl would
+        /// otherwise fall back to the CA bundle compiled into it.
+        bool admittedUrl(std::string_view url, bool haveCa)
+        {
+            return startsWithScheme(url, "http://") || (haveCa && startsWithScheme(url, "https://"));
+        }
+
         class CurlTransport final : public Transport
         {
         public:
-            CurlTransport(const RuntimeConfig& config, TransportEnvironment environment)
+            CurlTransport(const RuntimeConfig& config,
+                          TlsMaterial tls,
+                          Credentials credentials,
+                          TransportEnvironment environment)
                 : m_shared(std::make_shared<TransportShared>(
                       config, std::move(environment.postToPool), environment.loops.size()))
                 , m_requestTimeout(config.requestTimeout)
                 , m_maxResponseBytes(config.maxResponseBytes)
             {
+                // Kept for the transport's lifetime: curl reads the blobs (CURL_BLOB_NOCOPY) until the last cleanup.
+                // Moved in before anything can throw, so that a failed construction wipes them (~TransportShared).
+                m_shared->tls = std::move(tls);
+                m_shared->credentials = std::move(credentials);
                 if (environment.loops.empty() || !m_shared->postToPool)
                 {
                     throw std::invalid_argument("the transport needs at least one loop and a CPU pool");
@@ -91,7 +106,8 @@ namespace indexer_client::detail
 
             Admission submit(HttpRequest request, ResultCallback callback) override
             {
-                if (!admittedMethod(request.method) || !admittedUrl(request.url) || !callback)
+                if (!admittedMethod(request.method) || !admittedUrl(request.url, !m_shared->tls.caBundle.empty()) ||
+                    !callback)
                 {
                     m_shared->rejected.fetch_add(1);
                     return Admission {false, Cause::InvalidArgument, 0};
@@ -258,6 +274,13 @@ namespace indexer_client::detail
     {
     }
 
+    TransportShared::~TransportShared()
+    {
+        // Best effort (I55): curl and OpenSSL keep their own copies of the key and of the password.
+        cleanseString(tls.privateKey);
+        cleanseString(credentials.password);
+    }
+
     bool TransportShared::resolve(const std::shared_ptr<TransferState>& state,
                                   HttpResult&& result,
                                   std::optional<std::string> retryAfter) noexcept
@@ -324,14 +347,18 @@ namespace indexer_client::detail
         return true;
     }
 
-    std::shared_ptr<Transport> Transport::create(const RuntimeConfig& config, TransportEnvironment environment)
+    std::shared_ptr<Transport> Transport::create(const RuntimeConfig& config,
+                                                 TlsMaterial tls,
+                                                 Credentials credentials,
+                                                 TransportEnvironment environment)
     {
         std::call_once(g_curlGlobalInit, [] { g_curlGlobalInitResult = curl_global_init(CURL_GLOBAL_DEFAULT); });
         if (g_curlGlobalInitResult != CURLE_OK)
         {
+            cleanseString(credentials.password); // The key is wiped by ~TlsMaterial.
             throw std::runtime_error(std::string("curl_global_init failed: ") +
                                      curl_easy_strerror(g_curlGlobalInitResult));
         }
-        return std::make_shared<CurlTransport>(config, std::move(environment));
+        return std::make_shared<CurlTransport>(config, std::move(tls), std::move(credentials), std::move(environment));
     }
 } // namespace indexer_client::detail

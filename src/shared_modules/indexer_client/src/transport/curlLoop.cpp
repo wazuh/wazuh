@@ -80,9 +80,22 @@ namespace indexer_client::detail
                               { return (x >= 'A' && x <= 'Z' ? static_cast<char>(x + 32) : x) == y; });
         }
 
-        Duration microsToDuration(curl_off_t micros)
+        /// Reads the transfer's timings (microseconds) into `timings`; on a cancelled or stopped transfer too.
+        void readTimings(CURL* easy, TransferTimings& timings)
         {
-            return std::chrono::duration_cast<Duration>(std::chrono::microseconds(micros));
+            curl_off_t value = 0;
+            if (curl_easy_getinfo(easy, CURLINFO_TOTAL_TIME_T, &value) == CURLE_OK)
+            {
+                timings.total = std::chrono::microseconds(value);
+            }
+            if (curl_easy_getinfo(easy, CURLINFO_CONNECT_TIME_T, &value) == CURLE_OK)
+            {
+                timings.connect = std::chrono::microseconds(value);
+            }
+            if (curl_easy_getinfo(easy, CURLINFO_APPCONNECT_TIME_T, &value) == CURLE_OK)
+            {
+                timings.appConnect = std::chrono::microseconds(value);
+            }
         }
 
         struct SocketInfo final
@@ -240,8 +253,41 @@ namespace indexer_client::detail
             const auto& body = request.body;
 
             set(curl_easy_setopt(easy, CURLOPT_URL, request.url.c_str()));
-            set(curl_easy_setopt(easy, CURLOPT_PROTOCOLS_STR, "http")); // E2a-2 widens it to "http,https".
+            set(curl_easy_setopt(easy, CURLOPT_PROTOCOLS_STR, "http,https"));
             set(curl_easy_setopt(easy, CURLOPT_NOSIGNAL, 1L));
+
+            // TLS (I48): material in memory (CURL_BLOB_NOCOPY over TransportShared, alive until the last
+            // curl_multi_cleanup), no CA directory, verification always on, TLS 1.2 or newer. No insecure mode.
+            const auto& tls = shared->tls;
+            if (!tls.caBundle.empty())
+            {
+                curl_blob ca {const_cast<char*>(tls.caBundle.data()), tls.caBundle.size(), CURL_BLOB_NOCOPY};
+                set(curl_easy_setopt(easy, CURLOPT_CAINFO_BLOB, &ca));
+            }
+            else
+            {
+                // No CA: never curl's compiled-in bundle (https is not admitted then anyway; defence in depth).
+                set(curl_easy_setopt(easy, CURLOPT_CAINFO, nullptr));
+            }
+            set(curl_easy_setopt(easy, CURLOPT_CAPATH, nullptr));
+            set(curl_easy_setopt(easy, CURLOPT_SSL_VERIFYPEER, 1L));
+            set(curl_easy_setopt(easy, CURLOPT_SSL_VERIFYHOST, 2L));
+            set(curl_easy_setopt(easy, CURLOPT_SSLVERSION, static_cast<long>(CURL_SSLVERSION_TLSv1_2)));
+            if (tls.mutual())
+            {
+                // The whole certificate file, so that the intermediates travel with the leaf.
+                curl_blob certificate {
+                    const_cast<char*>(tls.certificateChain.data()), tls.certificateChain.size(), CURL_BLOB_NOCOPY};
+                curl_blob key {const_cast<char*>(tls.privateKey.data()), tls.privateKey.size(), CURL_BLOB_NOCOPY};
+                set(curl_easy_setopt(easy, CURLOPT_SSLCERTTYPE, "PEM"));
+                set(curl_easy_setopt(easy, CURLOPT_SSLCERT_BLOB, &certificate));
+                set(curl_easy_setopt(easy, CURLOPT_SSLKEYTYPE, "PEM"));
+                set(curl_easy_setopt(easy, CURLOPT_SSLKEY_BLOB, &key));
+            }
+
+            // Credentials (I55): separate options, so a ':' in the password travels as is; never USERPWD.
+            set(curl_easy_setopt(easy, CURLOPT_USERNAME, shared->credentials.user.c_str()));
+            set(curl_easy_setopt(easy, CURLOPT_PASSWORD, shared->credentials.password.c_str()));
             set(curl_easy_setopt(easy, CURLOPT_PROXY, "")); // Never a proxy from the environment.
             set(curl_easy_setopt(easy, CURLOPT_TCP_NODELAY, 1L));
             set(curl_easy_setopt(easy, CURLOPT_TIMEOUT_MS, static_cast<long>(state.timeout.count())));
@@ -391,6 +437,7 @@ namespace indexer_client::detail
             curl_easy_getinfo(state->easy, CURLINFO_SIZE_UPLOAD_T, &uploaded);
             result.uploadedBytes = uploaded > 0 ? static_cast<std::uint64_t>(uploaded) : 0;
             result.mayHaveSent = state->mayHaveSent;
+            readTimings(state->easy, result.timings);
             curl_multi_remove_handle(multi, state->easy);
             curl_easy_cleanup(state->easy);
             state->easy = nullptr;
@@ -441,20 +488,8 @@ namespace indexer_client::detail
                 result.nodeAttributable = nodeAttributable(result.cause);
                 result.mayHaveSent = state->mayHaveSent;
                 curl_easy_getinfo(easy, CURLINFO_RESPONSE_CODE, &result.status);
+                readTimings(easy, result.timings);
                 curl_off_t value = 0;
-                if (curl_easy_getinfo(easy, CURLINFO_TOTAL_TIME_T, &value) == CURLE_OK)
-                {
-                    result.timings.total = microsToDuration(value);
-                }
-                if (curl_easy_getinfo(easy, CURLINFO_CONNECT_TIME_T, &value) == CURLE_OK)
-                {
-                    result.timings.connect = microsToDuration(value);
-                }
-                if (curl_easy_getinfo(easy, CURLINFO_APPCONNECT_TIME_T, &value) == CURLE_OK)
-                {
-                    result.timings.appConnect = microsToDuration(value);
-                }
-                value = 0;
                 curl_easy_getinfo(easy, CURLINFO_SIZE_UPLOAD_T, &value);
                 result.uploadedBytes = value > 0 ? static_cast<std::uint64_t>(value) : 0;
                 result.body = std::move(state->response);

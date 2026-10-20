@@ -53,7 +53,9 @@ namespace
                                            TransportCause::ResponseTooLarge,
                                            TransportCause::LocalError,
                                            TransportCause::Cancelled,
-                                           TransportCause::Shutdown};
+                                           TransportCause::Shutdown,
+                                           TransportCause::Tls,
+                                           TransportCause::TlsConfig};
 } // namespace
 
 TEST(TransportCoverageTest, CauseNamesAreDistinctLowercaseAndStable)
@@ -67,7 +69,9 @@ TEST(TransportCoverageTest, CauseNamesAreDistinctLowercaseAndStable)
                                   "response_too_large",
                                   "local_error",
                                   "cancelled",
-                                  "shutdown"};
+                                  "shutdown",
+                                  "tls",
+                                  "tls_config"};
     std::set<std::string> seen;
     for (std::size_t i = 0; i < std::size(ALL_CAUSES); ++i)
     {
@@ -88,7 +92,8 @@ TEST(TransportCoverageTest, OnlyNodeFailuresAreAttributable)
                                          TransportCause::Connect,
                                          TransportCause::SendError,
                                          TransportCause::RecvError,
-                                         TransportCause::PartialResponse};
+                                         TransportCause::PartialResponse,
+                                         TransportCause::Tls};
     for (const auto cause : ALL_CAUSES)
     {
         EXPECT_EQ(nodeAttributable(cause), node.count(cause) == 1) << toString(cause);
@@ -113,17 +118,16 @@ TEST_F(TransportTest, AdmissionRefusals)
 
     const auto nullCallback = transport->submit(request(HttpMethod::Get, fake.baseUrl() + "/x"), nullptr);
     const auto badMethod = transport->submit(request(static_cast<HttpMethod>(99), fake.baseUrl() + "/x"), counting);
-    const auto https = transport->submit(request(HttpMethod::Get, "https://127.0.0.1:1/x"), counting);
     const auto noHost = transport->submit(request(HttpMethod::Get, "http://"), counting);
     const auto garbage = transport->submit(request(HttpMethod::Get, "htxp://127.0.0.1:1/x"), counting);
     const auto empty = transport->submit(request(HttpMethod::Get, ""), counting);
-    for (const auto& admission : {nullCallback, badMethod, https, noHost, garbage, empty})
+    for (const auto& admission : {nullCallback, badMethod, noHost, garbage, empty})
     {
         EXPECT_FALSE(admission.admitted);
         EXPECT_EQ(admission.cause, indexer_client::Cause::InvalidArgument);
         EXPECT_EQ(admission.id, 0u);
     }
-    EXPECT_EQ(transport->stats().rejected, 6u);
+    EXPECT_EQ(transport->stats().rejected, 5u);
     EXPECT_EQ(transport->stats().admitted, 0u);
 
     // The scheme is case-insensitive.
@@ -361,7 +365,7 @@ TEST_F(TransportTest, CreateRequiresLoopAndPool)
     };
     try
     {
-        Transport::create(config.value, std::move(noLoops));
+        Transport::create(config.value, {}, {"user", "pass"}, std::move(noLoops));
         FAIL() << "a transport without loops was created";
     }
     catch (const std::invalid_argument& e)
@@ -372,7 +376,7 @@ TEST_F(TransportTest, CreateRequiresLoopAndPool)
     asio::io_context context;
     indexer_client::detail::TransportEnvironment noPool;
     noPool.loops.push_back(&context);
-    EXPECT_THROW(Transport::create(config.value, std::move(noPool)), std::invalid_argument);
+    EXPECT_THROW(Transport::create(config.value, {}, {"user", "pass"}, std::move(noPool)), std::invalid_argument);
 }
 
 // A pool that refuses the task: the transfer is still resolved (counted completed) and the callback never runs.
@@ -394,7 +398,7 @@ TEST_F(TransportTest, RefusingPoolDropsTheCallback)
         ++*offered;
         return false;
     };
-    auto transport = Transport::create(config.value, std::move(environment));
+    auto transport = Transport::create(config.value, {}, {"user", "pass"}, std::move(environment));
     std::atomic<int> calls {0};
     const auto admission =
         transport->submit(request(HttpMethod::Get, fake.baseUrl() + "/x"), [&calls](HttpResult&&) { ++calls; });
@@ -447,6 +451,11 @@ namespace
             return R"({"hosts":["http://127.0.0.1:9200"]})";
         }
 
+        indexer_client::Credentials credentials() const override
+        {
+            return {"user", "pass"};
+        }
+
     private:
         Mode m_mode;
     };
@@ -479,7 +488,9 @@ TEST(TransportCoverageTest, KeyValueSourceTrimsAndReportsProblemKeys)
     using indexer_client::RuntimeConfig;
     const auto indexer = std::string(R"({"hosts":["http://127.0.0.1:9200"]})");
     const auto good = KeyValueConfigSource::parse(
-        "# comment\nanalysisd.indexer_client_network_threads =\t3 \nanalysisd.indexer_client_cpu_threads=4\n", indexer);
+        "# comment\nanalysisd.indexer_client_network_threads =\t3 \nanalysisd.indexer_client_cpu_threads=4\n",
+        indexer,
+        indexer_client::Credentials {"user", "pass"});
     ASSERT_TRUE(good.ok()) << good.reason;
     const auto config = RuntimeConfig::from(ProcessId::Analysisd, good.value);
     ASSERT_TRUE(config.ok()) << config.reason;
@@ -487,7 +498,9 @@ TEST(TransportCoverageTest, KeyValueSourceTrimsAndReportsProblemKeys)
     EXPECT_EQ(config.value.cpuThreads, 4u);
 
     const auto bad = KeyValueConfigSource::parse(
-        "analysisd.indexer_client_network_threads=2\nanalysisd.indexer_client_cpu_threads=\n", indexer);
+        "analysisd.indexer_client_network_threads=2\nanalysisd.indexer_client_cpu_threads=\n",
+        indexer,
+        indexer_client::Credentials {"user", "pass"});
     ASSERT_TRUE(bad.ok()) << bad.reason;
     const auto keys = bad.value.keysWithPrefix("analysisd.indexer_client_");
     ASSERT_EQ(keys.size(), 2u);
@@ -543,11 +556,42 @@ TEST(TransportCoverageTest, CurlCodeTable)
                       {CURLE_FAILED_INIT, false, TransportCause::LocalError},
                       {CURLE_OUT_OF_MEMORY, false, TransportCause::LocalError},
                       {CURLE_UNSUPPORTED_PROTOCOL, false, TransportCause::LocalError},
+                      // I54: the node's TLS (attributable) versus our own material (local).
+                      {CURLE_SSL_CONNECT_ERROR, false, TransportCause::Tls},
+                      {CURLE_PEER_FAILED_VERIFICATION, false, TransportCause::Tls},
+                      {CURLE_PEER_FAILED_VERIFICATION, true, TransportCause::Tls},
+                      {CURLE_SSL_CLIENTCERT, false, TransportCause::Tls},
+                      {CURLE_SSL_CERTPROBLEM, false, TransportCause::TlsConfig},
+                      {CURLE_SSL_CACERT_BADFILE, false, TransportCause::TlsConfig},
+                      {CURLE_SSL_ENGINE_NOTFOUND, false, TransportCause::TlsConfig},
+                      {CURLE_SSL_ENGINE_SETFAILED, false, TransportCause::TlsConfig},
+                      {CURLE_SSL_ENGINE_INITFAILED, false, TransportCause::TlsConfig},
+                      {CURLE_SSL_ISSUER_ERROR, false, TransportCause::TlsConfig},
+                      {CURLE_SSL_CIPHER, false, TransportCause::TlsConfig},
+                      {CURLE_SSL_CRL_BADFILE, false, TransportCause::TlsConfig},
+                      {CURLE_SSL_PINNEDPUBKEYNOTMATCH, false, TransportCause::TlsConfig},
+                      {CURLE_SSL_INVALIDCERTSTATUS, false, TransportCause::TlsConfig},
+                      {CURLE_BAD_FUNCTION_ARGUMENT, false, TransportCause::LocalError},
                       {9999, false, TransportCause::LocalError}};
     for (const auto& row : rows)
     {
         EXPECT_EQ(classifyCurlCode(row.code, row.capTripped), row.cause)
             << row.code << " cap=" << row.capTripped << " -> " << toString(classifyCurlCode(row.code, row.capTripped));
+    }
+    // The numbers I54 names, pinned against curl's own constants.
+    static_assert(CURLE_SSL_CONNECT_ERROR == 35 && CURLE_PEER_FAILED_VERIFICATION == 60 && CURLE_SSL_CLIENTCERT == 98);
+    static_assert(CURLE_SSL_CERTPROBLEM == 58 && CURLE_SSL_CACERT_BADFILE == 77 && CURLE_SSL_ENGINE_NOTFOUND == 53 &&
+                  CURLE_SSL_ENGINE_SETFAILED == 54 && CURLE_SSL_ENGINE_INITFAILED == 66 &&
+                  CURLE_SSL_ISSUER_ERROR == 83 && CURLE_BAD_FUNCTION_ARGUMENT == 43);
+    static_assert(CURLE_SSL_CIPHER == 59 && CURLE_SSL_CRL_BADFILE == 82 && CURLE_SSL_PINNEDPUBKEYNOTMATCH == 90 &&
+                  CURLE_SSL_INVALIDCERTSTATUS == 91);
+    for (const int code : {35, 60, 98})
+    {
+        EXPECT_TRUE(nodeAttributable(classifyCurlCode(code, false))) << code;
+    }
+    for (const int code : {58, 77, 53, 54, 59, 66, 82, 83, 90, 91, 43})
+    {
+        EXPECT_FALSE(nodeAttributable(classifyCurlCode(code, false))) << code;
     }
 }
 

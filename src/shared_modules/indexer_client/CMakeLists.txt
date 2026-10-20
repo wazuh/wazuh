@@ -28,7 +28,8 @@ set(INDEXER_CLIENT_SOURCES
     src/transport/transport.cpp
     src/transport/curlLoop.cpp
     src/transport/classify.cpp
-    src/transport/retryAfter.cpp)
+    src/transport/retryAfter.cpp
+    src/transport/tlsMaterial.cpp)
 
 # Two compilations of the same sources (I45b): the production objects behind the .so carry no test seam; the
 # testing objects (INDEXER_CLIENT_TESTING + src/testing/) build a static library that only the component suite links,

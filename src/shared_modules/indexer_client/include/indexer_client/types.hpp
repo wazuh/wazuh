@@ -280,6 +280,14 @@ namespace indexer_client
         bool last {false};
     };
 
+    /// Indexer credentials (I42, I55): read by each process from its keystore and handed over through
+    /// IConfigSource::credentials(). Deliberately without operator<<: never streamed, logged or put in a reason.
+    struct Credentials final
+    {
+        std::string user;
+        std::string password;
+    };
+
     struct HealthView final
     {
         enum class NodeState

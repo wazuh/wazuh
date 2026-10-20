@@ -29,12 +29,14 @@
 #include "componentFixture.hpp"
 #include "fakeIndexer.hpp"
 #include "rawTcpServer.hpp"
+#include "tlsMaterialFactory.hpp"
 
 using namespace component;
 using indexer_client::testing::FakeIndexer;
 using indexer_client::testing::FakeIndexerOptions;
 using indexer_client::testing::Rule;
 using indexer_client::testing::SilentServer;
+using indexer_client::testing::TlsMaterialFactory;
 
 namespace
 {
@@ -356,31 +358,62 @@ TEST_F(TransportTest, MethodAndBodyAfterReuse)
     EXPECT_EQ(fake.requestCount(), steps.size());
 }
 
-// RF-19: until E2a-2 brings TLS, an https:// URL is not admitted (no callback) and opens no connection.
-TEST_F(TransportTest, HttpsNotAdmittedUntilTls)
+// RF-19, E2a-2: https is admitted (in any case) and opens its connection, the send is cancelled; ftp and PATCH are
+// not admitted (InvalidArgument, no callback) and open no connection.
+TEST_F(TransportTest, HttpsAdmittedFtpNot)
 {
     SilentServer server;
-    auto transport = startRuntime(1, 2);
+    // With a CA configured, so the https handshakes wait on the silent server until they are cancelled.
+    TlsMaterialFactory material;
+    auto started = indexer_client::RuntimeOwner::start(
+        indexer_client::ProcessId::Analysisd,
+        MapSource({{"analysisd.indexer_client_network_threads", "1"}, {"analysisd.indexer_client_cpu_threads", "2"}},
+                  R"({"hosts":["https://127.0.0.1:9200"],"ssl":{"certificate_authorities":[")" +
+                      material.caCertificate() + R"("]}})"));
+    ASSERT_TRUE(started.ok()) << started.reason;
+    auto transport = indexer_client::detail::runtimeTransport();
     ASSERT_NE(transport, nullptr);
     auto collector = Collector::create();
     const auto rejectedBefore = transport->stats().rejected;
 
     const auto authority = "127.0.0.1:" + std::to_string(server.port());
     std::vector<Submitted> refused;
-    for (const auto& url : {"https://" + authority + "/", "HTTPS://" + authority + "/x", "ftp://" + authority + "/"})
+    for (const auto& url : {"ftp://" + authority + "/", "FTP://" + authority + "/x"})
     {
         for (const auto method : {HttpMethod::Get, HttpMethod::Post})
         {
             refused.push_back(submitTo(*transport, collector, request(method, url)));
-            EXPECT_FALSE(refused.back().admission.admitted) << url;
-            EXPECT_EQ(refused.back().admission.cause, indexer_client::Cause::InvalidArgument) << url;
-            EXPECT_EQ(refused.back().admission.id, 0u) << url;
         }
     }
-    EXPECT_FALSE(server.waitForAccepted(1, 300ms)) << "a refused URL opened a connection";
+    refused.push_back(
+        submitTo(*transport, collector, request(static_cast<HttpMethod>(5), "https://" + authority + "/")));
+    for (const auto& submitted : refused)
+    {
+        EXPECT_FALSE(submitted.admission.admitted);
+        EXPECT_EQ(submitted.admission.cause, indexer_client::Cause::InvalidArgument);
+        EXPECT_EQ(submitted.admission.id, 0u);
+    }
+    EXPECT_FALSE(server.waitForAccepted(1, 300ms)) << "a refused request opened a connection";
     EXPECT_EQ(server.acceptedCount(), 0u);
     EXPECT_EQ(collector->total(), 0u) << "a request that was not admitted got a callback";
+    EXPECT_EQ(transport->stats().rejected - rejectedBefore, refused.size());
+    EXPECT_EQ(transport->stats().admitted, 0u);
+
+    // https (also upper case) is admitted: each one reaches the server and is cancelled before any answer.
+    std::size_t accepted = 0;
+    for (const auto& url : {"https://" + authority + "/", "HTTPS://" + authority + "/x"})
+    {
+        const auto sent =
+            submitTo(*transport, collector, request(HttpMethod::Get, url, nullptr, indexer_client::Duration {20000}));
+        ASSERT_TRUE(sent.admission.admitted) << url;
+        EXPECT_NE(sent.admission.id, 0u);
+        ASSERT_TRUE(server.waitForAccepted(++accepted, 10s)) << url << " opened no connection";
+        EXPECT_TRUE(transport->cancel(sent.admission.id)) << url;
+        ASSERT_TRUE(collector->waitKey(sent.key, 10s)) << url;
+        EXPECT_EQ(collector->result(sent.key)->cause, TransportCause::Cancelled) << url;
+        EXPECT_EQ(collector->count(sent.key), 1) << url;
+    }
     const auto stats = transport->stats();
     EXPECT_EQ(stats.rejected - rejectedBefore, refused.size());
-    EXPECT_EQ(stats.admitted, 0u);
+    EXPECT_EQ(stats.admitted, 2u);
 }

@@ -43,8 +43,9 @@ namespace
     class MapSource final : public IConfigSource
     {
     public:
-        explicit MapSource(std::map<std::string, std::string> values)
+        explicit MapSource(std::map<std::string, std::string> values, Credentials credentials = {"user", "pass"})
             : m_values(std::move(values))
+            , m_credentials(std::move(credentials))
         {
         }
 
@@ -73,11 +74,17 @@ namespace
 
         std::string indexerSectionJson() const override
         {
-            return R"({"hosts":["https://127.0.0.1:9200"]})";
+            return R"({"hosts":["http://127.0.0.1:9200"]})";
+        }
+
+        indexer_client::Credentials credentials() const override
+        {
+            return m_credentials;
         }
 
     private:
         std::map<std::string, std::string> m_values;
+        Credentials m_credentials;
     };
 
     MapSource sourceWith(std::uint32_t k, std::uint32_t m)
@@ -579,6 +586,38 @@ TEST_F(RuntimeOwnerTest, FailedStartLeavesNoThreads)
     auto ok = RuntimeOwner::start(ProcessId::Analysisd, sourceWith(1, 1));
     ASSERT_TRUE(ok.ok()) << ok.reason;
     EXPECT_EQ(settledTasks().size(), before.size() + 2);
+}
+
+// RF-19, D24: credentials are mandatory (also with http hosts). A missing one fails the start with InvalidConfig
+// before any thread exists, and the reason never carries the value that was given.
+TEST_F(RuntimeOwnerTest, MissingCredentialsUser)
+{
+    const std::string password = "s3cr3t-Pa55";
+    const auto before = settledTasks();
+    auto failed = RuntimeOwner::start(
+        ProcessId::Analysisd,
+        MapSource({{"analysisd.indexer_client_network_threads", "1"}, {"analysisd.indexer_client_cpu_threads", "1"}},
+                  {"", password}));
+    EXPECT_EQ(failed.cause, Cause::InvalidConfig) << failed.reason;
+    EXPECT_NE(failed.reason.find("user"), std::string::npos) << failed.reason;
+    EXPECT_EQ(failed.reason.find(password), std::string::npos) << "the reason leaks the password";
+    EXPECT_FALSE(RuntimeOwner::running());
+    EXPECT_EQ(settledTasks(), before);
+}
+
+TEST_F(RuntimeOwnerTest, MissingCredentialsPassword)
+{
+    const std::string user = "indexer-writer-7";
+    const auto before = settledTasks();
+    auto failed = RuntimeOwner::start(
+        ProcessId::Analysisd,
+        MapSource({{"analysisd.indexer_client_network_threads", "1"}, {"analysisd.indexer_client_cpu_threads", "1"}},
+                  {user, ""}));
+    EXPECT_EQ(failed.cause, Cause::InvalidConfig) << failed.reason;
+    EXPECT_NE(failed.reason.find("password"), std::string::npos) << failed.reason;
+    EXPECT_EQ(failed.reason.find(user), std::string::npos) << "the reason leaks the user";
+    EXPECT_FALSE(RuntimeOwner::running());
+    EXPECT_EQ(settledTasks(), before);
 }
 
 TEST_F(RuntimeOwnerTest, ClientAfterShutdownFails)

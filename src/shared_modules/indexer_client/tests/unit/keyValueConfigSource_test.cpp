@@ -30,7 +30,8 @@ namespace
 
 TEST(KeyValueConfigSourceTest, ParsesAndTrims)
 {
-    const auto result = KeyValueConfigSource::parse("a.b=1\nc.d  =  two words \t\r\nf= =x\n", R"({"hosts":["h"]})");
+    const auto result = KeyValueConfigSource::parse(
+        "a.b=1\nc.d  =  two words \t\r\nf= =x\n", R"({"hosts":["h"]})", indexer_client::Credentials {"user", "pass"});
     ASSERT_TRUE(result.ok()) << result.reason;
     const auto& source = result.value;
     EXPECT_EQ(source.raw("a.b"), "1");
@@ -42,7 +43,9 @@ TEST(KeyValueConfigSourceTest, ParsesAndTrims)
 
 TEST(KeyValueConfigSourceTest, CommentsAndBlankLines)
 {
-    const auto result = KeyValueConfigSource::parse("# header\n\n   \n  # indented comment = not a key\nk=v\n#k=w", "");
+    const auto result = KeyValueConfigSource::parse("# header\n\n   \n  # indented comment = not a key\nk=v\n#k=w",
+                                                    "",
+                                                    indexer_client::Credentials {"user", "pass"});
     ASSERT_TRUE(result.ok()) << result.reason;
     EXPECT_EQ(result.value.raw("k"), "v");
     EXPECT_EQ(result.value.keysWithPrefix(""), (std::vector<std::string> {"k"}));
@@ -52,14 +55,15 @@ TEST(KeyValueConfigSourceTest, CommentsAndBlankLines)
 // and a line with an empty key can never match any key, so it is skipped (the C reader logs and skips both).
 TEST(KeyValueConfigSourceTest, MalformedLineRecorded)
 {
-    const auto noEquals = KeyValueConfigSource::parse("a=1\n# ok\nnot a pair\n", "");
+    const auto noEquals =
+        KeyValueConfigSource::parse("a=1\n# ok\nnot a pair\n", "", indexer_client::Credentials {"user", "pass"});
     ASSERT_TRUE(noEquals.ok()) << noEquals.reason;
     EXPECT_EQ(noEquals.value.raw("not a pair"), std::nullopt);
     EXPECT_EQ(noEquals.value.problem("not a pair"), "line 3: 'not a pair' is malformed (expected 'key=value')");
     EXPECT_EQ(noEquals.value.problem("a"), std::nullopt);
     EXPECT_EQ(noEquals.value.keysWithPrefix(""), (std::vector<std::string> {"a", "not a pair"}));
 
-    const auto emptyKey = KeyValueConfigSource::parse("a=1\n= 5\n", "");
+    const auto emptyKey = KeyValueConfigSource::parse("a=1\n= 5\n", "", indexer_client::Credentials {"user", "pass"});
     ASSERT_TRUE(emptyKey.ok()) << emptyKey.reason;
     EXPECT_EQ(emptyKey.value.keysWithPrefix(""), (std::vector<std::string> {"a"}));
 }
@@ -69,7 +73,8 @@ TEST(KeyValueConfigSourceTest, MalformedLineOutsidePrefixIgnored)
 {
     const auto source = KeyValueConfigSource::parse("remoted.foo\nwazuh_modules.indexer_client_cpu_threads 4\n"
                                                     "analysisd.indexer_client_cpu_threads=3\n",
-                                                    INDEXER);
+                                                    INDEXER,
+                                                    indexer_client::Credentials {"user", "pass"});
     ASSERT_TRUE(source.ok()) << source.reason;
     const auto config = RuntimeConfig::from(ProcessId::Analysisd, source.value);
     ASSERT_TRUE(config.ok()) << config.reason;
@@ -79,7 +84,9 @@ TEST(KeyValueConfigSourceTest, MalformedLineOutsidePrefixIgnored)
 TEST(KeyValueConfigSourceTest, MalformedLineUnderPrefixFails)
 {
     const auto source = KeyValueConfigSource::parse(
-        "remoted.foo=1\nanalysisd.indexer_client_cpu_threads 4\nanalysisd.indexer_client_cpu_threads=3\n", INDEXER);
+        "remoted.foo=1\nanalysisd.indexer_client_cpu_threads 4\nanalysisd.indexer_client_cpu_threads=3\n",
+        INDEXER,
+        indexer_client::Credentials {"user", "pass"});
     ASSERT_TRUE(source.ok()) << source.reason;
     const auto config = RuntimeConfig::from(ProcessId::Analysisd, source.value);
     EXPECT_EQ(config.cause, Cause::InvalidConfig);
@@ -90,7 +97,8 @@ TEST(KeyValueConfigSourceTest, MalformedLineUnderPrefixFails)
 // is never read (not even validated).
 TEST(KeyValueConfigSourceTest, FirstDuplicateWins)
 {
-    const auto result = KeyValueConfigSource::parse("k=1\nother=x\nk = 2\nk=\n", "");
+    const auto result =
+        KeyValueConfigSource::parse("k=1\nother=x\nk = 2\nk=\n", "", indexer_client::Credentials {"user", "pass"});
     ASSERT_TRUE(result.ok()) << result.reason;
     EXPECT_EQ(result.value.raw("k"), "1");
     EXPECT_EQ(result.value.keysWithPrefix("k"), (std::vector<std::string> {"k"}));
@@ -100,7 +108,8 @@ TEST(KeyValueConfigSourceTest, FirstDuplicateWins)
 // For the C reader a line whose first character is a space is a comment, whatever follows.
 TEST(KeyValueConfigSourceTest, LeadingSpaceIsComment)
 {
-    const auto result = KeyValueConfigSource::parse(" a.b=1\n  not a pair\na.b=2\n\r\n", "");
+    const auto result = KeyValueConfigSource::parse(
+        " a.b=1\n  not a pair\na.b=2\n\r\n", "", indexer_client::Credentials {"user", "pass"});
     ASSERT_TRUE(result.ok()) << result.reason;
     EXPECT_EQ(result.value.raw("a.b"), "2") << "the indented line is a comment, not the first occurrence";
     EXPECT_EQ(result.value.keysWithPrefix(""), (std::vector<std::string> {"a.b"}));
@@ -113,7 +122,7 @@ TEST(KeyValueConfigSourceTest, EmptyValueFails)
     for (const char* text : {"a=1\nb=\n", "a=1\nb=   \n", "a=1\nb = \t\r\n", "a=1\nb=\nb=2\n"})
     {
         SCOPED_TRACE(text);
-        const auto result = KeyValueConfigSource::parse(text, "");
+        const auto result = KeyValueConfigSource::parse(text, "", indexer_client::Credentials {"user", "pass"});
         ASSERT_TRUE(result.ok()) << result.reason;
         EXPECT_EQ(result.value.raw("b"), std::nullopt) << "the first occurrence wins, also when it is the empty one";
         EXPECT_EQ(result.value.problem("b"), "line 2: key 'b' has an empty value");
@@ -123,8 +132,9 @@ TEST(KeyValueConfigSourceTest, EmptyValueFails)
 
 TEST(KeyValueConfigSourceTest, EmptyValueOutsidePrefixIgnored)
 {
-    const auto source =
-        KeyValueConfigSource::parse("remoted.foo=\nwazuh_modules.indexer_client_cpu_threads=\n", INDEXER);
+    const auto source = KeyValueConfigSource::parse("remoted.foo=\nwazuh_modules.indexer_client_cpu_threads=\n",
+                                                    INDEXER,
+                                                    indexer_client::Credentials {"user", "pass"});
     ASSERT_TRUE(source.ok()) << source.reason;
     const auto config = RuntimeConfig::from(ProcessId::Analysisd, source.value);
     ASSERT_TRUE(config.ok()) << config.reason;
@@ -133,7 +143,9 @@ TEST(KeyValueConfigSourceTest, EmptyValueOutsidePrefixIgnored)
 
 TEST(KeyValueConfigSourceTest, EmptyValueUnderPrefixFails)
 {
-    const auto source = KeyValueConfigSource::parse("# header\nwazuh_modules.indexer_client_cpu_threads = \n", INDEXER);
+    const auto source = KeyValueConfigSource::parse("# header\nwazuh_modules.indexer_client_cpu_threads = \n",
+                                                    INDEXER,
+                                                    indexer_client::Credentials {"user", "pass"});
     ASSERT_TRUE(source.ok()) << source.reason;
     const auto config = RuntimeConfig::from(ProcessId::Modulesd, source.value);
     EXPECT_EQ(config.cause, Cause::InvalidConfig);
@@ -146,7 +158,8 @@ TEST(KeyValueConfigSourceTest, TabIndentedIsComment)
 {
     const auto result = KeyValueConfigSource::parse(
         "\tanalysisd.indexer_client_cpu_threads=9\n\tnot a pair\n\tb=\nanalysisd.indexer_client_cpu_threads=3\n",
-        INDEXER);
+        INDEXER,
+        indexer_client::Credentials {"user", "pass"});
     ASSERT_TRUE(result.ok()) << result.reason;
     EXPECT_EQ(result.value.keysWithPrefix(""), (std::vector<std::string> {"analysisd.indexer_client_cpu_threads"}));
     EXPECT_EQ(result.value.raw("analysisd.indexer_client_cpu_threads"), "3")
@@ -163,7 +176,8 @@ TEST(KeyValueConfigSourceTest, KeysWithPrefix)
                                                     "analysisd.other=3\n"
                                                     "wazuh_modules.indexer_client_cpu_threads=4\n"
                                                     "analysisd.indexer_clien=5\n",
-                                                    "");
+                                                    "",
+                                                    indexer_client::Credentials {"user", "pass"});
     ASSERT_TRUE(result.ok()) << result.reason;
     EXPECT_EQ(result.value.keysWithPrefix("analysisd.indexer_client_"),
               (std::vector<std::string> {"analysisd.indexer_client_bogus", "analysisd.indexer_client_cpu_threads"}));
@@ -176,7 +190,7 @@ TEST(KeyValueConfigSourceTest, KeysWithPrefix)
 // first offending key, so the order is part of what an operator sees.
 TEST(KeyValueConfigSourceTest, KeysMergedSorted)
 {
-    const auto source = KeyValueConfigSource::parse("z=1\nb\n", "");
+    const auto source = KeyValueConfigSource::parse("z=1\nb\n", "", indexer_client::Credentials {"user", "pass"});
     ASSERT_TRUE(source.ok()) << source.reason;
     EXPECT_EQ(source.value.keysWithPrefix(""), (std::vector<std::string> {"b", "z"}));
 }

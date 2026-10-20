@@ -35,6 +35,7 @@
 #include <set>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <utility>
 #include <vector>
@@ -85,6 +86,17 @@ namespace indexer_client::testing
     };
 
     /**
+     * @brief The credentials of a `Authorization: Basic` header, decoded byte for byte (RFC 7617).
+     *
+     * The user ends at the first ':'; the password is everything after it, colons and UTF-8 included.
+     */
+    struct BasicAuthorization
+    {
+        std::string user;
+        std::string password;
+    };
+
+    /**
      * @brief A request as the fake received it.
      */
     struct RecordedRequest
@@ -104,7 +116,27 @@ namespace indexer_client::testing
         int remotePort {0};
         /// When the handler saw the request (the whole request has been read).
         std::chrono::steady_clock::time_point receivedAt;
+        /// The decoded `Authorization: Basic` credentials; absent without the header, with another scheme, or when
+        /// the value is not canonical base64 of `user:password`.
+        std::optional<BasicAuthorization> basicAuthorization;
     };
+
+#ifdef CPPHTTPLIB_OPENSSL_SUPPORT
+    /**
+     * @brief TLS settings of the fake (component suite only: it needs CPPHTTPLIB_OPENSSL_SUPPORT).
+     */
+    struct FakeTlsOptions
+    {
+        /// Server certificate chain file (PEM), e.g. TlsMaterialFactory::serverCertificate().
+        std::string certificate;
+        /// Server private key file (PEM, unencrypted).
+        std::string key;
+        /// Non-empty: mTLS, the client must present a pair that chains to this CA file.
+        std::string clientCa;
+        /// Speak at most TLS 1.1 (the floor and the security level are lowered so that 1.0/1.1 really negotiate).
+        bool maxTls11 {false};
+    };
+#endif
 
     /**
      * @brief Tuning of the fake's HTTP server.
@@ -126,10 +158,15 @@ namespace indexer_client::testing
         /// listen() backlog. cpp-httplib listens with 5, so a burst of connections (64 at once) has SYNs dropped
         /// and retried a second later; start() re-listens with this value.
         int listenBacklog {1024};
+#ifdef CPPHTTPLIB_OPENSSL_SUPPORT
+        /// Present: serve HTTPS (cpp-httplib SSLServer) instead of plain HTTP.
+        std::optional<FakeTlsOptions> tls;
+#endif
     };
 
     /**
-     * @brief In-process fake indexer: plain HTTP on 127.0.0.1, ephemeral port, scripted by an ordered rule list.
+     * @brief In-process fake indexer: HTTP (or, in the component suite, HTTPS/mTLS) on 127.0.0.1, ephemeral port,
+     * scripted by an ordered rule list.
      *
      * Thread-safe: rules can be added and requests inspected while the server is serving.
      */
@@ -166,7 +203,7 @@ namespace indexer_client::testing
             {
                 throw std::runtime_error("FakeIndexer: already started");
             }
-            m_port = m_server.bind_to_any_port("127.0.0.1");
+            m_port = m_server->bind_to_any_port("127.0.0.1");
             if (m_port <= 0)
             {
                 throw std::runtime_error("FakeIndexer: bind failed");
@@ -177,12 +214,12 @@ namespace indexer_client::testing
             m_thread = std::thread(
                 [this]
                 {
-                    m_server.listen_after_bind();
+                    m_server->listen_after_bind();
                     m_threadDone = true;
                 });
 
             const auto deadline = std::chrono::steady_clock::now() + m_options.readyTimeout;
-            while (!m_server.is_running())
+            while (!m_server->is_running())
             {
                 if (m_threadDone.load() || std::chrono::steady_clock::now() >= deadline)
                 {
@@ -216,9 +253,9 @@ namespace indexer_client::testing
             bool stopRequested {false};
             while (!m_threadDone.load())
             {
-                if (!stopRequested && m_server.is_running())
+                if (!stopRequested && m_server->is_running())
                 {
-                    m_server.stop();
+                    m_server->stop();
                     stopRequested = true;
                 }
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -232,10 +269,20 @@ namespace indexer_client::testing
             return m_port;
         }
 
-        /// "http://127.0.0.1:<port>".
+        /// Whether the fake serves HTTPS.
+        bool tls() const
+        {
+#ifdef CPPHTTPLIB_OPENSSL_SUPPORT
+            return m_options.tls.has_value();
+#else
+            return false;
+#endif
+        }
+
+        /// "http://127.0.0.1:<port>", or "https://…" when tls().
         std::string baseUrl() const
         {
-            return "http://127.0.0.1:" + std::to_string(m_port);
+            return std::string(tls() ? "https" : "http") + "://127.0.0.1:" + std::to_string(m_port);
         }
 
         /**
@@ -380,6 +427,118 @@ namespace indexer_client::testing
             return buffer;
         }
 
+        /**
+         * @brief Strict standard base64 (RFC 4648 §4): padded to a multiple of 4, no whitespace, canonical padding
+         * bits.
+         *
+         * @return The decoded bytes, or nothing if @p text is not canonical base64.
+         */
+        static std::optional<std::string> decodeBase64(std::string_view text)
+        {
+            const auto value = [](char c) -> int
+            {
+                if (c >= 'A' && c <= 'Z')
+                {
+                    return c - 'A';
+                }
+                if (c >= 'a' && c <= 'z')
+                {
+                    return c - 'a' + 26;
+                }
+                if (c >= '0' && c <= '9')
+                {
+                    return c - '0' + 52;
+                }
+                if (c == '+')
+                {
+                    return 62;
+                }
+                if (c == '/')
+                {
+                    return 63;
+                }
+                return -1;
+            };
+            if (text.size() % 4 != 0)
+            {
+                return std::nullopt;
+            }
+            std::string out;
+            out.reserve(text.size() / 4 * 3);
+            for (std::size_t i = 0; i < text.size(); i += 4)
+            {
+                const bool last = i + 4 == text.size();
+                const std::size_t padding = !last ? 0 : (text[i + 3] == '=' ? (text[i + 2] == '=' ? 2 : 1) : 0);
+                std::uint32_t group {0};
+                for (std::size_t j = 0; j < 4; ++j)
+                {
+                    const int digit = j < 4 - padding ? value(text[i + j]) : 0;
+                    if (digit < 0)
+                    {
+                        return std::nullopt;
+                    }
+                    group = (group << 6) | static_cast<std::uint32_t>(digit);
+                }
+                // Non-canonical: bits that the padding drops must be zero.
+                if ((padding == 1 && (group & 0xffU) != 0) || (padding == 2 && (group & 0xffffU) != 0))
+                {
+                    return std::nullopt;
+                }
+                out.push_back(static_cast<char>((group >> 16) & 0xffU));
+                if (padding < 2)
+                {
+                    out.push_back(static_cast<char>((group >> 8) & 0xffU));
+                }
+                if (padding < 1)
+                {
+                    out.push_back(static_cast<char>(group & 0xffU));
+                }
+            }
+            return out;
+        }
+
+        /**
+         * @brief Decodes an `Authorization` value of the Basic scheme (scheme case-insensitive, one or more spaces).
+         *
+         * @return user and password exactly as sent, or nothing for another scheme, bad base64 or no ':'.
+         */
+        static std::optional<BasicAuthorization> decodeBasicAuthorization(std::string_view header)
+        {
+            static constexpr std::string_view SCHEME {"basic"};
+            if (header.size() <= SCHEME.size())
+            {
+                return std::nullopt;
+            }
+            for (std::size_t i = 0; i < SCHEME.size(); ++i)
+            {
+                const char c = header[i];
+                if ((c >= 'A' && c <= 'Z' ? static_cast<char>(c - 'A' + 'a') : c) != SCHEME[i])
+                {
+                    return std::nullopt;
+                }
+            }
+            std::size_t start = SCHEME.size();
+            if (header[start] != ' ')
+            {
+                return std::nullopt;
+            }
+            while (start < header.size() && header[start] == ' ')
+            {
+                ++start;
+            }
+            const auto decoded = decodeBase64(header.substr(start));
+            if (!decoded.has_value())
+            {
+                return std::nullopt;
+            }
+            const auto colon = decoded->find(':');
+            if (colon == std::string::npos)
+            {
+                return std::nullopt;
+            }
+            return BasicAuthorization {decoded->substr(0, colon), decoded->substr(colon + 1)};
+        }
+
     private:
         /**
          * @brief Re-listens on the bound socket with FakeIndexerOptions::listenBacklog.
@@ -428,27 +587,56 @@ namespace indexer_client::testing
 
         void setup()
         {
+#ifdef CPPHTTPLIB_OPENSSL_SUPPORT
+            if (m_options.tls.has_value())
+            {
+                const auto& tls = *m_options.tls;
+                auto server = std::make_unique<httplib::SSLServer>(
+                    tls.certificate.c_str(), tls.key.c_str(), tls.clientCa.empty() ? nullptr : tls.clientCa.c_str());
+                if (!server->is_valid())
+                {
+                    throw std::runtime_error("FakeIndexer: cannot load the TLS certificate/key/client CA");
+                }
+                if (tls.maxTls11)
+                {
+                    SSL_CTX* context = static_cast<SSL_CTX*>(server->tls_context());
+                    // OpenSSL 3 refuses TLS < 1.2 above security level 0; httplib sets a 1.2 floor.
+                    SSL_CTX_set_security_level(context, 0);
+                    if (SSL_CTX_set_min_proto_version(context, TLS1_VERSION) != 1 ||
+                        SSL_CTX_set_max_proto_version(context, TLS1_1_VERSION) != 1)
+                    {
+                        throw std::runtime_error("FakeIndexer: cannot cap the TLS version");
+                    }
+                }
+                m_server = std::move(server);
+            }
+            else
+#endif
+            {
+                m_server = std::make_unique<httplib::Server>();
+            }
+
             const auto threads = m_options.threads;
-            m_server.new_task_queue = [threads]
+            m_server->new_task_queue = [threads]
             {
                 return new httplib::ThreadPool(threads);
             };
-            m_server.set_tcp_nodelay(true); // else Nagle + delayed ACK adds ~40 ms to small responses
-            m_server.set_keep_alive_max_count(m_options.keepAliveMaxCount);
-            m_server.set_keep_alive_timeout(m_options.keepAliveTimeoutSec);
-            m_server.set_payload_max_length(64ULL * 1024 * 1024);
-            m_server.set_write_timeout(m_options.writeTimeoutSec, 0);
+            m_server->set_tcp_nodelay(true); // else Nagle + delayed ACK adds ~40 ms to small responses
+            m_server->set_keep_alive_max_count(m_options.keepAliveMaxCount);
+            m_server->set_keep_alive_timeout(m_options.keepAliveTimeoutSec);
+            m_server->set_payload_max_length(64ULL * 1024 * 1024);
+            m_server->set_write_timeout(m_options.writeTimeoutSec, 0);
 
             const auto handler = [this](const httplib::Request& req, httplib::Response& res)
             {
                 handle(req, res);
             };
-            m_server.Get(".*", handler); // also serves HEAD
-            m_server.Post(".*", handler);
-            m_server.Put(".*", handler);
-            m_server.Patch(".*", handler);
-            m_server.Delete(".*", handler);
-            m_server.Options(".*", handler);
+            m_server->Get(".*", handler); // also serves HEAD
+            m_server->Post(".*", handler);
+            m_server->Put(".*", handler);
+            m_server->Patch(".*", handler);
+            m_server->Delete(".*", handler);
+            m_server->Options(".*", handler);
         }
 
         void handle(const httplib::Request& req, httplib::Response& res)
@@ -456,15 +644,18 @@ namespace indexer_client::testing
             Rule matched;
             {
                 std::lock_guard lock(m_mutex);
-                m_requests.push_back(RecordedRequest {req.method,
-                                                      req.path,
-                                                      req.target,
-                                                      m_options.recordBodies ? req.body : std::string {},
-                                                      req.body.size(),
-                                                      req.headers,
-                                                      req.remote_addr,
-                                                      req.remote_port,
-                                                      std::chrono::steady_clock::now()});
+                m_requests.push_back(RecordedRequest {
+                    req.method,
+                    req.path,
+                    req.target,
+                    m_options.recordBodies ? req.body : std::string {},
+                    req.body.size(),
+                    req.headers,
+                    req.remote_addr,
+                    req.remote_port,
+                    std::chrono::steady_clock::now(),
+                    req.has_header("Authorization") ? decodeBasicAuthorization(req.get_header_value("Authorization"))
+                                                    : std::nullopt});
                 for (auto& entry : m_rules)
                 {
                     const auto& rule = entry.rule;
@@ -572,7 +763,7 @@ namespace indexer_client::testing
         }
 
         FakeIndexerOptions m_options;
-        httplib::Server m_server;
+        std::unique_ptr<httplib::Server> m_server;
         std::thread m_thread;
         int m_port {0};
         std::atomic<bool> m_stopping {false};
