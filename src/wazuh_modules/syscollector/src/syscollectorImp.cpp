@@ -1032,7 +1032,7 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
                         const unsigned int containerBaselineInterval)
 {
     auto dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, dbPath, getCreateStatement(),
-                                          DbManagement::PERSISTENT, getUpgradeStatements());
+                                           DbManagement::PERSISTENT, getUpgradeStatements());
     auto normalizer = std::make_unique<SysNormalizer>(normalizerConfigPath, normalizerType);
 
     std::unique_lock<std::mutex> lock{m_scan_mutex};
@@ -2753,9 +2753,9 @@ void Syscollector::dropContainerContext(const std::string& containerId)
         // and a primary key is exactly what this builder binds.
         auto deleteQuery = DeleteQuery::builder()
                            .table(CONTAINER_CONTEXT_TABLE)
-                           .data({{CONTAINER_ID_COLUMN, containerId}})
-                           .rowFilter("")
-                           .build();
+        .data({{CONTAINER_ID_COLUMN, containerId}})
+        .rowFilter("")
+        .build();
 
         m_spDBSync->deleteRows(deleteQuery.query());
     }
