@@ -8486,7 +8486,7 @@ TEST_F(SyscollectorImpTest, ADeletedContainerRowCarriesOneContainerBlockAndNoKub
     std::vector<std::string> persisted;
     const auto capturePersist
     {
-        [&persisted](const std::string&, Operation_t, const std::string&, const std::string& payload, uint64_t)
+        [&persisted](const std::string&, Operation_t, const std::string&, const std::string & payload, uint64_t)
         {
             persisted.push_back(payload);
         }
@@ -8569,7 +8569,7 @@ TEST_F(SyscollectorImpTest, EachContainersRowsCarryTheirOwnContextNotThePrevious
     std::vector<std::string> persisted;
     const auto capturePersist
     {
-        [&persisted](const std::string&, Operation_t, const std::string&, const std::string& payload, uint64_t)
+        [&persisted](const std::string&, Operation_t, const std::string&, const std::string & payload, uint64_t)
         {
             persisted.push_back(payload);
         }
@@ -8591,7 +8591,7 @@ TEST_F(SyscollectorImpTest, EachContainersRowsCarryTheirOwnContextNotThePrevious
         const auto document = nlohmann::json::parse(payload);
         ASSERT_TRUE(document.contains("container"));
         namesById[document["container"]["id"].get<std::string>() + "/" +
-                                document["container"]["name"].get<std::string>()]++;
+                                                                 document["container"]["name"].get<std::string>()]++;
     }
 
     EXPECT_EQ(namesById["a/alpha"], 2) << "both of a's rows must carry a's own context";
@@ -9176,7 +9176,7 @@ TEST_F(SyscollectorImpTest, ADeleteIsDescribedByTheContextStoredOnceNotByTheRow)
     std::vector<std::string> persisted;
     const auto capturePersist
     {
-        [&persisted](const std::string&, Operation_t, const std::string&, const std::string& payload, uint64_t)
+        [&persisted](const std::string&, Operation_t, const std::string&, const std::string & payload, uint64_t)
         {
             persisted.push_back(payload);
         }

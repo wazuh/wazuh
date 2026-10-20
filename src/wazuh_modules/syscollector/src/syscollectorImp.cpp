@@ -2939,9 +2939,9 @@ void Syscollector::dropContainerContext(const std::string& containerId)
         // and a primary key is exactly what this builder binds.
         auto deleteQuery = DeleteQuery::builder()
                            .table(CONTAINER_CONTEXT_TABLE)
-                           .data({{CONTAINER_ID_COLUMN, containerId}})
-                           .rowFilter("")
-                           .build();
+        .data({{CONTAINER_ID_COLUMN, containerId}})
+        .rowFilter("")
+        .build();
 
         m_spDBSync->deleteRows(deleteQuery.query());
     }
