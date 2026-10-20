@@ -14,6 +14,7 @@
 #include "sqlite3Wrapper.hpp"
 #include <memory>
 #include <filesystem>
+#include <system_error>
 #include <thread>
 #include <chrono>
 
@@ -677,4 +678,59 @@ TEST_F(PersistentQueueStorageBusyLockTest, ResetAllSyncingWaitsOutTransientLockI
     EXPECT_NO_THROW(secondInstanceStorage.resetAllSyncing());
 
     lockReleaser.join();
+}
+
+class PersistentQueueStorageWalCheckpointTest : public ::testing::Test
+{
+    protected:
+        std::string dbPath;
+        LoggerFunc testLogger;
+
+        void SetUp() override
+        {
+            dbPath = (std::filesystem::temp_directory_path() / "wazuh_persistent_queue_wal_checkpoint_test.db").string();
+            std::filesystem::remove(dbPath);
+            std::filesystem::remove(dbPath + "-wal");
+            std::filesystem::remove(dbPath + "-shm");
+
+            testLogger = [](modules_log_level_t /*level*/, const std::string& /*msg*/)
+            {
+            };
+        }
+
+        void TearDown() override
+        {
+            std::filesystem::remove(dbPath);
+            std::filesystem::remove(dbPath + "-wal");
+            std::filesystem::remove(dbPath + "-shm");
+        }
+};
+
+TEST_F(PersistentQueueStorageWalCheckpointTest, CheckpointKeepsWalBoundedUnderSustainedWritesWithoutDataLoss)
+{
+    // Far more frames than the threshold must leave the -wal file bounded near it (checkpoints
+    // firing and resetting the WAL), not growing with commit count.
+    constexpr int32_t thresholdPages = 100;
+    constexpr int itemCount = 3000;
+    const std::string payload(300, 'x');
+
+    PersistentQueueStorage storage(dbPath, testLogger, nullptr, thresholdPages);
+    EXPECT_EQ(storage.getWalAutocheckpoint(), thresholdPages);
+
+    for (int i = 0; i < itemCount; ++i)
+    {
+        const std::string id = "id" + std::to_string(i);
+        storage.submitOrCoalesce(PersistedData{0, id, "index1", payload, Operation::CREATE, 0});
+    }
+
+    // PASSIVE never shrinks -wal, so its high-water mark settles near the threshold. 4x margin over
+    // threshold * 4096-byte page covers frame headers and the last un-checkpointed window.
+    constexpr std::uintmax_t walBoundBytes = static_cast<std::uintmax_t>(thresholdPages) * 4096U * 4U;
+    std::error_code ec;
+    const auto walBytes = std::filesystem::file_size(dbPath + "-wal", ec);
+    EXPECT_FALSE(ec);
+    EXPECT_LE(walBytes, walBoundBytes);
+
+    auto pending = storage.fetchAndMarkForSync();
+    EXPECT_EQ(pending.size(), static_cast<size_t>(itemCount));
 }
