@@ -17,9 +17,10 @@ consumers of the indexer, one consumer at a time, with:
 
 The design is in `planes/18-indexer_connector_v2/03-diseno.md` §1–§4 (outside the repository).
 
-**Status: E2a-2 — internal HTTP/HTTPS transport with TLS and credentials, no public network API.** The public headers, the
+**Status: E2b — internal transport with TLS and credentials, node health probe and logging, no public write or query API.** The public headers, the
 configuration schema, the runtime lifecycle (threads, owner thread, shutdown deadline), the test
-helpers and the internal curl [Transport](#transport-internal-e2a-1-and-e2a-2) (HTTP, HTTPS, credentials) exist. The public write and
+helpers, the internal curl [Transport](#transport-internal-e2a-1-and-e2a-2) (HTTP, HTTPS, credentials) and the
+[node health probe](#node-health-e2b) exist. The public write and
 query interfaces still send nothing to an indexer; see
 [What is not implemented yet](#what-is-not-implemented-yet).
 `indexer_connector` keeps working untouched until each consumer migrates.
@@ -46,12 +47,14 @@ Headers are in `include/indexer_client/`; `indexerClient.hpp` is the umbrella.
 | | `Op`, `Callback` | One write (`Index`, `IndexAutoId`, `IndexDataStream`, `Delete`, `IndexVersionedScript`); completion callback that runs on the CPU pool |
 | | `BucketSpec` | A consumer-declared queue: name, weight, quota, retry, overflow, bulk, conflict policy, `ordered` |
 | | `Slice`, `CursorQuery`, `PitOptions`, `DbqOptions`, `QueryOptions`, `PitPage` | Query and PIT parameters and page |
-| | `HealthView`, `CloseReport`, `MetricsSnapshot` | Node states and `clusterRed`; close accounting; runtime counters (E1 reports only the thread layout and client count) |
+| | `HealthView` | `nodes[]` (`url`, `state`, `reason`), `clusterRed`, `localFault`, `anyAvailable()`, `anyUsable()`; returned by `Client::health()` (see [Node health](#node-health-e2b)) |
+| | `CloseReport`, `MetricsSnapshot` | Close accounting; runtime counters (only the thread layout and client count so far) |
 | `iConfigSource.hpp` | `IConfigSource` | The only way configuration and credentials reach the library |
 | `types.hpp` | `Credentials` | Indexer `user` and `password`; no `operator<<` |
 | `keyValueConfigSource.hpp` | `KeyValueConfigSource` | `IConfigSource` over `key=value` text plus an `<indexer>` JSON string |
 | `runtimeConfig.hpp` | `SslConfig`, `RuntimeConfig` | Typed, validated configuration; `prefixFor()` and `from()` |
-| `runtime.hpp` | `RuntimeOwner` | Single owner of the process runtime: `start`, `beginShutdown`, `shutdown`, `running` |
+| `runtime.hpp` | `LogFunction`, `setLogFunction` | Log sink of the library; valid only while no runtime runs (see [Logging](#logging)) |
+| | `RuntimeOwner` | Single owner of the process runtime: `start`, `beginShutdown`, `shutdown`, `running` |
 | | `RuntimeRef` | Non-owning reference: `client()`, `snapshot()`, `shutdownDeadline()`, `valid()` |
 | | `detail::testing::*` | Test seams: `postToPool`, `postToIoLoop`, `onRuntimeThread`, `usageErrors` |
 | `client.hpp` | `Client` | A consumer's handle on the runtime; implements `IClient` |
@@ -333,6 +336,99 @@ dies and `KeyValueConfigSource` wipes its password copy in its destructor, but c
 copies of their own that the library cannot reach, the `Credentials` returned by `credentials()` are
 the caller's, and a moved-from string may keep stale bytes; do not rely on it as a guarantee.
 
+## Node health (E2b)
+
+The runtime knows at every moment which indexer nodes it can use. Each node is in one of three states
+(`HealthView::NodeState`): `Available`, `Throttled` (the node answered 429) or `Down`. In `view()` every node starts `Down`
+until the first probe round says otherwise. The state lives in an internal `NodeSet` (`src/health/nodeSet.{hpp,cpp}`) fed by the
+`Prober` (`src/health/prober.{hpp,cpp}`) and, later, by the data path.
+
+**The probe.** The `Prober` sends one `GET {host}/_cluster/health?local=true` per configured node through the
+[Transport](#transport-internal-e2a-1-and-e2a-2), with `request.timeout` = `probe_timeout_ms`. It works in **rounds**:
+
+- the first round is armed when the runtime starts (no wait for the interval), then one round every `probe_interval_ms`;
+- a round is complete when every node has produced exactly one result; the `NodeSet` applies the whole round at once, under
+  its mutex;
+- rounds never overlap: if the interval expires while the previous round is still in flight, that tick is skipped and counted
+  (`ProberStats::roundsSkipped`);
+- the timer is an asio `steady_timer` on network loop 0 and is only touched from that loop. **Only the probe returns a node to
+  `Available`.**
+
+**Probe result table** (`classify()` in `src/health/nodeSet.cpp`; `Node.reason` holds the text for `Down`):
+
+| Result | State | Reason / effect |
+|---|---|---|
+| 2xx, body JSON with string `status` `green` or `yellow` | Available | |
+| 2xx, `status` `red` | Down, **every** node | The round is red: `clusterRed` is set, every node's reason is `cluster health is red (reported by '<host>')` (a node already Down by its own result keeps its own reason) and no node returns to Available while a round holds `red` |
+| 2xx, `status` missing, not a string, any other value, or body not JSON | Down | `invalid _cluster/health body` |
+| 429 | Throttled | `error.durability` or `error.root_cause[0].durability` equal to `PERMANENT` marks the throttle as permanent; anything else, or an unreadable body, is transient |
+| 401, 403 | Down | `HTTP <status>: check indexer credentials / permissions` |
+| any other HTTP status | Down | `HTTP <status>` |
+| transport cause with `nodeAttributable` (`Timeout`, `Connect`, `SendError`, `RecvError`, `PartialResponse`, `Tls`) | Down | `<cause> (curl <code>)` |
+| `TlsConfig`, `LocalError`, `ResponseTooLarge` | Down **and** `localFault` | `<cause> (curl <code>)`; a probe the transport did not admit reports `probe not admitted: <cause>` |
+| `Cancelled`, `Shutdown` | ignored | The whole round is discarded: no transition, no log |
+
+`localFault` is set while the last complete round had a local result (the runtime, not the node, is at fault) and is cleared by
+the first complete round without one.
+
+**Passive signals.** `NodeSet::report(index, HttpResult)` is for the data path (E3b, E4; nothing calls it yet). It applies at once,
+outside the rounds, and can only degrade: a node-attributable failure sets `Down`; a 429 sets `Throttled` from `Available`. A
+passive success never promotes, and `Retry-After` is ignored.
+
+**Selector.** `NodeSet::choose()` is round-robin among the `Available` nodes; a `Throttled` node is chosen only when none is
+`Available`; it returns nothing when every node is `Down`.
+
+**`HealthView`** (`Client::health()`, a copy taken under the mutex; empty when the runtime is gone):
+
+| Member | Meaning |
+|---|---|
+| `nodes[]` | In the order of `hosts`: `url`, `state`, `reason` (why it is `Down`, empty otherwise) |
+| `clusterRed` | The last complete round contained a `red` cluster; every node is `Down` |
+| `localFault` | The local reason of the last complete round, when there is one |
+| `anyAvailable()` | At least one node `Available`; the strict aggregate, for the vulnerability scanner |
+| `anyUsable()` | At least one node not `Down`; the lenient aggregate, for inventory sync |
+
+**For the next stages.** `NodeSet` also exposes `generation()` (+1 per node transition), `transitions(index)` and
+`onTransition(hook)`, called after each transition outside the mutex; `Prober::stats()` reports `rounds`, `roundsApplied`,
+`roundsDiscarded`, `roundsSkipped`, `submitsRefused` and `resultsAfterStop`. They are internal.
+
+**Stop order.** `RuntimeState::stopAndJoin` stops the prober first, then the transport, then the loops, then the CPU pool.
+`Prober::stop()` sets a flag, posts the timer cancellation to loop 0 and waits for it, so no round is armed and no probe is
+submitted after it returns.
+
+## Logging
+
+The library logs through `loggerHelper.h` with the tag `indexer-client`. The process gives it its log function, the same one it
+gives `indexer_connector`:
+
+```cpp
+using LogFunction = std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>;
+void setLogFunction(LogFunction logFunction);
+```
+
+- It **replaces** the previous function (a plain assignment, unlike the first-wins `assignLogFunction`); an empty function silences
+  the library.
+- It is valid only while no runtime is running (before `RuntimeOwner::start()` or after `shutdown()`), because runtime threads read
+  the sink without synchronization; the check runs under the lock that serializes `start()` and `shutdown()`. With a runtime
+  running (or from a runtime thread) the call is ignored and counted as a usage error.
+- The sink (`Log::GLOBAL_LOG_FUNCTION`) is defined in `src/log.cpp`, one per shared object. `runtime.hpp` does not include
+  `loggerHelper.h`.
+
+The health code logs **only on a change** (an edge), never once per round. The first round always logs: a node's previous state is
+unknown, so its first state is reported. Lines emitted by `src/health/nodeSet.cpp`:
+
+| Level | Text | When |
+|---|---|---|
+| INFO | `Indexer node '<host>' is available.` | The node's logged state becomes Available |
+| INFO | `Indexer node '<host>' is throttled (HTTP 429).` | The logged state becomes Throttled |
+| WARN | `Indexer node '<host>' is no longer available. Reason: <reason>` | The logged state becomes Down, or a Down node's reason changes (once per distinct reason, e.g. connect refused, then 401) |
+| WARN | `Indexer node '<host>' is throttled with durability PERMANENT: it will not recover without operator action.` | A permanent throttle starts, also from a transient one |
+| ERROR | `Indexer cluster health is red: every node is marked down.` | A round turns red |
+| INFO | `Indexer cluster is no longer red.` | The first round that is not red |
+| ERROR | `Indexer client local fault: <reason>` | `localFault` appears |
+| INFO | `Indexer client local fault cleared.` | `localFault` disappears |
+| WARN | `Every indexer node rejects the TLS handshake with the configured CA (curl <code>): if the indexer CA was rotated, update <indexer><ssl> and restart the manager.` | Every node is Down with cause `Tls`; once per episode |
+
 ## Linking
 
 curl and OpenSSL come **only** through `libwazuhext.so` (`target_link_libraries(indexer_client
@@ -365,14 +461,19 @@ C++20-ism in a public header fails there first:
 
 | Suite | Target / ctest label | Covers |
 |---|---|---|
-| Unit | `indexer_client_utest` (`tests/unit/*.cpp`) | Config, key-value source, mocks, fake indexer, the public library |
-| Component | `indexer_client_component_test` (`tests/component/*.cpp`) | The transport and the fake over real sockets, with the seams |
+| Unit | `indexer_client_utest` (`tests/unit/*.cpp`) | Config, key-value source, mocks, fake indexer, the public library (`VisibilityTest.SetLogFunctionRoutesLogs` covers the log setter) |
+| Component | `indexer_client_component_test` (`tests/component/*.cpp`) | The transport and the fake over real sockets, with the seams; `HealthTest` (probe, states, logs, stop order) and `FakeHealthTest` (the fake's `/_cluster/health` rules) |
 
 ```bash
 cmake --build $WAZUH_REPO/src/build -j"$(nproc)" --target indexer_client_utest indexer_client_component_test
 ctest --test-dir $WAZUH_REPO/src/build -L indexer_client_utest
 ctest --test-dir $WAZUH_REPO/src/build -L indexer_client_component_test
 ```
+
+The runtime starts the probe on its own. The test hook `testing_hooks::setProbeAutoStart(false)`
+(`src/testing/hooks.hpp`, test build only) creates the `NodeSet` and `Prober` without a first round or a timer, and `probeNow()`
+still arms a single round; the transport suites use it so the probe does not add traffic to what they count. It is read once per
+`start()` and `resetAll()` restores `true`.
 
 Check each binary's mtime before trusting a PASSED. The component executable links with `-rdynamic`
 (it interposes `getaddrinfo` for the hung-resolver case) and writes a link map,
@@ -395,15 +496,19 @@ Layout of `tests/`: `unit/` (config schema, key-value source, mocks, fake indexe
 
 ## What is not implemented yet
 
-E1 delivered the skeleton, E2a-1 the internal `http` transport and E2a-2 TLS and credentials. Not implemented, by stage:
+E1 delivered the skeleton, E2a-1 the internal `http` transport, E2a-2 TLS and credentials and E2b node health and logging. Not
+implemented, by stage:
 
 | Area | Stage |
 |---|---|
-| Node probes and health states; transport performance | E2b, E2c |
+| Bulk failover to another node and the wait of an ambiguous `ordered` bucket (they will use `generation()` and `onTransition`) | E3b |
+| Reads answering `Unavailable` when no node is usable | E4 |
+| Health metrics and `Retry-After` in passive signals | E5 |
+| Transport performance | E2c |
 | Writes: bucket queues, bulk building, scheduling, retries, overflow, tickets and groups | E2–E5 |
 | Queries: `search`, `searchAfter`, PIT, `deleteByQuery`, `updateByQuery`, `indexExists` | E2–E5 |
 | Metrics beyond the thread layout in `MetricsSnapshot` | E2–E5 |
 | Migration of the four consumers off `indexer_connector` | later stages |
 
-Until then `submit`, `group`, the query interface and `health` have no network behavior behind
-them: the transport is internal and nothing public calls it yet.
+Until then `submit`, `group` and the query interface have no network behavior behind them. The only traffic is the health probe;
+nothing public calls the transport yet.

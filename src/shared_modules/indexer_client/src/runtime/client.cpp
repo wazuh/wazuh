@@ -17,6 +17,7 @@
 #include <cstdio>
 #include <utility>
 
+#include "health/nodeSet.hpp"
 #include "indexer_client/runtime.hpp"
 #include "runtime/runtimeInternal.hpp"
 
@@ -203,7 +204,12 @@ namespace indexer_client
 
     HealthView Client::health() const
     {
-        return {};
+        if (!m_state)
+        {
+            return {};
+        }
+        const auto nodes = detail::runtimeNodeSet(m_state->runtime, m_state->epoch);
+        return nodes ? nodes->view() : HealthView {};
     }
 
     void Client::requestClose()

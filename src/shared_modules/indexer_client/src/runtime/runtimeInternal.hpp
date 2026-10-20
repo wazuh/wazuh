@@ -19,6 +19,7 @@
 #include <atomic>
 #include <condition_variable>
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -40,6 +41,14 @@ namespace indexer_client::detail
 
     /// Counts one usage error (I37) in the process-wide counter read by detail::testing::usageErrors().
     void countUsageError();
+
+    /// Runs `action` under the lock that serializes RuntimeOwner::start() and shutdown() when no runtime exists (no
+    /// runtime thread can be running); false, without running it, otherwise (setLogFunction, I56).
+    bool withNoRuntime(const std::function<void()>& action);
+
+    class NodeSet;
+    /// The NodeSet of a client's runtime (Client::health()): null once that runtime is gone or another epoch runs.
+    std::shared_ptr<NodeSet> runtimeNodeSet(const std::weak_ptr<RuntimeState>& runtime, std::uint64_t epoch);
 
     /// One-shot completion shared by every ticket kind: set once, waited on by consumer threads only.
     template<class T>

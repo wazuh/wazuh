@@ -31,9 +31,15 @@
 #include <asio/io_context.hpp>
 #include <asio/post.hpp>
 
+#include "health/nodeSet.hpp"
+#include "health/prober.hpp"
 #include "runtime/runtimeInternal.hpp"
 #include "transport/seams.hpp"
 #include "transport/transport.hpp"
+
+#ifdef INDEXER_CLIENT_TESTING
+#include "testing/hooks.hpp"
+#endif
 
 namespace indexer_client
 {
@@ -43,6 +49,11 @@ namespace indexer_client
 
         /// Usage errors detected by the library (I37), process-wide; read through detail::testing::usageErrors().
         std::atomic<std::uint64_t> g_usageErrors {0};
+
+#ifdef INDEXER_CLIENT_TESTING
+        /// testing_hooks::setProbeAutoStart (test build only).
+        std::atomic<bool> g_probeAutoStart {true};
+#endif
 
         /// Joins `thread` if it is joinable.
         void joinIfJoinable(std::thread& thread)
@@ -259,13 +270,17 @@ namespace indexer_client
 
             /// Created by start() once every runtime thread exists; stopped first by stopAndJoin() (I22c, D28).
             std::shared_ptr<Transport> transport;
+            /// Node health (E2b, I57): created after the transport; the prober is stopped before it.
+            std::shared_ptr<NodeSet> nodes;
+            std::shared_ptr<Prober> prober;
 
             bool sameEpoch(std::uint64_t other) const
             {
                 return epoch == other;
             }
 
-            /// Contract order (contrato-transport.md, stop): close admission, stop the transport (every transfer
+            /// Contract order (contrato-transport.md, stop): close admission, stop the prober (no round is armed and
+            /// no probe submitted afterwards, I57), stop the transport (every transfer
             /// resolved, every multi cleaned up on its loop), release the work guards and join the loops, then drain
             /// and join the CPU pool. Never holds `mutex` while joining: a task may still need it (client registry,
             /// seams). The transport's deadline is the shutdown deadline, else now + drain.
@@ -276,6 +291,10 @@ namespace indexer_client
                     std::lock_guard<std::mutex> lock(mutex);
                     accepting = false;
                     deadline = shutdownDeadline;
+                }
+                if (prober)
+                {
+                    prober->stop();
                 }
                 if (transport)
                 {
@@ -642,16 +661,32 @@ namespace indexer_client
             };
             state->transport = detail::Transport::create(
                 state->config, std::move(tls.value), std::move(credentials), std::move(environment));
+            // Node health (I57): created after the transport, stopped before it (stopAndJoin). The first round is
+            // armed at once on loop 0.
+            state->nodes = std::make_shared<detail::NodeSet>(state->config.hosts);
+            state->prober = detail::Prober::create(state->nodes,
+                                                   state->transport,
+                                                   state->loops.front()->context,
+                                                   state->config.probeInterval,
+                                                   state->config.probeTimeout);
+#ifdef INDEXER_CLIENT_TESTING
+            if (g_probeAutoStart.load())
+#endif
+            {
+                state->prober->start();
+            }
         }
         catch (const std::exception& e)
         {
             state->stopAndJoin();
-            return Result::failure(Cause::InvalidState, std::string("cannot create the transport: ") + e.what());
+            return Result::failure(Cause::InvalidState,
+                                   std::string("cannot create the transport or the health probe: ") + e.what());
         }
         catch (...)
         {
             state->stopAndJoin();
-            return Result::failure(Cause::InvalidState, "cannot create the transport: unexpected exception");
+            return Result::failure(Cause::InvalidState,
+                                   "cannot create the transport or the health probe: unexpected exception");
         }
 
         {
@@ -719,12 +754,55 @@ namespace indexer_client
             g_usageErrors.fetch_add(1);
         }
 
+        bool withNoRuntime(const std::function<void()>& action)
+        {
+            if (t_onRuntimeThread)
+            {
+                return false;
+            }
+            std::lock_guard<std::mutex> lifecycle(g_lifecycle);
+            if (current())
+            {
+                return false;
+            }
+            action();
+            return true;
+        }
+
         std::shared_ptr<Transport> runtimeTransport()
         {
             auto state = current();
             return state ? state->transport : nullptr;
         }
+
+        std::shared_ptr<NodeSet> runtimeNodeSet()
+        {
+            auto state = current();
+            return state ? state->nodes : nullptr;
+        }
+
+        std::shared_ptr<Prober> runtimeProber()
+        {
+            auto state = current();
+            return state ? state->prober : nullptr;
+        }
+
+        std::shared_ptr<NodeSet> runtimeNodeSet(const std::weak_ptr<RuntimeState>& runtime, std::uint64_t epoch)
+        {
+            auto state = runtime.lock();
+            return (state && state->sameEpoch(epoch)) ? state->nodes : nullptr;
+        }
     } // namespace detail
+
+#ifdef INDEXER_CLIENT_TESTING
+    namespace testing_hooks
+    {
+        void setProbeAutoStart(bool enabled)
+        {
+            g_probeAutoStart.store(enabled);
+        }
+    } // namespace testing_hooks
+#endif
 
     namespace detail::testing
     {

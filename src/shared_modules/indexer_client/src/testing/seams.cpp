@@ -119,12 +119,15 @@ namespace indexer_client::testing_hooks
     }
     void resetAll()
     {
-        std::lock_guard<std::mutex> lock(g_hooksMutex);
-        g_afterAdmissionCheck = {};
-        g_injectMultiError = {};
-        g_throwOnAdd = {};
-        g_beforeRetryAfterParse = {};
-        g_onTimerHandler = {};
-        g_openSocket = {};
+        {
+            std::lock_guard<std::mutex> lock(g_hooksMutex);
+            g_afterAdmissionCheck = {};
+            g_injectMultiError = {};
+            g_throwOnAdd = {};
+            g_beforeRetryAfterParse = {};
+            g_onTimerHandler = {};
+            g_openSocket = {};
+        }
+        setProbeAutoStart(true);
     }
 } // namespace indexer_client::testing_hooks

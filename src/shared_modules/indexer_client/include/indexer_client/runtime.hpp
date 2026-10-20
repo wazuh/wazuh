@@ -13,6 +13,7 @@
 #ifndef _INDEXER_CLIENT_RUNTIME_HPP
 #define _INDEXER_CLIENT_RUNTIME_HPP
 
+#include <cstdarg>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -70,6 +71,14 @@ namespace indexer_client
 
         static bool running();
     };
+
+    /// The process's log function, with the same signature indexer_connector takes (level, tag, file, line, function,
+    /// format, arguments). Replaces the previous one; an empty function silences the library. Valid only while no
+    /// runtime is running (before RuntimeOwner::start() or after shutdown()): with a runtime running the call is
+    /// ignored and counted as a usage error (I56).
+    using LogFunction =
+        std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>;
+    INDEXER_CLIENT_API void setLogFunction(LogFunction logFunction);
 
     namespace detail::testing
     {
