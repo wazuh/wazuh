@@ -626,14 +626,36 @@ std::string Syscollector::getCreateStatement() const
 /// Schema changes applied to a database that already exists, in order.
 ///
 /// DBSync derives the schema version from this list: a database reports
-/// PRAGMA user_version, and every statement from that point on is applied to
-/// it, one prepared statement each. Two consequences, both load-bearing:
+/// PRAGMA user_version, and every entry from that point on is applied to it.
+/// Three properties, all load-bearing:
 ///
-///  - ONE statement per entry. The upgrade step prepares and steps exactly
-///    once, so a string holding two statements silently applies only the first.
+///  - One entry is one SCRIPT. It runs through sqlite3_exec inside a
+///    transaction that also carries the version bump, so a step is
+///    all-or-nothing. A script must not open a transaction of its own.
 ///  - This list is APPEND-ONLY, permanently. An agent may skip releases, so it
 ///    replays the vector from wherever its own database left off. Editing or
 ///    removing an entry rewrites history that some installed agent still needs.
+///  - The DDL below is written out LITERALLY rather than taken from the
+///    constants in syscollectorTablesDef.hpp. An edit to a constant must not
+///    reach a migration that has already run on real agents; it earns a new
+///    entry instead.
+///
+/// container_id joins every primary key, and SQLite cannot alter a primary key
+/// in place, so each table is rebuilt: rename the old one aside, create the new
+/// shape under its final name, copy the rows with container_id = '', drop the
+/// old one. Rename-aside-then-create rather than create-then-rename, because
+/// ALTER TABLE ... RENAME rewrites sqlite_master with the table name quoted,
+/// and a migrated database would then differ textually from a freshly created
+/// one forever.
+///
+/// Columns are enumerated rather than copied with SELECT *, because a live
+/// table also carries db_status_field_dm, which initializeStatusField() adds
+/// lazily on first use and which therefore varies per table and per host. It is
+/// per-transaction state, so dropping it here is correct; it comes back on the
+/// next transaction.
+///
+/// Host rows keep their checksums: getRowChecksum() erases container_id before
+/// digesting, so no upgraded agent re-syncs its inventory.
 ///
 /// The create statement above must keep producing the same schema this list
 /// builds up to, because fresh databases take that path and never replay these.
@@ -649,25 +671,348 @@ std::vector<std::string> Syscollector::getUpgradeStatements() const
         // copy of it onto every row that container owns.
         CONTAINER_CONTEXT_SQL_STATEMENT,
 
-        // v3 -> v16: drop the per-row copy, now that every reader takes the
-        // context from container_context. One statement per table because the
-        // upgrade step runs exactly one, and spelled out in full rather than
-        // generated from a table list: a migration already applied must keep
-        // meaning what it meant, which a list someone may later extend cannot
-        // guarantee.
-        "ALTER TABLE dbsync_osinfo DROP COLUMN container_json;",
-        "ALTER TABLE dbsync_hwinfo DROP COLUMN container_json;",
-        "ALTER TABLE dbsync_hotfixes DROP COLUMN container_json;",
-        "ALTER TABLE dbsync_packages DROP COLUMN container_json;",
-        "ALTER TABLE dbsync_processes DROP COLUMN container_json;",
-        "ALTER TABLE dbsync_ports DROP COLUMN container_json;",
-        "ALTER TABLE dbsync_network_iface DROP COLUMN container_json;",
-        "ALTER TABLE dbsync_network_protocol DROP COLUMN container_json;",
-        "ALTER TABLE dbsync_network_address DROP COLUMN container_json;",
-        "ALTER TABLE dbsync_users DROP COLUMN container_json;",
-        "ALTER TABLE dbsync_groups DROP COLUMN container_json;",
-        "ALTER TABLE dbsync_services DROP COLUMN container_json;",
-        "ALTER TABLE dbsync_browser_extensions DROP COLUMN container_json;",
+        // v3 -> v4: dbsync_osinfo (20 columns)
+        R"(DROP TABLE IF EXISTS dbsync_osinfo_upgrade_v4_old;
+ALTER TABLE dbsync_osinfo RENAME TO dbsync_osinfo_upgrade_v4_old;
+CREATE TABLE dbsync_osinfo (
+    container_id TEXT DEFAULT '',
+    hostname TEXT,
+    architecture TEXT,
+    os_name TEXT,
+    os_version TEXT,
+    os_codename TEXT,
+    os_major TEXT,
+    os_minor TEXT,
+    os_patch TEXT,
+    os_build TEXT,
+    os_platform TEXT,
+    os_type TEXT,
+    os_kernel_name TEXT,
+    os_kernel_release TEXT,
+    os_kernel_version TEXT,
+    os_display_version TEXT,
+    os_full TEXT,
+    sync INTEGER DEFAULT 0,
+    checksum TEXT,
+    version INTEGER NOT NULL DEFAULT 1,
+    PRIMARY KEY (container_id, os_name, os_version)) WITHOUT ROWID;
+INSERT INTO dbsync_osinfo (container_id,hostname,architecture,os_name,os_version,os_codename,os_major,os_minor,os_patch,os_build,os_platform,os_type,os_kernel_name,os_kernel_release,os_kernel_version,os_display_version,os_full,sync,checksum,version)
+    SELECT '',hostname,architecture,os_name,os_version,os_codename,os_major,os_minor,os_patch,os_build,os_platform,os_type,os_kernel_name,os_kernel_release,os_kernel_version,os_display_version,os_full,sync,checksum,version FROM dbsync_osinfo_upgrade_v4_old;
+DROP TABLE dbsync_osinfo_upgrade_v4_old;)",
+
+        // v4 -> v5: dbsync_hwinfo (11 columns)
+        R"(DROP TABLE IF EXISTS dbsync_hwinfo_upgrade_v5_old;
+ALTER TABLE dbsync_hwinfo RENAME TO dbsync_hwinfo_upgrade_v5_old;
+CREATE TABLE dbsync_hwinfo (
+    container_id TEXT DEFAULT '',
+    serial_number TEXT,
+    cpu_name TEXT,
+    cpu_cores INTEGER,
+    cpu_speed DOUBLE,
+    memory_total INTEGER,
+    memory_free INTEGER,
+    memory_used INTEGER,
+    sync INTEGER DEFAULT 0,
+    checksum TEXT,
+    version INTEGER NOT NULL DEFAULT 1,
+    PRIMARY KEY (container_id, serial_number)) WITHOUT ROWID;
+INSERT INTO dbsync_hwinfo (container_id,serial_number,cpu_name,cpu_cores,cpu_speed,memory_total,memory_free,memory_used,sync,checksum,version)
+    SELECT '',serial_number,cpu_name,cpu_cores,cpu_speed,memory_total,memory_free,memory_used,sync,checksum,version FROM dbsync_hwinfo_upgrade_v5_old;
+DROP TABLE dbsync_hwinfo_upgrade_v5_old;)",
+
+        // v5 -> v6: dbsync_hotfixes (5 columns)
+        R"(DROP TABLE IF EXISTS dbsync_hotfixes_upgrade_v6_old;
+ALTER TABLE dbsync_hotfixes RENAME TO dbsync_hotfixes_upgrade_v6_old;
+CREATE TABLE dbsync_hotfixes(
+    container_id TEXT DEFAULT '',
+    hotfix_name TEXT,
+    sync INTEGER DEFAULT 0,
+    checksum TEXT,
+    version INTEGER NOT NULL DEFAULT 1,
+    PRIMARY KEY (container_id, hotfix_name)) WITHOUT ROWID;
+INSERT INTO dbsync_hotfixes (container_id,hotfix_name,sync,checksum,version)
+    SELECT '',hotfix_name,sync,checksum,version FROM dbsync_hotfixes_upgrade_v6_old;
+DROP TABLE dbsync_hotfixes_upgrade_v6_old;)",
+
+        // v6 -> v7: dbsync_packages (17 columns)
+        R"(DROP TABLE IF EXISTS dbsync_packages_upgrade_v7_old;
+ALTER TABLE dbsync_packages RENAME TO dbsync_packages_upgrade_v7_old;
+CREATE TABLE dbsync_packages(
+    container_id TEXT DEFAULT '',
+    name TEXT,
+    version_ TEXT,
+    vendor TEXT,
+    installed TEXT,
+    path TEXT,
+    architecture TEXT,
+    category TEXT,
+    description TEXT,
+    size BIGINT,
+    priority TEXT,
+    multiarch TEXT,
+    source TEXT,
+    type TEXT,
+    sync INTEGER DEFAULT 0,
+    checksum TEXT,
+    version INTEGER NOT NULL DEFAULT 1,
+    PRIMARY KEY (container_id, name,version_,architecture,type,path)) WITHOUT ROWID;
+INSERT INTO dbsync_packages (container_id,name,version_,vendor,installed,path,architecture,category,description,size,priority,multiarch,source,type,sync,checksum,version)
+    SELECT '',name,version_,vendor,installed,path,architecture,category,description,size,priority,multiarch,source,type,sync,checksum,version FROM dbsync_packages_upgrade_v7_old;
+DROP TABLE dbsync_packages_upgrade_v7_old;)",
+
+        // v7 -> v8: dbsync_processes (14 columns)
+        R"(DROP TABLE IF EXISTS dbsync_processes_upgrade_v8_old;
+ALTER TABLE dbsync_processes RENAME TO dbsync_processes_upgrade_v8_old;
+CREATE TABLE dbsync_processes (
+    container_id TEXT DEFAULT '',
+    pid TEXT,
+    name TEXT,
+    state TEXT,
+    parent_pid BIGINT,
+    utime BIGINT,
+    stime BIGINT,
+    command_line TEXT,
+    args TEXT,
+    args_count BIGINT,
+    start TEXT,
+    sync INTEGER DEFAULT 0,
+    checksum TEXT,
+    version INTEGER NOT NULL DEFAULT 1,
+    PRIMARY KEY (container_id, pid)) WITHOUT ROWID;
+INSERT INTO dbsync_processes (container_id,pid,name,state,parent_pid,utime,stime,command_line,args,args_count,start,sync,checksum,version)
+    SELECT '',pid,name,state,parent_pid,utime,stime,command_line,args,args_count,start,sync,checksum,version FROM dbsync_processes_upgrade_v8_old;
+DROP TABLE dbsync_processes_upgrade_v8_old;)",
+
+        // v8 -> v9: dbsync_ports (15 columns)
+        R"(DROP TABLE IF EXISTS dbsync_ports_upgrade_v9_old;
+ALTER TABLE dbsync_ports RENAME TO dbsync_ports_upgrade_v9_old;
+CREATE TABLE dbsync_ports (
+       container_id TEXT DEFAULT '',
+       network_transport TEXT,
+       source_ip TEXT,
+       source_port BIGINT,
+       destination_ip TEXT,
+       destination_port BIGINT,
+       host_network_egress_queue BIGINT,
+       host_network_ingress_queue BIGINT,
+       file_inode BIGINT,
+       interface_state TEXT,
+       process_pid BIGINT,
+       process_name TEXT,
+       sync INTEGER DEFAULT 0,
+       checksum TEXT,
+       version INTEGER NOT NULL DEFAULT 1,
+       PRIMARY KEY (container_id, file_inode, network_transport, source_ip, source_port)) WITHOUT ROWID;
+INSERT INTO dbsync_ports (container_id,network_transport,source_ip,source_port,destination_ip,destination_port,host_network_egress_queue,host_network_ingress_queue,file_inode,interface_state,process_pid,process_name,sync,checksum,version)
+    SELECT '',network_transport,source_ip,source_port,destination_ip,destination_port,host_network_egress_queue,host_network_ingress_queue,file_inode,interface_state,process_pid,process_name,sync,checksum,version FROM dbsync_ports_upgrade_v9_old;
+DROP TABLE dbsync_ports_upgrade_v9_old;)",
+
+        // v9 -> v10: dbsync_network_iface (18 columns)
+        R"(DROP TABLE IF EXISTS dbsync_network_iface_upgrade_v10_old;
+ALTER TABLE dbsync_network_iface RENAME TO dbsync_network_iface_upgrade_v10_old;
+CREATE TABLE dbsync_network_iface (
+       container_id TEXT DEFAULT '',
+       interface_name TEXT,
+       interface_alias TEXT,
+       interface_type TEXT,
+       interface_state TEXT,
+       interface_mtu INTEGER,
+       host_mac TEXT,
+       host_network_egress_packages INTEGER,
+       host_network_ingress_packages INTEGER,
+       host_network_egress_bytes INTEGER,
+       host_network_ingress_bytes INTEGER,
+       host_network_egress_errors INTEGER,
+       host_network_ingress_errors INTEGER,
+       host_network_egress_drops INTEGER,
+       host_network_ingress_drops INTEGER,
+       sync INTEGER DEFAULT 0,
+       checksum TEXT,
+       version INTEGER NOT NULL DEFAULT 1,
+       PRIMARY KEY (container_id, interface_name,interface_alias,interface_type)) WITHOUT ROWID;
+INSERT INTO dbsync_network_iface (container_id,interface_name,interface_alias,interface_type,interface_state,interface_mtu,host_mac,host_network_egress_packages,host_network_ingress_packages,host_network_egress_bytes,host_network_ingress_bytes,host_network_egress_errors,host_network_ingress_errors,host_network_egress_drops,host_network_ingress_drops,sync,checksum,version)
+    SELECT '',interface_name,interface_alias,interface_type,interface_state,interface_mtu,host_mac,host_network_egress_packages,host_network_ingress_packages,host_network_egress_bytes,host_network_ingress_bytes,host_network_egress_errors,host_network_ingress_errors,host_network_egress_drops,host_network_ingress_drops,sync,checksum,version FROM dbsync_network_iface_upgrade_v10_old;
+DROP TABLE dbsync_network_iface_upgrade_v10_old;)",
+
+        // v10 -> v11: dbsync_network_protocol (9 columns)
+        R"(DROP TABLE IF EXISTS dbsync_network_protocol_upgrade_v11_old;
+ALTER TABLE dbsync_network_protocol RENAME TO dbsync_network_protocol_upgrade_v11_old;
+CREATE TABLE dbsync_network_protocol (
+       container_id TEXT DEFAULT '',
+       interface_name TEXT,
+       network_type TEXT,
+       network_gateway TEXT,
+       network_dhcp INTEGER,
+       network_metric TEXT,
+       sync INTEGER DEFAULT 0,
+       checksum TEXT,
+       version INTEGER NOT NULL DEFAULT 1,
+       PRIMARY KEY (container_id, interface_name,network_type)) WITHOUT ROWID;
+INSERT INTO dbsync_network_protocol (container_id,interface_name,network_type,network_gateway,network_dhcp,network_metric,sync,checksum,version)
+    SELECT '',interface_name,network_type,network_gateway,network_dhcp,network_metric,sync,checksum,version FROM dbsync_network_protocol_upgrade_v11_old;
+DROP TABLE dbsync_network_protocol_upgrade_v11_old;)",
+
+        // v11 -> v12: dbsync_network_address (9 columns)
+        R"(DROP TABLE IF EXISTS dbsync_network_address_upgrade_v12_old;
+ALTER TABLE dbsync_network_address RENAME TO dbsync_network_address_upgrade_v12_old;
+CREATE TABLE dbsync_network_address (
+       container_id TEXT DEFAULT '',
+       interface_name TEXT,
+       network_type INTEGER,
+       network_ip TEXT,
+       network_netmask TEXT,
+       network_broadcast TEXT,
+       sync INTEGER DEFAULT 0,
+       checksum TEXT,
+       version INTEGER NOT NULL DEFAULT 1,
+       PRIMARY KEY (container_id, interface_name,network_type,network_ip)) WITHOUT ROWID;
+INSERT INTO dbsync_network_address (container_id,interface_name,network_type,network_ip,network_netmask,network_broadcast,sync,checksum,version)
+    SELECT '',interface_name,network_type,network_ip,network_netmask,network_broadcast,sync,checksum,version FROM dbsync_network_address_upgrade_v12_old;
+DROP TABLE dbsync_network_address_upgrade_v12_old;)",
+
+        // v12 -> v13: dbsync_users (35 columns)
+        R"(DROP TABLE IF EXISTS dbsync_users_upgrade_v13_old;
+ALTER TABLE dbsync_users RENAME TO dbsync_users_upgrade_v13_old;
+CREATE TABLE dbsync_users (
+        container_id TEXT DEFAULT '',
+        user_name TEXT,
+        user_full_name TEXT,
+        user_home TEXT,
+        user_id BIGINT,
+        user_uid_signed BIGINT,
+        user_uuid TEXT,
+        user_groups TEXT,
+        user_group_id BIGINT,
+        user_group_id_signed BIGINT,
+        user_created TEXT,
+        user_roles TEXT,
+        user_shell TEXT,
+        user_type TEXT,
+        user_is_hidden INTEGER,
+        user_is_remote INTEGER,
+        user_last_login TEXT,
+        user_auth_failed_count BIGINT,
+        user_auth_failed_timestamp TEXT,
+        user_password_last_change BIGINT,
+        user_password_expiration_date TEXT,
+        user_password_hash_algorithm TEXT,
+        user_password_inactive_days INTEGER,
+        user_password_max_days_between_changes INTEGER,
+        user_password_min_days_between_changes INTEGER,
+        user_password_status TEXT,
+        user_password_warning_days_before_expiration INTEGER,
+        process_pid BIGINT,
+        host_ip TEXT,
+        login_status INTEGER,
+        login_tty TEXT,
+        login_type TEXT,
+        sync INTEGER DEFAULT 0,
+        checksum TEXT,
+        version INTEGER NOT NULL DEFAULT 1,
+        PRIMARY KEY (container_id, user_name)) WITHOUT ROWID;
+INSERT INTO dbsync_users (container_id,user_name,user_full_name,user_home,user_id,user_uid_signed,user_uuid,user_groups,user_group_id,user_group_id_signed,user_created,user_roles,user_shell,user_type,user_is_hidden,user_is_remote,user_last_login,user_auth_failed_count,user_auth_failed_timestamp,user_password_last_change,user_password_expiration_date,user_password_hash_algorithm,user_password_inactive_days,user_password_max_days_between_changes,user_password_min_days_between_changes,user_password_status,user_password_warning_days_before_expiration,process_pid,host_ip,login_status,login_tty,login_type,sync,checksum,version)
+    SELECT '',user_name,user_full_name,user_home,user_id,user_uid_signed,user_uuid,user_groups,user_group_id,user_group_id_signed,user_created,user_roles,user_shell,user_type,user_is_hidden,user_is_remote,user_last_login,user_auth_failed_count,user_auth_failed_timestamp,user_password_last_change,user_password_expiration_date,user_password_hash_algorithm,user_password_inactive_days,user_password_max_days_between_changes,user_password_min_days_between_changes,user_password_status,user_password_warning_days_before_expiration,process_pid,host_ip,login_status,login_tty,login_type,sync,checksum,version FROM dbsync_users_upgrade_v13_old;
+DROP TABLE dbsync_users_upgrade_v13_old;)",
+
+        // v13 -> v14: dbsync_groups (11 columns)
+        R"(DROP TABLE IF EXISTS dbsync_groups_upgrade_v14_old;
+ALTER TABLE dbsync_groups RENAME TO dbsync_groups_upgrade_v14_old;
+CREATE TABLE dbsync_groups (
+    container_id TEXT DEFAULT '',
+    group_id BIGINT,
+    group_name TEXT,
+    group_description TEXT,
+    group_id_signed BIGINT,
+    group_uuid TEXT,
+    group_is_hidden INTEGER,
+    group_users TEXT,
+    sync INTEGER DEFAULT 0,
+    checksum TEXT,
+    version INTEGER NOT NULL DEFAULT 1,
+    PRIMARY KEY (container_id, group_name)) WITHOUT ROWID;
+INSERT INTO dbsync_groups (container_id,group_id,group_name,group_description,group_id_signed,group_uuid,group_is_hidden,group_users,sync,checksum,version)
+    SELECT '',group_id,group_name,group_description,group_id_signed,group_uuid,group_is_hidden,group_users,sync,checksum,version FROM dbsync_groups_upgrade_v14_old;
+DROP TABLE dbsync_groups_upgrade_v14_old;)",
+
+        // v14 -> v15: dbsync_services (36 columns)
+        R"(DROP TABLE IF EXISTS dbsync_services_upgrade_v15_old;
+ALTER TABLE dbsync_services RENAME TO dbsync_services_upgrade_v15_old;
+CREATE TABLE dbsync_services (
+        container_id TEXT DEFAULT '',
+        service_id TEXT,
+        service_name TEXT,
+        service_description TEXT,
+        service_type TEXT,
+        service_state TEXT,
+        service_sub_state TEXT,
+        service_enabled TEXT,
+        service_start_type TEXT,
+		service_restart TEXT,
+		service_frequency BIGINT,
+		service_starts_on_mount INTEGER,
+		service_starts_on_path_modified TEXT,
+		service_starts_on_not_empty_directory TEXT,
+		service_inetd_compatibility INTEGER,
+        process_pid BIGINT,
+        process_executable TEXT,
+        process_args TEXT,
+		process_user_name TEXT,
+		process_group_name TEXT,
+		process_working_dir TEXT,
+		process_root_dir TEXT,
+        file_path TEXT,
+        service_address TEXT,
+        log_file_path TEXT,
+        error_log_file_path TEXT,
+        service_exit_code INTEGER,
+        service_win32_exit_code INTEGER,
+        service_following TEXT,
+        service_object_path TEXT,
+        service_target_ephemeral_id BIGINT,
+        service_target_type TEXT,
+        service_target_address TEXT,
+        sync INTEGER DEFAULT 0,
+        checksum TEXT,
+        version INTEGER NOT NULL DEFAULT 1,
+        PRIMARY KEY (container_id, service_id, file_path)) WITHOUT ROWID;
+INSERT INTO dbsync_services (container_id,service_id,service_name,service_description,service_type,service_state,service_sub_state,service_enabled,service_start_type,service_restart,service_frequency,service_starts_on_mount,service_starts_on_path_modified,service_starts_on_not_empty_directory,service_inetd_compatibility,process_pid,process_executable,process_args,process_user_name,process_group_name,process_working_dir,process_root_dir,file_path,service_address,log_file_path,error_log_file_path,service_exit_code,service_win32_exit_code,service_following,service_object_path,service_target_ephemeral_id,service_target_type,service_target_address,sync,checksum,version)
+    SELECT '',service_id,service_name,service_description,service_type,service_state,service_sub_state,service_enabled,service_start_type,service_restart,service_frequency,service_starts_on_mount,service_starts_on_path_modified,service_starts_on_not_empty_directory,service_inetd_compatibility,process_pid,process_executable,process_args,process_user_name,process_group_name,process_working_dir,process_root_dir,file_path,service_address,log_file_path,error_log_file_path,service_exit_code,service_win32_exit_code,service_following,service_object_path,service_target_ephemeral_id,service_target_type,service_target_address,sync,checksum,version FROM dbsync_services_upgrade_v15_old;
+DROP TABLE dbsync_services_upgrade_v15_old;)",
+
+        // v15 -> v16: dbsync_browser_extensions (26 columns)
+        R"(DROP TABLE IF EXISTS dbsync_browser_extensions_upgrade_v16_old;
+ALTER TABLE dbsync_browser_extensions RENAME TO dbsync_browser_extensions_upgrade_v16_old;
+CREATE TABLE dbsync_browser_extensions (
+        container_id TEXT DEFAULT '',
+        browser_name TEXT,
+        user_id TEXT,
+        package_name TEXT,
+        package_id TEXT,
+        package_version_ TEXT,
+        package_description TEXT,
+        package_vendor TEXT,
+        package_build_version TEXT,
+        package_path TEXT,
+        browser_profile_name TEXT,
+        browser_profile_path TEXT,
+        package_reference TEXT,
+        package_permissions TEXT,
+        package_type TEXT,
+        package_enabled INTEGER,
+        package_visible INTEGER,
+        package_autoupdate INTEGER,
+        package_persistent INTEGER,
+        package_from_webstore INTEGER,
+        browser_profile_referenced INTEGER,
+        package_installed TEXT,
+        file_hash_sha256 TEXT,
+        sync INTEGER DEFAULT 0,
+        checksum TEXT,
+        version INTEGER NOT NULL DEFAULT 1,
+        PRIMARY KEY (container_id, browser_name,user_id,browser_profile_path,package_name,package_version_)) WITHOUT ROWID;
+INSERT INTO dbsync_browser_extensions (container_id,browser_name,user_id,package_name,package_id,package_version_,package_description,package_vendor,package_build_version,package_path,browser_profile_name,browser_profile_path,package_reference,package_permissions,package_type,package_enabled,package_visible,package_autoupdate,package_persistent,package_from_webstore,browser_profile_referenced,package_installed,file_hash_sha256,sync,checksum,version)
+    SELECT '',browser_name,user_id,package_name,package_id,package_version_,package_description,package_vendor,package_build_version,package_path,browser_profile_name,browser_profile_path,package_reference,package_permissions,package_type,package_enabled,package_visible,package_autoupdate,package_persistent,package_from_webstore,browser_profile_referenced,package_installed,file_hash_sha256,sync,checksum,version FROM dbsync_browser_extensions_upgrade_v16_old;
+DROP TABLE dbsync_browser_extensions_upgrade_v16_old;)",
     });
 
     return statements;
