@@ -86,6 +86,24 @@ char *replace_win_format(char *str, int message){
     return result;
 }
 
+// "Severity Name" -> "severityName". Works in place: the name can only shrink.
+static void normalize_eventdata_name(char *name) {
+    char *out = name;
+    int first = 1;
+    int upper = 0;
+
+    for (; *name; name++) {
+        if (isspace((unsigned char)*name)) {
+            upper = !first;
+        } else {
+            *out++ = first ? tolower((unsigned char)*name) : upper ? toupper((unsigned char)*name) : *name;
+            first = upper = 0;
+        }
+    }
+
+    *out = '\0';
+}
+
 /* Special decoder for Windows eventchannel */
 int DecodeWinevt(Eventinfo *lf){
     OS_XML xml;
@@ -230,7 +248,7 @@ int DecodeWinevt(Eventinfo *lf){
                                     if (!strcmp(child_attr[p]->attributes[l], "Name") && strcmp(child_attr[p]->content, "(NULL)") != 0
                                             && strcmp(child_attr[p]->content, "-") != 0) {
                                         filtered_string = replace_win_format(child_attr[p]->content, 0);
-                                        *child_attr[p]->values[l] = tolower(*child_attr[p]->values[l]);
+                                        normalize_eventdata_name(child_attr[p]->values[l]);
 
                                         // Save category ID
                                         if (!strcmp(child_attr[p]->values[l], "categoryId")){
@@ -265,7 +283,7 @@ int DecodeWinevt(Eventinfo *lf){
                                             && strcmp(child_attr[p]->content, "-") != 0){
                                         filtered_string = replace_win_format(child_attr[p]->content, 0);
                                         mdebug2("Unexpected attribute at EventData (%s).", child_attr[p]->attributes[l]);
-                                        *child_attr[p]->values[l] = tolower(*child_attr[p]->values[l]);
+                                        normalize_eventdata_name(child_attr[p]->values[l]);
                                         cJSON_AddStringToObject(json_eventdata_in, child_attr[p]->values[l], filtered_string);
                                         os_free(filtered_string);
                                     }

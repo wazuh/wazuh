@@ -31,7 +31,7 @@ extern _Config Config;
 
 int test_setup_global(void ** state) {
     expect_string(__wrap__mdebug1, formatted_msg, "WinevtInit completed.");
-    Config.decoder_order_size = 32;
+    Config.decoder_order_size = 128;
     WinevtInit();
     return 0;
 }
@@ -161,6 +161,98 @@ void test_winevt_dec_join_data_large_accumulation(void ** state) {
     assert_int_equal(ret, SUCCESS_DECODE);
 }
 
+/* Returns the value of a dynamic field, or NULL if the decoder did not produce it. */
+static const char * get_field(const Eventinfo * lf, const char * key) {
+    for (int i = 0; i < lf->nfields; i++) {
+        if (strcmp(lf->fields[i].key, key) == 0) {
+            return lf->fields[i].value;
+        }
+    }
+    return NULL;
+}
+
+/* Windows Defender event 1116 as rendered by EvtRender: single-quoted XML attributes and names with spaces. */
+void test_winevt_dec_eventdata_name_with_spaces(void ** state) {
+    const char * TEST_LOG_STRING =
+        "{\"Event\":\"<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'>"
+        "<System><Provider Name='Microsoft-Windows-Windows Defender' Guid='{11cd958a-c507-4ef3-b3f2-5fd9dfbd2c78}' />"
+        "<EventID>1116</EventID><Version>0</Version><Level>3</Level><Task>0</Task><Opcode>0</Opcode>"
+        "<Keywords>0x8000000000000000</Keywords><TimeCreated SystemTime='2026-06-08T06:31:57.5414550Z' />"
+        "<EventRecordID>5264</EventRecordID><Correlation ActivityID='{eaeb204a-b4d3-43b2-be47-42bc20d67dff}' />"
+        "<Execution ProcessID='5292' ThreadID='19172' />"
+        "<Channel>Microsoft-Windows-Windows Defender/Operational</Channel><Computer>Rocket</Computer>"
+        "<Security UserID='S-1-5-18' /></System>"
+        "<EventData><Data Name='Product Name'>Microsoft Defender Antivirus</Data>"
+        "<Data Name='Product Version'>4.18.26040.7</Data>"
+        "<Data Name='Detection ID'>{BEE71375-8269-475C-82CD-8A33096E28CB}</Data>"
+        "<Data Name='Detection Time'>2026-06-08T06:31:57.227Z</Data>"
+        "<Data Name='Unused'></Data>"
+        "<Data Name='Threat ID'>17463</Data>"
+        "<Data Name='Threat Name'>Tool:Win32/EICAR_Test_File</Data>"
+        "<Data Name='Severity ID'>5</Data>"
+        "<Data Name='Severity Name'>Severe</Data>"
+        "<Data Name='Category ID'>34</Data>"
+        "<Data Name='Category Name'>Tool</Data>"
+        "<Data Name='FWLink'>https://go.microsoft.com/fwlink/?linkid=37020</Data>"
+        "<Data Name='Status Code'>1</Data>"
+        "<Data Name='State'>1</Data>"
+        "<Data Name='Source ID'>4</Data>"
+        "<Data Name='Source Name'>Downloads and attachments</Data>"
+        "<Data Name='Process Name'>Unknown</Data>"
+        "<Data Name='Detection User'>Rocket\\\\Vikman</Data>"
+        "<Data Name='Path'>file:_D:\\\\Vikman\\\\Downloads\\\\eicar_com.zip</Data>"
+        "<Data Name='Action Name'>Not Applicable</Data>"
+        "<Data Name='Error Code'>0x00000000</Data>"
+        "<Data Name='Error Description'>The operation completed successfully. </Data>"
+        "<Data Name='Security intelligence Version'>AV: 1.451.323.0, AS: 1.451.323.0</Data>"
+        "<Data Name='Engine Version'>AM: 1.1.26040.8, NIS: 1.1.26040.8</Data>"
+        "</EventData></Event>\"}";
+
+    Eventinfo * lf = *state;
+    lf->log = lf->full_log = strdup(TEST_LOG_STRING);
+
+    expect_any(__wrap__mdebug2, formatted_msg);
+
+    int ret = DecodeWinevt(lf);
+    assert_int_equal(ret, SUCCESS_DECODE);
+
+    assert_string_equal(get_field(lf, "win.eventdata.severityName"), "Severe");
+    assert_string_equal(get_field(lf, "win.eventdata.threatName"), "Tool:Win32/EICAR_Test_File");
+    assert_string_equal(get_field(lf, "win.eventdata.processName"), "Unknown");
+    assert_string_equal(get_field(lf, "win.eventdata.errorCode"), "0x00000000");
+    assert_string_equal(get_field(lf, "win.eventdata.errorDescription"), "The operation completed successfully.");
+    assert_string_equal(get_field(lf, "win.eventdata.productName"), "Microsoft Defender Antivirus");
+    assert_string_equal(get_field(lf, "win.eventdata.securityIntelligenceVersion"),
+                        "AV: 1.451.323.0, AS: 1.451.323.0");
+    assert_string_equal(get_field(lf, "win.eventdata.state"), "1");
+    assert_non_null(get_field(lf, "win.eventdata.detectionUser"));
+    assert_null(get_field(lf, "win.eventdata.severity Name"));
+
+    for (int i = 0; i < lf->nfields; i++) {
+        assert_null(strchr(lf->fields[i].key, ' '));
+    }
+}
+
+/* Runs of spaces, and leading or trailing ones, collapse into a single capital letter. */
+void test_winevt_dec_eventdata_name_spaces_edges(void ** state) {
+    const char * TEST_LOG_STRING =
+        "{\"Event\":\"<Event><EventData>"
+        "<Data Name='Current security intelligence Version'>1.2</Data>"
+        "<Data Name=' Lead  and double '>x</Data>"
+        "</EventData></Event>\"}";
+
+    Eventinfo * lf = *state;
+    lf->log = lf->full_log = strdup(TEST_LOG_STRING);
+
+    expect_any(__wrap__mdebug2, formatted_msg);
+
+    int ret = DecodeWinevt(lf);
+    assert_int_equal(ret, SUCCESS_DECODE);
+
+    assert_string_equal(get_field(lf, "win.eventdata.currentSecurityIntelligenceVersion"), "1.2");
+    assert_string_equal(get_field(lf, "win.eventdata.leadAndDouble"), "x");
+}
+
 int main() {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_winevt_dec_time_created_no_attributes, test_setup, test_cleanup),
@@ -169,6 +261,8 @@ int main() {
         cmocka_unit_test_setup_teardown(test_winevt_dec_provider_no_attributes, test_setup, test_cleanup),
         cmocka_unit_test_setup_teardown(test_winevt_dec_provider, test_setup, test_cleanup),
         cmocka_unit_test_setup_teardown(test_winevt_dec_join_data_large_accumulation, test_setup, test_cleanup),
+        cmocka_unit_test_setup_teardown(test_winevt_dec_eventdata_name_with_spaces, test_setup, test_cleanup),
+        cmocka_unit_test_setup_teardown(test_winevt_dec_eventdata_name_spaces_edges, test_setup, test_cleanup),
     };
     return cmocka_run_group_tests(tests, test_setup_global, NULL);
 }
