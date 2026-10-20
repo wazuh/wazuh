@@ -31,6 +31,7 @@
 #endif
 
 #include "syscollectorImp_test.h"
+#include "legacySchemaV1.hpp"
 #include "syscollector.hpp"
 #include "module_query_errors.h"
 #include "syscollectorTablesDef.hpp"
@@ -8749,61 +8750,133 @@ TEST_F(SyscollectorImpTest, AFreshDatabaseIsCreatedAtTheCurrentSchemaVersion)
     }
 }
 
-TEST_F(SyscollectorImpTest, AnExistingDatabaseIsUpgradedWithoutLosingWhatItHeld)
+/// The schema as SQLite itself records it, with runs of whitespace collapsed so
+/// that reindenting a DDL literal -- which is not a schema change -- does not
+/// read as one. Identifier quoting is deliberately NOT normalised: if a table
+/// ever comes back as CREATE TABLE "dbsync_groups", someone has rebuilt it by
+/// creating under a temporary name and renaming, and ALTER TABLE ... RENAME
+/// quotes the name it writes into sqlite_master.
+static std::string schemaFingerprint(const char* path)
 {
-    // A version-1 database: the schema as it shipped, with no container_context
-    // table, built here with raw sqlite so DBSync cannot stamp a version onto
-    // it. This is the shape on every agent that upgrades rather than installs.
     sqlite3* db = nullptr;
-    ASSERT_EQ(sqlite3_open_v2(SYSCOLLECTOR_TEST_DB_PATH, &db,
-                              SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, nullptr), SQLITE_OK);
 
-    std::string legacySchema;
-    legacySchema += OS_SQL_STATEMENT;
-    legacySchema += HW_SQL_STATEMENT;
-    legacySchema += PACKAGES_SQL_STATEMENT;
-    legacySchema += HOTFIXES_SQL_STATEMENT;
-    legacySchema += PROCESSES_SQL_STATEMENT;
-    legacySchema += PORTS_SQL_STATEMENT;
-    legacySchema += NETIFACE_SQL_STATEMENT;
-    legacySchema += NETPROTO_SQL_STATEMENT;
-    legacySchema += NETADDR_SQL_STATEMENT;
-    legacySchema += GROUPS_SQL_STATEMENT;
-    legacySchema += USERS_SQL_STATEMENT;
-    legacySchema += SERVICES_SQL_STATEMENT;
-    legacySchema += BROWSER_EXTENSIONS_SQL_STATEMENT;
-    legacySchema += TABLE_METADATA_SQL_STATEMENT;
-
-    // The create statements above no longer carry container_json, so a version-1
-    // schema has to be reconstituted rather than borrowed: put the column back
-    // on every table that had it. ADD COLUMN appends rather than restoring its
-    // original position, which DROP COLUMN does not care about.
-    for (const auto& table : LEGACY_CONTAINER_JSON_TABLES)
+    if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READONLY, nullptr) != SQLITE_OK)
     {
-        legacySchema += "ALTER TABLE " + table + " ADD COLUMN container_json TEXT DEFAULT '';";
+        if (db)
+        {
+            sqlite3_close(db);
+        }
+
+        return "<unreadable>";
     }
 
-    legacySchema += "PRAGMA user_version = 1;";
+    sqlite3_stmt* stmt = nullptr;
+    std::string out;
+
+    if (sqlite3_prepare_v2(db,
+                           "SELECT type, name, tbl_name, COALESCE(sql, '') FROM sqlite_master "
+                           "WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name;",
+                           -1, &stmt, nullptr) == SQLITE_OK)
+    {
+        while (sqlite3_step(stmt) == SQLITE_ROW)
+        {
+            for (int col = 0; col < 4; ++col)
+            {
+                const auto* text = reinterpret_cast<const char*>(sqlite3_column_text(stmt, col));
+                out += (text != nullptr ? text : "");
+                out += '|';
+            }
+
+            out += '\n';
+        }
+    }
+
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
+
+    // Collapse whitespace runs to a single space.
+    std::string collapsed;
+    bool inSpace = false;
+
+    for (const auto character : out)
+    {
+        const bool isSpace = (character == ' ' || character == '\t' || character == '\r');
+
+        if (isSpace)
+        {
+            inSpace = true;
+            continue;
+        }
+
+        if (inSpace)
+        {
+            collapsed += ' ';
+            inSpace = false;
+        }
+
+        collapsed += character;
+    }
+
+    return collapsed;
+}
+
+/// Lays down a database shaped exactly as released 5.0.0 left it: the frozen
+/// v1 DDL, stamped version 1, with db_status_field_dm present on every table
+/// except dbsync_hotfixes.
+///
+/// That unevenness is not incidental. SQLiteDBEngine adds the status column
+/// lazily, the first time a table is named in a transaction, and
+/// dbsync_hotfixes holds Windows-only data, so on a Linux agent it never gets
+/// one. A rebuild that copied rows with SELECT * would pass against a tidy
+/// fixture and fail on every real agent; leaving exactly one table without the
+/// column is what makes that mistake visible here.
+static void seedLegacyV1Database(const char* path)
+{
+    sqlite3* db = nullptr;
+    ASSERT_EQ(sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, nullptr), SQLITE_OK);
+
+    std::string schema {LEGACY_V1_SCHEMA};
+
+    for (const auto& table : LEGACY_CONTAINER_JSON_TABLES)
+    {
+        if (table != "dbsync_hotfixes")
+        {
+            schema += "ALTER TABLE " + table + " ADD COLUMN db_status_field_dm INTEGER DEFAULT 1;";
+        }
+    }
+
+    schema += "PRAGMA user_version = 1;";
 
     char* errMsg = nullptr;
-    ASSERT_EQ(sqlite3_exec(db, legacySchema.c_str(), nullptr, nullptr, &errMsg), SQLITE_OK)
-            << (errMsg ? errMsg : "");
+    ASSERT_EQ(sqlite3_exec(db, schema.c_str(), nullptr, nullptr, &errMsg), SQLITE_OK) << (errMsg ? errMsg : "");
 
     if (errMsg)
     {
         sqlite3_free(errMsg);
     }
 
-    // A host row and a container row, so the assertions below cover both
-    // scopes rather than only the one this work touches. The container row
-    // carries a context copy, which is what an upgraded agent's rows hold.
+    sqlite3_close(db);
+}
+
+TEST_F(SyscollectorImpTest, AnExistingDatabaseIsUpgradedWithoutLosingWhatItHeld)
+{
+    seedLegacyV1Database(SYSCOLLECTOR_TEST_DB_PATH);
+
+    sqlite3* db = nullptr;
+    ASSERT_EQ(sqlite3_open_v2(SYSCOLLECTOR_TEST_DB_PATH, &db, SQLITE_OPEN_READWRITE, nullptr), SQLITE_OK);
+
+    // Three keys of different widths, and a row carrying NULLs in non-key
+    // columns, because the rebuild names every column explicitly and a
+    // mis-ordered list would land values in the wrong ones.
+    char* errMsg = nullptr;
     ASSERT_EQ(sqlite3_exec(db,
-                           "INSERT INTO dbsync_processes (container_id, pid, name, checksum) "
-                           "VALUES ('', '1', 'host-proc', 'host-sum');"
-                           "INSERT INTO dbsync_processes (container_id, container_json, pid, name, checksum) "
-                           "VALUES ('c1', '{\"container\":{\"id\":\"c1\"}}', '2', 'ctr-proc', 'ctr-sum');",
-                           nullptr, nullptr, &errMsg), SQLITE_OK)
-            << (errMsg ? errMsg : "");
+                           "INSERT INTO dbsync_processes (pid, name, checksum, version) "
+                           "VALUES ('1', 'host-proc', 'proc-sum', 7);"
+                           "INSERT INTO dbsync_groups (group_id, group_name, checksum) "
+                           "VALUES (0, 'root', 'group-sum');"
+                           "INSERT INTO dbsync_packages (name, version_, architecture, type, path, checksum, vendor) "
+                           "VALUES ('bash', '5.2', 'amd64', 'deb', '/', 'pkg-sum', NULL);",
+                           nullptr, nullptr, &errMsg), SQLITE_OK) << (errMsg ? errMsg : "");
 
     if (errMsg)
     {
@@ -8814,8 +8887,8 @@ TEST_F(SyscollectorImpTest, AnExistingDatabaseIsUpgradedWithoutLosingWhatItHeld)
 
     ASSERT_EQ(readUserVersion(SYSCOLLECTOR_TEST_DB_PATH), 1) << "precondition: a version-1 database";
     ASSERT_FALSE(tableExists(SYSCOLLECTOR_TEST_DB_PATH, "container_context"));
-    ASSERT_TRUE(columnExists(SYSCOLLECTOR_TEST_DB_PATH, "dbsync_processes", "container_json"))
-            << "precondition: a version-1 database still copies the context onto every row";
+    ASSERT_FALSE(columnExists(SYSCOLLECTOR_TEST_DB_PATH, "dbsync_groups", "container_id"))
+            << "precondition: a released 5.0.0 database has no container_id anywhere";
 
     const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
     EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
@@ -8831,39 +8904,161 @@ TEST_F(SyscollectorImpTest, AnExistingDatabaseIsUpgradedWithoutLosingWhatItHeld)
     EXPECT_TRUE(tableExists(SYSCOLLECTOR_TEST_DB_PATH, "container_context"))
             << "the upgrade statement is the only route by which an existing database gains the table";
 
-    // Every table loses the column, not just the one the rows below check.
-    // A table missed here would keep paying the per-row cost forever, since
-    // the upgrade that drops it never runs twice.
     for (const auto& table : LEGACY_CONTAINER_JSON_TABLES)
     {
-        EXPECT_FALSE(columnExists(SYSCOLLECTOR_TEST_DB_PATH, table, "container_json"))
-                << table << " kept the per-row context copy through the upgrade";
+        EXPECT_TRUE(columnExists(SYSCOLLECTOR_TEST_DB_PATH, table, "container_id"))
+                << table << " did not gain container_id, so container and host rows will collide in it";
+        EXPECT_FALSE(columnExists(SYSCOLLECTOR_TEST_DB_PATH, table, "db_status_field_dm"))
+                << table << " kept the status column through the rebuild; it is per-transaction state "
+                << "and SQLiteDBEngine adds it back on first use";
+        EXPECT_FALSE(tableExists(SYSCOLLECTOR_TEST_DB_PATH, (table + "_upgrade_v15_old").c_str()))
+                << table << " left its rebuild scratch table behind";
     }
 
-    // The rows must survive, with their checksums untouched. A checksum that
-    // changed here would resync that agent's entire inventory on upgrade --
-    // which is the cost this whole approach exists to avoid paying.
+    // container_id has to lead the key, not merely exist: it is what separates
+    // a container's row from the host's.
     ASSERT_EQ(sqlite3_open_v2(SYSCOLLECTOR_TEST_DB_PATH, &db, SQLITE_OPEN_READONLY, nullptr), SQLITE_OK);
 
     sqlite3_stmt* stmt = nullptr;
-    ASSERT_EQ(sqlite3_prepare_v2(db, "SELECT container_id, name, checksum FROM dbsync_processes ORDER BY pid;",
-                                 -1, &stmt, nullptr), SQLITE_OK);
+    ASSERT_EQ(sqlite3_prepare_v2(db, "PRAGMA table_info(dbsync_groups);", -1, &stmt, nullptr), SQLITE_OK);
 
-    std::vector<std::string> rows;
+    std::string leadingKeyColumn;
 
     while (sqlite3_step(stmt) == SQLITE_ROW)
     {
-        rows.emplace_back(std::string(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0))) + "/" +
-                          reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1)) + "/" +
-                          reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2)));
+        if (sqlite3_column_int(stmt, 5) == 1)
+        {
+            leadingKeyColumn = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+        }
     }
 
     sqlite3_finalize(stmt);
+    EXPECT_EQ(leadingKeyColumn, "container_id");
+
+    // The rows must survive with their checksums and versions untouched. A
+    // checksum that changed here would resync that agent's whole inventory on
+    // upgrade, which is the cost this approach exists to avoid paying; a
+    // version that reset would make the indexer noop the document instead.
+    ASSERT_EQ(sqlite3_prepare_v2(db,
+                                 "SELECT container_id || '/' || name || '/' || checksum || '/' || version "
+                                 "FROM dbsync_processes;", -1, &stmt, nullptr), SQLITE_OK);
+    ASSERT_EQ(sqlite3_step(stmt), SQLITE_ROW);
+    EXPECT_STREQ(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0)), "/host-proc/proc-sum/7");
+    sqlite3_finalize(stmt);
+
+    ASSERT_EQ(sqlite3_prepare_v2(db,
+                                 "SELECT container_id || '/' || group_name || '/' || checksum "
+                                 "FROM dbsync_groups;", -1, &stmt, nullptr), SQLITE_OK);
+    ASSERT_EQ(sqlite3_step(stmt), SQLITE_ROW);
+    EXPECT_STREQ(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0)), "/root/group-sum");
+    sqlite3_finalize(stmt);
+
+    // The NULL must still be a NULL, in the column it started in.
+    ASSERT_EQ(sqlite3_prepare_v2(db,
+                                 "SELECT name, checksum, vendor IS NULL FROM dbsync_packages;",
+                                 -1, &stmt, nullptr), SQLITE_OK);
+    ASSERT_EQ(sqlite3_step(stmt), SQLITE_ROW);
+    EXPECT_STREQ(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0)), "bash");
+    EXPECT_STREQ(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1)), "pkg-sum");
+    EXPECT_EQ(sqlite3_column_int(stmt, 2), 1) << "a NULL was filled in, so the copy shifted a column";
+    sqlite3_finalize(stmt);
+
+    ASSERT_EQ(sqlite3_prepare_v2(db, "PRAGMA integrity_check;", -1, &stmt, nullptr), SQLITE_OK);
+    ASSERT_EQ(sqlite3_step(stmt), SQLITE_ROW);
+    EXPECT_STREQ(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0)), "ok");
+    sqlite3_finalize(stmt);
+
+    sqlite3_close(db);
+}
+
+TEST_F(SyscollectorImpTest, AContainerRowNoLongerCollidesWithTheHostRow)
+{
+    // The defect this migration exists to fix: on a 5.0.0 schema the key is
+    // (group_name), so a container's 'root' group is the host's row. Through
+    // DBSync the two scopes then overwrite each other on alternating scans.
+    seedLegacyV1Database(SYSCOLLECTOR_TEST_DB_PATH);
+
+    sqlite3* db = nullptr;
+    ASSERT_EQ(sqlite3_open_v2(SYSCOLLECTOR_TEST_DB_PATH, &db, SQLITE_OPEN_READWRITE, nullptr), SQLITE_OK);
+    char* errMsg = nullptr;
+    ASSERT_EQ(sqlite3_exec(db, "INSERT INTO dbsync_groups (group_id, group_name, checksum) "
+                           "VALUES (0, 'root', 'host-sum');", nullptr, nullptr, &errMsg), SQLITE_OK)
+            << (errMsg ? errMsg : "");
+
+    if (errMsg)
+    {
+        sqlite3_free(errMsg);
+    }
+
+    // Before the migration a container's root group cannot coexist with it.
+    ASSERT_NE(sqlite3_exec(db, "INSERT INTO dbsync_groups (group_id, group_name, checksum) "
+                           "VALUES (0, 'root', 'ctr-sum');", nullptr, nullptr, nullptr), SQLITE_OK)
+            << "precondition: the 5.0.0 key already rejects a second 'root'";
     sqlite3_close(db);
 
-    ASSERT_EQ(rows.size(), 2u) << "an upgrade must not drop rows";
-    EXPECT_EQ(rows[0], "/host-proc/host-sum");
-    EXPECT_EQ(rows[1], "c1/ctr-proc/ctr-sum");
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    Syscollector::instance().init(spInfoWrapper, reportFunction, persistFunction, logFunction,
+                                  SYSCOLLECTOR_TEST_DB_PATH, "", "",
+                                  3600, false, false, false, false, false, false, false,
+                                  false, false, false, false, false, false, false);
+    Syscollector::instance().destroy();
+
+    ASSERT_EQ(sqlite3_open_v2(SYSCOLLECTOR_TEST_DB_PATH, &db, SQLITE_OPEN_READWRITE, nullptr), SQLITE_OK);
+    errMsg = nullptr;
+    EXPECT_EQ(sqlite3_exec(db, "INSERT INTO dbsync_groups (container_id, group_id, group_name, checksum) "
+                           "VALUES ('c1', 0, 'root', 'ctr-sum');", nullptr, nullptr, &errMsg), SQLITE_OK)
+            << "a container's root group still collides with the host's: " << (errMsg ? errMsg : "");
+
+    if (errMsg)
+    {
+        sqlite3_free(errMsg);
+    }
+
+    sqlite3_stmt* stmt = nullptr;
+    ASSERT_EQ(sqlite3_prepare_v2(db, "SELECT count(*) FROM dbsync_groups WHERE group_name = 'root';",
+                                 -1, &stmt, nullptr), SQLITE_OK);
+    ASSERT_EQ(sqlite3_step(stmt), SQLITE_ROW);
+    EXPECT_EQ(sqlite3_column_int(stmt, 0), 2) << "the host and container rows must coexist";
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
+}
+
+TEST_F(SyscollectorImpTest, AMigratedDatabaseHasTheSchemaOfAFreshOne)
+{
+    // Nothing in the code keeps getCreateStatement() and getUpgradeStatements()
+    // converging; this test is the only thing that does. An edit to a DDL
+    // constant changes the created side and not the migrated one, and the only
+    // way back to green is to append a migration entry that makes the same
+    // change to a database that already exists -- which is the append-only
+    // discipline the upgrade list documents, enforced rather than asked for.
+    constexpr auto MIGRATED_DB_PATH {"syscollector_migrated_test.db"};
+    std::remove(MIGRATED_DB_PATH);
+
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    // Created from nothing: takes the create statement.
+    Syscollector::instance().init(spInfoWrapper, reportFunction, persistFunction, logFunction,
+                                  SYSCOLLECTOR_TEST_DB_PATH, "", "",
+                                  3600, false, false, false, false, false, false, false,
+                                  false, false, false, false, false, false, false);
+    Syscollector::instance().destroy();
+
+    // Reached by the other route: a released 5.0.0 database, replayed forward.
+    seedLegacyV1Database(MIGRATED_DB_PATH);
+    Syscollector::instance().init(spInfoWrapper, reportFunction, persistFunction, logFunction,
+                                  MIGRATED_DB_PATH, "", "",
+                                  3600, false, false, false, false, false, false, false,
+                                  false, false, false, false, false, false, false);
+    Syscollector::instance().destroy();
+
+    EXPECT_EQ(readUserVersion(SYSCOLLECTOR_TEST_DB_PATH), readUserVersion(MIGRATED_DB_PATH));
+    EXPECT_EQ(schemaFingerprint(SYSCOLLECTOR_TEST_DB_PATH), schemaFingerprint(MIGRATED_DB_PATH))
+            << "a migrated database and a freshly created one must be the same database";
+
+    std::remove(MIGRATED_DB_PATH);
 }
 
 /// Reads a container's stored context, or "" when it has none.
