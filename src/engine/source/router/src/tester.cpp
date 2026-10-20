@@ -199,7 +199,8 @@ base::RespOrError<test::Entry> Tester::getEntry(const std::string& name) const
 // Testing
 base::RespOrError<test::Output> Tester::ingestTest(base::Event&& event, const test::Options& opt)
 {
-    std::shared_lock lock {m_mutex};
+    // Exclusive: subscribing and unsubscribing mutate the controller, so concurrent runs must not overlap.
+    std::unique_lock lock {m_mutex};
 
     auto it = m_table.find(opt.environmentName());
     if (it == m_table.end())

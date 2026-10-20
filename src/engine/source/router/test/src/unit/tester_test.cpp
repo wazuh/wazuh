@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include <gtest/gtest.h>
 
+#include <atomic>
+#include <chrono>
+#include <thread>
+#include <vector>
+
 #include <bk/mockController.hpp>
 #include <builder/mockBuilder.hpp>
 #include <builder/mockPolicy.hpp>
@@ -597,6 +602,64 @@ TEST_F(TesterTest, IngestTestWithTraceAssetOnly)
     auto& output = std::get<router::test::Output>(response);
     // Traces should have the asset entry but only SUCCESS marker, no detailed traces
     EXPECT_FALSE(output.traceList().empty());
+
+    stopControllerCall();
+}
+
+TEST_F(TesterTest, IngestTestConcurrentRunsDoNotOverlap)
+{
+    auto entryPost = router::test::EntryPost {ENVIRONMENT_NAME, POLICY_NAMESPACE, LIFESPAM};
+    std::unordered_set<base::Name> fakeAssets {};
+    fakeAssets.insert(base::Name("asset/test/0"));
+
+    addEntryCallers(fakeAssets, "hash");
+    m_test->addEntry(entryPost, /*ignoreFail=*/false);
+    m_test->enableEntry(ENVIRONMENT_NAME);
+
+    constexpr int THREADS = 8;
+    std::atomic<int> inFlight {0};
+    std::atomic<int> maxInFlight {0};
+
+    EXPECT_CALL(*m_mockController, subscribe(testing::_, testing::_))
+        .Times(THREADS)
+        .WillRepeatedly(testing::Return(bk::Subscription(1)));
+    EXPECT_CALL(*m_mockController, ingestGet(testing::_))
+        .Times(THREADS)
+        .WillRepeatedly(
+            [&](base::Event&& ev) -> base::Event
+            {
+                const int now = ++inFlight;
+                int prev = maxInFlight.load();
+                while (prev < now && !maxInFlight.compare_exchange_weak(prev, now))
+                {
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds(5));
+                --inFlight;
+                return std::move(ev);
+            });
+    EXPECT_CALL(*m_mockController, unsubscribeAll()).Times(THREADS);
+
+    std::unordered_set<std::string> assets {"asset/test/0"};
+    router::test::Options opt(router::test::Options::TraceLevel::ALL, assets, ENVIRONMENT_NAME);
+
+    std::vector<std::thread> threads;
+    for (int i = 0; i < THREADS; ++i)
+    {
+        threads.emplace_back(
+            [&]()
+            {
+                auto event = std::make_shared<json::Json>(R"({"key": "value"})");
+                auto response = m_test->ingestTest(std::move(event), opt);
+                EXPECT_FALSE(std::holds_alternative<base::Error>(response));
+            });
+    }
+    for (auto& t : threads)
+    {
+        t.join();
+    }
+
+    // Subscriptions live on the shared controller, so runs must be serialized
+    EXPECT_EQ(maxInFlight.load(), 1);
 
     stopControllerCall();
 }
