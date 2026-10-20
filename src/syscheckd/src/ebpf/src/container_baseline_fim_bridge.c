@@ -663,6 +663,12 @@ static int container_row_sync_flag(const cJSON* row, int operation)
      * check below would make the container cap silently depend on
      * container_file_limit being set, which is not what configures it.
      *
+     * This gate and the budget below govern the STATEFUL row and nothing else.
+     * The alert is sent without consulting either, exactly as the host sends
+     * one without consulting syscheck.file_limit -- see
+     * container_should_report_events() for why that asymmetry is the intended
+     * behaviour rather than an oversight to be tidied away.
+     *
      * Deletes are exempt: container_budget_decide() answers a delete with the
      * row's own stored flag, so a row the manager never saw still reports no
      * deletion, and one it did see is still withdrawn. Suppressing that would
@@ -836,6 +842,26 @@ static const char* CONTAINER_FIM_EVENT_TYPE[] = {
  * here happens-before every read of it. */
 static int container_notify_scan = -1;
 
+/* The ONLY thing standing between a detected change and its alert, and that is
+ * deliberate: neither the document budget nor the admission set is consulted
+ * here, although both are consulted for the stateful row in
+ * container_row_sync_flag().
+ *
+ * It reads like an inconsistency and is not one -- it is what the host already
+ * does. There, `sync_flag` is decided against syscheck.file_limit
+ * (file/file.c:317) while the alert is sent on `notify_scan != 0 &&
+ * report_event` alone (file/file.c:178 and :477), with the limit nowhere in
+ * the condition. So a host file past the document limit still alerts; it
+ * simply contributes no row to wazuh-states-fim-files.
+ *
+ * The rule that produces is worth stating plainly, because a later reader will
+ * be tempted to "fix" this into agreement: a limit bounds STATE, never
+ * DETECTION. Making the alert respect the budget would mean a container that
+ * exhausted its allowance stops reporting changes entirely -- a silent
+ * detection gap, configured by something an operator set to bound a database.
+ *
+ * The admission set has no host counterpart, there being no host admission,
+ * but it sits on the same side of the line: it withholds rows, not alerts. */
 static int container_should_report_events(void)
 {
     if (container_notify_scan < 0) {
