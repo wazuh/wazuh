@@ -1,0 +1,9 @@
+- name: rpm_ndb_database_is_inventoried
+  description: An image whose package database is an rpm ndb one under /usr is inventoried with its packages
+  configuration_parameters:
+    SCAN_ON_START: 'yes'
+    INTERVAL: 1h
+    ARCHIVE_PATH: /tmp/wazuh-container-images/oci-rpm-ndb
+  metadata:
+    package_format: rpm
+    database_format: ndb
