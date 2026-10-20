@@ -17,11 +17,11 @@ consumers of the indexer, one consumer at a time, with:
 
 The design is in `planes/18-indexer_connector_v2/03-diseno.md` §1–§4 (outside the repository).
 
-**Status: E3a — write admission, buckets and scheduling on top of the internal transport; nothing is sent to the indexer yet, no public query API.** The public headers, the
+**Status: E3b-1 — write admission, buckets and scheduling on top of the internal transport, plus the bulk-response classifier and the retry lane (not called yet); nothing is sent to the indexer yet, no public query API.** The public headers, the
 configuration schema, the runtime lifecycle (threads, owner thread, shutdown deadline), the test
 helpers, the internal curl [Transport](#transport-internal-e2a-1-and-e2a-2) (HTTP, HTTPS, credentials), the
 [node health probe](#node-health-e2b) and the [write path](#write-path-e3a) (encoding, quota charge, overflow policies, DRR scheduler,
-resolution) exist, and the transport has been [benchmarked against the v1](#benchmark). `Writer::submit` admits and schedules
+resolution) exist, the [response classifier and retry lane](#response-classification-and-retry-lane-e3b-1) are written and tested but not wired, and the transport has been [benchmarked against the v1](#benchmark). `Writer::submit` admits and schedules
 writes but no bulk is sent: the production sink resolves every operation `Failed(Unavailable)`. The query interface still
 sends nothing; see [What is not implemented yet](#what-is-not-implemented-yet).
 `indexer_connector` keeps working untouched until each consumer migrates.
@@ -509,7 +509,7 @@ One `Scheduler` per runtime, created after the loops exist. All its state (ring,
 from network loop 0, as the `Prober` does; other threads only append to a notification list and post a pass.
 
 - **Thresholds.** A bucket is eligible when its pending bytes reach `bulk.maxBytes`, its pending operations reach `bulk.maxDocs`
-  or its oldest pending operation is `bulk.maxAge` old (`Bucket::eligible`; E3b will add backoff and the retry lane).
+  or its oldest pending operation is `bulk.maxAge` old, or its retry-lane head is due (`Bucket::eligible(now)`; see [the retry lane](#response-classification-and-retry-lane-e3b-1)).
 - **Notifications.** `enqueue` tells the scheduler when the bucket goes from empty to non-empty or crosses `maxBytes` or `maxDocs`
   (`>=`), deduplicated by an atomic flag. Notifications posted while a pass is queued coalesce into that pass.
 - **`maxAge` timers.** Each bucket has an asio timer armed for its oldest pending operation plus `maxAge`, and re-armed after every
@@ -531,7 +531,7 @@ from network loop 0, as the `Prober` does; other threads only append to a notifi
 until `WritePath::sinkReady()`), `dispatch(Batch)` (on loop 0; each operation must be resolved exactly once through
 `WritePath::resolve`, from any thread) and `stop()` (afterwards no batch is accepted; what the sink still holds is resolved by the
 shutdown sweep). **Production: `Failed(Unavailable)`** with the reason `no bulk sender yet (E3b)`, unbounded capacity: what the
-stub writer of E1 answered. E3b replaces it with the bulk sender and E5's limiter becomes its capacity. The component suites
+stub writer of E1 answered. E3b-2 replaces it with the bulk sender and E5's limiter becomes its capacity. The component suites
 install a programmable sink through `detail::write::runtimeWritePath()->setSink(...)`.
 
 ### Resolution
@@ -561,6 +561,106 @@ inline. `Dropped(ClientClosed)` and `Dropped(Shutdown)` are also counted per cli
   batch or timer afterwards) -> `sink.stop()` -> every operation still unresolved, pending or delivered, resolves
   `Dropped(Shutdown)` while the pool still accepts tasks. Only then the node-health prober, the transport, the loops and the
   CPU pool stop, as described in [Node health](#node-health-e2b).
+
+### Response classification and retry lane (E3b-1)
+
+E3b-1 adds the two pieces the bulk sender (E3b-2) is built from: a pure **classifier** of a `_bulk` response and the bucket's **retry
+lane**. **Nothing in production calls either yet**: the sender that does arrives in E3b-2, and until then the production sink still
+resolves every operation `Failed(Unavailable)`. Both are exercised only by the component suites (see [Build and tests](#build-and-tests)).
+
+**Classifier** (`src/write/response.{hpp,cpp}`). It returns verdicts and applies no policy; it names no bucket type, so E4 can reuse
+the request classifier. Two steps over one response:
+
+`classifyRequest(HttpResult, batchSize)` returns a `RequestOutcome{verdict, cause, httpStatus, reason, retryAfter, mayHaveSent}`:
+
+| Response | Verdict | Cause / note |
+|---|---|---|
+| `Timeout`, `Connect`, `SendError`, `RecvError`, `PartialResponse`, `Tls` (node-attributable) | `Failover` | `mayHaveSent` is copied from the `HttpResult`: E3b-2 counts an attempt only when it is set |
+| `TlsConfig`, `LocalError` | `Retry` | |
+| `Cancelled`, `Shutdown` | `Ignore` | The shutdown sweep resolves the operations |
+| 429 | `Throttled` | `Cause::Throttled`; `retryAfter` when the transport parsed one |
+| 413 | `Split` (more than one operation) | `Cause::PayloadTooLarge`; with one operation `FailBatch(PayloadTooLarge)` |
+| `ResponseTooLarge` | `Split` (more than one operation) | With one operation `FailBatch(ItemPermanent)`, reason `response over maxResponseBytes` |
+| 408 | `Retry` | `TransportTimeout` |
+| 5xx | `Retry` | `Server5xx` |
+| 401, 403 | `Retry` | `Client4xx` (see the deviation below) |
+| 3xx (curl does not follow redirects) | `FailBatch` | `Client4xx`, reason `unexpected 3xx` |
+| any other 4xx, a request-level 409 included | `FailBatch` | `Client4xx` |
+| 2xx | `Items` | |
+| a status outside the table (1xx, 600 and above) | `Retry` | `Server5xx`, reason `unexpected status`: bounded by `maxAttempts` instead of dropped |
+
+**Deviation from RF-9 (and from design §4.5).** RF-9 says a 4xx is permanent; 401 and 403 are **retryable** here, because the node
+probe already marks the node `Down` for them and discarding data over credentials would be silent. The requirement and the design
+are amended when E3b-2 closes.
+
+`classifyItems(std::string& body, expected)` reads a 2xx body item by item and returns one `ItemResult{verdict, outcome, httpStatus,
+itemErrorType, reason}` per operation, or `nullopt` when the body is unreadable or does not hold exactly `expected` items (E3b-2
+retries that with an attempt). `"errors":false` is never used to skip anything: **every item is classified**, so a success
+is always read from its own status. The position decides the match (item i is operation i); the item's key (`index`, `create`,
+`delete` or `update`) only matters for the `delete` rule. An item with no key, more than one key or no `status` is `Permanent` with
+reason `malformed item`.
+
+| Item | Verdict | Note |
+|---|---|---|
+| 2xx | `Ok` | `outcome` from `result`: `created`, `updated`, `noop`, `deleted` |
+| `delete`, 404, `result: not_found`, no `error` | `NotFound` | Idempotent success (`ItemOutcome::NotFound`) |
+| 404 with `index_not_found_exception`, any other 404 | `Permanent` | |
+| 429, 5xx, `cluster_block_exception`, `es_rejected_execution_exception` | `Retry` | |
+| 409 with `version_conflict_engine_exception` | `Conflict` | Status and error type are kept: the bucket's `ConflictPolicy` decides in E3b-2 (`Success` turns it into `Ok`; `ConflictPolicy::Retry` is E3c) |
+| 409 of another type, any other 4xx, a status outside the table | `Permanent` | |
+
+`itemErrorType` is truncated to 64 B and `reason` to 512 B (never inside a UTF-8 sequence); the `caused_by` error is appended to the
+`reason` as `; caused by <type>: <reason>`.
+
+**Parser memory (I65).** The parser is simdjson's *ondemand* one (no DOM), one per pool thread, and it is rebuilt after a parse
+when its capacity is above **4 MiB**, so a single large response does not pin memory on a pool thread for the runtime's lifetime
+(`ParserMemoryBounded`). ondemand needs `SIMDJSON_PADDING` readable bytes after the body: the transport reserves
+`RESPONSE_PADDING` (64) bytes once, when a transfer completes and before the body moves into the `HttpResult`
+(`src/transport/curlLoop.cpp`), so `classifyItems` normally copies nothing; it only reserves them itself when a body arrives without
+(`std::string&` is mutable for that reason; the content never changes). `testing_hooks::parserCapacity()` exists in the test build only.
+
+**Risk D44.** Only simdjson's stage 2 (the header-side iteration: skipping, unescaping, number parsing) is compiled without
+`-march` and runs the scalar `fallback` code; stage 1 (structural indexing and UTF-8 validation) runs the archive's
+runtime-dispatched kernel (haswell, icelake, westmere). The 0.3 s per 8 MiB seen so far is a Debug (-O0) figure. Deferred to E5:
+measure big responses in Release with `bench --path client` before multiversioning `response.cpp` (which would only speed up
+stage 2) or moving to the dispatched DOM with a bounded parser.
+
+**Retry lane** (`src/write/bucket.{hpp,cpp}`, I66). `OpState` gains `firstAttempt` (set by the first `slice`), `notBefore`,
+`batchCap` (bytes, 0 = no cap) and the last error (`lastCause`, `lastHttpStatus`, `lastItemErrorType`, `lastReason`).
+`Bucket::requeue(ops, RequeueSpec, now)` moves delivered operations back, under one lock per call, and returns a
+`RequeueResult{notify, exhausted, closed}`. `RequeueSpec{countAttempt, delay, at, toHead, halve}` is what E3b-2 will pass:
+
+| Use (E3b-2) | `RequeueSpec` |
+|---|---|
+| Failover | `{countAttempt = mayHaveSent, Now}` |
+| 429 | `{false, At(node notBefore)}` |
+| Retryable error | `{true, Backoff}` |
+| Split (413, `ResponseTooLarge`) | `{false, Now, toHead, halve}` |
+
+- **Backoff.** `d = min(cap, base * 2^(attempts - 1))` with a bounded exponent (`d = cap` as soon as the exponent would reach it), then
+  `notBefore = now + d * (1 + jitter * u)` with `u` uniform in [-1, 1], never above `cap`. The jitter is drawn once per call, so the
+  operations of one batch stay together. `base`, `cap` and `jitter` are the bucket's `RetryPolicy`.
+- **Exhaustion.** An operation is exhausted when `attempts >= maxAttempts` or `now - firstAttempt >= maxDuration`; an unset bound
+  (`nullopt`) never exhausts. `maxDuration` counts from the **first send**, not from the queueing, so time spent waiting in the
+  queue is not spent budget (`MaxDurationCountsFromFirstSend`). Exhausted operations are returned in `exhausted` for the caller to
+  resolve `Failed(RetryExhausted)` with their last status, error type and reason.
+- **`halve` and `batchCap`.** After a 413 or `ResponseTooLarge` the two halves must not merge again: `halve` sets
+  `batchCap = ceil(batch bytes / 2)` on the requeued operations, and `slice` stops before exceeding the smallest `batchCap` of what it
+  has taken (`SplitHalvesNeverRemerge`).
+- **Lane before pending.** The lane is ordered by `notBefore` and goes **before** the pending queue. `eligible(now)` is the
+  thresholds or a due lane head; `headBytes(now)` and `slice(credit, now)` take the due lane first and then the pending queue (a
+  batch may hold both); `empty()` means no pending operation and an empty lane; `nextDue(now)` is the minimum of the oldest
+  pending operation plus `maxAge` and the lane head. A lane that is not yet due makes the bucket neither eligible nor stuck in the
+  ring (`LaneBeforePending`, through the real scheduler). `oldestPending()` is **provisional**: it also reports the lane head minus
+  `maxAge` so the current `armTimer` wakes on time; E3b-2 moves the timer to `nextDue()`.
+- **Close and sweep.** An operation requeued into a closed bucket is returned in `closed` (to resolve `Dropped(closedCause)`);
+  `close()` returns the lane and then the pending operations; operations already `claimed` are skipped. The `exhausted` and `closed`
+  ones stay in the delivered set until the caller resolves them, so the shutdown sweep still sees them. `notify` is set when the lane
+  was empty or its head moved earlier.
+- **Quota and overflow.** The charge does not change while an operation sits in the lane (RF-12), and `DropOldest` evicts only
+  pending operations, never one in the lane (`DropOldestSparesRetryLane`).
+
+The scheduler passes its `now` to `eligible`, `headBytes` and `slice`; that is the only change to its code.
 
 ## Logging
 
@@ -689,6 +789,10 @@ a real indexer and network RTT may differ (one RTT per bulk), so E6 confirms it 
 
 ## Linking
 
+simdjson (the bulk-response classifier) is linked **statically** into the `.so` and into `indexer_client_testing`, from the
+prebuilt archive `src/external/simdjson/build/libsimdjson.a` that the v1 also links (`CMakeLists.txt:82-95`). `--exclude-libs,ALL`
+keeps its symbols local: `nm -D` of the `.so` shows no `simdjson::`.
+
 curl and OpenSSL come **only** through `libwazuhext.so` (`target_link_libraries(indexer_client
 PRIVATE wazuhext …)`). The library never links `ext_curl`, the static archive: the process holds a
 single curl and OpenSSL. Only curl's headers are taken from `src/external/curl/include`. The `.so`
@@ -739,6 +843,20 @@ installed through `WritePath::setSink`, a callback result log). Every case ends 
 | `writeClose_test.cpp` | `SubmitRacesClose`, `CloseAndShutdownResolveRetained`, `ShutdownWithHeldBatch`, `DefaultSinkUnavailable` |
 | `writeReserve_test.cpp` | `ResultReserveMeasured` (allocation counter; skipped under ASAN/TSAN) |
 
+**E3b-1 suites** (component, `tests/component/`; neither needs a real indexer):
+
+| File | Cases |
+|---|---|
+| `responseClassify_test.cpp` | `ClassifyRequestMatrix`, `ClassifyItemsMatrix`, `ClassifyDeleteNotFound`, `ClassifyConflict`, `ClassifyUnreadableOrMismatch`, `ClassifyReasonBounded`, `ParserMemoryBounded`, `TransportBodyPadded` |
+| `writeRetryLane_test.cpp` | `RequeueBackoffAndExhaust`, `MaxDurationCountsFromFirstSend`, `RequeueSpecs`, `SplitHalvesNeverRemerge`, `CloseReturnsLaneAndPending`, `RequeueOnClosedBucket`, `DropOldestSparesRetryLane`, `NextDueAndEmpty`, `LaneBeforePending`, `RetryLaneInvariantsUnderRace` |
+
+**Fake `_bulk` responder.** `tests/fake/bulkResponder.hpp` (a dynamic `Rule`, `Rule::dynamic` in `fakeIndexer.hpp`) answers `POST /_bulk`
+with **one item per operation received**, driven by a script by position (status, key, `result`, `error.type` and `reason`,
+`caused_by`), with `errors` kept coherent. It can also serve an unreadable body, one item too many or too few, or a whole-request
+answer (413, 429 with `Retry-After`, 5xx, 401), queue scripts, and hold an answer until released. Its own tests are in
+`tests/unit/fakeBulk_test.cpp` (`FakeBulkResponder.*`, `FakeBulkResponderRules.CoexistsWithStaticRules`,
+`FakeBulkResponderRender.ItemsWithoutHttp`).
+
 The unit suite also covers the registration rule (`BucketSpecTest.InvalidBulkMaxBytesPlusReserveAboveQuota`) and the production
 sink through the public API (`BucketSpecTest.WriterSubmitResolvesUnavailable`).
 
@@ -774,12 +892,14 @@ Layout of `tests/`: `unit/` (config schema, key-value source, mocks, fake indexe
 ## What is not implemented yet
 
 E1 delivered the skeleton, E2a-1 the internal `http` transport, E2a-2 TLS and credentials, E2b node health and logging, E2c the
-transport [benchmark](#benchmark) (done; the `--path client` benchmark of the whole client arrives with E5) and E3a the
-[write path](#write-path-e3a) up to the sink. Not implemented, by stage:
+transport [benchmark](#benchmark) (done; the `--path client` benchmark of the whole client arrives with E5), E3a the
+[write path](#write-path-e3a) up to the sink and E3b-1 the [response classifier and retry lane](#response-classification-and-retry-lane-e3b-1)
+(written and tested, not called). Not implemented, by stage:
 
 | Area | Stage |
 |---|---|
-| Bulk building and sending, per-item classification, retry lane and backoff, HTTP 413 handling, failover to another node, the wait of an ambiguous `ordered` bucket (they will use `generation()` and `onTransition`) | E3b |
+| The bulk sender (`BulkSink`) that builds and sends bulks and applies the classifier's verdicts and the conflict policy, the per-node window and `notBefore`, scheduler wake-ups, failover to another node, the timer on `nextDue()`, end-to-end suites over the real transport and the re-measured `RESULT_RESERVE` | E3b-2 |
+| The wait of an ambiguous `ordered` bucket (it will use `generation()` and `onTransition`), `ConflictPolicy::Retry` | E3c |
 | `Group` (atomic groups), `ordered` buckets, `cancel(tag)`, `WriteMode::ReplacePreserving` | E3c |
 | Reads answering `Unavailable` when no node is usable | E4 |
 | Queries: `search`, `searchAfter`, PIT, `deleteByQuery`, `updateByQuery`, `indexExists` | E4 |
@@ -788,6 +908,6 @@ transport [benchmark](#benchmark) (done; the `--path client` benchmark of the wh
 | Metrics beyond the thread layout in `MetricsSnapshot` | E5 |
 | Migration of the four consumers off `indexer_connector` | later stages |
 
-Until then no write reaches an indexer: `submit` admits, charges and schedules, and the production sink resolves every operation
+Until then no write reaches an indexer: `submit` admits, charges and schedules, nothing calls the classifier or the retry lane, and the production sink resolves every operation
 `Failed(Unavailable)`. `group()`, `cancel()` and the query interface are stubs. The only traffic is the health probe; nothing public
 calls the transport yet.

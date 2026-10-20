@@ -61,9 +61,59 @@ namespace indexer_client::detail::write
         std::shared_ptr<TicketState> ticket;
         Callback callback;
         std::atomic<bool> claimed {false}; ///< Resolution is first-wins (sink, sweep, eviction).
-        std::uint32_t attempts {0};        ///< E3b.
+        std::uint32_t attempts {0};        ///< Counted retries (E3b-1 I66).
         TimePoint firstSubmit {};
+        TimePoint firstAttempt {};  ///< Set by the first slice(): maxDuration counts from the first send (I66).
+        TimePoint notBefore {};     ///< In the retry lane: not sent before this.
+        std::uint64_t batchCap {0}; ///< After a split (413): a batch holding this op stays under it; 0 = no cap.
+        /// The last error, for Failed(RetryExhausted) (I66).
+        Cause lastCause {Cause::None};
+        int lastHttpStatus {0};
+        std::string lastItemErrorType;
+        std::string lastReason;
         std::weak_ptr<Bucket> bucket;
+    };
+
+    /// The error an op is requeued after (copied into OpState::last*).
+    struct LastError final
+    {
+        Cause cause {Cause::None};
+        int httpStatus {0};
+        std::string itemErrorType;
+        std::string reason;
+    };
+
+    struct RequeueOp final
+    {
+        std::shared_ptr<OpState> op;
+        LastError lastError;
+    };
+
+    /// How a batch's ops go back to the retry lane (E3b-1 I66). E3b-2's uses: failover {mayHaveSent, Now}; request 429
+    /// {false, At(nodeNotBefore)}; retryable error {true, Backoff}; split {false, Now, toHead, halve}.
+    struct RequeueSpec final
+    {
+        enum class Delay
+        {
+            Backoff, ///< The bucket's RetryPolicy backoff for the op's (new) attempt count.
+            At,      ///< `at`.
+            Now
+        };
+        bool countAttempt {true};
+        Delay delay {Delay::Backoff};
+        TimePoint at {};
+        bool toHead {false}; ///< Before every other lane op (a split's halves); implies Now (notBefore = now).
+        bool halve {false};  ///< Sets batchCap = ceil(batch bytes / 2) on the requeued ops (413, ResponseTooLarge).
+    };
+
+    struct RequeueResult final
+    {
+        bool notify {false}; ///< The lane was empty or its head moved earlier: the caller notifies the scheduler.
+        /// Retry budget spent: the caller resolves them Failed(RetryExhausted) with their last error. Still in the
+        /// delivered set until resolved.
+        std::vector<std::shared_ptr<OpState>> exhausted;
+        /// The bucket is closed: the caller resolves them Dropped(closedCause()). Still in the delivered set.
+        std::vector<std::shared_ptr<OpState>> closed;
     };
 
     /// What the scheduler hands to the sink.
@@ -145,28 +195,48 @@ namespace indexer_client::detail::write
 
         // ---- scheduler (loop 0 only)
 
-        /// Some threshold reached at `now`: pending bytes >= maxBytes, pending docs >= maxDocs, or the oldest pending
-        /// op older than maxAge. E3b extends it (retry lane, backoff).
+        /// Some threshold reached at `now`: the retry-lane head is due (notBefore <= now), pending bytes >= maxBytes,
+        /// pending docs >= maxDocs, or the oldest pending op older than maxAge.
         bool eligible(TimePoint now) const;
+        /// The instant that, plus bulk.maxAge, is nextDue(): the oldest pending op's firstSubmit, or the retry-lane
+        /// head's notBefore - maxAge when that is earlier (the scheduler arms its timer at oldestPending() + maxAge).
         std::optional<TimePoint> oldestPending() const;
-        std::uint64_t headBytes() const; ///< Wire size of the next pending op; 0 when empty.
+        /// Wire size of the next op a slice at `now` would take (due lane head first, else the pending head); 0 if
+        /// none.
+        std::uint64_t headBytes(TimePoint now) const;
+        /// No pending op and an empty retry lane.
         bool empty() const;
-        /// Takes whole ops from the head while their wire bytes fit in `credit`, bulk.maxBytes and bulk.maxDocs; at
-        /// least one op if `credit >= headBytes()`. The ops move to the delivered set (counted as retained).
-        Batch slice(std::uint64_t credit);
+        /// When this bucket next needs a pass: min(oldest pending + maxAge, retry-lane head notBefore); nullopt if
+        /// empty.
+        std::optional<TimePoint> nextDue(TimePoint now) const;
+        /// Takes whole ops, the due retry lane first and then the pending queue (one batch may mix both), while their
+        /// wire bytes fit in `credit`, bulk.maxBytes, bulk.maxDocs and the smallest batchCap of the ops taken; at least
+        /// one op if `credit >= headBytes(now)`. Sets firstAttempt (when unset) to `now`. The ops move to the delivered
+        /// set (counted as retained).
+        Batch slice(std::uint64_t credit, TimePoint now);
+
+        // ---- retry lane (E3b-1 I66; any thread, one lock per call)
+
+        /// Moves delivered ops back to the retry lane (ahead of the pending queue, ordered by notBefore) per `spec`, or
+        /// returns them as exhausted / closed; skips ops already claimed and ops not in the delivered set. Every op
+        /// handled takes `lastError` into OpState::last*. Charge unchanged (RF-12). Exhausted: attempts >= maxAttempts
+        /// or now - firstAttempt >= maxDuration (an unset bound never exhausts). A Backoff jitter is drawn once per
+        /// call, so the ops of one batch stay together.
+        RequeueResult requeue(std::vector<RequeueOp> ops, const RequeueSpec& spec, TimePoint now);
         /// Clears the dedup flag set by enqueue (the scheduler consumed the notification).
         void clearNotified() noexcept;
 
         // ---- resolution and close (any thread)
 
-        /// Releases an op's payload (once per op) and wakes blocked producers. Called by the resolution path.
+        /// Releases an op's payload (once per op) and wakes blocked producers; an op still in the retry lane leaves it.
+        /// Called by the resolution path.
         void releasePayload(OpState& op);
         /// Releases one RESULT_RESERVE (after the callback ran, or when the last Ticket died).
         void releaseReserve();
         /// Stops admission with `cause` (ClientClosed or Shutdown; the first close fixes the cause), wakes every
-        /// blocked producer and returns the pending ops (not those delivered to the sink) for the caller to resolve
-        /// Dropped(cause). Callable again: each call hands back what is pending then. Their payload stays charged
-        /// until the resolution releases it.
+        /// blocked producer and returns the retry lane and then the pending ops (not those delivered to the sink) for
+        /// the caller to resolve Dropped(cause). Callable again: each call hands back what is queued then. Their
+        /// payload stays charged until the resolution releases it.
         std::vector<std::shared_ptr<OpState>> close(Cause cause);
         /// The close cause, or nullopt while the bucket admits.
         std::optional<Cause> closedCause() const;
@@ -188,6 +258,12 @@ namespace indexer_client::detail::write
         /// `globalSurplus` = evicted payload not reused by the new op, to release after the mutex is dropped.
         bool evictOldestLocked(std::uint64_t charge, Reservation& reservation, std::uint64_t& globalSurplus);
         void addChargeLocked(std::uint64_t bytes) noexcept;
+        /// The retry-lane head is due at `now`; m_mutex held.
+        bool laneDueLocked(TimePoint now) const;
+        /// min(oldest pending + maxAge, retry-lane head notBefore); m_mutex held.
+        std::optional<TimePoint> nextDueLocked() const;
+        /// Inserts a non-toHead op into the retry lane by notBefore (stable); m_mutex held.
+        void insertLaneLocked(std::shared_ptr<OpState> op);
 
         const std::string m_consumer;
         const BucketSpec m_spec;
@@ -196,6 +272,7 @@ namespace indexer_client::detail::write
         mutable std::mutex m_mutex;
         std::condition_variable m_room;
         std::deque<std::shared_ptr<OpState>> m_pending;
+        std::deque<std::shared_ptr<OpState>> m_lane; ///< Retry lane, ordered by notBefore (toHead ops first).
         std::unordered_map<const OpState*, std::shared_ptr<OpState>> m_delivered; ///< Removed by releasePayload.
         std::uint64_t m_pendingBytes {0};
         std::uint64_t m_charge {0};
