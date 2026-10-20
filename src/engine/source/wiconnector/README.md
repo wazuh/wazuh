@@ -51,9 +51,13 @@ Internally the module wraps an asynchronous `IndexerConnectorAsync` instance (fr
 To prevent **TOCTOU (time-of-check time-of-use) races** between policy/IOC hash validation and subsequent data download, the connector implements **consumer validation within a PIT snapshot**. When downstream modules (`cmsync`, `iocsync`) pass a `consumerIdToValidate` parameter:
 
 1. A **multi-index PIT** is created that includes both the data index AND `.wazuh-cti-consumers`.
-2. Within the same PIT snapshot, the consumer document is queried and validated to be in the `idle` status.
-3. If the consumer is not idle, the method returns `std::nullopt` (graceful skip — data download is deferred).
-4. If the consumer is idle, data retrieval proceeds within the same PIT, guaranteeing consistency.
+2. Within the same PIT snapshot, the consumer document is queried and validated to be in the `ready` status.
+3. If the consumer is not ready, the method returns `std::nullopt` (graceful skip — data download is deferred). A missing consumer document inside the PIT is an error (`IndexerConnectorException`).
+4. If the consumer is ready, data retrieval proceeds within the same PIT, guaranteeing consistency.
+
+Before the PIT, `isConsumerReadyForSync(consumerId)` is a cheap pre-flight check. It reads the consumer document directly (no PIT) and returns `true` only for `status == "ready"` and `local_offset != 0`.
+- It returns `false` when the document or the `.wazuh-cti-consumers` index is missing; the index answers 404 `index_not_found_exception`, which `IndexerConnectorException::statusCode()` identifies.
+- It throws on any other error (transport, 429, 5xx, 401/403), so the caller's retry covers it.
 
 This pattern is used by:
 - `getPolicy()` — validates `STANDARD_RULESET_CONSUMER_ID` before fetching policy resources.
@@ -94,9 +98,9 @@ The private `queryByBatches()` method provides a reusable pagination loop used b
 - An `onDocument` callback invoked for each hit.
 - An optional source filter for field-level projection.
 - An **optional `consumerIdToValidate`** parameter:
-  - When provided: PIT is created over both the data index AND `.wazuh-cti-consumers`; consumer is validated to be `idle` before pagination begins.
+  - When provided: PIT is created over both the data index AND `.wazuh-cti-consumers`; consumer is validated to be `ready` before pagination begins.
   - When not provided: PIT is created over the data index only; no consumer validation.
-  - **Returns `std::optional<std::size_t>`**: `std::nullopt` if consumer not idle, otherwise the number of documents processed.
+  - **Returns `std::optional<std::size_t>`**: `std::nullopt` if consumer not ready, otherwise the number of documents processed.
 
 ### Well-Known Indices
 
@@ -269,8 +273,8 @@ Acquires shared lock, delegates to `IndexerConnectorAsync::indexDataStream()`. E
 
 1. **When `consumerIdToValidate` is provided** (typically `STANDARD_RULESET_CONSUMER_ID`):
    - Opens a **multi-index PIT** including all 4 policy aliases AND `.wazuh-cti-consumers`.
-   - Validates consumer is `idle` within the PIT snapshot.
-   - Returns `std::nullopt` if consumer not idle (cmsync skips sync cycle).
+   - Validates consumer is `ready` within the PIT snapshot.
+   - Returns `std::nullopt` if consumer not ready (cmsync skips sync cycle).
 2. **Otherwise** (no consumer validation):
    - Opens a PIT across all 4 policy aliases only.
 3. Paginates through results using `search_after` cursors.
@@ -283,9 +287,9 @@ Acquires shared lock, delegates to `IndexerConnectorAsync::indexDataStream()`. E
 
 **When `consumerIdToValidate` is provided** (typically `STANDARD_RULESET_CONSUMER_ID`):
 - Creates a multi-index PIT including both `wazuh-threatintel-policies` AND `.wazuh-cti-consumers`.
-- Validates consumer is `idle` within the PIT snapshot.
+- Validates consumer is `ready` within the PIT snapshot.
 - Queries policy within the same PIT to guarantee consistency.
-- Returns `std::nullopt` if consumer not idle.
+- Returns `std::nullopt` if consumer not ready.
 
 **Otherwise** (no consumer validation):
 - Performs a direct search without PIT.
@@ -297,8 +301,8 @@ Returns the hash and `enabled && hasIntegrations`.
 Uses `queryByBatches()` with a `term` query on `document.type`, projecting only the 12 IOC source fields. For each hit, extracts `document.name` as key and the serialised `document` as value, invoking the callback.
 
 **With consumer validation**:
-- If `consumerIdToValidate` is provided (typically `IOC_ENRICHMENT_CONSUMER_ID`), validates the consumer is idle before streaming.
-- Returns `std::nullopt` if the consumer is not idle (allowing `iocsync` to skip the sync cycle).
+- If `consumerIdToValidate` is provided (typically `IOC_ENRICHMENT_CONSUMER_ID`), validates the consumer is ready before streaming.
+- Returns `std::nullopt` if the consumer is not ready (allowing `iocsync` to skip the sync cycle).
 - Returns `std::nullopt` if consumer validation fails with an exception.
 
 **Without consumer validation**:
@@ -308,9 +312,9 @@ Uses `queryByBatches()` with a `term` query on `document.type`, projecting only 
 
 **When `consumerIdToValidate` is provided** (typically `IOC_ENRICHMENT_CONSUMER_ID`):
 - Creates a multi-index PIT including both `wazuh-threatintel-enrichments` AND `.wazuh-cti-consumers`.
-- Validates consumer is `idle` within the PIT snapshot.
+- Validates consumer is `ready` within the PIT snapshot.
 - Queries IOC hashes within the same PIT to guarantee consistency.
-- Returns `std::nullopt` if consumer not idle (iocsync skips sync cycle).
+- Returns `std::nullopt` if consumer not ready (iocsync skips sync cycle).
 
 **Otherwise** (no consumer validation):
 - Queries directly without PIT.
