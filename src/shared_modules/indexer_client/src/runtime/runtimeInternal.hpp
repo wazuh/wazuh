@@ -29,9 +29,16 @@
 #include "indexer_client/client.hpp"
 #include "indexer_client/types.hpp"
 
+namespace indexer_client::detail::write
+{
+    class Bucket;
+    class WritePath;
+} // namespace indexer_client::detail::write
+
 namespace indexer_client::detail
 {
     struct RuntimeState;
+    struct ClientState;
 
     /// Releases a consumer name so that a later client may reuse it. No-op if the runtime is gone or restarted.
     void releaseClientName(const std::weak_ptr<RuntimeState>& runtime, std::uint64_t epoch, const std::string& name);
@@ -91,6 +98,12 @@ namespace indexer_client::detail
 
     struct TicketState final : Completion<OpResult>
     {
+        /// E3a (I62): the op's RESULT_RESERVE when it has no callback; its destructor returns the reserve to the
+        /// bucket, so the reserve lives as long as the last Ticket. Never dropped while holding a bucket mutex.
+        std::shared_ptr<void> resultReserve;
+        /// The submitting client, for the completion accounting of WritePath::resolve (outstandingCompletions and
+        /// the CloseReport counters). Weak: a ticket never keeps its client alive.
+        std::weak_ptr<ClientState> client;
     };
 
     struct CancelState final : Completion<Unit>
@@ -119,6 +132,18 @@ namespace indexer_client::detail
         std::uint64_t epoch {0};
         std::string consumer;
         std::vector<BucketSpec> buckets;
+        /// E3a: the client's buckets, in the order of `buckets` (created by WritePath::registerClient).
+        std::vector<std::shared_ptr<write::Bucket>> bucketStates;
+        /// E3a (I63): completions posted to the pool and not yet finished (callback run, reserve released);
+        /// awaitClosed waits on it and reports the rest as CloseReport.callbacksInFlight.
+        std::mutex completionsMutex;
+        std::condition_variable completionsDone;
+        std::uint64_t outstandingCompletions {0};
+        /// E3a: ops of this client resolved Dropped(ClientClosed) / Dropped(Shutdown) (CloseReport).
+        std::atomic<std::uint64_t> droppedClientClosed {0};
+        std::atomic<std::uint64_t> droppedShutdown {0};
+        /// E3a: the runtime's write path (set by RuntimeRef::client); weak, like `runtime`.
+        std::weak_ptr<write::WritePath> writePath;
         Duration drain {Duration {10000}};
         std::atomic<bool> closeRequested {false};
         std::atomic<bool> nameReleased {false};
@@ -136,6 +161,15 @@ namespace indexer_client::detail
             releaseName();
         }
     };
+
+    /// The CPU pool's queue (E3a, NoDropWithoutCounter): tasks posted and not yet taken by a worker, and the peak
+    /// since the runtime started. Zeros when no runtime runs. Internal access (component suite).
+    struct PoolStats final
+    {
+        std::uint64_t postsPending {0};
+        std::uint64_t peakPostsPending {0};
+    };
+    PoolStats runtimePoolStats();
 
     /// E1 stubs: every data-path operation is Cause::Unavailable until E3b/E4 replace them.
     std::shared_ptr<IWriter> makeStubWriter(std::shared_ptr<ClientState> client, std::string bucket);

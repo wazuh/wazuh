@@ -28,6 +28,7 @@ namespace
     std::function<void()> g_beforeRetryAfterParse;
     std::function<void(std::uint64_t, std::uint64_t)> g_onTimerHandler;
     std::function<std::optional<int>()> g_openSocket;
+    std::function<void()> g_afterAdmission;
 
     template<class F>
     F copyOf(const F& hook)
@@ -89,6 +90,14 @@ namespace indexer_client::detail::seams
         auto hook = copyOf(g_openSocket);
         return hook ? hook() : std::nullopt;
     }
+
+    void afterAdmission()
+    {
+        if (auto hook = copyOf(g_afterAdmission))
+        {
+            hook();
+        }
+    }
 } // namespace indexer_client::detail::seams
 
 namespace indexer_client::testing_hooks
@@ -117,6 +126,10 @@ namespace indexer_client::testing_hooks
     {
         store(g_openSocket, std::move(hook));
     }
+    void setAfterAdmission(std::function<void()> hook)
+    {
+        store(g_afterAdmission, std::move(hook));
+    }
     void resetAll()
     {
         {
@@ -127,6 +140,7 @@ namespace indexer_client::testing_hooks
             g_beforeRetryAfterParse = {};
             g_onTimerHandler = {};
             g_openSocket = {};
+            g_afterAdmission = {};
         }
         setProbeAutoStart(true);
     }

@@ -33,6 +33,7 @@ namespace indexer_client::detail::seams
     std::optional<int> openSocket();                                      ///< CURL_SOCKET_BAD forces a connect failure.
     void onRuntimeThreadStart(pid_t tid);                                 ///< Each runtime thread, at start.
     void onPostRejected();                                                ///< A post refused by a closed loop.
+    void afterAdmission(); ///< E3a: in Writer::submit, between the bucket reservation and the enqueue.
 #else
     // always_inline: even at -O0 no out-of-line copy is emitted, so the .so carries no seams:: symbol (VisibilityTest).
     [[gnu::always_inline]] inline void afterAdmissionCheck() {}
@@ -49,6 +50,7 @@ namespace indexer_client::detail::seams
     }
     [[gnu::always_inline]] inline void onRuntimeThreadStart(pid_t) {}
     [[gnu::always_inline]] inline void onPostRejected() {}
+    [[gnu::always_inline]] inline void afterAdmission() {}
 #endif
 } // namespace indexer_client::detail::seams
 

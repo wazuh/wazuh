@@ -32,6 +32,7 @@ namespace indexer_client::testing_hooks
     void setBeforeRetryAfterParse(std::function<void()> hook);
     void setOnTimerHandler(std::function<void(std::uint64_t, std::uint64_t)> hook);
     void setOpenSocket(std::function<std::optional<int>()> hook);
+    void setAfterAdmission(std::function<void()> hook); ///< E3a: between reserve and enqueue in Writer::submit.
     /// false makes RuntimeOwner::start create the NodeSet and the Prober without starting the probe (no round, no
     /// timer; probeNow() still arms a single round): for the suites that count the transport's own traffic (E2a).
     /// Read once per start(); resetAll() restores the default, true.
