@@ -1,14 +1,14 @@
 # Container Images
 
-The **Container Images** module introduces agent-side support for collecting inventory from container images. The module discovers image references from configured image inputs on disk and inventories the packages their layers contain during periodic scans.
+The **Container Images** module introduces agent-side support for collecting inventory from container images. The module discovers image references from configured image inputs on disk and in GitHub Container Registry, and inventories the packages their layers contain during periodic scans.
 
 The module is implemented as an **agent-only** `wazuh-modulesd` module. It follows the same module layout used by other inventory components: a C glue layer handles configuration and lifecycle, while a C++ shared library contains the scan logic.
 
-> **Note:** This stage covers image discovery from saved archives and OCI image layouts, package extraction for the `dpkg` and `apk` formats, and local persistence of the inventory. RPM extraction, change events, manager synchronization, indexing, Vulnerability Detector integration, and the container engine and registry readers are not implemented yet.
+> **Note:** This stage covers image discovery from saved archives, OCI image layouts and GitHub Container Registry references, package extraction for the `dpkg`, `apk` and `rpm` (sqlite and ndb) formats, and local persistence of the inventory. Berkeley DB `rpm` databases, change events, manager synchronization, indexing, Vulnerability Detector integration, the container engine reader and registries other than GitHub Container Registry are not implemented yet.
 
 ## Overview
 
-Container Images scans configured image sources, stores what it finds in a local database, and reports the scan in the agent logs. The inputs are images on disk, which are read without a container daemon: saved image archives and OCI image layout directories.
+Container Images scans configured image sources, stores what it finds in a local database, and reports the scan in the agent logs. The inputs are read without a container daemon: saved image archives and OCI image layout directories on disk, and image references in GitHub Container Registry.
 
 ### Key Features
 
@@ -17,6 +17,7 @@ Container Images scans configured image sources, stores what it finds in a local
 - **Digest check**: An image still reporting the configuration digest already stored is not read again, so an unchanged image costs its metadata and nothing more.
 - **Read failure handling**: A reference that cannot be read keeps the inventory an earlier scan stored for it, instead of having it reported as deleted.
 - **Archive reader**: Reads saved image archives (`docker save`) and OCI image layout directories.
+- **Registry reader**: Reads image references in GitHub Container Registry, pinned by tag or by digest, with credentials taken from the agent credential store.
 - **Streaming layer reader**: Streams layer blobs, gzip-compressed, zstd-compressed or plain, without extracting an image to disk.
 - **Package extraction**: Composes the image layers in manifest order, applies the OverlayFS deletion markers, and parses the `dpkg` and `apk` databases.
 - **Format detection**: Detects the inputs and package formats that are not implemented yet, logs them, and continues.
@@ -40,7 +41,7 @@ Container Images scans configured image sources, stores what it finds in a local
 | Saved image archive | `<archive>` | Supported | The output of `docker save`, holding either an OCI layout or the older `manifest.json` layout. |
 | OCI image layout | `<archive>` | Supported | A directory containing an OCI image layout. |
 | Container engine store | `<local>` | Not implemented | Accepted by the configuration and reported. |
-| Remote registries | `<ref>` | Not implemented | Accepted by the configuration and reported. |
+| GitHub Container Registry | `<ref>` | Supported | An image reference pinned by tag or by digest. Other registries are refused. |
 
 ## Supported Package Formats
 
@@ -97,7 +98,7 @@ wazuh-modulesd:container_images: INFO: Scan ended. 1 references, 132 packages.
 
 ## Current Limitations
 
-- RPM package extraction is not implemented; an RPM-based image is inventoried with zero packages and a warning.
+- Berkeley DB `rpm` databases are not read; an image carrying only one is inventoried with zero packages and a warning.
 - Agent Sync Protocol synchronization is not implemented, so the stored inventory stays on the agent.
 - Vulnerability Detector integration is not implemented.
 - Remote images are read from GitHub Container Registry. Other registries, the container engine, Windows registry support, and Kubernetes integrations are not implemented.
