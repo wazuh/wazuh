@@ -183,6 +183,18 @@ int RunFimDbsyncBaselineFrom(const ContainerDiscoverer&        discover,
                               const DbsyncRowSink&              sink,
                               const ContainerStatusSink&        status_sink = {},
                               const std::function<void()>&      rate_limit = {},
+                              /* FORWARD THIS. An empty sink is legal and means "this consumer
+                               * does not store context separately, accept every container"
+                               * (MakeContextSink, container_baseline.cpp), so a forwarding site
+                               * that simply FORGETS it compiles silently and produces rows for
+                               * a container whose context was never stored -- rows whose DELETE
+                               * events can no longer describe themselves. That happened once,
+                               * at RunFimDbsyncBaselineForContainerFrom().
+                               *
+                               * The default cannot be removed to catch it: status_sink and
+                               * rate_limit above default too, and C++ forbids a non-defaulted
+                               * parameter after a defaulted one. The guard is the test
+                               * "AContainerScanStoresItsContextBeforeAnyRow" instead. */
                               const ContainerContextSink&      context_sink = {});
 
 /// @brief FIM baseline for ONE container, over the paths the caller supplies.
