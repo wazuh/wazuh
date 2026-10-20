@@ -27,6 +27,11 @@
 /* Execd select timeout -- in seconds */
 #define EXECD_TIMEOUT   1
 
+/* Repeated offenders table: maximum entries, rows and purge interval (seconds) */
+#define REPEATED_OFFENDERS_MAX      10000
+#define REPEATED_OFFENDERS_ROWS     2048
+#define REPEATED_OFFENDERS_PURGE    60
+
 extern int repeated_offenders_timeout[];
 extern time_t pending_upg;
 extern int is_disabled;
@@ -84,6 +89,12 @@ typedef struct _timeout_data {
     char *parameters;
     char *rkey;
 } timeout_data;
+
+/* Repeated offender entry */
+typedef struct _repeated_offender {
+    int count;
+    time_t release_at;  // When the last block applied to this key ends
+} repeated_offender;
 
 void FreeTimeoutEntry(timeout_data *timeout_entry);
 void FreeTimeoutList();

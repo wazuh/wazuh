@@ -35,8 +35,14 @@
 
 extern int test_mode;
 extern OSList *timeout_list;
+extern OSHash *repeated_hash;
+extern time_t repeated_last_purge;
+extern int repeated_full_warned;
 
 void ExecdStart(int q);
+void RepeatedOffendersInit();
+void RepeatedOffendersPurge(time_t curr_time);
+int RepeatedOffendersCheck(const char *rkey, int timeout_value, time_t curr_time);
 
 /* Setup/Teardown */
 
@@ -84,6 +90,39 @@ static int test_teardown_file(void **state) {
     os_free(wfd);
     FreeTimeoutList();
     return 0;
+}
+
+/* repeated_offenders configured as "1,5,10" (minutes) */
+static int test_setup_repeated(void **state) {
+    repeated_offenders_timeout[0] = 1;
+    repeated_offenders_timeout[1] = 5;
+    repeated_offenders_timeout[2] = 10;
+
+    will_return(__wrap_time, 123456789);
+    RepeatedOffendersInit();
+    return 0;
+}
+
+static int test_teardown_repeated(void **state) {
+    memset(repeated_offenders_timeout, 0, 7 * sizeof(int));
+
+    if (repeated_hash) {
+        OSHash_Clean(repeated_hash, free);
+        repeated_hash = NULL;
+    }
+    return 0;
+}
+
+static void fill_repeated_hash(unsigned int count, time_t release_at) {
+    char key[32];
+
+    for (unsigned int i = 0; i < count; i++) {
+        repeated_offender *offender;
+        os_calloc(1, sizeof(repeated_offender), offender);
+        offender->release_at = release_at;
+        snprintf(key, sizeof(key), "fill-%u", i);
+        assert_int_equal(OSHash_Add(repeated_hash, key, offender), 2);
+    }
 }
 
 /* Tests */
@@ -1229,8 +1268,136 @@ void test_ExecdLogRestart_rejects_symlink(void **state) {
     ExecdLogRestart(cmd);
 }
 
+static void test_RepeatedOffendersInit_disabled(void **state) {
+    RepeatedOffendersInit();
+
+    assert_null(repeated_hash);
+}
+
+static void test_RepeatedOffendersInit_enabled(void **state) {
+    assert_non_null(repeated_hash);
+    assert_true(repeated_hash->rows >= REPEATED_OFFENDERS_ROWS);
+    assert_int_equal(repeated_hash->elements, 0);
+}
+
+static void test_RepeatedOffendersCheck_escalates(void **state) {
+    time_t now = 1000;
+
+    // First offense: base timeout, no escalation
+    assert_int_equal(RepeatedOffendersCheck("block-ip-10.0.0.1", 30, now), 30);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Repeated offender. Setting timeout to '60s'");
+    assert_int_equal(RepeatedOffendersCheck("block-ip-10.0.0.1", 30, now + 40), 60);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Repeated offender. Setting timeout to '300s'");
+    assert_int_equal(RepeatedOffendersCheck("block-ip-10.0.0.1", 30, now + 50), 300);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Repeated offender. Setting timeout to '600s'");
+    assert_int_equal(RepeatedOffendersCheck("block-ip-10.0.0.1", 30, now + 55), 600);
+
+    // The last level is kept
+    expect_string(__wrap__mdebug1, formatted_msg, "Repeated offender. Setting timeout to '600s'");
+    assert_int_equal(RepeatedOffendersCheck("block-ip-10.0.0.1", 30, now + 58), 600);
+
+    repeated_offender *offender = OSHash_Get(repeated_hash, "block-ip-10.0.0.1");
+    assert_non_null(offender);
+    assert_int_equal(offender->count, 3);
+    assert_int_equal(offender->release_at, now + 58 + 600);
+    assert_int_equal(repeated_hash->elements, 1);
+}
+
+static void test_RepeatedOffendersPurge_window(void **state) {
+    time_t now = 1000;
+
+    assert_int_equal(RepeatedOffendersCheck("block-ip-10.0.0.1", 30, now), 30);
+    assert_int_equal(RepeatedOffendersCheck("block-ip-10.0.0.2", 30, now + 100), 30);
+
+    // Window is the largest repeated timeout (600s) after the block ends
+    RepeatedOffendersPurge(now + 30 + 600);
+    assert_int_equal(repeated_hash->elements, 2);
+
+    RepeatedOffendersPurge(now + 30 + 601);
+    assert_int_equal(repeated_hash->elements, 1);
+    assert_null(OSHash_Get(repeated_hash, "block-ip-10.0.0.1"));
+    assert_non_null(OSHash_Get(repeated_hash, "block-ip-10.0.0.2"));
+    assert_int_equal(repeated_last_purge, now + 30 + 601);
+
+    // A forgotten key starts over from the base timeout
+    assert_int_equal(RepeatedOffendersCheck("block-ip-10.0.0.1", 30, now + 30 + 601), 30);
+}
+
+static void test_RepeatedOffendersPurge_keeps_active_block(void **state) {
+    time_t now = 1000;
+
+    // The base timeout is longer than the window: the entry outlives the block
+    assert_int_equal(RepeatedOffendersCheck("block-ip-10.0.0.1", 3600, now), 3600);
+
+    RepeatedOffendersPurge(now + 3600);
+    assert_int_equal(repeated_hash->elements, 1);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Repeated offender. Setting timeout to '60s'");
+    assert_int_equal(RepeatedOffendersCheck("block-ip-10.0.0.1", 3600, now + 3600 + 600), 60);
+}
+
+static void test_RepeatedOffendersCheck_purge_interval(void **state) {
+    time_t now = 1000;
+
+    fill_repeated_hash(5, 0);
+
+    // The first check purges the expired entries
+    assert_int_equal(RepeatedOffendersCheck("block-ip-10.0.0.1", 30, now), 30);
+    assert_int_equal(repeated_last_purge, now);
+    assert_int_equal(repeated_hash->elements, 1);
+
+    fill_repeated_hash(5, 0);
+
+    // No purge before the interval
+    assert_int_equal(RepeatedOffendersCheck("block-ip-10.0.0.2", 30, now + REPEATED_OFFENDERS_PURGE - 1), 30);
+    assert_int_equal(repeated_last_purge, now);
+    assert_int_equal(repeated_hash->elements, 7);
+
+    assert_int_equal(RepeatedOffendersCheck("block-ip-10.0.0.3", 30, now + REPEATED_OFFENDERS_PURGE), 30);
+    assert_int_equal(repeated_last_purge, now + REPEATED_OFFENDERS_PURGE);
+    assert_int_equal(repeated_hash->elements, 3);
+}
+
+static void test_RepeatedOffendersCheck_full(void **state) {
+    time_t now = 1000;
+    char warn_msg[OS_SIZE_256];
+
+    assert_int_equal(RepeatedOffendersCheck("block-ip-10.0.0.1", 30, now), 30);
+    fill_repeated_hash(REPEATED_OFFENDERS_MAX - 1, now + 30);
+
+    // New keys are not tracked, and the warning is logged once
+    snprintf(warn_msg, sizeof(warn_msg), AR_REPEATED_FULL, REPEATED_OFFENDERS_MAX);
+    expect_string(__wrap__mwarn, formatted_msg, warn_msg);
+    assert_int_equal(RepeatedOffendersCheck("block-ip-10.0.0.2", 30, now + 1), 30);
+    assert_int_equal(RepeatedOffendersCheck("block-ip-10.0.0.3", 30, now + 2), 30);
+    assert_null(OSHash_Get(repeated_hash, "block-ip-10.0.0.2"));
+    assert_int_equal(repeated_hash->elements, REPEATED_OFFENDERS_MAX);
+
+    // Known offenders still escalate
+    expect_string(__wrap__mdebug1, formatted_msg, "Repeated offender. Setting timeout to '60s'");
+    assert_int_equal(RepeatedOffendersCheck("block-ip-10.0.0.1", 30, now + 3), 60);
+
+    // Once the filler expires, new keys are tracked again
+    RepeatedOffendersPurge(now + 30 + 601);
+    assert_int_equal(repeated_hash->elements, 1);
+    assert_int_equal(repeated_full_warned, 0);
+
+    assert_int_equal(RepeatedOffendersCheck("block-ip-10.0.0.2", 30, now + 30 + 602), 30);
+    assert_int_equal(repeated_hash->elements, 2);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
+        cmocka_unit_test_teardown(test_RepeatedOffendersInit_disabled, test_teardown_repeated),
+        cmocka_unit_test_setup_teardown(test_RepeatedOffendersInit_enabled, test_setup_repeated, test_teardown_repeated),
+        cmocka_unit_test_setup_teardown(test_RepeatedOffendersCheck_escalates, test_setup_repeated, test_teardown_repeated),
+        cmocka_unit_test_setup_teardown(test_RepeatedOffendersPurge_window, test_setup_repeated, test_teardown_repeated),
+        cmocka_unit_test_setup_teardown(test_RepeatedOffendersPurge_keeps_active_block, test_setup_repeated, test_teardown_repeated),
+        cmocka_unit_test_setup_teardown(test_RepeatedOffendersCheck_purge_interval, test_setup_repeated, test_teardown_repeated),
+        cmocka_unit_test_setup_teardown(test_RepeatedOffendersCheck_full, test_setup_repeated, test_teardown_repeated),
         cmocka_unit_test_setup_teardown(test_ExecdStart_ok, test_setup_file, test_teardown_file),
         cmocka_unit_test_setup_teardown(test_ExecdStart_timeout_not_repeated, test_setup_file_timeout, test_teardown_file),
         cmocka_unit_test_setup_teardown(test_ExecdStart_timeout_repeated, test_setup_file_timeout, test_teardown_file),
