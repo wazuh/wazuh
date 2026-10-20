@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 
 #### Fixed
 
+- Fixed the removal and purge of the `wazuh-manager` DEB package failing when the installation is incomplete. ([#33339](https://github.com/wazuh/wazuh/issues/33339))
 - Fixed the validation of `group_id` when reading and writing group configuration files, rejecting values that are not a valid group name. ([#40363](https://github.com/wazuh/wazuh/pull/40363))
 
 ### Agent
