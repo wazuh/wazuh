@@ -40,7 +40,7 @@ namespace
 
         std::string indexerSectionJson() const override
         {
-            return R"({"hosts":["http://127.0.0.1:9200"]})";
+            return R"({"hosts":["http://127.0.0.1:1"]})";
         }
 
         indexer_client::Credentials credentials() const override

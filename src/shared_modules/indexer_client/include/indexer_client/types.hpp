@@ -300,9 +300,39 @@ namespace indexer_client
         {
             std::string url;
             NodeState state {NodeState::Down};
+            std::string reason; ///< Why the node is Down (status, cause, curl code); empty otherwise.
         };
         std::vector<Node> nodes;
         bool clusterRed {false};
+        /// Set while the last complete probe round failed for a local reason (TLS material curl refused, a local
+        /// curl error, a response over the cap): the runtime, not the nodes, is at fault (D36).
+        std::optional<std::string> localFault;
+
+        /// At least one node Available: the strict aggregate (vulnerability scanner admission, I52-e).
+        bool anyAvailable() const
+        {
+            for (const auto& node : nodes)
+            {
+                if (node.state == NodeState::Available)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// At least one node not Down (Available or Throttled): the lenient aggregate (inventory sync, I52-e).
+        bool anyUsable() const
+        {
+            for (const auto& node : nodes)
+            {
+                if (node.state != NodeState::Down)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
     };
 
     struct CloseReport final

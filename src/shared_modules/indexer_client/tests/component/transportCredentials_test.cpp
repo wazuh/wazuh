@@ -94,6 +94,8 @@ protected:
     void SetUp() override
     {
         indexer_client::testing_hooks::resetAll();
+        // The health probe would add its own requests to the traffic these cases count (E2b).
+        indexer_client::testing_hooks::setProbeAutoStart(false);
     }
 
     void TearDown() override
