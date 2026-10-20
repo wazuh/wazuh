@@ -309,8 +309,9 @@ void test_read_several_registries(void **state) {
     assert_string_equal(data->registries[1].host, "other.example");
 }
 
-void test_read_registry_with_only_a_passkey(void **state) {
-    /* One of the two key names is enough to be a usable entry. */
+void test_read_registry_with_only_a_passkey_is_skipped(void **state) {
+    /* Both keys are needed to authenticate, so an entry with one is reported while the
+     * operator is editing it, and the message names the one that is missing. */
     const char *string =
         "<registry_auth>\n"
         "  <registry>\n"
@@ -320,12 +321,58 @@ void test_read_registry_with_only_a_passkey(void **state) {
         "</registry_auth>\n";
     test_structure *test = *state;
     test->nodes = string_to_xml_node(string, &(test->xml));
+    expect_any(__wrap__mtwarn, tag);
+    expect_string(__wrap__mtwarn, formatted_msg, "The 'registry' entry for 'ghcr.io' at module 'container_images' names no 'user_keystore_key', ignoring it.");
+    assert_int_equal(wm_container_images_read(&(test->xml), test->nodes, test->module), 0);
+
+    wm_container_images_t *data = (wm_container_images_t *)test->module->data;
+    assert_int_equal(data->registries_count, 0);
+}
+
+void test_read_registry_with_only_a_user_key_is_skipped(void **state) {
+    const char *string =
+        "<registry_auth>\n"
+        "  <registry>\n"
+        "    <host>ghcr.io</host>\n"
+        "    <user_keystore_key>ghcr_user</user_keystore_key>\n"
+        "  </registry>\n"
+        "</registry_auth>\n";
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    expect_any(__wrap__mtwarn, tag);
+    expect_string(__wrap__mtwarn, formatted_msg, "The 'registry' entry for 'ghcr.io' at module 'container_images' names no 'passkey_keystore_key', ignoring it.");
+    assert_int_equal(wm_container_images_read(&(test->xml), test->nodes, test->module), 0);
+
+    wm_container_images_t *data = (wm_container_images_t *)test->module->data;
+    assert_int_equal(data->registries_count, 0);
+}
+
+void test_read_registry_with_a_repeated_host_keeps_the_first(void **state) {
+    /* The module uses the first entry for a host, so the second is reported instead of
+     * being dropped without a word. */
+    const char *string =
+        "<registry_auth>\n"
+        "  <registry>\n"
+        "    <host>ghcr.io</host>\n"
+        "    <user_keystore_key>first_user</user_keystore_key>\n"
+        "    <passkey_keystore_key>first_token</passkey_keystore_key>\n"
+        "  </registry>\n"
+        "  <registry>\n"
+        "    <host>ghcr.io</host>\n"
+        "    <user_keystore_key>second_user</user_keystore_key>\n"
+        "    <passkey_keystore_key>second_token</passkey_keystore_key>\n"
+        "  </registry>\n"
+        "</registry_auth>\n";
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    expect_any(__wrap__mtwarn, tag);
+    expect_string(__wrap__mtwarn, formatted_msg, "The 'registry' entry for 'ghcr.io' at module 'container_images' repeats a host already configured, ignoring it. The first entry is used.");
     assert_int_equal(wm_container_images_read(&(test->xml), test->nodes, test->module), 0);
 
     wm_container_images_t *data = (wm_container_images_t *)test->module->data;
     assert_int_equal(data->registries_count, 1);
-    assert_string_equal(data->registries[0].user_key, "");
-    assert_string_equal(data->registries[0].passkey_key, "ghcr_token");
+    assert_string_equal(data->registries[0].user_key, "first_user");
+    assert_string_equal(data->registries[0].passkey_key, "first_token");
 }
 
 void test_read_registry_without_host_is_skipped(void **state) {
@@ -372,6 +419,7 @@ void test_read_registry_unknown_tag_is_skipped(void **state) {
         "  <registry>\n"
         "    <host>ghcr.io</host>\n"
         "    <user_keystore_key>ghcr_user</user_keystore_key>\n"
+        "    <passkey_keystore_key>ghcr_token</passkey_keystore_key>\n"
         "    <nonsense>x</nonsense>\n"
         "  </registry>\n"
         "  <nonsense>y</nonsense>\n"
@@ -462,7 +510,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_read_unknown_tag, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_registry_auth, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_several_registries, setup_test_read, teardown_test_read),
-        cmocka_unit_test_setup_teardown(test_read_registry_with_only_a_passkey, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_registry_with_only_a_passkey_is_skipped, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_registry_with_only_a_user_key_is_skipped, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_registry_with_a_repeated_host_keeps_the_first, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_registry_without_host_is_skipped, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_registry_without_any_key_is_skipped, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_registry_unknown_tag_is_skipped, setup_test_read, teardown_test_read),
