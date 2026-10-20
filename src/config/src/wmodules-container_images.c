@@ -119,12 +119,29 @@ static void parse_registry(const OS_XML *xml, xml_node *registry_node, wm_contai
         return;
     }
 
-    // A registry with no key names is the same as no entry at all: the reference would be
-    // attempted anonymously either way, so it is reported rather than stored.
-    if ((!user_key || !strlen(user_key)) && (!passkey_key || !strlen(passkey_key))) {
-        mwarn("The '%s' entry for '%s' at module '%s' names no keystore key, ignoring it.", XML_CI_REGISTRY, host, WM_CONTAINER_IMAGES_CONTEXT.name);
+    // Both keys are needed to authenticate, so an entry with one can never work and is
+    // reported here, where the operator is editing it, rather than at scan time as a
+    // credential missing from the store.
+    if (!user_key || !strlen(user_key)) {
+        mwarn("The '%s' entry for '%s' at module '%s' names no '%s', ignoring it.", XML_CI_REGISTRY, host, WM_CONTAINER_IMAGES_CONTEXT.name, XML_CI_USER_KEY);
         OS_ClearNode(children);
         return;
+    }
+
+    if (!passkey_key || !strlen(passkey_key)) {
+        mwarn("The '%s' entry for '%s' at module '%s' names no '%s', ignoring it.", XML_CI_REGISTRY, host, WM_CONTAINER_IMAGES_CONTEXT.name, XML_CI_PASSKEY_KEY);
+        OS_ClearNode(children);
+        return;
+    }
+
+    // The first entry for a host is the one the module uses, so a later one would be
+    // dropped silently, unlike every other repeated element, where the last wins.
+    for (int i = 0; i < container_images->registries_count; i++) {
+        if (!strcmp(container_images->registries[i].host, host)) {
+            mwarn("The '%s' entry for '%s' at module '%s' repeats a host already configured, ignoring it. The first entry is used.", XML_CI_REGISTRY, host, WM_CONTAINER_IMAGES_CONTEXT.name);
+            OS_ClearNode(children);
+            return;
+        }
     }
 
     add_registry(container_images, host, user_key, passkey_key);
