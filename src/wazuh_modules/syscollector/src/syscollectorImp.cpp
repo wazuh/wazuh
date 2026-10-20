@@ -2820,9 +2820,9 @@ void Syscollector::dropContainerContext(const std::string& containerId)
         // and a primary key is exactly what this builder binds.
         auto deleteQuery = DeleteQuery::builder()
                            .table(CONTAINER_CONTEXT_TABLE)
-                           .data({{CONTAINER_ID_COLUMN, containerId}})
-                           .rowFilter("")
-                           .build();
+        .data({{CONTAINER_ID_COLUMN, containerId}})
+        .rowFilter("")
+        .build();
 
         m_spDBSync->deleteRows(deleteQuery.query());
     }
@@ -5609,7 +5609,10 @@ void Syscollector::setAdmittedContainers(const std::map<std::string, bool>& disc
     m_containerAdmissionWithholding = (admitted.size() != discovered.size());
     const bool lostAdmission = std::any_of(m_admittedContainers.begin(),
                                            m_admittedContainers.end(),
-                                           [&admitted](const auto& id) { return admitted.count(id) == 0; });
+                                           [&admitted](const auto & id)
+    {
+        return admitted.count(id) == 0;
+    });
     m_admittedContainers = std::move(admitted);
     m_admissionKnown = true;
 
@@ -5650,27 +5653,29 @@ void Syscollector::setAdmittedContainers(const std::map<std::string, bool>& disc
     {
         std::vector<nlohmann::json> records;
         auto query = SelectQuery::builder()
-                         .table(table)
-                         .columnList({"*"})
-                         .rowFilter("WHERE sync=1 AND container_id<>''")
-                         .build();
+                     .table(table)
+                     .columnList({"*"})
+                     .rowFilter("WHERE sync=1 AND container_id<>''")
+                     .build();
         m_spDBSync->selectRows(query.query(),
-                               [&records, this](ReturnTypeCallback type, const nlohmann::json& row)
-                               {
-                                   if (type == SELECTED &&
-                                       !isContainerAdmittedLocked(row.at(CONTAINER_ID_COLUMN).get<std::string>()))
-                                   {
-                                       records.push_back(row);
-                                   }
-                               });
+                               [&records, this](ReturnTypeCallback type, const nlohmann::json & row)
+        {
+            if (type == SELECTED &&
+                    !isContainerAdmittedLocked(row.at(CONTAINER_ID_COLUMN).get<std::string>()))
+            {
+                records.push_back(row);
+            }
+        });
 
         std::vector<std::pair<std::string, nlohmann::json>> demoted;
+
         for (const auto& record : records)
         {
             auto [data, version] = ecsData(record, table);
             m_persistDiffFunction(calculateHashId(record, table), OPERATION_DELETE, index, data.dump(), version);
             demoted.emplace_back(table, record);
         }
+
         updateSyncFlagInDB(demoted, 0);
     }
 
@@ -5678,6 +5683,7 @@ void Syscollector::setAdmittedContainers(const std::map<std::string, bool>& disc
     {
         it = isContainerAdmittedLocked(it->first) ? std::next(it) : m_containerDocumentCounts.erase(it);
     }
+
     for (auto it = m_limitReported.begin(); it != m_limitReported.end();)
     {
         it = isContainerAdmittedLocked(it->first) ? std::next(it) : m_limitReported.erase(it);
@@ -5782,11 +5788,11 @@ std::set<std::string> Syscollector::containersWithRowsIn(const std::string& tabl
     // DISTINCT so the engine returns one row per container, not one per stored
     // inventory row.
     auto selectQuery = SelectQuery::builder()
-                           .table(tableName)
-                           .columnList({CONTAINER_ID_COLUMN})
-                           .rowFilter(unsyncedOnly ? "WHERE sync=0 AND container_id != ''" : "WHERE container_id != ''")
-                           .distinctOpt(true)
-                           .build();
+                       .table(tableName)
+                       .columnList({CONTAINER_ID_COLUMN})
+                       .rowFilter(unsyncedOnly ? "WHERE sync=0 AND container_id != ''" : "WHERE container_id != ''")
+                       .distinctOpt(true)
+                       .build();
 
     m_spDBSync->selectRows(selectQuery.query(),
                            [&ids](ReturnTypeCallback, const nlohmann::json & row)
@@ -6471,7 +6477,7 @@ size_t Syscollector::promoteUnsyncedItems(const std::string& index,
     {
         m_logFunction(LOG_DEBUG,
                       reason + ": Promoting " + std::to_string(recordsToPromote.size()) +
-                          " unsynced items for index '" + index + "'");
+                      " unsynced items for index '" + index + "'");
     }
 
     // Generate INSERT events and mark as sync=1
@@ -6565,8 +6571,8 @@ void Syscollector::promoteItemsAfterScanLocked(LimitScope scope)
             for (auto it = m_limitReported.begin(); it != m_limitReported.end();)
             {
                 it = (it->second == index && !it->first.empty() && targets.count(it->first) == 0)
-                         ? m_limitReported.erase(it)
-                         : std::next(it);
+                     ? m_limitReported.erase(it)
+                     : std::next(it);
             }
         }
 
@@ -6588,7 +6594,7 @@ void Syscollector::promoteItemsAfterScanLocked(LimitScope scope)
             // Calculate available space
             size_t availableSpace = limit == 0               ? std::numeric_limits<uint32_t>::max()
                                     : (currentCount < limit) ? (limit - currentCount)
-                                                             : 0;
+                                    : 0;
 
             const std::string scopeSuffix = (scope == LimitScope::host)
                                             ? std::string {}

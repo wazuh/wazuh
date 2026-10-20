@@ -60,7 +60,7 @@ extern "C" int __wrap_cbaseline_run_syscollector_dbsync(const char* socket,
                                                         void* ctx)
 {
     return containerScanHook ? containerScanHook(sink, status, ctx)
-                             : __real_cbaseline_run_syscollector_dbsync(socket, sink, status, ctx);
+           : __real_cbaseline_run_syscollector_dbsync(socket, sink, status, ctx);
 }
 
 extern "C" int __wrap_cbaseline_list_containers(const char* socket, cb_container_id_sink_t sink, void* ctx)
@@ -6658,41 +6658,51 @@ TEST_F(SyscollectorImpTest, AdmissionRetractsAndRestoresRetainedRows)
     module.init(
         info,
         reportFunction,
-        [&events](const std::string& id, Operation_t op, const std::string&, const std::string&, uint64_t)
-        { events.emplace_back(id, op); },
-        logFunction,
-        SYSCOLLECTOR_DB_PATH,
-        "",
-        "",
-        3600,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false);
+        [&events](const std::string & id, Operation_t op, const std::string&, const std::string&, uint64_t)
+    {
+        events.emplace_back(id, op);
+    },
+    logFunction,
+    SYSCOLLECTOR_DB_PATH,
+    "",
+    "",
+    3600,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false);
 
     const std::string index = "wazuh-states-inventory-processes";
-    for (const size_t limit : {size_t {2}, size_t {0}})
+
+    for (const size_t limit :
+            {
+                size_t {2}, size_t {0}
+            })
     {
         module.m_containerDocumentLimits[index] = limit;
         module.setAdmittedContainers({{"a", true}, {"b", true}});
-        for (const std::string id : {"", "a", "b"})
+
+        for (const std::string id :
+                {"", "a", "b"
+                })
         {
             const nlohmann::json row = {{"container_id", id},
-                                        {"pid", "123"},
-                                        {"name", "test"},
-                                        {"checksum", "checksum"},
-                                        {"version", 1},
-                                        {"sync", 1}};
+                {"pid", "123"},
+                {"name", "test"},
+                {"checksum", "checksum"},
+                {"version", 1},
+                {"sync", 1}
+            };
             auto query = SyncRowQuery::builder().table(PROCESSES_TABLE).data(row).build();
             module.m_spDBSync->syncRow(query.query(), [](ReturnTypeCallback, const nlohmann::json&) {});
         }
@@ -6707,10 +6717,12 @@ TEST_F(SyscollectorImpTest, AdmissionRetractsAndRestoresRetainedRows)
         module.m_admissionReconciled = false;
         module.setAdmittedContainers({{"a", true}, {"b", false}});
         ASSERT_EQ(events.size(), 1u);
+
         if (events.size() == 1u)
         {
             EXPECT_EQ(events[0].second, OPERATION_DELETE);
         }
+
         EXPECT_EQ(module.m_containerDocumentCounts.count("b"), 0u);
 
         auto flags = [&module]()
@@ -6718,10 +6730,11 @@ TEST_F(SyscollectorImpTest, AdmissionRetractsAndRestoresRetainedRows)
             std::map<std::string, int> result;
             auto query = SelectQuery::builder().table(PROCESSES_TABLE).columnList({"container_id", "sync"}).build();
             module.m_spDBSync->selectRows(query.query(),
-                                          [&result](ReturnTypeCallback, const nlohmann::json& row) {
-                                              result[row.at("container_id").get<std::string>()] =
-                                                  row.at("sync").get<int>();
-                                          });
+                                          [&result](ReturnTypeCallback, const nlohmann::json & row)
+            {
+                result[row.at("container_id").get<std::string>()] =
+                    row.at("sync").get<int>();
+            });
             return result;
         };
         EXPECT_EQ(flags(), (std::map<std::string, int> {{"", 1}, {"a", 1}, {"b", 0}}));
@@ -6729,7 +6742,7 @@ TEST_F(SyscollectorImpTest, AdmissionRetractsAndRestoresRetainedRows)
         module.setAdmittedContainers({{"a", true}, {"b", false}});
         EXPECT_EQ(events.size(), 1u) << "unchanged admission must not repeat DELETEs";
         EXPECT_FALSE(module.m_admissionRetractionPending)
-            << "a cap that is merely still biting owes no second pass over every table";
+                << "a cap that is merely still biting owes no second pass over every table";
         module.applyDocumentLimit(index, PROCESSES_TABLE, 0, Syscollector::LimitScope::container, "b");
         EXPECT_EQ(events.size(), 1u) << "an unlimited document budget must not bypass admission";
         module.m_containerDocumentLimits[index] = limit;
@@ -6737,11 +6750,13 @@ TEST_F(SyscollectorImpTest, AdmissionRetractsAndRestoresRetainedRows)
         module.setAdmittedContainers({{"a", true}, {"b", true}});
         module.promoteItemsAfterScan();
         ASSERT_EQ(events.size(), 2u);
+
         if (events.size() == 2u)
         {
             EXPECT_EQ(events[1].first, events[0].first);
             EXPECT_EQ(events[1].second, OPERATION_CREATE);
         }
+
         EXPECT_EQ(flags().at("b"), 1);
     }
 }
@@ -6756,37 +6771,43 @@ TEST_F(SyscollectorImpTest, DocumentBudgetsShrinkPromoteAndReleasePerContainer)
         info,
         reportFunction,
         [&events](const std::string&, Operation_t op, const std::string&, const std::string&, uint64_t)
-        { events.push_back(op); },
-        logFunction,
-        SYSCOLLECTOR_DB_PATH,
-        "",
-        "",
-        3600,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false);
+    {
+        events.push_back(op);
+    },
+    logFunction,
+    SYSCOLLECTOR_DB_PATH,
+    "",
+    "",
+    3600,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false);
     const std::string index = "wazuh-states-inventory-processes";
-    for (const std::string id : {"", "a", "b"})
+
+    for (const std::string id :
+            {"", "a", "b"
+            })
     {
         for (int pid = 1; pid <= 3; ++pid)
         {
             const nlohmann::json row = {{"container_id", id},
-                                        {"pid", std::to_string(pid)},
-                                        {"name", "test"},
-                                        {"checksum", "sum"},
-                                        {"version", 1},
-                                        {"sync", 1}};
+                {"pid", std::to_string(pid)},
+                {"name", "test"},
+                {"checksum", "sum"},
+                {"version", 1},
+                {"sync", 1}
+            };
             auto query = SyncRowQuery::builder().table(PROCESSES_TABLE).data(row).build();
             module.m_spDBSync->syncRow(query.query(), [](ReturnTypeCallback, const nlohmann::json&) {});
         }
@@ -6794,9 +6815,12 @@ TEST_F(SyscollectorImpTest, DocumentBudgetsShrinkPromoteAndReleasePerContainer)
     module.initializeDocumentCounts();
     module.setAdmittedContainers({{"a", true}, {"b", true}});
     EXPECT_TRUE(
-        module.applyLimitsForScope(nlohmann::json {{"container_processes", 1u}}, Syscollector::LimitScope::container));
+    module.applyLimitsForScope(nlohmann::json {{"container_processes", 1u}}, Syscollector::LimitScope::container));
     EXPECT_EQ(events.size(), 4u);
-    EXPECT_TRUE(std::all_of(events.begin(), events.end(), [](Operation_t op) { return op == OPERATION_DELETE; }));
+    EXPECT_TRUE(std::all_of(events.begin(), events.end(), [](Operation_t op)
+    {
+        return op == OPERATION_DELETE;
+    }));
     EXPECT_EQ(module.m_documentCounts[index], 3u);
     EXPECT_EQ(module.m_containerDocumentCounts["a"][index], 1u);
     EXPECT_EQ(module.m_containerDocumentCounts["b"][index], 1u);
@@ -6813,9 +6837,12 @@ TEST_F(SyscollectorImpTest, DocumentBudgetsShrinkPromoteAndReleasePerContainer)
     EXPECT_TRUE(module.checkDocumentLimit(PROCESSES_TABLE, row, MODIFIED));
     EXPECT_TRUE(module.checkDocumentLimit(PROCESSES_TABLE, row, DELETED));
     module.m_spDBSync->deleteRows(
-        {{"table", PROCESSES_TABLE},
-         {"query",
-          {{"data", nlohmann::json::array({{{"container_id", "a"}, {"pid", "1"}}})}, {"where_filter_opt", ""}}}});
+    {
+        {"table", PROCESSES_TABLE},
+        {
+            "query",
+            {{"data", nlohmann::json::array({{{"container_id", "a"}, {"pid", "1"}}})}, {"where_filter_opt", ""}}
+        }});
     EXPECT_EQ(module.m_containerDocumentCounts["a"][index], 0u);
     row["sync"] = 0;
     EXPECT_FALSE(module.checkDocumentLimit(PROCESSES_TABLE, row, DELETED));
@@ -6826,10 +6853,13 @@ TEST_F(SyscollectorImpTest, DocumentBudgetsShrinkPromoteAndReleasePerContainer)
 
     events.clear();
     EXPECT_TRUE(
-        module.applyLimitsForScope(nlohmann::json {{"container_processes", 3u}}, Syscollector::LimitScope::container));
+    module.applyLimitsForScope(nlohmann::json {{"container_processes", 3u}}, Syscollector::LimitScope::container));
     EXPECT_EQ(module.m_containerDocumentCounts["b"][index], 3u);
     EXPECT_FALSE(events.empty());
-    EXPECT_TRUE(std::all_of(events.begin(), events.end(), [](Operation_t op) { return op == OPERATION_CREATE; }));
+    EXPECT_TRUE(std::all_of(events.begin(), events.end(), [](Operation_t op)
+    {
+        return op == OPERATION_CREATE;
+    }));
     module.applyDocumentLimit(index, PROCESSES_TABLE, 3, Syscollector::LimitScope::container, "b");
     module.releaseContainerCounts("b");
     EXPECT_EQ(module.m_containerDocumentCounts.count("b"), 0u);
@@ -6847,41 +6877,44 @@ TEST_F(SyscollectorImpTest, PostScanPromotionVisitsOnlyContainersWithBacklog)
         info,
         reportFunction,
         [&events](const std::string&, Operation_t op, const std::string&, const std::string&, uint64_t)
-        { events.push_back(op); },
-        [&notices](const modules_log_level_t level, const std::string& message)
+    {
+        events.push_back(op);
+    },
+    [&notices](const modules_log_level_t level, const std::string & message)
+    {
+        if (level == LOG_INFO && message.find("Inventory limit reached") != std::string::npos)
         {
-            if (level == LOG_INFO && message.find("Inventory limit reached") != std::string::npos)
-            {
-                notices.push_back(message);
-            }
-        },
-        SYSCOLLECTOR_DB_PATH,
-        "",
-        "",
-        3600,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false);
+            notices.push_back(message);
+        }
+    },
+    SYSCOLLECTOR_DB_PATH,
+    "",
+    "",
+    3600,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false);
     const std::string index = "wazuh-states-inventory-processes";
-    const auto store = [&module](const std::string& id, int pid, int sync)
+    const auto store = [&module](const std::string & id, int pid, int sync)
     {
         const nlohmann::json row = {{"container_id", id},
-                                    {"pid", std::to_string(pid)},
-                                    {"name", "test"},
-                                    {"checksum", "sum"},
-                                    {"version", 1},
-                                    {"sync", sync}};
+            {"pid", std::to_string(pid)},
+            {"name", "test"},
+            {"checksum", "sum"},
+            {"version", 1},
+            {"sync", sync}
+        };
         auto query = SyncRowQuery::builder().table(PROCESSES_TABLE).data(row).build();
         module.m_spDBSync->syncRow(query.query(), [](ReturnTypeCallback, const nlohmann::json&) {});
     };
@@ -6945,26 +6978,28 @@ TEST_F(SyscollectorImpTest, ContainerBaselineAdmissionAndCleanup)
         info,
         reportFunction,
         [&events](const std::string&, Operation_t op, const std::string&, const std::string&, uint64_t)
-        { events.push_back(op); },
-        logFunction,
-        SYSCOLLECTOR_DB_PATH,
-        "",
-        "",
-        3600,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false);
+    {
+        events.push_back(op);
+    },
+    logFunction,
+    SYSCOLLECTOR_DB_PATH,
+    "",
+    "",
+    3600,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false);
     module.m_containerBaseline = true;
     module.m_containerRowsPurged = false;
     module.m_containerDocumentCounts.clear();
@@ -6980,7 +7015,9 @@ TEST_F(SyscollectorImpTest, ContainerBaselineAdmissionAndCleanup)
     {
         if (!available)
             return -1;
+
         for (const auto& [id, allowed] : admitted) sink(id.c_str(), allowed, ctx);
+
         return static_cast<int>(admitted.size());
     };
     containerScanHook = [&](cb_dbsync_row_sink_t sink, cb_container_status_sink_t status, void* ctx)
@@ -6992,6 +7029,7 @@ TEST_F(SyscollectorImpTest, ContainerBaselineAdmissionAndCleanup)
                 const nlohmann::json row = {{"container_id", id}, {"pid", "123"}, {"name", "worker"}};
                 sink(id.c_str(), PROCESSES_TABLE, row.dump().c_str(), ctx);
             }
+
             cb_container_status_t outcome {};
             outcome.container_id = id.c_str();
             outcome.partial = partial;
@@ -6999,6 +7037,7 @@ TEST_F(SyscollectorImpTest, ContainerBaselineAdmissionAndCleanup)
             outcome.netns_unreadable = partial;
             status(&outcome, ctx);
         }
+
         return static_cast<int>(scanned.size());
     };
     auto flags = [&]()
@@ -7006,8 +7045,10 @@ TEST_F(SyscollectorImpTest, ContainerBaselineAdmissionAndCleanup)
         std::map<std::string, int> rows;
         auto query = SelectQuery::builder().table(PROCESSES_TABLE).columnList({"container_id", "sync"}).build();
         module.m_spDBSync->selectRows(query.query(),
-                                      [&](ReturnTypeCallback, const nlohmann::json& row)
-                                      { rows[row.at("container_id").get<std::string>()] = row.at("sync").get<int>(); });
+                                      [&](ReturnTypeCallback, const nlohmann::json & row)
+        {
+            rows[row.at("container_id").get<std::string>()] = row.at("sync").get<int>();
+        });
         return rows;
     };
     module.runContainerBaselinePass();
@@ -7556,7 +7597,7 @@ TEST_F(SyscollectorImpTest, ADeletedContainerRowCarriesOneContainerBlockAndNoKub
     std::vector<std::string> persisted;
     const auto capturePersist
     {
-        [&persisted](const std::string&, Operation_t, const std::string&, const std::string& payload, uint64_t)
+        [&persisted](const std::string&, Operation_t, const std::string&, const std::string & payload, uint64_t)
         {
             persisted.push_back(payload);
         }
@@ -7639,7 +7680,7 @@ TEST_F(SyscollectorImpTest, EachContainersRowsCarryTheirOwnContextNotThePrevious
     std::vector<std::string> persisted;
     const auto capturePersist
     {
-        [&persisted](const std::string&, Operation_t, const std::string&, const std::string& payload, uint64_t)
+        [&persisted](const std::string&, Operation_t, const std::string&, const std::string & payload, uint64_t)
         {
             persisted.push_back(payload);
         }
@@ -7661,7 +7702,7 @@ TEST_F(SyscollectorImpTest, EachContainersRowsCarryTheirOwnContextNotThePrevious
         const auto document = nlohmann::json::parse(payload);
         ASSERT_TRUE(document.contains("container"));
         namesById[document["container"]["id"].get<std::string>() + "/" +
-                                document["container"]["name"].get<std::string>()]++;
+                                                                 document["container"]["name"].get<std::string>()]++;
     }
 
     EXPECT_EQ(namesById["a/alpha"], 2) << "both of a's rows must carry a's own context";
@@ -8246,7 +8287,7 @@ TEST_F(SyscollectorImpTest, ADeleteIsDescribedByTheContextStoredOnceNotByTheRow)
     std::vector<std::string> persisted;
     const auto capturePersist
     {
-        [&persisted](const std::string&, Operation_t, const std::string&, const std::string& payload, uint64_t)
+        [&persisted](const std::string&, Operation_t, const std::string&, const std::string & payload, uint64_t)
         {
             persisted.push_back(payload);
         }
