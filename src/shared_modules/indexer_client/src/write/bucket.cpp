@@ -13,6 +13,8 @@
 #include "write/bucket.hpp"
 
 #include <algorithm>
+#include <chrono>
+#include <random>
 #include <utility>
 
 #include "indexer_client/runtime.hpp"
@@ -20,6 +22,35 @@
 
 namespace indexer_client::detail::write
 {
+    namespace
+    {
+        /// Uniform in [-1, 1], one draw per requeue (the ops of one batch keep travelling together).
+        double jitterDraw()
+        {
+            thread_local std::mt19937_64 engine {std::random_device {}()};
+            return std::uniform_real_distribution<double>(-1.0, 1.0)(engine);
+        }
+
+        /// I66: d = min(cap, base * 2^(attempts - 1)) with the exponent bounded (d = cap as soon as doubling reaches
+        /// it, so an unlimited policy never overflows), then d * (1 + jitter * u), clamped to [0, cap].
+        Duration backoffDelay(const RetryPolicy& retry, std::uint32_t attempts, double u)
+        {
+            using Rep = Duration::rep;
+            const Rep cap = std::max<Rep>(retry.cap.count(), 0);
+            Rep d = std::min<Rep>(std::max<Rep>(retry.base.count(), 0), cap);
+            for (std::uint32_t k = 1; k < attempts && d < cap; ++k)
+            {
+                d = d > cap / 2 ? cap : d * 2;
+            }
+            const double scaled = static_cast<double>(d) * (1.0 + retry.jitter * u);
+            if (!(scaled > 0.0)) // Also NaN.
+            {
+                return Duration::zero();
+            }
+            return scaled >= static_cast<double>(cap) ? Duration {cap} : Duration {static_cast<Rep>(scaled)};
+        }
+    } // namespace
+
     Bucket::Bucket(std::string consumer, BucketSpec spec, GlobalBudget& budget)
         : m_consumer(std::move(consumer))
         , m_spec(std::move(spec))
@@ -243,9 +274,18 @@ namespace indexer_client::detail::write
         return crossed && !m_notified.exchange(true);
     }
 
+    bool Bucket::laneDueLocked(TimePoint now) const
+    {
+        return !m_lane.empty() && m_lane.front()->notBefore <= now;
+    }
+
     bool Bucket::eligible(TimePoint now) const
     {
         std::lock_guard<std::mutex> lock(m_mutex);
+        if (laneDueLocked(now))
+        {
+            return true;
+        }
         if (m_pending.empty())
         {
             return false;
@@ -254,55 +294,111 @@ namespace indexer_client::detail::write
                now - m_pending.front()->firstSubmit >= m_spec.bulk.maxAge;
     }
 
+    std::optional<TimePoint> Bucket::nextDueLocked() const
+    {
+        std::optional<TimePoint> due;
+        if (!m_pending.empty())
+        {
+            due = m_pending.front()->firstSubmit + m_spec.bulk.maxAge;
+        }
+        if (!m_lane.empty() && (!due || m_lane.front()->notBefore < *due))
+        {
+            due = m_lane.front()->notBefore;
+        }
+        return due;
+    }
+
     std::optional<TimePoint> Bucket::oldestPending() const
     {
+        // The scheduler arms its timer at oldestPending() + maxAge: the lane head is reported shifted back by maxAge
+        // so that the timer fires at its notBefore (I66).
         std::lock_guard<std::mutex> lock(m_mutex);
-        if (m_pending.empty())
+        const auto due = nextDueLocked();
+        if (!due)
         {
             return std::nullopt;
         }
-        return m_pending.front()->firstSubmit;
+        return *due - m_spec.bulk.maxAge;
     }
 
-    std::uint64_t Bucket::headBytes() const
+    std::uint64_t Bucket::headBytes(TimePoint now) const
     {
         std::lock_guard<std::mutex> lock(m_mutex);
+        if (laneDueLocked(now))
+        {
+            return m_lane.front()->lines.size();
+        }
         return m_pending.empty() ? 0 : m_pending.front()->lines.size();
     }
 
     bool Bucket::empty() const
     {
         std::lock_guard<std::mutex> lock(m_mutex);
-        return m_pending.empty();
+        return m_pending.empty() && m_lane.empty();
     }
 
-    Batch Bucket::slice(std::uint64_t credit)
+    std::optional<TimePoint> Bucket::nextDue(TimePoint /*now*/) const
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return nextDueLocked();
+    }
+
+    Batch Bucket::slice(std::uint64_t credit, TimePoint now)
     {
         Batch batch;
         std::lock_guard<std::mutex> lock(m_mutex);
         const auto maxBytes = static_cast<std::uint64_t>(m_spec.bulk.maxBytes);
         const auto maxDocs = m_spec.bulk.maxDocs;
-        while (!m_pending.empty())
+        std::uint64_t cap = 0; // Smallest batchCap of the ops taken (0 = none): split halves never merge again.
+        // Whether `op` joins the batch; a document is never split: the head goes alone whenever the credit covers it.
+        const auto fits = [&](const OpState& op)
         {
-            const std::uint64_t size = m_pending.front()->lines.size();
+            const std::uint64_t size = op.lines.size();
             if (batch.ops.empty())
             {
-                // A document is never split: the head goes alone whenever the credit covers it.
-                if (size > credit)
-                {
-                    break;
-                }
+                return size <= credit;
             }
-            else if (batch.bytes + size > credit || batch.bytes + size > maxBytes || batch.ops.size() >= maxDocs)
+            const std::uint64_t opCap = op.batchCap == 0 ? cap : (cap == 0 ? op.batchCap : std::min(cap, op.batchCap));
+            return batch.bytes + size <= credit && batch.bytes + size <= maxBytes && batch.ops.size() < maxDocs &&
+                   (opCap == 0 || batch.bytes + size <= opCap);
+        };
+        const auto take = [&](std::shared_ptr<OpState> op)
+        {
+            if (op->batchCap != 0)
+            {
+                cap = cap == 0 ? op->batchCap : std::min(cap, op->batchCap);
+            }
+            if (op->firstAttempt == TimePoint {})
+            {
+                op->firstAttempt = now;
+            }
+            batch.bytes += op->lines.size();
+            m_delivered.emplace(op.get(), op);
+            batch.ops.push_back(std::move(op));
+        };
+        // The due retry lane first, then the pending queue: one batch may mix both.
+        bool full = false;
+        while (laneDueLocked(now))
+        {
+            if (!fits(*m_lane.front()))
+            {
+                full = true;
+                break;
+            }
+            auto op = std::move(m_lane.front());
+            m_lane.pop_front();
+            take(std::move(op));
+        }
+        while (!full && !m_pending.empty())
+        {
+            if (!fits(*m_pending.front()))
             {
                 break;
             }
             auto op = std::move(m_pending.front());
             m_pending.pop_front();
-            m_pendingBytes -= size;
-            batch.bytes += size;
-            m_delivered.emplace(op.get(), op);
-            batch.ops.push_back(std::move(op));
+            m_pendingBytes -= op->lines.size();
+            take(std::move(op));
         }
         if (!batch.ops.empty())
         {
@@ -326,6 +422,19 @@ namespace indexer_client::detail::write
             {
                 keep = std::move(it->second);
                 m_delivered.erase(it);
+            }
+            else if (op.payloadCharged)
+            {
+                // Resolved while in the retry lane (claimed by a sweep after its requeue): it leaves the lane too.
+                const auto lane =
+                    std::find_if(m_lane.begin(),
+                                 m_lane.end(),
+                                 [&op](const std::shared_ptr<OpState>& entry) { return entry.get() == &op; });
+                if (lane != m_lane.end())
+                {
+                    keep = std::move(*lane);
+                    m_lane.erase(lane);
+                }
             }
             if (op.payloadCharged)
             {
@@ -357,13 +466,18 @@ namespace indexer_client::detail::write
 
     std::vector<std::shared_ptr<OpState>> Bucket::close(Cause cause)
     {
-        std::vector<std::shared_ptr<OpState>> pending;
+        std::vector<std::shared_ptr<OpState>> pending; // Lane first, then pending.
         std::lock_guard<std::mutex> lock(m_mutex);
         if (!m_closed)
         {
             m_closed = cause;
         }
-        pending.reserve(m_pending.size());
+        pending.reserve(m_lane.size() + m_pending.size());
+        for (auto& op : m_lane)
+        {
+            pending.push_back(std::move(op));
+        }
+        m_lane.clear();
         for (auto& op : m_pending)
         {
             pending.push_back(std::move(op));
@@ -422,5 +536,101 @@ namespace indexer_client::detail::write
         BucketStats stats = m_stats;
         stats.charge = m_charge;
         return stats;
+    }
+    void Bucket::insertLaneLocked(std::shared_ptr<OpState> op)
+    {
+        // After the last lane op due no later than this one (stable for ties). A toHead prefix with a later notBefore
+        // is skipped over only by an op due earlier than it, which is due before it anyway.
+        auto it = m_lane.end();
+        while (it != m_lane.begin() && (*std::prev(it))->notBefore > op->notBefore)
+        {
+            --it;
+        }
+        m_lane.insert(it, std::move(op));
+    }
+
+    RequeueResult Bucket::requeue(std::vector<RequeueOp> ops, const RequeueSpec& spec, TimePoint now)
+    {
+        RequeueResult result;
+        const double u = spec.delay == RequeueSpec::Delay::Backoff ? jitterDraw() : 0.0;
+        std::uint64_t batchBytes = 0;
+        for (const auto& entry : ops)
+        {
+            if (entry.op)
+            {
+                batchBytes += entry.op->lines.size();
+            }
+        }
+        const std::uint64_t halfCap = (batchBytes + 1) / 2;
+
+        std::vector<std::shared_ptr<OpState>> toHead;
+        std::lock_guard<std::mutex> lock(m_mutex);
+        const std::optional<TimePoint> headBefore =
+            m_lane.empty() ? std::nullopt : std::optional<TimePoint> {m_lane.front()->notBefore};
+        for (auto& entry : ops)
+        {
+            auto& op = entry.op;
+            if (!op || op->claimed.load())
+            {
+                continue; // Resolved (or being resolved) by someone else.
+            }
+            const auto delivered = m_delivered.find(op.get());
+            if (delivered == m_delivered.end())
+            {
+                continue; // Not delivered by this bucket (already resolved): nothing to requeue.
+            }
+            op->lastCause = entry.lastError.cause;
+            op->lastHttpStatus = entry.lastError.httpStatus;
+            op->lastItemErrorType = std::move(entry.lastError.itemErrorType);
+            op->lastReason = std::move(entry.lastError.reason);
+            if (m_closed)
+            {
+                result.closed.push_back(std::move(op)); // Stays delivered: the caller (or the sweep) resolves it.
+                continue;
+            }
+            if (spec.countAttempt)
+            {
+                ++op->attempts;
+            }
+            const auto& retry = m_spec.retry;
+            const bool attemptsSpent = retry.maxAttempts && op->attempts >= *retry.maxAttempts;
+            const bool durationSpent =
+                retry.maxDuration && op->firstAttempt != TimePoint {} && now - op->firstAttempt >= *retry.maxDuration;
+            if (attemptsSpent || durationSpent)
+            {
+                result.exhausted.push_back(std::move(op)); // Stays delivered until resolved.
+                continue;
+            }
+            switch (spec.delay)
+            {
+                case RequeueSpec::Delay::Backoff:
+                    op->notBefore = now + backoffDelay(retry, std::max<std::uint32_t>(op->attempts, 1), u);
+                    break;
+                case RequeueSpec::Delay::At: op->notBefore = spec.at; break;
+                case RequeueSpec::Delay::Now: op->notBefore = now; break;
+            }
+            if (spec.toHead)
+            {
+                // A head op is due now by construction, so the lane head stays its minimum notBefore (G-diff E3b-1
+                // obj. 3): eligible/headBytes/nextDue read only the front.
+                op->notBefore = now;
+            }
+            if (spec.halve)
+            {
+                op->batchCap = halfCap;
+            }
+            m_delivered.erase(delivered);
+            if (spec.toHead)
+            {
+                toHead.push_back(std::move(op));
+            }
+            else
+            {
+                insertLaneLocked(std::move(op));
+            }
+        }
+        m_lane.insert(m_lane.begin(), std::make_move_iterator(toHead.begin()), std::make_move_iterator(toHead.end()));
+        result.notify = !m_lane.empty() && (!headBefore || m_lane.front()->notBefore < *headBefore);
+        return result;
     }
 } // namespace indexer_client::detail::write

@@ -23,4 +23,4 @@ target_include_directories(
           ${SRC_FOLDER} ${SRC_FOLDER}/external/openssl/include)
 target_compile_definitions(indexer_client_bench_v2 PRIVATE CPPHTTPLIB_OPENSSL_SUPPORT ASIO_STANDALONE)
 target_compile_features(indexer_client_bench_v2 PRIVATE cxx_std_17)
-target_link_libraries(indexer_client_bench_v2 PRIVATE wazuhext ext_asio Threads::Threads)
+target_link_libraries(indexer_client_bench_v2 PRIVATE wazuhext ext_asio Threads::Threads ${INDEXER_CLIENT_SIMDJSON})

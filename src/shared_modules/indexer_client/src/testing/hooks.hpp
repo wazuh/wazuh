@@ -17,6 +17,7 @@
 // setter replaces the previous hook; an empty function restores the default (no-op / identity). resetAll() is meant
 // for test fixtures' TearDown.
 
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <optional>
@@ -33,6 +34,8 @@ namespace indexer_client::testing_hooks
     void setOnTimerHandler(std::function<void(std::uint64_t, std::uint64_t)> hook);
     void setOpenSocket(std::function<std::optional<int>()> hook);
     void setAfterAdmission(std::function<void()> hook); ///< E3a: between reserve and enqueue in Writer::submit.
+    /// E3b-1: capacity of the calling thread's bulk-response parser (0 before its first use); I65 caps it at 4 MiB.
+    std::size_t parserCapacity();
     /// false makes RuntimeOwner::start create the NodeSet and the Prober without starting the probe (no round, no
     /// timer; probeNow() still arms a single round): for the suites that count the transport's own traffic (E2a).
     /// Read once per start(); resetAll() restores the default, true.
