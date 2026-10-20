@@ -354,6 +354,49 @@ TEST(ValueValidatorTest, Ip_RejectsMalformed)
     }
 }
 
+TEST(ValueValidatorTest, Ip_AcceptsZoneIds)
+{
+    auto v = getIpValidator();
+    for (const auto* value : {R"("fe80::1%eth0")",
+                              R"("fe80::1%0")",
+                              R"("fe80::1%15")",
+                              R"("fe80::1%ETH0")",
+                              R"("fe80::87a:f22b:64d4:824a%15")",
+                              R"("::%eth0")",
+                              R"("1:2:3:4:5:6:7:8%eth0")",
+                              R"("fe80::1%eth0%x")",
+                              R"("fe80::1%eth 0")",
+                              R"("fe80::1%a.b_c-d")"})
+    {
+        SCOPED_TRACE(value);
+        EXPECT_FALSE(base::isError(v(json::Json {value})));
+    }
+}
+
+TEST(ValueValidatorTest, Ip_RejectsMalformedZoneIds)
+{
+    auto v = getIpValidator();
+    for (const auto* value : {R"("fe80::1%")",
+                              R"("%eth0")",
+                              R"("%")",
+                              R"("1.2.3.4%eth0")",
+                              R"("1.2.3.4%")",
+                              R"("::ffff:1.2.3.4%eth0")",
+                              R"("fe80::g%eth0")",
+                              R"("fe80:::1%eth0")",
+                              R"("1:2:3:4:5:6:7:8:9%eth0")",
+                              R"("fe80::1/64%eth0")",
+                              R"("[fe80::1%eth0]")",
+                              R"(" fe80::1%eth0")",
+                              R"("fe80::1%eth0\u0000x")"})
+    {
+        SCOPED_TRACE(value);
+        auto res = v(json::Json {value});
+        ASSERT_TRUE(base::isError(res));
+        EXPECT_THAT(base::getError(res).message, HasSubstr("Invalid IP"));
+    }
+}
+
 TEST(ValueValidatorTest, Ip_RejectsEmbeddedNul)
 {
     auto v = getIpValidator();

@@ -210,7 +210,7 @@ Per-type validators in `valueValidators.hpp`:
 | `getUnsignedLongValidator` | `json.isUint64()` |
 | `getStringValidator` | `json.isString()` |
 | `getDateValidator` | String in the exact form `YYYY-MM-DD` or `YYYY-MM-DDTHH:MM:SS[.fraction]<zone>` (two-digit fields, 1-9 fraction digits, zone `Z`, `Zulu` or a numeric offset `+HH:MM`/`-HH:MM` with hours up to 14 and minutes below 60, and nothing after it; a date without time takes no zone) that is a real calendar date and time (month 1-12, valid day of month, hour < 24, minute < 60, second < 60) |
-| `getIpValidator` | String that `inet_pton` accepts as IPv4 or IPv6 (whole string; no embedded NUL, no zone id) |
+| `getIpValidator` | String that `inet_pton` accepts as IPv4 or IPv6 (whole string; no embedded NUL), or an IPv6 address with no dots followed by `%` and a non-empty zone (the zone is not otherwise checked, as in the index mapping; no zone on IPv4 or on an IPv4-embedded address). The `ip` parser used in decoders still rejects a zone id |
 | `getBinaryValidator` | String that is entirely Base64 (padding allowed, nothing after it) |
 | `getObjectValidator` | `json.isObject()` |
 | `getIncompatibleValidator` | Always fails (for types that cannot be written to) |

@@ -284,10 +284,23 @@ inline ValueValidator getIpValidator()
             return base::Error {"Invalid IP"};
         }
 
-        const std::string address {val};
+        std::string address {val};
+
+        // The mapping takes an IPv6 address followed by '%' and any non-empty zone, but no zone on an embedded IPv4
+        const auto zone = address.find('%');
+        if (zone != std::string::npos)
+        {
+            if (zone + 1 == address.size() || address.find('.') < zone)
+            {
+                return base::Error {"Invalid IP"};
+            }
+            address.resize(zone);
+        }
+
         in_addr ipv4 {};
         in6_addr ipv6 {};
-        if (inet_pton(AF_INET, address.c_str(), &ipv4) != 1 && inet_pton(AF_INET6, address.c_str(), &ipv6) != 1)
+        if ((zone != std::string::npos || inet_pton(AF_INET, address.c_str(), &ipv4) != 1)
+            && inet_pton(AF_INET6, address.c_str(), &ipv6) != 1)
         {
             return base::Error {"Invalid IP"};
         }
