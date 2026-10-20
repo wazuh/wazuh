@@ -147,12 +147,22 @@ void TesterWorker::start()
                 {
                     auto& [event, opt, callback] = *testEvent;
 
-                    const auto timestamp = base::utils::time::getCurrentISO8601();
-                    const auto eventId = base::utils::generators::generateUUIDv4();
-                    event->setString(timestamp, "/@timestamp");
-                    event->setString(eventId, "/wazuh/event/id");
+                    base::RespOrError<test::Output> output;
+                    try
+                    {
+                        const auto timestamp = base::utils::time::getCurrentISO8601();
+                        const auto eventId = base::utils::generators::generateUUIDv4();
+                        event->setString(timestamp, "/@timestamp");
+                        event->setString(eventId, "/wazuh/event/id");
 
-                    auto output = m_tester->ingestTest(std::move(event), opt);
+                        output = m_tester->ingestTest(std::move(event), opt);
+                    }
+                    catch (const std::exception& e)
+                    {
+                        LOG_ERROR_L(
+                            functionName.c_str(), "Failed processing test event in tester worker: {}", e.what());
+                        output = base::Error {fmt::format("Failed processing the test event: {}", e.what())};
+                    }
                     try
                     {
                         callback(std::move(output));
