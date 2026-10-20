@@ -200,7 +200,7 @@ CMSync::CMSync(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexerPt
                const std::shared_ptr<cm::crud::ICrudService>& cmcrudPt,
                const std::shared_ptr<::store::IStore>& storePtr,
                const std::shared_ptr<router::IRouterAPI>& routerPtr,
-               nlohmann::json indexerConnection,
+               std::shared_ptr<content_manager::IContentIndexer> contentIndexer,
                const size_t attempts,
                const size_t waitSeconds,
                cmcontent::Options contentOptions,
@@ -211,9 +211,8 @@ CMSync::CMSync(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexerPt
     , m_router(routerPtr)
     , m_attempts(attempts)
     , m_waitSeconds(waitSeconds)
-    , m_indexerConnection(std::move(indexerConnection))
     , m_contentOptions(std::move(contentOptions))
-    , m_topicFactory(topicFactory ? std::move(topicFactory) : cmcontent::defaultTopicFactory())
+    , m_topicFactory(topicFactory ? std::move(topicFactory) : cmcontent::defaultTopicFactory(std::move(contentIndexer)))
     , m_mutex()
 {
     // Check if is the first setup
@@ -310,12 +309,11 @@ void CMSync::registerTopic(const SyncedNamespace& nsState)
     const auto routeName = nsState.getRouteName();
     auto tokenStore = cmcontent::derivedTokenStore([this, routeName]() { return loadTokenForRoute(routeName); });
 
-    registration.topic =
-        m_topicFactory(topicName,
-                       cmcontent::rulesetParameters(
-                           m_indexerConnection, nsState.getOriginSpace(), m_contentOptions, nsState.getConsumerId()),
-                       registration.sink,
-                       std::move(tokenStore));
+    registration.topic = m_topicFactory(
+        topicName,
+        cmcontent::rulesetParameters(nsState.getOriginSpace(), m_contentOptions, nsState.getConsumerId()),
+        registration.sink,
+        std::move(tokenStore));
 
     std::lock_guard<std::mutex> containerLock(m_registrationsMutex);
     m_registrations.emplace(topicName, std::move(registration));

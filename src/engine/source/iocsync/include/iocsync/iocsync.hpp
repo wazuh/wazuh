@@ -62,7 +62,6 @@ private:
     std::size_t m_attempts;    ///< Number of attempts to retry a cycle before giving up
     std::size_t m_waitSeconds; ///< Seconds to wait between attempts
 
-    nlohmann::json m_indexerConnection;     ///< Indexer connection settings handed to every registration
     cmcontent::Options m_contentOptions;    ///< Page size and timing tunables for every registration
     cmcontent::TopicFactory m_topicFactory; ///< Builds each type's topic; substituted in tests
 
@@ -158,8 +157,8 @@ public:
      * checks that short-circuit a whole cycle
      * @param kvdbiocManagerPtr Pointer to the KVDB IOC manager, used to create and manage IOC databases
      * @param storePtr Pointer to the internal config store
-     * @param indexerConnection Indexer connection settings (hosts, ssl, credentials) for the content
-     * registrations
+     * @param contentIndexer The Engine's indexer, shared by every content registration (D1 of the
+     * content manager). Only read when @p topicFactory is empty; may then not be null.
      * @param maxRetries Maximum number of attempts to retry a cycle before failing
      * @param retryIntervalSeconds Seconds to wait between attempts
      * @param contentOptions Page size and timing tunables for the content registrations
@@ -169,7 +168,7 @@ public:
     IocSync(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexerPtr,
             const std::shared_ptr<ioc::kvdb::IKVDBManager>& kvdbiocManagerPtr,
             const std::shared_ptr<::store::IStore>& storePtr,
-            nlohmann::json indexerConnection,
+            std::shared_ptr<content_manager::IContentIndexer> contentIndexer,
             const size_t maxRetries,
             const size_t retryIntervalSeconds,
             cmcontent::Options contentOptions,

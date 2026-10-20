@@ -86,21 +86,14 @@ namespace
     }
 
     /// Parameters mirroring VD's: a 60-minute interval, with a one-second consumer retry.
-    nlohmann::json parameters(std::size_t consumerRetrySeconds = 1)
+    content_manager::TopicSpec parameters(std::size_t consumerRetrySeconds = 1)
     {
-        return nlohmann::json {{"topicName", TOPIC},
-                               {"configData",
-                                {{"consumerName", "Action Test"},
-                                 {"changeDetection", "cursor"},
-                                 {"consumerRetryIntervalSeconds", consumerRetrySeconds},
-                                 {"indexer",
-                                  {{"index", "data-index"},
-                                   {"consumerStatusIndex", ".consumers"},
-                                   {"consumerStatusId", "consumer:1"},
-                                   {"consumerStatusCacheSeconds", 0},
-                                   {"cursorField", "offset"},
-                                   {"pageSize", 10},
-                                   {"numSlices", 1}}}}}};
+        content_manager::TopicSpec spec;
+        spec.source.indices = {"data-index"};
+        spec.source.pageSize = 10;
+        spec.readiness = content_manager::Readiness {".consumers", "consumer:1", consumerRetrySeconds, 0};
+        spec.detection = content_manager::CursorDetection {};
+        return spec;
     }
 
     /// A port whose consumer reports `running` for the first @p busyProbes cycles, then `ready`.

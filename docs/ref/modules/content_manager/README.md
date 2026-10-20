@@ -98,7 +98,10 @@ The Engine's topics are triggered through its API socket with `POST /content/rul
 
 The Content Manager logs to `/var/wazuh-manager/logs/wazuh-manager.log`, tagged by the host it runs
 in: `wazuh-manager-modulesd:content-updater` for the vulnerability feed and
-`wazuh-manager-analysisd:content-updater` for the Engine's ruleset and IoC topics. Lines to look for:
+`wazuh-manager-analysisd:content-updater` for the Engine's ruleset and IoC topics. It has no
+connection of its own: it reads through the host's indexer connector, so a failed request to the
+indexer is reported once, by that connector, under the host's own indexer-connector tag. Lines to
+look for:
 
 | Message | Meaning |
 |---|---|

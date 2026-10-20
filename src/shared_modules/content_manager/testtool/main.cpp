@@ -1,8 +1,10 @@
+#include "contentIndexerAdapters.hpp"
 #include "contentManager.hpp"
 #include "contentOnDemand.hpp"
 #include "contentRegister.hpp"
 #include "contentSink.hpp"
 #include "contentTypes.hpp"
+#include "indexerConnector.hpp"
 #include "loggerHelper.h"
 #include <chrono>
 #include <cstdarg>
@@ -22,30 +24,27 @@
  * dispatches into. The sink below only prints what it is given, which makes this the shortest way
  * to see the exact shape of the delivery contract.
  */
-static const nlohmann::json CONFIG_PARAMETERS =
+static const std::string TOPIC_NAME {"test"};
+
+/// The registration, built the way a host builds one (D2): a typed spec, turned into parameters.
+static content_manager::TopicSpec topicSpec()
+{
+    content_manager::TopicSpec spec;
+    spec.schedule.intervalSeconds = 30;
+    spec.schedule.onDemand = true;
+    spec.source.indices = {".wazuh-threatintel-vulnerabilities"};
+    spec.readiness = content_manager::Readiness {".wazuh-cti-consumers", "cti:catalog:consumer:vulnerabilities"};
+    spec.detection = content_manager::CursorDetection {};
+    spec.state.databasePath = "/tmp/content_updater/rocksdb";
+    return spec;
+}
+
+// The connector the tool builds, as a host does: the library never opens one of its own (D1). The
+// credentials come from the keystore (`queue/keystore` under the working directory).
+static const nlohmann::json INDEXER_CONNECTION =
     R"(
         {
-            "topicName": "test",
-            "interval": 30,
-            "ondemand": true,
-            "configData":
-            {
-                "consumerName": "ContentManagerTestTool",
-                "changeDetection": "cursor",
-                "databasePath": "/tmp/content_updater/rocksdb",
-                "indexer":
-                {
-                    "hosts": ["https://localhost:9200"],
-                    "username": "admin",
-                    "password": "admin",
-                    "index": ".wazuh-threatintel-vulnerabilities",
-                    "consumerStatusIndex": ".wazuh-cti-consumers",
-                    "consumerStatusId": "cti:catalog:consumer:vulnerabilities",
-                    "cursorField": "offset",
-                    "pageSize": 100,
-                    "numSlices": 1
-                }
-            }
+            "hosts": ["https://localhost:9200"]
         }
         )"_json;
 
@@ -165,8 +164,13 @@ int main()
 
     try
     {
-        const auto topicName = CONFIG_PARAMETERS.at("topicName").get<std::string>();
-        ContentRegister registerer {topicName, CONFIG_PARAMETERS, std::make_shared<PrintingSink>()};
+        const auto& topicName = TOPIC_NAME;
+        const auto connector = std::make_shared<IndexerConnectorSync>(
+            INDEXER_CONNECTION, LoggingContext {"content-manager-testtool", logFunction});
+        ContentRegister registerer {topicName,
+                                    content_manager::toParameters(topicSpec()),
+                                    std::make_shared<PrintingSink>(),
+                                    content_manager::makeContentIndexer(connector)};
 
         std::this_thread::sleep_for(std::chrono::seconds(5));
 

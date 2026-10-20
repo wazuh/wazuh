@@ -137,8 +137,11 @@ struct Config
 
 Credentials are not part of `Config`: the connector reads them from the keystore (`indexer` / `username`, `password`).
 
-An alternative constructor accepts a raw JSON OSSEC configuration string directly. `main.cpp` uses
-that one, and hands the **same** JSON to the content registrations, so there is no second place to
+An alternative constructor accepts a raw JSON OSSEC configuration string directly. `main.cpp`
+instead builds the connector once, with `makeIndexerConnectorAsync` (the same parsing that
+constructor uses), and passes it to the constructor taking a `shared_ptr<IndexerConnectorAsync>` —
+and, through `content_manager::makeContentIndexer`, to the content registrations. One connector
+serves both, so there is no second connection, monitor or place to
 configure the indexer.
 
 Beyond the `Config` struct fields above, `main.cpp` reads eight more settings

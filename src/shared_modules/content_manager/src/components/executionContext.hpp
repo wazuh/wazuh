@@ -18,6 +18,7 @@
 // and `USER` against rocksdb's enumerators. It was included for exactly one thing, the
 // `__wazuh_version` string, to build an HTTP User-Agent that nothing ever read.
 #include "componentsHelper.hpp"
+#include "contentTopicSpec.hpp"
 #include "loggerHelper.h"
 #include "sharedDefs.hpp"
 #include <cstdint>
@@ -39,15 +40,11 @@
 #pragma pop_macro("USER")
 
 /**
- * @brief Validates a registration's configuration and opens whatever storage it asks for.
+ * @brief Opens whatever storage a registration asks for.
  *
- * Reduced to exactly that. It used to also create download/content folders for file-based
- * downloaders; there are none left — content streams from the indexer straight into the sink — so
- * those folders were pure overhead and are gone.
- *
- * Everything this class rejects is rejected **at registration**, which is the only point where a
- * configuration error can still be reported to the host as an exception rather than having to be
- * flattened into a `CycleStatus::FailedConfig` on every cycle forever.
+ * Validation used to live here too, as a set of checks against the raw parameters; it moved to
+ * @ref TopicSpecParser (D2), which turns them into the typed model every stage reads, so this class
+ * is left with the one thing that touches the filesystem.
  */
 class ExecutionContext final
 {
@@ -55,287 +52,24 @@ public:
     std::shared_ptr<Utils::RocksDBWrapper> database; ///< Updater database, or null when unused.
 
     /**
-     * @brief Validate @p configData and open its database if it has one.
+     * @brief Open the registration's token database, if it has one.
      *
-     * @param configData The `configData` object of the registration parameters.
+     * @param spec The parsed registration.
      * @param topicName Topic name; part of the database file name.
      * @return The prepared context.
-     * @throws std::invalid_argument if the configuration is not usable.
+     * @throws std::exception if the database cannot be opened even after being rebuilt.
      */
-    static ExecutionContext prepare(const nlohmann::json& configData, const std::string& topicName)
+    static ExecutionContext prepare(const content_manager::TopicSpec& spec, const std::string& topicName)
     {
-        validate(configData);
-
         ExecutionContext context;
-
-        const auto databasePath = configData.value("databasePath", std::string {});
-        if (!databasePath.empty())
+        if (!spec.state.databasePath.empty())
         {
-            context.database = openDatabase(databasePath, topicName);
+            context.database = openDatabase(spec.state.databasePath, topicName);
         }
-
         return context;
     }
 
-    /**
-     * @brief Check a registration's configuration without touching the filesystem.
-     *
-     * @param configData The `configData` object of the registration parameters.
-     * @throws std::invalid_argument with a message naming the offending key.
-     */
-    static void validate(const nlohmann::json& configData)
-    {
-        if (!configData.is_object())
-        {
-            throw std::invalid_argument {"configData must be an object"};
-        }
-
-        if (!configData.contains("consumerName") || !configData.at("consumerName").is_string() ||
-            configData.at("consumerName").get_ref<const std::string&>().empty())
-        {
-            throw std::invalid_argument {"Missing or empty consumerName"};
-        }
-
-        const auto changeDetection = configData.value("changeDetection", std::string {});
-        if (changeDetection != "cursor" && changeDetection != "hash")
-        {
-            throw std::invalid_argument {"changeDetection must be either \"cursor\" or \"hash\""};
-        }
-
-        if (!configData.contains("indexer") || !configData.at("indexer").is_object())
-        {
-            throw std::invalid_argument {"Missing indexer configuration"};
-        }
-        const auto& indexer = configData.at("indexer");
-
-        if (dataIndices(indexer).empty())
-        {
-            throw std::invalid_argument {"indexer must define a non-empty \"index\" or \"indices\""};
-        }
-
-        validateConsumerStatusIndex(indexer);
-
-        if (changeDetection == "hash")
-        {
-            validateHashProbe(indexer);
-        }
-
-        validateQueryShape(indexer);
-    }
-
-    /**
-     * @brief The indices a registration's PIT covers, excluding the consumer status index.
-     *
-     * @param indexer The `configData.indexer` object.
-     * @return Index names, in configuration order.
-     */
-    static std::vector<std::string> dataIndices(const nlohmann::json& indexer)
-    {
-        std::vector<std::string> indices;
-
-        if (indexer.contains("indices") && indexer.at("indices").is_array())
-        {
-            for (const auto& entry : indexer.at("indices"))
-            {
-                if (entry.is_string() && !entry.get_ref<const std::string&>().empty())
-                {
-                    indices.push_back(entry.get<std::string>());
-                }
-            }
-        }
-        else if (indexer.contains("index") && indexer.at("index").is_string() &&
-                 !indexer.at("index").get_ref<const std::string&>().empty())
-        {
-            indices.push_back(indexer.at("index").get<std::string>());
-        }
-
-        return indices;
-    }
-
 private:
-    /**
-     * @brief Whether a value is an integer that is not negative.
-     *
-     * Deliberately NOT `is_number_unsigned()`. nlohmann records how a number was *stored*, not what
-     * it means: `indexer["numSlices"] = 1` goes in as a signed `number_integer`, because the literal
-     * is an `int`, and only a value parsed from JSON text or assigned from an unsigned type comes
-     * back `number_unsigned`. Testing the storage class therefore rejects perfectly valid
-     * configurations depending on how the caller happened to build them — the Engine assigns a bare
-     * `1` and the vulnerability scanner assigns a `uint32_t`, so the same check passes for one and
-     * fails for the other.
-     *
-     * @param value The value to test.
-     * @return True when it is an integer greater than or equal to zero.
-     */
-    static bool isNonNegativeInteger(const nlohmann::json& value)
-    {
-        if (value.is_number_unsigned())
-        {
-            return true;
-        }
-        return value.is_number_integer() && value.get<std::int64_t>() >= 0;
-    }
-
-    /**
-     * @brief Type-check the keys that shape the search request.
-     *
-     * These are read later with `json::value(key, default)`, which throws a `type_error` naming
-     * nothing useful when the stored type does not match — and, worse, `sourceFilter` and `sortKeys`
-     * are read behind an `is_object`/`is_array` test, so a mistyped one is silently *ignored*. For
-     * `sourceFilter` that means quietly downloading every field of every document: the vulnerability
-     * scanner's filter drops most of a CVE5 record, so losing it turns a feed update into a
-     * multi-gigabyte transfer that still works and is therefore never noticed. Rejecting the
-     * registration is the only point at which that is cheap to catch.
-     *
-     * @param indexer The `configData.indexer` object.
-     */
-    static void validateQueryShape(const nlohmann::json& indexer)
-    {
-        if (indexer.contains("numSlices"))
-        {
-            const auto& slices = indexer.at("numSlices");
-            if (!isNonNegativeInteger(slices) || slices.get<std::int64_t>() == 0)
-            {
-                throw std::invalid_argument {"indexer.numSlices must be a positive integer"};
-            }
-        }
-
-        // Zero is accepted and handled downstream: the factory logs it and falls back to the default
-        // page size, which is friendlier than refusing to register over a tunable.
-        if (indexer.contains("pageSize") && !isNonNegativeInteger(indexer.at("pageSize")))
-        {
-            throw std::invalid_argument {"indexer.pageSize must be a non-negative integer"};
-        }
-
-        if (indexer.contains("consumerStatusCacheSeconds") &&
-            !isNonNegativeInteger(indexer.at("consumerStatusCacheSeconds")))
-        {
-            throw std::invalid_argument {"indexer.consumerStatusCacheSeconds must be a non-negative integer"};
-        }
-
-        if (indexer.contains("keepAlive") &&
-            (!indexer.at("keepAlive").is_string() || indexer.at("keepAlive").get_ref<const std::string&>().empty()))
-        {
-            throw std::invalid_argument {"indexer.keepAlive must be a non-empty duration string, e.g. \"5m\""};
-        }
-
-        if (indexer.contains("expandWildcards") && !indexer.at("expandWildcards").is_boolean())
-        {
-            throw std::invalid_argument {"indexer.expandWildcards must be a boolean"};
-        }
-
-        if (indexer.contains("sourceFilter") && !indexer.at("sourceFilter").is_object())
-        {
-            throw std::invalid_argument {"indexer.sourceFilter must be an object with \"includes\"/\"excludes\""};
-        }
-
-        if (indexer.contains("cursorField") &&
-            (!indexer.at("cursorField").is_string() || indexer.at("cursorField").get_ref<const std::string&>().empty()))
-        {
-            throw std::invalid_argument {"indexer.cursorField must be a non-empty field name"};
-        }
-
-        if (indexer.contains("sortKeys"))
-        {
-            const auto& sortKeys = indexer.at("sortKeys");
-            if (!sortKeys.is_array() || sortKeys.empty())
-            {
-                throw std::invalid_argument {"indexer.sortKeys must be a non-empty array"};
-            }
-            for (const auto& key : sortKeys)
-            {
-                if (!key.is_object() || key.empty())
-                {
-                    throw std::invalid_argument {"indexer.sortKeys entries must be single-field objects"};
-                }
-            }
-        }
-
-        if (indexer.contains("requiredDocumentIds"))
-        {
-            const auto& ids = indexer.at("requiredDocumentIds");
-            if (!ids.is_array())
-            {
-                throw std::invalid_argument {"indexer.requiredDocumentIds must be an array of document ids"};
-            }
-            for (const auto& id : ids)
-            {
-                if (!id.is_string() || id.get_ref<const std::string&>().empty())
-                {
-                    throw std::invalid_argument {"indexer.requiredDocumentIds entries must be non-empty strings"};
-                }
-            }
-        }
-    }
-
-    /**
-     * @brief The consumer status index must be one concrete index, not an alias or a pattern.
-     *
-     * Both defences against consumer documents leaking into the content — the query-side `must_not`
-     * on `_index` and the hit-side drop — compare against the `_index` metafield, and that reports
-     * the concrete backing index. A pattern or a comma list would simply never match, so the leak
-     * would be silent. Rejecting it here is the only place it can be caught cheaply.
-     */
-    static void validateConsumerStatusIndex(const nlohmann::json& indexer)
-    {
-        const auto index = indexer.value("consumerStatusIndex", std::string {});
-        if (index.empty())
-        {
-            return;
-        }
-
-        if (index.find('*') != std::string::npos || index.find(',') != std::string::npos || index.front() == '-')
-        {
-            throw std::invalid_argument {
-                "indexer.consumerStatusIndex must be a concrete index name (no wildcard, comma list or exclusion): '" +
-                index + "'"};
-        }
-
-        if (indexer.value("consumerStatusId", std::string {}).empty())
-        {
-            throw std::invalid_argument {"indexer.consumerStatusId is required when consumerStatusIndex is set"};
-        }
-    }
-
-    static void validateHashProbe(const nlohmann::json& indexer)
-    {
-        const bool hasDocId = indexer.contains("hashDocId") && indexer.at("hashDocId").is_string() &&
-                              !indexer.at("hashDocId").get_ref<const std::string&>().empty();
-        const bool hasIndex = indexer.contains("hashIndex") && indexer.at("hashIndex").is_string() &&
-                              !indexer.at("hashIndex").get_ref<const std::string&>().empty();
-
-        if (hasDocId == hasIndex)
-        {
-            throw std::invalid_argument {
-                "hash change detection requires exactly one of indexer.hashDocId or indexer.hashIndex"};
-        }
-
-        if (hasIndex && (!indexer.contains("hashQuery") || !indexer.at("hashQuery").is_object()))
-        {
-            throw std::invalid_argument {"indexer.hashQuery is required when indexer.hashIndex is set"};
-        }
-
-        if (!indexer.contains("hashPointers") || !indexer.at("hashPointers").is_array() ||
-            indexer.at("hashPointers").empty())
-        {
-            throw std::invalid_argument {"indexer.hashPointers must be a non-empty array of JSON pointers"};
-        }
-
-        for (const auto& pointer : indexer.at("hashPointers"))
-        {
-            if (!pointer.is_string() || pointer.get_ref<const std::string&>().empty() ||
-                pointer.get_ref<const std::string&>().front() != '/')
-            {
-                throw std::invalid_argument {"indexer.hashPointers entries must be JSON pointers starting with '/'"};
-            }
-        }
-
-        if (!indexer.contains("dataQuery") || !indexer.at("dataQuery").is_object())
-        {
-            throw std::invalid_argument {"indexer.dataQuery is required for hash change detection"};
-        }
-    }
-
     /**
      * @brief Open the updater database, rebuilding it if what is on disk cannot be opened.
      *

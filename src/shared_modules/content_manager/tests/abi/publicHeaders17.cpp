@@ -28,16 +28,20 @@
  * what makes it impossible to change a layout without noticing that the version must move too.
  */
 
+#include "contentIndexer.hpp"
+#include "contentIndexerAdapters.hpp"
 #include "contentManager.hpp"
 #include "contentOnDemand.hpp"
 #include "contentRegister.hpp"
 #include "contentSink.hpp"
 #include "contentTokenStore.hpp"
+#include "contentTopicSpec.hpp"
 #include "contentTypes.hpp"
 #include "sharedDefs.hpp"
 
 #include <chrono>
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -120,6 +124,13 @@ namespace
         std::string detail;
     };
 
+    struct ContentPitMirror
+    {
+        std::string id;
+        std::uint64_t creationTime;
+        std::string keepAlive;
+    };
+
 #define ASSERT_LAYOUT(type)                                                                                            \
     static_assert(sizeof(type) == sizeof(type##Mirror), #type " layout changed: bump CONTRACT_ABI_VERSION");           \
     static_assert(alignof(type) == alignof(type##Mirror), #type " alignment changed: bump CONTRACT_ABI_VERSION")
@@ -132,6 +143,7 @@ namespace
     ASSERT_LAYOUT(CycleOutcome);
     ASSERT_LAYOUT(RunRequest);
     ASSERT_LAYOUT(OnDemandResult);
+    ASSERT_LAYOUT(ContentPit);
 
 #undef ASSERT_LAYOUT
 
@@ -152,6 +164,8 @@ namespace
     static_assert(noexcept(std::declval<IContentTokenStore&>().store(std::declval<std::string_view>(),
                                                                      std::declval<std::string_view>())),
                   "IContentTokenStore::store must be noexcept");
+    static_assert(noexcept(std::declval<IContentIndexer&>().closePit(std::declval<const ContentPit&>())),
+                  "IContentIndexer::closePit must be noexcept");
     static_assert(noexcept(std::declval<ContentRegister&>().runOnce(std::declval<RunRequest>())),
                   "ContentRegister::runOnce must be noexcept");
     static_assert(noexcept(std::declval<ContentRegister&>().currentToken()),

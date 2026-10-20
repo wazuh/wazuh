@@ -30,11 +30,6 @@ namespace
 constexpr std::size_t DEFAULT_RETRIES = 1;
 constexpr std::size_t DEFAULT_WAIT = 0;
 
-nlohmann::json indexerConnection()
-{
-    return nlohmann::json {{"hosts", nlohmann::json::array({"http://127.0.0.1:9200"})}};
-}
-
 cmcontent::Options contentOptions()
 {
     cmcontent::Options options;
@@ -91,14 +86,8 @@ protected:
         EXPECT_CALL(*store, existsDoc(_)).WillOnce(Return(true));
         EXPECT_CALL(*store, readDoc(_)).WillOnce(Return(store::mocks::storeReadDocResp(stateDoc(persisted))));
 
-        return std::make_unique<IocSync>(indexer,
-                                         kvdb,
-                                         store,
-                                         indexerConnection(),
-                                         DEFAULT_RETRIES,
-                                         DEFAULT_WAIT,
-                                         contentOptions(),
-                                         topics.factory());
+        return std::make_unique<IocSync>(
+            indexer, kvdb, store, nullptr, DEFAULT_RETRIES, DEFAULT_WAIT, contentOptions(), topics.factory());
     }
 
     /// Let the pre-flight through: the consumer is ready and the remote index exists.
@@ -301,8 +290,8 @@ TEST_F(IocSyncOrchestrationTest, ARetryableOutcomeIsRetriedUpToTheConfiguredAtte
     EXPECT_CALL(*store, readDoc(_)).WillOnce(Return(store::mocks::storeReadDocResp(stateDoc(persisted))));
 
     constexpr std::size_t ATTEMPTS = 3;
-    auto sync = std::make_unique<IocSync>(
-        indexer, kvdb, store, indexerConnection(), ATTEMPTS, 0, contentOptions(), topics.factory());
+    auto sync =
+        std::make_unique<IocSync>(indexer, kvdb, store, nullptr, ATTEMPTS, 0, contentOptions(), topics.factory());
     sync->synchronize();
 
     EXPECT_EQ(topics.callCount(topicOf("url_domain")), ATTEMPTS);

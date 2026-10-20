@@ -46,22 +46,21 @@ public:
      * @brief Build a topic driver.
      *
      * @param topicName Topic name.
-     * @param parameters Registration parameters.
+     * @param spec The parsed registration.
      * @param sink Where the content goes.
      * @param tokenStore Host-supplied token store; may be null.
      * @param port Indexer access.
      */
     Action(std::string topicName,
-           nlohmann::json parameters,
+           const content_manager::TopicSpec& spec,
            std::shared_ptr<content_manager::IContentSink> sink,
            std::shared_ptr<content_manager::IContentTokenStore> tokenStore,
-           std::shared_ptr<IIndexerQueryPort> port)
+           std::shared_ptr<content_manager::IContentIndexer> port)
         : m_topicName {std::move(topicName)}
         , m_stopActionCondition {std::make_shared<ConditionSync>(false)}
         , m_orchestration {std::make_unique<ActionOrchestrator>(
-              parameters, m_stopActionCondition, std::move(sink), std::move(tokenStore), std::move(port))}
+              m_topicName, spec, m_stopActionCondition, std::move(sink), std::move(tokenStore), std::move(port))}
     {
-        m_parameters = std::move(parameters);
     }
 
     /**
@@ -390,7 +389,6 @@ private:
     bool m_running {false};
 
     std::string m_topicName;
-    nlohmann::json m_parameters;
     std::shared_ptr<ConditionSync> m_stopActionCondition;
     std::unique_ptr<ActionOrchestrator> m_orchestration;
     std::size_t m_consecutiveTransportFailures {0};

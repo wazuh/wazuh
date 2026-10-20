@@ -197,7 +197,7 @@ public:
            const std::shared_ptr<cm::crud::ICrudService>& cmcrudPtr,
            const std::shared_ptr<store::IStore>& storePtr,
            const std::shared_ptr<router::IRouterAPI>& routerPtr,
-           nlohmann::json indexerConnection,
+           std::shared_ptr<content_manager::IContentIndexer> contentIndexer,
            size_t attempts,
            size_t waitSeconds,
            cmcontent::Options contentOptions);
@@ -210,8 +210,11 @@ public:
 };
 ```
 
-`indexerConnection` is the **same** JSON `main.cpp` builds the indexer connector from, so there is no
-second place to configure the indexer.
+`contentIndexer` is the Engine's **one** `IndexerConnectorAsync`, wrapped by
+`content_manager::makeContentIndexer` in `main.cpp` (D1 of the content manager): the registrations
+never open a connection of their own, so there is no second connector, monitor or place to
+configure the indexer. It is only read to build the default topic factory; a test passing its own
+factory may pass null.
 
 ## Implementation Details
 

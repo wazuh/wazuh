@@ -11,10 +11,11 @@
 #ifndef _CONTENT_MODULE_IMPLEMENTATION_HPP
 #define _CONTENT_MODULE_IMPLEMENTATION_HPP
 
-#include "components/indexerQueryPort.hpp"
+#include "contentIndexer.hpp"
 #include "contentProvider.hpp"
 #include "contentSink.hpp"
 #include "contentTokenStore.hpp"
+#include "contentTopicSpec.hpp"
 #include "contentTypes.hpp"
 #include "singleton.hpp"
 #include <cstdarg>
@@ -27,21 +28,12 @@
 /**
  * @brief The module's single registry of topics — and of the indexer sessions they share.
  *
- * ### Why the session registry lives here
+ * ### Why there is no connection here
  *
- * A connector's constructor resolves credentials, merges CA bundles, runs a synchronous health
- * check against every host and starts its own health-monitor thread. The previous code built a
- * fresh one **per PIT operation** — five call sites plus one per slice — which was merely wasteful
- * for VD's single topic but multiplies by the number of topics, and the Engine has eight of them by
- * default, held alongside its own event-indexing connector.
- *
- * `IndexerSession` exists precisely for "this process holds more than one connector": every
- * connector built from a session adopts that session's single monitor. The registry is keyed by a
- * fingerprint of the connection settings, so registrations that talk to the same indexer with the
- * same credentials share one session and one monitor, and registrations that do not are kept apart
- * — a session's monitor only knows the hosts it was built with.
- *
- * Sessions are held weakly: the last port using one releases it.
+ * The library never builds an indexer connection (D1): each registration is handed the host's, as a
+ * `content_manager::IContentIndexer`. A host therefore runs one connector stack — one health
+ * monitor, one keystore read — however many topics it registers, and an indexer outage is reported
+ * once, by the host's own connector.
  */
 class ContentModuleFacade final : public Singleton<ContentModuleFacade>
 {
@@ -71,19 +63,18 @@ public:
      * @brief Register one topic.
      *
      * @param name Topic name.
-     * @param parameters Registration parameters.
+     * @param spec The parsed registration (D2).
      * @param sink Where the content goes.
      * @param tokenStore Host-supplied token store; may be null.
-     * @param port Indexer access. When null, one is built over a shared session derived from
-     *             `parameters.configData.indexer`. Tests pass a fake here.
+     * @param indexer The host's indexer. Required.
      * @throws std::runtime_error if the topic is already registered.
-     * @throws std::invalid_argument if the configuration is not usable.
+     * @throws std::invalid_argument if the configuration is not usable or @p indexer is null.
      */
     void addProvider(const std::string& name,
-                     const nlohmann::json& parameters,
+                     const content_manager::TopicSpec& spec,
                      std::shared_ptr<content_manager::IContentSink> sink,
-                     std::shared_ptr<content_manager::IContentTokenStore> tokenStore = nullptr,
-                     std::shared_ptr<IIndexerQueryPort> port = nullptr);
+                     std::shared_ptr<content_manager::IContentIndexer> indexer,
+                     std::shared_ptr<content_manager::IContentTokenStore> tokenStore = nullptr);
 
     /**
      * @brief Start the library's driver thread for a topic.
@@ -132,34 +123,8 @@ public:
      */
     void requestStop(const std::string& name) noexcept;
 
-    /**
-     * @brief The identity of an indexer connection: everything a session is built from.
-     *
-     * Two registrations share a session only when these match exactly. `monitoring_interval_seconds`
-     * is part of it because a session's monitor is built with one value and every connector on it
-     * inherits that value, so two registrations asking for different periods must not be merged.
-     *
-     * Public because it is the rule this class's sharing behaviour rests on, and it is worth
-     * asserting directly rather than only through the side effect of how many monitor threads a
-     * process ends up with.
-     *
-     * @param indexerConfig The `configData.indexer` object.
-     * @return A canonical fingerprint string.
-     */
-    static std::string fingerprint(const nlohmann::json& indexerConfig);
-
 private:
-    /**
-     * @brief Get, or lazily create, the session for a set of connection settings.
-     *
-     * @param indexerConfig The `configData.indexer` object.
-     * @return The shared session.
-     */
-    std::shared_ptr<IndexerSession> sessionFor(const nlohmann::json& indexerConfig);
-
     std::unordered_map<std::string, std::unique_ptr<ContentProvider>> m_providers;
-    /// Weak on purpose: a session lives exactly as long as some port still needs it.
-    std::unordered_map<std::string, std::weak_ptr<IndexerSession>> m_sessions;
     mutable std::shared_mutex m_mutex;
 };
 

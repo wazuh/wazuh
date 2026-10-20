@@ -62,7 +62,6 @@ private:
     std::size_t m_attempts;    ///< Number of attempts to retry a cycle before failing
     std::size_t m_waitSeconds; ///< Seconds to wait between attempts
 
-    nlohmann::json m_indexerConnection;     ///< Indexer connection settings handed to every registration
     cmcontent::Options m_contentOptions;    ///< Page size and timing tunables for every registration
     cmcontent::TopicFactory m_topicFactory; ///< Builds each space's topic; substituted in tests
 
@@ -164,7 +163,8 @@ public:
      * @param cmcrudPtr Namespace store.
      * @param storePtr Internal config store.
      * @param routerPtr Router API.
-     * @param indexerConnection Indexer connection settings for the content registrations.
+     * @param contentIndexer The Engine's indexer, shared by every content registration (D1 of the
+     * content manager). Only read when @p topicFactory is empty; may then not be null.
      * @param attempts Number of attempts to retry a cycle before failing.
      * @param waitSeconds Seconds to wait between attempts.
      * @param contentOptions Page size and timing tunables for the content registrations.
@@ -175,7 +175,7 @@ public:
            const std::shared_ptr<cm::crud::ICrudService>& cmcrudPtr,
            const std::shared_ptr<::store::IStore>& storePtr,
            const std::shared_ptr<router::IRouterAPI>& routerPtr,
-           nlohmann::json indexerConnection,
+           std::shared_ptr<content_manager::IContentIndexer> contentIndexer,
            const size_t attempts,
            const size_t waitSeconds,
            cmcontent::Options contentOptions,

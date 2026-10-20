@@ -5,6 +5,8 @@
 
 #include <fmt/format.h>
 
+#include <contentTopicSpec.hpp>
+
 #include <cmcontent/registration.hpp>
 
 namespace cmcontent
@@ -35,46 +37,36 @@ const std::vector<std::string> POLICY_ALIASES {"wazuh-threatintel-kvdbs",
                                                "wazuh-threatintel-integrations",
                                                "wazuh-threatintel-policies"};
 
-/// `_shard_doc` is synthesised by the PIT itself, so it is mapped in every index the PIT spans —
-/// including the consumer status index, which is why no `unmapped_type` is needed here.
-nlohmann::json sortKeys()
-{
-    return nlohmann::json::array({nlohmann::json {{"_shard_doc", "asc"}}, nlohmann::json {{"_id", "asc"}}});
-}
-
 std::size_t clampPageSize(std::size_t pageSize)
 {
     return std::clamp<std::size_t>(pageSize, 1, MAX_PAGE_SIZE);
 }
 
-nlohmann::json baseParameters(const nlohmann::json& connection,
-                              const std::string& topic,
-                              std::string_view consumerName,
-                              const Options& options)
+/// What every Engine topic shares. No interval: the Engine owns a scheduler with CPU priorities and a
+/// startup ordering the library cannot reproduce, so it drives runOnce from its own task instead of
+/// letting the library spawn a thread per topic. No database path: Engine state lives in
+/// store::IStore, and the token travels with it. No connection: the Engine's own indexer is handed to
+/// every registration (D1 of the content manager). The sort is implied by hash detection
+/// (`_shard_doc`, `_id`), so it is not spelled out either (D2).
+content_manager::TopicSpec baseSpec(const Options& options, const std::optional<std::string>& consumerId)
 {
-    nlohmann::json parameters;
-    parameters["topicName"] = topic;
-    parameters["ondemand"] = true;
-    // No "interval": the Engine owns a scheduler with CPU priorities and a startup ordering the
-    // library cannot reproduce, so it drives runOnce from its own task instead of letting the
-    // library spawn a thread per topic.
+    content_manager::TopicSpec spec;
+    spec.schedule.onDemand = true;
+    spec.source.pitKeepAlive = options.pitKeepAlive;
+    spec.source.pageSize = clampPageSize(options.pageSize);
 
-    auto& configData = parameters["configData"];
-    configData["consumerName"] = std::string {consumerName};
-    configData["changeDetection"] = "hash";
-    configData["consumerRetryIntervalSeconds"] = options.consumerRetrySeconds;
-    // No "databasePath": Engine state lives in store::IStore, and the token travels with it.
-
-    configData["indexer"] = connection;
-    auto& indexer = configData["indexer"];
-    indexer["consumerStatusIndex"] = std::string {CTI_CONSUMERS_INDEX};
-    indexer["keepAlive"] = options.pitKeepAlive;
-    indexer["consumerStatusCacheSeconds"] = options.consumerCacheSeconds;
-    indexer["pageSize"] = clampPageSize(options.pageSize);
-    indexer["numSlices"] = 1;
-    indexer["sortKeys"] = sortKeys();
-
-    return parameters;
+    // No consumer writes a space like `custom`, so there is nothing to wait for: no readiness block,
+    // no gate (D2).
+    if (consumerId.has_value() && !consumerId->empty())
+    {
+        // At least one second, as the library used to enforce silently: the library now refuses a
+        // zero retry, and `analysisd.content_consumer_retry_interval` may legitimately be set to 0.
+        spec.readiness = content_manager::Readiness {std::string {CTI_CONSUMERS_INDEX},
+                                                     *consumerId,
+                                                     std::max<std::size_t>(1, options.consumerRetrySeconds),
+                                                     options.consumerCacheSeconds};
+    }
+    return spec;
 }
 
 } // namespace
@@ -89,28 +81,17 @@ std::string iocTopic(std::string_view iocType)
     return fmt::format("content.ioc.{}", iocType);
 }
 
-nlohmann::json rulesetParameters(const nlohmann::json& connection,
-                                 std::string_view space,
-                                 const Options& options,
-                                 const std::optional<std::string>& consumerId)
+nlohmann::json
+rulesetParameters(std::string_view space, const Options& options, const std::optional<std::string>& consumerId)
 {
-    auto parameters = baseParameters(connection, rulesetTopic(space), "Wazuh Engine CM Sync", options);
+    auto spec = baseSpec(options, consumerId);
+    spec.source.indices = POLICY_ALIASES;
+    spec.source.expandWildcards = true;
+    spec.source.query = nlohmann::json {
+        {"bool",
+         {{"filter", nlohmann::json::array({nlohmann::json {{"term", {{"space.name", std::string {space}}}}}})}}}};
 
-    auto& indexer = parameters["configData"]["indexer"];
-    indexer["indices"] = POLICY_ALIASES;
-    indexer["expandWildcards"] = true;
-    if (consumerId.has_value() && !consumerId->empty())
-    {
-        indexer["consumerStatusId"] = *consumerId;
-    }
-    else
-    {
-        // No consumer writes this space, so there is nothing to wait for: an empty status index
-        // disables both the pre-flight probe and the in-snapshot validation.
-        indexer.erase("consumerStatusIndex");
-    }
-    indexer["hashIndex"] = std::string {POLICY_INDEX};
-
+    content_manager::HashDetection hash;
     // The probe must select the ONE policy document of this space, but it runs inside the PIT,
     // which spans every resource index. No document field singles the policy out: `enabled` is
     // required on decoders and filters too (wazuh-decoders.json, wazuh-filters.json), so a field
@@ -120,40 +101,35 @@ nlohmann::json rulesetParameters(const nlohmann::json& connection,
     // aliases and `_index` reports the concrete backing index, which carries a suffix. The wildcard
     // is the same "contains `policies`" rule the sink classifies hits by (kindFromIndexName), so the
     // probe and the sink agree on what the policy document is by construction.
-    indexer["hashQuery"] = nlohmann::json {
+    hash.probe = content_manager::QueryProbe {nlohmann::json {
         {"bool",
          {{"filter",
            nlohmann::json::array({nlohmann::json {{"term", {{"space.name", std::string {space}}}}},
-                                  nlohmann::json {{"wildcard", {{"_index", {{"value", "*policies*"}}}}}}})}}}};
-    indexer["hashPointers"] = nlohmann::json::array({"/space/hash/sha256"});
-    indexer["metadataPointers"] =
-        nlohmann::json {{"enabled", "/document/enabled"}, {"integrations", "/document/integrations"}};
-    indexer["dataQuery"] = nlohmann::json {
-        {"bool",
-         {{"filter", nlohmann::json::array({nlohmann::json {{"term", {{"space.name", std::string {space}}}}}})}}}};
+                                  nlohmann::json {{"wildcard", {{"_index", {{"value", "*policies*"}}}}}}})}}}}};
+    hash.tokenPointers = {"/space/hash/sha256"};
+    hash.metadata = {{"enabled", "/document/enabled"}, {"integrations", "/document/integrations"}};
+    spec.detection = std::move(hash);
 
-    return parameters;
+    return content_manager::toParameters(spec);
 }
 
-nlohmann::json iocParameters(const nlohmann::json& connection, std::string_view iocType, const Options& options)
+nlohmann::json iocParameters(std::string_view iocType, const Options& options)
 {
-    auto parameters = baseParameters(connection, iocTopic(iocType), "Wazuh Engine IOC Sync", options);
+    auto spec = baseSpec(options, std::string {IOC_CONSUMER_ID});
+    spec.source.indices = {std::string {IOC_INDEX}};
+    spec.source.query = nlohmann::json {{"term", {{"document.type", std::string {iocType}}}}};
+    spec.source.sourceFilter =
+        nlohmann::json {{"includes", IOC_SOURCE_INCLUDES}, {"excludes", nlohmann::json::array()}};
 
-    auto& indexer = parameters["configData"]["indexer"];
-    indexer["index"] = std::string {IOC_INDEX};
-    indexer["consumerStatusId"] = std::string {IOC_CONSUMER_ID};
-    indexer["hashDocId"] = std::string {IOC_HASHES_DOC_ID};
-
+    content_manager::HashDetection hash;
+    hash.probe = content_manager::DocumentProbe {std::string {IOC_HASHES_DOC_ID}};
     // Two shapes are accepted for the manifest: the current one nests every type under
     // `type_hashes`, an older one puts them at the top level. First pointer that resolves wins, so
     // both keep working without a migration.
-    indexer["hashPointers"] = nlohmann::json::array(
-        {fmt::format("/type_hashes/{}/hash/sha256", iocType), fmt::format("/{}/hash/sha256", iocType)});
+    hash.tokenPointers = {fmt::format("/type_hashes/{}/hash/sha256", iocType), fmt::format("/{}/hash/sha256", iocType)};
+    spec.detection = std::move(hash);
 
-    indexer["dataQuery"] = nlohmann::json {{"term", {{"document.type", std::string {iocType}}}}};
-    indexer["sourceFilter"] = nlohmann::json {{"includes", IOC_SOURCE_INCLUDES}, {"excludes", nlohmann::json::array()}};
-
-    return parameters;
+    return content_manager::toParameters(spec);
 }
 
 } // namespace cmcontent

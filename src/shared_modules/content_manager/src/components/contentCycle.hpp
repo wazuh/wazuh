@@ -14,10 +14,10 @@
 #include "changeDetector.hpp"
 #include "conditionSync.hpp"
 #include "consumerGate.hpp"
+#include "contentIndexer.hpp"
 #include "contentSink.hpp"
 #include "contentTokenStore.hpp"
 #include "contentTypes.hpp"
-#include "indexerQueryPort.hpp"
 #include "loggerHelper.h"
 #include "pitPaginator.hpp"
 #include "pitSession.hpp"
@@ -83,7 +83,7 @@ public:
      * @param stop Cooperative stop flag shared with the driver.
      */
     ContentCycle(Config config,
-                 std::shared_ptr<IIndexerQueryPort> port,
+                 std::shared_ptr<content_manager::IContentIndexer> port,
                  std::unique_ptr<IChangeDetector> detector,
                  std::shared_ptr<content_manager::IContentSink> sink,
                  std::shared_ptr<content_manager::IContentTokenStore> tokenStore,
@@ -501,7 +501,7 @@ private:
     static constexpr std::chrono::seconds SINK_RETRY_INTERVAL {30};
 
     Config m_config;
-    std::shared_ptr<IIndexerQueryPort> m_port;
+    std::shared_ptr<content_manager::IContentIndexer> m_port;
     std::unique_ptr<IChangeDetector> m_detector;
     std::shared_ptr<content_manager::IContentSink> m_sink;
     std::shared_ptr<content_manager::IContentTokenStore> m_tokenStore;

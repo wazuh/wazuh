@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#include <stdexcept>
 #include <utility>
 
 #include <base/logging.hpp>
@@ -21,8 +22,10 @@ public:
     ContentRegisterTopic(const std::string& topicName,
                          const nlohmann::json& parameters,
                          std::shared_ptr<content_manager::IContentSink> sink,
+                         std::shared_ptr<content_manager::IContentIndexer> indexer,
                          std::shared_ptr<content_manager::IContentTokenStore> tokenStore)
-        : m_register(std::make_unique<ContentRegister>(topicName, parameters, std::move(sink), std::move(tokenStore)))
+        : m_register(std::make_unique<ContentRegister>(
+              topicName, parameters, std::move(sink), std::move(indexer), std::move(tokenStore)))
     {
     }
 
@@ -39,14 +42,21 @@ private:
 
 } // namespace
 
-TopicFactory defaultTopicFactory()
+TopicFactory defaultTopicFactory(std::shared_ptr<content_manager::IContentIndexer> indexer)
 {
-    return [](const std::string& topicName,
-              const nlohmann::json& parameters,
-              std::shared_ptr<content_manager::IContentSink> sink,
-              std::shared_ptr<content_manager::IContentTokenStore> tokenStore) -> std::unique_ptr<IContentTopic>
+    if (!indexer)
     {
-        return std::make_unique<ContentRegisterTopic>(topicName, parameters, std::move(sink), std::move(tokenStore));
+        throw std::invalid_argument {"The content registrations need the Engine's indexer; got null"};
+    }
+
+    return [indexer = std::move(indexer)](
+               const std::string& topicName,
+               const nlohmann::json& parameters,
+               std::shared_ptr<content_manager::IContentSink> sink,
+               std::shared_ptr<content_manager::IContentTokenStore> tokenStore) -> std::unique_ptr<IContentTopic>
+    {
+        return std::make_unique<ContentRegisterTopic>(
+            topicName, parameters, std::move(sink), indexer, std::move(tokenStore));
     };
 }
 

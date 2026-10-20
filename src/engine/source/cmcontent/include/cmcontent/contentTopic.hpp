@@ -12,6 +12,7 @@
 
 #include <json.hpp>
 
+#include <contentIndexer.hpp>
 #include <contentOnDemand.hpp>
 #include <contentSink.hpp>
 #include <contentTokenStore.hpp>
@@ -61,11 +62,16 @@ using TopicFactory =
                                                  std::shared_ptr<content_manager::IContentTokenStore> tokenStore)>;
 
 /**
- * @brief The production factory: builds a real `ContentRegister`.
+ * @brief The production factory: builds a real `ContentRegister` over the host's indexer.
  *
+ * The indexer is captured here rather than passed through @ref TopicFactory, so the factory
+ * signature — and every fake factory a test substitutes — knows nothing about connections.
+ *
+ * @param indexer The Engine's indexer, shared by every topic (D1 of the content manager).
  * @return A factory registering topics with the shared content manager.
+ * @throws std::invalid_argument if @p indexer is null.
  */
-TopicFactory defaultTopicFactory();
+TopicFactory defaultTopicFactory(std::shared_ptr<content_manager::IContentIndexer> indexer);
 
 /// How one on-demand update is queued: `content_manager::requestOnDemand`, or a fake in tests.
 using OnDemandDispatch = std::function<void(

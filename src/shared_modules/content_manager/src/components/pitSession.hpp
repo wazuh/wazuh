@@ -11,7 +11,7 @@
 #ifndef _PIT_SESSION_HPP
 #define _PIT_SESSION_HPP
 
-#include "indexerQueryPort.hpp"
+#include "contentIndexer.hpp"
 #include "loggerHelper.h"
 #include "sharedDefs.hpp"
 #include <json.hpp>
@@ -70,7 +70,7 @@ public:
      * @param cfg Session configuration.
      * @throws IndexerConnectorException if the PIT cannot be opened.
      */
-    PitSession(IIndexerQueryPort& port, Config cfg)
+    PitSession(content_manager::IContentIndexer& port, Config cfg)
         : m_port {port}
         , m_config {std::move(cfg)}
         , m_pit {port.openPit(buildIndices(m_config), m_config.keepAlive, m_config.expandWildcards)}
@@ -159,7 +159,7 @@ public:
     }
 
     /// @return The open PIT.
-    const PointInTime& pit() const noexcept
+    const content_manager::ContentPit& pit() const noexcept
     {
         return m_pit;
     }
@@ -244,9 +244,9 @@ private:
         return sort;
     }
 
-    IIndexerQueryPort& m_port;
+    content_manager::IContentIndexer& m_port;
     Config m_config;
-    PointInTime m_pit;
+    content_manager::ContentPit m_pit;
 };
 
 #endif // _PIT_SESSION_HPP

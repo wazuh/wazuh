@@ -37,9 +37,6 @@ constexpr std::string_view IOC_INDEX {"wazuh-threatintel-enrichments"};
 /// Manifest document carrying the per-type IOC hashes.
 constexpr std::string_view IOC_HASHES_DOC_ID {"__ioc_type_hashes__"};
 
-/// Index holding the per-space policy documents.
-constexpr std::string_view POLICY_INDEX {"wazuh-threatintel-policies"};
-
 /// Hard cap on the page size, whatever the configuration asks for.
 constexpr std::size_t MAX_PAGE_SIZE {1000};
 
@@ -75,7 +72,6 @@ std::string iocTopic(std::string_view iocType);
  * are all already per-space, so a single multi-space topic would have to invent a sub-stream
  * concept inside the generic contract for the benefit of exactly one consumer.
  *
- * @param connection Indexer connection settings (`hosts`, `ssl`, credentials).
  * @param space Origin space in the indexer.
  * @param options Tunables.
  * @param consumerId CTI consumer whose readiness gates the space, or nullopt for a space no consumer
@@ -83,20 +79,17 @@ std::string iocTopic(std::string_view iocType);
  *                   standard content says nothing about whether its own documents are complete.
  * @return The parameters to hand to `ContentRegister`.
  */
-nlohmann::json rulesetParameters(const nlohmann::json& connection,
-                                 std::string_view space,
-                                 const Options& options,
-                                 const std::optional<std::string>& consumerId);
+nlohmann::json
+rulesetParameters(std::string_view space, const Options& options, const std::optional<std::string>& consumerId);
 
 /**
  * @brief Registration parameters for one IOC type.
  *
- * @param connection Indexer connection settings (`hosts`, `ssl`, credentials).
  * @param iocType IOC type.
  * @param options Tunables.
  * @return The parameters to hand to `ContentRegister`.
  */
-nlohmann::json iocParameters(const nlohmann::json& connection, std::string_view iocType, const Options& options);
+nlohmann::json iocParameters(std::string_view iocType, const Options& options);
 
 } // namespace cmcontent
 

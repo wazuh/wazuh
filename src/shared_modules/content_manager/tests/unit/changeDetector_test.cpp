@@ -159,7 +159,6 @@ TEST(ContentHashDetectorTest, DocProbeFallsBackToTheFlatManifestShape)
 TEST(ContentHashDetectorTest, QueryProbeReadsMetadataAlongsideTheHash)
 {
     ContentHashDetector::Config config;
-    config.hashIndex = "wazuh-threatintel-policies";
     config.hashQuery = nlohmann::json {{"term", {{"space.name", "standard"}}}};
     config.hashPointers = {"/space/hash/sha256"};
     config.metadataPointers = {{"enabled", "/document/enabled"}, {"integrations", "/document/integrations"}};
@@ -189,7 +188,6 @@ TEST(ContentHashDetectorTest, QueryProbeReadsMetadataAlongsideTheHash)
 TEST(ContentHashDetectorTest, AQueryProbeMatchingTwoDocumentsIsAConfigurationError)
 {
     ContentHashDetector::Config config;
-    config.hashIndex = "wazuh-threatintel-policies";
     config.hashQuery = nlohmann::json {{"term", {{"space.name", "standard"}}}};
     config.hashPointers = {"/space/hash/sha256"};
     config.dataQuery = nlohmann::json {{"term", {{"space.name", "standard"}}}};
@@ -213,14 +211,13 @@ TEST(ContentHashDetectorTest, AQueryProbeMatchingTwoDocumentsIsAConfigurationErr
     // cycles: the topic would alternate between two hashes and reload on every single cycle, with
     // nothing anywhere reporting a fault. Naming the offending key is the whole point.
     EXPECT_FALSE(probe.configError.empty());
-    EXPECT_NE(probe.configError.find("hashQuery"), std::string::npos);
+    EXPECT_NE(probe.configError.find("detection.probe.query"), std::string::npos);
     EXPECT_TRUE(probe.remoteToken.empty());
 }
 
 TEST(ContentHashDetectorTest, AQueryProbeAsksForOneMoreHitThanItNeeds)
 {
     ContentHashDetector::Config config;
-    config.hashIndex = "wazuh-threatintel-policies";
     config.hashQuery = nlohmann::json {{"term", {{"space.name", "standard"}}}};
     config.hashPointers = {"/space/hash/sha256"};
     config.dataQuery = nlohmann::json::object();
@@ -313,4 +310,32 @@ TEST(ContentHashDetectorTest, PlanMatrix)
 
     EXPECT_EQ(detector.finalToken(remote, "ignored"), "hash-1");
     EXPECT_TRUE(detector.pageTokenPointer().empty());
+}
+
+TEST(OffsetCursorDetectorTest, AnIncrementalFetchRunsTheSourceQueryAndTheRange)
+{
+    // source.query now narrows both strategies (D2): an incremental cursor fetch must keep it, or a
+    // topic scoped to part of an index would pull in everything newer than its cursor.
+    const nlohmann::json sourceQuery {{"term", {{"type", "CVE"}}}};
+    OffsetCursorDetector detector {"offset", sourceQuery};
+
+    const auto incremental = detector.plan({}, "42");
+    ASSERT_EQ(incremental.mode, FetchPlan::Mode::Incremental);
+    const auto& filters = incremental.query.at("bool").at("filter");
+    ASSERT_EQ(filters.size(), 2U);
+    EXPECT_EQ(filters[0], sourceQuery);
+    EXPECT_EQ(filters[1].at("range").at("offset").at("gt"), 42U);
+
+    // A full fetch runs the topic's query as is.
+    const auto full = detector.plan({}, "");
+    EXPECT_EQ(full.mode, FetchPlan::Mode::Full);
+    EXPECT_EQ(full.query, sourceQuery);
+}
+
+TEST(OffsetCursorDetectorTest, WithoutASourceQueryAFullFetchSelectsEverything)
+{
+    OffsetCursorDetector detector {"offset"};
+
+    EXPECT_EQ(detector.plan({}, "").query, (nlohmann::json {{"match_all", nlohmann::json::object()}}));
+    EXPECT_EQ(detector.plan({}, "7").query, (nlohmann::json {{"range", {{"offset", {{"gt", 7U}}}}}}));
 }

@@ -22,14 +22,6 @@ namespace
 constexpr std::size_t DEFAULT_RETRIES = 1;
 constexpr std::size_t DEFAULT_WAIT = 0;
 
-/// Minimal-but-valid indexer settings. Never reaches a real session: the tests inject the fake topic
-/// registry, because a real registration reads the indexer credentials from the keystore — which a
-/// unit test does not have, and which parallel test processes would contend for.
-nlohmann::json indexerConnection()
-{
-    return nlohmann::json {{"hosts", nlohmann::json::array({"http://127.0.0.1:9200"})}};
-}
-
 cmcontent::Options contentOptions()
 {
     cmcontent::Options options;
@@ -56,14 +48,8 @@ protected:
         // One write per addIOCTypeToSync; the constructor no longer duplicates the final one.
         EXPECT_CALL(*store, upsertDoc(_, _)).Times(numTypes).WillRepeatedly(Return(store::mocks::storeOk()));
 
-        return std::make_unique<IocSync>(indexer,
-                                         kvdb,
-                                         store,
-                                         indexerConnection(),
-                                         DEFAULT_RETRIES,
-                                         DEFAULT_WAIT,
-                                         contentOptions(),
-                                         topics.factory());
+        return std::make_unique<IocSync>(
+            indexer, kvdb, store, nullptr, DEFAULT_RETRIES, DEFAULT_WAIT, contentOptions(), topics.factory());
     }
 
     cmcontent::mocks::FakeTopicRegistry topics;
@@ -140,8 +126,7 @@ TEST_F(IocSyncStatusTest, RestoresLastSuccessfulUpdateFromStore)
     // Hash is non-empty, so availability is checked against the KVDB.
     EXPECT_CALL(*kvdb, exists(_)).WillRepeatedly(Return(true));
 
-    IocSync sync(
-        indexer, kvdb, store, indexerConnection(), DEFAULT_RETRIES, DEFAULT_WAIT, contentOptions(), topics.factory());
+    IocSync sync(indexer, kvdb, store, nullptr, DEFAULT_RETRIES, DEFAULT_WAIT, contentOptions(), topics.factory());
 
     auto status = sync.getIocStatus();
     ASSERT_EQ(status.size(), 1U);

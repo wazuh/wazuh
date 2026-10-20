@@ -9,7 +9,6 @@
  */
 
 #include "contentModuleFacade.hpp"
-#include "components/indexerConnectorQueryPort.hpp"
 #include "loggerHelper.h"
 #include "onDemandManager.hpp"
 #include "sharedDefs.hpp"
@@ -39,7 +38,6 @@ void ContentModuleFacade::stop()
     {
         std::lock_guard<std::shared_mutex> lock {m_mutex};
         providers.swap(m_providers);
-        m_sessions.clear();
     }
 
     // Every stop first, then every drain: one pass would let a topic run to completion while the
@@ -92,11 +90,16 @@ void ContentModuleFacade::removeProvider(const std::string& name)
 }
 
 void ContentModuleFacade::addProvider(const std::string& name,
-                                      const nlohmann::json& parameters,
+                                      const content_manager::TopicSpec& spec,
                                       std::shared_ptr<content_manager::IContentSink> sink,
-                                      std::shared_ptr<content_manager::IContentTokenStore> tokenStore,
-                                      std::shared_ptr<IIndexerQueryPort> port)
+                                      std::shared_ptr<content_manager::IContentIndexer> indexer,
+                                      std::shared_ptr<content_manager::IContentTokenStore> tokenStore)
 {
+    if (!indexer)
+    {
+        throw std::invalid_argument {"A content registration needs the host's indexer: '" + name + "'"};
+    }
+
     std::lock_guard<std::shared_mutex> lock {m_mutex};
 
     if (m_providers.find(name) != m_providers.end())
@@ -104,24 +107,9 @@ void ContentModuleFacade::addProvider(const std::string& name,
         throw std::runtime_error("Provider already exist");
     }
 
-    if (!port)
-    {
-        // Named here because the connector's own exceptions do not say which registration they
-        // belong to, and a bare JSON or keystore error reaching the host is unattributable.
-        try
-        {
-            const auto& indexerConfig = parameters.at("configData").at("indexer");
-            port = std::make_shared<IndexerConnectorQueryPort>(indexerConfig, sessionFor(indexerConfig));
-        }
-        catch (const std::exception& e)
-        {
-            throw std::runtime_error {"Cannot connect topic '" + name + "' to the indexer: " + e.what()};
-        }
-    }
-
     m_providers.emplace(
         name,
-        std::make_unique<ContentProvider>(name, parameters, std::move(sink), std::move(tokenStore), std::move(port)));
+        std::make_unique<ContentProvider>(name, spec, std::move(sink), std::move(tokenStore), std::move(indexer)));
 }
 
 void ContentModuleFacade::startScheduling(const std::string& name, size_t interval)
@@ -232,37 +220,4 @@ void ContentModuleFacade::requestStop(const std::string& name) noexcept
     {
         providerIt->second->requestStop();
     }
-}
-
-std::shared_ptr<IndexerSession> ContentModuleFacade::sessionFor(const nlohmann::json& indexerConfig)
-{
-    const auto key = fingerprint(indexerConfig);
-
-    if (const auto it = m_sessions.find(key); it != m_sessions.end())
-    {
-        if (auto session = it->second.lock())
-        {
-            return session;
-        }
-    }
-
-    auto session = std::make_shared<IndexerSession>(indexerConfig, LoggingContext {WM_CONTENTUPDATER, {}});
-    m_sessions[key] = session;
-    return session;
-}
-
-std::string ContentModuleFacade::fingerprint(const nlohmann::json& indexerConfig)
-{
-    // An ordered_json keeps the rendering stable regardless of how the host assembled the object,
-    // so two equivalent configurations cannot end up with two sessions.
-    nlohmann::ordered_json identity;
-    for (const auto* key :
-         {"hosts", "ssl", "username", "password", "service_account_token", "monitoring_interval_seconds"})
-    {
-        if (indexerConfig.contains(key))
-        {
-            identity[key] = indexerConfig.at(key);
-        }
-    }
-    return identity.dump();
 }

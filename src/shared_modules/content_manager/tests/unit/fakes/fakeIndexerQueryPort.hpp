@@ -16,13 +16,16 @@
 // transitively is exactly the kind of thing that compiles in one test and not another: the suites
 // that include `contentCycle.hpp` or `action.hpp` first got it for free, and the ones that start
 // from `changeDetector.hpp` did not.
-#include "components/indexerQueryPort.hpp"
+#include "contentIndexer.hpp"
 #include "contentSink.hpp"
 #include "contentTokenStore.hpp"
 #include "contentTypes.hpp"
+#include <algorithm>
 #include <cstddef>
 #include <functional>
 #include <json.hpp>
+#include <limits>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -40,13 +43,14 @@ namespace fakes
      *
      * This is the seam the previous implementation did not have: it took `IndexerConnectorSync` by
      * concrete type, so most of it could not be exercised without a live cluster and was excluded from
-     * coverage on exactly those grounds. Everything above @ref IIndexerQueryPort is now reachable from
+     * coverage on exactly those grounds. Everything above @ref content_manager::IContentIndexer is now reachable from
      * a unit test.
      *
-     * Clones share the recorded state with the original, so a test can assert on what every slice
-     * worker did without having to reach into each clone.
+     * One instance serves every caller at once, as the host's connector does (D1): slice workers
+     * search it concurrently, so its bookkeeping is locked and it records how many searches were in
+     * flight together.
      */
-    class FakeIndexerQueryPort final : public IIndexerQueryPort
+    class FakeIndexerQueryPort final : public content_manager::IContentIndexer
     {
     public:
         /// One recorded search request.
@@ -66,9 +70,11 @@ namespace fakes
             std::mutex mutex;
 
             // --- scripted behaviour ---
-            /// Answers PIT searches. Receives the call and its 0-based index within the port.
+            /// Answers PIT searches. Receives the call and its 0-based index within its slice (or among
+            /// the unsliced calls), so a scripted "first page, then empty" holds per slice worker.
             std::function<nlohmann::json(const SearchCall&, std::size_t)> onSearch;
-            /// Answers non-PIT searches, keyed by index name.
+            /// Answers non-PIT searches with the hits object. Receives the index and the request body
+            /// the call stands for (`size`, `query`, `_source`).
             std::function<nlohmann::json(std::string_view, const nlohmann::json&)> onSearchIndex;
             /// When set, openPit throws with this message.
             std::string openPitError;
@@ -79,8 +85,10 @@ namespace fakes
             std::vector<std::pair<std::string, nlohmann::json>> indexSearches;
             std::size_t openedPits {0};
             std::size_t closedPits {0};
-            std::size_t clones {0};
-            std::size_t liveClones {0};
+            std::size_t inFlight {0};
+            std::size_t maxConcurrentSearches {0}; ///< Peak number of searches in flight at once.
+            /// Calls seen so far, per slice id; unsliced calls are counted under SIZE_MAX.
+            std::map<std::size_t, std::size_t> callsPerSlice;
         };
 
         FakeIndexerQueryPort()
@@ -88,28 +96,14 @@ namespace fakes
         {
         }
 
-        explicit FakeIndexerQueryPort(std::shared_ptr<State> state)
-            : m_state {std::move(state)}
-            , m_isClone {true}
-        {
-        }
-
-        ~FakeIndexerQueryPort() override
-        {
-            if (m_isClone)
-            {
-                std::lock_guard<std::mutex> lock {m_state->mutex};
-                --m_state->liveClones;
-            }
-        }
-
-        /// @return The state shared by this port and every clone of it.
+        /// @return The recorded and scripted state.
         const std::shared_ptr<State>& state() const noexcept
         {
             return m_state;
         }
 
-        PointInTime openPit(const std::vector<std::string>& indices, std::string_view keepAlive, bool) override
+        content_manager::ContentPit
+        openPit(const std::vector<std::string>& indices, std::string_view keepAlive, bool) override
         {
             std::lock_guard<std::mutex> lock {m_state->mutex};
             if (!m_state->openPitError.empty())
@@ -118,16 +112,16 @@ namespace fakes
             }
             m_state->openedIndices.push_back(indices);
             ++m_state->openedPits;
-            return PointInTime {"fake-pit", 0, keepAlive};
+            return content_manager::ContentPit {"fake-pit", 0, std::string {keepAlive}};
         }
 
-        void closePit(const PointInTime&) noexcept override
+        void closePit(const content_manager::ContentPit&) noexcept override
         {
             std::lock_guard<std::mutex> lock {m_state->mutex};
             ++m_state->closedPits;
         }
 
-        nlohmann::json search(const PointInTime&,
+        nlohmann::json search(const content_manager::ContentPit&,
                               std::size_t size,
                               const nlohmann::json& query,
                               const nlohmann::json& sort,
@@ -143,8 +137,21 @@ namespace fakes
                 std::lock_guard<std::mutex> lock {m_state->mutex};
                 m_state->searches.push_back(call);
                 handler = m_state->onSearch;
-                ordinal = m_callCount++;
+                const auto sliceKey =
+                    slice.has_value() ? slice->at("id").get<std::size_t>() : std::numeric_limits<std::size_t>::max();
+                ordinal = m_state->callsPerSlice[sliceKey]++;
+                m_state->maxConcurrentSearches = std::max(m_state->maxConcurrentSearches, ++m_state->inFlight);
             }
+
+            struct InFlight
+            {
+                State& state;
+                ~InFlight()
+                {
+                    std::lock_guard<std::mutex> lock {state.mutex};
+                    --state.inFlight;
+                }
+            } inFlight {*m_state};
 
             if (!handler)
             {
@@ -153,8 +160,17 @@ namespace fakes
             return handler(call, ordinal);
         }
 
-        nlohmann::json searchIndex(std::string_view index, const nlohmann::json& body) override
+        nlohmann::json searchIndex(std::string_view index,
+                                   std::size_t size,
+                                   const nlohmann::json& query,
+                                   const std::optional<nlohmann::json>& source) override
         {
+            nlohmann::json body {{"size", size}, {"query", query}};
+            if (source.has_value())
+            {
+                body["_source"] = *source;
+            }
+
             std::function<nlohmann::json(std::string_view, const nlohmann::json&)> handler;
             {
                 std::lock_guard<std::mutex> lock {m_state->mutex};
@@ -164,19 +180,17 @@ namespace fakes
 
             if (!handler)
             {
-                return nlohmann::json {{"hits", {{"hits", nlohmann::json::array()}}}};
+                return emptyHits();
             }
-            return handler(index, body);
-        }
 
-        std::unique_ptr<IIndexerQueryPort> clone() const override
-        {
+            // Handlers may script either a whole search response or the hits object the contract
+            // returns; a whole response is unwrapped, as the synchronous adapter does.
+            auto response = handler(index, body);
+            if (response.is_object() && response.contains("hits") && response.at("hits").is_object())
             {
-                std::lock_guard<std::mutex> lock {m_state->mutex};
-                ++m_state->clones;
-                ++m_state->liveClones;
+                return std::move(response.at("hits"));
             }
-            return std::make_unique<FakeIndexerQueryPort>(m_state);
+            return response;
         }
 
         /// @return A hits object with no results, which terminates a fetch.
@@ -214,8 +228,6 @@ namespace fakes
 
     private:
         std::shared_ptr<State> m_state;
-        bool m_isClone {false};
-        std::size_t m_callCount {0};
     };
 
     /**

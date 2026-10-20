@@ -2,44 +2,19 @@
 
 ## Details
 
-The [execution context](../../src/components/executionContext.hpp) is what a registration is checked
-and prepared by, once, before any cycle runs. It does two things and nothing else:
+The [execution context](../../src/components/executionContext.hpp) opens whatever storage a
+registration asks for, once, before any cycle runs: when `state.databasePath` is set, the updater
+RocksDB, with the `current_offset` column created if it is missing. That column is where
+`RocksDbTokenStore` keeps the change-detection token. Hosts that own their own state — the Engine
+keeps its tokens in `store::IStore` documents — leave `databasePath` unset and supply an
+`IContentTokenStore` instead, and then no database is opened at all.
 
-- **Configuration validation**: every rule that can be checked without touching the indexer is
-  checked here, so a broken configuration is reported to the host as an exception at registration
-  rather than as a `CycleStatus::FailedConfig` on every cycle for the rest of the process's life.
-- **Database initialization**: when `configData.databasePath` is present, it opens the updater
-  RocksDB and creates the `current_offset` column if it is missing. That column is where
-  `RocksDbTokenStore` keeps the change-detection token. Hosts that own their own state — the Engine
-  keeps its tokens in `store::IStore` documents — omit `databasePath` and supply an
-  `IContentTokenStore` instead, and then no database is opened at all.
-
-It used to also create `downloads/` and `contents/` folders for file-based downloaders. There are
-none left: content streams from the indexer straight into the sink, so those folders were pure
-overhead and are gone.
-
-## What it rejects
-
-- a missing or empty `consumerName`;
-- a `changeDetection` that is not `cursor` or `hash`;
-- a missing `indexer` object, or one without a non-empty `index`/`indices`;
-- a `consumerStatusIndex` that is not a **concrete** index name — no wildcard, comma list or leading
-  `-`. Both defences against consumer documents leaking into the content compare against the
-  `_index` metafield, which reports concrete backing index names; a pattern would simply never
-  match, and the leak would be silent;
-- a `consumerStatusIndex` without a `consumerStatusId`;
-- in hash mode: anything other than exactly one of `hashDocId` / `hashIndex`, a `hashIndex` without
-  a `hashQuery`, an empty or malformed `hashPointers`, or a missing `dataQuery`;
-- a mistyped key in the query shape: `numSlices` (must be a positive integer), `pageSize`,
-  `consumerStatusCacheSeconds`, `keepAlive`, `expandWildcards`, `cursorField`, `sortKeys`,
-  `sourceFilter` or `requiredDocumentIds`.
-
-  The last two are the reason this group exists at all. Both are read behind an `is_object` /
-  `is_array` test, so a mistyped one is not an error at cycle time — it is *silently ignored*. A
-  feed downloaded without its `_source` filter still works; it is simply several gigabytes instead
-  of a few hundred megabytes, and nothing downstream would ever report it. The rest are read with
-  `json::value(key, default)`, which throws a `type_error` naming nothing useful, on a topic that
-  had registered cleanly.
+It used to validate the registration too. That moved to
+[`TopicSpecParser`](../../src/components/topicSpecParser.hpp) with D2 of the
+[library README](../../README.md#d2-in-detail): the parameters are parsed once into a typed
+`content_manager::TopicSpec`, every block rejects keys it does not know (naming key and block), and
+every later stage reads the typed model. A broken registration is still reported to the host as an
+exception at construction, never as a `CycleStatus::FailedConfig` on every cycle.
 
 ## Recovering an unusable database
 

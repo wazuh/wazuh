@@ -121,7 +121,7 @@ public:
 IocSync::IocSync(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexerPtr,
                  const std::shared_ptr<ioc::kvdb::IKVDBManager>& kvdbiocManagerPtr,
                  const std::shared_ptr<::store::IStore>& storePtr,
-                 nlohmann::json indexerConnection,
+                 std::shared_ptr<content_manager::IContentIndexer> contentIndexer,
                  const size_t maxRetries,
                  const size_t retryIntervalSeconds,
                  cmcontent::Options contentOptions,
@@ -131,9 +131,8 @@ IocSync::IocSync(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexer
     , m_store(storePtr)
     , m_attempts(maxRetries)
     , m_waitSeconds(retryIntervalSeconds)
-    , m_indexerConnection(std::move(indexerConnection))
     , m_contentOptions(std::move(contentOptions))
-    , m_topicFactory(topicFactory ? std::move(topicFactory) : cmcontent::defaultTopicFactory())
+    , m_topicFactory(topicFactory ? std::move(topicFactory) : cmcontent::defaultTopicFactory(std::move(contentIndexer)))
     , m_mutex()
 {
     // Check if is the first setup
@@ -199,7 +198,7 @@ void IocSync::registerTopic(std::string_view iocType, const std::string& initial
     registration.token = std::make_shared<cmcontent::TokenCell>(initialToken);
 
     registration.topic = m_topicFactory(topicName,
-                                        cmcontent::iocParameters(m_indexerConnection, iocType, m_contentOptions),
+                                        cmcontent::iocParameters(iocType, m_contentOptions),
                                         registration.sink,
                                         cmcontent::cellTokenStore(registration.token));
 

@@ -51,6 +51,18 @@ struct Config
  * and proper shutdown functionality.
  *
  */
+/**
+ * @brief Build the Engine's indexer connector from a JSON OSSEC configuration string.
+ *
+ * The one place it is built, so the instance shared by @ref WIndexerConnector and the content
+ * registrations is configured exactly as the JSON constructor configures its own.
+ *
+ * @param jsonOssecConfig The JSON string containing the OSSEC configuration for the indexer connector
+ * @return The connector.
+ * @throws std::runtime_error if the JSON configuration is invalid or empty
+ */
+std::shared_ptr<IndexerConnectorAsync> makeIndexerConnectorAsync(std::string_view jsonOssecConfig);
+
 class WIndexerConnector : public IWIndexerConnector
 {
 
@@ -84,6 +96,20 @@ public:
      * @throws std::runtime_error if the JSON configuration is invalid or empty
      */
     WIndexerConnector(std::string_view jsonOssecConfig, const std::size_t maxHitsPerRequest);
+
+    /**
+     * @brief Constructs a WIndexerConnector over a connector the caller already built.
+     *
+     * The Engine builds one connector (@ref makeIndexerConnectorAsync) and shares it between this
+     * class and the content registrations, so the process runs one health monitor and reports an
+     * indexer outage once (D1 of the content manager). @ref shutdown releases this class's
+     * reference only; the connector is destroyed when its last holder lets go.
+     *
+     * @param connector The shared connector. Must not be null.
+     * @param maxHitsPerRequest The maximum number of hits per request
+     * @throws std::runtime_error if @p connector is null
+     */
+    WIndexerConnector(std::shared_ptr<IndexerConnectorAsync> connector, const std::size_t maxHitsPerRequest);
 
     /**
      * @brief Test-only constructor: inject a custom IIndexerConnectorAsync (e.g. a gMock).

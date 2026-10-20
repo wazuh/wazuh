@@ -11,7 +11,7 @@
 #ifndef _CONSUMER_GATE_HPP
 #define _CONSUMER_GATE_HPP
 
-#include "indexerQueryPort.hpp"
+#include "contentIndexer.hpp"
 #include "loggerHelper.h"
 #include "sharedDefs.hpp"
 #include <chrono>
@@ -88,8 +88,10 @@ public:
      * @param cacheTtl How long an answer may be reused across topics.
      * @return The consumer's state.
      */
-    static Result
-    probe(IIndexerQueryPort& port, const std::string& index, const std::string& id, std::chrono::seconds cacheTtl)
+    static Result probe(content_manager::IContentIndexer& port,
+                        const std::string& index,
+                        const std::string& id,
+                        std::chrono::seconds cacheTtl)
     {
         if (index.empty() || id.empty())
         {
@@ -187,17 +189,18 @@ private:
         Entry entry;
     };
 
-    static Result query(IIndexerQueryPort& port, const std::string& index, const std::string& id)
+    static Result query(content_manager::IContentIndexer& port, const std::string& index, const std::string& id)
     {
         try
         {
-            const nlohmann::json body {
-                {"size", 1},
-                {"query", {{"ids", {{"values", nlohmann::json::array({id})}}}}},
-                {"_source", {{"includes", nlohmann::json::array({"status"})}, {"excludes", nlohmann::json::array()}}}};
+            const nlohmann::json query {{"ids", {{"values", nlohmann::json::array({id})}}}};
+            const nlohmann::json sourceFilter {{"includes", nlohmann::json::array({"status"})},
+                                               {"excludes", nlohmann::json::array()}};
 
-            const auto response = port.searchIndex(index, body);
-            const auto hits = response.value("hits", nlohmann::json::object()).value("hits", nlohmann::json::array());
+            // searchIndex returns the hits object, so the documents are one level down.
+            const auto hitsObject = port.searchIndex(index, 1, query, sourceFilter);
+            const auto hits =
+                hitsObject.is_object() ? hitsObject.value("hits", nlohmann::json::array()) : nlohmann::json::array();
             if (!hits.is_array() || hits.empty())
             {
                 return Result {Status::Missing, {}, {}};

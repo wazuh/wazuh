@@ -37,11 +37,6 @@ const base::Name STORE_NAME_CMSYNC {"cmsync/status/0"};
 constexpr std::size_t DEFAULT_ATTEMPTS = 1U;
 constexpr std::size_t DEFAULT_WAIT_SECONDS = 0U;
 
-nlohmann::json indexerConnection()
-{
-    return nlohmann::json {{"hosts", nlohmann::json::array({"http://127.0.0.1:9200"})}};
-}
-
 cmcontent::Options contentOptions()
 {
     cmcontent::Options options;
@@ -120,7 +115,7 @@ protected:
                                                   crud,
                                                   store,
                                                   router,
-                                                  indexerConnection(),
+                                                  nullptr,
                                                   DEFAULT_ATTEMPTS,
                                                   DEFAULT_WAIT_SECONDS,
                                                   contentOptions(),
@@ -437,7 +432,7 @@ TEST_F(CMSyncOrchestrationTest, ARetryableOutcomeIsRetriedUpToTheConfiguredAttem
 
     constexpr std::size_t ATTEMPTS = 3;
     const auto sync = std::make_unique<cm::sync::CMSync>(
-        indexer, crud, store, router, indexerConnection(), ATTEMPTS, 0, contentOptions(), topics.factory());
+        indexer, crud, store, router, nullptr, ATTEMPTS, 0, contentOptions(), topics.factory());
     sync->synchronize();
 
     // runOnce reports by status and executeWithRetry retries on a thrown exception, so a non-zero

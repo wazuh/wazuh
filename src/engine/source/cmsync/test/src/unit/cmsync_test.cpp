@@ -41,14 +41,6 @@ constexpr size_t DEFAULT_WAIT_SECONDS = 5U;
 
 constexpr std::string_view STANDARD_CONSUMER_ID = "cti:catalog:consumer:ruleset";
 
-/// Minimal-but-valid indexer settings. Never reaches a real session: the tests inject the fake topic
-/// registry, because a real registration reads the indexer credentials from the keystore — which a
-/// unit test does not have, and which parallel test processes would contend for.
-nlohmann::json indexerConnection()
-{
-    return nlohmann::json {{"hosts", nlohmann::json::array({"http://127.0.0.1:9200"})}};
-}
-
 cmcontent::Options contentOptions()
 {
     cmcontent::Options options;
@@ -127,7 +119,7 @@ protected:
                                                   crud,
                                                   store,
                                                   router,
-                                                  indexerConnection(),
+                                                  nullptr,
                                                   DEFAULT_ATTEMPTS,
                                                   DEFAULT_WAIT_SECONDS,
                                                   contentOptions(),

@@ -21,7 +21,7 @@ namespace
 {
 
     /// Drive one cycle and hand back the sort array the fetch actually sent.
-    nlohmann::json capturedSort(const nlohmann::json& configData)
+    nlohmann::json capturedSort(const content_manager::TopicSpec& spec)
     {
         auto port = std::make_shared<FakeIndexerQueryPort>();
         port->state()->onSearchIndex = [](std::string_view, const nlohmann::json&)
@@ -44,7 +44,7 @@ namespace
 
         ConsumerGate::resetCache();
 
-        auto cycle = FactoryContentUpdater::create(configData,
+        auto cycle = FactoryContentUpdater::create(spec,
                                                    "topic",
                                                    std::make_shared<RecordingSink>(),
                                                    std::make_shared<MemoryTokenStore>(),
@@ -61,22 +61,20 @@ namespace
         return port->state()->searches.empty() ? nlohmann::json {} : port->state()->searches.back().sort;
     }
 
-    nlohmann::json cursorConfig()
+    content_manager::TopicSpec cursorSpec()
     {
-        return nlohmann::json {{"consumerName", "Test Consumer"},
-                               {"changeDetection", "cursor"},
-                               {"indexer",
-                                {{"index", "data-index"},
-                                 {"consumerStatusIndex", ".consumers"},
-                                 {"consumerStatusId", "consumer:1"},
-                                 {"cursorField", "offset"}}}};
+        content_manager::TopicSpec spec;
+        spec.source.indices = {"data-index"};
+        spec.readiness = content_manager::Readiness {".consumers", "consumer:1"};
+        spec.detection = content_manager::CursorDetection {};
+        return spec;
     }
 
 } // namespace
 
 TEST(FactoryContentUpdaterTest, InjectsUnmappedTypeOnNonMetafieldSortKeys)
 {
-    const auto sort = capturedSort(cursorConfig());
+    const auto sort = capturedSort(cursorSpec());
 
     // The whole reason this exists: with the consumer index inside the PIT, sorting on a field that
     // index does not map makes OpenSearch reject the SEARCH, not just skip the document. VD sorts
@@ -93,11 +91,10 @@ TEST(FactoryContentUpdaterTest, InjectsUnmappedTypeOnNonMetafieldSortKeys)
 
 TEST(FactoryContentUpdaterTest, LeavesTheSortAloneWithoutAConsumerIndex)
 {
-    auto config = cursorConfig();
-    config["indexer"].erase("consumerStatusIndex");
-    config["indexer"].erase("consumerStatusId");
+    auto spec = cursorSpec();
+    spec.readiness.reset();
 
-    const auto sort = capturedSort(config);
+    const auto sort = capturedSort(spec);
 
     ASSERT_TRUE(sort.is_array());
     EXPECT_EQ(sort[0], (nlohmann::json {{"offset", "asc"}}));
@@ -105,20 +102,48 @@ TEST(FactoryContentUpdaterTest, LeavesTheSortAloneWithoutAConsumerIndex)
 
 TEST(FactoryContentUpdaterTest, HonoursAConfiguredUnmappedType)
 {
-    auto config = cursorConfig();
-    config["indexer"]["sortUnmappedType"] = "keyword";
+    auto spec = cursorSpec();
+    spec.detection = content_manager::CursorDetection {"offset", "keyword"};
 
-    const auto sort = capturedSort(config);
+    const auto sort = capturedSort(spec);
     EXPECT_EQ(sort[0].at("offset").at("unmapped_type"), "keyword");
 }
 
-TEST(FactoryContentUpdaterTest, EngineStyleMetafieldSortIsUnaffected)
+TEST(FactoryContentUpdaterTest, HashDetectionSortsOnShardDocThenId)
 {
-    auto config = cursorConfig();
-    config["indexer"]["sortKeys"] = nlohmann::json::array({nlohmann::json {{"_shard_doc", "asc"}}});
+    // The sort is implied by the strategy (D2): a hash topic always reloads in full, and
+    // `_shard_doc` is synthesised by the PIT, so it needs no unmapped_type even with a consumer index.
+    content_manager::TopicSpec spec;
+    spec.source.indices = {"data-index"};
+    content_manager::HashDetection hash;
+    hash.probe = content_manager::QueryProbe {nlohmann::json {{"term", {{"space.name", "standard"}}}}};
+    hash.tokenPointers = {"/space/hash/sha256"};
+    spec.detection = hash;
 
-    const auto sort = capturedSort(config);
-    EXPECT_EQ(sort, nlohmann::json::array({nlohmann::json {{"_shard_doc", "asc"}}}));
+    auto port = std::make_shared<FakeIndexerQueryPort>();
+    port->state()->onSearch = [](const auto&, std::size_t ordinal) -> nlohmann::json
+    {
+        if (ordinal == 0)
+        {
+            // The probe finds a hash, so the cycle goes on to a full fetch.
+            return FakeIndexerQueryPort::hitsOf(nlohmann::json::array(
+                {nlohmann::json {{"_id", "policy"}, {"_source", {{"space", {{"hash", {{"sha256", "h1"}}}}}}}}}));
+        }
+        return FakeIndexerQueryPort::emptyHits();
+    };
+
+    ConsumerGate::resetCache();
+    auto cycle = FactoryContentUpdater::create(spec,
+                                               "topic",
+                                               std::make_shared<RecordingSink>(),
+                                               std::make_shared<MemoryTokenStore>(),
+                                               std::make_shared<ConditionSync>(false),
+                                               port);
+    cycle->run({});
+
+    ASSERT_GE(port->state()->searches.size(), 2U);
+    EXPECT_EQ(port->state()->searches.back().sort,
+              nlohmann::json::array({nlohmann::json {{"_shard_doc", "asc"}}, nlohmann::json {{"_id", "asc"}}}));
 }
 
 TEST(FactoryContentUpdaterTest, ScopesTheDataQueryAwayFromTheConsumerIndex)
@@ -143,7 +168,7 @@ TEST(FactoryContentUpdaterTest, ScopesTheDataQueryAwayFromTheConsumerIndex)
     };
 
     ConsumerGate::resetCache();
-    auto cycle = FactoryContentUpdater::create(cursorConfig(),
+    auto cycle = FactoryContentUpdater::create(cursorSpec(),
                                                "topic",
                                                std::make_shared<RecordingSink>(),
                                                std::make_shared<MemoryTokenStore>(),
@@ -159,9 +184,24 @@ TEST(FactoryContentUpdaterTest, ScopesTheDataQueryAwayFromTheConsumerIndex)
     EXPECT_EQ(query.at("bool").at("must_not").front().at("terms").at("_index"), nlohmann::json::array({".consumers"}));
 }
 
-TEST(FactoryContentUpdaterTest, RejectsAnInvalidConfiguration)
+TEST(FactoryContentUpdaterTest, ATopicWithoutReadinessSnapshotsTheDataIndicesOnly)
 {
-    nlohmann::json config {{"consumerName", "Test"}, {"changeDetection", "hash"}, {"indexer", {{"index", "x"}}}};
+    // No readiness block means no gate (D2): the PIT must not pull the consumer index in, and no
+    // pre-flight probe may run.
+    auto spec = cursorSpec();
+    spec.readiness.reset();
 
-    EXPECT_THROW(ExecutionContext::validate(config), std::invalid_argument);
+    auto port = std::make_shared<FakeIndexerQueryPort>();
+    ConsumerGate::resetCache();
+    auto cycle = FactoryContentUpdater::create(spec,
+                                               "topic",
+                                               std::make_shared<RecordingSink>(),
+                                               std::make_shared<MemoryTokenStore>(),
+                                               std::make_shared<ConditionSync>(false),
+                                               port);
+    cycle->run({});
+
+    ASSERT_FALSE(port->state()->openedIndices.empty());
+    EXPECT_EQ(port->state()->openedIndices.front(), (std::vector<std::string> {"data-index"}));
+    EXPECT_TRUE(port->state()->indexSearches.empty());
 }

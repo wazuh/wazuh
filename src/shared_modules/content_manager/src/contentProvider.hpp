@@ -27,18 +27,17 @@ public:
      * @brief Register a topic.
      *
      * @param topicName Topic name.
-     * @param parameters Registration parameters.
+     * @param spec The parsed registration.
      * @param sink Where the content goes.
      * @param tokenStore Host-supplied token store; may be null.
      * @param port Indexer access.
      */
     ContentProvider(const std::string& topicName,
-                    const nlohmann::json& parameters,
+                    const content_manager::TopicSpec& spec,
                     std::shared_ptr<content_manager::IContentSink> sink,
                     std::shared_ptr<content_manager::IContentTokenStore> tokenStore,
-                    std::shared_ptr<IIndexerQueryPort> port)
-        : m_action {
-              std::make_unique<Action>(topicName, parameters, std::move(sink), std::move(tokenStore), std::move(port))}
+                    std::shared_ptr<content_manager::IContentIndexer> port)
+        : m_action {std::make_unique<Action>(topicName, spec, std::move(sink), std::move(tokenStore), std::move(port))}
     {
     }
 

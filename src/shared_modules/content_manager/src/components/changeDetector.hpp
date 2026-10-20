@@ -11,10 +11,11 @@
 #ifndef _CHANGE_DETECTOR_HPP
 #define _CHANGE_DETECTOR_HPP
 
-#include "indexerQueryPort.hpp"
+#include "contentIndexer.hpp"
 #include "pitSession.hpp"
 #include <json.hpp>
 #include <map>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -72,7 +73,7 @@ public:
      * @return The remote state.
      * @throws IndexerConnectorException if the probe query fails.
      */
-    virtual ProbeResult probe(PitSession& session, IIndexerQueryPort& port) = 0;
+    virtual ProbeResult probe(PitSession& session, content_manager::IContentIndexer& port) = 0;
 
     /**
      * @brief Decide what to fetch.
@@ -104,8 +105,10 @@ public:
  * @brief Change detection by a monotonic integer cursor carried on every document.
  *
  * The stored token is the highest value seen; the next cycle asks for everything strictly greater.
- * The field name is configuration (`indexer.cursorField`, default `"offset"`), which is what lets
- * this class be reused by anything that publishes an increasing sequence number.
+ * The field name is configuration (`detection.field`, default `"offset"`), which is what lets
+ * this class be reused by anything that publishes an increasing sequence number. The topic's own
+ * `source.query`, when it has one, narrows both shapes of fetch: a full one runs it as is, an
+ * incremental one runs it AND the cursor range.
  */
 class OffsetCursorDetector final : public IChangeDetector
 {
@@ -114,14 +117,16 @@ public:
      * @brief Build a cursor detector.
      *
      * @param cursorField Document field carrying the cursor.
+     * @param sourceQuery The topic's own query; empty selects everything.
      */
-    explicit OffsetCursorDetector(std::string cursorField)
+    explicit OffsetCursorDetector(std::string cursorField, std::optional<nlohmann::json> sourceQuery = std::nullopt)
         : m_cursorField {std::move(cursorField)}
+        , m_sourceQuery {std::move(sourceQuery)}
     {
     }
 
     /// Nothing to probe: the cursor is carried by the documents themselves.
-    ProbeResult probe(PitSession&, IIndexerQueryPort&) override
+    ProbeResult probe(PitSession&, content_manager::IContentIndexer&) override
     {
         return ProbeResult {};
     }
@@ -138,13 +143,16 @@ public:
         if (!parseToken(localToken, parsed) || parsed == 0)
         {
             result.mode = FetchPlan::Mode::Full;
-            result.query = nlohmann::json {{"match_all", nlohmann::json::object()}};
+            result.query = m_sourceQuery.value_or(nlohmann::json {{"match_all", nlohmann::json::object()}});
             result.startToken.clear();
             return result;
         }
 
         result.mode = FetchPlan::Mode::Incremental;
-        result.query = nlohmann::json {{"range", {{m_cursorField, {{"gt", parsed}}}}}};
+        const nlohmann::json range {{"range", {{m_cursorField, {{"gt", parsed}}}}}};
+        result.query = m_sourceQuery.has_value()
+                           ? nlohmann::json {{"bool", {{"filter", nlohmann::json::array({*m_sourceQuery, range})}}}}
+                           : range;
         return result;
     }
 
@@ -190,6 +198,7 @@ public:
 
 private:
     std::string m_cursorField;
+    std::optional<nlohmann::json> m_sourceQuery; ///< The topic's own query, if any.
 };
 
 /**
@@ -199,14 +208,13 @@ private:
  *
  *  - **doc probe** (`hashDocId` set): the hash lives in a dedicated manifest document whose id is
  *    known, e.g. `iocsync`'s `__ioc_type_hashes__`.
- *  - **query probe** (`hashIndex` set): the hash lives on a document that has to be searched for,
+ *  - **query probe** (`hashDocId` empty): the hash lives on the one document `hashQuery` selects,
  *    e.g. `cmsync`'s per-space policy document.
  *
- * @note The query probe runs inside the PIT, which spans every data index. Restricting it to
- *       `hashIndex` via the `_index` metafield is NOT possible in general: when the configured name
- *       is an alias, `_index` reports the concrete backing index instead. So `hashQuery` must
- *       itself be selective enough to match exactly one document — for the policy case, filtering on
- *       a policy-only field does it. `hashIndex` is kept for diagnostics and to select this shape.
+ * @note The query probe runs inside the PIT, which spans every data index, so `hashQuery` must itself
+ *       be selective enough to match exactly one document. When the configured names are aliases,
+ *       `_index` reports the suffixed backing index, so an index has to be singled out by a wildcard
+ *       on `_index`, never an exact match — which is how `cmsync` selects its policies index.
  */
 class ContentHashDetector final : public IChangeDetector
 {
@@ -215,7 +223,6 @@ public:
     struct Config
     {
         std::string hashDocId;                               ///< Manifest document id (doc probe).
-        std::string hashIndex;                               ///< Index the hash document lives in (query probe).
         nlohmann::json hashQuery;                            ///< Query selecting the hash document (query probe).
         std::vector<std::string> hashPointers;               ///< Candidate pointers to the hash; first match wins.
         std::map<std::string, std::string> metadataPointers; ///< name -> pointer, surfaced to the sink.
@@ -225,14 +232,14 @@ public:
     /**
      * @brief Build a hash detector.
      *
-     * @param config Probe configuration. Validated by `ExecutionContext` before it gets here.
+     * @param config Probe configuration. Validated by `TopicSpecParser` before it gets here.
      */
     explicit ContentHashDetector(Config config)
         : m_config {std::move(config)}
     {
     }
 
-    ProbeResult probe(PitSession& session, IIndexerQueryPort& port) override
+    ProbeResult probe(PitSession& session, content_manager::IContentIndexer& port) override
     {
         const bool docProbe = !m_config.hashDocId.empty();
         const auto query = docProbe
@@ -268,8 +275,8 @@ public:
 
         if (!docProbe && hitArray.size() > 1)
         {
-            result.configError = "indexer.hashQuery matched more than one document in '" + m_config.hashIndex +
-                                 "'; it must select exactly one";
+            result.configError = "detection.probe.query matched more than one document (" + m_config.hashQuery.dump() +
+                                 "); it must select exactly one";
             return result;
         }
 

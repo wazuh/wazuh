@@ -410,7 +410,6 @@ TEST(ContentCycleTest, SlicesAreUsedOnFullLoadsOnly)
     {
         EXPECT_FALSE(call.slice.has_value());
     }
-    EXPECT_EQ(harness.port->state()->clones, 0U);
 }
 
 TEST(ContentCycleTest, DurableAckPersistsImmediatelyAndCommitFinalises)
@@ -444,7 +443,6 @@ TEST(ContentCycleTest, AnAmbiguousProbeIsAConfigFailureNotATransportOne)
     harness.preflight("ready");
 
     ContentHashDetector::Config detectorConfig;
-    detectorConfig.hashIndex = "policies";
     detectorConfig.hashQuery = nlohmann::json {{"term", {{"space.name", "standard"}}}};
     detectorConfig.hashPointers = {"/space/hash/sha256"};
     detectorConfig.dataQuery = nlohmann::json::object();

@@ -14,8 +14,8 @@
 #include "components/contentCycle.hpp"
 #include "components/executionContext.hpp"
 #include "components/factoryContentUpdater.hpp"
-#include "components/indexerQueryPort.hpp"
 #include "components/rocksDbTokenStore.hpp"
+#include "contentIndexer.hpp"
 #include "contentSink.hpp"
 #include "contentTokenStore.hpp"
 #include "contentTypes.hpp"
@@ -39,26 +39,27 @@ public:
     /**
      * @brief Prepare a topic.
      *
-     * @param parameters Registration parameters (`topicName`, `configData`, …).
+     * @param topicName Topic name.
+     * @param spec The parsed registration (D2).
      * @param stopActionCondition Cooperative stop flag shared with the driver.
      * @param sink Where the content goes.
      * @param tokenStore Host-supplied token store. When null, one is built over
-     *                   `configData.databasePath` if that key is present.
+     *                   `state.databasePath` if the registration has one.
      * @param port Indexer access.
      * @throws std::invalid_argument if the configuration is not usable.
      */
-    ActionOrchestrator(const nlohmann::json& parameters,
+    ActionOrchestrator(const std::string& topicName,
+                       const content_manager::TopicSpec& spec,
                        std::shared_ptr<ConditionSync> stopActionCondition,
                        std::shared_ptr<content_manager::IContentSink> sink,
                        std::shared_ptr<content_manager::IContentTokenStore> tokenStore,
-                       std::shared_ptr<IIndexerQueryPort> port)
+                       std::shared_ptr<content_manager::IContentIndexer> port)
     {
         try
         {
-            m_topicName = parameters.at("topicName").get<std::string>();
-            const auto& configData = parameters.at("configData");
+            m_topicName = topicName;
 
-            auto context = ExecutionContext::prepare(configData, m_topicName);
+            auto context = ExecutionContext::prepare(spec, m_topicName);
             m_database = std::move(context.database);
 
             m_tokenStore = std::move(tokenStore);
@@ -70,7 +71,7 @@ public:
             // Intent through configuration rather than a reach-in: hosts used to delete the
             // library's storage directory behind its back to force a rebuild, which could only work
             // before the registration existed.
-            if (m_tokenStore && configData.value("resetStateOnRegister", false))
+            if (m_tokenStore && spec.state.resetOnRegister)
             {
                 logInfo(WM_CONTENTUPDATER,
                         "Clearing the stored content token for '%s' as requested at registration.",
@@ -78,12 +79,8 @@ public:
                 m_tokenStore->clear(m_topicName);
             }
 
-            m_cycle = FactoryContentUpdater::create(configData,
-                                                    m_topicName,
-                                                    std::move(sink),
-                                                    m_tokenStore,
-                                                    std::move(stopActionCondition),
-                                                    std::move(port));
+            m_cycle = FactoryContentUpdater::create(
+                spec, m_topicName, std::move(sink), m_tokenStore, std::move(stopActionCondition), std::move(port));
         }
         catch (const std::exception& e)
         {

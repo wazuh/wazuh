@@ -14,15 +14,18 @@ namespace wiconnector
 
 /**
  * @brief Production implementation of IIndexerConnectorAsync that forwards every call to
- *        an owned IndexerConnectorAsync instance.
+ *        an IndexerConnectorAsync instance.
+ *
+ * Holds it shared: the Engine runs one connector, which the content registrations use too (D1 of the
+ * content manager), so this adapter is one of its owners rather than the only one.
  */
 class IndexerConnectorAsyncAdapter final : public IIndexerConnectorAsync
 {
 private:
-    std::unique_ptr<IndexerConnectorAsync> m_inner;
+    std::shared_ptr<IndexerConnectorAsync> m_inner;
 
 public:
-    explicit IndexerConnectorAsyncAdapter(std::unique_ptr<IndexerConnectorAsync> inner)
+    explicit IndexerConnectorAsyncAdapter(std::shared_ptr<IndexerConnectorAsync> inner)
         : m_inner(std::move(inner))
     {
     }

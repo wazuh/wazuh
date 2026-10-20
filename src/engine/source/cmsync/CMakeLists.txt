@@ -78,12 +78,8 @@ target_link_libraries(cmsync_ctest
     store::mocks
     wIndexerConnector::mocks
     cmcrud::mocks
-    # Seeds the indexer credentials the real registrations read (Keystore::put, exported by it).
-    indexer_connector
 )
-target_include_directories(cmsync_ctest PRIVATE ${SRC_DIR} ${SHARED_MODULES}/keystore/include)
-# The keystore is one RocksDB under the shared working directory: serialised with every other suite
-# that opens it, or parallel processes fail on its LOCK file.
-gtest_discover_tests(cmsync_ctest PROPERTIES RESOURCE_LOCK "rocks_db_lock")
+target_include_directories(cmsync_ctest PRIVATE ${SRC_DIR})
+gtest_discover_tests(cmsync_ctest)
 
 endif(ENGINE_BUILD_TEST)

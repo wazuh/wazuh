@@ -163,13 +163,13 @@ Key relationships:
 - **`router` is the runtime hub.** It owns event queues, worker threads and route lifecycle; `cmsync` hot-swaps its routes.
 - **`builder` is the compilation hub.** Every dependency that contributes to event processing is funneled into it via `BuilderDeps`.
 - **`store` and `cmstore` are the data hubs.** Persisted state (schemas, allowed fields, ruleset, sync state) flows through them.
-- **Two egress paths to the indexer, deliberately.** `wiconnector` carries event indexing and the
-  engine's own read probes. Content *downloads* go through the shared `content_manager` library,
-  which opens its own read-only connectors. They are not merged because that library is a separate
-  DSO shared with the Vulnerability Scanner, and reaching across the boundary for `wiconnector`'s
-  connector would reintroduce exactly the coupling the shared library removes. The cost is bounded:
-  `content_manager` builds every connector from one `IndexerSession` per distinct indexer
-  configuration, so the whole process holds two health monitors rather than one per topic.
+- **One connector to the indexer.** `main.cpp` builds a single `IndexerConnectorAsync`
+  (`wiconnector::makeIndexerConnectorAsync`) and shares it: `wiconnector` uses it for event indexing
+  and the engine's own read probes, and the content registrations use it, through
+  `content_manager::makeContentIndexer`, for every download (D1 of the content manager). The
+  library opens no connection of its own, so the process runs one health monitor and reports an
+  indexer outage once. Downloads use only the connector's synchronous read calls, never its
+  indexing queue, so they do not delay events.
 
 ---
 

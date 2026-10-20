@@ -13,9 +13,10 @@
  */
 
 #include "components/consumerGate.hpp"
-#include "components/indexerQueryPort.hpp"
+#include "contentIndexer.hpp"
 #include "contentModuleFacade.hpp"
 #include "contentOnDemand.hpp"
+#include "contentRegister.hpp"
 #include "contentSink.hpp"
 #include "contentTokenStore.hpp"
 #include "contentTypes.hpp"
@@ -44,7 +45,7 @@ namespace
     constexpr auto OTHER_TOPIC = "component.topic.other";
 
     /// A scripted indexer. Every answer is queued in advance, in the order the cycle will ask for them.
-    class ScriptedPort final : public IIndexerQueryPort
+    class ScriptedPort final : public content_manager::IContentIndexer
     {
     public:
         struct Script
@@ -78,16 +79,16 @@ namespace
             return m_script;
         }
 
-        PointInTime openPit(const std::vector<std::string>&, std::string_view keepAlive, bool) override
+        content_manager::ContentPit openPit(const std::vector<std::string>&, std::string_view keepAlive, bool) override
         {
             std::lock_guard<std::mutex> lock {m_script->mutex};
             ++m_script->pitsOpened;
-            return PointInTime {"pit", 0, keepAlive};
+            return content_manager::ContentPit {"pit", 0, std::string {keepAlive}};
         }
 
-        void closePit(const PointInTime&) noexcept override {}
+        void closePit(const content_manager::ContentPit&) noexcept override {}
 
-        nlohmann::json search(const PointInTime&,
+        nlohmann::json search(const content_manager::ContentPit&,
                               std::size_t,
                               const nlohmann::json&,
                               const nlohmann::json&,
@@ -119,24 +120,20 @@ namespace
             return nlohmann::json {{"hits", nlohmann::json::array()}};
         }
 
-        nlohmann::json searchIndex(std::string_view, const nlohmann::json&) override
+        nlohmann::json
+        searchIndex(std::string_view, std::size_t, const nlohmann::json&, const std::optional<nlohmann::json>&) override
         {
             std::lock_guard<std::mutex> lock {m_script->mutex};
             if (m_script->consumerStatuses.empty())
             {
-                return nlohmann::json {{"hits", statusHits("ready")}};
+                return statusHits("ready");
             }
             const auto index = std::min(m_script->preflightCalls, m_script->consumerStatuses.size() - 1);
             const auto status = m_script->consumerStatuses[index];
             ++m_script->preflightCalls;
             // The next PIT search is the in-PIT readiness probe.
             m_inPitPending = true;
-            return nlohmann::json {{"hits", statusHits(status)}};
-        }
-
-        std::unique_ptr<IIndexerQueryPort> clone() const override
-        {
-            return std::make_unique<ScriptedPort>(m_script);
+            return statusHits(status);
         }
 
         static nlohmann::json statusHits(const std::string& status)
@@ -222,22 +219,20 @@ namespace
         }
     };
 
+    content_manager::TopicSpec spec()
+    {
+        content_manager::TopicSpec spec;
+        spec.schedule.onDemand = true;
+        spec.source.indices = {"data-index"};
+        spec.source.pageSize = 10;
+        spec.readiness = content_manager::Readiness {".consumers", "consumer:1", 1, 0};
+        spec.detection = content_manager::CursorDetection {};
+        return spec;
+    }
+
     nlohmann::json parameters()
     {
-        return nlohmann::json {{"topicName", TOPIC},
-                               {"ondemand", true},
-                               {"configData",
-                                {{"consumerName", "Component Test"},
-                                 {"changeDetection", "cursor"},
-                                 {"consumerRetryIntervalSeconds", 1},
-                                 {"indexer",
-                                  {{"index", "data-index"},
-                                   {"consumerStatusIndex", ".consumers"},
-                                   {"consumerStatusId", "consumer:1"},
-                                   {"consumerStatusCacheSeconds", 0},
-                                   {"cursorField", "offset"},
-                                   {"pageSize", 10},
-                                   {"numSlices", 1}}}}}};
+        return content_manager::toParameters(spec());
     }
 
     class ContentRegistrationTest : public ::testing::Test
@@ -268,7 +263,7 @@ namespace
             port->script()->inPitStatuses = std::move(inPit);
             port->script()->dataPages = std::move(pages);
 
-            ContentModuleFacade::instance().addProvider(TOPIC, parameters(), m_sink, m_tokens, port);
+            ContentModuleFacade::instance().addProvider(TOPIC, spec(), m_sink, port, m_tokens);
             return port->script();
         }
 
@@ -395,22 +390,28 @@ TEST_F(ContentRegistrationTest, RegisteringTheSameTopicTwiceIsRefused)
     port->script()->consumerStatuses = {"ready"};
     port->script()->inPitStatuses = {"ready"};
 
-    EXPECT_THROW(ContentModuleFacade::instance().addProvider(TOPIC, parameters(), m_sink, m_tokens, port),
+    EXPECT_THROW(ContentModuleFacade::instance().addProvider(TOPIC, spec(), m_sink, port, m_tokens),
                  std::runtime_error);
 }
 
 TEST_F(ContentRegistrationTest, AnInvalidConfigurationIsRefusedAtRegistration)
 {
     auto broken = parameters();
-    broken["configData"]["indexer"]["consumerStatusIndex"] = ".consumers-*";
+    broken["readiness"]["consumerIndex"] = ".consumers-*";
 
     auto port = std::make_shared<ScriptedPort>();
     port->script()->consumerStatuses = {"ready"};
     port->script()->inPitStatuses = {"ready"};
 
     // Caught once, at registration, instead of becoming a FailedConfig on every cycle forever.
-    EXPECT_THROW(ContentModuleFacade::instance().addProvider("broken.topic", broken, m_sink, m_tokens, port),
-                 std::invalid_argument);
+    EXPECT_THROW((ContentRegister {"broken.topic", broken, m_sink, port, m_tokens}), std::invalid_argument);
+}
+
+TEST_F(ContentRegistrationTest, ARegistrationWithoutTheHostsIndexerIsRefused)
+{
+    // The library never opens a connection of its own (D1): with no indexer there is nothing a
+    // cycle could read from, so it is refused at registration rather than failing on every cycle.
+    EXPECT_THROW((ContentRegister {"no.indexer", parameters(), m_sink, nullptr, m_tokens}), std::invalid_argument);
 }
 
 TEST_F(ContentRegistrationTest, RegisteringATopicDoesNotWaitForAnotherTopicsCycle)
@@ -443,15 +444,13 @@ TEST_F(ContentRegistrationTest, RegisteringATopicDoesNotWaitForAnotherTopicsCycl
     }
 
     // The cycle is now parked inside the library. Registering an unrelated topic must still work.
-    auto otherParameters = parameters();
-    otherParameters["topicName"] = OTHER_TOPIC;
     auto otherPort = std::make_shared<ScriptedPort>();
     otherPort->script()->consumerStatuses = {"ready"};
     otherPort->script()->inPitStatuses = {"ready"};
 
     const auto startedAt = std::chrono::steady_clock::now();
     ContentModuleFacade::instance().addProvider(
-        OTHER_TOPIC, otherParameters, std::make_shared<CountingSink>(), std::make_shared<MemoryTokens>(), otherPort);
+        OTHER_TOPIC, spec(), std::make_shared<CountingSink>(), otherPort, std::make_shared<MemoryTokens>());
     const auto elapsed = std::chrono::steady_clock::now() - startedAt;
 
     EXPECT_LT(elapsed, std::chrono::seconds {5}) << "registering a topic waited for an unrelated topic's cycle";

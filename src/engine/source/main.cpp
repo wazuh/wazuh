@@ -34,6 +34,7 @@
 #include <conf/conf.hpp>
 #include <conf/keys.hpp>
 #include <confremote/confremotemanager.hpp>
+#include <contentIndexerAdapters.hpp>
 #include <contentManager.hpp>
 #include <defs/defs.hpp>
 #include <dumper/dumper.hpp>
@@ -310,9 +311,9 @@ int main(int argc, char* argv[])
     std::shared_ptr<scheduler::Scheduler> scheduler;
     std::shared_ptr<streamlog::LogManager> streamLogger;
     std::shared_ptr<wiconnector::WIndexerConnector> indexerConnector;
-    /// The same indexer settings the connector was built from, handed to every content
-    /// registration. They are assembled once, in the Indexer Connector section below.
-    nlohmann::json indexerConnectionSettings = nlohmann::json::object();
+    /// The Engine's one indexer connector, as the content registrations use it (D1 of the content
+    /// manager): the same instance indexerConnector forwards to, never a second connection.
+    std::shared_ptr<content_manager::IContentIndexer> contentIndexer;
     std::shared_ptr<httpsrv::Server> apiServer;
     std::shared_ptr<dumper::Dumper> dumper;
     std::shared_ptr<raweventindexer::RawEventIndexer> rawEventIndexer;
@@ -579,12 +580,11 @@ int main(int argc, char* argv[])
                 const auto maxHitsPerRequest =
                     confManager.get<std::size_t>(conf::key::CMSYNC_INDEXER_CONNECTOR_SYNC_BATCH_SIZE);
 
-                // Create indexer connector with enhanced configuration
-                indexerConnector = std::make_shared<wiconnector::WIndexerConnector>(jsonCnf.str(), maxHitsPerRequest);
-
-                // The content manager builds its own (read-only, session-shared) connectors from
-                // exactly these settings, so there is no second place to configure the indexer.
-                indexerConnectionSettings = nlohmann::json::parse(jsonCnf.str());
+                // One connector for everything: event indexing, the pre-flight checks and every content
+                // download share it, so there is one health monitor and an outage is reported once.
+                const auto asyncConnector = wiconnector::makeIndexerConnectorAsync(jsonCnf.str());
+                indexerConnector = std::make_shared<wiconnector::WIndexerConnector>(asyncConnector, maxHitsPerRequest);
+                contentIndexer = content_manager::makeContentIndexer(asyncConnector);
                 // Register destructive shutdown first so it executes (LIFO) AFTER requestShutdown,
                 // ensuring in-flight pagination loops abort and release shared locks before destroy.
                 exitHandler.add([indexerConnector]() { indexerConnector->shutdown(); });
@@ -764,7 +764,7 @@ int main(int argc, char* argv[])
                                                                cmCrudService,
                                                                store,
                                                                orchestrator,
-                                                               indexerConnectionSettings,
+                                                               contentIndexer,
                                                                maxRetries,
                                                                retryInterval,
                                                                contentOptions);
@@ -787,7 +787,7 @@ int main(int argc, char* argv[])
             contentOptions.consumerRetrySeconds = confManager.get<size_t>(conf::key::CONTENT_CONSUMER_RETRY_INTERVAL);
 
             iocSyncService = std::make_shared<ioc::sync::IocSync>(
-                indexerConnector, IOCkvdb, store, indexerConnectionSettings, maxRetries, retryInterval, contentOptions);
+                indexerConnector, IOCkvdb, store, contentIndexer, maxRetries, retryInterval, contentOptions);
             LOG_INFO("IOC Sync Service initialized");
 
             exitHandler.add([iocSyncService]() { iocSyncService->requestShutdown(); });

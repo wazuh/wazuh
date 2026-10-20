@@ -12,8 +12,8 @@
 #define _PIT_PAGINATOR_HPP
 
 #include "conditionSync.hpp"
+#include "contentIndexer.hpp"
 #include "contentSink.hpp"
-#include "indexerQueryPort.hpp"
 #include "loggerHelper.h"
 #include "pitSession.hpp"
 #include "sharedDefs.hpp"
@@ -60,8 +60,9 @@ struct FetchOutcome
  * Absorbs the old `fetchWithPit` and `fetchWithSlicedPit`. Three rules it keeps from them, each for
  * a reason worth restating:
  *
- *  - **Each slice worker gets its own port** (`IIndexerQueryPort::clone`). HTTP state is not
- *    shareable across threads.
+ *  - **Every slice worker shares the host's one indexer** (D1). `IContentIndexer` requires
+ *    concurrent calls, and the connectors meet it: a search takes no connector lock, and HTTP
+ *    handles are per thread in the process-wide `HTTPRequest`. A per-slice copy bought nothing.
  *  - **Sink calls are serialised by one mutex**, so a sink never needs to be thread-safe to be
  *    sliceable.
  *  - **Durable acknowledgements only advance the resume point on the unsliced path.** A slice's
@@ -81,7 +82,7 @@ public:
      * @param session The open PIT. Must outlive the paginator.
      * @param stop Cooperative stop flag, checked between pages.
      */
-    PitPaginator(IIndexerQueryPort& port, PitSession& session, ConditionSync& stop)
+    PitPaginator(content_manager::IContentIndexer& port, PitSession& session, ConditionSync& stop)
         : m_port {port}
         , m_session {session}
         , m_stop {stop}
@@ -299,7 +300,6 @@ private:
 
         try
         {
-            auto slicePort = m_port.clone();
             const nlohmann::json sliceParam {{"id", sliceId}, {"max", spec.slices}};
             std::optional<nlohmann::json> searchAfter;
             std::size_t pageIndex = 0;
@@ -318,7 +318,7 @@ private:
                     break;
                 }
 
-                const auto hits = slicePort->search(
+                const auto hits = m_port.search(
                     m_session.pit(), spec.pageSize, spec.query, spec.sort, searchAfter, spec.sourceFilter, sliceParam);
                 const auto& hitArray = hits.at("hits");
 
@@ -483,7 +483,7 @@ private:
         return {};
     }
 
-    IIndexerQueryPort& m_port;
+    content_manager::IContentIndexer& m_port;
     PitSession& m_session;
     ConditionSync& m_stop;
     std::mutex m_sinkMutex;

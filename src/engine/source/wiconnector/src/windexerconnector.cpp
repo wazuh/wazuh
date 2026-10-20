@@ -111,21 +111,8 @@ std::string Config::toJson() const
     return config.dump();
 }
 
-/****************************************************************************************
- * Wrapper of IndexerConnector class implementation
- ****************************************************************************************/
-WIndexerConnector::WIndexerConnector(std::string_view jsonOssecConfig, const std::size_t maxHitsPerRequest)
+std::shared_ptr<IndexerConnectorAsync> makeIndexerConnectorAsync(std::string_view jsonOssecConfig)
 {
-    if (maxHitsPerRequest == 0)
-    {
-        LOG_WARNING("[indexer-connector] maxHitsPerRequest must be greater than zero, default to 1");
-        m_maxHitsPerRequest = 1;
-    }
-    else
-    {
-        m_maxHitsPerRequest = maxHitsPerRequest;
-    }
-
     if (jsonOssecConfig.empty())
     {
         throw std::runtime_error("Empty JSON configuration for IndexerConnector");
@@ -138,9 +125,36 @@ WIndexerConnector::WIndexerConnector(std::string_view jsonOssecConfig, const std
     }
 
     const auto logFunction = logging::createStandaloneLogFunction();
-    auto inner =
-        std::make_unique<IndexerConnectorAsync>(jsonParsed, LoggingContext {logging::default_tag(), logFunction});
-    m_indexerConnectorAsync = std::make_unique<IndexerConnectorAsyncAdapter>(std::move(inner));
+    return std::make_shared<IndexerConnectorAsync>(jsonParsed, LoggingContext {logging::default_tag(), logFunction});
+}
+
+/****************************************************************************************
+ * Wrapper of IndexerConnector class implementation
+ ****************************************************************************************/
+WIndexerConnector::WIndexerConnector(std::string_view jsonOssecConfig, const std::size_t maxHitsPerRequest)
+    : WIndexerConnector(makeIndexerConnectorAsync(jsonOssecConfig), maxHitsPerRequest)
+{
+}
+
+WIndexerConnector::WIndexerConnector(std::shared_ptr<IndexerConnectorAsync> connector,
+                                     const std::size_t maxHitsPerRequest)
+{
+    if (!connector)
+    {
+        throw std::runtime_error("IndexerConnectorAsync instance cannot be null");
+    }
+
+    if (maxHitsPerRequest == 0)
+    {
+        LOG_WARNING("[indexer-connector] maxHitsPerRequest must be greater than zero, default to 1");
+        m_maxHitsPerRequest = 1;
+    }
+    else
+    {
+        m_maxHitsPerRequest = maxHitsPerRequest;
+    }
+
+    m_indexerConnectorAsync = std::make_unique<IndexerConnectorAsyncAdapter>(std::move(connector));
 }
 
 WIndexerConnector::WIndexerConnector(const Config& config,

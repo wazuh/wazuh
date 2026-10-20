@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-#include <filesystem>
 #include <memory>
+#include <optional>
 #include <string>
+#include <string_view>
+#include <vector>
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -12,17 +14,16 @@
 #include <cmcontent/registration.hpp>
 #include <cmcrud/mockcmcrud.hpp>
 #include <cmsync/cmsync.hpp>
-#include <keyStore.hpp>
+#include <contentIndexer.hpp>
 #include <router/mockRouter.hpp>
 #include <store/mockStore.hpp>
 #include <wiconnector/mockswindexerconnector.hpp>
 
 /*
  * Component-level: CMSync wired to real content registrations over the shared content manager, with
- * only the far ends (store, router, namespace store, indexer) faked. No indexer has to be running —
- * an unreachable host is not a configuration error — but the indexer credentials do: a real
- * registration reads them from the keystore and refuses to start without them, so they are seeded
- * below exactly as the wiconnector suite does. What this exercises is the wiring: that a
+ * only the far ends (store, router, namespace store, indexer) faked. The registrations are handed a
+ * fake indexer, as production hands them the Engine's own (D1 of the content manager), so neither a
+ * running indexer nor keystore credentials are needed. What this exercises is the wiring: that a
  * registration is created per tracked space, that a cycle can be driven end to end without
  * throwing, and that the outcome lands in the status the API serves.
  */
@@ -30,34 +31,43 @@
 namespace
 {
 
-bool seedIndexerCredentials()
+/**
+ * @brief An indexer with nothing published on it.
+ *
+ * Answers rather than throws: an exception thrown here, in the test binary, and caught inside the
+ * content manager's library would depend on RTTI matching across the two. "Nothing there" is what a
+ * cycle sees on a fresh cluster, and it handles that as a deferral, not an error.
+ */
+class EmptyIndexer final : public content_manager::IContentIndexer
 {
-    try
+public:
+    content_manager::ContentPit openPit(const std::vector<std::string>&, std::string_view keepAlive, bool) override
     {
-        // Keystore::put() opens `queue/keystore` relative to the working directory and creates the
-        // store itself, but not the directory above it.
-        std::filesystem::create_directories("queue");
-        Keystore::put("indexer", "username", "test-user");
-        Keystore::put("indexer", "password", "test-password");
-        return true;
+        return content_manager::ContentPit {"pit", 0, std::string {keepAlive}};
     }
-    catch (const std::exception&)
-    {
-        return false;
-    }
-}
 
-/// Seeded before main(): the indexer connector caches the credentials on first use and throws when
-/// they are unset.
-const bool g_credentialsSeeded = seedIndexerCredentials();
+    void closePit(const content_manager::ContentPit&) noexcept override {}
+
+    nlohmann::json search(const content_manager::ContentPit&,
+                          std::size_t,
+                          const nlohmann::json&,
+                          const nlohmann::json&,
+                          const std::optional<nlohmann::json>&,
+                          const std::optional<nlohmann::json>&,
+                          const std::optional<nlohmann::json>&) override
+    {
+        return nlohmann::json {{"hits", nlohmann::json::array()}};
+    }
+
+    nlohmann::json
+    searchIndex(std::string_view, std::size_t, const nlohmann::json&, const std::optional<nlohmann::json>&) override
+    {
+        return nlohmann::json {{"hits", nlohmann::json::array()}};
+    }
+};
 
 constexpr size_t DEFAULT_ATTEMPTS = 1U;
 constexpr size_t DEFAULT_WAIT_SECONDS = 0U;
-
-nlohmann::json indexerConnection()
-{
-    return nlohmann::json {{"hosts", nlohmann::json::array({"http://127.0.0.1:9200"})}};
-}
 
 cmcontent::Options contentOptions()
 {
@@ -91,7 +101,7 @@ protected:
                                                   crud,
                                                   store,
                                                   router,
-                                                  indexerConnection(),
+                                                  std::make_shared<EmptyIndexer>(),
                                                   DEFAULT_ATTEMPTS,
                                                   DEFAULT_WAIT_SECONDS,
                                                   contentOptions());

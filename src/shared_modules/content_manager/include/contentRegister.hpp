@@ -11,8 +11,10 @@
 #ifndef _CONTENT_REGISTER_HPP
 #define _CONTENT_REGISTER_HPP
 
+#include "contentIndexer.hpp"
 #include "contentSink.hpp"
 #include "contentTokenStore.hpp"
+#include "contentTopicSpec.hpp"
 #include "contentTypes.hpp"
 #include <json.hpp>
 #include <memory>
@@ -28,26 +30,14 @@
  * @brief One registered content topic: its configuration, its sink and its token.
  *
  * The library is *pull*-driven. A host that already owns a scheduler (the Engine) constructs a
- * registration without an `interval` and calls @ref runOnce from its own task; a host that does not
- * (the vulnerability scanner) passes `interval` and gets the library's own driver thread, which
+ * registration without `schedule.intervalSeconds` and calls @ref runOnce from its own task; a host
+ * that does not (the vulnerability scanner) sets it and gets the library's own driver thread, which
  * calls the same @ref runOnce.
  *
- * Expected @p parameters shape:
- * @code{.jsonc}
- * {
- *   "topicName": "vulnerability_feed_manager",
- *   "interval": 3600,          // optional: present => the library spawns a driver thread
- *   "ondemand": true,          // optional: register the topic on the on-demand lane
- *   "configData": {
- *     "consumerName": "Wazuh VulnerabilityDetector",   // required, becomes the HTTP User-Agent
- *     "changeDetection": "cursor",                     // required: "cursor" | "hash"
- *     "databasePath": "queue/vd/vd_updater/rocksdb",   // optional: enables the built-in token store
- *     "resetStateOnRegister": false,                   // optional: clear the token at construction
- *     "consumerRetryIntervalSeconds": 60,              // optional, default 60
- *     "indexer": { ... }                               // hosts, ssl, auth + the per-topic query spec
- *   }
- * }
- * @endcode
+ * @p parameters is the JSON of a `content_manager::TopicSpec` — build it with
+ * `content_manager::toParameters` (contentTopicSpec.hpp) rather than by hand. The shape, grouped by
+ * concern, and the strict parsing it gets at construction are described in D2 of the library's
+ * README; every unknown key is rejected, naming its block.
  */
 class EXPORTED ContentRegister final
 {
@@ -58,19 +48,22 @@ public:
      * @param topicName Unique topic name. Also the key of the on-demand route.
      * @param parameters Registration parameters (see the class documentation).
      * @param sink Destination for the downloaded content. Must not be null.
+     * @param indexer The host's indexer (see contentIndexer.hpp, D1). Must not be null: the library
+     *                never opens a connection of its own. Held for the registration's whole life.
      * @param tokenStore Where the change-detection token lives. When null, the library builds one
-     *                   over `configData.databasePath`; passing null with no `databasePath` leaves
+     *                   over `state.databasePath`; passing null with no `databasePath` leaves
      *                   the topic tokenless, i.e. every cycle is a full reload.
      * @param contractVersion Leave at its default. Compiled into the caller so a host built against
      *                        a stale `contentTypes.hpp` is refused instead of misreading a struct.
      *
-     * @throws std::invalid_argument if the configuration is invalid, the sink is null, or the
+     * @throws std::invalid_argument if the configuration is invalid, the sink or the indexer is null, or the
      *         contract version does not match the one built into the library.
      * @throws std::runtime_error if the topic is already registered.
      */
     explicit ContentRegister(std::string topicName,
                              const nlohmann::json& parameters,
                              std::shared_ptr<content_manager::IContentSink> sink,
+                             std::shared_ptr<content_manager::IContentIndexer> indexer,
                              std::shared_ptr<content_manager::IContentTokenStore> tokenStore = nullptr,
                              std::uint32_t contractVersion = content_manager::CONTRACT_ABI_VERSION);
 

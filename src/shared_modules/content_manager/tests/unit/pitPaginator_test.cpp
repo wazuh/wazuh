@@ -14,6 +14,8 @@
 #include "gtest/gtest.h"
 #include <atomic>
 #include <chrono>
+#include <condition_variable>
+#include <mutex>
 #include <set>
 #include <thread>
 
@@ -220,15 +222,28 @@ TEST(PitPaginatorTest, TransportErrorIsReportedNotThrown)
     EXPECT_EQ(outcome.documentsDelivered, 0U);
 }
 
-TEST(PitPaginatorTest, SlicedFetchGivesEachWorkerItsOwnPortAndReleasesThem)
+TEST(PitPaginatorTest, SlicedFetchRunsEverySliceOnTheOneIndexerAtOnce)
 {
     FakeIndexerQueryPort port;
-    port.state()->onSearch = [](const FakeIndexerQueryPort::SearchCall& call, std::size_t ordinal) -> nlohmann::json
+
+    // Each slice's first search waits (bounded) until all three are in flight together, which can
+    // only happen if the workers really share the one instance concurrently (D1) rather than
+    // queueing on it or on copies of it.
+    std::mutex gateMutex;
+    std::condition_variable gate;
+    std::size_t arrived = 0;
+    port.state()->onSearch = [&](const FakeIndexerQueryPort::SearchCall& call, std::size_t ordinal) -> nlohmann::json
     {
         EXPECT_TRUE(call.slice.has_value());
         if (ordinal > 0)
         {
             return FakeIndexerQueryPort::emptyHits();
+        }
+        {
+            std::unique_lock<std::mutex> lock {gateMutex};
+            ++arrived;
+            gate.notify_all();
+            gate.wait_for(lock, std::chrono::seconds {5}, [&arrived] { return arrived >= 3; });
         }
         const auto sliceId = call.slice->at("id").get<std::size_t>();
         return FakeIndexerQueryPort::hitsOf(
@@ -243,10 +258,7 @@ TEST(PitPaginatorTest, SlicedFetchGivesEachWorkerItsOwnPortAndReleasesThem)
     const auto outcome = paginator.run(specOf(10, 3), sink, "topic");
 
     EXPECT_EQ(outcome.documentsDelivered, 3U);
-    EXPECT_EQ(port.state()->clones, 3U);
-    // HTTP state is not shareable across threads, so each worker gets its own port — and none of
-    // them outlives the fetch.
-    EXPECT_EQ(port.state()->liveClones, 0U);
+    EXPECT_EQ(port.state()->maxConcurrentSearches, 3U);
 
     // A per-slice token is not a resume point: the other slices may be far behind.
     EXPECT_TRUE(outcome.durableToken.empty());

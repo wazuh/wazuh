@@ -188,13 +188,16 @@ class IIocSync {
 ### `IocSync` (iocsync.hpp / iocsync.cpp)
 
 **Constructor**: takes `shared_ptr<IWIndexerConnector>`, `shared_ptr<IKVDBManager>`,
-`shared_ptr<store::IStore>` (stored as weak pointers), the indexer connection settings, retry
+`shared_ptr<store::IStore>` (stored as weak pointers), the Engine's content indexer, retry
 tunables and `cmcontent::Options`. On first run (no persisted state) it initializes the sync list
 with every type from `ioc::kvdb::details::getSupportedIocTypes()`. In both cases it builds one
 content registration per tracked type.
 
-`indexerConnection` is the **same** JSON `main.cpp` builds the indexer connector from, so there is no
-second place to configure the indexer.
+The content indexer is the Engine's **one** `IndexerConnectorAsync`, wrapped by
+`content_manager::makeContentIndexer` in `main.cpp` (D1 of the content manager): the registrations
+never open a connection of their own, so there is no second connector, monitor or place to
+configure the indexer. It is only read to build the default topic factory; a test passing its own
+factory may pass null.
 
 **Key Members**:
 

@@ -8,6 +8,7 @@
  * Foundation.
  */
 
+#include "components/topicSpecParser.hpp"
 #include "contentManager.hpp"
 #include "contentModuleFacade.hpp"
 #include "contentRegister.hpp"
@@ -29,6 +30,7 @@ void ContentModule::stop()
 ContentRegister::ContentRegister(std::string name,
                                  const nlohmann::json& parameters,
                                  std::shared_ptr<content_manager::IContentSink> sink,
+                                 std::shared_ptr<content_manager::IContentIndexer> indexer,
                                  std::shared_ptr<content_manager::IContentTokenStore> tokenStore,
                                  std::uint32_t contractVersion)
     : m_name {std::move(name)}
@@ -48,14 +50,18 @@ ContentRegister::ContentRegister(std::string name,
         throw std::invalid_argument {"A content sink is required to register '" + m_name + "'"};
     }
 
-    ContentModuleFacade::instance().addProvider(m_name, parameters, std::move(sink), std::move(tokenStore));
+    // Parsed and validated once, here: every later stage reads the typed spec (D2).
+    const auto spec = TopicSpecParser::parse(parameters);
 
-    if (parameters.contains("interval"))
+    ContentModuleFacade::instance().addProvider(
+        m_name, spec, std::move(sink), std::move(indexer), std::move(tokenStore));
+
+    if (spec.schedule.intervalSeconds.has_value())
     {
-        ContentModuleFacade::instance().startScheduling(m_name, parameters.at("interval").get<size_t>());
+        ContentModuleFacade::instance().startScheduling(m_name, *spec.schedule.intervalSeconds);
     }
 
-    if (parameters.value("ondemand", false))
+    if (spec.schedule.onDemand)
     {
         ContentModuleFacade::instance().startOndemand(m_name);
     }
