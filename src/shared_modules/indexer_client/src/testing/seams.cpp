@@ -29,6 +29,9 @@ namespace
     std::function<void(std::uint64_t, std::uint64_t)> g_onTimerHandler;
     std::function<std::optional<int>()> g_openSocket;
     std::function<void()> g_afterAdmission;
+    std::function<bool()> g_refuseSubmit;
+    std::function<void()> g_beforeCompletion;
+    std::function<void()> g_beforeSenderMirror;
 
     template<class F>
     F copyOf(const F& hook)
@@ -98,6 +101,28 @@ namespace indexer_client::detail::seams
             hook();
         }
     }
+
+    bool refuseSubmit()
+    {
+        auto hook = copyOf(g_refuseSubmit);
+        return hook ? hook() : false;
+    }
+
+    void beforeCompletion()
+    {
+        if (auto hook = copyOf(g_beforeCompletion))
+        {
+            hook();
+        }
+    }
+
+    void beforeSenderMirror()
+    {
+        if (auto hook = copyOf(g_beforeSenderMirror))
+        {
+            hook();
+        }
+    }
 } // namespace indexer_client::detail::seams
 
 namespace indexer_client::testing_hooks
@@ -130,6 +155,18 @@ namespace indexer_client::testing_hooks
     {
         store(g_afterAdmission, std::move(hook));
     }
+    void setRefuseSubmit(std::function<bool()> hook)
+    {
+        store(g_refuseSubmit, std::move(hook));
+    }
+    void setBeforeCompletion(std::function<void()> hook)
+    {
+        store(g_beforeCompletion, std::move(hook));
+    }
+    void setBeforeSenderMirror(std::function<void()> hook)
+    {
+        store(g_beforeSenderMirror, std::move(hook));
+    }
     void resetAll()
     {
         {
@@ -141,6 +178,9 @@ namespace indexer_client::testing_hooks
             g_onTimerHandler = {};
             g_openSocket = {};
             g_afterAdmission = {};
+            g_refuseSubmit = {};
+            g_beforeCompletion = {};
+            g_beforeSenderMirror = {};
         }
         setProbeAutoStart(true);
     }

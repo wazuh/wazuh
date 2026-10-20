@@ -308,19 +308,6 @@ namespace indexer_client::detail::write
         return due;
     }
 
-    std::optional<TimePoint> Bucket::oldestPending() const
-    {
-        // The scheduler arms its timer at oldestPending() + maxAge: the lane head is reported shifted back by maxAge
-        // so that the timer fires at its notBefore (I66).
-        std::lock_guard<std::mutex> lock(m_mutex);
-        const auto due = nextDueLocked();
-        if (!due)
-        {
-            return std::nullopt;
-        }
-        return *due - m_spec.bulk.maxAge;
-    }
-
     std::uint64_t Bucket::headBytes(TimePoint now) const
     {
         std::lock_guard<std::mutex> lock(m_mutex);
@@ -418,6 +405,10 @@ namespace indexer_client::detail::write
         std::uint64_t released = 0;
         {
             std::lock_guard<std::mutex> lock(m_mutex);
+            // The resolution won the claim, so no requeue writes them again: a resolved op whose completion waits on
+            // the pool keeps no last-error strings (RESULT_RESERVE, G-diff E3b-2 obj. 1).
+            std::string().swap(op.lastReason);
+            std::string().swap(op.lastItemErrorType);
             if (const auto it = m_delivered.find(&op); it != m_delivered.end())
             {
                 keep = std::move(it->second);
@@ -579,10 +570,13 @@ namespace indexer_client::detail::write
             {
                 continue; // Not delivered by this bucket (already resolved): nothing to requeue.
             }
-            op->lastCause = entry.lastError.cause;
-            op->lastHttpStatus = entry.lastError.httpStatus;
-            op->lastItemErrorType = std::move(entry.lastError.itemErrorType);
-            op->lastReason = std::move(entry.lastError.reason);
+            if (entry.lastError.cause != Cause::None)
+            {
+                op->lastCause = entry.lastError.cause;
+                op->lastHttpStatus = entry.lastError.httpStatus;
+                op->lastItemErrorType = std::move(entry.lastError.itemErrorType);
+                op->lastReason = std::move(entry.lastError.reason);
+            }
             if (m_closed)
             {
                 result.closed.push_back(std::move(op)); // Stays delivered: the caller (or the sweep) resolves it.
@@ -598,6 +592,8 @@ namespace indexer_client::detail::write
                 retry.maxDuration && op->firstAttempt != TimePoint {} && now - op->firstAttempt >= *retry.maxDuration;
             if (attemptsSpent || durationSpent)
             {
+                result.exhaustedErrors.push_back(
+                    LastError {op->lastCause, op->lastHttpStatus, op->lastItemErrorType, op->lastReason});
                 result.exhausted.push_back(std::move(op)); // Stays delivered until resolved.
                 continue;
             }

@@ -320,6 +320,46 @@ TEST_F(WriteRetryLaneTest, MaxDurationCountsFromFirstSend)
     ASSERT_TRUE(results->waitTotal(1));
 }
 
+// G-diff E3b-2 obj. 3: a requeue whose LastError has cause None (none of the sender's requeues does since that
+// objection, but the bucket must not depend on it) keeps the op's previous last error, so a maxDuration exhaustion
+// inside it still reports the real error; the exhausted op's error is handed out copied (exhaustedErrors), and the
+// resolution frees the op's last-error strings (obj. 1). Mutant: requeue overwrites last* with an empty error.
+TEST_F(WriteRetryLaneTest, RequeueWithoutErrorKeepsLastError)
+{
+    ASSERT_NO_FATAL_FAILURE(start());
+    installSink(TestSink::Mode::Hold, 0);
+    auto withDuration = bucketSpec("b", 1U << 20, ic::Overflow::Kind::Reject, 0, 1);
+    withDuration.retry = retryPolicy(std::nullopt, ic::Duration {300}, ic::Duration {10}, ic::Duration {20}, 0);
+    auto c = client("c", {withDuration});
+    auto results = Results::create();
+    auto batch = deliver(c->writer("b"), results, 0, 1);
+    ASSERT_EQ(batch.ops.size(), 1U);
+    auto bucket = batch.bucket;
+    const auto op = batch.ops[0];
+    const auto t = op->firstAttempt;
+
+    auto result = bucket->requeue(requeueOps({op}), spec(false, Delay::Now), t + std::chrono::milliseconds(1));
+    ASSERT_TRUE(result.exhausted.empty());
+    ASSERT_EQ(bucket->slice(ALL, t + std::chrono::milliseconds(1)).ops.size(), 1U);
+    std::vector<wr::RequeueOp> noError;
+    noError.push_back(wr::RequeueOp {op, wr::LastError {}});
+    result = bucket->requeue(std::move(noError), spec(false, Delay::Now), t + std::chrono::milliseconds(300));
+    ASSERT_EQ(result.exhausted.size(), 1U) << "maxDuration spent inside the requeue without an error";
+    ASSERT_EQ(result.exhaustedErrors.size(), 1U);
+    EXPECT_EQ(result.exhaustedErrors[0].cause, ic::Cause::Server5xx);
+    EXPECT_EQ(result.exhaustedErrors[0].httpStatus, 503);
+    EXPECT_EQ(result.exhaustedErrors[0].itemErrorType, "unavailable_shards_exception");
+    EXPECT_EQ(result.exhaustedErrors[0].reason, "primary shard is not active");
+    EXPECT_EQ(op->lastCause, ic::Cause::Server5xx) << "the previous last error is kept";
+    EXPECT_EQ(op->lastReason, "primary shard is not active");
+
+    ASSERT_TRUE(resolve(op, ic::Status::Failed, ic::Cause::RetryExhausted));
+    EXPECT_TRUE(op->lastReason.empty()) << "the resolution frees the last-error strings";
+    EXPECT_TRUE(op->lastItemErrorType.empty());
+    ASSERT_TRUE(results->waitTotal(1));
+    drain(bucket);
+}
+
 // I66: Now with and without an attempt, At(t) waits for t, toHead goes before every other lane op; the lane is
 // ordered by notBefore (stable) and `notify` is set when the lane was empty or its head moved earlier.
 TEST_F(WriteRetryLaneTest, RequeueSpecs)

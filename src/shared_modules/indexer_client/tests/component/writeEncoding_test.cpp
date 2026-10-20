@@ -290,3 +290,37 @@ TEST_F(WriteTest, EncodingRejectsInvalid)
     EXPECT_EQ(results->total(), good.size()) << "no refused submit ever calls back";
     expectInvariants(stats("b"));
 }
+
+// G-diff E3b-2 obj. 2: the per-operation ConflictPolicy (Op::onConflict) is E3c, so submit refuses it with
+// InvalidArgument (counted, nothing charged, no callback) instead of serving the op with the bucket's policy; the
+// same op without it is accepted. Mutant: Writer::submit ignores Op::onConflict.
+TEST_F(WriteTest, PerOpConflictPolicyRefusedUntilE3c)
+{
+    ASSERT_NO_FATAL_FAILURE(start());
+    auto sink = installSink();
+    auto c = client("c", {bucketSpec("b", 1u << 20, ic::Overflow::Kind::Reject, 64 * 1024, 1)});
+    auto writer = c->writer("b");
+    auto results = Results::create();
+    auto op = make(ic::Op::Kind::Index, "i", "1", "{}");
+    op.onConflict = ic::ConflictPolicy {};
+
+    const auto refused = writer->submit(op, results->callback(0));
+    EXPECT_FALSE(refused.accepted);
+    EXPECT_EQ(refused.cause, ic::Cause::InvalidArgument);
+    EXPECT_FALSE(refused.ticket.ready());
+    auto s = stats("b");
+    EXPECT_EQ(s.invalidArgument, 1u);
+    EXPECT_EQ(s.submitted, 1u);
+    EXPECT_EQ(s.accepted, 0u);
+    EXPECT_EQ(s.charge, 0u);
+    expectInvariants(s);
+
+    op.onConflict.reset();
+    const auto accepted = writer->submit(op, results->callback(1));
+    EXPECT_TRUE(accepted.accepted) << ic::toString(accepted.cause);
+    ASSERT_TRUE(sink->waitDispatched(1));
+    EXPECT_EQ(sink->resolveHeld(), 1u);
+    ASSERT_TRUE(results->waitTotal(1));
+    EXPECT_EQ(results->count(0), 0) << "a refused submit never calls back";
+    expectInvariants(stats("b"));
+}
