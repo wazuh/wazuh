@@ -8,6 +8,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/engine"
 )
 
 // Duration unmarshals a Go duration string ("20s", "5m").
@@ -196,6 +198,10 @@ type Step struct {
 	// the whole sample file as a single batch. One runStep pass always ships the
 	// entire file, split into ceil(lines/batch) requests.
 	EventsPerBatch int `json:"events_per_batch"`
+	// Header shapes the step's H line: size, extra members, identity
+	// position and how often it changes (engine.HeaderSpec). Absent sends the
+	// minimal header an agent sends.
+	Header *engine.HeaderSpec `json:"header,omitempty"`
 }
 
 // DocSpec controls document (or context) generation for a step.

@@ -27,6 +27,10 @@ type agent struct {
 	enroll    *wire.Client
 	enrollSeq atomic.Uint64
 
+	// engineBatches counts the engine batches this agent has sent, across
+	// lanes and passes; it drives a header's change_every.
+	engineBatches atomic.Uint64
+
 	// vdFeedOffset is the last vd_feed_offset a notify reported (agent mode
 	// only; stays 0 in uds mode, which has no /control to learn it from).
 	// Written by keepaliveLoop, read by the lane goroutines building

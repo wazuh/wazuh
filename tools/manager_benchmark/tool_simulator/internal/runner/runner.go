@@ -266,6 +266,9 @@ func (r *Runner) buildAgents(ctx context.Context) ([]*agent, error) {
 				ag.client = wire.NewAgentClient(ident, r.cfg.Manager, r.cfg.Port, r.cfg.Timeout, r.cfg.Reuse, r.cfg.GlobalPrefix)
 				r.enrolled++
 			} else {
+				// Canonical form ("001"): both uds receivers, inventory-sync and the
+				// engine, accept only the canonical spelling of an agent id.
+				ag.id = canonicalAgentID(fleet.FirstID + i)
 				ag.client = wire.NewUDSClient(ag.id, r.cfg.Socket, r.cfg.Timeout)
 				r.enrolled++ // synthetic identity: "ready" is the uds-mode equivalent of enrolled
 			}
@@ -273,6 +276,12 @@ func (r *Runner) buildAgents(ctx context.Context) ([]*agent, error) {
 		}
 	}
 	return agents, nil
+}
+
+// canonicalAgentID spells an agent id the way the manager does: zero-padded to
+// at least three digits, wider ids unchanged.
+func canonicalAgentID(id int) string {
+	return fmt.Sprintf("%03d", id)
 }
 
 func (r *Runner) concurrency(total int) int {

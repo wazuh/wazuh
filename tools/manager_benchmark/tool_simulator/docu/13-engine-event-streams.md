@@ -11,11 +11,23 @@ Source of truth: `src/remoted/remoted_module/src/endpoints/statelessEndpoint.{hp
 
 ## The route
 
-`POST /stateless`, HTTPS/1517, authenticated by the same gateway as everything else (see
-[04-wire-protocol.md](04-wire-protocol.md)): `protocol-version: 1` plus the `wazuh-agent+jwt`
-bearer `Authorization` (identity only; the body is not part of authentication). It exists **only in
-`agent` mode** — there is no Unix-socket equivalent, because the engine ingress is remoted's own
-downstream, not this module's.
+In **agent** mode: `POST /stateless`, HTTPS/1517, authenticated by the same gateway as everything
+else (see [04-wire-protocol.md](04-wire-protocol.md)): `protocol-version: 1` plus the
+`wazuh-agent+jwt` bearer `Authorization` (identity only; the body is not part of authentication).
+This exercises the whole relay: JWT, the identity check, forwarding and the engine.
+
+In **uds** mode the sender skips remoted and is itself an engine producer: it posts the same batch
+to the engine's own `POST /events/enriched` on `--socket` (the engine ingest socket,
+`<WAZUH_HOME>/queue/sockets/engine-ingest-http.sock`) with `Content-Type: application/x-ndjson` and
+`X-Wazuh-Agent-Id: <agent id>`, the header remoted adds for the agent it authenticated. Synthesized
+ids are canonical (`"001"`), so the header and the H line carry the same spelling. Nothing has to be
+enrolled, which is what makes a distinct-id flood (`engine_direct_flood`) cheap. The engine answers
+`200` where remoted answers `202`, and both count in the same success bucket (`s202`). With
+`run_benchmark.sh`, pass the engine ingest socket as `--socket`. The engine's own counters
+(`agent.cache.*`, `server.*`) come from the monitor's `analysisd` source (`POST /metrics/dump` on the
+engine API socket), not from `--socket`. A uds run has a single `--socket`, so it cannot mix
+inventory lanes and engine lanes: a `404` on an engine batch (the inventory-sync socket, the default)
+invalidates the run instead of losing every batch.
 
 ## The body: an H/E batch
 
@@ -77,6 +89,24 @@ Three rules keep an event lane honest:
 - Sustained pressure comes from the run's own repetition (`repeat_count` on the step or the run's
   `repeat_until`), the same mechanism every other lane uses; the stream stops at drain with
   everything else.
+
+## Shaping the header
+
+By default the `H ` line is the minimal one above. An optional `header` block on the step shapes it,
+so a run can measure how header size and layout drive remoted's identity check and the engine's
+agent metadata cache:
+
+| Field | Effect |
+|---|---|
+| `pad_bytes` | Exact size of the H-line JSON (the text after `H `), reached by growing a `bench_pad` member under `wazuh.agent`. The loader refuses a size some agent cannot reach and, in agent mode, anything over remoted's 8192-byte cap (every batch would be `400`) |
+| `extra_fields` | That many `bench_field_<n>` string members under `wazuh.agent` |
+| `off_path_fields` | That many members under a root `bench` object, outside `wazuh` |
+| `id_position` | `first` (default) or `last`: where `id` sits among the members of `wazuh.agent` |
+| `change_every` | Change the header every N batches the agent sends, through a `wazuh.agent.bench_seq` counter (`0` = never). The counter belongs to the agent and survives repeated passes, so the header keeps changing for the whole run |
+
+The identity path (`wazuh`, `wazuh.agent`, `wazuh.agent.id`) always appears exactly once, and the
+same inputs always give the same bytes, so a stable header is a byte-identical repeat.
+`engine_header_shapes` puts the shapes side by side.
 
 The step needs `engine` (the sample file, relative to the scenario file) and `location`;
 `events_per_second` and `events_per_batch` default to `0` (unlimited, and the whole file in one

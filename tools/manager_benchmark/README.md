@@ -28,6 +28,10 @@ into one `summary.json` and plots it.
 # agent mode — enroll the fleet over POST /enroll, then HTTPS to remoted (the whole relay)
 sudo ./prepare_manager.sh                                    # one-time: reachable enrollment + the fleet's token
 ./run_benchmark.sh --scenario scenarios/real_syscollector_debian.json --mode agent
+
+# uds mode with engine lanes — straight to the engine's POST /events/enriched (no remoted, no enrollment)
+./run_benchmark.sh --scenario scenarios/engine_direct_flood.json --mode uds \
+                   --socket /var/wazuh-manager/queue/sockets/engine-ingest-http.sock
 ```
 
 **The cluster name is read from the manager's own config.** The server answers `403` to any session

@@ -1,6 +1,7 @@
 package scenario
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -230,5 +231,55 @@ func TestCompressionForResolvesTheDefaultPerTransport(t *testing.T) {
 	d.Compression = "zstd"
 	if got := d.CompressionFor("agent"); got != "zstd" {
 		t.Fatalf("explicit zstd must stick, got %q", got)
+	}
+}
+
+// engineStep writes a one-line sample log and returns an engine step literal
+// pointing at it, with any extra fields appended.
+func engineStep(t *testing.T, extra string) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "sample.log")
+	if err := os.WriteFile(path, []byte("Oct  6 14:02:11 host sshd[1]: test\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return fmt.Sprintf(`{"kind": "engine", "engine": %q, "location": "syslog"%s}`, path, extra)
+}
+
+// uds mode posts engine batches straight to the engine's ingest socket, so the
+// loader no longer reserves engine steps for agent mode.
+func TestLoaderAllowsEngineStepsInUDSMode(t *testing.T) {
+	scn, err := loadFromLiteral(t, sprintf(minimalUDS, engineStep(t, `, "header": {"pad_bytes": 9000}`), ""))
+	if err != nil {
+		t.Fatalf("a uds engine step must load: %v", err)
+	}
+	if h := scn.Lanes["main"][0].Header; h == nil || h.PadBytes != 9000 {
+		t.Fatalf("header not parsed: %+v", h)
+	}
+}
+
+func TestLoaderConstrainsHeaderSpec(t *testing.T) {
+	const minimalAgent = `{
+	  "name": "t", "mode": "agent",
+	  "lanes": {"main": [%s]},
+	  "fleets": [{"name": "f", "agents": 1, "first_id": 1, "lanes": ["main"]}]
+	}`
+	for _, tc := range []struct{ body, field string }{
+		{sprintf(minimalUDS, `{"kind": "delta", "header": {"pad_bytes": 512}}`, ""), "engine steps"},
+		{sprintf(minimalUDS, engineStep(t, `, "header": {"pad_bytes": -1}`), ""), "pad_bytes"},
+		{sprintf(minimalUDS, engineStep(t, `, "header": {"extra_fields": -1}`), ""), "extra_fields"},
+		{sprintf(minimalUDS, engineStep(t, `, "header": {"off_path_fields": -1}`), ""), "off_path_fields"},
+		{sprintf(minimalUDS, engineStep(t, `, "header": {"change_every": -1}`), ""), "change_every"},
+		{sprintf(minimalUDS, engineStep(t, `, "header": {"id_position": "middle"}`), ""), "id_position"},
+		{sprintf(minimalUDS, engineStep(t, `, "header": {"pad_bytes": 20}`), ""), "pad_bytes"},
+		{sprintf(minimalAgent, engineStep(t, `, "header": {"pad_bytes": 9000}`)), "H-line cap"},
+		{sprintf(minimalAgent, engineStep(t, `, "header": {"extra_fields": 400}`)), "H-line cap"},
+	} {
+		if _, err := loadFromLiteral(t, tc.body); err == nil || !strings.Contains(err.Error(), tc.field) {
+			t.Errorf("want an error naming %q, got %v\n%s", tc.field, err, tc.body)
+		}
+	}
+	if _, err := loadFromLiteral(t, sprintf(minimalAgent, engineStep(t,
+		`, "header": {"pad_bytes": 8192, "extra_fields": 3, "off_path_fields": 2, "id_position": "last", "change_every": 5}`))); err != nil {
+		t.Fatalf("a header at exactly remoted's cap must load: %v", err)
 	}
 }

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/engine"
 )
 
 // Known step kinds, so a typo is a load-time error, not a silent no-op.
@@ -118,15 +120,52 @@ func (s *Scenario) validate() error {
 	return nil
 }
 
+// validateHeader refuses a header shape the run could not send as written: a
+// negative knob, an unknown id position, a padding size some agent of the
+// fleet cannot reach, or, in agent mode, a header remoted would answer 400.
+func (s *Scenario) validateHeader(where string, h *engine.HeaderSpec) error {
+	if h == nil {
+		return nil
+	}
+	for _, knob := range []struct {
+		name  string
+		value int
+	}{
+		{"pad_bytes", h.PadBytes}, {"extra_fields", h.ExtraFields},
+		{"off_path_fields", h.OffPathFields}, {"change_every", h.ChangeEvery},
+	} {
+		if knob.value < 0 {
+			return fmt.Errorf("%s: header.%s must not be negative", where, knob.name)
+		}
+	}
+	if h.IDPosition != "" && h.IDPosition != "first" && h.IDPosition != "last" {
+		return fmt.Errorf("%s: header.id_position must be \"first\" or \"last\", got %q", where, h.IDPosition)
+	}
+	minBytes := engine.MinHeaderBytes(h)
+	if h.PadBytes > 0 && h.PadBytes < minBytes {
+		return fmt.Errorf("%s: header.pad_bytes %d is below the %d bytes this header needs", where, h.PadBytes, minBytes)
+	}
+	if s.Mode == "agent" {
+		size := minBytes
+		if h.PadBytes > size {
+			size = h.PadBytes
+		}
+		if size > engine.MaxStatelessHeaderBytes {
+			return fmt.Errorf("%s: header of %d bytes exceeds remoted's %d-byte H-line cap (every batch would be answered 400)",
+				where, size, engine.MaxStatelessHeaderBytes)
+		}
+	}
+	return nil
+}
+
 func (s *Scenario) validateStep(fleet, lane string, i int, step Step) error {
 	where := fmt.Sprintf("fleet %q lane %q step %d", fleet, lane, i)
 	if !validKinds[step.Kind] {
 		return fmt.Errorf("%s: unknown kind %q", where, step.Kind)
 	}
 	if step.Kind == "engine" {
-		if s.Mode != "agent" {
-			return fmt.Errorf("%s: engine streams need agent mode", where)
-		}
+		// Agent mode posts to remoted's POST /stateless; uds mode posts straight
+		// to the engine's POST /events/enriched on --socket (docu/13).
 		if step.Engine == "" || step.Location == "" {
 			return fmt.Errorf("%s: engine step needs \"engine\" and \"location\"", where)
 		}
@@ -136,6 +175,12 @@ func (s *Scenario) validateStep(fleet, lane string, i int, step Step) error {
 		if step.EventsPerBatch < 0 {
 			return fmt.Errorf("%s: events_per_batch must not be negative", where)
 		}
+		if err := s.validateHeader(where, step.Header); err != nil {
+			return err
+		}
+	}
+	if step.Kind != "engine" && step.Header != nil {
+		return fmt.Errorf("%s: header only applies to engine steps", where)
 	}
 	if step.Kind != "engine" && (step.EventsPerSecond != 0 || step.EventsPerBatch != 0) {
 		return fmt.Errorf("%s: events_per_second/events_per_batch only apply to engine steps", where)
