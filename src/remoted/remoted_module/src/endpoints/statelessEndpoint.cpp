@@ -20,10 +20,13 @@
 namespace remoted::endpoints::stateless
 {
 
-    remoted::downstream::DownstreamTarget target(const std::string& socketPath)
+    remoted::downstream::DownstreamTarget target(const std::string& socketPath, const std::string& agentId)
     {
         remoted::downstream::DownstreamTarget result {
             socketPath, remoted::http::Method::Post, "/events/enriched", "application/x-ndjson"};
+        // Written by us, never by the agent: the value comes from the Authorization header the
+        // gateway already authenticated, so it cannot be used to inject headers downstream.
+        result.headers.emplace_back("X-Wazuh-Agent-Id", agentId);
         result.serviceName = "engine event ingress";
         return result;
     }
@@ -245,7 +248,7 @@ namespace remoted::endpoints::stateless
                 responder->send(std::move(rejection));
                 return;
             }
-            auto downstreamTarget = target(socketPath);
+            auto downstreamTarget = target(socketPath, authReq->agentId);
             downstreamTarget.httpMetrics = metrics;
             forwarder.forward(std::move(authReq), std::move(responder), std::move(downstreamTarget), postProcess);
         };

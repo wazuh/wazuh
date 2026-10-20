@@ -11,7 +11,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"strconv"
 	"time"
 )
 
@@ -68,6 +67,9 @@ func createHTTPClient(socket string) *http.Client {
 // sendEvent sends an event via HTTP POST to the engine
 func sendEvent(client *http.Client, message string, agentid int, isRaw bool, contentType string) {
 	var payload string
+	// Canonical form ("001"), the spelling the manager gives every agent id. The engine is told which
+	// agent the batch belongs to by X-Wazuh-Agent-Id, so the header and the H line carry the same id.
+	id := fmt.Sprintf("%03d", agentid)
 
 	if isRaw {
 		// Send message as-is (should be in H/E format already)
@@ -81,7 +83,7 @@ func sendEvent(client *http.Client, message string, agentid int, isRaw bool, con
 		header := map[string]interface{}{
 			"wazuh": map[string]interface{}{
 				"agent": map[string]interface{}{
-					"id":   strconv.Itoa(agentid),
+					"id":   id,
 					"name": fmt.Sprintf("hostname%d", agentid),
 				},
 			},
@@ -112,6 +114,7 @@ func sendEvent(client *http.Client, message string, agentid int, isRaw bool, con
 	}
 
 	req.Header.Set("Content-Type", contentType)
+	req.Header.Set("X-Wazuh-Agent-Id", id)
 
 	// Send request
 	resp, err := client.Do(req)

@@ -558,8 +558,9 @@ src/endpoints/
   over UDS (see *Deferred forwarding*) and replies from the downstream result
   (`202`/`400`/`413`/`503`); `400`/`401`/`413` auth rejections come straight from the gateway.
 - **Per-endpoint policy (`statelessEndpoint.hpp/.cpp`):** each endpoint owns *what* it forwards and
-  *how* it maps the answer, kept out of the generic `downstream/` machinery. `stateless::target(socket)`
-  builds the engine ingest `DownstreamTarget` (`POST /events/enriched`, `application/x-ndjson`) and
+  *how* it maps the answer, kept out of the generic `downstream/` machinery. `stateless::target(socket,
+  agentId)` builds the engine ingest `DownstreamTarget` (`POST /events/enriched`, `application/x-ndjson`,
+  plus `X-Wazuh-Agent-Id: <agentId>`, the authenticated id, written by remoted and never by the agent) and
   `stateless::postProcess(err, resp)` is the `PostProcessor` (the mapping above). A new endpoint adds
   its own `target`/`postProcess`.
   `stateless::validatePayloadIdentity(req)` is a pure, pre-forward check: it parses the body's `H
@@ -608,11 +609,12 @@ src/endpoints/
   indexer-side rejection is invisible from here. `wazuh-agent-stats` is `dynamic: true`, so an
   undeclared metric is indexed like any other field rather than rejected. Three things differ from
   `/stateless`:
-  - **They forward the authenticated agent id as an `X-Wazuh-Agent-Id` header.** Unlike an H/E batch,
-    these documents do not carry the id, and modulesd is what writes it in — so it has to receive it.
-    That is why `DownstreamTarget`/`DownstreamRequest` grew a `headers` field. The value comes from the
-    Authorization header the gateway already verified, never from the body, so a document claiming a
-    different agent cannot override it.
+  - **They forward the authenticated agent id as an `X-Wazuh-Agent-Id` header, and here it is the only
+    id.** These documents do not carry the id, and modulesd is what writes it in, so it has to receive
+    it. That is why `DownstreamTarget`/`DownstreamRequest` grew a `headers` field. `/stateless` now sends
+    the same header next to an H line that also names the agent. The value comes from the Authorization
+    header the gateway already verified, never from the body, so a document claiming a different agent
+    cannot override it.
   - **They differ from each other only in what a success carries back.** `/config`'s `postProcess`
     passes the downstream body through (`200` + modulesd's JSON), unlike `/stateless` which discards it;
     `/stats` answers a fixed `{}` instead, since the agent has nothing to read back and a constant keeps

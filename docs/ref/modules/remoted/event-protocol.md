@@ -18,6 +18,11 @@ HTTP POST over Unix socket at `/var/wazuh-manager/queue/sockets/engine-ingest-ht
 `application/x-wev1` (classic C dispatcher) or `application/x-ndjson` (HTTPS `remoted_module`
 ingestion path, forwarding to `POST /events/enriched`).
 
+The HTTPS `remoted_module` path also sends `X-Wazuh-Agent-Id: <agent id>`. The value is the canonical
+id of the agent remoted authenticated (the token's `sub`, e.g. `001`). remoted writes it itself; it
+is never copied from the agent's request. It names the agent the batch belongs to outside the
+agent-written `H` line. The classic C dispatcher does not send it yet.
+
 ## Message Format
 
 Batch structure:

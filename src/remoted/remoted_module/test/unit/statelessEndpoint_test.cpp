@@ -65,7 +65,7 @@ namespace
 
 TEST(StatelessEndpoint, TargetPointsAtEngineEventIngress)
 {
-    const auto target = stateless::target("queue/sockets/engine-ingest-http.sock");
+    const auto target = stateless::target("queue/sockets/engine-ingest-http.sock", "042");
     EXPECT_EQ(target.socketPath, "queue/sockets/engine-ingest-http.sock");
     EXPECT_EQ(target.method, Method::Post);
     EXPECT_EQ(target.path, "/events/enriched");
@@ -74,6 +74,10 @@ TEST(StatelessEndpoint, TargetPointsAtEngineEventIngress)
     // it stays on the global remoted.downstream_response_timeout. The 0 sentinel is what expresses
     // that -- a future slow endpoint is the one that sets a value here.
     EXPECT_EQ(target.responseTimeoutMs, 0);
+    // The agent the batch belongs to travels outside the agent-written body, as on /stateful.
+    ASSERT_EQ(target.headers.size(), 1U);
+    EXPECT_EQ(target.headers[0].first, "X-Wazuh-Agent-Id");
+    EXPECT_EQ(target.headers[0].second, "042");
 }
 
 TEST(StatelessEndpoint, PostProcessMapsDownstreamResults)
@@ -546,6 +550,35 @@ TEST(StatelessMakeHandler, ValidationSuccessForwardsAndPostProcesses)
 
     ASSERT_EQ(fut.wait_for(std::chrono::seconds {2}), std::future_status::ready);
     EXPECT_EQ(fut.get().status, 202); // stateless::postProcess still runs on the success path
+}
+
+// The engine learns the batch's agent from the id the gateway verified, never from the request: the
+// downstream request carries exactly one X-Wazuh-Agent-Id, and its value is the authenticated id.
+TEST(StatelessMakeHandler, ForwardsTheVerifiedAgentIdAsTheOnlyIdentityHeader)
+{
+    auto client = std::make_shared<FakeDownstreamClient>();
+    auto limiter = std::make_shared<DeferredWorkLimiter>(4);
+    DeferredForwarder forwarder {client, limiter, 1};
+
+    auto handler = stateless::makeHandler(forwarder, "queue/sockets/engine-ingest-http.sock");
+    auto fixture = makeAuthReq("H {\"wazuh\":{\"agent\":{\"id\":\"042\"}}}\nE some event\n", "042");
+    auto responder = std::make_shared<CapturingResponder>();
+
+    handler(fixture.req, responder);
+
+    ASSERT_TRUE(client->called());
+    const auto req = client->request();
+    std::size_t identityHeaders = 0;
+    for (const auto& [name, value] : req.headers)
+    {
+        if (name == "X-Wazuh-Agent-Id")
+        {
+            ++identityHeaders;
+            EXPECT_EQ(value, "042");
+        }
+    }
+    EXPECT_EQ(identityHeaders, 1U);
+    client->fire(DownstreamError::None, DownstreamResponse {200, ""});
 }
 
 // With a metric set wired in, the handler's own pre-forward 400 (payload identity) and the

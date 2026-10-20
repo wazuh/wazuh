@@ -13,7 +13,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"strconv"
 	"time"
 )
 
@@ -32,7 +31,7 @@ func main() {
 	flag.StringVar(&logMessage, "m", "", "Only log")
 	flag.BoolVar(&isRawMessage, "r", false, "Use raw message (send as-is without wrapping)")
 	flag.UintVar(&loops, "l", 1, "Number of agents where to send all the logs of the file")
-	flag.UintVar(&agentid, "a", 1, "Agent ID to use with single log message, defaults to 1")
+	flag.UintVar(&agentid, "a", 1, "Agent ID to use with single log message, defaults to 1; also sent as X-Wazuh-Agent-Id, in raw mode too")
 	flag.StringVar(&contentType, "c", "application/x-ndjson", "Content-Type header (default: application/x-ndjson)")
 	flag.StringVar(&sockPath, "s", sockPath, "Path to HTTP unix socket")
 	flag.Parse()
@@ -73,6 +72,9 @@ func createHTTPClient(socket string) *http.Client {
 // sendEvent sends an event via HTTP POST to the engine
 func sendEvent(client *http.Client, message string, agentid int, isRaw bool, contentType string) {
 	var payload string
+	// Canonical form ("001"), the spelling the manager gives every agent id. The engine is told which
+	// agent the batch belongs to by X-Wazuh-Agent-Id, so the header and the H line carry the same id.
+	id := fmt.Sprintf("%03d", agentid)
 
 	if isRaw {
 		// Send message as-is (should be in H/E format already)
@@ -86,7 +88,7 @@ func sendEvent(client *http.Client, message string, agentid int, isRaw bool, con
 		header := map[string]interface{}{
 			"wazuh": map[string]interface{}{
 				"agent": map[string]interface{}{
-					"id":   strconv.Itoa(agentid),
+					"id":   id,
 					"name": fmt.Sprintf("hostname%d", agentid),
 				},
 			},
@@ -118,6 +120,7 @@ func sendEvent(client *http.Client, message string, agentid int, isRaw bool, con
 	}
 
 	req.Header.Set("Content-Type", contentType)
+	req.Header.Set("X-Wazuh-Agent-Id", id)
 
 	// Send request
 	resp, err := client.Do(req)

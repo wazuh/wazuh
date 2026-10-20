@@ -29,8 +29,16 @@ namespace remoted::endpoints::stateless
      * (path + content-type) and the response mapping.
      */
 
-    /// @brief The engine event-ingress target reached over @p socketPath.
-    remoted::downstream::DownstreamTarget target(const std::string& socketPath);
+    /**
+     * @brief The engine event-ingress target reached over @p socketPath, carrying @p agentId as
+     *        `X-Wazuh-Agent-Id`.
+     *
+     * @p agentId is the canonical id the gateway verified (AuthenticatedRequest::agentId, the token's
+     * `sub`), never a value read from the agent's request: it tells the engine which agent the batch
+     * belongs to outside the agent-written H line, the same way /stateful, /stats and /config already
+     * do for their downstreams.
+     */
+    remoted::downstream::DownstreamTarget target(const std::string& socketPath, const std::string& agentId);
 
     /**
      * @brief Map the downstream result to the agent response.
@@ -88,7 +96,7 @@ namespace remoted::endpoints::stateless
      *
      * On validation failure, answers via the same {"error","code"} shape every other auth rejection
      * uses (remoted::endpoints::errorResponseFor) and never calls forward(). On success, delegates to
-     * forwarder.forward(req, responder, target(socketPath), postProcess).
+     * forwarder.forward(req, responder, target(socketPath, req->agentId), postProcess).
      *
      * @warning The returned handler stores a reference to @p forwarder. The caller must guarantee
      * forwarder outlives every route registered with it -- i.e. the HTTP server (which owns the route

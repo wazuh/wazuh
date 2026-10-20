@@ -474,7 +474,8 @@ manager-local Unix socket (`GET /`, `GET /metrics`, `GET /status`, `GET /tls` on
 - **`POST /stateless`** — authenticated event ingestion. Once the signature is verified, the module
   cross-checks the H line's `wazuh.agent.id` against the authenticated `agent-id` (**`400`** on a
   missing/malformed header or a mismatch); only then does it forward the H/E batch to the engine's
-  event ingress over a Unix-domain socket (`POST /events/enriched`) and reply from the downstream
+  event ingress over a Unix-domain socket (`POST /events/enriched`, stamping the authenticated
+  identity as `X-Wazuh-Agent-Id`) and reply from the downstream
   result: **`202 Accepted`** (engine enqueued the batch), **`400`** (engine rejected the batch),
   **`413`**, or **`503`** (out of capacity or the engine is unreachable/errored). Auth failures
   return the errors above. Note the agent sends **no `Content-Type`** on this route — nothing on

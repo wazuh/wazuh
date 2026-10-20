@@ -689,9 +689,10 @@ private:
         // the wazuh-db socket, deadlines and the refresh interval from it.
 
         // /stateless takes the client's default response deadline (its target leaves the override
-        // at 0), so that is what gets checked against the transport's request cap.
+        // at 0), so that is what gets checked against the transport's request cap. Only the
+        // deadline of this target is read, so it is built without an agent id.
         warnIfDownstreamBudgetExceedsRequestTimeout(
-            "/stateless", downstreamConfig, config, remoted::endpoints::stateless::target(eventsSocketPath));
+            "/stateless", downstreamConfig, config, remoted::endpoints::stateless::target(eventsSocketPath, {}));
 
         // /stats and /config: same authenticated pipeline as /stateless, but forwarded to modulesd's
         // inventory sync server instead of the engine.
