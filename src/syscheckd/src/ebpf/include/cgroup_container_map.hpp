@@ -139,6 +139,20 @@ namespace fim_container_events
          * inodes and are reused, so an allowlist that only ever grows would end up
          * admitting whatever inherits the inode. */
         std::vector<std::uint64_t> removed;
+
+        /* Containers the connector STATES no longer exist, as opposed to merely
+         * having no key right now. A consumer may delete their stored rows.
+         *
+         * Deliberately narrower than `removed` above, and the distinction is
+         * load-bearing: a STOPPED container also loses its cgroup and so also
+         * appears in `removed`, but it is still known to container_instances and
+         * its rows are the state a restart resumes diffing against. Filled ONLY
+         * from an explicit Kind::removed, which the connector emits only after its
+         * own removal grace has expired — never from `cgroup_id == 0`, and never
+         * from install(), because absence from one list is not a statement of
+         * removal. Deleting a stopped container's baseline is the mistake this
+         * separation exists to make impossible. */
+        std::vector<std::string> gone;
     };
 
     struct CgroupMapStats
@@ -353,7 +367,9 @@ namespace fim_container_events
                      * one, a stop takes it away, a removal ends it. */
                     const auto previous = eraseByContainerIdLocked(event.container_id);
 
-                    if (event.kind == CgroupDeltaEvent::Kind::removed || event.cgroup_id == 0)
+                    const bool gone = (event.kind == CgroupDeltaEvent::Kind::removed);
+
+                    if (gone || event.cgroup_id == 0)
                     {
                         /* NO VALID KEY any more — deleted, or stopped. Zero is the
                          * test because zero is what every producer sends for "no
@@ -374,6 +390,15 @@ namespace fim_container_events
                         if (withdraw != 0)
                         {
                             delta.removed.push_back(withdraw);
+                        }
+
+                        /* Only an explicit removal, never the cgroup_id == 0 that
+                         * shares this branch. Both lose the key; only one means the
+                         * container is gone, and the consumer deletes rows off this
+                         * list. See CgroupListDelta::gone. */
+                        if (gone)
+                        {
+                            delta.gone.push_back(event.container_id);
                         }
 
                         continue;
