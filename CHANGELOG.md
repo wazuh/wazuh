@@ -96,6 +96,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the Solaris 10 and AIX agent packages leaving files in `/var/ossec` after removal. ([#39807](https://github.com/wazuh/wazuh/pull/39807))
 - Fixed the browser extensions inventory dropping entries when an extension metadata file contains unexpected values. ([#39931](https://github.com/wazuh/wazuh/pull/39931))
 - Fixed active responses following symbolic links when writing their log file on UNIX systems. ([#40017](https://github.com/wazuh/wazuh/pull/40017))
+- Fixed FIM errors on file names that are not valid UTF-8. ([#40513](https://github.com/wazuh/wazuh/pull/40513))
 - Fixed FIM `report_changes` following directory symbolic links when saving file snapshots on UNIX systems. ([#40110](https://github.com/wazuh/wazuh/pull/40110))
 - Fixed logcollector reading files that contain NUL bytes again from the start, and sending their events again, after every agent restart. ([#40134](https://github.com/wazuh/wazuh/pull/40134))
 - Fixed logcollector validating monitored paths on Solaris 10, HP-UX and AIX 6.1, which lack part of the `openat()` family, and a race on Windows where a directory switched in place to a junction could redirect an open. ([#40019](https://github.com/wazuh/wazuh/pull/40019))
