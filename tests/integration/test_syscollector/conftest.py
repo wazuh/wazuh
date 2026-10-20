@@ -113,7 +113,7 @@ def populate_syscollector_db():
                 os_kernel_name TEXT,
                 os_kernel_release TEXT,
                 os_kernel_version TEXT,
-                os_distribution_release TEXT,
+                os_display_version TEXT,
                 os_full TEXT,
                 checksum TEXT,
                 version INTEGER NOT NULL DEFAULT 1, db_status_field_dm INTEGER DEFAULT 1,
@@ -328,8 +328,8 @@ def populate_syscollector_db():
 
         # Insert dummy data
         cursor.execute('''
-            INSERT OR IGNORE INTO dbsync_osinfo (hostname, architecture, os_name, os_version, os_codename, os_major, os_minor, os_patch, os_build, os_platform, os_type, os_kernel_name, os_kernel_release, os_kernel_version, os_distribution_release, os_full, checksum)
-            VALUES ('test-host', 'x86_64', 'Ubuntu', '20.04', 'focal', '20', '04', '0', '0', 'ubuntu', 'linux', 'Linux', '5.4.0-100-generic', '#113-Ubuntu SMP Thu Feb 3 18:43:29 UTC 2022', '20.04', 'Ubuntu 20.04.4 LTS', 'os_checksum_1')
+            INSERT OR IGNORE INTO dbsync_osinfo (hostname, architecture, os_name, os_version, os_codename, os_major, os_minor, os_patch, os_build, os_platform, os_type, os_kernel_name, os_kernel_release, os_kernel_version, os_display_version, os_full, checksum)
+            VALUES ('test-host', 'x86_64', 'Ubuntu', '20.04', 'focal', '20', '04', '0', '0', 'ubuntu', 'linux', 'Linux', '5.4.0-100-generic', '#113-Ubuntu SMP Thu Feb 3 18:43:29 UTC 2022', NULL, 'Ubuntu 20.04.4 LTS', 'os_checksum_1')
         ''')
 
         cursor.execute('''

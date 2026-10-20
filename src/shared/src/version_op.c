@@ -363,6 +363,8 @@ char *get_release_from_build(char *os_build) {
         } else if (!strcmp(os_build, "14393")) {
             os_strdup("1607", retval);
         } else if (!strcmp(os_build, "15063")) {
+            os_strdup("1703", retval);
+        } else if (!strcmp(os_build, "16299")) {
             os_strdup("1709", retval);
         } else if (!strcmp(os_build, "17134")) {
             os_strdup("1803", retval);
