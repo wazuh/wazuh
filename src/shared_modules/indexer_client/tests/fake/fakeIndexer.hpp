@@ -15,13 +15,24 @@
 
 #include "httplib.h"
 
+#include <dirent.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+
+#include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <condition_variable>
 #include <cstddef>
+#include <cstdint>
+#include <cstdio>
+#include <cstdlib>
+#include <ctime>
 #include <memory>
 #include <mutex>
 #include <optional>
 #include <regex>
+#include <set>
 #include <stdexcept>
 #include <string>
 #include <thread>
@@ -30,6 +41,15 @@
 
 namespace indexer_client::testing
 {
+    /// How a scripted response body is framed on the wire.
+    enum class Framing
+    {
+        /// `Content-Length` with the full body size (the default).
+        ContentLength,
+        /// `Transfer-Encoding: chunked`, in Rule::chunkSize pieces.
+        Chunked
+    };
+
     /**
      * @brief One scripted response of the fake indexer.
      *
@@ -52,6 +72,16 @@ namespace indexer_client::testing
         std::optional<std::string> retryAfter;
         /// How many requests this rule answers before it stops matching; absent means unlimited.
         std::optional<std::size_t> times;
+        /// Hold the response until FakeIndexer::releaseHeld() (or stop()). Applied before #latency.
+        bool hold {false};
+        /// Serve exactly this many filler bytes ('x'), generated while streaming, instead of #body.
+        std::optional<std::size_t> bodySize;
+        /// Body framing. Any setting other than a plain ContentLength #body streams the body.
+        Framing framing {Framing::ContentLength};
+        /// Piece size when streaming (also the chunk size of Framing::Chunked).
+        std::size_t chunkSize {16 * 1024};
+        /// Close the connection after this many body bytes, before the declared length (or the final chunk).
+        std::optional<std::size_t> cutAfter;
     };
 
     /**
@@ -64,8 +94,16 @@ namespace indexer_client::testing
         std::string path;
         /// Raw request target (path plus query string).
         std::string target;
+        /// Request body; empty unless FakeIndexerOptions::recordBodies.
         std::string body;
+        /// Size of the request body as received (always recorded).
+        std::size_t bodySize {0};
         httplib::Headers headers;
+        /// Peer address and port: distinct ports are distinct TCP connections.
+        std::string remoteAddr;
+        int remotePort {0};
+        /// When the handler saw the request (the whole request has been read).
+        std::chrono::steady_clock::time_point receivedAt;
     };
 
     /**
@@ -81,6 +119,13 @@ namespace indexer_client::testing
         time_t keepAliveTimeoutSec {30};
         /// Upper bound for start() to see the server listening.
         std::chrono::milliseconds readyTimeout {5000};
+        /// Keep request bodies in RecordedRequest::body. Off by default: bulk tests must not retain their payloads.
+        bool recordBodies {false};
+        /// Socket write timeout, seconds: bounds how long a response stalls on a client that stopped reading.
+        time_t writeTimeoutSec {5};
+        /// listen() backlog. cpp-httplib listens with 5, so a burst of connections (64 at once) has SYNs dropped
+        /// and retried a second later; start() re-listens with this value.
+        int listenBacklog {1024};
     };
 
     /**
@@ -126,6 +171,7 @@ namespace indexer_client::testing
             {
                 throw std::runtime_error("FakeIndexer: bind failed");
             }
+            widenBacklog();
             m_stopping = false;
             m_threadDone = false;
             m_thread = std::thread(
@@ -150,10 +196,17 @@ namespace indexer_client::testing
 
         /**
          * @brief Stops serving and joins the server thread. Idempotent.
+         *
+         * Releases every held response first (the latch opens and stays open), so it never waits for releaseHeld().
          */
         void stop()
         {
-            m_stopping = true;
+            {
+                std::lock_guard lock(m_mutex);
+                m_stopping = true;
+                m_holdOpen = true;
+            }
+            m_cv.notify_all();
             if (!m_thread.joinable())
             {
                 return;
@@ -234,7 +287,138 @@ namespace indexer_client::testing
             m_requests.clear();
         }
 
+        /**
+         * @brief Waits until at least @p count requests have been received (recorded) in total.
+         *
+         * A request is recorded as soon as it is read, before any hold or latency, so this is the "received" event.
+         *
+         * @return Whether the count was reached within @p timeout.
+         */
+        bool waitForRequests(std::size_t count, std::chrono::milliseconds timeout) const
+        {
+            std::unique_lock lock(m_mutex);
+            return m_cv.wait_for(lock, timeout, [&] { return m_requests.size() >= count; });
+        }
+
+        /// Number of distinct remote ports among the recorded requests (= TCP connections that sent a request).
+        std::size_t distinctRemotePorts() const
+        {
+            std::lock_guard lock(m_mutex);
+            std::set<int> ports;
+            for (const auto& request : m_requests)
+            {
+                ports.insert(request.remotePort);
+            }
+            return ports.size();
+        }
+
+        /// Responses held by a Rule::hold rule right now.
+        std::size_t heldNow() const
+        {
+            std::lock_guard lock(m_mutex);
+            return m_held;
+        }
+
+        /**
+         * @brief Waits until at least @p count responses are held at the same time.
+         *
+         * @return Whether that happened within @p timeout.
+         */
+        bool waitHeld(std::size_t count, std::chrono::milliseconds timeout) const
+        {
+            std::unique_lock lock(m_mutex);
+            return m_cv.wait_for(lock, timeout, [&] { return m_held >= count; });
+        }
+
+        /// Opens the hold latch: every held response is answered, and later Rule::hold requests pass straight through.
+        void releaseHeld()
+        {
+            {
+                std::lock_guard lock(m_mutex);
+                m_holdOpen = true;
+            }
+            m_cv.notify_all();
+        }
+
+        /// Closes the hold latch again (it starts closed). No effect after stop().
+        void rearmHold()
+        {
+            std::lock_guard lock(m_mutex);
+            if (!m_stopping)
+            {
+                m_holdOpen = false;
+            }
+        }
+
+        /**
+         * @brief Formats @p when as an IMF-fixdate (RFC 9110 §5.6.7), e.g. for Rule::retryAfter.
+         *
+         * Locale-independent: it never goes through strftime or the global locale.
+         */
+        static std::string httpDate(std::chrono::system_clock::time_point when)
+        {
+            static constexpr const char* DAYS[] {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
+            static constexpr const char* MONTHS[] {
+                "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+            const std::time_t seconds = std::chrono::system_clock::to_time_t(when);
+            std::tm utc {};
+            if (::gmtime_r(&seconds, &utc) == nullptr)
+            {
+                throw std::runtime_error("FakeIndexer: gmtime_r failed");
+            }
+            char buffer[64];
+            std::snprintf(buffer,
+                          sizeof(buffer),
+                          "%s, %02d %s %04d %02d:%02d:%02d GMT",
+                          DAYS[utc.tm_wday],
+                          utc.tm_mday,
+                          MONTHS[utc.tm_mon],
+                          utc.tm_year + 1900,
+                          utc.tm_hour,
+                          utc.tm_min,
+                          utc.tm_sec);
+            return buffer;
+        }
+
     private:
+        /**
+         * @brief Re-listens on the bound socket with FakeIndexerOptions::listenBacklog.
+         *
+         * cpp-httplib does not expose its listening socket, so it is found among this process's descriptors: the
+         * listening TCP socket bound to 127.0.0.1:<port>. Best effort: if it is not found the backlog stays at 5.
+         */
+        void widenBacklog() const
+        {
+            DIR* directory = ::opendir("/proc/self/fd");
+            if (directory == nullptr)
+            {
+                return;
+            }
+            while (const dirent* entry = ::readdir(directory))
+            {
+                char* end {nullptr};
+                const long fd = std::strtol(entry->d_name, &end, 10);
+                if (end == entry->d_name || *end != '\0' || fd == ::dirfd(directory))
+                {
+                    continue;
+                }
+                int listening {0};
+                socklen_t optionLength = sizeof(listening);
+                sockaddr_in address {};
+                socklen_t addressLength = sizeof(address);
+                if (::getsockopt(static_cast<int>(fd), SOL_SOCKET, SO_ACCEPTCONN, &listening, &optionLength) == 0 &&
+                    listening == 1 &&
+                    ::getsockname(static_cast<int>(fd), reinterpret_cast<sockaddr*>(&address), &addressLength) == 0 &&
+                    address.sin_family == AF_INET && ntohs(address.sin_port) == m_port &&
+                    address.sin_addr.s_addr == htonl(INADDR_LOOPBACK))
+                {
+                    ::listen(static_cast<int>(fd), m_options.listenBacklog);
+                    break;
+                }
+            }
+            ::closedir(directory);
+        }
+
         struct Entry
         {
             std::regex regex;
@@ -253,6 +437,7 @@ namespace indexer_client::testing
             m_server.set_keep_alive_max_count(m_options.keepAliveMaxCount);
             m_server.set_keep_alive_timeout(m_options.keepAliveTimeoutSec);
             m_server.set_payload_max_length(64ULL * 1024 * 1024);
+            m_server.set_write_timeout(m_options.writeTimeoutSec, 0);
 
             const auto handler = [this](const httplib::Request& req, httplib::Response& res)
             {
@@ -268,13 +453,18 @@ namespace indexer_client::testing
 
         void handle(const httplib::Request& req, httplib::Response& res)
         {
-            int status {200};
-            std::string body {"{}"};
-            std::chrono::milliseconds latency {0};
-            std::optional<std::string> retryAfter;
+            Rule matched;
             {
                 std::lock_guard lock(m_mutex);
-                m_requests.push_back(RecordedRequest {req.method, req.path, req.target, req.body, req.headers});
+                m_requests.push_back(RecordedRequest {req.method,
+                                                      req.path,
+                                                      req.target,
+                                                      m_options.recordBodies ? req.body : std::string {},
+                                                      req.body.size(),
+                                                      req.headers,
+                                                      req.remote_addr,
+                                                      req.remote_port,
+                                                      std::chrono::steady_clock::now()});
                 for (auto& entry : m_rules)
                 {
                     const auto& rule = entry.rule;
@@ -291,27 +481,94 @@ namespace indexer_client::testing
                         continue;
                     }
                     ++entry.hits;
-                    status = rule.status;
-                    body = rule.body;
-                    latency = rule.latency;
-                    retryAfter = rule.retryAfter;
+                    matched = rule;
                     break;
                 }
             }
+            m_cv.notify_all(); // the "received" event
 
-            const auto until = std::chrono::steady_clock::now() + latency;
+            if (matched.hold)
+            {
+                std::unique_lock lock(m_mutex);
+                ++m_held;
+                m_cv.notify_all();
+                m_cv.wait(lock, [this] { return m_holdOpen; });
+                --m_held;
+            }
+
+            const auto until = std::chrono::steady_clock::now() + matched.latency;
             while (std::chrono::steady_clock::now() < until && !m_stopping.load())
             {
                 std::this_thread::sleep_for(std::min<std::chrono::steady_clock::duration>(
                     until - std::chrono::steady_clock::now(), std::chrono::milliseconds(5)));
             }
 
-            res.status = status;
-            if (retryAfter.has_value())
+            res.status = matched.status;
+            if (matched.retryAfter.has_value())
             {
-                res.set_header("Retry-After", *retryAfter);
+                res.set_header("Retry-After", *matched.retryAfter);
             }
-            res.set_content(body, "application/json");
+            respond(matched, res);
+        }
+
+        /// Fills the response body as the rule asks: a plain string, or a streamed (possibly cut) body.
+        void respond(const Rule& rule, httplib::Response& res)
+        {
+            static constexpr const char* CONTENT_TYPE {"application/json"};
+            const bool streamed =
+                rule.bodySize.has_value() || rule.framing != Framing::ContentLength || rule.cutAfter.has_value();
+            if (!streamed)
+            {
+                res.set_content(rule.body, CONTENT_TYPE);
+                return;
+            }
+
+            auto source = std::make_shared<const std::string>(rule.bodySize.has_value() ? std::string {} : rule.body);
+            const std::size_t total = rule.bodySize.value_or(source->size());
+            const std::size_t limit = std::min(total, rule.cutAfter.value_or(total));
+            const bool cut = rule.cutAfter.has_value() && *rule.cutAfter < total;
+            const std::size_t piece = std::max<std::size_t>(1, rule.chunkSize);
+            // Filler pieces are cut from one shared buffer, so even a multi-GiB body is never allocated.
+            auto filler = std::make_shared<const std::string>(rule.bodySize.has_value() ? piece : 0, 'x');
+
+            // Writes [offset, min(offset + piece, limit)); returns false (the connection is then closed) once a cut
+            // body has written its limit, or when the client is gone or the fake is stopping.
+            auto writeFrom = [this, source, filler, limit, cut, piece](std::size_t offset, httplib::DataSink& sink)
+            {
+                if (m_stopping.load())
+                {
+                    return false;
+                }
+                if (offset >= limit)
+                {
+                    if (cut)
+                    {
+                        return false;
+                    }
+                    sink.done();
+                    return true;
+                }
+                const std::size_t length = std::min(piece, limit - offset);
+                const char* data = filler->empty() ? source->data() + offset : filler->data();
+                return sink.write(data, length);
+            };
+
+            if (rule.framing == Framing::Chunked)
+            {
+                res.set_chunked_content_provider(CONTENT_TYPE,
+                                                 [writeFrom](std::size_t offset, httplib::DataSink& sink)
+                                                 { return writeFrom(offset, sink); });
+                return;
+            }
+            if (total == 0)
+            {
+                res.set_content(std::string {}, CONTENT_TYPE);
+                return;
+            }
+            res.set_content_provider(total,
+                                     CONTENT_TYPE,
+                                     [writeFrom](std::size_t offset, std::size_t /*length*/, httplib::DataSink& sink)
+                                     { return writeFrom(offset, sink); });
         }
 
         FakeIndexerOptions m_options;
@@ -321,6 +578,9 @@ namespace indexer_client::testing
         std::atomic<bool> m_stopping {false};
         std::atomic<bool> m_threadDone {false};
         mutable std::mutex m_mutex;
+        mutable std::condition_variable m_cv;
+        bool m_holdOpen {false};
+        std::size_t m_held {0};
         std::vector<Entry> m_rules;
         std::vector<RecordedRequest> m_requests;
     };

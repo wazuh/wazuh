@@ -41,3 +41,34 @@ target_compile_definitions(indexer_client_utest PRIVATE INDEXER_CLIENT_SO_PATH="
 
 add_test(NAME indexer_client_utest COMMAND indexer_client_utest)
 set_tests_properties(indexer_client_utest PROPERTIES LABELS indexer_client_utest)
+
+# Component suite (E2a-1): the transport and the fake over real sockets. It links the testing build of the library
+# (indexer_client_testing, with the seams) and never the .so, so the process holds a single runtime (I45b).
+file(GLOB COMPONENT_SRC_FILES ${CMAKE_CURRENT_LIST_DIR}/component/*.cpp)
+
+add_executable(indexer_client_component_test ${COMPONENT_SRC_FILES})
+
+target_link_libraries(
+  indexer_client_component_test
+  debug gtestd
+  debug gmockd
+  debug gtest_maind
+  optimized gtest
+  optimized gmock
+  optimized gtest_main
+  indexer_client_testing
+  ext_httplib
+  Threads::Threads
+  dl)
+
+target_include_directories(
+  indexer_client_component_test PRIVATE ${CMAKE_CURRENT_LIST_DIR}/fake ${CMAKE_CURRENT_LIST_DIR}/../src
+                                        ${SRC_FOLDER}/external/cpp-httplib)
+
+# -rdynamic lets the test executable interpose getaddrinfo for the hung-resolver case (T20); the link map proves that
+# no static copy of curl or OpenSSL entered the executable.
+target_link_options(indexer_client_component_test PRIVATE -rdynamic
+                    "LINKER:-Map=${CMAKE_CURRENT_BINARY_DIR}/indexer_client_component_test.map")
+
+add_test(NAME indexer_client_component_test COMMAND indexer_client_component_test)
+set_tests_properties(indexer_client_component_test PROPERTIES LABELS indexer_client_component_test)
