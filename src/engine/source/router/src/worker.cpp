@@ -67,7 +67,7 @@ void RouterWorker::start()
                     continue;
                 }
 
-                // Sentinel used to wake up workers (e.g. test path)
+                // Empty sentinel event
                 if (queuedEvent.first == nullptr || queuedEvent.second.empty())
                 {
                     continue;
@@ -110,64 +110,6 @@ void RouterWorker::start()
 }
 
 void RouterWorker::stop()
-{
-    if (!m_isRunning)
-    {
-        return;
-    }
-
-    m_isRunning = false;
-    if (m_thread.joinable())
-    {
-        m_thread.join();
-    }
-}
-
-void TesterWorker::start()
-{
-    if (m_isRunning)
-    {
-        return;
-    }
-
-    m_isRunning = true;
-    m_thread = std::thread(
-        [this, functionName = logging::getLambdaName(__FUNCTION__, "testerWorkerThread")]()
-        {
-            std::size_t tID = std::hash<std::thread::id> {}(std::this_thread::get_id());
-            LOG_DEBUG_L(functionName.c_str(), "Tester Worker {} started", tID);
-
-            base::process::setThreadName("ORTester-" + std::to_string(tID));
-
-            while (m_isRunning)
-            {
-                // Process test queue
-                test::EventTest testEvent {};
-                if (m_tQueue->waitPop(testEvent, fastqueue::WAIT_DEQUEUE_TIMEOUT_USEC) && testEvent != nullptr)
-                {
-                    auto& [event, opt, callback] = *testEvent;
-
-                    const auto timestamp = base::utils::time::getCurrentISO8601();
-                    const auto eventId = base::utils::generators::generateUUIDv4();
-                    event->setString(timestamp, "/@timestamp");
-                    event->setString(eventId, "/wazuh/event/id");
-
-                    auto output = m_tester->ingestTest(std::move(event), opt);
-                    try
-                    {
-                        callback(std::move(output));
-                    }
-                    catch (const std::exception& e)
-                    {
-                        LOG_ERROR_L(functionName.c_str(), "Error when executing API callback: {}", e.what());
-                    }
-                }
-            }
-            LOG_DEBUG_L(functionName.c_str(), "Tester Worker {} finished", tID);
-        });
-}
-
-void TesterWorker::stop()
 {
     if (!m_isRunning)
     {

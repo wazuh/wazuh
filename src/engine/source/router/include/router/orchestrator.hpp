@@ -24,7 +24,6 @@ namespace router
 {
 
 using ProdQueueType = fastqueue::IQueue<IngestEvent>;
-using TestQueueType = fastqueue::IQueue<test::EventTest>;
 
 // Forward declarations
 template<typename T>
@@ -44,7 +43,7 @@ protected:
 
     // Workers synchronization
     std::list<std::shared_ptr<IWorker<IRouter>>> m_routerWorkers;
-    std::shared_ptr<IWorker<ITester>> m_testerWorker;
+    std::shared_ptr<ITester> m_tester;      ///< Tester that runs on the caller's thread
     mutable std::shared_mutex m_syncMutex;  ///< Mutex for the Workers synchronization (1 query at a time)
     std::atomic<bool> m_isShutdown {false}; ///< Flag to indicate orchestrator has been shutdown
 
@@ -52,7 +51,6 @@ protected:
 
     // Workers configuration
     std::shared_ptr<ProdQueueType> m_eventQueue;                        ///< The event queue
-    std::shared_ptr<TestQueueType> m_testQueue;                         ///< The test queue
     std::shared_ptr<EnvironmentBuilder> m_envBuilder;                   ///< The environment builder
     std::function<std::shared_ptr<IWorker<IRouter>>()> m_workerFactory; ///< Factory for expansion workers
 
@@ -80,7 +78,7 @@ protected:
     using WorkerOp = std::function<base::OptError(const std::shared_ptr<IWorker<T>>&)>;
     std::shared_ptr<fastmetrics::SlidingWindowRate> m_epsRate; // EPS rate shared across all workers
     base::OptError forEachRouterWorker(const WorkerOp<IRouter>& f);
-    base::OptError forTesterWorker(const WorkerOp<ITester>& f);
+    base::OptError forTester(const std::function<base::OptError(const std::shared_ptr<ITester>&)>& f);
 
     void dumpTestersInternal() const; ///< Dump testers (m_syncMutex lock must be held)
     void dumpRoutersInternal() const; ///< Dump routers (m_syncMutex lock must be held)
@@ -98,8 +96,7 @@ protected:
      */
     base::OptError initRouterWorker(const std::shared_ptr<IWorker<IRouter>>& worker,
                                     const std::vector<EntryConverter>& routerEntries);
-    base::OptError initTesterWorker(const std::shared_ptr<IWorker<ITester>>& worker,
-                                    const std::vector<EntryConverter>& testerEntries);
+    base::OptError initTester(const std::vector<EntryConverter>& testerEntries);
 
     Orchestrator() = default; ///< Default constructor for testing purposes
 
@@ -118,7 +115,6 @@ public:
 
         std::shared_ptr<bk::IControllerMaker> m_controllerMaker; ///< Controller maker for creating controllers
         std::shared_ptr<ProdQueueType> m_prodQueue;              ///< The event queue
-        std::shared_ptr<TestQueueType> m_testQueue;              ///< The test queue
 
         std::shared_ptr<raweventindexer::IRawEventIndexer> m_rawIndexer; ///< Raw indexer used in worker drain path
 
@@ -242,12 +238,12 @@ public:
     std::list<test::Entry> getTestEntries() const override;
 
     /**
-     * @copydoc router::ITesterAPI::ingestTest ASynchronous
+     * @copydoc router::ITesterAPI::ingestTest (the test runs on the calling thread, the future is already ready)
      */
     std::future<base::RespOrError<test::Output>> ingestTest(base::Event&& event, const test::Options& opt) override;
 
     /**
-     * @copydoc router::ITesterAPI::ingestTest Synchronous
+     * @copydoc router::ITesterAPI::ingestTest (the callback is invoked on the calling thread before returning)
      */
     base::OptError ingestTest(base::Event&& event,
                               const test::Options& opt,

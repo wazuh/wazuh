@@ -41,7 +41,6 @@ protected:
     std::shared_ptr<bk::mocks::MockMakerController> m_mockControllerMaker;
     std::shared_ptr<bk::mocks::MockController> m_mockController;
     std::shared_ptr<fastqueue::mocks::MockQueue<router::IngestEvent>> m_mockQueueRouter;
-    std::shared_ptr<fastqueue::mocks::MockQueue<router::test::EventTest>> m_mockQueueTester;
     std::shared_ptr<raweventindexer::mocks::MockRawEventIndexer> m_mockRawIndexer;
 
     std::shared_ptr<router::Orchestrator> m_orchestrator;
@@ -60,7 +59,6 @@ public:
         m_mockControllerMaker = std::make_shared<bk::mocks::MockMakerController>();
         m_mockController = std::make_shared<bk::mocks::MockController>();
         m_mockQueueRouter = std::make_shared<fastqueue::mocks::MockQueue<router::IngestEvent>>();
-        m_mockQueueTester = std::make_shared<fastqueue::mocks::MockQueue<router::test::EventTest>>();
         m_mockRawIndexer = std::make_shared<raweventindexer::mocks::MockRawEventIndexer>();
 
         auto& manager = SingletonLocator::instance<fastmetrics::IManager>();
@@ -90,7 +88,6 @@ public:
                                               .m_builder = m_mockbuilder,
                                               .m_controllerMaker = m_mockControllerMaker,
                                               .m_prodQueue = m_mockQueueRouter,
-                                              .m_testQueue = m_mockQueueTester,
                                               .m_rawIndexer = m_mockRawIndexer,
                                               .m_testTimeout = SERVER_API_TIMEOUT};
 
@@ -130,7 +127,6 @@ public:
 
         m_orchestrator = std::make_shared<router::Orchestrator>(config);
 
-        EXPECT_CALL(*m_mockQueueTester, waitPop(testing::_, testing::_)).WillRepeatedly(testing::Return(false));
         EXPECT_CALL(*m_mockQueueRouter, waitPop(testing::_, testing::_)).WillRepeatedly(testing::Return(false));
         m_orchestrator->start();
     }
@@ -340,39 +336,12 @@ TEST_F(OrchestratorTesterTest, IngestTest)
     fakeAssetsString.insert("decoder/fake/0");
     router::test::Options opt(router::test::Options::TraceLevel::ASSET_ONLY, fakeAssetsString, "test");
     auto event = std::make_shared<json::Json>(R"({"message":"test"})");
-    router::test::EventTest capturedTuple;
-    std::mutex capturedTupleMutex;
-
-    EXPECT_CALL(*m_mockQueueTester, tryPush(testing::_))
-        .WillOnce(testing::Invoke(
-            [&](router::test::EventTest tuple)
-            {
-                std::lock_guard<std::mutex> lock(capturedTupleMutex);
-                capturedTuple = std::move(tuple);
-                return true;
-            }));
-
-    EXPECT_CALL(*m_mockQueueTester, waitPop(testing::_, testing::_))
-        .WillRepeatedly(testing::Invoke(
-            [&](router::test::EventTest& out, auto)
-            {
-                std::lock_guard<std::mutex> lock(capturedTupleMutex);
-                if (capturedTuple != nullptr)
-                {
-                    out = std::move(capturedTuple);
-                    return true;
-                }
-                return false;
-            }));
 
     ON_CALL(*m_mockController, subscribe(testing::_, testing::_)).WillByDefault(testing::Return(bk::Subscription(1)));
 
     ON_CALL(*m_mockController, ingestGet(testing::_)).WillByDefault(testing::Return(event));
 
     ON_CALL(*m_mockController, unsubscribeAll()).WillByDefault(testing::Return());
-
-    EXPECT_CALL(*m_mockQueueRouter, empty()).WillOnce(testing::Return(true));
-    EXPECT_CALL(*m_mockQueueRouter, push(testing::_)).Times(1);
 
     auto resultFuture = m_orchestrator->ingestTest(std::move(event), opt);
 
@@ -388,7 +357,7 @@ TEST_F(OrchestratorTesterTest, IngestTest)
 
     auto result = base::getResponse(optResult);
 
-    // The TesterWorker stamps @timestamp and wazuh/event/id before processing
+    // The orchestrator stamps @timestamp and wazuh/event/id before processing
     auto& ev = result.event();
     EXPECT_TRUE(ev->isString("/message"));
     std::string msg;

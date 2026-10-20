@@ -36,7 +36,6 @@
 #include <eMessages/eMessage.h>
 #include <fastmetrics/registry.hpp>
 #include <fastqueue/cqueue.hpp>
-#include <fastqueue/stdqueue.hpp>
 #include <geo/downloader.hpp>
 #include <geo/manager.hpp>
 #include <httpsrv/server.hpp>
@@ -686,14 +685,12 @@ int main(int argc, char* argv[])
 
             const auto eventQueue = std::make_shared<fastqueue::CQueue<router::IngestEvent>>(qSize, qEps);
             eventQueue->setByteLimit(qMaxBytes, [](const router::IngestEvent& e) { return e.second.size(); });
-            const auto testQueue = std::make_shared<fastqueue::StdQueue<router::test::EventTest>>(qSize);
 
             router::Orchestrator::Options config {.m_numThreads = confManager.get<int>(conf::key::ORCHESTRATOR_THREADS),
                                                   .m_wStore = store,
                                                   .m_builder = builder,
                                                   .m_controllerMaker = std::make_shared<bk::rx::ControllerMaker>(),
                                                   .m_prodQueue = eventQueue,
-                                                  .m_testQueue = testQueue,
                                                   .m_rawIndexer = rawEventIndexer,
                                                   .m_testTimeout = confManager.get<int>(conf::key::SERVER_API_TIMEOUT)};
 

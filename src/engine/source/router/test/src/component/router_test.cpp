@@ -37,7 +37,6 @@ protected:
     std::shared_ptr<bk::mocks::MockMakerController> m_mockControllerMaker;
     std::shared_ptr<bk::mocks::MockController> m_mockController;
     std::shared_ptr<fastqueue::mocks::MockQueue<router::IngestEvent>> m_mockQueueRouter;
-    std::shared_ptr<fastqueue::mocks::MockQueue<router::test::EventTest>> m_mockQueueTester;
     std::shared_ptr<raweventindexer::mocks::MockRawEventIndexer> m_mockRawIndexer;
 
     std::shared_ptr<router::Orchestrator> m_orchestrator;
@@ -56,7 +55,6 @@ public:
         m_mockControllerMaker = std::make_shared<bk::mocks::MockMakerController>();
         m_mockController = std::make_shared<bk::mocks::MockController>();
         m_mockQueueRouter = std::make_shared<fastqueue::mocks::MockQueue<router::IngestEvent>>();
-        m_mockQueueTester = std::make_shared<fastqueue::mocks::MockQueue<router::test::EventTest>>();
         m_mockRawIndexer = std::make_shared<raweventindexer::mocks::MockRawEventIndexer>();
 
         auto& manager = SingletonLocator::instance<fastmetrics::IManager>();
@@ -86,7 +84,6 @@ public:
                                               .m_builder = m_mockbuilder,
                                               .m_controllerMaker = m_mockControllerMaker,
                                               .m_prodQueue = m_mockQueueRouter,
-                                              .m_testQueue = m_mockQueueTester,
                                               .m_rawIndexer = m_mockRawIndexer,
                                               .m_testTimeout = SERVER_API_TIMEOUT};
 
@@ -126,7 +123,6 @@ public:
 
         m_orchestrator = std::make_shared<router::Orchestrator>(config);
 
-        EXPECT_CALL(*m_mockQueueTester, waitPop(testing::_, testing::_)).WillRepeatedly(testing::Return(false));
         EXPECT_CALL(*m_mockQueueRouter, waitPop(testing::_, testing::_)).WillRepeatedly(testing::Return(false));
         m_orchestrator->start();
     }

@@ -22,14 +22,6 @@ public:
     MOCK_METHOD(std::shared_ptr<router::IRouter>, get, (), (const, override));
 };
 
-class MockTesterWorker : public router::IWorker<router::ITester>
-{
-public:
-    MOCK_METHOD(void, start, (), (override));
-    MOCK_METHOD(void, stop, (), (override));
-    MOCK_METHOD(std::shared_ptr<router::ITester>, get, (), (const, override));
-};
-
 } // namespace router
 
 #endif // ROUTER_TEST_INTERNAL_MOCKS_WORKER_HPP

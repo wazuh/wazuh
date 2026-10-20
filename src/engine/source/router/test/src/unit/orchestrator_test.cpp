@@ -75,9 +75,7 @@ class OrchestratorToTest : public router::Orchestrator
 public:
     std::shared_ptr<store::mocks::MockStore> m_mockstore;
     std::shared_ptr<fastqueue::mocks::MockQueue<IngestEvent>> m_mockEventQueue;
-    std::shared_ptr<fastqueue::mocks::MockQueue<test::EventTest>> m_mockTestQueue;
     std::list<std::shared_ptr<MockRouterWorker>> m_routerMocks;
-    std::shared_ptr<MockTesterWorker> m_testerWorkerMock;
     std::deque<std::function<std::shared_ptr<IWorker<IRouter>>()>> m_factoryQueue;
 
     OrchestratorToTest()
@@ -87,12 +85,7 @@ public:
         m_mockstore = std::make_shared<store::mocks::MockStore>();
         m_wStore = m_mockstore;
         m_mockEventQueue = std::make_shared<fastqueue::mocks::MockQueue<IngestEvent>>();
-        m_mockTestQueue = std::make_shared<fastqueue::mocks::MockQueue<test::EventTest>>();
         m_eventQueue = m_mockEventQueue;
-        m_testQueue = m_mockTestQueue;
-
-        m_testerWorkerMock = std::make_shared<MockTesterWorker>();
-        m_testerWorker = m_testerWorkerMock;
         m_workerFactory = [this]() -> std::shared_ptr<IWorker<IRouter>>
         {
             if (!m_factoryQueue.empty())
@@ -136,7 +129,8 @@ public:
     void callDumpTesters() const { dumpTesters(); }
     void callDumpRouters() const { dumpRouters(); }
     void setShutdown(bool value) { m_isShutdown.store(value, std::memory_order_release); }
-    void resetTesterWorker() { m_testerWorker = nullptr; }
+    void resetTester() { m_tester = nullptr; }
+    void setTester(std::shared_ptr<router::ITester> tester) { m_tester = std::move(tester); }
 
     void setContentionState(bool contended, int64_t startUsec, int64_t lastWarningUsec, uint64_t dropped)
     {
@@ -165,15 +159,10 @@ public:
 
     void expectDumpTester()
     {
-        if (!m_testerWorkerMock)
-        {
-            FAIL() << "No mock worker";
-        }
-
         auto testerMock = std::make_shared<MockTester>();
         auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
 
-        EXPECT_CALL(*m_testerWorkerMock, get()).WillOnce(testing::Return(itesterMock));
+        setTester(itesterMock);
 
         EXPECT_CALL(*testerMock, getEntries()).WillOnce(testing::Return(std::list<test::Entry> {}));
 
@@ -183,29 +172,19 @@ public:
 
     void expectPostEntryAddEntryFailure()
     {
-        if (!m_testerWorkerMock)
-        {
-            FAIL() << "No mock worker";
-        }
-
         auto testerMock = std::make_shared<MockTester>();
         auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
 
-        EXPECT_CALL(*m_testerWorkerMock, get()).WillOnce(testing::Return(itesterMock));
+        setTester(itesterMock);
         EXPECT_CALL(*testerMock, addEntry(testing::_, testing::_)).WillOnce(testing::Return(base::Error {"error"}));
     }
 
     void expectPostEntryEnableEntryFailure()
     {
-        if (!m_testerWorkerMock)
-        {
-            FAIL() << "No mock worker";
-        }
-
         auto testerMock = std::make_shared<MockTester>();
         auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
 
-        EXPECT_CALL(*m_testerWorkerMock, get()).WillRepeatedly(testing::Return(itesterMock));
+        setTester(itesterMock);
         EXPECT_CALL(*testerMock, addEntry(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
 
         EXPECT_CALL(*testerMock, enableEntry(testing::_)).WillOnce(testing::Return(base::Error {"error"}));
@@ -213,15 +192,10 @@ public:
 
     void expectPostEntrySuccess()
     {
-        if (!m_testerWorkerMock)
-        {
-            FAIL() << "No mock worker";
-        }
-
         auto testerMock = std::make_shared<MockTester>();
         auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
 
-        EXPECT_CALL(*m_testerWorkerMock, get()).WillRepeatedly(testing::Return(itesterMock));
+        setTester(itesterMock);
         EXPECT_CALL(*testerMock, addEntry(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
         EXPECT_CALL(*testerMock, enableEntry(testing::_)).WillRepeatedly(testing::Return(std::nullopt));
         EXPECT_CALL(*testerMock, getEntries()).WillRepeatedly(testing::Return(std::list<test::Entry> {}));
@@ -232,29 +206,19 @@ public:
 
     void expectDeleteEntryRemoveEntryFailure()
     {
-        if (!m_testerWorkerMock)
-        {
-            FAIL() << "No mock worker";
-        }
-
         auto testerMock = std::make_shared<MockTester>();
         auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
 
-        EXPECT_CALL(*m_testerWorkerMock, get()).WillOnce(testing::Return(itesterMock));
+        setTester(itesterMock);
         EXPECT_CALL(*testerMock, removeEntry(testing::_)).WillOnce(testing::Return(base::Error {"error"}));
     }
 
     void expectDeleteEntrySuccess()
     {
-        if (!m_testerWorkerMock)
-        {
-            FAIL() << "No mock worker";
-        }
-
         auto testerMock = std::make_shared<MockTester>();
         auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
 
-        EXPECT_CALL(*m_testerWorkerMock, get()).WillRepeatedly(testing::Return(itesterMock));
+        setTester(itesterMock);
         EXPECT_CALL(*testerMock, removeEntry(testing::_)).WillRepeatedly(testing::Return(std::nullopt));
         EXPECT_CALL(*testerMock, getEntries()).WillRepeatedly(testing::Return(std::list<test::Entry> {}));
 
@@ -264,58 +228,38 @@ public:
 
     void expectGetEntryGetEntryFailure()
     {
-        if (!m_testerWorkerMock)
-        {
-            FAIL() << "No mock worker";
-        }
-
         auto testerMock = std::make_shared<MockTester>();
         auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
 
-        EXPECT_CALL(*m_testerWorkerMock, get()).WillOnce(testing::Return(itesterMock));
+        setTester(itesterMock);
         EXPECT_CALL(*testerMock, getEntry(testing::_)).WillOnce(testing::Return(base::Error {"error"}));
     }
 
     void expectGetEntrySuccess()
     {
-        if (!m_testerWorkerMock)
-        {
-            FAIL() << "No mock worker";
-        }
-
         auto testerMock = std::make_shared<MockTester>();
         auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
 
-        EXPECT_CALL(*m_testerWorkerMock, get()).WillRepeatedly(testing::Return(itesterMock));
+        setTester(itesterMock);
         EXPECT_CALL(*testerMock, getEntry(testing::_))
             .WillRepeatedly(testing::Return(test::EntryPost {"test", G_NAMESPACE_ALT, 0}));
     }
 
     void expectReloadEntryRebuildEntryFailure()
     {
-        if (!m_testerWorkerMock)
-        {
-            FAIL() << "No mock worker";
-        }
-
         auto testerMock = std::make_shared<MockTester>();
         auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
 
-        EXPECT_CALL(*m_testerWorkerMock, get()).WillOnce(testing::Return(itesterMock));
+        setTester(itesterMock);
         EXPECT_CALL(*testerMock, rebuildEntry(testing::_)).WillOnce(testing::Return(base::Error {"error"}));
     }
 
     void expectReloadEntryEnableEntryFailure()
     {
-        if (!m_testerWorkerMock)
-        {
-            FAIL() << "No mock worker";
-        }
-
         auto testerMock = std::make_shared<MockTester>();
         auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
 
-        EXPECT_CALL(*m_testerWorkerMock, get()).WillRepeatedly(testing::Return(itesterMock));
+        setTester(itesterMock);
         EXPECT_CALL(*testerMock, rebuildEntry(testing::_)).WillRepeatedly(testing::Return(std::nullopt));
 
         EXPECT_CALL(*testerMock, enableEntry(testing::_)).WillOnce(testing::Return(base::Error {"error"}));
@@ -323,15 +267,10 @@ public:
 
     void expectReloadSuccess()
     {
-        if (!m_testerWorkerMock)
-        {
-            FAIL() << "No mock worker";
-        }
-
         auto testerMock = std::make_shared<MockTester>();
         auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
 
-        EXPECT_CALL(*m_testerWorkerMock, get()).WillRepeatedly(testing::Return(itesterMock));
+        setTester(itesterMock);
         EXPECT_CALL(*testerMock, rebuildEntry(testing::_)).WillRepeatedly(testing::Return(std::nullopt));
 
         EXPECT_CALL(*testerMock, enableEntry(testing::_)).WillRepeatedly(testing::Return(std::nullopt));
@@ -339,29 +278,19 @@ public:
 
     void expectGetGetEntriesEmpty()
     {
-        if (!m_testerWorkerMock)
-        {
-            FAIL() << "No mock worker";
-        }
-
         auto testerMock = std::make_shared<MockTester>();
         auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
 
-        EXPECT_CALL(*m_testerWorkerMock, get()).WillOnce(testing::Return(itesterMock));
+        setTester(itesterMock);
         EXPECT_CALL(*testerMock, getEntries()).WillOnce(testing::Return(std::list<test::Entry> {}));
     }
 
     void expectGetEntriesSuccess()
     {
-        if (!m_testerWorkerMock)
-        {
-            FAIL() << "No mock worker";
-        }
-
         auto testerMock = std::make_shared<MockTester>();
         auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
 
-        EXPECT_CALL(*m_testerWorkerMock, get()).WillRepeatedly(testing::Return(itesterMock));
+        setTester(itesterMock);
 
         EXPECT_CALL(*testerMock, getEntries())
             .WillRepeatedly(testing::Return(std::list<test::Entry> {test::EntryPost {"test", G_NAMESPACE_ALT, 0}}));
@@ -369,29 +298,19 @@ public:
 
     void expectGetAssetsEmpty()
     {
-        if (!m_testerWorkerMock)
-        {
-            FAIL() << "No mock worker";
-        }
-
         auto testerMock = std::make_shared<MockTester>();
         auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
 
-        EXPECT_CALL(*m_testerWorkerMock, get()).WillOnce(testing::Return(itesterMock));
+        setTester(itesterMock);
         EXPECT_CALL(*testerMock, getAssets(testing::_)).WillOnce(testing::Return(base::Error {"error"}));
     }
 
     void expectGetAssetsSuccess()
     {
-        if (!m_testerWorkerMock)
-        {
-            FAIL() << "No mock worker";
-        }
-
         auto testerMock = std::make_shared<MockTester>();
         auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
 
-        EXPECT_CALL(*m_testerWorkerMock, get()).WillRepeatedly(testing::Return(itesterMock));
+        setTester(itesterMock);
         EXPECT_CALL(*testerMock, getAssets(testing::_))
             .WillRepeatedly(testing::Return(std::unordered_set<std::string> {"decoder"}));
     }
@@ -684,7 +603,6 @@ TEST_F(OrchestratorTest, start)
 {
 
     m_orchestrator->forEachWorkerMock([](auto mockWorker) { EXPECT_CALL(*mockWorker, start()).Times(1); });
-    EXPECT_CALL(*m_orchestrator->m_testerWorkerMock, start()).Times(1);
 
     ASSERT_NO_THROW(m_orchestrator->start());
 }
@@ -694,7 +612,6 @@ TEST_F(OrchestratorTest, stop)
 
     m_orchestrator->expectDumpTester();
     m_orchestrator->forEachWorkerMock([](auto mockWorker) { EXPECT_CALL(*mockWorker, stop()).Times(1); });
-    EXPECT_CALL(*m_orchestrator->m_testerWorkerMock, stop()).Times(1);
 
     ASSERT_NO_THROW(m_orchestrator->stop());
 }
@@ -1160,7 +1077,7 @@ TEST_F(OrchestratorTest, renameTestEntryWorkerFails)
     auto testerMock = std::make_shared<MockTester>();
     auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
 
-    EXPECT_CALL(*m_orchestrator->m_testerWorkerMock, get()).WillOnce(testing::Return(itesterMock));
+    m_orchestrator->setTester(itesterMock);
     EXPECT_CALL(*testerMock, renameEntry("oldName", "newName"))
         .WillOnce(testing::Return(base::Error {"rename failed"}));
 
@@ -1172,7 +1089,7 @@ TEST_F(OrchestratorTest, renameTestEntrySuccess)
     auto testerMock = std::make_shared<MockTester>();
     auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
 
-    EXPECT_CALL(*m_orchestrator->m_testerWorkerMock, get()).WillRepeatedly(testing::Return(itesterMock));
+    m_orchestrator->setTester(itesterMock);
     EXPECT_CALL(*testerMock, renameEntry("oldName", "newName")).WillOnce(testing::Return(std::nullopt));
     EXPECT_CALL(*testerMock, getEntries()).WillOnce(testing::Return(std::list<test::Entry> {}));
 
@@ -1183,39 +1100,61 @@ TEST_F(OrchestratorTest, renameTestEntrySuccess)
 }
 
 /**************************************************************************
- * ingestTest (future overload) - queue path
+ * ingestTest (future overload) - runs on the calling thread
  *************************************************************************/
 
-TEST_F(OrchestratorTest, ingestTestFutureQueueSuccess)
+TEST_F(OrchestratorTest, ingestTestFutureSuccess)
 {
     test::Options opt(test::Options::TraceLevel::NONE, std::unordered_set<std::string> {}, "testEnv");
     auto event = std::make_shared<json::Json>(R"({"message":"test"})");
-
-    EXPECT_CALL(*m_orchestrator->m_mockTestQueue, tryPush(testing::_)).WillOnce(testing::Return(true));
-    EXPECT_CALL(*m_orchestrator->m_mockEventQueue, empty()).WillOnce(testing::Return(true));
-    EXPECT_CALL(*m_orchestrator->m_mockEventQueue, push(testing::_)).WillOnce(testing::Return(true));
 
     auto testerMock = std::make_shared<MockTester>();
-    auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
-    EXPECT_CALL(*m_orchestrator->m_testerWorkerMock, get()).WillOnce(testing::Return(itesterMock));
+    m_orchestrator->setTester(testerMock);
     EXPECT_CALL(*testerMock, updateLastUsed(testing::_, testing::_)).WillOnce(testing::Return(true));
+    EXPECT_CALL(*testerMock, ingestTest(testing::_, testing::_))
+        .WillOnce(testing::Invoke(
+            [](base::Event&& ev, const test::Options&) -> base::RespOrError<test::Output>
+            {
+                test::Output out;
+                out.event() = std::move(ev);
+                return out;
+            }));
 
     auto future = m_orchestrator->ingestTest(std::move(event), opt);
-    // Future is pending (no worker to resolve the promise), just verify no crash
-    EXPECT_TRUE(future.valid());
+    ASSERT_EQ(future.wait_for(std::chrono::seconds(0)), std::future_status::ready);
+    auto result = future.get();
+    ASSERT_FALSE(base::isError(result));
+
+    // The event is stamped before it reaches the tester
+    const auto& ev = base::getResponse(result).event();
+    EXPECT_TRUE(ev->isString("/@timestamp"));
+    EXPECT_TRUE(ev->isString("/wazuh/event/id"));
 }
 
-TEST_F(OrchestratorTest, ingestTestFutureQueueFull)
+TEST_F(OrchestratorTest, ingestTestFutureTesterError)
 {
     test::Options opt(test::Options::TraceLevel::NONE, std::unordered_set<std::string> {}, "testEnv");
     auto event = std::make_shared<json::Json>(R"({"message":"test"})");
 
-    EXPECT_CALL(*m_orchestrator->m_mockTestQueue, tryPush(testing::_)).WillOnce(testing::Return(false));
+    auto testerMock = std::make_shared<MockTester>();
+    m_orchestrator->setTester(testerMock);
+    EXPECT_CALL(*testerMock, updateLastUsed(testing::_, testing::_)).WillOnce(testing::Return(true));
+    EXPECT_CALL(*testerMock, ingestTest(testing::_, testing::_))
+        .WillOnce(testing::Return(base::Error {"env does not exist"}));
 
     auto future = m_orchestrator->ingestTest(std::move(event), opt);
-    future.wait();
     auto result = future.get();
-    EXPECT_TRUE(base::isError(result));
+    ASSERT_TRUE(base::isError(result));
+    EXPECT_EQ(base::getError(result).message, "env does not exist");
+}
+
+TEST_F(OrchestratorTest, ingestTestFutureInvalidOptions)
+{
+    test::Options opt(test::Options::TraceLevel::NONE, std::unordered_set<std::string> {}, "");
+    auto event = std::make_shared<json::Json>(R"({"message":"test"})");
+
+    auto future = m_orchestrator->ingestTest(std::move(event), opt);
+    EXPECT_TRUE(base::isError(future.get()));
 }
 
 /**************************************************************************
@@ -1237,15 +1176,16 @@ TEST_F(OrchestratorTest, ingestTestCallbackInvalidOptions)
     EXPECT_TRUE(result.has_value());
 }
 
-TEST_F(OrchestratorTest, ingestTestCallbackQueueFull)
+TEST_F(OrchestratorTest, ingestTestCallbackTesterUnavailable)
 {
     test::Options opt(test::Options::TraceLevel::NONE, std::unordered_set<std::string> {}, "testEnv");
     auto event = std::make_shared<json::Json>(R"({"message":"test"})");
 
-    EXPECT_CALL(*m_orchestrator->m_mockTestQueue, tryPush(testing::_)).WillOnce(testing::Return(false));
-
-    auto result = m_orchestrator->ingestTest(std::move(event), opt, [](auto&&) {});
+    m_orchestrator->resetTester();
+    bool called = false;
+    auto result = m_orchestrator->ingestTest(std::move(event), opt, [&called](auto&&) { called = true; });
     EXPECT_TRUE(result.has_value());
+    EXPECT_FALSE(called);
 }
 
 TEST_F(OrchestratorTest, ingestTestCallbackSuccess)
@@ -1253,15 +1193,32 @@ TEST_F(OrchestratorTest, ingestTestCallbackSuccess)
     test::Options opt(test::Options::TraceLevel::NONE, std::unordered_set<std::string> {}, "testEnv");
     auto event = std::make_shared<json::Json>(R"({"message":"test"})");
 
-    EXPECT_CALL(*m_orchestrator->m_mockTestQueue, tryPush(testing::_)).WillOnce(testing::Return(true));
-    EXPECT_CALL(*m_orchestrator->m_mockEventQueue, empty()).WillOnce(testing::Return(false));
+    auto testerMock = std::make_shared<MockTester>();
+    m_orchestrator->setTester(testerMock);
+    EXPECT_CALL(*testerMock, updateLastUsed(testing::_, testing::_)).WillOnce(testing::Return(true));
+    EXPECT_CALL(*testerMock, ingestTest(testing::_, testing::_))
+        .WillOnce(testing::Return(base::RespOrError<test::Output> {test::Output {}}));
+
+    // The callback runs on this thread, before ingestTest returns
+    int calls = 0;
+    auto result = m_orchestrator->ingestTest(std::move(event), opt, [&calls](auto&&) { ++calls; });
+    EXPECT_FALSE(result.has_value());
+    EXPECT_EQ(calls, 1);
+}
+
+TEST_F(OrchestratorTest, ingestTestCallbackExceptionIsContained)
+{
+    test::Options opt(test::Options::TraceLevel::NONE, std::unordered_set<std::string> {}, "testEnv");
+    auto event = std::make_shared<json::Json>(R"({"message":"test"})");
 
     auto testerMock = std::make_shared<MockTester>();
-    auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
-    EXPECT_CALL(*m_orchestrator->m_testerWorkerMock, get()).WillOnce(testing::Return(itesterMock));
+    m_orchestrator->setTester(testerMock);
     EXPECT_CALL(*testerMock, updateLastUsed(testing::_, testing::_)).WillOnce(testing::Return(true));
+    EXPECT_CALL(*testerMock, ingestTest(testing::_, testing::_))
+        .WillOnce(testing::Return(base::RespOrError<test::Output> {test::Output {}}));
 
-    auto result = m_orchestrator->ingestTest(std::move(event), opt, [](auto&&) {});
+    auto result =
+        m_orchestrator->ingestTest(std::move(event), opt, [](auto&&) { throw std::runtime_error {"callback failed"}; });
     EXPECT_FALSE(result.has_value());
 }
 
@@ -1275,13 +1232,12 @@ TEST_F(OrchestratorTest, requestShutdown)
     auto testerMock = std::make_shared<MockTester>();
     auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
 
-    EXPECT_CALL(*m_orchestrator->m_testerWorkerMock, get()).WillOnce(testing::Return(itesterMock));
+    m_orchestrator->setTester(itesterMock);
     EXPECT_CALL(*testerMock, getEntries()).WillOnce(testing::Return(std::list<test::Entry> {}));
     EXPECT_CALL(*(m_orchestrator->m_mockstore), upsertDoc(testing::_, testing::_))
         .WillOnce(::testing::Return(store::mocks::storeOk()));
 
     m_orchestrator->forEachWorkerMock([](auto mockWorker) { EXPECT_CALL(*mockWorker, stop()).Times(1); });
-    EXPECT_CALL(*m_orchestrator->m_testerWorkerMock, stop()).Times(1);
 
     ASSERT_NO_THROW(m_orchestrator->requestShutdown());
 }
@@ -1297,7 +1253,6 @@ protected:
     std::shared_ptr<builder::mocks::MockBuilder> m_mockBuilder;
     std::shared_ptr<bk::mocks::MockMakerController> m_mockControllerMaker;
     std::shared_ptr<fastqueue::mocks::MockQueue<IngestEvent>> m_mockProdQueue;
-    std::shared_ptr<fastqueue::mocks::MockQueue<test::EventTest>> m_mockTestQueue;
     std::shared_ptr<fastmetrics::MockCounter> m_mockCounter;
 
     void SetUp() override
@@ -1311,7 +1266,6 @@ protected:
         m_mockBuilder = std::make_shared<builder::mocks::MockBuilder>();
         m_mockControllerMaker = std::make_shared<bk::mocks::MockMakerController>();
         m_mockProdQueue = std::make_shared<fastqueue::mocks::MockQueue<IngestEvent>>();
-        m_mockTestQueue = std::make_shared<fastqueue::mocks::MockQueue<test::EventTest>>();
 
         auto& manager = SingletonLocator::instance<fastmetrics::IManager>();
         auto* mockMetrics = dynamic_cast<fastmetrics::MockManager*>(&manager);
@@ -1343,7 +1297,6 @@ protected:
         opt.m_builder = m_mockBuilder;
         opt.m_controllerMaker = m_mockControllerMaker;
         opt.m_prodQueue = m_mockProdQueue;
-        opt.m_testQueue = m_mockTestQueue;
         opt.m_testTimeout = 1000;
         opt.m_rawIndexer = nullptr;
         return opt;
@@ -1382,13 +1335,6 @@ TEST_F(OrchestratorConstructorTest, OptionsValidateNullProdQueue)
 {
     auto opt = makeValidOptions();
     opt.m_prodQueue = nullptr;
-    ASSERT_THROW(opt.validate(), std::runtime_error);
-}
-
-TEST_F(OrchestratorConstructorTest, OptionsValidateNullTestQueue)
-{
-    auto opt = makeValidOptions();
-    opt.m_testQueue = nullptr;
     ASSERT_THROW(opt.validate(), std::runtime_error);
 }
 
@@ -1604,7 +1550,7 @@ TEST_F(OrchestratorTest, dumpTesters)
     auto testerMock = std::make_shared<MockTester>();
     auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
 
-    EXPECT_CALL(*m_orchestrator->m_testerWorkerMock, get()).WillOnce(testing::Return(itesterMock));
+    m_orchestrator->setTester(itesterMock);
     EXPECT_CALL(*testerMock, getEntries()).WillOnce(testing::Return(std::list<test::Entry> {}));
     EXPECT_CALL(*(m_orchestrator->m_mockstore), upsertDoc(testing::_, testing::_))
         .WillOnce(::testing::Return(store::mocks::storeOk()));

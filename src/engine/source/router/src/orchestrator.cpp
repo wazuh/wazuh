@@ -8,6 +8,8 @@
 
 #include <base/json.hpp>
 #include <base/logging.hpp>
+#include <base/utils/generator.hpp>
+#include <base/utils/timeUtils.hpp>
 #include <fastmetrics/registry.hpp>
 #include <proc.hpp>
 
@@ -53,14 +55,14 @@ base::OptError Orchestrator::forEachRouterWorker(const WorkerOp<IRouter>& f)
     return std::nullopt;
 }
 
-base::OptError Orchestrator::forTesterWorker(const WorkerOp<ITester>& f)
+base::OptError Orchestrator::forTester(const std::function<base::OptError(const std::shared_ptr<ITester>&)>& f)
 {
-    if (!m_testerWorker)
+    if (!m_tester)
     {
-        return base::Error {"Tester worker is not available"};
+        return base::Error {"Tester is not available"};
     }
 
-    if (auto error = f(m_testerWorker); error)
+    if (auto error = f(m_tester); error)
     {
         return error;
     }
@@ -70,18 +72,17 @@ base::OptError Orchestrator::forTesterWorker(const WorkerOp<ITester>& f)
 /**************************************************************************
  * Manage configuration - Dump
  *************************************************************************/
-base::OptError loadTesterOnWorker(const std::vector<EntryConverter>& entries,
-                                  const std::shared_ptr<IWorker<ITester>>& worker)
+base::OptError loadTesterEntries(const std::vector<EntryConverter>& entries, const std::shared_ptr<ITester>& tester)
 {
     for (const auto& entry : entries)
     {
-        auto err = worker->get()->addEntry(test::EntryPost(entry), /*ignoreFail=*/true);
+        auto err = tester->addEntry(test::EntryPost(entry), /*ignoreFail=*/true);
         if (err)
         {
             return err;
         }
-        worker->get()->updateLastUsed(entry.name(), entry.lastUse().value_or(0));
-        worker->get()->enableEntry(entry.name());
+        tester->updateLastUsed(entry.name(), entry.lastUse().value_or(0));
+        tester->enableEntry(entry.name());
     }
     return std::nullopt;
 }
@@ -121,7 +122,7 @@ void saveConfig(const std::weak_ptr<store::IStore>& wStore, const base::Name& st
 
 void Orchestrator::dumpTestersInternal() const
 {
-    auto jDump = EntryConverter::toJsonArray(m_testerWorker->get()->getEntries());
+    auto jDump = EntryConverter::toJsonArray(m_tester->getEntries());
     saveConfig(m_wStore, m_storeTesterName, jDump);
 }
 
@@ -186,10 +187,9 @@ base::OptError Orchestrator::initRouterWorker(const std::shared_ptr<IWorker<IRou
     return std::nullopt;
 }
 
-base::OptError Orchestrator::initTesterWorker(const std::shared_ptr<IWorker<ITester>>& worker,
-                                              const std::vector<EntryConverter>& testerEntries)
+base::OptError Orchestrator::initTester(const std::vector<EntryConverter>& testerEntries)
 {
-    auto error = loadTesterOnWorker(testerEntries, worker);
+    auto error = loadTesterEntries(testerEntries, m_tester);
 
     if (error)
     {
@@ -283,7 +283,6 @@ void Orchestrator::Options::validate() const
     validatePointer(m_builder, "builder");
     validatePointer(m_controllerMaker, "controllerMaker");
     validatePointer(m_prodQueue, "prodQueue");
-    validatePointer(m_testQueue, "testQueue");
     if (m_testTimeout < 1)
     {
         throw std::runtime_error {"Configuration error: testTimeout must be greater than 0"};
@@ -292,9 +291,8 @@ void Orchestrator::Options::validate() const
 
 Orchestrator::Orchestrator(const Options& opt)
     : m_routerWorkers()
-    , m_testerWorker()
+    , m_tester()
     , m_eventQueue(opt.m_prodQueue)
-    , m_testQueue(opt.m_testQueue)
     , m_envBuilder()
     , m_syncMutex()
     , m_isShutdown(false)
@@ -407,13 +405,10 @@ Orchestrator::Orchestrator(const Options& opt)
         "expandWorkerPool).",
         m_targetWorkerCount);
 
+    m_tester = std::make_shared<Tester>(m_envBuilder);
+    if (auto err = initTester(testerEntries))
     {
-        auto t = std::make_shared<router::TesterWorker>(m_envBuilder, m_testQueue);
-        if (auto err = initTesterWorker(t, testerEntries))
-        {
-            LOG_ERROR("[Orchestrator::Tester] Cannot load initial states from store: {}", err->message);
-        }
-        m_testerWorker = std::move(t);
+        LOG_ERROR("[Orchestrator::Tester] Cannot load initial states from store: {}", err->message);
     }
 }
 
@@ -425,8 +420,6 @@ void Orchestrator::start()
     {
         routerWorker->start();
     }
-
-    m_testerWorker->start();
 }
 
 void Orchestrator::stop()
@@ -437,8 +430,6 @@ void Orchestrator::stop()
     {
         routerWorker->stop();
     }
-
-    m_testerWorker->stop();
 }
 
 void Orchestrator::requestShutdown()
@@ -448,10 +439,9 @@ void Orchestrator::requestShutdown()
     this->stop();
     std::unique_lock lock {m_syncMutex};
     m_routerWorkers.clear();
-    m_testerWorker.reset();
+    m_tester.reset();
     m_envBuilder.reset();
     m_eventQueue.reset();
-    m_testQueue.reset();
     m_wStore.reset();
     m_workerFactory = nullptr;
 }
@@ -730,14 +720,13 @@ base::OptError Orchestrator::postTestEntry(const test::EntryPost& entry)
     }
 
     std::unique_lock lock {m_syncMutex};
-    auto error =
-        forTesterWorker([&entry](const auto& worker) { return worker->get()->addEntry(entry, /*ignoreFail=*/false); });
+    auto error = forTester([&entry](const auto& tester) { return tester->addEntry(entry, /*ignoreFail=*/false); });
     if (error)
     {
         return error;
     }
 
-    error = forTesterWorker([&entry](const auto& worker) { return worker->get()->enableEntry(entry.name()); });
+    error = forTester([&entry](const auto& tester) { return tester->enableEntry(entry.name()); });
     if (error)
     {
         return error;
@@ -755,7 +744,7 @@ base::OptError Orchestrator::deleteTestEntry(const std::string& name)
         return base::Error {"Name cannot be empty"};
     }
 
-    auto error = forTesterWorker([&name](const auto& worker) { return worker->get()->removeEntry(name); });
+    auto error = forTester([&name](const auto& tester) { return tester->removeEntry(name); });
     if (error)
     {
         return error;
@@ -772,7 +761,7 @@ base::RespOrError<test::Entry> Orchestrator::getTestEntry(const std::string& nam
     }
 
     std::shared_lock lock {m_syncMutex};
-    return m_testerWorker->get()->getEntry(name);
+    return m_tester->getEntry(name);
 }
 
 base::OptError Orchestrator::reloadTestEntry(const std::string& name)
@@ -783,12 +772,12 @@ base::OptError Orchestrator::reloadTestEntry(const std::string& name)
     }
 
     std::unique_lock lock {m_syncMutex};
-    auto error = forTesterWorker([&name](const auto& worker) { return worker->get()->rebuildEntry(name); });
+    auto error = forTester([&name](const auto& tester) { return tester->rebuildEntry(name); });
     if (error)
     {
         return error;
     }
-    return forTesterWorker([&name](const auto& worker) { return worker->get()->enableEntry(name); });
+    return forTester([&name](const auto& tester) { return tester->enableEntry(name); });
 }
 
 base::OptError Orchestrator::renameTestEntry(const std::string& from, const std::string& to)
@@ -800,7 +789,7 @@ base::OptError Orchestrator::renameTestEntry(const std::string& from, const std:
 
     std::unique_lock lock {m_syncMutex};
 
-    auto error = forTesterWorker([&](const auto& worker) { return worker->get()->renameEntry(from, to); });
+    auto error = forTester([&](const auto& tester) { return tester->renameEntry(from, to); });
 
     if (error)
     {
@@ -814,40 +803,22 @@ base::OptError Orchestrator::renameTestEntry(const std::string& from, const std:
 std::list<test::Entry> Orchestrator::getTestEntries() const
 {
     std::shared_lock lock {m_syncMutex};
-    return m_testerWorker->get()->getEntries();
+    return m_tester->getEntries();
 }
 
 std::future<base::RespOrError<test::Output>> Orchestrator::ingestTest(base::Event&& event, const test::Options& opt)
 {
-    if (auto error = opt.validate(); error)
-    {
-        return std::async(std::launch::deferred,
-                          [err = std::move(error)]() -> base::RespOrError<test::Output> { return *err; });
-    }
-
     auto promisePtr = std::make_shared<std::promise<base::RespOrError<test::Output>>>();
     auto future = promisePtr->get_future();
 
-    auto callback = [promisePtr](base::RespOrError<test::Output>&& output)
-    {
-        promisePtr->set_value(std::move(output));
-    };
-    auto tuple = std::make_shared<test::TestingTuple>(std::move(event), opt, std::move(callback));
-
-    if (!m_testQueue->tryPush(tuple))
+    auto error = ingestTest(std::move(event),
+                            opt,
+                            [promisePtr](base::RespOrError<test::Output>&& output)
+                            { promisePtr->set_value(std::move(output)); });
+    if (error)
     {
         return std::async(std::launch::deferred,
-                          []() -> base::RespOrError<test::Output> { return base::Error {"Test queue is full"}; });
-    }
-
-    if (m_eventQueue->empty())
-    {
-        m_eventQueue->push(IngestEvent {});
-    }
-
-    {
-        std::shared_lock lock {m_syncMutex};
-        m_testerWorker->get()->updateLastUsed(opt.environmentName());
+                          [err = std::move(error)]() -> base::RespOrError<test::Output> { return *err; });
     }
     return future;
 }
@@ -866,19 +837,27 @@ base::OptError Orchestrator::ingestTest(base::Event&& event,
         return error;
     }
 
-    auto tuple = std::make_shared<test::TestingTuple>(std::move(event), opt, std::move(callbackFn));
-    if (!m_testQueue->tryPush(tuple))
-    {
-        return base::Error {"Test queue is full"};
-    }
-    if (m_eventQueue->empty())
-    {
-        m_eventQueue->push(IngestEvent {});
-    }
+    event->setString(base::utils::time::getCurrentISO8601(), "/@timestamp");
+    event->setString(base::utils::generators::generateUUIDv4(), "/wazuh/event/id");
 
+    base::RespOrError<test::Output> output;
     {
         std::shared_lock lock {m_syncMutex};
-        m_testerWorker->get()->updateLastUsed(opt.environmentName());
+        if (!m_tester)
+        {
+            return base::Error {"Tester is not available"};
+        }
+        m_tester->updateLastUsed(opt.environmentName());
+        output = m_tester->ingestTest(std::move(event), opt);
+    }
+
+    try
+    {
+        callbackFn(std::move(output));
+    }
+    catch (const std::exception& e)
+    {
+        LOG_ERROR("[Orchestrator::Tester] Error when executing API callback: {}", e.what());
     }
 
     return std::nullopt;
@@ -892,7 +871,7 @@ base::RespOrError<std::unordered_set<std::string>> Orchestrator::getAssets(const
     }
 
     std::shared_lock lock {m_syncMutex};
-    return m_testerWorker->get()->getAssets(name);
+    return m_tester->getAssets(name);
 }
 
 } // namespace router

@@ -72,50 +72,6 @@ public:
     std::shared_ptr<IRouter> get() const override { return m_router; }
 };
 
-class TesterWorker : public IWorker<ITester>
-{
-private:
-    std::shared_ptr<ITester> m_tester;                            ///< The tester instance
-    std::atomic_bool m_isRunning;                                 ///< Flag to know if the worker is running
-    std::thread m_thread;                                         ///< The thread for the worker
-    std::shared_ptr<fastqueue::IQueue<test::EventTest>> m_tQueue; ///< The tester queue
-
-public:
-    /**
-     * @brief Construct a new Worker object
-     *
-     */
-    TesterWorker(std::shared_ptr<EnvironmentBuilder> envBuilder, decltype(m_tQueue) tQueue)
-        : m_tester(std::make_shared<Tester>(envBuilder))
-        , m_isRunning(false)
-        , m_thread()
-        , m_tQueue(tQueue)
-    {
-        if (!m_tQueue)
-        {
-            throw std::logic_error("Invalid queue for the tester worker");
-        }
-    }
-
-    ~TesterWorker() { stop(); }
-
-    /**
-     * @copydoc IWorker::start
-     */
-    void start() override;
-
-    /**
-     * @copydoc IWorker::stop
-     */
-    void stop() override;
-
-    /**
-     * @brief Get the tester associated with the worker.
-     * @return A constant reference to the shared pointer of the tester.
-     */
-    std::shared_ptr<ITester> get() const override { return m_tester; }
-};
-
 } // namespace router
 
 #endif // ROUTER_WORKER_HPP
