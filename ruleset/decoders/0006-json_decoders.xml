@@ -15,6 +15,12 @@
   <json_null_field>discard</json_null_field>
 </decoder>
 
+<decoder name="json-security-lake">
+  <prematch>"category_uid":</prematch>
+  <plugin_decoder>JSON_Decoder</plugin_decoder>
+  <json_null_field>discard</json_null_field>
+</decoder>
+
 <decoder name="json">
   <prematch>^{\s*"</prematch>
   <plugin_decoder>JSON_Decoder</plugin_decoder>
