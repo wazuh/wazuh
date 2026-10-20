@@ -49,7 +49,7 @@ namespace
 
         std::string indexerSectionJson() const override
         {
-            return R"({"hosts":["http://127.0.0.1:9200"]})";
+            return R"({"hosts":["http://127.0.0.1:1"]})";
         }
 
         indexer_client::Credentials credentials() const override
@@ -106,11 +106,12 @@ TEST_F(ClientTest, QueryStubReturnsUnavailable)
     EXPECT_EQ(exists.cause, Cause::Unavailable) << "Unavailable is not 'false' (RF-14)";
 }
 
-TEST_F(ClientTest, HealthIsEmpty)
+TEST_F(ClientTest, HealthListsTheConfiguredHost)
 {
+    // One node per configured host from start() on (E2b); its state is the probe's business (component suite).
     const auto health = m_client->health();
-    EXPECT_TRUE(health.nodes.empty());
-    EXPECT_FALSE(health.clusterRed);
+    ASSERT_EQ(health.nodes.size(), 1U);
+    EXPECT_EQ(health.nodes[0].url, "http://127.0.0.1:1");
 }
 
 TEST_F(ClientTest, AwaitClosedFromConsumerSucceeds)

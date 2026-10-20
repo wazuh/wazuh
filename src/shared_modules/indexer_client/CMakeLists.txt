@@ -16,7 +16,7 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 find_package(Threads REQUIRED)
 
-# The full source list is fixed here (E1 + the E2a-1 transport) so that the parallel steps never edit this file
+# The full source list is fixed here (E1 + the E2a transport + the E2b health and log sink) so that the parallel steps never edit this file
 # (plan 18, anexos/e2a-1/contrato-transport.md §Unidades).
 set(INDEXER_CLIENT_SOURCES
     src/types.cpp
@@ -29,7 +29,10 @@ set(INDEXER_CLIENT_SOURCES
     src/transport/curlLoop.cpp
     src/transport/classify.cpp
     src/transport/retryAfter.cpp
-    src/transport/tlsMaterial.cpp)
+    src/transport/tlsMaterial.cpp
+    src/health/nodeSet.cpp
+    src/health/prober.cpp
+    src/log.cpp)
 
 # Two compilations of the same sources (I45b): the production objects behind the .so carry no test seam; the
 # testing objects (INDEXER_CLIENT_TESTING + src/testing/) build a static library that only the component suite links,
@@ -45,7 +48,12 @@ function(indexer_client_objects name)
   target_include_directories(
     ${name}
     PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${SRC_FOLDER}/external/nlohmann
-    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src ${SRC_FOLDER}/external/curl/include)
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
+            ${SRC_FOLDER}/external/curl/include
+            # loggerHelper.h (I56) and what it pulls in (commonDefs.h -> cJSON.h); never seen by the public headers.
+            ${SRC_FOLDER}/shared_modules/utils
+            ${SRC_FOLDER}/shared_modules/common
+            ${SRC_FOLDER}/external/cJSON)
   # Only INDEXER_CLIENT_API symbols are exported. asio's headers force default visibility unless
   # ASIO_DISABLE_VISIBILITY is set (measured in the E0 spike: 159 asio symbols exported without it).
   target_compile_options(${name} PRIVATE -fvisibility=hidden -fvisibility-inlines-hidden)
