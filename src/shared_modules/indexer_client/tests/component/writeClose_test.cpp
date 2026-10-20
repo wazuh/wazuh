@@ -10,14 +10,15 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// Close and shutdown of the write path, and the production sink of E3a (plan-E3a §Tests: I63).
+// Close and shutdown of the write path, and the production sink (plan-E3a §Tests: I63; since E3b-2 the bulk sender).
 
 #include <future>
 #include <string>
 #include <thread>
 #include <vector>
 
-#include "writeFixture.hpp"
+#include "bulkFixture.hpp"
+#include "write/sender.hpp"
 
 using namespace write_component;
 using component::AsyncCall;
@@ -317,10 +318,13 @@ TEST_F(WriteTest, ShutdownWithHeldBatch)
     expectInvariants(stats("b"));
 }
 
-// I63: without replacing the sink, every op is Failed(Unavailable) (the E1 stub's answer) and the charge returns to 0.
-TEST_F(WriteTest, DefaultSinkUnavailable)
+// I63, E3b-2: without replacing the sink, the production sink is the bulk sender: every op is written (Ok) to the
+// configured node and the charge returns to 0.
+TEST_F(BulkTest, DefaultSinkIsTheBulkSender)
 {
-    ASSERT_NO_FATAL_FAILURE(start());
+    const auto node = startNode();
+    ASSERT_NO_FATAL_FAILURE(startOn({node.url()}));
+    ASSERT_NE(std::dynamic_pointer_cast<wr::BulkSink>(m_path->sink()), nullptr) << "the runtime's sink";
     auto c = client("c", {bucketSpec("b", 1u << 20, ic::Overflow::Kind::Reject, 0, 10, ic::Duration {200})});
     auto writer = c->writer("b");
     auto results = Results::create();
@@ -336,17 +340,27 @@ TEST_F(WriteTest, DefaultSinkUnavailable)
         SCOPED_TRACE(k);
         const auto result = tickets[k].wait(now() + 3s);
         ASSERT_TRUE(result.ok()) << ic::toString(result.cause);
-        EXPECT_EQ(result.value.status, ic::Status::Failed);
-        EXPECT_EQ(result.value.cause, ic::Cause::Unavailable);
+        EXPECT_EQ(result.value.status, ic::Status::Ok);
+        EXPECT_EQ(result.value.cause, ic::Cause::None);
+        EXPECT_EQ(result.value.outcome, ic::ItemOutcome::Created);
     }
     ASSERT_TRUE(results->waitTotal(12));
-    EXPECT_EQ(results->countWith(ic::Status::Failed, ic::Cause::Unavailable), 12u);
+    EXPECT_EQ(results->countWith(ic::Status::Ok, ic::Cause::None), 12u);
     EXPECT_GT(globalCharge(), 0u) << "the reserves of the ops without callback live in their tickets";
     tickets.clear();
     ASSERT_TRUE(eventually([this] { return globalCharge() == 0; }, 5s));
     auto s = stats("b");
     EXPECT_EQ(s.accepted, 25u);
-    EXPECT_EQ(s.resolvedFailed, 25u);
+    EXPECT_EQ(s.resolvedOk, 25u);
     EXPECT_EQ(s.retained, 0u);
     expectInvariants(s);
+
+    EXPECT_EQ(node.bulk->opCount(), 25u);
+    EXPECT_EQ(node.bulk->answered(), 3u) << "10 + 10 by maxDocs, 5 by maxAge";
+    const auto sender = wr::senderStats();
+    EXPECT_EQ(sender.sent, 3u);
+    ASSERT_EQ(sender.nodes.size(), 1u);
+    EXPECT_EQ(sender.nodes[0].host, node.url());
+    EXPECT_EQ(sender.nodes[0].requests, 3u);
+    EXPECT_FALSE(sender.nodes[0].down);
 }

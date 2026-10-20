@@ -139,7 +139,11 @@ namespace
 // delivered set, the callback, the completion queued on the pool with an OpResult at its caps, the result stored in
 // the ticket, the reserve handle) is <= RESULT_RESERVE. Phases: (1) retained with a callback; (2) resolved, its
 // completion queued behind a busy pool, the batch still held by the sink; (3) callback run, the Ticket still alive
-// (reported: with a callback the reserve is already released); (4) without a callback, resolved, the Ticket alive.
+// (reported: with a callback the reserve is already released); (4) without a callback, resolved, the Ticket alive;
+// (5, E3b-2) with a callback, requeued into the retry lane with its LastError at its caps (the batch gone); (6, G-diff
+// E3b-2 obj. 1) the composed worst case: requeued with its LastError at its caps, sliced again, then resolved
+// Failed(ItemPermanent) with a capped OpResult while its completion waits behind a busy pool, the batch still held
+// (the resolution frees the op's last-error strings).
 TEST_F(WriteTest, ResultReserveMeasured)
 {
 #if !WRITE_RESERVE_COUNTER
@@ -226,14 +230,144 @@ TEST_F(WriteTest, ResultReserveMeasured)
     tickets.clear();
     batches.clear();
 
-    const double measured = std::max({retained, queued, noCallback});
+    // (5) With a callback, back in the retry lane (an hour away) with the largest LastError the sender keeps; the
+    // batches are gone, so the lane is the ops' only holder besides the test's handles (reserved beforehand).
+    std::vector<std::shared_ptr<wr::OpState> > lane;
+    lane.reserve(N);
+    const auto base5 = liveBytes();
+    for (std::size_t i = 0; i < N; ++i)
+    {
+        auto submit = writer->submit(smallOp(2 * N + i), [counter](const ic::OpResult&) { counter->fetch_add(1); });
+        ASSERT_TRUE(submit.accepted);
+        tickets.push_back(std::move(submit.ticket));
+    }
+    ASSERT_TRUE(sink->waitDispatched(3 * N / PER_BATCH));
+    for (auto& batch : sink->take())
+    {
+        batches.push_back(std::move(batch));
+    }
+    const std::uint64_t laneLines = linesOf(batches);
+    wr::RequeueSpec later;
+    later.countAttempt = true;
+    later.delay = wr::RequeueSpec::Delay::At;
+    later.at = now() + std::chrono::hours(1);
+    for (auto& batch : batches)
+    {
+        std::vector<wr::RequeueOp> ops;
+        ops.reserve(batch.ops.size());
+        for (const auto& op : batch.ops)
+        {
+            lane.push_back(op);
+            ops.push_back(wr::RequeueOp {op,
+                                         wr::LastError {ic::Cause::ItemRetryable,
+                                                        429,
+                                                        std::string(ic::OpResult::MAX_ITEM_ERROR_TYPE, 't'),
+                                                        std::string(ic::OpResult::MAX_REASON, 'r')}});
+        }
+        const auto requeued = batch.bucket->requeue(std::move(ops), later, now());
+        ASSERT_TRUE(requeued.exhausted.empty());
+        ASSERT_TRUE(requeued.closed.empty());
+    }
+    batches.clear();
+    const double inLane =
+        static_cast<double>(liveBytes() - base5 - static_cast<std::int64_t>(laneLines)) / static_cast<double>(N);
+    EXPECT_EQ(stats("b").retained, N) << "in the lane";
+    for (const auto& op : lane)
+    {
+        ASSERT_TRUE(m_path->resolve(op, result));
+    }
+    lane.clear();
+    ASSERT_TRUE(component::eventually([&] { return calls->load() == 2 * N; }, 5s));
+    ASSERT_TRUE(component::eventually([&] { return stats("b").charge == 0; }, 5s));
+    tickets.clear();
+
+    // (6) Requeued with the largest LastError, re-sliced by the scheduler, resolved behind a busy pool.
+    const auto base6 = liveBytes();
+    for (std::size_t i = 0; i < N; ++i)
+    {
+        auto submit = writer->submit(smallOp(3 * N + i), [counter](const ic::OpResult&) { counter->fetch_add(1); });
+        ASSERT_TRUE(submit.accepted);
+        tickets.push_back(std::move(submit.ticket));
+    }
+    ASSERT_TRUE(sink->waitDispatched(4 * N / PER_BATCH));
+    for (auto& batch : sink->take())
+    {
+        batches.push_back(std::move(batch));
+    }
+    wr::RequeueSpec again;
+    again.countAttempt = true;
+    again.delay = wr::RequeueSpec::Delay::Now;
+    std::shared_ptr<wr::Bucket> bucket6;
+    for (auto& batch : batches)
+    {
+        std::vector<wr::RequeueOp> ops;
+        ops.reserve(batch.ops.size());
+        for (const auto& op : batch.ops)
+        {
+            ops.push_back(wr::RequeueOp {op,
+                                         wr::LastError {ic::Cause::ItemRetryable,
+                                                        429,
+                                                        std::string(ic::OpResult::MAX_ITEM_ERROR_TYPE, 't'),
+                                                        std::string(ic::OpResult::MAX_REASON, 'r')}});
+        }
+        bucket6 = batch.bucket;
+        const auto requeued = batch.bucket->requeue(std::move(ops), again, now());
+        ASSERT_TRUE(requeued.exhausted.empty());
+        ASSERT_TRUE(requeued.closed.empty());
+    }
+    batches.clear();
+    ASSERT_NE(bucket6, nullptr);
+    m_path->scheduler()->notify(bucket6);
+    std::size_t resliced = 0;
+    ASSERT_TRUE(component::eventually(
+        [&]
+        {
+            for (auto& batch : sink->take())
+            {
+                resliced += batch.ops.size();
+                batches.push_back(std::move(batch));
+            }
+            return resliced == N;
+        },
+        5s))
+        << resliced << " of " << N << " re-sliced";
+    for (const auto& batch : batches)
+    {
+        for (const auto& op : batch.ops)
+        {
+            ASSERT_EQ(op->lastReason.size(), ic::OpResult::MAX_REASON) << "the op carries its capped last error";
+        }
+    }
+    auto blocker6 = component::Blocker::create();
+    component::ReleaseOnExit releaseOnExit6(blocker6);
+    ASSERT_TRUE(ic::detail::testing::postToPool(blocker6->task()));
+    ASSERT_TRUE(blocker6->waitStarted(1, 5s));
+    for (const auto& batch : batches)
+    {
+        for (const auto& op : batch.ops)
+        {
+            ASSERT_TRUE(m_path->resolve(op, result));
+        }
+    }
+    const double composed = perOp(base6);
+    blocker6->release();
+    ASSERT_TRUE(component::eventually([&] { return calls->load() == 3 * N; }, 5s));
+    ASSERT_TRUE(component::eventually([&] { return stats("b").charge == 0; }, 5s));
+    tickets.clear();
+    batches.clear();
+    bucket6.reset();
+
+    const double measured = std::max({retained, queued, noCallback, inLane, composed});
     std::printf(
         "[ RESERVE  ] bytes per op besides its lines: retained %.1f, queued completion %.1f, after the callback "
-        "(ticket alive) %.1f, no callback %.1f; max %.1f; RESULT_RESERVE %llu\n",
+        "(ticket alive) %.1f, no callback %.1f, requeued in the lane %.1f, requeued then resolved (queued completion) "
+        "%.1f; max %.1f; RESULT_RESERVE %llu\n",
         retained,
         queued,
         afterCallback,
         noCallback,
+        inLane,
+        composed,
         measured,
         static_cast<unsigned long long>(wr::RESULT_RESERVE));
     EXPECT_GT(measured, 0.0) << "the counter saw nothing: is the replacement operator new linked?";
