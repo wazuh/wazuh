@@ -58,6 +58,15 @@ os_info *get_win_version();
 
 
 /**
+ * @brief Translate a Windows PROCESSOR_ARCHITECTURE value into the reported architecture.
+ *
+ * @param processor_arch Value of PROCESSOR_ARCHITECTURE (e.g. "AMD64", "ARM64", "x86").
+ * @return Architecture name, or NULL if the value is not recognized.
+ */
+const char *win_processor_arch_to_machine(const char *processor_arch);
+
+
+/**
  * @brief Get the version information. (UNIX based systems).
  *
  * @return Pointer to allocated os_info struct.

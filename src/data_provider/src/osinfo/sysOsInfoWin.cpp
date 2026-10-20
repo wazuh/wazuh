@@ -185,24 +185,8 @@ static std::string getName()
 
 static std::string getMachine()
 {
-    static const std::map<std::string, std::string> ARCH_MAP
-    {
-        {"AMD64",   "x86_64"},
-        {"IA64",    "x86_64"},
-        {"ARM64",   "x86_64"},
-        {"x86",     "i686"},
-    };
-    std::string machine { UNKNOWN_VALUE };
     Utils::Registry environment{HKEY_LOCAL_MACHINE, R"(System\CurrentControlSet\Control\Session Manager\Environment)"};
-    const auto arch{environment.string("PROCESSOR_ARCHITECTURE")};
-    const auto it{ARCH_MAP.find(arch)};
-
-    if (it != ARCH_MAP.end())
-    {
-        machine = it->second;
-    }
-
-    return machine;
+    return SysOsInfoProviderWindows::machineFromProcessorArchitecture(environment.string("PROCESSOR_ARCHITECTURE"));
 }
 
 static std::string getNodeName()
