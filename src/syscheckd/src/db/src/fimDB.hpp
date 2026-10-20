@@ -17,7 +17,9 @@
 #include <condition_variable>
 #include <mutex>
 #include <shared_mutex>
+#include <string>
 #include <thread>
+#include <vector>
 
 #ifdef __cplusplus
 extern "C"
@@ -115,6 +117,86 @@ constexpr auto CREATE_TABLE_METADATA_DB_STATEMENT
     last_sync_time INTEGER NOT NULL
     );)"
 };
+
+/// Schema changes applied to a database that already exists, in order.
+///
+/// DBSync derives the schema version from this list: a database reports
+/// PRAGMA user_version, and every entry from that point on is applied to it.
+/// Three properties, all load-bearing:
+///
+///  - One entry is one SCRIPT. It runs through sqlite3_exec inside a
+///    transaction that also carries the version bump, so a step is
+///    all-or-nothing. A script must not open a transaction of its own.
+///  - This list is APPEND-ONLY, permanently. An agent may skip releases, so it
+///    replays the vector from wherever its own database stopped.
+///  - The DDL below is written out LITERALLY rather than taken from the
+///    constants above. An edit to a constant must not reach a migration that
+///    has already run on real agents; it earns a new entry instead.
+///
+/// Lives here rather than inside DB::init so a test can reach the real vector
+/// instead of keeping a copy of it that would drift.
+inline const std::vector<std::string>& fimDbUpgradeStatements()
+{
+    static const std::vector<std::string> STATEMENTS
+    {
+        // v1 -> v2: store a container's context once, rather than stamping a
+        // copy of it onto every file row that container owns.
+        CREATE_CONTAINER_CONTEXT_DB_STATEMENT,
+
+        // v2 -> v3: container_id joins the primary key, which SQLite cannot
+        // alter in place on a WITHOUT ROWID table, so file_entry is rebuilt:
+        // rename the old one aside, create the new shape under its final name,
+        // copy the rows with container_id = '', drop the old one.
+        //
+        // Rename-aside-then-create rather than create-then-rename, because
+        // ALTER TABLE ... RENAME rewrites sqlite_master with the table name
+        // quoted, and a migrated database would then differ textually from a
+        // freshly created one forever.
+        //
+        // Both indexes follow file_entry through the rename, keeping their
+        // names, so CREATE INDEX must come after the old table is dropped --
+        // otherwise the names are still taken, IF NOT EXISTS makes the creates
+        // silent no-ops, and DROP TABLE then takes the only real indexes with
+        // it, leaving file_entry unindexed and no error anywhere. The explicit
+        // DROP INDEX keeps that true if the order is ever disturbed.
+        //
+        // Columns are enumerated rather than copied with SELECT *, because a
+        // live table also carries db_status_field_dm, which
+        // initializeStatusField() adds lazily on first use. It is
+        // per-transaction state, so dropping it here is correct.
+        R"(DROP TABLE IF EXISTS file_entry_upgrade_v3_old;
+ALTER TABLE file_entry RENAME TO file_entry_upgrade_v3_old;
+DROP INDEX IF EXISTS path_index;
+DROP INDEX IF EXISTS inode_index;
+CREATE TABLE IF NOT EXISTS file_entry (
+    container_id TEXT NOT NULL DEFAULT '',
+    path TEXT NOT NULL,
+    checksum TEXT NOT NULL,
+    device INTEGER,
+    inode INTEGER,
+    size INTEGER,
+    permissions TEXT,
+    attributes TEXT,
+    uid TEXT,
+    gid TEXT,
+    owner TEXT,
+    group_ TEXT,
+    hash_md5 TEXT,
+    hash_sha1 TEXT,
+    hash_sha256 TEXT,
+    mtime INTEGER,
+    version INTEGER NOT NULL DEFAULT 1,
+    sync INTEGER DEFAULT 0,
+    PRIMARY KEY(container_id, path)) WITHOUT ROWID;
+INSERT INTO file_entry (container_id,path,checksum,device,inode,size,permissions,attributes,uid,gid,owner,group_,hash_md5,hash_sha1,hash_sha256,mtime,version,sync)
+    SELECT '',path,checksum,device,inode,size,permissions,attributes,uid,gid,owner,group_,hash_md5,hash_sha1,hash_sha256,mtime,version,sync FROM file_entry_upgrade_v3_old;
+DROP TABLE file_entry_upgrade_v3_old;
+CREATE INDEX IF NOT EXISTS path_index ON file_entry (path);
+CREATE INDEX IF NOT EXISTS inode_index ON file_entry (device, inode);)",
+    };
+
+    return STATEMENTS;
+}
 
 class FIMDB
 {
