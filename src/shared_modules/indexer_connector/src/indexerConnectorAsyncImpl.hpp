@@ -20,6 +20,7 @@
 #include "reflectiveJson.hpp"
 #include "secureCommunication.hpp"
 #include "simdjson.h"
+#include <chrono>
 #include <mutex>
 #include <optional>
 #include <string>
@@ -48,6 +49,7 @@ inline void appendEscapedId(std::string& bulkData, std::string_view id)
 constexpr auto HTTP_VERSION_CONFLICT {409};
 constexpr auto HTTP_CONTENT_LENGTH {413};
 constexpr auto HTTP_TOO_MANY_REQUESTS {429};
+constexpr auto HTTP_SERVICE_UNAVAILABLE {503};
 
 // Overhead is the fixed JSON scaffolding for one bulk item:
 // {"index":{"_index":"<index>","id":"<id>"}}
@@ -105,10 +107,12 @@ template<typename TSelector,
          size_t FlushInterval = 20,
          size_t RetryDelay = 1,
          size_t MaxSuccessCount = 5,
-         size_t MaxRetryDelay = 15>
+         size_t MaxRetryDelay = 15,
+         size_t MaxUnavailableRetries = 10>
 class IndexerConnectorAsyncImpl final
 {
     static_assert(RetryDelay > 0, "RetryDelay must be greater than 0");
+    static_assert(MaxUnavailableRetries > 0, "MaxUnavailableRetries must be greater than 0");
 
     SecureCommunication m_secureCommunication;
     std::unique_ptr<TSelector> m_selector;
@@ -121,12 +125,30 @@ class IndexerConnectorAsyncImpl final
     bool m_error413Logged {false};
     bool m_loggerDropLogged {false};
     size_t m_successCount {0};
+    /// Consecutive HTTP 503 answers to the _bulk request at the head of the queue. Reset by any
+    /// other HTTP outcome. Touched only from the processor and its callbacks, which run on the
+    /// queue's dispatch thread, so it needs no synchronization.
+    size_t m_consecutiveUnavailable {0};
+    /// Discard log window (dispatch thread only, like m_consecutiveUnavailable): the first discard
+    /// is logged with a WARN and opens the window; later ones are accumulated per cause and
+    /// summarized at most once every m_discardSummaryInterval seconds.
+    bool m_discardWindowOpen {false};
+    std::chrono::steady_clock::time_point m_discardWindowStart {};
+    size_t m_pendingDiscardEvents {0};
+    size_t m_pendingDiscardBatches {0};
+    size_t m_pendingDiscard500 {0};
+    size_t m_pendingDiscard502 {0};
+    size_t m_pendingDiscard504 {0};
+    size_t m_pendingDiscard503Exhausted {0};
+    size_t m_pendingDiscardOther {0};
     size_t m_maxQueueBytes {0};
     size_t m_flushInterval {FlushInterval};
     size_t m_bulkMaxBytes {BulkMaxBytes};
     size_t m_loggerQueueSize {DEFAULT_LOGGER_QUEUE_SIZE};
     size_t m_loggerThreads {DEFAULT_LOGGER_THREADS};
     size_t m_maxRetryDelay {MaxRetryDelay};
+    /// Minimum seconds between two "Discards continue" summaries (test hook, 30 in production).
+    size_t m_discardSummaryInterval {30};
     /// Fallback for 'request_timeout_seconds' when the configuration has no opinion.
     static constexpr long DEFAULT_REQUEST_TIMEOUT_SECONDS {60};
     /// Upper bound in milliseconds for one data request against the indexer
@@ -190,9 +212,11 @@ public:
         std::unique_ptr<TSelector> selector = nullptr,
         std::string callerName = "",
         std::optional<SecureCommunication> secureCommunication = std::nullopt,
-        IndexerBulkQueue::PauseObserver pauseObserver = {})
+        IndexerBulkQueue::PauseObserver pauseObserver = {},
+        size_t discardSummaryIntervalSec = 30)
         : m_httpRequest(httpRequest ? httpRequest : &THttpRequest::instance())
         , m_logFn {}
+        , m_discardSummaryInterval(discardSummaryIntervalSec)
     {
         m_logFn = LogFn {callerName}.compose("indexer-connector");
         // Install caller context so sub-objects (queues, dispatchers) pick up the right base tag
@@ -516,6 +540,10 @@ public:
                         m_successCount++;
                     }
 
+                    // Any HTTP answer other than 503 ends a run of consecutive 503s.
+                    m_consecutiveUnavailable = 0;
+                    maybeLogDiscardSummary();
+
                     // Fast path: when the bulk head reports "errors":false there is nothing to
                     // log — drop payload and response right here instead of parking a full copy
                     // of both in the logger queue (the main RSS driver under sustained load).
@@ -542,11 +570,13 @@ public:
                     }
                 };
 
-                const auto onError =
-                    [this, &bulkData](const std::string& error, const long statusCode, const std::string& responseBody)
+                const auto onError = [this, &bulkData, bulkSize](const std::string& error,
+                                                                 const long statusCode,
+                                                                 const std::string& responseBody)
                 {
                     if (statusCode == HTTP_CONTENT_LENGTH)
                     {
+                        m_consecutiveUnavailable = 0;
                         constexpr size_t MINIMAL_BULK_BYTES {4096};
                         LOGFN_DEBUG2(m_logFn, "Received 413 error (Payload Too Large). Reducing bulk threshold.");
                         const auto currentBulkMax = m_queue->bulkMaxBytes();
@@ -581,11 +611,13 @@ public:
                     }
                     else if (statusCode == HTTP_VERSION_CONFLICT)
                     {
+                        m_consecutiveUnavailable = 0;
                         LOGFN_DEBUG2(m_logFn, "Document version conflict, retrying with exponential backoff.");
                         throw IndexerConnectorException(error);
                     }
                     else if (statusCode == HTTP_TOO_MANY_REQUESTS)
                     {
+                        m_consecutiveUnavailable = 0;
                         LOGFN_DEBUG2(m_logFn, "Too many requests, retrying with exponential backoff.");
                         throw IndexerConnectorException(error);
                     }
@@ -593,6 +625,7 @@ public:
                     {
                         // No HTTP response at all (timeout, connection refused, TLS failure):
                         // Discarding here would turn every transient outage into silent data loss.
+                        m_consecutiveUnavailable = 0;
                         LOGFN_DEBUG2(m_logFn,
                                      "Transport-level failure, no HTTP status received (code %ld): %s. "
                                      "Requeueing the batch for retry.",
@@ -600,12 +633,39 @@ public:
                                      error.c_str());
                         throw IndexerConnectorException(error);
                     }
+                    else if (statusCode == HTTP_SERVICE_UNAVAILABLE)
+                    {
+                        // 503: the indexer refused the request (e.g. no master, shards unassigned) without
+                        // processing it, so it is safe to retry - but not forever. The queue requeues the
+                        // batch at the front, so consecutive 503s are answers to the same head batch.
+                        // Accepted imprecision: if the bulk threshold changes between attempts or the head
+                        // absorbs newer items, the discarded batch may hold items tried fewer times.
+                        if (++m_consecutiveUnavailable < MaxUnavailableRetries)
+                        {
+                            LOGFN_DEBUG2(m_logFn,
+                                         "Service unavailable (attempt %zu of %zu), retrying with exponential "
+                                         "backoff.",
+                                         m_consecutiveUnavailable,
+                                         MaxUnavailableRetries);
+                            throw IndexerConnectorException(error);
+                        }
+                        // Retries exhausted: discard. Note the queue's backoff stays high after this
+                        // discard (only reportHealthyResponse() resets it, and a 503 is not a healthy
+                        // response), and each retry also waits for the next flush (the requeued batch
+                        // does not fill the bulk threshold). Under a persistent 503 each following batch
+                        // takes about (MaxUnavailableRetries - 1) x (max retry delay + flush interval) to
+                        // be discarded, not the ramp-up time of the first one.
+                        m_consecutiveUnavailable = 0;
+                        discardBatch(statusCode, bulkSize, error, responseBody, true);
+                        return;
+                    }
                     else
                     {
-                        LOGFN_WARN(m_logFn,
-                                   "%s, status code: %ld. Discarding event(s) in this batch.",
-                                   error.c_str(),
-                                   statusCode);
+                        // 500, 502, 504 and any other status: not retried. 502/504 may mean the indexer
+                        // processed the bulk but the answer was lost; resending would duplicate documents
+                        // in data streams, which have no _id.
+                        m_consecutiveUnavailable = 0;
+                        discardBatch(statusCode, bulkSize, error, responseBody, false);
                     }
                 };
 
@@ -1129,5 +1189,130 @@ public:
         }
 
         return hitsResult;
+    }
+
+private:
+    /**
+     * @brief Discards a batch after an indexer response: counts it in getDroppedEvents() and logs it
+     * with one WARN that opens a window plus, while discards continue, a summary at most once every
+     * m_discardSummaryInterval seconds (see maybeLogDiscardSummary()). Dispatch thread only.
+     *
+     * @param statusCode HTTP status of the _bulk response.
+     * @param events Number of events in the discarded batch.
+     * @param error Error message of the request.
+     * @param responseBody Body of the response (logged at DEBUG2 only).
+     * @param exhausted True when the batch is discarded after MaxUnavailableRetries consecutive 503.
+     */
+    void discardBatch(const long statusCode,
+                      const size_t events,
+                      const std::string& error,
+                      const std::string& responseBody,
+                      const bool exhausted)
+    {
+        m_queue->recordDiscarded(events);
+
+        LOGFN_DEBUG1(
+            m_logFn, "Bulk request discarded: HTTP %ld, %zu event(s), error: %s.", statusCode, events, error.c_str());
+        LOGFN_DEBUG2(m_logFn, "Discarded bulk response body: %s", responseBody.c_str());
+
+        if (!m_discardWindowOpen)
+        {
+            if (exhausted)
+            {
+                LOGFN_WARN(m_logFn,
+                           "Discarding %zu event(s): bulk request answered HTTP %ld on %zu consecutive attempts. "
+                           "Further discards are summarized every %zu seconds.",
+                           events,
+                           statusCode,
+                           MaxUnavailableRetries,
+                           m_discardSummaryInterval);
+            }
+            else
+            {
+                LOGFN_WARN(m_logFn,
+                           "Discarding %zu event(s): bulk request answered HTTP %ld. "
+                           "Further discards are summarized every %zu seconds.",
+                           events,
+                           statusCode,
+                           m_discardSummaryInterval);
+            }
+            m_discardWindowOpen = true;
+            m_discardWindowStart = std::chrono::steady_clock::now();
+            return;
+        }
+
+        m_pendingDiscardEvents += events;
+        ++m_pendingDiscardBatches;
+        if (exhausted)
+        {
+            m_pendingDiscard503Exhausted += events;
+        }
+        else if (statusCode == 500)
+        {
+            m_pendingDiscard500 += events;
+        }
+        else if (statusCode == 502)
+        {
+            m_pendingDiscard502 += events;
+        }
+        else if (statusCode == 504)
+        {
+            m_pendingDiscard504 += events;
+        }
+        else
+        {
+            m_pendingDiscardOther += events;
+        }
+
+        maybeLogDiscardSummary();
+    }
+
+    /**
+     * @brief Closes the discard log window once m_discardSummaryInterval seconds have passed since it
+     * was opened or last summarized: with pending discards it logs a "Discards continue" summary and
+     * starts a new window; without them it closes the window, so the next discard logs a fresh WARN.
+     * Evaluated on the next discard or the next successful response (no timer of its own), so the
+     * reliable figure is getDroppedEvents(), not the log. Dispatch thread only.
+     */
+    void maybeLogDiscardSummary()
+    {
+        if (!m_discardWindowOpen)
+        {
+            return;
+        }
+
+        const auto now = std::chrono::steady_clock::now();
+        const auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - m_discardWindowStart);
+        if (elapsed < std::chrono::seconds(m_discardSummaryInterval))
+        {
+            return;
+        }
+
+        if (m_pendingDiscardBatches == 0)
+        {
+            m_discardWindowOpen = false;
+            return;
+        }
+
+        LOGFN_WARN(m_logFn,
+                   "Discards continue: %zu event(s) in %zu batch(es) in the last %lld seconds (HTTP 500: %zu, "
+                   "502: %zu, 504: %zu, 503 retries exhausted: %zu, other: %zu).",
+                   m_pendingDiscardEvents,
+                   m_pendingDiscardBatches,
+                   static_cast<long long>(elapsed.count()),
+                   m_pendingDiscard500,
+                   m_pendingDiscard502,
+                   m_pendingDiscard504,
+                   m_pendingDiscard503Exhausted,
+                   m_pendingDiscardOther);
+
+        m_pendingDiscardEvents = 0;
+        m_pendingDiscardBatches = 0;
+        m_pendingDiscard500 = 0;
+        m_pendingDiscard502 = 0;
+        m_pendingDiscard504 = 0;
+        m_pendingDiscard503Exhausted = 0;
+        m_pendingDiscardOther = 0;
+        m_discardWindowStart = now;
     }
 };
