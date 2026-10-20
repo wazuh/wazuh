@@ -38,7 +38,8 @@ set(INDEXER_CLIENT_SOURCES
     src/write/bucket.cpp
     src/write/scheduler.cpp
     src/write/sink.cpp
-    src/write/writer.cpp)
+    src/write/writer.cpp
+    src/write/response.cpp)
 
 # Two compilations of the same sources (I45b): the production objects behind the .so carry no test seam; the
 # testing objects (INDEXER_CLIENT_TESTING + src/testing/) build a static library that only the component suite links,
@@ -59,7 +60,9 @@ function(indexer_client_objects name)
             # loggerHelper.h (I56) and what it pulls in (commonDefs.h -> cJSON.h); never seen by the public headers.
             ${SRC_FOLDER}/shared_modules/utils
             ${SRC_FOLDER}/shared_modules/common
-            ${SRC_FOLDER}/external/cJSON)
+            ${SRC_FOLDER}/external/cJSON
+            # The bulk-response classifier (E3b-1 I65); never seen by the public headers.
+            ${SRC_FOLDER}/external/simdjson/include)
   # Only INDEXER_CLIENT_API symbols are exported. asio's headers force default visibility unless
   # ASIO_DISABLE_VISIBILITY is set (measured in the E0 spike: 159 asio symbols exported without it).
   target_compile_options(${name} PRIVATE -fvisibility=hidden -fvisibility-inlines-hidden)
@@ -76,7 +79,10 @@ target_include_directories(indexer_client PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/inc
 target_compile_features(indexer_client PUBLIC cxx_std_17)
 # --exclude-libs localizes whatever arrives from static archives; wazuhext is the process's single curl/OpenSSL (I44).
 target_link_options(indexer_client PRIVATE "LINKER:--exclude-libs,ALL" "LINKER:--no-undefined")
-target_link_libraries(indexer_client PRIVATE wazuhext ext_asio Threads::Threads)
+# simdjson (the bulk-response classifier, E3b-1 I65): the prebuilt static archive the v1 links too; its symbols stay
+# local (--exclude-libs,ALL). Linked on the final targets: an OBJECT library's link does not reach $<TARGET_OBJECTS>.
+set(INDEXER_CLIENT_SIMDJSON ${SRC_FOLDER}/external/simdjson/build/libsimdjson.a)
+target_link_libraries(indexer_client PRIVATE wazuhext ext_asio Threads::Threads ${INDEXER_CLIENT_SIMDJSON})
 set_target_properties(indexer_client PROPERTIES BUILD_RPATH_USE_ORIGIN TRUE BUILD_RPATH "$ORIGIN/../lib")
 
 # Test-only: the same sources with the seams compiled in. Configuration comes through IConfigSource only (I26c).
@@ -86,7 +92,7 @@ target_include_directories(
                                 ${CMAKE_CURRENT_SOURCE_DIR}/src ${SRC_FOLDER}/external/curl/include)
 target_compile_definitions(indexer_client_testing PUBLIC INDEXER_CLIENT_TESTING)
 target_compile_features(indexer_client_testing PUBLIC cxx_std_17)
-target_link_libraries(indexer_client_testing PUBLIC wazuhext ext_asio Threads::Threads)
+target_link_libraries(indexer_client_testing PUBLIC wazuhext ext_asio Threads::Threads ${INDEXER_CLIENT_SIMDJSON})
 
 if(UNIT_TEST)
   add_subdirectory(tests)

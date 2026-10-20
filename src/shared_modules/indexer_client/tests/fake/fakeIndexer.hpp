@@ -28,6 +28,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <ctime>
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -83,6 +84,11 @@ namespace indexer_client::testing
         std::size_t chunkSize {16 * 1024};
         /// Close the connection after this many body bytes, before the declared length (or the final chunk).
         std::optional<std::size_t> cutAfter;
+        /// Dynamic answer: when set, it is called once per matched request, outside the fake's lock and before #hold
+        /// and #latency, with the request and a copy of this rule; it may rewrite any response field of that copy
+        /// (status, body, retryAfter, hold, latency, framing...). The rule's own fields are never modified. See
+        /// bulkResponder.hpp.
+        std::function<void(const httplib::Request&, Rule&)> dynamic;
     };
 
     /**
@@ -675,6 +681,13 @@ namespace indexer_client::testing
                     matched = rule;
                     break;
                 }
+            }
+            // A dynamic rule runs before the "received" event, so a waiter that then reads the responder's counters
+            // (BulkResponder::received(), answered()) sees this request (G-diff E3b-1 obj. 7).
+            if (matched.dynamic)
+            {
+                const auto dynamic = matched.dynamic; // the call may overwrite matched.dynamic itself
+                dynamic(req, matched);
             }
             m_cv.notify_all(); // the "received" event
 

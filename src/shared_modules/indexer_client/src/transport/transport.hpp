@@ -105,6 +105,9 @@ namespace indexer_client::detail
         std::uint64_t uploadedBytes {0};
     };
 
+    /// Spare capacity every HttpResult::body carries past its size (the bulk classifier parses in place, E3b-1 I65).
+    constexpr std::size_t RESPONSE_PADDING = 64;
+
     /// Runs on a CPU-pool thread (`ic-cpu-*`), exactly once per admitted request, never on a network thread.
     using ResultCallback = std::function<void(HttpResult&&)>;
 

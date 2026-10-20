@@ -183,7 +183,7 @@ namespace indexer_client::detail::write
         /// documents). Adds at once the credit of the k - 1 empty rounds classic DRR would still spin through, k being
         /// the fewest rounds after which some bucket covers its head; the next turn adds the k-th. Same outcome, no
         /// spin.
-        void fastForward(SchedulerShared& shared)
+        void fastForward(SchedulerShared& shared, TimePoint now)
         {
             std::uint64_t rounds = 0;
             for (const auto& key : shared.ring)
@@ -194,7 +194,7 @@ namespace indexer_client::detail::write
                 {
                     continue;
                 }
-                const auto head = bucket->headBytes();
+                const auto head = bucket->headBytes(now);
                 const auto perRound = static_cast<std::uint64_t>(bucket->spec().weight) * shared.quantum;
                 if (head <= it->second.credit || perRound == 0)
                 {
@@ -257,7 +257,7 @@ namespace indexer_client::detail::write
                 const auto batchesBefore = shared->batches.load();
                 for (;;)
                 {
-                    const auto head = bucket->headBytes();
+                    const auto head = bucket->headBytes(now);
                     if (head == 0 || entry.credit < head || !bucket->eligible(now))
                     {
                         break;
@@ -267,7 +267,7 @@ namespace indexer_client::detail::write
                         capacityExhausted = true;
                         break;
                     }
-                    auto batch = bucket->slice(entry.credit);
+                    auto batch = bucket->slice(entry.credit, now);
                     if (batch.ops.empty())
                     {
                         stuck = true; // Never expected (slice takes the head when the credit covers it).
@@ -304,7 +304,7 @@ namespace indexer_client::detail::write
                     }
                     else if (++idleTurns >= shared->ring.size())
                     {
-                        fastForward(*shared);
+                        fastForward(*shared, now);
                         idleTurns = 0;
                     }
                 }
