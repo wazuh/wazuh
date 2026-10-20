@@ -17,6 +17,7 @@
 #include "makeUnique.h"
 #include "test_inputs.h"
 #include "cjsonSmartDeleter.hpp"
+#include "sqlite3.h"
 
 constexpr auto DATABASE_TEMP {"TEMP.db"};
 constexpr auto DATABASE_MEMORY {":memory:"};
@@ -2543,6 +2544,164 @@ TEST_F(DBSyncTest, TestUpgrade)
     };
 
     EXPECT_NO_THROW(dbSync->selectRows(selectQuery.query(), selectCallbackData));
+}
+
+/// Reads PRAGMA user_version straight from the file, so the assertions below do not
+/// depend on the same code path they are checking.
+static int readUserVersion(const char* path)
+{
+    sqlite3* db {nullptr};
+    int version {-1};
+
+    if (SQLITE_OK == sqlite3_open(path, &db))
+    {
+        sqlite3_stmt* stmt {nullptr};
+
+        if (SQLITE_OK == sqlite3_prepare_v2(db, "PRAGMA user_version;", -1, &stmt, nullptr))
+        {
+            if (SQLITE_ROW == sqlite3_step(stmt))
+            {
+                version = sqlite3_column_int(stmt, 0);
+            }
+
+            sqlite3_finalize(stmt);
+        }
+    }
+
+    sqlite3_close(db);
+    return version;
+}
+
+static bool tableExists(const char* path, const char* table)
+{
+    sqlite3* db {nullptr};
+    bool found {false};
+
+    if (SQLITE_OK == sqlite3_open(path, &db))
+    {
+        sqlite3_stmt* stmt {nullptr};
+        const auto query {"SELECT 1 FROM sqlite_master WHERE type='table' AND name=?;"};
+
+        if (SQLITE_OK == sqlite3_prepare_v2(db, query, -1, &stmt, nullptr))
+        {
+            sqlite3_bind_text(stmt, 1, table, -1, SQLITE_STATIC);
+            found = (SQLITE_ROW == sqlite3_step(stmt));
+            sqlite3_finalize(stmt);
+        }
+    }
+
+    sqlite3_close(db);
+    return found;
+}
+
+TEST_F(DBSyncTest, TestUpgradeRunsEveryStatementOfAnEntry)
+{
+    const auto sql{"CREATE TABLE simple_test(`name` TEXT, `value` BIGINT, PRIMARY KEY (`name`));"};
+    std::vector<std::string> updates;
+
+    auto dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql, DbManagement::PERSISTENT, updates);
+    dbSync.reset();
+
+    // A schema change that takes more than one statement has to land as one step; the
+    // upgrade used to prepare and step once, silently applying only the first.
+    updates.push_back("CREATE TABLE step_a(`x` TEXT);"
+                      "CREATE TABLE step_b(`y` TEXT);"
+                      "CREATE TABLE step_c(`z` TEXT);");
+
+    EXPECT_NO_THROW(dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql, DbManagement::PERSISTENT, updates));
+    dbSync.reset();
+
+    EXPECT_TRUE(tableExists(DATABASE_TEMP, "step_a"));
+    EXPECT_TRUE(tableExists(DATABASE_TEMP, "step_b"));
+    EXPECT_TRUE(tableExists(DATABASE_TEMP, "step_c"));
+    EXPECT_EQ(2, readUserVersion(DATABASE_TEMP));
+}
+
+TEST_F(DBSyncTest, TestUpgradeStepIsAllOrNothing)
+{
+    const auto sql{"CREATE TABLE simple_test(`name` TEXT, `value` BIGINT, PRIMARY KEY (`name`));"};
+    std::vector<std::string> updates;
+
+    auto dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql, DbManagement::PERSISTENT, updates);
+    dbSync.reset();
+
+    // The first statement succeeds, the second cannot. Neither may survive, and the
+    // version must not advance, or the next start would resume past a step that never ran.
+    updates.push_back("CREATE TABLE half_applied(`x` TEXT);"
+                      "INSERT INTO no_such_table VALUES(1);");
+
+    EXPECT_ANY_THROW(dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql, DbManagement::PERSISTENT, updates));
+    dbSync.reset();
+
+    EXPECT_FALSE(tableExists(DATABASE_TEMP, "half_applied"));
+    EXPECT_EQ(1, readUserVersion(DATABASE_TEMP));
+}
+
+TEST_F(DBSyncTest, TestUpgradeRejectsADatabaseAheadOfTheSchema)
+{
+    const auto sql{"CREATE TABLE simple_test(`name` TEXT, `value` BIGINT, PRIMARY KEY (`name`));"};
+    std::vector<std::string> updates
+    {
+        "CREATE TABLE ahead_a(`x` TEXT);",
+        "CREATE TABLE ahead_b(`y` TEXT);"
+    };
+
+    auto dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql, DbManagement::PERSISTENT, updates);
+    dbSync.reset();
+    EXPECT_EQ(3, readUserVersion(DATABASE_TEMP));
+
+    // An older build must refuse a database it cannot know the shape of, rather than
+    // writing to it on the assumption that its own schema applies.
+    const std::vector<std::string> noUpdates;
+    EXPECT_ANY_THROW(dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql, DbManagement::PERSISTENT, noUpdates));
+}
+
+TEST_F(DBSyncTest, TestUpgradeResumesFromAPartialUpgrade)
+{
+    const auto sql{"CREATE TABLE simple_test(`name` TEXT, `value` BIGINT, PRIMARY KEY (`name`));"};
+    // No IF NOT EXISTS anywhere: replaying an entry that already ran would throw.
+    const std::string entry1 {"CREATE TABLE marker_one(`x` TEXT);"};
+    const std::string entry2 {"CREATE TABLE marker_two(`x` TEXT);"};
+    const std::string entry3 {"CREATE TABLE marker_three(`x` TEXT);"};
+
+    std::vector<std::string> updates {entry1};
+    auto dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql, DbManagement::PERSISTENT, updates);
+    dbSync.reset();
+
+    // A database built from nothing takes the create statement and is stamped
+    // at the current version directly -- it never replays the upgrade list, so
+    // entry1 does not run here. That is what obliges the create statement to
+    // keep producing the same schema the list builds up to.
+    EXPECT_EQ(2, readUserVersion(DATABASE_TEMP));
+    EXPECT_FALSE(tableExists(DATABASE_TEMP, "marker_one"));
+
+    updates.push_back(entry2);
+    updates.push_back(entry3);
+    EXPECT_NO_THROW(dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql, DbManagement::PERSISTENT, updates));
+    dbSync.reset();
+
+    // Resumed from version 2: the two new entries ran, and the one already
+    // accounted for did not -- it has no IF NOT EXISTS, so a replay would throw.
+    EXPECT_FALSE(tableExists(DATABASE_TEMP, "marker_one"));
+    EXPECT_TRUE(tableExists(DATABASE_TEMP, "marker_two"));
+    EXPECT_TRUE(tableExists(DATABASE_TEMP, "marker_three"));
+    EXPECT_EQ(4, readUserVersion(DATABASE_TEMP));
+}
+
+TEST_F(DBSyncTest, TestUpgradeAtCurrentVersionIsANoOp)
+{
+    const auto sql{"CREATE TABLE simple_test(`name` TEXT, `value` BIGINT, PRIMARY KEY (`name`));"};
+    const std::vector<std::string> updates {"CREATE TABLE once_only(`x` TEXT);"};
+
+    auto dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql, DbManagement::PERSISTENT, updates);
+    dbSync.reset();
+
+    // Re-opening at the current version must not replay anything; the entry has no
+    // IF NOT EXISTS, so a replay would throw.
+    EXPECT_NO_THROW(dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql, DbManagement::PERSISTENT, updates));
+    dbSync.reset();
+
+    EXPECT_EQ(2, readUserVersion(DATABASE_TEMP));
 }
 
 TEST_F(DBSyncTest, IncreaseEachEntryVersionSuccess)

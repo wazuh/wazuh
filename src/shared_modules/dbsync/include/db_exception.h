@@ -39,6 +39,7 @@ DBSyncExceptionType DELETE_OLD_DB_ERROR            { std::make_pair(20, "Error d
 DBSyncExceptionType MIN_ROW_LIMIT_BELOW_ZERO       { std::make_pair(21, "Invalid row limit, values below 0 not allowed.")       };
 DBSyncExceptionType ERROR_COUNT_MAX_ROWS           { std::make_pair(22, "Count is less than 0.")                                };
 DBSyncExceptionType STEP_ERROR_UPDATE_STMT         { std::make_pair(23, "Error upgrading DB.")                                  };
+DBSyncExceptionType DB_VERSION_AHEAD_OF_SCHEMA     { std::make_pair(24, "DB was written by a newer schema than this build.")    };
 
 namespace DbSync
 {
