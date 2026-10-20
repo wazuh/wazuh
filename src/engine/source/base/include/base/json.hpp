@@ -5,9 +5,11 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <cstring>
 #include <functional>
 #include <iostream>
 #include <memory>
+#include <new>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -28,10 +30,58 @@
 namespace json
 {
 
+/**
+ * @brief Base allocator of every engine JSON document: rapidjson's CrtAllocator, but an allocation failure throws
+ * std::bad_alloc instead of returning a null block that rapidjson would write through.
+ */
+struct BaseAllocator : rapidjson::CrtAllocator
+{
+    void* Malloc(size_t size)
+    {
+        void* block = rapidjson::CrtAllocator::Malloc(size);
+        if (block == nullptr && size != 0)
+        {
+            throw std::bad_alloc();
+        }
+        return block;
+    }
+
+    void* Realloc(void* originalPtr, size_t originalSize, size_t newSize)
+    {
+        void* block = rapidjson::CrtAllocator::Realloc(originalPtr, originalSize, newSize);
+        if (block == nullptr && newSize != 0)
+        {
+            throw std::bad_alloc();
+        }
+        return block;
+    }
+};
+
+using Allocator = rapidjson::MemoryPoolAllocator<BaseAllocator>; ///< Pool allocator of the engine documents.
+using Document = rapidjson::GenericDocument<rapidjson::UTF8<>, Allocator, BaseAllocator>;
+using Value = rapidjson::GenericValue<rapidjson::UTF8<>, Allocator>;
+using Pointer = rapidjson::GenericPointer<Value>;
+using Reader = rapidjson::GenericReader<rapidjson::UTF8<>, rapidjson::UTF8<>, BaseAllocator>;
+using StringBuffer = rapidjson::GenericStringBuffer<rapidjson::UTF8<>, BaseAllocator>;
+
+} // namespace json
+
+namespace rapidjson
+{
+/// rapidjson specialises PutN() (indentation of PrettyWriter) with memset only for its default StringBuffer
+inline void PutN(json::StringBuffer& stream, char c, size_t n)
+{
+    std::memset(stream.Push(n), c, n * sizeof(c));
+}
+} // namespace rapidjson
+
+namespace json
+{
+
 class PointerPath
 {
 private:
-    rapidjson::Pointer m_pointer; ///< RapidJSON pointer object, used for JSON access. Initialized from m_path.
+    json::Pointer m_pointer; ///< RapidJSON pointer object, used for JSON access. Initialized from m_path.
 
 public:
     /**
@@ -59,16 +109,16 @@ public:
     {
     }
 
-    // Copy and move (rapidjson::Pointer is copyable)
+    // Copy and move (json::Pointer is copyable)
     PointerPath(const PointerPath&) = default;
     PointerPath& operator=(const PointerPath&) = default;
     PointerPath(PointerPath&&) noexcept = default;
     PointerPath& operator=(PointerPath&&) noexcept = default;
 
-    // Implicit conversion to rapidjson::Pointer
-    operator const rapidjson::Pointer&() const { return m_pointer; }
-    // Explicit getter for the rapidjson::Pointer, if needed.
-    const rapidjson::Pointer& getPointer() const { return m_pointer; }
+    // Implicit conversion to json::Pointer
+    operator const json::Pointer&() const { return m_pointer; }
+    // Explicit getter for the json::Pointer, if needed.
+    const json::Pointer& getPointer() const { return m_pointer; }
 };
 
 inline const PointerPath ROOT_PP {""}; ///< Constant PointerPath representing the root of the JSON document.
@@ -90,7 +140,7 @@ constexpr bool NOT_RECURSIVE {false};
  * @brief JSON document wrapper around RapidJSON.
  *
  * Provides a high-level, type-safe API for creating, querying and manipulating
- * JSON documents.  Internally uses a `rapidjson::Document` for storage.
+ * JSON documents.  Internally uses a `json::Document` for storage.
  * Paths are expressed as JSON Pointer strings (e.g. "/a/b/0").
  */
 class Json
@@ -193,9 +243,9 @@ private:
     // document (which references the allocator) goes first, then the allocator, then
     // the buffer the allocator lives in. Both pointers are null for standard documents.
     std::unique_ptr<uint8_t[]> m_compactBuffer; ///< Initial memory block of a compact document (null otherwise).
-    std::unique_ptr<rapidjson::MemoryPoolAllocator<>>
+    std::unique_ptr<json::Allocator>
         m_ownAllocator; ///< Heap-stable small-chunk allocator of a compact document (null otherwise).
-    rapidjson::Document m_document;
+    json::Document m_document;
 
     /// Tag to select the compact-document constructor.
     struct CompactTag
@@ -232,13 +282,13 @@ private:
     Json(ExactTag, size_t poolBytes);
 
     /**
-     * @brief Construct a new Json object from a rapidjson::Value.
+     * @brief Construct a new Json object from a json::Value.
      * Deep-copies the value into a pool sized exactly to it (const strings are copied too), so
      * the new document is independent of the source and reserves no more than it uses.
      *
-     * @param value The rapidjson::Value to copy.
+     * @param value The json::Value to copy.
      */
-    explicit Json(const rapidjson::Value& value);
+    explicit Json(const json::Value& value);
 
     /**
      * @brief Construct a new Json object form a rapidjason::GenericObject.
@@ -246,7 +296,7 @@ private:
      *
      * @param object The rapidjson::GenericObject to copy.
      */
-    Json(const rapidjson::GenericObject<true, rapidjson::Value>& object);
+    Json(const rapidjson::GenericObject<true, json::Value>& object);
 
     /**
      * @brief Get Json type from internal rapidjson type.
@@ -278,7 +328,7 @@ private:
      * @param source The RapidJSON value to merge.
      * @param path JSON pointer path to the target node.
      */
-    void merge(const bool isRecursive, const rapidjson::Value& source, std::string_view path);
+    void merge(const bool isRecursive, const json::Value& source, std::string_view path);
 
 public:
     /**
@@ -316,22 +366,22 @@ public:
      *
      * The returned result is the Reader's: Populate never sets doc.HasParseError(), so callers MUST
      * use this ParseResult. Its code is kParseErrorTermination when — and only when — the depth cap
-     * fired (rapidjson::Document's own handler never returns false); see isDepthError().
+     * fired (json::Document's own handler never returns false); see isDepthError().
      *
      * @tparam parseFlags rapidjson parse flags (e.g. kParseStopWhenDoneFlag). kParseInsituFlag is not supported.
      * @param doc Fresh document that receives the value (its allocator is used, so a compact document keeps its pool).
      * @param is Input stream (StringStream, EncodedInputStream<UTF8<>, MemoryStream>, ...).
      */
     template<unsigned parseFlags = rapidjson::kParseNoFlags, typename InputStream>
-    static rapidjson::ParseResult parseBounded(rapidjson::Document& doc, InputStream& is)
+    static rapidjson::ParseResult parseBounded(json::Document& doc, InputStream& is)
     {
         static_assert(!(parseFlags & rapidjson::kParseInsituFlag), "in-situ parsing is not supported by parseBounded");
         RAPIDJSON_ASSERT(doc.IsNull());
         rapidjson::ParseResult result;
-        auto generator = [&](rapidjson::Document& handler) -> bool
+        auto generator = [&](json::Document& handler) -> bool
         {
-            BoundedHandler<rapidjson::Document> guard {handler, MAX_DEPTH};
-            rapidjson::Reader reader;
+            BoundedHandler<json::Document> guard {handler, MAX_DEPTH};
+            json::Reader reader;
             result = reader.Parse<parseFlags>(is, guard);
             return static_cast<bool>(result);
         };
@@ -402,9 +452,9 @@ public:
      * @brief Construct a new Json object from a rapidjason Document.
      * Moves the document.
      *
-     * @param document The rapidjson::Document to move.
+     * @param document The json::Document to move.
      */
-    explicit Json(rapidjson::Document&& document);
+    explicit Json(json::Document&& document);
 
     /**
      * @brief Construct a new Json object from a json string
@@ -423,7 +473,7 @@ public:
     /************************************************************************************/
     // Compact documents (small allocator)
     //
-    // A standard rapidjson::Document allocates memory in 64 KB chunks. For small,
+    // A standard json::Document allocates memory in 64 KB chunks. For small,
     // long-lived documents (cached agent headers, helper-function values) that wastes
     // RSS. A compact Json starts with a small initial block and grows in small steps.
     /************************************************************************************/
@@ -1360,13 +1410,13 @@ public:
         static_assert(std::is_invocable_v<Transform&, std::string_view, std::string&>,
                       "Transform must be callable as void(std::string_view, std::string&).");
 
-        const rapidjson::Pointer pp(path.data(), static_cast<rapidjson::SizeType>(path.size()));
+        const json::Pointer pp(path.data(), static_cast<rapidjson::SizeType>(path.size()));
         if (!pp.IsValid())
         {
             throw std::runtime_error(fmt::format("Invalid pointer path '{}'", std::string(path)));
         }
 
-        auto* node = const_cast<rapidjson::Value*>(pp.Get(m_document));
+        auto* node = const_cast<json::Value*>(pp.Get(m_document));
         if (!node)
         {
             throw std::runtime_error(fmt::format("Path '{}' not found", std::string(path)));
@@ -1376,12 +1426,12 @@ public:
 
         struct StringEdit
         {
-            rapidjson::Value* v;
+            json::Value* v;
             std::string text;
         };
         struct KeyEdit
         {
-            rapidjson::Value* name;
+            json::Value* name;
             std::string text;
         };
 
@@ -1409,7 +1459,7 @@ public:
 
         // Validation DFS + edit collection (without writing to the DOM)
         // array_is_obj_value: true if the current array is an object value (do not transform its strings)
-        auto preflight = [&](auto&& self, rapidjson::Value& v, bool array_is_obj_value) -> bool
+        auto preflight = [&](auto&& self, json::Value& v, bool array_is_obj_value) -> bool
         {
             bool changed = false;
 

@@ -4,7 +4,9 @@
 #include <algorithm>
 #include <atomic>
 #include <cstdlib>
+#include <functional>
 #include <iostream>
+#include <limits>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -444,34 +446,34 @@ TEST(JsonCopyMemoryTest, ConstStringIsCopied)
     const std::string expectedValue {ownedValue};
     const json::Json expectedNested {std::string_view {R"({")" + ownedName + R"(":")" + ownedValue + R"("})"}};
 
-    rapidjson::Document doc;
+    json::Document doc;
     doc.SetObject();
     auto& alloc = doc.GetAllocator();
     const auto valueRef = [&]()
     {
-        return rapidjson::Value {rapidjson::StringRef(ownedValue.data(), ownedValue.size())};
+        return json::Value {rapidjson::StringRef(ownedValue.data(), ownedValue.size())};
     };
     const auto nestedRef = [&]()
     {
-        rapidjson::Value nested {rapidjson::kObjectType};
-        rapidjson::Value name {rapidjson::StringRef(ownedName.data(), ownedName.size())};
-        rapidjson::Value value {valueRef()};
+        json::Value nested {rapidjson::kObjectType};
+        json::Value name {rapidjson::StringRef(ownedName.data(), ownedName.size())};
+        json::Value value {valueRef()};
         nested.AddMember(name, value, alloc);
         return nested;
     };
 
-    rapidjson::Value arr {rapidjson::kArrayType};
+    json::Value arr {rapidjson::kArrayType};
     {
-        rapidjson::Value value {valueRef()};
+        json::Value value {valueRef()};
         arr.PushBack(value, alloc);
-        rapidjson::Value nested {nestedRef()};
+        json::Value nested {nestedRef()};
         arr.PushBack(nested, alloc);
     }
-    rapidjson::Value obj {rapidjson::kObjectType};
+    json::Value obj {rapidjson::kObjectType};
     {
-        rapidjson::Value value {valueRef()};
+        json::Value value {valueRef()};
         obj.AddMember("plain", value, alloc);
-        rapidjson::Value nested {nestedRef()};
+        json::Value nested {nestedRef()};
         obj.AddMember("nested", nested, alloc);
     }
     doc.AddMember("arr", arr, alloc);
@@ -742,4 +744,115 @@ TEST(JsonCopyMemoryTest, ExhaustionFailsCleanly)
         },
         ::testing::ExitedWithCode(3),
         "");
+}
+
+/******************************************************************************/
+// Every other growth path of a document (issue #40107): the allocation failure is a std::bad_alloc (exit 3), never a
+// write through the null block rapidjson's default allocator returns. The source is parsed before the cap; the
+// headroom is a fraction of the text so that the copy, the parse or the serialization cannot fit.
+/******************************************************************************/
+
+TEST(JsonAllocationFailureTest, BaseAllocatorThrows)
+{
+    SKIP_UNDER_SANITIZER(); // the sanitizer allocators abort on an allocation this large instead of returning null
+    json::BaseAllocator allocator;
+    EXPECT_THROW(allocator.Malloc(std::numeric_limits<size_t>::max() / 2), std::bad_alloc);
+    EXPECT_THROW(allocator.Realloc(nullptr, 0, std::numeric_limits<size_t>::max() / 2), std::bad_alloc);
+    EXPECT_EQ(allocator.Malloc(0), nullptr);
+    void* block = allocator.Malloc(64);
+    ASSERT_NE(block, nullptr);
+    EXPECT_EQ(allocator.Realloc(block, 64, 0), nullptr);
+}
+
+namespace
+{
+// Runs `body` on a copy of a source parsed before the cap; expects the clean failure exit code
+void expectCleanFailure(const std::function<bool(const json::Json&)>& body, rlim_t headroomDivisor)
+{
+    DeathTestStyleGuard guard {"threadsafe"};
+    const auto text = makeArrayText(ISSUE_COUNT);
+    if (!addressSpaceCapFits(text.size(), SETUP_ALLOWANCE_FACTOR * text.size()))
+    {
+        GTEST_SKIP() << "the hard RLIMIT_AS of this host leaves no room for the cap";
+    }
+
+    EXPECT_EXIT(
+        {
+            const json::Json source {std::string_view {text}};
+            exitUnderAddressSpaceCap(text.size() / headroomDivisor, [&]() { return body(source); });
+        },
+        ::testing::ExitedWithCode(3),
+        "");
+}
+} // namespace
+
+TEST(JsonAllocationFailureTest, ParseFailsCleanly)
+{
+    SKIP_UNDER_SANITIZER();
+    DeathTestStyleGuard guard {"threadsafe"};
+    const auto text = makeArrayText(ISSUE_COUNT);
+    if (!addressSpaceCapFits(text.size(), SETUP_ALLOWANCE_FACTOR * text.size()))
+    {
+        GTEST_SKIP() << "the hard RLIMIT_AS of this host leaves no room for the cap";
+    }
+
+    EXPECT_EXIT(
+        {
+            // Three copies of the array in one document: the parse needs more than one text of headroom
+            const std::string big = "[" + text + "," + text + "," + text + "]";
+            exitUnderAddressSpaceCap(text.size(),
+                                     [&]()
+                                     {
+                                         const json::Json parsed {std::string_view {big}};
+                                         return parsed.isArray();
+                                     });
+        },
+        ::testing::ExitedWithCode(3),
+        "");
+}
+
+TEST(JsonAllocationFailureTest, SetFailsCleanly)
+{
+    SKIP_UNDER_SANITIZER();
+    expectCleanFailure(
+        [](const json::Json& source)
+        {
+            json::Json target;
+            target.set("/copy", source);
+            return target.isArray("/copy");
+        },
+        8);
+}
+
+TEST(JsonAllocationFailureTest, AppendJsonFailsCleanly)
+{
+    SKIP_UNDER_SANITIZER();
+    expectCleanFailure(
+        [](const json::Json& source)
+        {
+            json::Json target;
+            target.setArray("/list");
+            target.appendJson(source, "/list");
+            return target.isArray("/list");
+        },
+        8);
+}
+
+TEST(JsonAllocationFailureTest, MergeFailsCleanly)
+{
+    SKIP_UNDER_SANITIZER();
+    expectCleanFailure(
+        [](const json::Json& source)
+        {
+            json::Json target {R"({"list":[]})"};
+            target.merge(json::NOT_RECURSIVE, source, "/list");
+            return target.isArray("/list");
+        },
+        8);
+}
+
+TEST(JsonAllocationFailureTest, SerializeFailsCleanly)
+{
+    SKIP_UNDER_SANITIZER();
+    expectCleanFailure([](const json::Json& source) { return !source.str().empty(); }, 8);
 }

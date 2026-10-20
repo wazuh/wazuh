@@ -8,7 +8,7 @@
 namespace yml
 {
 
-rapidjson::Document Converter::loadYMLfromFile(const std::string& filepath)
+json::Document Converter::loadYMLfromFile(const std::string& filepath)
 {
     auto allDocs = YAML::LoadAllFromFile(filepath);
     if (allDocs.size() != 1)
@@ -18,17 +18,17 @@ rapidjson::Document Converter::loadYMLfromFile(const std::string& filepath)
 
     YAML::Node& root = allDocs[0];
 
-    rapidjson::Document doc;
+    json::Document doc;
 
-    rapidjson::Value val = yamlToJson(root, doc.GetAllocator());
+    json::Value val = yamlToJson(root, doc.GetAllocator());
     doc.CopyFrom(val, doc.GetAllocator());
 
     return doc;
 }
 
-rapidjson::Value Converter::parseScalar(const YAML::Node& node, rapidjson::Document::AllocatorType& allocator)
+json::Value Converter::parseScalar(const YAML::Node& node, json::Document::AllocatorType& allocator)
 {
-    rapidjson::Value v;
+    json::Value v;
     if (QUOTED_TAG == node.Tag())
     {
         v.SetString(node.as<std::string>().c_str(), allocator);
@@ -61,7 +61,7 @@ rapidjson::Value Converter::parseScalar(const YAML::Node& node, rapidjson::Docum
     return v;
 }
 
-YAML::Node Converter::parseScalar(const rapidjson::Value& node)
+YAML::Node Converter::parseScalar(const json::Value& node)
 {
     YAML::Node n;
     if (node.IsString())
@@ -96,7 +96,7 @@ YAML::Node Converter::parseScalar(const rapidjson::Value& node)
     return n;
 }
 
-rapidjson::Document Converter::loadYMLfromString(const std::string& yamlStr)
+json::Document Converter::loadYMLfromString(const std::string& yamlStr)
 {
     auto rootAll = YAML::LoadAll(yamlStr);
     if (rootAll.size() != 1)
@@ -104,15 +104,15 @@ rapidjson::Document Converter::loadYMLfromString(const std::string& yamlStr)
         throw std::runtime_error("YAML string contains multiple documents, expected a single document.");
     }
     YAML::Node& root = rootAll[0];
-    rapidjson::Document doc;
+    json::Document doc;
 
-    rapidjson::Value val = yamlToJson(root, doc.GetAllocator());
+    json::Value val = yamlToJson(root, doc.GetAllocator());
     doc.CopyFrom(val, doc.GetAllocator());
 
     return doc;
 }
 
-YAML::Node Converter::jsonToYaml(const rapidjson::Value& value)
+YAML::Node Converter::jsonToYaml(const json::Value& value)
 {
     if (value.IsObject())
     {
@@ -138,9 +138,9 @@ YAML::Node Converter::jsonToYaml(const rapidjson::Value& value)
     }
 }
 
-rapidjson::Value Converter::yamlToJson(const YAML::Node& root, rapidjson::Document::AllocatorType& allocator)
+json::Value Converter::yamlToJson(const YAML::Node& root, json::Document::AllocatorType& allocator)
 {
-    rapidjson::Value v;
+    json::Value v;
 
     switch (root.Type())
     {
@@ -163,7 +163,7 @@ rapidjson::Value Converter::yamlToJson(const YAML::Node& root, rapidjson::Docume
 
             for (const auto& it : root)
             {
-                v.AddMember(rapidjson::Value(it.first.as<std::string>().c_str(), allocator),
+                v.AddMember(json::Value(it.first.as<std::string>().c_str(), allocator),
                             yamlToJson(it.second, allocator),
                             allocator);
             }
