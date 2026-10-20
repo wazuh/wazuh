@@ -17,11 +17,13 @@ from requests import HTTPError
 sys.path.insert(0, dirname(dirname(dirname(abspath(__file__)))))
 
 from azure_services.analytics import (
+    INGESTION_TIME_COLUMN,
     URL_ANALYTICS,
     build_log_analytics_query,
     get_log_analytics_events,
     get_time_position,
     iter_log_analytics_events,
+    pop_ingestion_times,
     start_log_analytics,
 )
 from db import orm
@@ -29,6 +31,8 @@ from db import orm
 PAST_DATE = '2022-01-01T12:00:00.000000Z'
 PRESENT_DATE = '2022-06-15T12:00:00.000000Z'
 FUTURE_DATE = '2022-12-31T12:00:00.000000Z'
+LAST_INGESTION = '2022-06-15T13:00:00.1234567Z'
+LAST_TIME_GENERATED = '2022-06-15T12:59:00.7654321Z'
 
 TEST_DATA_PATH = join(dirname(dirname(realpath(__file__))), 'data')
 
@@ -141,10 +145,13 @@ def test_start_log_analytics_ko_credentials(mock_logging):
         (PAST_DATE, PAST_DATE, PRESENT_DATE, True),
     ],
 )
+@patch('azure_services.analytics.get_ingestion_cursor', return_value=None)
 @patch('azure_services.analytics.offset_to_datetime')
 @patch('azure_services.analytics.create_new_row')
 @patch('db.orm.get_row', return_value=None)
-def test_build_log_analytics_query(mock_get, mock_create, mock_datetime, min_date, max_date, desired_date, reparse):
+def test_build_log_analytics_query(
+    mock_get, mock_create, mock_datetime, mock_ingestion, min_date, max_date, desired_date, reparse
+):
     """Test build_log_analytics_query creates the required query with the expected "TimeGenerated" filter values."""
     la_query = 'test_query'
     mock_create.return_value = MagicMock(min_processed_date=min_date, max_processed_date=max_date)
@@ -172,6 +179,51 @@ def test_build_log_analytics_query(mock_get, mock_create, mock_datetime, min_dat
             expected_str = f'TimeGenerated > datetime({max_date})'
 
     assert expected_str in result['query']
+    assert result['query'].startswith(f'{la_query} | extend {INGESTION_TIME_COLUMN} = ingestion_time() | where ( ')
+    assert result['query'].endswith(
+        f') and ( isnull({INGESTION_TIME_COLUMN}) or {INGESTION_TIME_COLUMN} <= ago(2m) ) '
+        f'| order by {INGESTION_TIME_COLUMN} asc, TimeGenerated asc '
+    )
+    mock_ingestion.assert_called_with('')
+
+
+@pytest.mark.parametrize(
+    'offset, min_date, desired_date, expected_lower, backfill',
+    [
+        # The time offset is newer than the lookback from the last ingestion time
+        ('1d', PAST_DATE, PRESENT_DATE, PRESENT_DATE, False),
+        # Without time offset, the lookback from the last ingestion time applies
+        ('', PAST_DATE, None, '2022-06-13T12:00:00.123456Z', False),
+        # The time offset is older than the oldest record processed
+        ('1d', PRESENT_DATE, PAST_DATE, '2022-06-13T12:00:00.123456Z', True),
+    ],
+)
+@patch('azure_services.analytics.get_ingestion_cursor', return_value=(LAST_INGESTION, LAST_TIME_GENERATED))
+@patch('azure_services.analytics.offset_to_datetime')
+@patch('db.orm.get_row')
+def test_build_log_analytics_query_ingestion_time(
+    mock_get, mock_datetime, mock_ingestion, offset, min_date, desired_date, expected_lower, backfill
+):
+    """Test build_log_analytics_query requests the records ingested after the last record processed."""
+    mock_get.return_value = MagicMock(min_processed_date=min_date, max_processed_date=PRESENT_DATE)
+    mock_datetime.return_value = parse(desired_date) if desired_date else None
+    result = build_log_analytics_query(query='test_query', offset=offset, md5_hash='', reparse=False)
+
+    expected_str = (
+        f'test_query | extend {INGESTION_TIME_COLUMN} = ingestion_time() '
+        f'| where ( ( TimeGenerated >= datetime({expected_lower}) and ( '
+        f'{INGESTION_TIME_COLUMN} > datetime({LAST_INGESTION}) or '
+        f'( {INGESTION_TIME_COLUMN} == datetime({LAST_INGESTION}) and '
+        f'TimeGenerated > datetime({LAST_TIME_GENERATED}) ) or '
+        f'( isnull({INGESTION_TIME_COLUMN}) and TimeGenerated > datetime({PRESENT_DATE}) ) ) )'
+    )
+    if backfill:
+        expected_str += f' or ( TimeGenerated < datetime({min_date}) and TimeGenerated >= datetime({desired_date}))'
+    expected_str += (
+        f' ) and ( isnull({INGESTION_TIME_COLUMN}) or {INGESTION_TIME_COLUMN} <= ago(2m) ) '
+        f'| order by {INGESTION_TIME_COLUMN} asc, TimeGenerated asc '
+    )
+    assert result['query'] == expected_str
 
 
 @patch('azure_utils.logging.error')
@@ -193,12 +245,15 @@ def test_build_log_analytics_query_ko(mock_get, mock_logging):
         ('log_analytics_events_empty', None),
     ],
 )
+@patch('azure_services.analytics.update_ingestion_cursor')
 @patch('azure_utils.logging.error')
 @patch('azure_services.analytics.update_row_object')
 @patch('azure_services.analytics.iter_log_analytics_events')
 @patch('azure_services.analytics.get_time_position')
 @patch('azure_services.analytics.get')
-def test_get_log_analytics_events(mock_get, mock_position, mock_iter, mock_update, mock_logging, file, time_position):
+def test_get_log_analytics_events(
+    mock_get, mock_position, mock_iter, mock_update, mock_logging, mock_update_ingestion, file, time_position
+):
     """Test get_log_analytics_events gets the logs, process the response and iterate the events if the 'TimeGenerated'
     field was present."""
     la_query = 'test_query'
@@ -225,14 +280,74 @@ def test_get_log_analytics_events(mock_get, mock_position, mock_iter, mock_updat
     mock_get.assert_called_with(url, params=body, headers=headers, timeout=10)
     if rows is None or (len(rows) > 0 and time_position is None):
         mock_logging.assert_called_once()
+        mock_update_ingestion.assert_not_called()
     elif len(rows) == 0:
         mock_position.assert_not_called()
         mock_iter.assert_not_called()
         mock_update.assert_not_called()
+        mock_update_ingestion.assert_not_called()
     else:
         mock_position.assert_called_with(columns)
         mock_iter.assert_called_with(columns, rows, tag)
         mock_update.assert_called_once()
+        mock_update_ingestion.assert_called_once_with('', [], [row[time_position] for row in rows])
+
+
+@patch('azure_services.analytics.update_ingestion_cursor')
+@patch('azure_services.analytics.update_row_object')
+@patch('azure_services.analytics.iter_log_analytics_events')
+@patch('azure_services.analytics.get')
+def test_get_log_analytics_events_ingestion_time(mock_get, mock_iter, mock_update, mock_update_ingestion):
+    """Test get_log_analytics_events removes the ingestion time column from the events and stores its values, and
+    stores the oldest and newest TimeGenerated whatever their order in the results."""
+    columns = [{'name': 'TimeGenerated'}, {'name': INGESTION_TIME_COLUMN}, {'name': 'OperationName'}]
+    rows = [
+        ['2022-06-15T11:30:00Z', '2022-06-15T11:40:00Z', 'op2'],
+        ['2022-06-15T11:00:00Z', '2022-06-15T12:00:00.1234567Z', 'op1'],
+        ['2022-06-15T11:00:00.5Z', '2022-06-15T12:00:00.1234567Z', 'op3'],
+    ]
+    mock_get.return_value = MagicMock(
+        status_code=200, json=MagicMock(return_value={'tables': [{'columns': columns, 'rows': rows}]})
+    )
+    get_log_analytics_events(url='url', body='body', headers='headers', md5_hash='md5', query='q', tag='', tenant='')
+
+    mock_iter.assert_called_once_with(
+        [{'name': 'TimeGenerated'}, {'name': 'OperationName'}],
+        [['2022-06-15T11:30:00Z', 'op2'], ['2022-06-15T11:00:00Z', 'op1'], ['2022-06-15T11:00:00.5Z', 'op3']],
+        '',
+    )
+    mock_update.assert_called_once_with(
+        table=orm.LogAnalytics,
+        md5_hash='md5',
+        new_min='2022-06-15T11:00:00Z',
+        new_max='2022-06-15T11:30:00Z',
+        query='q',
+    )
+    mock_update_ingestion.assert_called_once_with(
+        'md5',
+        ['2022-06-15T11:40:00Z', '2022-06-15T12:00:00.1234567Z', '2022-06-15T12:00:00.1234567Z'],
+        ['2022-06-15T11:30:00Z', '2022-06-15T11:00:00Z', '2022-06-15T11:00:00.5Z'],
+    )
+
+
+@pytest.mark.parametrize(
+    'columns, rows, expected_columns, expected_rows, expected_times',
+    [
+        (
+            [{'name': 'a'}, {'name': INGESTION_TIME_COLUMN}, {'name': 'b'}],
+            [[1, 't1', 2], [3, None, 4]],
+            [{'name': 'a'}, {'name': 'b'}],
+            [[1, 2], [3, 4]],
+            ['t1', None],
+        ),
+        ([{'name': 'a'}], [[1], [2]], [{'name': 'a'}], [[1], [2]], []),
+    ],
+)
+def test_pop_ingestion_times(columns, rows, expected_columns, expected_rows, expected_times):
+    """Test pop_ingestion_times removes the ingestion time column and returns its values."""
+    assert pop_ingestion_times(columns, rows) == expected_times
+    assert columns == expected_columns
+    assert rows == expected_rows
 
 
 @patch('azure_services.analytics.get')
