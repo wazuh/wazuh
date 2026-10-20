@@ -515,7 +515,7 @@ void * lccom_main(__attribute__((unused)) void * arg) {
         return NULL;
     }
 
-    while (1) {
+    while (FOREVER()) {
 
         // Wait for socket
         FD_ZERO(&fdset);
@@ -541,7 +541,8 @@ void * lccom_main(__attribute__((unused)) void * arg) {
             continue;
         }
 
-        os_calloc(OS_MAXSTR, sizeof(char), buffer);
+        // One byte more than the limit, so a request of exactly OS_MAXSTR bytes stays terminated.
+        os_calloc(OS_MAXSTR + 1, sizeof(char), buffer);
         switch (length = OS_RecvSecureTCP(peer, buffer,OS_MAXSTR), length) {
         case OS_SOCKTERR:
             merror("At lccom_main(): OS_RecvSecureTCP(): response size is bigger than expected");
@@ -553,20 +554,16 @@ void * lccom_main(__attribute__((unused)) void * arg) {
 
         case 0:
             mdebug1("Empty message from local client.");
-            close(peer);
-            break;
-
-        case OS_MAXLEN:
-            merror("Received message > %i", MAX_DYN_STR);
-            close(peer);
             break;
 
         default:
             length = lccom_dispatch(buffer, &response);
             OS_SendSecureTCP(peer, length, response);
             free(response);
-            close(peer);
         }
+
+        // Every outcome above ends the exchange, including a failed receive.
+        close(peer);
         free(buffer);
     }
 
