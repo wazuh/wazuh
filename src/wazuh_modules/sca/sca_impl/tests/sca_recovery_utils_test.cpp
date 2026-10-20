@@ -542,5 +542,7 @@ TEST_F(SCARecoveryUtilsTest, BuildStatefulMessageCapsAnOversizedReason)
 
     auto result = sca::recovery::buildStatefulMessage(check, policy);
 
-    EXPECT_EQ(result["check"]["reason"].get<std::string>().size(), 1024U);
+    const auto reason = result["check"]["reason"].get<std::string>();
+    EXPECT_EQ(reason.size(), 1024U);
+    EXPECT_EQ(reason.substr(reason.size() - 12), "\n[truncated]");
 }
