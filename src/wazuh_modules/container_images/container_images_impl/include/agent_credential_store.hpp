@@ -36,6 +36,14 @@ namespace containerimages
     /// be talked into by a file it does not own.
     constexpr std::uintmax_t MAX_CREDENTIAL_STORE_SIZE {1024 * 1024};
 
+    /// @brief What happened to a key that was asked to be removed.
+    enum class RemoveOutcome
+    {
+        Removed, ///< The key was dropped and the store rewritten.
+        Absent,  ///< There was no such key, or no store at all.
+        Failed   ///< The store could not be read or rewritten. The reason is logged.
+    };
+
     /// @brief Credentials kept in a file next to the agent's other state.
     ///
     /// ## What this protects, and what it does not
@@ -77,8 +85,11 @@ namespace containerimages
             bool put(const std::string& family, const std::string& key, const Secret& value) const;
 
             /// @brief Remove a key, and the family once its last key is gone.
-            /// @return True when the store was rewritten, false when the key was absent.
-            bool remove(const std::string& family, const std::string& key) const;
+            ///
+            /// A store that cannot be read is a failure, not an absent key: reporting it
+            /// as "no such credential" would send an operator looking for a typo in the
+            /// key name while the file itself is the problem.
+            RemoveOutcome remove(const std::string& family, const std::string& key) const;
 
             /// @brief The store's location.
             const std::string& path() const

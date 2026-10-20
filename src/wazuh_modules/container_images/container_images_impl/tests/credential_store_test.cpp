@@ -9,12 +9,14 @@
  */
 
 #include "agent_credential_store.hpp"
+#include "ci_logging_helper.hpp"
 
 #include <gtest/gtest.h>
 
 #include <filesystem>
 #include <fstream>
 #include <string>
+#include <vector>
 
 #ifndef WIN32
 #include <sys/stat.h>
@@ -220,14 +222,95 @@ TEST_F(CredentialStoreTest, RemovingAKeyDropsItAndThenTheFamily)
     ASSERT_TRUE(store.put(FAMILY, USER_KEY, Secret {"owner"}));
     ASSERT_TRUE(store.put(FAMILY, TOKEN_KEY, Secret {TOKEN_VALUE}));
 
-    EXPECT_TRUE(store.remove(FAMILY, USER_KEY));
+    EXPECT_EQ(store.remove(FAMILY, USER_KEY), RemoveOutcome::Removed);
     EXPECT_FALSE(store.get(FAMILY, USER_KEY).has_value());
     EXPECT_TRUE(store.get(FAMILY, TOKEN_KEY).has_value());
 
-    EXPECT_TRUE(store.remove(FAMILY, TOKEN_KEY));
+    EXPECT_EQ(store.remove(FAMILY, TOKEN_KEY), RemoveOutcome::Removed);
     EXPECT_EQ(readRaw(m_path).find(FAMILY), std::string::npos);
 
-    EXPECT_FALSE(store.remove(FAMILY, TOKEN_KEY));
+    EXPECT_EQ(store.remove(FAMILY, TOKEN_KEY), RemoveOutcome::Absent);
+}
+
+TEST_F(CredentialStoreTest, RemovingFromAStoreThatDoesNotExistIsAnAbsentKey)
+{
+    const AgentCredentialStore store {m_path.string()};
+
+    EXPECT_EQ(store.remove(FAMILY, TOKEN_KEY), RemoveOutcome::Absent);
+    EXPECT_FALSE(std::filesystem::exists(m_path));
+}
+
+TEST_F(CredentialStoreTest, RemovingAKeyLeavesNoTemporaryFileBehind)
+{
+    const AgentCredentialStore store {m_path.string()};
+
+    ASSERT_TRUE(store.put(FAMILY, USER_KEY, Secret {"owner"}));
+    ASSERT_TRUE(store.put(FAMILY, TOKEN_KEY, Secret {TOKEN_VALUE}));
+    ASSERT_EQ(store.remove(FAMILY, USER_KEY), RemoveOutcome::Removed);
+
+    EXPECT_FALSE(std::filesystem::exists(m_path.string() + ".new"));
+}
+#endif
+
+// What the keystore tool shows an operator is whatever the store logs, so these read it
+// back through the same callback the tool installs.
+class CredentialStoreReasonTest : public CredentialStoreTest
+{
+    protected:
+        void SetUp() override
+        {
+            CredentialStoreTest::SetUp();
+
+            LoggingHelper::setLogCallback([this](const modules_log_level_t level, const char* message)
+            {
+                m_warnings.push_back({level, message});
+            });
+        }
+
+        void TearDown() override
+        {
+            LoggingHelper::setLogCallback({});
+            CredentialStoreTest::TearDown();
+        }
+
+        bool warned(const std::string& fragment) const
+        {
+            for (const auto& entry : m_warnings)
+            {
+                if (entry.second.find(fragment) != std::string::npos)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        std::vector<std::pair<modules_log_level_t, std::string>> m_warnings;
+};
+
+#ifndef WIN32
+TEST_F(CredentialStoreReasonTest, RemovingFromAnUnreadableStoreFailsAndSaysSo)
+{
+    // Not "no such credential": the key may well be in a store that cannot be read, and
+    // the operator has to be sent to the file rather than to the key name.
+    const AgentCredentialStore store {m_path.string()};
+
+    writeRaw(m_path, "{not json");
+
+    EXPECT_EQ(store.remove(FAMILY, TOKEN_KEY), RemoveOutcome::Failed);
+    EXPECT_TRUE(warned("could not be read")) << "the reason was not logged";
+    EXPECT_EQ(readRaw(m_path), "{not json") << "an unreadable store must be left alone";
+}
+
+TEST_F(CredentialStoreReasonTest, StoringIntoAnUnreadableStoreLogsWhy)
+{
+    const AgentCredentialStore store {m_path.string()};
+
+    writeRaw(m_path, "{not json");
+
+    EXPECT_FALSE(store.put(FAMILY, TOKEN_KEY, Secret {TOKEN_VALUE}));
+    EXPECT_TRUE(warned("could not be read, so it was not modified")) << "the reason was not logged";
 }
 #endif
 

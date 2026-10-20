@@ -393,20 +393,28 @@ namespace containerimages
 #endif
     }
 
-    bool AgentCredentialStore::remove(const std::string& family, const std::string& key) const
+    RemoveOutcome AgentCredentialStore::remove(const std::string& family, const std::string& key) const
     {
         nlohmann::json document;
 
-        if (loadStore(m_path, document) != LoadOutcome::Loaded)
+        switch (loadStore(m_path, document))
         {
-            return false;
+            case LoadOutcome::Absent:
+                return RemoveOutcome::Absent;
+
+            case LoadOutcome::Unusable:
+                logWarn("The credential store at '" + m_path + "' could not be read, so it was not modified.");
+                return RemoveOutcome::Failed;
+
+            case LoadOutcome::Loaded:
+                break;
         }
 
         const auto families {document.find(family)};
 
         if (families == document.end() || !families->is_object() || families->find(key) == families->end())
         {
-            return false;
+            return RemoveOutcome::Absent;
         }
 
         families->erase(key);
@@ -417,6 +425,7 @@ namespace containerimages
         }
 
         const auto temporaryPath {m_path + ".new"};
+        std::error_code error;
 
         {
             std::ofstream file {temporaryPath, std::ios::binary | std::ios::trunc};
@@ -424,7 +433,7 @@ namespace containerimages
             if (!file.is_open())
             {
                 logWarn("Could not open the credential store at '" + m_path + "' for writing.");
-                return false;
+                return RemoveOutcome::Failed;
             }
 
             restrictPermissions(temporaryPath);
@@ -434,13 +443,23 @@ namespace containerimages
 
             if (!file.good())
             {
-                return false;
+                file.close();
+                std::filesystem::remove(temporaryPath, error);
+                logWarn("Could not write the credential store at '" + m_path + "'.");
+                return RemoveOutcome::Failed;
             }
         }
 
-        std::error_code error;
         std::filesystem::rename(temporaryPath, m_path, error);
 
-        return !error;
+        if (error)
+        {
+            std::error_code ignored;
+            std::filesystem::remove(temporaryPath, ignored);
+            logWarn("Could not replace the credential store at '" + m_path + "'.");
+            return RemoveOutcome::Failed;
+        }
+
+        return RemoveOutcome::Removed;
     }
 } // namespace containerimages

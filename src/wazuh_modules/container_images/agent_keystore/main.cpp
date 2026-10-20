@@ -9,6 +9,7 @@
  */
 
 #include "agent_credential_store.hpp"
+#include "ci_logging_helper.hpp"
 
 #include <homedirHelper.hpp>
 
@@ -215,19 +216,38 @@ int main(int argc, char* argv[])
         }
     }
 
+    // The store reports why it refused or only half did through the module's logging
+    // helper, which drops a message when no callback is set. Here that is the whole
+    // explanation an operator gets, including the warning that the file's permissions
+    // could not be restricted.
+    containerimages::LoggingHelper::setLogCallback([](const modules_log_level_t level, const char* message)
+    {
+        if (level != LOG_DEBUG && level != LOG_DEBUG_VERBOSE)
+        {
+            std::cerr << message << "\n";
+        }
+    });
+
     const containerimages::AgentCredentialStore store {storePath};
 
     if (remove)
     {
-        if (!store.remove(family, key))
+        switch (store.remove(family, key))
         {
-            std::cerr << "No such credential.\n";
-            return 1;
+            case containerimages::RemoveOutcome::Removed:
+                std::cout << "Credential removed.\n";
+                return 0;
+
+            case containerimages::RemoveOutcome::Absent:
+                std::cerr << "No such credential.\n";
+                return 1;
+
+            case containerimages::RemoveOutcome::Failed:
+                std::cerr << "The credential was not removed.\n";
+                return 1;
         }
 
-        std::cout << "Credential removed.\n";
-
-        return 0;
+        return 1;
     }
 
     if (!valuePath.empty())
@@ -258,7 +278,7 @@ int main(int argc, char* argv[])
 
     if (!store.put(family, key, containerimages::Secret {value}))
     {
-        // put() has already reported why through the module's logging helper.
+        // put() has already reported why, through the callback set above.
         std::cerr << "The credential was not stored.\n";
         return 1;
     }
