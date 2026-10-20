@@ -9532,7 +9532,7 @@ paths:
       tags:
         - Agents
       summary: "Summarize agents OS"
-      description: "Return a summary of the OS of available agents"
+      description: "Return a summary of the OS of available agents. If none of them has reported its OS yet, they are returned as failed items. If there are no agents registered, the message says so"
       operationId: api.controllers.agent_controller.get_agent_summary_os
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:read'
