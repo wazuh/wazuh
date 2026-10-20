@@ -18,6 +18,18 @@
 namespace cm::sync
 {
 
+/**
+ * @brief Delay before the next sync cycle while a space has no route.
+ *
+ * @param retryInterval `analysisd.cm_sync_retry_interval`; 0 disables the early retry.
+ * @param syncInterval `analysisd.cm_sync_interval`, the regular cycle.
+ * @return 0 when disabled (the regular cycle applies), otherwise the retry interval capped at the regular one.
+ */
+constexpr std::size_t earlyRetryInterval(std::size_t retryInterval, std::size_t syncInterval)
+{
+    return retryInterval < syncInterval ? retryInterval : syncInterval;
+}
+
 // Forward declarations, state of synchronized namespace
 class SyncedNamespace;
 

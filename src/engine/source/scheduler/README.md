@@ -52,7 +52,7 @@ Defined in `ischeduler.hpp`:
 | `runImmediately` | `bool` | If `true` and `interval > 0`, first execution happens immediately; then recurs at `interval`. No effect when `interval == 0` |
 | `CPUPriority` | `int` | Linux nice value (`-20` highest to `19` lowest). `0` = default |
 | `taskFunction` | `std::function<void()>` | The callable to execute |
-| `nextInterval` | `std::function<std::size_t()>` | Optional. Recurring tasks only: called after each run; a non-zero result replaces `interval` for the next run only (e.g. a shorter retry while a task's work is incomplete). Must not throw |
+| `nextInterval` | `std::function<std::size_t()>` | Optional. Recurring tasks only: called after each run; a non-zero result replaces `interval` for the next run only (e.g. a shorter retry while a task's work is incomplete). If it throws, a warning is logged and `interval` applies |
 
 Fields must be specified in the order listed above when using C++20 designated initializers.
 
@@ -217,6 +217,7 @@ Use a real 2-thread scheduler with atomic counters and short sleeps to verify be
 | `RunImmediately_ExecutesOnFirstCycle` | `runImmediately=true` fires before one full interval elapses |
 | `RunImmediately_ThenRecurresAtInterval` | Immediate first fire, then normal recurring cadence, task not removed |
 | `NextInterval_OverridesIntervalForNextRun` | A non-zero `nextInterval` result reschedules sooner than `interval`; `0` falls back to `interval` |
+| `NextInterval_ThrowFallsBackToInterval` | A throwing `nextInterval` falls back to `interval` and the task keeps running |
 | `RunImmediately_NoEffectOnOneTimeTask` | `runImmediately=true` on one-time task: runs once, removed, no double execution |
 | `ScheduleTaskFirst_ExecutesBeforeOtherPendingTasks` | Task registered via `scheduleTaskFirst` runs before a previously registered one-time task |
 | `ScheduleTaskFirst_LastCallIsFirst` | Second `scheduleTaskFirst` call executes before first call |

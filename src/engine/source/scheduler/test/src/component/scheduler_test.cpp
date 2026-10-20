@@ -3,6 +3,7 @@
 #include <chrono>
 #include <filesystem>
 #include <memory>
+#include <stdexcept>
 #include <thread>
 
 #include <gtest/gtest.h>
@@ -180,6 +181,33 @@ TEST_F(SchedulerTest, NextInterval_OverridesIntervalForNextRun)
 
     std::this_thread::sleep_for(std::chrono::milliseconds(1500));
     EXPECT_EQ(executionCount.load(), 2); // nextInterval returned 0: next run falls back to 60 s
+
+    scheduler->stop();
+}
+
+TEST_F(SchedulerTest, NextInterval_ThrowFallsBackToInterval)
+{
+    std::atomic<int> executionCount {0};
+
+    scheduler::TaskConfig config;
+    config.interval = 1;
+    config.runImmediately = true;
+    config.CPUPriority = 0;
+    config.taskFunction = [&executionCount]()
+    {
+        executionCount.fetch_add(1);
+    };
+    config.nextInterval = []() -> std::size_t
+    {
+        throw std::runtime_error("nextInterval failure");
+    };
+
+    scheduler->start();
+    scheduler->scheduleTask("throwingNextIntervalTask", std::move(config));
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(1500));
+    EXPECT_GE(executionCount.load(), 2); // rescheduled at the regular 1 s interval, worker still alive
+    EXPECT_EQ(scheduler->getActiveTasksCount(), 1);
 
     scheduler->stop();
 }

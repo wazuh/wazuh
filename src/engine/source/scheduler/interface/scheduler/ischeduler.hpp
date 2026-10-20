@@ -23,7 +23,7 @@ struct TaskConfig
     std::function<void()> taskFunction; ///< The callable function/lambda to execute when the task runs
     std::function<std::size_t()> nextInterval {}; ///< Optional, recurring tasks only: called after each run; a
                                                   ///< non-zero result replaces interval for the next run only.
-                                                  ///< Must not throw.
+                                                  ///< If it throws, interval applies.
 };
 
 /**

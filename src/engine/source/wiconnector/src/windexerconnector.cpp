@@ -40,6 +40,7 @@ constexpr std::size_t HASH_QUERY_SIZE {1};                        ///< Size for 
 constexpr std::size_t SAFE_STREAM_PAGE_SIZE {1000};               ///< Hard cap for streaming page size
 constexpr std::string_view REMOTE_CONF_INDEX {".wazuh-settings"}; ///< remote conf index name
 constexpr std::string_view CTI_CONSUMERS_INDEX {".wazuh-cti-consumers"}; ///< CTI consumers index name
+constexpr long HTTP_NOT_FOUND {404};                                     ///< Status of a search on a missing index
 const std::array<std::string_view, 12> IOC_SOURCE_FILTER_INCLUDES = {"document.name",
                                                                      "document.type",
                                                                      "document.id",
@@ -810,7 +811,22 @@ bool WIndexerConnector::isConsumerReadyForSync(std::string_view consumerId)
     nlohmann::json query = {{"ids", {{"values", {consumerId}}}}};
     nlohmann::json source = {{"includes", {"status", "local_offset"}}, {"excludes", nlohmann::json::array()}};
 
-    nlohmann::json hits = m_indexerConnectorAsync->search(CTI_CONSUMERS_INDEX, SINGLE_RESULT_SIZE, query, source);
+    nlohmann::json hits;
+    try
+    {
+        hits = m_indexerConnectorAsync->search(CTI_CONSUMERS_INDEX, SINGLE_RESULT_SIZE, query, source);
+    }
+    catch (const IndexerConnectorException& e)
+    {
+        if (e.statusCode() != HTTP_NOT_FOUND)
+        {
+            throw;
+        }
+        LOG_DEBUG("[indexer-connector] Index '{}' not found, consumer '{}' not ready",
+                  CTI_CONSUMERS_INDEX,
+                  std::string(consumerId));
+        return false;
+    }
 
     size_t totalHits = getTotalHits(hits);
     if (totalHits == 0)

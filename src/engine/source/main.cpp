@@ -999,8 +999,10 @@ int main(int argc, char* argv[])
                                                            }});
 
             // While a space has no route (indexer failure, content not ready yet), the next cycle runs
-            // after the shorter retry interval instead of the regular one.
-            const auto cmSyncRetryInterval = confManager.get<std::size_t>(conf::key::CM_SYNC_RETRY_INTERVAL);
+            // after the shorter retry interval instead of the regular one (never later than the regular one).
+            const auto cmSyncInterval = confManager.get<std::size_t>(conf::key::CM_SYNC_INTERVAL);
+            const auto cmSyncRetryInterval = cm::sync::earlyRetryInterval(
+                confManager.get<std::size_t>(conf::key::CM_SYNC_RETRY_INTERVAL), cmSyncInterval);
             auto cmSyncPending = std::make_shared<std::atomic<bool>>(false);
             const auto cmSyncNextInterval = [cmSyncPending, cmSyncRetryInterval]() -> std::size_t
             {
@@ -1010,7 +1012,7 @@ int main(int argc, char* argv[])
             // Async Synchronize on startup
             scheduler->scheduleTask(
                 "cm-sync-task",
-                scheduler::TaskConfig {.interval = confManager.get<std::size_t>(conf::key::CM_SYNC_INTERVAL),
+                scheduler::TaskConfig {.interval = cmSyncInterval,
                                        .runImmediately = true,
                                        .CPUPriority = 0,
                                        .taskFunction =

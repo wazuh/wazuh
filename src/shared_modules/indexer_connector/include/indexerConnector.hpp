@@ -635,7 +635,8 @@ public:
      * @param query The query object (must be valid JSON).
      * @param source Optional source filtering configuration (includes/excludes fields).
      * @return The hits object from the search response.
-     * @throws IndexerConnectorException if the search fails.
+     * @throws IndexerConnectorException if the search fails; statusCode() holds the indexer's HTTP
+     *         status (404 for a missing index), 0 or negative if there was none.
      *
      * Example:
      * nlohmann::json query = {{"bool", {{"filter", {{{{"term", {{"space.name", "free"}}}}}}}}};
@@ -669,11 +670,13 @@ public:
 private:
     std::string m_message;
     Category m_category {Category::Other};
+    long m_statusCode {0};
 
 public:
-    explicit IndexerConnectorException(std::string message, Category category = Category::Other)
+    explicit IndexerConnectorException(std::string message, Category category = Category::Other, long statusCode = 0)
         : m_message(std::move(message))
         , m_category(category)
+        , m_statusCode(statusCode)
     {
     }
 
@@ -685,6 +688,15 @@ public:
     Category category() const noexcept
     {
         return m_category;
+    }
+
+    /**
+     * @brief HTTP status the indexer answered with; 0 or negative when there was no HTTP answer (no
+     *        host available, transport failure) or the failure is not an HTTP one.
+     */
+    long statusCode() const noexcept
+    {
+        return m_statusCode;
     }
 };
 

@@ -199,7 +199,25 @@ void Scheduler::workerThread()
             {
                 LOG_DEBUG("[Scheduler] Rescheduling recurring task '{}'", task.name);
                 auto updatedTask = task;
-                const auto delay = task.config.nextInterval ? task.config.nextInterval() : 0;
+                std::size_t delay = 0;
+                if (task.config.nextInterval)
+                {
+                    try
+                    {
+                        delay = task.config.nextInterval();
+                    }
+                    catch (const std::exception& e)
+                    {
+                        LOG_WARNING("[Scheduler] Next interval of task '{}' failed, using its regular interval: {}",
+                                    task.name,
+                                    e.what());
+                    }
+                    catch (...)
+                    {
+                        LOG_WARNING("[Scheduler] Next interval of task '{}' failed, using its regular interval",
+                                    task.name);
+                    }
+                }
                 updatedTask.nextRun =
                     std::chrono::steady_clock::now() + std::chrono::seconds(delay > 0 ? delay : task.config.interval);
                 m_taskQueue.push(updatedTask);

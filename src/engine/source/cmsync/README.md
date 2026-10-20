@@ -112,7 +112,7 @@ Remote operations (`existsPolicy`, `getPolicy`, `getPolicyHashAndEnabled`) are w
 
 ### Early Retry While a Space Has No Route
 
-When a space ends a cycle without a route and its policy is not disabled (the indexer failed, or the content is not published or the CTI consumer not ready yet), `synchronize()` returns `true`. The `cm-sync-task` in `main.cpp` then runs the next cycle after `analysisd.cm_sync_retry_interval` seconds (default 30) instead of `analysisd.cm_sync_interval` (default 120), until every space has a route or a disabled policy. A space that keeps its previous route after a failed cycle does not trigger it: the old route keeps processing events.
+When a space ends a cycle without a route and its policy is not disabled (the indexer failed, or the content is not published or the CTI consumer not ready yet), `synchronize()` returns `true`. The `cm-sync-task` in `main.cpp` then runs the next cycle after `analysisd.cm_sync_retry_interval` seconds (default 30) instead of `analysisd.cm_sync_interval` (default 120), until every space has a route or a disabled policy. The retry interval is capped at `analysisd.cm_sync_interval`. "Disabled policy" is the last successful policy read (`disabled_by_policy` in the state document), so a cycle that fails before reading the policy does not change it. A space that keeps its previous route after a failed cycle does not trigger it: the old route keeps processing events.
 
 ### Graceful Shutdown
 
