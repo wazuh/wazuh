@@ -2072,6 +2072,7 @@ void test_win_processor_arch_to_machine(void **state)
     assert_string_equal(win_processor_arch_to_machine("ARM64"), "arm64");
     assert_string_equal(win_processor_arch_to_machine("x86"), "i686");
     assert_null(win_processor_arch_to_machine("ARM"));
+    assert_null(win_processor_arch_to_machine("ARM64EC"));
     assert_null(win_processor_arch_to_machine(""));
     assert_null(win_processor_arch_to_machine(NULL));
 }

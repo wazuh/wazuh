@@ -596,5 +596,6 @@ TEST_F(SysInfoWinTest, MachineFromProcessorArchitecture)
     EXPECT_EQ("arm64", SysOsInfoProviderWindows::machineFromProcessorArchitecture("ARM64"));
     EXPECT_EQ("i686", SysOsInfoProviderWindows::machineFromProcessorArchitecture("x86"));
     EXPECT_EQ(UNKNOWN_VALUE, SysOsInfoProviderWindows::machineFromProcessorArchitecture("ARM"));
+    EXPECT_EQ(UNKNOWN_VALUE, SysOsInfoProviderWindows::machineFromProcessorArchitecture("ARM64EC"));
     EXPECT_EQ(UNKNOWN_VALUE, SysOsInfoProviderWindows::machineFromProcessorArchitecture(""));
 }

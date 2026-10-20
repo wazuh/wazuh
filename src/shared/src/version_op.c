@@ -943,11 +943,11 @@ const char *win_processor_arch_to_machine(const char *processor_arch) {
         return NULL;
     }
 
-    if (!strncmp(processor_arch, "AMD64", 5) || !strncmp(processor_arch, "IA64", 4)) {
+    if (!strcmp(processor_arch, "AMD64") || !strcmp(processor_arch, "IA64")) {
         return "x86_64";
-    } else if (!strncmp(processor_arch, "ARM64", 5)) {
+    } else if (!strcmp(processor_arch, "ARM64")) {
         return "arm64";
-    } else if (!strncmp(processor_arch, "x86", 3)) {
+    } else if (!strcmp(processor_arch, "x86")) {
         return "i686";
     }
 
