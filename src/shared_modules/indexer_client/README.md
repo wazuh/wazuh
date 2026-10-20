@@ -17,10 +17,10 @@ consumers of the indexer, one consumer at a time, with:
 
 The design is in `planes/18-indexer_connector_v2/03-diseno.md` §1–§4 (outside the repository).
 
-**Status: E2b — internal transport with TLS and credentials, node health probe and logging, no public write or query API.** The public headers, the
+**Status: E2c — internal transport with TLS and credentials, node health probe and logging, transport benchmark harness, no public write or query API.** The public headers, the
 configuration schema, the runtime lifecycle (threads, owner thread, shutdown deadline), the test
 helpers, the internal curl [Transport](#transport-internal-e2a-1-and-e2a-2) (HTTP, HTTPS, credentials) and the
-[node health probe](#node-health-e2b) exist. The public write and
+[node health probe](#node-health-e2b) exist, and the transport has been [benchmarked against the v1](#benchmark). The public write and
 query interfaces still send nothing to an indexer; see
 [What is not implemented yet](#what-is-not-implemented-yet).
 `indexer_connector` keeps working untouched until each consumer migrates.
@@ -278,7 +278,8 @@ the runtime alive. The normative contract is `planes/18-indexer_connector_v2/ane
   `strptime`/`mktime`, so neither the global locale nor `TZ` changes the result. The value is
   capped at `retry_after_max_ms` and parsed on the CPU pool.
 - **Fixed options.** Per easy: `CURLOPT_PROTOCOLS_STR "http,https"`, `CURLOPT_NOSIGNAL`,
-  `CURLOPT_PROXY ""` (never a proxy from the environment), `Expect:` suppressed. Per multi:
+  `CURLOPT_PROXY ""` (never a proxy from the environment); `Expect` is left to curl (100-continue on bodies over 1 MiB,
+  as the v1). Per multi:
   `CURLMOPT_MAX_HOST_CONNECTIONS` = 8 (a constant of E2a-1; the real window is E5's) and
   `CURLMOPT_QUICK_EXIT`. `curl_global_init` runs once (`std::call_once`).
 - **Timings.** `HttpResult.timings` (`TransferTimings`: `total`, `connect`, `appConnect`) is in
@@ -429,6 +430,98 @@ unknown, so its first state is reported. Lines emitted by `src/health/nodeSet.cp
 | INFO | `Indexer client local fault cleared.` | `localFault` disappears |
 | WARN | `Every indexer node rejects the TLS handshake with the configured CA (curl <code>): if the indexer CA was rotated, update <indexer><ssl> and restart the manager.` | Every node is Down with cause `Tls`; once per episode |
 
+## Benchmark
+
+`bench/` (stage E2c) measures whether the v2 [transport](#transport-internal-e2a-1-and-e2a-2) is at least as fast as the v1 bulk
+path. It compares two executables over **the same in-process fake indexer** (`bench/benchFake.hpp`, cpp-httplib; it counts bytes,
+requests and connections and keeps no bodies) and **the same `libwazuhext.so`**, both in Release:
+
+- `indexer_client_bench_v1`: `HTTPRequest::post` (`SINGLE`), as the v1 bulk does, in a closed loop on the calling thread;
+- `indexer_client_bench_v2`: the production objects (no test seams), `RuntimeOwner::start` with K = 1 and the default M = 2,
+  `c` chains each keeping one `POST /_bulk` in flight; each result callback (on the CPU pool) submits the chain's next request.
+
+The load is one precomputed 4 MiB body, `POST /_bulk`, 60 s timeout. The normative comparison puts **identical headers on the
+wire**: the v1 sends the v2's set (`Content-Type: application/json`, an empty `Accept-Encoding:`, the same Basic auth) and both let
+curl add `Expect: 100-continue` ([finding below](#finding-expect-100-continue)). The v1 **as shipped** (`DEFAULT_HEADERS`,
+`Accept-Encoding: gzip`) is informative only. `--selfcheck` verifies the headers on the wire.
+
+**Build.** The target is off by default (`INDEXER_CLIENT_BENCH`, `CMakeLists.txt:90`); CI does not compile it yet. Build it in a
+**separate checkout or worktree**, never the development checkout: `wazuhext` is always written to `<checkout>/src/build/lib`
+whatever the build tree, and both binaries load it from there through their RPATH:
+
+```bash
+cmake -S <checkout>/src -B <checkout>/src/build-rel -DTARGET=manager -DCMAKE_BUILD_TYPE=Release -DINDEXER_CLIENT_BENCH=ON
+cmake --build <checkout>/src/build-rel -j"$(nproc)" --target indexer_client_bench_v1 indexer_client_bench_v2
+```
+
+**Run.** `bench/run.sh` never builds anything:
+
+```bash
+bench/run.sh --v1 <bench_v1> --v2 <bench_v2> --cpus 0,2,4,6 --out <prefix> [--selfcheck] [--fake-status N] [--wazuhext-sha256 SHA]
+```
+
+| Option | Meaning |
+|---|---|
+| `--cpus LIST\|none` | CPU set for v1, v2 and the fake together (`taskset`); `none` disables pinning |
+| `--out PREFIX` | Writes `PREFIX.csv`, `PREFIX-summary.txt` and `PREFIX.log` (provenance and each binary's output) |
+| `--selfcheck` | 2 s per side and mode, plus the header check on the wire; exit 0 only when every sample is valid and the headers match |
+| `--fake-status N` | The fake answers `/_bulk` with status N (a sample then is invalid; used to test the harness) |
+| `--wazuhext-sha256 SHA` | Refuse to measure when a binary maps another `libwazuhext` |
+
+Each binary takes `--mode plain|tls`, `--secs`, `--warmup`, `--pair`, `--fake-status`, `--print-headers` and `--csv-header`; the v1
+also `--headers normative|shipped`, the v2 `--c 1|2|4|8`, `--path transport|client` (`client` is reserved for E5) and
+`--probe [--rounds N]`. Exit codes of `run.sh`: 0 ok, 1 an invalid informative row, a failed probe or a failed selfcheck (an invalid normative
+sample annuls its pair and counts through the reliability rule), 2 usage, 3 another `libwazuhext` loaded,
+4 host load never fell to load1 <= 2, 5 a mode stayed unreliable after its repetition.
+
+**Method.**
+
+- Per mode (plain, TLS): **5 alternated pairs** v1/v2 at c = 1 (which side goes first alternates), 3 s warm-up and a 20 s window;
+  the ratio is the **median of the valid pairs' v2/v1 ratios** (at least 4 valid pairs).
+- A sample is invalid on any `Shutdown`/`Cancelled` result, any error, or server bytes different from client bytes; its pair is
+  annulled.
+- Reliability: it does not start while load1 > 2; the run is **unreliable** when the v1 throughput varies more than 3 % between
+  its pairs (max/min) or the IQR of the ratios exceeds 0.04 (or fewer than 4 valid pairs). It is repeated once; if it stays
+  unreliable, `run.sh` exits 5.
+- **Grey zone**: a median in [0.94, 0.96) is re-measured with 7 pairs of 30 s before deciding.
+- Affinity: v1, v2 and the fake share one fixed set of four physical P cores (one sibling each); every CSV row records the
+  `cpus` and the `libwazuhext` sha256.
+- **Informative** runs, after the normative ones: v2 at c = 2, 4, 8 and the v1 as shipped, 20 s each, per mode.
+- The D37 probe (`--probe`): 50 consecutive probe rounds on a live TLS runtime, counting the connections they cost.
+
+**Output.** The CSV has one row per run (`mode,headers,side,c,pair,requests,bytes,secs,mib_s,req_ms_mean,xfer_ms_mean,
+connect_ms_sum,appconnect_ms_sum,thread_cpu,proc_cpu,cpus,wazuhext_sha256,errors,server_bytes,valid`). The summary has one
+`NORMATIVE` line per mode (median, valid pairs, v1 spread, IQR, `reliable`, `grey`), the `INFO` lines and the `PROBE` line.
+
+**Result of E2c** (2026-10-20, Intel Core i9-14900HX, governor `powersave`, CPUs 0,2,4,6, Release, 4 MiB bulk body; MiB/s):
+
+| Run | Plain | TLS |
+|---|---|---|
+| Normative c = 1, median v2/v1 (5 of 5 valid pairs, reliable, not grey) | **0.992** | **1.003** |
+| v1 spread / IQR of the ratios | 0.025 / 0.006 | 0.014 / 0.005 |
+| v2 c = 2 (informative) | 5422.7 | 1890.7 |
+| v2 c = 4 (informative) | 5223.9 | 1878.6 |
+| v2 c = 8 (informative) | 5139.8 | 1928.2 |
+| v1 as shipped (informative) | 5286.1 | 1958.1 |
+
+The gate is a median >= 0.95 at c = 1 in plain and TLS (the two normative rows); the other rows are informative. The
+informative rows are bounded by the single network thread (K = 1, ~82 % busy in TLS) and by the in-process fake sharing the four
+cores: they are not a concurrency ceiling (E5 sizes the windows with K and against the real indexer). The machine class of CI is
+not measured (E6).
+
+**D37 (probe cost).** With `CAINFO_BLOB` curl re-parses the CA bundle on every new TLS connection; the probe does not pay it
+repeatedly: `PROBE,connections=1,failures=0,appconnect_nonzero=0,rounds=50,applied=50,...`: 50 rounds over the one connection the
+runtime's start round opened (so even round 1 does no handshake; `connections` is the oracle). The rounds run back to back over a
+warm connection: the 10 s interval against an indexer that closes idle connections is E6's.
+
+### Finding: `Expect: 100-continue`
+
+The v2 used to suppress `Expect:`; the v1 as shipped let curl send `100-continue` on bodies over 1 MiB, and over TLS the v1 as
+shipped was faster than the v2 (about 1922 against 1675 MiB/s). The diagnosis (`anexos/e2c/diagnostico-expect.md`, outside the
+repository) showed that the whole difference was `Expect: 100-continue` (gzip did not matter); the v2 now leaves `Expect` to
+curl (I60), which also lets a node reject (401/413/429) before the body. Measured on the fake only: about +18 % TLS and +5 % plain;
+a real indexer and network RTT may differ (one RTT per bulk), so E6 confirms it against the real indexer.
+
 ## Linking
 
 curl and OpenSSL come **only** through `libwazuhext.so` (`target_link_libraries(indexer_client
@@ -496,7 +589,8 @@ Layout of `tests/`: `unit/` (config schema, key-value source, mocks, fake indexe
 
 ## What is not implemented yet
 
-E1 delivered the skeleton, E2a-1 the internal `http` transport, E2a-2 TLS and credentials and E2b node health and logging. Not
+E1 delivered the skeleton, E2a-1 the internal `http` transport, E2a-2 TLS and credentials, E2b node health and logging and E2c the
+transport [benchmark](#benchmark) (done; the `--path client` benchmark of the whole client arrives with E5). Not
 implemented, by stage:
 
 | Area | Stage |
@@ -504,7 +598,7 @@ implemented, by stage:
 | Bulk failover to another node and the wait of an ambiguous `ordered` bucket (they will use `generation()` and `onTransition`) | E3b |
 | Reads answering `Unavailable` when no node is usable | E4 |
 | Health metrics and `Retry-After` in passive signals | E5 |
-| Transport performance | E2c |
+| Benchmark of the whole client (`--path client`) | E5 |
 | Writes: bucket queues, bulk building, scheduling, retries, overflow, tickets and groups | E2–E5 |
 | Queries: `search`, `searchAfter`, PIT, `deleteByQuery`, `updateByQuery`, `indexExists` | E2–E5 |
 | Metrics beyond the thread layout in `MetricsSnapshot` | E2–E5 |

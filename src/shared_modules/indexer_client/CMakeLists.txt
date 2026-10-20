@@ -85,3 +85,9 @@ target_link_libraries(indexer_client_testing PUBLIC wazuhext ext_asio Threads::T
 if(UNIT_TEST)
   add_subdirectory(tests)
 endif()
+
+# Release benchmark harness against the indexer_connector transport (plan 18, E2c); off by default, never in the normal build.
+option(INDEXER_CLIENT_BENCH "Build the indexer_client benchmark harness" OFF)
+if(INDEXER_CLIENT_BENCH)
+  add_subdirectory(bench)
+endif()

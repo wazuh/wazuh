@@ -344,7 +344,9 @@ namespace indexer_client::detail
                     break;
             }
 
-            // No 100-continue round trip; an explicit or suppressed Content-Type (curl would add a form type).
+            // An explicit or suppressed Content-Type (curl would add a form type). `Expect` is left to curl, as the v1
+            // does: 100-continue on bodies over 1 MiB, so the node can refuse (401, 413, 429) before the body is sent;
+            // measured in E2c at +18 % (TLS) and +5 % (clear) on a 4 MiB bulk against the fake (plan 18, I60).
             const auto append = [&state](const std::string& line)
             {
                 auto* list = curl_slist_append(state.headers, line.c_str());
@@ -355,10 +357,6 @@ namespace indexer_client::detail
                 state.headers = list;
                 return true;
             };
-            if (!append("Expect:"))
-            {
-                return CURLE_OUT_OF_MEMORY;
-            }
             if (sendsBody && !append((body ? "Content-Type: " + request.contentType : std::string("Content-Type:"))))
             {
                 return CURLE_OUT_OF_MEMORY;
