@@ -182,14 +182,20 @@ The agent already has the right mechanism: DBSync's `upgradeStatements`, now wir
 **But `wdb_upgrade.c` is worth reading for three things DBSync lacks**, and this is the part of
 the comparison that has value:
 
-| `wdb_upgrade_global()` does | `SQLiteDBEngine::initialize` does |
-| --- | --- |
-| `wdb_global_create_backup(…, "-pre_upgrade")`, restores on failure | nothing — a failed upgrade leaves a half-migrated database |
-| Rejects `version > latest_version` and disables the database | no upper bound; a downgraded agent silently uses a newer schema |
-| `wdb->enabled = false` with a specific error naming the database | a generic throw, swallowed by the caller |
+| `wdb_upgrade_global()` does | `SQLiteDBEngine::initialize` did | …and does now |
+| --- | --- | --- |
+| `wdb_global_create_backup(…, "-pre_upgrade")`, restores on failure | nothing — a failed upgrade leaves a half-migrated database | **each step is atomic**, so a failure leaves the database whole at its previous version. No backup; see §25.7 rule 4 |
+| Rejects `version > latest_version` and disables the database | no upper bound; a downgraded agent silently uses a newer schema | **guard added** (`DB_VERSION_AHEAD_OF_SCHEMA`) |
+| `wdb->enabled = false` with a specific error naming the database | a generic throw, swallowed by the caller | error names the step and carries SQLite's own text; **still swallowed** — see §25.8 |
 
-Given that a failed migration here means permanent silent inventory loss, the backup/restore
-pattern is not a nicety.
+The middle row was worth borrowing and has been. The first turned out not to be: once a step
+cannot half-apply, the state a backup would restore from no longer exists, and what it *would*
+restore — a 5.0.0-shaped database under a 5.1.0 agent — is itself the broken state §25.2
+describes. The third is a policy question this work deliberately left open.
+
+Two of the three gaps this table was written to highlight are therefore closed by changing
+`SQLiteDBEngine::initialize` rather than by importing anything from `wdb_upgrade.c`. The one
+genuinely borrowed idea is the version guard.
 
 ---
 
@@ -202,10 +208,36 @@ pattern is not a nicety.
 | Separate container tables | ~13 creates | untouched | none | reverses the shared-table design |
 | Synthetic URI | 0 | untouched | none | forks every path query |
 
-**Rebuild in place** means, per table: create the new shape under a temporary name, copy rows with
-`container_id = ''`, drop the original, rename. One statement per vector element, because the
-upgrade loop prepares and steps exactly once — a multi-statement string silently runs only its
-first statement.
+**Rebuild in place** means, per table: **rename the original aside**, create the new shape under
+its final name, copy rows with `container_id = ''`, drop the renamed original.
+
+Two corrections to what this section first said, both found while implementing it and both
+verified against SQLite 3.45.1:
+
+**The ordering is the other way round.** Creating under a temporary name and renaming at the end
+makes `ALTER TABLE … RENAME` rewrite `sqlite_master.sql` with the table name **quoted** —
+`CREATE TABLE "dbsync_groups" (…)` against a freshly created `CREATE TABLE dbsync_groups (…)`.
+The two schemas then differ textually forever, which defeats the one test that can keep the
+create path and the upgrade path from drifting apart. Renaming the old table aside first and
+creating under the final name yields a `sqlite_master` **byte-identical** to a fresh database's.
+
+**One *script* per vector element, not one statement.** The claim that the loop "prepares and
+steps exactly once" was true of the code as it stood, and the fix is to change the code rather
+than to live within it: `Connection::execute` is already `sqlite3_exec`, so the upgrade loop now
+runs each entry as a whole script inside its transaction, and the `PRAGMA user_version` bump
+moves inside that transaction too. A step is then all-or-nothing, a per-table rebuild is one
+entry, and the half-migrated database this document worried about stops being a representable
+state. The counts in the table above are statements, not entries: 14 entries for syscollector,
+2 for FIM.
+
+A third thing the implementation turned up, which this document had missed entirely: a live
+table carries a column no DDL mentions. `SQLiteDBEngine::initializeStatusField` adds
+`db_status_field_dm` lazily, per table, the first time a table is named in a transaction — so
+whether a table has it varies **per table and per host** (`dbsync_hotfixes` lacks it on Linux,
+being Windows-only data that is never transacted). A rebuild copying rows with `SELECT *` passes
+against any fixture built from DDL and fails on every real agent. Columns must be enumerated.
+The column is per-transaction state, so dropping it in the rebuild is correct; it comes back on
+first use.
 
 Verified end to end on a 5.0.0 database:
 
@@ -225,7 +257,19 @@ its inventory**, which is the cost the whole container-context design exists to 
 
 The FIM rebuild additionally has to recreate `path_index` and `inode_index`, which are dropped
 with the original table. (An `ALTER TABLE … DROP COLUMN` preserves indexes — a manual rebuild does
-not.)
+not.) **And the order in which it recreates them decides whether the recreation happens at all.**
+
+`ALTER TABLE … RENAME` carries both indexes along with the old table, *keeping their names*, and
+index names are global per schema. So a `CREATE INDEX IF NOT EXISTS path_index ON file_entry …`
+issued while the renamed original still exists finds the name taken and silently does nothing —
+and the following `DROP TABLE … _old` then takes the only real index with it. Reproduced: that
+ordering leaves `file_entry` with **zero indexes and no error**, every path lookup a full scan on
+a table whose default ceiling is 300 000 rows.
+
+What prevents it is putting `DROP TABLE … _old` **before** `CREATE INDEX`, which frees the names.
+An explicit `DROP INDEX IF EXISTS` pair is kept as well, not because it is needed in the current
+ordering but so that a later edit which moves the creates earlier stays correct rather than
+silently losing the indexes.
 
 ---
 
@@ -236,12 +280,23 @@ not.)
 2. **Migrate by rebuild**, preserving rows. It is the only option that keeps existing host
    inventory *and* avoids a fleet-wide re-sync, and the primary-key change is unavoidable under
    any design that keeps natural uniqueness.
-3. **Treat the migration vector as frozen history.** One statement per element, append-only,
-   written out literally rather than generated from a table list — a list someone later extends
-   would silently rewrite a migration that has already run on real agents.
-4. **Consider porting the backup/restore pattern** from `wdb_upgrade.c` into the DBSync upgrade
-   loop. This changes shared code used by every consumer, so it is a separate decision; the
-   failure mode it guards against is permanent silent data loss.
+3. **Treat the migration vector as frozen history.** One *script* per element, append-only,
+   written out literally rather than generated from a table list or taken from the DDL constants
+   — either would silently rewrite a migration that has already run on real agents. This is now
+   enforced rather than asked for: a test builds one database from the create statement and
+   another from the frozen 5.0.0 schema replayed forward, and compares `sqlite_master`. An edit
+   to a DDL constant changes one side only, and the sole way back to green is to append an entry
+   making the same change to a database that already exists.
+4. ~~**Consider porting the backup/restore pattern** from `wdb_upgrade.c`.~~ **Recommended
+   against, now that each step is atomic.** With the `user_version` bump inside the step's own
+   transaction, a failed migration leaves the database at its previous version with a consistent,
+   fully-formed schema — there is no half-migrated state left to restore from, which was the
+   whole failure class the backup existed to cover. What it would still cover is a migration
+   script that commits successfully but shifts values between columns, and restoring there gives
+   back a 5.0.0-shaped database that a 5.1.0 agent cannot use either: the broken state §25.2
+   describes. The checks worth having instead are the ones in §25.7 rule 3 plus per-row checksum
+   assertions, and both are now in the test suite. What *was* worth taking from `wdb_upgrade.c`
+   is the version-range guard, which is implemented.
 
 ### What is not being proposed
 
@@ -254,13 +309,44 @@ tables. The migration cost is real, and it is buying something.
 
 ## 25.8 Open questions for the team
 
+> **Four of these are now answered, by the implementation on
+> `37532-upgrade-released-agent-schema`.** Kept below as written, with the answers inline.
+
 - **Is a full re-sync actually unacceptable?** "Drop and recreate empty" is half the frozen
   history and far less code. It is rejected above on the strength of the no-re-sync guarantee —
   if that guarantee is worth less than it looks at fleet scale, the simpler option wins.
+  → **Answered: yes, unacceptable, and for a stronger reason than this document gave.** Every
+  stateful document is written under an `external_gte` script
+  (`indexerConnectorSyncImpl.hpp:132-135`), and `calculateHashId()` omits `container_id` from the
+  `_id` when it is empty — so a recreated database keeps the same `_id` but restarts `version` at
+  1, and the indexer **noops** every document it already holds at version ≥ 2. For
+  `dbsync_packages`, whose rows rarely change, the stale document is then frozen permanently.
+  Drop-and-recreate is not "loud but safe"; it is silently wrong unless paired with a
+  `notifyDataClean` over every index, which costs a multi-cycle per-agent inventory blackout.
+  The row copy that avoids all this is about 26 extra lines of SQL.
 - **What is the oldest supported upgrade source?** This document assumes 5.0.0. If 4.x agents can
   reach 5.1.0 directly, their schema needs the same treatment and the vector grows.
 - **Should the upgrade failure be fatal rather than silent?** Today the module logs and becomes a
   no-op. An agent whose inventory has permanently stopped arguably ought to be noisier than one
   log line.
+  → **Still open, deliberately narrowed.** Not fatal: the comment at `syscollector.cpp:110-112`
+  is right that this crosses a C boundary, and killing `wazuh-modulesd` because inventory failed
+  to migrate trades a dead module for a dead agent. What this work changed is the *message* — the
+  thrown error now names the step and carries SQLite's own text, which is the difference between
+  a diagnosable field failure and a shrug. What it did **not** change is the policy, and the
+  option worth a follow-up issue is neither "fatal" nor "backup" but **recreate-on-failure**:
+  reuse `reCreateDbLambda`, so the module always comes up and the agent re-baselines instead of
+  staying permanently dead. That is roughly five lines and it is a separate decision, because it
+  changes shared code every DBSync consumer runs.
 - **Does FIM need the same backup treatment as syscollector**, or is a re-baseline acceptable
   there given the files are re-readable from disk?
+  → **Moot: neither gets a backup**, per the revised §25.7 rule 4.
+- **New, and not previously asked: what happens to the container sweeps on an un-migrated
+  agent?** The removal and reconcile work that landed after this document was written opens
+  transactions scoped to `container_id`, and `validatedScopeColumn` throws when the column is
+  absent. Traced: the throw is swallowed by `dbsync_create_txn` and again by
+  `fim_db_transaction_start`, and `ScopedContainerTxn` logs at **debug** and carries on with a
+  null handle. It cannot degrade into an unscoped delete that would take the host's rows — that
+  was checked specifically — but it does mean container state on an un-migrated agent is never
+  cleaned up, with nothing in a default-level log to say so. The migration removes the
+  condition; a test now pins it.
