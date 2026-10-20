@@ -11,7 +11,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the group configuration readers and upload accepting a group directory that resolves outside the shared directory, and the multigroup reader accepting a file name that resolves outside the multigroup directory. ([#36834](https://github.com/wazuh/wazuh/issues/36834))
 - Fixed `GET /agents/summary/os` returning `error: 0` with no failed items when none of the agents has reported its operative system. Those agents are now returned as failed items with error code 1761, and the response states when there are no agents registered. ([#37539](https://github.com/wazuh/wazuh/issues/37539))
 - Added type validation for the error details of cluster synchronization messages and bound the received archive path to the file transfer completed for the task. ([#40367](https://github.com/wazuh/wazuh/pull/40367))
-- Fixed the indexer refusing Amazon Security Lake alerts whose null OCSF fields were decoded as the text `"null"` instead of being left out, which also disabled the CloudTrail successful-operation rules; added a dedicated decoder for these events and reworked the affected rules to stop depending on the literal text `"null"`. ([#40419](https://github.com/wazuh/wazuh/issues/40419))
+- Fixed the indexer refusing Amazon Security Lake alerts whose null OCSF fields were decoded as the text `"null"` instead of being left out, which also disabled the CloudTrail successful-operation rules; added a dedicated decoder for these events and reworked the affected rules to stop depending on the literal text `"null"`. ([#40522](https://github.com/wazuh/wazuh/pull/40522))
 
 ### Agent
 
