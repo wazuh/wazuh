@@ -36,6 +36,7 @@
 #include "../wrappers/wazuh/shared/queue_linked_op_wrappers.h"
 #include "../wrappers/wazuh/shared/validate_op_wrappers.h"
 #include "../wrappers/wazuh/shared/batch_queue_op_wrappers.h"
+#include "../wrappers/wazuh/shared/http_op_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_metadata_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
 #include "../wrappers/wazuh/config/mconf-config_wrappers.h"
@@ -4480,6 +4481,170 @@ void test_w_remoted_build_module_config_null_https_strings_leave_buffers_empty(v
     assert_false(rm_config.enrollment_enabled);
 }
 
+/* canonical_agent_id: the spelling the manager gives every agent id, zero-padded to three digits */
+
+void test_canonical_agent_id_pads_and_keeps_wide_ids(void **state) {
+    const char *in[]  = {"0", "0000000000", "1", "001", "0001", "1000", "4294967295"};
+    const char *out[] = {"000", "000", "001", "001", "001", "1000", "4294967295"};
+    char buf[16];
+
+    for (size_t i = 0; i < sizeof(in) / sizeof(in[0]); i++) {
+        assert_int_equal(canonical_agent_id(in[i], buf, sizeof(buf)), 0);
+        assert_string_equal(buf, out[i]);
+    }
+}
+
+void test_canonical_agent_id_rejects_what_is_not_an_agent_id(void **state) {
+    const char *in[] = {"", "abc", "12x", "-1", "12345678901", "4294967296"};
+    char buf[16];
+
+    for (size_t i = 0; i < sizeof(in) / sizeof(in[0]); i++) {
+        assert_int_equal(canonical_agent_id(in[i], buf, sizeof(buf)), -1);
+    }
+    assert_int_equal(canonical_agent_id(NULL, buf, sizeof(buf)), -1);
+    assert_int_equal(canonical_agent_id("1", NULL, sizeof(buf)), -1);
+    assert_int_equal(canonical_agent_id("1", buf, 0), -1);
+    assert_int_equal(canonical_agent_id("1", buf, 3), -1);
+    assert_int_equal(canonical_agent_id("1", buf, 4), 0);
+    assert_string_equal(buf, "001");
+}
+
+/* append_header: the H line names the agent with its canonical id */
+
+void test_append_header_writes_canonical_id(void **state) {
+    dispatch_ctx_t ctx = {.agent_id = "7"};
+    bulk_init(&ctx.bulk, 256);
+
+    expect_string(__wrap_agent_meta_snapshot_str, agent_id_str, "7");
+    expect_any(__wrap_agent_meta_snapshot_str, out);
+    will_return(__wrap_agent_meta_snapshot_str, -1); // no metadata: the id alone
+
+    assert_int_equal(append_header(&ctx), 0);
+    assert_string_equal(ctx.canonical_id, "007");
+    assert_int_equal(ctx.drop, 0);
+    // The bulk is a length-delimited buffer, not a C string: assert on a terminated copy.
+    char *line = strndup(ctx.bulk.buf, ctx.bulk.len);
+    assert_non_null(line);
+    assert_true(strncmp(line, "H {", 3) == 0);
+    assert_non_null(strstr(line, "\"id\":\"007\""));
+    assert_null(strstr(line, "\"id\":\"7\""));
+    free(line);
+
+    bulk_free(&ctx.bulk);
+}
+
+void test_append_header_marks_non_numeric_id_for_drop(void **state) {
+    dispatch_ctx_t ctx = {.agent_id = "x1"};
+    bulk_init(&ctx.bulk, 256);
+
+    atomic_store(&s_last_invalid_id_warn, 0);
+    expect_value(__wrap_time, time, 0);
+    will_return(__wrap_time, 1000);
+    expect_string(__wrap__mwarn, formatted_msg, "Discarding events of agent 'x1': its id is not a valid agent id.");
+
+    assert_int_equal(append_header(&ctx), -1);
+    assert_int_equal(ctx.drop, 1);
+    assert_int_equal(ctx.bulk.len, 0);
+
+    bulk_free(&ctx.bulk);
+}
+
+void test_invalid_agent_batches_are_dropped_with_throttled_warnings(void **state) {
+    const time_t times[] = {1000, 1089, 1090};
+    atomic_store(&s_last_invalid_id_warn, 0);
+
+    for (size_t i = 0; i < sizeof(times) / sizeof(times[0]); i++) {
+        dispatch_ctx_t ctx = {.agent_id = "x1"};
+        bulk_init(&ctx.bulk, 256);
+        expect_value(__wrap_time, time, 0);
+        will_return(__wrap_time, times[i]);
+        if (i != 1) {
+            expect_string(__wrap__mwarn, formatted_msg,
+                          "Discarding events of agent 'x1': its id is not a valid agent id.");
+        }
+        for (size_t j = 0; j < 2; j++) {
+            evt_item_t *event = calloc(1, sizeof(*event));
+            assert_non_null(event);
+            event->raw = strdup("test event");
+            assert_non_null(event->raw);
+            event->len = strlen(event->raw);
+            expect_function_call(__wrap_rem_inc_recv_events_failed);
+            rr_collect_one(event, &ctx);
+        }
+        assert_int_equal(ctx.drop, 1);
+        assert_int_equal(ctx.bulk.len, 0);
+        bulk_free(&ctx.bulk);
+    }
+    atomic_store(&s_last_invalid_id_warn, 0);
+}
+
+/* set_batch_identity: the reused client starts each batch from its own headers, plus the agent's */
+
+void test_batch_without_agent_identity_is_dropped(void **state) {
+    dispatch_ctx_t ctx = {0};
+    bulk_init(&ctx.bulk, 256);
+    evt_item_t *event = calloc(1, sizeof(*event));
+    assert_non_null(event);
+    event->raw = strdup("test event");
+    assert_non_null(event->raw);
+    event->len = strlen(event->raw);
+
+    expect_string(__wrap__mwarn, formatted_msg, "Unable to append header for agent '?'");
+    expect_function_call(__wrap_rem_inc_recv_events_failed);
+    rr_collect_one(event, &ctx);
+    assert_int_equal(ctx.drop, 1);
+    assert_int_equal(ctx.header_added, 0);
+    assert_int_equal(ctx.bulk.len, 0);
+    bulk_free(&ctx.bulk);
+}
+
+void test_set_batch_identity_resets_then_adds_the_header(void **state) {
+    uhttp_client_t *cli = (uhttp_client_t *)0x1;
+
+    expect_function_call(__wrap_uhttp_client_reset_headers);
+    will_return(__wrap_uhttp_client_reset_headers, 0);
+    expect_function_call(__wrap_uhttp_client_add_header);
+    expect_string(__wrap_uhttp_client_add_header, header_line, "X-Wazuh-Agent-Id: 042");
+    will_return(__wrap_uhttp_client_add_header, 0);
+
+    assert_int_equal(set_batch_identity(cli, "042"), 0);
+}
+
+void test_set_batch_identity_reports_a_header_failure(void **state) {
+    uhttp_client_t *cli = (uhttp_client_t *)0x1;
+
+    expect_function_call(__wrap_uhttp_client_reset_headers);
+    will_return(__wrap_uhttp_client_reset_headers, 0);
+    expect_function_call(__wrap_uhttp_client_add_header);
+    expect_string(__wrap_uhttp_client_add_header, header_line, "X-Wazuh-Agent-Id: 042");
+    will_return(__wrap_uhttp_client_add_header, 1);
+
+    assert_int_equal(set_batch_identity(cli, "042"), -1);
+}
+
+void test_set_batch_identity_resets_between_agents(void **state) {
+    uhttp_client_t *cli = (uhttp_client_t *)0x1;
+    const char *ids[] = {"001", "042"};
+    const char *headers[] = {"X-Wazuh-Agent-Id: 001", "X-Wazuh-Agent-Id: 042"};
+    for (size_t i = 0; i < 2; i++) {
+        expect_function_call(__wrap_uhttp_client_reset_headers);
+        will_return(__wrap_uhttp_client_reset_headers, 0);
+        expect_function_call(__wrap_uhttp_client_add_header);
+        expect_string(__wrap_uhttp_client_add_header, header_line, headers[i]);
+        will_return(__wrap_uhttp_client_add_header, 0);
+        assert_int_equal(set_batch_identity(cli, ids[i]), 0);
+    }
+}
+
+void test_set_batch_identity_reports_a_reset_failure(void **state) {
+    uhttp_client_t *cli = (uhttp_client_t *)0x1;
+
+    expect_function_call(__wrap_uhttp_client_reset_headers);
+    will_return(__wrap_uhttp_client_reset_headers, 1);
+
+    assert_int_equal(set_batch_identity(cli, "042"), -1);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -4596,6 +4761,16 @@ int main(void)
         cmocka_unit_test(test_w_remoted_check_tls_files_ca_unset),
         cmocka_unit_test(test_w_remoted_check_tls_files_ca_certificate_unreadable),
         cmocka_unit_test(test_w_remoted_check_tls_files_ca_certificate_ok),
-        cmocka_unit_test(test_w_remoted_check_tls_files_absolute_paths)};
+        cmocka_unit_test(test_w_remoted_check_tls_files_absolute_paths),
+        cmocka_unit_test(test_canonical_agent_id_pads_and_keeps_wide_ids),
+        cmocka_unit_test(test_canonical_agent_id_rejects_what_is_not_an_agent_id),
+        cmocka_unit_test(test_append_header_writes_canonical_id),
+        cmocka_unit_test(test_append_header_marks_non_numeric_id_for_drop),
+        cmocka_unit_test(test_invalid_agent_batches_are_dropped_with_throttled_warnings),
+        cmocka_unit_test(test_batch_without_agent_identity_is_dropped),
+        cmocka_unit_test(test_set_batch_identity_resets_then_adds_the_header),
+        cmocka_unit_test(test_set_batch_identity_resets_between_agents),
+        cmocka_unit_test(test_set_batch_identity_reports_a_header_failure),
+        cmocka_unit_test(test_set_batch_identity_reports_a_reset_failure)};
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

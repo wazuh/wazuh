@@ -18,10 +18,15 @@ HTTP POST over Unix socket at `/var/wazuh-manager/queue/sockets/engine-ingest-ht
 `application/x-wev1` (classic C dispatcher) or `application/x-ndjson` (HTTPS `remoted_module`
 ingestion path, forwarding to `POST /events/enriched`).
 
-The HTTPS `remoted_module` path also sends `X-Wazuh-Agent-Id: <agent id>`. The value is the canonical
-id of the agent remoted authenticated (the token's `sub`, e.g. `001`). remoted writes it itself; it
-is never copied from the agent's request. It names the agent the batch belongs to outside the
-agent-written `H` line. The classic C dispatcher does not send it yet.
+Both remoted paths also send `X-Wazuh-Agent-Id: <agent id>`. It names the agent the batch belongs to
+outside the `H` line, and remoted always writes it itself:
+
+- The HTTPS `remoted_module` path sends the canonical id of the agent it authenticated (the token's
+  `sub`, e.g. `001`), never a value copied from the agent's request.
+- The classic C dispatcher sends the canonical spelling of the key's id (`1` in `client.keys` is sent
+  as `001`), and its `H` line carries that same spelling.
+- A dispatcher batch whose stored id is not a valid agent id is discarded; warnings are limited to
+  one every 90 seconds across dispatcher threads.
 
 ## Message Format
 

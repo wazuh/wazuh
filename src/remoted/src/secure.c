@@ -68,6 +68,7 @@ _Static_assert(REMOTED_HTTPS_RATE_LIMIT_UNSET == REMOTED_MODULE_RATE_LIMIT_UNSET
 
 static _Atomic time_t s_last_events_drop_warn = 0;
 static _Atomic size_t s_pending_events_drop = 0;
+static _Atomic time_t s_last_invalid_id_warn = 0;
 
 /**
  * @brief Increment the pending-drop counter and emit a rate-limited warning.
@@ -261,6 +262,8 @@ typedef struct {
 typedef struct {
     const char *agent_id;
     int   header_added;
+    int   drop;              // 1 when the batch cannot be built or identified: never send it
+    char  canonical_id[16];  // canonical spelling of agent_id ("001"), set by append_header()
     bulk_t bulk;             // body to send (header + events)
 } dispatch_ctx_t;
 
@@ -1775,10 +1778,72 @@ const char* infer_os_type(const char *os_platform) {
     return "linux";
 }
 
-// Encode the header ONLY once above the body
-static int append_header(dispatch_ctx_t *ctx) {
+/**
+ * @brief Write the canonical spelling of an agent id: its value zero-padded to at least three digits.
+ *
+ * The same rule the manager applies to every agent id it issues or verifies: 1 to 10 ASCII digits
+ * whose value fits in 32 bits, so "1", "01" and "0001" are all "001", and "1000" stays "1000".
+ *
+ * @param id   Agent id as stored (client.keys).
+ * @param out  Destination buffer.
+ * @param size Size of @p out.
+ * @return 0 on success; -1 if @p id is not a valid agent id or @p out is too small.
+ */
+STATIC int canonical_agent_id(const char *id, char *out, size_t size) {
+    if (!id || !out || size == 0) return -1;
+
+    const size_t len = strlen(id);
+    if (len == 0 || len > 10) return -1;
+
+    unsigned long long value = 0;
+    for (size_t i = 0; i < len; i++) {
+        if (id[i] < '0' || id[i] > '9') return -1;
+        value = value * 10 + (unsigned long long)(id[i] - '0');
+    }
+    if (value > UINT32_MAX) return -1;
+
+    const int written = snprintf(out, size, "%03llu", value);
+    return (written > 0 && (size_t)written < size) ? 0 : -1;
+}
+
+/**
+ * @brief Name the batch's agent to the engine: the client's headers are reset to the ones it was
+ *        built with, then X-Wazuh-Agent-Id is added.
+ *
+ * The client is reused for every agent, so without the reset the previous agent's header would
+ * also be sent.
+ *
+ * @return 0 on success; -1 if the headers could not be set (the batch must not be sent).
+ */
+STATIC int set_batch_identity(uhttp_client_t *cli, const char *canonical_id) {
+    char line[64];
+
+    if (!cli || !canonical_id || !canonical_id[0]) return -1;
+    if (uhttp_client_reset_headers(cli) != 0) return -1;
+
+    const int written = snprintf(line, sizeof(line), "X-Wazuh-Agent-Id: %s", canonical_id);
+    if (written <= 0 || (size_t)written >= sizeof(line)) return -1;
+
+    return uhttp_client_add_header(cli, line) == 0 ? 0 : -1;
+}
+
+// Encode the header ONLY once above the body. The agent id written into it is the canonical one, the
+// same string set_batch_identity() sends as X-Wazuh-Agent-Id, so both name the agent identically.
+STATIC int append_header(dispatch_ctx_t *ctx) {
     if (!ctx || !ctx->agent_id) return -1;
     if (ctx->header_added) return 0;
+
+    if (canonical_agent_id(ctx->agent_id, ctx->canonical_id, sizeof(ctx->canonical_id)) != 0) {
+        time_t now = time(NULL);
+        time_t last = atomic_load_explicit(&s_last_invalid_id_warn, memory_order_relaxed);
+        if ((last == 0 || now - last >= 90) &&
+            atomic_compare_exchange_strong_explicit(&s_last_invalid_id_warn, &last, now,
+                                                    memory_order_relaxed, memory_order_relaxed)) {
+            mwarn("Discarding events of agent '%s': its id is not a valid agent id.", ctx->agent_id);
+        }
+        ctx->drop = 1;
+        return -1;
+    }
 
     // Snapshot metadata for this agent (copies strings into 'snap')
     agent_meta_t snap = {0};
@@ -1800,7 +1865,7 @@ static int append_header(dispatch_ctx_t *ctx) {
     cJSON_AddItemToObject(host, "os",    os);
 
     // agent.*
-    cJSON_AddStringToObject(agent, "id", ctx->agent_id);
+    cJSON_AddStringToObject(agent, "id", ctx->canonical_id);
     if (have_meta && snap.agent_name) {
         cJSON_AddStringToObject(agent, "name", snap.agent_name);
     }
@@ -1936,10 +2001,19 @@ static void rr_collect_one(void *data, void *user) {
     dispatch_ctx_t *ctx = (dispatch_ctx_t*)user;
 
     // Ensure header at the top of the body
-    if (!ctx->header_added) {
+    if (!ctx->header_added && !ctx->drop) {
         if (append_header(ctx) < 0) {
-            mwarn("Unable to append header for agent '%s'", ctx->agent_id ?: "?");
+            if (!ctx->drop) {
+                mwarn("Unable to append header for agent '%s'", ctx->agent_id ?: "?");
+            }
+            ctx->drop = 1;
         }
+    }
+
+    if (ctx->drop) {
+        rem_inc_recv_events_failed();
+        dispose_evt_item(e);
+        return;
     }
 
     // Event Framing: "E <indented_payload>\n"
@@ -2013,14 +2087,21 @@ void *dispach_events_thread(void *arg) {
         // Online path: build one agent batch and POST it
         dispatch_ctx_t ctx = {
             .agent_id     = NULL,
-            .header_added = 0
+            .header_added = 0,
+            .drop         = 0
         };
         bulk_init(&ctx.bulk, 8192);
 
         size_t drained = batch_queue_drain_next_ex(q, /*abstime=*/NULL,
                                                    rr_collect_one, &ctx, &ctx.agent_id);
 
-        if (drained > 0 && ctx.bulk.len > 0) {
+        if (drained > 0 && ctx.bulk.len > 0 && !ctx.drop
+            && set_batch_identity(cli, ctx.canonical_id) != 0) {
+            mwarn("Discarding a batch of agent '%s': unable to set its identity header.", ctx.agent_id ?: "?");
+            ctx.drop = 1;
+        }
+
+        if (drained > 0 && ctx.bulk.len > 0 && !ctx.drop) {
             uhttp_result_t res = {0};
             int rc = uhttp_post(cli, ctx.bulk.buf, ctx.bulk.len, &res);
             if (rc != 0) {
