@@ -24,15 +24,16 @@ namespace containerimages
 
     /// @brief A registry reference broken into the parts a pull needs.
     ///
-    /// Exactly one of @ref tag and @ref digest is set. A digest-pinned reference names
+    /// At least one of @ref tag and @ref digest is set. A digest-pinned reference names
     /// its content directly; a tag-pinned one names something the registry may repoint
     /// at different content later, which is why the two are kept apart rather than
-    /// collapsed into one "identifier" string at parse time.
+    /// collapsed into one "identifier" string at parse time. When both were written,
+    /// the digest is what is pulled and the tag is only kept.
     struct RegistryReference
     {
         std::string registry;   ///< Registry host, e.g. "ghcr.io".
         std::string repository; ///< Repository path, e.g. "owner/app".
-        std::string tag;        ///< Tag, when the reference is pinned by tag.
+        std::string tag;        ///< Tag, when the reference carries one.
         std::string digest;     ///< Digest, when the reference is pinned by content.
 
         /// @brief True when the reference names its content directly.
@@ -56,8 +57,9 @@ namespace containerimages
 
     /// @brief Parse a configured `<ref>` value.
     ///
-    /// Accepts `host/repository:tag` and `host/repository@algorithm:digest`. A reference
-    /// with neither a tag nor a digest takes @ref DEFAULT_TAG.
+    /// Accepts `host/repository:tag`, `host/repository@algorithm:digest` and
+    /// `host/repository:tag@algorithm:digest`, where the digest wins. A reference with
+    /// neither a tag nor a digest takes @ref DEFAULT_TAG.
     ///
     /// @param text      The reference as written in the configuration.
     /// @param reference Filled in when parsing succeeds.
