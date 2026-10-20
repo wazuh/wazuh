@@ -135,27 +135,26 @@ namespace containerimages
 
         // A ':' only introduces a tag when it comes after the last '/'. Before it, it is
         // the port of a registry host, which this module does not accept but must not
-        // mistake for a tag.
-        if (reference.digest.empty())
+        // mistake for a tag. Looked for with a digest present too: "app:1.4@sha256:..." is
+        // what dependency update tools write, and the tag in it is left for the digest to
+        // override.
+        const auto lastSlash {remainder.rfind('/')};
+        const auto tagSeparator {remainder.rfind(':')};
+
+        if (tagSeparator != std::string::npos && (lastSlash == std::string::npos || tagSeparator > lastSlash))
         {
-            const auto lastSlash {remainder.rfind('/')};
-            const auto tagSeparator {remainder.rfind(':')};
+            reference.tag = remainder.substr(tagSeparator + 1);
+            remainder = remainder.substr(0, tagSeparator);
 
-            if (tagSeparator != std::string::npos && (lastSlash == std::string::npos || tagSeparator > lastSlash))
+            if (!isSafeTag(reference.tag))
             {
-                reference.tag = remainder.substr(tagSeparator + 1);
-                remainder = remainder.substr(0, tagSeparator);
-
-                if (!isSafeTag(reference.tag))
-                {
-                    error = "the tag is not a well-formed OCI tag";
-                    return false;
-                }
+                error = "the tag is not a well-formed OCI tag";
+                return false;
             }
-            else
-            {
-                reference.tag = DEFAULT_TAG;
-            }
+        }
+        else if (reference.digest.empty())
+        {
+            reference.tag = DEFAULT_TAG;
         }
 
         const auto components {splitPath(remainder)};

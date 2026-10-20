@@ -94,6 +94,45 @@ TEST_F(RegistryReferenceTest, DigestSeparatorWinsOverTagSeparator)
     EXPECT_TRUE(reference.pinnedByDigest());
 }
 
+TEST_F(RegistryReferenceTest, ATagWrittenBesideADigestIsAcceptedAndTheDigestWins)
+{
+    // The form Renovate and Dependabot write, and the one Docker and containerd accept:
+    // the tag documents the digest and plays no part in which content is pulled.
+    const std::string digest {"sha256:2f3a4b5c6d7e8f900112233445566778899aabbccddeeff00112233445566778"};
+    const auto reference {parsed("ghcr.io/owner/app:1.4@" + digest)};
+
+    EXPECT_EQ(reference.registry, "ghcr.io");
+    EXPECT_EQ(reference.repository, "owner/app");
+    EXPECT_EQ(reference.tag, "1.4");
+    EXPECT_TRUE(reference.pinnedByDigest());
+    EXPECT_EQ(reference.identifier(), reference.digest);
+    EXPECT_EQ(reference.digest, digest);
+}
+
+TEST_F(RegistryReferenceTest, ADigestOnItsOwnLeavesNoTagAndTakesNoDefault)
+{
+    EXPECT_TRUE(parsed("ghcr.io/owner/app@sha256:2f3a4b5c6d7e8f9001122334455667788").tag.empty());
+}
+
+TEST_F(RegistryReferenceTest, AMalformedTagBesideADigestIsRejected)
+{
+    rejected("ghcr.io/owner/app:bad tag@sha256:2f3a4b5c6d7e8f9001122334455667788");
+    rejected("ghcr.io/owner/app:../x@sha256:2f3a4b5c6d7e8f9001122334455667788");
+    rejected("ghcr.io/owner/app:@sha256:2f3a4b5c6d7e8f9001122334455667788");
+}
+
+TEST_F(RegistryReferenceTest, ATagBesideAMalformedDigestIsRejected)
+{
+    rejected("ghcr.io/owner/app:1.4@sha256:");
+    rejected("ghcr.io/owner/app:1.4@notadigest");
+}
+
+TEST_F(RegistryReferenceTest, ARegistryPortBesideADigestIsNotTakenForATag)
+{
+    // The ':' before the last '/' is a port, which this module refuses, not a tag.
+    rejected("ghcr.io:443/owner/app@sha256:2f3a4b5c6d7e8f9001122334455667788");
+}
+
 TEST_F(RegistryReferenceTest, UnsupportedRegistryIsRejected)
 {
     rejected("docker.io/library/nginx:1.27");
