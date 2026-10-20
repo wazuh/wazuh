@@ -61,6 +61,10 @@ target_link_libraries(
   Threads::Threads
   dl)
 
+# The fake's TLS/mTLS servers (E2a-2): cpp-httplib's SSLServer over the OpenSSL that libwazuhext exports (I44); only
+# this executable compiles them, so the unit suite never touches OpenSSL.
+target_compile_definitions(indexer_client_component_test PRIVATE CPPHTTPLIB_OPENSSL_SUPPORT)
+
 target_include_directories(
   indexer_client_component_test PRIVATE ${CMAKE_CURRENT_LIST_DIR}/fake ${CMAKE_CURRENT_LIST_DIR}/../src
                                         ${SRC_FOLDER}/external/cpp-httplib)

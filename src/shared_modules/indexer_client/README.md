@@ -17,9 +17,9 @@ consumers of the indexer, one consumer at a time, with:
 
 The design is in `planes/18-indexer_connector_v2/03-diseno.md` §1–§4 (outside the repository).
 
-**Status: E2a-1 — internal HTTP transport, no public network API.** The public headers, the
+**Status: E2a-2 — internal HTTP/HTTPS transport with TLS and credentials, no public network API.** The public headers, the
 configuration schema, the runtime lifecycle (threads, owner thread, shutdown deadline), the test
-helpers and the internal curl [Transport](#transport-internal-e2a-1) exist. The public write and
+helpers and the internal curl [Transport](#transport-internal-e2a-1-and-e2a-2) (HTTP, HTTPS, credentials) exist. The public write and
 query interfaces still send nothing to an indexer; see
 [What is not implemented yet](#what-is-not-implemented-yet).
 `indexer_connector` keeps working untouched until each consumer migrates.
@@ -47,7 +47,8 @@ Headers are in `include/indexer_client/`; `indexerClient.hpp` is the umbrella.
 | | `BucketSpec` | A consumer-declared queue: name, weight, quota, retry, overflow, bulk, conflict policy, `ordered` |
 | | `Slice`, `CursorQuery`, `PitOptions`, `DbqOptions`, `QueryOptions`, `PitPage` | Query and PIT parameters and page |
 | | `HealthView`, `CloseReport`, `MetricsSnapshot` | Node states and `clusterRed`; close accounting; runtime counters (E1 reports only the thread layout and client count) |
-| `iConfigSource.hpp` | `IConfigSource` | The only way configuration reaches the library |
+| `iConfigSource.hpp` | `IConfigSource` | The only way configuration and credentials reach the library |
+| `types.hpp` | `Credentials` | Indexer `user` and `password`; no `operator<<` |
 | `keyValueConfigSource.hpp` | `KeyValueConfigSource` | `IConfigSource` over `key=value` text plus an `<indexer>` JSON string |
 | `runtimeConfig.hpp` | `SslConfig`, `RuntimeConfig` | Typed, validated configuration; `prefixFor()` and `from()` |
 | `runtime.hpp` | `RuntimeOwner` | Single owner of the process runtime: `start`, `beginShutdown`, `shutdown`, `running` |
@@ -121,8 +122,9 @@ The library **never opens a file**. All configuration arrives through `IConfigSo
 | `keysWithPrefix(prefix)` | Every key of the source that starts with `prefix` (including the ones `problem()` reports); used to reject unknown keys |
 | `problem(key)` | Why a present key is unusable (malformed line, empty value), or `nullopt`; defaults to `nullopt` |
 | `indexerSectionJson()` | The `<indexer>` section as canonical JSON |
+| `credentials()` | The indexer `Credentials{user, password}` (pure virtual; see [Credentials](#tls-and-credentials)) |
 
-`KeyValueConfigSource::parse(text, indexerSectionJson)` is the stock implementation: `key=value`
+`KeyValueConfigSource::parse(text, indexerSectionJson, Credentials)` is the stock implementation (the `Credentials` are returned as is by `credentials()`): `key=value`
 lines, judged **per key** like wazuh's C internal-options reader (`_read_file` in
 `src/shared/src/validate_op.c`): outside the process prefix nothing is judged. Under the prefix it is
 **stricter than C**: a malformed line is fatal wherever it appears (C logs `FGETS_ERROR` and skips it)
@@ -210,7 +212,7 @@ loops and the CPU pool runs its result callbacks; the test seams (`detail::testi
 `clients`. curl's own DNS resolver threads are auxiliary threads outside K + M; the transport sets
 `CURLMOPT_QUICK_EXIT` so they never block shutdown.
 
-## Transport (internal, E2a-1)
+## Transport (internal, E2a-1 and E2a-2)
 
 `detail::Transport` (`src/transport/transport.hpp`) is the HTTP layer the probe (E2b), the bulk
 path (E3b) and the queries (E4) build on. It is **not public API**: no installed header names it and
@@ -225,7 +227,7 @@ the runtime alive. The normative contract is `planes/18-indexer_connector_v2/ane
   `src/transport/transport.cpp:220`).
 - **Admission.** `submit(HttpRequest, ResultCallback)` is synchronous and returns
   `Admission{admitted, cause, id}`. `id` is monotonic per runtime and never reused. Only `GET`,
-  `HEAD`, `POST`, `PUT`, `DELETE` and the scheme `http` are admitted (until E2a-2 adds `https`);
+  `HEAD`, `POST`, `PUT`, `DELETE` and the schemes `http` and `https` are admitted (`https` only when some CA is configured, see [TLS](#tls-and-credentials));
   anything else, or a stopped transport, is not admitted (`InvalidArgument` / `Shutdown`) and the
   callback never runs. The `id` is registered before the post to the loop, so `stop()` resolves it
   even if the post never arrived.
@@ -272,11 +274,64 @@ the runtime alive. The normative contract is `planes/18-indexer_connector_v2/ane
 - **`Retry-After`** is parsed byte by byte (`src/transport/retryAfter.cpp`): no locale, no
   `strptime`/`mktime`, so neither the global locale nor `TZ` changes the result. The value is
   capped at `retry_after_max_ms` and parsed on the CPU pool.
-- **Fixed options.** Per easy: `CURLOPT_PROTOCOLS_STR "http"` (E2a-2 widens it), `CURLOPT_NOSIGNAL`,
+- **Fixed options.** Per easy: `CURLOPT_PROTOCOLS_STR "http,https"`, `CURLOPT_NOSIGNAL`,
   `CURLOPT_PROXY ""` (never a proxy from the environment), `Expect:` suppressed. Per multi:
   `CURLMOPT_MAX_HOST_CONNECTIONS` = 8 (a constant of E2a-1; the real window is E5's) and
   `CURLMOPT_QUICK_EXIT`. `curl_global_init` runs once (`std::call_once`).
-- **TLS** is not available until E2a-2, which adds `Tls` and `TlsConfig` to `TransportCause`.
+- **Timings.** `HttpResult.timings` (`TransferTimings`: `total`, `connect`, `appConnect`) is in
+  **microseconds**, and is also filled for `Cancelled` and `Shutdown` results. `appConnect` is 0 in clear text.
+- **TLS and credentials** are described in [TLS and credentials](#tls-and-credentials); they add `Tls`
+  and `TlsConfig` to `TransportCause`.
+
+### TLS and credentials
+
+**TLS material (I48).** `RuntimeOwner::start` calls `loadTlsMaterial` (`src/transport/tlsMaterial.cpp`)
+before creating any thread, and does so **whenever the material is configured, whatever the hosts'
+scheme**: a typo in a path fails at start, not on the day `https` is used. A failure is
+`Cause::InvalidConfig`, names the path or the host, and creates no thread. What is required:
+
+- every host is `http` or `https` (case-insensitive); some `https` host with no CA configured fails;
+- every file is at most **1 MiB**;
+- every file in `ssl.certificate_authorities` exists, parses the way curl parses `CAINFO_BLOB`
+  (`PEM_X509_INFO_read_bio` over the whole file: a malformed PEM block anywhere fails) and holds at
+  least one certificate. The files are concatenated, so a later CA is as valid as the first; the
+  concatenation is parsed again and must stay below curl's blob limit (8 000 000 bytes);
+- `ssl.certificate` and `ssl.key` come **together or not at all**; `""` counts as absent (the
+  manager's config fills defaults). The certificate file is the leaf plus optional intermediates,
+  parsed the way curl parses `SSLCERT_BLOB` (the leaf, then only PEM certificates up to the end), and
+  is sent whole; the key must be PEM, **unencrypted**, and match the **first** certificate.
+
+Because the validation uses curl's own OpenSSL primitives, 58 and 77 cannot come from the content of
+the files any more (a file changed on disk after start does not matter: the material is in memory).
+
+How it reaches curl: relative paths resolve against the process's working directory (the manager
+runs with cwd = home); the files are read once into memory (`TlsMaterial`, held by the transport) and
+passed as `CAINFO_BLOB`, `SSLCERT_BLOB` and `SSLKEY_BLOB` with `CURL_BLOB_NOCOPY`, so no temporary file
+and no CA directory (`CAPATH` is null). Verification is always on (`VERIFYPEER` 1, `VERIFYHOST` 2),
+the minimum protocol is TLS 1.2 and there is no insecure mode. `https` is admitted only when a CA is
+configured. The material is read only at start: **rotating a CA, certificate or key requires a
+restart**.
+
+**TLS causes (I54).** Added to the classification table:
+
+| curl code | `TransportCause` | `nodeAttributable` | Meaning |
+|---|---|---|---|
+| 35 (handshake), 60 (verification: CA, hostname), 98 (the node wants a client certificate) | `Tls` | yes | A fault of the node or of what it presents |
+| 58 (our certificate or pair), 77 (our CA bundle) | `TlsConfig` | no | curl rejected bytes our validation accepted: local |
+| 53, 54, 59, 66, 82, 83, 90, 91 | `TlsConfig` | no | Listed for completeness; unreachable with our options (no `SSLENGINE`, cipher list, `CRLFILE`, `ISSUERCERT`, pinned public key nor `VERIFYSTATUS`) |
+| 43 | `LocalError` | no | Stays generic |
+
+**Credentials (I55, I42).** `IConfigSource::credentials()` returns the `Credentials`; the process
+reads them from its own keystore, the library never does. They are **mandatory, also with `http`**:
+`start` copies them and fails with `InvalidConfig` (before any thread) when the user or the password
+is empty or `credentials()` throws. They travel on every request as `CURLOPT_USERNAME` and
+`CURLOPT_PASSWORD` (never `USERPWD`, so a `:` in the password arrives intact) and survive the
+destruction of the source. They never appear in a `reason`, a log or `stats()`. Wiping memory is
+**best effort**: the transport calls `OPENSSL_cleanse` over its own copies of the password and the
+key when it is destroyed (also when its construction fails), `TlsMaterial` wipes the key whenever it
+dies and `KeyValueConfigSource` wipes its password copy in its destructor, but curl and OpenSSL keep
+copies of their own that the library cannot reach, the `Credentials` returned by `credentials()` are
+the caller's, and a moved-from string may keep stale bytes; do not rely on it as a guarantee.
 
 ## Linking
 
@@ -340,11 +395,10 @@ Layout of `tests/`: `unit/` (config schema, key-value source, mocks, fake indexe
 
 ## What is not implemented yet
 
-E1 delivered the skeleton and E2a-1 the internal `http` transport. Not implemented, by stage:
+E1 delivered the skeleton, E2a-1 the internal `http` transport and E2a-2 TLS and credentials. Not implemented, by stage:
 
 | Area | Stage |
 |---|---|
-| Transport: TLS and credentials | E2a-2 |
 | Node probes and health states; transport performance | E2b, E2c |
 | Writes: bucket queues, bulk building, scheduling, retries, overflow, tickets and groups | E2–E5 |
 | Queries: `search`, `searchAfter`, PIT, `deleteByQuery`, `updateByQuery`, `indexExists` | E2–E5 |

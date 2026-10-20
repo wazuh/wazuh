@@ -57,8 +57,11 @@ namespace component
     class MapSource final : public indexer_client::IConfigSource
     {
     public:
-        explicit MapSource(std::map<std::string, std::string> values)
+        /// `indexerJson` is the <indexer> section (default: one http host, no ssl).
+        explicit MapSource(std::map<std::string, std::string> values,
+                           std::string indexerJson = R"({"hosts":["http://127.0.0.1:9200"]})")
             : m_values(std::move(values))
+            , m_indexerJson(std::move(indexerJson))
         {
         }
 
@@ -87,11 +90,17 @@ namespace component
 
         std::string indexerSectionJson() const override
         {
-            return R"({"hosts":["http://127.0.0.1:9200"]})";
+            return m_indexerJson;
+        }
+
+        indexer_client::Credentials credentials() const override
+        {
+            return {"user", "pass"};
         }
 
     private:
         std::map<std::string, std::string> m_values;
+        std::string m_indexerJson;
     };
 
     /// Polls `predicate` (1 ms apart) for a condition that has no notification of its own; false past `timeout`.
