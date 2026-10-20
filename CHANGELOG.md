@@ -23,6 +23,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the `azure-logs` configuration reported by the Server API leaving out the requests and containers of each source. ([#40579](https://github.com/wazuh/wazuh/pull/40579))
 - Fixed a memory leak in `wazuh-modulesd` each time the `azure-logs` configuration was requested. ([#40579](https://github.com/wazuh/wazuh/pull/40579))
 - Fixed the vulnerability scanner reporting no OS vulnerabilities for Windows 10 agents older than 20H2, which have no display version. ([#40489](https://github.com/wazuh/wazuh/pull/40489))
+- Fixed the Azure Log Analytics integration never collecting the records ingested after a run with a `TimeGenerated` older than the newest record processed. ([#40538](https://github.com/wazuh/wazuh/pull/40538))
 
 ### Agent
 
