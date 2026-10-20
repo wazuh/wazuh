@@ -24,12 +24,16 @@
 #include <utility>
 
 #include <pthread.h>
+#include <sys/syscall.h>
+#include <unistd.h>
 
 #include <asio/executor_work_guard.hpp>
 #include <asio/io_context.hpp>
 #include <asio/post.hpp>
 
 #include "runtime/runtimeInternal.hpp"
+#include "transport/seams.hpp"
+#include "transport/transport.hpp"
 
 namespace indexer_client
 {
@@ -57,6 +61,11 @@ namespace indexer_client
                 return;
             }
             thread.join();
+        }
+
+        pid_t currentTid()
+        {
+            return static_cast<pid_t>(::syscall(SYS_gettid));
         }
 
         void nameThisThread(const char* prefix, std::size_t index)
@@ -152,6 +161,7 @@ namespace indexer_client
                         {
                             t_onRuntimeThread = true;
                             nameThisThread("ic-cpu-", i);
+                            seams::onRuntimeThreadStart(currentTid());
                             work();
                         });
                 }
@@ -247,18 +257,29 @@ namespace indexer_client
             std::optional<TimePoint> shutdownDeadline;
             std::set<std::string> clients;
 
+            /// Created by start() once every runtime thread exists; stopped first by stopAndJoin() (I22c, D28).
+            std::shared_ptr<Transport> transport;
+
             bool sameEpoch(std::uint64_t other) const
             {
                 return epoch == other;
             }
 
-            /// Stops accepting work, releases the work guards and joins every runtime thread. Never holds `mutex`
-            /// while joining: a task may still need it (client registry, seams).
+            /// Contract order (contrato-transport.md, stop): close admission, stop the transport (every transfer
+            /// resolved, every multi cleaned up on its loop), release the work guards and join the loops, then drain
+            /// and join the CPU pool. Never holds `mutex` while joining: a task may still need it (client registry,
+            /// seams). The transport's deadline is the shutdown deadline, else now + drain.
             void stopAndJoin()
             {
+                std::optional<TimePoint> deadline;
                 {
                     std::lock_guard<std::mutex> lock(mutex);
                     accepting = false;
+                    deadline = shutdownDeadline;
+                }
+                if (transport)
+                {
+                    transport->stop(deadline.value_or(std::chrono::steady_clock::now() + config.drain));
                 }
                 for (auto& loop : loops)
                 {
@@ -533,6 +554,7 @@ namespace indexer_client
                         {
                             t_onRuntimeThread = true;
                             nameThisThread("ic-io-", i);
+                            detail::seams::onRuntimeThreadStart(currentTid());
                             for (;;)
                             {
                                 try
@@ -563,6 +585,33 @@ namespace indexer_client
                 return Result::failure(Cause::InvalidState, "cannot create runtime threads: unexpected exception");
             }
         } // The owner's mask is restored here, after every thread exists.
+
+        // The transport borrows the loops' io_contexts and the pool; it creates no thread of its own (curl's resolver
+        // threads, auxiliary and outside K + M, start later from the network threads and inherit their mask).
+        try
+        {
+            detail::TransportEnvironment environment;
+            for (auto& loop : state->loops)
+            {
+                environment.loops.push_back(&loop->context);
+            }
+            // The pool outlives every use: the transport is stopped before the pool in stopAndJoin().
+            environment.postToPool = [pool = &state->pool](std::function<void()> task)
+            {
+                return pool->post(std::move(task));
+            };
+            state->transport = detail::Transport::create(state->config, std::move(environment));
+        }
+        catch (const std::exception& e)
+        {
+            state->stopAndJoin();
+            return Result::failure(Cause::InvalidState, std::string("cannot create the transport: ") + e.what());
+        }
+        catch (...)
+        {
+            state->stopAndJoin();
+            return Result::failure(Cause::InvalidState, "cannot create the transport: unexpected exception");
+        }
 
         {
             std::lock_guard<std::mutex> lock(g_mutex);
@@ -627,6 +676,12 @@ namespace indexer_client
         void countUsageError()
         {
             g_usageErrors.fetch_add(1);
+        }
+
+        std::shared_ptr<Transport> runtimeTransport()
+        {
+            auto state = current();
+            return state ? state->transport : nullptr;
         }
     } // namespace detail
 
