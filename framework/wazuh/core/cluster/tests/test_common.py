@@ -1233,14 +1233,16 @@ def test_handler_end_file():
 
     with patch('builtins.open'):
         with open(os.path.join(os.getcwd(), "no_file.txt")) as f:
-            handler.in_file = {b"name": {"fd": f, "checksum": ChecksumMock()}}
+            handler.in_file = {b"name": {"fd": f, "checksum": ChecksumMock(), "path": "/full/path"}}
             # Test the first condition
             assert handler.end_file(b"name checksum") == (b"ok", b"File received correctly")
+            assert handler.received_files == {"/full/path"}
 
-            handler.in_file = {b"name": {"fd": f, "checksum": hashlib.sha256()}}
+            handler.in_file = {b"name": {"fd": f, "checksum": hashlib.sha256(), "path": "/other/path"}}
             # Test the second condition
             assert handler.end_file(b"name checksum") == (b"err",
                                                           b"File wasn't correctly received. Checksums aren't equal.")
+            assert handler.received_files == {"/full/path"}
 
 
 @pytest.mark.parametrize('task_name', [
@@ -1557,11 +1559,31 @@ def test_wazuh_common_end_receiving_file_ok(logger_mock, wazuh_common_mock):
         with patch('asyncio.create_task'):
             file_task = cluster_common.ReceiveFileTask(wazuh_common_mock, logger_mock, b"task")
 
+    received = os.path.join(common.WAZUH_PATH, "queue/cluster/filepath")
     with patch('wazuh.core.cluster.common.WazuhCommon.get_logger'):
         wazuh_common.sync_tasks = {'task_ID': file_task}
+        wazuh_common.received_files = {received}
         # Use a path within queue/cluster to pass validation
         assert wazuh_common.end_receiving_file("task_ID queue/cluster/filepath") == (b'ok', b'File correctly received')
         assert isinstance(wazuh_common.sync_tasks["task_ID"], cluster_common.ReceiveFileTask)
+        assert wazuh_common.sync_tasks["task_ID"].filename == received
+        # The path can be claimed once
+        assert wazuh_common.received_files == set()
+
+
+@pytest.mark.parametrize('filename', ['queue/cluster/c-internal.sock', 'queue/cluster/other-node/integrity.zip'])
+def test_wazuh_common_end_receiving_file_not_received(filename):
+    """Check that a path under the allowed prefix is rejected when no transfer for it completed."""
+
+    task = MagicMock(filename='')
+    wazuh_common.sync_tasks = {'task_ID': task}
+    wazuh_common.received_files = {os.path.join(common.WAZUH_PATH, 'queue/cluster/task_ID.zip')}
+    with patch('wazuh.core.cluster.common.WazuhCommon.get_logger'):
+        with pytest.raises(exception.WazuhClusterError, match=r'.* 3027 .*'):
+            wazuh_common.end_receiving_file(f"task_ID {filename}")
+
+    assert task.filename == ''
+    task.received_information.set.assert_not_called()
 
 
 def test_wazuh_common_end_receiving_file_ko():
@@ -1588,13 +1610,19 @@ def test_wazuh_common_error_receiving_file_ok(json_loads_mock):
 
 
 def test_wazuh_common_error_receiving_file_ko():
-    """Test the 'error_receiving_file' when an exception takes place."""
+    """Test the 'error_receiving_file' when removing the received file fails."""
 
+    task = MagicMock(filename='/received/file')
+    wazuh_common.sync_tasks = {'task_ID': task}
     with patch('json.loads', return_value=Exception("error_details")):
         with patch('os.path.exists', return_value=True):
-            with patch('os.remove', side_effect=Exception):
-                with patch('wazuh.core.cluster.common.WazuhCommon.get_logger'):
+            with patch('os.remove', side_effect=Exception) as remove_mock:
+                with patch('wazuh.core.cluster.common.WazuhCommon.get_logger') as logger_mock:
                     assert wazuh_common.error_receiving_file("task_ID error_details") == (b'ok', b'Error received')
+
+    remove_mock.assert_called_once_with('/received/file')
+    logger_mock.return_value.error.assert_called_once()
+    assert isinstance(task.filename, Exception)
 
 
 @pytest.mark.parametrize('error_details', ['"etc/client.keys"', '["etc/client.keys"]', '{"a": 1}', 'null'])
