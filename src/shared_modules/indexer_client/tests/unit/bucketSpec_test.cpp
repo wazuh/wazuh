@@ -11,6 +11,7 @@
  */
 
 #include <chrono>
+#include <future>
 #include <limits>
 #include <memory>
 #include <string>
@@ -19,6 +20,7 @@
 #include <gtest/gtest.h>
 
 #include "indexer_client/runtime.hpp"
+#include "write/bucket.hpp"
 
 using namespace indexer_client;
 
@@ -165,6 +167,20 @@ TEST_F(BucketSpecTest, InvalidBulkMaxBytesAboveQuota)
     expectRejected({spec}, field("bulk.maxBytes must be <= quotaBytes"));
 }
 
+TEST_F(BucketSpecTest, InvalidBulkMaxBytesPlusReserveAboveQuota)
+{
+    // I62: the largest admissible op (a whole bulk) plus its result reserve must fit in the quota.
+    const auto reserve = std::to_string(detail::write::RESULT_RESERVE);
+    auto spec = valid();
+    spec.quotaBytes = 4096;
+    spec.bulk.maxBytes = 4096; // maxBytes == quotaBytes: no room for the reserve.
+    expectRejected({spec}, field("bulk.maxBytes + RESULT_RESERVE (" + reserve + ") must be <= quotaBytes"));
+    spec.bulk.maxBytes = 4096 - detail::write::RESULT_RESERVE + 1; // One byte short.
+    expectRejected({spec}, field("bulk.maxBytes + RESULT_RESERVE (" + reserve + ") must be <= quotaBytes"));
+    spec.bulk.maxBytes = 4096 - detail::write::RESULT_RESERVE; // Exactly fits.
+    EXPECT_TRUE(m_ref.client("consumer", {spec}).ok());
+}
+
 TEST_F(BucketSpecTest, InvalidRetryBaseAboveCap)
 {
     auto spec = valid();
@@ -258,8 +274,8 @@ TEST_F(BucketSpecTest, ValidSpecAccepted)
     blocking.overflow.blockTimeout = Duration {100};
     blocking.weight = 7;
     auto edge = valid("edge");
-    edge.quotaBytes = 4096;
-    edge.bulk.maxBytes = 4096; // maxBytes == quotaBytes is allowed.
+    edge.quotaBytes = 4096 + detail::write::RESULT_RESERVE;
+    edge.bulk.maxBytes = 4096; // maxBytes + RESULT_RESERVE == quotaBytes is allowed.
     edge.retry.base = Duration {500};
     edge.retry.cap = Duration {500};
     edge.retry.maxAttempts = std::nullopt;
@@ -286,9 +302,11 @@ TEST_F(BucketSpecTest, ValidSpecAccepted)
     EXPECT_EQ(m_ref.snapshot().clients, 2u);
 }
 
-TEST_F(BucketSpecTest, WriterStubReturnsUnavailable)
+TEST_F(BucketSpecTest, WriterSubmitResolvesUnavailable)
 {
-    auto client = m_ref.client("writer", {valid("events")});
+    auto spec = valid("events");
+    spec.bulk.maxDocs = 1; // One op is a batch: no wait for maxAge.
+    auto client = m_ref.client("writer", {spec});
     ASSERT_TRUE(client.ok()) << client.reason;
 
     EXPECT_EQ(client.value->writer("missing"), nullptr) << "an unknown bucket has no writer";
@@ -299,10 +317,21 @@ TEST_F(BucketSpecTest, WriterStubReturnsUnavailable)
     op.index = "wazuh-states-test";
     op.id = "1";
     op.body = R"({"a":1})";
-    const auto submit = writer->submit(op, [](const OpResult&) { FAIL() << "a rejected submit has no callback"; });
-    EXPECT_FALSE(submit.accepted);
-    EXPECT_EQ(submit.cause, Cause::Unavailable);
-    EXPECT_FALSE(submit.ticket.ready());
+    // E3a: submit admits the op; the production sink (no bulk sender before E3b) resolves it Failed(Unavailable).
+    auto callbackResult = std::make_shared<std::promise<OpResult>>();
+    auto callbackFuture = callbackResult->get_future();
+    const auto submit =
+        writer->submit(op, [callbackResult](const OpResult& result) { callbackResult->set_value(result); });
+    ASSERT_TRUE(submit.accepted) << toString(submit.cause);
+    EXPECT_EQ(submit.cause, Cause::None);
+    const auto result = submit.ticket.wait(std::chrono::steady_clock::now() + std::chrono::seconds(5));
+    ASSERT_TRUE(result.ok()) << toString(result.cause);
+    EXPECT_EQ(result.value.status, Status::Failed);
+    EXPECT_EQ(result.value.cause, Cause::Unavailable);
+    ASSERT_EQ(callbackFuture.wait_for(std::chrono::seconds(5)), std::future_status::ready);
+    const auto called = callbackFuture.get();
+    EXPECT_EQ(called.status, Status::Failed);
+    EXPECT_EQ(called.cause, Cause::Unavailable);
 
     auto group = writer->group();
     EXPECT_EQ(group.add(op), Cause::Unavailable);

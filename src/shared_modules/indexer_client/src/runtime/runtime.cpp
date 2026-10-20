@@ -12,6 +12,7 @@
 
 #include "indexer_client/runtime.hpp"
 
+#include <algorithm>
 #include <atomic>
 #include <condition_variable>
 #include <csignal>
@@ -36,6 +37,7 @@
 #include "runtime/runtimeInternal.hpp"
 #include "transport/seams.hpp"
 #include "transport/transport.hpp"
+#include "write/writer.hpp"
 
 #ifdef INDEXER_CLIENT_TESTING
 #include "testing/hooks.hpp"
@@ -187,9 +189,20 @@ namespace indexer_client
                         return false;
                     }
                     m_queue.push_back(std::move(task));
+                    m_peakPending = std::max<std::uint64_t>(m_peakPending, m_queue.size());
                 }
                 m_cv.notify_one();
                 return true;
+            }
+
+            /// Tasks queued and not yet taken by a worker, and the peak since the pool was created (E3a).
+            PoolStats stats()
+            {
+                std::lock_guard<std::mutex> lock(m_mutex);
+                PoolStats stats;
+                stats.postsPending = m_queue.size();
+                stats.peakPostsPending = m_peakPending;
+                return stats;
             }
 
             void stopAndJoin()
@@ -237,6 +250,7 @@ namespace indexer_client
             std::condition_variable m_cv;
             std::deque<std::function<void()>> m_queue;
             bool m_stop {false};
+            std::uint64_t m_peakPending {0};
             std::vector<std::thread> m_threads;
         };
 
@@ -273,13 +287,18 @@ namespace indexer_client
             /// Node health (E2b, I57): created after the transport; the prober is stopped before it.
             std::shared_ptr<NodeSet> nodes;
             std::shared_ptr<Prober> prober;
+            /// The write path (E3a, I62/I63): created after the probe; stopped first in stopAndJoin, right after the
+            /// admission closes and before the probe.
+            std::shared_ptr<write::WritePath> writePath;
 
             bool sameEpoch(std::uint64_t other) const
             {
                 return epoch == other;
             }
 
-            /// Contract order (contrato-transport.md, stop): close admission, stop the prober (no round is armed and
+            /// Contract order (contrato-transport.md, stop): close admission, stop the write path (buckets closed and
+            /// blocked producers woken, scheduler stopped, sink stopped, every unresolved op Dropped(Shutdown) while
+            /// the pool still runs its completions), stop the prober (no round is armed and
             /// no probe submitted afterwards, I57), stop the transport (every transfer
             /// resolved, every multi cleaned up on its loop), release the work guards and join the loops, then drain
             /// and join the CPU pool. Never holds `mutex` while joining: a task may still need it (client registry,
@@ -291,6 +310,10 @@ namespace indexer_client
                     std::lock_guard<std::mutex> lock(mutex);
                     accepting = false;
                     deadline = shutdownDeadline;
+                }
+                if (writePath)
+                {
+                    writePath->stop();
                 }
                 if (prober)
                 {
@@ -404,6 +427,12 @@ namespace indexer_client
             {
                 return field("bulk.maxBytes") + " must be <= quotaBytes";
             }
+            // I62: the largest admissible op (a whole bulk) plus its result reserve must fit in the quota.
+            if (static_cast<std::uint64_t>(spec.bulk.maxBytes) + detail::write::RESULT_RESERVE > spec.quotaBytes)
+            {
+                return field("bulk.maxBytes") + " + RESULT_RESERVE (" + std::to_string(detail::write::RESULT_RESERVE) +
+                       ") must be <= quotaBytes";
+            }
             if (spec.retry.base <= Duration::zero())
             {
                 return field("retry.base") + " must be > 0";
@@ -503,6 +532,21 @@ namespace indexer_client
                 clientState->nameReleased = true;
                 return Result::failure(Cause::InvalidArgument,
                                        "consumer '" + clientState->consumer + "' already has a live client");
+            }
+            // Under the runtime mutex: stopAndJoin closes the admission under it before stopping the write path, so
+            // a registered client is always seen by the shutdown sweep.
+            if (state->writePath)
+            {
+                try
+                {
+                    state->writePath->registerClient(*clientState);
+                }
+                catch (...)
+                {
+                    state->clients.erase(clientState->consumer);
+                    clientState->nameReleased = true;
+                    return Result::failure(Cause::InvalidState, "cannot create the client's buckets");
+                }
             }
         }
         return Result::success(std::make_shared<Client>(std::move(clientState)));
@@ -675,18 +719,26 @@ namespace indexer_client
             {
                 state->prober->start();
             }
+            // The write path (I62/I63): its scheduler lives on loop 0 like the probe; its completions run on the pool,
+            // which outlives every completion the write path posts (stopAndJoin stops it long before the pool).
+            state->writePath = std::make_shared<detail::write::WritePath>(
+                state->config.globalQuotaBytes,
+                [pool = &state->pool](std::function<void()> task) { return pool->post(std::move(task)); });
+            state->writePath->start(state->loops.front()->context, state->config.drrQuantumBytes);
         }
         catch (const std::exception& e)
         {
             state->stopAndJoin();
             return Result::failure(Cause::InvalidState,
-                                   std::string("cannot create the transport or the health probe: ") + e.what());
+                                   std::string("cannot create the transport, the health probe or the write path: ") +
+                                       e.what());
         }
         catch (...)
         {
             state->stopAndJoin();
             return Result::failure(Cause::InvalidState,
-                                   "cannot create the transport or the health probe: unexpected exception");
+                                   "cannot create the transport, the health probe or the write path: unexpected "
+                                   "exception");
         }
 
         {
@@ -786,6 +838,21 @@ namespace indexer_client
             auto state = current();
             return state ? state->prober : nullptr;
         }
+
+        PoolStats runtimePoolStats()
+        {
+            auto state = current();
+            return state ? state->pool.stats() : PoolStats {};
+        }
+
+        namespace write
+        {
+            std::shared_ptr<WritePath> runtimeWritePath()
+            {
+                auto state = current();
+                return state ? state->writePath : nullptr;
+            }
+        } // namespace write
 
         std::shared_ptr<NodeSet> runtimeNodeSet(const std::weak_ptr<RuntimeState>& runtime, std::uint64_t epoch)
         {

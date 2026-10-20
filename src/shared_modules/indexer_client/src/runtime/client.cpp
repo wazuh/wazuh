@@ -15,11 +15,13 @@
 #include <algorithm>
 #include <chrono>
 #include <cstdio>
+#include <mutex>
 #include <utility>
 
 #include "health/nodeSet.hpp"
 #include "indexer_client/runtime.hpp"
 #include "runtime/runtimeInternal.hpp"
+#include "write/writer.hpp"
 
 namespace indexer_client
 {
@@ -190,7 +192,14 @@ namespace indexer_client
         {
             return nullptr;
         }
-        return detail::makeStubWriter(m_state, found->name);
+        const auto index = static_cast<std::size_t>(found - m_state->buckets.cbegin());
+        auto path = m_state->writePath.lock();
+        if (!path || index >= m_state->bucketStates.size())
+        {
+            // The runtime is gone (or never registered this client): the E1 stub answers Unavailable.
+            return detail::makeStubWriter(m_state, found->name);
+        }
+        return detail::write::makeWriter(m_state, m_state->bucketStates[index], std::move(path));
     }
 
     std::shared_ptr<IQuery> Client::query()
@@ -214,13 +223,19 @@ namespace indexer_client
 
     void Client::requestClose()
     {
-        if (m_state)
+        if (!m_state)
         {
-            m_state->closeRequested.store(true);
+            return;
+        }
+        // The flag first: a submit racing this close either is swept here or sees the flag after its enqueue.
+        m_state->closeRequested.store(true);
+        if (auto path = m_state->writePath.lock())
+        {
+            path->closeClient(*m_state); // Wakes blocked producers; pending ops resolve Dropped(ClientClosed).
         }
     }
 
-    Outcome<CloseReport> Client::awaitClosed(Deadline /*deadline*/)
+    Outcome<CloseReport> Client::awaitClosed(Deadline deadline)
     {
         if (detail::testing::onRuntimeThread())
         {
@@ -230,10 +245,35 @@ namespace indexer_client
         {
             return Outcome<CloseReport>::failure(Cause::InvalidState, "empty client handle");
         }
-        // E1 has no data path: nothing to drain. Closing frees the consumer name.
-        m_state->closeRequested.store(true);
+        requestClose();
+        // I63: what the client still retains (ops delivered to the sink and not resolved yet) is dropped now; E5
+        // adds the drain up to the deadline before this point.
+        if (auto path = m_state->writePath.lock())
+        {
+            for (const auto& bucket : m_state->bucketStates)
+            {
+                for (const auto& op : bucket->delivered())
+                {
+                    OpResult result;
+                    result.status = Status::Dropped;
+                    result.cause = Cause::ClientClosed;
+                    result.reason = "dropped: the client was closed";
+                    path->resolve(op, std::move(result));
+                }
+            }
+        }
+        CloseReport report;
+        {
+            std::unique_lock<std::mutex> lock(m_state->completionsMutex);
+            m_state->completionsDone.wait_until(
+                lock, deadline, [this] { return m_state->outstandingCompletions == 0; });
+            report.callbacksInFlight = static_cast<std::size_t>(m_state->outstandingCompletions);
+        }
+        report.droppedClientClosed = static_cast<std::size_t>(m_state->droppedClientClosed.load());
+        report.droppedShutdown = static_cast<std::size_t>(m_state->droppedShutdown.load());
+        // Closing frees the consumer name.
         m_state->releaseName();
-        return Outcome<CloseReport>::success(CloseReport {});
+        return Outcome<CloseReport>::success(report);
     }
 
     bool Client::valid() const noexcept
