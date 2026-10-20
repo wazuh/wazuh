@@ -54,6 +54,13 @@ else()
 
     list(APPEND execd_names "test_read_exec_config")
     list(APPEND execd_flags "${DEBUG_OP_WRAPPERS}")
+
+    # The local request listener, in its own binary so that wrapping close and accept does not
+    # reach the other execd tests.
+    list(APPEND execd_names "test_wcom")
+    list(APPEND execd_flags "-Wl,--wrap,close -Wl,--wrap,accept -Wl,--wrap,select -Wl,--wrap,FOREVER \
+                             -Wl,--wrap,OS_BindUnixDomain -Wl,--wrap,OS_RecvSecureTCP \
+                             -Wl,--wrap,OS_SendSecureTCP ${DEBUG_OP_WRAPPERS}")
 endif()
 
 list(LENGTH execd_names count)
