@@ -44,7 +44,7 @@ namespace containerimages
         long connectTimeoutMs {10000};                        ///< Ceiling on establishing a connection.
         long requestTimeoutMs {30000};                        ///< Ceiling on one whole request.
         std::uint64_t maxResponseBytes {16ULL * 1024 * 1024}; ///< Ceiling on one buffered response.
-        long blobTimeoutMs {300000};                          ///< Ceiling on one whole blob transfer.
+        long blobIdleTimeoutMs {300000};                      ///< Ceiling on a wait for a blob's next bytes.
     };
 
     /// @brief Requests this module makes of a registry.

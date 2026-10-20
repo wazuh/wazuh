@@ -11,6 +11,7 @@
 #include "registry_byte_stream.hpp"
 
 #include <algorithm>
+#include <cctype>
 #include <cstdlib>
 #include <utility>
 
@@ -34,6 +35,22 @@ namespace
 
     /// @brief Offset past which the buffer is compacted rather than grown.
     constexpr std::size_t COMPACT_THRESHOLD {64 * 1024};
+
+    /// @brief The header whose value tells the agent how long to wait.
+    const std::string RETRY_AFTER {"retry-after:"};
+
+    /// @brief True when @p text starts with @p lowerCasePrefix, whatever its case.
+    bool startsWithIgnoringCase(const std::string& text, const std::string& lowerCasePrefix)
+    {
+        return text.size() >= lowerCasePrefix.size() &&
+               std::equal(lowerCasePrefix.begin(),
+                          lowerCasePrefix.end(),
+                          text.begin(),
+                          [](const char expected, const char actual)
+        {
+            return expected == static_cast<char>(std::tolower(static_cast<unsigned char>(actual)));
+        });
+    }
 } // namespace
 
 namespace containerimages
@@ -45,6 +62,7 @@ namespace containerimages
                                const std::atomic<bool>* stopRequested)
         : m_config {std::move(config)}
         , m_stopRequested {stopRequested}
+        , m_idle {std::chrono::milliseconds {m_config.blobIdleTimeoutMs}}
         , m_url {std::move(url)}
         , m_headers {std::move(headers)}
         , m_maxBytes {maxBytes}
@@ -109,6 +127,7 @@ namespace containerimages
             // is arriving, which is the only place it can be: Content-Length is the
             // image's own claim about itself.
             stream->m_overLimit = true;
+            stream->m_abortedLocally = true;
 
             return 0;
         }
@@ -125,6 +144,7 @@ namespace containerimages
 
         stream->m_buffer.append(data, bytes);
         stream->m_received += bytes;
+        stream->m_idle.restart(std::chrono::steady_clock::now());
 
         return bytes;
     }
@@ -144,8 +164,9 @@ namespace containerimages
 
         const std::string line {data, bytes};
 
-        // Only the status line is of interest. A redirect contributes its own, and the
-        // last one seen is the response whose body actually arrives.
+        // Only the status line and Retry-After are of interest. A redirect contributes its
+        // own status line, and the last one seen is the response whose body actually
+        // arrives, so what an earlier hop said about waiting is dropped with it.
         if (line.rfind("HTTP/", 0) == 0)
         {
             const auto firstSpace {line.find(' ')};
@@ -154,6 +175,13 @@ namespace containerimages
             {
                 stream->m_status = std::strtol(line.c_str() + firstSpace + 1, nullptr, 10);
             }
+
+            stream->m_retryAfter.clear();
+        }
+        else if (startsWithIgnoringCase(line, RETRY_AFTER))
+        {
+            stream->m_retryAfter = line.substr(RETRY_AFTER.size());
+            stream->m_retryAfter.erase(stream->m_retryAfter.find_last_not_of(" \t\r\n") + 1);
         }
 
         return bytes;
@@ -162,7 +190,7 @@ namespace containerimages
     bool RegistryByteStream::start()
     {
         m_started = true;
-        m_deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds {m_config.blobTimeoutMs};
+        m_idle.restart(std::chrono::steady_clock::now());
 
         if (m_config.caBundle.empty())
         {
@@ -213,11 +241,9 @@ namespace containerimages
         // this transfer is suspended on purpose whenever the caller is slower than the
         // network, so it would abort a healthy read of a large layer.
         //
-        // The stall detector below is not sufficient on its own either. It only fires
-        // when the average rate falls below its limit, so a server trickling a couple of
-        // bytes a second satisfies it indefinitely. The bound that actually holds is
-        // m_deadline, checked in pump(), because a module thread that will not return
-        // starves the shutdown budget shared by every module.
+        // The stall detector below ends a transfer that stays under 1 KiB/s for the
+        // request timeout. m_idle is the backstop, checked in pump(): it counts only a
+        // wait for the network, and restarts whenever bytes arrive.
         curl_easy_setopt(handle, CURLOPT_LOW_SPEED_LIMIT, 1024L);
         curl_easy_setopt(handle, CURLOPT_LOW_SPEED_TIME, m_config.requestTimeoutMs / 1000);
 
@@ -255,17 +281,19 @@ namespace containerimages
         if (m_stopRequested != nullptr && m_stopRequested->load())
         {
             m_failed = true;
+            m_abortedLocally = true;
             m_error = "the module was asked to stop";
             m_running = false;
 
             return;
         }
 
-        if (std::chrono::steady_clock::now() > m_deadline)
+        if (m_idle.expired(std::chrono::steady_clock::now(), m_paused))
         {
             m_failed = true;
-            m_error = "the layer transfer exceeded its " + std::to_string(m_config.blobTimeoutMs) +
-                      " millisecond limit";
+            m_abortedLocally = true;
+            m_error = "the layer transfer received no data for " + std::to_string(m_config.blobIdleTimeoutMs) +
+                      " milliseconds";
             m_running = false;
 
             return;
@@ -345,6 +373,13 @@ namespace containerimages
         if (!m_started && !start())
         {
             return 0;
+        }
+
+        // A wait for the network starts here. Time the caller spent since its last read,
+        // parsing what it was given, is not the network's.
+        if (buffered() == 0 && m_running && !m_failed)
+        {
+            m_idle.restart(std::chrono::steady_clock::now());
         }
 
         // Advance the transfer only while the caller has nothing to consume. This is what

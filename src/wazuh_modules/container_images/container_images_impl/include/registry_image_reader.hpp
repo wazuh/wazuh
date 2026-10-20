@@ -15,6 +15,7 @@
 #include "credential_provider.hpp"
 #include "iimage_reader.hpp"
 #include "platform_selection.hpp"
+#include "registry_byte_stream.hpp"
 #include "registry_reference.hpp"
 #include "registry_transport.hpp"
 #include "retry_policy.hpp"
@@ -22,6 +23,7 @@
 #include <atomic>
 #include <chrono>
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <string>
 
@@ -76,6 +78,13 @@ namespace containerimages
             /// unchanged-digest short circuit coverable.
             void setTransport(std::unique_ptr<IRegistryTransport> transport);
 
+            /// @brief Replace how a layer blob is opened, for tests.
+            ///
+            /// The same reason as @ref setTransport, for the other half of the registry
+            /// conversation: a layer is streamed rather than fetched through the
+            /// transport, so its retry can only be covered with a stand-in stream.
+            void setBlobStreamFactory(BlobStreamFactory factory);
+
             ImageReadResult discover() override;
             std::string sourceType() const override;
 
@@ -83,10 +92,25 @@ namespace containerimages
             /// @brief Sleep @p delay in slices, returning false if a stop was requested.
             bool waitOrStop(std::chrono::milliseconds delay) const;
 
+            /// @brief One request to perform, filling in a response or saying why none came.
+            using Attempt = std::function<bool(HttpResponse&, std::string&)>;
+
+            /// @brief Run @p attempt with the retry and back-off policy applied.
+            ///
+            /// A 401 is returned as a result, since it carries the challenge the caller
+            /// needs. Any other status outside 2xx is a failure, retried when the policy
+            /// says it is transient.
+            bool send(const Attempt& attempt, HttpResponse& response, std::string& error);
+
             /// @brief One metadata request, with the retry and back-off policy applied.
             ///
             /// @param authorized When true the bearer token is sent, when there is one.
             bool request(const std::string& url, bool authorized, HttpResponse& response, std::string& error);
+
+            /// @brief Open one attempt at a layer blob.
+            std::unique_ptr<IBlobStream> openBlob(const std::string& url,
+                                                  const std::vector<std::string>& headers,
+                                                  std::uint64_t maxBytes) const;
 
             /// @brief Obtain a bearer token for @p challenge, with a credential when the
             /// registry has one configured and anonymously when it does not.
@@ -107,6 +131,7 @@ namespace containerimages
             TransportConfig m_transportConfig;
             RetryPolicy m_retryPolicy;
             std::unique_ptr<IRegistryTransport> m_transport;
+            BlobStreamFactory m_blobStreamFactory;
             std::string m_token;
             bool m_tokenRefreshed {false};
             std::uint64_t m_imageBytes {0};

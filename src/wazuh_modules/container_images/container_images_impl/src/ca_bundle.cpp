@@ -16,15 +16,15 @@ namespace containerimages
 {
     const std::vector<std::string>& wellKnownCaBundles()
     {
-        // The same set cURL's own configure script probes for, in the same order, so a
-        // run-time answer matches what a correctly built cURL would have found.
+        // The list and the order the agent's other modules probe (os_ca_bundle_candidates),
+        // so a host that works for one of them works for this one.
         static const std::vector<std::string> LOCATIONS {
-            "/etc/ssl/certs/ca-certificates.crt",    // Debian, Ubuntu, Gentoo
-            "/etc/pki/tls/certs/ca-bundle.crt",      // RHEL, Fedora, CentOS, Amazon Linux
-            "/etc/ssl/ca-bundle.pem",                // openSUSE, SLES
-            "/etc/pki/tls/cacert.pem",               // older RHEL
-            "/etc/ssl/cert.pem",                     // Alpine, macOS, FreeBSD
-            "/usr/local/share/certs/ca-root-nss.crt" // FreeBSD ports
+            "/etc/ssl/certs/ca-certificates.crt",     // Debian systems
+            "/etc/pki/tls/certs/ca-bundle.crt",       // Redhat and Mandriva
+            "/usr/share/ssl/certs/ca-bundle.crt",     // RedHat
+            "/usr/local/share/certs/ca-root-nss.crt", // FreeBSD
+            "/etc/ssl/cert.pem",                      // OpenBSD, FreeBSD, MacOS
+            "/etc/ssl/ca-bundle.pem"                  // SUSE (SLES, openSUSE)
         };
 
         return LOCATIONS;

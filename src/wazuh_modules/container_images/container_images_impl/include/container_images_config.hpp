@@ -100,14 +100,15 @@ namespace containerimages
         long requestTimeoutMs {30000};  ///< Ceiling on one metadata request, and the
                                         ///< stall window for a blob transfer.
 
-        /// Ceiling on the wall-clock time one layer transfer may take.
+        /// Ceiling on how long a layer transfer may go without delivering a byte.
         ///
-        /// A blob transfer is suspended whenever the caller is slower than the network,
-        /// so libcurl's own total timeout is the wrong tool and its stall detector only
-        /// fires below one byte per second, which a trickling server satisfies forever.
-        /// This is the bound that actually holds, and it exists because a module thread
-        /// that will not return starves the shutdown budget every module shares.
-        long blobTimeoutMs {300000};
+        /// Not a ceiling on the whole transfer: a blob is suspended whenever the caller
+        /// is slower than the network, so libcurl's total timeout would abort a healthy
+        /// read of a large layer. The wait restarts whenever bytes arrive and does not
+        /// run while the transfer is suspended. libcurl's stall detector, which fires
+        /// below 1 KiB/s over @ref requestTimeoutMs, normally ends a stalled transfer
+        /// first; this is the backstop.
+        long blobIdleTimeoutMs {300000};
         int maxAttempts {4};            ///< Attempts per request, including the first.
 
         /// Wait before the second attempt, doubling thereafter. Configurable so a test

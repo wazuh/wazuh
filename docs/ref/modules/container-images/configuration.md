@@ -188,11 +188,13 @@ A registry is verified against a certificate bundle. When `<ca_bundle>` is not s
 ```
 /etc/ssl/certs/ca-certificates.crt
 /etc/pki/tls/certs/ca-bundle.crt
-/etc/ssl/ca-bundle.pem
-/etc/pki/tls/cacert.pem
-/etc/ssl/cert.pem
+/usr/share/ssl/certs/ca-bundle.crt
 /usr/local/share/certs/ca-root-nss.crt
+/etc/ssl/cert.pem
+/etc/ssl/ca-bundle.pem
 ```
+
+This is the list the agent's other HTTPS modules probe, in the same order.
 
 The first one that exists is used. This is resolved on the agent rather than taken from the HTTP library's build-time default, because that default is whichever path existed on the machine that built the package and is not necessarily present on the host running it.
 
@@ -211,8 +213,8 @@ A remote reference is bounded so one slow or hostile registry cannot hold the mo
 | Bytes per image | 2 GiB | One reference cannot consume the whole scan. |
 | Bytes per scan | 8 GiB | Checked before a reference starts, so a scan stops taking on new work rather than abandoning an image half read. |
 | Time per metadata request | 30 s | A registry that accepts a connection and then says nothing. |
-| Time per layer transfer | 5 min | A registry that trickles bytes indefinitely. A layer transfer is suspended whenever the agent is slower than the network, so a plain total timeout would abort a healthy read of a large layer and a rate-based stall detector never fires against a slow trickle. This wall-clock ceiling is the bound that holds. |
-| Attempts per request | 4 | With a doubling back-off from one second, honouring `Retry-After` when the registry sends one. |
+| Time without progress per layer | 5 min | A registry that accepts a layer request and then stops sending. The wait restarts whenever bytes arrive and does not run while the transfer is suspended for the agent to catch up, so a large layer is bounded by its byte ceiling and not by the time it takes. A transfer that stays under 1 KiB/s for 30 s is ended earlier by the stall detector. |
+| Attempts per request | 4 | With a doubling back-off from one second, honouring `Retry-After` when the registry sends one. Applies to manifests, to the token exchange and to layers: a layer that fails after its transfer began is started again from its first byte, and the bytes each attempt delivered count against the image's byte ceiling. A transfer ended by a stop request, by the no-progress bound or by the byte ceiling is not retried. |
 
 A scan that is asked to stop abandons what it is reading, including a layer transfer in progress. This matters because every module shares one shutdown budget: a reference that would not return would delay every other module's clean stop.
 
