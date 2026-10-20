@@ -544,3 +544,98 @@ TEST(ContainerEventRouterTest, UnfilteredADeltaAddedContainerIsNotWalked)
     EXPECT_TRUE(DrainBatches(f.staging).empty());
     EXPECT_EQ(0u, f.router.stats().discovery_escalations);
 }
+
+/* --- removals --------------------------------------------------------------
+ *
+ * The mirror image of discovery. An addition becomes a walk; a removal becomes
+ * a cleanup. The two are NOT gated the same way, and that is the point of the
+ * pair of tests below.
+ */
+
+TEST(ContainerEventRouterTest, ARemovedContainerIsStagedForCleanupNotAWalk)
+{
+    Fixture f;
+    f.router.setFiltering(true);
+
+    f.router.applyContainerDelta({CgroupDeltaEvent {CgroupDeltaEvent::Kind::added, 320, "container-a"}});
+    f.staging.release();
+    ASSERT_EQ(1u, DrainBatches(f.staging).size()); // the add
+
+    const auto delta =
+        f.router.applyContainerDelta({CgroupDeltaEvent {CgroupDeltaEvent::Kind::removed, 320, "container-a"}});
+
+    EXPECT_EQ(1u, delta.removed.size()) << "the kernel must stop admitting the cgroup";
+
+    const auto batches = DrainBatches(f.staging);
+    ASSERT_EQ(1u, batches.size());
+    EXPECT_EQ("container-a", batches[0].container_id);
+    EXPECT_EQ(Batch::Lifecycle::containerGone, batches[0].lifecycle);
+    EXPECT_FALSE(batches[0].suspect)
+        << "a removal became a walk; a walk may infer deletions from absence and would return 0 anyway";
+
+    EXPECT_EQ(1ull, f.router.stats().removals);
+}
+
+TEST(ContainerEventRouterTest, ARemovalIsStagedEvenWithoutKernelFiltering)
+{
+    // Filtering is turned off when a cgroup does not fit the kernel allowlist,
+    // which is logged and tolerated. Discovery survives that because events
+    // from an unidentified cgroup still arrive and the resolver escalates them.
+    //
+    // A removal has no such second route: nothing else anywhere reports that a
+    // container is gone. If this were gated on filtering the way additions are,
+    // such a host would quietly stop cleaning up removed containers.
+    Fixture f;
+    f.router.setFiltering(false);
+
+    f.router.applyContainerDelta({CgroupDeltaEvent {CgroupDeltaEvent::Kind::added, 330, "container-a"}});
+    f.staging.release();
+    DrainBatches(f.staging); // whatever discovery did or did not stage
+
+    f.router.applyContainerDelta({CgroupDeltaEvent {CgroupDeltaEvent::Kind::removed, 330, "container-a"}});
+
+    const auto batches = DrainBatches(f.staging);
+    ASSERT_EQ(1u, batches.size()) << "a removal was dropped because kernel filtering was off";
+    EXPECT_EQ("container-a", batches[0].container_id);
+    EXPECT_EQ(Batch::Lifecycle::containerGone, batches[0].lifecycle);
+}
+
+TEST(ContainerEventRouterTest, AdditionsRemainGatedOnFilteringWhileRemovalsDoNot)
+{
+    // States the asymmetry as one assertion, so that "make them consistent"
+    // cannot look like a tidy-up. Without filtering an addition is discovered
+    // through the unidentified-cgroup path instead, so escalating here as well
+    // would walk it twice.
+    Fixture f;
+    f.router.setFiltering(false);
+
+    f.router.applyContainerDelta({CgroupDeltaEvent {CgroupDeltaEvent::Kind::added, 340, "container-a"}});
+    f.staging.release();
+    EXPECT_TRUE(DrainBatches(f.staging).empty()) << "an addition escalated with filtering off";
+
+    f.router.applyContainerDelta({CgroupDeltaEvent {CgroupDeltaEvent::Kind::removed, 340, "container-a"}});
+    EXPECT_EQ(1u, DrainBatches(f.staging).size()) << "a removal did not";
+}
+
+TEST(ContainerEventRouterTest, ASnapshotRefreshNeverStagesACleanup)
+{
+    // install() replaces the map wholesale, so a container missing from the new
+    // snapshot has dropped out of one listing — which is not a statement that
+    // it was removed. Deleting rows off that is the whole-node sweep's job, and
+    // only against a list it confirmed it could obtain.
+    Fixture f;
+    f.router.setFiltering(true);
+
+    f.router.applyContainerList({{350, "container-a"}, {351, "container-b"}});
+    f.staging.release();
+    DrainBatches(f.staging); // the two adds
+
+    f.router.applyContainerList({{350, "container-a"}});
+
+    for (const auto& batch : DrainBatches(f.staging))
+    {
+        EXPECT_NE(Batch::Lifecycle::containerGone, batch.lifecycle)
+            << "absence from a snapshot was treated as a removal";
+    }
+    EXPECT_EQ(0ull, f.router.stats().removals);
+}
