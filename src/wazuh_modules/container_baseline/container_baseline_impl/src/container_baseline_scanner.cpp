@@ -475,7 +475,7 @@ int RunFimDbsyncBaselineForContainerFrom(const ContainerDiscoverer&        disco
     }
 
     return RunFimDbsyncBaselineFrom([&selected]() { return selected; },
-                                    pidIndex, safe, sink, guarded, rate_limit);
+                                    pidIndex, safe, sink, guarded, rate_limit, context_sink);
 }
 
 int RunSyscollectorDbsyncBaselineFrom(const ContainerDiscoverer& discover,
