@@ -48,32 +48,16 @@ void DB::init(const int storage,
 {
     const auto* path {storage == FIM_DB_MEMORY ? FIM_DB_MEMORY_PATH : FIM_DB_DISK_PATH};
 
-    // Schema changes for a database that already exists, in order. DBSync
-    // reads PRAGMA user_version and applies everything from there on, one
-    // prepared statement per entry -- so each entry holds exactly one
-    // statement, and the list is append-only: an agent may skip releases and
-    // replays it from wherever its own database stopped.
-    //
-    // Without this, CreateStatement() is only ever reached by a database being
-    // created from nothing, and every upgraded agent silently keeps the schema
-    // it already had.
-    const std::vector<std::string> upgradeStatements
-    {
-        // v1 -> v2: store a container's context once, rather than stamping a
-        // copy of it onto every file row that container owns.
-        CREATE_CONTAINER_CONTEXT_DB_STATEMENT,
-
-        // v2 -> v3: drop the per-row copy, now that every reader takes the
-        // context from container_context.
-        "ALTER TABLE file_entry DROP COLUMN container_json;",
-    };
-
+    // Without an upgrade list, CreateStatement() is only ever reached by a
+    // database being created from nothing, and every upgraded agent silently
+    // keeps the schema it already had. The list itself lives beside the DDL it
+    // mirrors, in fimDB.hpp.
     auto dbsyncHandler {std::make_shared<DBSync>(HostType::AGENT,
                                                  DbEngineType::SQLITE3,
                                                  path,
                                                  FIMDBCreator<OS_TYPE>::CreateStatement(),
                                                  DbManagement::PERSISTENT,
-                                                 upgradeStatements)};
+                                                 fimDbUpgradeStatements())};
 
     FIMDB::instance().init(std::move(callbackLogWrapper), std::move(dbsyncHandler), fileLimit, valueLimit);
 }
