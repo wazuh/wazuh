@@ -35,8 +35,10 @@ from db.utils import (
 )
 
 URL_ANALYTICS = 'https://api.loganalytics.io'
-# Column added to the results with the ingestion time of each record. It's removed before sending the events.
+# Columns added to the results with the ingestion time of each record and the time Azure ran the query. They're
+# removed before sending the events.
 INGESTION_TIME_COLUMN = 'wazuh_ingestion_time'
+QUERY_TIME_COLUMN = 'wazuh_query_time'
 # Records ingested at the same time can become queryable in any order, so only those ingested at least this long ago
 # are requested.
 INGESTION_DELAY = '2m'
@@ -199,7 +201,8 @@ def build_log_analytics_query(
     )
     # Sorted like the ingestion cursor, so results cut by the API limits continue from the last record returned
     query = (
-        f'{query} | extend {INGESTION_TIME_COLUMN} = ingestion_time() | where {filter_value} '
+        f'{query} | extend {INGESTION_TIME_COLUMN} = ingestion_time(), {QUERY_TIME_COLUMN} = now() '
+        f'| where {filter_value} '
         f'| order by {INGESTION_TIME_COLUMN} asc, TimeGenerated asc '
     )
     logging.debug(f'Log Analytics: The search starts for query: "{query}"')
@@ -239,16 +242,22 @@ def get_log_analytics_events(
             if len(rows) == 0:
                 logging.info(f'Log Analytics: There are no new results for {tenant}')
             else:
-                ingestion_times = pop_ingestion_times(columns, rows)
+                ingestion_times = pop_column(columns, rows, INGESTION_TIME_COLUMN)
+                query_times = pop_column(columns, rows, QUERY_TIME_COLUMN)
                 time_position = get_time_position(columns)
                 if time_position is not None:
                     iter_log_analytics_events(columns, rows, tag)
                     times = [row[time_position] for row in rows]
+                    newest = max(times, key=datetime_key)
+                    # No record is generated after the query runs, so a TimeGenerated set ahead isn't stored as the
+                    # newest one, as the next runs would skip the records generated until then
+                    if query_times and datetime_key(newest) > datetime_key(query_times[0]):
+                        newest = query_times[0]
                     update_row_object(
                         table=orm.LogAnalytics,
                         md5_hash=md5_hash,
                         new_min=min(times, key=datetime_key),
-                        new_max=max(times, key=datetime_key),
+                        new_max=newest,
                         query=query,
                     )
                     # Stored after the events are sent: a failure in between resends them instead of losing them
@@ -265,8 +274,8 @@ def get_log_analytics_events(
         response.raise_for_status()
 
 
-def pop_ingestion_times(columns: list, rows: list) -> list:
-    """Remove the ingestion time column added by the module from the columns and rows.
+def pop_column(columns: list, rows: list, name: str) -> list:
+    """Remove a column added by the module from the columns and rows.
 
     Parameters
     ----------
@@ -274,14 +283,16 @@ def pop_ingestion_times(columns: list, rows: list) -> list:
         List of columns of the log analytic logs.
     rows : list
         List of rows containing the values for each column.
+    name : str
+        Name of the column.
 
     Returns
     -------
     list
-        The ingestion time of each row, or an empty list if the column is not present.
+        The value of the column in each row, or an empty list if the column is not present.
     """
     for i, column in enumerate(columns):
-        if column['name'] == INGESTION_TIME_COLUMN:
+        if column['name'] == name:
             columns.pop(i)
             return [row.pop(i) for row in rows]
     return []

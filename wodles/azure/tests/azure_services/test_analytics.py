@@ -18,12 +18,13 @@ sys.path.insert(0, dirname(dirname(dirname(abspath(__file__)))))
 
 from azure_services.analytics import (
     INGESTION_TIME_COLUMN,
+    QUERY_TIME_COLUMN,
     URL_ANALYTICS,
     build_log_analytics_query,
     get_log_analytics_events,
     get_time_position,
     iter_log_analytics_events,
-    pop_ingestion_times,
+    pop_column,
     start_log_analytics,
 )
 from db import orm
@@ -33,6 +34,7 @@ PRESENT_DATE = '2022-06-15T12:00:00.000000Z'
 FUTURE_DATE = '2022-12-31T12:00:00.000000Z'
 LAST_INGESTION = '2022-06-15T13:00:00.1234567Z'
 LAST_TIME_GENERATED = '2022-06-15T12:59:00.7654321Z'
+QUERY_TIME = '2022-06-15T13:00:00Z'
 
 TEST_DATA_PATH = join(dirname(dirname(realpath(__file__))), 'data')
 
@@ -179,7 +181,9 @@ def test_build_log_analytics_query(
             expected_str = f'TimeGenerated > datetime({max_date})'
 
     assert expected_str in result['query']
-    assert result['query'].startswith(f'{la_query} | extend {INGESTION_TIME_COLUMN} = ingestion_time() | where ( ')
+    assert result['query'].startswith(
+        f'{la_query} | extend {INGESTION_TIME_COLUMN} = ingestion_time(), {QUERY_TIME_COLUMN} = now() | where ( '
+    )
     assert result['query'].endswith(
         f') and ( isnull({INGESTION_TIME_COLUMN}) or {INGESTION_TIME_COLUMN} <= ago(2m) ) '
         f'| order by {INGESTION_TIME_COLUMN} asc, TimeGenerated asc '
@@ -210,7 +214,7 @@ def test_build_log_analytics_query_ingestion_time(
     result = build_log_analytics_query(query='test_query', offset=offset, md5_hash='', reparse=False)
 
     expected_str = (
-        f'test_query | extend {INGESTION_TIME_COLUMN} = ingestion_time() '
+        f'test_query | extend {INGESTION_TIME_COLUMN} = ingestion_time(), {QUERY_TIME_COLUMN} = now() '
         f'| where ( ( TimeGenerated >= datetime({expected_lower}) and ( '
         f'{INGESTION_TIME_COLUMN} > datetime({LAST_INGESTION}) or '
         f'( {INGESTION_TIME_COLUMN} == datetime({LAST_INGESTION}) and '
@@ -298,13 +302,18 @@ def test_get_log_analytics_events(
 @patch('azure_services.analytics.iter_log_analytics_events')
 @patch('azure_services.analytics.get')
 def test_get_log_analytics_events_ingestion_time(mock_get, mock_iter, mock_update, mock_update_ingestion):
-    """Test get_log_analytics_events removes the ingestion time column from the events and stores its values, and
-    stores the oldest and newest TimeGenerated whatever their order in the results."""
-    columns = [{'name': 'TimeGenerated'}, {'name': INGESTION_TIME_COLUMN}, {'name': 'OperationName'}]
+    """Test get_log_analytics_events removes the columns added by the module from the events and stores the ingestion
+    times, and stores the oldest and newest TimeGenerated whatever their order in the results."""
+    columns = [
+        {'name': 'TimeGenerated'},
+        {'name': INGESTION_TIME_COLUMN},
+        {'name': 'OperationName'},
+        {'name': QUERY_TIME_COLUMN},
+    ]
     rows = [
-        ['2022-06-15T11:30:00Z', '2022-06-15T11:40:00Z', 'op2'],
-        ['2022-06-15T11:00:00Z', '2022-06-15T12:00:00.1234567Z', 'op1'],
-        ['2022-06-15T11:00:00.5Z', '2022-06-15T12:00:00.1234567Z', 'op3'],
+        ['2022-06-15T11:30:00Z', '2022-06-15T11:40:00Z', 'op2', QUERY_TIME],
+        ['2022-06-15T11:00:00Z', '2022-06-15T12:00:00.1234567Z', 'op1', QUERY_TIME],
+        ['2022-06-15T11:00:00.5Z', '2022-06-15T12:00:00.1234567Z', 'op3', QUERY_TIME],
     ]
     mock_get.return_value = MagicMock(
         status_code=200, json=MagicMock(return_value={'tables': [{'columns': columns, 'rows': rows}]})
@@ -331,21 +340,53 @@ def test_get_log_analytics_events_ingestion_time(mock_get, mock_iter, mock_updat
 
 
 @pytest.mark.parametrize(
-    'columns, rows, expected_columns, expected_rows, expected_times',
+    'times, query_time, expected_max',
+    [
+        (['2022-06-15T11:00:00Z', '2022-06-15T11:30:00Z'], QUERY_TIME, '2022-06-15T11:30:00Z'),
+        # A TimeGenerated set after the query ran isn't stored as the newest one
+        (['2022-06-15T11:00:00Z', '2022-06-16T11:00:00Z'], QUERY_TIME, QUERY_TIME),
+        (['2022-06-15T11:00:00Z', '2022-06-15T13:00:00.0000001Z'], QUERY_TIME, QUERY_TIME),
+        (['2022-06-15T11:00:00Z', '2022-06-16T11:00:00Z'], None, '2022-06-16T11:00:00Z'),
+    ],
+)
+@patch('azure_services.analytics.update_ingestion_cursor')
+@patch('azure_services.analytics.update_row_object')
+@patch('azure_services.analytics.iter_log_analytics_events')
+@patch('azure_services.analytics.get')
+def test_get_log_analytics_events_query_time(
+    mock_get, mock_iter, mock_update, mock_update_ingestion, times, query_time, expected_max
+):
+    """Test get_log_analytics_events doesn't store a TimeGenerated later than the time the query ran."""
+    columns = [{'name': 'TimeGenerated'}] + ([{'name': QUERY_TIME_COLUMN}] if query_time else [])
+    rows = [[time] + ([query_time] if query_time else []) for time in times]
+    mock_get.return_value = MagicMock(
+        status_code=200, json=MagicMock(return_value={'tables': [{'columns': columns, 'rows': rows}]})
+    )
+    get_log_analytics_events(url='url', body='body', headers='headers', md5_hash='md5', query='q', tag='', tenant='')
+
+    mock_update.assert_called_once_with(
+        table=orm.LogAnalytics, md5_hash='md5', new_min='2022-06-15T11:00:00Z', new_max=expected_max, query='q'
+    )
+    mock_update_ingestion.assert_called_once_with('md5', [], times)
+
+
+@pytest.mark.parametrize(
+    'columns, rows, name, expected_columns, expected_rows, expected_values',
     [
         (
             [{'name': 'a'}, {'name': INGESTION_TIME_COLUMN}, {'name': 'b'}],
             [[1, 't1', 2], [3, None, 4]],
+            INGESTION_TIME_COLUMN,
             [{'name': 'a'}, {'name': 'b'}],
             [[1, 2], [3, 4]],
             ['t1', None],
         ),
-        ([{'name': 'a'}], [[1], [2]], [{'name': 'a'}], [[1], [2]], []),
+        ([{'name': 'a'}], [[1], [2]], QUERY_TIME_COLUMN, [{'name': 'a'}], [[1], [2]], []),
     ],
 )
-def test_pop_ingestion_times(columns, rows, expected_columns, expected_rows, expected_times):
-    """Test pop_ingestion_times removes the ingestion time column and returns its values."""
-    assert pop_ingestion_times(columns, rows) == expected_times
+def test_pop_column(columns, rows, name, expected_columns, expected_rows, expected_values):
+    """Test pop_column removes the column from the columns and rows and returns its values."""
+    assert pop_column(columns, rows, name) == expected_values
     assert columns == expected_columns
     assert rows == expected_rows
 
