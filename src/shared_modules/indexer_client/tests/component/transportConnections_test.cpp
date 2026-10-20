@@ -417,3 +417,63 @@ TEST_F(TransportTest, HttpsAdmittedFtpNot)
     EXPECT_EQ(stats.rejected - rejectedBefore, refused.size());
     EXPECT_EQ(stats.admitted, 2u);
 }
+
+// I60 (plan 18, E2c): `Expect` is left to curl, as the v1 does: a body over 1 MiB goes with `Expect: 100-continue` (the
+// node can refuse before the body), a small one without it; the whole body arrives either way.
+TEST_F(TransportTest, LargeBodyExpectsContinue)
+{
+    FakeIndexer fake;
+    fake.start();
+    auto transport = startRuntime(1, 2);
+    ASSERT_NE(transport, nullptr);
+    auto collector = Collector::create();
+
+    const auto small = std::make_shared<const std::string>(1024, 's');
+    const auto large = std::make_shared<const std::string>(4 * 1024 * 1024, 'l');
+    for (const auto& body : {small, large})
+    {
+        const auto one = submitTo(*transport, collector, request(HttpMethod::Post, fake.baseUrl() + "/_bulk", body));
+        ASSERT_TRUE(one.admission.admitted);
+        ASSERT_TRUE(collector->waitKey(one.key, 10s));
+        EXPECT_EQ(collector->result(one.key)->status, 200);
+    }
+
+    const auto received = fake.requests();
+    ASSERT_EQ(received.size(), 2u);
+    EXPECT_EQ(received[0].headers.count("Expect"), 0u) << "a small body needs no 100-continue";
+    EXPECT_EQ(received[0].bodySize, small->size());
+    const auto expect = received[1].headers.find("Expect");
+    ASSERT_NE(expect, received[1].headers.end()) << "a 4 MiB body goes with Expect: 100-continue";
+    EXPECT_EQ(expect->second, "100-continue");
+    EXPECT_EQ(received[1].bodySize, large->size());
+}
+
+// I60: the node refuses a large bulk after `100 Continue` with 429 and Retry-After: the final response's status and
+// Retry-After win over the interim 1xx.
+TEST_F(TransportTest, LargeBodyRetryAfterAfterContinue)
+{
+    FakeIndexer fake;
+    Rule throttled;
+    throttled.method = "POST";
+    throttled.pathRegex = "/_bulk";
+    throttled.status = 429;
+    throttled.retryAfter = "3";
+    fake.addRule(throttled);
+    fake.start();
+    auto transport = startRuntime(1, 2);
+    ASSERT_NE(transport, nullptr);
+    auto collector = Collector::create();
+
+    const auto large = std::make_shared<const std::string>(4 * 1024 * 1024, 'r');
+    const auto one = submitTo(*transport, collector, request(HttpMethod::Post, fake.baseUrl() + "/_bulk", large));
+    ASSERT_TRUE(one.admission.admitted);
+    ASSERT_TRUE(collector->waitKey(one.key, 10s));
+    const auto result = collector->result(one.key);
+    EXPECT_EQ(result->cause, TransportCause::None);
+    EXPECT_EQ(result->status, 429);
+    ASSERT_TRUE(result->retryAfter.has_value());
+    EXPECT_EQ(*result->retryAfter, indexer_client::Duration {3000});
+    const auto received = fake.requests();
+    ASSERT_EQ(received.size(), 1u);
+    EXPECT_EQ(received[0].headers.count("Expect"), 1u) << "the bulk went through the 100-continue exchange";
+}

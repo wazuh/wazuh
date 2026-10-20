@@ -323,7 +323,9 @@ TEST_F(TransportTest, CancelDuringStalledUpload)
     const auto during = submitTo(*transport, collector, request(HttpMethod::Get, fake.baseUrl() + "/during"));
     ASSERT_TRUE(collector->waitKey(during.key, 10s));
     EXPECT_EQ(collector->result(during.key)->status, 200);
-    std::this_thread::sleep_for(200ms); // Measured: the upload is stalled well before this.
+    // curl sends `Expect: 100-continue` and waits up to 1 s (CURLOPT_EXPECT_100_TIMEOUT_MS) for an answer the silent
+    // server never gives before it sends the body (I60); measured: the upload is stalled well before 1.5 s.
+    std::this_thread::sleep_for(1500ms);
     EXPECT_EQ(collector->count(upload.key), 0);
     EXPECT_EQ(inFlight(*transport), 1u);
 

@@ -97,7 +97,8 @@ TEST_F(TransportTest, MayHaveSentPostPartialTrue)
     const auto one =
         submitTo(*transport,
                  collector,
-                 request(HttpMethod::Post, stalled.baseUrl() + "/_bulk", body, indexer_client::Duration {500}));
+                 // Past curl's 1 s wait for `100 Continue` (I60), so part of the body goes out before the timeout.
+                 request(HttpMethod::Post, stalled.baseUrl() + "/_bulk", body, indexer_client::Duration {2000}));
     ASSERT_TRUE(one.admission.admitted);
     ASSERT_TRUE(collector->waitKey(one.key, 10s));
     const auto result = collector->result(one.key);
@@ -106,6 +107,33 @@ TEST_F(TransportTest, MayHaveSentPostPartialTrue)
     EXPECT_TRUE(result->mayHaveSent);
     EXPECT_GT(result->uploadedBytes, 0u) << "part of the body went out";
     EXPECT_LT(result->uploadedBytes, BODY) << "the upload had stalled";
+    stalled.resumeReading();
+}
+
+// I60: a body over 1 MiB waits for `100 Continue`; a timeout inside that wait (the silent server never answers) sent
+// the headers but no body byte: Timeout, node-attributable, mayHaveSent (the request was ready to go), 0 bytes
+// uploaded.
+TEST_F(TransportTest, MayHaveSentPostDuringExpectWaitTrue)
+{
+    constexpr std::size_t BODY = 4 * 1024 * 1024;
+    StalledUploadServer stalled(64 * 1024);
+    auto transport = startRuntime(1, 2);
+    ASSERT_NE(transport, nullptr);
+    auto collector = Collector::create();
+
+    const auto body = std::make_shared<const std::string>(BODY, 'e');
+    const auto one =
+        submitTo(*transport,
+                 collector,
+                 // Inside curl's 1 s wait for `100 Continue` (CURLOPT_EXPECT_100_TIMEOUT_MS).
+                 request(HttpMethod::Post, stalled.baseUrl() + "/_bulk", body, indexer_client::Duration {500}));
+    ASSERT_TRUE(one.admission.admitted);
+    ASSERT_TRUE(collector->waitKey(one.key, 10s));
+    const auto result = collector->result(one.key);
+    EXPECT_EQ(result->cause, TransportCause::Timeout) << indexer_client::detail::toString(result->cause);
+    EXPECT_TRUE(result->nodeAttributable);
+    EXPECT_TRUE(result->mayHaveSent);
+    EXPECT_EQ(result->uploadedBytes, 0u) << "no body byte leaves before 100 Continue";
     stalled.resumeReading();
 }
 
