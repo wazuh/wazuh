@@ -34,6 +34,12 @@ namespace indexer_client::detail::seams
     void onRuntimeThreadStart(pid_t tid);                                 ///< Each runtime thread, at start.
     void onPostRejected();                                                ///< A post refused by a closed loop.
     void afterAdmission(); ///< E3a: in Writer::submit, between the bucket reservation and the enqueue.
+    /// E3b-2: true makes the bulk sender treat its Transport::submit as refused (InvalidState) without submitting.
+    bool refuseSubmit();
+    /// G-diff E3b-2: in a bulk completion, after the slot was released (may throw: the completion's fallback).
+    void beforeCompletion();
+    /// G-diff E3b-2: in the bulk sender's NodeSet hook, before it refreshes the Down mirror (may block: mirror lag).
+    void beforeSenderMirror();
 #else
     // always_inline: even at -O0 no out-of-line copy is emitted, so the .so carries no seams:: symbol (VisibilityTest).
     [[gnu::always_inline]] inline void afterAdmissionCheck() {}
@@ -51,6 +57,12 @@ namespace indexer_client::detail::seams
     [[gnu::always_inline]] inline void onRuntimeThreadStart(pid_t) {}
     [[gnu::always_inline]] inline void onPostRejected() {}
     [[gnu::always_inline]] inline void afterAdmission() {}
+    [[gnu::always_inline]] inline bool refuseSubmit()
+    {
+        return false;
+    }
+    [[gnu::always_inline]] inline void beforeCompletion() {}
+    [[gnu::always_inline]] inline void beforeSenderMirror() {}
 #endif
 } // namespace indexer_client::detail::seams
 

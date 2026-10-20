@@ -180,6 +180,8 @@ namespace indexer_client::testing
         bool hold {false};
         /// Delay before answering (after the hold), as Rule::latency does.
         std::chrono::milliseconds latency {0};
+        /// Items: a request holding more ops than this gets 413 with an empty body instead (E3b-2 Split413).
+        std::optional<std::size_t> maxOps;
 
         /// Every op succeeds.
         static BulkScript items()
@@ -219,6 +221,14 @@ namespace indexer_client::testing
             script.status = status;
             script.body = std::move(body);
             script.retryAfter = std::move(retryAfter);
+            return script;
+        }
+
+        /// Items, except that a request with more than @p ops operations gets 413 (empty body): a split ends there.
+        static BulkScript tooLargeAbove(std::size_t ops)
+        {
+            BulkScript script;
+            script.maxOps = ops;
             return script;
         }
 
@@ -375,6 +385,12 @@ namespace indexer_client::testing
                 return reply;
             }
             reply.status = script.status;
+            if (script.maxOps.has_value() && ops.size() > *script.maxOps)
+            {
+                reply.status = 413;
+                reply.body.clear();
+                return reply;
+            }
             if (script.mode == BulkMode::Request)
             {
                 reply.body = script.body;

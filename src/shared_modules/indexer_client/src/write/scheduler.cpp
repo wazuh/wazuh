@@ -107,7 +107,8 @@ namespace indexer_client::detail::write
             return true;
         }
 
-        /// Loop 0 only: arms (or re-arms) `entry`'s maxAge timer to the expiry of its bucket's oldest pending op. An
+        /// Loop 0 only: arms (or re-arms) `entry`'s timer to the bucket's nextDue() (oldest pending op + maxAge, or the
+        /// retry-lane head's notBefore, whichever comes first; E3b-2). An
         /// already-due expiry is not armed (arming it would spin while the sink has no capacity, which
         /// WritePath::sinkReady() ends) and is reported: an op that expired during the pass was not eligible when the
         /// pass read the buckets, so the caller runs another pass for it.
@@ -115,9 +116,8 @@ namespace indexer_client::detail::write
         {
             std::optional<TimePoint> due;
             bool dueNow = false;
-            if (const auto oldest = bucket.oldestPending(); oldest)
+            if (due = bucket.nextDue(now); due)
             {
-                due = *oldest + bucket.spec().bulk.maxAge;
                 if (*due <= now)
                 {
                     due.reset();

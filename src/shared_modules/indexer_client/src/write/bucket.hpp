@@ -43,11 +43,14 @@ namespace indexer_client::detail::write
     class GlobalBudget;
 
     /// Fixed per-operation result reserve (I62): internal Op state, ticket state, callback slot and an OpResult with
-    /// its strings at their caps. Fixed by the measurement of E3a step 5: at most 1308.5 heap bytes per op besides its
-    /// lines (a resolved op whose completion waits on the pool with a capped OpResult, its batch still held), x 1.25 =
-    /// 1636, rounded up to a multiple of 64. ResultReserveMeasured is its regression guard; re-measured in E3b when
-    /// OpState grows. Registration requires bulk.maxBytes + RESULT_RESERVE <= quotaBytes.
-    constexpr std::uint64_t RESULT_RESERVE = 1664;
+    /// its strings at their caps. Fixed by measurement (ResultReserveMeasured, its regression guard), x 1.25 rounded up
+    /// to a multiple of 64: E3a step 5 measured 1308.5 heap bytes per op besides its lines (1664); E3b-2 step 4b, with
+    /// the retry state of E3b-1 in OpState, 1404.1 (a resolved op whose completion waits on the pool with a capped
+    /// OpResult, its batch still held; an op requeued into the retry lane with its LastError at its caps keeps 1138.6;
+    /// G-diff E3b-2, an op requeued with that LastError, re-sliced and then resolved like the first keeps 1396.7, since
+    /// the resolution frees OpState::last*; 1992.7 without that) => 1755.1 => 1792. Registration requires
+    /// bulk.maxBytes + RESULT_RESERVE <= quotaBytes.
+    constexpr std::uint64_t RESULT_RESERVE = 1792;
 
     /// One admitted write. Created by the writer, owned by the bucket's queue, then by a Batch, then by its resolution.
     struct OpState final
@@ -66,7 +69,9 @@ namespace indexer_client::detail::write
         TimePoint firstAttempt {};  ///< Set by the first slice(): maxDuration counts from the first send (I66).
         TimePoint notBefore {};     ///< In the retry lane: not sent before this.
         std::uint64_t batchCap {0}; ///< After a split (413): a batch holding this op stays under it; 0 = no cap.
-        /// The last error, for Failed(RetryExhausted) (I66).
+        /// The last error, for Failed(RetryExhausted) (I66). Written by Bucket::requeue under the bucket's mutex; the
+        /// strings are freed when the op resolves (Bucket::releasePayload), so a resolved op whose completion waits on
+        /// the pool does not keep them (RESULT_RESERVE).
         Cause lastCause {Cause::None};
         int lastHttpStatus {0};
         std::string lastItemErrorType;
@@ -74,7 +79,7 @@ namespace indexer_client::detail::write
         std::weak_ptr<Bucket> bucket;
     };
 
-    /// The error an op is requeued after (copied into OpState::last*).
+    /// The error an op is requeued after (copied into OpState::last*; `cause == None` keeps the op's previous one).
     struct LastError final
     {
         Cause cause {Cause::None};
@@ -90,7 +95,8 @@ namespace indexer_client::detail::write
     };
 
     /// How a batch's ops go back to the retry lane (E3b-1 I66). E3b-2's uses: failover {mayHaveSent, Now}; request 429
-    /// {false, At(nodeNotBefore)}; retryable error {true, Backoff}; split {false, Now, toHead, halve}.
+    /// {false, Now} (the node waits; the batch may go to another node, I68); retryable error {true, Backoff}; split
+    /// {false, Now, toHead, halve}.
     struct RequeueSpec final
     {
         enum class Delay
@@ -112,6 +118,9 @@ namespace indexer_client::detail::write
         /// Retry budget spent: the caller resolves them Failed(RetryExhausted) with their last error. Still in the
         /// delivered set until resolved.
         std::vector<std::shared_ptr<OpState>> exhausted;
+        /// exhaustedErrors[i] = exhausted[i]'s last error, copied under the bucket's mutex: a concurrent resolution
+        /// (the shutdown sweep) frees OpState::last* under that mutex, so the caller never reads them unlocked.
+        std::vector<LastError> exhaustedErrors;
         /// The bucket is closed: the caller resolves them Dropped(closedCause()). Still in the delivered set.
         std::vector<std::shared_ptr<OpState>> closed;
     };
@@ -198,9 +207,6 @@ namespace indexer_client::detail::write
         /// Some threshold reached at `now`: the retry-lane head is due (notBefore <= now), pending bytes >= maxBytes,
         /// pending docs >= maxDocs, or the oldest pending op older than maxAge.
         bool eligible(TimePoint now) const;
-        /// The instant that, plus bulk.maxAge, is nextDue(): the oldest pending op's firstSubmit, or the retry-lane
-        /// head's notBefore - maxAge when that is earlier (the scheduler arms its timer at oldestPending() + maxAge).
-        std::optional<TimePoint> oldestPending() const;
         /// Wire size of the next op a slice at `now` would take (due lane head first, else the pending head); 0 if
         /// none.
         std::uint64_t headBytes(TimePoint now) const;
@@ -219,9 +225,9 @@ namespace indexer_client::detail::write
 
         /// Moves delivered ops back to the retry lane (ahead of the pending queue, ordered by notBefore) per `spec`, or
         /// returns them as exhausted / closed; skips ops already claimed and ops not in the delivered set. Every op
-        /// handled takes `lastError` into OpState::last*. Charge unchanged (RF-12). Exhausted: attempts >= maxAttempts
-        /// or now - firstAttempt >= maxDuration (an unset bound never exhausts). A Backoff jitter is drawn once per
-        /// call, so the ops of one batch stay together.
+        /// handled takes `lastError` into OpState::last* (one with `cause == None` keeps the op's previous last error).
+        /// Charge unchanged (RF-12). Exhausted: attempts >= maxAttempts or now - firstAttempt >= maxDuration (an unset
+        /// bound never exhausts). A Backoff jitter is drawn once per call, so the ops of one batch stay together.
         RequeueResult requeue(std::vector<RequeueOp> ops, const RequeueSpec& spec, TimePoint now);
         /// Clears the dedup flag set by enqueue (the scheduler consumed the notification).
         void clearNotified() noexcept;
@@ -229,7 +235,8 @@ namespace indexer_client::detail::write
         // ---- resolution and close (any thread)
 
         /// Releases an op's payload (once per op) and wakes blocked producers; an op still in the retry lane leaves it.
-        /// Called by the resolution path.
+        /// Also frees the op's last-error strings (under the mutex Bucket::requeue writes them with). Called by the
+        /// resolution path, after it won the op's claim.
         void releasePayload(OpState& op);
         /// Releases one RESULT_RESERVE (after the callback ran, or when the last Ticket died).
         void releaseReserve();

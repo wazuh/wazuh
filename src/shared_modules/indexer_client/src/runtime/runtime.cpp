@@ -287,8 +287,8 @@ namespace indexer_client
             /// Node health (E2b, I57): created after the transport; the prober is stopped before it.
             std::shared_ptr<NodeSet> nodes;
             std::shared_ptr<Prober> prober;
-            /// The write path (E3a, I62/I63): created after the probe; stopped first in stopAndJoin, right after the
-            /// admission closes and before the probe.
+            /// The write path (E3a, I62/I63) with the bulk sender (E3b-2): created after the prober and started before
+            /// it; stopped first in stopAndJoin, right after the admission closes and before the probe.
             std::shared_ptr<write::WritePath> writePath;
 
             bool sameEpoch(std::uint64_t other) const
@@ -464,6 +464,16 @@ namespace indexer_client
             if (spec.onConflict.kind == ConflictPolicy::Kind::Retry && spec.onConflict.retryOnConflict == 0)
             {
                 return field("onConflict.retryOnConflict") + " must be > 0 with ConflictPolicy::Retry";
+            }
+            // Accepted by the API but not honoured by the bulk sender yet: refused rather than silently served with
+            // other semantics (G-diff E3b-2 obj. 2).
+            if (spec.onConflict.kind == ConflictPolicy::Kind::Retry)
+            {
+                return field("onConflict.kind") + " = Retry is not implemented yet (E3c)";
+            }
+            if (spec.ordered)
+            {
+                return field("ordered") + " = true is not implemented yet (E3c)";
             }
             return {};
         }
@@ -705,26 +715,28 @@ namespace indexer_client
             };
             state->transport = detail::Transport::create(
                 state->config, std::move(tls.value), std::move(credentials), std::move(environment));
-            // Node health (I57): created after the transport, stopped before it (stopAndJoin). The first round is
-            // armed at once on loop 0.
+            // Node health (I57): created after the transport, stopped before it (stopAndJoin).
             state->nodes = std::make_shared<detail::NodeSet>(state->config.hosts);
             state->prober = detail::Prober::create(state->nodes,
                                                    state->transport,
                                                    state->loops.front()->context,
                                                    state->config.probeInterval,
                                                    state->config.probeTimeout);
+            // The write path (I62/I63): its scheduler and the bulk sender's timer live on loop 0 like the probe; its
+            // completions run on the pool, which outlives every completion the write path posts (stopAndJoin stops it
+            // long before the pool). Started BEFORE the prober (E3b-2, I68): the sender's NodeSet hook must see the
+            // first round's transitions.
+            state->writePath = std::make_shared<detail::write::WritePath>(
+                state->config.globalQuotaBytes,
+                [pool = &state->pool](std::function<void()> task) { return pool->post(std::move(task)); });
+            state->writePath->start(state->loops.front()->context, state->config, state->nodes, state->transport);
+            // The first round is armed at once on loop 0.
 #ifdef INDEXER_CLIENT_TESTING
             if (g_probeAutoStart.load())
 #endif
             {
                 state->prober->start();
             }
-            // The write path (I62/I63): its scheduler lives on loop 0 like the probe; its completions run on the pool,
-            // which outlives every completion the write path posts (stopAndJoin stops it long before the pool).
-            state->writePath = std::make_shared<detail::write::WritePath>(
-                state->config.globalQuotaBytes,
-                [pool = &state->pool](std::function<void()> task) { return pool->post(std::move(task)); });
-            state->writePath->start(state->loops.front()->context, state->config.drrQuantumBytes);
         }
         catch (const std::exception& e)
         {

@@ -20,6 +20,7 @@
 #include "runtime/runtimeInternal.hpp"
 #include "transport/seams.hpp"
 #include "write/encoding.hpp"
+#include "write/sender.hpp"
 
 // The write path of a runtime (plan 18 I62/I63). Lock discipline: WritePath::m_mutex only guards its own members and
 // is never held while calling into a bucket, the scheduler or the sink; a bucket's mutex is a leaf (bucket.hpp);
@@ -152,6 +153,13 @@ namespace indexer_client::detail::write
             Submit submit(Op request, Callback cb) override
             {
                 Submit submit;
+                if (request.onConflict)
+                {
+                    // The per-operation ConflictPolicy is E3c: refused rather than silently served with the bucket's.
+                    m_bucket->countInvalidArgument();
+                    submit.cause = Cause::InvalidArgument;
+                    return submit;
+                }
                 auto encoded = encode(std::move(request));
                 if (!encoded.ok())
                 {
@@ -264,13 +272,32 @@ namespace indexer_client::detail::write
     {
     }
 
-    void WritePath::start(asio::io_context& loop0, std::uint64_t quantumBytes)
+    void WritePath::start(asio::io_context& loop0,
+                          const RuntimeConfig& config,
+                          std::shared_ptr<NodeSet> nodes,
+                          std::shared_ptr<Transport> transport)
     {
-        auto scheduler = Scheduler::create(weak_from_this(), loop0, quantumBytes);
-        auto sink = makeUnavailableSink(weak_from_this());
-        std::lock_guard<std::mutex> lock(m_mutex);
-        m_scheduler = std::move(scheduler);
-        m_sink = std::move(sink);
+        auto scheduler = Scheduler::create(weak_from_this(), loop0, config.drrQuantumBytes);
+        std::shared_ptr<BulkSink> bulk;
+        std::shared_ptr<BatchSink> sink;
+        if (nodes && transport)
+        {
+            bulk = BulkSink::create(weak_from_this(), std::move(nodes), std::move(transport), loop0, config);
+            sink = bulk;
+        }
+        else
+        {
+            sink = makeUnavailableSink(weak_from_this());
+        }
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            m_scheduler = std::move(scheduler);
+            m_sink = std::move(sink);
+        }
+        if (bulk)
+        {
+            bulk->start(); // The NodeSet hook, before the runtime starts the prober.
+        }
     }
 
     void WritePath::registerClient(ClientState& client)
@@ -324,8 +351,15 @@ namespace indexer_client::detail::write
 
     void WritePath::setSink(std::shared_ptr<BatchSink> sink)
     {
-        std::lock_guard<std::mutex> lock(m_mutex);
-        m_sink = std::move(sink);
+        std::shared_ptr<BatchSink> replaced;
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            replaced = std::exchange(m_sink, std::move(sink));
+        }
+        if (replaced)
+        {
+            replaced->stop(); // Outside the mutex: the production sender cancels its transfers and its timer (E3b-2).
+        }
     }
 
     void WritePath::sinkReady()
@@ -334,6 +368,11 @@ namespace indexer_client::detail::write
         {
             current->notifyAll();
         }
+    }
+
+    bool WritePath::postToPool(std::function<void()> task)
+    {
+        return !m_poolDetached.load() && m_postToPool(std::move(task));
     }
 
     bool WritePath::resolve(const std::shared_ptr<OpState>& op, OpResult result)
@@ -359,8 +398,16 @@ namespace indexer_client::detail::write
         }
         if (bucket)
         {
+            // Once per op (the bucket tracks it); wakes blocked producers; frees the op's last-error strings under the
+            // mutex a concurrent Bucket::requeue writes them with (nothing reads them after the claim: an exhausted
+            // op's error was copied out by that requeue).
             bucket->countResolved(result.status);
-            bucket->releasePayload(*op); // Once per op (the bucket tracks it); wakes blocked producers.
+            bucket->releasePayload(*op);
+        }
+        else
+        {
+            std::string().swap(op->lastReason); // No bucket, so no requeue can write them.
+            std::string().swap(op->lastItemErrorType);
         }
         if (client && result.status == Status::Dropped)
         {

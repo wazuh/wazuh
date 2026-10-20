@@ -58,6 +58,9 @@ namespace indexer_client::detail
 
         /// Round-robin among the Available nodes; a Throttled one only when none is Available; nullopt when all Down.
         std::optional<std::size_t> choose();
+        /// As choose(), among the nodes `allowed(index)` accepts (E3b-2: the sender's window and notBefore). The filter
+        /// runs under this NodeSet's mutex: it may take a leaf mutex (the sender's), never call back into the NodeSet.
+        std::optional<std::size_t> choose(const std::function<bool(std::size_t)>& allowed);
 
         /// A copy, safe from any thread.
         HealthView view() const;

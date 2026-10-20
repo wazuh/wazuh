@@ -19,6 +19,9 @@
 
 #include <gtest/gtest.h>
 
+#include "bulkResponder.hpp"
+#include "fakeIndexer.hpp"
+#include "healthRules.hpp"
 #include "indexer_client/runtime.hpp"
 #include "write/bucket.hpp"
 
@@ -30,6 +33,11 @@ namespace
     class DefaultsSource final : public IConfigSource
     {
     public:
+        explicit DefaultsSource(std::string host = "http://127.0.0.1:1")
+            : m_host(std::move(host))
+        {
+        }
+
         std::optional<std::string> raw(std::string_view /*key*/) const override
         {
             return std::nullopt;
@@ -42,13 +50,16 @@ namespace
 
         std::string indexerSectionJson() const override
         {
-            return R"({"hosts":["http://127.0.0.1:1"]})";
+            return R"({"hosts":[")" + m_host + R"("]})";
         }
 
         indexer_client::Credentials credentials() const override
         {
             return {"user", "pass"};
         }
+
+    private:
+        std::string m_host;
     };
 } // namespace
 
@@ -252,6 +263,23 @@ TEST_F(BucketSpecTest, InvalidZeroRetryOnConflict)
     expectRejected({spec}, field("onConflict.retryOnConflict must be > 0 with ConflictPolicy::Retry"));
 }
 
+// G-diff E3b-2 obj. 2: ConflictPolicy::Retry and ordered buckets are accepted by the API but the bulk sender does not
+// honour them until E3c, so registration refuses them (the field named). Mutants: either check removed.
+TEST_F(BucketSpecTest, InvalidRetryConflictPolicyBeforeE3c)
+{
+    auto spec = valid();
+    spec.onConflict.kind = ConflictPolicy::Kind::Retry;
+    spec.onConflict.retryOnConflict = 1;
+    expectRejected({spec}, field("onConflict.kind = Retry is not implemented yet (E3c)"));
+}
+
+TEST_F(BucketSpecTest, InvalidOrderedBeforeE3c)
+{
+    auto spec = valid();
+    spec.ordered = true;
+    expectRejected({spec}, field("ordered = true is not implemented yet (E3c)"));
+}
+
 TEST_F(BucketSpecTest, InvalidBlockWithoutTimeout)
 {
     auto spec = valid();
@@ -285,11 +313,10 @@ TEST_F(BucketSpecTest, ValidSpecAccepted)
     blocking.retry.maxAttempts = 1u;
     blocking.quotaBytes = RuntimeConfig {}.globalQuotaBytes; // quotaBytes == global_quota_bytes is allowed.
     blocking.retry.maxDuration = Duration {1};               // The smallest positive maxDuration is allowed.
-    blocking.onConflict.kind = ConflictPolicy::Kind::Retry;
-    blocking.onConflict.retryOnConflict = 1; // The smallest retryOnConflict with Retry is allowed.
+    // ConflictPolicy::Retry and ordered = true are refused until E3c (InvalidRetryConflictPolicyBeforeE3c,
+    // InvalidOrderedBeforeE3c).
     edge.onConflict.kind = ConflictPolicy::Kind::Success;
     edge.onConflict.retryOnConflict = 0; // retryOnConflict is ignored without Retry.
-    edge.ordered = true;
 
     auto result = m_ref.client("valid", {valid(), blocking, edge});
     ASSERT_TRUE(result.ok()) << result.reason;
@@ -302,8 +329,20 @@ TEST_F(BucketSpecTest, ValidSpecAccepted)
     EXPECT_EQ(m_ref.snapshot().clients, 2u);
 }
 
-TEST_F(BucketSpecTest, WriterSubmitResolvesUnavailable)
+TEST_F(BucketSpecTest, WriterSubmitResolvesThroughTheSender)
 {
+    // E3b-2: the production sink is the bulk sender. A fake indexer (green health, every `_bulk` op created) replaces
+    // the fixture's unreachable host.
+    auto bulk = std::make_shared<indexer_client::testing::BulkResponder>();
+    indexer_client::testing::FakeIndexer fake;
+    fake.addRule(indexer_client::testing::healthRule("green"));
+    fake.addRule(indexer_client::testing::bulkRule(bulk));
+    fake.start();
+    RuntimeOwner::shutdown();
+    auto started = RuntimeOwner::start(ProcessId::Analysisd, DefaultsSource {fake.baseUrl()});
+    ASSERT_TRUE(started.ok()) << started.reason;
+    m_ref = started.value;
+
     auto spec = valid("events");
     spec.bulk.maxDocs = 1; // One op is a batch: no wait for maxAge.
     auto client = m_ref.client("writer", {spec});
@@ -317,7 +356,8 @@ TEST_F(BucketSpecTest, WriterSubmitResolvesUnavailable)
     op.index = "wazuh-states-test";
     op.id = "1";
     op.body = R"({"a":1})";
-    // E3a: submit admits the op; the production sink (no bulk sender before E3b) resolves it Failed(Unavailable).
+    // submit admits the op; the sender writes it (once the probe has the node up) and the ticket and the callback
+    // both get the item's result.
     auto callbackResult = std::make_shared<std::promise<OpResult>>();
     auto callbackFuture = callbackResult->get_future();
     const auto submit =
@@ -326,13 +366,19 @@ TEST_F(BucketSpecTest, WriterSubmitResolvesUnavailable)
     EXPECT_EQ(submit.cause, Cause::None);
     const auto result = submit.ticket.wait(std::chrono::steady_clock::now() + std::chrono::seconds(5));
     ASSERT_TRUE(result.ok()) << toString(result.cause);
-    EXPECT_EQ(result.value.status, Status::Failed);
-    EXPECT_EQ(result.value.cause, Cause::Unavailable);
+    EXPECT_EQ(result.value.status, Status::Ok);
+    EXPECT_EQ(result.value.cause, Cause::None);
+    EXPECT_EQ(result.value.outcome, ItemOutcome::Created);
+    EXPECT_EQ(result.value.httpStatus, 201);
     ASSERT_EQ(callbackFuture.wait_for(std::chrono::seconds(5)), std::future_status::ready);
     const auto called = callbackFuture.get();
-    EXPECT_EQ(called.status, Status::Failed);
-    EXPECT_EQ(called.cause, Cause::Unavailable);
+    EXPECT_EQ(called.status, Status::Ok);
+    EXPECT_EQ(called.outcome, ItemOutcome::Created);
+    ASSERT_EQ(bulk->received().size(), 1u);
+    ASSERT_EQ(bulk->received()[0].size(), 1u);
+    EXPECT_EQ(bulk->received()[0][0].id, "1");
 
+    // Groups and cancel(tag) are E3c: still Unavailable.
     auto group = writer->group();
     EXPECT_EQ(group.add(op), Cause::Unavailable);
     const auto groupTicket = group.commit();
@@ -342,4 +388,5 @@ TEST_F(BucketSpecTest, WriterSubmitResolvesUnavailable)
     const auto cancel = writer->cancel("agent-001");
     EXPECT_TRUE(cancel.ready());
     EXPECT_EQ(cancel.wait(std::chrono::steady_clock::now()).cause, Cause::Unavailable);
+    RuntimeOwner::shutdown(); // Before the fake goes away.
 }

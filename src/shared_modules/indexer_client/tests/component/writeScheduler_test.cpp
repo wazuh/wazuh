@@ -21,7 +21,7 @@
 #include <thread>
 #include <vector>
 
-#include "writeFixture.hpp"
+#include "bulkFixture.hpp"
 
 using namespace write_component;
 using component::eventually;
@@ -240,20 +240,23 @@ TEST_F(WriteTest, DocumentNeverSplitCreditCarries)
     expectInvariants(stats("big"));
 }
 
-// CA-1/T1: C clients x B buckets writing through the scheduler and the sink add no thread: the runtime's own threads
-// stay K + M (K = 1 and 3).
-TEST_F(WriteTest, ThreadsStayKPlusMWithBuckets)
+// CA-1/T1: C clients x B buckets writing through the scheduler and the production sink (the bulk sender, E3b-2, to a
+// fake node started before the base sample) add no thread: the runtime's own threads stay K + M (K = 1 and 3).
+TEST_F(BulkTest, ThreadsStayKPlusMWithBuckets)
 {
     constexpr std::uint32_t M = 2;
     constexpr std::size_t CLIENTS = 3;
     constexpr std::size_t BUCKETS = 3;
     constexpr std::size_t OPS = 20; // A multiple of maxDocs (4): every batch leaves by maxDocs, none waits on maxAge.
+    const auto node = startNode();  // Its server threads belong to the base.
     for (const std::uint32_t k : {1u, 3u})
     {
         SCOPED_TRACE("K=" + std::to_string(k));
         const auto base = component::settledTasks();
         hooks::clearRuntimeThreads();
-        ASSERT_NO_FATAL_FAILURE(start(k, M));
+        ASSERT_NO_FATAL_FAILURE(startOn({node.url()},
+                                        std::chrono::hours(1),
+                                        {{"network_threads", std::to_string(k)}, {"cpu_threads", std::to_string(M)}}));
         {
             auto results = Results::create();
             std::vector<std::shared_ptr<ic::Client>> clients;
@@ -278,7 +281,7 @@ TEST_F(WriteTest, ThreadsStayKPlusMWithBuckets)
                 }
             }
             ASSERT_TRUE(results->waitTotal(key, 10s)) << results->total() << " of " << key;
-            EXPECT_EQ(results->countWith(ic::Status::Failed, ic::Cause::Unavailable), key) << "the production sink";
+            EXPECT_EQ(results->countWith(ic::Status::Ok, ic::Cause::None), key) << "written by the production sink";
 
             const auto sample = component::settledTasks();
             std::set<std::string> delta;

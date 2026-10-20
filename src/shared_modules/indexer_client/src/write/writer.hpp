@@ -25,6 +25,7 @@
 #include <vector>
 
 #include "indexer_client/client.hpp"
+#include "indexer_client/runtimeConfig.hpp"
 #include "write/bucket.hpp"
 #include "write/budget.hpp"
 #include "write/scheduler.hpp"
@@ -33,6 +34,8 @@
 namespace indexer_client::detail
 {
     struct ClientState;
+    class NodeSet;
+    class Transport;
 } // namespace indexer_client::detail
 
 namespace indexer_client::detail::write
@@ -50,8 +53,13 @@ namespace indexer_client::detail::write
         /// `postToPool` runs a task on the CPU pool (false once the pool stopped accepting).
         WritePath(std::uint64_t globalCap, std::function<bool(std::function<void()>)> postToPool);
 
-        /// Created after the runtime threads exist (needs loop 0); installs the production sink.
-        void start(asio::io_context& loop0, std::uint64_t quantumBytes);
+        /// Created after the runtime threads exist (needs loop 0); installs and starts the production sink, the bulk
+        /// sender (E3b-2), whose start() registers the NodeSet hook: the runtime calls this before prober->start().
+        /// Without a NodeSet or a transport the sink is makeUnavailableSink (defensive; the runtime always has both).
+        void start(asio::io_context& loop0,
+                   const RuntimeConfig& config,
+                   std::shared_ptr<NodeSet> nodes,
+                   std::shared_ptr<Transport> transport);
 
         /// Creates the client's buckets (owned by its ClientState) and registers them weakly for the scheduler.
         void registerClient(ClientState& client);
@@ -63,6 +71,9 @@ namespace indexer_client::detail::write
         void setSink(std::shared_ptr<BatchSink> sink);
         /// The sink has capacity again: the scheduler runs a pass.
         void sinkReady();
+        /// Runs `task` on the CPU pool (the bulk sender's assembly and submit, E3b-2). False, without running it, once
+        /// stop() finished or the pool refused it.
+        bool postToPool(std::function<void()> task);
 
         /// The single resolution path, first-wins on OpState::claimed: releases the payload once, counts the status and
         /// posts the completion to the pool (ticket completed, then the callback under a guard that releases the

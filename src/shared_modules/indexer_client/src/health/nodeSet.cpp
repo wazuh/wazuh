@@ -390,6 +390,11 @@ namespace indexer_client::detail
 
     std::optional<std::size_t> NodeSet::choose()
     {
+        return choose([](std::size_t) { return true; });
+    }
+
+    std::optional<std::size_t> NodeSet::choose(const std::function<bool(std::size_t)>& allowed)
+    {
         std::lock_guard<std::mutex> lock(m_mutex);
         const auto count = m_nodes.size();
         for (const auto wanted : {State::Available, State::Throttled})
@@ -397,7 +402,7 @@ namespace indexer_client::detail
             for (std::size_t step = 0; step < count; ++step)
             {
                 const auto index = (m_next + step) % count;
-                if (m_nodes[index].state == wanted)
+                if (m_nodes[index].state == wanted && allowed(index))
                 {
                     m_next = (index + 1) % count;
                     return index;
