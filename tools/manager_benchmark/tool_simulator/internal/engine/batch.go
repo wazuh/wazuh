@@ -5,7 +5,9 @@
 package engine
 
 import (
+	"encoding/json"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -39,6 +41,29 @@ type HeaderSpec struct {
 	// through a wazuh.agent.bench_seq member, so the engine sees a new header
 	// for a known agent. 0 never changes it.
 	ChangeEvery int `json:"change_every"`
+	// Profile "agent" writes the members a real agent reports about itself
+	// (AgentInfo) in the layout the agent sends them; "" (the default) writes
+	// only the id.
+	Profile string `json:"profile"`
+}
+
+// ProfileAgent is the HeaderSpec.Profile of a real agent's H line.
+const ProfileAgent = "agent"
+
+// AgentInfo is what an agent reports about itself in its H line
+// (docs/ref/modules/remoted/event-protocol.md, "Field Specifications"). Empty
+// strings and an empty Groups are omitted, as the agent omits them.
+type AgentInfo struct {
+	Name         string
+	Version      string
+	Groups       []string
+	Architecture string
+	Hostname     string
+	OSName       string
+	OSPlatform   string
+	OSType       string
+	OSVersion    string
+	ClusterName  string
 }
 
 // Batch builds the body of an engine batch with the minimal header:
@@ -73,18 +98,24 @@ func BatchWithHeader(headerJSON, locationID, location string, lines []string) []
 // than the unpadded header, the header is returned unpadded; the scenario
 // loader refuses such a spec (MinHeaderBytes).
 func HeaderLine(agentID string, spec *HeaderSpec, seq int) string {
+	return HeaderLineFor(agentID, nil, spec, seq)
+}
+
+// HeaderLineFor is HeaderLine with the agent's own metadata, which the "agent"
+// profile writes; info is ignored by the default profile and may be nil.
+func HeaderLineFor(agentID string, info *AgentInfo, spec *HeaderSpec, seq int) string {
 	if spec == nil {
 		return `{"wazuh":{"agent":{"id":` + strconv.Quote(agentID) + `}}}`
 	}
-	unpadded := buildHeader(agentID, spec, seq, -1)
+	unpadded := buildHeader(agentID, info, spec, seq, -1)
 	if spec.PadBytes <= 0 {
 		return unpadded
 	}
-	emptyPad := buildHeader(agentID, spec, seq, 0)
+	emptyPad := buildHeader(agentID, info, spec, seq, 0)
 	if spec.PadBytes < len(emptyPad) {
 		return unpadded
 	}
-	return buildHeader(agentID, spec, seq, spec.PadBytes-len(emptyPad))
+	return buildHeader(agentID, info, spec, seq, spec.PadBytes-len(emptyPad))
 }
 
 // MinHeaderBytes is the smallest H-line JSON spec can produce for any
@@ -92,6 +123,11 @@ func HeaderLine(agentID string, spec *HeaderSpec, seq int) string {
 // header of the widest id. A PadBytes below it cannot be reached by every
 // agent of a fleet.
 func MinHeaderBytes(spec *HeaderSpec) int {
+	return MinHeaderBytesFor(nil, spec)
+}
+
+// MinHeaderBytesFor is MinHeaderBytes for an agent reporting info.
+func MinHeaderBytesFor(info *AgentInfo, spec *HeaderSpec) int {
 	if spec == nil {
 		return len(HeaderLine(widestAgentID, nil, 0))
 	}
@@ -101,43 +137,106 @@ func MinHeaderBytes(spec *HeaderSpec) int {
 	}
 	// The widest bench_seq a run reaches is unknown here; one digit is the
 	// floor, and every later value only adds digits, which the padding absorbs.
-	return len(buildHeader(widestAgentID, spec, 0, padLen))
+	return len(buildHeader(widestAgentID, info, spec, 0, padLen))
+}
+
+// jsonString encodes s as a JSON string: profile values come from scenario
+// text, so they must not be able to break out of their quotes.
+func jsonString(s string) string {
+	b, _ := json.Marshal(s)
+	return string(b)
+}
+
+// member is one "name":value pair of an object being written.
+type member struct{ name, value string }
+
+// object writes members as a JSON object, sorted by name when sorted is set:
+// the agent builds its H line with nlohmann::json, whose objects are ordered
+// maps, so a real header lists every object's members by name.
+func object(members []member, sorted bool) string {
+	if sorted {
+		sort.SliceStable(members, func(i, j int) bool { return members[i].name < members[j].name })
+	}
+	parts := make([]string, len(members))
+	for i, m := range members {
+		parts[i] = jsonString(m.name) + ":" + m.value
+	}
+	return "{" + strings.Join(parts, ",") + "}"
+}
+
+// profileMembers are the wazuh.agent members an agent reports besides its id.
+func profileMembers(info *AgentInfo) []member {
+	if info == nil {
+		info = &AgentInfo{}
+	}
+	var out []member
+	add := func(to *[]member, name, value string) {
+		if value != "" {
+			*to = append(*to, member{name, jsonString(value)})
+		}
+	}
+	add(&out, "name", info.Name)
+	add(&out, "version", info.Version)
+	if len(info.Groups) > 0 {
+		groups := make([]string, len(info.Groups))
+		for i, g := range info.Groups {
+			groups[i] = jsonString(g)
+		}
+		out = append(out, member{"groups", "[" + strings.Join(groups, ",") + "]"})
+	}
+	var os, host []member
+	add(&os, "name", info.OSName)
+	add(&os, "version", info.OSVersion)
+	add(&os, "platform", info.OSPlatform)
+	add(&os, "type", info.OSType)
+	add(&host, "architecture", info.Architecture)
+	add(&host, "hostname", info.Hostname)
+	// The agent always sends host and host.os, empty or not.
+	host = append(host, member{"os", object(os, true)})
+	return append(out, member{"host", object(host, true)})
 }
 
 // buildHeader writes the shaped header. padLen < 0 omits the filler member;
 // padLen >= 0 writes it with that many filler characters.
-func buildHeader(agentID string, spec *HeaderSpec, seq, padLen int) string {
-	var agent []string
-	idMember := `"id":` + strconv.Quote(agentID)
-	if spec.IDPosition != "last" {
+func buildHeader(agentID string, info *AgentInfo, spec *HeaderSpec, seq, padLen int) string {
+	real := spec.Profile == ProfileAgent
+	var agent []member
+	idMember := member{"id", strconv.Quote(agentID)}
+	if real || spec.IDPosition != "last" {
 		agent = append(agent, idMember)
 	}
+	if real {
+		agent = append(agent, profileMembers(info)...)
+	}
 	for i := 0; i < spec.ExtraFields; i++ {
-		agent = append(agent, fmt.Sprintf(`"bench_field_%d":"value_%d"`, i, i))
+		agent = append(agent, member{fmt.Sprintf("bench_field_%d", i), fmt.Sprintf(`"value_%d"`, i)})
 	}
 	if spec.ChangeEvery > 0 {
-		agent = append(agent, `"bench_seq":`+strconv.Itoa(seq))
+		agent = append(agent, member{"bench_seq", strconv.Itoa(seq)})
 	}
 	if padLen >= 0 {
-		agent = append(agent, `"bench_pad":"`+strings.Repeat("x", padLen)+`"`)
+		agent = append(agent, member{"bench_pad", `"` + strings.Repeat("x", padLen) + `"`})
 	}
-	if spec.IDPosition == "last" {
+	if !real && spec.IDPosition == "last" {
 		agent = append(agent, idMember)
 	}
 
-	var sb strings.Builder
-	sb.WriteString(`{"wazuh":{"agent":{`)
-	sb.WriteString(strings.Join(agent, ","))
-	sb.WriteString(`}}`)
-	if spec.OffPathFields > 0 {
-		off := make([]string, spec.OffPathFields)
-		for i := range off {
-			off[i] = fmt.Sprintf(`"field_%d":"value_%d"`, i, i)
+	wazuh := []member{{"agent", object(agent, real)}}
+	if real {
+		// The agent always sends cluster, as agent's sibling, with only its name.
+		var cluster []member
+		if info != nil && info.ClusterName != "" {
+			cluster = append(cluster, member{"name", jsonString(info.ClusterName)})
 		}
-		sb.WriteString(`,"bench":{`)
-		sb.WriteString(strings.Join(off, ","))
-		sb.WriteString(`}`)
+		wazuh = append(wazuh, member{"cluster", object(cluster, true)})
 	}
-	sb.WriteString(`}`)
-	return sb.String()
+	root := []member{{"wazuh", object(wazuh, real)}}
+	if spec.OffPathFields > 0 {
+		off := make([]member, spec.OffPathFields)
+		for i := range off {
+			off[i] = member{fmt.Sprintf("field_%d", i), fmt.Sprintf(`"value_%d"`, i)}
+		}
+		root = append(root, member{"bench", object(off, false)})
+	}
+	return object(root, real)
 }

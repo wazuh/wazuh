@@ -2,6 +2,7 @@ package engine
 
 import (
 	"encoding/json"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -70,10 +71,10 @@ func TestHeaderLinePadsToExactSize(t *testing.T) {
 	// Below the unpadded size the header is sent unpadded; the loader refuses
 	// such a spec before a run starts.
 	spec := &HeaderSpec{PadBytes: 10}
-	if got := HeaderLine("001", spec, 0); got != buildHeader("001", spec, 0, -1) {
+	if got := HeaderLine("001", spec, 0); got != buildHeader("001", nil, spec, 0, -1) {
 		t.Fatalf("an unreachable pad_bytes must leave the header unpadded, got %q", got)
 	}
-	if MinHeaderBytes(&HeaderSpec{PadBytes: 1}) != len(buildHeader("4294967295", &HeaderSpec{PadBytes: 1}, 0, 0)) {
+	if MinHeaderBytes(&HeaderSpec{PadBytes: 1}) != len(buildHeader("4294967295", nil, &HeaderSpec{PadBytes: 1}, 0, 0)) {
 		t.Fatal("MinHeaderBytes must be the widest id's header with an empty filler")
 	}
 }
@@ -122,5 +123,44 @@ func TestHeaderLineChangesEveryN(t *testing.T) {
 	}
 	if HeaderLine("001", &HeaderSpec{}, 7) != HeaderLine("001", &HeaderSpec{}, 0) {
 		t.Fatal("change_every 0 must never change the header")
+	}
+}
+
+// The agent profile must reproduce the H line a real agent sends: the
+// documented members, every object listed by name (nlohmann::json orders them),
+// host and cluster present even when empty.
+func TestHeaderLineAgentProfileMatchesTheAgentLayout(t *testing.T) {
+	info := &AgentInfo{
+		Name: "web-server-01", Version: "v5.0.0", Groups: []string{"web", "production"},
+		Architecture: "x86_64", Hostname: "web-server-01",
+		OSName: "Ubuntu", OSVersion: "22.04", OSPlatform: "ubuntu", OSType: "linux",
+		ClusterName: "production",
+	}
+	got := HeaderLineFor("001", info, &HeaderSpec{Profile: ProfileAgent}, 0)
+	want := `{"wazuh":{"agent":{"groups":["web","production"],"host":{"architecture":"x86_64","hostname":"web-server-01",` +
+		`"os":{"name":"Ubuntu","platform":"ubuntu","type":"linux","version":"22.04"}},"id":"001","name":"web-server-01",` +
+		`"version":"v5.0.0"},"cluster":{"name":"production"}}}`
+	if got != want {
+		t.Fatalf("agent profile:\n got %s\nwant %s", got, want)
+	}
+
+	bare := HeaderLineFor("001", &AgentInfo{}, &HeaderSpec{Profile: ProfileAgent}, 0)
+	if bare != `{"wazuh":{"agent":{"host":{"os":{}},"id":"001"},"cluster":{}}}` {
+		t.Fatalf("empty values must be omitted, host/os/cluster kept: %s", bare)
+	}
+
+	quoted := HeaderLineFor("001", &AgentInfo{Name: `a"b\c`}, &HeaderSpec{Profile: ProfileAgent}, 0)
+	if !json.Valid([]byte(quoted)) || !strings.Contains(quoted, `"name":"a\"b\\c"`) {
+		t.Fatalf("a scenario value must stay inside its JSON string: %s", quoted)
+	}
+
+	// The knobs still apply on top of the profile, in the same sorted layout.
+	changing := &HeaderSpec{Profile: ProfileAgent, ChangeEvery: 1, PadBytes: 1024}
+	a, b := HeaderLineFor("001", info, changing, 0), HeaderLineFor("001", info, changing, 1)
+	if a == b || len(a) != 1024 || len(b) != 1024 {
+		t.Fatalf("a changing profile header must change and keep its padded size: %d %d", len(a), len(b))
+	}
+	if names := decodeOrdered(t, agentObject(t, a)); !sort.StringsAreSorted(names) {
+		t.Fatalf("wazuh.agent members must be sorted, got %v", names)
 	}
 }

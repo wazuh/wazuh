@@ -9,11 +9,13 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/control"
+	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/engine"
 	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/metrics"
 	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/pacing"
 	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/scenario"
@@ -272,10 +274,28 @@ func (r *Runner) buildAgents(ctx context.Context) ([]*agent, error) {
 				ag.client = wire.NewUDSClient(ag.id, r.cfg.Socket, r.cfg.Timeout)
 				r.enrolled++ // synthetic identity: "ready" is the uds-mode equivalent of enrolled
 			}
+			ag.headerInfo = agentHeaderInfo(r.scn, fleet, ag.name)
 			agents = append(agents, ag)
 		}
 	}
 	return agents, nil
+}
+
+// agentHeaderInfo is the metadata a real agent of fleet would report in its H
+// line: the fleet's start block, the scenario's cluster name, the agent's name
+// as its hostname, and the "default" group every agent belongs to.
+func agentHeaderInfo(scn *scenario.Scenario, fleet scenario.Fleet, name string) engine.AgentInfo {
+	version := fleet.Start.AgentVersion
+	if version != "" && !strings.HasPrefix(version, "v") {
+		version = "v" + version
+	}
+	return engine.AgentInfo{
+		Name: name, Version: version, Groups: []string{"default"},
+		Architecture: fleet.Start.Architecture, Hostname: name,
+		OSName: fleet.Start.OSName, OSPlatform: fleet.Start.OSPlatform,
+		OSType: fleet.Start.OSType, OSVersion: fleet.Start.OSVersion,
+		ClusterName: scn.Defaults.ClusterName,
+	}
 }
 
 // canonicalAgentID spells an agent id the way the manager does: zero-padded to

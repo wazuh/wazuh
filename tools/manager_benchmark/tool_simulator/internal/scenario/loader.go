@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/engine"
 )
@@ -123,9 +124,16 @@ func (s *Scenario) validate() error {
 // validateHeader refuses a header shape the run could not send as written: a
 // negative knob, an unknown id position, a padding size some agent of the
 // fleet cannot reach, or, in agent mode, a header remoted would answer 400.
-func (s *Scenario) validateHeader(where string, h *engine.HeaderSpec) error {
+func (s *Scenario) validateHeader(where, fleetName string, h *engine.HeaderSpec) error {
 	if h == nil {
 		return nil
+	}
+	if h.Profile != "" && h.Profile != engine.ProfileAgent {
+		return fmt.Errorf("%s: header.profile must be %q or absent, got %q", where, engine.ProfileAgent, h.Profile)
+	}
+	if h.Profile == engine.ProfileAgent && h.IDPosition != "" {
+		return fmt.Errorf("%s: header.id_position does not apply to the %q profile, whose members are sorted by name as the agent sends them",
+			where, engine.ProfileAgent)
 	}
 	for _, knob := range []struct {
 		name  string
@@ -141,7 +149,7 @@ func (s *Scenario) validateHeader(where string, h *engine.HeaderSpec) error {
 	if h.IDPosition != "" && h.IDPosition != "first" && h.IDPosition != "last" {
 		return fmt.Errorf("%s: header.id_position must be \"first\" or \"last\", got %q", where, h.IDPosition)
 	}
-	minBytes := engine.MinHeaderBytes(h)
+	minBytes := engine.MinHeaderBytesFor(s.widestHeaderInfo(fleetName), h)
 	if h.PadBytes > 0 && h.PadBytes < minBytes {
 		return fmt.Errorf("%s: header.pad_bytes %d is below the %d bytes this header needs", where, h.PadBytes, minBytes)
 	}
@@ -153,6 +161,26 @@ func (s *Scenario) validateHeader(where string, h *engine.HeaderSpec) error {
 		if size > engine.MaxStatelessHeaderBytes {
 			return fmt.Errorf("%s: header of %d bytes exceeds remoted's %d-byte H-line cap (every batch would be answered 400)",
 				where, size, engine.MaxStatelessHeaderBytes)
+		}
+	}
+	return nil
+}
+
+// widestHeaderInfo bounds what an "agent" profile header of fleetName carries:
+// the fleet's start block and cluster name as written, and a 64-character
+// agent name, wider than any name the sender generates.
+func (s *Scenario) widestHeaderInfo(fleetName string) *engine.AgentInfo {
+	for _, f := range s.Fleets {
+		if f.Name != fleetName {
+			continue
+		}
+		name := strings.Repeat("n", 64)
+		return &engine.AgentInfo{
+			Name: name, Version: "v" + f.Start.AgentVersion, Groups: []string{"default"},
+			Architecture: f.Start.Architecture, Hostname: name,
+			OSName: f.Start.OSName, OSPlatform: f.Start.OSPlatform,
+			OSType: f.Start.OSType, OSVersion: f.Start.OSVersion,
+			ClusterName: s.Defaults.ClusterName,
 		}
 	}
 	return nil
@@ -175,7 +203,7 @@ func (s *Scenario) validateStep(fleet, lane string, i int, step Step) error {
 		if step.EventsPerBatch < 0 {
 			return fmt.Errorf("%s: events_per_batch must not be negative", where)
 		}
-		if err := s.validateHeader(where, step.Header); err != nil {
+		if err := s.validateHeader(where, fleet, step.Header); err != nil {
 			return err
 		}
 	}

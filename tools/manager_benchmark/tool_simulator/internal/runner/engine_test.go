@@ -144,3 +144,33 @@ func TestUDSEngineStepOnTheWrongSocketInvalidatesTheRun(t *testing.T) {
 		t.Fatalf("failErr = %v, want the --socket hint", r.failErr)
 	}
 }
+
+// An "agent" profile header carries what a real agent of that fleet reports
+// about itself, and stays byte-identical from batch to batch.
+func TestAgentProfileHeaderCarriesTheFleetMetadata(t *testing.T) {
+	sock, received := fakeEngine(t)
+	r, step := udsEngineRunner(t, sock, 7)
+	r.scn.Defaults.ClusterName = "cluster01"
+	r.scn.Fleets[0].Start = scenario.StartMeta{Architecture: "x86_64", OSName: "Ubuntu", OSPlatform: "ubuntu",
+		OSType: "linux", OSVersion: "22.04", AgentVersion: "5.0.0"}
+	step.Header = &engine.HeaderSpec{Profile: engine.ProfileAgent}
+
+	agents, err := r.buildAgents(context.Background())
+	if err != nil {
+		t.Fatalf("buildAgents: %v", err)
+	}
+	agents[0].runEngine(context.Background(), "engine", step)
+
+	reqs := received()
+	want := `H {"wazuh":{"agent":{"groups":["default"],"host":{"architecture":"x86_64","hostname":"bench-linux-0007",` +
+		`"os":{"name":"Ubuntu","platform":"ubuntu","type":"linux","version":"22.04"}},"id":"007",` +
+		`"name":"bench-linux-0007","version":"v5.0.0"},"cluster":{"name":"cluster01"}}}`
+	for i, req := range reqs {
+		if got := strings.SplitN(req.body, "\n", 2)[0]; got != want {
+			t.Fatalf("request %d H line:\n got %s\nwant %s", i, got, want)
+		}
+	}
+	if len(reqs) != 4 {
+		t.Fatalf("requests = %d, want 4", len(reqs))
+	}
+}

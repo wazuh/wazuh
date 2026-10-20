@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/control"
+	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/engine"
 	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/scenario"
 	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/wire"
 )
@@ -30,6 +31,9 @@ type agent struct {
 	// engineBatches counts the engine batches this agent has sent, across
 	// lanes and passes; it drives a header's change_every.
 	engineBatches atomic.Uint64
+	// headerInfo is what this agent reports about itself in an "agent"
+	// profile H line, fixed for the run (agentHeaderInfo).
+	headerInfo engine.AgentInfo
 
 	// vdFeedOffset is the last vd_feed_offset a notify reported (agent mode
 	// only; stays 0 in uds mode, which has no /control to learn it from).

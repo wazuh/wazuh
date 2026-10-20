@@ -350,7 +350,7 @@ func (a *agent) engineHeader(spec *engine.HeaderSpec) string {
 	if spec != nil && spec.ChangeEvery > 0 {
 		seq = int(n / uint64(spec.ChangeEvery))
 	}
-	return engine.HeaderLine(a.id, spec, seq)
+	return engine.HeaderLineFor(a.id, &a.headerInfo, spec, seq)
 }
 
 func (a *agent) runDelete(ctx context.Context, lane string) {

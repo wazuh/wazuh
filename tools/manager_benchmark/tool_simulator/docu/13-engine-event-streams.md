@@ -103,10 +103,13 @@ agent metadata cache:
 | `off_path_fields` | That many members under a root `bench` object, outside `wazuh` |
 | `id_position` | `first` (default) or `last`: where `id` sits among the members of `wazuh.agent` |
 | `change_every` | Change the header every N batches the agent sends, through a `wazuh.agent.bench_seq` counter (`0` = never). The counter belongs to the agent and survives repeated passes, so the header keeps changing for the whole run |
+| `profile` | `agent` writes the header a real agent sends: `id`, `name`, `version`, `groups` (`["default"]`) and `host.{architecture,hostname,os.{name,platform,type,version}}` under `wazuh.agent`, plus `wazuh.cluster.name`. The values come from the fleet's `start` block, the scenario's `cluster_name` and the agent's own name (also its hostname). Like the agent, which builds the line with nlohmann::json, every object lists its members sorted by name, so `id_position` does not apply. The other knobs add their members on top. Absent writes only the id |
 
 The identity path (`wazuh`, `wazuh.agent`, `wazuh.agent.id`) always appears exactly once, and the
 same inputs always give the same bytes, so a stable header is a byte-identical repeat.
-`engine_header_shapes` puts the shapes side by side.
+`engine_header_shapes` puts the shapes side by side; `engine_cache_fleet` runs a fleet with the
+`agent` profile at a low, constant total event rate (one event per batch), to fill the engine's
+metadata cache without pressuring its event queue.
 
 The step needs `engine` (the sample file, relative to the scenario file) and `location`;
 `events_per_second` and `events_per_batch` default to `0` (unlimited, and the whole file in one

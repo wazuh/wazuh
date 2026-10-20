@@ -273,6 +273,9 @@ func TestLoaderConstrainsHeaderSpec(t *testing.T) {
 		{sprintf(minimalUDS, engineStep(t, `, "header": {"pad_bytes": 20}`), ""), "pad_bytes"},
 		{sprintf(minimalAgent, engineStep(t, `, "header": {"pad_bytes": 9000}`)), "H-line cap"},
 		{sprintf(minimalAgent, engineStep(t, `, "header": {"extra_fields": 400}`)), "H-line cap"},
+		{sprintf(minimalUDS, engineStep(t, `, "header": {"profile": "windows"}`), ""), "profile"},
+		{sprintf(minimalUDS, engineStep(t, `, "header": {"profile": "agent", "id_position": "last"}`), ""), "id_position"},
+		{sprintf(minimalUDS, engineStep(t, `, "header": {"profile": "agent", "pad_bytes": 100}`), ""), "pad_bytes"},
 	} {
 		if _, err := loadFromLiteral(t, tc.body); err == nil || !strings.Contains(err.Error(), tc.field) {
 			t.Errorf("want an error naming %q, got %v\n%s", tc.field, err, tc.body)
@@ -281,5 +284,9 @@ func TestLoaderConstrainsHeaderSpec(t *testing.T) {
 	if _, err := loadFromLiteral(t, sprintf(minimalAgent, engineStep(t,
 		`, "header": {"pad_bytes": 8192, "extra_fields": 3, "off_path_fields": 2, "id_position": "last", "change_every": 5}`))); err != nil {
 		t.Fatalf("a header at exactly remoted's cap must load: %v", err)
+	}
+	if _, err := loadFromLiteral(t, sprintf(minimalAgent, engineStep(t,
+		`, "header": {"profile": "agent", "change_every": 0}`))); err != nil {
+		t.Fatalf("an agent-profile header must load: %v", err)
 	}
 }
