@@ -783,13 +783,16 @@ bool WIndexerConnector::existsIndex(std::string_view indexName)
         nlohmann::json query = R"({"match_all": {}})"_json;
         nlohmann::json source = {{"includes", nlohmann::json::array()}, {"excludes", nlohmann::json::array()}};
 
-        // If the index doesn't exist, this will throw an exception
         m_indexerConnectorAsync->search(indexName, 0, query, source);
         return true;
     }
-    catch (const IndexerConnectorException&)
+    catch (const IndexerConnectorException& e)
     {
-        return false;
+        if (e.statusCode() == HTTP_NOT_FOUND)
+        {
+            return false;
+        }
+        throw;
     }
 }
 

@@ -112,7 +112,8 @@ public:
     /**
      * @brief Checks if IOC index data is available in the indexer.
      *
-     * @return true if IOC index is available, false otherwise
+     * @return true if IOC index is available, false if the indexer answers that it does not exist.
+     * @throws std::exception if the query fails, so the caller's retry covers transient indexer errors.
      */
     virtual bool existsIocDataIndex() = 0;
 

@@ -7205,3 +7205,29 @@ TEST_F(IndexerConnectorSyncTest, ReplayingAnAppliedSessionIsANoOpNotADuplicate)
     ASSERT_EQ(bodies.size(), 2U);
     EXPECT_EQ(bodies[0], bodies[1]) << "deterministic ids and versions: the replay is byte-identical";
 }
+
+TEST_F(IndexerConnectorSyncTest, TimerFlushWithEveryNodeDownLogsAWarning)
+{
+    ScopedLogCapture logs;
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext())
+        .WillRepeatedly(Invoke(
+            []() -> std::string
+            { throw IndexerConnectorException("No available server. Unavailable nodes: mockserver:9200: down"); }));
+    EXPECT_CALL(mockHttpRequest, post(_, _, _)).Times(0);
+
+    config["flush_interval_seconds"] = 1;
+    IndexerConnectorSyncImplNoFlushInterval connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    {
+        auto lock = connector.scopeLock();
+        connector.bulkIndex("id1", "index1", R"({"field":"value1"})");
+    }
+
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+    while (!logs.containsAtLevel(Log::LOGLEVEL_WARNING, "Error processing bulk: No available server") &&
+           std::chrono::steady_clock::now() < deadline)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
+    EXPECT_TRUE(logs.containsAtLevel(Log::LOGLEVEL_WARNING, "Error processing bulk: No available server"));
+}
