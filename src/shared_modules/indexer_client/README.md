@@ -17,12 +17,13 @@ consumers of the indexer, one consumer at a time, with:
 
 The design is in `planes/18-indexer_connector_v2/03-diseno.md` §1–§4 (outside the repository).
 
-**Status: E2c — internal transport with TLS and credentials, node health probe and logging, transport benchmark harness, no public write or query API.** The public headers, the
+**Status: E3a — write admission, buckets and scheduling on top of the internal transport; nothing is sent to the indexer yet, no public query API.** The public headers, the
 configuration schema, the runtime lifecycle (threads, owner thread, shutdown deadline), the test
-helpers, the internal curl [Transport](#transport-internal-e2a-1-and-e2a-2) (HTTP, HTTPS, credentials) and the
-[node health probe](#node-health-e2b) exist, and the transport has been [benchmarked against the v1](#benchmark). The public write and
-query interfaces still send nothing to an indexer; see
-[What is not implemented yet](#what-is-not-implemented-yet).
+helpers, the internal curl [Transport](#transport-internal-e2a-1-and-e2a-2) (HTTP, HTTPS, credentials), the
+[node health probe](#node-health-e2b) and the [write path](#write-path-e3a) (encoding, quota charge, overflow policies, DRR scheduler,
+resolution) exist, and the transport has been [benchmarked against the v1](#benchmark). `Writer::submit` admits and schedules
+writes but no bulk is sent: the production sink resolves every operation `Failed(Unavailable)`. The query interface still
+sends nothing; see [What is not implemented yet](#what-is-not-implemented-yet).
 `indexer_connector` keeps working untouched until each consumer migrates.
 
 Strict C++17: the target requires `cxx_std_17` publicly and is pinned to 17, so consumers built
@@ -60,9 +61,24 @@ Headers are in `include/indexer_client/`; `indexerClient.hpp` is the umbrella.
 | `client.hpp` | `Client` | A consumer's handle on the runtime; implements `IClient` |
 | | `IClient`, `IWriter`, `IQuery` | Abstract interfaces for consumers' mocks |
 | | `Ticket`, `GroupTicket`, `CancelTicket` | Handles on a pending write, a group of writes and a cancel; `ready()` and `wait(Deadline)` |
-| | `Submit` | Result of `submit`: `accepted`, `cause`, `ticket` |
-| | `Group` | Atomic group of writes: `add(Op)` then `commit()`; dropped without commit it releases its reservation |
+| | `Submit` | Result of `submit`: `accepted`, `cause`, `ticket` (no `reason`) |
+| | `Group` | Atomic group of writes: `add(Op)` then `commit()`; dropped without commit it releases its reservation (stub until E3c) |
 | | `Pit`, `PitSession` | Shared PIT handle and its cursors (`next`, `exhausted`) |
+
+**Write handles in E3a.** `Writer::submit` is real: it validates, encodes, charges and queues the operation (see
+[Write path](#write-path-e3a)). `Writer::group()` and `Writer::cancel(tag)` are still stubs until E3c (`cancel` answers
+`Unavailable`; a `Group` cannot be committed into anything). `Client::writer(bucket)` returns the writer bound to that bucket of
+the client; once the runtime is gone it returns the E1 stub writer, which answers `Unavailable`.
+
+`CloseReport` (from `Client::awaitClosed`) fills all three fields:
+
+| Field | Meaning |
+|---|---|
+| `callbacksInFlight` | Completions of this client (ticket completion plus callback) still outstanding when the deadline passed |
+| `droppedClientClosed` | Operations of this client resolved `Dropped(ClientClosed)` |
+| `droppedShutdown` | Operations of this client resolved `Dropped(Shutdown)` |
+
+Operations dropped by an overflow policy (`Dropped(QueueFull)`) are not part of the report; they are in the per-bucket counters.
 
 Mocks of the interfaces (`tests/mocks/mockIndexerClient.hpp`) and an in-process fake indexer
 (`tests/fake/fakeIndexer.hpp`) are test helpers, not part of the installed API.
@@ -393,9 +409,158 @@ passive success never promotes, and `Retry-After` is ignored.
 `onTransition(hook)`, called after each transition outside the mutex; `Prober::stats()` reports `rounds`, `roundsApplied`,
 `roundsDiscarded`, `roundsSkipped`, `submitsRefused` and `resultsAfterStop`. They are internal.
 
-**Stop order.** `RuntimeState::stopAndJoin` stops the prober first, then the transport, then the loops, then the CPU pool.
+**Stop order.** `RuntimeState::stopAndJoin` stops the [write path](#close-and-shutdown) first, then the prober, then the transport, then the loops, then the CPU pool.
 `Prober::stop()` sets a flag, posts the timer cancellation to loop 0 and waits for it, so no round is armed and no probe is
 submitted after it returns.
+
+## Write path (E3a)
+
+`Writer::submit` validates and encodes the operation, charges its memory against the bucket's quota and the global cap, applies
+the bucket's overflow policy when there is no room, and queues it. A DRR scheduler on network loop 0 forms batches from the
+queues and hands them to an internal sink. In E3a the production sink sends nothing: every operation resolves
+`Failed(Unavailable)` (the bulk sender is E3b). The code is in `src/write/` (`encoding`, `bucket`, `budget`, `scheduler`, `sink`,
+`writer`); none of it is public API. Counters are reachable only through `detail::writeStats()`.
+
+### Encoding per kind
+
+`encode(Op&&)` (`src/write/encoding.hpp`) runs in `submit`, on the producer's thread, once. The result is the operation's NDJSON
+lines (each ends in `\n`); their size is exactly what goes on the wire, and E3b re-sends them without re-encoding. The body is
+moved into the lines: on success `op.body` is left empty with its memory freed. The shapes are byte-for-byte the v1's
+(`indexer_connector/src/indexerConnectorSyncImpl.hpp`):
+
+| Kind | Lines |
+|---|---|
+| `Index` | `{"index":{"_index":"<i>","_id":"<id>"}}` + body |
+| `IndexAutoId` | `{"index":{"_index":"<i>"}}` + body |
+| `IndexDataStream` | `{"create":{"_index":"<i>"}}` + body |
+| `Delete` | `{"delete":{"_index":"<i>","_id":"<id>"}}` (one line, no body) |
+| `IndexVersionedScript` | `{"update":{"_index":"<i>","_id":"<id>"}}` + `{"script":{...,"params":{"doc_version":<version>,"doc":<body>}},"upsert":<body>,"scripted_upsert":true}`; the Painless source keeps the document unless `document_version` is older, then sets `ctx.op = 'none'`; the document travels twice |
+
+Validation failures are `Cause::InvalidArgument`, counted in the bucket (`invalidArgument`), and the op is not charged. The
+field is first in the internal reason (`index: ...`, `id: ...`, `version: ...`, `body: ...`, `mode: ...`), but `Submit` carries
+no `reason`: the consumer sees only the cause.
+
+| Field | Rule |
+|---|---|
+| `index` | Non-empty and only `[a-zA-Z0-9._*-]` (the v1 allowlist, `isSafeIndexName`) |
+| `id` | Required for `Index`, `Delete` and `IndexVersionedScript`; must be empty for `IndexAutoId` and `IndexDataStream`. Escaped as the v1 does: `"`, `\`, the short escapes and any other control character below 0x20 as `\u00XX` |
+| `version` | Only for `IndexVersionedScript`, where it must be a canonical integer in [0, `INT64_MAX`] (digits only, no leading zero); empty for every other kind |
+| `body` | Required and free of `\n` for every kind but `Delete`; must be empty for `Delete` |
+| `mode` | `WriteMode::ReplacePreserving` is `InvalidArgument` until E3c |
+
+### Charge and quota
+
+Every accepted operation is charged `encoded bytes + RESULT_RESERVE` (`RESULT_RESERVE` = 1664, `src/write/bucket.hpp`) against its
+bucket's `quotaBytes` and against the runtime-wide `global_quota_bytes`.
+
+- **Wire bytes** (the payload) are what the operation holds in the queue and in a batch. They are released once, when the
+  operation resolves (or at once when `DropOldest` evicts it).
+- **`RESULT_RESERVE`** covers what the operation keeps after its lines are gone: its internal state, the ticket state, the callback
+  slot and an `OpResult` with its strings at their caps. It is released after the callback has run (also when the callback throws)
+  and, for an operation without a callback, when the last `Ticket` is destroyed. `Ticket::wait()` does not consume it.
+- **How the constant was measured.** `ResultReserveMeasured` replaces the global `operator new` of the test executable with an
+  allocation counter (usable size of every block) and measures the heap an accepted operation keeps besides its lines in four
+  phases: retained with a callback; resolved with its completion queued behind a busy pool and its batch still held (the worst
+  one, 1308.5 B per operation); callback run with the `Ticket` alive; resolved without a callback. 1308.5 B x 1.25 = 1636, rounded
+  up to a multiple of 64 gives 1664. The case is a regression guard, skipped under ASAN/TSAN (they own `operator new`), and the
+  constant is re-measured in E3b when the internal state grows.
+- **What it does not cover.** Only the library's state: a callback whose captures exceed `std::function`'s small buffer (the
+  measurement uses an 8-byte capture) allocates consumer memory that is not charged. `IWriter::submit(Op op, ...)` takes the
+  operation by value: `submit(std::move(op))` avoids a copy of the body before the encoding moves it. `maxAge` counts from the
+  moment `submit` was called, so time blocked in `Block` counts toward it.
+- **Global cap.** `GlobalBudget` reserves with a lock-free compare-and-swap loop (never add-then-roll-back, which would refuse
+  other buckets spuriously). Buckets whose quotas add up to more than the cap compete for it, and the one that does not fit
+  applies its overflow policy as if its own quota were full.
+- **Too large.** `Submit{false, PayloadTooLarge}` when the encoded size is above `bulk.maxBytes`, or the charge is above the
+  bucket's `quotaBytes` or above the global cap. It is counted (`payloadTooLarge`).
+- **Registration rule.** `RuntimeRef::client` rejects a bucket (`InvalidArgument`, field named in `reason`) unless
+  `bulk.maxBytes + RESULT_RESERVE <= quotaBytes` (`validateBucket`, `src/runtime/runtime.cpp`), together with the older
+  `bulk.maxBytes <= quotaBytes <= global_quota_bytes`. So the largest admissible operation always fits an empty bucket.
+
+### Overflow policies
+
+When the charge does not fit, the bucket's `Overflow` decides:
+
+| Policy | Result |
+|---|---|
+| `Reject` | `Submit{false, QueueFull}` (`rejectedQueueFull`) |
+| `Block` | The producer sleeps until room, close or `blockTimeout`: `SubmitTimeout` on timeout (`submitTimeout`), the close cause (`ClientClosed` or `Shutdown`) on close (`rejectedClosed`) |
+| `DropNewest` | The new operation is accepted but never queued and resolves `Dropped(QueueFull)`. Without a callback nothing is charged and the ticket is completed in `submit` (no pool task). With a callback only `RESULT_RESERVE` is charged, returned after the callback; if even that does not fit, `Submit{false, QueueFull}`. The pool backlog from drops is therefore bounded by `quotaBytes / RESULT_RESERVE` |
+| `DropOldest` | Evicts the fewest oldest **pending** operations that make room (never one already delivered to the sink); each resolves `Dropped(QueueFull)`, its payload is released at once and its reserve after its callback. The evicted bytes pass to the new operation without a window in which another bucket could take them. If evicting everything pending would not be enough, nothing is evicted and the new operation gets the `DropNewest` treatment |
+
+- **Block wake-ups.** `GlobalBudget` keeps the set of buckets with blocked producers (a bucket enters and leaves under its own
+  mutex). Any release, local or global, that finds the set non-empty takes each such bucket's mutex (alone, holding no other lock)
+  and notifies, so a release that frees global room wakes a producer blocked on another bucket. `requestClose()` and the shutdown
+  wake every blocked producer.
+- **Reentrancy.** A `submit` in `Block` that would have to wait, called from a runtime thread (a callback, for example), returns
+  `Reentrancy` without sleeping (`reentrancy`), as every other wait in the library does.
+- **Counters.** Each bucket keeps `submitted`, `accepted`, `rejectedQueueFull`, `rejectedClosed`, `submitTimeout`, `reentrancy`,
+  `payloadTooLarge`, `invalidArgument`, `droppedNewest`, `droppedOldest`, `resolvedOk`, `resolvedFailed`, `resolvedDropped`,
+  `retained`, `charge` and `peakCharge` (`BucketStats`; `WriteStats` adds `globalCharge` and `globalCap`). Invariants:
+  `submitted = accepted + rejectedQueueFull + rejectedClosed + submitTimeout + reentrancy + payloadTooLarge + invalidArgument`
+  and `accepted = resolved + retained`. A drop is never silent: every `DropNewest` and each `DropOldest` eviction is counted and
+  resolved.
+- **Locks.** A bucket's mutex is a leaf: it is never held while posting, running a callback or destroying a ticket state, and
+  the only other lock taken under it is the waiter registry's (itself a leaf).
+
+### Scheduler (DRR on loop 0)
+
+One `Scheduler` per runtime, created after the loops exist. All its state (ring, cursor, credits, `maxAge` timers) is touched only
+from network loop 0, as the `Prober` does; other threads only append to a notification list and post a pass.
+
+- **Thresholds.** A bucket is eligible when its pending bytes reach `bulk.maxBytes`, its pending operations reach `bulk.maxDocs`
+  or its oldest pending operation is `bulk.maxAge` old (`Bucket::eligible`; E3b will add backoff and the retry lane).
+- **Notifications.** `enqueue` tells the scheduler when the bucket goes from empty to non-empty or crosses `maxBytes` or `maxDocs`
+  (`>=`), deduplicated by an atomic flag. Notifications posted while a pass is queued coalesce into that pass.
+- **`maxAge` timers.** Each bucket has an asio timer armed for its oldest pending operation plus `maxAge`, and re-armed after every
+  pass. An expiry already due when the timer would be armed is not armed (it would spin while the sink has no capacity): the pass
+  runs once more instead, when the sink has capacity; otherwise `sinkReady()` resumes the scheduler.
+- **The DRR loop.** Eligible buckets form a ring with a persistent cursor. On its turn a bucket's `credit` grows by
+  `weight x drr_quantum_bytes` and it emits batches while `credit >= bytes of its head operation` and `sink.capacity() > 0`. A batch
+  takes whole operations from the head, at most `bulk.maxBytes` and `bulk.maxDocs`, within the credit; the head goes alone
+  whenever the credit covers it, so a document is never split. The turn ends when the credit does not cover the head (credit kept),
+  when the bucket empties (credit reset to 0) or when it falls below every threshold again (its timer brings it back). If the sink's
+  capacity reaches 0 the cursor stays on the bucket and `sinkReady()` resumes the same turn without new credit.
+- **Fast-forward.** If a complete round emits nothing because the quantum is small against the documents, the scheduler adds at once
+  the credit of the `k - 1` empty rounds classic DRR would still spin through (`k` = fewest rounds after which some bucket covers
+  its head) instead of looping (`SchedulerStats::fastForwards`). Same outcome, no spin on loop 0.
+
+### Internal sink
+
+`detail::write::BatchSink` (`src/write/sink.hpp`) is where batches go: `capacity()` (batches it accepts now; 0 stops the scheduler
+until `WritePath::sinkReady()`), `dispatch(Batch)` (on loop 0; each operation must be resolved exactly once through
+`WritePath::resolve`, from any thread) and `stop()` (afterwards no batch is accepted; what the sink still holds is resolved by the
+shutdown sweep). **Production: `Failed(Unavailable)`** with the reason `no bulk sender yet (E3b)`, unbounded capacity: what the
+stub writer of E1 answered. E3b replaces it with the bulk sender and E5's limiter becomes its capacity. The component suites
+install a programmable sink through `detail::write::runtimeWritePath()->setSink(...)`.
+
+### Resolution
+
+Every operation resolves exactly once: the first of the sink, a close sweep or an eviction wins (`OpState::claimed`), and the
+rest are no-ops. The winner releases the payload, counts the status in the bucket and completes the ticket; the callback runs on
+the CPU pool (never on a network thread) after the ticket is completed, and the reserve is returned after it. A callback that
+throws is swallowed and does not skip the accounting. If the pool no longer accepts tasks (late in shutdown), the completion runs
+inline. `Dropped(ClientClosed)` and `Dropped(Shutdown)` are also counted per client for the `CloseReport`.
+
+### Close and shutdown
+
+- **`requestClose()`** closes the client's buckets with `ClientClosed`: blocked producers wake and return `ClientClosed`, later
+  `submit` calls return `ClientClosed`, and the operations still pending resolve `Dropped(ClientClosed)`. Operations already
+  delivered to the sink keep their course. **Provisional (E3a):** the design (`requestClose()` stops admission and *starts
+  draining*) keeps the pending operations for E5's drain up to the `awaitClosed` deadline; dropping them here is E3a's stand-in
+  while there is no real sender (D43).
+- **`awaitClosed(deadline)`** does `requestClose()`, resolves what the client still retains in the sink `Dropped(ClientClosed)`
+  (E5 adds the drain up to the deadline before this point), then waits for the client's outstanding completions until the
+  deadline; whatever is left is `CloseReport.callbacksInFlight`. It returns the `CloseReport` described in [Public API](#public-api).
+- **Submit racing a close.** `submit` reserves, then enqueues. A close that swept the bucket between the two did not see the
+  operation, so after enqueuing the writer checks the bucket's close cause and, if closed, takes the operation back and resolves it
+  `Dropped`. Everything accepted is resolved once and nothing refused has a callback (`SubmitRacesClose`, using the seam
+  `afterAdmission`).
+- **Shutdown order** (`RuntimeState::stopAndJoin`): stop accepting clients, then `WritePath::stop()`: every bucket closes with
+  `Shutdown` (blocked producers wake) and its pending operations resolve `Dropped(Shutdown)` -> the scheduler stops (no pass,
+  batch or timer afterwards) -> `sink.stop()` -> every operation still unresolved, pending or delivered, resolves
+  `Dropped(Shutdown)` while the pool still accepts tasks. Only then the node-health prober, the transport, the loops and the
+  CPU pool stop, as described in [Node health](#node-health-e2b).
 
 ## Logging
 
@@ -555,13 +720,32 @@ C++20-ism in a public header fails there first:
 | Suite | Target / ctest label | Covers |
 |---|---|---|
 | Unit | `indexer_client_utest` (`tests/unit/*.cpp`) | Config, key-value source, mocks, fake indexer, the public library (`VisibilityTest.SetLogFunctionRoutesLogs` covers the log setter) |
-| Component | `indexer_client_component_test` (`tests/component/*.cpp`) | The transport and the fake over real sockets, with the seams; `HealthTest` (probe, states, logs, stop order) and `FakeHealthTest` (the fake's `/_cluster/health` rules) |
+| Component | `indexer_client_component_test` (`tests/component/*.cpp`) | The transport and the fake over real sockets, with the seams; `HealthTest` (probe, states, logs, stop order) and `FakeHealthTest` (the fake's `/_cluster/health` rules); `WriteTest` (the [write path](#write-path-e3a), below) |
 
 ```bash
 cmake --build $WAZUH_REPO/src/build -j"$(nproc)" --target indexer_client_utest indexer_client_component_test
 ctest --test-dir $WAZUH_REPO/src/build -L indexer_client_utest
 ctest --test-dir $WAZUH_REPO/src/build -L indexer_client_component_test
 ```
+
+**`WriteTest` suites** (E3a, `tests/component/write*_test.cpp`, shared fixture `writeFixture.hpp`: a runtime, a programmable sink
+installed through `WritePath::setSink`, a callback result log). Every case ends with the charge and the retained operations at 0.
+
+| File | Cases |
+|---|---|
+| `writeEncoding_test.cpp` | `EncodingPerKind`, `EncodingRejectsInvalid` |
+| `writeAdmission_test.cpp` | `ChargeIsWireBytesPlusReserve`, `GlobalCapAcrossBuckets`, `OverflowReject`, `OverflowBlockTimeout`, `OverflowDropNewest`, `OverflowDropOldest`, `OverflowBlockWakes`, `BlockedProducerWakesOnClose`, `NoDropWithoutCounter`, `BlockFromRuntimeThreadIsReentrancy`, `PayloadTooLargeAtSubmit` |
+| `writeScheduler_test.cpp` | `ThresholdsFormBatches`, `DrrNoStarvation`, `DrrShareByWeight`, `DocumentNeverSplitCreditCarries`, `ThreadsStayKPlusMWithBuckets`, `DrrTinyQuantumFastForwards`, `MaxAgeExpiringDuringAPassIsServed` |
+| `writeClose_test.cpp` | `SubmitRacesClose`, `CloseAndShutdownResolveRetained`, `ShutdownWithHeldBatch`, `DefaultSinkUnavailable` |
+| `writeReserve_test.cpp` | `ResultReserveMeasured` (allocation counter; skipped under ASAN/TSAN) |
+
+The unit suite also covers the registration rule (`BucketSpecTest.InvalidBulkMaxBytesPlusReserveAboveQuota`) and the production
+sink through the public API (`BucketSpecTest.WriterSubmitResolvesUnavailable`).
+
+**Seam `afterAdmission`.** `detail::seams::afterAdmission()` (`src/transport/seams.hpp`) runs in `Writer::submit` between the bucket
+reservation and the enqueue; in the test build `testing_hooks::setAfterAdmission(hook)` installs the hook (`resetAll()` clears it).
+`SubmitRacesClose` uses it to close the client or shut the runtime down exactly in that window; the production build compiles it
+to nothing.
 
 The runtime starts the probe on its own. The test hook `testing_hooks::setProbeAutoStart(false)`
 (`src/testing/hooks.hpp`, test build only) creates the `NodeSet` and `Prober` without a first round or a timer, and `probeNow()`
@@ -589,20 +773,21 @@ Layout of `tests/`: `unit/` (config schema, key-value source, mocks, fake indexe
 
 ## What is not implemented yet
 
-E1 delivered the skeleton, E2a-1 the internal `http` transport, E2a-2 TLS and credentials, E2b node health and logging and E2c the
-transport [benchmark](#benchmark) (done; the `--path client` benchmark of the whole client arrives with E5). Not
-implemented, by stage:
+E1 delivered the skeleton, E2a-1 the internal `http` transport, E2a-2 TLS and credentials, E2b node health and logging, E2c the
+transport [benchmark](#benchmark) (done; the `--path client` benchmark of the whole client arrives with E5) and E3a the
+[write path](#write-path-e3a) up to the sink. Not implemented, by stage:
 
 | Area | Stage |
 |---|---|
-| Bulk failover to another node and the wait of an ambiguous `ordered` bucket (they will use `generation()` and `onTransition`) | E3b |
+| Bulk building and sending, per-item classification, retry lane and backoff, HTTP 413 handling, failover to another node, the wait of an ambiguous `ordered` bucket (they will use `generation()` and `onTransition`) | E3b |
+| `Group` (atomic groups), `ordered` buckets, `cancel(tag)`, `WriteMode::ReplacePreserving` | E3c |
 | Reads answering `Unavailable` when no node is usable | E4 |
-| Health metrics and `Retry-After` in passive signals | E5 |
+| Queries: `search`, `searchAfter`, PIT, `deleteByQuery`, `updateByQuery`, `indexExists` | E4 |
+| Limiter, AIMD window and pacing, drain up to the shutdown deadline, public metrics (write counters, health metrics, `Retry-After` in passive signals) | E5 |
 | Benchmark of the whole client (`--path client`) | E5 |
-| Writes: bucket queues, bulk building, scheduling, retries, overflow, tickets and groups | E2–E5 |
-| Queries: `search`, `searchAfter`, PIT, `deleteByQuery`, `updateByQuery`, `indexExists` | E2–E5 |
-| Metrics beyond the thread layout in `MetricsSnapshot` | E2–E5 |
+| Metrics beyond the thread layout in `MetricsSnapshot` | E5 |
 | Migration of the four consumers off `indexer_connector` | later stages |
 
-Until then `submit`, `group` and the query interface have no network behavior behind them. The only traffic is the health probe;
-nothing public calls the transport yet.
+Until then no write reaches an indexer: `submit` admits, charges and schedules, and the production sink resolves every operation
+`Failed(Unavailable)`. `group()`, `cancel()` and the query interface are stubs. The only traffic is the health probe; nothing public
+calls the transport yet.

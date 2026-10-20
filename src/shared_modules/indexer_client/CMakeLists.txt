@@ -16,7 +16,7 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 find_package(Threads REQUIRED)
 
-# The full source list is fixed here (E1 + the E2a transport + the E2b health and log sink) so that the parallel steps never edit this file
+# The full source list is fixed here (E1 + the E2a transport + the E2b health and log sink + the E3a write path) so that the parallel steps never edit this file
 # (plan 18, anexos/e2a-1/contrato-transport.md §Unidades).
 set(INDEXER_CLIENT_SOURCES
     src/types.cpp
@@ -32,7 +32,13 @@ set(INDEXER_CLIENT_SOURCES
     src/transport/tlsMaterial.cpp
     src/health/nodeSet.cpp
     src/health/prober.cpp
-    src/log.cpp)
+    src/log.cpp
+    src/write/encoding.cpp
+    src/write/budget.cpp
+    src/write/bucket.cpp
+    src/write/scheduler.cpp
+    src/write/sink.cpp
+    src/write/writer.cpp)
 
 # Two compilations of the same sources (I45b): the production objects behind the .so carry no test seam; the
 # testing objects (INDEXER_CLIENT_TESTING + src/testing/) build a static library that only the component suite links,
