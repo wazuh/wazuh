@@ -44,6 +44,13 @@ chown -R ${USER}:${GROUP} ${DIR}/queue/{diff,sockets,rids}
 chmod -R 770 ${DIR}/queue/sockets
 chmod -R 750 ${DIR}/queue/{diff,rids}
 
+# The credential store is root-only. The recursive chmod and chown above made it group-readable
+if [ -d "${DIR}/queue/credentials" ]; then
+    chown root:wheel ${DIR}/queue/credentials
+    chmod 750 ${DIR}/queue/credentials
+    find ${DIR}/queue/credentials -type f -exec chown root:wheel {} \; -exec chmod 640 {} \;
+fi
+
 # For the logging user
 chmod 770 ${DIR}/logs
 chown -R ${USER}:${GROUP} ${DIR}/logs
