@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include <base/managerConfig.hpp>
 
+#include <base/json.hpp>
+
 #include <memory>
 #include <stdexcept>
 #include <variant>
 
 #include <manager_config/manager_config.hpp>
-#include <rapidjson/document.h>
 
 namespace
 {
@@ -20,7 +21,7 @@ manager_config::LoadOptions loadOptions(const std::filesystem::path& home, bool 
     return options;
 }
 
-std::string stringMember(const rapidjson::Document& object, const char* key)
+std::string stringMember(const json::Document& object, const char* key)
 {
     const auto it = object.FindMember(key);
     if (it == object.MemberEnd() || !it->value.IsString())
@@ -75,14 +76,14 @@ std::string sectionJson(std::string_view section)
 
 std::pair<std::string, std::string> clusterNames()
 {
-    const auto json = sectionJson("cluster");
-    if (json.empty())
+    const auto text = sectionJson("cluster");
+    if (text.empty())
     {
         return {};
     }
 
-    rapidjson::Document cluster;
-    if (cluster.Parse(json.c_str()).HasParseError() || !cluster.IsObject())
+    json::Document cluster;
+    if (cluster.Parse(text.c_str()).HasParseError() || !cluster.IsObject())
     {
         return {};
     }
@@ -94,14 +95,14 @@ LogFormat logFormat()
 {
     constexpr LogFormat DEFAULT_FORMAT {true, false};
 
-    const auto json = sectionJson("logging");
-    if (json.empty())
+    const auto text = sectionJson("logging");
+    if (text.empty())
     {
         return DEFAULT_FORMAT;
     }
 
-    rapidjson::Document section;
-    if (section.Parse(json.c_str()).HasParseError() || !section.IsObject())
+    json::Document section;
+    if (section.Parse(text.c_str()).HasParseError() || !section.IsObject())
     {
         return DEFAULT_FORMAT;
     }

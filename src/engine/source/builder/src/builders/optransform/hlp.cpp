@@ -15,10 +15,9 @@ namespace
 {
 using namespace builder::builders;
 
-static_assert(
-    std::is_same_v<rapidjson::Document::AllocatorType, rapidjson::MemoryPoolAllocator<rapidjson::CrtAllocator>>,
-    "HLP transforms require RapidJSON's MemoryPoolAllocator<CrtAllocator>: parser mappers retain string_views into "
-    "the event while mutating it, so replacing the allocator may invalidate those views.");
+static_assert(std::is_same_v<json::Document::AllocatorType, rapidjson::MemoryPoolAllocator<json::BaseAllocator>>,
+              "HLP transforms require the engine pool allocator: parser mappers retain string_views into "
+              "the event while mutating it, so replacing the allocator may invalidate those views.");
 
 enum class HLPParserType
 {

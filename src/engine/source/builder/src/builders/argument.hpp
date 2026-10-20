@@ -78,7 +78,7 @@ public:
  *
  * Stores either a json::Json (for complex values like objects, arrays, numbers, bools)
  * or a plain std::string (for string-only values), avoiding the overhead of a full
- * rapidjson::Document when only a string is needed.
+ * json::Document when only a string is needed.
  */
 class Value : public Argument
 {

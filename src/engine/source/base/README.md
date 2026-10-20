@@ -13,7 +13,7 @@ base/
 ├── CMakeLists.txt
 ├── README.md
 ├── include/base/
-│   ├── json.hpp                # base::json::Json, the JSON document type used across the engine
+│   ├── json.hpp                # base::json::Json, the JSON document type used across the engine (an allocation failure throws std::bad_alloc)
 │   ├── graph.hpp               # Graph type
 │   ├── expression.hpp          # Expression and formula types
 │   ├── eventParser.hpp         # Event parser
