@@ -363,22 +363,6 @@ constexpr auto BROWSER_EXTENSIONS_TABLE     { "dbsync_browser_extensions"   };
 constexpr auto METADATA_TABLE               { "table_metadata"              };
 constexpr auto CONTAINER_CONTEXT_TABLE      { "container_context"           };
 
-// Primary key fields for each table (used for ORDER BY clauses)
-// These must match the PRIMARY KEY definitions in the CREATE TABLE statements above
-constexpr auto OS_PK_FIELDS                 { "container_id, os_name, os_version" };
-constexpr auto HW_PK_FIELDS                 { "container_id, serial_number" };
-constexpr auto HOTFIXES_PK_FIELDS           { "container_id, hotfix_name" };
-constexpr auto PACKAGES_PK_FIELDS           { "container_id, name, version_, architecture, type, path" };
-constexpr auto PROCESSES_PK_FIELDS          { "container_id, pid" };
-constexpr auto PORTS_PK_FIELDS              { "container_id, file_inode, network_transport, source_ip, source_port" };
-constexpr auto NET_IFACE_PK_FIELDS          { "container_id, interface_name, interface_alias, interface_type" };
-constexpr auto NET_PROTOCOL_PK_FIELDS       { "container_id, interface_name, network_type" };
-constexpr auto NET_ADDRESS_PK_FIELDS        { "container_id, interface_name, network_type, network_ip" };
-constexpr auto USERS_PK_FIELDS              { "container_id, user_name" };
-constexpr auto GROUPS_PK_FIELDS             { "container_id, group_name" };
-constexpr auto SERVICES_PK_FIELDS           { "container_id, service_id, file_path" };
-constexpr auto BROWSER_EXTENSIONS_PK_FIELDS { "container_id, browser_name, user_id, browser_profile_path, package_name, package_version_" };
-
 // Simplified ordering fields for document limit management
 // Most tables use first PK field only, but some use multiple for better stability
 constexpr auto OS_ORDER_BY                  { "os_name" };
