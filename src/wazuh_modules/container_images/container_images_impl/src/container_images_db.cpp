@@ -14,6 +14,7 @@
 #include "dbsync.hpp"
 #include "hashHelper.h"
 #include "stringHelper.h"
+#include "wazuhCommon.hpp"
 
 #include <cstdint>
 #include <string>
@@ -91,7 +92,8 @@ namespace
         const auto content {row.dump()};
         Utils::HashData hash;
         hash.update(content.c_str(), content.size());
-        return Utils::asciiToHex(hash.hash());
+        const auto digest {hash.hash()};
+        return wazuh::hex_encode(digest.data(), digest.size());
     }
 
     /// @brief A string column of a selected row, empty when absent or null.
@@ -189,7 +191,8 @@ namespace
             }
         }
 
-        return Utils::asciiToHex(hash.hash());
+        const auto digest {hash.hash()};
+        return wazuh::hex_encode(digest.data(), digest.size());
     }
 
     // DBSync writes the version as a signed integer on every path (insert, modify and the
