@@ -271,31 +271,37 @@ int main(int argc, char* argv[])
 
     // Content Manager: hand it this process's log function so everything it emits lands in the
     // engine's log with the engine's rotation policy. Log::GLOBAL_LOG_FUNCTION is defined per DSO,
-    // so the .so keeps its own copy and this only tells it which sink to use -- no wazuhext is
-    // pulled in. Started before any module that registers a content topic.
+    // so the .so keeps its own copy and this only tells it which sink to use. Started before any
+    // module that registers a content topic, and only when event processing is on — the same switch
+    // that decides whether CMSync and IocSync exist — so the standalone engine, which runs with it
+    // off, loads the library but never starts it (D3 of the content manager).
     //
     // The library tags its lines with the modulesd daemon name it was written for; rewritten here
     // so an operator filtering by daemon finds the engine's content downloads under the engine.
-    ContentModule::instance().start(
-        [logFunction = logging::createStandaloneLogFunction()](const int level,
-                                                               const char* tag,
-                                                               const char* file,
-                                                               const int line,
-                                                               const char* func,
-                                                               const char* msg,
-                                                               va_list args)
-        {
-            constexpr std::string_view LIBRARY_PREFIX {"wazuh-manager-modulesd:"};
-            const std::string_view original {tag != nullptr ? tag : ""};
-            if (original.rfind(LIBRARY_PREFIX, 0) != 0)
+    if (confManager.get<bool>(conf::key::SERVER_ENABLE_EVENT_PROCESSING))
+    {
+        ContentModule::instance().start(
+            [logFunction = logging::createStandaloneLogFunction()](const int level,
+                                                                   const char* tag,
+                                                                   const char* file,
+                                                                   const int line,
+                                                                   const char* func,
+                                                                   const char* msg,
+                                                                   va_list args)
             {
-                logFunction(level, tag, file, line, func, msg, args);
-                return;
-            }
-            const auto rewritten = "wazuh-manager-analysisd:" + std::string {original.substr(LIBRARY_PREFIX.size())};
-            logFunction(level, rewritten.c_str(), file, line, func, msg, args);
-        });
-    exitHandler.add([]() { ContentModule::instance().stop(); });
+                constexpr std::string_view LIBRARY_PREFIX {"wazuh-manager-modulesd:"};
+                const std::string_view original {tag != nullptr ? tag : ""};
+                if (original.rfind(LIBRARY_PREFIX, 0) != 0)
+                {
+                    logFunction(level, tag, file, line, func, msg, args);
+                    return;
+                }
+                const auto rewritten =
+                    "wazuh-manager-analysisd:" + std::string {original.substr(LIBRARY_PREFIX.size())};
+                logFunction(level, rewritten.c_str(), file, line, func, msg, args);
+            });
+        exitHandler.add([]() { ContentModule::instance().stop(); });
+    }
 
     // Engine start - Init modules
 

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
 cmake_minimum_required(VERSION 3.12.4)
 
 project(content_manager)
@@ -20,7 +21,8 @@ endif()
 # Include directories
 include_directories(include)
 include_directories(${SRC_FOLDER})
-include_directories(${SRC_FOLDER}/shared/include)
+# Not ${SRC_FOLDER}/shared/include: those are GPL-2.0-only C headers, and this library is
+# GPL-2.0-only OR AGPL-3.0-or-later (D3). Nothing here has used them since defs.h was removed.
 include_directories(${SRC_FOLDER}/external/cJSON)
 include_directories(${SRC_FOLDER}/external/nlohmann)
 include_directories(${SRC_FOLDER}/external/curl/include/curl)

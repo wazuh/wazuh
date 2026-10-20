@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
 #include "contentIndexerAdapters.hpp"
 #include "contentManager.hpp"
 #include "contentOnDemand.hpp"

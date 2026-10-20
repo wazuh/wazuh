@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
 /*
  * Wazuh - Content Merge Tool
  * Copyright (C) Wazuh Inc.

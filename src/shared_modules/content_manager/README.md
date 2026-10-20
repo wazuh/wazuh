@@ -126,12 +126,13 @@ spec.detection = hash;
 > The Content Manager ships a [test tool](./testtool/main.cpp) that registers one topic against a
 > live indexer and prints the delivery contract as it happens.
 
-## Design decisions (D1–D2)
+## Design decisions (D1–D3)
 
 | ID | Decision |
 |---|---|
 | D1 | **The library never owns an indexer connection; every registration uses the host's.** Before this, each registration built its own `IndexerSession` (keystore read, startup health check, its own health-monitor thread) and its own `IndexerConnectorSync` from connection settings copied into `configData.indexer`. Every host therefore ran two connector stacks against the same cluster — VD its scan pool plus this one, the Engine its async connector plus this one — so an indexer outage was reported twice, by two monitors, and each host paid for a second set of connector objects. The detailed contract follows the table. |
 | D2 | **Registrations are described by concern, and each change-detection strategy carries only its own settings.** The parameters were one flat `configData.indexer` object mixing five concerns — what to read, the consumer readiness gate, change detection, full-load preconditions, token state — where half the keys meant something only under one `changeDetection` value, so the validator had to reject combinations ("exactly one of hashDocId/hashIndex", "hashQuery requires hashIndex") instead of the shape ruling them out. Some keys were dead (`consumerName` since D1, `hashIndex` beyond picking the probe shape), the topic name was given twice, a missing gate was expressed by deleting a key, and every host hand-assembled the JSON. The detailed contract follows the table. |
+| D3 | **The library is dual-licensed `GPL-2.0-only OR AGPL-3.0-or-later`, and the Engine starts it only when it can use it.** It was GPL-2.0-only while the Engine (AGPL-3.0-or-later) linked it, an incompatible combination whether linked statically or dynamically; it is now licensed like the other libraries both sides link (`utils`, `manager_config`, `keystore`, `indexer_connector`, `common`), AGPL-only being ruled out because modulesd is GPL-2.0-only. The Engine keeps linking the shared library, as it does `indexer_connector`, and no longer starts it when event processing is off. The detailed contract follows the table. |
 
 ### D1 in detail
 
@@ -281,6 +282,38 @@ interval change (`changeSchedulerInterval`) is unaffected.
 key in each block, a `readiness` block missing its id, and an empty `tokenPointers` are each
 rejected with the key named; a registration with no `readiness` opens a PIT over the data indices
 only; an incremental cursor fetch with a `source.query` runs both clauses.
+
+### D3 in detail
+
+**License.** Every file of `src/shared_modules/content_manager/` carries
+`GPL-2.0-only OR AGPL-3.0-or-later`, with the notice `indexer_connector` uses, and the directory
+ships the same `COPYING`. `content_manager` joins `DUAL_DIRS` in
+`.github/scripts/spdx_scope.py` (and its unit test), so the SPDX check covers every file a change
+touches here. The choice follows from who links it: the Vulnerability Scanner in modulesd takes it
+under GPL-2.0, the Engine under AGPL-3.0. Everything the library includes or links is already
+compatible with both: `utils` and `indexer_connector` are dual, nlohmann/json is MIT, and its link
+dependencies are ones the Engine already has. `src/shared/include` (GPL-2.0 C headers) is dropped
+from its include path — nothing has used it since `defs.h` was removed — so no GPL-2.0-only header
+can be included again unnoticed.
+
+**Not started when there is nothing to run.** `main.cpp` starts `ContentModule` (and registers its
+stop) only when `analysisd.server_enable_event_processing` is on — the same switch that decides
+whether CMSync and IocSync exist. The standalone Engine, which runs with it off, loads
+`libcontent_manager.so` but never starts it; the standalone package ships the library, exactly as it
+ships `libindexer_connector.so`, which it also loads without using.
+
+**Static linking was considered and dropped.** Linking a static build of the library into the
+Engine would have spared the standalone package one `.so`, and kept `std::` objects from crossing
+between the Engine's static libstdc++ and the library's shared one. Neither held up against the
+`indexer_connector` precedent: the standalone Engine already loads one library it never uses, and
+the Engine already exchanges `nlohmann::json`, strings and exceptions with `indexer_connector`
+across that same boundary in production. What it would have cost was concrete: a second build of the
+same sources with link rules that can drift (it must not link `gcc_s` beside `-static-libgcc`), the
+code twice on disk, and a split of `Log::GLOBAL_LOG_FUNCTION`, which the shared library must define
+and the Engine already defines — a duplicate symbol in a static archive.
+
+**Docs.** CLAUDE.md's "five dual-licensed shared libraries" becomes six. Nothing in a package's
+installed tree changes.
 
 ## Verification
 

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
 """Live-cluster gates for the content manager's query shape.
 
 Two properties of the in-PIT consistency model cannot be asserted against a fake, because the fake
