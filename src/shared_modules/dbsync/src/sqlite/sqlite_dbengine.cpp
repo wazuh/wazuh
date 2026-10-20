@@ -693,12 +693,11 @@ void SQLiteDBEngine::initialize(const std::string&              path,
                 for (size_t i = dbVersion - 1; i < upgradeStatements.size(); ++i)
                 {
                     auto transaction = m_sqliteFactory->createTransaction(m_sqliteConnection);
-                    const auto stmt {m_sqliteFactory->createStatement(m_sqliteConnection, upgradeStatements[i])};
-
-                    if (SQLITE_DONE != stmt->step())
-                    {
-                        throw dbengine_error {STEP_ERROR_UPDATE_STMT};
-                    }
+                    // sqlite3_exec, so one entry may hold a whole script: a schema change that
+                    // takes several statements lands as one step. Such a script must not open a
+                    // transaction of its own, since this one is already open. A failure throws
+                    // sqlite_error with SQLite's own code, which the handlers below classify.
+                    m_sqliteConnection->execute(upgradeStatements[i]);
 
                     // Inside the transaction, so a restart between the upgrade and the version bump
                     // cannot leave an upgraded schema at the old version, which would run the same

@@ -887,11 +887,6 @@ TEST_F(DBEngineTest, UpgradeBumpsTheVersionBeforeCommitting)
     EXPECT_CALL(*mockFactory, createStatement(_, "PRAGMA user_version;"))
     .WillOnce(Return(ByMove(std::move(versionStatement))));
 
-    auto upgradeStatement { std::make_unique<MockStatement>() };
-    EXPECT_CALL(*upgradeStatement, step()).WillOnce(Return(SQLITE_DONE));
-    EXPECT_CALL(*mockFactory, createStatement(_, "UPGRADE_1"))
-    .WillOnce(Return(ByMove(std::move(upgradeStatement))));
-
     EXPECT_CALL(*mockFactory, createTransaction(_))
     .WillOnce(Return(ByMove(std::move(upgradeTransaction))))
     .WillOnce(Return(ByMove(std::move(engineTransaction))));
@@ -899,6 +894,7 @@ TEST_F(DBEngineTest, UpgradeBumpsTheVersionBeforeCommitting)
     // A restart between the two must not leave the upgraded schema at the old version.
     {
         ::testing::InSequence sequence;
+        EXPECT_CALL(*mockConnection, execute("UPGRADE_1")).Times(1);
         EXPECT_CALL(*mockConnection, execute("PRAGMA user_version = 2;")).Times(1);
         EXPECT_CALL(*upgradeTransactionRaw, commit()).Times(1);
     }
@@ -946,10 +942,8 @@ TEST_F(DBEngineTest, FailedUpgradeRecreatesTheDatabase)
     EXPECT_CALL(*mockFactory, createConnection(_)).Times(2).WillRepeatedly(Return(mockConnection));
     expectStoredVersion(*mockFactory, 1);
 
-    auto upgradeStatement { std::make_unique<MockStatement>() };
-    EXPECT_CALL(*upgradeStatement, step()).WillOnce(Return(SQLITE_ERROR));
-    EXPECT_CALL(*mockFactory, createStatement(_, "UPGRADE_1"))
-    .WillOnce(Return(ByMove(std::move(upgradeStatement))));
+    EXPECT_CALL(*mockConnection, execute("UPGRADE_1"))
+    .WillOnce(Throw(SQLite::sqlite_error {std::make_pair(SQLITE_ERROR, "UPGRADE_1. syntax error")}));
 
     EXPECT_CALL(*mockFactory, createTransaction(_))
     .WillOnce(Return(ByMove(std::move(upgradeTransaction))))
@@ -974,7 +968,7 @@ TEST_F(DBEngineTest, NewerDatabaseIsRecreated)
     expectStoredVersion(*mockFactory, 3);
 
     // Nothing to upgrade from a version this code does not know.
-    EXPECT_CALL(*mockFactory, createStatement(_, "UPGRADE_1")).Times(0);
+    EXPECT_CALL(*mockConnection, execute("UPGRADE_1")).Times(0);
     EXPECT_CALL(*mockFactory, createTransaction(_)).WillOnce(Return(ByMove(std::make_unique<MockTransaction>())));
 
     expectRecreatedAtVersion2(*mockFactory, *mockConnection);
@@ -986,7 +980,7 @@ TEST_F(DBEngineTest, NewerDatabaseIsRecreated)
                                                      std::vector<std::string> {"UPGRADE_1"}));
 }
 
-// The real schema mismatch: SQLite rejects the RENAME when it prepares it ("no such column").
+// The real schema mismatch: SQLite rejects the RENAME ("no such column").
 TEST_F(DBEngineTest, UpgradeRejectedBySQLiteRecreatesTheDatabase)
 {
     const auto& mockFactory { std::make_shared<MockSQLiteFactory>() };
@@ -995,7 +989,7 @@ TEST_F(DBEngineTest, UpgradeRejectedBySQLiteRecreatesTheDatabase)
     EXPECT_CALL(*mockFactory, createConnection(_)).Times(2).WillRepeatedly(Return(mockConnection));
     expectStoredVersion(*mockFactory, 1);
 
-    EXPECT_CALL(*mockFactory, createStatement(_, "UPGRADE_1"))
+    EXPECT_CALL(*mockConnection, execute("UPGRADE_1"))
     .WillOnce(Throw(SQLite::sqlite_error {std::make_pair(SQLITE_ERROR, "no such column: os_distribution_release")}));
 
     EXPECT_CALL(*mockFactory, createTransaction(_))
@@ -1025,7 +1019,7 @@ TEST_F(DBEngineTest, TransientUpgradeErrorKeepsTheDatabase)
     EXPECT_CALL(*mockFactory, createConnection(_)).Times(1).WillOnce(Return(mockConnection));
     expectStoredVersion(*mockFactory, 1);
 
-    EXPECT_CALL(*mockFactory, createStatement(_, "UPGRADE_1"))
+    EXPECT_CALL(*mockConnection, execute("UPGRADE_1"))
     .WillOnce(Throw(SQLite::sqlite_error {std::make_pair(SQLITE_BUSY, "database is locked")}));
     EXPECT_CALL(*mockFactory, createTransaction(_)).WillOnce(Return(ByMove(std::make_unique<MockTransaction>())));
 
@@ -1095,10 +1089,7 @@ TEST_F(DBEngineTest, FailureAfterACommittedUpgradeKeepsTheDatabase)
     EXPECT_CALL(*mockFactory, createConnection(_)).Times(1).WillOnce(Return(mockConnection));
     expectStoredVersion(*mockFactory, 1);
 
-    auto upgradeStatement { std::make_unique<MockStatement>() };
-    EXPECT_CALL(*upgradeStatement, step()).WillOnce(Return(SQLITE_DONE));
-    EXPECT_CALL(*mockFactory, createStatement(_, "UPGRADE_1"))
-    .WillOnce(Return(ByMove(std::move(upgradeStatement))));
+    EXPECT_CALL(*mockConnection, execute("UPGRADE_1")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA user_version = 2;")).Times(1);
 
     EXPECT_CALL(*mockFactory, createTransaction(_))
