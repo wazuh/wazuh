@@ -1884,6 +1884,18 @@ def test_master_handler_process_files_from_worker_validates_non_merged_path(safe
     assert any('excluded list' in str(e) or '3022' in str(e)
               for e in result['errors_per_folder']['queue/testing/'])
 
+    basename_mock.return_value = "file.swp"
+    cluster_items_with_excluded['files']['excluded_extensions'] = ['.swp']
+    files_metadata = {"queue/testing/file.swp": {"merged": False, "cluster_item_key": "queue/testing/"}}
+    result = master_handler.process_files_from_worker(
+        files_metadata=files_metadata,
+        decompressed_files_path='/decompressed',
+        cluster_items=cluster_items_with_excluded,
+        worker_name='worker1',
+        timeout=0
+    )
+    assert any('excluded list' in str(e) for e in result['errors_per_folder']['queue/testing/'])
+
 
 @patch("wazuh.core.common.wazuh_uid", return_value="wazuh_uid")
 @patch("wazuh.core.common.wazuh_gid", return_value="wazuh_gid")
