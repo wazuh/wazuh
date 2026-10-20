@@ -19,12 +19,12 @@ The **Router** module is the event-processing core of the Wazuh Engine, responsi
                     │  - Lifecycle: start / stop / requestShutdown        │
                     │  - Config persistence (Store)                        │
                     │  - Event queue contention monitoring                 │
-                    │  - Coordinates N RouterWorkers + 1 TesterWorker      │
+                    │  - Coordinates N RouterWorkers + 1 Tester            │
                     └────────┬────────────────────────────┬────────────────┘
                              │                            │
               ┌──────────────▼──────────┐      ┌──────────▼──────────────┐
-              │   RouterWorker (×N)     │      │    TesterWorker (×1)    │
-              │   Thread + ProdQueue    │      │    Thread + TestQueue   │
+              │   RouterWorker (×N)     │      │       Tester (×1)       │
+              │   Thread + ProdQueue    │      │  Runs on caller thread  │
               │   ┌───────────────────┐ │      │   ┌──────────────────┐  │
               │   │     Router        │ │      │   │     Tester       │  │
               │   │  Table<Entry>     │ │      │   │  map<name,Entry> │  │
@@ -43,7 +43,7 @@ The **Router** module is the event-processing core of the Wazuh Engine, responsi
 
 1. **Production path**: An external caller invokes `postEvent()` on the Orchestrator, which pushes the `IngestEvent` (JSON + original string) into the shared `ProdQueue`. N `RouterWorker` threads compete to dequeue events. Each worker stamps the event with `@timestamp` (ISO 8601) and `wazuh/event/id` (UUIDv4), optionally indexes the raw event, parses it via `parseLegacyEvent`, and calls `Router::ingest()` which iterates the priority-sorted `Table` and feeds the event into every *enabled* `Environment`.
 
-2. **Testing path**: A caller invokes `ingestTest()`, which wraps the event + options + callback into a `TestingTuple` and pushes it into the `TestQueue`. A single `TesterWorker` dequeues the tuple, stamps the event with `@timestamp` (ISO 8601) and `wazuh/event/id` (UUIDv4), subscribes to the requested asset traces on the `bk::IController`, runs the event through the pipeline, collects trace output, and delivers the result via the callback/future.
+2. **Testing path**: A caller invokes `ingestTest()`, which runs on the calling thread (the API request thread): it stamps the event with `@timestamp` (ISO 8601) and `wazuh/event/id` (UUIDv4), subscribes to the requested asset traces on the `bk::IController`, runs the event through the pipeline, collects trace output, and delivers the result via the callback/future before returning. Concurrent test runs are serialized by the `Tester`.
 
 ## Key Concepts
 
@@ -52,8 +52,8 @@ The **Router** module is the event-processing core of the Wazuh Engine, responsi
 | **Entry** | A named association between a policy namespace and a processing environment. Production entries have a *priority*; test entries have a *lifetime*. |
 | **Environment** | A wrapper around `bk::IController` (the backend execution engine) plus a hash identifying the build. Created by `EnvironmentBuilder`. |
 | **Table** | A priority-sorted collection (linked list + hash index) used by `Router` to guarantee event processing order. |
-| **Worker** | A thread that drains a queue. `RouterWorker` drains production events; `TesterWorker` drains test events. Workers own their `Router`/`Tester` instance. |
-| **Orchestrator** | Façade that replicates every route mutation across all N router workers and the single tester worker, persists state to the Store, and manages lifecycle. |
+| **Worker** | A thread that drains a queue. `RouterWorker` drains production events and owns its `Router` instance. Test events have no worker: they run on the caller's thread. |
+| **Orchestrator** | Façade that replicates every route mutation across all N router workers and the single `Tester`, persists state to the Store, and manages lifecycle. |
 | **EntryConverter** | Serialization utility to convert entries to/from `json::Json` for Store persistence. |
 | **EnvironmentBuilder** | Factory that uses `builder::IBuilder` + `bk::IControllerMaker` to compile a namespace's policy into a runnable `Environment`. |
 | **Hot Swap** | Ability to atomically replace the namespace (policy) of a running route without downtime — the new environment is built lock-free, then swapped in under a write lock. |
@@ -76,7 +76,7 @@ router/
 │   ├── iworker.hpp             # IWorker<T> template interface
 │   ├── router.hpp / .cpp       # Router — priority-based event dispatch
 │   ├── tester.hpp / .cpp       # Tester — trace-enabled test execution
-│   ├── worker.hpp / .cpp       # RouterWorker, TesterWorker
+│   ├── worker.hpp / .cpp       # RouterWorker
 │   ├── table.hpp / .cpp        # Table<T> — priority-sorted container
 │   ├── environment.hpp / .cpp  # Environment — bk::IController wrapper
 │   ├── environmentBuilder.hpp  # EnvironmentBuilder — factory
@@ -123,8 +123,8 @@ class IOrchestratorAPI : public IRouterAPI, public ITesterAPI {};
 | `getTestEntry(name)` / `getTestEntries()` | Query test session metadata |
 | `reloadTestEntry(name)` | Rebuild the test environment |
 | `renameTestEntry(from, to)` | Rename a test session |
-| `ingestTest(event, options)` | Process a test event (async via future) |
-| `ingestTest(event, options, callback)` | Process a test event (callback-based) |
+| `ingestTest(event, options)` | Process a test event (runs on the calling thread; the future is already ready) |
+| `ingestTest(event, options, callback)` | Process a test event (runs on the calling thread; the callback is invoked before returning) |
 | `getAssets(name)` | List traceable assets in a test session |
 | `getTestTimeout()` | Get the configured test timeout |
 
@@ -149,7 +149,7 @@ The `Orchestrator` constructor:
 2. Creates a shared `EnvironmentBuilder` from the builder and controller maker.
 3. Loads persisted router/tester configuration from the Store (`router/router/0`, `router/tester/0`).
 4. Creates exactly **1** `RouterWorker` synchronously, initialized with the saved route table. Additional workers are deferred to `expandWorkerPool()` (see below).
-5. Creates 1 `TesterWorker` initialized with saved test sessions.
+5. Creates the `Tester`, initialized with saved test sessions.
 
 ### Deferred Worker Pool Expansion
 
@@ -187,7 +187,7 @@ Every route mutation (add, remove, rebuild, priority change, hot swap) is replic
 3. Runs the event through the controller (`ingestGet`).
 4. Collects trace output into `test::Output` and unsubscribes.
 
-The `TesterWorker` thread picks `TestingTuple` items from the test queue, stamps the event with `@timestamp` and `wazuh/event/id` (mirroring the production path), and invokes `Tester::ingestTest()`. The result is delivered to the caller via the callback. The `Orchestrator` exposes both a `std::future`-based and callback-based API for test ingestion.
+`Orchestrator::ingestTest()` stamps the event with `@timestamp` and `wazuh/event/id` (mirroring the production path) and invokes `Tester::ingestTest()` on the calling thread, holding the orchestrator's shared lock so entries cannot be removed mid-run. `Tester::ingestTest()` takes the tester mutex exclusively because subscribing to traces mutates the controller. The result is delivered to the caller via the callback, or through an already-ready `std::future`.
 
 ### Table (Priority Container)
 
@@ -217,8 +217,8 @@ Unit tests cover each internal class independently using GMock:
 - **`environment_test`**: Controller wrapping, hash tracking, ingestion
 - **`environmentBuilder_test`**: Policy build, controller creation, error handling
 - **`router_test`**: Entry CRUD, priority changes, event ingestion, hot swap
-- **`tester_test`**: Entry CRUD, rename, test ingestion with traces, asset listing
-- **`worker_test`**: RouterWorker/TesterWorker lifecycle, event processing, sentinel skipping, `@timestamp`/`wazuh.event.id` stamping
+- **`tester_test`**: Entry CRUD, rename, test ingestion with traces, concurrent runs, asset listing
+- **`worker_test`**: RouterWorker lifecycle, event processing, sentinel skipping, `@timestamp`/`wazuh.event.id` stamping
 - **`orchestrator_test`**: Full lifecycle, multi-worker replication, store persistence, queue contention, worker pool expansion
 - **`entryConverter_test`**: JSON ↔ Entry round-trip conversion
 
