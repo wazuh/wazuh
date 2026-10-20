@@ -9,6 +9,7 @@
  */
 
 #include "auth_challenge.hpp"
+#include "ca_bundle.hpp"
 #include "retry_policy.hpp"
 
 #include <gtest/gtest.h>
@@ -17,6 +18,7 @@
 #include <filesystem>
 #include <fstream>
 #include <string>
+#include <vector>
 
 using namespace containerimages;
 using namespace std::chrono_literals;
@@ -459,4 +461,73 @@ TEST_F(RegistryByteStreamTest, AFailedStreamReadsAsEmptyAndSaysWhy)
     EXPECT_EQ(stream.read(buffer, sizeof(buffer)), 0u);
     EXPECT_TRUE(stream.failed());
     EXPECT_FALSE(stream.error().empty());
+}
+
+class IdleBoundTest : public ::testing::Test
+{
+    protected:
+        using Clock = std::chrono::steady_clock;
+
+        static constexpr std::chrono::milliseconds WINDOW {1000};
+        const Clock::time_point m_origin {Clock::now()};
+};
+
+TEST_F(IdleBoundTest, ItExpiresOnlyOnceTheWindowHasPassed)
+{
+    IdleBound bound {WINDOW};
+    bound.restart(m_origin);
+
+    EXPECT_FALSE(bound.expired(m_origin + WINDOW, false));
+    EXPECT_TRUE(bound.expired(m_origin + WINDOW + std::chrono::milliseconds {1}, false));
+}
+
+TEST_F(IdleBoundTest, ProgressStartsTheWaitAgainSoALongTransferNeverExpires)
+{
+    // Ten windows in all, each wait well inside its own: a large layer on a slow link.
+    IdleBound bound {WINDOW};
+    bound.restart(m_origin);
+
+    for (int step = 1; step <= 10; ++step)
+    {
+        const auto arrival {m_origin + std::chrono::milliseconds {step * 900}};
+
+        EXPECT_FALSE(bound.expired(arrival, false)) << "step " << step;
+        bound.restart(arrival);
+    }
+}
+
+TEST_F(IdleBoundTest, TimeSpentSuspendedForTheCallerIsNeverCounted)
+{
+    IdleBound bound {WINDOW};
+    bound.restart(m_origin);
+
+    EXPECT_FALSE(bound.expired(m_origin + 10 * WINDOW, true));
+    EXPECT_TRUE(bound.expired(m_origin + 10 * WINDOW, false));
+}
+
+TEST_F(IdleBoundTest, ResumingAndRestartingGivesAFullWindowAgain)
+{
+    // What read() does when the caller has drained the buffer after a long pause.
+    IdleBound bound {WINDOW};
+    bound.restart(m_origin);
+
+    const auto resumed {m_origin + 10 * WINDOW};
+    bound.restart(resumed);
+
+    EXPECT_FALSE(bound.expired(resumed + WINDOW, false));
+}
+
+TEST(CaBundleLocationsTest, TheLocationsAreThoseTheOtherModulesProbeInTheSameOrder)
+{
+    // A host that works for the agent's other HTTPS modules has to work here, and on a
+    // host with several bundles both have to pick the same one. Mirrors
+    // os_ca_bundle_candidates in shared/src/os_cert_bundle.c.
+    const std::vector<std::string> shared {"/etc/ssl/certs/ca-certificates.crt",
+                                           "/etc/pki/tls/certs/ca-bundle.crt",
+                                           "/usr/share/ssl/certs/ca-bundle.crt",
+                                           "/usr/local/share/certs/ca-root-nss.crt",
+                                           "/etc/ssl/cert.pem",
+                                           "/etc/ssl/ca-bundle.pem"};
+
+    EXPECT_EQ(wellKnownCaBundles(), shared);
 }

@@ -10,11 +10,14 @@
 
 #include "container_images_config.hpp"
 #include "credential_provider.hpp"
+#include "registry_byte_stream.hpp"
 #include "registry_image_reader.hpp"
 #include "registry_transport.hpp"
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
+#include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <map>
@@ -44,6 +47,17 @@ namespace
 
             /// Answers keyed by a substring of the URL, first match wins.
             std::vector<std::pair<std::string, HttpResponse>> answers;
+
+            /// Answers that change from one request to the next, consulted before
+            /// @ref answers. The last one repeats. A status of 0 stands for no response.
+            struct Sequence
+            {
+                std::string fragment;
+                std::vector<HttpResponse> responses;
+                std::size_t next {0};
+            };
+
+            std::vector<Sequence> sequences;
             std::vector<Call> calls;
             bool refuse {false}; ///< When set, no response is produced at all.
 
@@ -94,6 +108,23 @@ namespace
                     return false;
                 }
 
+                for (auto& sequence : sequences)
+                {
+                    if (url.find(sequence.fragment) != std::string::npos)
+                    {
+                        response = sequence.responses[std::min(sequence.next, sequence.responses.size() - 1)];
+                        ++sequence.next;
+
+                        if (response.status == 0)
+                        {
+                            error = "scripted transport failure";
+                            return false;
+                        }
+
+                        return true;
+                    }
+                }
+
                 for (const auto& entry : answers)
                 {
                     if (url.find(entry.first) != std::string::npos)
@@ -108,6 +139,79 @@ namespace
 
                 return true;
             }
+    };
+
+    /// @brief What became of one scripted layer transfer.
+    struct BlobOutcome
+    {
+        bool failed {false};
+        long status {200};
+        std::string error {"scripted transfer failure"};
+        std::uint64_t delivered {0}; ///< What bytesDelivered() reports, whatever was actually read.
+        bool abortedLocally {false};
+        std::string retryAfter;
+    };
+
+    /// @brief A layer blob that needs no network: an empty tar, or a scripted failure.
+    class ScriptedBlob final : public IBlobStream
+    {
+        public:
+            explicit ScriptedBlob(BlobOutcome outcome)
+                : m_outcome {std::move(outcome)}
+            {
+            }
+
+            std::size_t read(char* buffer, const std::size_t size) override
+            {
+                // A failed transfer reads as empty, as the real one does.
+                if (m_outcome.failed || m_sent >= TAR_END_OF_ARCHIVE)
+                {
+                    return 0;
+                }
+
+                const auto count {std::min(size, TAR_END_OF_ARCHIVE - m_sent)};
+                std::fill_n(buffer, count, '\0');
+                m_sent += count;
+
+                return count;
+            }
+
+            bool failed() const override
+            {
+                return m_outcome.failed;
+            }
+
+            const std::string& error() const override
+            {
+                return m_outcome.error;
+            }
+
+            long status() const override
+            {
+                return m_outcome.status;
+            }
+
+            std::uint64_t bytesDelivered() const override
+            {
+                return m_outcome.delivered;
+            }
+
+            bool abortedLocally() const override
+            {
+                return m_outcome.abortedLocally;
+            }
+
+            const std::string& retryAfter() const override
+            {
+                return m_outcome.retryAfter;
+            }
+
+        private:
+            /// Two zero blocks, which is what ends a tar archive.
+            static constexpr std::size_t TAR_END_OF_ARCHIVE {1024};
+
+            BlobOutcome m_outcome;
+            std::size_t m_sent {0};
     };
 
     /// @brief A credential provider with a fixed answer.
@@ -509,4 +613,275 @@ TEST_F(RegistryReaderTest, TheSourceTypeIsTheConfigurationEntryName)
 {
     const auto instance = reader("ghcr.io/owner/app:1.0");
     EXPECT_EQ(instance->sourceType(), "ref");
+}
+
+// The token exchange is a request like any other: the first one of every scan against a
+// private repository, and as exposed to throttling and resets as a manifest request.
+class RegistryTokenRetryTest : public RegistryReaderTest
+{
+    protected:
+        void SetUp() override
+        {
+            RegistryReaderTest::SetUp();
+
+            m_config.registryAuth.push_back({"ghcr.io", "ghcr_user", "ghcr_token"});
+            m_credentials.values["container_images/ghcr_user"] = "owner";
+            m_credentials.values["container_images/ghcr_token"] = "a-secret-token";
+
+            // Challenged once, then served.
+            m_transport->sequences.push_back({"/manifests/1.0", {challenge(), json(200, MANIFEST)}, 0});
+            m_transport->answers.push_back({"/blobs/sha256:cccc3333", json(200, configBlob())});
+        }
+
+        std::size_t basicTokenCalls() const
+        {
+            return static_cast<std::size_t>(std::count_if(m_transport->calls.begin(),
+                                                          m_transport->calls.end(),
+                                                          [](const ScriptedTransport::Call & call)
+            {
+                return call.basic && call.url.find("/token") != std::string::npos;
+            }));
+        }
+};
+
+TEST_F(RegistryTokenRetryTest, AThrottledTokenEndpointIsRetried)
+{
+    m_transport->sequences.push_back({"/token", {json(429, ""), json(200, R"({"token":"scripted-token"})")}, 0});
+
+    const auto instance = reader("ghcr.io/owner/app:1.0");
+
+    EXPECT_EQ(instance->discover().status, ReadStatus::Success);
+    EXPECT_EQ(basicTokenCalls(), 2u);
+}
+
+TEST_F(RegistryTokenRetryTest, ATokenRequestThatProducesNoResponseIsRetried)
+{
+    m_transport->sequences.push_back({"/token", {json(0, ""), json(200, R"({"token":"scripted-token"})")}, 0});
+
+    const auto instance = reader("ghcr.io/owner/app:1.0");
+
+    EXPECT_EQ(instance->discover().status, ReadStatus::Success);
+    EXPECT_EQ(basicTokenCalls(), 2u);
+}
+
+TEST_F(RegistryTokenRetryTest, AnAnonymousTokenRequestIsRetriedToo)
+{
+    m_config.registryAuth.clear();
+    m_transport->sequences.push_back({"/token", {json(503, ""), json(200, R"({"token":"scripted-token"})")}, 0});
+
+    const auto instance = reader("ghcr.io/owner/app:1.0");
+
+    EXPECT_EQ(instance->discover().status, ReadStatus::Success);
+    EXPECT_EQ(m_transport->countMatching("/token"), 2u);
+}
+
+TEST_F(RegistryTokenRetryTest, ATokenEndpointThatStaysUnavailableGivesUpAfterTheConfiguredAttempts)
+{
+    m_transport->answers.push_back({"/token", json(503, "")});
+
+    const auto instance = reader("ghcr.io/owner/app:1.0");
+
+    EXPECT_EQ(instance->discover().status, ReadStatus::Failed);
+    EXPECT_EQ(basicTokenCalls(), static_cast<std::size_t>(m_config.limits.maxAttempts));
+}
+
+TEST_F(RegistryTokenRetryTest, ARejectedCredentialIsNotRetried)
+{
+    // Repeating a wrong password gains nothing, and against a registry that locks an
+    // account out it costs something.
+    m_transport->answers.push_back({"/token", json(401, "")});
+
+    const auto instance = reader("ghcr.io/owner/app:1.0");
+
+    EXPECT_EQ(instance->discover().status, ReadStatus::Failed);
+    EXPECT_EQ(basicTokenCalls(), 1u);
+}
+
+// What a layer does when its transfer fails. The transfer is stood in for by a scripted
+// blob, since the real one needs a registry, and what is asserted is the reader's decision:
+// whether another attempt is made, with what allowance, and after how long.
+class RegistryLayerRetryTest : public RegistryReaderTest
+{
+    protected:
+        static constexpr auto MANIFEST_WITH_A_LAYER = R"({"mediaType":"application/vnd.oci.image.manifest.v1+json",
+            "config":{"digest":"sha256:cccc3333"},"layers":[{"digest":"sha256:dddd4444"}]})";
+
+        void SetUp() override
+        {
+            RegistryReaderTest::SetUp();
+
+            m_transport->answers.push_back({"/token", json(200, R"({"token":"scripted-token"})")});
+            m_transport->answers.push_back({"/manifests/1.0", json(200, MANIFEST_WITH_A_LAYER)});
+            m_transport->answers.push_back({"/blobs/sha256:cccc3333", json(200, configBlob())});
+        }
+
+        /// @brief A reader whose layer attempts end as @p outcomes, the last one repeating.
+        std::unique_ptr<RegistryImageReader> layerReader(std::vector<BlobOutcome> outcomes)
+        {
+            m_outcomes = std::move(outcomes);
+
+            auto instance {reader("ghcr.io/owner/app:1.0")};
+            instance->setBlobStreamFactory([this](const TransportConfig&,
+                                                  const std::string&,
+                                                  const std::vector<std::string>& headers,
+                                                  const std::uint64_t maxBytes,
+                                                  const std::atomic<bool>*)
+            {
+                m_attemptHeaders.push_back(headers);
+                m_attemptLimits.push_back(maxBytes);
+
+                const auto index {std::min(m_attemptLimits.size(), m_outcomes.size()) - 1};
+
+                return std::unique_ptr<IBlobStream> {std::make_unique<ScriptedBlob>(m_outcomes[index])};
+            });
+
+            return instance;
+        }
+
+        static BlobOutcome failure(const long status, const std::uint64_t delivered = 0)
+        {
+            BlobOutcome outcome;
+            outcome.failed = true;
+            outcome.status = status;
+            outcome.delivered = delivered;
+
+            return outcome;
+        }
+
+        std::vector<BlobOutcome> m_outcomes;
+        std::vector<std::vector<std::string>> m_attemptHeaders;
+        std::vector<std::uint64_t> m_attemptLimits;
+};
+
+TEST_F(RegistryLayerRetryTest, ALayerThatFailsAfterItsHeadersArrivedIsRetried)
+{
+    // The status is 200 by the time a body byte can fail: a reset, a TLS error and a
+    // stall all arrive here, and none of them says the request was wrong.
+    const auto instance = layerReader({failure(200), BlobOutcome {}});
+
+    EXPECT_EQ(instance->discover().status, ReadStatus::Success);
+    EXPECT_EQ(m_attemptLimits.size(), 2u);
+}
+
+TEST_F(RegistryLayerRetryTest, ALayerWhoseRedirectTargetFailedIsRetried)
+{
+    // The registry answered 307 and the content host could not be reached, so the last
+    // status seen is the redirect's.
+    const auto instance = layerReader({failure(307), BlobOutcome {}});
+
+    EXPECT_EQ(instance->discover().status, ReadStatus::Success);
+    EXPECT_EQ(m_attemptLimits.size(), 2u);
+}
+
+TEST_F(RegistryLayerRetryTest, ALayerThatNeverGotAResponseIsRetried)
+{
+    const auto instance = layerReader({failure(0), BlobOutcome {}});
+
+    EXPECT_EQ(instance->discover().status, ReadStatus::Success);
+    EXPECT_EQ(m_attemptLimits.size(), 2u);
+}
+
+TEST_F(RegistryLayerRetryTest, AnUnavailableRegistryIsRetriedForALayer)
+{
+    const auto instance = layerReader({failure(503), BlobOutcome {}});
+
+    EXPECT_EQ(instance->discover().status, ReadStatus::Success);
+    EXPECT_EQ(m_attemptLimits.size(), 2u);
+}
+
+TEST_F(RegistryLayerRetryTest, ALayerTheRegistryRefusesIsNotRetried)
+{
+    const auto instance = layerReader({failure(404), BlobOutcome {}});
+
+    EXPECT_EQ(instance->discover().status, ReadStatus::Failed);
+    EXPECT_EQ(m_attemptLimits.size(), 1u);
+}
+
+TEST_F(RegistryLayerRetryTest, ATransferEndedByThisSideIsNotRetried)
+{
+    // A stop request, the idle bound and the byte ceiling each end the transfer here, and
+    // another attempt would only reach the same limit again.
+    auto aborted {failure(200)};
+    aborted.abortedLocally = true;
+
+    const auto instance = layerReader({aborted, BlobOutcome {}});
+
+    EXPECT_EQ(instance->discover().status, ReadStatus::Failed);
+    EXPECT_EQ(m_attemptLimits.size(), 1u);
+}
+
+TEST_F(RegistryLayerRetryTest, ALayerThatKeepsFailingGivesUpAfterTheConfiguredAttempts)
+{
+    const auto instance = layerReader({failure(200)});
+
+    EXPECT_EQ(instance->discover().status, ReadStatus::Failed);
+    EXPECT_EQ(m_attemptLimits.size(), static_cast<std::size_t>(m_config.limits.maxAttempts));
+}
+
+TEST_F(RegistryLayerRetryTest, TheRetryAfterOfALayerIsHonoured)
+{
+    // The back-off is one millisecond in this suite, so waiting for the second the
+    // registry asked for can only come from the header.
+    auto throttled {failure(429)};
+    throttled.retryAfter = "1";
+
+    const auto start {std::chrono::steady_clock::now()};
+    const auto instance = layerReader({throttled, BlobOutcome {}});
+    const auto result {instance->discover()};
+    const auto elapsed {std::chrono::steady_clock::now() - start};
+
+    EXPECT_EQ(result.status, ReadStatus::Success);
+    EXPECT_GE(elapsed, std::chrono::milliseconds {900});
+}
+
+TEST_F(RegistryLayerRetryTest, EachAttemptIsAllowedOnlyWhatTheEarlierOnesLeftOfTheImage)
+{
+    // Every attempt delivers bytes before it fails. Allowing each the whole ceiling again
+    // would pull a multiple of it for one image.
+    m_config.limits.maxImageBytes = 100;
+
+    const auto instance = layerReader({failure(200, 60), failure(200, 40), BlobOutcome {}});
+
+    EXPECT_EQ(instance->discover().status, ReadStatus::Failed);
+    ASSERT_EQ(m_attemptLimits.size(), 2u);
+    EXPECT_EQ(m_attemptLimits[0], 100u);
+    EXPECT_EQ(m_attemptLimits[1], 40u);
+
+    // The failed attempts were paid for, in the image and in the scan.
+    EXPECT_EQ(m_scanBytes, 100u);
+}
+
+TEST_F(RegistryLayerRetryTest, AnExpiredTokenIsRefreshedOnceAndTheLayerIsAskedForAgain)
+{
+    m_transport->answers.insert(m_transport->answers.begin(), {"/blobs/sha256:dddd4444", challenge()});
+
+    const auto instance = layerReader({failure(401), BlobOutcome {}});
+
+    EXPECT_EQ(instance->discover().status, ReadStatus::Success);
+    ASSERT_EQ(m_attemptHeaders.size(), 2u);
+    EXPECT_TRUE(m_attemptHeaders[0].empty());
+    ASSERT_EQ(m_attemptHeaders[1].size(), 1u);
+    EXPECT_EQ(m_attemptHeaders[1][0], "Authorization: Bearer scripted-token");
+    EXPECT_EQ(m_transport->countMatching("/token"), 1u);
+}
+
+TEST_F(RegistryLayerRetryTest, ARefreshThatIsAnsweredByAThrottledEndpointIsRetried)
+{
+    m_transport->answers.insert(m_transport->answers.begin(), {"/blobs/sha256:dddd4444", challenge()});
+    m_transport->sequences.push_back({"/token", {json(429, ""), json(200, R"({"token":"scripted-token"})")}, 0});
+
+    const auto instance = layerReader({failure(401), BlobOutcome {}});
+
+    EXPECT_EQ(instance->discover().status, ReadStatus::Success);
+    EXPECT_EQ(m_transport->countMatching("/token"), 2u);
+}
+
+TEST_F(RegistryLayerRetryTest, ARefreshIsAttemptedOnlyOncePerReference)
+{
+    m_transport->answers.insert(m_transport->answers.begin(), {"/blobs/sha256:dddd4444", challenge()});
+
+    const auto instance = layerReader({failure(401)});
+
+    EXPECT_EQ(instance->discover().status, ReadStatus::Failed);
+    EXPECT_EQ(m_transport->countMatching("/token"), 1u);
 }

@@ -103,7 +103,7 @@ Bridges libcurl, which pushes received bytes into a callback, to the byte-stream
 
 The consequence is that memory is bounded by the suspend threshold rather than by the image size. Reading a 68 MB image measured 17 MB of peak resident memory.
 
-A blob transfer carries no total wall-clock timeout, on purpose: the transfer is suspended whenever the caller is slower than the network, so a total ceiling would abort a healthy read of a large layer. It is bounded instead by a byte ceiling and by stall detection.
+A blob transfer carries no total wall-clock timeout, on purpose: the transfer is suspended whenever the caller is slower than the network, so a total ceiling would abort a healthy read of a large layer. It is bounded instead by a byte ceiling, by libcurl's stall detection, and by a no-progress bound that counts only time spent waiting for the network: it restarts whenever bytes arrive and does not run while the transfer is suspended or while the caller is parsing.
 
 ### **Layer Reader and Composition**
 

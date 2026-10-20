@@ -22,6 +22,7 @@
 
 #include <chrono>
 #include <exception>
+#include <optional>
 #include <thread>
 #include <utility>
 
@@ -96,26 +97,23 @@ namespace containerimages
         m_transportInjected = m_transport != nullptr;
     }
 
+    void RegistryImageReader::setBlobStreamFactory(BlobStreamFactory factory)
+    {
+        m_blobStreamFactory = std::move(factory);
+    }
+
     std::string RegistryImageReader::sourceType() const
     {
         return referenceTypeName(ReferenceType::Registry);
     }
 
-    bool RegistryImageReader::request(const std::string& url,
-                                      const bool authorized,
-                                      HttpResponse& response,
-                                      std::string& error)
+    bool RegistryImageReader::send(const Attempt& attempt, HttpResponse& response, std::string& error)
     {
-        std::vector<std::string> headers {acceptHeader()};
-
-        if (authorized && !m_token.empty())
+        for (int attemptNumber = 1;; ++attemptNumber)
         {
-            headers.push_back("Authorization: Bearer " + m_token);
-        }
+            error.clear();
 
-        for (int attempt = 1;; ++attempt)
-        {
-            const auto answered {m_transport->get(url, headers, response, error)};
+            const auto answered {attempt(response, error)};
 
             if (answered && response.status >= 200 && response.status <= 299)
             {
@@ -129,7 +127,7 @@ namespace containerimages
             }
 
             const auto status {answered ? response.status : TRANSPORT_FAILURE};
-            const auto decision {m_retryPolicy.evaluate(status, response.header("retry-after"), attempt)};
+            const auto decision {m_retryPolicy.evaluate(status, response.header("retry-after"), attemptNumber)};
 
             if (!decision.retry)
             {
@@ -153,6 +151,38 @@ namespace containerimages
                 return false;
             }
         }
+    }
+
+    bool RegistryImageReader::request(const std::string& url,
+                                      const bool authorized,
+                                      HttpResponse& response,
+                                      std::string& error)
+    {
+        std::vector<std::string> headers {acceptHeader()};
+
+        if (authorized && !m_token.empty())
+        {
+            headers.push_back("Authorization: Bearer " + m_token);
+        }
+
+        return send([this, &url, &headers](HttpResponse & attemptResponse, std::string & attemptError)
+        {
+            return m_transport->get(url, headers, attemptResponse, attemptError);
+        },
+        response,
+        error);
+    }
+
+    std::unique_ptr<IBlobStream> RegistryImageReader::openBlob(const std::string& url,
+                                                               const std::vector<std::string>& headers,
+                                                               const std::uint64_t maxBytes) const
+    {
+        if (m_blobStreamFactory)
+        {
+            return m_blobStreamFactory(m_transportConfig, url, headers, maxBytes, m_context.stopRequested);
+        }
+
+        return std::make_unique<RegistryByteStream>(m_transportConfig, url, headers, maxBytes, m_context.stopRequested);
     }
 
     bool RegistryImageReader::waitOrStop(const std::chrono::milliseconds delay) const
@@ -206,12 +236,13 @@ namespace containerimages
                                     ? m_context.config->credentialsFor(m_reference.registry)
                                     : nullptr};
 
-        HttpResponse response;
+        std::optional<Secret> user;
+        std::optional<Secret> passkey;
 
         if (configured != nullptr && m_context.credentials != nullptr)
         {
-            const auto user {m_context.credentials->get(CREDENTIAL_FAMILY, configured->userKey)};
-            const auto passkey {m_context.credentials->get(CREDENTIAL_FAMILY, configured->passkeyKey)};
+            user = m_context.credentials->get(CREDENTIAL_FAMILY, configured->userKey);
+            passkey = m_context.credentials->get(CREDENTIAL_FAMILY, configured->passkeyKey);
 
             if (!user.has_value() || !passkey.has_value())
             {
@@ -221,21 +252,34 @@ namespace containerimages
                         " is missing from the agent credential store";
                 return false;
             }
-
-            if (!m_transport->getWithBasicAuth(url, {}, user->value(), *passkey, response, error))
-            {
-                return false;
-            }
         }
         else
         {
             logDebug("No credential is configured for " + m_reference.registry +
                      ", requesting an anonymous token.");
+        }
 
-            if (!m_transport->get(url, {}, response, error))
+        HttpResponse response;
+
+        // Retried like any other request: the token endpoint is the first request of every
+        // scan against a private repository, and a 429 or a reset there is as transient as
+        // anywhere else.
+        const Attempt exchange {[this, &url, &user, &passkey](HttpResponse & reply, std::string & failure)
+        {
+            if (passkey.has_value())
             {
-                return false;
+                return m_transport->getWithBasicAuth(url, {}, user->value(), *passkey, reply, failure);
             }
+
+            return m_transport->get(url, {}, reply, failure);
+        }};
+
+        const auto exchanged {send(exchange, response, error)};
+
+        if (!exchanged)
+        {
+            error = "the token request failed: " + error;
+            return false;
         }
 
         if (response.status < 200 || response.status > 299)
@@ -330,16 +374,6 @@ namespace containerimages
                 return false;
             }
 
-            // What is left of this image's allowance, so one oversized layer cannot be
-            // read just because it is the first.
-            const auto remaining {limits.maxImageBytes > m_imageBytes ? limits.maxImageBytes - m_imageBytes : 0};
-
-            if (remaining == 0)
-            {
-                error = "the image exceeded its " + std::to_string(limits.maxImageBytes) + " byte allowance";
-                return false;
-            }
-
             const auto url {"https://" + m_reference.registry + "/v2/" + m_reference.repository + "/blobs/" +
                             digest};
 
@@ -357,33 +391,51 @@ namespace containerimages
 
             for (int attempt = 1;; ++attempt)
             {
-                RegistryByteStream blob {m_transportConfig, url, headers, remaining, m_context.stopRequested};
-                LayerByteStream decompressed {blob};
+                // What is left of this image's allowance now, so one oversized layer cannot
+                // be read just because it is the first, and the bytes a failed attempt
+                // delivered are not allowed again to the next one.
+                const auto remaining {limits.maxImageBytes > m_imageBytes ? limits.maxImageBytes - m_imageBytes : 0};
+
+                if (remaining == 0)
+                {
+                    error = "the image exceeded its " + std::to_string(limits.maxImageBytes) + " byte allowance";
+                    return false;
+                }
+
+                const auto blob {openBlob(url, headers, remaining)};
+                LayerByteStream decompressed {*blob};
 
                 snapshot = readLayerSnapshot(decompressed);
 
-                m_imageBytes += blob.bytesDelivered();
+                m_imageBytes += blob->bytesDelivered();
 
                 if (m_context.scanBytes != nullptr)
                 {
-                    *m_context.scanBytes += blob.bytesDelivered();
+                    *m_context.scanBytes += blob->bytesDelivered();
                 }
 
-                if (!blob.failed())
+                if (!blob->failed())
                 {
                     break;
                 }
 
                 // A token that expired part way through a large image is answered by
                 // asking for another one, once, rather than by failing the reference.
-                if (blob.status() == 401 && !m_tokenRefreshed)
+                if (blob->status() == 401 && !m_tokenRefreshed)
                 {
                     m_tokenRefreshed = true;
 
                     HttpResponse challenge;
                     std::string ignored;
 
-                    if (m_transport->get(url, {}, challenge, ignored) && challenge.status == 401 &&
+                    const auto challenged {send([this, &url](HttpResponse & attemptResponse, std::string & attemptError)
+                    {
+                        return m_transport->get(url, {}, attemptResponse, attemptError);
+                    },
+                    challenge,
+                    ignored)};
+
+                    if (challenged && challenge.status == 401 &&
                         authenticate(challenge.header("www-authenticate"), ignored))
                     {
                         headers.clear();
@@ -392,16 +444,32 @@ namespace containerimages
                     }
                 }
 
-                const auto decision {m_retryPolicy.evaluate(blob.status(), {}, attempt)};
+                // This side ending the transfer, by a stop request, the idle bound or the
+                // byte ceiling, is final: another attempt would only reach the same limit.
+                RetryDecision decision;
+
+                if (!blob->abortedLocally())
+                {
+                    // Once headers have arrived, the status is that of the response that
+                    // started the transfer, 200 or a redirect's 3xx, and says nothing
+                    // about why the body then failed. A reset, a TLS error and a stall
+                    // are transport failures like any other.
+                    const auto status {blob->status() < 400 ? TRANSPORT_FAILURE : blob->status()};
+
+                    decision = m_retryPolicy.evaluate(status, blob->retryAfter(), attempt);
+                }
 
                 if (!decision.retry)
                 {
                     // A layer that could not be retrieved makes the composed inventory a
                     // guess, and a guess stored as the complete state deletes whatever the
                     // reference really holds. Reported as a failed read instead.
-                    error = "layer " + digest.substr(0, 19) + " could not be retrieved: " + blob.error();
+                    error = "layer " + digest.substr(0, 19) + " could not be retrieved: " + blob->error();
                     return false;
                 }
+
+                logDebug("Reference '" + m_location + "': layer " + digest.substr(0, 19) + " failed (" +
+                         blob->error() + "), retrying in " + std::to_string(decision.delay.count()) + " ms.");
 
                 if (!waitOrStop(decision.delay))
                 {
@@ -436,6 +504,14 @@ namespace containerimages
         // unwinds the whole scan loop, exactly as the archive reader documents.
         try
         {
+#ifdef WIN32
+            // Refused before anything else, so no request is made that could never
+            // inventory anything, and the reason is not mistaken for a certificate problem.
+            logWarn("Reference '" + m_location + "' cannot be read: remote references are not supported on "
+                    "Windows agents.");
+            return ImageReadResult::failed();
+#endif
+
             std::string error;
 
             if (!parseRegistryReference(m_location, m_reference, error))
@@ -472,7 +548,7 @@ namespace containerimages
             m_transportConfig.caBundle = bundle.path;
             m_transportConfig.connectTimeoutMs = limits.connectTimeoutMs;
             m_transportConfig.requestTimeoutMs = limits.requestTimeoutMs;
-            m_transportConfig.blobTimeoutMs = limits.blobTimeoutMs;
+            m_transportConfig.blobIdleTimeoutMs = limits.blobIdleTimeoutMs;
 
             // An injected transport is left in place: a test supplies one and must not
             // have it replaced by a real one the moment discover() runs.
