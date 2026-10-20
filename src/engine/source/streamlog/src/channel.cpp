@@ -210,7 +210,10 @@ bool ChannelHandler::rotateFile(RotationRequirement rotationType)
     }
 
     // Commit the new file path
-    m_stateData.currentFile = newFilePath;
+    {
+        std::lock_guard<std::mutex> lock(m_stateData.currentFileMutex);
+        m_stateData.currentFile = newFilePath;
+    }
     m_stateData.lastRotation = now;
 
     // Rotate the file by closing the current output file and opening a new one
@@ -225,7 +228,10 @@ bool ChannelHandler::rotateFile(RotationRequirement rotationType)
                   m_channelName,
                   e.what());
         // Restore previous state — the old file is still the active one on disk
-        m_stateData.currentFile = previousFile;
+        {
+            std::lock_guard<std::mutex> lock(m_stateData.currentFileMutex);
+            m_stateData.currentFile = previousFile;
+        }
         m_stateData.counter = previousCounter;
         m_stateData.channelState->store(ChannelState::ErrorClosed, std::memory_order_relaxed);
         return false;
