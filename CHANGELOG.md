@@ -18,6 +18,7 @@ All notable changes to this project will be documented in this file.
 #### Fixed
 
 - Hardened how the agent handles requests received from the manager. ([#40467](https://github.com/wazuh/wazuh/pull/40467))
+- Fixed `agent-auth` failing at random with `SSL error (2)` because it did not set the receive timeout of its enrollment socket. ([#40468](https://github.com/wazuh/wazuh/pull/40468))
 
 ## [v4.14.10]
 
