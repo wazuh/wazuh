@@ -108,6 +108,24 @@ target_link_libraries(resolver_wait_test
 add_test(NAME resolver_wait_test
          COMMAND resolver_wait_test)
 
+# When the container reconciliation floor comes round (#37532 / #37396). Split
+# out of the drain for the same reason as the resolver's wait above it, and
+# tested for one in particular: an interval that disables the periodic deadline
+# must not be able to disable anything else, which is the trap syscollector's
+# own floor fell into.
+add_executable(container_sweep_schedule_test container_sweep_schedule_test.cpp)
+
+target_link_libraries(container_sweep_schedule_test
+    debug gtestd
+    debug gtest_maind
+    optimized gtest
+    optimized gtest_main
+    pthread
+)
+
+add_test(NAME container_sweep_schedule_test
+         COMMAND container_sweep_schedule_test)
+
 # The container FIM document budget's decision rule (#37532 / O10). Split out of
 # the bridge for the same reason as everything above it: the rule otherwise sits
 # beside a process-global counter and a pthread mutex inside a .c, reachable only
