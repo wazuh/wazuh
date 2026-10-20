@@ -5,8 +5,9 @@ on:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - ".github/workflows/5_testunit_indexer_client.yml"
-      # The library and its tests include nothing in-tree outside the module: asio, nlohmann,
-      # googletest and cpp-httplib come from src/external (CMakeLists.txt:36, tests/CMakeLists.txt:10-37).
+      # The library and its tests include nothing in-tree outside the module: asio, nlohmann, curl's
+      # headers, googletest and cpp-httplib come from src/external, and curl/OpenSSL are linked through
+      # wazuhext (src/external/CMakeLists.txt, listed below).
       - "src/shared_modules/indexer_client/**"
       # Configure path: build_target_cpp configures src/ as one tree -- src/CMakeLists.txt (includes
       # src/cmake/*.cmake, reads VERSION.json, registers this module) and src/external/CMakeLists.txt,
@@ -78,6 +79,20 @@ jobs:
           valgrind: "false"
           target: "indexer_client_utest"
 
+      - name: Indexer client - Build component tests
+        uses: ./.github/actions/build_target_cpp
+        with:
+          target: "indexer_client_component_test"
+          test: "true"
+          asan: "false"
+
+      # The component suite drives the curl transport against an in-process fake over real sockets.
+      - name: Indexer client - Run component tests
+        uses: ./.github/actions/test_cpp
+        with:
+          valgrind: "false"
+          target: "indexer_client_component_test"
+
       - name: Indexer client - Coverage
         uses: ./.github/actions/coverage_cpp
         with:
@@ -115,4 +130,17 @@ jobs:
         uses: ./.github/actions/test_cpp
         with:
           target: "indexer_client_utest"
+          valgrind: "false"
+
+      - name: Indexer client - Build component tests
+        uses: ./.github/actions/build_target_cpp
+        with:
+          target: "indexer_client_component_test"
+          test: "true"
+          asan: "true"
+
+      - name: Indexer client - Run component tests
+        uses: ./.github/actions/test_cpp
+        with:
+          target: "indexer_client_component_test"
           valgrind: "false"

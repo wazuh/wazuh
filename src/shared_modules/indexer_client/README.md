@@ -17,9 +17,11 @@ consumers of the indexer, one consumer at a time, with:
 
 The design is in `planes/18-indexer_connector_v2/03-diseno.md` §1–§4 (outside the repository).
 
-**Status: E1 — skeleton without network.** The public headers, the configuration schema, the
-runtime lifecycle (threads, owner thread, shutdown deadline) and the test helpers exist. Nothing is
-sent to an indexer yet; see [What is not implemented yet](#what-is-not-implemented-yet).
+**Status: E2a-1 — internal HTTP transport, no public network API.** The public headers, the
+configuration schema, the runtime lifecycle (threads, owner thread, shutdown deadline), the test
+helpers and the internal curl [Transport](#transport-internal-e2a-1) exist. The public write and
+query interfaces still send nothing to an indexer; see
+[What is not implemented yet](#what-is-not-implemented-yet).
 `indexer_connector` keeps working untouched until each consumer migrates.
 
 Strict C++17: the target requires `cxx_std_17` publicly and is pinned to 17, so consumers built
@@ -202,16 +204,99 @@ Per process, the runtime owns **K + M** threads, fixed by configuration:
 | Network | K = `network_threads` | One I/O loop each (asio `io_context`) |
 | CPU | M = `cpu_threads` | CPU pool; completion callbacks run here |
 
-No consumer, bucket or `Client` creates threads. In E1 the threads exist and accept test tasks
-(`detail::testing::postToPool`, `postToIoLoop`); `MetricsSnapshot` reports `networkThreads`,
-`cpuThreads` and `clients`. From E2, when libcurl arrives, curl's own DNS resolver threads are
-auxiliary threads outside K + M; per the design they never block shutdown.
+No consumer, bucket or `Client` creates threads. The network threads run the transport's curl
+loops and the CPU pool runs its result callbacks; the test seams (`detail::testing::postToPool`,
+`postToIoLoop`) still accept test tasks. `MetricsSnapshot` reports `networkThreads`, `cpuThreads` and
+`clients`. curl's own DNS resolver threads are auxiliary threads outside K + M; the transport sets
+`CURLMOPT_QUICK_EXIT` so they never block shutdown.
+
+## Transport (internal, E2a-1)
+
+`detail::Transport` (`src/transport/transport.hpp`) is the HTTP layer the probe (E2b), the bulk
+path (E3b) and the queries (E4) build on. It is **not public API**: no installed header names it and
+neither asio nor curl types appear in it. `RuntimeOwner::start` creates it after the runtime threads
+exist; internal users reach it through `detail::runtimeTransport()`, a weak view that never keeps
+the runtime alive. The normative contract is `planes/18-indexer_connector_v2/anexos/e2a-1/contrato-transport.md`
+(outside the repository).
+
+- **Loops.** Each of the K network threads runs one libcurl multi on its `io_context`
+  (`src/transport/curlLoop.cpp`). Under the admission mutex a request goes to the loop with the
+  fewest admitted-and-unresolved transfers, ties broken round-robin (`pickLoop`,
+  `src/transport/transport.cpp:220`).
+- **Admission.** `submit(HttpRequest, ResultCallback)` is synchronous and returns
+  `Admission{admitted, cause, id}`. `id` is monotonic per runtime and never reused. Only `GET`,
+  `HEAD`, `POST`, `PUT`, `DELETE` and the scheme `http` are admitted (until E2a-2 adds `https`);
+  anything else, or a stopped transport, is not admitted (`InvalidArgument` / `Shutdown`) and the
+  callback never runs. The `id` is registered before the post to the loop, so `stop()` resolves it
+  even if the post never arrived.
+- **One result per admitted request.** The callback runs exactly once, on a CPU-pool thread
+  (`ic-cpu-*`), never on a network thread. The first event that touches a transfer (completion,
+  `cancel`, `stop`) wins.
+- **`cancel(id)`** never blocks and is valid from any thread, runtime threads included. An unknown
+  or already resolved `id` returns `false`, and so does an `id` whose loop has already closed (a stop
+  is in progress and delivers `Shutdown`). Otherwise it posts to the owning loop, which removes the
+  easy handle from the multi before resolving with `Cancelled`. No post captures `this`; a post to a
+  closed loop is refused and counted. Descriptors curl opens itself (the multi's wake-up pair) are
+  only released, never closed, and are assumed long-lived: they are tracked by number, so a curl or
+  c-ares change that reports a per-resolve socket closed before its `CURL_POLL_REMOVE` would need a
+  close-before-remove guard (checked against curl 8.20: `lib/multi.c:1139-1143`).
+- **`stop(deadline)`** is idempotent and safe to call concurrently; it always joins and returns
+  `true` when everything finished within `deadline` (a measured objective, not a cut-off). Order:
+  (1) close admission; (2) remove every transfer from its multi and resolve it as `Shutdown`;
+  (3) `curl_multi_cleanup` on each loop's own thread, with `CURLMOPT_QUICK_EXIT` so the resolver
+  threads are not joined; (4) the runtime joins the loops and drains the CPU pool. Only
+  `RuntimeOwner::shutdown` and the destructor of the runtime state call it.
+- **Classification.** The transport classifies and never retries (`src/transport/classify.cpp`):
+
+| curl code | `TransportCause` | `nodeAttributable` |
+|---|---|---|
+| none (an HTTP response arrived, any status) | `None` | no |
+| 28 | `Timeout` | yes |
+| 6, 7 | `Connect` | yes |
+| 55 | `SendError` | yes |
+| 56, 52 | `RecvError` | yes |
+| 18 | `PartialResponse` | yes |
+| 23 with the response cap tripped | `ResponseTooLarge` | no |
+| 2, 27, a `curl_multi_socket_action` error, 23 without the cap flag, any other | `LocalError` | no |
+| `cancel` won the race | `Cancelled` | no |
+| resolved by `stop` | `Shutdown` | no |
+
+- **`mayHaveSent`** is set when `CURLOPT_PREREQFUNCTION` ran: the connection was ready and the
+  request was about to be written. It is conservative (true against a server that accepts and stays
+  silent) and is reset on every use of an easy handle. `HttpResult.uploadedBytes` carries
+  `CURLINFO_SIZE_UPLOAD_T`.
+- **Response cap.** `max_response_bytes` is enforced only in the write callback
+  (`curlLoop.cpp:772`), which sets the cap flag and fails the transfer; `HttpResult.body` is never
+  larger than the cap. `CURLOPT_MAXFILESIZE_LARGE` is not used and `CURLOPT_ACCEPT_ENCODING` is not
+  enabled (if it ever is, the cap must count decoded bytes).
+- **`Retry-After`** is parsed byte by byte (`src/transport/retryAfter.cpp`): no locale, no
+  `strptime`/`mktime`, so neither the global locale nor `TZ` changes the result. The value is
+  capped at `retry_after_max_ms` and parsed on the CPU pool.
+- **Fixed options.** Per easy: `CURLOPT_PROTOCOLS_STR "http"` (E2a-2 widens it), `CURLOPT_NOSIGNAL`,
+  `CURLOPT_PROXY ""` (never a proxy from the environment), `Expect:` suppressed. Per multi:
+  `CURLMOPT_MAX_HOST_CONNECTIONS` = 8 (a constant of E2a-1; the real window is E5's) and
+  `CURLMOPT_QUICK_EXIT`. `curl_global_init` runs once (`std::call_once`).
+- **TLS** is not available until E2a-2, which adds `Tls` and `TlsConfig` to `TransportCause`.
+
+## Linking
+
+curl and OpenSSL come **only** through `libwazuhext.so` (`target_link_libraries(indexer_client
+PRIVATE wazuhext …)`). The library never links `ext_curl`, the static archive: the process holds a
+single curl and OpenSSL. Only curl's headers are taken from `src/external/curl/include`. The `.so`
+has `BUILD_RPATH $ORIGIN/../lib` so it finds `libwazuhext.so` in `${CMAKE_BINARY_DIR}/lib`.
 
 ## Build and tests
 
-The library is a SHARED target, `indexer_client`, registered by `add_subdirectory(shared_modules/indexer_client)`
-in `src/CMakeLists.txt`. Output goes to `${CMAKE_BINARY_DIR}/lib`, like `indexer_connector`. It
-links `ext_asio` and `Threads::Threads` privately; in E1 there is no curl and no `manager_config`.
+The sources are compiled twice (I45b, `CMakeLists.txt:35-61`):
+
+| Target | Kind | Seams | Linked by |
+|---|---|---|---|
+| `indexer_client` | SHARED, from `indexer_client_objects` | none (production) | consumers and `indexer_client_utest` |
+| `indexer_client_testing` | STATIC, from `indexer_client_objects_testing`, `INDEXER_CLIENT_TESTING` (adds `src/testing/seams.cpp`, `src/testing/registry.cpp`) | `detail::seams::*` | only `indexer_client_component_test` |
+
+So no executable holds two copies of the runtime. Output goes to `${CMAKE_BINARY_DIR}/lib`, like
+`indexer_connector`. The `.so` links `wazuhext`, `ext_asio` and `Threads::Threads` privately; there
+is no `manager_config`.
 
 ```bash
 cmake --build $WAZUH_REPO/src/build -j"$(nproc)" --target indexer_client
@@ -219,36 +304,52 @@ cmake --build $WAZUH_REPO/src/build -j"$(nproc)" --target indexer_client
 
 Unit tests need `-DUNIT_TEST=ON`. Prefer reconfiguring the tree with
 `cmake -S $WAZUH_REPO/src -B $WAZUH_REPO/src/build -DUNIT_TEST=ON`: `make … TEST=yes` also sets it
-but forces ASAN on the engine (see `.claude/docs/testing.md`).
-The test target is `indexer_client_utest`, compiled at C++17 so a C++20-ism in a public header
-fails there first:
+but forces ASAN on the engine (see `.claude/docs/testing.md`). There are two suites, each with its
+own executable, ctest name and ctest label (`tests/CMakeLists.txt`); both compile at C++17, so a
+C++20-ism in a public header fails there first:
+
+| Suite | Target / ctest label | Covers |
+|---|---|---|
+| Unit | `indexer_client_utest` (`tests/unit/*.cpp`) | Config, key-value source, mocks, fake indexer, the public library |
+| Component | `indexer_client_component_test` (`tests/component/*.cpp`) | The transport and the fake over real sockets, with the seams |
 
 ```bash
-cmake --build $WAZUH_REPO/src/build -j"$(nproc)" --target indexer_client_utest
-$WAZUH_REPO/src/build/shared_modules/indexer_client/tests/indexer_client_utest   # path follows the tree layout; or: ctest --test-dir $WAZUH_REPO/src/build -R indexer_client_utest
+cmake --build $WAZUH_REPO/src/build -j"$(nproc)" --target indexer_client_utest indexer_client_component_test
+ctest --test-dir $WAZUH_REPO/src/build -L indexer_client_utest
+ctest --test-dir $WAZUH_REPO/src/build -L indexer_client_component_test
 ```
 
-Check the binary's mtime before trusting a PASSED. ThreadSanitizer needs a separate tree outside
-`src/build` (the TSAN flags rewrite `CMAKE_CXX_FLAGS_DEBUG` tree-wide and would clobber the shared
-`src/build/lib`), configured with `-DCMAKE_BUILD_TYPE=Debug -DTSANITIZE=ON`, building only
-`indexer_client` and `indexer_client_utest`. Prove the instrumentation with `nm -C <binary> | grep -c __tsan`
-on both the `.so` and the test executable.
+Check each binary's mtime before trusting a PASSED. The component executable links with `-rdynamic`
+(it interposes `getaddrinfo` for the hung-resolver case) and writes a link map,
+`indexer_client_component_test.map`, that shows no static curl or OpenSSL entered it.
 
-Layout of `tests/`: `unit/` (config schema, key-value source, mocks, fake indexer), `mocks/`
-(gmock mocks of the public interfaces), `fake/` (in-process fake indexer). `spike/` holds the E0
-measurement code and is not part of the target.
+**Sanitizers.** Both suites run in a **sibling worktree**, not in `src/build`: the sanitizer flags
+rewrite `CMAKE_CXX_FLAGS_DEBUG` tree-wide and `libwazuhext.so` is written to `src/build/lib`, which
+would be clobbered (I47b). Configure it outside `src/build` with `-DCMAKE_BUILD_TYPE=Debug`
+and, for TSAN, `-DTSANITIZE=ON`; for ASAN, the CI mechanism
+(`-DCMAKE_C_FLAGS`/`-DCMAKE_CXX_FLAGS="-g -fsanitize=address -fsanitize=undefined -fsanitize=leak"`,
+`.github/actions/build_target_cpp/action.yml`). Rebuild `wazuhext` there before each sanitized run, check
+with `readelf -d` that it needs `libasan` only in the ASAN tree, and prove the instrumentation with
+`nm -C <test binary> | grep -c __tsan` (or `__asan`). The CI workflow
+(`.github/workflows/5_testunit_indexer_client.yml`) builds and runs both suites in the normal job and
+in the ASAN job.
+
+Layout of `tests/`: `unit/` (config schema, key-value source, mocks, fake indexer), `component/`
+(transport over real sockets), `mocks/` (gmock mocks of the public interfaces), `fake/`
+(in-process fake indexer). `spike/` holds the E0 measurement code and is not part of the targets.
 
 ## What is not implemented yet
 
-E1 delivers the skeleton only. Not implemented, by stage:
+E1 delivered the skeleton and E2a-1 the internal `http` transport. Not implemented, by stage:
 
 | Area | Stage |
 |---|---|
-| Transport: libcurl multi with asio, TLS, node probes and health states | E2 |
+| Transport: TLS and credentials | E2a-2 |
+| Node probes and health states; transport performance | E2b, E2c |
 | Writes: bucket queues, bulk building, scheduling, retries, overflow, tickets and groups | E2–E5 |
 | Queries: `search`, `searchAfter`, PIT, `deleteByQuery`, `updateByQuery`, `indexExists` | E2–E5 |
 | Metrics beyond the thread layout in `MetricsSnapshot` | E2–E5 |
 | Migration of the four consumers off `indexer_connector` | later stages |
 
 Until then `submit`, `group`, the query interface and `health` have no network behavior behind
-them.
+them: the transport is internal and nothing public calls it yet.
