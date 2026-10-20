@@ -28,6 +28,8 @@ namespace indexer_client::detail
             case TransportCause::LocalError: return "local_error";
             case TransportCause::Cancelled: return "cancelled";
             case TransportCause::Shutdown: return "shutdown";
+            case TransportCause::Tls: return "tls";
+            case TransportCause::TlsConfig: return "tls_config";
         }
         return "unknown";
     }
@@ -40,7 +42,8 @@ namespace indexer_client::detail
             case TransportCause::Connect:
             case TransportCause::SendError:
             case TransportCause::RecvError:
-            case TransportCause::PartialResponse: return true;
+            case TransportCause::PartialResponse:
+            case TransportCause::Tls: return true;
             default: return false;
         }
     }
@@ -60,7 +63,20 @@ namespace indexer_client::detail
             case 18: return TransportCause::PartialResponse; // CURLE_PARTIAL_FILE
             case 23:                                         // CURLE_WRITE_ERROR: ours only if the cap fired
                 return capTripped ? TransportCause::ResponseTooLarge : TransportCause::LocalError;
-            default: return TransportCause::LocalError; // 2, 27 and everything else
+            case 35:                                    // CURLE_SSL_CONNECT_ERROR (handshake)
+            case 60:                                    // CURLE_PEER_FAILED_VERIFICATION (CA, hostname)
+            case 98: return TransportCause::Tls;        // CURLE_SSL_CLIENTCERT (the node wants a client cert)
+            case 58:                                    // CURLE_SSL_CERTPROBLEM (our certificate or pair)
+            case 77:                                    // CURLE_SSL_CACERT_BADFILE (our CA bundle)
+            case 53:                                    // CURLE_SSL_ENGINE_NOTFOUND       } unreachable with our
+            case 54:                                    // CURLE_SSL_ENGINE_SETFAILED      } options (no SSLENGINE,
+            case 59:                                    // CURLE_SSL_CIPHER                } cipher list, CRLFILE,
+            case 66:                                    // CURLE_SSL_ENGINE_INITFAILED     } ISSUERCERT, pinned key
+            case 82:                                    // CURLE_SSL_CRL_BADFILE           } or VERIFYSTATUS);
+            case 83:                                    // CURLE_SSL_ISSUER_ERROR          } listed for
+            case 90:                                    // CURLE_SSL_PINNEDPUBKEYNOTMATCH  } completeness
+            case 91: return TransportCause::TlsConfig;  // CURLE_SSL_INVALIDCERTSTATUS     }
+            default: return TransportCause::LocalError; // 2, 27, 43 and everything else
         }
     }
 } // namespace indexer_client::detail

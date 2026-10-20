@@ -62,9 +62,16 @@ namespace indexer_client::detail
         TransportShared(const RuntimeConfig& runtimeConfig,
                         std::function<bool(std::function<void()>)> pool,
                         std::size_t loopCount);
+        /// Wipes the private key and the password (OPENSSL_cleanse, best effort: curl keeps its own copies).
+        ~TransportShared();
+
+        TransportShared(const TransportShared&) = delete;
+        TransportShared& operator=(const TransportShared&) = delete;
 
         Duration retryAfterMax;
         std::function<bool(std::function<void()>)> postToPool;
+        TlsMaterial tls;         ///< I48; set once before any loop runs, read-only afterwards.
+        Credentials credentials; ///< I55; set once before any loop runs, read-only afterwards.
 
         std::mutex mutex; ///< Admission: guards `accepting`, `nextId`, `cursor` and `registry`.
         bool accepting {true};

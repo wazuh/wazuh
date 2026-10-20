@@ -92,6 +92,11 @@ namespace
             return m_indexer;
         }
 
+        indexer_client::Credentials credentials() const override
+        {
+            return {"user", "pass"};
+        }
+
         const std::set<std::string>& asked() const
         {
             return m_asked;

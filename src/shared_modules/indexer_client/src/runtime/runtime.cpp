@@ -509,6 +509,21 @@ namespace indexer_client
         return detail::runtimeShutdownDeadline(m_state, m_epoch);
     }
 
+    namespace
+    {
+        /// Wipes the key and the password copies of start() on every exit (I55, best effort).
+        struct SecretsWiper final
+        {
+            std::string& key;
+            std::string& password;
+            ~SecretsWiper()
+            {
+                detail::cleanseString(key);
+                detail::cleanseString(password);
+            }
+        };
+    } // namespace
+
     Outcome<RuntimeRef> RuntimeOwner::start(ProcessId process, const IConfigSource& source)
     {
         using Result = Outcome<RuntimeRef>;
@@ -530,6 +545,31 @@ namespace indexer_client
         if (!config.ok())
         {
             return Result::failure(config.cause, std::move(config.reason), config.httpStatus);
+        }
+
+        // TLS material and credentials are read and validated once, here, before any runtime thread exists (I48,
+        // I55): a failure creates no thread. The reason never carries the password nor the key.
+        auto tls = detail::loadTlsMaterial(config.value);
+        if (!tls.ok())
+        {
+            return Result::failure(tls.cause, std::move(tls.reason));
+        }
+        Credentials credentials;
+        // Every exit that does not hand them to the transport wipes the local copies (best effort; empty once moved).
+        const SecretsWiper wiper {tls.value.privateKey, credentials.password};
+        try
+        {
+            credentials = source.credentials();
+        }
+        catch (...)
+        {
+            return Result::failure(Cause::InvalidConfig, "cannot read the indexer credentials");
+        }
+        if (credentials.user.empty() || credentials.password.empty())
+        {
+            return Result::failure(Cause::InvalidConfig,
+                                   credentials.user.empty() ? "indexer credentials missing: user"
+                                                            : "indexer credentials missing: password");
         }
 
         auto state = std::make_shared<detail::RuntimeState>();
@@ -600,7 +640,8 @@ namespace indexer_client
             {
                 return pool->post(std::move(task));
             };
-            state->transport = detail::Transport::create(state->config, std::move(environment));
+            state->transport = detail::Transport::create(
+                state->config, std::move(tls.value), std::move(credentials), std::move(environment));
         }
         catch (const std::exception& e)
         {

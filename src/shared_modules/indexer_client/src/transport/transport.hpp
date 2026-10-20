@@ -17,6 +17,7 @@
 // (E2b), the bulk path (E3b) and the queries (E4) build on it; nothing here is public API. Neither asio nor curl types
 // appear in this header.
 
+#include <chrono>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -26,6 +27,7 @@
 
 #include "indexer_client/runtimeConfig.hpp"
 #include "indexer_client/types.hpp"
+#include "transport/tlsMaterial.hpp"
 
 namespace asio
 {
@@ -46,7 +48,7 @@ namespace indexer_client::detail
     struct HttpRequest final
     {
         HttpMethod method {HttpMethod::Get};
-        std::string url;                         ///< Scheme `http` only until E2a-2; anything else is not admitted.
+        std::string url;                         ///< Scheme `http` or `https`; anything else is not admitted.
         std::shared_ptr<const std::string> body; ///< Shared, never copied per attempt; null = no body.
         std::string contentType {"application/json"};
         Duration timeout {Duration {0}}; ///< 0 = RuntimeConfig.requestTimeout.
@@ -64,12 +66,15 @@ namespace indexer_client::detail
         ResponseTooLarge, ///< curl 23 with the response cap tripped (only then).
         LocalError,       ///< curl 2, 27, a curl_multi_socket_action error, a 23 without the cap flag, anything else.
         Cancelled,        ///< cancel(id) won the race.
-        Shutdown          ///< Resolved by stop().
+        Shutdown,         ///< Resolved by stop().
+        Tls,              ///< curl 35, 60, 98: the node's handshake or certificate was not accepted (E2a-2, I54).
+        TlsConfig         ///< curl 58, 77 (and 53, 54, 66, 83): local TLS material curl refused.
     };
 
     const char* toString(TransportCause cause) noexcept;
 
-    /// True only for failures the node is responsible for: Timeout, Connect, SendError, RecvError, PartialResponse.
+    /// True only for failures the node is responsible for: Timeout, Connect, SendError, RecvError, PartialResponse,
+    /// Tls.
     bool nodeAttributable(TransportCause cause) noexcept;
 
     /// Maps a curl result code (CURLcode as int) to its cause. `capTripped` = the transfer's response cap fired.
@@ -77,9 +82,10 @@ namespace indexer_client::detail
 
     struct TransferTimings final
     {
-        Duration total {Duration {0}};
-        Duration connect {Duration {0}};    ///< CURLINFO_CONNECT_TIME_T.
-        Duration appConnect {Duration {0}}; ///< CURLINFO_APPCONNECT_TIME_T (0 in clear text).
+        // Microseconds (a millisecond loses a loopback handshake). Filled on cancelled and stopped transfers too.
+        std::chrono::microseconds total {0};
+        std::chrono::microseconds connect {0};    ///< CURLINFO_CONNECT_TIME_T.
+        std::chrono::microseconds appConnect {0}; ///< CURLINFO_APPCONNECT_TIME_T (0 in clear text).
     };
 
     struct HttpResult final
@@ -167,7 +173,9 @@ namespace indexer_client::detail
         virtual TransportStats stats() const = 0;
 
         /// Builds the curl-based transport over the given environment.
-        static std::shared_ptr<Transport> create(const RuntimeConfig& config, TransportEnvironment environment);
+        /// `tls` and `credentials` are kept for the transport's lifetime (curl reads the blobs until the last cleanup).
+        static std::shared_ptr<Transport>
+        create(const RuntimeConfig& config, TlsMaterial tls, Credentials credentials, TransportEnvironment environment);
     };
 
     /// The running runtime's transport, or null. For internal users and the component tests.

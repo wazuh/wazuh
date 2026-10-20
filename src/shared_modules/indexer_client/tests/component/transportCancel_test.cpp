@@ -285,6 +285,10 @@ TEST_F(TransportTest, CancelWhileServerSilent)
     EXPECT_EQ(result->cause, TransportCause::Cancelled);
     EXPECT_FALSE(result->nodeAttributable);
     EXPECT_TRUE(result->mayHaveSent);
+    // The contract fills the timings also for Cancelled (read before the easy leaves the multi): the TCP connection
+    // was made and time went by.
+    EXPECT_GT(result->timings.connect.count(), 0);
+    EXPECT_GT(result->timings.total.count(), 0);
     EXPECT_EQ(inFlight(*transport), 0u) << "inFlightEasies";
 
     const auto eof = silent.waitForEof(0, 2s);
