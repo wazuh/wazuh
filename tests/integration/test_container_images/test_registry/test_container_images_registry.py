@@ -84,9 +84,14 @@ t5_params, t5_metadata, t5_ids = configuration.get_test_cases_data(t5_cases_path
 t5_configurations = configuration.load_configuration_template(config_path, t5_params, t5_metadata)
 
 
-def _wait_for_scan_ended(monitor: file_monitor.FileMonitor, timeout: int = 60) -> None:
-    """Block until the next 'Scan ended.' line. This is the race-free scan barrier."""
-    monitor.start(callback=callbacks.generate_callback(patterns.CB_SCAN_ENDED), timeout=timeout)
+def _wait_for_scan_ended(monitor: file_monitor.FileMonitor, timeout: int = 60, scans: int = 1) -> None:
+    """Block until the log holds @scans 'Scan ended.' lines. This is the race-free scan barrier.
+
+    The monitor reads the whole file before it waits for new lines, so a wait that follows an
+    earlier scan in the same log has to count that scan too.
+    """
+    monitor.start(callback=callbacks.generate_callback(patterns.CB_SCAN_ENDED), timeout=timeout,
+                  accumulations=scans)
     assert monitor.callback_result, 'No "Scan ended." line was logged within the timeout.'
 
 
@@ -279,7 +284,8 @@ def test_an_unchanged_reference_retrieves_no_image_contents(test_configuration, 
     from wazuh_testing.tools import services
     services.control_service('restart', daemon='wazuh-modulesd')
 
-    _wait_for_scan_ended(file_monitor.FileMonitor(WAZUH_LOG_PATH))
+    # The first scan's line is still in the log, so the barrier is the second one.
+    _wait_for_scan_ended(file_monitor.FileMonitor(WAZUH_LOG_PATH), scans=2)
 
     assert _log_contains('so no image contents were retrieved'), \
         'The unchanged reference was not recognised as unchanged.'
