@@ -58,7 +58,8 @@ async def test_get_status(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_req
 @patch('api.controllers.manager_controller.remove_nones_to_dict')
 @patch('api.controllers.manager_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.manager_controller.raise_if_exc', return_value=CustomAffectedItems())
-async def test_get_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
+@patch('api.controllers.manager_controller.fill_master_uuid')
+async def test_get_info(mock_fill, mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'get_info' endpoint is working as expected."""
     result = await get_info()
     mock_dapi.assert_called_once_with(f=manager.get_basic_info,
@@ -70,6 +71,7 @@ async def test_get_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_reque
                                       rbac_permissions=mock_request.context['token_info']['rbac_policies']
                                       )
     mock_exc.assert_called_once_with(mock_dfunc.return_value)
+    mock_fill.assert_called_once_with(mock_exc.return_value)
     mock_remove.assert_called_once_with({})
     assert isinstance(result, ConnexionResponse)
 
