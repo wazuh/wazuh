@@ -792,16 +792,33 @@ bool ContainerEventDrain::start(const DrainConfig& config, ReconcileHandler hand
         const char* controller = nullptr;
         const int subsys = wz_cgroup_v1_select_subsys(&controller);
 
-        if (subsys < 0 || rt_set_cgroup_v1_subsys(impl->handle, static_cast<unsigned int>(subsys)) != 0)
+        /* The floor the old refusal existed to provide, kept: a host where no
+         * controller can serve as a key gets no attribution rather than wrong
+         * attribution. The two ways of getting here are reported apart,
+         * because they send the reader to different places -- one is a
+         * property of the host, the other is a stale build artifact, and a
+         * single message for both blamed the host for either. */
+        if (subsys < 0)
         {
-            /* The floor the old refusal existed to provide, kept: a host where
-             * no controller can serve as a key gets no attribution rather than
-             * wrong attribution. Reached when none of the candidates is mounted
-             * as a v1 hierarchy, or when the only one that is has no subsystem
-             * slot to read — `name=systemd` is the realistic case. */
+            /* None of the candidates is mounted as a v1 hierarchy, or the only
+             * one that is has no subsystem slot to read -- `name=systemd` is
+             * the realistic case. */
             LogError("Container eBPF drain: this host has no unified cgroup hierarchy and no controller "
                      "that can identify a container, so an event's cgroup_id cannot be attributed; "
                      "disabling the event-driven reconcile.");
+            rt_close(impl->handle);
+            delete impl;
+            return false;
+        }
+
+        if (rt_set_cgroup_v1_subsys(impl->handle, static_cast<unsigned int>(subsys)) != 0)
+        {
+            /* The host offered a usable controller and the engine would not
+             * take it. The engine has already said why on its own logger. */
+            LogError(std::string{"Container eBPF drain: this host's '"} + (controller ? controller : "?") +
+                     "' controller can identify a container, but the eBPF engine refused to read ids from "
+                     "it; disabling the event-driven reconcile. See the preceding eBPF message for the "
+                     "reason -- a loaded rt_file.bpf.o older than this agent is the usual one.");
             rt_close(impl->handle);
             delete impl;
             return false;
@@ -854,7 +871,6 @@ bool ContainerEventDrain::start(const DrainConfig& config, ReconcileHandler hand
             return false;
         }
     }
-
     impl->handler = std::move(handler);
 
     impl->allowlist_active = (filter.cgroup_mode == RT_CGROUP_MODE_ALLOWLIST);
