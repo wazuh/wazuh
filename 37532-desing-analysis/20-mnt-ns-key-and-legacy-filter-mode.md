@@ -1,5 +1,20 @@
 # 20 — Why a legacy-cgroup host needs `mnt_ns` as its key, and why that forces `RT_CGROUP_MODE_ALL`
 
+> **SUPERSEDED (2026-10-21) — the branch did the opposite of this document's verdict, deliberately.**
+>
+> This argues that a legacy host must key on `mnt_ns` and that doing so forces `RT_CGROUP_MODE_ALL`.
+> What shipped keys on the **v1 controller's cgroup id** and **keeps allowlist filtering**, because
+> the premise behind the verdict turned out to be about the BPF program rather than the kernel: the
+> helper `bpf_get_current_cgroup_id()` collapses on such a host, but the controller hierarchies are
+> kernfs nodes with perfectly good ids and the program can be pointed at one
+> (`current_container_cgroup_id()` in `rt_file.bpf.c`). The `mnt_ns` path remains as the fallback for
+> a host where no controller qualifies, which is why §20.4's analysis of inode reuse still matters —
+> see `metadata_store.cpp`'s removal-grace identity check, which exists because of it.
+>
+> §20.4.5's `0::/` measurement also stands, and is one of the two shapes a legacy host can take; the
+> other was measured on CentOS Stream 8 and Ubuntu 22.04. Read §20.4 as evidence, the verdict as
+> history.
+
 **Subject:** the two consequences of correlating container events on a mount namespace instead of a
 cgroup, both of which were found by measurement rather than by reading, and neither of which is
 stated in `18-cgroup-v1-unified-resolver-plan.md` as written.

@@ -544,9 +544,12 @@ every child cgroup means one container mapping to many keys, which the store, th
 ### Fix 2 — cgroup v1 key-space mismatch (§22.11.3) — **FIXED**
 
 The producer decided its key from the host mode alone and never called
-`wz_cgroup_v1_select_subsys()`, the chooser that exists so the resolver and the engine cannot settle
-on different hierarchies. It does now, so legacy keys on the controller cgroup id the resolver was
-already computing and discarding. Validated on Ubuntu 22.04 booted pure legacy (0 cgroup2 mounts,
+`wz_cgroup_v1_select_subsys()`, the chooser both halves are meant to ask so they prefer the same
+hierarchy. It does now, so legacy keys on the controller cgroup id the resolver was already
+computing and discarding. (It is a preference rather than a guarantee: where the shared selector
+answers -1 the resolver falls back to its own list, which accepts `name=systemd` while the engine
+cannot. That host is keyed on the mount namespace, so the divergence costs grouping accuracy rather
+than correlation, and is reported at startup.) Validated on Ubuntu 22.04 booted pure legacy (0 cgroup2 mounts,
 Docker `Cgroup Version: 1`):
 
 | Assertion | Before | After |
@@ -573,10 +576,20 @@ docker start -> seq=5 kind=changed key=5731
 **A second v1 defect surfaced during this validation and is fixed in the same change.** With the key
 agreed, FIM still produced nothing and the baseline still reported zero — but the log now said why:
 `0 container(s) scanned, 1 container(s) known`. The baseline's own process-to-container mapping read
-**only** the `0::` line, and a pure v1 host has **no `0::` line at all** (measured: `0:: lines: 0`,
-every line a numbered v1 hierarchy). No process mapped to any container. It now falls back to the
-first controller line, which carries the same path. This is why the fix is validated end to end and
-not merely at the key: agreeing on the key was necessary and, on its own, still produced nothing.
+**only** the `0::` line, and on THIS host there was no `0::` line at all (measured: `0:: lines: 0`,
+every line a numbered v1 hierarchy). No process mapped to any container.
+
+*Corrected 2026-10-21.* That measurement is real but is not a property of legacy hosts in general:
+doc 20 §20.4.5 recorded `0::/` on a different kernel, and doc 18 was corrected to say so. The
+original fix here — fall back when the `0::` line is missing — therefore covered only one of the two
+shapes, and a legacy host emitting `0::/` still mapped every process to the root. It also took the
+FIRST numbered line, which on CentOS Stream 8 is `12:hugetlb:/` — a root path naming nothing — so
+the fallback could fail even where it did run. Both are fixed in
+`SelectCgroupPathFromProcCgroup()`: the unified line wins only when it names something, and the
+controller is chosen by the shared priority order rather than by print order.
+
+This is why the fix is validated end to end and not merely at the key: agreeing on the key was
+necessary and, on its own, still produced nothing.
 
 ---
 

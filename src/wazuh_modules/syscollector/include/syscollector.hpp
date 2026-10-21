@@ -145,7 +145,8 @@ class EXPORTED Syscollector final
         void destroy();
 
         /// Waits on container_instances' lifecycle notifications and brings the
-        /// next container pass forward when one arrives. Runs until m_stopping.
+        /// next container pass forward when one arrives -- without moving the
+        /// host scan, which keeps its own deadline. Runs until m_stopping.
         void containerNotifyLoop();
 
         /// Inventories only what container_instances reports as changed since
@@ -747,7 +748,10 @@ class EXPORTED Syscollector final
         // Set by the lifecycle watcher when container_instances reports its
         // list changed, cleared by syncLoop when it acts on it. Lets a new or
         // removed container be inventoried without waiting out the remainder of
-        // m_containerBaselineInterval, which on a long interval is most of it.
+        // whichever interval is in force -- m_containerBaselineInterval on the
+        // independent cadence, the host interval on the coupled one. BOTH
+        // branches of syncLoop consult it; the coupled branch, which is the
+        // default, once did not, so the watcher ran and changed nothing.
         std::atomic<bool>                                                        m_containerScanRequested;
         // Blocks on the notification socket. Started only when the container
         // baseline is enabled: with it off there is nothing to bring forward.

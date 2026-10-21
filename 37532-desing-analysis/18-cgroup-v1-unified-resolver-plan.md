@@ -657,3 +657,53 @@ on every supported host. The v2 evidence in §15.10 is the baseline it has to re
 5. **Should Phase 2 exist at all?** Correlating FIM on a namespace rather than a cgroup is a
    different security property. If the answer is no, WP5/WP6 drop and O4 resolves to
    "inventory-only, permanently".
+
+---
+
+## 18.9 Kernel measurements, 2026-10-21
+
+Taken while fixing a review of this branch. They settle two questions the earlier sections answer
+differently in different places, and one nobody had asked.
+
+### The `0::` line on a legacy host — both shapes are real
+
+| host | kernel | `0::` line |
+|---|---|---|
+| CentOS Stream 8 | 4.18.0-326.el8 | **absent** |
+| Ubuntu 22.04, `unified_cgroup_hierarchy=0` | 5.15 | **absent** (doc 22 §22.11.3) |
+| the host in doc 20 §20.4.5 | — | **present**, reads `0::/` |
+
+So §18.2's correction stands and the absolutes elsewhere were wrong in both directions: doc 21 said
+a legacy host *always* emits one, doc 22 §22.12 said it *never* does. Neither may be assumed, which
+is why `SelectCgroupPathFromProcCgroup()` takes the unified line only when it names something and
+falls through to a controller line otherwise.
+
+A second defect hid behind the first: the fallback took the **first numbered line**, which on CentOS
+Stream 8 is `12:hugetlb:/` — a root path naming nothing. So even the host shape the original fix was
+written for could resolve nothing. The controller is now ranked by the shared priority order.
+
+### `kernfs_node.id` packs a generation, and the type does not tell you
+
+The BPF program reads a container's cgroup id from `kernfs_node.id` and userspace matches on
+`stat()`'s `st_ino`. Those are not the same number.
+
+| host | `kernfs_node.id` type | generation packed? |
+|---|---|---|
+| RHEL 8.1 (4.18.0-147.57.1) | `union kernfs_node_id` | yes |
+| Amazon Linux 2 (4.14.97) | `union kernfs_node_id` | yes |
+| CentOS Stream 8 (4.18.0-326) | plain `u64` | **yes** |
+
+Red Hat backported 5.5's plain-`u64` change behind `RH_KABI`, so on CentOS Stream 8 the union still
+exists in BTF (as `rh_kabi_hidden_167`) while the live field is a `u64` — and the generation is
+packed regardless. A `bpf_core_type_exists(union kernfs_node_id)` test reads TRUE there and answers
+the wrong question entirely.
+
+Measured directly: `name_to_handle_at()` on `/sys/fs/cgroup/memory/system.slice` returns ino 35 with
+generation 1 in the high word, against `st_ino` 35. Hence the unconditional mask in
+`kernfs_node_ino()` — safe everywhere, since a kernfs ino comes from a 32-bit IDR and never reaches
+the high word.
+
+**Not yet validated end to end.** The mask is measured right; no agent has been run on RHEL 8 or
+Amazon Linux 2 to confirm a container is listed, its processes attributed and a file change reported
+from inside it. `wazuh_agent_centos` is a genuine legacy-cgroup RHEL-family host and is the place to
+do it.
