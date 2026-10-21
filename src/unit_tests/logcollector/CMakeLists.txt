@@ -81,6 +81,13 @@ else()
                                     -Wl,--wrap,cJSON_Delete -Wl,--wrap,_mwarn -Wl,--wrap,stat -Wl,--wrap,_mdebug2 \
                                     -Wl,--wrap,difftime -Wl,--wrap,strftime ${DEBUG_OP_WRAPPERS}")
 
+    # The local request listener, in its own binary so that wrapping close and accept does not
+    # reach the other logcollector tests.
+    list(APPEND logcollector_names "test_lccom_main")
+    list(APPEND logcollector_flags "-Wl,--wrap,close -Wl,--wrap,accept -Wl,--wrap,select -Wl,--wrap,FOREVER \
+                                    -Wl,--wrap,OS_BindUnixDomain -Wl,--wrap,OS_RecvSecureTCP \
+                                    -Wl,--wrap,OS_SendSecureTCP ${DEBUG_OP_WRAPPERS}")
+
     list(APPEND logcollector_names "test_macos_log")
     list(APPEND logcollector_flags "-Wl,--wrap,wpopenv -Wl,--wrap,fileno -Wl,--wrap,fcntl -Wl,--wrap,_merror \
                                     -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets -Wl,--wrap,fgetpos \
