@@ -55,6 +55,12 @@ int wdbc_connect_with_attempts(int max_attempts) {
 
 
     for (int attempts = 1; attempts <= max_attempts && (wdb_socket = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_SIZE_6144)) < 0; attempts++) {
+        if (w_shutdown_requested()) {
+            // wazuh-db is not coming back before this daemon is gone: the ladder would only hold
+            // the thread for up to 15 s of sleep and announce each rung at INFO.
+            break;
+        }
+
         switch (errno) {
         case ENOENT:
             minfo("Cannot find '%s'. Waiting %d seconds to reconnect.", sockname, attempts);
@@ -66,7 +72,7 @@ int wdbc_connect_with_attempts(int max_attempts) {
     }
 
     if (wdb_socket < 0) {
-        merror("Unable to connect to socket '%s'.", sockname);
+        wdbc_fail("Unable to connect to socket '%s'.", sockname);
     }
 
     return wdb_socket;
@@ -98,7 +104,7 @@ int wdbc_query(const int sock, const char *query, char *response, const int len)
             merror("database socket is full");
             goto end;
         } else {
-            merror("Cannot send message: (%d) '%s'.", errno, strerror(errno));
+            wdbc_fail("Cannot send message: (%d) '%s'.", errno, strerror(errno));
             goto end;
         }
     }
@@ -113,7 +119,7 @@ int wdbc_query(const int sock, const char *query, char *response, const int len)
         merror("Cannot receive message: response size is bigger than expected");
         break;
     case -1:
-        merror("Cannot receive message: %s (%d)", strerror(errno), errno);
+        wdbc_fail("Cannot receive message: %s (%d)", strerror(errno), errno);
         break;
     default:
         response[len - 1] = '\0';
@@ -178,7 +184,7 @@ int wdbc_query_ex_timeout(int *sock, const char *query, char *response, const in
         *sock = timeout > 0 ? wdbc_connect_timeout(timeout) : wdbc_connect();
 
         if (*sock < 0) {
-            merror("Unable to connect to socket '%s'.", WDB_LOCAL_SOCK);
+            wdbc_fail("Unable to connect to socket '%s'.", WDB_LOCAL_SOCK);
             return retval;
         }
     }
@@ -196,10 +202,18 @@ int wdbc_query_ex_timeout(int *sock, const char *query, char *response, const in
             // arrives depends only on whether wazuh-db had unread data queued when it closed. With
             // it in the catch-all below, a wazuh-db restart failed the query outright on the very
             // path this reconnect exists to cover.
-            //
+            close(*sock);
+            *sock = -1;
+
+            if (w_shutdown_requested()) {
+                // Not a reconnect: wazuh-db was stopped in the same pass as this daemon, and the
+                // caller's own exit is the only thing left to wait for.
+                mdebug1("Connection with wazuh-manager-db lost while shutting down.");
+                return retval;
+            }
+
             // Retry to connect
             merror("Connection with wazuh-manager-db lost. Reconnecting.");
-            close(*sock);
             if (*sock = (timeout > 0 ? wdbc_connect_timeout(timeout) : wdbc_connect()), *sock < 0) {
                 return retval;
             }
@@ -212,7 +226,7 @@ int wdbc_query_ex_timeout(int *sock, const char *query, char *response, const in
             // and -1 when the response did. Reporting both as a send failure is what made a
             // wazuh-db that closed the connection mid-answer -- the ordinary shape of a manager
             // stop, arriving as ECONNRESET -- read as this process failing to write to it.
-            merror("Cannot %s message: (%d) '%s'.", retval == -2 ? "send" : "receive", errno, strerror(errno));
+            wdbc_fail("Cannot %s message: (%d) '%s'.", retval == -2 ? "send" : "receive", errno, strerror(errno));
             return retval;
         }
     }
@@ -285,10 +299,10 @@ cJSON * wdbc_query_parse_json(int *sock, const char *query, char *response, cons
     result = wdbc_query_ex(sock, query, response, len);
     switch (result) {
     case -2:
-        merror("Unable to connect to socket '%s'", WDB_LOCAL_SOCK);
+        wdbc_fail("Unable to connect to socket '%s'", WDB_LOCAL_SOCK);
         return NULL;
     case -1:
-        merror("No response from wazuh-manager-db.");
+        wdbc_fail("No response from wazuh-manager-db.");
         return NULL;
     }
 
@@ -329,10 +343,10 @@ wdbc_result wdbc_query_parse(int *sock, const char *query, char *response, const
         }
     }
     else if (-2 == result) {
-        merror("Unable to connect to socket '%s'", WDB_LOCAL_SOCK);
+        wdbc_fail("Unable to connect to socket '%s'", WDB_LOCAL_SOCK);
     }
     else if (-1 == result) {
-        merror("No response from wazuh-manager-db.");
+        wdbc_fail("No response from wazuh-manager-db.");
     }
 
     if (payload) {

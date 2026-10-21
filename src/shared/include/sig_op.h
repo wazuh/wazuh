@@ -13,6 +13,18 @@
 #ifndef SIG_H
 #define SIG_H
 
+#include <stdbool.h>
+
+/* True once HandleSIG() has taken a termination signal. The daemon is then inside exit(), and its
+ * other threads keep running until the process is gone; a peer daemon stopped in the same pass
+ * (wazuh-server.sh signals every daemon before waiting for any) is expected to vanish under them
+ * in that window, so a failure to reach it is part of the shutdown, not a fault to report. Only
+ * raised by HandleSIG(): daemons with a handler of their own (StartSIG2) carry their own flag. The
+ * flag is a lock-free atomic, so the handler's store and the readers in other threads are ordered
+ * without a lock; it is kept behind these two calls because this header also reaches C++ units. */
+bool w_shutdown_requested(void);
+void w_shutdown_requested_set(bool value);
+
 void HandleSIG(int sig) __attribute__((noreturn));
 void HandleSIGPIPE(int sig);
 void HandleExit();
