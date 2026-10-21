@@ -1165,13 +1165,26 @@ void test_wm_office365_dump_yes_options(void **state) {
     os_calloc(1, sizeof(wm_office365_subscription), data->office365_config->subscription);
     os_strdup("test_subscription_name", data->office365_config->subscription->subscription_name);
 
-    char *test = "{\"office365\":{\"enabled\":\"yes\",\"only_future_events\":\"yes\",\"interval\":10,\"api_auth\":[{\"tenant_id\":\"test_tenant_id\",\"client_id\":\"test_client_id\",\"client_secret_path\":\"test_client_secret_path\",\"client_secret\":\"test_client_secret\",\"api_type\":\"commercial\"}],\"subscriptions\":[\"test_subscription_name\"]}}";
+    char *test = "{\"office365\":{\"enabled\":\"yes\",\"only_future_events\":\"yes\",\"interval\":10,\"api_auth\":[{\"tenant_id\":\"test_tenant_id\",\"client_id\":\"test_client_id\",\"client_secret_path\":\"test_client_secret_path\",\"client_secret\":\"*****\",\"api_type\":\"commercial\"}],\"subscriptions\":[\"test_subscription_name\"]}}";
 
     cJSON *root = wm_office365_dump(data->office365_config);
     data->root_c = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);
 
     assert_string_equal(data->root_c, test);
+}
+
+void test_wm_office365_dump_never_prints_a_client_secret(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    os_calloc(1, sizeof(wm_office365_auth), data->office365_config->auth);
+    os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
+    os_strdup("fake-o365-client-secret", data->office365_config->auth->client_secret);
+
+    cJSON *root = wm_office365_dump(data->office365_config);
+    data->root_c = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+
+    assert_null(strstr(data->root_c, "fake-o365-client-secret"));
 }
 
 void test_wm_office365_main_disabled(void **state) {
@@ -3796,6 +3809,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_office365_dump_no_options, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_dump_yes_options_empty_arrays, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_dump_yes_options, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_office365_dump_never_prints_a_client_secret, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_get_access_token_with_auth_secret, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_get_access_token_with_auth_secret_path, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_get_access_token_with_auth_secret_response_400, setup_conf, teardown_conf),
