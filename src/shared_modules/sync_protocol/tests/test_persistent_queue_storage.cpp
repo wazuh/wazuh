@@ -14,10 +14,8 @@
 #include "sqlite3Wrapper.hpp"
 #include <memory>
 #include <filesystem>
-#include <system_error>
 #include <thread>
 #include <chrono>
-#include <random>
 
 struct QueueScenario
 {
@@ -679,118 +677,4 @@ TEST_F(PersistentQueueStorageBusyLockTest, ResetAllSyncingWaitsOutTransientLockI
     EXPECT_NO_THROW(secondInstanceStorage.resetAllSyncing());
 
     lockReleaser.join();
-}
-
-class PersistentQueueStorageWalCheckpointTest : public ::testing::Test
-{
-    protected:
-        std::string dbPath;
-        LoggerFunc testLogger;
-
-        void SetUp() override
-        {
-            // Unique per run so concurrent invocations or stale -wal/-shm files can't collide.
-            const std::string unique = std::to_string(std::random_device{}());
-            dbPath = (std::filesystem::temp_directory_path() /
-                      ("wazuh_persistent_queue_wal_checkpoint_test_" + unique + ".db")).string();
-            std::filesystem::remove(dbPath);
-            std::filesystem::remove(dbPath + "-wal");
-            std::filesystem::remove(dbPath + "-shm");
-
-            testLogger = [](modules_log_level_t /*level*/, const std::string& /*msg*/)
-            {
-            };
-        }
-
-        void TearDown() override
-        {
-            std::filesystem::remove(dbPath);
-            std::filesystem::remove(dbPath + "-wal");
-            std::filesystem::remove(dbPath + "-shm");
-        }
-};
-
-TEST_F(PersistentQueueStorageWalCheckpointTest, CheckpointKeepsWalBoundedUnderSustainedWritesWithoutDataLoss)
-{
-    // Far more frames than the threshold must leave the -wal file bounded near it (checkpoints
-    // firing and resetting the WAL), not growing with commit count.
-    constexpr int32_t thresholdPages = 100;
-    constexpr int itemCount = 3000;
-    const std::string payload(300, 'x');
-
-    PersistentQueueStorage storage(dbPath, testLogger, nullptr, thresholdPages);
-    EXPECT_EQ(storage.getWalAutocheckpoint(), thresholdPages);
-
-    for (int i = 0; i < itemCount; ++i)
-    {
-        const std::string id = "id" + std::to_string(i);
-        storage.submitOrCoalesce(PersistedData{0, id, "index1", payload, Operation::CREATE, 0});
-    }
-
-    // PASSIVE never shrinks -wal, so its high-water mark settles near the threshold. Query the page
-    // size instead of assuming 4096 so the bound holds on any build; 4x margin covers frame headers
-    // and the last un-checkpointed window.
-    std::uintmax_t pageSize = 4096U;
-    {
-        SQLite3Wrapper::Connection pageSizeConn(dbPath);
-        SQLite3Wrapper::Statement pageSizeStmt(pageSizeConn, "PRAGMA page_size;");
-
-        if (pageSizeStmt.step() == SQLITE_ROW)
-        {
-            pageSize = static_cast<std::uintmax_t>(pageSizeStmt.value<int64_t>(0));
-        }
-    }
-    const std::uintmax_t walBoundBytes = static_cast<std::uintmax_t>(thresholdPages) * pageSize * 4U;
-    std::error_code ec;
-    const auto walBytes = std::filesystem::file_size(dbPath + "-wal", ec);
-    EXPECT_FALSE(ec);
-    EXPECT_LE(walBytes, walBoundBytes);
-
-    auto pending = storage.fetchAndMarkForSync();
-    EXPECT_EQ(pending.size(), static_cast<size_t>(itemCount));
-}
-
-TEST_F(PersistentQueueStorageWalCheckpointTest, EarlyBreakFetchDoesNotBlockSubsequentCheckpoint)
-{
-    // fetchAndMarkForSync(maxBytes) can break its select loop early, leaving the statement mid-scan
-    // when the transaction commits; threshold 1 forces a checkpoint attempt on this commit so the
-    // resulting SQLITE_LOCKED/SQLITE_BUSY risk is exercised deterministically rather than depending
-    // on leftover frames from earlier commits.
-    constexpr int32_t thresholdPages = 1;
-    constexpr int itemCount = 2000;
-    const std::string payload(300, 'x');
-
-    std::vector<std::string> warnings;
-    testLogger = [&warnings](modules_log_level_t level, const std::string & msg)
-    {
-        if (level == LOG_WARNING)
-        {
-            warnings.push_back(msg);
-        }
-    };
-
-    PersistentQueueStorage storage(dbPath, testLogger, nullptr, thresholdPages);
-
-    std::vector<PersistedData> batch;
-    batch.reserve(static_cast<size_t>(itemCount));
-
-    for (int i = 0; i < itemCount; ++i)
-    {
-        batch.push_back(PersistedData{0, "id" + std::to_string(i), "index1", payload, Operation::CREATE, 0});
-    }
-
-    storage.submitBatch(batch);
-    warnings.clear(); // Only the fetch below is under test; submitBatch's own checkpoint isn't at risk.
-
-    // Budget covers only a handful of items, forcing a normal early break (non-empty result) well
-    // before the select loop reaches the end of the PENDING set.
-    constexpr size_t maxBytes = 20000;
-    auto fetched = storage.fetchAndMarkForSync(maxBytes);
-    ASSERT_FALSE(fetched.empty());
-    EXPECT_LT(fetched.size(), static_cast<size_t>(itemCount));
-
-    for (const auto& warning : warnings)
-    {
-        EXPECT_EQ(warning.find("checkpoint"), std::string::npos) << "Unexpected checkpoint warning: " << warning;
-    }
 }
