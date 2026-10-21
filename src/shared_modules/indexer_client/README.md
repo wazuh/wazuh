@@ -17,13 +17,13 @@ consumers of the indexer, one consumer at a time, with:
 
 The design is in `planes/18-indexer_connector_v2/03-diseno.md` §1–§4 (outside the repository).
 
-**Status: E3c-2 (E3c complete) — write admission, buckets and scheduling on top of the internal transport, the bulk-response classifier, the retry lane and the bulk sender, with the per-operation conflict policy, `ReplacePreserving`, confirmable groups, [`ordered` buckets](#ordered-buckets-e3c-2) and [`cancel(tag)`](#cancellation-e3c-2): writes reach the indexer; no public query API yet.** The public headers, the
+**Status: E4b (E4 complete) — write admission, buckets and scheduling on top of the internal transport, the bulk-response classifier, the retry lane and the bulk sender, with the per-operation conflict policy, `ReplacePreserving`, confirmable groups, [`ordered` buckets](#ordered-buckets-e3c-2) and [`cancel(tag)`](#cancellation-e3c-2), plus the [queries](#queries-e4a) and the [managed point in time](#point-in-time-e4b): writes and reads reach the indexer.** The public headers, the
 configuration schema, the runtime lifecycle (threads, owner thread, shutdown deadline), the test
 helpers, the internal curl [Transport](#transport-internal-e2a-1-and-e2a-2) (HTTP, HTTPS, credentials), the
 [node health probe](#node-health-e2b) and the [write path](#write-path-e3a) (encoding, quota charge, overflow policies, DRR scheduler,
 resolution) exist, the [response classifier and retry lane](#response-classification-and-retry-lane-e3b-1) are driven by the [bulk sender](#bulk-sender-e3b-2), and the transport has been [benchmarked against the v1](#benchmark). `Writer::submit` admits and schedules
-writes and the production sink sends them as `_bulk` requests, with a per-node window, failover and retry. The query interface still
-sends nothing; see [What is not implemented yet](#what-is-not-implemented-yet).
+writes and the production sink sends them as `_bulk` requests, with a per-node window, failover and retry; `Client::query()` runs
+searches, by-query writes, index checks and PITs on the consumer's thread. See [What is not implemented yet](#what-is-not-implemented-yet).
 `indexer_connector` keeps working untouched until each consumer migrates.
 
 Strict C++17: the target requires `cxx_std_17` publicly and is pinned to 17, so consumers built
@@ -63,7 +63,7 @@ Headers are in `include/indexer_client/`; `indexerClient.hpp` is the umbrella.
 | | `Ticket`, `GroupTicket`, `CancelTicket` | Handles on a pending write, a group of writes and a cancel; `ready()` and `wait(Deadline)` |
 | | `Submit` | Result of `submit`: `accepted`, `cause`, `reason` (why it was refused; `InvalidArgument` names the field first, D42), `ticket` |
 | | `Group` | Confirmable group of writes: `add(Op)` reserves its quota at once, `commit()` enqueues all together; dropped without commit it releases its reservation; `lastAddReason()` (see [Groups](#groups-e3c-1)) |
-| | `Pit`, `PitSession` | Shared PIT handle and its cursors (`next`, `exhausted`); `pit()` answers `Unavailable` until E4b |
+| | `Pit`, `PitSession` | Shared PIT handle (`cursor`, `search`, `generation`) and its cursors (`next`, `exhausted`); see [Point in time](#point-in-time-e4b) |
 
 **Write handles.** `Writer::submit` validates, encodes, charges and queues the operation (see
 [Write path](#write-path-e3a)); a refusal carries its `reason` (D42: `InvalidArgument` names the field first, as the internal
@@ -926,7 +926,7 @@ The normative text is `src/write/bucket.hpp` (CANCELLATION) and `src/write/sende
 ## Queries (E4a)
 
 `Client::query()` returns the `IQuery` of the client: `search`, `searchAfter`, `deleteByQuery`, `updateByQuery` and `indexExists`
-(`pit()` is a stub until E4b). The contract is the header `src/query/query.hpp` (normative); the pure response classifiers are in
+and, since E4b, `pit()` (see [Point in time](#point-in-time-e4b)). The contract is the header `src/query/query.hpp` (normative); the pure response classifiers are in
 `src/query/queryResponse.hpp`. Nothing there is public API.
 
 ### Execution model
@@ -999,7 +999,7 @@ entry is `Failed(ItemPermanent)` with the first one in `reason`; `timed_out` is 
 | `deleteByQuery(indices, query, dbq)` | `POST /<i1,i2>/_delete_by_query[?conflicts=proceed]` | `query` | The response | `index_not_found_exception`: `Ok({})`; any other: `Client4xx` |
 | `updateByQuery(indices, query)` | `POST /<i1,i2>/_update_by_query?conflicts=proceed` | `query` | The response | `index_not_found_exception`: `NotFound`; any other: `Client4xx` |
 | `indexExists(index)` | `HEAD /<index>` | none | `200`: `true` | `false` |
-| `pit(...)` | none | none | `Unavailable`, reason `PIT not implemented yet (E4b)` | none |
+| `pit(indices, pitOptions)` | `POST /<i1,i2>/_search/point_in_time?keep_alive=<ms>ms` | none | A `Pit` handle | `index_not_found_exception`: `NotFound` (see [Point in time](#point-in-time-e4b)) |
 
 ### `searchAfter`
 
@@ -1046,7 +1046,7 @@ request is made.
 
 | Situation | `Cause` |
 |---|---|
-| Deadline or page deadline expired, no usable node until then, `pit()` | `Unavailable` |
+| Deadline or page deadline expired, no usable node until then | `Unavailable` |
 | The transport refused to admit the request (reason `the transport refused the request`) | The transport's admission cause (`InvalidArgument`, `InvalidState`) |
 | `maxAttempts` or `maxDuration` exhausted (503, 429 storm, timeouts) | `RetryExhausted` |
 | `search`/`updateByQuery` on a missing index (`index_not_found_exception`) | `NotFound` |
@@ -1063,6 +1063,170 @@ request is made.
 `detail::query::queryStats()` returns process-wide counters since the process started, never reset (they survive `shutdown()` +
 `start()`): `requests`, `failovers`, `throttles`, `unavailable`, `tooLarge` (responses the classifier refused for size) and
 `conflictRetries`. They are for the tests; E5 publishes them as metrics and decides whether they reset per runtime.
+
+## Point in time (E4b)
+
+`IQuery::pit(indices, PitOptions, QueryOptions, deadline)` creates a managed PIT and returns a `Pit` handle; `Pit::cursor` and
+`Pit::search` read through it, and the library deletes it when the last handle goes. The contract is the header `src/query/pit.hpp`
+(normative); every PIT request runs through the same attempt loop as the queries (`execute()` in `src/query/engine.hpp`) with the
+`QueryOptions` given to `pit()`: the same [clocks, retry verdicts and wake-ups](#queries-e4a). Nothing there is public API.
+
+### Creation
+
+`pit()` runs on the calling consumer thread. Order: `Reentrancy` from a runtime thread; validation without a request
+(`InvalidArgument` with the field first: the indices as in [Index validation](#index-validation), `keepAlive > 0`, the `QueryOptions`
+checks); then
+
+`POST /<i1,i2>/_search/point_in_time?keep_alive=<ms>ms[&expand_wildcards=all]`, no body.
+
+`PitOptions.keepAlive` (default 300000 ms) is sent in milliseconds. `expand_wildcards=all` is added when `PitOptions.expandWildcardsAll`
+or `QueryOptions.expandWildcardsAll` is set. A 2xx needs a non-empty string `pit_id`, otherwise `Failed(ItemPermanent)`; a 404
+`index_not_found_exception` is `NotFound` (I85); the rest follows the [retry table](#retry-i82).
+
+### Slots and the cap
+
+`max_open_pits` (default 64, see [Configuration](#configuration)) bounds, per runtime, the PITs open **plus** the reservations below.
+Before **every attempt** of a creation the engine takes one slot from the registry; with none free the call ends `QueueFull`
+(reason `too many open PITs (N)`, N = open + reserved + slots held by creations in flight) without a request, counted in `refusedFull`. The slot of each attempt is settled when the attempt ends:
+
+| How the attempt ended | The slot |
+|---|---|
+| 2xx with a `pit_id` | Becomes the PIT's (open) |
+| Any other HTTP answer | Released |
+| Transport failure with `mayHaveSent`, or abandoned (deadline, close, shutdown) | **Reserved** until `now + keepAlive`: the PIT may exist on the indexer (an orphan until its `keep_alive` frees it), so it keeps counting against the cap |
+| Transport failure without `mayHaveSent` | Released |
+
+A result that arrives late (after the engine stopped waiting) changes nothing: the reservation stays until it lapses. Lapsed
+reservations are purged on every acquisition and on every statistics read. A wait for a usable node is not an attempt: the creation
+keeps its slot through it (up to its deadline), whereas a backoff after a settled attempt (429, 5xx) holds none and the next attempt
+acquires again.
+
+### Shared state and threads
+
+`Pit` is copyable and `Pit`, its copies and every `PitSession` share one internal state: the current `pit_id`, `keepAlive`, the
+`generation` (a process-wide counter, `Pit::generation()`), the expired flag, the time of the last request, the `QueryOptions` of `pit()` and
+the indices. `cursor()`, `next()` and `search()` are safe from different threads (E9 pages up to 32 slices at once). The state holds the
+`Client`, so **the consumer name stays reserved while any `Pit` or `PitSession` is alive**: a new `RuntimeRef::client` with that name is
+`InvalidArgument` (`already has a live client`). A default-constructed `Pit` or `PitSession` answers `InvalidState` on `cursor()`/`next()`/`search()`, never a crash.
+
+### Cursors
+
+`Pit::cursor(CursorQuery, std::optional<Slice>)` returns a `PitSession`; each `next(deadline)` is one request:
+
+`POST /_search?allow_partial_search_results=false`
+
+with the body:
+
+| Member | Value |
+|---|---|
+| `size` | `CursorQuery.pageSize` |
+| `query` | `CursorQuery.query` |
+| `sort` | `CursorQuery.sort`; empty means `[{"_shard_doc":"asc"}]` |
+| `_source` | `CursorQuery.source`, only when not null |
+| `slice` | `{id, max}` when a `Slice` was given |
+| `pit` | `{id, keep_alive: "<ms>ms"}` on every request, which renews the PIT |
+| `search_after` | The `sort` of the previous page's last hit; absent on the cursor's first page, which sets `track_total_hits: true` instead |
+
+- **Tiebreaker.** The default `_shard_doc` is unique within a PIT. A `sort` of the consumer gets **no tiebreaker added**: if it is not
+  unique, hits that tie can be skipped or repeated across pages, and adding `_shard_doc` last is the consumer's job (E9 decides).
+- **`PitPage`.** `generation` (the PIT's, unique per process), `hits` (the `hits.hits` array), `last` and `total`. `total` is `hits.total.value` and is set
+  **only on the cursor's first page** (I92); later pages leave it empty.
+- **`last`** is true when the page has fewer hits than `pageSize`. `next()` after `last` returns `Ok` with an empty page, `last` set, and
+  **sends nothing**; `exhausted()` tells it.
+- **Retries.** The body of a page is built once: a retried page repeats the same `pit` id and the same `search_after`.
+- **Invalid cursor.** `slice.max < 2`, `slice.id >= slice.max` or `pageSize == 0` are not refused by `cursor()`: the first `next()`
+  returns `InvalidArgument` with the field (`slice.max: must be >= 2`, ...), without a request.
+
+`Pit::search(body, deadline)` sends the consumer's body to the same route with its `pit` member **overwritten** by `{id, keep_alive}`;
+nothing else is touched. It returns the whole response.
+
+### `pit_id` renewal
+
+A 2xx whose `pit_id` differs from the current one replaces it (the last arrival wins: every id of the same PIT addresses the same
+contexts). The delete uses the id that is current when the last handle goes.
+
+### Expiry
+
+A PIT is expired when a search answers
+
+- a 404 whose `error.type` or any `error.root_cause[].type` is `search_context_missing_exception`, or
+- a 2xx with `_shards.failed > 0` and that type in `_shards.failures` (with `allow_partial_search_results=false` the indexer may answer
+  this way); a 2xx with a shard failure of **any other type** is a retry, not an expiry.
+
+The state is marked expired once and **every** handle gets `PitExpired`: the failing call, a call that was asleep in a backoff (the
+engine checks before each attempt), and every later `next()` or `search()`, which return without a request. A 2xx that lands after the
+PIT was marked expired is discarded: `PitExpired`, counted in `stale`. **The library never recreates a PIT**; the consumer restarts its
+whole query with a new `pit()`.
+
+### Lifetime and delete
+
+The registry keeps the PIT while any handle lives. When the last `Pit` or `PitSession` goes (on any thread, never blocking) the
+registry receives `{id, keepAlive, lastUse}` and sends
+
+`DELETE /_search/point_in_time` with `{"pit_id": "<id>"}`
+
+through the transport (`NodeSet::choose()`, callback on the CPU pool). `lastUse` is the time the last request was **observed sent**,
+so it is an upper bound of the real last use. Classification is `classifyRequest(result, 1)`:
+
+| Result | Action |
+|---|---|
+| 2xx or 404 | Confirmed (`deletesConfirmed`); the slot is freed |
+| 429 | Waits `max(Retry-After, backoff)` and retries |
+| Failover or retry verdict | Retries after `backoffDelay` (1 s base, 15 s cap, `deleteRetries`) |
+| No usable node | Waits `min(backoff, probe_interval_ms)`, without counting a retry |
+| Any other final answer (another 4xx, a response too large) | Gives up at once: the `keep_alive` frees the PIT (`deletesExpired`); the slot is freed |
+| `lastUse + keepAlive` passed | Gives up: the indexer frees the PIT by itself (`deletesExpired`); the slot is freed |
+
+Each `DELETE` is sent with timeout `min(request_timeout_ms, lastUse + keepAlive − now)` (the sum saturates: `keepAlive` has no upper
+bound), so a hung one never holds the slot past the PIT's own expiry.
+Retries run on a timer of network loop 0, and `release` is idempotent per id. While a delete waits to be confirmed or to expire, its slot
+still counts against `max_open_pits`. A runtime that is gone does nothing: a `PitState` whose registry has died leaves the PIT to its
+`keep_alive`.
+
+### Shutdown
+
+`RuntimeState::stopAndJoin` calls `drain(shutdownDeadline − min(DRAIN_STOP_MARGIN, (shutdownDeadline − now) / 2))` (the margin is
+1 s, or half of what is left when the deadline is closer: a short `drain_ms` still sends the deletes) after the write path stops and
+before `transport->stop()`. The drain sends **every pending delete at once** with timeout `min(request_timeout_ms, drainEnd − now)`
+and waits for them; at `drainEnd` the rest are cancelled and counted `deletesExpired`. During the drain there are **no retries**: a
+delete that fails is not repeated. PITs whose handles are still alive are deleted too (the registry keeps a weak reference to each open
+PIT); their state is marked drained, so the later hand-over of their last handle does nothing and any later request on them returns
+`Shutdown`. A creation that completes after the drain started is marked drained the same way: its delete joins the drain if it is
+still before `drainEnd`, otherwise it counts as expired without a request. A PIT released after the drain is treated as expired
+without a request.
+
+### `pitStats()`
+
+`detail::query::pitStats()` returns process-wide counters, never reset (they survive `shutdown()` + `start()`), except the gauges, which
+read the live registry:
+
+| Field | Kind | Meaning |
+|---|---|---|
+| `open` | gauge | PITs holding a slot |
+| `reserved` | gauge | Reservations of creations of unknown result |
+| `deletesPending` | gauge | Deletes not yet confirmed or expired |
+| `created`, `deletesConfirmed`, `deletesExpired`, `deleteRetries` | counters | Registry events |
+| `expired`, `stale` | counters | PITs marked expired; results discarded after it |
+| `refusedFull` | counter | Creations refused by the cap |
+
+They are for the tests; E5 publishes `pit.open`, `pit.delete.pending`, `pit.delete.retries` and `pit.expired`.
+
+### Causes of a PIT
+
+| Situation | `Cause` |
+|---|---|
+| Called from a runtime thread | `Reentrancy` |
+| Invalid index, `keepAlive == 0`, invalid `retry`/`pageDeadline`, invalid cursor or `slice` | `InvalidArgument` |
+| A default-constructed `Pit` or `PitSession` | `InvalidState` |
+| No free slot (`max_open_pits`, reservations included) | `QueueFull` |
+| Missing index on creation (`index_not_found_exception`) | `NotFound` |
+| 2xx without a string `pit_id`; unparsable 2xx; response over the cap | `ItemPermanent` |
+| The PIT expired (404 or 2xx with `search_context_missing_exception`), on the failing call and on every later one | `PitExpired` |
+| Deadline or page deadline expired, no usable node until then | `Unavailable` |
+| `maxAttempts` or `maxDuration` exhausted | `RetryExhausted` |
+| Any other 4xx | `Client4xx` |
+| The client closed, during or before the call | `ClientClosed` |
+| The runtime shut down or drained the PIT | `Shutdown` |
 
 ## Logging
 
@@ -1225,8 +1389,8 @@ C++20-ism in a public header fails there first:
 
 | Suite | Target / ctest label | Covers |
 |---|---|---|
-| Unit | `indexer_client_utest` (`tests/unit/*.cpp`) | Config, key-value source, mocks, fake indexer, the query response classifiers (`queryResponse_test.cpp`, 21 cases), the public library (`VisibilityTest.SetLogFunctionRoutesLogs` covers the log setter) |
-| Component | `indexer_client_component_test` (`tests/component/*.cpp`) | The transport and the fake over real sockets, with the seams; `HealthTest` (probe, states, logs, stop order) and `FakeHealthTest` (the fake's `/_cluster/health` rules); `WriteTest` (the [write path](#write-path-e3a), below); the [queries](#queries-e4a) (`query_test.cpp` 17, `queryByQuery_test.cpp` 2, `queryDomFactor_test.cpp` 1) |
+| Unit | `indexer_client_utest` (`tests/unit/*.cpp`) | Config, key-value source, mocks, fake indexer, the query response classifiers (`queryResponse_test.cpp`, 29 cases), the public library (`VisibilityTest.SetLogFunctionRoutesLogs` covers the log setter) |
+| Component | `indexer_client_component_test` (`tests/component/*.cpp`) | The transport and the fake over real sockets, with the seams; `HealthTest` (probe, states, logs, stop order) and `FakeHealthTest` (the fake's `/_cluster/health` rules); `WriteTest` (the [write path](#write-path-e3a), below); the [queries](#queries-e4a) (`query_test.cpp` 17, `queryByQuery_test.cpp` 2, `queryDomFactor_test.cpp` 1); the [PIT](#point-in-time-e4b) (`pit_test.cpp` 10, `pitRegistry_test.cpp` 6) |
 
 ```bash
 cmake --build $WAZUH_REPO/src/build -j"$(nproc)" --target indexer_client_utest indexer_client_component_test
@@ -1339,7 +1503,7 @@ in the ASAN job.
 
 Layout of `tests/`: `unit/` (config schema, key-value source, mocks, fake indexer), `component/`
 (transport over real sockets), `mocks/` (gmock mocks of the public interfaces), `fake/`
-(in-process fake indexer). `spike/` holds the E0 measurement code and is not part of the targets.
+(in-process fake indexer; `fake/pitResponder.hpp` is the programmable PIT responder of the PIT suites). `spike/` holds the E0 measurement code and is not part of the targets.
 
 ## What is not implemented yet
 
@@ -1348,11 +1512,10 @@ transport [benchmark](#benchmark) (done; the `--path client` benchmark of the wh
 [write path](#write-path-e3a) up to the sink, E3b-1 the [response classifier and retry lane](#response-classification-and-retry-lane-e3b-1),
 E3b-2 the [bulk sender](#bulk-sender-e3b-2), E3c-1 the [per-operation conflict policy](#conflict-policy-e3c-1), `ReplacePreserving` and
 [groups](#groups-e3c-1), and E3c-2 [`ordered` buckets](#ordered-buckets-e3c-2) and [`cancel(tag)`](#cancellation-e3c-2): bulk writes
-reach the indexer, and E4a the [queries](#queries-e4a) (`search`, `searchAfter`, `deleteByQuery`, `updateByQuery`, `indexExists`). Not implemented, by stage:
+reach the indexer, E4a the [queries](#queries-e4a) (`search`, `searchAfter`, `deleteByQuery`, `updateByQuery`, `indexExists`) and E4b the managed [point in time](#point-in-time-e4b). Not implemented, by stage:
 
 | Area | Stage |
 |---|---|
-| PIT: `Pit`, `PitSession`; `pit()` answers `Unavailable` (`PIT not implemented yet (E4b)`) | E4b |
 | AIMD window and pacing (the fixed window of 4 per node is replaced, using the latencies in `SenderStats`), the two-phase `stop()` for the drain up to the shutdown deadline (D43), one pass per completion, D44 (simdjson stage 2 in Release), public metrics (write counters, health metrics, `Retry-After` in passive signals) | E5 |
 | Benchmark of the whole client (`--path client`) | E5 |
 | Metrics beyond the thread layout in `MetricsSnapshot` | E5 |

@@ -67,6 +67,19 @@ namespace indexer_client::detail::query
 
     /// indexExists (HEAD, no body): 2xx ⇒ Ok exists = true; 404 ⇒ Ok exists = false.
     QueryResponse classifyExists(const HttpResult& result);
+
+    /// Type of an expired PIT's search context (pit.hpp EXPIRY, D52).
+    constexpr const char* SEARCH_CONTEXT_MISSING = "search_context_missing_exception";
+
+    /// PIT creation (pit.hpp CREATE, stage E4b). 2xx: capped and parsed as a search, then a non-empty string `pit_id`
+    /// (else Fail ItemPermanent). 404: as classifySearch (index_not_found_exception ⇒ NotFound, I85).
+    QueryResponse classifyPitCreate(const HttpResult& result, std::uint64_t maxResponseBytes);
+
+    /// A search on a PIT (pit.hpp SEARCH and EXPIRY, D52). 404 whose error.type or any error.root_cause[].type is
+    /// SEARCH_CONTEXT_MISSING ⇒ Fail PitExpired; any other 404 as classifySearch. 2xx: capped and parsed; with
+    /// _shards.failed > 0, SEARCH_CONTEXT_MISSING in any _shards.failures[] ⇒ Fail PitExpired and any other failure
+    /// ⇒ Retry (a partial answer is never a page); else Ok. The caller owns the PIT state (expired, stale, pit_id).
+    QueryResponse classifyPitSearch(const HttpResult& result, std::uint64_t maxResponseBytes);
 } // namespace indexer_client::detail::query
 
 #endif // _INDEXER_CLIENT_QUERY_RESPONSE_HPP

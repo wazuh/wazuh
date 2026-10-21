@@ -757,7 +757,7 @@ TEST_F(QueryTest, QueryResponseCap)
 }
 
 // I87: unsafe or missing index names (also "." and "..", which libcurl collapses, and "_all") ⇒ InvalidArgument naming
-// the field, no request; pit() ⇒ Unavailable (E4b).
+// the field, no request; pit() validates its indices the same way (E4b).
 TEST_F(QueryTest, QueryRejectsUnsafeIndex)
 {
     const auto node = fake();
@@ -791,9 +791,9 @@ TEST_F(QueryTest, QueryRejectsUnsafeIndex)
     EXPECT_EQ(emptyUbq.cause, ic::Cause::InvalidArgument);
     EXPECT_EQ(emptyUbq.reason.rfind("indices", 0), 0u) << emptyUbq.reason;
 
-    auto pit = query->pit({"idx"}, {}, fastOptions(), in(5s));
-    EXPECT_EQ(pit.cause, ic::Cause::Unavailable);
-    EXPECT_EQ(pit.reason, q::PIT_NOT_YET);
+    auto pit = query->pit({"a/b"}, {}, fastOptions(), in(5s));
+    EXPECT_EQ(pit.cause, ic::Cause::InvalidArgument);
+    EXPECT_EQ(pit.reason.rfind("indices[0]", 0), 0u) << pit.reason;
 
     EXPECT_EQ(delta(before, q::queryStats()).requests, 0u);
     EXPECT_EQ(queries(*node).size(), 0u);

@@ -36,6 +36,11 @@ namespace indexer_client::detail::write
     struct OpState;
 } // namespace indexer_client::detail::write
 
+namespace indexer_client::detail::query
+{
+    class PitRegistry;
+} // namespace indexer_client::detail::query
+
 namespace indexer_client::detail
 {
     struct RuntimeState;
@@ -62,6 +67,10 @@ namespace indexer_client::detail
     /// The transport of a client's runtime (E4a queries, G-plan obj. 9): null once that runtime is gone or another
     /// epoch runs.
     std::shared_ptr<Transport> runtimeTransport(const std::weak_ptr<RuntimeState>& runtime, std::uint64_t epoch);
+
+    /// The PIT registry of a client's runtime (E4b, I90): null once that runtime is gone or another epoch runs.
+    std::shared_ptr<query::PitRegistry> runtimePitRegistry(const std::weak_ptr<RuntimeState>& runtime,
+                                                           std::uint64_t epoch);
 
     /// One-shot completion shared by every ticket kind: set once, waited on by consumer threads only.
     template<class T>
@@ -157,13 +166,42 @@ namespace indexer_client::detail
         bool stopping {false}; ///< Set once by stopAndJoin(), before the write path stops.
     };
 
-    struct PitState final
+    /// Polymorphic hand-over run when a PitState dies (pit.cpp defines the derived one; its virtual destructor is
+    /// reached through the vtable, so no PitState symbol has to be visible outside the library).
+    struct PitHandoff
     {
-        std::uint64_t generation {0};
+        virtual ~PitHandoff() = default;
     };
 
+    /// A managed PIT (E4b, I93). NORMATIVE contract: query/pit.hpp. Shared by its Pit handles and PitSessions.
+    struct PitState final
+    {
+        std::mutex mutex;  ///< A leaf; guards `id` and `lastUse`.
+        std::string id;    ///< Renewed by a 2xx carrying another pit_id (last arrival wins).
+        TimePoint lastUse; ///< When the end of the last attempt that may have been sent was seen (an upper bound).
+        Duration keepAlive {Duration {0}};
+        std::uint64_t generation {0}; ///< Process-wide counter at creation (never reused).
+        std::atomic<bool> expired {false};
+        std::atomic<bool> drained {false}; ///< The shutdown drain deleted it: the hand-over gives nothing.
+        QueryOptions options;              ///< The pit() options: they govern every page and search.
+        std::vector<std::string> indices;
+        std::shared_ptr<ClientState> client;
+        std::weak_ptr<query::PitRegistry> registry;
+        /// Last member, so destroyed first while the others still hold their values: pit.cpp's hand-over gives
+        /// {id, keepAlive, lastUse} to the registry (I90) unless `drained`.
+        std::unique_ptr<PitHandoff> handoff;
+    };
+
+    /// One cursor (slice) over a PitState (E4b, I93).
     struct CursorState final
     {
+        std::shared_ptr<PitState> pit;
+        CursorQuery query;
+        std::optional<Slice> slice;
+        std::string invalid;        ///< Non-empty: the first next() returns InvalidArgument with this reason.
+        std::mutex mutex;           ///< Serializes next() on this cursor; guards the members below.
+        nlohmann::json searchAfter; ///< The last hit's sort; null before the first page.
+        bool firstPage {true};
         std::atomic<bool> exhausted {false};
     };
 

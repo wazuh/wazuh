@@ -10,7 +10,8 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// E4a 03 §4.16 / I84-I86: the pure query-response classifiers, without network.
+// E4a 03 §4.16 / I84-I86: the pure query-response classifiers, without network; E4b (pit.hpp CREATE, EXPIRY): the
+// PIT creation and PIT search classifiers.
 
 #include <cstdint>
 #include <string>
@@ -27,6 +28,8 @@ namespace
     using indexer_client::detail::HttpResult;
     using indexer_client::detail::query::classifyByQuery;
     using indexer_client::detail::query::classifyExists;
+    using indexer_client::detail::query::classifyPitCreate;
+    using indexer_client::detail::query::classifyPitSearch;
     using indexer_client::detail::query::classifySearch;
     using indexer_client::detail::query::errorReason;
     using indexer_client::detail::query::errorType;
@@ -281,6 +284,123 @@ TEST(QueryResponseTest, UnexpectedStatusIsAFinalFail)
     EXPECT_EQ(classifySearch(http(400, OTHER_404_BODY), MAX_BYTES).cause, Cause::Client4xx);
     EXPECT_EQ(classifyByQuery(http(500), DBQ, MAX_BYTES).cause, Cause::Server5xx);
     EXPECT_EQ(classifyExists(http(0)).verdict, QueryVerdict::Fail);
+}
+
+// ------------------------------------------------------------------------------------------------------- PIT create
+
+TEST(QueryResponseTest, PitCreate2xxWithPitIdIsOk)
+{
+    const auto response = classifyPitCreate(http(200, R"({"pit_id":"pit-1","_shards":{"failed":0}})"), MAX_BYTES);
+    EXPECT_EQ(response.verdict, QueryVerdict::Ok);
+    EXPECT_EQ(response.body.at("pit_id"), "pit-1");
+}
+
+TEST(QueryResponseTest, PitCreate2xxWithoutAUsablePitIdIsItemPermanent)
+{
+    for (const char* body :
+         {R"({"_shards":{"failed":0}})", R"({"pit_id":""})", R"({"pit_id":7})", R"({"pit_id":null})"})
+    {
+        const auto response = classifyPitCreate(http(200, body), MAX_BYTES);
+        EXPECT_EQ(response.verdict, QueryVerdict::Fail) << body;
+        EXPECT_EQ(response.cause, Cause::ItemPermanent) << body;
+        EXPECT_EQ(response.httpStatus, 200) << body;
+        EXPECT_NE(response.reason.find("response without pit_id"), std::string::npos) << response.reason;
+    }
+    EXPECT_EQ(classifyPitCreate(http(200, "{truncated"), MAX_BYTES).cause, Cause::ItemPermanent);
+}
+
+TEST(QueryResponseTest, PitCreate404IsNotFoundOnlyForAMissingIndex)
+{
+    const auto missing = classifyPitCreate(http(404, NOT_FOUND_BODY), MAX_BYTES);
+    EXPECT_EQ(missing.verdict, QueryVerdict::Fail);
+    EXPECT_EQ(missing.cause, Cause::NotFound);
+    EXPECT_EQ(missing.reason.rfind("404 index_not_found_exception: ", 0), 0U) << missing.reason;
+    for (const char* body : {OTHER_404_BODY, ""})
+    {
+        const auto other = classifyPitCreate(http(404, body), MAX_BYTES);
+        EXPECT_EQ(other.verdict, QueryVerdict::Fail) << body;
+        EXPECT_EQ(other.cause, Cause::Client4xx) << body;
+    }
+}
+
+// ------------------------------------------------------------------------------------------------------- PIT search
+
+TEST(QueryResponseTest, PitSearch404ContextMissingIsPitExpired)
+{
+    const char* direct =
+        R"({"error":{"type":"search_context_missing_exception","reason":"No search context"},"status":404})";
+    const char* inRootCause =
+        R"({"error":{"root_cause":[{"type":"other_exception"},)"
+        R"({"type":"search_context_missing_exception","reason":"No search context"}],)"
+        R"("type":"search_phase_execution_exception","reason":"all shards failed"},"status":404})";
+    for (const char* body : {direct, inRootCause})
+    {
+        const auto response = classifyPitSearch(http(404, body), MAX_BYTES);
+        EXPECT_EQ(response.verdict, QueryVerdict::Fail) << body;
+        EXPECT_EQ(response.cause, Cause::PitExpired) << body;
+        EXPECT_EQ(response.httpStatus, 404) << body;
+    }
+}
+
+TEST(QueryResponseTest, PitSearch404OfAnotherTypeIsNotAnExpiry)
+{
+    for (const char* body : {OTHER_404_BODY, "", "<html>not found</html>"})
+    {
+        const auto response = classifyPitSearch(http(404, body), MAX_BYTES);
+        EXPECT_EQ(response.verdict, QueryVerdict::Fail) << body;
+        EXPECT_EQ(response.cause, Cause::Client4xx) << body;
+    }
+    EXPECT_EQ(classifyPitSearch(http(404, NOT_FOUND_BODY), MAX_BYTES).cause, Cause::NotFound);
+}
+
+TEST(QueryResponseTest, PitSearch2xxShardFailureOfTheContextIsPitExpired)
+{
+    // The type in the failure's reason, in its cause, and in the caused_by of either.
+    const std::string failures[] = {
+        R"({"shard":0,"reason":{"type":"search_context_missing_exception","reason":"No search context"}})",
+        R"({"shard":0,"cause":{"type":"search_context_missing_exception"}})",
+        R"({"shard":0,"cause":{"type":"query_shard_exception",)"
+        R"("caused_by":{"type":"search_context_missing_exception"}}})",
+        R"({"shard":0,"reason":{"type":"x","caused_by":{"type":"search_context_missing_exception"}}})"};
+    for (const auto& failure : failures)
+    {
+        const auto body = R"({"hits":{"hits":[]},"_shards":{"total":2,"failed":1,"failures":[{"shard":1,)"
+                          R"("reason":{"type":"illegal_argument_exception"}},)" +
+                          failure + "]}}";
+        const auto response = classifyPitSearch(http(200, body), MAX_BYTES);
+        EXPECT_EQ(response.verdict, QueryVerdict::Fail) << body;
+        EXPECT_EQ(response.cause, Cause::PitExpired) << body;
+    }
+}
+
+TEST(QueryResponseTest, PitSearch2xxOtherShardFailureIsRetry)
+{
+    const auto response =
+        classifyPitSearch(http(200,
+                               R"({"hits":{"hits":[]},"_shards":{"total":2,"failed":1,"failures":[{"shard":0,)"
+                               R"("reason":{"type":"illegal_argument_exception","reason":"bad"}}]}})"),
+                          MAX_BYTES);
+    EXPECT_EQ(response.verdict, QueryVerdict::Retry);
+    EXPECT_EQ(response.httpStatus, 200);
+    EXPECT_NE(response.reason.find("illegal_argument_exception"), std::string::npos) << response.reason;
+
+    const auto noFailures =
+        classifyPitSearch(http(200, R"({"hits":{"hits":[]},"_shards":{"total":2,"failed":1}})"), MAX_BYTES);
+    EXPECT_EQ(noFailures.verdict, QueryVerdict::Retry);
+    EXPECT_NE(noFailures.reason.find("shard failure"), std::string::npos) << noFailures.reason;
+}
+
+TEST(QueryResponseTest, PitSearch2xxWithoutShardFailuresIsOk)
+{
+    for (const char* body : {R"({"hits":{"hits":[]}})",
+                             R"({"hits":{"hits":[]},"_shards":"weird"})",
+                             R"({"hits":{"hits":[]},"_shards":{"total":2,"failed":0}})",
+                             R"({"pit_id":"pit-2","hits":{"hits":[]},"_shards":{"failed":0,"failures":[]}})"})
+    {
+        const auto response = classifyPitSearch(http(200, body), MAX_BYTES);
+        EXPECT_EQ(response.verdict, QueryVerdict::Ok) << body;
+    }
+    EXPECT_EQ(classifyPitSearch(http(200, "{truncated"), MAX_BYTES).cause, Cause::ItemPermanent);
 }
 
 // ------------------------------------------------------------------------------------------------ errorType / reason

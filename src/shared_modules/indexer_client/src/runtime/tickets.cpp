@@ -17,12 +17,20 @@
 #include "runtime/runtimeInternal.hpp"
 #include "write/group.hpp"
 
+namespace indexer_client::detail::query
+{
+    // The managed PIT (pit.cpp; contract query/pit.hpp).
+    std::shared_ptr<CursorState>
+    openCursor(std::shared_ptr<PitState> pit, CursorQuery query, std::optional<Slice> slice);
+    Outcome<PitPage> cursorNext(const std::shared_ptr<CursorState>& cursor, Deadline deadline);
+    Outcome<nlohmann::json>
+    pitSearch(const std::shared_ptr<PitState>& pit, const nlohmann::json& body, Deadline deadline);
+} // namespace indexer_client::detail::query
+
 namespace indexer_client
 {
     namespace
     {
-        constexpr const char* E1_UNAVAILABLE = "data path not implemented yet (E3b/E4)";
-
         template<class T, class State>
         Outcome<T> waitOn(const std::shared_ptr<State>& state, Deadline deadline)
         {
@@ -136,7 +144,7 @@ namespace indexer_client
     {
     }
 
-    Outcome<PitPage> PitSession::next(Deadline /*deadline*/)
+    Outcome<PitPage> PitSession::next(Deadline deadline)
     {
         if (detail::testing::onRuntimeThread())
         {
@@ -146,7 +154,7 @@ namespace indexer_client
         {
             return Outcome<PitPage>::failure(Cause::InvalidState, "empty cursor");
         }
-        return Outcome<PitPage>::failure(Cause::Unavailable, E1_UNAVAILABLE);
+        return detail::query::cursorNext(m_state, deadline);
     }
 
     bool PitSession::exhausted() const
@@ -159,18 +167,19 @@ namespace indexer_client
     {
     }
 
-    PitSession Pit::cursor(CursorQuery /*query*/, std::optional<Slice> /*slice*/)
+    PitSession Pit::cursor(CursorQuery query, std::optional<Slice> slice)
     {
-        return PitSession(std::make_shared<detail::CursorState>());
+        // Validated here, reported by the first next() (InvalidArgument, pit.hpp SEARCH).
+        return PitSession(detail::query::openCursor(m_state, std::move(query), slice));
     }
 
-    Outcome<nlohmann::json> Pit::search(const nlohmann::json& /*body*/, Deadline /*deadline*/)
+    Outcome<nlohmann::json> Pit::search(const nlohmann::json& body, Deadline deadline)
     {
         if (detail::testing::onRuntimeThread())
         {
             return Outcome<nlohmann::json>::failure(Cause::Reentrancy, "search() called from a runtime thread");
         }
-        return Outcome<nlohmann::json>::failure(Cause::Unavailable, E1_UNAVAILABLE);
+        return detail::query::pitSearch(m_state, body, deadline);
     }
 
     std::uint64_t Pit::generation() const

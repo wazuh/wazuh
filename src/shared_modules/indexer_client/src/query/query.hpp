@@ -71,17 +71,15 @@
 //                         Ok({}); any other 404 ⇒ Client4xx.
 //   updateByQuery(is, q)  POST /<i1,i2>/_update_by_query?conflicts=proceed; body q. 404 index_not_found ⇒ NotFound.
 //   indexExists(i)        HEAD /<i>; 200 ⇒ true, 404 ⇒ false, the rest by I82 (I83). Never false on an outage.
-//   pit(...)              Unavailable "PIT not implemented yet (E4b)".
+//   pit(...)              the managed PIT of pit.hpp (E4b), on execute() (engine.hpp).
 //
 // STATS. queryStats() counts requests, failovers, throttles, Unavailable results, responses the classifier refused
 // for size (QueryResponse::tooLarge) and conflict retries: process-wide since process start, never reset (they survive
 // shutdown() + start()); E5 publishes them and decides whether they reset per runtime (D48/D50).
 //
-// E4b (D51). (1) PIT reuses execute(), RouteSpec and Classifier, today in query.cpp's anonymous namespace: move them
-// to a header. target("", route, params) already omits the index segment (POST /_search, DELETE
-// /_search/point_in_time). (2) The classifier only sees a 2xx or a 404: the PIT classifier must intercept the 404
-// search_context_missing_exception of an expired PIT ⇒ PitExpired (otherwise it is Fail Client4xx). (3) A DELETE with
-// a body (PIT delete): verify that curlLoop.cpp sends CUSTOMREQUEST DELETE together with POSTFIELDS.
+// E4b (D51, done): execute(), RouteSpec, Classifier and target() live in engine.hpp; the PIT classifier
+// (queryResponse.hpp) turns search_context_missing_exception into PitExpired; DELETE with a body is covered by
+// transportConnections_test.
 
 #include <chrono>
 #include <cstdint>
@@ -116,9 +114,6 @@ namespace indexer_client::detail::query
 
     /// Body bytes quoted in a 4xx reason.
     constexpr std::size_t REASON_BODY_BYTES = 256;
-
-    /// Text of the E4a pit() answer (the verificar.sh stub grep looks for it).
-    constexpr const char* PIT_NOT_YET = "PIT not implemented yet (E4b)";
 
     struct QueryStats final
     {

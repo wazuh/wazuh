@@ -285,6 +285,8 @@ namespace indexer_client
         std::uint64_t generation {0};
         nlohmann::json hits = nlohmann::json::array();
         bool last {false};
+        /// hits.total.value of the cursor's first page (track_total_hits); empty on the following pages (I92).
+        std::optional<std::uint64_t> total;
     };
 
     /// Indexer credentials (I42, I55): read by each process from its keystore and handed over through

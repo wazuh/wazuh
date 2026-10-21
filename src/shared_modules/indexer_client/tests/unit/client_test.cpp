@@ -200,8 +200,10 @@ TEST_F(ClientTest, GroupCommitTwiceIsInvalidState)
     EXPECT_EQ(group.commit().wait(soon()).cause, Cause::InvalidState);
 }
 
-TEST_F(ClientTest, PitStubs)
+TEST_F(ClientTest, EmptyPitHandles)
 {
+    // E4b: no node ever answers, so pit() ends Unavailable; the empty Pit it carries (and one built over a state
+    // that was never created) answers InvalidState, never touching the network.
     auto query = m_client->query();
     ASSERT_NE(query, nullptr);
     auto fromStub = query->pit({"idx"}, PitOptions {}, QueryOptions {}, soon());
@@ -211,11 +213,11 @@ TEST_F(ClientTest, PitStubs)
     for (Pit* pit : {&fromStub.value, &withState})
     {
         EXPECT_EQ(pit->generation(), 0u);
-        EXPECT_EQ(pit->search(nlohmann::json::object(), soon()).cause, Cause::Unavailable);
+        EXPECT_EQ(pit->search(nlohmann::json::object(), soon()).cause, Cause::InvalidState);
 
         auto cursor = pit->cursor(CursorQuery {});
         EXPECT_FALSE(cursor.exhausted()) << "a fresh cursor is not exhausted";
-        EXPECT_EQ(cursor.next(soon()).cause, Cause::Unavailable);
+        EXPECT_EQ(cursor.next(soon()).cause, Cause::InvalidState);
 
         std::promise<std::tuple<Cause, Cause>> result;
         ASSERT_TRUE(detail::testing::postToPool(

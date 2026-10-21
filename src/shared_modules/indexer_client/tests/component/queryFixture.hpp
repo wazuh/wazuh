@@ -35,6 +35,8 @@
 #include "healthRules.hpp"
 #include "indexer_client/runtime.hpp"
 #include "json.hpp"
+#include "pitResponder.hpp"
+#include "query/pit.hpp"
 #include "query/query.hpp"
 #include "testing/hooks.hpp"
 
@@ -272,6 +274,112 @@ protected:
 
     indexer_client::RuntimeRef m_ref;
     std::vector<std::shared_ptr<query_component::FakeIndexer>> m_fakes;
+};
+
+namespace query_component
+{
+    using indexer_client::testing::PitCall;
+    using indexer_client::testing::PitRequestView;
+    using indexer_client::testing::PitResponder;
+
+    /// pitStats() counters of `after` minus `before`; the gauges (open, reserved, deletesPending) are `after`'s.
+    inline q::PitStats pitDelta(const q::PitStats& before, const q::PitStats& after)
+    {
+        q::PitStats d = after;
+        d.created = after.created - before.created;
+        d.deletesConfirmed = after.deletesConfirmed - before.deletesConfirmed;
+        d.deletesExpired = after.deletesExpired - before.deletesExpired;
+        d.deleteRetries = after.deleteRetries - before.deleteRetries;
+        d.expired = after.expired - before.expired;
+        d.stale = after.stale - before.stale;
+        d.refusedFull = after.refusedFull - before.refusedFull;
+        return d;
+    }
+
+    inline std::vector<RecordedRequest> pitSearches(const FakeIndexer& node)
+    {
+        std::vector<RecordedRequest> out;
+        for (auto& request : node.requests())
+        {
+            if (request.method == "POST" && request.path == "/_search")
+            {
+                out.push_back(std::move(request));
+            }
+        }
+        return out;
+    }
+
+    inline std::vector<RecordedRequest> pitDeletes(const FakeIndexer& node)
+    {
+        std::vector<RecordedRequest> out;
+        for (auto& request : node.requests())
+        {
+            if (request.method == "DELETE" && request.path == "/_search/point_in_time")
+            {
+                out.push_back(std::move(request));
+            }
+        }
+        return out;
+    }
+
+    inline std::vector<RecordedRequest> pitCreates(const FakeIndexer& node)
+    {
+        std::vector<RecordedRequest> out;
+        for (auto& request : node.requests())
+        {
+            static const std::string suffix = "/_search/point_in_time";
+            if (request.method == "POST" && request.path.size() > suffix.size() &&
+                request.path.compare(request.path.size() - suffix.size(), suffix.size(), suffix) == 0)
+            {
+                out.push_back(std::move(request));
+            }
+        }
+        return out;
+    }
+
+    /// A cursor query: match_all, `pageSize` hits per page, the default sort (_shard_doc).
+    inline ic::CursorQuery cursorQuery(std::uint32_t pageSize)
+    {
+        ic::CursorQuery query;
+        query.query = {{"match_all", nlohmann::json::object()}};
+        query.pageSize = pageSize;
+        return query;
+    }
+
+    inline ic::PitOptions keepAlive(std::chrono::milliseconds span)
+    {
+        ic::PitOptions options;
+        options.keepAlive = ic::Duration {span.count()};
+        return options;
+    }
+
+    /// The document numbers (`_source.n`) of a page.
+    inline std::vector<std::int64_t> numbers(const ic::PitPage& page)
+    {
+        std::vector<std::int64_t> out;
+        for (const auto& h : page.hits)
+        {
+            out.push_back(h.at("_source").at("n").get<std::int64_t>());
+        }
+        return out;
+    }
+} // namespace query_component
+
+/// The PIT suites (plan-E4b §Tests): QueryTest plus a fake whose PIT endpoints are a shared PitResponder.
+class PitTest : public QueryTest
+{
+protected:
+    /// A fake answering the health probe, then `before` (scripted ahead of the PIT), then the responder's PIT rules.
+    std::shared_ptr<query_component::FakeIndexer> pitFake(const std::shared_ptr<query_component::PitResponder>& pits,
+                                                          std::vector<query_component::Rule> before = {})
+    {
+        auto all = std::move(before);
+        for (auto& r : pits->rules())
+        {
+            all.push_back(std::move(r));
+        }
+        return fake(std::move(all));
+    }
 };
 
 #endif // _INDEXER_CLIENT_TESTS_COMPONENT_QUERY_FIXTURE_HPP

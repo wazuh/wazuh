@@ -31,9 +31,11 @@
 #include <asio/executor_work_guard.hpp>
 #include <asio/io_context.hpp>
 #include <asio/post.hpp>
+#include <asio/steady_timer.hpp>
 
 #include "health/nodeSet.hpp"
 #include "health/prober.hpp"
+#include "query/pit.hpp"
 #include "runtime/runtimeInternal.hpp"
 #include "transport/seams.hpp"
 #include "transport/transport.hpp"
@@ -255,6 +257,85 @@ namespace indexer_client
             std::vector<std::thread> m_threads;
         };
 
+        /// The PIT registry's timers (E4b, I93): one steady_timer per after() on loop 0, all cancelled by stop(),
+        /// which runs before the loops' work guards are released (a pending wait would keep a loop running).
+        class LoopTimers final : public std::enable_shared_from_this<LoopTimers>
+        {
+        public:
+            explicit LoopTimers(asio::io_context& loop)
+                : m_loop(loop)
+            {
+            }
+
+            /// Any thread: runs `task` on the loop once `delay` has passed; false once stopped.
+            bool after(Duration delay, std::function<void()> task)
+            {
+                std::lock_guard<std::mutex> lock(m_mutex);
+                if (m_stopped)
+                {
+                    return false;
+                }
+                asio::post(m_loop,
+                           [self = shared_from_this(), delay, task = std::move(task)]() mutable
+                           {
+                               std::shared_ptr<asio::steady_timer> timer;
+                               {
+                                   std::lock_guard<std::mutex> lock(self->m_mutex);
+                                   if (self->m_stopped)
+                                   {
+                                       return;
+                                   }
+                                   timer = std::make_shared<asio::steady_timer>(self->m_loop, delay);
+                                   self->m_timers.insert(timer);
+                               }
+                               timer->async_wait(
+                                   [self, timer, task = std::move(task)](const std::error_code& error)
+                                   {
+                                       {
+                                           std::lock_guard<std::mutex> lock(self->m_mutex);
+                                           self->m_timers.erase(timer);
+                                           if (error || self->m_stopped)
+                                           {
+                                               return;
+                                           }
+                                       }
+                                       task();
+                                   });
+                           });
+                return true;
+            }
+
+            /// Idempotent: no timer is armed afterwards; the pending ones are cancelled on the loop.
+            void stop()
+            {
+                std::lock_guard<std::mutex> lock(m_mutex);
+                if (m_stopped)
+                {
+                    return;
+                }
+                m_stopped = true;
+                asio::post(m_loop,
+                           [self = shared_from_this()]()
+                           {
+                               std::set<std::shared_ptr<asio::steady_timer>> timers;
+                               {
+                                   std::lock_guard<std::mutex> lock(self->m_mutex);
+                                   timers.swap(self->m_timers);
+                               }
+                               for (const auto& timer : timers)
+                               {
+                                   timer->cancel();
+                               }
+                           });
+            }
+
+        private:
+            asio::io_context& m_loop;
+            std::mutex m_mutex; ///< A leaf; guards the members below.
+            bool m_stopped {false};
+            std::set<std::shared_ptr<asio::steady_timer>> m_timers;
+        };
+
         struct RuntimeState final
         {
             RuntimeState() = default;
@@ -293,6 +374,10 @@ namespace indexer_client
             std::shared_ptr<write::WritePath> writePath;
             /// E4a (I87): the gate every query of this runtime waits on; stopAndJoin() wakes it first.
             std::shared_ptr<QueryGate> queryGate = std::make_shared<QueryGate>();
+            /// E4b (I90, I93): the PIT registry, created after the transport and the NodeSet, drained by stopAndJoin
+            /// after the write path and before the transport; its timers live on loop 0 and stop after the drain.
+            std::shared_ptr<LoopTimers> pitTimers;
+            std::shared_ptr<query::PitRegistry> pits;
 
             bool sameEpoch(std::uint64_t other) const
             {
@@ -305,7 +390,9 @@ namespace indexer_client
             /// no probe submitted afterwards, I57), stop the transport (every transfer
             /// resolved, every multi cleaned up on its loop), release the work guards and join the loops, then drain
             /// and join the CPU pool. Never holds `mutex` while joining: a task may still need it (client registry,
-            /// seams). The transport's deadline is the shutdown deadline, else now + drain.
+            /// seams). The deadline (fixed here) is the shutdown deadline, else now + drain; the PIT drain (E4b, I93)
+            /// runs after the write path and ends min(DRAIN_STOP_MARGIN, half of what is left) before it, then the
+            /// transport stops.
             void stopAndJoin()
             {
                 std::optional<TimePoint> deadline;
@@ -314,6 +401,7 @@ namespace indexer_client
                     accepting = false;
                     deadline = shutdownDeadline;
                 }
+                const auto stopDeadline = deadline.value_or(std::chrono::steady_clock::now() + config.drain);
                 {
                     // Queries waiting for a backoff or a node return Shutdown; one waiting for its result is resolved
                     // by transport->stop() below.
@@ -325,13 +413,25 @@ namespace indexer_client
                 {
                     writePath->stop();
                 }
+                if (pits)
+                {
+                    // The margin is DRAIN_STOP_MARGIN, or half of what is left when that is shorter: a short deadline
+                    // still sends the deletes (pit.hpp SHUTDOWN).
+                    const auto left = std::chrono::duration_cast<Duration>(
+                        std::max(stopDeadline - std::chrono::steady_clock::now(), TimePoint::duration::zero()));
+                    pits->drain(stopDeadline - std::min(query::DRAIN_STOP_MARGIN, left / 2));
+                }
+                if (pitTimers)
+                {
+                    pitTimers->stop();
+                }
                 if (prober)
                 {
                     prober->stop();
                 }
                 if (transport)
                 {
-                    transport->stop(deadline.value_or(std::chrono::steady_clock::now() + config.drain));
+                    transport->stop(stopDeadline);
                 }
                 for (auto& loop : loops)
                 {
@@ -729,6 +829,23 @@ namespace indexer_client
                 state->config, std::move(tls.value), std::move(credentials), std::move(environment));
             // Node health (I57): created after the transport, stopped before it (stopAndJoin).
             state->nodes = std::make_shared<detail::NodeSet>(state->config.hosts);
+            // The PIT registry (E4b, I90): after the transport and the NodeSet; its retries run on loop 0 timers.
+            state->pitTimers = std::make_shared<detail::LoopTimers>(state->loops.front()->context);
+            {
+                detail::query::PitRegistryEnvironment pitEnvironment;
+                pitEnvironment.maxOpenPits = state->config.maxOpenPits;
+                pitEnvironment.requestTimeout = state->config.requestTimeout;
+                pitEnvironment.probeInterval = state->config.probeInterval;
+                pitEnvironment.transport = state->transport;
+                pitEnvironment.nodes = state->nodes;
+                pitEnvironment.after = [timers = std::weak_ptr<detail::LoopTimers>(state->pitTimers)](
+                                           Duration delay, std::function<void()> task)
+                {
+                    auto alive = timers.lock();
+                    return alive && alive->after(delay, std::move(task));
+                };
+                state->pits = detail::query::makePitRegistry(std::move(pitEnvironment));
+            }
             state->prober = detail::Prober::create(state->nodes,
                                                    state->transport,
                                                    state->loops.front()->context,
@@ -888,6 +1005,13 @@ namespace indexer_client
         {
             auto state = runtime.lock();
             return (state && state->sameEpoch(epoch)) ? state->transport : nullptr;
+        }
+
+        std::shared_ptr<query::PitRegistry> runtimePitRegistry(const std::weak_ptr<RuntimeState>& runtime,
+                                                               std::uint64_t epoch)
+        {
+            auto state = runtime.lock();
+            return (state && state->sameEpoch(epoch)) ? state->pits : nullptr;
         }
     } // namespace detail
 
