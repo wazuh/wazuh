@@ -401,3 +401,143 @@ TEST(ContainerEventStaging, EveryStagedPathIsServedExactlyOnceUnderContention)
     EXPECT_EQ(staging.stats().path_overflows, 0u);
     EXPECT_EQ(staging.pendingContainers(), 0u);
 }
+
+/* --- lifecycle work --------------------------------------------------------
+ *
+ * A removal and the periodic floor are reconciliation, not collection: they
+ * delete rows rather than read files. They share the staging buffer so that
+ * every database mutation still happens on the consumer thread, and so the
+ * release gate covers them for free.
+ */
+
+TEST(ContainerEventStaging, AGoneContainerIsServedAsLifecycleWork)
+{
+    ContainerEventStaging staging(1024, 128);
+    staging.release();
+
+    staging.onGone("c1");
+
+    Batch batch;
+    ASSERT_TRUE(staging.nextBatch(batch, kNoWait));
+    EXPECT_EQ("c1", batch.container_id);
+    EXPECT_EQ(Batch::Lifecycle::containerGone, batch.lifecycle);
+    EXPECT_FALSE(batch.suspect) << "a removal must never be served as a walk";
+    EXPECT_TRUE(batch.paths.empty());
+    EXPECT_TRUE(batch.unlinked.empty());
+
+    EXPECT_FALSE(staging.nextBatch(batch, kNoWait)) << "served more than once";
+}
+
+TEST(ContainerEventStaging, ARemovalSupersedesEverythingStagedForThatContainer)
+{
+    // Reading or walking a container the runtime has already removed is work
+    // that cannot succeed: the re-read finds nothing and the walk returns 0
+    // because the connector no longer lists it. The sweep removes the very rows
+    // all of it describes, so it replaces them rather than queueing behind.
+    ContainerEventStaging staging(1024, 128);
+    staging.release();
+
+    staging.onEvent("c1", "/data/a");
+    staging.onEvent("c1", "/data/b");
+    staging.onUnlink("c1", "/data/c");
+    staging.onDrops("c1");
+
+    staging.onGone("c1");
+
+    const auto batches = drainAll(staging);
+    ASSERT_EQ(1u, batches.size()) << "stale work for a removed container was still served";
+    EXPECT_EQ(Batch::Lifecycle::containerGone, batches[0].lifecycle);
+    EXPECT_EQ("c1", batches[0].container_id);
+}
+
+TEST(ContainerEventStaging, ARemovalLeavesOtherContainersAlone)
+{
+    ContainerEventStaging staging(1024, 128);
+    staging.release();
+
+    staging.onEvent("keep", "/data/a");
+    staging.onGone("drop");
+
+    const auto batches = drainAll(staging);
+    ASSERT_EQ(2u, batches.size());
+
+    bool saw_gone = false;
+    bool saw_paths = false;
+
+    for (const auto& batch : batches)
+    {
+        if (batch.lifecycle == Batch::Lifecycle::containerGone)
+        {
+            saw_gone = true;
+            EXPECT_EQ("drop", batch.container_id);
+        }
+        else
+        {
+            saw_paths = true;
+            EXPECT_EQ("keep", batch.container_id);
+            EXPECT_EQ(1u, batch.paths.size());
+        }
+    }
+
+    EXPECT_TRUE(saw_gone);
+    EXPECT_TRUE(saw_paths) << "an unrelated container's work was dropped by a removal";
+}
+
+TEST(ContainerEventStaging, ASweepRequestIsServedOnceAndCarriesNoContainer)
+{
+    ContainerEventStaging staging(1024, 128);
+    staging.release();
+
+    // Idempotent: several requests before the consumer gets to it collapse into
+    // the one pass they would each have performed.
+    staging.requestSweep();
+    staging.requestSweep();
+    staging.requestSweep();
+
+    Batch batch;
+    ASSERT_TRUE(staging.nextBatch(batch, kNoWait));
+    EXPECT_EQ(Batch::Lifecycle::sweepAbsent, batch.lifecycle);
+    EXPECT_TRUE(batch.container_id.empty()) << "the floor reconciles the whole node, not one container";
+    EXPECT_FALSE(batch.suspect);
+
+    EXPECT_FALSE(staging.nextBatch(batch, kNoWait)) << "the floor was served more than once per request";
+}
+
+TEST(ContainerEventStaging, TheFloorIsNotStarvedByUnendingPathWork)
+{
+    // The floor recovers removals no notification carried, so the situation it
+    // exists for is one where something else is already wrong. A node whose
+    // staged paths never drain must not be able to hold it off indefinitely.
+    ContainerEventStaging staging(1024, 128);
+    staging.release();
+
+    for (int i = 0; i < 64; ++i)
+    {
+        staging.onEvent("busy", "/data/f" + std::to_string(i));
+    }
+
+    staging.requestSweep();
+
+    Batch batch;
+    ASSERT_TRUE(staging.nextBatch(batch, kShortWait));
+    EXPECT_EQ(Batch::Lifecycle::sweepAbsent, batch.lifecycle)
+        << "path work was served ahead of the reconciliation floor";
+}
+
+TEST(ContainerEventStaging, LifecycleWorkIsHeldUntilRelease)
+{
+    // Same gate as everything else: a removal arriving while the startup
+    // baseline still holds an open transaction is queued, not dropped.
+    ContainerEventStaging staging(1024, 128);
+
+    staging.onGone("c1");
+    staging.requestSweep();
+
+    Batch batch;
+    EXPECT_FALSE(staging.nextBatch(batch, kShortWait)) << "lifecycle work ran during the baseline";
+
+    staging.release();
+
+    const auto batches = drainAll(staging);
+    ASSERT_EQ(2u, batches.size()) << "lifecycle work raised before release() was lost";
+}

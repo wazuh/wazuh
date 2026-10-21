@@ -101,7 +101,7 @@ std::string RowJson(const char* containerId, const char* path)
     char buffer[1024];
     std::snprintf(buffer,
                   sizeof(buffer),
-                  "{\"path\":\"%s\",\"container_id\":\"%s\",\"container_json\":\"\",\"mode\":0,"
+                  "{\"path\":\"%s\",\"container_id\":\"%s\",\"mode\":0,"
                   "\"size\":1,\"permissions\":\"0644\",\"uid\":\"0\",\"gid\":\"0\",\"owner\":\"root\","
                   "\"group\":\"root\",\"inode\":1,\"device\":1,\"mtime\":1,\"hash_md5\":\"\","
                   "\"hash_sha1\":\"\",\"hash_sha256\":\"\",\"checksum\":\"cs\",\"version\":1}",
@@ -117,7 +117,7 @@ std::string ChangedRowJson(const char* containerId, const char* path)
     char buffer[1024];
     std::snprintf(buffer,
                   sizeof(buffer),
-                  "{\"path\":\"%s\",\"container_id\":\"%s\",\"container_json\":\"\",\"mode\":0,"
+                  "{\"path\":\"%s\",\"container_id\":\"%s\",\"mode\":0,"
                   "\"size\":99,\"permissions\":\"0644\",\"uid\":\"0\",\"gid\":\"0\",\"owner\":\"root\","
                   "\"group\":\"root\",\"inode\":1,\"device\":1,\"mtime\":2,\"hash_md5\":\"\","
                   "\"hash_sha1\":\"\",\"hash_sha256\":\"\",\"checksum\":\"cs-changed\",\"version\":1}",
@@ -142,6 +142,43 @@ void SyncPaths(TXN_HANDLE txn, const char* containerId, int first, int last)
         std::snprintf(path, sizeof(path), "/etc/a%d", i);
         fim_db_transaction_sync_row_json(txn, "file_entry", RowJson(containerId, path).c_str());
     }
+}
+
+/* Case 8 needs to know what the context looked like AT THE MOMENT each DELETE
+ * callback ran, not afterwards, so it is read from inside the callback. */
+std::string g_context_container;
+int g_context_seen_during_delete = 0;
+int g_context_missing_during_delete = 0;
+
+void DeleteWatchingCallback(ReturnTypeCallback type, const cJSON* payload, void* user)
+{
+    RowCallback(type, payload, user);
+
+    if (type == DELETED)
+    {
+        cJSON* ctx = fim_db_get_container_context(g_context_container.c_str());
+
+        if (ctx != nullptr)
+        {
+            ++g_context_seen_during_delete;
+            cJSON_Delete(ctx);
+        }
+        else
+        {
+            ++g_context_missing_during_delete;
+        }
+    }
+}
+
+/* What the sweep does to one container, in the order container_baseline_fim.cpp
+ * does it (SweepOneContainer): rows and their DELETE events first, the context
+ * only once those have been served. */
+void SweepOneContainer(const char* containerId, callback_txn_t callback)
+{
+    const auto scope = TxnScope(containerId);
+    TXN_HANDLE txn = fim_db_transaction_start(scope.c_str(), callback, nullptr);
+    fim_db_transaction_deleted_rows(txn, callback, nullptr);
+    fim_db_delete_container_context(containerId);
 }
 
 bool Check(const char* name, bool condition, const char* detail)
@@ -309,6 +346,114 @@ int main()
 
         std::snprintf(detail, sizeof(detail), "INSERTED=%d (want 0)", g_inserted);
         ok &= Check("direct upsert leaves untouched rows in place", g_inserted == 0, detail);
+    }
+
+    /* 8. D23's ordering, as an assertion rather than a comment. A container's
+     *    DELETE events are built from its stored context, so the context has
+     *    to outlive them: SweepOneContainer() deletes the rows, lets their
+     *    callbacks run, and only then drops the context. Reversing those two
+     *    lines produces deletes that cannot say what they refer to, and
+     *    nothing else in the tree would notice. */
+    {
+        ResetCounters();
+        g_context_container = "cid-sweep";
+        g_context_seen_during_delete = 0;
+        g_context_missing_during_delete = 0;
+
+        const auto scope = TxnScope("cid-sweep");
+        TXN_HANDLE txn = fim_db_transaction_start(scope.c_str(), RowCallback, nullptr);
+        SyncPaths(txn, "cid-sweep", 0, 4);
+        fim_db_transaction_close(txn);
+        fim_db_set_container_context("cid-sweep", "{\"container\":{\"id\":\"cid-sweep\"}}");
+
+        ResetCounters();
+        SweepOneContainer("cid-sweep", DeleteWatchingCallback);
+
+        std::snprintf(detail,
+                      sizeof(detail),
+                      "DELETED=%d with context=%d without=%d",
+                      g_deleted,
+                      g_context_seen_during_delete,
+                      g_context_missing_during_delete);
+        ok &= Check("the context outlives the deletes built from it",
+                    g_deleted == 4 && g_context_seen_during_delete == 4 && g_context_missing_during_delete == 0,
+                    detail);
+
+        cJSON* after = fim_db_get_container_context("cid-sweep");
+        std::snprintf(detail, sizeof(detail), "context after sweep=%s", after == nullptr ? "gone" : "present");
+        ok &= Check("... and is gone once they have been served", after == nullptr, detail);
+        cJSON_Delete(after);
+    }
+
+    /* 9. Sweeping the same container again is a no-op. The removal hook and
+     *    the periodic floor can both reach the same container -- a removal
+     *    notification arriving just before a scheduled pass is the ordinary
+     *    case, not a rare race -- so the second one must produce no events and
+     *    no error rather than a second round of DELETEs. */
+    {
+        ResetCounters();
+        SweepOneContainer("cid-sweep", RowCallback);
+
+        std::snprintf(detail,
+                      sizeof(detail),
+                      "DELETED=%d INSERTED=%d MODIFIED=%d (want 0/0/0)",
+                      g_deleted,
+                      g_inserted,
+                      g_modified);
+        ok &= Check("sweeping an already swept container does nothing",
+                    g_deleted == 0 && g_inserted == 0 && g_modified == 0 && g_unexpected == 0,
+                    detail);
+    }
+
+    /* 10. D11 rule 2: a single-container sweep has no authoritative view of
+     *     what else exists, so it may not touch anything outside its own
+     *     scope. The per-container path deliberately does not prune. */
+    {
+        ResetCounters();
+        fim_db_set_container_context("cid-keep", "{\"container\":{\"id\":\"cid-keep\"}}");
+        fim_db_set_container_context("cid-drop", "{\"container\":{\"id\":\"cid-drop\"}}");
+
+        const auto scope = TxnScope("cid-keep");
+        TXN_HANDLE txn = fim_db_transaction_start(scope.c_str(), RowCallback, nullptr);
+        SyncPaths(txn, "cid-keep", 0, 2);
+        fim_db_transaction_close(txn);
+
+        SweepOneContainer("cid-drop", RowCallback);
+
+        cJSON* keep = fim_db_get_container_context("cid-keep");
+        cJSON* drop = fim_db_get_container_context("cid-drop");
+        std::snprintf(detail,
+                      sizeof(detail),
+                      "cid-keep=%s cid-drop=%s",
+                      keep == nullptr ? "gone" : "present",
+                      drop == nullptr ? "gone" : "present");
+        ok &= Check("one container's sweep leaves another's context alone", keep != nullptr && drop == nullptr, detail);
+        cJSON_Delete(keep);
+        cJSON_Delete(drop);
+    }
+
+    /* 11. The prune, which is the whole-node pass's half of the same job: a
+     *     context whose sweep was interrupted between deleting the rows and
+     *     deleting the context is orphaned, and nothing else would ever
+     *     collect it. Only a pass holding an authoritative list may do this,
+     *     which is why it is here and not in case 10. */
+    {
+        fim_db_set_container_context("cid-orphan", "{\"container\":{\"id\":\"cid-orphan\"}}");
+
+        const char* keep_list[] = {"cid-keep"};
+        fim_db_prune_container_contexts(keep_list, 1);
+
+        cJSON* orphan = fim_db_get_container_context("cid-orphan");
+        cJSON* keep = fim_db_get_container_context("cid-keep");
+        std::snprintf(detail,
+                      sizeof(detail),
+                      "cid-orphan=%s cid-keep=%s",
+                      orphan == nullptr ? "gone" : "present",
+                      keep == nullptr ? "gone" : "present");
+        ok &=
+            Check("the prune collects an orphan and keeps the live one", orphan == nullptr && keep != nullptr, detail);
+        cJSON_Delete(orphan);
+        cJSON_Delete(keep);
     }
 
     std::printf("\n%s\n", ok ? "ALL OK" : "FAILURES");

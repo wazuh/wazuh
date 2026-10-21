@@ -678,6 +678,13 @@ void SQLiteDBEngine::initialize(const std::string&              path,
         m_sqliteConnection = m_sqliteFactory->createConnection(path);
         dbVersion = getDbVersion();
 
+        if (dbVersion > currentDbsyncVersion)
+        {
+            // A database left behind by a newer build. Its shape is unknown to this one, so
+            // using it would be silent corruption rather than a downgrade.
+            throw dbengine_error {DB_VERSION_AHEAD_OF_SCHEMA};
+        }
+
         if (0 == dbVersion)
         {
             m_sqliteConnection.reset();
@@ -689,15 +696,31 @@ void SQLiteDBEngine::initialize(const std::string&              path,
             for (size_t i = dbVersion - 1; i < upgradeStatements.size(); ++i)
             {
                 auto transaction = m_sqliteFactory->createTransaction(m_sqliteConnection);
-                const auto stmt {m_sqliteFactory->createStatement(m_sqliteConnection, upgradeStatements[i])};
 
-                if (SQLITE_DONE != stmt->step())
+                try
                 {
-                    throw dbengine_error {STEP_ERROR_UPDATE_STMT};
+                    // sqlite3_exec, so one entry may hold a whole script: a schema change that
+                    // takes several statements lands as one step. Such a script must not open a
+                    // transaction of its own, since this one is already open.
+                    m_sqliteConnection->execute(upgradeStatements[i]);
+                    // Inside the transaction, so a step is all-or-nothing. Written after the
+                    // commit it left a window in which a crash replayed a step that had already
+                    // been applied.
+                    m_sqliteConnection->execute("PRAGMA user_version = " + std::to_string(i + 2) + ";");
+                }
+                catch (const DbSync::dbsync_error& ex)
+                {
+                    throw dbengine_error
+                    {
+                        std::make_pair(STEP_ERROR_UPDATE_STMT.first,
+                                       STEP_ERROR_UPDATE_STMT.second +
+                                       " Step " + std::to_string(i + 1) +
+                                       " (version " + std::to_string(i + 1) +
+                                       " -> " + std::to_string(i + 2) + "): " + ex.what())
+                    };
                 }
 
                 transaction->commit();
-                m_sqliteConnection->execute("PRAGMA user_version = " + std::to_string(i + 2) + ";");
             }
 
             m_transaction = m_sqliteFactory->createTransaction(m_sqliteConnection);

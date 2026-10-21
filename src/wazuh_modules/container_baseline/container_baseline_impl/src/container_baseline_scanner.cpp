@@ -281,7 +281,8 @@ int RunFimDbsyncBaselineFrom(const ContainerDiscoverer&        discover,
                               const std::vector<MonitoredPath>& paths,
                               const DbsyncRowSink&              sink,
                               const ContainerStatusSink&        status_sink,
-                              const std::function<void()>&      rate_limit)
+                              const std::function<void()>&      rate_limit,
+                              const ContainerContextSink&       context_sink)
 {
     int baselined = 0;
 
@@ -295,8 +296,20 @@ int RunFimDbsyncBaselineFrom(const ContainerDiscoverer&        discover,
         const auto pid = SelectAddressablePid(pids);
         if (pid == 0) continue; // every candidate has gone; same as "no live PID"
 
+        const auto containerContext = BuildContainerContextJson(identity.container_id, identity.context);
+
+        // The context reaches the consumer BEFORE any of this container's
+        // rows, and the consumer may refuse it. A refusal means it could not
+        // store the context, so emitting rows anyway would leave rows
+        // referencing a container nothing can describe -- and the DELETE they
+        // eventually produce is the very event that context exists to keep
+        // self-contained. Skip the container whole, and do not count it
+        // baselined, because it was not.
+        if (context_sink && !context_sink(identity.container_id, containerContext)) {
+            continue;
+        }
+
         ++baselined;
-        const auto containerJson = BuildContainerContextJson(identity.container_id, identity.context);
 
         // A walk that hit its row cap, or whose root could not be examined,
         // produces a SUBSET of the container's files, and absence must not then
@@ -324,7 +337,7 @@ int RunFimDbsyncBaselineFrom(const ContainerDiscoverer&        discover,
             for (auto row : walk.rows) {
                 ApplyIdentity(row, identity);
                 sink(DbsyncRow{identity.container_id, "file_entry",
-                               BuildFimFileDbsyncRow(row, containerJson)});
+                               BuildFimFileDbsyncRow(row)});
             }
         }
 
@@ -358,7 +371,8 @@ int RunFimDbsyncBaselineForContainerFrom(const ContainerDiscoverer&        disco
                                           const std::vector<MonitoredPath>& paths,
                                           const DbsyncRowSink&              sink,
                                           const ContainerStatusSink&        status_sink,
-                                          const std::function<void()>&      rate_limit)
+                                          const std::function<void()>&      rate_limit,
+                                          const ContainerContextSink&       context_sink)
 {
     if (container_id.empty()) return 0;
 
@@ -415,13 +429,14 @@ int RunFimDbsyncBaselineForContainerFrom(const ContainerDiscoverer&        disco
     }
 
     return RunFimDbsyncBaselineFrom([&selected]() { return selected; },
-                                    pidIndex, safe, sink, guarded, rate_limit);
+                                    pidIndex, safe, sink, guarded, rate_limit, context_sink);
 }
 
 int RunSyscollectorDbsyncBaselineFrom(const ContainerDiscoverer& discover,
                                        const PidIndex&            pidIndex,
                                        const DbsyncRowSink&       sink,
-                                       const ContainerStatusSink& status_sink)
+                                       const ContainerStatusSink& status_sink,
+                                       const ContainerContextSink& context_sink)
 {
     int baselined = 0;
 
@@ -439,20 +454,32 @@ int RunSyscollectorDbsyncBaselineFrom(const ContainerDiscoverer& discover,
         const auto pid = SelectAddressablePid(pids);
         if (pid == 0) continue; // every candidate has gone; same as "no live PID"
 
-        ++baselined;
-
         const auto scope = DetectContainerScope(pid);
 
-        // Context blob serialized once per container; every row carries it in
-        // its container_json column so DELETED events stay self-contained.
-        const auto containerJson = BuildContainerContextJson(identity.container_id, identity.context);
+        // Context serialized once per container and handed to the consumer
+        // before any of this container's rows, so a DELETED event can still
+        // describe the container after it is gone.
+        const auto containerContext = BuildContainerContextJson(identity.container_id, identity.context);
+
+        // Same contract as the FIM path: context first, and a refusal means
+        // this container contributes nothing on this pass.
+        if (context_sink && !context_sink(identity.container_id, containerContext)) {
+            continue;
+        }
+
+        // Counted only once the container is committed to, so the returned
+        // count keeps meaning "containers that produced a baseline". A caller
+        // compares it against the known container list to tell stopped from
+        // gone, and a skipped container must not read as either.
+        ++baselined;
+
         const auto emit = [&](const std::string& table, std::string json) {
             sink(DbsyncRow{identity.container_id, table, std::move(json)});
         };
 
         for (auto row : ScanContainerProcesses(identity.container_id, pids)) {
             ApplyIdentity(row, identity);
-            emit("dbsync_processes", BuildProcessDbsyncRow(row, containerJson));
+            emit("dbsync_processes", BuildProcessDbsyncRow(row));
         }
 
         // Network-namespace-scoped classes. ScanContainerNetwork itself declines
@@ -462,7 +489,7 @@ int RunSyscollectorDbsyncBaselineFrom(const ContainerDiscoverer& discover,
 
         for (auto row : ScanContainerNetwork(identity.container_id, pids, scope, netnsShared)) {
             ApplyIdentity(row, identity);
-            emit("dbsync_ports", BuildPortDbsyncRow(row, containerJson));
+            emit("dbsync_ports", BuildPortDbsyncRow(row));
         }
 
         // Users, groups, packages and the OS record are image-layer content, so
@@ -502,32 +529,32 @@ int RunSyscollectorDbsyncBaselineFrom(const ContainerDiscoverer& discover,
 
         for (auto row : content->users) {
             ApplyIdentity(row, identity);
-            emit("dbsync_users", BuildUserDbsyncRow(row, containerJson));
+            emit("dbsync_users", BuildUserDbsyncRow(row));
         }
 
         for (auto row : content->groups) {
             ApplyIdentity(row, identity);
-            emit("dbsync_groups", BuildGroupDbsyncRow(row, containerJson));
+            emit("dbsync_groups", BuildGroupDbsyncRow(row));
         }
 
         for (auto row : content->packages) {
             ApplyIdentity(row, identity);
-            emit("dbsync_packages", BuildPackageDbsyncRow(row, containerJson));
+            emit("dbsync_packages", BuildPackageDbsyncRow(row));
         }
 
         for (auto row : content->os) {
             ApplyIdentity(row, identity);
-            emit("dbsync_osinfo", BuildOsDbsyncRow(row, containerJson));
+            emit("dbsync_osinfo", BuildOsDbsyncRow(row));
         }
 
         auto ifscan = ScanContainerInterfaces(pid, scope);
         for (auto row : ifscan.interfaces) {
             ApplyIdentity(row, identity);
-            emit("dbsync_network_iface", BuildInterfaceDbsyncRow(row, containerJson));
+            emit("dbsync_network_iface", BuildInterfaceDbsyncRow(row));
         }
         for (auto row : ifscan.addresses) {
             ApplyIdentity(row, identity);
-            emit("dbsync_network_address", BuildNetworkAddressDbsyncRow(row, containerJson));
+            emit("dbsync_network_address", BuildNetworkAddressDbsyncRow(row));
         }
 
         // Routes come from /proc/<pid>/net/route, which is netns-relative — so
@@ -536,18 +563,18 @@ int RunSyscollectorDbsyncBaselineFrom(const ContainerDiscoverer& discover,
         if (!scope.netCollapsedToHost()) {
             for (auto row : ScanContainerProtocols(pid)) {
                 ApplyIdentity(row, identity);
-                emit("dbsync_network_protocol", BuildProtocolDbsyncRow(row, containerJson));
+                emit("dbsync_network_protocol", BuildProtocolDbsyncRow(row));
             }
         }
 
         for (auto row : ScanContainerServices(pid)) {
             ApplyIdentity(row, identity);
-            emit("dbsync_services", BuildServiceDbsyncRow(row, containerJson));
+            emit("dbsync_services", BuildServiceDbsyncRow(row));
         }
 
         for (auto row : ScanContainerHardware(pid)) {
             ApplyIdentity(row, identity);
-            emit("dbsync_hwinfo", BuildHardwareDbsyncRow(row, containerJson));
+            emit("dbsync_hwinfo", BuildHardwareDbsyncRow(row));
         }
 
         if (status_sink) {
@@ -586,13 +613,14 @@ int RunFimDbsyncBaseline(const std::string&                connector_socket_path
                           const std::vector<MonitoredPath>& paths,
                           const DbsyncRowSink&              sink,
                           const ContainerStatusSink&        status_sink,
-                          const std::function<void()>&      rate_limit)
+                          const std::function<void()>&      rate_limit,
+                          const ContainerContextSink&       context_sink)
 {
     const auto pids = PidIndex::Build();
 
     return RunFimDbsyncBaselineFrom(
         [&connector_socket_path]() { return DiscoverContainers(connector_socket_path); },
-        pids, paths, sink, status_sink, rate_limit);
+        pids, paths, sink, status_sink, rate_limit, context_sink);
 }
 
 int RunFimDbsyncBaselineForContainer(const std::string&                connector_socket_path,
@@ -600,7 +628,8 @@ int RunFimDbsyncBaselineForContainer(const std::string&                connector
                                       const std::vector<MonitoredPath>& paths,
                                       const DbsyncRowSink&              sink,
                                       const ContainerStatusSink&        status_sink,
-                                      const std::function<void()>&      rate_limit)
+                                      const std::function<void()>&      rate_limit,
+                                      const ContainerContextSink&       context_sink)
 {
     if (container_id.empty()) return 0;
 
@@ -621,24 +650,27 @@ int RunFimDbsyncBaselineForContainer(const std::string&                connector
     const auto pids = PidIndex::FromMap({{container_id, ResolvePidsForContainer(container_id)}});
 
     return RunFimDbsyncBaselineForContainerFrom([&identities]() { return identities; },
-                                                container_id, pids, paths, sink, status_sink, rate_limit);
+                                                container_id, pids, paths, sink, status_sink, rate_limit,
+                                                context_sink);
 }
 
 int RunSyscollectorDbsyncBaseline(const std::string&         connector_socket_path,
                                   const DbsyncRowSink&       sink,
-                                  const ContainerStatusSink& status_sink)
+                                  const ContainerStatusSink& status_sink,
+                                  const ContainerContextSink& context_sink)
 {
     const auto pids = PidIndex::Build();
 
     return RunSyscollectorDbsyncBaselineFrom(
         [&connector_socket_path]() { return DiscoverContainers(connector_socket_path); },
-        pids, sink, status_sink);
+        pids, sink, status_sink, context_sink);
 }
 
 int RunSyscollectorDbsyncBaselineForContainers(const std::string&              connector_socket_path,
                                                const std::vector<std::string>& container_ids,
                                                const DbsyncRowSink&            sink,
-                                               const ContainerStatusSink&      status_sink)
+                                               const ContainerStatusSink&      status_sink,
+                                               const ContainerContextSink&     context_sink)
 {
     if (container_ids.empty())
     {
@@ -675,7 +707,8 @@ int RunSyscollectorDbsyncBaselineForContainers(const std::string&              c
     // row-contiguity and one-status-per-container contracts to drift apart.
     const auto pids = PidIndex::Build();
 
-    return RunSyscollectorDbsyncBaselineFrom([&selected]() { return selected; }, pids, sink, status_sink);
+    return RunSyscollectorDbsyncBaselineFrom([&selected]() { return selected; }, pids, sink, status_sink,
+                                             context_sink);
 }
 
 int ListContainers(const std::string& connector_socket_path, const ContainerIdSink& sink)

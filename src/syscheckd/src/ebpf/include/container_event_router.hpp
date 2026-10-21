@@ -90,6 +90,7 @@ struct RouterStats
     unsigned long long late_escalations{0};   /* containers identified after their events */
     unsigned long long renames_routed{0};     /* renames escalated (source path is never reported) */
     unsigned long long discovery_escalations{0}; /* containers walked because the kernel filter had not reached them */
+    unsigned long long removals{0};              /* containers the runtime reported gone, queued for cleanup */
 };
 
 class ContainerEventRouter
@@ -342,6 +343,7 @@ class ContainerEventRouter
             out.discovery_escalations = m_stats.discovery_escalations.load(std::memory_order_relaxed);
             out.late_escalations = m_stats.late_escalations.load(std::memory_order_relaxed);
             out.renames_routed = m_stats.renames_routed.load(std::memory_order_relaxed);
+            out.removals = m_stats.removals.load(std::memory_order_relaxed);
             return out;
         }
 
@@ -362,6 +364,7 @@ class ContainerEventRouter
             std::atomic<unsigned long long> late_escalations{0};
             std::atomic<unsigned long long> renames_routed{0};
             std::atomic<unsigned long long> discovery_escalations{0};
+            std::atomic<unsigned long long> removals{0};
         };
 
         void bump(std::atomic<unsigned long long>& counter)
@@ -382,6 +385,31 @@ class ContainerEventRouter
                     bump(m_stats.discovery_escalations);
                     m_staging.onDrops(entry.second);
                 }
+            }
+
+            /* NOT inside the m_filtering branch above, and that asymmetry is
+             * deliberate.
+             *
+             * An addition is gated on it because without the kernel filter a
+             * new container is discovered the other way -- its events arrive
+             * under an unidentified cgroup and applyContainerResolution()
+             * escalates it -- so escalating here as well would walk it twice.
+             *
+             * A removal has no second route. Nothing else in this class, or in
+             * the resolver, ever reports that a container is gone. Gating it
+             * the same way would mean a host that dropped out of filtering
+             * because the allowlist overflowed stops cleaning up removed
+             * containers entirely -- silently, and on the hosts least able to
+             * afford the extra rows.
+             *
+             * Staged rather than escalated: a removal must never become a
+             * walk. The walk would return 0 for a container the connector no
+             * longer lists, and a walk is the one thing allowed to infer
+             * deletions from absence. */
+            for (const auto& container_id : delta.gone)
+            {
+                bump(m_stats.removals);
+                m_staging.onGone(container_id);
             }
 
             return delta;

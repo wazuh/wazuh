@@ -44,6 +44,10 @@
 | [#37532](https://github.com/wazuh/wazuh/issues/37532) | Inventoried only the containers that changed between full scans instead of every container each time. |
 | [#37203](https://github.com/wazuh/wazuh/issues/37203) | Reported when a host's cgroup layout prevents container security from working, which previously failed silently. |
 | [#37203](https://github.com/wazuh/wazuh/issues/37203) | Added container inventory and file monitoring on hosts using the legacy cgroup layout, such as RHEL 8 and Amazon Linux 2. |
+| [#37532](https://github.com/wazuh/wazuh/issues/37532) | Stored a container's runtime context once per container instead of copying it onto every inventory and file row. |
+| [#37532](https://github.com/wazuh/wazuh/issues/37532) | Stopped reporting a container's whole inventory as changed when only its labels or annotations changed. |
+| [#37532](https://github.com/wazuh/wazuh/issues/37532) | Removed the rows a deleted container left behind in two inventory tables the cleanup did not cover. |
+| [#37532](https://github.com/wazuh/wazuh/issues/37532) | Applied pending database schema changes when upgrading an agent, which previously reached only new installations. |
 
 #### Removed
 

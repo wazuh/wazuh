@@ -288,3 +288,63 @@ TEST(BuildProtocolJson, OmitsDhcpBecauseSchemaTypeIsBoolean)
     // "unknown" is not a boolean; the field is dropped rather than fail strict validation.
     EXPECT_FALSE(j.at("network").contains("dhcp"));
 }
+
+/* The container block reaches the manager by two different routes: inlined
+ * into a stateless event by the Build*Json() builders, and serialized by
+ * BuildContainerContextJson() into the context each consumer stores once per
+ * container, so a DELETE still describes a container that is already gone.
+ *
+ * baseline_rows.cpp says in a comment that the two must not drift, "or the
+ * same row reaches the manager in two different shapes depending on which
+ * consumer emitted it" -- and then nothing enforced it. Both routes go through
+ * StampContainerContext(), so this holds today by construction; the test is
+ * here so that a change which gives either route its own formatting has to
+ * fail a test rather than ship a second shape.
+ */
+TEST(ContainerContextShape, TheStoredBlobMatchesTheBlockEmittedInline)
+{
+    for (const auto& ctx : {MakeKubernetesContext(), MakeDockerContext()})
+    {
+        FileBaselineRow row;
+        row.path         = "/etc/passwd";
+        row.container_id = "cid1";
+        row.container    = ctx;
+
+        const auto [id, inline_json] = BuildFimFileJson(row);
+        const auto inlineBlock = nlohmann::json::parse(inline_json).at("container");
+
+        const auto storedBlock =
+            nlohmann::json::parse(BuildContainerContextJson(row.container_id, ctx)).at("container");
+
+        EXPECT_EQ(inlineBlock, storedBlock)
+                << "the stored context and the inlined one are the same block, or a row means "
+                << "different things to the two consumers that emit it";
+    }
+}
+
+/* A null context is what a row carries when container_instances could not
+ * resolve the container. Both routes must still produce a well-formed block
+ * carrying the id, because the id is the one piece of attribution that is
+ * never in doubt -- and a DELETE that arrives with no container block at all
+ * is indistinguishable from a host row's.
+ */
+TEST(ContainerContextShape, AnUnresolvedContextStillCarriesTheIdOnBothRoutes)
+{
+    const ContainerContextPtr none;
+
+    FileBaselineRow row;
+    row.path         = "/etc/passwd";
+    row.container_id = "cid1";
+    row.container    = none;
+
+    const auto [id, inline_json] = BuildFimFileJson(row);
+    const auto inlineBlock = nlohmann::json::parse(inline_json).at("container");
+    const auto storedBlock = nlohmann::json::parse(BuildContainerContextJson("cid1", none)).at("container");
+
+    EXPECT_EQ(inlineBlock.at("id"), "cid1");
+    EXPECT_EQ(storedBlock.at("id"), "cid1");
+    EXPECT_EQ(inlineBlock, storedBlock);
+
+    // Not Kubernetes-origin, so no orchestrator block is invented for it.
+    EXPECT_FALSE(storedBlock.contains("kubernetes"));
+}

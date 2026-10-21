@@ -11,6 +11,7 @@
 #include "container_baseline_host_api.h"
 
 #include "container_doc_budget.h"
+#include "db.h"
 
 #include "file.h"
 #include "shared.h"
@@ -119,28 +120,26 @@ static void normalize_container_fim_row(cJSON* msg)
         return;
     }
 
-    // Lift the container_json column to the top-level "container" block. Since
-    // D15 the Kubernetes context is nested INSIDE that block at
-    // container.kubernetes, so it rides along with this one detach -- there is
-    // no second block to lift. BuildContainerContextJson() is what wrote this
-    // column, so the shape here is whatever StampContainerContext() produced.
-    const cJSON* container_json_item = cJSON_GetObjectItem(msg, "container_json");
-    if (container_json_item != NULL && cJSON_IsString(container_json_item) &&
-        container_json_item->valuestring != NULL && container_json_item->valuestring[0] != '\0') {
-        cJSON* ctx = cJSON_Parse(container_json_item->valuestring);
-        if (ctx != NULL) {
-            cJSON* container_block = cJSON_DetachItemFromObject(ctx, "container");
-            if (container_block != NULL) {
-                cJSON_DeleteItemFromObject(msg, "container");
-                cJSON_AddItemToObject(msg, "container", container_block);
-            }
-            // Defensive: a column written before D15 carries a sibling
-            // "kubernetes". Drop it rather than lift it, so a database that
-            // survived the change cannot emit the retired two-block shape.
-            cJSON_DeleteItemFromObject(msg, "kubernetes");
-            cJSON_Delete(ctx);
-        }
+    // Attach the container block, which is stored once per container rather
+    // than copied onto every row. Since D15 the Kubernetes context is nested
+    // INSIDE that block at container.kubernetes, so there is no second block.
+    const cJSON* container_id_item = cJSON_GetObjectItem(msg, "container_id");
+    cJSON* container_block = NULL;
+
+    if (container_id_item != NULL && cJSON_IsString(container_id_item) &&
+        container_id_item->valuestring != NULL && container_id_item->valuestring[0] != '\0') {
+        container_block = fim_db_get_container_context(container_id_item->valuestring);
     }
+
+    if (container_block != NULL) {
+        cJSON_DeleteItemFromObject(msg, "container");
+        cJSON_AddItemToObject(msg, "container", container_block);
+    }
+
+    // Defensive: the retired pre-D15 shape put "kubernetes" beside "container"
+    // rather than inside it. Drop any such sibling rather than lift it, so the
+    // two-block shape every dynamic:strict template rejects cannot be emitted.
+    cJSON_DeleteItemFromObject(msg, "kubernetes");
 
     cJSON* file_obj = cJSON_GetObjectItem(msg, "file");
     if (file_obj == NULL || !cJSON_IsObject(file_obj)) {
@@ -193,7 +192,6 @@ static void normalize_container_fim_row(cJSON* msg)
     cJSON_DeleteItemFromObject(msg, "is_symlink");
     // dbsync-only columns: not part of the stateful event schema.
     cJSON_DeleteItemFromObject(msg, "container_id");
-    cJSON_DeleteItemFromObject(msg, "container_json");
     cJSON_DeleteItemFromObject(msg, "checksum");
     cJSON_DeleteItemFromObject(msg, "sync");
     cJSON_DeleteItemFromObject(msg, "version");
@@ -665,6 +663,12 @@ static int container_row_sync_flag(const cJSON* row, int operation)
      * check below would make the container cap silently depend on
      * container_file_limit being set, which is not what configures it.
      *
+     * This gate and the budget below govern the STATEFUL row and nothing else.
+     * The alert is sent without consulting either, exactly as the host sends
+     * one without consulting syscheck.file_limit -- see
+     * container_should_report_events() for why that asymmetry is the intended
+     * behaviour rather than an oversight to be tidied away.
+     *
      * Deletes are exempt: container_budget_decide() answers a delete with the
      * row's own stored flag, so a row the manager never saw still reports no
      * deletion, and one it did see is still withdrawn. Suppressing that would
@@ -718,11 +722,10 @@ static int container_row_sync_flag(const cJSON* row, int operation)
     return granted;
 }
 
-void fim_persist_baseline_row(const char* id, int operation, const char* index, const char* json, uint64_t version)
+void fim_persist_baseline_row(const char* id, int operation, const char* index, cJSON* msg, uint64_t version)
 {
-    cJSON* msg = cJSON_Parse(json);
     if (msg == NULL) {
-        mdebug1("Container FIM baseline: dropping row '%s' - failed to parse JSON.", id);
+        mdebug1("Container FIM baseline: dropping row '%s' - no row object.", id);
         return;
     }
 
@@ -839,6 +842,26 @@ static const char* CONTAINER_FIM_EVENT_TYPE[] = {
  * here happens-before every read of it. */
 static int container_notify_scan = -1;
 
+/* The ONLY thing standing between a detected change and its alert, and that is
+ * deliberate: neither the document budget nor the admission set is consulted
+ * here, although both are consulted for the stateful row in
+ * container_row_sync_flag().
+ *
+ * It reads like an inconsistency and is not one -- it is what the host already
+ * does. There, `sync_flag` is decided against syscheck.file_limit
+ * (file/file.c:317) while the alert is sent on `notify_scan != 0 &&
+ * report_event` alone (file/file.c:178 and :477), with the limit nowhere in
+ * the condition. So a host file past the document limit still alerts; it
+ * simply contributes no row to wazuh-states-fim-files.
+ *
+ * The rule that produces is worth stating plainly, because a later reader will
+ * be tempted to "fix" this into agreement: a limit bounds STATE, never
+ * DETECTION. Making the alert respect the budget would mean a container that
+ * exhausted its allowance stops reporting changes entirely -- a silent
+ * detection gap, configured by something an operator set to bound a database.
+ *
+ * The admission set has no host counterpart, there being no host admission,
+ * but it sits on the same side of the line: it withholds rows, not alerts. */
 static int container_should_report_events(void)
 {
     if (container_notify_scan < 0) {
@@ -853,30 +876,25 @@ void fim_container_baseline_first_scan_done(void)
     container_notify_scan = 1;
 }
 
-/* Lifts the container_json column onto `target` as the top-level "container"
- * block, Kubernetes context nested inside it at container.kubernetes (D15).
- * Same placement normalize_container_fim_row() uses for the stateful document,
- * so an analyst reads the same field names on both sides. */
+/* Looks the row's container context up by id and attaches it to `target` as
+ * the top-level "container" block, Kubernetes context nested inside it at
+ * container.kubernetes (D15). Same placement normalize_container_fim_row()
+ * uses for the stateful document, so an analyst reads the same field names on
+ * both sides. */
 static void add_container_context(const cJSON* row_data, cJSON* target)
 {
-    const cJSON* container_json_item = cJSON_GetObjectItem(row_data, "container_json");
+    // Stored once per container; the row references it by id.
+    const cJSON* container_id_item = cJSON_GetObjectItem(row_data, "container_id");
+    cJSON* container_block = NULL;
 
-    if (container_json_item == NULL || !cJSON_IsString(container_json_item) ||
-        container_json_item->valuestring == NULL || container_json_item->valuestring[0] == '\0') {
-        return;
+    if (container_id_item != NULL && cJSON_IsString(container_id_item) &&
+        container_id_item->valuestring != NULL && container_id_item->valuestring[0] != '\0') {
+        container_block = fim_db_get_container_context(container_id_item->valuestring);
     }
 
-    cJSON* ctx = cJSON_Parse(container_json_item->valuestring);
-    if (ctx == NULL) {
-        return;
-    }
-
-    cJSON* container_block = cJSON_DetachItemFromObject(ctx, "container");
     if (container_block != NULL) {
         cJSON_AddItemToObject(target, "container", container_block);
     }
-
-    cJSON_Delete(ctx);
 }
 
 void fim_send_container_stateless_event(const cJSON* row_data,
@@ -963,7 +981,7 @@ void fim_send_container_stateless_event(const cJSON* row_data,
      *
      * Container rows have no fim_file_data struct, so this always takes
      * fim_attributes_json()'s JSON-only mode (data == NULL) — which reads the
-     * named columns and ignores container_id/container_json. */
+     * named columns and ignores container_id. */
     cJSON* file_stateless = (operation == OPERATION_DELETE || g_host.attributes_json == NULL)
         ? cJSON_CreateObject()
         : g_host.attributes_json(row_data, NULL, config);
