@@ -627,7 +627,7 @@ static cJSON* wm_ms_graph_dump_tenant(const wm_ms_graph_auth* auth) {
     if (auth->tenant_id) {
         cJSON_AddStringToObject(tenant, "tenant_id", auth->tenant_id);
     }
-    module_report_add_masked_secret(tenant, "secret_value", auth->secret_value);
+    module_report_add_secret(tenant, "secret_value", auth->secret_value, false);
     if (api_type) {
         cJSON_AddStringToObject(tenant, "api_type", api_type);
     }

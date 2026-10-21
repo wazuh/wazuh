@@ -11,6 +11,7 @@
 #ifndef MODULE_REPORT_H
 #define MODULE_REPORT_H
 
+#include <stdbool.h>
 #include <stddef.h>
 #include "cJSON.h"
 
@@ -58,23 +59,24 @@ void module_report_add(cJSON *report, const char *module, cJSON *body);
 #define MODULE_REPORT_SECRET_MASK "*****"
 
 /**
- * @brief Store a credential in a module body without its value.
+ * @brief Store a credential in a module body, masked unless asked otherwise.
  *
  * Module bodies leave the agent: the manager indexes the /config report as it
- * arrives. The key is kept with MODULE_REPORT_SECRET_MASK as its value, so the
- * report still tells that the credential is set, and the field stays a string,
- * the type the index maps it with. A path to a file holding a credential is
- * not a credential and is reported as is.
+ * arrives. Masked, the key is kept with MODULE_REPORT_SECRET_MASK as its value,
+ * so the report still tells that the credential is set, and the field stays a
+ * string, the type the index maps it with. A path to a file holding a
+ * credential is not a credential and is reported as is.
  *
  * Adds nothing when the secret is NULL or empty: no credential is set, and a
  * mask would claim one is. Call sites can pass the field straight in.
  *
  * @param object Destination object, e.g. one entry of a module's api_auth.
  * @param key Field name, e.g. "secret_key".
- * @param secret Credential value. Only tested, never copied.
+ * @param secret Credential value. Copied only when unmasked.
+ * @param unmasked true reports the value itself instead of the mask.
  */
-void module_report_add_masked_secret(cJSON *object, const char *key,
-                                     const char *secret);
+void module_report_add_secret(cJSON *object, const char *key,
+                              const char *secret, bool unmasked);
 
 /**
  * @brief Serialize a report into the "ok <json>" reply a dispatcher returns.

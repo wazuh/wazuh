@@ -251,7 +251,7 @@ cJSON *wm_office365_dump(const wm_office365* office365_config) {
             if (iter->client_secret_path) {
                 cJSON_AddStringToObject(api_auth, "client_secret_path", iter->client_secret_path);
             }
-            module_report_add_masked_secret(api_auth, "client_secret", iter->client_secret);
+            module_report_add_secret(api_auth, "client_secret", iter->client_secret, false);
             // The management API FQDN is unique between API types, so the login FQDN can be safely ignored
             if (iter->management_fqdn) {
                 if (!strncmp(iter->management_fqdn, WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN, 17)) {
