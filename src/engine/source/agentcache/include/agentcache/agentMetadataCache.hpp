@@ -2,12 +2,16 @@
 #ifndef _AGENTCACHE_AGENT_METADATA_CACHE_HPP
 #define _AGENTCACHE_AGENT_METADATA_CACHE_HPP
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <cstddef>
+#include <cstdint>
 #include <functional>
+#include <limits>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <shared_mutex>
 #include <stdexcept>
 #include <string>
@@ -25,6 +29,18 @@
 namespace agentcache
 {
 
+/// Retained-cache limits; zero independently disables each constraint.
+struct Limits
+{
+    static constexpr std::size_t MAX_ENTRIES =
+        std::min<std::uint64_t>(std::numeric_limits<std::size_t>::max(), std::uint64_t {1} << 32);
+    static constexpr std::size_t MAX_BYTES =
+        std::min<std::uint64_t>(std::numeric_limits<std::size_t>::max(), std::uint64_t {1} << 40);
+
+    std::size_t maxEntries {0};
+    std::size_t maxBytes {0};
+};
+
 /**
  * @brief Thread-safe cache for parsed agent metadata (header JSON).
  *
@@ -32,13 +48,19 @@ namespace agentcache
  * header JSON string.  Parsing each one into a json::Json object is expensive because
  * RapidJSON allocates a memory pool (growing in ~64 KB chunks) per Document.  This cache
  * deduplicates headers by agent ID, returning a shared_ptr to an already-parsed header
- * when the content has not changed.  Headers are stored as compact documents
- * (json::Json::compact — small allocator, ~4 KB instead of 64 KB per header), since they
- * live for as long as the agent is active.
+ * when the content has not changed. Headers use json::Json::compact; their actual pool
+ * capacity is included in the retained-byte accounting.
  *
  * Lookups are O(1) by canonical agent ID, followed by a full header-byte comparison. A hit
  * reuses a document already validated for that ID. Exactly one entry is kept per agent — a
- * new valid header for a known agent replaces the previous one.
+ * new valid header replaces the previous one if it fits the configured limits. A valid header
+ * that does not fit is returned without retention; an older entry for that agent is removed.
+ * Admission does not evict unrelated agents. Only the TTL sweep evicts stale entries.
+ *
+ * Accounted bytes include header/id lengths, document pool capacity and a fixed entry overhead.
+ * They exclude allocator rounding, spare string capacities, map buckets, pool bookkeeping,
+ * transient candidates and documents held by callers after removal. This is not a process-memory
+ * limit: concurrent parsing and returned shared pointers can keep additional memory alive.
  *
  * Thread safety: multiple readers can call getOrParse() concurrently under a shared lock;
  * the per-entry last-used timestamp is a relaxed atomic so it can be refreshed without an
@@ -56,9 +78,10 @@ public:
      */
     enum class Operation
     {
-        Retrieved, ///< An entry with identical content already existed (cache hit, no parse).
-        Inserted,  ///< No previous entry for this agent; a newly parsed one was stored.
-        Updated,   ///< The agent had a different header; its entry was replaced.
+        Retrieved,        ///< An entry with identical content already existed (cache hit, no parse).
+        Inserted,         ///< No previous entry for this agent; a newly parsed one was stored.
+        Updated,          ///< The agent had a different header; its entry was replaced.
+        BypassedCapacity, ///< Valid metadata returned without retention because admission did not fit.
     };
 
     /// Result of getOrParse(): the shared header plus what happened in the cache.
@@ -68,14 +91,16 @@ public:
     /**
      * @brief Construct the cache with a given time-to-live for entries.
      * @param ttl Entries not accessed within this duration are eligible for eviction.
+     * @param limits Entry/byte limits, each zero for unlimited; bounded by Limits::MAX_ENTRIES/MAX_BYTES.
      * @param clock Clock used to timestamp entries and calculate TTL expiry.
      *
      * @note fastmetrics::registerManager() must have been called before construction, as the
      *       cache resolves its metric counters from the metrics manager.
      */
     explicit AgentMetadataCache(
-        std::chrono::seconds ttl, ClockFn clock = []() { return std::chrono::steady_clock::now(); })
-        : m_ttl(ttl)
+        std::chrono::seconds ttl, Limits limits = {}, ClockFn clock = []() { return std::chrono::steady_clock::now(); })
+        : m_limits(limits)
+        , m_ttl(ttl)
         , m_clock(std::move(clock))
         , m_hitsCounter(fastmetrics::manager().getOrCreateCounter(fastmetrics::names::AGENT_CACHE_HITS))
         , m_insertionsCounter(fastmetrics::manager().getOrCreateCounter(fastmetrics::names::AGENT_CACHE_INSERTIONS))
@@ -90,6 +115,10 @@ public:
         {
             throw std::invalid_argument("AgentMetadataCache: clock function must be valid");
         }
+        if (limits.maxEntries > Limits::MAX_ENTRIES || limits.maxBytes > Limits::MAX_BYTES)
+        {
+            throw std::invalid_argument("AgentMetadataCache: limits exceed supported entry/byte bounds");
+        }
         m_byId.reserve(CACHE_INITIAL_CAPACITY);
     }
 
@@ -102,7 +131,8 @@ public:
      *
      * @param trustedAgentId Canonical identity supplied by the authenticated or local producer.
      * @param headerStr Raw JSON after "H " in the NDJson batch.
-     * @return Parsed header and Retrieved, Inserted or Updated outcome.
+     * @return Parsed header and Retrieved, Inserted, Updated or BypassedCapacity outcome.
+     * Capacity bypass still parses and validates identity; it never returns an older header.
      * @throws IdentityError On a non-canonical ID or an absent, ambiguous, non-string or mismatched
      *         identity in the header. Existing entries remain unchanged.
      * @throws std::runtime_error On invalid JSON.
@@ -138,6 +168,7 @@ public:
             throw IdentityError("AgentMetadataCache: header agent ID does not match the trusted agent ID");
         }
 
+        const auto candidateBytes = entryBytes(headerStr.size(), agentId.size(), parsed->getAllocatedMemory());
         std::unique_lock lock(m_mutex);
         auto it = m_byId.find(agentId);
         // Another thread may have admitted the same pair while this call parsed it.
@@ -148,11 +179,34 @@ public:
             return {it->second->header, Operation::Retrieved};
         }
         const bool agentExisted = it != m_byId.end();
-        auto entry = std::make_shared<CacheEntry>();
-        entry->header = std::move(parsed);
-        entry->headerStr.assign(headerStr);
-        entry->lastUsed.store(nowRep(), std::memory_order_relaxed);
-        m_byId[agentId] = entry;
+        const auto retainedBytes = m_accountedBytes - (agentExisted ? it->second->accountedBytes : 0);
+        const auto retainedEntries = m_byId.size() - (agentExisted ? 1 : 0);
+        const auto bytesAfter = candidateBytes ? checkedAdd(retainedBytes, *candidateBytes) : std::nullopt;
+        const bool fitsEntries = retainedEntries < std::numeric_limits<std::size_t>::max()
+                                 && (m_limits.maxEntries == 0 || retainedEntries < m_limits.maxEntries);
+        const bool fitsBytes = bytesAfter && (m_limits.maxBytes == 0 || *bytesAfter <= m_limits.maxBytes);
+        if (!fitsEntries || !fitsBytes)
+        {
+            if (agentExisted)
+            {
+                m_byId.erase(it);
+                m_accountedBytes = retainedBytes;
+            }
+            return {std::move(parsed), Operation::BypassedCapacity};
+        }
+
+        // Prepare all potentially throwing state before publishing a replacement. Failed allocation
+        // or clock evaluation must leave the old entry and running total intact.
+        auto entry = std::make_shared<CacheEntry>(std::move(parsed), headerStr, *candidateBytes, nowRep());
+        if (agentExisted)
+        {
+            it->second = entry;
+        }
+        else
+        {
+            m_byId.emplace(agentId, entry);
+        }
+        m_accountedBytes = *bytesAfter;
 
         if (agentExisted)
         {
@@ -217,6 +271,7 @@ public:
                 {
                     continue;
                 }
+                m_accountedBytes -= it->second->accountedBytes;
                 m_byId.erase(it);
                 ++evicted;
             }
@@ -238,16 +293,25 @@ public:
         return m_byId.size();
     }
 
+    /// Accounted retained state, excluding documents kept alive only by callers.
+    std::size_t accountedBytes() const
+    {
+        std::shared_lock lock(m_mutex);
+        return m_accountedBytes;
+    }
+
     /**
-     * @brief Remove all cached entries.
+     * @brief Remove all cached entries and release their accounted bytes.
      */
     void clear()
     {
         std::unique_lock lock(m_mutex);
         m_byId.clear();
+        m_accountedBytes = 0;
     }
 
 private:
+    friend struct AgentMetadataCacheTestAccess;
     static inline const json::PointerPath AGENT_ID_PATH {"/wazuh/agent/id"}; ///< JSON pointer path to the agent ID.
     static constexpr std::size_t CACHE_INITIAL_CAPACITY = 1024; ///< Initial capacity for the cache's index.
 
@@ -255,15 +319,54 @@ private:
 
     struct CacheEntry
     {
-        std::shared_ptr<const json::Json> header;                 ///< Parsed header JSON.
-        std::string headerStr;                                    ///< Compared byte for byte on cache lookups.
-        std::atomic<std::chrono::steady_clock::rep> lastUsed {0}; ///< Last access timestamp for eviction.
-    };
+        CacheEntry(std::shared_ptr<const json::Json> parsed,
+                   std::string_view raw,
+                   std::size_t bytes,
+                   std::chrono::steady_clock::rep lastAccess)
+            : header(std::move(parsed))
+            , headerStr(raw)
+            , lastUsed(lastAccess)
+            , accountedBytes(bytes)
+        {
+        }
 
-    std::chrono::seconds m_ttl;        ///< Time-to-live for entries.
-    ClockFn m_clock;                   ///< Clock used for cache entry age calculations.
-    mutable std::shared_mutex m_mutex; ///< Protects m_byId for thread-safe access.
-    std::unordered_map<std::string, std::shared_ptr<CacheEntry>> m_byId; ///< agentId -> entry (one per agent).
+        std::shared_ptr<const json::Json> header;
+        std::string headerStr;
+        std::atomic<std::chrono::steady_clock::rep> lastUsed;
+        const std::size_t accountedBytes;
+    };
+    using CacheMap = std::unordered_map<std::string, std::shared_ptr<CacheEntry>>;
+
+    // Fixed estimate: entry, document and map value objects, plus six pointers for a node's
+    // link/hash and two shared-owner control blocks. Not measured allocator/RSS usage.
+    static constexpr std::size_t ENTRY_OVERHEAD =
+        sizeof(CacheEntry) + sizeof(json::Json) + sizeof(CacheMap::value_type) + 6 * sizeof(void*);
+
+    static std::optional<std::size_t> checkedAdd(std::size_t left, std::size_t right)
+    {
+        if (right > std::numeric_limits<std::size_t>::max() - left)
+        {
+            return std::nullopt;
+        }
+        return left + right;
+    }
+
+    static std::optional<std::size_t> entryBytes(std::size_t header, std::size_t id, std::size_t pool)
+    {
+        auto cost = checkedAdd(ENTRY_OVERHEAD, header);
+        if (cost)
+        {
+            cost = checkedAdd(*cost, id);
+        }
+        return cost ? checkedAdd(*cost, pool) : std::nullopt;
+    }
+
+    const Limits m_limits;
+    std::chrono::seconds m_ttl;
+    ClockFn m_clock;
+    mutable std::shared_mutex m_mutex; ///< Protects the index and running byte total.
+    CacheMap m_byId;
+    std::size_t m_accountedBytes {0};
 
     // Metric counters (process-wide singletons resolved from the fastmetrics manager).
     std::shared_ptr<fastmetrics::ICounter> m_hitsCounter;       ///< agent.cache.hits (Retrieved).

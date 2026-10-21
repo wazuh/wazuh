@@ -3,6 +3,9 @@
 
 #include <atomic>
 #include <chrono>
+#include <limits>
+#include <optional>
+#include <shared_mutex>
 #include <string>
 #include <thread>
 #include <vector>
@@ -16,6 +19,44 @@ using namespace agentcache;
 using namespace std::chrono_literals;
 
 using Op = AgentMetadataCache::Operation;
+
+namespace agentcache
+{
+struct AgentMetadataCacheTestAccess
+{
+    static std::size_t overhead() { return AgentMetadataCache::ENTRY_OVERHEAD; }
+
+    static bool consistent(const AgentMetadataCache& cache)
+    {
+        std::shared_lock lock(cache.m_mutex);
+        std::size_t sum = 0;
+        for (const auto& [id, entry] : cache.m_byId)
+        {
+            if (!entry || entry->accountedBytes > std::numeric_limits<std::size_t>::max() - sum)
+            {
+                return false;
+            }
+            sum += entry->accountedBytes;
+        }
+        return sum == cache.m_accountedBytes
+               && (cache.m_limits.maxEntries == 0 || cache.m_byId.size() <= cache.m_limits.maxEntries)
+               && (cache.m_limits.maxBytes == 0 || sum <= cache.m_limits.maxBytes);
+    }
+
+    static std::shared_ptr<const json::Json> retained(const AgentMetadataCache& cache, const std::string& id)
+    {
+        std::shared_lock lock(cache.m_mutex);
+        const auto it = cache.m_byId.find(id);
+        return it == cache.m_byId.end() ? nullptr : it->second->header;
+    }
+
+    static auto add(std::size_t a, std::size_t b) { return AgentMetadataCache::checkedAdd(a, b); }
+    static auto cost(std::size_t header, std::size_t id, std::size_t pool)
+    {
+        return AgentMetadataCache::entryBytes(header, id, pool);
+    }
+};
+} // namespace agentcache
 
 namespace
 {
@@ -163,7 +204,7 @@ TEST_F(AgentMetadataCacheTest, GetOrParse_EmptyAgentId_Throws)
 TEST_F(AgentMetadataCacheTest, EvictStale_RemovesExpiredEntries)
 {
     FakeClock fakeClock;
-    AgentMetadataCache shortCache(1s, fakeClock.fn());
+    AgentMetadataCache shortCache(1s, {}, fakeClock.fn());
 
     shortCache.getOrParse("001", HEADER_AGENT_001);
     EXPECT_EQ(shortCache.size(), 1);
@@ -178,7 +219,7 @@ TEST_F(AgentMetadataCacheTest, EvictStale_RemovesExpiredEntries)
 TEST_F(AgentMetadataCacheTest, EvictStale_KeepsRecentEntries)
 {
     FakeClock fakeClock;
-    AgentMetadataCache shortCache(2s, fakeClock.fn());
+    AgentMetadataCache shortCache(2s, {}, fakeClock.fn());
 
     shortCache.getOrParse("001", HEADER_AGENT_001);
     shortCache.getOrParse("002", HEADER_AGENT_002);
@@ -384,7 +425,7 @@ TEST_F(AgentMetadataCacheTest, Metrics_RecordsEvictions)
     const auto evictions0 = evictions->get();
 
     FakeClock fakeClock;
-    AgentMetadataCache shortCache(1s, fakeClock.fn());
+    AgentMetadataCache shortCache(1s, {}, fakeClock.fn());
     shortCache.getOrParse("001", HEADER_AGENT_001);
     shortCache.getOrParse("002", HEADER_AGENT_002);
 
@@ -491,7 +532,7 @@ TEST(CanonicalAgentIdTest, MatchesJwtProfileVectors)
 TEST_F(AgentMetadataCacheTest, TrustedIdHitRefreshesTtl)
 {
     FakeClock clock;
-    AgentMetadataCache shortCache(2s, clock.fn());
+    AgentMetadataCache shortCache(2s, {}, clock.fn());
     auto first = shortCache.getOrParse("001", HEADER_AGENT_001);
     clock.advance(1500ms);
     auto hit = shortCache.getOrParse("001", HEADER_AGENT_001);
@@ -625,4 +666,434 @@ TEST_F(AgentMetadataCacheTest, ThreadSafety_ConcurrentReplacementsKeepReturnedHe
     }
     EXPECT_EQ(errors.load(), 0);
     EXPECT_LE(cache.size(), 1u);
+}
+
+namespace
+{
+std::string sizedHeader(const std::string& id, std::size_t padding)
+{
+    return R"({"wazuh":{"agent":{"id":")" + id + R"(","name":")" + std::string(padding, 'x') + R"("}}})";
+}
+
+std::size_t costOf(const std::string& id, const std::string& header)
+{
+    return header.size() + id.size() + json::Json::compact(header).getAllocatedMemory()
+           + AgentMetadataCacheTestAccess::overhead();
+}
+
+void expectHeader(const std::shared_ptr<const json::Json>& header, const std::string& id, std::size_t padding)
+{
+    ASSERT_NE(header, nullptr);
+    std::string_view value;
+    ASSERT_EQ(header->getString(value, "/wazuh/agent/id"), json::RetGet::Success);
+    EXPECT_EQ(value, id);
+    ASSERT_EQ(header->getString(value, "/wazuh/agent/name"), json::RetGet::Success);
+    EXPECT_EQ(value, std::string(padding, 'x'));
+}
+} // namespace
+
+TEST_F(AgentMetadataCacheTest, AccountsRetainedComponentsExactly)
+{
+    std::size_t expected = 0;
+    for (const auto id : {"001", "4294967295"})
+    {
+        const auto header = sizedHeader(id, 32);
+        const auto first = cache.getOrParse(id, header);
+        expected += header.size() + std::string_view(id).size() + first.first->getAllocatedMemory()
+                    + AgentMetadataCacheTestAccess::overhead();
+        EXPECT_EQ(cache.accountedBytes(), expected);
+        EXPECT_EQ(cache.getOrParse(id, header).first, first.first);
+        EXPECT_EQ(cache.accountedBytes(), expected);
+    }
+    const auto changed = sizedHeader("001", 512);
+    expected = expected - costOf("001", sizedHeader("001", 32)) + costOf("001", changed);
+    EXPECT_EQ(cache.getOrParse("001", changed).second, Op::Updated);
+    EXPECT_EQ(cache.accountedBytes(), expected);
+    EXPECT_TRUE(AgentMetadataCacheTestAccess::consistent(cache));
+}
+
+TEST_F(AgentMetadataCacheTest, ZeroLimitsKeepUnlimitedAdmission)
+{
+    const auto a = sizedHeader("001", 16);
+    const auto b = sizedHeader("002", 16);
+    for (const auto limits : {Limits {}, Limits {2, 0}, Limits {0, costOf("001", a) + costOf("002", b)}})
+    {
+        AgentMetadataCache bounded(60s, limits);
+        EXPECT_EQ(bounded.getOrParse("001", a).second, Op::Inserted);
+        EXPECT_EQ(bounded.getOrParse("002", b).second, Op::Inserted);
+        EXPECT_EQ(bounded.size(), 2u);
+        EXPECT_TRUE(AgentMetadataCacheTestAccess::consistent(bounded));
+    }
+    for (int i = 100; i < 120; ++i)
+    {
+        const auto id = std::to_string(i);
+        EXPECT_EQ(cache.getOrParse(id, sizedHeader(id, 16)).second, Op::Inserted);
+    }
+    EXPECT_EQ(cache.size(), 20u);
+}
+
+TEST_F(AgentMetadataCacheTest, EntryLimitBypassesWithoutEvicting)
+{
+    AgentMetadataCache bounded(60s, {2, 0});
+    const auto a = bounded.getOrParse("001", sizedHeader("001", 16)).first;
+    const auto b = bounded.getOrParse("002", sizedHeader("002", 16)).first;
+    const auto before = bounded.accountedBytes();
+    const auto c = bounded.getOrParse("003", sizedHeader("003", 16));
+    const auto again = bounded.getOrParse("003", sizedHeader("003", 16));
+    EXPECT_EQ(c.second, Op::BypassedCapacity);
+    EXPECT_EQ(again.second, Op::BypassedCapacity);
+    EXPECT_NE(c.first, again.first);
+    expectHeader(c.first, "003", 16);
+    EXPECT_EQ(bounded.size(), 2u);
+    EXPECT_EQ(bounded.accountedBytes(), before);
+    EXPECT_EQ(AgentMetadataCacheTestAccess::retained(bounded, "001"), a);
+    EXPECT_EQ(AgentMetadataCacheTestAccess::retained(bounded, "002"), b);
+    EXPECT_EQ(AgentMetadataCacheTestAccess::retained(bounded, "003"), nullptr);
+}
+
+TEST_F(AgentMetadataCacheTest, ByteLimitAcceptsExactFit)
+{
+    const auto a = sizedHeader("001", 16);
+    const auto b = sizedHeader("002", 16);
+    const auto exact = costOf("001", a) + costOf("002", b);
+    for (const auto budget : {exact, exact - 1})
+    {
+        AgentMetadataCache bounded(60s, {0, budget});
+        EXPECT_EQ(bounded.getOrParse("001", a).second, Op::Inserted);
+        EXPECT_EQ(bounded.getOrParse("002", b).second, budget == exact ? Op::Inserted : Op::BypassedCapacity);
+        EXPECT_EQ(bounded.accountedBytes(), budget == exact ? exact : costOf("001", a));
+        EXPECT_TRUE(AgentMetadataCacheTestAccess::consistent(bounded));
+    }
+}
+
+TEST_F(AgentMetadataCacheTest, BothLimitsRejectTheSameAdmission)
+{
+    const auto a = sizedHeader("001", 16);
+    AgentMetadataCache bounded(60s, {1, costOf("001", a)});
+    const auto first = bounded.getOrParse("001", a).first;
+    const auto large = bounded.getOrParse("002", sizedHeader("002", 8192));
+    EXPECT_EQ(large.second, Op::BypassedCapacity);
+    expectHeader(large.first, "002", 8192);
+    EXPECT_EQ(AgentMetadataCacheTestAccess::retained(bounded, "001"), first);
+    EXPECT_EQ(bounded.size(), 1u);
+    EXPECT_TRUE(AgentMetadataCacheTestAccess::consistent(bounded));
+}
+
+TEST_F(AgentMetadataCacheTest, OversizedEntryIsReturnedWithoutRetention)
+{
+    AgentMetadataCache bounded(60s, {0, 1});
+    const auto result = bounded.getOrParse("001", sizedHeader("001", 16384));
+    EXPECT_EQ(result.second, Op::BypassedCapacity);
+    expectHeader(result.first, "001", 16384);
+    EXPECT_EQ(bounded.size(), 0u);
+    EXPECT_EQ(bounded.accountedBytes(), 0u);
+}
+
+TEST_F(AgentMetadataCacheTest, ReplacementUsesNetDelta)
+{
+    const auto small = sizedHeader("001", 16);
+    const auto large = sizedHeader("001", 256);
+    const auto other = sizedHeader("002", 16);
+    const auto budget = costOf("001", large) + costOf("002", other);
+    AgentMetadataCache bounded(60s, {2, budget});
+    const auto old = bounded.getOrParse("001", small).first;
+    bounded.getOrParse("002", other);
+    const auto result = bounded.getOrParse("001", large);
+    EXPECT_EQ(result.second, Op::Updated);
+    EXPECT_NE(result.first, old);
+    EXPECT_EQ(bounded.size(), 2u);
+    EXPECT_EQ(bounded.accountedBytes(), budget);
+    EXPECT_TRUE(AgentMetadataCacheTestAccess::consistent(bounded));
+}
+
+TEST_F(AgentMetadataCacheTest, UnfittingReplacementReleasesOldEntry)
+{
+    const auto a = sizedHeader("001", 16);
+    const auto b = sizedHeader("002", 16);
+    AgentMetadataCache bounded(60s, {2, costOf("001", a) + costOf("002", b)});
+    const auto old = bounded.getOrParse("001", a).first;
+    const auto other = bounded.getOrParse("002", b).first;
+    const auto result = bounded.getOrParse("001", sizedHeader("001", 8192));
+    EXPECT_EQ(result.second, Op::BypassedCapacity);
+    EXPECT_NE(result.first, old);
+    expectHeader(result.first, "001", 8192);
+    expectHeader(old, "001", 16);
+    EXPECT_EQ(bounded.size(), 1u);
+    EXPECT_EQ(bounded.accountedBytes(), costOf("002", b));
+    EXPECT_EQ(AgentMetadataCacheTestAccess::retained(bounded, "001"), nullptr);
+    EXPECT_EQ(AgentMetadataCacheTestAccess::retained(bounded, "002"), other);
+    EXPECT_TRUE(AgentMetadataCacheTestAccess::consistent(bounded));
+}
+
+TEST_F(AgentMetadataCacheTest, ShrinkingReplacementReleasesBytes)
+{
+    const auto large = sizedHeader("001", 8192);
+    const auto small = sizedHeader("001", 16);
+    const auto b = sizedHeader("002", 16);
+    const auto c = sizedHeader("003", 16);
+    AgentMetadataCache bounded(60s, {0, costOf("001", large) + costOf("002", b)});
+    bounded.getOrParse("001", large);
+    bounded.getOrParse("002", b);
+    EXPECT_EQ(bounded.getOrParse("001", small).second, Op::Updated);
+    EXPECT_EQ(bounded.accountedBytes(), costOf("001", small) + costOf("002", b));
+    EXPECT_EQ(bounded.getOrParse("003", c).second, Op::Inserted);
+    EXPECT_EQ(bounded.accountedBytes(), costOf("001", small) + costOf("002", b) + costOf("003", c));
+    EXPECT_TRUE(AgentMetadataCacheTestAccess::consistent(bounded));
+}
+
+TEST_F(AgentMetadataCacheTest, InvalidReplacementPreservesAccounting)
+{
+    const auto a = sizedHeader("001", 16);
+    AgentMetadataCache bounded(60s, {1, costOf("001", a)});
+    const auto old = bounded.getOrParse("001", a).first;
+    for (const auto& invalid : {HEADER_INVALID_JSON,
+                                HEADER_MISSING_ID,
+                                HEADER_NON_NUMERIC_ID,
+                                sizedHeader("002", 8192),
+                                std::string(R"({"wazuh":{"agent":{"id":"001","id":"002"}}})")})
+    {
+        EXPECT_THROW(bounded.getOrParse("001", invalid), std::runtime_error);
+        EXPECT_EQ(bounded.accountedBytes(), costOf("001", a));
+        EXPECT_EQ(bounded.size(), 1u);
+        EXPECT_EQ(AgentMetadataCacheTestAccess::retained(bounded, "001"), old);
+        EXPECT_TRUE(AgentMetadataCacheTestAccess::consistent(bounded));
+    }
+}
+
+TEST_F(AgentMetadataCacheTest, ClockFailurePreservesAccounting)
+{
+    const auto a = sizedHeader("001", 16);
+    auto changed = a;
+    changed.replace(changed.find(std::string(16, 'x')), 16, std::string(16, 'y'));
+    bool failClock = false;
+    AgentMetadataCache bounded(60s,
+                               {1, costOf("001", a)},
+                               [&]()
+                               {
+                                   if (failClock)
+                                       throw std::runtime_error("clock unavailable");
+                                   return std::chrono::steady_clock::time_point {};
+                               });
+    const auto original = bounded.getOrParse("001", a).first;
+    auto updates = fastmetrics::manager().getOrCreateCounter(fastmetrics::names::AGENT_CACHE_UPDATES);
+    const auto before = updates->get();
+    failClock = true;
+    EXPECT_THROW(bounded.getOrParse("001", changed), std::runtime_error);
+    EXPECT_EQ(updates->get(), before);
+    EXPECT_EQ(AgentMetadataCacheTestAccess::retained(bounded, "001"), original);
+    EXPECT_EQ(bounded.accountedBytes(), costOf("001", a));
+    EXPECT_TRUE(AgentMetadataCacheTestAccess::consistent(bounded));
+}
+
+TEST_F(AgentMetadataCacheTest, EvictionAndClearReleaseAccountedBytes)
+{
+    FakeClock clock;
+    AgentMetadataCache bounded(1s, {2, 0}, clock.fn());
+    const auto a = sizedHeader("001", 16);
+    const auto b = sizedHeader("002", 16);
+    bounded.getOrParse("001", a);
+    bounded.getOrParse("002", b);
+    clock.advance(1s);
+    EXPECT_EQ(bounded.evictStale(), 0u);
+    EXPECT_EQ(bounded.getOrParse("001", a).second, Op::Retrieved);
+    clock.advance(1ns);
+    EXPECT_EQ(bounded.evictStale(), 1u);
+    EXPECT_EQ(bounded.accountedBytes(), costOf("001", a));
+    EXPECT_TRUE(AgentMetadataCacheTestAccess::consistent(bounded));
+    bounded.clear();
+    bounded.clear();
+    EXPECT_EQ(bounded.size(), 0u);
+    EXPECT_EQ(bounded.accountedBytes(), 0u);
+    EXPECT_EQ(bounded.getOrParse("002", b).second, Op::Inserted);
+    EXPECT_EQ(bounded.accountedBytes(), costOf("002", b));
+}
+
+TEST_F(AgentMetadataCacheTest, ReturnedHeadersSurviveRemoval)
+{
+    const auto initial = sizedHeader("001", 128);
+    for (int action = 0; action < 4; ++action)
+    {
+        FakeClock clock;
+        AgentMetadataCache bounded(1s, {1, costOf("001", initial)}, clock.fn());
+        const auto old = bounded.getOrParse("001", initial).first;
+        if (action < 2)
+        {
+            const auto padding = action == 0 ? 16u : 8192u;
+            const auto result = bounded.getOrParse("001", sizedHeader("001", padding));
+            EXPECT_EQ(result.second, action == 0 ? Op::Updated : Op::BypassedCapacity);
+            bounded.clear();
+            expectHeader(result.first, "001", padding);
+        }
+        else if (action == 2)
+        {
+            clock.advance(1s + 1ns);
+            EXPECT_EQ(bounded.evictStale(), 1u);
+        }
+        else
+        {
+            bounded.clear();
+        }
+        expectHeader(old, "001", 128);
+        EXPECT_EQ(bounded.accountedBytes(), 0u);
+    }
+}
+
+TEST_F(AgentMetadataCacheTest, BypassLeavesExistingCountersUnchanged)
+{
+    auto& mgr = fastmetrics::manager();
+    const std::vector<std::shared_ptr<fastmetrics::ICounter>> counters {
+        mgr.getOrCreateCounter(fastmetrics::names::AGENT_CACHE_HITS),
+        mgr.getOrCreateCounter(fastmetrics::names::AGENT_CACHE_INSERTIONS),
+        mgr.getOrCreateCounter(fastmetrics::names::AGENT_CACHE_UPDATES),
+        mgr.getOrCreateCounter(fastmetrics::names::AGENT_CACHE_EVICTIONS)};
+    const auto a = sizedHeader("001", 16);
+    AgentMetadataCache bounded(60s, {1, costOf("001", a)});
+    bounded.getOrParse("001", a);
+    std::vector<std::uint64_t> before;
+    for (const auto& counter : counters) before.push_back(counter->get());
+    EXPECT_EQ(bounded.getOrParse("002", sizedHeader("002", 16)).second, Op::BypassedCapacity);
+    EXPECT_EQ(bounded.getOrParse("001", sizedHeader("001", 8192)).second, Op::BypassedCapacity);
+    bounded.clear();
+    for (std::size_t i = 0; i < counters.size(); ++i) EXPECT_EQ(counters[i]->get(), before[i]);
+}
+
+TEST_F(AgentMetadataCacheTest, RejectsLimitsAboveSupportedBounds)
+{
+    EXPECT_NO_THROW((AgentMetadataCache(60s, {Limits::MAX_ENTRIES, Limits::MAX_BYTES})));
+    EXPECT_NO_THROW((AgentMetadataCache(60s, {})));
+    if (Limits::MAX_ENTRIES < std::numeric_limits<std::size_t>::max())
+    {
+        EXPECT_THROW((AgentMetadataCache(60s, {Limits::MAX_ENTRIES + 1, 0})), std::invalid_argument);
+    }
+    if (Limits::MAX_BYTES < std::numeric_limits<std::size_t>::max())
+    {
+        EXPECT_THROW((AgentMetadataCache(60s, {0, Limits::MAX_BYTES + 1})), std::invalid_argument);
+    }
+    EXPECT_THROW((AgentMetadataCache(60s, {}, {})), std::invalid_argument);
+}
+
+TEST_F(AgentMetadataCacheTest, AccountingArithmeticCannotWrap)
+{
+    const auto max = std::numeric_limits<std::size_t>::max();
+    EXPECT_EQ(AgentMetadataCacheTestAccess::add(max, 0), max);
+    EXPECT_EQ(AgentMetadataCacheTestAccess::add(max - 1, 1), max);
+    EXPECT_FALSE(AgentMetadataCacheTestAccess::add(max, 1));
+    const auto available = max - AgentMetadataCacheTestAccess::overhead();
+    EXPECT_EQ(AgentMetadataCacheTestAccess::cost(available - 3, 3, 0), max);
+    EXPECT_FALSE(AgentMetadataCacheTestAccess::cost(available - 3, 3, 1));
+    EXPECT_FALSE(AgentMetadataCacheTestAccess::cost(max, 3, 1));
+    EXPECT_FALSE(AgentMetadataCacheTestAccess::cost(0, max, 1));
+}
+
+TEST_F(AgentMetadataCacheTest, ConcurrentIdenticalMissesConverge)
+{
+    AgentMetadataCache bounded(60s, {1, 0});
+    const auto header = sizedHeader("001", 128);
+    auto insertions = fastmetrics::manager().getOrCreateCounter(fastmetrics::names::AGENT_CACHE_INSERTIONS);
+    const auto before = insertions->get();
+    std::atomic<int> ready {0};
+    std::atomic<bool> start {false};
+    std::vector<AgentMetadataCache::GetResult> results(8);
+    std::vector<std::thread> threads;
+    for (std::size_t t = 0; t < results.size(); ++t)
+    {
+        threads.emplace_back(
+            [&, t]()
+            {
+                ready.fetch_add(1);
+                while (!start.load()) std::this_thread::yield();
+                results[t] = bounded.getOrParse("001", header);
+            });
+    }
+    while (ready.load() != static_cast<int>(results.size())) std::this_thread::yield();
+    start.store(true);
+    for (auto& thread : threads) thread.join();
+    std::size_t inserted = 0;
+    for (const auto& result : results)
+    {
+        inserted += result.second == Op::Inserted;
+        EXPECT_TRUE(result.second == Op::Inserted || result.second == Op::Retrieved);
+        EXPECT_EQ(result.first, results.front().first);
+    }
+    EXPECT_EQ(inserted, 1u);
+    EXPECT_EQ(insertions->get() - before, 1u);
+    EXPECT_EQ(bounded.accountedBytes(), costOf("001", header));
+    EXPECT_TRUE(AgentMetadataCacheTestAccess::consistent(bounded));
+}
+
+TEST_F(AgentMetadataCacheTest, ThreadSafety_BoundedMutationsKeepAccountingConsistent)
+{
+    using Clock = std::chrono::steady_clock;
+    const auto budget = 2 * costOf("001", sizedHeader("001", 128));
+    std::atomic<Clock::rep> ticks {0};
+    AgentMetadataCache bounded(1s, {3, budget}, [&]() { return Clock::time_point(Clock::duration(ticks.load())); });
+    std::atomic<bool> start {false};
+    std::atomic<int> errors {0};
+    std::atomic<int> bypasses {0};
+    std::atomic<int> writersLeft {8};
+    std::atomic<bool> maintenanceStarted {false};
+    std::vector<std::thread> threads;
+    for (int t = 0; t < 8; ++t)
+    {
+        threads.emplace_back(
+            [&, t]()
+            {
+                while (!start.load() || !maintenanceStarted.load()) std::this_thread::yield();
+                for (int i = 0; i < 200; ++i)
+                {
+                    const auto id = "00" + std::to_string(1 + (t + i) % 5);
+                    const auto padding = i % 3 == 0 ? 8192u : 128u;
+                    const auto header = sizedHeader(id, padding);
+                    try
+                    {
+                        for (int repeat = 0; repeat < 2; ++repeat)
+                        {
+                            const auto result = bounded.getOrParse(id, header);
+                            bypasses.fetch_add(result.second == Op::BypassedCapacity);
+                            std::string_view actualId, actualName;
+                            if (result.first->getString(actualId, "/wazuh/agent/id") != json::RetGet::Success
+                                || actualId != id
+                                || result.first->getString(actualName, "/wazuh/agent/name") != json::RetGet::Success
+                                || actualName.size() != padding)
+                            {
+                                ++errors;
+                            }
+                        }
+                        if (!AgentMetadataCacheTestAccess::consistent(bounded))
+                            ++errors;
+                    }
+                    catch (...)
+                    {
+                        ++errors;
+                    }
+                }
+                writersLeft.fetch_sub(1);
+            });
+    }
+    threads.emplace_back(
+        [&]()
+        {
+            while (!start.load()) std::this_thread::yield();
+            maintenanceStarted.store(true);
+            std::size_t i = 0;
+            do
+            {
+                ticks.fetch_add(std::chrono::duration_cast<Clock::duration>(2s).count());
+                bounded.evictStale();
+                if (i % 3 == 0)
+                    bounded.clear();
+                if (!AgentMetadataCacheTestAccess::consistent(bounded))
+                    ++errors;
+                ++i;
+                std::this_thread::yield();
+            } while (writersLeft.load() != 0);
+        });
+    start.store(true);
+    for (auto& thread : threads) thread.join();
+    EXPECT_EQ(errors.load(), 0);
+    EXPECT_GT(bypasses.load(), 0);
+    EXPECT_TRUE(AgentMetadataCacheTestAccess::consistent(bounded));
+    bounded.clear();
+    EXPECT_EQ(bounded.size(), 0u);
+    EXPECT_EQ(bounded.accountedBytes(), 0u);
 }
