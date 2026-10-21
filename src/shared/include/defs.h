@@ -101,7 +101,11 @@ https://www.gnu.org/licenses/gpl.html\n"
 #endif
 
 #ifndef GROUPGLOBAL
+#ifdef CLIENT
 #define GROUPGLOBAL "wazuh"
+#else
+#define GROUPGLOBAL "wazuh-manager"
+#endif
 #endif
 
 // Standard super user UID and GID
