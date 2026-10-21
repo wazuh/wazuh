@@ -381,8 +381,9 @@ Everything below the `401` rows keeps a numeric `code` equal to the HTTP status.
 | Body exceeds the auth body limit (5 MiB) -- or, for `Content-Encoding: zstd`, the frame declares a window over 8 MiB, or the decoder's buffers or the decompressed output don't fit in the in-flight capacity free at that moment | `413` | `Request payload is too large`              |
 | `Content-Encoding` present but not (case-insensitively) `zstd`                                                                                                                          | `415` | `Unsupported Content-Encoding`              |
 | `Content-Encoding: zstd`, but the body isn't a valid/complete zstd frame                                                                                                                | `400` | `Malformed compressed body`                 |
-| H line repeats `wazuh`, `wazuh.agent` or `wazuh.agent.id` (names compared after JSON unescaping)                                                                                        | `400` | `Invalid event batch`                       |
-| Payload's `wazuh.agent.id` (H line) missing/malformed/non-numeric, `wazuh` or `wazuh.agent` not an object, or not byte-for-byte equal to the authenticated `agent-id` (zero padding included)  | `400` | `Invalid event batch`                       |
+| Engine rejects an H line that repeats `wazuh`, `wazuh.agent` or `wazuh.agent.id` (names compared after JSON unescaping)                                                                                        | `400` | `Invalid event batch`                       |
+| Engine rejects payload's `wazuh.agent.id` (H line) missing/malformed/non-numeric, `wazuh` or `wazuh.agent` not an object, or not byte-for-byte equal to the authenticated `agent-id` (zero padding included)  | `400` | `Invalid event batch`                       |
+| Missing literal `H ` prefix or H-line slice exceeds 8 KiB | `400` | `Invalid event batch` |
 | Downstream rejected the batch (bad H/E)                                                                                                                                                 | `400` | `Invalid event batch`                       |
 | Out of capacity, or downstream unreachable/errored                                                                                                                                      | `503` | `Service unavailable`                       |
 | Endpoint handler raised an unexpected error                                                                                                                                             | `500` | `Internal server error`                     |
@@ -391,16 +392,19 @@ Everything below the `401` rows keeps a numeric `code` equal to the HTTP status.
 A path that matches no route is answered `404` with `{"error":"not_found"}` (no `code`) and the
 connection is closed. The `429` bodies of the rate-limited routes are documented with each route.
 
-The payload-identity check runs **before** the batch is forwarded: a mismatch never reaches the
-engine at all, and (by design) shares the same `400 Invalid event batch` message as a batch the
-engine itself rejects, so a client cannot distinguish the two causes.
+Before forwarding, remoted checks only the literal `H ` prefix and the 8 KiB limit on the
+following bytes before the first LF (or end of body). It does not parse JSON. A missing prefix or
+oversized slice returns `400 Invalid event batch` locally. Otherwise remoted forwards the decoded
+body unchanged, with `X-Wazuh-Agent-Id` set from the verified JWT identity.
 
-A header that repeats a step of the identity path is refused outright rather than resolved. JSON
-permits repetition, but the manager forwards the batch downstream byte for byte and the engine
-re-reads those same bytes under different rules — it keeps the *last* of a repeated name where this
-check takes the *first*. Whichever member was validated would therefore not be the one ingested, so
-the ambiguous header is rejected instead. The comparison is done on the unescaped names, so
-`"wazuh"` and `"\u0077azuh"` count as the same member.
+The engine validates the H-line JSON and identity before enqueueing. Each step of
+`/wazuh/agent/id` must appear exactly once, and the string id must equal the trusted carrier
+byte for byte. Names are compared after JSON unescaping, so `"wazuh"` and `"\u0077azuh"` count
+as the same member. On a cache hit, the same id and exact header bytes have already passed this
+validation. An engine 400 is relayed as the same neutral `400 Invalid event batch` response.
+Identity rejections increment the engine's `agent.cache.rejected.identity`; remoted's
+`remoted.auth.reject.payload_mismatch` counts only local prefix/size failures. Both local and relayed
+400 responses increment `remoted.http.stateless.responses.400`.
 
 The rule covers `wazuh`, `wazuh.agent` and `wazuh.agent.id` only. A repetition elsewhere in the
 header cannot move the identity, because the engine escapes member names when it builds the JSON
@@ -472,10 +476,10 @@ manager-local Unix socket (`GET /`, `GET /metrics`, `GET /status`, `GET /tls` on
   the configured CA — refusing to hand out a CA that would make every verifying agent fail. See
   [CA certificate endpoint](#ca-certificate-endpoint-get-cacerts) below.
 - **`POST /stateless`** — authenticated event ingestion. Once the signature is verified, the module
-  cross-checks the H line's `wazuh.agent.id` against the authenticated `agent-id` (**`400`** on a
-  missing/malformed header or a mismatch); only then does it forward the H/E batch to the engine's
-  event ingress over a Unix-domain socket (`POST /events/enriched`, stamping the authenticated
-  identity as `X-Wazuh-Agent-Id`) and reply from the downstream
+  checks the literal `H ` prefix and 8 KiB H-line slice limit (**`400`** on failure). It forwards the
+  unchanged H/E batch to the engine over a Unix-domain socket (`POST /events/enriched`), setting
+  `X-Wazuh-Agent-Id` to the authenticated id. The engine validates JSON and identity, with cache
+  hits reusing validation of the same id and header bytes. remoted replies from the downstream
   result: **`202 Accepted`** (engine enqueued the batch), **`400`** (engine rejected the batch),
   **`413`**, or **`503`** (out of capacity or the engine is unreachable/errored). Auth failures
   return the errors above. Note the agent sends **no `Content-Type`** on this route — nothing on

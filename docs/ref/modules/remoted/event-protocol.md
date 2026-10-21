@@ -105,8 +105,10 @@ The header is a JSON object conforming to Elastic Common Schema (ECS):
 The engine requires exactly one locally authored `X-Wazuh-Agent-Id`. It must be canonical
 (`000`–`999`, or no leading zero through `4294967295`) and equal to the H-line id. It rejects a
 missing/repeated/malformed carrier or an ambiguous/mismatched H-line identity with HTTP 400.
-remoted also validates the H-line identity on the HTTPS path. The engine does not
-verify JWTs; it trusts producers that can write to its local socket to supply the authenticated or
+On the HTTPS path, remoted verifies the JWT and checks only the literal `H ` prefix and
+8 KiB H-line slice limit before forwarding; it does not parse the JSON. H-line identity validation
+belongs to the engine, with cache hits reusing validation of the same id and exact header bytes.
+The engine does not verify JWTs; it trusts producers that can write to its local socket to supply the authenticated or
 server-side identity. See the [ingestion specification](../engine/spec-events.yaml).
 
 - Exactly one header per batch (first line)
