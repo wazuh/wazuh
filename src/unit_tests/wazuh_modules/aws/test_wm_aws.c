@@ -38,6 +38,9 @@ extern void wm_aws_run_s3(wm_aws_bucket *bucket);
 // Static in wm_aws.c, but visible here because WAZUH_UNIT_TESTING drops the qualifier.
 extern void wm_aws_add_quoted_arg(char **command, const char *value);
 
+// Not in wm_aws.h: the module only exposes it through WM_AWS_CONTEXT.dump.
+cJSON *wm_aws_dump(const wm_aws *aws_config);
+
 void wm_aws_run_s3(wm_aws_bucket *exec_bucket) {
     // Will wrap this function to check running times in order to check scheduling
     return;
@@ -347,6 +350,69 @@ void test_add_quoted_arg_bucket_values_with_spaces(void **state) {
     os_free(command);
 }
 
+/* The dump only reads the configuration, so it is built on the stack: no
+ * parser, no allocations to free. scan_wday -1 is what sched_scan_init leaves. */
+static char *aws_dump_text(const wm_aws *aws_config) {
+    cJSON *root = wm_aws_dump(aws_config);
+    char *text = cJSON_PrintUnformatted(root);
+
+    cJSON_Delete(root);
+    return text;
+}
+
+void test_aws_dump_masks_bucket_and_service_keys(void **state) {
+    wm_aws_bucket bucket = {
+        .bucket = "wazuh-aws-wodle",
+        .access_key = "AKIAFAKEBUCKETKEY001",
+        .secret_key = "fakeBucketSecretKey001",
+        .type = "cloudtrail",
+    };
+    wm_aws_service service = {
+        .type = "inspector",
+        .access_key = "AKIAFAKESERVICEKEY01",
+        .secret_key = "fakeServiceSecretKey01",
+        .regions = "us-east-1",
+    };
+    wm_aws aws_config = { .scan_config.scan_wday = -1, .enabled = 1, .buckets = &bucket, .services = &service };
+
+    char *text = aws_dump_text(&aws_config);
+
+    assert_string_equal(text, "{\"aws-s3\":{\"disabled\":\"no\",\"run_on_start\":\"no\",\"skip_on_error\":\"no\","
+                              "\"buckets\":[{\"name\":\"wazuh-aws-wodle\",\"access_key\":\"*****\",\"secret_key\":\"*****\","
+                              "\"type\":\"cloudtrail\",\"remove_from_bucket\":\"no\"}],"
+                              "\"services\":[{\"type\":\"inspector\",\"access_key\":\"*****\",\"secret_key\":\"*****\","
+                              "\"regions\":\"us-east-1\",\"remove_log_streams\":\"no\"}]}}");
+    cJSON_free(text);
+}
+
+void test_aws_dump_never_prints_an_inline_key(void **state) {
+    wm_aws_bucket second = { .bucket = "second-bucket", .access_key = "AKIAFAKESECONDKEY001", .secret_key = "fakeSecondSecret001" };
+    wm_aws_bucket first = { .bucket = "first-bucket", .access_key = "AKIAFAKEFIRSTKEY0001", .secret_key = "fakeFirstSecret0001", .next = &second };
+    wm_aws_service service = { .type = "cloudwatchlogs", .access_key = "AKIAFAKESERVICEKEY02", .secret_key = "fakeServiceSecret002" };
+    wm_aws aws_config = { .scan_config.scan_wday = -1, .buckets = &first, .services = &service };
+    const char *keys[] = { "AKIAFAKEFIRSTKEY0001", "fakeFirstSecret0001", "AKIAFAKESECONDKEY001",
+                           "fakeSecondSecret001", "AKIAFAKESERVICEKEY02", "fakeServiceSecret002" };
+
+    char *text = aws_dump_text(&aws_config);
+
+    for (size_t i = 0; i < sizeof(keys) / sizeof(keys[0]); i++) {
+        assert_null(strstr(text, keys[i]));
+    }
+    cJSON_free(text);
+}
+
+void test_aws_dump_leaves_out_keys_that_are_not_set(void **state) {
+    wm_aws_bucket bucket = { .bucket = "wazuh-aws-wodle", .aws_profile = "default", .type = "cloudtrail" };
+    wm_aws aws_config = { .scan_config.scan_wday = -1, .enabled = 1, .buckets = &bucket };
+
+    char *text = aws_dump_text(&aws_config);
+
+    assert_string_equal(text, "{\"aws-s3\":{\"disabled\":\"no\",\"run_on_start\":\"no\",\"skip_on_error\":\"no\","
+                              "\"buckets\":[{\"name\":\"wazuh-aws-wodle\",\"aws_profile\":\"default\","
+                              "\"type\":\"cloudtrail\",\"remove_from_bucket\":\"no\"}]}}");
+    cJSON_free(text);
+}
+
 int main(void) {
     const struct CMUnitTest tests_with_startup[] = {
         cmocka_unit_test_setup_teardown(test_interval_execution, setup_test_executions, teardown_test_executions)
@@ -360,7 +426,10 @@ int main(void) {
         cmocka_unit_test(test_add_quoted_arg_value_with_spaces),
         cmocka_unit_test(test_add_quoted_arg_value_without_spaces),
         cmocka_unit_test(test_add_quoted_arg_value_with_special_chars),
-        cmocka_unit_test(test_add_quoted_arg_bucket_values_with_spaces)
+        cmocka_unit_test(test_add_quoted_arg_bucket_values_with_spaces),
+        cmocka_unit_test(test_aws_dump_masks_bucket_and_service_keys),
+        cmocka_unit_test(test_aws_dump_never_prints_an_inline_key),
+        cmocka_unit_test(test_aws_dump_leaves_out_keys_that_are_not_set)
     };
     int result;
     result = cmocka_run_group_tests(tests_with_startup, setup_module, teardown_module);
