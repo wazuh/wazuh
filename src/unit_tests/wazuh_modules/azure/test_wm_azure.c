@@ -34,6 +34,8 @@ static wmodule *azure_module;
 static OS_XML *lxml;
 extern int test_mode;
 
+cJSON *wm_azure_dump(const wm_azure_t *azure);
+
 static void wmodule_cleanup(wmodule *module){
     wm_azure_t* module_data = (wm_azure_t *)module->data;
     if(module_data->api_config){
@@ -294,6 +296,43 @@ void test_read_scheduling_interval_configuration(void **state) {
     assert_int_equal(module_data->scan_config.scan_wday, -1);
 }
 
+void test_dump_requests_and_containers(void **state) {
+    wm_azure_request_t second_request = { .tag = "azure-signin", .query = "SigninLogs", .time_offset = "1d", .timeout = 60 };
+    wm_azure_request_t first_request = { .tag = "azure-activity", .query = "AzureActivity", .time_offset = "36h",
+                                         .workspace = "d6b-efa", .next = &second_request };
+    wm_azure_request_t graph_request = { .tag = "azure-ad-graph", .query = "auditLogs/directoryAudits", .time_offset = "1d" };
+    wm_azure_api_t graph = { .type = GRAPHS, .auth_path = "/var/ossec/wodles/azure/graph.txt",
+                             .tenantdomain = "wazuh.onmicrosoft.com", .request = &graph_request };
+    wm_azure_api_t analytics = { .type = LOG_ANALYTICS, .auth_path = "/var/ossec/wodles/azure/analytics.txt",
+                                 .tenantdomain = "wazuh.onmicrosoft.com", .request = &first_request, .next = &graph };
+    wm_azure_container_t second_container = { .name = "insights-operational-logs", .blobs = "*", .content_type = "file",
+                                              .time_offset = "2d", .path = "logs/", .timeout = 30 };
+    wm_azure_container_t first_container = { .name = "insights-activity-logs", .blobs = ".json", .content_type = "json_inline",
+                                             .time_offset = "24h", .next = &second_container };
+    wm_azure_storage_t storage = { .auth_path = "/var/ossec/wodles/azure/storage.txt", .tag = "azure-storage",
+                                   .container = &first_container };
+    wm_azure_t azure = { .flags.enabled = 1, .api_config = &analytics, .storage = &storage, .scan_config.scan_wday = -1 };
+
+    cJSON *root = wm_azure_dump(&azure);
+    char *text = cJSON_PrintUnformatted(root);
+
+    assert_string_equal(text, "{\"azure-logs\":{\"disabled\":\"no\",\"run_on_start\":\"no\",\"timeout\":0,\"content\":["
+                              "{\"type\":\"log_analytics\",\"tenantdomain\":\"wazuh.onmicrosoft.com\","
+                              "\"auth_path\":\"/var/ossec/wodles/azure/analytics.txt\",\"requests\":["
+                              "{\"tag\":\"azure-activity\",\"query\":\"AzureActivity\",\"time_offset\":\"36h\",\"workspace\":\"d6b-efa\"},"
+                              "{\"tag\":\"azure-signin\",\"query\":\"SigninLogs\",\"time_offset\":\"1d\",\"timeout\":60}]},"
+                              "{\"type\":\"graph\",\"tenantdomain\":\"wazuh.onmicrosoft.com\","
+                              "\"auth_path\":\"/var/ossec/wodles/azure/graph.txt\",\"requests\":["
+                              "{\"tag\":\"azure-ad-graph\",\"query\":\"auditLogs/directoryAudits\",\"time_offset\":\"1d\"}]},"
+                              "{\"tag\":\"azure-storage\",\"auth_path\":\"/var/ossec/wodles/azure/storage.txt\",\"containers\":["
+                              "{\"name\":\"insights-activity-logs\",\"blobs\":\".json\",\"content_type\":\"json_inline\",\"time_offset\":\"24h\"},"
+                              "{\"name\":\"insights-operational-logs\",\"blobs\":\"*\",\"content_type\":\"file\",\"time_offset\":\"2d\","
+                              "\"prefix\":\"logs/\",\"timeout\":30}]}]}}");
+
+    cJSON_free(text);
+    cJSON_Delete(root);
+}
+
 int main(void) {
     const struct CMUnitTest tests_with_startup[] = {
         cmocka_unit_test_setup_teardown(test_interval_execution, setup_test_executions, teardown_test_executions)
@@ -303,7 +342,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_read_scheduling_monthday_configuration, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_scheduling_weekday_configuration, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_scheduling_daytime_configuration, setup_test_read, teardown_test_read),
-        cmocka_unit_test_setup_teardown(test_read_scheduling_interval_configuration, setup_test_read, teardown_test_read)
+        cmocka_unit_test_setup_teardown(test_read_scheduling_interval_configuration, setup_test_read, teardown_test_read),
+        cmocka_unit_test(test_dump_requests_and_containers)
     };
     int result;
     result = cmocka_run_group_tests(tests_with_startup, setup_module, teardown_module);

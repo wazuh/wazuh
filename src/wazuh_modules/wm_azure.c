@@ -543,6 +543,7 @@ cJSON *wm_azure_dump(const wm_azure_t * azure) {
                     if (request_conf->timeout) cJSON_AddNumberToObject(request, "timeout", request_conf->timeout);
                     cJSON_AddItemToArray(requests, request);
                 }
+                cJSON_AddItemToObject(api, "requests", requests);
             }
             cJSON_AddItemToArray(content, api);
         }
@@ -565,6 +566,7 @@ cJSON *wm_azure_dump(const wm_azure_t * azure) {
                     if (container_conf->timeout) cJSON_AddNumberToObject(container, "timeout", container_conf->timeout);
                     cJSON_AddItemToArray(containers, container);
                 }
+                cJSON_AddItemToObject(storage, "containers", containers);
             }
             cJSON_AddItemToArray(content, storage);
         }
