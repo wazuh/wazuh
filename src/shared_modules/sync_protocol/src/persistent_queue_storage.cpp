@@ -261,90 +261,91 @@ std::vector<PersistedData> PersistentQueueStorage::fetchAndMarkForSync(size_t ma
 
     try
     {
-        const std::string selectQuery =
-            "SELECT rowid, id, idx, data, operation, version, is_data_context "
-            "FROM persistent_queue "
-            "WHERE sync_status = ? "
-            "ORDER BY rowid ASC;";
-
-        SQLite3Wrapper::Statement selectStmt(m_connection, selectQuery);
-        selectStmt.bind(1, static_cast<int>(SyncStatus::PENDING));
-
-        while (selectStmt.step() == SQLITE_ROW)
+        // Scoped so selectStmt finishes before the writes below: a budget break would otherwise
+        // leave it mid-scan through COMMIT.
         {
-            PersistedData data;
-            int64_t rowid = selectStmt.value<int64_t>(0);
-            data.id = selectStmt.value<std::string>(1);
-            data.index = selectStmt.value<std::string>(2);
-            data.data = selectStmt.value<std::string>(3);
-            data.operation = static_cast<Operation>(selectStmt.value<int>(4));
-            data.version = static_cast<uint64_t>(selectStmt.value<int64_t>(5));
-            data.is_data_context = selectStmt.value<int>(6) != 0;
-            const size_t estimatedItemBytes = estimateSerializedItemBytes(data);
+            const std::string selectQuery =
+                "SELECT rowid, id, idx, data, operation, version, is_data_context "
+                "FROM persistent_queue "
+                "WHERE sync_status = ? "
+                "ORDER BY rowid ASC;";
 
-            if (maxBytes > 0 && estimatedBytes + estimatedItemBytes > maxBytes)
+            SQLite3Wrapper::Statement selectStmt(m_connection, selectQuery);
+            selectStmt.bind(1, static_cast<int>(SyncStatus::PENDING));
+
+            while (selectStmt.step() == SQLITE_ROW)
             {
-                if (!result.empty())
-                {
-                    // Normal budget exhaustion: stop before adding this item.
-                    break;
-                }
+                PersistedData data;
+                int64_t rowid = selectStmt.value<int64_t>(0);
+                data.id = selectStmt.value<std::string>(1);
+                data.index = selectStmt.value<std::string>(2);
+                data.data = selectStmt.value<std::string>(3);
+                data.operation = static_cast<Operation>(selectStmt.value<int>(4));
+                data.version = static_cast<uint64_t>(selectStmt.value<int64_t>(5));
+                data.is_data_context = selectStmt.value<int>(6) != 0;
+                const size_t estimatedItemBytes = estimateSerializedItemBytes(data);
 
-                if (data.id == m_oversizedItemId)
+                if (maxBytes > 0 && estimatedBytes + estimatedItemBytes > maxBytes)
                 {
-                    ++m_oversizedItemAttempts;
-                }
-                else
-                {
-                    m_oversizedItemId = data.id;
-                    m_oversizedItemAttempts = 1;
-                }
+                    if (!result.empty())
+                    {
+                        // Normal budget exhaustion: stop before adding this item.
+                        break;
+                    }
 
-                if (m_oversizedItemAttempts > MAX_OVERSIZED_ATTEMPTS)
-                {
-                    // This item alone has exceeded the cap for MAX_OVERSIZED_ATTEMPTS
-                    // consecutive cycles: whatever rejected it before will reject it
-                    // again, and every item behind it (rowid ASC) is starved as long as
-                    // it stays PENDING. Drop it instead of resending it forever.
-                    m_logger(LOG_ERROR,
-                             "PersistentQueueStorage: Dropping pending item (~" +
+                    if (data.id == m_oversizedItemId)
+                    {
+                        ++m_oversizedItemAttempts;
+                    }
+                    else
+                    {
+                        m_oversizedItemId = data.id;
+                        m_oversizedItemAttempts = 1;
+                    }
+
+                    if (m_oversizedItemAttempts > MAX_OVERSIZED_ATTEMPTS)
+                    {
+                        // This item alone has exceeded the cap for MAX_OVERSIZED_ATTEMPTS
+                        // consecutive cycles: whatever rejected it before will reject it
+                        // again, and every item behind it (rowid ASC) is starved as long as
+                        // it stays PENDING. Drop it instead of resending it forever.
+                        m_logger(LOG_ERROR,
+                                 "PersistentQueueStorage: Dropping pending item (~" +
+                                 std::to_string(estimatedItemBytes) +
+                                 " B) after " + std::to_string(m_oversizedItemAttempts) +
+                                 " consecutive cycles alone over the byte cap (" +
+                                 std::to_string(maxBytes) + " B); it was blocking every item behind it.");
+                        idsToDrop.push_back(rowid);
+                        m_oversizedItemId.clear();
+                        m_oversizedItemAttempts = 0;
+                        continue;
+                    }
+
+                    // First item already exceeds the cap. Enforcing the limit here
+                    // would leave the item stuck in PENDING forever, so we accept it
+                    // once but emit a WARNING so operators can investigate oversized records.
+                    m_logger(LOG_WARNING,
+                             "PersistentQueueStorage: A single pending item (~" +
                              std::to_string(estimatedItemBytes) +
-                             " B) after " + std::to_string(m_oversizedItemAttempts) +
-                             " consecutive cycles alone over the byte cap (" +
-                             std::to_string(maxBytes) + " B); it was blocking every item behind it.");
-                    idsToDrop.push_back(rowid);
+                             " B) exceeds the byte cap (" +
+                             std::to_string(maxBytes) +
+                             " B); sending it alone (attempt " +
+                             std::to_string(m_oversizedItemAttempts) + "/" +
+                             std::to_string(MAX_OVERSIZED_ATTEMPTS) +
+                             "). Consider reducing individual item size.");
+                }
+                else if (data.id == m_oversizedItemId)
+                {
+                    // No longer alone over the cap (e.g. coalesced smaller): clear its streak.
                     m_oversizedItemId.clear();
                     m_oversizedItemAttempts = 0;
-                    continue;
                 }
 
-                // First item already exceeds the cap. Enforcing the limit here
-                // would leave the item stuck in PENDING forever, so we accept it
-                // once but emit a WARNING so operators can investigate oversized records.
-                m_logger(LOG_WARNING,
-                         "PersistentQueueStorage: A single pending item (~" +
-                         std::to_string(estimatedItemBytes) +
-                         " B) exceeds the byte cap (" +
-                         std::to_string(maxBytes) +
-                         " B); sending it alone (attempt " +
-                         std::to_string(m_oversizedItemAttempts) + "/" +
-                         std::to_string(MAX_OVERSIZED_ATTEMPTS) +
-                         "). Consider reducing individual item size.");
+                estimatedBytes += estimatedItemBytes;
+                idsToUpdate.push_back(rowid);
+                result.emplace_back(std::move(data));
             }
-            else if (data.id == m_oversizedItemId)
-            {
-                // No longer alone over the cap (e.g. coalesced smaller): clear its streak.
-                m_oversizedItemId.clear();
-                m_oversizedItemAttempts = 0;
-            }
-
-            estimatedBytes += estimatedItemBytes;
-            idsToUpdate.push_back(rowid);
-            result.emplace_back(std::move(data));
         }
-
-        // A budget break leaves selectStmt mid-scan, holding a WAL read mark that blocks checkpointing after COMMIT.
-        selectStmt.reset();
 
         // SQLite has a limit on the number of parameters in a single query
         // (typically 999). To handle an unlimited number of ids, both batched
