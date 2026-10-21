@@ -1,0 +1,90 @@
+name: 4.X - FIM eBPF syscalls validation
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
+    paths:
+      - "src/syscheckd/src/ebpf/**"
+      - "packages/externals/ebpf/**"
+      - ".github/workflows/4_testcomponent_fim-ebpf-syscalls.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-ebpf:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install clang and Zig
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libelf-dev zlib1g-dev >/dev/null
+          wget -qO- https://apt.llvm.org/llvm.sh | sudo bash -s 20 >/dev/null
+          zig_version="$(sed -n 's/^ZIG_VERSION="\(.*\)"/\1/p' packages/externals/ebpf/build_ebpf.sh)"
+          curl -fsSL "https://ziglang.org/download/${zig_version}/zig-x86_64-linux-${zig_version}.tar.xz" | tar -xJ -C "${RUNNER_TEMP}"
+          echo "${RUNNER_TEMP}/zig-x86_64-linux-${zig_version}" >> "${GITHUB_PATH}"
+
+      - name: Build libbpf-bootstrap
+        run: bash packages/externals/ebpf/build_ebpf.sh >/dev/null
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: libbpf-bootstrap
+          path: output
+
+  syscalls:
+    needs: build-ebpf
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { runner: ubuntu-24.04, arch: amd64 }
+          - { runner: ubuntu-24.04-arm, arch: aarch64 }
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    env:
+      RUN_TEST: bash src/syscheckd/src/ebpf/tests/syscalls/run_syscalls_test.sh src/syscheckd/build/bin/ebpf_syscalls_test libbpf-bootstrap/build
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: libbpf-bootstrap
+          path: output
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq xfsprogs btrfs-progs ${{ matrix.arch == 'amd64' && 'qemu-system-x86 virtme-ng zstd' || '' }} >/dev/null
+
+      - name: Build test
+        run: |
+          make -C src deps TARGET=agent -j"$(nproc)" >/dev/null
+          make -C src TARGET=agent -j"$(nproc)" wazuh-syscheckd >/dev/null
+          make -C src/syscheckd/build ebpf_syscalls_test >/dev/null
+          tar -xzf "output/${{ matrix.arch }}/libbpf-bootstrap.tar.gz"
+
+      - name: Runner kernel
+        run: sudo ${RUN_TEST}
+
+      # GitHub arm64 runners have no KVM
+      - name: Kernels 5.8, 6.8 and 6.18
+        if: matrix.arch == 'amd64' && !cancelled()
+        run: |
+          rc=0
+          for args in "v5.8" "v6.8" "v6.8 --append lsm=lockdown,capability,landlock,yama,apparmor,bpf" "v6.18"; do
+            # vng needs a terminal; drop its download spinner and the qemu 9p notice
+            script -qec "sudo vng -r ${args} --user root --memory 2G --cpus 2 --exec '${RUN_TEST}'" /dev/null |
+              tr '\r' '\n' | sed -E '/downloading kernel|9p: degraded/d; s/\x1b\[\?25[hl]//g; /^[[:space:]]*$/d'
+            [ "${PIPESTATUS[0]}" -eq 0 ] || rc=1
+          done
+          exit "${rc}"
