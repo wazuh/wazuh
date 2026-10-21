@@ -41,6 +41,7 @@
 #include "cgroup_host_mode.h"
 
 #include <dlfcn.h>
+#include <errno.h>
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -662,9 +663,28 @@ int rt_set_cgroup_v1_subsys(rt_handle_t handle, unsigned int subsys_index)
 
     const unsigned int key = FILTER_CFG_KEY_V1_SUBSYS;
     const unsigned int value = subsys_index + 1u;
+
+    /* Probe the slot before writing it. 'filter_cfg' grew a third entry when
+     * the legacy controller read was added, and an array map rejects a key
+     * past its end -- so a loaded object that predates that change fails here
+     * and nowhere else. Without this the caller sees only a generic write
+     * failure and reports that the HOST has no usable controller, which sends
+     * whoever reads the log looking at cgroups instead of at a stale build
+     * artifact. */
+    unsigned int probe = 0;
+    if (g_libbpf.map_lookup_elem(h->filter_cfg_fd, &key, &probe) != 0)
+    {
+        rt_log(&h->log,
+               RT_LOG_ERROR,
+               "the loaded rt_file.bpf.o is too old: its 'filter_cfg' map has no slot %u, which is where "
+               "the v1 cgroup controller index goes. Rebuild rt_file.bpf.o.",
+               key);
+        return -1;
+    }
+
     if (g_libbpf.map_update_elem(h->filter_cfg_fd, &key, &value, 0 /* BPF_ANY */) != 0)
     {
-        rt_log(&h->log, RT_LOG_ERROR, "could not configure the v1 cgroup subsystem index");
+        rt_log(&h->log, RT_LOG_ERROR, "could not configure the v1 cgroup subsystem index: %s", strerror(errno));
         return -1;
     }
 
