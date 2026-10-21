@@ -1149,6 +1149,28 @@ def test_agent_get_outdated_agents(socket_mock, send_mock):
             False
     ),
     (
+            {'001', '006'},
+            {'1816': {'006'}},
+            {'error': 0,
+             'data': [{'error': 0, 'message': 'Success', 'agent': 1, 'task_id': 1},
+                      {'error': 6, 'message': 'Agent information not found in database', 'agent': 6}
+                      ],
+             'message': 'Success'},
+            None,
+            False
+    ),
+    (
+            {'001', '006'},
+            {'1818': {'006'}},
+            {'error': 0,
+             'data': [{'error': 0, 'message': 'Success', 'agent': 1, 'task_id': 1},
+                      {'error': 8, 'message': 'Agent is not active', 'agent': 6}
+                      ],
+             'message': 'Success'},
+            None,
+            False
+    ),
+    (
             {'000', '001', '002'},
             {'1703': {'000'}, '1731': {'001', '002'}},
             {},
