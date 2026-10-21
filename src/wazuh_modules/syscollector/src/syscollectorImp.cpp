@@ -2965,7 +2965,14 @@ void Syscollector::containerNotifyLoop()
         // deserves one scan rather than one each.
         static_cast<void>(notify.drain());
 
-        m_containerScanRequested.store(true);
+        // Under the scan mutex, even though the flag is atomic. The waiter
+        // tests it inside its predicate, so a store landing between that test
+        // and the wait would be a notification the waiter never sees -- and
+        // the next one may be a whole scan interval away.
+        {
+            std::lock_guard<std::mutex> lock{m_scan_mutex};
+            m_containerScanRequested.store(true);
+        }
         m_cv.notify_all();
     }
 }
@@ -2982,11 +2989,18 @@ void Syscollector::containerNotifyLoop()
 void Syscollector::syncLoop(std::unique_lock<std::mutex>& scan_lock)
 {
     // Coupled cadence (<container_baseline_interval> = 0, the default): the
-    // container pass runs inside scan(), exactly as before, and this loop has
-    // one deadline. That path is kept byte-for-byte rather than folded into
-    // the two-deadline one below, because the loop below cannot reproduce
-    // wait_for's relative-timeout semantics precisely and this is the path
-    // every existing deployment is on.
+    // full container pass runs inside scan(), exactly as before, and the host
+    // interval is this loop's only deadline.
+    //
+    // It still honours a lifecycle notification, which is the whole reason the
+    // watcher thread is started. It used to wait on a predicate naming only
+    // m_stopping, so the flag the watcher set was never read here and a new
+    // container waited out the host interval — on the configuration every
+    // deployment runs by default.
+    //
+    // The deadline is ABSOLUTE rather than wait_for's relative timeout, so a
+    // notification serves the container without also dragging the host scan
+    // forward: waking early must not restart or shorten the host interval.
     if (m_containerBaselineInterval == 0)
     {
         if (m_scanOnStart)
@@ -2994,18 +3008,50 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& scan_lock)
             scan();
         }
 
-        while (!m_cv.wait_for(scan_lock, std::chrono::seconds{m_intervalValue}, [&]()
-    {
-        return m_stopping.load();
-        }))
+        auto nextHostScan = std::chrono::steady_clock::now() + std::chrono::seconds{m_intervalValue};
+
+        while (!m_stopping.load())
         {
+            m_cv.wait_until(scan_lock, nextHostScan, [&]()
+            {
+                return m_stopping.load() || m_containerScanRequested.load();
+            });
+
+            if (m_stopping.load())
+            {
+                break;
+            }
+
+            const auto now = std::chrono::steady_clock::now();
+
             if (m_paused)
             {
                 m_logFunction(LOG_DEBUG, "Syscollector scanning paused, skipping scan iteration");
+
+                // An elapsed absolute deadline makes wait_until return at once,
+                // so push it forward or the loop spins for the whole pause.
+                if (now >= nextHostScan)
+                {
+                    nextHostScan = now + std::chrono::seconds{m_intervalValue};
+                }
+
+                m_containerScanRequested.store(false);
                 continue;
             }
 
-            scan();
+            // exchange, not load: a change arriving DURING the pass sets the
+            // flag again and is served next time round rather than swallowed.
+            const auto pass = decideContainerPass(now >= nextHostScan, m_containerScanRequested.exchange(false));
+
+            if (now >= nextHostScan)
+            {
+                scan(); // Runs the full container baseline itself in this mode.
+                nextHostScan = now + std::chrono::seconds{m_intervalValue};
+            }
+            else if (pass.run)
+            {
+                runContainerBaselinePass(pass.delta_only);
+            }
         }
         m_cv.notify_all();
         return;
