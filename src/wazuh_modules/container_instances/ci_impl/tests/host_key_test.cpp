@@ -107,9 +107,19 @@ TEST(HostKeyTest, AskingWithTheWrongKindIsRefusedRatherThanMissed)
     auto store = MakeStore(KeyKind::mntNsInode);
     store.applySnapshot(kDocker, {MakeRecord("alpha", kMntNsInode)}, {kMntNsInode}, std::chrono::steady_clock::now());
 
-    EXPECT_EQ(nullptr, store.lookup(HostKey {KeyKind::cgroupInode, kMntNsInode}).record)
-        << "the right number with the wrong kind must not resolve";
-    EXPECT_EQ(nullptr, store.lookup(HostKey {KeyKind::mntNsInode, kCgroupInode}).record);
+    const auto refused = store.lookup(HostKey {KeyKind::cgroupInode, kMntNsInode});
+
+    EXPECT_EQ(nullptr, refused.record) << "the right number with the wrong kind must not resolve";
+    EXPECT_EQ(LookupResult::Status::wrongKeyKind, refused.status)
+        << "and it must be distinguishable from a miss: a miss means 'go and resolve it', "
+           "which is the one thing a caller in the wrong key space must not do";
+
+    EXPECT_EQ(LookupResult::Status::wrongKeyKind, store.lookup(HostKey {KeyKind::cgroupInode, kCgroupInode}).status)
+        << "the refusal is about the key space, not about this particular number";
+
+    EXPECT_EQ(LookupResult::Status::miss, store.lookup(HostKey {KeyKind::mntNsInode, kCgroupInode}).status)
+        << "while an unknown number in the RIGHT kind stays an ordinary miss, so the cold path "
+           "it triggers is not lost";
 }
 
 TEST(HostKeyTest, TheStorePublishesWhichKindItUsesSoConsumersNeedNotGuess)

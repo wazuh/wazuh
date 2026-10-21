@@ -44,6 +44,7 @@ namespace wazuh::container_instances::wire
             case QueryResponse::ErrorCode::badRequest: return "bad_request";
             case QueryResponse::ErrorCode::unsupportedVersion: return "unsupported_version";
             case QueryResponse::ErrorCode::internal: return "internal";
+            case QueryResponse::ErrorCode::keyKindMismatch: return "key_kind_mismatch";
         }
         return "internal";
     }
