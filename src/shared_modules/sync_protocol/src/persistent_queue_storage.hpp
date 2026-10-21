@@ -50,8 +50,8 @@ class PersistentQueueStorage : public IPersistentQueueStorage
         explicit PersistentQueueStorage(const std::string& dbPath, LoggerFunc logger, std::shared_ptr<IFileSystemWrapper> fileSystemWrapper = nullptr,
                                         std::optional<int32_t> walAutocheckpointPages = std::nullopt);
 
-        /// @brief Default destructor.
-        ~PersistentQueueStorage() override = default;
+        /// @brief Unregisters the WAL-commit hook so a late commit can't reach this destroyed object.
+        ~PersistentQueueStorage() override;
 
         /// @brief Submits a new message, applying coalescing logic.
         /// This method finds if a message with the same ID already exists
@@ -101,6 +101,33 @@ class PersistentQueueStorage : public IPersistentQueueStorage
 
         /// @brief Path to the SQLite database file.
         std::string m_dbPath;
+
+        /// @brief WAL frame threshold driving maybeCheckpoint(), and the value getWalAutocheckpoint()
+        /// reports when set. Compared against the live frame count from onWalCommit(), not the -wal
+        /// file size, because a PASSIVE checkpoint resets the live count but never shrinks the file.
+        /// When set, the constructor installs onWalCommit(), which also disables SQLite's own (here
+        /// ineffective) auto-checkpoint.
+        std::optional<int32_t> m_walAutocheckpointPages;
+
+        /// @brief Runs an explicit PASSIVE checkpoint when the live WAL frame count (from
+        /// onWalCommit()) reaches m_walAutocheckpointPages. Called after every committed write transaction.
+        void maybeCheckpoint();
+
+        /// @brief COMMITs, then checkpoints if due. Every write path must use it: the custom WAL hook
+        /// disables SQLite's own auto-checkpoint, so the WAL would otherwise grow unbounded.
+        void commitAndMaybeCheckpoint();
+
+        /// @brief SQLite WAL-commit hook; records the live frame count in m_lastWalFrames. Never
+        /// checkpoints the database itself.
+        /// @param self The owning PersistentQueueStorage instance (the hook's registered context).
+        /// @param walFrames Number of frames in the WAL after the commit.
+        /// @return SQLITE_OK always.
+        static int onWalCommit(void* self, sqlite3* db, const char* dbName, int walFrames);
+
+        /// @brief Live WAL frame count from the most recent commit, set by onWalCommit() and read by
+        /// maybeCheckpoint(). The hook fires synchronously inside the commit that maybeCheckpoint()
+        /// follows, so both touch it on the same thread.
+        int m_lastWalFrames {0};
 
         /// @brief Logger function
         LoggerFunc m_logger;

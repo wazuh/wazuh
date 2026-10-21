@@ -34,6 +34,7 @@ PersistentQueueStorage::PersistentQueueStorage(const std::string& dbPath, Logger
                                                std::optional<int32_t> walAutocheckpointPages)
     : m_connection(createOrOpenDatabase(dbPath)),
       m_dbPath(dbPath),
+      m_walAutocheckpointPages(walAutocheckpointPages),
       m_logger(std::move(logger)),
       m_fileSystemWrapper(fileSystemWrapper ? std::move(fileSystemWrapper) : std::make_shared<file_system::FileSystemWrapper>())
 {
@@ -50,7 +51,10 @@ PersistentQueueStorage::PersistentQueueStorage(const std::string& dbPath, Logger
 
         if (walAutocheckpointPages.has_value())
         {
-            m_connection.execute("PRAGMA wal_autocheckpoint = " + std::to_string(walAutocheckpointPages.value()) + ";");
+            // Record the live WAL frame count for maybeCheckpoint(), and replace SQLite's own
+            // checkpoint hook (which makes no progress here); PRAGMA wal_autocheckpoint would only
+            // reinstall it.
+            sqlite3_wal_hook(m_connection.db(), &PersistentQueueStorage::onWalCommit, this);
         }
     }
     // LCOV_EXCL_START
@@ -61,6 +65,16 @@ PersistentQueueStorage::PersistentQueueStorage(const std::string& dbPath, Logger
     }
 
     // LCOV_EXCL_STOP
+}
+
+PersistentQueueStorage::~PersistentQueueStorage()
+{
+    // Unhook while m_connection is still alive (it is destroyed after this body) so a late commit
+    // can't call back into this half-destroyed object.
+    if (m_walAutocheckpointPages.has_value() && m_connection.db() != nullptr)
+    {
+        sqlite3_wal_hook(m_connection.db(), nullptr, nullptr);
+    }
 }
 
 SQLite3Wrapper::Connection PersistentQueueStorage::createOrOpenDatabase(const std::string& dbPath)
@@ -201,6 +215,40 @@ void PersistentQueueStorage::applyCoalesceLogic(const PersistedData& newData)
     }
 }
 
+int PersistentQueueStorage::onWalCommit(void* self, sqlite3* /*db*/, const char* /*dbName*/, int walFrames)
+{
+    // Only record it; the explicit checkpoint in maybeCheckpoint() runs after COMMIT, where it makes progress.
+    static_cast<PersistentQueueStorage*>(self)->m_lastWalFrames = walFrames;
+    return SQLITE_OK;
+}
+
+void PersistentQueueStorage::maybeCheckpoint()
+{
+    if (!m_walAutocheckpointPages.has_value())
+    {
+        return;
+    }
+
+    // Live frame count (refreshed by onWalCommit() each commit), not file size: a checkpoint resets
+    // it; if it can't fully reset (a reader holds frames), the next commit reports the high count and we retry.
+    if (m_lastWalFrames < m_walAutocheckpointPages.value())
+    {
+        return;
+    }
+
+    if (const auto rc = sqlite3_wal_checkpoint_v2(m_connection.db(), nullptr, SQLITE_CHECKPOINT_PASSIVE, nullptr, nullptr);
+            rc != SQLITE_OK)
+    {
+        m_logger(LOG_WARNING, std::string("PersistentQueueStorage: Manual WAL checkpoint failed: ") + sqlite3_errstr(rc));
+    }
+}
+
+void PersistentQueueStorage::commitAndMaybeCheckpoint()
+{
+    m_connection.execute("COMMIT;");
+    maybeCheckpoint();
+}
+
 void PersistentQueueStorage::submitOrCoalesce(const PersistedData& newData)
 {
     m_connection.execute("BEGIN IMMEDIATE TRANSACTION;");
@@ -208,7 +256,7 @@ void PersistentQueueStorage::submitOrCoalesce(const PersistedData& newData)
     try
     {
         applyCoalesceLogic(newData);
-        m_connection.execute("COMMIT;");
+        commitAndMaybeCheckpoint();
     }
     // LCOV_EXCL_START
     catch (const std::exception& e)
@@ -237,7 +285,7 @@ void PersistentQueueStorage::submitBatch(const std::vector<PersistedData>& batch
             applyCoalesceLogic(item);
         }
 
-        m_connection.execute("COMMIT;");
+        commitAndMaybeCheckpoint();
     }
     // LCOV_EXCL_START
     catch (const std::exception& e)
@@ -373,7 +421,7 @@ std::vector<PersistedData> PersistentQueueStorage::fetchAndMarkForSync(size_t ma
 
         if (idsToUpdate.empty())
         {
-            m_connection.execute("COMMIT;");
+            commitAndMaybeCheckpoint();
             return result;
         }
 
@@ -401,7 +449,7 @@ std::vector<PersistedData> PersistentQueueStorage::fetchAndMarkForSync(size_t ma
             updateStmt.step();
         }
 
-        m_connection.execute("COMMIT;");
+        commitAndMaybeCheckpoint();
     }
     // LCOV_EXCL_START
     catch (const std::exception& e)
@@ -488,7 +536,7 @@ void PersistentQueueStorage::removeAllSynced()
         stmtUpdate.bind(5, static_cast<int>(SyncStatus::SYNCING_UPDATED));
         stmtUpdate.step();
 
-        m_connection.execute("COMMIT;");
+        commitAndMaybeCheckpoint();
     }
     // LCOV_EXCL_START
     catch (const std::exception& ex)
@@ -521,7 +569,7 @@ void PersistentQueueStorage::resetAllSyncing()
         stmtDelete.bind(2, static_cast<int>(CreateStatus::NEW_DELETED));
         stmtDelete.step();
 
-        m_connection.execute("COMMIT;");
+        commitAndMaybeCheckpoint();
     }
     // LCOV_EXCL_START
     catch (const std::exception& ex)
@@ -545,7 +593,7 @@ void PersistentQueueStorage::removeByIndex(const std::string& index)
         stmt.bind(1, index);
         stmt.step();
 
-        m_connection.execute("COMMIT;");
+        commitAndMaybeCheckpoint();
     }
     // LCOV_EXCL_START
     catch (const std::exception& ex)
@@ -568,7 +616,7 @@ void PersistentQueueStorage::removeAllDataContext()
         SQLite3Wrapper::Statement stmt(m_connection, query);
         stmt.step();
 
-        m_connection.execute("COMMIT;");
+        commitAndMaybeCheckpoint();
 
         if (m_logger)
         {
@@ -618,6 +666,13 @@ void PersistentQueueStorage::deleteDatabase()
 
 int32_t PersistentQueueStorage::getWalAutocheckpoint() const
 {
+    // Our WAL hook occupies the callback slot PRAGMA wal_autocheckpoint reports through, so return
+    // the configured value directly; without an override, SQLite's own default is still in effect.
+    if (m_walAutocheckpointPages.has_value())
+    {
+        return m_walAutocheckpointPages.value();
+    }
+
     SQLite3Wrapper::Statement stmt(m_connection, "PRAGMA wal_autocheckpoint;");
 
     if (stmt.step() == SQLITE_ROW)
