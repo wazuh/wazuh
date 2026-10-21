@@ -354,6 +354,14 @@ namespace wazuh::container_instances_client
             return delta;
         }
 
+        /// Where this client connects. Exposed so a caller can tell "the
+        /// producer has not answered yet" from "there is no producer on this
+        /// host at all" without paying a connect timeout to find out.
+        [[nodiscard]] const std::string& socketPath() const
+        {
+            return m_socketPath;
+        }
+
         [[nodiscard]] std::string status() const
         {
             return roundTrip(R"({"version":2,"op":"status"})").json;
