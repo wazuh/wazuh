@@ -2478,6 +2478,38 @@ Current number of agent metadata entries held in the cache (one per agent).
 
 ---
 
+##### `agent.cache.bytes`
+
+Pull metric: accounted bytes retained by the cache. This includes raw header and ID lengths,
+allocated JSON pool capacity and a fixed entry overhead. It excludes allocator rounding, spare
+string capacity, map buckets, pool bookkeeping, concurrent parsing, and documents kept alive by
+queued events or callers after removal. It is not an RSS or process-memory bound.
+
+**Used for:** comparing retention against `agent.cache.max_bytes` and tuning the byte limit.
+
+---
+
+##### `agent.cache.max_entries` and `agent.cache.max_bytes`
+
+Pull metrics reporting the configured entry and accounted-byte limits. Each `0` independently
+means unlimited. See [Agent metadata cache settings](#agent-metadata-cache).
+
+---
+
+##### `agent.cache.bypass.max_entries` and `agent.cache.bypass.max_bytes`
+
+Counters of valid header admissions that did not fit the respective limit. Both increment when
+both constraints fail. A replacement that exceeds the byte limit increments the byte counter and
+releases the agent's old entry. No unrelated entry is evicted, and a bypass is not a TTL eviction.
+Invalid JSON and identity failures do not increment these counters.
+
+The parsed header is still returned for normal batch processing; capacity does not reject the
+request. Continued bypasses mean repeated parsing and validation for headers that cannot be
+retained, trading CPU savings for bounded retention. Increase the corresponding limit when that
+tradeoff warrants more retained memory.
+
+---
+
 ##### `agent.cache.hits`
 
 Total number of header lookups served from the cache without re-parsing.
@@ -2849,10 +2881,33 @@ reads); they must remain owned by `wazuh-manager` (see [Process Privileges](conf
 
 ### Agent metadata cache
 
+The cache keeps one validated header per trusted agent ID and reuses it only when its bytes are
+identical. These internal options resolve environment → internal-options file → default. Malformed
+unsigned environment values (including negatives) log a warning and fall back to the next source;
+resolved values outside the supported ranges fail start-up when event processing is enabled.
+
 | Setting | Env var | Description | Default | Mode |
 |:--|:--|:--|:--:|:--:|
-| `analysisd.agent_metadata_cache_ttl` | `WAZUH_AGENT_METADATA_CACHE_TTL` | Time-to-live in seconds for cached agent metadata. | `300` | both |
-| `analysisd.agent_metadata_cache_clean_interval` | `WAZUH_AGENT_METADATA_CACHE_CLEAN_INTERVAL` | Interval in seconds between best-effort evictions of stale agent metadata cache entries. | `60` | both |
+| `analysisd.agent_metadata_cache_max_entries` | `WAZUH_AGENT_METADATA_CACHE_MAX_ENTRIES` | Maximum retained entries. `0` disables this constraint; range `0..4294967296` on 64-bit systems, limited to `SIZE_MAX` on smaller platforms. | `50000` | both |
+| `analysisd.agent_metadata_cache_max_bytes` | `WAZUH_AGENT_METADATA_CACHE_MAX_BYTES` | Maximum accounted retained bytes. `0` disables this constraint; range `0..1099511627776` on 64-bit systems, limited to `SIZE_MAX` on smaller platforms. | `134217728` (128 MiB) | both |
+| `analysisd.agent_metadata_cache_ttl` | `WAZUH_AGENT_METADATA_CACHE_TTL` | Time-to-live in seconds since the last matching lookup. Range `1..86400`; outside it, start-up fails when event processing is enabled. | `300` | both |
+| `analysisd.agent_metadata_cache_clean_interval` | `WAZUH_AGENT_METADATA_CACHE_CLEAN_INTERVAL` | Interval in seconds between best-effort TTL sweeps. Range `1..86400`; `0` and larger values stop start-up when event processing is enabled. | `60` | both |
+
+Admission checks both enabled limits without scanning or evicting other agents. For a changed
+header, the check subtracts that agent's old cost before adding the new one. If it still does not
+fit, the old entry is removed and the new parsed header is used without retention. Stale entries
+are removed only by the periodic TTL sweep, so an expired entry can still occupy capacity until
+that sweep runs. Setting both limits to `0` restores unlimited retention.
+
+A valid header is admitted before the batch's events are validated. Header-only batches and
+batches whose event bodies later fail with HTTP 400 can therefore populate the cache. Limits
+bound retained state only: queued events and callers can hold shared metadata beyond removal,
+and router queue-byte accounting counts raw events separately from these headers.
+
+The defaults were sized from measured real-agent entries of about 2.4 KiB: 50,000 such entries
+need about 120 MiB. Larger headers reach the byte limit sooner; this is a sizing rationale,
+not a guarantee of capacity for every 50,000-agent deployment. Use the
+[cache metrics](#agent-cache-metrics) to observe usage and bypasses.
 
 ### Orchestrator
 

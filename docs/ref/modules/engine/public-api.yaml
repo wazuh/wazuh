@@ -1053,6 +1053,11 @@ paths:
                     - router.queue.usage.percent
                     - router.events.dropped
                     - agent.cache.entries
+                    - agent.cache.bytes
+                    - agent.cache.max_entries
+                    - agent.cache.max_bytes
+                    - agent.cache.bypass.max_entries
+                    - agent.cache.bypass.max_bytes
                     - agent.cache.hits
                     - agent.cache.insertions
                     - agent.cache.updates
@@ -1134,6 +1139,26 @@ paths:
                       type: pull
                       enabled: true
                       value: 1200
+                    - name: agent.cache.bytes
+                      type: pull
+                      enabled: true
+                      value: 2949120
+                    - name: agent.cache.max_entries
+                      type: pull
+                      enabled: true
+                      value: 50000
+                    - name: agent.cache.max_bytes
+                      type: pull
+                      enabled: true
+                      value: 134217728
+                    - name: agent.cache.bypass.max_entries
+                      type: counter
+                      enabled: true
+                      value: 0
+                    - name: agent.cache.bypass.max_bytes
+                      type: counter
+                      enabled: true
+                      value: 4
                     - name: agent.cache.hits
                       type: counter
                       enabled: true
