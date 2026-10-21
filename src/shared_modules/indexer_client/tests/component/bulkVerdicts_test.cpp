@@ -569,16 +569,18 @@ TEST_F(BulkTest, Request429HonorsRetryAfterPerNode)
     EXPECT_GT(a.bulk->answered(), 1u) << "A takes traffic again once notBefore has passed";
 }
 
-// I68: a 429 without Retry-After makes the node wait `pace` (paceInitial), doubled by a 429 whose request left after
-// that wait was set, and back to 0 with a 2xx. PACE is 500 ms so that a stalled poll on a slow CI cannot see both 429s
-// in its first sample.
+// I68 + I98: a 429 without Retry-After makes the node wait `pace` (paceInitial), doubled by a 429 whose request left
+// after that wait was set. A 2xx keeps the pace: only paceRelaxAfter (here 2) clean sends halve it, and a pace below
+// paceInitial becomes 0; meanwhile every send is spaced by the pace (nextSendAt). PACE is 500 ms so that a stalled poll
+// on a slow CI cannot see both 429s in its first sample.
 TEST_F(BulkTest, Request429Paces)
 {
     constexpr auto PACE = 500ms;
     const auto a = startNode();
     a.bulk->push(BulkScript::throttled());
     a.bulk->push(BulkScript::throttled());
-    ASSERT_NO_FATAL_FAILURE(startOn({a.url()}, std::chrono::hours(1), {{"pace_initial_ms", "500"}}));
+    ASSERT_NO_FATAL_FAILURE(
+        startOn({a.url()}, std::chrono::hours(1), {{"pace_initial_ms", "500"}, {"pace_relax_after", "2"}}));
     auto c = client("c", {fastBucket("b", 1, 1)});
     auto results = Results::create();
     const auto submitted = std::chrono::steady_clock::now();
@@ -607,11 +609,40 @@ TEST_F(BulkTest, Request429Paces)
     const auto elapsed = std::chrono::steady_clock::now() - submitted;
     EXPECT_EQ(results->result(0)->status, ic::Status::Ok);
     EXPECT_GE(elapsed, 3 * PACE - 20ms) << "waited pace, then twice pace";
-    EXPECT_EQ(senderNode(0).pace, ic::Duration {0}) << "a 2xx resets the pace";
+    const auto afterOk = senderNode(0);
+    EXPECT_EQ(afterOk.pace, ic::Duration {2 * PACE}) << "one clean send keeps the pace";
+    EXPECT_EQ(afterOk.paceRelaxed, 0u);
+    // No assertion on nextSendAt here: it is in force only for 2 x PACE after the send, and the response may come
+    // later than that (G-diff E5a obj. 5); the spacing below measures it by the clock.
     EXPECT_EQ(a.bulk->answered(), 3u);
+
+    // The second clean send, itself spaced by 2 × PACE from the third request, halves the pace to PACE.
+    ASSERT_TRUE(c->writer("b")->submit(indexOp(id(1)), results->callback(1)).accepted);
+    ASSERT_TRUE(results->waitTotal(2));
+    EXPECT_EQ(results->result(1)->status, ic::Status::Ok);
+    EXPECT_GE(std::chrono::steady_clock::now() - submitted, 5 * PACE - 20ms) << "nextSendAt spaced the fourth send";
+    const auto relaxed = senderNode(0);
+    EXPECT_EQ(relaxed.pace, ic::Duration {PACE}) << "paceRelaxAfter clean sends halve the pace";
+    EXPECT_EQ(relaxed.paceRelaxed, 1u);
+
+    // Two more clean sends: PACE / 2 is below paceInitial, so the pace ends at 0.
+    for (std::uint64_t k = 2; k <= 3; ++k)
+    {
+        ASSERT_TRUE(c->writer("b")->submit(indexOp(id(k)), results->callback(k)).accepted);
+        ASSERT_TRUE(results->waitTotal(k + 1));
+        EXPECT_EQ(results->result(k)->status, ic::Status::Ok);
+    }
+    // A relaxation never shortens a nextSendAt in force: the fifth send waits the 2 × PACE set by the fourth, the
+    // sixth waits PACE.
+    EXPECT_GE(std::chrono::steady_clock::now() - submitted, 8 * PACE - 20ms) << "the sends were not spaced";
+    const auto cleared = senderNode(0);
+    EXPECT_EQ(cleared.pace, ic::Duration {0}) << "a pace below paceInitial becomes 0";
+    EXPECT_EQ(cleared.paceRelaxed, 2u);
+    EXPECT_EQ(a.bulk->answered(), 6u);
 }
 
-// I68: a 2xx that completes while a 429's notBefore is in force resets the pace but never shortens that notBefore.
+// I68 + I98: a 2xx that completes while a 429's notBefore is in force never shortens that notBefore, and, its request
+// having left before the notBefore was set, is no clean send: the pace is kept.
 TEST_F(BulkTest, NotBeforeNeverShortenedBy2xx)
 {
     const auto a = startNode();
@@ -633,8 +664,9 @@ TEST_F(BulkTest, NotBeforeNeverShortenedBy2xx)
     a.fake->releaseHeld();
     ASSERT_TRUE(eventually([&] { return results->count(0) == 1; }, 5s));
     EXPECT_EQ(results->result(0)->status, ic::Status::Ok);
-    ASSERT_TRUE(eventually([] { return senderNode(0).pace == ic::Duration {0}; }, 5s)) << "the 2xx resets the pace";
     const auto afterOk = senderNode(0);
+    EXPECT_EQ(afterOk.pace, throttled.pace) << "a 2xx sent before the notBefore was set relaxed the pace";
+    EXPECT_EQ(afterOk.paceRelaxed, 0u);
     ASSERT_TRUE(afterOk.notBefore.has_value()) << "the 2xx cleared the notBefore";
     EXPECT_EQ(*afterOk.notBefore, *throttled.notBefore) << "the 2xx moved the notBefore";
     EXPECT_FALSE(eventually([&] { return a.bulk->answered() > 2; },

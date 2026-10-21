@@ -16,6 +16,7 @@
 // The DRR scheduler (stage E3a, plan 18 I63/I23). One per runtime, on network loop 0: its state, its maxAge timers and
 // its ring are touched only from loop 0 (the Prober's pattern). No asio type in this header.
 
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 
@@ -29,6 +30,11 @@ namespace asio
 namespace indexer_client::detail::write
 {
     class WritePath;
+
+    /// Batches per unit of weight a bucket may emit in one DRR turn while another bucket of the ring is eligible
+    /// (I97b): with the 1 MiB quantum, small batches would otherwise hold the turn for hundreds of batches. Scaled by
+    /// the weight so that a heavier bucket keeps its share (RF-3): the cap is weight x DRR_MAX_BATCHES_PER_TURN.
+    constexpr std::size_t DRR_MAX_BATCHES_PER_TURN = 8;
 
     struct SchedulerStats final
     {
@@ -52,10 +58,12 @@ namespace indexer_client::detail::write
         virtual SchedulerStats stats() const = 0;
 
         /// DRR (I63): ring of eligible buckets with a persistent cursor; a turn adds weight x quantum to the bucket's
-        /// credit and emits batches (Bucket::slice) while credit >= headBytes() and capacity() > 0; the turn ends when
-        /// the credit does not cover the head (credit kept), the bucket empties (credit = 0) or capacity is exhausted
-        /// (cursor stays on the bucket). A maxAge timer per bucket is armed from its oldest pending op and re-armed
-        /// after each batch.
+        /// credit and emits batches (Bucket::slice, each at most the credit) while credit >= headBytes() and
+        /// capacity() > 0; the turn ends when the credit does not cover the head (credit kept), the bucket empties
+        /// (credit = 0), capacity is exhausted (cursor stays on the bucket) or, after weight x DRR_MAX_BATCHES_PER_TURN
+        /// batches, when another bucket of the ring is eligible (I97b: the cursor moves on, the leftover credit is kept
+        /// capped at weight x quantum, and the next turn adds its quantum as usual; with no other eligible bucket the
+        /// turn goes on). A maxAge timer per bucket is armed from its oldest pending op and re-armed after each batch.
         static std::shared_ptr<Scheduler>
         create(std::weak_ptr<WritePath> path, asio::io_context& loop0, std::uint64_t quantumBytes);
     };

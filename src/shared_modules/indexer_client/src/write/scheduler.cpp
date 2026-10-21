@@ -45,8 +45,9 @@ namespace indexer_client::detail::write
         struct Entry final
         {
             BucketKey bucket;
-            std::uint64_t credit {0}; ///< DRR deficit; kept across turns, 0 when the bucket empties.
-            bool inTurn {false};      ///< The turn was cut by the sink's capacity: resume it without new credit.
+            std::uint64_t credit {0};    ///< DRR deficit; kept across turns, 0 when the bucket empties.
+            bool inTurn {false};         ///< The turn was cut by the sink's capacity: resume it without new credit.
+            std::size_t turnBatches {0}; ///< Batches of the current turn (weight x DRR_MAX_BATCHES_PER_TURN, I97b).
             bool inRing {false};
             std::unique_ptr<asio::steady_timer> timer; ///< maxAge timer, armed from the oldest pending op.
             std::optional<TimePoint> due;              ///< Expiry the timer is armed for (none when idle).
@@ -221,6 +222,26 @@ namespace indexer_client::detail::write
             shared.fastForwards.fetch_add(1);
         }
 
+        /// Loop 0 only: some bucket of the ring other than the one at `index` is alive, non-empty and eligible.
+        bool otherEligible(const SchedulerShared& shared, std::size_t index, TimePoint now)
+        {
+            for (std::size_t i = 0; i < shared.ring.size(); ++i)
+            {
+                if (i == index)
+                {
+                    continue;
+                }
+                if (auto it = shared.entries.find(shared.ring[i]); it != shared.entries.end())
+                {
+                    if (auto other = it->second.bucket.lock(); other && !other->empty() && other->eligible(now))
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
         void drr(const std::shared_ptr<SchedulerShared>& shared, BatchSink& sink, TimePoint now)
         {
             std::size_t idleTurns = 0; ///< Consecutive complete turns that emitted nothing.
@@ -247,13 +268,17 @@ namespace indexer_client::detail::write
                 {
                     return; // The cursor does not advance; sinkReady() resumes this turn.
                 }
+                const auto perTurn = static_cast<std::uint64_t>(bucket->spec().weight) * shared->quantum;
+                const auto maxBatches = static_cast<std::size_t>(bucket->spec().weight) * DRR_MAX_BATCHES_PER_TURN;
                 if (!entry.inTurn)
                 {
                     entry.inTurn = true;
-                    entry.credit += static_cast<std::uint64_t>(bucket->spec().weight) * shared->quantum;
+                    entry.turnBatches = 0;
+                    entry.credit += perTurn;
                 }
                 bool capacityExhausted = false;
                 bool stuck = false;
+                bool yielded = false;
                 const auto batchesBefore = shared->batches.load();
                 for (;;)
                 {
@@ -262,18 +287,24 @@ namespace indexer_client::detail::write
                     {
                         break;
                     }
+                    if (entry.turnBatches >= maxBatches && otherEligible(*shared, index, now))
+                    {
+                        yielded = true; // I97b: another bucket waits; the leftover credit is kept, capped below.
+                        break;
+                    }
                     if (sink.capacity() == 0)
                     {
                         capacityExhausted = true;
                         break;
                     }
-                    auto batch = bucket->slice(entry.credit, now);
+                    auto batch = bucket->slice(entry.credit, now, sink.batchLimit());
                     if (batch.ops.empty())
                     {
                         stuck = true; // Never expected (slice takes the head when the credit covers it).
                         break;
                     }
                     entry.credit -= std::min(entry.credit, batch.bytes);
+                    ++entry.turnBatches;
                     shared->batches.fetch_add(1);
                     sink.dispatch(std::move(batch));
                     if (isStopped(*shared))
@@ -286,7 +317,13 @@ namespace indexer_client::detail::write
                     return; // Turn cut: credit and cursor kept, inTurn stays set.
                 }
                 entry.inTurn = false;
-                if (bucket->empty())
+                if (yielded)
+                {
+                    entry.credit = std::min(entry.credit, perTurn);
+                    shared->cursor = index + 1;
+                    idleTurns = 0;
+                }
+                else if (bucket->empty())
                 {
                     entry.credit = 0;
                     removeFromRing(*shared, index);

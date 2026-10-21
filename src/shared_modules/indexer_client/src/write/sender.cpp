@@ -13,6 +13,7 @@
 #include "write/sender.hpp"
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <exception>
 #include <future>
@@ -55,6 +56,22 @@ namespace indexer_client::detail::write
             std::uint64_t requests {0};
             std::uint64_t totalMicros {0};
             std::uint64_t failures {0};
+            // Limiter (E5a, I98; sender.hpp). `window` starts at nodeWindowMax (SenderShared's constructor).
+            double window {1};            ///< Real AIMD window; ⌊window⌋ requests may be in flight.
+            std::uint64_t bulkTarget {0}; ///< Bytes; 0 = uncapped.
+            TimePoint nextSendAt {};      ///< Pacing: nothing is sent to the node before it (in force when > now).
+            std::uint32_t cleanSends {0}; ///< 2xx sent after the last notBeforeSet since the last relaxation or 429.
+            TimePoint lastDecreaseAt {};  ///< One decrease per burst: only a request sent after it decreases again.
+            TimePoint lastSentAt {};      ///< Set by the choose filter when it takes the slot.
+            std::uint64_t lastBatchBytes {0}; ///< The bytes of that batch (the Throttled hook's `b`).
+            std::array<std::chrono::microseconds, LATENCY_RING> ring {}; ///< timings.total of every HTTP response.
+            std::size_t ringSize {0};
+            std::size_t ringNext {0};
+            std::uint64_t decreases429 {0};
+            std::uint64_t decreasesThrottled {0};
+            std::uint64_t decreasesLatency {0};
+            std::uint64_t increases {0};
+            std::uint64_t paceRelaxed {0};
         };
 
         /// One request between its submit and its completion (for the cancellation of stop()).
@@ -76,6 +93,10 @@ namespace indexer_client::detail::write
                 , loop0(loop)
                 , paceInitial(std::min(config.paceInitial, config.retryAfterMax))
                 , retryAfterMax(config.retryAfterMax)
+                , paceRelaxAfter(std::max<std::uint32_t>(1, config.paceRelaxAfter))
+                , latencyTarget(config.latencyTarget)
+                , nodeWindowMax(std::max<std::uint32_t>(1, config.nodeWindowMax))
+                , bulkMinBytes(std::max<std::uint64_t>(1, config.bulkMinBytes))
                 , ambiguousRetryWindow(config.ambiguousRetryWindow)
             {
                 const auto count = nodes ? nodes->size() : 0;
@@ -92,6 +113,10 @@ namespace indexer_client::detail::write
                     urls.push_back(host + "/_bulk");
                 }
                 slots.resize(count);
+                for (auto& slot : slots)
+                {
+                    slot.window = static_cast<double>(nodeWindowMax); // I96: the window starts at its maximum.
+                }
                 pinnedWaiting.resize(count);
             }
 
@@ -101,6 +126,10 @@ namespace indexer_client::detail::write
             asio::io_context& loop0;
             const Duration paceInitial;
             const Duration retryAfterMax;
+            const std::uint32_t paceRelaxAfter;
+            const Duration latencyTarget;
+            const std::uint32_t nodeWindowMax;   ///< I98: the AIMD window's cap and start.
+            const std::uint64_t bulkMinBytes;    ///< I98: the bulk target's floor.
             const Duration ambiguousRetryWindow; ///< I79: how long an ambiguous batch stays pinned to its node.
             std::vector<std::string> urls;
             std::vector<std::string> hosts;
@@ -159,11 +188,62 @@ namespace indexer_client::detail::write
             return result;
         }
 
-        /// The node takes a bulk now: not Down (mirror), no notBefore in force, a free slot; the mutex held.
+        /// ⌊window⌋, the requests the node may have in flight (I98).
+        std::uint32_t windowSlots(const NodeSlot& slot)
+        {
+            return std::max<std::uint32_t>(1, static_cast<std::uint32_t>(slot.window));
+        }
+
+        /// The node takes a bulk now: not Down (mirror), no notBefore nor nextSendAt in force, a free slot of its
+        /// window; the mutex held. The ONE predicate of capacity(), batchLimit(), the choose filter and wakePinned
+        /// (D47).
         bool usableLocked(const SenderShared& shared, std::size_t node, TimePoint now)
         {
             const auto& slot = shared.slots[node];
-            return !slot.down && slot.notBefore <= now && slot.inFlight < NODE_WINDOW;
+            return !slot.down && slot.notBefore <= now && slot.nextSendAt <= now && slot.inFlight < windowSlots(slot);
+        }
+
+        /// p95 of the node's ring, sorted[⌈0.95·n⌉ − 1], or nullopt below LATENCY_MIN_SAMPLES (I98); the mutex held.
+        std::optional<std::chrono::microseconds> p95Locked(const NodeSlot& slot)
+        {
+            if (slot.ringSize < LATENCY_MIN_SAMPLES)
+            {
+                return std::nullopt;
+            }
+            std::array<std::chrono::microseconds, LATENCY_RING> sorted = slot.ring;
+            std::sort(sorted.begin(), sorted.begin() + static_cast<std::ptrdiff_t>(slot.ringSize));
+            return sorted[(95 * slot.ringSize + 99) / 100 - 1];
+        }
+
+        /// I98 decrease (the caller checked «once per burst»): halves the window and the bulk target, `bytes` being the
+        /// batch's (lastBatchBytes for the Throttled hook); the mutex held. The caller counts the origin.
+        void decreaseLocked(const SenderShared& shared, NodeSlot& slot, std::uint64_t bytes, TimePoint now)
+        {
+            slot.window = std::max(1.0, slot.window / 2);
+            const auto base = slot.bulkTarget != 0 ? std::min(slot.bulkTarget, bytes) : bytes;
+            slot.bulkTarget = std::max(shared.bulkMinBytes, base / 2);
+            slot.lastDecreaseAt = now;
+        }
+
+        /// I98 increase: window += 1 / window (cap nodeWindowMax); a capped bulk target grows by max(bulkMinBytes, a
+        /// quarter) and is uncapped again at BULK_TARGET_UNCAPPED; the mutex held.
+        void increaseLocked(const SenderShared& shared, NodeSlot& slot)
+        {
+            const auto max = static_cast<double>(shared.nodeWindowMax);
+            if (slot.window >= max && slot.bulkTarget == 0)
+            {
+                return; // Nothing left to recover.
+            }
+            slot.window = std::min(max, slot.window + 1.0 / slot.window);
+            if (slot.bulkTarget != 0)
+            {
+                slot.bulkTarget += std::max(shared.bulkMinBytes, slot.bulkTarget / 4);
+                if (slot.bulkTarget >= BULK_TARGET_UNCAPPED)
+                {
+                    slot.bulkTarget = 0;
+                }
+            }
+            ++slot.increases;
         }
 
         /// I79 (sender.hpp): for every node usable now, takes its pinnedWaiting list and tells each bucket that is
@@ -253,7 +333,8 @@ namespace indexer_client::detail::write
             asio::post(shared->loop0, [shared]() { armTimer(shared); });
         }
 
-        /// Loop 0 only: (re)arms the timer at the earliest notBefore in force; a later one waits for the next arm.
+        /// Loop 0 only: (re)arms the timer at the earliest notBefore or nextSendAt in force (I98); a later one waits
+        /// for the next arm.
         void armTimer(const std::shared_ptr<SenderShared>& shared)
         {
             std::optional<TimePoint> earliest;
@@ -266,9 +347,12 @@ namespace indexer_client::detail::write
                 const auto now = std::chrono::steady_clock::now();
                 for (const auto& slot : shared->slots)
                 {
-                    if (slot.notBefore > now && (!earliest || slot.notBefore < *earliest))
+                    for (const auto at : {slot.notBefore, slot.nextSendAt})
                     {
-                        earliest = slot.notBefore;
+                        if (at > now && (!earliest || at < *earliest))
+                        {
+                            earliest = at;
+                        }
                     }
                 }
                 if (!earliest || (shared->timerAt && *shared->timerAt <= *earliest))
@@ -298,8 +382,8 @@ namespace indexer_client::detail::write
                             return;
                         }
                     }
-                    ready(shared, shared->path.lock()); // A node whose notBefore ended may hold pinned batches.
-                    armTimer(shared);                   // The next notBefore still in force, if any.
+                    ready(shared, shared->path.lock()); // A node whose wait ended may hold pinned batches.
+                    armTimer(shared);                   // The next notBefore / nextSendAt still in force, if any.
                 });
         }
 
@@ -575,17 +659,30 @@ namespace indexer_client::detail::write
                     --slot.inFlight;
                 }
                 shared->flights.erase(flight);
-                if (result.cause == TransportCause::None)
+                const bool http = result.cause == TransportCause::None;
+                const bool success = http && result.status >= 200 && result.status < 300;
+                const std::chrono::microseconds latency {std::max<std::int64_t>(0, result.timings.total.count())};
+                if (http)
                 {
-                    // HTTP responses only: a timeout or a cancellation would skew E5's latency average.
+                    // HTTP responses only (429 included): a timeout or a cancellation would skew the latency.
                     ++slot.requests;
-                    slot.totalMicros +=
-                        static_cast<std::uint64_t>(std::max<std::int64_t>(0, result.timings.total.count()));
+                    slot.totalMicros += static_cast<std::uint64_t>(latency.count());
+                    if (sentAt > slot.lastDecreaseAt)
+                    {
+                        // Only the regime after the last decrease: a request still in flight when it happened would
+                        // refill the emptied ring with the spike's samples and decrease again (G-diff obj. 1).
+                        slot.ring[slot.ringNext] = latency;
+                        slot.ringNext = (slot.ringNext + 1) % LATENCY_RING;
+                        slot.ringSize = std::min(slot.ringSize + 1, LATENCY_RING);
+                    }
                 }
                 else
                 {
-                    ++slot.failures;
+                    ++slot.failures; // I98: a transport failure is Down (CA-13), never a decrease.
                 }
+                // I98, in this order: the decrease (once per burst: only a request sent after the last one), then the
+                // increase, which a decrease in the same completion excludes. Item rejections never get here.
+                bool decreased = false;
                 if (outcome.verdict == RequestVerdict::Throttled)
                 {
                     // One burst of the window doubles the pace once: only a request that left after the notBefore in
@@ -594,6 +691,13 @@ namespace indexer_client::detail::write
                     {
                         slot.pace = slot.pace.count() == 0 ? shared->paceInitial
                                                            : std::min(slot.pace * 2, shared->retryAfterMax);
+                    }
+                    slot.cleanSends = 0;
+                    if (sentAt > slot.lastDecreaseAt)
+                    {
+                        decreaseLocked(*shared, slot, batch.bytes, now);
+                        ++slot.decreases429;
+                        decreased = true;
                     }
                     const auto wait = std::max(outcome.retryAfter.value_or(Duration {0}), slot.pace);
                     if (now + wait > slot.notBefore)
@@ -605,9 +709,42 @@ namespace indexer_client::detail::write
                     }
                     ++shared->counters.throttled;
                 }
-                else if (result.cause == TransportCause::None && result.status >= 200 && result.status < 300)
+                if (http && !decreased && sentAt > slot.lastDecreaseAt)
                 {
-                    slot.pace = Duration {0}; // Never touches a notBefore in force.
+                    if (const auto p95 = p95Locked(slot); p95 && *p95 > shared->latencyTarget)
+                    {
+                        decreaseLocked(*shared, slot, batch.bytes, now);
+                        slot.ringSize = 0; // A fresh ring: the slow samples cannot decrease twice (G-plan obj. 2).
+                        slot.ringNext = 0;
+                        ++slot.decreasesLatency;
+                        decreased = true;
+                    }
+                }
+                if (success)
+                {
+                    // I98 pacing: a 2xx of a request sent after the last notBeforeSet is a clean send; paceRelaxAfter
+                    // of them halve the pace, 0 below paceInitial. A 2xx never shortens a notBefore or a nextSendAt.
+                    if (slot.pace.count() > 0 && slot.notBeforeEverSet && sentAt > slot.notBeforeSet &&
+                        ++slot.cleanSends >= shared->paceRelaxAfter)
+                    {
+                        slot.cleanSends = 0;
+                        slot.pace /= 2;
+                        if (slot.pace < shared->paceInitial)
+                        {
+                            slot.pace = Duration {0};
+                        }
+                        ++slot.paceRelaxed;
+                    }
+                    if (!decreased && sentAt > slot.lastDecreaseAt && latency < shared->latencyTarget)
+                    {
+                        increaseLocked(*shared, slot);
+                    }
+                }
+                if (outcome.verdict == RequestVerdict::Split && http && result.status == 413)
+                {
+                    // I98: the node refused the payload; the next batches stay under half of it (not a decrease).
+                    const auto half = std::max<std::uint64_t>(1, batch.bytes / 2);
+                    slot.bulkTarget = slot.bulkTarget != 0 ? std::min(slot.bulkTarget, half) : half;
                 }
                 switch (outcome.verdict)
                 {
@@ -904,7 +1041,7 @@ namespace indexer_client::detail::write
                 }
                 std::weak_ptr<SenderShared> weak = m_shared;
                 m_shared->nodes->onTransition(
-                    [weak](std::size_t /*index*/, NodeSet::State /*from*/, NodeSet::State /*to*/)
+                    [weak](std::size_t index, NodeSet::State /*from*/, NodeSet::State to)
                     {
                         auto shared = weak.lock();
                         if (!shared)
@@ -916,6 +1053,18 @@ namespace indexer_client::detail::write
                             if (shared->stopped)
                             {
                                 return;
+                            }
+                            // I98: a transition to Throttled decreases only when a bulk left after the last decrease
+                            // (the bulk 429 that caused it already decreased; a probe or query 429 does here).
+                            if (to == NodeSet::State::Throttled && index < shared->slots.size())
+                            {
+                                auto& slot = shared->slots[index];
+                                if (slot.lastSentAt > slot.lastDecreaseAt)
+                                {
+                                    decreaseLocked(
+                                        *shared, slot, slot.lastBatchBytes, std::chrono::steady_clock::now());
+                                    ++slot.decreasesThrottled;
+                                }
                             }
                         }
                         seams::beforeSenderMirror();
@@ -932,14 +1081,37 @@ namespace indexer_client::detail::write
                 }
                 const auto now = std::chrono::steady_clock::now();
                 std::size_t total = 0;
-                for (const auto& slot : m_shared->slots)
+                for (std::size_t i = 0; i < m_shared->slots.size(); ++i)
                 {
-                    if (!slot.down && slot.notBefore <= now && slot.inFlight < NODE_WINDOW)
+                    if (usableLocked(*m_shared, i, now))
                     {
-                        total += NODE_WINDOW - slot.inFlight;
+                        // I98: a paced node takes one send per interval (G-plan obj. 16).
+                        const auto& slot = m_shared->slots[i];
+                        total += slot.pace.count() > 0 ? 1 : windowSlots(slot) - slot.inFlight;
                     }
                 }
                 return total;
+            }
+
+            std::uint64_t batchLimit() override
+            {
+                std::lock_guard<std::mutex> lock(m_shared->mutex);
+                if (m_shared->stopped)
+                {
+                    return 0;
+                }
+                // I98: the smallest capped bulkTarget among the usable nodes; the node is chosen after the slice.
+                const auto now = std::chrono::steady_clock::now();
+                std::uint64_t limit = 0;
+                for (std::size_t i = 0; i < m_shared->slots.size(); ++i)
+                {
+                    const auto target = m_shared->slots[i].bulkTarget;
+                    if (target != 0 && usableLocked(*m_shared, i, now) && (limit == 0 || target < limit))
+                    {
+                        limit = target;
+                    }
+                }
+                return limit;
             }
 
             void dispatch(Batch batch) override
@@ -972,26 +1144,38 @@ namespace indexer_client::detail::write
                     }
                 }
                 const bool pinned = pinNode && pinUntil > now;
+                bool paced = false;
                 if (!stopped && shared->nodes)
                 {
                     // The filter runs under the NodeSet's mutex and takes the sender's (the allowed order); the slot
                     // is taken in the same step, so capacity() sees it at once. A pinned batch admits its node only.
+                    // I98: taking the slot also sets the pacing (nextSendAt = now + pace), so the DRR cannot send a
+                    // second batch to the node inside the interval before the pool task runs.
+                    const auto bytes = held->bytes;
                     node = shared->nodes->choose(
-                        [&shared, now, pinned, &pinNode](std::size_t index)
+                        [&shared, now, pinned, &pinNode, bytes, &paced](std::size_t index)
                         {
                             std::lock_guard<std::mutex> lock(shared->mutex);
-                            if (index >= shared->slots.size() || (pinned && index != *pinNode))
+                            if (index >= shared->slots.size() || (pinned && index != *pinNode) || shared->stopped ||
+                                !usableLocked(*shared, index, now))
                             {
                                 return false;
                             }
                             auto& slot = shared->slots[index];
-                            if (shared->stopped || slot.notBefore > now || slot.inFlight >= NODE_WINDOW)
-                            {
-                                return false;
-                            }
                             ++slot.inFlight;
+                            slot.lastSentAt = now;
+                            slot.lastBatchBytes = bytes;
+                            if (slot.pace.count() > 0)
+                            {
+                                slot.nextSendAt = now + slot.pace;
+                                paced = true;
+                            }
                             return true;
                         });
+                }
+                if (paced)
+                {
+                    armTimer(shared); // I98: loop 0; wakes the scheduler when nextSendAt ends.
                 }
                 if (!node && pinned && !stopped && shared->nodes)
                 {
@@ -1142,6 +1326,21 @@ namespace indexer_client::detail::write
                     node.requests = slot.requests;
                     node.totalMicros = slot.totalMicros;
                     node.failures = slot.failures;
+                    node.window = slot.window;
+                    node.bulkTarget = slot.bulkTarget;
+                    if (slot.nextSendAt > now)
+                    {
+                        node.nextSendAt = slot.nextSendAt;
+                    }
+                    if (const auto p95 = p95Locked(slot))
+                    {
+                        node.p95 = std::chrono::duration_cast<Duration>(*p95);
+                    }
+                    node.decreases429 = slot.decreases429;
+                    node.decreasesThrottled = slot.decreasesThrottled;
+                    node.decreasesLatency = slot.decreasesLatency;
+                    node.increases = slot.increases;
+                    node.paceRelaxed = slot.paceRelaxed;
                     stats.nodes.push_back(std::move(node));
                 }
                 return stats;

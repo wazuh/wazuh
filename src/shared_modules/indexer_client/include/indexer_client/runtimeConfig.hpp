@@ -43,7 +43,7 @@ namespace indexer_client
         std::uint32_t cpuThreads {2};                     ///< M, [1, 64]
         std::uint64_t globalQuotaBytes {256u << 20};      ///< runtime-wide cap of retained bytes, > 0
         std::uint64_t maxResponseBytes {64u << 20};       ///< > 0
-        std::uint64_t drrQuantumBytes {1u << 20};         ///< > 0
+        std::uint64_t drrQuantumBytes {1u << 20};         ///< > 0 (I97b)
         Duration requestTimeout {Duration {60000}};       ///< > 0
         Duration probeTimeout {Duration {5000}};          ///< > 0
         Duration probeInterval {Duration {10000}};        ///< > 0
@@ -55,6 +55,8 @@ namespace indexer_client
         Duration retryAfterMax {Duration {60000}};        ///< > 0
         Duration callbackBudget {Duration {200}};         ///< > 0 (k4-1)
         std::uint32_t maxOpenPits {64};                   ///< > 0
+        std::uint32_t nodeWindowMax {4};                  ///< [1, 64], AIMD window cap and start (I96, I98)
+        std::uint64_t bulkMinBytes {64u << 10};           ///< [1, 32 MiB], AIMD bulk target floor (I98)
 
         /// Prefix of the internal-options family for a process (`analysisd.indexer_client_` /
         /// `wazuh_modules.indexer_client_`).
