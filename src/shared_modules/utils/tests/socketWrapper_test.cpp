@@ -580,6 +580,7 @@ TEST_F(SocketWrapperTest, ListenUnixCreatesSocketInPinnedDirectory)
         EXPECT_NO_THROW(socketWrapper.listen(unixAddressBuilder.address(gSocketPath.string()).data()));
     }
 
+    EXPECT_TRUE(fs::is_directory(fs::symlink_status(dir / "moved")));
     EXPECT_TRUE(fs::is_empty(gOtherPath));
     EXPECT_TRUE(fs::is_socket(fs::symlink_status(gSocketPath)));
 
