@@ -897,6 +897,18 @@ notify after a `startup`, nor to the first one that carries host metadata.
 If tasks are found, the manager marks them as delivered (updates status to `delivered` and records
 delivery time). Task delivery status is **local only** (not broadcast to the cluster).
 
+Before a successful `notify`, remoted must have a fresh group membership for the agent. It uses a
+fresh registry entry without querying wazuh-db; if the entry is missing, expired, or invalidated,
+it reads the local database. A failed read (including a timeout or full request queue) returns
+`503 dependency_unavailable` **before** remoted queries task-manager or builds the success body.
+No tasks are marked delivered by this notify, and the response contains no `config_token`,
+`config_hash`, `ca_generation`, `settings_hash`, or `vd_feed_offset`. Task-manager's SQLite store
+and CA publication do not depend on wazuh-db, but this endpoint does not send a partial `200`:
+task delivery and discovery of a new CA generation wait for a successful notify. The agent keeps
+its current configuration and retries; the failed notify does not update registry activity or
+write a keepalive to wazuh-db. Once membership is established, a task-manager failure alone still
+returns `200` with an empty `tasks` array.
+
 The agent compares the received hashes against its local copies: if `settings_hash` differs, it
 sends a new `startup` request; if `config_hash` differs, it downloads the new `merged.mg` file via
 `/download`, using the response's `agent.config_token` as the request's `resource_id`.
@@ -1037,7 +1049,8 @@ The `/control` endpoint integrates with two backend services over Unix-domain so
 
 A thread-safe **agent registry** (8-shard hash table) caches agent metadata (groups, last activity
 timestamp, last keepalive update timestamp) to minimize wazuh-db round-trips during the hot path
-(`notify` every 10 seconds per agent). Entries idle for 6 hours are evicted by a sweep that runs
+(`notify` every 10 seconds per agent); `/download` authorizes against the same cache and falls back to
+wazuh-db when it cannot vouch for the agent. Entries idle for 6 hours are evicted by a sweep that runs
 every 300 seconds.
 
 ### Error handling
@@ -1055,6 +1068,15 @@ Control-specific conditions:
 | Agent version higher than allowed (startup only) | `409` | `invalid_version` |
 | Invalid host info format (notify only)     | `400` | `invalid_host_info`    |
 | wazuh-db unavailable (get groups)          | `503` | `dependency_unavailable` |
+| wazuh-db has no row for the agent (`ok []`) | `503` | `dependency_unavailable` |
+| Membership read superseded by a newer invalidation | `503` | `dependency_unavailable` |
+
+These `503`s arise only when the manager holds no fresh membership for the agent (established
+within `remoted.control_groups_refresh_interval`): a fresh one answers `startup` and `notify` without
+querying wazuh-db. An expired membership is never served in place of an answer, and an agent with no
+row in the node's local wazuh-db is never handed `default`: it retries until its row arrives. All
+three causes share one answer on the wire. Read failures and missing rows have separate logs and
+`remoted.control.wdb_error` / `remoted.control.no_row` metrics; superseded reads are logged separately.
 
 The two version rejections deliberately carry different statuses even though they share an `error`
 message. A **malformed** version is a bad request: resending the same bytes can never succeed, so the
@@ -1444,9 +1466,13 @@ Accepted identifiers:
 > **A `config` download is authorized against the requesting agent's own groups.** `resource_id`
 > must equal the selector `/control` handed that agent as `config_token` — the same string
 > `config_hash` was computed over — and anything else is answered `403`. The manager resolves that
-> selector from the agent registry `/control` already maintains, so the check costs no wazuh-db
-> round trip; an agent whose membership the manager has never established (it never completed
-> `/control/startup`, or its entry was evicted) is **denied, not served**.
+> selector from the agent registry `/control` maintains, without querying wazuh-db, while the
+> agent's membership there is fresh (established within `remoted.control_groups_refresh_interval`).
+> Otherwise — the agent never sent `/control` to this node, the manager restarted, the entry expired
+> or was never established — the manager reads the membership from the node's local
+> `wazuh-manager-db` first, asynchronously: an agent that database has no row for is **not served**
+> (never `default`) but answered `503`, as when the database does not answer in time — the agent
+> retries until its row reaches this node.
 >
 > The comparison is exact, including the order of a multigroup CSV: `a,b` and `b,a` name different
 > merged files, and only one of them is the file `config_hash` refers to.
@@ -1477,7 +1503,8 @@ instead.
 | Body empty, over 4 KiB, not a JSON object, wrong member count, or a non-string member | `400` | `Invalid request format` |
 | `resource_type` is neither `config` nor `wpk` | `400` | `Invalid resource type` |
 | `resource_id` fails the grammar for its type | `400` | `Invalid resource identifier` |
-| `resource_type: config` and `resource_id` is not the requesting agent's own selector, or the manager has no established membership for it | `403` | `Forbidden` |
+| `resource_type: config` and `resource_id` is not the requesting agent's own selector | `403` | `Forbidden` |
+| `resource_type: config` and the agent's membership could not be read from `wazuh-manager-db` in time, or it has no row for the agent | `503` | `dependency_unavailable` (with `dependency: wazuh-db`) |
 | Resource absent, not a regular file, or `O_NOFOLLOW` rejected a symlink | `404` | `Resource not found` |
 | Unexpected `errno` while opening or stat-ing | `500` | `Internal server error` |
 
