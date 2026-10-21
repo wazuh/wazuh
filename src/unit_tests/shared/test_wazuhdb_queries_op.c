@@ -3268,6 +3268,37 @@ void test_wdb_get_distinct_agent_groups_error_no_json_response(void **state) {
     assert_null(root);
 }
 
+static int teardown_wdb_global_helpers_clear_shutdown(void **state) {
+    w_shutdown_requested_set(false);
+    return teardown_wdb_global_helpers(state);
+}
+
+void test_wdb_get_distinct_agent_groups_error_while_shutting_down(void **state) {
+    cJSON *root = NULL;
+    const char *query_str = "global get-distinct-groups ";
+    const char *response = "err";
+
+    will_return(__wrap_cJSON_CreateArray, NULL);
+
+    // The query fails after the daemon took its termination signal: remoted's group refresh lands
+    // on a wazuh-db stopped in the same pass. The helper's own line follows the client's down to
+    // debug, otherwise the ERROR the client no longer writes would just reappear one layer up.
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
+    will_return(__wrap_wdbc_query_ex, OS_INVALID);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Error querying Wazuh DB to get agent's groups.");
+
+    expect_function_call(__wrap_cJSON_Delete);
+
+    w_shutdown_requested_set(true);
+    root = wdb_get_distinct_agent_groups(NULL);
+
+    assert_null(root);
+}
+
 void test_wdb_get_distinct_agent_groups_error_parse_chunk(void **state) {
     cJSON *root = NULL;
     const char *query_str = "global get-distinct-groups ";
@@ -3717,6 +3748,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_set_agent_groups_socket_error, setup_wdb_global_helpers_add_agent, teardown_wdb_global_helpers_add_agent),
         /* Tests wdb_get_distinct_agent_groups */
         cmocka_unit_test_setup_teardown(test_wdb_get_distinct_agent_groups_error_no_json_response, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_get_distinct_agent_groups_error_while_shutting_down, setup_wdb_global_helpers, teardown_wdb_global_helpers_clear_shutdown),
         cmocka_unit_test_setup_teardown(test_wdb_get_distinct_agent_groups_error_parse_chunk, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_get_distinct_agent_groups_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_get_distinct_agent_groups_success_due_ok, setup_wdb_global_helpers, teardown_wdb_global_helpers),
