@@ -270,14 +270,23 @@ static inline int wz_cgroup_v1_controller_mounted(const char* controller)
 /* The controller this host will be keyed by, as an index into
  * enum cgroup_subsys_id. Returns -1 when none of the candidates can serve.
  *
- * ONE chooser, so the resolver and the eBPF engine cannot settle on different
- * hierarchies — which would not fail loudly, it would simply make every lookup
- * between them miss, because the two numbers come from unrelated kernfs trees.
+ * One PRIORITY ORDER for every half that has to choose, so the resolver, the
+ * baseline's process mapping and the eBPF engine prefer the same hierarchy —
+ * disagreement would not fail loudly, it would simply make every lookup between
+ * them miss, because the two numbers come from unrelated kernfs trees.
  *
- * A candidate has to pass both tests: mounted as a v1 hierarchy (or there is no
- * cgroup under it to read), and possessing a subsystem slot (or the BPF program
- * has nothing to index). `name=systemd` passes the first and fails the second,
- * which is why the engine's usable list is shorter than the resolver's.
+ * It is an order, not a verdict, and the halves do NOT all apply it with the
+ * same filter. A candidate has to pass both tests here: mounted as a v1
+ * hierarchy (or there is no cgroup under it to read), and possessing a
+ * subsystem slot (or the BPF program has nothing to index). `name=systemd`
+ * passes the first and fails the second, which is why the engine's usable list
+ * is shorter than the resolver's — `selectCanonicalCgroup()` takes this
+ * function's answer as a PREFERENCE and falls back to its own list when it
+ * returns -1. So the two can still land on different hierarchies on a host
+ * where only an engine-unusable controller is mounted. That costs grouping
+ * accuracy rather than correlation, because such a host is keyed on the mount
+ * namespace, and the resolver reports the divergence at startup instead of
+ * leaving it silent.
  */
 static inline int wz_cgroup_v1_select_subsys(const char** chosen)
 {

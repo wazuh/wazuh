@@ -8,8 +8,10 @@
  * Foundation.
  *
  * This parser accepted exactly one shape — a line beginning `0::` — and
- * returned nothing for anything else. A pure cgroup v1 host has no such line,
- * so every line was rejected, every container got inode 0, and the module
+ * returned nothing for anything else. On a legacy host that line either is
+ * absent or reads `0::/` and names nothing; which of the two depends on the
+ * kernel (measured both ways — see cgroup_parse.hpp). Either way no numbered
+ * controller line was ever read, so every container got inode 0 and the module
  * reported no containers at all while looking perfectly healthy.
  *
  * Two things are pinned here. First, that the line parser reads the format

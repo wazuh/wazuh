@@ -64,6 +64,12 @@ namespace wazuh::container_instances
         /// integers they simply fail to match, which is reported as "this
         /// container is unknown" — sending the consumer off to re-resolve a
         /// container that is sitting right there.
+        ///
+        /// The refusal is `Status::wrongKeyKind`, and the distinction from
+        /// `miss` is the whole point: returning a plain miss here WAS the
+        /// defect, because every caller reads a miss as "unknown, go and
+        /// resolve it" and resolving a number from the wrong space either never
+        /// settles or settles on an unrelated container.
         [[nodiscard]] virtual LookupResult lookup(HostKey key) const = 0;
 
         /// Which kind of key this store is filed under, so a consumer can ask
