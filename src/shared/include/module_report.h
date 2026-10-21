@@ -52,6 +52,30 @@ void module_report_merge(cJSON *body, cJSON *section);
  */
 void module_report_add(cJSON *report, const char *module, cJSON *body);
 
+/* What a report shows instead of a credential's value. The same text the
+ * server API masks configuration secrets with, so a masked value reads the
+ * same wherever the configuration is shown. */
+#define MODULE_REPORT_SECRET_MASK "*****"
+
+/**
+ * @brief Store a credential in a module body without its value.
+ *
+ * Module bodies leave the agent: the manager indexes the /config report as it
+ * arrives. The key is kept with MODULE_REPORT_SECRET_MASK as its value, so the
+ * report still tells that the credential is set, and the field stays a string,
+ * the type the index maps it with. A path to a file holding a credential is
+ * not a credential and is reported as is.
+ *
+ * Adds nothing when the secret is NULL or empty: no credential is set, and a
+ * mask would claim one is. Call sites can pass the field straight in.
+ *
+ * @param object Destination object, e.g. one entry of a module's api_auth.
+ * @param key Field name, e.g. "secret_key".
+ * @param secret Credential value. Only tested, never copied.
+ */
+void module_report_add_masked_secret(cJSON *object, const char *key,
+                                     const char *secret);
+
 /**
  * @brief Serialize a report into the "ok <json>" reply a dispatcher returns.
  *

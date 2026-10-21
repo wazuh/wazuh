@@ -47,6 +47,15 @@ void module_report_add(cJSON *report, const char *module, cJSON *body) {
     cJSON_AddItemToObject(report, module, body);
 }
 
+void module_report_add_masked_secret(cJSON *object, const char *key,
+                                     const char *secret) {
+    if (!object || !key || !secret || *secret == '\0') {
+        return;
+    }
+
+    cJSON_AddStringToObject(object, key, MODULE_REPORT_SECRET_MASK);
+}
+
 size_t module_report_reply(cJSON *report, char **output) {
     char *json_str = NULL;
 
