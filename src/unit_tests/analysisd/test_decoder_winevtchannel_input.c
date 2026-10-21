@@ -171,6 +171,15 @@ static const char * get_field(const Eventinfo * lf, const char * key) {
     return NULL;
 }
 
+/* Fails naming the key, since assert_string_equal passes a missing field to strcmp. */
+static void assert_field(const Eventinfo * lf, const char * key, const char * expected) {
+    const char * value = get_field(lf, key);
+    if (value == NULL) {
+        fail_msg("field '%s' not found", key);
+    }
+    assert_string_equal(value, expected);
+}
+
 /* Windows Defender event 1116 as rendered by EvtRender: single-quoted XML attributes and names with spaces. */
 void test_winevt_dec_eventdata_name_with_spaces(void ** state) {
     const char * TEST_LOG_STRING =
@@ -216,15 +225,14 @@ void test_winevt_dec_eventdata_name_with_spaces(void ** state) {
     int ret = DecodeWinevt(lf);
     assert_int_equal(ret, SUCCESS_DECODE);
 
-    assert_string_equal(get_field(lf, "win.eventdata.severityName"), "Severe");
-    assert_string_equal(get_field(lf, "win.eventdata.threatName"), "Tool:Win32/EICAR_Test_File");
-    assert_string_equal(get_field(lf, "win.eventdata.processName"), "Unknown");
-    assert_string_equal(get_field(lf, "win.eventdata.errorCode"), "0x00000000");
-    assert_string_equal(get_field(lf, "win.eventdata.errorDescription"), "The operation completed successfully.");
-    assert_string_equal(get_field(lf, "win.eventdata.productName"), "Microsoft Defender Antivirus");
-    assert_string_equal(get_field(lf, "win.eventdata.securityIntelligenceVersion"),
-                        "AV: 1.451.323.0, AS: 1.451.323.0");
-    assert_string_equal(get_field(lf, "win.eventdata.state"), "1");
+    assert_field(lf, "win.eventdata.severityName", "Severe");
+    assert_field(lf, "win.eventdata.threatName", "Tool:Win32/EICAR_Test_File");
+    assert_field(lf, "win.eventdata.processName", "Unknown");
+    assert_field(lf, "win.eventdata.errorCode", "0x00000000");
+    assert_field(lf, "win.eventdata.errorDescription", "The operation completed successfully.");
+    assert_field(lf, "win.eventdata.productName", "Microsoft Defender Antivirus");
+    assert_field(lf, "win.eventdata.securityIntelligenceVersion", "AV: 1.451.323.0, AS: 1.451.323.0");
+    assert_field(lf, "win.eventdata.state", "1");
     assert_non_null(get_field(lf, "win.eventdata.detectionUser"));
     assert_null(get_field(lf, "win.eventdata.severity Name"));
 
@@ -249,8 +257,8 @@ void test_winevt_dec_eventdata_name_spaces_edges(void ** state) {
     int ret = DecodeWinevt(lf);
     assert_int_equal(ret, SUCCESS_DECODE);
 
-    assert_string_equal(get_field(lf, "win.eventdata.currentSecurityIntelligenceVersion"), "1.2");
-    assert_string_equal(get_field(lf, "win.eventdata.leadAndDouble"), "x");
+    assert_field(lf, "win.eventdata.currentSecurityIntelligenceVersion", "1.2");
+    assert_field(lf, "win.eventdata.leadAndDouble", "x");
 }
 
 int main() {
