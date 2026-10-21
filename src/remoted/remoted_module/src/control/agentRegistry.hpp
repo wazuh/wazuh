@@ -107,6 +107,10 @@ namespace remoted::control
 
         std::array<Shard, 8> m_shards;
         std::atomic<uint64_t> m_groupsSeq {0};
+        /// Registry-wide withdrawal marks. With no established membership for A, a skipped push
+        /// or eviction for B after A's lookup ticket can also reject A's answer (503). This
+        /// conservative cross-agent rejection avoids storing a stale read when the erased or
+        /// skipped agent was A; a retry takes a new ticket.
         std::atomic<uint64_t> m_lastSkipSeq {0};
         /// The largest groups stamp an evicted entry held (0 = none yet).
         std::atomic<uint64_t> m_lastEvictSeq {0};

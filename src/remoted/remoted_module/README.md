@@ -883,6 +883,16 @@ the ticket — an established one then answers — and it never creates an entry
 stored as `{"default"}` by every writer (`membershipGroups()`, `groupSelector.hpp`). `groupsFresh()` is the
 freshness test of `/control` startup and notify and of `/download` (`remoted.control_groups_refresh_interval`).
 
+**Availability tradeoff of the withdrawal marks.** `m_lastSkipSeq` and `m_lastEvictSeq` are
+registry-wide, not per-agent. When agent A has no established membership (its entry is absent or
+invalidated), a skipped push or stamped eviction for agent B after A's ticket also makes A's
+in-flight lookup `Superseded`, even though B's change does not affect A. A's request gets `503` and
+must retry with a new ticket. Repeated marks during a burst of group changes or an eviction sweep can
+delay cold lookups on a restarting remoted or a worker catching up with the master. The marks favor
+rejecting an uncertain read over establishing stale membership; per-agent withdrawal marks would
+remove the unrelated-agent rejection but need a bounded lifetime covering both `/control` and
+`/download` lookups in flight.
+
 Sharding (8 shards) minimizes lock contention on high-frequency keepalives from many agents.
 
 #### WazuhDBClient (`wazuhDBClient.hpp/.cpp`)
