@@ -273,3 +273,23 @@ TEST(DBTest, TestValidFimLimit)
     delete mockLog;
     delete mockSync;
 }
+
+TEST(DBTest, TestUtf8Sanitize)
+{
+    const auto check
+    {
+        [](const char* input, const char* expected)
+        {
+            const std::unique_ptr<char, decltype(&free)> result {fim_db_utf8_sanitize(input), free};
+            ASSERT_NE(nullptr, result);
+            EXPECT_STREQ(expected, result.get());
+        }
+    };
+
+    check("/etc/wgetrc \xc3\xa9\xf0\x9f\x98\x80 \"quoted\"\n", "/etc/wgetrc \xc3\xa9\xf0\x9f\x98\x80 \"quoted\"\n");
+    check("/tmp/b\xff", "/tmp/b\xef\xbf\xbd");
+    // A truncated sequence is one replacement, like nlohmann::json::dump(), not one per byte.
+    check("/tmp/\xe2\x82x", "/tmp/\xef\xbf\xbdx");
+    check("{\"path\":\"/tmp/b\xff\"}", "{\"path\":\"/tmp/b\xef\xbf\xbd\"}");
+    EXPECT_EQ(nullptr, fim_db_utf8_sanitize(nullptr));
+}

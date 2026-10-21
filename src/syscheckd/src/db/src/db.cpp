@@ -418,6 +418,29 @@ void fim_db_teardown()
     // LCOV_EXCL_STOP
 }
 
+char* fim_db_utf8_sanitize(const char* input)
+{
+    char* retVal {nullptr};
+
+    if (input)
+    {
+        try
+        {
+            const auto sanitized = nlohmann::json::parse(nlohmann::json(input).dump(-1, ' ', false, nlohmann::json::error_handler_t::replace)).get<std::string>();
+            retVal = strdup(sanitized.c_str());
+        }
+        // LCOV_EXCL_START
+        catch (const std::exception& err)
+        {
+            FIMDB::instance().logFunction(LOG_ERROR, err.what());
+        }
+
+        // LCOV_EXCL_STOP
+    }
+
+    return retVal;
+}
+
 
 #ifdef __cplusplus
 }

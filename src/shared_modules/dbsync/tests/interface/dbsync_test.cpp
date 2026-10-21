@@ -17,6 +17,7 @@
 #include "makeUnique.h"
 #include "test_inputs.h"
 #include "cjsonSmartDeleter.hpp"
+#include "cjsonHelper.hpp"
 
 constexpr auto DATABASE_TEMP {"TEMP.db"};
 constexpr auto DATABASE_MEMORY {":memory:"};
@@ -2434,4 +2435,93 @@ TEST_F(DBSyncTest, TestUpgrade)
     };
 
     EXPECT_NO_THROW(dbSync->selectRows(selectQuery.query(), selectCallbackData));
+}
+
+TEST_F(DBSyncTest, toCJSONMatchesParsedDump)
+{
+    const auto input = R"({"str":"a\"b\\c\n\u00e9\u20ac\ud83d\ude00","int":-42,"big":9007199254740993,"uint":18446744073709551615,
+        "float":0.1,"neg_zero":-0.0,"exp":1.5e300,"t":true,"f":false,"n":null,"empty_obj":{},"empty_arr":[],
+        "nested":{"arr":[1,"x",[2.5,null],{"k":"v"}]},"int_max":2147483648,"int_min":-2147483649})"_json;
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> expected { cJSON_Parse(input.dump().c_str()) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> result { Utils::toCJSON(input) };
+
+    ASSERT_NE(nullptr, result);
+    EXPECT_TRUE(cJSON_Compare(expected.get(), result.get(), true));
+    const std::unique_ptr<char, CJsonSmartFree> expectedText { cJSON_PrintUnformatted(expected.get()) };
+    const std::unique_ptr<char, CJsonSmartFree> resultText { cJSON_PrintUnformatted(result.get()) };
+    EXPECT_STREQ(expectedText.get(), resultText.get());
+    EXPECT_EQ(cJSON_GetObjectItem(expected.get(), "int_max")->valueint, cJSON_GetObjectItem(result.get(), "int_max")->valueint);
+    EXPECT_EQ(cJSON_GetObjectItem(expected.get(), "int_min")->valueint, cJSON_GetObjectItem(result.get(), "int_min")->valueint);
+}
+
+TEST_F(DBSyncTest, toCJSONKeepsInvalidUtf8)
+{
+    const std::string invalid {"/tmp/b\xff\xe2\x82x"};
+    const nlohmann::json input {{"path", invalid}, {"list", {invalid}}};
+
+    EXPECT_ANY_THROW(input.dump());
+
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> result { Utils::toCJSON(input) };
+    ASSERT_NE(nullptr, result);
+    EXPECT_EQ(invalid, cJSON_GetStringValue(cJSON_GetObjectItem(result.get(), "path")));
+    EXPECT_EQ(invalid, cJSON_GetStringValue(cJSON_GetArrayItem(cJSON_GetObjectItem(result.get(), "list"), 0)));
+}
+
+TEST_F(DBSyncTest, toCJSONNonFiniteFloatIsNull)
+{
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> result { Utils::toCJSON(std::nan("")) };
+    ASSERT_NE(nullptr, result);
+    EXPECT_TRUE(cJSON_IsNull(result.get()));
+}
+
+static void pathCallback(const ReturnTypeCallback type,
+                         const cJSON* json,
+                         void* ctx)
+{
+    auto results { reinterpret_cast<std::vector<std::pair<ReturnTypeCallback, std::string>>*>(ctx) };
+    results->emplace_back(type, cJSON_GetStringValue(cJSON_GetObjectItem(json, "path")));
+}
+
+TEST_F(DBSyncTest, txnCallbacksWithInvalidUtf8Row)
+{
+    const auto sql{ "CREATE TABLE files(`path` TEXT, `size` BIGINT, PRIMARY KEY (`path`)) WITHOUT ROWID;"};
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsonTables { cJSON_Parse(R"({"table":"files"})") };
+    const std::string invalidPath {"/b\xff"};
+    const auto row
+    {
+        [](const std::string & path)
+        {
+            return nlohmann::json {{"table", "files"}, {"data", nlohmann::json::array({{{"path", path}, {"size", 1}}})}};
+        }
+    };
+    std::vector<std::pair<ReturnTypeCallback, std::string>> results;
+    callback_data_t callbackData { pathCallback, &results };
+
+    const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
+    ASSERT_NE(nullptr, handle);
+
+    auto txn { dbsync_create_txn(handle, jsonTables.get(), 0, 100, callbackData) };
+    ASSERT_NE(nullptr, txn);
+
+    const std::vector<std::string> paths {"/a", invalidPath, "/c"};
+
+    for (const auto& path : paths)
+    {
+        EXPECT_NO_THROW(DBSyncTxn(txn).syncTxnRow(row(path)));
+    }
+
+    EXPECT_EQ(0, dbsync_close_txn(txn));
+
+    // Only "/a" is seen again: the invalid row and the one after it must both be reported as deleted.
+    txn = dbsync_create_txn(handle, jsonTables.get(), 0, 100, callbackData);
+    ASSERT_NE(nullptr, txn);
+    EXPECT_NO_THROW(DBSyncTxn(txn).syncTxnRow(row("/a")));
+    EXPECT_EQ(0, dbsync_get_deleted_rows(txn, callbackData));
+    EXPECT_EQ(0, dbsync_close_txn(txn));
+
+    const std::vector<std::pair<ReturnTypeCallback, std::string>> expected
+    {
+        {INSERTED, "/a"}, {INSERTED, invalidPath}, {INSERTED, "/c"}, {DELETED, invalidPath}, {DELETED, "/c"}
+    };
+    EXPECT_EQ(expected, results);
 }

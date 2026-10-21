@@ -49,7 +49,7 @@ namespace RSync
 
                 outputMessage["data"] = outputData;
 
-                callback(outputMessage.dump());
+                callback(outputMessage.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace));
             }
     };
 };// namespace RSync

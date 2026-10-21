@@ -63,7 +63,7 @@ namespace RSync
 
                     if (!data.checksum.empty() || INTEGRITY_CLEAR == data.type)
                     {
-                        callback(outputMessage.dump());
+                        callback(outputMessage.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace));
                     }
                 }
                 // LCOV_EXCL_START

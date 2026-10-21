@@ -213,6 +213,14 @@ EXPORTED FIMDBErrorCode fim_db_transaction_deleted_rows(TXN_HANDLE txn_handler,
  */
 EXPORTED void fim_db_teardown();
 
+/**
+ * @brief Replaces invalid UTF-8 in a string with U+FFFD, the same way the sync messages do it.
+ *
+ * @param input String to sanitize.
+ * @return New string to be freed by the caller, or NULL on failure.
+ */
+EXPORTED char* fim_db_utf8_sanitize(const char* input);
+
 #ifdef WIN32
 
 // Registry functions.
