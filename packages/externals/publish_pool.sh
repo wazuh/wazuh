@@ -28,7 +28,8 @@
 # Needs bash >= 4.4 (inherit_errexit), python3 and an AWS CLI with
 # put-object --if-none-match: an older one rejects the option on the first upload,
 # which then fails before writing anything. The role needs s3:ListBucket on the
-# bucket, limited to the deps/pool/ prefix.
+# whole bucket: S3 answers NoSuchKey for a missing manifest only to callers that can
+# list the bucket, and AccessDenied otherwise.
 
 set -euo pipefail
 # put() runs inside $(...): without this its failures would not stop the script.

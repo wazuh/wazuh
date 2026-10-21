@@ -12476,6 +12476,7 @@ Included in: manager, standalone
 ------------------------------------------------------------------------------
 [ libyaml/LICENSE ]
 ------------------------------------------------------------------------------
+Copyright (c) 2017-2018 Ingy döt Net
 Copyright (c) 2006-2016 Kirill Simonov
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
