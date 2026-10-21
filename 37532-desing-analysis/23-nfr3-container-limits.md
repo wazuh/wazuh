@@ -542,3 +542,57 @@ defects of this branch.
 - The container document id is `wazuh_<agent>_<cid>:<path>`, unhashed. OpenSearch caps `_id`
   at 512 bytes, so a very long container path would fail to index. Hashing it would change the
   id scheme on both the live and recovery paths, and that was left as a follow-up.
+
+---
+
+## 23.12 Does a limit bound what is detected, or only what is stored? (2026-10-21)
+
+The team's position is that a limit restricts the number of elements in `wazuh-states-*` and does
+not restrict alerts, and that host FIM is the reference for that behaviour. Verified on
+`wazuh_manager` against 50 files in one watched directory, with `notify_first_scan` on so the
+baseline scan alerts.
+
+**Host FIM has two limits, and only one of them behaves that way.**
+
+| | source | what it gates |
+| --- | --- | --- |
+| `syscheck.file_limit` | the manager's `getdoclimits fim` reply | `sync_flag`, and therefore whether `validate_and_persist_fim_event()` persists the stateful document |
+| `syscheck.file_entry_limit` | `<file_limit><entries>` in `ossec.conf` | `setTableMaxRow("file_entry", N)`, i.e. rows dbsync will accept at all |
+
+| run | `<entries>` | doc limit | alerts | rows in `fim.db` | `sync=1` | queued for manager |
+| --- | --- | --- | --- | --- | --- | --- |
+| baseline | 0 | 0 | 50 | 50 | 50 | 50 |
+| document limit | 0 | 5 | **50** | 50 | **5** | **5** |
+| database limit | 5 | 0 | **5** | **5** | 5 | 5 |
+
+**The document limit behaves exactly as the team describes.** All 50 changes alert, all 50 rows
+are kept locally, and 5 documents reach the manager. `file/file.c` sends the stateless event under
+`if (notify_scan != 0 && txn_context->event->report_event)` — the limit is nowhere in that
+condition — and only afterwards does `validate_and_persist_fim_event()` apply
+`if (validation_passed && sync_flag == 1)`. Detection and storage are genuinely separate.
+
+**The database limit does not.** At `<entries>5</entries>`, 45 of 50 file creations produced **no
+alert at all**. dbsync rejects the insert with `MAX_ROWS`, and the switch in
+`fim_process_callback()` does:
+
+```c
+case MAX_ROWS:
+    mdebug1("Couldn't insert '%s' entry into DB. The DB is full, please check your configuration.", path);
+// Fallthrough
+default:
+    goto end;
+```
+
+`goto end` jumps past the point where the stateless event is built, so the alert is never
+constructed, let alone sent. The only trace is a **debug**-level line — 90 of them in this run —
+which an operator at default log level never sees.
+
+So the behaviour the team wants is already correct for the limit that bounds `wazuh-states-*`, and
+is *not* correct for the limit that bounds the database. That second one is a silent detection
+gap: a full `file_entry` table stops FIM reporting changes, without saying so at any visible log
+level. Worth deciding deliberately rather than inheriting — the options are to emit the alert
+before consulting the database, or at minimum to raise that `mdebug1` to a warning and say the
+agent has stopped detecting.
+
+This matters for the container work because `container_file_entry_limit` reaches the same
+`MAX_ROWS` path, so a container that fills its share stops alerting too, by the same mechanism.
