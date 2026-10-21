@@ -33,9 +33,12 @@ namespace wazuh::container_instances
         }
 
         // Legacy is supported now, provided a v1 controller exists that the
-        // resolver and the eBPF program can both read — the same controller,
-        // chosen by the same selector, so the two cannot drift. Naming it here
-        // is what lets an operator check the two halves agree.
+        // resolver and the eBPF program can both read. Both prefer the same
+        // controller because both ask the shared selector first -- but it is a
+        // preference, not a guarantee: where the selector finds nothing the
+        // resolver falls back to its own list, which accepts `name=systemd`
+        // while the engine cannot. Naming the controller here is what lets an
+        // operator check the two halves actually agree.
         const char* controller = nullptr;
         if (wz_cgroup_v1_select_subsys(&controller) >= 0 && controller != nullptr)
         {

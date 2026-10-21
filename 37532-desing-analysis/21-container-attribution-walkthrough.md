@@ -71,8 +71,12 @@ Two details that are easy to get wrong and are pinned by tests:
 - **A hybrid host's `0::` path is relative to `<root>/unified`, not `<root>`.** Statting it at the
   root finds nothing, which produced the same symptom as pure v1 on a host whose ids were perfectly
   usable.
-- **A pure v1 host still emits a `0::` line** — it reads `0::/`. It is ignored on a legacy host by
-  `selectCanonicalCgroup`, and a path of `/` is dropped by `scan()` anyway.
+- **Whether a pure v1 host emits a `0::` line depends on the kernel.** Measured both ways: absent
+  on CentOS Stream 8 (4.18.0-326) and on Ubuntu 22.04 forced to v1 (doc 22 §22.11.3), present as a
+  useless `0::/` on the kernel in doc 20 §20.4.5. Neither shape may be assumed. In
+  `container_instances` it is ignored on a legacy host by `selectCanonicalCgroup`, and a path of `/`
+  is dropped by `scan()` anyway. `container_baseline` has its own reader, which did NOT handle the
+  `0::/` case and is corrected in `SelectCgroupPathFromProcCgroup()`.
 
 The **mount namespace** is read from the **lowest host pid** in each cgroup
 (`proc_cgroup_resolver.cpp`). That rule exists because `unshare -m` inside a container would
@@ -344,9 +348,23 @@ This is the property the whole design rests on, and it now holds on both hierarc
 kernel stamps into an event and the number userspace filed the container under are **the same
 inode**, read by two different routes. No translation table, and nothing to drift.
 
-It only holds because **one selector chooses the controller for both sides**
-(`wz_cgroup_v1_select_subsys`). Two independent choices would not fail loudly — they would simply
-make every lookup miss, because the two numbers would come from unrelated kernfs trees.
+It holds because **both sides ask the same selector first** (`wz_cgroup_v1_select_subsys`).
+Independent choices would not fail loudly — they would simply make every lookup miss, because the
+two numbers would come from unrelated kernfs trees.
+
+It is a preference rather than a guarantee, and the limit is worth stating. Where the shared
+selector answers −1, `selectCanonicalCgroup()` falls back to its own list, which accepts
+`name=systemd` where the engine cannot index it. Such a host keys on the mount namespace instead,
+so the halves differ by one of them having no cgroup key at all rather than by two keys that
+silently fail to match — and the resolver reports the divergence at startup. The third chooser,
+`container_baseline`'s own process-to-container mapping, now ranks by the same shared order
+(`SelectCgroupPathFromProcCgroup()`); it used to take whichever controller line the kernel printed
+first.
+
+One more thing the "same number" claim depends on: the id the BPF program reads is masked to its
+low 32 bits, because a kernfs id packs a reuse generation above the inode number. Measured on
+RHEL 8.1, Amazon Linux 2 and CentOS Stream 8 — on all three the raw id and `st_ino` differ, and
+without the mask nothing correlates at all.
 
 ---
 

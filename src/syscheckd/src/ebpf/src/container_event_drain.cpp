@@ -788,9 +788,12 @@ bool ContainerEventDrain::start(const DrainConfig& config, ReconcileHandler hand
          * It refuses no longer, because the helper was the limit and not the
          * kernel: the v1 controllers' cgroups are kernfs nodes carrying ids of
          * exactly the same kind, and the engine can be pointed at one. The
-         * controller is chosen by the shared selector, so this and the resolver
-         * cannot settle on different hierarchies and then miss every lookup
-         * between them. */
+         * controller is chosen by the shared selector, which the resolver asks
+         * first too, so on any host where it answers the two halves read the
+         * same hierarchy. Where it does NOT answer, this consumer refuses
+         * outright while the resolver falls back to its own list -- so the
+         * halves differ by one half having no key at all, rather than by two
+         * keys that silently fail to match. */
         const char* controller = nullptr;
         const int subsys = wz_cgroup_v1_select_subsys(&controller);
 

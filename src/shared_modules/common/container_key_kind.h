@@ -78,7 +78,9 @@ static inline int wz_container_key_kind_from_name(const char* name, wz_container
  * wz_cgroup_v1_select_subsys() answers. Asking it here is what keeps the
  * producer's key and the consumer's key in the same number space: the resolver
  * already stats that controller's cgroup directory, and the BPF program returns
- * that directory's inode.
+ * that directory's inode -- masked to its low 32 bits, because a kernfs id
+ * packs a reuse generation above the inode number on the kernels this targets
+ * (see kernfs_node_ino() in rt_file.bpf.c).
  *
  * Falling back to the mount namespace only when no controller qualifies keeps
  * the previous behaviour for hosts where nothing better exists -- at the cost
