@@ -17,8 +17,9 @@
 #include "contentCycle.hpp"
 #include "contentTopicSpec.hpp"
 #include "loggerHelper.h"
+#include "pitSession.hpp"
 #include "sharedDefs.hpp"
-#include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <memory>
 #include <optional>
@@ -27,10 +28,7 @@
 #include <variant>
 
 /**
- * @brief Turns a parsed registration into a runnable @ref ContentCycle.
- *
- * Reads the typed @ref content_manager::TopicSpec only (D2): the JSON was parsed and validated once,
- * by @ref TopicSpecParser, so nothing here re-checks a key or carries a second default.
+ * @brief Turns a validated registration into a runnable @ref ContentCycle.
  */
 class FactoryContentUpdater final
 {
@@ -38,11 +36,11 @@ public:
     /**
      * @brief Build the cycle for a topic.
      *
-     * @param spec The parsed registration.
+     * @param spec The registration, already validated.
      * @param topicName Topic name.
      * @param sink Where the content goes.
      * @param tokenStore Where the token lives; may be null.
-     * @param stop Cooperative stop flag.
+     * @param stop Cooperative stop flag; must outlive the cycle.
      * @param port Indexer access.
      * @return The cycle.
      */
@@ -50,7 +48,7 @@ public:
                                                 const std::string& topicName,
                                                 std::shared_ptr<content_manager::IContentSink> sink,
                                                 std::shared_ptr<content_manager::IContentTokenStore> tokenStore,
-                                                std::shared_ptr<ConditionSync> stop,
+                                                const std::atomic<bool>& stop,
                                                 std::shared_ptr<content_manager::IContentIndexer> port)
     {
         ContentCycle::Config config;
@@ -68,76 +66,55 @@ public:
         }
 
         config.fullSlices = spec.source.slices;
-        config.requiredDocumentIds = nlohmann::json::array();
-        for (const auto& id : spec.fullLoad.requiredDocumentIds)
-        {
-            config.requiredDocumentIds.push_back(id);
-        }
-
+        config.requiredDocumentIds = spec.fullLoad.requiredDocumentIds;
         config.fetchTemplate.pageSize = spec.source.pageSize;
         config.fetchTemplate.sourceFilter = spec.source.sourceFilter;
 
         std::unique_ptr<IChangeDetector> detector;
-        std::string strategy;
+        const char* strategy = "cursor";
         if (const auto* cursor = std::get_if<content_manager::CursorDetection>(&spec.detection))
         {
-            strategy = "cursor";
-            config.fetchTemplate.sort = cursorSort(*cursor, config.pit.consumerStatusIndex);
+            config.fetchTemplate.sort = cursorSort(*cursor);
             detector = std::make_unique<OffsetCursorDetector>(cursor->field, spec.source.query);
         }
         else
         {
             strategy = "hash";
-            const auto& hash = std::get<content_manager::HashDetection>(spec.detection);
-            config.fetchTemplate.sort = hashSort();
-            detector = std::make_unique<ContentHashDetector>(hashConfig(hash, spec.source.query));
+            config.fetchTemplate.sort = PitSession::docSort();
+            detector = std::make_unique<ContentHashDetector>(
+                hashConfig(std::get<content_manager::HashDetection>(spec.detection), spec.source.query));
         }
 
         logDebug1(WM_CONTENTUPDATER,
                   "Content cycle for '%s' created (detection=%s, indices=%zu, slices=%zu, pageSize=%zu)",
                   topicName.c_str(),
-                  strategy.c_str(),
+                  strategy,
                   config.pit.dataIndices.size(),
                   config.fullSlices,
                   config.fetchTemplate.pageSize);
 
-        return std::make_unique<ContentCycle>(std::move(config),
-                                              std::move(port),
-                                              std::move(detector),
-                                              std::move(sink),
-                                              std::move(tokenStore),
-                                              std::move(stop));
+        return std::make_unique<ContentCycle>(
+            std::move(config), std::move(port), std::move(detector), std::move(sink), std::move(tokenStore), stop);
     }
 
 private:
     /**
-     * @brief The cursor field, then `_id` — safe for a PIT that also spans the consumer index.
+     * @brief The cursor field, with an `unmapped_type`, then `_id`.
      *
-     * A sharp edge of the in-PIT consistency model, worth stating precisely because the imprecise
-     * version of it invites deleting the injection. OpenSearch requires a sort field to be mapped in
-     * **at least one** index of the search, not in every one, so `.wazuh-cti-consumers` lacking the
-     * cursor field is harmless on its own (verified against OpenSearch 3.7 by
+     * OpenSearch requires a sort field to be mapped in **at least one** index of the search, not in
+     * every one, so a consumer index lacking the cursor field is harmless on its own (verified by
      * `testtool/integration/query_contract_test.py`). What is not harmless is a **cold start**: a
-     * fresh install's data index holds no documents yet, so nothing has created a dynamic mapping for
-     * the field, which is then unmapped across every index in the PIT — and that OpenSearch rejects.
-     * That is exactly the first full load of a new manager; the `unmapped_type` makes it work.
+     * fresh install's data index holds no documents yet, so the field is unmapped across every index
+     * of the search — consumer index or not — and OpenSearch rejects it. The `unmapped_type` makes a
+     * new topic's first full load work.
+     *
+     * @param cursor The cursor detection.
+     * @return The sort array.
      */
-    static nlohmann::json cursorSort(const content_manager::CursorDetection& cursor,
-                                     const std::string& consumerStatusIndex)
+    static nlohmann::json cursorSort(const content_manager::CursorDetection& cursor)
     {
-        nlohmann::json field = "asc";
-        if (!consumerStatusIndex.empty())
-        {
-            field = nlohmann::json {{"order", "asc"}, {"unmapped_type", cursor.unmappedType}};
-        }
+        const nlohmann::json field {{"order", "asc"}, {"unmapped_type", cursor.unmappedType}};
         return nlohmann::json::array({nlohmann::json {{cursor.field, field}}, nlohmann::json {{"_id", "asc"}}});
-    }
-
-    /// `_shard_doc` is synthesised by the PIT, so it is mapped in every index the PIT spans — the
-    /// consumer index included — and needs no `unmapped_type`.
-    static nlohmann::json hashSort()
-    {
-        return nlohmann::json::array({nlohmann::json {{"_shard_doc", "asc"}}, nlohmann::json {{"_id", "asc"}}});
     }
 
     static ContentHashDetector::Config hashConfig(const content_manager::HashDetection& hash,

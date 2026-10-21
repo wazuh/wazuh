@@ -64,7 +64,7 @@ TEST(PitPaginatorTest, ThreadsSearchAfterAndStopsOnAShortPage)
         return FakeIndexerQueryPort::hitsOf(nlohmann::json::array({FakeIndexerQueryPort::hit("CVE-3", 3)}));
     };
 
-    ConditionSync stop {false};
+    std::atomic<bool> stop {false};
     PitSession session {port, pitConfig()};
     PitPaginator paginator {port, session, stop};
     RecordingSink sink;
@@ -98,7 +98,7 @@ TEST(PitPaginatorTest, DropsConsumerDocumentsBeforeTheSinkSeesThem)
              FakeIndexerQueryPort::hit("CVE-2", 2)}));
     };
 
-    ConditionSync stop {false};
+    std::atomic<bool> stop {false};
     PitSession session {port, pitConfig()};
     PitPaginator paginator {port, session, stop};
     RecordingSink sink;
@@ -127,7 +127,7 @@ TEST(PitPaginatorTest, DurableAckAdvancesTheResumePoint)
         return FakeIndexerQueryPort::hitsOf(nlohmann::json::array({FakeIndexerQueryPort::hit("CVE-9", 9)}));
     };
 
-    ConditionSync stop {false};
+    std::atomic<bool> stop {false};
     PitSession session {port, pitConfig()};
     PitPaginator paginator {port, session, stop};
 
@@ -138,8 +138,39 @@ TEST(PitPaginatorTest, DurableAckAdvancesTheResumePoint)
     const auto outcome =
         paginator.run(specOf(10), sink, "topic", [&durable](const std::string& token) { durable.push_back(token); });
 
-    EXPECT_EQ(outcome.durableToken, "9");
+    EXPECT_EQ(outcome.highestPageToken, "9");
     EXPECT_EQ(durable, (std::vector<std::string> {"9"}));
+}
+
+TEST(PitPaginatorTest, APageOfConsumerDocumentsOnlyIsNotADurablePoint)
+{
+    FakeIndexerQueryPort port;
+    port.state()->onSearch = [](const auto&, std::size_t call) -> nlohmann::json
+    {
+        if (call == 0)
+        {
+            return FakeIndexerQueryPort::hitsOf(nlohmann::json::array({FakeIndexerQueryPort::hit("CVE-1", 1)}));
+        }
+        if (call == 1)
+        {
+            return FakeIndexerQueryPort::hitsOf(nlohmann::json::array(
+                {nlohmann::json {{"_id", "consumer:1"}, {"_index", ".consumers"}, {"_source", {{"offset", 2}}}}}));
+        }
+        return FakeIndexerQueryPort::emptyHits();
+    };
+
+    std::atomic<bool> stop {false};
+    PitSession session {port, pitConfig()};
+    PitPaginator paginator {port, session, stop};
+
+    RecordingSink sink;
+    sink.pageStatus = content_manager::PageStatus::Durable;
+
+    std::vector<std::string> durable;
+    paginator.run(specOf(1), sink, "topic", [&durable](const std::string& token) { durable.push_back(token); });
+
+    // The second page reached no sink, so nothing acknowledged its token.
+    EXPECT_EQ(durable, (std::vector<std::string> {"1"}));
 }
 
 TEST(PitPaginatorTest, AcceptedAckDoesNotAdvanceTheResumePoint)
@@ -154,16 +185,18 @@ TEST(PitPaginatorTest, AcceptedAckDoesNotAdvanceTheResumePoint)
         return FakeIndexerQueryPort::hitsOf(nlohmann::json::array({FakeIndexerQueryPort::hit("CVE-9", 9)}));
     };
 
-    ConditionSync stop {false};
+    std::atomic<bool> stop {false};
     PitSession session {port, pitConfig()};
     PitPaginator paginator {port, session, stop};
     RecordingSink sink; // defaults to Accepted
 
-    const auto outcome = paginator.run(specOf(10), sink, "topic");
+    std::vector<std::string> durable;
+    const auto outcome =
+        paginator.run(specOf(10), sink, "topic", [&durable](const std::string& token) { durable.push_back(token); });
 
     // Buffered is not durable: resuming from here after a crash would skip whatever the sink still
     // held in memory.
-    EXPECT_TRUE(outcome.durableToken.empty());
+    EXPECT_TRUE(durable.empty());
     EXPECT_EQ(outcome.highestPageToken, "9");
 }
 
@@ -175,7 +208,7 @@ TEST(PitPaginatorTest, RejectAbortsTheFetchImmediately)
         return FakeIndexerQueryPort::hitsOf(nlohmann::json::array({FakeIndexerQueryPort::hit("CVE-1", 1)}));
     };
 
-    ConditionSync stop {false};
+    std::atomic<bool> stop {false};
     PitSession session {port, pitConfig()};
     PitPaginator paginator {port, session, stop};
 
@@ -192,7 +225,7 @@ TEST(PitPaginatorTest, RejectAbortsTheFetchImmediately)
 
 TEST(PitPaginatorTest, StopRequestEndsTheFetch)
 {
-    ConditionSync stop {true};
+    std::atomic<bool> stop {true};
 
     FakeIndexerQueryPort port;
     PitSession session {port, pitConfig()};
@@ -213,7 +246,7 @@ TEST(PitPaginatorTest, TransportErrorIsReportedNotThrown)
         throw std::runtime_error("indexer exploded");
     };
 
-    ConditionSync stop {false};
+    std::atomic<bool> stop {false};
     PitSession session {port, pitConfig()};
     PitPaginator paginator {port, session, stop};
     RecordingSink sink;
@@ -252,18 +285,21 @@ TEST(PitPaginatorTest, SlicedFetchRunsEverySliceOnTheOneIndexerAtOnce)
             nlohmann::json::array({FakeIndexerQueryPort::hit("CVE-" + std::to_string(sliceId), sliceId + 1)}));
     };
 
-    ConditionSync stop {false};
+    std::atomic<bool> stop {false};
     PitSession session {port, pitConfig()};
     PitPaginator paginator {port, session, stop};
     RecordingSink sink;
+    sink.pageStatus = content_manager::PageStatus::Durable;
 
-    const auto outcome = paginator.run(specOf(10, 3), sink, "topic");
+    std::vector<std::string> durable;
+    const auto outcome =
+        paginator.run(specOf(10, 3), sink, "topic", [&durable](const std::string& token) { durable.push_back(token); });
 
     EXPECT_EQ(outcome.documentsDelivered, 3U);
     EXPECT_EQ(port.state()->maxConcurrentSearches, 3U);
 
     // A per-slice token is not a resume point: the other slices may be far behind.
-    EXPECT_TRUE(outcome.durableToken.empty());
+    EXPECT_TRUE(durable.empty());
 
     std::set<std::size_t> sliceIds;
     for (const auto& call : port.state()->searches)
@@ -327,7 +363,7 @@ TEST(PitPaginatorTest, SlicedFetchSerialisesSinkCalls)
         void abort(content_manager::AbortReason, const std::string&) noexcept override {}
     };
 
-    ConditionSync stop {false};
+    std::atomic<bool> stop {false};
     PitSession session {port, pitConfig()};
     PitPaginator paginator {port, session, stop};
     ExclusivitySink sink;

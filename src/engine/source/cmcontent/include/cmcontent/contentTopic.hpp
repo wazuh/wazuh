@@ -2,34 +2,27 @@
 #ifndef CMCONTENT_CONTENT_TOPIC_HPP
 #define CMCONTENT_CONTENT_TOPIC_HPP
 
+#include <atomic>
+#include <cstddef>
 #include <functional>
 #include <memory>
-#include <mutex>
 #include <string>
 #include <string_view>
-#include <utility>
-#include <vector>
-
-#include <json.hpp>
 
 #include <contentIndexer.hpp>
-#include <contentOnDemand.hpp>
 #include <contentSink.hpp>
 #include <contentTokenStore.hpp>
+#include <contentTopicSpec.hpp>
 #include <contentTypes.hpp>
 
 namespace cmcontent
 {
 
 /**
- * @brief One registered content topic, as its owner needs to see it.
+ * @brief One registered content topic, as a sync service drives it.
  *
- * `ContentRegister` is a concrete class that registers itself with a process-wide facade and opens
- * real connections to the indexer on construction, so a sync service holding one directly cannot be
- * tested without an indexer. That is not a hypothetical: it is why the orchestration in `CMSync` and
- * `IocSync` — which outcome makes a space FAILED, when a missing database forces a full reload, what
- * happens when a cycle is already running — had no unit coverage at all. This interface is the seam
- * that gives it some.
+ * The seam between the sync services and `ContentRegister`, so their orchestration can be tested
+ * with a scripted topic instead of an indexer.
  */
 class IContentTopic
 {
@@ -45,122 +38,56 @@ public:
     virtual content_manager::CycleOutcome runOnce(content_manager::RunRequest request = {}) noexcept = 0;
 
     /**
-     * @brief Ask an in-flight cycle to wind down at its next checkpoint.
+     * @brief Stop the topic for good: the in-flight cycle winds down, later ones are skipped.
      */
     virtual void requestStop() noexcept = 0;
 };
 
 /**
  * @brief Builds the topic object for a registration.
- *
- * Defaults to @ref defaultTopicFactory; tests substitute one that returns a fake.
  */
 using TopicFactory =
     std::function<std::unique_ptr<IContentTopic>(const std::string& topicName,
-                                                 const nlohmann::json& parameters,
+                                                 const content_manager::TopicSpec& spec,
                                                  std::shared_ptr<content_manager::IContentSink> sink,
                                                  std::shared_ptr<content_manager::IContentTokenStore> tokenStore)>;
 
 /**
- * @brief The production factory: builds a real `ContentRegister` over the host's indexer.
- *
- * The indexer is captured here rather than passed through @ref TopicFactory, so the factory
- * signature — and every fake factory a test substitutes — knows nothing about connections.
+ * @brief The production factory: a `ContentRegister` over the Engine's indexer.
  *
  * @param indexer The Engine's indexer, shared by every topic (D1 of the content manager).
- * @return A factory registering topics with the shared content manager.
+ * @return The factory.
  * @throws std::invalid_argument if @p indexer is null.
  */
 TopicFactory defaultTopicFactory(std::shared_ptr<content_manager::IContentIndexer> indexer);
 
-/// How one on-demand update is queued: `content_manager::requestOnDemand`, or a fake in tests.
-using OnDemandDispatch = std::function<void(
-    const std::string&, content_manager::RunRequest, std::function<void(content_manager::OnDemandResult)>)>;
-
-/**
- * @brief Queue on-demand updates for several topics, strictly one after another.
- *
- * Each topic is queued from the previous one's completion, so a request occupies one slot of the
- * shared on-demand lane however many topics it covers. Queuing them all at once would not fit: the
- * lane is deliberately short (4 slots, see OnDemandManager), and the IOC sync alone registers six
- * types — the fifth and sixth would be rejected as "lane full" while the route that asked for them
- * answered success.
- *
- * A topic that cannot run (already running, failed, unknown) is logged and the sequence moves on. A
- * lane that is full or shutting down ends it, and the topics it never reached are named in the
- * warning, so nothing is skipped silently.
- *
- * @param topics Topics to update, in order.
- * @param component Log prefix of the caller.
- * @param dispatch How to queue one update. Defaults to the content manager's lane.
- */
-void requestOnDemandInSequence(std::vector<std::string> topics, std::string component, OnDemandDispatch dispatch = {});
-
-/**
- * @brief One topic's change-detection token, safe to touch from any thread.
- *
- * The token is read and written by the content cycle, which runs on whichever thread drove it — the
- * sync service's scheduler task for a scheduled run, an on-demand lane worker for an API-triggered
- * one. Those are different threads, and the second is not serialised against the first by anything
- * the sync service holds. Routing the token through this cell instead of through the service's own
- * state vector is what keeps that safe: the vector stays single-threaded and is reconciled from the
- * cells at cycle boundaries, where the owning thread already holds its own lock.
- */
-class TokenCell final
+/// How often a failed cycle is retried before the sync service reports it.
+struct RetryPolicy
 {
-public:
-    /**
-     * @brief Build a cell.
-     *
-     * @param initial Token to start from; "" when nothing has been committed.
-     */
-    explicit TokenCell(std::string initial = {})
-        : m_value(std::move(initial))
-    {
-    }
-
-    /// @return The current token.
-    std::string get() const
-    {
-        std::lock_guard<std::mutex> lock {m_mutex};
-        return m_value;
-    }
-
-    /**
-     * @brief Replace the token.
-     *
-     * @param value New token.
-     */
-    void set(std::string value)
-    {
-        std::lock_guard<std::mutex> lock {m_mutex};
-        m_value = std::move(value);
-    }
-
-private:
-    mutable std::mutex m_mutex;
-    std::string m_value;
+    std::size_t maxAttempts {3}; ///< Cycles per run, the first included. At least one runs.
+    std::size_t waitSeconds {5}; ///< Pause between attempts.
 };
 
 /**
- * @brief A token store backed by a @ref TokenCell.
+ * @brief Run a topic, retrying a transport or sink failure.
  *
- * @param cell The cell to read and write. Must outlive the registration.
- * @return The token store to hand to the registration.
+ * A deferral, a configuration failure or a stop is returned at once: retrying cannot change it
+ * within one run.
+ *
+ * @param topic The topic.
+ * @param request What each cycle should do.
+ * @param retry How often to retry.
+ * @param stop Ends the retries early.
+ * @param component The caller, as its log lines name it.
+ * @param what Names the run in the retry log lines.
+ * @return The last cycle's outcome; `SkippedStopRequested` when @p stop ended it before a cycle ran.
  */
-std::shared_ptr<content_manager::IContentTokenStore> cellTokenStore(std::shared_ptr<TokenCell> cell);
-
-/**
- * @brief A read-only token store backed by a caller-supplied loader.
- *
- * For topics whose token is not stored but *derived* — `cmsync` reads the hash of the ruleset the
- * router currently serves, so the deployed state is the token and there is nothing separate to keep
- * in step with it.
- *
- * @param loader Reads the current token. Must be safe to call from any thread.
- * @return The token store to hand to the registration.
- */
-std::shared_ptr<content_manager::IContentTokenStore> derivedTokenStore(std::function<std::string()> loader);
+content_manager::CycleOutcome runWithRetries(IContentTopic& topic,
+                                             const content_manager::RunRequest& request,
+                                             const RetryPolicy& retry,
+                                             const std::atomic<bool>& stop,
+                                             const std::string& component,
+                                             std::string_view what);
 
 } // namespace cmcontent
 

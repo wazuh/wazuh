@@ -19,23 +19,8 @@ namespace wiconnector
 namespace
 {
 
-constexpr std::string_view POLICY_INDEX {"wazuh-threatintel-policies"};  ///< Policy index name
-constexpr std::string_view IOC_INDEX {"wazuh-threatintel-enrichments"};  ///< IOC index name
-constexpr std::size_t SINGLE_RESULT_SIZE {1};                            ///< Size for single result queries
-constexpr std::string_view REMOTE_CONF_INDEX {".wazuh-settings"};        ///< remote conf index name
-constexpr std::string_view CTI_CONSUMERS_INDEX {".wazuh-cti-consumers"}; ///< CTI consumers index name
-
-// Helpers
-nlohmann::json getQueryFilter(std::string_view space)
-{
-    if (space.empty())
-    {
-        throw std::runtime_error("Space name cannot be empty");
-    }
-    nlohmann::json query = R"({"bool": {"filter": [{ "term": { "space.name": "" }}]}})"_json;
-    query["bool"]["filter"][0]["term"]["space.name"] = space;
-    return query;
-}
+constexpr std::size_t SINGLE_RESULT_SIZE {1};                     ///< Size for single result queries
+constexpr std::string_view REMOTE_CONF_INDEX {".wazuh-settings"}; ///< remote conf index name
 
 size_t getTotalHits(const nlohmann::json& hits)
 {
@@ -131,46 +116,22 @@ std::shared_ptr<IndexerConnectorAsync> makeIndexerConnectorAsync(std::string_vie
 /****************************************************************************************
  * Wrapper of IndexerConnector class implementation
  ****************************************************************************************/
-WIndexerConnector::WIndexerConnector(std::string_view jsonOssecConfig, const std::size_t maxHitsPerRequest)
-    : WIndexerConnector(makeIndexerConnectorAsync(jsonOssecConfig), maxHitsPerRequest)
+WIndexerConnector::WIndexerConnector(std::string_view jsonOssecConfig)
+    : WIndexerConnector(makeIndexerConnectorAsync(jsonOssecConfig))
 {
 }
 
-WIndexerConnector::WIndexerConnector(std::shared_ptr<IndexerConnectorAsync> connector,
-                                     const std::size_t maxHitsPerRequest)
+WIndexerConnector::WIndexerConnector(std::shared_ptr<IndexerConnectorAsync> connector)
 {
     if (!connector)
     {
         throw std::runtime_error("IndexerConnectorAsync instance cannot be null");
     }
-
-    if (maxHitsPerRequest == 0)
-    {
-        LOG_WARNING("[indexer-connector] maxHitsPerRequest must be greater than zero, default to 1");
-        m_maxHitsPerRequest = 1;
-    }
-    else
-    {
-        m_maxHitsPerRequest = maxHitsPerRequest;
-    }
-
     m_indexerConnectorAsync = std::make_unique<IndexerConnectorAsyncAdapter>(std::move(connector));
 }
 
-WIndexerConnector::WIndexerConnector(const Config& config,
-                                     const LogFunctionType& logFunction,
-                                     const std::size_t maxHitsPerRequest)
+WIndexerConnector::WIndexerConnector(const Config& config, const LogFunctionType& logFunction)
 {
-    if (maxHitsPerRequest == 0)
-    {
-        LOG_WARNING("[indexer-connector] maxHitsPerRequest must be greater than zero, default to 1");
-        m_maxHitsPerRequest = 1;
-    }
-    else
-    {
-        m_maxHitsPerRequest = maxHitsPerRequest;
-    }
-
     nlohmann::json jsonConfig = nlohmann::json::parse(config.toJson(), nullptr, false);
     if (jsonConfig.is_discarded())
     {
@@ -182,23 +143,13 @@ WIndexerConnector::WIndexerConnector(const Config& config,
     m_indexerConnectorAsync = std::make_unique<IndexerConnectorAsyncAdapter>(std::move(inner));
 }
 
-WIndexerConnector::WIndexerConnector(std::unique_ptr<IIndexerConnectorAsync> async, const std::size_t maxHitsPerRequest)
+WIndexerConnector::WIndexerConnector(std::unique_ptr<IIndexerConnectorAsync> async)
 {
     if (!async)
     {
         throw std::runtime_error("IndexerConnectorAsync instance cannot be null");
     }
     m_indexerConnectorAsync = std::move(async);
-
-    if (maxHitsPerRequest == 0)
-    {
-        LOG_WARNING("[indexer-connector] maxHitsPerRequest must be greater than zero, default to 1");
-        m_maxHitsPerRequest = 1;
-    }
-    else
-    {
-        m_maxHitsPerRequest = maxHitsPerRequest;
-    }
 }
 
 WIndexerConnector::~WIndexerConnector() = default;
@@ -206,15 +157,8 @@ WIndexerConnector::~WIndexerConnector() = default;
 void WIndexerConnector::shutdown()
 {
     LOG_INFO("[indexer-connector] Shutdown initiated");
-    m_shutdownRequested.store(true, std::memory_order_relaxed);
-    std::unique_lock lock(m_mutex); // Wait for any in-flight operations (syncs)
+    std::unique_lock lock(m_mutex); // Wait for in-flight operations
     m_indexerConnectorAsync.reset();
-}
-
-void WIndexerConnector::requestShutdown()
-{
-    m_shutdownRequested.store(true, std::memory_order_relaxed);
-    LOG_INFO("[indexer-connector] Shutdown requested");
 }
 
 uint64_t WIndexerConnector::getQueueSize()
@@ -260,133 +204,6 @@ void WIndexerConnector::index(std::string_view index, std::string_view data)
     else
     {
         LOG_DEBUG("[indexer-connector] IndexerConnectorAsync shutdown, cannot index data");
-    }
-}
-
-bool WIndexerConnector::existsPolicy(std::string_view space)
-{
-    std::shared_lock lock(m_mutex);
-    if (!m_indexerConnectorAsync)
-    {
-        throw std::runtime_error("IndexerConnectorAsync is not initialized");
-    }
-
-    // Prepare query filter for the space
-    nlohmann::json query = getQueryFilter(space);
-
-    // Prepare source filter to only retrieve space.name field
-    nlohmann::json source = {{"includes", {"space.name"}}, {"excludes", nlohmann::json::array()}};
-
-    // Execute search query with size=1 (we only need to know if at least one exists)
-    nlohmann::json hits = m_indexerConnectorAsync->search(POLICY_INDEX, SINGLE_RESULT_SIZE, query, source);
-
-    // Check total hits
-    size_t totalHits = getTotalHits(hits);
-
-    return totalHits > 0;
-}
-
-bool WIndexerConnector::existsIndex(std::string_view indexName)
-{
-    std::shared_lock lock(m_mutex);
-    if (!m_indexerConnectorAsync)
-    {
-        throw std::runtime_error("IndexerConnectorAsync is not initialized");
-    }
-
-    try
-    {
-        // Try a simple count query with size=0
-        nlohmann::json query = R"({"match_all": {}})"_json;
-        nlohmann::json source = {{"includes", nlohmann::json::array()}, {"excludes", nlohmann::json::array()}};
-
-        // If the index doesn't exist, this will throw an exception
-        m_indexerConnectorAsync->search(indexName, 0, query, source);
-        return true;
-    }
-    catch (const IndexerConnectorException&)
-    {
-        return false;
-    }
-}
-
-bool WIndexerConnector::existsIocDataIndex()
-{
-    return existsIndex(IOC_INDEX);
-}
-
-bool WIndexerConnector::isConsumerReadyForSync(std::string_view consumerId)
-{
-    std::shared_lock lock(m_mutex);
-    if (!m_indexerConnectorAsync)
-    {
-        LOG_DEBUG("[indexer-connector] IndexerConnectorAsync not initialized, consumer '{}' not ready",
-                  std::string(consumerId));
-        return false;
-    }
-
-    try
-    {
-        nlohmann::json query = {{"ids", {{"values", {consumerId}}}}};
-        nlohmann::json source = {{"includes", {"status", "local_offset"}}, {"excludes", nlohmann::json::array()}};
-
-        nlohmann::json hits = m_indexerConnectorAsync->search(CTI_CONSUMERS_INDEX, SINGLE_RESULT_SIZE, query, source);
-
-        size_t totalHits = getTotalHits(hits);
-        if (totalHits == 0)
-        {
-            LOG_DEBUG("[indexer-connector] Consumer document '{}' not found", std::string(consumerId));
-            return false;
-        }
-
-        const auto& hitArray = hits["hits"];
-        if (!hitArray.is_array() || hitArray.empty() || !hitArray[0].contains("_source"))
-        {
-            LOG_DEBUG("[indexer-connector] Invalid consumer hit for '{}'", std::string(consumerId));
-            return false;
-        }
-
-        const auto& src = hitArray[0]["_source"];
-
-        // Check status == "ready"
-        if (!src.contains("status") || !src["status"].is_string())
-        {
-            LOG_DEBUG("[indexer-connector] Consumer '{}' missing 'status' field", std::string(consumerId));
-            return false;
-        }
-
-        const auto status = src["status"].get<std::string>();
-        if (status != "ready")
-        {
-            LOG_DEBUG("[indexer-connector] Consumer '{}' is not ready (status: {})", std::string(consumerId), status);
-            return false;
-        }
-
-        // Check local_offset != 0
-        if (!src.contains("local_offset") || !src["local_offset"].is_number())
-        {
-            LOG_DEBUG("[indexer-connector] Consumer '{}' missing or non-numeric 'local_offset' field",
-                      std::string(consumerId));
-            return false;
-        }
-
-        const auto localOffset = src["local_offset"].get<int64_t>();
-        if (localOffset == 0)
-        {
-            LOG_DEBUG("[indexer-connector] Consumer '{}' has local_offset=0, data not yet available",
-                      std::string(consumerId));
-            return false;
-        }
-
-        LOG_DEBUG("[indexer-connector] Consumer '{}' is ready for sync (ready, local_offset={})",
-                  std::string(consumerId),
-                  localOffset);
-        return true;
-    }
-    catch (const std::exception& e)
-    {
-        LOG_DEBUG("[indexer-connector] Error checking consumer '{}' readiness: {}", std::string(consumerId), e.what());
-        return false;
     }
 }
 

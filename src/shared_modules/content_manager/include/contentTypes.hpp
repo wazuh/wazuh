@@ -24,27 +24,13 @@
  * @file contentTypes.hpp
  * @brief The value types of the content-delivery contract.
  *
- * This header is deliberately poor in dependencies: nlohmann's json plus the standard library,
- * nothing else. It is included by hosts that live on the other side of the `.so` boundary (the
- * Engine links `wazuh-engine` with `-static-libstdc++` while `content_manager.so` links libstdc++
- * dynamically), so it must not drag in `loggerHelper.h`, rocksdb or the UDS transport, and it must
- * compile under `-std=c++17` even though the library itself is built as C++20. The
- * `content_manager_public_abi_c17` CI target enforces both properties.
- *
- * Nothing here throws and nothing here owns a resource: every type is a plain aggregate of
- * layout-stable members, so passing one across the DSO boundary by value is defined.
+ * This header depends on nlohmann's json and the standard library only, and compiles under
+ * `-std=c++17` although the library is built as C++20: it is included by hosts on the other side of
+ * the `.so` boundary, the Engine among them. The `content_manager_public_abi_c17` target enforces
+ * both properties.
  */
 namespace content_manager
 {
-
-    /**
-     * @brief Version of the delivery contract this header describes.
-     *
-     * Checked by `ContentRegister`'s constructor against the value compiled into the `.so`. A host
-     * built against an older header is refused at registration instead of being allowed to misread a
-     * struct whose layout moved.
-     */
-    constexpr std::uint32_t CONTRACT_ABI_VERSION = 2;
 
     /**
      * @brief What kind of content delivery a cycle is about to perform.
@@ -52,7 +38,7 @@ namespace content_manager
     enum class SessionKind : std::uint8_t
     {
         FullReload,  ///< Everything the source holds; the sink should replace its content wholesale.
-        Incremental, ///< Only what changed since `SessionInfo::localToken`.
+        Incremental, ///< Only what changed since the stored token.
         NoChange     ///< The remote token matches the local one; no document will be delivered.
     };
 
@@ -63,10 +49,8 @@ namespace content_manager
     {
         std::string topic;                          ///< Registered topic name.
         SessionKind kind {SessionKind::FullReload}; ///< Delivery shape for this cycle.
-        std::string localToken;                     ///< Token from the previous successful commit ("" on first run).
         std::string remoteToken;                    ///< Token probed from the source ("" in cursor mode).
-        nlohmann::json probeMetadata;               ///< Detector extras, e.g. `{"enabled": false}`.
-        bool onDemand {false};                      ///< True when the cycle was triggered by an on-demand request.
+        nlohmann::json probeMetadata;               ///< Detector extras, e.g. `{"enabled": false}`. Always an object.
     };
 
     /**
@@ -90,8 +74,6 @@ namespace content_manager
         std::string_view topic;               ///< Registered topic name.
         const nlohmann::json* hits {nullptr}; ///< Raw hit array (`_id`, `_index`, `_source`, `sort`).
         std::string pageToken;                ///< Highest page token in this page ("" when not tokenised).
-        std::size_t sliceId {0};              ///< Slice that produced the page (0 when unsliced).
-        std::size_t pageIndex {0};            ///< 0-based page counter within the slice.
     };
 
     /**
@@ -122,7 +104,6 @@ namespace content_manager
         SessionKind kind {SessionKind::FullReload}; ///< Delivery shape this cycle used.
         std::string finalToken;                     ///< Token to persist if the commit succeeds.
         std::size_t documentsDelivered {0};         ///< Documents handed to `acceptPage` this cycle.
-        bool changed {false};                       ///< True when at least one document was delivered.
     };
 
     /**
@@ -149,14 +130,13 @@ namespace content_manager
      */
     enum class AbortReason : std::uint8_t
     {
-        StopRequested,     ///< The host asked the registration to stop.
-        FetchError,        ///< The source could not be read to completion.
-        SinkRejectedPage,  ///< The sink answered `PageStatus::Reject`.
-        TokenPersistFailed ///< The content was committed but the token could not be written.
+        StopRequested,   ///< The host asked the registration to stop.
+        FetchError,      ///< The source could not be read to completion.
+        SinkRejectedPage ///< The sink answered `PageStatus::Reject`.
     };
 
     /**
-     * @brief The terminal state of one `runOnce`.
+     * @brief The terminal state of one cycle.
      */
     enum class CycleStatus : std::uint8_t
     {
@@ -168,36 +148,59 @@ namespace content_manager
         SkippedAlreadyRunning,    ///< A cycle for this topic was already in progress; this one did not run.
         FailedTransport,          ///< The source could not be reached or answered an error.
         FailedSink,               ///< The sink rejected a page, aborted, or its token could not be stored.
-        FailedConfig              ///< The registration's configuration is invalid.
+        FailedConfig              ///< The registration does not match the live data (e.g. an ambiguous probe).
     };
 
     /**
-     * @brief What one `runOnce` did, and when the driver should come back.
+     * @brief What one cycle did, and when the driver should come back.
      */
     struct CycleOutcome
     {
         CycleStatus status {CycleStatus::Unchanged}; ///< Terminal state of the cycle.
         std::size_t documentsDelivered {0};          ///< Documents handed to the sink.
-        std::string token;                           ///< Token in force after the cycle.
+        std::string token;                           ///< Token in force after the cycle ("" when none).
         std::string detail;                          ///< Human-readable summary, safe to log.
 
         /**
          * @brief How long the driver should wait before the next attempt.
          *
-         * Zero means "use the configured interval". Every `Skipped*`/`Failed*` status carries a short
-         * backoff instead, so a deferred cycle is not postponed by a full scheduler period — with VD's
-         * 60-minute default interval that difference is the whole feed.
+         * Zero means "use the configured interval". A deferral or a transport or sink failure carries a
+         * short backoff instead, so a topic whose consumer is briefly busy is not postponed by a whole
+         * scheduler period.
          */
         std::chrono::seconds retryAfter {0};
     };
 
     /**
-     * @brief What the caller wants from one `runOnce`.
+     * @brief What the caller wants from one cycle.
      */
     struct RunRequest
     {
-        bool forceFullReload {false}; ///< Clear the token before probing, forcing a `FullReload` session.
-        bool onDemand {false};        ///< Mark the resulting `SessionInfo` as on-demand.
+        /// Fetch everything, whatever the stored token says. The token is cleared once the sink has
+        /// accepted the full session, so a crash mid-reload starts over instead of resuming.
+        bool forceFullReload {false};
+    };
+
+    /**
+     * @brief How a requested cycle ended, in the terms a request handler answers with.
+     */
+    enum class OnDemandCode : std::uint8_t
+    {
+        Completed,      ///< The cycle ran: the content is up to date (`Updated` or `Unchanged`).
+        Deferred,       ///< The cycle could not proceed yet (consumer busy, required documents missing). Retryable.
+        AlreadyRunning, ///< A cycle for this topic was running or already requested; this one was not queued.
+        ShuttingDown,   ///< The topic is stopping. Retryable once it is back.
+        Failed          ///< The cycle ran and failed, or the topic is not driven by the library.
+    };
+
+    /**
+     * @brief Result of `ContentRegister::requestRun`.
+     */
+    struct OnDemandResult
+    {
+        OnDemandCode code {OnDemandCode::Completed}; ///< Outcome class.
+        std::string detail;                          ///< Human-readable context, safe to log or return.
+        CycleOutcome outcome;                        ///< The cycle's own outcome, when one ran.
     };
 
 } // namespace content_manager

@@ -13,16 +13,12 @@
 #ifndef _FAKE_INDEXER_QUERY_PORT_HPP
 #define _FAKE_INDEXER_QUERY_PORT_HPP
 
-// Everything the three fakes below derive from or name, included here rather than assumed from the
-// includer. `MemoryTokenStore` implements `IContentTokenStore`, and leaving that header to arrive
-// transitively is exactly the kind of thing that compiles in one test and not another: the suites
-// that include `contentCycle.hpp` or `action.hpp` first got it for free, and the ones that start
-// from `changeDetector.hpp` did not.
 #include "contentIndexer.hpp"
 #include "contentSink.hpp"
 #include "contentTokenStore.hpp"
 #include "contentTypes.hpp"
 #include <algorithm>
+#include <atomic>
 #include <cstddef>
 #include <functional>
 #include <json.hpp>
@@ -40,13 +36,11 @@
 namespace fakes
 {
 
+    /// A stop flag nobody raises, for the components that take one.
+    inline std::atomic<bool> NEVER_STOP {false};
+
     /**
      * @brief A scriptable indexer.
-     *
-     * This is the seam the previous implementation did not have: it took `IndexerConnectorSync` by
-     * concrete type, so most of it could not be exercised without a live cluster and was excluded from
-     * coverage on exactly those grounds. Everything above @ref content_manager::IContentIndexer is now reachable from
-     * a unit test.
      *
      * One instance serves every caller at once, as the host's connector does (D1): slice workers
      * search it concurrently, so its bookkeeping is locked and it records how many searches were in
@@ -66,7 +60,7 @@ namespace fakes
             std::optional<nlohmann::json> slice;
         };
 
-        /// Everything the fake records and is scripted with. Shared with every clone.
+        /// Everything the fake records and is scripted with.
         struct State
         {
             std::mutex mutex;

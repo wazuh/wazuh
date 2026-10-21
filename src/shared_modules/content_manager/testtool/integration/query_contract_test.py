@@ -9,12 +9,11 @@ REST API.
 
   1. **The cursor sort survives a cold start.** Validating consumer readiness from inside the
      snapshot means the PIT spans `.wazuh-cti-consumers` as well as the data indices, and that index
-     does not map `offset`. Running this against a real cluster corrected the reasoning it was
-     written from: OpenSearch requires a sort field to be mapped in *at least one* index of the
-     search, not in every one, so the consumer index alone is harmless. What is NOT harmless is a
-     fresh install, where the data index has no documents and therefore no dynamic mapping for the
-     cursor field either -- now it is unmapped everywhere, OpenSearch rejects the whole search, and
-     the first feed load of a new manager fails. `FactoryContentUpdater::buildSort` injects
+     does not map `offset`. OpenSearch requires a sort field to be mapped in *at least one* index of
+     the search, not in every one, so the consumer index alone is harmless. What is NOT harmless is
+     a fresh install, where the data index has no documents and therefore no dynamic mapping for the
+     cursor field either -- it is then unmapped everywhere, OpenSearch rejects the whole search, and
+     the first feed load of a new manager fails. `FactoryContentUpdater::cursorSort` injects
      `unmapped_type`, and this asserts both halves: rejected without it, accepted with it.
 
   2. **Slicing over that PIT neither loses nor duplicates documents.** PIT slicing is shard-derived,
@@ -48,16 +47,15 @@ CONSUMER_ID = "cti:catalog:consumer:test"
 DATA_SHARDS = 3
 DOCUMENT_COUNT = 120
 
-# Exactly what FactoryContentUpdater::buildSort emits for a cursor-mode topic whose PIT includes a
-# consumer status index. Kept literal, and kept next to the negative control below, so the thing
+# Exactly what FactoryContentUpdater::cursorSort emits for every cursor-mode topic. Kept literal, and kept next to the negative control below, so the thing
 # this gate protects is visible in one place.
 VD_SORT_WITH_UNMAPPED_TYPE = [{"offset": {"order": "asc", "unmapped_type": "long"}}, {"_id": "asc"}]
 VD_SORT_WITHOUT_UNMAPPED_TYPE = [{"offset": "asc"}, {"_id": "asc"}]
 
-# What the Engine's topics sort on. `_shard_doc` is synthesised by the PIT itself, so it is mapped
-# in every index the PIT spans and needs no `unmapped_type` -- this gate proves that claim rather
-# than trusting it.
-ENGINE_SORT = [{"_shard_doc": "asc"}, {"_id": "asc"}]
+# What hash topics, the consumer check and the required-documents count sort on. `_doc` and `_id`
+# are metafields every index of the PIT has, so they need no `unmapped_type` -- this gate proves
+# that claim rather than trusting it. Not `_shard_doc`: OpenSearch 2.x rejects it.
+ENGINE_SORT = [{"_doc": "asc"}, {"_id": "asc"}]
 
 
 class Failure(Exception):
@@ -124,8 +122,8 @@ def seed(host):
         },
     )
 
-    # `local_offset`, NOT `offset`. This asymmetry is the entire reason `unmapped_type` exists, and
-    # it mirrors the real `.wazuh-cti-consumers` mapping.
+    # `local_offset`, NOT `offset`: the consumer index never maps the cursor field, mirroring the real
+    # `.wazuh-cti-consumers` mapping.
     request(
         host,
         "PUT",
@@ -182,8 +180,8 @@ def search(host, pit_id, sort, size=10, slice_spec=None, query=None):
 def gate_sort_works_in_steady_state(host):
     """Gate 1a: the sort the factory emits is accepted once the data index has content.
 
-    Worth stating what this does NOT show, because the module's own comments used to claim it did:
-    the consumer index lacking `offset` is, on its own, harmless. OpenSearch requires a sort field to
+    Worth stating what this does NOT show: the consumer index lacking `offset` is, on its own,
+    harmless. OpenSearch requires a sort field to
     be mapped in *at least one* index of the search, not in every one; documents from the indices
     that lack it simply sort as missing. The un-injected form passes here too -- see gate 1b for the
     case where it does not.
@@ -200,11 +198,11 @@ def gate_sort_works_in_steady_state(host):
         status_engine, body_engine = search(host, pit_id, ENGINE_SORT)
         if status_engine != 200:
             raise Failure(
-                "_shard_doc is not usable over a PIT spanning both indices, so the Engine's topics "
-                f"cannot sort at all. Response: {json.dumps(body_engine)[:600]}"
+                "_doc/_id is not usable over a PIT spanning both indices, so hash topics and the "
+                f"consumer check cannot sort at all. Response: {json.dumps(body_engine)[:600]}"
             )
 
-        return f"{DATA_SHARDS} data shards + 1 consumer shard; _shard_doc usable too"
+        return f"{DATA_SHARDS} data shards + 1 consumer shard; _doc/_id usable too"
     finally:
         close_pit(host, pit_id)
 

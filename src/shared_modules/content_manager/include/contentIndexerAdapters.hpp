@@ -13,14 +13,9 @@
 #ifndef _CONTENT_INDEXER_ADAPTERS_HPP
 #define _CONTENT_INDEXER_ADAPTERS_HPP
 
+#include "contentExport.hpp"
 #include "contentIndexer.hpp"
 #include <memory>
-
-#if __GNUC__ >= 4
-#define EXPORTED __attribute__((visibility("default")))
-#else
-#define EXPORTED
-#endif
 
 // Forward-declared, not included: indexerConnector.hpp is not on the include path this library's
 // public headers are held to (content_manager_public_abi_c17), and a host that passes a connector

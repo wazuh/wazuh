@@ -44,8 +44,8 @@ namespace content_manager
      * or its own implementation — so a process runs one connector, one health monitor and one
      * keystore read, and an indexer outage is reported once.
      *
-     * **Implementations must accept concurrent calls**: slice workers of one download, cycles of
-     * several topics, the scheduler and the on-demand lane all use the one instance at once. They must
+     * **Implementations must accept concurrent calls**: slice workers of one download and cycles of
+     * several topics all use the one instance at once. They must
      * not hold a lock of their own across a request. They may throw on transport failure; the content
      * cycle is the single place that catches, inside the library.
      */

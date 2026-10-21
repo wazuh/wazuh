@@ -13,46 +13,89 @@
 #ifndef _ROCKSDB_TOKEN_STORE_HPP
 #define _ROCKSDB_TOKEN_STORE_HPP
 
-#include "componentsHelper.hpp"
 #include "contentTokenStore.hpp"
 #include "loggerHelper.h"
 #include "sharedDefs.hpp"
+#include "utils/rocksDBWrapper.hpp"
 #include "utils/timeHelper.h"
 #include <ctime>
+#include <filesystem>
 #include <memory>
+#include <stdexcept>
+#include <string>
+#include <system_error>
 #include <utility>
 
-// See executionContext.hpp: `defs.h`'s USER macro collides with rocksdb's USER enumerator, so any
-// header of ours that reaches for rocksdb has to shield the include rather than rely on being the
-// first one to get there.
-#pragma push_macro("USER")
-#undef USER
-#include "utils/rocksDBWrapper.hpp"
-#pragma pop_macro("USER")
-
 /**
- * @brief The token store hosts without one of their own get: a column in the updater's RocksDB.
+ * @brief The token store hosts without one of their own get: a column in a per-topic RocksDB.
  *
- * The on-disk format is the one that already exists and is deliberately unchanged — an append-only
- * log of `compact-timestamp -> token` rows in `current_offset`, read back with `getLastKeyValue`
- * (a `SeekToLast`). Deployed updater databases are readable by this class byte for byte, so no
- * migration is needed.
+ * The token is an append-only log of `compact-timestamp -> token` rows in `current_offset`, read
+ * back with a `SeekToLast`.
  *
- * @note @ref clear appends `"0"`; it does not delete. `getLastKeyValue` **throws** on an empty
- *       column, so an actual delete would break every subsequent @ref load. `load` maps a stored
- *       `"0"` back to "" — which is what makes the cursor detector choose a full reload. The
- *       consequence is that the column grows by one row per write and is never pruned. That is
- *       pre-existing behaviour, recorded here as a known wart rather than silently inherited;
- *       bounding it is a separate piece of work.
+ * @note @ref clear appends `"0"`; it does not delete, because an empty column reads as "no row" and
+ *       the store could then not tell a clear from a first run. `load` maps a stored `"0"` back to "",
+ *       which is what makes the cursor detector choose a full reload. The column grows by one row per
+ *       write and is not pruned.
  */
 class RocksDbTokenStore final : public content_manager::IContentTokenStore
 {
 public:
+    /// Column holding the token rows.
+    static constexpr auto COLUMN {"current_offset"};
+
+    /**
+     * @brief Open (or create) the token database of a topic, rebuilding it if what is on disk cannot
+     *        be opened.
+     *
+     * `RocksDBWrapper` attempts its own repair first; this is the second line of defence, for when
+     * that fails too. Discarding the file is safe here in a way it would not be for content: the
+     * database holds only the token, and losing it costs one full re-download.
+     *
+     * @param databasePath Directory holding the token databases.
+     * @param topicName Topic name; part of the database file name.
+     * @return The store.
+     * @throws std::exception if the database cannot be opened even after being rebuilt.
+     */
+    static std::shared_ptr<RocksDbTokenStore> open(const std::string& databasePath, const std::string& topicName)
+    {
+        std::filesystem::create_directories(databasePath);
+        const auto databaseFile = databasePath + "/updater_" + topicName + "_metadata";
+
+        std::shared_ptr<Utils::RocksDBWrapper> database;
+        try
+        {
+            database = std::make_shared<Utils::RocksDBWrapper>(databaseFile);
+        }
+        catch (const std::exception& e)
+        {
+            logWarn(WM_CONTENTUPDATER,
+                    "The content token database for '%s' could not be opened or repaired (%s); it will be rebuilt "
+                    "and the next cycle will perform a full reload.",
+                    topicName.c_str(),
+                    e.what());
+
+            std::error_code errorCode;
+            std::filesystem::remove_all(databaseFile, errorCode);
+            if (errorCode)
+            {
+                throw std::runtime_error {"Could not remove the unusable content token database '" + databaseFile +
+                                          "': " + errorCode.message()};
+            }
+            database = std::make_shared<Utils::RocksDBWrapper>(databaseFile);
+        }
+
+        if (!database->columnExists(COLUMN))
+        {
+            database->createColumn(COLUMN);
+        }
+        return std::make_shared<RocksDbTokenStore>(std::move(database));
+    }
+
     /**
      * @brief Build a store over an already-open database.
      *
-     * @param database The updater database. One per topic, so the topic argument of the interface
-     *                 methods is informational here.
+     * @param database The token database, one per topic: the topic argument of the interface
+     *                 methods only names it in log lines.
      */
     explicit RocksDbTokenStore(std::shared_ptr<Utils::RocksDBWrapper> database)
         : m_database {std::move(database)}
@@ -61,19 +104,12 @@ public:
 
     std::string load(std::string_view topic) noexcept override
     {
-        if (!m_database)
-        {
-            return {};
-        }
-
         try
         {
-            // `getLastKeyValue` throws the same way for an empty column and for a missing one, and
-            // both read back as "no token" — which silently costs a full re-download of the whole
-            // feed. The first is the ordinary first-run case and must stay quiet; the second means
-            // something removed the column from under us, and an operator has no other way to find
-            // out why the feed rebuilt itself.
-            if (!m_database->columnExists(Components::Columns::CURRENT_OFFSET))
+            // A missing column and an empty one both read back as "no token", which costs a full
+            // re-download. The empty one is the ordinary first run and stays quiet; a missing one
+            // means something removed it from under us, and that has to be visible.
+            if (!m_database->columnExists(COLUMN))
             {
                 logWarn(WM_CONTENTUPDATER,
                         "The content token column is missing for '%s'; the next cycle will perform a full reload.",
@@ -81,7 +117,7 @@ public:
                 return {};
             }
 
-            auto value = m_database->getLastKeyValue(Components::Columns::CURRENT_OFFSET).second.ToString();
+            auto value = m_database->getLastKeyValue(COLUMN).second;
             return value == "0" ? std::string {} : value;
         }
         catch (const std::exception&)
@@ -93,12 +129,6 @@ public:
 
     bool store(std::string_view topic, std::string_view token) noexcept override
     {
-        if (token.empty())
-        {
-            // Nothing to record. Writing "" would be read back as "no token" anyway, so this is not
-            // a failure — it is a no-op the caller must not treat as a persistence error.
-            return true;
-        }
         return write(topic, std::string {token});
     }
 
@@ -110,14 +140,9 @@ public:
 private:
     bool write(std::string_view topic, const std::string& value) noexcept
     {
-        if (!m_database)
-        {
-            return false;
-        }
-
         try
         {
-            m_database->put(Utils::getCompactTimestamp(std::time(nullptr)), value, Components::Columns::CURRENT_OFFSET);
+            m_database->put(Utils::getCompactTimestamp(std::time(nullptr)), value, COLUMN);
             return true;
         }
         catch (const std::exception& e)

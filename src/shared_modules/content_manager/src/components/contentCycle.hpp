@@ -14,7 +14,6 @@
 #define _CONTENT_CYCLE_HPP
 
 #include "changeDetector.hpp"
-#include "conditionSync.hpp"
 #include "consumerGate.hpp"
 #include "contentIndexer.hpp"
 #include "contentSink.hpp"
@@ -24,27 +23,27 @@
 #include "pitPaginator.hpp"
 #include "pitSession.hpp"
 #include "sharedDefs.hpp"
+#include <atomic>
 #include <chrono>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
+#include <vector>
 
 /**
  * @brief One content cycle: probe, fetch, deliver, promote, persist. Exactly once.
  *
- * This class replaces `IndexerDownloader`, and the difference that matters is not the size: it runs
- * the cycle **once** and returns a value. The old one owned three unbounded polling loops, so a
- * caller could not know how long `handleRequest` would take, and "wait for the consumer" was
- * expressed as a parked thread. Here every gate is single-pass and every non-terminal outcome
- * carries a `retryAfter` for the driver to honour, which is what makes it safe to run on a shared
- * scheduler worker pool.
+ * Every gate is single-pass and every non-terminal outcome carries a `retryAfter` for the driver to
+ * honour, so a cycle never parks its thread and is safe to run on a shared scheduler worker.
  *
  * ### Who writes the token
  *
  * Exactly four paths, and no others:
- *  - `RunRequest::forceFullReload` clears it **before** probing. This is the one pre-cycle write and
- *    it is deliberate: if the process dies mid-reload, a cleared token makes the next boot start
- *    over instead of resuming from a cursor whose content was already partially overwritten.
+ *  - `RunRequest::forceFullReload` clears it once the sink has accepted the full session, before the
+ *    first page: if the process dies mid-reload, the next boot starts over instead of resuming from
+ *    a cursor whose content was already partially overwritten. A forced cycle that a gate stops
+ *    leaves the token as it was;
  *  - a `Durable` page acknowledgement stores that page's token immediately;
  *  - `CommitStatus::Committed` stores the final token;
  *  - `CommitStatus::RejectedRetryFull` clears it.
@@ -53,10 +52,10 @@
  *
  * ### Exception containment
  *
- * `run` is `noexcept` and everything that can throw — the port, the PIT session's constructor, the
- * detectors — is constructed or called inside its `try`. This is load-bearing rather than tidy: the
- * sink may live in a DSO with its own libstdc++, and an exception unwinding across that boundary is
- * undefined. Sink calls get a second `catch (...)` of their own, on this side of the boundary.
+ * `run` is `noexcept` and everything that can throw — the indexer, the PIT session's constructor,
+ * the detectors — is called inside its `try`. The sink may live in a DSO with its own libstdc++, and
+ * an exception unwinding across that boundary is undefined, so sink calls get a second `catch (...)`
+ * of their own, on this side of the boundary.
  */
 class ContentCycle final
 {
@@ -68,7 +67,7 @@ public:
         PitSession::Config pit;                          ///< Indices and consumer document to snapshot.
         FetchSpec fetchTemplate;                         ///< Sort, source filter, page size. Query is per-cycle.
         std::size_t fullSlices {1};                      ///< Slices to use on a full fetch.
-        nlohmann::json requiredDocumentIds;              ///< Documents that must exist before a full load.
+        std::vector<std::string> requiredDocumentIds;    ///< Documents that must exist before a full load.
         std::chrono::seconds consumerRetryInterval {60}; ///< Backoff when the consumer is not ready.
         std::chrono::seconds consumerCacheTtl {5};       ///< Pre-flight probe cache lifetime.
     };
@@ -82,20 +81,20 @@ public:
      * @param sink Where the content goes.
      * @param tokenStore Where the token lives. May be null: the topic is then tokenless and every
      *                   cycle is a full reload.
-     * @param stop Cooperative stop flag shared with the driver.
+     * @param stop Cooperative stop flag owned by the driver; must outlive the cycle.
      */
     ContentCycle(Config config,
                  std::shared_ptr<content_manager::IContentIndexer> port,
                  std::unique_ptr<IChangeDetector> detector,
                  std::shared_ptr<content_manager::IContentSink> sink,
                  std::shared_ptr<content_manager::IContentTokenStore> tokenStore,
-                 std::shared_ptr<ConditionSync> stop)
+                 const std::atomic<bool>& stop)
         : m_config {std::move(config)}
         , m_port {std::move(port)}
         , m_detector {std::move(detector)}
         , m_sink {std::move(sink)}
         , m_tokenStore {std::move(tokenStore)}
-        , m_stop {std::move(stop)}
+        , m_stop {stop}
     {
     }
 
@@ -107,26 +106,13 @@ public:
      */
     content_manager::CycleOutcome run(const content_manager::RunRequest& request) noexcept
     {
-        using namespace content_manager;
-
-        CycleOutcome outcome;
+        using content_manager::CycleStatus;
 
         try
         {
-            if (m_stop->check())
+            if (m_stop.load())
             {
-                outcome.status = CycleStatus::SkippedStopRequested;
-                outcome.detail = "stop requested before the cycle started";
-                outcome.token = loadToken();
-                return outcome;
-            }
-
-            if (request.forceFullReload && m_tokenStore)
-            {
-                logDebug2(WM_CONTENTUPDATER,
-                          "Clearing the stored token for '%s' to force a full reload.",
-                          m_config.topic.c_str());
-                m_tokenStore->clear(m_config.topic);
+                return make(CycleStatus::SkippedStopRequested, "stop requested before the cycle started");
             }
 
             // Cost gate: cheap, non-PIT, and cached across topics watching the same consumer. Its
@@ -134,155 +120,143 @@ public:
             // visibly mid-update; the authoritative check happens inside the snapshot below.
             const auto preflight = ConsumerGate::probe(
                 *m_port, m_config.pit.consumerStatusIndex, m_config.pit.consumerStatusId, m_config.consumerCacheTtl);
-
             if (preflight.status == ConsumerGate::Status::Unreachable)
             {
-                return transportFailure("indexer unreachable: " + preflight.error);
+                return make(CycleStatus::FailedTransport, "indexer unreachable: " + preflight.error);
             }
             if (preflight.status != ConsumerGate::Status::Ready)
             {
-                return consumerNotReady(std::string {"pre-flight consumer status: "} +
-                                        ConsumerGate::describe(preflight.status));
+                return make(CycleStatus::SkippedConsumerNotReady,
+                            std::string {"pre-flight consumer status: "} + ConsumerGate::describe(preflight.status));
             }
 
-            return runInSession(request);
+            PitSession session {*m_port, m_config.pit};
+            return runInSession(session, request);
         }
         catch (const std::exception& e)
         {
-            return transportFailure(e.what());
+            return make(CycleStatus::FailedTransport, e.what());
         }
         catch (...)
         {
-            return transportFailure("unknown error");
+            return make(CycleStatus::FailedTransport, "unknown error");
         }
     }
 
 private:
-    content_manager::CycleOutcome runInSession(const content_manager::RunRequest& request)
+    content_manager::CycleOutcome runInSession(PitSession& session, const content_manager::RunRequest& request)
     {
         using namespace content_manager;
-
-        PitSession session {*m_port, m_config.pit};
 
         // Correctness gate. Unlike the pre-flight it reads the consumer document from inside the
         // very snapshot the content will be read from, so a consumer that starts rewriting between
         // the two cannot be missed.
-        std::string rawStatus;
-        switch (session.validateConsumerReady(&rawStatus))
+        const auto consumer = session.validateConsumerReady();
+        if (consumer.status != ConsumerGate::Status::Ready)
         {
-            case PitSession::Readiness::Ready: break;
-
-            case PitSession::Readiness::Missing:
-                reportMissingConsumer();
-                return consumerNotReady("consumer document '" + m_config.pit.consumerStatusId + "' not found");
-
-            case PitSession::Readiness::Unusable:
-                return consumerNotReady("consumer document '" + m_config.pit.consumerStatusId +
-                                        "' carries no readable status");
-
-            case PitSession::Readiness::NotReady:
-            default: return consumerNotReady("in-PIT consumer status: " + rawStatus);
+            return make(CycleStatus::SkippedConsumerNotReady,
+                        std::string {"in-PIT consumer status: "} + ConsumerGate::describe(consumer.status));
         }
-        m_missingConsumerCycles = 0;
 
-        const auto localToken = loadToken();
+        const auto localToken = request.forceFullReload ? std::string {} : loadToken();
         const auto probe = m_detector->probe(session, *m_port);
 
         // A probe that cannot identify the remote state unambiguously is a configuration fault, not
-        // a transient one. Reporting it as such stops the driver from retrying something that
-        // cannot succeed, and names the key at fault instead of silently syncing the wrong content.
+        // a transient one: the driver must not retry it as if it were.
         if (!probe.configError.empty())
         {
-            CycleOutcome outcome;
-            outcome.status = CycleStatus::FailedConfig;
-            outcome.detail = probe.configError;
-            outcome.token = localToken;
             logError(WM_CONTENTUPDATER,
                      "Content update for '%s' cannot run: %s",
                      m_config.topic.c_str(),
-                     outcome.detail.c_str());
-            return outcome;
+                     probe.configError.c_str());
+            return make(CycleStatus::FailedConfig, probe.configError);
         }
 
         const auto plan = m_detector->plan(probe, localToken);
 
-        // Checked on a full plan only, matching the behaviour it replaces. An incremental run means
-        // a previous cycle committed successfully, so the required documents were present then; if
-        // they have since gone, the sink's own validation in commit() rejects with RetryFull, which
-        // clears the token and makes the next cycle full — where this is checked.
+        // Checked on a full plan only. An incremental run means a previous cycle committed, so the
+        // required documents were present then; if they have since gone, the sink's own validation
+        // rejects the commit with RetryFull, and the next cycle — a full one — is checked here.
         if (plan.mode == FetchPlan::Mode::Full && !m_config.requiredDocumentIds.empty())
         {
             const auto found = session.countDocuments(m_config.requiredDocumentIds);
             if (found < m_config.requiredDocumentIds.size())
             {
-                CycleOutcome outcome;
-                outcome.status = CycleStatus::SkippedPreconditionUnmet;
-                outcome.detail = "required documents not indexed yet (" + std::to_string(found) + "/" +
-                                 std::to_string(m_config.requiredDocumentIds.size()) + ")";
-                outcome.token = localToken;
-                outcome.retryAfter = m_config.consumerRetryInterval;
-                logInfo(WM_CONTENTUPDATER,
-                        "Content update for '%s' deferred: %s",
-                        m_config.topic.c_str(),
-                        outcome.detail.c_str());
-                return outcome;
+                return make(CycleStatus::SkippedPreconditionUnmet,
+                            "required documents not indexed yet (" + std::to_string(found) + "/" +
+                                std::to_string(m_config.requiredDocumentIds.size()) + ")");
             }
         }
 
         SessionInfo info;
         info.topic = m_config.topic;
         info.kind = toKind(plan.mode);
-        info.localToken = localToken;
         info.remoteToken = probe.remoteToken;
-        // Always an object: a probe that found nothing (or a detector with no extras) leaves the
-        // metadata null, and `value()` on a null json throws in the sink.
         info.probeMetadata = probe.metadata.is_object() ? probe.metadata : nlohmann::json::object();
-        info.onDemand = request.onDemand;
 
         const auto decision = beginSession(info);
         if (decision == SessionDecision::Skip)
         {
-            CycleOutcome outcome;
-            outcome.status = CycleStatus::Unchanged;
-            outcome.detail = "sink declined this cycle";
-            outcome.token = localToken;
-            return outcome;
+            return make(CycleStatus::Unchanged, "sink declined this cycle");
         }
         if (decision == SessionDecision::Abort)
         {
-            return sinkFailure("sink is not accepting content right now", localToken);
+            return make(CycleStatus::FailedSink, "sink is not accepting content right now");
         }
+
+        if (request.forceFullReload && plan.mode == FetchPlan::Mode::Full && m_tokenStore)
+        {
+            m_tokenStore->clear(m_config.topic);
+        }
+
+        return fetchAndCommit(session, info, probe, plan, localToken);
+    }
+
+    content_manager::CycleOutcome fetchAndCommit(PitSession& session,
+                                                 const content_manager::SessionInfo& info,
+                                                 const ProbeResult& probe,
+                                                 const FetchPlan& plan,
+                                                 const std::string& localToken)
+    {
+        using namespace content_manager;
 
         FetchOutcome fetch;
         if (plan.mode != FetchPlan::Mode::NoChange)
         {
-            fetch = runFetch(session, plan, localToken);
-
+            fetch = runFetch(session, plan);
             if (fetch.interrupted)
             {
                 abortSession(AbortReason::StopRequested, "stop requested during fetch");
-                CycleOutcome outcome;
-                outcome.status = CycleStatus::SkippedStopRequested;
-                outcome.detail = "fetch interrupted by a stop request";
-                outcome.token = loadToken();
-                return outcome;
+                return make(CycleStatus::SkippedStopRequested, "fetch interrupted by a stop request");
             }
             if (fetch.sinkRejected)
             {
                 abortSession(AbortReason::SinkRejectedPage, fetch.error);
-                return sinkFailure("sink rejected a page: " + fetch.error, loadToken());
+                return make(CycleStatus::FailedSink, "sink rejected a page: " + fetch.error);
             }
             if (!fetch.error.empty())
             {
                 abortSession(AbortReason::FetchError, fetch.error);
-                return transportFailure(fetch.error);
+                return make(CycleStatus::FailedTransport, fetch.error);
             }
         }
 
-        return commit(info, probe, fetch, localToken);
+        // Nothing tokenised this cycle (an empty incremental fetch, or a hash-tracked topic): keep
+        // the bound we already had so the final token does not regress it.
+        const auto highest = fetch.highestPageToken.empty() ? localToken : fetch.highestPageToken;
+
+        CommitInfo commitInfo;
+        commitInfo.topic = m_config.topic;
+        commitInfo.kind = info.kind;
+        commitInfo.finalToken = m_detector->finalToken(probe, highest);
+        commitInfo.documentsDelivered = fetch.documentsDelivered;
+
+        auto outcome = commit(commitInfo);
+        outcome.documentsDelivered = fetch.documentsDelivered;
+        return outcome;
     }
 
-    FetchOutcome runFetch(PitSession& session, const FetchPlan& plan, const std::string& localToken)
+    FetchOutcome runFetch(PitSession& session, const FetchPlan& plan)
     {
         auto spec = m_config.fetchTemplate;
         spec.query = session.scopeToData(plan.query);
@@ -290,8 +264,6 @@ private:
         // Slicing discards per-page durability, so it is only ever used where there is none to lose:
         // a full reload, which restarts from scratch anyway.
         spec.slices = plan.mode == FetchPlan::Mode::Full ? m_config.fullSlices : 1U;
-
-        PitPaginator paginator {*m_port, session, *m_stop};
 
         PitPaginator::DurableCallback onDurable;
         if (m_tokenStore)
@@ -309,29 +281,13 @@ private:
             };
         }
 
-        auto outcome = paginator.run(spec, *m_sink, m_config.topic, std::move(onDurable));
-        if (outcome.highestPageToken.empty())
-        {
-            // Nothing tokenised this cycle (an empty incremental fetch, or a hash-tracked topic):
-            // keep the bound we already had so finalToken does not regress it.
-            outcome.highestPageToken = localToken;
-        }
-        return outcome;
+        PitPaginator paginator {*m_port, session, m_stop};
+        return paginator.run(spec, *m_sink, m_config.topic, onDurable);
     }
 
-    content_manager::CycleOutcome commit(const content_manager::SessionInfo& info,
-                                         const ProbeResult& probe,
-                                         const FetchOutcome& fetch,
-                                         const std::string& localToken)
+    content_manager::CycleOutcome commit(const content_manager::CommitInfo& commitInfo)
     {
         using namespace content_manager;
-
-        CommitInfo commitInfo;
-        commitInfo.topic = m_config.topic;
-        commitInfo.kind = info.kind;
-        commitInfo.finalToken = m_detector->finalToken(probe, fetch.highestPageToken);
-        commitInfo.documentsDelivered = fetch.documentsDelivered;
-        commitInfo.changed = fetch.documentsDelivered > 0;
 
         CommitResult result;
         try
@@ -343,64 +299,41 @@ private:
             result = CommitResult {CommitStatus::RejectedRetrySame, "sink threw from commit"};
         }
 
-        CycleOutcome outcome;
-        outcome.documentsDelivered = fetch.documentsDelivered;
-
-        switch (result.status)
+        if (result.status == CommitStatus::RejectedRetryFull)
         {
-            case CommitStatus::Committed:
+            if (m_tokenStore)
             {
-                if (m_tokenStore && !m_tokenStore->store(m_config.topic, commitInfo.finalToken))
-                {
-                    // The content is live and the token is not. Reporting failure re-fetches next
-                    // cycle, which is the safe direction; the sink is deliberately NOT aborted,
-                    // since its content has already been promoted.
-                    outcome.status = CycleStatus::FailedSink;
-                    outcome.detail = "content committed but the token could not be persisted";
-                    outcome.token = localToken;
-                    outcome.retryAfter = SINK_RETRY_INTERVAL;
-                    logWarn(WM_CONTENTUPDATER,
-                            "Content update for '%s' committed but its token could not be persisted; the next "
-                            "cycle will re-fetch.",
-                            m_config.topic.c_str());
-                    return outcome;
-                }
-
-                outcome.status = commitInfo.changed ? CycleStatus::Updated : CycleStatus::Unchanged;
-                outcome.token = commitInfo.finalToken.empty() ? localToken : commitInfo.finalToken;
-                outcome.detail = result.detail;
-                return outcome;
+                m_tokenStore->clear(m_config.topic);
             }
-
-            case CommitStatus::RejectedRetryFull:
-            {
-                if (m_tokenStore)
-                {
-                    m_tokenStore->clear(m_config.topic);
-                }
-                outcome.status = CycleStatus::FailedSink;
-                outcome.detail =
-                    result.detail.empty() ? "sink rejected the content; forcing a full reload" : result.detail;
-                outcome.token.clear();
-                outcome.retryAfter = SINK_RETRY_INTERVAL;
-                logWarn(WM_CONTENTUPDATER,
-                        "Content update for '%s' was rejected on commit (%s); the stored token was cleared and "
-                        "the next cycle will perform a full reload.",
-                        m_config.topic.c_str(),
-                        outcome.detail.c_str());
-                return outcome;
-            }
-
-            case CommitStatus::RejectedRetrySame:
-            default:
-            {
-                outcome.status = CycleStatus::FailedSink;
-                outcome.detail = result.detail.empty() ? "sink could not promote the content" : result.detail;
-                outcome.token = localToken;
-                outcome.retryAfter = SINK_RETRY_INTERVAL;
-                return outcome;
-            }
+            const auto detail = result.detail.empty() ? std::string {"sink rejected the content; forcing a full reload"}
+                                                      : result.detail;
+            logWarn(WM_CONTENTUPDATER,
+                    "Content update for '%s' was rejected on commit (%s); the stored token was cleared and the "
+                    "next cycle will perform a full reload.",
+                    m_config.topic.c_str(),
+                    detail.c_str());
+            return make(CycleStatus::FailedSink, detail);
         }
+
+        if (result.status != CommitStatus::Committed)
+        {
+            return make(CycleStatus::FailedSink,
+                        result.detail.empty() ? std::string {"sink could not promote the content"} : result.detail);
+        }
+
+        if (!commitInfo.finalToken.empty() && m_tokenStore &&
+            !m_tokenStore->store(m_config.topic, commitInfo.finalToken))
+        {
+            // The content is live and the token is not. Reporting failure re-fetches next cycle,
+            // which is the safe direction; the sink is NOT aborted, its content is already promoted.
+            logWarn(WM_CONTENTUPDATER,
+                    "Content update for '%s' committed but its token could not be persisted; the next cycle "
+                    "will re-fetch.",
+                    m_config.topic.c_str());
+            return make(CycleStatus::FailedSink, "content committed but the token could not be persisted");
+        }
+
+        return make(commitInfo.documentsDelivered > 0 ? CycleStatus::Updated : CycleStatus::Unchanged, result.detail);
     }
 
     content_manager::SessionDecision beginSession(const content_manager::SessionInfo& info) noexcept
@@ -432,60 +365,24 @@ private:
         return m_tokenStore ? m_tokenStore->load(m_config.topic) : std::string {};
     }
 
-    content_manager::CycleOutcome consumerNotReady(const std::string& detail)
+    /// The outcome of @p status, with the token now in force and the backoff that status carries.
+    content_manager::CycleOutcome make(content_manager::CycleStatus status, std::string detail)
     {
+        using content_manager::CycleStatus;
+
         content_manager::CycleOutcome outcome;
-        outcome.status = content_manager::CycleStatus::SkippedConsumerNotReady;
-        outcome.detail = detail;
+        outcome.status = status;
+        outcome.detail = std::move(detail);
         outcome.token = loadToken();
-        outcome.retryAfter = m_config.consumerRetryInterval;
-        return outcome;
-    }
-
-    content_manager::CycleOutcome transportFailure(const std::string& detail)
-    {
-        content_manager::CycleOutcome outcome;
-        outcome.status = content_manager::CycleStatus::FailedTransport;
-        outcome.detail = detail;
-        outcome.token = loadToken();
-        // Flat here on purpose: escalating this into a growing backoff needs state that survives
-        // between cycles, and this object does not — ContentProvider owns that escalation.
-        outcome.retryAfter = TRANSPORT_RETRY_INTERVAL;
-        return outcome;
-    }
-
-    content_manager::CycleOutcome sinkFailure(const std::string& detail, const std::string& token)
-    {
-        content_manager::CycleOutcome outcome;
-        outcome.status = content_manager::CycleStatus::FailedSink;
-        outcome.detail = detail;
-        outcome.token = token;
-        outcome.retryAfter = SINK_RETRY_INTERVAL;
-        return outcome;
-    }
-
-    /// A missing consumer document is the *normal* state of a fresh install, so it stays quiet for
-    /// the first few cycles and only then becomes worth an operator's attention.
-    void reportMissingConsumer()
-    {
-        ++m_missingConsumerCycles;
-        if (m_missingConsumerCycles <= ConsumerGate::WARN_AFTER_ATTEMPTS)
+        switch (status)
         {
-            logDebug2(WM_CONTENTUPDATER,
-                      "Consumer '%s' not found for '%s' (cycle %zu/%zu).",
-                      m_config.pit.consumerStatusId.c_str(),
-                      m_config.topic.c_str(),
-                      m_missingConsumerCycles,
-                      ConsumerGate::WARN_AFTER_ATTEMPTS);
+            case CycleStatus::SkippedConsumerNotReady:
+            case CycleStatus::SkippedPreconditionUnmet: outcome.retryAfter = m_config.consumerRetryInterval; break;
+            case CycleStatus::FailedTransport:
+            case CycleStatus::FailedSink: outcome.retryAfter = FAILURE_RETRY_INTERVAL; break;
+            default: break;
         }
-        else
-        {
-            logInfo(WM_CONTENTUPDATER,
-                    "Consumer '%s' is still not present in '%s'; content for '%s' cannot be downloaded yet.",
-                    m_config.pit.consumerStatusId.c_str(),
-                    m_config.pit.consumerStatusIndex.c_str(),
-                    m_config.topic.c_str());
-        }
+        return outcome;
     }
 
     static content_manager::SessionKind toKind(FetchPlan::Mode mode) noexcept
@@ -499,16 +396,15 @@ private:
         }
     }
 
-    static constexpr std::chrono::seconds TRANSPORT_RETRY_INTERVAL {30};
-    static constexpr std::chrono::seconds SINK_RETRY_INTERVAL {30};
+    /// Flat: the driver escalates consecutive transport failures, since a cycle keeps no state.
+    static constexpr std::chrono::seconds FAILURE_RETRY_INTERVAL {30};
 
     Config m_config;
     std::shared_ptr<content_manager::IContentIndexer> m_port;
     std::unique_ptr<IChangeDetector> m_detector;
     std::shared_ptr<content_manager::IContentSink> m_sink;
     std::shared_ptr<content_manager::IContentTokenStore> m_tokenStore;
-    std::shared_ptr<ConditionSync> m_stop;
-    std::size_t m_missingConsumerCycles {0};
+    const std::atomic<bool>& m_stop;
 };
 
 #endif // _CONTENT_CYCLE_HPP

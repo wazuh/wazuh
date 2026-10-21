@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
 #include "contentIndexerAdapters.hpp"
-#include "contentManager.hpp"
-#include "contentOnDemand.hpp"
+#include "contentLogging.hpp"
 #include "contentRegister.hpp"
 #include "contentSink.hpp"
 #include "contentTypes.hpp"
@@ -20,19 +19,17 @@
 /*
  * Test tool for the Content Manager.
  *
- * Registers one topic against a live Wazuh Indexer, lets the library's driver thread run a couple
- * of cycles, then triggers one on-demand update through the same seam a host's HTTP route
- * dispatches into. The sink below only prints what it is given, which makes this the shortest way
- * to see the exact shape of the delivery contract.
+ * Registers one topic against a live Wazuh Indexer, lets the library's driver thread run a cycle,
+ * then requests one more through the same call a host's HTTP route makes. The sink below only prints what it is given,
+ * which makes this the shortest way to see the exact shape of the delivery contract.
  */
 static const std::string TOPIC_NAME {"test"};
 
-/// The registration, built the way a host builds one (D2): a typed spec, turned into parameters.
+/// The registration, built the way a host builds one (D2).
 static content_manager::TopicSpec topicSpec()
 {
     content_manager::TopicSpec spec;
     spec.schedule.intervalSeconds = 30;
-    spec.schedule.onDemand = true;
     spec.source.indices = {".wazuh-threatintel-vulnerabilities"};
     spec.readiness = content_manager::Readiness {".wazuh-cti-consumers", "cti:catalog:consumer:vulnerabilities"};
     spec.detection = content_manager::CursorDetection {};
@@ -52,7 +49,7 @@ static const nlohmann::json INDEXER_CONNECTION =
 // Enable/Disable logging verbosity.
 static const auto VERBOSE {true};
 
-// Enable/Disable the forced full-reload on-demand request.
+// Enable/Disable the forced full reload on the requested cycle.
 static const auto FORCE_FULL_RELOAD {false};
 
 /**
@@ -90,8 +87,6 @@ void logFunction(const int logLevel,
                                                             {Log::LOGLEVEL_CRITICAL, "CRITICAL"}};
     const auto levelTag {"[" + LOG_LEVEL_TAGS.at(logLevel) + "]"};
 
-    // Was `OS_MAXSTR` from defs.h, which is OS_SIZE_65536. Spelled out locally so this tool does
-    // not pull a C header in for one buffer bound.
     constexpr std::size_t LOG_BUFFER_SIZE {65536};
     char formattedStr[LOG_BUFFER_SIZE] = {0};
     vsnprintf(formattedStr, LOG_BUFFER_SIZE, message, args);
@@ -131,24 +126,22 @@ class PrintingSink final : public content_manager::IContentSink
 public:
     content_manager::SessionDecision beginSession(const content_manager::SessionInfo& info) noexcept override
     {
-        std::cout << "beginSession topic=" << info.topic << " kind=" << static_cast<int>(info.kind) << " localToken='"
-                  << info.localToken << "' remoteToken='" << info.remoteToken << "' onDemand=" << info.onDemand
-                  << std::endl;
+        std::cout << "beginSession topic=" << info.topic << " kind=" << static_cast<int>(info.kind) << " remoteToken='"
+                  << info.remoteToken << "'" << std::endl;
         return content_manager::SessionDecision::Proceed;
     }
 
     content_manager::PageAck acceptPage(const content_manager::ContentPage& page) noexcept override
     {
-        std::cout << "acceptPage slice=" << page.sliceId << " index=" << page.pageIndex
-                  << " hits=" << (page.hits != nullptr ? page.hits->size() : 0) << " token='" << page.pageToken << "'"
-                  << std::endl;
+        std::cout << "acceptPage hits=" << (page.hits != nullptr ? page.hits->size() : 0) << " token='"
+                  << page.pageToken << "'" << std::endl;
         return content_manager::PageAck {content_manager::PageStatus::Durable, {}};
     }
 
     content_manager::CommitResult commit(const content_manager::CommitInfo& info) noexcept override
     {
         std::cout << "commit topic=" << info.topic << " documents=" << info.documentsDelivered << " finalToken='"
-                  << info.finalToken << "' changed=" << info.changed << std::endl;
+                  << info.finalToken << "'" << std::endl;
         return content_manager::CommitResult {content_manager::CommitStatus::Committed, {}};
     }
 
@@ -156,32 +149,34 @@ public:
     {
         std::cout << "abort reason=" << static_cast<int>(reason) << " detail=" << detail << std::endl;
     }
+
+    void cycleFinished(const content_manager::CycleOutcome& outcome) noexcept override
+    {
+        std::cout << "cycleFinished status=" << static_cast<int>(outcome.status) << " token='" << outcome.token
+                  << "' detail=" << outcome.detail << std::endl;
+    }
 };
 
 int main()
 {
-    auto& instance = ContentModule::instance();
-    instance.start(logFunction);
+    content_manager::setLogFunction(logFunction, "content-manager-testtool");
 
     try
     {
         const auto& topicName = TOPIC_NAME;
         const auto connector = std::make_shared<IndexerConnectorSync>(
             INDEXER_CONNECTION, LoggingContext {"content-manager-testtool", logFunction});
-        ContentRegister registerer {topicName,
-                                    content_manager::toParameters(topicSpec()),
-                                    std::make_shared<PrintingSink>(),
-                                    content_manager::makeContentIndexer(connector)};
+        ContentRegister registerer {
+            topicName, topicSpec(), std::make_shared<PrintingSink>(), content_manager::makeContentIndexer(connector)};
 
         std::this_thread::sleep_for(std::chrono::seconds(5));
 
-        content_manager::requestOnDemand(topicName,
-                                         content_manager::RunRequest {FORCE_FULL_RELOAD, true},
-                                         [](content_manager::OnDemandResult result)
-                                         {
-                                             std::cout << "on-demand result: code=" << static_cast<int>(result.code)
-                                                       << " detail=" << result.detail << std::endl;
-                                         });
+        registerer.requestRun(content_manager::RunRequest {FORCE_FULL_RELOAD},
+                              [](content_manager::OnDemandResult result)
+                              {
+                                  std::cout << "requested cycle: code=" << static_cast<int>(result.code)
+                                            << " detail=" << result.detail << std::endl;
+                              });
 
         std::this_thread::sleep_for(std::chrono::seconds(60));
 
@@ -191,8 +186,6 @@ int main()
     {
         std::cout << "Exception: " << e.what() << std::endl;
     }
-
-    instance.stop();
 
     return 0;
 }

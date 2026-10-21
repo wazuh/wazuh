@@ -76,12 +76,10 @@ TEST(OffsetCursorDetectorTest, PlanMatrix)
         if (testCase.expected == FetchPlan::Mode::Full)
         {
             EXPECT_EQ(plan.query, (nlohmann::json {{"match_all", nlohmann::json::object()}})) << testCase.what;
-            EXPECT_TRUE(plan.startToken.empty()) << testCase.what;
         }
         else
         {
             EXPECT_EQ(plan.query, (nlohmann::json {{"range", {{"offset", {{"gt", 1042}}}}}})) << testCase.what;
-            EXPECT_EQ(plan.startToken, "1042") << testCase.what;
         }
     }
 }
@@ -316,8 +314,8 @@ TEST(ContentHashDetectorTest, PlanMatrix)
 
 TEST(OffsetCursorDetectorTest, AnIncrementalFetchRunsTheSourceQueryAndTheRange)
 {
-    // source.query now narrows both strategies (D2): an incremental cursor fetch must keep it, or a
-    // topic scoped to part of an index would pull in everything newer than its cursor.
+    // source.query narrows both strategies (D2): an incremental cursor fetch must keep it, or a topic
+    // scoped to part of an index would pull in everything newer than its cursor.
     const nlohmann::json sourceQuery {{"term", {{"type", "CVE"}}}};
     OffsetCursorDetector detector {"offset", sourceQuery};
 

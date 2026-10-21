@@ -18,51 +18,34 @@ if(NOT DEFINED SHARED_MODULES)
   get_filename_component(SHARED_MODULES ${SRC_FOLDER}/shared_modules/ ABSOLUTE)
 endif()
 
-# Include directories
+# Include directories. Not ${SRC_FOLDER}/shared/include: those are GPL-2.0-only C headers, and this
+# library is GPL-2.0-only OR AGPL-3.0-or-later (D3).
 include_directories(include)
-include_directories(${SRC_FOLDER})
-# Not ${SRC_FOLDER}/shared/include: those are GPL-2.0-only C headers, and this library is
-# GPL-2.0-only OR AGPL-3.0-or-later (D3). Nothing here has used them since defs.h was removed.
+include_directories(src)
+# utils/loggerHelper.h includes common/commonDefs.h, which includes cJSON.h.
 include_directories(${SRC_FOLDER}/external/cJSON)
 include_directories(${SRC_FOLDER}/external/nlohmann)
-include_directories(${SRC_FOLDER}/external/curl/include/curl)
 include_directories(${SRC_FOLDER}/external/rocksdb/include)
-include_directories(${SRC_FOLDER}/external/zlib/)
-include_directories(${SRC_FOLDER}/external/zlib/contrib/)
-
 include_directories(${SHARED_MODULES})
 include_directories(${SHARED_MODULES}/utils)
-include_directories(${SHARED_MODULES}/content_manager/src/components)
 include_directories(${SHARED_MODULES}/indexer_connector/include)
 
-# Link directories
-link_directories(${SRC_FOLDER})
 link_directories(${SRC_FOLDER}/build/lib)
-link_directories(${SHARED_MODULES}/indexer_connector/build)
 link_directories(${SRC_FOLDER}/external/rocksdb/build/)
-link_directories(${SRC_FOLDER}/external/zlib/)
-link_directories(${SRC_FOLDER}/external/zlib/contrib/minizip/)
 
-file(GLOB CONTENT_DOWNLOAD_SRC "src/*.cpp")
+file(GLOB CONTENT_MANAGER_SRC "src/*.cpp")
 
-add_library(content_manager SHARED ${CONTENT_DOWNLOAD_SRC})
+add_library(content_manager SHARED ${CONTENT_MANAGER_SRC})
 
-# flatbuffers was linked but never referenced: grepping the module for it returns nothing. Dropping
-# it matters beyond tidiness -- every host that links this library inherited a DT_NEEDED on a
-# library it does not use.
 target_link_libraries(content_manager PRIVATE gcc_s wazuhext
                                               rocksdb indexer_connector)
 
 # PUBLIC so a host outside this tree (the Engine) gets the contract headers by linking the target,
-# instead of hard-coding a relative path to them.
-# ${SHARED_MODULES}/utils is here for one header: contentManager.hpp derives ContentModule from
-# Singleton<>. Nothing else in include/ reaches outside these three directories, and the
-# content_manager_public_abi_c17 target below is compiled with exactly this set so a fourth
-# dependency cannot creep in unnoticed.
+# instead of hard-coding a relative path to them. The content_manager_public_abi_c17 target below is
+# compiled with exactly this set, so a third dependency cannot creep in unnoticed.
 target_include_directories(content_manager PUBLIC
                            $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>
-                           $<BUILD_INTERFACE:${SRC_FOLDER}/external/nlohmann>
-                           $<BUILD_INTERFACE:${SHARED_MODULES}/utils>)
+                           $<BUILD_INTERFACE:${SRC_FOLDER}/external/nlohmann>)
 
 set_target_properties(content_manager PROPERTIES BUILD_RPATH_USE_ORIGIN TRUE
                                                  BUILD_RPATH "$ORIGIN/../lib")
@@ -75,7 +58,7 @@ if(UNIT_TEST)
   # Compiles the public headers alone, under C++17, with ONLY the include directories a foreign
   # host gets. Two things fail this target and nothing else catches either of them: a public header
   # reaching for a C++20 feature (the Engine's own libraries are C++17), and a private header
-  # (rocksDBWrapper.hpp, contentModuleFacade.hpp, onDemandManager.hpp) leaking into include/.
+  # (rocksDBWrapper.hpp, topicDriver.hpp) leaking into include/.
   add_library(content_manager_public_abi_c17 OBJECT tests/abi/publicHeaders17.cpp)
   set_target_properties(content_manager_public_abi_c17 PROPERTIES CXX_STANDARD 17
                                                                   CXX_STANDARD_REQUIRED ON)
@@ -84,8 +67,7 @@ if(UNIT_TEST)
   # guard would then pass no matter what leaked.
   set_property(TARGET content_manager_public_abi_c17 PROPERTY INCLUDE_DIRECTORIES
                ${CMAKE_CURRENT_LIST_DIR}/include
-               ${SRC_FOLDER}/external/nlohmann
-               ${SHARED_MODULES}/utils)
+               ${SRC_FOLDER}/external/nlohmann)
 endif()
 
 add_subdirectory(testtool)

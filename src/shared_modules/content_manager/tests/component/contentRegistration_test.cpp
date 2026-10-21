@@ -9,15 +9,12 @@
  *
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  *
- * Drives a whole registration — facade, provider, driver, cycle — against a scripted indexer,
- * rather than against a fake HTTP server. The seam these tests go through is the same one the
- * production path uses; only the far end of it is substituted.
+ * Drives whole registrations through the public `ContentRegister` API against a scripted indexer,
+ * rather than against a fake HTTP server. Only the far end of the production path is substituted.
  */
 
 #include "components/consumerGate.hpp"
 #include "contentIndexer.hpp"
-#include "contentModuleFacade.hpp"
-#include "contentOnDemand.hpp"
 #include "contentRegister.hpp"
 #include "contentSink.hpp"
 #include "contentTokenStore.hpp"
@@ -44,7 +41,6 @@ namespace
     using content_manager::CycleStatus;
 
     constexpr auto TOPIC = "component.topic";
-    constexpr auto OTHER_TOPIC = "component.topic.other";
 
     /// A scripted indexer. Every answer is queued in advance, in the order the cycle will ask for them.
     class ScriptedPort final : public content_manager::IContentIndexer
@@ -221,20 +217,15 @@ namespace
         }
     };
 
-    content_manager::TopicSpec spec()
+    content_manager::TopicSpec spec(std::optional<std::size_t> interval = std::nullopt)
     {
         content_manager::TopicSpec spec;
-        spec.schedule.onDemand = true;
+        spec.schedule.intervalSeconds = interval;
         spec.source.indices = {"data-index"};
         spec.source.pageSize = 10;
         spec.readiness = content_manager::Readiness {".consumers", "consumer:1", 1, 0};
         spec.detection = content_manager::CursorDetection {};
         return spec;
-    }
-
-    nlohmann::json parameters()
-    {
-        return content_manager::toParameters(spec());
     }
 
     class ContentRegistrationTest : public ::testing::Test
@@ -249,28 +240,27 @@ namespace
 
         void TearDown() override
         {
-            // Unconditional, and for both: a test that fails a fatal assertion skips its own cleanup,
-            // and a topic left registered makes every later test fail with "Provider already exist".
-            ContentModuleFacade::instance().removeProvider(TOPIC);
-            ContentModuleFacade::instance().removeProvider(OTHER_TOPIC);
+            m_registration.reset();
         }
 
         /// Register the topic with a scripted indexer behind it.
         std::shared_ptr<ScriptedPort::Script> registerTopic(std::vector<std::string> preflight,
                                                             std::vector<std::string> inPit,
-                                                            std::vector<nlohmann::json> pages)
+                                                            std::vector<nlohmann::json> pages,
+                                                            std::optional<std::size_t> interval = std::nullopt)
         {
             auto port = std::make_shared<ScriptedPort>();
             port->script()->consumerStatuses = std::move(preflight);
             port->script()->inPitStatuses = std::move(inPit);
             port->script()->dataPages = std::move(pages);
 
-            ContentModuleFacade::instance().addProvider(TOPIC, spec(), m_sink, port, m_tokens);
+            m_registration = std::make_unique<ContentRegister>(TOPIC, spec(interval), m_sink, port, m_tokens);
             return port->script();
         }
 
         std::shared_ptr<CountingSink> m_sink;
         std::shared_ptr<MemoryTokens> m_tokens;
+        std::unique_ptr<ContentRegister> m_registration;
     };
 
 } // namespace
@@ -279,7 +269,7 @@ TEST_F(ContentRegistrationTest, ConsumerRunningSkipsWithNoSinkCalls)
 {
     auto script = registerTopic({"running"}, {"running"}, {});
 
-    const auto outcome = ContentModuleFacade::instance().runOnce(TOPIC, {});
+    const auto outcome = m_registration->runOnce();
 
     EXPECT_EQ(outcome.status, CycleStatus::SkippedConsumerNotReady);
     EXPECT_EQ(m_sink->documents.load(), 0U);
@@ -290,12 +280,11 @@ TEST_F(ContentRegistrationTest, ConsumerRunningSkipsWithNoSinkCalls)
 
 TEST_F(ContentRegistrationTest, ConsumerFlippingBetweenPreflightAndPitStillSkips)
 {
-    // This is the case the in-PIT check exists for and that the previous design could not express:
-    // the pre-flight sees `ready`, and by the time the snapshot is open the indexer has started
-    // rewriting. A check outside the PIT would have proceeded to read content mid-rewrite.
+    // The case the in-PIT check exists for: the pre-flight sees `ready`, and by the time the
+    // snapshot is open the indexer has started rewriting.
     auto script = registerTopic({"ready"}, {"running"}, {ScriptedPort::page({{"CVE-1", 1}})});
 
-    const auto outcome = ContentModuleFacade::instance().runOnce(TOPIC, {});
+    const auto outcome = m_registration->runOnce();
 
     EXPECT_EQ(outcome.status, CycleStatus::SkippedConsumerNotReady);
     EXPECT_EQ(script->pitsOpened, 1U);
@@ -307,13 +296,13 @@ TEST_F(ContentRegistrationTest, FullLoadThenIncrementalReusesTheStoredToken)
 {
     registerTopic({"ready"}, {"ready"}, {ScriptedPort::page({{"CVE-1", 1}, {"CVE-2", 7}})});
 
-    auto first = ContentModuleFacade::instance().runOnce(TOPIC, {});
+    auto first = m_registration->runOnce();
     EXPECT_EQ(first.status, CycleStatus::Updated);
     EXPECT_EQ(first.token, "7");
     EXPECT_EQ(m_sink->documents.load(), 2U);
-    EXPECT_EQ(m_tokens->token, "7");
+    EXPECT_EQ(m_registration->currentToken(), "7");
 
-    auto second = ContentModuleFacade::instance().runOnce(TOPIC, {});
+    auto second = m_registration->runOnce();
     EXPECT_EQ(second.status, CycleStatus::Unchanged);
 
     ASSERT_EQ(m_sink->kinds.size(), 2U);
@@ -321,13 +310,13 @@ TEST_F(ContentRegistrationTest, FullLoadThenIncrementalReusesTheStoredToken)
     EXPECT_EQ(m_sink->kinds[1], content_manager::SessionKind::Incremental);
 }
 
-TEST_F(ContentRegistrationTest, ForcedReloadClearsTheTokenAndReloads)
+TEST_F(ContentRegistrationTest, ForcedReloadReloadsEverything)
 {
     registerTopic({"ready"}, {"ready"}, {ScriptedPort::page({{"CVE-1", 5}})});
-    ASSERT_EQ(ContentModuleFacade::instance().runOnce(TOPIC, {}).status, CycleStatus::Updated);
+    ASSERT_EQ(m_registration->runOnce().status, CycleStatus::Updated);
     ASSERT_EQ(m_tokens->token, "5");
 
-    ContentModuleFacade::instance().runOnce(TOPIC, content_manager::RunRequest {true, true});
+    m_registration->runOnce(content_manager::RunRequest {/*forceFullReload=*/true});
 
     ASSERT_EQ(m_sink->kinds.size(), 2U);
     EXPECT_EQ(m_sink->kinds[1], content_manager::SessionKind::FullReload);
@@ -335,12 +324,11 @@ TEST_F(ContentRegistrationTest, ForcedReloadClearsTheTokenAndReloads)
 
 TEST_F(ContentRegistrationTest, RunOnceReturnsPromptlyWhileTheConsumerStaysBusy)
 {
-    // The bounded-gate guarantee: a cycle never parks its caller polling for readiness. The old
-    // in-cycle loop would still be sleeping when this assertion runs.
+    // The bounded-gate guarantee: a cycle never parks its caller polling for readiness.
     auto script = registerTopic({"running"}, {"running"}, {});
 
     const auto started = std::chrono::steady_clock::now();
-    const auto outcome = ContentModuleFacade::instance().runOnce(TOPIC, {});
+    const auto outcome = m_registration->runOnce();
     const auto elapsed = std::chrono::steady_clock::now() - started;
 
     EXPECT_EQ(outcome.status, CycleStatus::SkippedConsumerNotReady);
@@ -350,134 +338,64 @@ TEST_F(ContentRegistrationTest, RunOnceReturnsPromptlyWhileTheConsumerStaysBusy)
     EXPECT_EQ(script->preflightCalls, 1U);
 }
 
-TEST_F(ContentRegistrationTest, UnknownTopicIsAConfigFailureNotACrash)
+TEST_F(ContentRegistrationTest, ARequestedRunDrivesTheSameCycle)
 {
-    const auto outcome = ContentModuleFacade::instance().runOnce("no.such.topic", {});
-    EXPECT_EQ(outcome.status, CycleStatus::FailedConfig);
-}
-
-TEST_F(ContentRegistrationTest, OnDemandDrivesTheSameCycle)
-{
-    registerTopic({"ready"}, {"ready"}, {ScriptedPort::page({{"CVE-1", 3}})});
-    ContentModuleFacade::instance().startOndemand(TOPIC);
+    // The first page goes to the start-up cycle; the requested one then finds the content current.
+    registerTopic({"ready"}, {"ready"}, {ScriptedPort::page({{"CVE-1", 3}})}, /*interval=*/3600);
 
     std::mutex mutex;
     std::condition_variable cv;
-    bool answered {false};
-    content_manager::OnDemandResult received;
+    std::vector<content_manager::OnDemandResult> received;
+    const auto request = [&]
+    {
+        m_registration->requestRun({},
+                                   [&](content_manager::OnDemandResult result)
+                                   {
+                                       {
+                                           std::lock_guard<std::mutex> lock {mutex};
+                                           received.push_back(std::move(result));
+                                       }
+                                       cv.notify_all();
+                                   });
+    };
 
-    content_manager::requestOnDemand(TOPIC,
-                                     {},
-                                     [&](content_manager::OnDemandResult result)
-                                     {
-                                         {
-                                             std::lock_guard<std::mutex> lock {mutex};
-                                             received = std::move(result);
-                                             answered = true;
-                                         }
-                                         cv.notify_all();
-                                     });
-
+    // Retried while the start-up cycle holds the slot: that answer is AlreadyRunning, not a queue.
     std::unique_lock<std::mutex> lock {mutex};
-    ASSERT_TRUE(cv.wait_for(lock, std::chrono::seconds {5}, [&answered] { return answered; }));
-    EXPECT_EQ(received.code, content_manager::OnDemandCode::Completed);
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds {10};
+    while (std::chrono::steady_clock::now() < deadline &&
+           (received.empty() || received.back().code == content_manager::OnDemandCode::AlreadyRunning))
+    {
+        lock.unlock();
+        request();
+        lock.lock();
+        cv.wait_for(lock, std::chrono::milliseconds {100}, [&] { return !received.empty(); });
+    }
+
+    ASSERT_FALSE(received.empty());
+    EXPECT_EQ(received.back().code, content_manager::OnDemandCode::Completed);
     EXPECT_EQ(m_sink->documents.load(), 1U);
 }
 
-TEST_F(ContentRegistrationTest, RegisteringTheSameTopicTwiceIsRefused)
+TEST_F(ContentRegistrationTest, AnInvalidSpecIsRefusedAtRegistration)
 {
-    registerTopic({"ready"}, {"ready"}, {});
+    auto broken = spec();
+    broken.readiness->consumerIndex = ".consumers-*";
 
-    auto port = std::make_shared<ScriptedPort>();
-    port->script()->consumerStatuses = {"ready"};
-    port->script()->inPitStatuses = {"ready"};
-
-    EXPECT_THROW(ContentModuleFacade::instance().addProvider(TOPIC, spec(), m_sink, port, m_tokens),
-                 std::runtime_error);
-}
-
-TEST_F(ContentRegistrationTest, AnInvalidConfigurationIsRefusedAtRegistration)
-{
-    auto broken = parameters();
-    broken["readiness"]["consumerIndex"] = ".consumers-*";
-
-    auto port = std::make_shared<ScriptedPort>();
-    port->script()->consumerStatuses = {"ready"};
-    port->script()->inPitStatuses = {"ready"};
-
-    // Caught once, at registration, instead of becoming a FailedConfig on every cycle forever.
-    EXPECT_THROW((ContentRegister {"broken.topic", broken, m_sink, port, m_tokens}), std::invalid_argument);
+    // Caught once, at registration, instead of becoming a failure on every cycle forever.
+    EXPECT_THROW((ContentRegister {"broken.topic", broken, m_sink, std::make_shared<ScriptedPort>(), m_tokens}),
+                 std::invalid_argument);
 }
 
 TEST_F(ContentRegistrationTest, ARegistrationWithoutTheHostsIndexerIsRefused)
 {
-    // The library never opens a connection of its own (D1): with no indexer there is nothing a
-    // cycle could read from, so it is refused at registration rather than failing on every cycle.
-    EXPECT_THROW((ContentRegister {"no.indexer", parameters(), m_sink, nullptr, m_tokens}), std::invalid_argument);
+    // The library never opens a connection of its own (D1).
+    EXPECT_THROW((ContentRegister {"no.indexer", spec(), m_sink, nullptr, m_tokens}), std::invalid_argument);
 }
 
-TEST_F(ContentRegistrationTest, RegisteringATopicDoesNotWaitForAnotherTopicsCycle)
+TEST_F(ContentRegistrationTest, DestroyingARegistrationWaitsForItsCycle)
 {
-    // The registry lock is held only long enough to find a topic and claim its run slot, never for
-    // the download. Held across the cycle instead — as it was — registering or removing ANY topic
-    // waits for whatever else happens to be downloading, which for a full vulnerability feed is
-    // minutes; and a reader-preferring shared_mutex can starve that writer indefinitely under a
-    // steady stream of cycles.
-    std::mutex gateMutex;
-    std::condition_variable gate;
-    bool released = false;
-    bool cycleStarted = false;
-
-    auto script = registerTopic({"ready"}, {"ready"}, {ScriptedPort::page({{"CVE-1", 1}})});
-    script->beforeSearch = [&]
-    {
-        std::unique_lock<std::mutex> lock {gateMutex};
-        cycleStarted = true;
-        gate.notify_all();
-        gate.wait(lock, [&] { return released; });
-    };
-
-    std::thread runner([] { ContentModuleFacade::instance().runOnce(TOPIC, {}); });
-
-    {
-        std::unique_lock<std::mutex> lock {gateMutex};
-        ASSERT_TRUE(gate.wait_for(lock, std::chrono::seconds {10}, [&] { return cycleStarted; }))
-            << "the cycle never reached the indexer";
-    }
-
-    // The cycle is now parked inside the library. Registering an unrelated topic must still work.
-    auto otherPort = std::make_shared<ScriptedPort>();
-    otherPort->script()->consumerStatuses = {"ready"};
-    otherPort->script()->inPitStatuses = {"ready"};
-
-    const auto startedAt = std::chrono::steady_clock::now();
-    ContentModuleFacade::instance().addProvider(
-        OTHER_TOPIC, spec(), std::make_shared<CountingSink>(), otherPort, std::make_shared<MemoryTokens>());
-    const auto elapsed = std::chrono::steady_clock::now() - startedAt;
-
-    EXPECT_LT(elapsed, std::chrono::seconds {5}) << "registering a topic waited for an unrelated topic's cycle";
-
-    {
-        std::lock_guard<std::mutex> lock {gateMutex};
-        released = true;
-    }
-    gate.notify_all();
-    runner.join();
-
-    // The hook captures this function's locals by reference and the port outlives it (TearDown is
-    // what unregisters the topic). Nothing calls it after this point, but leaving a dangling
-    // capture in a live object is not a thing to rely on being unreachable.
-    script->beforeSearch = nullptr;
-
-    ContentModuleFacade::instance().removeProvider(OTHER_TOPIC);
-}
-
-TEST_F(ContentRegistrationTest, RemovingATopicWaitsForItsOwnCycleToDrain)
-{
-    // The other half of the same contract: the short lock hold must not weaken the guarantee that
-    // nothing of this topic's is still running once removeProvider returns — which is what the
-    // host relies on to then destroy the sink. A cycle either claims its run slot before the erase
-    // — and is waited for — or never finds the topic at all.
+    // What lets a host destroy its sink right after the registration: nothing of the topic's is
+    // still running once the destructor returns.
     std::mutex gateMutex;
     std::condition_variable gate;
     bool released = false;
@@ -496,7 +414,7 @@ TEST_F(ContentRegistrationTest, RemovingATopicWaitsForItsOwnCycleToDrain)
     std::thread runner(
         [&]
         {
-            ContentModuleFacade::instance().runOnce(TOPIC, {});
+            m_registration->runOnce();
             cycleFinished = true;
         });
 
@@ -505,9 +423,8 @@ TEST_F(ContentRegistrationTest, RemovingATopicWaitsForItsOwnCycleToDrain)
         ASSERT_TRUE(gate.wait_for(lock, std::chrono::seconds {10}, [&] { return cycleStarted; }));
     }
 
-    std::thread remover([] { ContentModuleFacade::instance().removeProvider(TOPIC); });
+    std::thread destroyer([this] { m_registration.reset(); });
 
-    // Give the remover a moment to get as far as it can, which must not be all the way.
     std::this_thread::sleep_for(std::chrono::milliseconds {200});
     EXPECT_FALSE(cycleFinished.load()) << "the cycle ended on its own; the test is not measuring the drain";
 
@@ -517,9 +434,7 @@ TEST_F(ContentRegistrationTest, RemovingATopicWaitsForItsOwnCycleToDrain)
     }
     gate.notify_all();
 
-    remover.join();
-    EXPECT_TRUE(cycleFinished.load()) << "removeProvider returned while a cycle for that topic was still running";
+    destroyer.join();
+    EXPECT_TRUE(cycleFinished.load()) << "the registration was destroyed while its cycle was still running";
     runner.join();
-
-    script->beforeSearch = nullptr;
 }

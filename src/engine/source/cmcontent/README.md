@@ -2,20 +2,18 @@
 
 ## Overview
 
-`cmcontent` is the engine's half of the shared **content manager**. The library in
-`src/shared_modules/content_manager` owns everything generic about pulling content out of the
-wazuh-indexer — the Point-in-Time, the pagination, consumer readiness, change detection, the token
-rules. This module supplies the three things that are specific to the engine:
+`cmcontent` is what is Engine-specific about downloading content from the wazuh-indexer through the
+shared content manager (`src/shared_modules/content_manager`). The library owns how content is read —
+the Point-in-Time, pagination, consumer readiness, change detection, the token rules. This module
+owns:
 
-1. **Topic configuration** — what each ruleset space and each IOC type looks like as a content topic.
-2. **Sinks** — where the downloaded documents go and who decides they are safe to keep.
-3. **A token store adapter** — how a topic's change-detection token maps onto state `cmsync` and
-   `iocsync` already persist.
+1. **Topic specs** — what each ruleset space and each IOC type looks like as a content topic.
+2. **Sinks** — how the downloaded documents become Engine state, and when they are safe to keep.
+3. **The topic seam** — the interface the sync services drive a topic through, and the retry policy
+   they share.
 
-It exists so that `cmsync` and `iocsync` share one download implementation with the Vulnerability
-Detection module instead of carrying a second one. Before this, the engine had its own PIT handling,
-its own `search_after` loop and its own consumer validation in `wiconnector`; every fix had to be
-made twice, and usually was not.
+When topics run and what their outcome means for the reported status belongs to the sync services,
+[`cmsync`](../cmsync/README.md) and [`iocsync`](../iocsync/README.md).
 
 ## Architecture
 
@@ -23,23 +21,20 @@ made twice, and usually was not.
   ┌─────────┐                 ┌──────────┐
   │ cmsync  │                 │ iocsync  │
   └────┬────┘                 └────┬─────┘
-       │ one ContentRegister per   │ one ContentRegister per
-       │ tracked space             │ tracked IOC type
+       │ one topic per space       │ one topic per IOC type
        ▼                           ▼
   ┌──────────────────────────────────────────┐
   │              cmcontent                    │
-  │                                           │
-  │  registration.hpp   topic names + config  │
-  │  rulesetSink.hpp    namespace + route     │
-  │  iocTypeSink.hpp    staging KVDB + swap   │
-  │  engineTokenStore   hash <-> service state│
+  │  registration     topic names + specs     │
+  │  contentTopic     IContentTopic, retries  │
+  │  rulesetSink      namespace + route       │
+  │  iocTypeSink      staging KVDB + swap     │
+  │  engineTokenStore token over owner state  │
   └──────────────────┬───────────────────────┘
                      │ IContentSink / IContentTokenStore
                      ▼
   ┌──────────────────────────────────────────┐
   │   content_manager (shared .so)            │
-  │   PIT · pagination · consumer gate ·      │
-  │   change detection · token durability     │
   └──────────────────┬───────────────────────┘
                      ▼
               wazuh-indexer
@@ -49,82 +44,96 @@ made twice, and usually was not.
 
 ### `registration.hpp` — what a topic is
 
-`rulesetParameters()` and `iocParameters()` build the JSON a `ContentRegister` is constructed from.
-Both produce `changeDetection: "hash"` topics with no `interval` (the engine drives each cycle from
-its own scheduler, which has CPU priorities and a startup ordering the library cannot reproduce) and
-no `databasePath` (engine state lives in `store::IStore`, and the token travels with it).
+`rulesetSpec()` and `iocSpec()` build the `content_manager::TopicSpec` of a topic. Both use hash
+change detection, no interval (the Engine's scheduler runs each topic) and no `databasePath` (the
+token lives in Engine state, see below).
 
-Topic names are `content.ruleset.<space>` and `content.ioc.<type>` — **one topic per space and per
-type**, because the hash, the promotion and the status are all already per-space and per-type. A
-single multi-stream topic would have to invent a sub-stream concept inside the generic contract for
-the benefit of exactly one consumer.
-
-Two details worth knowing:
+Topic names are `content.ruleset.<space>` and `content.ioc.<type>` — one topic per space and per
+type, because the hash, the promotion and the status are all per space and per type.
 
 - **The ruleset hash probe selects the policies index with a wildcard on `_index`.** Its PIT spans
   every resource alias with wildcard expansion, so `_index` reports the concrete, suffixed backing
   index and an exact match would miss it. No document field can stand in for it: `enabled` is
-  required on decoders and filters as well as on the policy, so filtering on it matches them all.
-  The wildcard (`*policies*`) is the same rule the sink classifies hits by, so the two agree on which
-  document is the policy.
-- **The IOC hash probe accepts two manifest shapes**, the current nested `type_hashes` one and an
-  older flat one. First pointer that resolves wins, so both work without a migration.
+  required on decoders and filters as well as on the policy. The wildcard (`*policies*`) is the
+  rule the sink classifies hits by, so the two agree on which document is the policy.
+- **The `custom` space has no consumer gate.** No CTI consumer writes it, so a CTI re-index of the
+  standard content says nothing about whether its documents are complete.
+- **The IOC hash probe accepts two manifest shapes**, the nested `type_hashes` one and a flat one.
+  The first pointer that resolves wins.
+- The page size is capped at `MAX_PAGE_SIZE` (1000) whatever the configuration asks for.
 
-Sorting is on `_shard_doc` and `_id` only. `_shard_doc` is synthesised by the PIT itself, so it is
-mapped in every index the PIT spans — including the consumer status index — which is why the engine
-needs no `unmapped_type` injection.
+### `contentTopic.hpp` — the seam
+
+**`IContentTopic` + `TopicFactory`.** `ContentRegister` is concrete and talks to an indexer; the
+sync services hold an `IContentTopic` instead, built by a `TopicFactory`, so their orchestration —
+which outcome makes a space FAILED, when a missing database forces a full reload — is unit-tested
+against a scripted topic (`cmcontent::mocks::FakeTopicRegistry`). `defaultTopicFactory(indexer)`
+builds real registrations over the Engine's one indexer connector.
+
+**`runWithRetries`.** Runs a topic and retries `FailedTransport` and `FailedSink` up to
+`RetryPolicy::maxAttempts`, `waitSeconds` apart, stopping early on shutdown. A deferral, a
+configuration failure or a stop returns at once: retrying cannot change it within one run.
+
+### `releasableIndexer.hpp` — the topics' share of the connector
+
+The content topics and the event writer (`wiconnector`) share one `IndexerConnectorAsync`, and a
+topic holds its indexer for its whole life. `ReleasableIndexer` is the indexer the topics get:
+`main.cpp` releases it in the same exit handler that shuts the writer down, so the connector's queue
+and threads stop there rather than when `main` returns. `release()` waits for the requests in flight;
+after it every call fails as an unreachable indexer would.
 
 ### `rulesetSink.hpp` — assemble in memory, swap the route
 
-One sink per space. It buckets each hit by the index it came from, stashes the space hash onto the
-policy document at `/hash`, and on commit calls `importNamespace(softValidation=true)` followed by a
-router hot-swap, then deletes the namespace the route used to serve.
+One `RulesetSpaceSink` per space. It owns the space's deployment — the route `cmsync_<space>` and
+the namespaces `cmsync_<space>_<suffix>` it creates and retires — and the router is the record of
+it: the namespace the route serves is the one in force, and its hash is the topic's token. The sink
+is therefore also the topic's `IContentTokenStore`: `load` reads the served hash, `store` and `clear`
+write nothing (the commit's route swap already recorded it). A route deleted out of band reads back
+as "no token", and the next cycle rebuilds it.
 
-Staging is in memory rather than on disk: a ruleset is small and the promotion is a single import
-plus a route swap, so there is nothing to gain from writing it out first. That is also why every page
-is only `Accepted` — until `commit` runs, none of it exists anywhere a reader could see.
+The sink buckets each hit by the index it came from, stashes the space hash onto the policy
+document, and on commit imports the namespace, points the route at it (creating the route when
+missing) and deletes the namespace the route used to serve. Staging is in memory: a ruleset is
+small and nothing exists anywhere a reader could see until `commit`, so every page is `Accepted`.
 
-Failure modes are distinguished on purpose:
+`collectOrphanNamespaces()` deletes the space's namespaces that no route serves — what a process
+killed between import and route swap leaves behind. Without a readable router it deletes nothing.
 
 | Situation | Result | Why |
 |---|---|---|
-| Remote policy disabled, or has no integrations | teardown + `Skip` | Deploying it would route nothing |
-| Unrecognised `_index`, or a policy with no hash | `Reject` | Silently dropping it would deploy a namespace quietly missing resources |
-| No policy document delivered | `RejectedRetryFull` | Nothing to route: a content problem, so re-fetch from scratch |
-| Import or route swap failed | `RejectedRetrySame` + rollback | A promotion problem, not a content one; the imported namespace is garbage and is removed |
+| No policy document in the indexer | `Skip` | Nothing to deploy, nothing to tear down |
+| Policy without a boolean `enabled` or an `integrations` array | `Abort` | A malformed document must not stop event processing; the deployed ruleset stays |
+| Policy disabled, or with no integrations | teardown + `Skip` | Deploying it would route nothing |
+| Unrecognised `_index`, or a policy with no hash | page `Reject` | Dropping it would deploy a namespace quietly missing resources |
+| No policy document delivered | `RejectedRetryFull` | A content problem: re-fetch from scratch |
+| Import or route swap failed | `RejectedRetrySame` + rollback | A promotion problem; the staging namespace is removed |
 
 ### `iocTypeSink.hpp` — stage on disk, swap the database
 
-One sink per IOC type. It stages into a KVDB named `iocsync_<type>_staging` — fixed per type, so a
-database left behind by a crash is still addressable and is reclaimed by the next session — writes
-each document
-under a lower-cased `document.name` (indicators arrive with whatever casing the feed used; lookups
-have their own), and on commit hot-swaps it onto the live database, creating that database first if
-it does not exist.
+One `IocTypeSink` per IOC type. It stages into a KVDB named `iocsync_<type>_staging`, writes each
+document under its lower-cased `document.name`, and on commit hot-swaps it onto the live database,
+creating that database first if it does not exist.
 
-A staging database has no meaningful intermediate durability — nothing reads it until the swap, and a
-partial one is thrown away rather than resumed — so every page is `Accepted` and never `Durable`.
-Malformed documents are skipped rather than rejected: one bad indicator must not discard a whole
-feed.
+The staging name is fixed per type: two cycles of a type never run at once, and a fixed name is one
+the next session can still find and remove after a crash. Pages are only `Accepted` — a partial
+staging database is thrown away, never resumed. Malformed documents are skipped: one bad indicator
+must not discard a whole feed. A `NoChange` session is skipped; rebuilding a database that went
+missing is `iocsync`'s to ask for, with a forced full reload.
 
-A `NoChange` session is **skipped**, not proceeded with. Rebuilding a physically deleted database is
-the caller's job: `iocsync` notices before the cycle starts and asks for a forced full reload
-instead, because a `NoChange` session carries no documents to swap in.
+### `engineTokenStore.hpp` — a token over its owner's state
 
-### `engineTokenStore.hpp` — a view, not a second writer
+An `IContentTokenStore` over two callbacks, for a token that lives in state its owner already
+persists: `iocsync` keeps each type's hash in `iocsync/status/0` and writes that document once per
+run, so it stays the document's only writer. A clear stores "".
 
-The token each topic needs is exactly the hash the engine already persists: a space's
-`space.hash.sha256` and an IOC type's `last_data_hash`. The store is therefore an adapter over two
-callbacks supplied by the owning service, not a second writer into `store::IStore` — `CMSync` and
-`IocSync` each hold their state in memory, mutate it under their own mutex and dump the whole
-document in one write, and a second writer would race that over an array it does not own.
+## The DSO boundary
 
-For `cmsync` the loader goes further and reads the hash **from the router**: the router knows what is
-actually deployed, so a route deleted out of band reads back as "no token" and the next cycle
-rebuilds it. Storing is then a no-op — the hot-swap already did it.
-
-The existing `cmsync/status/0` and `iocsync/status/0` documents keep their shape and field names, so
-there is no state migration and a downgrade reads them back.
+`content_manager` is a shared library built outside the Engine tree, and `wazuh-engine` links
+libstdc++ statically while the library links it dynamically, so nothing may be thrown across the
+boundary: the whole `IContentSink` / `IContentTokenStore` surface and `ContentRegister::runOnce` are
+`noexcept` and report failure by value, and every sink and token-store method here catches
+everything. `content_manager` is a `PUBLIC` dependency of this target because its public headers
+name the library's types.
 
 ## Directory Structure
 
@@ -133,87 +142,46 @@ cmcontent/
 ├── CMakeLists.txt
 ├── README.md
 ├── include/cmcontent/
-│   ├── registration.hpp        # Topic names and per-topic configuration
-│   ├── rulesetSink.hpp         # IContentSink for one ruleset space
-│   ├── iocTypeSink.hpp         # IContentSink for one IOC type
-│   └── engineTokenStore.hpp    # IContentTokenStore over the services' own state
-├── src/
-│   ├── registration.cpp
-│   ├── rulesetSink.cpp
-│   ├── iocTypeSink.cpp
-│   └── engineTokenStore.cpp
-└── test/src/unit/
-    ├── registration_test.cpp
-    ├── rulesetSink_test.cpp
-    ├── iocTypeSink_test.cpp
-    └── engineTokenStore_test.cpp
+│   ├── registration.hpp        # Topic names and specs
+│   ├── contentTopic.hpp        # IContentTopic, TopicFactory, runWithRetries
+│   ├── releasableIndexer.hpp   # The topics' indexer, released at shutdown
+│   ├── rulesetSink.hpp         # Sink and token store for one ruleset space
+│   ├── iocTypeSink.hpp         # Sink for one IOC type
+│   └── engineTokenStore.hpp    # Token store over the owner's state
+├── src/                        # One .cpp per header
+└── test/
+    ├── mocks/cmcontent/fakeContentTopic.hpp   # FakeTopicRegistry
+    └── src/unit/                              # One test per component
 ```
-
-## The DSO boundary
-
-`content_manager` is a **shared** library built outside the engine tree, and `wazuh-engine` links
-libstdc++ statically while `content_manager.so` links it dynamically. Two copies of libstdc++ in one
-process make throwing across the boundary undefined, so the contract is designed around it:
-
-- the whole `IContentSink` / `IContentTokenStore` surface and `ContentRegister::runOnce` are
-  `noexcept`, and report failure by value;
-- everything this module's sinks do is wrapped so nothing escapes — including the token-store
-  callbacks, which reach back into engine code;
-- only layout-stable types cross, pinned by `static_assert`s and a `CONTRACT_ABI_VERSION` checked at
-  registration.
-
-`content_manager` is a `PUBLIC` dependency of this target because this module's own public headers
-name its types.
-
-## `contentTopic.hpp` — the seam, and where the token lives
-
-Two small pieces that exist because of *how* the sync services are driven, not what they download.
-
-**`IContentTopic` + `TopicFactory`.** `ContentRegister` is concrete: constructing one registers with
-a process-wide facade and opens real connections to the indexer. A sync service holding one
-therefore could not be unit-tested at all, which is why the orchestration in `CMSync` and `IocSync`
-— which outcome makes a space FAILED, when a missing database forces a full reload, what an
-already-running cycle does to the persisted state — had no coverage. The factory defaults to the
-real thing and is substituted in tests.
-
-**`TokenCell`.** A cycle's token is read and written on whichever thread drove the cycle: the sync
-service's scheduler task for a scheduled run, a content-manager lane worker for one triggered
-through the on-demand API. Those are different threads, and nothing the sync service holds
-serialises the second against the first. Routing the token through a cell keeps the service's own
-state vector single-threaded — it is reconciled from the cells at cycle boundaries, where the owning
-thread already holds its mutex. `cellTokenStore` wraps one for `iocsync`; `derivedTokenStore` covers
-`cmsync`, whose token is not stored but *derived* from the hash the router is actually serving, so
-there is nothing separate to keep in step.
 
 ## CMake Targets
 
 | Target | Type | Alias | Links |
 |---|---|---|---|
-| `cmcontent_cmcontent` | STATIC | `cmcontent::cmcontent` | `base`, `store::istore`, `cmcrud::icmcrud`, `router::irouter`, `iockvdb::ikvdb`, `content_manager` |
+| `cmcontent_cmcontent` | STATIC | `cmcontent::cmcontent` | `base`, `cmcrud::icmcrud`, `router::irouter`, `iockvdb::ikvdb`, `content_manager` |
 | `cmcontent_mocks` | INTERFACE | `cmcontent::mocks` | `GTest::gmock`, `cmcontent::cmcontent` |
 | `cmcontent_utest` | Executable | — | `cmcontent::cmcontent`, `iockvdb::mocks`, `cmcrud::mocks`, `router::mocks`, GTest |
 
-`cmcontent::mocks` carries `FakeTopicRegistry`, the scripted `IContentTopic` that `cmsync_utest` and
-`iocsync_utest` drive their orchestration through.
-
 ## Testing
 
-`cmcontent_utest` covers the parts that used to be untestable without a live cluster:
+`cmcontent_utest`:
 
-- **registration** — no `interval`, no `databasePath`, connection settings forwarded verbatim, the
-  ruleset probe's discriminator, both IOC manifest shapes, the 12-field IOC projection, page-size
-  clamping, and metafield-only sorting.
-- **rulesetSink** — disabled-policy teardown, integration-less policy treated as disabled, `NoChange`
-  skip, resource bucketing across all five index kinds, route creation vs. hot-swap, old-namespace
-  deletion, and every reject/rollback path.
-- **iocTypeSink** — staging database naming, lower-cased keys, malformed documents skipped, target
-  creation on first sync, hot-swap, rollback on failed swap, abort, and abandoned-staging cleanup.
-- **engineTokenStore** — delegation, clear-as-empty-hash, failed writes reported by value, and
-  callback exceptions swallowed rather than crossing the DSO boundary.
+- **registration** — topic names, no interval and no state path, the ruleset probe, the ungated
+  `custom` space, both IOC manifest shapes, the IOC projection, page-size capping.
+- **contentTopic** — which statuses are retried, the attempt budget, stopping early.
+- **releasableIndexer** — forwarding, dropping its share on release, failing after it, waiting for
+  a request in flight.
+- **rulesetSink** — the token read from the router, orphan collection, malformed metadata, teardown,
+  resource bucketing, route creation and hot-swap, old-namespace deletion, every reject and rollback.
+- **iocTypeSink** — staging naming, lower-cased keys, malformed documents skipped, target creation,
+  hot-swap, rollback, abort, leftover staging cleanup, an unregistered staging handle.
+- **engineTokenStore** — delegation, clear as an empty token, failures reported by value, callback
+  exceptions contained.
 
 ## Consumers
 
 | Module | Role |
 |---|---|
-| `cmsync` | One registration per tracked ruleset space |
-| `iocsync` | One registration per tracked IOC type |
+| `cmsync` | One topic per tracked ruleset space |
+| `iocsync` | One topic per IOC type |
+| `main.cpp` | Builds the `defaultTopicFactory` over a `ReleasableIndexer` of the Engine's connector |

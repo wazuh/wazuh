@@ -61,7 +61,7 @@ TEST(PitSessionTest, OmitsTheConsumerIndexWhenValidationIsDisabled)
     EXPECT_FALSE(session.validationEnabled());
     EXPECT_EQ(port.state()->openedIndices.front(), (std::vector<std::string> {"a", "b"}));
     // With no consumer to validate, readiness is not something this session can be wrong about.
-    EXPECT_EQ(session.validateConsumerReady(), PitSession::Readiness::Ready);
+    EXPECT_EQ(session.validateConsumerReady().status, ConsumerGate::Status::Ready);
 }
 
 TEST(PitSessionTest, ReadinessTaxonomy)
@@ -69,19 +69,19 @@ TEST(PitSessionTest, ReadinessTaxonomy)
     struct Case
     {
         nlohmann::json response;
-        PitSession::Readiness expected;
+        ConsumerGate::Status expected;
         const char* what;
     };
 
     const std::vector<Case> cases {
-        {consumerHit("ready"), PitSession::Readiness::Ready, "ready"},
-        {consumerHit("running"), PitSession::Readiness::NotReady, "running"},
-        {consumerHit("failed"), PitSession::Readiness::NotReady, "failed"},
-        {consumerHit("something-new"), PitSession::Readiness::NotReady, "unrecognised status"},
-        {consumerHit(""), PitSession::Readiness::Unusable, "empty status"},
-        {nlohmann::json {{"hits", nlohmann::json::array()}}, PitSession::Readiness::Missing, "no document"},
+        {consumerHit("ready"), ConsumerGate::Status::Ready, "ready"},
+        {consumerHit("running"), ConsumerGate::Status::Running, "running"},
+        {consumerHit("failed"), ConsumerGate::Status::Failed, "failed"},
+        {consumerHit("something-new"), ConsumerGate::Status::Unknown, "unrecognised status"},
+        {consumerHit(""), ConsumerGate::Status::Empty, "empty status"},
+        {nlohmann::json {{"hits", nlohmann::json::array()}}, ConsumerGate::Status::Missing, "no document"},
         {nlohmann::json {{"hits", nlohmann::json::array({nlohmann::json {{"_id", "consumer:1"}}})}},
-         PitSession::Readiness::Unusable,
+         ConsumerGate::Status::Empty,
          "hit without _source"}};
 
     for (const auto& testCase : cases)
@@ -93,7 +93,8 @@ TEST(PitSessionTest, ReadinessTaxonomy)
         };
 
         PitSession session {port, validatingConfig()};
-        EXPECT_EQ(session.validateConsumerReady(), testCase.expected) << testCase.what;
+        // The same parser as the pre-flight gate, so the two can never disagree on a document.
+        EXPECT_EQ(session.validateConsumerReady().status, testCase.expected) << testCase.what;
     }
 }
 
@@ -162,6 +163,6 @@ TEST(PitSessionTest, CountDocumentsReportsHowManyRequiredIdsArePresent)
     };
 
     PitSession session {port, validatingConfig()};
-    const auto ids = nlohmann::json::array({"FEED-GLOBAL", "OSCPE-GLOBAL", "CNA-MAPPING-GLOBAL"});
+    const std::vector<std::string> ids {"FEED-GLOBAL", "OSCPE-GLOBAL", "CNA-MAPPING-GLOBAL"};
     EXPECT_EQ(session.countDocuments(ids), 2U);
 }

@@ -1,5 +1,5 @@
 /*
- * Wazuh content manager - Unit Tests
+ * Wazuh content manager
  * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -10,19 +10,13 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-#ifndef _CONDITION_SYNC_TEST_HPP
-#define _CONDITION_SYNC_TEST_HPP
+#ifndef _CONTENT_EXPORT_HPP
+#define _CONTENT_EXPORT_HPP
 
-#include "gtest/gtest.h"
+#if __GNUC__ >= 4
+#define EXPORTED __attribute__((visibility("default")))
+#else
+#define EXPORTED
+#endif
 
-/**
- * @brief Runs unit tests for ConditionSync
- */
-class ConditionSyncTest : public ::testing::Test
-{
-protected:
-    ConditionSyncTest() = default;
-    ~ConditionSyncTest() override = default;
-};
-
-#endif //_CONDITION_SYNC_TEST_HPP
+#endif // _CONTENT_EXPORT_HPP

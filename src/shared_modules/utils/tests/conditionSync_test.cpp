@@ -1,5 +1,5 @@
 /*
- * Wazuh content manager - Unit Tests
+ * Wazuh shared modules utils - Unit Tests
  * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it and/or modify it

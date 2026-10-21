@@ -12,18 +12,11 @@ namespace cmcontent
 {
 
 /**
- * @brief The Engine's change-detection token store, backed by the sync services' own state.
+ * @brief A change-detection token store over its owner's state, through two callbacks.
  *
- * The token this library needs per topic is exactly the hash the Engine already persists: a
- * space's `space.hash.sha256` in `cmsync/status/0`, an IOC type's `last_data_hash` in
- * `iocsync/status/0`. Those documents keep their existing shape and field names, so there is no
- * state migration and a downgrade reads them back unchanged.
- *
- * It is deliberately an adapter over two callbacks rather than a second writer into
- * `store::IStore`. `CMSync` and `IocSync` each hold their state in memory, mutate it under their
- * own mutex and dump the whole document in one write; a token store that also wrote that document
- * would be a second writer racing the first, and would have to re-read and merge an array it does
- * not own. Delegating keeps a single writer and one flush per cycle.
+ * For a token that lives in state the owner already persists — an IOC type's `last_data_hash` in
+ * `iocsync/status/0` — so the owner stays its single writer and flushes it once per cycle.
+ * A clear is a store of "": an empty hash is what "nothing committed" looks like there.
  */
 class EngineTokenStore final : public content_manager::IContentTokenStore
 {

@@ -25,7 +25,6 @@ target_link_libraries(cmsync_cmsync
     cmcrud::icmcrud
     store::istore
     router::irouter
-    wIndexerConnector::iwIndexerConnector
     cmcontent::cmcontent
 )
 add_library(cmsync::cmsync ALIAS cmsync_cmsync)
@@ -46,7 +45,6 @@ add_library(cmsync::mocks ALIAS cmsync_mocks)
 
 add_executable(cmsync_utest
     ${UNIT_SRC_DIR}/cmsync_test.cpp
-    ${UNIT_SRC_DIR}/cmsync_sync_test.cpp
 )
 target_link_libraries(cmsync_utest
     PRIVATE
@@ -55,16 +53,12 @@ target_link_libraries(cmsync_utest
     cmsync::cmsync
     router::mocks
     store::mocks
-    wIndexerConnector::mocks
     cmcrud::mocks
     cmcontent::mocks
 )
 target_include_directories(cmsync_utest PRIVATE ${SRC_DIR})
 gtest_discover_tests(cmsync_utest)
 
-# Re-enabled: it had been commented out because it referenced a storecti_test.cpp and a
-# ctistore::mocks target that no longer exist. Neither is needed now -- the download this suite
-# would have had to fake is no longer part of cmsync.
 add_executable(cmsync_ctest
     ${COMPONENT_SRC_DIR}/cmsync_test.cpp
 )
@@ -76,7 +70,6 @@ target_link_libraries(cmsync_ctest
     GTest::gmock
     router::mocks
     store::mocks
-    wIndexerConnector::mocks
     cmcrud::mocks
 )
 target_include_directories(cmsync_ctest PRIVATE ${SRC_DIR})

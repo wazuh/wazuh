@@ -18,7 +18,6 @@
 #include <map>
 #include <optional>
 #include <string>
-#include <type_traits>
 #include <variant>
 #include <vector>
 
@@ -26,18 +25,16 @@
  * @file contentTopicSpec.hpp
  * @brief A registration, described by concern (D2).
  *
- * Hosts fill a @ref content_manager::TopicSpec and hand @ref content_manager::toParameters's JSON to
- * `ContentRegister`. Everything here is header-only and runs in the host: only that JSON crosses
- * the library boundary, so none of these structs is part of the binary contract. Defaults are the
- * library's; a host sets only what differs.
+ * Defaults are the library's; a host sets only what differs. `ContentRegister` validates the whole
+ * spec at construction and names the field at fault.
  */
 namespace content_manager
 {
     /// When the topic runs. With no interval the host drives `runOnce` itself.
     struct Schedule
     {
-        std::optional<std::size_t> intervalSeconds; ///< Library-driven period; empty = host-driven.
-        bool onDemand {false};                      ///< Publish the topic on the on-demand lane.
+        /// Library-driven period. Empty = host-driven: no driver thread, and `requestRun` is refused.
+        std::optional<std::size_t> intervalSeconds;
     };
 
     /// What a cycle reads.
@@ -111,95 +108,6 @@ namespace content_manager
         FullLoad fullLoad;
         State state;
     };
-
-    /**
-     * @brief The registration parameters for @p spec, in the shape `ContentRegister` parses.
-     *
-     * @param spec The registration.
-     * @return The parameters.
-     */
-    inline nlohmann::json toParameters(const TopicSpec& spec)
-    {
-        nlohmann::json parameters = nlohmann::json::object();
-
-        auto& schedule = parameters["schedule"];
-        schedule = nlohmann::json {{"onDemand", spec.schedule.onDemand}};
-        if (spec.schedule.intervalSeconds.has_value())
-        {
-            schedule["intervalSeconds"] = *spec.schedule.intervalSeconds;
-        }
-
-        auto& source = parameters["source"];
-        source = nlohmann::json {{"indices", spec.source.indices},
-                                 {"expandWildcards", spec.source.expandWildcards},
-                                 {"pageSize", spec.source.pageSize},
-                                 {"slices", spec.source.slices},
-                                 {"pitKeepAlive", spec.source.pitKeepAlive}};
-        if (spec.source.query.has_value())
-        {
-            source["query"] = *spec.source.query;
-        }
-        if (spec.source.sourceFilter.has_value())
-        {
-            source["sourceFilter"] = *spec.source.sourceFilter;
-        }
-
-        if (spec.readiness.has_value())
-        {
-            parameters["readiness"] = nlohmann::json {{"consumerIndex", spec.readiness->consumerIndex},
-                                                      {"consumerId", spec.readiness->consumerId},
-                                                      {"retrySeconds", spec.readiness->retrySeconds},
-                                                      {"cacheSeconds", spec.readiness->cacheSeconds}};
-        }
-
-        parameters["detection"] = std::visit(
-            [](const auto& detection) -> nlohmann::json
-            {
-                using T = std::decay_t<decltype(detection)>;
-                if constexpr (std::is_same_v<T, CursorDetection>)
-                {
-                    return nlohmann::json {
-                        {"type", "cursor"}, {"field", detection.field}, {"unmappedType", detection.unmappedType}};
-                }
-                else
-                {
-                    nlohmann::json hash {{"type", "hash"}, {"tokenPointers", detection.tokenPointers}};
-                    hash["probe"] = std::visit(
-                        [](const auto& probe) -> nlohmann::json
-                        {
-                            using P = std::decay_t<decltype(probe)>;
-                            if constexpr (std::is_same_v<P, DocumentProbe>)
-                            {
-                                return nlohmann::json {{"type", "document"}, {"id", probe.id}};
-                            }
-                            else
-                            {
-                                return nlohmann::json {{"type", "query"}, {"query", probe.query}};
-                            }
-                        },
-                        detection.probe);
-                    if (!detection.metadata.empty())
-                    {
-                        hash["metadata"] = detection.metadata;
-                    }
-                    return hash;
-                }
-            },
-            spec.detection);
-
-        if (!spec.fullLoad.requiredDocumentIds.empty())
-        {
-            parameters["fullLoad"] = nlohmann::json {{"requiredDocumentIds", spec.fullLoad.requiredDocumentIds}};
-        }
-
-        parameters["state"] = nlohmann::json {{"resetOnRegister", spec.state.resetOnRegister}};
-        if (!spec.state.databasePath.empty())
-        {
-            parameters["state"]["databasePath"] = spec.state.databasePath;
-        }
-
-        return parameters;
-    }
 } // namespace content_manager
 
 #endif // _CONTENT_TOPIC_SPEC_HPP

@@ -38,9 +38,9 @@ Each update:
      **incremental update** of only the documents whose `offset` is greater than the cursor.
    - **Engine ruleset and IoCs** — the indexer publishes a content hash; when it differs from the
      deployed one the content is reloaded in full, and when it matches nothing is downloaded.
-4. **Downloads the snapshot**, `pageSize` documents per request. An initial load of the vulnerability
-   feed is split into `numSlices` parallel slices when `numSlices` is greater than 1; incremental
-   updates are always sequential.
+4. **Downloads the snapshot**, `pageSize` documents per request. A full load of the vulnerability
+   feed (the initial load, or one forced on demand) is split into `numSlices` parallel slices when
+   `numSlices` is greater than 1; incremental updates are always sequential.
 5. **Lets the host accept the result.** The host promotes the content only once it has all of it. If
    it rejects it — for example, the Vulnerability Scanner finds the local feed not usable — the
    stored position is cleared and the next run, about 30 seconds later, is a full reload.
@@ -86,8 +86,10 @@ the next update is an initial load.
 
 The vulnerability feed can be updated on request through the `POST /ondemand` route of the
 Vulnerability Scanner's local socket, `/var/wazuh-manager/queue/sockets/vd-http.sock`, with
-`{"topic": "vulnerability_feed_manager"}`. An `offset` of `0` in the body discards the stored cursor
-and forces an initial load; `-1` (the default) keeps it. The route, its status codes and its limits
+`{"topic": "vulnerability_feed_manager"}`. An `offset` of `0` in the body forces a full load; `-1` (the default)
+continues from the stored cursor. The stored cursor is replaced only once the full load is accepted:
+a forced update that cannot run yet (consumer busy, global maps missing, indexer unreachable) leaves
+it, and the feed in force, untouched, and the route answers that the update was deferred. The route, its status codes and its limits
 are documented in the [Vulnerability Scanner API reference](../vulnerability-scanner/api-reference.md#post-ondemand).
 
 The Engine's topics are triggered through its API socket with `POST /content/ruleset/update` and
@@ -105,10 +107,9 @@ look for:
 
 | Message | Meaning |
 |---|---|
-| `Content cycle for '<topic>' created (changeDetection=<mode>, indices=<n>, slices=<n>, pageSize=<n>)` | The topic was registered |
+| `Content cycle for '<topic>' created (detection=<mode>, indices=<n>, slices=<n>, pageSize=<n>)` | The topic was registered |
 | `Consumer '<id>' in '<index>' is still not ready (<status>); content download is deferred.` | The CTI consumer is still indexing the content |
 | `Consumer '<id>' is not present in '<index>' yet; content cannot be downloaded until the indexer publishes it.` | The consumer document is missing — the normal state of a fresh install |
-| `Starting sliced fetch for '<topic>' with <n> slices, pageSize=<n>` | A parallel initial load started |
 | `Content update for '<topic>' completed: <n> document(s), token '<token>'.` | An update finished and its new position was stored |
 | `Content update for '<topic>' deferred: <reason>. Retrying in <n>s.` | The update could not start yet and will be retried |
 | `Content update for '<topic>' failed: <error>. Retrying in <n>s.` | The update failed and will be retried |

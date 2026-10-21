@@ -17,7 +17,7 @@ namespace wiconnector
  *        an IndexerConnectorAsync instance.
  *
  * Holds it shared: the Engine runs one connector, which the content registrations use too (D1 of the
- * content manager), so this adapter is one of its owners rather than the only one.
+ * content manager).
  */
 class IndexerConnectorAsyncAdapter final : public IIndexerConnectorAsync
 {
@@ -37,25 +37,6 @@ public:
 
     uint64_t getQueueSize() const override { return m_inner->getQueueSize(); }
     uint64_t getDroppedEvents() const override { return m_inner->getDroppedEvents(); }
-
-    PointInTime createPointInTime(const std::vector<std::string>& indices,
-                                  std::string_view keepAlive,
-                                  bool expandWildcards) override
-    {
-        return m_inner->createPointInTime(indices, keepAlive, expandWildcards);
-    }
-
-    void deletePointInTime(const PointInTime& pit) override { m_inner->deletePointInTime(pit); }
-
-    nlohmann::json search(const PointInTime& pit,
-                          std::size_t size,
-                          const nlohmann::json& query,
-                          const nlohmann::json& sort,
-                          const std::optional<nlohmann::json>& searchAfter = std::nullopt,
-                          const std::optional<nlohmann::json>& source = std::nullopt) override
-    {
-        return m_inner->search(pit, size, query, sort, searchAfter, source);
-    }
 
     nlohmann::json search(std::string_view index,
                           std::size_t size,

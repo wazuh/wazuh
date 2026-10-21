@@ -1,5 +1,5 @@
 /*
- * Wazuh content manager
+ * Wazuh shared modules utils - Unit Tests
  * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -10,10 +10,19 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-#ifndef _SHARED_DEFS_H
-#define _SHARED_DEFS_H
+#ifndef _CONDITION_SYNC_TEST_HPP
+#define _CONDITION_SYNC_TEST_HPP
 
-/// Log tag used by every component of the content updater.
-#define WM_CONTENTUPDATER "wazuh-manager-modulesd:content-updater"
+#include "gtest/gtest.h"
 
-#endif // _SHARED_DEFS_H
+/**
+ * @brief Runs unit tests for ConditionSync
+ */
+class ConditionSyncTest : public ::testing::Test
+{
+protected:
+    ConditionSyncTest() = default;
+    ~ConditionSyncTest() override = default;
+};
+
+#endif //_CONDITION_SYNC_TEST_HPP

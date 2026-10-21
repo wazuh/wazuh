@@ -3,43 +3,48 @@
 #define CMCONTENT_RULESET_SINK_HPP
 
 #include <memory>
-#include <mutex>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/json.hpp>
 #include <cmcrud/icmcrudservice.hpp>
 #include <cmstore/types.hpp>
 #include <contentSink.hpp>
+#include <contentTokenStore.hpp>
 #include <router/iapi.hpp>
 
 namespace cmcontent
 {
 
 /**
- * @brief What one ruleset cycle did, for the sync service to fold into its persisted state.
+ * @brief What is deployed for one space, read from the router.
  */
-struct RulesetOutcome
+struct RulesetDeployment
 {
-    bool applied {false};                                 ///< A new namespace was imported and routed.
-    bool disabled {false};                                ///< The remote policy is disabled; the route was removed.
-    std::optional<cm::store::NamespaceId> newNamespaceId; ///< The namespace now serving the route.
-    std::string hash;                                     ///< Hash of the content now deployed.
-    bool routeAvailable {false};                          ///< Whether a route exists for this space after the cycle.
+    bool available {false};      ///< A route serves the space.
+    std::string hash;            ///< Hash of the deployed ruleset; "" when no route serves it.
+    std::optional<bool> enabled; ///< Whether the remote policy is enabled, as last probed; empty before.
 };
 
 /**
- * @brief Assembles one space's ruleset in memory and swaps it into the router atomically.
+ * @brief One space's ruleset deployment: assembles it in memory and swaps it into the router.
  *
- * Unlike the IOC sink, this one stages in memory rather than on disk: a ruleset is small and the
- * promotion is `importNamespace` followed by a router hot-swap, so there is nothing to gain from
- * writing it out first. That is also why every page is merely `Accepted` — until `commit` runs,
- * none of it exists anywhere a reader could see.
+ * The sink owns everything about the space's deployment — the route `cmsync_<space>`, the namespaces
+ * `cmsync_<space>_<suffix>` it creates and retires — and the router is the record of it: the
+ * namespace a route serves is the one in force, and its hash is the topic's change-detection token
+ * (the sink is also the topic's token store). Nothing else keeps a copy that could disagree.
  *
- * One sink per space, matching one topic per space.
+ * Staging is in memory: a ruleset is small and the promotion is `importNamespace` followed by a
+ * router hot-swap, so every page is merely `Accepted` until `commit` runs.
+ *
+ * Called by one thread at a time: the cycles of its topic, which never overlap, and the sync
+ * service that runs them.
  */
-class RulesetSpaceSink final : public content_manager::IContentSink
+class RulesetSpaceSink final
+    : public content_manager::IContentSink
+    , public content_manager::IContentTokenStore
 {
 public:
     /**
@@ -48,40 +53,32 @@ public:
      * @param crud Namespace store.
      * @param router Router the space's route lives in.
      * @param space Origin space in the indexer.
-     * @param routeName Route name for this space.
      */
     RulesetSpaceSink(std::weak_ptr<cm::crud::ICrudService> crud,
                      std::weak_ptr<router::IRouterAPI> router,
-                     std::string space,
-                     std::string routeName);
+                     std::string space);
 
     ~RulesetSpaceSink() override;
 
     /**
-     * @brief Seed the sink with the persisted namespace, and report the one actually in force.
+     * @brief The route name of a space.
      *
-     * Called before every scheduled cycle. The first call seeds the sink with the namespace the
-     * sync service persisted; from then on the sink is the authority, because every swap and
-     * teardown goes through it — including those of on-demand cycles, which run on a lane worker
-     * the sync service never observes. Later calls therefore ignore the argument and return the
-     * sink's own view, so the caller can adopt a change it did not drive instead of overwriting it
-     * with a namespace that has already been deleted.
-     *
-     * @param persistedNamespaceId The persisted namespace, or nullopt when the space has never synced.
-     * @return The namespace the sink considers in force, or nullopt when none is.
+     * @param space Origin space.
+     * @return `cmsync_<space>`.
      */
-    std::optional<cm::store::NamespaceId> prepare(const std::optional<cm::store::NamespaceId>& persistedNamespaceId);
+    static std::string routeName(std::string_view space);
+
+    /// @return What is deployed for this space now.
+    RulesetDeployment deployment() const noexcept;
 
     /**
-     * @brief What the last cycle did, taken out of the sink.
+     * @brief Delete this space's namespaces that no route serves.
      *
-     * Returns by value and resets, so a caller cannot read a stale outcome from a cycle it did not
-     * itself drive — an on-demand cycle running between a scheduled `runOnce` and this call would
-     * otherwise leave its own result here to be mistaken for the caller's.
-     *
-     * @return The outcome of the last completed cycle.
+     * A process killed between `importNamespace` and the route swap leaves a namespace nothing
+     * points at. Without a readable router nothing is deleted: a dead namespace cannot then be told
+     * from a deployed one.
      */
-    RulesetOutcome takeOutcome();
+    void collectOrphanNamespaces() noexcept;
 
     /**
      * @copydoc content_manager::IContentSink::beginSession
@@ -103,6 +100,15 @@ public:
      */
     void abort(content_manager::AbortReason reason, const std::string& detail) noexcept override;
 
+    /// The hash of the ruleset the route serves, when the route is enabled.
+    std::string load(std::string_view topic) noexcept override;
+
+    /// Nothing to write: the commit's route swap already recorded the hash.
+    bool store(std::string_view topic, std::string_view token) noexcept override;
+
+    /// Nothing to clear: a forced reload replaces the deployment when it commits.
+    bool clear(std::string_view topic) noexcept override;
+
 private:
     /// Everything a policy is made of, accumulated across the cycle's pages.
     struct Accumulator
@@ -115,16 +121,16 @@ private:
         bool policySeen {false};
     };
 
-    /// Remove the route and the namespace of a space whose remote policy is disabled.
-    /// @pre m_mutex is held.
+    /// @return The namespace the route serves, or nullopt when there is no readable route.
+    std::optional<cm::store::NamespaceId> servedNamespace() const noexcept;
+
+    /// Remove the route and the namespace it serves.
     void teardown() noexcept;
 
     /// Point the route at @p namespaceId, creating it when it does not exist yet.
-    /// @pre m_mutex is held.
     void routeTo(const cm::store::NamespaceId& namespaceId);
 
     /// Drop the staging namespace, if one was allocated. Never throws.
-    /// @pre m_mutex is held.
     void discardStaging() noexcept;
 
     std::weak_ptr<cm::crud::ICrudService> m_crud;
@@ -132,23 +138,9 @@ private:
     std::string m_space;
     std::string m_routeName;
 
-    /**
-     * @brief Guards every mutable member below.
-     *
-     * The library serialises the sink's own callbacks, so they never race each other — but
-     * @ref prepare and @ref takeOutcome are called by the sync service, on its thread, and a cycle
-     * triggered through the on-demand API runs on a lane worker. Those two are not serialised
-     * against each other by anything, and `m_currentNamespaceId` is a `std::optional<NamespaceId>`
-     * holding a `std::string`: concurrent access is a data race, not merely a stale read.
-     */
-    mutable std::mutex m_mutex;
-
-    std::optional<cm::store::NamespaceId> m_currentNamespaceId;
-    bool m_seeded {false}; ///< Whether prepare() has seeded m_currentNamespaceId yet.
+    std::optional<bool> m_policyEnabled;
     std::optional<cm::store::NamespaceId> m_stagingNamespaceId;
     Accumulator m_accumulator;
-    std::string m_remoteHash;
-    RulesetOutcome m_outcome;
 };
 
 } // namespace cmcontent

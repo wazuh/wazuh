@@ -87,7 +87,7 @@ The diagram shows the engine boundary and its relationships with the outside wor
 | KVDB | Per-space key-value lookups used by decoders and filters | [Key Value Databases (KVDBs)](./README.md#key-value-databases-kvdbs) |
 | IOC | Global Indicator-of-Compromise databases consumed by enrichment | [IOC enrichment](./README.md#ioc-enrichment) |
 | Geo | GeoIP/ASN enrichment using MaxMind databases | [Geo enrichment](./README.md#geo-enrichment) |
-| Indexer Connector | Engine's own `wazuh-indexer` channel: outbound events, inbound configuration, readiness probes | [Output process](./README.md#output-process) |
+| Indexer Connector | Engine's own `wazuh-indexer` channel: outbound events, inbound configuration | [Output process](./README.md#output-process) |
 | Content Manager (shared library) | Downloads ruleset and IoC content from `wazuh-indexer`; linked in-process, shared with Vulnerability Detection | `src/engine/source/cmcontent/README.md` |
 | Stream Log | Async rotating log channels backing file outputs and the event dumper | [Output directory structure](./README.md#output-directory-structure) |
 | Configuration | Local settings (`analysisd.*` internal options, `WAZUH_*` environment variables, the `<indexer>` section of `wazuh-manager.conf`) plus runtime settings pulled from `wazuh-indexer` | [Engine configuration](./configuration.md) |
@@ -134,13 +134,13 @@ The Geo module performs GeoIP and ASN lookups using MaxMind MMDB databases. Like
 
 ### Indexer Connector
 
-The Indexer Connector carries the engine's own `wazuh-indexer` traffic: **outbound** processed events (driven by policy outputs), **inbound** runtime configuration (consumed by the Configuration module), and the cheap existence and consumer-readiness probes the synchronizers make before starting a cycle.
+The Indexer Connector carries the engine's own `wazuh-indexer` traffic: **outbound** processed events (driven by policy outputs) and **inbound** runtime configuration (consumed by the Configuration module).
 
-**Content downloads do not go through it.** Ruleset and IoC content is pulled by the shared **Content Manager** library (`shared_modules/content_manager`), which the engine links in-process and which opens its own read-only connectors — the same library and the same implementation the Vulnerability Detection module uses. Keeping them separate is deliberate: that library is a distinct shared object, and reaching across the boundary for the Indexer Connector's own connector would reintroduce exactly the duplication the shared library removes. The cost is bounded, because every connector it builds comes from one session per distinct indexer configuration.
+**Content downloads do not go through it.** Ruleset and IoC content is pulled by the shared **Content Manager** library (`shared_modules/content_manager`), the same library the Vulnerability Detection module uses. It opens no connection of its own: the engine builds one indexer connector and hands it to both, so there is one health monitor and one place to configure the indexer. Downloads use only the connector's synchronous read calls, never its indexing queue, so they do not delay events.
 
 ### Content Manager (shared library)
 
-See `src/engine/source/cmcontent/README.md` for the engine's half of it: the per-space and per-type topic configuration, the sinks that receive downloaded documents, and the token-store adapter.
+See `src/engine/source/cmcontent/README.md` for the engine's half of it: the per-space and per-type topic specs and the sinks that turn downloaded documents into routes and IoC databases.
 
 ### Stream Log
 

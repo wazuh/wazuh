@@ -49,7 +49,7 @@ namespace
         std::shared_ptr<FakeIndexerQueryPort> port {std::make_shared<FakeIndexerQueryPort>()};
         std::shared_ptr<RecordingSink> sink {std::make_shared<RecordingSink>()};
         std::shared_ptr<MemoryTokenStore> tokens {std::make_shared<MemoryTokenStore>()};
-        std::shared_ptr<ConditionSync> stop {std::make_shared<ConditionSync>(false)};
+        std::atomic<bool> stop {false};
         ContentCycle::Config config;
 
         Harness()
@@ -113,7 +113,7 @@ TEST(ContentCycleTest, FullLoadCommitsAndPersistsTheToken)
     EXPECT_EQ(harness.sink->sessions.front().kind, content_manager::SessionKind::FullReload);
     ASSERT_EQ(harness.sink->commits.size(), 1U);
     EXPECT_EQ(harness.sink->commits.front().finalToken, "5");
-    EXPECT_TRUE(harness.sink->commits.front().changed);
+    EXPECT_EQ(harness.sink->commits.front().documentsDelivered, 2U);
 
     // Exactly one write, at commit: nothing was acked Durable in this cycle.
     EXPECT_EQ(harness.tokens->writes, (std::vector<std::string> {"5"}));
@@ -130,29 +130,54 @@ TEST(ContentCycleTest, StoredCursorProducesAnIncrementalSession)
 
     ASSERT_EQ(harness.sink->sessions.size(), 1U);
     EXPECT_EQ(harness.sink->sessions.front().kind, content_manager::SessionKind::Incremental);
-    EXPECT_EQ(harness.sink->sessions.front().localToken, "100");
     // Nothing new to fetch, but the sink still gets its commit so it can act on every cycle.
     EXPECT_EQ(outcome.status, CycleStatus::Unchanged);
 }
 
-TEST(ContentCycleTest, ForceFullReloadClearsTheTokenBeforeProbing)
+TEST(ContentCycleTest, ForceFullReloadClearsTheTokenOnceTheSinkAcceptsTheSession)
 {
     Harness harness;
     harness.preflight("ready");
     harness.tokens->token = "100";
     harness.port->state()->onSearch = readyThen(nullptr);
 
-    harness.build()->run({/*forceFullReload=*/true, /*onDemand=*/true});
-
-    ASSERT_FALSE(harness.tokens->writes.empty());
-    // The clear is the FIRST write and it happens before the probe: a crash mid-reload must start
-    // over on the next boot rather than resume from a cursor whose content was overwritten.
-    EXPECT_TRUE(harness.tokens->writes.front().empty());
+    harness.build()->run({/*forceFullReload=*/true});
 
     ASSERT_EQ(harness.sink->sessions.size(), 1U);
     EXPECT_EQ(harness.sink->sessions.front().kind, content_manager::SessionKind::FullReload);
-    EXPECT_TRUE(harness.sink->sessions.front().localToken.empty());
-    EXPECT_TRUE(harness.sink->sessions.front().onDemand);
+
+    // The clear is the FIRST write, before any page: a crash mid-reload must start over on the next
+    // boot rather than resume from a cursor whose content was overwritten.
+    ASSERT_FALSE(harness.tokens->writes.empty());
+    EXPECT_TRUE(harness.tokens->writes.front().empty());
+}
+
+TEST(ContentCycleTest, AForcedReloadThatAGateStopsKeepsTheToken)
+{
+    Harness harness;
+    harness.preflight("running");
+    harness.tokens->token = "100";
+
+    const auto outcome = harness.build()->run({/*forceFullReload=*/true});
+
+    // Nothing was reloaded, so the stored position still describes the content the host holds.
+    EXPECT_EQ(outcome.status, CycleStatus::SkippedConsumerNotReady);
+    EXPECT_EQ(outcome.token, "100");
+    EXPECT_TRUE(harness.tokens->writes.empty());
+}
+
+TEST(ContentCycleTest, AForcedReloadTheSinkDeclinesKeepsTheToken)
+{
+    Harness harness;
+    harness.preflight("ready");
+    harness.tokens->token = "100";
+    harness.sink->decision = content_manager::SessionDecision::Skip;
+    harness.port->state()->onSearch = readyThen(nullptr);
+
+    harness.build()->run({/*forceFullReload=*/true});
+
+    EXPECT_TRUE(harness.tokens->writes.empty());
+    EXPECT_EQ(harness.tokens->token, "100");
 }
 
 TEST(ContentCycleTest, PreflightNotReadySkipsWithABoundedRetry)
@@ -215,7 +240,7 @@ TEST(ContentCycleTest, UnsatisfiedPreconditionDefersTheFullLoad)
 {
     Harness harness;
     harness.preflight("ready");
-    harness.config.requiredDocumentIds = nlohmann::json::array({"FEED-GLOBAL", "OSCPE-GLOBAL", "CNA-MAPPING-GLOBAL"});
+    harness.config.requiredDocumentIds = {"FEED-GLOBAL", "OSCPE-GLOBAL", "CNA-MAPPING-GLOBAL"};
     harness.port->state()->onSearch = readyThen(
         [](const auto&, std::size_t) -> nlohmann::json
         {
@@ -236,7 +261,7 @@ TEST(ContentCycleTest, PreconditionIsNotCheckedOnAnIncrementalPlan)
     Harness harness;
     harness.preflight("ready");
     harness.tokens->token = "100";
-    harness.config.requiredDocumentIds = nlohmann::json::array({"FEED-GLOBAL"});
+    harness.config.requiredDocumentIds = {"FEED-GLOBAL"};
     harness.port->state()->onSearch = readyThen(nullptr);
 
     const auto outcome = harness.build()->run({});
@@ -356,7 +381,7 @@ TEST(ContentCycleTest, FailedTokenPersistenceAfterCommitIsReportedNotAborted)
 TEST(ContentCycleTest, StopRequestBeforeTheCycleSkipsEverything)
 {
     Harness harness;
-    harness.stop->set(true);
+    harness.stop = true;
 
     const auto outcome = harness.build()->run({});
 
@@ -492,7 +517,7 @@ TEST(ContentCycleTest, ASliceRejectionEndsTheOtherSlices)
 
     // Endless work for every slice, so a slice that ignores its sibling's rejection keeps paging
     // rather than merely wasting one request. Keyed on the slice parameter rather than on a call
-    // ordinal, because each clone counts its own calls from zero.
+    // ordinal, which is counted per slice.
     std::atomic<std::size_t> slicePages {0};
     harness.port->state()->onSearch = [&slicePages](const FakeIndexerQueryPort::SearchCall& call,
                                                     std::size_t) -> nlohmann::json

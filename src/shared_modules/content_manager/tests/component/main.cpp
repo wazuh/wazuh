@@ -27,7 +27,7 @@ namespace Log
      * The consequence for a test executable is that linking `content_manager.so` does NOT supply
      * the symbol — the library's definition is hidden inside it — so any translation unit here that
      * emits an inline logging helper needs this definition to link. That is not hypothetical: this
-     * suite includes `contentModuleFacade.hpp` and `components/consumerGate.hpp`, both of which log.
+     * suite includes `components/consumerGate.hpp`, which logs.
      *
      * Left unset on purpose. `Log::isLevelEnabled` short-circuits on a null function, so the tests
      * run silently instead of needing a sink; a test that wants output calls

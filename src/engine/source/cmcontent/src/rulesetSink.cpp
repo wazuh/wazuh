@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include <array>
-#include <mutex>
 #include <set>
 #include <stdexcept>
 #include <string_view>
@@ -65,94 +64,157 @@ ResourceKind kindFromIndexName(std::string_view indexName)
     return ResourceKind::Unknown;
 }
 
+/// Every namespace a space's sink creates starts with this, which is how orphans are found.
+std::string namespacePrefix(std::string_view space)
+{
+    return fmt::format("cmsync_{}_", space);
+}
+
 cm::store::NamespaceId generateNamespaceId(std::string_view space)
 {
-    return cm::store::NamespaceId {fmt::format("cmsync_{}_{}", space, base::utils::generators::randomHexString(4))};
+    return cm::store::NamespaceId {namespacePrefix(space) + base::utils::generators::randomHexString(4)};
 }
 
 } // namespace
 
 RulesetSpaceSink::RulesetSpaceSink(std::weak_ptr<cm::crud::ICrudService> crud,
                                    std::weak_ptr<router::IRouterAPI> router,
-                                   std::string space,
-                                   std::string routeName)
+                                   std::string space)
     : m_crud(std::move(crud))
     , m_router(std::move(router))
     , m_space(std::move(space))
-    , m_routeName(std::move(routeName))
+    , m_routeName(routeName(m_space))
 {
 }
 
 RulesetSpaceSink::~RulesetSpaceSink()
 {
-    std::lock_guard<std::mutex> lock {m_mutex};
     discardStaging();
 }
 
-std::optional<cm::store::NamespaceId>
-RulesetSpaceSink::prepare(const std::optional<cm::store::NamespaceId>& persistedNamespaceId)
+std::string RulesetSpaceSink::routeName(std::string_view space)
 {
-    std::lock_guard<std::mutex> lock {m_mutex};
-    if (!m_seeded)
-    {
-        m_currentNamespaceId = persistedNamespaceId;
-        m_seeded = true;
-    }
-    return m_currentNamespaceId;
+    return fmt::format("cmsync_{}", space);
 }
 
-RulesetOutcome RulesetSpaceSink::takeOutcome()
+RulesetDeployment RulesetSpaceSink::deployment() const noexcept
 {
-    std::lock_guard<std::mutex> lock {m_mutex};
-    return std::exchange(m_outcome, RulesetOutcome {});
+    RulesetDeployment deployment;
+    deployment.enabled = m_policyEnabled;
+
+    try
+    {
+        auto router = m_router.lock();
+        if (!router || !router->existsEntry(m_routeName))
+        {
+            return deployment;
+        }
+
+        const auto entry = router->getEntry(m_routeName);
+        if (!base::isError(entry))
+        {
+            deployment.available = true;
+            deployment.hash = base::getResponse(entry).hash();
+        }
+    }
+    catch (...)
+    {
+        // Reported as not available: the status must never take the sync down with it.
+    }
+    return deployment;
+}
+
+void RulesetSpaceSink::collectOrphanNamespaces() noexcept
+{
+    auto crud = m_crud.lock();
+    auto router = m_router.lock();
+    if (!crud || !router)
+    {
+        return;
+    }
+
+    try
+    {
+        std::optional<cm::store::NamespaceId> served;
+        if (router->existsEntry(m_routeName))
+        {
+            const auto entry = router->getEntry(m_routeName);
+            if (base::isError(entry))
+            {
+                LOG_WARNING("[{}] Skipping orphan collection for space '{}': its route could not be read",
+                            LOG_MODULE_NAME,
+                            m_space);
+                return;
+            }
+            served = base::getResponse(entry).namespaceId();
+        }
+
+        const auto prefix = namespacePrefix(m_space);
+        for (const auto& candidate : crud->listNamespaces())
+        {
+            if (candidate.toStr().rfind(prefix, 0) != 0 || (served.has_value() && candidate == *served))
+            {
+                continue;
+            }
+            LOG_INFO("[{}] Removing the orphaned namespace '{}' left by an interrupted sync",
+                     LOG_MODULE_NAME,
+                     candidate.toStr());
+            crud->deleteNamespace(candidate);
+        }
+    }
+    catch (const std::exception& e)
+    {
+        LOG_WARNING("[{}] Could not collect orphaned namespaces of space '{}': {}", LOG_MODULE_NAME, m_space, e.what());
+    }
 }
 
 content_manager::SessionDecision RulesetSpaceSink::beginSession(const content_manager::SessionInfo& info) noexcept
 {
     using namespace content_manager;
 
-    std::lock_guard<std::mutex> lock {m_mutex};
-
-    m_outcome = RulesetOutcome {};
-    m_remoteHash = info.remoteToken;
-
-    auto router = m_router.lock();
     auto crud = m_crud.lock();
-    if (!router || !crud)
+    if (!crud || m_router.expired())
     {
         return SessionDecision::Abort;
     }
 
+    // No policy document for the space at all: nothing to deploy, and nothing to tear down either.
+    if (info.kind == SessionKind::NoChange && info.remoteToken.empty())
+    {
+        LOG_DEBUG("[{}] Space '{}' has no policy in the indexer", LOG_MODULE_NAME, m_space);
+        return SessionDecision::Skip;
+    }
+
+    // A policy is usable only if it is enabled AND carries integrations. Either field missing or
+    // ill-typed is a malformed document: the cycle aborts and the deployed ruleset stays in force,
+    // rather than one bad document stopping event processing for the space.
+    const auto& metadata = info.probeMetadata;
+    const auto enabled = metadata.find("enabled");
+    const auto integrations = metadata.find("integrations");
+    if (enabled == metadata.end() || !enabled->is_boolean() || integrations == metadata.end()
+        || !integrations->is_array())
+    {
+        LOG_WARNING("[{}] The policy of space '{}' has no boolean 'enabled' or no 'integrations' array; keeping the "
+                    "deployed ruleset",
+                    LOG_MODULE_NAME,
+                    m_space);
+        return SessionDecision::Abort;
+    }
+
+    m_policyEnabled = enabled->get<bool>() && !integrations->empty();
+    if (!*m_policyEnabled)
+    {
+        teardown();
+        return SessionDecision::Skip;
+    }
+
+    if (info.kind == SessionKind::NoChange)
+    {
+        return SessionDecision::Skip;
+    }
+
     try
     {
-        const bool routeExists = router->existsEntry(m_routeName);
-
-        // A policy is only usable if it is enabled AND actually carries integrations. The two are
-        // separate fields in the indexer and can disagree; treating an integration-less policy as
-        // enabled would deploy a namespace that routes nothing.
-        const bool enabledFlag = info.probeMetadata.value("enabled", true);
-        const bool hasIntegrations =
-            info.probeMetadata.contains("integrations") ? !info.probeMetadata.at("integrations").empty() : true;
-
-        if (!enabledFlag || !hasIntegrations)
-        {
-            teardown();
-            m_outcome.disabled = true;
-            m_outcome.routeAvailable = false;
-            return SessionDecision::Skip;
-        }
-
-        if (info.kind == SessionKind::NoChange)
-        {
-            // The remote hash matches what was committed, but that only says the *content* has not
-            // moved. If the route was deleted out of band there is nothing serving it, and the
-            // caller asks for a forced reload in that case rather than this sink second-guessing
-            // the plan — a NoChange session carries no documents to deploy.
-            m_outcome.routeAvailable = routeExists;
-            m_outcome.hash = info.remoteToken;
-            return SessionDecision::Skip;
-        }
-
         discardStaging();
         m_accumulator = Accumulator {};
 
@@ -188,8 +250,6 @@ content_manager::PageAck RulesetSpaceSink::acceptPage(const content_manager::Con
     {
         return PageAck {PageStatus::Accepted, {}};
     }
-
-    std::lock_guard<std::mutex> lock {m_mutex};
 
     try
     {
@@ -264,8 +324,6 @@ content_manager::CommitResult RulesetSpaceSink::commit(const content_manager::Co
 {
     using namespace content_manager;
 
-    std::lock_guard<std::mutex> lock {m_mutex};
-
     if (!m_stagingNamespaceId.has_value())
     {
         return CommitResult {CommitStatus::RejectedRetrySame, "no staging namespace to promote"};
@@ -286,6 +344,7 @@ content_manager::CommitResult RulesetSpaceSink::commit(const content_manager::Co
     }
 
     const auto staging = *m_stagingNamespaceId;
+    const auto previous = servedNamespace();
 
     try
     {
@@ -320,29 +379,23 @@ content_manager::CommitResult RulesetSpaceSink::commit(const content_manager::Co
     // The swap succeeded: the staging namespace is now the live one, so it must not be discarded.
     m_stagingNamespaceId.reset();
 
-    if (m_currentNamespaceId.has_value() && *m_currentNamespaceId != staging)
+    if (previous.has_value() && *previous != staging)
     {
         try
         {
-            crud->deleteNamespace(*m_currentNamespaceId);
+            crud->deleteNamespace(*previous);
         }
         catch (const std::exception& e)
         {
-            // Not a commit failure: the new content is already live. A leaked namespace costs disk,
-            // a rolled-back promotion costs correctness.
+            // Not a commit failure: the new content is already live. A leaked namespace costs disk
+            // (and is collected at the next start), a rolled-back promotion costs correctness.
             LOG_WARNING("[{}] Failed to delete the previous namespace '{}' for space '{}': {}",
                         LOG_MODULE_NAME,
-                        m_currentNamespaceId->toStr(),
+                        previous->toStr(),
                         m_space,
                         e.what());
         }
     }
-
-    m_currentNamespaceId = staging;
-    m_outcome.applied = true;
-    m_outcome.newNamespaceId = staging;
-    m_outcome.hash = m_remoteHash;
-    m_outcome.routeAvailable = true;
 
     LOG_INFO("[{}] Successfully synchronized space '{}'", LOG_MODULE_NAME, m_space);
     return CommitResult {CommitStatus::Committed, {}};
@@ -350,8 +403,6 @@ content_manager::CommitResult RulesetSpaceSink::commit(const content_manager::Co
 
 void RulesetSpaceSink::abort(content_manager::AbortReason, const std::string& detail) noexcept
 {
-    std::lock_guard<std::mutex> lock {m_mutex};
-
     if (m_stagingNamespaceId.has_value())
     {
         LOG_DEBUG("[{}] Discarding the staging namespace for space '{}': {}", LOG_MODULE_NAME, m_space, detail);
@@ -382,6 +433,7 @@ void RulesetSpaceSink::teardown() noexcept
                  LOG_MODULE_NAME,
                  m_space);
 
+        const auto served = servedNamespace();
         if (auto error = router->deleteEntry(m_routeName); base::isError(error))
         {
             LOG_WARNING("[{}] Failed to delete route '{}' for space '{}': {}",
@@ -389,12 +441,12 @@ void RulesetSpaceSink::teardown() noexcept
                         m_routeName,
                         m_space,
                         base::getError(error).message);
+            return;
         }
 
-        if (m_currentNamespaceId.has_value())
+        if (served.has_value())
         {
-            crud->deleteNamespace(*m_currentNamespaceId);
-            m_currentNamespaceId.reset();
+            crud->deleteNamespace(*served);
         }
     }
     catch (const std::exception& e)
@@ -404,6 +456,66 @@ void RulesetSpaceSink::teardown() noexcept
     catch (...)
     {
         LOG_WARNING("[{}] Failed to tear down space '{}'", LOG_MODULE_NAME, m_space);
+    }
+}
+
+std::string RulesetSpaceSink::load(std::string_view) noexcept
+{
+    try
+    {
+        auto router = m_router.lock();
+        if (!router || !router->existsEntry(m_routeName))
+        {
+            return {};
+        }
+
+        const auto entry = router->getEntry(m_routeName);
+        if (base::isError(entry))
+        {
+            return {};
+        }
+
+        // A disabled route is not serving the content it was built from, so it must not count as
+        // "already at this hash".
+        const auto& served = base::getResponse(entry);
+        return served.status() == ::router::env::State::ENABLED ? served.hash() : std::string {};
+    }
+    catch (...)
+    {
+        return {};
+    }
+}
+
+bool RulesetSpaceSink::store(std::string_view, std::string_view) noexcept
+{
+    return true;
+}
+
+bool RulesetSpaceSink::clear(std::string_view) noexcept
+{
+    return true;
+}
+
+std::optional<cm::store::NamespaceId> RulesetSpaceSink::servedNamespace() const noexcept
+{
+    try
+    {
+        auto router = m_router.lock();
+        if (!router || !router->existsEntry(m_routeName))
+        {
+            return std::nullopt;
+        }
+
+        const auto entry = router->getEntry(m_routeName);
+        if (base::isError(entry))
+        {
+            return std::nullopt;
+        }
+        return base::getResponse(entry).namespaceId();
+    }
+    catch (...)
+    {
+        return std::nullopt;
     }
 }
 

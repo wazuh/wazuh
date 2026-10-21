@@ -29,7 +29,12 @@ namespace content_manager
      *     -> Proceed : acceptPage(page)*  then  commit(info)   [or abort(...) if the fetch failed]
      *     -> Skip    : nothing else is called; the stored token is untouched
      *     -> Abort   : nothing else is called; the stored token is untouched
+     *   cycleFinished(outcome)                                  [every cycle that ran, gated or not]
      * @endcode
+     *
+     * A cycle that a gate stops before `beginSession` (consumer not ready, transport failure) still
+     * ends in `cycleFinished`, so a sink that reports status sees every result. No two cycles of one
+     * topic overlap, so `cycleFinished` always belongs to the session it follows.
      *
      * `acceptPage` is called from at most one thread at a time even when the fetch is sliced — the
      * paginator serialises it — but it is not necessarily the *same* thread across calls, so a sink
@@ -91,6 +96,19 @@ namespace content_manager
          * @param detail Human-readable context, safe to log.
          */
         virtual void abort(AbortReason reason, const std::string& detail) noexcept = 0;
+
+        /**
+         * @brief Learn how the cycle ended.
+         *
+         * Called once per cycle that ran, after the token was written and before the next cycle of
+         * this topic can start. The default does nothing.
+         *
+         * @param outcome What the cycle did.
+         */
+        virtual void cycleFinished(const CycleOutcome& outcome) noexcept
+        {
+            (void)outcome;
+        }
     };
 
 } // namespace content_manager

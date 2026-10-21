@@ -27,39 +27,31 @@ namespace
         void SetUp() override
         {
             std::filesystem::remove_all(DATABASE_PATH);
-            open();
+            reopen();
         }
 
         void TearDown() override
         {
             m_store.reset();
-            m_database.reset();
             std::filesystem::remove_all(DATABASE_PATH);
         }
 
         /// Reopen the database, the way a process restart would.
-        void open()
+        void reopen()
         {
             m_store.reset();
-            m_database.reset();
-            m_database = std::make_shared<Utils::RocksDBWrapper>(DATABASE_PATH);
-            if (!m_database->columnExists(Components::Columns::CURRENT_OFFSET))
-            {
-                m_database->createColumn(Components::Columns::CURRENT_OFFSET);
-            }
-            m_store = std::make_unique<RocksDbTokenStore>(m_database);
+            m_store = RocksDbTokenStore::open(DATABASE_PATH, TOPIC);
         }
 
-        std::shared_ptr<Utils::RocksDBWrapper> m_database;
-        std::unique_ptr<RocksDbTokenStore> m_store;
+        std::shared_ptr<RocksDbTokenStore> m_store;
     };
 
 } // namespace
 
-TEST_F(RocksDbTokenStoreTest, AnEmptyColumnReadsAsNoToken)
+TEST_F(RocksDbTokenStoreTest, OpenCreatesTheDatabaseAndItsColumn)
 {
-    // getLastKeyValue throws on an empty column; load() must absorb that rather than let a first
-    // run look like a failure.
+    EXPECT_TRUE(std::filesystem::exists(std::string {DATABASE_PATH} + "/updater_" + TOPIC + "_metadata"));
+    // A first run reads as "no token", not as a failure.
     EXPECT_EQ(m_store->load(TOPIC), "");
 }
 
@@ -77,34 +69,17 @@ TEST_F(RocksDbTokenStoreTest, TheLastWriteWins)
     EXPECT_EQ(m_store->load(TOPIC), "3");
 }
 
-TEST_F(RocksDbTokenStoreTest, ClearReadsBackAsNoTokenRatherThanThrowing)
+TEST_F(RocksDbTokenStoreTest, ClearReadsBackAsNoToken)
 {
     ASSERT_TRUE(m_store->store(TOPIC, "1042"));
     EXPECT_TRUE(m_store->clear(TOPIC));
-
-    // clear() APPENDS "0"; it does not delete. The column is an append-only log read with a
-    // SeekToLast, and getLastKeyValue throws on an empty column — so a real delete would break
-    // every subsequent load().
     EXPECT_EQ(m_store->load(TOPIC), "");
-}
-
-TEST_F(RocksDbTokenStoreTest, StoringAnEmptyTokenIsANoOpNotAFailure)
-{
-    ASSERT_TRUE(m_store->store(TOPIC, "7"));
-    // Reported as success: "" would read back as "no token" anyway, so the caller must not treat
-    // this as a persistence error and re-fetch a whole feed over it.
-    EXPECT_TRUE(m_store->store(TOPIC, ""));
-    EXPECT_EQ(m_store->load(TOPIC), "7");
 }
 
 TEST_F(RocksDbTokenStoreTest, SurvivesAReopen)
 {
     ASSERT_TRUE(m_store->store(TOPIC, "2048"));
-
-    open();
-
-    // The on-disk format is the one already deployed — compact-timestamp keys in `current_offset` —
-    // so an upgraded manager reads its existing cursor back unchanged, with no migration.
+    reopen();
     EXPECT_EQ(m_store->load(TOPIC), "2048");
 }
 
@@ -112,31 +87,20 @@ TEST_F(RocksDbTokenStoreTest, ClearSurvivesAReopen)
 {
     ASSERT_TRUE(m_store->store(TOPIC, "2048"));
     ASSERT_TRUE(m_store->clear(TOPIC));
-
-    open();
-
+    reopen();
     EXPECT_EQ(m_store->load(TOPIC), "");
 }
 
-TEST_F(RocksDbTokenStoreTest, ANullDatabaseIsInertRatherThanFatal)
+TEST_F(RocksDbTokenStoreTest, AMissingColumnReadsAsNoToken)
 {
-    RocksDbTokenStore store {nullptr};
-    EXPECT_EQ(store.load(TOPIC), "");
-    EXPECT_FALSE(store.store(TOPIC, "1"));
-    EXPECT_FALSE(store.clear(TOPIC));
-}
+    // Reads back like an empty column — as "no token" — but means something removed the column.
+    const auto barePath = std::string {DATABASE_PATH} + "_bare";
+    {
+        auto bare = std::make_shared<Utils::RocksDBWrapper>(barePath);
+        ASSERT_FALSE(bare->columnExists(RocksDbTokenStore::COLUMN));
 
-TEST_F(RocksDbTokenStoreTest, AMissingColumnReadsAsNoTokenRatherThanThrowing)
-{
-    // Distinct from the empty-column case above, and the reason both are tested: they read back
-    // identically — as "no token", which silently costs a full re-download — but only one of them
-    // is normal. An empty column is a first run; a missing one means something removed it.
-    auto bare = std::make_shared<Utils::RocksDBWrapper>(std::string {DATABASE_PATH} + "_bare");
-    ASSERT_FALSE(bare->columnExists(Components::Columns::CURRENT_OFFSET));
-
-    RocksDbTokenStore store {bare};
-    EXPECT_EQ(store.load(TOPIC), "");
-
-    bare.reset();
-    std::filesystem::remove_all(std::string {DATABASE_PATH} + "_bare");
+        RocksDbTokenStore store {bare};
+        EXPECT_EQ(store.load(TOPIC), "");
+    }
+    std::filesystem::remove_all(barePath);
 }

@@ -25,26 +25,20 @@
 #include <unordered_map>
 
 /**
- * @brief The cheap pre-flight check that a content consumer is worth querying.
+ * @brief The consumer document's format, and the cheap pre-flight check that it says "ready".
  *
- * @ref PitSession already validates readiness *inside* the snapshot, which is the correctness gate.
- * This one is the cost gate, and it is not redundant with it: a full VD load is a multi-minute,
- * multi-gigabyte operation, and discovering "the consumer is mid-update" only after opening a PIT
- * over the whole CVE index wastes a lease and a round trip on every cycle during an indexer content
- * update. The Engine keeps the same two layers for the same reason.
+ * @ref PitSession validates readiness *inside* the snapshot, which is the correctness gate, with
+ * the query and the parser defined here. The probe below is the cost gate, and it is not redundant
+ * with it: a full VD load is a multi-minute, multi-gigabyte operation, and discovering "the consumer
+ * is mid-update" only after opening a PIT over the whole CVE index wastes a lease and a round trip
+ * on every cycle during an indexer content update.
  *
- * Two things changed from the loop this replaces:
- *
- *  - **It is bounded.** One probe per cycle, then the cycle ends `SkippedConsumerNotReady` with a
- *    short `retryAfter`. The old `while (true)` parked its thread for as long as the consumer
- *    stayed busy, which is merely wasteful on a dedicated thread and a deadlock on a shared
- *    scheduler worker pool.
+ *  - **It is bounded.** One probe per cycle; a busy consumer ends the cycle `SkippedConsumerNotReady`
+ *    with a short `retryAfter` rather than parking the thread.
  *  - **It is cached, process-wide, per consumer id.** Registrations that watch the same consumer —
  *    the Engine's six IOC topics do — pay for one probe between them.
- *
- * The status taxonomy and the "stay at DEBUG for the first few attempts, then escalate" behaviour
- * are carried over unchanged: an indexer that has just restarted is expected to answer badly for a
- * few seconds, and that should not fill the log.
+ *  - **It stays at DEBUG for the first few bad answers**, then escalates: an indexer that has just
+ *    restarted is expected to answer badly for a few seconds.
  */
 class ConsumerGate final
 {
@@ -159,6 +153,60 @@ public:
         return shouldEscalate(attempt);
     }
 
+    /// @return The query selecting the consumer document @p id.
+    static nlohmann::json statusQuery(const std::string& id)
+    {
+        return nlohmann::json {{"ids", {{"values", nlohmann::json::array({id})}}}};
+    }
+
+    /// @return The `_source` filter that keeps only the consumer's status.
+    static nlohmann::json statusSourceFilter()
+    {
+        return nlohmann::json {{"includes", nlohmann::json::array({"status"})}, {"excludes", nlohmann::json::array()}};
+    }
+
+    /**
+     * @brief Read a consumer's state out of the hits object of a @ref statusQuery search.
+     *
+     * @param hitsObject The `hits` object of the response.
+     * @return The consumer's state. Never `Unreachable`: that is the search failing, not its answer.
+     */
+    static Result parse(const nlohmann::json& hitsObject)
+    {
+        const auto hits =
+            hitsObject.is_object() ? hitsObject.value("hits", nlohmann::json::array()) : nlohmann::json::array();
+        if (!hits.is_array() || hits.empty())
+        {
+            return Result {Status::Missing, {}, {}};
+        }
+
+        const auto& hit = hits.front();
+        const auto source = hit.is_object() ? hit.value("_source", nlohmann::json::object()) : nlohmann::json {};
+        if (!source.is_object() || !source.contains("status") || !source.at("status").is_string())
+        {
+            return Result {Status::Empty, {}, {}};
+        }
+
+        auto raw = source.at("status").get<std::string>();
+        if (raw.empty())
+        {
+            return Result {Status::Empty, {}, {}};
+        }
+        if (raw == "ready")
+        {
+            return Result {Status::Ready, std::move(raw), {}};
+        }
+        if (raw == "running")
+        {
+            return Result {Status::Running, std::move(raw), {}};
+        }
+        if (raw == "failed")
+        {
+            return Result {Status::Failed, std::move(raw), {}};
+        }
+        return Result {Status::Unknown, std::move(raw), {}};
+    }
+
     /// @return A short human-readable name for a status, for log messages.
     static const char* describe(Status status) noexcept
     {
@@ -195,49 +243,7 @@ private:
     {
         try
         {
-            const nlohmann::json query {{"ids", {{"values", nlohmann::json::array({id})}}}};
-            const nlohmann::json sourceFilter {{"includes", nlohmann::json::array({"status"})},
-                                               {"excludes", nlohmann::json::array()}};
-
-            // searchIndex returns the hits object, so the documents are one level down.
-            const auto hitsObject = port.searchIndex(index, 1, query, sourceFilter);
-            const auto hits =
-                hitsObject.is_object() ? hitsObject.value("hits", nlohmann::json::array()) : nlohmann::json::array();
-            if (!hits.is_array() || hits.empty())
-            {
-                return Result {Status::Missing, {}, {}};
-            }
-
-            const auto& hit = hits.front();
-            if (!hit.contains("_source") || !hit.at("_source").is_object())
-            {
-                return Result {Status::Empty, {}, {}};
-            }
-
-            const auto& source = hit.at("_source");
-            if (!source.contains("status") || !source.at("status").is_string())
-            {
-                return Result {Status::Empty, {}, {}};
-            }
-
-            auto raw = source.at("status").get<std::string>();
-            if (raw.empty())
-            {
-                return Result {Status::Empty, {}, {}};
-            }
-            if (raw == "ready")
-            {
-                return Result {Status::Ready, std::move(raw), {}};
-            }
-            if (raw == "running")
-            {
-                return Result {Status::Running, std::move(raw), {}};
-            }
-            if (raw == "failed")
-            {
-                return Result {Status::Failed, std::move(raw), {}};
-            }
-            return Result {Status::Unknown, std::move(raw), {}};
+            return parse(port.searchIndex(index, 1, statusQuery(id), statusSourceFilter()));
         }
         catch (const std::exception& e)
         {

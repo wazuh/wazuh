@@ -50,7 +50,6 @@ protected:
     }
 
     wiconnector::LogFunctionType logFunction;
-    const std::size_t maxHitsPerRequest {1000};
 };
 
 // Test Config class functionality
@@ -131,7 +130,7 @@ TEST_F(WIndexerConnectorTest, ConstructorWithValidConfig)
     wiconnector::Config config;
     config.hosts = {"http://localhost:9200"};
 
-    EXPECT_NO_THROW({ wiconnector::WIndexerConnector connector(config, logFunction, maxHitsPerRequest); });
+    EXPECT_NO_THROW({ wiconnector::WIndexerConnector connector(config, logFunction); });
 }
 
 TEST_F(WIndexerConnectorTest, ConstructorWithValidJsonConfig)
@@ -140,31 +139,21 @@ TEST_F(WIndexerConnectorTest, ConstructorWithValidJsonConfig)
         "hosts": ["http://localhost:9200"]
     })";
 
-    EXPECT_NO_THROW({ wiconnector::WIndexerConnector connector(validJson, maxHitsPerRequest); });
+    EXPECT_NO_THROW({ wiconnector::WIndexerConnector connector(validJson); });
 }
 
 TEST_F(WIndexerConnectorTest, ConstructorWithEmptyJsonConfig)
 {
     std::string emptyJson = "";
 
-    EXPECT_THROW({ wiconnector::WIndexerConnector connector(emptyJson, maxHitsPerRequest); }, std::runtime_error);
+    EXPECT_THROW({ wiconnector::WIndexerConnector connector(emptyJson); }, std::runtime_error);
 }
 
 TEST_F(WIndexerConnectorTest, ConstructorWithInvalidJsonConfig)
 {
     std::string invalidJson = "{ invalid json }";
 
-    EXPECT_THROW({ wiconnector::WIndexerConnector connector(invalidJson, maxHitsPerRequest); }, std::runtime_error);
-}
-
-// Test that constructor throws when maxHitsPerRequest is zero
-TEST_F(WIndexerConnectorTest, ConstructorMaxHitsToZero)
-{
-    wiconnector::Config config;
-    config.hosts = {"http://localhost:9200"};
-
-    // Should not throw maxHitsPerRequest set to 0 will fallback to 1.
-    EXPECT_NO_THROW({ wiconnector::WIndexerConnector connector(config, logFunction, 0); });
+    EXPECT_THROW({ wiconnector::WIndexerConnector connector(invalidJson); }, std::runtime_error);
 }
 
 // Test indexing functionality
@@ -173,7 +162,7 @@ TEST_F(WIndexerConnectorTest, IndexValidData)
     wiconnector::Config config;
     config.hosts = {"http://localhost:9200"}; // This will likely fail to connect, but that's OK for unit test
 
-    wiconnector::WIndexerConnector connector(config, logFunction, maxHitsPerRequest);
+    wiconnector::WIndexerConnector connector(config, logFunction);
 
     // This should not throw, even if connection fails (it logs warnings internally)
     EXPECT_NO_THROW({ connector.index("test-index", R"({"field": "value"})"); });
@@ -184,7 +173,7 @@ TEST_F(WIndexerConnectorTest, IndexEmptyIndex)
     wiconnector::Config config;
     config.hosts = {"http://localhost:9200"};
 
-    wiconnector::WIndexerConnector connector(config, logFunction, maxHitsPerRequest);
+    wiconnector::WIndexerConnector connector(config, logFunction);
 
     // Should handle empty index name gracefully
     EXPECT_NO_THROW({ connector.index("", R"({"field": "value"})"); });
@@ -195,7 +184,7 @@ TEST_F(WIndexerConnectorTest, IndexEmptyData)
     wiconnector::Config config;
     config.hosts = {"http://localhost:9200"};
 
-    wiconnector::WIndexerConnector connector(config, logFunction, maxHitsPerRequest);
+    wiconnector::WIndexerConnector connector(config, logFunction);
 
     // Should handle empty data gracefully
     EXPECT_NO_THROW({ connector.index("test-index", ""); });
@@ -207,7 +196,7 @@ TEST_F(WIndexerConnectorTest, ShutdownConnector)
     wiconnector::Config config;
     config.hosts = {"http://localhost:9200"};
 
-    wiconnector::WIndexerConnector connector(config, logFunction, maxHitsPerRequest);
+    wiconnector::WIndexerConnector connector(config, logFunction);
 
     // Shutdown should work without throwing
     EXPECT_NO_THROW({ connector.shutdown(); });
@@ -222,7 +211,7 @@ TEST_F(WIndexerConnectorTest, ConcurrentIndexing)
     wiconnector::Config config;
     config.hosts = {"http://localhost:9200"};
 
-    wiconnector::WIndexerConnector connector(config, logFunction, maxHitsPerRequest);
+    wiconnector::WIndexerConnector connector(config, logFunction);
 
     std::vector<std::thread> threads;
     const int numThreads = 5;
@@ -258,7 +247,7 @@ TEST_F(WIndexerConnectorTest, ConcurrentIndexingAndShutdown)
     wiconnector::Config config;
     config.hosts = {"http://localhost:9200"};
 
-    wiconnector::WIndexerConnector connector(config, logFunction, maxHitsPerRequest);
+    wiconnector::WIndexerConnector connector(config, logFunction);
 
     std::atomic<bool> shouldStop {false};
     std::vector<std::thread> threads;
@@ -296,47 +285,6 @@ TEST_F(WIndexerConnectorTest, ConcurrentIndexingAndShutdown)
     SUCCEED();
 }
 
-// Test requestShutdown is callable and is non-destructive
-TEST_F(WIndexerConnectorTest, RequestShutdownIsNonDestructive)
-{
-    wiconnector::Config config;
-    config.hosts = {"http://localhost:9200"};
-
-    wiconnector::WIndexerConnector connector(config, logFunction, maxHitsPerRequest);
-
-    // requestShutdown only sets a flag; should not throw and should not destroy the connector
-    EXPECT_NO_THROW({ connector.requestShutdown(); });
-
-    // Indexing should still be possible after requestShutdown (only the destructive shutdown
-    // resets the underlying async connector).
-    EXPECT_NO_THROW({ connector.index("test-index", R"({"field": "value"})"); });
-}
-
-// Test that requestShutdown followed by shutdown works cleanly
-TEST_F(WIndexerConnectorTest, RequestShutdownThenShutdown)
-{
-    wiconnector::Config config;
-    config.hosts = {"http://localhost:9200"};
-
-    wiconnector::WIndexerConnector connector(config, logFunction, maxHitsPerRequest);
-
-    EXPECT_NO_THROW({ connector.requestShutdown(); });
-    EXPECT_NO_THROW({ connector.shutdown(); });
-}
-
-// Test that requestShutdown is idempotent (safe to call multiple times)
-TEST_F(WIndexerConnectorTest, RequestShutdownIdempotent)
-{
-    wiconnector::Config config;
-    config.hosts = {"http://localhost:9200"};
-
-    wiconnector::WIndexerConnector connector(config, logFunction, maxHitsPerRequest);
-
-    EXPECT_NO_THROW({ connector.requestShutdown(); });
-    EXPECT_NO_THROW({ connector.requestShutdown(); });
-    EXPECT_NO_THROW({ connector.requestShutdown(); });
-}
-
 // Integration-style test (will be skipped if no real indexer available)
 TEST_F(WIndexerConnectorTest, DISABLED_IntegrationTest)
 {
@@ -344,7 +292,7 @@ TEST_F(WIndexerConnectorTest, DISABLED_IntegrationTest)
     wiconnector::Config config;
     config.hosts = {"http://localhost:9200"};
 
-    wiconnector::WIndexerConnector connector(config, logFunction, maxHitsPerRequest);
+    wiconnector::WIndexerConnector connector(config, logFunction);
 
     // Try to index some data
     connector.index("test-integration-index", R"({
@@ -382,9 +330,9 @@ protected:
     }
 
     /// Build the connector.
-    std::unique_ptr<wiconnector::WIndexerConnector> makeConnector(std::size_t maxHits = 1000)
+    std::unique_ptr<wiconnector::WIndexerConnector> makeConnector()
     {
-        return std::make_unique<wiconnector::WIndexerConnector>(std::move(mockOwned), maxHits);
+        return std::make_unique<wiconnector::WIndexerConnector>(std::move(mockOwned));
     }
 
     std::unique_ptr<NiceMock<wiconnector::mocks::MockIndexerConnectorAsync>> mockOwned;
@@ -437,63 +385,6 @@ TEST_F(WIndexerConnectorMockTest, IndexSwallowsStdException)
     EXPECT_CALL(*mock, indexDataStream(_, _)).WillOnce(Throw(std::runtime_error("oops")));
     auto connector = makeConnector();
     EXPECT_NO_THROW(connector->index("idx", R"({"a":1})"));
-}
-
-/**************************
- * existsPolicy
- **************************/
-TEST_F(WIndexerConnectorMockTest, ExistsPolicyTrueWhenHits)
-{
-    nlohmann::json hits = {{"total", {{"value", 1}}}, {"hits", nlohmann::json::array()}};
-    EXPECT_CALL(*mock, search(An<std::string_view>(), _, _, _)).WillOnce(Return(hits));
-    auto connector = makeConnector();
-    EXPECT_TRUE(connector->existsPolicy("default"));
-}
-
-TEST_F(WIndexerConnectorMockTest, ExistsPolicyFalseWhenZeroHits)
-{
-    nlohmann::json hits = {{"total", {{"value", 0}}}, {"hits", nlohmann::json::array()}};
-    EXPECT_CALL(*mock, search(An<std::string_view>(), _, _, _)).WillOnce(Return(hits));
-    auto connector = makeConnector();
-    EXPECT_FALSE(connector->existsPolicy("default"));
-}
-
-TEST_F(WIndexerConnectorMockTest, ExistsPolicyEmptySpaceThrows)
-{
-    auto connector = makeConnector();
-    EXPECT_THROW(connector->existsPolicy(""), std::runtime_error);
-}
-
-TEST_F(WIndexerConnectorMockTest, ExistsPolicyAfterShutdownThrows)
-{
-    auto connector = makeConnector();
-    connector->shutdown();
-    EXPECT_THROW(connector->existsPolicy("default"), std::runtime_error);
-}
-
-/**************************
- * existsIocDataIndex
- **************************/
-TEST_F(WIndexerConnectorMockTest, ExistsIocDataIndexTrue)
-{
-    EXPECT_CALL(*mock, search(An<std::string_view>(), 0U, _, _)).WillOnce(Return(nlohmann::json::object()));
-    auto connector = makeConnector();
-    EXPECT_TRUE(connector->existsIocDataIndex());
-}
-
-TEST_F(WIndexerConnectorMockTest, ExistsIocDataIndexFalseOnException)
-{
-    EXPECT_CALL(*mock, search(An<std::string_view>(), 0U, _, _))
-        .WillOnce(Throw(IndexerConnectorException("index_not_found_exception")));
-    auto connector = makeConnector();
-    EXPECT_FALSE(connector->existsIocDataIndex());
-}
-
-TEST_F(WIndexerConnectorMockTest, ExistsIocDataIndexAfterShutdownThrows)
-{
-    auto connector = makeConnector();
-    connector->shutdown();
-    EXPECT_THROW(connector->existsIocDataIndex(), std::runtime_error);
 }
 
 /**************************

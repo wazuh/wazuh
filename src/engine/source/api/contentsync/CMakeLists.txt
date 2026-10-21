@@ -14,8 +14,7 @@ target_include_directories(api_contentsync
 target_link_libraries(api_contentsync
     PUBLIC
     api::adapter
-    cmsync::icmsync
-    iocsync::iiocsync
+    scheduler::ischeduler
 )
 add_library(api::contentsync ALIAS api_contentsync)
 
@@ -29,8 +28,7 @@ if(ENGINE_BUILD_TEST)
     target_link_libraries(api_contentsync_utest
         PRIVATE
         api::contentsync
-        cmsync::mocks
-        iocsync::mocks
+        scheduler::mocks
         GTest::gtest_main
         GTest::gmock
         eMessages

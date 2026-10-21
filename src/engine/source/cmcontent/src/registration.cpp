@@ -42,25 +42,20 @@ std::size_t clampPageSize(std::size_t pageSize)
     return std::clamp<std::size_t>(pageSize, 1, MAX_PAGE_SIZE);
 }
 
-/// What every Engine topic shares. No interval: the Engine owns a scheduler with CPU priorities and a
-/// startup ordering the library cannot reproduce, so it drives runOnce from its own task instead of
-/// letting the library spawn a thread per topic. No database path: Engine state lives in
-/// store::IStore, and the token travels with it. No connection: the Engine's own indexer is handed to
-/// every registration (D1 of the content manager). The sort is implied by hash detection
-/// (`_shard_doc`, `_id`), so it is not spelled out either (D2).
+/// What every Engine topic shares. No interval: the Engine's own scheduler runs each topic, so the
+/// library starts no thread. No database path: the token lives in Engine state (the deployed route,
+/// the IOC sync status). The sort is implied by hash detection (D2).
 content_manager::TopicSpec baseSpec(const Options& options, const std::optional<std::string>& consumerId)
 {
     content_manager::TopicSpec spec;
-    spec.schedule.onDemand = true;
     spec.source.pitKeepAlive = options.pitKeepAlive;
     spec.source.pageSize = clampPageSize(options.pageSize);
 
-    // No consumer writes a space like `custom`, so there is nothing to wait for: no readiness block,
-    // no gate (D2).
+    // No consumer writes a space like `custom`, so there is nothing to wait for: no readiness gate.
     if (consumerId.has_value() && !consumerId->empty())
     {
-        // At least one second, as the library used to enforce silently: the library now refuses a
-        // zero retry, and `analysisd.content_consumer_retry_interval` may legitimately be set to 0.
+        // At least one second: the library refuses a zero retry, and
+        // `analysisd.content_consumer_retry_interval` may legitimately be set to 0.
         spec.readiness = content_manager::Readiness {std::string {CTI_CONSUMERS_INDEX},
                                                      *consumerId,
                                                      std::max<std::size_t>(1, options.consumerRetrySeconds),
@@ -81,8 +76,8 @@ std::string iocTopic(std::string_view iocType)
     return fmt::format("content.ioc.{}", iocType);
 }
 
-nlohmann::json
-rulesetParameters(std::string_view space, const Options& options, const std::optional<std::string>& consumerId)
+content_manager::TopicSpec
+rulesetSpec(std::string_view space, const Options& options, const std::optional<std::string>& consumerId)
 {
     auto spec = baseSpec(options, consumerId);
     spec.source.indices = POLICY_ALIASES;
@@ -109,11 +104,10 @@ rulesetParameters(std::string_view space, const Options& options, const std::opt
     hash.tokenPointers = {"/space/hash/sha256"};
     hash.metadata = {{"enabled", "/document/enabled"}, {"integrations", "/document/integrations"}};
     spec.detection = std::move(hash);
-
-    return content_manager::toParameters(spec);
+    return spec;
 }
 
-nlohmann::json iocParameters(std::string_view iocType, const Options& options)
+content_manager::TopicSpec iocSpec(std::string_view iocType, const Options& options)
 {
     auto spec = baseSpec(options, std::string {IOC_CONSUMER_ID});
     spec.source.indices = {std::string {IOC_INDEX}};
@@ -123,13 +117,11 @@ nlohmann::json iocParameters(std::string_view iocType, const Options& options)
 
     content_manager::HashDetection hash;
     hash.probe = content_manager::DocumentProbe {std::string {IOC_HASHES_DOC_ID}};
-    // Two shapes are accepted for the manifest: the current one nests every type under
-    // `type_hashes`, an older one puts them at the top level. First pointer that resolves wins, so
-    // both keep working without a migration.
+    // Two manifest shapes are accepted: one nests every type under `type_hashes`, the other puts
+    // them at the top level. The first pointer that resolves wins.
     hash.tokenPointers = {fmt::format("/type_hashes/{}/hash/sha256", iocType), fmt::format("/{}/hash/sha256", iocType)};
     spec.detection = std::move(hash);
-
-    return content_manager::toParameters(spec);
+    return spec;
 }
 
 } // namespace cmcontent

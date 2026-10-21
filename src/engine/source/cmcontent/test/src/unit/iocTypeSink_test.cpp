@@ -59,21 +59,33 @@ protected:
         sink = std::make_shared<IocTypeSink>(kvdb, IOC_TYPE);
         targetDb = std::string {ioc::kvdb::details::getDbNameFromType(IOC_TYPE)};
 
-        // `exists` answers from a real set rather than a fixed value. A mock that reports every
-        // database as present forever makes cleanup look like it runs twice — the sink probes before
-        // removing, so a lying `exists` turns one removal into two — and that is a property of the
-        // mock, not of the code. Modelling it costs three lines and removes a whole class of
-        // false failures.
-        ON_CALL(*kvdb, add(_)).WillByDefault(Invoke([this](std::string_view name) { existing.emplace(name); }));
+        // Modelled on the real manager rather than answered with fixed values: a name can be
+        // registered with no instance (data that could not be reopened at start-up), which
+        // `exists` reports as absent and `add` refuses.
+        ON_CALL(*kvdb, add(_))
+            .WillByDefault(Invoke(
+                [this](std::string_view name)
+                {
+                    registered.emplace(name);
+                    existing.emplace(name);
+                }));
         ON_CALL(*kvdb, remove(_))
-            .WillByDefault(Invoke([this](std::string_view name) { existing.erase(std::string {name}); }));
+            .WillByDefault(Invoke(
+                [this](std::string_view name)
+                {
+                    registered.erase(std::string {name});
+                    existing.erase(std::string {name});
+                }));
         ON_CALL(*kvdb, exists(_))
             .WillByDefault(Invoke([this](std::string_view name) { return existing.count(std::string {name}) != 0; }));
+        ON_CALL(*kvdb, isRegistered(_))
+            .WillByDefault(Invoke([this](std::string_view name) { return registered.count(std::string {name}) != 0; }));
         ON_CALL(*kvdb, hotSwap(_, _))
             .WillByDefault(Invoke(
                 [this](std::string_view source, std::string_view target)
                 {
-                    // The real swap invalidates the source and leaves the target holding its data.
+                    // The real swap retires the source and leaves the target holding its data.
+                    registered.erase(std::string {source});
                     existing.erase(std::string {source});
                     existing.emplace(target);
                 }));
@@ -86,7 +98,8 @@ protected:
     std::shared_ptr<NiceMock<ioc::kvdb::MockKVDBManager>> kvdb;
     std::shared_ptr<IocTypeSink> sink;
     std::string targetDb;
-    std::set<std::string> existing;
+    std::set<std::string> registered; ///< Names add() refuses and remove() accepts.
+    std::set<std::string> existing;   ///< Registered names that also hold an instance.
 };
 
 } // namespace
@@ -96,7 +109,7 @@ TEST_F(IocTypeSinkTest, NoChangeIsSkippedWithoutTouchingTheDatabase)
     EXPECT_CALL(*kvdb, add(_)).Times(0);
 
     // A NoChange session carries no documents, so there would be nothing to swap in. Rebuilding a
-    // physically missing database is the caller's job: it asks for a forced full reload instead.
+    // missing database is the sync service's job: it asks for a forced full reload instead.
     EXPECT_EQ(sink->beginSession(sessionOf(content_manager::SessionKind::NoChange)),
               content_manager::SessionDecision::Skip);
 }
@@ -120,6 +133,7 @@ TEST_F(IocTypeSinkTest, AStagingDatabaseLeftByAPreviousRunIsReclaimed)
 {
     // No prior session on this object: this is what a crash mid-sync leaves behind, and the only
     // reason it is recoverable is that the name is derived from the type rather than invented.
+    registered.emplace(stagingDb());
     existing.emplace(stagingDb());
 
     EXPECT_CALL(*kvdb, remove(StrEq(stagingDb()))).Times(1);
@@ -127,6 +141,33 @@ TEST_F(IocTypeSinkTest, AStagingDatabaseLeftByAPreviousRunIsReclaimed)
 
     EXPECT_EQ(sink->beginSession(sessionOf(content_manager::SessionKind::FullReload)),
               content_manager::SessionDecision::Proceed);
+}
+
+TEST_F(IocTypeSinkTest, AStagingNameRegisteredWithNoInstanceIsReclaimed)
+{
+    // A crash mid-session can leave the staging name registered while its data cannot be reopened.
+    // `exists` then answers false, so only `isRegistered` lets the sink remove it; otherwise `add`
+    // would refuse the name and the type could never sync again.
+    registered.emplace(stagingDb());
+
+    EXPECT_CALL(*kvdb, remove(StrEq(stagingDb()))).Times(1);
+    EXPECT_CALL(*kvdb, add(StrEq(stagingDb()))).Times(1);
+
+    EXPECT_EQ(sink->beginSession(sessionOf(content_manager::SessionKind::FullReload)),
+              content_manager::SessionDecision::Proceed);
+}
+
+TEST_F(IocTypeSinkTest, ATargetRegisteredWithNoInstanceIsSwappedIntoNotReAdded)
+{
+    registered.emplace(targetDb);
+    ASSERT_EQ(sink->beginSession(sessionOf(content_manager::SessionKind::FullReload)),
+              content_manager::SessionDecision::Proceed);
+
+    EXPECT_CALL(*kvdb, add(StrEq(targetDb))).Times(0);
+    EXPECT_CALL(*kvdb, hotSwap(StrEq(stagingDb()), StrEq(targetDb))).Times(1);
+
+    EXPECT_EQ(sink->commit({}).status, content_manager::CommitStatus::Committed);
+    EXPECT_EQ(existing.count(targetDb), 1U);
 }
 
 TEST_F(IocTypeSinkTest, DocumentsAreStoredUnderALowercasedKey)

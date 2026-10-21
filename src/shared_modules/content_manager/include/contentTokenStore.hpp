@@ -22,15 +22,15 @@ namespace content_manager
     /**
      * @brief Where a topic's change-detection token is kept between cycles.
      *
-     * The token is whatever the configured detector produces: a monotonic cursor in `"cursor"` mode, a
-     * content hash in `"hash"` mode. The library treats it as an opaque string and only compares it for
-     * equality or emptiness, so a host is free to store it wherever its own state already lives — VD
-     * keeps it in the updater RocksDB, the Engine in its `store::IStore` status documents.
+     * The token is whatever the configured detector produces: a monotonic cursor for cursor detection,
+     * a content hash for hash detection. The library treats it as an opaque string and only compares
+     * it for equality or emptiness, so a host is free to store it wherever its own state already lives.
      *
-     * Implementations are called from the cycle thread only, and must not throw: a failure to persist
-     * is reported by returning false, which the library maps to `CycleStatus::FailedSink` with
-     * `AbortReason::TokenPersistFailed` — the safe direction, since the content is already live and the
-     * next cycle simply re-fetches.
+     * The library writes it only from inside a cycle (never two at once for one topic), and reads it
+     * from a cycle or from `ContentRegister::currentToken`. Implementations must not throw: a failure
+     * to persist is reported by returning false, which the library maps to `CycleStatus::FailedSink` —
+     * the safe direction, since the content is already live and the next cycle simply re-fetches. The
+     * library never stores an empty token; it calls @ref clear instead.
      */
     class IContentTokenStore
     {

@@ -45,12 +45,23 @@ public:
     virtual void add(std::string_view dbName) = 0;
 
     /**
-     * @brief Check if a database exists and is registered.
+     * @brief Check if a database is registered and holds a usable instance.
      *
      * @param dbName DB identifier
      * @return true if DB exists, false otherwise
      */
     virtual bool exists(std::string_view dbName) const noexcept = 0;
+
+    /**
+     * @brief Check if a name is registered, whether or not it holds an instance.
+     *
+     * A registered name is one @ref add refuses and @ref remove accepts. It can be registered with no
+     * instance when its data could not be reopened at start-up.
+     *
+     * @param dbName DB identifier
+     * @return true if the name is registered
+     */
+    virtual bool isRegistered(std::string_view dbName) const noexcept = 0;
 
     /**
      * @brief Add a key-value pair to the DB.

@@ -14,12 +14,7 @@ namespace cmcontent
 /**
  * @brief Loads one IOC type's documents into a staging KVDB and hot-swaps it into place.
  *
- * The staging-then-swap shape is unchanged from the code this replaces, and it is the reason IOC
- * sync was already closer to a correct promotion model than anything else in the tree: readers
- * never observe a half-written database, because the database they read is only ever swapped
- * whole. What changed is that the decision to promote is now a return value the library acts on
- * (`CommitStatus`) rather than a `bool` the caller had to interpret.
- *
+ * Readers never observe a half-written database: the one they read is only ever swapped whole.
  * One sink per IOC type, matching one topic per IOC type.
  */
 class IocTypeSink final : public content_manager::IContentSink
@@ -55,13 +50,6 @@ public:
      */
     void abort(content_manager::AbortReason reason, const std::string& detail) noexcept override;
 
-    /**
-     * @brief How many IOC entries the last committed cycle stored.
-     *
-     * @return The count; 0 when the last cycle delivered nothing.
-     */
-    std::size_t lastStoredCount() const noexcept { return m_lastStoredCount; }
-
 private:
     /// Drops the staging database, if one is open. Never throws.
     void discardStaging() noexcept;
@@ -76,7 +64,6 @@ private:
 
     std::string m_stagingDbName; ///< Empty when no session is open.
     std::size_t m_storedCount {0};
-    std::size_t m_lastStoredCount {0};
 };
 
 } // namespace cmcontent

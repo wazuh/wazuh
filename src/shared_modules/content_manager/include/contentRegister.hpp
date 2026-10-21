@@ -13,33 +13,25 @@
 #ifndef _CONTENT_REGISTER_HPP
 #define _CONTENT_REGISTER_HPP
 
+#include "contentExport.hpp"
 #include "contentIndexer.hpp"
 #include "contentSink.hpp"
 #include "contentTokenStore.hpp"
 #include "contentTopicSpec.hpp"
 #include "contentTypes.hpp"
-#include <json.hpp>
+#include <functional>
 #include <memory>
 #include <string>
 
-#if __GNUC__ >= 4
-#define EXPORTED __attribute__((visibility("default")))
-#else
-#define EXPORTED
-#endif
+class TopicDriver;
 
 /**
  * @brief One registered content topic: its configuration, its sink and its token.
  *
- * The library is *pull*-driven. A host that already owns a scheduler (the Engine) constructs a
- * registration without `schedule.intervalSeconds` and calls @ref runOnce from its own task; a host
- * that does not (the vulnerability scanner) sets it and gets the library's own driver thread, which
- * calls the same @ref runOnce.
- *
- * @p parameters is the JSON of a `content_manager::TopicSpec` — build it with
- * `content_manager::toParameters` (contentTopicSpec.hpp) rather than by hand. The shape, grouped by
- * concern, and the strict parsing it gets at construction are described in D2 of the library's
- * README; every unknown key is rejected, naming its block.
+ * A host that owns a scheduler (the Engine) registers without `schedule.intervalSeconds` and calls
+ * @ref runOnce from its own task. A host that does not (the vulnerability scanner) sets it and gets
+ * a driver thread that runs a cycle at start, then on the interval, and runs @ref requestRun's
+ * requests in between.
  */
 class EXPORTED ContentRegister final
 {
@@ -47,39 +39,32 @@ public:
     /**
      * @brief Register a topic.
      *
-     * @param topicName Unique topic name. Also the key of the on-demand route.
-     * @param parameters Registration parameters (see the class documentation).
+     * @param topicName Topic name, carried on every log line and sink call.
+     * @param spec The registration (contentTopicSpec.hpp).
      * @param sink Destination for the downloaded content. Must not be null.
-     * @param indexer The host's indexer (see contentIndexer.hpp, D1). Must not be null: the library
-     *                never opens a connection of its own. Held for the registration's whole life.
-     * @param tokenStore Where the change-detection token lives. When null, the library builds one
-     *                   over `state.databasePath`; passing null with no `databasePath` leaves
-     *                   the topic tokenless, i.e. every cycle is a full reload.
-     * @param contractVersion Leave at its default. Compiled into the caller so a host built against
-     *                        a stale `contentTypes.hpp` is refused instead of misreading a struct.
+     * @param indexer The host's indexer (contentIndexer.hpp, D1). Must not be null. Held for the
+     *                registration's whole life.
+     * @param tokenStore Where the change-detection token lives. When null, the library keeps it in a
+     *                   RocksDB under `state.databasePath`; with no `databasePath` either, the topic is
+     *                   tokenless and every cycle is a full reload.
      *
-     * @throws std::invalid_argument if the configuration is invalid, the sink or the indexer is null, or the
-     *         contract version does not match the one built into the library.
-     * @throws std::runtime_error if the topic is already registered.
+     * @throws std::invalid_argument if the spec is invalid (naming the field), or the sink or the
+     *         indexer is null.
+     * @throws std::runtime_error if the token database cannot be opened, even after a rebuild.
      */
-    explicit ContentRegister(std::string topicName,
-                             const nlohmann::json& parameters,
-                             std::shared_ptr<content_manager::IContentSink> sink,
-                             std::shared_ptr<content_manager::IContentIndexer> indexer,
-                             std::shared_ptr<content_manager::IContentTokenStore> tokenStore = nullptr,
-                             std::uint32_t contractVersion = content_manager::CONTRACT_ABI_VERSION);
+    ContentRegister(std::string topicName,
+                    const content_manager::TopicSpec& spec,
+                    std::shared_ptr<content_manager::IContentSink> sink,
+                    std::shared_ptr<content_manager::IContentIndexer> indexer,
+                    std::shared_ptr<content_manager::IContentTokenStore> tokenStore = nullptr);
 
     /**
      * @brief Unregister the topic.
      *
-     * Blocks until any in-flight cycle for this topic has finished and its on-demand route has been
-     * withdrawn, so no callback into the sink can be running once this returns.
-     *
-     * Two consequences of that guarantee, both of which are deadlocks if ignored:
-     *  - a host that holds a lock the sink also takes must release it before destroying the
-     *    registration;
-     *  - a registration must never be destroyed from inside its own sink callback. This waits for
-     *    the cycle that callback belongs to, so it would be waiting on itself.
+     * Stops the driver thread, answers a pending @ref requestRun with `ShuttingDown`, and waits for
+     * an in-flight cycle, so no callback into the sink can be running once this returns. Two
+     * consequences, both deadlocks if ignored: release any lock the sink also takes before destroying
+     * the registration, and never destroy it from inside its own sink.
      */
     ~ContentRegister();
 
@@ -87,22 +72,29 @@ public:
     ContentRegister& operator=(const ContentRegister&) = delete;
 
     /**
-     * @brief Run exactly one content cycle, synchronously.
+     * @brief Run exactly one content cycle on the calling thread.
      *
-     * Bounded: every gate is single-pass, so this returns in roughly the time one pass over the
-     * source takes and never parks the calling thread on a poll. Never throws.
-     *
-     * Mutually exclusive per topic: if a cycle for this topic is already running (scheduled or
-     * on-demand), this returns immediately with `CycleStatus::SkippedAlreadyRunning` rather than
-     * running a second one concurrently. That status is distinct from `SkippedStopRequested` on
-     * purpose — a caller that folds a cycle's outcome into its own state must be able to tell "I
-     * observed nothing because nothing ran" from "I observed a completed no-op", and the two have
-     * opposite meanings for whatever the caller reads afterwards.
+     * Bounded: every gate is single-pass, so a deferred cycle returns with `retryAfter` instead of
+     * waiting. Never throws. If a cycle of this topic is already running, returns
+     * `SkippedAlreadyRunning` at once ("nothing ran"), which is distinct from `SkippedStopRequested`.
      *
      * @param req What the caller wants from this cycle.
      * @return What the cycle did, and how long the caller should wait before the next one.
      */
     content_manager::CycleOutcome runOnce(content_manager::RunRequest req = {}) noexcept;
+
+    /**
+     * @brief Ask the driver thread to run a cycle now.
+     *
+     * Never blocks, so it is safe from a transport I/O thread. A request that cannot be queued — a
+     * cycle running or already requested, a stopping topic, a topic without an interval — is answered
+     * inline; otherwise the driver thread runs it and answers on that thread.
+     *
+     * @param req What the cycle should do.
+     * @param completion Invoked exactly once with the result. May be empty.
+     */
+    void requestRun(content_manager::RunRequest req,
+                    std::function<void(content_manager::OnDemandResult)> completion) noexcept;
 
     /**
      * @brief The token in force for this topic.
@@ -112,21 +104,16 @@ public:
     std::string currentToken() const noexcept;
 
     /**
-     * @brief Ask any in-flight cycle to wind down at the next checkpoint.
+     * @brief Stop this topic for good.
+     *
+     * An in-flight cycle winds down at its next checkpoint, and every later cycle returns
+     * `SkippedStopRequested`. Used by hosts that tear down in two steps: stop everything, then
+     * destroy.
      */
     void requestStop() noexcept;
 
-    /**
-     * @brief Change the driver thread's interval.
-     *
-     * No-op when the registration was created without an `interval`.
-     *
-     * @param newInterval New interval, in seconds.
-     */
-    void changeSchedulerInterval(size_t newInterval);
-
 private:
-    std::string m_name;
+    std::unique_ptr<TopicDriver> m_driver;
 };
 
 #endif // _CONTENT_REGISTER_HPP

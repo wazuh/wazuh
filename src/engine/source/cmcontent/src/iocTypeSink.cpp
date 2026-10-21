@@ -41,9 +41,8 @@ content_manager::SessionDecision IocTypeSink::beginSession(const content_manager
 {
     using namespace content_manager;
 
-    // Nothing moved remotely. The caller is responsible for noticing that the target database has
-    // gone missing and asking for a forced full reload instead — it knows that before the cycle
-    // starts, and a NoChange session delivers no documents for this sink to swap in.
+    // Nothing moved remotely. A target database that has gone missing is the sync service's to
+    // notice: it asks for a forced full reload, which is never a NoChange session.
     if (info.kind == SessionKind::NoChange)
     {
         return SessionDecision::Skip;
@@ -57,12 +56,9 @@ content_manager::SessionDecision IocTypeSink::beginSession(const content_manager
 
     try
     {
-        // One fixed name per type, not a random one. Two cycles for the same type can never run at
-        // once — the library refuses the second — so a random suffix bought nothing, and it cost the
-        // only thing that matters after a crash: a staging database whose name died with the process
-        // is one nothing can ever find again, so every interrupted sync leaked a database
-        // permanently. With a fixed name this single call cleans up after both a previous session of
-        // this object and a previous run of the whole process.
+        // One fixed name per type: two cycles for a type never run at once, and a fixed name is one
+        // the next session can still find after a crash, so this call also cleans up after a
+        // previous run of the whole process.
         discardStaging();
 
         m_stagingDbName = m_stagingDbNameForType;
@@ -165,7 +161,9 @@ content_manager::CommitResult IocTypeSink::commit(const content_manager::CommitI
 
     try
     {
-        if (!kvdb->exists(m_targetDbName))
+        // Registered, not merely holding an instance: a target whose data could not be reopened at
+        // start-up is registered without one, add() refuses it, and the swap fills it.
+        if (!kvdb->isRegistered(m_targetDbName))
         {
             kvdb->add(m_targetDbName);
             LOG_INFO("[{}] Created target database '{}'", LOG_MODULE_NAME, m_targetDbName);
@@ -173,7 +171,6 @@ content_manager::CommitResult IocTypeSink::commit(const content_manager::CommitI
 
         kvdb->hotSwap(m_stagingDbName, m_targetDbName);
         m_stagingDbName.clear();
-        m_lastStoredCount = m_storedCount;
 
         if (m_storedCount == 0)
         {
@@ -185,10 +182,8 @@ content_manager::CommitResult IocTypeSink::commit(const content_manager::CommitI
     }
     catch (const std::exception& e)
     {
-        // RetrySame rather than RetryFull: the failure is in the promotion, not in the content, so
-        // the remote hash is still the one to fetch next time. Keeping the old token would be wrong
-        // (we never committed), and the library leaves it untouched on this status — which is
-        // exactly right, since the token still describes what the target database holds.
+        // RetrySame rather than RetryFull: the failure is in the promotion, not in the content. The
+        // library leaves the token untouched, and it still describes what the target holds.
         discardStaging();
         LOG_WARNING("[{}] Failed to promote IOC type '{}': {}", LOG_MODULE_NAME, m_iocType, e.what());
         return CommitResult {CommitStatus::RejectedRetrySame, e.what()};
@@ -221,14 +216,14 @@ void IocTypeSink::discardStaging() noexcept
     }
 
     // Keyed on the type's fixed staging name rather than on whether *this object* opened a session,
-    // so it also reclaims what an earlier process left behind. There is exactly one such database
-    // per type and nothing else ever reads it, so removing it whenever it exists is unconditionally
-    // safe.
+    // so it also reclaims what an earlier process left behind — including a name registered with no
+    // instance, whose data could not be reopened, which add() would otherwise refuse forever. Nothing
+    // else reads it, so removing it whenever it is registered is safe.
     const auto& name = m_stagingDbNameForType;
 
     try
     {
-        if (kvdb->exists(name))
+        if (kvdb->isRegistered(name))
         {
             kvdb->remove(name);
         }

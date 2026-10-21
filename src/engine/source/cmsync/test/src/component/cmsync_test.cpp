@@ -11,21 +11,18 @@
 #include <base/json.hpp>
 #include <base/logging.hpp>
 #include <base/syncStatus.hpp>
-#include <cmcontent/registration.hpp>
+#include <cmcontent/contentTopic.hpp>
 #include <cmcrud/mockcmcrud.hpp>
 #include <cmsync/cmsync.hpp>
 #include <contentIndexer.hpp>
 #include <router/mockRouter.hpp>
 #include <store/mockStore.hpp>
-#include <wiconnector/mockswindexerconnector.hpp>
 
 /*
  * Component-level: CMSync wired to real content registrations over the shared content manager, with
- * only the far ends (store, router, namespace store, indexer) faked. The registrations are handed a
- * fake indexer, as production hands them the Engine's own (D1 of the content manager), so neither a
- * running indexer nor keystore credentials are needed. What this exercises is the wiring: that a
- * registration is created per tracked space, that a cycle can be driven end to end without
- * throwing, and that the outcome lands in the status the API serves.
+ * only the far ends (store, router, namespace store, indexer) faked. What this exercises is the
+ * wiring: a registration per tracked space, a cycle driven end to end without throwing, and the
+ * outcome landing in the status the API serves.
  */
 
 namespace
@@ -66,9 +63,6 @@ public:
     }
 };
 
-constexpr size_t DEFAULT_ATTEMPTS = 1U;
-constexpr size_t DEFAULT_WAIT_SECONDS = 0U;
-
 cmcontent::Options contentOptions()
 {
     cmcontent::Options options;
@@ -84,7 +78,6 @@ protected:
     {
         logging::testInit();
 
-        indexer = std::make_shared<::testing::NiceMock<wiconnector::mocks::MockWIndexerConnector>>();
         crud = std::make_shared<::testing::NiceMock<cm::crud::MockCrudService>>();
         store = std::make_shared<::testing::NiceMock<store::mocks::MockStore>>();
         router = std::make_shared<::testing::NiceMock<::router::mocks::MockRouterAPI>>();
@@ -97,17 +90,15 @@ protected:
 
     std::unique_ptr<cm::sync::CMSync> create()
     {
-        return std::make_unique<cm::sync::CMSync>(indexer,
-                                                  crud,
+        return std::make_unique<cm::sync::CMSync>(crud,
                                                   store,
                                                   router,
-                                                  std::make_shared<EmptyIndexer>(),
-                                                  DEFAULT_ATTEMPTS,
-                                                  DEFAULT_WAIT_SECONDS,
-                                                  contentOptions());
+                                                  cmcontent::defaultTopicFactory(indexer),
+                                                  contentOptions(),
+                                                  cmcontent::RetryPolicy {1, 0});
     }
 
-    std::shared_ptr<::testing::NiceMock<wiconnector::mocks::MockWIndexerConnector>> indexer;
+    std::shared_ptr<EmptyIndexer> indexer {std::make_shared<EmptyIndexer>()};
     std::shared_ptr<::testing::NiceMock<cm::crud::MockCrudService>> crud;
     std::shared_ptr<::testing::NiceMock<store::mocks::MockStore>> store;
     std::shared_ptr<::testing::NiceMock<::router::mocks::MockRouterAPI>> router;
@@ -117,9 +108,7 @@ protected:
 
 TEST_F(CMSyncComponentTest, RegistersOneTopicPerTrackedSpace)
 {
-    // One registration per space rather than one for the whole ruleset: the hash, the promotion and
-    // the route are all already per-space. Constructing twice would collide on the topic names, so
-    // this also proves the first instance released them.
+    // Building twice proves the first instance released its registrations.
     {
         const auto first = create();
         ASSERT_EQ(first->getSpacesStatus().size(), 2U);
@@ -129,31 +118,24 @@ TEST_F(CMSyncComponentTest, RegistersOneTopicPerTrackedSpace)
     EXPECT_EQ(second->getSpacesStatus().size(), 2U);
 }
 
-TEST_F(CMSyncComponentTest, ACycleAgainstAnUnreachableIndexerFailsWithoutThrowing)
+TEST_F(CMSyncComponentTest, AnEmptyIndexerDefersOrFindsNothingWithoutFailing)
 {
     const auto sync = create();
 
-    // existsPolicy is the first thing a space's cycle does; making it throw simulates a dead
-    // indexer. Nothing may escape: synchronize() runs on a scheduler worker.
-    ON_CALL(*indexer, existsPolicy(::testing::_))
-        .WillByDefault(::testing::Throw(std::runtime_error("connection refused")));
-
+    // `standard` waits for a consumer document the indexer does not have; `custom` finds no policy.
+    // Neither is a failure, and nothing may escape: synchronize() runs on a scheduler worker.
     EXPECT_NO_THROW(sync->synchronize());
 
-    const auto status = sync->getSpacesStatus();
-    ASSERT_EQ(status.size(), 2U);
-    for (const auto& entry : status)
+    for (const auto& entry : sync->getSpacesStatus())
     {
-        EXPECT_EQ(entry.status, base::SyncStatus::FAILED);
+        EXPECT_EQ(entry.status, base::SyncStatus::READY) << entry.name;
+        EXPECT_FALSE(entry.available) << entry.name;
     }
 }
 
-TEST_F(CMSyncComponentTest, ShutdownInterruptsTheIteration)
+TEST_F(CMSyncComponentTest, ShutdownBeforeASyncRunsNothing)
 {
     const auto sync = create();
-
-    ON_CALL(*indexer, existsPolicy(::testing::_)).WillByDefault(::testing::Return(true));
-    ON_CALL(*indexer, isConsumerReadyForSync(::testing::_)).WillByDefault(::testing::Return(false));
 
     sync->requestShutdown();
     EXPECT_NO_THROW(sync->synchronize());

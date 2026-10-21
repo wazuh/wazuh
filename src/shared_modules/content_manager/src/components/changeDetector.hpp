@@ -15,6 +15,7 @@
 
 #include "contentIndexer.hpp"
 #include "pitSession.hpp"
+#include "tokenHelpers.hpp"
 #include <json.hpp>
 #include <map>
 #include <optional>
@@ -33,7 +34,7 @@ struct ProbeResult
     /// Set when the probe found the *configuration* to be unusable against the live data — not when
     /// it merely found nothing. A remote state that cannot be identified unambiguously is a config
     /// error, not a transient one: retrying cannot fix it, so the cycle ends `FailedConfig` and says
-    /// which key to look at rather than silently picking one of the candidates.
+    /// which field to look at rather than silently picking one of the candidates.
     std::string configError;
 };
 
@@ -46,21 +47,19 @@ struct FetchPlan
     enum class Mode
     {
         Full,        ///< Fetch everything.
-        Incremental, ///< Fetch only what is newer than `startToken`.
+        Incremental, ///< Fetch only what is newer than the stored token.
         NoChange     ///< Fetch nothing.
     };
 
     Mode mode {Mode::Full}; ///< Shape of the fetch.
     nlohmann::json query;   ///< Query to run. NOT yet scoped by `PitSession::scopeToData`.
-    std::string startToken; ///< Lower bound, for `Incremental`.
 };
 
 /**
  * @brief How a topic decides whether its content moved.
  *
- * The two implementations below are the only two shapes the three consumers need, and they differ
- * only in where the "current state" of the source lives: a monotonically increasing integer written
- * onto every document (VD), or a content hash published next to the data (both Engine consumers).
+ * Two shapes, differing only in where the "current state" of the source lives: a monotonically
+ * increasing integer written onto every document, or a content hash published next to the data.
  */
 class IChangeDetector
 {
@@ -73,7 +72,7 @@ public:
      * @param session The open PIT.
      * @param port Indexer access, for detectors that need a query the session does not offer.
      * @return The remote state.
-     * @throws IndexerConnectorException if the probe query fails.
+     * @throws std::exception whatever the indexer throws when the probe query fails.
      */
     virtual ProbeResult probe(PitSession& session, content_manager::IContentIndexer& port) = 0;
 
@@ -81,7 +80,7 @@ public:
      * @brief Decide what to fetch.
      *
      * @param remote The probed remote state.
-     * @param localToken The token stored by the previous successful commit.
+     * @param localToken The token stored by the previous successful commit ("" forces a full fetch).
      * @return The plan.
      */
     virtual FetchPlan plan(const ProbeResult& remote, const std::string& localToken) const = 0;
@@ -107,10 +106,8 @@ public:
  * @brief Change detection by a monotonic integer cursor carried on every document.
  *
  * The stored token is the highest value seen; the next cycle asks for everything strictly greater.
- * The field name is configuration (`detection.field`, default `"offset"`), which is what lets
- * this class be reused by anything that publishes an increasing sequence number. The topic's own
- * `source.query`, when it has one, narrows both shapes of fetch: a full one runs it as is, an
- * incremental one runs it AND the cursor range.
+ * The topic's own `source.query`, when it has one, narrows both shapes of fetch: a full one runs it
+ * as is, an incremental one runs it AND the cursor range.
  */
 class OffsetCursorDetector final : public IChangeDetector
 {
@@ -136,17 +133,15 @@ public:
     FetchPlan plan(const ProbeResult&, const std::string& localToken) const override
     {
         FetchPlan result;
-        result.startToken = localToken;
 
         // A cursor that is absent, zeroed or corrupt all mean the same thing: there is no safe
         // lower bound, so the only correct fetch is everything. Falling through to a range query
         // with a garbage bound would either throw on every cycle or silently skip documents.
         std::uint64_t parsed = 0;
-        if (!parseToken(localToken, parsed) || parsed == 0)
+        if (!tokenHelpers::parseUnsigned(localToken, parsed) || parsed == 0)
         {
             result.mode = FetchPlan::Mode::Full;
             result.query = m_sourceQuery.value_or(nlohmann::json {{"match_all", nlohmann::json::object()}});
-            result.startToken.clear();
             return result;
         }
 
@@ -168,36 +163,6 @@ public:
         return "/_source/" + m_cursorField;
     }
 
-    /// @return The document field carrying the cursor.
-    const std::string& cursorField() const noexcept
-    {
-        return m_cursorField;
-    }
-
-    /**
-     * @brief Parse a stored cursor.
-     *
-     * @param token Stored token.
-     * @param[out] value Parsed value, untouched on failure.
-     * @return True when @p token is a well-formed unsigned integer.
-     */
-    static bool parseToken(const std::string& token, std::uint64_t& value)
-    {
-        if (token.empty() || token.find_first_not_of("0123456789") != std::string::npos)
-        {
-            return false;
-        }
-        try
-        {
-            value = std::stoull(token);
-        }
-        catch (const std::exception&)
-        {
-            return false;
-        }
-        return true;
-    }
-
 private:
     std::string m_cursorField;
     std::optional<nlohmann::json> m_sourceQuery; ///< The topic's own query, if any.
@@ -206,17 +171,17 @@ private:
 /**
  * @brief Change detection by a content hash published alongside the data.
  *
- * Two probe shapes, because the two Engine consumers locate their hash differently:
+ * Two probe shapes:
  *
- *  - **doc probe** (`hashDocId` set): the hash lives in a dedicated manifest document whose id is
- *    known, e.g. `iocsync`'s `__ioc_type_hashes__`.
+ *  - **doc probe** (`hashDocId` set): the hash lives in a manifest document whose id is known,
+ *    e.g. the IOC sync's `__ioc_type_hashes__`.
  *  - **query probe** (`hashDocId` empty): the hash lives on the one document `hashQuery` selects,
- *    e.g. `cmsync`'s per-space policy document.
+ *    e.g. the ruleset sync's per-space policy document.
  *
  * @note The query probe runs inside the PIT, which spans every data index, so `hashQuery` must itself
  *       be selective enough to match exactly one document. When the configured names are aliases,
  *       `_index` reports the suffixed backing index, so an index has to be singled out by a wildcard
- *       on `_index`, never an exact match — which is how `cmsync` selects its policies index.
+ *       on `_index`, never an exact match.
  */
 class ContentHashDetector final : public IChangeDetector
 {
@@ -234,7 +199,7 @@ public:
     /**
      * @brief Build a hash detector.
      *
-     * @param config Probe configuration. Validated by `TopicSpecParser` before it gets here.
+     * @param config Probe configuration, already validated with the registration.
      */
     explicit ContentHashDetector(Config config)
         : m_config {std::move(config)}
@@ -259,7 +224,7 @@ public:
         const auto hits = port.search(session.pit(),
                                       probeSize,
                                       session.scopeToData(query),
-                                      probeSort(),
+                                      PitSession::docSort(),
                                       std::nullopt,
                                       sourceFilter(),
                                       std::nullopt);
@@ -283,14 +248,8 @@ public:
         }
 
         const auto& hit = hitArray.front();
-        if (!hit.contains("_source") || !hit.at("_source").is_object())
-        {
-            result.sourceMissing = true;
-            return result;
-        }
-
-        const auto& source = hit.at("_source");
-        result.remoteToken = readFirstString(source, m_config.hashPointers);
+        const auto* source = tokenHelpers::resolve(hit, "/_source");
+        result.remoteToken = source != nullptr ? readFirstString(*source) : std::string {};
         if (result.remoteToken.empty())
         {
             result.sourceMissing = true;
@@ -300,7 +259,7 @@ public:
         result.metadata = nlohmann::json::object();
         for (const auto& [name, pointer] : m_config.metadataPointers)
         {
-            if (const auto* value = resolve(source, pointer); value != nullptr)
+            if (const auto* value = tokenHelpers::resolve(*source, pointer); value != nullptr)
             {
                 result.metadata[name] = *value;
             }
@@ -312,7 +271,6 @@ public:
     FetchPlan plan(const ProbeResult& remote, const std::string& localToken) const override
     {
         FetchPlan result;
-        result.startToken = localToken;
 
         if (remote.sourceMissing || (!remote.remoteToken.empty() && remote.remoteToken == localToken))
         {
@@ -346,11 +304,8 @@ private:
         auto includes = nlohmann::json::array();
         const auto add = [&includes](const std::string& pointer)
         {
-            auto root = pointerRoot(pointer);
-            if (!root.empty())
-            {
-                includes.push_back(std::move(root));
-            }
+            const auto end = pointer.find('/', 1);
+            includes.push_back(pointer.substr(1, end == std::string::npos ? std::string::npos : end - 1));
         };
 
         for (const auto& pointer : m_config.hashPointers)
@@ -361,68 +316,20 @@ private:
         {
             add(pointer);
         }
-
-        if (includes.empty())
-        {
-            return nlohmann::json {{"includes", nlohmann::json::array({"*"})}, {"excludes", nlohmann::json::array()}};
-        }
         return nlohmann::json {{"includes", std::move(includes)}, {"excludes", nlohmann::json::array()}};
     }
 
-    /// "/type_hashes/url_domain/hash/sha256" -> "type_hashes"
-    static std::string pointerRoot(const std::string& pointer)
+    std::string readFirstString(const nlohmann::json& source) const
     {
-        if (pointer.size() < 2 || pointer.front() != '/')
+        for (const auto& pointer : m_config.hashPointers)
         {
-            return {};
-        }
-        const auto end = pointer.find('/', 1);
-        return pointer.substr(1, end == std::string::npos ? std::string::npos : end - 1);
-    }
-
-    static const nlohmann::json* resolve(const nlohmann::json& document, const std::string& pointer)
-    {
-        if (pointer.empty() || pointer.front() != '/')
-        {
-            return nullptr;
-        }
-        try
-        {
-            const nlohmann::json::json_pointer jp {pointer};
-            if (!document.contains(jp))
+            const auto* value = tokenHelpers::resolve(source, pointer);
+            if (value != nullptr && value->is_string() && !value->get_ref<const std::string&>().empty())
             {
-                return nullptr;
-            }
-            return &document.at(jp);
-        }
-        catch (const std::exception&)
-        {
-            return nullptr;
-        }
-    }
-
-    static std::string readFirstString(const nlohmann::json& document, const std::vector<std::string>& pointers)
-    {
-        for (const auto& pointer : pointers)
-        {
-            const auto* value = resolve(document, pointer);
-            if (value != nullptr && value->is_string())
-            {
-                auto text = value->get<std::string>();
-                if (!text.empty())
-                {
-                    return text;
-                }
+                return value->get<std::string>();
             }
         }
         return {};
-    }
-
-    static const nlohmann::json& probeSort()
-    {
-        static const nlohmann::json sort =
-            nlohmann::json::array({nlohmann::json {{"_shard_doc", "asc"}}, nlohmann::json {{"_id", "asc"}}});
-        return sort;
     }
 
     Config m_config;

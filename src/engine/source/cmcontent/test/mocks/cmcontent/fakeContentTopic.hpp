@@ -19,15 +19,9 @@ namespace cmcontent::mocks
 /**
  * @brief A scripted @ref IContentTopic, plus the registry a test drives it through.
  *
- * The sync services own concrete `ContentRegister`s in production, which register themselves with a
- * process-wide facade and open real connections on construction — so the orchestration around them
- * (which outcome makes a type FAILED, when a missing database forces a full reload, what a
- * already-running cycle does to the persisted state) could not be exercised at all. Injecting a
- * factory that hands out these instead is what makes that testable.
- *
- * The fake deliberately does the two things a real topic does that the orchestration depends on:
- * it can report any `CycleOutcome`, and it can write to the token store it was given, which is how
- * a committed hash reaches the service's state.
+ * Does the two things a real topic does that the sync services depend on: it reports any
+ * `CycleOutcome`, and it writes to the token store it was given, which is how a committed hash
+ * reaches the service's state.
  */
 class FakeTopicRegistry
 {
@@ -40,9 +34,7 @@ public:
         bool clearToken {false};               ///< Clear the token store instead of writing.
 
         /// Optional: exercise the sink the way a real cycle would, so the caller's handling of what
-        /// the sink leaves behind is covered too. A `CycleOutcome` alone cannot express that — for
-        /// `cmsync` the interesting result of a cycle is the sink's `RulesetOutcome`, not the
-        /// status.
+        /// the sink leaves behind (the deployed route) is covered too.
         std::function<void(content_manager::IContentSink&)> driveSink;
     };
 
@@ -61,14 +53,14 @@ public:
     TopicFactory factory()
     {
         return [this](const std::string& topicName,
-                      const nlohmann::json& parameters,
+                      const content_manager::TopicSpec& spec,
                       std::shared_ptr<content_manager::IContentSink> sink,
                       std::shared_ptr<content_manager::IContentTokenStore> tokenStore) -> std::unique_ptr<IContentTopic>
         {
             {
                 std::lock_guard<std::mutex> lock {m_mutex};
                 m_registered.push_back(topicName);
-                m_parameters[topicName] = parameters;
+                m_specs[topicName] = spec;
                 m_sinks[topicName] = sink;
                 m_tokenStores[topicName] = tokenStore;
             }
@@ -127,12 +119,12 @@ public:
         return it == m_stops.end() ? 0U : it->second;
     }
 
-    /// @return The registration parameters a topic was built with.
-    nlohmann::json parametersOf(const std::string& topic) const
+    /// @return The spec a topic was built with.
+    content_manager::TopicSpec specOf(const std::string& topic) const
     {
         std::lock_guard<std::mutex> lock {m_mutex};
-        const auto it = m_parameters.find(topic);
-        return it == m_parameters.end() ? nlohmann::json {} : it->second;
+        const auto it = m_specs.find(topic);
+        return it == m_specs.end() ? content_manager::TopicSpec {} : it->second;
     }
 
     /// @return The sink a topic was built with.
@@ -249,7 +241,7 @@ private:
     mutable std::mutex m_mutex;
     std::vector<std::string> m_registered;
     std::vector<Call> m_calls;
-    std::unordered_map<std::string, nlohmann::json> m_parameters;
+    std::unordered_map<std::string, content_manager::TopicSpec> m_specs;
     std::unordered_map<std::string, std::shared_ptr<content_manager::IContentSink>> m_sinks;
     std::unordered_map<std::string, std::shared_ptr<content_manager::IContentTokenStore>> m_tokenStores;
     std::unordered_map<std::string, std::vector<Script>> m_scripts;

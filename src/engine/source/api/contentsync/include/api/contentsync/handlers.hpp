@@ -3,70 +3,49 @@
 #define _API_CONTENTSYNC_HANDLERS_HPP
 
 #include <memory>
+#include <string>
 
 #include <api/adapter/adapter.hpp>
-#include <cmsync/icmsync.hpp>
-#include <iocsync/iiocsync.hpp>
+#include <scheduler/triggerableTask.hpp>
 
 /**
  * @brief On-demand triggers for the content the engine pulls from the wazuh-indexer.
  *
- * Both routes do the same thing for their own content: ask the content manager to run a cycle now
- * rather than at the next scheduler tick. Neither blocks — the request goes onto the content
- * manager's short bounded lane and runs on one of its workers — so a caller gets an immediate
- * answer meaning "accepted", not "finished". Progress and results are read from `GET /status`,
- * which already reports per-space and per-type sync state.
- *
- * A cycle whose content has not moved costs one hash probe, and a topic that is already syncing is
- * left alone rather than run twice, so these are safe to call repeatedly.
+ * Each route runs its sync task now rather than at its next scheduled run. Neither blocks: the
+ * answer means "accepted", not "finished", and the outcome is read from `GET /status`. A request
+ * that arrives while the task runs makes it run once more right after, so calling repeatedly is
+ * safe and cheap — a content that has not moved costs one hash probe.
  */
 namespace api::contentsync::handlers
 {
 
 /**
- * @brief Trigger a ruleset synchronization for every tracked space.
+ * @brief A handler that triggers a sync task.
  *
- * POST /content/ruleset/update
- * Request: {}
- * Response: GenericStatus_Response
- *
- * New capability: the ruleset previously had no way to be refreshed other than waiting for
- * `cm-sync-task`.
- *
- * @param cmSync Ruleset sync service.
+ * @param task The task. Held weakly, so a shutdown that destroys it cannot leave the server calling
+ *             into a freed object; when it is gone (or was never built) the route answers 500.
+ * @param what What the task syncs, for the answer and the log.
  * @return The route handler.
  */
-adapter::RouteHandler updateRuleset(const std::shared_ptr<cm::sync::ICMSync>& cmSync);
+adapter::RouteHandler triggerSync(const std::shared_ptr<scheduler::TriggerableTask>& task, std::string what);
 
 /**
- * @brief Trigger an IOC synchronization from the indexer for every tracked type.
+ * @brief Register the content synchronization routes.
  *
- * POST /content/ioc/sync
- * Request: {}
- * Response: GenericStatus_Response
+ * POST /content/ruleset/update and POST /content/ioc/sync. Both take an empty request and answer a
+ * `GenericStatus_Response`. The IOC route is separate from `POST /content/ioc/update`, which ingests
+ * a local nd-json file: the two share no input and no code path.
  *
- * Deliberately a separate route from `POST /content/ioc/update`, which ingests a local nd-json file
- * given a path and a hash. The two share no input and no code path; folding the indexer mode into
- * the same route as a flag would have made half of its request fields meaningless on each call.
- *
- * @param iocSync IOC sync service.
- * @return The route handler.
- */
-adapter::RouteHandler syncIocFromIndexer(const std::shared_ptr<ioc::sync::IIocSync>& iocSync);
-
-/**
- * @brief Register the content synchronization handlers.
- *
- * @param cmSync Ruleset sync service.
- * @param iocSync IOC sync service.
+ * @param rulesetSync The ruleset sync task (`cm-sync-task`).
+ * @param iocSync The IOC sync task (`ioc-sync-task`).
  * @param server API server.
  */
-inline void registerHandlers(const std::shared_ptr<cm::sync::ICMSync>& cmSync,
-                             const std::shared_ptr<ioc::sync::IIocSync>& iocSync,
+inline void registerHandlers(const std::shared_ptr<scheduler::TriggerableTask>& rulesetSync,
+                             const std::shared_ptr<scheduler::TriggerableTask>& iocSync,
                              const std::shared_ptr<httpsrv::Server>& server)
 {
-    server->addRoute(httpsrv::Method::POST, "/content/ruleset/update", updateRuleset(cmSync));
-    server->addRoute(httpsrv::Method::POST, "/content/ioc/sync", syncIocFromIndexer(iocSync));
+    server->addRoute(httpsrv::Method::POST, "/content/ruleset/update", triggerSync(rulesetSync, "ruleset"));
+    server->addRoute(httpsrv::Method::POST, "/content/ioc/sync", triggerSync(iocSync, "IOC"));
 }
 
 } // namespace api::contentsync::handlers

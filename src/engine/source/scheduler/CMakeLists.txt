@@ -38,6 +38,13 @@ target_include_directories(scheduler_mocks INTERFACE ${TEST_MOCK_DIR})
 target_link_libraries(scheduler_mocks INTERFACE GTest::gmock scheduler::ischeduler)
 add_library(scheduler::mocks ALIAS scheduler_mocks)
 
+# Unit test
+add_executable(scheduler_utest
+    ${TEST_SRC_DIR}/unit/triggerableTask_test.cpp
+)
+target_link_libraries(scheduler_utest PRIVATE scheduler::mocks base GTest::gtest_main GTest::gmock)
+gtest_discover_tests(scheduler_utest)
+
 # Component test
 add_executable(scheduler_ctest
     ${COMPONENT_SRC_DIR}/scheduler_test.cpp

@@ -1,37 +1,39 @@
 # Content Manager
 
-The Content Manager downloads content from the Wazuh Indexer and keeps it up to date. It is a
-generic library: the Vulnerability Detection module, the Engine's ruleset sync (`cmsync`) and the
-Engine's IOC enrichment sync (`iocsync`) all drive it, each with its own change-detection strategy,
-its own destination and its own token storage.
+The Content Manager keeps a host's copy of indexer content in step with the Wazuh Indexer. It is a
+generic library: the Vulnerability Detection module (the CVE feed) and the Engine's ruleset and IOC
+syncs (`cmcontent`) all use it, each with its own change-detection strategy, its own destination
+and its own token storage. A host describes what to read and where it goes; the library owns how it
+is read.
 
 ## The cycle
 
-Every consumer runs the same cycle, once per scheduled or on-demand execution:
+Every topic runs the same cycle, once per scheduled or requested execution:
 
 ```
+pre-flight: is the consumer "ready"? (cheap, cached)        (cost gate)
 open a PIT over {data indices} ∪ {consumer status index}
-  → validate the consumer is "ready" INSIDE the PIT      (consistency)
-  → probe the remote change token and compare it locally (change detection)
-  → if it moved: paginate the PIT with search_after      (fetch)
-  → the sink accepts pages, then promotes atomically     (delivery)
-  → persist the new token only after promotion           (durability)
+  → validate the consumer is "ready" INSIDE the PIT          (consistency)
+  → probe the remote change token and compare it locally     (change detection)
+  → if it moved: paginate the PIT with search_after          (fetch)
+  → the sink accepts pages, then promotes atomically         (delivery)
+  → persist the new token only after promotion               (durability)
 close the PIT
+tell the sink how the cycle ended                            (cycleFinished)
 ```
 
-Only change detection, delivery and token storage genuinely differ between consumers. Fetching
-differs only by *configuration* — indices, query, sort keys, `_source` filter, page size, slice
-count.
+Only change detection, delivery and token storage differ between topics. Fetching differs only by
+*configuration* — indices, query, `_source` filter, page size, slice count.
 
-Validating the consumer from inside the PIT rather than before opening it is what closes the window
-in which the indexer starts rewriting content between the check and the snapshot. It has two
-consequences the configuration has to respect, both handled by the library:
+Validating the consumer from inside the PIT rather than before opening it closes the window in
+which the indexer starts rewriting content between the check and the snapshot. It has two
+consequences the library handles:
 
-- sort keys that are not metafields get an `unmapped_type` injected. Not because the consumer status
-  index lacks them — OpenSearch only needs a sort field mapped in *one* index of the search — but
-  because on a cold start the data index has no documents and therefore no dynamic mapping either,
-  leaving the key unmapped everywhere, which does fail the whole search. That is exactly a new
-  manager's first feed load;
+- the cursor sort carries an `unmapped_type`. Not because the consumer status index lacks the
+  field — OpenSearch only needs a sort field mapped in *one* index of the search — but because on a
+  cold start the data index has no documents and therefore no dynamic mapping either, leaving the
+  key unmapped everywhere, which fails the whole search. That is exactly a new manager's first feed
+  load;
 - consumer documents are excluded from results twice — query-side with a `must_not` on `_index`, and
   hit-side by dropping anything that still arrives from that index.
 
@@ -39,14 +41,18 @@ consequences the configuration has to respect, both handled by the library:
 
 | Component | Responsibility |
 |---|---|
-| `IContentIndexer` | The host's indexer: the four read operations the cycle needs (public, `contentIndexer.hpp`). The library ships adapters over `IndexerConnectorSync` and `IndexerConnectorAsync` (`makeContentIndexer`); tests pass a fake. It never builds a connection of its own (D1). |
-| `PitSession` | Opens and closes the PIT; validates consumer readiness inside it; scopes queries to the data indices. |
-| `ConsumerGate` | Cheap, bounded, cached pre-flight readiness probe, shared across topics watching the same consumer. |
-| `IChangeDetector` | `OffsetCursorDetector` (monotonic integer cursor) and `ContentHashDetector` (content hash, doc- or query-probed). |
-| `PitPaginator` | `search_after` pagination, optionally sliced. No domain knowledge. |
-| `ContentCycle` | Runs the cycle exactly once and returns a `CycleOutcome`. Never throws, never loops indefinitely. |
+| `ContentRegister` | The public handle of one topic (`contentRegister.hpp`). Owns its `TopicDriver`. |
+| `TopicDriver` | One topic: validates the spec, opens the token store, holds the run slot (one cycle at a time), runs the optional driver thread and the pending request, escalates transport backoff, logs each outcome. |
+| `ContentCycle` | Runs the cycle exactly once and returns a `CycleOutcome`. Never throws, never waits on a gate. |
+| `ConsumerGate` | The consumer document's format (query, `_source` filter, parser) and the cached pre-flight probe, shared across topics watching the same consumer. |
+| `PitSession` | Opens and closes the PIT; validates consumer readiness inside it with the gate's parser; scopes queries to the data indices. |
+| `IChangeDetector` | `OffsetCursorDetector` (monotonic integer cursor) and `ContentHashDetector` (content hash, document- or query-probed). |
+| `PitPaginator` | `search_after` pagination, optionally sliced, with sink calls serialised. No domain knowledge. |
+| `FactoryContentUpdater` | Turns a validated `TopicSpec` into a `ContentCycle`. |
+| `RocksDbTokenStore` | The built-in token store, one RocksDB per topic under `state.databasePath`. |
+| `IContentIndexer` | The host's indexer: the four read operations the cycle needs (`contentIndexer.hpp`), with adapters over both connectors (D1). |
 | `IContentSink` | Where the content goes, and who decides it is safe to keep. Implemented by the host. |
-| `IContentTokenStore` | Where the change-detection token lives. `RocksDbTokenStore` by default; hosts may supply their own. |
+| `IContentTokenStore` | Where the change-detection token lives, when the host keeps it. |
 
 Operator-facing behaviour (indices, state on disk, logs, configuration) is documented in the published
 reference, [docs/ref/modules/content_manager/README.md](../../../docs/ref/modules/content_manager/README.md).
@@ -55,47 +61,67 @@ This README covers the library's interface and internals.
 ## Usage
 
 ```cpp
+// Once, before the first registration: the library logs through the host, under the host's tag.
+content_manager::setLogFunction(logFunction, "wazuh-manager-modulesd:content-updater");
+
 // The host's own connector — the one it already uses for everything else (D1).
 const auto indexer = content_manager::makeContentIndexer(myConnector);
-ContentRegister registration {topicName, parameters, std::make_shared<MySink>(), indexer};
+ContentRegister registration {"my.topic", spec, std::make_shared<MySink>(), indexer};
 
-// Host-driven (the Engine): call it from your own scheduler.
+// Host-driven (no schedule.intervalSeconds): run a cycle from your own scheduler.
 const auto outcome = registration.runOnce();
 
-// Library-driven (the vulnerability scanner): pass "interval" in the parameters and the library
-// spawns a thread that calls runOnce for you.
+// Library-driven (schedule.intervalSeconds set): the driver thread runs a cycle at start and then
+// on the interval; a request runs one now and answers when it ends.
+registration.requestRun({/*forceFullReload=*/false},
+                        [](content_manager::OnDemandResult result) { /* map result.code */ });
 ```
 
-`runOnce` is bounded: every gate is single-pass, and a deferred cycle reports `CycleOutcome::retryAfter`
-instead of parking the calling thread. A driver must honour `retryAfter` when it is non-zero —
-otherwise a topic whose consumer is briefly busy waits a whole scheduler interval, which for VD's
-60-minute default means an hour with no data.
+`runOnce` is bounded: every gate is single-pass, and a deferred cycle reports
+`CycleOutcome::retryAfter` instead of parking the calling thread. The driver thread honours
+`retryAfter` when it is non-zero — otherwise a topic whose consumer is briefly busy would wait a
+whole interval, which for VD's 60-minute default means an hour with no data.
 
-Cycles are mutually exclusive per topic: a scheduled run and an on-demand one cannot overlap. The
-loser gets `CycleStatus::SkippedAlreadyRunning`, which is deliberately **not**
-`SkippedStopRequested` — a caller folding a cycle's result into its own state has to be able to tell
-"nothing ran, so I observed nothing" from "a cycle ran and found nothing to do", and the two lead to
-opposite conclusions about whatever it reads next. Registering the topic elsewhere is not blocked
-while a cycle runs: the registry lock is held only long enough to find the topic and claim its run
-slot, never for the download.
+Cycles are mutually exclusive per topic, whoever asks for them. A second one gets
+`CycleStatus::SkippedAlreadyRunning` — deliberately **not** `SkippedStopRequested`: a caller folding a
+cycle's result into its own state has to tell "nothing ran, so I observed nothing" from "a cycle ran
+and found nothing to do". `requestRun` answers `AlreadyRunning` inline in the same situation, or when
+a request is already pending.
+
+`IContentSink::cycleFinished(outcome)` is called after every cycle that ran — including one a gate
+stopped before `beginSession` — inside the run slot, after the token was written. A sink that
+reports status sees every result there, and nothing else can start a cycle of the topic until it
+returns.
+
+`requestRun`'s `OnDemandCode` says what a request handler answers:
+
+| Code | Cycle status |
+|---|---|
+| `Completed` | `Updated`, `Unchanged` |
+| `Deferred` | `SkippedConsumerNotReady`, `SkippedPreconditionUnmet` |
+| `AlreadyRunning` | a cycle was running or already requested |
+| `ShuttingDown` | `SkippedStopRequested`, or the registration is stopping |
+| `Failed` | `FailedTransport`, `FailedSink`, `FailedConfig`, or the topic has no interval |
+
+`requestStop()` is permanent: every later cycle returns `SkippedStopRequested`. Hosts that tear down
+in two steps (stop everything, then destroy) use it; destroying a registration stops it anyway and
+waits for an in-flight cycle.
 
 ### Configuration
 
 A registration is a `content_manager::TopicSpec` (`include/contentTopicSpec.hpp`), grouped by
-concern: `schedule` (interval, on-demand), `source` (indices, query, source filter, paging, slices,
-PIT lease), an optional `readiness` gate (the CTI consumer document; absent means never gated),
-`detection` (either a cursor or a content hash, each carrying only its own settings), `fullLoad`
-(documents a full load requires) and `state` (the built-in token store). Hosts fill the struct and
-pass `content_manager::toParameters(spec)` to `ContentRegister`, which parses it strictly: every
-unknown key is rejected, naming its block. The full shape, the defaults and what each old key became
-are in [D2](#d2-in-detail).
+concern: `schedule` (the interval; none = host-driven), `source` (indices, query, source filter,
+paging, slices, PIT lease), an optional `readiness` gate (the CTI consumer document; absent means
+never gated), `detection` (a cursor or a content hash, each carrying only its own settings),
+`fullLoad` (documents a full load requires) and `state` (the built-in token store). Defaults are the
+library's; a host sets only what differs. `ContentRegister` validates the values at construction and
+names the field at fault (D2).
 
 ### Example — Vulnerability Detection
 
 ```cpp
 content_manager::TopicSpec spec;
 spec.schedule.intervalSeconds = 3600;
-spec.schedule.onDemand = true;
 spec.source.indices = {".wazuh-threatintel-vulnerabilities"};
 spec.source.slices = 2;
 spec.source.sourceFilter = getCve5SourceFilter();
@@ -108,8 +134,7 @@ spec.state.databasePath = "queue/vd/vd_updater/rocksdb";
 ### Example — Engine ruleset sync (one topic per space)
 
 ```cpp
-content_manager::TopicSpec spec;
-spec.schedule.onDemand = true; // no interval: the Engine's scheduler drives runOnce
+content_manager::TopicSpec spec; // no interval: the Engine's scheduler runs the topic
 spec.source.indices = {"wazuh-threatintel-kvdbs", "wazuh-threatintel-decoders", "wazuh-threatintel-filters",
                        "wazuh-threatintel-integrations", "wazuh-threatintel-policies"};
 spec.source.expandWildcards = true;
@@ -126,194 +151,122 @@ spec.detection = hash;
 > The Content Manager ships a [test tool](./testtool/main.cpp) that registers one topic against a
 > live indexer and prints the delivery contract as it happens.
 
-## Design decisions (D1–D3)
+## Design decisions (D1–D4)
 
 | ID | Decision |
 |---|---|
-| D1 | **The library never owns an indexer connection; every registration uses the host's.** Before this, each registration built its own `IndexerSession` (keystore read, startup health check, its own health-monitor thread) and its own `IndexerConnectorSync` from connection settings copied into `configData.indexer`. Every host therefore ran two connector stacks against the same cluster — VD its scan pool plus this one, the Engine its async connector plus this one — so an indexer outage was reported twice, by two monitors, and each host paid for a second set of connector objects. The detailed contract follows the table. |
-| D2 | **Registrations are described by concern, and each change-detection strategy carries only its own settings.** The parameters were one flat `configData.indexer` object mixing five concerns — what to read, the consumer readiness gate, change detection, full-load preconditions, token state — where half the keys meant something only under one `changeDetection` value, so the validator had to reject combinations ("exactly one of hashDocId/hashIndex", "hashQuery requires hashIndex") instead of the shape ruling them out. Some keys were dead (`consumerName` since D1, `hashIndex` beyond picking the probe shape), the topic name was given twice, a missing gate was expressed by deleting a key, and every host hand-assembled the JSON. The detailed contract follows the table. |
-| D3 | **The library is dual-licensed `GPL-2.0-only OR AGPL-3.0-or-later`, and the Engine starts it only when it can use it.** It was GPL-2.0-only while the Engine (AGPL-3.0-or-later) linked it, an incompatible combination whether linked statically or dynamically; it is now licensed like the other libraries both sides link (`utils`, `manager_config`, `keystore`, `indexer_connector`, `common`), AGPL-only being ruled out because modulesd is GPL-2.0-only. The Engine keeps linking the shared library, as it does `indexer_connector`, and no longer starts it when event processing is off. The detailed contract follows the table. |
+| D1 | **The library never owns an indexer connection; every registration uses the host's.** One connector per process means one health monitor, one keystore read, and an indexer outage reported once. |
+| D2 | **Registrations are described by concern, and each change-detection strategy carries only its own settings.** The shape of `TopicSpec` rules out mixed strategies and unknown keys; what is left to validate is values. |
+| D3 | **The library is dual-licensed `GPL-2.0-only OR AGPL-3.0-or-later`, and the Engine starts it only when it can use it.** Both modulesd (GPL-2.0) and the Engine (AGPL-3.0) link it. |
+| D4 | **One owner per job: the library runs topics; hosts run nothing of their own around it.** Two layers (`ContentRegister` → `TopicDriver` → `ContentCycle`), no process-wide registry, a per-topic request instead of a shared lane, every outcome reaching the sink, and the host's tag on every log line. |
 
 ### D1 in detail
 
-**Contract.** A new public header, `include/contentIndexer.hpp`, defines
-`content_manager::IContentIndexer` — the four operations a cycle needs, and nothing else:
+**Contract.** `include/contentIndexer.hpp` defines `content_manager::IContentIndexer` — the four
+operations a cycle needs:
 
 | Operation | Used for |
 |---|---|
 | `openPit(indices, keepAlive, expandWildcards)` | The snapshot a cycle reads from |
 | `closePit(pit)` | Releasing it; never throws (a leaked PIT expires after `keepAlive`) |
 | `search(pit, size, query, sort, searchAfter, source, slice)` | Every probe and every page, sliced or not |
-| `searchIndex(index, size, query, source)` | The pre-flight consumer probe, outside any PIT. Returns the **hits object** (`{"total": …, "hits": [...]}`), the shape both connectors already return |
+| `searchIndex(index, size, query, source)` | The pre-flight consumer probe, outside any PIT. Returns the **hits object** (`{"total": …, "hits": [...]}`) |
 
-It replaces the private `IIndexerQueryPort`. `clone()` is gone: an implementation **must accept
-concurrent calls** — slice workers, several topics, the scheduler and the on-demand lane all use the
-one instance at once — and must not hold a lock of its own across a request.
+An implementation **must accept concurrent calls** — slice workers and several topics use the one
+instance at once — and must not hold a lock of its own across a request. `ContentRegister` takes it
+as a required argument and holds the `shared_ptr` for its whole life, so the connector cannot be
+destroyed under a running cycle whatever order the host tears down in.
 
-`ContentRegister` takes it as a required argument:
-`ContentRegister(topicName, parameters, sink, std::shared_ptr<content_manager::IContentIndexer> indexer, tokenStore = nullptr, contractVersion = …)`.
-A null `indexer` throws `std::invalid_argument`, like a null sink. The registration holds the
-`shared_ptr` for its whole life, so the connector cannot be destroyed under a running cycle whatever
-order the host tears down in.
-
-**Adapters.** The library ships the two hosts need, in `include/contentIndexerAdapters.hpp`:
+**Adapters.** `include/contentIndexerAdapters.hpp` ships
 `content_manager::makeContentIndexer(std::shared_ptr<IndexerConnectorSync>)` and
-`content_manager::makeContentIndexer(std::shared_ptr<IndexerConnectorAsync>)`. The header
-forward-declares both classes instead of including `indexerConnector.hpp`, so the C++17 public-header
-guard (`content_manager_public_abi_c17`) keeps compiling with the include directories it has today. A
-future host either uses one of these or implements the interface.
+`makeContentIndexer(std::shared_ptr<IndexerConnectorAsync>)`. The header forward-declares both classes
+instead of including `indexerConnector.hpp`, so the C++17 public-header guard compiles with the
+include directories a foreign host gets. A future host uses one of these or implements the interface.
 
 **Why sharing is safe.** Checked in the code, not assumed:
 
 - A search takes no connector lock. `IndexerConnectorSync::search` and `executeSearchQuery` use only
   local state; `m_mutex` is taken by bulk operations and `scopeLock()` alone. A content download on a
-  connector therefore never waits for, and never holds up, a bulk write on the same connector.
+  connector never waits for, and never holds up, a bulk write on the same connector.
 - HTTP concurrency is per thread, not per connector. Every connector posts through the process-wide
-  `HTTPRequest::instance()`, whose curl handles are cached per `std::thread::id`; its mutex covers the
-  cache lookup only. A second connector instance adds no parallelism — the old "HTTP state must not
-  be shared across threads" reason for `clone()` did not hold.
-- Host selection is `RoundRobinSelector` over an atomic index, and the health monitor is shared
-  already (one session per host).
+  `HTTPRequest::instance()`, whose curl handles are cached per `std::thread::id`.
+- Host selection is `RoundRobinSelector` over an atomic index, and the health monitor is shared.
 - `IndexerConnectorAsync::search` is a direct synchronous request on the calling thread; it does not
   go through the event-indexing queue, so the Engine's event throughput is untouched by downloads.
 
-**What moves, per host.**
-
-- **Vulnerability Scanner.** The feed registration uses `makeContentIndexer(m_scanConnectors.front())`
-  — slot 0 of the existing scan pool, which already doubles as `ScanAgentList`'s read-only connector.
-  No instance is added. A scan checks a slot out exclusively only to serialise its `scopeLock()`/bulk
-  section, which downloads never take, so a long feed download does not delay scans or the inventory
-  sync's VD lane. `buildUpdaterConfig` stops copying the `<indexer>` section into
-  `configData.indexer`. `TDatabaseFeedManager` takes the `IContentIndexer` as its last constructor
-  argument and passes it to the registration.
-- **Engine.** `main.cpp` builds the one `IndexerConnectorAsync` as a `shared_ptr` and hands it to
-  `WIndexerConnector` (new constructor taking it; the adapter holds a `shared_ptr` instead of a
-  `unique_ptr`) and, through `makeContentIndexer`, to `CMSync` and `IocSync`. Their constructors take
-  `std::shared_ptr<content_manager::IContentIndexer>` instead of the `indexerConnection` JSON, and
-  pass it to `cmcontent::defaultTopicFactory(indexer)`, which captures it — so `TopicFactory`'s
-  signature, and every fake factory a test substitutes, is unchanged. `rulesetParameters`/
-  `iocParameters` drop their `connection` parameter.
-- **Library.** Removed: `ContentModuleFacade::sessionFor`, `fingerprint`, `m_sessions`, the
-  `IndexerConnectorQueryPort` class (its body becomes the `IndexerConnectorSync` adapter) and every
-  `clone()`. `configData.indexer` keeps the query specification only (indices, consumer, probe,
-  paging); connection keys in it are ignored. The library no longer reads the keystore.
-- **Test tool.** `testtool/main.cpp` builds its own `IndexerConnectorSync` from its configuration and
-  registers through `makeContentIndexer`, exactly as a host does.
-
-**Logging.** A failed request is now logged once, by the host's connector, under the host's tag
-(`wazuh-manager-modulesd:vulnerability-scanner(indexer-connector)`, the Engine's own) — no longer a
-second time under `content-updater(indexer-connector)` by a second connector. The cycle's own lines
-(`Content update for '<topic>' …`) are unchanged.
-
-**Tests.** Every unit test already drives the cycle through a fake port; it now implements
-`IContentIndexer` and loses `clone()`. `content_manager_ctest` and every host test pass a fake
-explicitly. That removes the last tests that reached the real keystore: `cmsync_ctest`'s credential
-seeding and its `rocks_db_lock` go away. New: a slicing test asserting every slice runs on the **same**
-instance concurrently, and a registration test asserting a null indexer is rejected. The two adapters
-are thin forwarding shims (LCOV-excluded); the VD efficacy suite and the Engine integration suites
-exercise them end to end.
+**Hosts.** The Vulnerability Scanner hands the feed registration slot 0 of its scan pool, which a
+scan checks out exclusively only for its `scopeLock()`/bulk section — a section downloads never take.
+The Engine builds one `IndexerConnectorAsync` and shares it between `WIndexerConnector` (event
+indexing) and every content topic.
 
 ### D2 in detail
 
-**Shape.** The parameters a `ContentRegister` receives become, with every key optional unless marked:
+**Shape.** Every field is optional unless marked:
 
-```json,fragment
-{
-  "schedule":  { "intervalSeconds": 3600, "onDemand": true },
-  "source":    { "indices": ["…"],                          // required, non-empty
-                 "expandWildcards": false, "query": {…}, "sourceFilter": {…},
-                 "pageSize": 100, "slices": 1, "pitKeepAlive": "5m" },
-  "readiness": { "consumerIndex": "…", "consumerId": "…",   // both required when the block is present
-                 "retrySeconds": 60, "cacheSeconds": 5 },
-  "detection": { "type": "cursor", "field": "offset", "unmappedType": "long" }
-            or { "type": "hash",
-                 "probe": { "type": "document", "id": "…" } or { "type": "query", "query": {…} },
-                 "tokenPointers": ["/…"],                     // required, non-empty
-                 "metadata": { "enabled": "/document/enabled" } },
-  "fullLoad":  { "requiredDocumentIds": ["…"] },
-  "state":     { "databasePath": "…", "resetOnRegister": false }
-}
-```
-
-`detection` is required. What the old keys became:
-
-| Old | New |
+| Block | Fields |
 |---|---|
-| `topicName` | removed: the topic is `ContentRegister`'s first argument, which was already required and had to match |
-| `interval`, `ondemand` | `schedule.intervalSeconds`, `schedule.onDemand` |
-| `configData.consumerName` | removed: dead since D1 (it was the User-Agent of the library's own connector) |
-| `configData.changeDetection` | `detection.type` |
-| `configData.databasePath`, `resetStateOnRegister` | `state.databasePath`, `state.resetOnRegister` |
-| `configData.consumerRetryIntervalSeconds` | `readiness.retrySeconds` |
-| `indexer.index` / `indices`, `expandWildcards`, `pageSize`, `numSlices`, `keepAlive`, `sourceFilter` | `source.indices` (always a list), `source.expandWildcards`, `source.pageSize`, `source.slices`, `source.pitKeepAlive`, `source.sourceFilter` |
-| `indexer.dataQuery` (hash only) | `source.query`, now for **both** strategies: a full fetch runs it as is, an incremental cursor fetch runs it AND the cursor range. Absent means everything, which is what cursor mode did before |
-| `indexer.consumerStatusIndex` / `Id`, `consumerStatusCacheSeconds` | `readiness.consumerIndex` / `consumerId`, `readiness.cacheSeconds`. **No `readiness` block means no gate**, replacing the deleted key `registration.cpp` used for the `custom` space |
-| `indexer.cursorField`, `sortUnmappedType` | `detection.field`, `detection.unmappedType` (cursor only) |
-| `indexer.hashDocId` / `hashIndex` + `hashQuery` | `detection.probe`: `{"type": "document", "id"}` or `{"type": "query", "query"}`. `hashIndex` is gone; the ambiguity error names the probe query instead |
-| `indexer.hashPointers`, `metadataPointers` | `detection.tokenPointers`, `detection.metadata` (hash only) |
-| `indexer.sortKeys` | removed: derived from the strategy — cursor sorts on its field (with `unmappedType` when a consumer index joins the PIT) then `_id`, hash on `_shard_doc` then `_id`. The only two hosts used exactly these |
-| `indexer.requiredDocumentIds` | `fullLoad.requiredDocumentIds` |
-| any connection key | rejected, like every other unknown key |
+| `schedule` | `intervalSeconds` (absent = host-driven) |
+| `source` | `indices` (required, non-empty), `expandWildcards`, `query`, `sourceFilter`, `pageSize` (100), `slices` (1), `pitKeepAlive` ("5m") |
+| `readiness` | `consumerIndex`, `consumerId` (both required when present), `retrySeconds` (60), `cacheSeconds` (5). Absent = never gated |
+| `detection` | `CursorDetection {field = "offset", unmappedType = "long"}` or `HashDetection {probe, tokenPointers, metadata}`, with `probe` a `DocumentProbe {id}` or a `QueryProbe {query}` |
+| `fullLoad` | `requiredDocumentIds` |
+| `state` | `databasePath` (empty = host-supplied store), `resetOnRegister` |
 
-**Strict.** Every block rejects keys it does not know, naming the key and its block, and a key
-belonging to the other strategy is unknown to this one. A stale or mistyped registration therefore
-fails at construction with a message an operator can act on, instead of being half-ignored — which
-is what happened to connection keys after D1.
+`source.query` narrows both strategies: a full fetch runs it as is, an incremental cursor fetch runs
+it AND the cursor range. The sort is implied by the strategy — cursor sorts on its field (always
+with its `unmappedType`, which a cold start needs) then `_id`, hash on `_doc` then `_id` (not
+`_shard_doc`, which OpenSearch 2.x rejects).
 
-**Parsed once.** The library turns the JSON into one typed internal model at registration; validation
-and `FactoryContentUpdater` both read that model, so the scattered `value(key, default)` reads, the
-separate type checks in `ExecutionContext` and their defaults living in two places all go away.
-
-**Typed builders for hosts.** A header-only public header, `include/contentTopicSpec.hpp`, gives
-hosts a C++17 struct with the defaults above — `content_manager::TopicSpec`, with
-`std::variant<CursorDetection, HashDetection>`, `std::optional<Readiness>` — and an inline
-`toParameters(const TopicSpec&)` that emits the JSON. It runs in the host, so only JSON crosses the
-library boundary and no struct layout joins the `CONTRACT_ABI_VERSION` guard; the C++17 public-header
-check compiles it. VD's `buildUpdaterConfig` and the Engine's `rulesetParameters`/`iocParameters`
-build a `TopicSpec` instead of JSON.
-
-**What else goes.** VD's `configuration["updater"]` override of the whole registration, whose only
-user was `testtool/scanner/config.content_generation.json` — itself still in the pre-5.x CTI
-snapshot format the library dropped long ago — is removed, and so is that file. The policy-driven
-interval change (`changeSchedulerInterval`) is unaffected.
-
-**Tests.** The registrations the suites build move to the new shape (most through `TopicSpec`). New:
-`toParameters` → parse round-trips for both strategies; a key from the other strategy, an unknown
-key in each block, a `readiness` block missing its id, and an empty `tokenPointers` are each
-rejected with the key named; a registration with no `readiness` opens a PIT over the data indices
-only; an incremental cursor fetch with a `source.query` runs both clauses.
+**Validated once.** `validateTopicSpec` rejects what the shape cannot rule out — empty indices, a zero
+page size or slice count, a consumer index that is a pattern, a list or an exclusion (both
+consumer-document defences compare against the concrete `_index`), a token pointer that is not a JSON
+pointer — and names the field. Every later stage reads the typed spec.
 
 ### D3 in detail
 
 **License.** Every file of `src/shared_modules/content_manager/` carries
-`GPL-2.0-only OR AGPL-3.0-or-later`, with the notice `indexer_connector` uses, and the directory
-ships the same `COPYING`. `content_manager` joins `DUAL_DIRS` in
-`.github/scripts/spdx_scope.py` (and its unit test), so the SPDX check covers every file a change
-touches here. The choice follows from who links it: the Vulnerability Scanner in modulesd takes it
-under GPL-2.0, the Engine under AGPL-3.0. Everything the library includes or links is already
-compatible with both: `utils` and `indexer_connector` are dual, nlohmann/json is MIT, and its link
-dependencies are ones the Engine already has. `src/shared/include` (GPL-2.0 C headers) is dropped
-from its include path — nothing has used it since `defs.h` was removed — so no GPL-2.0-only header
-can be included again unnoticed.
+`GPL-2.0-only OR AGPL-3.0-or-later`, with the notice `indexer_connector` uses, and the directory ships
+the same `COPYING`. `content_manager` is in `DUAL_DIRS` in `.github/scripts/spdx_scope.py`. Everything
+the library includes or links is compatible with both: `utils` and `indexer_connector` are dual,
+nlohmann/json is MIT. `src/shared/include` (GPL-2.0 C headers) is not on its include path.
 
-**Not started when there is nothing to run.** `main.cpp` starts `ContentModule` (and registers its
-stop) only when `analysisd.server_enable_event_processing` is on — the same switch that decides
-whether CMSync and IocSync exist. The standalone Engine, which runs with it off, loads
-`libcontent_manager.so` but never starts it; the standalone package ships the library, exactly as it
-ships `libindexer_connector.so`, which it also loads without using.
+**Started only when used.** The Engine sets the library's log function only when
+`analysisd.server_enable_event_processing` is on — the switch that decides whether CMSync and IocSync
+exist. The standalone Engine, which runs with it off, loads `libcontent_manager.so` without using it,
+as it does `libindexer_connector.so`.
 
-**Static linking was considered and dropped.** Linking a static build of the library into the
-Engine would have spared the standalone package one `.so`, and kept `std::` objects from crossing
-between the Engine's static libstdc++ and the library's shared one. Neither held up against the
-`indexer_connector` precedent: the standalone Engine already loads one library it never uses, and
-the Engine already exchanges `nlohmann::json`, strings and exceptions with `indexer_connector`
-across that same boundary in production. What it would have cost was concrete: a second build of the
-same sources with link rules that can drift (it must not link `gcc_s` beside `-static-libgcc`), the
-code twice on disk, and a split of `Log::GLOBAL_LOG_FUNCTION`, which the shared library must define
-and the Engine already defines — a duplicate symbol in a static archive.
+**Shared, not static.** Linking a static build into the Engine was considered and dropped: it would
+need a second build of the same sources with link rules that can drift, put the code twice on disk,
+and split `Log::GLOBAL_LOG_FUNCTION`, which the shared library defines — while the Engine already
+exchanges `nlohmann::json`, strings and exceptions with `indexer_connector` across the same boundary.
 
-**Docs.** CLAUDE.md's "five dual-licensed shared libraries" becomes six. Nothing in a package's
-installed tree changes.
+### D4 in detail
+
+**Layers.** `ContentRegister` owns a `TopicDriver`, which owns a `ContentCycle`. There is no
+process-wide registry: a registration is reached through its handle, and topic names only label log
+lines and sink calls.
+
+**Running a topic.** A topic with `schedule.intervalSeconds` gets a driver thread: a cycle at start,
+then one per wake-up — the timer (`retryAfter`, or the interval), or a request. `requestRun` never
+blocks; it is answered inline when it cannot be queued (a cycle running or already requested, a
+stopping topic, a topic without an interval) and on the driver thread otherwise. A topic without an
+interval is the host's to run with `runOnce`, from its own scheduler. Both paths share the one run
+slot.
+
+**Forced reloads.** `RunRequest::forceFullReload` plans with an empty token and clears the stored one
+only once the sink has accepted the full session. A forced request that a gate stops — consumer busy,
+required documents missing, an unreachable indexer — leaves the stored token, and with it the host's
+reported offset, unchanged.
+
+**Every outcome reaches the sink.** `cycleFinished` is how a host learns about deferrals and
+transport failures that never reached `beginSession`, and it runs inside the run slot, so its state
+always belongs to the cycle it follows.
+
+**Logging.** `content_manager::setLogFunction(fn, tag)` installs the host's sink and the tag every
+library line carries, so each daemon's content downloads appear under that daemon.
+
+**What a host writes.** A sink, optionally a token store, a `TopicSpec`, a `setLogFunction` call, and
+either `runOnce` from its own scheduler or an interval plus `requestRun` for on-demand updates.
 
 ## Verification
 
@@ -321,20 +274,17 @@ Automated, and run by CI:
 
 | Suite | Covers |
 |---|---|
-| `content_manager_utest` | Every component through `IContentIndexer`: the full `CycleStatus` matrix, which paths write the token, `retryAfter` per status, slicing, the consumer gate and its cache, the on-demand lane, the token store. |
-| `content_manager_ctest` | A whole registration — facade, provider, driver, cycle — against a scripted indexer: the consumer-flip race, forced reloads, on-demand, registry locking under a running cycle. |
+| `content_manager_utest` | Every component through `IContentIndexer`: the full `CycleStatus` matrix, which paths write the token, `retryAfter` per status, slicing, the consumer gate and its cache, the driver (thread, requests, codes, backoff, run slot), spec validation, the token store. |
+| `content_manager_ctest` | Whole registrations through the public API against a scripted indexer: the consumer-flip race, forced reloads, requested runs, destruction waiting for a cycle. |
 | `content_manager_public_abi_c17` | The public headers alone, under C++17, with only the include directories a foreign host gets. Fails on a C++20 construct in a public header, and on a private header leaking into `include/`. |
 
 Two properties are asserted here rather than left to an integration run, because both would otherwise
 surface only in production:
 
-- **A deferred cycle comes back on `retryAfter`, not on the scheduler interval.** Driven with the
-  vulnerability scanner's real 3600-second interval, holding the consumer busy and asserting the
-  cycle completes in seconds. Getting this wrong means a manager that boots during an indexer
-  content update has no CVE data for an hour.
-- **The registry lock is not held across a download.** One test parks a cycle inside the library and
-  registers a second topic while it is parked; another checks that removing a topic still waits for
-  its own cycle to drain.
+- **A deferred cycle comes back on `retryAfter`, not on the interval.** Driven with VD's real
+  3600-second interval and a busy consumer, the driver retries within seconds.
+- **A deferred request is not reported as completed.** A request whose cycle the consumer gate
+  stops answers `Deferred`, so a handler cannot answer "ok" for a download that did not happen.
 
 ### Against a live cluster
 
@@ -350,6 +300,6 @@ docker compose -f docker-compose.yml up -d && ./query_contract_test.py
 
 What remains manual is **end-to-end promotion** for each consumer, which needs the built binaries: a
 vulnerability feed cold start, a full load with a concurrent consumer update, an Engine ruleset sync
-with a mid-download consumer flip, an IOC sync with one type changing, on-demand returning 409 under
-a running update, and a graceful shutdown mid-download for each. The table in
+with a mid-download consumer flip, an IOC sync with one type changing, on-demand under a running
+update, and a graceful shutdown mid-download for each. The table in
 [`testtool/integration/README.md`](./testtool/integration/README.md) says what must hold for each.

@@ -7,17 +7,14 @@
 #include <string>
 #include <string_view>
 
-#include <json.hpp>
+#include <contentTopicSpec.hpp>
 
 /**
- * @brief Engine-side glue for the shared content manager.
+ * @brief How the Engine's content reaches it from the indexer, through the shared content manager.
  *
- * The Engine used to carry its own copy of the whole indexer-content pipeline in `wiconnector`:
- * PIT handling, `search_after` pagination, consumer validation, per-space and per-type hash
- * comparison. All of that is the same problem the Vulnerability Detection module solved separately
- * in `shared_modules/content_manager`, with different consistency guarantees and different bugs.
- * This namespace is what is left of the Engine's half: topic naming, the configuration that
- * describes each topic's query, and the sinks that decide what to do with the documents.
+ * This namespace owns what is Engine-specific about the download: each topic's name and spec, and
+ * the sinks that turn the documents into Engine state (ruleset namespaces and routes, IOC KVDBs).
+ * The sync services decide when topics run and what their outcome means for the reported status.
  */
 namespace cmcontent
 {
@@ -66,30 +63,28 @@ std::string rulesetTopic(std::string_view space);
 std::string iocTopic(std::string_view iocType);
 
 /**
- * @brief Registration parameters for one ruleset space.
+ * @brief The registration for one ruleset space.
  *
- * One topic per space rather than one for the whole ruleset: the hash, the promotion and the route
- * are all already per-space, so a single multi-space topic would have to invent a sub-stream
- * concept inside the generic contract for the benefit of exactly one consumer.
+ * One topic per space: the hash, the promotion and the route are all per space.
  *
  * @param space Origin space in the indexer.
  * @param options Tunables.
  * @param consumerId CTI consumer whose readiness gates the space, or nullopt for a space no consumer
  *                   writes (`custom`): such a space is never gated, since a CTI re-index of the
  *                   standard content says nothing about whether its own documents are complete.
- * @return The parameters to hand to `ContentRegister`.
+ * @return The spec to hand to `ContentRegister`.
  */
-nlohmann::json
-rulesetParameters(std::string_view space, const Options& options, const std::optional<std::string>& consumerId);
+content_manager::TopicSpec
+rulesetSpec(std::string_view space, const Options& options, const std::optional<std::string>& consumerId);
 
 /**
- * @brief Registration parameters for one IOC type.
+ * @brief The registration for one IOC type.
  *
  * @param iocType IOC type.
  * @param options Tunables.
- * @return The parameters to hand to `ContentRegister`.
+ * @return The spec to hand to `ContentRegister`.
  */
-nlohmann::json iocParameters(std::string_view iocType, const Options& options);
+content_manager::TopicSpec iocSpec(std::string_view iocType, const Options& options);
 
 } // namespace cmcontent
 

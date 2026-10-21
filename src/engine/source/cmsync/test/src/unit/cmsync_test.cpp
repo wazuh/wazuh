@@ -1,12 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#include <chrono>
 #include <memory>
+#include <optional>
 #include <string>
+#include <variant>
 #include <vector>
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <base/json.hpp>
+#include <base/logging.hpp>
 #include <base/syncStatus.hpp>
 #include <cmcontent/fakeContentTopic.hpp>
 #include <cmcontent/registration.hpp>
@@ -14,245 +18,361 @@
 #include <cmsync/cmsync.hpp>
 #include <router/mockRouter.hpp>
 #include <store/mockStore.hpp>
-#include <wiconnector/mockswindexerconnector.hpp>
 
 /*
- * What is covered here, and what moved.
- *
- * The download itself — the PIT, the pagination, the consumer check, the per-space hash comparison —
- * is no longer part of this class; it is one content registration per space over the shared content
- * manager. The cases that used to live here as expectations on a deleted query surface now live
- * where the logic does: `cmcontent_utest` covers the sink that assembles a namespace and swaps it
- * into the router, and `content_manager_utest`/`content_manager_ctest` cover the cycle itself,
- * including consumer readiness and the token rules.
- *
- * What remains this class's own behaviour, and is covered below: which spaces are tracked, how
- * their state document is written and read back, and how the status the API serves is derived.
+ * CMSync's own behaviour: which spaces are tracked, how a cycle's outcome becomes the status the API
+ * serves, and what is persisted. The deployment itself is the sink's (cmcontent_utest), the cycle
+ * the content manager's (content_manager_utest).
  */
+
+using namespace ::testing;
 
 namespace
 {
 
-constexpr std::string_view STORE_ORIGIN_STANDARD = "standard";
-constexpr std::string_view STORE_ORIGIN_CUSTOM = "custom";
+constexpr std::string_view STANDARD = "standard";
+constexpr std::string_view CUSTOM = "custom";
 const base::Name STORE_NAME_CMSYNC {"cmsync/status/0"};
-constexpr size_t DEFAULT_ATTEMPTS = 3U;
-constexpr size_t DEFAULT_WAIT_SECONDS = 5U;
 
-constexpr std::string_view STANDARD_CONSUMER_ID = "cti:catalog:consumer:ruleset";
-
-cmcontent::Options contentOptions()
+std::string topicOf(std::string_view space)
 {
-    cmcontent::Options options;
-    options.pageSize = 100;
-    return options;
+    return cmcontent::rulesetTopic(space);
 }
 
-json::Json createStoredState()
+std::string routeOf(std::string_view space)
+{
+    return cmcontent::RulesetSpaceSink::routeName(space);
+}
+
+router::prod::Entry routeServing(std::string_view space, const std::string& nsId, const std::string& hash)
+{
+    router::prod::EntryPost post(routeOf(space), cm::store::NamespaceId(nsId), 1);
+    router::prod::Entry entry(post);
+    entry.status(router::env::State::ENABLED);
+    entry.hash(hash);
+    return entry;
+}
+
+/// A persisted record for both spaces, as written by an earlier run (including fields no longer read).
+json::Json storedState()
 {
     json::Json state {};
     state.setArray();
-
-    json::Json standard {};
-    standard.setString(std::string(STORE_ORIGIN_STANDARD), "/origin_space");
-    standard.setString("stored_standard_ns", "/namespace_id");
-    standard.setString(std::string(STANDARD_CONSUMER_ID), "/consumer_id");
-    standard.setInt64(1700000000, "/last_successful_update");
-    standard.setBool(true, "/enabled");
-    state.appendJson(standard);
-
-    json::Json custom {};
-    custom.setString(std::string(STORE_ORIGIN_CUSTOM), "/origin_space");
-    custom.setString("stored_custom_ns", "/namespace_id");
-    state.appendJson(custom);
-
+    for (const auto& space : {STANDARD, CUSTOM})
+    {
+        json::Json entry {};
+        entry.setString(std::string {space}, "/origin_space");
+        entry.setString("ns_" + std::string {space}, "/namespace_id");
+        entry.setInt64(1700000000, "/last_successful_update");
+        entry.setBool(true, "/enabled");
+        state.appendJson(entry);
+    }
     return state;
 }
 
-void expectStateDocHasSpaces(const store::Doc& doc, const std::vector<std::string>& expectedSpaces)
+content_manager::SessionInfo sessionOf(content_manager::SessionKind kind, bool enabled, const std::string& hash)
 {
-    const auto config = doc.getArray();
-    ASSERT_TRUE(config.has_value());
-    ASSERT_EQ(config->size(), expectedSpaces.size());
-
-    for (size_t i = 0; i < expectedSpaces.size(); ++i)
-    {
-        std::string origin;
-        std::string nsId;
-        ASSERT_EQ(json::RetGet::Success, config->at(i).getString(origin, "/origin_space"));
-        ASSERT_EQ(json::RetGet::Success, config->at(i).getString(nsId, "/namespace_id"));
-        EXPECT_EQ(origin, expectedSpaces.at(i));
-        EXPECT_FALSE(nsId.empty());
-    }
+    content_manager::SessionInfo info;
+    info.kind = kind;
+    info.remoteToken = hash;
+    info.probeMetadata = nlohmann::json {{"enabled", enabled}, {"integrations", nlohmann::json::array({"wazuh-core"})}};
+    return info;
 }
 
-router::prod::Entry makeRouterEntry(const std::string& name,
-                                    const std::string& nsId,
-                                    std::size_t priority,
-                                    router::env::State state,
-                                    const std::string& hash)
+nlohmann::json policyPage(std::string_view space, const std::string& hash)
 {
-    router::prod::EntryPost post(name, cm::store::NamespaceId(nsId), priority);
-    router::prod::Entry entry(post);
-    entry.status(state);
-    entry.hash(hash);
-    return entry;
+    return nlohmann::json::array({nlohmann::json {{"_id", "policy"},
+                                                  {"_index", "wazuh-threatintel-policies-000001"},
+                                                  {"_source",
+                                                   {{"space", {{"name", space}, {"hash", {{"sha256", hash}}}}},
+                                                    {"document", {{"name", "policy/wazuh/0"}, {"enabled", true}}}}}}});
+}
+
+cm::sync::SpaceStatus statusOf(const std::vector<cm::sync::SpaceStatus>& all, std::string_view space)
+{
+    for (const auto& entry : all)
+    {
+        if (entry.name == space)
+        {
+            return entry;
+        }
+    }
+    ADD_FAILURE() << "no status reported for space '" << space << "'";
+    return {};
 }
 
 class CMSyncTest : public ::testing::Test
 {
 protected:
-    std::shared_ptr<::testing::NiceMock<wiconnector::mocks::MockWIndexerConnector>> indexer {
-        std::make_shared<::testing::NiceMock<wiconnector::mocks::MockWIndexerConnector>>()};
-    std::shared_ptr<::testing::NiceMock<cm::crud::MockCrudService>> crud {
-        std::make_shared<::testing::NiceMock<cm::crud::MockCrudService>>()};
-    std::shared_ptr<::testing::StrictMock<store::mocks::MockStore>> store {
-        std::make_shared<::testing::StrictMock<store::mocks::MockStore>>()};
-    std::shared_ptr<::testing::NiceMock<router::mocks::MockRouterAPI>> router {
-        std::make_shared<::testing::NiceMock<router::mocks::MockRouterAPI>>()};
-
-    void SetUp() override { logging::testInit(); }
-
-    std::unique_ptr<cm::sync::CMSync> create()
+    void SetUp() override
     {
-        return std::make_unique<cm::sync::CMSync>(indexer,
-                                                  crud,
-                                                  store,
-                                                  router,
-                                                  nullptr,
-                                                  DEFAULT_ATTEMPTS,
-                                                  DEFAULT_WAIT_SECONDS,
-                                                  contentOptions(),
-                                                  topics.factory());
+        logging::testInit();
+        // `getEntry` returns a variant whose first alternative has no default constructor, so an
+        // unstubbed call is a confusing failure: default to "no route", and stub getEntry where a
+        // route exists.
+        ON_CALL(*router, existsEntry(_)).WillByDefault(Return(false));
+        ON_CALL(*store, existsDoc(STORE_NAME_CMSYNC)).WillByDefault(Return(false));
+        ON_CALL(*store, upsertDoc(STORE_NAME_CMSYNC, _)).WillByDefault(Return(store::mocks::storeOk()));
     }
 
+    std::unique_ptr<cm::sync::CMSync> build(std::size_t attempts = 1)
+    {
+        return std::make_unique<cm::sync::CMSync>(
+            crud, store, router, topics.factory(), cmcontent::Options {}, cmcontent::RetryPolicy {attempts, 0});
+    }
+
+    /// Start from a persisted record.
+    void withStoredState()
+    {
+        ON_CALL(*store, existsDoc(STORE_NAME_CMSYNC)).WillByDefault(Return(true));
+        ON_CALL(*store, readDoc(STORE_NAME_CMSYNC))
+            .WillByDefault(Return(store::mocks::storeReadDocResp(storedState())));
+    }
+
+    /// The route of @p space serves @p nsId at @p hash from now on.
+    void serve(std::string_view space, const std::string& nsId, const std::string& hash)
+    {
+        ON_CALL(*router, existsEntry(routeOf(space))).WillByDefault(Return(true));
+        ON_CALL(*router, getEntry(routeOf(space))).WillByDefault(Return(routeServing(space, nsId, hash)));
+    }
+
+    /// Capture the next persisted record.
+    std::optional<json::Json>& capturePersisted()
+    {
+        EXPECT_CALL(*store, upsertDoc(STORE_NAME_CMSYNC, _))
+            .WillOnce(
+                [this](const base::Name&, const store::Doc& doc)
+                {
+                    m_persisted.emplace(doc);
+                    return store::mocks::storeOk();
+                });
+        return m_persisted;
+    }
+
+    std::shared_ptr<NiceMock<cm::crud::MockCrudService>> crud {std::make_shared<NiceMock<cm::crud::MockCrudService>>()};
+    std::shared_ptr<NiceMock<store::mocks::MockStore>> store {std::make_shared<NiceMock<store::mocks::MockStore>>()};
+    std::shared_ptr<NiceMock<router::mocks::MockRouterAPI>> router {
+        std::make_shared<NiceMock<router::mocks::MockRouterAPI>>()};
     cmcontent::mocks::FakeTopicRegistry topics;
+
+private:
+    std::optional<json::Json> m_persisted;
 };
 
 } // namespace
 
-TEST_F(CMSyncTest, InitializesDefaultSpacesOnFirstSetup)
+TEST_F(CMSyncTest, RegistersOneTopicPerTrackedSpace)
 {
-    EXPECT_CALL(*store, existsDoc(STORE_NAME_CMSYNC)).WillOnce(::testing::Return(false));
-    EXPECT_CALL(*store, upsertDoc(STORE_NAME_CMSYNC, ::testing::_))
-        .WillOnce(::testing::Invoke(
-            [](const base::Name&, const store::Doc& doc)
-            {
-                expectStateDocHasSpaces(doc, {std::string(STORE_ORIGIN_STANDARD), std::string(STORE_ORIGIN_CUSTOM)});
-                return store::mocks::storeOk();
-            }));
+    const auto sync = build();
 
-    const auto sync = create();
+    EXPECT_THAT(topics.registered(), UnorderedElementsAre(topicOf(STANDARD), topicOf(CUSTOM)));
+
+    // `standard` waits for its CTI consumer; nothing writes `custom`, so nothing gates it.
+    const auto standard = topics.specOf(topicOf(STANDARD));
+    ASSERT_TRUE(standard.readiness.has_value());
+    EXPECT_EQ(standard.readiness->consumerId, cmcontent::RULESET_CONSUMER_ID);
+    EXPECT_FALSE(topics.specOf(topicOf(CUSTOM)).readiness.has_value());
+}
+
+TEST_F(CMSyncTest, EachSpacesSinkIsAlsoItsTokenStore)
+{
+    // One record of what is deployed: the route. The token is its hash, read by the same object
+    // that swaps it.
+    serve(STANDARD, "ns_standard", "deployed-hash");
+    const auto sync = build();
+
+    const auto tokenStore = topics.tokenStoreOf(topicOf(STANDARD));
+    ASSERT_NE(tokenStore, nullptr);
+    const auto* asSink = dynamic_cast<cmcontent::RulesetSpaceSink*>(topics.sinkOf(topicOf(STANDARD)).get());
+    ASSERT_NE(asSink, nullptr);
+    EXPECT_EQ(dynamic_cast<cmcontent::RulesetSpaceSink*>(tokenStore.get()), asSink);
+    EXPECT_EQ(tokenStore->load(topicOf(STANDARD)), "deployed-hash");
+}
+
+TEST_F(CMSyncTest, AFirstStartReportsBothSpacesReadyAndWritesNothing)
+{
+    EXPECT_CALL(*store, upsertDoc(_, _)).Times(0);
+    const auto sync = build();
 
     const auto status = sync->getSpacesStatus();
     ASSERT_EQ(status.size(), 2U);
-    EXPECT_EQ(status[0].name, STORE_ORIGIN_STANDARD);
-    EXPECT_EQ(status[1].name, STORE_ORIGIN_CUSTOM);
-    // Nothing has been deployed yet, so nothing is available and nothing has failed.
-    EXPECT_FALSE(status[0].available);
-    EXPECT_EQ(status[0].status, base::SyncStatus::READY);
+    EXPECT_EQ(statusOf(status, STANDARD).status, base::SyncStatus::READY);
+    EXPECT_FALSE(statusOf(status, STANDARD).available);
 }
 
-TEST_F(CMSyncTest, LoadsPersistedSpacesWithoutRewritingTheDocument)
+TEST_F(CMSyncTest, LoadsThePersistedRecordAndTheDeployedRoute)
 {
-    const auto state = createStoredState();
+    withStoredState();
+    serve(STANDARD, "ns_standard", "deployed-hash");
+    EXPECT_CALL(*store, upsertDoc(_, _)).Times(0);
 
-    EXPECT_CALL(*store, existsDoc(STORE_NAME_CMSYNC)).WillOnce(::testing::Return(true));
-    EXPECT_CALL(*store, readDoc(STORE_NAME_CMSYNC)).WillOnce(::testing::Return(store::mocks::storeReadDocResp(state)));
-    // No upsertDoc: loading is not a state change, and StrictMock would fail if one happened.
-    ON_CALL(*router, existsEntry(::testing::_)).WillByDefault(::testing::Return(false));
+    const auto sync = build();
 
-    const auto sync = create();
-
-    const auto status = sync->getSpacesStatus();
-    ASSERT_EQ(status.size(), 2U);
-    EXPECT_EQ(status[0].name, STORE_ORIGIN_STANDARD);
-    EXPECT_EQ(status[0].lastSuccessfulUpdate, 1700000000U);
-    // `enabled` is persisted; `available`/`hash` are live router state re-derived on the next sync.
-    EXPECT_TRUE(status[0].enabled);
-    EXPECT_FALSE(status[0].available);
+    const auto standard = statusOf(sync->getSpacesStatus(), STANDARD);
+    EXPECT_EQ(standard.lastSuccessfulUpdate, 1700000000U);
+    EXPECT_TRUE(standard.enabled);
+    // The router says what is deployed, so a restart reports it without waiting for a sync.
+    EXPECT_TRUE(standard.available);
+    EXPECT_EQ(standard.hash, "deployed-hash");
+    EXPECT_FALSE(statusOf(sync->getSpacesStatus(), CUSTOM).available);
 }
 
-TEST_F(CMSyncTest, ReconcilesRouteStateFromTheRouterOnStartup)
-{
-    const auto state = createStoredState();
-
-    EXPECT_CALL(*store, existsDoc(STORE_NAME_CMSYNC)).WillOnce(::testing::Return(true));
-    EXPECT_CALL(*store, readDoc(STORE_NAME_CMSYNC)).WillOnce(::testing::Return(store::mocks::storeReadDocResp(state)));
-
-    ON_CALL(*router, existsEntry(std::string {"cmsync_standard"})).WillByDefault(::testing::Return(true));
-    ON_CALL(*router, existsEntry(std::string {"cmsync_custom"})).WillByDefault(::testing::Return(false));
-    ON_CALL(*router, getEntry(std::string {"cmsync_standard"}))
-        .WillByDefault(::testing::Return(
-            makeRouterEntry("cmsync_standard", "stored_standard_ns", 1, router::env::State::ENABLED, "deployed-hash")));
-
-    const auto sync = create();
-
-    const auto status = sync->getSpacesStatus();
-    ASSERT_EQ(status.size(), 2U);
-    // A route that exists is reported as available with the hash actually deployed, so a restart
-    // does not claim the ruleset is missing until the next sync proves otherwise.
-    EXPECT_TRUE(status[0].available);
-    EXPECT_EQ(status[0].hash, "deployed-hash");
-    EXPECT_FALSE(status[1].available);
-}
-
-TEST_F(CMSyncTest, RejectsAMalformedStateDocument)
+TEST_F(CMSyncTest, RejectsAMalformedRecord)
 {
     json::Json notAnArray {};
     notAnArray.setString("nonsense", "/whatever");
+    ON_CALL(*store, existsDoc(STORE_NAME_CMSYNC)).WillByDefault(Return(true));
+    ON_CALL(*store, readDoc(STORE_NAME_CMSYNC)).WillByDefault(Return(store::mocks::storeReadDocResp(notAnArray)));
 
-    EXPECT_CALL(*store, existsDoc(STORE_NAME_CMSYNC)).WillOnce(::testing::Return(true));
-    EXPECT_CALL(*store, readDoc(STORE_NAME_CMSYNC))
-        .WillOnce(::testing::Return(store::mocks::storeReadDocResp(notAnArray)));
-
-    EXPECT_THROW(create(), std::runtime_error);
+    EXPECT_THROW(build(), std::runtime_error);
 }
 
-TEST_F(CMSyncTest, RequestShutdownIsSafeBeforeAnySync)
+TEST_F(CMSyncTest, RefusesAMissingTopicFactory)
 {
-    EXPECT_CALL(*store, existsDoc(STORE_NAME_CMSYNC)).WillOnce(::testing::Return(false));
-    EXPECT_CALL(*store, upsertDoc(STORE_NAME_CMSYNC, ::testing::_))
-        .WillOnce(::testing::Return(store::mocks::storeOk()));
-
-    const auto sync = create();
-    EXPECT_NO_THROW(sync->requestShutdown());
+    EXPECT_THROW(cm::sync::CMSync(crud, store, router, {}, cmcontent::Options {}, cmcontent::RetryPolicy {}),
+                 std::invalid_argument);
 }
 
-TEST_F(CMSyncTest, SynchronizeSkipsSpacesThatDoNotExistRemotely)
+TEST_F(CMSyncTest, OrphanNamespacesAreCollectedAtStartup)
 {
-    EXPECT_CALL(*store, existsDoc(STORE_NAME_CMSYNC)).WillOnce(::testing::Return(false));
-    EXPECT_CALL(*store, upsertDoc(STORE_NAME_CMSYNC, ::testing::_))
-        .WillOnce(::testing::Return(store::mocks::storeOk()));
+    serve(STANDARD, "cmsync_standard_live", "h");
+    ON_CALL(*crud, listNamespaces())
+        .WillByDefault(Return(std::vector<cm::store::NamespaceId> {cm::store::NamespaceId("cmsync_standard_live"),
+                                                                   cm::store::NamespaceId("cmsync_standard_a1b2"),
+                                                                   cm::store::NamespaceId("cmsync_custom_c3d4"),
+                                                                   cm::store::NamespaceId("user_namespace")}));
 
-    const auto sync = create();
+    EXPECT_CALL(*crud, deleteNamespace(cm::store::NamespaceId("cmsync_standard_a1b2"))).Times(1);
+    EXPECT_CALL(*crud, deleteNamespace(cm::store::NamespaceId("cmsync_custom_c3d4"))).Times(1);
+    EXPECT_CALL(*crud, deleteNamespace(cm::store::NamespaceId("cmsync_standard_live"))).Times(0);
+    EXPECT_CALL(*crud, deleteNamespace(cm::store::NamespaceId("user_namespace"))).Times(0);
 
-    // A space with no policy in the indexer has nothing to sync, and saying so costs one cheap
-    // query instead of a PIT per space.
-    ON_CALL(*indexer, existsPolicy(::testing::_)).WillByDefault(::testing::Return(false));
+    const auto sync = build();
+}
 
-    EXPECT_NO_THROW(sync->synchronize());
-
-    const auto status = sync->getSpacesStatus();
-    ASSERT_EQ(status.size(), 2U);
-    for (const auto& entry : status)
+TEST_F(CMSyncTest, ASuccessfulCycleIsReportedAndPersisted)
+{
+    cmcontent::mocks::FakeTopicRegistry::Script deployed;
+    deployed.outcome.status = content_manager::CycleStatus::Updated;
+    deployed.driveSink = [this](content_manager::IContentSink& sink)
     {
-        EXPECT_EQ(entry.status, base::SyncStatus::READY);
-        EXPECT_FALSE(entry.available);
-    }
+        ASSERT_EQ(sink.beginSession(sessionOf(content_manager::SessionKind::FullReload, true, "new-hash")),
+                  content_manager::SessionDecision::Proceed);
+        const auto hits = policyPage(STANDARD, "new-hash");
+        content_manager::ContentPage page;
+        page.hits = &hits;
+        ASSERT_EQ(sink.acceptPage(page).status, content_manager::PageStatus::Accepted);
+        ASSERT_EQ(sink.commit({}).status, content_manager::CommitStatus::Committed);
+        serve(STANDARD, "cmsync_standard_new", "new-hash"); // What the route swap did.
+    };
+    topics.script(topicOf(STANDARD), {deployed});
+    topics.scriptStatus(topicOf(CUSTOM), content_manager::CycleStatus::Unchanged);
+
+    const auto sync = build();
+    auto& persisted = capturePersisted();
+    sync->synchronize();
+
+    const auto status = statusOf(sync->getSpacesStatus(), STANDARD);
+    EXPECT_EQ(status.status, base::SyncStatus::READY);
+    EXPECT_TRUE(status.available);
+    EXPECT_TRUE(status.enabled);
+    EXPECT_EQ(status.hash, "new-hash");
+    EXPECT_GT(status.lastSuccessfulUpdate, 0U);
+
+    ASSERT_TRUE(persisted.has_value());
+    const auto entries = persisted->getArray();
+    ASSERT_TRUE(entries.has_value());
+    ASSERT_EQ(entries->size(), 2U);
+    std::string namespaceId;
+    EXPECT_NE(entries->front().getString(namespaceId, std::string_view {"/namespace_id"}), json::RetGet::Success)
+        << "the router records the namespace; the state document does not";
 }
 
-TEST_F(CMSyncTest, SynchronizeSkipsWhenTheConsumerIsNotReady)
+TEST_F(CMSyncTest, ADisabledPolicyIsReportedAndTheSpaceStaysTracked)
 {
-    EXPECT_CALL(*store, existsDoc(STORE_NAME_CMSYNC)).WillOnce(::testing::Return(false));
-    EXPECT_CALL(*store, upsertDoc(STORE_NAME_CMSYNC, ::testing::_))
-        .WillOnce(::testing::Return(store::mocks::storeOk()));
+    serve(STANDARD, "ns_standard", "h");
+    cmcontent::mocks::FakeTopicRegistry::Script disabled;
+    disabled.outcome.status = content_manager::CycleStatus::Unchanged;
+    disabled.driveSink = [this](content_manager::IContentSink& sink)
+    {
+        EXPECT_EQ(sink.beginSession(sessionOf(content_manager::SessionKind::FullReload, false, "any")),
+                  content_manager::SessionDecision::Skip);
+        ON_CALL(*router, existsEntry(routeOf(STANDARD))).WillByDefault(Return(false)); // The teardown.
+    };
+    topics.script(topicOf(STANDARD), {disabled});
+    topics.scriptStatus(topicOf(CUSTOM), content_manager::CycleStatus::Unchanged);
 
-    const auto sync = create();
+    const auto sync = build();
+    sync->synchronize();
 
-    ON_CALL(*indexer, existsPolicy(::testing::_)).WillByDefault(::testing::Return(true));
-    ON_CALL(*indexer, isConsumerReadyForSync(::testing::_)).WillByDefault(::testing::Return(false));
+    const auto status = statusOf(sync->getSpacesStatus(), STANDARD);
+    EXPECT_FALSE(status.enabled);
+    EXPECT_FALSE(status.available);
+    EXPECT_EQ(status.status, base::SyncStatus::READY);
+    // Re-enabling the policy upstream brings it back with no operator action.
+    EXPECT_EQ(sync->getSpacesStatus().size(), 2U);
+}
 
-    // The standard space has a consumer id, so this short-circuits it before any lease is taken.
-    EXPECT_NO_THROW(sync->synchronize());
+TEST_F(CMSyncTest, AFailureIsRetriedThenReportedAndClearedByTheNextGoodCycle)
+{
+    cmcontent::mocks::FakeTopicRegistry::Script failing;
+    failing.outcome.status = content_manager::CycleStatus::FailedTransport;
+    cmcontent::mocks::FakeTopicRegistry::Script unchanged;
+    unchanged.outcome.status = content_manager::CycleStatus::Unchanged;
+    topics.script(topicOf(STANDARD), {failing, failing, unchanged});
+    topics.scriptStatus(topicOf(CUSTOM), content_manager::CycleStatus::Unchanged);
+
+    const auto sync = build(/*attempts=*/2);
+    sync->synchronize();
+
+    EXPECT_EQ(topics.callCount(topicOf(STANDARD)), 2U);
+    EXPECT_EQ(statusOf(sync->getSpacesStatus(), STANDARD).status, base::SyncStatus::FAILED);
+    EXPECT_EQ(statusOf(sync->getSpacesStatus(), CUSTOM).status, base::SyncStatus::READY);
+
+    sync->synchronize();
+    EXPECT_EQ(statusOf(sync->getSpacesStatus(), STANDARD).status, base::SyncStatus::READY);
+}
+
+TEST_F(CMSyncTest, ADeferralIsNotRetriedNorAFailure)
+{
+    topics.scriptStatus(topicOf(STANDARD), content_manager::CycleStatus::SkippedConsumerNotReady);
+    topics.scriptStatus(topicOf(CUSTOM), content_manager::CycleStatus::Unchanged);
+
+    const auto sync = build(/*attempts=*/3);
+    sync->synchronize();
+
+    // The deployed ruleset is still in force; the next scheduled run is the retry.
+    EXPECT_EQ(topics.callCount(topicOf(STANDARD)), 1U);
+    EXPECT_EQ(statusOf(sync->getSpacesStatus(), STANDARD).status, base::SyncStatus::READY);
+}
+
+TEST_F(CMSyncTest, ACycleThatDidNotRunLeavesTheStatusAlone)
+{
+    cmcontent::mocks::FakeTopicRegistry::Script failing;
+    failing.outcome.status = content_manager::CycleStatus::FailedSink;
+    cmcontent::mocks::FakeTopicRegistry::Script busy;
+    busy.outcome.status = content_manager::CycleStatus::SkippedAlreadyRunning;
+    topics.script(topicOf(STANDARD), {failing, busy});
+    topics.scriptStatus(topicOf(CUSTOM), content_manager::CycleStatus::Unchanged);
+
+    const auto sync = build();
+    sync->synchronize();
+    ASSERT_EQ(statusOf(sync->getSpacesStatus(), STANDARD).status, base::SyncStatus::FAILED);
+
+    // Nothing ran, so nothing was observed: the last real result stands.
+    sync->synchronize();
+    EXPECT_EQ(statusOf(sync->getSpacesStatus(), STANDARD).status, base::SyncStatus::FAILED);
+}
+
+TEST_F(CMSyncTest, ShutdownStopsEveryTopicAndTheNextRun)
+{
+    const auto sync = build();
+
+    sync->requestShutdown();
+
+    EXPECT_EQ(topics.stopCount(topicOf(STANDARD)), 1U);
+    EXPECT_EQ(topics.stopCount(topicOf(CUSTOM)), 1U);
+
+    sync->synchronize();
+    EXPECT_TRUE(topics.calls().empty());
 }

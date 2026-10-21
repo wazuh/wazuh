@@ -18,10 +18,10 @@ namespace cm::sync
 struct SpaceStatus
 {
     std::string name;                                  ///< Space name (e.g., "standard", "custom")
-    bool available {false};                            ///< Has been synced at least once
+    bool available {false};                            ///< A route serves the space
     bool enabled {false};                              ///< Whether the space is enabled in the remote policy
-    base::SyncStatus status {base::SyncStatus::READY}; ///< Current state: ready, running, or failed
-    std::string hash;                                  ///< Last known content hash
+    base::SyncStatus status {base::SyncStatus::READY}; ///< Current state: ready, updating, or failed
+    std::string hash;                                  ///< Hash of the deployed ruleset
     uint32_t lastSuccessfulUpdate {0};                 ///< Unix timestamp of last successful sync (0 if never)
 };
 
@@ -29,6 +29,11 @@ class ICMSync
 {
 public:
     virtual ~ICMSync() = default;
+
+    /**
+     * @brief Run one content cycle per tracked space and record what came of it.
+     */
+    virtual void synchronize() = 0;
 
     /**
      * @brief Request graceful shutdown of in-flight synchronization operations.
@@ -43,18 +48,6 @@ public:
      * @return Vector of SpaceStatus, one per configured space.
      */
     virtual std::vector<SpaceStatus> getSpacesStatus() const = 0;
-
-    /**
-     * @brief Queue an out-of-band synchronization, off the scheduler.
-     *
-     * Non-blocking: the request is handed to the content manager's bounded lane and runs on one of
-     * its workers, so this is safe to call from an API handler thread. A space whose content has
-     * not moved costs one hash probe, and a space already syncing is left alone rather than run
-     * twice.
-     *
-     * @param space Space to update. Empty updates every tracked space.
-     */
-    virtual void requestOnDemandUpdate(std::string_view space = {}) = 0;
 };
 
 } // namespace cm::sync

@@ -50,7 +50,7 @@ namespace
                                                    "topic",
                                                    std::make_shared<RecordingSink>(),
                                                    std::make_shared<MemoryTokenStore>(),
-                                                   std::make_shared<ConditionSync>(false),
+                                                   fakes::NEVER_STOP,
                                                    port);
         cycle->run({});
 
@@ -91,15 +91,17 @@ TEST(FactoryContentUpdaterTest, InjectsUnmappedTypeOnNonMetafieldSortKeys)
     EXPECT_EQ(sort[1], (nlohmann::json {{"_id", "asc"}}));
 }
 
-TEST(FactoryContentUpdaterTest, LeavesTheSortAloneWithoutAConsumerIndex)
+TEST(FactoryContentUpdaterTest, InjectsUnmappedTypeWithoutAConsumerIndexToo)
 {
+    // A cold start leaves the cursor field unmapped in the data index itself, so the injection is
+    // needed whether or not a consumer index joins the PIT.
     auto spec = cursorSpec();
     spec.readiness.reset();
 
     const auto sort = capturedSort(spec);
 
     ASSERT_TRUE(sort.is_array());
-    EXPECT_EQ(sort[0], (nlohmann::json {{"offset", "asc"}}));
+    EXPECT_EQ(sort[0], (nlohmann::json {{"offset", {{"order", "asc"}, {"unmapped_type", "long"}}}}));
 }
 
 TEST(FactoryContentUpdaterTest, HonoursAConfiguredUnmappedType)
@@ -111,10 +113,11 @@ TEST(FactoryContentUpdaterTest, HonoursAConfiguredUnmappedType)
     EXPECT_EQ(sort[0].at("offset").at("unmapped_type"), "keyword");
 }
 
-TEST(FactoryContentUpdaterTest, HashDetectionSortsOnShardDocThenId)
+TEST(FactoryContentUpdaterTest, HashDetectionSortsOnDocThenId)
 {
     // The sort is implied by the strategy (D2): a hash topic always reloads in full, and
-    // `_shard_doc` is synthesised by the PIT, so it needs no unmapped_type even with a consumer index.
+    // `_doc` and `_id` are metafields every index has, so they need no unmapped_type even with a
+    // consumer index.
     content_manager::TopicSpec spec;
     spec.source.indices = {"data-index"};
     content_manager::HashDetection hash;
@@ -139,13 +142,13 @@ TEST(FactoryContentUpdaterTest, HashDetectionSortsOnShardDocThenId)
                                                "topic",
                                                std::make_shared<RecordingSink>(),
                                                std::make_shared<MemoryTokenStore>(),
-                                               std::make_shared<ConditionSync>(false),
+                                               fakes::NEVER_STOP,
                                                port);
     cycle->run({});
 
     ASSERT_GE(port->state()->searches.size(), 2U);
     EXPECT_EQ(port->state()->searches.back().sort,
-              nlohmann::json::array({nlohmann::json {{"_shard_doc", "asc"}}, nlohmann::json {{"_id", "asc"}}}));
+              nlohmann::json::array({nlohmann::json {{"_doc", "asc"}}, nlohmann::json {{"_id", "asc"}}}));
 }
 
 TEST(FactoryContentUpdaterTest, ScopesTheDataQueryAwayFromTheConsumerIndex)
@@ -174,7 +177,7 @@ TEST(FactoryContentUpdaterTest, ScopesTheDataQueryAwayFromTheConsumerIndex)
                                                "topic",
                                                std::make_shared<RecordingSink>(),
                                                std::make_shared<MemoryTokenStore>(),
-                                               std::make_shared<ConditionSync>(false),
+                                               fakes::NEVER_STOP,
                                                port);
     cycle->run({});
 
@@ -199,7 +202,7 @@ TEST(FactoryContentUpdaterTest, ATopicWithoutReadinessSnapshotsTheDataIndicesOnl
                                                "topic",
                                                std::make_shared<RecordingSink>(),
                                                std::make_shared<MemoryTokenStore>(),
-                                               std::make_shared<ConditionSync>(false),
+                                               fakes::NEVER_STOP,
                                                port);
     cycle->run({});
 

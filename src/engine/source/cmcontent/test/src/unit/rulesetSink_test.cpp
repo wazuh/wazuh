@@ -21,16 +21,21 @@ namespace
 constexpr auto SPACE = "standard";
 constexpr auto ROUTE = "cmsync_standard";
 
-content_manager::SessionInfo sessionOf(content_manager::SessionKind kind,
-                                       bool enabled = true,
-                                       const std::vector<std::string>& integrations = {"int1"})
+content_manager::SessionInfo sessionWith(content_manager::SessionKind kind, nlohmann::json metadata)
 {
     content_manager::SessionInfo info;
     info.topic = "content.ruleset.standard";
     info.kind = kind;
     info.remoteToken = "remote-hash";
-    info.probeMetadata = nlohmann::json {{"enabled", enabled}, {"integrations", integrations}};
+    info.probeMetadata = std::move(metadata);
     return info;
+}
+
+content_manager::SessionInfo sessionOf(content_manager::SessionKind kind,
+                                       bool enabled = true,
+                                       const std::vector<std::string>& integrations = {"int1"})
+{
+    return sessionWith(kind, nlohmann::json {{"enabled", enabled}, {"integrations", integrations}});
 }
 
 nlohmann::json hitOf(const std::string& index, nlohmann::json source)
@@ -53,6 +58,17 @@ content_manager::ContentPage pageOf(const nlohmann::json& hits)
     return page;
 }
 
+::router::prod::Entry routeServing(const std::string& namespaceId,
+                                   const std::string& hash,
+                                   ::router::env::State state = ::router::env::State::ENABLED)
+{
+    ::router::prod::EntryPost post(ROUTE, cm::store::NamespaceId(namespaceId), 1);
+    ::router::prod::Entry entry(post);
+    entry.status(state);
+    entry.hash(hash);
+    return entry;
+}
+
 class RulesetSpaceSinkTest : public ::testing::Test
 {
 protected:
@@ -61,7 +77,7 @@ protected:
         logging::testInit();
         crud = std::make_shared<NiceMock<cm::crud::MockCrudService>>();
         router = std::make_shared<NiceMock<::router::mocks::MockRouterAPI>>();
-        sink = std::make_shared<RulesetSpaceSink>(crud, router, SPACE, ROUTE);
+        sink = std::make_shared<RulesetSpaceSink>(crud, router, SPACE);
 
         ON_CALL(*crud, existsNamespace(_)).WillByDefault(Return(false));
         ON_CALL(*router, existsEntry(_)).WillByDefault(Return(false));
@@ -71,6 +87,24 @@ protected:
         ON_CALL(*router, deleteEntry(_)).WillByDefault(Return(base::OptError {}));
     }
 
+    /// The route exists and serves @p namespaceId at @p hash.
+    void serve(const std::string& namespaceId,
+               const std::string& hash = "deployed-hash",
+               ::router::env::State state = ::router::env::State::ENABLED)
+    {
+        ON_CALL(*router, existsEntry(std::string {ROUTE})).WillByDefault(Return(true));
+        ON_CALL(*router, getEntry(std::string {ROUTE})).WillByDefault(Return(routeServing(namespaceId, hash, state)));
+    }
+
+    /// Open a full session and hand it one page holding the policy.
+    void stagePolicy()
+    {
+        ASSERT_EQ(sink->beginSession(sessionOf(content_manager::SessionKind::FullReload)),
+                  content_manager::SessionDecision::Proceed);
+        const auto hits = nlohmann::json::array({policyHit()});
+        ASSERT_EQ(sink->acceptPage(pageOf(hits)).status, content_manager::PageStatus::Accepted);
+    }
+
     std::shared_ptr<NiceMock<cm::crud::MockCrudService>> crud;
     std::shared_ptr<NiceMock<::router::mocks::MockRouterAPI>> router;
     std::shared_ptr<RulesetSpaceSink> sink;
@@ -78,53 +112,76 @@ protected:
 
 } // namespace
 
-TEST_F(RulesetSpaceSinkTest, ADisabledPolicyTearsTheSpaceDown)
+TEST_F(RulesetSpaceSinkTest, TheRouteIsNamedAfterTheSpace)
 {
-    const cm::store::NamespaceId current {"cmsync_standard_abcd"};
-    sink->prepare(current);
+    EXPECT_EQ(RulesetSpaceSink::routeName(SPACE), ROUTE);
+}
 
-    ON_CALL(*router, existsEntry(std::string {ROUTE})).WillByDefault(Return(true));
+TEST_F(RulesetSpaceSinkTest, ADisabledPolicyTearsDownTheRouteAndTheNamespaceItServes)
+{
+    serve("cmsync_standard_abcd");
     EXPECT_CALL(*router, deleteEntry(std::string {ROUTE})).Times(1);
-    EXPECT_CALL(*crud, deleteNamespace(current)).Times(1);
+    EXPECT_CALL(*crud, deleteNamespace(cm::store::NamespaceId("cmsync_standard_abcd"))).Times(1);
 
     EXPECT_EQ(sink->beginSession(sessionOf(content_manager::SessionKind::FullReload, /*enabled=*/false)),
               content_manager::SessionDecision::Skip);
-
-    const auto outcome = sink->takeOutcome();
-    EXPECT_TRUE(outcome.disabled);
-    EXPECT_FALSE(outcome.routeAvailable);
+    EXPECT_EQ(sink->deployment().enabled, false);
 }
 
-TEST_F(RulesetSpaceSinkTest, APolicyWithoutIntegrationsCountsAsDisabled)
+TEST_F(RulesetSpaceSinkTest, APolicyWithAnEmptyIntegrationListCountsAsDisabled)
 {
-    sink->prepare(std::nullopt);
-    ON_CALL(*router, existsEntry(std::string {ROUTE})).WillByDefault(Return(false));
-
     // `enabled` and the integration list are separate fields and can disagree; a policy with no
     // integrations would deploy a namespace that routes nothing.
     EXPECT_EQ(sink->beginSession(sessionOf(content_manager::SessionKind::FullReload, /*enabled=*/true, {})),
               content_manager::SessionDecision::Skip);
-    EXPECT_TRUE(sink->takeOutcome().disabled);
+    EXPECT_EQ(sink->deployment().enabled, false);
 }
 
-TEST_F(RulesetSpaceSinkTest, NoChangeIsSkipped)
+TEST_F(RulesetSpaceSinkTest, AMalformedPolicyAbortsAndKeepsTheDeployedRuleset)
 {
-    sink->prepare(std::nullopt);
-    ON_CALL(*router, existsEntry(std::string {ROUTE})).WillByDefault(Return(true));
+    serve("cmsync_standard_abcd");
+    EXPECT_CALL(*router, deleteEntry(_)).Times(0);
+    EXPECT_CALL(*crud, deleteNamespace(_)).Times(0);
 
+    // One bad document must not stop event processing for the space.
+    const std::vector<nlohmann::json> malformed {
+        nlohmann::json {{"enabled", true}, {"integrations", nlohmann::json::object()}},
+        nlohmann::json {{"enabled", true}, {"integrations", ""}},
+        nlohmann::json {{"enabled", true}, {"integrations", nullptr}},
+        nlohmann::json {{"enabled", true}},
+        nlohmann::json {{"enabled", "yes"}, {"integrations", {"int1"}}},
+        nlohmann::json {{"integrations", {"int1"}}},
+        nlohmann::json::object()};
+    for (const auto& metadata : malformed)
+    {
+        EXPECT_EQ(sink->beginSession(sessionWith(content_manager::SessionKind::FullReload, metadata)),
+                  content_manager::SessionDecision::Abort)
+            << metadata.dump();
+    }
+}
+
+TEST_F(RulesetSpaceSinkTest, ASpaceWithNoPolicyInTheIndexerIsLeftAlone)
+{
+    serve("cmsync_standard_abcd");
+    EXPECT_CALL(*router, deleteEntry(_)).Times(0);
+
+    auto info = sessionWith(content_manager::SessionKind::NoChange, nlohmann::json::object());
+    info.remoteToken.clear();
+
+    EXPECT_EQ(sink->beginSession(info), content_manager::SessionDecision::Skip);
+}
+
+TEST_F(RulesetSpaceSinkTest, NoChangeIsSkippedWithoutStaging)
+{
     EXPECT_CALL(*crud, existsNamespace(_)).Times(0);
 
     EXPECT_EQ(sink->beginSession(sessionOf(content_manager::SessionKind::NoChange)),
               content_manager::SessionDecision::Skip);
-
-    const auto outcome = sink->takeOutcome();
-    EXPECT_TRUE(outcome.routeAvailable);
-    EXPECT_EQ(outcome.hash, "remote-hash");
+    EXPECT_EQ(sink->deployment().enabled, true);
 }
 
-TEST_F(RulesetSpaceSinkTest, AssemblesResourcesByIndexAndPromotes)
+TEST_F(RulesetSpaceSinkTest, AssemblesResourcesByIndexAndCreatesTheRoute)
 {
-    sink->prepare(std::nullopt);
     ASSERT_EQ(sink->beginSession(sessionOf(content_manager::SessionKind::FullReload)),
               content_manager::SessionDecision::Proceed);
 
@@ -136,96 +193,30 @@ TEST_F(RulesetSpaceSinkTest, AssemblesResourcesByIndexAndPromotes)
     hits.push_back(
         hitOf("wazuh-threatintel-integrations-000001", nlohmann::json {{"document", {{"name", "integration/a/0"}}}}));
     hits.push_back(policyHit());
-
     ASSERT_EQ(sink->acceptPage(pageOf(hits)).status, content_manager::PageStatus::Accepted);
 
-    // Every resource kind reaches the import in its own bucket, and the policy carries the hash the
-    // router will later report back — which is how the next cycle recognises "already deployed".
-    EXPECT_CALL(*crud,
-                importNamespace(_,
-                                SizeIs(1), // kvdbs
-                                SizeIs(1), // decoders
-                                SizeIs(1), // filters
-                                SizeIs(1), // integrations
-                                _,
-                                true))
-        .Times(1);
+    EXPECT_CALL(*crud, importNamespace(_, SizeIs(1), SizeIs(1), SizeIs(1), SizeIs(1), _, true)).Times(1);
     EXPECT_CALL(*router, postEntry(_)).Times(1);
+    EXPECT_CALL(*crud, deleteNamespace(_)).Times(0); // Nothing was deployed before.
 
-    content_manager::CommitInfo info;
-    info.topic = "content.ruleset.standard";
-    info.finalToken = "remote-hash";
-
-    EXPECT_EQ(sink->commit(info).status, content_manager::CommitStatus::Committed);
-
-    const auto outcome = sink->takeOutcome();
-    EXPECT_TRUE(outcome.applied);
-    EXPECT_EQ(outcome.hash, "remote-hash");
-    EXPECT_TRUE(outcome.newNamespaceId.has_value());
+    EXPECT_EQ(sink->commit({}).status, content_manager::CommitStatus::Committed);
 }
 
-TEST_F(RulesetSpaceSinkTest, AnExistingRouteIsHotSwappedAndTheOldNamespaceRemoved)
+TEST_F(RulesetSpaceSinkTest, AnExistingRouteIsHotSwappedAndTheNamespaceItServedRetired)
 {
-    const cm::store::NamespaceId previous {"cmsync_standard_0000"};
-    sink->prepare(previous);
-
-    ON_CALL(*router, existsEntry(std::string {ROUTE})).WillByDefault(Return(true));
-
-    ASSERT_EQ(sink->beginSession(sessionOf(content_manager::SessionKind::FullReload)),
-              content_manager::SessionDecision::Proceed);
-
-    auto hits = nlohmann::json::array({policyHit()});
-    ASSERT_EQ(sink->acceptPage(pageOf(hits)).status, content_manager::PageStatus::Accepted);
+    serve("cmsync_standard_0000");
+    stagePolicy();
 
     EXPECT_CALL(*router, hotSwapNamespace(std::string {ROUTE}, _)).Times(1);
     EXPECT_CALL(*router, postEntry(_)).Times(0);
-    EXPECT_CALL(*crud, deleteNamespace(previous)).Times(1);
+    // The router names the namespace in force, whoever deployed it: nothing else keeps a copy.
+    EXPECT_CALL(*crud, deleteNamespace(cm::store::NamespaceId("cmsync_standard_0000"))).Times(1);
 
     EXPECT_EQ(sink->commit({}).status, content_manager::CommitStatus::Committed);
-}
-
-TEST_F(RulesetSpaceSinkTest, OnceSeededTheSinkReportsItsOwnSwapOverAStalePersistedNamespace)
-{
-    const cm::store::NamespaceId stale {"cmsync_standard_0000"};
-    EXPECT_EQ(sink->prepare(stale), stale);
-
-    // A swap the sync service did not drive — an on-demand cycle on a lane worker.
-    ON_CALL(*router, existsEntry(std::string {ROUTE})).WillByDefault(Return(true));
-    ASSERT_EQ(sink->beginSession(sessionOf(content_manager::SessionKind::FullReload)),
-              content_manager::SessionDecision::Proceed);
-    auto hits = nlohmann::json::array({policyHit()});
-    ASSERT_EQ(sink->acceptPage(pageOf(hits)).status, content_manager::PageStatus::Accepted);
-    ASSERT_EQ(sink->commit({}).status, content_manager::CommitStatus::Committed);
-    const auto deployed = sink->takeOutcome().newNamespaceId;
-    ASSERT_TRUE(deployed.has_value());
-
-    // The sync service still holds the deleted id. Re-seeding with it would make the next swap
-    // delete it again and leak the namespace actually being served.
-    EXPECT_EQ(sink->prepare(stale), deployed);
-
-    ASSERT_EQ(sink->beginSession(sessionOf(content_manager::SessionKind::FullReload)),
-              content_manager::SessionDecision::Proceed);
-    ASSERT_EQ(sink->acceptPage(pageOf(hits)).status, content_manager::PageStatus::Accepted);
-    EXPECT_CALL(*crud, deleteNamespace(*deployed)).Times(1);
-    EXPECT_CALL(*crud, deleteNamespace(stale)).Times(0);
-    EXPECT_EQ(sink->commit({}).status, content_manager::CommitStatus::Committed);
-}
-
-TEST_F(RulesetSpaceSinkTest, OnceSeededTheSinkReportsItsOwnTeardown)
-{
-    const cm::store::NamespaceId current {"cmsync_standard_abcd"};
-    sink->prepare(current);
-
-    ON_CALL(*router, existsEntry(std::string {ROUTE})).WillByDefault(Return(true));
-    ASSERT_EQ(sink->beginSession(sessionOf(content_manager::SessionKind::FullReload, /*enabled=*/false)),
-              content_manager::SessionDecision::Skip);
-
-    EXPECT_FALSE(sink->prepare(current).has_value());
 }
 
 TEST_F(RulesetSpaceSinkTest, APageWithoutAPolicyIsRejectedAsUnusableContent)
 {
-    sink->prepare(std::nullopt);
     ASSERT_EQ(sink->beginSession(sessionOf(content_manager::SessionKind::FullReload)),
               content_manager::SessionDecision::Proceed);
 
@@ -235,14 +226,12 @@ TEST_F(RulesetSpaceSinkTest, APageWithoutAPolicyIsRejectedAsUnusableContent)
 
     EXPECT_CALL(*crud, importNamespace(_, _, _, _, _, _, _)).Times(0);
 
-    // RetryFull, not RetrySame: without a policy there is nothing to route, and that is a content
-    // problem — the next cycle must re-fetch from scratch rather than trust the token.
+    // RetryFull: without a policy there is nothing to route, which is a content problem.
     EXPECT_EQ(sink->commit({}).status, content_manager::CommitStatus::RejectedRetryFull);
 }
 
 TEST_F(RulesetSpaceSinkTest, APolicyWithoutAHashIsRejected)
 {
-    sink->prepare(std::nullopt);
     ASSERT_EQ(sink->beginSession(sessionOf(content_manager::SessionKind::FullReload)),
               content_manager::SessionDecision::Proceed);
 
@@ -255,7 +244,6 @@ TEST_F(RulesetSpaceSinkTest, APolicyWithoutAHashIsRejected)
 
 TEST_F(RulesetSpaceSinkTest, AnUnrecognisedIndexIsRejected)
 {
-    sink->prepare(std::nullopt);
     ASSERT_EQ(sink->beginSession(sessionOf(content_manager::SessionKind::FullReload)),
               content_manager::SessionDecision::Proceed);
 
@@ -267,35 +255,23 @@ TEST_F(RulesetSpaceSinkTest, AnUnrecognisedIndexIsRejected)
 
 TEST_F(RulesetSpaceSinkTest, AFailedImportRollsBackTheStagingNamespace)
 {
-    sink->prepare(std::nullopt);
-    ASSERT_EQ(sink->beginSession(sessionOf(content_manager::SessionKind::FullReload)),
-              content_manager::SessionDecision::Proceed);
-
-    auto hits = nlohmann::json::array({policyHit()});
-    ASSERT_EQ(sink->acceptPage(pageOf(hits)).status, content_manager::PageStatus::Accepted);
+    stagePolicy();
 
     ON_CALL(*crud, importNamespace(_, _, _, _, _, _, _)).WillByDefault(Throw(std::runtime_error("import failed")));
     ON_CALL(*crud, existsNamespace(_)).WillByDefault(Return(true));
     EXPECT_CALL(*crud, deleteNamespace(_)).Times(1);
 
     EXPECT_EQ(sink->commit({}).status, content_manager::CommitStatus::RejectedRetrySame);
-    EXPECT_FALSE(sink->takeOutcome().applied);
 }
 
 TEST_F(RulesetSpaceSinkTest, AFailedRouteSwapRollsBackTheImportedNamespace)
 {
-    sink->prepare(std::nullopt);
-    ASSERT_EQ(sink->beginSession(sessionOf(content_manager::SessionKind::FullReload)),
-              content_manager::SessionDecision::Proceed);
-
-    auto hits = nlohmann::json::array({policyHit()});
-    ASSERT_EQ(sink->acceptPage(pageOf(hits)).status, content_manager::PageStatus::Accepted);
+    stagePolicy();
 
     ON_CALL(*router, postEntry(_)).WillByDefault(Return(base::Error {"no priority available"}));
     ON_CALL(*crud, existsNamespace(_)).WillByDefault(Return(true));
 
-    // The namespace was imported but nothing points at it, so it is garbage. Leaving it would
-    // accumulate one dead namespace per failed cycle.
+    // The namespace was imported but nothing points at it, so it is garbage.
     EXPECT_CALL(*crud, deleteNamespace(_)).Times(1);
 
     EXPECT_EQ(sink->commit({}).status, content_manager::CommitStatus::RejectedRetrySame);
@@ -303,7 +279,6 @@ TEST_F(RulesetSpaceSinkTest, AFailedRouteSwapRollsBackTheImportedNamespace)
 
 TEST_F(RulesetSpaceSinkTest, AbortDiscardsTheStagingNamespace)
 {
-    sink->prepare(std::nullopt);
     ASSERT_EQ(sink->beginSession(sessionOf(content_manager::SessionKind::FullReload)),
               content_manager::SessionDecision::Proceed);
 
@@ -315,9 +290,82 @@ TEST_F(RulesetSpaceSinkTest, AbortDiscardsTheStagingNamespace)
 
 TEST_F(RulesetSpaceSinkTest, DeadDependenciesAbortTheSession)
 {
-    RulesetSpaceSink orphan {
-        std::weak_ptr<cm::crud::ICrudService> {}, std::weak_ptr<::router::IRouterAPI> {}, SPACE, ROUTE};
+    RulesetSpaceSink orphan {std::weak_ptr<cm::crud::ICrudService> {}, std::weak_ptr<::router::IRouterAPI> {}, SPACE};
 
     EXPECT_EQ(orphan.beginSession(sessionOf(content_manager::SessionKind::FullReload)),
               content_manager::SessionDecision::Abort);
+}
+
+TEST_F(RulesetSpaceSinkTest, TheTokenIsTheHashTheEnabledRouteServes)
+{
+    // The invariant ruleset change detection rests on: the sink writes `space.hash.sha256` into the
+    // policy it imports, the router reports it as the route's hash, and the next cycle compares the
+    // remote hash against it.
+    serve("cmsync_standard_abcd", "deployed-hash");
+    EXPECT_EQ(sink->load("topic"), "deployed-hash");
+
+    // Writes are no-ops: the route swap already recorded the hash.
+    EXPECT_TRUE(sink->store("topic", "other"));
+    EXPECT_TRUE(sink->clear("topic"));
+    EXPECT_EQ(sink->load("topic"), "deployed-hash");
+}
+
+TEST_F(RulesetSpaceSinkTest, AMissingOrDisabledRouteReadsAsNoToken)
+{
+    // Nothing serving the space means the next cycle must rebuild it.
+    EXPECT_TRUE(sink->load("topic").empty());
+
+    serve("cmsync_standard_abcd", "deployed-hash", ::router::env::State::DISABLED);
+    EXPECT_TRUE(sink->load("topic").empty());
+}
+
+TEST_F(RulesetSpaceSinkTest, TheDeploymentIsReadFromTheRouter)
+{
+    EXPECT_FALSE(sink->deployment().available);
+    EXPECT_FALSE(sink->deployment().enabled.has_value()) << "no policy probed yet";
+
+    serve("cmsync_standard_abcd", "deployed-hash");
+    const auto deployment = sink->deployment();
+    EXPECT_TRUE(deployment.available);
+    EXPECT_EQ(deployment.hash, "deployed-hash");
+}
+
+TEST_F(RulesetSpaceSinkTest, OrphansAreTheSpacesNamespacesNoRouteServes)
+{
+    serve("cmsync_standard_live");
+    ON_CALL(*crud, listNamespaces())
+        .WillByDefault(Return(std::vector<cm::store::NamespaceId> {cm::store::NamespaceId("cmsync_standard_live"),
+                                                                   cm::store::NamespaceId("cmsync_standard_a1b2"),
+                                                                   cm::store::NamespaceId("cmsync_custom_c3d4"),
+                                                                   cm::store::NamespaceId("user_namespace")}));
+
+    EXPECT_CALL(*crud, deleteNamespace(cm::store::NamespaceId("cmsync_standard_a1b2"))).Times(1);
+    EXPECT_CALL(*crud, deleteNamespace(cm::store::NamespaceId("cmsync_standard_live"))).Times(0);
+    EXPECT_CALL(*crud, deleteNamespace(cm::store::NamespaceId("cmsync_custom_c3d4"))).Times(0); // Another space's.
+    EXPECT_CALL(*crud, deleteNamespace(cm::store::NamespaceId("user_namespace"))).Times(0);
+
+    sink->collectOrphanNamespaces();
+}
+
+TEST_F(RulesetSpaceSinkTest, WithNoRouteEveryNamespaceOfTheSpaceIsAnOrphan)
+{
+    ON_CALL(*crud, listNamespaces())
+        .WillByDefault(Return(std::vector<cm::store::NamespaceId> {cm::store::NamespaceId("cmsync_standard_a1b2")}));
+    EXPECT_CALL(*crud, deleteNamespace(cm::store::NamespaceId("cmsync_standard_a1b2"))).Times(1);
+
+    sink->collectOrphanNamespaces();
+}
+
+TEST_F(RulesetSpaceSinkTest, AnUnreadableRouteCollectsNothing)
+{
+    // A dead namespace cannot be told from a deployed one without the route: deleting a live
+    // ruleset is never worth the disk.
+    ON_CALL(*router, existsEntry(std::string {ROUTE})).WillByDefault(Return(true));
+    ON_CALL(*router, getEntry(std::string {ROUTE}))
+        .WillByDefault(Return(base::RespOrError<::router::prod::Entry> {base::Error {"unreadable"}}));
+    ON_CALL(*crud, listNamespaces())
+        .WillByDefault(Return(std::vector<cm::store::NamespaceId> {cm::store::NamespaceId("cmsync_standard_a1b2")}));
+    EXPECT_CALL(*crud, deleteNamespace(_)).Times(0);
+
+    sink->collectOrphanNamespaces();
 }
