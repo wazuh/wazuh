@@ -1413,6 +1413,7 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
                 if (!strcmp(node[i]->attributes[0], "type") && !strcmp(node[i]->values[0], "sregex")) {
                     OSMatch *mt_pt;
 
+                    nodiff_size = 0;
                     if (!syscheck->nodiff_regex) {
                         os_calloc(2, sizeof(OSMatch *), syscheck->nodiff_regex);
                         syscheck->nodiff_regex[0] = NULL;
@@ -1446,6 +1447,7 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
             }
             /* Add if simple entry -- check for duplicates */
             else if (!os_IsStrOnArray(node[i]->content, syscheck->nodiff)) {
+                nodiff_size = 0;
                 if (!syscheck->nodiff) {
                     os_calloc(2, sizeof(char *), syscheck->nodiff);
 

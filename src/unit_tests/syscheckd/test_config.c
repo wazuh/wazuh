@@ -302,6 +302,30 @@ void test_Read_Syscheck_Config_invalid_diff_limit(void **state)
     assert_string_equal(syscheck.nodiff[0], "/etc/secret.conf");
 }
 
+void test_Read_Syscheck_Config_diff_nodiff_mixed(void **state)
+{
+    (void) state;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+
+    Read_Syscheck_Config("test_syscheck_diff_nodiff_mixed.conf");
+
+    assert_non_null(syscheck.nodiff);
+    assert_string_equal(syscheck.nodiff[0], "/etc/a.conf");
+    assert_string_equal(syscheck.nodiff[1], "/etc/b.conf");
+    assert_string_equal(syscheck.nodiff[2], "/etc/c.conf");
+    assert_null(syscheck.nodiff[3]);
+
+    assert_non_null(syscheck.nodiff_regex);
+    assert_non_null(syscheck.nodiff_regex[0]);
+    assert_non_null(syscheck.nodiff_regex[1]);
+    assert_non_null(syscheck.nodiff_regex[2]);
+    assert_null(syscheck.nodiff_regex[3]);
+}
+
 void test_read_data_unit_short_values(void **state)
 {
     (void) state;
@@ -940,6 +964,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_undefined, setup_read_config, restart_syscheck),
         cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_unparsed, setup_read_config, restart_syscheck),
         cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_invalid_diff_limit, setup_read_config, restart_syscheck),
+        cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_diff_nodiff_mixed, setup_read_config, restart_syscheck),
         cmocka_unit_test(test_read_data_unit_short_values),
         cmocka_unit_test_setup_teardown(test_getSyscheckConfig, setup_read_config, restart_syscheck),
         cmocka_unit_test_setup_teardown(test_getSyscheckConfig_no_audit, setup_read_config, restart_syscheck),
