@@ -661,7 +661,7 @@ cJSON* wm_ms_graph_dump(const wm_ms_graph* ms_graph) {
         for (unsigned int resource_num = 0; resource_num < ms_graph->num_resources; resource_num++) {
             cJSON* resource = cJSON_CreateObject();
             if (ms_graph->resources[resource_num].name) {
-                cJSON_AddStringToObject(ms_graph_auth, "name", ms_graph->resources[resource_num].name);
+                cJSON_AddStringToObject(resource, "name", ms_graph->resources[resource_num].name);
             } else {
                 cJSON_free(resource);
                 continue;

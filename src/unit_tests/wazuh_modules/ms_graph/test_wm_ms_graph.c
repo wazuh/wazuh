@@ -1506,7 +1506,7 @@ void test_dump(void **state) {
     cJSON* dump = wm_ms_graph_dump(module_data);
     char* dump_text = cJSON_PrintUnformatted(dump);
 
-    assert_string_equal(dump_text, "{\"ms_graph\":{\"enabled\":\"yes\",\"only_future_events\":\"no\",\"curl_max_size\":1024,\"page_size\":100,\"time_delay\":10,\"run_on_start\":\"yes\",\"version\":\"v1.0\",\"wday\":\"sunday\",\"api_auth\":{\"client_id\":\"example_string\",\"tenant_id\":\"example_string\",\"secret_value\":\"*****\",\"api_type\":\"global\",\"name\":\"security\"},\"resources\":[{\"relationship\":\"alerts_v2\"}]}}");
+    assert_string_equal(dump_text, "{\"ms_graph\":{\"enabled\":\"yes\",\"only_future_events\":\"no\",\"curl_max_size\":1024,\"page_size\":100,\"time_delay\":10,\"run_on_start\":\"yes\",\"version\":\"v1.0\",\"wday\":\"sunday\",\"api_auth\":{\"client_id\":\"example_string\",\"tenant_id\":\"example_string\",\"secret_value\":\"*****\",\"api_type\":\"global\"},\"resources\":[{\"name\":\"security\",\"relationship\":\"alerts_v2\"}]}}");
 
     cJSON_Delete(dump);
     os_free(dump_text);
