@@ -8,6 +8,7 @@
  * Foundation.
  */
 
+#include "ci_logging_helper.hpp"
 #include "container_images_config.hpp"
 #include "credential_provider.hpp"
 #include "registry_byte_stream.hpp"
@@ -21,6 +22,7 @@
 #include <filesystem>
 #include <fstream>
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -350,7 +352,7 @@ class RegistryReaderTest : public ::testing::Test
         std::unique_ptr<RegistryImageReader> reader(const std::string& location,
                                                     const std::string& knownDigest = {})
         {
-            const ReaderContext context {&m_config, &m_credentials, &m_scanBytes, nullptr};
+            const ReaderContext context {&m_config, &m_credentials, &m_scanBytes, nullptr, &m_refusedHosts};
             auto instance {std::make_unique<RegistryImageReader>(location, knownDigest, context)};
             instance->setTransport(std::unique_ptr<IRegistryTransport>(m_transport));
 
@@ -371,6 +373,7 @@ class RegistryReaderTest : public ::testing::Test
         ContainerImagesConfig m_config;
         StubCredentials m_credentials;
         std::uint64_t m_scanBytes {0};
+        std::set<std::string> m_refusedHosts; ///< What one scan shares across its references.
         ScriptedTransport* m_transport {nullptr}; ///< Owned by the reader once injected.
 };
 
@@ -695,6 +698,262 @@ TEST_F(RegistryTokenRetryTest, ARejectedCredentialIsNotRetried)
 
     EXPECT_EQ(instance->discover().status, ReadStatus::Failed);
     EXPECT_EQ(basicTokenCalls(), 1u);
+}
+
+// A credential the registry refuses at the token request must not cost the public
+// references on the same host. The reference is read once without it, and the user is told.
+class RegistryCredentialFallbackTest : public RegistryReaderTest
+{
+    protected:
+        static constexpr auto USER = "scripted-user-name";
+        static constexpr auto PASSKEY = "scripted-secret-value";
+
+        void SetUp() override
+        {
+            RegistryReaderTest::SetUp();
+
+            m_config.registryAuth.push_back({"ghcr.io", "ghcr_user", "ghcr_token"});
+            m_credentials.values["container_images/ghcr_user"] = USER;
+            m_credentials.values["container_images/ghcr_token"] = PASSKEY;
+
+            LoggingHelper::setLogCallback([this](const modules_log_level_t level, const char* message)
+            {
+                if (level == LOG_WARNING)
+                {
+                    m_warnings.push_back(message);
+                }
+            });
+        }
+
+        void TearDown() override
+        {
+            LoggingHelper::setLogCallback({});
+            RegistryReaderTest::TearDown();
+        }
+
+        /// @brief A public reference: challenged, then served. The token endpoint answers
+        /// @p credentialedAnswer to the credentialed request and a token to the anonymous one.
+        void scriptPublicReference(const HttpResponse& credentialedAnswer)
+        {
+            m_transport->sequences.push_back({"/manifests/1.0", {challenge(), json(200, MANIFEST)}, 0});
+            m_transport->sequences.push_back(
+            {"/token", {credentialedAnswer, json(200, R"({"token":"anonymous-token"})")}, 0});
+            m_transport->answers.push_back({"/blobs/sha256:cccc3333", json(200, configBlob())});
+        }
+
+        /// @brief A private reference: every manifest request is challenged, and the
+        /// anonymous token, though issued, does not open it.
+        void scriptPrivateReference(const HttpResponse& credentialedAnswer)
+        {
+            m_transport->answers.push_back({"/manifests/1.0", challenge()});
+            m_transport->sequences.push_back(
+            {"/token", {credentialedAnswer, json(200, R"({"token":"anonymous-token"})")}, 0});
+        }
+
+        std::size_t anonymousTokenCalls() const
+        {
+            return static_cast<std::size_t>(std::count_if(m_transport->calls.begin(),
+                                                          m_transport->calls.end(),
+                                                          [](const ScriptedTransport::Call & call)
+            {
+                return !call.basic && call.url.find("/token") != std::string::npos;
+            }));
+        }
+
+        std::size_t warningsMentioning(const std::string& fragment) const
+        {
+            return static_cast<std::size_t>(std::count_if(m_warnings.begin(),
+                                                          m_warnings.end(),
+                                                          [&fragment](const std::string & line)
+            {
+                return line.find(fragment) != std::string::npos;
+            }));
+        }
+
+        std::vector<std::string> m_warnings;
+};
+
+TEST_F(RegistryCredentialFallbackTest, ARefusedCredentialStillInventoriesAPublicReference)
+{
+    scriptPublicReference(json(403, ""));
+
+    const auto instance = reader("ghcr.io/owner/app:1.0");
+
+    EXPECT_EQ(instance->discover().status, ReadStatus::Success);
+    EXPECT_EQ(anonymousTokenCalls(), 1u);
+    EXPECT_EQ(m_warnings.size(), 1u);
+    EXPECT_EQ(warningsMentioning("The credential configured for ghcr.io"), 1u);
+    EXPECT_EQ(warningsMentioning("read anonymously"), 1u);
+}
+
+TEST_F(RegistryCredentialFallbackTest, ACredentialAnsweredWithA401IsHandledLikeA403)
+{
+    scriptPublicReference(json(401, ""));
+
+    const auto instance = reader("ghcr.io/owner/app:1.0");
+
+    EXPECT_EQ(instance->discover().status, ReadStatus::Success);
+    EXPECT_EQ(anonymousTokenCalls(), 1u);
+    EXPECT_EQ(warningsMentioning("The credential configured for ghcr.io"), 1u);
+}
+
+TEST_F(RegistryCredentialFallbackTest, TheWarningNamesTheKeysAndNeverTheirValues)
+{
+    scriptPublicReference(json(403, ""));
+
+    const auto instance = reader("ghcr.io/owner/app:1.0");
+    instance->discover();
+
+    ASSERT_EQ(m_warnings.size(), 1u);
+    EXPECT_NE(m_warnings.front().find("ghcr_user"), std::string::npos);
+    EXPECT_NE(m_warnings.front().find("ghcr_token"), std::string::npos);
+    EXPECT_EQ(m_warnings.front().find(USER), std::string::npos);
+    EXPECT_EQ(m_warnings.front().find(PASSKEY), std::string::npos);
+}
+
+TEST_F(RegistryCredentialFallbackTest, APrivateReferenceKeepsTheOriginalCredentialError)
+{
+    // The anonymous token is issued but does not open the repository, so the fallback
+    // fails too and the user is shown what they can fix: the credential.
+    scriptPrivateReference(json(403, ""));
+
+    const auto instance = reader("ghcr.io/owner/app:1.0");
+
+    EXPECT_EQ(instance->discover().status, ReadStatus::Failed);
+    EXPECT_EQ(anonymousTokenCalls(), 1u);
+    ASSERT_EQ(m_warnings.size(), 1u) << "one line per failed reference, and no refusal notice";
+    EXPECT_NE(m_warnings.front().find("could not be resolved: the token request failed: the registry answered 403."),
+              std::string::npos)
+            << m_warnings.front();
+}
+
+TEST_F(RegistryCredentialFallbackTest, AnAnonymousTokenRequestThatIsRefusedTooKeepsTheOriginalError)
+{
+    m_transport->answers.push_back({"/manifests/1.0", challenge()});
+    m_transport->answers.push_back({"/token", json(403, "")});
+
+    const auto instance = reader("ghcr.io/owner/app:1.0");
+
+    EXPECT_EQ(instance->discover().status, ReadStatus::Failed);
+    ASSERT_EQ(m_warnings.size(), 1u);
+    EXPECT_NE(m_warnings.front().find("could not be resolved: the token request failed: the registry answered 403."),
+              std::string::npos)
+            << m_warnings.front();
+}
+
+TEST_F(RegistryCredentialFallbackTest, ARefusedCredentialAnsweredWithA401KeepsItsOwnError)
+{
+    scriptPrivateReference(json(401, ""));
+
+    const auto instance = reader("ghcr.io/owner/app:1.0");
+
+    EXPECT_EQ(instance->discover().status, ReadStatus::Failed);
+    ASSERT_EQ(m_warnings.size(), 1u);
+    EXPECT_NE(m_warnings.front().find("the registry refused to issue a token, answering 401."),
+              std::string::npos)
+            << m_warnings.front();
+}
+
+TEST_F(RegistryCredentialFallbackTest, AValidCredentialMakesNoAnonymousRequest)
+{
+    m_transport->sequences.push_back({"/manifests/1.0", {challenge(), json(200, MANIFEST)}, 0});
+    m_transport->answers.push_back({"/token", json(200, R"({"token":"scripted-token"})")});
+    m_transport->answers.push_back({"/blobs/sha256:cccc3333", json(200, configBlob())});
+
+    const auto instance = reader("ghcr.io/owner/app:1.0");
+
+    EXPECT_EQ(instance->discover().status, ReadStatus::Success);
+    EXPECT_EQ(anonymousTokenCalls(), 0u);
+    EXPECT_TRUE(m_warnings.empty());
+}
+
+TEST_F(RegistryCredentialFallbackTest, ACredentialMissingFromTheStoreIsNotReplacedByAnAnonymousRequest)
+{
+    m_credentials.values.clear();
+    m_transport->answers.push_back({"/manifests/1.0", challenge()});
+
+    const auto instance = reader("ghcr.io/owner/app:1.0");
+
+    EXPECT_EQ(instance->discover().status, ReadStatus::Failed);
+    EXPECT_EQ(m_transport->countMatching("/token"), 0u);
+    ASSERT_EQ(m_warnings.size(), 1u);
+    EXPECT_NE(m_warnings.front().find("is missing from the agent credential store"), std::string::npos);
+}
+
+TEST_F(RegistryCredentialFallbackTest, ATransportFailureOrThrottlingIsNotAnAnonymousCase)
+{
+    // Neither says anything about the credential, so no anonymous request is made.
+    m_transport->sequences.push_back({"/manifests/1.0", {challenge()}, 0});
+    m_transport->answers.push_back({"/token", json(503, "")});
+
+    const auto instance = reader("ghcr.io/owner/app:1.0");
+
+    EXPECT_EQ(instance->discover().status, ReadStatus::Failed);
+    EXPECT_EQ(anonymousTokenCalls(), 0u);
+}
+
+TEST_F(RegistryCredentialFallbackTest, TheRefusalIsReportedOncePerScanAndHost)
+{
+    scriptPublicReference(json(403, ""));
+
+    {
+        const auto first = reader("ghcr.io/owner/app:1.0");
+        EXPECT_EQ(first->discover().status, ReadStatus::Success);
+    }
+
+    // A second reference on the same host, in the same scan.
+    m_transport = new ScriptedTransport();
+    scriptPublicReference(json(403, ""));
+
+    const auto second = reader("ghcr.io/owner/app:1.0");
+
+    EXPECT_EQ(second->discover().status, ReadStatus::Success);
+    EXPECT_EQ(warningsMentioning("The credential configured for ghcr.io"), 1u);
+
+    // The next scan starts with a clean slate and says it again.
+    m_refusedHosts.clear();
+    m_transport = new ScriptedTransport();
+    scriptPublicReference(json(403, ""));
+
+    const auto third = reader("ghcr.io/owner/app:1.0");
+
+    EXPECT_EQ(third->discover().status, ReadStatus::Success);
+    EXPECT_EQ(warningsMentioning("The credential configured for ghcr.io"), 2u);
+}
+
+TEST_F(RegistryCredentialFallbackTest, AnAnonymousFallbackDoesNotChangeHowTheNextReferenceAuthenticates)
+{
+    scriptPublicReference(json(403, ""));
+
+    {
+        const auto first = reader("ghcr.io/owner/app:1.0");
+        EXPECT_EQ(first->discover().status, ReadStatus::Success);
+    }
+
+    // The next reference's credential is accepted, and it is the one presented.
+    m_transport = new ScriptedTransport();
+    m_transport->sequences.push_back({"/manifests/1.0", {challenge(), json(200, MANIFEST)}, 0});
+    m_transport->answers.push_back({"/token", json(200, R"({"token":"scripted-token"})")});
+    m_transport->answers.push_back({"/blobs/sha256:cccc3333", json(200, configBlob())});
+
+    const auto second = reader("ghcr.io/owner/app:1.0");
+
+    EXPECT_EQ(second->discover().status, ReadStatus::Success);
+    ASSERT_EQ(m_transport->countMatching("/token"), 1u);
+
+    for (const auto& call : m_transport->calls)
+    {
+        if (call.url.find("/token") != std::string::npos)
+        {
+            EXPECT_TRUE(call.basic);
+            EXPECT_EQ(call.user, USER);
+        }
+
+        if (call.url.find("/manifests/") != std::string::npos && call.headers.size() > 1)
+        {
+            EXPECT_EQ(call.headers[1], "Authorization: Bearer scripted-token");
+        }
+    }
 }
 
 // What a layer does when its transfer fails. The transfer is stood in for by a scripted
