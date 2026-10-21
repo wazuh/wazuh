@@ -640,6 +640,20 @@ void test_azure_dump_never_prints_a_key(void **state) {
     cJSON_free(text);
 }
 
+void test_azure_dump_reports_keys_in_clear_when_unmasked(void **state) {
+    wm_azure_api_t api = { .type = LOG_ANALYTICS, .application_key = "fakeAzureAnalyticsKey02", .tenantdomain = "wazuh.onmicrosoft.com" };
+    wm_azure_storage_t storage = { .account_key = "fakeAzureAccountKey0003", .tag = "azure-storage" };
+    wm_azure_t azure = { .api_config = &api, .storage = &storage, .scan_config.scan_wday = -1 };
+
+    wm_unmask_credentials = 1;
+    char *text = azure_dump_text(&azure);
+    wm_unmask_credentials = 0;
+
+    assert_non_null(strstr(text, "\"application_key\":\"fakeAzureAnalyticsKey02\""));
+    assert_non_null(strstr(text, "\"account_key\":\"fakeAzureAccountKey0003\""));
+    cJSON_free(text);
+}
+
 void test_azure_dump_reports_requests_and_containers(void **state) {
     wm_azure_request_t request = { .tag = "azure-activity", .query = "AzureActivity", .time_offset = "36h", .workspace = "d6b-efa" };
     wm_azure_api_t api = { .type = LOG_ANALYTICS, .auth_path = "/var/ossec/wodles/azure/credentials.txt",
@@ -687,6 +701,7 @@ int main(void) {
     const struct CMUnitTest tests_dump[] = {
         cmocka_unit_test(test_azure_dump_masks_application_and_account_keys),
         cmocka_unit_test(test_azure_dump_never_prints_a_key),
+        cmocka_unit_test(test_azure_dump_reports_keys_in_clear_when_unmasked),
         cmocka_unit_test(test_azure_dump_reports_requests_and_containers)
     };
     int result;

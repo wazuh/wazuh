@@ -1637,6 +1637,22 @@ void test_dump_never_prints_a_secret_value(void **state) {
     os_free(dump_text);
 }
 
+void test_dump_reports_secret_values_in_clear_when_unmasked(void **state) {
+    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    add_two_tenants(module_data, "fakeGraphSecretForTenantA", "fakeGraphSecretForTenantB");
+
+    wm_unmask_credentials = 1;
+    cJSON* dump = wm_ms_graph_dump(module_data);
+    wm_unmask_credentials = 0;
+    char* dump_text = cJSON_PrintUnformatted(dump);
+
+    assert_non_null(strstr(dump_text, "\"secret_value\":\"fakeGraphSecretForTenantA\""));
+    assert_non_null(strstr(dump_text, "\"secret_value\":\"fakeGraphSecretForTenantB\""));
+
+    cJSON_Delete(dump);
+    os_free(dump_text);
+}
+
 void test_dump_reports_each_tenant_separately(void **state) {
     wm_ms_graph* module_data = (wm_ms_graph *)*state;
     add_two_tenants(module_data, "fakeGraphSecretForTenantA", "fakeGraphSecretForTenantB");
@@ -4633,6 +4649,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_dump_gcc_configuration, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_dump_dod_configuration, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_dump_never_prints_a_secret_value, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_dump_reports_secret_values_in_clear_when_unmasked, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_dump_reports_each_tenant_separately, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_dump_reports_every_relationship_of_a_resource, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_get_access_token_no_response, setup_conf, teardown_conf),

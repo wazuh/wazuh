@@ -229,6 +229,21 @@ void test_github_dump_never_prints_an_api_token(void **state) {
     assert_null(strstr(data->root_c, "ghp_fakeTokenForOrgB"));
 }
 
+void test_github_dump_reports_the_api_token_in_clear_when_unmasked(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    os_calloc(1, sizeof(wm_github_auth), data->github_config->auth);
+    os_strdup("org_a", data->github_config->auth->org_name);
+    os_strdup("ghp_fakeTokenForOrgA", data->github_config->auth->api_token);
+
+    wm_unmask_credentials = 1;
+    cJSON *root = wm_github_dump(data->github_config);
+    wm_unmask_credentials = 0;
+    data->root_c = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+
+    assert_non_null(strstr(data->root_c, "\"api_token\":\"ghp_fakeTokenForOrgA\""));
+}
+
 void test_github_scan_failure_action_1(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     os_calloc(1, sizeof(wm_github_fail), data->github_config->fails);
@@ -1648,6 +1663,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_github_dump_no_options, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_github_dump_yes_options, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_github_dump_never_prints_an_api_token, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_github_dump_reports_the_api_token_in_clear_when_unmasked, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_github_scan_failure_action_1, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_github_scan_failure_action_2, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_github_scan_failure_action_3, setup_conf, teardown_conf),

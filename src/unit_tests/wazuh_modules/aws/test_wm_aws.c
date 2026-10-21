@@ -401,6 +401,20 @@ void test_aws_dump_never_prints_an_inline_key(void **state) {
     cJSON_free(text);
 }
 
+void test_aws_dump_reports_keys_in_clear_when_unmasked(void **state) {
+    wm_aws_bucket bucket = { .bucket = "wazuh-aws-wodle", .access_key = "AKIAFAKEBUCKETKEY001", .secret_key = "fakeBucketSecretKey001" };
+    wm_aws_service service = { .type = "inspector", .access_key = "AKIAFAKESERVICEKEY01", .secret_key = "fakeServiceSecretKey01" };
+    wm_aws aws_config = { .scan_config.scan_wday = -1, .buckets = &bucket, .services = &service };
+
+    wm_unmask_credentials = 1;
+    char *text = aws_dump_text(&aws_config);
+    wm_unmask_credentials = 0;
+
+    assert_non_null(strstr(text, "\"access_key\":\"AKIAFAKEBUCKETKEY001\",\"secret_key\":\"fakeBucketSecretKey001\""));
+    assert_non_null(strstr(text, "\"access_key\":\"AKIAFAKESERVICEKEY01\",\"secret_key\":\"fakeServiceSecretKey01\""));
+    cJSON_free(text);
+}
+
 void test_aws_dump_leaves_out_keys_that_are_not_set(void **state) {
     wm_aws_bucket bucket = { .bucket = "wazuh-aws-wodle", .aws_profile = "default", .type = "cloudtrail" };
     wm_aws aws_config = { .scan_config.scan_wday = -1, .enabled = 1, .buckets = &bucket };
@@ -429,6 +443,7 @@ int main(void) {
         cmocka_unit_test(test_add_quoted_arg_bucket_values_with_spaces),
         cmocka_unit_test(test_aws_dump_masks_bucket_and_service_keys),
         cmocka_unit_test(test_aws_dump_never_prints_an_inline_key),
+        cmocka_unit_test(test_aws_dump_reports_keys_in_clear_when_unmasked),
         cmocka_unit_test(test_aws_dump_leaves_out_keys_that_are_not_set)
     };
     int result;

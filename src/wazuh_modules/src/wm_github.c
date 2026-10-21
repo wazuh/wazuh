@@ -196,7 +196,7 @@ cJSON *wm_github_dump(const wm_github* github_config) {
             if (iter->org_name) {
                 cJSON_AddStringToObject(api_auth, "org_name", iter->org_name);
             }
-            module_report_add_secret(api_auth, "api_token", iter->api_token, false);
+            module_report_add_secret(api_auth, "api_token", iter->api_token, wm_unmask_credentials);
             cJSON_AddItemToArray(arr_auth, api_auth);
         }
         if (cJSON_GetArraySize(arr_auth) > 0) {
