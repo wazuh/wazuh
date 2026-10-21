@@ -1387,6 +1387,14 @@ freshness bound of `/download`'s authorization.
   hand out membership that can be arbitrarily stale with no sign of it, which is the worse trade for
   a security product. The retry rate is visible as `remoted.control.wdb.*` in
   [`GET /metrics`](metrics.md#control-plane--remotedcontrol).
+- **Note:** For `notify`, that `503` is sent before remoted fetches pending tasks or builds the
+  response. Task delivery (including upgrades) waits for a successful notify, even though
+  task-manager has its own SQLite store. The agent also receives no `ca_generation`,
+  `settings_hash`, or `vd_feed_offset` in that response; CA publication discovery and those
+  updates wait for a successful notify too. No registry activity or wazuh-db keepalive is recorded
+  for the failed notify. The agent keeps its previously applied configuration and retries. remoted
+  does not send a partial `200` with tasks or CA information when group membership cannot be
+  refreshed.
 
 - **Note:** `/download` trusts the cached membership of an agent for this long. After that, and for
   an agent the node has no cached membership for (it never sent `/control` here, or remoted

@@ -897,6 +897,18 @@ notify after a `startup`, nor to the first one that carries host metadata.
 If tasks are found, the manager marks them as delivered (updates status to `delivered` and records
 delivery time). Task delivery status is **local only** (not broadcast to the cluster).
 
+Before a successful `notify`, remoted must have a fresh group membership for the agent. It uses a
+fresh registry entry without querying wazuh-db; if the entry is missing, expired, or invalidated,
+it reads the local database. A failed read (including a timeout or full request queue) returns
+`503 dependency_unavailable` **before** remoted queries task-manager or builds the success body.
+No tasks are marked delivered by this notify, and the response contains no `config_token`,
+`config_hash`, `ca_generation`, `settings_hash`, or `vd_feed_offset`. Task-manager's SQLite store
+and CA publication do not depend on wazuh-db, but this endpoint does not send a partial `200`:
+task delivery and discovery of a new CA generation wait for a successful notify. The agent keeps
+its current configuration and retries; the failed notify does not update registry activity or
+write a keepalive to wazuh-db. Once membership is established, a task-manager failure alone still
+returns `200` with an empty `tasks` array.
+
 The agent compares the received hashes against its local copies: if `settings_hash` differs, it
 sends a new `startup` request; if `config_hash` differs, it downloads the new `merged.mg` file via
 `/download`, using the response's `agent.config_token` as the request's `resource_id`.
@@ -1057,13 +1069,14 @@ Control-specific conditions:
 | Invalid host info format (notify only)     | `400` | `invalid_host_info`    |
 | wazuh-db unavailable (get groups)          | `503` | `dependency_unavailable` |
 | wazuh-db has no row for the agent (`ok []`) | `503` | `dependency_unavailable` |
+| Membership read superseded by a newer invalidation | `503` | `dependency_unavailable` |
 
-Both `503`s arise only when the manager holds no fresh membership for the agent (established
+These `503`s arise only when the manager holds no fresh membership for the agent (established
 within `remoted.control_groups_refresh_interval`): a fresh one answers `startup` and `notify` without
 querying wazuh-db. An expired membership is never served in place of an answer, and an agent with no
-row in the node's local wazuh-db is never handed `default`: it retries until its row arrives. The two
-causes share one answer on the wire; the manager tells them apart in its log and in the
-`remoted.control.wdb_error` / `remoted.control.no_row` metrics.
+row in the node's local wazuh-db is never handed `default`: it retries until its row arrives. All
+three causes share one answer on the wire. Read failures and missing rows have separate logs and
+`remoted.control.wdb_error` / `remoted.control.no_row` metrics; superseded reads are logged separately.
 
 The two version rejections deliberately carry different statuses even though they share an `error`
 message. A **malformed** version is a bad request: resending the same bytes can never succeed, so the
