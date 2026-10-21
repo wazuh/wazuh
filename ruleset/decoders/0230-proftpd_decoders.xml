@@ -39,7 +39,7 @@
 <decoder name="proftpd-login failed">
   <parent>proftpd</parent>
   <prematch>Login failed</prematch>
-  <regex>^[\.+]: \S+ \(\S+[(\S+)]\) \w+ USER (\S*)</regex>
+  <regex type="pcre2">\[([^\]]+)\]\).*?USER (\S+) \(Login failed\)</regex>
   <order>srcip, user</order>
 </decoder>
 
