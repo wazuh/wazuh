@@ -34,6 +34,7 @@ static void wm_ms_graph_cleanup();
 cJSON* wm_ms_graph_dump(const wm_ms_graph* ms_graph);
 static const char* wm_ms_graph_api_type_name(const char* query_fqdn);
 static cJSON* wm_ms_graph_dump_tenant(const wm_ms_graph_auth* auth);
+static cJSON* wm_ms_graph_dump_resource(const wm_ms_graph_resource* resource);
 static bool wm_ms_graph_ensure_valid_token(wm_ms_graph_auth *auth_config, ssize_t curl_max_size, bool* token_changed);
 static curl_response* wm_ms_graph_http_get_with_retry(char** headers, const char* url, size_t curl_max_size, const char* relationship_name);
 
@@ -633,6 +634,25 @@ static cJSON* wm_ms_graph_dump_tenant(const wm_ms_graph_auth* auth) {
     return tenant;
 }
 
+static cJSON* wm_ms_graph_dump_resource(const wm_ms_graph_resource* resource) {
+    cJSON* dumped = cJSON_CreateObject();
+    cJSON* relationships = cJSON_CreateArray();
+
+    cJSON_AddStringToObject(dumped, "name", resource->name);
+    for (unsigned int i = 0; resource->relationships && i < resource->num_relationships; i++) {
+        if (resource->relationships[i]) {
+            cJSON_AddItemToArray(relationships, cJSON_CreateString(resource->relationships[i]));
+        }
+    }
+    // All of them under one key, the one the index maps: repeating the key kept only the last one
+    if (cJSON_GetArraySize(relationships) > 0) {
+        cJSON_AddItemToObject(dumped, "relationship", relationships);
+    } else {
+        cJSON_Delete(relationships);
+    }
+    return dumped;
+}
+
 cJSON* wm_ms_graph_dump(const wm_ms_graph* ms_graph) {
     cJSON* root = cJSON_CreateObject();
     cJSON* ms_graph_info = cJSON_CreateObject();
@@ -680,26 +700,14 @@ cJSON* wm_ms_graph_dump(const wm_ms_graph* ms_graph) {
     if (ms_graph->resources) {
         cJSON* resource_array = cJSON_CreateArray();
         for (unsigned int resource_num = 0; resource_num < ms_graph->num_resources; resource_num++) {
-            cJSON* resource = cJSON_CreateObject();
             if (ms_graph->resources[resource_num].name) {
-                cJSON_AddStringToObject(resource, "name", ms_graph->resources[resource_num].name);
-            } else {
-                cJSON_free(resource);
-                continue;
+                cJSON_AddItemToArray(resource_array, wm_ms_graph_dump_resource(&ms_graph->resources[resource_num]));
             }
-            if (ms_graph->resources[resource_num].relationships) {
-                for (unsigned int relationship_num = 0; relationship_num < ms_graph->resources[resource_num].num_relationships; relationship_num++) {
-                    if (ms_graph->resources[resource_num].relationships[relationship_num]) {
-                        cJSON_AddStringToObject(resource, "relationship", ms_graph->resources[resource_num].relationships[relationship_num]);
-                    }
-                }
-            }
-            cJSON_AddItemToArray(resource_array, resource);
         }
         if (cJSON_GetArraySize(resource_array) > 0) {
             cJSON_AddItemToObject(ms_graph_info, "resources", resource_array);
         } else {
-            cJSON_free(resource_array);
+            cJSON_Delete(resource_array);
         }
     }
     cJSON_AddItemToObject(root, "ms_graph", ms_graph_info);

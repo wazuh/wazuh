@@ -1506,7 +1506,7 @@ void test_dump(void **state) {
     cJSON* dump = wm_ms_graph_dump(module_data);
     char* dump_text = cJSON_PrintUnformatted(dump);
 
-    assert_string_equal(dump_text, "{\"ms_graph\":{\"enabled\":\"yes\",\"only_future_events\":\"no\",\"curl_max_size\":1024,\"page_size\":100,\"time_delay\":10,\"run_on_start\":\"yes\",\"version\":\"v1.0\",\"wday\":\"sunday\",\"api_auth\":[{\"client_id\":\"example_string\",\"tenant_id\":\"example_string\",\"secret_value\":\"*****\",\"api_type\":\"global\"}],\"resources\":[{\"name\":\"security\",\"relationship\":\"alerts_v2\"}]}}");
+    assert_string_equal(dump_text, "{\"ms_graph\":{\"enabled\":\"yes\",\"only_future_events\":\"no\",\"curl_max_size\":1024,\"page_size\":100,\"time_delay\":10,\"run_on_start\":\"yes\",\"version\":\"v1.0\",\"wday\":\"sunday\",\"api_auth\":[{\"client_id\":\"example_string\",\"tenant_id\":\"example_string\",\"secret_value\":\"*****\",\"api_type\":\"global\"}],\"resources\":[{\"name\":\"security\",\"relationship\":[\"alerts_v2\"]}]}}");
 
     cJSON_Delete(dump);
     os_free(dump_text);
@@ -1648,6 +1648,27 @@ void test_dump_reports_each_tenant_separately(void **state) {
     assert_string_equal(dump_text, "{\"ms_graph\":{\"enabled\":\"no\",\"only_future_events\":\"no\",\"run_on_start\":\"no\",\"wday\":\"sunday\","
                                    "\"api_auth\":[{\"client_id\":\"client_a\",\"tenant_id\":\"client_a\",\"secret_value\":\"*****\",\"api_type\":\"global\"},"
                                    "{\"client_id\":\"client_b\",\"tenant_id\":\"client_b\",\"secret_value\":\"*****\",\"api_type\":\"gcc-high\"}]}}");
+
+    cJSON_Delete(dump);
+    os_free(dump_text);
+}
+
+void test_dump_reports_every_relationship_of_a_resource(void **state) {
+    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    os_calloc(1, sizeof(wm_ms_graph_resource), module_data->resources);
+    module_data->num_resources = 1;
+    os_strdup("security", module_data->resources[0].name);
+    os_calloc(2, sizeof(char*), module_data->resources[0].relationships);
+    os_strdup("alerts_v2", module_data->resources[0].relationships[0]);
+    os_strdup("incidents", module_data->resources[0].relationships[1]);
+    module_data->resources[0].num_relationships = 2;
+
+    cJSON* dump = wm_ms_graph_dump(module_data);
+    char* dump_text = cJSON_PrintUnformatted(dump);
+
+    // Both under the key the index maps; repeating the key kept only the last one
+    assert_string_equal(dump_text, "{\"ms_graph\":{\"enabled\":\"no\",\"only_future_events\":\"no\",\"run_on_start\":\"no\",\"wday\":\"sunday\","
+                                   "\"resources\":[{\"name\":\"security\",\"relationship\":[\"alerts_v2\",\"incidents\"]}]}}");
 
     cJSON_Delete(dump);
     os_free(dump_text);
@@ -4613,6 +4634,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_dump_dod_configuration, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_dump_never_prints_a_secret_value, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_dump_reports_each_tenant_separately, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_dump_reports_every_relationship_of_a_resource, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_get_access_token_no_response, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_get_access_token_unsuccessful_status_code, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_get_access_token_curl_max_size, setup_conf, teardown_conf),
