@@ -1057,6 +1057,7 @@ paths:
                     - agent.cache.insertions
                     - agent.cache.updates
                     - agent.cache.evictions
+                    - agent.cache.rejected.identity
                     - space.wazuh.events.discarded
                     - space.wazuh.events.unclassified
                     - space.wazuh.events.discarded.prefilter
@@ -1149,6 +1150,10 @@ paths:
                       type: counter
                       enabled: true
                       value: 300
+                    - name: agent.cache.rejected.identity
+                      type: counter
+                      enabled: true
+                      value: 2
                     spaces:
                     - name: wazuh
                       metrics:

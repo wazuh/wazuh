@@ -151,6 +151,7 @@ Predefined names in `metric_names.hpp`:
 | `router.eps.30m` | PULL | router/orchestrator (SlidingWindowRate) |
 | `server.bytes.received` | COUNTER | api/event |
 | `server.events.received` | COUNTER | api/event |
+| `agent.cache.rejected.identity` | COUNTER | api/event (one per identity-rejected batch) |
 | `space.{name}.events.unclassified` | COUNTER | builder/policy (per-space) |
 | `space.{name}.events.discarded` | COUNTER | builder/policy (per-space) |
 | `space.{name}.events.discarded.prefilter` | COUNTER | builder/policy (per-space) |

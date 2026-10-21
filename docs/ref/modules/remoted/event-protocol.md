@@ -87,7 +87,7 @@ The header is a JSON object conforming to Elastic Common Schema (ECS):
 
 | Field | Type | Required | Description | Example |
 |-------|------|----------|-------------|---------|
-| `wazuh.agent.id` | string | **Yes** | Agent numeric ID | `"001"` |
+| `wazuh.agent.id` | string | **Yes** | Canonical uint32 agent ID, zero-padded only to 3 digits | `"001"` |
 | `wazuh.agent.name` | string | No | Agent name | `"web-server-01"` |
 | `wazuh.agent.version` | string | No | Wazuh agent version | `"v5.0.0"` |
 | `wazuh.agent.groups` | array[string] | No | Agent groups | `["web", "production"]` |
@@ -101,6 +101,13 @@ The header is a JSON object conforming to Elastic Common Schema (ECS):
 | `wazuh.cluster.node` | string | No | Manager node | `"master-node"` |
 
 ### Rules
+
+The engine requires exactly one locally authored `X-Wazuh-Agent-Id`. It must be canonical
+(`000`–`999`, or no leading zero through `4294967295`) and equal to the H-line id. It rejects a
+missing/repeated/malformed carrier or an ambiguous/mismatched H-line identity with HTTP 400.
+remoted also validates the H-line identity on the HTTPS path. The engine does not
+verify JWTs; it trusts producers that can write to its local socket to supply the authenticated or
+server-side identity. See the [ingestion specification](../engine/spec-events.yaml).
 
 - Exactly one header per batch (first line)
 - JSON must be compact (no newlines)

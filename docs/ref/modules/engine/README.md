@@ -16,6 +16,20 @@
 The engine is responsible for transforming raw data into standardized schema documents, enriching it with threat
 intelligence, and forwarding it to designated destinations (`wazuh-indexer`).
 
+## Event ingestion identity
+
+`POST /events/enriched` on `engine-ingest-http.sock` requires exactly one canonical
+`X-Wazuh-Agent-Id`, supplied by the local producer. The H-line `/wazuh/agent/id` must be a string
+with that value, and every member along its path must occur exactly once. Violations return 400
+before enqueueing. The cache validates once per distinct (id, exact header bytes) pair.
+
+The socket is `0660 wazuh-manager`; the engine performs no peer-credential or JWT verification.
+Processes allowed to write to it are trusted to author the carrier from authenticated or server-side
+identity. External local writers must add the header; the H line is never an identity fallback.
+The agent-facing HTTPS protocol is unchanged: remoted verifies the JWT and writes the carrier.
+The tester's separate `agent_metadata` path does not enforce this ingestion contract.
+See the [events specification](spec-events.yaml) for canonical ids, error cases and both content types.
+
 ## Data flow
 
 Events are received from `wazuh-manager-remoted`, which is responsible for receiving events from the agents.
@@ -2454,7 +2468,7 @@ Total number of events received by the server.
 
 #### Agent cache metrics
 
-These metrics track the agent metadata cache, which deduplicates the per-batch agent header JSON so it is parsed only once per agent instead of once per batch.
+These metrics track the agent metadata cache, which deduplicates the per-batch agent header JSON and reuses previously validated (trusted id, exact header bytes) pairs.
 
 ##### `agent.cache.entries`
 
@@ -2493,6 +2507,19 @@ Total number of cache entries replaced because the agent's header changed.
 Total number of entries removed by the periodic TTL cleanup.
 
 **Used for:** tracking cache turnover and TTL/interval tuning.
+
+---
+
+##### `agent.cache.rejected.identity`
+
+Number of HTTP batches rejected for a missing, repeated or noncanonical identity carrier, or a
+missing, ambiguous, non-string or mismatched H-line identity. Each rejected batch increments once,
+including when the cache is warm. Malformed JSON, other framing errors and hook failures are not
+identity rejections. Capacity is unrelated to this counter.
+
+Warnings are emitted immediately and then at most once per 90 seconds across the ingress handler's
+threads; suppression does not suppress the counter. Query it with `POST /metrics/dump` on the API
+socket. A successful batch leaves this counter unchanged.
 
 ---
 
