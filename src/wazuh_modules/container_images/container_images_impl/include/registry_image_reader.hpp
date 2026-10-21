@@ -127,6 +127,7 @@ namespace containerimages
 
             /// @brief Answer a manifest request again without the credential the registry refused.
             ///
+            /// For a refusal at the token request or at the manifest the token was issued for.
             /// Succeeds only when the registry then serves the manifest, and says so once per
             /// scan and host. Otherwise the token is dropped and @p error keeps the credential
             /// error it came in with.
@@ -154,9 +155,13 @@ namespace containerimages
             std::string m_token;
             bool m_tokenRefreshed {false};
 
-            /// @brief Set once the registry refused the configured credential at the token
-            /// request, after which this reference no longer sends it.
+            /// @brief Set once the registry refused the configured credential, at the token
+            /// request or at the manifest the token was issued for, after which this
+            /// reference no longer sends it.
             bool m_credentialRefused {false};
+
+            /// @brief True when the last token request carried the configured credential.
+            bool m_credentialSent {false};
             std::uint64_t m_imageBytes {0};
     };
 } // namespace containerimages

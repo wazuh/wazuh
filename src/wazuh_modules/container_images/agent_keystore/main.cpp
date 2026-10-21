@@ -218,8 +218,8 @@ int main(int argc, char* argv[])
 
     // The store reports why it refused or only half did through the module's logging
     // helper, which drops a message when no callback is set. Here that is the whole
-    // explanation an operator gets, including the warning that the file's permissions
-    // could not be restricted.
+    // explanation an operator gets, including why the file's permissions could not be
+    // restricted and the credential was therefore not stored.
     containerimages::LoggingHelper::setLogCallback([](const modules_log_level_t level, const char* message)
     {
         if (level != LOG_DEBUG && level != LOG_DEBUG_VERBOSE)

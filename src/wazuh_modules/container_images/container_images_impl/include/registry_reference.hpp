@@ -48,6 +48,33 @@ namespace containerimages
             return pinnedByDigest() ? digest : tag;
         }
 
+        /// @brief The name the image is stored under: `registry/repository[:tag][@digest]`.
+        ///
+        /// The repository is part of it, since the same tag names different images in
+        /// different repositories, and the tag stays when a digest follows it.
+        std::string fullName() const
+        {
+            auto name {taggedName()};
+
+            if (name.empty())
+            {
+                name = registry + "/" + repository;
+            }
+
+            return pinnedByDigest() ? name + "@" + digest : name;
+        }
+
+        /// @brief `registry/repository:tag`, empty when the reference carries no tag.
+        std::string taggedName() const
+        {
+            if (tag.empty())
+            {
+                return {};
+            }
+
+            return registry + "/" + repository + ":" + tag;
+        }
+
         /// @brief The scope a token is requested for.
         std::string pullScope() const
         {

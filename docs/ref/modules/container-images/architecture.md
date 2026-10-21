@@ -88,7 +88,7 @@ Reads an image from GitHub Container Registry. It implements the same reader int
 The sequence is the one the registry advertises rather than one assumed of it:
 
 1. An unauthenticated manifest request is answered with `401` and a `WWW-Authenticate` header naming the token endpoint, the service and the scope.
-2. A token is obtained from that endpoint: anonymously for a public repository, or with HTTP Basic and a credential read from the agent credential store for a private one. When the registry answers `401` or `403` to the token request that carries the credential, the reference is tried once more with an anonymous token, so a wrong credential does not fail the public references on the same host. If the registry serves the manifest that way, the reference is inventoried and one warning per scan and host reports the refusal. Otherwise the reference fails with the error of the credential. A credential missing from the store, a transport failure and throttling get no anonymous retry. The token belongs to one reader, which is one reference, so the anonymous token cannot reach another reference.
+2. A token is obtained from that endpoint: anonymously for a public repository, or with HTTP Basic and a credential read from the agent credential store for a private one. When the registry answers `401` or `403` to the token request that carries the credential, the reference is tried once more with an anonymous token, so a wrong credential does not fail the public references on the same host. If the registry serves the manifest that way, the reference is inventoried and one warning per scan and host reports the refusal. Otherwise the reference fails with the error of the credential. The same retry applies when a token is issued for the credential and the manifest request is then answered with `401` or `403`, as it is for a token without the scope the repository needs. A credential missing from the store, a transport failure and throttling get no anonymous retry. The token belongs to one reader, which is one reference, so the anonymous token cannot reach another reference.
 3. The image index is fetched and the matching variant is selected: the architecture is the agent's, and the operating system is always `linux`, because an image is a Linux image whatever runs the engine. Build attestation entries, which carry no image content, are skipped.
 4. The configuration digest is compared against the one already stored. When they match, nothing further is retrieved.
 5. The configuration blob supplies the platform metadata, and each layer is streamed.
@@ -215,14 +215,14 @@ Discovered images are represented with `ImageReferenceRecord` entries:
 |-------|-------------|
 | `source.sourceType` | Reference type, `archive` at this stage. |
 | `source.location` | Source location, such as the configured path. |
-| `tag` | Name the image is known by. A saved image carries the whole reference in `io.containerd.image.name` and only the tag in `org.opencontainers.image.ref.name`, so the first is preferred. |
+| `tag` | Name the image is known by. A saved image carries the whole reference in `io.containerd.image.name` and only the tag in `org.opencontainers.image.ref.name`, so the first is preferred. A remote reference is named `registry/repository[:tag][@digest]`, with the tag kept when a digest follows it. |
 | `configDigest` | Image configuration blob digest. |
 | `manifestDigest` | Manifest digest. |
 | `os` | Operating system from the image configuration. |
 | `architecture` | Architecture from the image configuration. |
 | `variant` | Architecture variant, when present. |
 | `osVersion` | Operating system version, when present. |
-| `tags` | Every tag the image is known by, when the source lists more than one. |
+| `tags` | Every tag the image is known by, when the source lists more than one. A remote reference with a tag lists `registry/repository:tag`. |
 | `packages` | The packages found in the image layers. |
 
 ---

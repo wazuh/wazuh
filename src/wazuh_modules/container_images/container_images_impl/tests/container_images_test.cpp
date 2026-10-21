@@ -615,6 +615,38 @@ TEST_F(ContainerImagesDBTest, ReSyncingAStoredRecordDoesNotDropItsTags)
     EXPECT_EQ(reloaded->tags, std::vector<std::string>({"12", "latest"}));
 }
 
+TEST_F(ContainerImagesDBTest, ARowStoredUnderABareTagIsRenamedInPlace)
+{
+    // A row written before remote images were stored under their whole reference holds the
+    // bare tag. The row key is the configured reference, which has not changed, so the new
+    // name replaces the old one: one row, modified, never a second row and never a failure.
+    ContainerImagesDB db(m_dbPath);
+
+    auto reference {makeReference("ghcr.io/owner/app:1.0", {makePackage("apt", "2.6.1")})};
+    reference.source.sourceType = "ref";
+    reference.tag = "1.0";
+
+    DeltaTally first;
+    db.syncReferences({reference}, first.callback());
+    ASSERT_EQ(first.created, 1);
+
+    reference.tag = "ghcr.io/owner/app:1.0";
+    reference.tags = {"ghcr.io/owner/app:1.0"};
+
+    DeltaTally second;
+    db.syncReferences({reference}, second.callback());
+
+    EXPECT_EQ(second.created, 0);
+    EXPECT_EQ(second.modified, 1);
+    EXPECT_EQ(second.deleted, 0);
+
+    const auto stored {db.loadStored("ref", "ghcr.io/owner/app:1.0")};
+
+    ASSERT_TRUE(stored.has_value());
+    EXPECT_EQ(stored->tag, "ghcr.io/owner/app:1.0");
+    EXPECT_EQ(stored->tags, std::vector<std::string>({"ghcr.io/owner/app:1.0"}));
+}
+
 TEST_F(ContainerImagesDBTest, FirstSyncReportsAllRowsAsCreated)
 {
     ContainerImagesDB db(m_dbPath);

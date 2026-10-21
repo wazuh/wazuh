@@ -618,6 +618,82 @@ TEST_F(RegistryReaderTest, TheSourceTypeIsTheConfigurationEntryName)
     EXPECT_EQ(instance->sourceType(), "ref");
 }
 
+// The name a remote image is stored under. It is the whole reference, so it does not
+// depend on the source that read the image and does not collide across repositories.
+class RegistryImageNameTest : public RegistryReaderTest
+{
+    protected:
+        static constexpr auto DIGEST = "sha256:2f3a4b5c6d7e8f9001122334455667788";
+
+        /// @brief The record @p location produced, on a registry that serves it publicly.
+        ImageReferenceRecord discovered(const std::string& location)
+        {
+            // The first matching answer wins, so the platform manifest comes before the
+            // index that every other manifest request is answered with.
+            m_transport->answers.push_back({"/manifests/sha256:aaaa1111", json(200, MANIFEST)});
+            m_transport->answers.push_back({"/manifests/", json(200, index())});
+            m_transport->answers.push_back({"/blobs/sha256:cccc3333", json(200, configBlob())});
+
+            const auto instance = reader(location);
+            auto result {instance->discover()};
+
+            EXPECT_EQ(result.status, ReadStatus::Success) << location;
+            EXPECT_EQ(result.records.size(), 1u) << location;
+
+            if (result.records.empty())
+            {
+                return {};
+            }
+
+            return result.records.front();
+        }
+};
+
+TEST_F(RegistryImageNameTest, ATaggedReferenceIsNamedByItsRepositoryAndTag)
+{
+    const auto record {discovered("ghcr.io/owner/app:1.0")};
+
+    EXPECT_EQ(record.tag, "ghcr.io/owner/app:1.0");
+    EXPECT_EQ(record.tags, std::vector<std::string>({"ghcr.io/owner/app:1.0"}));
+}
+
+TEST_F(RegistryImageNameTest, ARepositoryAndATagThatAreNotWrittenOutAreStillNamed)
+{
+    // No tag written, so latest is assumed, and it is the name the image is stored under.
+    const auto record {discovered("ghcr.io/owner/app")};
+
+    EXPECT_EQ(record.tag, "ghcr.io/owner/app:latest");
+    EXPECT_EQ(record.tags, std::vector<std::string>({"ghcr.io/owner/app:latest"}));
+}
+
+TEST_F(RegistryImageNameTest, TheSameTagInTwoRepositoriesIsTwoNames)
+{
+    const auto first {discovered("ghcr.io/owner/app:latest")};
+
+    m_transport = new ScriptedTransport();
+    const auto second {discovered("ghcr.io/other/tool:latest")};
+
+    EXPECT_NE(first.tag, second.tag);
+    EXPECT_EQ(first.tag, "ghcr.io/owner/app:latest");
+    EXPECT_EQ(second.tag, "ghcr.io/other/tool:latest");
+}
+
+TEST_F(RegistryImageNameTest, ATagBesideADigestIsKeptInTheName)
+{
+    const auto record {discovered(std::string {"ghcr.io/owner/app:1.4@"} + DIGEST)};
+
+    EXPECT_EQ(record.tag, std::string {"ghcr.io/owner/app:1.4@"} + DIGEST);
+    EXPECT_EQ(record.tags, std::vector<std::string>({"ghcr.io/owner/app:1.4"}));
+}
+
+TEST_F(RegistryImageNameTest, ADigestOnItsOwnIsNamedByItsRepositoryAndDigest)
+{
+    const auto record {discovered(std::string {"ghcr.io/owner/app@"} + DIGEST)};
+
+    EXPECT_EQ(record.tag, std::string {"ghcr.io/owner/app@"} + DIGEST);
+    EXPECT_TRUE(record.tags.empty());
+}
+
 // The token exchange is a request like any other: the first one of every scan against a
 // private repository, and as exposed to throttling and resets as a manifest request.
 class RegistryTokenRetryTest : public RegistryReaderTest
@@ -892,6 +968,118 @@ TEST_F(RegistryCredentialFallbackTest, ATransportFailureOrThrottlingIsNotAnAnony
     EXPECT_EQ(anonymousTokenCalls(), 0u);
 }
 
+// A token can be issued for the credential and the manifest still refused, as it is for a
+// token without the scope the repository needs. That is a refusal of the credential too.
+TEST_F(RegistryCredentialFallbackTest, AManifestRefusedAfterATokenWasIssuedStillInventoriesAPublicReference)
+{
+    const std::vector<long> refusals {403, 401};
+
+    for (const auto refusal : refusals)
+    {
+        m_warnings.clear();
+        m_transport = new ScriptedTransport();
+        m_refusedHosts.clear();
+
+        m_transport->sequences.push_back(
+        {"/manifests/1.0", {challenge(), json(refusal, ""), json(200, MANIFEST)}, 0});
+        m_transport->sequences.push_back(
+        {"/token", {json(200, R"({"token":"scoped-token"})"), json(200, R"({"token":"anonymous-token"})")}, 0});
+        m_transport->answers.push_back({"/blobs/sha256:cccc3333", json(200, configBlob())});
+
+        const auto instance = reader("ghcr.io/owner/app:1.0");
+
+        EXPECT_EQ(instance->discover().status, ReadStatus::Success) << refusal;
+        EXPECT_EQ(anonymousTokenCalls(), 1u) << refusal;
+        EXPECT_EQ(m_transport->countMatching("/token"), 2u) << refusal;
+        EXPECT_EQ(warningsMentioning("The credential configured for ghcr.io"), 1u) << refusal;
+        EXPECT_EQ(m_warnings.size(), 1u) << refusal;
+    }
+}
+
+TEST_F(RegistryCredentialFallbackTest, TheAnonymousRetryAfterAManifestRefusalCarriesNoCredential)
+{
+    m_transport->sequences.push_back({"/manifests/1.0", {challenge(), json(403, ""), json(200, MANIFEST)}, 0});
+    m_transport->sequences.push_back(
+    {"/token", {json(200, R"({"token":"scoped-token"})"), json(200, R"({"token":"anonymous-token"})")}, 0});
+    m_transport->answers.push_back({"/blobs/sha256:cccc3333", json(200, configBlob())});
+
+    const auto instance = reader("ghcr.io/owner/app:1.0");
+
+    ASSERT_EQ(instance->discover().status, ReadStatus::Success);
+
+    std::vector<std::string> manifestAuthorizations;
+
+    for (const auto& call : m_transport->calls)
+    {
+        if (call.url.find("/manifests/") != std::string::npos && call.headers.size() > 1)
+        {
+            manifestAuthorizations.push_back(call.headers[1]);
+        }
+    }
+
+    EXPECT_EQ(manifestAuthorizations,
+              std::vector<std::string>({"Authorization: Bearer scoped-token", "Authorization: Bearer anonymous-token"}));
+}
+
+TEST_F(RegistryCredentialFallbackTest, APrivateReferenceRefusedAtTheManifestKeepsTheOriginalError)
+{
+    // The anonymous token is issued too and the manifest is refused again, so the user is
+    // shown the refusal of the credential, which is the one they can act on.
+    m_transport->sequences.push_back({"/manifests/1.0", {challenge(), json(403, "")}, 0});
+    m_transport->answers.push_back({"/token", json(200, R"({"token":"scoped-token"})")});
+
+    const auto instance = reader("ghcr.io/owner/app:1.0");
+
+    EXPECT_EQ(instance->discover().status, ReadStatus::Failed);
+    EXPECT_EQ(anonymousTokenCalls(), 1u);
+    ASSERT_EQ(m_warnings.size(), 1u) << "one line per failed reference, and no refusal notice";
+    EXPECT_NE(m_warnings.front().find("could not be resolved: the registry answered 403."), std::string::npos)
+            << m_warnings.front();
+}
+
+TEST_F(RegistryCredentialFallbackTest, APrivateReferenceRefusedWith401AtTheManifestKeepsItsOwnError)
+{
+    m_transport->sequences.push_back({"/manifests/1.0", {challenge()}, 0});
+    m_transport->answers.push_back({"/token", json(200, R"({"token":"scoped-token"})")});
+
+    const auto instance = reader("ghcr.io/owner/app:1.0");
+
+    EXPECT_EQ(instance->discover().status, ReadStatus::Failed);
+    EXPECT_EQ(anonymousTokenCalls(), 1u);
+    ASSERT_EQ(m_warnings.size(), 1u);
+    EXPECT_NE(m_warnings.front().find("could not be resolved: the registry rejected the credential."),
+              std::string::npos)
+            << m_warnings.front();
+}
+
+TEST_F(RegistryCredentialFallbackTest, AManifestRefusedForAnAnonymousTokenIsNotAnotherFallback)
+{
+    // No credential is configured, so there is nothing that was refused to take back.
+    m_config.registryAuth.clear();
+    m_transport->sequences.push_back({"/manifests/1.0", {challenge(), json(403, "")}, 0});
+    m_transport->answers.push_back({"/token", json(200, R"({"token":"anonymous-token"})")});
+
+    const auto instance = reader("ghcr.io/owner/app:1.0");
+
+    EXPECT_EQ(instance->discover().status, ReadStatus::Failed);
+    EXPECT_EQ(m_transport->countMatching("/token"), 1u);
+    EXPECT_EQ(m_transport->countMatching("/manifests/"), 2u);
+    ASSERT_EQ(m_warnings.size(), 1u);
+}
+
+TEST_F(RegistryCredentialFallbackTest, AManifestThatIsThrottledOrUnreachableIsNotAnAnonymousCase)
+{
+    // Neither says anything about the credential, however late in the conversation.
+    m_transport->sequences.push_back({"/manifests/1.0", {challenge(), json(503, "")}, 0});
+    m_transport->answers.push_back({"/token", json(200, R"({"token":"scoped-token"})")});
+
+    const auto instance = reader("ghcr.io/owner/app:1.0");
+
+    EXPECT_EQ(instance->discover().status, ReadStatus::Failed);
+    EXPECT_EQ(m_transport->countMatching("/token"), 1u);
+    EXPECT_EQ(anonymousTokenCalls(), 0u);
+}
+
 TEST_F(RegistryCredentialFallbackTest, TheRefusalIsReportedOncePerScanAndHost)
 {
     scriptPublicReference(json(403, ""));
@@ -1108,6 +1296,133 @@ TEST_F(RegistryLayerRetryTest, EachAttemptIsAllowedOnlyWhatTheEarlierOnesLeftOfT
 
     // The failed attempts were paid for, in the image and in the scan.
     EXPECT_EQ(m_scanBytes, 100u);
+}
+
+// A layer larger than what is left of the image's allowance cannot be read whatever the
+// transfer does, so it is refused on the strength of the size the manifest declares.
+class RegistryLayerSizeTest : public RegistryLayerRetryTest
+{
+    protected:
+        /// @brief Serve a manifest whose layers are @p layers, a JSON array body.
+        void declareLayers(const std::string& layers)
+        {
+            const auto manifest {R"({"mediaType":"application/vnd.oci.image.manifest.v1+json",
+                "config":{"digest":"sha256:cccc3333"},"layers":)" + layers + "}"};
+
+            m_transport->answers.insert(m_transport->answers.begin(), {"/manifests/1.0", json(200, manifest)});
+        }
+
+        void declareLayerSize(const std::uint64_t size)
+        {
+            declareLayers(R"([{"digest":"sha256:dddd4444","size":)" + std::to_string(size) + "}]");
+        }
+
+        std::vector<std::string> m_warnings;
+
+        void SetUp() override
+        {
+            RegistryLayerRetryTest::SetUp();
+
+            LoggingHelper::setLogCallback([this](const modules_log_level_t level, const char* message)
+            {
+                if (level == LOG_WARNING)
+                {
+                    m_warnings.push_back(message);
+                }
+            });
+        }
+
+        void TearDown() override
+        {
+            LoggingHelper::setLogCallback({});
+            RegistryLayerRetryTest::TearDown();
+        }
+};
+
+TEST_F(RegistryLayerSizeTest, ALayerLargerThanTheImageAllowanceIsNeverTransferred)
+{
+    m_config.limits.maxImageBytes = 100;
+    declareLayerSize(150);
+
+    const auto instance = layerReader({BlobOutcome {}});
+
+    EXPECT_EQ(instance->discover().status, ReadStatus::Failed);
+    EXPECT_TRUE(m_attemptLimits.empty());
+    EXPECT_EQ(m_scanBytes, 0u);
+    ASSERT_EQ(m_warnings.size(), 1u);
+    EXPECT_NE(m_warnings.front().find("layer sha256:dddd4444 is 150 bytes and the image has 100 of its 100 byte "
+                                      "allowance left"),
+              std::string::npos)
+            << m_warnings.front();
+}
+
+TEST_F(RegistryLayerSizeTest, ALayerThatFitsExactlyIsTransferred)
+{
+    m_config.limits.maxImageBytes = 100;
+    declareLayerSize(100);
+
+    const auto instance = layerReader({BlobOutcome {}});
+
+    EXPECT_EQ(instance->discover().status, ReadStatus::Success);
+    EXPECT_EQ(m_attemptLimits.size(), 1u);
+}
+
+TEST_F(RegistryLayerSizeTest, ALayerWithNoDeclaredSizeIsLeftToTheCeiling)
+{
+    m_config.limits.maxImageBytes = 100;
+
+    const auto instance = layerReader({BlobOutcome {}});
+
+    EXPECT_EQ(instance->discover().status, ReadStatus::Success);
+    EXPECT_EQ(m_attemptLimits.size(), 1u);
+}
+
+TEST_F(RegistryLayerSizeTest, ARetryThatCannotFitIsNotStartedAndNamesTheCauseOfTheFailure)
+{
+    // The first attempt delivers 60 of 100 bytes and fails; the 60-byte layer cannot be
+    // read again from the 40 that are left, so the failure is the one reported, not the limit.
+    m_config.limits.maxImageBytes = 100;
+    declareLayerSize(60);
+
+    auto failed {failure(200, 60)};
+    failed.error = "the connection was reset";
+
+    const auto instance = layerReader({failed, BlobOutcome {}});
+
+    EXPECT_EQ(instance->discover().status, ReadStatus::Failed);
+    EXPECT_EQ(m_attemptLimits.size(), 1u);
+    ASSERT_EQ(m_warnings.size(), 1u);
+    EXPECT_NE(m_warnings.front().find("layer sha256:dddd4444 could not be retrieved: the connection was reset"),
+              std::string::npos)
+            << m_warnings.front();
+    EXPECT_EQ(m_warnings.front().find("allowance"), std::string::npos) << m_warnings.front();
+}
+
+TEST_F(RegistryLayerSizeTest, ARetryThatStillFitsIsStarted)
+{
+    m_config.limits.maxImageBytes = 100;
+    declareLayerSize(40);
+
+    const auto instance = layerReader({failure(200, 30), BlobOutcome {}});
+
+    EXPECT_EQ(instance->discover().status, ReadStatus::Success);
+    ASSERT_EQ(m_attemptLimits.size(), 2u);
+    EXPECT_EQ(m_attemptLimits[1], 70u);
+}
+
+TEST_F(RegistryLayerSizeTest, ASecondLayerIsCheckedAgainstWhatTheFirstLeft)
+{
+    m_config.limits.maxImageBytes = 100;
+
+    declareLayers(R"([{"digest":"sha256:dddd4444","size":60},{"digest":"sha256:eeee5555","size":60}])");
+
+    BlobOutcome first;
+    first.delivered = 60;
+
+    const auto instance = layerReader({first});
+
+    EXPECT_EQ(instance->discover().status, ReadStatus::Failed);
+    EXPECT_EQ(m_attemptLimits.size(), 1u) << "the second layer must not be requested";
 }
 
 TEST_F(RegistryLayerRetryTest, AnExpiredTokenIsRefreshedOnceAndTheLayerIsAskedForAgain)
