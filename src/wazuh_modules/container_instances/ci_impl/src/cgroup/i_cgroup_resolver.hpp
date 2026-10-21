@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
@@ -74,6 +75,54 @@ namespace wazuh::container_instances
     [[nodiscard]] inline std::uint64_t hostKeyOf(const CgroupEntry& entry, KeyKind kind)
     {
         return (kind == KeyKind::mntNsInode) ? entry.mntNsInode : entry.inode;
+    }
+
+    /// One host key per container id, chosen so the SAME scan always yields the
+    /// same answer.
+    ///
+    /// A scan reports one entry per distinct cgroup, and a container running an
+    /// init system occupies several: PID 1 in `init.scope`, each unit in
+    /// `system.slice/<unit>.service`, every one its own kernfs node with its own
+    /// inode. They all carry the container's id, so the id maps to several
+    /// entries and SOMETHING has to pick.
+    ///
+    /// The connectors used to pick by inserting into an unordered map and
+    /// letting the first insertion win, which made the choice depend on the
+    /// order a hash table happened to iterate. Across two scans that order can
+    /// differ, and a container whose host key changes is published as `changed`
+    /// (lifecycle_journal.hpp) -- so consumers re-walked its files and re-scanned
+    /// its inventory, repeatedly, for a container that had not moved.
+    ///
+    /// Shortest path wins, ties broken lexicographically: the container's own
+    /// cgroup is a prefix of every child's, so when a process is observed there
+    /// it is chosen, and when none is -- which is exactly the init-system case --
+    /// the same child is chosen every time regardless of walk order.
+    [[nodiscard]] inline std::unordered_map<std::string, std::uint64_t> hostKeysByContainerId(const CgroupScan& scan)
+    {
+        std::unordered_map<std::string, std::string> pathByContainerId;
+        std::unordered_map<std::string, std::uint64_t> out;
+
+        for (const auto& entry : scan.containers)
+        {
+            const auto hostKey = hostKeyOf(entry, scan.keyKind);
+            const auto existing = pathByContainerId.find(entry.containerId);
+
+            if (existing != pathByContainerId.end())
+            {
+                const auto& chosen = existing->second;
+                const bool better = entry.cgroupPath.size() < chosen.size() ||
+                                    (entry.cgroupPath.size() == chosen.size() && entry.cgroupPath < chosen);
+                if (!better)
+                {
+                    continue;
+                }
+            }
+
+            pathByContainerId[entry.containerId] = entry.cgroupPath;
+            out[entry.containerId] = hostKey;
+        }
+
+        return out;
     }
 
     /// Isolated container-id/inode resolution: /proc walk + cgroupfs stat. Fully

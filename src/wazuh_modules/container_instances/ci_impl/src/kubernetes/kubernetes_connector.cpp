@@ -69,14 +69,12 @@ namespace wazuh::container_instances
     void KubernetesConnector::reconcile()
     {
         const auto scan = m_resolver.scan();
-        std::unordered_map<std::string, std::uint64_t> inodeByContainerId;
-        for (const auto& entry : scan.containers)
-        {
-            // The host's key, not simply the cgroup inode: on a legacy hierarchy the
-            // cgroup inode is a number no event ever carries, so keying on it answers
-            // every correlation lookup with a miss while looking entirely healthy.
-            inodeByContainerId.emplace(entry.containerId, hostKeyOf(entry, scan.keyKind));
-        }
+        // The host's key, not simply the cgroup inode: on a legacy hierarchy the
+        // cgroup inode is a number no event ever carries, so keying on it answers
+        // every correlation lookup with a miss while looking entirely healthy.
+        // One key per container, chosen deterministically -- see
+        // hostKeysByContainerId().
+        const auto inodeByContainerId = hostKeysByContainerId(scan);
         const auto inodeFor = [&inodeByContainerId](const std::string& containerId)
         {
             const auto it = inodeByContainerId.find(containerId);

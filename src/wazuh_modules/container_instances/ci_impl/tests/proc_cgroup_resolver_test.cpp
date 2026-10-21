@@ -374,3 +374,58 @@ TEST(ProcCgroupResolverTest, ALegacyHostWithNoUsableControllerResolvesNothing)
     EXPECT_TRUE(scan.containers.empty()) << "unlisted rather than keyed on an arbitrary hierarchy";
     EXPECT_TRUE(scan.allHostKeys.empty());
 }
+
+TEST(ProcCgroupResolverTest, AnInitSystemContainerGetsOneStableKeyWhateverTheWalkOrder)
+{
+    /* A container whose PID 1 is an init system puts NO process in its own
+     * cgroup: PID 1 sits in init.scope and each unit in its own slice. Every one
+     * of those carries the container's id, so the scan reports several entries
+     * for one container and something has to choose between them.
+     *
+     * Choosing by hash-table insertion order made the container's key depend on
+     * which cgroup the walk reached first, which can differ between scans -- and
+     * a container whose host key changes is republished as `changed`, so
+     * consumers re-walk its files and re-scan its inventory for a container that
+     * never moved. */
+    const auto root = ContainerLeaf();
+
+    const auto scanWith = [&root](const std::vector<std::string>& pidOrder)
+    {
+        FakeProc proc;
+        proc.pids = pidOrder;
+        // A unified host: the key IS the cgroup inode, so each child cgroup
+        // carries a different one. (On a legacy host every child shares the
+        // container's mount namespace, so the ambiguity does not arise.)
+        proc.cgroupFileByPid["100"] = {"0::" + root + "/init.scope"};
+        proc.cgroupFileByPid["200"] = {"0::" + root + "/system.slice/sshd.service"};
+        proc.cgroupFileByPid["300"] = {"0::" + root + "/system.slice/cron.service"};
+        proc.inodeByPath["/sys/fs/cgroup" + root + "/init.scope"] = 11;
+        proc.inodeByPath["/sys/fs/cgroup" + root + "/system.slice/sshd.service"] = 12;
+        proc.inodeByPath["/sys/fs/cgroup" + root + "/system.slice/cron.service"] = 13;
+        proc.inodeByPath["/proc/100/ns/mnt"] = 4026532281;
+        proc.inodeByPath["/proc/200/ns/mnt"] = 4026532281;
+        proc.inodeByPath["/proc/300/ns/mnt"] = 4026532281;
+
+        const ProcCgroupResolver resolver {proc, proc, proc, Log, "/proc", "/sys/fs/cgroup", WZ_CGROUP_MODE_UNIFIED};
+        return resolver.scan();
+    };
+
+    const auto forward = scanWith({"100", "200", "300"});
+    const auto reversed = scanWith({"300", "200", "100"});
+
+    const auto forwardKeys = hostKeysByContainerId(forward);
+    const auto reversedKeys = hostKeysByContainerId(reversed);
+
+    ASSERT_EQ(1U, forwardKeys.size()) << "one container, however many cgroups its processes occupy";
+    ASSERT_EQ(1U, reversedKeys.size());
+    EXPECT_EQ(forwardKeys.at(kContainerId), reversedKeys.at(kContainerId))
+        << "the key must not depend on the order the process table was walked";
+    EXPECT_EQ(11U, forwardKeys.at(kContainerId))
+        << "init.scope is the shortest path of the three, so it is the one chosen";
+
+    // Every child cgroup still has to reach the kernel allowlist, or events from
+    // the units the container runs are filtered out before anyone sees them.
+    EXPECT_EQ(1U, forward.allHostKeys.count(11U));
+    EXPECT_EQ(1U, forward.allHostKeys.count(12U));
+    EXPECT_EQ(1U, forward.allHostKeys.count(13U));
+}
