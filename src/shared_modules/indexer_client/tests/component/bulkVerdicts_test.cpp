@@ -137,7 +137,7 @@ TEST_F(BulkTest, BulkBodyIsTheEncodedLines)
     std::string expected;
     for (const auto& op : ops)
     {
-        auto encoded = wr::encode(ic::Op(op));
+        auto encoded = wr::encode(ic::Op(op), ic::ConflictPolicy {});
         ASSERT_TRUE(encoded.ok()) << encoded.reason;
         expected += encoded.value;
     }

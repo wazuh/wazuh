@@ -17,7 +17,7 @@ consumers of the indexer, one consumer at a time, with:
 
 The design is in `planes/18-indexer_connector_v2/03-diseno.md` §1–§4 (outside the repository).
 
-**Status: E3b-2 — write admission, buckets and scheduling on top of the internal transport, the bulk-response classifier, the retry lane and the bulk sender: writes reach the indexer; no public query API yet.** The public headers, the
+**Status: E3c-1 — write admission, buckets and scheduling on top of the internal transport, the bulk-response classifier, the retry lane and the bulk sender, now with the per-operation conflict policy, `ReplacePreserving` and confirmable groups: writes reach the indexer; no public query API yet.** The public headers, the
 configuration schema, the runtime lifecycle (threads, owner thread, shutdown deadline), the test
 helpers, the internal curl [Transport](#transport-internal-e2a-1-and-e2a-2) (HTTP, HTTPS, credentials), the
 [node health probe](#node-health-e2b) and the [write path](#write-path-e3a) (encoding, quota charge, overflow policies, DRR scheduler,
@@ -61,13 +61,14 @@ Headers are in `include/indexer_client/`; `indexerClient.hpp` is the umbrella.
 | `client.hpp` | `Client` | A consumer's handle on the runtime; implements `IClient` |
 | | `IClient`, `IWriter`, `IQuery` | Abstract interfaces for consumers' mocks |
 | | `Ticket`, `GroupTicket`, `CancelTicket` | Handles on a pending write, a group of writes and a cancel; `ready()` and `wait(Deadline)` |
-| | `Submit` | Result of `submit`: `accepted`, `cause`, `ticket` (no `reason`) |
-| | `Group` | Atomic group of writes: `add(Op)` then `commit()`; dropped without commit it releases its reservation (stub until E3c) |
+| | `Submit` | Result of `submit`: `accepted`, `cause`, `reason` (why it was refused; `InvalidArgument` names the field first, D42), `ticket` |
+| | `Group` | Confirmable group of writes: `add(Op)` reserves its quota at once, `commit()` enqueues all together; dropped without commit it releases its reservation; `lastAddReason()` (see [Groups](#groups-e3c-1)) |
 | | `Pit`, `PitSession` | Shared PIT handle and its cursors (`next`, `exhausted`) |
 
-**Write handles in E3a.** `Writer::submit` is real: it validates, encodes, charges and queues the operation (see
-[Write path](#write-path-e3a)). `Writer::group()` and `Writer::cancel(tag)` are still stubs until E3c (`cancel` answers
-`Unavailable`; a `Group` cannot be committed into anything). `Client::writer(bucket)` returns the writer bound to that bucket of
+**Write handles in E3c-1.** `Writer::submit` validates, encodes, charges and queues the operation (see
+[Write path](#write-path-e3a)); a refusal carries its `reason` (D42: `InvalidArgument` names the field first, as the internal
+reason of `encode` does; `QueueFull`, `PayloadTooLarge` and the rest carry their own). `Writer::group()` returns a real
+[`Group`](#groups-e3c-1). `Writer::cancel(tag)` is still a stub until E3c-2 (it answers `Unavailable`). `Client::writer(bucket)` returns the writer bound to that bucket of
 the client; once the runtime is gone it returns the E1 stub writer, which answers `Unavailable`.
 
 `CloseReport` (from `Client::awaitClosed`) fills all three fields:
@@ -128,7 +129,8 @@ RuntimeOwner::shutdown()                  owner thread, joins every runtime thre
 - **Reentrancy.** Every wait in the library (`Ticket::wait`, `GroupTicket::wait`,
   `CancelTicket::wait`, `PitSession::next`, blocking queries, `awaitClosed`) is the library's own
   and returns `Cause::Reentrancy` when called from a runtime thread. From a callback a consumer
-  may only request (a non-blocking `submit`, `requestClose()`), never wait.
+  may only request (a non-blocking `submit`, `requestClose()`), never wait; that includes a `Group::add` in `Block` that would
+  have to wait and `GroupTicket::wait`.
   `detail::testing::onRuntimeThread()` exposes the flag this relies on.
 
 ## Configuration
@@ -424,7 +426,7 @@ that resolved every operation `Failed(Unavailable)`). The code is in `src/write/
 
 ### Encoding per kind
 
-`encode(Op&&)` (`src/write/encoding.hpp`) runs in `submit`, on the producer's thread, once. The result is the operation's NDJSON
+`encode(Op&&, const ConflictPolicy&)` (`src/write/encoding.hpp`, normative for the details below) runs in `submit` and in `Group::add`, on the producer's thread, once. The result is the operation's NDJSON
 lines (each ends in `\n`); their size is exactly what goes on the wire, and a retry re-sends them without re-encoding. The body is
 moved into the lines: on success `op.body` is left empty with its memory freed. The shapes are byte-for-byte the v1's
 (`indexer_connector/src/indexerConnectorSyncImpl.hpp`):
@@ -435,11 +437,34 @@ moved into the lines: on success `op.body` is left empty with its memory freed. 
 | `IndexAutoId` | `{"index":{"_index":"<i>"}}` + body |
 | `IndexDataStream` | `{"create":{"_index":"<i>"}}` + body |
 | `Delete` | `{"delete":{"_index":"<i>","_id":"<id>"}}` (one line, no body) |
-| `IndexVersionedScript` | `{"update":{"_index":"<i>","_id":"<id>"}}` + `{"script":{...,"params":{"doc_version":<version>,"doc":<body>}},"upsert":<body>,"scripted_upsert":true}`; the Painless source keeps the document unless `document_version` is older, then sets `ctx.op = 'none'`; the document travels twice |
+| `IndexVersionedScript` | `{"update":{"_index":"<i>","_id":"<id>"<R>}}` + `{"script":{...,"params":{"doc_version":<version>,"doc":<body>}},"upsert":<body>,"scripted_upsert":true}`; the Painless source keeps the document unless `document_version` is older, then sets `ctx.op = 'none'`; the document travels twice |
+| `Index` + `ReplacePreserving` | `{"update":{"_index":"<i>","_id":"<id>"<R>}}` + `{"script":{"source":"<PRESERVE_SOURCE>","lang":"painless","params":{"paths":<P>,"doc":<body>}},"upsert":<body>,"scripted_upsert":true}` |
+| `IndexVersionedScript` + `ReplacePreserving` | as above with `"<PRESERVE_VERSIONED_SOURCE>"` and `"params":{"doc_version":<version>,"paths":<P>,"doc":<body>}` |
+
+`<R>` is `,"retry_on_conflict":<n>` and appears only on the `update` actions (`IndexVersionedScript` and every `ReplacePreserving`
+line) and only when the effective [conflict policy](#conflict-policy-e3c-1) is `Retry`; with `Success` the line is the E3a one (v1
+parity). An `index`, `create` or `delete` line never carries it (OpenSearch answers 400 to the whole request). `<P>` is the preserved
+paths in the given order, each an array of its segments, e.g. `[["case"],["a","b"]]`.
+
+**`ReplacePreserving` (I28, I71, I72).** It is admitted only for `Index` and `IndexVersionedScript`; with `Delete`, `IndexAutoId` or
+`IndexDataStream` the op is `InvalidArgument` (`mode: ...`). The document travels twice, as in `IndexVersionedScript`: once in
+`params.doc` and once as `upsert` (a missing document is created by running the script on the upsert). The two Painless sources are
+**constants** exported by `encoding.hpp` (`PRESERVE_SOURCE`, `PRESERVE_VERSIONED_SOURCE`): OpenSearch caches the compiled script per
+source, so the paths travel in `params.paths`, never inside the source. Semantics, in this order:
+
+1. (versioned only) the version guard first: an older `doc_version` sets `ctx.op = 'none'` (a noop) and nothing else runs;
+2. each path is looked up in the stored `ctx._source`, walking only through `instanceof Map` and `containsKey`: a missing key or a
+   non-map intermediate means "absent" and the walk never throws;
+3. `ctx._source` becomes a copy of `params.doc` (fields the agent no longer sends disappear; `params.doc` itself is never mutated);
+4. every path that was present is restored, copying each intermediate map before the `put`: the stored value wins over the agent's
+   at that path. An absent path leaves the agent's value (or nothing).
+
+**Caveat (D45).** The in-process fake indexer does not run Painless: the tests freeze the bytes of both shapes and check the
+outcomes the sender maps (`updated`, `noop`, `created`), but the preservation itself is proven only against a real OpenSearch, in E6.
 
 Validation failures are `Cause::InvalidArgument`, counted in the bucket (`invalidArgument`), and the op is not charged. The
-field is first in the internal reason (`index: ...`, `id: ...`, `version: ...`, `body: ...`, `mode: ...`), but `Submit` carries
-no `reason`: the consumer sees only the cause.
+field is first in the reason (`index: ...`, `id: ...`, `version: ...`, `body: ...`, `mode: ...`,
+`onConflict.retryOnConflict: ...`), which `Submit::reason` and `Group::lastAddReason()` hand to the consumer (D42).
 
 | Field | Rule |
 |---|---|
@@ -447,8 +472,62 @@ no `reason`: the consumer sees only the cause.
 | `id` | Required for `Index`, `Delete` and `IndexVersionedScript`; must be empty for `IndexAutoId` and `IndexDataStream`. Escaped as the v1 does: `"`, `\`, the short escapes and any other control character below 0x20 as `\u00XX` |
 | `version` | Only for `IndexVersionedScript`, where it must be a canonical integer in [0, `INT64_MAX`] (digits only, no leading zero); empty for every other kind |
 | `body` | Required and free of `\n` for every kind but `Delete`; must be empty for `Delete` |
-| `mode` | `WriteMode::ReplacePreserving` is `InvalidArgument` until E3c |
-| `onConflict` | Must be unset: the per-operation `ConflictPolicy` is `InvalidArgument` until E3c (the sender would otherwise apply the bucket's policy silently) |
+| `mode` | `ReplacePreserving` only with `Index` or `IndexVersionedScript` (I72); `preservedPaths` non-empty only with `ReplacePreserving` |
+| `preservedPaths` | With `ReplacePreserving`: 1 to 16 paths; each 1 to 8 segments of 1 to 64 characters from `[A-Za-z0-9_@-]` (written dot-separated); no two equal and none a segment prefix of another; with `IndexVersionedScript` none may be `state`, `state.document_version` or below it (it would defeat the guard) |
+| `onConflict` | Optional per-operation [conflict policy](#conflict-policy-e3c-1); `Retry` needs `retryOnConflict` in 1 to 100 (`MAX_RETRY_ON_CONFLICT`) |
+
+### Conflict policy (E3c-1)
+
+A 409 on a `_bulk` item (`version_conflict_engine_exception`) is resolved by the **effective policy**: `Op::onConflict` when the
+operation sets it, otherwise the bucket's `BucketSpec::onConflict`. The choice is stored with the operation (`OpState::conflictRetry`)
+when it is admitted.
+
+| Policy | A 409 item |
+|---|---|
+| `Success` | The op resolves `Ok` keeping the 409 and the error type (the E3a behaviour) |
+| `Retry` | The op is requeued with backoff on the retry lane, with `LastError {VersionConflict, 409, type, reason}`; when the bucket's retry budget runs out it resolves `Failed(RetryExhausted)` carrying that last error. The wire line also carries `retry_on_conflict` (update actions only, see [Encoding per kind](#encoding-per-kind)) |
+
+`retryOnConflict` must be 1 to 100 for a `Retry` policy, both in `Op::onConflict` (`InvalidArgument`, field
+`onConflict.retryOnConflict`) and in the bucket's spec (registration refuses it). `Retry` on `create`
+(`IndexDataStream`), `IndexAutoId` or `Index`/`Delete` is accepted but only changes how a 409 item is treated: for `create` the 409
+means "the document exists", so retrying it can never succeed and is useless. `ordered` buckets are still refused (E3c-2).
+
+### Groups (E3c-1)
+
+`Writer::group()` returns a `Group` (RF-7, I70, I74; the normative detail is `src/write/group.hpp`). It lets a consumer reserve room
+for a set of writes first and release them to the scheduler all together.
+
+- **States.** `Building` -> `Committed` -> `Done`, or `Building` -> `Abandoned`. A `Group` is single-owner and not thread-safe; two
+  groups may be built concurrently from different threads.
+- **`add(op)`** (`Building` only, else `InvalidState`) validates and encodes exactly as `submit` (failure is `InvalidArgument`, the
+  reason is kept for `lastAddReason()`, empty after an accepted add) and **reserves the quota now**: payload plus `RESULT_RESERVE`
+  against the bucket and the global cap. The op stays charged and outside the queue until `commit`. Refusals: `PayloadTooLarge`
+  (above `bulk.maxBytes`, or the single charge above the quota or global cap), `GroupTooLarge` (what the group already holds plus
+  this op would exceed the quota or the global cap; the group stays usable and can still be committed), `QueueFull`,
+  `SubmitTimeout`, `Reentrancy`, the close cause, `Unavailable` (its client is gone; with the runtime shut down the add answers the
+  close cause). `DropNewest` and `DropOldest` behave like `Reject` for a group (I70): nothing is evicted and nothing is dropped.
+  With `Block` the call waits for room like `submit`, except that it **never waits on a group in `Building`**: when the room is
+  held by groups still being built (the bucket's or the global `building` charge) it returns `QueueFull` at once, so two half-built
+  groups cannot deadlock each other.
+- **`commit()`** (first call only; a second returns a ready ticket with `InvalidState`) enqueues every op under one bucket lock and
+  makes them eligible **now**, whatever the thresholds (`maxAge`, `maxDocs`) say, and it always notifies the scheduler. An empty
+  group is a ready ticket with success and an empty vector. If the bucket closed in between, the ops resolve `Dropped(cause)`; a
+  group committed after the runtime is gone resolves every op `Dropped(Shutdown)` without touching the bucket (a `Group` may
+  outlive `RuntimeOwner::shutdown()`: no bucket call is made without a live write path, because the bucket references the
+  runtime's budget).
+  Committed ops are ordinary pending ops (`DropOldest` of other submits may evict them; close and shutdown sweep them).
+- **Results.** The `GroupTicket` completes when the last op has resolved (an op requeued by the retry lane or split is not resolved:
+  the ticket waits), with the `OpResult`s in `add` order. There is no callback and no pool task.
+- **Abandonment.** Destroying (or move-assigning over) a `Building` group returns its payload, its reserves, the bucket's and the
+  global `building` charge at once and wakes blocked producers; the ops count as `groupAbandoned` and `resolvedDropped`.
+- **Reserves.** The `RESULT_RESERVE` of every `add` returns when the shared group state dies (the last of the `Group`, the
+  `GroupTicket` and the committed ops), through weak references to the write path and the bucket like a plain submit's reserve
+  handle; if the bucket is gone the global budget gets it back. The group's mutex is a leaf: never held while calling the bucket,
+  the scheduler, the write path or the budget.
+- **Statistics.** `BucketStats` adds `groupBuilding` (ops reserved by uncommitted groups), `groupAbandoned` and
+  `rejectedGroupTooLarge` (counted under `submitted`). The invariant is now `accepted = resolved + retained + groupBuilding`.
+- **Reentrancy.** A `Block` `add` that would have to wait, and `GroupTicket::wait`, called from a runtime thread return `Reentrancy`.
+- **Not yet.** `cancel(tag)` does not see groups in `Building` (their ops are outside the queue); E3c-2 decides that.
 
 ### Charge and quota
 
@@ -486,7 +565,8 @@ bucket's `quotaBytes` and against the runtime-wide `global_quota_bytes`.
 - **Registration rule.** `RuntimeRef::client` rejects a bucket (`InvalidArgument`, field named in `reason`) unless
   `bulk.maxBytes + RESULT_RESERVE <= quotaBytes` (`validateBucket`, `src/runtime/runtime.cpp`), together with the older
   `bulk.maxBytes <= quotaBytes <= global_quota_bytes`. So the largest admissible operation always fits an empty bucket. Until
-  E3c it also rejects `onConflict.kind = Retry` and `ordered = true`, which the bulk sender does not honour yet.
+  E3c-2 it also rejects `ordered = true`, which the bulk sender does not honour yet; `onConflict.kind = Retry` registers with
+  `retryOnConflict` 1 to 100.
 
 ### Overflow policies
 
@@ -506,10 +586,11 @@ When the charge does not fit, the bucket's `Overflow` decides:
 - **Reentrancy.** A `submit` in `Block` that would have to wait, called from a runtime thread (a callback, for example), returns
   `Reentrancy` without sleeping (`reentrancy`), as every other wait in the library does.
 - **Counters.** Each bucket keeps `submitted`, `accepted`, `rejectedQueueFull`, `rejectedClosed`, `submitTimeout`, `reentrancy`,
-  `payloadTooLarge`, `invalidArgument`, `droppedNewest`, `droppedOldest`, `resolvedOk`, `resolvedFailed`, `resolvedDropped`,
+  `payloadTooLarge`, `invalidArgument`, `droppedNewest`, `droppedOldest`, `rejectedGroupTooLarge`, `groupBuilding`, `groupAbandoned`, `resolvedOk`, `resolvedFailed`, `resolvedDropped`,
   `retained`, `charge` and `peakCharge` (`BucketStats`; `WriteStats` adds `globalCharge` and `globalCap`). Invariants:
-  `submitted = accepted + rejectedQueueFull + rejectedClosed + submitTimeout + reentrancy + payloadTooLarge + invalidArgument`
-  and `accepted = resolved + retained`. A drop is never silent: every `DropNewest` and each `DropOldest` eviction is counted and
+  `submitted = accepted + rejectedQueueFull + rejectedClosed + submitTimeout + reentrancy + payloadTooLarge + invalidArgument + rejectedGroupTooLarge`
+  and `accepted = resolved + retained + groupBuilding` (the last term is the ops of groups not committed yet, see
+  [Groups](#groups-e3c-1)). A drop is never silent: every `DropNewest` and each `DropOldest` eviction is counted and
   resolved.
 - **Locks.** A bucket's mutex is a leaf: it is never held while posting, running a callback or destroying a ticket state, and
   the only other lock taken under it is the waiter registry's (itself a leaf).
@@ -620,7 +701,7 @@ reason `malformed item`.
 | `delete`, 404, `result: not_found`, no `error` | `NotFound` | Idempotent success (`ItemOutcome::NotFound`) |
 | 404 with `index_not_found_exception`, any other 404 | `Permanent` | |
 | 429, 5xx, `cluster_block_exception`, `es_rejected_execution_exception` | `Retry` | |
-| 409 with `version_conflict_engine_exception` | `Conflict` | Status and error type are kept: the sender resolves it `Ok` keeping the 409 and the type, as the bucket's `ConflictPolicy` says (the per-operation policy and `ConflictPolicy::Retry` are E3c) |
+| 409 with `version_conflict_engine_exception` | `Conflict` | By the op's effective [conflict policy](#conflict-policy-e3c-1): `Success` ⇒ `Ok` keeping the 409 and the error type; `Retry` ⇒ requeued |
 | 409 of another type, any other 4xx, a status outside the table | `Permanent` | |
 
 `itemErrorType` is truncated to 64 B and `reason` to 512 B (never inside a UTF-8 sequence); the `caused_by` error is appended to the
@@ -720,7 +801,7 @@ the transfer leaves the slot to its callback.
 | `Throttled` (429) | `NodeSet::report` (the node goes `Throttled`), raise the node's `notBefore`, requeue `{false, Now}` (see below) |
 | `Split` | Requeue `{false, Now, toHead, halve}` |
 | `FailBatch` | Every operation `Failed(cause, httpStatus, reason)` |
-| `Items` | `classifyItems`; per item `Ok`/`NotFound` resolve `Ok` with the item's outcome, `Conflict` resolves `Ok` keeping 409 and the error type, `Retry` requeues `{true, Backoff}` (one call per batch), `Permanent` resolves `Failed(ItemPermanent)` with the item's status, type and reason |
+| `Items` | `classifyItems`; per item `Ok`/`NotFound` resolve `Ok` with the item's outcome, `Conflict` follows the op's effective [conflict policy](#conflict-policy-e3c-1) (`Success`: `Ok` keeping 409 and the error type; `Retry`: requeue `{true, Backoff}` and, once exhausted, `Failed(RetryExhausted)`), `Retry` requeues `{true, Backoff}` (one call per batch), `Permanent` resolves `Failed(ItemPermanent)` with the item's status, type and reason |
 
 An operation the requeue returns as `exhausted` resolves `Failed(RetryExhausted)` with its last error; one returned as `closed`
 resolves `Dropped` with the bucket's close cause (`ClientClosed` or `Shutdown`).
@@ -937,7 +1018,7 @@ installed through `WritePath::setSink`, a callback result log). Every case ends 
 
 | File | Cases |
 |---|---|
-| `writeEncoding_test.cpp` | `EncodingPerKind`, `EncodingRejectsInvalid`, `PerOpConflictPolicyRefusedUntilE3c` |
+| `writeEncoding_test.cpp` | `EncodingPerKind`, `EncodingRejectsInvalid`, `EncodingConflictRetryLine`, `EncodingPreservingShapes` (the frozen byte vectors E6 reuses), `EncodingPreservingRejects`, `SubmitCarriesReason` |
 | `writeAdmission_test.cpp` | `ChargeIsWireBytesPlusReserve`, `GlobalCapAcrossBuckets`, `OverflowReject`, `OverflowBlockTimeout`, `OverflowDropNewest`, `OverflowDropOldest`, `OverflowBlockWakes`, `BlockedProducerWakesOnClose`, `NoDropWithoutCounter`, `BlockFromRuntimeThreadIsReentrancy`, `PayloadTooLargeAtSubmit` |
 | `writeScheduler_test.cpp` | `ThresholdsFormBatches`, `DrrNoStarvation`, `DrrShareByWeight`, `DocumentNeverSplitCreditCarries`, `ThreadsStayKPlusMWithBuckets`, `DrrTinyQuantumFastForwards`, `MaxAgeExpiringDuringAPassIsServed` |
 | `writeClose_test.cpp` | `SubmitRacesClose`, `CloseAndShutdownResolveRetained`, `ShutdownWithHeldBatch`, `DefaultSinkIsTheBulkSender` |
@@ -958,8 +1039,8 @@ answer (413, 429 with `Retry-After`, 5xx, 401), queue scripts, and hold an answe
 `FakeBulkResponderRender.ItemsWithoutHttp`).
 
 The unit suite also covers the registration rule (`BucketSpecTest.InvalidBulkMaxBytesPlusReserveAboveQuota`), the refusal of
-what E3c will implement (`BucketSpecTest.InvalidRetryConflictPolicyBeforeE3c`, `BucketSpecTest.InvalidOrderedBeforeE3c`; the
-component case `WriteTest.PerOpConflictPolicyRefusedUntilE3c` for `Op::onConflict`) and the production sink through the public API
+what E3c-2 will implement (`BucketSpecTest.InvalidOrderedBeforeE3c`; `BucketSpecTest.RetryConflictPolicyRegisters` and
+`BucketSpecTest.InvalidZeroRetryOnConflict` cover the `Retry` policy, which since E3c-1 registers) and the production sink through the public API
 (`BucketSpecTest.WriterSubmitResolvesThroughTheSender`).
 
 **E3b-2 suites** (component, `tests/component/`; the real transport against in-process fake nodes). They use the fixture
@@ -974,6 +1055,15 @@ test above).
 | `bulkVerdicts_test.cpp` | `BulkBodyIsTheEncodedLines`, `ErrorsFalseStillPerItem`, `DeleteNotFoundIsOk`, `IndexNotFoundIsPermanent`, `MixedItems`, `EveryOpOneResult`, `LimitedRetryExhausts`, `UnlimitedSurvives5xx`, `PoisonDoesNotBlock`, `Split413`, `ResponseTooLargeSplits`, `Request429HonorsRetryAfterPerNode`, `Request429Paces`, `NotBeforeNeverShortenedBy2xx`, `Client4xxFailsBatch`, `CredentialsErrorRetries`, `UnreadableBodyRetries`, `PassiveReport429Throttled` |
 | `bulkWakeups_test.cpp` | `FailoverOnTransportError`, `WindowPerNode`, `SubmitRefusedRequeues`, `CompletionFreesWindow`, `NotBeforeExpiryWakesScheduler`, `NoUsableNodeWaitsThenSends`, `CloseClientWhileInFlightRetry`, `RetryLaneBeforePendingE2E`, `BackoffIsPerBucket`, `ShutdownCancelsInFlight`, `ShutdownRacesRequeue`, `StaleDownMirrorDoesNotSpin`, `SetSinkRequeuesCancelledInFlight`, `CompletionExceptionRequeues` |
 
+**E3c-1 suites** (component; the conflict and preservation cases use the fake `_bulk` responder, which does not run Painless, D45).
+
+| File | Cases |
+|---|---|
+| `bulkConflict_test.cpp` | `ConflictRetryThenOk`, `ConflictSuccessKeeps409`, `ConflictRetryExhausts`, `BucketRetryOnWire`, `BucketRetryPolicyRegisters`, `PreservingOutcomes` |
+| `writeGroup_test.cpp` | `GroupHundredOneRejected`, `TwoBuildingGroupsDoNotBlock`, `GroupAddWaitsForCommittedRoom`, `GroupAddTimesOut`, `AbandonedGroupReleases`, `GroupTooLarge`, `CommitFlushesNow`, `GroupItemRetryCompletesOnce`, `GroupAcrossSplit413`, `GroupDropPoliciesRejectLikeReject`, `GroupAfterCloseAndShutdown`, `GroupOutlivesRuntime`, `GroupReservesReturnedWhenBucketDies`, `EmptyCommit`, `GroupStatsInvariant`, `GroupLastAddReason` |
+| `writeReentrancy_test.cpp` | `CallbackBlockingCallsAreReentrancy` (`submit`, `Ticket::wait`, `GroupTicket::wait` and `Group::add` from a callback), `CallbackRequestCloseAndClientDestroy` |
+
+The conflict, preservation and `Submit::reason` cases of `writeEncoding_test.cpp` are listed above.
 The wake-up cases use `bulk.maxAge >= 30 s` and `probe_interval_ms >= 30 s`, with `probeNow()` for the transition they want, so
 no other wake-up can rescue the one under test.
 
@@ -1020,22 +1110,21 @@ Layout of `tests/`: `unit/` (config schema, key-value source, mocks, fake indexe
 
 E1 delivered the skeleton, E2a-1 the internal `http` transport, E2a-2 TLS and credentials, E2b node health and logging, E2c the
 transport [benchmark](#benchmark) (done; the `--path client` benchmark of the whole client arrives with E5), E3a the
-[write path](#write-path-e3a) up to the sink, E3b-1 the [response classifier and retry lane](#response-classification-and-retry-lane-e3b-1)
-and E3b-2 the [bulk sender](#bulk-sender-e3b-2): bulk writes reach the indexer. Not implemented, by stage:
+[write path](#write-path-e3a) up to the sink, E3b-1 the [response classifier and retry lane](#response-classification-and-retry-lane-e3b-1),
+E3b-2 the [bulk sender](#bulk-sender-e3b-2) and E3c-1 the [per-operation conflict policy](#conflict-policy-e3c-1), `ReplacePreserving` and
+[groups](#groups-e3c-1): bulk writes reach the indexer. Not implemented, by stage:
 
 | Area | Stage |
 |---|---|
-| The per-operation `ConflictPolicy` and `ConflictPolicy::Retry` (`retry_on_conflict`); until then `submit` refuses `Op::onConflict` and registration refuses `onConflict.kind = Retry` (`InvalidArgument`), and the sender resolves a 409 `Ok` | E3c |
-| `ordered` buckets (the wait of an ambiguous `ordered` bucket, which will use `generation()` and `onTransition`; I36 and D38); until then registration refuses `ordered = true` | E3c |
-| `Group` (atomic groups), `cancel(tag)`, `WriteMode::ReplacePreserving` | E3c |
+| `ordered` buckets (the wait of an ambiguous `ordered` bucket, which will use `generation()` and `onTransition`; I36 and D38); until then registration refuses `ordered = true`. `cancel(tag)` (until then it answers `Unavailable`) and whether it reaches groups in `Building`; CA-3 | E3c-2 |
 | Reads answering `Unavailable` when no node is usable | E4 |
 | Queries: `search`, `searchAfter`, PIT, `deleteByQuery`, `updateByQuery`, `indexExists` | E4 |
 | AIMD window and pacing (the fixed window of 4 per node is replaced, using the latencies in `SenderStats`), the two-phase `stop()` for the drain up to the shutdown deadline (D43), one pass per completion, D44 (simdjson stage 2 in Release), public metrics (write counters, health metrics, `Retry-After` in passive signals) | E5 |
 | Benchmark of the whole client (`--path client`) | E5 |
 | Metrics beyond the thread layout in `MetricsSnapshot` | E5 |
-| Behaviour against a real indexer (request headers without `Accept-Encoding`, D41; `Expect: 100-continue` cost) | E6 |
+| Behaviour against a real indexer (request headers without `Accept-Encoding`, D41; `Expect: 100-continue` cost), and the real Painless run of `ReplacePreserving` (D45) | E6 |
 | Migration of the four consumers off `indexer_connector` | later stages |
 
-Until then `group()`, `cancel()` and the query interface are stubs, and nothing public calls the transport directly. Traffic is the
+Until then `cancel()` and the query interface are stubs, and nothing public calls the transport directly. Traffic is the
 health probe and the bulk sender's `POST /_bulk`; `requestClose()` still drops the pending operations instead of draining them
 (E3a's stand-in, D43).

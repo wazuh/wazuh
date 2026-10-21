@@ -143,7 +143,8 @@ namespace
 // (5, E3b-2) with a callback, requeued into the retry lane with its LastError at its caps (the batch gone); (6, G-diff
 // E3b-2 obj. 1) the composed worst case: requeued with its LastError at its caps, sliced again, then resolved
 // Failed(ItemPermanent) with a capped OpResult while its completion waits behind a busy pool, the batch still held
-// (the resolution frees the op's last-error strings).
+// (the resolution frees the op's last-error strings); (7, E3c-1) an op of a group, Building, then resolved with a
+// capped OpResult in its slot while the batches are still held.
 TEST_F(WriteTest, ResultReserveMeasured)
 {
 #if !WRITE_RESERVE_COUNTER
@@ -357,17 +358,69 @@ TEST_F(WriteTest, ResultReserveMeasured)
     batches.clear();
     bucket6.reset();
 
-    const double measured = std::max({retained, queued, noCallback, inLane, composed});
+    // (7, E3c-1) A group of N ops: (a) Building (the ops in the GroupState, charged, outside the queue); (b) committed,
+    // sliced, every op resolved Failed(ItemPermanent) with a capped OpResult (its slot filled), the batches still held
+    // (the group's own state, its result vector and the ticket's completion amortized over its ops).
+    const auto base7 = liveBytes();
+    std::uint64_t groupLines = 0;
+    double groupBuilding = 0.0;
+    double groupResolved = 0.0;
+    {
+        auto group = writer->group();
+        for (std::size_t i = 0; i < N; ++i)
+        {
+            groupLines += wireSize(smallOp(4 * N + i));
+        }
+        const auto baseAdds = liveBytes();
+        for (std::size_t i = 0; i < N; ++i)
+        {
+            ASSERT_EQ(group.add(smallOp(4 * N + i)), ic::Cause::None);
+        }
+        groupBuilding = static_cast<double>(liveBytes() - baseAdds - static_cast<std::int64_t>(groupLines)) /
+                        static_cast<double>(N);
+        auto groupTicket = group.commit();
+        std::size_t sliced = 0;
+        ASSERT_TRUE(component::eventually(
+            [&]
+            {
+                for (auto& batch : sink->take())
+                {
+                    sliced += batch.ops.size();
+                    batches.push_back(std::move(batch));
+                }
+                return sliced == N;
+            },
+            5s))
+            << sliced << " of " << N << " sliced";
+        for (const auto& batch : batches)
+        {
+            for (const auto& op : batch.ops)
+            {
+                ASSERT_TRUE(m_path->resolve(op, result));
+            }
+        }
+        ASSERT_TRUE(groupTicket.ready());
+        groupResolved = perOp(base7);
+        batches.clear();
+        const auto outcome = groupTicket.wait(now() + 5s);
+        ASSERT_TRUE(outcome.ok());
+        ASSERT_EQ(outcome.value.size(), N);
+    }
+    ASSERT_TRUE(component::eventually([&] { return stats("b").charge == 0; }, 5s));
+
+    const double measured = std::max({retained, queued, noCallback, inLane, composed, groupBuilding, groupResolved});
     std::printf(
         "[ RESERVE  ] bytes per op besides its lines: retained %.1f, queued completion %.1f, after the callback "
         "(ticket alive) %.1f, no callback %.1f, requeued in the lane %.1f, requeued then resolved (queued completion) "
-        "%.1f; max %.1f; RESULT_RESERVE %llu\n",
+        "%.1f, group building %.1f, group resolved (batches held) %.1f; max %.1f; RESULT_RESERVE %llu\n",
         retained,
         queued,
         afterCallback,
         noCallback,
         inLane,
         composed,
+        groupBuilding,
+        groupResolved,
         measured,
         static_cast<unsigned long long>(wr::RESULT_RESERVE));
     EXPECT_GT(measured, 0.0) << "the counter saw nothing: is the replacement operator new linked?";

@@ -24,6 +24,7 @@
 #include "healthRules.hpp"
 #include "indexer_client/runtime.hpp"
 #include "write/bucket.hpp"
+#include "write/encoding.hpp"
 
 using namespace indexer_client;
 
@@ -263,21 +264,37 @@ TEST_F(BucketSpecTest, InvalidZeroRetryOnConflict)
     expectRejected({spec}, field("onConflict.retryOnConflict must be > 0 with ConflictPolicy::Retry"));
 }
 
-// G-diff E3b-2 obj. 2: ConflictPolicy::Retry and ordered buckets are accepted by the API but the bulk sender does not
-// honour them until E3c, so registration refuses them (the field named). Mutants: either check removed.
-TEST_F(BucketSpecTest, InvalidRetryConflictPolicyBeforeE3c)
+// E3c-1 I73: ConflictPolicy::Retry registers with retryOnConflict in [1, MAX_RETRY_ON_CONFLICT] (both bounds; 0 is
+// InvalidZeroRetryOnConflict) and 101 is refused naming the field. Mutant: the cap check removed.
+TEST_F(BucketSpecTest, RetryConflictPolicyRegisters)
 {
+    auto one = valid("one");
+    one.onConflict.kind = ConflictPolicy::Kind::Retry;
+    one.onConflict.retryOnConflict = 1;
+    auto hundred = valid("hundred");
+    hundred.onConflict.kind = ConflictPolicy::Kind::Retry;
+    hundred.onConflict.retryOnConflict = detail::write::MAX_RETRY_ON_CONFLICT;
+    auto result = m_ref.client("retry", {one, hundred});
+    ASSERT_TRUE(result.ok()) << result.reason;
+    EXPECT_NE(result.value, nullptr);
+    EXPECT_EQ(m_ref.snapshot().clients, 1u);
+
     auto spec = valid();
     spec.onConflict.kind = ConflictPolicy::Kind::Retry;
-    spec.onConflict.retryOnConflict = 1;
-    expectRejected({spec}, field("onConflict.kind = Retry is not implemented yet (E3c)"));
+    spec.onConflict.retryOnConflict = detail::write::MAX_RETRY_ON_CONFLICT + 1;
+    auto refused = m_ref.client("consumer", {spec});
+    EXPECT_EQ(refused.cause, Cause::InvalidArgument) << refused.reason;
+    EXPECT_EQ(refused.reason, field("onConflict.retryOnConflict must be <= 100 with ConflictPolicy::Retry"));
+    EXPECT_EQ(refused.value, nullptr);
 }
 
+// G-diff E3b-2 obj. 2: an ordered bucket is accepted by the API but the bulk sender does not honour it until E3c-2, so
+// registration refuses it (the field named). Mutant: the check removed.
 TEST_F(BucketSpecTest, InvalidOrderedBeforeE3c)
 {
     auto spec = valid();
     spec.ordered = true;
-    expectRejected({spec}, field("ordered = true is not implemented yet (E3c)"));
+    expectRejected({spec}, field("ordered = true is not implemented yet (E3c-2)"));
 }
 
 TEST_F(BucketSpecTest, InvalidBlockWithoutTimeout)
@@ -313,8 +330,7 @@ TEST_F(BucketSpecTest, ValidSpecAccepted)
     blocking.retry.maxAttempts = 1u;
     blocking.quotaBytes = RuntimeConfig {}.globalQuotaBytes; // quotaBytes == global_quota_bytes is allowed.
     blocking.retry.maxDuration = Duration {1};               // The smallest positive maxDuration is allowed.
-    // ConflictPolicy::Retry and ordered = true are refused until E3c (InvalidRetryConflictPolicyBeforeE3c,
-    // InvalidOrderedBeforeE3c).
+    // ordered = true is refused until E3c-2 (InvalidOrderedBeforeE3c); Retry registers (RetryConflictPolicyRegisters).
     edge.onConflict.kind = ConflictPolicy::Kind::Success;
     edge.onConflict.retryOnConflict = 0; // retryOnConflict is ignored without Retry.
 
@@ -378,12 +394,20 @@ TEST_F(BucketSpecTest, WriterSubmitResolvesThroughTheSender)
     ASSERT_EQ(bulk->received()[0].size(), 1u);
     EXPECT_EQ(bulk->received()[0][0].id, "1");
 
-    // Groups and cancel(tag) are E3c: still Unavailable.
+    // E3c-1: a group's op goes through the same sender; its ticket completes with the item's result. cancel(tag) is
+    // E3c-2: still Unavailable.
     auto group = writer->group();
-    EXPECT_EQ(group.add(op), Cause::Unavailable);
+    op.id = "2";
+    EXPECT_EQ(group.add(op), Cause::None) << group.lastAddReason();
     const auto groupTicket = group.commit();
-    EXPECT_TRUE(groupTicket.ready());
-    EXPECT_EQ(groupTicket.wait(std::chrono::steady_clock::now()).cause, Cause::Unavailable);
+    const auto groupResult = groupTicket.wait(std::chrono::steady_clock::now() + std::chrono::seconds(5));
+    ASSERT_TRUE(groupResult.ok()) << toString(groupResult.cause);
+    ASSERT_EQ(groupResult.value.size(), 1u);
+    EXPECT_EQ(groupResult.value[0].status, Status::Ok);
+    EXPECT_EQ(groupResult.value[0].outcome, ItemOutcome::Created);
+    ASSERT_EQ(bulk->received().size(), 2u);
+    ASSERT_EQ(bulk->received()[1].size(), 1u);
+    EXPECT_EQ(bulk->received()[1][0].id, "2");
 
     const auto cancel = writer->cancel("agent-001");
     EXPECT_TRUE(cancel.ready());

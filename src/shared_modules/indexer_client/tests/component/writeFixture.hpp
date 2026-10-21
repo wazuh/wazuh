@@ -326,7 +326,7 @@ namespace write_component
     /// Wire size of `op` (its NDJSON lines).
     inline std::uint64_t wireSize(ic::Op op)
     {
-        auto encoded = wr::encode(std::move(op));
+        auto encoded = wr::encode(std::move(op), ic::ConflictPolicy {});
         EXPECT_TRUE(encoded.ok()) << encoded.reason;
         return encoded.value.size();
     }
@@ -353,7 +353,7 @@ namespace write_component
     inline std::uint64_t rejectedTotal(const wr::BucketStats& s)
     {
         return s.rejectedQueueFull + s.rejectedClosed + s.submitTimeout + s.reentrancy + s.payloadTooLarge +
-               s.invalidArgument;
+               s.invalidArgument + s.rejectedGroupTooLarge;
     }
 
     inline std::string describe(const wr::BucketStats& s)
@@ -362,10 +362,11 @@ namespace write_component
         out << s.consumer << "/" << s.bucket << ": submitted " << s.submitted << " accepted " << s.accepted
             << " rejectedQueueFull " << s.rejectedQueueFull << " rejectedClosed " << s.rejectedClosed
             << " submitTimeout " << s.submitTimeout << " reentrancy " << s.reentrancy << " payloadTooLarge "
-            << s.payloadTooLarge << " invalidArgument " << s.invalidArgument << " droppedNewest " << s.droppedNewest
-            << " droppedOldest " << s.droppedOldest << " resolvedOk " << s.resolvedOk << " resolvedFailed "
-            << s.resolvedFailed << " resolvedDropped " << s.resolvedDropped << " retained " << s.retained << " charge "
-            << s.charge << " peakCharge " << s.peakCharge;
+            << s.payloadTooLarge << " invalidArgument " << s.invalidArgument << " rejectedGroupTooLarge "
+            << s.rejectedGroupTooLarge << " groupBuilding " << s.groupBuilding << " groupAbandoned " << s.groupAbandoned
+            << " droppedNewest " << s.droppedNewest << " droppedOldest " << s.droppedOldest << " resolvedOk "
+            << s.resolvedOk << " resolvedFailed " << s.resolvedFailed << " resolvedDropped " << s.resolvedDropped
+            << " retained " << s.retained << " charge " << s.charge << " peakCharge " << s.peakCharge;
         return out.str();
     }
 
@@ -380,11 +381,13 @@ namespace write_component
         return out.str();
     }
 
-    /// The I62 invariants of one bucket.
+    /// The I62 invariants of one bucket, with the groups' terms of I74 (bucket.hpp): a GroupTooLarge add is a
+    /// refusal under `submitted`, and an op reserved by a group not committed yet is accepted but not retained.
     inline void expectInvariants(const wr::BucketStats& s)
     {
         EXPECT_EQ(s.submitted, s.accepted + rejectedTotal(s)) << describe(s);
-        EXPECT_EQ(s.accepted, s.resolvedOk + s.resolvedFailed + s.resolvedDropped + s.retained) << describe(s);
+        EXPECT_EQ(s.accepted, s.resolvedOk + s.resolvedFailed + s.resolvedDropped + s.retained + s.groupBuilding)
+            << describe(s);
     }
 } // namespace write_component
 

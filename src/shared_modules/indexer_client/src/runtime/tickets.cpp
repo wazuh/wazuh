@@ -15,6 +15,7 @@
 #include "indexer_client/client.hpp"
 #include "indexer_client/runtime.hpp"
 #include "runtime/runtimeInternal.hpp"
+#include "write/group.hpp"
 
 namespace indexer_client
 {
@@ -88,30 +89,46 @@ namespace indexer_client
     }
 
     Group::Group(Group&&) noexcept = default;
-    Group& Group::operator=(Group&&) noexcept = default;
-    Group::~Group() = default; // E1 reserves nothing, so abandoning a group releases nothing.
 
-    Cause Group::add(Op /*op*/)
+    Group& Group::operator=(Group&& other) noexcept
     {
-        if (!m_state || m_state->committed.load())
+        if (this != &other)
+        {
+            if (m_state)
+            {
+                detail::write::abandonGroup(*m_state); // A Building group overwritten is abandoned (group.hpp).
+            }
+            m_state = std::move(other.m_state);
+        }
+        return *this;
+    }
+
+    Group::~Group()
+    {
+        if (m_state)
+        {
+            detail::write::abandonGroup(*m_state); // No-op unless still Building; a moved-from Group has no state.
+        }
+    }
+
+    Cause Group::add(Op op)
+    {
+        if (!m_state)
         {
             return Cause::InvalidState;
         }
-        return Cause::Unavailable;
+        return detail::write::addToGroup(m_state, std::move(op));
+    }
+
+    const std::string& Group::lastAddReason() const
+    {
+        static const std::string none;
+        return m_state ? m_state->lastAddReason : none; // Written by add() on the owner's thread (single owner).
     }
 
     GroupTicket Group::commit()
     {
-        if (!m_state || m_state->committed.exchange(true))
-        {
-            // An empty or already committed group yields a ready ticket that reports the misuse.
-            auto state = std::make_shared<detail::GroupState>();
-            state->committed = true;
-            state->complete(Outcome<std::vector<OpResult>>::failure(Cause::InvalidState, "group already committed"));
-            return GroupTicket(std::move(state));
-        }
-        m_state->complete(Outcome<std::vector<OpResult>>::failure(Cause::Unavailable, E1_UNAVAILABLE));
-        return GroupTicket(m_state);
+        return detail::write::commitGroup(m_state);
     }
 
     PitSession::PitSession(std::shared_ptr<detail::CursorState> state)

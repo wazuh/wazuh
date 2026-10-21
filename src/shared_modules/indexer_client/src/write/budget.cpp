@@ -65,6 +65,21 @@ namespace indexer_client::detail::write
         return m_cap;
     }
 
+    void GlobalBudget::addBuilding(std::uint64_t bytes) noexcept
+    {
+        m_building.fetch_add(bytes);
+    }
+
+    void GlobalBudget::removeBuilding(std::uint64_t bytes) noexcept
+    {
+        m_building.fetch_sub(bytes);
+    }
+
+    std::uint64_t GlobalBudget::building() const noexcept
+    {
+        return m_building.load();
+    }
+
     void GlobalBudget::addWaiter(const std::shared_ptr<Bucket>& bucket)
     {
         std::lock_guard<std::mutex> lock(m_waitersMutex);
@@ -88,6 +103,12 @@ namespace indexer_client::detail::write
 
     void GlobalBudget::wakeWaiters()
     {
+        // seq_cst, as in release(): a waiter registers (m_waiterCount) before its predicate re-reads charge() and
+        // building(), so either this load sees it or its re-check sees what the caller changed before calling.
+        if (m_waiterCount.load() == 0)
+        {
+            return;
+        }
         std::vector<std::weak_ptr<Bucket>> copy;
         {
             std::lock_guard<std::mutex> lock(m_waitersMutex);

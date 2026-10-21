@@ -388,12 +388,23 @@ namespace indexer_client::detail::write
                 const auto& op = batch.ops[i];
                 switch (item.verdict)
                 {
+                    case ItemVerdict::Conflict:
+                        // I73: the op's effective ConflictPolicy (OpState::conflictRetry). Retry ⇒ back to the lane
+                        // with the 409 as its last error (exhausted ⇒ Failed(RetryExhausted) with it); Success ⇒ Ok
+                        // keeping the 409 and its type, as below.
+                        if (op->conflictRetry)
+                        {
+                            retry.push_back(RequeueOp {op,
+                                                       LastError {Cause::VersionConflict,
+                                                                  item.httpStatus,
+                                                                  std::move(item.itemErrorType),
+                                                                  item.reason}});
+                            break;
+                        }
+                        [[fallthrough]];
                     case ItemVerdict::Ok:
                     case ItemVerdict::NotFound:
-                    case ItemVerdict::Conflict:
                     {
-                        // Conflict: the bucket's ConflictPolicy (per-operation policy and Retry are E3c): Ok keeping
-                        // the 409 and its type.
                         OpResult ok;
                         ok.status = Status::Ok;
                         ok.outcome = item.outcome;

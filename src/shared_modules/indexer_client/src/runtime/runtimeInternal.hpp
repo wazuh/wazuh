@@ -33,6 +33,7 @@ namespace indexer_client::detail::write
 {
     class Bucket;
     class WritePath;
+    struct OpState;
 } // namespace indexer_client::detail::write
 
 namespace indexer_client::detail
@@ -110,9 +111,35 @@ namespace indexer_client::detail
     {
     };
 
+    /// A confirmable group (E3c-1, I74). NORMATIVE contract: write/group.hpp.
     struct GroupState final : Completion<std::vector<OpResult>>
     {
-        std::atomic<bool> committed {false};
+        enum class Phase
+        {
+            Building,
+            Committed,
+            Done,
+            Abandoned
+        };
+
+        GroupState() = default;
+        GroupState(const GroupState&) = delete;
+        GroupState& operator=(const GroupState&) = delete;
+        ~GroupState(); ///< Returns reservesHeld x RESULT_RESERVE (group.cpp).
+
+        std::atomic<bool> committed {false}; ///< commit() runs once.
+        std::weak_ptr<ClientState> client;
+        std::weak_ptr<write::Bucket> bucket;
+        std::weak_ptr<write::WritePath> path;
+
+        std::mutex groupMutex; ///< A leaf (group.hpp); guards the members below.
+        Phase phase {Phase::Building};
+        std::vector<std::shared_ptr<write::OpState>> ops; ///< Building only.
+        std::uint64_t reservedBytes {0};                  ///< Payload + reserves of the Building ops.
+        std::uint32_t reservesHeld {0};                   ///< RESULT_RESERVEs this group still owes back.
+        std::vector<OpResult> results;                    ///< One slot per op, in add order (Committed).
+        std::size_t remaining {0};
+        std::string lastAddReason; ///< Why the last add() was refused (D42); empty after an accepted one.
     };
 
     struct PitState final

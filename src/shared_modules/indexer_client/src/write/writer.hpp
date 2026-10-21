@@ -78,7 +78,9 @@ namespace indexer_client::detail::write
         /// The single resolution path, first-wins on OpState::claimed: releases the payload once, counts the status and
         /// posts the completion to the pool (ticket completed, then the callback under a guard that releases the
         /// result reserve even if it throws; without a callback the reserve dies with the last Ticket), counted in the
-        /// client's outstandingCompletions. Returns false when the op was already resolved.
+        /// client's outstandingCompletions. An op of a group (OpState::group, I74) has neither: it goes to
+        /// resolveInGroup (group.hpp) instead, no pool task, and then drops its GroupState reference. Returns false
+        /// when the op was already resolved.
         bool resolve(const std::shared_ptr<OpState>& op, OpResult result);
 
         /// requestClose(): closes the client's buckets (ClientClosed; blocked producers wake) and resolves their
@@ -108,9 +110,10 @@ namespace indexer_client::detail::write
         std::atomic<bool> m_poolDetached {false};
     };
 
-    /// The writer bound to one bucket of one client (Client::writer). submit: encode (InvalidArgument) → reserve →
-    /// enqueue (+ Scheduler::notify) or the drop/refusal; seams::afterAdmission() sits between reserve and enqueue.
-    /// group() and cancel() stay stubs until E3c.
+    /// The writer bound to one bucket of one client (Client::writer). submit: effective conflict policy + encode
+    /// (InvalidArgument, Submit::reason) → reserve → enqueue (+ Scheduler::notify) or the drop/refusal;
+    /// seams::afterAdmission() sits between reserve and enqueue. group(): a Building group of this bucket (group.hpp,
+    /// E3c-1). cancel() stays a stub until E3c-2.
     std::shared_ptr<IWriter>
     makeWriter(std::shared_ptr<ClientState> client, std::shared_ptr<Bucket> bucket, std::shared_ptr<WritePath> path);
 

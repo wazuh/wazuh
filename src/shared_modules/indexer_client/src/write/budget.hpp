@@ -41,6 +41,13 @@ namespace indexer_client::detail::write
         std::uint64_t charge() const noexcept;
         std::uint64_t cap() const noexcept;
 
+        /// Charge held by Building groups of every bucket (E3c-1 I74): a group add that cannot fit without other
+        /// Building groups' room never waits. Also part of charge(). addBuilding never wakes (the caller wakes the
+        /// waiters with wakeWaiters(), holding no bucket mutex).
+        void addBuilding(std::uint64_t bytes) noexcept;
+        void removeBuilding(std::uint64_t bytes) noexcept;
+        std::uint64_t building() const noexcept;
+
         /// Buckets with at least one producer waiting in a Block submit. A bucket enters and leaves under its own
         /// mutex (the registry mutex is the only lock ever taken inside a bucket's, and it is a leaf); a release copies
         /// the set under the registry mutex, drops it, and then takes each bucket's mutex (alone) to notify_all: the
@@ -59,6 +66,7 @@ namespace indexer_client::detail::write
 
         const std::uint64_t m_cap;
         std::atomic<std::uint64_t> m_charge {0};
+        std::atomic<std::uint64_t> m_building {0};
         /// Size of m_waiters, readable without the registry mutex: a release with no waiter takes no lock.
         std::atomic<std::size_t> m_waiterCount {0};
         std::mutex m_waitersMutex;

@@ -698,21 +698,27 @@ TEST(TransportCoverageTest, TicketWaitsForItsCompletion)
     EXPECT_EQ(empty.wait(std::chrono::steady_clock::now() + 1s).cause, Cause::InvalidState);
 }
 
-// A group survives a move (the moved-from one is empty and refuses everything); commit is once only.
+// A group survives a move (the moved-from one is empty and refuses everything, its commit says so); commit is once
+// only. A group without a write path (gone: group.hpp, lifetime rule) refuses its adds Shutdown before looking at the
+// bucket, so its commit is the empty one: a ready success with no result.
 TEST(TransportCoverageTest, GroupMovesAndCommitsOnce)
 {
     using indexer_client::Cause;
     indexer_client::Group first(std::make_shared<indexer_client::detail::GroupState>());
     indexer_client::Group second(std::move(first));
     EXPECT_EQ(first.add(indexer_client::Op {}), Cause::InvalidState);
-    EXPECT_EQ(second.add(indexer_client::Op {}), Cause::Unavailable);
+    EXPECT_EQ(second.add(indexer_client::Op {}), Cause::Shutdown);
+    EXPECT_FALSE(second.lastAddReason().empty());
 
     indexer_client::Group third;
     third = std::move(second);
     EXPECT_EQ(second.add(indexer_client::Op {}), Cause::InvalidState);
+    EXPECT_EQ(second.commit().wait(std::chrono::steady_clock::now() + 1s).reason, "empty group handle");
     const auto committed = third.commit();
     EXPECT_TRUE(committed.ready());
-    EXPECT_EQ(committed.wait(std::chrono::steady_clock::now() + 1s).cause, Cause::Unavailable);
+    const auto empty = committed.wait(std::chrono::steady_clock::now() + 1s);
+    EXPECT_TRUE(empty.ok()) << indexer_client::toString(empty.cause);
+    EXPECT_TRUE(empty.value.empty());
     EXPECT_EQ(third.add(indexer_client::Op {}), Cause::InvalidState);
     const auto again = third.commit();
     EXPECT_EQ(again.wait(std::chrono::steady_clock::now() + 1s).cause, Cause::InvalidState);
