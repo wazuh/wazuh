@@ -32,6 +32,10 @@ namespace wazuh::container_instances
                     response.status = QueryResponse::Status::error;
                     response.errorCode = QueryResponse::ErrorCode::internal;
                     break;
+                case LookupResult::Status::wrongKeyKind:
+                    response.status = QueryResponse::Status::error;
+                    response.errorCode = QueryResponse::ErrorCode::keyKindMismatch;
+                    break;
             }
             return response;
         }
@@ -127,6 +131,13 @@ namespace wazuh::container_instances
         const auto byCgroup = m_store.lookup(HostKey {request.keyKind, request.hostKey});
         if (byCgroup.status != LookupResult::Status::miss)
         {
+            // wrongKeyKind lands here too, and must NOT fall through to the
+            // secondary keys or the cold path below: resolving a number from
+            // the wrong key space reinterprets it in this host's space, which
+            // either never settles or settles on an unrelated container. The
+            // producer and the consumer disagree about the host — a deployment
+            // fault, answered once and loudly rather than papered over per
+            // query.
             return fromLookup(byCgroup);
         }
 

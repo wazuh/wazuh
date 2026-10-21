@@ -23,7 +23,13 @@ namespace wazuh::container_instances
             miss,     ///< Nothing known for this key.
             resolved, ///< `record` is set.
             pending,  ///< Cold cache; caller re-queries later.
-            verdict   ///< `reason` is set; permanent "not a container".
+            verdict,  ///< `reason` is set; permanent "not a container".
+            /// The caller asked in a key space this host does not use. Distinct
+            /// from `miss` on purpose: a miss means "go and resolve it", and
+            /// resolving a number from the wrong space either never settles or
+            /// settles on the wrong container. Nothing here can answer the
+            /// question as asked, so the caller is told so instead.
+            wrongKeyKind
         };
 
         Status status {Status::miss};
