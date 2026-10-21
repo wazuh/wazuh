@@ -4565,3 +4565,54 @@ TEST_F(JsonBase, DeepOps_StackProbe)
 
     report(ctx.error.empty() && check(), ctx.error.empty() ? "check failed" : "operation threw: " + ctx.error);
 }
+
+TEST_F(JsonBase, GetUniqueStringRejectsRepeatedIdentitySteps)
+{
+    for (const auto text : {R"({"wazuh":{"agent":{"id":"001","id":"001"}}})",
+                            R"({"wazuh":{"agent":{"id":"001"},"agent":{"id":"002"}}})",
+                            R"({"wazuh":{"agent":{"id":"001"}},"wazuh":{"agent":{"id":"002"}}})",
+                            R"({"wazuh":{"agent":{"id":"001"}},"\u0077azuh":{"agent":{"id":"001"}}})",
+                            R"({"wazuh":{"agent":{"id":"001","\u0069d":"001"}}})"})
+    {
+        SCOPED_TRACE(text);
+        Json doc {text};
+        std::string_view out = "unchanged";
+        EXPECT_EQ(doc.getUniqueString(out, "/wazuh/agent/id"), RetGet::NotFound);
+        EXPECT_EQ(out, "unchanged");
+    }
+}
+
+TEST_F(JsonBase, GetUniqueStringUsesDecodedNamesAndLengths)
+{
+    Json doc {
+        R"({"\u0077azuh":{"agent":{"id":"001","name":1,"name":2}},"wazuh\u0000x":{},"wazuh/agent":{},"a/b":{"~":"ok"},"0":"numeric key"})"};
+    std::string_view out;
+    ASSERT_EQ(doc.getUniqueString(out, "/wazuh/agent/id"), RetGet::Success);
+    EXPECT_EQ(out, "001");
+    ASSERT_EQ(doc.getUniqueString(out, "/a~1b/~0"), RetGet::Success);
+    EXPECT_EQ(out, "ok");
+    ASSERT_EQ(doc.getUniqueString(out, "/0"), RetGet::Success);
+    EXPECT_EQ(out, "numeric key");
+    Json scalar {R"("a\u0000b")"};
+    ASSERT_EQ(scalar.getUniqueString(out, ""), RetGet::Success);
+    EXPECT_EQ(out, std::string_view("a\0b", 3));
+}
+
+TEST_F(JsonBase, GetUniqueStringRejectsWrongTypesAndMissingSteps)
+{
+    for (const auto text :
+         {R"([])", R"({"wazuh":null})", R"({"wazuh":{"agent":[]}})", R"({"wazuh":{"agent":{"id":123}}})"})
+    {
+        Json doc {text};
+        std::string_view out = "unchanged";
+        EXPECT_EQ(doc.getUniqueString(out, "/wazuh/agent/id"), RetGet::WrongType) << text;
+        EXPECT_EQ(out, "unchanged");
+    }
+    for (const auto text : {R"({})", R"({"wazuh":{}})", R"({"wazuh":{"agent":{}}})"})
+    {
+        Json doc {text};
+        std::string_view out = "unchanged";
+        EXPECT_EQ(doc.getUniqueString(out, "/wazuh/agent/id"), RetGet::NotFound) << text;
+        EXPECT_EQ(out, "unchanged");
+    }
+}

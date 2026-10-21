@@ -25,19 +25,26 @@ struct FastMetricsInit
 static FastMetricsInit fastMetricsInit_;
 } // namespace
 
-static std::string makeHeader(int agentNum)
+struct AgentHeader
+{
+    std::string id;
+    std::string json;
+};
+
+static AgentHeader makeHeader(int agentNum)
 {
     std::string id = std::to_string(agentNum);
     while (id.size() < 3)
     {
         id = "0" + id;
     }
-    return R"({"wazuh":{"agent":{"id":")" + id + R"(","name":"agent-)" + id
-           + R"(","version":"5.0.0","host":{"hostname":"host-)" + id
-           + R"(","os":{"name":"Ubuntu","platform":"linux","version":"24.04"}}}}})";
+    return {id,
+            R"({"wazuh":{"agent":{"id":")" + id + R"(","name":"agent-)" + id
+                + R"(","version":"5.0.0","host":{"hostname":"host-)" + id
+                + R"(","os":{"name":"Ubuntu","platform":"linux","version":"24.04"}}}}})"};
 }
 
-static const std::string HEADER_001 = makeHeader(1);
+static const AgentHeader HEADER_001 = makeHeader(1);
 
 // =============================================================================
 // Benchmarks
@@ -51,7 +58,7 @@ static void BM_Baseline_ParseOnly(benchmark::State& state)
 {
     for (auto _ : state)
     {
-        auto parsed = std::make_shared<const json::Json>(std::string_view(HEADER_001));
+        auto parsed = std::make_shared<const json::Json>(std::string_view(HEADER_001.json));
         benchmark::DoNotOptimize(parsed);
     }
     state.SetItemsProcessed(state.iterations());
@@ -65,11 +72,11 @@ BENCHMARK(BM_Baseline_ParseOnly);
 static void BM_GetOrParse_CacheHit(benchmark::State& state)
 {
     AgentMetadataCache cache(60s);
-    cache.getOrParse(HEADER_001); // Warm up
+    cache.getOrParse(HEADER_001.id, HEADER_001.json); // Warm up
 
     for (auto _ : state)
     {
-        auto result = cache.getOrParse(HEADER_001);
+        auto result = cache.getOrParse(HEADER_001.id, HEADER_001.json);
         benchmark::DoNotOptimize(result);
     }
     state.SetItemsProcessed(state.iterations());
@@ -89,7 +96,7 @@ static void BM_GetOrParse_CacheMiss(benchmark::State& state)
     AgentMetadataCache cache(60s);
 
     // Distinct agent id per element -> every lookup is a genuine miss (one entry per agent).
-    std::vector<std::string> headers;
+    std::vector<AgentHeader> headers;
     for (int64_t i = 0; i < state.max_iterations; ++i)
     {
         headers.push_back(makeHeader(static_cast<int>(i) + 1));
@@ -98,7 +105,8 @@ static void BM_GetOrParse_CacheMiss(benchmark::State& state)
     int64_t idx = 0;
     for (auto _ : state)
     {
-        auto result = cache.getOrParse(headers[idx++]);
+        const auto& header = headers[idx++];
+        auto result = cache.getOrParse(header.id, header.json);
         benchmark::DoNotOptimize(result);
     }
     state.SetItemsProcessed(state.iterations());
@@ -114,7 +122,7 @@ static void BM_GetOrParse_MultiAgent(benchmark::State& state)
     const int numAgents = state.range(0);
     AgentMetadataCache cache(60s);
 
-    std::vector<std::string> headers;
+    std::vector<AgentHeader> headers;
     headers.reserve(numAgents);
     for (int i = 1; i <= numAgents; ++i)
     {
@@ -124,13 +132,14 @@ static void BM_GetOrParse_MultiAgent(benchmark::State& state)
     // Warm up all entries
     for (auto& h : headers)
     {
-        cache.getOrParse(h);
+        cache.getOrParse(h.id, h.json);
     }
 
     int idx = 0;
     for (auto _ : state)
     {
-        auto result = cache.getOrParse(headers[idx % numAgents]);
+        const auto& header = headers[idx % numAgents];
+        auto result = cache.getOrParse(header.id, header.json);
         benchmark::DoNotOptimize(result);
         ++idx;
     }
@@ -145,9 +154,9 @@ BENCHMARK(BM_GetOrParse_MultiAgent)->Arg(10)->Arg(50)->Arg(100)->Arg(500);
 static void BM_GetOrParse_Concurrent(benchmark::State& state)
 {
     static AgentMetadataCache cache(60s);
-    static std::vector<std::string> headers = []()
+    static std::vector<AgentHeader> headers = []()
     {
-        std::vector<std::string> h;
+        std::vector<AgentHeader> h;
         for (int i = 1; i <= 20; ++i)
         {
             h.push_back(makeHeader(i));
@@ -163,14 +172,15 @@ static void BM_GetOrParse_Concurrent(benchmark::State& state)
         cache.clear();
         for (auto& h : headers)
         {
-            cache.getOrParse(h);
+            cache.getOrParse(h.id, h.json);
         }
     }
 
     int idx = state.thread_index();
     for (auto _ : state)
     {
-        auto result = cache.getOrParse(headers[idx % headers.size()]);
+        const auto& header = headers[idx % headers.size()];
+        auto result = cache.getOrParse(header.id, header.json);
         benchmark::DoNotOptimize(result);
         ++idx;
     }

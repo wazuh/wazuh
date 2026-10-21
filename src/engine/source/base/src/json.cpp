@@ -445,6 +445,45 @@ void Json::set(std::string_view basePtrPath, std::string_view referencePtrPath)
     }
 }
 
+RetGet Json::getUniqueString(std::string_view& out, const PointerPath& path) const noexcept
+{
+    const auto& pointer = path.getPointer();
+    const auto* value = static_cast<const rapidjson::Value*>(&m_document);
+    for (rapidjson::SizeType i = 0; i < pointer.GetTokenCount(); ++i)
+    {
+        if (!value->IsObject())
+        {
+            return RetGet::WrongType;
+        }
+        const auto& token = pointer.GetTokens()[i];
+        const std::string_view name {token.name, token.length};
+        const rapidjson::Value* found = nullptr;
+        for (auto member = value->MemberBegin(); member != value->MemberEnd(); ++member)
+        {
+            if (std::string_view(member->name.GetString(), member->name.GetStringLength()) != name)
+            {
+                continue;
+            }
+            if (found)
+            {
+                return RetGet::NotFound;
+            }
+            found = &member->value;
+        }
+        if (!found)
+        {
+            return RetGet::NotFound;
+        }
+        value = found;
+    }
+    if (!value->IsString())
+    {
+        return RetGet::WrongType;
+    }
+    out = std::string_view(value->GetString(), value->GetStringLength());
+    return RetGet::Success;
+}
+
 std::optional<int> Json::getInt(std::string_view path) const
 {
     std::optional<int> retval {std::nullopt};

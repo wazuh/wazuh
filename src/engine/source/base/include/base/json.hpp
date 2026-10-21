@@ -678,6 +678,19 @@ public:
     }
 
     /**
+     * @brief Get a string through a unique path of object members.
+     *
+     * Each decoded pointer token must match exactly one member, comparing both bytes and length.
+     * Arrays are not traversed; numeric tokens are object member names. An empty path selects the root.
+     * Off-path members are not traversed or checked for uniqueness.
+     *
+     * @return Success, NotFound (absent or repeated member), or WrongType (non-object intermediate
+     *         or non-string leaf). The output is assigned only on success.
+     * @warning The returned view is valid only while this document remains alive and unmodified.
+     */
+    RetGet getUniqueString(std::string_view& out, const PointerPath& path = ROOT_PP) const noexcept;
+
+    /**
      * @brief Get the value of the int field at the given path.
      *
      * @param path JSON pointer path to the field (default: root).

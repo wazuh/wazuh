@@ -2,7 +2,6 @@
 #ifndef _AGENTCACHE_AGENT_METADATA_CACHE_HPP
 #define _AGENTCACHE_AGENT_METADATA_CACHE_HPP
 
-#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <cstddef>
@@ -16,6 +15,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include <agentcache/canonicalAgentId.hpp>
 #include <base/json.hpp>
 #include <fastmetrics/iMetric.hpp>
 #include <fastmetrics/metric_names.hpp>
@@ -35,10 +35,9 @@ namespace agentcache
  * (json::Json::compact — small allocator, ~4 KB instead of 64 KB per header), since they
  * live for as long as the agent is active.
  *
- * Lookups are O(1): a secondary index maps the header content hash directly to its entry,
- * so the hot path never scans the map.  Hits are verified by comparing the full header
- * string (guarding against hash collisions).  Exactly one entry is kept per agent — a new
- * header for a known agent replaces the previous one.
+ * Lookups are O(1) by canonical agent ID, followed by a full header-byte comparison. A hit
+ * reuses a document already validated for that ID. Exactly one entry is kept per agent — a
+ * new valid header for a known agent replaces the previous one.
  *
  * Thread safety: multiple readers can call getOrParse() concurrently under a shared lock;
  * the per-entry last-used timestamp is a relaxed atomic so it can be refreshed without an
@@ -90,33 +89,35 @@ public:
         {
             throw std::invalid_argument("AgentMetadataCache: clock function must be valid");
         }
-        m_byAgent.reserve(CACHE_INITIAL_CAPACITY);
-        m_byHash.reserve(CACHE_INITIAL_CAPACITY);
+        m_byId.reserve(CACHE_INITIAL_CAPACITY);
     }
 
     /**
-     * @brief Look up or parse a header JSON string.
+     * @brief Look up or parse a header bound to a canonical, trusted agent ID.
      *
-     * If an entry with the same content already exists, the cached shared_ptr is returned
-     * (avoiding a new json::Json allocation).  Otherwise the header is parsed, the agent ID
-     * extracted and validated, and the entry is stored, replacing any previous header for
-     * the same agent.  The corresponding metric counter (hits/insertions/updates) is recorded.
+     * A hit requires the same ID and identical bytes. On a miss, the identity path must be unique
+     * and its string value must equal the trusted ID before anything is stored. Parsing and
+     * validation run outside the lock; admission is double-checked under the exclusive lock.
      *
-     * @param headerStr Raw JSON string of the header (e.g., the text after "H " in the NDJson batch).
-     * @return GetResult Pair of {shared pointer to the parsed header, Operation describing whether
-     *         the entry was Retrieved (hit), Inserted (new agent) or Updated (header replaced)}.
-     * @throws std::runtime_error If headerStr is not valid JSON, or if `/wazuh/agent/id`
-     *         is missing or not a string containing a positive numeric value.
+     * @param trustedAgentId Canonical identity supplied by the authenticated or local producer.
+     * @param headerStr Raw JSON after "H " in the NDJson batch.
+     * @return Parsed header and Retrieved, Inserted or Updated outcome.
+     * @throws std::runtime_error On invalid JSON, a non-canonical ID, or an absent, ambiguous,
+     *         non-string or mismatched identity in the header. Existing entries remain unchanged.
      */
-    GetResult getOrParse(std::string_view headerStr)
+    GetResult getOrParse(std::string_view trustedAgentId, std::string_view headerStr)
     {
-        const std::size_t hash = std::hash<std::string_view> {}(headerStr);
+        if (!isCanonicalAgentId(trustedAgentId))
+        {
+            throw std::runtime_error("AgentMetadataCache: trusted agent ID must be canonical");
+        }
+        const std::string agentId(trustedAgentId);
 
-        // Fast path: shared (read) lock — O(1) lookup by content hash.
+        // Fast path: only an already validated (ID, header bytes) pair can hit.
         {
             std::shared_lock lock(m_mutex);
-            auto it = m_byHash.find(hash);
-            if (it != m_byHash.end() && std::string_view(it->second->headerStr) == headerStr)
+            auto it = m_byId.find(agentId);
+            if (it != m_byId.end() && std::string_view(it->second->headerStr) == headerStr)
             {
                 it->second->lastUsed.store(nowRep(), std::memory_order_relaxed);
                 m_hitsCounter->add(1);
@@ -124,71 +125,65 @@ public:
             }
         }
 
-        // Slow path: parse JSON and extract agent ID (done outside the lock). Parsed directly
-        // into a compact document (small allocator) since the header lives as long as the agent.
         auto parsed = std::make_shared<const json::Json>(json::Json::compact(headerStr));
-
-        std::string_view agentIdSv;
-        if (parsed->getString(agentIdSv, AGENT_ID_PATH) != json::RetGet::Success)
+        std::string_view headerId;
+        if (parsed->getUniqueString(headerId, AGENT_ID_PATH) != json::RetGet::Success)
         {
-            throw std::runtime_error("AgentMetadataCache: missing or non-string /wazuh/agent/id in header");
+            throw std::runtime_error("AgentMetadataCache: missing, repeated or non-string /wazuh/agent/id in header");
+        }
+        if (headerId != trustedAgentId)
+        {
+            throw std::runtime_error("AgentMetadataCache: header agent ID does not match the trusted agent ID");
         }
 
-        if (agentIdSv.empty()
-            || !std::all_of(agentIdSv.begin(), agentIdSv.end(), [](char c) { return c >= '0' && c <= '9'; }))
+        std::unique_lock lock(m_mutex);
+        auto it = m_byId.find(agentId);
+        // Another thread may have admitted the same pair while this call parsed it.
+        if (it != m_byId.end() && std::string_view(it->second->headerStr) == headerStr)
         {
-            throw std::runtime_error("AgentMetadataCache: /wazuh/agent/id must be a non-empty positive numeric string");
+            it->second->lastUsed.store(nowRep(), std::memory_order_relaxed);
+            m_hitsCounter->add(1);
+            return {it->second->header, Operation::Retrieved};
         }
+        const bool agentExisted = it != m_byId.end();
+        auto entry = std::make_shared<CacheEntry>();
+        entry->header = std::move(parsed);
+        entry->headerStr.assign(headerStr);
+        entry->lastUsed.store(nowRep(), std::memory_order_relaxed);
+        m_byId[agentId] = entry;
 
-        std::string agentId(agentIdSv);
-
-        // Exclusive lock — insert or replace.
+        if (agentExisted)
         {
-            std::unique_lock lock(m_mutex);
-
-            // Double-check: another thread may have inserted this exact header while we parsed.
-            auto hashIt = m_byHash.find(hash);
-            if (hashIt != m_byHash.end() && std::string_view(hashIt->second->headerStr) == headerStr)
-            {
-                hashIt->second->lastUsed.store(nowRep(), std::memory_order_relaxed);
-                m_hitsCounter->add(1);
-                return {hashIt->second->header, Operation::Retrieved};
-            }
-
-            // Drop the agent's previous header (if any) from the hash index to avoid leaks.
-            // Whether an entry already existed decides Updated vs Inserted.
-            auto agentIt = m_byAgent.find(agentId);
-            const bool agentExisted = (agentIt != m_byAgent.end());
-            if (agentExisted)
-            {
-                m_byHash.erase(agentIt->second->headerHash);
-            }
-
-            auto entry = std::make_shared<CacheEntry>();
-            entry->header = std::move(parsed);
-            entry->headerHash = hash;
-            entry->headerStr.assign(headerStr);
-            entry->lastUsed.store(nowRep(), std::memory_order_relaxed);
-
-            m_byAgent[agentId] = entry;
-            m_byHash[hash] = entry;
-
-            if (agentExisted)
-            {
-                m_updatesCounter->add(1);
-            }
-            else
-            {
-                m_insertionsCounter->add(1);
-            }
-            return {entry->header, agentExisted ? Operation::Updated : Operation::Inserted};
+            m_updatesCounter->add(1);
         }
+        else
+        {
+            m_insertionsCounter->add(1);
+        }
+        return {entry->header, agentExisted ? Operation::Updated : Operation::Inserted};
+    }
+
+    /**
+     * @brief Temporary compatibility path for callers that do not yet pass the trusted ID.
+     *
+     * Derives the ID from the body, parsing even on a cache hit. Remove this overload once
+     * the ingest handler passes the producer's carrier; it is not an authentication boundary.
+     */
+    GetResult getOrParse(std::string_view headerStr)
+    {
+        const auto parsed = json::Json::compact(headerStr);
+        std::string_view id;
+        if (parsed.getUniqueString(id, AGENT_ID_PATH) != json::RetGet::Success)
+        {
+            throw std::runtime_error("AgentMetadataCache: missing, repeated or non-string /wazuh/agent/id in header");
+        }
+        return getOrParse(id, headerStr);
     }
 
     /**
      * @brief Remove entries that have not been accessed within the TTL.
      *
-     * Two-phase to minimise the time the maps are held under the exclusive lock, since reads
+     * Two-phase to minimise the time the map is held under the exclusive lock, since reads
      * (getOrParse hits) are the hot path:
      *  - Phase 1 (shared lock): scan and collect the agent IDs of stale entries. Read-only, so
      *    concurrent getOrParse hits are not blocked; only the slow (insert/replace) path waits.
@@ -211,7 +206,7 @@ public:
         std::vector<std::string> staleAgents;
         {
             std::shared_lock lock(m_mutex);
-            for (const auto& [agentId, entry] : m_byAgent)
+            for (const auto& [agentId, entry] : m_byId)
             {
                 if (isStale(*entry))
                 {
@@ -232,13 +227,12 @@ public:
             std::unique_lock lock(m_mutex);
             for (const auto& agentId : staleAgents)
             {
-                auto it = m_byAgent.find(agentId);
-                if (it == m_byAgent.end() || !isStale(*it->second))
+                auto it = m_byId.find(agentId);
+                if (it == m_byId.end() || !isStale(*it->second))
                 {
                     continue;
                 }
-                m_byHash.erase(it->second->headerHash);
-                m_byAgent.erase(it);
+                m_byId.erase(it);
                 ++evicted;
             }
         }
@@ -256,7 +250,7 @@ public:
     std::size_t size() const
     {
         std::shared_lock lock(m_mutex);
-        return m_byAgent.size();
+        return m_byId.size();
     }
 
     /**
@@ -265,29 +259,26 @@ public:
     void clear()
     {
         std::unique_lock lock(m_mutex);
-        m_byAgent.clear();
-        m_byHash.clear();
+        m_byId.clear();
     }
 
 private:
     static inline const json::PointerPath AGENT_ID_PATH {"/wazuh/agent/id"}; ///< JSON pointer path to the agent ID.
-    static constexpr std::size_t CACHE_INITIAL_CAPACITY = 1024; ///< Initial capacity for the cache's internal maps.
+    static constexpr std::size_t CACHE_INITIAL_CAPACITY = 1024; ///< Initial capacity for the cache's index.
 
     std::chrono::steady_clock::rep nowRep() const { return m_clock().time_since_epoch().count(); }
 
     struct CacheEntry
     {
-        std::shared_ptr<const json::Json> header; ///< Parsed header JSON.
-        std::size_t headerHash {0};               ///< Hash of the header string (used for O(1) lookup in m_byHash).
-        std::string headerStr;                    ///< Verified against lookups to avoid hash collisions.
+        std::shared_ptr<const json::Json> header;                 ///< Parsed header JSON.
+        std::string headerStr;                                    ///< Compared byte for byte on cache lookups.
         std::atomic<std::chrono::steady_clock::rep> lastUsed {0}; ///< Last access timestamp for eviction.
     };
 
     std::chrono::seconds m_ttl;        ///< Time-to-live for entries.
     ClockFn m_clock;                   ///< Clock used for cache entry age calculations.
-    mutable std::shared_mutex m_mutex; ///< Protects m_byAgent and m_byHash for thread-safe access.
-    std::unordered_map<std::string, std::shared_ptr<CacheEntry>> m_byAgent; ///< agentId -> entry (one per agent).
-    std::unordered_map<std::size_t, std::shared_ptr<CacheEntry>> m_byHash;  ///< content hash -> entry (O(1) lookup).
+    mutable std::shared_mutex m_mutex; ///< Protects m_byId for thread-safe access.
+    std::unordered_map<std::string, std::shared_ptr<CacheEntry>> m_byId; ///< agentId -> entry (one per agent).
 
     // Metric counters (process-wide singletons resolved from the fastmetrics manager).
     std::shared_ptr<fastmetrics::ICounter> m_hitsCounter;       ///< agent.cache.hits (Retrieved).
