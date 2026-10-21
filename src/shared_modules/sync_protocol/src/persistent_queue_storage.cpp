@@ -236,10 +236,47 @@ void PersistentQueueStorage::maybeCheckpoint()
         return;
     }
 
-    if (const auto rc = sqlite3_wal_checkpoint_v2(m_connection.db(), nullptr, SQLITE_CHECKPOINT_PASSIVE, nullptr, nullptr);
-            rc != SQLITE_OK)
+    int framesInWal = 0;
+    int framesCheckpointed = 0;
+    const auto rc = sqlite3_wal_checkpoint_v2(m_connection.db(), nullptr, SQLITE_CHECKPOINT_PASSIVE, &framesInWal, &framesCheckpointed);
+
+    if (rc == SQLITE_OK)
     {
-        m_logger(LOG_WARNING, std::string("PersistentQueueStorage: Manual WAL checkpoint failed: ") + sqlite3_errstr(rc));
+        // Frame-less commits (e.g. an empty fetch/remove) never fire onWalCommit(), so without this
+        // m_lastWalFrames would keep its stale pre-checkpoint value and re-trigger a checkpoint on
+        // every subsequent commit even though there is nothing left to back-fill.
+        m_lastWalFrames = (framesInWal > framesCheckpointed) ? (framesInWal - framesCheckpointed) : 0;
+    }
+
+    if (rc == SQLITE_OK && framesCheckpointed == framesInWal)
+    {
+        m_consecutiveCheckpointFailures = 0;
+        return;
+    }
+
+    // A failed/partial checkpoint (e.g. a long-lived reader) is retried on every subsequent commit;
+    // rate-limit the WARNING so sustained contention can't flood ossec.log.
+    ++m_consecutiveCheckpointFailures;
+
+    if (m_consecutiveCheckpointFailures == 1 || m_consecutiveCheckpointFailures % 100 == 0)
+    {
+        try
+        {
+            const std::string detail = (rc == SQLITE_OK)
+                                       ? ("backfilled " + std::to_string(framesCheckpointed) + "/" + std::to_string(framesInWal) + " frames")
+                                       : sqlite3_errstr(rc);
+            m_logger(LOG_WARNING, std::string("PersistentQueueStorage: Manual WAL checkpoint did not fully complete (") +
+                     detail + "), " + std::to_string(m_consecutiveCheckpointFailures) + " consecutive occurrence(s).");
+        }
+        // LCOV_EXCL_START
+        catch (const std::exception&)
+        {
+            // maybeCheckpoint() runs after COMMIT already succeeded (see commitAndMaybeCheckpoint()); a
+            // throwing logger must not propagate here, or callers would ROLLBACK a transaction that no
+            // longer exists, masking the original commit's success.
+        }
+
+        // LCOV_EXCL_STOP
     }
 }
 
@@ -390,6 +427,11 @@ std::vector<PersistedData> PersistentQueueStorage::fetchAndMarkForSync(size_t ma
             idsToUpdate.push_back(rowid);
             result.emplace_back(std::move(data));
         }
+
+        // Release selectStmt's read mark now: if the loop above broke early (byte budget), the
+        // statement is still mid-scan and would otherwise pin the WAL through the COMMIT below,
+        // making the checkpoint in commitAndMaybeCheckpoint() fail with SQLITE_LOCKED/SQLITE_BUSY.
+        selectStmt.reset();
 
         // SQLite has a limit on the number of parameters in a single query
         // (typically 999). To handle an unlimited number of ids, both batched

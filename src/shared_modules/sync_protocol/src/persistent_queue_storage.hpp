@@ -93,6 +93,9 @@ class PersistentQueueStorage : public IPersistentQueueStorage
 
         /// @brief Returns the WAL auto-checkpoint threshold currently configured on this connection.
         /// @return The configured threshold, in WAL pages.
+        /// @note Reports the configured override, not verified live checkpoint activity; for the
+        /// default (no-override) construction used by every caller except FIM, this accessor can't tell
+        /// whether SQLite's own auto-checkpoint is actually running (see m_walAutocheckpointPages).
         int32_t getWalAutocheckpoint() const;
 
     private:
@@ -107,10 +110,15 @@ class PersistentQueueStorage : public IPersistentQueueStorage
         /// file size, because a PASSIVE checkpoint resets the live count but never shrinks the file.
         /// When set, the constructor installs onWalCommit(), which also disables SQLite's own (here
         /// ineffective) auto-checkpoint.
+        /// @note Only callers that pass a value (FIM's usage) get this explicit checkpoint; syscollector,
+        /// SCA, and agent_info construct with std::nullopt and stay on SQLite's own auto-checkpoint.
         std::optional<int32_t> m_walAutocheckpointPages;
 
         /// @brief Runs an explicit PASSIVE checkpoint when the live WAL frame count (from
-        /// onWalCommit()) reaches m_walAutocheckpointPages. Called after every committed write transaction.
+        /// onWalCommit()) reaches m_walAutocheckpointPages. Called after every committed write
+        /// transaction, after the COMMIT has already succeeded - never throws, so a logger exception
+        /// here can't be mistaken by a caller for a failed COMMIT and trigger a ROLLBACK against a
+        /// transaction that no longer exists.
         void maybeCheckpoint();
 
         /// @brief COMMITs, then checkpoints if due. Every write path must use it: the custom WAL hook
@@ -126,8 +134,14 @@ class PersistentQueueStorage : public IPersistentQueueStorage
 
         /// @brief Live WAL frame count from the most recent commit, set by onWalCommit() and read by
         /// maybeCheckpoint(). The hook fires synchronously inside the commit that maybeCheckpoint()
-        /// follows, so both touch it on the same thread.
+        /// follows, so both touch it on the same thread. maybeCheckpoint() also updates it directly
+        /// after a checkpoint attempt, since a frame-less commit (e.g. an empty fetch/remove) never
+        /// fires onWalCommit() and would otherwise leave a stale pre-checkpoint value in place.
         int m_lastWalFrames {0};
+
+        /// @brief Consecutive maybeCheckpoint() attempts that failed to fully back-fill the WAL,
+        /// used to rate-limit the WARNING log instead of emitting one per commit under contention.
+        unsigned int m_consecutiveCheckpointFailures {0};
 
         /// @brief Logger function
         LoggerFunc m_logger;
