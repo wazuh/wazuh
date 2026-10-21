@@ -60,7 +60,12 @@ namespace wazuh::container_instances
         {
             badRequest,
             unsupportedVersion,
-            internal
+            internal,
+            /// The request stated a key kind this host does not use. A
+            /// deployment fault rather than a bad message, and named
+            /// separately so a consumer can correct itself from the refusal
+            /// instead of retrying a number that can never match.
+            keyKindMismatch
         };
 
         Status status {Status::error};

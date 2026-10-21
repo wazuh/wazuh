@@ -54,7 +54,9 @@ namespace wazuh::container_instances
             // numbers, so a mismatched one merely fails to match; reported as
             // "unknown container" it sends the caller off re-resolving
             // something that is sitting right here.
-            return {};
+            LookupResult refused;
+            refused.status = LookupResult::Status::wrongKeyKind;
+            return refused;
         }
         std::shared_lock lock(m_mutex);
         const auto it = m_byCgroup.find(key.value);
