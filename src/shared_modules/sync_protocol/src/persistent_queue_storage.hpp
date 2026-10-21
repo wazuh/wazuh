@@ -50,8 +50,8 @@ class PersistentQueueStorage : public IPersistentQueueStorage
         explicit PersistentQueueStorage(const std::string& dbPath, LoggerFunc logger, std::shared_ptr<IFileSystemWrapper> fileSystemWrapper = nullptr,
                                         std::optional<int32_t> walAutocheckpointPages = std::nullopt);
 
-        /// @brief Default destructor.
-        ~PersistentQueueStorage() override = default;
+        /// @brief Unregisters the WAL-commit hook so a late commit can't reach this destroyed object.
+        ~PersistentQueueStorage() override;
 
         /// @brief Submits a new message, applying coalescing logic.
         /// This method finds if a message with the same ID already exists
@@ -112,6 +112,10 @@ class PersistentQueueStorage : public IPersistentQueueStorage
         /// @brief Runs an explicit PASSIVE checkpoint when the live WAL frame count (from
         /// onWalCommit()) reaches m_walAutocheckpointPages. Called after every committed write transaction.
         void maybeCheckpoint();
+
+        /// @brief COMMITs, then checkpoints if due. Every write path must use it: the custom WAL hook
+        /// disables SQLite's own auto-checkpoint, so the WAL would otherwise grow unbounded.
+        void commitAndMaybeCheckpoint();
 
         /// @brief SQLite WAL-commit hook; records the live frame count in m_lastWalFrames. Never
         /// checkpoints the database itself.

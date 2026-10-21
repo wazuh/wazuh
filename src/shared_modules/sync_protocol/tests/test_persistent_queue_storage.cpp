@@ -17,6 +17,7 @@
 #include <system_error>
 #include <thread>
 #include <chrono>
+#include <random>
 
 struct QueueScenario
 {
@@ -688,7 +689,10 @@ class PersistentQueueStorageWalCheckpointTest : public ::testing::Test
 
         void SetUp() override
         {
-            dbPath = (std::filesystem::temp_directory_path() / "wazuh_persistent_queue_wal_checkpoint_test.db").string();
+            // Unique per run so concurrent invocations or stale -wal/-shm files can't collide.
+            const std::string unique = std::to_string(std::random_device{}());
+            dbPath = (std::filesystem::temp_directory_path() /
+                      ("wazuh_persistent_queue_wal_checkpoint_test_" + unique + ".db")).string();
             std::filesystem::remove(dbPath);
             std::filesystem::remove(dbPath + "-wal");
             std::filesystem::remove(dbPath + "-shm");
@@ -723,9 +727,20 @@ TEST_F(PersistentQueueStorageWalCheckpointTest, CheckpointKeepsWalBoundedUnderSu
         storage.submitOrCoalesce(PersistedData{0, id, "index1", payload, Operation::CREATE, 0});
     }
 
-    // PASSIVE never shrinks -wal, so its high-water mark settles near the threshold. 4x margin over
-    // threshold * 4096-byte page covers frame headers and the last un-checkpointed window.
-    constexpr std::uintmax_t walBoundBytes = static_cast<std::uintmax_t>(thresholdPages) * 4096U * 4U;
+    // PASSIVE never shrinks -wal, so its high-water mark settles near the threshold. Query the page
+    // size instead of assuming 4096 so the bound holds on any build; 4x margin covers frame headers
+    // and the last un-checkpointed window.
+    std::uintmax_t pageSize = 4096U;
+    {
+        SQLite3Wrapper::Connection pageSizeConn(dbPath);
+        SQLite3Wrapper::Statement pageSizeStmt(pageSizeConn, "PRAGMA page_size;");
+
+        if (pageSizeStmt.step() == SQLITE_ROW)
+        {
+            pageSize = static_cast<std::uintmax_t>(pageSizeStmt.value<int64_t>(0));
+        }
+    }
+    const std::uintmax_t walBoundBytes = static_cast<std::uintmax_t>(thresholdPages) * pageSize * 4U;
     std::error_code ec;
     const auto walBytes = std::filesystem::file_size(dbPath + "-wal", ec);
     EXPECT_FALSE(ec);

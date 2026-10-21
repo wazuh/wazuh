@@ -67,6 +67,16 @@ PersistentQueueStorage::PersistentQueueStorage(const std::string& dbPath, Logger
     // LCOV_EXCL_STOP
 }
 
+PersistentQueueStorage::~PersistentQueueStorage()
+{
+    // Unhook while m_connection is still alive (it is destroyed after this body) so a late commit
+    // can't call back into this half-destroyed object.
+    if (m_walAutocheckpointPages.has_value() && m_connection.db() != nullptr)
+    {
+        sqlite3_wal_hook(m_connection.db(), nullptr, nullptr);
+    }
+}
+
 SQLite3Wrapper::Connection PersistentQueueStorage::createOrOpenDatabase(const std::string& dbPath)
 {
     return SQLite3Wrapper::Connection(dbPath);
@@ -233,6 +243,12 @@ void PersistentQueueStorage::maybeCheckpoint()
     }
 }
 
+void PersistentQueueStorage::commitAndMaybeCheckpoint()
+{
+    m_connection.execute("COMMIT;");
+    maybeCheckpoint();
+}
+
 void PersistentQueueStorage::submitOrCoalesce(const PersistedData& newData)
 {
     m_connection.execute("BEGIN IMMEDIATE TRANSACTION;");
@@ -240,8 +256,7 @@ void PersistentQueueStorage::submitOrCoalesce(const PersistedData& newData)
     try
     {
         applyCoalesceLogic(newData);
-        m_connection.execute("COMMIT;");
-        maybeCheckpoint();
+        commitAndMaybeCheckpoint();
     }
     // LCOV_EXCL_START
     catch (const std::exception& e)
@@ -270,8 +285,7 @@ void PersistentQueueStorage::submitBatch(const std::vector<PersistedData>& batch
             applyCoalesceLogic(item);
         }
 
-        m_connection.execute("COMMIT;");
-        maybeCheckpoint();
+        commitAndMaybeCheckpoint();
     }
     // LCOV_EXCL_START
     catch (const std::exception& e)
@@ -407,7 +421,7 @@ std::vector<PersistedData> PersistentQueueStorage::fetchAndMarkForSync(size_t ma
 
         if (idsToUpdate.empty())
         {
-            m_connection.execute("COMMIT;");
+            commitAndMaybeCheckpoint();
             return result;
         }
 
@@ -435,7 +449,7 @@ std::vector<PersistedData> PersistentQueueStorage::fetchAndMarkForSync(size_t ma
             updateStmt.step();
         }
 
-        m_connection.execute("COMMIT;");
+        commitAndMaybeCheckpoint();
     }
     // LCOV_EXCL_START
     catch (const std::exception& e)
@@ -522,7 +536,7 @@ void PersistentQueueStorage::removeAllSynced()
         stmtUpdate.bind(5, static_cast<int>(SyncStatus::SYNCING_UPDATED));
         stmtUpdate.step();
 
-        m_connection.execute("COMMIT;");
+        commitAndMaybeCheckpoint();
     }
     // LCOV_EXCL_START
     catch (const std::exception& ex)
@@ -555,7 +569,7 @@ void PersistentQueueStorage::resetAllSyncing()
         stmtDelete.bind(2, static_cast<int>(CreateStatus::NEW_DELETED));
         stmtDelete.step();
 
-        m_connection.execute("COMMIT;");
+        commitAndMaybeCheckpoint();
     }
     // LCOV_EXCL_START
     catch (const std::exception& ex)
@@ -579,7 +593,7 @@ void PersistentQueueStorage::removeByIndex(const std::string& index)
         stmt.bind(1, index);
         stmt.step();
 
-        m_connection.execute("COMMIT;");
+        commitAndMaybeCheckpoint();
     }
     // LCOV_EXCL_START
     catch (const std::exception& ex)
@@ -602,7 +616,7 @@ void PersistentQueueStorage::removeAllDataContext()
         SQLite3Wrapper::Statement stmt(m_connection, query);
         stmt.step();
 
-        m_connection.execute("COMMIT;");
+        commitAndMaybeCheckpoint();
 
         if (m_logger)
         {
