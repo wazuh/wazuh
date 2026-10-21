@@ -18,7 +18,9 @@ ExternalProject_Add(
   upstream_popt
   SOURCE_DIR ${POPT_SRC}
   BINARY_DIR ${POPT_OUT}
+  # Older glibc (the CentOS 6 agent image) has __secure_getenv, which glibc >= 2.17 no longer exports: use getenv.
   CONFIGURE_COMMAND ${POPT_SRC}/configure --disable-scripts --disable-doc --enable-static --disable-shared CFLAGS=-fPIC
+                    ac_cv_func_secure_getenv=no ac_cv_func___secure_getenv=no
   BUILD_ALWAYS 1
   INSTALL_COMMAND ""
   BUILD_BYPRODUCTS ${POPT_STATIC_LIB}
