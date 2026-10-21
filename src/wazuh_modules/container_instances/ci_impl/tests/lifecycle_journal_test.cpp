@@ -168,6 +168,42 @@ TEST(LifecycleJournalTest, RemovedIsPublishedAtGraceExpiryNotAtSnapshotAbsence)
     EXPECT_EQ(1u, ListedIds(store).count("delta")) << "and it is still listed meanwhile";
 }
 
+TEST(LifecycleJournalTest, AnInodeReusedByAnotherContainerIsNotMarkedForDeletion)
+{
+    // A host key is an inode, and the kernel reuses inodes. On a host keyed by
+    // the mount namespace that happens readily: one container goes, the next
+    // one born lands on the same number.
+    //
+    // The removal is processed against whatever holds the key NOW, so without
+    // an identity check the grace mark lands on the LIVE container — which is
+    // then deleted at expiry — while the departed one is never marked and never
+    // expires, because the sweep only walks the by-key index.
+    auto store = MakeStore();
+
+    store.applySnapshot(kDocker, {MakeRecord("zeta", 77)}, {77}, Now());
+    const auto afterAdd = store.lifecycleCursor();
+
+    // "zeta" leaves and "eta" takes its inode, in the same reconcile.
+    store.applySnapshot(kDocker, {MakeRecord("eta", 77)}, {77}, Now());
+    store.applySnapshot(kDocker, {MakeRecord("eta", 77)}, {77}, Now() + REMOVAL_GRACE + std::chrono::seconds {1});
+
+    EXPECT_EQ(1u, ListedIds(store).count("eta")) << "the live container must survive its predecessor's removal";
+    EXPECT_EQ(0u, ListedIds(store).count("zeta")) << "and the departed one must still go";
+
+    const auto delta = store.lifecycleSince(afterAdd);
+    const auto removed = std::count_if(delta.events.begin(),
+                                       delta.events.end(),
+                                       [](const auto& event) { return event.kind == LifecycleKind::removed; });
+    EXPECT_EQ(1, removed) << "exactly one removal, and it is zeta's";
+    for (const auto& event : delta.events)
+    {
+        if (event.kind == LifecycleKind::removed)
+        {
+            EXPECT_EQ("zeta", event.containerId);
+        }
+    }
+}
+
 TEST(LifecycleJournalTest, AStoppedContainerIsChangedNotRemoved)
 {
     auto store = MakeStore();
