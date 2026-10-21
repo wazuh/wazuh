@@ -12,6 +12,9 @@
 
 #include "query/query.hpp"
 
+#include "query/engine.hpp"
+#include "query/pit.hpp"
+
 #include <algorithm>
 #include <atomic>
 #include <functional>
@@ -78,23 +81,12 @@ namespace indexer_client::detail::query
             return Outcome<T>::failure(other.cause, other.reason, other.httpStatus);
         }
 
-        /// What one attempt goes to: the method, the target appended to the node's host ("/<indices><route>?<qs>")
-        /// and the body, shared by every attempt (I87; E4b builds the PIT routes on the same engine).
-        struct RouteSpec final
-        {
-            HttpMethod method {HttpMethod::Post};
-            std::string target;
-            std::shared_ptr<const std::string> body;
-        };
-
-        /// The operation's classifier (queryResponse.hpp), called for a 2xx or a 404.
-        using Classifier = std::function<QueryResponse(const HttpResult&)>;
-
         /// The state of one attempt, shared with the transport callback (which may land after the engine returned).
-        /// `result` is written and read under the gate's mutex.
+        /// `result` and `abandoned` are written and read under the gate's mutex.
         struct AttemptState final
         {
             std::optional<HttpResult> result;
+            bool abandoned {false}; ///< The engine stopped waiting: the callback delivers the result as Late (E4b).
         };
 
         /// The last failure seen, for "deadline expired, last cause: ..." and RetryExhausted.
@@ -213,7 +205,8 @@ namespace indexer_client::detail::query
         }
 
         /// "/<indices><route>[?p1&p2...]"; without indices, "<route>[?...]" (route starts with '/'; E4b's PIT routes).
-        std::string target(const std::string& indices, std::string_view route, const std::vector<std::string>& params)
+        std::string
+        targetImpl(const std::string& indices, std::string_view route, const std::vector<std::string>& params)
         {
             std::string out = indices.empty() ? std::string(route) : "/" + indices + std::string(route);
             for (std::size_t i = 0; i < params.size(); ++i)
@@ -290,11 +283,12 @@ namespace indexer_client::detail::query
 
         /// The I87 loop of one page: attempts, the three clocks, the I82 verdicts and the I86 conflict budget.
         /// Reusable by E4b (PIT create, delete and search build their RouteSpec and classifier).
-        Outcome<QueryResponse> execute(const std::shared_ptr<ClientState>& client,
-                                       const QueryOptions& options,
-                                       Deadline deadline,
-                                       const RouteSpec& route,
-                                       const Classifier& classify)
+        Outcome<QueryResponse> executeImpl(const std::shared_ptr<ClientState>& client,
+                                           const QueryOptions& options,
+                                           Deadline deadline,
+                                           const RouteSpec& route,
+                                           const Classifier& classify,
+                                           const EngineHooks& hooks)
         {
             auto& gate = *client->queryGate;
             const auto& retry = options.retry;
@@ -306,6 +300,20 @@ namespace indexer_client::detail::query
             Series series;
             std::uint32_t conflicts = 0;
             LastCause last;
+            std::uint64_t attemptNo = 0;
+
+            // E4b hooks (engine.hpp): the observer sees every admitted attempt once; never called under the gate.
+            const auto notify = [&](AttemptEvent::Kind kind, const HttpResult* result)
+            {
+                if (hooks.observer)
+                {
+                    AttemptEvent event;
+                    event.kind = kind;
+                    event.attempt = attemptNo;
+                    event.result = result;
+                    hooks.observer(event);
+                }
+            };
 
             const auto expired = [&]() -> Outcome<QueryResponse>
             {
@@ -329,6 +337,13 @@ namespace indexer_client::detail::query
                 if (const auto cause = closing(*client, gate))
                 {
                     return closedOutcome(*cause);
+                }
+                if (hooks.preAttempt)
+                {
+                    if (auto abort = hooks.preAttempt())
+                    {
+                        return fail<QueryResponse>(abort->cause, std::move(abort->reason));
+                    }
                 }
                 const TimePoint start = now();
                 if (start >= limit)
@@ -374,15 +389,38 @@ namespace indexer_client::detail::query
 
                 auto attempt = std::make_shared<AttemptState>();
                 auto gateRef = client->queryGate;
-                const auto admission = transport->submit(std::move(request),
-                                                         [attempt, gateRef](HttpResult&& result)
-                                                         {
-                                                             {
-                                                                 std::lock_guard<std::mutex> lock(gateRef->mutex);
-                                                                 attempt->result = std::move(result);
-                                                             }
-                                                             gateRef->cv.notify_all();
-                                                         });
+                const std::uint64_t thisAttempt = attemptNo + 1;
+                // The observer is copied into the callback: a Late result may land after execute() returned.
+                const auto admission =
+                    transport->submit(std::move(request),
+                                      [attempt, gateRef, observer = hooks.observer, thisAttempt](HttpResult&& result)
+                                      {
+                                          bool late = false;
+                                          {
+                                              std::lock_guard<std::mutex> lock(gateRef->mutex);
+                                              if (attempt->abandoned)
+                                              {
+                                                  late = true;
+                                              }
+                                              else
+                                              {
+                                                  attempt->result = std::move(result);
+                                              }
+                                          }
+                                          if (!late)
+                                          {
+                                              gateRef->cv.notify_all();
+                                              return;
+                                          }
+                                          if (observer)
+                                          {
+                                              AttemptEvent event;
+                                              event.kind = AttemptEvent::Kind::Late;
+                                              event.attempt = thisAttempt;
+                                              event.result = &result;
+                                              observer(event);
+                                          }
+                                      });
                 transport.reset();
                 nodes.reset();
                 if (!admission.admitted)
@@ -394,6 +432,7 @@ namespace indexer_client::detail::query
                     return fail<QueryResponse>(admission.cause, "the transport refused the request");
                 }
                 g_requests.fetch_add(1, std::memory_order_relaxed);
+                attemptNo = thisAttempt;
                 if (!series.start)
                 {
                     series.start = start;
@@ -418,9 +457,14 @@ namespace indexer_client::detail::query
                     {
                         result = std::move(attempt->result);
                     }
+                    else
+                    {
+                        attempt->abandoned = true; // Its result, if any, goes to the observer as Late.
+                    }
                 }
                 if (!result)
                 {
+                    notify(AttemptEvent::Kind::Abandoned, nullptr);
                     cancelAttempt(*client, admission.id);
                     if (const auto cause = closing(*client, gate))
                     {
@@ -433,6 +477,7 @@ namespace indexer_client::detail::query
                 if (r.cause == TransportCause::Timeout && !configuredTimeout)
                 {
                     // The page's own clock fired, not the configured timeout: never node-attributable here.
+                    notify(AttemptEvent::Kind::Failed, &r);
                     return expired();
                 }
                 if (auto set = runtimeNodeSet(client->runtime, client->epoch))
@@ -442,9 +487,15 @@ namespace indexer_client::detail::query
 
                 const auto verdict = write::classifyRequest(r, 1);
                 const bool answered = r.cause == TransportCause::None;
+                std::optional<QueryResponse> classified;
                 if (answered && ((r.status >= 200 && r.status < 300) || r.status == 404))
                 {
-                    auto response = classify(r);
+                    classified = classify(r);
+                }
+                notify(answered ? AttemptEvent::Kind::Answered : AttemptEvent::Kind::Failed, &r);
+                if (classified)
+                {
+                    auto response = std::move(*classified);
                     if (response.tooLarge)
                     {
                         g_tooLarge.fetch_add(1, std::memory_order_relaxed);
@@ -670,16 +721,22 @@ namespace indexer_client::detail::query
                 }
             }
 
-            Outcome<Pit> pit(std::vector<std::string> /*indices*/,
-                             PitOptions /*pitOptions*/,
-                             const QueryOptions& /*options*/,
-                             Deadline /*deadline*/) override
+            Outcome<Pit> pit(std::vector<std::string> indices,
+                             PitOptions pitOptions,
+                             const QueryOptions& options,
+                             Deadline deadline) override
             {
-                if (testing::onRuntimeThread())
+                // pit.hpp CREATE: Reentrancy, then indices, keepAlive and the QueryOptions (InvalidArgument).
+                auto invalid = invalidIndices(indices);
+                if (!invalid && pitOptions.keepAlive <= Duration::zero())
                 {
-                    return fail<Pit>(Cause::Reentrancy, "pit() called from a runtime thread");
+                    invalid = std::string("pitOptions.keepAlive: must be > 0");
                 }
-                return fail<Pit>(Cause::Unavailable, PIT_NOT_YET);
+                if (auto refused = admit<Pit>(options, std::move(invalid), "pit()"))
+                {
+                    return *refused;
+                }
+                return createPit(m_client, std::move(indices), pitOptions, options, deadline);
             }
 
             Outcome<nlohmann::json> deleteByQuery(std::vector<std::string> indices,
@@ -814,6 +871,21 @@ namespace indexer_client::detail::query
             std::shared_ptr<ClientState> m_client;
         };
     } // namespace
+
+    std::string target(const std::string& indices, std::string_view route, const std::vector<std::string>& params)
+    {
+        return targetImpl(indices, route, params);
+    }
+
+    Outcome<QueryResponse> execute(const std::shared_ptr<ClientState>& client,
+                                   const QueryOptions& options,
+                                   Deadline deadline,
+                                   const RouteSpec& route,
+                                   const Classifier& classify,
+                                   const EngineHooks& hooks)
+    {
+        return executeImpl(client, options, deadline, route, classify, hooks);
+    }
 
     std::shared_ptr<IQuery> makeQuery(std::shared_ptr<ClientState> client)
     {

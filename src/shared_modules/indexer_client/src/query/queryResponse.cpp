@@ -182,6 +182,74 @@ namespace indexer_client::detail::query
             return {};
         }
 
+        bool isType(const nlohmann::json& node, std::string_view type)
+        {
+            if (!node.is_object())
+            {
+                return false;
+            }
+            const auto field = node.find("type");
+            return field != node.end() && field->is_string() && field->get_ref<const std::string&>() == type;
+        }
+
+        /// A `_shards.failures[]` entry naming `type` in its reason/cause, or in their caused_by.
+        bool failureHasType(const nlohmann::json& failure, std::string_view type)
+        {
+            if (!failure.is_object())
+            {
+                return false;
+            }
+            for (const char* field : {"reason", "cause"})
+            {
+                const auto node = failure.find(field);
+                if (node == failure.end() || !node->is_object())
+                {
+                    continue;
+                }
+                if (isType(*node, type))
+                {
+                    return true;
+                }
+                const auto causedBy = node->find("caused_by");
+                if (causedBy != node->end() && isType(*causedBy, type))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// error.type or any error.root_cause[].type of an error body is `type`.
+        bool errorHasType(const std::string& body, std::string_view type)
+        {
+            const auto parsed = nlohmann::json::parse(body, nullptr, false);
+            if (parsed.is_discarded() || !parsed.is_object())
+            {
+                return false;
+            }
+            const auto error = parsed.find("error");
+            if (error == parsed.end() || !error->is_object())
+            {
+                return false;
+            }
+            if (isType(*error, type))
+            {
+                return true;
+            }
+            const auto rootCause = error->find("root_cause");
+            if (rootCause != error->end() && rootCause->is_array())
+            {
+                for (const auto& cause : *rootCause)
+                {
+                    if (isType(cause, type))
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
         std::uint64_t versionConflictsOf(const nlohmann::json& body)
         {
             const auto field = body.find("version_conflicts");
@@ -329,6 +397,86 @@ namespace indexer_client::detail::query
             response.reason = std::to_string(conflicts) + " version conflicts";
         }
         return response;
+    }
+
+    QueryResponse classifyPitCreate(const HttpResult& result, std::uint64_t maxResponseBytes)
+    {
+        if (result.status == HTTP_NOT_FOUND)
+        {
+            return failNotFound(result);
+        }
+        if (!is2xx(result.status))
+        {
+            return failUnexpected(result);
+        }
+        QueryResponse response;
+        if (!parse2xx(result, maxResponseBytes, response))
+        {
+            return response;
+        }
+        const auto id = response.body.find("pit_id");
+        if (id == response.body.end() || !id->is_string() || id->get_ref<const std::string&>().empty())
+        {
+            return fail(result, Cause::ItemPermanent, boundedReason(result.status, "response without pit_id", {}));
+        }
+        return response;
+    }
+
+    QueryResponse classifyPitSearch(const HttpResult& result, std::uint64_t maxResponseBytes)
+    {
+        if (result.status == HTTP_NOT_FOUND)
+        {
+            if (errorHasType(result.body, SEARCH_CONTEXT_MISSING))
+            {
+                return fail(result, Cause::PitExpired, errorReason(result.status, result.body));
+            }
+            return failNotFound(result);
+        }
+        if (!is2xx(result.status))
+        {
+            return failUnexpected(result);
+        }
+        QueryResponse response;
+        if (!parse2xx(result, maxResponseBytes, response))
+        {
+            return response;
+        }
+        const auto shards = response.body.find("_shards");
+        if (shards == response.body.end() || !shards->is_object())
+        {
+            return response;
+        }
+        const auto failed = shards->find("failed");
+        const bool anyFailed = failed != shards->end() && failed->is_number() && failed->get<double>() > 0;
+        if (!anyFailed)
+        {
+            return response;
+        }
+        // D52: allow_partial_search_results=false should turn a shard failure into a non-2xx; a 2xx that still
+        // reports one is never a page.
+        const auto failures = shards->find("failures");
+        std::string firstType;
+        if (failures != shards->end() && failures->is_array())
+        {
+            for (const auto& failure : *failures)
+            {
+                if (failureHasType(failure, SEARCH_CONTEXT_MISSING))
+                {
+                    return fail(result,
+                                Cause::PitExpired,
+                                boundedReason(result.status, SEARCH_CONTEXT_MISSING, "partial shard failure"));
+                }
+            }
+            if (!failures->empty())
+            {
+                firstType = failureType(failures->front());
+            }
+        }
+        QueryResponse retry;
+        retry.verdict = QueryVerdict::Retry;
+        retry.httpStatus = static_cast<int>(result.status);
+        retry.reason = boundedReason(result.status, firstType.empty() ? "shard failure" : firstType, {});
+        return retry;
     }
 
     QueryResponse classifyExists(const HttpResult& result)
