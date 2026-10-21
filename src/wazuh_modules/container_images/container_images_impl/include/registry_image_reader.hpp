@@ -25,6 +25,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <set>
 #include <string>
 
 namespace containerimages
@@ -49,6 +50,14 @@ namespace containerimages
         /// from a slow registry keeps the module thread alive past the shutdown budget
         /// that every module shares, which starves the others.
         const std::atomic<bool>* stopRequested {nullptr};
+
+        /// @brief Hosts whose refused credential this scan has already warned about.
+        /// Not owned.
+        ///
+        /// Shared across the references of a scan so a refused credential is reported
+        /// once per host rather than once per reference. Without it each reference logs
+        /// the same warning.
+        std::set<std::string>* refusedCredentialHosts {nullptr};
     };
 
     /// @brief Reads an image, and the packages it contains, from a remote registry.
@@ -116,6 +125,16 @@ namespace containerimages
             /// registry has one configured and anonymously when it does not.
             bool authenticate(const std::string& challengeHeader, std::string& error);
 
+            /// @brief Answer a manifest request again without the credential the registry refused.
+            ///
+            /// Succeeds only when the registry then serves the manifest, and says so once per
+            /// scan and host. Otherwise the token is dropped and @p error keeps the credential
+            /// error it came in with.
+            bool readAnonymously(const std::string& url,
+                                 const std::string& challengeHeader,
+                                 HttpResponse& response,
+                                 std::string& error);
+
             /// @brief Fetch the manifest or index the reference points at.
             bool fetchManifest(const std::string& identifier, nlohmann::json& document, std::string& error);
 
@@ -134,6 +153,10 @@ namespace containerimages
             BlobStreamFactory m_blobStreamFactory;
             std::string m_token;
             bool m_tokenRefreshed {false};
+
+            /// @brief Set once the registry refused the configured credential at the token
+            /// request, after which this reference no longer sends it.
+            bool m_credentialRefused {false};
             std::uint64_t m_imageBytes {0};
     };
 } // namespace containerimages

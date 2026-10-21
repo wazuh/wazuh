@@ -61,7 +61,7 @@ This enables the module with default settings:
 |--------|------|---------|-------------|
 | `references` | section | empty | Container section for image sources. |
 | `references/archive` | string | empty | Path to a saved image archive or to an OCI image layout directory. This element can be repeated. |
-| `references/ref` | string | empty | Image in a remote GHCR registry, by tag or by digest. This element can be repeated. |
+| `references/ref` | string | empty | Image in a remote GHCR registry, by tag, by digest, or by both. This element can be repeated. |
 | `registry_auth` | section | empty | Container section for per-registry credentials. See [Registry Credentials](#registry-credentials). |
 | `ca_bundle` | string | detected | Path to the certificate bundle used to verify a registry. Detected at run time when unset. |
 | `references/local` | string | empty | Image in the local container engine store. Accepted and reported as unimplemented. |
@@ -112,15 +112,16 @@ wazuh-modulesd:container_images: WARNING: NOT IMPLEMENTED: the '<local>' referen
 
 ### Remote References
 
-A `<ref>` entry names an image in GitHub Container Registry, pinned either by tag or by digest:
+A `<ref>` entry names an image in GitHub Container Registry, by tag, by digest, or by both:
 
 ```xml
 <ref>ghcr.io/owner/app:1.4</ref>
 <ref>ghcr.io/owner/app</ref>
 <ref>ghcr.io/owner/app@sha256:2f3a...</ref>
+<ref>ghcr.io/owner/app:1.4@sha256:2f3a...</ref>
 ```
 
-An entry with no tag and no digest is read as `latest`, matching every other registry client.
+An entry with no tag and no digest is read as `latest`, matching every other registry client. An entry carrying both a tag and a digest is pinned by the digest: the registry is asked for that digest, and the tag is not used to select the image.
 
 Only `ghcr.io` is supported. A reference naming any other registry, or naming none at all, is reported and skipped rather than fetched from somewhere it was not asked for:
 
@@ -170,6 +171,16 @@ A registry with no entry in this block is attempted with no credential. A regist
 ```sql
 wazuh-modulesd:container_images: WARNING: Reference 'ghcr.io/owner/private:1.0' could not be resolved: the credential configured for ghcr.io is missing from the agent credential store.
 ```
+
+That reference is not retried anonymously: keys missing from the store are a configuration mistake, and an anonymous read would hide it behind an unrelated "not found" answer.
+
+A credential the registry itself refuses is handled differently. The credential is sent for every reference on its host, so a wrong or expired one would otherwise also fail the public references there. When the registry answers `401` or `403` to the token request carrying the credential, that reference is tried once more with an anonymous token. If the registry then serves it, the reference is inventoried and the module logs one warning per scan and host:
+
+```sql
+wazuh-modulesd:container_images: WARNING: The credential configured for ghcr.io (keys 'ghcr_user' and 'ghcr_token') was refused by the registry. References on ghcr.io that need no credential are being read anonymously.
+```
+
+If the anonymous attempt fails as well, as it does for a private repository, the reference is reported with the error the credential produced, for example `the token request failed: the registry answered 403`. Nothing else triggers the retry: an unreachable registry, throttling, a missing image and a platform mismatch are reported as they are. The anonymous token is used for that reference only and never for another one.
 
 No credential value is written to the log at any level, and the configuration dump reports the key names only.
 

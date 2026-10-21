@@ -118,6 +118,7 @@ namespace containerimages
 
         // Reset per scan: the ceiling bounds one scan, not the lifetime of the module.
         m_scanBytes = 0;
+        m_refusedCredentialHosts.clear();
 
         std::vector<ImageReferenceRecord> references;
 
@@ -145,7 +146,7 @@ namespace containerimages
             }
 
             auto stored {m_db->loadStored(referenceTypeName(configured.type), configured.location)};
-            const ReaderContext context {&m_config, m_credentials.get(), &m_scanBytes, &m_stopFlag};
+            const ReaderContext context {&m_config, m_credentials.get(), &m_scanBytes, &m_stopFlag, &m_refusedCredentialHosts};
             const auto reader {m_readerFactory(configured, stored ? stored->configDigest : std::string {}, context)};
 
             if (!reader)

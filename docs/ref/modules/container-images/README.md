@@ -17,7 +17,7 @@ Container Images scans configured image sources, stores what it finds in a local
 - **Digest check**: An image still reporting the configuration digest already stored is not read again, so an unchanged image costs its metadata and nothing more.
 - **Read failure handling**: A reference that cannot be read keeps the inventory an earlier scan stored for it, instead of having it reported as deleted.
 - **Archive reader**: Reads saved image archives (`docker save`) and OCI image layout directories.
-- **Registry reader**: Reads image references in GitHub Container Registry, pinned by tag or by digest, with credentials taken from the agent credential store.
+- **Registry reader**: Reads image references in GitHub Container Registry, pinned by tag, by digest, or by a tag followed by a digest, with credentials taken from the agent credential store.
 - **Streaming layer reader**: Streams layer blobs, gzip-compressed, zstd-compressed or plain, without extracting an image to disk.
 - **Package extraction**: Composes the image layers in manifest order, applies the OverlayFS deletion markers, and parses the `dpkg` and `apk` databases.
 - **Format detection**: Detects the inputs and package formats that are not implemented yet, logs them, and continues.
@@ -41,7 +41,7 @@ Container Images scans configured image sources, stores what it finds in a local
 | Saved image archive | `<archive>` | Supported | The output of `docker save`, holding either an OCI layout or the older `manifest.json` layout. |
 | OCI image layout | `<archive>` | Supported | A directory containing an OCI image layout. |
 | Container engine store | `<local>` | Not implemented | Accepted by the configuration and reported. |
-| GitHub Container Registry | `<ref>` | Supported | An image reference pinned by tag or by digest. Other registries are refused. |
+| GitHub Container Registry | `<ref>` | Supported | An image reference pinned by tag, by digest, or by a tag followed by a digest. Other registries are refused. |
 
 ## Supported Package Formats
 

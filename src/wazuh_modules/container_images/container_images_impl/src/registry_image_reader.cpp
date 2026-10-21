@@ -239,7 +239,7 @@ namespace containerimages
         std::optional<Secret> user;
         std::optional<Secret> passkey;
 
-        if (configured != nullptr && m_context.credentials != nullptr)
+        if (configured != nullptr && m_context.credentials != nullptr && !m_credentialRefused)
         {
             user = m_context.credentials->get(CREDENTIAL_FAMILY, configured->userKey);
             passkey = m_context.credentials->get(CREDENTIAL_FAMILY, configured->passkeyKey);
@@ -253,7 +253,7 @@ namespace containerimages
                 return false;
             }
         }
-        else
+        else if (!m_credentialRefused)
         {
             logDebug("No credential is configured for " + m_reference.registry +
                      ", requesting an anonymous token.");
@@ -275,6 +275,14 @@ namespace containerimages
         }};
 
         const auto exchanged {send(exchange, response, error)};
+
+        // The registry refusing the credential itself, as a 401 answer or as a 403 that
+        // ended the retries, as opposed to a transport failure or throttling. Only this
+        // is answered with an anonymous attempt, by the caller.
+        if (passkey.has_value() && ((exchanged && response.status == 401) || (!exchanged && response.status == 403)))
+        {
+            m_credentialRefused = true;
+        }
 
         if (!exchanged)
         {
@@ -306,6 +314,42 @@ namespace containerimages
         return true;
     }
 
+    bool RegistryImageReader::readAnonymously(const std::string& url,
+                                              const std::string& challengeHeader,
+                                              HttpResponse& response,
+                                              std::string& error)
+    {
+        // The error the refused credential produced is what the user can act on, so it is
+        // the one reported when the anonymous attempt does not work either.
+        const auto credentialError {error};
+        std::string anonymousError;
+
+        // authenticate() no longer sends the credential now that it was refused.
+        if (authenticate(challengeHeader, anonymousError) && request(url, true, response, anonymousError) &&
+                response.status >= 200 && response.status <= 299)
+        {
+            const auto* configured {m_context.config->credentialsFor(m_reference.registry)};
+
+            const auto firstReport {m_context.refusedCredentialHosts == nullptr ||
+                                    m_context.refusedCredentialHosts->insert(m_reference.registry).second};
+
+            if (firstReport)
+            {
+                logWarn("The credential configured for " + m_reference.registry + " (keys '" +
+                        configured->userKey + "' and '" + configured->passkeyKey +
+                        "') was refused by the registry. References on " + m_reference.registry +
+                        " that need no credential are being read anonymously.");
+            }
+
+            return true;
+        }
+
+        m_token.clear();
+        error = credentialError;
+
+        return false;
+    }
+
     bool RegistryImageReader::fetchManifest(const std::string& identifier,
                                             nlohmann::json& document,
                                             std::string& error)
@@ -322,20 +366,29 @@ namespace containerimages
 
         if (response.status == 401)
         {
-            if (!authenticate(response.header("www-authenticate"), error))
-            {
-                return false;
-            }
+            const auto challengeHeader {response.header("www-authenticate")};
 
-            if (!request(url, true, response, error))
+            if (!authenticate(challengeHeader, error))
             {
-                return false;
+                // A credential the registry refused does not stop a public reference on the
+                // same host, so it is tried once without it.
+                if (!m_credentialRefused || !readAnonymously(url, challengeHeader, response, error))
+                {
+                    return false;
+                }
             }
-
-            if (response.status == 401)
+            else
             {
-                error = "the registry rejected the credential";
-                return false;
+                if (!request(url, true, response, error))
+                {
+                    return false;
+                }
+
+                if (response.status == 401)
+                {
+                    error = "the registry rejected the credential";
+                    return false;
+                }
             }
         }
 
