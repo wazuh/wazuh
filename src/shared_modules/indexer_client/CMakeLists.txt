@@ -41,7 +41,9 @@ set(INDEXER_CLIENT_SOURCES
     src/write/writer.cpp
     src/write/response.cpp
     src/write/sender.cpp
-    src/write/group.cpp)
+    src/write/group.cpp
+    src/query/query.cpp
+    src/query/queryResponse.cpp)
 
 # Two compilations of the same sources (I45b): the production objects behind the .so carry no test seam; the
 # testing objects (INDEXER_CLIENT_TESTING + src/testing/) build a static library that only the component suite links,

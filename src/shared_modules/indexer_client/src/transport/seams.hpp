@@ -42,6 +42,8 @@ namespace indexer_client::detail::seams
     void beforeSenderMirror();
     /// E3c-2: in the bulk sender's pool task, before it drops the cancelled ops and assembles the body.
     void beforeAssembly();
+    /// E4a: replaces the DBQ/UBQ conflict-retry base (I86) in milliseconds; nullopt keeps CONFLICT_BASE.
+    std::optional<std::int64_t> queryConflictBaseMs();
 #else
     // always_inline: even at -O0 no out-of-line copy is emitted, so the .so carries no seams:: symbol (VisibilityTest).
     [[gnu::always_inline]] inline void afterAdmissionCheck() {}
@@ -66,6 +68,10 @@ namespace indexer_client::detail::seams
     [[gnu::always_inline]] inline void beforeCompletion() {}
     [[gnu::always_inline]] inline void beforeSenderMirror() {}
     [[gnu::always_inline]] inline void beforeAssembly() {}
+    [[gnu::always_inline]] inline std::optional<std::int64_t> queryConflictBaseMs()
+    {
+        return std::nullopt;
+    }
 #endif
 } // namespace indexer_client::detail::seams
 

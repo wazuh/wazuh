@@ -14,45 +14,16 @@
 
 #include <algorithm>
 #include <chrono>
-#include <random>
 #include <unordered_set>
 #include <utility>
 
 #include "indexer_client/runtime.hpp"
+#include "runtime/backoff.hpp"
 #include "runtime/runtimeInternal.hpp"
 #include "write/budget.hpp"
 
 namespace indexer_client::detail::write
 {
-    namespace
-    {
-        /// Uniform in [-1, 1], one draw per requeue (the ops of one batch keep travelling together).
-        double jitterDraw()
-        {
-            thread_local std::mt19937_64 engine {std::random_device {}()};
-            return std::uniform_real_distribution<double>(-1.0, 1.0)(engine);
-        }
-
-        /// I66: d = min(cap, base * 2^(attempts - 1)) with the exponent bounded (d = cap as soon as doubling reaches
-        /// it, so an unlimited policy never overflows), then d * (1 + jitter * u), clamped to [0, cap].
-        Duration backoffDelay(const RetryPolicy& retry, std::uint32_t attempts, double u)
-        {
-            using Rep = Duration::rep;
-            const Rep cap = std::max<Rep>(retry.cap.count(), 0);
-            Rep d = std::min<Rep>(std::max<Rep>(retry.base.count(), 0), cap);
-            for (std::uint32_t k = 1; k < attempts && d < cap; ++k)
-            {
-                d = d > cap / 2 ? cap : d * 2;
-            }
-            const double scaled = static_cast<double>(d) * (1.0 + retry.jitter * u);
-            if (!(scaled > 0.0)) // Also NaN.
-            {
-                return Duration::zero();
-            }
-            return scaled >= static_cast<double>(cap) ? Duration {cap} : Duration {static_cast<Rep>(scaled)};
-        }
-    } // namespace
-
     std::uint64_t orderedKeyHash(std::string_view index, std::string_view id) noexcept
     {
         constexpr std::uint64_t OFFSET = 14695981039346656037ULL;

@@ -291,6 +291,8 @@ namespace indexer_client
             /// The write path (E3a, I62/I63) with the bulk sender (E3b-2): created after the prober and started before
             /// it; stopped first in stopAndJoin, right after the admission closes and before the probe.
             std::shared_ptr<write::WritePath> writePath;
+            /// E4a (I87): the gate every query of this runtime waits on; stopAndJoin() wakes it first.
+            std::shared_ptr<QueryGate> queryGate = std::make_shared<QueryGate>();
 
             bool sameEpoch(std::uint64_t other) const
             {
@@ -312,6 +314,13 @@ namespace indexer_client
                     accepting = false;
                     deadline = shutdownDeadline;
                 }
+                {
+                    // Queries waiting for a backoff or a node return Shutdown; one waiting for its result is resolved
+                    // by transport->stop() below.
+                    std::lock_guard<std::mutex> gate(queryGate->mutex);
+                    queryGate->stopping = true;
+                }
+                queryGate->cv.notify_all();
                 if (writePath)
                 {
                     writePath->stop();
@@ -529,6 +538,10 @@ namespace indexer_client
         clientState->consumer = std::string(consumer);
         clientState->buckets = std::move(buckets);
         clientState->drain = state->config.drain;
+        clientState->queryGate = state->queryGate;
+        clientState->requestTimeout = state->config.requestTimeout;
+        clientState->probeInterval = state->config.probeInterval;
+        clientState->maxResponseBytes = state->config.maxResponseBytes;
         {
             std::lock_guard<std::mutex> lock(state->mutex);
             if (!state->accepting)
@@ -869,6 +882,12 @@ namespace indexer_client
         {
             auto state = runtime.lock();
             return (state && state->sameEpoch(epoch)) ? state->nodes : nullptr;
+        }
+
+        std::shared_ptr<Transport> runtimeTransport(const std::weak_ptr<RuntimeState>& runtime, std::uint64_t epoch)
+        {
+            auto state = runtime.lock();
+            return (state && state->sameEpoch(epoch)) ? state->transport : nullptr;
         }
     } // namespace detail
 
