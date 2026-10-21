@@ -38,6 +38,8 @@ namespace indexer_client::testing_hooks
     void setRefuseSubmit(std::function<bool()> hook);
     /// G-diff E3b-2: runs in every bulk completion after the slot was released; a throw exercises its fallback.
     void setBeforeCompletion(std::function<void()> hook);
+    /// E3c-2: runs in the bulk sender's pool task before the cancelled ops are dropped and the body assembled.
+    void setBeforeAssembly(std::function<void()> hook);
     /// G-diff E3b-2: runs in the bulk sender's NodeSet hook before the Down mirror is refreshed; blocking delays it.
     void setBeforeSenderMirror(std::function<void()> hook);
     /// E3b-1: capacity of the calling thread's bulk-response parser (0 before its first use); I65 caps it at 4 MiB.

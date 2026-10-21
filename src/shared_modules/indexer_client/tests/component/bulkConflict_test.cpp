@@ -259,8 +259,8 @@ TEST_F(BulkTest, BucketRetryOnWire)
     expectInvariants(stats("b"));
 }
 
-// CA-9: ConflictPolicy::Retry in a BucketSpec registers (1 and MAX_RETRY_ON_CONFLICT) and its writer accepts ops;
-// 101 and `ordered = true` are still refused (E3c-2), naming the field.
+// CA-9: ConflictPolicy::Retry in a BucketSpec registers (1 and MAX_RETRY_ON_CONFLICT) and its writer accepts ops; 101
+// is refused, naming the field. Since E3c-2 an ordered bucket with Retry registers too and writes.
 TEST_F(BulkTest, BucketRetryPolicyRegisters)
 {
     const auto a = startNode();
@@ -278,14 +278,19 @@ TEST_F(BulkTest, BucketRetryPolicyRegisters)
     auto above = m_ref.client("above", {fastBucket("b", 1, 5, retryPolicy(wr::MAX_RETRY_ON_CONFLICT + 1))});
     EXPECT_EQ(above.cause, ic::Cause::InvalidArgument);
     EXPECT_THAT(above.reason, HasSubstr("onConflict.retryOnConflict must be <= 100")) << above.reason;
+    EXPECT_EQ(m_ref.snapshot().clients, 1u) << "the refused client took no consumer name";
+    // E3c-2: an ordered bucket with Retry registers too, and its op ends Ok.
     auto orderedSpec = fastBucket("b", 1, 5, retryPolicy(4));
     orderedSpec.ordered = true;
     auto ordered = m_ref.client("ordered", {orderedSpec});
-    EXPECT_EQ(ordered.cause, ic::Cause::InvalidArgument);
-    EXPECT_THAT(ordered.reason, HasSubstr("ordered = true is not implemented yet (E3c-2)")) << ordered.reason;
-    EXPECT_EQ(m_ref.snapshot().clients, 1u) << "the refused clients took no consumer name";
+    ASSERT_TRUE(ordered.ok()) << ic::toString(ordered.cause) << ": " << ordered.reason;
+    ASSERT_TRUE(ordered.value->writer("b")->submit(versionedOp(id(2)), results->callback(2)).accepted);
+    ASSERT_TRUE(results->waitTotal(3));
+    EXPECT_EQ(results->countWith(ic::Status::Ok, ic::Cause::None), 3u);
+    EXPECT_EQ(m_ref.snapshot().clients, 2u);
     expectInvariants(stats("one"));
     expectInvariants(stats("hundred"));
+    expectInvariants(stats("b", "ordered"));
 }
 
 // CA-28: the fake receives the frozen ReplacePreserving vectors (one batch, in submit order) and each op gets its
