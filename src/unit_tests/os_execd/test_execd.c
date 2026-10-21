@@ -37,7 +37,7 @@ extern int test_mode;
 extern OSList *timeout_list;
 extern OSHash *repeated_hash;
 extern time_t repeated_last_purge;
-extern int repeated_full_warned;
+extern time_t repeated_last_full_warn;
 
 void ExecdStart(int q);
 void RepeatedOffendersInit();
@@ -1368,25 +1368,132 @@ static void test_RepeatedOffendersCheck_full(void **state) {
     assert_int_equal(RepeatedOffendersCheck("block-ip-10.0.0.1", 30, now), 30);
     fill_repeated_hash(REPEATED_OFFENDERS_MAX - 1, now + 30);
 
-    // New keys are not tracked, and the warning is logged once
+    // New keys are not tracked, and the warning is logged once per purge interval
     snprintf(warn_msg, sizeof(warn_msg), AR_REPEATED_FULL, REPEATED_OFFENDERS_MAX);
     expect_string(__wrap__mwarn, formatted_msg, warn_msg);
     assert_int_equal(RepeatedOffendersCheck("block-ip-10.0.0.2", 30, now + 1), 30);
     assert_int_equal(RepeatedOffendersCheck("block-ip-10.0.0.3", 30, now + 2), 30);
     assert_null(OSHash_Get(repeated_hash, "block-ip-10.0.0.2"));
     assert_int_equal(repeated_hash->elements, REPEATED_OFFENDERS_MAX);
+    assert_int_equal(repeated_last_full_warn, now + 1);
 
     // Known offenders still escalate
     expect_string(__wrap__mdebug1, formatted_msg, "Repeated offender. Setting timeout to '60s'");
     assert_int_equal(RepeatedOffendersCheck("block-ip-10.0.0.1", 30, now + 3), 60);
 
+    expect_string(__wrap__mwarn, formatted_msg, warn_msg);
+    assert_int_equal(RepeatedOffendersCheck("block-ip-10.0.0.3", 30, now + 1 + REPEATED_OFFENDERS_PURGE), 30);
+    assert_int_equal(repeated_last_full_warn, now + 1 + REPEATED_OFFENDERS_PURGE);
+
     // Once the filler expires, new keys are tracked again
     RepeatedOffendersPurge(now + 30 + 601);
     assert_int_equal(repeated_hash->elements, 1);
-    assert_int_equal(repeated_full_warned, 0);
 
     assert_int_equal(RepeatedOffendersCheck("block-ip-10.0.0.2", 30, now + 30 + 602), 30);
     assert_int_equal(repeated_hash->elements, 2);
+}
+
+static void test_RepeatedOffendersCheck_full_purges_first(void **state) {
+    time_t now = 1000;
+
+    assert_int_equal(RepeatedOffendersCheck("block-ip-10.0.0.1", 30, now), 30);
+    fill_repeated_hash(REPEATED_OFFENDERS_MAX - 1, 0);
+
+    // A full table is purged before the purge interval, at most once per second
+    assert_int_equal(RepeatedOffendersCheck("block-ip-10.0.0.2", 30, now + 1), 30);
+    assert_int_equal(repeated_last_purge, now + 1);
+    assert_int_equal(repeated_hash->elements, 2);
+    assert_non_null(OSHash_Get(repeated_hash, "block-ip-10.0.0.2"));
+}
+
+static void test_RepeatedOffendersCheck_clock_backwards(void **state) {
+    time_t now = 1000;
+
+    assert_int_equal(RepeatedOffendersCheck("block-ip-10.0.0.1", 30, now), 30);
+    fill_repeated_hash(5, 0);
+
+    // A check earlier than the last purge purges again
+    assert_int_equal(RepeatedOffendersCheck("block-ip-10.0.0.2", 30, now - 100), 30);
+    assert_int_equal(repeated_last_purge, now - 100);
+    assert_int_equal(repeated_hash->elements, 2);
+}
+
+static int test_setup_repeated_run(void **state) {
+    test_setup_file(state);
+    return test_setup_repeated(state);
+}
+
+static int test_teardown_repeated_run(void **state) {
+    test_teardown_repeated(state);
+    return test_teardown_file(state);
+}
+
+/* Expect the start of a stateful active response for 10.0.0.1 */
+static void expect_repeated_ar_start(wfd_t *wfd, time_t now, int base_timeout) {
+    will_return(__wrap_time, now);
+
+    expect_string(__wrap_GetCommandbyName, name, "test-block5");
+    will_return(__wrap_GetCommandbyName, base_timeout);
+    will_return(__wrap_GetCommandbyName, "active-response/bin/test-block.sh");
+
+    expect_any(__wrap__mdebug1, formatted_msg);
+    will_return(__wrap_wpopenv, wfd);
+
+    expect_value(__wrap_fprintf, __stream, wfd->file_in);
+    expect_any(__wrap_fprintf, formatted_msg);
+    will_return(__wrap_fprintf, 0);
+
+    expect_value(__wrap_fgets, __stream, wfd->file_out);
+    will_return(__wrap_fgets, "{\"version\":1,\"origin\":{\"name\":\"test-block\",\"module\":\"active-response\"},"
+                              "\"command\":\"check_keys\",\"parameters\":{\"keys\":[\"10.0.0.1\"]}}");
+}
+
+/* Expect the continue/abort message sent to the script */
+static void expect_repeated_ar_end(wfd_t *wfd) {
+    expect_value(__wrap_fprintf, __stream, wfd->file_in);
+    expect_any(__wrap_fprintf, formatted_msg);
+    will_return(__wrap_fprintf, 0);
+    will_return(__wrap_wpclose, 0);
+}
+
+static void test_ExecdRun_repeated_offender(void **state) {
+    wfd_t *wfd = *state;
+    time_t now = 123456789;
+    int childcount = 0;
+    char message[OS_SIZE_1024];
+    const char *json = "{\"version\":1,\"origin\":{\"name\":\"node01\",\"module\":\"wazuh-analysisd\"},"
+                       "\"command\":\"test-block5\",\"parameters\":{\"extra_args\":[],"
+                       "\"alert\":{\"data\":{\"srcip\":\"10.0.0.1\"}}}}";
+
+    // First offense: base timeout
+    expect_repeated_ar_start(wfd, now, 5);
+    expect_any(__wrap__mdebug1, formatted_msg);
+    expect_repeated_ar_end(wfd);
+
+    snprintf(message, sizeof(message), "%s", json);
+    ExecdRun(message, &childcount);
+
+    timeout_data *entry = (timeout_data *)OSList_GetFirstNode(timeout_list)->data;
+    assert_string_equal(entry->rkey, "test-block.sh-10.0.0.1");
+    assert_int_equal(entry->time_to_block, 5);
+
+    // Second offense while blocked: the existing timeout entry gets the escalated timeout
+    expect_repeated_ar_start(wfd, now + 2, 5);
+    expect_string(__wrap__mdebug1, formatted_msg, "Repeated offender. Setting timeout to '60s'");
+    expect_string(__wrap__mdebug1, formatted_msg, "Command already received, updating time of addition to now.");
+    expect_repeated_ar_end(wfd);
+
+    snprintf(message, sizeof(message), "%s", json);
+    ExecdRun(message, &childcount);
+
+    assert_int_equal(timeout_list->currently_size, 1);
+    assert_int_equal(entry->time_of_addition, now + 2);
+    assert_int_equal(entry->time_to_block, 60);
+
+    repeated_offender *offender = OSHash_Get(repeated_hash, "test-block.sh-10.0.0.1");
+    assert_non_null(offender);
+    assert_int_equal(offender->count, 1);
+    assert_int_equal(offender->release_at, now + 2 + 60);
 }
 
 int main(void) {
@@ -1398,6 +1505,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_RepeatedOffendersPurge_keeps_active_block, test_setup_repeated, test_teardown_repeated),
         cmocka_unit_test_setup_teardown(test_RepeatedOffendersCheck_purge_interval, test_setup_repeated, test_teardown_repeated),
         cmocka_unit_test_setup_teardown(test_RepeatedOffendersCheck_full, test_setup_repeated, test_teardown_repeated),
+        cmocka_unit_test_setup_teardown(test_RepeatedOffendersCheck_full_purges_first, test_setup_repeated, test_teardown_repeated),
+        cmocka_unit_test_setup_teardown(test_RepeatedOffendersCheck_clock_backwards, test_setup_repeated, test_teardown_repeated),
+        cmocka_unit_test_setup_teardown(test_ExecdRun_repeated_offender, test_setup_repeated_run, test_teardown_repeated_run),
         cmocka_unit_test_setup_teardown(test_ExecdStart_ok, test_setup_file, test_teardown_file),
         cmocka_unit_test_setup_teardown(test_ExecdStart_timeout_not_repeated, test_setup_file_timeout, test_teardown_file),
         cmocka_unit_test_setup_teardown(test_ExecdStart_timeout_repeated, test_setup_file_timeout, test_teardown_file),

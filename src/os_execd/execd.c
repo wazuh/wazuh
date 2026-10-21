@@ -30,8 +30,10 @@ time_t pending_upg = 0;
 STATIC OSList *timeout_list;
 STATIC OSListNode *timeout_node;
 STATIC OSHash *repeated_hash;
+STATIC int repeated_levels;
+STATIC time_t repeated_window;
 STATIC time_t repeated_last_purge;
-STATIC int repeated_full_warned;
+STATIC time_t repeated_last_full_warn;
 
 #ifdef WIN32
 #ifdef WAZUH_UNIT_TESTING
@@ -95,11 +97,21 @@ void FreeTimeoutList() {
 STATIC void RepeatedOffendersInit()
 {
     repeated_hash = NULL;
+    repeated_levels = 0;
+    repeated_window = 0;
     repeated_last_purge = 0;
-    repeated_full_warned = 0;
+    repeated_last_full_warn = 0;
 
     if (repeated_offenders_timeout[0] == 0) {
         return;
+    }
+
+    for (; repeated_offenders_timeout[repeated_levels] != 0; repeated_levels++) {
+        time_t level = (time_t)repeated_offenders_timeout[repeated_levels] * 60;
+
+        if (level > repeated_window) {
+            repeated_window = level;
+        }
     }
 
     if (repeated_hash = OSHash_Create(), !repeated_hash) {
@@ -109,34 +121,27 @@ STATIC void RepeatedOffendersInit()
     if (!OSHash_setSize(repeated_hash, REPEATED_OFFENDERS_ROWS)) {
         merror_exit(MEM_ERROR, errno, strerror(errno));
     }
+
+    // OSHash_setSize() resets the seed to fixed values
+    repeated_hash->initial_seed = os_getprime((unsigned)os_random() % repeated_hash->rows);
+    repeated_hash->constant = os_getprime((unsigned)os_random() % repeated_hash->rows);
 }
 
 /* Forget the keys whose last block ended longer ago than the largest repeated timeout */
 STATIC void RepeatedOffendersPurge(time_t curr_time)
 {
-    time_t window = 0;
     unsigned int row;
     OSHashNode *node;
     OSHashNode *next;
-
-    for (int i = 0; repeated_offenders_timeout[i] != 0; i++) {
-        if ((time_t)repeated_offenders_timeout[i] * 60 > window) {
-            window = (time_t)repeated_offenders_timeout[i] * 60;
-        }
-    }
 
     for (node = OSHash_Begin(repeated_hash, &row); node; node = next) {
         repeated_offender *offender = (repeated_offender *)node->data;
 
         next = OSHash_Next(repeated_hash, &row, node);
 
-        if (curr_time - offender->release_at > window) {
+        if (curr_time - offender->release_at > repeated_window) {
             free(OSHash_Delete(repeated_hash, node->key));
         }
-    }
-
-    if (repeated_hash->elements < REPEATED_OFFENDERS_MAX) {
-        repeated_full_warned = 0;
     }
 
     repeated_last_purge = curr_time;
@@ -147,19 +152,15 @@ STATIC int RepeatedOffendersCheck(const char *rkey, int timeout_value, time_t cu
 {
     repeated_offender *offender;
 
-    if (curr_time - repeated_last_purge >= REPEATED_OFFENDERS_PURGE) {
+    // Purge every interval, after a backward clock step, and at most once a second while full
+    if (curr_time - repeated_last_purge >= REPEATED_OFFENDERS_PURGE || curr_time < repeated_last_purge ||
+        (repeated_hash->elements >= REPEATED_OFFENDERS_MAX && curr_time != repeated_last_purge)) {
         RepeatedOffendersPurge(curr_time);
     }
 
     if (offender = (repeated_offender *)OSHash_Get(repeated_hash, rkey), offender) {
-        int levels = 0;
-
-        while (repeated_offenders_timeout[levels] != 0) {
-            levels++;
-        }
-
-        if (offender->count >= levels) {
-            timeout_value = repeated_offenders_timeout[levels - 1] * 60;
+        if (offender->count >= repeated_levels) {
+            timeout_value = repeated_offenders_timeout[repeated_levels - 1] * 60;
         } else {
             timeout_value = repeated_offenders_timeout[offender->count] * 60;
             offender->count++;
@@ -168,9 +169,10 @@ STATIC int RepeatedOffendersCheck(const char *rkey, int timeout_value, time_t cu
         mdebug1("Repeated offender. Setting timeout to '%ds'", timeout_value);
     } else {
         if (repeated_hash->elements >= REPEATED_OFFENDERS_MAX) {
-            if (!repeated_full_warned) {
+            // Repeat the warning at most once per purge interval while the table stays full
+            if (curr_time - repeated_last_full_warn >= REPEATED_OFFENDERS_PURGE || curr_time < repeated_last_full_warn) {
                 mwarn(AR_REPEATED_FULL, REPEATED_OFFENDERS_MAX);
-                repeated_full_warned = 1;
+                repeated_last_full_warn = curr_time;
             }
             return timeout_value;
         }
