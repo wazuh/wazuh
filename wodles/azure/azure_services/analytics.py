@@ -30,6 +30,7 @@ from db.utils import (
     create_new_row,
     datetime_key,
     get_ingestion_cursor,
+    lower_max_processed_date,
     update_ingestion_cursor,
     update_row_object,
 )
@@ -248,8 +249,8 @@ def get_log_analytics_events(
             else:
                 ingestion_times = pop_column(columns, rows, INGESTION_TIME_COLUMN)
                 if ingestion_times and not any(ingestion_times):
-                    logging.warning(f'Log Analytics: The results of the query "{query}" have no ingestion time, so it '
-                                    f'keeps filtering by TimeGenerated and can miss the records ingested after a run.')
+                    logging.debug(f'Log Analytics: The results of the query "{query}" have no ingestion time, so it '
+                                  f'keeps filtering by TimeGenerated and can miss the records ingested after a run.')
                 query_times = pop_column(columns, rows, QUERY_TIME_COLUMN)
                 time_position = get_time_position(columns)
                 if time_position is not None:
@@ -267,6 +268,10 @@ def get_log_analytics_events(
                         new_max=newest,
                         query=query,
                     )
+                    # A newest date stored ahead of the query time, as previous versions could, would keep the queries
+                    # without an ingestion time from collecting anything until then
+                    if query_times:
+                        lower_max_processed_date(orm.LogAnalytics, md5_hash, query_times[0])
                     # Stored after the events are sent: a failure in between resends them instead of losing them
                     update_ingestion_cursor(md5_hash, ingestion_times, times)
                 else:

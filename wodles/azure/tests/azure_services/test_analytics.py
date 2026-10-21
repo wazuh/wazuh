@@ -299,11 +299,12 @@ def test_get_log_analytics_events(
         mock_update_ingestion.assert_called_once_with('', [], [row[time_position] for row in rows])
 
 
+@patch('azure_services.analytics.lower_max_processed_date')
 @patch('azure_services.analytics.update_ingestion_cursor')
 @patch('azure_services.analytics.update_row_object')
 @patch('azure_services.analytics.iter_log_analytics_events')
 @patch('azure_services.analytics.get')
-def test_get_log_analytics_events_ingestion_time(mock_get, mock_iter, mock_update, mock_update_ingestion):
+def test_get_log_analytics_events_ingestion_time(mock_get, mock_iter, mock_update, mock_update_ingestion, mock_lower):
     """Test get_log_analytics_events removes the columns added by the module from the events and stores the ingestion
     times, and stores the oldest and newest TimeGenerated whatever their order in the results."""
     columns = [
@@ -339,25 +340,26 @@ def test_get_log_analytics_events_ingestion_time(mock_get, mock_iter, mock_updat
         ['2022-06-15T11:40:00Z', '2022-06-15T12:00:00.1234567Z', '2022-06-15T12:00:00.1234567Z'],
         ['2022-06-15T11:30:00Z', '2022-06-15T11:00:00Z', '2022-06-15T11:00:00.5Z'],
     )
+    mock_lower.assert_called_once_with(orm.LogAnalytics, 'md5', QUERY_TIME)
 
 
 @pytest.mark.parametrize(
-    'ingestion_times, warned',
+    'ingestion_times, logged',
     [
         ([None, None], True),
         (['2022-06-15T12:00:00Z', None], False),
         (['2022-06-15T12:00:00Z', '2022-06-15T12:30:00Z'], False),
     ],
 )
-@patch('azure_utils.logging.warning')
+@patch('azure_utils.logging.debug')
 @patch('azure_services.analytics.update_ingestion_cursor')
 @patch('azure_services.analytics.update_row_object')
 @patch('azure_services.analytics.iter_log_analytics_events')
 @patch('azure_services.analytics.get')
 def test_get_log_analytics_events_no_ingestion_time(
-    mock_get, mock_iter, mock_update, mock_update_ingestion, mock_warning, ingestion_times, warned
+    mock_get, mock_iter, mock_update, mock_update_ingestion, mock_debug, ingestion_times, logged
 ):
-    """Test get_log_analytics_events warns when no record of the results has an ingestion time."""
+    """Test get_log_analytics_events logs when no record of the results has an ingestion time."""
     columns = [{'name': 'TimeGenerated'}, {'name': INGESTION_TIME_COLUMN}]
     rows = [['2022-06-15T11:00:00Z', ingestion_times[0]], ['2022-06-15T11:30:00Z', ingestion_times[1]]]
     mock_get.return_value = MagicMock(
@@ -365,7 +367,7 @@ def test_get_log_analytics_events_no_ingestion_time(
     )
     get_log_analytics_events(url='url', body='body', headers='headers', md5_hash='md5', query='q', tag='', tenant='')
 
-    assert mock_warning.called == warned
+    assert any('have no ingestion time' in str(c) for c in mock_debug.call_args_list) == logged
     mock_update.assert_called_once()
 
 
@@ -379,14 +381,16 @@ def test_get_log_analytics_events_no_ingestion_time(
         (['2022-06-15T11:00:00Z', '2022-06-16T11:00:00Z'], None, '2022-06-16T11:00:00Z'),
     ],
 )
+@patch('azure_services.analytics.lower_max_processed_date')
 @patch('azure_services.analytics.update_ingestion_cursor')
 @patch('azure_services.analytics.update_row_object')
 @patch('azure_services.analytics.iter_log_analytics_events')
 @patch('azure_services.analytics.get')
 def test_get_log_analytics_events_query_time(
-    mock_get, mock_iter, mock_update, mock_update_ingestion, times, query_time, expected_max
+    mock_get, mock_iter, mock_update, mock_update_ingestion, mock_lower, times, query_time, expected_max
 ):
-    """Test get_log_analytics_events doesn't store a TimeGenerated later than the time the query ran."""
+    """Test get_log_analytics_events doesn't store a TimeGenerated later than the time the query ran, and lowers a
+    stored one to it."""
     columns = [{'name': 'TimeGenerated'}] + ([{'name': QUERY_TIME_COLUMN}] if query_time else [])
     rows = [[time] + ([query_time] if query_time else []) for time in times]
     mock_get.return_value = MagicMock(
@@ -398,6 +402,10 @@ def test_get_log_analytics_events_query_time(
         table=orm.LogAnalytics, md5_hash='md5', new_min='2022-06-15T11:00:00Z', new_max=expected_max, query='q'
     )
     mock_update_ingestion.assert_called_once_with('md5', [], times)
+    if query_time:
+        mock_lower.assert_called_once_with(orm.LogAnalytics, 'md5', query_time)
+    else:
+        mock_lower.assert_not_called()
 
 
 @pytest.mark.parametrize(

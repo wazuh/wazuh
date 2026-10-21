@@ -20,6 +20,7 @@ from db.utils import (
     create_new_row,
     get_ingestion_cursor,
     get_processed_bytes,
+    lower_max_processed_date,
     remove_stale_offsets,
     save_processed_bytes,
     update_ingestion_cursor,
@@ -232,5 +233,44 @@ def test_ingestion_cursor_functions_ko(mock_get, mock_set, mock_logging, functio
     """Test the ingestion cursor functions handle ORM errors as expected."""
     with pytest.raises(SystemExit) as err:
         function(*args)
+    assert err.value.code == 1
+    mock_logging.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    'stored_max, max_date, expected',
+    [
+        # A newest date stored ahead of the query time is lowered to it
+        ('2026-10-08T10:00:00.0000000Z', '2026-10-07T10:15:00.1234567Z', '2026-10-07T10:15:00.1234567Z'),
+        ('2026-10-07T10:00:00Z', '2026-10-07T10:15:00Z', None),
+        ('2026-10-07T10:15:00Z', '2026-10-07T10:15:00Z', None),
+    ],
+)
+@patch('db.orm.update_row')
+@patch('db.orm.get_row')
+def test_lower_max_processed_date(mock_get, mock_update, stored_max, max_date, expected):
+    """Test lower_max_processed_date only replaces the newest date stored when it's later than the given one."""
+    mock_get.return_value = MagicMock(min_processed_date=PAST_DATE, max_processed_date=stored_max)
+    lower_max_processed_date(table=orm.LogAnalytics, md5_hash='hash', max_date=max_date)
+    mock_get.assert_called_once_with(table=orm.LogAnalytics, md5='hash')
+    if expected:
+        mock_update.assert_called_once_with(table=orm.LogAnalytics, md5='hash', min_date=PAST_DATE, max_date=expected)
+    else:
+        mock_update.assert_not_called()
+
+
+@pytest.mark.parametrize('get_error, update_error', [(True, False), (False, True)])
+@patch('azure_utils.logging.error')
+@patch('db.orm.update_row')
+@patch('db.orm.get_row')
+def test_lower_max_processed_date_ko(mock_get, mock_update, mock_logging, get_error, update_error):
+    """Test lower_max_processed_date handles ORM errors as expected."""
+    mock_get.return_value = MagicMock(min_processed_date=PAST_DATE, max_processed_date=FUTURE_DATE)
+    if get_error:
+        mock_get.side_effect = orm.AzureORMError
+    if update_error:
+        mock_update.side_effect = orm.AzureORMError
+    with pytest.raises(SystemExit) as err:
+        lower_max_processed_date(table=orm.LogAnalytics, md5_hash='hash', max_date=PRESENT_DATE)
     assert err.value.code == 1
     mock_logging.assert_called_once()

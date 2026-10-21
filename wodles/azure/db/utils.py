@@ -69,6 +69,35 @@ def update_row_object(
             sys.exit(1)
 
 
+def lower_max_processed_date(table: orm.Base, md5_hash: str, max_date: str):
+    """Store the given date as the newest date processed if the one stored is later.
+
+    Parameters
+    ----------
+    table : orm.Base
+        Database table reference for the service.
+    md5_hash : str
+        md5 value used to search the query in the table.
+    max_date : str
+        Value to store if the one stored is later.
+    """
+    try:
+        row = orm.get_row(table=table, md5=md5_hash)
+    except orm.AzureORMError as e:
+        logging.error(f'Error trying to obtain row object from "{table.__tablename__}" using md5="{md5_hash}": {e}')
+        sys.exit(1)
+    if parse(row.max_processed_date, fuzzy=True) <= parse(max_date, fuzzy=True):
+        return
+    logging.debug(
+        f'Lowering the newest date processed for "{md5_hash}" from "{row.max_processed_date}" to "{max_date}"'
+    )
+    try:
+        orm.update_row(table=table, md5=md5_hash, min_date=row.min_processed_date, max_date=max_date)
+    except orm.AzureORMError as e:
+        logging.error(f'Error updating row object from {table.__tablename__}: {e}')
+        sys.exit(1)
+
+
 def create_new_row(table: orm.Base, md5_hash: str, query: str, offset: str) -> orm.Base:
     """Create a new row object for the given table, insert it into the database and return it.
 
