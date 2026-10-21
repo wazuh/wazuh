@@ -2,7 +2,13 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import logging
+
 from connexion.lifecycle import ConnexionResponse
+from wazuh.core.cluster.dapi.dapi import DistributedAPI
+from wazuh.core.exception import WazuhException
+from wazuh.manager import get_master_installation_uid
+
 from api.encoder import dumps, prettify
 
 JSON_CONTENT_TYPE="application/json"
@@ -45,3 +51,28 @@ def build_recursion_error_response(pretty: bool = False) -> ConnexionResponse:
         status_code=400,
         content_type=ERROR_CONTENT_TYPE
     )
+
+
+async def fill_master_uuid(data) -> None:
+    """Set the master's installation UID in a node info result when the node did not provide one.
+
+    Worker nodes do not have their own UID, so it is requested to the master. If it cannot be obtained the
+    result is left untouched.
+
+    Parameters
+    ----------
+    data : AffectedItemsWazuhResult
+        Result of `get_basic_info`. It is modified in place.
+    """
+    items = getattr(data, 'affected_items', None)
+    if not items or items[0].get('uuid') is not None:
+        return
+
+    dapi = DistributedAPI(f=get_master_installation_uid,
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=False,
+                          logger=logging.getLogger('wazuh-api'))
+    result = await dapi.distribute_function()
+    if not isinstance(result, WazuhException):
+        items[0]['uuid'] = result.dikt['uuid']

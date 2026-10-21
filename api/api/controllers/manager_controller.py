@@ -12,7 +12,7 @@ import wazuh.analysis as analysis
 import wazuh.manager as manager
 import wazuh.stats as stats
 from api.constants import INSTALLATION_UID_KEY, UPDATE_INFORMATION_KEY
-from api.controllers.util import json_response, XML_CONTENT_TYPE
+from api.controllers.util import fill_master_uuid, json_response, XML_CONTENT_TYPE
 from api.models.base_model_ import Body
 from api.util import (
     deprecate_endpoint, deserialize_date, only_master_endpoint, parse_api_param, raise_if_exc, remove_nones_to_dict
@@ -83,6 +83,8 @@ async def get_info(pretty: bool = False, wait_for_complete: bool = False) -> Con
                           rbac_permissions=request.context['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
+
+    await fill_master_uuid(data)
 
     return json_response(data, pretty=pretty)
 

@@ -1653,13 +1653,30 @@ void test_get_unix_version_darwin_mapped_codename(void **state)
     assert_string_equal(ret->os_version, "26.5.1 (Tahoe)");
 }
 
+void test_get_unix_version_darwin_golden_gate_codename(void **state)
+{
+    (void) state;
+    os_info *ret;
+
+    // macOS 27 Golden Gate runs Darwin 27
+    expect_darwin_version_calls("27.0.1\n", "27.0.0\n");
+
+    ret = get_unix_version();
+    *state = ret;
+
+    assert_non_null(ret);
+    assert_string_equal(ret->os_platform, "darwin");
+    assert_string_equal(ret->os_codename, "Golden Gate");
+    assert_string_equal(ret->os_version, "27.0.1 (Golden Gate)");
+}
+
 void test_get_unix_version_darwin_unmapped_codename(void **state)
 {
     (void) state;
     os_info *ret;
 
     // Darwin version newer than the release name table: no codename, and no "(Unknown)" suffix
-    expect_darwin_version_calls("28.0\n", "27.0.0\n");
+    expect_darwin_version_calls("29.0\n", "28.0.0\n");
 
     ret = get_unix_version();
     *state = ret;
@@ -1667,7 +1684,7 @@ void test_get_unix_version_darwin_unmapped_codename(void **state)
     assert_non_null(ret);
     assert_string_equal(ret->os_platform, "darwin");
     assert_null(ret->os_codename);
-    assert_string_equal(ret->os_version, "28.0");
+    assert_string_equal(ret->os_version, "29.0");
 }
 
 void test_get_unix_version_fail_os_release_uname_darwin_no_key(void **state)
@@ -2593,8 +2610,9 @@ void test_OSX_ReleaseName(void **state) {
     assert_string_equal(OSX_ReleaseName(23), "Sonoma");
     assert_string_equal(OSX_ReleaseName(24), "Sequoia");
     assert_string_equal(OSX_ReleaseName(25), "Tahoe");
-    assert_string_equal(OSX_ReleaseName(26), "Golden Gate");
-    assert_string_equal(OSX_ReleaseName(27), "Unknown");
+    assert_string_equal(OSX_ReleaseName(26), "Unknown");
+    assert_string_equal(OSX_ReleaseName(27), "Golden Gate");
+    assert_string_equal(OSX_ReleaseName(28), "Unknown");
 }
 
 #endif
@@ -2799,6 +2817,7 @@ int main(void) {
             cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_uname_darwin, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_uname_darwin_no_key, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_darwin_mapped_codename, delete_os_info),
+            cmocka_unit_test_teardown(test_get_unix_version_darwin_golden_gate_codename, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_darwin_unmapped_codename, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_uname_sunos, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_uname_sunos_10_scenario_one, delete_os_info),
