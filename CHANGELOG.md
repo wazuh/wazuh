@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
 - Fixed `GET /agents/summary/os` returning `error: 0` with no failed items when none of the agents has reported its operative system. Those agents are now returned as failed items with error code 1761, and the response states when there are no agents registered. ([#37539](https://github.com/wazuh/wazuh/issues/37539))
 - Added type validation for the error details of cluster synchronization messages and bound the received archive path to the file transfer completed for the task. ([#40367](https://github.com/wazuh/wazuh/pull/40367))
 - Hardened how cluster workers apply the files received from the master. ([#40366](https://github.com/wazuh/wazuh/pull/40366))
+- Fixed the snort decoder truncating `srcip` to all but its last octet and keeping the port in `dstip`. ([#40521](https://github.com/wazuh/wazuh/pull/40521))
 - Fixed `wazuh-execd` keeping a local request connection open when the request could not be read, and not terminating a request of the maximum size. ([#40529](https://github.com/wazuh/wazuh/pull/40529))
 - Fixed `wazuh-logcollector` keeping a local request connection open when the request could not be read, and not terminating a request of the maximum size. ([#40537](https://github.com/wazuh/wazuh/pull/40537))
 - Fixed `PUT /agents/upgrade` and `PUT /agents/upgrade_custom` failing the whole request with an internal error when an agent is deleted or disconnected while its upgrade task is being created. ([#40427](https://github.com/wazuh/wazuh/pull/40427))
