@@ -36,7 +36,7 @@ set_target_properties(wazuh_uds_http_server PROPERTIES POSITION_INDEPENDENT_CODE
 # Deliberately NOT hidden: the vague-linkage (weak) instantiations consumer TUs create from
 # these headers. Hiding those (a header-wide visibility pragma) clamps every module function
 # whose SIGNATURE mentions a lib type -- including sanctioned cross-boundary calls like
-# content_manager::dispatchOnDemand and the module APIs the unit-test binaries link against --
+# the vulnerability scanner's own routes and the module APIs the unit-test binaries link against --
 # and identical weak template code collapsing across DSOs is ABI-normal C++, not a leak.
 # LogThrottle marks itself hidden in its own header (its inline statics would export as
 # GNU-unique from every consumer otherwise).

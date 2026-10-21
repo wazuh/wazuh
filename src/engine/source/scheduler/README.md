@@ -61,6 +61,20 @@ Fields must be specified in the order listed above when using C++20 designated i
 - **Recurring** (`interval > 0`, `runImmediately = false`): First execution occurs after `interval` seconds (`nextRun = now() + interval`). After each execution, rescheduled with `nextRun = now() + interval`.
 - **Recurring with immediate first run** (`interval > 0`, `runImmediately = true`): First execution is immediate (`nextRun = now()`). Subsequent executions recur at `interval` seconds.
 
+### Run-now tasks (`TriggerableTask`)
+
+`interface/scheduler/triggerableTask.hpp` (header-only) wraps a recurring task that can also be run
+on request. `start()` registers it with its interval, first run one interval away (a no-op with
+interval 0); `trigger()` never blocks and never throws.
+
+A request that arrives while the work is running sets a rerun flag, and the work runs once more as
+soon as it finishes. Any other request schedules a one-time run of its own, `<name>/request-<n>`,
+and moves it to the front of the queue; requests made before that run starts share it. A request
+never depends on the recurring task being in the queue — it is not, between a run returning and the
+scheduler re-queuing it — so none is lost. Runs never overlap: an execution that finds another one
+running leaves the work to it, as a rerun. Every request is answered by a run that started after it. `cm-sync-task` and `ioc-sync-task` are
+`TriggerableTask`s, triggered by `POST /content/ruleset/update` and `POST /content/ioc/sync`.
+
 ### Task Queue (`TaskQueue`)
 
 An internal thread-safe sorted list that orders tasks by their `nextRun` time (earliest first). Features:
@@ -88,7 +102,7 @@ The scheduler is designed to be **created before tasks are registered** and **st
 
 - Tasks can be enqueued via `scheduleTask()` or `scheduleTaskFirst()` at any time before or after `start()`.
 - Worker threads are launched only when `start()` is explicitly called.
-- In `main.cpp`, `start()` is called immediately after the last `scheduleTaskFirst("initial-sync", …)` call in each execution branch.
+- In `main.cpp`, `start()` is called right after `cm-sync-task` is triggered to run first.
 
 ### CPU Priority
 
@@ -100,7 +114,8 @@ The scheduler sets per-thread Linux nice values around task execution using `set
 scheduler/
 ├── CMakeLists.txt
 ├── interface/scheduler/
-│   └── ischeduler.hpp          # IScheduler interface + TaskConfig
+│   ├── ischeduler.hpp          # IScheduler interface + TaskConfig
+│   └── triggerableTask.hpp     # TriggerableTask (run on interval and on request)
 ├── include/scheduler/
 │   └── scheduler.hpp           # Scheduler, TaskQueue, ScheduledTask
 ├── src/
@@ -108,8 +123,9 @@ scheduler/
 └── test/
     ├── mocks/scheduler/
     │   └── mockScheduler.hpp   # GMock for IScheduler
-    └── src/component/
-        └── scheduler_test.cpp  # Component tests
+    └── src/
+        ├── component/scheduler_test.cpp     # Component tests
+        └── unit/triggerableTask_test.cpp    # TriggerableTask over a mocked IScheduler
 ```
 
 ## Public Interface
@@ -191,6 +207,7 @@ Multiple calls before `start()` are ordered such that the **last call executes f
 | `scheduler_scheduler` | `scheduler::scheduler` | STATIC | Full implementation |
 | `scheduler_mocks` | `scheduler::mocks` | INTERFACE | GMock for `IScheduler` |
 | `scheduler_ctest` | — | EXECUTABLE | Component tests |
+| `scheduler_utest` | — | EXECUTABLE | `TriggerableTask` unit tests |
 
 **Dependency graph:**
 
@@ -230,12 +247,11 @@ The scheduler is instantiated once in `main.cpp` as `std::make_shared<scheduler:
 
 | Task Name | Interval | Method | Consumer | Purpose |
 |-----------|----------|--------|----------|---------|
-| `cm-sync-task` | `CM_SYNC_INTERVAL` | `scheduleTask` | Content Manager | Synchronizes content manager data |
-| `ioc-sync-task` | `IOC_SYNC_INTERVAL` | `scheduleTask` | IOC Sync | Indicator of Compromise synchronization |
+| `cm-sync-task` | `CM_SYNC_INTERVAL` | `TriggerableTask` | CM Sync | Ruleset synchronization; triggered at startup to run before every other task, and by the contentsync API |
+| `ioc-sync-task` | `IOC_SYNC_INTERVAL` (0 = on request only) | `TriggerableTask` | IOC Sync | IOC synchronization; triggered by the contentsync API |
 | `geo-sync-task` | `GEO_SYNC_INTERVAL` | `scheduleTask` | Geo Manager | Updates GeoIP databases (GeoLite2-City, GeoLite2-ASN) |
 | `remote-conf-sync` | `REMOTE_CONF_SYNC_INTERVAL` | `scheduleTask` | Remote Config | Remote configuration synchronization |
 | `MetricsLogger` | `METRICS_LOG_INTERVAL` | `scheduleTask` | Metrics | Writes all metrics to the stream logger |
-| `initial-sync` | one-time | `scheduleTaskFirst` | main.cpp | Triggers cm/ioc/geo/remote-conf synchronization at startup; guaranteed to run before all other pending tasks |
 | *(dynamic)* | one-time | `scheduleTask` | streamlog | Gzip compression of rotated log files |
 | *(dynamic)* | one-time | `scheduleTask` | api/ioccrud | On-demand IOC sync triggered via API |
 
@@ -243,4 +259,4 @@ The scheduler is instantiated once in `main.cpp` as `std::make_shared<scheduler:
 
 - **streamlog**: Stores `std::weak_ptr<scheduler::IScheduler>` and dynamically schedules one-time compression tasks when log files rotate.
 - **api/ioccrud**: Receives the scheduler as a parameter in API route handlers for managing IOC sync operations.
-- **main.cpp**: Calls `scheduleTask()` for all periodic tasks during initialization, then `scheduleTaskFirst()` for the one-time `initial-sync` startup task. `start()` is deferred until after all tasks are registered.
+- **main.cpp**: Calls `scheduleTask()` for the periodic tasks and starts the two `TriggerableTask`s during initialization, triggering each for a first run now; `cm-sync-task` is triggered last, so it runs first. `start()` is deferred until after all tasks are registered.

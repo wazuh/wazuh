@@ -282,6 +282,12 @@ bool KVDBManager::exists(std::string_view dbName) const noexcept
     return it->second->hasInstance();
 }
 
+bool KVDBManager::isRegistered(std::string_view dbName) const noexcept
+{
+    std::shared_lock<std::shared_mutex> lk(m_registryMutex);
+    return m_handles.find(std::string(dbName)) != m_handles.end();
+}
+
 std::optional<json::Json> KVDBManager::get(std::string_view dbName, std::string_view key) const
 {
     const std::string db(dbName);

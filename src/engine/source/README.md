@@ -83,14 +83,15 @@ Used by virtually every other module.
 - [streamlog/](streamlog/README.md) — Async rotating log channels (size+time, gzip, retention) used by file outputs and `dumper`.
 - [dumper/](dumper/README.md) — Toggleable raw-event dumper that writes via `streamlog` when active.
 - [scheduler/](scheduler/README.md) — Priority thread-pool task scheduler for periodic syncs and metric flushes.
-- [wiconnector/](wiconnector/README.md) — Thread-safe client for the Wazuh Indexer: events, policy resources, IOCs and remote config. Sole egress to the indexer.
+- [wiconnector/](wiconnector/README.md) — Thread-safe writer to the Wazuh Indexer: event indexing, queue counters and the remote configuration read.
 
 ### Synchronization & remote configuration
 
 - [confremote/](confremote/README.md) — Pulls remote runtime configuration from the indexer with rollback on rejection.
 - [cmcrud/](cmcrud/README.md) — Validation/adapter layer between the API and `cmstore` mutations; enforces canonical ordering and namespace import atomicity.
-- [cmsync/](cmsync/README.md) — Periodic content sync from indexer; hot-swaps router routes when policies change.
-- [iocsync/](iocsync/README.md) — Periodic IOC sync into `iockvdb` with atomic hot-swap.
+- [cmcontent/](cmcontent/README.md) — What is Engine-specific about content downloads through the shared `content_manager` library: per-space and per-type topic specs, the sinks that turn documents into routes and IOC databases, and the topic seam the sync services drive.
+- [cmsync/](cmsync/README.md) — Runs the ruleset topics (`standard`, `custom`) and reports per-space status.
+- [iocsync/](iocsync/README.md) — Runs the IOC topics, rebuilds missing databases, and reports per-type status.
 - [rawevtindexer/](rawevtindexer/README.md) — Toggleable forensic indexing of raw (pre-processing) events.
 
 ### Routing & runtime
@@ -143,11 +144,18 @@ Used by virtually every other module.
         └────────┘
 
                   ┌────────────────┐
-                  │  wiconnector   │ ──► wazuh-indexer    (sole egress)
+                  │  wiconnector   │ ──► wazuh-indexer
                   └────────────────┘
                           ▲
-              cmsync, iocsync, confremote,
-              rawevtindexer, streamlog, builder
+              confremote, rawevtindexer,
+              streamlog, builder
+
+                  ┌────────────────┐
+                  │ content_manager│ ──► wazuh-indexer    (content downloads)
+                  │  (shared .so)  │
+                  └────────────────┘
+                          ▲
+                  cmcontent ◄── cmsync, iocsync
 ```
 
 Key relationships:
@@ -155,7 +163,13 @@ Key relationships:
 - **`router` is the runtime hub.** It owns event queues, worker threads and route lifecycle; `cmsync` hot-swaps its routes.
 - **`builder` is the compilation hub.** Every dependency that contributes to event processing is funneled into it via `BuilderDeps`.
 - **`store` and `cmstore` are the data hubs.** Persisted state (schemas, allowed fields, ruleset, sync state) flows through them.
-- **`wiconnector` is the only egress to the indexer.** All outbound traffic to OpenSearch goes through it.
+- **One connector to the indexer.** `main.cpp` builds a single `IndexerConnectorAsync`
+  (`wiconnector::makeIndexerConnectorAsync`) and shares it: `wiconnector` uses it for event indexing
+  and the remote configuration, and the content topics use it, through
+  `content_manager::makeContentIndexer`, for every download (D1 of the content manager). The
+  library opens no connection of its own, so the process runs one health monitor and reports an
+  indexer outage once. Downloads use only the connector's synchronous read calls, never its
+  indexing queue, so they do not delay events.
 
 ---
 
@@ -165,14 +179,17 @@ Modules are wired together in [main.cpp](main.cpp) using `std::shared_ptr` and a
 
 1. **Process bootstrap** — option parsing, logging (standalone spdlog vs the manager log sink, `base/managerLogSink.hpp`); the soft `RLIMIT_NOFILE` is then raised to a fixed `8192` (never above the hard limit, never lowered if already higher), followed by the optional `goDaemon()`.
 2. **Configuration** — `conf::Conf` loads from ini file; every later module reads it via `confManager.get<T>(key::…)`. Signal handlers (`SIGINT`, `SIGTERM`, `SIGPIPE` → ignore) are installed right after, once the configuration is loaded.
+   When event processing is enabled, `content_manager::setLogFunction(...)` then hands the shared
+   `content_manager` library this process's log function and the `wazuh-manager-analysisd:content-updater`
+   tag, before any module registers a content topic.
 3. **Privilege drop** (manager-integrated mode only) — the process starts as `root` and switches group and user to the hardcoded `wazuh-manager:wazuh-manager` (`base::process::WAZUH_GROUP`/`WAZUH_USER`), unless disabled via `key::DROP_PRIVILEGES`; group first, since `setgid()` is not permitted after `setuid()`. Everything below runs unprivileged. In standalone mode the launcher's user/group are inherited untouched.
    > **Caveat when debugging with `DROP_PRIVILEGES=false`:** running as `root` leaves every runtime-created path (`data/store`, `data/ruleset`, `data/kvdb-ioc`, `data/mmdb`, `data/tzdb`, `logs/<YYYY>/<MMM>/`, `var/run`) owned by `root:root`. Re-enabling the drop then fails at startup with a permission error from the first module that writes — `chown -R wazuh-manager:wazuh-manager` those paths before restarting. See [configuration.md](../../../docs/ref/modules/engine/configuration.md#process-privileges).
 4. **Core data layer** — `store::Store` (with `FileDriver`) → `cmstore::CMStore` → `kvdbstore::KVDBManager` → `iockvdb::KVDBManager(store)` → `geo::Manager(store, downloader)` → `fastmetrics::registerManager()` → `schemf::Schema` (loads `schema/engine-schema/0` from `store`).
 5. **Parsing** — `hlp::initTZDB(...)` then `logpar::Logpar` (uses `schema/wazuh-logpar-overrides/0` from `store` and the schema validator); `hlp::registerParsers(logpar)`.
 6. **Scheduler & I/O** (always, but most consumers gated on `enableProcessing`) — `scheduler::Scheduler` (registered for early shutdown). When `enableProcessing` is on: `wiconnector::WIndexerConnector` (queue metrics registered as pull callbacks) and `streamlog::LogManager(store, scheduler)`.
 7. **Compilation hub** — `builder::Builder(cmStore, schemaValidator, defs, allowedFields, builderDeps, store)` where `BuilderDeps` carries `logpar`, `kvdbManager`, `IOCkvdb`, `geoManager`, `streamLogger`, `indexerConnector` and the file-output rotation config. Then `cmcrud::CrudService(cmStore, builder)`.
-8. **Background services** (gated) — `confremote::ConfRemoteManager`, `rawevtindexer::RawEventIndexer`, `router::Orchestrator(...)` (started immediately and registered for shutdown), `cmsync::CMSync`, `iocsync::IocSync` (scheduled via `scheduler`), `dumper::Dumper(streamLogger)`.
-9. **API surface** — `httpsrv::Server` is created, then per-domain handlers register their routes against it: metrics, geo, router, tester, dumper, rawevtindexer, cmcrud, ioccrud. Finally `apiServer->start(socketPath)`. An optional second `httpsrv::Server` is created for the remote-event-receiver (event ingestion).
+8. **Background services** (gated) — `confremote::ConfRemoteManager`, `rawevtindexer::RawEventIndexer`, `router::Orchestrator(...)` (started immediately and registered for shutdown), `cmsync::CMSync`, `iocsync::IocSync` (each run by a `scheduler::TriggerableTask`, which the contentsync API also triggers), `dumper::Dumper(streamLogger)`.
+9. **API surface** — `httpsrv::Server` is created, then per-domain handlers register their routes against it: metrics, geo, router, tester, dumper, rawevtindexer, cmcrud, ioccrud, status, contentsync. Finally `apiServer->start(socketPath)`. An optional second `httpsrv::Server` is created for the remote-event-receiver (event ingestion).
 
 Shutdown is the exact reverse: `StackExecutor` drains callbacks in LIFO. The API server stops first (it joins client connections), background services request shutdown and join, the orchestrator drains queues, `streamlog` and `wiconnector` flush, the scheduler stops, and logging is the last thing torn down.
 

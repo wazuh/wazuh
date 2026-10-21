@@ -50,9 +50,7 @@ namespace invsync::endpoints::vd_scan
      *
      * THE ADMISSION ROUTE STAYS WHERE IT IS. `POST /vulnerability-detector/scan` on the scanner's
      * own socket keeps its validation, its readiness preflight and its `503 scan_queue_full`
-     * vocabulary, because remoted distinguishes that code from the content manager's
-     * `ondemand_queue_full` for metrics. What changes there is only what it does after admitting:
-     * create a task row instead of pushing onto an in-memory deque.
+     * vocabulary, which remoted attributes in its metrics. After admitting, it creates a task row.
      */
 
     /// @brief The verb. POST because the caller's C-side HTTP helper (uhttp_*) only speaks POST.

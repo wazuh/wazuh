@@ -541,9 +541,8 @@ unregisters FIRST, before the lane dies under the scanner's feet.
 `POST /_internal/vd/scan` rescans ONE agent — no session, no inventory. VD reads the agent's stored
 packages and writes its findings with its own connector, so the lane's answer is the scan's outcome
 and nothing more. Its caller is the Task Manager's dispatcher, executing a durable `vd_scan` task
-that the scanner's own admission route created; that route is untouched, including its
-`503 scan_queue_full` vocabulary, which remoted distinguishes from the content manager's
-`ondemand_queue_full` for metric attribution.
+that the scanner's own admission route created, with its `503 scan_queue_full` vocabulary, which
+remoted attributes in its metrics.
 
 **Why it lives here and not in the vulnerability scanner**, which owns the scan itself:
 

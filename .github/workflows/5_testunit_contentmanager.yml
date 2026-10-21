@@ -6,14 +6,13 @@ on:
     paths:
       - ".github/workflows/5_testunit_contentmanager.yml"
       # content_manager_utest and content_manager_ctest (tests/unit, tests/component) link the
-      # content_manager library built from src/ and include/ (CMakeLists.txt:51-56). Every
-      # CMakeLists.txt of the module is on the configure path (CMakeLists.txt:64,67). Not the
-      # testtool sources (target not built here), README.md or doc/.
+      # content_manager library built from src/ and include/. Every CMakeLists.txt of the module
+      # is on the configure path. Not the testtool sources (target not built here) or README.md.
       - "src/shared_modules/content_manager/**/CMakeLists.txt"
       - "src/shared_modules/content_manager/include/**"
       - "src/shared_modules/content_manager/src/**"
       - "src/shared_modules/content_manager/tests/**"
-      # Linked: indexer_connector (CMakeLists.txt:55-56, tests/component/CMakeLists.txt:38), and
+      # Linked: indexer_connector (CMakeLists.txt, tests/component/CMakeLists.txt), and
       # through it keystore (indexer_connector/CMakeLists.txt:52-53; keystore is also built
       # standalone by build_external_deps/action.yml:45-53) -- none of their test trees or qa/.
       - "src/shared_modules/indexer_connector/**/CMakeLists.txt"
@@ -21,13 +20,8 @@ on:
       - "src/shared_modules/indexer_connector/src/**"
       - "src/shared_modules/keystore/**"
       - "!src/shared_modules/keystore/qa/**"
-      # Header-only use of the UDS transport (CMakeLists.txt:21-26: contentOnDemand.hpp,
-      # onDemandManager.hpp include uds_http_server/IUdsHttpServer.hpp and logThrottle.hpp) and of
-      # shared/include/defs.h (src/components/executionContext.hpp:17).
-      - "src/shared_modules/uds_http_server/include/**"
-      - "src/shared/include/defs.h"
-      # Headers from shared_modules/utils (CMakeLists.txt:37-38) and common/commonDefs.h
-      # (include/content_manager.h:28, utils/loggerHelper.h:15). utils/flatbuffers is built by
+      # Headers from shared_modules/utils (rocksDBWrapper.hpp, loggerHelper.h, timeHelper.h) and
+      # common/commonDefs.h (included by utils/loggerHelper.h). utils/flatbuffers is built by
       # build_external_deps/action.yml:55-63. utils' own tests and benchmark are another component's
       # tree; only their CMakeLists.txt are on the configure path (utils/CMakeLists.txt).
       - "src/shared_modules/utils/**"
@@ -119,12 +113,9 @@ jobs:
           valgrind: "false"
           target: "content_manager_utest"
 
-      # The component suite runs here too, so its coverage counts: it exercises the module's
-      # orchestration layer (contentModule, contentModuleFacade, actionOrchestrator, action,
-      # contentProvider) that no unit test reaches. Its fake server is cpp-httplib on localhost, so
-      # nothing external is required. This is the suite's only lane: the former
-      # 5_testcomponent_contentmanager.yml ran the same label in the same coverage-flag build (its
-      # "valgrind" leg instrumented nothing) plus an ASAN build, which the job below now does.
+      # The component suite runs here too, so its coverage counts: it drives whole registrations
+      # through the public API against a scripted in-process indexer, so nothing external is
+      # required. This is the suite's only lane; the ASAN build is the job below.
       - name: Content manager - Build component tests
         uses: ./.github/actions/build_target_cpp
         with:

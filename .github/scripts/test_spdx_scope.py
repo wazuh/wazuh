@@ -35,7 +35,7 @@ class ClassifyTest(unittest.TestCase):
         self.assertEqual(spdx.classify(ENGINE_CPP, b"int x;\n"), (AGPL, "//"))
 
     def test_dual_scope_dirs(self):
-        for d in ("utils", "manager_config", "keystore", "indexer_connector", "common"):
+        for d in ("utils", "manager_config", "keystore", "indexer_connector", "common", "content_manager"):
             p = "src/shared_modules/%s/sub/f.hpp" % d
             self.assertEqual(spdx.classify(p, b"int x;\n"), (DUAL, "//"), p)
 
