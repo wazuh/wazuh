@@ -37,6 +37,7 @@
 #include "runtime/runtimeInternal.hpp"
 #include "transport/seams.hpp"
 #include "transport/transport.hpp"
+#include "write/encoding.hpp"
 #include "write/writer.hpp"
 
 #ifdef INDEXER_CLIENT_TESTING
@@ -465,15 +466,19 @@ namespace indexer_client
             {
                 return field("onConflict.retryOnConflict") + " must be > 0 with ConflictPolicy::Retry";
             }
+            // I73: the same cap as an op's own onConflict (encoding.hpp).
+            if (spec.onConflict.kind == ConflictPolicy::Kind::Retry &&
+                spec.onConflict.retryOnConflict > detail::write::MAX_RETRY_ON_CONFLICT)
+            {
+                return field("onConflict.retryOnConflict") +
+                       " must be <= " + std::to_string(detail::write::MAX_RETRY_ON_CONFLICT) +
+                       " with ConflictPolicy::Retry";
+            }
             // Accepted by the API but not honoured by the bulk sender yet: refused rather than silently served with
             // other semantics (G-diff E3b-2 obj. 2).
-            if (spec.onConflict.kind == ConflictPolicy::Kind::Retry)
-            {
-                return field("onConflict.kind") + " = Retry is not implemented yet (E3c)";
-            }
             if (spec.ordered)
             {
-                return field("ordered") + " = true is not implemented yet (E3c)";
+                return field("ordered") + " = true is not implemented yet (E3c-2)";
             }
             return {};
         }

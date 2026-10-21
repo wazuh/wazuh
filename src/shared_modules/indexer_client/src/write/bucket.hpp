@@ -35,6 +35,7 @@
 namespace indexer_client::detail
 {
     struct TicketState;
+    struct GroupState;
 } // namespace indexer_client::detail
 
 namespace indexer_client::detail::write
@@ -77,6 +78,15 @@ namespace indexer_client::detail::write
         std::string lastItemErrorType;
         std::string lastReason;
         std::weak_ptr<Bucket> bucket;
+        /// The effective ConflictPolicy is Retry (I73): a 409 item goes back to the retry lane. Set before enqueue,
+        /// immutable afterwards (read lock-free by the sender).
+        bool conflictRetry {false};
+        /// The group this op belongs to (I74, group.hpp): strong, so its result slot exists at resolution; null for a
+        /// plain submit. `groupIndex` = its add position.
+        std::shared_ptr<GroupState> group;
+        std::uint32_t groupIndex {0};
+        /// Set by enqueue/enqueueGroup (per-bucket, monotonic): eligible() compares the pending head with flushSeq.
+        std::uint64_t seq {0};
     };
 
     /// The error an op is requeued after (copied into OpState::last*; `cause == None` keeps the op's previous one).
@@ -148,11 +158,11 @@ namespace indexer_client::detail::write
         std::vector<std::shared_ptr<OpState>> evicted;
     };
 
-    /// Per-bucket counters (I62). Invariants: submitted = accepted + rejected* (+ invalidArgument); accepted = resolved
-    /// + retained. reserve() counts submitted and its outcome; countInvalidArgument() counts submitted too. A
-    /// DropNewest drop and each DropOldest eviction are accepted (and droppedNewest / droppedOldest) and become
-    /// resolved when the caller resolves them (countResolved); they are never retained. `retained` = ops enqueued whose
-    /// payload is still charged (pending, delivered, or handed back by close() and not yet resolved).
+    /// Per-bucket counters (I62, I74). Invariants: submitted = accepted + rejected* (+ invalidArgument); accepted =
+    /// resolved + retained + groupBuilding. reserve() counts submitted and its outcome; countInvalidArgument() counts
+    /// submitted too. A DropNewest drop and each DropOldest eviction are accepted (and droppedNewest / droppedOldest)
+    /// and become resolved when the caller resolves them (countResolved); they are never retained. `retained` = ops
+    /// enqueued whose payload is still charged (pending, delivered, or handed back by close() and not yet resolved).
     struct BucketStats final
     {
         std::string consumer;
@@ -167,6 +177,9 @@ namespace indexer_client::detail::write
         std::uint64_t invalidArgument {0};
         std::uint64_t droppedNewest {0};
         std::uint64_t droppedOldest {0};
+        std::uint64_t rejectedGroupTooLarge {0}; ///< Group adds refused GroupTooLarge (E3c-1 I74; under `submitted`).
+        std::uint64_t groupBuilding {0};         ///< Ops reserved by groups not committed yet (accepted, not retained).
+        std::uint64_t groupAbandoned {0};        ///< Ops of abandoned groups (also counted resolvedDropped).
         std::uint64_t resolvedOk {0};
         std::uint64_t resolvedFailed {0};
         std::uint64_t resolvedDropped {0};
@@ -183,7 +196,7 @@ namespace indexer_client::detail::write
         const BucketSpec& spec() const noexcept;
         const std::string& consumer() const noexcept;
 
-        // ---- admission (producer threads; E3c's Group uses reserve and enqueue separately)
+        // ---- admission (producer threads; a Group uses reserveForGroup, then enqueueGroup or cancelGroupReservation)
 
         /// Charges `payload` + RESULT_RESERVE against the quota and the global cap with the bucket's policy (I62). For
         /// a DropNewest drop only RESULT_RESERVE is charged, and only when `withCallback` (QueueFull if even that does
@@ -202,18 +215,45 @@ namespace indexer_client::detail::write
         /// same lock, or closedCause()) and, if closed, calls close() again to take it back and resolve it.
         bool enqueue(std::shared_ptr<OpState> op, std::optional<Cause>* closed = nullptr);
 
+        /// Group::add (I74, group.hpp): charges `payload` + RESULT_RESERVE for an op of a Building group that already
+        /// holds `groupReserved`. In order: closed ⇒ its cause (rejectedClosed); payload > bulk.maxBytes or the charge
+        /// alone above the quota or the global cap ⇒ PayloadTooLarge; groupReserved + charge above the quota or the
+        /// global cap ⇒ GroupTooLarge (rejectedGroupTooLarge); fits ⇒ charged; otherwise Reject, DropNewest and
+        /// DropOldest ⇒ QueueFull with nothing evicted (I70), and Block ⇒ Reentrancy from a runtime thread, QueueFull
+        /// at once when charge + building (this bucket's) > quotaBytes or charge + GlobalBudget::building() > the cap
+        /// (the room is held by Building groups: never wait on one, 03 §4.13), else waits like reserve() re-checking
+        /// that condition on every wake-up (SubmitTimeout at blockUntil). A charged op adds to `building` (bucket and
+        /// global) and to groupBuilding, and wakes the bucket's blocked producers and, after the mutex is dropped, the
+        /// global waiters (their building condition may now hold). Counts submitted and its outcome. Never returns
+        /// dropNewest/evicted.
+        Reservation reserveForGroup(std::uint64_t payload, std::uint64_t groupReserved, TimePoint blockUntil);
+        /// Group commit (I74): appends `ops` (reserved by reserveForGroup, `reserved` bytes in all) under one lock like
+        /// enqueue, takes `reserved` out of `building` (bucket and global) and groupBuilding, gives each op the next
+        /// seq and sets flushSeq to the last; returns true when the scheduler must be told: ALWAYS unless the dedup
+        /// flag was already set (the group leaves now, whatever the thresholds); false for an empty `ops` (nothing to
+        /// flush; the `reserved` bytes still leave `building`). Closed: as enqueue (`closed`).
+        bool enqueueGroup(std::vector<std::shared_ptr<OpState>> ops,
+                          std::uint64_t reserved,
+                          std::optional<Cause>* closed = nullptr);
+        /// Group abandonment (I74): returns `reserved` bytes (payload + reserves of `ops` Building ops) to the charge,
+        /// `building` (bucket and global) and the global cap, counts them groupAbandoned and resolvedDropped (out of
+        /// groupBuilding) and wakes the blocked producers (the global ones after the mutex is dropped).
+        void cancelGroupReservation(std::uint64_t reserved, std::uint32_t ops);
+
         // ---- scheduler (loop 0 only)
 
         /// Some threshold reached at `now`: the retry-lane head is due (notBefore <= now), pending bytes >= maxBytes,
-        /// pending docs >= maxDocs, or the oldest pending op older than maxAge.
+        /// pending docs >= maxDocs, the oldest pending op older than maxAge, or the pending head committed by a group
+        /// (seq <= flushSeq, I74).
         bool eligible(TimePoint now) const;
         /// Wire size of the next op a slice at `now` would take (due lane head first, else the pending head); 0 if
         /// none.
         std::uint64_t headBytes(TimePoint now) const;
         /// No pending op and an empty retry lane.
         bool empty() const;
-        /// When this bucket next needs a pass: min(oldest pending + maxAge, retry-lane head notBefore); nullopt if
-        /// empty.
+        /// When this bucket next needs a pass: min(oldest pending + maxAge, retry-lane head notBefore), or "now" while
+        /// the pending head is a committed group's (seq <= flushSeq) — returned as TimePoint::min(), which every `now`
+        /// reaches (Scheduler::armTimer arms no timer and reports it due); nullopt if empty.
         std::optional<TimePoint> nextDue(TimePoint now) const;
         /// Takes whole ops, the due retry lane first and then the pending queue (one batch may mix both), while their
         /// wire bytes fit in `credit`, bulk.maxBytes, bulk.maxDocs and the smallest batchCap of the ops taken; at least
@@ -238,8 +278,9 @@ namespace indexer_client::detail::write
         /// Also frees the op's last-error strings (under the mutex Bucket::requeue writes them with). Called by the
         /// resolution path, after it won the op's claim.
         void releasePayload(OpState& op);
-        /// Releases one RESULT_RESERVE (after the callback ran, or when the last Ticket died).
-        void releaseReserve();
+        /// Releases `count` RESULT_RESERVEs (after the callback ran, when the last Ticket died, or when a committed
+        /// group's GroupState died).
+        void releaseReserve(std::uint32_t count = 1);
         /// Stops admission with `cause` (ClientClosed or Shutdown; the first close fixes the cause), wakes every
         /// blocked producer and returns the retry lane and then the pending ops (not those delivered to the sink) for
         /// the caller to resolve Dropped(cause). Callable again: each call hands back what is queued then. Their
@@ -267,7 +308,8 @@ namespace indexer_client::detail::write
         void addChargeLocked(std::uint64_t bytes) noexcept;
         /// The retry-lane head is due at `now`; m_mutex held.
         bool laneDueLocked(TimePoint now) const;
-        /// min(oldest pending + maxAge, retry-lane head notBefore); m_mutex held.
+        /// min(oldest pending + maxAge, retry-lane head notBefore), TimePoint::min() for a committed group's head;
+        /// m_mutex held.
         std::optional<TimePoint> nextDueLocked() const;
         /// Inserts a non-toHead op into the retry lane by notBefore (stable); m_mutex held.
         void insertLaneLocked(std::shared_ptr<OpState> op);
@@ -283,6 +325,9 @@ namespace indexer_client::detail::write
         std::unordered_map<const OpState*, std::shared_ptr<OpState>> m_delivered; ///< Removed by releasePayload.
         std::uint64_t m_pendingBytes {0};
         std::uint64_t m_charge {0};
+        std::uint64_t m_building {0}; ///< Charge held by Building groups (I74).
+        std::uint64_t m_nextSeq {1};
+        std::uint64_t m_flushSeq {0}; ///< The last op of the last committed group (I74).
         std::uint32_t m_waiting {0};
         std::optional<Cause> m_closed;
         std::atomic<bool> m_notified {false};
