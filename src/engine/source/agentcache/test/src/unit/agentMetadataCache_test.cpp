@@ -1097,3 +1097,104 @@ TEST_F(AgentMetadataCacheTest, ThreadSafety_BoundedMutationsKeepAccountingConsis
     EXPECT_EQ(bounded.size(), 0u);
     EXPECT_EQ(bounded.accountedBytes(), 0u);
 }
+
+TEST_F(AgentMetadataCacheTest, CleanIntervalRange)
+{
+    EXPECT_THROW(validateCleanInterval(0), std::invalid_argument);
+    EXPECT_THROW(validateCleanInterval(86401), std::invalid_argument);
+    EXPECT_THROW(validateCleanInterval(std::numeric_limits<std::size_t>::max()), std::invalid_argument);
+    for (const auto seconds : {1u, 60u, 86400u}) EXPECT_EQ(validateCleanInterval(seconds), seconds);
+}
+
+TEST_F(AgentMetadataCacheTest, BypassMetricsTrackEachConstraint)
+{
+    auto entries = fastmetrics::manager().getOrCreateCounter(fastmetrics::names::AGENT_CACHE_BYPASS_MAX_ENTRIES);
+    auto bytes = fastmetrics::manager().getOrCreateCounter(fastmetrics::names::AGENT_CACHE_BYPASS_MAX_BYTES);
+    EXPECT_EQ(entries->type(), fastmetrics::MetricType::COUNTER);
+    EXPECT_EQ(bytes->type(), fastmetrics::MetricType::COUNTER);
+    const auto a = sizedHeader("001", 16);
+    for (const auto limits : {Limits {1, 0}, Limits {0, costOf("001", a)}, Limits {1, costOf("001", a)}})
+    {
+        AgentMetadataCache bounded(60s, limits);
+        const auto entriesBefore = entries->get();
+        const auto bytesBefore = bytes->get();
+        EXPECT_EQ(bounded.getOrParse("001", a).second, Op::Inserted);
+        EXPECT_EQ(bounded.getOrParse("001", a).second, Op::Retrieved);
+        for (const auto& invalid : {HEADER_INVALID_JSON, HEADER_MISSING_ID, sizedHeader("002", 8192)})
+            EXPECT_THROW(bounded.getOrParse("001", invalid), std::runtime_error);
+        EXPECT_EQ(entries->get(), entriesBefore);
+        EXPECT_EQ(bytes->get(), bytesBefore);
+        EXPECT_EQ(bounded.getOrParse("002", sizedHeader("002", 16)).second, Op::BypassedCapacity);
+        EXPECT_EQ(entries->get(), entriesBefore + (limits.maxEntries != 0));
+        EXPECT_EQ(bytes->get(), bytesBefore + (limits.maxBytes != 0));
+        if (limits.maxBytes != 0)
+        {
+            EXPECT_EQ(bounded.getOrParse("001", sizedHeader("001", 8192)).second, Op::BypassedCapacity);
+            EXPECT_EQ(entries->get(), entriesBefore + (limits.maxEntries != 0));
+            EXPECT_EQ(bytes->get(), bytesBefore + 2);
+            EXPECT_EQ(bounded.size(), 0u);
+            EXPECT_EQ(bounded.accountedBytes(), 0u);
+        }
+    }
+}
+
+TEST_F(AgentMetadataCacheTest, RetentionPullMetricsFollowMutationsAndDestruction)
+{
+    FakeClock clock;
+    const auto small = sizedHeader("001", 16);
+    const auto large = sizedHeader("001", 512);
+    const Limits limits {1, costOf("001", large)};
+    auto bounded = std::make_shared<AgentMetadataCache>(1s, limits, clock.fn());
+    const std::weak_ptr<AgentMetadataCache> weak = bounded;
+    registerCacheMetrics(bounded);
+    const auto names = {fastmetrics::names::AGENT_CACHE_ENTRIES,
+                        fastmetrics::names::AGENT_CACHE_BYTES,
+                        fastmetrics::names::AGENT_CACHE_MAX_ENTRIES,
+                        fastmetrics::names::AGENT_CACHE_MAX_BYTES};
+    for (const auto name : names)
+    {
+        const auto metric = fastmetrics::manager().get(name);
+        ASSERT_NE(metric, nullptr);
+        EXPECT_EQ(metric->type(), fastmetrics::MetricType::PULL);
+        metric->enable();
+    }
+    const auto expectPulls = [&](std::size_t count, std::size_t bytes)
+    {
+        const auto hits = fastmetrics::manager().get(fastmetrics::names::AGENT_CACHE_HITS)->value();
+        const auto insertions = fastmetrics::manager().get(fastmetrics::names::AGENT_CACHE_INSERTIONS)->value();
+        const auto updates = fastmetrics::manager().get(fastmetrics::names::AGENT_CACHE_UPDATES)->value();
+        const auto evictions = fastmetrics::manager().get(fastmetrics::names::AGENT_CACHE_EVICTIONS)->value();
+        EXPECT_EQ(fastmetrics::manager().get(fastmetrics::names::AGENT_CACHE_ENTRIES)->value(), count);
+        EXPECT_EQ(fastmetrics::manager().get(fastmetrics::names::AGENT_CACHE_BYTES)->value(), bytes);
+        EXPECT_EQ(fastmetrics::manager().get(fastmetrics::names::AGENT_CACHE_MAX_ENTRIES)->value(), limits.maxEntries);
+        EXPECT_EQ(fastmetrics::manager().get(fastmetrics::names::AGENT_CACHE_MAX_BYTES)->value(), limits.maxBytes);
+        EXPECT_EQ(fastmetrics::manager().get(fastmetrics::names::AGENT_CACHE_HITS)->value(), hits);
+        EXPECT_EQ(fastmetrics::manager().get(fastmetrics::names::AGENT_CACHE_INSERTIONS)->value(), insertions);
+        EXPECT_EQ(fastmetrics::manager().get(fastmetrics::names::AGENT_CACHE_UPDATES)->value(), updates);
+        EXPECT_EQ(fastmetrics::manager().get(fastmetrics::names::AGENT_CACHE_EVICTIONS)->value(), evictions);
+    };
+    expectPulls(0, 0);
+    EXPECT_EQ(bounded->getOrParse("001", small).second, Op::Inserted);
+    expectPulls(1, costOf("001", small));
+    EXPECT_EQ(bounded->getOrParse("001", small).second, Op::Retrieved);
+    expectPulls(1, costOf("001", small));
+    EXPECT_EQ(bounded->getOrParse("001", large).second, Op::Updated);
+    expectPulls(1, costOf("001", large));
+    EXPECT_EQ(bounded->getOrParse("002", sizedHeader("002", 16)).second, Op::BypassedCapacity);
+    expectPulls(1, costOf("001", large));
+    EXPECT_EQ(bounded->getOrParse("001", small).second, Op::Updated);
+    expectPulls(1, costOf("001", small));
+    EXPECT_EQ(bounded->getOrParse("001", sizedHeader("001", 8192)).second, Op::BypassedCapacity);
+    expectPulls(0, 0);
+    bounded->getOrParse("001", small);
+    clock.advance(1s + 1ns);
+    EXPECT_EQ(bounded->evictStale(), 1u);
+    expectPulls(0, 0);
+    bounded->getOrParse("001", small);
+    bounded->clear();
+    expectPulls(0, 0);
+    bounded->getOrParse("001", small);
+    bounded.reset();
+    EXPECT_TRUE(weak.expired());
+    for (const auto name : names) EXPECT_EQ(fastmetrics::manager().get(name)->value(), 0);
+}

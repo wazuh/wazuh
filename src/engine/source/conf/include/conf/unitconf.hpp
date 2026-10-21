@@ -206,8 +206,9 @@ public:
             std::string::size_type pos;
             try
             {
-                // check for whitespace
-                if (std::any_of(value.begin(), value.end(), [](unsigned char c) { return std::isspace(c); }))
+                // stoull accepts a minus sign and can wrap a negative value into the unsigned range.
+                if ((!value.empty() && value.front() == '-')
+                    || std::any_of(value.begin(), value.end(), [](unsigned char c) { return std::isspace(c); }))
                 {
                     throw std::runtime_error(
                         fmt::format("Invalid number value for environment variable '{}' (value: '{}').", m_env, value));

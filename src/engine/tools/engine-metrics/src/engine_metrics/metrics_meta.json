@@ -59,5 +59,25 @@
   "indexer.events.dropped": {
     "category": "events",
     "unit": "count"
+  },
+  "agent.cache.bytes": {
+    "category": "cache",
+    "unit": "bytes"
+  },
+  "agent.cache.max_entries": {
+    "category": "cache",
+    "unit": "items"
+  },
+  "agent.cache.max_bytes": {
+    "category": "cache",
+    "unit": "bytes"
+  },
+  "agent.cache.bypass.max_entries": {
+    "category": "cache",
+    "unit": "count"
+  },
+  "agent.cache.bypass.max_bytes": {
+    "category": "cache",
+    "unit": "count"
   }
 }

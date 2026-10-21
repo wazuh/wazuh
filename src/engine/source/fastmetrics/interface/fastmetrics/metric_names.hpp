@@ -32,6 +32,11 @@ constexpr auto ROUTER_EVENTS_DROPPED = "router.events.dropped";
 
 // Agent cache metrics
 constexpr auto AGENT_CACHE_ENTRIES = "agent.cache.entries";
+constexpr auto AGENT_CACHE_BYTES = "agent.cache.bytes";
+constexpr auto AGENT_CACHE_MAX_ENTRIES = "agent.cache.max_entries";
+constexpr auto AGENT_CACHE_MAX_BYTES = "agent.cache.max_bytes";
+constexpr auto AGENT_CACHE_BYPASS_MAX_ENTRIES = "agent.cache.bypass.max_entries";
+constexpr auto AGENT_CACHE_BYPASS_MAX_BYTES = "agent.cache.bypass.max_bytes";
 constexpr auto AGENT_CACHE_HITS = "agent.cache.hits";
 constexpr auto AGENT_CACHE_EVICTIONS = "agent.cache.evictions";
 constexpr auto AGENT_CACHE_INSERTIONS = "agent.cache.insertions";

@@ -99,6 +99,8 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     addUnit<size_t>(key::EVENT_QUEUE_MAX_BYTES, "WAZUH_EVENT_QUEUE_MAX_BYTES", 0x1 << 25); // 0 = unlimited
 
     // Agent Metadata Cache
+    addUnit<size_t>(key::AGENT_METADATA_CACHE_MAX_ENTRIES, "WAZUH_AGENT_METADATA_CACHE_MAX_ENTRIES", 50000);
+    addUnit<size_t>(key::AGENT_METADATA_CACHE_MAX_BYTES, "WAZUH_AGENT_METADATA_CACHE_MAX_BYTES", 134217728);
     addUnit<size_t>(key::AGENT_METADATA_CACHE_TTL, "WAZUH_AGENT_METADATA_CACHE_TTL", 300); // 5 minutes
     addUnit<size_t>(
         key::AGENT_METADATA_CACHE_CLEAN_INTERVAL, "WAZUH_AGENT_METADATA_CACHE_CLEAN_INTERVAL", 60); // 1 minute

@@ -473,4 +473,88 @@ TEST(ConfDropPrivileges, EnvOverride)
 
     unsetEnv("WAZUH_ENGINE_DROP_PRIVILEGES");
 }
+TEST(ConfTest, AgentCacheDefaultsAndOverrides)
+{
+    logging::testInit();
+    ScopedEnv entriesEnv("WAZUH_AGENT_METADATA_CACHE_MAX_ENTRIES");
+    ScopedEnv bytesEnv("WAZUH_AGENT_METADATA_CACHE_MAX_BYTES");
+    conf::Conf defaults(std::make_shared<conf::mocks::MockFileLoader>());
+    EXPECT_EQ(defaults.get<size_t>(conf::key::AGENT_METADATA_CACHE_MAX_ENTRIES), 50000u);
+    EXPECT_EQ(defaults.get<size_t>(conf::key::AGENT_METADATA_CACHE_MAX_BYTES), 134217728u);
+
+    conf::Conf configured(
+        conf::mocks::createMockFileLoader({{std::string(conf::key::AGENT_METADATA_CACHE_MAX_ENTRIES), "17"},
+                                           {std::string(conf::key::AGENT_METADATA_CACHE_MAX_BYTES), "8192"}}));
+    configured.load();
+    EXPECT_EQ(configured.get<size_t>(conf::key::AGENT_METADATA_CACHE_MAX_ENTRIES), 17u);
+    EXPECT_EQ(configured.get<size_t>(conf::key::AGENT_METADATA_CACHE_MAX_BYTES), 8192u);
+    setEnv("WAZUH_AGENT_METADATA_CACHE_MAX_ENTRIES", "23");
+    setEnv("WAZUH_AGENT_METADATA_CACHE_MAX_BYTES", "16384");
+    EXPECT_EQ(configured.get<size_t>(conf::key::AGENT_METADATA_CACHE_MAX_ENTRIES), 23u);
+    EXPECT_EQ(configured.get<size_t>(conf::key::AGENT_METADATA_CACHE_MAX_BYTES), 16384u);
+    EXPECT_EQ(defaults.get<size_t>(conf::key::AGENT_METADATA_CACHE_MAX_ENTRIES), 23u);
+    EXPECT_EQ(defaults.get<size_t>(conf::key::AGENT_METADATA_CACHE_MAX_BYTES), 16384u);
+}
+
+TEST(ConfTest, AgentCacheZeroLimits)
+{
+    logging::testInit();
+    ScopedEnv entriesEnv("WAZUH_AGENT_METADATA_CACHE_MAX_ENTRIES");
+    ScopedEnv bytesEnv("WAZUH_AGENT_METADATA_CACHE_MAX_BYTES");
+    conf::Conf configured(
+        conf::mocks::createMockFileLoader({{std::string(conf::key::AGENT_METADATA_CACHE_MAX_ENTRIES), "0"},
+                                           {std::string(conf::key::AGENT_METADATA_CACHE_MAX_BYTES), "0"}}));
+    configured.load();
+    EXPECT_EQ(configured.get<size_t>(conf::key::AGENT_METADATA_CACHE_MAX_ENTRIES), 0u);
+    EXPECT_EQ(configured.get<size_t>(conf::key::AGENT_METADATA_CACHE_MAX_BYTES), 0u);
+    conf::Conf defaults(std::make_shared<conf::mocks::MockFileLoader>());
+    setEnv("WAZUH_AGENT_METADATA_CACHE_MAX_ENTRIES", "0");
+    EXPECT_EQ(defaults.get<size_t>(conf::key::AGENT_METADATA_CACHE_MAX_ENTRIES), 0u);
+    EXPECT_EQ(defaults.get<size_t>(conf::key::AGENT_METADATA_CACHE_MAX_BYTES), 134217728u);
+    unsetEnv("WAZUH_AGENT_METADATA_CACHE_MAX_ENTRIES");
+    setEnv("WAZUH_AGENT_METADATA_CACHE_MAX_BYTES", "0");
+    EXPECT_EQ(defaults.get<size_t>(conf::key::AGENT_METADATA_CACHE_MAX_ENTRIES), 50000u);
+    EXPECT_EQ(defaults.get<size_t>(conf::key::AGENT_METADATA_CACHE_MAX_BYTES), 0u);
+    setEnv("WAZUH_AGENT_METADATA_CACHE_MAX_ENTRIES", "0");
+    EXPECT_EQ(defaults.get<size_t>(conf::key::AGENT_METADATA_CACHE_MAX_ENTRIES), 0u);
+    EXPECT_EQ(defaults.get<size_t>(conf::key::AGENT_METADATA_CACHE_MAX_BYTES), 0u);
+}
+
+TEST(ConfTest, UnsignedFileRangeGuard)
+{
+    logging::testInit();
+    ScopedEnv env("TEST_ENV_UNSIGNED_FILE");
+    const auto wide = std::numeric_limits<int64_t>::max();
+    for (const auto& value : {std::string("-1"), std::string("0"), std::to_string(wide)})
+    {
+        SCOPED_TRACE(value);
+        conf::Conf configured(conf::mocks::createMockFileLoader({{"analysisd.unsigned_file", value}}));
+        configured.addUnit<size_t>("analysisd.unsigned_file", "TEST_ENV_UNSIGNED_FILE", 7);
+        configured.load();
+        const auto expected = value == "-1"  ? size_t {7}
+                              : value == "0" ? size_t {0}
+                              : static_cast<uint64_t>(wide) > std::numeric_limits<size_t>::max()
+                                  ? size_t {7}
+                                  : static_cast<size_t>(wide);
+        EXPECT_EQ(configured.get<size_t>("analysisd.unsigned_file"), expected);
+    }
+}
+
+TEST(ConfTest, InvalidUnsignedEnvironmentFallsBack)
+{
+    logging::testInit();
+    ScopedEnv env("WAZUH_AGENT_METADATA_CACHE_MAX_ENTRIES");
+    conf::Conf configured(
+        conf::mocks::createMockFileLoader({{std::string(conf::key::AGENT_METADATA_CACHE_MAX_ENTRIES), "31"}}));
+    configured.load();
+    conf::Conf defaults(std::make_shared<conf::mocks::MockFileLoader>());
+    for (const auto invalid : {"-1", "-18446744073709551615", " 1", "1x", "18446744073709551616"})
+    {
+        SCOPED_TRACE(invalid);
+        setEnv("WAZUH_AGENT_METADATA_CACHE_MAX_ENTRIES", invalid);
+        EXPECT_EQ(configured.get<size_t>(conf::key::AGENT_METADATA_CACHE_MAX_ENTRIES), 31u);
+        EXPECT_EQ(defaults.get<size_t>(conf::key::AGENT_METADATA_CACHE_MAX_ENTRIES), 50000u);
+    }
+}
+
 } // namespace

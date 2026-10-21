@@ -41,6 +41,17 @@ struct Limits
     std::size_t maxBytes {0};
 };
 
+/// Validate periodic cleanup before handing the interval to the scheduler (zero means one-shot there).
+inline std::size_t validateCleanInterval(std::size_t seconds)
+{
+    if (seconds == 0 || seconds > 86400)
+    {
+        throw std::invalid_argument(
+            "analysisd.agent_metadata_cache_clean_interval must be between 1 and 86400 seconds");
+    }
+    return seconds;
+}
+
 /**
  * @brief Thread-safe cache for parsed agent metadata (header JSON).
  *
@@ -66,9 +77,9 @@ struct Limits
  * the per-entry last-used timestamp is a relaxed atomic so it can be refreshed without an
  * exclusive lock.  Inserts, replacements and eviction take an exclusive lock.
  *
- * Metrics: the cache records its own fastmetrics counters (hits, insertions, updates and
- * evictions). This requires fastmetrics::registerManager() to have been called beforehand.
- * The instantaneous entry count is exposed as a pull metric via registerCacheMetrics().
+ * Metrics: the cache records its own fastmetrics counters (hits, insertions, updates, evictions and capacity bypasses).
+ * This requires fastmetrics::registerManager() to have been called beforehand. Retained usage and configured limits are
+ * exposed as pull metrics via registerCacheMetrics().
  */
 class AgentMetadataCache
 {
@@ -106,18 +117,28 @@ public:
         , m_insertionsCounter(fastmetrics::manager().getOrCreateCounter(fastmetrics::names::AGENT_CACHE_INSERTIONS))
         , m_updatesCounter(fastmetrics::manager().getOrCreateCounter(fastmetrics::names::AGENT_CACHE_UPDATES))
         , m_evictionsCounter(fastmetrics::manager().getOrCreateCounter(fastmetrics::names::AGENT_CACHE_EVICTIONS))
+        , m_bypassEntriesCounter(
+              fastmetrics::manager().getOrCreateCounter(fastmetrics::names::AGENT_CACHE_BYPASS_MAX_ENTRIES))
+        , m_bypassBytesCounter(
+              fastmetrics::manager().getOrCreateCounter(fastmetrics::names::AGENT_CACHE_BYPASS_MAX_BYTES))
     {
         if (ttl <= std::chrono::seconds(0) || ttl > std::chrono::seconds(3600 * 24)) // 1 day
         {
-            throw std::invalid_argument("AgentMetadataCache: TTL must be > 0 and <= 86400 seconds");
+            throw std::invalid_argument("analysisd.agent_metadata_cache_ttl must be between 1 and 86400 seconds");
         }
         if (!m_clock)
         {
             throw std::invalid_argument("AgentMetadataCache: clock function must be valid");
         }
-        if (limits.maxEntries > Limits::MAX_ENTRIES || limits.maxBytes > Limits::MAX_BYTES)
+        if (limits.maxEntries > Limits::MAX_ENTRIES)
         {
-            throw std::invalid_argument("AgentMetadataCache: limits exceed supported entry/byte bounds");
+            throw std::invalid_argument("analysisd.agent_metadata_cache_max_entries must be between 0 and "
+                                        + std::to_string(Limits::MAX_ENTRIES));
+        }
+        if (limits.maxBytes > Limits::MAX_BYTES)
+        {
+            throw std::invalid_argument("analysisd.agent_metadata_cache_max_bytes must be between 0 and "
+                                        + std::to_string(Limits::MAX_BYTES));
         }
         m_byId.reserve(CACHE_INITIAL_CAPACITY);
     }
@@ -187,6 +208,14 @@ public:
         const bool fitsBytes = bytesAfter && (m_limits.maxBytes == 0 || *bytesAfter <= m_limits.maxBytes);
         if (!fitsEntries || !fitsBytes)
         {
+            if (!fitsEntries)
+            {
+                m_bypassEntriesCounter->add(1);
+            }
+            if (!fitsBytes)
+            {
+                m_bypassBytesCounter->add(1);
+            }
             if (agentExisted)
             {
                 m_byId.erase(it);
@@ -293,6 +322,9 @@ public:
         return m_byId.size();
     }
 
+    /// Immutable configured limits; each zero independently means unlimited.
+    Limits limits() const noexcept { return m_limits; }
+
     /// Accounted retained state, excluding documents kept alive only by callers.
     std::size_t accountedBytes() const
     {
@@ -369,20 +401,22 @@ private:
     std::size_t m_accountedBytes {0};
 
     // Metric counters (process-wide singletons resolved from the fastmetrics manager).
-    std::shared_ptr<fastmetrics::ICounter> m_hitsCounter;       ///< agent.cache.hits (Retrieved).
-    std::shared_ptr<fastmetrics::ICounter> m_insertionsCounter; ///< agent.cache.insertions (Inserted).
-    std::shared_ptr<fastmetrics::ICounter> m_updatesCounter;    ///< agent.cache.updates (Updated).
-    std::shared_ptr<fastmetrics::ICounter> m_evictionsCounter;  ///< agent.cache.evictions (evictStale).
+    std::shared_ptr<fastmetrics::ICounter> m_hitsCounter;          ///< agent.cache.hits (Retrieved).
+    std::shared_ptr<fastmetrics::ICounter> m_insertionsCounter;    ///< agent.cache.insertions (Inserted).
+    std::shared_ptr<fastmetrics::ICounter> m_updatesCounter;       ///< agent.cache.updates (Updated).
+    std::shared_ptr<fastmetrics::ICounter> m_evictionsCounter;     ///< agent.cache.evictions (evictStale).
+    std::shared_ptr<fastmetrics::ICounter> m_bypassEntriesCounter; ///< agent.cache.bypass.max_entries.
+    std::shared_ptr<fastmetrics::ICounter> m_bypassBytesCounter;   ///< agent.cache.bypass.max_bytes.
 };
 
 /**
- * @brief Register the instantaneous "agent.cache.entries" pull metric for a cache instance.
+ * @brief Register instantaneous retained usage and configured limits as pull metrics for a cache instance.
  *
  * Uses a weak_ptr so the metrics manager never keeps the cache alive nor dereferences it
  * after destruction (mirrors the engine's other pull-metric registrations). Safe to call
  * once after the cache is constructed; re-registering the same metric name is a no-op.
  *
- * @param cache The cache whose size() should be exposed.
+ * @param cache The cache whose retained usage and limits should be exposed.
  */
 inline void registerCacheMetrics(const std::shared_ptr<AgentMetadataCache>& cache)
 {
@@ -393,6 +427,27 @@ inline void registerCacheMetrics(const std::shared_ptr<AgentMetadataCache>& cach
                      {
                          auto c = weakCache.lock();
                          return c ? c->size() : std::size_t {0};
+                     });
+    FASTMETRICS_PULL(std::size_t,
+                     fastmetrics::names::AGENT_CACHE_BYTES,
+                     [weakCache]()
+                     {
+                         auto c = weakCache.lock();
+                         return c ? c->accountedBytes() : std::size_t {0};
+                     });
+    FASTMETRICS_PULL(std::size_t,
+                     fastmetrics::names::AGENT_CACHE_MAX_ENTRIES,
+                     [weakCache]()
+                     {
+                         auto c = weakCache.lock();
+                         return c ? c->limits().maxEntries : std::size_t {0};
+                     });
+    FASTMETRICS_PULL(std::size_t,
+                     fastmetrics::names::AGENT_CACHE_MAX_BYTES,
+                     [weakCache]()
+                     {
+                         auto c = weakCache.lock();
+                         return c ? c->limits().maxBytes : std::size_t {0};
                      });
 }
 
