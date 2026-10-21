@@ -394,7 +394,8 @@ const char *OSX_ReleaseName(int version) {
     /* 23 */ "Sonoma",
     /* 24 */ "Sequoia",
     /* 25 */ "Tahoe",
-    /* 26 */ "Golden Gate",
+    /* 26 */ OSX_UNKNOWN_RELEASE_NAME, /* No macOS release uses Darwin 26 */
+    /* 27 */ "Golden Gate",
     };
 
     version -= 10;

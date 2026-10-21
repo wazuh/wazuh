@@ -642,30 +642,8 @@ TEST_F(SysInfoParsersTest, MacOSGoldenGateCodename)
     {
         R"(
         ProductName:	macOS
-        ProductVersion:	27.0
-        BuildVersion:	26A5000a
-        )"
-    };
-    constexpr auto MACOS_UNAME
-    {
-        "26.0.0"
-    };
-    nlohmann::json output;
-    MacOsParser parser;
-    EXPECT_TRUE(parser.parseSwVersion(MACOS_SW_VERSION, output));
-    EXPECT_TRUE(parser.parseUname(MACOS_UNAME, output));
-    EXPECT_EQ("27.0", output["os_version"]);
-    EXPECT_EQ("Golden Gate", output["os_codename"]);
-}
-
-TEST_F(SysInfoParsersTest, MacOSUnmappedCodenameIsEmpty)
-{
-    constexpr auto MACOS_SW_VERSION
-    {
-        R"(
-        ProductName:	macOS
-        ProductVersion:	28.0
-        BuildVersion:	27A100
+        ProductVersion:	27.0.1
+        BuildVersion:	26A434
         )"
     };
     constexpr auto MACOS_UNAME
@@ -676,7 +654,29 @@ TEST_F(SysInfoParsersTest, MacOSUnmappedCodenameIsEmpty)
     MacOsParser parser;
     EXPECT_TRUE(parser.parseSwVersion(MACOS_SW_VERSION, output));
     EXPECT_TRUE(parser.parseUname(MACOS_UNAME, output));
-    EXPECT_EQ("28.0", output["os_version"]);
+    EXPECT_EQ("27.0.1", output["os_version"]);
+    EXPECT_EQ("Golden Gate", output["os_codename"]);
+}
+
+TEST_F(SysInfoParsersTest, MacOSUnmappedCodenameIsEmpty)
+{
+    constexpr auto MACOS_SW_VERSION
+    {
+        R"(
+        ProductName:	macOS
+        ProductVersion:	29.0
+        BuildVersion:	28A100
+        )"
+    };
+    constexpr auto MACOS_UNAME
+    {
+        "28.0.0"
+    };
+    nlohmann::json output;
+    MacOsParser parser;
+    EXPECT_TRUE(parser.parseSwVersion(MACOS_SW_VERSION, output));
+    EXPECT_TRUE(parser.parseUname(MACOS_UNAME, output));
+    EXPECT_EQ("29.0", output["os_version"]);
     EXPECT_EQ("", output["os_codename"]);
 }
 
