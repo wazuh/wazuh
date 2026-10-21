@@ -640,6 +640,25 @@ void test_azure_dump_never_prints_a_key(void **state) {
     cJSON_free(text);
 }
 
+void test_azure_dump_reports_requests_and_containers(void **state) {
+    wm_azure_request_t request = { .tag = "azure-activity", .query = "AzureActivity", .time_offset = "36h", .workspace = "d6b-efa" };
+    wm_azure_api_t api = { .type = LOG_ANALYTICS, .auth_path = "/var/ossec/wodles/azure/credentials.txt",
+                           .tenantdomain = "wazuh.onmicrosoft.com", .request = &request };
+    wm_azure_container_t container = { .name = "insights-logs", .blobs = ".json", .content_type = "json_inline", .time_offset = "24h" };
+    wm_azure_storage_t storage = { .auth_path = "/var/ossec/wodles/azure/credentials.txt", .tag = "azure-storage", .container = &container };
+    wm_azure_t azure = { .flags.enabled = 1, .api_config = &api, .storage = &storage, .scan_config.scan_wday = -1 };
+
+    char *text = azure_dump_text(&azure);
+
+    assert_string_equal(text, "{\"azure-logs\":{\"disabled\":\"no\",\"run_on_start\":\"no\",\"timeout\":0,\"content\":["
+                              "{\"type\":\"log_analytics\",\"tenantdomain\":\"wazuh.onmicrosoft.com\","
+                              "\"auth_path\":\"/var/ossec/wodles/azure/credentials.txt\",\"requests\":["
+                              "{\"tag\":\"azure-activity\",\"query\":\"AzureActivity\",\"time_offset\":\"36h\",\"workspace\":\"d6b-efa\"}]},"
+                              "{\"tag\":\"azure-storage\",\"auth_path\":\"/var/ossec/wodles/azure/credentials.txt\",\"containers\":["
+                              "{\"name\":\"insights-logs\",\"blobs\":\".json\",\"content_type\":\"json_inline\",\"time_offset\":\"24h\"}]}]}}");
+    cJSON_free(text);
+}
+
 int main(void) {
     const struct CMUnitTest tests_with_startup[] = {
         cmocka_unit_test_setup_teardown(test_interval_execution, setup_test_executions, teardown_test_executions),
@@ -667,7 +686,8 @@ int main(void) {
     };
     const struct CMUnitTest tests_dump[] = {
         cmocka_unit_test(test_azure_dump_masks_application_and_account_keys),
-        cmocka_unit_test(test_azure_dump_never_prints_a_key)
+        cmocka_unit_test(test_azure_dump_never_prints_a_key),
+        cmocka_unit_test(test_azure_dump_reports_requests_and_containers)
     };
     int result;
     result = cmocka_run_group_tests(tests_with_startup, setup_module, teardown_module);
