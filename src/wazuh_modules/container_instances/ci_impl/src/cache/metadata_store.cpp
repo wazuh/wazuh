@@ -49,10 +49,11 @@ namespace wazuh::container_instances
         }
         if (key.kind != m_keyKind)
         {
-            // Refused rather than looked up. The two kinds are both 64-bit
-            // inode numbers, so a mismatched one would simply not be found and
-            // the caller would be told the container is unknown — which it is
-            // not, and which sends it off re-resolving something already here.
+            // Refused, not looked up, and the refusal has to be TOLD APART from
+            // a miss by the caller. The two kinds are both 64-bit inode
+            // numbers, so a mismatched one merely fails to match; reported as
+            // "unknown container" it sends the caller off re-resolving
+            // something that is sitting right here.
             return {};
         }
         std::shared_lock lock(m_mutex);
@@ -201,7 +202,8 @@ namespace wazuh::container_instances
             if (entryIt != m_byCgroup.end())
             {
                 if (auto* resolved = std::get_if<ResolvedEntry>(&entryIt->second);
-                    resolved != nullptr && resolved->source == source)
+                    resolved != nullptr && resolved->source == source &&
+                    resolved->record != nullptr && resolved->record->containerId == record.containerId)
                 {
                     resolved->deletedAt.reset();
                 }
@@ -223,14 +225,24 @@ namespace wazuh::container_instances
                 eraseResolvedLocked(source, containerId);
                 continue;
             }
+            // The key must still belong to THIS container. A mount-namespace
+            // inode is reused by the kernel, so by the time a removal is
+            // processed the key can already have been rebound to a live
+            // container -- marking that one would delete something running and
+            // leave the departed record to sit here forever, since the expiry
+            // sweep below only ever walks m_byCgroup.
             const auto entryIt = m_byCgroup.find(record->hostKey);
-            if (entryIt != m_byCgroup.end())
+            auto* resolved = entryIt != m_byCgroup.end() ? std::get_if<ResolvedEntry>(&entryIt->second) : nullptr;
+            const bool stillOurs = resolved != nullptr && resolved->source == source &&
+                                   resolved->record != nullptr && resolved->record->containerId == containerId;
+            if (!stillOurs)
             {
-                if (auto* resolved = std::get_if<ResolvedEntry>(&entryIt->second);
-                    resolved != nullptr && resolved->source == source && !resolved->deletedAt)
-                {
-                    resolved->deletedAt = now;
-                }
+                eraseResolvedLocked(source, containerId);
+                continue;
+            }
+            if (!resolved->deletedAt)
+            {
+                resolved->deletedAt = now;
             }
         }
 
