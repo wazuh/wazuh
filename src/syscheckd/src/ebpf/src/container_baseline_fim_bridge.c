@@ -489,6 +489,8 @@ void fim_persist_baseline_row(const char* id, int operation, const char* index, 
     char item_desc[128];
     snprintf(item_desc, sizeof(item_desc), "container FIM baseline row %s", id ? id : "<null>");
     if (g_host.validate_and_persist == NULL) {
+        // The call below is followed by cJSON_Delete(msg); returning here skips it.
+        cJSON_Delete(msg);
         return;
     }
 
