@@ -163,8 +163,11 @@ TEST_F(ClientTest, WaitsFromRuntimeThreadAreReentrancy)
     EXPECT_EQ(cancel, Cause::Reentrancy);
     EXPECT_EQ(ticket, Cause::Reentrancy);
 
-    // The same waits from the consumer thread see the stub result.
-    EXPECT_EQ(groupTicket.wait(soon()).cause, Cause::Unavailable);
+    // The same waits from the consumer thread: the empty group's commit is a success with no result; the cancel is
+    // still the stub.
+    const auto committed = groupTicket.wait(soon());
+    EXPECT_TRUE(committed.ok()) << toString(committed.cause);
+    EXPECT_TRUE(committed.value.empty());
     EXPECT_EQ(cancelTicket.wait(soon()).cause, Cause::Unavailable);
     EXPECT_EQ(Ticket {}.wait(soon()).cause, Cause::InvalidState);
 }
@@ -186,8 +189,11 @@ TEST_F(ClientTest, GroupCommitTwiceIsInvalidState)
     auto writer = m_client->writer("events");
     ASSERT_NE(writer, nullptr);
     auto group = writer->group();
-    EXPECT_EQ(group.commit().wait(soon()).cause, Cause::Unavailable);
+    const auto first = group.commit().wait(soon());
+    EXPECT_TRUE(first.ok()) << toString(first.cause) << ": the empty commit succeeds";
+    EXPECT_TRUE(first.value.empty());
     EXPECT_EQ(group.add(Op {}), Cause::InvalidState);
+    EXPECT_FALSE(group.lastAddReason().empty());
     EXPECT_EQ(group.commit().wait(soon()).cause, Cause::InvalidState);
 }
 

@@ -75,6 +75,7 @@ namespace indexer_client
     {
         bool accepted {false};
         Cause cause {Cause::None};
+        std::string reason; ///< Why it was refused; InvalidArgument names the field first (D42).
         Ticket ticket;
     };
 
@@ -89,7 +90,15 @@ namespace indexer_client
         Group& operator=(const Group&) = delete;
         ~Group(); ///< Without commit() the group is abandoned and its reservation released.
 
-        Cause add(Op op); ///< None | GroupTooLarge | QueueFull | SubmitTimeout | ...
+        /// Validates like Writer::submit and reserves the op's quota now with the bucket's overflow policy (DropNewest
+        /// and DropOldest behave like Reject, I70): None | InvalidArgument | PayloadTooLarge | GroupTooLarge |
+        /// QueueFull | SubmitTimeout | Reentrancy | ClientClosed | Shutdown | InvalidState (after commit()) |
+        /// Unavailable (its client is gone; with the runtime shut down it answers the close cause). Not thread-safe.
+        Cause add(Op op);
+        /// Why the last add() was refused (empty after an accepted one).
+        const std::string& lastAddReason() const;
+        /// Enqueues every added op at once and makes them eligible now; the ticket completes when all are resolved,
+        /// with their results in add order. A second commit() yields a ready ticket with InvalidState.
         GroupTicket commit();
 
     private:

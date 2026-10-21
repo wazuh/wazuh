@@ -243,6 +243,121 @@ namespace indexer_client::detail::write
         return reservation;
     }
 
+    Reservation Bucket::reserveForGroup(std::uint64_t payload, std::uint64_t groupReserved, TimePoint blockUntil)
+    {
+        const std::uint64_t charge = payload + RESULT_RESERVE;
+        Reservation reservation;
+        bool charged = false;
+        {
+            std::unique_lock<std::mutex> lock(m_mutex);
+            ++m_stats.submitted;
+            if (m_closed)
+            {
+                ++m_stats.rejectedClosed;
+                reservation.cause = *m_closed;
+                return reservation;
+            }
+            if (payload > m_spec.bulk.maxBytes || charge > m_spec.quotaBytes || charge > m_budget.cap())
+            {
+                ++m_stats.payloadTooLarge;
+                reservation.cause = Cause::PayloadTooLarge;
+                return reservation;
+            }
+            // charge <= quota and <= cap here, so the subtractions cannot wrap.
+            if (groupReserved > m_spec.quotaBytes - charge || groupReserved > m_budget.cap() - charge)
+            {
+                ++m_stats.rejectedGroupTooLarge;
+                reservation.cause = Cause::GroupTooLarge;
+                return reservation;
+            }
+            // The room this op lacks is held by Building groups (this bucket's or any bucket's): waiting for it could
+            // wait on a group that is never committed (03 §4.13), so it is QueueFull at once. m_mutex held.
+            const auto heldByGroups = [&]
+            {
+                return m_building > m_spec.quotaBytes - charge || m_budget.building() > m_budget.cap() - charge;
+            };
+            charged = tryChargeLocked(charge);
+            if (!charged)
+            {
+                if (m_spec.overflow.kind != Overflow::Kind::Block)
+                {
+                    // Reject, DropNewest and DropOldest alike (I70): nothing is dropped or evicted for a group op.
+                    ++m_stats.rejectedQueueFull;
+                    reservation.cause = Cause::QueueFull;
+                    return reservation;
+                }
+                if (indexer_client::detail::testing::onRuntimeThread())
+                {
+                    ++m_stats.reentrancy; // RF-27, as reserve().
+                    reservation.cause = Cause::Reentrancy;
+                    return reservation;
+                }
+                if (heldByGroups())
+                {
+                    ++m_stats.rejectedQueueFull;
+                    reservation.cause = Cause::QueueFull;
+                    return reservation;
+                }
+                // Registered before the predicate's first re-check (see GlobalBudget::addWaiter), as reserve().
+                if (m_waiting++ == 0)
+                {
+                    m_budget.addWaiter(shared_from_this());
+                }
+                bool held = false;
+                m_room.wait_until(lock,
+                                  blockUntil,
+                                  [&]
+                                  {
+                                      if (m_closed)
+                                      {
+                                          return true;
+                                      }
+                                      charged = tryChargeLocked(charge);
+                                      if (charged)
+                                      {
+                                          return true;
+                                      }
+                                      held = heldByGroups();
+                                      return held;
+                                  });
+                if (--m_waiting == 0)
+                {
+                    m_budget.removeWaiter(this);
+                }
+                if (!charged)
+                {
+                    if (m_closed)
+                    {
+                        ++m_stats.rejectedClosed;
+                        reservation.cause = *m_closed;
+                    }
+                    else if (held)
+                    {
+                        ++m_stats.rejectedQueueFull;
+                        reservation.cause = Cause::QueueFull;
+                    }
+                    else
+                    {
+                        ++m_stats.submitTimeout;
+                        reservation.cause = Cause::SubmitTimeout;
+                    }
+                    return reservation;
+                }
+            }
+            ++m_stats.accepted;
+            ++m_stats.groupBuilding;
+            m_building += charge;
+            m_budget.addBuilding(charge); // Before the wake-ups below: a woken waiter's re-check sees it.
+            if (m_waiting != 0)
+            {
+                m_room.notify_all(); // Their building condition may hold now.
+            }
+        }
+        // Other buckets' group adds may be waiting on a condition that `building` now meets; no bucket mutex held.
+        m_budget.wakeWaiters();
+        return reservation;
+    }
+
     bool Bucket::enqueue(std::shared_ptr<OpState> op, std::optional<Cause>* closed)
     {
         std::lock_guard<std::mutex> lock(m_mutex);
@@ -263,6 +378,7 @@ namespace indexer_client::detail::write
             op->bucket = weak_from_this();
         }
         op->payloadCharged = true;
+        op->seq = m_nextSeq++;
         ++m_stats.retained;
         m_pendingBytes += op->lines.size();
         m_pending.push_back(std::move(op));
@@ -272,6 +388,63 @@ namespace indexer_client::detail::write
         const bool crossed = wasEmpty || (bytesBefore < maxBytes && m_pendingBytes >= maxBytes) ||
                              (docsBefore < maxDocs && m_pending.size() >= maxDocs);
         return crossed && !m_notified.exchange(true);
+    }
+
+    bool Bucket::enqueueGroup(std::vector<std::shared_ptr<OpState>> ops,
+                              std::uint64_t reserved,
+                              std::optional<Cause>* closed)
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        if (closed)
+        {
+            *closed = m_closed;
+        }
+        m_building -= reserved;
+        m_budget.removeBuilding(reserved);
+        m_stats.groupBuilding -= ops.size();
+        if (ops.empty())
+        {
+            return false; // Nothing to flush (commitGroup never calls it so).
+        }
+        const auto now = std::chrono::steady_clock::now();
+        for (auto& op : ops)
+        {
+            if (op->firstSubmit == TimePoint {})
+            {
+                op->firstSubmit = now;
+            }
+            if (op->bucket.expired())
+            {
+                op->bucket = weak_from_this();
+            }
+            op->payloadCharged = true;
+            op->seq = m_nextSeq++;
+            ++m_stats.retained;
+            m_pendingBytes += op->lines.size();
+            m_pending.push_back(std::move(op));
+        }
+        m_flushSeq = m_nextSeq - 1;
+        // Whatever the thresholds: the group leaves now (RF-7).
+        return !m_notified.exchange(true);
+    }
+
+    void Bucket::cancelGroupReservation(std::uint64_t reserved, std::uint32_t ops)
+    {
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            m_charge -= reserved;
+            m_building -= reserved;
+            m_stats.groupBuilding -= ops;
+            m_stats.groupAbandoned += ops;
+            m_stats.resolvedDropped += ops;
+            if (m_waiting != 0)
+            {
+                m_room.notify_all();
+            }
+        }
+        // `building` first: it is part of the global charge and never exceeds it.
+        m_budget.removeBuilding(reserved);
+        m_budget.release(reserved); // Wakes the global waiters.
     }
 
     bool Bucket::laneDueLocked(TimePoint now) const
@@ -290,8 +463,8 @@ namespace indexer_client::detail::write
         {
             return false;
         }
-        return m_pendingBytes >= m_spec.bulk.maxBytes || m_pending.size() >= m_spec.bulk.maxDocs ||
-               now - m_pending.front()->firstSubmit >= m_spec.bulk.maxAge;
+        return m_pending.front()->seq <= m_flushSeq || m_pendingBytes >= m_spec.bulk.maxBytes ||
+               m_pending.size() >= m_spec.bulk.maxDocs || now - m_pending.front()->firstSubmit >= m_spec.bulk.maxAge;
     }
 
     std::optional<TimePoint> Bucket::nextDueLocked() const
@@ -299,6 +472,13 @@ namespace indexer_client::detail::write
         std::optional<TimePoint> due;
         if (!m_pending.empty())
         {
+            if (m_pending.front()->seq <= m_flushSeq)
+            {
+                // A committed group's op heads the queue: due now. TimePoint::min() is <= any `now`, so
+                // Scheduler::armTimer arms no timer for it and reports it due (it re-posts a pass when the sink has
+                // capacity; otherwise sinkReady() resumes the scheduler). Nothing is earlier, so the lane cannot win.
+                return TimePoint::min();
+            }
             due = m_pending.front()->firstSubmit + m_spec.bulk.maxAge;
         }
         if (!m_lane.empty() && (!due || m_lane.front()->notBefore < *due))
@@ -442,17 +622,18 @@ namespace indexer_client::detail::write
         m_budget.release(released);
     }
 
-    void Bucket::releaseReserve()
+    void Bucket::releaseReserve(std::uint32_t count)
     {
+        const std::uint64_t bytes = RESULT_RESERVE * count;
         {
             std::lock_guard<std::mutex> lock(m_mutex);
-            m_charge -= RESULT_RESERVE;
+            m_charge -= bytes;
             if (m_waiting != 0)
             {
                 m_room.notify_all();
             }
         }
-        m_budget.release(RESULT_RESERVE);
+        m_budget.release(bytes);
     }
 
     std::vector<std::shared_ptr<OpState>> Bucket::close(Cause cause)

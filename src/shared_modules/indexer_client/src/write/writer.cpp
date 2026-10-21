@@ -20,6 +20,7 @@
 #include "runtime/runtimeInternal.hpp"
 #include "transport/seams.hpp"
 #include "write/encoding.hpp"
+#include "write/group.hpp"
 #include "write/sender.hpp"
 
 // The write path of a runtime (plan 18 I62/I63). Lock discipline: WritePath::m_mutex only guards its own members and
@@ -30,7 +31,23 @@ namespace indexer_client::detail::write
 {
     namespace
     {
-        constexpr const char* E3C_UNAVAILABLE = "groups and cancel(tag) arrive in E3c";
+        constexpr const char* E3C_UNAVAILABLE = "cancel(tag) arrives in E3c-2";
+
+        /// The fixed reason of a refused submit (D42): never a consumer string (group.cpp has the add() twin).
+        const char* refusalReason(Cause cause)
+        {
+            switch (cause)
+            {
+                case Cause::QueueFull: return "the bucket has no room for the operation";
+                case Cause::SubmitTimeout: return "blocked until overflow.blockTimeout without room";
+                case Cause::Reentrancy: return "a blocking submit from a runtime thread";
+                case Cause::PayloadTooLarge:
+                    return "the operation can never fit bulk.maxBytes, the bucket's quota or the global cap";
+                case Cause::ClientClosed: return "the client is closed";
+                case Cause::Shutdown: return "the runtime is shutting down";
+                default: return toString(cause);
+            }
+        }
 
         OpResult dropped(Cause cause)
         {
@@ -153,18 +170,14 @@ namespace indexer_client::detail::write
             Submit submit(Op request, Callback cb) override
             {
                 Submit submit;
-                if (request.onConflict)
-                {
-                    // The per-operation ConflictPolicy is E3c: refused rather than silently served with the bucket's.
-                    m_bucket->countInvalidArgument();
-                    submit.cause = Cause::InvalidArgument;
-                    return submit;
-                }
-                auto encoded = encode(std::move(request));
+                // The effective conflict policy (I73): the op's when set, else the bucket's.
+                const ConflictPolicy effective = request.onConflict ? *request.onConflict : m_bucket->spec().onConflict;
+                auto encoded = encode(std::move(request), effective);
                 if (!encoded.ok())
                 {
                     m_bucket->countInvalidArgument();
                     submit.cause = encoded.cause;
+                    submit.reason = std::move(encoded.reason); // The field first (D42).
                     return submit;
                 }
                 const bool withCallback = static_cast<bool>(cb);
@@ -181,6 +194,7 @@ namespace indexer_client::detail::write
                 if (reservation.cause != Cause::None)
                 {
                     submit.cause = reservation.cause;
+                    submit.reason = refusalReason(reservation.cause);
                     return submit;
                 }
 
@@ -221,6 +235,7 @@ namespace indexer_client::detail::write
                 op->callback = std::move(cb);
                 op->firstSubmit = now;
                 op->bucket = m_bucket;
+                op->conflictRetry = effective.kind == ConflictPolicy::Kind::Retry;
 
                 seams::afterAdmission();
 
@@ -249,7 +264,7 @@ namespace indexer_client::detail::write
 
             Group group() override
             {
-                return Group(std::make_shared<GroupState>());
+                return Group(makeGroup(m_client, m_bucket, m_path));
             }
 
             CancelTicket cancel(std::string_view /*tag*/) override
@@ -386,7 +401,15 @@ namespace indexer_client::detail::write
         auto ticket = std::move(op->ticket);
         auto callback = std::move(op->callback);
         const bool reserveCharged = op->reserveCharged;
-        auto client = ticket ? ticket->client.lock() : nullptr;
+        std::shared_ptr<ClientState> client;
+        if (ticket)
+        {
+            client = ticket->client.lock();
+        }
+        else if (op->group)
+        {
+            client = op->group->client.lock(); // A group op counts in the CloseReport like a submitted one.
+        }
 
         if (result.reason.size() > OpResult::MAX_REASON)
         {
@@ -419,6 +442,16 @@ namespace indexer_client::detail::write
             {
                 client->droppedShutdown.fetch_add(1);
             }
+        }
+
+        if (op->group)
+        {
+            // A group op (I74): no ticket, no callback, no pool task. Its slot is filled (the last one completes the
+            // GroupTicket) and the op lets its GroupState go, with no lock held: it may be the last holder, whose
+            // destructor returns the group's reserves; the OpState itself may still live on in a batch.
+            resolveInGroup(*op, std::move(result));
+            op->group.reset();
+            return true;
         }
 
         if (!callback)

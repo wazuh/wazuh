@@ -55,9 +55,10 @@
 //   FailBatch  every op Failed(cause, httpStatus, reason).
 //   Items      classifyItems(body, n, &reason): nullopt ⇒ requeue {true, Backoff} with lastError {Server5xx, the 2xx
 //              status, that reason}; per item:
-//              Ok / NotFound ⇒ Ok with its outcome; Conflict ⇒ Ok keeping 409 and the type (the BUCKET's
-//              ConflictPolicy; per-operation policy and Retry are E3c); Retry ⇒ requeue {true, Backoff} with the item's
-//              error (one call for the batch); Permanent ⇒ Failed(ItemPermanent, status, type, reason).
+//              Ok / NotFound ⇒ Ok with its outcome; Conflict ⇒ by the op's effective policy (OpState::conflictRetry,
+//              E3c-1 I73): Success ⇒ Ok keeping 409 and the type, Retry ⇒ requeue {true, Backoff} with lastError
+//              {VersionConflict, 409, type, reason}; item Retry ⇒ requeue {true, Backoff} with the item's error; both
+//              kinds of requeue in one call for the batch; Permanent ⇒ Failed(ItemPermanent, status, type, reason).
 // Any 2xx from a node resets its pace to 0 and NEVER shortens a notBefore in force. RequeueResult.exhausted ⇒
 // Failed(RetryExhausted) with the op's last error; RequeueResult.closed ⇒ Dropped(closedCause); RequeueResult.notify ⇒
 // Scheduler::notify(bucket). Every completion ⇒ WritePath::sinkReady().
