@@ -215,6 +215,20 @@ namespace indexer_client::detail::write
                     return "body: contains '\\n' (compact JSON expected)";
                 }
             }
+
+            // E3c-2 I80: the tag is a cancellation key, never wire bytes; the reason never echoes it (D42).
+            if (op.tag.size() > MAX_TAG_SIZE)
+            {
+                return "tag: longer than " + std::to_string(MAX_TAG_SIZE) + " bytes";
+            }
+            for (const char c : op.tag)
+            {
+                const auto byte = static_cast<unsigned char>(c);
+                if (byte < 0x20 || byte == 0x7f)
+                {
+                    return "tag: contains a control character";
+                }
+            }
             return {};
         }
 

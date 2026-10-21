@@ -474,12 +474,6 @@ namespace indexer_client
                        " must be <= " + std::to_string(detail::write::MAX_RETRY_ON_CONFLICT) +
                        " with ConflictPolicy::Retry";
             }
-            // Accepted by the API but not honoured by the bulk sender yet: refused rather than silently served with
-            // other semantics (G-diff E3b-2 obj. 2).
-            if (spec.ordered)
-            {
-                return field("ordered") + " = true is not implemented yet (E3c-2)";
-            }
             return {};
         }
     } // namespace

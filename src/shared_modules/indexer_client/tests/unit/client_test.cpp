@@ -163,12 +163,14 @@ TEST_F(ClientTest, WaitsFromRuntimeThreadAreReentrancy)
     EXPECT_EQ(cancel, Cause::Reentrancy);
     EXPECT_EQ(ticket, Cause::Reentrancy);
 
-    // The same waits from the consumer thread: the empty group's commit is a success with no result; the cancel is
-    // still the stub.
+    // The same waits from the consumer thread: the empty group's commit is a success with no result; the cancel of a
+    // tag with nothing queued is a ready success (E3c-2).
     const auto committed = groupTicket.wait(soon());
     EXPECT_TRUE(committed.ok()) << toString(committed.cause);
     EXPECT_TRUE(committed.value.empty());
-    EXPECT_EQ(cancelTicket.wait(soon()).cause, Cause::Unavailable);
+    EXPECT_TRUE(cancelTicket.ready());
+    const auto cancelled = cancelTicket.wait(soon());
+    EXPECT_TRUE(cancelled.ok()) << toString(cancelled.cause);
     EXPECT_EQ(Ticket {}.wait(soon()).cause, Cause::InvalidState);
 }
 

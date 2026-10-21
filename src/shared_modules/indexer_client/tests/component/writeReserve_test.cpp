@@ -144,7 +144,8 @@ namespace
 // E3b-2 obj. 1) the composed worst case: requeued with its LastError at its caps, sliced again, then resolved
 // Failed(ItemPermanent) with a capped OpResult while its completion waits behind a busy pool, the batch still held
 // (the resolution frees the op's last-error strings); (7, E3c-1) an op of a group, Building, then resolved with a
-// capped OpResult in its slot while the batches are still held.
+// capped OpResult in its slot while the batches are still held; (8, E3c-2) an op of an ordered bucket with a tag at its
+// cap and its key: retained, then pinned in the lane with its LastError at its caps, then resolved from the lane.
 TEST_F(WriteTest, ResultReserveMeasured)
 {
 #if !WRITE_RESERVE_COUNTER
@@ -154,7 +155,10 @@ TEST_F(WriteTest, ResultReserveMeasured)
     constexpr std::size_t PER_BATCH = 64;
     ASSERT_NO_FATAL_FAILURE(start(1, 1));
     auto sink = installSink();
-    auto c = client("c", {bucketSpec("b", 64u << 20, ic::Overflow::Kind::Reject, 1u << 20, PER_BATCH)});
+    // E3c-2: an ordered bucket whose single batch takes all N ops (one bulk in flight per ordered bucket).
+    auto ordered = bucketSpec("o", 8u << 20, ic::Overflow::Kind::Reject, 1u << 20, N);
+    ordered.ordered = true;
+    auto c = client("c", {bucketSpec("b", 64u << 20, ic::Overflow::Kind::Reject, 1u << 20, PER_BATCH), ordered});
     auto writer = c->writer("b");
     const auto result = cappedResult();
     auto calls = std::make_shared<std::atomic<std::size_t> >(0);
@@ -408,11 +412,90 @@ TEST_F(WriteTest, ResultReserveMeasured)
     }
     ASSERT_TRUE(component::eventually([&] { return stats("b").charge == 0; }, 5s));
 
-    const double measured = std::max({retained, queued, noCallback, inLane, composed, groupBuilding, groupResolved});
+    // (8, E3c-2) An ordered bucket: each op with a tag at its cap (OpState::tag) and its key (keyHash), (a) retained
+    // with a callback, the batch held; (b) requeued into the lane with its LastError at its caps and pinned (the
+    // ambiguous anchor), the batch gone; (c) resolved from the lane with a capped OpResult behind a busy pool.
+    const std::size_t dispatchedBefore = sink->dispatched();
+    auto orderedWriter = c->writer("o");
+    const auto base8 = liveBytes();
+    for (std::size_t i = 0; i < N; ++i)
+    {
+        auto op = smallOp(5 * N + i);
+        op.tag.assign(wr::MAX_TAG_SIZE, 'g');
+        auto submit = orderedWriter->submit(std::move(op), [counter](const ic::OpResult&) { counter->fetch_add(1); });
+        ASSERT_TRUE(submit.accepted);
+        tickets.push_back(std::move(submit.ticket));
+    }
+    ASSERT_TRUE(sink->waitDispatched(dispatchedBefore + 1));
+    for (auto& batch : sink->take())
+    {
+        batches.push_back(std::move(batch));
+    }
+    ASSERT_EQ(batches.size(), 1u);
+    ASSERT_EQ(batches[0].ops.size(), N);
+    ASSERT_TRUE(batches[0].ops[0]->hasKey) << "an ordered bucket's op carries its key";
+    const double orderedRetained = perOp(base8);
+    const std::uint64_t orderedLines = linesOf(batches);
+    wr::RequeueSpec pinned;
+    pinned.countAttempt = false;
+    pinned.delay = wr::RequeueSpec::Delay::At;
+    pinned.at = now() + std::chrono::hours(1);
+    pinned.pin = wr::RequeueSpec::Pin::Set;
+    pinned.pinNode = 0;
+    pinned.pinUntil = now() + std::chrono::hours(1);
+    {
+        std::vector<wr::RequeueOp> ops;
+        ops.reserve(N);
+        for (const auto& op : batches[0].ops)
+        {
+            lane.push_back(op);
+            ops.push_back(wr::RequeueOp {op,
+                                         wr::LastError {ic::Cause::TransportTimeout,
+                                                        0,
+                                                        std::string(ic::OpResult::MAX_ITEM_ERROR_TYPE, 't'),
+                                                        std::string(ic::OpResult::MAX_REASON, 'r')}});
+        }
+        const auto requeued = batches[0].bucket->requeue(std::move(ops), pinned, now());
+        ASSERT_TRUE(requeued.exhausted.empty());
+        ASSERT_TRUE(requeued.closed.empty());
+        ASSERT_TRUE(requeued.cancelled.empty());
+    }
+    batches.clear();
+    const double orderedPinned =
+        static_cast<double>(liveBytes() - base8 - static_cast<std::int64_t>(orderedLines)) / static_cast<double>(N);
+    EXPECT_EQ(stats("o").orderedAmbiguous, N) << "pinned in the lane";
+    auto blocker8 = component::Blocker::create();
+    component::ReleaseOnExit releaseOnExit8(blocker8);
+    ASSERT_TRUE(ic::detail::testing::postToPool(blocker8->task()));
+    ASSERT_TRUE(blocker8->waitStarted(1, 5s));
+    for (const auto& op : lane)
+    {
+        ASSERT_TRUE(m_path->resolve(op, result));
+    }
+    const double orderedResolved =
+        static_cast<double>(liveBytes() - base8 - static_cast<std::int64_t>(orderedLines)) / static_cast<double>(N);
+    blocker8->release();
+    lane.clear();
+    ASSERT_TRUE(component::eventually([&] { return calls->load() == 4 * N; }, 5s));
+    ASSERT_TRUE(component::eventually([&] { return stats("o").charge == 0; }, 5s));
+    tickets.clear();
+
+    const double measured = std::max({retained,
+                                      queued,
+                                      noCallback,
+                                      inLane,
+                                      composed,
+                                      groupBuilding,
+                                      groupResolved,
+                                      orderedRetained,
+                                      orderedPinned,
+                                      orderedResolved});
     std::printf(
         "[ RESERVE  ] bytes per op besides its lines: retained %.1f, queued completion %.1f, after the callback "
         "(ticket alive) %.1f, no callback %.1f, requeued in the lane %.1f, requeued then resolved (queued completion) "
-        "%.1f, group building %.1f, group resolved (batches held) %.1f; max %.1f; RESULT_RESERVE %llu\n",
+        "%.1f, group building %.1f, group resolved (batches held) %.1f, ordered with a 256 B tag and its key: retained "
+        "%.1f, pinned in the lane %.1f, resolved from the lane (queued completion) %.1f; max %.1f (x 1.25 = %.1f); "
+        "RESULT_RESERVE %llu\n",
         retained,
         queued,
         afterCallback,
@@ -421,7 +504,11 @@ TEST_F(WriteTest, ResultReserveMeasured)
         composed,
         groupBuilding,
         groupResolved,
+        orderedRetained,
+        orderedPinned,
+        orderedResolved,
         measured,
+        measured * 1.25,
         static_cast<unsigned long long>(wr::RESULT_RESERVE));
     EXPECT_GT(measured, 0.0) << "the counter saw nothing: is the replacement operator new linked?";
     EXPECT_LE(measured, static_cast<double>(wr::RESULT_RESERVE)) << "RESULT_RESERVE is below what an op keeps";

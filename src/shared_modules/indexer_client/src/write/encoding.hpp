@@ -18,6 +18,7 @@
 // what the bucket charges (CA-12) and the bulk carries without re-encoding. Normative contract:
 // anexos/e2a-1/contrato-transport.md § Escritura; this header is normative for I73.
 
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <string_view>
@@ -31,6 +32,9 @@ namespace indexer_client::detail::write
 
     /// Upper bound of ConflictPolicy::retryOnConflict (I73), for the op's policy and the bucket's.
     constexpr std::uint32_t MAX_RETRY_ON_CONFLICT = 100;
+
+    /// Upper bound of Op::tag in bytes (E3c-2 I80). The tag is not part of the wire lines.
+    constexpr std::size_t MAX_TAG_SIZE = 256;
 
     /// The closed scripts of WriteMode::ReplacePreserving (I28, I73). Constant sources: OpenSearch caches a compiled
     /// inline script per source (and rate-limits compilations), so the paths travel in `params.paths`, never in the
@@ -98,6 +102,7 @@ namespace indexer_client::detail::write
     ///     where the kind has none (IndexAutoId, IndexDataStream); `version` not a canonical integer in
     ///     [0, INT64_MAX] (no leading zero) for IndexVersionedScript or non-empty for any other kind; empty body or a
     ///     '\n' in it for the kinds with a body, a non-empty body for Delete;
+    ///   - `tag` (E3c-2 I80) longer than MAX_TAG_SIZE or with a byte below 0x20 or 0x7f ("tag: ...");
     ///   - effective Retry with retryOnConflict 0 or > MAX_RETRY_ON_CONFLICT;
     ///   - ReplacePreserving with a kind other than Index or IndexVersionedScript (I72); preservedPaths with Replace;
     ///     with ReplacePreserving: 0 or more than 16 paths, a path of 0 or more than 8 segments, a segment empty,

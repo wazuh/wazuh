@@ -32,6 +32,7 @@ namespace
     std::function<bool()> g_refuseSubmit;
     std::function<void()> g_beforeCompletion;
     std::function<void()> g_beforeSenderMirror;
+    std::function<void()> g_beforeAssembly;
 
     template<class F>
     F copyOf(const F& hook)
@@ -123,6 +124,14 @@ namespace indexer_client::detail::seams
             hook();
         }
     }
+
+    void beforeAssembly()
+    {
+        if (auto hook = copyOf(g_beforeAssembly))
+        {
+            hook();
+        }
+    }
 } // namespace indexer_client::detail::seams
 
 namespace indexer_client::testing_hooks
@@ -167,6 +176,10 @@ namespace indexer_client::testing_hooks
     {
         store(g_beforeSenderMirror, std::move(hook));
     }
+    void setBeforeAssembly(std::function<void()> hook)
+    {
+        store(g_beforeAssembly, std::move(hook));
+    }
     void resetAll()
     {
         {
@@ -181,6 +194,7 @@ namespace indexer_client::testing_hooks
             g_refuseSubmit = {};
             g_beforeCompletion = {};
             g_beforeSenderMirror = {};
+            g_beforeAssembly = {};
         }
         setProbeAutoStart(true);
     }

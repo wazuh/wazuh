@@ -221,7 +221,11 @@ namespace indexer_client
         std::string id;
         std::string body; ///< Compact JSON without '\n'.
         std::string version;
-        std::string tag; ///< e.g. the agent id (RF-26).
+        /// Cancellation key, e.g. the agent id (RF-26); never sent to the indexer. At most 256 bytes, with no byte
+        /// below 0x20 nor 0x7f (otherwise the op is refused as an invalid argument); empty = no tag.
+        /// IWriter::cancel(tag) drops the ops of its bucket with that tag; cancel("") is refused (InvalidArgument). See
+        /// README § Cancellation.
+        std::string tag;
         WriteMode mode;
         std::optional<ConflictPolicy> onConflict; ///< Overrides the bucket's policy.
     };
@@ -238,6 +242,9 @@ namespace indexer_client
         Overflow overflow;
         BulkThresholds bulk;
         ConflictPolicy onConflict;
+        /// Send order per key (index, _id): an op is never sent before an earlier op of its key has a final outcome,
+        /// the bucket keeps at most one bulk in flight, and an ambiguous failure (the node may have applied the bulk)
+        /// pins the retry to that node for ambiguous_retry_window_ms. See README § Ordered buckets.
         bool ordered {false};
     };
 

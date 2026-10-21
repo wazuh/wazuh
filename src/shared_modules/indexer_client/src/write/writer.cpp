@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <chrono>
 #include <string>
+#include <string_view>
 #include <utility>
 
 #include "runtime/runtimeInternal.hpp"
@@ -31,8 +32,6 @@ namespace indexer_client::detail::write
 {
     namespace
     {
-        constexpr const char* E3C_UNAVAILABLE = "cancel(tag) arrives in E3c-2";
-
         /// The fixed reason of a refused submit (D42): never a consumer string (group.cpp has the add() twin).
         const char* refusalReason(Cause cause)
         {
@@ -49,6 +48,29 @@ namespace indexer_client::detail::write
             }
         }
 
+        /// The cancel(tag) refusal (field first), or null for a tag submit accepts (encoding.hpp, MAX_TAG_SIZE).
+        const char* invalidCancelTag(std::string_view tag)
+        {
+            if (tag.empty())
+            {
+                return "tag: empty";
+            }
+            if (tag.size() > MAX_TAG_SIZE)
+            {
+                static_assert(MAX_TAG_SIZE == 256, "the reason below names the bound");
+                return "tag: longer than 256 bytes";
+            }
+            for (const char c : tag)
+            {
+                const auto byte = static_cast<unsigned char>(c);
+                if (byte < 0x20 || byte == 0x7f)
+                {
+                    return "tag: contains a control character";
+                }
+            }
+            return nullptr;
+        }
+
         OpResult dropped(Cause cause)
         {
             OpResult result;
@@ -59,6 +81,7 @@ namespace indexer_client::detail::write
                 case Cause::QueueFull: result.reason = "dropped by the bucket's overflow policy"; break;
                 case Cause::ClientClosed: result.reason = "dropped: the client was closed"; break;
                 case Cause::Shutdown: result.reason = "dropped: the runtime is shutting down"; break;
+                case Cause::Cancelled: result.reason = "dropped: cancelled by cancel(tag)"; break;
                 default: result.reason = std::string("dropped: ") + toString(cause); break;
             }
             return result;
@@ -180,6 +203,10 @@ namespace indexer_client::detail::write
                     submit.reason = std::move(encoded.reason); // The field first (D42).
                     return submit;
                 }
+                // encode() only moved the body out: the tag and the key fields are still the request's (I79, I80).
+                std::string tag = std::move(request.tag);
+                const bool hasKey = m_bucket->spec().ordered && !request.id.empty(); // `_id` iff the kind has one.
+                const std::uint64_t keyHash = hasKey ? orderedKeyHash(request.index, request.id) : 0;
                 const bool withCallback = static_cast<bool>(cb);
                 const auto now = std::chrono::steady_clock::now();
                 const auto& overflow = m_bucket->spec().overflow;
@@ -236,6 +263,9 @@ namespace indexer_client::detail::write
                 op->firstSubmit = now;
                 op->bucket = m_bucket;
                 op->conflictRetry = effective.kind == ConflictPolicy::Kind::Retry;
+                op->tag = std::move(tag);
+                op->hasKey = hasKey;
+                op->keyHash = keyHash;
 
                 seams::afterAdmission();
 
@@ -267,10 +297,38 @@ namespace indexer_client::detail::write
                 return Group(makeGroup(m_client, m_bucket, m_path));
             }
 
-            CancelTicket cancel(std::string_view /*tag*/) override
+            /// I80 (bucket.hpp): the bucket removes the pending and lane ops of the tag and marks the delivered ones;
+            /// the removed ones resolve Dropped(Cancelled) here, outside its mutex. With nothing delivered the ticket
+            /// completes at once; otherwise the bucket completes it at the last resolution of a marked op. Never
+            /// blocks.
+            CancelTicket cancel(std::string_view tag) override
             {
                 auto state = std::make_shared<CancelState>();
-                state->complete(Outcome<Unit>::failure(Cause::Unavailable, E3C_UNAVAILABLE));
+                // An empty tag is "no tag" (OpState::tag): it would cancel every untagged op. A tag that submit refuses
+                // can match nothing. Both are refused with the field first, never echoing the tag (D42).
+                if (const char* why = invalidCancelTag(tag); why != nullptr)
+                {
+                    state->complete(Outcome<Unit>::failure(Cause::InvalidArgument, why));
+                    return CancelTicket(std::move(state));
+                }
+                auto result = m_bucket->cancel(std::string(tag), state);
+                for (const auto& op : result.removed)
+                {
+                    m_path->resolve(op, dropped(Cause::Cancelled));
+                }
+                if (!result.removed.empty())
+                {
+                    // Removing lane ops may lift an ordered bucket's pin gate or unblock keys: its timer may still be
+                    // armed at a far nextDue (the pin's end, the lane head), so the scheduler looks again now.
+                    if (auto scheduler = m_path->scheduler())
+                    {
+                        scheduler->notify(m_bucket);
+                    }
+                }
+                if (!result.waiting)
+                {
+                    state->complete(Outcome<Unit>::success(Unit {}));
+                }
                 return CancelTicket(std::move(state));
             }
 
@@ -425,12 +483,18 @@ namespace indexer_client::detail::write
             // mutex a concurrent Bucket::requeue writes them with (nothing reads them after the claim: an exhausted
             // op's error was copied out by that requeue).
             bucket->countResolved(result.status);
+            if (result.status == Status::Dropped && result.cause == Cause::Cancelled)
+            {
+                bucket->countCancelled(1); // I80: also under resolvedDropped.
+            }
             bucket->releasePayload(*op);
         }
         else
         {
-            std::string().swap(op->lastReason); // No bucket, so no requeue can write them.
+            // No bucket, so no requeue writes the last-error strings and no cancel reads the tag (RESULT_RESERVE).
+            std::string().swap(op->lastReason);
             std::string().swap(op->lastItemErrorType);
+            std::string().swap(op->tag);
         }
         if (client && result.status == Status::Dropped)
         {
