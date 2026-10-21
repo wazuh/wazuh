@@ -20,6 +20,7 @@
 #endif
 
 #include "wmodules.h"
+#include "module_report.h"
 
 #ifdef WIN32
 #ifdef WAZUH_UNIT_TESTING
@@ -195,9 +196,7 @@ cJSON *wm_github_dump(const wm_github* github_config) {
             if (iter->org_name) {
                 cJSON_AddStringToObject(api_auth, "org_name", iter->org_name);
             }
-            if (iter->api_token) {
-                cJSON_AddStringToObject(api_auth, "api_token", iter->api_token);
-            }
+            module_report_add_masked_secret(api_auth, "api_token", iter->api_token);
             cJSON_AddItemToArray(arr_auth, api_auth);
         }
         if (cJSON_GetArraySize(arr_auth) > 0) {
