@@ -684,6 +684,10 @@ else
 GIT_REFS_LIST := $(shell $(ROUTE_PATH)/../tools/get_git_refs.sh 2>/dev/null)
 endif
 
+# TEMPORARY, package-build branch only (never merged): try the wazuh-indexer-plugins#1702 branch
+# first, so the agent embeds its inventory-system template until #1702 is merged into 5.0.0.
+GIT_REFS_LIST := refs/heads/fix/40207-host-os-kernel-mapping $(GIT_REFS_LIST)
+
 $(INDEXER_PLUGINS_DIR):
 	@mkdir -p $(INDEXER_PLUGINS_DIR)
 
