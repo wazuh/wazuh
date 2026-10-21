@@ -173,12 +173,12 @@ def test_build_log_analytics_query(
         if parse(desired_date) < parse(min_date, fuzzy=True):
             expected_str = (
                 f'( TimeGenerated < datetime({min_date}) and TimeGenerated >= datetime({desired_date})) '
-                f'or ( TimeGenerated > datetime({max_date}))'
+                f'or ( TimeGenerated > min_of(datetime({max_date}), now()))'
             )
         elif parse(desired_date) > parse(max_date, fuzzy=True):
             expected_str = f'TimeGenerated >= datetime({desired_date})'
         else:
-            expected_str = f'TimeGenerated > datetime({max_date})'
+            expected_str = f'TimeGenerated > min_of(datetime({max_date}), now())'
 
     assert expected_str in result['query']
     assert result['query'].startswith(
@@ -198,8 +198,10 @@ def test_build_log_analytics_query(
         ('1d', PAST_DATE, PRESENT_DATE, PRESENT_DATE, False),
         # Without time offset, the lookback from the last ingestion time applies
         ('', PAST_DATE, None, '2022-06-13T12:00:00.123456Z', False),
+        # Records older than the oldest date processed are left to the backfill
+        ('', '2022-06-14T00:00:00.000000Z', None, '2022-06-14T00:00:00.000000Z', False),
         # The time offset is older than the oldest record processed
-        ('1d', PRESENT_DATE, PAST_DATE, '2022-06-13T12:00:00.123456Z', True),
+        ('1d', PRESENT_DATE, PAST_DATE, PRESENT_DATE, True),
     ],
 )
 @patch('azure_services.analytics.get_ingestion_cursor', return_value=(LAST_INGESTION, LAST_TIME_GENERATED))
@@ -219,7 +221,7 @@ def test_build_log_analytics_query_ingestion_time(
         f'{INGESTION_TIME_COLUMN} > datetime({LAST_INGESTION}) or '
         f'( {INGESTION_TIME_COLUMN} == datetime({LAST_INGESTION}) and '
         f'TimeGenerated > datetime({LAST_TIME_GENERATED}) ) or '
-        f'( isnull({INGESTION_TIME_COLUMN}) and TimeGenerated > datetime({PRESENT_DATE}) ) ) )'
+        f'( isnull({INGESTION_TIME_COLUMN}) and TimeGenerated > min_of(datetime({PRESENT_DATE}), now()) ) ) )'
     )
     if backfill:
         expected_str += f' or ( TimeGenerated < datetime({min_date}) and TimeGenerated >= datetime({desired_date}))'
@@ -337,6 +339,34 @@ def test_get_log_analytics_events_ingestion_time(mock_get, mock_iter, mock_updat
         ['2022-06-15T11:40:00Z', '2022-06-15T12:00:00.1234567Z', '2022-06-15T12:00:00.1234567Z'],
         ['2022-06-15T11:30:00Z', '2022-06-15T11:00:00Z', '2022-06-15T11:00:00.5Z'],
     )
+
+
+@pytest.mark.parametrize(
+    'ingestion_times, warned',
+    [
+        ([None, None], True),
+        (['2022-06-15T12:00:00Z', None], False),
+        (['2022-06-15T12:00:00Z', '2022-06-15T12:30:00Z'], False),
+    ],
+)
+@patch('azure_utils.logging.warning')
+@patch('azure_services.analytics.update_ingestion_cursor')
+@patch('azure_services.analytics.update_row_object')
+@patch('azure_services.analytics.iter_log_analytics_events')
+@patch('azure_services.analytics.get')
+def test_get_log_analytics_events_no_ingestion_time(
+    mock_get, mock_iter, mock_update, mock_update_ingestion, mock_warning, ingestion_times, warned
+):
+    """Test get_log_analytics_events warns when no record of the results has an ingestion time."""
+    columns = [{'name': 'TimeGenerated'}, {'name': INGESTION_TIME_COLUMN}]
+    rows = [['2022-06-15T11:00:00Z', ingestion_times[0]], ['2022-06-15T11:30:00Z', ingestion_times[1]]]
+    mock_get.return_value = MagicMock(
+        status_code=200, json=MagicMock(return_value={'tables': [{'columns': columns, 'rows': rows}]})
+    )
+    get_log_analytics_events(url='url', body='body', headers='headers', md5_hash='md5', query='q', tag='', tenant='')
+
+    assert mock_warning.called == warned
+    mock_update.assert_called_once()
 
 
 @pytest.mark.parametrize(

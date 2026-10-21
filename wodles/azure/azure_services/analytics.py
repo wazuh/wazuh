@@ -152,6 +152,8 @@ def build_log_analytics_query(
     desired_str = f'datetime({desired_datetime.strftime(DATETIME_MASK)})'
     min_str = f'datetime({min_str})'
     max_str = f'datetime({max_str})'
+    # A newest TimeGenerated stored ahead of the current time, as previous versions could, doesn't hold back the run
+    newest_str = f'min_of({max_str}, now())'
     cursor = get_ingestion_cursor(md5_hash)
 
     # If reparse was provided, get the logs ignoring if they were already processed
@@ -164,6 +166,8 @@ def build_log_analytics_query(
         lower_datetime = parse(cursor[0], fuzzy=True) - TIME_GENERATED_LOOKBACK
         if offset:
             lower_datetime = max(lower_datetime, desired_datetime)
+        # Records older than the oldest date processed are left to the time_offset backfill, which starts from it
+        lower_datetime = max(lower_datetime, min_datetime)
         lower_str = f'datetime({lower_datetime.strftime(DATETIME_MASK)})'
         logging.debug(f"Log Analytics: Making request for the records ingested after {ingestion_str} "
                       f"generated from {lower_str}")
@@ -172,7 +176,7 @@ def build_log_analytics_query(
         filter_value = (
             f'( TimeGenerated >= {lower_str} and ( {INGESTION_TIME_COLUMN} > {ingestion_str} or '
             f'( {INGESTION_TIME_COLUMN} == {ingestion_str} and TimeGenerated > {time_generated_str} ) or '
-            f'( isnull({INGESTION_TIME_COLUMN}) and TimeGenerated > {max_str} ) ) )'
+            f'( isnull({INGESTION_TIME_COLUMN}) and TimeGenerated > {newest_str} ) ) )'
         )
         if desired_datetime < min_datetime:
             logging.debug(f"Log Analytics: Making request query also for the interval from {desired_str} to {min_str}")
@@ -185,14 +189,14 @@ def build_log_analytics_query(
                           f"from {desired_str} to {min_str} and from {max_str}")
             filter_value = (
                 f'( TimeGenerated < {min_str} and TimeGenerated >= {desired_str}) or '
-                f'( TimeGenerated > {max_str})'
+                f'( TimeGenerated > {newest_str})'
             )
         elif desired_datetime > max_datetime:
             logging.debug(f"Log Analytics: Making request for the following interval: from {desired_str}")
             filter_value = f'TimeGenerated >= {desired_str}'
         else:
             logging.debug(f"Log Analytics: Making request for the following interval: from {max_str}")
-            filter_value = f'TimeGenerated > {max_str}'
+            filter_value = f'TimeGenerated > {newest_str}'
 
     # The last ingestion time stored can't move past a record that isn't queryable yet
     filter_value = (
@@ -243,6 +247,9 @@ def get_log_analytics_events(
                 logging.info(f'Log Analytics: There are no new results for {tenant}')
             else:
                 ingestion_times = pop_column(columns, rows, INGESTION_TIME_COLUMN)
+                if ingestion_times and not any(ingestion_times):
+                    logging.warning(f'Log Analytics: The results of the query "{query}" have no ingestion time, so it '
+                                    f'keeps filtering by TimeGenerated and can miss the records ingested after a run.')
                 query_times = pop_column(columns, rows, QUERY_TIME_COLUMN)
                 time_position = get_time_position(columns)
                 if time_position is not None:
