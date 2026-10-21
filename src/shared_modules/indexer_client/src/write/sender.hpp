@@ -63,6 +63,29 @@
 // Failed(RetryExhausted) with the op's last error; RequeueResult.closed ⇒ Dropped(closedCause); RequeueResult.notify ⇒
 // Scheduler::notify(bucket). Every completion ⇒ WritePath::sinkReady().
 //
+// Ordered buckets and cancellation (E3c-2, I79/I80; the bucket side is in bucket.hpp):
+//   - Assembly: the pool task first removes from the Batch (ops and bytes) every op whose `cancelled` is set, resolving
+//     each Dropped(Cancelled) (seams::beforeAssembly() runs just before this check); an emptied batch gives its slot
+//     back (inFlight--, sinkReady) and returns without a submit. No op of a cancelled tag is sent after cancel().
+//   - Pin at dispatch: when a batch's ops carry pinNode (they all carry the same pin, bucket.hpp) and pinUntil > now,
+//     the choose filter admits pinNode alone; without it the batch is requeued {false, At(pinUntil), Pin::Keep} and the
+//     bucket is recorded in pinnedWaiting[pinNode] (weak); when that node becomes usable again (the Down mirror clears,
+//     or its notBefore timer fires) the sender calls Bucket::pinnedNodeUsable(node, now) for each recorded bucket and
+//     Scheduler::notify when it says so. With pinUntil <= now any node is admitted; the ops' pin is cleared and
+//     Bucket::countAmbiguousFailover(ops) runs.
+//     [E3c-2 step 4 precisions] The pinned node is "usable" when it is not Down, has no notBefore in force and has a
+//     free slot (the choose filter's terms), so a completion or a released slot also wakes pinnedWaiting (a full
+//     window would otherwise wait until pinUntil). The bucket is recorded before the requeue and the node re-checked
+//     after it, with the mirror refreshed. A batch sent to its pinned node inside the window keeps its pin (a second
+//     ambiguous failure keeps the first `until`); an expired pin is cleared only when some node takes the batch, and
+//     countAmbiguousFailover counts only when that node is another one. "With an HTTP response" includes
+//     ResponseTooLarge (the node answered).
+//   - Pin at completion: Failover with mayHaveSent in an ordered bucket ⇒ requeue {mayHaveSent, Now, Pin::Set, node,
+//     now + RuntimeConfig.ambiguousRetryWindow}; a Failover without it and "no usable node" ⇒ Pin::Keep; every
+//     completion with an HTTP response ⇒ Pin::Clear. Unordered buckets ignore the pin. A Tls failure with mayHaveSent
+//     is a Failover and pins too (D38: a misconfigured mTLS node costs one window per batch before the failover).
+//   - RequeueResult::cancelled ⇒ resolve Dropped(Cancelled) (also after an attempt that would have exhausted).
+//
 // Wake-ups: a loop-0 asio timer at the earliest notBefore in force, armed by a post that captures the shared state and
 // checks `stopped` (the Prober's pattern), firing sinkReady(); the NodeSet::onTransition hook (registered by start(),
 // which the runtime calls BEFORE prober->start()) mirrors Down and calls sinkReady() through a weak_ptr<WritePath>.

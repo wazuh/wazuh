@@ -288,13 +288,24 @@ TEST_F(BucketSpecTest, RetryConflictPolicyRegisters)
     EXPECT_EQ(refused.value, nullptr);
 }
 
-// G-diff E3b-2 obj. 2: an ordered bucket is accepted by the API but the bulk sender does not honour it until E3c-2, so
-// registration refuses it (the field named). Mutant: the check removed.
-TEST_F(BucketSpecTest, InvalidOrderedBeforeE3c)
+// E3c-2 (I79): the bulk sender honours `ordered`, so the refusal of E3b-2 (G-diff obj. 2) is lifted: an ordered bucket
+// registers and gets its writer, and every other rule still applies to it (an ordered spec with a bad field is
+// refused naming that field, and takes no consumer name).
+TEST_F(BucketSpecTest, OrderedRegisters)
 {
+    auto bad = valid();
+    bad.ordered = true;
+    bad.weight = 0;
+    expectRejected({bad}, field("weight must be > 0"));
+
     auto spec = valid();
     spec.ordered = true;
-    expectRejected({spec}, field("ordered = true is not implemented yet (E3c-2)"));
+    auto result = m_ref.client("ordered", {spec});
+    ASSERT_TRUE(result.ok()) << result.reason;
+    ASSERT_NE(result.value, nullptr);
+    EXPECT_TRUE(result.value->valid());
+    EXPECT_NE(result.value->writer("events"), nullptr);
+    EXPECT_EQ(m_ref.snapshot().clients, 1u);
 }
 
 TEST_F(BucketSpecTest, InvalidBlockWithoutTimeout)
@@ -330,7 +341,7 @@ TEST_F(BucketSpecTest, ValidSpecAccepted)
     blocking.retry.maxAttempts = 1u;
     blocking.quotaBytes = RuntimeConfig {}.globalQuotaBytes; // quotaBytes == global_quota_bytes is allowed.
     blocking.retry.maxDuration = Duration {1};               // The smallest positive maxDuration is allowed.
-    // ordered = true is refused until E3c-2 (InvalidOrderedBeforeE3c); Retry registers (RetryConflictPolicyRegisters).
+    // ordered = true registers (OrderedRegisters); Retry registers (RetryConflictPolicyRegisters).
     edge.onConflict.kind = ConflictPolicy::Kind::Success;
     edge.onConflict.retryOnConflict = 0; // retryOnConflict is ignored without Retry.
 
@@ -394,8 +405,8 @@ TEST_F(BucketSpecTest, WriterSubmitResolvesThroughTheSender)
     ASSERT_EQ(bulk->received()[0].size(), 1u);
     EXPECT_EQ(bulk->received()[0][0].id, "1");
 
-    // E3c-1: a group's op goes through the same sender; its ticket completes with the item's result. cancel(tag) is
-    // E3c-2: still Unavailable.
+    // E3c-1: a group's op goes through the same sender; its ticket completes with the item's result. E3c-2:
+    // cancel(tag) reaches the bucket (nothing of the tag left: a ready success; the empty tag: InvalidArgument).
     auto group = writer->group();
     op.id = "2";
     EXPECT_EQ(group.add(op), Cause::None) << group.lastAddReason();
@@ -411,6 +422,9 @@ TEST_F(BucketSpecTest, WriterSubmitResolvesThroughTheSender)
 
     const auto cancel = writer->cancel("agent-001");
     EXPECT_TRUE(cancel.ready());
-    EXPECT_EQ(cancel.wait(std::chrono::steady_clock::now()).cause, Cause::Unavailable);
+    EXPECT_TRUE(cancel.wait(std::chrono::steady_clock::now()).ok());
+    const auto refused = writer->cancel("");
+    EXPECT_TRUE(refused.ready());
+    EXPECT_EQ(refused.wait(std::chrono::steady_clock::now()).cause, Cause::InvalidArgument);
     RuntimeOwner::shutdown(); // Before the fake goes away.
 }

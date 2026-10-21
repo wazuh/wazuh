@@ -76,6 +76,7 @@ namespace indexer_client::detail::write
                 , loop0(loop)
                 , paceInitial(std::min(config.paceInitial, config.retryAfterMax))
                 , retryAfterMax(config.retryAfterMax)
+                , ambiguousRetryWindow(config.ambiguousRetryWindow)
             {
                 const auto count = nodes ? nodes->size() : 0;
                 urls.reserve(count);
@@ -91,6 +92,7 @@ namespace indexer_client::detail::write
                     urls.push_back(host + "/_bulk");
                 }
                 slots.resize(count);
+                pinnedWaiting.resize(count);
             }
 
             const std::weak_ptr<WritePath> path;
@@ -99,6 +101,7 @@ namespace indexer_client::detail::write
             asio::io_context& loop0;
             const Duration paceInitial;
             const Duration retryAfterMax;
+            const Duration ambiguousRetryWindow; ///< I79: how long an ambiguous batch stays pinned to its node.
             std::vector<std::string> urls;
             std::vector<std::string> hosts;
 
@@ -113,6 +116,9 @@ namespace indexer_client::detail::write
             std::uint64_t mirroredGeneration {0};
             std::uint64_t nextFlight {0};
             std::unordered_map<std::uint64_t, Flight> flights;
+            /// I79: per node, the ordered buckets whose pinned batch found the node unusable (weak, deduplicated);
+            /// taken when the node is usable again (wakePinned).
+            std::vector<std::vector<std::weak_ptr<Bucket>>> pinnedWaiting;
             SenderStats counters; ///< Without `nodes` (built from `slots` by stats()).
         };
 
@@ -130,8 +136,12 @@ namespace indexer_client::detail::write
             OpResult result;
             result.status = Status::Dropped;
             result.cause = cause;
-            result.reason = cause == Cause::ClientClosed ? "dropped: the client was closed"
-                                                         : "dropped: the runtime is shutting down";
+            switch (cause)
+            {
+                case Cause::ClientClosed: result.reason = "dropped: the client was closed"; break;
+                case Cause::Cancelled: result.reason = "dropped: cancelled by cancel(tag)"; break;
+                default: result.reason = "dropped: the runtime is shutting down"; break;
+            }
             return result;
         }
 
@@ -147,6 +157,86 @@ namespace indexer_client::detail::write
                                           (last.reason.empty() ? std::string() : ": " + last.reason),
                                       OpResult::MAX_REASON);
             return result;
+        }
+
+        /// The node takes a bulk now: not Down (mirror), no notBefore in force, a free slot; the mutex held.
+        bool usableLocked(const SenderShared& shared, std::size_t node, TimePoint now)
+        {
+            const auto& slot = shared.slots[node];
+            return !slot.down && slot.notBefore <= now && slot.inFlight < NODE_WINDOW;
+        }
+
+        /// I79 (sender.hpp): for every node usable now, takes its pinnedWaiting list and tells each bucket that is
+        /// still alive (Bucket::pinnedNodeUsable), notifying the scheduler when it asks. The sender's mutex is only
+        /// held to take the lists: the buckets and the scheduler are called without it.
+        void wakePinned(const std::shared_ptr<SenderShared>& shared)
+        {
+            const auto now = std::chrono::steady_clock::now();
+            std::vector<std::pair<std::size_t, std::vector<std::weak_ptr<Bucket>>>> taken;
+            {
+                std::lock_guard<std::mutex> lock(shared->mutex);
+                if (shared->stopped)
+                {
+                    return;
+                }
+                for (std::size_t node = 0; node < shared->pinnedWaiting.size(); ++node)
+                {
+                    if (!shared->pinnedWaiting[node].empty() && usableLocked(*shared, node, now))
+                    {
+                        taken.emplace_back(node, std::exchange(shared->pinnedWaiting[node], {}));
+                    }
+                }
+            }
+            if (taken.empty())
+            {
+                return;
+            }
+            auto path = shared->path.lock();
+            auto scheduler = path ? path->scheduler() : nullptr;
+            for (const auto& [node, buckets] : taken)
+            {
+                for (const auto& weak : buckets)
+                {
+                    auto bucket = weak.lock();
+                    if (bucket && bucket->pinnedNodeUsable(node, now) && scheduler)
+                    {
+                        scheduler->notify(bucket);
+                    }
+                }
+            }
+        }
+
+        /// Records `bucket` as waiting for `node` (pinned batch, node unusable); deduplicated, expired entries pruned.
+        void addPinnedWaiting(SenderShared& shared, std::size_t node, const std::shared_ptr<Bucket>& bucket)
+        {
+            std::lock_guard<std::mutex> lock(shared.mutex);
+            if (node >= shared.pinnedWaiting.size())
+            {
+                return;
+            }
+            auto& waiting = shared.pinnedWaiting[node];
+            waiting.erase(std::remove_if(waiting.begin(),
+                                         waiting.end(),
+                                         [](const std::weak_ptr<Bucket>& entry) { return entry.expired(); }),
+                          waiting.end());
+            const bool known = std::any_of(waiting.begin(),
+                                           waiting.end(),
+                                           [&bucket](const std::weak_ptr<Bucket>& entry)
+                                           { return !entry.owner_before(bucket) && !bucket.owner_before(entry); });
+            if (!known)
+            {
+                waiting.push_back(bucket);
+            }
+        }
+
+        /// Wakes the pinned buckets whose node is usable, then the scheduler (WritePath::sinkReady).
+        void ready(const std::shared_ptr<SenderShared>& shared, const std::shared_ptr<WritePath>& path)
+        {
+            wakePinned(shared);
+            if (path)
+            {
+                path->sinkReady();
+            }
         }
 
         void armTimer(const std::shared_ptr<SenderShared>& shared);
@@ -208,11 +298,8 @@ namespace indexer_client::detail::write
                             return;
                         }
                     }
-                    if (auto path = shared->path.lock())
-                    {
-                        path->sinkReady();
-                    }
-                    armTimer(shared); // The next notBefore still in force, if any.
+                    ready(shared, shared->path.lock()); // A node whose notBefore ended may hold pinned batches.
+                    armTimer(shared);                   // The next notBefore still in force, if any.
                 });
         }
 
@@ -247,10 +334,7 @@ namespace indexer_client::detail::write
             {
                 return;
             }
-            if (auto path = shared->path.lock())
-            {
-                path->sinkReady();
-            }
+            ready(shared, shared->path.lock()); // A node no longer Down may hold pinned batches.
         }
 
         /// Gives a request's slot back (and forgets its flight); the caller wakes the scheduler afterwards.
@@ -304,6 +388,11 @@ namespace indexer_client::detail::write
                         path->resolve(op, droppedResult(cause));
                     }
                 }
+                // I80: marked by cancel(tag); cancellation wins over exhaustion and close (bucket.hpp).
+                for (const auto& op : result.cancelled)
+                {
+                    path->resolve(op, droppedResult(Cause::Cancelled));
+                }
                 if (result.notify)
                 {
                     if (auto scheduler = path->scheduler())
@@ -330,11 +419,12 @@ namespace indexer_client::detail::write
             requeueOps(shared, path, batch.bucket, std::move(ops), spec);
         }
 
-        RequeueSpec spec(bool countAttempt, RequeueSpec::Delay delay)
+        RequeueSpec spec(bool countAttempt, RequeueSpec::Delay delay, RequeueSpec::Pin pin = RequeueSpec::Pin::Keep)
         {
             RequeueSpec requeue;
             requeue.countAttempt = countAttempt;
             requeue.delay = delay;
+            requeue.pin = pin;
             return requeue;
         }
 
@@ -357,16 +447,15 @@ namespace indexer_client::detail::write
                          batch,
                          LastError {Cause::InvalidState, 0, {}, truncated(std::move(reason), OpResult::MAX_REASON)},
                          spec(true, RequeueSpec::Delay::Backoff));
-            if (path)
-            {
-                path->sinkReady();
-            }
+            ready(shared, path);
         }
 
         /// Items verdict: one resolution or requeue per op, item i <-> op i.
+        /// An HTTP response: the requeues clear the ambiguous pin (I79; ignored by unordered buckets).
         void
         applyItems(SenderShared& shared, const std::shared_ptr<WritePath>& path, const Batch& batch, HttpResult& result)
         {
+            constexpr auto clear = RequeueSpec::Pin::Clear;
             std::string reason;
             auto items = classifyItems(result.body, batch.ops.size(), &reason);
             if (!items)
@@ -378,7 +467,7 @@ namespace indexer_client::detail::write
                                         static_cast<int>(result.status),
                                         {},
                                         truncated(std::move(reason), OpResult::MAX_REASON)},
-                             spec(true, RequeueSpec::Delay::Backoff));
+                             spec(true, RequeueSpec::Delay::Backoff, clear));
                 return;
             }
             std::vector<RequeueOp> retry;
@@ -441,7 +530,7 @@ namespace indexer_client::detail::write
                     }
                 }
             }
-            requeueOps(shared, path, batch.bucket, std::move(retry), spec(true, RequeueSpec::Delay::Backoff));
+            requeueOps(shared, path, batch.bucket, std::move(retry), spec(true, RequeueSpec::Delay::Backoff, clear));
         }
 
         /// A completion that threw after the slot was released: what is still unresolved goes back to the lane with an
@@ -528,6 +617,13 @@ namespace indexer_client::detail::write
                 }
             }
 
+            // I79 (sender.hpp): a completion with an HTTP response (a ResponseTooLarge included: the node answered)
+            // clears the ambiguous pin; one without keeps it, except a Failover that may have sent, which pins the
+            // batch of an ordered bucket to this node for ambiguousRetryWindow. Unordered buckets ignore the pin.
+            const bool answered =
+                result.cause == TransportCause::None || result.cause == TransportCause::ResponseTooLarge;
+            const auto pin = answered ? RequeueSpec::Pin::Clear : RequeueSpec::Pin::Keep;
+
             auto path = shared->path.lock();
             // Past the slot release nothing may leave the batch unresolved: an exception (bad_alloc in a requeue or a
             // resolution, or the test seam) sends what is still unresolved back to the lane (G-diff E3b-2 obj. 6).
@@ -552,11 +648,21 @@ namespace indexer_client::detail::write
                         }
                         break;
                     case RequestVerdict::Failover:
+                    {
                         shared->nodes->report(node, result);
-                        requeueBatch(*shared, path, batch, error, spec(outcome.mayHaveSent, RequeueSpec::Delay::Now));
+                        auto failover = spec(outcome.mayHaveSent, RequeueSpec::Delay::Now, pin);
+                        if (outcome.mayHaveSent && batch.bucket && batch.bucket->spec().ordered)
+                        {
+                            // D38: a Tls failure that may have sent pins too (one window per batch on that node).
+                            failover.pin = RequeueSpec::Pin::Set;
+                            failover.pinNode = node;
+                            failover.pinUntil = now + shared->ambiguousRetryWindow;
+                        }
+                        requeueBatch(*shared, path, batch, error, failover);
                         break;
+                    }
                     case RequestVerdict::Retry:
-                        requeueBatch(*shared, path, batch, error, spec(true, RequeueSpec::Delay::Backoff));
+                        requeueBatch(*shared, path, batch, error, spec(true, RequeueSpec::Delay::Backoff, pin));
                         break;
                     case RequestVerdict::Throttled:
                         shared->nodes->report(node, result);
@@ -564,11 +670,11 @@ namespace indexer_client::detail::write
                         {
                             postArm(shared);
                         }
-                        requeueBatch(*shared, path, batch, error, spec(false, RequeueSpec::Delay::Now));
+                        requeueBatch(*shared, path, batch, error, spec(false, RequeueSpec::Delay::Now, pin));
                         break;
                     case RequestVerdict::Split:
                     {
-                        auto split = spec(false, RequeueSpec::Delay::Now);
+                        auto split = spec(false, RequeueSpec::Delay::Now, pin);
                         split.toHead = true;
                         split.halve = true;
                         requeueBatch(*shared, path, batch, error, split);
@@ -599,10 +705,7 @@ namespace indexer_client::detail::write
             {
                 requeueAfterFailure(*shared, path, batch, "bulk completion failed: unexpected exception");
             }
-            if (path)
-            {
-                path->sinkReady();
-            }
+            ready(shared, path); // The slot is free: a bucket pinned to this node may go now.
         }
 
         /// CPU pool: assembles the body and submits it. Every exit without a callback gives the slot back.
@@ -659,6 +762,52 @@ namespace indexer_client::detail::write
                     return;
                 }
 
+                // I80 (sender.hpp): the ops cancel(tag) marked leave the batch (ops and bytes, so item i <-> op i
+                // still holds) and resolve Dropped(Cancelled); no op of a cancelled tag is sent after cancel().
+                seams::beforeAssembly();
+                if (std::any_of(batch->ops.begin(),
+                                batch->ops.end(),
+                                [](const std::shared_ptr<OpState>& op) { return op->cancelled.load(); }))
+                {
+                    std::vector<std::shared_ptr<OpState>> kept;
+                    std::vector<std::shared_ptr<OpState>> cancelled;
+                    kept.reserve(batch->ops.size());
+                    std::uint64_t bytes = 0;
+                    for (auto& op : batch->ops)
+                    {
+                        if (op->cancelled.load())
+                        {
+                            cancelled.push_back(std::move(op));
+                        }
+                        else
+                        {
+                            bytes += op->lines.size();
+                            kept.push_back(std::move(op));
+                        }
+                    }
+                    batch->ops = std::move(kept);
+                    batch->bytes = bytes;
+                    auto path = shared->path.lock();
+                    if (batch->ops.empty())
+                    {
+                        // Nothing left to send: the slot goes back (the catch must not give it back again).
+                        admitted = true;
+                        releaseSlot(*shared, node, flight);
+                    }
+                    if (path)
+                    {
+                        for (const auto& op : cancelled)
+                        {
+                            path->resolve(op, droppedResult(Cause::Cancelled));
+                        }
+                    }
+                    if (batch->ops.empty())
+                    {
+                        ready(shared, path);
+                        return;
+                    }
+                }
+
                 std::uint64_t size = 0;
                 for (const auto& op : batch->ops)
                 {
@@ -685,10 +834,7 @@ namespace indexer_client::detail::write
                     if (admission.cause == Cause::Shutdown)
                     {
                         releaseSlot(*shared, node, flight); // The runtime's sweep resolves the ops.
-                        if (auto path = shared->path.lock())
-                        {
-                            path->sinkReady();
-                        }
+                        ready(shared, shared->path.lock());
                         return;
                     }
                     refused(shared,
@@ -809,15 +955,32 @@ namespace indexer_client::detail::write
                     stopped = shared->stopped;
                     flight = ++shared->nextFlight;
                 }
+                // I79 (sender.hpp): the ambiguous pin of an ordered bucket's batch. Every op of a pinned batch carries
+                // the same pin (bucket.hpp); the ops are delivered, so only this sender touches it now.
+                std::optional<std::size_t> pinNode;
+                TimePoint pinUntil {};
+                if (held->bucket && held->bucket->spec().ordered)
+                {
+                    for (const auto& op : held->ops)
+                    {
+                        if (op->pinNode)
+                        {
+                            pinNode = op->pinNode;
+                            pinUntil = op->pinUntil;
+                            break;
+                        }
+                    }
+                }
+                const bool pinned = pinNode && pinUntil > now;
                 if (!stopped && shared->nodes)
                 {
                     // The filter runs under the NodeSet's mutex and takes the sender's (the allowed order); the slot
-                    // is taken in the same step, so capacity() sees it at once.
+                    // is taken in the same step, so capacity() sees it at once. A pinned batch admits its node only.
                     node = shared->nodes->choose(
-                        [&shared, now](std::size_t index)
+                        [&shared, now, pinned, &pinNode](std::size_t index)
                         {
                             std::lock_guard<std::mutex> lock(shared->mutex);
-                            if (index >= shared->slots.size())
+                            if (index >= shared->slots.size() || (pinned && index != *pinNode))
                             {
                                 return false;
                             }
@@ -829,6 +992,35 @@ namespace indexer_client::detail::write
                             ++slot.inFlight;
                             return true;
                         });
+                }
+                if (!node && pinned && !stopped && shared->nodes)
+                {
+                    // The pinned node cannot take it: back to the lane until pinUntil, pin and last error kept; the
+                    // bucket waits in pinnedWaiting[node] for the node to be usable again (mirror or notBefore timer).
+                    // Recorded before the requeue and re-checked after it (with a fresh mirror, so a stale "not Down"
+                    // cannot spin), so a node that becomes usable in between is never missed.
+                    refreshMirror(shared, false);
+                    addPinnedWaiting(*shared, *pinNode, held->bucket);
+                    auto wait = spec(false, RequeueSpec::Delay::At, RequeueSpec::Pin::Keep);
+                    wait.at = pinUntil;
+                    requeueBatch(*shared, shared->path.lock(), *held, LastError {}, wait);
+                    wakePinned(shared);
+                    return;
+                }
+                if (node && pinNode && !pinned)
+                {
+                    // The window ended: any node was admitted and the pin is cleared (a batch still pinned keeps it,
+                    // so a second ambiguous failure keeps the first `until`). Only a batch that leaves for another node
+                    // is an ambiguous failover (BucketStats::orderedAmbiguousFailover).
+                    for (const auto& op : held->ops)
+                    {
+                        op->pinNode.reset();
+                        op->pinUntil = TimePoint {};
+                    }
+                    if (*node != *pinNode)
+                    {
+                        held->bucket->countAmbiguousFailover(held->ops.size());
+                    }
                 }
                 if (!node)
                 {

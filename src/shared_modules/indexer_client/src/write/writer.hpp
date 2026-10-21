@@ -113,7 +113,7 @@ namespace indexer_client::detail::write
     /// The writer bound to one bucket of one client (Client::writer). submit: effective conflict policy + encode
     /// (InvalidArgument, Submit::reason) → reserve → enqueue (+ Scheduler::notify) or the drop/refusal;
     /// seams::afterAdmission() sits between reserve and enqueue. group(): a Building group of this bucket (group.hpp,
-    /// E3c-1). cancel() stays a stub until E3c-2.
+    /// E3c-1). cancel(tag): Bucket::cancel and the resolution of what it removes (E3c-2 I80, bucket.hpp).
     std::shared_ptr<IWriter>
     makeWriter(std::shared_ptr<ClientState> client, std::shared_ptr<Bucket> bucket, std::shared_ptr<WritePath> path);
 

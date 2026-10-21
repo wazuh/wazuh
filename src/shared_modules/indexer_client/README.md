@@ -17,7 +17,7 @@ consumers of the indexer, one consumer at a time, with:
 
 The design is in `planes/18-indexer_connector_v2/03-diseno.md` §1–§4 (outside the repository).
 
-**Status: E3c-1 — write admission, buckets and scheduling on top of the internal transport, the bulk-response classifier, the retry lane and the bulk sender, now with the per-operation conflict policy, `ReplacePreserving` and confirmable groups: writes reach the indexer; no public query API yet.** The public headers, the
+**Status: E3c-2 (E3c complete) — write admission, buckets and scheduling on top of the internal transport, the bulk-response classifier, the retry lane and the bulk sender, with the per-operation conflict policy, `ReplacePreserving`, confirmable groups, [`ordered` buckets](#ordered-buckets-e3c-2) and [`cancel(tag)`](#cancellation-e3c-2): writes reach the indexer; no public query API yet.** The public headers, the
 configuration schema, the runtime lifecycle (threads, owner thread, shutdown deadline), the test
 helpers, the internal curl [Transport](#transport-internal-e2a-1-and-e2a-2) (HTTP, HTTPS, credentials), the
 [node health probe](#node-health-e2b) and the [write path](#write-path-e3a) (encoding, quota charge, overflow policies, DRR scheduler,
@@ -65,10 +65,10 @@ Headers are in `include/indexer_client/`; `indexerClient.hpp` is the umbrella.
 | | `Group` | Confirmable group of writes: `add(Op)` reserves its quota at once, `commit()` enqueues all together; dropped without commit it releases its reservation; `lastAddReason()` (see [Groups](#groups-e3c-1)) |
 | | `Pit`, `PitSession` | Shared PIT handle and its cursors (`next`, `exhausted`) |
 
-**Write handles in E3c-1.** `Writer::submit` validates, encodes, charges and queues the operation (see
+**Write handles.** `Writer::submit` validates, encodes, charges and queues the operation (see
 [Write path](#write-path-e3a)); a refusal carries its `reason` (D42: `InvalidArgument` names the field first, as the internal
 reason of `encode` does; `QueueFull`, `PayloadTooLarge` and the rest carry their own). `Writer::group()` returns a real
-[`Group`](#groups-e3c-1). `Writer::cancel(tag)` is still a stub until E3c-2 (it answers `Unavailable`). `Client::writer(bucket)` returns the writer bound to that bucket of
+[`Group`](#groups-e3c-1). `Writer::cancel(tag)` returns a [`CancelTicket`](#cancellation-e3c-2). `Client::writer(bucket)` returns the writer bound to that bucket of
 the client; once the runtime is gone it returns the E1 stub writer, which answers `Unavailable`.
 
 `CloseReport` (from `Client::awaitClosed`) fills all three fields:
@@ -490,7 +490,7 @@ when it is admitted.
 `retryOnConflict` must be 1 to 100 for a `Retry` policy, both in `Op::onConflict` (`InvalidArgument`, field
 `onConflict.retryOnConflict`) and in the bucket's spec (registration refuses it). `Retry` on `create`
 (`IndexDataStream`), `IndexAutoId` or `Index`/`Delete` is accepted but only changes how a 409 item is treated: for `create` the 409
-means "the document exists", so retrying it can never succeed and is useless. `ordered` buckets are still refused (E3c-2).
+means "the document exists", so retrying it can never succeed and is useless. `ordered` buckets are described in [Ordered buckets](#ordered-buckets-e3c-2).
 
 ### Groups (E3c-1)
 
@@ -527,7 +527,8 @@ for a set of writes first and release them to the scheduler all together.
 - **Statistics.** `BucketStats` adds `groupBuilding` (ops reserved by uncommitted groups), `groupAbandoned` and
   `rejectedGroupTooLarge` (counted under `submitted`). The invariant is now `accepted = resolved + retained + groupBuilding`.
 - **Reentrancy.** A `Block` `add` that would have to wait, and `GroupTicket::wait`, called from a runtime thread return `Reentrancy`.
-- **Not yet.** `cancel(tag)` does not see groups in `Building` (their ops are outside the queue); E3c-2 decides that.
+- **Cancellation.** `cancel(tag)` does not see groups in `Building` (their ops are outside the queue, I76); the ops of a committed
+  group are ordinary pending ops and `cancel` reaches them (see [Cancellation](#cancellation-e3c-2)).
 
 ### Charge and quota
 
@@ -548,7 +549,9 @@ bucket's `quotaBytes` and against the runtime-wide `global_quota_bytes`.
   resolution frees the operation's last-error strings (`Bucket::releasePayload`), so a retried operation keeps no more than one
   that was never requeued; with the strings kept (the G-diff mutant) the composed case measured 1992.7 B. E3a measured 1308.5 B
   per operation in the worst phase (x 1.25 = 1636, rounded up to a multiple of 64: 1664); with the retry state of E3b-1 in
-  `OpState`, E3b-2 measured **1404.1 B**, x 1.25 = 1755.1, rounded up to **1792**. The case is a regression guard, skipped under
+  `OpState`, E3b-2 measured 1404.1 B (x 1.25 = 1755.1: 1792); with the tag, key and pin of E3c-2, an `ordered` operation with a
+  256-byte tag pinned in the retry lane measured **1555.2 B**, x 1.25 = 1944.0, rounded up to **1984** (the resolution also frees the
+  tag). The case is a regression guard, skipped under
   ASAN/TSAN (they own `operator new`), and the constant is re-measured when the internal state grows.
 - **What it does not cover.** Only the library's state: a callback whose captures exceed `std::function`'s small buffer (the
   measurement uses an 8-byte capture) allocates consumer memory that is not charged. `IWriter::submit(Op op, ...)` takes the
@@ -564,8 +567,8 @@ bucket's `quotaBytes` and against the runtime-wide `global_quota_bytes`.
   bucket's `quotaBytes` or above the global cap. It is counted (`payloadTooLarge`).
 - **Registration rule.** `RuntimeRef::client` rejects a bucket (`InvalidArgument`, field named in `reason`) unless
   `bulk.maxBytes + RESULT_RESERVE <= quotaBytes` (`validateBucket`, `src/runtime/runtime.cpp`), together with the older
-  `bulk.maxBytes <= quotaBytes <= global_quota_bytes`. So the largest admissible operation always fits an empty bucket. Until
-  E3c-2 it also rejects `ordered = true`, which the bulk sender does not honour yet; `onConflict.kind = Retry` registers with
+  `bulk.maxBytes <= quotaBytes <= global_quota_bytes`. So the largest admissible operation always fits an empty bucket.
+  `ordered = true` registers (E3c-2; there is no refusal left in `validateBucket`); `onConflict.kind = Retry` registers with
   `retryOnConflict` 1 to 100.
 
 ### Overflow policies
@@ -586,7 +589,7 @@ When the charge does not fit, the bucket's `Overflow` decides:
 - **Reentrancy.** A `submit` in `Block` that would have to wait, called from a runtime thread (a callback, for example), returns
   `Reentrancy` without sleeping (`reentrancy`), as every other wait in the library does.
 - **Counters.** Each bucket keeps `submitted`, `accepted`, `rejectedQueueFull`, `rejectedClosed`, `submitTimeout`, `reentrancy`,
-  `payloadTooLarge`, `invalidArgument`, `droppedNewest`, `droppedOldest`, `rejectedGroupTooLarge`, `groupBuilding`, `groupAbandoned`, `resolvedOk`, `resolvedFailed`, `resolvedDropped`,
+  `payloadTooLarge`, `invalidArgument`, `droppedNewest`, `droppedOldest`, `rejectedGroupTooLarge`, `groupBuilding`, `groupAbandoned`, `cancelled`, `orderedAmbiguous`, `orderedAmbiguousFailover`, `resolvedOk`, `resolvedFailed`, `resolvedDropped`,
   `retained`, `charge` and `peakCharge` (`BucketStats`; `WriteStats` adds `globalCharge` and `globalCap`). Invariants:
   `submitted = accepted + rejectedQueueFull + rejectedClosed + submitTimeout + reentrancy + payloadTooLarge + invalidArgument + rejectedGroupTooLarge`
   and `accepted = resolved + retained + groupBuilding` (the last term is the ops of groups not committed yet, see
@@ -843,6 +846,83 @@ as success or failure now retry, so the indexer may see an operation more than o
 | A failover with `mayHaveSent` false | Retried with no attempt counted |
 | 401, 403 | Retryable, not a failed batch (`CredentialsErrorRetries`) |
 
+### Ordered buckets (E3c-2)
+
+`BucketSpec::ordered = true` (I36, I75, I79) gives a bucket **send order per key**. The normative text is `src/write/bucket.hpp`
+(ORDERED BUCKETS) and `src/write/sender.hpp` (Ordered buckets and cancellation, D38); this section is the summary.
+
+**What is guaranteed, and what is not.** The library orders what it **sends**: an operation is never put on the wire before an
+earlier operation of the same key has a final outcome (from the indexer or a local drop) or, in the ambiguous case below, before the pin ended. It does
+**not** order how the indexer applies requests: a request that timed out may still be applied later by its node (see the residual risk below). An unordered bucket is unchanged (`UnorderedUnchanged`).
+
+- **The key** is `(index, _id)`: `OpState::keyHash` is a 64-bit FNV-1a hash of `index`, a `\0` byte and `_id` (`orderedKeyHash`), set only
+  in an ordered bucket and only for kinds with `_id`. A collision can only block too much, never too little. Operations without `_id`
+  (`IndexAutoId`, `IndexDataStream`) have no key and are **never blocked**.
+- **One bulk in flight.** While any operation of the bucket is delivered to the sink the bucket is not eligible and `nextDue` is empty;
+  the completion wakes the scheduler (`sinkReady`). So an ordered bucket never has two `_bulk` requests in flight (the node window of
+  the sender still applies across buckets).
+- **A key at most once per bulk.** `slice` takes the due retry lane first and then scans the pending queue in order, at most
+  `bulk.maxDocs` operations: a pending operation whose key is already blocked (a key in the lane, one already taken into the batch or one
+  of an operation skipped earlier in the scan) is skipped and keeps its place; the scan **stops** at the first takeable operation that does
+  not fit (credit, `maxBytes`, `maxDocs`, `batchCap`). Skipped operations leave in a later bulk, and one that is alone leaves by `maxAge`.
+- **Only the key is blocked (I75).** An operation in the retry lane (item `Retry`, a 409 under a `Retry` policy, backoff) blocks its own
+  key and nothing else: operations of other keys keep flowing in the following bulks, and the successors of the key wait until it resolves.
+- **No idle spin.** With nothing takeable `nextDue` is the `notBefore` of the lane head (not `now`), so loop 0 does not run in empty
+  (`OrderedNoIdleSpin`).
+
+**Ambiguous state (D38).** A `Failover` with `mayHaveSent` (timeout, reset or TLS failure after the request left, see
+[Response classification](#response-classification-and-retry-lane-e3b-1)) means the node may already have applied the bulk. In an
+ordered bucket the sender does not fail over at once: it requeues the batch with a **pin** `{node, until = now + ambiguous_retry_window_ms}`
+(default 30 s, see [Configuration](#configuration)) and the same pin for every operation of the batch (a batch already pinned keeps its
+`until`). The window therefore bounds the time pinned from the **first** ambiguous failure: with `request_timeout_ms >=
+ambiguous_retry_window_ms` (the defaults), a second timeout of the retry on its node is an immediate, counted failover.
+
+- While some operation of the lane is pinned, the bucket is eligible only for those operations once due, `slice` takes exactly them and
+  `nextDue` is their `notBefore`. The sender admits only the pinned node for that batch; if it is not usable (`Down`, a `notBefore` in
+  force or a full window) the batch waits in the lane (`{false, At(pinUntil)}`) and the bucket is recorded in `pinnedWaiting[node]`.
+- When the node **comes back** (the `Down` mirror clears, its `notBefore` timer fires or a slot frees) the sender calls
+  `Bucket::pinnedNodeUsable(node, now)` and the retry goes **to that node**: if it applied the first request, the item answers as the
+  indexer decides (for example a version conflict), and the order is kept.
+- When `until` passes, any node may take the batch: the pin is cleared and the **failover is counted** (`orderedAmbiguousFailover`,
+  per operation, only when the node is another one).
+- Every completion with an HTTP response removes the pin (`ResponseTooLarge` included: the node answered). A failure **before** sending
+  (`mayHaveSent` false, for example connection refused) does not pin: failover at once as in an unordered bucket
+  (`OrderedFailureBeforeSendFailsOverAtOnce`). Unordered buckets ignore the pin.
+- **D38 (TLS).** A TLS failure with `mayHaveSent` is a `Failover` and pins like any other: an indexer node with a wrong mTLS setup costs
+  one ambiguous window per batch in an ordered bucket before the counted failover. This is the written behaviour; it has no test of its own.
+- **Counters** (`BucketStats`): `orderedAmbiguous` counts operations pinned (per operation and per pin), `orderedAmbiguousFailover`
+  operations sent to another node once the window ended (counted at dispatch, so a batch the pool task then drops still counts).
+
+**Residual risk.** After the window the batch goes to another node while the first one may still apply the older request later, so
+the final state of a key can be an older one. The library cannot close that window; the consumer mitigates it with its own sweep
+(inventory sync, E7, with the `ordered.ambiguous.residual` metric), which is outside this library.
+
+### Cancellation (E3c-2)
+
+`Writer::cancel(tag)` (I25, I76-I78, I80) returns a `CancelTicket` and never blocks (valid from any thread, runtime threads included).
+The normative text is `src/write/bucket.hpp` (CANCELLATION) and `src/write/sender.hpp`.
+
+- **Per bucket (I77).** `Op::tag` (for example the agent id, RF-26) is stored with the operation; `cancel` acts on the **writer's bucket**
+  only, not on the whole client. The tag is never part of the wire lines.
+- **What it reaches.** Pending operations and the retry lane (removed and resolved `Dropped(Cancelled)` at once, also the ops of a
+  **committed** group, which are ordinary pending ones), and operations already **in flight**, which are marked. A group in `Building` is not
+  reached (I76: its operations are outside the queue until `commit`).
+- **In flight (I78).** A marked operation is never requeued: if its bulk fails or would retry or exhaust, it resolves `Dropped(Cancelled)`
+  (the cancellation wins, `RequeueResult::cancelled`); if its bulk **succeeds**, it resolves as the indexer answered, so `Ok` stays `Ok`.
+- **0 sends after `cancel`.** Before assembling a body the sender's pool task removes the marked operations from the batch (operations and
+  bytes, so item *i* still matches operation *i*) and resolves them `Dropped(Cancelled)`; a batch left empty gives its slot back and sends
+  nothing (`CancelSlicedBeforeSubmitNotSent`, through the test seam `beforeAssembly`).
+- **The ticket.** `CancelTicket::ready()` is true at once when no operation of the tag was in flight; otherwise it completes (success) when
+  the last of those has resolved, counted by `releasePayload`, the single decrement point. `wait` from a runtime thread returns
+  `Reentrancy`. A second `cancel` of the same tag registers its own waiter; operations of the tag submitted **after** the cancel are not
+  counted. A bucket destroyed with waiters fails them `ClientClosed`.
+- **A valid tag** is at most 256 bytes (`MAX_TAG_SIZE`) with no control character (bytes below 0x20 or 0x7f). On `submit` and
+  `Group::add` an invalid tag is `InvalidArgument` (`tag: ...`, never echoing the tag, D42); an **empty** tag means "no tag" and is
+  accepted there, but `cancel("")` is refused `InvalidArgument` because it would match every untagged operation.
+- **Counter.** `BucketStats::cancelled` counts the operations resolved `Dropped(Cancelled)`, and they are also in `resolvedDropped`; the
+  invariants of [Groups](#groups-e3c-1) are unchanged. Cancelling an ordered bucket tells the scheduler, because removing lane operations
+  can lift a key block or a pin.
+
 ## Logging
 
 The library logs through `loggerHelper.h` with the tag `indexer-client`. The process gives it its log function, the same one it
@@ -1038,8 +1118,8 @@ answer (413, 429 with `Retry-After`, 5xx, 401), queue scripts, and hold an answe
 `tests/unit/fakeBulk_test.cpp` (`FakeBulkResponder.*`, `FakeBulkResponderRules.CoexistsWithStaticRules`,
 `FakeBulkResponderRender.ItemsWithoutHttp`).
 
-The unit suite also covers the registration rule (`BucketSpecTest.InvalidBulkMaxBytesPlusReserveAboveQuota`), the refusal of
-what E3c-2 will implement (`BucketSpecTest.InvalidOrderedBeforeE3c`; `BucketSpecTest.RetryConflictPolicyRegisters` and
+The unit suite also covers the registration rule (`BucketSpecTest.InvalidBulkMaxBytesPlusReserveAboveQuota`), the former refusal of
+`ordered = true` (superseded by E3c-2: `BucketSpecTest.OrderedRegisters` checks that `ordered` registers and that the other rules still apply; `BucketSpecTest.RetryConflictPolicyRegisters` and
 `BucketSpecTest.InvalidZeroRetryOnConflict` cover the `Retry` policy, which since E3c-1 registers) and the production sink through the public API
 (`BucketSpecTest.WriterSubmitResolvesThroughTheSender`).
 
@@ -1063,6 +1143,16 @@ test above).
 | `writeGroup_test.cpp` | `GroupHundredOneRejected`, `TwoBuildingGroupsDoNotBlock`, `GroupAddWaitsForCommittedRoom`, `GroupAddTimesOut`, `AbandonedGroupReleases`, `GroupTooLarge`, `CommitFlushesNow`, `GroupItemRetryCompletesOnce`, `GroupAcrossSplit413`, `GroupDropPoliciesRejectLikeReject`, `GroupAfterCloseAndShutdown`, `GroupOutlivesRuntime`, `GroupReservesReturnedWhenBucketDies`, `EmptyCommit`, `GroupStatsInvariant`, `GroupLastAddReason` |
 | `writeReentrancy_test.cpp` | `CallbackBlockingCallsAreReentrancy` (`submit`, `Ticket::wait`, `GroupTicket::wait` and `Group::add` from a callback), `CallbackRequestCloseAndClientDestroy` |
 
+**E3c-2 suites** (component).
+
+| File | Cases |
+|---|---|
+| `bulkOrdered_test.cpp` | `OrderedOneBulkInFlight`, `OrderedKeyOncePerBulk`, `OrderedItemRetryBlocksOnlyItsKey`, `OrderedTimeoutAfterApplyKeepsOrder`, `OrderedAmbiguousFailoverAfterWindow`, `OrderedFailureBeforeSendFailsOverAtOnce`, `OrderedNoIdleSpin`, `UnorderedUnchanged` |
+| `writeCancel_test.cpp` | `CancelPendingAndInFlight503`, `CancelInFlightOkStaysOk`, `CancelSlicedBeforeSubmitNotSent`, `CancelOtherTagsUntouched`, `CancelCommittedGroupOps`, `CancelIgnoresBuildingGroup`, `CancelTicketWaitsInFlightOnly`, `CancelFromCallbackReentrancy`, `TagValidation`, `CancelTwiceSameTag`, `CancelAfterTagReenqueued`, `CancelWakesOrderedBucket` |
+| `bulkFairness_test.cpp` | `ItemRejectionsDoNotStarveOtherBucket` (CA-3; about 21 s, about three times that under TSAN) |
+
+`ResultReserveMeasured` is re-run with `key`, `tag` and the pin in `OpState`; `RESULT_RESERVE` is raised if the measure x 1.25 exceeds it.
+
 The conflict, preservation and `Submit::reason` cases of `writeEncoding_test.cpp` are listed above.
 The wake-up cases use `bulk.maxAge >= 30 s` and `probe_interval_ms >= 30 s`, with `probeNow()` for the transition they want, so
 no other wake-up can rescue the one under test.
@@ -1070,6 +1160,10 @@ no other wake-up can rescue the one under test.
 **Seam `refuseSubmit`.** `detail::seams::refuseSubmit()` (`src/transport/seams.hpp`) is read by the sender's CPU-pool task just
 before it builds the request; `testing_hooks::setRefuseSubmit(hook)` installs a hook that makes it answer true, which `SubmitRefusedRequeues` uses to
 exercise the refused-submit path. The production build compiles it to `false`.
+
+**Seam `beforeAssembly`** (E3c-2, `src/transport/seams.hpp`). It runs in the sender's CPU-pool task just before the cancelled operations
+are removed from the batch and the body is assembled (`testing_hooks::setBeforeAssembly`); a test calls `cancel(tag)` inside it to prove
+that nothing of the tag reaches the wire. The production build compiles it to nothing.
 
 **Seams `beforeCompletion` and `beforeSenderMirror`** (G-diff E3b-2, `src/transport/seams.hpp`). The first runs in every bulk
 completion after its slot was released (`testing_hooks::setBeforeCompletion`; a throwing hook exercises the completion's fallback,
@@ -1111,20 +1205,20 @@ Layout of `tests/`: `unit/` (config schema, key-value source, mocks, fake indexe
 E1 delivered the skeleton, E2a-1 the internal `http` transport, E2a-2 TLS and credentials, E2b node health and logging, E2c the
 transport [benchmark](#benchmark) (done; the `--path client` benchmark of the whole client arrives with E5), E3a the
 [write path](#write-path-e3a) up to the sink, E3b-1 the [response classifier and retry lane](#response-classification-and-retry-lane-e3b-1),
-E3b-2 the [bulk sender](#bulk-sender-e3b-2) and E3c-1 the [per-operation conflict policy](#conflict-policy-e3c-1), `ReplacePreserving` and
-[groups](#groups-e3c-1): bulk writes reach the indexer. Not implemented, by stage:
+E3b-2 the [bulk sender](#bulk-sender-e3b-2), E3c-1 the [per-operation conflict policy](#conflict-policy-e3c-1), `ReplacePreserving` and
+[groups](#groups-e3c-1), and E3c-2 [`ordered` buckets](#ordered-buckets-e3c-2) and [`cancel(tag)`](#cancellation-e3c-2): bulk writes
+reach the indexer. Not implemented, by stage:
 
 | Area | Stage |
 |---|---|
-| `ordered` buckets (the wait of an ambiguous `ordered` bucket, which will use `generation()` and `onTransition`; I36 and D38); until then registration refuses `ordered = true`. `cancel(tag)` (until then it answers `Unavailable`) and whether it reaches groups in `Building`; CA-3 | E3c-2 |
 | Reads answering `Unavailable` when no node is usable | E4 |
 | Queries: `search`, `searchAfter`, PIT, `deleteByQuery`, `updateByQuery`, `indexExists` | E4 |
 | AIMD window and pacing (the fixed window of 4 per node is replaced, using the latencies in `SenderStats`), the two-phase `stop()` for the drain up to the shutdown deadline (D43), one pass per completion, D44 (simdjson stage 2 in Release), public metrics (write counters, health metrics, `Retry-After` in passive signals) | E5 |
 | Benchmark of the whole client (`--path client`) | E5 |
 | Metrics beyond the thread layout in `MetricsSnapshot` | E5 |
 | Behaviour against a real indexer (request headers without `Accept-Encoding`, D41; `Expect: 100-continue` cost), and the real Painless run of `ReplacePreserving` (D45) | E6 |
+| The consumer's sweep that closes the [ordered ambiguous window](#ordered-buckets-e3c-2) (inventory sync, delete by query) and its `ordered.ambiguous.residual` metric | E7 |
 | Migration of the four consumers off `indexer_connector` | later stages |
 
-Until then `cancel()` and the query interface are stubs, and nothing public calls the transport directly. Traffic is the
-health probe and the bulk sender's `POST /_bulk`; `requestClose()` still drops the pending operations instead of draining them
-(E3a's stand-in, D43).
+Until then the query interface is a stub, and nothing public calls the transport directly. Traffic is the health probe and the bulk
+sender's `POST /_bulk`; `requestClose()` still drops the pending operations instead of draining them (E3a's stand-in, D43).

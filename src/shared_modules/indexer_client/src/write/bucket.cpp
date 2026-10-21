@@ -15,9 +15,11 @@
 #include <algorithm>
 #include <chrono>
 #include <random>
+#include <unordered_set>
 #include <utility>
 
 #include "indexer_client/runtime.hpp"
+#include "runtime/runtimeInternal.hpp"
 #include "write/budget.hpp"
 
 namespace indexer_client::detail::write
@@ -51,6 +53,28 @@ namespace indexer_client::detail::write
         }
     } // namespace
 
+    std::uint64_t orderedKeyHash(std::string_view index, std::string_view id) noexcept
+    {
+        constexpr std::uint64_t OFFSET = 14695981039346656037ULL;
+        constexpr std::uint64_t PRIME = 1099511628211ULL;
+        std::uint64_t hash = OFFSET;
+        const auto mix = [&hash](unsigned char byte)
+        {
+            hash ^= byte;
+            hash *= PRIME;
+        };
+        for (const char c : index)
+        {
+            mix(static_cast<unsigned char>(c));
+        }
+        mix(0);
+        for (const char c : id)
+        {
+            mix(static_cast<unsigned char>(c));
+        }
+        return hash;
+    }
+
     Bucket::Bucket(std::string consumer, BucketSpec spec, GlobalBudget& budget)
         : m_consumer(std::move(consumer))
         , m_spec(std::move(spec))
@@ -58,6 +82,19 @@ namespace indexer_client::detail::write
     {
         m_stats.consumer = m_consumer;
         m_stats.bucket = m_spec.name;
+    }
+
+    Bucket::~Bucket()
+    {
+        // No other reference exists, so no lock: the waiters still registered can never reach 0 (I80).
+        for (auto& waiter : m_cancelWaiters)
+        {
+            if (waiter.ticket)
+            {
+                waiter.ticket->complete(Outcome<Unit>::failure(
+                    Cause::ClientClosed, "the client was closed before the cancelled operations resolved"));
+            }
+        }
     }
 
     const BucketSpec& Bucket::spec() const noexcept
@@ -452,9 +489,169 @@ namespace indexer_client::detail::write
         return !m_lane.empty() && m_lane.front()->notBefore <= now;
     }
 
+    void Bucket::laneAddedLocked(const OpState& op)
+    {
+        if (!m_spec.ordered)
+        {
+            return;
+        }
+        if (op.hasKey)
+        {
+            ++m_laneKeys[op.keyHash];
+        }
+        if (op.pinNode)
+        {
+            ++m_lanePinned;
+        }
+    }
+
+    void Bucket::laneRemovedLocked(const OpState& op)
+    {
+        if (!m_spec.ordered)
+        {
+            return;
+        }
+        if (op.hasKey)
+        {
+            if (const auto it = m_laneKeys.find(op.keyHash); it != m_laneKeys.end() && --it->second == 0)
+            {
+                m_laneKeys.erase(it);
+            }
+        }
+        if (op.pinNode && m_lanePinned != 0)
+        {
+            --m_lanePinned;
+        }
+    }
+
+    bool Bucket::laneBlocksLocked(const OpState& op) const
+    {
+        return op.hasKey && m_laneKeys.find(op.keyHash) != m_laneKeys.end();
+    }
+
+    Bucket::PinScan Bucket::pinScanLocked(TimePoint now) const
+    {
+        PinScan scan;
+        if (m_lanePinned == 0)
+        {
+            return scan;
+        }
+        for (const auto& op : m_lane)
+        {
+            if (!op->pinNode || op->pinUntil <= now)
+            {
+                continue;
+            }
+            const TimePoint next = std::min(op->notBefore, op->pinUntil);
+            if (!scan.pinned || next < scan.next)
+            {
+                scan.next = next;
+            }
+            scan.pinned = true;
+            if (op->notBefore <= now && !scan.due)
+            {
+                scan.due = true;
+                scan.head = op->lines.size();
+            }
+        }
+        return scan;
+    }
+
+    std::optional<std::size_t> Bucket::firstTakeablePendingLocked() const
+    {
+        if (m_laneKeys.empty())
+        {
+            return m_pending.empty() ? std::nullopt : std::optional<std::size_t> {0};
+        }
+        // Skipped ops are blocked by a lane key, so they add no key of their own: the lane's keys are the whole set.
+        const std::size_t limit = std::min<std::size_t>(m_pending.size(), m_spec.bulk.maxDocs);
+        for (std::size_t i = 0; i < limit; ++i)
+        {
+            if (!laneBlocksLocked(*m_pending[i]))
+            {
+                return i;
+            }
+        }
+        return std::nullopt;
+    }
+
+    bool Bucket::orderedEligibleLocked(TimePoint now) const
+    {
+        if (!m_delivered.empty())
+        {
+            return false; // One bulk in flight; its completion wakes the scheduler (sinkReady).
+        }
+        if (const auto pin = pinScanLocked(now); pin.pinned)
+        {
+            return pin.due;
+        }
+        if (laneDueLocked(now))
+        {
+            return true;
+        }
+        const auto first = firstTakeablePendingLocked();
+        if (!first)
+        {
+            return false;
+        }
+        return m_pending[*first]->seq <= m_flushSeq || m_pendingBytes >= m_spec.bulk.maxBytes ||
+               m_pending.size() >= m_spec.bulk.maxDocs || now - m_pending.front()->firstSubmit >= m_spec.bulk.maxAge;
+    }
+
+    std::uint64_t Bucket::orderedHeadBytesLocked(TimePoint now) const
+    {
+        if (!m_delivered.empty())
+        {
+            return 0;
+        }
+        if (const auto pin = pinScanLocked(now); pin.pinned)
+        {
+            return pin.head;
+        }
+        if (laneDueLocked(now))
+        {
+            return m_lane.front()->lines.size();
+        }
+        const auto first = firstTakeablePendingLocked();
+        return first ? m_pending[*first]->lines.size() : 0;
+    }
+
+    std::optional<TimePoint> Bucket::orderedNextDueLocked(TimePoint now) const
+    {
+        if (!m_delivered.empty())
+        {
+            return std::nullopt; // The completion wakes the scheduler (sinkReady); shutdown through the sweep.
+        }
+        if (const auto pin = pinScanLocked(now); pin.pinned)
+        {
+            return pin.next;
+        }
+        // Never an already-passed time that a pass would not turn into a batch (no idle spin of loop 0): the pending
+        // thresholds count only while some pending op is takeable; with none, the lane head (not due, or it would be
+        // takeable) is what unblocks it.
+        std::optional<TimePoint> due;
+        if (const auto first = firstTakeablePendingLocked(); first)
+        {
+            if (m_pending[*first]->seq <= m_flushSeq)
+            {
+                return TimePoint::min(); // A takeable committed group's op: due now (see nextDueLocked).
+            }
+            due = m_pending.front()->firstSubmit + m_spec.bulk.maxAge;
+        }
+        if (!m_lane.empty() && (!due || m_lane.front()->notBefore < *due))
+        {
+            due = m_lane.front()->notBefore;
+        }
+        return due;
+    }
+
     bool Bucket::eligible(TimePoint now) const
     {
         std::lock_guard<std::mutex> lock(m_mutex);
+        if (m_spec.ordered)
+        {
+            return orderedEligibleLocked(now);
+        }
         if (laneDueLocked(now))
         {
             return true;
@@ -467,8 +664,12 @@ namespace indexer_client::detail::write
                m_pending.size() >= m_spec.bulk.maxDocs || now - m_pending.front()->firstSubmit >= m_spec.bulk.maxAge;
     }
 
-    std::optional<TimePoint> Bucket::nextDueLocked() const
+    std::optional<TimePoint> Bucket::nextDueLocked(TimePoint now) const
     {
+        if (m_spec.ordered)
+        {
+            return orderedNextDueLocked(now);
+        }
         std::optional<TimePoint> due;
         if (!m_pending.empty())
         {
@@ -491,6 +692,10 @@ namespace indexer_client::detail::write
     std::uint64_t Bucket::headBytes(TimePoint now) const
     {
         std::lock_guard<std::mutex> lock(m_mutex);
+        if (m_spec.ordered)
+        {
+            return orderedHeadBytesLocked(now);
+        }
         if (laneDueLocked(now))
         {
             return m_lane.front()->lines.size();
@@ -504,10 +709,10 @@ namespace indexer_client::detail::write
         return m_pending.empty() && m_lane.empty();
     }
 
-    std::optional<TimePoint> Bucket::nextDue(TimePoint /*now*/) const
+    std::optional<TimePoint> Bucket::nextDue(TimePoint now) const
     {
         std::lock_guard<std::mutex> lock(m_mutex);
-        return nextDueLocked();
+        return nextDueLocked(now);
     }
 
     Batch Bucket::slice(std::uint64_t credit, TimePoint now)
@@ -543,6 +748,90 @@ namespace indexer_client::detail::write
             m_delivered.emplace(op.get(), op);
             batch.ops.push_back(std::move(op));
         };
+        if (m_spec.ordered)
+        {
+            if (!m_delivered.empty())
+            {
+                return batch; // One bulk in flight (eligible() is false meanwhile).
+            }
+            if (pinScanLocked(now).pinned)
+            {
+                // The pin gate: exactly the due pinned ops (they share one pin), nothing else joins.
+                std::deque<std::shared_ptr<OpState>> rest;
+                bool stop = false;
+                for (auto& op : m_lane)
+                {
+                    const bool candidate = op->pinNode && op->pinUntil > now && op->notBefore <= now;
+                    if (stop || !candidate || !fits(*op))
+                    {
+                        stop = stop || candidate;
+                        rest.push_back(std::move(op));
+                        continue;
+                    }
+                    laneRemovedLocked(*op);
+                    take(std::move(op));
+                }
+                m_lane.swap(rest);
+            }
+            else
+            {
+                std::unordered_set<std::uint64_t> taken; // Keys in this batch: a key at most once per bulk.
+                const auto blocked = [&](const OpState& op)
+                {
+                    return op.hasKey && (laneBlocksLocked(op) || taken.count(op.keyHash) != 0);
+                };
+                bool full = false;
+                while (laneDueLocked(now))
+                {
+                    if (!fits(*m_lane.front()) || (m_lane.front()->hasKey && taken.count(m_lane.front()->keyHash) != 0))
+                    {
+                        full = true;
+                        break;
+                    }
+                    auto op = std::move(m_lane.front());
+                    m_lane.pop_front();
+                    laneRemovedLocked(*op);
+                    if (op->hasKey)
+                    {
+                        taken.insert(op->keyHash);
+                    }
+                    take(std::move(op));
+                }
+                // The pending queue in order, at most bulk.maxDocs ops visited: blocked ones are skipped and keep
+                // their place; the scan stops at the first takeable op that does not fit.
+                std::vector<std::shared_ptr<OpState>> skipped;
+                std::size_t visited = 0;
+                const std::size_t limit = full ? 0 : std::min<std::size_t>(m_pending.size(), maxDocs);
+                for (; visited < limit; ++visited)
+                {
+                    auto& op = m_pending[visited];
+                    if (blocked(*op))
+                    {
+                        skipped.push_back(std::move(op));
+                        continue;
+                    }
+                    if (!fits(*op))
+                    {
+                        break;
+                    }
+                    m_pendingBytes -= op->lines.size();
+                    if (op->hasKey)
+                    {
+                        taken.insert(op->keyHash);
+                    }
+                    take(std::move(op));
+                }
+                m_pending.erase(m_pending.begin(), m_pending.begin() + static_cast<std::ptrdiff_t>(visited));
+                m_pending.insert(m_pending.begin(),
+                                 std::make_move_iterator(skipped.begin()),
+                                 std::make_move_iterator(skipped.end()));
+            }
+            if (!batch.ops.empty())
+            {
+                batch.bucket = shared_from_this();
+            }
+            return batch;
+        }
         // The due retry lane first, then the pending queue: one batch may mix both.
         bool full = false;
         while (laneDueLocked(now))
@@ -583,6 +872,7 @@ namespace indexer_client::detail::write
     {
         std::shared_ptr<OpState> keep; // Dropped after the mutex: the op (and its TicketState) never dies under it.
         std::uint64_t released = 0;
+        std::vector<std::shared_ptr<CancelState>> cancelDone; // Completed after the mutex (I80).
         {
             std::lock_guard<std::mutex> lock(m_mutex);
             // The resolution won the claim, so no requeue writes them again: a resolved op whose completion waits on
@@ -603,6 +893,7 @@ namespace indexer_client::detail::write
                                  [&op](const std::shared_ptr<OpState>& entry) { return entry.get() == &op; });
                 if (lane != m_lane.end())
                 {
+                    laneRemovedLocked(op);
                     keep = std::move(*lane);
                     m_lane.erase(lane);
                 }
@@ -617,9 +908,37 @@ namespace indexer_client::detail::write
                 {
                     m_room.notify_all();
                 }
+                // I80: the single decrement point, once per op (payloadCharged); only a marked op counted at its
+                // waiter's registration (seq < seqLimit) decrements it.
+                if (!m_cancelWaiters.empty() && op.cancelled.load() && !op.tag.empty())
+                {
+                    for (auto it = m_cancelWaiters.begin(); it != m_cancelWaiters.end();)
+                    {
+                        if (it->tag == op.tag && op.seq < it->seqLimit && it->remaining != 0 && --it->remaining == 0)
+                        {
+                            cancelDone.push_back(std::move(it->ticket));
+                            it = m_cancelWaiters.erase(it);
+                        }
+                        else
+                        {
+                            ++it;
+                        }
+                    }
+                }
             }
+            // The tag is only read while the op is queued or delivered (cancel, the decrement above): a resolved op
+            // whose completion waits on the pool does not keep it, whether its payload was still charged or not (an
+            // op evicted by DropOldest) (RESULT_RESERVE).
+            std::string().swap(op.tag);
         }
         m_budget.release(released);
+        for (const auto& ticket : cancelDone)
+        {
+            if (ticket)
+            {
+                ticket->complete(Outcome<Unit>::success(Unit {}));
+            }
+        }
     }
 
     void Bucket::releaseReserve(std::uint32_t count)
@@ -650,6 +969,8 @@ namespace indexer_client::detail::write
             pending.push_back(std::move(op));
         }
         m_lane.clear();
+        m_laneKeys.clear();
+        m_lanePinned = 0;
         for (auto& op : m_pending)
         {
             pending.push_back(std::move(op));
@@ -695,6 +1016,108 @@ namespace indexer_client::detail::write
         }
     }
 
+    CancelResult Bucket::cancel(const std::string& tag, const std::shared_ptr<CancelState>& ticket)
+    {
+        CancelResult result;
+        if (tag.empty())
+        {
+            return result; // "No tag" (OpState::tag): never matches; the writer refuses it before.
+        }
+        std::lock_guard<std::mutex> lock(m_mutex);
+        // The removed ops stay charged (payloadCharged, retained) until the caller resolves them, as close().
+        const auto drain = [&](std::deque<std::shared_ptr<OpState>>& queue, bool lane)
+        {
+            auto out = queue.begin();
+            for (auto it = queue.begin(); it != queue.end(); ++it)
+            {
+                if ((*it)->tag != tag)
+                {
+                    if (out != it)
+                    {
+                        *out = std::move(*it);
+                    }
+                    ++out;
+                    continue;
+                }
+                if (lane)
+                {
+                    laneRemovedLocked(**it);
+                }
+                else
+                {
+                    m_pendingBytes -= (*it)->lines.size();
+                }
+                result.removed.push_back(std::move(*it));
+            }
+            queue.erase(out, queue.end());
+        };
+        drain(m_lane, true);
+        drain(m_pending, false);
+
+        std::uint64_t remaining = 0;
+        for (const auto& entry : m_delivered)
+        {
+            if (entry.second->tag == tag)
+            {
+                entry.second->cancelled.store(true);
+                ++remaining;
+            }
+        }
+        if (remaining != 0)
+        {
+            m_cancelWaiters.push_back(CancelWaiter {tag, m_nextSeq, remaining, ticket});
+            result.waiting = true;
+        }
+        return result;
+    }
+
+    bool Bucket::pinnedNodeUsable(std::size_t node, TimePoint now)
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        if (!m_spec.ordered || m_lanePinned == 0)
+        {
+            return false;
+        }
+        // The ops made due now leave the lane and re-enter it by their new notBefore (insertLaneLocked: after every op
+        // due no later, in their previous relative order), so the lane stays ordered by notBefore.
+        std::vector<std::shared_ptr<OpState>> moved;
+        auto out = m_lane.begin();
+        for (auto it = m_lane.begin(); it != m_lane.end(); ++it)
+        {
+            auto& op = *it;
+            if (op->pinNode && *op->pinNode == node && op->pinUntil > now && op->notBefore > now)
+            {
+                laneRemovedLocked(*op);
+                op->notBefore = now;
+                moved.push_back(std::move(op));
+                continue;
+            }
+            if (out != it)
+            {
+                *out = std::move(op);
+            }
+            ++out;
+        }
+        m_lane.erase(out, m_lane.end());
+        for (auto& op : moved)
+        {
+            insertLaneLocked(std::move(op));
+        }
+        return !moved.empty();
+    }
+
+    void Bucket::countAmbiguousFailover(std::uint64_t ops)
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_stats.orderedAmbiguousFailover += ops;
+    }
+
+    void Bucket::countCancelled(std::uint64_t ops)
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_stats.cancelled += ops;
+    }
+
     void Bucket::countInvalidArgument()
     {
         std::lock_guard<std::mutex> lock(m_mutex);
@@ -718,6 +1141,7 @@ namespace indexer_client::detail::write
         {
             --it;
         }
+        laneAddedLocked(*op);
         m_lane.insert(it, std::move(op));
     }
 
@@ -737,6 +1161,21 @@ namespace indexer_client::detail::write
 
         std::vector<std::shared_ptr<OpState>> toHead;
         std::lock_guard<std::mutex> lock(m_mutex);
+        // I79: one pin for the whole batch; an op already pinned keeps its `until` (so does the batch: it was sliced
+        // under the pin gate, so its pinned ops share it).
+        const bool setPin = m_spec.ordered && spec.pin == RequeueSpec::Pin::Set;
+        TimePoint pinUntil = spec.pinUntil;
+        if (setPin)
+        {
+            for (const auto& entry : ops)
+            {
+                if (entry.op && entry.op->pinNode && m_delivered.count(entry.op.get()) != 0)
+                {
+                    pinUntil = entry.op->pinUntil;
+                    break;
+                }
+            }
+        }
         const std::optional<TimePoint> headBefore =
             m_lane.empty() ? std::nullopt : std::optional<TimePoint> {m_lane.front()->notBefore};
         for (auto& entry : ops)
@@ -750,6 +1189,13 @@ namespace indexer_client::detail::write
             if (delivered == m_delivered.end())
             {
                 continue; // Not delivered by this bucket (already resolved): nothing to requeue.
+            }
+            if (op->cancelled.load())
+            {
+                // I80: never back to the lane; cancellation wins over exhaustion and close. Stays delivered until
+                // the caller resolves it Dropped(Cancelled) (releasePayload decrements the waiters).
+                result.cancelled.push_back(std::move(op));
+                continue;
             }
             if (entry.lastError.cause != Cause::None)
             {
@@ -796,6 +1242,17 @@ namespace indexer_client::detail::write
             {
                 op->batchCap = halfCap;
             }
+            if (setPin)
+            {
+                op->pinNode = spec.pinNode;
+                op->pinUntil = pinUntil;
+                ++m_stats.orderedAmbiguous;
+            }
+            else if (m_spec.ordered && spec.pin == RequeueSpec::Pin::Clear)
+            {
+                op->pinNode.reset();
+                op->pinUntil = TimePoint {};
+            }
             m_delivered.erase(delivered);
             if (spec.toHead)
             {
@@ -805,6 +1262,10 @@ namespace indexer_client::detail::write
             {
                 insertLaneLocked(std::move(op));
             }
+        }
+        for (const auto& op : toHead)
+        {
+            laneAddedLocked(*op);
         }
         m_lane.insert(m_lane.begin(), std::make_move_iterator(toHead.begin()), std::make_move_iterator(toHead.end()));
         result.notify = !m_lane.empty() && (!headBefore || m_lane.front()->notBefore < *headBefore);

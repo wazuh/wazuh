@@ -18,6 +18,36 @@
 // TicketState, or while taking any other lock, with one exception: GlobalBudget's waiter registry (add/removeWaiter),
 // itself a leaf that is never held while a bucket mutex is taken. Normative contract:
 // anexos/e2a-1/contrato-transport.md § Escritura.
+//
+// ORDERED BUCKETS (stage E3c-2, plan 18 I36/I75/I79; NORMATIVE). With BucketSpec::ordered:
+//   - Keys: an op of a kind with `_id` carries keyHash = 64-bit hash of index + '\0' + _id (a collision only blocks too
+//     much, never too little); ops without `_id` have no key and are never blocked. The retry lane keeps a multiset of
+//     its ops' keys, updated on every insert/remove.
+//   - One bulk in flight: while the delivered set is not empty the bucket is not eligible and nextDue is nullopt (the
+//     completion wakes the scheduler through sinkReady; shutdown through the sweep).
+//   - Blocked keys: those of the lane, those already taken into the batch being built, and those of pending ops
+//     skipped earlier in the same scan. An op is TAKEABLE if it is the due lane head, or a pending op whose key is not
+//     blocked. eligible() needs some takeable op (thresholds and maxAge measured as for any bucket); with nothing
+//     takeable nextDue is the lane head's notBefore; the committed-group TimePoint::min() applies only when that head
+//     is takeable. headBytes() = the first takeable op.
+//   - slice(): the due lane first; then the pending queue in order, scanning at most bulk.maxDocs ops: blocked ones are
+//     skipped (they keep their place), and the scan STOPS at the first takeable op that does not fit (credit, maxBytes,
+//     maxDocs, batchCap).
+//   - Ambiguous pin: requeue with RequeueSpec::Pin::Set gives every op of the batch the same {node, until} (a batch
+//     whose ops are already pinned keeps their `until`, even an expired one: the sender clears an expired pin at
+//     dispatch) and counts orderedAmbiguous per op; Pin::Keep leaves it; Pin::Clear removes it. So the window bounds
+//     the time pinned from the FIRST ambiguous failure: with request_timeout >= window, a second timeout of the batch
+//     on its node is an immediate failover, counted in orderedAmbiguousFailover. While
+//     some lane op has pinUntil > now ("pinned"): eligible ⇔ the pinned ops are due, slice() takes exactly them
+//     (nothing else joins), nextDue = their notBefore. pinnedNodeUsable(node, now) makes the ops pinned to `node` due
+//     now.
+// CANCELLATION (I25, I76–I78, I80; NORMATIVE): cancel(tag) removes the pending and lane ops with the tag (the caller
+// resolves them Dropped(Cancelled)), sets `cancelled` on the delivered ones and registers one waiter {tag, remaining,
+// ticket} if any is delivered. A requeue never puts a cancelled op back: it returns in RequeueResult::cancelled (also
+// when it would be exhausted or closed: cancellation wins). The single decrement point is releasePayload: every waiter
+// of the op's tag loses one, and those that reach 0 complete (success) after the mutex is dropped. A second cancel of a
+// tag adds a second waiter. A bucket destroyed with waiters fails them ClientClosed. Groups still Building are out of
+// reach (I76). Ops resolved Dropped(Cancelled) count in `cancelled` and in resolvedDropped.
 
 #include <atomic>
 #include <condition_variable>
@@ -27,6 +57,7 @@
 #include <mutex>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
@@ -36,6 +67,7 @@ namespace indexer_client::detail
 {
     struct TicketState;
     struct GroupState;
+    struct CancelState;
 } // namespace indexer_client::detail
 
 namespace indexer_client::detail::write
@@ -49,9 +81,16 @@ namespace indexer_client::detail::write
     /// the retry state of E3b-1 in OpState, 1404.1 (a resolved op whose completion waits on the pool with a capped
     /// OpResult, its batch still held; an op requeued into the retry lane with its LastError at its caps keeps 1138.6;
     /// G-diff E3b-2, an op requeued with that LastError, re-sliced and then resolved like the first keeps 1396.7, since
-    /// the resolution frees OpState::last*; 1992.7 without that) => 1755.1 => 1792. Registration requires
-    /// bulk.maxBytes + RESULT_RESERVE <= quotaBytes.
-    constexpr std::uint64_t RESULT_RESERVE = 1792;
+    /// the resolution frees OpState::last*; 1992.7 without that) => 1755.1 => 1792; E3c-2 step 6b, with the tag, key
+    /// and pin of E3c-2 in OpState, 1555.2 (an op of an ordered bucket with a 256-byte tag, pinned in the retry lane; a
+    /// queued completion keeps 1516.0, since the resolution also frees OpState::tag) => 1944.0 => 1984. Registration
+    /// requires bulk.maxBytes + RESULT_RESERVE <= quotaBytes.
+    constexpr std::uint64_t RESULT_RESERVE = 1984;
+
+    /// I79: the key of an op of an ordered bucket (OpState::keyHash), computed by whoever builds the OpState: 64-bit
+    /// FNV-1a over `index`, one '\0' byte and `id`. Stable across runs, builds and platforms; a collision only blocks
+    /// too much, never too little.
+    std::uint64_t orderedKeyHash(std::string_view index, std::string_view id) noexcept;
 
     /// One admitted write. Created by the writer, owned by the bucket's queue, then by a Batch, then by its resolution.
     struct OpState final
@@ -87,6 +126,17 @@ namespace indexer_client::detail::write
         std::uint32_t groupIndex {0};
         /// Set by enqueue/enqueueGroup (per-bucket, monotonic): eligible() compares the pending head with flushSeq.
         std::uint64_t seq {0};
+        /// Op::tag (E3c-2 I80), moved in by submit / Group::add; empty = none.
+        std::string tag;
+        /// Ordered buckets only (I79): the key's 64-bit hash; `hasKey` false for kinds without `_id` (never blocked).
+        std::uint64_t keyHash {0};
+        bool hasKey {false};
+        /// I80: set under the bucket mutex by cancel(); read lock-free by the sender before it assembles a bulk.
+        std::atomic<bool> cancelled {false};
+        /// I79: the ambiguous pin, written under the bucket mutex by requeue and read by the sender once the op is in a
+        /// batch (and cleared by it when the pin has expired at dispatch).
+        std::optional<std::size_t> pinNode;
+        TimePoint pinUntil {};
     };
 
     /// The error an op is requeued after (copied into OpState::last*; `cause == None` keeps the op's previous one).
@@ -120,6 +170,19 @@ namespace indexer_client::detail::write
         TimePoint at {};
         bool toHead {false}; ///< Before every other lane op (a split's halves); implies Now (notBefore = now).
         bool halve {false};  ///< Sets batchCap = ceil(batch bytes / 2) on the requeued ops (413, ResponseTooLarge).
+        /// I79 (ordered buckets; ignored otherwise): Keep leaves each op's pin; Set pins them all to `pinNode` until
+        /// `pinUntil` (an op already pinned keeps its `until`; orderedAmbiguous += ops); Clear removes it. The sender
+        /// uses Set for a Failover with mayHaveSent, Keep for any other completion without an HTTP response (and "no
+        /// usable node"), Clear for every completion with one.
+        enum class Pin
+        {
+            Keep,
+            Set,
+            Clear
+        };
+        Pin pin {Pin::Keep};
+        std::size_t pinNode {0};
+        TimePoint pinUntil {};
     };
 
     struct RequeueResult final
@@ -133,6 +196,15 @@ namespace indexer_client::detail::write
         std::vector<LastError> exhaustedErrors;
         /// The bucket is closed: the caller resolves them Dropped(closedCause()). Still in the delivered set.
         std::vector<std::shared_ptr<OpState>> closed;
+        /// Marked by cancel(tag) (I80): the caller resolves them Dropped(Cancelled). Still in the delivered set.
+        std::vector<std::shared_ptr<OpState>> cancelled;
+    };
+
+    /// Outcome of Bucket::cancel (I80).
+    struct CancelResult final
+    {
+        std::vector<std::shared_ptr<OpState>> removed; ///< Pending and lane ops of the tag: resolve Dropped(Cancelled).
+        bool waiting {false}; ///< Some delivered op carries the tag: the ticket completes at the last resolution.
     };
 
     /// What the scheduler hands to the sink.
@@ -180,6 +252,10 @@ namespace indexer_client::detail::write
         std::uint64_t rejectedGroupTooLarge {0}; ///< Group adds refused GroupTooLarge (E3c-1 I74; under `submitted`).
         std::uint64_t groupBuilding {0};         ///< Ops reserved by groups not committed yet (accepted, not retained).
         std::uint64_t groupAbandoned {0};        ///< Ops of abandoned groups (also counted resolvedDropped).
+        std::uint64_t cancelled {0};             ///< Ops resolved Dropped(Cancelled) (also resolvedDropped; I80).
+        std::uint64_t orderedAmbiguous {0};      ///< Ops pinned after an ambiguous failure (I79; per op and pin).
+        std::uint64_t orderedAmbiguousFailover {
+            0}; ///< Pinned ops sent to another node once the window ended (counted at dispatch).
         std::uint64_t resolvedOk {0};
         std::uint64_t resolvedFailed {0};
         std::uint64_t resolvedDropped {0};
@@ -192,6 +268,10 @@ namespace indexer_client::detail::write
     {
     public:
         Bucket(std::string consumer, BucketSpec spec, GlobalBudget& budget);
+        /// Fails the cancel(tag) waiters still registered with ClientClosed (I80).
+        ~Bucket();
+        Bucket(const Bucket&) = delete;
+        Bucket& operator=(const Bucket&) = delete;
 
         const BucketSpec& spec() const noexcept;
         const std::string& consumer() const noexcept;
@@ -239,6 +319,21 @@ namespace indexer_client::detail::write
         /// `building` (bucket and global) and the global cap, counts them groupAbandoned and resolvedDropped (out of
         /// groupBuilding) and wakes the blocked producers (the global ones after the mutex is dropped).
         void cancelGroupReservation(std::uint64_t reserved, std::uint32_t ops);
+
+        // ---- ordered buckets and cancellation (E3c-2; see the header comment)
+
+        /// cancel(tag): `ticket` is registered as a waiter when `waiting`; otherwise the caller completes it at once.
+        /// The caller notifies the scheduler when something was removed (an ordered bucket's gate or keys may have
+        /// lifted).
+        CancelResult cancel(const std::string& tag, const std::shared_ptr<CancelState>& ticket);
+        /// The sender saw `node` usable again: the lane ops pinned to it become due now. True when the caller must
+        /// notify the scheduler (some op changed).
+        bool pinnedNodeUsable(std::size_t node, TimePoint now);
+        /// `ops` pinned ops went to another node once their window ended. Counted at dispatch, before the pool task: a
+        /// batch dropped there (refused, cancelled-empty) still counts.
+        void countAmbiguousFailover(std::uint64_t ops);
+        /// Counts `ops` resolutions Dropped(Cancelled) (the caller resolves them through WritePath::resolve).
+        void countCancelled(std::uint64_t ops);
 
         // ---- scheduler (loop 0 only)
 
@@ -309,10 +404,32 @@ namespace indexer_client::detail::write
         /// The retry-lane head is due at `now`; m_mutex held.
         bool laneDueLocked(TimePoint now) const;
         /// min(oldest pending + maxAge, retry-lane head notBefore), TimePoint::min() for a committed group's head;
-        /// m_mutex held.
-        std::optional<TimePoint> nextDueLocked() const;
+        /// the ordered rules of the header comment when spec().ordered; m_mutex held.
+        std::optional<TimePoint> nextDueLocked(TimePoint now) const;
         /// Inserts a non-toHead op into the retry lane by notBefore (stable); m_mutex held.
         void insertLaneLocked(std::shared_ptr<OpState> op);
+
+        // Ordered buckets (I79); m_mutex held. Every op entering the lane goes through laneAddedLocked and every op
+        // leaving it through laneRemovedLocked (cancel() and pinnedNodeUsable() too), which keep m_laneKeys and
+        // m_lanePinned.
+        void laneAddedLocked(const OpState& op);
+        void laneRemovedLocked(const OpState& op);
+        /// The key of `op` is in the lane.
+        bool laneBlocksLocked(const OpState& op) const;
+        /// The lane's pinned ops at `now` (pinNode set and pinUntil > now).
+        struct PinScan
+        {
+            bool pinned {false};    ///< Some lane op is pinned: the pin gate governs the bucket.
+            bool due {false};       ///< Some pinned op has notBefore <= now.
+            TimePoint next {};      ///< min(notBefore, pinUntil) over the pinned ops.
+            std::uint64_t head {0}; ///< Wire size of the first due pinned op (lane order).
+        };
+        PinScan pinScanLocked(TimePoint now) const;
+        /// Index of the first takeable pending op (key not in the lane) among the first bulk.maxDocs ones.
+        std::optional<std::size_t> firstTakeablePendingLocked() const;
+        bool orderedEligibleLocked(TimePoint now) const;
+        std::uint64_t orderedHeadBytesLocked(TimePoint now) const;
+        std::optional<TimePoint> orderedNextDueLocked(TimePoint now) const;
 
         const std::string m_consumer;
         const BucketSpec m_spec;
@@ -331,6 +448,20 @@ namespace indexer_client::detail::write
         std::uint32_t m_waiting {0};
         std::optional<Cause> m_closed;
         std::atomic<bool> m_notified {false};
+        /// Ordered buckets (I79): multiset of the lane ops' keys (hash -> count; ops without a key are not in it).
+        std::unordered_map<std::uint64_t, std::uint32_t> m_laneKeys;
+        std::size_t m_lanePinned {0}; ///< Ordered buckets: lane ops with pinNode set (expired pins included).
+        /// I80: one per cancel(tag) that found delivered ops of its tag. It counts the ops of `tag` that were delivered
+        /// at registration (all with seq < seqLimit, all marked); releasePayload decrements it for a marked op of
+        /// `tag` with seq < seqLimit (ops of the tag enqueued after the cancel have a later seq and never count).
+        struct CancelWaiter
+        {
+            std::string tag;
+            std::uint64_t seqLimit {0};
+            std::uint64_t remaining {0};
+            std::shared_ptr<CancelState> ticket;
+        };
+        std::vector<CancelWaiter> m_cancelWaiters;
         BucketStats m_stats;
     };
 } // namespace indexer_client::detail::write
