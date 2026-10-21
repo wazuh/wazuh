@@ -87,17 +87,18 @@ protected:
     std::shared_ptr<Client> m_client;
 };
 
-TEST_F(ClientTest, QueryStubReturnsUnavailable)
+TEST_F(ClientTest, QueryWithoutUsableNodeIsUnavailable)
 {
+    // E4a: the host never answers (no node leaves Down), so every query ends Unavailable at its deadline.
     auto query = m_client->query();
     ASSERT_NE(query, nullptr);
     const QueryOptions options;
+    const auto paged = nlohmann::json {{"size", 10}, {"sort", nlohmann::json::array({"_id"})}};
     EXPECT_EQ(query->search("idx", nlohmann::json::object(), options, soon()).cause, Cause::Unavailable);
-    EXPECT_EQ(
-        query->searchAfter(
-                 "idx", nlohmann::json::object(), [](const nlohmann::json&) { return true; }, options, soon())
-            .cause,
-        Cause::Unavailable);
+    EXPECT_EQ(query->searchAfter(
+                       "idx", paged, [](const nlohmann::json&) { return true; }, options, soon())
+                  .cause,
+              Cause::Unavailable);
     EXPECT_EQ(query->pit({"idx"}, PitOptions {}, options, soon()).cause, Cause::Unavailable);
     EXPECT_EQ(query->deleteByQuery({"idx"}, nlohmann::json::object(), DbqOptions {}, options, soon()).cause,
               Cause::Unavailable);
