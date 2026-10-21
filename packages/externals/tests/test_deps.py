@@ -2137,7 +2137,12 @@ def test_workflow_images_by_version_tag(tmp_path):
 def test_publish_gated():
     workflow = jobs(EXTERNALS_WORKFLOW.read_text(encoding="utf-8"))
     publish = workflow["publish"]
-    assert re.search(r"^    if: vars\.DEPS_POOL_PUBLISH == 'true'$", publish, re.M)
+    # A skipped build-ebpf or cpython (their refs already exist) must not skip publish: the condition
+    # starts with always() and names the result of every job it waits for.
+    condition = " ".join(re.search(r"^    if: >-\n((?:      .*\n)+)", publish, re.M).group(1).split())
+    assert condition.startswith("always() && vars.DEPS_POOL_PUBLISH == 'true'")
+    for need in ("pool", "smoke-build", "smoke-sources"):
+        assert f"needs.{need}.result == 'success'" in condition
     assert re.search(r"^    environment: deps-publish$", publish, re.M)
     assert re.search(r"^    concurrency:\n(?:      .*\n)*?      cancel-in-progress: false$", publish, re.M)
     assert re.search(r"^    concurrency:\n(?:      .*\n)*?      queue: max$", publish, re.M)
@@ -2149,6 +2154,7 @@ def test_publish_gated():
     checks = [i for i, step in enumerate(steps) if step["run"] and "deps.py verify --lock" in step["run"]]
     assert len(checks) == 1 and checks[0] < role[0]
     assert job_needs(workflow["verify"]) == ["pool", "publish"]
+    assert re.search(r"^    if: always\(\) && needs\.publish\.result == 'success'$", workflow["verify"], re.M)
 
 
 def smoke_build_matrix():

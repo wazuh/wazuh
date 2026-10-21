@@ -701,7 +701,11 @@ jobs:
     # PR, this file included, at the SHA being published. Publishing is
     # idempotent per ref (publish_pool.sh), so runs queue instead of cancelling.
     needs: [check, pool, smoke-build, smoke-sources]
-    if: vars.DEPS_POOL_PUBLISH == 'true'
+    # always(): build-ebpf and cpython are skipped when their refs exist, and a skipped job anywhere
+    # upstream skips this one under the implicit success().
+    if: >-
+      always() && vars.DEPS_POOL_PUBLISH == 'true' && needs.pool.result == 'success' &&
+      needs.smoke-build.result == 'success' && needs.smoke-sources.result == 'success'
     runs-on: ubuntu-24.04
     environment: deps-publish
     concurrency:
@@ -749,6 +753,7 @@ jobs:
 
   verify:
     needs: [pool, publish]
+    if: always() && needs.publish.result == 'success'
     runs-on: ubuntu-24.04
     permissions:
       id-token: write
