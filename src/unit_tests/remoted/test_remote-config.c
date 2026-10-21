@@ -124,6 +124,19 @@ static void mock_remoted_internal_option_values(int legacy_value) {
     will_return(__wrap_getDefine_Int_default, 1);
     will_return(__wrap_getDefine_Int_default, 1);
 
+    // Container-inventory limits: a separate budget from the host ones above,
+    // read whether or not the host runs containers.
+    will_return(__wrap_getDefine_Int_default, 1);
+    will_return(__wrap_getDefine_Int_default, 1);
+    will_return(__wrap_getDefine_Int_default, 1);
+    will_return(__wrap_getDefine_Int_default, 1);
+    will_return(__wrap_getDefine_Int_default, 1);
+    will_return(__wrap_getDefine_Int_default, 1);
+    will_return(__wrap_getDefine_Int_default, 1);
+    will_return(__wrap_getDefine_Int_default, 1);
+    will_return(__wrap_getDefine_Int_default, 1);
+    will_return(__wrap_getDefine_Int_default, 1);
+
     // SCA limits
     will_return(__wrap_getDefine_Int_default, 1);
 
