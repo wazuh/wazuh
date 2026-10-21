@@ -33,6 +33,7 @@ namespace
     std::function<void()> g_beforeCompletion;
     std::function<void()> g_beforeSenderMirror;
     std::function<void()> g_beforeAssembly;
+    std::optional<std::int64_t> g_queryConflictBaseMs;
 
     template<class F>
     F copyOf(const F& hook)
@@ -132,6 +133,12 @@ namespace indexer_client::detail::seams
             hook();
         }
     }
+
+    std::optional<std::int64_t> queryConflictBaseMs()
+    {
+        std::lock_guard<std::mutex> lock(g_hooksMutex);
+        return g_queryConflictBaseMs;
+    }
 } // namespace indexer_client::detail::seams
 
 namespace indexer_client::testing_hooks
@@ -180,6 +187,12 @@ namespace indexer_client::testing_hooks
     {
         store(g_beforeAssembly, std::move(hook));
     }
+
+    void setQueryConflictBaseMs(std::optional<std::int64_t> milliseconds)
+    {
+        std::lock_guard<std::mutex> lock(g_hooksMutex);
+        g_queryConflictBaseMs = milliseconds;
+    }
     void resetAll()
     {
         {
@@ -195,6 +208,7 @@ namespace indexer_client::testing_hooks
             g_beforeCompletion = {};
             g_beforeSenderMirror = {};
             g_beforeAssembly = {};
+            g_queryConflictBaseMs.reset();
         }
         setProbeAutoStart(true);
     }

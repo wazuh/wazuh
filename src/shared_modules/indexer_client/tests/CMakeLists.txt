@@ -16,6 +16,9 @@ file(GLOB UNIT_SRC_FILES ${CMAKE_CURRENT_LIST_DIR}/unit/*.cpp)
 
 add_executable(indexer_client_utest ${UNIT_SRC_FILES})
 
+# The pure query classifiers (E4a, queryResponse_test) are hidden in the .so: the suite compiles their TU itself.
+target_sources(indexer_client_utest PRIVATE ${CMAKE_CURRENT_LIST_DIR}/../src/query/queryResponse.cpp)
+
 target_link_libraries(
   indexer_client_utest
   debug gtestd

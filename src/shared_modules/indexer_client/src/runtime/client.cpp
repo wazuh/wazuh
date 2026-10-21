@@ -20,6 +20,7 @@
 
 #include "health/nodeSet.hpp"
 #include "indexer_client/runtime.hpp"
+#include "query/query.hpp"
 #include "runtime/runtimeInternal.hpp"
 #include "write/writer.hpp"
 
@@ -62,66 +63,6 @@ namespace indexer_client
             std::shared_ptr<detail::ClientState> m_client;
             std::string m_bucket;
         };
-
-        class StubQuery final : public IQuery
-        {
-        public:
-            explicit StubQuery(std::shared_ptr<detail::ClientState> client)
-                : m_client(std::move(client))
-            {
-            }
-
-            Outcome<nlohmann::json> search(std::string_view /*index*/,
-                                           const nlohmann::json& /*body*/,
-                                           const QueryOptions& /*options*/,
-                                           Deadline /*deadline*/) override
-            {
-                return Outcome<nlohmann::json>::failure(Cause::Unavailable, E1_UNAVAILABLE);
-            }
-
-            Outcome<Unit> searchAfter(std::string_view /*index*/,
-                                      nlohmann::json /*body*/,
-                                      std::function<bool(const nlohmann::json&)> /*page*/,
-                                      const QueryOptions& /*options*/,
-                                      Deadline /*deadline*/) override
-            {
-                return Outcome<Unit>::failure(Cause::Unavailable, E1_UNAVAILABLE);
-            }
-
-            Outcome<Pit> pit(std::vector<std::string> /*indices*/,
-                             PitOptions /*pitOptions*/,
-                             const QueryOptions& /*options*/,
-                             Deadline /*deadline*/) override
-            {
-                return Outcome<Pit>::failure(Cause::Unavailable, E1_UNAVAILABLE);
-            }
-
-            Outcome<nlohmann::json> deleteByQuery(std::vector<std::string> /*indices*/,
-                                                  const nlohmann::json& /*query*/,
-                                                  DbqOptions /*dbqOptions*/,
-                                                  const QueryOptions& /*options*/,
-                                                  Deadline /*deadline*/) override
-            {
-                return Outcome<nlohmann::json>::failure(Cause::Unavailable, E1_UNAVAILABLE);
-            }
-
-            Outcome<nlohmann::json> updateByQuery(std::vector<std::string> /*indices*/,
-                                                  const nlohmann::json& /*query*/,
-                                                  const QueryOptions& /*options*/,
-                                                  Deadline /*deadline*/) override
-            {
-                return Outcome<nlohmann::json>::failure(Cause::Unavailable, E1_UNAVAILABLE);
-            }
-
-            Outcome<bool>
-            indexExists(std::string_view /*index*/, const QueryOptions& /*options*/, Deadline /*deadline*/) override
-            {
-                return Outcome<bool>::failure(Cause::Unavailable, E1_UNAVAILABLE);
-            }
-
-        private:
-            std::shared_ptr<detail::ClientState> m_client;
-        };
     } // namespace
 
     namespace detail
@@ -129,11 +70,6 @@ namespace indexer_client
         std::shared_ptr<IWriter> makeStubWriter(std::shared_ptr<ClientState> client, std::string bucket)
         {
             return std::make_shared<StubWriter>(std::move(client), std::move(bucket));
-        }
-
-        std::shared_ptr<IQuery> makeStubQuery(std::shared_ptr<ClientState> client)
-        {
-            return std::make_shared<StubQuery>(std::move(client));
         }
     } // namespace detail
 
@@ -208,7 +144,8 @@ namespace indexer_client
         {
             return nullptr;
         }
-        return detail::makeStubQuery(m_state);
+        // With the runtime gone (or another epoch) every operation answers Shutdown without a request (I87 step 3).
+        return detail::query::makeQuery(m_state);
     }
 
     HealthView Client::health() const
@@ -229,6 +166,14 @@ namespace indexer_client
         }
         // The flag first: a submit racing this close either is swept here or sees the flag after its enqueue.
         m_state->closeRequested.store(true);
+        if (m_state->queryGate)
+        {
+            {
+                // Under the gate's mutex: a query that checked the flag is already waiting, so it sees this notify.
+                std::lock_guard<std::mutex> gate(m_state->queryGate->mutex);
+            }
+            m_state->queryGate->cv.notify_all(); // E4a: queries waiting on this client return ClientClosed.
+        }
         if (auto path = m_state->writePath.lock())
         {
             path->closeClient(*m_state); // Wakes blocked producers; pending ops resolve Dropped(ClientClosed).

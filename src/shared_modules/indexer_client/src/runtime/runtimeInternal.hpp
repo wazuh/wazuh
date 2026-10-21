@@ -58,6 +58,11 @@ namespace indexer_client::detail
     /// The NodeSet of a client's runtime (Client::health()): null once that runtime is gone or another epoch runs.
     std::shared_ptr<NodeSet> runtimeNodeSet(const std::weak_ptr<RuntimeState>& runtime, std::uint64_t epoch);
 
+    class Transport;
+    /// The transport of a client's runtime (E4a queries, G-plan obj. 9): null once that runtime is gone or another
+    /// epoch runs.
+    std::shared_ptr<Transport> runtimeTransport(const std::weak_ptr<RuntimeState>& runtime, std::uint64_t epoch);
+
     /// One-shot completion shared by every ticket kind: set once, waited on by consumer threads only.
     template<class T>
     struct Completion
@@ -142,6 +147,16 @@ namespace indexer_client::detail
         std::string lastAddReason; ///< Why the last add() was refused (D42); empty after an accepted one.
     };
 
+    /// E4a (I87): where every query wait sleeps. One per runtime, shared with each of its clients; the transport
+    /// callback of a query attempt, Client::requestClose() and RuntimeState::stopAndJoin() notify it (notify_all:
+    /// a waiter re-checks its own attempt, client and `stopping`). A leaf: nothing else is locked under `mutex`.
+    struct QueryGate final
+    {
+        std::mutex mutex;
+        std::condition_variable cv;
+        bool stopping {false}; ///< Set once by stopAndJoin(), before the write path stops.
+    };
+
     struct PitState final
     {
         std::uint64_t generation {0};
@@ -172,6 +187,11 @@ namespace indexer_client::detail
         /// E3a: the runtime's write path (set by RuntimeRef::client); weak, like `runtime`.
         std::weak_ptr<write::WritePath> writePath;
         Duration drain {Duration {10000}};
+        /// E4a (I87): the runtime's query gate and the configuration values a query needs (copied at creation).
+        std::shared_ptr<QueryGate> queryGate;
+        Duration requestTimeout {Duration {60000}};
+        Duration probeInterval {Duration {10000}};
+        std::uint64_t maxResponseBytes {64u << 20};
         std::atomic<bool> closeRequested {false};
         std::atomic<bool> nameReleased {false};
 
@@ -198,9 +218,8 @@ namespace indexer_client::detail
     };
     PoolStats runtimePoolStats();
 
-    /// E1 stubs: every data-path operation is Cause::Unavailable until E3b/E4 replace them.
+    /// E1 stub writer: every operation is Cause::Unavailable (Client::writer() when the runtime is gone).
     std::shared_ptr<IWriter> makeStubWriter(std::shared_ptr<ClientState> client, std::string bucket);
-    std::shared_ptr<IQuery> makeStubQuery(std::shared_ptr<ClientState> client);
 } // namespace indexer_client::detail
 
 #endif // _INDEXER_CLIENT_RUNTIME_INTERNAL_HPP

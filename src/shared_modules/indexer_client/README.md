@@ -63,7 +63,7 @@ Headers are in `include/indexer_client/`; `indexerClient.hpp` is the umbrella.
 | | `Ticket`, `GroupTicket`, `CancelTicket` | Handles on a pending write, a group of writes and a cancel; `ready()` and `wait(Deadline)` |
 | | `Submit` | Result of `submit`: `accepted`, `cause`, `reason` (why it was refused; `InvalidArgument` names the field first, D42), `ticket` |
 | | `Group` | Confirmable group of writes: `add(Op)` reserves its quota at once, `commit()` enqueues all together; dropped without commit it releases its reservation; `lastAddReason()` (see [Groups](#groups-e3c-1)) |
-| | `Pit`, `PitSession` | Shared PIT handle and its cursors (`next`, `exhausted`) |
+| | `Pit`, `PitSession` | Shared PIT handle and its cursors (`next`, `exhausted`); `pit()` answers `Unavailable` until E4b |
 
 **Write handles.** `Writer::submit` validates, encodes, charges and queues the operation (see
 [Write path](#write-path-e3a)); a refusal carries its `reason` (D42: `InvalidArgument` names the field first, as the internal
@@ -923,6 +923,147 @@ The normative text is `src/write/bucket.hpp` (CANCELLATION) and `src/write/sende
   invariants of [Groups](#groups-e3c-1) are unchanged. Cancelling an ordered bucket tells the scheduler, because removing lane operations
   can lift a key block or a pin.
 
+## Queries (E4a)
+
+`Client::query()` returns the `IQuery` of the client: `search`, `searchAfter`, `deleteByQuery`, `updateByQuery` and `indexExists`
+(`pit()` is a stub until E4b). The contract is the header `src/query/query.hpp` (normative); the pure response classifiers are in
+`src/query/queryResponse.hpp`. Nothing there is public API.
+
+### Execution model
+
+Every operation runs **synchronously on the calling consumer thread**. No runtime thread runs a query and no task is posted for it,
+so a query never blocks the IoLoops or the CPU pool. In order:
+
+1. Called from a runtime thread (`onRuntimeThread()`): `Reentrancy`, before anything else.
+2. Validation, without a request: `InvalidArgument` with the field first in `reason`.
+3. The client closed: `ClientClosed`; its runtime gone or of another epoch: `Shutdown`.
+
+The `IQuery` belongs to its `Client`: destroying the `Client` closes it (`~Client` = `requestClose()` + `awaitClosed()`), and every later
+call on a query obtained from it returns `ClientClosed`. Keep the `Client` alive for as long as its queries are used.
+
+### Clocks
+
+| Clock | Bounds | Notes |
+|---|---|---|
+| `Deadline` | The whole call | Never an HTTP timeout. When it expires with an attempt in flight the engine cancels the transfer (`Cancelled`, never attributed to a node) and returns `Unavailable` with reason `deadline expired, last cause: ...` |
+| `QueryOptions.pageDeadline` | Each page (one search, one DBQ, ...) from its first attempt, waits included | The clock starts when the page's first attempt is submitted; a wait for a usable node before it counts only against the `Deadline`. Expiry returns `Unavailable` with reason `page deadline expired, ...` |
+| HTTP timeout | One attempt | `min(RuntimeConfig.requestTimeout, what is left of the page)` |
+
+The consumer's `Deadline` **never marks a node `Down`**. A `Timeout` reaches `NodeSet::report` (the node goes `Down` and the next
+attempt fails over) only when the attempt had the whole per-attempt budget `min(requestTimeout, pageDeadline)`: the page's first
+attempt always has it, and so has a later one while at least `requestTimeout` of the page is left. A `Timeout` of an attempt whose
+budget the page cut short is the page's own clock: it is not reported and the call returns `Unavailable` `page deadline expired`.
+An attempt with the whole budget waits `TIMEOUT_GRACE` (1 s) past the page for curl's own `Timeout`, never past the `Deadline`: with
+the defaults (`pageDeadline` 30 s < `requestTimeout` 60 s) a hung node is reported `Down` by the query that hit it, which then returns
+`Unavailable` (its page is spent); the next query chooses another node.
+
+### One attempt
+
+The engine takes the transport and the `NodeSet` of the client's epoch (a null one is `Shutdown`; neither is held past the attempt),
+calls `NodeSet::choose()` and submits `HttpRequest{url = host + route, timeout}`. It then waits on the runtime's `QueryGate` (one
+mutex and condition variable shared by the runtime and all its clients; the transport callback captures the attempt state by
+`shared_ptr`, so it may land after the engine returned). The result is reported to the `NodeSet` (passive signals, see
+[Node health](#node-health-e2b)) and classified by `classifyRequest(result, 1)` and then by the operation's classifier.
+
+With **no node to choose**, the engine waits `max(50 ms, min(retry.base, probeInterval))` and chooses again, without spending an
+attempt. It ends by `Deadline` (once the page has made its first attempt, also by the page deadline or `retry.maxDuration`), never by
+a busy wait.
+
+### Retry (I82)
+
+| Verdict | Action |
+|---|---|
+| Failover | Another attempt at once; counted only when the request may have been sent |
+| Throttled (429) | Waits `max(Retry-After, backoffDelay(retry, ++throttles))` without an attempt; `throttles` grows the exponent, so a storm of 429 without `Retry-After` backs off |
+| Retry (408, 5xx, 401, 403, TLS configuration, local error, `timed_out`) | An attempt, then `backoffDelay(retry, attempts)` (`src/runtime/backoff.hpp`) |
+| `maxAttempts` or `maxDuration` (from the page's first attempt) exhausted | `Failed(RetryExhausted)`, the last cause in `reason` |
+| Fail | Its own cause (see [Causes](#causes-of-a-query)) |
+| Conflict (DBQ/UBQ) | Its own budget, below |
+
+### Conflicts of `deleteByQuery` and `updateByQuery` (I86)
+
+A 2xx whose `failures` are all `version_conflict_engine_exception` / 409, or with `version_conflicts > 0`, is a conflict. The budget is
+`CONFLICT_ATTEMPTS = 3` attempts with a wait of `CONFLICT_BASE = 3 s`, doubled up to `CONFLICT_CAP = 15 s`. Each conflict retry opens
+a **fresh I82 series** (independent clocks). Exhausted: `Failed(VersionConflict)` with the counts in `reason`. Any other `failures`
+entry is `Failed(ItemPermanent)` with the first one in `reason`; `timed_out` is a Retry under I82.
+
+### Routes (I88)
+
+`QueryOptions.expandWildcardsAll` adds `expand_wildcards=all` to every route below, `HEAD` included. `DbqOptions.proceedOnConflicts`
+(default `true`) controls `conflicts=proceed` in `deleteByQuery`.
+
+| Operation | Method and route | Body | Success | 404 |
+|---|---|---|---|---|
+| `search(index, body)` | `POST /<index>/_search` | `body` | The whole response (`Outcome<json>`) | `index_not_found_exception`: `NotFound`; any other: `Client4xx` |
+| `searchAfter(index, body, page)` | `POST /<index>/_search`, one per page | `body` with `search_after` | `Ok` when it stops (below) | As `search` |
+| `deleteByQuery(indices, query, dbq)` | `POST /<i1,i2>/_delete_by_query[?conflicts=proceed]` | `query` | The response | `index_not_found_exception`: `Ok({})`; any other: `Client4xx` |
+| `updateByQuery(indices, query)` | `POST /<i1,i2>/_update_by_query?conflicts=proceed` | `query` | The response | `index_not_found_exception`: `NotFound`; any other: `Client4xx` |
+| `indexExists(index)` | `HEAD /<index>` | none | `200`: `true` | `false` |
+| `pit(...)` | none | none | `Unavailable`, reason `PIT not implemented yet (E4b)` | none |
+
+### `searchAfter`
+
+`body.sort` must be a non-empty array and `body.size` an integer greater than 0, otherwise `InvalidArgument` without a request. The
+callback `page(response)` runs on the consumer thread for **every** page, the empty one included; an exception from it propagates and
+leaves no request pending. Pagination stops when:
+
+- `page` returns `false` (result `Ok`);
+- a page has no hits;
+- a page has fewer hits than `size`;
+- the last hit has no `sort`.
+
+Otherwise the next page is the same body with `search_after` set to the `sort` of the last hit. A page that fails returns its cause.
+
+### `indexExists`
+
+`HEAD /<index>`: `200` is `true` and `404` is `false`; every other answer follows the retry table. An outage is **never** `false`: it
+ends in `Unavailable` or `RetryExhausted`.
+
+### Response cap
+
+A 2xx body with `body.size() * QUERY_DOM_FACTOR > maxResponseBytes` is `Failed(ItemPermanent)`, reason `response too large for a query`,
+**without parsing it**: parsing builds a DOM several times larger than the wire body. The effective wire cap of a query is therefore
+`maxResponseBytes / QUERY_DOM_FACTOR`, that is 8 MiB with the default 64 MiB: `QUERY_DOM_FACTOR = 8` is `ceil(6.19 × 1.25)`, the worst
+DOM-to-wire ratio `QueryDomFactorMeasured` found (glibc heap in use: inventory-sync checksum page 6.19, vulnerability-scanner packages page
+5.74, delete/update-by-query responses 3.5–5.2). An unparsable 2xx body is also `ItemPermanent`. The reason of a 4xx is the OpenSearch error type
+plus at most `REASON_BODY_BYTES = 256` bytes of the body, within `OpResult::MAX_REASON`.
+
+### Close and shutdown
+
+Every wait (result, backoff, no node) sleeps on the `QueryGate`. The transport callback, `Client::requestClose()` and
+`RuntimeState::stopAndJoin()` (before the write path stops; it also sets `stopping`) notify it. Woken by a close, the engine cancels
+the attempt in flight and returns `ClientClosed` (`Shutdown` when the gate is stopping). There is no busy wait.
+
+### Index validation
+
+Every index must be non-empty, made only of `[A-Za-z0-9_.*-]`, not made only of dots (libcurl collapses `.` and `..` path segments,
+so `..` would reach `/_delete_by_query` of every index) and not start with `_` (`_all`, an endpoint); the list of a DBQ/UBQ must not be
+empty. Also validated, with the same rules as a bucket's `RetryPolicy`: `retry.base > 0`, `retry.cap >= retry.base`,
+`retry.jitter` in `[0, 1]` (NaN refused), `retry.maxAttempts > 0` or unset, `retry.maxDuration > 0` or unset, `pageDeadline > 0`. Failures are `InvalidArgument` with the field first in `reason`, and no
+request is made.
+
+### Causes of a query
+
+| Situation | `Cause` |
+|---|---|
+| Deadline or page deadline expired, no usable node until then, `pit()` | `Unavailable` |
+| The transport refused to admit the request (reason `the transport refused the request`) | The transport's admission cause (`InvalidArgument`, `InvalidState`) |
+| `maxAttempts` or `maxDuration` exhausted (503, 429 storm, timeouts) | `RetryExhausted` |
+| `search`/`updateByQuery` on a missing index (`index_not_found_exception`) | `NotFound` |
+| Any other 4xx (400, any other 404, ...) | `Client4xx` |
+| Unparsable 2xx, response over the cap, DBQ/UBQ `failures` that are not conflicts | `ItemPermanent` |
+| DBQ/UBQ conflicts after the I86 budget | `VersionConflict` |
+| Unsafe or empty index, empty list, invalid `retry` or `pageDeadline`, `searchAfter` without `sort` or `size`, `searchAfter` with an empty `page` (`page: must be callable`) | `InvalidArgument` |
+| Called from a runtime thread | `Reentrancy` |
+| The client closed (`requestClose()` or `awaitClosed()`), during or before the call | `ClientClosed` |
+| The runtime shut down or of another epoch | `Shutdown` |
+
+### `queryStats()`
+
+`detail::query::queryStats()` returns process-wide counters since the process started, never reset (they survive `shutdown()` +
+`start()`): `requests`, `failovers`, `throttles`, `unavailable`, `tooLarge` (responses the classifier refused for size) and
+`conflictRetries`. They are for the tests; E5 publishes them as metrics and decides whether they reset per runtime.
+
 ## Logging
 
 The library logs through `loggerHelper.h` with the tag `indexer-client`. The process gives it its log function, the same one it
@@ -1084,8 +1225,8 @@ C++20-ism in a public header fails there first:
 
 | Suite | Target / ctest label | Covers |
 |---|---|---|
-| Unit | `indexer_client_utest` (`tests/unit/*.cpp`) | Config, key-value source, mocks, fake indexer, the public library (`VisibilityTest.SetLogFunctionRoutesLogs` covers the log setter) |
-| Component | `indexer_client_component_test` (`tests/component/*.cpp`) | The transport and the fake over real sockets, with the seams; `HealthTest` (probe, states, logs, stop order) and `FakeHealthTest` (the fake's `/_cluster/health` rules); `WriteTest` (the [write path](#write-path-e3a), below) |
+| Unit | `indexer_client_utest` (`tests/unit/*.cpp`) | Config, key-value source, mocks, fake indexer, the query response classifiers (`queryResponse_test.cpp`, 21 cases), the public library (`VisibilityTest.SetLogFunctionRoutesLogs` covers the log setter) |
+| Component | `indexer_client_component_test` (`tests/component/*.cpp`) | The transport and the fake over real sockets, with the seams; `HealthTest` (probe, states, logs, stop order) and `FakeHealthTest` (the fake's `/_cluster/health` rules); `WriteTest` (the [write path](#write-path-e3a), below); the [queries](#queries-e4a) (`query_test.cpp` 17, `queryByQuery_test.cpp` 2, `queryDomFactor_test.cpp` 1) |
 
 ```bash
 cmake --build $WAZUH_REPO/src/build -j"$(nproc)" --target indexer_client_utest indexer_client_component_test
@@ -1207,12 +1348,11 @@ transport [benchmark](#benchmark) (done; the `--path client` benchmark of the wh
 [write path](#write-path-e3a) up to the sink, E3b-1 the [response classifier and retry lane](#response-classification-and-retry-lane-e3b-1),
 E3b-2 the [bulk sender](#bulk-sender-e3b-2), E3c-1 the [per-operation conflict policy](#conflict-policy-e3c-1), `ReplacePreserving` and
 [groups](#groups-e3c-1), and E3c-2 [`ordered` buckets](#ordered-buckets-e3c-2) and [`cancel(tag)`](#cancellation-e3c-2): bulk writes
-reach the indexer. Not implemented, by stage:
+reach the indexer, and E4a the [queries](#queries-e4a) (`search`, `searchAfter`, `deleteByQuery`, `updateByQuery`, `indexExists`). Not implemented, by stage:
 
 | Area | Stage |
 |---|---|
-| Reads answering `Unavailable` when no node is usable | E4 |
-| Queries: `search`, `searchAfter`, PIT, `deleteByQuery`, `updateByQuery`, `indexExists` | E4 |
+| PIT: `Pit`, `PitSession`; `pit()` answers `Unavailable` (`PIT not implemented yet (E4b)`) | E4b |
 | AIMD window and pacing (the fixed window of 4 per node is replaced, using the latencies in `SenderStats`), the two-phase `stop()` for the drain up to the shutdown deadline (D43), one pass per completion, D44 (simdjson stage 2 in Release), public metrics (write counters, health metrics, `Retry-After` in passive signals) | E5 |
 | Benchmark of the whole client (`--path client`) | E5 |
 | Metrics beyond the thread layout in `MetricsSnapshot` | E5 |
@@ -1220,5 +1360,4 @@ reach the indexer. Not implemented, by stage:
 | The consumer's sweep that closes the [ordered ambiguous window](#ordered-buckets-e3c-2) (inventory sync, delete by query) and its `ordered.ambiguous.residual` metric | E7 |
 | Migration of the four consumers off `indexer_connector` | later stages |
 
-Until then the query interface is a stub, and nothing public calls the transport directly. Traffic is the health probe and the bulk
-sender's `POST /_bulk`; `requestClose()` still drops the pending operations instead of draining them (E3a's stand-in, D43).
+Nothing public calls the transport directly. Traffic is the health probe, the bulk sender's `POST /_bulk` and the queries; `requestClose()` still drops the pending operations instead of draining them (E3a's stand-in, D43).
