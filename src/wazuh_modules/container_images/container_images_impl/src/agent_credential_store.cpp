@@ -14,9 +14,11 @@
 
 #include <evpHelper.hpp>
 
+#include <cerrno>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
+#include <system_error>
 #include <utility>
 #include <vector>
 
@@ -181,17 +183,19 @@ namespace
     ///
     /// This is the control the design actually relies on, so a failure to apply it is
     /// reported rather than ignored.
-    bool restrictPermissions(const std::string& path)
+    ///
+    /// @return The reason it could not be applied, or an empty code when it was.
+    std::error_code restrictPermissions(const std::string& path)
     {
 #ifndef WIN32
         // 0640: agent daemons run as root, so nothing needs group write and no one else
         // needs any access. Set explicitly rather than left to the umask.
         if (::chmod(path.c_str(), S_IRUSR | S_IWUSR | S_IRGRP) != 0)
         {
-            return false;
+            return {errno, std::generic_category()};
         }
 
-        return true;
+        return {};
 #else
         // Never reached: put() refuses on Windows before it gets here. Restricting the
         // file would need an explicit DACL granting only SYSTEM and BUILTIN\Administrators
@@ -199,7 +203,7 @@ namespace
         // installation directory is readable by Users. Registry support is not offered on
         // Windows, so that work is not done and no credential is written there.
         (void)path;
-        return false;
+        return std::make_error_code(std::errc::operation_not_supported);
 #endif
     }
 } // namespace
@@ -348,8 +352,17 @@ namespace containerimages
         }
 
         // Restricted before the value is written into it, so the credential never exists
-        // on disk under permissions wider than the final ones.
+        // on disk under permissions wider than the final ones. When that cannot be done
+        // the value is not written at all.
         const auto restricted {restrictPermissions(temporaryPath)};
+
+        if (restricted)
+        {
+            std::filesystem::remove(temporaryPath, error);
+            logWarn("The credential was not stored: the permissions of the credential store at '" + m_path +
+                    "' could not be restricted (" + restricted.message() + ").");
+            return false;
+        }
 
         {
             std::ofstream file {temporaryPath, std::ios::binary | std::ios::trunc};
@@ -380,13 +393,6 @@ namespace containerimages
             std::filesystem::remove(temporaryPath, ignored);
             logWarn("Could not replace the credential store at '" + m_path + "'.");
             return false;
-        }
-
-        if (!restricted)
-        {
-            logWarn("The credential store at '" + m_path +
-                    "' was written but its permissions could not be restricted. Restrict it so that only the "
-                    "agent's own account can read it.");
         }
 
         return true;

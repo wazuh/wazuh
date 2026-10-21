@@ -259,6 +259,8 @@ namespace containerimages
                      ", requesting an anonymous token.");
         }
 
+        m_credentialSent = passkey.has_value();
+
         HttpResponse response;
 
         // Retried like any other request: the token endpoint is the first request of every
@@ -379,14 +381,29 @@ namespace containerimages
             }
             else
             {
-                if (!request(url, true, response, error))
-                {
-                    return false;
-                }
+                const auto answered {request(url, true, response, error)};
+                const bool unauthorized = answered && response.status == 401;
+                const bool forbidden = !answered && response.status == 403;
 
-                if (response.status == 401)
+                if (unauthorized)
                 {
                     error = "the registry rejected the credential";
+                }
+
+                // A token issued for the credential that the manifest then refuses, as a
+                // token without the scope the repository needs does. Handled like a
+                // refusal at the token request.
+                if ((unauthorized || forbidden) && m_credentialSent)
+                {
+                    m_credentialRefused = true;
+
+                    if (!readAnonymously(url, challengeHeader, response, error))
+                    {
+                        return false;
+                    }
+                }
+                else if (!answered || unauthorized)
+                {
                     return false;
                 }
             }
@@ -441,6 +458,17 @@ namespace containerimages
             // way cannot be resumed, so the attempt starts the layer again; a partially
             // consumed snapshot is discarded with the stream that produced it.
             LayerSnapshot snapshot;
+            std::string failedCause;
+
+            // The size the manifest declares, which is what the transfer will deliver.
+            // Zero when the manifest does not say, which leaves the ceiling to decide.
+            const auto sizeNode {layer.find("size")};
+            std::uint64_t layerSize {0};
+
+            if (sizeNode != layer.end() && sizeNode->is_number_unsigned())
+            {
+                layerSize = sizeNode->get<std::uint64_t>();
+            }
 
             for (int attempt = 1;; ++attempt)
             {
@@ -449,9 +477,27 @@ namespace containerimages
                 // delivered are not allowed again to the next one.
                 const auto remaining {limits.maxImageBytes > m_imageBytes ? limits.maxImageBytes - m_imageBytes : 0};
 
+                if (attempt > 1 && (remaining == 0 || layerSize > remaining))
+                {
+                    // Another attempt could only end on the ceiling. What the user can act
+                    // on is why the layer failed, not the allowance the failure left behind.
+                    logDebug("Reference '" + m_location + "': layer " + digest.substr(0, 19) + " is not retried, " +
+                             std::to_string(remaining) + " byte(s) of the image allowance are left.");
+                    error = "layer " + digest.substr(0, 19) + " could not be retrieved: " + failedCause;
+                    return false;
+                }
+
                 if (remaining == 0)
                 {
                     error = "the image exceeded its " + std::to_string(limits.maxImageBytes) + " byte allowance";
+                    return false;
+                }
+
+                if (layerSize > remaining)
+                {
+                    error = "layer " + digest.substr(0, 19) + " is " + std::to_string(layerSize) +
+                            " bytes and the image has " + std::to_string(remaining) + " of its " +
+                            std::to_string(limits.maxImageBytes) + " byte allowance left";
                     return false;
                 }
 
@@ -471,6 +517,8 @@ namespace containerimages
                 {
                     break;
                 }
+
+                failedCause = blob->error();
 
                 // A token that expired part way through a large image is answered by
                 // asking for another one, once, rather than by failing the reference.
@@ -660,7 +708,13 @@ namespace containerimages
 
             ImageReferenceRecord record;
             record.source = {sourceType(), m_location};
-            record.tag = m_reference.pinnedByDigest() ? m_reference.digest : m_reference.tag;
+            record.tag = m_reference.fullName();
+
+            if (!m_reference.tag.empty())
+            {
+                record.tags.push_back(m_reference.taggedName());
+            }
+
             record.configDigest = configDigest;
             record.manifestDigest = selected.digest;
 

@@ -109,6 +109,25 @@ TEST_F(RegistryReferenceTest, ATagWrittenBesideADigestIsAcceptedAndTheDigestWins
     EXPECT_EQ(reference.digest, digest);
 }
 
+TEST_F(RegistryReferenceTest, TheFullNameKeepsTheRepositoryTheTagAndTheDigest)
+{
+    const std::string digest {"sha256:2f3a4b5c6d7e8f900112233445566778899aabbccddeeff00112233445566778"};
+
+    const auto tagged {parsed("ghcr.io/owner/app:1.4")};
+    EXPECT_EQ(tagged.fullName(), "ghcr.io/owner/app:1.4");
+    EXPECT_EQ(tagged.taggedName(), "ghcr.io/owner/app:1.4");
+
+    const auto both {parsed("ghcr.io/owner/app:1.4@" + digest)};
+    EXPECT_EQ(both.fullName(), "ghcr.io/owner/app:1.4@" + digest);
+    EXPECT_EQ(both.taggedName(), "ghcr.io/owner/app:1.4");
+
+    const auto pinned {parsed("ghcr.io/owner/app@" + digest)};
+    EXPECT_EQ(pinned.fullName(), "ghcr.io/owner/app@" + digest);
+    EXPECT_TRUE(pinned.taggedName().empty());
+
+    EXPECT_EQ(parsed("ghcr.io/owner/app").fullName(), "ghcr.io/owner/app:latest");
+}
+
 TEST_F(RegistryReferenceTest, ADigestOnItsOwnLeavesNoTagAndTakesNoDefault)
 {
     EXPECT_TRUE(parsed("ghcr.io/owner/app@sha256:2f3a4b5c6d7e8f9001122334455667788").tag.empty());
