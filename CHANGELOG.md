@@ -128,6 +128,7 @@
 |-------|---------|
 | [#29533](https://github.com/wazuh/wazuh/issues/29533) [#31838](https://github.com/wazuh/wazuh/issues/31838) | Added local state persistence for agent modules (FIM, System Inventory, SCA), removing the dependency on `rsync` with the Wazuh Server and reducing network traffic and server-side processing overhead. |
 | [#37828](https://github.com/wazuh/wazuh/issues/37828) [#37830](https://github.com/wazuh/wazuh/issues/37830) [#37832](https://github.com/wazuh/wazuh/issues/37832) [#37833](https://github.com/wazuh/wazuh/issues/37833) [#37834](https://github.com/wazuh/wazuh/issues/37834) [#37835](https://github.com/wazuh/wazuh/issues/37835) [#37836](https://github.com/wazuh/wazuh/issues/37836) | Added an agent HTTPS client covering the `/control` lifecycle, the `/stateless` and `/stateful` data planes, `/download` for centralized configuration and WPK packages, task dispatch with durable deduplication, and remote upgrade, with AES-CMAC request signing and fail-closed TLS validation. |
+| [#32152](https://github.com/wazuh/wazuh/issues/32152) | Added the `agent_info` module, the agent's single source of truth for its own metadata (id, name, version, OS, groups, cluster), persisted locally and attached to every module's events. |
 | [#37843](https://github.com/wazuh/wazuh/issues/37843) | Added periodic `/stats` and `/config` push, reporting every module's statistics and configuration in a single aggregated document per endpoint, behind two `ossec.conf` toggles that are off by default. |
 | [#40125](https://github.com/wazuh/wazuh/pull/40125) | Added an active response `allowlist`; responses never target the manager or loopback. |
 | [#39064](https://github.com/wazuh/wazuh/issues/39064) | Agents now re-enroll with a per-agent secret stored at `etc/reenroll.secret`, keeping their agent id. |
@@ -144,7 +145,6 @@
 
 | Issue | Comment |
 |-------|---------|
-| [#37831](https://github.com/wazuh/wazuh/issues/37831) | Changed the agent transport to HTTPS for all server communication, removing the legacy TCP data path and its internal-option fallback. |
 | [#38465](https://github.com/wazuh/wazuh/issues/38465) | Changed agent enrollment to consume the manager's HTTPS `POST /enroll` endpoint instead of the legacy `A:`/`K:` protocol over TCP/1515, reusing the same `<agent><ssl>`/`<agent><server>` transport as the rest of the agent's HTTPS traffic. |
 | [#38624](https://github.com/wazuh/wazuh/issues/38624) | Changed the `WAZUH_MANAGER_ENDPOINT` installation variable to carry the whole connection target — `host[:port][/prefix]`, with only the address mandatory — which the DEB/RPM, source and MSI installers write verbatim into the agent's single `<endpoint>` setting. It supersedes `WAZUH_MANAGER` and `WAZUH_MANAGER_PORT` when set, and those keep working unchanged when it is not. A trailing slash (`host/`) opts out of the reverse-proxy prefix. Replaces the variable's previous prefix-only meaning. |
 | [#33378](https://github.com/wazuh/wazuh/issues/33378) | Changed the Wazuh Manager installation path to `/var/wazuh-manager` (replacing `/var/ossec`) and removed agent ID `000`, fully decoupling agent and manager processes on shared hosts. |
@@ -192,15 +192,12 @@
 | [#40349](https://github.com/wazuh/wazuh/pull/40349) | Fixed the Office 365 and GitHub modules skipping the rest of a collection window after a response larger than `curl_max_size`; only that response is now skipped, with a warning. |
 | [#40349](https://github.com/wazuh/wazuh/pull/40349) | Fixed the AWS and GCP modules stopping when a command could not be run. |
 | [#40349](https://github.com/wazuh/wazuh/pull/40349) | Fixed the agent upgrade reporting an installer that timed out as dispatched. |
-| [#40343](https://github.com/wazuh/wazuh/issues/40343) | Fixed token enrollment failing when the manager requires a client certificate. |
-| [#40343](https://github.com/wazuh/wazuh/issues/40343) | Fixed token enrollment reporting a manager that refuses the agent's client certificate as unreachable. |
 | [#40114](https://github.com/wazuh/wazuh/issues/40114) | Fixed RPM agent removal leaving the agent key and re-enrollment secret behind. |
 | [#39991](https://github.com/wazuh/wazuh/issues/39991) | Fixed agent daemons using up to 2x memory on aarch64 with glibc 2.43. |
 | [#29668](https://github.com/wazuh/wazuh/issues/29668) | Fixed FIM checksum calculation that was incorrectly ignoring some file fields. |
 | [#30513](https://github.com/wazuh/wazuh/issues/30513) | Fixed syscollector reporting duplicate and bogus packages on macOS arm64. |
 | [#32915](https://github.com/wazuh/wazuh/issues/32915) | Fixed `agent_control` not displaying agent status information. |
 | [#35071](https://github.com/wazuh/wazuh/issues/35071) | Fixed SCA handling of invalid operators and missing values in regex patterns. |
-| [#35156](https://github.com/wazuh/wazuh/issues/35156) | Fixed agent modules initializing before agent metadata was fully ready. |
 | [#35162](https://github.com/wazuh/wazuh/issues/35162) | Fixed FIM inventory reporting file modification time as 1970-01-01. |
 | [#35169](https://github.com/wazuh/wazuh/issues/35169) | Fixed agent automatic reload failing after receiving centralized configuration. |
 | [#35248](https://github.com/wazuh/wazuh/issues/35248) | Fixed syscollector false positive package detection on macOS. |
@@ -221,10 +218,8 @@
 | [#37653](https://github.com/wazuh/wazuh/issues/37653) | Lowered the `wazuh-agentd` connection socket error log to debug level to avoid duplicating the "Lost connection with manager" error on transient disconnections. |
 | [#37626](https://github.com/wazuh/wazuh/issues/37626) | Fixed a race condition when saving the Logcollector file status on shutdown. |
 | [#37656](https://github.com/wazuh/wazuh/issues/37656) | Fixed an unbounded memory leak in `wazuh-modulesd` caused by a missing RPM macro context cleanup on every package scan cycle. |
-| [#37543](https://github.com/wazuh/wazuh/issues/37543) | Fixed agent-info module caching cluster_name, cluster_node, and agent_groups from a one-time handshake at startup, causing stale values in `agent_metadata` until the agent process restarted. |
 | [#37993](https://github.com/wazuh/wazuh/issues/37993) | Fixed `wazuh-syscheckd` failing the `file_entry.checksum` NOT NULL constraint when the deferred sync-flag update ran for an entry deleted during the scan. |
 | [#37993](https://github.com/wazuh/wazuh/issues/37993) | Fixed `wazuh-syscheckd` failure on shutdown, which logged "Invalid handle value", crashed the process and left a stale PID file. |
-| [#38163](https://github.com/wazuh/wazuh/issues/38163) | Fixed `wazuh-agentd` crashing on start when the agent metadata segment could only be opened read-only, which happens whenever a root process creates it before the daemon drops privileges. |
 | [#38065](https://github.com/wazuh/wazuh/issues/38065) | Fixed SCA and Syscollector sync threads not blocking `SIGTERM`, which could cause the shutdown handler to run on a module thread instead of the main thread and time out joining it. |
 | [#38212](https://github.com/wazuh/wazuh/issues/38212) | Fixed the Windows agent leaving the FIM synchronization database open when the service stopped, which left the `queue\` directory behind after an uninstall without purge. |
 | [#38646](https://github.com/wazuh/wazuh/pull/38646) | Fixed SCA HIPAA compliance mappings across policy checks. |
@@ -232,17 +227,14 @@
 | [#38600](https://github.com/wazuh/wazuh/issues/38600) | Removed the default `netstat` and `last` command monitoring entries, which depend on binaries not present on every supported platform (e.g. minimal container images), causing repeated failed executions every `frequency` cycle. |
 | [#39279](https://github.com/wazuh/wazuh/issues/39279) | Removed the default `df -P` command monitoring entry, which reported disk usage/capacity with no security relevance every `frequency` cycle. Also removed the stale `df -P`, `netstat`, and `last` entries from `etc/ossec-agent.conf`, the fallback configuration installed by `install.sh` when template generation fails on a source install. |
 | [#38829](https://github.com/wazuh/wazuh/issues/38829) | Fixed Coverity findings across agent components (`syscheckd`, `sca`, `agent-info`, `https_client`, `agent-upgrade`, and `shared`). |
-| [#38766](https://github.com/wazuh/wazuh/issues/38766) | Fixed `wazuh-agentd` crashing with `SIGSEGV` on every service stop, which also cut the shutdown drain short before the `/control` shutdown notification was sent. |
 | [#38850](https://github.com/wazuh/wazuh/issues/38850) | Fixed missing `<manager>` block on Debian 10 unattended DEB installs. |
 | [#38975](https://github.com/wazuh/wazuh/pull/38975) | Fixed SCA PCI-DSS compliance mappings, updated from v3.2.1 to v4.0 numbering. |
-| [#38840](https://github.com/wazuh/wazuh/issues/38840) | Fixed the agent's reported `/config` snapshot staying stale for up to an hour after a group's shared configuration (e.g. `agent.conf`) changed; the manager now sees the update as soon as the agent's reload actually completes, instead of waiting out the periodic report's regular cadence. |
 | [#38928](https://github.com/wazuh/wazuh/issues/38928) | Fixed the CIS Amazon Linux 2023 SCA policy: check 31170 was named for the GID 0 default group control it does not test (its rule actually tests the root password), and check 31172 was a byte-identical duplicate of 31171, both testing `/etc/passwd` permissions and inflating compliance scores. |
 | [#38914](https://github.com/wazuh/wazuh/issues/38914) | Fixed the default agent nodiff list not protecting `/etc/shadow` and real key paths. |
 | [#39309](https://github.com/wazuh/wazuh/issues/39309) | Fixed SCA HIPAA compliance values using parenthesized notation, which the dashboard's Regulatory Compliance catalogue doesn't recognize; converted to the dotted notation the catalogue expects. |
 | [#39514](https://github.com/wazuh/wazuh/pull/39514) | Fixed SCA ISO 27001 compliance mappings, remapped from the superseded 2013 numbering to 2022 Annex A. |
 | [#39192](https://github.com/wazuh/wazuh/issues/39192) | Fixed the `block-ip` active response not blocking IPs on a default macOS install. |
 | [#39667](https://github.com/wazuh/wazuh/issues/39667) | Fixed `azure-logs` logging a collection whose Python script failed as finished: a non-zero exit code is now reported as a warning, the script output that is not in its log format (e.g. a Python traceback) is logged as an error, also after a timeout, and the request, container and domain are logged as failed instead of finished. A script that cannot be executed, e.g. because python3 is missing, is now reported and no longer stops the module. |
-| [#40179](https://github.com/wazuh/wazuh/issues/40179) | Fixed the agent downloading and discarding the shared configuration when the manager advertises the `0` config hash. |
 | [#39869](https://github.com/wazuh/wazuh/pull/39869) | Fixed FIM scan hanging when a monitored file is replaced by a FIFO. |
 | [#39998](https://github.com/wazuh/wazuh/pull/39998) | Fixed the Debian 13 SCA policy reusing the Debian 12 check IDs, renumbering it to a dedicated 42000+ range. |
 | [#40307](https://github.com/wazuh/wazuh/pull/40307) | Fixed MITRE ATT&CK mappings across 64 SCA policies: removed Windows-only and cloud-only techniques from Linux and macOS checks, removed the reconnaissance technique `T1595` from all of them, updated revoked technique IDs to their current successors, and added missing parent techniques. |
