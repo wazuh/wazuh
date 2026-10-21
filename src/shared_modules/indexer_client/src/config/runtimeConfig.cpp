@@ -21,6 +21,7 @@
 #include <string_view>
 
 #include "json.hpp"
+#include "write/sender.hpp"
 
 namespace indexer_client
 {
@@ -65,7 +66,7 @@ namespace indexer_client
         }
 
         /// The single schema of the internal-options family (RF-18). Mirrored by the table in the module README.
-        constexpr std::array<SchemaEntry, 16> kSchema {{
+        constexpr std::array<SchemaEntry, 18> kSchema {{
             {"network_threads", "count", 1, 64, 1, &setU32<&RuntimeConfig::networkThreads>},
             {"cpu_threads", "count", 1, 64, 2, &setU32<&RuntimeConfig::cpuThreads>},
             {"global_quota_bytes", "bytes", 1, 64 * GIB, 256 * MIB, &setU64<&RuntimeConfig::globalQuotaBytes>},
@@ -87,6 +88,8 @@ namespace indexer_client
             {"retry_after_max_ms", "ms", 1, HOUR_MS, 60 * SECOND_MS, &setMs<&RuntimeConfig::retryAfterMax>},
             {"callback_budget_ms", "ms", 1, MINUTE_MS, 200, &setMs<&RuntimeConfig::callbackBudget>},
             {"max_open_pits", "count", 1, 10000, 64, &setU32<&RuntimeConfig::maxOpenPits>},
+            {"node_window_max", "count", 1, 64, 4, &setU32<&RuntimeConfig::nodeWindowMax>},
+            {"bulk_min_bytes", "bytes", 1, 32 * MIB, 64 * KIB, &setU64<&RuntimeConfig::bulkMinBytes>},
         }};
 
         constexpr bool schemaIsConsistent()
@@ -102,6 +105,23 @@ namespace indexer_client
             return true;
         }
         static_assert(schemaIsConsistent(), "every kSchema default must lie inside its [min, max] and min must be > 0");
+
+        constexpr std::uint64_t schemaMax(std::string_view name)
+        {
+            for (const auto& entry : kSchema)
+            {
+                if (std::string_view {entry.name} == name)
+                {
+                    return entry.max;
+                }
+            }
+            return 0;
+        }
+        // I98 (G-diff obj. 7): a decrease never yields a target at or above the uncapped mark, so bulk_min_bytes stays
+        // below it.
+        static_assert(schemaMax("bulk_min_bytes") != 0 &&
+                          schemaMax("bulk_min_bytes") < detail::write::BULK_TARGET_UNCAPPED,
+                      "bulk_min_bytes must stay below BULK_TARGET_UNCAPPED (write/sender.hpp)");
 
         bool isBlank(char c)
         {

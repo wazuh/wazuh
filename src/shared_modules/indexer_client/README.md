@@ -17,12 +17,12 @@ consumers of the indexer, one consumer at a time, with:
 
 The design is in `planes/18-indexer_connector_v2/03-diseno.md` §1–§4 (outside the repository).
 
-**Status: E4b (E4 complete) — write admission, buckets and scheduling on top of the internal transport, the bulk-response classifier, the retry lane and the bulk sender, with the per-operation conflict policy, `ReplacePreserving`, confirmable groups, [`ordered` buckets](#ordered-buckets-e3c-2) and [`cancel(tag)`](#cancellation-e3c-2), plus the [queries](#queries-e4a) and the [managed point in time](#point-in-time-e4b): writes and reads reach the indexer.** The public headers, the
+**Status: E5a — write admission, buckets and scheduling on top of the internal transport, the bulk-response classifier, the retry lane and the bulk sender with its [per-node load control](#load-control-e5a) (E5a), with the per-operation conflict policy, `ReplacePreserving`, confirmable groups, [`ordered` buckets](#ordered-buckets-e3c-2) and [`cancel(tag)`](#cancellation-e3c-2), plus the [queries](#queries-e4a) and the [managed point in time](#point-in-time-e4b): writes and reads reach the indexer.** The public headers, the
 configuration schema, the runtime lifecycle (threads, owner thread, shutdown deadline), the test
 helpers, the internal curl [Transport](#transport-internal-e2a-1-and-e2a-2) (HTTP, HTTPS, credentials), the
 [node health probe](#node-health-e2b) and the [write path](#write-path-e3a) (encoding, quota charge, overflow policies, DRR scheduler,
 resolution) exist, the [response classifier and retry lane](#response-classification-and-retry-lane-e3b-1) are driven by the [bulk sender](#bulk-sender-e3b-2), and the transport has been [benchmarked against the v1](#benchmark). `Writer::submit` admits and schedules
-writes and the production sink sends them as `_bulk` requests, with a per-node window, failover and retry; `Client::query()` runs
+writes and the production sink sends them as `_bulk` requests, with a per-node adaptive window, a bulk-size target and pacing, failover and retry; `Client::query()` runs
 searches, by-query writes, index checks and PITs on the consumer's thread. See [What is not implemented yet](#what-is-not-implemented-yet).
 `indexer_connector` keeps working untouched until each consumer migrates.
 
@@ -213,6 +213,8 @@ source; every minimum is 1 and bounds are inclusive):
 | `retry_after_max_ms` | unsigned integer | ms | 1 – 3600000 (1 h) | 60000 |
 | `callback_budget_ms` | unsigned integer | ms | 1 – 60000 (1 min) | 200 |
 | `max_open_pits` | unsigned integer | count | 1 – 10000 | 64 |
+| `node_window_max` | unsigned integer | count | 1 – 64 | 4 |
+| `bulk_min_bytes` | unsigned integer | bytes | 1 – 33554432 (32 MiB) | 65536 (64 KiB) |
 
 A change to `kSchema` must change this table, the `RuntimeConfig` initializers (checked by the
 `DefaultsWhenUnset` test) and the tests together. In E1 these options are not yet registered in
@@ -298,7 +300,7 @@ the runtime alive. The normative contract is `planes/18-indexer_connector_v2/ane
 - **Fixed options.** Per easy: `CURLOPT_PROTOCOLS_STR "http,https"`, `CURLOPT_NOSIGNAL`,
   `CURLOPT_PROXY ""` (never a proxy from the environment); `Expect` is left to curl (100-continue on bodies over 1 MiB,
   as the v1). Per multi:
-  `CURLMOPT_MAX_HOST_CONNECTIONS` = 8 (a constant of E2a-1; the real window is E5's) and
+  `CURLMOPT_MAX_HOST_CONNECTIONS` = 8 (a constant of E2a-1; the sender's window is the [limiter's](#load-control-e5a)) and
   `CURLMOPT_QUICK_EXIT`. `curl_global_init` runs once (`std::call_once`).
 - **Timings.** `HttpResult.timings` (`TransferTimings`: `total`, `connect`, `appConnect`) is in
   **microseconds**, and is also filled for `Cancelled` and `Shutdown` results. `appConnect` is 0 in clear text.
@@ -557,9 +559,8 @@ bucket's `quotaBytes` and against the runtime-wide `global_quota_bytes`.
   measurement uses an 8-byte capture) allocates consumer memory that is not charged. `IWriter::submit(Op op, ...)` takes the
   operation by value: `submit(std::move(op))` avoids a copy of the body before the encoding moves it. `maxAge` counts from the
   moment `submit` was called, so time blocked in `Block` counts toward it. The bulk sender's body of a request in flight is a
-  fresh concatenation of the batch's lines while the operations keep theirs: up to `NODE_WINDOW x nodes x bulk.maxBytes` of
-  transient memory per runtime outside the quota. E5 (the limiter) decides between charging it and sending from the lines
-  without the copy.
+  fresh concatenation of the batch's lines while the operations keep theirs: up to `node_window_max x nodes x bulk.maxBytes` of
+  transient memory per runtime outside the quota. E5 decides between charging it and sending from the lines without the copy.
 - **Global cap.** `GlobalBudget` reserves with a lock-free compare-and-swap loop (never add-then-roll-back, which would refuse
   other buckets spuriously). Buckets whose quotas add up to more than the cap compete for it, and the one that does not fit
   applies its overflow policy as if its own quota were full.
@@ -613,9 +614,14 @@ from network loop 0, as the `Prober` does; other threads only append to a notifi
 - **The DRR loop.** Eligible buckets form a ring with a persistent cursor. On its turn a bucket's `credit` grows by
   `weight x drr_quantum_bytes` and it emits batches while `credit >= bytes of its head operation` and `sink.capacity() > 0`. A batch
   takes whole operations from the head, at most `bulk.maxBytes` and `bulk.maxDocs`, within the credit; the head goes alone
-  whenever the credit covers it, so a document is never split. The turn ends when the credit does not cover the head (credit kept),
-  when the bucket empties (credit reset to 0) or when it falls below every threshold again (its timer brings it back). If the sink's
-  capacity reaches 0 the cursor stays on the bucket and `sinkReady()` resumes the same turn without new credit.
+  whenever the credit covers it, so a document is never split. The credit also bounds the size of each batch: with many small
+  documents a batch is at most `bulk.maxBytes` and about `weight x drr_quantum_bytes` (1 MiB by default; up to twice that right
+  after a yielded turn, below). The turn ends when the credit does not cover the head (credit kept), when the bucket empties
+  (credit reset to 0), when it falls below every threshold again (its timer brings it back) or, **after
+  `weight x DRR_MAX_BATCHES_PER_TURN` (8) batches, when another bucket of the ring is eligible** (I97b; scaled by the weight so
+  that the shares still follow the weights): the cursor moves on and the leftover credit is kept, capped at
+  `weight x drr_quantum_bytes` (the next turn adds its quantum as usual); with no other eligible bucket the turn goes on. If the
+  sink's capacity reaches 0 the cursor stays on the bucket and `sinkReady()` resumes the same turn without new credit.
 - **Fast-forward.** If a complete round emits nothing because the quantum is small against the documents, the scheduler adds at once
   the credit of the `k - 1` empty rounds classic DRR would still spin through (`k` = fewest rounds after which some bucket covers
   its head) instead of looping (`SchedulerStats::fastForwards`). Same outcome, no spin on loop 0.
@@ -626,7 +632,8 @@ from network loop 0, as the `Prober` does; other threads only append to a notifi
 until `WritePath::sinkReady()`), `dispatch(Batch)` (on loop 0; each operation must be resolved exactly once through
 `WritePath::resolve`, from any thread) and `stop()` (afterwards no batch is accepted; what the sink still holds is resolved by the
 shutdown sweep). **Production: the [bulk sender](#bulk-sender-e3b-2)** (`BulkSink`), whose capacity is the free window of the usable
-nodes; E5's limiter will replace the fixed window. `WritePath::setSink` stops the sink it replaces; the bulk sender's transfers
+nodes (each one's adaptive window, see [Load control](#load-control-e5a)); `batchLimit()` (default 0) is the smallest capped bulk target
+among the usable nodes, which the scheduler passes to `Bucket::slice` as `cap`. `WritePath::setSink` stops the sink it replaces; the bulk sender's transfers
 in flight are cancelled, and their batches go back to the retry lane with no attempt and wait for the new sink (no sweep follows
 outside a runtime stop; a closed bucket hands them back for `Dropped`). The component suites that need a programmable sink install
 it through `detail::write::runtimeWritePath()->setSink(...)`; with the production sink and no usable node, batches wait in the
@@ -768,16 +775,16 @@ description; this section is the summary. It owns no thread: it runs on loop 0 (
 and completions) and inside the transport's callbacks, and every task captures the shared state, never `this`.
 
 **Per-node state** (under the sender's mutex, a leaf): `inFlight`, `notBefore`, `pace`, a mirror of the node's `Down` state (every
-node starts `Down`, like the `NodeSet`'s view; the `NodeSet::onTransition` hook keeps the mirror current), and request and latency
-counters. The window is `NODE_WINDOW` = 4 bulk requests in flight per node (E5 replaces it with AIMD). `capacity()` is the sum of
-`max(0, 4 - inFlight)` over the nodes that are not `Down` and whose `notBefore` has passed; it reads only the sender's mutex, so the
-scheduler can ask it on every pass.
+node starts `Down`, like the `NodeSet`'s view; the `NodeSet::onTransition` hook keeps the mirror current), request and latency
+counters and the limiter's state (see [Load control](#load-control-e5a)). The window is adaptive: up to `node_window_max` bulk
+requests in flight per node (default 4). `capacity()` is the sum over the usable nodes of `⌊window⌋ - inFlight` (1 for a node with
+`pace > 0`); it reads only the sender's mutex, so the scheduler can ask it on every pass.
 
 **Lock order.** The `NodeSet` mutex may take the sender's (the filter of `choose`), never the reverse. The sender never calls
 `NodeSet`, `Bucket`, `WritePath`, `Scheduler` or `Transport` with its own mutex held.
 
-**Choosing a node.** `dispatch(batch)` on loop 0 calls `NodeSet::choose(filter)`: a node that is not `Down`, whose `notBefore` has
-passed and whose `inFlight` is below the window; the slot (`inFlight++`) is taken in the same step. With no such node the sender
+**Choosing a node.** `dispatch(batch)` on loop 0 calls `NodeSet::choose(filter)`: a usable node (not `Down`, `notBefore` and
+`nextSendAt` passed, `inFlight` below `⌊window⌋`); the slot (`inFlight++`) is taken in the same step. With no such node the sender
 refreshes its `Down` mirror from the `NodeSet` (the hook may still be on its way; a stale mirror would keep `capacity()` above 0
 and the scheduler re-slicing), the batch goes back to the retry lane (`{false, Now}`, no attempt counted, last error
 `Unavailable` "no usable node") and a health transition or the timer wakes the scheduler later. A requeue without an error of its
@@ -812,12 +819,14 @@ resolves `Dropped` with the bucket's close cause (`ClientClosed` or `Shutdown`).
 **429 and pacing.** On a request-level 429 the node's `notBefore = max(notBefore, now + max(Retry-After or 0, pace))`: a
 `notBefore` in force is never shortened. `pace` starts at 0; a 429 sets it to `pace_initial_ms` and later ones double it, up to
 `retry_after_max_ms`, **but only for a 429 whose request left after the current `notBefore` was set**, so one burst of the window
-doubles it once. Any 2xx from the node sets `pace` back to 0 and never shortens a `notBefore` in force. The batch is requeued with
-no attempt counted and no delay, so it can go to another node while the throttled one is quiet.
+doubles it once. A 2xx never shortens a `notBefore` in force; it relaxes `pace` only through the clean-send count described in
+[Load control](#load-control-e5a). The batch is requeued with no attempt counted and no delay, so it can go to another node while
+the throttled one is quiet.
 
 **Wake-ups.** Every completion calls `sinkReady()`; a requeue that reports `notify` calls `Scheduler::notify(bucket)`. A timer on
-loop 0, armed at the earliest `notBefore` in force by a post that captures the shared state and checks `stopped` (the `Prober`'s
-pattern), calls `sinkReady()` when it expires, so a node whose `notBefore` passed is used again without another `submit`. The
+loop 0, armed at the earliest `notBefore` or `nextSendAt` in force (see [Load control](#load-control-e5a)) by a post from a
+completion that captures the shared state and checks `stopped` (the `Prober`'s pattern) or directly by `dispatch()` (already on
+loop 0), calls `sinkReady()` when it expires, so a node whose `notBefore` passed is used again without another `submit`. The
 `NodeSet::onTransition` hook mirrors the node's state and calls `sinkReady()` through a `weak_ptr<WritePath>`. `start()` registers
 the hook and the runtime calls it **before** `prober->start()`, so the first probe round cannot be missed; the write path is
 created after the prober and started before it (`RuntimeState`, `src/runtime/runtime.cpp`).
@@ -832,8 +841,8 @@ destructor counts a usage error only if its timer was armed and `stop()` never r
 **`SenderStats`** (`detail::write::senderStats()`, empty when no runtime runs or a test replaced the sink): `sent`, `failovers`,
 `splits`, `throttled` (request-level 429), `retries` (requeues that count an attempt), `submitRefused`, `exhausted`, and per node
 `host`, `down`, `inFlight`, `notBefore` (only when in force), `pace`, `requests` and `totalMicros` (HTTP responses only, any status:
-their count and the sum of their `timings.total`; E5's AIMD reads them) and `failures` (completions without a response: timeout,
-connection, TLS, cancellation).
+their count and the sum of their `timings.total`) and `failures` (completions without a response: timeout, connection, TLS,
+cancellation), plus the limiter's fields listed in [Load control](#load-control-e5a).
 
 **At-least-once, new against the v1.** The sender never drops an operation silently, and some situations that the v1 treated
 as success or failure now retry, so the indexer may see an operation more than once. Resolution is still exactly once.
@@ -922,6 +931,68 @@ The normative text is `src/write/bucket.hpp` (CANCELLATION) and `src/write/sende
 - **Counter.** `BucketStats::cancelled` counts the operations resolved `Dropped(Cancelled)`, and they are also in `resolvedDropped`; the
   invariants of [Groups](#groups-e3c-1) are unchanged. Cancelling an ordered bucket tells the scheduler, because removing lane operations
   can lift a key block or a pin.
+
+## Load control (E5a)
+
+The [bulk sender](#bulk-sender-e3b-2) limits its own load per node. Two independent mechanisms act on every node: an adaptive
+**window and bulk-size target**, and **pacing**. `src/write/sender.hpp` (block "Limiter") is normative; this section is the summary.
+All the state is per node, under the sender's mutex. Options: `node_window_max`, `bulk_min_bytes`, `latency_target_ms`,
+`pace_initial_ms`, `pace_relax_after`, `retry_after_max_ms` and `drr_quantum_bytes` (see [Configuration](#configuration)).
+
+**A usable node** is one predicate, used by `capacity()`, the filter of `choose` and the wake-up of pinned batches:
+`!down and notBefore <= now and nextSendAt <= now and inFlight < floor(window)`.
+
+**Window.** A real number in [1, `node_window_max`] per node (AIMD). It **starts at `node_window_max`** (I96) and:
+
+- **halves** (`window = max(1, window / 2)`, once per burst) on a request-level 429, on a p95 of the node's latencies above
+  `latency_target_ms`, or when the `NodeSet` moves the node to `Throttled`;
+- **grows by `1 / window`** (up to `node_window_max`) on each 2xx whose latency is below `latency_target_ms`;
+- is **kept** when the node goes `Down` and comes back `Available`.
+
+A `node_window_max` above 8 per network thread (`CURLMOPT_MAX_HOST_CONNECTIONS`) opens no more connections to a node: the extra
+requests wait inside curl for a free connection, while the sender counts them in `inFlight`.
+
+*Once per burst:* a decrease applies only to a request sent after the previous decrease (`sentAt > lastDecreaseAt`), so the
+requests of one window that return 429 together halve it once. The `Throttled` transition (hook) decreases only when something was
+sent since the last decrease: the bulk 429 that caused the transition already did, a probe or query 429 has not. *Latency:* the
+sender keeps the last 32 `timings.total` of the HTTP responses of the node (429 included) whose request was sent after the last
+decrease; the p95 is `sorted[ceil(0.95 * n) - 1]` and decides only with `n >= 8`; a decrease for latency empties the ring, and the
+requests still in flight when it happened do not refill it, so a latency spike costs one halving. A 2xx raises the window
+only if it was sent after the last decrease and no decrease happened in the same completion (the decrease is evaluated first).
+
+**Bulk target.** Per node, in bytes; 0 means uncapped, which is the start.
+
+- A decrease sets `bulkTarget = max(bulk_min_bytes, (bulkTarget ? min(bulkTarget, b) : b) / 2)`, with `b` the bytes of the batch
+  whose response caused it (the last batch sent, for the `Throttled` hook).
+- Recovery: each qualifying 2xx adds `max(bulk_min_bytes, bulkTarget / 4)` to a capped target; on reaching 64 MiB
+  (`BULK_TARGET_UNCAPPED`) it becomes 0 again, so there is no cap above that.
+- A **413** splits the batch as before and also sets `bulkTarget = min(bulkTarget or infinity, bytes / 2)`; it does not touch the
+  window and is not counted as a decrease.
+- **Batch cap.** `BatchSink::batchLimit()` returns the smallest capped target among the usable nodes (0 when none is capped); the
+  scheduler passes it to `Bucket::slice` as `cap`, another `min` next to `bulk.maxBytes` and `batchCap`. It is the smallest of the
+  usable nodes, not the chosen node's, because the node is chosen after the batch is formed. The **first operation of a batch
+  always goes out**, whatever the cap, so a document larger than the target is still sent.
+
+**Pacing.** A minimum interval between sends to a node that does not depend on the window.
+
+- The first request-level 429 (with or without `Retry-After`) sets `pace = pace_initial_ms`; each later burst of 429 doubles it, up
+  to `retry_after_max_ms`.
+- When a send takes a node's slot with `pace > 0`, `nextSendAt = now + pace`, and the node is not usable until then. `capacity()`
+  counts 1 for such a node (one send per interval) and the sender's timer is armed at the earliest `notBefore` or `nextSendAt` in
+  force.
+- A 2xx of a request sent after the last `notBefore` was set counts a clean send; every `pace_relax_after` clean sends halve `pace`
+  (the count restarts), and a `pace` below `pace_initial_ms` becomes 0. A 429 resets the count.
+- `Retry-After` is handled as before: `notBefore = max(notBefore, now + max(Retry-After or 0, pace))`. A 2xx never shortens a
+  `notBefore` or a `nextSendAt` in force.
+
+**What never moves the limiter.** Item-level rejections inside a 2xx (including items answered 429) and transport failures
+(timeout, connect, TLS, cancellation: those are `Down`, not load).
+
+**Queries** (I95): they never take a window slot (I95, D50), so a full bulk window does not delay a query.
+
+**`senderStats()`.** Per node, besides the fields of the [bulk sender](#bulk-sender-e3b-2): `window` (real), `bulkTarget` (0 =
+uncapped), `nextSendAt` (only when in force), `p95` (0 below 8 samples), `decreases429`, `decreasesThrottled`, `decreasesLatency`,
+`increases` and `paceRelaxed`. They are internal: E5c publishes them as metrics.
 
 ## Queries (E4a)
 
@@ -1300,7 +1371,7 @@ bench/run.sh --v1 <bench_v1> --v2 <bench_v2> --cpus 0,2,4,6 --out <prefix> [--se
 | `--wazuhext-sha256 SHA` | Refuse to measure when a binary maps another `libwazuhext` |
 
 Each binary takes `--mode plain|tls`, `--secs`, `--warmup`, `--pair`, `--fake-status`, `--print-headers` and `--csv-header`; the v1
-also `--headers normative|shipped`, the v2 `--c 1|2|4|8`, `--path transport|client` (`client` is reserved for E5) and
+also `--headers normative|shipped`, the v2 `--c 1|2|4|8`, `--path transport|client` (`client` is reserved for E6) and
 `--probe [--rounds N]`. Exit codes of `run.sh`: 0 ok, 1 an invalid informative row, a failed probe or a failed selfcheck (an invalid normative
 sample annuls its pair and counts through the reliability rule), 2 usage, 3 another `libwazuhext` loaded,
 4 host load never fell to load1 <= 2, 5 a mode stayed unreliable after its repetition.
@@ -1337,7 +1408,7 @@ connect_ms_sum,appconnect_ms_sum,thread_cpu,proc_cpu,cpus,wazuhext_sha256,errors
 
 The gate is a median >= 0.95 at c = 1 in plain and TLS (the two normative rows); the other rows are informative. The
 informative rows are bounded by the single network thread (K = 1, ~82 % busy in TLS) and by the in-process fake sharing the four
-cores: they are not a concurrency ceiling (E5 sizes the windows with K and against the real indexer). The machine class of CI is
+cores: they are not a concurrency ceiling (E5a fixed the adaptive window; E6 measures the windows with K against the real indexer). The machine class of CI is
 not measured (E6).
 
 **D37 (probe cost).** With `CAINFO_BLOB` curl re-parses the CA bundle on every new TLS connection; the probe does not pay it
@@ -1508,16 +1579,16 @@ Layout of `tests/`: `unit/` (config schema, key-value source, mocks, fake indexe
 ## What is not implemented yet
 
 E1 delivered the skeleton, E2a-1 the internal `http` transport, E2a-2 TLS and credentials, E2b node health and logging, E2c the
-transport [benchmark](#benchmark) (done; the `--path client` benchmark of the whole client arrives with E5), E3a the
+transport [benchmark](#benchmark) (done; the `--path client` benchmark of the whole client arrives with E6), E3a the
 [write path](#write-path-e3a) up to the sink, E3b-1 the [response classifier and retry lane](#response-classification-and-retry-lane-e3b-1),
 E3b-2 the [bulk sender](#bulk-sender-e3b-2), E3c-1 the [per-operation conflict policy](#conflict-policy-e3c-1), `ReplacePreserving` and
 [groups](#groups-e3c-1), and E3c-2 [`ordered` buckets](#ordered-buckets-e3c-2) and [`cancel(tag)`](#cancellation-e3c-2): bulk writes
-reach the indexer, E4a the [queries](#queries-e4a) (`search`, `searchAfter`, `deleteByQuery`, `updateByQuery`, `indexExists`) and E4b the managed [point in time](#point-in-time-e4b). Not implemented, by stage:
+reach the indexer, E4a the [queries](#queries-e4a) (`search`, `searchAfter`, `deleteByQuery`, `updateByQuery`, `indexExists`), E4b the managed [point in time](#point-in-time-e4b) and E5a the per-node [load control](#load-control-e5a) (adaptive window, bulk-size target and pacing). Not implemented, by stage:
 
 | Area | Stage |
 |---|---|
-| AIMD window and pacing (the fixed window of 4 per node is replaced, using the latencies in `SenderStats`), the two-phase `stop()` for the drain up to the shutdown deadline (D43), one pass per completion, D44 (simdjson stage 2 in Release), public metrics (write counters, health metrics, `Retry-After` in passive signals) | E5 |
-| Benchmark of the whole client (`--path client`) | E5 |
+| The two-phase `stop()` for the drain up to the shutdown deadline (D43), one pass per completion, D44 (simdjson stage 2 in Release), public metrics (write counters, health metrics, `Retry-After` in passive signals) | E5 |
+| Benchmark of the whole client (`--path client`) | E6 |
 | Metrics beyond the thread layout in `MetricsSnapshot` | E5 |
 | Behaviour against a real indexer (request headers without `Accept-Encoding`, D41; `Expect: 100-continue` cost), and the real Painless run of `ReplacePreserving` (D45) | E6 |
 | The consumer's sweep that closes the [ordered ambiguous window](#ordered-buckets-e3c-2) (inventory sync, delete by query) and its `ordered.ambiguous.residual` metric | E7 |

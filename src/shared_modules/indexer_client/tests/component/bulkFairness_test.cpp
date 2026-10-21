@@ -13,8 +13,8 @@
 // CA-3, T3 (plan-E3c-2 §Tests, step 6b): a bucket whose every item is rejected does not starve another bucket on the
 // same node. Item rejections are the rejecting bucket's own business (its retry lane and its backoff); the node keeps
 // serving everybody. The production sender runs over the real transport against one fake node (bulkFixture.hpp) that
-// answers B's `_bulk` after 20 ms, so the node's throughput is set by its window (NODE_WINDOW bulks in flight), not by
-// the machine; A's rejections are answered at once (a write block costs the node nothing), so A's own slot time is
+// answers B's `_bulk` after 20 ms, so the node's throughput is set by its window (node_window_max bulks in flight), not
+// by the machine; A's rejections are answered at once (a write block costs the node nothing), so A's own slot time is
 // not what the case measures. Every case ends with the charge and the retained ops at 0 (TearDown).
 
 #include <atomic>
@@ -75,8 +75,8 @@ TEST_F(BulkTest, ItemRejectionsDoNotStarveOtherBucket)
                                      reply.latency = std::chrono::milliseconds(0); // A block is answered at once.
                                  }
                              });
-    // A small DRR quantum (4 KiB, two of B's batches): with the default 1 MiB a turn of B lasts ~550 batches (~3 s at
-    // this node's pace), so A would get a turn, hence a retry, only every ~3 s.
+    // A small DRR quantum (4 KiB, two of B's batches): A gets a turn, hence a retry, every two of B's batches (with
+    // the default 1 MiB the turn of B would end only at DRR_MAX_BATCHES_PER_TURN, I97b).
     ASSERT_NO_FATAL_FAILURE(startOn({a.url()}, std::chrono::milliseconds(3600000), {{"drr_quantum_bytes", "4096"}}));
     auto bSpec = bucketSpec("b", 1u << 20, ic::Overflow::Kind::Block, 0, 20, ic::Duration {5});
     auto aSpec = bucketSpec("a", 1u << 20, ic::Overflow::Kind::Reject, 0, A_OPS, ic::Duration {5});

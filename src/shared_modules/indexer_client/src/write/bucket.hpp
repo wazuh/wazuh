@@ -351,10 +351,11 @@ namespace indexer_client::detail::write
         /// reaches (Scheduler::armTimer arms no timer and reports it due); nullopt if empty.
         std::optional<TimePoint> nextDue(TimePoint now) const;
         /// Takes whole ops, the due retry lane first and then the pending queue (one batch may mix both), while their
-        /// wire bytes fit in `credit`, bulk.maxBytes, bulk.maxDocs and the smallest batchCap of the ops taken; at least
-        /// one op if `credit >= headBytes(now)`. Sets firstAttempt (when unset) to `now`. The ops move to the delivered
-        /// set (counted as retained).
-        Batch slice(std::uint64_t credit, TimePoint now);
+        /// wire bytes fit in `credit`, bulk.maxBytes, bulk.maxDocs, `cap` (the sink's batchLimit, 0 = none; I98) and
+        /// the smallest batchCap of the ops taken; at least one op if `credit >= headBytes(now)` (`cap` never refuses
+        /// the first op). Sets firstAttempt (when unset) to `now`. The ops move to the delivered set (counted as
+        /// retained).
+        Batch slice(std::uint64_t credit, TimePoint now, std::uint64_t cap = 0);
 
         // ---- retry lane (E3b-1 I66; any thread, one lock per call)
 
