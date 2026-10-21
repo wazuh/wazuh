@@ -10,6 +10,7 @@ from wazuh.core import common, configuration
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import manager_restart, read_cluster_config, running_in_master_node
 from wazuh.core.configuration import get_ossec_conf, write_ossec_conf
+from wazuh.core.decorators import dapi_allower
 from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.core.manager import status, get_api_conf, get_update_information_template, get_ossec_logs, \
     get_logs_summary, validate_ossec_conf, OSSEC_LOG_FIELDS, query_update_check_service as query_update_check_service_core
@@ -349,6 +350,18 @@ def get_basic_info() -> AffectedItemsWazuhResult:
     result.total_affected_items = len(result.affected_items)
 
     return result
+
+
+@dapi_allower()
+def get_master_installation_uid() -> WazuhResult:
+    """Return the installation UID of the node where it runs. It must be executed in the master node.
+
+    Returns
+    -------
+    WazuhResult
+        Result with the installation UID under the `uuid` key.
+    """
+    return WazuhResult({'uuid': common.get_installation_uid()})
 
 
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:update_config"],
