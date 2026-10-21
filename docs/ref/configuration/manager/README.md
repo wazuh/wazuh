@@ -122,6 +122,7 @@ below, and a value outside the range stops the daemon at start with
 | `wazuh_modules.task_nice` | `10` | `-20`-`19` | Nice value of the external programs a module launches; no manager module launches one |
 | `wazuh_modules.kill_timeout` | `10` | `0`-`3600` | Seconds a module's child process gets to exit at shutdown before it is killed; no manager module starts one |
 | `wazuh_modules.socket_timeout` | `1` | `1`-`60` | Longest time, in seconds, a local client of the `wazuh-manager-modulesd` request socket can go without sending the next part of its request, or without reading the reply, before the connection is dropped. It bounds each wait, not the whole request |
+| `wazuh_modules.unmask_credentials` | `0` | `0`-`1` | Reports module credentials in clear instead of as `*****`; read and range-checked, but the modules that hold credentials run only on agents |
 | `wazuh.thread_stack_size` | `8192` | `2048`-`65536` | Stack size, in KiB, of the threads `wazuh-manager-remoted` and `wazuh-manager-modulesd` start; read at each thread creation |
 
 ---
