@@ -3,7 +3,7 @@
 # Wazuh external dependency builder (container-side).
 #
 # Runs inside one of the package builder Docker images (e.g.
-# packages/debs/amd64/manager:<tag>). Driven by
+# pkg_rpm_manager_builder_amd64:<tag>). Driven by
 # packages/externals/generate_external.sh on the host.
 #
 # Inputs (env vars set by the host script):

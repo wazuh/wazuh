@@ -3,8 +3,8 @@ name: 5.X - Package - Build external dependencies
 # Builds the pool refs of src/deps.lock.mk that packages.wazuh.com/deps/pool/ does
 # not have yet, tests them and publishes them. A ref is <name>/<version>-<key>,
 # where the key hashes everything that decides its bytes (`deps.py key` prints
-# it), so a change to the inventory, a patch, the build recipe or a builder image
-# gives new refs, and only those are built:
+# it), so a change to the inventory, a patch, the build recipe, the macOS runners or
+# Xcode gives new refs, and only those are built:
 #
 #   check        the lock is the one the inventory generates; `deps.py plan` lists the
 #                entries whose ref is not published
@@ -23,8 +23,10 @@ name: 5.X - Package - Build external dependencies
 #                repository variable is 'true'
 #   verify       every published ref, through packages.wazuh.com
 #
-# Builder images are pulled by the digest of packages/externals/builder-images.json,
-# which is part of the keys; macOS builds use the Xcode pinned there.
+# Builder images are the ones packages/externals/builder-images.json names, with the
+# tag of the VERSION.json version; each leg records the digest it ran. They stay
+# out of the keys, so a rebuilt image does not rebuild the pool. macOS builds use
+# the Xcode pinned there, which is part of the keys.
 #
 # Build legs: rpm amd64/arm64 with the agent image (centos:6, glibc 2.12, whose
 # binaries run everywhere) and with the manager image (centos:7, for what the
@@ -117,7 +119,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Pull the pinned builder image
+      - name: Pull the builder image
         if: matrix.system != 'macos'
         env:
           GHCR_TOKEN: ${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }}
@@ -298,7 +300,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Pull the pinned builder image
+      - name: Pull the builder image
         env:
           GHCR_TOKEN: ${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }}
         run: bash packages/externals/pull_builder_image.sh "pkg_rpm_manager_builder_${{ matrix.architecture }}" linux manager "${{ matrix.architecture }}"
@@ -346,6 +348,7 @@ jobs:
           cp "${RUNNER_TEMP}/cpython-output/cpython_${{ matrix.archive }}.tar.gz" "${out}/pool/${ref}/sources/"
           cp "${RUNNER_TEMP}/cpython-output/cpython.tar.gz" "${out}/pool/${ref}/${{ matrix.platform }}/"
           cp "${RUNNER_TEMP}/cpython-output/toolchain.txt" "${out}/toolchain/cpython-${{ matrix.architecture }}.txt"
+          echo "image: ${BUILDER_IMAGE}" >> "${out}/toolchain/cpython-${{ matrix.architecture }}.txt"
           tar -czf "cpython-${{ matrix.architecture }}.tar.gz" --owner=0 --group=0 --no-same-owner -C "${out}" pool toolchain
           ls -lh "cpython-${{ matrix.architecture }}.tar.gz"
 
@@ -437,7 +440,7 @@ jobs:
 
   smoke-build:
     # Build the agent and the manager against pool-new and the published pool
-    # inside the pinned builder images, to confirm the new refs link. No package
+    # inside the builder images of the legs, to confirm the new refs link. No package
     # is produced. The windows agent build runs in compile_windows_agent so the
     # host-side tools shipped under windows/ (flatbuffers' flatc) run on the
     # glibc the windows agent build sees. The log is uploaded; the analysis step
@@ -469,7 +472,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Pull the pinned builder image
+      - name: Pull the builder image
         if: matrix.system != 'macos'
         env:
           GHCR_TOKEN: ${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }}
@@ -621,7 +624,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Pull the pinned builder image
+      - name: Pull the builder image
         env:
           GHCR_TOKEN: ${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }}
         run: bash packages/externals/pull_builder_image.sh "${{ matrix.image }}" linux "${{ matrix.target }}" "${{ matrix.architecture }}"

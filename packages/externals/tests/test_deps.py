@@ -1392,11 +1392,15 @@ def test_key_platform_recipe(key_repo):
     images_path = repo / "packages/externals/builder-images.json"
     before = deps.keys(document, repo)
     images = json.loads(images_path.read_text(encoding="utf-8"))
-    images["windows"]["agent"] = "ghcr.io/wazuh/compile_windows_agent@sha256:" + "c" * 64
+    images["windows"]["agent"] = "ghcr.io/wazuh/compile_windows_agent_new"
+    images["linux"]["manager"]["amd64"] = "ghcr.io/wazuh/pkg_rpm_manager_builder_amd64_new"
     images_path.write_text(json.dumps(images), encoding="utf-8")
-    windows = {e["name"] for e in document["entries"] if e.get("built", True) and "windows" in e["platforms"]}
-    assert windows
-    assert changed(before, deps.keys(document, repo)) == with_dependents(document, windows)
+    assert changed(before, deps.keys(document, repo)) == set()
+    images["darwin"]["xcode"] = "16.2"
+    images_path.write_text(json.dumps(images), encoding="utf-8")
+    darwin = {e["name"] for e in document["entries"] if e.get("built", True) and "darwin" in e["platforms"]}
+    assert darwin and "rocksdb" not in darwin
+    assert changed(before, deps.keys(document, repo)) == with_dependents(document, darwin)
 
 
 @pytest.mark.parametrize("field,value", [("license", "Other"), ("cpe", None), ("notes", "edited"),
@@ -1637,6 +1641,7 @@ def test_builder_images_macos_runners():
 
 
 @pytest.mark.parametrize("path,value", [(("linux", "agent", "amd64"), "ghcr.io/wazuh/x:5.0.0"),
+                                        (("windows", "agent"), "ghcr.io/wazuh/x@sha256:" + "a" * 64),
                                         (("windows", "agent"), None), (("darwin", "runners"), [])])
 def test_builder_images_format(path, value):
     images = copy.deepcopy(deps.load(deps.BUILDER_IMAGES))
@@ -1667,19 +1672,6 @@ def test_validate_builder_images(tmp_path):
     images.parent.mkdir(parents=True)
     images.write_text(json.dumps({"linux": {}}), encoding="utf-8")
     assert any(e.startswith("<builder-images>:") for e in errors(minimal(), repo_root=tmp_path))
-
-
-def test_key_platform_recipe_linux(key_repo):
-    repo, document = key_repo
-    images_path = repo / "packages/externals/builder-images.json"
-    before = deps.keys(document, repo)
-    images = json.loads(images_path.read_text(encoding="utf-8"))
-    images["linux"]["manager"]["amd64"] = "ghcr.io/wazuh/pkg_rpm_manager_builder_amd64@sha256:" + "d" * 64
-    images_path.write_text(json.dumps(images), encoding="utf-8")
-    manager = {e["name"] for e in document["entries"] if e.get("built", True) and e["name"] != "libbpf-bootstrap"
-               and "linux" in e["platforms"] and "manager" in e["targets"]}
-    assert "rocksdb" in manager and "dbus" not in manager
-    assert changed(before, deps.keys(document, repo)) == with_dependents(document, manager)
 
 
 @pytest.mark.parametrize("field,value", [("format", "zip"), ("strip", 2)])
@@ -2096,7 +2088,7 @@ def docker_commands(run_body):
 
 
 @pytest.mark.skipif(shutil.which("bash") is None, reason="needs bash")
-def test_workflow_images_by_digest(tmp_path):
+def test_workflow_images_by_version_tag(tmp_path):
     text = EXTERNALS_WORKFLOW.read_text(encoding="utf-8")
     assert [s for s in ("pull_image_from_ghcr.sh", "docker_image_tag", "deps_version") if s in text.lower()] == []
     docker_jobs = 0
@@ -2113,21 +2105,33 @@ def test_workflow_images_by_digest(tmp_path):
         pulls = [i for i, step in enumerate(steps) if step["run"] and "pull_builder_image.sh" in step["run"]]
         assert pulls and pulls[0] < runs_docker[0], name
     assert docker_jobs == 4
+    cpython = jobs(text)["cpython"]
+    assert 'echo "image: ${BUILDER_IMAGE}" >> "${out}/toolchain/cpython-${{ matrix.architecture }}.txt"' in cpython
 
-    log = tmp_path / "docker.log"
-    bin_dir = fake_tools(tmp_path / "bin", {"docker": f'echo "$*" >> {shlex.quote(str(log))}; cat > /dev/null'})
-    github_env = tmp_path / "github_env"
-    github_env.write_text("EARLIER=1\n")
-    result = subprocess.run(["bash", str(HERE.parent / "pull_builder_image.sh"), "pkg_rpm_manager_builder_amd64",
-                             "linux", "manager", "amd64"], capture_output=True, text=True, timeout=60,
-                            env=dict(os.environ, PATH=f"{bin_dir}:{os.environ['PATH']}", GHCR_TOKEN="token",
-                                     GITHUB_ACTOR="actor", GITHUB_ENV=str(github_env)))
-    assert result.returncode == 0, result.stdout + result.stderr
-    image = run("builder-image", "linux", "manager", "amd64").stdout.strip()
-    digest = re.fullmatch(r"\S+@sha256:([0-9a-f]{64})", image).group(1)
-    assert log.read_text().splitlines() == ["login ghcr.io -u actor --password-stdin", f"pull {image}",
-                                           f"tag {image} pkg_rpm_manager_builder_amd64:{digest[:12]}"]
-    assert github_env.read_text() == f"EARLIER=1\nBUILDER_TAG={digest[:12]}\n"
+    repository = run("builder-image", "linux", "manager", "amd64").stdout.strip()
+    image = f"{repository}:{json.loads((deps.REPO / 'VERSION.json').read_text())['version']}"
+    digest = f"{repository}@sha256:" + "e" * 64
+    other = "ghcr.io/wazuh/pkg_rpm_agent_builder_amd64@sha256:" + "f" * 64
+    for inspected, ok in ((f"{other}\n{digest}", True), (other, False), ("", False)):
+        log = tmp_path / "docker.log"
+        log.unlink(missing_ok=True)
+        bin_dir = fake_tools(tmp_path / "bin", {"docker": f'echo "$*" >> {shlex.quote(str(log))}; cat > /dev/null; '
+                                                          f'[ "$1" != image ] || printf "%s\\n" {shlex.quote(inspected)}'})
+        github_env = tmp_path / "github_env"
+        github_env.write_text("EARLIER=1\n")
+        result = subprocess.run(["bash", str(HERE.parent / "pull_builder_image.sh"), "pkg_rpm_manager_builder_amd64",
+                                 "linux", "manager", "amd64"], capture_output=True, text=True, timeout=60,
+                                env=dict(os.environ, PATH=f"{bin_dir}:{os.environ['PATH']}", GHCR_TOKEN="token",
+                                         GITHUB_ACTOR="actor", GITHUB_ENV=str(github_env)))
+        pulled = ["login ghcr.io -u actor --password-stdin", f"pull {image}",
+                  f"image inspect --format {{{{range .RepoDigests}}}}{{{{println .}}}}{{{{end}}}} {image}"]
+        if not ok:
+            assert result.returncode != 0 and "has no registry digest" in result.stderr
+            assert log.read_text().splitlines() == pulled and github_env.read_text() == "EARLIER=1\n"
+            continue
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert log.read_text().splitlines() == pulled + [f"tag {image} pkg_rpm_manager_builder_amd64:{'e' * 12}"]
+        assert github_env.read_text() == f"EARLIER=1\nBUILDER_TAG={'e' * 12}\nBUILDER_IMAGE={digest}\n"
 
 
 def test_publish_gated():
@@ -2441,10 +2445,12 @@ def generate_pack(tmp_path, zips, toolchain=None, env=None):
 
 @needs_zip
 def test_generate_pack_pool_layout(tmp_path):
+    image = "ghcr.io/wazuh/pkg_rpm_manager_builder_amd64@sha256:" + "e" * 64
     result, out = generate_pack(tmp_path, {"curl_src.zip": {"curl/a.c": "c"},
                                            "curl_rpm_amd64.zip": {"curl/lib/.libs/libcurl.a": "a"},
                                            "rocksdb_rpm_amd64.zip": {"rocksdb/a.c": "c"}},
-                                toolchain="leg: rpm-amd64-manager\ncmake: cmake version 3.31.6\n")
+                                toolchain="leg: rpm-amd64-manager\ncmake: cmake version 3.31.6\n",
+                                env={"BUILDER_IMAGE": image})
     assert result.returncode == 0, result.stdout + result.stderr
     curl = out / "pool" / LOCK_REFS["curl"]
     with tarfile.open(curl / "sources" / "curl.tar.gz") as archive:
@@ -2457,7 +2463,7 @@ def test_generate_pack_pool_layout(tmp_path):
         toolchain = archive.extractfile("toolchain/rpm-amd64-manager.txt").read()
     assert f"pool/{LOCK_REFS['curl']}/linux/amd64/curl.tar.gz" in names
     assert all(n.startswith(("pool", "toolchain")) for n in names)
-    assert toolchain == b"leg: rpm-amd64-manager\ncmake: cmake version 3.31.6\n"
+    assert toolchain == f"leg: rpm-amd64-manager\ncmake: cmake version 3.31.6\nimage: {image}\n".encode()
 
 
 @needs_zip
@@ -2945,7 +2951,7 @@ def test_builder_image_cli():
     images = deps.load(deps.BUILDER_IMAGES)
     result = run("builder-image", "linux", "manager", "amd64")
     assert (result.returncode, result.stdout) == (0, images["linux"]["manager"]["amd64"] + "\n"), result.stderr
-    assert re.fullmatch(r"ghcr\.io/wazuh/\S+@sha256:[0-9a-f]{64}\n", result.stdout)
+    assert re.fullmatch(r"ghcr\.io/wazuh/[a-z0-9_]+\n", result.stdout)
     result = run("builder-image", "darwin", "xcode")
     assert (result.returncode, result.stdout) == (0, "15.4\n"), result.stderr
     for path in (("darwin",), ("darwin", "runners"), ("linux", "nosuch")):

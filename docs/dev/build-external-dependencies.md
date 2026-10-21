@@ -136,7 +136,7 @@ The key is the first 12 hex digits of a sha256 over everything that decides the 
 | The text outside the blocks, the `# deps-recipe` blocks of `src/CMakeLists.txt`, `src/Makefile` and `src/cmake/WazuhExternalFlags.cmake` | every compiled library |
 | The `# deps-recipe` blocks of `build_external.sh`, `generate_external.sh`, `consolidate.sh` | every library except cpython and libbpf-bootstrap |
 | A `# deps-entry <name>` block of those scripts | that library and the ones that link it |
-| Builder image digests in `builder-images.json` | every library built on that platform |
+| The macOS runners and Xcode version in `builder-images.json` | every library built on macOS |
 | `framework/cpython/compile.sh`, `framework/cpython/custom/**`, `framework/requirements.txt`, `framework/.python-version`, the `# cpython-recipe` block of `src/Makefile` | cpython |
 | `ebpf/build_ebpf.sh`, `src/syscheckd/src/ebpf/src/modern.bpf.c` | libbpf-bootstrap |
 | `KEY_EPOCH` in `deps.py` | everything |
@@ -156,7 +156,7 @@ check ─► build-externals (7 legs) ─┐                                    
 | Job | What it does |
 |-----|--------------|
 | `check` | `lock --check` and `plan`: which refs are missing. Nothing else runs if none is. |
-| `build-externals` | One leg per system, arch and target, in the builder image pinned by digest (macOS natively). Builds the missing libraries; the rest come from the pool. |
+| `build-externals` | One leg per system, arch and target, in the builder image `builder-images.json` names, with the tag of the `VERSION.json` version (macOS natively). Builds the missing libraries; the rest come from the pool. |
 | `build-ebpf` | Builds `libbpf-bootstrap` for every Linux arch with clang 20 and Zig. |
 | `consolidate` | Merges the legs into one pool tree and writes the manifests. |
 | `cpython` | Builds the interpreter and its wheels against the other refs, for amd64 and arm64 (manager only). |
@@ -271,14 +271,14 @@ Details for whoever changes the build scripts, the workflow or `deps.py`. Each b
 - Content fields: `version`, `revision`, `source`, `upstream_sha256`, `snapshot_sha256`, `patches`, `overlay`, `subdir`, `targets`, `platforms`, `format`, `strip` and `built`. `url` is left out: a mirror serving the same sha256 gives the same bytes. `binaries` is not keyed; it only decides which platform tarballs a manifest must have.
 - The values `deps.py flatten` hands `build_external.sh` for the entry, except the URL, are keyed too.
 - Patch files are hashed as text (CRLF read as LF). Overlay files are hashed raw with their executable bit, because `build_external.sh` copies them as is: a checkout that converts line endings in `packages/externals/overlay/` computes other keys.
-- Builders: for each platform of the entry, the image digests of `builder-images.json` for its targets (Linux), the Windows image, or the macOS runners and Xcode version.
+- Builders: the macOS runners and Xcode version, for an entry built on macOS. The Linux and Windows images are pulled by the tag of the branch version and stay out of the key: rebuilding an image from the same Dockerfile, which moves the tag, rebuilds nothing. When a builder image changes what it compiles with (compiler, base system), raise `KEY_EPOCH` in a pull request opened once the push to the branch has published the new image, so every ref is built with it.
 - `cpython` takes the `libwazuhext` block of `src/external/CMakeLists.txt`. A block whose name is no inventory entry counts as outside text. The block of a `built: false` entry goes into no key. `deps.py lock` fails when a built library has no block.
 
 </details>
 
 <details><summary>Manifest contents and when it is not written</summary>
 
-`manifest.json` holds the `inputs_hash`, the inventory entry, the refs of its links, the commit and run that built it, the sha256 of every file, the `toolchain` of each leg (compilers and tools installed on the fly, which the pinned images do not fix) and the unpinned builder images, if any. `cpython` also records its wheels and the sha256 of `framework/requirements.txt`. On a pull request `wazuh_commit` is the PR head: the jobs build its merge with the base branch, whose commit GitHub does not keep.
+`manifest.json` holds the `inputs_hash`, the inventory entry, the refs of its links, the commit and run that built it, the sha256 of every file, the `toolchain` of each leg (compilers and tools installed on the fly, and the digest of the builder image the leg ran in). `cpython` also records its wheels and the sha256 of `framework/requirements.txt`. On a pull request `wazuh_commit` is the PR head: the jobs build its merge with the base branch, whose commit GitHub does not keep.
 
 The run fails without writing a manifest if an entry has no `sources/`, lacks a tarball for a platform of `binaries` (default `platforms`) that the run built, has binaries with `built: false`, or, for `cpython`, ships wheels that differ between architectures or from `framework/requirements.txt`.
 
@@ -299,7 +299,7 @@ A dependency is downloaded for the targets that compile it, with three exception
 <details><summary>Build legs and smoke jobs</summary>
 
 - The manager image builds a few libraries the agent image cannot. Both Linux legs build the agent set, and `consolidate.sh` keeps the agent copy where both produced one, so the binaries run with glibc 2.12. A leg packs a platform tarball only for a library that produced a compiled file (`.a`, `.so`, `.lib`, `.dylib`). Sources are the same on every leg and the first copy is kept. `consolidate.sh` fails if a leg of the matrix left no tarball (`EXPECTED_LEGS`).
-- Builder images are pulled by digest by `pull_builder_image.sh`, which tags them with the first 12 digits (`BUILDER_TAG`). Artifacts in the CI bucket: `externals-<leg>-<target>`, `libbpf-bootstrap`, `externals-all`, `cpython-<arch>`, `pool-new`, `smoke-build-<target>-<arch>`, `smoke-sources-<target>-<arch>`.
+- Builder images are pulled by `pull_builder_image.sh` with the tag of the `VERSION.json` version, and tagged locally with the first 12 digits of their digest (`BUILDER_TAG`); the full digest goes to the toolchain of the leg (`BUILDER_IMAGE`). Artifacts in the CI bucket: `externals-<leg>-<target>`, `libbpf-bootstrap`, `externals-all`, `cpython-<arch>`, `pool-new`, `smoke-build-<target>-<arch>`, `smoke-sources-<target>-<arch>`.
 - `smoke-build` lays out with `deps.py mirror --local` every ref the target needs: the new ones from `pool-new`, the rest from the pool. The macOS agent builds natively, prepared like the package job (`generate_wazuh_packages.sh -i`) with the runner's default Xcode, so a clash with the Xcode the legs pin shows up before publishing. The Windows leg catches host tools shipped under `windows/` (for example `flatc`) built against a newer glibc than the consumer image.
 - `smoke-sources` builds in two phases, `make deps EXTERNAL_SRC_ONLY=yes` plus `make build-external`, then the product: the engine looks for the built abseil directory at configure time and data_provider's services module does not wait for dbus, so one pass does not work. It fails if the dependency phase consumed anything precompiled. `cpython` comes built from `sources/` and `libbpf-bootstrap` is skipped.
 

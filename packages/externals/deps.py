@@ -81,6 +81,7 @@ OWN_RECIPE = {
                 "framework/.python-version", "src/Makefile#cpython-recipe"),
     "libbpf-bootstrap": ("packages/externals/ebpf/build_ebpf.sh", "src/syscheckd/src/ebpf/src/modern.bpf.c"),
 }
+# builder-images.json is listed for the path filters; only its darwin values go into a key (_platform_recipe()).
 KEY_INPUT_FILES = ("packages/externals/dependencies.json", "packages/externals/builder-images.json",
                    "packages/externals/patches/**", "packages/externals/overlay/**")
 # Links libwazuhext and carries the framework wheels.
@@ -339,11 +340,11 @@ def cmake_links(cmake_text):
 POOL_PLATFORMS = {"linux": ("linux/amd64", "linux/aarch64"), "darwin": ("darwin/amd64", "darwin/aarch64"),
                   "windows": ("windows",)}
 ALL_POOL_PLATFORMS = tuple(d for dirs in POOL_PLATFORMS.values() for d in dirs)
-IMAGE_RE = re.compile(r"^ghcr\.io/wazuh/[a-z0-9_]+@sha256:[0-9a-f]{64}$|^unpinned:\S+$")
+IMAGE_RE = re.compile(r"^ghcr\.io/wazuh/[a-z0-9_]+$")
 
 
 def check_builder_images(images):
-    """Errors in builder-images.json: one digest per linux target/arch and for windows, runners and Xcode for darwin."""
+    """Errors in builder-images.json: one image per linux target/arch and for windows, runners and Xcode for darwin."""
     errors = []
     expected = [("linux", t, a) for t in ("agent", "manager") for a in ("amd64", "arm64")] + [("windows", "agent")]
     for path in expected:
@@ -351,7 +352,7 @@ def check_builder_images(images):
         for key in path:
             value = value.get(key) if isinstance(value, dict) else None
         if not isinstance(value, str) or not IMAGE_RE.match(value):
-            errors.append(f"<builder-images>: {'.'.join(path)} must be ghcr.io/wazuh/<image>@sha256:<digest>")
+            errors.append(f"<builder-images>: {'.'.join(path)} must be ghcr.io/wazuh/<image>, without tag or digest")
     darwin = images.get("darwin") if isinstance(images, dict) else None
     if not (isinstance(darwin, dict) and isinstance(darwin.get("runners"), list) and darwin["runners"]
             and all(isinstance(r, str) for r in darwin["runners"]) and isinstance(darwin.get("xcode"), str)
@@ -632,15 +633,13 @@ def _recipe(specs, repo):
 
 
 def _platform_recipe(entry, images):
-    """Builder of each platform the entry is built on: image digests for linux/windows, runner and Xcode for darwin."""
-    result = {}
-    for platform in sorted(entry["platforms"]):
-        if platform not in images:
-            raise ValueError(f"{entry['name']}: no builder for {platform} in {BUILDER_IMAGES.name}")
-        builders = images[platform]
-        result[platform] = {t: builders[t] for t in sorted(entry["targets"]) if t in builders} \
-            if platform == "linux" else builders
-    return result
+    """Runners and Xcode of the darwin build. The Linux and Windows images are pulled by the tag of the branch
+    version, which moves on every rebuild of an unchanged image, so they stay out of the key."""
+    if "darwin" not in entry["platforms"]:
+        return {}
+    if "darwin" not in images:
+        raise ValueError(f"{entry['name']}: no builder for darwin in {BUILDER_IMAGES.name}")
+    return {"darwin": images["darwin"]}
 
 
 EXTERNAL_CMAKE = "src/external/CMakeLists.txt"
@@ -844,8 +843,6 @@ def manifest_pool(doc, pool_dir, wazuh_commit=None, workflow_run=None, repo=REPO
     computed = keys(doc, repo)
     entries = {e["name"]: e for e in doc["entries"]}
     refs = {ref(entries[n], k): n for n, (k, _) in computed.items()}
-    images = json.dumps(load(Path(repo) / BUILDER_IMAGES.relative_to(REPO)))
-    unpinned = sorted(set(re.findall(r'"(unpinned:[^"]+)"', images)))
     if toolchain and not Path(toolchain).is_dir():
         raise ValueError(f"--toolchain {toolchain} is not a directory")
     if only is not None and (not only or only - {e["name"] for e in doc["entries"]}):
@@ -886,7 +883,7 @@ def manifest_pool(doc, pool_dir, wazuh_commit=None, workflow_run=None, repo=REPO
         result = {"schema": 2, "ref": where.relative_to(pool_dir).as_posix(), "inputs_hash": computed[name][1],
                   "entry": entries[name],
                   "links": {link: ref(entries[link], computed[link][0]) for link in entries[name].get("links", [])},
-                  "wazuh_commit": wazuh_commit, "workflow_run": workflow_run, "unpinned": unpinned, **extra,
+                  "wazuh_commit": wazuh_commit, "workflow_run": workflow_run, **extra,
                   "toolchain": tools, "files": files}
         (where / "manifest.json").write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     return errors
@@ -1430,9 +1427,6 @@ def main(argv=None):
         else:
             warnings = []
             external = None if args.no_make else external_res(args.src, warnings)
-            images = json.dumps(load(BUILDER_IMAGES))
-            if "unpinned:" in images:
-                warnings.append(f"{BUILDER_IMAGES.name} has unpinned builders; pool keys do not identify their images")
             for warning in warnings:
                 print(f"WARNING: {warning}", file=sys.stderr)
             errors = validate(doc, external)

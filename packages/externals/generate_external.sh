@@ -115,7 +115,7 @@ DEPS_ENV_FILE="external_sources.env"
 python3 "${CURRENT_PATH}/deps.py" flatten > "${OUTDIR}/${DEPS_ENV_FILE}"
 
 # macOS runs natively on the macOS runner (no Docker available, host toolchain
-# is what we ship against). Every other leg runs inside a pinned Wazuh builder
+# is what we ship against). Every other leg runs inside a Wazuh builder
 # image so the host glibc the build was produced against is the image's, not
 # the runner's:
 #   - deb/rpm   -> pkg_<sys>_<target>_builder_<arch>      (centos:6/7 era)
@@ -274,6 +274,8 @@ rm -rf "${OUTDIR}/toolchain"
 mkdir -p "${OUTDIR}/toolchain"
 if [ -f "${OUTDIR}/external_artifacts/toolchain.txt" ]; then
     cp "${OUTDIR}/external_artifacts/toolchain.txt" "${OUTDIR}/toolchain/${SYSTEM}-${ARCHITECTURE}-${TARGET}.txt"
+    # The image the leg ran in, from pull_builder_image.sh; the macOS leg has none.
+    [ -z "${BUILDER_IMAGE:-}" ] || echo "image: ${BUILDER_IMAGE}" >> "${OUTDIR}/toolchain/${SYSTEM}-${ARCHITECTURE}-${TARGET}.txt"
 fi
 
 OUT_TARBALL="${OUTDIR}/externals-${SYSTEM}-${ARCHITECTURE}-${TARGET}.tar.gz"

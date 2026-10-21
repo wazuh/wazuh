@@ -1,10 +1,11 @@
 #!/bin/bash
 #
-# Pull a builder image by the digest packages/externals/builder-images.json pins
-# for it and tag it <local_name>:<first 12 hex of the digest>, the name
-# generate_external.sh and the workflow run it as; the tag goes to BUILDER_TAG in
-# $GITHUB_ENV. The digest in the tag keeps runs of other branches sharing the
-# Docker daemon from swapping the image.
+# Pull the builder image packages/externals/builder-images.json names for <key>,
+# tagged with the version of VERSION.json, and tag it <local_name>:<first 12 hex
+# of its digest>, the name generate_external.sh and the workflow run it as. The
+# tag goes to BUILDER_TAG and the digest to BUILDER_IMAGE in $GITHUB_ENV, which
+# the legs record in their toolchain. The digest in the tag keeps runs of other
+# branches sharing the Docker daemon from swapping the image.
 #
 #   pull_builder_image.sh <local_name> <key>...
 #
@@ -23,12 +24,19 @@ shift
 HERE="$(cd "$(dirname "$0")" && pwd)"
 RETRY="${HERE}/../../.github/scripts/run_with_retry.sh"
 
-image="$(python3 "${HERE}/deps.py" builder-image "$@")"
+version="$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1]))["version"])' "${HERE}/../../VERSION.json")"
+image="$(python3 "${HERE}/deps.py" builder-image "$@"):${version}"
 printf '%s' "${GHCR_TOKEN:?GHCR_TOKEN is required}" | docker login ghcr.io -u "${GITHUB_ACTOR:?}" --password-stdin
 "${RETRY}" --attempts 4 --delay 10 --backoff 2 --max-delay 45 --timeout 900 --label "Pull ${image}" -- \
     docker pull "${image}"
-tag="${image##*@sha256:}"
-tag="${tag:0:12}"
+# RepoDigests has one entry per repository the image was pulled from; keep this one's.
+digest="$(docker image inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "${image}" \
+    | grep -m1 "^${image%:*}@sha256:" || true)"
+if [[ ! "${digest}" =~ @sha256:([0-9a-f]{64})$ ]]; then
+    echo "ERROR: ${image} has no registry digest: ${digest}" >&2
+    exit 1
+fi
+tag="${BASH_REMATCH[1]:0:12}"
 docker tag "${image}" "${LOCAL_NAME}:${tag}"
-[ -z "${GITHUB_ENV:-}" ] || echo "BUILDER_TAG=${tag}" >> "${GITHUB_ENV}"
-echo "${LOCAL_NAME}:${tag} = ${image}"
+[ -z "${GITHUB_ENV:-}" ] || printf 'BUILDER_TAG=%s\nBUILDER_IMAGE=%s\n' "${tag}" "${digest}" >> "${GITHUB_ENV}"
+echo "${LOCAL_NAME}:${tag} = ${image} = ${digest}"
