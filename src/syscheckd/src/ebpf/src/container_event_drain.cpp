@@ -31,12 +31,14 @@
 #include <cerrno>
 #include <chrono>
 #include <cstring>
+#include <optional>
 #include <thread>
 #include <utility>
 #include <vector>
 
 #include <poll.h>
 #include <sys/eventfd.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 namespace fim_container_events
@@ -857,7 +859,38 @@ bool ContainerEventDrain::start(const DrainConfig& config, ReconcileHandler hand
      *
      * This consumer always keys on a cgroup id: the helper on a unified host,
      * the configured v1 controller on a legacy one. Anything else disagrees. */
-    if (const auto producerKind = impl->client.hostKeyKind())
+    /* The producer binds its socket before its first enumeration finishes, so
+     * at this point it may be up but not yet answering -- the same startup race
+     * container_baseline_scanner.cpp retries around. One 1 s attempt would
+     * report "cannot verify" for a producer that is merely slow, so retry
+     * briefly; but only when the socket is actually there, or a host with no
+     * container_instances at all pays the whole budget for an answer that can
+     * never come. */
+    constexpr int kKeyKindAttempts = 10;
+    constexpr auto kKeyKindDelay = std::chrono::milliseconds {500};
+
+    std::optional<wz_container_key_kind_t> producerKind;
+    for (int attempt = 1; attempt <= kKeyKindAttempts; ++attempt)
+    {
+        producerKind = impl->client.hostKeyKind();
+        if (producerKind)
+        {
+            break;
+        }
+        struct stat socketInfo
+        {
+        };
+        if (::stat(impl->client.socketPath().c_str(), &socketInfo) != 0)
+        {
+            break; // No container_instances on this host; nothing to wait for.
+        }
+        if (attempt < kKeyKindAttempts)
+        {
+            std::this_thread::sleep_for(kKeyKindDelay);
+        }
+    }
+
+    if (producerKind)
     {
         if (*producerKind != WZ_CONTAINER_KEY_CGROUP)
         {
@@ -871,6 +904,19 @@ bool ContainerEventDrain::start(const DrainConfig& config, ReconcileHandler hand
             return false;
         }
     }
+    else
+    {
+        /* Not a mismatch -- an unanswered question, which is what an older
+         * producer and an absent one both look like. Carry on, because
+         * refusing here would disable attribution on every host whose
+         * container_instances is simply older than this check. But say so: a
+         * disagreement that nothing reports is the failure this whole check
+         * exists to end, and silence here reads exactly like agreement. */
+        LogWarn("Container eBPF drain: container_instances did not state which key kind it publishes, so "
+                "attribution is running unverified. If no container is ever enriched, the two halves are "
+                "probably keying on different number spaces.");
+    }
+
     impl->handler = std::move(handler);
 
     impl->allowlist_active = (filter.cgroup_mode == RT_CGROUP_MODE_ALLOWLIST);
