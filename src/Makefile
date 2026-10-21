@@ -1418,7 +1418,11 @@ EXTERNAL_DIR := $(EXTERNAL_RES:%=external/%)
 EXTERNAL_TAR := $(EXTERNAL_RES:%=external/%.tar.gz)
 
 # Shared tools like dependencies
+# http-request is only built by the manager and the Linux agent (data_provider),
+# and the native tar on AIX, HP-UX and Solaris lacks --strip-components
+ifeq (,$(filter ${uname_S},AIX HP-UX SunOS))
 SHARED_RES := http-request
+endif
 SHARED_TAR := $(SHARED_RES:%=shared_modules/%.tar.gz)
 
 .PHONY: deps
