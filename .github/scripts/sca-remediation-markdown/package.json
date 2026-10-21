@@ -1,0 +1,18 @@
+{
+  "name": "sca-remediation-markdown-validator",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Validates that ruleset/sca/**/*.yml `remediation` fields render the way the dashboard's Markdown renderer actually renders them.",
+  "type": "commonjs",
+  "scripts": {
+    "validate": "node validate.js",
+    "check-renderer-sync": "node check-renderer-sync.js"
+  },
+  "dependencies": {
+    "dompurify": "3.1.6",
+    "js-yaml": "4.1.0",
+    "jsdom": "24.1.1",
+    "markdown-it": "14.1.0",
+    "markdown-it-link-attributes": "4.0.1"
+  }
+}
