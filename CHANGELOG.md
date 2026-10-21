@@ -13,12 +13,19 @@ All notable changes to this project will be documented in this file.
 - Added type validation for the error details of cluster synchronization messages and bound the received archive path to the file transfer completed for the task. ([#40367](https://github.com/wazuh/wazuh/pull/40367))
 - Hardened how cluster workers apply the files received from the master. ([#40366](https://github.com/wazuh/wazuh/pull/40366))
 - Fixed the snort decoder truncating `srcip` to all but its last octet and keeping the port in `dstip`. ([#40521](https://github.com/wazuh/wazuh/pull/40521))
+- Fixed `wazuh-execd` keeping a local request connection open when the request could not be read, and not terminating a request of the maximum size. ([#40529](https://github.com/wazuh/wazuh/pull/40529))
+- Fixed `wazuh-logcollector` keeping a local request connection open when the request could not be read, and not terminating a request of the maximum size. ([#40537](https://github.com/wazuh/wazuh/pull/40537))
+- Fixed `PUT /agents/upgrade` and `PUT /agents/upgrade_custom` failing the whole request with an internal error when an agent is deleted or disconnected while its upgrade task is being created. ([#40427](https://github.com/wazuh/wazuh/pull/40427))
+- Fixed the vulnerability scanner evaluating Ubuntu kernel variant packages (HWE, cloud and other flavors) against the generic `linux` product instead of the product of their source package. Cloud, OEM and low-latency kernel images, which were not evaluated before, are now scanned against their own product. ([#39267](https://github.com/wazuh/wazuh/issues/39267))
 
 ### Agent
 
 #### Fixed
 
 - Hardened how the agent handles requests received from the manager. ([#40467](https://github.com/wazuh/wazuh/pull/40467))
+- Fixed `agent-auth` failing at random with `SSL error (2)` because it did not set the receive timeout of its enrollment socket. ([#40468](https://github.com/wazuh/wazuh/pull/40468))
+- Fixed `wazuh-execd` keeping a local request connection open when the request could not be read, and not terminating a request of the maximum size. ([#40529](https://github.com/wazuh/wazuh/pull/40529))
+- Fixed `wazuh-logcollector` keeping a local request connection open when the request could not be read, and not terminating a request of the maximum size. ([#40537](https://github.com/wazuh/wazuh/pull/40537))
 
 ## [v4.14.10]
 
