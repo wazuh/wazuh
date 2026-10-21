@@ -18,6 +18,7 @@
 #define FMODE_CREATED                   0x4000
 #define O_CREAT                         0100
 #define O_ACCMODE                       00000003
+#define ATTR_FILE                       (1 << 13)
 
 /* These define general path extraction and buffer limits. */
 #define LIMIT_PATH_SIZE(x)              ((x) & (MAX_PATH_LEN - 1))
@@ -501,6 +502,15 @@ int kprobe__mnt_want_write(struct pt_regs *ctx)
     return 0;
 }
 
+SEC("kprobe/mnt_want_write_file")
+int kprobe__mnt_want_write_file(struct pt_regs *ctx)
+{
+    u64 id = bpf_get_current_pid_tgid();
+    u64 mnt = (u64)BPF_CORE_READ((struct file *)PT_REGS_PARM1(ctx), f_path.mnt);
+    bpf_map_update_elem(&write_mnt_map, &id, &mnt, BPF_ANY);
+    return 0;
+}
+
 /*
  * Returns the mount recorded by kprobe/mnt_want_write for the current thread
  * if it is attached (same check as the kernel's is_mounted(), which skips
@@ -540,8 +550,11 @@ int kprobe__security_inode_setattr(struct pt_regs *ctx)
      * of the kernel version.
      */
     struct dentry *dentry = resolve_dentry((struct dentry *)PT_REGS_PARM1_CORE(ctx));
-    if (!dentry)
+    struct iattr *attr = (struct iattr *)PT_REGS_PARM2_CORE(ctx);
+    if (!dentry) {
         dentry = resolve_dentry((struct dentry *)PT_REGS_PARM2_CORE(ctx));
+        attr = (struct iattr *)PT_REGS_PARM3_CORE(ctx);
+    }
     if (!dentry)
         return 0;
 
@@ -562,6 +575,9 @@ int kprobe__security_inode_setattr(struct pt_regs *ctx)
         .dentry = dentry,
         .mnt    = get_write_mnt(BPF_CORE_READ(d_inode, i_sb))
     };
+    // If ia_file is ever removed from struct iattr, guard this with bpf_core_field_exists()
+    if (BPF_CORE_READ(attr, ia_valid) & ATTR_FILE)
+        path.mnt = BPF_CORE_READ(attr, ia_file, f_path.mnt);
 
     struct buffer *string_buf = bpf_map_lookup_elem(&heaps_map, &(u32){0});
     if (!string_buf)

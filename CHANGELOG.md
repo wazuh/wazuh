@@ -13,6 +13,8 @@ All notable changes to this project will be documented in this file.
 
 #### Fixed
 
+- Fixed the FIM eBPF whodata device ID not matching the file device. ([#32502](https://github.com/wazuh/wazuh/issues/32502))
+- Fixed wrong paths in FIM eBPF whodata events for `fchown` and `ftruncate` on non-root mounts. ([#32502](https://github.com/wazuh/wazuh/issues/32502))
 - Hardened how the agent handles requests received from the manager. ([#40467](https://github.com/wazuh/wazuh/pull/40467))
 
 ## [v4.14.10]
