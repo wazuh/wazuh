@@ -1,10 +1,15 @@
 #include "pid_resolver.hpp"
 
+#include "cgroup_host_mode.h"
+
 #include <dirent.h>
 
 #include <algorithm>
 #include <cctype>
 #include <fstream>
+#include <iterator>
+#include <sstream>
+#include <string>
 #include <string_view>
 
 namespace wazuh::container_baseline {
@@ -36,42 +41,15 @@ bool IsHexId(std::string_view s, std::size_t min_len, std::size_t max_len) noexc
     return true;
 }
 
-// Returns a cgroup path for `pid` that a container id can be read from.
-//
-// Prefers the unified line, which is the only one a v2 host has. A pure cgroup
-// v1 host has NO "0::" line at all -- measured on Ubuntu 22.04 booted with
-// systemd.unified_cgroup_hierarchy=0 systemd.legacy_systemd_cgroup_controller=1,
-// where every line is a numbered v1 hierarchy -- so reading only "0::" found
-// nothing, no PID mapped to any container, and the baseline reported zero
-// containers scanned while the connector was reporting one known. Any v1
-// controller line carries the same container path, so fall back to the first
-// one rather than giving up.
-std::string ReadProcCgroupV2Path(const std::string& pid)
+// Reads /proc/<pid>/cgroup and hands the whole thing to the pure selector,
+// which is where the v1/v2 decision lives (and where it is tested).
+std::string ReadProcCgroupPath(const std::string& pid)
 {
     std::ifstream f("/proc/" + pid + "/cgroup");
     if (!f) return {};
 
-    std::string fallback;
-    std::string line;
-    while (std::getline(f, line)) {
-        if (line.size() >= 3 && line[0] == '0' && line[1] == ':' && line[2] == ':') {
-            return line.substr(3);
-        }
-
-        // "<hierarchy-id>:<controllers>:<path>" -- take the path after the
-        // second colon. Skipped when the controller field is empty, which is
-        // what the unified line looks like and is handled above.
-        if (fallback.empty()) {
-            const auto first = line.find(':');
-            if (first != std::string::npos) {
-                const auto second = line.find(':', first + 1);
-                if (second != std::string::npos && second > first + 1) {
-                    fallback = line.substr(second + 1);
-                }
-            }
-        }
-    }
-    return fallback;
+    std::string contents((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+    return SelectCgroupPathFromProcCgroup(contents);
 }
 
 // Invokes `visit(container_id, pid)` once for every PID on the host whose cgroup
@@ -87,7 +65,7 @@ void SweepProc(Visitor&& visit)
         if (!IsAllDigits(ent->d_name)) continue;
         const std::string pid_str = ent->d_name;
 
-        const std::string cg_path = ReadProcCgroupV2Path(pid_str);
+        const std::string cg_path = ReadProcCgroupPath(pid_str);
         if (cg_path.empty()) continue;
 
         auto container_id = ExtractContainerIdFromCgroupPath(cg_path);
@@ -137,6 +115,81 @@ std::string MatchContainerIdComponent(std::string_view leaf)
 }
 
 } // namespace
+
+std::string SelectCgroupPathFromProcCgroup(const std::string& proc_cgroup_contents)
+{
+    std::string unified;
+    std::string best_numbered;
+    int best_rank = WZ_CGROUP_V1_PRIORITY_COUNT; // Lower is better; this means "none yet".
+
+    std::istringstream stream(proc_cgroup_contents);
+    std::string line;
+    while (std::getline(stream, line))
+    {
+        if (!line.empty() && line.back() == '\r') line.pop_back();
+
+        if (line.size() >= 3 && line[0] == '0' && line[1] == ':' && line[2] == ':')
+        {
+            unified = line.substr(3);
+            continue;
+        }
+
+        // "<hierarchy-id>:<controllers>:<path>". An empty controller field is
+        // what the unified line looks like and is handled above.
+        const auto first = line.find(':');
+        if (first == std::string::npos) continue;
+        const auto second = line.find(':', first + 1);
+        if (second == std::string::npos || second <= first + 1) continue;
+
+        const std::string controllers = line.substr(first + 1, second - first - 1);
+        const std::string path = line.substr(second + 1);
+
+        // Rank by the SHARED priority order, so this agrees with the hierarchy
+        // the resolver keys on and the eBPF program reads. A controller outside
+        // that list is still usable -- every v1 line carries the same container
+        // path -- but only as a last resort.
+        int rank = WZ_CGROUP_V1_PRIORITY_COUNT;
+        for (unsigned int i = 0; i < WZ_CGROUP_V1_PRIORITY_COUNT; ++i)
+        {
+            const char* wanted = wz_cgroup_v1_priority(i);
+            if (wanted == nullptr) break;
+
+            // Whole comma-separated element, so "cpu" does not match "cpuacct";
+            // a "name=" prefix is part of the element, as in "1:name=systemd:".
+            std::string_view rest{controllers};
+            while (!rest.empty())
+            {
+                const auto comma = rest.find(',');
+                const auto element = rest.substr(0, comma);
+                const auto bare = element.rfind("name=", 0) == 0 ? element.substr(5) : element;
+                if (bare == wanted)
+                {
+                    rank = static_cast<int>(i);
+                    break;
+                }
+                if (comma == std::string_view::npos) break;
+                rest.remove_prefix(comma + 1);
+            }
+            if (rank != WZ_CGROUP_V1_PRIORITY_COUNT) break;
+        }
+
+        // First line seen wins until something better-ranked turns up, so the
+        // choice does not depend on the order the kernel happens to print.
+        if (best_numbered.empty() || rank < best_rank)
+        {
+            best_rank = rank;
+            best_numbered = path;
+        }
+    }
+
+    // The unified line only wins when it NAMES something. A legacy host may
+    // emit `0::/`, which identifies nothing: taking it regardless is what left
+    // the baseline reporting zero containers scanned while the connector
+    // reported one known.
+    if (!unified.empty() && unified != "/") return unified;
+    if (!best_numbered.empty()) return best_numbered;
+    return unified; // "/" or nothing: let the caller's id extraction reject it.
+}
 
 std::string ExtractContainerIdFromCgroupPath(const std::string& cgroup_path)
 {
