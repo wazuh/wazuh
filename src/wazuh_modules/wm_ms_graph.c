@@ -598,7 +598,6 @@ void wm_ms_graph_cleanup() {
 cJSON* wm_ms_graph_dump(const wm_ms_graph* ms_graph) {
     cJSON* root = cJSON_CreateObject();
     cJSON* ms_graph_info = cJSON_CreateObject();
-    cJSON* ms_graph_auth = cJSON_CreateObject();
 
     if (ms_graph->enabled) {
         cJSON_AddStringToObject(ms_graph_info, "enabled", "yes");
@@ -631,9 +630,11 @@ cJSON* wm_ms_graph_dump(const wm_ms_graph* ms_graph) {
 
     int e;
     wm_ms_graph_auth *it;
+    cJSON* auth_array = cJSON_CreateArray();
 
     for (e = 0; ms_graph->auth_config[e]; e++) {
         it = ms_graph->auth_config[e];
+        cJSON* ms_graph_auth = cJSON_CreateObject();
 
         if (it->client_id) {
             cJSON_AddStringToObject(ms_graph_auth, "client_id", it->client_id);
@@ -652,32 +653,33 @@ cJSON* wm_ms_graph_dump(const wm_ms_graph* ms_graph) {
         } else if (!strcmp(it->query_fqdn, WM_MS_GRAPH_DOD_API_QUERY_FQDN)) {
             cJSON_AddStringToObject(ms_graph_auth, "api_type", "dod");
         }
+        cJSON_AddItemToArray(auth_array, ms_graph_auth);
     }
-    cJSON_AddItemToObject(ms_graph_info, "api_auth", ms_graph_auth);
+    cJSON_AddItemToObject(ms_graph_info, "api_auth", auth_array);
 
     if (ms_graph->resources) {
         cJSON* resource_array = cJSON_CreateArray();
         for (unsigned int resource_num = 0; resource_num < ms_graph->num_resources; resource_num++) {
-            cJSON* resource = cJSON_CreateObject();
-            if (ms_graph->resources[resource_num].name) {
-                cJSON_AddStringToObject(ms_graph_auth, "name", ms_graph->resources[resource_num].name);
-            } else {
-                cJSON_free(resource);
+            if (!ms_graph->resources[resource_num].name) {
                 continue;
             }
+            cJSON* resource = cJSON_CreateObject();
+            cJSON_AddStringToObject(resource, "name", ms_graph->resources[resource_num].name);
             if (ms_graph->resources[resource_num].relationships) {
+                cJSON* relationship_array = cJSON_CreateArray();
                 for (unsigned int relationship_num = 0; relationship_num < ms_graph->resources[resource_num].num_relationships; relationship_num++) {
                     if (ms_graph->resources[resource_num].relationships[relationship_num]) {
-                        cJSON_AddStringToObject(resource, "relationship", ms_graph->resources[resource_num].relationships[relationship_num]);
+                        cJSON_AddItemToArray(relationship_array, cJSON_CreateString(ms_graph->resources[resource_num].relationships[relationship_num]));
                     }
                 }
+                cJSON_AddItemToObject(resource, "relationships", relationship_array);
             }
             cJSON_AddItemToArray(resource_array, resource);
         }
         if (cJSON_GetArraySize(resource_array) > 0) {
             cJSON_AddItemToObject(ms_graph_info, "resources", resource_array);
         } else {
-            cJSON_free(resource_array);
+            cJSON_Delete(resource_array);
         }
     }
     cJSON_AddItemToObject(root, "ms_graph", ms_graph_info);

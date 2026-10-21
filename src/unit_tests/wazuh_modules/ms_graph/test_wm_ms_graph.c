@@ -1506,7 +1506,7 @@ void test_dump(void **state) {
     cJSON* dump = wm_ms_graph_dump(module_data);
     char* dump_text = cJSON_PrintUnformatted(dump);
 
-    assert_string_equal(dump_text, "{\"ms_graph\":{\"enabled\":\"yes\",\"only_future_events\":\"no\",\"curl_max_size\":1024,\"page_size\":100,\"time_delay\":10,\"run_on_start\":\"yes\",\"version\":\"v1.0\",\"wday\":\"sunday\",\"api_auth\":{\"client_id\":\"example_string\",\"tenant_id\":\"example_string\",\"secret_value\":\"example_string\",\"api_type\":\"global\",\"name\":\"security\"},\"resources\":[{\"relationship\":\"alerts_v2\"}]}}");
+    assert_string_equal(dump_text, "{\"ms_graph\":{\"enabled\":\"yes\",\"only_future_events\":\"no\",\"curl_max_size\":1024,\"page_size\":100,\"time_delay\":10,\"run_on_start\":\"yes\",\"version\":\"v1.0\",\"wday\":\"sunday\",\"api_auth\":[{\"client_id\":\"example_string\",\"tenant_id\":\"example_string\",\"secret_value\":\"example_string\",\"api_type\":\"global\"}],\"resources\":[{\"name\":\"security\",\"relationships\":[\"alerts_v2\"]}]}}");
 
     cJSON_Delete(dump);
     os_free(dump_text);
@@ -1552,7 +1552,7 @@ void test_dump_gcc_configuration(void **state) {
     cJSON* dump = wm_ms_graph_dump(module_data);
     char* dump_text = cJSON_PrintUnformatted(dump);
 
-    assert_string_equal(dump_text, "{\"ms_graph\":{\"enabled\":\"no\",\"only_future_events\":\"yes\",\"curl_max_size\":1024,\"page_size\":100,\"time_delay\":10,\"run_on_start\":\"no\",\"version\":\"v1.0\",\"wday\":\"sunday\",\"api_auth\":{\"client_id\":\"example_string\",\"tenant_id\":\"example_string\",\"secret_value\":\"example_string\",\"api_type\":\"gcc-high\"}}}");
+    assert_string_equal(dump_text, "{\"ms_graph\":{\"enabled\":\"no\",\"only_future_events\":\"yes\",\"curl_max_size\":1024,\"page_size\":100,\"time_delay\":10,\"run_on_start\":\"no\",\"version\":\"v1.0\",\"wday\":\"sunday\",\"api_auth\":[{\"client_id\":\"example_string\",\"tenant_id\":\"example_string\",\"secret_value\":\"example_string\",\"api_type\":\"gcc-high\"}]}}");
 
     cJSON_Delete(dump);
     os_free(dump_text);
@@ -1598,7 +1598,74 @@ void test_dump_dod_configuration(void **state) {
     cJSON* dump = wm_ms_graph_dump(module_data);
     char* dump_text = cJSON_PrintUnformatted(dump);
 
-    assert_string_equal(dump_text, "{\"ms_graph\":{\"enabled\":\"no\",\"only_future_events\":\"yes\",\"curl_max_size\":1024,\"page_size\":100,\"time_delay\":10,\"run_on_start\":\"no\",\"version\":\"v1.0\",\"wday\":\"sunday\",\"api_auth\":{\"client_id\":\"example_string\",\"tenant_id\":\"example_string\",\"secret_value\":\"example_string\",\"api_type\":\"dod\"}}}");
+    assert_string_equal(dump_text, "{\"ms_graph\":{\"enabled\":\"no\",\"only_future_events\":\"yes\",\"curl_max_size\":1024,\"page_size\":100,\"time_delay\":10,\"run_on_start\":\"no\",\"version\":\"v1.0\",\"wday\":\"sunday\",\"api_auth\":[{\"client_id\":\"example_string\",\"tenant_id\":\"example_string\",\"secret_value\":\"example_string\",\"api_type\":\"dod\"}]}}");
+
+    cJSON_Delete(dump);
+    os_free(dump_text);
+}
+
+void test_dump_multiple_auths_and_resources(void **state) {
+    /*
+    <enabled>yes</enabled>
+    <only_future_events>no</only_future_events>
+    <run_on_start>yes</run_on_start>
+    <version>v1.0</version>
+    <api_auth>
+      <client_id>client_1</client_id>
+      <tenant_id>tenant_1</tenant_id>
+      <secret_value>secret_1</secret_value>
+      <api_type>global</api_type>
+    </api_auth>
+    <api_auth>
+      <client_id>client_2</client_id>
+      <tenant_id>tenant_2</tenant_id>
+      <secret_value>secret_2</secret_value>
+      <api_type>gcc-high</api_type>
+    </api_auth>
+    <resource>
+      <name>security</name>
+      <relationship>alerts_v2</relationship>
+      <relationship>incidents</relationship>
+    </resource>
+    <resource>
+      <name>deviceManagement</name>
+      <relationship>auditEvents</relationship>
+    </resource>
+    */
+    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    os_calloc(3, sizeof(wm_ms_graph_auth*), module_data->auth_config);
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[1]);
+    module_data->enabled = true;
+    module_data->only_future_events = false;
+    module_data->run_on_start = true;
+    os_strdup("v1.0", module_data->version);
+    os_strdup("client_1", module_data->auth_config[0]->client_id);
+    os_strdup("tenant_1", module_data->auth_config[0]->tenant_id);
+    os_strdup("secret_1", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
+    os_strdup("client_2", module_data->auth_config[1]->client_id);
+    os_strdup("tenant_2", module_data->auth_config[1]->tenant_id);
+    os_strdup("secret_2", module_data->auth_config[1]->secret_value);
+    os_strdup(WM_MS_GRAPH_GCC_HIGH_API_LOGIN_FQDN, module_data->auth_config[1]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GCC_HIGH_API_QUERY_FQDN, module_data->auth_config[1]->query_fqdn);
+    os_malloc(2 * sizeof(wm_ms_graph_resource), module_data->resources);
+    module_data->num_resources = 2;
+    os_strdup("security", module_data->resources[0].name);
+    os_malloc(2 * sizeof(char*), module_data->resources[0].relationships);
+    os_strdup("alerts_v2", module_data->resources[0].relationships[0]);
+    os_strdup("incidents", module_data->resources[0].relationships[1]);
+    module_data->resources[0].num_relationships = 2;
+    os_strdup("deviceManagement", module_data->resources[1].name);
+    os_malloc(sizeof(char*), module_data->resources[1].relationships);
+    os_strdup("auditEvents", module_data->resources[1].relationships[0]);
+    module_data->resources[1].num_relationships = 1;
+
+    cJSON* dump = wm_ms_graph_dump(module_data);
+    char* dump_text = cJSON_PrintUnformatted(dump);
+
+    assert_string_equal(dump_text, "{\"ms_graph\":{\"enabled\":\"yes\",\"only_future_events\":\"no\",\"run_on_start\":\"yes\",\"version\":\"v1.0\",\"wday\":\"sunday\",\"api_auth\":[{\"client_id\":\"client_1\",\"tenant_id\":\"tenant_1\",\"secret_value\":\"secret_1\",\"api_type\":\"global\"},{\"client_id\":\"client_2\",\"tenant_id\":\"tenant_2\",\"secret_value\":\"secret_2\",\"api_type\":\"gcc-high\"}],\"resources\":[{\"name\":\"security\",\"relationships\":[\"alerts_v2\",\"incidents\"]},{\"name\":\"deviceManagement\",\"relationships\":[\"auditEvents\"]}]}}");
 
     cJSON_Delete(dump);
     os_free(dump_text);
@@ -4562,6 +4629,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_dump, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_dump_gcc_configuration, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_dump_dod_configuration, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_dump_multiple_auths_and_resources, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_get_access_token_no_response, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_get_access_token_unsuccessful_status_code, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_get_access_token_curl_max_size, setup_conf, teardown_conf),
