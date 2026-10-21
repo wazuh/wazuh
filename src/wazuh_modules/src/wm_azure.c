@@ -13,6 +13,7 @@
 #include "wmodules.h"
 #include "wm_azure.h"
 #include "expression.h"
+#include "module_report.h"
 
 #ifdef WAZUH_UNIT_TESTING
 // Remove static qualifier when unit testing
@@ -556,7 +557,7 @@ cJSON *wm_azure_dump(const wm_azure_t * azure) {
             if (api_config->type == LOG_ANALYTICS) cJSON_AddStringToObject(api, "type", "log_analytics"); else cJSON_AddStringToObject(api, "type", "graph");
             cJSON_AddStringToObject(api, "tenantdomain", api_config->tenantdomain);
             if (api_config->application_id) cJSON_AddStringToObject(api, "application_id", api_config->application_id);
-            if (api_config->application_key) cJSON_AddStringToObject(api, "application_key", api_config->application_key);
+            module_report_add_masked_secret(api, "application_key", api_config->application_key);
             if (api_config->auth_path) cJSON_AddStringToObject(api, "auth_path", api_config->auth_path);
             if (api_config->request) {
                 cJSON *requests = cJSON_CreateArray();
@@ -577,7 +578,7 @@ cJSON *wm_azure_dump(const wm_azure_t * azure) {
             cJSON *storage = cJSON_CreateObject();
             cJSON_AddStringToObject(storage, "tag", storage_conf->tag);
             if (storage_conf->account_name) cJSON_AddStringToObject(storage, "account_name", storage_conf->account_name);
-            if (storage_conf->account_key) cJSON_AddStringToObject(storage, "account_key", storage_conf->account_key);
+            module_report_add_masked_secret(storage, "account_key", storage_conf->account_key);
             if (storage_conf->auth_path) cJSON_AddStringToObject(storage, "auth_path", storage_conf->auth_path);
             if (storage_conf->container) {
                 cJSON *containers = cJSON_CreateArray();

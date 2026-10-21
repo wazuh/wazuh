@@ -43,6 +43,7 @@ void wm_setup_logging_capture();
 void wm_integrations_parse_output(char * const output, bool failed);
 bool wm_azure_graphs(wm_azure_api_t *graph);
 bool wm_azure_storage(wm_azure_storage_t *storage);
+cJSON *wm_azure_dump(const wm_azure_t *azure);
 
 static void wmodule_cleanup(wmodule *module){
     wm_azure_t* module_data = (wm_azure_t *)module->data;
@@ -588,6 +589,57 @@ void test_storage_success_is_logged_as_finished(void **state) {
     assert_true(wm_azure_storage(module_data->storage));
 }
 
+/* The dump only reads the configuration, so it is built on the stack. That
+ * also keeps wm_azure_destroy() and its azure_script_log_regex out of these
+ * tests. The parser no longer accepts inline keys, but the struct still has
+ * them, and the dump must not print them. scan_wday -1 is what
+ * sched_scan_init leaves. */
+static char *azure_dump_text(const wm_azure_t *azure) {
+    cJSON *root = wm_azure_dump(azure);
+    char *text = cJSON_PrintUnformatted(root);
+
+    cJSON_Delete(root);
+    return text;
+}
+
+void test_azure_dump_masks_application_and_account_keys(void **state) {
+    wm_azure_api_t api = {
+        .type = LOG_ANALYTICS,
+        .application_id = "fake-application-id",
+        .application_key = "fakeAzureApplicationKey01",
+        .tenantdomain = "wazuh.onmicrosoft.com",
+    };
+    wm_azure_storage_t storage = {
+        .account_name = "wazuhstorage",
+        .account_key = "fakeAzureAccountKey0001",
+        .tag = "azure-storage",
+    };
+    wm_azure_t azure = { .flags.enabled = 1, .api_config = &api, .storage = &storage, .scan_config.scan_wday = -1 };
+
+    char *text = azure_dump_text(&azure);
+
+    assert_string_equal(text, "{\"azure-logs\":{\"disabled\":\"no\",\"run_on_start\":\"no\",\"timeout\":0,\"content\":["
+                              "{\"type\":\"log_analytics\",\"tenantdomain\":\"wazuh.onmicrosoft.com\","
+                              "\"application_id\":\"fake-application-id\",\"application_key\":\"*****\"},"
+                              "{\"tag\":\"azure-storage\",\"account_name\":\"wazuhstorage\",\"account_key\":\"*****\"}]}}");
+    cJSON_free(text);
+}
+
+void test_azure_dump_never_prints_a_key(void **state) {
+    wm_azure_api_t graph = { .type = GRAPHS, .application_key = "fakeAzureGraphKey0001", .tenantdomain = "wazuh.onmicrosoft.com" };
+    wm_azure_api_t analytics = { .type = LOG_ANALYTICS, .application_key = "fakeAzureAnalyticsKey01",
+                                 .tenantdomain = "wazuh.onmicrosoft.com", .next = &graph };
+    wm_azure_storage_t storage = { .account_key = "fakeAzureAccountKey0002", .tag = "azure-storage" };
+    wm_azure_t azure = { .api_config = &analytics, .storage = &storage, .scan_config.scan_wday = -1 };
+
+    char *text = azure_dump_text(&azure);
+
+    assert_null(strstr(text, "fakeAzureGraphKey0001"));
+    assert_null(strstr(text, "fakeAzureAnalyticsKey01"));
+    assert_null(strstr(text, "fakeAzureAccountKey0002"));
+    cJSON_free(text);
+}
+
 int main(void) {
     const struct CMUnitTest tests_with_startup[] = {
         cmocka_unit_test_setup_teardown(test_interval_execution, setup_test_executions, teardown_test_executions),
@@ -613,9 +665,14 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_read_scheduling_daytime_configuration, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_scheduling_interval_configuration, setup_test_read, teardown_test_read)
     };
+    const struct CMUnitTest tests_dump[] = {
+        cmocka_unit_test(test_azure_dump_masks_application_and_account_keys),
+        cmocka_unit_test(test_azure_dump_never_prints_a_key)
+    };
     int result;
     result = cmocka_run_group_tests(tests_with_startup, setup_module, teardown_module);
     result += cmocka_run_group_tests(tests_runners, setup_runners, teardown_runners);
     result += cmocka_run_group_tests(tests_without_startup, NULL, NULL);
+    result += cmocka_run_group_tests(tests_dump, NULL, NULL);
     return result;
 }
