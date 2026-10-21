@@ -13,6 +13,7 @@
 
 #include "wmodules.h"
 #include "wm_ms_graph.h"
+#include "module_report.h"
 
 #ifdef WIN32
 #ifdef WAZUH_UNIT_TESTING
@@ -643,9 +644,7 @@ cJSON* wm_ms_graph_dump(const wm_ms_graph* ms_graph) {
         if (it->tenant_id) {
             cJSON_AddStringToObject(ms_graph_auth, "tenant_id", it->tenant_id);
         }
-        if (it->secret_value) {
-            cJSON_AddStringToObject(ms_graph_auth, "secret_value", it->secret_value);
-        }
+        module_report_add_masked_secret(ms_graph_auth, "secret_value", it->secret_value);
         // The FQDN used for querying the API is unique across types, so we can ignore the login FQDN
         if (!strcmp(it->query_fqdn, WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN)) {
             cJSON_AddStringToObject(ms_graph_auth, "api_type", "global");

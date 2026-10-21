@@ -1506,7 +1506,7 @@ void test_dump(void **state) {
     cJSON* dump = wm_ms_graph_dump(module_data);
     char* dump_text = cJSON_PrintUnformatted(dump);
 
-    assert_string_equal(dump_text, "{\"ms_graph\":{\"enabled\":\"yes\",\"only_future_events\":\"no\",\"curl_max_size\":1024,\"page_size\":100,\"time_delay\":10,\"run_on_start\":\"yes\",\"version\":\"v1.0\",\"wday\":\"sunday\",\"api_auth\":{\"client_id\":\"example_string\",\"tenant_id\":\"example_string\",\"secret_value\":\"example_string\",\"api_type\":\"global\",\"name\":\"security\"},\"resources\":[{\"relationship\":\"alerts_v2\"}]}}");
+    assert_string_equal(dump_text, "{\"ms_graph\":{\"enabled\":\"yes\",\"only_future_events\":\"no\",\"curl_max_size\":1024,\"page_size\":100,\"time_delay\":10,\"run_on_start\":\"yes\",\"version\":\"v1.0\",\"wday\":\"sunday\",\"api_auth\":{\"client_id\":\"example_string\",\"tenant_id\":\"example_string\",\"secret_value\":\"*****\",\"api_type\":\"global\",\"name\":\"security\"},\"resources\":[{\"relationship\":\"alerts_v2\"}]}}");
 
     cJSON_Delete(dump);
     os_free(dump_text);
@@ -1552,7 +1552,7 @@ void test_dump_gcc_configuration(void **state) {
     cJSON* dump = wm_ms_graph_dump(module_data);
     char* dump_text = cJSON_PrintUnformatted(dump);
 
-    assert_string_equal(dump_text, "{\"ms_graph\":{\"enabled\":\"no\",\"only_future_events\":\"yes\",\"curl_max_size\":1024,\"page_size\":100,\"time_delay\":10,\"run_on_start\":\"no\",\"version\":\"v1.0\",\"wday\":\"sunday\",\"api_auth\":{\"client_id\":\"example_string\",\"tenant_id\":\"example_string\",\"secret_value\":\"example_string\",\"api_type\":\"gcc-high\"}}}");
+    assert_string_equal(dump_text, "{\"ms_graph\":{\"enabled\":\"no\",\"only_future_events\":\"yes\",\"curl_max_size\":1024,\"page_size\":100,\"time_delay\":10,\"run_on_start\":\"no\",\"version\":\"v1.0\",\"wday\":\"sunday\",\"api_auth\":{\"client_id\":\"example_string\",\"tenant_id\":\"example_string\",\"secret_value\":\"*****\",\"api_type\":\"gcc-high\"}}}");
 
     cJSON_Delete(dump);
     os_free(dump_text);
@@ -1598,7 +1598,35 @@ void test_dump_dod_configuration(void **state) {
     cJSON* dump = wm_ms_graph_dump(module_data);
     char* dump_text = cJSON_PrintUnformatted(dump);
 
-    assert_string_equal(dump_text, "{\"ms_graph\":{\"enabled\":\"no\",\"only_future_events\":\"yes\",\"curl_max_size\":1024,\"page_size\":100,\"time_delay\":10,\"run_on_start\":\"no\",\"version\":\"v1.0\",\"wday\":\"sunday\",\"api_auth\":{\"client_id\":\"example_string\",\"tenant_id\":\"example_string\",\"secret_value\":\"example_string\",\"api_type\":\"dod\"}}}");
+    assert_string_equal(dump_text, "{\"ms_graph\":{\"enabled\":\"no\",\"only_future_events\":\"yes\",\"curl_max_size\":1024,\"page_size\":100,\"time_delay\":10,\"run_on_start\":\"no\",\"version\":\"v1.0\",\"wday\":\"sunday\",\"api_auth\":{\"client_id\":\"example_string\",\"tenant_id\":\"example_string\",\"secret_value\":\"*****\",\"api_type\":\"dod\"}}}");
+
+    cJSON_Delete(dump);
+    os_free(dump_text);
+}
+
+static wm_ms_graph_auth* new_global_tenant(const char* client_id, const char* secret_value) {
+    wm_ms_graph_auth* auth = NULL;
+    os_calloc(1, sizeof(wm_ms_graph_auth), auth);
+    os_strdup(client_id, auth->client_id);
+    os_strdup(client_id, auth->tenant_id);
+    os_strdup(secret_value, auth->secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, auth->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, auth->query_fqdn);
+    return auth;
+}
+
+void test_dump_never_prints_a_secret_value(void **state) {
+    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    // NULL-terminated, as wm_ms_graph_read() leaves it
+    os_calloc(3, sizeof(wm_ms_graph_auth*), module_data->auth_config);
+    module_data->auth_config[0] = new_global_tenant("client_a", "fakeGraphSecretForTenantA");
+    module_data->auth_config[1] = new_global_tenant("client_b", "fakeGraphSecretForTenantB");
+
+    cJSON* dump = wm_ms_graph_dump(module_data);
+    char* dump_text = cJSON_PrintUnformatted(dump);
+
+    assert_null(strstr(dump_text, "fakeGraphSecretForTenantA"));
+    assert_null(strstr(dump_text, "fakeGraphSecretForTenantB"));
 
     cJSON_Delete(dump);
     os_free(dump_text);
@@ -4562,6 +4590,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_dump, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_dump_gcc_configuration, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_dump_dod_configuration, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_dump_never_prints_a_secret_value, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_get_access_token_no_response, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_get_access_token_unsuccessful_status_code, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_get_access_token_curl_max_size, setup_conf, teardown_conf),
