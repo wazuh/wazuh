@@ -139,8 +139,11 @@ jobs:
           test: "true"
           asan: "true"
 
+      # The *Long load cases (~90 s of wall clock each run) only measure rates: the normal job runs them, ASAN adds nothing.
       - name: Indexer client - Run component tests
         uses: ./.github/actions/test_cpp
+        env:
+          GTEST_FILTER: "-*Long"
         with:
           target: "indexer_client_component_test"
           valgrind: "false"

@@ -14,9 +14,10 @@
 #define _INDEXER_CLIENT_WRITE_SINK_HPP
 
 // Where the scheduler hands batches (stage E3a, plan 18 I63). E3b replaces the production sink with the bulk sender;
-// E5's limiter becomes its capacity.
+// E5a's limiter (sender.hpp, I98) is its capacity and its batchLimit.
 
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 
 #include "write/bucket.hpp"
@@ -33,6 +34,12 @@ namespace indexer_client::detail::write
         /// Batches the sink accepts now (loop 0 reads it before each dispatch). 0 stops the scheduler until the sink
         /// calls WritePath::sinkReady().
         virtual std::size_t capacity() = 0;
+        /// Wire bytes the next batch should not exceed (loop 0, read before each slice; I98); 0 = no limit. Never
+        /// applied to the first op of a batch.
+        virtual std::uint64_t batchLimit()
+        {
+            return 0;
+        }
         /// Takes the batch (loop 0). Every op is resolved exactly once through WritePath::resolve, from any thread.
         virtual void dispatch(Batch batch) = 0;
         /// After stop() no batch is accepted; batches the sink still holds are resolved Dropped(Shutdown) by the

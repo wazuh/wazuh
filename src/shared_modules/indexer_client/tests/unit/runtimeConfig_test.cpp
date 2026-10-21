@@ -35,7 +35,7 @@ namespace
     constexpr const char* MODULESD = "wazuh_modules.indexer_client_";
     constexpr const char* MINIMAL_INDEXER = R"({"hosts":["https://127.0.0.1:9200"]})";
 
-    /// The 16 keys of the schema; a drift between this list and kSchema fails EveryKeyApplied.
+    /// The 18 keys of the schema; a drift between this list and kSchema fails EveryKeyApplied.
     const std::vector<std::string> SCHEMA_KEYS {"network_threads",
                                                 "cpu_threads",
                                                 "global_quota_bytes",
@@ -51,7 +51,9 @@ namespace
                                                 "pace_relax_after",
                                                 "retry_after_max_ms",
                                                 "callback_budget_ms",
-                                                "max_open_pits"};
+                                                "max_open_pits",
+                                                "node_window_max",
+                                                "bulk_min_bytes"};
 
     /// In-memory source that records every key asked through raw().
     class RecordingSource final : public IConfigSource
@@ -152,6 +154,8 @@ TEST(RuntimeConfigTest, OutOfRangeFails)
         expectInvalid(RecordingSource {{{key(name), "0"}}}, key(name));
     }
     expectInvalid(RecordingSource {{{key("max_open_pits"), "4294967296"}}}, key("max_open_pits"));
+    expectInvalid(RecordingSource {{{key("node_window_max"), "65"}}}, key("node_window_max"));
+    expectInvalid(RecordingSource {{{key("bulk_min_bytes"), "33554433"}}}, key("bulk_min_bytes"));
 }
 
 TEST(RuntimeConfigTest, NegativeQueueBytesFails)
@@ -225,6 +229,8 @@ TEST(RuntimeConfigTest, EveryKeyApplied)
     EXPECT_EQ(c.retryAfterMax, Duration {16});
     EXPECT_EQ(c.callbackBudget, Duration {17});
     EXPECT_EQ(c.maxOpenPits, 18u);
+    EXPECT_EQ(c.nodeWindowMax, 19u);
+    EXPECT_EQ(c.bulkMinBytes, 20u);
 
     for (const auto& name : SCHEMA_KEYS)
     {
@@ -282,6 +288,11 @@ TEST(RuntimeConfigTest, DefaultsWhenUnset)
     EXPECT_EQ(c.retryAfterMax, d.retryAfterMax);
     EXPECT_EQ(c.callbackBudget, d.callbackBudget);
     EXPECT_EQ(c.maxOpenPits, d.maxOpenPits);
+    EXPECT_EQ(c.nodeWindowMax, d.nodeWindowMax);
+    EXPECT_EQ(c.bulkMinBytes, d.bulkMinBytes);
+    EXPECT_EQ(c.drrQuantumBytes, 1048576u);
+    EXPECT_EQ(c.nodeWindowMax, 4u);
+    EXPECT_EQ(c.bulkMinBytes, 65536u);
 }
 
 TEST(RuntimeConfigTest, PrefixPerProcess)

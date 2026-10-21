@@ -39,6 +39,11 @@
 #include "write/sender.hpp"
 
 using namespace write_component;
+
+namespace
+{
+    const std::uint32_t kWindow = ic::RuntimeConfig {}.nodeWindowMax; // I96: the AIMD window starts at its cap.
+} // namespace
 using bulk_component::BulkItem;
 using bulk_component::BulkScript;
 using component::eventually;
@@ -187,9 +192,10 @@ TEST_F(BulkTest, FailoverOnTransportError)
     expectInvariants(stats("b"));
 }
 
-// I68: never more than NODE_WINDOW (4) requests in flight per node. Two nodes whose `_bulk` answers are held, 12
-// one-op batches: 4 reach each node and no more during T; after the release every op ends Ok and no sample of the
-// sender ever shows more than 4 in flight on a node. Mutant: the window is ignored (capacity and the node filter).
+// I68: never more than node_window_max (4, the AIMD window starts at its cap, I96) requests in flight per node. Two
+// nodes whose `_bulk` answers are held, 12 one-op batches: 4 reach each node and no more during T; after the release
+// every op ends Ok and no sample of the sender ever shows more than 4 in flight on a node. Mutant: the window is
+// ignored (capacity and the node filter).
 TEST_F(BulkTest, WindowPerNode)
 {
     constexpr std::uint64_t OPS = 12;
@@ -203,14 +209,14 @@ TEST_F(BulkTest, WindowPerNode)
     {
         ASSERT_TRUE(writer->submit(indexOp(id(k)), results->callback(k)).accepted);
     }
-    ASSERT_TRUE(a.fake->waitHeld(wr::NODE_WINDOW, 3s));
-    ASSERT_TRUE(b.fake->waitHeld(wr::NODE_WINDOW, 3s));
-    EXPECT_FALSE(eventually([&] { return a.bulk->answered() + b.bulk->answered() > 2 * wr::NODE_WINDOW; }, 300ms))
+    ASSERT_TRUE(a.fake->waitHeld(kWindow, 3s));
+    ASSERT_TRUE(b.fake->waitHeld(kWindow, 3s));
+    EXPECT_FALSE(eventually([&] { return a.bulk->answered() + b.bulk->answered() > 2 * kWindow; }, 300ms))
         << "a fifth request reached a node";
-    EXPECT_EQ(a.bulk->answered(), wr::NODE_WINDOW);
-    EXPECT_EQ(b.bulk->answered(), wr::NODE_WINDOW);
-    EXPECT_EQ(senderNode(0).inFlight, wr::NODE_WINDOW);
-    EXPECT_EQ(senderNode(1).inFlight, wr::NODE_WINDOW);
+    EXPECT_EQ(a.bulk->answered(), kWindow);
+    EXPECT_EQ(b.bulk->answered(), kWindow);
+    EXPECT_EQ(senderNode(0).inFlight, kWindow);
+    EXPECT_EQ(senderNode(1).inFlight, kWindow);
     EXPECT_EQ(stats("b").retained, OPS);
 
     a.fake->releaseHeld();
@@ -226,7 +232,7 @@ TEST_F(BulkTest, WindowPerNode)
             return results->total() >= OPS;
         },
         3s));
-    EXPECT_LE(peak, wr::NODE_WINDOW);
+    EXPECT_LE(peak, kWindow);
     EXPECT_EQ(results->countWith(ic::Status::Ok, ic::Cause::None), OPS);
     EXPECT_EQ(a.bulk->opCount() + b.bulk->opCount(), OPS);
 }
@@ -239,7 +245,7 @@ TEST_F(BulkTest, SubmitRefusedRequeues)
     const auto a = startNode();
     ASSERT_NO_FATAL_FAILURE(startOn({a.url()}));
     auto refusals = std::make_shared<std::atomic<int>>(0);
-    auto refuseNext = std::make_shared<std::atomic<int>>(static_cast<int>(wr::NODE_WINDOW));
+    auto refuseNext = std::make_shared<std::atomic<int>>(static_cast<int>(kWindow));
     ic::testing_hooks::setRefuseSubmit(
         [refusals, refuseNext]()
         {
@@ -254,29 +260,29 @@ TEST_F(BulkTest, SubmitRefusedRequeues)
     auto c = client("c", {bucket("b", 1), bucket("one", 1, 1)});
     auto writer = c->writer("b");
     auto results = Results::create();
-    for (std::uint64_t k = 0; k < wr::NODE_WINDOW; ++k)
+    for (std::uint64_t k = 0; k < kWindow; ++k)
     {
         ASSERT_TRUE(writer->submit(indexOp(id(k)), results->callback(k)).accepted);
     }
-    ASSERT_TRUE(results->waitTotal(wr::NODE_WINDOW, 3s)) << "refusals " << refusals->load();
-    EXPECT_EQ(results->countWith(ic::Status::Ok, ic::Cause::None), wr::NODE_WINDOW);
-    EXPECT_EQ(refusals->load(), static_cast<int>(wr::NODE_WINDOW));
+    ASSERT_TRUE(results->waitTotal(kWindow, 3s)) << "refusals " << refusals->load();
+    EXPECT_EQ(results->countWith(ic::Status::Ok, ic::Cause::None), kWindow);
+    EXPECT_EQ(refusals->load(), static_cast<int>(kWindow));
     auto sender = wr::senderStats();
-    EXPECT_EQ(sender.submitRefused, wr::NODE_WINDOW);
-    EXPECT_EQ(sender.sent, wr::NODE_WINDOW) << "only the admitted submits count as sent";
-    EXPECT_GE(sender.retries, wr::NODE_WINDOW) << "each refusal costs an attempt";
-    EXPECT_EQ(a.bulk->opCount(), wr::NODE_WINDOW);
+    EXPECT_EQ(sender.submitRefused, kWindow);
+    EXPECT_EQ(sender.sent, kWindow) << "only the admitted submits count as sent";
+    EXPECT_GE(sender.retries, kWindow) << "each refusal costs an attempt";
+    EXPECT_EQ(a.bulk->opCount(), kWindow);
     ASSERT_TRUE(eventually([] { return senderNode(0).inFlight == 0; }, 3s)) << "the window was given back";
 
     refuseNext->store(1);
     ASSERT_TRUE(c->writer("one")->submit(indexOp(id(9)), results->callback(9)).accepted);
-    ASSERT_TRUE(results->waitTotal(wr::NODE_WINDOW + 1, 3s));
+    ASSERT_TRUE(results->waitTotal(kWindow + 1, 3s));
     const auto exhausted = results->result(9);
     EXPECT_EQ(exhausted->status, ic::Status::Failed) << describe(exhausted);
     EXPECT_EQ(exhausted->cause, ic::Cause::RetryExhausted);
     EXPECT_THAT(exhausted->reason, HasSubstr(ic::toString(ic::Cause::InvalidState)));
     EXPECT_THAT(exhausted->reason, HasSubstr("refused"));
-    EXPECT_EQ(wr::senderStats().submitRefused, wr::NODE_WINDOW + 1);
+    EXPECT_EQ(wr::senderStats().submitRefused, kWindow + 1);
     ASSERT_TRUE(eventually([] { return senderNode(0).inFlight == 0; }, 3s));
 }
 
@@ -296,9 +302,9 @@ TEST_F(BulkTest, CompletionFreesWindow)
     {
         ASSERT_TRUE(writer->submit(indexOp(id(k)), results->callback(k)).accepted);
     }
-    ASSERT_TRUE(a.fake->waitHeld(wr::NODE_WINDOW, 3s));
-    EXPECT_FALSE(eventually([&] { return a.bulk->answered() > wr::NODE_WINDOW; }, T)) << "sent past the window";
-    EXPECT_EQ(a.bulk->answered(), wr::NODE_WINDOW);
+    ASSERT_TRUE(a.fake->waitHeld(kWindow, 3s));
+    EXPECT_FALSE(eventually([&] { return a.bulk->answered() > kWindow; }, T)) << "sent past the window";
+    EXPECT_EQ(a.bulk->answered(), kWindow);
     EXPECT_EQ(results->total(), 0u);
 
     const auto released = std::chrono::steady_clock::now();
@@ -517,8 +523,8 @@ TEST_F(BulkTest, ShutdownRacesRequeue)
         {
             ASSERT_TRUE(writer->submit(indexOp(id(k)), results->callback(k)).accepted);
         }
-        ASSERT_TRUE(a.fake->waitHeld(wr::NODE_WINDOW, 3s));
-        ASSERT_TRUE(b.fake->waitHeld(wr::NODE_WINDOW, 3s));
+        ASSERT_TRUE(a.fake->waitHeld(kWindow, 3s));
+        ASSERT_TRUE(b.fake->waitHeld(kWindow, 3s));
 
         auto blocker = component::Blocker::create();
         component::ReleaseOnExit releaseOnExit(blocker);
@@ -528,7 +534,7 @@ TEST_F(BulkTest, ShutdownRacesRequeue)
         const auto completedBefore = transportCompleted();
         a.fake->releaseHeld();
         b.fake->releaseHeld();
-        ASSERT_TRUE(eventually([&] { return transportCompleted() >= completedBefore + 2 * wr::NODE_WINDOW; }, 3s))
+        ASSERT_TRUE(eventually([&] { return transportCompleted() >= completedBefore + 2 * kWindow; }, 3s))
             << "the eight answers reached the transport";
 
         // The sweep runs inside shutdown() (test thread); the pool stays blocked until it has resolved the 16 ops.
@@ -574,8 +580,8 @@ TEST_F(BulkTest, ShutdownRacesRequeue)
         {
             ASSERT_TRUE(writer->submit(indexOp(id(k)), results->callback(k)).accepted);
         }
-        ASSERT_TRUE(a.fake->waitHeld(wr::NODE_WINDOW, 3s));
-        ASSERT_TRUE(b.fake->waitHeld(wr::NODE_WINDOW, 3s));
+        ASSERT_TRUE(a.fake->waitHeld(kWindow, 3s));
+        ASSERT_TRUE(b.fake->waitHeld(kWindow, 3s));
         {
             Concurrently release(
                 [&]()
