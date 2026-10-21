@@ -10,6 +10,7 @@
 #include "sysInfo.hpp"
 #include "sysInfo.h"
 #include "cjsonSmartDeleter.hpp"
+#include "osinfo/sysOsParsers.h"
 
 nlohmann::json SysInfo::hardware()
 {
@@ -23,7 +24,10 @@ nlohmann::json SysInfo::packages()
 
 nlohmann::json SysInfo::os()
 {
-    return getOsInfo();
+    // Not brace-initialized: a json built from a braced json is an array holding it.
+    auto osInfo = getOsInfo();
+    setOsFull(osInfo);
+    return osInfo;
 }
 
 nlohmann::json SysInfo::processes()

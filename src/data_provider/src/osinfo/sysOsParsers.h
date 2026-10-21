@@ -12,7 +12,9 @@
 #define _SYS_OS_PARSERS_H
 
 #include <istream>
+#include <string>
 #include "json.hpp"
+#include "stringHelper.h"
 
 struct ISysOsParser
 {
@@ -134,6 +136,34 @@ class MacOsParser
         bool parseSystemProfiler(const std::string& in, nlohmann::json& output);
         bool parseUname(const std::string& in, nlohmann::json& output);
 };
+
+/**
+ * @brief Fills os_full with the OS name followed by its version, unless it is already set.
+ *
+ * Header-only, as SysInfo::os() calls it on every platform and this file's source is not built on
+ * Windows, where the provider sets os_full itself.
+ *
+ * @param output OS information with os_name and os_version.
+ */
+inline void setOsFull(nlohmann::json& output)
+{
+    if (!output.is_object() || output.contains("os_full"))
+    {
+        return;
+    }
+
+    const auto getValue = [&output](const std::string & key)
+    {
+        return output.contains(key) && output[key].is_string() ? Utils::trim(output[key].get<std::string>()) : std::string{};
+    };
+    const auto name{getValue("os_name")};
+    const auto version{getValue("os_version")};
+
+    if (!name.empty())
+    {
+        output["os_full"] = version.empty() ? name : name + " " + version;
+    }
+}
 
 class FactorySysOsParser final
 {

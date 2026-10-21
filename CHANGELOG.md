@@ -187,6 +187,7 @@
 | [#40121](https://github.com/wazuh/wazuh/issues/40121) | The Windows installer's no-token message points to **Manage** > **Enroll** in the agent GUI or to `wazuh-agent-auth.exe`. |
 | [#40121](https://github.com/wazuh/wazuh/issues/40121) | Windows installer lines in `ossec.log` use the agent's `yyyy/mm/dd hh:mm:ss` timestamp. |
 | [#40349](https://github.com/wazuh/wazuh/pull/40349) | Changed the AWS module to pass inline `access_key`/`secret_key` to its script through the environment instead of the command line. |
+| [#40531](https://github.com/wazuh/wazuh/issues/40531) | Aligned `host.os.kernel`, `host.os.display_version` and `host.os.full` in the syscollector system inventory with the inventory schema. |
 
 #### Removed
 
