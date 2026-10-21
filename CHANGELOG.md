@@ -22,6 +22,7 @@ All notable changes to this project will be documented in this file.
 - Fixed `wazuh-execd` keeping every repeated offender for the life of the process, so its memory grew with each new source that triggered an active response. ([#40540](https://github.com/wazuh/wazuh/pull/40540))
 - Fixed the `azure-logs` configuration reported by the Server API leaving out the requests and containers of each source. ([#40579](https://github.com/wazuh/wazuh/pull/40579))
 - Fixed a memory leak in `wazuh-modulesd` each time the `azure-logs` configuration was requested. ([#40579](https://github.com/wazuh/wazuh/pull/40579))
+- Fixed Vulnerability Detection reporting CentOS Stream packages as vulnerable when the fixed version differs from the installed one only by the minor of the dist tag (`el10` and `el10_2`). ([#40560](https://github.com/wazuh/wazuh/issues/40560))
 
 ### Agent
 
