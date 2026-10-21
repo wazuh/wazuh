@@ -36,6 +36,7 @@ constexpr auto AGENT_CACHE_HITS = "agent.cache.hits";
 constexpr auto AGENT_CACHE_EVICTIONS = "agent.cache.evictions";
 constexpr auto AGENT_CACHE_INSERTIONS = "agent.cache.insertions";
 constexpr auto AGENT_CACHE_UPDATES = "agent.cache.updates";
+constexpr auto AGENT_CACHE_REJECTED_IDENTITY = "agent.cache.rejected.identity";
 
 // Server metrics
 constexpr auto SERVER_BYTES_RECEIVED = "server.bytes.received";

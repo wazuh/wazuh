@@ -16,6 +16,7 @@
 #include <vector>
 
 #include <agentcache/canonicalAgentId.hpp>
+#include <agentcache/identityError.hpp>
 #include <base/json.hpp>
 #include <fastmetrics/iMetric.hpp>
 #include <fastmetrics/metric_names.hpp>
@@ -102,14 +103,15 @@ public:
      * @param trustedAgentId Canonical identity supplied by the authenticated or local producer.
      * @param headerStr Raw JSON after "H " in the NDJson batch.
      * @return Parsed header and Retrieved, Inserted or Updated outcome.
-     * @throws std::runtime_error On invalid JSON, a non-canonical ID, or an absent, ambiguous,
-     *         non-string or mismatched identity in the header. Existing entries remain unchanged.
+     * @throws IdentityError On a non-canonical ID or an absent, ambiguous, non-string or mismatched
+     *         identity in the header. Existing entries remain unchanged.
+     * @throws std::runtime_error On invalid JSON.
      */
     GetResult getOrParse(std::string_view trustedAgentId, std::string_view headerStr)
     {
         if (!isCanonicalAgentId(trustedAgentId))
         {
-            throw std::runtime_error("AgentMetadataCache: trusted agent ID must be canonical");
+            throw IdentityError("AgentMetadataCache: trusted agent ID must be canonical");
         }
         const std::string agentId(trustedAgentId);
 
@@ -129,11 +131,11 @@ public:
         std::string_view headerId;
         if (parsed->getUniqueString(headerId, AGENT_ID_PATH) != json::RetGet::Success)
         {
-            throw std::runtime_error("AgentMetadataCache: missing, repeated or non-string /wazuh/agent/id in header");
+            throw IdentityError("AgentMetadataCache: missing, repeated or non-string /wazuh/agent/id in header");
         }
         if (headerId != trustedAgentId)
         {
-            throw std::runtime_error("AgentMetadataCache: header agent ID does not match the trusted agent ID");
+            throw IdentityError("AgentMetadataCache: header agent ID does not match the trusted agent ID");
         }
 
         std::unique_lock lock(m_mutex);
@@ -161,23 +163,6 @@ public:
             m_insertionsCounter->add(1);
         }
         return {entry->header, agentExisted ? Operation::Updated : Operation::Inserted};
-    }
-
-    /**
-     * @brief Temporary compatibility path for callers that do not yet pass the trusted ID.
-     *
-     * Derives the ID from the body, parsing even on a cache hit. Remove this overload once
-     * the ingest handler passes the producer's carrier; it is not an authentication boundary.
-     */
-    GetResult getOrParse(std::string_view headerStr)
-    {
-        const auto parsed = json::Json::compact(headerStr);
-        std::string_view id;
-        if (parsed.getUniqueString(id, AGENT_ID_PATH) != json::RetGet::Success)
-        {
-            throw std::runtime_error("AgentMetadataCache: missing, repeated or non-string /wazuh/agent/id in header");
-        }
-        return getOrParse(id, headerStr);
     }
 
     /**

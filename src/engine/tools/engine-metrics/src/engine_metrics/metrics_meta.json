@@ -1,5 +1,9 @@
 {
   "_comment": "category: section in the dashboard (events, bytes, or any custom label). unit: y-axis label (count, items, percent, bytes, eps).",
+  "agent.cache.rejected.identity": {
+    "category": "events",
+    "unit": "count"
+  },
   "server.bytes.received": {
     "category": "bytes",
     "unit": "bytes"

@@ -34,7 +34,7 @@ static auto FAILURE = Expc::failure();
 enum class CaseMode
 {
     Runner,            // uses runNDJson(batch) and compares with Expc (SUCCESS/FAILURE)
-    NullHookNoThrow,   // calls parseNDJson(batch, {}) and expects no throw
+    NullHookNoThrow,   // calls parseNDJson with an explicit id and an empty hook
     HookThrowsWrapped, // calls parseNDJson with a throwing hook and checks wrapped message
     RunnerThrows       // expects runNDJson(batch) to throw
 };
@@ -245,7 +245,7 @@ static std::vector<base::Event> runNDJson(std::string_view batch)
         out.push_back(std::move(ev));
     };
 
-    parseNDJson(batch, hook, makeAgentMetadataCache());
+    parseNDJson(batch, "123", hook, makeAgentMetadataCache());
     return out;
 }
 
@@ -296,7 +296,7 @@ TEST_P(NdJsonParserTest, Parse)
         case CaseMode::NullHookNoThrow:
         {
             EventHook empty {};
-            ASSERT_NO_THROW(parseNDJson(batch, empty, makeAgentMetadataCache()));
+            ASSERT_NO_THROW(parseNDJson(batch, "123", empty, makeAgentMetadataCache()));
             break;
         }
 
@@ -309,7 +309,7 @@ TEST_P(NdJsonParserTest, Parse)
 
             try
             {
-                parseNDJson(batch, throwing, makeAgentMetadataCache());
+                parseNDJson(batch, "123", throwing, makeAgentMetadataCache());
                 FAIL() << "Expected std::runtime_error";
             }
             catch (const std::runtime_error& ex)

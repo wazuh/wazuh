@@ -138,25 +138,25 @@ TEST_F(AgentMetadataCacheTest, GetOrParse_InvalidJson_Throws)
 
 TEST_F(AgentMetadataCacheTest, GetOrParse_MissingAgentId_Throws)
 {
-    EXPECT_THROW(cache.getOrParse("001", HEADER_MISSING_ID), std::runtime_error);
+    EXPECT_THROW(cache.getOrParse("001", HEADER_MISSING_ID), IdentityError);
     EXPECT_EQ(cache.size(), 0);
 }
 
 TEST_F(AgentMetadataCacheTest, GetOrParse_NonNumericAgentId_Throws)
 {
-    EXPECT_THROW(cache.getOrParse("001", HEADER_NON_NUMERIC_ID), std::runtime_error);
+    EXPECT_THROW(cache.getOrParse("001", HEADER_NON_NUMERIC_ID), IdentityError);
     EXPECT_EQ(cache.size(), 0);
 }
 
 TEST_F(AgentMetadataCacheTest, GetOrParse_NegativeAgentId_Throws)
 {
-    EXPECT_THROW(cache.getOrParse("001", HEADER_NEGATIVE_ID), std::runtime_error);
+    EXPECT_THROW(cache.getOrParse("001", HEADER_NEGATIVE_ID), IdentityError);
     EXPECT_EQ(cache.size(), 0);
 }
 
 TEST_F(AgentMetadataCacheTest, GetOrParse_EmptyAgentId_Throws)
 {
-    EXPECT_THROW(cache.getOrParse("001", HEADER_EMPTY_ID), std::runtime_error);
+    EXPECT_THROW(cache.getOrParse("001", HEADER_EMPTY_ID), IdentityError);
     EXPECT_EQ(cache.size(), 0);
 }
 
@@ -513,7 +513,7 @@ TEST_F(AgentMetadataCacheTest, TrustedIdMismatchCannotReuseHeader)
     auto insertions = fastmetrics::manager().getOrCreateCounter(fastmetrics::names::AGENT_CACHE_INSERTIONS);
     const auto hitsBefore = hits->get();
     const auto insertionsBefore = insertions->get();
-    EXPECT_THROW(cache.getOrParse("002", HEADER_AGENT_001), std::runtime_error);
+    EXPECT_THROW(cache.getOrParse("002", HEADER_AGENT_001), IdentityError);
     EXPECT_EQ(cache.size(), 1u);
     EXPECT_EQ(hits->get(), hitsBefore);
     EXPECT_EQ(insertions->get(), insertionsBefore);
@@ -540,7 +540,7 @@ TEST_F(AgentMetadataCacheTest, TrustedIdRejectsInvalidIdentityPath)
     for (const auto& header : invalid)
     {
         SCOPED_TRACE(header);
-        EXPECT_THROW(cache.getOrParse("001", header), std::runtime_error);
+        EXPECT_THROW(cache.getOrParse("001", header), IdentityError);
         EXPECT_EQ(cache.size(), 1u);
         EXPECT_EQ(cache.getOrParse("001", HEADER_AGENT_001).first, original.first);
     }
@@ -551,7 +551,7 @@ TEST_F(AgentMetadataCacheTest, TrustedIdRejectsNoncanonicalId)
     const auto first = cache.getOrParse("001", HEADER_AGENT_001);
     for (const auto id : {"", "1", "0001", "abc", "4294967296", "10000000000"})
     {
-        EXPECT_THROW(cache.getOrParse(id, HEADER_AGENT_001), std::runtime_error) << id;
+        EXPECT_THROW(cache.getOrParse(id, HEADER_AGENT_001), IdentityError) << id;
         EXPECT_EQ(cache.size(), 1u);
     }
     EXPECT_EQ(cache.getOrParse("001", HEADER_AGENT_001).first, first.first);
@@ -567,18 +567,6 @@ TEST_F(AgentMetadataCacheTest, AcceptsOffPathMetadataWithinJsonDepthLimit)
     const auto tooDeep =
         prefix + std::string(json::Json::MAX_DEPTH, '[') + "0" + std::string(json::Json::MAX_DEPTH, ']') + "}";
     EXPECT_THROW(cache.getOrParse("001", tooDeep), std::runtime_error);
-    EXPECT_EQ(cache.size(), 1u);
-}
-
-TEST_F(AgentMetadataCacheTest, LegacyOneArgumentBridgeStillWorks)
-{
-    const auto first = cache.getOrParse(HEADER_AGENT_001);
-    EXPECT_EQ(first.second, Op::Inserted);
-    const auto hit = cache.getOrParse(HEADER_AGENT_001);
-    EXPECT_EQ(hit.second, Op::Retrieved);
-    EXPECT_EQ(hit.first, first.first);
-    EXPECT_THROW(cache.getOrParse(R"({"wazuh":{"agent":{"id":"1"}}})"), std::runtime_error);
-    EXPECT_THROW(cache.getOrParse(HEADER_MISSING_ID), std::runtime_error);
     EXPECT_EQ(cache.size(), 1u);
 }
 

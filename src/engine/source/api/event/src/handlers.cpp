@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include <api/event/handlers.hpp>
+#include <api/event/identityWarningGate.hpp>
 #include <api/event/ndJsonParser.hpp>
 #include <base/logging.hpp>
 
@@ -18,12 +19,18 @@ adapter::RouteHandler pushEvent(const std::shared_ptr<::router::IRouterAPI>& orc
     auto bytesReceivedCounter = fastmetrics::manager().getOrCreateCounter(fastmetrics::names::SERVER_BYTES_RECEIVED);
     auto eventsReceivedCounter = fastmetrics::manager().getOrCreateCounter(fastmetrics::names::SERVER_EVENTS_RECEIVED);
 
+    auto identityRejectedCounter =
+        fastmetrics::manager().getOrCreateCounter(fastmetrics::names::AGENT_CACHE_REJECTED_IDENTITY);
+    auto identityWarningGate = std::make_shared<IdentityWarningGate>();
+
     return [lambdaName = std::move(lambdaName),
             weakOrchestrator = std::move(weakOrchestrator),
             weakDump = std::weak_ptr(dumper),
             agentMetadataCache = std::move(agentMetadataCache),
             bytesReceivedCounter,
-            eventsReceivedCounter](const auto& req, auto& res)
+            eventsReceivedCounter,
+            identityRejectedCounter,
+            identityWarningGate](const auto& req, auto& res)
     {
         auto orchestratorRef = weakOrchestrator.lock();
         if (!orchestratorRef)
@@ -49,8 +56,30 @@ adapter::RouteHandler pushEvent(const std::shared_ptr<::router::IRouterAPI>& orc
         // Track bytes received (entire HTTP body size)
         bytesReceivedCounter->add(req.body.size());
 
+        const auto carrierCount = req.get_header_value_count("X-Wazuh-Agent-Id");
+        const std::string agentId = carrierCount == 1 ? req.get_header_value("X-Wazuh-Agent-Id")
+                                                      : (carrierCount == 0 ? "<missing>" : "<repeated>");
+        const auto badRequest = [&res](std::string_view message)
+        {
+            json::Json body;
+            body.setString(message, "/error");
+            body.setInt(400, "/code");
+            res.status = httplib::StatusCode::BadRequest_400;
+            res.set_content(body.str(), "application/json");
+        };
+
         try
         {
+            if (carrierCount != 1)
+            {
+                throw agentcache::IdentityError {
+                    fmt::format(protocol::PARSER_ERROR_MSG, "Expected exactly one X-Wazuh-Agent-Id header")};
+            }
+            if (!agentcache::isCanonicalAgentId(agentId))
+            {
+                throw agentcache::IdentityError {
+                    fmt::format(protocol::PARSER_ERROR_MSG, "X-Wazuh-Agent-Id must be canonical")};
+            }
             protocol::EventHook enqueueHook =
                 [orchestratorRef, eventsReceivedCounter](router::IngestEvent&& ingestEvent)
             {
@@ -58,13 +87,24 @@ adapter::RouteHandler pushEvent(const std::shared_ptr<::router::IRouterAPI>& orc
                 orchestratorRef->postEvent(std::move(ingestEvent));
             };
 
-            protocol::parseNDJson(req.body, enqueueHook, agentMetadataCache);
+            protocol::parseNDJson(req.body, agentId, enqueueHook, agentMetadataCache);
+        }
+        catch (const agentcache::IdentityError& e)
+        {
+            identityRejectedCounter->add(1);
+            if (identityWarningGate->allow(std::chrono::steady_clock::now()))
+            {
+                json::Json context;
+                context.setString(std::string_view(agentId).substr(0, 64), "/agent_id");
+                LOG_WARNING_L(lambdaName.c_str(), "[API::Event] Identity rejected {}: {}", context.str(), e.what());
+            }
+            badRequest(e.what());
+            return;
         }
         catch (const std::exception& e)
         {
             LOG_WARNING_L(lambdaName.c_str(), "[API::Event] Failed to parse request: '{}'", e.what());
-            res.status = httplib::StatusCode::BadRequest_400;
-            res.set_content(fmt::format("{{\"error\": \"{}\", \"code\": 400}}", e.what()), "application/json");
+            badRequest(e.what());
             return;
         }
 

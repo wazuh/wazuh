@@ -156,11 +156,20 @@ TEST_F(WorkerTest, RouterWorkerProcessesEventWithRawIndexer)
 {
     auto mockQueue = std::make_shared<fastqueue::mocks::MockQueue<IngestEvent>>();
 
-    auto agentJson = std::make_shared<json::Json>(R"({"agent":{"id":"001","name":"test"}})");
+    auto agentJson = std::make_shared<json::Json>(R"({"wazuh":{"agent":{"id":"001","name":"test"}}})");
     std::string eventStr = R"(1:[100] (agent) any->syslog {"message":"test"})";
 
     ON_CALL(*m_mockRawIndexer, isEnabled()).WillByDefault(Return(true));
-    EXPECT_CALL(*m_mockRawIndexer, index(A<const std::string&>())).Times(AtLeast(1));
+    EXPECT_CALL(*m_mockRawIndexer, index(A<const std::string&>()))
+        .Times(AtLeast(1))
+        .WillRepeatedly(
+            [](const std::string& payload)
+            {
+                json::Json raw {std::string_view(payload)};
+                std::string_view id;
+                EXPECT_EQ(raw.getString(id, "/wazuh/agent/id"), json::RetGet::Success);
+                EXPECT_EQ(id, "001");
+            });
 
     std::atomic<int> callCount {0};
     ON_CALL(*mockQueue, waitPop(_, _))
