@@ -201,6 +201,38 @@ extern int LINUX_KERNEL_VERSION __kconfig;
  * container's events to its parent slice, with a real and plausible number.
  * Where v1 hierarchies are mounted the question cannot arise: a task is in
  * exactly one cgroup per mounted hierarchy. */
+/* The inode number out of a kernfs node id.
+ *
+ * A kernfs id is `(u64)generation << 32 | ino`, while userspace keys containers
+ * on stat()'s st_ino -- the low half alone. Returning the raw id therefore
+ * missed on every single event on any host whose generation is non-zero.
+ *
+ * Masked UNCONDITIONALLY, because the packing is what varies and the layout is
+ * not a reliable signal for it. Measured on the three kernels this feature
+ * names:
+ *
+ *   RHEL 8.1 (4.18.0-147.57.1), Amazon Linux 2 (4.14.97)
+ *       kernfs_node.id is `union kernfs_node_id` -- the pre-5.5 layout.
+ *   CentOS Stream 8 (4.18.0-326.el8)
+ *       Red Hat backported 5.5's plain `u64 id` behind RH_KABI, so the union
+ *       still EXISTS in BTF (as rh_kabi_hidden_167) while the live field is a
+ *       u64. A `bpf_core_type_exists(union kernfs_node_id)` test reads TRUE
+ *       here and would have been answering the wrong question.
+ *
+ * And the generation is packed on that host regardless: name_to_handle_at() on
+ * /sys/fs/cgroup/memory/system.slice returns ino 35 with generation 1 in the
+ * high word, against st_ino 35. So the type says nothing about the packing,
+ * and the mask is right either way.
+ *
+ * Safe on every kernel because a kernfs ino comes from a 32-bit IDR and so
+ * never reaches the high word; when no generation is packed the high word is
+ * zero and the mask is a no-op. Arithmetic on the u64, not a reinterpretation
+ * of its bytes, so endianness does not enter into it. */
+statfunc __u64 kernfs_node_ino(__u64 raw)
+{
+    return raw & 0xFFFFFFFFULL;
+}
+
 statfunc __u64 current_container_cgroup_id(void)
 {
     __u32 key = FILTER_CFG_KEY_V1_SUBSYS;
@@ -240,7 +272,7 @@ statfunc __u64 current_container_cgroup_id(void)
     {
         return 0;
     }
-    return BPF_CORE_READ(cgrp, kn, id);
+    return kernfs_node_ino(BPF_CORE_READ(cgrp, kn, id));
 }
 
 /* Returns non-zero when this event should reach the ring buffer. Called before
