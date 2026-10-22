@@ -72,6 +72,9 @@ namespace indexer_client::detail::write
             std::uint64_t decreasesLatency {0};
             std::uint64_t increases {0};
             std::uint64_t paceRelaxed {0};
+            std::uint64_t throttled {0}; ///< E5c: request-level 429 answers.
+            std::uint64_t server5xx {0}; ///< E5c: HTTP answers with a 5xx status.
+            LatencyHistogram latency;    ///< E5c: timings.total of every HTTP answer.
         };
 
         /// One request between its submit and its completion (for the cancellation of stop() and cancelBucket()).
@@ -438,18 +441,20 @@ namespace indexer_client::detail::write
         }
 
         /// Moves `ops` back to the bucket's retry lane per `spec` and resolves what comes back exhausted or closed.
-        /// No sender lock held.
-        void requeueOps(SenderShared& shared,
-                        const std::shared_ptr<WritePath>& path,
-                        const std::shared_ptr<Bucket>& bucket,
-                        std::vector<RequeueOp> ops,
-                        const RequeueSpec& spec)
+        /// No sender lock held. Returns the ops another resolution won first (skipped) plus those handed back closed:
+        /// the late results of a completion with an HTTP answer (metrics.hpp LATE RESULTS).
+        std::uint64_t requeueOps(SenderShared& shared,
+                                 const std::shared_ptr<WritePath>& path,
+                                 const std::shared_ptr<Bucket>& bucket,
+                                 std::vector<RequeueOp> ops,
+                                 const RequeueSpec& spec)
         {
             if (!bucket || ops.empty())
             {
-                return;
+                return 0;
             }
             auto result = bucket->requeue(std::move(ops), spec, std::chrono::steady_clock::now());
+            const std::uint64_t late = result.skipped + result.closed.size();
             if (spec.countAttempt || !result.exhausted.empty())
             {
                 std::lock_guard<std::mutex> lock(shared.mutex);
@@ -490,14 +495,15 @@ namespace indexer_client::detail::write
                     }
                 }
             }
+            return late;
         }
 
-        /// The whole batch back to the lane with the same last error.
-        void requeueBatch(SenderShared& shared,
-                          const std::shared_ptr<WritePath>& path,
-                          const Batch& batch,
-                          const LastError& error,
-                          const RequeueSpec& spec)
+        /// The whole batch back to the lane with the same last error; returns requeueOps' late results.
+        std::uint64_t requeueBatch(SenderShared& shared,
+                                   const std::shared_ptr<WritePath>& path,
+                                   const Batch& batch,
+                                   const LastError& error,
+                                   const RequeueSpec& spec)
         {
             std::vector<RequeueOp> ops;
             ops.reserve(batch.ops.size());
@@ -505,7 +511,7 @@ namespace indexer_client::detail::write
             {
                 ops.push_back(RequeueOp {op, error});
             }
-            requeueOps(shared, path, batch.bucket, std::move(ops), spec);
+            return requeueOps(shared, path, batch.bucket, std::move(ops), spec);
         }
 
         RequeueSpec spec(bool countAttempt, RequeueSpec::Delay delay, RequeueSpec::Pin pin = RequeueSpec::Pin::Keep)
@@ -547,16 +553,26 @@ namespace indexer_client::detail::write
             constexpr auto clear = RequeueSpec::Pin::Clear;
             std::string reason;
             auto items = classifyItems(result.body, batch.ops.size(), &reason);
+            // E5c: the ops whose resolution another one won (a sweep) or that come back closed (metrics.hpp).
+            std::uint64_t late = 0;
+            const auto countLate = [&batch, &late]()
+            {
+                if (late != 0 && batch.bucket)
+                {
+                    batch.bucket->countLate(late);
+                }
+            };
             if (!items)
             {
-                requeueBatch(shared,
-                             path,
-                             batch,
-                             LastError {Cause::Server5xx,
-                                        static_cast<int>(result.status),
-                                        {},
-                                        truncated(std::move(reason), OpResult::MAX_REASON)},
-                             spec(true, RequeueSpec::Delay::Backoff, clear));
+                late += requeueBatch(shared,
+                                     path,
+                                     batch,
+                                     LastError {Cause::Server5xx,
+                                                static_cast<int>(result.status),
+                                                {},
+                                                truncated(std::move(reason), OpResult::MAX_REASON)},
+                                     spec(true, RequeueSpec::Delay::Backoff, clear));
+                countLate();
                 return;
             }
             std::vector<RequeueOp> retry;
@@ -589,9 +605,9 @@ namespace indexer_client::detail::write
                         ok.httpStatus = item.httpStatus;
                         ok.itemErrorType = std::move(item.itemErrorType);
                         ok.reason = std::move(item.reason);
-                        if (path)
+                        if (path && !path->resolve(op, std::move(ok)))
                         {
-                            path->resolve(op, std::move(ok));
+                            ++late;
                         }
                         break;
                     }
@@ -611,15 +627,17 @@ namespace indexer_client::detail::write
                         failed.httpStatus = item.httpStatus;
                         failed.itemErrorType = std::move(item.itemErrorType);
                         failed.reason = std::move(item.reason);
-                        if (path)
+                        if (path && !path->resolve(op, std::move(failed)))
                         {
-                            path->resolve(op, std::move(failed));
+                            ++late;
                         }
                         break;
                     }
                 }
             }
-            requeueOps(shared, path, batch.bucket, std::move(retry), spec(true, RequeueSpec::Delay::Backoff, clear));
+            late += requeueOps(
+                shared, path, batch.bucket, std::move(retry), spec(true, RequeueSpec::Delay::Backoff, clear));
+            countLate();
         }
 
         /// A completion that threw after the slot was released: what is still unresolved goes back to the lane with an
@@ -672,6 +690,11 @@ namespace indexer_client::detail::write
                     // HTTP responses only (429 included): a timeout or a cancellation would skew the latency.
                     ++slot.requests;
                     slot.totalMicros += static_cast<std::uint64_t>(latency.count());
+                    slot.latency.observe(static_cast<std::uint64_t>(latency.count()));
+                    if (result.status >= 500 && result.status < 600)
+                    {
+                        ++slot.server5xx;
+                    }
                     if (sentAt > slot.lastDecreaseAt)
                     {
                         // Only the regime after the last decrease: a request still in flight when it happened would
@@ -713,6 +736,7 @@ namespace indexer_client::detail::write
                         armNeeded = true;
                     }
                     ++shared->counters.throttled;
+                    ++slot.throttled;
                 }
                 if (http && !decreased && sentAt > slot.lastDecreaseAt)
                 {
@@ -757,6 +781,15 @@ namespace indexer_client::detail::write
                     case RequestVerdict::Split: ++shared->counters.splits; break;
                     default: break;
                 }
+            }
+            if (batch.bucket)
+            {
+                // E5c: the bucket's bulk counters and latency, under its own mutex (never under the sender's).
+                const bool http = result.cause == TransportCause::None;
+                batch.bucket->countBulk(batch.bytes,
+                                        http ? std::optional<std::uint64_t>(static_cast<std::uint64_t>(
+                                                   std::max<std::int64_t>(0, result.timings.total.count())))
+                                             : std::nullopt);
             }
 
             // I79 (sender.hpp): a completion with an HTTP response (a ResponseTooLarge included: the node answered)
@@ -825,6 +858,7 @@ namespace indexer_client::detail::write
                     case RequestVerdict::FailBatch:
                         if (path)
                         {
+                            std::uint64_t late = 0; // E5c: lost to another resolution (metrics.hpp LATE RESULTS).
                             for (const auto& op : batch.ops)
                             {
                                 OpResult failed;
@@ -832,7 +866,14 @@ namespace indexer_client::detail::write
                                 failed.cause = outcome.cause;
                                 failed.httpStatus = outcome.httpStatus;
                                 failed.reason = outcome.reason;
-                                path->resolve(op, std::move(failed));
+                                if (!path->resolve(op, std::move(failed)))
+                                {
+                                    ++late;
+                                }
+                            }
+                            if (late != 0 && batch.bucket)
+                            {
+                                batch.bucket->countLate(late);
                             }
                         }
                         break;
@@ -1388,6 +1429,9 @@ namespace indexer_client::detail::write
                     node.decreasesLatency = slot.decreasesLatency;
                     node.increases = slot.increases;
                     node.paceRelaxed = slot.paceRelaxed;
+                    node.throttled = slot.throttled;
+                    node.server5xx = slot.server5xx;
+                    node.latency = slot.latency;
                     stats.nodes.push_back(std::move(node));
                 }
                 return stats;

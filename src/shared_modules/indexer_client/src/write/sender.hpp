@@ -132,6 +132,7 @@
 #include <string>
 #include <vector>
 
+#include "indexer_client/metrics.hpp"
 #include "indexer_client/runtimeConfig.hpp"
 #include "indexer_client/types.hpp"
 #include "write/sink.hpp"
@@ -177,6 +178,10 @@ namespace indexer_client::detail::write
         std::uint64_t decreasesLatency {0};
         std::uint64_t increases {0};
         std::uint64_t paceRelaxed {0};
+        // E5c (metrics.hpp NodeMetrics).
+        std::uint64_t throttled {0}; ///< Request-level 429 answers of the node.
+        std::uint64_t server5xx {0}; ///< HTTP answers with a 5xx status.
+        LatencyHistogram latency;    ///< timings.total of every HTTP answer.
     };
 
     struct SenderStats final

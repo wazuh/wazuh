@@ -16,6 +16,7 @@
 // Umbrella header of the indexer client (indexer connector v2). See the module README.
 #include "client.hpp"
 #include "iConfigSource.hpp"
+#include "metrics.hpp"
 #include "runtime.hpp"
 #include "runtimeConfig.hpp"
 #include "types.hpp"

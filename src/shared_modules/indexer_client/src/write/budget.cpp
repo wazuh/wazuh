@@ -14,30 +14,85 @@
 
 #include <algorithm>
 
+#include "loggerHelper.h"
 #include "write/bucket.hpp"
 
 namespace indexer_client::detail::write
 {
+    namespace
+    {
+        constexpr const char* TAG = "indexer-client";
+
+        /// `percent` % of `value`, rounded down, without overflow.
+        constexpr std::uint64_t percentOf(std::uint64_t value, std::uint64_t percent) noexcept
+        {
+            return value / 100 * percent + value % 100 * percent / 100;
+        }
+    } // namespace
+
     GlobalBudget::GlobalBudget(std::uint64_t cap)
         : m_cap(cap)
+        , m_threshold80(percentOf(cap, 80))
+        , m_threshold70(percentOf(cap, 70))
     {
     }
 
     bool GlobalBudget::tryReserve(std::uint64_t bytes) noexcept
     {
+        // E5c: no line here (it runs under a bucket mutex); an edge is only claimed, emitPendingLogs() writes it.
+        const auto refuse = [this](std::uint64_t charge)
+        {
+            if (m_armedFull.load(std::memory_order_relaxed) && m_armedFull.exchange(false))
+            {
+                m_pendingFullCharge.store(charge);
+                m_pendingFull.store(true);
+            }
+            return false;
+        };
         if (bytes > m_cap)
         {
-            return false;
+            return false; // Never fits (PayloadTooLarge, checked by the bucket before): not an overflow.
         }
         auto current = m_charge.load();
         do
         {
             if (current > m_cap - bytes)
             {
-                return false;
+                return refuse(current);
             }
         } while (!m_charge.compare_exchange_weak(current, current + bytes));
+        if (current + bytes >= m_threshold80 && m_armed80.load(std::memory_order_relaxed) && m_armed80.exchange(false))
+        {
+            m_pending80Charge.store(current + bytes);
+            m_pending80.store(true);
+        }
         return true;
+    }
+
+    void GlobalBudget::emitPendingLogs() noexcept
+    {
+        try
+        {
+            if (m_pending80.load(std::memory_order_relaxed) && m_pending80.exchange(false))
+            {
+                logWarn(TAG,
+                        "Indexer client global quota reached 80%% (%llu of %llu bytes charged).",
+                        static_cast<unsigned long long>(m_pending80Charge.load()),
+                        static_cast<unsigned long long>(m_cap));
+            }
+            if (m_pendingFull.load(std::memory_order_relaxed) && m_pendingFull.exchange(false))
+            {
+                logWarn(TAG,
+                        "Indexer client global quota is full (%llu of %llu bytes charged): every bucket applies its "
+                        "overflow policy.",
+                        static_cast<unsigned long long>(m_pendingFullCharge.load()),
+                        static_cast<unsigned long long>(m_cap));
+            }
+        }
+        catch (...)
+        {
+            // A log sink must never take a producer or a runtime thread down.
+        }
     }
 
     void GlobalBudget::release(std::uint64_t bytes)
@@ -48,7 +103,13 @@ namespace indexer_client::detail::write
         }
         // seq_cst on both sides (here and in addWaiter + the CAS of a waiter's re-check): either this load sees the
         // waiter registered, or the waiter's re-check sees the released bytes.
-        m_charge.fetch_sub(bytes);
+        const auto before = m_charge.fetch_sub(bytes);
+        if (before >= m_threshold70 && before - bytes < m_threshold70)
+        {
+            // E5c: crossing 70 % downwards re-arms both edges (an edge, not a level).
+            m_armed80.store(true);
+            m_armedFull.store(true);
+        }
         if (m_waiterCount.load() != 0)
         {
             wakeWaiters();

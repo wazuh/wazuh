@@ -35,8 +35,14 @@ namespace indexer_client::detail::write
 
         /// True and charged when `bytes` fit under the cap; false and nothing charged otherwise.
         bool tryReserve(std::uint64_t bytes) noexcept;
-        /// Returns `bytes`; then wakes the blocked producers through the registry (see Waiters).
+        /// Returns `bytes`; then wakes the blocked producers through the registry (see Waiters). E5c: a charge that
+        /// crosses 70 % of the cap downwards re-arms both quota edges (runtime/logSummary.hpp).
         void release(std::uint64_t bytes);
+
+        /// E5c (runtime/logSummary.hpp QUOTA EDGES): emits the global cap's edge lines claimed by tryReserve (a CAS
+        /// that reached 80 % of the cap, a refusal) while armed. Never called under a bucket mutex: Bucket::reserve and
+        /// reserveForGroup call it after theirs is dropped, and the log summary's timer drains it too.
+        void emitPendingLogs() noexcept;
 
         std::uint64_t charge() const noexcept;
         std::uint64_t cap() const noexcept;
@@ -65,7 +71,17 @@ namespace indexer_client::detail::write
         };
 
         const std::uint64_t m_cap;
+        const std::uint64_t m_threshold80; ///< 80 % and 70 % of m_cap, rounded down (E5c edges).
+        const std::uint64_t m_threshold70;
         std::atomic<std::uint64_t> m_charge {0};
+        // E5c quota edges: armed flags claimed with exchange (one line per crossing under concurrency), the claimed
+        // lines waiting for emitPendingLogs(), and the charge each one saw.
+        std::atomic<bool> m_armed80 {true};
+        std::atomic<bool> m_armedFull {true};
+        std::atomic<bool> m_pending80 {false};
+        std::atomic<bool> m_pendingFull {false};
+        std::atomic<std::uint64_t> m_pending80Charge {0};
+        std::atomic<std::uint64_t> m_pendingFullCharge {0};
         std::atomic<std::uint64_t> m_building {0};
         /// Size of m_waiters, readable without the registry mutex: a release with no waiter takes no lock.
         std::atomic<std::size_t> m_waiterCount {0};

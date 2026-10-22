@@ -17,7 +17,7 @@ consumers of the indexer, one consumer at a time, with:
 
 The design is in `planes/18-indexer_connector_v2/03-diseno.md` §1–§4 (outside the repository).
 
-**Status: E5b — write admission, buckets and scheduling on top of the internal transport, the bulk-response classifier, the retry lane and the bulk sender with its [per-node load control](#load-control-e5a) (E5a) and the [client close and shutdown](#closing-and-shutdown-e5b) that drain up to one deadline (E5b), with the per-operation conflict policy, `ReplacePreserving`, confirmable groups, [`ordered` buckets](#ordered-buckets-e3c-2) and [`cancel(tag)`](#cancellation-e3c-2), plus the [queries](#queries-e4a) and the [managed point in time](#point-in-time-e4b): writes and reads reach the indexer.** The public headers, the
+**Status: E5c — write admission, buckets and scheduling on top of the internal transport, the bulk-response classifier, the retry lane and the bulk sender with its [per-node load control](#load-control-e5a) (E5a) and the [client close and shutdown](#closing-and-shutdown-e5b) that drain up to one deadline (E5b), the [metrics snapshot and catalog](#metrics-e5c) and the [edge-triggered, summarized logging](#logging-e5c) (E5c; E5 is complete), with the per-operation conflict policy, `ReplacePreserving`, confirmable groups, [`ordered` buckets](#ordered-buckets-e3c-2) and [`cancel(tag)`](#cancellation-e3c-2), plus the [queries](#queries-e4a) and the [managed point in time](#point-in-time-e4b): writes and reads reach the indexer.** The public headers, the
 configuration schema, the runtime lifecycle (threads, owner thread, shutdown deadline), the test
 helpers, the internal curl [Transport](#transport-internal-e2a-1-and-e2a-2) (HTTP, HTTPS, credentials), the
 [node health probe](#node-health-e2b) and the [write path](#write-path-e3a) (encoding, quota charge, overflow policies, DRR scheduler,
@@ -49,7 +49,10 @@ Headers are in `include/indexer_client/`; `indexerClient.hpp` is the umbrella.
 | | `BucketSpec` | A consumer-declared queue: name, weight, quota, retry, overflow, bulk, conflict policy, `ordered` |
 | | `Slice`, `CursorQuery`, `PitOptions`, `DbqOptions`, `QueryOptions`, `PitPage` | Query and PIT parameters and page |
 | | `HealthView` | `nodes[]` (`url`, `state`, `reason`), `clusterRed`, `localFault`, `anyAvailable()`, `anyUsable()`; returned by `Client::health()` (see [Node health](#node-health-e2b)) |
-| | `CloseReport`, `MetricsSnapshot` | Close accounting; runtime counters (only the thread layout and client count so far) |
+| | `CloseReport` | Close accounting |
+| `metrics.hpp` | `MetricsSnapshot`, `ClientMetrics`, `BucketMetrics`, `NodeMetrics`, `QueryMetrics`, `PitMetrics`, `LatencyHistogram` | Typed snapshots of `RuntimeRef::snapshot()` and `Client::metrics()` (see [Metrics](#metrics-e5c)) |
+| | `RejectCause`, `DropCause`, `FailCause`, `RetryCause`, `toString(...)` | The closed per-cause sets |
+| | `MetricKind`, `forEachMetric`, `sanitizeMetricName` | The catalog of canonical names |
 | `iConfigSource.hpp` | `IConfigSource` | The only way configuration and credentials reach the library |
 | `types.hpp` | `Credentials` | Indexer `user` and `password`; no `operator<<` |
 | `keyValueConfigSource.hpp` | `KeyValueConfigSource` | `IConfigSource` over `key=value` text plus an `<indexer>` JSON string |
@@ -199,7 +202,7 @@ standalone path in the engine's `main.cpp` injects `/max_queue_bytes` too.
 **Internal options.** Full key = prefix + name. The prefix is `analysisd.indexer_client_` for
 `ProcessId::Analysisd` and `ProcessId::Standalone`, and `wazuh_modules.indexer_client_` for
 `ProcessId::Modulesd`. The table is the `kSchema` of `src/config/runtimeConfig.cpp` (the single
-source; every minimum is 1 and bounds are inclusive):
+source; every minimum is 1 except `log_summary_interval_ms`, whose minimum is 1000; bounds are inclusive):
 
 | Name (after the prefix) | Type | Unit | Range | Default |
 |---|---|---|---|---|
@@ -221,6 +224,7 @@ source; every minimum is 1 and bounds are inclusive):
 | `max_open_pits` | unsigned integer | count | 1 – 10000 | 64 |
 | `node_window_max` | unsigned integer | count | 1 – 64 | 4 |
 | `bulk_min_bytes` | unsigned integer | bytes | 1 – 33554432 (32 MiB) | 65536 (64 KiB) |
+| `log_summary_interval_ms` | unsigned integer | ms | 1000 – 3600000 (1 h) | 60000 |
 
 A change to `kSchema` must change this table, the `RuntimeConfig` initializers (checked by the
 `DefaultsWhenUnset` test) and the tests together. In E1 these options are not yet registered in
@@ -983,7 +987,7 @@ only if it was sent after the last decrease and no decrease happened in the same
 
 **`senderStats()`.** Per node, besides the fields of the [bulk sender](#bulk-sender-e3b-2): `window` (real), `bulkTarget` (0 =
 uncapped), `nextSendAt` (only when in force), `p95` (0 below 8 samples), `decreases429`, `decreasesThrottled`, `decreasesLatency`,
-`increases` and `paceRelaxed`. They are internal: E5c publishes them as metrics.
+`increases` and `paceRelaxed`. E5c publishes them as [metrics](#metrics-e5c) (`NodeMetrics`).
 
 ## Closing and shutdown (E5b)
 
@@ -1041,7 +1045,7 @@ and `callbacksSkipped` grows. The contract for consumers: a consumer that needs 
 
 **Callback duration.** Every callback is timed; one longer than `callbackBudget` adds 1 to `callbackOverruns` and updates
 `ClientState::callbackMaxDurationMicros`. `callbackOverruns` is in the `CloseReport`; the maximum is only in `ClientState` (no
-`CloseReport` field, nothing reads it yet); E5c publishes both (histogram and log). `Dropped(QueueFull)` has no field of its own.
+`CloseReport` field, E5c publishes both ([metrics](#metrics-e5c) and the [overrun summary](#logging-e5c)). `Dropped(QueueFull)` has no field of its own.
 
 **Destructor.** `~Client` on a consumer thread is `requestClose()` plus `awaitClosed()` with the shutdown deadline (or the default).
 On a runtime thread (also move-assignment over a live `Client` there) it keeps the pre-E5b behaviour: `requestClose()` plus the
@@ -1207,7 +1211,7 @@ request is made.
 
 `detail::query::queryStats()` returns process-wide counters since the process started, never reset (they survive `shutdown()` +
 `start()`): `requests`, `failovers`, `throttles`, `unavailable`, `tooLarge` (responses the classifier refused for size) and
-`conflictRetries`. They are for the tests; E5 publishes them as metrics and decides whether they reset per runtime.
+`conflictRetries`. E5c publishes them as `indexer_client.query.*` ([metrics](#metrics-e5c)); they are process-wide and never reset.
 
 ## Point in time (E4b)
 
@@ -1406,6 +1410,184 @@ unknown, so its first state is reported. Lines emitted by `src/health/nodeSet.cp
 | INFO | `Indexer client local fault cleared.` | `localFault` disappears |
 | WARN | `Every indexer node rejects the TLS handshake with the configured CA (curl <code>): if the indexer CA was rotated, update <indexer><ssl> and restart the manager.` | Every node is Down with cause `Tls`; once per episode |
 
+## Metrics (E5c)
+
+The library publishes its counters as typed snapshots plus a **catalog** of canonical names; it registers nothing in `wazuh_metrics` or
+fastmetrics (the adapters are E7–E10). The contract is `include/indexer_client/metrics.hpp`.
+
+**Scope** (I101). Neither call blocks the hot path: they read, with no I/O, under the leaf mutexes the counters already live under.
+
+| Call | Returns | Holds |
+|---|---|---|
+| `Client::metrics()` (also `IClient::metrics()`, mocked) | `ClientMetrics` | `consumer`, the `BucketMetrics` of **that consumer's** buckets, `callbacksSkipped`, `callbackOverruns`, `callbackMaxDurationMs`. A default-constructed or moved-from `Client` returns an empty `ClientMetrics` |
+| `RuntimeRef::snapshot()` | `MetricsSnapshot` | `networkThreads`, `cpuThreads`, `clients`, `globalCharge`, `globalQuotaBytes`, `retainedBytes`, `queries` (`QueryMetrics`), `pit` (`PitMetrics`), `nodes[]` (`NodeMetrics`), `usageErrors`; **no bucket** |
+
+**Lifetimes.** Buckets and nodes belong to the runtime: they start at 0 with each `start()`. `QueryMetrics`, `PitMetrics` and `usageErrors`
+are process-wide and never reset (they survive `shutdown()` + `start()`; one runtime per process in production).
+
+**Closed sets.** Each per-cause array is indexed by its enum and `forEachMetric` emits every member, zeros included.
+
+| Set | Members |
+|---|---|
+| `RejectCause` | `queue_full`, `client_closed`, `shutdown`, `submit_timeout`, `reentrancy`, `payload_too_large`, `group_too_large`, `invalid_argument` (refusals of `submit` and of `Group::add`) |
+| `DropCause` | `queue_full` (`DropNewest` and `DropOldest` together), `client_closed`, `shutdown`, `cancelled` |
+| `FailCause` | `item_permanent`, `retry_exhausted`, `client_4xx`, `server_5xx`, `unavailable`, `invalid_state` |
+| `RetryCause` | `item_retryable`, `version_conflict`, `server_5xx`, `transport`, `other`: operations requeued with a counted attempt, counted per operation in `Bucket::requeue` from its last error |
+
+`toString(RejectCause | DropCause | FailCause | RetryCause)` gives these names.
+
+**Latency** (I103). `LatencyHistogram` has 17 per-bucket counts (`counts[i]` counts samples whose milliseconds, rounded up, are `<= LATENCY_BOUNDS_MS[i]`
+and above the previous bound; bounds 1, 2, 4 … 32768 ms; `counts[16]` is the rest), `sumMicros` and `count`. `forEachMetric` publishes it
+**cumulative**: `latency.le_1` … `latency.le_32768`, `latency.le_inf`, `latency.sum_micros`, `latency.count`. A bucket's sample is
+`HttpResult.timings.total` of a bulk response that carried an HTTP answer.
+
+**`lateResults`.** Operations of a completion **with an HTTP answer** (`Items` or `FailBatch` verdict) whose resolution lost first-wins
+(`WritePath::resolve` returned false) or came back closed from `Bucket::requeue`. `Ignore` verdicts (`Cancelled`, `Shutdown`) never count.
+
+**`responseBytesInFlight`** (D48). The sum of the body bytes of query `HttpResult`s delivered to the query engine and not yet returned to the
+consumer (classification plus DOM); `peakResponseBytesInFlight` is its process-wide maximum. There is **no global charge** for query
+responses (I84): the gauge makes the D48 question observable instead of adding a cap.
+
+**Names.** Lowercase, dotted, no labels (`.claude/docs/metrics.md`). `<consumer>` and `<bucket>` are sanitized: lowercased, every character outside
+`[a-z0-9_]` becomes `_`, and a result that is empty or only `_` becomes `_` (`VD-Scanner` / `states.v2` give `vd_scanner` / `states_v2`; `---` gives `_`;
+`sanitizeMetricName()` is public). `<i>` of a node is its position in `<indexer><hosts>`; the host is in `NodeMetrics::host`.
+`RuntimeRef::client()` refuses with `InvalidArgument`, naming the field, a consumer whose sanitized name equals another live consumer's and two
+buckets of one client whose sanitized names are equal. The set of names is therefore **fixed for the life of the runtime** (buckets from
+`RuntimeRef::client()`, nodes from `start()`) and an adapter registers its pull metrics once. All values are doubles; byte counters are cast from `uint64`.
+`forEachMetric(ClientMetrics, visitor)` and `forEachMetric(MetricsSnapshot, visitor)` call `visitor(name, MetricKind {Counter, Gauge}, value)` once per metric.
+
+### Catalog
+
+Counts per prefix: bucket 50, client 3, runtime 7, query 8, PIT 10, node 31. Source = the field of the snapshot type.
+
+**Bucket**, prefix `indexer_client.bucket.<consumer>.<bucket>.` (`BucketMetrics`):
+
+| Name | Kind | Source |
+|---|---|---|
+| `accepted` | counter | `accepted` |
+| `rejected.<cause>` (8) | counter | `rejected[RejectCause]` |
+| `dropped.<cause>` (4) | counter | `dropped[DropCause]` |
+| `ok` | counter | `ok` |
+| `failed.<cause>` (6) | counter | `failed[FailCause]` |
+| `retries.<cause>` (5) | counter | `retries[RetryCause]` |
+| `late_results` | counter | `lateResults` |
+| `retained_bytes` | gauge | `retainedBytes`: payload charged (pending + retry lane + delivered); what E10 maps to `indexer.queue.size` |
+| `charge_bytes` | gauge | `charge`: everything charged (payload, result reserves, building groups) |
+| `quota_bytes` | gauge | `quotaBytes` |
+| `bulk_requests` | counter | `bulkRequests` |
+| `bulk_bytes` | counter | `bulkBytes`: the bytes handed to the sender, per completion; a resend (retry, failover) and each half of a 413 `Split` count again |
+| `latency.le_1` … `latency.le_32768` (16), `latency.le_inf` | counter | `latency.counts`, cumulative |
+| `latency.sum_micros`, `latency.count` | counter | `latency.sumMicros`, `latency.count` |
+
+**Client**, prefix `indexer_client.client.<consumer>.` (`ClientMetrics`):
+
+| Name | Kind | Source |
+|---|---|---|
+| `callbacks_skipped` | counter | `callbacksSkipped` |
+| `callback_overruns` | counter | `callbackOverruns` |
+| `callback_max_duration_ms` | gauge | `callbackMaxDurationMs` |
+
+**Runtime**, prefix `indexer_client.runtime.` (`MetricsSnapshot`):
+
+| Name | Kind | Source |
+|---|---|---|
+| `network_threads`, `cpu_threads` | gauge | `networkThreads`, `cpuThreads` |
+| `clients` | gauge | `clients` |
+| `global_charge_bytes` | gauge | `globalCharge` |
+| `global_quota_bytes` | gauge | `globalQuotaBytes` |
+| `retained_bytes` | gauge | `retainedBytes` |
+| `usage_errors` | counter | `usageErrors` |
+
+**Queries**, prefix `indexer_client.query.` (`QueryMetrics`, process-wide):
+
+| Name | Kind | Source |
+|---|---|---|
+| `requests` | counter | `requests` (attempts sent, as `queryStats()`) |
+| `failovers`, `throttles`, `unavailable` | counter | `failovers`, `throttles`, `unavailable` |
+| `too_large` | counter | `tooLarge` |
+| `conflict_retries` | counter | `conflictRetries` |
+| `response_bytes_in_flight` | gauge | `responseBytesInFlight` |
+| `peak_response_bytes_in_flight` | gauge | `peakResponseBytesInFlight` |
+
+**PIT**, prefix `indexer_client.pit.` (`PitMetrics`, process-wide):
+
+| Name | Kind | Source |
+|---|---|---|
+| `open`, `reserved`, `deletes_pending` | gauge | `open`, `reserved`, `deletesPending` |
+| `created` | counter | `created` |
+| `deletes_confirmed`, `deletes_expired`, `delete_retries` | counter | `deletesConfirmed`, `deletesExpired`, `deleteRetries` |
+| `expired`, `stale`, `refused_full` | counter | `expired`, `stale`, `refusedFull` |
+
+**Node**, prefix `indexer_client.node.<i>.` (`NodeMetrics`):
+
+| Name | Kind | Source |
+|---|---|---|
+| `state` | gauge | `state`: 0 = Available, 1 = Throttled, 2 = Down |
+| `transitions` | counter | `transitions` |
+| `window` | gauge | `window` |
+| `bulk_target_bytes` | gauge | `bulkTarget` |
+| `pace_ms` | gauge | `paceMs` |
+| `requests`, `throttled`, `server_5xx`, `failures` | counter | `requests`, `throttled`, `server5xx`, `failures` |
+| `decreases.429`, `decreases.throttled`, `decreases.latency` | counter | `decreases429`, `decreasesThrottled`, `decreasesLatency` |
+| `latency.le_1` … `latency.le_32768` (16), `latency.le_inf`, `latency.sum_micros`, `latency.count` | counter | `latency`, as the bucket's |
+
+**Accepted deviations:**
+
+- A request-level 413 of a single operation resolves `Failed(PayloadTooLarge)` and counts in `failed.client_4xx`; a cause outside `FailCause`
+  counts in `failed.invalid_state`.
+- The operations of an abandoned group (never committed) leave no slot in `dropped[]`.
+- `lateResults` also counts operations that the requeue skips because a sweep already resolved them.
+- `bulk_requests` counts every bulk completion, whatever its outcome.
+- `failed.server_5xx` and `failed.invalid_state` are part of the closed set but no production path resolves an operation with those causes today (a 5xx is retried and ends `retry_exhausted`); only the component suite moves them, through its test sink.
+
+## Logging (E5c)
+
+RF-16 asks for a log that is useful and bounded. Every line below is decided under the mutex that owns its state and **emitted after that mutex
+is dropped** (the `NodeSet` `pending.lines` pattern), never under a bucket mutex or inside `GlobalBudget::tryReserve`. The quota-edge lines are
+written **by the submitting thread that crossed the edge**, once per crossing, when it leaves `Bucket::reserve()`/`reserveForGroup()` with no
+mutex held (the engine's submit thread included); the summary's timer drains what is still pending, e.g. what a `Block` left behind. A throwing
+log sink never takes a producer or a runtime thread down. The node-health lines are in [Logging](#logging).
+
+**Quota edges**, per bucket and for the global cap. Each edge logs once and is re-armed only when the charge crosses **70 % downwards**
+(an edge, not a level: a storm of `QueueFull` at a low charge logs a single WARN). The global flags are atomics: the thread whose
+compare-and-swap crossed the threshold claims the line with an `exchange`, so a crossing logs exactly once under concurrency.
+
+| Level | Text | When |
+|---|---|---|
+| WARN | `Indexer client bucket '<consumer>/<bucket>' reached 80% of its quota (<charge> of <quota> bytes charged).` | The bucket's charge crosses 0.8 × quota upwards |
+| WARN | `Indexer client bucket '<consumer>/<bucket>' has no room for new operations (<charge> of <quota> bytes charged): its overflow policy '<policy>' applies.` | The first admission **the bucket's own quota** refuses and resolves by overflow: a `QueueFull` refusal, `DropNewest`, a `DropOldest` eviction or a `Block` that has to wait. A refusal of the global cap logs the global line below, never this one |
+| WARN | `Indexer client global quota reached 80% (<charge> of <cap> bytes charged).` | The global charge crosses 0.8 × `global_quota_bytes` upwards |
+| WARN | `Indexer client global quota is full (<charge> of <cap> bytes charged): every bucket applies its overflow policy.` | The first admission the global cap refuses |
+
+**Periodic summary** (I102). A timer on network loop 0 fires every `log_summary_interval_ms` (1000 – 3600000, default 60000). `<n>` is the
+elapsed seconds since the previous summary, rounded up and never below 1. A bucket with no activity in the interval logs nothing; every bucket
+with activity logs its INFO line every interval (one line per minute per active bucket with the default).
+
+| Level | Text | When |
+|---|---|---|
+| WARN | `Indexer client bucket '<consumer>/<bucket>' unsuccessful operations in the last <n> s: <key>=<count>, ..., other=<count>.` | The bucket had failed or dropped operations. At most **one** line per bucket and interval, with at most `K = 8` keys `<cause>[/<itemErrorType>]` (first come; `Cause` names, e.g. `item_permanent/mapper_parsing_exception`) and `other=` with the rest. Both `Failed` and `Dropped` count in the keys; the line is not emitted when nothing failed or was dropped; a control byte of an `itemErrorType` is shown as `?` |
+| INFO | `Indexer client bucket '<consumer>/<bucket>' in the last <n> s: <a> accepted, <o> ok, <f> failed, <d> dropped.` | The bucket had activity |
+| DEBUG | `Indexer client bucket '<consumer>/<bucket>' sample reason (<key>): <reason>` | One sample per bucket and interval, the `reason` truncated to 256 bytes |
+| WARN | `Indexer client consumer '<consumer>': <k> callbacks exceeded the callback budget of <b> ms in the last <n> s (the slowest took <m> ms).` | The client's `callbackOverruns` grew in the interval (delta and interval maximum) |
+| WARN | `Indexer client gave up <k> PIT delete(s) in the last <n> s (first PIT id '<id>...'): the indexer frees them when their keep_alive lapses.` | A PIT delete expired in the interval; `<id>` is the first 16 bytes of the first id |
+
+The counting happens in `Bucket::countResolved` under the bucket mutex; the timer swaps the interval out. The timer is weak-captured (it never
+keeps the summary alive) and the body releases its client references before it emits. The runtime's stop (`stopAndJoin`) disarms the summary
+and stops the timer **before** `writePath->stop()`, and emits the **last summary synchronously after** `writePath->stop()` and the PIT drain: the
+shutdown sweep's `Dropped(Shutdown)` and the PIT deletes the drain gives up are in it. The summary body has its own mutex, so a timer run still in
+progress and the final one may overlap. Limiter changes (window, target, pace) stay at DEBUG.
+
+**What is never logged at INFO or above:** a document body, a `reason`, an id or a URL, except the 16-byte prefix of a PIT id in the PIT WARN. The summary's only free text from
+the indexer is the `itemErrorType` token, with control bytes replaced.
+
+**Deviations accepted:**
+
+- `Reentrancy` refusals do not fire the «no room» edge.
+- The «no room» line of a `Block` comes out when that `submit` returns.
+
+**Seam.** `detail::testing::flushLogSummary()` (`runtime.hpp`) runs the summary body now on loop 0 and returns when its lines are emitted. It returns
+`false`, without waiting, when no runtime runs, it stopped accepting work, or the caller is a runtime thread.
+
 ## Benchmark
 
 `bench/` (stage E2c) measures whether the v2 [transport](#transport-internal-e2a-1-and-e2a-2) is at least as fast as the v1 bulk
@@ -1601,6 +1783,14 @@ test above).
 | `writeCancel_test.cpp` | `CancelPendingAndInFlight503`, `CancelInFlightOkStaysOk`, `CancelSlicedBeforeSubmitNotSent`, `CancelOtherTagsUntouched`, `CancelCommittedGroupOps`, `CancelIgnoresBuildingGroup`, `CancelTicketWaitsInFlightOnly`, `CancelFromCallbackReentrancy`, `TagValidation`, `CancelTwiceSameTag`, `CancelAfterTagReenqueued`, `CancelWakesOrderedBucket` |
 | `bulkFairness_test.cpp` | `ItemRejectionsDoNotStarveOtherBucket` (CA-3; about 21 s, about three times that under TSAN) |
 
+**E5c suites** ([Metrics](#metrics-e5c), [Logging](#logging-e5c)).
+
+| File | Covers |
+|---|---|
+| `tests/component/metrics_test.cpp` (`metrics_test`) | The snapshot and the catalog over the real transport and the fake |
+| `tests/component/logSummary_test.cpp` (`logSummary_test`) | The quota edges and the periodic summary, through `flushLogSummary()` |
+| `tests/unit/metricsCatalog_test.cpp` (`metricsCatalog_test`) | `LatencyHistogram`, name sanitizing and the catalog |
+
 **E5b suite** (component, [Closing and shutdown](#closing-and-shutdown-e5b)).
 
 | File | Cases |
@@ -1669,13 +1859,13 @@ transport [benchmark](#benchmark) (done; the `--path client` benchmark of the wh
 [write path](#write-path-e3a) up to the sink, E3b-1 the [response classifier and retry lane](#response-classification-and-retry-lane-e3b-1),
 E3b-2 the [bulk sender](#bulk-sender-e3b-2), E3c-1 the [per-operation conflict policy](#conflict-policy-e3c-1), `ReplacePreserving` and
 [groups](#groups-e3c-1), and E3c-2 [`ordered` buckets](#ordered-buckets-e3c-2) and [`cancel(tag)`](#cancellation-e3c-2): bulk writes
-reach the indexer, E4a the [queries](#queries-e4a) (`search`, `searchAfter`, `deleteByQuery`, `updateByQuery`, `indexExists`), E4b the managed [point in time](#point-in-time-e4b), E5a the per-node [load control](#load-control-e5a) (adaptive window, bulk-size target and pacing) and E5b the [client close and shutdown](#closing-and-shutdown-e5b) (drain up to one deadline, callback boundary). Not implemented, by stage:
+reach the indexer, E4a the [queries](#queries-e4a) (`search`, `searchAfter`, `deleteByQuery`, `updateByQuery`, `indexExists`), E4b the managed [point in time](#point-in-time-e4b), E5a the per-node [load control](#load-control-e5a) (adaptive window, bulk-size target and pacing), E5b the [client close and shutdown](#closing-and-shutdown-e5b) (drain up to one deadline, callback boundary) and E5c the [metrics](#metrics-e5c) and [logging](#logging-e5c), which complete E5. Not implemented, by stage:
 
 | Area | Stage |
 |---|---|
-| One pass per completion, D44 (simdjson stage 2 in Release), public metrics (write counters, health metrics, `Retry-After` in passive signals) | E5 |
+| One pass per completion and `Retry-After` in the passive signals of the `NodeSet` (D56) | E6 |
 | Benchmark of the whole client (`--path client`) | E6 |
-| Metrics beyond the thread layout in `MetricsSnapshot` | E5 |
+| Registration of the catalog in `wazuh_metrics` / fastmetrics and the `GET /metrics` of each consumer | E7–E10 |
 | Behaviour against a real indexer (request headers without `Accept-Encoding`, D41; `Expect: 100-continue` cost), and the real Painless run of `ReplacePreserving` (D45) | E6 |
 | The consumer's sweep that closes the [ordered ambiguous window](#ordered-buckets-e3c-2) (inventory sync, delete by query) and its `ordered.ambiguous.residual` metric | E7 |
 | Migration of the four consumers off `indexer_connector` | later stages |

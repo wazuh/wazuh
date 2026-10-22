@@ -123,6 +123,9 @@ namespace indexer_client::detail::query
         std::uint64_t unavailable {0};
         std::uint64_t tooLarge {0};
         std::uint64_t conflictRetries {0};
+        /// D48 (E5c, metrics.hpp QUERIES): gauge and process-wide peak of the response bytes in the engine.
+        std::uint64_t responseBytesInFlight {0};
+        std::uint64_t peakResponseBytesInFlight {0};
     };
 
     /// The real IQuery of a client whose runtime is alive.
