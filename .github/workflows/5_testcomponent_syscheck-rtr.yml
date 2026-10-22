@@ -10,6 +10,7 @@ on:
       - "src/syscheckd/**"
       - "src/unit_tests/syscheckd/**"
       - "src/Makefile"
+      - "src/deps.lock.mk"
       - ".github/workflows/5_testcomponent_syscheck-rtr.yml"
       - ".github/actions/**"
 

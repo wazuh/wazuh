@@ -73,6 +73,7 @@ on:
       # (action.yml:35-43). A submodule bump changes only the gitlink path, which no '/**'
       # pattern matches.
       - "src/Makefile"
+      - "src/deps.lock.mk"
       - "tools/get_git_refs.sh"
       - "src/shared_modules/http-request"
       # Result-affecting actions and scripts (reinstall_cmake runs tools/devContainer/reinstall-cmake.sh).

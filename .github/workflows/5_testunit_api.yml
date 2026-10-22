@@ -20,6 +20,7 @@ on:
       - 'src/external/CMakeLists.txt'
       - 'src/Makefile'
       - 'tools/get_git_refs.sh'
+      - 'src/deps.lock.mk'
       # Tavern suite and its selection (5_testintegration_api-endpoints.yml), the dev environment,
       # framework unit tests (5_testunit_framework.yml) and manager_config's C++ suites
       - '!api/test/**'

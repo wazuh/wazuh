@@ -142,12 +142,12 @@ TEST_F(SysInfoTest, packages_cb)
 
     auto expectedValue1
     {
-        R"({"architecture":"x86_64","hostname":"TINACHO","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 95","os_distribution_release":"sp1","os_version":"6.1.7601"})"_json
+        R"({"architecture":"x86_64","hostname":"TINACHO","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 95","os_display_version":"sp1","os_version":"6.1.7601"})"_json
     };
 
     auto expectedValue2
     {
-        R"({"architecture":"x86_64","hostname":"OCTACORE","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 3.1","os_distribution_release":"sp1","os_version":"6.1.7601"})"_json
+        R"({"architecture":"x86_64","hostname":"OCTACORE","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 3.1","os_display_version":"sp1","os_version":"6.1.7601"})"_json
     };
 
     const auto packagesCallback
@@ -230,9 +230,31 @@ TEST_F(SysInfoTest, ports)
 TEST_F(SysInfoTest, os)
 {
     SysInfoWrapper info;
-    EXPECT_CALL(info, getOsInfo()).WillOnce(Return("osinfo"));
-    const auto result {info.os()};
-    EXPECT_FALSE(result.empty());
+    EXPECT_CALL(info, getOsInfo()).WillOnce(Return(nlohmann::json
+    {
+        {"os_name", "Ubuntu"},
+        {"os_platform", "ubuntu"},
+        {"os_version", "22.04.3 LTS (Jammy Jellyfish)"}
+    }));
+    const auto result = info.os();
+    // The provider's object, not wrapped in an array, with os_full added to it.
+    ASSERT_TRUE(result.is_object());
+    EXPECT_EQ("ubuntu", result.at("os_platform"));
+    EXPECT_EQ("Ubuntu 22.04.3 LTS (Jammy Jellyfish)", result.at("os_full"));
+}
+
+TEST_F(SysInfoTest, osKeepsTheProviderFull)
+{
+    SysInfoWrapper info;
+    EXPECT_CALL(info, getOsInfo()).WillOnce(Return(nlohmann::json
+    {
+        {"os_name", "Microsoft Windows 11 Pro"},
+        {"os_version", "10.0.22631.4317"},
+        {"os_full", "Microsoft Windows 11 Pro 23H2"}
+    }));
+    const auto result = info.os();
+    ASSERT_TRUE(result.is_object());
+    EXPECT_EQ("Microsoft Windows 11 Pro 23H2", result.at("os_full"));
 }
 
 TEST_F(SysInfoTest, hotfixes)

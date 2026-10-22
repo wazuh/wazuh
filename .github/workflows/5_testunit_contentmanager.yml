@@ -47,6 +47,7 @@ on:
       # tools/get_git_refs.sh at src/Makefile:708) and builds http-request (action.yml:35-43), linked
       # through indexer_connector as urlrequest. A submodule bump changes only the gitlink path.
       - "src/Makefile"
+      - "src/deps.lock.mk"
       - "tools/get_git_refs.sh"
       - "src/shared_modules/http-request"
       # Result-affecting actions both jobs execute (setup-sccache wraps the compilers).

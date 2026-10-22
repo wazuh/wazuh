@@ -618,7 +618,6 @@ void SQLiteDBEngine::initialize(const std::string&              path,
         m_sqliteConnection->execute("PRAGMA temp_store = memory;");
         m_sqliteConnection->execute("PRAGMA journal_mode = truncate;");
         m_sqliteConnection->execute("PRAGMA synchronous = OFF;");
-        m_sqliteConnection->execute("PRAGMA user_version = " + std::to_string(currentDbsyncVersion) + ";");
 
         for (const auto& query : createDBQueryList)
         {
@@ -629,6 +628,10 @@ void SQLiteDBEngine::initialize(const std::string&              path,
                 throw dbengine_error {STEP_ERROR_CREATE_STMT};
             }
         }
+
+        // Only once every table exists: a database left half created stays at version 0, so the
+        // next start creates it again instead of using it with tables missing.
+        m_sqliteConnection->execute("PRAGMA user_version = " + std::to_string(currentDbsyncVersion) + ";");
 
         m_transaction = m_sqliteFactory->createTransaction(m_sqliteConnection);
     };
@@ -648,21 +651,72 @@ void SQLiteDBEngine::initialize(const std::string&              path,
 
         else if (dbVersion < currentDbsyncVersion)
         {
-            for (size_t i = dbVersion - 1; i < upgradeStatements.size(); ++i)
+            try
             {
-                auto transaction = m_sqliteFactory->createTransaction(m_sqliteConnection);
-                const auto stmt {m_sqliteFactory->createStatement(m_sqliteConnection, upgradeStatements[i])};
-
-                if (SQLITE_DONE != stmt->step())
+                for (size_t i = dbVersion - 1; i < upgradeStatements.size(); ++i)
                 {
-                    throw dbengine_error {STEP_ERROR_UPDATE_STMT};
+                    auto transaction = m_sqliteFactory->createTransaction(m_sqliteConnection);
+                    const auto stmt {m_sqliteFactory->createStatement(m_sqliteConnection, upgradeStatements[i])};
+
+                    if (SQLITE_DONE != stmt->step())
+                    {
+                        throw dbengine_error {STEP_ERROR_UPDATE_STMT};
+                    }
+
+                    // Inside the transaction, so a restart between the upgrade and the version bump
+                    // cannot leave an upgraded schema at the old version, which would run the same
+                    // upgrade again on the next start.
+                    m_sqliteConnection->execute("PRAGMA user_version = " + std::to_string(i + 2) + ";");
+                    transaction->commit();
+                }
+            }
+            catch (const SQLite::sqlite_error& e)
+            {
+                // Only a statement SQLite rejects (SQLITE_ERROR: no such column, no such table) means
+                // the schema is not the one the upgrade expects. A busy or locked database, a full
+                // disk or an I/O error is transient: rethrow it instead of deleting a database the
+                // next start can still upgrade. Masked, in case extended result codes are enabled.
+                if (SQLITE_ERROR != (e.id() & 0xff))
+                {
+                    throw;
                 }
 
-                transaction->commit();
-                m_sqliteConnection->execute("PRAGMA user_version = " + std::to_string(i + 2) + ";");
+                // A schema the upgrade cannot handle would fail the same way on every start. The
+                // database only holds what its owner collects again, so start over instead.
+                m_sqliteConnection.reset();
+                reCreateDbLambda();
+                m_recreateReason = "Database '" + path + "' could not be upgraded from version " +
+                                   std::to_string(dbVersion) + " and was created again: " + e.what();
+            }
+            catch (const dbengine_error& e)
+            {
+                if (STEP_ERROR_UPDATE_STMT.first != e.id())
+                {
+                    throw;
+                }
+
+                m_sqliteConnection.reset();
+                reCreateDbLambda();
+                m_recreateReason = "Database '" + path + "' could not be upgraded from version " +
+                                   std::to_string(dbVersion) + " and was created again: " + e.what();
             }
 
-            m_transaction = m_sqliteFactory->createTransaction(m_sqliteConnection);
+            // Outside the try: once the upgrades are committed, a failure here is not a schema
+            // problem, so it must not delete the upgraded database.
+            if (!m_transaction)
+            {
+                m_transaction = m_sqliteFactory->createTransaction(m_sqliteConnection);
+            }
+        }
+
+        // Written by a newer version, so its schema is unknown to this one (e.g. after a downgrade).
+        else if (dbVersion > currentDbsyncVersion)
+        {
+            m_sqliteConnection.reset();
+            reCreateDbLambda();
+            m_recreateReason = "Database '" + path + "' was written by a newer version (" +
+                               std::to_string(dbVersion) + ", this one is " +
+                               std::to_string(currentDbsyncVersion) + ") and was created again.";
         }
 
         else
@@ -674,6 +728,11 @@ void SQLiteDBEngine::initialize(const std::string&              path,
     {
         reCreateDbLambda();
     }
+}
+
+std::string SQLiteDBEngine::recreateReason() const
+{
+    return m_recreateReason;
 }
 
 bool SQLiteDBEngine::cleanDB(const std::string& path)

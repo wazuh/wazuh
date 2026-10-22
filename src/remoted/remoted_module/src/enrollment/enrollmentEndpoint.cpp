@@ -13,7 +13,7 @@
 #include "common/requestOutcomeMetrics.hpp"
 
 #include "common/logThrottle.hpp"
-#include "control/controlTypes.hpp"    // isValidVersion(), compareVersions() -- shared with /control (D8)
+#include "control/controlTypes.hpp"    // isValidVersion(), isAgentVersionTooNew() -- shared with /control (D8)
 #include "endpoints/endpoint.hpp"      // remoted::endpoints::errorResponseFor() -- shared auth-rejection logging
 #include "http_server/headerUtils.hpp" // remoted::http::headerValue() -- case-insensitive lookup
 #include "json.hpp"
@@ -47,6 +47,12 @@ namespace remoted::enrollment
         }
 
         remoted::common::LogThrottle& invalidBodyThrottle()
+        {
+            static remoted::common::LogThrottle instance;
+            return instance;
+        }
+
+        remoted::common::LogThrottle& versionRejectionThrottle()
         {
             static remoted::common::LogThrottle instance;
             return instance;
@@ -594,11 +600,25 @@ namespace remoted::enrollment
             const auto& parsed = std::get<ParsedBody>(parsedOrError);
 
             // authd's local `add` path performs no version check at all, so remoted enforces
-            // allow_higher_versions itself here, reusing compareVersions() rather than duplicating it.
+            // allow_higher_versions itself here, with the same major.minor rule as /control and 1515.
             if (!config.allowHigherVersions &&
-                remoted::control::compareVersions(config.managerVersion, parsed.version) < 0)
+                remoted::control::isAgentVersionTooNew(config.managerVersion, parsed.version))
             {
                 incRejectedValidation(metrics);
+                // WARN, like /control's: the agent retries forever and this is the manager's only trace
+                if (const auto throttle = versionRejectionThrottle().record())
+                {
+                    LOGFN_WARN(logFn(),
+                               "Enrollment of agent '%s' from %s rejected for version '%s' (manager=%s, "
+                               "allow_higher=%d): %llu rejection(s) in the last %d s.",
+                               parsed.name.c_str(),
+                               request->remoteIp.empty() ? "local" : request->remoteIp.c_str(),
+                               parsed.version.c_str(),
+                               config.managerVersion.c_str(),
+                               config.allowHigherVersions,
+                               throttle.total,
+                               remoted::common::LogThrottle::kDefaultWindowSeconds);
+                }
                 responder->send(errorResponse(400, 0, "Agent version is newer than this manager allows"));
                 return;
             }

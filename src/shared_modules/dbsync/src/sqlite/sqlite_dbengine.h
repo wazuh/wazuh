@@ -157,6 +157,8 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
 
         void closeAndDeleteDatabase(const std::string& path) override;
 
+        std::string recreateReason() const override;
+
     private:
         void initialize(const std::string&              path,
                         const std::string&              tableStmtCreation,
@@ -318,6 +320,7 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
         std::shared_ptr<SQLite::IConnection> m_sqliteConnection;
         std::mutex m_stmtMutex;
         std::unique_ptr<SQLite::ITransaction> m_transaction;
+        std::string m_recreateReason;
         std::mutex m_maxRowsMutex;
         std::map<std::string, MaxRows> m_maxRows;
         std::string m_lastCleanDBError;

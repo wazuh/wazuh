@@ -84,6 +84,8 @@ namespace DbSync
 
             void closeAndDeleteDatabase(const DBSYNC_HANDLE handle, const std::string& path);
 
+            std::string recreateReason(const DBSYNC_HANDLE handle);
+
             static bool isShuttingDown()
             {
                 return s_shuttingDown.load(std::memory_order_acquire);
