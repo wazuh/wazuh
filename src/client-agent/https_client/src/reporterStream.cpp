@@ -224,6 +224,22 @@ std::optional<std::string> ReporterStream::stampedDocument(std::optional<std::st
     const auto cluster = m_cluster.get();
     document["agent_id"] = m_signer.agentId(); // The live id: a re-enroll may have swapped it.
     document["cluster"] = {{"name", cluster.name}};
+
+    // Groups and host, read fresh on every push so a group change shows up in the next
+    // report. Only the metadata source may set this key; without metadata the report
+    // still goes out, just without it. The source's own cluster is not used: the stamp
+    // above is the manager-authoritative one.
+    document.erase("agent");
+    auto metadata = nlohmann::json::parse(m_collectors.collectAgentMetadata(), nullptr, false);
+
+    if (metadata.is_object())
+    {
+        if (const auto it = metadata.find("agent"); it != metadata.end() && it->is_object())
+        {
+            document["agent"] = std::move(*it);
+        }
+    }
+
     return document.dump();
 }
 

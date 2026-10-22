@@ -1910,8 +1910,9 @@ static void bridge_on_collect_host(char *json_out, size_t cap, void *user_data)
  * on /stateful, so the two transports can never disagree on cluster identity.
  * Writes an empty string when metadata is not yet available, so the module
  * falls back to an H line carrying only agent.id. Runs on the module's
- * stateless sender thread, once per flush (not per event); a shared-memory
- * read, fast and non-blocking. */
+ * stateless sender thread, once per flush (not per event), and on its reporter
+ * thread before each /stats and /config push; a shared-memory read, fast,
+ * non-blocking and safe to run on both threads at once. */
 static void bridge_on_collect_stateless_host(char *json_out, size_t cap, void *user_data)
 {
     (void)user_data;
@@ -1925,7 +1926,7 @@ static void bridge_on_collect_stateless_host(char *json_out, size_t cap, void *u
     agent_metadata_t metadata = {0};
 
     if (metadata_provider_get(&metadata) != 0) {
-        mdebug2("https_client: host metadata not available yet; /stateless H line carries only agent.id.");
+        mdebug2("https_client: agent metadata not available yet; /stateless H line and reports carry only the agent id.");
         return;
     }
 

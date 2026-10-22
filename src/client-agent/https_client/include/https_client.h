@@ -384,9 +384,10 @@ typedef struct hc_callbacks_t
     /// functions. Return either NULL (skip this cycle) or a NUL-terminated
     /// JSON OBJECT allocated with malloc() from the module's C runtime; the
     /// module takes ownership and frees it. Before sending, the module stamps
-    /// "agent_id" and the manager-authoritative "cluster" {"name"} into
-    /// the object (overwriting same-named members). A non-object return is
-    /// logged and the cycle skipped.
+    /// "agent_id", the manager-authoritative "cluster" {"name"} and the
+    /// "agent" object of on_collect_stateless_host into the object
+    /// (overwriting same-named members; "agent" is dropped when that callback
+    /// has nothing). A non-object return is logged and the cycle skipped.
     char* (*collect_stats)(void* user_data);
     char* (*collect_config)(void* user_data);
 
@@ -415,8 +416,11 @@ typedef struct hc_callbacks_t
     /// risking the other's already-shipped contract. Write an empty string
     /// when metadata is not yet available; the H line then carries only
     /// agent.id, as it always has. Called on the stateless sender thread
-    /// before each flush (not the dispatcher), so it must be a fast,
-    /// non-blocking read. Null means the H line carries only agent.id.
+    /// before each flush and on the reporter thread before each /stats and
+    /// /config push (never the dispatcher), possibly at the same time, so it
+    /// must be a fast, non-blocking, thread-safe read. cap is large enough for
+    /// the maximum group list. Null means the H line carries only agent.id and
+    /// the reports carry no "agent" object.
     void (*on_collect_stateless_host)(char* json_out, size_t cap, void* user_data);
 
     /// /control has been unreachable at the TRANSPORT level for a threshold

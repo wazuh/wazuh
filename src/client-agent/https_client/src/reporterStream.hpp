@@ -30,7 +30,8 @@
 /**
  * @brief The periodic /stats and /config reporter (#37843). One worker thread
  *        drives two independent cadences: each due path collects a snapshot,
- *        stamps agent_id + the manager-authoritative cluster, signs and POSTs.
+ *        stamps agent_id, the manager-authoritative cluster and the agent
+ *        metadata (groups, host), signs and POSTs.
  *        Only runs while Registered and not auth-paused; the drain skips it.
  */
 class ReporterStream final
