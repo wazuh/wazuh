@@ -41,7 +41,7 @@ namespace DbSync
                                      const unsigned int     maxQueueSize,
                                      const ResultCallback   callback);
             const std::shared_ptr<IPipeline>& pipeline(const PipelineCtxHandle handle);
-            void destroy(const PipelineCtxHandle handle);
+            void destroy(const PipelineCtxHandle handle, const bool keepRows = false);
         private:
             PipelineFactory(const PipelineFactory&) = delete;
             PipelineFactory& operator=(const PipelineFactory&) = delete;

@@ -187,12 +187,12 @@ static void closeTxnAfterSyncingOneRow(int (*closeTxn)(const TXN_HANDLE), const 
 
 TEST_F(DBSyncTest, closeTxnDeletesRowsNotSynced)
 {
-    closeTxnAfterSyncingOneRow(dbsync_close_txn, {R"({"pid":7,"name":"Guake"})"});
+    ASSERT_NO_FATAL_FAILURE(closeTxnAfterSyncingOneRow(dbsync_close_txn, {R"({"pid":7,"name":"Guake"})"}));
 }
 
 TEST_F(DBSyncTest, closeTxnKeepRowsKeepsRowsNotSynced)
 {
-    closeTxnAfterSyncingOneRow(dbsync_close_txn_keep_rows, {R"({"pid":4,"name":"System"})", R"({"pid":7,"name":"Guake"})"});
+    ASSERT_NO_FATAL_FAILURE(closeTxnAfterSyncingOneRow(dbsync_close_txn_keep_rows, {R"({"pid":4,"name":"System"})", R"({"pid":7,"name":"Guake"})"}));
 }
 
 TEST_F(DBSyncTest, dbsyncAddTableRelationshipDummy)

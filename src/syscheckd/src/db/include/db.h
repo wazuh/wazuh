@@ -191,9 +191,10 @@ EXPORTED FIMDBErrorCode fim_db_transaction_deleted_rows(TXN_HANDLE txn_handler,
 /**
  * @brief Function to close a transaction without running the deleted rows operation.
  *
- * For a scan cut short by the shutdown: the rows it never reached are not missing, so they must
- * not be reported as deleted nor removed from the database, but the transaction still has to be
- * closed to release its context.
+ * For a scan cut short by the shutdown, or one of the two registry transactions when the other
+ * could not be opened: the rows it never reached are not missing, so they must not be reported as
+ * deleted nor removed from the database, but the transaction still has to be closed to release
+ * its context.
  *
  * @param txn_handler Handler to an active transaction.
  *

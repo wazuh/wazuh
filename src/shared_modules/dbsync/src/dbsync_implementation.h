@@ -65,10 +65,8 @@ namespace DbSync
                                          const nlohmann::json&  json);
 
             void closeTransaction(const DBSYNC_HANDLE handle,
-                                  const TXN_HANDLE txnHandle);
-
-            void releaseTransaction(const DBSYNC_HANDLE handle,
-                                    const TXN_HANDLE txnHandle);
+                                  const TXN_HANDLE txnHandle,
+                                  const bool deleteUnsynced = true);
 
             void getDeleted(const DBSYNC_HANDLE   handle,
                             const TXN_HANDLE      txnHandle,

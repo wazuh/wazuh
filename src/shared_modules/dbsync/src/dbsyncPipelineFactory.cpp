@@ -58,14 +58,7 @@ namespace DbSync
 
                 try
                 {
-                    if (m_keepRowsOnClose)
-                    {
-                        DBSyncImplementation::instance().releaseTransaction(m_handle, m_txnContext);
-                    }
-                    else
-                    {
-                        DBSyncImplementation::instance().closeTransaction(m_handle, m_txnContext);
-                    }
+                    DBSyncImplementation::instance().closeTransaction(m_handle, m_txnContext, !m_keepRowsOnClose);
                 }
                 catch (...)
                 {
@@ -187,7 +180,7 @@ namespace DbSync
 
         return it->second;
     }
-    void PipelineFactory::destroy(const PipelineCtxHandle handle)
+    void PipelineFactory::destroy(const PipelineCtxHandle handle, const bool keepRows)
     {
         std::lock_guard<std::mutex> lock {m_contextsMutex};
         const auto& it {m_contexts.find(handle)};
@@ -195,6 +188,11 @@ namespace DbSync
         if (it == m_contexts.end())
         {
             throw dbsync_error {INVALID_HANDLE};
+        }
+
+        if (keepRows)
+        {
+            it->second->keepRowsOnClose();
         }
 
         m_contexts.erase(it);

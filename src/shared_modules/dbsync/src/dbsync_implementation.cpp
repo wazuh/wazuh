@@ -157,23 +157,20 @@ TXN_HANDLE DBSyncImplementation::createTransaction(const DBSYNC_HANDLE      hand
 }
 
 void DBSyncImplementation::closeTransaction(const DBSYNC_HANDLE handle,
-                                            const TXN_HANDLE txn)
+                                            const TXN_HANDLE txn,
+                                            const bool deleteUnsynced)
 {
     const auto& ctx{ dbEngineContext(handle) };
     const auto& tnxCtx { ctx->transactionContext(txn) };
 
     std::lock_guard<std::shared_timed_mutex> lock{ ctx->m_syncMutex };
-    ctx->m_dbEngine->deleteRowsByStatusField(tnxCtx->m_tables);
+
+    if (deleteUnsynced)
+    {
+        ctx->m_dbEngine->deleteRowsByStatusField(tnxCtx->m_tables);
+    }
+
     ctx->deleteTransactionContext(txn);
-}
-
-void DBSyncImplementation::releaseTransaction(const DBSYNC_HANDLE handle,
-                                              const TXN_HANDLE txnHandle)
-{
-    const auto& ctx{ dbEngineContext(handle) };
-
-    std::lock_guard<std::shared_timed_mutex> lock{ ctx->m_syncMutex };
-    ctx->deleteTransactionContext(txnHandle);
 }
 
 void DBSyncImplementation::getDeleted(const DBSYNC_HANDLE   handle,
