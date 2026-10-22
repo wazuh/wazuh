@@ -12,6 +12,7 @@
 #define _SYS_OS_PARSERS_H
 
 #include <istream>
+#include <string_view>
 #include "json.hpp"
 
 struct ISysOsParser
@@ -138,7 +139,7 @@ class MacOsParser
 class FactorySysOsParser final
 {
     public:
-        static std::unique_ptr<ISysOsParser> create(const std::string& platform)
+        static std::unique_ptr<ISysOsParser> create(std::string_view platform)
         {
             if (platform == "ubuntu")
             {

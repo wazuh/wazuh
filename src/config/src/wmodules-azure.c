@@ -19,14 +19,10 @@ static const char *XML_LOG_ANALYTICS = "log_analytics";
 static const char *XML_GRAPH = "graph";
 static const char *XML_STORAGE = "storage";
 
-static const char *XML_APP_ID = "application_id";
-static const char *XML_APP_KEY = "application_key";
 static const char *XML_AUTH_PATH = "auth_path";
 static const char *XML_TENANTDOMAIN = "tenantdomain";
 static const char *XML_REQUEST = "request";
 
-static const char *XML_ACCOUNT_NAME = "account_name";
-static const char *XML_ACCOUNT_KEY = "account_key";
 static const char *XML_TAG = "tag";
 static const char *XML_CONTAINER = "container";
 static const char *XML_CONTAINER_NAME = "name";
@@ -47,8 +43,6 @@ static void wm_clean_api(wm_azure_api_t * api_config);
 static void wm_clean_request(wm_azure_request_t * request);
 static void wm_clean_storage(wm_azure_storage_t * storage);
 static void wm_clean_container(wm_azure_container_t * container);
-
-static const char *AUTHENTICATION_OPTIONS_URL = "https://documentation.wazuh.com/current/azure/activity-services/prerequisites/credentials.html";
 
 // Parse XML
 

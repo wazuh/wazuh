@@ -26,8 +26,6 @@
 
 #define IN_BUFFER_SIZE sizeof(struct inotify_event) + NAME_MAX + 1
 
-static volatile unsigned int queue_i;
-static volatile unsigned int queue_j;
 static w_queue_t * queue;                 // Queue for pending files
 static OSHash * ptable;                 // Table for pending paths
 static pthread_mutex_t mutex_queue = PTHREAD_MUTEX_INITIALIZER;

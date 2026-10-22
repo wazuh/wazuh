@@ -139,7 +139,6 @@ int main(int argc, char **argv) {
 #ifdef PLATFORM_LINUX
 
 firewall_result_t try_firewalld(const char *srcip, int action, int ip_version, const char *argv0) {
-    char log_msg[OS_MAXSTR];
     char *fw_cmd_path = NULL;
     lock_context_t lock_ctx = {
         .lock_path = LOCK_PATH,
@@ -513,7 +512,6 @@ firewall_result_t try_npf(const char *srcip, int action, int ip_version, const c
 
 firewall_result_t try_route(const char *srcip, int action, int ip_version, const char *argv0) {
     (void)ip_version;  // route works for both IPv4 and IPv6
-    char log_msg[OS_MAXSTR];
     char *route_path = NULL;
 
     // Check if route binary is available

@@ -14,8 +14,6 @@
 #include "metadata_provider.h"
 
 static AgentSyncProtocol* g_proto = nullptr;
-const unsigned int retries = 1;
-const uint8_t timeout = 2;
 
 /// Stands in for the queue-sync socket: takes the one FullSession message and
 /// answers it the way the manager would, with a 200 OK /stateful HTTP result
