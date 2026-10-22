@@ -317,6 +317,96 @@ TEST_F(StatelessStreamTest, HeaderLineIgnoresAMalformedCollectHostResult)
     EXPECT_FALSE(wazuh.at("agent").contains("host"));
 }
 
+TEST_F(StatelessStreamTest, HeaderLineDropsGroupsThatWouldExceedRemotedCap)
+{
+    // 128 groups of 255 bytes, the agent's maximum, is about 33 KiB: remoted
+    // rejects an H line over 8 KiB together with every event of the batch.
+    nlohmann::json host;
+    host["agent"]["name"] = "myagent";
+    host["agent"]["host"]["hostname"] = "h1";
+    host["agent"]["groups"] = nlohmann::json::array();
+
+    for (int i = 0; i < 128; ++i)
+    {
+        host["agent"]["groups"].push_back(std::string(252, 'g') + std::to_string(100 + i));
+    }
+
+    host["cluster"]["name"] = "c1";
+    const auto hostJson = host.dump();
+
+    StatelessStream stream {m_config,
+                            m_performer,
+                            m_signer,
+                            m_clock,
+                            m_random,
+                            m_sink,
+                            m_authGate,
+                            m_compressionGate,
+                            [&hostJson]
+    {
+        return hostJson;
+    }};
+
+    std::string sentBody;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        sentBody.assign(reinterpret_cast<const char*>(spec.body), spec.bodyLength);
+        return response(TransportStatus::Ok, 200);
+    }));
+
+    stream.submit(reinterpret_cast<const uint8_t*>("event"), 5);
+    stream.tick(m_waiter, true);
+
+    const auto headerJson = sentBody.substr(2, sentBody.find('\n') - 2);
+    EXPECT_LE(headerJson.size(), 8U * 1024U);
+    const auto wazuh = parseWazuhHeader(sentBody);
+    EXPECT_EQ("001", wazuh.at("agent").at("id").get<std::string>());
+    EXPECT_FALSE(wazuh.at("agent").contains("groups"));
+    EXPECT_EQ("h1", wazuh.at("agent").at("host").at("hostname").get<std::string>());
+    EXPECT_EQ("c1", wazuh.at("cluster").at("name").get<std::string>());
+    EXPECT_NE(std::string::npos, sentBody.find("\nE event")) << "the events still go out";
+}
+
+TEST_F(StatelessStreamTest, HeaderLineFallsBackToAgentIdWhenEvenWithoutGroupsItIsTooLarge)
+{
+    nlohmann::json host;
+    host["agent"]["groups"] = {"g1"};
+    host["agent"]["host"]["hostname"] = std::string(9000, 'h');
+    host["cluster"]["name"] = "c1";
+    const auto hostJson = host.dump();
+
+    StatelessStream stream {m_config,
+                            m_performer,
+                            m_signer,
+                            m_clock,
+                            m_random,
+                            m_sink,
+                            m_authGate,
+                            m_compressionGate,
+                            [&hostJson]
+    {
+        return hostJson;
+    }};
+
+    std::string sentBody;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        sentBody.assign(reinterpret_cast<const char*>(spec.body), spec.bodyLength);
+        return response(TransportStatus::Ok, 200);
+    }));
+
+    stream.submit(reinterpret_cast<const uint8_t*>("event"), 5);
+    stream.tick(m_waiter, true);
+
+    const auto wazuh = parseWazuhHeader(sentBody);
+    EXPECT_EQ(nlohmann::json({{"id", "001"}}), wazuh.at("agent"));
+    EXPECT_EQ("c1", wazuh.at("cluster").at("name").get<std::string>());
+}
+
 TEST_F(StatelessStreamTest, HeaderLineIsRefreshedOnEveryFlushNotCachedAtConstruction)
 {
     // Cluster identity typically arrives only after the first /control
