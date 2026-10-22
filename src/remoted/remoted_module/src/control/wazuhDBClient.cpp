@@ -169,10 +169,10 @@ namespace remoted::control
         {
             std::string command;
             std::function<void(SocketError, const std::string&)> callback;
-            // Enqueue time + the round-trip deadline. Enforced only while wdb.sock is
-            // unreachable (see backoffExpiringQueued); a connected worker times the round trip
-            // from the send instead. The deadline is the same for every request, so the queue is
-            // ordered by it.
+            // Enqueue time + the round-trip deadline: one budget for the time spent queued and the
+            // round trip. A worker fails a request whose deadline passed before it could send it,
+            // and waits for the response only until this point. The deadline is the same for every
+            // request, so the queue is ordered by it.
             std::chrono::steady_clock::time_point expiresAt;
         };
 
@@ -210,9 +210,10 @@ namespace remoted::control
             }
         }
 
-        // Reconnect backoff while wdb.sock is unreachable. Interruptible: wakes immediately on
-        // stop, and at each queued request's deadline, so a request does not wait for wazuh-db
-        // to come back (or for the queue to overflow) past its deadline.
+        // Reconnect backoff when creating the client fails. Interruptible: wakes immediately on
+        // stop, and at each queued request's deadline, so a request does not wait out the backoff
+        // past its deadline. (A missing wdb.sock does not land here: SocketClient::connect() keeps
+        // retrying in its own thread, and the deadline checks in workerLoop() bound those requests.)
         void backoffExpiringQueued(std::chrono::steady_clock::time_point retryAt)
         {
             while (!m_stopping.load())
@@ -307,6 +308,14 @@ namespace remoted::control
                 m_queue.pop();
                 lock.unlock();
 
+                // Its deadline passed while it waited in the queue (wazuh-db unreachable or slow,
+                // the workers busy): fail it without sending.
+                if (std::chrono::steady_clock::now() >= req.expiresAt)
+                {
+                    failWithTimeout(req.callback);
+                    continue;
+                }
+
                 response.clear();
                 responseReady = false;
 
@@ -316,9 +325,10 @@ namespace remoted::control
                     const auto sentAt = std::chrono::steady_clock::now();
                     client->send(req.command.data(), req.command.size());
 
+                    // min(sentAt + deadline, expiresAt) is always expiresAt: the request was queued
+                    // before it was sent.
                     std::unique_lock<std::mutex> respLock(responseMutex);
-                    if (responseCv.wait_for(
-                            respLock, std::chrono::milliseconds(m_deadlineMs), [&]() { return responseReady; }))
+                    if (responseCv.wait_until(respLock, req.expiresAt, [&]() { return responseReady; }))
                     {
                         // Observed only on success: wdbError already counts the failures, so the
                         // histogram means "how long a HEALTHY round trip takes" -- the number that

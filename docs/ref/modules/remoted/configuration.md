@@ -1394,7 +1394,8 @@ Size of the wazuh-db connection pool the control plane uses.
 
 #### remoted.control_wdb_roundtrip_deadline
 
-Milliseconds a single wazuh-db round-trip may take before the control handler gives up.
+Milliseconds a wazuh-db request may take, from when it is queued until its answer, before the control
+handler gives up.
 
 - **Default value:** `2000`
 - **Allowed values:** Integer from `100` to `30000`
@@ -1402,9 +1403,9 @@ Milliseconds a single wazuh-db round-trip may take before the control handler gi
   `remoted.control.wdb_error` in
   [`GET /metrics`](metrics.md#control-plane--remotedcontrol). The healthy-round-trip
   distribution that sizes this deadline is `remoted.control.wdb.latency` (timeouts are
-  deliberately excluded from the histogram). The deadline also applies to a request still queued
-  while `wdb.sock` cannot be reached; it then fails as a timeout (503 on `/control`) instead of
-  waiting for wazuh-db.
+  deliberately excluded from the histogram). The time a request waits in the queue counts
+  against the deadline: one whose deadline passes before a connection is free (all of them busy, or
+  `wdb.sock` unreachable) fails as a timeout without being sent, instead of waiting for wazuh-db.
 
 #### remoted.control_wdb_max_queue_size
 

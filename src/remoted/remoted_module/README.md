@@ -922,11 +922,14 @@ Internally:
   failed connect is retried every second
 - Request queue bounded by `maxQueueSize` (`remoted.control_wdb_max_queue_size`) — drops requests with `SocketError::QueueFull` when full
 - Per-request deadline (`deadlineMs`, `remoted.control_wdb_roundtrip_deadline`) — reports
-  `SocketError::Timeout` if wazuh-db doesn't respond. On a connected worker the deadline runs from
-  when the command is **sent**. While `wdb.sock` cannot be reached at all no worker dequeues, so the
-  reconnect backoff also expires queued requests: each one carries enqueue time + `deadlineMs`, and a
-  request still queued past it fails with the same `Timeout` outcome (`wdb_error` counted, the same
-  throttled WARN) instead of waiting until wazuh-db comes back (`wazuhDBClient.cpp`,
+  `SocketError::Timeout` if wazuh-db doesn't respond in time. Each request carries enqueue time +
+  `deadlineMs`, one budget for the time it waits in the queue and the round trip: a worker fails a
+  request whose deadline passed before it could send it (without sending it), and waits for the
+  response only until that point. So with `wdb.sock` absent -- `SocketClient::connect()` does not
+  throw then, it keeps retrying in its own thread while the worker sends -- requests queued together
+  all fail at about one deadline, not one deadline after another per worker. Every expiry has the
+  same outcome (`wdb_error` counted, the same throttled WARN). When creating the client itself fails,
+  the one-second reconnect backoff also expires queued requests (`wazuhDBClient.cpp`,
   `backoffExpiringQueued()`)
 - Uses `LogThrottle` to avoid flooding logs with repeated errors (connection failures, timeouts, queue full)
 
