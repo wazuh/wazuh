@@ -64,8 +64,9 @@
 // setSink it waits in the lane for the new sink. A requeue whose lastError has cause None keeps the op's previous one.
 //
 // Completion (CPU pool), in this order: inFlight-- and the node's 429 state under the mutex, release it, then
-// NodeSet::report / Bucket::requeue / WritePath::resolve / sinkReady. An exception in that second part requeues what
-// is still unresolved {true, Backoff} with lastError {InvalidState, reason}, and sinkReady() still runs.
+// NodeSet::report / Bucket::requeue / WritePath::resolve, then the completion's single wake (ready(), below). An
+// exception in that second part requeues what is still unresolved {true, Backoff} with lastError {InvalidState, reason}
+// (an ambiguous 5xx of a Fail bucket resolves it Failed(Ambiguous) instead: never resent), and the wake still runs.
 // classifyRequest verdicts:
 //   Ignore     Shutdown: nothing (the sweep resolves). Cancelled with the sender already stopped (its stop() cancelled
 //              it): requeue {false, Now} with lastError {Cancelled}, no attempt; after a setSink no sweep follows, so
@@ -75,7 +76,8 @@
 //              with mayHaveSent, a refused submit, an unreadable 2xx, item Retry).
 //   Throttled  NodeSet::report + node notBefore = max(notBefore, now + max(Retry-After or 0, pace)); pace starts at
 //              RuntimeConfig.paceInitial and doubles (capped at retryAfterMax) only for a 429 whose request left after
-//              the node's current notBefore was set (one burst of the window doubles it once); cleanSends = 0; then
+//              the node's burst marker (the last bulk 429 that doubled the pace or raised notBefore; a park mirrored
+//              from NodeSet never moves it), so one burst of the window doubles it once; cleanSends = 0; then
 //              requeue {false, Now} (the batch may go to another node); stats.throttled++.
 //   Split      requeue {false, Now, toHead, halve}; stats.splits++.
 //   FailBatch  every op Failed(cause, httpStatus, reason).
@@ -85,11 +87,15 @@
 //              E3c-1 I73): Success ⇒ Ok keeping 409 and the type, Retry ⇒ requeue {true, Backoff} with lastError
 //              {VersionConflict, 409, type, reason}; item Retry ⇒ requeue {true, Backoff} with the item's error; both
 //              kinds of requeue in one call for the batch; Permanent ⇒ Failed(ItemPermanent, status, type, reason).
-// A 2xx of a request sent after the node's notBefore was last set counts a clean send; paceRelaxAfter clean sends halve
+// A 2xx of a request sent after the node's burst marker counts a clean send; paceRelaxAfter clean sends halve
 // the pace (cleanSends = 0) and a pace below paceInitial becomes 0. A 2xx NEVER shortens a notBefore or a nextSendAt in
 // force. RequeueResult.exhausted ⇒
-// Failed(RetryExhausted) with the op's last error; RequeueResult.closed ⇒ Dropped(sweepCause); RequeueResult.notify ⇒
-// Scheduler::notify(bucket). Every completion ⇒ WritePath::sinkReady().
+// Failed(RetryExhausted) with the op's last error; RequeueResult.closed ⇒ Dropped(sweepCause). One scheduler wake-up
+// per completion (E6a, I109): the buckets a requeue asks to notify (RequeueResult.notify) and the pinned buckets
+// waiting for the freed slot are collected and announced with a single Scheduler::notifyAll(buckets) in the
+// completion's ready(). The one exception: a NodeSet::report() that transitions the node (Throttled, Failover) runs
+// the NodeSet hook, whose refreshMirror() posts its own wake (needed for Down -> usable), so that completion posts
+// twice.
 //
 // Ordered buckets and cancellation (E3c-2, I79/I80; the bucket side is in bucket.hpp):
 //   - Assembly: the pool task first removes from the Batch (ops and bytes) every op whose `cancelled` is set, resolving
@@ -118,6 +124,9 @@
 // (capturing the shared state and checking `stopped`, the Prober's pattern) or directly by dispatch() (loop 0), firing
 // sinkReady(); the NodeSet::onTransition hook (registered by start(),
 // which the runtime calls BEFORE prober->start()) mirrors Down and calls sinkReady() through a weak_ptr<WritePath>.
+// The mirror also copies NodeSet::notBefore (a 429 Retry-After seen by any path, I109b) into the slot's notBefore, read
+// before the sender mutex (order NodeSet → sender), so a node parked by a query takes the sender's capacity to 0 and
+// the timer above wakes the scheduler when it expires.
 //
 // stop(): idempotent; sets `stopped`, cancels every transfer in flight (Transport::cancel), drops the timer on loop 0
 // (directly when already on loop 0, else post + wait). Results that arrive later are Ignore or lose to the sweep

@@ -19,6 +19,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <vector>
 
 #include "write/bucket.hpp"
 
@@ -39,6 +40,7 @@ namespace indexer_client::detail::write
     struct SchedulerStats final
     {
         std::uint64_t runs {0};         ///< Scheduling passes (coalesced notifications count once).
+        std::uint64_t posts {0};        ///< notify/notifyAll calls, counted before they coalesce (E6a, I109b).
         std::uint64_t batches {0};      ///< Batches dispatched.
         std::uint64_t timerFires {0};   ///< maxAge timers that fired.
         std::uint64_t fastForwards {0}; ///< Idle DRR cycles skipped at once (quantum small against the documents).
@@ -53,6 +55,9 @@ namespace indexer_client::detail::write
         /// thread; posts to loop 0; notifications posted while a pass is pending coalesce into one pass.
         virtual void notify(const std::shared_ptr<Bucket>& bucket) = 0;
         virtual void notifyAll() = 0;
+        /// notifyAll() that also announces `buckets` (as notify() would each), in ONE post: the single wake-up of a
+        /// bulk completion, with the buckets its requeues and the pinned wake-ups asked for (E6a, I109).
+        virtual void notifyAll(const std::vector<std::shared_ptr<Bucket>>& buckets) = 0;
         /// Flag + post + wait (as Prober::stop); afterwards no dispatch happens and no timer is armed. Idempotent.
         virtual void stop() = 0;
         virtual SchedulerStats stats() const = 0;

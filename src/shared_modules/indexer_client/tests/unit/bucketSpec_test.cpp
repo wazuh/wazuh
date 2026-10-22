@@ -343,7 +343,9 @@ TEST_F(BucketSpecTest, ValidSpecAccepted)
     blocking.retry.maxDuration = Duration {1};               // The smallest positive maxDuration is allowed.
     // ordered = true registers (OrderedRegisters); Retry registers (RetryConflictPolicyRegisters).
     edge.onConflict.kind = ConflictPolicy::Kind::Success;
-    edge.onConflict.retryOnConflict = 0; // retryOnConflict is ignored without Retry.
+    edge.onConflict.retryOnConflict = 0;                             // retryOnConflict is ignored without Retry.
+    EXPECT_EQ(BucketSpec {}.onAmbiguous5xx, AmbiguousPolicy::Retry); // I105: the default keeps resending.
+    edge.onAmbiguous5xx = AmbiguousPolicy::Fail;
 
     auto result = m_ref.client("valid", {valid(), blocking, edge});
     ASSERT_TRUE(result.ok()) << result.reason;

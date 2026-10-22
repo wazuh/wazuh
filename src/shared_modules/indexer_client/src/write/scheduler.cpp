@@ -67,6 +67,7 @@ namespace indexer_client::detail::write
             const std::uint64_t quantum;
 
             std::atomic<std::uint64_t> runs {0};
+            std::atomic<std::uint64_t> posts {0}; ///< notify/notifyAll calls, before coalescing (E6a).
             std::atomic<std::uint64_t> batches {0};
             std::atomic<std::uint64_t> timerFires {0};
             std::atomic<std::uint64_t> fastForwards {0};
@@ -457,6 +458,7 @@ namespace indexer_client::detail::write
                 {
                     return;
                 }
+                m_shared->posts.fetch_add(1); // Before coalescing: the oracle of «one wake-up per completion».
                 {
                     std::lock_guard<std::mutex> lock(m_shared->mutex);
                     if (m_shared->stopped)
@@ -470,7 +472,28 @@ namespace indexer_client::detail::write
 
             void notifyAll() override
             {
+                m_shared->posts.fetch_add(1);
                 postPass(m_shared); // Every pass reconsiders every known bucket.
+            }
+
+            void notifyAll(const std::vector<std::shared_ptr<Bucket>>& buckets) override
+            {
+                m_shared->posts.fetch_add(1);
+                {
+                    std::lock_guard<std::mutex> lock(m_shared->mutex);
+                    if (m_shared->stopped)
+                    {
+                        return;
+                    }
+                    for (const auto& bucket : buckets)
+                    {
+                        if (bucket)
+                        {
+                            m_shared->notified.push_back(bucket);
+                        }
+                    }
+                }
+                postPass(m_shared);
             }
 
             void stop() override
@@ -519,6 +542,7 @@ namespace indexer_client::detail::write
             {
                 SchedulerStats stats;
                 stats.runs = m_shared->runs.load();
+                stats.posts = m_shared->posts.load();
                 stats.batches = m_shared->batches.load();
                 stats.timerFires = m_shared->timerFires.load();
                 stats.fastForwards = m_shared->fastForwards.load();

@@ -281,7 +281,18 @@ namespace indexer_client::detail::write
                 // m_consumer and m_spec are immutable: read without the mutex.
                 for (const auto& line : lines)
                 {
-                    if (line.edge == Edge::Quota80)
+                    if (line.edge == Edge::Ambiguous)
+                    {
+                        logWarn(TAG,
+                                "Indexer client bucket '%s/%s' got an ambiguous HTTP %d for a bulk of %llu operations: "
+                                "they failed without being resent (onAmbiguous5xx = fail); the indexer may have "
+                                "applied them.",
+                                m_consumer.c_str(),
+                                m_spec.name.c_str(),
+                                line.httpStatus,
+                                static_cast<unsigned long long>(line.charge));
+                    }
+                    else if (line.edge == Edge::Quota80)
                     {
                         logWarn(TAG,
                                 "Indexer client bucket '%s/%s' reached 80%% of its quota (%llu of %llu bytes charged).",
@@ -1313,6 +1324,7 @@ namespace indexer_client::detail::write
                     case Cause::PayloadTooLarge: slot = FailCause::Client4xx; break; // A single-op 413.
                     case Cause::Server5xx: slot = FailCause::Server5xx; break;
                     case Cause::Unavailable: slot = FailCause::Unavailable; break;
+                    case Cause::Ambiguous: slot = FailCause::Ambiguous; break;
                     default: break;
                 }
                 ++m_stats.failed[at(slot)];
@@ -1338,7 +1350,7 @@ namespace indexer_client::detail::write
         m_stats.lateResults += ops;
     }
 
-    void Bucket::countBulk(std::uint64_t bytes, std::optional<std::uint64_t> latencyMicros)
+    void Bucket::countBulk(std::uint64_t bytes, std::optional<std::uint64_t> latencyMicros, bool success)
     {
         std::lock_guard<std::mutex> lock(m_mutex);
         ++m_stats.bulkRequests;
@@ -1346,6 +1358,22 @@ namespace indexer_client::detail::write
         if (latencyMicros)
         {
             m_stats.latency.observe(*latencyMicros);
+        }
+        if (success)
+        {
+            m_armedAmbiguous = true;
+        }
+    }
+
+    void Bucket::countAmbiguous(int httpStatus, std::uint64_t ops)
+    {
+        EmitPendingOnExit emit {*this}; // Declared before the lock: the line is written once the mutex is dropped.
+        std::lock_guard<std::mutex> lock(m_mutex);
+        if (m_armedAmbiguous)
+        {
+            m_armedAmbiguous = false;
+            m_edgeLines.push_back(EdgeLine {Edge::Ambiguous, ops, httpStatus});
+            m_edgePending.store(true);
         }
     }
 

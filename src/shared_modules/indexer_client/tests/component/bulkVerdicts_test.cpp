@@ -657,6 +657,16 @@ TEST_F(BulkTest, NotBeforeNeverShortenedBy2xx)
     ASSERT_TRUE(eventually([&] { return a.bulk->answered() == 1 && a.fake->heldNow() == 1; }, 5s));
     ASSERT_TRUE(writer->submit(indexOp(id(1)), results->callback(1)).accepted);
     ASSERT_TRUE(eventually([] { return wr::senderStats().throttled == 1; }, 5s));
+    // The same 429 sets the sender's notBefore and, through NodeSet::report and the hook, mirrors the NodeSet's (I109b)
+    // a few microseconds later: read it once the mirror has landed, so the comparison below can be exact.
+    ASSERT_TRUE(eventually(
+        []
+        {
+            const auto mirrored = senderNode(0).notBefore;
+            return mirrored && *mirrored >= indexer_client::detail::runtimeNodeSet()->notBefore(0);
+        },
+        5s))
+        << "the sender never mirrored the NodeSet's notBefore";
     const auto throttled = senderNode(0);
     ASSERT_TRUE(throttled.notBefore.has_value());
     EXPECT_GT(throttled.pace, ic::Duration {0});

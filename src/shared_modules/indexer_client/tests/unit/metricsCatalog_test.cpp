@@ -198,7 +198,7 @@ TEST(MetricsCatalogTest, CatalogNamesAreSaneAndStable)
     m.buckets = {bucket("states.v2"), bucket("---")};
     std::map<std::string, ic::MetricKind> kinds;
     const auto zero = collect(m, &kinds);
-    ASSERT_EQ(zero.size(), 2u * 50u + 3u);
+    ASSERT_EQ(zero.size(), 2u * 51u + 3u);
     std::set<std::string> expected;
     for (const auto* b : {"states_v2", "_"})
     {

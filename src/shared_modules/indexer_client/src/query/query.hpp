@@ -41,7 +41,8 @@
 // result on the client's QueryGate (the transport callback captures the attempt state by shared_ptr: it may land
 // after the engine returned) → NodeSet::report(node, result) → classifyRequest(result, 1) and the operation's
 // classifier (queryResponse.hpp). No node to choose ⇒ wait max(50 ms, min(retry.base, probeInterval)) and choose
-// again, without an attempt.
+// again, without an attempt; a node parked by a 429 Retry-After (NodeSet::earliestNotBefore(), I109) ends that wait
+// early, so a read whose usable nodes are all parked waits for the first one within its deadline instead of failing.
 //
 // VERDICTS (I82, the I65 table). Failover ⇒ another attempt at once (counted only with mayHaveSent). Throttled ⇒ wait
 // max(retryAfter, backoffDelay(retry, ++throttles)) without an attempt: `throttles` grows the exponent so a 429 storm

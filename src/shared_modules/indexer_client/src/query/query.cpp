@@ -393,10 +393,18 @@ namespace indexer_client::detail::query
                     {
                         last.set(Cause::Unavailable, 0, "no usable node");
                     }
+                    // I109: a node parked by a 429 Retry-After (not Down) ends this wait when its notBefore passes;
+                    // without one the poll is today's. Either way `limit` bounds it (pageEnd is not set yet).
+                    const auto parked = nodes->earliestNotBefore();
                     nodes.reset();
                     transport.reset();
                     const Duration wait = std::max(NO_NODE_WAIT_FLOOR, std::min(retry.base, client->probeInterval));
-                    sleepOnGate(*client, gate, std::min(addSaturated(start, wait), limit));
+                    auto until = std::min(addSaturated(start, wait), limit);
+                    if (parked)
+                    {
+                        until = std::min(until, *parked);
+                    }
+                    sleepOnGate(*client, gate, until);
                     continue;
                 }
 

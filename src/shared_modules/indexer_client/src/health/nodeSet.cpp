@@ -12,6 +12,8 @@
 
 #include "health/nodeSet.hpp"
 
+#include <algorithm>
+#include <chrono>
 #include <functional>
 #include <tuple>
 #include <utility>
@@ -19,8 +21,9 @@
 #include "json.hpp"
 #include "loggerHelper.h"
 
-// Node health (plan 18, I57): the probe table, the rounds, the passive signals, the selector and the edge-triggered
-// logs. Every transition is computed under m_mutex; the log lines and the onTransition hook run after releasing it.
+// Node health (plan 18, I57): the probe table, the rounds, the passive signals, the selector, the per-node notBefore
+// (E6a, I109) and the edge-triggered logs. Every transition is computed under m_mutex; the log lines and the
+// onTransition hook run after releasing it.
 
 namespace indexer_client::detail
 {
@@ -225,6 +228,16 @@ namespace indexer_client::detail
         }
     }
 
+    void NodeSet::park(std::size_t index, const HttpResult& result, TimePoint now)
+    {
+        if (result.cause != TransportCause::None || result.status != 429 || !result.retryAfter)
+        {
+            return;
+        }
+        auto& node = m_nodes[index];
+        node.notBefore = std::max(node.notBefore, now + *result.retryAfter);
+    }
+
     void NodeSet::updateTlsEpisode(Pending& pending)
     {
         bool allTls = !m_nodes.empty();
@@ -293,6 +306,7 @@ namespace indexer_client::detail
             }
         }
 
+        const auto now = std::chrono::steady_clock::now();
         Pending pending;
         {
             std::lock_guard<std::mutex> lock(m_mutex);
@@ -324,6 +338,7 @@ namespace indexer_client::detail
             {
                 m_nodes[i].lastCause = round[i].cause;
                 m_nodes[i].lastCurlCode = round[i].curlCode;
+                park(i, round[i], now); // I109b: the probe's own 429 Retry-After parks the node too.
                 if (red && verdicts[i].state == State::Down && !verdicts[i].red)
                 {
                     // Down by its own result: keep that reason, it is still the node's problem once red clears.
@@ -361,11 +376,15 @@ namespace indexer_client::detail
         {
             return; // A passive success never promotes; everything else is the probe's.
         }
+        const auto now = std::chrono::steady_clock::now();
         Pending pending;
         {
             std::lock_guard<std::mutex> lock(m_mutex);
             pending.hook = m_hook;
             auto& node = m_nodes[index];
+            // I109: a 429's Retry-After parks the node whatever its state (a Down node keeps it for when the probe
+            // brings it back); only the transition below is Available-only.
+            park(index, result, now);
             if (down)
             {
                 node.lastCause = result.cause;
@@ -382,7 +401,7 @@ namespace indexer_client::detail
             }
             else
             {
-                return;
+                return; // Already Throttled or Down: at most parked, no transition.
             }
         }
         emit(pending);
@@ -395,6 +414,7 @@ namespace indexer_client::detail
 
     std::optional<std::size_t> NodeSet::choose(const std::function<bool(std::size_t)>& allowed)
     {
+        const auto now = std::chrono::steady_clock::now();
         std::lock_guard<std::mutex> lock(m_mutex);
         const auto count = m_nodes.size();
         for (const auto wanted : {State::Available, State::Throttled})
@@ -402,7 +422,8 @@ namespace indexer_client::detail
             for (std::size_t step = 0; step < count; ++step)
             {
                 const auto index = (m_next + step) % count;
-                if (m_nodes[index].state == wanted && allowed(index))
+                // A parked node (notBefore in force) is skipped before the filter: it takes nothing from anyone.
+                if (m_nodes[index].state == wanted && m_nodes[index].notBefore <= now && allowed(index))
                 {
                     m_next = (index + 1) % count;
                     return index;
@@ -410,6 +431,27 @@ namespace indexer_client::detail
             }
         }
         return std::nullopt;
+    }
+
+    TimePoint NodeSet::notBefore(std::size_t index) const
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return m_nodes.at(index).notBefore;
+    }
+
+    std::optional<TimePoint> NodeSet::earliestNotBefore() const
+    {
+        const auto now = std::chrono::steady_clock::now();
+        std::lock_guard<std::mutex> lock(m_mutex);
+        std::optional<TimePoint> earliest;
+        for (const auto& node : m_nodes)
+        {
+            if (node.state != State::Down && node.notBefore > now && (!earliest || node.notBefore < *earliest))
+            {
+                earliest = node.notBefore;
+            }
+        }
+        return earliest;
     }
 
     HealthView NodeSet::view() const
