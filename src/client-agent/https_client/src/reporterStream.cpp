@@ -115,21 +115,38 @@ std::chrono::milliseconds ReporterStream::tick(Waiter& waiter, bool registered)
     }
 
     const auto now = m_clock.steadyNow();
+    const auto statsDue = m_stats.enabled && now >= fromRep(loadNextDue(m_stats));
 
-    if (m_stats.enabled && now >= fromRep(loadNextDue(m_stats)))
+    if (!statsDue && !m_config_.enabled)
     {
-        runPath(m_stats, m_statsBackoff, waiter, m_collectors.collectStats());
+        return sleepHint();
     }
 
-    if (m_config_.enabled && now >= fromRep(loadNextDue(m_config_)))
+    const auto agent = currentAgentMetadata();
+
+    if (statsDue)
     {
-        runPath(m_config_, m_configBackoff, waiter, m_collectors.collectConfig());
+        runPath(m_stats, m_statsBackoff, waiter, m_collectors.collectStats(), agent);
+    }
+
+    if (m_config_.enabled)
+    {
+        forceConfigReportOnGroupChange(agent);
+
+        if (now >= fromRep(loadNextDue(m_config_)))
+        {
+            runPath(m_config_, m_configBackoff, waiter, m_collectors.collectConfig(), agent);
+        }
     }
 
     return sleepHint();
 }
 
-void ReporterStream::runPath(Path& path, Backoff& backoff, Waiter& waiter, std::optional<std::string> collected)
+void ReporterStream::runPath(Path& path,
+                             Backoff& backoff,
+                             Waiter& waiter,
+                             std::optional<std::string> collected,
+                             const std::optional<std::string>& agent)
 {
     const auto now = m_clock.steadyNow();
     {
@@ -138,7 +155,7 @@ void ReporterStream::runPath(Path& path, Backoff& backoff, Waiter& waiter, std::
         std::lock_guard<std::mutex> lock(path.mtx);
         path.forcedSinceLastRun = false;
     }
-    const auto document = stampedDocument(std::move(collected));
+    const auto document = stampedDocument(std::move(collected), agent);
 
     if (!document)
     {
@@ -206,7 +223,8 @@ std::chrono::steady_clock::rep ReporterStream::loadNextDue(const Path& path) con
     return path.nextDue;
 }
 
-std::optional<std::string> ReporterStream::stampedDocument(std::optional<std::string> collected) const
+std::optional<std::string> ReporterStream::stampedDocument(std::optional<std::string> collected,
+                                                           const std::optional<std::string>& agent) const
 {
     if (!collected)
     {
@@ -225,22 +243,55 @@ std::optional<std::string> ReporterStream::stampedDocument(std::optional<std::st
     document["agent_id"] = m_signer.agentId(); // The live id: a re-enroll may have swapped it.
     document["cluster"] = {{"name", cluster.name}};
 
-    // Groups and host, read fresh on every push so a group change shows up in the next
-    // report. Only the metadata source may set this key; without metadata the report
-    // still goes out, just without it. The source's own cluster is not used: the stamp
-    // above is the manager-authoritative one.
+    // Groups and host. Only the metadata source may set this key; without metadata the
+    // report still goes out, just without it. The source's own cluster is not used: the
+    // stamp above is the manager-authoritative one.
     document.erase("agent");
-    auto metadata = nlohmann::json::parse(m_collectors.collectAgentMetadata(), nullptr, false);
+
+    if (agent)
+    {
+        document["agent"] = nlohmann::json::parse(*agent);
+    }
+
+    return document.dump();
+}
+
+std::optional<std::string> ReporterStream::currentAgentMetadata()
+{
+    // Read fresh every time so a group change shows up in the next report. A miss falls
+    // back to the last good block: the manager replaces the whole document, so a report
+    // without one would erase the groups and host it already holds.
+    const auto metadata = nlohmann::json::parse(m_collectors.collectAgentMetadata(), nullptr, false);
 
     if (metadata.is_object())
     {
         if (const auto it = metadata.find("agent"); it != metadata.end() && it->is_object())
         {
-            document["agent"] = std::move(*it);
+            m_lastAgent = it->dump();
         }
     }
 
-    return document.dump();
+    return m_lastAgent;
+}
+
+void ReporterStream::forceConfigReportOnGroupChange(const std::optional<std::string>& agent)
+{
+    if (!agent)
+    {
+        return;
+    }
+
+    const auto parsed = nlohmann::json::parse(*agent);
+    const auto it = parsed.find("groups");
+    auto groups = it != parsed.end() ? it->dump() : std::string {"[]"};
+
+    if (m_seenGroups && *m_seenGroups != groups)
+    {
+        LOGFN_DEBUG2(m_logFn, "Agent groups changed; sending the /config snapshot now.");
+        forceConfigReportNow();
+    }
+
+    m_seenGroups = std::move(groups);
 }
 
 std::chrono::milliseconds ReporterStream::sleepHint() const
