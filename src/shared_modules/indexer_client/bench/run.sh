@@ -154,12 +154,13 @@ if [ $SELFCHECK -eq 1 ]; then
     run_side "selfcheck $mode v1 shipped" "$V1" --mode $mode --headers shipped --secs $SELFCHECK_SECS --warmup 1 \
       --fake-status "$FAKE_STATUS" --print-headers
     v1s=$VALID; h1s=$HDRS
-    # Normative: the same headers (name and value). Shipped: differs exactly in these names (the v1 always asks for
-    # gzip; DEFAULT_HEADERS sets Accept and Accept-Charset; both sides let curl add 100-continue, I60).
+    # Normative: the same headers (name and value), both with Accept-Encoding: gzip (I117). Shipped: differs exactly in
+    # these names (DEFAULT_HEADERS sets Accept and Accept-Charset; both sides let curl add 100-continue, I60).
     hn=fail; hs=fail
-    [ -s "$h1" ] && cmp -s "$h1" "$h2" && hn=pass
+    [ -s "$h1" ] && cmp -s "$h1" "$h2" && grep -qx 'accept-encoding: gzip' "$h1" && grep -qx 'accept-encoding: gzip' "$h2" &&
+      hn=pass
     names=$(diff "$h1s" "$h2" | sed -n 's/^[<>] \([^:]*\):.*/\1/p' | sort -u | tr '\n' ' ')
-    [ -s "$h2" ] && [ "$names" = "accept accept-charset accept-encoding " ] && hs=pass
+    [ -s "$h2" ] && [ "$names" = "accept accept-charset " ] && hs=pass
     log "# selfcheck $mode headers: normative v1 vs v2 $hn; shipped v1 vs v2 differ in [${names% }] => $hs"
     if [ $hn = fail ]; then diff "$h1" "$h2" | sed 's/^/#   /' | tee -a "$LOG"; fi
     echo "SELFCHECK,$mode,v1=$v1,v2=$v2,v1_shipped=$v1s,headers_normative=$hn,headers_shipped=$hs" >>"$SUM"

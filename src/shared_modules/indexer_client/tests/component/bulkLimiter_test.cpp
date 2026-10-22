@@ -16,7 +16,7 @@
 // quantum with its cap of batches per turn (I97b). Every BulkLimiterTest case runs the production sink over the real
 // transport against one fake per node (bulkFixture.hpp); the probe interval is an hour, so health moves only with
 // probeNowAndWait(). The fake «limiter X» is a token bucket of depth B refilled continuously at X requests/s: a `_bulk`
-// request without a token gets a 429 without Retry-After. Time bounds of the plan are scaled() (x3 under TSAN); the
+// request without a token gets a 429 without Retry-After. Time bounds of the plan are scaled(); the
 // `*Long` case runs in the normal build only (verificar.sh excludes it under the sanitizers). The BulkLimiterSliceTest
 // cases drive Bucket::slice directly with a chosen `cap` (the test sink holds every batch and has no capacity, so the
 // scheduler never slices). Every wait is bounded; every case ends with the charge and the retained ops at 0 (TearDown).
@@ -54,6 +54,13 @@ namespace
     using indexer_client::testing::Rule;
 
     const std::uint32_t kWindowMax = ic::RuntimeConfig {}.nodeWindowMax;
+
+    /// A duration option of the config (latency_target_ms), scaled() like the fake's latencies it is compared with:
+    /// the ratio between them, which the case is about, does not change with the scale.
+    std::string scaledMs(std::chrono::milliseconds bound)
+    {
+        return std::to_string(scaled(bound).count());
+    }
 
     /// Fixed-width ids: every op with the same body has the same wire size.
     std::string id(std::uint64_t key)
@@ -543,10 +550,12 @@ TEST_F(BulkLimiterTest, LatencyHalvesWindowAndBulk)
 {
     constexpr std::uint64_t FLOOR = 4096;
     auto slow = BulkScript::items();
-    slow.latency = 200ms;
+    slow.latency = scaled(200ms);
     const auto a = startNode(std::move(slow));
-    ASSERT_NO_FATAL_FAILURE(startOn(
-        {a.url()}, std::chrono::hours(1), {{"latency_target_ms", "50"}, {"bulk_min_bytes", std::to_string(FLOOR)}}));
+    ASSERT_NO_FATAL_FAILURE(
+        startOn({a.url()},
+                std::chrono::hours(1),
+                {{"latency_target_ms", scaledMs(50ms)}, {"bulk_min_bytes", std::to_string(FLOOR)}}));
     auto c = client("c", {loadBucket("b", 1000, ic::Duration {100}, 32768)});
     Producer producer(c->writer("b"), 200, 1000);
 
@@ -557,14 +566,14 @@ TEST_F(BulkLimiterTest, LatencyHalvesWindowAndBulk)
     EXPECT_GE(slowNode.decreasesLatency, 2u) << describe(slowNode);
     EXPECT_EQ(slowNode.decreases429, 0u);
     const auto capped = Clock::now();
-    std::this_thread::sleep_for(1500ms);
+    std::this_thread::sleep_for(scaled(1500ms));
     const auto requests = bulkRequests(a);
     ASSERT_FALSE(requests.empty());
     EXPECT_GT(requests.front().bodySize, FLOOR) << "the first batch was not larger than the floor";
     std::size_t checked = 0;
     for (const auto& request : requests)
     {
-        if (request.receivedAt > capped + 300ms)
+        if (request.receivedAt > capped + scaled(300ms))
         {
             ++checked;
             EXPECT_LE(request.bodySize, FLOOR) << "a batch over the bulk target";
@@ -577,7 +586,7 @@ TEST_F(BulkLimiterTest, LatencyHalvesWindowAndBulk)
         eventually([] { return senderNode(0).window >= kWindowMax && senderNode(0).bulkTarget == 0; }, scaled(10000ms)))
         << "not recovered without latency: " << describe(senderNode(0));
     producer.stop();
-    ASSERT_TRUE(producer.waitResolved(30s));
+    ASSERT_TRUE(producer.waitResolved(scaled(30000ms)));
     EXPECT_EQ(producer.failed(), 0u);
 }
 
@@ -590,10 +599,10 @@ TEST_F(BulkLimiterTest, LatencySpikeHalvesOnce)
     for (int i = 0; i < 8; ++i)
     {
         auto slow = BulkScript::items();
-        slow.latency = 200ms;
+        slow.latency = scaled(200ms);
         a.bulk->push(std::move(slow));
     }
-    ASSERT_NO_FATAL_FAILURE(startOn({a.url()}, std::chrono::hours(1), {{"latency_target_ms", "50"}}));
+    ASSERT_NO_FATAL_FAILURE(startOn({a.url()}, std::chrono::hours(1), {{"latency_target_ms", scaledMs(50ms)}}));
     auto c = client("c", {loadBucket("b", 1)});
     auto writer = c->writer("b");
     auto results = Results::create();
@@ -633,7 +642,7 @@ TEST_F(BulkLimiterTest, LatencySpikeHalvesOnceUnderLoad)
         for (int i = 0; i < count; ++i)
         {
             auto slow = BulkScript::items();
-            slow.latency = latency;
+            slow.latency = scaled(latency);
             a.bulk->push(std::move(slow));
         }
     };
@@ -641,7 +650,7 @@ TEST_F(BulkLimiterTest, LatencySpikeHalvesOnceUnderLoad)
     pushSlow(300ms, 3);
     pushSlow(600ms, 1);
     pushSlow(800ms, 3);
-    ASSERT_NO_FATAL_FAILURE(startOn({a.url()}, std::chrono::hours(1), {{"latency_target_ms", "50"}}));
+    ASSERT_NO_FATAL_FAILURE(startOn({a.url()}, std::chrono::hours(1), {{"latency_target_ms", scaledMs(50ms)}}));
     auto c = client("c", {loadBucket("b", 1)});
     auto writer = c->writer("b");
     auto results = Results::create();
@@ -967,13 +976,13 @@ TEST_F(BulkLimiterTest, PinnedWaitsForTheRealWindow)
     a.bulk->push(BulkScript::throttled());
     a.bulk->push(BulkScript::throttled());
     auto slowOk = BulkScript::items();
-    slowOk.latency = 400ms;
+    slowOk.latency = scaled(400ms);
     a.bulk->push(std::move(slowOk));
     const auto b = startNode();
     setHealth(b, indexer_client::testing::healthStatusRule(503));
     ASSERT_NO_FATAL_FAILURE(startOn({a.url(), b.url()},
                                     std::chrono::hours(1),
-                                    {{"latency_target_ms", "300"}, {"ambiguous_retry_window_ms", "20000"}}));
+                                    {{"latency_target_ms", scaledMs(300ms)}, {"ambiguous_retry_window_ms", "20000"}}));
     ASSERT_EQ(nodeState(0), NodeState::Available);
     ASSERT_EQ(nodeState(1), NodeState::Down);
     auto c = client("c", {loadBucket("u", 1), loadBucket("o", 1, ic::Duration {200}, 0, true)});

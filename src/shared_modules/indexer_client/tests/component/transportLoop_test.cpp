@@ -23,11 +23,13 @@
 
 #include "componentFixture.hpp"
 #include "fakeIndexer.hpp"
+#include "testTimeScale.hpp"
 
 using namespace component;
 using indexer_client::testing::FakeIndexer;
 using indexer_client::testing::FakeIndexerOptions;
 using indexer_client::testing::Rule;
+using indexer_client::testing::scaled;
 namespace hooks = indexer_client::testing_hooks;
 
 namespace
@@ -184,7 +186,8 @@ TEST_F(TransportTest, StaleTimerNeverReachesCurl)
         ReleaseOnExit releaseBlocker(blocker);
         ASSERT_TRUE(indexer_client::detail::testing::postToIoLoop(blocker->task(), 0));
         ASSERT_TRUE(blocker->waitStarted(1, 5s));
-        std::this_thread::sleep_for(400ms); // Measured: the 200 ms timeout expires while the loop is busy.
+        // Measured (scaled(): longer only widens the margin): the 200 ms timeout expires while the loop is busy.
+        std::this_thread::sleep_for(scaled(400ms));
         ASSERT_TRUE(transport->cancel(one.admission.id));
         blocker->release();
 

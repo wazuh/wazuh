@@ -20,6 +20,7 @@ on:
       # from tools/get_git_refs.sh) and builds the http-request submodule; a submodule bump changes
       # only the gitlink path, which `http-request/**` would never match.
       - "src/Makefile"
+      - "src/deps.lock.mk"
       - "tools/get_git_refs.sh"
       - "src/shared_modules/http-request"
       # Result-affecting actions this workflow executes (upload_s3_artifact only reports, see the
@@ -75,6 +76,8 @@ jobs:
       # ASAN job below covers the memory-safety surface (teardown order of the runtime threads).
       - name: Indexer client - Run tests
         uses: ./.github/actions/test_cpp
+        env:
+          INDEXER_CLIENT_TEST_TIME_SCALE: "2"
         with:
           valgrind: "false"
           target: "indexer_client_utest"
@@ -89,6 +92,8 @@ jobs:
       # The component suite drives the curl transport against an in-process fake over real sockets.
       - name: Indexer client - Run component tests
         uses: ./.github/actions/test_cpp
+        env:
+          INDEXER_CLIENT_TEST_TIME_SCALE: "2"
         with:
           valgrind: "false"
           target: "indexer_client_component_test"
@@ -128,6 +133,8 @@ jobs:
       # without one.
       - name: Indexer client - Run tests
         uses: ./.github/actions/test_cpp
+        env:
+          INDEXER_CLIENT_TEST_TIME_SCALE: "2"
         with:
           target: "indexer_client_utest"
           valgrind: "false"
@@ -144,6 +151,86 @@ jobs:
         uses: ./.github/actions/test_cpp
         env:
           GTEST_FILTER: "-*Long"
+          INDEXER_CLIENT_TEST_TIME_SCALE: "2"
         with:
           target: "indexer_client_component_test"
           valgrind: "false"
+
+  indexerclient-tsan:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Project dependencies
+        uses: ./.github/actions/build_external_deps
+
+      # The TSAN runtime aborts at startup on ubuntu-24.04 runners with 32 bits of ASLR entropy
+      # (vm.mmap_rnd_bits); lower it before running anything instrumented.
+      - name: Lower ASLR entropy for TSAN
+        run: sudo sysctl -w vm.mmap_rnd_bits=28
+
+      - name: Indexer client - Build tests
+        uses: ./.github/actions/build_target_cpp
+        with:
+          target: "indexer_client_utest"
+          test: "true"
+          asan: "false"
+          tsan: "true"
+          flags: "-DCMAKE_BUILD_TYPE=Debug"
+
+      # Data races between the runtime threads, the asio loops and the callers only show up under
+      # TSAN; halt on the first report so a race fails the job instead of scrolling by.
+      - name: Indexer client - Run tests
+        uses: ./.github/actions/test_cpp
+        env:
+          TSAN_OPTIONS: "halt_on_error=1 second_deadlock_stack=1"
+          INDEXER_CLIENT_TEST_TIME_SCALE: "2"
+        with:
+          target: "indexer_client_utest"
+          valgrind: "false"
+
+      - name: Indexer client - Build component tests
+        uses: ./.github/actions/build_target_cpp
+        with:
+          target: "indexer_client_component_test"
+          test: "true"
+          asan: "false"
+          tsan: "true"
+          flags: "-DCMAKE_BUILD_TYPE=Debug"
+
+      # The *Long load cases (~90 s of wall clock each run) only measure rates: the normal job runs them, TSAN adds nothing.
+      - name: Indexer client - Run component tests
+        uses: ./.github/actions/test_cpp
+        env:
+          GTEST_FILTER: "-*Long"
+          INDEXER_CLIENT_TEST_TIME_SCALE: "2"
+        with:
+          target: "indexer_client_component_test"
+          valgrind: "false"
+
+  indexerclient-bench-build:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Project dependencies
+        uses: ./.github/actions/build_external_deps
+
+      # Build only: the benchmark measures rates and is run by hand; this keeps it compiling in a
+      # Release tree (the configuration it is measured in).
+      - name: Indexer client - Build benchmark
+        uses: ./.github/actions/build_target_cpp
+        with:
+          target: "indexer_client_bench"
+          test: "false"
+          flags: "-DINDEXER_CLIENT_BENCH=ON -DCMAKE_BUILD_TYPE=Release"

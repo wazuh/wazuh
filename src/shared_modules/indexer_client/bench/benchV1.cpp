@@ -39,16 +39,16 @@ namespace
     constexpr const char* USAGE =
         "usage: indexer_client_bench_v1 [--mode plain|tls] [--headers normative|shipped] [--secs N] [--warmup N]\n"
         "                               [--pair N] [--fake-status N] [--print-headers] [--csv-header]\n"
-        "  --headers normative  Content-Type: application/json and an empty Accept-Encoding (the\n"
-        "                       v2's set on the wire; the v1 always asks for gzip, curlWrapper.hpp)\n"
+        "  --headers normative  Content-Type: application/json (the v2's set on the wire; both ask for\n"
+        "                       gzip: the v1 always does, curlWrapper.hpp, and so does the v2)\n"
         "  --headers shipped    the v1 as shipped: DEFAULT_HEADERS (100-continue on a 4 MiB body)\n"
         "  Prints one 'ROW,<csv>' line (see --csv-header) and, with --print-headers, 'HEADER name: value' lines of\n"
         "  the first measured /_bulk. Exit 0 only when the row is valid.\n";
 
-    /// The headers the v2 puts on the wire, through the v1's own mechanism. An empty `Accept-Encoding:` drops the
-    /// `Accept-Encoding: gzip` the v1 handler always adds (http-request/src/curlWrapper.hpp, CURLOPT_ACCEPT_ENCODING);
-    /// the v2 never asks for a compressed response.
-    const std::unordered_set<std::string> NORMATIVE_HEADERS {"Content-Type: application/json", "Accept-Encoding:"};
+    /// The headers the v2 puts on the wire, through the v1's own mechanism. Both ask for gzip: the v1 handler always
+    /// adds `Accept-Encoding: gzip` (http-request/src/curlWrapper.hpp, CURLOPT_ACCEPT_ENCODING) and the v2 sets the
+    /// same option (I117). The bench fake never compresses, so the bytes on the wire do not change.
+    const std::unordered_set<std::string> NORMATIVE_HEADERS {"Content-Type: application/json"};
 
     int run(bench::Args& args)
     {

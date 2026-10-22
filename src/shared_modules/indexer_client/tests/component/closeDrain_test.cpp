@@ -16,7 +16,7 @@
 // sequence of E7/E10 (beginShutdown → requestClose → awaitClosed(shutdownDeadline()) → shutdown()) from the owner
 // thread. CloseDrainTest runs the production sink over the real transport against one fake node (bulkFixture.hpp);
 // CloseDrainSinkTest drives the test sink (writeFixture.hpp) where only the pool's timing matters. Time bounds of the
-// plan are scaled() (x3 under TSAN). Every wait is bounded; every case ends with the charge and the retained ops at 0
+// plan are scaled(). Every wait is bounded; every case ends with the charge and the retained ops at 0
 // (TearDown).
 
 #include <algorithm>
@@ -54,7 +54,6 @@ using component::AsyncCall;
 using component::eventually;
 using indexer_client::testing::Rule;
 using query_component::scaled;
-using query_component::TIME_SCALE;
 namespace hooks = indexer_client::testing_hooks;
 
 namespace

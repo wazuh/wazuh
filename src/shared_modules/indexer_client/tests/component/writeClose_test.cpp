@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "bulkFixture.hpp"
+#include "testTimeScale.hpp"
 #include "write/sender.hpp"
 
 using namespace write_component;
@@ -120,13 +121,21 @@ TEST_F(WriteTest, SubmitRacesClose)
         auto c = client("racing", {spec});
         auto results = Results::create();
         std::vector<std::vector<int>> accepted(PRODUCERS, std::vector<int>(PER_PRODUCER, -1));
+        // The handles are taken before any producer starts: a closing client hands out none (I37), and under a
+        // sanitizer on a loaded host a producer thread may only start after requestClose() below.
+        std::vector<std::shared_ptr<ic::IWriter>> writers;
+        for (std::size_t p = 0; p < PRODUCERS; ++p)
+        {
+            writers.push_back(c->writer("b"));
+            ASSERT_NE(writers.back(), nullptr);
+        }
         std::vector<std::thread> producers;
         for (std::size_t p = 0; p < PRODUCERS; ++p)
         {
             producers.emplace_back(
                 [&, p]
                 {
-                    auto writer = c->writer("b");
+                    const auto& writer = writers[p];
                     for (std::size_t i = 0; i < PER_PRODUCER; ++i)
                     {
                         const auto key = p * PER_PRODUCER + i;
@@ -136,7 +145,8 @@ TEST_F(WriteTest, SubmitRacesClose)
                 });
         }
         // EXPECT, not ASSERT: the producers must be joined whatever happens.
-        EXPECT_TRUE(eventually([&] { return stats("b", "racing").submitted >= PRODUCERS * PER_PRODUCER / 4; }, 5s));
+        EXPECT_TRUE(eventually([&] { return stats("b", "racing").submitted >= PRODUCERS * PER_PRODUCER / 4; },
+                               indexer_client::testing::scaled(5000ms)));
         c->requestClose();
         for (auto& producer : producers)
         {

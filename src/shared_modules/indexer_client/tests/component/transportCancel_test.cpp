@@ -18,10 +18,12 @@
 #include "componentFixture.hpp"
 #include "fakeIndexer.hpp"
 #include "rawTcpServer.hpp"
+#include "testTimeScale.hpp"
 
 using namespace component;
 using indexer_client::testing::FakeIndexer;
 using indexer_client::testing::Rule;
+using indexer_client::testing::scaled;
 using indexer_client::testing::SilentServer;
 using indexer_client::testing::StalledUploadServer;
 namespace hooks = indexer_client::testing_hooks;
@@ -127,8 +129,9 @@ TEST_F(TransportTest, CancelRacesVsCompletion)
         const auto one = submitTo(*transport, collector, request(HttpMethod::Get, fake.baseUrl() + "/race"));
         ASSERT_TRUE(one.admission.admitted);
         keys.push_back(one.key);
-        // Staggered delay (the measured variable of this race): 0 .. 3 ms.
-        const auto delay = std::chrono::microseconds((round % 31) * 100);
+        // Staggered delay (the measured variable of this race): 0 .. scaled(3 ms), so that the completion still wins
+        // the longer delays where every transfer is slower.
+        const auto delay = std::chrono::duration_cast<std::chrono::microseconds>(scaled(3ms)) * (round % 31) / 30;
         const auto until = std::chrono::steady_clock::now() + delay;
         while (std::chrono::steady_clock::now() < until)
         {
@@ -293,7 +296,7 @@ TEST_F(TransportTest, CancelWhileServerSilent)
 
     const auto eof = silent.waitForEof(0, 2s);
     ASSERT_TRUE(eof.has_value()) << "the silent server never saw the connection close";
-    EXPECT_LE(*eof - cancelledAt, 100ms)
+    EXPECT_LE(*eof - cancelledAt, scaled(100ms))
         << "EOF " << std::chrono::duration_cast<std::chrono::milliseconds>(*eof - cancelledAt).count()
         << " ms after cancel()";
 }
@@ -324,8 +327,8 @@ TEST_F(TransportTest, CancelDuringStalledUpload)
     ASSERT_TRUE(collector->waitKey(during.key, 10s));
     EXPECT_EQ(collector->result(during.key)->status, 200);
     // curl sends `Expect: 100-continue` and waits up to 1 s (CURLOPT_EXPECT_100_TIMEOUT_MS) for an answer the silent
-    // server never gives before it sends the body (I60); measured: the upload is stalled well before 1.5 s.
-    std::this_thread::sleep_for(1500ms);
+    // server never gives before it sends the body (I60); measured: the upload is stalled well before 1.5 s (scaled()).
+    std::this_thread::sleep_for(scaled(1500ms));
     EXPECT_EQ(collector->count(upload.key), 0);
     EXPECT_EQ(inFlight(*transport), 1u);
 
@@ -342,7 +345,7 @@ TEST_F(TransportTest, CancelDuringStalledUpload)
 
     const auto eof = stalled.waitForEof(0, 2s);
     ASSERT_TRUE(eof.has_value()) << "the stalled server never saw the connection close";
-    EXPECT_LE(*eof - resumedAt, 100ms)
+    EXPECT_LE(*eof - resumedAt, scaled(100ms))
         << "EOF " << std::chrono::duration_cast<std::chrono::milliseconds>(*eof - resumedAt).count()
         << " ms after cancel() + resumeReading()";
     EXPECT_LT(stalled.connections()[0].bytesRead, BODY);
