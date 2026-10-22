@@ -1077,7 +1077,7 @@ static void test_fatal_token_refusal_discards_the_dead_token(void **state) {
     assert_int_not_equal(IsFile("etc/client.keys"), 0);
 }
 
-/* The other 403: enrollment administratively disabled, which carries no authd code and is
+/* The other 403: enrollment administratively disabled, which carries authd code 0 and is
  * W_ENROLL_ERR_DISABLED rather than fatal. An operator can re-enable it, so the one-shot token must
  * survive -- discarding it here would need a newly minted token to undo a condition that clears
  * itself. This is the case that makes the fix a check on the STATUS and not on the 403. */
@@ -1090,13 +1090,43 @@ static void test_disabled_enrollment_keeps_the_token(void **state) {
     will_return(__wrap_hc_fetch_cacerts, 1);
     will_return(__wrap_hc_spki_pinned_certificate, PINNED_CERT);
     will_return(__wrap_hc_enroll, 403L);
-    will_return(__wrap_hc_enroll, "{\"error\":{\"message\":\"disabled\"}}");
+    will_return(__wrap_hc_enroll, "{\"error\":{\"code\":0,\"message\":\"Enrollment is disabled on this manager\"}}");
     will_return(__wrap_hc_enroll, 1);
 
     expect_any(__wrap__mdebug1, formatted_msg);
     expect_enrolling_as_line();
     expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
     expect_any(__wrap__minfo, formatted_msg);
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_PERMANENT);
+    assert_int_equal(g_enroll_call_count, 1);
+
+    assert_int_equal(IsFile("etc/enrollment_token"), 0);
+}
+
+/* The 403 the HTTPS server sends, before /enroll runs, when the client certificate's SAN does not
+ * list the peer address (verification_mode=full; behind a stream proxy the peer is the proxy). It
+ * must be logged with that reason, not as "disabled", and handled as before: not transient, and
+ * the token is kept -- it was never judged, so a fixed certificate can still use it. */
+static void test_certificate_mismatch_403_keeps_the_token(void **state) {
+    (void) state;
+    write_token_file(true, true, NULL);
+
+    will_return(__wrap_hc_fetch_cacerts, 200L);
+    will_return(__wrap_hc_fetch_cacerts, "FAKE-CA-BODY");
+    will_return(__wrap_hc_fetch_cacerts, 1);
+    will_return(__wrap_hc_spki_pinned_certificate, PINNED_CERT);
+    will_return(__wrap_hc_enroll, 403L);
+    will_return(__wrap_hc_enroll,
+                "{\"error\":\"Client certificate does not match the peer address\",\"code\":403}");
+    will_return(__wrap_hc_enroll, 1);
+
+    expect_any(__wrap__mdebug1, formatted_msg);
+    expect_enrolling_as_line();
+    expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
+    expect_string(__wrap__merror, formatted_msg,
+                  "Enrollment rejected by the manager (HTTP 403): Client certificate does not "
+                  "match the peer address.");
 
     assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_PERMANENT);
     assert_int_equal(g_enroll_call_count, 1);
@@ -2532,6 +2562,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_pin_mismatch_logs_named_error_and_writes_nothing, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_fatal_token_refusal_discards_the_dead_token, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_disabled_enrollment_keeps_the_token, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_certificate_mismatch_403_keeps_the_token, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_token_unknown_is_pending_and_keeps_the_token, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_stale_token_is_pending, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_token_revoked_401_is_permanent_and_keeps_the_token, setup_test,

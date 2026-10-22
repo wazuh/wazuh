@@ -316,14 +316,29 @@ w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result
      * unlike every other route -- those use endpoints/endpoint.cpp's flat
      * {"error":"<msg>","code":<class>} -- so `code` is read from inside the error object here. The
      * VALUE vocabulary is shared: on a 401 it is the authentication failure class as a string
-     * (#39040), and on everything else authd's numeric code, or 0 when there is none. */
+     * (#39040), and on everything else authd's numeric code, or 0 when there is none.
+     *
+     * A request can still be answered in the flat shape before it reaches the /enroll handler: the
+     * HTTPS server's own rejections (a client certificate that does not match the peer address, an
+     * internal error, an exhausted in-flight budget) use it. Their message is read so the log says
+     * why; their top-level `code` is only the HTTP status repeated, never an authd code or a
+     * failure class, so it is ignored. */
     const char *manager_message = NULL;
     const char *auth_class = NULL;
     int authd_code = 0;
+    bool nested_envelope = false;
     cJSON *error_response = cJSON_Parse(result->body);
     cJSON *error_obj = error_response ? cJSON_GetObjectItem(error_response, "error") : NULL;
-    cJSON *message = error_obj ? cJSON_GetObjectItem(error_obj, "message") : NULL;
-    cJSON *code = error_obj ? cJSON_GetObjectItem(error_obj, "code") : NULL;
+    cJSON *message = NULL;
+    cJSON *code = NULL;
+
+    if (cJSON_IsObject(error_obj)) {
+        nested_envelope = true;
+        message = cJSON_GetObjectItem(error_obj, "message");
+        code = cJSON_GetObjectItem(error_obj, "code");
+    } else if (cJSON_IsString(error_obj)) {
+        message = error_obj;
+    }
     manager_message = cJSON_GetStringValue(message);
 
     /* The NULL test is redundant against cJSON -- cJSON_IsString()/cJSON_IsNumber() both return
@@ -349,16 +364,23 @@ w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result
             status = w_enrollment_classify_auth_failure(auth_class, manager_message);
             break;
         case 403:
-            /* Two different 403s, told apart by whether authd put a code in the body:
+            /* Three different 403s, told apart by the envelope and the code in it:
              *
              *   9022/9023/9024 -- authd's verdict on an enrollment token whose SIGNATURE remoted
              *   already verified. Unknown/revoked, expired, or out of uses: an authoritative "no"
              *   about this credential, so retrying with it is pointless and only the operator can
              *   fix it (mint a new token).
              *
-             *   no code (0)    -- enrollment is administratively disabled on this manager. Kept as
+             *   nested, code 0 -- enrollment is administratively disabled on this manager. Kept as
              *   its own status, as before: an operator can re-enable it, so this one is worth
-             *   waiting on. */
+             *   waiting on.
+             *
+             *   anything else  -- refused before the /enroll handler ran (a client certificate
+             *   whose SAN does not list the peer address, a proxy in between), or a body that
+             *   could not be read. Saying "disabled" here would send the operator to the wrong
+             *   setting, so the manager's own reason is logged instead. Its own status, handled
+             *   like "disabled": the fix is on the manager or in the certificate, not in this
+             *   request, and an operator can make it. */
             if (authd_code == 9022 || authd_code == 9023 || authd_code == 9024) {
                 /* Named with the token id (#39064: "surface 403 to operators with token ID"):
                  * the whole point of this message is that an operator has to mint a replacement,
@@ -371,12 +393,16 @@ w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result
                        w_enrollment_token_id_or_unknown(enroll_kid), authd_code,
                        manager_message ? ": " : "", manager_message ? manager_message : "");
                 status = W_ENROLL_ERR_AUTH_FATAL;
-            } else {
+            } else if (nested_envelope && cJSON_IsNumber(code) && authd_code == 0) {
                 /* Administratively disabled, not a transport hiccup -- the
-                 * caller must not blind-retry this the same way (#38465 R12). */
-                minfo("Enrollment is disabled on the manager.%s%s", manager_message ? " " : "",
-                      manager_message ? manager_message : "");
+                 * caller must not blind-retry this the same way (#38465 R12). The manager's
+                 * message only restates it, so it is not appended. */
+                minfo("Enrollment is disabled on the manager.");
                 status = W_ENROLL_ERR_DISABLED;
+            } else {
+                merror("Enrollment rejected by the manager (HTTP 403): %s.",
+                       manager_message ? manager_message : "no reason given");
+                status = W_ENROLL_ERR_FORBIDDEN;
             }
             break;
         case 409:
@@ -535,6 +561,7 @@ w_enroll_action_t w_enrollment_apply_policy(w_enroll_status_t status) {
         case W_ENROLL_ERR_INVALID_REQUEST:
         case W_ENROLL_ERR_AUTH_RETRY:
         case W_ENROLL_ERR_DISABLED:
+        case W_ENROLL_ERR_FORBIDDEN:
         case W_ENROLL_ERR_DUPLICATE:
         case W_ENROLL_ERR_SERVER:
         default:

@@ -614,18 +614,74 @@ static void test_process_response_403_never_names_an_agent_id_as_a_token(void **
     }
 }
 
-/* The other 403: enrollment administratively disabled, which authd marks with code 0. Still its
- * own status and still retryable -- an operator can re-enable it. */
+/* The other 403: enrollment administratively disabled, which the /enroll handler marks with a
+ * nested envelope and code 0. Still its own status and still retryable -- an operator can
+ * re-enable it. The manager's message only restates it, so it is not appended a second time. */
 static void test_process_response_403_is_disabled_not_an_error(void **state) {
     (void)state;
     hc_enroll_result_t result = {0};
-    result.http_code = 403;
+    set_error_body(&result, 403, "0", "Enrollment is disabled on this manager");
 
     /* Administratively disabled: logged at INFO, not ERROR -- the caller must
      * be able to tell this apart from a transport hiccup (#38465 R12). */
     expect_string(__wrap__minfo, formatted_msg, "Enrollment is disabled on the manager.");
 
     assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_ERR_DISABLED);
+}
+
+/* With <verification_mode>full</verification_mode> the HTTPS server refuses a connection whose
+ * client certificate does not list the peer address before /enroll runs, in the flat envelope.
+ * That is not "disabled": reporting it as such sends the operator to the wrong setting. */
+static void test_process_response_403_flat_certificate_mismatch_is_not_disabled(void **state) {
+    (void)state;
+    hc_enroll_result_t result = {0};
+    result.http_code = 403;
+    snprintf(result.body, sizeof(result.body), "%s",
+             "{\"error\":\"Client certificate does not match the peer address\",\"code\":403}");
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "Enrollment rejected by the manager (HTTP 403): Client certificate does not "
+                  "match the peer address.");
+
+    assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_ERR_FORBIDDEN);
+}
+
+/* "Disabled" needs the manager to say so. A 403 with no readable body -- a proxy in between, a
+ * truncated answer -- is reported as an unexplained refusal, not as disabled. */
+static void test_process_response_403_without_a_body_is_not_disabled(void **state) {
+    (void)state;
+    hc_enroll_result_t result = {0};
+    result.http_code = 403;
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "Enrollment rejected by the manager (HTTP 403): no reason given.");
+
+    assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_ERR_FORBIDDEN);
+}
+
+/* A nested envelope whose code is missing is not the disabled marker either: only code 0 is. */
+static void test_process_response_403_nested_without_a_code_is_not_disabled(void **state) {
+    (void)state;
+    hc_enroll_result_t result = {0};
+    result.http_code = 403;
+    snprintf(result.body, sizeof(result.body), "%s", "{\"error\":{\"message\":\"Forbidden\"}}");
+
+    expect_string(__wrap__merror, formatted_msg, "Enrollment rejected by the manager (HTTP 403): Forbidden.");
+
+    assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_ERR_FORBIDDEN);
+}
+
+/* The flat top-level `code` is the HTTP status repeated, not an authd code: a flat body carrying
+ * one of the token-verdict numbers must not be read as a refused token and stop the agent. */
+static void test_process_response_403_flat_code_is_not_an_authd_code(void **state) {
+    (void)state;
+    hc_enroll_result_t result = {0};
+    result.http_code = 403;
+    snprintf(result.body, sizeof(result.body), "%s", "{\"error\":\"Forbidden\",\"code\":9022}");
+
+    expect_string(__wrap__merror, formatted_msg, "Enrollment rejected by the manager (HTTP 403): Forbidden.");
+
+    assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_ERR_FORBIDDEN);
 }
 
 /* A prefix mismatch is reported here or nowhere: on a fresh install the /control
@@ -672,6 +728,31 @@ static void test_process_response_unrecognized_status_is_server_error(void **sta
     result.http_code = 500;
 
     expect_string(__wrap__merror, formatted_msg, "Enrollment failed with unexpected HTTP status 500.");
+
+    assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_ERR_SERVER);
+}
+
+/* The HTTPS server's own 500 (an exception caught at the transport barrier) uses the flat
+ * envelope; its message must reach the log instead of being dropped by the nested-only parser. */
+static void test_process_response_flat_500_logs_the_manager_message(void **state) {
+    (void)state;
+    hc_enroll_result_t result = {0};
+    result.http_code = 500;
+    snprintf(result.body, sizeof(result.body), "%s", "{\"error\":\"Internal server error\",\"code\":500}");
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "Enrollment failed with unexpected HTTP status 500. Internal server error");
+
+    assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_ERR_SERVER);
+}
+
+/* An authd failure that /enroll maps to 500 keeps the nested envelope; its message still shows. */
+static void test_process_response_nested_500_logs_the_manager_message(void **state) {
+    (void)state;
+    hc_enroll_result_t result = {0};
+    set_error_body(&result, 500, "9999", "authd failure");
+
+    expect_string(__wrap__merror, formatted_msg, "Enrollment failed with unexpected HTTP status 500. authd failure");
 
     assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_ERR_SERVER);
 }
@@ -995,12 +1076,13 @@ static void test_process_response_200_leaves_the_fleet_password_alone(void **sta
 /* ---- w_enrollment_apply_policy: the decision itself (#39064) ---- */
 
 /* Everything that is or may be transient keeps the loop going. DISABLED is in this list on
- * purpose: an operator can re-enable enrollment, so waiting is the right answer. */
+ * purpose: an operator can re-enable enrollment, so waiting is the right answer. FORBIDDEN too:
+ * a certificate or proxy the manager refused is also fixed by an operator, not by this agent. */
 static void test_policy_retries_every_transient_status(void **state) {
     (void)state;
     static const w_enroll_status_t retryable[] = {
         W_ENROLL_ERR_TRANSPORT, W_ENROLL_ERR_INVALID_REQUEST, W_ENROLL_ERR_AUTH_RETRY,
-        W_ENROLL_ERR_DISABLED, W_ENROLL_ERR_DUPLICATE, W_ENROLL_ERR_SERVER};
+        W_ENROLL_ERR_DISABLED, W_ENROLL_ERR_FORBIDDEN, W_ENROLL_ERR_DUPLICATE, W_ENROLL_ERR_SERVER};
     size_t i;
 
     for (i = 0; i < sizeof(retryable) / sizeof(retryable[0]); i++) {
@@ -1212,10 +1294,16 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_process_response_403_without_a_token_id_still_reads, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_403_never_names_an_agent_id_as_a_token, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_403_is_disabled_not_an_error, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_process_response_403_flat_certificate_mismatch_is_not_disabled, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_process_response_403_without_a_body_is_not_disabled, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_process_response_403_nested_without_a_code_is_not_disabled, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_process_response_403_flat_code_is_not_an_authd_code, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_404_names_the_configured_path, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_409_is_duplicate, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_429_is_rate_limited_and_retryable, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_unrecognized_status_is_server_error, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_process_response_flat_500_logs_the_manager_message, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_process_response_nested_500_logs_the_manager_message, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_200_with_malformed_json_is_server_error, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_200_missing_field_is_server_error, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_build_request_prefers_the_reenroll_secret_over_the_password, setup_200_test, teardown_200_test),

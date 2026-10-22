@@ -1359,8 +1359,8 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
         /* w_enrollment_process_response() already logged the specific reason. TRANSPORT/SERVER
          * are the manager's or the network's problem and may clear on their own; the manager has
          * already made a final decision about this exact request in every other case (malformed
-         * request, bad credential, enrollment disabled, duplicate agent), and repeating it
-         * verbatim cannot change that -- except for report->pending, set above. */
+         * request, bad credential, enrollment disabled or refused with a 403, duplicate agent),
+         * and repeating it verbatim cannot change that -- except for report->pending, set above. */
         if (report != NULL) {
             report->transient = (enroll_status == W_ENROLL_ERR_TRANSPORT ||
                                  enroll_status == W_ENROLL_ERR_SERVER);

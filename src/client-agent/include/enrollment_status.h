@@ -64,9 +64,15 @@ typedef enum {
                                     *   re-enrollment bearer can provoke -- a password or token
                                     *   enrollment asserts no identity -- so it means exactly one
                                     *   thing: the stored re-enrollment secret is dead. */
-    W_ENROLL_ERR_DISABLED,        /**< 403 with no authd code: enrollment administratively disabled
-                                    *   on the manager -- distinct from a transport
-                                    *   error, do not blind-retry the same way. */
+    W_ENROLL_ERR_DISABLED,        /**< 403 whose nested envelope carries code 0: enrollment
+                                    *   administratively disabled on the manager -- distinct from a
+                                    *   transport error, do not blind-retry the same way. */
+    W_ENROLL_ERR_FORBIDDEN,       /**< Any other 403 without an authd code: refused before the
+                                    *   /enroll handler ran (e.g. a client certificate whose SAN
+                                    *   does not list the peer address), or with a body that could
+                                    *   not be read. Not "disabled", so it is logged with the
+                                    *   manager's own reason, but handled like it: retried by the
+                                    *   enrollment loops, not transient for the token bootstrap. */
     W_ENROLL_ERR_DUPLICATE,       /**< 409: duplicate agent. */
     W_ENROLL_ERR_SERVER           /**< 500/503, or any other/malformed response. */
 } w_enroll_status_t;
