@@ -81,6 +81,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/lib/libbpf.so,root,wazuh,750,file,-rwxr-x---,444128,0.1
 /var/ossec/lib/libfimebpf.so,root,wazuh,750,file,-rwxr-x---,497816,0.1
 /var/ossec/lib/modern.bpf.o,root,wazuh,750,file,-rwxr-x---,1293032,0.1
+/var/ossec/lib/rt_file.bpf.o,root,wazuh,750,file,-rwxr-x---,0,0.1
 /var/ossec/lib/libstdc++.so.6,root,wazuh,750,file,-rwxr-x---,2530376,0.1
 /var/ossec/lib/libsyscollector.so,root,wazuh,750,file,-rwxr-x---,913192,0.1
 /var/ossec/lib/libsca.so,root,wazuh,750,file,-rwxr-x---,866120,0.1
