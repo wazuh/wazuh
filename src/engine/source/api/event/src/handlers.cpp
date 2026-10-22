@@ -22,6 +22,9 @@ adapter::RouteHandler pushEvent(const std::shared_ptr<::router::IRouterAPI>& orc
     auto identityRejectedCounter =
         fastmetrics::manager().getOrCreateCounter(fastmetrics::names::AGENT_CACHE_REJECTED_IDENTITY);
     auto identityWarningGate = std::make_shared<IdentityWarningGate>();
+    // Malformed batches (invalid H-line JSON, broken framing) are throttled the same way: one producer
+    // sending them continuously must not flood the log.
+    auto parseWarningGate = std::make_shared<IdentityWarningGate>();
 
     return [lambdaName = std::move(lambdaName),
             weakOrchestrator = std::move(weakOrchestrator),
@@ -30,7 +33,8 @@ adapter::RouteHandler pushEvent(const std::shared_ptr<::router::IRouterAPI>& orc
             bytesReceivedCounter,
             eventsReceivedCounter,
             identityRejectedCounter,
-            identityWarningGate](const auto& req, auto& res)
+            identityWarningGate,
+            parseWarningGate](const auto& req, auto& res)
     {
         auto orchestratorRef = weakOrchestrator.lock();
         if (!orchestratorRef)
@@ -103,7 +107,13 @@ adapter::RouteHandler pushEvent(const std::shared_ptr<::router::IRouterAPI>& orc
         }
         catch (const std::exception& e)
         {
-            LOG_WARNING_L(lambdaName.c_str(), "[API::Event] Failed to parse request: '{}'", e.what());
+            if (parseWarningGate->allow(std::chrono::steady_clock::now()))
+            {
+                json::Json context;
+                context.setString(std::string_view(agentId).substr(0, 64), "/agent_id");
+                LOG_WARNING_L(
+                    lambdaName.c_str(), "[API::Event] Failed to parse request {}: '{}'", context.str(), e.what());
+            }
             badRequest(e.what());
             return;
         }

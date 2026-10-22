@@ -388,6 +388,22 @@ TEST_F(EventIdentityTest, GenericParserFailuresDoNotCountAsIdentity)
     EXPECT_EQ(rejected->get(), before);
 }
 
+TEST_F(EventIdentityTest, ParseFailureWarningIsThrottled)
+{
+    const auto before = rejected->get();
+    testing::internal::CaptureStderr();
+    for (int i = 0; i < 2; ++i)
+    {
+        EXPECT_EQ(send({{"X-Wazuh-Agent-Id", "001"}}, "H {invalid\nE 1:syslog:x\n").status, 400);
+    }
+    const auto output = testing::internal::GetCapturedStderr();
+    const std::string warning = "Failed to parse request {\"agent_id\":\"001\"}";
+    const auto first = output.find(warning);
+    EXPECT_NE(first, std::string::npos) << output;
+    EXPECT_EQ(output.find(warning, first + 1), std::string::npos) << output;
+    EXPECT_EQ(rejected->get(), before);
+}
+
 TEST_F(EventIdentityTest, HeaderOnlyAndLaterInvalidBatchesRetainValidHeader)
 {
     EXPECT_CALL(*router, postEvent(testing::_)).Times(0);
