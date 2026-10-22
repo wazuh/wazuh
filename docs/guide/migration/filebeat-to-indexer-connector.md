@@ -63,8 +63,9 @@ rm -f /tmp/root-ca.pem
 
 The files are `root:wazuh-manager` `0640`, the ownership and mode the installation gives the connector's files, so
 the daemons read them after dropping privileges. Staged without an import marker, they are checked before every
-start (a client pair not issued by `indexer-ca.pem`, expired, or without `clientAuth` stops it with an `INVALID`
-line naming the file) and never replaced.
+start and never replaced: a client pair not issued by `indexer-ca.pem`, without `clientAuth`, or not matching its key
+stops the start with an `INVALID` line naming the file, while an expired or not-yet-valid one only logs a `WARNING`
+(the indexer connection fails until it is renewed).
 
 ### 3. Store the credentials in the keystore
 
@@ -96,7 +97,7 @@ Edit the `<indexer>` section of `/etc/wazuh-manager/wazuh-manager.conf` with you
 </indexer>
 ```
 
-Relative paths are resolved from the installation directory, `/var/wazuh-manager`, not from `/etc/wazuh-manager`. For a multi-node indexer cluster, list each node as a separate `<host>`:
+Give every file as an absolute path directly inside `/etc/wazuh-manager/certs`. The schema also accepts a relative path, resolved from the installation directory, `/var/wazuh-manager`, but the start then refuses it, as it refuses any file outside that directory (see [Configured file names](../../ref/getting-started/credentials.md#configured-file-names)). For a multi-node indexer cluster, list each node as a separate `<host>`:
 
 ```xml
 <hosts>

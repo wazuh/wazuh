@@ -50,7 +50,7 @@ curl -k -X <METHOD> "https://localhost:55000/<ENDPOINT>" \
   -H "Authorization: Bearer <YOUR_JWT_TOKEN>"
 ```
 
-The token expires after `auth_token_exp_timeout` seconds (900 by default). `DELETE /security/user/authenticate` logs out, invalidating every token of the current user.
+The token expires after `auth_token_exp_timeout` seconds (900 by default). `DELETE /security/user/authenticate` logs out, invalidating every token of the current user; called with a `run_as` token it invalidates only the tokens granted for the same authorization context, since the account that logged in is shared by every end user it logs in.
 
 ### Update token expiration
 
@@ -85,7 +85,7 @@ curl -k -X GET "https://localhost:55000/?pretty=true" \
     "api_version": "5.0.0",
     "revision": "rc2",
     "license_name": "GPL 2.0",
-    "license_url": "https://github.com/wazuh/wazuh/blob/v5.0.0-rc1/LICENSE",
+    "license_url": "https://github.com/wazuh/wazuh/blob/v5.0.0-rc2/LICENSE",
     "hostname": "wazuh-manager",
     "timestamp": "2026-02-20T12:00:00Z"
   },
@@ -185,9 +185,10 @@ curl -k -X PUT "https://localhost:55000/agents/group/web-servers/reload?pretty=t
 
 Deleting an agent also removes its documents from the Wazuh Indexer (inventory state, reported
 configuration and statistics), which is why its data disappears from the dashboard. That cleanup is
-performed by `wazuh-manager-authd` after this call returns; if the indexer is unhealthy at that
-moment the documents can survive and authd logs an error naming the agent — see the
-[Inventory Sync Server FAQ](../inventory-sync-server/README.md) for the recovery.
+not part of this call: `wazuh-manager-authd` records a durable `agent_delete_indexer` task that the
+task manager runs no earlier than `authd.purge_delay` (120 seconds by default) after the removal, and
+retries until the indexer accepts it — see the
+[Inventory Sync Server FAQ](../inventory-sync-server/README.md#faq-operations) for how to check it.
 
 ```bash
 # Delete disconnected agents older than 30 days
@@ -418,7 +419,7 @@ Other MITRE endpoints: `/mitre/tactics`, `/mitre/groups`, `/mitre/software`, `/m
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | POST | `/security/user/authenticate` | Login (get JWT) |
-| DELETE | `/security/user/authenticate` | Logout (invalidate all of the current user's tokens) |
+| DELETE | `/security/user/authenticate` | Logout (invalidate all of the current user's tokens, or of the current authorization context with a `run_as` token) |
 | POST | `/security/user/authenticate/run_as` | Login with auth context |
 | PUT | `/security/user/revoke` | Revoke tokens |
 | GET | `/security/users` | List users |
@@ -463,7 +464,7 @@ Other MITRE endpoints: `/mitre/tactics`, `/mitre/groups`, `/mitre/software`, `/m
 | GET | `/mitre/references` | References |
 | GET | `/mitre/metadata` | Metadata |
 
-### Events & Overview
+### Overview
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/overview/agents` | Agent overview |
@@ -562,8 +563,11 @@ Errors follow a structured JSON response format.
 | 403       | Forbidden         | RBAC denied, or the client IP is blocked after too many failed logins (`6000`) |
 | 404       | Not Found         | Invalid endpoint, or the named resource (group, cluster node) does not exist |
 | 405       | Method Not Allowed | Invalid HTTP method     |
+| 406       | Not Acceptable    | The body does not match its `Content-Type` (`6002`) |
 | 413       | Payload Too Large | Request body too large   |
-| 429       | Too Many Requests | Rate limit exceeded (`6001` authenticated, `6005` unauthenticated) |
+| 415       | Unsupported Media Type | A `Content-Type` the operation does not accept |
+| 417       | Expectation Failed | An `Expect` header other than `100-continue` |
+| 429       | Too Many Requests | Rate limit exceeded (`6001` authenticated, `6005` unauthenticated), or too many logins already waiting for their password check (`6006`) |
 | 500       | Internal Error    | Check manager logs       |
 
 ### Exception Hierarchy
@@ -584,7 +588,7 @@ All exceptions inherit from `WazuhException` (defined in `core/exception.py`), w
 | 3000–3999 | Cluster errors | Cluster configuration, distributed API requests, worker not connected |
 | 4000–4500 | RBAC errors | Permission denied, invalid role/policy/resources |
 | 5000–5999 | User management errors | User not found, insecure password, invalid `allow_run_as` |
-| 6000–6999 | Security errors | Blocked IP, request rate limit reached, `run_as` not enabled for the user |
+| 6000–6999 | Security errors | Blocked IP, request rate limit reached, login queue full, `run_as` not enabled for the user |
 | 8000–8999 | Vulnerability scan errors | Scanner or feed not ready, scan queue full |
 
 Error responses include a `dapi_errors` field in cluster deployments.
@@ -592,7 +596,7 @@ Error responses include a `dapi_errors` field in cluster deployments.
 These codes are the framework's catalog (`framework/wazuh/core/exception.py`). The API process has a
 separate, startup-only catalog (`api/api/api_exception.py`) whose codes overlap numerically: `2000`
 invalid `api.yaml`, `2003` TLS certificate errors, `2004` configuration file not loadable, `2010`
-address already in use, `2011` logger setup error, `2012` `rbac.db` integrity check failed. They stop
+address already in use, `2011` logger setup error, `2012` `rbac.db` absent or failing its integrity check. They stop
 `wazuh-manager-apid` from starting and are printed as *Error when trying to start the Wazuh API* (or
 logged in `api.log` once the logger is set up); they are never returned to a client.
 

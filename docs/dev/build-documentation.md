@@ -15,8 +15,10 @@ The following specific versions are required for compatibility with the global d
 | Python 3 with `PyYAML` | `PyYAML` `6.0.3` in CI |
 | Node.js and `npm` (optional — only needed for Mermaid diagram validation) | Node.js `20` in CI |
 
-`build.sh` runs two Python tools (`docs/tools/gen-manager-conf-ref.py` and `docs/tools/check-docs.py`, which
-imports `yaml`), and `check-docs.py` validates the Mermaid diagrams with Node.js: on its first run it
+Python 3 is needed even for a bare `mdbook build` or `mdbook serve`: `book.toml` runs the `readme-links`
+preprocessor (`python3 tools/readme-links.py`), which rewrites links to `README.md` chapters to the `index.html`
+mdBook serves. `build.sh` also runs two Python tools (`docs/tools/gen-manager-conf-ref.py` and
+`docs/tools/check-docs.py`, which imports `yaml`), and `check-docs.py` validates the Mermaid diagrams with Node.js: on its first run it
 installs the pinned `jsdom` from `docs/tools/package-lock.json` with `npm ci` into
 `~/.cache/wazuh-docs-tools` (or `$WAZUH_DOCS_NODE_DIR`), outside `docs/` so that mdBook does not
 publish it. These versions are the ones the CI job (`.github/workflows/5_testbuild_docs.yml`) installs.
@@ -87,8 +89,19 @@ cd docs
 sh build.sh
 ```
 
-The output will be generated in the `docs/book` directory. `mdbook serve` skips both checks, so run
-`build.sh` before opening a pull request.
+The output will be generated in the `docs/book` directory. `mdbook serve` skips both checks, and so do the
+tracked `docs/build` and `docs/server.sh` helpers (a bare `mdbook build` and `mdbook serve`), so run `build.sh`
+before opening a pull request. A failed check prints the file, the line and the rule.
+
+To check only some files against a book already built, pass them to the checker from the repository root:
+
+```bash
+python3 docs/tools/check-docs.py --book docs/book docs/dev docs/ref/modules/remoted/README.md
+```
+
+Besides the book, the checker reads every tracked `.md` under `src/`, `framework/`, `api/` and `tools/` (links
+and anchors in the developer READMEs, checked as GitHub renders them), so an edit to a README can fail the
+documentation build. It sees only files tracked by Git: `git add` a new page before trusting a local run.
 
 ## Troubleshooting
 

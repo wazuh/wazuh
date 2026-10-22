@@ -22,19 +22,23 @@ The following table maps each `ossec.conf` element from Wazuh 4.x to the corresp
 | `<syslog_output>` filter | Alerting > Monitor > Query (data filter)                | [Step 2.1](#21-creating-a-monitor)                                    |
 | `syslog_output.level`    | Alerting > Monitor > Query / data filter (`wazuh.rule.level`) | [Step 2.1](#21-creating-a-monitor)                              |
 | `syslog_output.group`    | Alerting > Monitor > Query / data filter (`wazuh.rule.tags`) | [Step 2.1](#21-creating-a-monitor)                                |
-| `syslog_output.rule_id`  | Alerting > Monitor > Query / data filter (`wazuh.rule.id`) | [Step 2.1](#21-creating-a-monitor)                                  |
+| `syslog_output.rule_id`  | Alerting > Monitor > Query / data filter (`wazuh.rule.title` or `wazuh.rule.id`) | [Step 2.1](#21-creating-a-monitor)                |
+| `syslog_output.location` | Alerting > Monitor > Query / data filter (for example `wazuh.protocol.location`) | [Step 2.1](#21-creating-a-monitor)                |
+| `syslog_output.use_fqdn` | `---`                                                    | No equivalent: the payload carries whatever fields the action message names |
 
-> **Option scope note:** `protocol` is not a valid `<syslog_output>` option in Wazuh 4.x `ossec.conf` (the documented options are `server`, `port`, `level`, `group`, `rule_id`, `location`, `use_fqdn`, and `format`).
+> **Option scope note:** `protocol` is not a valid `<syslog_output>` option in Wazuh 4.x `ossec.conf` (the options are `server`, `port`, `level`, `group`, `rule_id`, `location`, `use_fqdn`, and `format`).
 
-> **Wazuh 4.x protocol note:** In Wazuh 4.x, `syslog_output` forwarding uses Syslog transport (UDP by default on port `514`). In Wazuh 5.x, Notifications uses HTTP/HTTPS POST webhooks for outbound routing. Target endpoints must support HTTP webhook ingestion, or you must deploy a webhook-to-syslog translation layer on the receiving side.
+> **Rule identity:** the 4.x numeric `rule_id` does not carry over. A 5.x finding's `wazuh.rule.id` is the detection rule's UUID, so match the rule that replaces yours by its `wazuh.rule.title` (see [Map rule identification](rules-4x-to-5x.md#step-2-map-rule-identification)).
 
-> **Note on Output Formats**: In Wazuh 4.x, the `<format>` tag automatically converted the data layout into predefined profiles (json, cef, or splunk). In Wazuh 5.x, the Notifications plugin does not include these pre-configured encoding profiles. To migrate specific formats (such as ArcSight CEF, Splunk key-value pairs, or custom JSON payloads), the structure must be manually designed inside the Message text block using Mustache syntax variables during the Action configuration phase.
+> **Wazuh 4.x protocol note:** In Wazuh 4.x, `syslog_output` forwarding sent each alert as a Syslog datagram over UDP (the only transport), to port `514` unless `<port>` said otherwise. In Wazuh 5.x, Notifications uses HTTP/HTTPS POST webhooks for outbound routing. Target endpoints must support HTTP webhook ingestion, or you must deploy a webhook-to-syslog translation layer on the receiving side.
+
+> **Note on Output Formats**: In Wazuh 4.x, the `<format>` tag selected one of four predefined layouts (`default`, `cef`, `json`, or `splunk`). In Wazuh 5.x, the Notifications plugin does not include these pre-configured encoding profiles. To migrate specific formats (such as ArcSight CEF, Splunk key-value pairs, or custom JSON payloads), the structure must be manually designed inside the Message text block using Mustache syntax variables during the Action configuration phase.
 
 ## Wazuh 4.x ossec.conf reference
 
 Below is a typical Wazuh 4.x configuration block you may have in your `ossec.conf`. Use it as a reference when following the migration steps.
 
-> **Port context:** In this legacy 4.x example, port `514` is the standard Syslog transport port (UDP/TCP). In Wazuh 5.x webhook routing, use the HTTP/HTTPS port exposed by your receiver (for example, `10515`).
+> **Port context:** In this legacy 4.x example, port `514` is the standard Syslog port (4.x sent to it over UDP). In Wazuh 5.x webhook routing, use the HTTP/HTTPS port exposed by your receiver (for example, `10515`).
 
 ```xml
 <syslog_output>
@@ -102,7 +106,7 @@ The trigger decides when the monitor fires on what the query matched; it has no 
 3. Under **Actions**, click **Add notification** and configure:
    - **Action name:** Provide a label (for example, `Send-Syslog-Payload`).
    - **Channel:** Select the custom webhook channel created in [Step 1](#1-setting-up-a-custom-webhook-notification-channel).
-  - **Message:** Replace the default monitor/trigger text with a finding-based payload. Use Mustache templates from `ctx.results` to map alert fields to your destination JSON structure. For example:
+  - **Message:** Replace the default monitor/trigger text with a finding-based payload. Use Mustache templates from `ctx.results` (a per query monitor's search response) to map alert fields to your destination JSON structure; a per document monitor exposes its matches under `ctx.alerts.0.sample_documents` instead, as in the [integratord migration guide](integratord-notifications.md#24-actions). For example:
 
 ```json
 {

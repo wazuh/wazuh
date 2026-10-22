@@ -15,11 +15,11 @@ The module provides **only the combinator framework** — it does not include co
 │              Consumer Modules                      │
 │                                                    │
 │  logpar         logicexpr         builder           │
-│  (log format    (boolean expr    (helper function   │
-│   parsing)       tokenization)    arg parsing)      │
+│  (logpar        (boolean expr    (helper function   │
+│   grammar)       tokenization)    arg parsing)      │
 │                                                    │
 │  Define concrete parsers:                          │
-│  pChar(), pNotChar(), pLiteral(), pQuoted()...     │
+│  pChar(), pNotChar(), pLiteral(), getHelper*()...  │
 └──────────────────────┬─────────────────────────────┘
                        │  use
               ┌────────▼─────────────────────┐
@@ -59,19 +59,24 @@ The return type of every parser. Wraps an optional value and a `Trace`:
 | Method | Description |
 |--------|-------------|
 | `success()` / `failure()` | Check outcome |
-| `value()` | Get the parsed value (throws if failure) |
-| `error()` | Get the error message (throws if success) |
+| `value()` | Get the parsed value (const reference, or rvalue on a non-const `Result`). Precondition: `success()` — the header comment promises `std::bad_optional_access`, but the code dereferences the optional unchecked |
+| `error()` | Get the trace message. Precondition: `failure()`; a success result throws `std::bad_optional_access` only when it carries no message |
 | `index()` | Position after parsing (next unconsumed character) |
 | `trace()` | Full `Trace` object for debugging |
 
 Factory functions:
 
 ```cpp
-// Success: value + new index
-makeSuccess<T>(T&& value, size_t index, trace_msg?, inner_traces?)
+// Success: value + new index (+ optional trace message and inner traces)
+template<typename T>
+Result<T> makeSuccess(T&& value, size_t index,
+                      Trace::messageT&& trace = std::nullopt,
+                      Trace::nestedTracesT&& innerTrace = std::nullopt);
 
 // Failure: error message + position where failure occurred
-makeError<T>(string&& error, size_t index, inner_traces?)
+template<typename T>
+Result<T> makeError(std::string&& error, size_t index,
+                    Trace::nestedTracesT&& innerTrace = std::nullopt);
 ```
 
 ### Trace
@@ -89,12 +94,12 @@ Trace utilities:
 
 | Function | Description |
 |----------|-------------|
-| `firstError(trace)` | Find the deepest (most specific) error in the trace tree |
+| `firstError(trace)` | Follow the first failed inner trace at each level down to the deepest one (returns `trace` itself if no inner trace failed) |
 | `getLeafErrors(trace)` | Collect all leaf-level error traces |
-| `detailedTrace(trace, ...)` | Build a tree-formatted trace string for debugging |
-| `formatTrace(text, trace, debugLvl)` | Human-readable error report with position markers |
+| `detailedTrace(trace, last, prefix = "")` | Build a tree-formatted trace string for debugging |
+| `formatTrace(text, trace, debugLvl)` | Human-readable error report with position markers: the main (first) error, the list of leaf errors, and with `debugLvl > 0` the detailed trace |
 
-Example output from `formatTrace`:
+Example output from `formatTrace` (`debugLvl` 0; the string starts with a newline):
 
 ```
 Main error: Expected digit at 3
@@ -215,13 +220,13 @@ Tests use helper parsers: `getSuccessParser()`, `getErrorParser()`, and `getAnyP
 
 | Module | Usage |
 |--------|-------|
-| **logpar** | Builds format-specific parsers (CSV, JSON, KV, XML, date, IP, URI, etc.) for log field extraction. Defines low-level character parsers (`pChar`, `pNotChar`, `pEscapedChar`, `pRawLiteral`) on top of parsec combinators. |
-| **logicexpr** | Tokenizes boolean logic expressions (AND, OR, NOT, parentheses). Uses a template `Tokenizer<TermP>` that chains parsec combinators for operator precedence. |
-| **builder** | Parses helper function call arguments. Implements `getHelperQuotedArgParser()`, `getHelperRefArgParser()`, `getHelperJsonArgParser()`, `getHelperRawArgParser()` returning `parsec::Result<OpArg>`. |
+| **logpar** | Parses the logpar expression grammar (`hlp::logpar::parser::pLogpar()` and friends) into an AST. Defines low-level character parsers (`pChar`, `pNotChar`, `pEscapedChar`, `pRawLiteral`) on top of parsec combinators. The format parsers themselves (CSV, JSON, KV, …) live in `hlp`, which does not use parsec. |
+| **logicexpr** | Tokenizes boolean logic expressions (AND, OR, NOT, parentheses). The template `Tokenizer<TermP>` requires `TermP` to be a `parsec::Parser` and tries it before matching operators; precedence is handled afterwards by the Shunting-Yard step. |
+| **builder** | Parses helper function call arguments (`builder/src/builders/helperParser.hpp`): `getHelperQuotedArgParser()`, `getHelperRefArgParser()`, `getHelperJsonArgParser()`, `getHelperRawArgParser()` each return a `parsec::Parser<builders::OpArg>`. |
 
 ## Usage Example
 
-Building a parser that matches "hello" followed by optional whitespace, then a number:
+Building a parser that matches "hello" followed by a space, then a single digit:
 
 ```cpp
 #include <parsec/parsec.hpp>
@@ -230,7 +235,7 @@ Building a parser that matches "hello" followed by optional whitespace, then a n
 parsec::Parser<char> pChar(char c) {
     return [c](std::string_view s, size_t i) -> parsec::Result<char> {
         if (i < s.size() && s[i] == c)
-            return parsec::makeSuccess(c, i + 1);
+            return parsec::makeSuccess<char>(char {c}, i + 1);
         return parsec::makeError<char>(
             fmt::format("Expected '{}' at {}", c, i), i);
     };
@@ -258,7 +263,7 @@ auto result = parser("hello 7", 0);
 ## Design Decisions
 
 - **Header-only**: No compilation unit — the entire library is in a single header, keeping the combinator templates fully inlineable and avoiding link-time overhead.
-- **Value semantics**: `Result<T>` and `Trace` use value types with full copy/move support. No heap allocation for the core types (though `std::function` may allocate for large captures).
+- **Value semantics**: `Result<T>` and `Trace` are value types with full copy/move support. They are not allocation-free: a `Trace` owns an optional message string and an optional vector of inner traces, and `std::function` may allocate for large captures.
 - **Trace tree**: Every combinator wraps its sub-parser traces into a tree, enabling recursive error reporting. This adds overhead but provides excellent diagnostics for complex grammars.
 - **No built-in character parsers**: The module deliberately provides only the combinator framework. Concrete parsers (character matching, string literals) are defined by each consumer module to suit their specific needs.
 - **`std::list` for Values**: `many`/`many1` use `std::list<T>` instead of `std::vector<T>` to enable efficient `splice` when composing `many1` on top of `many`.

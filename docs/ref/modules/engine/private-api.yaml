@@ -1,11 +1,16 @@
 openapi: 3.0.3
 info:
   title: Wazuh-Engine Private API
-  description: Internal-only API endpoints of the Wazuh Engine used by development, testing, and maintenance tooling. Public endpoints are documented separately in public-api.yaml.
+  description: |
+    Internal-only API endpoints of the Wazuh Engine used by development, testing, and maintenance tooling. Public endpoints are documented separately in public-api.yaml.
+
+    Every route is served on the engine API socket, `/var/wazuh-manager/queue/sockets/engine-api-http.sock`,
+    and takes `POST`. Request bodies are JSON; unknown fields are ignored, and an empty body is read as an empty
+    request. Responses carry a JSON body although the server labels it `Content-Type: plain/text`.
   version: 1.0.0
 servers:
-- url: http+unix:/run/wazuh-server/analysis
-  description: Wazuh server using Unix socket over HTTP
+- url: http+unix:/var/wazuh-manager/queue/sockets/engine-api-http.sock
+  description: Engine API socket (HTTP over a Unix socket)
 tags:
 - name: Router
   description: Operations for managing environments and routing
@@ -25,15 +30,22 @@ paths:
       tags:
       - Router
       summary: Create a new route
-      description: 'This endpoint allows the creation of a new route in the Wazuh Engine API.
-
-        '
+      description: |
+        Creates a production route that sends events to the policy of a namespace. The route's environment is
+        built from the namespace's policy at creation; a policy that cannot be built, or has no assets, is
+        rejected.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/RoutePost_Request'
+            example:
+              route:
+                name: default
+                namespaceId: standard
+                priority: 1
+                description: Default route
       responses:
         '200':
           $ref: '#/components/responses/GenericSuccess_200'
@@ -54,16 +66,16 @@ paths:
                   value:
                     status: ERROR
                     error: Name cannot be empty
-                namespace_not_exist:
-                  summary: Namespace does not exist
+                policy_build_failed:
+                  summary: The namespace's policy cannot be built (missing namespace, invalid asset, ...)
                   value:
                     status: ERROR
-                    error: 'Failed to create the route: Failed to create environment with namespace ''testing'': Namespace does not exist: testing'
+                    error: "Failed to create the route: Failed to create environment with policy 'testing': <details>"
                 namespace_has_no_assets:
-                  summary: Namespace has no assets
+                  summary: The namespace's policy has no assets
                   value:
                     status: ERROR
-                    error: 'Failed to create the route: Failed to create environment with namespace ''testing'': Namespace ''testing'' has no assets'
+                    error: "Failed to create the route: Failed to create environment with policy 'testing': Policy 'testing' has no assets"
                 priority_zero:
                   summary: Priority is set to 0
                   value:
@@ -75,7 +87,7 @@ paths:
                     status: ERROR
                     error: Priority cannot be greater than 1000
                 priority_already_in_use:
-                  summary: Priority already in use
+                  summary: Priority already in use (the message has two spaces)
                   value:
                     status: ERROR
                     error: The priority of the route  is already in use
@@ -91,9 +103,7 @@ paths:
       tags:
       - Router
       summary: Delete a route
-      description: 'This endpoint allows deleting a specific route in the Wazuh Engine API.
-
-        '
+      description: Deletes a production route.
       requestBody:
         required: true
         content:
@@ -114,7 +124,7 @@ paths:
                   summary: Missing name field
                   value:
                     status: ERROR
-                    error: Name cannot be empty
+                    error: 'Invalid name name: Name cannot be empty'
                 route_not_exist:
                   summary: Route does not exist
                   value:
@@ -127,9 +137,7 @@ paths:
       tags:
       - Router
       summary: Retrieve a route
-      description: 'This endpoint allows retrieving detailed information about a specific route.
-
-        '
+      description: Retrieves a production route.
       requestBody:
         required: true
         content:
@@ -145,12 +153,11 @@ paths:
                 $ref: '#/components/schemas/RouteGet_Response'
               example:
                 status: OK
-                error: null
                 route:
-                  name: example-route
-                  namespaceId: wazuh
-                  priority: 10
-                  description: Example route
+                  name: default
+                  namespaceId: standard
+                  priority: 1
+                  description: Default route
                   entry_status: ENABLED
                   uptime: 3600
         '400':
@@ -177,9 +184,7 @@ paths:
       tags:
       - Router
       summary: Reload a route
-      description: 'This endpoint allows reloading a specific route in the Wazuh Engine API.
-
-        '
+      description: Rebuilds a production route's environment from its namespace's current policy and enables it.
       requestBody:
         required: true
         content:
@@ -200,17 +205,17 @@ paths:
                   summary: Name field is empty
                   value:
                     status: ERROR
-                    error: Name cannot be empty
+                    error: 'Invalid name name: Name cannot be empty'
                 route_not_exist:
                   summary: Route does not exist
                   value:
                     status: ERROR
                     error: The route not exist
-                invalid_asset:
-                  summary: Some asset has validation errors
+                policy_build_failed:
+                  summary: The namespace's policy cannot be rebuilt
                   value:
                     status: ERROR
-                    error: 'Failed to reload the route: Failed to create environment with namespace ''wazuh'': Expected ''name'' key in asset document but got ''n'''
+                    error: "Failed to reload the route: Failed to create environment with policy 'standard': <details>"
         '500':
           $ref: '#/components/responses/InternalServerError_500'
   /_internal/router/route/patchPriority:
@@ -218,9 +223,7 @@ paths:
       tags:
       - Router
       summary: Update route priority
-      description: 'This endpoint allows updating the priority of a specific route.
-
-        '
+      description: Changes the priority of a production route (1..1000, not used by another route).
       requestBody:
         required: true
         content:
@@ -241,7 +244,7 @@ paths:
                   summary: Name field is empty
                   value:
                     status: ERROR
-                    error: Name cannot be empty
+                    error: 'Invalid name name: Name cannot be empty'
                 route_not_exist:
                   summary: Route does not exist
                   value:
@@ -251,12 +254,17 @@ paths:
                   summary: Priority greater than allowed
                   value:
                     status: ERROR
-                    error: Priority cannot be greater than 1000
+                    error: Priority of the route cannot be greater than 1000
                 priority_zero:
                   summary: Priority cannot be zero
                   value:
                     status: ERROR
-                    error: Priority cannot be 0
+                    error: Priority of the route cannot be 0
+                priority_in_use:
+                  summary: Priority already used by another route
+                  value:
+                    status: ERROR
+                    error: Failed to change the priority, it is already in use
         '500':
           $ref: '#/components/responses/InternalServerError_500'
   /_internal/router/table/get:
@@ -264,11 +272,9 @@ paths:
       tags:
       - Router
       summary: Retrieve all routes
-      description: 'This endpoint retrieves the list of existing routes in the Wazuh Engine API.
-
-        '
+      description: Lists the production routes.
       requestBody:
-        required: true
+        required: false
         content:
           application/json:
             schema:
@@ -282,12 +288,11 @@ paths:
                 $ref: '#/components/schemas/TableGet_Response'
               example:
                 status: OK
-                error: null
-                routes:
-                - name: example-route
-                  namespaceId: wazuh
-                  priority: 10
-                  description: Example route
+                table:
+                - name: default
+                  namespaceId: standard
+                  priority: 1
+                  description: Default route
                   entry_status: ENABLED
                   uptime: 3600
         '400':
@@ -299,15 +304,19 @@ paths:
       tags:
       - Tester
       summary: Create a new tester session
-      description: 'This endpoint allows creating a new tester session.
-
-        '
+      description: Creates a tester session on the policy of a namespace. The policy is built in test mode at creation.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/TesterSessionPost_Request'
+            example:
+              session:
+                name: testing
+                namespaceId: standard
+                lifetime: 0
+                description: Manual test session
       responses:
         '200':
           $ref: '#/components/responses/GenericSuccess_200'
@@ -332,17 +341,17 @@ paths:
                   summary: Session name already exists
                   value:
                     status: ERROR
-                    error: The 'testing' environment already exists
-                namespace_does_not_exist:
-                  summary: Namespace folder does not exist
+                    error: The 'testing' environment already exists.
+                policy_build_failed:
+                  summary: The namespace's policy cannot be built (missing namespace, invalid asset, ...)
                   value:
                     status: ERROR
-                    error: 'Failed to create the ''testing'' environment: File Namespace does not exist: testing'
+                    error: 'Failed to create the testing environment: <details>'
                 namespace_without_assets:
-                  summary: Namespace has no assets
+                  summary: The namespace's policy has no assets
                   value:
                     status: ERROR
-                    error: 'Failed to create the ''testing'' environment: Namespace ''wazuh'' has no assets'
+                    error: "Failed to create the testing environment: Policy 'standard' has no assets"
         '500':
           $ref: '#/components/responses/InternalServerError_500'
   /_internal/tester/session/delete:
@@ -350,9 +359,7 @@ paths:
       tags:
       - Tester
       summary: Delete a tester session
-      description: 'This endpoint allows deleting a specific tester session.
-
-        '
+      description: Deletes a tester session. Its namespace is not deleted.
       requestBody:
         required: true
         content:
@@ -378,7 +385,7 @@ paths:
                   summary: Session does not exist
                   value:
                     status: ERROR
-                    error: The 'testing' environment does not exist
+                    error: The 'testing' environment does not exist.
         '500':
           $ref: '#/components/responses/InternalServerError_500'
   /_internal/tester/session/get:
@@ -386,9 +393,7 @@ paths:
       tags:
       - Tester
       summary: Retrieve a tester session
-      description: 'This endpoint retrieves details of a specific tester session.
-
-        '
+      description: Retrieves a tester session.
       requestBody:
         required: true
         content:
@@ -413,7 +418,12 @@ paths:
                   summary: Name cannot be empty
                   value:
                     status: ERROR
-                    error: 'Invalid name name: Name cannot be empty'
+                    error: Name cannot be empty
+                session_not_exist:
+                  summary: Session does not exist
+                  value:
+                    status: ERROR
+                    error: The 'testing' environment does not exist.
         '500':
           $ref: '#/components/responses/InternalServerError_500'
   /_internal/tester/session/reload:
@@ -421,9 +431,7 @@ paths:
       tags:
       - Tester
       summary: Reload a tester session
-      description: 'This endpoint reloads a specific tester session.
-
-        '
+      description: Rebuilds a tester session from its namespace's current policy and enables it.
       requestBody:
         required: true
         content:
@@ -449,12 +457,12 @@ paths:
                   summary: Non-existent session
                   value:
                     status: ERROR
-                    error: The 'testing' environment does not exist
-                asset_validation_error:
-                  summary: Asset validation failure
+                    error: The 'testing' environment does not exist.
+                policy_build_failed:
+                  summary: The namespace's policy cannot be rebuilt
                   value:
                     status: ERROR
-                    error: 'Failed to create the ''testing'' environment: Expected ''name'' key in asset document but got ''n'''
+                    error: "Failed to create the 'testing' environment: <details>"
         '500':
           $ref: '#/components/responses/InternalServerError_500'
   /_internal/tester/run/post:
@@ -462,14 +470,47 @@ paths:
       tags:
       - Tester
       summary: Run a test in a session
-      description: "Injects a single event into the engine using a previously created and loaded testing session.\n\nAdditional metadata about the agent can be provided in the `agent_metadata` field, which\nis merged into the event before ingestion. It must be a **JSON object** (not a JSON-encoded string).\nIt can be an empty JSON object (`{}`).\n\nAfter the pipeline finishes, the final output event is validated against the Wazuh Common\nSchema (WCS). Validation is **non-blocking**: the pipeline result is always returned\nregardless of validation errors. The result is reported in `result.validation` when the\nschema validator is available.\n\nEach entry in `result.validation.errors` has:\n- `path` \u2014 field path using dot notation for nesting and `[N]` for array indices\n  (e.g. `\"event.severity\"`, `\"tags[1]\"`).\n- `kind` \u2014 one of:\n  - `unknown_field` \u2014 field is not defined in WCS and is not a temporary field.\n  - `temporary_field_not_allowed` \u2014 field is a pipeline-internal\
-        \ field (root starts with `_`).\n  - `invalid_type` \u2014 value does not match the WCS type for that field.\n- `expected` / `actual` \u2014 present only for `invalid_type` errors.\n\n`result.validation` is only present when the schema validator is available and the\npipeline produced an output event.\n\nErrors are sorted by path, with kind as tiebreaker.\n"
+      description: |
+        Injects a single event into the engine using a previously created and loaded testing session.
+        The run times out after 5 seconds.
+
+        `event` uses the legacy wire format `<queue>:<location>:<message>`: the first byte is the queue (its
+        byte value is stored in `wazuh.protocol.queue`, so `1` is `49`), and a `:` inside the location is escaped
+        as `|:`.
+
+        Additional metadata about the agent can be provided in the `agent_metadata` field, which
+        is merged into the event before ingestion. It must be a **JSON object** (not a JSON-encoded string);
+        omitted, it is an empty object.
+
+        With `trace_level` other than `NONE`, every asset of the session's policy is traced, or only those listed in
+        `asset_trace` (each must belong to the policy).
+
+        After the pipeline finishes, the final output event is validated against the Wazuh Common
+        Schema (WCS). Validation is **non-blocking**: the pipeline result is always returned
+        regardless of validation errors. Unlike `/logtest`, temporary fields are kept in the output and reported.
+
+        Each entry in `result.validation.errors` has:
+        - `path` — field path using dot notation for nesting and `[N]` for array indices
+          (e.g. `"event.severity"`, `"tags[1]"`).
+        - `kind` — one of:
+          - `unknown_field` — field is not defined in WCS and is not a temporary field.
+          - `temporary_field_not_allowed` — field is a pipeline-internal field (root starts with `_`).
+          - `invalid_type` — value does not match the WCS type for that field.
+        - `expected` / `actual` — present only for `invalid_type` errors.
+
+        `result.validation` is only present when the schema validator is available and the
+        pipeline produced an output event. Errors are sorted by path, with kind as tiebreaker.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/TesterRunPost_Request'
+            example:
+              name: testing
+              event: '1:/tmp/json:{"eventName": "CreateGroup"}'
+              agent_metadata: {}
+              trace_level: ASSET_ONLY
       responses:
         '200':
           description: Successfully ran the test
@@ -516,7 +557,7 @@ paths:
                             location: /tmp/json
                         event:
                           original: '...'
-                          severity: 42
+                          kind: 42
                         _tmp:
                           stage: done
                         unknown_field: value
@@ -526,7 +567,7 @@ paths:
                         errors:
                         - path: _tmp
                           kind: temporary_field_not_allowed
-                        - path: event.severity
+                        - path: event.kind
                           kind: invalid_type
                           expected: keyword
                           actual: number
@@ -539,36 +580,36 @@ paths:
               schema:
                 $ref: '#/components/schemas/Response'
               examples:
-                missing_fields:
-                  summary: Empty request
+                bad_event_format:
+                  summary: Event not in `<queue>:<location>:<message>` form
                   value:
                     status: ERROR
-                    error: 'Error parsing events: NDJson parser error, empty batch'
+                    error: 'Error parsing event: Invalid format: event must be at least 5 bytes ("<byte>:<location>:<message>")'
+                missing_separator:
+                  summary: No unescaped `:` between location and message
+                  value:
+                    status: ERROR
+                    error: "Error parsing event: Invalid format: missing unescaped ':' between location and message"
                 session_non_exist:
                   summary: Session does not exist
                   value:
                     status: ERROR
-                    error: The 'testing' environment does not exist
-                asset_validation_error:
-                  summary: Environment not enabled
+                    error: The 'testing' environment does not exist.
+                session_not_enabled:
+                  summary: Session not enabled
                   value:
                     status: ERROR
                     error: The 'testing' environment is not enabled
-                namespace_missing:
-                  summary: Namespace required
+                asset_not_in_policy:
+                  summary: An `asset_trace` entry is not an asset of the session's policy
                   value:
                     status: ERROR
-                    error: 'Error: Namespaces parameter is required'
-                ndjson_too_short:
-                  summary: Batch too short
+                    error: Asset decoder/unknown/0 not found in store
+                timeout:
+                  summary: The test run did not finish within 5 seconds
                   value:
                     status: ERROR
-                    error: 'Error parsing events: NDJson parser error, invalid batch, expected at least 3 lines'
-                ndjson_invalid_subheader:
-                  summary: Invalid NDJSON subheader
-                  value:
-                    status: ERROR
-                    error: 'Error parsing events: NDJson parser error, invalid subheader, expected ''/module'' and ''/collector'' fields'
+                    error: Timeout waiting for ingestTest
         '500':
           $ref: '#/components/responses/InternalServerError_500'
   /_internal/tester/table/get:
@@ -576,11 +617,9 @@ paths:
       tags:
       - Tester
       summary: Retrieve all tester sessions
-      description: 'This endpoint retrieves a list of all tester sessions.
-
-        '
+      description: Lists the tester sessions.
       requestBody:
-        required: true
+        required: false
         content:
           application/json:
             schema:
@@ -601,13 +640,12 @@ paths:
       tags:
       - Geo
       summary: Query geolocation data for an IP address
-      description: 'This endpoint queries geolocation data for a given IP address from both CITY and ASN databases.
+      description: |
+        Looks up an IP address in both loaded databases and returns each database's raw record for it:
+        `geo` holds the record of the CITY database and `as` the record of the ASN database, with the keys
+        the MaxMind MMDB files store (they are not mapped to WCS field names).
 
-        Returns WCS-compliant data with two objects: "geo" for city/location information and "as" for ASN information.
-
-        If a database is not available or the IP is not found, empty objects are returned for that database type.
-
-        '
+        If a database is not available or the IP is not found in it, its object is empty.
       requestBody:
         required: true
         content:
@@ -623,31 +661,28 @@ paths:
                 $ref: '#/components/schemas/GeoDbGet_Response'
               examples:
                 withBothData:
-                  summary: IP with both CITY and ASN data
+                  summary: IP with both CITY and ASN data (records abridged)
                   value:
                     status: OK
+                    error: ''
                     data:
                       geo:
-                        city_name: Mountain View
+                        city:
+                          names:
+                            en: Mountain View
+                        country:
+                          iso_code: US
                         location:
-                          lat: 37.386
-                          lon: -122.0838
-                        country_code: US
+                          latitude: 37.386
+                          longitude: -122.0838
                       as:
-                        number: 15169
-                        organization_name: Google LLC
-                cityOnly:
-                  summary: IP with only CITY data
-                  value:
-                    status: OK
-                    data:
-                      geo:
-                        city_name: Mountain View
-                      as: {}
+                        autonomous_system_number: 15169
+                        autonomous_system_organization: Google LLC
                 noData:
                   summary: IP not found in databases
                   value:
                     status: OK
+                    error: ''
                     data:
                       geo: {}
                       as: {}
@@ -670,13 +705,12 @@ paths:
       tags:
       - Geo
       summary: List all geolocation databases
-      description: 'This endpoint retrieves information about all geolocation databases currently loaded in the geo manager.
-
-        Returns details including database name, path, MD5 hash, creation timestamp, and type (city or asn).
-
-        '
+      description: |
+        Lists the geolocation databases currently loaded in the geo manager: file name, path, MD5 hash,
+        creation timestamp and type (`city` or `asn`). The databases live in `analysisd.geo_db_path`
+        (default `/var/wazuh-manager/data/mmdb`) as `GeoLite2-City.mmdb` and `GeoLite2-ASN.mmdb`.
       requestBody:
-        required: true
+        required: false
         content:
           application/json:
             schema:
@@ -695,14 +729,14 @@ paths:
                     status: OK
                     entries:
                     - name: GeoLite2-City.mmdb
-                      path: /var/wazuh-manager/geo/GeoLite2-City.mmdb
+                      path: /var/wazuh-manager/data/mmdb/GeoLite2-City.mmdb
                       hash: a1b2c3d4e5f6
-                      createdAt: '2024-01-15T10:30:00Z'
+                      createdAt: '1705314600'
                       type: city
                     - name: GeoLite2-ASN.mmdb
-                      path: /var/wazuh-manager/geo/GeoLite2-ASN.mmdb
+                      path: /var/wazuh-manager/data/mmdb/GeoLite2-ASN.mmdb
                       hash: f6e5d4c3b2a1
-                      createdAt: '2024-01-15T10:30:00Z'
+                      createdAt: '1705314600'
                       type: asn
                 empty:
                   summary: No databases loaded
@@ -718,11 +752,9 @@ paths:
       tags:
       - Event Dumper
       summary: Activate the event dumper
-      description: 'This endpoint activates the event dumper in the system.
-
-        '
+      description: Activates the event dumper (the `event-dumps` stream log channel).
       requestBody:
-        required: true
+        required: false
         content:
           application/json:
             schema:
@@ -731,11 +763,7 @@ paths:
         '200':
           $ref: '#/components/responses/GenericSuccess_200'
         '400':
-          description: Bad Request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Response'
+          $ref: '#/components/responses/BadRequest_400'
         '500':
           $ref: '#/components/responses/InternalServerError_500'
   /_internal/event-dumper/deactivate:
@@ -743,11 +771,9 @@ paths:
       tags:
       - Event Dumper
       summary: Deactivate the event dumper
-      description: 'This endpoint deactivates the event dumper in the system.
-
-        '
+      description: Deactivates the event dumper.
       requestBody:
-        required: true
+        required: false
         content:
           application/json:
             schema:
@@ -756,11 +782,7 @@ paths:
         '200':
           $ref: '#/components/responses/GenericSuccess_200'
         '400':
-          description: Bad Request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Response'
+          $ref: '#/components/responses/BadRequest_400'
         '500':
           $ref: '#/components/responses/InternalServerError_500'
   /_internal/event-dumper/status:
@@ -768,11 +790,9 @@ paths:
       tags:
       - Event Dumper
       summary: Get the status of the event dumper
-      description: 'This endpoint retrieves the current status of the event dumper.
-
-        '
+      description: Reports whether the event dumper is active.
       requestBody:
-        required: true
+        required: false
         content:
           application/json:
             schema:
@@ -786,23 +806,17 @@ paths:
                 $ref: '#/components/schemas/EventDumperStatus_Response'
               examples:
                 event_dumper_active:
-                  summary: Dumper events is active
+                  summary: Event dumper is active
                   value:
                     status: OK
-                    error: null
                     active: true
                 event_dumper_inactive:
-                  summary: Dumper events is inactive
+                  summary: Event dumper is inactive
                   value:
                     status: OK
-                    error: null
                     active: false
         '400':
-          description: Bad Request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Response'
+          $ref: '#/components/responses/BadRequest_400'
         '500':
           $ref: '#/components/responses/InternalServerError_500'
   /_internal/raweventindexer/status:
@@ -810,11 +824,9 @@ paths:
       tags:
       - Raw Event Indexer
       summary: Get the status of the raw event indexer
-      description: 'This endpoint retrieves whether raw event indexing is enabled.
-
-        '
+      description: Reports whether raw event indexing is enabled. The route exists only when the raw event indexer is created at startup.
       requestBody:
-        required: true
+        required: false
         content:
           application/json:
             schema:
@@ -831,20 +843,14 @@ paths:
                   summary: Raw event indexer enabled
                   value:
                     status: OK
-                    error: null
                     enabled: true
                 disabled:
                   summary: Raw event indexer disabled
                   value:
                     status: OK
-                    error: null
                     enabled: false
         '400':
-          description: Bad Request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Response'
+          $ref: '#/components/responses/BadRequest_400'
         '500':
           $ref: '#/components/responses/InternalServerError_500'
   /_internal/content/namespace/list:
@@ -852,20 +858,25 @@ paths:
       tags:
       - Content
       summary: List namespaces
-      description: Lists all available namespaces.
+      description: Lists all namespaces. A store failure is reported with HTTP 200 and `status` `ERROR`.
       requestBody:
-        required: true
+        required: false
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/namespaceGet_Request'
       responses:
         '200':
-          description: Successfully listed namespaces
+          description: Namespaces listed (or `status` `ERROR` with the store's error)
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/namespaceGet_Response'
+              example:
+                status: OK
+                spaces:
+                - standard
+                - custom
         '400':
           $ref: '#/components/responses/BadRequest_400'
         '500':
@@ -875,7 +886,7 @@ paths:
       tags:
       - Content
       summary: Create a namespace
-      description: Creates or ensures a namespace.
+      description: Creates a namespace. Errors (an empty `space` is `Field /space cannot be empty`) are 400.
       requestBody:
         required: true
         content:
@@ -913,7 +924,11 @@ paths:
       tags:
       - Content
       summary: Import a namespace
-      description: Imports a complete namespace definition from JSON.
+      description: |
+        Imports a complete namespace definition into a **new** namespace (an existing one is rejected with
+        `Namespace '<name>' already exists. Import is only allowed into a new namespace`). `jsonContent` is the
+        namespace document as a JSON **string**, an object with exactly the keys `policy` and `resources`
+        (see `POST /content/validate/policy` in the public API). A failed import is rolled back.
       requestBody:
         required: true
         content:
@@ -932,7 +947,7 @@ paths:
       tags:
       - Content
       summary: Create or replace a policy
-      description: Creates or replaces the policy for a namespace.
+      description: Creates or replaces the policy of a namespace. `jsonContent` must be a JSON object (`Payload top-level must be an object`).
       requestBody:
         required: true
         content:
@@ -951,7 +966,7 @@ paths:
       tags:
       - Content
       summary: Delete a policy
-      description: Deletes the policy associated with a namespace.
+      description: Deletes the policy of a namespace.
       requestBody:
         required: true
         content:
@@ -970,7 +985,9 @@ paths:
       tags:
       - Content
       summary: List resources
-      description: Lists resources of a given type within a namespace.
+      description: |
+        Lists the resources of a given type within a namespace. Missing `space`/`type` or an unknown `type` are 400;
+        a store failure (e.g. a namespace that does not exist) is reported with HTTP 200 and `status` `ERROR`.
       requestBody:
         required: true
         content:
@@ -979,7 +996,7 @@ paths:
               $ref: '#/components/schemas/resourceList_Request'
       responses:
         '200':
-          description: Successfully listed resources
+          description: Resources listed (or `status` `ERROR` with the store's error)
           content:
             application/json:
               schema:
@@ -993,7 +1010,11 @@ paths:
       tags:
       - Content
       summary: Get a resource
-      description: Retrieves a resource JSON document by identifier from a namespace. Identifiers are opaque strings (any UUID version or other format) and are matched byte by byte.
+      description: |
+        Retrieves a resource JSON document by identifier from a namespace. Identifiers are opaque strings
+        (any UUID version or other format) and are matched byte by byte. Missing `space`/`uuid` or an invalid
+        identifier are 400; a lookup failure (unknown namespace or identifier) is reported with HTTP 200 and
+        `status` `ERROR`.
       requestBody:
         required: true
         content:
@@ -1002,7 +1023,7 @@ paths:
               $ref: '#/components/schemas/resourceGet_Request'
       responses:
         '200':
-          description: Successfully retrieved the resource
+          description: The resource (or `status` `ERROR` with the store's error)
           content:
             application/json:
               schema:
@@ -1016,7 +1037,7 @@ paths:
       tags:
       - Content
       summary: Create or replace a resource
-      description: Creates or replaces a resource in a namespace.
+      description: Creates or replaces a resource in a namespace. `jsonContent` must be a JSON object.
       requestBody:
         required: true
         content:
@@ -1060,8 +1081,7 @@ components:
       description: Status codes representing different return states.
     ReturnError:
       type: string
-      description: Error message if status is ERROR
-      nullable: true
+      description: Error message; present when status is ERROR.
     Response:
       type: object
       properties:
@@ -1166,13 +1186,22 @@ components:
       properties:
         name:
           type: string
-          description: Database name
+          description: Database file name
         path:
           type: string
           description: Path of the MMDB database file
+        hash:
+          type: string
+          description: MD5 hash of the database file
+        createdAt:
+          type: string
+          description: Database creation timestamp in seconds since the epoch (a 64-bit integer, serialized as a JSON string)
         type:
           type: string
-          description: MMDB database type [city|asn]
+          enum:
+          - city
+          - asn
+          description: MMDB database type
     GeoDbGet_Request:
       type: object
       required:
@@ -1189,26 +1218,16 @@ components:
         properties:
           data:
             type: object
-            description: WCS-compliant geolocation data with 'geo' and 'as' objects
+            description: Raw MMDB records, `geo` from the CITY database and `as` from the ASN database
             properties:
               geo:
                 type: object
-                description: City and location data from CITY database. Empty object if not found or database not available.
+                description: Record from the CITY database. Empty object if not found or database not available.
                 additionalProperties: true
               as:
                 type: object
-                description: ASN data from ASN database. Empty object if not found or database not available.
+                description: Record from the ASN database. Empty object if not found or database not available.
                 additionalProperties: true
-            example:
-              geo:
-                city_name: Mountain View
-                location:
-                  lat: 37.386
-                  lon: -122.0838
-                country_code: US
-              as:
-                number: 15169
-                organization_name: Google LLC
     GeoDbList_Response:
       allOf:
       - $ref: '#/components/schemas/Response'
@@ -1270,25 +1289,34 @@ components:
           description: Name of the route
         priority:
           type: integer
+          minimum: 1
+          maximum: 1000
           description: New priority of the route
     RoutePost_Request:
       type: object
       required:
-      - name
-      - namespaceId
-      - priority
+      - route
       properties:
-        name:
-          type: string
-          description: Name of the route
-        namespaceId:
-          $ref: '#/components/schemas/Namespace'
-        priority:
-          type: integer
-          description: Priority of the route
-        description:
-          type: string
-          description: Description of the route
+        route:
+          type: object
+          required:
+          - name
+          - namespaceId
+          - priority
+          properties:
+            name:
+              type: string
+              description: Name of the route
+            namespaceId:
+              $ref: '#/components/schemas/Namespace'
+            priority:
+              type: integer
+              minimum: 1
+              maximum: 1000
+              description: Priority of the route (unique among routes)
+            description:
+              type: string
+              description: Description of the route
     RouteReload_Request:
       type: object
       required:
@@ -1322,13 +1350,13 @@ components:
           $ref: '#/components/schemas/RouteState'
         uptime:
           type: integer
-          description: Uptime of the route in seconds
+          description: Seconds since the route's environment was last built; for a DISABLED route, the last-update timestamp itself
     TableGet_Response:
       allOf:
       - $ref: '#/components/schemas/Response'
       - type: object
         properties:
-          routes:
+          table:
             type: array
             items:
               $ref: '#/components/schemas/RouterEntry'
@@ -1345,33 +1373,28 @@ components:
       required:
       - name
       - event
-      - agent_metadata
       properties:
         name:
           $ref: '#/components/schemas/TesterSessionName'
         event:
           type: string
-          description: Event to test
+          description: Event to test, in the legacy format `<queue>:<location>:<message>`
         agent_metadata:
           type: object
-          description: Metadata about the agent sending the event
+          description: Metadata merged into the event root before ingestion (default `{}`)
         trace_level:
           type: string
           enum:
           - NONE
           - ASSET_ONLY
           - ALL
+          default: NONE
           description: Level of traces
         asset_trace:
           type: array
           items:
             $ref: '#/components/schemas/ResourceName'
-          description: Assets for which detailed traces are required
-        namespaces:
-          type: array
-          items:
-            $ref: '#/components/schemas/Namespace'
-          description: Namespaces where the assets to test are located
+          description: Assets to trace (default every asset of the session's policy); each must belong to the policy
     TesterSession:
       type: object
       properties:
@@ -1484,7 +1507,7 @@ components:
           description: Full namespace JSON payload
         force:
           type: boolean
-          description: If true, skip validation
+          description: If true, skip the validation of integrations, assets and the policy against the namespace
     namespacePost_Request:
       type: object
       required:
@@ -1597,15 +1620,21 @@ components:
           description: Resource payload as a JSON object
   responses:
     InternalServerError_500:
-      description: Internal Server Error
+      description: |
+        Internal Server Error. A handler whose backing component is gone answers with a JSON `Response`
+        (`Error: Handler is not initialized`); an exception escaping a handler is answered by the server
+        with the plain-text body `Internal server error`.
       content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Response'
+          example:
+            status: ERROR
+            error: 'Error: Handler is not initialized'
         text/plain:
           schema:
             type: string
-            description: Internal server error message
-          example: 'Internal Server Error
-
-            '
+          example: Internal server error
     BadRequest_400:
       description: Bad Request
       content:
@@ -1623,4 +1652,3 @@ components:
             $ref: '#/components/schemas/Response'
           example:
             status: OK
-            error: null

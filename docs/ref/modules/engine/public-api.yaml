@@ -1,11 +1,18 @@
 openapi: 3.0.3
 info:
   title: Wazuh-Engine Public API
-  description: Public-facing API endpoints of the Wazuh Engine. These endpoints are intended for external consumers such as wazuh-indexer in standalone mode.
+  description: |
+    Public-facing API endpoints of the Wazuh Engine. These endpoints are intended for external consumers such as wazuh-indexer in standalone mode.
+
+    Every route is served on the engine API socket, `/var/wazuh-manager/queue/sockets/engine-api-http.sock`
+    (`analysisd.server_api_socket`). Request bodies are JSON; unknown fields are ignored, and an empty body is
+    read as an empty request. Responses carry a JSON body although the server labels it `Content-Type: plain/text`.
+    A body larger than `analysisd.server_api_payload_max_bytes` (default `0`, unlimited) is answered with
+    HTTP 413 and a plain-text message.
   version: 1.0.0
 servers:
-- url: http+unix:/run/wazuh-server/analysis
-  description: Wazuh server using Unix socket over HTTP
+- url: http+unix:/var/wazuh-manager/queue/sockets/engine-api-http.sock
+  description: Engine API socket (HTTP over a Unix socket)
 tags:
 - name: Content
   description: Operations for managing content.
@@ -175,14 +182,49 @@ paths:
                         hash: "geo1hash2asn0"
                         last_successful_update: 1750066800
         '500':
-          $ref: '#/components/responses/InternalServerError_500'
+          description: A status provider (content sync, IOC sync or geo manager) is unavailable.
+          content:
+            text/plain:
+              schema:
+                type: string
+              example: Internal Server Error
   /content/validate/policy:
     post:
       tags:
       - Content
       summary: Validate a policy JSON payload
-      description: "Validates a complete **policy JSON document** by importing it into a temporary namespace.\n\nThe payload must include a `policy` definition and its associated `resources`\n(decoders, integrations, kvdbs).\n\n## Validation strategy\n\nValidation has two phases depending on whether the policy contains integrations:\n\n- **Policy without integrations** (`policy.integrations` is empty): validated by\n  import alone. No tester entry is created or posted.\n- **Policy with integrations**: after import, a temporary tester entry is created\n  and posted to verify the policy can be fully instantiated by the Engine.\n\n## Effect on the persistent `\"testing\"` session\n\nThe `load_in_tester` flag and the policy `enabled` field jointly control what\nhappens to the persistent tester session named **\"testing\"**:\n\n| `load_in_tester` | Has integrations | `enabled` | Outcome |\n|------------------|-----------------|-----------|---------|\n| `false`          | any             | any\
-        \       | Existing `\"testing\"` session is **not touched**. Temp resources are cleaned up. |\n| `true`           | no              | any       | Existing `\"testing\"` session and its namespace are **deleted**. No new session is created. |\n| `true`           | yes             | `true`    | Temp session is **promoted** to `\"testing\"`, replacing the old one (old namespace deleted). |\n| `true`           | yes             | `false`   | Temp session+namespace **and** the existing `\"testing\"` session+namespace are **deleted**. |\n\n## Notes\n- A unique temporary namespace and tester session are generated per request.\n- If the Tester API is not available, the request fails immediately.\n"
+      description: |
+        Validates a complete **policy JSON document** by importing it into a temporary namespace.
+
+        The `full_policy` object must have exactly two keys: `policy` (the policy definition) and `resources`
+        (an object with the `kvdbs`, `decoders`, `filters`, `outputs` and `integrations` to import). Integrations
+        and KVDBs carry their name in `metadata.title`; the policy's own `metadata.title` is optional
+        (`Untitled Policy` when absent).
+
+        ## Validation strategy
+
+        - **Policy without integrations** (`policy.integrations` is empty): validated by
+          import alone. No tester session is created.
+        - **Policy with integrations**: after import, a temporary tester session is created
+          on the temporary namespace to verify the policy can be fully instantiated by the Engine.
+
+        ## Effect on the tester session named after `space`
+
+        `space` names the persistent tester session this request may replace (the session `/logtest`
+        runs against). The `load_in_tester` flag and the policy `enabled` field jointly decide its fate:
+
+        | `load_in_tester` | Has integrations | `enabled` | Outcome |
+        |------------------|------------------|-----------|---------|
+        | `false`          | any              | any       | The `space` session is **not touched**. Temporary resources are deleted. |
+        | `true`           | no               | any       | The `space` session and its namespace are **deleted**. No new session is created. |
+        | `true`           | yes              | `true`    | The temporary session is **renamed** to `space`, replacing the old one (old namespace deleted). |
+        | `true`           | yes              | `false`   | The temporary session and namespace **and** the `space` session and its namespace are **deleted**. |
+
+        ## Notes
+        - A unique temporary namespace and session name is generated per request
+          (`logtest_<hex>` when `load_in_tester` is true, `tmp_policy_validate_<hex>` otherwise).
+        - If the Tester API is not available, the request fails immediately.
+        - Any import or instantiation failure is returned as a 400 with the underlying error message.
       requestBody:
         required: true
         content:
@@ -191,27 +233,38 @@ paths:
               $ref: '#/components/schemas/policyValidate_Request'
             examples:
               validate_only:
-                summary: Validate policy (with integrations), no persistent tester session
+                summary: Validate a policy with integrations, leave the tester session untouched
                 value:
-                  space: test
+                  space: standard
                   load_in_tester: false
                   full_policy:
                     policy:
-                      title: <policy_name>
+                      metadata:
+                        title: <policy_name>
                       root_decoder: <decoder_uuid>
                       integrations:
                       - <integration_uuid>
-                      filters:
-                      - <filter_uuid>
-                      outputs:
-                      - <output_uuid>
                       enabled: true
                     resources:
-                      decoders: []
-                      integrations: []
                       kvdbs: []
+                      decoders:
+                      - id: <decoder_uuid>
+                        name: decoder/<name>/0
+                        enabled: true
+                        normalize:
+                        - map:
+                          - '@timestamp': get_date()
                       filters: []
                       outputs: []
+                      integrations:
+                      - id: <integration_uuid>
+                        metadata:
+                          title: <name>
+                        enabled: true
+                        category: security
+                        decoders:
+                        - <decoder_uuid>
+                        kvdbs: []
               validate_no_integrations:
                 summary: Validate policy without integrations (import-only validation)
                 value:
@@ -219,7 +272,8 @@ paths:
                   load_in_tester: false
                   full_policy:
                     policy:
-                      title: <policy_name>
+                      metadata:
+                        title: <policy_name>
                       integrations: []
                       enabled: true
                     resources:
@@ -229,12 +283,14 @@ paths:
                       filters: []
                       outputs: []
               validate_and_load_testing:
-                summary: Validate and promote to 'testing' session (enabled policy with integrations)
+                summary: Validate and promote to the `space` tester session (enabled policy with integrations)
                 value:
+                  space: test
                   load_in_tester: true
                   full_policy:
                     policy:
-                      title: <policy_name>
+                      metadata:
+                        title: <policy_name>
                       root_decoder: <decoder_uuid>
                       integrations:
                       - <integration_uuid>
@@ -244,22 +300,24 @@ paths:
                     resources:
                       kvdbs:
                       - id: <kvdb_uuid>
-                        title: <name>
+                        metadata:
+                          title: <name>
                         enabled: true
                         content:
                           <key>: {}
                       decoders:
                       - id: <decoder_uuid>
-                        name: decoder/<name>/<version>
+                        name: decoder/<name>/0
                         enabled: true
                         normalize:
                         - map:
                           - '@timestamp': get_date()
                       integrations:
                       - id: <integration_uuid>
-                        title: <name>
+                        metadata:
+                          title: <name>
                         enabled: true
-                        category: <category>
+                        category: security
                         decoders:
                         - <decoder_uuid>
                         kvdbs:
@@ -276,16 +334,17 @@ paths:
                         type: pre-filter
                         enabled: true
                         id: <filter_uuid>
+                      outputs: []
               validate_disabled_policy:
-                summary: "Validate disabled policy \u2014 clears the existing 'testing' session"
+                summary: "Validate a disabled policy — deletes the `space` tester session"
                 value:
+                  space: test
                   load_in_tester: true
                   full_policy:
                     policy:
-                      title: <policy_name>
-                      root_decoder: <decoder_uuid>
-                      integrations:
-                      - <integration_uuid>
+                      metadata:
+                        title: <policy_name>
+                      integrations: []
                       enabled: false
                     resources:
                       decoders: []
@@ -308,28 +367,33 @@ paths:
                   value:
                     status: ERROR
                     error: Missing full policy
+                missing_space:
+                  summary: Missing or empty space
+                  value:
+                    status: ERROR
+                    error: Field /space cannot be empty
                 tester_unavailable:
                   summary: Tester API is not available
                   value:
                     status: ERROR
                     error: Tester API is not available
-                tester_post_failed:
-                  summary: Failed creating temporary tester entry (policy with integrations)
+                import_failed:
+                  summary: The policy could not be imported into the temporary namespace
                   value:
                     status: ERROR
-                    error: 'Failed to create tester entry: <details>'
-                tester_rename_failed:
-                  summary: Failed promoting temp session to 'testing'
+                    error: "Failed to import namespace 'tmp_policy_validate_<hex>': <details>"
+                tester_failed:
+                  summary: Creating or renaming the tester session failed (the tester's error message is returned as is)
                   value:
                     status: ERROR
-                    error: 'Failed to rename tester entry: <details>'
+                    error: <tester error>
                 cleanup_failed_session:
-                  summary: "Strict cleanup failed \u2014 could not delete a session"
+                  summary: "Strict cleanup failed — could not delete a session"
                   value:
                     status: ERROR
                     error: 'Cleanup: failed deleting session ''<name>'': <details>'
                 cleanup_failed_namespace:
-                  summary: "Strict cleanup failed \u2014 could not delete a namespace"
+                  summary: "Strict cleanup failed — could not delete a namespace"
                   value:
                     status: ERROR
                     error: 'Cleanup: failed deleting namespace ''<name>'': <details>'
@@ -340,10 +404,47 @@ paths:
       tags:
       - Logtest
       summary: Inject an event into an existing testing session
-      description: "Injects a single event into the engine using a previously created and loaded testing session.\n\nThis endpoint **does not** validate policies and **does not** create sessions.\nIt only validates request parameters, parses/builds the event payload, and runs the test ingestion\nagainst the session identified by the `space` field.\n\nIf tracing is enabled (trace_level != NONE), the endpoint retrieves the list of policy assets\nfrom the specified testing session and uses them as the trace filter.\n\nAfter the pipeline finishes, the final output event is validated against the Wazuh Common\nSchema (WCS). Validation is **non-blocking**: the pipeline result is always returned\nregardless of validation errors. The result is reported in `result.validation` when the\nschema validator is available (see below).\n\nEach entry in `result.validation.errors` has:\n- `path` \u2014 field path using dot notation for nesting and `[N]` for array indices\n  (e.g. `\"event.severity\"`, `\"tags[1]\"\
-        `, `\"hits[0].id\"`).\n- `kind` \u2014 one of:\n  - `unknown_field` \u2014 field is not defined in WCS and is not a temporary field.\n  - `invalid_type` \u2014 value does not match the WCS type for that field.\n- `expected` / `actual` \u2014 present only for `invalid_type` errors; both are type strings\n  (e.g. `\"keyword\"`, `\"object\"`, `\"number\"`).\n\nPipeline-internal temporary fields (root key starts with `_`) are cleaned before validation.\n\nAny WCS field can hold either a single value or an array of values of the same type.\nArrays are always unrolled: each element is validated individually using the field's\nschema type. This applies to scalar types (e.g. `keyword`), numeric types, and object\ntypes such as `nested` (array of objects). Only one error is reported per invalid element.\n\n`FLAT_OBJECT` and `GEO_POINT` fields are treated as opaque: their children are never visited.\n\n`result.validation` is only present when the schema validator is available and the\npipeline\
-        \ produced an output event. If absent, no validation was performed.\n\nErrors are sorted by path, with kind as tiebreaker.\n\nNotes about event parsing:\n- `queue` indicates the queue to which the event will be sent.\n- `location` cannot be empty.\n- If `location` matches the legacy agent format (`\"[ID] (Name) IP->Module\"`), it is parsed and may\n  rewrite the final stored location to just the module.\n- If not legacy, host metadata is merged into the event before setting location/message.\n- `metadata` is **not required** and can be an empty **JSON object**, it can't be a JSON-encoded string, number, or array.\n  If `metadata` is present and it contains invalid nested fields, or includes top-level keys other than `wazuh`,\n  the request is rejected with a clear error message.\n- `metadata` is restricted to the top-level `wazuh` key. Arbitrary sibling fields such as `metadata.name` are not allowed.\n- `metadata.wazuh` must be a JSON object when present.\n  Use it to provide only\
-        \ fields accepted by the Wazuh event schema.\n"
+      description: |
+        Injects a single event into the engine using a previously created and loaded testing session
+        (created by `POST /content/validate/policy` with `load_in_tester: true`).
+
+        This endpoint **does not** validate policies and **does not** create sessions.
+        It only validates request parameters, builds the event, and runs the test ingestion
+        against the session named by the `space` field. The run times out after 5 seconds.
+
+        If tracing is enabled (`trace_level` other than `NONE`), the endpoint retrieves the list of policy assets
+        from the testing session and traces all of them.
+
+        After the pipeline finishes, temporary fields (root key starts with `_`) are removed from the
+        output event, which is then validated against the Wazuh Common Schema (WCS). Validation is
+        **non-blocking**: the pipeline result is always returned regardless of validation errors.
+
+        Each entry in `result.validation.errors` has:
+        - `path` — field path using dot notation for nesting and `[N]` for array indices
+          (e.g. `"event.severity"`, `"tags[1]"`, `"hits[0].id"`).
+        - `kind` — `unknown_field` (the field is not defined in WCS and is not a temporary field) or
+          `invalid_type` (the value does not match the WCS type for that field).
+        - `expected` / `actual` — type strings, present only for `invalid_type` errors
+          (e.g. `"keyword"`, `"object"`, `"number"`).
+
+        Any WCS field can hold either a single value or an array of values of the same type.
+        Arrays are always unrolled: each element is validated individually using the field's
+        schema type. Only one error is reported per invalid element.
+        `FLAT_OBJECT` and `GEO_POINT` fields are treated as opaque: their children are never visited.
+
+        `result.validation` is only present when the schema validator is available and the
+        pipeline produced an output event. Errors are sorted by path, with kind as tiebreaker.
+
+        Request rules, checked in this order:
+        - `queue` must be 1..255.
+        - `trace_level` must be `NONE`, `ASSET_ONLY` or `ALL` (case-insensitive).
+        - `metadata` is **optional**. When present it must be a JSON object that is either empty or has
+          `wazuh` (an object) as its only key; every leaf under `wazuh` must be a field of the event
+          schema with a value of the right type. The object is merged into the event root.
+        - `event` must not be empty or whitespace only.
+        - `space` must not be empty.
+        - `location` cannot be empty. It is stored as given in `wazuh.protocol.location`; the event text goes
+          to `event.original` and the queue to `wazuh.protocol.queue`.
       requestBody:
         required: true
         content:
@@ -368,7 +469,7 @@ paths:
                 value:
                   space: test
                   queue: 1
-                  location: '[001] (my-agent) 192.168.1.10->syslog'
+                  location: syslog
                   metadata:
                     wazuh:
                       agent:
@@ -383,19 +484,22 @@ paths:
                   location: syscheck
                   metadata:
                     wazuh:
-                      host:
-                        ip: 192.168.1.10
+                      agent:
+                        host:
+                          ip: 192.168.1.10
                   event: File /etc/passwd modified
                   trace_level: ALL
               metadata_wazuh_wrong_type:
-                summary: INVALID - metadata with type missmatch
+                summary: INVALID - metadata with type mismatch
                 value:
+                  space: test
                   queue: 1
                   location: syscheck
                   metadata:
                     wazuh:
-                      host:
-                        ip: notAnIpAddress
+                      agent:
+                        host:
+                          ip: notAnIpAddress
                   event: File /etc/passwd modified
                   trace_level: ALL
               metadata_wazuh_nested_ok:
@@ -408,8 +512,8 @@ paths:
                     wazuh:
                       agent:
                         id: '001'
-                      labels:
-                        kind: test
+                        groups:
+                        - default
                   event: File /etc/passwd modified
                   trace_level: ALL
               metadata_wazuh_empty_valid:
@@ -425,14 +529,24 @@ paths:
               metadata_empty_object_valid:
                 summary: VALID - empty metadata object
                 value:
+                  space: test
                   queue: 1
                   location: syscheck
                   metadata: {}
                   event: File /etc/passwd modified
                   trace_level: ALL
+              metadata_omitted_valid:
+                summary: VALID - metadata omitted
+                value:
+                  space: test
+                  queue: 1
+                  location: syscheck
+                  event: File /etc/passwd modified
+                  trace_level: ALL
               metadata_non_wazuh_key_invalid:
                 summary: INVALID - non-`wazuh` top-level metadata fields are rejected
                 value:
+                  space: test
                   queue: 1
                   location: syscheck
                   metadata:
@@ -440,19 +554,12 @@ paths:
                   event: File /etc/passwd modified
                   trace_level: ALL
               metadata_as_string_invalid:
-                summary: INVALID - metadata is a JSON-encoded string (Struct expects an object)
-                value:
-                  queue: 1
-                  location: syscheck
-                  metadata: '{"wazuh": {}}'
-                  event: File /etc/passwd modified
-                  trace_level: ALL
-              missing_metadata_invalid:
-                summary: INVALID - missing required metadata
+                summary: INVALID - metadata is a JSON-encoded string (an object is expected)
                 value:
                   space: test
                   queue: 1
                   location: syscheck
+                  metadata: '{"wazuh": {}}'
                   event: File /etc/passwd modified
                   trace_level: ALL
       responses:
@@ -474,45 +581,16 @@ paths:
                             queue: 1
                             location: syscheck
                           integration:
-                            category: Security
-                            name: integration/wazuh-core/0
-                            decoders:
-                            - core-wazuh-message
-                            - integrations
-                          host:
-                            name: test-host
-                        event:
-                          original: File /etc/passwd modified
-                        '@timestamp': '2025-12-26T17:33:22Z'
-                      asset_traces:
-                      - asset: decoder/core-wazuh-message/0
-                        success: true
-                        traces:
-                        - '@timestamp: get_date -> Success'
-                      validation:
-                        valid: true
-                        errors: []
-                ok_with_nested_wazuh_metadata:
-                  summary: OK - populated `metadata.wazuh` is accepted
-                  value:
-                    status: OK
-                    result:
-                      output:
-                        wazuh:
-                          protocol:
-                            queue: 1
-                            location: syscheck
-                          integration:
-                            category: Security
+                            category: security
                             name: integration/wazuh-core/0
                             decoders:
                             - core-wazuh-message
                             - integrations
                           agent:
-                            id: '001'
+                            name: AgentName
                         event:
                           original: File /etc/passwd modified
-                        '@timestamp': '2025-12-26T17:34:18Z'
+                        '@timestamp': '2025-12-26T17:33:22Z'
                       asset_traces:
                       - asset: decoder/core-wazuh-message/0
                         success: true
@@ -532,16 +610,13 @@ paths:
                             queue: 1
                             location: syscheck
                         event:
-                          original: '...'
-                          severity: 42
-                        _tmp:
-                          stage: done
+                          original: 42
                         unknown_field: value
                       asset_traces: []
                       validation:
                         valid: false
                         errors:
-                        - path: event.severity
+                        - path: event.original
                           kind: invalid_type
                           expected: keyword
                           actual: number
@@ -554,6 +629,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/Response'
               examples:
+                missing_queue:
+                  summary: Queue missing or zero
+                  value:
+                    status: ERROR
+                    error: queue is required and must be non-zero (1..255)
                 invalid_queue:
                   summary: Queue out of allowed range (1..255)
                   value:
@@ -563,43 +643,58 @@ paths:
                   summary: Unsupported trace level
                   value:
                     status: ERROR
-                    error: 'Invalid trace level: "VERBOSE". Supported: NONE, ASSET_ONLY, ALL'
+                    error: 'Invalid trace level: VERBOSE. Only support: NONE, ASSET_ONLY, ALL'
+                metadata_not_object:
+                  summary: metadata is not a JSON object (the request body does not parse)
+                  value:
+                    status: ERROR
+                    error: 'Failed to parse protobuff json request: <details>'
+                metadata_extra_top_level_keys:
+                  summary: metadata has more than one top-level key
+                  value:
+                    status: ERROR
+                    error: If not empty metadata must contain only 'wazuh' as the top-level key
+                metadata_unknown_top_level_field:
+                  summary: metadata's only key is not a `wazuh` object
+                  value:
+                    status: ERROR
+                    error: Metadata should contain 'wazuh' as root
+                metadata_field_rejected:
+                  summary: A metadata leaf is not an event-schema field or has the wrong type
+                  value:
+                    status: ERROR
+                    error: Metadata field 'wazuh.agent.host.ip' doesn't exist or doesn't match the expected one from the schema
+                empty_event:
+                  summary: Event missing or blank
+                  value:
+                    status: ERROR
+                    error: event is required and cannot be empty
+                empty_space:
+                  summary: Space missing or empty
+                  value:
+                    status: ERROR
+                    error: space is required and cannot be empty
                 empty_location:
                   summary: Location cannot be empty
                   value:
                     status: ERROR
                     error: 'Error parsing event: Invalid format: location cannot be empty'
-                event_parse_error:
-                  summary: Protocol parsing failed
+                timeout:
+                  summary: The test run did not finish within 5 seconds
                   value:
                     status: ERROR
-                    error: 'Error parsing event: <details>'
-                metadata_wrong_type_struct:
-                  summary: metadata must be an object (Struct); a string, number, or array is invalid
-                  value:
-                    status: ERROR
-                    error: metadata is required and must be a JSON object
-                metadata_unknown_top_level_field:
-                  summary: metadata contains unsupported top-level fields
-                  value:
-                    status: ERROR
-                    error: Metadata must be a non-empty object with 'wazuh' as root
+                    error: Timeout waiting for ingestTest
         '500':
           $ref: '#/components/responses/InternalServerError_500'
     delete:
       tags:
       - Logtest
-      summary: Cleanup logtest session and temporary namespace
-      description: 'Stops and removes the logtest testing session for the given `space` (if any)
+      summary: Cleanup logtest session and its namespace
+      description: |
+        Deletes the namespace of the testing session named by `space` (including all its assets),
+        then the session itself.
 
-        and deletes the associated temporary namespace from storage, including all assets.
-
-
-        This operation is safe and idempotent. If there is no active session or
-
-        namespace to delete for the given space, it returns **OK**.
-
-        '
+        This operation is idempotent: if there is no session named `space`, it returns **OK**.
       requestBody:
         required: true
         content:
@@ -623,6 +718,28 @@ paths:
                   summary: Cleanup completed or nothing to delete
                   value:
                     status: OK
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+              examples:
+                empty_space:
+                  summary: Space missing or empty
+                  value:
+                    status: ERROR
+                    error: space is required and cannot be empty
+                cleanup_failed_namespace:
+                  summary: The session's namespace could not be deleted
+                  value:
+                    status: ERROR
+                    error: 'Cleanup: failed deleting namespace ''<name>'': <details>'
+                cleanup_failed_session:
+                  summary: The session could not be deleted
+                  value:
+                    status: ERROR
+                    error: 'Cleanup: failed deleting session ''<name>'': <details>'
         '500':
           $ref: '#/components/responses/InternalServerError_500'
   /content/ioc/update:
@@ -630,7 +747,7 @@ paths:
       tags:
       - Content
       summary: Update IOCs from a file
-      description: "Performs an asynchronous update of the Indicators of Compromise (IOCs) in the manager \nusing the provided file path and hash.\n\nThe file must be in **nd-json** (newline-delimited JSON) format, where each line \nrepresents a single IOC JSON object containing at minimum:\n- `name`: The IOC value (IP, domain, hash, etc.)\n- `type`: The IOC type (e.g., \"connection\", \"url_domain\", \"file_hash\")\n\n**Hash-based optimization**: The `hash` field (typically MD5) is used to skip the \nupdate if the file content hasn't changed since the last synchronization, improving \nefficiency and reducing unnecessary I/O operations.\n\n**Behavior**:\n- If the hash matches the previously stored hash, returns OK without performing sync.\n- If the hash differs, schedules an asynchronous synchronization task.\n- Only one synchronization can run at a time (enforced by internal semaphore).\n- Updates are performed using a hot-swap mechanism to avoid service interruption.\n\n**Error handling**:\n\
+      description: "Performs an asynchronous update of the Indicators of Compromise (IOCs) in the manager \nusing the provided file path and hash.\n\nThe file must be in **nd-json** (newline-delimited JSON) format, where each line \nrepresents a single IOC JSON object containing at minimum:\n- `name`: The IOC value (IP, domain, hash, etc.)\n- `type`: The IOC type, one of \"connection\", \"url_full\", \"url_domain\", \"hash_md5\", \"hash_sha1\", \"hash_sha256\"\n  (lines with a missing key or an unsupported type are skipped)\n\n**Hash-based optimization**: The `hash` field (typically MD5) is used to skip the \nupdate if the file content hasn't changed since the last synchronization, improving \nefficiency and reducing unnecessary I/O operations.\n\n**Behavior**:\n- If the hash matches the previously stored hash, returns OK without performing sync.\n- If the hash differs, schedules an asynchronous synchronization task.\n- Only one synchronization can run at a time (enforced by internal semaphore).\n- Updates are performed using a hot-swap mechanism to avoid service interruption.\n\n**Error handling**:\n\
         - `path` must resolve (symlinks followed) to a regular file inside the IOC input directory\n  (`analysisd.kvdb_ioc_input_path`, default `/var/wazuh-manager/data/ioc-input`). A path outside it,\n  a directory, a special file, a nonexistent path or one escaping the directory through `..` or a symlink\n  is rejected with the same 400 Bad Request (`Field /path must be a regular file inside <directory>`),\n  so the response does not reveal whether a path outside the directory exists.\n- A file without a single valid IOC line is rejected by the synchronization task: the current IOC data and\n  the stored hash are kept and `GET /content/ioc/state` reports `No valid IOC lines in file`.\n- An empty `hash` field results in a 400 Bad Request (`Field /hash cannot be empty`).\n"
       requestBody:
         required: true
@@ -656,7 +773,6 @@ paths:
                   summary: Synchronization task scheduled successfully
                   value:
                     status: OK
-                    error: null
                 hash_match_no_sync:
                   summary: Hash matches, synchronization skipped
                   value:
@@ -679,16 +795,21 @@ paths:
                   value:
                     status: ERROR
                     error: Field /hash cannot be empty
-                file_not_found:
-                  summary: File does not exist
+                path_outside_input_dir:
+                  summary: Path is not a regular file inside the IOC input directory
                   value:
                     status: ERROR
-                    error: 'File not found: /invalid/path/file.json'
+                    error: 'Field /path must be a regular file inside /var/wazuh-manager/data/ioc-input'
                 sync_in_progress:
                   summary: Another synchronization is already updating
                   value:
                     status: ERROR
                     error: IOC synchronization already in progress
+                schedule_failed:
+                  summary: The synchronization task could not be scheduled
+                  value:
+                    status: ERROR
+                    error: 'Failed to schedule IOC sync task: <details>'
         '500':
           description: Internal Server Error
           content:
@@ -779,8 +900,31 @@ paths:
       tags:
       - Content
       summary: Validate a content resource
-      description: "This endpoint validates a content resource payload before storing it.\nIt validates the request schema and performs type-specific validation.\n\nThe validation is performed without requiring the full namespace context, so a resource can be checked\nindependently from other assets.\n\nThe request body must be a JSON object and the resource must include a non-empty identifier in the `resource.id` field.\nThe identifier is opaque: any UUID version or any other format is accepted.\nThe request body size can be limited through:\n- `analysisd.api_resource_payload_max_bytes`\n- `analysisd.api_resource_kvdb_payload_max_bytes`\n\nA value of `0` means unlimited for that limit. If the body exceeds a configured limit, the request is rejected\nwith HTTP 413.\n\n- **Integrations**:\n  - Validate schema.\n  - Validate `decoders[]` as non-empty, non-duplicated identifiers.\n  - Validate `kvdbs[]` as non-empty, non-duplicated identifiers.\n  - Validate category existence and validity.\n  - Validate `default_parent` as a non-empty identifier (if present).\n- **KVDB**:\n  - Validate schema.\n  - Require `content` to be a JSON object.\n\
-        - **Decoders**:\n  - Attempt decoder construction/compilation.\n  - Validation must not fail if referenced KVDBs are not present at validation time.\n"
+      description: |
+        Validates a content resource payload before storing it, without a namespace: a resource is checked
+        independently from other assets (referenced decoders and KVDBs need not exist).
+
+        The request body must be a JSON object with a non-empty `type` and a non-empty `resource` object.
+        `resource.id` must be present for integrations and KVDBs; identifiers are opaque (any UUID version
+        or other format is accepted).
+
+        The request body size is limited by:
+        - `analysisd.api_resource_payload_max_bytes` (default 50000), for every type except `kvdb`
+        - `analysisd.api_resource_kvdb_payload_max_bytes` (default 100000), for `kvdb`
+
+        A value of `0` means unlimited for that limit. A body over the limit for its type is rejected with
+        HTTP 413 (when both limits are set, a body over the larger of the two is rejected before the type is read).
+
+        Per type:
+        - **decoder**, **filter**: the asset name (`name`) must start with the type (`decoder/…`, `filter/…`) and
+          the asset must pass the builder's shallow validation.
+        - **integration**: `id`, `metadata.title`, `enabled` and `category` are required; `category` must be one of
+          `access-management`, `applications`, `cloud-services`, `network-activity`, `other`, `security`,
+          `system-activity`, `unclassified`; `decoders[]` and `kvdbs[]` must be non-empty, non-duplicated identifiers;
+          `default_parent`, if present, must be a non-empty identifier.
+        - **kvdb**: `id`, `metadata.title`, `enabled` and a `content` JSON object are required.
+
+        Validation failures are returned as 400 with `Failed to validate resource of type '<type>': <details>`.
       requestBody:
         required: true
         content:
@@ -795,7 +939,8 @@ paths:
                   resource:
                     id: 82e215c4-988a-4f64-8d15-b98b2fc03a4f
                     date: '2025-10-06T13:32:19Z'
-                    title: windows_kerberos_status_code_to_code_name
+                    metadata:
+                      title: windows_kerberos_status_code_to_code_name
                     author: Wazuh Inc.
                     content:
                       '0x0': KDC_ERR_NONE
@@ -812,9 +957,10 @@ paths:
                   type: integration
                   resource:
                     id: 5c1df6b6-1458-4b2e-9001-96f67a8b12c8
-                    title: windows
+                    metadata:
+                      title: windows
                     enabled: true
-                    category: Security
+                    category: security
                     default_parent: 85853f26-5779-469b-86c4-c47ee7d400b4
                     decoders:
                     - 85853f26-5779-469b-86c4-c47ee7d400b4
@@ -828,9 +974,10 @@ paths:
                   type: integration
                   resource:
                     id: 5c1df6b6-1458-4b2e-9001-96f67a8b12c8
-                    title: windows
+                    metadata:
+                      title: windows
                     enabled: false
-                    category: Security
+                    category: security
                     decoders:
                     - 85853f26-5779-469b-86c4-c47ee7d400b4
                     kvdbs: []
@@ -849,21 +996,43 @@ paths:
                   value:
                     status: ERROR
                     error: Field /type is required
+                missing_resource:
+                  summary: Missing or empty /resource
+                  value:
+                    status: ERROR
+                    error: Field /resource cannot be empty
                 unsupported_type:
                   summary: Unsupported /type
                   value:
                     status: ERROR
                     error: Unsupported value for /type
                 invalid_json:
-                  summary: Invalid JSON payload
+                  summary: Body is not valid JSON for the request
                   value:
                     status: ERROR
-                    error: Invalid JSON payload
+                    error: 'Failed to parse protobuff json request: <details>'
                 integration_invalid_category:
                   summary: Integration invalid category
                   value:
                     status: ERROR
-                    error: Category 'ossec' is not a valid category for integration 'windows'.
+                    error: "Failed to validate resource of type 'integration': Integration category is not valid: ossec"
+        '413':
+          description: Payload Too Large. The body exceeds the limit for its type.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+              examples:
+                too_large_for_type:
+                  summary: Body over the limit of its type
+                  value:
+                    status: ERROR
+                    error: "Request body exceeds maximum allowed size of 50000 bytes for type 'decoder'"
+                too_large:
+                  summary: Body over the larger of both limits
+                  value:
+                    status: ERROR
+                    error: Request body exceeds maximum allowed document size of 100000 bytes
         '500':
           $ref: '#/components/responses/InternalServerError_500'
   /metrics/enable:
@@ -909,7 +1078,7 @@ paths:
                 summary: Disable a per-space metric
                 value:
                   instrumentName: events.discarded
-                  space: wazuh
+                  space: standard
                   status: false
       responses:
         '200':
@@ -917,13 +1086,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Response'
+                $ref: '#/components/schemas/MetricsEnable_Response'
               examples:
                 success:
                   summary: Metric enabled
                   value:
                     status: OK
-                    error: null
+                    content: Metric 'router.events.processed' enabled
         '400':
           description: Bad Request
           content:
@@ -936,6 +1105,11 @@ paths:
                   value:
                     status: ERROR
                     error: Metric 'router.events.unknown' not found
+                missing_name:
+                  summary: instrumentName missing
+                  value:
+                    status: ERROR
+                    error: Field 'instrumentName' is required
         '500':
           $ref: '#/components/responses/InternalServerError_500'
   /metrics/get:
@@ -966,7 +1140,7 @@ paths:
                 summary: Get a per-space metric
                 value:
                   instrumentName: events.discarded
-                  space: wazuh
+                  space: standard
       responses:
         '200':
           description: Metric value retrieved
@@ -987,7 +1161,7 @@ paths:
                   summary: Per-space counter
                   value:
                     status: OK
-                    name: space.wazuh.events.discarded
+                    name: space.standard.events.discarded
                     type: counter
                     enabled: true
                     value: 42
@@ -1003,6 +1177,11 @@ paths:
                   value:
                     status: ERROR
                     error: Metric 'unknown.metric' not found
+                missing_name:
+                  summary: instrumentName missing
+                  value:
+                    status: ERROR
+                    error: Field 'instrumentName' is required
         '500':
           $ref: '#/components/responses/InternalServerError_500'
   /metrics/list:
@@ -1014,8 +1193,9 @@ paths:
 
 
         If `space` is provided, only metrics belonging to that space are returned
+        (those matching the internal prefix `space.<space>.`), with that prefix stripped.
 
-        (those matching the internal prefix `space.<space>.`).
+        An empty result is an error (400).
 
         '
       requestBody:
@@ -1031,7 +1211,7 @@ paths:
               list_space:
                 summary: List metrics for a specific space
                 value:
-                  space: wazuh
+                  space: standard
       responses:
         '200':
           description: Metric names retrieved
@@ -1041,7 +1221,7 @@ paths:
                 $ref: '#/components/schemas/MetricsList_Response'
               examples:
                 all_metrics:
-                  summary: All registered metrics
+                  summary: All registered metrics (excerpt)
                   value:
                     status: OK
                     names:
@@ -1057,19 +1237,19 @@ paths:
                     - agent.cache.insertions
                     - agent.cache.updates
                     - agent.cache.evictions
-                    - space.wazuh.events.discarded
-                    - space.wazuh.events.unclassified
-                    - space.wazuh.events.discarded.prefilter
-                    - space.wazuh.events.discarded.postfilter
+                    - space.standard.events.discarded
+                    - space.standard.events.unclassified
+                    - space.standard.events.discarded.prefilter
+                    - space.standard.events.discarded.postfilter
                 space_filtered:
-                  summary: Only metrics for space 'wazuh'
+                  summary: Only metrics for space 'standard' (prefix stripped)
                   value:
                     status: OK
                     names:
-                    - space.wazuh.events.discarded
-                    - space.wazuh.events.unclassified
-                    - space.wazuh.events.discarded.prefilter
-                    - space.wazuh.events.discarded.postfilter
+                    - events.discarded
+                    - events.unclassified
+                    - events.discarded.prefilter
+                    - events.discarded.postfilter
         '400':
           description: Bad Request
           content:
@@ -1082,6 +1262,11 @@ paths:
                   value:
                     status: ERROR
                     error: No metrics found for space 'nonexistent'
+                none_registered:
+                  summary: No metric is registered
+                  value:
+                    status: ERROR
+                    error: No metrics registered
         '500':
           $ref: '#/components/responses/InternalServerError_500'
   /metrics/dump:
@@ -1110,7 +1295,7 @@ paths:
                 $ref: '#/components/schemas/MetricsDump_Response'
               examples:
                 full_dump:
-                  summary: Complete metrics dump with global and per-space metrics
+                  summary: Metrics dump with global and per-space metrics (excerpt)
                   value:
                     status: OK
                     name: wazuh-manager-analysisd
@@ -1150,7 +1335,7 @@ paths:
                       enabled: true
                       value: 300
                     spaces:
-                    - name: wazuh
+                    - name: standard
                       metrics:
                       - name: events.discarded
                         type: counter
@@ -1181,8 +1366,7 @@ components:
       description: Status codes representing different return states.
     ReturnError:
       type: string
-      description: Error message if status is ERROR
-      nullable: true
+      description: Error message; present when status is ERROR (absent otherwise, except where an endpoint documents an informational message).
     Response:
       type: object
       properties:
@@ -1393,7 +1577,6 @@ components:
       required:
       - queue
       - location
-      - metadata
       - event
       - trace_level
       - space
@@ -1411,7 +1594,7 @@ components:
           description: Event source/location label (e.g., file path, agent name, or custom identifier)
         metadata:
           type: object
-          description: 'Required metadata object. Only the top-level `wazuh` key is allowed, and `metadata.wazuh` must be an object. The minimal accepted value is `{ "wazuh": {} }`.'
+          description: 'Optional metadata object, merged into the event root. It must be empty or have `wazuh` (an object) as its only key, and every leaf under `wazuh` must be an event-schema field of the right type.'
         event:
           type: string
           description: Raw event payload to test
@@ -1421,7 +1604,7 @@ components:
           - NONE
           - ASSET_ONLY
           - ALL
-          description: Level of traces
+          description: Level of traces (case-insensitive)
     LogtestDelete_Request:
       type: object
       required:
@@ -1459,6 +1642,14 @@ components:
         space:
           type: string
           description: Space name (policy/namespace). When set, the metric is resolved internally as 'space.<space>.<instrumentName>'.
+    MetricsEnable_Response:
+      allOf:
+      - $ref: '#/components/schemas/Response'
+      - type: object
+        properties:
+          content:
+            type: string
+            description: Confirmation message, `Metric '<name>' enabled` or `Metric '<name>' disabled`.
     MetricsGet_Request:
       type: object
       properties:
@@ -1475,7 +1666,7 @@ components:
         properties:
           name:
             type: string
-            description: Resolved metric name (full internal name, e.g., 'space.wazuh.events.discarded')
+            description: Resolved metric name (full internal name, e.g., 'space.standard.events.discarded')
           type:
             type: string
             description: Metric type as string
@@ -1531,7 +1722,7 @@ components:
       properties:
         name:
           type: string
-          description: Space name (e.g., 'wazuh', 'testing')
+          description: Space name (e.g., 'standard', 'custom')
         metrics:
           type: array
           items:
@@ -1565,15 +1756,21 @@ components:
             description: Per-space metrics grouped by space name
   responses:
     InternalServerError_500:
-      description: Internal Server Error
+      description: |
+        Internal Server Error. A handler whose backing component is gone answers with a JSON `Response`
+        (`Error: Handler is not initialized`); an exception escaping a handler is answered by the server
+        with the plain-text body `Internal server error`.
       content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Response'
+          example:
+            status: ERROR
+            error: 'Error: Handler is not initialized'
         text/plain:
           schema:
             type: string
-            description: Internal server error message
-          example: 'Internal Server Error
-
-            '
+          example: Internal server error
     BadRequest_400:
       description: Bad Request
       content:
@@ -1591,4 +1788,3 @@ components:
             $ref: '#/components/schemas/Response'
           example:
             status: OK
-            error: null

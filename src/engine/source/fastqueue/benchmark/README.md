@@ -1,144 +1,114 @@
 # FastQueue Benchmarks
 
-Performance benchmarks comparing `CQueue` (lock-free) and `StdQueue` (mutex-based) implementations.
+Performance benchmarks comparing `CQueue` (lock-free) and `StdQueue` (mutex-based) implementations,
+plus a standalone memory profiler for `CQueue`. Library documentation: [../README.md](../README.md).
+
+## Building
+
+The four executables are defined in `../CMakeLists.txt` under `ENGINE_BUILD_BENCHMARK`, which
+`src/engine/CMakeLists.txt` forces on when the build passes `WAZUH_ENGINE_TEST` — that is,
+`make -C src -j TARGET=manager ENGINE_TEST=y` (with `TEST` unset). They land in
+`src/build/engine/source/fastqueue/`. CMake warns when benchmarks are built in a build type other than
+`Release` or `RelWithDebInfo`, because the timings are skewed.
 
 ## Available Benchmarks
 
-### 1. fastqueue_benchmark (CQueue Only)
-**File**: `cqueue_bench.cpp`
+| Executable | Source | Framework |
+|---|---|---|
+| `fastqueue_benchmark` | `src/cqueue_bench.cpp` | Google Benchmark — `CQueue` only |
+| `fastqueue_stdqueue_benchmark` | `src/stdqueue_bench.cpp` | Google Benchmark — the same scenarios on `StdQueue` (`BM_StdQueue_*`) |
+| `fastqueue_comparison_benchmark` | `src/comparison_bench.cpp` | Google Benchmark — paired `BM_Compare_*_CQueue` / `BM_Compare_*_StdQueue` cases |
+| `fastqueue_memory_profile` | `src/memory_profile_bench.cpp` | Standalone (`main()`, no Google Benchmark) |
 
-Comprehensive benchmarks for the lock-free `CQueue` implementation.
-
-### 2. fastqueue_stdqueue_benchmark (StdQueue Only)
-**File**: `stdqueue_bench.cpp`
-
-Identical benchmarks for the mutex-based `StdQueue` implementation.
-
-### 3. fastqueue_comparison_benchmark (Direct Comparison)
-**File**: `comparison_bench.cpp`
-
-**Recommended** - Head-to-head comparison of both implementations with paired tests.
+Every queued element is a `std::shared_ptr<BenchData>` in the Google Benchmark executables and a
+`std::string` in the memory profiler.
 
 ## Important Notes
 
-**Minimum Queue Capacity**: Both implementations require **8,192 elements** (`MIN_QUEUE_CAPACITY`).
-- This is 2x `BLOCK_SIZE` (4096) for optimal CQueue performance
-- Attempting to create smaller queues will throw `std::runtime_error`
-- Recommended sizes: 2^17 (131K), 2^20 (1M)
+**Minimum Queue Capacity**: Both implementations require **8,192 elements** (`MIN_QUEUE_CAPACITY`);
+a smaller capacity throws `std::runtime_error`. `CQueue` uses `WQueueTraits` with `BLOCK_SIZE = 512` and
+`IMPLICIT_INITIAL_INDEX_SIZE = 512` (`include/fastqueue/cqueue.hpp`). The benchmarks use 2^17 (131,072)
+and 2^20 (1,048,576) element queues.
 
-## Benchmark Categories
+**Reading `items_per_second`**: none of the cases calls `UseRealTime()`, so Google Benchmark derives
+`items_per_second` from the CPU time of the benchmark thread. In the MPMC, high-contention and
+rate-limit cases that thread mostly waits (in `join()`, or sleeping), so its CPU time is far below the
+wall time (`Time` column) and the rate is inflated — compare the `Time` column across implementations
+for those cases. In MPSC and SPMC the benchmark thread is itself the consumer or the producer.
 
-### Individual benchmarks (CQueue and StdQueue):
-These test all SPSC, MPSC, SPMC, MPMC, Bulk, and High Contention scenarios.
+## Benchmark Scenarios
 
-### Comparison benchmark:
-Direct head-to-head tests:
+### `fastqueue_benchmark` and `fastqueue_stdqueue_benchmark`
 
-### 1. Single Producer, Single Consumer (SPSC)
-- Tests basic push/pop performance with different queue sizes
-- Queue sizes: 2^17 (131K items: 1K, 10K, 50K)
-- **Use case**: Sequential processing pipeline
+Both files register the same cases with the same arguments:
 
-### 2. Multiple Producers, Single Consumer (MPSC)
-- Multiple threads pushing, one consuming
-- Producers: 2, 4, 8 threads
-- Queue size: 2^17 (131K)
-- Items: 1000 per producer
-- **Use case**: Log aggregation, event collection from multiple sources
+| Case | Arguments | Work per iteration |
+|---|---|---|
+| SPSC (`BM_SPSC_PushPop<N>`) | queue 2^17: 1K, 10K, 50K items; queue 2^20: 10K, 100K, 500K items | push all, then `waitPop()` all, one thread |
+| MPSC (`BM_MPSC_PushPop`) | 2, 4, 8 producers × queue 2^17, 2^20 | 1,000 items per producer, one consumer |
+| SPMC (`BM_SPMC_PushPop`) | 2, 4, 8 consumers × queue 2^17, 2^20 | 10,000 items, one producer |
+| MPMC (`BM_MPMC_PushPop`) | 2×2, 4×4, 8×8 on 2^17; 2×4, 4×8, 8×16 on 2^20 | 1,000 items per producer |
+| Bulk (`BM_BulkPop`) | bulk 1, 10, 100 on 2^17; bulk 1, 10, 100, 1000 on 2^20 | fill 10,000 items, drain with `tryPopBulk()` |
+| High contention (`BM_HighContention`) | 2, 4, 8, 16 threads, queue 2^20 | 10,000 ops per thread, alternating `push()` / `tryPop()` |
 
-### 3. Single Producer, Multiple Consumers (SPMC)
-- One thread pushing, multiple consuming
-- Consumers: 2, 4, 8 threads
-- Queue size: 2^17 (131K)
-- Items: 10,000 total
-- **Use case**: Work distribution, fan-out patterns, parallel processing
+### `fastqueue_comparison_benchmark`
 
-### 4. Multiple Producers, Multiple Consumers (MPMC)
-- Concurrent producers and consumers
-- Configurations: 2x2, 4x4, 8x8, 2x4, 4x8, 8x16
-- Queue sizes: 2^17, 2^20
-- **Use case**: High-throughput message passing
+| Case | Arguments | Work per iteration |
+|---|---|---|
+| SPSC | 1K, 10K, 50K items, queue 2^17 | push all, then `waitPop()` all |
+| MPMC | fixed 4 producers × 4 consumers, queue 2^17 | 1,000 items per producer |
+| MPSC | 2, 4, 8 producers, queue 2^17 | 1,000 items per producer |
+| SPMC | 2, 4, 8 consumers, queue 2^17 | 10,000 items |
+| Bulk | bulk 1, 10, 100, queue 2^17 | fill 10,000 items, drain with `tryPopBulk()` |
+| Rate limit | 1,000 and 10,000 elements/s (burst = rate), queue `MIN_QUEUE_CAPACITY` | push 100 items, pop each with `tryPop()`, sleeping 100 µs whenever the limiter refuses |
+| High contention | 4, 8, 16 threads, queue 2^20 | 5,000 ops per thread, alternating `push()` / `tryPop()` |
 
-### 5. Bulk Operations
-- Tests bulk dequeue performance
-- Bulk sizes: 1, 10, 100, 1000
-- Queue sizes: 2^17, 2^20
-- **Use case**: Batch processing
-
-### 6. High Contention
-- Mixed push/pop operations under high contention
-- Threads: 2, 4, 8, 16
-- **Use case**: Stress testing, worst-case scenarios
-
-### 7. Rate Limiting (Comparison Benchmark Only)
-- Tests rate limiter overhead and accuracy
-- Rates: 1K, 10K elements/second
-- **Use case**: Backpressure control, throttling
+Rate limiting exists only in the comparison executable. Both implementations run the identical
+`tryPop()` + sleep loop there, so the case measures the shared `RateLimiter`, not the queue's blocking
+path (`waitPop()` / the condition variable are not exercised).
 
 ## Running Benchmarks
 
-### CQueue (Lock-Free) Performance Targets
+```bash
+cd src/build/engine/source/fastqueue
+./fastqueue_comparison_benchmark
+./fastqueue_benchmark --benchmark_filter='BM_MPSC_PushPop'
+./fastqueue_stdqueue_benchmark --benchmark_filter='BM_StdQueue_Bulk'
+```
 
-| Scenario | Target Throughput | Notes |
-|----------|------------------|-------|
-| SPSC | 40M+ ops/sec | Good baseline, StdQueue is faster here |
-| MPSC (8 producers) | 9M+ ops/sec | **Strong advantage** over StdQueue |
-| SPMC (8 consumers) | 2.5M+ ops/sec | **Best scenario** - 4.4x faster than StdQueue |
-| MPMC (4x4) | 24M+ ops/sec | High throughput under balance load |
-| Bulk (size 10) | 26M+ ops/sec | Excellent batch efficiency |
-| High Contention (16t) | 200M+ ops/sec | Maintains throughput under stress |
-
-### StdQueue (Mutex-Based) Performance Targets
-
-| Scenario | Target Throughput | Notes |
-|----------|------------------|-------|
-| SPSC | 45M+ ops/sec | **Best scenario** - simpler is faster |
-| MPSC (8 producers) | 3M+ ops/sec | Struggles with contention |
-| SPMC (8 consumers) | 650k+ ops/sec | Poor scaling with consumers |
-| MPMC (4x4) | 23M+ ops/sec | Competitive under balanced load |
-| Rate Limiting (10K/s) | 900k+ ops/sec | **Best scenario** - condition_variable shines |
-| High Contention (16t) | 175M+ ops/sec | Good but lower than CQueue |
-
----
+The executables use `BENCHMARK_MAIN()`, so every standard Google Benchmark flag
+(`--benchmark_filter`, `--benchmark_repetitions`, `--benchmark_format=json`, …) applies.
 
 ## Memory Profiling
 
-### 4. fastqueue_memory_profile (Standalone)
-**File**: `memory_profile_bench.cpp`
+### `fastqueue_memory_profile` (Standalone)
 
-A standalone memory profiling tool that measures heap allocation behavior of `CQueue<std::string>` under MPMC scenarios with ~1KB events.
+Measures heap allocation behaviour of `CQueue<std::string>` in one MPMC scenario: **8 producers, 4
+consumers, 131,072 events of 4,096 bytes**, queue capacity `MIN_QUEUE_CAPACITY` (8,192). Before the
+scenario it reports the construction cost of an empty `CQueue<std::string>` of that capacity.
 
 ### What it measures
-- **Peak live memory**: Maximum heap bytes in-flight at any point
-- **Total allocations**: Number of `new` calls during push/pop
-- **Total bytes allocated**: Cumulative heap usage
-- **Per-event overhead**: Average bytes allocated per event vs payload size
-- **Allocations per event**: How many heap allocations each push+pop cycle costs
-- **RSS delta**: Resident Set Size change from `/proc/self/status`
-- **Queue construction cost**: Memory allocated just to create an empty queue
-
-### Scenarios tested
-| Config | Description |
-|--------|-------------|
-| 1P/1C | SPSC baseline |
-| 2P/2C | Light MPMC |
-| 4P/4C | Medium MPMC |
-| 8P/8C | Heavy MPMC |
-| 4P/1C | Fan-in (MPSC-like) |
-| 1P/4C | Fan-out (SPMC-like) |
+- **RSS delta**: change in `VmRSS` from `/proc/self/status` (`VmPeak` is captured too)
+- **Peak live memory**: maximum heap bytes in flight at any point
+- **Total allocations** and **total bytes allocated** during push/pop
+- **Avg bytes/event**, **overhead/event** (versus the payload size) and **allocs/event**
+- **Live bytes at end**
+- **Queue construction cost**: allocations and bytes to create an empty queue
 
 ### Running
 
 ```bash
+cd src/build/engine/source/fastqueue
+
 # Direct execution (text report to stdout)
-./build/source/fastqueue/fastqueue_memory_profile
+./fastqueue_memory_profile
 
 # With Valgrind Massif (heap timeline snapshots)
-valgrind --tool=massif ./build/source/fastqueue/fastqueue_memory_profile
+valgrind --tool=massif ./fastqueue_memory_profile
 ms_print massif.out.<pid>
 
 # With heaptrack (if available)
-heaptrack ./build/source/fastqueue/fastqueue_memory_profile
+heaptrack ./fastqueue_memory_profile
 heaptrack_print heaptrack.fastqueue_memory_profile.<pid>.gz
 ```
 
@@ -146,28 +116,17 @@ heaptrack_print heaptrack.fastqueue_memory_profile.<pid>.gz
 - Overrides global `operator new` / `operator delete` with atomic counters
 - Stores allocation size in a 16-byte header before each returned pointer
 - Thread-safe via `std::atomic` (no mutex overhead in hot path)
-- Reads `/proc/self/status` for RSS/VmPeak measurements
-- Queue is constructed before tracking begins (isolates push/pop cost from construction cost)
+- Reads `/proc/self/status` for `VmRSS` / `VmPeak`
+- The scenario's queue is constructed before tracking begins (isolates push/pop cost from construction cost)
 
-### Configuration Tuning
+## Recorded Run
 
-1. **BLOCK_SIZE** (currently 4096):
-   - Increase for higher latency, better throughput
-   - Decrease for lower latency, more allocations
-   - Current value is optimal for most workloads
-
-2. **IMPLICIT_INITIAL_INDEX_SIZE** (currently 512):
-   - Increase for better MPMC scaling (more concurrent producers/consumers)
-   - Current value handles 8-16 threads well
-
-3. **MIN_QUEUE_CAPACITY** (8192):
-   - Do not change - required minimum for performance
-   - Use 2^17 (131K) or 2^20 (1M) for production
-
-## Benchmark Results
+One recorded run of `fastqueue_comparison_benchmark` on a 32-core host. Its header warns that CPU
+scaling was enabled and that the (Google Benchmark) library was built as **DEBUG**, so the absolute
+numbers are indicative only; rerun on a `Release`/`RelWithDebInfo` build before drawing conclusions.
 
 ```
-╰─#  $ENGINE_BUILD/source/fastqueue/fastqueue_comparison_benchmark
+$ src/build/engine/source/fastqueue/fastqueue_comparison_benchmark
 2026-02-16T21:30:07+00:00
 Running /workspaces/wazuh-5.x/wazuh/src/build/engine/source/fastqueue/fastqueue_comparison_benchmark
 Run on (32 X 5600 MHz CPU s)
@@ -221,97 +180,19 @@ BM_Compare_HighContention_StdQueue/16      21036 us          458 us         1000
 ```
 
 
-### Actual Performance Results (Release Build)
+What this run shows (wall time, `Time` column, lower is better):
 
-Based on real benchmark results on 32-core system:
+| Case | CQueue | StdQueue |
+|---|---|---|
+| SPSC, 10K items | 512 µs | 443 µs |
+| MPSC, 8 producers | 862 µs | 2,741 µs |
+| SPMC, 8 consumers | 3,540 µs | 16,969 µs |
+| MPMC, 4×4 | 1,059 µs | 2,761 µs |
+| Bulk, size 10 | 386 µs | 466 µs |
+| Rate limit, 10K/s | 9,000 µs | 9,000 µs |
+| High contention, 16 threads | 6,730 µs | 21,036 µs |
 
-#### Performance Summary Table
-
-| Scenario | CQueue | StdQueue | Winner | Advantage |
-|----------|--------|----------|--------|------------|
-| **SPSC** | 41.2 M/s | 46.1 M/s | StdQueue | +12% |
-| **MPSC (8 prod)** | 9.34 M/s | 3.32 M/s | **CQueue** | **+181%** |
-| **SPMC (8 cons)** | 2.86 M/s | 651 k/s | **CQueue** | **+339%** |
-| **MPMC (4x4)** | 24.3 M/s | 23.1 M/s | CQueue | +5% |
-| **Bulk (10)** | 26.0 M/s | 21.5 M/s | CQueue | +21% |
-| **Rate Limit (10K/s)** | 500 k/s | 942 k/s | **StdQueue** | **+88%** |
-| **High Contention (16t)** | 202 M/s | 176 M/s | CQueue | +15% |
-
-**CQueue (lock-free) strengths:**
-- **MPSC dominance**: 2.8x faster with multiple producers
-- **SPMC excellence**: Up to 4.4x faster with multiple consumers (best scenario!)
-- Better scaling under MPMC and high contention
-- Superior bulk operations performance
-- Lock-free guarantees, no mutex contention
-
-**StdQueue (mutex-based) strengths:**
-- **SPSC efficiency**: 12% faster in simple producer-consumer
-- **Rate limiting**: 88% faster when throttling is required
-- Exact capacity control (no overshoot)
-- Simpler implementation, easier to debug
-- Lower memory overhead for small queues
-
-### Key Performance Insights
-
-1. **SPSC (simple)**: StdQueue is 12% faster (mutex has low overhead without contention)
-2. **MPSC (multiple producers)**: CQueue is 2.3-2.8x faster and scales better with more producers
-3. **SPMC (multiple consumers)**: CQueue is 2.5-4.4x faster - this is CQueue's best scenario!
-4. **MPMC (balanced)**: CQueue is slightly faster (~5-8%)
-5. **Rate limiting**: StdQueue is dramatically faster (44-88%) - condition_variable integrates naturally
-6. **Bulk operations**: CQueue is 10-21% faster, especially with medium bulk sizes
-7. **High contention**: CQueue maintains better throughput (+15% with 16 threads)
-
-### Real Benchmark Results (Release Build)
-
-```
-# SPSC - StdQueue wins in simple scenarios
-BM_Compare_SPSC_CQueue/10000          486 us          items_per_second=41.1M/s
-BM_Compare_SPSC_StdQueue/10000        436 us          items_per_second=45.9M/s  ✓ 12% faster
-
-# MPSC - CQueue dominates with multiple producers
-BM_Compare_MPSC_CQueue/8              857 us          items_per_second=9.34M/s  ✓ 2.8x faster
-BM_Compare_MPSC_StdQueue/8           2410 us          items_per_second=3.32M/s
-
-# SPMC - CQueue's best scenario! (multiple consumers)
-BM_Compare_SPMC_CQueue/8             3497 us          items_per_second=2.86M/s  ✓ 4.4x faster
-BM_Compare_SPMC_StdQueue/8          15364 us          items_per_second=651k/s
-
-# MPMC - CQueue maintains advantage
-BM_Compare_MPMC_CQueue                167 us          items_per_second=24.3M/s  ✓ 5% faster
-BM_Compare_MPMC_StdQueue              181 us          items_per_second=23.1M/s
-
-# Rate Limiting - StdQueue excels
-BM_Compare_RateLimit_CQueue/10000     200 us          items_per_second=500k/s
-BM_Compare_RateLimit_StdQueue/10000   106 us          items_per_second=942k/s   ✓ 88% faster
-```
-
-**Key Takeaways:**
-- **StdQueue wins**: SPSC (+12%), Rate limiting (+88%)
-- **CQueue dominates**: MPSC (+181%), SPMC (+339%), MPMC (+5%), Bulk (+21%), High contention (+15%)
-
-### When to Choose Each Implementation
-
-**Use CQueue (lock-free) when:**
-- **Multiple producers → single consumer (MPSC)** - 2.8x faster
-- **Single producer → multiple consumers (SPMC)** - 4.4x faster
-- Multiple producers and multiple consumers (MPMC)
-- Bulk operations are frequent
-- High thread contention (8+ threads)
-- Maximum throughput is critical
-- Lock-free guarantees are required
-- **NO rate limiting** or rate limiting is not performance-critical
-
-**Use StdQueue (mutex-based) when:**
-- **Rate limiting is required** - 88% faster due to condition_variable integration
-- **Simple SPSC pattern** - 12% faster without contention overhead
-- Exact capacity control is critical (no overshoot)
-- Low contention scenarios (1-2 threads)
-- Simpler debugging and maintenance is preferred
-- Memory overhead is a concern
-- Mutex-based synchronization is acceptable/required
-
-**Critical Decision Point:**
-- If you need **rate limiting**: Choose **StdQueue** (nearly 2x faster)
-- If you have **asymmetric patterns** (MPSC/SPMC): Choose **CQueue** (2-4x faster)
-- If you have **simple SPSC**: Choose **StdQueue** (12% faster)
-- If you have **balanced MPMC** or **high contention**: Choose **CQueue** (5-15% faster)
+In this run `StdQueue` is faster only in single-threaded cases (SPSC, and bulk pop of size 1: 587 µs
+against 663 µs); `CQueue` is faster with several
+producers or consumers and under contention; the rate-limited case is bound by the token refill (100
+items at the configured rate) and takes the same wall time on both.

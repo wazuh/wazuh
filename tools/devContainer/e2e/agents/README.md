@@ -26,14 +26,16 @@ agents/
 | Credential | the manager's `/etc/wazuh-manager/authd.pass` (the installer's configuration sets `<auth><use_password>yes</use_password>`; the schema default is `no`) | an enrollment token minted with `wazuh-manager-authd --create-enrollment-token --address host.docker.internal` (the token carries host, port, prefix, the CA pin and the secret) |
 | Configured by | `entrypoint.sh` (`<client><server>` address/port from `MANAGER_HOST`/`MANAGER_PORT`) | `entrypoint.sh`, with the same three effects as the packaged `register_configure_agent.sh` — which the postinst removes together with `/var/ossec/packages_files`, so it is absent at container start, and is used when present: `<agent><manager><endpoint>` from the token's address (decoded with `wazuh-agentd --show-token`), `<enrollment><agent_name>`, and `etc/enrollment_token` 0600 root, unlinked by the agent once the bootstrap succeeds |
 | Success (agent log) | `agent-auth: INFO: Valid key received` then `(4102): Connected to the server` | `INFO: Token bootstrap: enrollment succeeded; the manager's CA is now the agent's trust anchor.` |
-| Success (manager) | `/etc/wazuh-manager/client.keys` + `global.db` (authd logs the 1515 path at debug level only) | `wazuh-manager-authd: INFO: Enrollment token '<id>' used by agent '<name>' (<uses>/unlimited).` and `Recorded credentials of agent '<name>' written to the database` |
+| Success (manager) | `/etc/wazuh-manager/client.keys` + `global.db` (authd logs the 1515 path at debug level only) | `wazuh-manager-authd: INFO: Enrollment token '<id>' used by agent '<name>' (<uses>/unlimited).` (`(<uses>/<max>)` with `--max-uses`) and `Agent key generated for agent '<name>' (requested by <source>)` |
 
-Reference: `docs/ref/modules/authd/enrollment-lifecycle.md`, `docs/ref/modules/authd/README.md#enrollment-tokens`,
-`docs/ref/modules/remoted/https-events-api.md#enrollment-endpoint-post-enroll`.
+Reference: [enrollment lifecycle](../../../../docs/ref/modules/authd/enrollment-lifecycle.md),
+[enrollment tokens](../../../../docs/ref/modules/authd/README.md#enrollment-tokens),
+[`POST /enroll`](../../../../docs/ref/modules/remoted/https-events-api.md#enrollment-endpoint-post-enroll).
 
 ## Quick start
 
-Prerequisites: docker + compose v2, `curl`; a running manager (`sudo ../wazuh_verify_manager.sh` → 7/7) whose
+Prerequisites: docker + compose v2, `curl`; a running manager (`sudo ../wazuh_verify_manager.sh` → 7/7) with
+`wazuh-manager-authd` running (minting is a client of its local socket, and only a master mints), whose
 listeners bind to `0.0.0.0` (`../init.sh` does that) and whose listener certificate names
 `host.docker.internal` in its SAN (the devcontainer's `scripts/wazuh-certs-tool.yml` does).
 
@@ -49,9 +51,13 @@ VS Code: `[Agent] Init setup (download pkgs)` → `[Agent] Create enrollment tok
 → `[Agent] Verify enrollment`; `[Agent] Reset (down -v)` wipes the volumes (and therefore the enrolled keys);
 `[Agent] Check packages (--check)` / `[Agent] Re-download packages (--force)` manage `pkgs/`.
 
-`init.sh` detects the architecture (amd64 or arm64; `WAZUH_ARCH` overrides it) and saves the packages under
-the fixed names `wazuh-agent_{4x,5x}.{deb,rpm}` that the Dockerfiles install by exact name, so a re-run for
-another arch overwrites the previous set.
+`init.sh` (needs only `curl`) detects the architecture (amd64 or arm64; `WAZUH_ARCH` overrides it) and saves
+the packages under the fixed names `wazuh-agent_{4x,5x}.{deb,rpm}` that the Dockerfiles install by exact name,
+so a re-run for another arch overwrites the previous set. The 4.x version is `WAZUH_4X_VERSION` (default
+`4.14.3-1`); the 5.x manifests are `WAZUH_5X_PRIMARY_MANIFEST_URL` and `WAZUH_5X_FALLBACK_MANIFEST_URL`, the
+same pair `../init.sh` uses. `pkgs/<name>.url` records where each package came from: one fetched from another
+URL is stale and re-downloaded, and a 5.x one is also re-downloaded when its size differs from the remote one.
+`--check` downloads nothing and exits 3 when a package is stale or missing.
 
 The 5.x package must be one that carries the token bootstrap (`--show-token` in `wazuh-agentd`): the nightly
 `5.0.0-latest` does; `init.sh --check` tells you whether `pkgs/` is stale. A 5.x package without it cannot enroll

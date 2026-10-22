@@ -1,6 +1,8 @@
 # 09 — Metrics and output
 
-**This document is the single source of truth for the artifact formats.** The retired simulator
+**This document is the single source of truth for the sender's artifact formats** (`bench.csv`
+and `sender_summary.json`; the rest of a results directory is the orchestration's, see
+[the harness README](../../README.md)). The retired simulator
 documented its CSV in one place and grew six undocumented columns in another; here the rule is: a
 column or field that is not in this document does not exist, and adding one means editing this file
 in the same change.
@@ -32,9 +34,11 @@ cacerts_latency_ms_p50,cacerts_latency_ms_p99,
 enroll_https_latency_ms_p50,enroll_https_latency_ms_p99
 ```
 
-- `timestamp` is ISO-8601 UTC with a `Z`; `elapsed_s` is whole seconds since the sender started
+- `timestamp` is ISO-8601 UTC with a `Z` (second precision); `elapsed_s` is whole seconds
+  (rounded) since the sender started
   (the CSV clock starts before enrollment, unlike `meta.start_time`, which restarts once the fleet
-  is authenticated). A final row is written when the run ends.
+  is authenticated). A final row is written when the run ends. `mode` is the effective mode, and
+  `agents_active` the number of agents admitted and not yet finished (`0` while the fleet enrolls).
 - Every count column is a **cumulative** counter, monotonically non-decreasing (deltas are the
   consumer's job — that keeps rows independent of sampling jitter).
 - `sessions_503_retry_after` is a **subset** of `sessions_503` (the feed-not-ready case, separated
@@ -52,16 +56,18 @@ enroll_https_latency_ms_p50,enroll_https_latency_ms_p99
   scan will run), not scans that ran yet — the manager answers at admission and scans afterward, so
   `scan_latency_ms_*` is admission time and NOT a scan duration. `scan_409` (a stale `feed_offset`)
   and `scan_503` (VD did not record it: pending-scan queue full / indexer unavailable / not ready /
-  task not recorded / unreachable) are contract outcomes;
-  `scan_other` holds the `400`/`401` that also invalidate the run. A `scan_vd` step never retries,
-  so requests and attempts are the same number here.
+  task not recorded / unreachable) are contract outcomes; `scan_other` holds every other status —
+  a `400`/`401` there also invalidates the run, anything else is only counted. A `200` whose body is
+  not JSON is counted in `scan_200` and invalidates the run. A `scan_vd` step never retries, so
+  requests and attempts are the same number here.
 - `cacerts_*` are the `GET /cacerts` counters ([15](15-cacerts.md)): the CA-distribution requests a
   `cacerts` step sends. `cacerts_200` counts CA PEMs handed out; `cacerts_404` (the manager has no
   CA file), `cacerts_503` (the manager refused a CA the served certificate does not chain to) and
   `cacerts_429` (the route's own rate limit, `remote.https.cacerts_rate_limit`) are the manager's
-  contract outcomes; `cacerts_other` holds what invalidates the run (a `200` without a PEM body, a
-  status the contract does not name) — the `429` has a column of its own so a rate-limited manager is
-  not mistaken for one answering something unexpected. `cacerts_latency_ms_*` is the cost of the
+  contract outcomes; `cacerts_other` holds a status the contract does not name, which also
+  invalidates the run — the `429` has a column of its own so a rate-limited manager is not mistaken
+  for one answering something unexpected. A `200` without the PEM media type or without a
+  certificate block is counted in `cacerts_200` and invalidates the run. `cacerts_latency_ms_*` is the cost of the
   cheapest route on the listener — TLS plus a file read, no downstream — and **excludes** the `429`s,
   which never reached the handler. A `cacerts` step never retries.
 - `meta.bootstrap` is how the fleet obtained its identities: `"enroll-token"` (`POST /enroll` with
@@ -75,8 +81,9 @@ enroll_https_latency_ms_p50,enroll_https_latency_ms_p99
   verified — no uses left, or revoked/expired between the two checks), `enroll_https_409` (a
   duplicate name) and `enroll_https_429` (the route's rate limit,
   `remote.https.enroll_rate_limit`, refused before `authd` was contacted at all) are the manager's
-  contract outcomes; `enroll_https_other` holds what invalidates the run (a `200` without the agent
-  record, a status the contract does not name). `enroll_https_latency_ms_*` spans remoted's
+  contract outcomes; `enroll_https_other` holds a status the contract does not name, which also
+  invalidates the run. A `200` without the agent record (or naming another agent) is counted in
+  `enroll_https_200` and invalidates the run. `enroll_https_latency_ms_*` spans remoted's
   verification, the hop to `authd` and `authd`'s `client.keys` write — a fleet's first-contact cost —
   and **excludes** the `429`s, which paid none of it. The step never retries.
   `prepare_manager.sh` clears both rate limits by default, so these two `429` columns stay at `0`
@@ -84,22 +91,30 @@ enroll_https_latency_ms_p50,enroll_https_latency_ms_p99
 - `sessions_401` has its own column rather than living in `sessions_other`: a `401` means remoted has
   not loaded that fleet's keys yet, so those requests measured nothing. It also **invalidates the
   run** — a run full of unauthenticated requests must never read as a result.
-- `transport_errors` counts responses that never arrived (connection closed, read timeout), never
-  folded into an HTTP bucket. A transport error on a `/control` request is counted in
-  `control_*_err` instead.
-- `bytes_sent` counts the WIRE bytes: with `compression: "zstd"` it is the compressed size (what
-  the manager actually received), not the FlatBuffer's. `meta.compression` records the mode, so a
+- `transport_errors` counts requests whose response never arrived (connection refused or closed,
+  timeout), on every route except `/control`, never folded into an HTTP bucket and never counted in
+  the route's `_sent`. A transport error on a `/control` request is counted in `control_*_err`
+  instead.
+- `bytes_sent` and `documents_sent` cover `/stateful` sessions only, per attempt (a re-sent session
+  counts again). `bytes_sent` counts the WIRE bytes: with zstd it is the compressed size (what the
+  manager actually received), not the FlatBuffer's. `meta.compression` records the mode, so a
   with/without pair is comparable at a glance.
-- The latency columns are percentiles **over the whole run so far**, so a row is self-contained.
+- The latency columns are percentiles **over the whole run so far**, so a row is self-contained, in
+  milliseconds with one decimal. They come from a log-linear histogram (four buckets per power of
+  two, each reported at its midpoint: `internal/metrics/histogram.go`), so they are accurate to
+  about 12 %, and `0.0` means no sample yet.
 - `control_*` and `deletes_*` count requests by outcome: `_ok` is a `200`, `_err` anything else
-  (for `/control`, also a request that got no answer).
+  (for `/control`, also a request that got no answer; a delete that got none is a
+  `transport_errors`).
 
 This top-level CSV is the aggregate. The per-lane and per-fleet breakdowns below are where a mixed
 fleet's detail lives — the CSV would be unreadable with a column per (fleet × lane × status).
 
 ## `sender_summary.json`
 
-```json
+Abbreviated (`"..."` stands for keys left out):
+
+```json,fragment
 {
   "meta": {
     "scenario_name": "mixed_fleet_windows_linux",
@@ -116,7 +131,7 @@ fleet's detail lives — the CSV would be unreadable with a column per (fleet ×
     "compression": "zstd",
     "document_seed": 1234567,
     "start_time": "2026-08-06T18:00:00Z", "end_time": "2026-08-06T18:05:00Z", "duration_sec": 300.0,
-    "sender_version": "<git describe>", "go_version": "go1.26.2"
+    "sender_version": "dev", "go_version": "go1.26.2"
   },
   "totals": {
     "sessions": { "sent": 240000, "ok": 239880, "noop": 120, "s400": 0, "s403": 0, "s409": 0,
@@ -171,8 +186,12 @@ fleet's detail lives — the CSV would be unreadable with a column per (fleet ×
   measurement started (after enrollment and the readiness probe). `by_lane` is where the VD lane's `503`s and the engine lane's
   events show up isolated from the FIM lane's clean stream — the whole reason a mixed fleet is worth
   running.
-- `latency_ms` **MUST** carry one histogram per request kind, never one merged number: a notify, a
-  1000-document session and an engine batch belong to different distributions.
+- `latency_ms` carries one histogram per request kind, never one merged number: a notify, a
+  1000-document session and an engine batch belong to different distributions. The kinds are
+  `session`, `stateless`, `notify`, `startup`, `scan`, `cacerts` and `enroll_https` (no
+  `shutdown`), each `{count, p50, p90, p95, p99, max, avg}` in milliseconds, and a kind with no
+  sample is left out of that bucket. `throughput.sessions_per_second` counts `/stateful` attempts,
+  and every `throughput` rate divides by `meta.duration_sec`.
 - `throughput.achieved_vs_target` is `null` when `requests_per_second: 0` (unlimited), since there
   is no target to divide by.
 - There is **no verdict, no pass/fail, no expected-ratio field by default.** The one opt-in
@@ -182,55 +201,47 @@ fleet's detail lives — the CSV would be unreadable with a column per (fleet ×
   judges the same way on any hardware. Otherwise: `meta.agents_failed` and the
   `transport_errors` total are facts, not judgments; the exit code is set from run-invalidating
   conditions only ([10](10-error-handling-and-shutdown.md)), not from these numbers.
-- `meta` **MUST** record everything needed to reproduce the run: the document seed, the effective
-  pacing, `connection_reuse`, and `server_vd_workers` read from `GET /metrics` when available (the
-  VD worker count changes what the lane numbers mean). **`server_vd_workers` is not implemented:**
-  the sender reads no server metric and `meta` has no such field, so the worker count has to come
-  from the manager's configuration and be stated in the report by hand. `meta` also does not record
-  `drain_timeout`, `repeat_until`, `--feed-timeout` or `--timeout`; the scenario copy and
-  `params.json` that `run_benchmark.sh` writes cover the first two, unless `--drain-timeout`
-  overrode the scenario's `drain_timeout`.
+- `meta` (the `Meta` struct in `internal/metrics/summary.go`) holds exactly the keys of the example.
+  Notes on a few: `target` is the socket path in `uds` mode; `bootstrap` is `""` in `uds` mode;
+  `agents_enrolled` counts identities obtained (synthesized ones in `uds` mode) and
+  `agents_failed` is `0` or `1`, since the first failed enrollment aborts the run;
+  `keepalive_interval` echoes the scenario's value (`"0s"` when absent, although the loop then uses
+  10 s); `compression` is `"zstd"` or `""`; `sender_version` is `dev` unless the binary was built
+  with `-ldflags "-X main.senderVersion=<version>"` (the Makefile's `build` target does not set
+  it). `meta` does not record the VD worker count (the sender reads no server metric: state it in
+  the report from the manager's configuration), `drain_timeout`, `repeat_until`, `--feed-timeout`
+  or `--timeout`; the scenario copy and `params.json` that `run_benchmark.sh` writes cover the
+  first two, unless `--drain-timeout` overrode the scenario's `drain_timeout`.
 
 ## `samples/metrics.ndjson` — the scrape
 
-The sender **MAY** scrape `GET /metrics` (F9a) itself in `uds` mode; in `agent` mode the socket may not be reachable from where the sender runs, and the orchestration's monitor does it (F9c-3). As implemented, the sender never scrapes: `samples/metrics.ndjson` is written only by the orchestration (`monitor.py`, or `scrape_metrics.sh` when the monitor cannot run).
-
-The format is NDJSON, one object per scrape, defined by `tools/devContainer/scripts/bench_samples.py` — the orchestration's monitor and the `scrape_metrics.sh` fallback write the same lines, and every source shares one file:
-
-```text
-{"kind":"run","r":"<run id>","started":"...Z","label":"<run label>"}
-{"kind":"meta","src":"inventory-sync","socket":"...","r":"<run id>",
- "types":{"<metric>":"counter",...},"units":{...},"descriptions":{...}}
-{"ts":"...Z","t":12.0,"src":"inventory-sync","ok":true,"m":{"<metric>":<value>,...},
- "h":{"<metric>":{"count":..,"p50":..,"p90":..,"p99":..,"max":..},...},
- "off":["<metric disabled in this scrape>"],"d":{"name":...,"timestamp":...},"r":"<run id>"}
-{"ts":"...Z","t":13.0,"src":"inventory-sync","ok":false,"err":"connection refused","r":"<run id>"}
-```
-
-The file is append-only and a reused label reuses its results directory, so it **MAY** hold several runs. Every line carries the `r` of the run that wrote it, each run opens with a `run` marker, and a consumer **MUST** scope to one run — the last, unless it says otherwise — rather than read the file whole: a cumulative counter's delta over two runs is the sum of both.
-
-The capture **MUST** be lossless: the module's original response has to be reconstructible from the file. Per-metric descriptors (`type`, `unit`, `description`) are registration-time constants and go on the `meta` line once, re-emitted if one changes; `d` holds the dump's own top-level scalars, including the server's clock; `off` names the metrics that reported `enabled: false`, whose `m` value is stale rather than measured. Metric names are the module's own; a histogram's distribution is in `h`, never among the scalars, so no consumer has to recognise a percentile by the shape of its name. A metric the dump did not carry is ABSENT from `m` rather than zero, and a failed scrape carries no metrics at all — writing zeros for either would read as a counter reset to anything computing a delta.
-
-This replaced a long-format `server_metrics.csv` (`timestamp,elapsed_s,metric,value`) that the fallback scraper wrote while the monitor wrote a wide one, so the same numbers reached the collator under two naming conventions. Per-daemon CSV files are no longer written during collection. They **MAY** be exported on demand from `samples/metrics.ndjson` using `python3 tools/devContainer/scripts/bench_samples.py <results_dir>`. By default, exports are written as `<results_dir>/stats-api-*.csv`; `--out-dir` selects a different destination. The orchestration also accepts `run_benchmark.sh --export-csv` to export the latest run after collection ends (requires `pandas`). This export is optional and disabled by default.
+The sender never scrapes `GET /metrics`: `samples/metrics.ndjson` is written only by the
+orchestration (`monitor.py`, or `scrape_metrics.sh` when the monitor cannot run), in the format
+defined by `tools/devContainer/scripts/bench_samples.py` and documented in
+[the harness README](../../README.md#samplesmetricsndjson-is-the-server-side-artifact).
 
 ## Console output
 
-Progress lines **SHOULD** be one per second, compact, and **MUST NOT** be the primary artifact. The
-final block **MUST** print: mode, achieved rate, the session, stateless and `/scan/vd` status
-distributions (the last two only when the run produced any), the session p50/p99, and whether the
-run was valid (not whether it "passed" — that distinction is the
-point). Enough that a run can be judged from the terminal, with the files for the detail.
+The console is never the primary artifact. The sender prints no progress lines: a header
+(`=== benchmark_sender (<version>) ===`, scenario and mode), setup messages, errors on stderr
+(`setup: …`, `run invalidated: …`), and a final block (`printFinal()` in
+`cmd/benchmark_sender/main.go`) with whether the run was valid (not whether it "passed" — that
+distinction is the point):
 
-As implemented, the sender prints **no progress lines** (only setup messages and the final
-block). The final block (`printFinal()` in `cmd/benchmark_sender/main.go`) prints the mode, agents
-enrolled/requested and the duration but **not the achieved rate**; then the session line (sent, ok,
-noop and each status), the stateless and `scan/vd` lines when there was any such traffic, the
-control and retry lines when non-zero, the session p50/p99 with `transport_errors` and `abandoned`,
-the `expected` verdict when the scenario has one, and `run: VALID|INVALID (exit N)`. It prints no
-`/cacerts` or `/enroll` line; those counters are in the artifacts only.
+- `mode=… agents=<enrolled>/<requested> duration=…s` — no achieved rate;
+- the session line (sent, ok, noop and each status, `503(retry_after=N)`, other);
+- the stateless and `scan/vd` lines when there was any such traffic (the latter with its admission
+  p50/p99);
+- the control and retry lines when non-zero;
+- the session p50/p99 with `transport_errors` and `abandoned`;
+- the `expected` verdict (`PASS` or `FAIL` with each failure) when the scenario has one;
+- `run: VALID (exit 0)`, `run: VALID, but the scenario's expected block failed (exit 3)` or
+  `run: INVALID (measurement not trustworthy) (exit N)`.
+
+There is no `/cacerts` or `/enroll` line; those counters are in the artifacts only.
 
 ## What is not measured here
 
 Manager-side resource usage (CPU, RSS, indexer latency) is the orchestration's monitor, not the
-sender. The sender **MUST NOT** read the manager's logs to infer anything: the HTTP answers and
-`/metrics` are the only channels it interprets.
+sender. The sender **MUST NOT** read the manager's logs or metrics to infer anything: the HTTP
+answers to its own requests are the only channel it interprets.

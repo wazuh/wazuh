@@ -203,6 +203,11 @@ enrolled.
 Both suites read `views.json`, so the fixtures are asserted through the **real selectors of the
 views**: a scope or a table that moves there fails here first.
 
+CI runs both in [5_testunit_dev-tools.yml](../../../../.github/workflows/5_testunit_dev-tools.yml) (job
+`dashboard-capture`, on a change to `dashboard/*.py` or `views.json`) with the venv's interpreter, built
+the way `--setup` builds it (`playwright==1.63.0`, Chromium under `<venv>/browsers`, `DASHBOARD_VENV`
+pointing at it), and fails when the output contains `skipped=`: a DOM case that skips is a failure there.
+
 Output (stdout, one line per check):
 
 ```
@@ -502,7 +507,7 @@ Under `--out`, which by default is a **fresh directory per run**,
   says where on the page to look for it.
 - **Selectors that fail loudly (naming themselves) rather than silently passing** when the dashboard
   moves them:
-  - `scope_selector` of `discover` is `.dscCanvas`, confirmed live (`probes/probe-canvas.py`: it holds both
+  - `scope_selector` of `discover` is `.dscCanvas`, confirmed live (a one-off DOM probe, probe-canvas, not kept in the repository: it holds both
     `table[data-test-subj=docTable]` and `discoverQueryHits`, one table). If a dashboard release changes it
     the view FAILs with `scope missing: .dscCanvas`.
   - the `vd` view's columns were measured by the first run with findings (2026-09-24): the VD

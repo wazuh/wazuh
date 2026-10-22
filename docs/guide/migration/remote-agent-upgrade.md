@@ -18,6 +18,7 @@ The remote agent upgrade mechanism is preserved in 5.x. The same `PUT /agents/up
 | Upgrade result reporting                     | Agent reported success/failure back to the manager, which recorded it as the task's status   | No outcome is recorded: tasks stay `delivered` whether the push and the install succeed or not, and `tasks.db` has no `failed` status. A 4.x agent's result ack (`upgrade_update_status`) is logged by `remoted` (`WARNING` when the agent reports a failure), answered with `clear_upgrade_result`, and also passed to the Engine like any other agent event. A push failure the manager itself detects is retried and then logged by `remoted`. Follow progress through the reported agent version, the agent's log and `remoted`'s log — see [Delivery to agents below v5.0.0](#delivery-to-agents-below-v500) |
 | HTTPS `verification_mode` vs. upgrade target  | Not applicable (no HTTPS transport in 4.x)                                                    | Upgrading to v5.0.0+ while `remoted`'s `<remote><https><verification_mode>` is not `none` is rejected (repo-based path: unless `force_upgrade` is set; custom-WPK path: unconditionally)       |
 | Manager trust anchor on the agent            | Not applicable (no TLS between agent and manager in 4.x)                                     | An agent upgraded to 5.x has no enrollment token to take an anchor from, so `remoted` pushes the manager's CA over the same upgrade channel, to `var/incoming/root-ca.pem`, before issuing `upgrade`. Controlled by `<remote><legacy><ca_delivery>` (default `yes`); never fails the upgrade. See [Trust anchor delivery](#trust-anchor-delivery-to-legacy-agents) |
+| Upgrading an agent below v5.0.0 with `<remote><legacy>` off | Not applicable | Rejected per agent (error `1828`, `The agent is below v5.0.0 and the manager's legacy delivery (remote.legacy.enabled) is disabled; the upgrade task could never be delivered.`), since only the legacy session can carry the WPK to it. Not overridable with `force`. An absent `<legacy>` block counts as off |
 | Custom WPK location                          | `file_path` could be any absolute path on the manager; the manager pushed that file directly | `file_path` must resolve **inside** `/var/wazuh-manager/var/upgrade/` (symlinks followed). Anything else is rejected with `The WPK file does not exist`. The agent now fetches the file by name from that directory, so a path outside it named a file the delivery side would never find |
 | When `<remote>` changes take effect for upgrades | Read per request                                                                          | Read once when `wazuh-manager-modulesd` starts. Changing `<remote><legacy>` or `<remote><https><verification_mode>` needs modulesd restarted as well as remoted, or upgrade requests keep applying the previous value |
 | Manager-side upgrade configuration | `<agent-upgrade>` section, with `<enabled>` and `<wpk_repository>` | Moved into `<task-manager>` as `<upgrade_enabled>` and `<wpk_repository>`. **`<agent-upgrade>` is no longer a valid manager section and the schema rejects it** — a manager configuration still carrying one is refused with `Invalid configuration at '/agent-upgrade'` and the manager will not start. See [Configuration changes](#configuration-changes) below |
@@ -284,10 +285,11 @@ itself did not complete. An agent off the air is worse than an agent without an 
 
 The manager refuses to send the CA, and logs an actionable error, when:
 
-- the configured `remote.https.ca_certificate` is missing, unreadable, or is not a complete PEM
-  certificate; or
-- that CA does not sign the certificate the manager's own HTTPS listener serves. An agent that
-  pinned such an anchor would fail every connection afterwards, which is worse than sending nothing.
+- the configured `remote.https.ca_certificate` is missing, unreadable, larger than 64 KiB, or carries
+  no certificate; or
+- the certificate the manager's own HTTPS listener serves does not chain to a certificate in it that
+  is a CA within its validity period. An agent that pinned such an anchor would fail every
+  connection afterwards, which is worse than sending nothing.
 
 Delivery status is visible in the manager log only. As with WPK delivery itself, `tasks.db` records
 no per-task outcome — see the "Upgrade result reporting" row in [Breaking changes at a
@@ -388,7 +390,7 @@ Optional query parameters:
 
 | Parameter         | Type    | Default            | Description                                                                                                      |
 | ----------------- | ------- | ------------------ | ---------------------------------------------------------------------------------------------------------------- |
-| `wpk_repo`        | string  | Default repository | WPK repository base URL                                                                                          |
+| `wpk_repo`        | string  | `<wpk_repository>`, else `packages.wazuh.com/<major>.x/wpk/` for the target | WPK repository base URL                                                                         |
 | `upgrade_version` | string  | Manager version    | Target version (e.g. `v5.0.0`)                                                                                   |
 | `use_http`        | boolean | `false`            | Use HTTP instead of HTTPS to fetch WPK                                                                           |
 | `force`           | boolean | `false`            | Bypass same-version and version-exceeds-manager checks; does **not** bypass the v4.14.0 intermediate requirement |

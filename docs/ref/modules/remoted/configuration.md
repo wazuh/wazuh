@@ -61,9 +61,9 @@ before issuing the `upgrade` command. The agent's installer picks it up from the
   by its own means. With `no`, the upgrade push is byte-for-byte what it was before this option
   existed — no file is read and no additional command is sent.
 - **Note:** With `yes` and a `remote.https.ca_certificate` bundle carrying more than one CA (a
-  rotation in progress), the bytes pushed are **not** the file as it sits on disk. `legacy_task_ca_read()`
-  asks the C++ module for the certificate the HTTPS listener's leaf is currently served under, and
-  the module hands back the first one that the leaf **actually chains to** and that is **an anchor
+  rotation in progress), the bytes pushed are **not** the file as it sits on disk. remoted picks,
+  from the bundle, the certificate the HTTPS listener's leaf is currently served under: the first
+  one that the leaf **actually chains to** and that is **an anchor
   the agent-side installer would keep**: it must be a CA (`basicConstraints CA:TRUE`) and currently
   within its validity window. A valid signature is deliberately not enough — a rotation's overlap is
   exactly where the bundle can carry an **expired** re-issue of the same key next to the current one,
@@ -71,9 +71,8 @@ before issuing the `upgrade` command. The agent's installer picks it up from the
   all; neither is something `src/init/pkg_installer.sh` will install and work with. If
   nothing in the bundle qualifies, **nothing is delivered** and the upgrade proceeds without a CA
   (see the "never fails an upgrade" note below) — better that than a `root-ca.pem` drop-in the
-  installer rejects on arrival. The result is re-serialized on its own, with no publication block
-  (`remoted_module_tls_leaf_signer_pem()`, `src/remoted/src/legacy_task_delivery.c:651-681`) — the
-  agent-side installer refuses a `root-ca.pem` drop-in with more than one certificate, so sending the
+  installer rejects on arrival. The result is re-serialized on its own, with no publication block —
+  the agent-side installer refuses a `root-ca.pem` drop-in with more than one certificate, so sending the
   bundle verbatim during a rotation would leave the agent with no anchor at all. With a single,
   currently-valid CA in the bundle, the result is substantively equivalent to the file.
 - **Note:** The CA is only sent when the upgrade targets v5.0.0 or later. An agent being stepped up
@@ -140,6 +139,10 @@ Accept connections from agents running a Wazuh version higher than the manager.
 - **Note:** "Higher" means a higher major or minor version: an agent one patch release ahead (5.0.1
   against a 5.0.0 manager) is always accepted, on the HTTPS and the legacy paths alike. Enable when
   upgrading agents to a new minor or major before the manager
+- **Note:** Applies to an agent's `POST /control` `startup` and to 4.x keep-alives. It does **not**
+  govern enrollment: `POST /enroll` follows authd's own
+  [`<auth><agents><allow_higher_versions>`](../authd/configuration.md#agents--allow_higher_versions),
+  so the two must be raised together for a newer agent to both enroll and connect
 
 ### legacy.ipv6
 
@@ -156,19 +159,18 @@ Bind remoted to a specific local IP address.
 - **Default value:** `0.0.0.0` (all IPv4 interfaces) when `ipv6` is `no`; all IPv6 interfaces (`::`)
   when `ipv6` is `yes` (the `0.0.0.0` default only applies in IPv4 mode)
 - **Allowed values:** Valid IPv4 or IPv6 address
-- **Note:** Restricts remoted to listen only on the specified interface. The shipped
-  `wazuh-manager.conf` and the install-time template write the `0.0.0.0` default explicitly; set a
-  specific address (or `127.0.0.1`) to accept agents only through that interface.
+- **Note:** Restricts remoted to listen only on the specified interface. The installer writes the
+  `0.0.0.0` default explicitly (and leaves the option out when it is told to enable `ipv6` without
+  an address); set a specific address (or `127.0.0.1`) to accept agents only through that interface.
 
 ### legacy.rids_closing_time
 
-Time to keep agent session IDs (RIDs) cached after agent disconnects.
+Idle time after which remoted closes an agent's open RIDS (message-counter) file in
+`queue/rids/`. It is also the period of the thread that looks for such files.
 
 - **Default value:** `5m` (300 seconds)
-- **Allowed values:** Time value with optional suffix: `s` (seconds), `m` (minutes), `h` (hours), `d` (days). Bare number defaults to seconds. A non-positive value is replaced by the default with a warning.
+- **Allowed values:** Time value with optional suffix: `s` (seconds), `m` (minutes), `h` (hours), `d` (days), `w` (weeks). Bare number defaults to seconds. `0` passes the schema but is replaced by the default with a warning.
 - **Example:** `300`, `5m`, `300s` are all equivalent
-- **Note:** Idle time after which remoted closes an agent's open RIDS (message-counter) file in
-  `queue/rids/`
 
 ### legacy.connection_overtake_time
 
@@ -238,7 +240,8 @@ similar spelling: nothing on disk is looked up under it.
 Whether an IPv6 `bind_addr` (e.g. `::`) also accepts IPv4 clients on the same socket
 (the `IPV6_V6ONLY` socket option).
 
-- **Default value:** `no` (force IPv6-only)
+- **Default value:** IPv6-only, the same as `no`. The schema gives this option no default; an absent
+  tag is left unset and the module treats it as `no`.
 - **Allowed values:** `yes` (force dual-stack on), `no` (force IPv6-only); any other value is
   rejected as a configuration error
 - **Note:** Only meaningful when `bind_addr` is IPv6; ignored (with a warning) for an IPv4
@@ -256,8 +259,10 @@ Path to the TLS certificate chain (PEM) presented by the server.
   Present but unreadable by the service user: `wazuh-manager-remoted` exits with
   `Cannot start the HTTPS agent listener: …`. The same message names the CA certificate
   (`remote.https.ca`) when `verification_mode` is `certificate` or `full` and that file is missing or unreadable.
-- **Note:** at startup the manager warns if this certificate has expired or expires within 30 days,
-  so a silent outage for verifying agents can be prevented before it happens.
+- **Note:** at startup, and again every 24 hours while it runs, the manager warns if this
+  certificate has expired (`The TLS certificate '<path>' has expired; …`) or expires within 30 days
+  (`The TLS certificate '<path>' expires in <n> day(s); …`), so a silent outage for verifying agents
+  can be prevented before it happens.
 - **Note:** before every start the credential resolver checks the configured pair, which must be directly in
   `/etc/wazuh-manager/certs` under any name; see
   [Configured file names](../../getting-started/credentials.md#configured-file-names).
@@ -354,8 +359,12 @@ TLS 1.3 ciphersuite override for the HTTPS listener (`SSL_CTX_set_ciphersuites()
 scheme, e.g. `TLS_AES_256_GCM_SHA384`). The listener requires TLS 1.3 as its minimum
 protocol version.
 
-- **Default value:** `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256`
-- **Allowed values:** colon-separated TLS 1.3 ciphersuite name string. The value is validated at
+- **Default value:** `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256`.
+  The schema gives this option no default (the generated reference shows none); an absent tag is
+  left unset and the module applies this built-in list.
+- **Allowed values:** colon-separated TLS 1.3 ciphersuite names, from `TLS_AES_128_GCM_SHA256`,
+  `TLS_AES_256_GCM_SHA384`, `TLS_CHACHA20_POLY1305_SHA256`, `TLS_AES_128_CCM_SHA256` and
+  `TLS_AES_128_CCM_8_SHA256`; at most 255 characters. The value is validated at
   configuration-parse time: a name that is not a TLS 1.3 suite (for example a TLS 1.2 string such
   as `HIGH:!ADH`) is rejected so the config test catches it, instead of the listener failing to
   start at runtime.
@@ -364,7 +373,8 @@ protocol version.
 
 Maximum accepted HTTP request body size, enforced by the transport.
 
-- **Default value:** `10M` (10 MiB)
+- **Default value:** `10M` (10 MiB). The schema gives this option no default (the generated
+  reference shows none); an absent tag is left unset and the module applies this built-in value.
 - **Allowed values:** Positive byte count with an optional single-letter suffix (`B`, `K`, `M`, `G`, case-insensitive). `K`/`M`/`G` are binary multiples; a bare number is bytes. Suffixes such as `MB` are rejected.
 - **Effect:** Raising the limit admits larger wire bodies and increases potential memory use per connection;
   lowering it rejects larger requests at the transport. The authentication and shared-memory limits still apply.
@@ -1337,7 +1347,9 @@ database.
   database, so the effective staleness of `last_keepalive` is up to one whole window. Two writes
   ignore the window: the first host-carrying notify, and the first notify after a `startup`
   (which must lift the agent out of the `pending` state a startup leaves in wazuh-db).
-- **Note:** Keep it below half of `<global><agents_disconnection_time>` (default `15m`); remoted
+- **Note:** Keep it below half of
+  [`<global><agents_disconnection_time>`](../task_manager/configuration.md#agents_disconnection_time)
+  (default `15m`), the one `<global>` option remoted reads; remoted
   warns at startup from half upward. The staleness the disconnection sweep compares against the
   threshold is the throttle plus the agent's notify interval, so any value at or above half can
   disconnect agents that are answering normally. Half rather than just below the threshold also
@@ -1463,11 +1475,11 @@ Seconds `remoted` waits to connect to `authd`'s local enrollment socket.
 
 Seconds `remoted` waits for `authd`'s answer once connected.
 
-- **Default value:** `0` (worker-aware default: short on the master, long enough on a worker to
-  outlast `authd`'s own worker-to-master cluster retry budget)
+- **Default value:** `0`, which means 5 seconds on the master and 15 seconds on a worker — long
+  enough to outlast `authd`'s own worker-to-master cluster retry budget
 - **Allowed values:** Integer from `0` to `120`
 - **Note:** Same evidence as `authd_connect_timeout`; together they must stay under
-  [`remoted.http_request_timeout`](configuration.md#remotedhttp_request_timeout), which the
+  [`remoted.http_request_timeout`](#remotedhttp_request_timeout), which the
   module warns about at startup.
 
 #### remoted.authd_max_queue_size
@@ -1711,13 +1723,16 @@ The values remoted is actually running with, schema defaults applied:
 
 ```bash
 GET /cluster/{node_id}/configuration/request/remote     # the <remote> section
-GET /cluster/{node_id}/configuration/request/internal   # the legacy remoted.* internal options
+GET /cluster/{node_id}/configuration/request/internal   # remoted.* internal options read by the C daemon
 ```
 
-The `internal` answer covers the legacy channel's options only; the `remoted.http_*`,
-`remoted.downstream_*`, `remoted.control_*`, `remoted.authd_*` and `remoted.jwt_*` options are not
-reported there. Run `/var/wazuh-manager/bin/wazuh-manager-remoted -t` to check that those are within
-range: it validates them and exits non-zero on the first bad one.
+The `internal` answer covers the options of the [Internal Options](#internal-options) list from
+`remoted.debug` to `remoted.comp_average_printout` only. None of the
+[HTTPS agent server's](#https-agent-server-remoted_module) options (`remoted.http_*`,
+`remoted.max_*`, `remoted.downstream_*`, `remoted.jwt_*`, `remoted.auth_*`, `remoted.control_*`,
+`remoted.enroll_*`, `remoted.authd_*`, `remoted.vd_scan_*`) nor the agent module limits are
+reported there. Run `/var/wazuh-manager/bin/wazuh-manager-remoted -t` to check that those are
+within range: it validates them and exits non-zero on the first bad one.
 
 ### Enable Debug Logging
 

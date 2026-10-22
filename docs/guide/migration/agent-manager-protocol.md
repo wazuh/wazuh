@@ -54,7 +54,7 @@ by default (`POST /wazuh-manager/control`). Full contracts in
 | --- | --- |
 | `OSSEC A:'<name>'` enrollment on port 1515 | `POST /enroll` on 1517, which bridges to `authd` over its local socket |
 | `#!-agent startup` control message | `POST /control` with `{"type":"startup"}` |
-| `#!-agent ack` keep-alive | `POST /control` with `{"type":"notify"}` |
+| `#!-` keep-alive carrying the agent's OS, version and `merged.mg` checksum (answered with `#!-agent ack`) | `POST /control` with `{"type":"notify"}` |
 | `#!-agent shutdown` | `POST /control` with `{"type":"shutdown"}` |
 | `#!-req` manager-to-agent requests | The `tasks` array in a `notify` response — the agent pulls work instead of the manager pushing it |
 | Event messages (logs, SCA, rootcheck, ...) | `POST /stateless`, as an H/E batch |
@@ -158,26 +158,27 @@ target and TLS material as every other HTTPS request. No script rewrites the fil
 
 ## Certificates
 
-The HTTPS listener requires a certificate and key. The manager issues a pair for itself at installation, but a
-distributed deployment normally replaces it: they are
-issued with the Wazuh installation assistant's `wazuh-certs-tool` — a `remoted.pem` leaf of the same
-`root-ca.pem` the assistant issues for the rest of the platform, so agents can pin that CA — and
-deployed under `/etc/wazuh-manager/certs` before the first start (see
-[Deploy certificates](../../ref/getting-started/installation.md#using-certificates-issued-elsewhere)). Starting is
-**fail-closed**: without them `wazuh-manager-control start` refuses (`(1244): Invalid configuration at
-'/remote/https/certificate': file not found: …`), and a pair the service user cannot read stops
-`remoted` at startup (`Cannot start the HTTPS agent listener: …`) rather than coming up without the
-listener.
+The HTTPS listener requires a certificate and key, `/etc/wazuh-manager/certs/remoted.pem` and
+`remoted-key.pem` by default. The installation issues that pair from the manager's CA unless you staged one, and
+agents pin the CA it chains to (`certs/root-ca.pem`); a pair from your own PKI, for example one issued with the
+same `wazuh-certs-tool` CA as the rest of the platform, is staged in `/etc/wazuh-manager/certs` instead (see
+[Using certificates issued elsewhere](../../ref/getting-started/installation.md#using-certificates-issued-elsewhere)
+and [Server pairs](../../ref/getting-started/credentials.md#server-pairs)). Starting is **fail-closed**: without
+the pair `wazuh-manager-control start` refuses (`(1244): Invalid configuration at '/remote/https/certificate': file
+not found: …`), and a pair the service user cannot read stops `wazuh-manager-remoted` at startup (`Cannot start
+the HTTPS agent listener: …`) rather than letting it come up without the listener.
 
-`authd` and `remoted` now share one pair, `/etc/wazuh-manager/certs/remoted.pem` and `/etc/wazuh-manager/certs/remoted-key.pem`
-(with `/etc/wazuh-manager/certs/root-ca.pem` as the CA). A 4.x configuration that pointed `<auth><ssl_manager_cert>`
-and `<ssl_manager_key>` at `authd.pem`/`authd-key.pem` should be repointed, or the overrides dropped
-so the defaults apply. See
-[Manager configuration migration](manager-configuration-migration.md#auth-section).
+`wazuh-manager-authd` and `wazuh-manager-remoted` share that one pair: `<auth><ssl_manager_cert>` and
+`<ssl_manager_key>` default to the same two files. A 4.x configuration that pointed them at its own pair (the 4.x
+default was `etc/sslmanager.cert`/`etc/sslmanager.key`) should be repointed, or the overrides dropped so the
+defaults apply. See [Manager configuration migration](manager-configuration-migration.md#auth-section).
 
-Client-certificate validation is optional and configured with
-`<remote><https><verification_mode>`: `none` (default), `certificate`, or `full` (which additionally
-requires the peer's address to appear in the certificate's SAN).
+Client-certificate validation is optional and configured with `<remote><https><verification_mode>`: `none`,
+`certificate`, or `full` (which additionally requires the address the peer connects from to appear in its
+certificate's SAN). The option has no schema default: left unset it resolves to `certificate` when
+`<remote><https><ca>` is set (with a warning saying so) and to `none` otherwise. Any mode other than `none`
+also makes remote upgrades to 5.x refuse unless forced; see
+[`https.verification_mode`](../../ref/modules/remoted/configuration.md#httpsverification_mode).
 
 ## Behind a load balancer
 

@@ -111,8 +111,9 @@ from an in-process queue and the agent's main thread runs the timeout check ever
 5. **Forwarding**: `wazuh-agentd` hands the payload unchanged to `wazuh-execd`. A payload that is not
    JSON or has no top-level `wazuh` key is dropped with an ERROR; when execd's queue is not available (Active
    Response disabled on the agent) the task is dropped at debug level.
-6. **Validation**: `wazuh-execd` parses the message and reads `wazuh.active_response.executable`,
-   `type` and `stateful_timeout` (see [What wazuh-execd reads](#what-wazuh-execd-reads)).
+6. **Validation**: `wazuh-execd` parses the message, reads `wazuh.active_response.executable`,
+   `type` and `stateful_timeout` (see [What wazuh-execd reads](#what-wazuh-execd-reads)), and drops
+   the message when `source.ip` is the manager, loopback or an `<allowlist>` entry.
 7. **Execution**: execd appends `"command": "enable"`, starts
    `active-response/bin/<executable>` and writes the message, one line, to its stdin.
 8. **Keys**: the executable answers on stdout with one `check_keys` line naming its keys (for
@@ -358,6 +359,7 @@ Everything else the event carries (`user.name`, `file.path`, …) travels along 
 | `wazuh.active_response.executable` | non-empty string, no parent-folder reference | the file run is `active-response/bin/<executable>`, plus `.exe` on Windows when the name has no `.`; it must exist and be readable, otherwise `(1311): Invalid command name` |
 | `wazuh.active_response.type` | `"stateful"` makes the response stateful; any other value or none is stateless | stateless responses never enter the timeout list |
 | `wazuh.active_response.stateful_timeout` | a number of seconds, read only when `type` is `stateful` | missing, `null` or `0` runs the response once, as stateless |
+| `source.ip` | optional; read when it is a string | when it is the manager, loopback, an unspecified address or an `<allowlist>` entry, nothing is run (see [allowlist](configuration.md#allowlist)) |
 
 execd reads nothing else. `extra_arguments`, `location` and `agent_id` reach the executable but no
 shipped executable uses them; a custom executable can read `wazuh.active_response.extra_arguments`
@@ -400,13 +402,15 @@ The shipped executables accept only `enable` and `disable` on line 1 and only `c
 ## Deduplication and timeouts
 
 Only a stateful response with a timeout greater than zero enters execd's timeout list, and only if
-the executable sends its `check_keys` line: a stateful executable that writes nothing on stdout is
+the executable writes a line on stdout: a stateful executable that writes nothing on stdout is
 run once and never reverted (`Active response won't be added to timeout list. Message not received
 with alert keys from script '<path>'` at debug level).
 
 Each entry is identified by a key built from the executable's file name followed by `-<key>` for
-each key, e.g. `block-ip-192.168.1.100` (at most 4095 characters; longer keys are truncated with a
-WARNING). For a stateful response:
+each string in `parameters.keys`, e.g. `block-ip-192.168.1.100` (at most 4095 characters; longer
+keys are truncated with a WARNING). A line that is not a `check_keys` message, or one with an empty
+`keys` array, leaves the key as the file name alone: every stateful response of that executable is
+then treated as the same action. For a stateful response:
 
 - **Key not in the list**: execd stores the message with `command` set to `disable`, the timeout and
   the current time, and answers `continue`.
@@ -502,20 +506,26 @@ status 255 on Unix) when the input is invalid or every method failed.
 
 ## Agent-side messages
 
-`wazuh-execd` logs to the agent's `logs/ossec.log` under the tag `wazuh-execd`; the agentd lines are
-under the agent's own tag. Debug lines need `execd.debug` (see
+`wazuh-execd` logs to the agent's `logs/ossec.log` under the tag `wazuh-execd`, and the agentd lines
+are under `wazuh-agentd`; on Windows both run inside the agent service and log under `wazuh-agent`.
+Debug lines need `execd.debug` for execd and `agent.debug` for agentd (`windows.debug` on Windows; see
 [Internal options](configuration.md#internal-options)).
 
 | Level | Message | Meaning |
 |---|---|---|
+| ERROR | `(1235): Invalid value for element '<option>': <value>.` then `(1202): Configuration error at '<file>'.` | a bad `<disabled>`, `<repeated_offenders>` or `<allowlist>` value; the agent does not start |
+| WARNING | `Could not read the manager address. Active responses will only skip the configured allowlist.` | at start: the agent's `<agent>` block could not be read, so the manager is not protected |
+| DEBUG | `Could not resolve manager address '<host>' for the active response allowlist.` | a manager name did not resolve; the addresses resolved before stay protected |
 | ERROR | `(1315): Invalid JSON message: '<message>'` | the payload is not JSON |
 | ERROR | `(1316): Invalid AR command: '<message>'` | `wazuh` or `wazuh.active_response` is not an object, or `executable` is missing, empty or not a string |
+| WARNING | `Active response '<executable>' not executed: source.ip '<ip>' is the manager or in the allowlist.` | `source.ip` is protected (see [allowlist](configuration.md#allowlist)); nothing is run |
 | ERROR | `Active response command '<name>' vulnerable to directory traversal attack. Ignoring.` | `executable` references a parent folder |
 | ERROR | `Active response command path too long for '<name>'. Ignoring.` | the resolved path does not fit |
 | ERROR | `(1311): Invalid command name '<name>' provided.` | `active-response/bin/<name>` does not exist or cannot be read |
 | ERROR | `(1317): Could not launch command <error> (<errno>)` | the executable could not be started |
 | WARNING | `Active response command '<path>' reported failure (exit code <n>).` | the executable exited non-zero |
 | WARNING | `Active response command '<path>' terminated abnormally.` | the executable was killed by a signal |
+| WARNING | `Could not determine exit status of active response command '<path>'.` | execd could not wait for the executable (Unix) |
 | WARNING | `Active response key exceeds maximum size (4096). Truncating keys.` | the keys do not fit in the entry key |
 | INFO | `(1350): Active response disabled.` | `<disabled>yes</disabled>`; nothing is executed |
 | INFO | `Adding offenders timeout: <n> (for #<k>)` | one `repeated_offenders` value read at start |

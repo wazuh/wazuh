@@ -1,12 +1,38 @@
 # Wazuh DB
 
 `wazuh-manager-db` is the manager's SQLite database daemon. It owns `global.db` (the agent registry and
-group assignments) and serves read-only queries on `mitre.db` (MITRE ATT&CK reference data).
+group assignments) and answers queries on `mitre.db` (MITRE ATT&CK reference data).
 
 Source: `src/wazuh_db/`
 
 For backup configuration and internal options see [Wazuh DB Configuration](configuration.md); for the
 HTTP routes see [the API reference](api-reference.md).
+
+## Running the daemon
+
+`wazuh-manager-control start` launches `/var/wazuh-manager/bin/wazuh-manager-db` (installed
+`root:root`, mode `0750`) with no arguments: it reads its configuration, daemonizes, drops to the
+`wazuh-manager` user and group, and serves until it receives `SIGTERM`, `SIGHUP` or `SIGINT`. Run by hand
+(as `root`), it accepts:
+
+```text
+wazuh-manager-db -[Vhdtf] [-c config]
+```
+
+| Flag | Effect |
+|------|--------|
+| `-V` | Print the version and license, exit `0` |
+| `-h` | Print the usage, exit `0` (an unknown flag does the same) |
+| `-d` | Debug output; repeat it (`-dd`) for more. When given, `wazuh_db.debug` is not read |
+| `-t` | Test the configuration and exit: `0` when valid; otherwise the error is logged and it exits `1` with `Invalid configuration block for Wazuh-DB.` Unlike a normal start, the test also requires the certificate files the configuration names to exist |
+| `-f` | Run in the foreground instead of daemonizing |
+| `-c <config>` | Read this configuration file instead of `/etc/wazuh-manager/wazuh-manager.conf` |
+
+The internal options (`wazuh_db.*`, see [Wazuh DB Configuration](configuration.md#internal-options)) are
+read before any of this, so an invalid one makes even `-t` exit with `(2302)`.
+
+The binary reads nothing from standard input: queries go to `wdb.sock` (below) or to the HTTP routes on
+`wdb-http.sock`.
 
 ## Architecture
 
@@ -57,8 +83,11 @@ err <message>
 due <JSON>
 ```
 
-`due` is a partial page of a paginated answer (`get-group-agents`, `sync-agent-info-get`,
-`sync-agent-groups-get`); the caller asks again from the last id it received.
+`due` is a partial page of a paginated answer (`get-group-agents`, `get-all-agents last_id <id>`,
+`get-agents-by-connection-status`, `disconnect-agents`, `sync-agent-info-get`, `sync-agent-groups-get`,
+`get-distinct-groups`); the caller asks again from the last id (for `get-distinct-groups`, the last
+group hash) it received. `get-all-agents context` instead streams every row as its own `due` message
+on the same connection and ends with `ok []`.
 
 A message that starts with `{` is not a database query but a JSON command:
 `{"command":"getstats"}` returns the query counters and timings, and

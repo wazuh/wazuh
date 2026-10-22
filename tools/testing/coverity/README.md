@@ -31,7 +31,8 @@ The analysis builds the manager (`make -C src TARGET=manager COVERITY=YES`) insi
   **Requires** `COVERITY_TOKEN` to be set.
   Fails if the tarball does not exist.
 * `--clean`
-  Remove generated files (`cov-int/` directory and `wazuh.tgz` tarball).
+  Remove generated files (`cov-int/` directory and `wazuh.tgz` tarball), after `--build` if both are
+  given, and exit: an `--upload` on the same command line never runs.
 * `--jobs N`
   Set the number of parallel jobs used during compilation (default: system `nproc`).
 * `--tag <tag>`

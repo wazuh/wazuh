@@ -50,7 +50,7 @@ Environment overrides: `INVSYNC_TESTTOOL` (harness binary), `FLATC`,
 
 | File | Contract |
 |---|---|
-| `test_transport_and_validation.py` | Strand-side 400s (missing/invalid identity header, junk body, non-FullSession message, empty values D8, checksum shape) + the `mode`×`payload` matrix + identity/cluster 403 + agent-id padding |
+| `test_transport_and_validation.py` | Health probe, strand-side 400s (missing, non-numeric or non-canonical identity header, another spelling of the claimed agent id, empty or junk body, non-FullSession message, empty values D8, checksum shape) + the `mode`×`payload` matrix + identity/cluster 403 + agent-id padding + unknown route `404` / wrong verb `405` |
 | `test_ingestion.py` | ModuleDelta×SyncData: `_id` shape, the authoritative `wazuh.*` overlay (anti-impersonation), deletes, multi-index sessions, per-document skips (forbidden index, empty id, malformed JSON, vulnerabilities write-protection), no-op 200, idempotent re-POST, contexts not indexed |
 | `test_cleans_and_resync.py` | Cleans single/multi-index (agent-scoped, deduplicated), forbidden-index noop, and the composed full resync (D19: Cleans + ModuleDelta) |
 | `test_checksum.py` | **ModuleCheck for real** (the legacy suite's hole): match, mismatch→409, agent scoping, `search_after` pagination past 1000 documents, empty-set aggregate |

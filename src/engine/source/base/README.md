@@ -71,7 +71,7 @@ Three binaries are built with `ENGINE_TEST=y` (see [CMakeLists.txt](CMakeLists.t
 
 | Binary | Content |
 |---|---|
-| `base_utest` | `test/src/unit/*_test.cpp` except the two below, including [process_test.cpp](test/src/unit/process_test.cpp) |
+| `base_utest` | The files listed in [CMakeLists.txt](CMakeLists.txt): `test/src/unit/*_test.cpp` and `test/src/unit/utils/*_test.cpp` except the two below, including [process_test.cpp](test/src/unit/process_test.cpp) |
 | `base_manager_utest` | Only [managerLogSink_test.cpp](test/src/unit/managerLogSink_test.cpp): the sink (`ManagerLogSinkTest.*`, `ManagerLogSinkDeathTest.*`) and the manager home (`ManagerHome.*`, `ManagerHomeAbsolute.*`). The sink and the manager mode are global process state, hence the separate binary. The fixtures work in their own `mkdtemp` directory (the child of a death test inherits it); `ManagerHomeAbsolute` touches no disk. |
 | `base_logger_utest` | [logger_test.cpp](test/src/unit/logger_test.cpp) |
 

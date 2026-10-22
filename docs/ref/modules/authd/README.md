@@ -37,10 +37,15 @@ material; that one is the order things happen in.
    default is `no`; the configuration the installer generates sets it to `yes`. The master
    generates the password at first start; see [use_password configuration](configuration.md#use_password).
 
+   The request is one line ending in `\n`. A connection that has not sent it within 30 seconds is
+   closed, and so is one that sends more than 68 KiB without a newline; at most 999 connections
+   are served at once (`Too many connections. Rejecting.` past that).
+
    Only `A:'<agent_name>'` is mandatory. The other fields are optional, but those present must
    appear in the order shown:
    - `A:'<agent_name>'` — the name the agent wants to register under (required). It must pass
-     `OS_IsValidName()`, or the answer is `ERROR: Invalid agent name`.
+     `OS_IsValidName()` (2–128 letters, digits, `-`, `_` or `.`, not starting with `.`), or the
+     answer is `ERROR: Invalid agent name: <name>`.
    - `V:'<version>'` — the agent's Wazuh version. A version newer than the manager's is refused
      unless [`<agents><allow_higher_versions>`](configuration.md#agents--allow_higher_versions) is `yes`.
    - `G:'<groups>'` — comma-separated centralized group(s) to assign the agent to at enrollment
@@ -52,10 +57,10 @@ material; that one is the order things happen in.
    - `K:'<key_hash>'` — the SHA-1 hash of the agent's current key, if it already has one. It is
      compared against the manager's stored key when deciding whether a `force` re-enrollment
      applies (see [Force re-enrollment](#force-re-enrollment)).
-5. On the master, authd validates the groups, checks for existing registrations (applying the `force` rules), and generates the agent key (32 bytes from OpenSSL's CSPRNG, stored as 64 lowercase hex chars -- the HS256 secret of remoted's `wazuh-agent+jwt` bearer profile). If the request included a `G:` field, the agent is assigned to those centralized groups as part of this same enrollment. A worker forwards the request to the master instead (see [Cluster](#cluster)).
-6. The response, `OSSEC K:'<id> <name> <ip> <key>'`, is sent back over the same TLS connection;
+4. On the master, authd validates the groups, checks for existing registrations (applying the `force` rules), and generates the agent key (32 bytes from OpenSSL's CSPRNG, stored as 64 lowercase hex chars -- the HS256 secret of remoted's `wazuh-agent+jwt` bearer profile). If the request included a `G:` field, the agent is assigned to those centralized groups as part of this same enrollment. A worker forwards the request to the master instead (see [Cluster](#cluster)).
+5. The response, `OSSEC K:'<id> <name> <ip> <key>'`, is sent back over the same TLS connection;
    a refusal is `ERROR: <reason>. Unable to add agent`.
-7. Only once the answer has been written is the entry queued for the writer thread, which persists
+6. Only once the answer has been written is the entry queued for the writer thread, which persists
    it to `/etc/wazuh-manager/client.keys`. If the answer cannot be written, the new entry is
    removed from the keystore again.
 
@@ -65,16 +70,9 @@ the agent's own [re-enrollment credential](#re-enrollment-secret) (`kid` = its a
 the same local-socket `add`, and every enrollment answered over that socket carries a fifth field,
 `reenroll_secret`, next to the key; port 1515 answers without it.
 
-## Threads
-
-| Thread | Role |
-|--------|------|
-| Remote server | Accepts TLS connections on port 1515 (when `remote_enrollment` and [`legacy_enrollment`](configuration.md#legacy_enrollment) are both `yes`) |
-| Local server | Handles enrollment via the local Unix socket `queue/sockets/auth.sock` (every node) |
-| Writer | Flushes the in-memory key queue to `client.keys` on disk, writes the agents' rows to wazuh-db, deletes each removed agent from wazuh-db, and records the indexer purge of every removed agent as a Task Manager task. It never waits on the network |
-| authpass watcher | On a worker with `use_password`, re-reads `/etc/wazuh-manager/authd.pass` as the cluster syncs it down from the master. Until it arrives the worker fails closed and rejects port-1515 enrollments with `ERROR: Enrollment password not available` |
-
-The writer runs on the **master only**. See [Cluster](#cluster) below.
+The daemon's threads (remote server, local server, writer, authpass watcher), the files it keeps
+and what each one holds are described in [Threads](architecture.md#threads) and
+[Storage](architecture.md#storage).
 
 ## Cluster
 
@@ -90,128 +88,55 @@ the agent already holds; see
 
 `/etc/wazuh-manager/enrollment_tokens.json` travels by the same sync (`cluster.json` lists it with `client.keys` and
 `authd.pass`). Only the master mints, consumes and revokes tokens: a worker reads its replica, forwards
-an `add` that carries `token_id` or `reenroll` to the master, answers `token_create` and `token_revoke`
-with `9015`, and serves `token_list` from the copy it holds.
+an `add` that carries `token_id` or `reenroll` to the master, answers `token_create`, `token_revoke`
+and `token_purge` with `9015`, and serves `token_list` from the copy it holds.
 
-## Storage
+## Agent removal
 
-| File | Contents |
-|------|----------|
-| `/etc/wazuh-manager/client.keys` | One line per agent: `<id> <name> <ip> <key>` |
-| `/var/wazuh-manager/queue/agents-timestamp` | Per-agent registration timestamp |
-| `/etc/wazuh-manager/authd.pass` | Enrollment password, mode `0640`. Generated by the master at start when `use_password` and `remote_enrollment` are both on and the file is absent; see [use_password](configuration.md#use_password) |
-| `/etc/wazuh-manager/enrollment_tokens.json` | The [enrollment token](#enrollment-tokens) store, `{"version":1,"tokens":[…]}`: per token `id`, `secret` (`null` when minted with `--no-credential`), `adr`, `pin` or `ca`, `created`, `expires`, `max_uses`, `uses`, `revoked`, `description`. Written by the master only, whole, through a temporary file `chmod`ed to `0640` and renamed into place |
-| `/var/wazuh-manager/queue/authd/pending-purges` | Deletions authd has begun recording but not yet finished, plus the highest agent id and sequence ever handed out. Normally empty |
-| `/var/wazuh-manager/queue/authd/pending-identities` | Credentials already handed out but not yet committed to `global.db`, one JSON line each, **in the clear** (mode `0640`) — see [Durability](#durability) and [the identity journal](architecture.md#the-identity-journal). Normally empty; a persistent nonempty file warrants checking database writes and journal-compaction errors |
+Removing an agent — through `DELETE /agents`, or implicitly when a [force re-enrollment](#force-re-enrollment)
+replaces it — takes it out of the in-memory keystore at once, out of `client.keys` and wazuh-db on the
+writer's next pass, and out of the indexer through a Task Manager task whose first attempt waits
+[`authd.purge_delay`](configuration.md#authdpurge_delay) seconds. What an operator sees:
 
-> For the diagrams — the thread layout, the removal path and the three intervals the purge has to
-> outlast — see [Architecture](architecture.md).
+- **The deletion is answered before it is complete.** Tooling that deletes an agent and immediately
+  checks the indexer has to wait for the purge.
+- **A deletion can be refused**: `9021` (`1766` through the server API) when too many earlier
+  deletions are still waiting to reach the indexer
+  ([`wazuh_modules.manager_task_max_pending_deletes`](configuration.md#wazuh_modulesmanager_task_max_pending_deletes)).
+  The agent is left untouched; retry once the backlog drains.
+- **An agent id is never reused**, not even across restarts, and an insertion naming the id of an
+  agent whose purge is still pending is refused (`9018`, `1763` through the server API).
+- **Deleting a manager should include deleting its indexer data**: a manager rebuilt into a clean
+  tree starts its id counter over while the indexer still holds the previous fleet's documents.
 
-## Agent removal and the indexer
-
-Removing an agent has to clean up more than `client.keys`: the agent's documents in the indexer
-(inventory state, reported configuration and statistics) have nothing to overwrite them once the
-agent is gone. Four places are involved, and only the first three are immediate:
-
-| # | What is removed | Who reads it afterwards | When |
-|---|---|---|---|
-| 1 | the entry in the in-memory keystore | authd itself: duplicate checks, agent limit | on the request |
-| 2 | the `client.keys` file | remoted, to authenticate agents | next writer pass |
-| 3 | the row in wazuh-db | the server API, to list agents | next writer pass |
-| 4 | the documents in the indexer | the dashboard | a Task Manager task, first attempted after `authd.purge_delay` |
-
-**The writer thread never waits on the network.** It records the deletion as a durable task and moves
-on; the Task Manager's dispatcher executes it. This is deliberate and it is the reason the split
-exists: the writer is the only thread that persists `client.keys`, so a slow or unreachable indexer
-used to stall every key write behind it — on a fleet-wide removal, no freshly enrolled agent reached
-`client.keys` and remoted answered `401` to all of them until the whole batch drained.
-
-### The delay before a purge
-
-A purge is not attempted immediately. The task's first attempt is set at least `authd.purge_delay`
-seconds out (see [Configuration](configuration.md)), because a `_delete_by_query` is a *search* and
-can only match what the indexer has already made searchable, and because in a cluster the worker
-nodes still hold the previous `client.keys` for a few seconds. Running it right away would let the
-last documents a departing agent wrote survive the purge, with nothing left to ever overwrite them.
-
-### Where authd's responsibility ends
-
-At the durable task row. There is no completion signal back to authd, by design — waiting for one is
-what used to block the writer — and the purge's own outcome is the task's status, reported in
-modulesd's log. The task type carries **no attempt budget**: once `client.keys` is written the agent is
-gone and nobody will ask again, so the deletion is retried until it succeeds rather than given up on.
-
-### Durability
-
-The deletion is journaled in `queue/authd/pending-purges` **before** `client.keys` is rewritten, and
-the line is dropped only once wazuh-db has acknowledged the task as committed. The journal is normally
-empty: it drains as fast as wazuh-db answers, not as fast as the indexer does.
-
-On the next start every surviving line is compared against the `client.keys` just read. An agent still
-listed there means the deletion never became final, so the line is dropped; an absent one means the
-task is still owed and is created now. That is what closes the window a crash between the key write
-and the task's creation used to leave open — nothing else in the system knows those documents are
-owed, since the agent is already out of `client.keys` and out of wazuh-db.
-
-The file also stores `last_id`, the highest agent id ever handed out. **An id is never reused**, even
-when the agents holding the highest ids have been deleted and `client.keys` no longer mentions them:
-a pending purge matches by agent id, so recycling one would let it delete the documents of a *new*
-agent. On startup the id counter is raised to that mark if needed, and the change is logged.
-
-Both `client.keys` and the database keep the id in a signed 32-bit integer, so a fleet large or
-long-lived enough can drive the counter all the way to `INT_MAX` on its own — no out-of-range input
-anywhere. Authd refuses to hand out the next id rather than wrapping it to a negative value: the
-auto-assigned enrollment fails the same way an ordinary `max_agents` refusal does — `9013 Maximum
-number of agents reached` — instead of silently producing a record `client.keys` and the database
-would disagree about.
-
-For the same reason, an insertion that names an id explicitly (`POST /agents/insert`) is **refused**
-while that id still owes a purge, rather than cancelling the purge: a recorded purge always runs.
-
-### When a deletion is refused
-
-A deletion can be turned down. If too many earlier ones are still waiting to reach the indexer, the
-request answers `9021` (`1766` through the server API) and the agent is left **untouched** — the check
-runs before the agent leaves the keystore, so retrying once the backlog drains is all that is needed.
-
-This is new behaviour and it replaces a worse one: the limit used to be discovered after `client.keys`
-had been written, where the only options left were to drop the purge silently or to log it while the
-documents were orphaned.
-
-### What a manager rebuilt from scratch inherits
-
-`queue/` survives an upgrade and a plain package removal, so the id mark and any pending purges
-survive with it. A full purge of the package — or an install from sources into a clean tree — takes
-the file with it, and the id counter starts over while the indexer still holds the previous fleet's
-documents. **Deleting a manager should therefore include deleting its indexer data**; otherwise new
-agents can inherit documents from the agents that held their ids before, in the indices they do not
-resynchronise themselves.
+The removal path, its durability journal, the id mark and the reasons for the delay are in
+[Agent removal](architecture.md#agent-removal).
 
 ## Force re-enrollment
 
 The `<force>` sub-block controls when an agent may overwrite an existing registration:
 
 - `enabled` — allow forced overwrite at all
-- `key_mismatch` — overwrite if the agent's key does not match
+- `key_mismatch` — refuse the overwrite when the newcomer proves it already holds the existing agent's key
 - `disconnected_time` — overwrite only if the agent has been disconnected for at least this long
 - `after_registration_time` — overwrite only if at least this much time has passed since the last registration
 
 All four guards are evaluated together, and every one of them has to allow the replacement. With the
 defaults (`enabled` on, `key_mismatch` on, `disconnected_time` 1 h, `after_registration_time` 1 h) an
-agent holding the name or IP is replaced when it has never connected or the disconnection guard
-allows it, was registered at least an hour ago, and the newcomer either omits `key_hash` or supplies a
-nonmatching hash. The disconnection guard refuses an agent whose recorded disconnection time is zero,
-and a `disconnected` agent whose disconnection is younger than `disconnected_time`; it can be
-disabled. The exact order is the
-[guard chain](enrollment-lifecycle.md#a-collision-and-what-key_hash-changes).
+agent holding the name or IP is replaced when it has never connected or has been `disconnected` for at
+least an hour, was registered at least an hour ago, and the newcomer either omits `key_hash` or
+supplies a nonmatching hash. While enabled, the disconnection guard refuses every existing agent whose
+status is neither `never_connected` nor `disconnected` (an `active` agent is never replaced), and a
+`disconnected` one whose recorded disconnection time is zero or younger than `disconnected_time`. The
+exact order is the [guard chain](enrollment-lifecycle.md#a-collision-and-what-key_hash-changes);
+the message each guard logs is in [Duplicate handling](architecture.md#duplicate-handling-and-force-replacement).
 
 **A replacement is a deletion.** The agent that loses its name is removed exactly as if it had been
 deleted through the API: it goes through the same removal queue, the same writer thread and the same
-indexer purge. This matters for scale — a fleet that re-enrolls with names that already exist
-generates one deletion per agent, without anyone calling the API — and it is why the delay and the
-persistence above apply to enrollment just as much as to a deletion through the API. The admission
-bound applies as well: when too many deletions are already in progress the *enrollment* is refused,
-rather than the replacement going ahead with a purge that cannot be recorded.
+indexer purge (see [Agent removal](#agent-removal)). A fleet that re-enrolls with names that already
+exist generates one deletion per agent, without anyone calling the API. The admission bound applies
+as well: when too many deletions are already in progress the *enrollment* is refused, rather than the
+replacement going ahead with a purge that cannot be recorded.
 
 **Replacement never reuses the id.** The replacing agent is a new registration and receives a new
 id; the replaced id is not handed out again. The one case where a caller can name an id is
@@ -245,18 +170,18 @@ wazuh-manager-authd -[VhdtfP] [-u user] [-g group] [-D dir] [-p port] [-c cipher
 | Flag | Effect | Default |
 | --- | --- | --- |
 | `-V` | Print the version and license, then exit. | — |
-| `-h` | Print the help message, then exit. | — |
+| `-h` | Print the help message, then exit with status `1`. | — |
 | `-d` | Enable debug logging. Repeat it (`-dd`) to raise the level. When given, `authd.debug` in the internal options is not read. | off |
 | `-t` | Read and validate `/etc/wazuh-manager/wazuh-manager.conf`, then exit `0` on success. Unlike a normal start, it also checks that the configured certificate and CA files exist (`auth.ssl_*` and `remote.https.*`). Nothing is bound or started. | — |
 | `-f` | Run in the foreground instead of daemonizing. **Also forces [`disabled`](configuration.md#disabled) to `no`**, so the daemon starts even when the configuration disables it. | off |
 | `-u <user>` | User the daemon switches to after startup. | `wazuh-manager` |
 | `-g <group>` | Group the daemon switches to after startup. | `wazuh-manager` |
 | `-D <dir>` | Accepted, but does not change the working directory: the daemon has already moved into the installation directory before it reads its options, and resolves every path from there. The value only shows up in a debug message. | `/var/wazuh-manager` |
-| `-p <port>` | Listening port. Overrides [`port`](configuration.md#port); `0` or a non-numeric value is rejected. | `1515` |
+| `-p <port>` | Listening port. Overrides [`port`](configuration.md#port). Not range-checked: `0` or a non-numeric value is rejected (`Invalid port: <value>`), but a value above `65535` wraps. | `1515` |
 | `-P` | Require the shared enrollment password. Overrides [`use_password`](configuration.md#use_password), but can only turn it on. | off |
 | `-c <suites>` | TLS 1.3 cipher suites. Overrides [`ciphers`](configuration.md#ciphers); validated the same way. | `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256` |
 | `-v <path>` | CA certificate used to verify agent certificates. Overrides [`ssl_agent_ca`](configuration.md#ssl_agent_ca). | none |
-| `-s` | Verify that the agent certificate's CN matches its IP. Overrides [`ssl_verify_host`](configuration.md#ssl_verify_host), but can only turn it on; it needs a CA from `-v` or `ssl_agent_ca`. | off |
+| `-s` | Verify that the agent certificate names the address it connects from (a SAN entry, else the CN). Overrides [`ssl_verify_host`](configuration.md#ssl_verify_host), but can only turn it on; it needs a CA from `-v` or `ssl_agent_ca`. | off |
 | `-x <path>` | Manager certificate. Overrides [`ssl_manager_cert`](configuration.md#ssl_manager_cert). | `/etc/wazuh-manager/certs/remoted.pem` |
 | `-k <path>` | Manager private key. Overrides [`ssl_manager_key`](configuration.md#ssl_manager_key). | `/etc/wazuh-manager/certs/remoted-key.pem` |
 
@@ -518,7 +443,7 @@ A request is a single-line JSON object:
   - `source` (optional) — the address the enrollment request came from, sent by remoted's
     `POST /enroll` (the agent's peer address) and forwarded by a worker to the master. Only logged:
     `Agent key generated for agent 'N' (requested by <source>)`; without it the line says
-    `(requested locally)` (`manage_agents`, the API). A value that is not printable as an address is
+    `(requested locally)` (the server API). A value that is not printable as an address is
     ignored; a non-string one answers `9002`
 - **`remove`** — delete an agent. Arguments: `id` (required), `purge` (optional boolean; same
   meaning as the [`purge`](configuration.md#purge) configuration option, but scoped to this one
@@ -590,8 +515,10 @@ the HTTPS agent listener's: the manager's credential resolver issues it at insta
 reissues it afterwards; a deployment on its own PKI replaces it out of band, for example with the
 Wazuh installation assistant's `wazuh-certs-tool` (see
 [Using certificates issued elsewhere](../../getting-started/installation.md#using-certificates-issued-elsewhere)).
-Without the files the manager fails closed before authd runs (`wazuh-manager-control start` reports
-the validator's `(1244) … file not found` verdict); when the files exist but the SSL context cannot be built — most
+Without the files the manager fails closed before authd runs: `wazuh-manager-control start` refuses
+it at its credential check (`Unresolved credentials`, error 21 with `-j`, the missing file named in
+`wazuh-manager.log`) or, when that check does not run, at the configuration test with the validator's
+`(1244) … file not found` verdict. When the files exist but the SSL context cannot be built — most
 often because the service user cannot read them — authd logs
 `SSL context setup failed (certificate '<cert>', key '<key>'). authd reuses the HTTPS agent
 listener's pair, issued at installation and never reissued at start: check that both files are owned

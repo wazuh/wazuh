@@ -24,6 +24,9 @@ The script is packaged along the `engine-suite` python package. To install, simp
 pip install tools/engine-suite
 ```
 
+(from `src/engine/`, after installing `tools/api-communication`; see the
+[engine-suite installation](../../README.md#installation)).
+
 To verify it's working:
 
 ```bash
@@ -52,3 +55,10 @@ subcommands:
     list                Get routes table
     ingest              Ingest an event
 ```
+
+`--api-socket` defaults to `/var/wazuh-manager/queue/sockets/engine-api-http.sock`. The commands call the
+engine's `_internal/router/*` endpoints (`route/post`, `route/delete`, `route/get`, `route/reload`,
+`route/patchPriority`, `table/get`).
+
+`ingest` has no endpoint: `api-communication` maps no route for its request message (`QueuePost_Request`)
+and the engine registers none, so the command always exits with an error.

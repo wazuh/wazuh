@@ -59,7 +59,7 @@ thread instead of being called inline.
 | Remote server | any node with both `remote_enrollment` and `legacy_enrollment` | TLS enrollment on port 1515 |
 | Local server | every node | `queue/sockets/auth.sock`: `add`, `remove`, `get` — for the server API and for remoted's `/enroll` — plus `token_create`, `token_list`, `token_revoke` and `token_purge` for the token CLI and the API |
 | Writer | master only | persists `client.keys`, removes Wazuh DB rows, records each deletion as a Task Manager task, and settles the credentials the [identity journal](#the-identity-journal) still owes — waking on its own clock while any remain |
-| authpass watcher | workers with `use_password` | re-reads `/etc/wazuh-manager/authd.pass` as the cluster syncs it down from the master |
+| authpass watcher | workers with `use_password` | re-reads `/etc/wazuh-manager/authd.pass` as the cluster syncs it down from the master. Until it arrives the worker fails closed: port 1515 answers `ERROR: Enrollment password not available. Unable to add agent` |
 
 ## The two stores
 
@@ -266,14 +266,23 @@ flowchart TB
     G1 -->|yes| G2{"agent-info readable<br/>in wazuh-db?"}
     G2 -->|no| X2["refuse:<br/>Failed to get agent-info"]
     G2 -->|yes| G3{"disconnected_time<br/>satisfied?"}
-    G3 -->|"still connected"| X3["refuse:<br/>can't be replaced since<br/>it is not disconnected"]
+    G3 -->|"status not disconnected,<br/>or no disconnection time"| X3["refuse:<br/>can't be replaced since<br/>it is not disconnected"]
     G3 -->|"disconnected too recently"| X4["refuse:<br/>has not been disconnected<br/>long enough"]
     G3 -->|ok| G4{"registered longer ago<br/>than after_registration_time?"}
     G4 -->|no| X5["refuse:<br/>doesn't comply with the<br/>registration time"]
     G4 -->|yes| G5{"key_mismatch: does the<br/>presented key_hash match?"}
     G5 -->|"matches"| X6["refuse:<br/>key already exists<br/>on the manager"]
-    G5 -->|"differs / absent"| OK["Removing old agent<br/>add_remove + OS_DeleteKey"]
+    G5 -->|"differs / absent"| G6{"deletion backlog<br/>full?"}
+    G6 -->|yes| X7["refuse:<br/>can't be replaced: too many<br/>deletions are in progress"]
+    G6 -->|no| OK["Removing old agent<br/>add_remove + OS_DeleteKey"]
 ```
+
+The disconnection guard is skipped when `disconnected_time` is disabled or the existing agent has
+never connected. A refusal is logged as `Duplicate name '<name>', rejecting enrollment. <reason>` (or
+`Duplicate IP '<ip>', …`) — at warning level when the agent is not disconnected, info otherwise — and
+answered `ERROR: Duplicate agent name: <name>` / `ERROR: Duplicate IP: <ip>` on port 1515, `9008` /
+`9007` on the local socket. An allowed replacement logs `Duplicate name. Removing old agent '<name>'
+(id '<id>').` (or `Duplicate IP '<ip>'. …`).
 
 Two consequences worth internalising:
 
@@ -285,7 +294,7 @@ Two consequences worth internalising:
 
 `key_hash` is the caller's `SHA1(id ‖ name ‖ raw_key)` over its *current* credential — the same value
 the legacy `K:` field carried, computed by `w_get_key_hash()` on both sides. It is a proof of
-possession, not the key itself, and it is the last guard consulted rather than the first.
+possession, not the key itself, and it is the last `<force>` guard consulted rather than the first.
 
 ## Cluster
 
@@ -317,7 +326,7 @@ property of the cluster sync interval, not of authd's own speed. The `<force>` s
 a worker — the master decides — and a worker that cannot reach the master answers `9016`.
 
 The same sync carries `/etc/wazuh-manager/enrollment_tokens.json`, with the same asymmetry: the master alone mints,
-consumes and revokes (`token_create`/`token_revoke` answer `9015` on a worker; `token_list` reads the
+consumes and revokes (`token_create`/`token_revoke`/`token_purge` answer `9015` on a worker; `token_list` reads the
 replica), and `w_request_agent_add_clustered()` forwards `token_id` and `reenroll` with the `add` so the
 master consumes the use or verifies the bearer, then relays the master's `reenroll_secret` to the agent.
 remoted on a worker verifies token bearers against its own read-only replica of the file, which lags by
@@ -383,7 +392,7 @@ flowchart LR
     M4 --> MT[(tasks.db)] -->|"first attempt after\nauthd.purge_delay"| DISP[Task Manager dispatcher] --> ISS[inventory_sync_server]
 ```
 
-Two of those doors are worth calling out:
+Three things about those doors are worth calling out:
 
 - **An enrollment whose name already exists is a removal.** `w_auth_replace_agent()` calls the same
   two functions the API path calls, so a fleet that re-enrolls with names that already exist generates
@@ -399,6 +408,11 @@ Two of those doors are worth calling out:
   agent is untouched and the caller can retry. One line later there would be nothing left to refuse
   and nobody to tell — which is why the previous design, discovering a full queue in the writer, could
   only drop the purge and orphan the documents.
+
+authd's responsibility ends at the durable task row: nothing reports back to it. The Task Manager's
+dispatcher runs the task, and its type carries **no attempt budget** — once `client.keys` is written
+the agent is gone and nobody will ask again, so the purge is retried until it succeeds. Its outcome is
+the task's status, not an authd log line.
 
 ### Why the purge waits
 
@@ -509,13 +523,13 @@ held their ids before, in the indices they do not resynchronise themselves.
 
 | Path | Contents |
 |---|---|
-| `/etc/wazuh-manager/client.keys` | one line per agent: `<id> <name> <ip> <key>`; rewritten whole, never edited in place. A removed agent is kept as a `!name` line unless `<purge>` is `yes` |
-| `queue/agents-timestamp` | per-agent registration timestamp |
-| `/etc/wazuh-manager/authd.pass` | enrollment password |
-| `queue/authd/pending-purges` | deletions between phase 1 and phase 4, plus the highest id and sequence ever handed out. Normally empty |
-| `queue/authd/pending-identities` | credentials handed out but not yet committed to `global.db` — see [the identity journal](#the-identity-journal). Mode `0640`, one JSON line per transition, **in the clear**. Normally empty; a persistent nonempty file warrants checking database writes and journal-compaction errors |
-| `queue/rids/<id>` | per-agent anti-replay counters, removed with the agent |
-| `/etc/wazuh-manager/enrollment_tokens.json` | the enrollment token store, `{"version":1,"tokens":[…]}`: per token `id`, `secret` (`null` without credential), `adr`, `pin`/`ca`, `created`, `expires`, `max_uses`, `uses`, `revoked`, `description`. Rewritten whole by the master (temporary file, `0640`, rename); a worker's copy comes from the cluster sync, and a momentarily missing file keeps the previous replica. Bounded at 5000 tokens and 7 MiB (one MiB below what remoted's replica accepts), and pruned by `token_purge` — which removes entries, unlike `token_revoke`, and is what a mint into a full store runs by itself before refusing. The **document** is read all or nothing (bad JSON, another `version`, no `tokens` array, or past either bound: the replica already loaded is kept); a single **entry** that cannot be parsed is dropped with a warning and the rest of the file loads, so one bad record cannot stop a node from honouring any token (issue #39133) |
+| `/etc/wazuh-manager/client.keys` | one line per agent: `<id> <name> <ip> <key>`; rewritten whole, never edited in place. A removed agent is kept as an `<id> !<name> <ip> <key>` line unless `<purge>` is `yes` or the deletion asked for `purge` (`DELETE /agents?purge=true`). `wazuh-manager` 0660 |
+| `/var/wazuh-manager/queue/agents-timestamp` | per-agent registration timestamp |
+| `/etc/wazuh-manager/authd.pass` | the enrollment password, first line only. Generated by the master at start, mode `0640`, when `use_password` and `remote_enrollment` are both on and the file is absent; replicated to the workers — see [The enrollment password](#the-enrollment-password) |
+| `/var/wazuh-manager/queue/authd/pending-purges` | deletions between phase 1 and phase 4, plus the highest id and sequence ever handed out — see [Durability and the id mark](#durability-and-the-id-mark). Normally empty |
+| `/var/wazuh-manager/queue/authd/pending-identities` | credentials handed out but not yet committed to `global.db` — see [the identity journal](#the-identity-journal). Mode `0640`, one JSON line per transition, **in the clear**. Normally empty; a persistent nonempty file warrants checking database writes and journal-compaction errors |
+| `/var/wazuh-manager/queue/rids/<id>` | per-agent anti-replay counters, removed with the agent |
+| `/etc/wazuh-manager/enrollment_tokens.json` | the enrollment token store, `{"version":1,"tokens":[…]}`: per token `id`, `secret` (`null` without credential), `adr`, `pin` and `ca` (one of them `null`), `created`, `expires`, `max_uses`, `uses`, `revoked`, `description`. Rewritten whole by the master (temporary file, `0640`, rename); a worker's copy comes from the cluster sync, and a momentarily missing file keeps the previous replica. Its bounds, purge and load rules are in [Enrollment tokens](README.md#enrollment-tokens) |
 
 The re-enrollment secret is retained in `agent.reenroll_secret` in `global.db` and temporarily in
 `pending-identities`; it never appears in `client.keys`.
@@ -524,6 +538,11 @@ The re-enrollment secret is retained in `agent.reenroll_secret` in `global.db` a
 
 | Line | Meaning |
 |---|---|
+| `A new enrollment password was generated and written to '…/authd.pass'` / `Using the existing enrollment password from '…'…` | master start with `use_password` and `remote_enrollment` on: the first when the file was absent, the second on every start that finds it |
+| `Enrollment password synchronized from the master node and now available at '…'` / `Enrollment password reloaded from '…'` | a worker picked up the password the cluster synced (the authpass watcher, or a port-1515 request) |
+| `Enrollment password required but not available yet. Rejecting request from <ip>…` | a worker with `use_password` that has not received `authd.pass` yet; logged once until it arrives |
+| `Invalid password provided by <ip>. Closing connection.` | a port-1515 request without the right `OSSEC PASS:` prefix |
+| `Accepting connections on port <port>. …` / `Port <port> was set as disabled.` | whether the port-1515 listener opened (`remote_enrollment` and `legacy_enrollment` both on) |
 | `Recovered N agent deletion(s) that were interrupted...` | startup reconciliation found deletions whose task was never created, and is creating them now |
 | `Dropped N journaled deletion(s) whose agents are still listed in client.keys` | those deletions never became final; nothing is owed |
 | `Converted N deletion(s) from the previous file format` | a journal written before sequences existed; the entries were numbered by position |
@@ -538,7 +557,7 @@ The re-enrollment secret is retained in `agent.reenroll_secret` in `global.db` a
 | `Recovered N identity transition(s) that the previous run did not finish writing to the database.` | startup found credentials still owed; the writer applies them on its own clock |
 | `Discarded N recorded identity transition(s) whose agent is no longer in client.keys and M superseded by a later one.` | startup reconciliation dropped what is no longer owed |
 | `Enrollment token 'X' minted for '…' (expires …, max_uses …, credential …)…` | a mint; never the secret or the token text |
-| `Agent key generated for agent 'N' (requested by <address>)` / `… (requested locally)` | a new agent on the local socket: the agent's peer address when the request came through remoted's `POST /enroll` (also when a worker forwarded it), `locally` for `manage_agents` and the API |
+| `Agent key generated for agent 'N' (requested by <address>)` / `… (requested locally)` | a new agent on the local socket: the agent's peer address when the request came through remoted's `POST /enroll` (also when a worker forwarded it), `locally` for the server API |
 | `Enrollment token 'X' used by agent 'N' (U/M).` / `Enrollment token 'X' revoked.` | the token paths; `U/M` is uses spent against `max_uses` (`U/unlimited` when it is `0`, the default). A refused token logs `ERROR 902x: …`; a re-enrollment the master's verification refuses (`9026`–`9028`) logs at debug level only |
 | `The enrollment token store holds N of the 5000 tokens it accepts…` | 80% of the cap reached; purge before it binds |
 | `Could not load the enrollment tokens from '…'` | the store could not be loaded at start; enrollments presenting a token are refused until it is fixed |

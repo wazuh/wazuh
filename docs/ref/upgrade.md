@@ -1,8 +1,8 @@
 # Upgrade
 
-This guide provides instructions for upgrading Wazuh server and agent components from a previous version. The upgrade process preserves the documented configuration and runtime paths while replacing package-managed files with the new version. A manager that was running when the upgrade started is restarted at its end; one that was stopped stays stopped.
+This guide provides instructions for upgrading the Wazuh manager from an earlier 5.x version, and Wazuh agents to 5.x. The upgrade process preserves the documented configuration and runtime paths while replacing package-managed files with the new version. A manager that was running when the upgrade started is restarted at its end; one that was stopped stays stopped.
 
-**Important**: Upgrading the Wazuh **manager** from version 4.x to 5.x is **not supported**. For manager major version upgrades, a fresh installation is required; [Manager migration from 4.x to 5.0](../guide/migration/manager-4x-to-5x.md) describes how to carry agent keys, registry, groups and API users into it. Wazuh **agents** support upgrades from 4.x to 5.x and can connect to a 5.x manager.
+**Important**: Upgrading the Wazuh **manager** from version 4.x to 5.x is **not supported**: the 5.x package (and `install.sh`) refuses to install over a 4.x manager, or beside one, with `ERROR: Upgrade from Wazuh manager versions prior to 5.x is not supported.` A 5.x manager is always a fresh installation; [Manager migration from 4.x to 5.0](../guide/migration/manager-4x-to-5x.md) describes how to carry agent keys, registry, groups and API users into it. Wazuh **agents** upgrade to 5.x from 4.14.0 or later, and a 4.x agent can connect to a 5.x manager through the legacy listener (see [Compatibility](compatibility.md)).
 
 ---
 
@@ -16,38 +16,13 @@ Before upgrading, ensure you:
 
 1. Review release notes for breaking changes and new features
 2. Verify system meets requirements for the new version
-3. Create a backup following the [backup procedures](backup-restore.md#manager-backup-and-restore)
+3. Create a backup following the [backup procedures](#backup)
 4. Plan maintenance window for the upgrade
 5. Notify relevant stakeholders
 
 ### Backup
 
-Create a backup before upgrading:
-
-```bash
-# Create backup directory
-BACKUP_DIR="/backup/wazuh-manager-$(date +%Y%m%d-%H%M%S)"
-sudo mkdir -p $BACKUP_DIR/db
-
-# Backup configuration and database. The source is tested first -- with `sudo
-# test`, since queue/db is not readable unprivileged -- because sqlite3 creates a
-# database when handed a path that does not exist, and the copy would then pass
-# the integrity check below while holding nothing.
-sudo tar -czf $BACKUP_DIR/wazuh-etc.tar.gz -C / etc/wazuh-manager/
-sudo test -f /var/wazuh-manager/queue/db/global.db \
-  && sudo sqlite3 /var/wazuh-manager/queue/db/global.db ".backup '$BACKUP_DIR/db/global.db'" \
-  || echo "MISSING: /var/wazuh-manager/queue/db/global.db - nothing was backed up"
-
-# Verify backup integrity
-tar -tzf $BACKUP_DIR/wazuh-etc.tar.gz > /dev/null && echo "Backup successful"
-if [ -f "$BACKUP_DIR/db/global.db" ]; then
-    sudo sqlite3 "$BACKUP_DIR/db/global.db" "PRAGMA integrity_check"
-    # The row count is what proves the copy carries the registry
-    sudo sqlite3 "$BACKUP_DIR/db/global.db" "SELECT count(*) FROM agent"
-else
-    echo "MISSING: no global.db in this backup - do NOT upgrade on it"
-fi
-```
+Take a full backup before upgrading, as described in [Creating a Full Manager Backup](backup-restore.md#creating-a-full-manager-backup). A [rollback](#rollback) restores from it, and it has to carry more than the configuration: removing the package deletes the databases, the keystore and the API users.
 
 ### Download package
 
@@ -141,36 +116,7 @@ The master accepts a worker only when both run exactly the same Wazuh version: i
 
 #### Backup all nodes
 
-**On the master node:**
-
-```bash
-BACKUP_DIR="/backup/wazuh-master-$(date +%Y%m%d-%H%M%S)"
-sudo mkdir -p $BACKUP_DIR/db
-
-# Full backup of master
-sudo tar -czf $BACKUP_DIR/wazuh-master-etc.tar.gz -C / etc/wazuh-manager/
-sudo test -f /var/wazuh-manager/queue/db/global.db \
-  && sudo sqlite3 /var/wazuh-manager/queue/db/global.db ".backup '$BACKUP_DIR/db/global.db'" \
-  || echo "MISSING: /var/wazuh-manager/queue/db/global.db - nothing was backed up"
-
-# Verify backup
-tar -tzf $BACKUP_DIR/wazuh-master-etc.tar.gz > /dev/null && echo "Master backup successful"
-[ -f "$BACKUP_DIR/db/global.db" ] && sudo sqlite3 "$BACKUP_DIR/db/global.db" "SELECT count(*) FROM agent" \
-  || echo "MISSING: no global.db in this backup"
-```
-
-**On each worker node:**
-
-```bash
-BACKUP_DIR="/backup/wazuh-worker-$(hostname)-$(date +%Y%m%d-%H%M%S)"
-sudo mkdir -p $BACKUP_DIR
-
-# Configuration backup only
-sudo tar -czf $BACKUP_DIR/wazuh-worker-config.tar.gz -C /etc/wazuh-manager wazuh-manager.conf wazuh-manager-internal-options.conf
-
-# Verify backup
-tar -tzf $BACKUP_DIR/wazuh-worker-config.tar.gz > /dev/null && echo "Worker backup successful"
-```
+Back up the master with [Master Node Backup](backup-restore.md#master-node-backup) and each worker with [Worker Node Backup](backup-restore.md#worker-node-backup). A worker's backup must carry its certificates, its CA and its keystore, which the cluster does not synchronize.
 
 #### Upgrade worker nodes
 
@@ -312,7 +258,7 @@ Before upgrading agents:
 3. Test on non-production agents first
 4. Verify manager compatibility with the new agent version
 
-**Note:** Wazuh agents version 4.x and later support upgrades to version 5.x.
+**Note:** Wazuh agents upgrade to 5.x only from version 4.14.0 or later. The agent packages and `install.sh` refuse an older one with `Upgrade to Wazuh 5.0.0 is only supported from version 4.14.0 or later.`; upgrade it to 4.14 first.
 
 ### File preservation
 
@@ -326,7 +272,7 @@ During a 5.x to 5.x agent upgrade the package scripts apply a **preserve / resto
 
 On DEB upgrades a `ossec.conf.new` side-file is written with the new default config for comparison.
 
-As with server upgrades, file contents, permissions, and ownership are preserved for the paths listed above. The upgrade does not normalize or reset any permissions or ownership set by the administrator.
+File contents, permissions, and ownership are preserved for the paths listed above. The upgrade does not normalize or reset any permissions or ownership set by the administrator.
 
 Preserve directory locations for recovery:
 
@@ -418,7 +364,7 @@ Get-Service -Name WazuhSvc
 
 If the upgrade fails or causes issues, you can roll back to the previous version.
 
-Removing the package is not a neutral step. `dpkg -r` and `rpm -e` delete `queue/` (every wazuh-db database, the Task Manager's `tasks.db`, the keystore and authd's pending deletions), `var/`, `logs/`, `data/` and the API directory (including `rbac.db`), and leave `/etc/wazuh-manager` only partly in place (see [Uninstall](uninstall.md#server)). The minimal backup above restores only `/etc/wazuh-manager` and `global.db`; take the full backup described in [Back Up and Restore](backup-restore.md#creating-a-full-manager-backup) if the rollback must keep the API users, the keystore or the task history.
+Removing the package is not a neutral step. `dpkg -r` and `rpm -e` delete `queue/` (every wazuh-db database, the Task Manager's `tasks.db`, the keystore and authd's pending deletions), `var/`, `logs/`, `data/` and the API directory (including `rbac.db`), and leave `/etc/wazuh-manager` only as `*.save` copies (see [Uninstall](uninstall.md#server)); `rpm -e` also deletes the `wazuh-manager` user and group. The installation of the previous version then starts from scratch, minting a new CA and new passwords, and the restore puts the backed-up state over it. Roll back only with a full backup taken as described in [Backup](#backup).
 
 ### Server rollback
 
@@ -442,87 +388,26 @@ sudo dpkg -r wazuh-manager
 sudo rpm -e wazuh-manager
 ```
 
-**Step 3: Restore from backup**
+**Step 3: Install the previous version**
 
-```bash
-# Restore configuration
-sudo tar -xzf $BACKUP_DIR/wazuh-etc.tar.gz -C /
+Install the previous version's package. A fresh package installation does not start the service.
 
-# Restore database
-sudo cp $BACKUP_DIR/db/global.db /var/wazuh-manager/queue/db/global.db
+**Step 4: Restore from backup**
 
-# tar run as root restores the owners and modes recorded in the archive, so
-# /etc/wazuh-manager needs no chown (and must not get a recursive one: the
-# configuration and every certificate are root-owned). The copied database does need it.
-sudo chown wazuh-manager:wazuh-manager /var/wazuh-manager/queue/db/global.db
-sudo chmod 660 /var/wazuh-manager/queue/db/global.db
-```
-
-**Step 4: Reinstall the previous version**
-
-Install the previous version package.
-
-**Step 5: Verify the rollback**
-
-```bash
-sudo systemctl start wazuh-manager
-sudo systemctl status wazuh-manager
-```
+Follow [Full Manager Restore](backup-restore.md#full-manager-restore) from its Step 2 on, with `BACKUP_DIR` set to the backup taken before the upgrade. Its last steps start the manager and verify the restore.
 
 ### Cluster rollback
 
 If the cluster upgrade fails, roll back **every** node to the same previous version: the master refuses a worker on any other version (`3031`), so a node left on the new version stays out of the cluster.
 
-**Rollback a worker node:**
+On each node, run Steps 1 to 3 of the [server rollback](#server-rollback), then restore:
+
+- **Master node**: [Restore Master Node](backup-restore.md#restore-master-node).
+- **Worker nodes**: [Restore Worker Node](backup-restore.md#restore-worker-node).
+
+Then verify that every node is listed, on the previous version:
 
 ```bash
-# Stop the service
-sudo systemctl stop wazuh-manager
-
-# Remove the new package (Debian)
-sudo dpkg -r wazuh-manager
-# Or remove the new package (Red Hat)
-sudo rpm -e wazuh-manager
-
-# Restore configuration
-sudo tar -xzf $BACKUP_DIR/wazuh-worker-config.tar.gz -C /etc/wazuh-manager
-
-# Reinstall previous version package
-
-# Start the service
-sudo systemctl start wazuh-manager
-
-# Verify cluster connectivity
-sudo /var/wazuh-manager/bin/cluster_control -l
-```
-
-**Rollback the master node:**
-
-```bash
-# Stop the service
-sudo systemctl stop wazuh-manager
-
-# Remove the new package (Debian)
-sudo dpkg -r wazuh-manager
-# Or remove the new package (Red Hat)
-sudo rpm -e wazuh-manager
-
-# Restore configuration and database
-sudo tar -xzf $BACKUP_DIR/wazuh-master-etc.tar.gz -C /
-sudo cp $BACKUP_DIR/db/global.db /var/wazuh-manager/queue/db/global.db
-
-# tar run as root restores the owners and modes recorded in the archive, so
-# /etc/wazuh-manager needs no chown (and must not get a recursive one: the
-# configuration and every certificate are root-owned). The copied database does need it.
-sudo chown wazuh-manager:wazuh-manager /var/wazuh-manager/queue/db/global.db
-sudo chmod 660 /var/wazuh-manager/queue/db/global.db
-
-# Reinstall previous version package
-
-# Start the service
-sudo systemctl start wazuh-manager
-
-# Verify cluster status
 sudo /var/wazuh-manager/bin/cluster_control -l
 ```
 
@@ -596,11 +481,11 @@ sudo ls -l /var/wazuh-manager/queue/db/
 # Review wazuh-manager.log for schema messages
 sudo grep -E "schema version|Failed to update global.db" /var/wazuh-manager/logs/wazuh-manager.log
 
-# If migration fails, restore from backup
+# If migration fails, restore from backup (the db/ copy of a backup taken with Option 1)
 sudo systemctl stop wazuh-manager
 sudo cp $BACKUP_DIR/db/global.db /var/wazuh-manager/queue/db/global.db
 sudo chown wazuh-manager:wazuh-manager /var/wazuh-manager/queue/db/global.db
-sudo chmod 660 /var/wazuh-manager/queue/db/global.db
+sudo chmod 640 /var/wazuh-manager/queue/db/global.db
 sudo systemctl start wazuh-manager
 ```
 

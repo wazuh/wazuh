@@ -13,17 +13,19 @@ daemons remoted, authd, wazuh-db and modulesd through libconfig's `w_mconf_*()`
 `getconfig` returns the effective sections); the cluster getters and the logging format inside libwazuh
 through the `w_mconf_hook_*` provider; the engine (`wazuh-manager-analysisd`) through the C++ API —
 `src/engine/source/base/src/managerConfig.cpp` links the `manager_config` target, loads the document
-once and reads its sections directly (for example the logging format, `managerConfig::logFormat()`); `wazuh-server.sh` (`validate`
-before any daemon `-t`, `get cluster.node_type`, `get auth.disabled`); and the Python framework
-(`wazuh.core.manager_conf` consumes `dump`/`validate` of the CLI — there is no second implementation of
-the language).
+once and reads its sections directly (for example the logging format, `managerConfig::logFormat()`);
+`bin/wazuh-manager-certs` through the C++ API (`src/shared_modules/manager_certs/CMakeLists.txt`);
+`wazuh-server.sh` (`validate` before any daemon `-t`, `get cluster.node_type`, `get auth.disabled`); the
+credential resolver (`src/init/credentials/wazuh-manager-resolve-credentials.py`, which runs the CLI's
+`dump` for the configured TLS paths); and the Python framework (`wazuh.core.manager_conf` consumes
+`dump`/`validate` of the CLI — there is no second implementation of the language).
 
 ## Requirements
 
 | # | Requirement | Where |
 |---|---|---|
 | RF-1 | Strict XML: exactly one `<wazuh_config>` root; entities decoded; raw `&`, `--` inside comments, legacy `<! !>` comments and a second root are rejected with the offending line | `src/xmlToJson.cpp` |
-| RF-2 | Canonical JSON with the schema's types: `yes`/`no` → boolean, digits → integer where allowed, repeated or comma-separated values → arrays, the attribute forms of the dialect (`<backup database="…">`, `<disconnected_time enabled="…">`) → nested objects, lowercase enums normalized | `src/xmlToJson.cpp` |
+| RF-2 | Canonical JSON with the schema's types: `yes`/`no` → boolean, digits → integer where allowed, repeated or comma-separated values → arrays, the attribute forms of the dialect (`<backup database="…">`, `<disconnected_time enabled="…">`) → nested objects, enums matched in any case and normalized to the schema's spelling | `src/xmlToJson.cpp` |
 | RF-3 | Validation against the embedded draft-04 schema; the first error is reported with its JSON pointer and keyword | `src/schemaValidate.cpp` |
 | RF-4 | Defaults declared in the schema are filled into the effective document (a missing section = its defaults) | `src/defaults.cpp` |
 | RF-5 | Uniform, fatal cross-field rules: certificate/key pairing, no `.`/`..` prefix segments, distinct listener ports, existence of the HTTPS/authd certificate files (relative to the manager home; nothing recreates them at start — the credential resolver issues them once at installation, or the operator provisions them, e.g. with wazuh-certs-tool — so the `file not found` verdict carries that hint; `indexer.ssl.*` is not checked, the connector reports those files at runtime) | `src/semantics.cpp` |
@@ -156,9 +158,12 @@ $WAZUH_REPO/src/build/shared_modules/manager_config/tests/unit/manager_config_ut
 $TMP_PY_VENV/bin/python3 tests/parity.py schema/wazuh-manager.schema.json tests/vectors
 ```
 
-CI runs all three on every PR touching `src/shared_modules/manager_config/**`, `src/init/**` or
-`etc/templates/**` (the last two because the CLI suite validates the configuration the installer
-generates) via `.github/workflows/5_testunit_managerconfig.yml`: one job with the three suites plus a
+CI runs all three on every PR touching `src/shared_modules/manager_config/**` (except this README),
+`error_messages.h`, the installer files the CLI suite executes (`gen_wazuh.sh`, `shared.sh`,
+`inst-functions.sh`, `template-select.sh` and the seven generic templates `WriteManager()` reads — it
+validates the configuration the installer generates) or the configure and build inputs, via
+`.github/workflows/5_testunit_managerconfig.yml` (its `paths:` list is the exact set): one job with the
+installer text-handling suite and the three suites plus a
 coverage report (uploaded, not gated) and an ASAN/UBSAN job that runs the GTest only — the CLI suite
 asserts exact exit codes and an empty stderr, which a sanitizer's reports would break.
 

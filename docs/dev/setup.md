@@ -10,22 +10,27 @@ The recommended platform for development is **Ubuntu 24.04**.
 
 The minimum toolchain requirements are:
 
-- GNU C/C++ Compiler 13+
+- GNU C/C++ Compiler 13+ (CI and the package builders use GCC 14)
 - GNU Make
-- CMake 3.22.1+
-- SELinux Policy Core Utils
+- CMake 3.22.1+ (the engine refuses an older one, although the top-level project accepts 3.12.4)
 - procps
 - curl
 
-For running unit tests, CMocka is required.
+Optional, for the agent only: `checkmodule` and `semodule_package`, which `src/Makefile` needs to build the
+agent's SELinux policy. When either is missing the policy is skipped without an error; the manager build
+never uses them.
+
+For running the C unit tests (CMocka suites), CMocka is required, and the unit-test project refuses to
+configure without `lcov`, `gcov` and `genhtml` (see [Test execution](test-execution.md)).
 
 ### Installation on Ubuntu 24.04
 
 Install the required packages using apt:
 
 ```bash
-apt install gcc g++ make cmake curl procps policycoreutils
-apt install libcmocka-dev
+apt install gcc g++ make cmake curl procps
+apt install checkpolicy semodule-utils     # optional: agent SELinux policy
+apt install libcmocka-dev lcov             # C unit tests
 ```
 
 ### Installation on Rocky Linux 9
@@ -33,7 +38,8 @@ apt install libcmocka-dev
 Install the required packages and enable the GCC toolset:
 
 ```bash
-dnf install make cmake gcc-toolset-13-gcc-c++ gcc-toolset-13-gcc procps policycoreutils
+dnf install make cmake gcc-toolset-13-gcc-c++ gcc-toolset-13-gcc procps
+dnf install checkpolicy policycoreutils    # optional: agent SELinux policy
 scl enable gcc-toolset-13 bash
 
 # Install CMocka
@@ -44,7 +50,7 @@ dnf install libcmocka-devel
 
 ### Windows Agent Build Requirements
 
-To build the Windows agent, you need MinGW and CMocka. Wine is only needed to run the cross-compiled unit tests, not to build.
+To build the Windows agent, you need MinGW. A MinGW build of CMocka and Wine are only needed for the cross-compiled unit tests, not to build.
 
 #### Installing MinGW and Wine on Ubuntu 24.04
 
@@ -172,8 +178,9 @@ Build tasks automate compilation from within VS Code. Create or update `.vscode/
 
 **Task configuration notes:**
 
-- `DEBUG=1` - Configures a `Debug` build (no optimization). Without it the build is `RelWithDebInfo`, which already carries symbols but is optimized
+- `DEBUG=1` - Configures a `Debug` build (no optimization). Without it the build is `RelWithDebInfo`, which already carries symbols but is optimized. Like every Makefile flag it stays in the CMake cache: a later build without it is still `Debug` (see [Build from Sources](build-sources.md#build-options))
 - `TARGET=manager` - The manager; `TARGET=server` is accepted as an alias and rewritten to `manager`, but `make server` (a goal, not a `TARGET`) stops with an error
+- The three tasks share the single build tree, whose cache is `src/build/CMakeCache.txt`, and each target needs its own `make -C src deps TARGET=<target>` first; run `make -C src clean-internals` before switching `TARGET` so that no cached setting of the previous one carries over
 - `-j4` - Enables parallel compilation with 4 jobs
 - `problemMatcher: ["$gcc"]` - Parses compiler output to display errors in the Problems panel
 
@@ -259,6 +266,8 @@ The debug configurations above run the installed binaries, so a rebuilt binary h
 ```
 
 Alternatively, link the `preLaunchTask` in your debug configuration to rebuild and deploy before each debug session.
+
+When you copy a rebuilt daemon, copy the shared libraries of `src/build/lib/` into the installation's `lib/` too: a module library left from an older build is loaded by the new daemon at run time and can crash it.
 
 ## Troubleshooting
 

@@ -154,7 +154,7 @@ field: array_contains(element, [...])
 
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
-| element | object, array, number, string, boolean | value or reference | Any object |
+| element | object, array, number, string, boolean | value or reference | Any value of the listed types |
 
 
 ## Target Field
@@ -377,7 +377,7 @@ field: array_contains_any(element, [...])
 
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
-| element | object, array, number, string, boolean | value or reference | Any object |
+| element | object, array, number, string, boolean | value or reference | Any value of the listed types |
 
 
 ## Target Field
@@ -771,7 +771,7 @@ field: array_not_contains(element, [...])
 
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
-| element | object, array, number, string, boolean | value or reference | Any object |
+| element | object, array, number, string, boolean | value or reference | Any value of the listed types |
 
 
 ## Target Field
@@ -994,7 +994,7 @@ field: array_not_contains_any(element, [...])
 
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
-| element | object, array, number, string, boolean | value or reference | Any object |
+| element | object, array, number, string, boolean | value or reference | Any value of the listed types |
 
 
 ## Target Field
@@ -1556,7 +1556,7 @@ This helper function is typically used in the check stage.
 
 ### Example 1
 
-Compare two different integers
+The key is not present in the object
 
 #### Asset
 
@@ -1577,7 +1577,7 @@ check:
 
 ### Example 2
 
-Compare two equals integers
+The key is present in the object
 
 #### Asset
 
@@ -2409,7 +2409,7 @@ Match IP CIDR
 
 ```yaml
 check:
-  - target_field: ip_cidr_match('192.168.0.0', '192.168.0.11')
+  - target_field: ip_cidr_match('192.168.0.0', '255.255.0.0')
 ```
 
 #### Input Event
@@ -2430,7 +2430,7 @@ Don't match IP CIDR
 
 ```yaml
 check:
-  - target_field: ip_cidr_match('192.168.0.0', '192.168.0.11')
+  - target_field: ip_cidr_match('192.168.0.0', '255.255.0.0')
 ```
 
 #### Input Event
@@ -3306,7 +3306,7 @@ check:
 
 ### Example 3
 
-number (array not empty)
+Not number (array)
 
 #### Asset
 
@@ -3928,7 +3928,7 @@ check:
 
 ### Example 2
 
-Is object
+Not object (array)
 
 #### Asset
 
@@ -4195,7 +4195,7 @@ field: keys_exist_in_list(elements)
 
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
-| elements | array | value or reference | Any string |
+| elements | array | value or reference | Any array |
 
 
 ## Target Field
@@ -4212,9 +4212,8 @@ It verifies whether the elements in the list are included as keys in the target 
 If any key from the target object is missing in the list, the validation fails.
 The function does not require that all keys in the list be present in the target field,
 but all keys from the target field must be in the list.
-If any element in the list is not a string, or if the target object is missing any keys from the list, the validation fails.
-This helper is particularly useful for ensuring that all required keys are present in the object and
-are strictly enforced in the list.
+If any element in the list is not a string, or if the target field is not an object, the validation fails.
+This helper is particularly useful for ensuring that an object carries no keys outside an allowed list.
 
 
 ## Keywords
@@ -4752,7 +4751,7 @@ This helper function is typically used in the check stage.
 
 ### Example 1
 
-Value is in array
+Value is not in array
 
 #### Asset
 
@@ -4773,7 +4772,7 @@ check:
 
 ### Example 2
 
-Value not is in array
+Value is not in array
 
 #### Asset
 
@@ -5043,14 +5042,14 @@ field: number_equal(any_number)
 
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
-| any_number | number | value or reference |
+| any_number | number | value or reference | Any number |
 
 
 ## Target Field
 
 | Type | Possible values |
 | ---- | --------------- |
-| number |
+| number | Any number |
 
 
 ## Description
@@ -5170,14 +5169,14 @@ field: number_greater(any_number)
 
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
-| any_number | number | value or reference |
+| any_number | number | value or reference | Any number |
 
 
 ## Target Field
 
 | Type | Possible values |
 | ---- | --------------- |
-| number |
+| number | Any number |
 
 
 ## Description
@@ -5295,14 +5294,14 @@ field: number_greater_or_equal(any_number)
 
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
-| any_number | number | value or reference |
+| any_number | number | value or reference | Any number |
 
 
 ## Target Field
 
 | Type | Possible values |
 | ---- | --------------- |
-| number |
+| number | Any number |
 
 
 ## Description
@@ -5422,14 +5421,14 @@ field: number_less(any_number)
 
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
-| any_number | number | value or reference |
+| any_number | number | value or reference | Any number |
 
 
 ## Target Field
 
 | Type | Possible values |
 | ---- | --------------- |
-| number |
+| number | Any number |
 
 
 ## Description
@@ -5549,14 +5548,14 @@ field: number_less_or_equal(any_number)
 
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
-| any_number | number | value or reference |
+| any_number | number | value or reference | Any number |
 
 
 ## Target Field
 
 | Type | Possible values |
 | ---- | --------------- |
-| number |
+| number | Any number |
 
 
 ## Description
@@ -5676,14 +5675,14 @@ field: number_not_equal(any_number)
 
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
-| any_number | number | value or reference |
+| any_number | number | value or reference | Any number |
 
 
 ## Target Field
 
 | Type | Possible values |
 | ---- | --------------- |
-| number |
+| number | Any number |
 
 
 ## Description
@@ -6695,18 +6694,18 @@ check:
 
 ```
 
-field: array_extract_key_obj(source_array, key_pointer, new_value_pointer, old_value_pointer, skip_serializer)
+field: array_extract_key_obj(source_array, key_pointer, new_value_pointer, old_value_pointer, [skip_serializer])
 ```
 
 ## Arguments
 
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
-| source_array | array | reference | Any string |
+| source_array | array | reference | Any array |
 | key_pointer | string | value | Any string |
 | new_value_pointer | string | value | Any string |
 | old_value_pointer | string | value | Any string |
-| skip_serializer | boolean | value | Any string |
+| skip_serializer (optional) | boolean | value | Any boolean |
 
 
 ## Outputs
@@ -7031,17 +7030,17 @@ normalize:
 
 ```
 
-field: array_obj_to_mapkv(source_array, key_pointer, value_pointer, skip_serializer)
+field: array_obj_to_mapkv(source_array, key_pointer, value_pointer, [skip_serializer])
 ```
 
 ## Arguments
 
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
-| source_array | array | reference | Any string |
+| source_array | array | reference | Any array |
 | key_pointer | string | value | Any string |
 | value_pointer | string | value | Any string |
-| skip_serializer | boolean | value | Any string |
+| skip_serializer (optional) | boolean | value | Any boolean |
 
 
 ## Outputs
@@ -7349,8 +7348,8 @@ field: concat(operand_left, operand_right, [...])
 
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
-| operand_left | string, number, object | value or reference | Any object |
-| operand_right | string, number, object | value or reference | Any object |
+| operand_left | string, number, object | value or reference | Any value of the listed types |
+| operand_right | string, number, object | value or reference | Any value of the listed types |
 
 
 ## Outputs
@@ -7375,14 +7374,14 @@ The result of the concatenation is stored in the field `field`.
 
 ### Example 1
 
-Concatenate a string with another empty one
+Concatenate several strings in argument order
 
 #### Asset
 
 ```yaml
 normalize:
   - map:
-      - target_field: concat('yes', ' ', 'no', 'hello', 'yes')
+      - target_field: concat('hello', ' ', 'no', 'yes', 'yes')
 ```
 
 #### Input Event
@@ -7482,8 +7481,8 @@ field: concat_any(operand_left, operand_right, [...])
 
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
-| operand_left | string, number, object | value or reference | Any object |
-| operand_right | string, number, object | value or reference | Any object |
+| operand_left | string, number, object | value or reference | Any value of the listed types |
+| operand_right | string, number, object | value or reference | Any value of the listed types |
 
 
 ## Outputs
@@ -7707,7 +7706,7 @@ normalize:
 
 ```
 
-field: date_to_epoch(date, format)
+field: date_to_epoch(date, [format])
 ```
 
 ## Arguments
@@ -7715,14 +7714,14 @@ field: date_to_epoch(date, format)
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
 | date | string | reference | Any string |
-| format | string | value | Any string |
+| format (optional) | string | value | Any string |
 
 
 ## Outputs
 
 | Type | Possible values |
 | ---- | --------------- |
-| double |
+| double | Any number |
 
 
 ## Description
@@ -8808,15 +8807,15 @@ field: float_calculate(operator, operand_left, operand_right, [...])
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
 | operator | string | value | mul, div, sub, sum |
-| operand_left | number | value or reference |
-| operand_right | number | value or reference |
+| operand_left | number | value or reference | Any number |
+| operand_right | number | value or reference | Any number |
 
 
 ## Outputs
 
 | Type | Possible values |
 | ---- | --------------- |
-| number |
+| number | Any number |
 
 
 ## Description
@@ -10029,7 +10028,7 @@ field: iana_protocol_number_to_name(protocol_code)
 
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
-| protocol_code | string, number | reference | Any object |
+| protocol_code | string, number | reference | Any value of the listed types |
 
 
 ## Outputs
@@ -11090,7 +11089,7 @@ field: join(array, separator)
 
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
-| array | array | reference | Any string |
+| array | array | reference | Any array |
 | separator | string | value | Any string |
 
 
@@ -12079,14 +12078,14 @@ field: to_bool(number_to_convert)
 
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
-| number_to_convert | number | reference |
+| number_to_convert | number | reference | Any number |
 
 
 ## Outputs
 
 | Type | Possible values |
 | ---- | --------------- |
-| boolean |
+| boolean | Any boolean |
 
 
 ## Description
@@ -12262,7 +12261,7 @@ normalize:
 
 ### Example 6
 
-Converts integer -1 to true (non-positives are true).
+Converts integer -1 to true (any non-zero number is true).
 
 #### Asset
 
@@ -12331,15 +12330,15 @@ normalize:
 
 ```
 
-field: to_int(number_to_transform, operation_mode)
+field: to_int(number_to_transform, [operation_mode])
 ```
 
 ## Arguments
 
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
-| number_to_transform | number | reference |
-| operation_mode | string | value | truncate, round |
+| number_to_transform | number | reference | Any number |
+| operation_mode (optional) | string | value | truncate, round |
 
 
 ## Outputs
@@ -12353,6 +12352,7 @@ field: to_int(number_to_transform, operation_mode)
 
 Transforms a number to an integer by truncating the fractional part or rounding to the nearest integer based on the fractional value (e.g., 9.6 → 10, -4.7 → -5);
 values with a fractional part ≥ 0.5 or ≤ -0.5 round away from zero, while others round toward zero.
+`operation_mode` is optional; when omitted the number is truncated.
 The result of the to_int operation is mapped to “target_field”. In case of errors “target_field” will not be modified.
 This helper function is typically used in the map stage
 
@@ -12949,7 +12949,7 @@ field: array_append(any_object, [...])
 
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
-| any_object | number, string, object, boolean, array | value or reference | Any object |
+| any_object | number, string, object, boolean, array | value or reference | Any value of the listed types |
 
 
 ## Target Field
@@ -13158,7 +13158,7 @@ field: array_append_any(any_object, [...])
 
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
-| any_object | number, string, object, boolean, array | value or reference | Any object |
+| any_object | number, string, object, boolean, array | value or reference | Any value of the listed types |
 
 
 ## Target Field
@@ -13331,7 +13331,7 @@ field: array_append_unique(any_object, [...])
 
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
-| any_object | number, string, object, boolean, array | value or reference | Any object |
+| any_object | number, string, object, boolean, array | value or reference | Any value of the listed types |
 
 
 ## Target Field
@@ -13497,7 +13497,7 @@ field: array_append_unique_any(any_object, [...])
 
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
-| any_object | number, string, object, boolean, array | value or reference | Any object |
+| any_object | number, string, object, boolean, array | value or reference | Any value of the listed types |
 
 
 ## Target Field
@@ -13687,7 +13687,7 @@ This helper function is typically used in the map stage.
 
 ### Example 1
 
-Success delete
+Deletes a string target field
 
 #### Asset
 
@@ -13705,19 +13705,11 @@ normalize:
 }
 ```
 
-#### Outcome Event
-
-```json
-{
-  "target_field": ""
-}
-```
-
 *The operation was successful*
 
 ### Example 2
 
-Success delete
+Deletes an object target field
 
 #### Asset
 
@@ -13737,19 +13729,11 @@ normalize:
 }
 ```
 
-#### Outcome Event
-
-```json
-{
-  "target_field": ""
-}
-```
-
 *The operation was successful*
 
 ### Example 3
 
-Success delete
+Deletes an array target field
 
 #### Asset
 
@@ -13772,14 +13756,6 @@ normalize:
 }
 ```
 
-#### Outcome Event
-
-```json
-{
-  "target_field": ""
-}
-```
-
 *The operation was successful*
 
 
@@ -13798,7 +13774,7 @@ field: delete_fields_with_value(any_object)
 
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
-| any_object | number, string, object, boolean, array | value or reference | Any object |
+| any_object | number, string, object, boolean, array | value or reference | Any value of the listed types |
 
 
 ## Target Field
@@ -14235,7 +14211,7 @@ Typically used with field = ".", the root element.
 
 ### Example 1
 
-Success erase custom file
+A string target has no keys to erase
 
 #### Asset
 
@@ -14253,19 +14229,11 @@ normalize:
 }
 ```
 
-#### Outcome Event
-
-```json
-{
-  "target_field": ""
-}
-```
-
 *The operation was successful*
 
 ### Example 2
 
-Success erase custum file
+Erases the keys of the object target that are not in the schema
 
 #### Asset
 
@@ -14285,19 +14253,11 @@ normalize:
 }
 ```
 
-#### Outcome Event
-
-```json
-{
-  "target_field": ""
-}
-```
-
 *The operation was successful*
 
 ### Example 3
 
-Success erase custom file
+An array target has no keys to erase
 
 #### Asset
 
@@ -14317,14 +14277,6 @@ normalize:
     3,
     4
   ]
-}
-```
-
-#### Outcome Event
-
-```json
-{
-  "target_field": ""
 }
 ```
 
@@ -15190,7 +15142,7 @@ field: kvdb_get_array(db_name, array_key)
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
 | db_name | string | value | Any string |
-| array_key | array | value or reference | Any string |
+| array_key | array | value or reference | Any array |
 
 
 ## Target Field
@@ -15203,11 +15155,11 @@ field: kvdb_get_array(db_name, array_key)
 ## Description
 
 For each key in "array_key", looks up the value in the KVDB named "db_name"
-and appends any found values to the target array field.
+and appends the found values to the target array field.
 - "array_key" may be a literal array of strings or a reference to a field
   that contains such an array of strings.
-- If some keys are not present in the DB, they are silently skipped
-  (best-effort behavior).
+- If any key is not present in the DB, or the values found are not all of the
+  same type, the operation fails and nothing is appended.
 - If the DB does not exist, or if the target field cannot be treated as
   an array, the operation fails and the target field is left unchanged.
 This helper function is typically used in the map stage.
@@ -15297,7 +15249,7 @@ normalize:
 
 ### Example 3
 
-Skips keys that are not present in the KVDB
+Fails when a key is not present in the KVDB, appending nothing
 
 #### Asset
 
@@ -15317,10 +15269,7 @@ normalize:
 
 ```json
 {
-  "target_field": [
-    "KDC_ERR_NONE",
-    "KDC_ERR_C_PRINCIPAL_UNKNOWN"
-  ]
+  "target_field": []
 }
 ```
 
@@ -15446,7 +15395,7 @@ normalize:
 
 ### Example 7
 
-Skips non-existing keys provided by reference
+Fails when a key provided by reference is not present in the KVDB, appending nothing
 
 #### Asset
 
@@ -15477,10 +15426,7 @@ normalize:
     "0x99",
     "0x6"
   ],
-  "target_field": [
-    "KDC_ERR_SERVICE_EXP",
-    "KDC_ERR_C_PRINCIPAL_UNKNOWN"
-  ]
+  "target_field": []
 }
 ```
 
@@ -16431,7 +16377,7 @@ field: merge(any_object)
 
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
-| any_object | object, array, number, string, boolean | reference | Any object |
+| any_object | object, array, number, string, boolean | reference | Any value of the listed types |
 
 
 ## Target Field
@@ -16803,7 +16749,7 @@ field: merge_recursive(any_object)
 
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
-| any_object | object, array, number, string, boolean | reference | Any object |
+| any_object | object, array, number, string, boolean | reference | Any value of the listed types |
 
 
 ## Target Field
@@ -17286,7 +17232,7 @@ normalize:
 
 ```
 
-field: parse_alphanumeric(field_to_parse, [...])
+field: parse_alphanumeric(field_to_parse)
 ```
 
 ## Arguments
@@ -17305,8 +17251,10 @@ field: parse_alphanumeric(field_to_parse, [...])
 
 ## Description
 
-Checks if an input matches an alphanumeric string, and if so, it evaluates to true and the extracted data
-contained in a JSON object is stored in the output field; otherwise, it evaluates to false.
+Checks if an input matches an alphanumeric string, and if so, it evaluates to true and the matched string
+is stored in the output field; otherwise, it evaluates to false.
+After `field_to_parse` it accepts one optional value: a string with additional characters to accept
+besides letters and digits.
 
 
 ## Keywords
@@ -17388,7 +17336,7 @@ normalize:
 
 ```
 
-field: parse_between(input_field, start, end, [...])
+field: parse_between(input_field, start, end)
 ```
 
 ## Arguments
@@ -18273,7 +18221,7 @@ normalize:
 
 ```
 
-field: parse_date(input_field, format, locale)
+field: parse_date(input_field, format, [locale])
 ```
 
 ## Arguments
@@ -18282,7 +18230,7 @@ field: parse_date(input_field, format, locale)
 | --------- | ---- | ------ | --------------- |
 | input_field | string | reference | Any string |
 | format | string | value | Any string |
-| locale | string | value | Any string |
+| locale (optional) | string | value | Any string |
 
 
 ## Target Field
@@ -18679,7 +18627,7 @@ normalize:
 
 ```
 
-field: parse_file(input_field, [...])
+field: parse_file(input_field)
 ```
 
 ## Arguments
@@ -18928,7 +18876,7 @@ normalize:
 
 ```
 
-field: parse_fqdn(input_field, [...])
+field: parse_fqdn(input_field)
 ```
 
 ## Arguments
@@ -19445,7 +19393,7 @@ normalize:
 
 ```
 
-field: parse_ip(input_field, [...])
+field: parse_ip(input_field)
 ```
 
 ## Arguments
@@ -19623,7 +19571,7 @@ normalize:
 
 ```
 
-field: parse_json(input_field, [...])
+field: parse_json(input_field)
 ```
 
 ## Arguments
@@ -19737,7 +19685,7 @@ normalize:
 
 ```
 
-field: parse_key_value(input_field, sep_token, delim_token, quote_char, esc_char, [...])
+field: parse_key_value(input_field, sep_token, delim_token, quote_char, esc_char)
 ```
 
 ## Arguments
@@ -20159,7 +20107,7 @@ normalize:
 
 ```
 
-field: parse_quoted(input_field, [...])
+field: parse_quoted(input_field)
 ```
 
 ## Arguments
@@ -20182,6 +20130,8 @@ This parser is designed to extract text enclosed in quotation marks from the inp
 It supports custom quotation and escape characters, allowing for flexibility in parsing complex quoted strings.
 Evaluates the content of the input field to extract text that is enclosed in the specified `quoted` character
 considering any `escape` characters used to include the quotation character within the quoted text.
+After `input_field` it accepts up to two optional single-character values: the quotation character
+(default `"`) and the escape character (default `\`).
 
 
 ## Keywords
@@ -20422,7 +20372,7 @@ normalize:
 
 ### Example 4
 
-Failure unsigned long parse
+Failure short parse (non-numeric)
 
 #### Asset
 
@@ -20627,7 +20577,7 @@ normalize:
 
 ```
 
-field: parse_uri(input_field, [...])
+field: parse_uri(input_field)
 ```
 
 ## Arguments
@@ -20804,7 +20754,7 @@ normalize:
 
 ```
 
-field: parse_useragent(input_field, [...])
+field: parse_useragent(input_field)
 ```
 
 ## Arguments
@@ -20880,7 +20830,7 @@ normalize:
 
 ```
 
-field: parse_xml(input_field, [...])
+field: parse_xml(input_field)
 ```
 
 ## Arguments
@@ -21073,7 +21023,7 @@ field: replace(old, new)
 
 | Type | Possible values |
 | ---- | --------------- |
-| string |
+| string | Any string |
 
 
 ## Description
@@ -21158,14 +21108,14 @@ normalize:
 
 ```
 
-field: sanitize_fields(recursive)
+field: sanitize_fields([recursive])
 ```
 
 ## Arguments
 
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
-| recursive | boolean | value | Any string |
+| recursive (optional) | boolean | value | Any boolean |
 
 
 ## Target Field
@@ -21181,7 +21131,8 @@ Normalize JSON object keys, nested object keys, standalone strings, and strings 
 
 ### Behavior:
 - **Object keys** are sanitized: all keys in the object are normalized.
-- **Nested objects**: if `recursive` is true, keys inside nested objects are also sanitized.
+- **Nested objects**: if `recursive` is true, keys inside nested objects are also sanitized
+  (`recursive` is optional and defaults to false).
 - **Arrays**:
   - Arrays that are **not values of JSON object keys** are processed element-wise.
   - Elements can be:
@@ -21303,7 +21254,10 @@ normalize:
 
 ```json
 {
-  "target_field": ""
+  "target_field": {
+    "hello world": 1,
+    "hello-world": 2
+  }
 }
 ```
 
@@ -21496,7 +21450,12 @@ normalize:
 
 ```json
 {
-  "target_field": ""
+  "target_field": [
+    1,
+    {
+      "a": 1
+    }
+  ]
 }
 ```
 
@@ -21531,7 +21490,12 @@ normalize:
 
 ```json
 {
-  "target_field": ""
+  "target_field": [
+    true,
+    {
+      "a": 1
+    }
+  ]
 }
 ```
 
@@ -21566,7 +21530,12 @@ normalize:
 
 ```json
 {
-  "target_field": ""
+  "target_field": [
+    null,
+    {
+      "a": 1
+    }
+  ]
 }
 ```
 
@@ -21728,7 +21697,9 @@ normalize:
 
 ```json
 {
-  "target_field": ""
+  "target_field": {
+    "***": 1
+  }
 }
 ```
 
@@ -21828,7 +21799,9 @@ normalize:
 
 ```json
 {
-  "target_field": ""
+  "target_field": {
+    ":\\ /- .": 1
+  }
 }
 ```
 
@@ -21924,7 +21897,7 @@ normalize:
 
 ```json
 {
-  "target_field": ""
+  "target_field": "::::"
 }
 ```
 
@@ -22030,7 +22003,7 @@ field: trim(trim_place, character)
 
 | Type | Possible values |
 | ---- | --------------- |
-| string |
+| string | Any string |
 
 
 ## Description

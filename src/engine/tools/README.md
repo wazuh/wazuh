@@ -5,71 +5,100 @@
 3. [Scripts and Packages](#scripts-and-packages)
     - [API communication](#api-communication)
     - [Engine suite](#engine-suite)
+    - [Engine metrics](#engine-metrics)
+    - [Engine schema](#engine-schema)
+    - [Engine bench](#engine-bench)
     - [EVTX to XML](#evtx-to-xml)
+    - [Third-party notices](#third-party-notices)
     - [Check valgrind](#check-valgrind)
     - [Check ASAN](#check-asan)
 
 # Summary
 
-This directory includes several packages and scripts designed to make development, and the
-management of related tools, easier. The following describes the directory structure and provides
-detailed information about each component.
+This directory includes packages and scripts designed to make engine development and testing easier. None
+of them is installed with the manager, except `engine-schema`, which the installer runs from the source tree
+to generate the schema files. The `engine-suite`, `engine-metrics` and `engine-bench` tools talk to the engine
+over its API socket,
+`/var/wazuh-manager/queue/sockets/engine-api-http.sock` on an installed manager. The commands below run from
+`src/engine/`.
 
 # Directory structure
 
 ```plaintext
 tools/
-│
-├── api-communication/
-├── engine-suite/
-├── evtx2xml/
+├── api-communication/     # Python client library for the engine API socket
+├── engine-bench/          # perf + flame graph profiler (engine-bench)
+├── engine-metrics/        # Metrics dashboard and CLI (engine-metrics)
+├── engine-schema/         # Schema generator from the Wazuh Common Schema (engine_schema.py)
+├── engine-suite/          # engine-router, engine-test, engine-event-dumper, engine-public, engine-private
+├── evtx2xml/              # EVTX to XML converter (evtx2xml)
+├── third-party-notices/   # THIRD-PARTY-NOTICES and README table generator (generate.py)
+├── check_ASAN.sh
+├── check_Valgrind.sh
+└── ...                    # Other one-off helper scripts
 ```
 
 # Scripts and Packages
 
 ## API communication
 
-The `api-communication` package is a tool designed to facilitate communication with the engine API, allowing the execution of commands and operations on engine components.
+The `api-communication` package is the Python client of the engine API: `APIClient` sends protobuf request
+messages as JSON over the API socket and deduces the endpoint from the message type. `engine-suite`,
+`engine-metrics` and `engine-bench` (through `test/engine-test-utils`) depend on it, and it is not published,
+so install it first. See the
+[api-communication README](./api-communication/README.md).
 
-### Main Features
-
-- **Communication with the Engine API**:
-    Provides an interface to send requests to the engine API and receive responses efficiently, using messages in protobuf format.
-
-- **API Command Management**:
-    Translates messages into specific commands that the engine API can process, allowing operations to be performed on engine components
-
-### Installation
 ```bash
 pip3 install tools/api-communication
 ```
 
 ## Engine suite
 
-The `engine-suite` package is a comprehensive tool designed to manage, clean, and compare resources, as well as update decoders and manage integrations within the Wazuh environment.
+The `engine-suite` package installs the `engine-router` (routes), `engine-test` (test integrations and
+testing sessions), `engine-event-dumper` (event dumper), `engine-public` (policy and resource validation,
+logtest cleanup, IOC, status) and `engine-private` (namespaces, content CRUD, geo, raw event indexer)
+commands. See the [engine-suite README](./engine-suite/README.md).
 
-- **Resource Management and Deletion**: Allows the deletion of resources in specific namespaces, such as user, Wazuh, and system, ensuring that the environment remains clean and organized. It also includes the removal of policies and assets, ensuring that rules and configurations are aligned with the desired changes.
-
-- **Decoder Update**: Facilitates the massive update of auxiliary function names in decoders and allows listing all fields extracted by a specific decoder, helping in the administration and maintenance of the decoders.
-
-- **File Comparison**: Provides tools to compare event files in YAML or JSON format, detecting differences in keys and values. In addition, it integrates external tools such as Delta for a clear visualization of the differences.
-
-- **Integrations Management**: Centralizes the creation, addition, update and removal of integrations, and also generates documentation, charts and manifests to facilitate the administration and monitoring of these integrations.
-
-### Installation
 ```bash
 pip3 install tools/engine-suite
 ```
+
+## Engine metrics
+
+Real-time web dashboard and CLI for the engine metrics (`engine-metrics dashboard|dump|list|get|enable|disable`).
+See the [engine-metrics README](./engine-metrics/README.md).
+
+## Engine schema
+
+Generates `engine-schema.json`, `wazuh-logpar-overrides.json`, `wazuh-decoders.json` and the geo and IOC
+enrichment configurations from the Wazuh Common Schema. See the
+[engine-schema README](./engine-schema/README.md).
+
+## Engine bench
+
+Profiles an engine started from a test environment with `perf` and renders a flame graph. See the
+[engine-bench README](./engine-bench/README.md).
 
 ## EVTX to XML
 
 This module converts event files in EVTX format (used by Windows for event logs) to XML format. This allows you to view and work with Windows event logs in a more accessible and standard format. For more information see the [evtx2xml README](./evtx2xml/README.md).
 
+## Third-party notices
+
+`third-party-notices/generate.py` generates `THIRD-PARTY-NOTICES` and the third-party table of the root
+`README.md` from `third-party-notices/components.json`; the license texts it inlines live in
+`third-party-notices/texts/` ([origin of each text](./third-party-notices/texts/README.md)).
+
 ## Check valgrind
 
-- **Running Valgrind**: Run software tests with Valgrind to identify memory leaks and other similar problems.
-- **Test Search Settings**: Allows you to specify the directory where to search for tests, exclude certain directories, and apply filters to the results.
-- **Report Generation**: Creates a detailed report on Valgrind results in a specified output file.
+- **Running Valgrind**: Runs every `*_ctest`/`*_utest` binary under Valgrind (`--leak-check=full`) to identify memory leaks and other similar problems.
+- **Test Search Settings**: Allows you to specify the directory where to search for tests, exclude certain directories, and pass a gtest filter.
+- **Report Generation**: Writes the Valgrind output to a report file.
+
+The script expects an engine build tree in a `build` directory under `src/engine/` (with `source/` and a `main` binary), whatever
+`-t` says, and first requires every static library found there to be built with a sanitizer. The manager
+build puts the engine in `src/build/engine` (binary `wazuh-engine`), so on a manager build tree the script
+exits with `Build directory does not exist`.
 
 ### Usage
 ```bash
@@ -80,24 +109,30 @@ Options:
   -e, --exclude DIRS  Colon-separated list of directories to exclude
   -t, --test-dir DIR  Directory to search for tests (default: build directory)
   -r, --regex PATTERN Optional regular expression to filter tests (default: no filtering)
-  -o, --output FILE   File to redirect output (default: /valgrindReport.log)
+  -o, --output FILE   File to redirect output (default: ${SCRIPT_DIR}/valgrindReport.log)
 ```
 
-- **Run only OrchestratorTest from router component**:
+The help prints the `--output` default before it is set, as `/valgrindReport.log`; the actual default is
+`valgrindReport.log` next to the script. `-r` is passed to the test binaries as `--gtest_filter`.
+
+- **Run only the OrchestratorTest suite of the router component**:
 ```bash
-bash tools/check_Valgrind.sh -t build/source/router/ -r OrchestratorTesterTest*
+bash tools/check_Valgrind.sh -t build/source/router/ -r 'OrchestratorTest*'
 ```
 
-- **Run all test except those of the builder and kvdb**:
+- **Run all tests except those of the builder and kvdbstore**:
 ```bash
-bash tools/check_Valgrind.sh -e build/source/bk/:build/source/builder/:build/source/kvdb/
+bash tools/check_Valgrind.sh -e build/source/builder/:build/source/kvdbstore/
 ```
 
 ## Check ASAN
 
-- **ASAN, TSAN, and MSAN check**: Check if the binaries are compiled with support for AddressSanitizer, ThreadSanitizer, or MemorySanitizer.
-- **Test Execution**: Use `ctest` to run tests in the specified directory and redirect the results to a file if indicated.
-- **Flexible Configuration**: Allows you to specify the test directory, exclude certain directories, apply filtering
+- **ASAN, TSAN, and MSAN check**: Checks that the test binaries, the static libraries and the `main` binary are compiled with AddressSanitizer, ThreadSanitizer, or MemorySanitizer, and stops at the first that is not.
+- **Test Execution**: Uses `ctest --output-on-failure -V` to run the tests in the specified directory and appends the results to a file if indicated.
+- **Flexible Configuration**: Allows you to specify the test directory, exclude certain directories, and filter tests with a `ctest --tests-regex`.
+
+It expects the same build tree as `check_Valgrind.sh`. CI's ASAN gate does not use it (see the
+`5_testunit_engine.yml` workflow).
 
 ### Usage
 ```bash
@@ -110,11 +145,11 @@ Options:
   -r, --regex PATTERN Optional regular expression to filter tests (default: no filtering)
   -o, --output FILE   File to redirect output (default: stdout)
 ```
-- **Run only OrchestratorTest from router component**:
+- **Run only the OrchestratorTest suite of the router component**:
 ```bash
-bash tools/check_ASAN.sh -t build/source/router/ --regex OrchestratorTest*
+bash tools/check_ASAN.sh -t build/source/router/ --regex 'OrchestratorTest'
 ```
-- **Run all test except those of the builder and kvdb**:
+- **Run all tests except those of the builder and kvdbstore**:
 ```bash
-bash tools/check_ASAN.sh -e build/source/bk/:build/source/builder/:build/source/kvdb/
+bash tools/check_ASAN.sh -e build/source/builder/:build/source/kvdbstore/
 ```

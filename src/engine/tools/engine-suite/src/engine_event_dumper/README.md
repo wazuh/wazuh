@@ -22,6 +22,9 @@ The script is packaged along the `engine-suite` python package. To install, simp
 pip install tools/engine-suite
 ```
 
+(from `src/engine/`, after installing `tools/api-communication`; see the
+[engine-suite installation](../../README.md#installation)).
+
 To verify it's working:
 
 ```bash
@@ -45,3 +48,7 @@ subcommands:
     deactivate          Deactivate the event-dumper
     status              Get the event-dumper status
 ```
+
+`--api-socket` defaults to `/var/wazuh-manager/queue/sockets/engine-api-http.sock`. The commands call the
+engine's `_internal/event-dumper/activate`, `_internal/event-dumper/deactivate` and
+`_internal/event-dumper/status` endpoints.

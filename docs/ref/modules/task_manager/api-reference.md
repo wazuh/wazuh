@@ -26,7 +26,7 @@ The [README](README.md#http-interface) summarises the surface; this page is the 
 | `GET` | `/v1/metrics` | Control | The metrics dump — see [Metrics](metrics.md) |
 
 Every path is versioned, the two `GET`s included; an unversioned or unknown path answers `404`
-`{"error":"Unknown endpoint","code":404}`. All twelve routes are registered on every start; the
+`{"error":"Unknown endpoint","code":404}`, and a known path with the wrong method `405`. All twelve routes are registered on every start; the
 upgrade routes stay registered with `<upgrade_enabled>no</upgrade_enabled>` and refuse every agent
 instead.
 
@@ -55,7 +55,8 @@ instead.
 ## Errors
 
 Every JSON route (all but the upgrade routes and the two `GET`s) answers errors as
-`{"error": "<code>", "message": "<text>"}`; the transport's own refusals (`404`, `413`, `503`) are
+`{"error": "<code>", "message": "<text>"}`; the transport's own refusals (`404`, `405`, `413`, `503`,
+and `504` when a handler has not answered within the transport's 300 s response backstop) are
 `{"error": "<text>", "code": <status>}` instead:
 
 | Status | `error` | When |
@@ -64,8 +65,7 @@ Every JSON route (all but the upgrade routes and the two `GET`s) answers errors 
 | `400` | `parsing_error` | a required field is missing, empty or out of range — the message names it |
 | `404` | `not_found` | `/v1/manager-tasks/get` for an id with no row |
 | `413` | `payload_too_large` | the serialized `payload` exceeds `max_payload_bytes` (message `payload exceeds max_payload_bytes`) |
-| `500` | `create_failed` | `/v1/tasks` could not store the row |
-| `500` | `internal_error` | an unexpected exception in the handler (logged; the message says "see the manager log") |
+| `500` | `internal_error` | an unexpected exception in the handler, including `/v1/tasks` failing to store its row (logged; the message says "see the manager log") |
 | `503` | `queue_full` | `/v1/manager-tasks`: the type's admission bound is reached (body also carries `"result":"queue_full"`) |
 
 ## Agent tasks
@@ -121,8 +121,9 @@ Rows are described in [Manager tasks](manager-tasks.md). Statuses: `pending`, `c
 | `task_type` | yes | non-empty string |
 | `payload` | yes | a JSON string is stored as-is; any other value is serialized; capped at `max_payload_bytes` |
 | `agent_id`, `schedule_id` | no | strings |
-| `scheduled_run_at`, `next_attempt_at` | no | Unix seconds |
+| `scheduled_run_at` | no | Unix seconds |
 | `create_time` | no | Unix seconds; defaults to now |
+| `next_attempt_at` | no | Unix seconds; defaults to `create_time` |
 | `coalesce`, `max_pending` | no | **honoured only for a task type this build does not know** — a registered type takes both from its descriptor |
 
 Answers `200` `{"result": "created"|"coalesced"|"collided", "task_id": "<id>"}`, or `503` with
@@ -144,8 +145,8 @@ for is stored and never run; the next start of the module retires it as `failed`
 
 ### `POST /v1/manager-tasks/by-agent`
 
-`{"agent_id", "task_type"}` (both required). Answers `200` `{"task": <row>}`, or `200` `{}` when the
-agent has no such task — "none" is an answer here, not an error (it is what authd's pending-purge check
+`{"agent_id", "task_type"}` (both required). Answers `200` `{"task": <row>}` with the agent's most
+recently created row of that type, whatever its status, or `200` `{}` when the agent has no such task — "none" is an answer here, not an error (it is what authd's pending-purge check
 asks).
 
 ### `POST /v1/manager-tasks/list`
@@ -175,14 +176,14 @@ deliberate ways:
 
 | Field | Route | Required | Rule |
 |---|---|---|---|
-| `agents` | both | yes | non-empty array of positive integer agent ids |
+| `agents` | both | yes | non-empty array of positive integer agent ids (missing or empty: error 2; a non-integer or non-positive id: error 3); more than [`upgrade_max_agents`](configuration.md#internal-options-the-upgrade-path-adds) (500) answers every agent with error 2 |
 | `request_time` | both | yes | number, Unix seconds, non-zero, within `[now - 1 year, now + 60 s]`; it becomes the task's `create_time`, so every cluster node derives the same task id |
 | `version` | `/upgrade` | no | target version; defaults to the manager's own |
 | `wpk_repo` | `/upgrade` | no | repository for this request; overrides [`<wpk_repository>`](configuration.md#xml-options) |
 | `use_http` | `/upgrade` | no | boolean; `http://` instead of `https://` when the repository names no scheme |
 | `force_upgrade` | `/upgrade` | no | boolean; lifts the version gates that can be forced ([Version constraints](agent-upgrades.md#version-constraints)) |
-| `package_type` | `/upgrade` | no | `rpm` or `deb` |
-| `file_path` | `/upgrade-custom` | yes | the WPK, which must resolve to a file directly inside `var/upgrade/` |
+| `package_type` | `/upgrade` | no | `rpm` or `deb` (anything else: error 3). Used only for a Linux target of v4.9.0 or later: for an agent that reports no package family; one that reports a different family keeps its own unless `force_upgrade` is set |
+| `file_path` | `/upgrade-custom` | yes | the WPK, which must resolve to a file directly inside `var/upgrade/`. Not checked at admission: an absent, empty or misplaced one answers each agent that passes the version and delivery checks with error 14 |
 | `installer` | `/upgrade-custom` | no | installer script name; defaults to `upgrade.bat` on Windows and `upgrade.sh` elsewhere |
 
 ### Response
@@ -202,7 +203,7 @@ without an `agent`. The per-agent codes:
 |---|---|---|
 | 0 | — | `Success` |
 | 1 | 1811 | `Could not parse message JSON` |
-| 2 | 1812 | `Required parameters in json message where not found` (or the parser's own text) |
+| 2 | 1812 | `Required parameters in json message where not found` (or the parser's own text) — also every agent of a request larger than `upgrade_max_agents` |
 | 3 | 1813 | `JSON parameter not recognized` (or the parser's own text) |
 | 4 | 1814 | `Task manager communication error` — the batch queue is full, the module is shutting down, or the rows could not be stored; the Server API halves the chunk and retries |
 | 6 | 1816 | `Agent information not found in database` — no such agent in this node's wazuh-db, the query did not complete, or the agent's record is missing what a repository upgrade needs (platform, architecture, OS major version — and minor on Ubuntu — or a readable agent version). In a cluster the Server API drops it for an agent another node reported on, so it reaches the top level only when no node could create the task |
@@ -216,7 +217,7 @@ without an `agent`. The per-agent codes:
 | 14 | 1824 | `The WPK file does not exist` |
 | 15 | 1825 | `The WPK sha1 of the file is not valid` |
 | 16 | 1826 | `The manager's HTTPS verification_mode is not 'none'; …` |
-| 17 | 1827 | `Upgrade procedure could not start` — also the answer to every agent while `<upgrade_enabled>` is `no` |
+| 17 | 1827 | `Upgrade procedure could not start` — the answer to every agent while `<upgrade_enabled>` is `no`, and to an unexpected error while admitting the request |
 | 18 | 1828 | `The agent is below v5.0.0 and the manager's legacy delivery (remote.legacy.enabled) is disabled; …` |
 
 The flow is in [Agent upgrades](agent-upgrades.md); the options in

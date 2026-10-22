@@ -289,20 +289,9 @@ The request body MAY optionally be compressed with `Content-Encoding: zstd` (cas
 other value is accepted — **`gzip` is not supported.** Support can be turned off entirely with
 `remoted.http_content_encoding_enabled` (default: enabled) — see [Configuration](#configuration).
 
-**Why zstd and not gzip.** Both were measured on a real 48 MB FIM sync payload before choosing. At
-its default level zstd beats gzip's default on all three axes at once, so there is no trade-off to
-weigh — and decompression speed is the side that matters here, since agents compress while the
-manager decompresses:
-
-| Codec                  | Compressed  | Compress  | Decompress  |
-| ---------------------- | ----------- | --------- | ----------- |
-| `gzip-6` (default)     | 4.25 MB     | 224 ms    | 44.2 ms     |
-| `gzip-9` (max)         | 4.10 MB     | 429 ms    | 43.1 ms     |
-| **`zstd-3` (default)** | **3.66 MB** | **55 ms** | **24.0 ms** |
-| `zstd-9`               | 3.44 MB     | 157 ms    | 24.3 ms     |
-
-Supporting both was considered and dropped: it would mean two decoders, two dependency chains and
-two test matrices for a codec that is dominated on this workload.
+Why zstd was chosen over gzip, with the benchmark behind it, and how the decoder's memory is
+reserved, are design records kept in the developer README
+(`src/remoted/remoted_module/README.md`, section *Why zstd, and not gzip*).
 
 - On routes using the agent bearer, decompression happens **after** authentication succeeds: the bearer token is verified
   from the headers alone (the body is not part of it — TLS protects it), so an unauthenticated
@@ -316,31 +305,14 @@ two test matrices for a codec that is dominated on this workload.
   cap because the agent sizes its batches before compressing them, so honest bodies decode past
   5 MiB.
 - A body is exactly **one** zstd frame. Anything after the first frame (another frame, a skippable
-  frame) is a `400`, and no frame may declare a window over 8 MiB. **Both** of the decoder's memory costs are charged as real
-  reservations against the **in-flight byte budget** (`max_inflight_bytes`, see
-  [Configuration](#configuration)) — the same pool that bounds unprocessed request payloads. So a
-  mostly-idle server admits requests one already near its memory ceiling refuses, and concurrent
-  zstd requests genuinely compete for that pool rather than each reading the same "free" figure and
-  all proceeding at once:
-  - **The decoder's own buffers**, which zstd allocates *before* producing any output. Unlike
-    gzip/DEFLATE (fixed 32 KiB window by spec), a zstd frame's header declares its own window size,
-    so the amount needed is read straight off that header — each frame reserves exactly what it
-    needs, not a blanket worst case. A frame declaring a window larger than 8 MiB is refused with
-    `413` outright, before any reservation. Otherwise it is refused with `413` if that doesn't fit, before
-    anything is decoded; a frame whose header can't even be read is rejected without consulting the
-    budget at all. This reservation is released as soon as decompression finishes, since zstd frees
-    those buffers then.
-  - **The decompressed output buffer.** What is charged is the memory the buffer actually takes from
-    the allocator, always reserved *before* it grows — so the figure can never lag behind real usage.
-    A frame header normally declares its decompressed size, in which case that is charged once and
-    the buffer sized to it exactly (one allocation, nothing to copy as it fills, and such a frame is
-    refused up front if the declaration alone doesn't fit). A frame that omits the size — streaming
-    compression with no pledged size — grows in doubling blocks instead, each block charged before it
-    is allocated; that over-allocates relative to the data, but the over-allocation is charged rather
-    than hidden. Either way a highly-compressed "decompression bomb" is rejected the moment a
-    reservation is refused, before the full payload is ever materialized in memory. These bytes stay
-    charged for as long as the decompressed body is held (released once the handler is done with it),
-    the same way the compressed wire body's own reservation already works.
+  frame) is a `400`, and a frame declaring a window over 8 MiB is a `413`. Both of the decoder's
+  memory costs — its own buffers, sized from the window the frame header declares, and the
+  decompressed output — are reserved against the **in-flight byte budget** (`max_inflight_bytes`,
+  see [Configuration](#configuration)) *before* they are allocated, so concurrent zstd requests
+  compete for the same pool as unprocessed payloads. A request whose reservation does not fit at
+  that moment is refused with `413` before the payload is materialized in memory; the reservations
+  are released when decompression finishes (decoder buffers) and when the handler is done with the
+  body (output).
 - A missing `Content-Encoding` header is treated exactly like today: the body is passed through
   unchanged.
 - Any `Content-Encoding` value other than `zstd` — including `gzip`, which was intentionally dropped
@@ -384,7 +356,7 @@ Everything below the `401` rows keeps a numeric `code` equal to the HTTP status.
 | H line repeats `wazuh`, `wazuh.agent` or `wazuh.agent.id` (names compared after JSON unescaping)                                                                                        | `400` | `Invalid event batch`                       |
 | Payload's `wazuh.agent.id` (H line) missing/malformed/non-numeric, `wazuh` or `wazuh.agent` not an object, or not byte-for-byte equal to the authenticated `agent-id` (zero padding included)  | `400` | `Invalid event batch`                       |
 | Downstream rejected the batch (bad H/E)                                                                                                                                                 | `400` | `Invalid event batch`                       |
-| Out of capacity, or downstream unreachable/errored                                                                                                                                      | `503` | `Service unavailable`                       |
+| Out of capacity (byte budget, deferred-work slots, or this agent's own share), or downstream unreachable/errored                                                                        | `503` | `Service unavailable`                       |
 | Endpoint handler raised an unexpected error                                                                                                                                             | `500` | `Internal server error`                     |
 | `verification_mode full` and the client certificate does not carry the connecting peer's address                                                                                       | `403` | `Client certificate does not match the peer address` |
 
@@ -424,15 +396,19 @@ TLS checks still apply. See the memory settings below.
 Rate limiting is a **separate** mechanism and answers **`429 Too Many Requests`** with a
 `Retry-After`. It applies to the two routes no credential can gate, `POST /enroll` and
 `GET /cacerts`, and only to those: every other route is already bounded by what the presented agent
-key permits. The bucket belongs to the **endpoint**, so the configured rate is a ceiling for the
-whole fleet rather than an allowance per agent — one client asking fast enough can consume the
-route's budget. See
+key permits. The bucket belongs to the **endpoint** (`POST /enroll` has two of the same rate, one
+for requests that verified a password or enrollment token and one for the rest), so the configured
+rate is a ceiling for every caller of this node rather than an allowance per agent — one client
+asking fast enough can consume the route's budget. See
 [the `remote.https` rate options](configuration.md#rate-limits-of-the-unauthenticated-routes)
 for the defaults and for how to size them.
 
-The one `503` that *does* carry a `Retry-After` is relayed, not generated: on `/stateful`, a
-digits-only `Retry-After` of at most 6 digits from the inventory sync server is passed through, since there the
-downstream answer **is** the session result.
+`/stateful` is the one route whose `503` can carry a `Retry-After`, in two cases: a digits-only
+`Retry-After` of at most 6 digits that the inventory sync server sent is passed through, since there
+the downstream answer **is** the session result; and the `503` remoted answers when
+`remoted.downstream_stateful_response_timeout` elapses carries
+[`remoted.downstream_stateful_retry_after`](configuration.md#remoteddownstream_stateful_retry_after)
+(20 s by default, `0` omits it), because the sync server is still applying that session.
 
 **Statuses remoted never sends.** `426 Upgrade Required` is not part of this contract, and `429`
 is answered only on the two rate-limited routes above — capacity is shed with `503`, never `429`.
@@ -536,157 +512,38 @@ ships next to it in the book.
 
 ## Configuration
 
-Advanced RESTinio tuning knobs (threading, timeouts, message limits) resolve as **caller value →
-built-in default**. `remoted` populates the caller value by reading the `remoted.http_*` internal
-options (`/etc/wazuh-manager/wazuh-manager-internal-options.conf`) in `secure.c` and passing the result to
-`remoted_module` through its C-ABI struct; an option present in the file but out of range (or
-non-numeric) prevents `remoted` from starting, same as every other internal option. See
-[Internal Options](configuration.md#internal-options) for the full reference (allowed ranges,
-notes).
+Every setting of this listener is documented once, in the [Configuration Reference](configuration.md):
 
-| Setting                               | Default               | Internal option                         |
-| ------------------------------------- | --------------------- | --------------------------------------- |
-| I/O threads                           | `cpp_get_nproc()`     | `remoted.http_io_threads`               |
-| Handler worker threads                | `2 * cpp_get_nproc()` | `remoted.http_worker_threads`           |
-| Read / handshake timeout              | `10 s`                | `remoted.http_read_timeout`             |
-| Write timeout                         | `10 s`                | `remoted.http_write_timeout`            |
-| Request timeout                       | `30 s`                | `remoted.http_request_timeout`          |
-| Max URL size                          | `2048 B`              | `remoted.http_max_url_size`             |
-| Max header name size                  | `256 B`               | `remoted.http_max_header_name_size`     |
-| Max header value size                 | `8192 B`              | `remoted.http_max_header_value_size`    |
-| Max header count                      | `64`                  | `remoted.http_max_header_count`         |
-| Max pipelined requests per connection | `4`                   | `remoted.http_max_pipelined_requests`   |
-| Concurrent TCP accepts                | `cpp_get_nproc()`, floored at `2` | `remoted.http_concurrent_accepts` |
-| Socket read buffer size               | `8192 B`              | `remoted.http_buffer_size`              |
-| Streamed response chunk size (`POST /download`) | `64 KiB`    | `remoted.http_stream_chunk_size`        |
-| Accept `Content-Encoding: zstd`       | enabled               | `remoted.http_content_encoding_enabled` |
-
-I/O threads, handler worker threads, and concurrent TCP accepts are count settings: a `<=0` value
-(including "not set" in `wazuh-manager-internal-options.conf`) resolves via `cpp_get_nproc()`
-(`shared_modules/utils/proc.hpp`, cgroup-aware on Linux) instead of a fixed constant, so the pool
-sizes track the host/container's available CPUs. The handler worker pool is oversubscribed (`2x`)
-because that work can block (token verification, `client.keys` file I/O), unlike the purely
-async I/O threads. Concurrent TCP accepts is additionally floored at `2` regardless of core count,
-so a single-vCPU host or cgroup does not regress below the historical fixed default.
-
-Bind address, port, max body size, the certificate/private key paths, and the mTLS settings (CA,
-ciphers, client verification mode) are **not** internal options -- they are regular, user-facing
-`<remote><https>` settings (`wazuh-manager.conf`). All resolve as **`<https>` tag value → built-in
-default**; an absent `<https>` block, or an absent individual option within it, falls back to the
-built-in default below. See
-[Configuration Reference — HTTPS Configuration](configuration.md#https-configuration) for the full
-`<https>` tag reference and examples (including mutual TLS). Threading (`remoted.http_io_threads`,
-`remoted.http_worker_threads`) is not exposed in `<https>` and remains an internal option (see the table
-above).
-
-| Setting                                                                          | `<https>` tag       | Default                                                                                       |
-| -------------------------------------------------------------------------------- | ------------------- | --------------------------------------------------------------------------------------------- |
-| Bind address (IPv4 or IPv6, see [above](#bind-address-ipv4-ipv6-and-dual-stack)) | `bind_addr`         | `0.0.0.0`                                                                                     |
-| Dual-stack override (IPv6 `bind_addr` only)                                      | `dual_stack`        | `no` (force IPv6-only)                                                                        |
-| Port                                                                             | `port`              | `1517`                                                                                        |
-| Path prefix of every route                                                       | `global_prefix`     | `/wazuh-manager/`                                                                             |
-| Transport max body size                                                          | `max_body_size`     | `10 MiB`                                                                                      |
-| TLS certificate chain                                                            | `certificate`       | `/etc/wazuh-manager/certs/remoted.pem`                                                                       |
-| TLS private key                                                                  | `key`               | `/etc/wazuh-manager/certs/remoted-key.pem`                                                                   |
-| Client CA bundle                                                                 | `ca`                | unset (when `verification_mode` is `certificate`/`full` without it, `/etc/wazuh-manager/certs/root-ca.pem`)  |
-| CA served on `GET /cacerts`                                                      | `ca_certificate`    | `/etc/wazuh-manager/certs/root-ca.pem`                                                                       |
-| Client verification mode                                                         | `verification_mode` | `none` (auto-upgraded to `certificate` if `<ca>` is set in XML without `<verification_mode>`) |
-| TLS 1.3 ciphersuites                                                             | `ciphers`           | `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256`                  |
-| Rate limit of `POST /enroll` (requests/s)                                        | `enroll_rate_limit` | `100`                                                                                         |
-| Rate limit of `GET /cacerts` (requests/s)                                        | `cacerts_rate_limit`| `50`                                                                                          |
-
-> There is no `enabled` toggle: the listener always attempts to start and self-gates on the
-> presence of a valid certificate/key, same as before this configuration surface existed.
-
-The **memory-management / capacity** settings are internal options too, read by the same code in
-`secure.c`; they are listed apart because they bound in-memory resource usage rather than tune the
-transport:
-
-| Setting                                             | Default   | Internal option                    |
-| --------------------------------------------------- | --------- | ---------------------------------- |
-| Max in-flight payload bytes (→ `503`)               | `256 MiB` | `remoted.max_inflight_bytes`       |
-| Max simultaneous connections                        | `256`     | `remoted.max_parallel_connections` |
-| Max connections per address still in the TLS handshake (→ disconnected) | `32` | `remoted.max_handshakes_per_source` |
-| Max deferred requests awaiting downstream (→ `503`) | `128`     | `remoted.max_deferred_requests`    |
-| Max open requests per agent (→ `503`)               | `6`       | `remoted.max_requests_per_agent`   |
-| Max decoded bytes per agent (→ `503`/`413`)         | half the budget | `remoted.max_inflight_bytes_per_agent` |
+- the user-facing `<remote><https>` options — bind address, port, `global_prefix`, `max_body_size`,
+  the certificate, key and CA paths, `verification_mode`, `ciphers`, `dual_stack` and the two rate
+  limits — in [HTTPS Configuration](configuration.md#https-configuration). There is no `enabled`
+  toggle: the listener always starts, and remoted refuses to start without its certificate and key;
+- the `remoted.*` internal options (`/etc/wazuh-manager/wazuh-manager-internal-options.conf`) —
+  the transport's threads, timeouts and message limits (`remoted.http_*`), the capacity limits
+  (`remoted.max_inflight_bytes`, `remoted.max_parallel_connections`,
+  `remoted.max_handshakes_per_source`, `remoted.max_deferred_requests`,
+  `remoted.max_requests_per_agent`, `remoted.max_inflight_bytes_per_agent`), the downstream client
+  (`remoted.downstream_*`), the token window and body caps (`remoted.jwt_*`, `remoted.auth_*`), the
+  `/control` clients (`remoted.control_*`), the `/enroll` bridge (`remoted.enroll_password_refresh_interval`,
+  `remoted.authd_*`) and the `/scan/vd` client (`remoted.vd_scan_*`) — in
+  [HTTPS Agent Server](configuration.md#https-agent-server-remoted_module), each with its default
+  and range. A value out of range or not numeric stops `remoted` at start, and
+  `wazuh-manager-remoted -t` reports it without starting the daemon.
 
 The capacity limits are **layered**: the transport max body size caps a single request's peak
-(RESTinio rejects an oversized `Content-Length` early by closing the connection), the max connections
-caps how many bodies can be read at once (peak ≈ max connections × max body size), the in-flight byte
-budget caps the total accepted-but-unprocessed payload in memory, and the deferred-request limiter
-caps how many requests are parked awaiting a downstream service. Those four are shared by the whole
-fleet, so the per-agent share stops one agent from holding all of them: it counts the requests each
-authenticated agent has open and the decoded bytes they hold, refusing one more request before its
-body is decoded and a body that does not fit what is left of the agent's share. Exhausting any of them → a plain
-`503` (the agent retries; the two unauthenticated routes, `GET /` and `GET /cacerts`, are exempt
-from the byte budget).
+(the connection is closed on an oversized `Content-Length`), the max connections caps how many
+bodies can be read at once (peak ≈ max connections × max body size), the in-flight byte budget caps
+the total accepted-but-unprocessed payload in memory, and the deferred-request limiter caps how many
+requests are parked awaiting a downstream service. Those four are shared by every agent, so the
+per-agent share stops one agent from holding all of them: it counts the requests each authenticated
+agent has open and the decoded bytes they hold, refusing one more request before its body is
+decoded and a body that does not fit what is left of the agent's share. Exhausting any of them → a
+plain `503` (the agent retries; `GET /` and `GET /cacerts` are exempt from the byte budget).
 
-### Downstream client and auth middleware
-
-A fourth group of internal options tunes the deferred-forwarding downstream UDS client
-(`downstream/downstreamConfig.hpp`/`.cpp`) and the auth middleware's timestamp window / body cap
-(`auth/authTypes.hpp`/`.cpp`). Same resolution pattern as the RESTinio settings above: `secure.c`
-reads each `remoted.*` option and passes it through the C-ABI struct;
-`remoted::downstream::buildDownstreamConfig()`/`remoted::auth::buildAuthConfig()` apply the
-built-in default on `<=0` (except `jwt_clock_skew`, where `0` is a valid "no tolerance" value). The
-four timeouts are configured in **seconds** and converted to milliseconds internally.
-
-| Setting                            | Default           | Internal option                             |
-| ---------------------------------- | ----------------- | ------------------------------------------- |
-| Downstream connect timeout         | `2 s`             | `remoted.downstream_connect_timeout`        |
-| Downstream write timeout           | `5 s`             | `remoted.downstream_write_timeout`          |
-| Downstream response timeout        | `5 s`             | `remoted.downstream_response_timeout`       |
-| Downstream response timeout, `POST /stateful` | `20 s` | `remoted.downstream_stateful_response_timeout` |
-| Downstream client I/O threads      | `cpp_get_nproc()` | `remoted.downstream_io_threads`             |
-| Downstream post-processing threads | `cpp_get_nproc()` | `remoted.downstream_post_process_threads`   |
-| Max downstream response body       | `10 MiB`          | `remoted.downstream_max_response_body_size` |
-| JWT max accepted token age         | `60 s`            | `remoted.jwt_max_age`                       |
-| JWT clock skew                     | `30 s`            | `remoted.jwt_clock_skew`                    |
-| Auth max body size                 | `5 MiB`           | `remoted.auth_max_body_size`                |
-| Auth max decoded body size         | `32 MiB`          | `remoted.auth_max_decoded_body_size`        |
-
-The two thread-count fields above resolve a `<=0` value via `cpp_get_nproc()` the same way
-`http_io_threads`/`http_worker_threads` do (no `2x` oversubscription here -- both pools are either
-a purely async I/O reactor or documented as non-blocking work). The downstream client's events
-socket path (`eventsSocketPath`) and the auth middleware's `supportedProtocolVersion` are not
-internal options -- the former is an installation detail (mirrors the classic C forwarder's
-socket), the latter a protocol constant.
-
-### Enrollment bridge (`POST /enroll`)
-
-A fifth, small group of internal options tunes the `/enroll`-to-`authd` bridge
-(`AuthdClient`/`PasswordKeySource`/`TokenKeySource`, see
-[Enrollment endpoint](#enrollment-endpoint-post-enroll) below). Same resolution pattern: `secure.c`
-reads each option and passes it through the C-ABI struct.
-
-| Setting                                     | Default                                                | Internal option                          |
-| -------------------------------------------- | ------------------------------------------------------ | ----------------------------------------- |
-| `/etc/wazuh-manager/authd.pass` and `/etc/wazuh-manager/enrollment_tokens.json` hot-reload poll interval | `10 s`                                                  | `remoted.enroll_password_refresh_interval` |
-| `authd` local-socket connect timeout          | `2 s`                                                   | `remoted.authd_connect_timeout`            |
-| `authd` local-socket response timeout         | `5 s` on a master, `15 s` on a cluster worker           | `remoted.authd_response_timeout`           |
-| Bridge request queue high-water mark          | `256`                                                   | `remoted.authd_max_queue_size`             |
-| Concurrent bridge worker threads              | `8`                                                      | `remoted.authd_worker_threads`             |
-
-The response timeout's worker default is longer than the master's on purpose: on a worker, `authd`'s
-own forward to the master can retry internally for several seconds before answering, and a shorter
-client-side timeout here would cut off a legitimate, still-in-progress worker enrollment as a
-spurious `503`. All other enrollment behavior (whether it's enabled, whether a password/client
-certificate is required, which agent versions are accepted) is deliberately **not** a separate
-`remoted`-owned setting — it's read from `authd`'s own `<auth>` block so the two enrollment paths
-can never disagree; see [Enrollment endpoint](#enrollment-endpoint-post-enroll) below.
-
-**Why more than one worker.** `authd`'s local-socket accept loop hands each accepted connection to
-its own detached thread (`os_auth/src/local-server.c`'s `handle_local_client`), so several `add`
-requests -- including a worker's cluster-forwarded ones, which can legitimately take several
-seconds -- now genuinely run concurrently on `authd`'s side too, not just queue one-at-a-time behind
-a single dispatcher. A single-worker `remoted` would still only ever have ONE such request in
-flight at a time no matter how parallel `authd` itself can go, and would still pay the
-connection-setup round trip (connect + send + await reply + close) sitting on the critical path *in
-addition to* `authd`'s processing time, for every single request. With several workers, `authd` can
-actually work on more than one at once, and another connection is normally already waiting in its
-listen backlog (128 slots) by the time it finishes one and calls `accept()` again. Keep this well
-under 128 — there's no benefit to more workers than that backlog can hold.
+All other enrollment behavior (whether it is enabled, whether a password or a client certificate is
+required, which agent versions are accepted) is not a `remoted` setting: it is read from `authd`'s
+own `<auth>` section, so the two enrollment paths can never disagree; see
+[Enrollment endpoint](#enrollment-endpoint-post-enroll) below.
 
 ### client.keys hot-reload
 
@@ -752,7 +609,7 @@ Four more that are not about tuning:
 - A missing or unreadable `/etc/wazuh-manager/authd.pass`, at `remoted` startup or on a later poll, is normally a
   **WARNING** naming the file. The exception is a cluster worker within about a minute of starting:
   there, the file not having synced down from the master yet is expected, so it logs at **DEBUG1**
-  instead ("waiting for the enrollment password to be synchronized from the master node"). A worker
+  instead ("Waiting for the enrollment password to be synchronized from the master node …"). A worker
   still missing the file past that window, or a master hitting this path at all, still warns.
 - **`Could not derive the enrollment key from '/etc/wazuh-manager/authd.pass' (HKDF unavailable)`** (ERROR) means the
   OpenSSL KDF provider is broken: every Password-mode enrollment fails closed until it is fixed,
@@ -955,14 +812,12 @@ rather than omitting the field or sending an empty string. `config_token` is alw
 string, including in that unresolved case — the agent still needs something to name on `/download`,
 and the next notify re-triggers the attempt.
 
-**`ca_generation` (issue #39319, RF-3) is the one exception to "always present" above, and it is not
-interchangeable across its four states.** It carries the generation the CA bundle
+**`ca_generation` (issue #39319, RF-3) is present too, but it is the one field whose value may be
+`null`, and it is not interchangeable across its three states.** It carries the generation the CA bundle
 [`GET /cacerts`](#ca-certificate-endpoint-get-cacerts) would serve right now, at no extra cost to
 this hot path: a timestamp once a guard vouched for that bundle; `0` when there is a bundle to serve
-and no guard vouched for it (an unstamped file, or one a guard refused); `null` when there is no
-servable bundle at all (nothing configured, or the configured file yields no certificate); and the
-key itself **absent** on a manager whose build predates this feature — absent means *unknown*, not
-the same as the confirmed-empty `null`. `nlohmann::json` serialises object keys alphabetically, so on
+and no guard vouched for it (an unstamped file, or one a guard refused); and `null` when there is no
+servable bundle at all (nothing configured, or the configured file yields no certificate). `nlohmann::json` serialises object keys alphabetically, so on
 the wire `ca_generation` lands between `agent` and `settings_hash`, exactly as in the examples above.
 
 **Response with tasks (`200 OK`):**
@@ -1358,14 +1213,14 @@ master node's `authd` predates it.
 | Condition | HTTP | Notes |
 | --- | --- | --- |
 | Enrollment administratively disabled | `403` | Route always exists; see above. |
-| Missing or unsupported `protocol-version` | `400` | Validated first after the rate limit and the disabled check, in every mode -- before the credential check and before the body-size cap, matching every other authenticated route. |
+| Missing or unsupported `protocol-version` | `400` | Validated first after the disabled check, in every mode -- before the credential check and before the body-size cap, matching every other authenticated route. |
 | Missing/invalid credential | `401` | Same generic message for every class; `error.code` and the `WWW-Authenticate` challenge name the class: `invalid_request` (Password mode, no usable `Authorization`), `invalid_signature` (a bearer that does not verify with its key: wrong password, wrong token secret, a token of the agent profile, a malformed token), `stale_token` (outside the accepted time window), `token_unknown` / `token_expired` / `token_revoked` (the enrollment token's own state, decided from this manager's replica of the store), `enrollment_key_unavailable` (Password mode and the enrollment password is not available on this node — bare `Bearer` challenge, retry later). See Authentication above. |
 | Re-enrollment refused by `authd` on the master (9026 unknown agent or no re-enrollment credential on record / 9027 invalid credential / 9028 outside the accepted time window) | `401` | The bearer travels to `authd` unverified, so its verdict is an authentication failure: mapped onto the classes `unknown_agent` / `invalid_signature` / `stale_token` respectively, with the same generic message and challenge — `authd`'s code and text never reach the wire. |
 | `authd` refused the use of a **verified** enrollment token: 9022 not found or revoked, 9023 expired, 9024 uses exhausted | `403` | `{"error":{"code":9022,"message":"Enrollment token not found or revoked"}}`, `{"error":{"code":9023,"message":"Enrollment token expired"}}`, `{"error":{"code":9024,"message":"Enrollment token uses exhausted"}}`. `403` rather than `401` because the bearer did verify — re-signing fixes nothing; the operator has to mint a new token. 9022/9023 are reachable only when this manager's replica lagged behind `authd`'s store (a revocation or expiry landing between the two checks, a worker copy not yet synchronized); 9024 is decided by `authd` alone, which owns the use counter. |
 | Body exceeds `remoted.auth_max_body_size` (5 MiB default) | `413` | Checked once the protocol version is accepted, BEFORE the bearer is checked (and before a credential check, in Open mode too) -- an oversized body is rejected without ever reaching `parseAndValidateBody()`'s own smaller (16 KiB) schema check. |
-| `Content-Encoding` other than `zstd` | `415` | `{"error":{"code":0,"message":"Unsupported Content-Encoding"}}`. Checked after the credential, before the body is parsed. |
+| `Content-Encoding` other than `zstd` | `415` | `{"error":{"code":0,"message":"Unsupported Content-Encoding"}}`. Checked after the credential (and, for a request that verified no credential, after its rate limit), before the body is parsed. |
 | `Content-Encoding: zstd` but not a valid, complete frame | `400` | `{"error":{"code":0,"message":"Malformed compressed body"}}`. Same point as the `415`. |
-| Malformed body, missing `name`/`version`, invalid `ip` | `400` | Rejected before `authd` is ever contacted. |
+| Empty or over 16 KiB once decoded, malformed JSON, missing or invalid `name`/`version`, a non-string `groups`/`key_hash`, invalid `ip` | `400` | Rejected before `authd` is ever contacted. A zstd body that would decode past 16 KiB is a `413` instead. |
 | Agent version newer than allowed | `400` | See `version` in the request table above. The manager logs a throttled `WARNING` naming the agent, its address and both versions. |
 | `authd` bad function/args/name/ip/groups (9003–9006, 9014, 9017) | `400` | Passed through with `authd`'s own message. `9017` ("Invalid agent name") is unreachable from this endpoint in practice: `isValidName()` above is strictly tighter than the local socket's storage-safety floor, so any name `authd` would reject with `9017` was already refused locally with a `400`. It is mapped for completeness, not as a path clients should expect. |
 | `authd` duplicate ip/name/id (9007/9008/9012) | `409` | |
@@ -1723,10 +1578,27 @@ python3 send_stateless.py --agent-id 1001
 python3 send_stateless.py --agent-id 1001 --tamper
 
 # run every success/failure scenario and check the expected status codes, including
-# Content-Encoding: zstd (valid, malformed, and a body decompressing past the 5 MiB auth cap --
-# which is accepted, since that cap does not apply to decompressed bodies) and the unsupported gzip
+# Content-Encoding: zstd (valid, malformed, and a body decompressing to about 6 MiB -- accepted:
+# the 5 MiB wire cap does not apply to the decoded body, which is capped at 32 MiB instead) and the
+# unsupported gzip
 python3 send_stateless.py --all
 # options: --url (default https://127.0.0.1:1517), --body, --client-keys
+```
+
+`src/remoted/remoted_module/tools/send_control.py` does the same for `POST /control`:
+
+```bash
+# a startup, a notify (optionally with host metadata) and a shutdown -> 200
+python3 send_control.py --url https://127.0.0.1:1517 --type startup
+python3 send_control.py --url https://127.0.0.1:1517 --type notify --with-host
+python3 send_control.py --url https://127.0.0.1:1517 --type shutdown
+
+# corrupt the token's signature -> 401 (invalid_signature)
+python3 send_control.py --url https://127.0.0.1:1517 --type startup --tamper
+
+# run every success/failure scenario
+python3 send_control.py --url https://127.0.0.1:1517 --all
+# options: --url (default https://127.0.0.1:9443), --agent-id, --client-keys, --version
 ```
 
 `src/remoted/remoted_module/tools/send_scan_vd.py` does the same for `POST /scan/vd`, and can
@@ -1809,6 +1681,16 @@ python3 send_enroll.py --password Secret123 --all
 # options: --url (default https://127.0.0.1:1517), --version, --groups, --ip, --key-hash,
 #          --password-file /etc/wazuh-manager/authd.pass (requires an explicit path),
 #          --timeout (default 20 s)
+```
+
+`src/remoted/remoted_module/tools/auth_class_matrix.py` checks, on the manager itself and as root,
+that each of the eight `401` classes listed under [Error responses](#error-responses) comes back
+with its status, `error.code` and `WWW-Authenticate` challenge. Two of its cases change manager
+state and put it back: it mints enrollment tokens through `authd` (left in the store, revoked or
+expired) and moves `/etc/wazuh-manager/authd.pass` aside for one request.
+
+```bash
+sudo python3 auth_class_matrix.py --url https://127.0.0.1:1517 --global-prefix /wazuh-manager
 ```
 
 ## References

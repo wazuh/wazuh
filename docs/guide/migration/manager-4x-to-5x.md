@@ -19,7 +19,7 @@ indexer.
 | Enrollment password (`authd.pass`) | Kept on the manager only if 4.x agents still have to enroll. 5.0 agents enroll with a token; the 5.0 package upgrade deletes the endpoint's default copy, and an agent uses a password only from a file placed there by hand. | [Step 3](#enrollment-password) |
 | API users, roles and policies (`rbac.db`) | Kept, including passwords, which then replace the ones the 5.0 install generated. | [Step 3](#api-users-roles-and-policies) |
 | Manager configuration | Rewritten by hand into `wazuh-manager.conf`. | Step 4 |
-| TLS material | Not carried. 5.0 needs a CA and an agent-listener certificate issued from it, minted by the manager at install or given to it, and every agent ends up verifying the manager against that CA. | [Step 2](#certificates-and-credentials), [Step 7](#7-upgrade-the-agents-to-50) |
+| TLS material | Not carried automatically. 5.0 needs a CA and an agent-listener certificate issued from it, minted by the manager at install or given to it, and every agent ends up verifying the manager against that CA. | [Step 2](#certificates-and-credentials), [Step 7](#7-upgrade-the-agents-to-50) |
 | Alerts, inventory, vulnerability and SCA history in the indexer | Not read by 5.0. The 4.x indices stay in the indexer for consultation; inventory, FIM, SCA and vulnerability state is rebuilt by each agent once it runs 5.0. | Section [Historical data](#historical-data) |
 | Agent labels | Removed in 5.0 on both sides. Not migrated. | |
 | Custom rules, decoders and CDB lists | Not migrated. Decoders and CDB lists are rewritten as engine decoders and KVDBs; rules are rewritten as Sigma-based detection rules, which the indexer evaluates (the engine has no rules). | [Rules](rules-4x-to-5x.md), [decoders](xml-decoders-migration.md), [CDB lists](cdb-to-kvdb-migration.md) |
@@ -110,7 +110,22 @@ set are different, see [Back up and restore](../../ref/backup-restore.md).
 
 ## 2. Install the 5.0 manager
 
-Uninstall 4.x and install 5.0 following the installation documentation.
+Uninstall 4.x, then install 5.0 following [Installation](../../ref/getting-started/installation.md).
+The order is enforced. The DEB `preinst` and the RPM `%pre` refuse to install, fresh install or
+upgrade, while a 4.x manager is still on the host (an `/etc/ossec-init.conf` of type `server` or
+`local`, or a `/var/ossec` whose `bin/wazuh-control info -t` answers `server`), and `install.sh`
+refuses when the `wazuh-manager` installation it finds is older than 5.x. Nothing is changed:
+
+```console
+ERROR: Upgrade from Wazuh manager versions prior to 5.x is not supported.
+
+Detected installed version: 4.14.0
+
+A clean installation of Wazuh manager 5.x is required.
+Refer to the 5.x migration guide for more information.
+```
+
+A 4.x **agent** on the same host does not block the installation.
 
 ### Certificates and credentials
 
@@ -486,7 +501,7 @@ Validate before starting:
 If you installed with the listeners pointed away from the fleet, put them back now that the registry
 knows every agent:
 
-```xml
+```xml,fragment
 <remote>
   <https>
     <bind_addr>0.0.0.0</bind_addr>
@@ -522,7 +537,11 @@ curl -sk "https://localhost:55000/groups" -H "Authorization: Bearer $TOKEN"
 ```
 
 Every agent appears with its 4.x id, name, version, groups and registration date, as
-`disconnected` until it reconnects.
+`disconnected` until it reconnects. If you used the migration tool instead of the SQL in Step 3, two of
+those differ: `dateAdd` is the moment the tool inserted the agent (`POST /agents/insert` accepts no
+registration date), and version and OS stay empty until the agent's first keepalive. Its `check`
+command compares the manager against the bundle and names any agent missing, renamed, outside its
+groups, or present without having been in the bundle.
 
 ## 6. Reconnect the 4.x agents
 
@@ -601,10 +620,10 @@ An upgraded agent keeps its identity and never enrolls, which is the point of th
 it holds on disk still changes, and it is worth knowing before you upgrade a fleet:
 
 1. The manager delivers its CA (remote upgrades), the installer validates it and writes it to
-   `/etc/wazuh-manager/certs/root-ca.pem`.
+   the agent's `/var/ossec/etc/certs/root-ca.pem`.
 2. The package preserves `client.keys`, `ossec.conf` and `local_internal_options.conf`.
-3. The package **deletes `/etc/wazuh-manager/authd.pass`**, overwriting it first. The message is on the package
-   manager's own output:
+3. The package **deletes the agent's `/var/ossec/etc/authd.pass`**, overwriting it first. The message is on the
+   package manager's own output:
 
    ```console
    wazuh-agent: removed the fleet-wide enrollment password at /var/ossec/etc/authd.pass. 5.0 enrols

@@ -11,93 +11,104 @@
 
 ## Summary
 
-The `engine-suite` python package contains a set of tools that allow you to manage and interact with the Wazuh engine.
-These tools are designed to facilitate the management of assets, policies, integrations, and other elements of the
-Wazuh environment, providing a centralized and efficient way to perform these tasks.
+The `engine-suite` python package contains command-line tools that talk to the engine
+(`wazuh-manager-analysisd`) over its HTTP API socket, through the [api-communication](../api-communication/README.md)
+library. Every tool takes `--api-socket` (`engine-test` takes it on its `run`, `run-raw` and `session`
+subcommands), defaulting to `/var/wazuh-manager/queue/sockets/engine-api-http.sock`
+(`src/shared/default_settings.py`). They are development and testing tools: none is installed with the
+manager.
 
 # Directory structure
 
 ```plaintext
-├── engine-suite/
-│   └── src
-│       └── engine_event_dumper
-│       └── engine_private
-│       └── engine_public
-│       └── engine_router
-│       └── engine_test
-│       └── shared
+engine-suite/
+├── setup.cfg               # Package metadata and console_scripts entry points
+└── src/
+    ├── engine_event_dumper/
+    ├── engine_private/
+    ├── engine_public/
+    ├── engine_router/
+    ├── engine_test/
+    └── shared/             # Default settings, payload loaders and output dumpers
 ```
 
 ## Engine router
 
-- **Route management**:
-    - **List and Get Routes**: Provides the ability to list and get details of routes.
-    - **Creation of Routes**: Allows you to create new routes, specifying assets such as decoders, rules, integrations, etc.
-    - **Deletion and Update**: Provides the ability to delete or update existing routes, providing flexibility in configuration management.
-- **EPS management**:
-    - **Set EPS Limit**: Allows you to set the EPS limit for routes, ensuring that the system does not exceed the specified limit.
-    - **Get EPS Limit**: Provides the ability to get the EPS limit for routes.
-    - **Enable/Disable EPS Limit**: Allows you to enable or disable the EPS limit for routes.
+Route management on the engine's router (`_internal/router/*` endpoints):
 
-For more details, refer to src/engine_router/README.md.
+- `list`: Get the routes table.
+- `get <route>`: Get a route's details.
+- `add <route> <priority> <policy> [-d DESCRIPTION]`: Create a route.
+- `update <route> --priority PRIORITY`: Change a route's priority (the only field it can update).
+- `reload <route>`: Rebuild a route.
+- `delete <route>`: Delete a route.
+- `ingest <event>`: Present in the parser, but `api-communication` maps no endpoint to its request
+  (`QueuePost_Request`), so it always fails.
+
+For more details, refer to [src/engine_router/README.md](src/engine_router/README.md).
 
 ## Engine test
 
-- **Integrations Management**:
-    - **Creation of Integrations**: Facilitates the creation of new integrations, where it is necessary to specify the format. Formats may include `audit`, `syslog`, `multiline`, `remote syslog`, `json`, among others.
-    - **Deletion and Update**: Allows you to delete or update existing integrations, providing flexibility in configuration management.
-    - **Getting Integrations**: Provides the ability to list and get details of configured integrations.
+- **Integration configurations**: `add`, `get`, `list` and `delete` manage the local configuration file of
+  integrations under test (each integration names a collector type: `single-line`, `multi-line`,
+  `dynamic-multi-line` or `windows-eventchannel`); `create-config` writes a default configuration file.
+- **Test execution**: `run` and `run-raw` send events read from standard input to a testing session (or a
+  namespace) and print the output, optionally with the trace through the assets of the policy.
+- **Testing sessions**: `session list|get|add|delete|reload|delete-all` manage the engine's tester sessions.
 
-- **Test Execution**:
-    - This subcommand allows you to test decoders or rules by creating test sessions.
-    - Allows the introduction of specific events and following the trace of these events through the different assets (decoders, rules, etc.) that make up a particular policy.
-    - Facilitates the analysis of how an event is processed by the engine, helping in the debugging.
-
-For more details, refer to src/engine_test/README.md.
+For more details, refer to [src/engine_test/README.md](src/engine_test/README.md).
 
 ## Engine event dumper
 
-- **Event Dumper Management**: Activates, deactivates, and reports the status of the engine's internal event dumper, which persists raw events for forensic investigation.
+- **Event Dumper Management**: Activates, deactivates, and reports the status of the engine's internal event
+  dumper (`activate`, `deactivate`, `status`).
 
-For more details, refer to src/engine_event_dumper/README.md.
+For more details, refer to [src/engine_event_dumper/README.md](src/engine_event_dumper/README.md).
 
 ## Engine public
 
-- **Content Validation**: Validates a full policy (`cm policy-validate`) or a single resource (`cm validate`) against the engine, optionally loading a validated policy into a testing session.
-- **Logtest Cleanup**: Removes the active logtest testing session and its temporary namespace (`cm logtest-cleanup`).
-- **Engine Status**: Reports whether the engine has all required resources available to process events (`status get`).
+- **Content Validation**: Validates a full policy (`cm policy-validate`) or a single resource (`cm validate`)
+  against the engine, optionally loading a validated policy into a testing session.
+- **Logtest Cleanup**: Removes the logtest testing session and its temporary namespace (`logtest cleanup`).
+- **IOC**: Reports the IOC databases' state (`ioc state`) and schedules an IOC synchronization from an ndjson
+  file (`ioc update`).
+- **Engine Status**: Reports whether the engine has all required resources available to process events
+  (`status get`).
 
-For more details, refer to src/engine_public/README.md.
+For more details, refer to [src/engine_public/README.md](src/engine_public/README.md).
 
 ## Engine private
 
-- **Namespace Management**: Lists, creates, deletes, and imports namespaces.
-- **Content Manager CRUD**: Lists, gets, upserts, and deletes policies and resources (decoders, rules, filters, integrations, kvdbs) within a namespace.
-- **Geo**: Queries and lists the loaded GeoIP/ASN databases.
-- **Raw Event Indexer**: Reports the status of the raw event indexer.
+- **Namespace Management** (`ns`): `list`, `create`, `delete` and `import` namespaces.
+- **Content Manager CRUD** (`cm -n SPACE`): `list`, `get`, `upsert` and `delete` resources, and
+  `policy-upsert`/`policy-delete` the policy, within a namespace.
+- **Geo** (`geo`): `get` the GeoIP/ASN data of an IP, and `list` the loaded databases.
+- **Raw Event Indexer** (`rawevt`): `status` of the raw event indexer.
 
-These are internal-only operations, not intended for use outside development and testing.
+These are internal-only operations (`_internal/*` endpoints), not intended for use outside development and
+testing.
 
 # Installation
 
-Requires:
-- `python 3.8`
-- `pip3`
--`tools/engine-suite` package.
+Requires Python 3.8 or newer and `pip3`. The package depends on `api-communication`, which is not
+published: install it first. From `src/engine/`:
 
-To install navigate where the Wazuh repository folder is located and run:
-```
+```bash
+pip3 install tools/api-communication
 pip3 install tools/engine-suite
 ```
-If we want to install for developing and modifying the scripts, install in editable mode and the additional dev packages:
-```
+
+To install for developing and modifying the scripts, install in editable mode with the additional dev packages:
+
+```bash
 pip3 install -e tools/engine-suite[dev]
 ```
+
 **For developing we recommend to install it under a virtual environment.**
 
-Once installed the following scripts are available in the path:
+Once installed the following scripts are available in the path (`[options.entry_points]` in `setup.cfg`):
 - [engine-router](src/engine_router/README.md)
 - [engine-test](src/engine_test/README.md)
 - [engine-event-dumper](src/engine_event_dumper/README.md)
 - [engine-public](src/engine_public/README.md)
-- `engine-private` (internal/private administrative commands — content manager, geo, namespace, and raw-event handling; no README yet, see `src/engine_private/cmds/`)
+- `engine-private` (no README; see `src/engine_private/__main__.py` and `src/engine_private/cmds/`)

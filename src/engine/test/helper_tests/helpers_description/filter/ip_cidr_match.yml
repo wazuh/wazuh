@@ -40,13 +40,13 @@ target_field:
 test:
   - arguments:
       subnet: 192.168.0.0
-      mask: 192.168.0.11
+      mask: 255.255.0.0
     target_field: 192.168.1.5
     should_pass: true
     description: Match IP CIDR
   - arguments:
       subnet: 192.168.0.0
-      mask: 192.168.0.11
+      mask: 255.255.0.0
     target_field: 111.111.1.11
     should_pass: false
     description: Don't match IP CIDR

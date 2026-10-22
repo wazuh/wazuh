@@ -302,10 +302,10 @@ remoted owns no enrollment business logic. It validates the body — `name`, `ve
 — resolves the source IP, and sends an `add` over `queue/sockets/auth.sock`:
 
 ```json
-{"function":"add","arguments":{"name":"…","ip":"…","groups":"…","key_hash":"…","token_id":"…"}}
+{"function":"add","arguments":{"name":"…","ip":"…","groups":"…","key_hash":"…","token_id":"…","source":"…"}}
 ```
 
-`force`, `id` and a raw `key` are **never** sent by this route, even though the socket accepts all
+`source` is the agent's peer address, used only in authd's log line. `force`, `id` and a raw `key` are **never** sent by this route, even though the socket accepts all
 three. Fresh enrollment gets an auto-assigned id and a manager-generated key; re-enrollment instead
 sends `reenroll: {kid, bearer}` and keeps the id named there. A worker ignores a socket caller's
 `force` override and uses the master's policy.
@@ -376,7 +376,7 @@ refusal ends the decision:
 |---|---|---|
 | 1 | `force.enabled` | it is off |
 | 2 | agent info readable | wazuh-db cannot supply the existing agent's status, disconnection time and registration date |
-| 3 | `force.disconnected_time` | when enabled and the status is not `never_connected`: `disconnection_time` is zero, or the status is `disconnected` with a positive timestamp younger than the configured interval |
+| 3 | `force.disconnected_time` | when enabled and the status is not `never_connected`: the status is anything other than `disconnected` (an `active` agent is never replaced), `disconnection_time` is zero, or the disconnection is younger than the configured interval |
 | 4 | `force.after_registration_time` | the configured threshold is positive and the existing agent is younger than it |
 | 5 | `force.key_mismatch` | when enabled and `key_hash` is supplied: **the supplied hash matches** |
 | 6 | deletion backlog | too many deletions are already in flight; this replacement failure surfaces as `9007`/`9008` (`409`), while an explicit `remove` uses `9021` |
@@ -541,6 +541,16 @@ writer can delay that availability; see [the two stores](architecture.md#the-two
 Once the key is in place, ordinary authenticated agent routes use `wazuh-agent+jwt`. A later
 re-enrollment still uses `wazuh-enroll+jwt`, signed from the re-enrollment secret; probes and CA
 fetches remain unauthenticated.
+
+### Verifying the enrollment
+
+On the master, `/var/wazuh-manager/logs/wazuh-manager.log` records the enrollment as
+`Agent key generated for agent '<name>' (requested by <address>)` and, for a token,
+`Enrollment token '<id>' used by agent '<name>' (<uses>/<max_uses>).` (`<uses>/unlimited` without a
+limit). The token's spent uses appear in `--list-enrollment-tokens` and `GET /agents/enrollment-tokens`.
+The agent itself appears in the server API once the writer has inserted its row:
+`GET /agents?name=<name>` returns it with status `never_connected` until its first authenticated
+request reaches remoted.
 
 ## Where each thing lives when it is over
 

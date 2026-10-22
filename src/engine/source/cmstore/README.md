@@ -4,7 +4,14 @@
 
 `cmstore` is the **primary content repository** for the Wazuh Engine. It manages all the resources that define the event processing pipeline: **decoders**, **filters**, **outputs**, **integrations**, **KVDBs**, and **policies**. These resources are organized into **namespaces**, each backed by a filesystem directory with a bidirectional UUID↔name cache for O(1) lookups.
 
-CMStore is the single source of truth that the **builder** reads to compile the processing pipeline and that the **backend** ultimately executes. It also provides the CRUD layer used by the management API (`cmcrud`), the test API (`api/tester`), and the KVDB store (`kvdbstore`).
+CMStore is the engine's local copy of the content: the **builder** reads it to compile the processing pipeline that the **backend** executes. The source of truth is `wazuh-indexer`, whose spaces `cmsync` imports into namespaces through `cmcrud`. CMStore is also read and written by the CRUD service (`cmcrud`), the test API (`api/tester`) and the KVDB manager (`kvdbstore`).
+
+`main.cpp` constructs one `CMStore` from two settings (operator reference: the engine's [internal options, Paths](../../../../docs/ref/modules/engine/configuration.md#paths)):
+
+| Constructor argument | Setting | Env var | Default on a manager |
+|---|---|---|---|
+| `path` (namespaces) | `analysisd.cm_ruleset_path` | `WAZUH_CM_RULESET_PATH` | `/var/wazuh-manager/data/ruleset` |
+| `outputsPath` (default outputs) | `analysisd.output_path` | `WAZUH_OUTPUTS_PATH` | `/etc/wazuh-manager/outputs/` |
 
 ## Architecture
 
@@ -19,7 +26,7 @@ CMStore is the single source of truth that the **builder** reads to compile the 
               ▼                      ▼                      ▼
      ┌────────────────┐    ┌────────────────┐    ┌────────────────┐
      │  CMStoreNS     │    │  CMStoreNS     │    │  CMStoreNS     │
-     │  ns: "wazuh"   │    │  ns: "custom"  │    │  ns: "..."     │
+     │  ns: "<ns1>"   │    │  ns: "<ns2>"   │    │  ns: "..."     │
      │                │    │                │    │                │
      │  ┌──────────┐  │    │  ┌──────────┐  │    │                │
      │  │ CacheNS  │  │    │  │ CacheNS  │  │    │                │
@@ -37,10 +44,12 @@ CMStore is the single source of truth that the **builder** reads to compile the 
      └────────────────┘    └────────────────┘    └────────────────┘
 
                          Consumers:
-         ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐
-         │ builder  │  │ router   │  │ kvdbstore│  │  cmcrud  │
-         └──────────┘  └──────────┘  └──────────┘  └──────────┘
+   ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌────────────┐
+   │ builder  │  │ router   │  │ kvdbstore│  │  cmcrud  │  │ api/tester │
+   └──────────┘  └──────────┘  └──────────┘  └──────────┘  └────────────┘
 ```
+
+Namespaces created by `cmsync` are named `cmsync_<space>_<hex4>` (one per synchronized space); others come from the `/_internal/content/namespace/*` routes and the temporary namespace of `POST /content/validate/policy` (`api/cmcrud`).
 
 ### Concurrency Model
 
@@ -55,13 +64,13 @@ Read operations (get asset, resolve UUID) acquire a shared lock. Write operation
 
 ### Namespaces
 
-A namespace is an isolated content partition on disk. Each namespace has its own directory containing subdirectories for each resource type plus a policy file and a UUID cache. Forbidden namespace names: `output`, `system`, `default`.
+A namespace is an isolated content partition on disk. Each namespace has its own directory containing subdirectories for each resource type plus a policy file and a UUID cache. A `NamespaceId` must be non-empty and contain only alphanumerics and `_` (`types.hpp`). Forbidden namespace names: `output`, `system`, `default` — rejected by create, delete and rename, and skipped when loading from disk.
 
 ### Resource Types
 
 ```cpp
 enum class ResourceType : uint8_t {
-    DECODER, OUTPUT, FILTER, INTEGRATION, KVDB
+    UNDEFINED = 0, DECODER = 1, OUTPUT = 2, FILTER = 3, INTEGRATION = 4, KVDB = 5
 };
 ```
 
@@ -73,7 +82,7 @@ enum class ResourceType : uint8_t {
 
 ### UUID System
 
-Every resource has a UUID identifier. When a resource is created via YAML/JSON, CMStore either extracts the existing `/id` field or generates a new UUIDv4 and injects it. Identifiers coming from the content are opaque: any UUID version (v4, v5, ...) or any other string is accepted and never interpreted. The UUID is the canonical identifier used across the policy, integrations, and all cross-references.
+Every resource has a UUID identifier. When a resource is created (`createResource()`, JSON content), CMStore either extracts the existing `/id` field or generates a new UUIDv4 and injects it. Identifiers coming from the content are opaque: any UUID version (v4, v5, ...) or any other string is accepted and never interpreted. The UUID is the canonical identifier used across the policy, integrations, and all cross-references.
 
 The validity rule is `base::utils::generators::isValidResourceId()` (`base/utils/generator.hpp`), applied at every entry point (data types, `CMStoreNS::upsertUUID()`, the CRUD service and the `/_internal/content/get|delete` handlers):
 
@@ -89,12 +98,14 @@ Each namespace maintains an in-memory bidirectional cache:
 - `UUID → (Name, ResourceType)` for UUID-based lookups
 - `(Name, ResourceType) → UUID` for name-based lookups
 
-The cache is serialized to `cache_ns.json` on every mutation. On startup, the cache is loaded from disk; if corrupt, it is rebuilt by scanning the filesystem.
+The cache is serialized to `cache_ns.json` after every resource create, update or delete (policy writes do not touch it). When a namespace is loaded, the cache is read from disk; if that fails (missing or corrupt file), it is rebuilt by scanning the resource directories and flushed back.
 
 ### Policy
 
 A `Policy` defines the complete event processing pipeline within a namespace:
 
+- **title** — read from `/metadata/title`
+- **enabled** — required boolean
 - **root_decoder** — UUID of the entry-point decoder
 - **integrations** — Ordered list of integration UUIDs
 - **filters** — Pre/post-filter chain
@@ -105,13 +116,13 @@ A `Policy` defines the complete event processing pipeline within a namespace:
 
 ### Categories
 
-Integrations are assigned to one of 8 predefined categories:
+Integrations are assigned to one of 8 predefined categories (`categories.hpp`; `Integration` rejects any other):
 
 `access-management`, `applications`, `cloud-services`, `network-activity`, `other`, `security`, `system-activity`, `unclassified`
 
 ### Asset Adaptation
 
-The `detail.hpp` header provides `adaptDecoder()` and `adaptFilter()` functions that normalize YAML/JSON documents into a canonical key ordering before consumption by the builder. For decoders: `name → parents → definitions → check → parse|* → normalize → enabled → id`.
+The `detail.hpp` header provides `adaptDecoder()`, `adaptFilter()` and `adaptOutput()`, which rebuild a JSON asset document with its known keys in a canonical order (unknown keys are dropped), check that `name` is `<type>/<name>/<version>`, and require a boolean `enabled`. `cmcrud` applies them before storing an asset. For decoders: `name → parents → definitions → check → parse|* (at most one) → normalize → enabled → id`; for filters: `name → parents → definitions → type → check → enabled → id`; for outputs: `name → parents → definitions → outputs → enabled → id`. It also provides `findDuplicateOrInvalidUUID()` for reference lists.
 
 ## Directory Structure
 
@@ -122,7 +133,7 @@ cmstore/
 │   ├── icmstore.hpp                      # ICMStore, ICMstoreNS, ICMStoreNSReader
 │   ├── types.hpp                         # ResourceType enum, NamespaceId, data type imports
 │   ├── categories.hpp                    # AVAILABLE_CATEGORIES, exists()
-│   ├── detail.hpp                        # adaptDecoder(), adaptFilter(), UUID validation
+│   ├── detail.hpp                        # adaptDecoder/Filter/Output(), findDuplicateOrInvalidUUID()
 │   ├── datapolicy.hpp                    # dataType::Policy — pipeline definition
 │   ├── dataintegration.hpp               # dataType::Integration — integration manifest
 │   └── datakvdb.hpp                      # dataType::KVDB — key-value database definition
@@ -141,11 +152,12 @@ cmstore/
 │   └── src/
 │       ├── unit/
 │       │   ├── cachens_test.cpp          # CacheNS unit tests
-│       │   └── cmstore_test.cpp          # CMStore/CMStoreNS unit tests
+│       │   ├── cmstore_test.cpp          # CMStore/CMStoreNS unit tests
+│       │   └── detail_test.cpp           # detail.hpp adapters and UUID checks
 │       └── component/
 │           └── cmstore_test.cpp          # Full component tests with filesystem
 └── benchmark/src/
-    └── cmsync_bench.cpp                  # Sync benchmark
+    └── cmsync_bench.cpp                  # Placeholder (BM_Dummy only); no CMake target builds it
 ```
 
 ## Public Interface
@@ -210,9 +222,9 @@ Read-write interface extending `ICMStoreNSReader`:
 
 ```cpp
 class ICMstoreNS : public ICMStoreNSReader {
-    virtual std::string createResource(const std::string& name, ResourceType type, const std::string& ymlContent) = 0;
-    virtual void updateResourceByName(const std::string& name, ResourceType type, const std::string& ymlContent) = 0;
-    virtual void updateResourceByUUID(const std::string& uuid, const std::string& ymlContent) = 0;
+    virtual std::string createResource(const std::string& name, ResourceType type, const json::Json& content) = 0;
+    virtual void updateResourceByName(const std::string& name, ResourceType type, const json::Json& content) = 0;
+    virtual void updateResourceByUUID(const std::string& uuid, const json::Json& content) = 0;
     virtual void deleteResourceByName(const std::string& name, ResourceType type) = 0;
     virtual void deleteResourceByUUID(const std::string& uuid) = 0;
     virtual void upsertPolicy(const dataType::Policy& policy) = 0;
@@ -225,28 +237,30 @@ class ICMstoreNS : public ICMStoreNSReader {
 | Type | Namespace | Key Fields |
 |------|-----------|------------|
 | `Policy` | `cm::store::dataType` | title, enabled, root_decoder, integrations[], filters[], enrichments[], outputs[], origin_space, hash, index_unclassified_events, index_discarded_events, cleanup_decoder_variables |
-| `Integration` | `cm::store::dataType` | uuid, name, enabled, category, default_parent?, decoders[], kvdbs[] |
-| `KVDB` | `cm::store::dataType` | uuid, name, content (JSON object), enabled |
+| `Integration` | `cm::store::dataType` | id, name (`/metadata/title`), enabled, category, default_parent?, decoders[], kvdbs[] |
+| `KVDB` | `cm::store::dataType` | id, name (`/metadata/title`), content (JSON object), enabled |
 
 ## Implementation Details
 
 ### `CMStore` (cmstore.hpp / cmstore.cpp)
 
-- **Constructor**: Takes absolute `basePath` and `outputsPath`. Validates both paths exist and are writable (writes test files). Loads all existing namespaces from disk.
+- **Constructor**: Takes absolute `path` and `outputsPath`. Both must exist and be directories; `path` must be writable (it creates and removes a test file and a test directory). Loads all existing namespaces from disk.
 - **Namespace map**: `unordered_map<NamespaceId, shared_ptr<ICMstoreNS>>` protected by `shared_mutex`.
 - **`createNamespace()`**: Creates directory with 0750 permissions, initializes empty `cache_ns.json`, constructs `CMStoreNS`.
-- **`deleteNamespace()`**: Checks `use_count > 1` to abort if active references exist. Removes directory recursively.
-- **Forbidden namespaces**: `output`, `system`, `default` are rejected on create/delete.
+- **`deleteNamespace()`** / **`renameNamespace()`**: abort when `use_count > 1` (a reader or writer still holds the namespace). Delete removes the directory recursively; rename moves it and reloads the namespace under the new id.
+- **Lookups**: `getNS()` / `getNSReader()` throw `Namespace does not exist: <ns>` for an unknown id.
+- **Forbidden namespaces**: `output`, `system`, `default` are rejected on create, delete and rename.
 
 ### `CMStoreNS` (storens.hpp / storens.cpp)
 
 - **Constructor**: Takes `NamespaceId`, storage path, and outputs path. Loads or rebuilds the UUID cache on startup.
-- **Resource CRUD**: All operations follow: validate → acquire lock → update cache → write file → flush cache.
-- **UUID handling**: `upsertUUID()` parses content as JSON/YAML, extracts or generates UUID, re-injects it into content.
-- **Path mapping**: Resource names have `/` replaced with `_` for safe filenames. The type determines the subdirectory (`decoders/`, `filters/`, etc.).
-- **Assets are stored as `.json`**; policies as `policy.json`.
+- **Resource writes**: resolve the file path (validates the name) → take the exclusive lock → check the cache (name, UUID) → write the file → update the cache → flush `cache_ns.json`. `createResource()` refuses a name whose file already exists, because `/`→`_` folding can map two names to one file.
+- **Updates**: `updateResourceByName()` and `updateResourceByUUID()` require the content's `/id` to match the stored UUID.
+- **UUID handling**: `upsertUUID()` takes the JSON object, validates an existing `/id` or generates a UUIDv4 and writes it into the content.
+- **Path mapping**: Resource names of every type have `/` replaced with `_` for the file name, which must pass `fileutils::isValidFileName()` (no traversal, no control characters, at most 255 bytes). The type determines the subdirectory (`decoders/`, `filters/`, `outputs/`, `integrations/`, `kvdbs/`).
+- **Every resource is stored as `<name>.json`**; the policy as `policy.json`. When rebuilding the cache, asset file names get their first and last `_` turned back into `/`.
 - **File permissions**: Files get 0640, directories get 0750.
-- **Output resolution**: `getOutputsForSpace()` checks for a space-specific directory under the outputs path; falls back to `default/`.
+- **Output resolution**: `getOutputsForSpace(spaceKey)` reads every `.yml`/`.yaml` file of `<outputsPath>/<spaceKey>/` if that directory exists, else of `<outputsPath>/default/`. These YAML outputs are separate from the namespace's own `outputs/` resources.
 
 ### `CacheNS` (cachens.hpp / cachens.cpp)
 
@@ -260,22 +274,25 @@ class ICMstoreNS : public ICMStoreNSReader {
 | Target | Type | Alias | Description |
 |--------|------|-------|-------------|
 | `cmstore_icmstore` | INTERFACE | `cmstore::icmstore` | Public interfaces + data types |
-| `cmstore_cmstore` | STATIC | `cmstore::cmstore` | Concrete implementation (links yml, base) |
+| `cmstore_cmstore` | STATIC | `cmstore::cmstore` | Concrete implementation (public `base`, `cmstore::icmstore`; private `yml`) |
 | `cmstore_mocks` | INTERFACE | `cmstore::mocks` | GMock mocks for all interfaces |
-| `cmstore_utest` | Executable | — | Unit tests (cache, store) |
+| `cmstore_utest` | Executable | — | Unit tests (cache, store, detail) |
 | `cmstore_ctest` | Executable | — | Component tests (filesystem) |
+
+The mocks and test executables exist only when `ENGINE_BUILD_TEST` is on.
 
 ## Testing
 
-- **Unit tests** (`cachens_test.cpp`, `cmstore_test.cpp`): Test CacheNS bidirectional lookups, serialization, CMStore namespace operations.
-- **Component tests** (`cmstore_test.cpp`): Full integration tests with real filesystem operations, resource CRUD cycles.
+- **Unit tests** (`test/src/unit/`: `cachens_test.cpp`, `cmstore_test.cpp`, `detail_test.cpp`): CacheNS bidirectional lookups and serialization, CMStore namespace operations, the `detail.hpp` adapters.
+- **Component tests** (`test/src/component/cmstore_test.cpp`): Full integration tests with real filesystem operations, resource CRUD cycles.
 
 ## Consumers
 
 | Consumer | Dependency | Usage |
 |----------|------------|-------|
 | **builder** | `cmstore::icmstore` | Reads policy, integrations, decoders, KVDBs, and outputs to compile the processing pipeline |
-| **router** | `cmstore::icmstore` | Uses `ICMStoreNSReader` and types for environment building and routing configuration |
-| **kvdbstore** | `cmstore::icmstore` | Reads KVDB definitions from CMStore to populate the in-memory read-only KVDB layer |
-| **cmcrud** | `cmstore::icmstore` | CRUD service layer that exposes CMStore operations through the management API |
-| **api/tester** | `cmstore::icmstore` | Test API uses CMStore reader to validate and test pipeline configurations |
+| **router** | `cmstore::icmstore` | Uses only `NamespaceId` (`cmstore/types.hpp`) to identify the namespace of each route and test session |
+| **kvdbstore** | `cmstore::icmstore` | `IKVDBManager::getKVDBHandler()` reads KVDB definitions through an `ICMStoreNSReader` |
+| **cmcrud** | `cmstore::icmstore` (via `cmcrud::icmcrud`) | CRUD service used by the API handlers and `cmsync` |
+| **api/tester** | `cmstore::icmstore` | Tester handlers read namespaces through `ICMStore` |
+| **main.cpp** | `cmstore::cmstore` | Constructs the single `CMStore` and injects it into the builder, `CrudService` and the router and tester API handlers |

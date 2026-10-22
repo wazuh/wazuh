@@ -42,10 +42,9 @@ Adding a type is one descriptor plus either a route or a handler. It is not a ch
 executor, the scheduler, the store or the schema — `TASK_TYPE` is opaque to storage.
 
 **Isolation is a concurrency cap, not a dedicated thread.** A 300-second vulnerability scan must not
-sit in front of a bulk deletion, and a cap of one on `vd_scan` guarantees that exactly as a
-dedicated lane did. What changed is that types no longer share threads merely to save threads: only
-the two log rotations actually conflict — they rewrite the same files — so only they
-share a group, and the disconnection sweep can now run while a rotation is compressing.
+sit in front of a bulk deletion, and a cap of one on `vd_scan` guarantees that. Only the two log
+rotations actually conflict — they rewrite the same files — so only they share a group, and the
+disconnection sweep can run while a rotation is compressing.
 
 ---
 
@@ -96,12 +95,13 @@ A handler reports one of seven outcomes (`ok`, `retryable`, `timeout`, `terminal
 | incomplete | back to `pending`, eligible immediately | no |
 
 For the two routed types the outcome comes from the consumer's answer: `2xx` is ok; a refused
-connection is not ready; a timeout is timeout; `409` is busy; `5xx`, `408` and `429` are retryable;
-any other `4xx` is terminal — or retryable when the body carries `"retryable": true`, or for a type
-that does not allow terminal failure.
+connection (including a socket that does not exist) is not ready; a timeout is timeout; any other
+transport error is retryable; `409` is busy; `5xx`, `408` and `429` are retryable; any other `4xx`
+is terminal — or retryable when the body carries `"retryable": true`, or for a type that does not
+allow terminal failure; any other non-`2xx` status is retryable.
 
-A real attempt (retryable or timeout) resets the consecutive-deferral count; the retry delay doubles
-per attempt, the deferral delay per consecutive deferral.
+A real attempt (retryable or timeout) and an incomplete run both reset the consecutive-deferral
+count; the retry delay doubles per attempt, the deferral delay per consecutive deferral.
 
 **Two ladders, not one.** Retry backoff doubles from `manager_task_backoff_base` (30 s) to
 `manager_task_backoff_cap` (900 s) — at the defaults, eight attempts span about forty-five minutes.
@@ -125,11 +125,12 @@ There is no way to make that atomic across two processes, so the design absorbs 
 
 A claimed row records an `OWNER` naming the process instance and the worker inside it. Every
 `manager_task_sweep_interval` (60 s) the scheduler checks its own workers' claimed rows and returns
-to `pending` any whose owner is not actually running them. At startup it does the same over *every*
-claimed row, whoever owns it — those are the rows the previous process left behind — without charging
-them an attempt. It then retires every pending row whose type this build has no handler for as
+to `pending` any whose owner is not actually running them and that has been claimed for longer than
+`manager_task_claim_grace`. At startup it does the same over every claimed row whose owning process
+is no longer running — the rows the previous process left behind. Neither sweep charges the row an
+attempt. It then retires every pending row whose type this build has no handler for as
 `failed` (`last_error` `unknown task type`), logging `Retired <n> pending manager tasks of unknown type
-'<type>'.` at ERROR.
+'<type>'. This build has no handler for it, so they could never have run.` at ERROR.
 
 **A watchdog observes; it cannot fix.** There is no cancellation primitive available, so a handler
 that overruns is reported, not stopped. What handlers do get is a cooperative stop token, checked
@@ -195,15 +196,15 @@ live in the same database and nothing else prunes them. Four rules apply, in ord
 
 | Rule | Option | Default | Range |
 | --- | --- | --- | --- |
-| Terminal rows older than N days, measured from when they *reached* a terminal state | `wazuh_modules.manager_task_retention_days` | 7 | 1–3650 |
+| `completed`, `failed` and `superseded` rows older than N days, measured from when they *reached* that state | `wazuh_modules.manager_task_retention_days` | 7 | 1–3650 |
 | `dead_letter` rows older than N days | `wazuh_modules.manager_task_dead_letter_retention_days` | 30 | 1–3650 |
 | Keep at most N finished runs per schedule (dead letters are not counted or removed by this rule) | `wazuh_modules.manager_task_history_per_schedule` | 20 | 1–100000 |
 | Hard ceiling on the table, evicting terminal rows oldest first — `completed`, then `superseded`, then `failed`, `dead_letter` last | `wazuh_modules.manager_task_max_rows` | 100000 | 1–100000000 |
 
 Retention runs on the Task Manager's cleanup pass, every
-[`cleanup_interval`](configuration.md#cleanup_interval). If the ceiling cannot be met because the
-excess is pending, claimed or dead-lettered work, the pass logs `MANAGER_TASKS still holds <n> rows
-after retention, above the <max> ceiling.` at WARN.
+[`cleanup_interval`](configuration.md#cleanup_interval). The ceiling evicts dead letters too, last,
+so it can be missed only when the excess is pending or claimed work; the pass then logs
+`MANAGER_TASKS still holds <n> rows after retention, above the <max> ceiling.` at WARN.
 
 Dead letters outlive ordinary terminal rows because they are the only record of work that was
 abandoned. Retention is measured from `END_TIME`, not `CREATE_TIME` — a task created eight days ago
@@ -242,11 +243,11 @@ the orphaned documents this feature exists to prevent.
 
 | Option | Default | Range | Meaning |
 | --- | --- | --- | --- |
-| `wazuh_modules.manager_task_delete_timeout` | 600 s | 1–7200 | Deadline on one deletion call, and the type's watchdog budget. Must exceed the scan timeout; otherwise the module refuses to start (`manager_task_delete_timeout (<n>s) must exceed manager_task_vd_scan_timeout (<m>s): …`) |
+| `wazuh_modules.manager_task_delete_timeout` | 600 s | 1–7200 | Deadline on one deletion call, and the type's watchdog budget. Must exceed the scan timeout; otherwise the module refuses to start (`Task manager failed to start: manager_task_delete_timeout (<n>s) must exceed manager_task_vd_scan_timeout (<m>s): …`). This pair is checked at module start, not by `wazuh-manager-modulesd -t` |
 | `wazuh_modules.manager_task_vd_scan_timeout` | 300 s | 1–3600 | Deadline on one scan call, and the type's watchdog budget |
 | `wazuh_modules.manager_task_max_pending_deletes` | 20000 | 0–1000000 | Admission bound on pending deletions. `0` removes the bound |
 | `wazuh_modules.manager_task_max_pending_scans` | 64 | 0–1000000 | Admission bound on pending on-demand scans. `0` removes the bound |
-| `wazuh_modules.manager_task_create_timeout` | 2 s | 1–60 | Deadline on the vulnerability scanner's own call to create a row; read by the scanner, not by this module |
+| `wazuh_modules.manager_task_create_timeout` | 2 s | 1–60 | Deadline on the vulnerability scanner's own call to create a row; read by the scanner when it starts, not by this module, so an out-of-range value passes `wazuh-manager-modulesd -t` and stops modulesd at the scanner's start instead |
 
 The delete timeout must exceed the scan timeout because a scan holding an agent parks that agent's
 deletion behind it in the consumer's per-agent queue; with both deadlines equal, the deletion would

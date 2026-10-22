@@ -1,62 +1,81 @@
-# End-to-End Tests for Wazuh-Engine
+# End-to-End Tests for the Wazuh Engine
 
-This directory contains a comprehensive suite of end-to-end tests for the Wazuh-Engine project. These tests are designed to ensure the reliability and stability of the Wazuh-Engine across various components and operations.
+This directory contains the end-to-end test suites of the engine (`wazuh-manager-analysisd`, built as
+`src/build/engine/wazuh-engine`). They run the engine binary in standalone mode
+(`WAZUH_ENGINE_STANDALONE=true`) inside a sandbox directory and drive it through its API socket.
 
 ## Test Categories
 
-- **Acceptance Tests**: Located in the `acceptance/` directory. These tests focus on performance comparisons between Wazuh-Engine and wazuh-manager-analysisd.
-- **Integration Tests**: Located in the `integration/` directory. These tests cover the integration aspects of the Wazuh-Engine components.
-- **Helper Functions Tests**: Located in the `helpers/` directory. These tests validate the functionality of helper functions used within the assets.
+- **Integration Tests** (`integration_tests/`): behave features that exercise the engine API (router,
+  tester, content CRUD, namespaces, geo, status), run with the `engine-it` tool.
+- **Helper Functions Tests** (`helper_tests/`): tests generated from the helper function descriptions, run
+  with the `engine-helper-test` tool. The same descriptions generate the helper functions reference.
+- **Acceptance Tests** (`acceptance_test/`): a load test of a manager installation, run by hand.
 
+Both the integration and the helper tests run in
+[5_testintegration_engine.yml](../../../.github/workflows/5_testintegration_engine.yml) (jobs `api_tests` and
+`helper_tests`). The acceptance test is not run by CI.
 
 ## Environment Setup Script
 
-The `setupEnvironment.py` script is used to configure the environment necessary for running the tests, ensuring that Wazuh-Engine operates in a controlled, sandboxed environment.
+The `setupEnvironment.py` script prepares the sandbox directory the integration and helper tests run in:
+
+- copies the `engine-schema`, `wazuh-logpar-overrides` and `allowed-fields` schemas from `ruleset/schemas/`
+  into `<env>/store/schema/<name>/0`;
+- creates `<env>/queue/sockets`, `kvdb`, `logs`, `outputs` and `content`;
+- copies the IANA time zone database from `src/external/tzdata` into `<env>/tzdb/iana`;
+- copies the engine binary `src/build/engine/wazuh-engine` into `<env>/wazuh-engine`;
+- stores test indexer credentials in `<env>/queue/keystore` with `src/build/bin/wazuh-manager-keystore`
+  (run with `WAZUH_MANAGER_HOME=<env>`), because the engine's indexer connector refuses to start without them.
+
+It exits with an error when the time zone database (run `make -C src deps TARGET=manager` first), the engine
+binary or the keystore tool (build the manager tree first) is missing. It writes no `config.env`: the
+`init` subcommand of each test tool does.
 
 ### Prerequisites
 
-- **Python 3.8+**
-- **pip3**
-- **engine-suite**: This package includes several tools that facilitate the use of the Wazuh-Engine ecosystem, these tools are used by the tests and the user to interact with the api in a simple way.
-- **api-communication**: This package facilitates communication with the Wazuh API, crucial for some components that interact directly with the Wazuh API.
-- **engine-test-utils** This package includes utilities used by the tests.
+- **Python 3.8+** and **pip3**
+- **api-communication**: client library for the engine API socket.
+- **engine-suite**: engine command-line tools; the test tools import its shared settings.
+- **engine-test-utils**: utilities used by the tests (engine process handler).
+- **engine-it** and/or **engine-helper-test**: the test runners.
 
 ### Installation
 
-First, ensure that you have Python and pip installed on your system. Then, install the required Python packages by navigating to the root directory of the Wazuh repository and running the following commands:
+From `src/engine/` (the order matters: each package depends on the previous ones, which are not published):
 
 ```bash
 pip3 install tools/api-communication
-pip3 install test/engine-test-utils
 pip3 install tools/engine-suite
+pip3 install test/engine-test-utils
 pip3 install test/integration_tests/engine-it
-pip3 install test/helper_tests/engine_helper_test
+pip3 install test/helper_tests/engine-helper-test
 ```
 
 ### Usage
 
-To set up the test environment, use the following command syntax:
-
 ```bash
-./setupEnvironment.py [-h] [-e ENVIRONMENT]
+./test/setupEnvironment.py [-h] [-e ENVIRONMENT]
 ```
 
 **Optional Arguments:**
 
 - `-h, --help`: Show the help message and exit.
-- `-e ENVIRONMENT, --environment ENVIRONMENT`: Specify the directory for the test environment.
+- `-e ENVIRONMENT, --environment ENVIRONMENT`: Directory for the test environment. Default: `environment/`
+  at the root of the repository.
 
 **Example:**
 
 ```bash
-./setupEnvironment.py -e /tmp/engine
+./test/setupEnvironment.py -e /tmp/engine
 ```
 
-This command sets up the testing environment in the `/tmp/engine` directory.
+This command sets up the testing environment in the `/tmp/engine` directory. Run it on a fresh directory:
+the time zone copy fails when `<env>/tzdb/iana` already exists.
 
 ## Running Tests
 
-To run tests, follow the specific instructions provided in the README.md of each directory. Ensure the environment is set up using `setupEnvironment.py` before running any tests to avoid conflicts and ensure accurate results.
+Follow the instructions in the README of each suite:
 
 - [Integration test](./integration_tests/README.md)
 - [Helper test](./helper_tests/README.md)

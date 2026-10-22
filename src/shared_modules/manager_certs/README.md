@@ -109,7 +109,7 @@ src/shared_modules/manager_certs/
 | `remove <identity>` | bundle, leaf | bundle, `<bundle>.lock` | 0 published, 1 refused or the identity is not in the bundle, 2 environment |
 | `prune-expired` | bundle, leaf | bundle, `<bundle>.lock` (nothing at all when nothing expired) | 0 published **or** nothing to prune, 1 refused, 2 environment |
 | `stamp` | bundle, leaf | bundle, `<bundle>.lock` | 0 published, 1 refused, 2 environment |
-| `--from-master [--master <host>] [--port <port>]` | bundle (as its trust material), leaf, the master's `GET /cacerts` | bundle, `<bundle>.lock` | 0 installed, repaired (same generation, different certificates), **or** already at that generation, 1 refused (not vouched, behind, or a guard), 2 environment (not a worker, unreachable, TLS, not a complete 200, unreadable header, unparsable body) |
+| `--from-master [--master <host>] [--port <port>]` | bundle (as its trust material), leaf, the master's `GET /cacerts` | bundle, `<bundle>.lock` | 0 installed, repaired (same generation, different certificates), **or** already at that generation, 1 refused (not vouched, behind, or a guard), 2 environment (not a worker, no usable master address or port, unreachable, TLS, not a complete 200, unreadable header, unparsable body) |
 | `--version` / `-V` | nothing | — | 0 |
 | `--help` / `-h` | nothing | — | 0 |
 
@@ -120,10 +120,19 @@ paths (default `$WAZUH_MANAGER_HOME`, else the parent of the `bin/` directory ho
 binary — the same `resolveHome()` shape as `wazuh-manager-conf`). `--version`/`--help` short-circuit
 before either is ever consulted.
 
-`--from-master` is an option, not a command word, and takes no argument of its own; `--master
-<host>` and `--port <port>` only mean anything beside it (they override `/cluster/nodes[0]` and
-`/remote/https/port`, which is what the URL is otherwise built from, together with
-`/remote/https/global_prefix`).
+`--from-master` is an option, not a command word, and takes no argument of its own; combined
+with a command it is a usage error (exit 1). The URL is built from components as
+`https://<host>:<port><global_prefix>/cacerts`: `<host>` is `/cluster/nodes/0` (the first entry
+of `cluster.nodes`), `<port>` is `/remote/https/port` and the prefix is
+`/remote/https/global_prefix`, normalized so the default `/wazuh-manager/` gives
+`/wazuh-manager/cacerts` (`buildUrl()` in `src/commands/fromMaster.cpp`). `--master <host>` and
+`--port <port>` override the first two; either one without `--from-master`, or without its
+value, is a usage error (exit 1, `src/main.cpp`). The address is validated before anything
+connects, each refusal exit 2: an empty `cluster.nodes` with no `--master` (`no master address
+configured (/cluster/nodes is empty); pass --master <host>`), a host containing whitespace,
+a control character, `/`, `?`, `#`, `@` or `\`, or unbalanced brackets, and a port that is not
+a number in 1–65535. A bare IPv6 literal (`--master ::1`) is bracketed for the URL. A failed
+fetch names both overrides and the `scp` + `add` fallback in its message.
 
 ### `inspect` example
 
@@ -330,7 +339,7 @@ that arrived in the response.
 |---|---|
 | 0 | Success (including `--version`/`--help`, `check` on a bundle it vouches for, and `add` after publishing) |
 | 1 | The bundle or a certificate was rejected (cause on stderr), the identity `remove` was given is not in the bundle, or a CLI usage error (unknown option/command, missing argument) |
-| 2 | Environment: configuration file not found, configuration invalid, CA bundle/leaf/input not found or not readable (a symlink, not a regular file, or over the 1 MiB cap), a bundle or input that is not well formed, not running as root, a writing command on a cluster worker, or a write that failed (errno on stderr, destination untouched). For `--from-master` also: this node is not a worker, the local bundle is empty, the master is unreachable or its certificate is not verified by the local bundle, the answer is not a complete 200, the generation header is missing or unreadable, or the downloaded body does not parse |
+| 2 | Environment: configuration file not found, configuration invalid, CA bundle/leaf/input not found or not readable (not a regular file, or over the 1 MiB cap; the writing commands and `--from-master` also refuse a bundle that is a symlink, while `inspect`/`check` and the leaf and input reads follow one), a bundle or input that is not well formed, not running as root, a writing command on a cluster worker, or a write that failed (errno on stderr, destination untouched). For `--from-master` also: this node is not a worker, the local bundle is empty, the master is unreachable or its certificate is not verified by the local bundle, the answer is not a complete 200, the generation header is missing or unreadable, or the downloaded body does not parse |
 
 The rule behind the split, for every command: **what we could not read or parse is 2; what we read
 fine and may not accept is 1.**
@@ -347,8 +356,8 @@ fine and may not accept is 1.**
   automatic build dependency of `manager_certs_utest` itself (same precedent as
   `manager_config_utest`/`wazuh-manager-conf`): build both explicitly, e.g.
   `cmake --build $WAZUH_REPO/src/build -j --target manager_certs_utest wazuh-manager-certs`.
-- Installed `0750 root:wazuh-manager` by `InstallLocal()` (`src/init/inst-functions.sh`, right
-  after `wazuh-manager-conf`), listed in `packages/rpms/SPECS/wazuh-manager.spec` and pinned by
+- Installed `0750 root:wazuh-manager` by `InstallLocal()` (`src/init/inst-functions.sh`, on the
+  line before `wazuh-manager-conf`), listed in `packages/rpms/SPECS/wazuh-manager.spec` and pinned by
   its row in `.github/actions/check_files/manager_base.csv`. The deb
   `postinst` needs no change — it does not enumerate installed binaries individually, the same
   precedent `wazuh-manager-conf` already established.

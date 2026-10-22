@@ -38,7 +38,7 @@ wazuh::metrics;` and dropping its copy — additive API changes only.
 |---|---|---|
 | RF-1 | Counter / gauge / histogram / pull types behind `IMetric` interfaces, each registered through `IManager` with optional `description`/`unit` metadata. `SlidingWindowRate` is a standalone helper: not an `IMetric`, never in the registry or the dump | kept |
 | RF-2 | Thread-safe registry: `getOrCreate*` is idempotent (same name → same instance); re-registering a name under a **different type** throws | kept |
-| RF-3 | Histograms answer p50/p90/p99 snapshots with bounded relative error (~12.5%, 128 log-linear buckets); min/max are exact and the percentiles are clamped into `[min, max]`, so `min <= p50 <= p90 <= p99 <= max` always holds within a snapshot; percentiles are computed only on `snapshot()` | kept |
+| RF-3 | Histograms answer p50/p90/p99 snapshots with bounded relative error (~12.5%, 128 log-linear buckets: 32 octaves × 4 sub-buckets, so an observation of 2^32 or more lands in the last bucket and only the exact `max` still reports it); min/max are exact and the percentiles are clamped into `[min, max]`, so `min <= p50 <= p90 <= p99 <= max` always holds within a snapshot; percentiles are computed only on `snapshot()` | kept |
 | RF-4 | `dumpJson()` is deterministic: entries sorted by name, exact unsigned integers for counters/counts, `description`/`unit` omitted when not registered, envelope with daemon name + ISO-8601 UTC timestamp | kept |
 | RF-5 | Scalar entries carry the engine-compatible `{name, type, enabled, value}` shape so tooling treats both dumps alike | kept |
 
@@ -64,71 +64,16 @@ wazuh::metrics;` and dropping its copy — additive API changes only.
 
 ## Usage contract
 
-**Resolve once, mutate lock-free.** `getOrCreate*` costs a shared lock and a
-hash lookup; call it in constructors (cold path) and cache the returned
-`shared_ptr`. Every subsequent update is one relaxed atomic op:
-
-```cpp
-class Worker
-{
-    std::shared_ptr<wazuh::metrics::ICounter> m_processed;
-
-public:
-    explicit Worker(wazuh::metrics::IManager& metrics)
-        : m_processed(metrics.getOrCreateCounter("module.worker.processed",
-                                                 "Items processed", "count"))
-    {
-    }
-
-    void onItem()
-    {
-        m_processed->add(); // hot path: one relaxed fetch_add
-    }
-};
-```
-
-**No labels.** Dimensions are encoded in the metric name
-(`sync.requests.total.200`). For a closed set (HTTP codes, worker ids),
-pre-create one metric per member and select with a `switch` — never format a
-name per event.
-
-**Names live in a catalog header.** `constexpr` literals in a header beside the
-subsystem that owns the family (one `metricNames.hpp` for a single-family module
-such as `inventory_sync_server`, one header per family in `remoted_module`),
-never spelled at the call site.
-
-**Pull metrics capture lifetimes.** There is no `remove()`: a pull metric's
-getter must outlive the manager, so never register one over an object that is
-torn down earlier (a worker, a pipeline). Use a gauge the object updates
-instead — that is why shard depths in `inventory_sync_server` are gauges.
-
-**Durations are histograms of integers.** Pick a unit (microseconds, bytes),
-say it in the registration `unit`, and `observe()` raw integers. `snapshot()`
-computes percentiles only when asked (a dump), never per event.
-
-## Dump format
-
-```json
-{
-  "name": "inventory_sync_server",
-  "timestamp": "2026-08-06T12:00:00Z",
-  "metrics": [
-    {"name": "sync.bulk.flushes", "type": "counter", "enabled": true, "value": 41,
-     "description": "Successful pipeline group-commit flushes", "unit": "count"},
-    {"name": "sync.session.duration.bulk", "type": "histogram", "enabled": true, "value": 41,
-     "description": "Enqueue-to-response time of bulk sessions", "unit": "microseconds",
-     "summary": {"count": 41, "sum": 5150000, "min": 900, "max": 410000,
-                  "p50": 98304, "p90": 229376, "p99": 393216}}
-  ]
-}
-```
-
-Entries are sorted by name (deterministic output), counters and histogram
-counts are exact unsigned integers, `description`/`unit` appear only when
-registered, and a histogram's `value` is its observation count. `type` is one of
-`counter`, `gauge_int`, `pull`, `histogram`; a pull metric's `value` is a double.
-The envelope `name` is `DumpOptions::daemonName`, and an empty `timestampISO`
-means the current UTC time, formatted `%Y-%m-%dT%H:%M:%SZ`.
+How a consumer instruments itself — resolve once and mutate lock-free, no labels, names in a
+catalog header beside the owning subsystem, pull-metric lifetimes, durations as integer
+histograms, serving and documenting the dump — is published as the
+[integration guide](../../../docs/ref/modules/utils/metrics/integration-guide.md), and the dump
+format an operator reads as the
+[Metrics Library page](../../../docs/ref/modules/utils/metrics/README.md#querying-a-modules-metrics).
+They are the single copy; the requirements and decisions above say why. Two details of the dump
+that only a developer needs: the envelope `name` is `DumpOptions::daemonName`, and an empty
+`DumpOptions::timestampISO` means the current UTC time, formatted `%Y-%m-%dT%H:%M:%SZ`; a pull
+metric's `value` is a double, a gauge's is signed.
 
 ## Layout
 
