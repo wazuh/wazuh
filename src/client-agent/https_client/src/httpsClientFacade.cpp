@@ -27,7 +27,8 @@ namespace
     /// Pull-source for the /stateless H line's host block -- a separate C
     /// callback from on_collect_host (Notify's), so the two endpoints' host
     /// blocks can carry different fields and evolve independently without
-    /// either risking the other's already-shipped contract.
+    /// either risking the other's already-shipped contract. The /stats and
+    /// /config reporter stamps the same block on its documents.
     std::function<std::string()> makeStatelessHostCollector(const hc_callbacks_t& callbacks)
     {
         return makeMetadataCollector(
@@ -69,7 +70,7 @@ HttpsClientFacade::HttpsClientFacade(const hc_config_t& config, const hc_callbac
     , m_caPublication(m_config.caPublication)
     , m_taskStore(callbacks.check_and_record_task, callbacks.user_data)
     , m_vdOffsetStore(callbacks.vd_offset_observe, callbacks.vd_offset_clear_pending, callbacks.user_data)
-    , m_collectors(callbacks)
+    , m_collectors(callbacks, makeStatelessHostCollector(callbacks))
     , m_stateless(m_config,
                   m_performer,
                   m_signer,
