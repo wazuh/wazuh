@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <agentcache/agentMetadataCache.hpp>
+#include <base/logging.hpp>
 #include <fastmetrics/iMetric.hpp>
 #include <fastmetrics/metric_names.hpp>
 #include <fastmetrics/registry.hpp>
@@ -132,6 +133,10 @@ void expectNonIdentityError(Call&& call)
 class AgentMetadataCacheTest : public ::testing::Test
 {
 protected:
+    // Start the test logger before any test makes the cache log (a capacity bypass warns), so every
+    // test, in any order, writes through the same logger.
+    static void SetUpTestSuite() { logging::testInit(); }
+
     AgentMetadataCache cache {60s}; // 60s TTL for most tests
 };
 
@@ -1268,4 +1273,25 @@ TEST_F(AgentMetadataCacheTest, FitsBytesHandlesOverflowAndUnlimited)
     expectFit(AgentMetadataCache::fitsBytes(10, 5, 15), true, false);
     expectFit(AgentMetadataCache::fitsBytes(10, 6, 15), false, true);
     expectFit(AgentMetadataCache::fitsBytes(max - 1, 1, 0), true, false);
+}
+
+TEST_F(AgentMetadataCacheTest, CapacityBypassWarningIsThrottled)
+{
+    AgentMetadataCache bounded(60s, {1, 0});
+    EXPECT_EQ(bounded.getOrParse("001", sizedHeader("001", 16)).second, Op::Inserted);
+    testing::internal::CaptureStderr();
+    for (const auto id : {"002", "003", "004"})
+    {
+        EXPECT_EQ(bounded.getOrParse(id, sizedHeader(id, 16)).second, Op::BypassedCapacity);
+    }
+    const auto output = testing::internal::GetCapturedStderr();
+    const std::string warning = "Cache full: 1 agent header(s) parsed without being retained";
+    const auto first = output.find(warning);
+    EXPECT_NE(first, std::string::npos) << output;
+    EXPECT_EQ(output.find("Cache full", first + 1), std::string::npos) << output;
+    EXPECT_NE(output.find("(entries 1/1, accounted bytes"), std::string::npos) << output;
+    EXPECT_NE(output.find("/unlimited). "), std::string::npos) << output;
+    EXPECT_NE(output.find("'analysisd.agent_metadata_cache_max_entries'."), std::string::npos) << output;
+    EXPECT_EQ(output.find("agent_metadata_cache_max_bytes'"), std::string::npos) << output;
+    EXPECT_EQ(bounded.size(), 1u);
 }

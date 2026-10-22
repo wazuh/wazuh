@@ -22,6 +22,7 @@
 #include <agentcache/canonicalAgentId.hpp>
 #include <agentcache/identityError.hpp>
 #include <base/json.hpp>
+#include <base/logging.hpp>
 #include <fastmetrics/iMetric.hpp>
 #include <fastmetrics/metric_names.hpp>
 #include <fastmetrics/registry.hpp>
@@ -239,6 +240,7 @@ public:
                     {
                         m_bypassBytesCounter->add(1);
                     }
+                    reportBypass(!fitsEntries, byteFit.countAsBypass);
                     return {std::move(parsed), Operation::BypassedCapacity};
                 }
             }
@@ -269,6 +271,7 @@ public:
             {
                 m_bypassBytesCounter->add(1);
             }
+            reportBypass(!fitsEntries, byteFit.countAsBypass);
             if (agentExisted)
             {
                 m_byId.erase(it);
@@ -396,6 +399,61 @@ public:
     }
 
 private:
+    /// Shortest gap between two capacity warnings.
+    static constexpr std::chrono::seconds BYPASS_REPORT_INTERVAL {90};
+
+    /**
+     * @brief Counts one capacity bypass and, at most once per BYPASS_REPORT_INTERVAL, logs a warning with the
+     * number of headers parsed without being retained since the previous report.
+     *
+     * Called with m_mutex held (shared or exclusive), so the occupancy is read directly. The throttle uses the
+     * steady clock rather than the injectable one, and never throws: reporting must not turn a bypass, which
+     * only costs a parse, into a failed batch.
+     */
+    void reportBypass(bool entriesLimited, bool bytesLimited) noexcept
+    {
+        if (!entriesLimited && !bytesLimited)
+        {
+            return;
+        }
+        m_bypassesSinceReport.fetch_add(1, std::memory_order_relaxed);
+        const auto now = std::chrono::steady_clock::now().time_since_epoch().count();
+        constexpr auto interval =
+            std::chrono::duration_cast<std::chrono::steady_clock::duration>(BYPASS_REPORT_INTERVAL).count();
+        auto next = m_nextBypassReport.load(std::memory_order_relaxed);
+        while (now >= next)
+        {
+            if (m_nextBypassReport.compare_exchange_weak(next, now + interval, std::memory_order_relaxed))
+            {
+                try
+                {
+                    const auto limit = [](std::size_t value)
+                    {
+                        return value == 0 ? std::string {"unlimited"} : std::to_string(value);
+                    };
+                    const std::string settings = entriesLimited && bytesLimited
+                                                     ? "'analysisd.agent_metadata_cache_max_entries' and "
+                                                       "'analysisd.agent_metadata_cache_max_bytes'"
+                                                     : (entriesLimited ? "'analysisd.agent_metadata_cache_max_entries'"
+                                                                       : "'analysisd.agent_metadata_cache_max_bytes'");
+                    LOG_WARNING("[AgentMetadataCache] Cache full: {} agent header(s) parsed without being retained "
+                                "since the previous report (entries {}/{}, accounted bytes {}/{}). Each such "
+                                "batch parses and validates its header again. Consider raising {}.",
+                                m_bypassesSinceReport.exchange(0, std::memory_order_relaxed),
+                                m_byId.size(),
+                                limit(m_limits.maxEntries),
+                                m_accountedBytes,
+                                limit(m_limits.maxBytes),
+                                settings);
+                }
+                catch (...)
+                {
+                }
+                return;
+            }
+        }
+    }
+
     friend struct AgentMetadataCacheTestAccess;
     static inline const json::PointerPath AGENT_ID_PATH {"/wazuh/agent/id"}; ///< JSON pointer path to the agent ID.
     static constexpr std::size_t CACHE_INITIAL_CAPACITY = 1024; ///< Initial capacity for the cache's index.
@@ -460,6 +518,9 @@ private:
     std::shared_ptr<fastmetrics::ICounter> m_evictionsCounter;     ///< agent.cache.evictions (evictStale).
     std::shared_ptr<fastmetrics::ICounter> m_bypassEntriesCounter; ///< agent.cache.bypass.max_entries.
     std::shared_ptr<fastmetrics::ICounter> m_bypassBytesCounter;   ///< agent.cache.bypass.max_bytes.
+    std::atomic<std::size_t> m_bypassesSinceReport {0};            ///< Bypasses not yet reported in a warning.
+    std::atomic<std::chrono::steady_clock::rep> m_nextBypassReport {
+        std::numeric_limits<std::chrono::steady_clock::rep>::min()}; ///< Earliest time of the next warning.
 };
 
 /**
