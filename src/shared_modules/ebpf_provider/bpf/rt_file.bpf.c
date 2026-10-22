@@ -31,12 +31,42 @@
 #define HALF_BUF_SIZE        (PERCPU_BUF_SIZE >> 1)
 #define LIMIT_HALF(x)        ((x) & (HALF_BUF_SIZE - 1))
 
-#define statfunc static inline
+/* Every helper is force-inlined, and exactly ONE function in this object is
+ * allowed to be a BPF-to-BPF subprogram: rt_walk_dentry, marked subprogfunc.
+ *
+ * Plain `static inline` left the choice of what to outline to clang, and that
+ * choice is what broke RHEL 8 / CentOS Stream 8 (4.18). Two things go wrong
+ * there, and only the second is fatal:
+ *
+ *   - A subprogram argument that is a pointer to a non-BTF type (char*,
+ *     unsigned char**, __u64*) is refused by btf_prepare_func_args() with
+ *     "Unrecognized arg#0 type PTR". For a STATIC subprogram that is only a
+ *     log line: the verifier falls back to walking into the callee.
+ *   - That fallback is the killer. The callee here is a 320-iteration unrolled
+ *     dentry walk, ~13,800 instructions, reachable three times per program, so
+ *     walking into it at every call site blew the verifier's budget outright:
+ *     "BPF program is too large. Processed 1000001 insn (limit 1000000)".
+ *
+ * A GLOBAL (external-linkage) noinline function with all-scalar arguments is
+ * verified once, on its own -- the log says "Validating rt_walk_dentry()
+ * func#1..." -- and each call site then costs only an argument check. That is
+ * why rt_walk_dentry is not static and why every one of its parameters is an
+ * integer. See the WHICH-HELPERS note above it. */
+#define statfunc    static __always_inline
+#define subprogfunc __attribute__((noinline))
 
 struct buffer
 {
     __u8 data[PERCPU_BUF_SIZE];
 };
+
+/* Which scratch slot of heaps_map a path walk writes into. Two distinct
+ * 32 KiB per-CPU regions, exactly as the two separate maps they replace were:
+ * the triggering hook's own walk must survive until submit_event() has copied
+ * it into evt->filename, and the cwd walks run from inside submit_event(). */
+#define RT_SLOT_EVENT 0
+#define RT_SLOT_CWD   1
+#define RT_SLOT_COUNT 2
 
 struct
 {
@@ -49,7 +79,7 @@ struct
     __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
     __type(key, __u32);
     __type(value, struct buffer);
-    __uint(max_entries, 1);
+    __uint(max_entries, RT_SLOT_COUNT);
 } heaps_map SEC(".maps");
 
 struct
@@ -60,18 +90,17 @@ struct
     __uint(max_entries, 1);
 } dpath_map SEC(".maps");
 
-/* Separate scratch buffer for cwd resolution (called from within
- * submit_event(), after the triggering hook's own path-walk buffer has
- * already been consumed into evt->filename) — mirrors modern.bpf.c's
- * cwd_heap, kept distinct from heaps_map out of the same caution rather
- * than relying on read-before-reuse ordering being safe. */
-struct
-{
-    __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-    __type(key, __u32);
-    __type(value, struct buffer);
-    __uint(max_entries, 1);
-} cwd_heap SEC(".maps");
+/* cwd resolution used to have its own map (cwd_heap, mirroring modern.bpf.c)
+ * kept distinct from heaps_map out of caution rather than relying on
+ * read-before-reuse ordering being safe. That caution is preserved exactly --
+ * RT_SLOT_CWD is a different 32 KiB region from RT_SLOT_EVENT -- but as a slot
+ * of ONE map rather than a second map.
+ *
+ * One map, not two, because the slot is now chosen inside rt_walk_dentry() and
+ * a map pointer cannot be passed to it. Selecting between two maps there would
+ * produce PTR_TO_MAP_VALUE registers with different map_ptr, which 4.18's
+ * regsafe() compares, so the two branches would never prune against each other
+ * and the verifier would walk the whole unrolled loop twice. */
 
 /* Single-slot drop counter (#37396 backpressure design): incremented every
  * time bpf_ringbuf_reserve() fails, read-and-reset into the next
@@ -146,6 +175,21 @@ struct
 #define FILTER_CFG_KEY_MODE 0
 #define FILTER_CFG_KEY_SKIP 1
 
+/* Which v1 controller hierarchy to read a container's cgroup id from, stored
+ * as index+1 so that an unwritten slot — array maps start zeroed — means "not
+ * configured" and is distinguishable from subsystem 0, which is a real
+ * controller (cpuset).
+ *
+ * Unset is the normal case: on a unified or hybrid host
+ * bpf_get_current_cgroup_id() already reports a usable per-cgroup id, and this
+ * path is never taken. */
+#define FILTER_CFG_KEY_V1_SUBSYS 2
+
+/* An upper bound for the verifier, not a kernel limit. CGROUP_SUBSYS_COUNT is
+ * build-dependent (15 on the hosts measured); anything at or above this is
+ * refused rather than read. */
+#define RT_V1_SUBSYS_MAX 64
+
 /* Mirrors RT_SKIP_PROC_CONTEXT in rt_engine.h; the two must stay in step. */
 #define RT_SKIP_PROC_CONTEXT (1u << 0)
 
@@ -154,7 +198,7 @@ struct
     __uint(type, BPF_MAP_TYPE_ARRAY);
     __type(key, __u32);
     __type(value, __u32);
-    __uint(max_entries, 2);
+    __uint(max_entries, 3);
 } filter_cfg SEC(".maps");
 
 struct
@@ -166,6 +210,99 @@ struct
 } cgroup_allow_map SEC(".maps");
 
 extern int LINUX_KERNEL_VERSION __kconfig;
+
+/* The id of the cgroup this task's container is filed under.
+ *
+ * bpf_get_current_cgroup_id() reports the task's cgroup in the UNIFIED (v2)
+ * hierarchy. On a host that has no unified hierarchy it therefore reports
+ * nothing useful — which is why container attribution was refused there
+ * (#37396 ADR-002). That is a limit of the HELPER, not of the kernel: the v1
+ * controllers' cgroups are kernfs nodes with ids of exactly the same kind, and
+ * the id read here is the one `stat()` returns for that controller's directory
+ * — measured on a non-unified host, both 8387 for the same container
+ * (`20-mnt-ns-key-and-legacy-filter-mode.md` §20.4.4).
+ *
+ * WHY THIS IS ONLY EVER CONFIGURED ON A LEGACY HOST, and must never be turned
+ * on elsewhere: on a unified hierarchy a controller is only enabled where an
+ * ancestor enabled it through cgroup.subtree_control, so css_set.subsys[i]
+ * points at the nearest ANCESTOR where controller i is enabled — not
+ * necessarily the task's own cgroup. Reading it there would attribute a
+ * container's events to its parent slice, with a real and plausible number.
+ * Where v1 hierarchies are mounted the question cannot arise: a task is in
+ * exactly one cgroup per mounted hierarchy. */
+/* The inode number out of a kernfs node id.
+ *
+ * A kernfs id is `(u64)generation << 32 | ino`, while userspace keys containers
+ * on stat()'s st_ino -- the low half alone. Returning the raw id therefore
+ * missed on every single event on any host whose generation is non-zero.
+ *
+ * Masked UNCONDITIONALLY, because the packing is what varies and the layout is
+ * not a reliable signal for it. Measured on the three kernels this feature
+ * names:
+ *
+ *   RHEL 8.1 (4.18.0-147.57.1), Amazon Linux 2 (4.14.97)
+ *       kernfs_node.id is `union kernfs_node_id` -- the pre-5.5 layout.
+ *   CentOS Stream 8 (4.18.0-326.el8)
+ *       Red Hat backported 5.5's plain `u64 id` behind RH_KABI, so the union
+ *       still EXISTS in BTF (as rh_kabi_hidden_167) while the live field is a
+ *       u64. A `bpf_core_type_exists(union kernfs_node_id)` test reads TRUE
+ *       here and would have been answering the wrong question.
+ *
+ * And the generation is packed on that host regardless: name_to_handle_at() on
+ * /sys/fs/cgroup/memory/system.slice returns ino 35 with generation 1 in the
+ * high word, against st_ino 35. So the type says nothing about the packing,
+ * and the mask is right either way.
+ *
+ * Safe on every kernel because a kernfs ino comes from a 32-bit IDR and so
+ * never reaches the high word; when no generation is packed the high word is
+ * zero and the mask is a no-op. Arithmetic on the u64, not a reinterpretation
+ * of its bytes, so endianness does not enter into it. */
+statfunc __u64 kernfs_node_ino(__u64 raw)
+{
+    return raw & 0xFFFFFFFFULL;
+}
+
+statfunc __u64 current_container_cgroup_id(void)
+{
+    __u32 key = FILTER_CFG_KEY_V1_SUBSYS;
+    __u32* configured = bpf_map_lookup_elem(&filter_cfg, &key);
+
+    if (!configured || *configured == 0)
+    {
+        return bpf_get_current_cgroup_id();
+    }
+
+    const __u32 index = *configured - 1;
+    if (index >= RT_V1_SUBSYS_MAX)
+    {
+        return 0;
+    }
+
+    struct task_struct* task = (struct task_struct*)bpf_get_current_task();
+    struct css_set* cset = BPF_CORE_READ(task, cgroups);
+    if (!cset)
+    {
+        return 0;
+    }
+
+    /* A VARIABLE index, so BPF_CORE_READ(cset, subsys[index]) cannot be used —
+     * it resolves a field offset at load time and needs a constant. CO-RE
+     * supplies the array's offset instead and the index is applied by hand;
+     * the bound above is what lets the verifier accept the read. */
+    struct cgroup_subsys_state* css = NULL;
+    const __u64 offset = (__u64)bpf_core_field_offset(struct css_set, subsys) + (__u64)index * sizeof(void*);
+    if (bpf_probe_read_kernel(&css, sizeof(css), (void*)cset + offset) != 0 || !css)
+    {
+        return 0;
+    }
+
+    struct cgroup* cgrp = BPF_CORE_READ(css, cgroup);
+    if (!cgrp)
+    {
+        return 0;
+    }
+    return kernfs_node_ino(BPF_CORE_READ(cgrp, kn, id));
+}
 
 /* Returns non-zero when this event should reach the ring buffer. Called before
  * bpf_ringbuf_reserve() so a filtered event costs one map lookup rather than a
@@ -206,8 +343,10 @@ statfunc void bump_drop_counter(void)
         __sync_fetch_and_add(counter, 1);
     }
 
-    /* Attribute the same drop to the cgroup that would have owned the event. */
-    __u64 cgroup_id = bpf_get_current_cgroup_id();
+    /* Attribute the same drop to the cgroup that would have owned the event.
+     * The same reader as the submit path, so drop attribution and event
+     * attribution cannot disagree about which cgroup a task is in. */
+    __u64 cgroup_id = current_container_cgroup_id();
     __u32* per_cgroup = bpf_map_lookup_elem(&cgroup_drops_map, &cgroup_id);
     if (!per_cgroup)
     {
@@ -262,8 +401,21 @@ statfunc __u32 take_drop_counter(void)
 
 /* Manual dentry/vfsmount walker for the kprobe attach path (bpf_d_path is
  * not callable from kprobe context). Ported verbatim from modern.bpf.c's
- * get_path_str_from_path(). */
-statfunc long get_path_str_from_path(unsigned char** path_str, struct path* path, struct buffer* out_buf)
+ * get_path_str_from_path().
+ *
+ * THE ONE SUBPROGRAM. Global linkage and all-scalar arguments are both load-
+ * bearing on 4.18 -- see the statfunc/subprogfunc note at the top of this file.
+ * The addresses arrive as __u64 and are cast back here; nothing is lost by
+ * that, because every dereference below is a bpf_probe_read_kernel via
+ * BPF_CORE_READ, so the pointer is an opaque address to the verifier either
+ * way. CO-RE relocations are emitted at the access sites inside this function,
+ * where the types are fully declared, so they are unaffected.
+ *
+ * Returns the byte offset into heaps_map[slot].data[] at which the
+ * NUL-terminated absolute path begins, or negative on failure. Callers must
+ * mask it with LIMIT_HALF() before indexing: to the verifier this is a value
+ * returned from a subprogram, with no bounds of its own. */
+subprogfunc long rt_walk_dentry(__u64 dentry_addr, __u64 vfsmnt_addr, __u32 slot)
 {
     long ret;
     struct dentry *dentry, *dentry_parent, *dentry_mnt;
@@ -272,8 +424,13 @@ statfunc long get_path_str_from_path(unsigned char** path_str, struct path* path
     const unsigned char* name;
     size_t name_len;
 
-    dentry = BPF_CORE_READ(path, dentry);
-    vfsmnt = BPF_CORE_READ(path, mnt);
+    __u32 slot_key = slot;
+    struct buffer* out_buf = bpf_map_lookup_elem(&heaps_map, &slot_key);
+    if (!out_buf)
+        return -1;
+
+    dentry = (struct dentry*)dentry_addr;
+    vfsmnt = (struct vfsmount*)vfsmnt_addr;
     mnt = container_of(vfsmnt, struct mount, mnt);
     mnt_parent = BPF_CORE_READ(mnt, mnt_parent);
 
@@ -333,8 +490,37 @@ statfunc long get_path_str_from_path(unsigned char** path_str, struct path* path
         out_buf->data[buf_off] = '/';
     }
     out_buf->data[HALF_BUF_SIZE - 1] = 0;
-    *path_str = &out_buf->data[buf_off];
-    return HALF_BUF_SIZE - buf_off - 1;
+    /* The OFFSET, not the length. Every call site only ever tested this
+     * against zero, so the change is invisible to them; buf_off is kept in
+     * [0, HALF_BUF_SIZE-1] by the LIMIT_HALF discipline above, so the caller's
+     * mask is provably a no-op on any real value. */
+    return (long)buf_off;
+}
+
+/* Typed facade, so call sites keep compile-time type checking. Must be
+ * force-inlined: its parameters are pointers, which is the shape that may not
+ * cross a subprogram boundary. */
+statfunc long rt_walk_path_at(struct dentry* dentry, struct vfsmount* mnt, __u32 slot)
+{
+    return rt_walk_dentry((__u64)(unsigned long)dentry, (__u64)(unsigned long)mnt, slot);
+}
+
+/* Re-derives the string from the (slot, offset) pair rt_walk_dentry returned.
+ * Also force-inlined -- it RETURNS a pointer, which is the same illegal shape
+ * as taking one. The LIMIT_HALF mask is what gives the verifier a bound on a
+ * value it got back from a subprogram; without it the indexing is rejected as
+ * unbounded. */
+statfunc const char* rt_slot_str(__u32 slot, long off)
+{
+    if (off < 0)
+        return NULL;
+
+    __u32 slot_key = slot;
+    struct buffer* buf = bpf_map_lookup_elem(&heaps_map, &slot_key);
+    if (!buf)
+        return NULL;
+
+    return (const char*)&buf->data[LIMIT_HALF((__u64)off)];
 }
 
 statfunc void get_inode_dev(struct inode* inode_ptr, __u64* inode, __u64* dev)
@@ -364,16 +550,20 @@ statfunc int get_task_cwd(char* dest, int size, struct task_struct* task)
     if (!fs)
         return -1;
 
-    struct path pwd = BPF_CORE_READ(fs, pwd);
-    struct buffer* buf = bpf_map_lookup_elem(&cwd_heap, &(__u32) {0});
-    if (!buf)
+    /* Two field reads rather than one 16-byte struct copy onto the BPF stack.
+     * The `struct path pwd` local is gone, and with it every question about
+     * whether a pointer to stack memory is an acceptable subprogram argument.
+     * The pair can in principle tear across the two reads if the task calls
+     * chdir() between them; that race is immaterial beside the one the
+     * 320-step walk below already has. */
+    struct dentry* pwd_dentry = BPF_CORE_READ(fs, pwd.dentry);
+    struct vfsmount* pwd_mnt = BPF_CORE_READ(fs, pwd.mnt);
+
+    const char* cwd_path = rt_slot_str(RT_SLOT_CWD, rt_walk_path_at(pwd_dentry, pwd_mnt, RT_SLOT_CWD));
+    if (!cwd_path)
         return -1;
 
-    unsigned char* cwd_path = NULL;
-    if (get_path_str_from_path(&cwd_path, &pwd, buf) < 0)
-        return -1;
-
-    bpf_probe_read_kernel_str(dest, size, (const char*)cwd_path);
+    bpf_probe_read_kernel_str(dest, size, cwd_path);
     return 0;
 }
 
@@ -394,7 +584,7 @@ statfunc void submit_event(__u16 event_type, const char* filename, __u64 ino, __
 {
     /* Resolved once, up front: the filter needs it before deciding whether to
      * reserve, and the event needs it afterwards. */
-    __u64 cgroup_id = bpf_get_current_cgroup_id();
+    __u64 cgroup_id = current_container_cgroup_id();
 
     if (!event_is_wanted(cgroup_id))
     {
@@ -510,16 +700,18 @@ int kprobe__vfs_open(struct pt_regs* ctx)
     if (!d_inode || !is_regular_file(d_inode))
         return 0;
 
-    struct buffer* buf = bpf_map_lookup_elem(&heaps_map, &(__u32) {0});
-    if (!buf)
+    struct vfsmount* mnt = NULL;
+    bpf_probe_read_kernel(&mnt, sizeof(mnt), &path->mnt);
+    if (!mnt)
         return 0;
-    unsigned char* full_path = NULL;
-    if (get_path_str_from_path(&full_path, path, buf) < 0)
+
+    const char* full_path = rt_slot_str(RT_SLOT_EVENT, rt_walk_path_at(dentry, mnt, RT_SLOT_EVENT));
+    if (!full_path)
         return 0;
 
     __u64 inode = 0, dev = 0;
     get_inode_dev(d_inode, &inode, &dev);
-    submit_event(RT_EV_FILE_OPEN, (const char*)full_path, inode, dev);
+    submit_event(RT_EV_FILE_OPEN, full_path, inode, dev);
     return 0;
 }
 
@@ -585,17 +777,13 @@ int kprobe__security_inode_setattr(struct pt_regs* ctx)
     if (!mnt)
         return 0;
 
-    struct path path = {.dentry = dentry, .mnt = mnt};
-    struct buffer* buf = bpf_map_lookup_elem(&heaps_map, &(__u32) {0});
-    if (!buf)
-        return 0;
-    unsigned char* full_path = NULL;
-    if (get_path_str_from_path(&full_path, &path, buf) < 0)
+    const char* full_path = rt_slot_str(RT_SLOT_EVENT, rt_walk_path_at(dentry, mnt, RT_SLOT_EVENT));
+    if (!full_path)
         return 0;
 
     __u64 inode = 0, dev = 0;
     get_inode_dev(d_inode, &inode, &dev);
-    submit_event(RT_EV_FILE_ATTR, (const char*)full_path, inode, dev);
+    submit_event(RT_EV_FILE_ATTR, full_path, inode, dev);
     return 0;
 }
 
@@ -633,17 +821,13 @@ int kprobe__vfs_unlink(struct pt_regs* ctx)
     if (!mnt)
         return 0;
 
-    struct path path = {.dentry = dentry, .mnt = mnt};
-    struct buffer* buf = bpf_map_lookup_elem(&heaps_map, &(__u32) {0});
-    if (!buf)
-        return 0;
-    unsigned char* full_path = NULL;
-    if (get_path_str_from_path(&full_path, &path, buf) < 0)
+    const char* full_path = rt_slot_str(RT_SLOT_EVENT, rt_walk_path_at(dentry, mnt, RT_SLOT_EVENT));
+    if (!full_path)
         return 0;
 
     __u64 inode = 0, dev = 0;
     get_inode_dev(d_inode, &inode, &dev);
-    submit_event(RT_EV_FILE_UNLINK, (const char*)full_path, inode, dev);
+    submit_event(RT_EV_FILE_UNLINK, full_path, inode, dev);
     return 0;
 }
 
@@ -725,14 +909,10 @@ int kprobe__vfs_rename(struct pt_regs* ctx)
     if (!mnt)
         return 0;
 
-    struct buffer* buf = bpf_map_lookup_elem(&heaps_map, &(__u32) {0});
-    if (!buf)
-        return 0;
-    struct path new_path = {.dentry = new_dentry, .mnt = mnt};
-    unsigned char* full_path = NULL;
-    if (get_path_str_from_path(&full_path, &new_path, buf) >= 0)
+    const char* full_path = rt_slot_str(RT_SLOT_EVENT, rt_walk_path_at(new_dentry, mnt, RT_SLOT_EVENT));
+    if (full_path)
     {
-        submit_event(RT_EV_FILE_RENAME, (const char*)full_path, inode, dev);
+        submit_event(RT_EV_FILE_RENAME, full_path, inode, dev);
     }
     return 0;
 }

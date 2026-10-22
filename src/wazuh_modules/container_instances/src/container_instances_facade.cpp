@@ -3,11 +3,13 @@
 #include "../ci_impl/src/cache/metadata_store.hpp"
 #include "../ci_impl/src/cgroup/inode_reader.hpp"
 #include "../ci_impl/src/cgroup/proc_cgroup_resolver.hpp"
+#include "../ci_impl/src/core/cgroup_mode_report.hpp"
 #include "../ci_impl/src/core/module_config.hpp"
 #include "../ci_impl/src/core/stop_controller.hpp"
 #include "../ci_impl/src/docker/docker_api_client.hpp"
 #include "../ci_impl/src/docker/docker_connector.hpp"
 #include "../ci_impl/src/ipc/ipc_server.hpp"
+#include "../ci_impl/src/ipc/lifecycle_notifier.hpp"
 #include "../ci_impl/src/ipc/query_service.hpp"
 #include "../ci_impl/src/kubernetes/kubernetes_api_client.hpp"
 #include "../ci_impl/src/kubernetes/kubernetes_connector.hpp"
@@ -29,6 +31,27 @@ namespace wazuh::container_instances
 
     namespace
     {
+
+        /* The module's first line, before any connector speaks.
+         *
+         * Until now this module never named the host's cgroup hierarchy, and
+         * on a v1 host that silence WAS the bug report: the connectors
+         * authenticate, return real containers, and every running one is then
+         * dropped for having no cgroup inode, because the resolver only
+         * parses v2 `0::` lines. The operator sees a healthy module, an
+         * inventory that never fills, and nothing anywhere naming the cause
+         * (#37203 O4).
+         *
+         * The probe is the one in shared_modules/common, the same code the
+         * eBPF engine reads its answer from — so an operator comparing the
+         * two logs is comparing two readings, not two implementations. The
+         * wording lives in cgroup_mode_report.hpp, where it can be tested
+         * without a v1 host. */
+        void logCgroupHostMode(const Logger& logger)
+        {
+            const auto report = describeCgroupHostMode(wz_cgroup_mode());
+            logger(report.level, report.message);
+        }
 
         ModuleConfig parseConfig(const nlohmann::json& configuration)
         {
@@ -72,6 +95,8 @@ namespace wazuh::container_instances
             , m_store(m_logger)
             , m_transport(m_logger)
         {
+            logCgroupHostMode(m_logger);
+
             std::vector<RefresherBinding> refreshers;
             std::string connectorNames;
 
@@ -113,6 +138,12 @@ namespace wazuh::container_instances
             m_queryService = std::make_unique<QueryService>(
                 m_store, std::move(refreshers), m_resolver, RetryPolicy {}, connectorNames, m_logger);
             m_ipcServer = std::make_unique<IpcServer>(*m_queryService, config.ipcSocketPath, m_logger);
+
+            // Wired before any connector thread starts, so the first reconcile
+            // already notifies rather than being the one change consumers have
+            // to wait a full poll interval to notice.
+            m_notifier = std::make_unique<LifecycleNotifier>(config.notifySocketPaths, m_logger);
+            m_store.setOnLifecycleChange([this](LifecycleCursor cursor) { m_notifier->notify(cursor); });
 
             if (m_ownershipPoller)
             {
@@ -176,6 +207,11 @@ namespace wazuh::container_instances
         std::vector<std::unique_ptr<IContainerConnector>> m_connectors;
         std::unique_ptr<QueryService> m_queryService;
         std::unique_ptr<IpcServer> m_ipcServer;
+
+        /// Outlives the store's callback by being destroyed after it: members
+        /// are torn down in reverse declaration order, and the connector threads
+        /// that can trigger a notification are joined before either.
+        std::unique_ptr<LifecycleNotifier> m_notifier;
         std::vector<std::thread> m_connectorThreads;
     };
 

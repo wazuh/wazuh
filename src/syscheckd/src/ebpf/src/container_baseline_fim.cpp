@@ -770,6 +770,13 @@ extern "C" void fim_container_events_start(void)
         config.bpf_object_path = resolved;
     }
 
+    // Likewise for libbpf itself: no agent binary carries an RPATH, so without
+    // an explicit path the engine binds whatever libbpf the host provides.
+    char resolved_libbpf[PATH_MAX] = {0};
+    if (fim_container_baseline_abspath(CB_RT_LIBBPF_PATH, resolved_libbpf, sizeof(resolved_libbpf)) == 0) {
+        config.libbpf_path = resolved_libbpf;
+    }
+
     try {
         if (!fim_container_events::ContainerEventDrain::instance().start(config, ReconcileBatch)) {
             // A WARNING, not a debug line, and only reachable once we know the

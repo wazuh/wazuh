@@ -21,7 +21,10 @@ namespace wazuh::container_instances
         [[nodiscard]] std::vector<ContainerSummary> listContainers() override;
         [[nodiscard]] ContainerDetail inspect(const std::string& containerId) override;
         [[nodiscard]] StreamOutcome
-        streamEvents(std::int64_t sinceSeconds, const DockerEventSink& sink, const StopController& stop) override;
+        streamEvents(std::int64_t sinceSeconds,
+                     const DockerEventSink& sink,
+                     const StopController& stop,
+                     const std::function<void()>& onIdle = {}) override;
 
     private:
         [[nodiscard]] HttpRequestSpec specFor(const std::string& resource) const;

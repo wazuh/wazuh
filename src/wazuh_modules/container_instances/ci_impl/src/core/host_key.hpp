@@ -1,0 +1,106 @@
+#pragma once
+
+#include "cgroup_host_mode.h"
+#include "container_key_kind.h"
+
+#include <cstdint>
+#include <string>
+
+namespace wazuh::container_instances
+{
+
+    /// Separating two roles that happen to coincide on cgroup v2.
+    ///
+    /// One number has been playing both parts: the STORE INDEX KEY, which a
+    /// record is filed under so a consumer lookup finds it, and the EBPF
+    /// CORRELATION KEY, which the kernel stamps into every event. On a unified
+    /// hierarchy they are the same cgroup inode, and that identity is the
+    /// design's elegance. On a legacy hierarchy they cannot be the same,
+    /// because `bpf_get_current_cgroup_id()` collapses to one constant for
+    /// every task — so the kernel side carries no usable number at all, and the
+    /// correlation key has to come from somewhere else (#37396 ADR-002).
+    ///
+    /// Unifying the two hierarchies therefore means separating the two roles
+    /// and letting the host decide which concrete number fills each.
+    enum class KeyKind : std::uint8_t
+    {
+        cgroupInode, ///< Unified and hybrid: `ev->cgroup_id`, identical value.
+        mntNsInode   ///< Legacy: `ev->mnt_ns`, already carried by every event.
+    };
+
+    struct HostKey
+    {
+        KeyKind kind {KeyKind::cgroupInode};
+        std::uint64_t value {0};
+
+        [[nodiscard]] bool operator==(const HostKey& other) const
+        {
+            return kind == other.kind && value == other.value;
+        }
+    };
+
+    /// Which key this host uses — a HOST CONSTANT, decided once at startup from
+    /// the mount layout.
+    ///
+    /// Never per record and never inferred from an event. Two records in one
+    /// store keyed by different kinds are two numbers drawn from unrelated
+    /// spaces that happen to share a type, and every comparison between them is
+    /// silently meaningless — which is the exact ambiguity this split exists to
+    /// remove, reintroduced one layer down.
+    ///
+    /// Hybrid follows unified because `bpf_get_current_cgroup_id()` returns
+    /// unified-hierarchy ids there, which is also how the mode probe classifies
+    /// it.
+    ///
+    /// Legacy is NOT decided from the mode alone, and deciding it that way was
+    /// the defect: the mode says only that the helper is unusable, while what
+    /// matters is whether a v1 controller exists that the resolver and the eBPF
+    /// program can both read. Delegated to the shared C header so that question
+    /// is answered in exactly one place — this function used to duplicate the
+    /// ternary, which is how the producer came to key on the mount namespace
+    /// while the consumer read cgroup ids from the memory controller.
+    /// `v1ControllerUsable` is the shared selector's verdict, taken as a
+    /// parameter so both legacy branches are reachable from a test on any build
+    /// host — asking the live host inside here would make the answer depend on
+    /// where the suite runs, and the legacy branch would simply never execute on
+    /// a developer machine.
+    [[nodiscard]] inline KeyKind keyKindFor(wz_cgroup_mode_t mode, bool v1ControllerUsable)
+    {
+        if (wz_cgroup_mode_has_usable_cgroup_id(mode))
+        {
+            return KeyKind::cgroupInode;
+        }
+        return v1ControllerUsable ? KeyKind::cgroupInode : KeyKind::mntNsInode;
+    }
+
+    /// Production entry point: asks the shared selector about this host.
+    [[nodiscard]] inline KeyKind keyKindFor(wz_cgroup_mode_t mode)
+    {
+        return keyKindFor(mode, wz_cgroup_v1_select_subsys(nullptr) >= 0);
+    }
+
+    /// The wire spelling. Stable across versions: it is published in the
+    /// `status` reply so a consumer DISCOVERS which key to send rather than
+    /// probing the host itself — two components independently classifying one
+    /// host is the defect the shared probe exists to prevent, and the protocol
+    /// must not reintroduce it.
+    [[nodiscard]] inline const char* keyKindName(KeyKind kind)
+    {
+        // Delegated, not spelled again: the consumer library reads the same
+        // strings from the same header, so neither side can drift.
+        return wz_container_key_kind_name(kind == KeyKind::mntNsInode ? WZ_CONTAINER_KEY_MNT_NS
+                                                                      : WZ_CONTAINER_KEY_CGROUP);
+    }
+
+    [[nodiscard]] inline bool keyKindFromName(const std::string& name, KeyKind& out)
+    {
+        wz_container_key_kind_t kind {};
+        if (wz_container_key_kind_from_name(name.c_str(), &kind) == 0)
+        {
+            return false;
+        }
+        out = (kind == WZ_CONTAINER_KEY_MNT_NS) ? KeyKind::mntNsInode : KeyKind::cgroupInode;
+        return true;
+    }
+
+} // namespace wazuh::container_instances

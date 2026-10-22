@@ -47,10 +47,10 @@ void DB::removeFile(const std::string& path, const std::string& containerId)
     auto deleteQuery
     {
         DeleteQuery::builder()
-            .table(FIMDB_FILE_TABLE_NAME)
-            .data({{"path", encodedPath}, {"container_id", containerId}})
-            .rowFilter("")
-            .build()
+        .table(FIMDB_FILE_TABLE_NAME)
+        .data({{"path", encodedPath}, {"container_id", containerId}})
+        .rowFilter("")
+        .build()
     };
 
     FIMDB::instance().removeItem(deleteQuery.query());

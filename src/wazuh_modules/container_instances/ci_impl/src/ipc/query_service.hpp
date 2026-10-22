@@ -44,6 +44,11 @@ namespace wazuh::container_instances
         [[nodiscard]] QueryResponse handle(const QueryRequest& request) override;
 
     private:
+        /// The op dispatch. Separate from handle() so that every response it
+        /// builds passes one place that stamps the protocol version and the
+        /// host's key kind onto it.
+        [[nodiscard]] QueryResponse dispatch(const QueryRequest& request);
+
         [[nodiscard]] QueryResponse resolve(const QueryRequest& request);
         [[nodiscard]] QueryResponse coldResolve(std::uint64_t cgroupInode);
 

@@ -38,7 +38,10 @@
  * without its headers. See rt_libbpf_shim.h for why the types are shadowed. */
 #include "rt_libbpf_shim.h"
 
+#include "cgroup_host_mode.h"
+
 #include <dlfcn.h>
+#include <errno.h>
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -50,6 +53,11 @@
  * must stay in step: the BPF side reads these keys. */
 #define FILTER_CFG_KEY_MODE 0
 #define FILTER_CFG_KEY_SKIP 1
+/* index+1, so an unwritten slot means "not configured" and stays
+ * distinguishable from subsystem 0, which is a real controller. Must match
+ * bpf/rt_file.bpf.c. */
+#define FILTER_CFG_KEY_V1_SUBSYS 2
+#define RT_V1_SUBSYS_MAX         64
 
 #define BPF_OBJ_PATH_FALLBACK "rt_file.bpf.o"
 #define LSM_LIST_FILE "/sys/kernel/security/lsm"
@@ -128,31 +136,15 @@ rt_log(const struct rt_log_target* target, int level, const char* fmt, ...)
     }
 }
 
-/* cgroup v1 vs v2, decided from the mount layout rather than from events.
+/* The hierarchy probe moved to shared_modules/common/cgroup_host_mode.h, so
+ * that container_instances asks the same question of the same code rather
+ * than carrying a second copy that can drift (#37203 O4). What used to be
+ * local to this file is now the policy the whole feature shares; the only
+ * thing kept here is the engine's own reading of the answer.
  *
- * On a v2 (unified) hierarchy the root cgroupfs exposes cgroup.controllers; on
- * a pure v1 host it does not, and bpf_get_current_cgroup_id() collapses to a
- * constant, making every event's cgroup_id useless as a correlation key
- * (spike #37396 ADR-002). A hybrid host mounts v2 at /sys/fs/cgroup/unified,
- * which is treated as v2-capable here: the ids that helper returns are the
- * unified hierarchy's, so they do correlate.
- *
- * Deliberately userspace-side: the version is a host constant, and detecting
- * it in the BPF program would need a config map written at load time — see the
- * RT_F_CGROUP_V1 note in rt_open(). */
-static int detect_cgroup_v1(void)
-{
-    struct stat st;
-    if (stat("/sys/fs/cgroup/cgroup.controllers", &st) == 0)
-    {
-        return 0;
-    }
-    if (stat("/sys/fs/cgroup/unified/cgroup.controllers", &st) == 0)
-    {
-        return 0;
-    }
-    return 1;
-}
+ * Still deliberately userspace-side: the hierarchy is a host constant, and
+ * detecting it in the BPF program would need a config map written at load
+ * time — see the RT_F_CGROUP_V1 note in rt_open(). */
 
 #define RT_RESOLVE_SYM(field, sym)                                                                                   \
     do                                                                                                               \
@@ -160,13 +152,17 @@ static int detect_cgroup_v1(void)
         *(void**)(&g_libbpf.field) = dlsym(mod, sym);                                                               \
         if (!g_libbpf.field)                                                                                         \
         {                                                                                                            \
-            rt_log(log, RT_LOG_ERROR, "libbpf missing symbol '%s'", sym);                                            \
+            rt_log(log,                                                                                              \
+                   RT_LOG_ERROR,                                                                                     \
+                   "libbpf at '%s' is missing symbol '%s'; it is too old for this engine",                           \
+                   bound,                                                                                            \
+                   sym);                                                                                             \
             dlclose(mod);                                                                                           \
             return 0;                                                                                               \
         }                                                                                                            \
     } while (0)
 
-static int ensure_libbpf_loaded(const struct rt_log_target* log)
+static int ensure_libbpf_loaded(const struct rt_log_target* log, const char* libbpf_path)
 {
     if (g_libbpf_resolved)
     {
@@ -174,16 +170,43 @@ static int ensure_libbpf_loaded(const struct rt_log_target* log)
     }
     g_libbpf_resolved = 1;
 
-    void* mod = dlopen(LIBBPF_SONAME_PRIMARY, RTLD_NOW);
+    /* The caller's own copy first. A bare soname binds whatever the host has,
+     * and a host libbpf old enough to lack one of the symbols below fails the
+     * open outright — see rt_filter.libbpf_path. */
+    const char* bound = NULL;
+    void* mod = NULL;
+    if (libbpf_path && libbpf_path[0])
+    {
+        mod = dlopen(libbpf_path, RTLD_NOW);
+        if (mod)
+        {
+            bound = libbpf_path;
+        }
+        else
+        {
+            rt_log(log,
+                   RT_LOG_WARN,
+                   "dlopen('%s') failed (%s); falling back to the system libbpf, which may be too old",
+                   libbpf_path,
+                   dlerror());
+        }
+    }
+    if (!mod)
+    {
+        mod = dlopen(LIBBPF_SONAME_PRIMARY, RTLD_NOW);
+        bound = LIBBPF_SONAME_PRIMARY;
+    }
     if (!mod)
     {
         mod = dlopen(LIBBPF_SONAME_FALLBACK, RTLD_NOW);
+        bound = LIBBPF_SONAME_FALLBACK;
     }
     if (!mod)
     {
         rt_log(log, RT_LOG_ERROR, "dlopen(libbpf) failed: %s", dlerror());
         return 0;
     }
+    rt_log(log, RT_LOG_INFO, "libbpf bound from '%s'", bound);
 
     RT_RESOLVE_SYM(open_file, "bpf_object__open_file");
     RT_RESOLVE_SYM(load, "bpf_object__load");
@@ -246,7 +269,8 @@ struct rt_engine_handle
     int filter_cfg_fd;
     int cgroup_allow_fd;
 
-    int cgroup_v1;
+    wz_cgroup_mode_t cgroup_mode;
+    int v1_subsys_configured;
 
     /* Rejected-record accounting; reported once per handle so a stale object
      * cannot flood the log. */
@@ -429,7 +453,7 @@ rt_handle_t rt_open(const struct rt_filter* filter)
         return NULL;
     }
 
-    if (!ensure_libbpf_loaded(&log))
+    if (!ensure_libbpf_loaded(&log, filter->libbpf_path))
     {
         rt_log(&log, RT_LOG_ERROR, "libbpf unavailable — falling back is the caller's responsibility");
         return NULL;
@@ -447,8 +471,8 @@ rt_handle_t rt_open(const struct rt_filter* filter)
     h->filter_cfg_fd = -1;
     h->cgroup_allow_fd = -1;
 
-    h->cgroup_v1 = detect_cgroup_v1();
-    if (h->cgroup_v1)
+    h->cgroup_mode = wz_cgroup_mode();
+    if (!wz_cgroup_mode_has_usable_cgroup_id(h->cgroup_mode))
     {
         /* Worth an explicit line: on such a host cgroup_id correlates nothing,
          * so a consumer that keys containers on it silently attributes every
@@ -460,9 +484,30 @@ rt_handle_t rt_open(const struct rt_filter* filter)
          * built or loaded in this development environment; until that lands,
          * rt_host_cgroup_v1() is the only reliable source and a consumer MUST
          * use it rather than testing ev->flags. */
-        rt_log(&h->log, RT_LOG_WARN,
-               "host uses cgroup v1: every event's cgroup_id is a constant, not a correlation key — "
-               "consumers must correlate on mnt_ns instead (see rt_host_cgroup_v1())");
+        /* The advice this used to give — "correlate on mnt_ns instead" — was
+         * written when the helper's limit looked like the kernel's. It is not:
+         * rt_set_cgroup_v1_subsys() points the program at a v1 controller's own
+         * cgroups, and from then on cgroup_id identifies a container and the
+         * allowlist filters normally. Measured on a pure v1 host: the helper
+         * returns 1 for every task, while the controller read returns 6403 and
+         * 6435 for two containers, matching stat() of their directories. */
+        rt_log(&h->log,
+               RT_LOG_WARN,
+               "host cgroup hierarchy is %s: bpf_get_current_cgroup_id() reports the unified "
+               "hierarchy, which this host does not have, so an event's cgroup_id identifies nothing "
+               "until a consumer calls rt_set_cgroup_v1_subsys()",
+               wz_cgroup_mode_name(h->cgroup_mode));
+    }
+    else
+    {
+        /* Say it on the healthy path too. "Which hierarchy did the agent
+         * think it was on?" is the first question asked of any attribution
+         * bug, and an answer that only appears when the answer is bad leaves
+         * the common case indistinguishable from the probe never running. */
+        rt_log(&h->log,
+               RT_LOG_INFO,
+               "host cgroup hierarchy is %s: cgroup_id is a usable correlation key",
+               wz_cgroup_mode_name(h->cgroup_mode));
     }
 
     const char* obj_path = (filter->bpf_obj_path && filter->bpf_obj_path[0]) ? filter->bpf_obj_path : BPF_OBJ_PATH_FALLBACK;
@@ -616,6 +661,80 @@ int rt_set_cgroup_mode(rt_handle_t handle, int mode)
         return -1;
     }
     return 0;
+}
+
+int rt_set_cgroup_v1_subsys(rt_handle_t handle, unsigned int subsys_index)
+{
+    struct rt_engine_handle* h = (struct rt_engine_handle*)handle;
+    if (!h || h->filter_cfg_fd < 0)
+    {
+        return -1;
+    }
+
+    /* Refused rather than trusted to the caller. On a unified or hybrid host
+     * css_set.subsys[i] can point at an ANCESTOR cgroup — the nearest one
+     * where controller i is enabled — so this read would attribute a
+     * container's events to its parent slice, with a number that looks
+     * entirely reasonable. The helper is correct there and must be used. */
+    if (!wz_cgroup_v1_subsys_read_allowed(h->cgroup_mode, (int)subsys_index))
+    {
+        rt_log(&h->log,
+               RT_LOG_ERROR,
+               "refusing to read cgroup ids from a v1 controller on a %s host: the helper is correct here "
+               "and the controller read can resolve to an ancestor cgroup",
+               wz_cgroup_mode_name(h->cgroup_mode));
+        return -1;
+    }
+
+    if (subsys_index >= RT_V1_SUBSYS_MAX)
+    {
+        rt_log(&h->log, RT_LOG_ERROR, "cgroup subsystem index %u out of range", subsys_index);
+        return -1;
+    }
+
+    const unsigned int key = FILTER_CFG_KEY_V1_SUBSYS;
+    const unsigned int value = subsys_index + 1u;
+
+    /* Probe the slot before writing it. 'filter_cfg' grew a third entry when
+     * the legacy controller read was added, and an array map rejects a key
+     * past its end -- so a loaded object that predates that change fails here
+     * and nowhere else. Without this the caller sees only a generic write
+     * failure and reports that the HOST has no usable controller, which sends
+     * whoever reads the log looking at cgroups instead of at a stale build
+     * artifact. */
+    unsigned int probe = 0;
+    if (g_libbpf.map_lookup_elem(h->filter_cfg_fd, &key, &probe) != 0)
+    {
+        rt_log(&h->log,
+               RT_LOG_ERROR,
+               "the loaded rt_file.bpf.o is too old: its 'filter_cfg' map has no slot %u, which is where "
+               "the v1 cgroup controller index goes. Rebuild rt_file.bpf.o.",
+               key);
+        return -1;
+    }
+
+    if (g_libbpf.map_update_elem(h->filter_cfg_fd, &key, &value, 0 /* BPF_ANY */) != 0)
+    {
+        rt_log(&h->log, RT_LOG_ERROR, "could not configure the v1 cgroup subsystem index: %s", strerror(errno));
+        return -1;
+    }
+
+    h->v1_subsys_configured = 1;
+    rt_log(&h->log,
+           RT_LOG_INFO,
+           "reading container cgroup ids from v1 controller subsystem %u; cgroup filtering is available",
+           subsys_index);
+    return 0;
+}
+
+int rt_cgroup_id_is_usable(rt_handle_t handle)
+{
+    const struct rt_engine_handle* h = (const struct rt_engine_handle*)handle;
+    if (!h)
+    {
+        return 0;
+    }
+    return wz_cgroup_mode_has_usable_cgroup_id(h->cgroup_mode) || h->v1_subsys_configured;
 }
 
 int rt_allow_cgroup(rt_handle_t handle, unsigned long long cgroup_id)
@@ -793,5 +912,6 @@ int rt_abi_minor(void)
 int rt_host_cgroup_v1(rt_handle_t handle)
 {
     const struct rt_engine_handle* h = (const struct rt_engine_handle*)handle;
-    return h ? h->cgroup_v1 : detect_cgroup_v1();
+    const wz_cgroup_mode_t mode = h ? h->cgroup_mode : wz_cgroup_mode();
+    return wz_cgroup_mode_has_usable_cgroup_id(mode) ? 0 : 1;
 }

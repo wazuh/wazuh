@@ -1,2 +1,9 @@
 # The objects themselves are committed when they exist (see README.md);
 # nothing else in these directories is.
+#
+# Two rules above would otherwise exclude them: `*.o` at the repository root,
+# and `rt_file.bpf.o` in this module's own .gitignore, which is there to keep
+# the standalone Makefile's build output untracked. Neither excludes a parent
+# DIRECTORY, so re-including the files here works.
+!rt_file.bpf.o
+!*/rt_file.bpf.o

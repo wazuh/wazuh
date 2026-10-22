@@ -16,6 +16,10 @@ string(APPEND CMAKE_CXX_FLAGS
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/include
   ${SRC_FOLDER}/shared/include
+  # The v1 controller priority order, so the baseline's own cgroup selector
+  # agrees with the resolver's and the eBPF engine's instead of being a third
+  # independent choice. Header-only C, no link dependency.
+  ${SRC_FOLDER}/shared_modules/common
   ${SRC_FOLDER}/shared_modules/container_instances_client/include
   ${SRC_FOLDER}/external/nlohmann
   ${SRC_FOLDER}/external/openssl/include

@@ -5,6 +5,7 @@
 #include <gtest/gtest.h>
 
 using wazuh::container_baseline::ExtractContainerIdFromCgroupPath;
+using wazuh::container_baseline::SelectCgroupPathFromProcCgroup;
 
 TEST(ExtractContainerIdFromCgroupPath, ContainerdSystemdDriver)
 {
@@ -43,6 +44,24 @@ TEST(ExtractContainerIdFromCgroupPath, OuterDockerWrapReadsLeafNotMiddleSegment)
         "kubepods.slice/cri-containerd-eeee111122223333444455556666777788889999aaaabbbb.scope";
     EXPECT_EQ(ExtractContainerIdFromCgroupPath(path),
               "eeee111122223333444455556666777788889999aaaabbbb");
+}
+
+TEST(ExtractContainerIdFromCgroupPath, InitSystemContainerIsFoundFromItsChildCgroup)
+{
+    // An image whose PID 1 is an init system puts every process in a CHILD
+    // cgroup, so no process ever names the container's own cgroup. Reading only
+    // the leaf found nothing and the container contributed no PIDs at all, so
+    // the baseline reported zero containers scanned while the connector was
+    // reporting one known. Must agree with container_instances'
+    // extractContainerId(), which scans the same way.
+    EXPECT_EQ(ExtractContainerIdFromCgroupPath(
+                  "/system.slice/docker-b1b6ccc5c74210b8218705474216b5066936036017bb89d9fdaf1a1959425c5d.scope/"
+                  "init.scope"),
+              "b1b6ccc5c74210b8218705474216b5066936036017bb89d9fdaf1a1959425c5d");
+
+    EXPECT_EQ(ExtractContainerIdFromCgroupPath(
+                  "/docker/0000111122223333444455556666777788889999aaaabbbbccccdddd/system.slice/containerd.service"),
+              "0000111122223333444455556666777788889999aaaabbbbccccdddd");
 }
 
 TEST(ExtractContainerIdFromCgroupPath, SystemSliceReturnsEmpty)
@@ -128,4 +147,98 @@ TEST(PidIndex, EveryIndexedContainerHasAscendingPids)
         // The index must agree with itself: a lookup returns the same list.
         EXPECT_EQ(index.pidsFor(container_id), pids);
     }
+}
+
+
+/* Which line of /proc/<pid>/cgroup the container id is read from.
+ *
+ * The regression these pin: a legacy host whose kernel emits a `0::/` line got
+ * "/" back, which names no container, so NO process mapped to any container and
+ * the baseline reported "0 container(s) scanned, 1 container(s) known". Whether
+ * such a host emits that line is kernel-dependent -- absent on CentOS Stream 8
+ * (4.18.0-326, measured) and on Ubuntu 22.04 forced to v1, present on a newer
+ * one -- so neither shape may be assumed. */
+
+TEST(SelectCgroupPathFromProcCgroup, AUnifiedLineThatNamesAPathWins)
+{
+    const std::string contents =
+        "0::/system.slice/docker-fedcba0987654321fedcba0987654321fedcba09.scope\n";
+    EXPECT_EQ(SelectCgroupPathFromProcCgroup(contents),
+              "/system.slice/docker-fedcba0987654321fedcba0987654321fedcba09.scope");
+}
+
+TEST(SelectCgroupPathFromProcCgroup, ALegacyHostEmittingAUselessUnifiedLineFallsBackToAController)
+{
+    // The defect. Both lines are present and only the numbered one identifies
+    // the container.
+    const std::string contents =
+        "0::/\n"
+        "11:memory:/docker/fedcba0987654321fedcba0987654321fedcba09\n"
+        "10:pids:/docker/fedcba0987654321fedcba0987654321fedcba09\n";
+    EXPECT_EQ(SelectCgroupPathFromProcCgroup(contents),
+              "/docker/fedcba0987654321fedcba0987654321fedcba09")
+        << "a unified path of \"/\" identifies nothing, so it must not win";
+}
+
+TEST(SelectCgroupPathFromProcCgroup, APureLegacyHostWithNoUnifiedLineAtAll)
+{
+    // The shape measured on CentOS Stream 8 (4.18.0-326): every line numbered.
+    const std::string contents =
+        "12:hugetlb:/\n"
+        "11:pids:/docker/fedcba0987654321fedcba0987654321fedcba09\n"
+        "10:memory:/docker/fedcba0987654321fedcba0987654321fedcba09\n"
+        "1:name=systemd:/docker/fedcba0987654321fedcba0987654321fedcba09\n";
+    EXPECT_EQ(SelectCgroupPathFromProcCgroup(contents),
+              "/docker/fedcba0987654321fedcba0987654321fedcba09");
+}
+
+TEST(SelectCgroupPathFromProcCgroup, TheControllerChosenFollowsTheSharedPriorityOrder)
+{
+    // memory outranks pids, and neither appears first. Keying on whichever line
+    // came first would make this host's choice differ from the hierarchy the
+    // resolver stats and the eBPF program reads.
+    const std::string contents =
+        "12:hugetlb:/hugetlb-path\n"
+        "11:pids:/pids-path\n"
+        "10:memory:/memory-path\n";
+    EXPECT_EQ(SelectCgroupPathFromProcCgroup(contents), "/memory-path");
+}
+
+TEST(SelectCgroupPathFromProcCgroup, TheChoiceDoesNotDependOnTheOrderTheLinesAppear)
+{
+    const std::string forward = "10:memory:/memory-path\n11:pids:/pids-path\n";
+    const std::string reversed = "11:pids:/pids-path\n10:memory:/memory-path\n";
+    EXPECT_EQ(SelectCgroupPathFromProcCgroup(forward), SelectCgroupPathFromProcCgroup(reversed));
+    EXPECT_EQ(SelectCgroupPathFromProcCgroup(reversed), "/memory-path");
+}
+
+TEST(SelectCgroupPathFromProcCgroup, AControllerIsMatchedAsAWholeElement)
+{
+    // "cpu" must not match inside "cpuacct", and a name= hierarchy is matched
+    // on its bare name.
+    const std::string contents = "2:cpu,cpuacct:/cpu-path\n1:name=systemd:/systemd-path\n";
+    EXPECT_EQ(SelectCgroupPathFromProcCgroup(contents), "/cpu-path")
+        << "cpuacct outranks name=systemd in the shared order";
+}
+
+TEST(SelectCgroupPathFromProcCgroup, AnUnrankedControllerIsStillBetterThanNothing)
+{
+    // Every v1 line carries the same container path, so a host mounting none of
+    // the preferred controllers is still resolvable.
+    const std::string contents = "12:hugetlb:/docker/abc\n9:freezer:/docker/abc\n";
+    EXPECT_EQ(SelectCgroupPathFromProcCgroup(contents), "/docker/abc");
+}
+
+TEST(SelectCgroupPathFromProcCgroup, AHostProcessOnALegacyHostYieldsARootPath)
+{
+    const std::string contents = "0::/\n11:memory:/\n";
+    const auto selected = SelectCgroupPathFromProcCgroup(contents);
+    EXPECT_EQ(ExtractContainerIdFromCgroupPath(selected), "")
+        << "a host process must not be attributed to a container";
+}
+
+TEST(SelectCgroupPathFromProcCgroup, EmptyOrGarbageYieldsNothingUsable)
+{
+    EXPECT_EQ(SelectCgroupPathFromProcCgroup(""), "");
+    EXPECT_EQ(ExtractContainerIdFromCgroupPath(SelectCgroupPathFromProcCgroup("nonsense\n")), "");
 }

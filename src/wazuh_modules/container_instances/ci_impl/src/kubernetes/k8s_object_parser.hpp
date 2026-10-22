@@ -30,6 +30,29 @@ namespace wazuh::container_instances::k8s
     namespace detail
     {
 
+        /// containerStatuses[].state -> ContainerState.
+        ///
+        /// The object carries exactly one of `running`, `waiting` or
+        /// `terminated`. `waiting` covers ImagePullBackOff and
+        /// CrashLoopBackOff, where the container exists in the pod but has no
+        /// process; `terminated` covers a completed Job. Both keep their rows,
+        /// which is why neither may be reported as running. An object with none
+        /// of the three is a shape we do not recognise and stays `unknown`.
+        [[nodiscard]] inline ContainerState parseContainerState(const nlohmann::json& containerStatus)
+        {
+            const auto state = containerStatus.value("state", nlohmann::json::object());
+
+            if (state.contains("running"))
+            {
+                return ContainerState::running;
+            }
+            if (state.contains("terminated") || state.contains("waiting"))
+            {
+                return ContainerState::stopped;
+            }
+            return ContainerState::unknown;
+        }
+
         [[nodiscard]] inline std::map<std::string, std::string> toStringMap(const nlohmann::json& object)
         {
             std::map<std::string, std::string> result;
@@ -153,6 +176,14 @@ namespace wazuh::container_instances::k8s
                 container.image = containerStatus.value("image", "");
                 container.imageDigest = extractImageDigest(containerStatus.value("imageID", ""));
                 container.restartCount = containerStatus.value("restartCount", 0);
+                container.state = detail::parseContainerState(containerStatus);
+                // Only the running state carries a start time. A terminated
+                // container has startedAt too, but under `terminated`, and it
+                // describes a run that has ended — reading it would make a
+                // finished container look freshly started.
+                container.startedAt = containerStatus.value("state", nlohmann::json::object())
+                                      .value("running", nlohmann::json::object())
+                                      .value("startedAt", "");
 
                 const auto specIt = specsByName.find(container.name);
                 if (specIt != specsByName.end())

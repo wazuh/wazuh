@@ -39,6 +39,13 @@
 | [#37532](https://github.com/wazuh/wazuh/issues/37532) | Made container file monitoring and container inventory opt-in and independently switchable. |
 | [#37396](https://github.com/wazuh/wazuh/issues/37396) | Stopped resolving process working directories for container file events, which never used them. |
 | [#37396](https://github.com/wazuh/wazuh/issues/37396) | Stopped delivering file events from outside any container to container file monitoring. |
+| [#37532](https://github.com/wazuh/wazuh/issues/37532) | Detected new containers as soon as the container runtime reports them instead of waiting for the next scheduled check. |
+| [#37532](https://github.com/wazuh/wazuh/issues/37532) | Refreshed container inventory when a container appears or is removed rather than only on its scan interval. |
+| [#37532](https://github.com/wazuh/wazuh/issues/37532) | Inventoried only the containers that changed between full scans instead of every container each time. |
+| [#37203](https://github.com/wazuh/wazuh/issues/37203) | Reported when a host's legacy cgroup layout leaves container security unable to identify containers, which previously failed silently. |
+| [#37203](https://github.com/wazuh/wazuh/issues/37203) | Added container inventory on hosts using the legacy cgroup layout, such as RHEL 8. |
+| [#37203](https://github.com/wazuh/wazuh/issues/37203) | Added container file monitoring on hosts using the legacy cgroup layout, such as RHEL 8. |
+| [#37203](https://github.com/wazuh/wazuh/issues/37203) | Reported file changes inside containers on installed agents, which previously reported the feature as unavailable on every platform. |
 
 #### Removed
 
@@ -52,6 +59,8 @@
 | Issue | Comment |
 |-------|---------|
 | [#37396](https://github.com/wazuh/wazuh/issues/37396) | Corrected the user and group reported by the container file monitoring engine, which were interchanged. |
+| [#37532](https://github.com/wazuh/wazuh/issues/37532) | Started monitoring containers that were created moments apart on an otherwise idle host, which were previously never detected. |
+| [#37532](https://github.com/wazuh/wazuh/issues/37532) | Kept the file and inventory data of a stopped container instead of discarding it as if the container had been deleted. |
 
 ## Prior versions
 
