@@ -9,7 +9,7 @@ import logging
 import sys
 from datetime import datetime
 from hashlib import md5
-from json import JSONDecodeError, dumps, loads
+from json import dumps, loads
 from os.path import abspath, dirname
 
 from azure.core.exceptions import AzureError, ClientAuthenticationError, HttpResponseError, ResourceExistsError, \
@@ -249,7 +249,7 @@ def get_blobs(
                     try:
                         content_list = loads(content)
                         records = content_list['records']
-                    except (JSONDecodeError, TypeError) as e:
+                    except (ValueError, TypeError, RecursionError) as e:
                         logging.error(
                             f'Storage: Error reading the contents of the blob: "{e}".'
                         )

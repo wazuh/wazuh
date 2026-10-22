@@ -840,7 +840,6 @@ def test_append_blob_json_file_is_read_whole(in_memory_db):
     assert container.downloads == [None, None]
 
 
-
 @pytest.mark.parametrize('blob_type', [BlobType.APPENDBLOB, BlobType.BLOCKBLOB])
 def test_containers_of_the_same_account_keep_their_own_bookmark(in_memory_db, blob_type):
     """Test the blobs of a container are not skipped because another container of the same storage account sent
@@ -895,3 +894,16 @@ def test_json_file_records_that_are_not_a_list_do_not_move_the_bookmark(in_memor
     run_storage(container, json_inline=False, json_file=True)
 
     assert container.downloads == [None, None]
+
+
+@pytest.mark.parametrize('contents', [
+    '{"records": ' + '[' * 5000 + ']' * 5000 + '}',
+    '{"records": [{"properties": {"id": "E1"}, "value": ' + '9' * 5000 + '}]}',
+], ids=['nested_too_deeply', 'integer_too_long'])
+def test_json_file_that_cannot_be_parsed_skips_the_blob(in_memory_db, contents):
+    """Test a JSON file that cannot be parsed is skipped without stopping the blobs that follow."""
+    container = FakeContainer()
+    container.write(HOURLY_BLOB, contents)
+    container.write(HOURLY_BLOB.replace('/h=08/', '/h=09/'), json.dumps({'records': [{'properties': {'id': 'E2'}}]}))
+
+    assert run_storage(container, json_inline=False, json_file=True) == ['E2']
