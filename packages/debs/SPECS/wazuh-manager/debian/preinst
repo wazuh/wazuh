@@ -15,14 +15,23 @@ prepare_tmp_dir() {
     mkdir -p "${WAZUH_TMP_DIR}"
 }
 
-backup_upgrade_preserve() {
+# Refuses, and takes the directory, while the manager is still running: postrm
+# failed-upgrade|abort-upgrade keeps this directory on purpose, so once an upgrade has failed every
+# later attempt finds it, and refusing after the stop would take the manager down and leave it
+# down, since the wazuh.restart marker is only honoured by a postinst that never runs after a
+# failed preinst. A plain mkdir, so the snapshot always copies into a directory this run made.
+reserve_upgrade_preserve() {
     if [ -e "${WAZUH_PRESERVE_DIR}" ]; then
         echo "ERROR: Existing manager upgrade preserve backup found at ${WAZUH_PRESERVE_DIR}." >&2
         echo "ERROR: Recover or move this directory before retrying the upgrade." >&2
         exit 1
     fi
-    mkdir -p "${WAZUH_PRESERVE_DIR}"
+    mkdir -p "${DIR}/packages_files"
+    mkdir -m 0700 "${WAZUH_PRESERVE_DIR}"
+}
 
+# Into the directory reserve_upgrade_preserve() made.
+backup_upgrade_preserve() {
     if [ -d "${CONF_DIR}" ]; then
         mkdir -p "${WAZUH_PRESERVE_DIR}/etc"
         cp -a "${CONF_DIR}/." "${WAZUH_PRESERVE_DIR}/etc/"
@@ -129,6 +138,26 @@ running() {
     return 1
 }
 
+# Undoes a run that failed between the reservation and the end of the snapshot (an EXIT trap, so
+# a command that fails under set -e is covered too): the directory this run reserved goes (its
+# content, if any, is a partial copy of files still in place), and the manager is started again,
+# through the same tool that found it running, when the stop had been reached. The marker goes
+# too: postinst configure will not run after this preinst fails.
+undo_failed_upgrade_preserve() {
+    # The handler inherits set -e; nothing here may end it before the restart is attempted.
+    set +e
+    rm -rf "${WAZUH_PRESERVE_DIR}" \
+        || echo "WARNING: could not remove ${WAZUH_PRESERVE_DIR}; remove it by hand before retrying the upgrade." >&2
+    if [ -f "${WAZUH_TMP_DIR}/wazuh.restart" ]; then
+        rm -f "${WAZUH_TMP_DIR}/wazuh.restart"
+        case "${RESTART_WITH:-}" in
+            systemctl) systemctl start wazuh-manager.service > /dev/null 2>&1 ;;
+            service) service wazuh-manager start > /dev/null 2>&1 ;;
+            *) ${DIR}/bin/wazuh-manager-control start > /dev/null 2>&1 ;;
+        esac || echo "WARNING: the manager could not be started again after the failed upgrade; start it by hand." >&2
+    fi
+}
+
 case "$1" in
     install|upgrade)
 
@@ -167,18 +196,27 @@ case "$1" in
                 exit 1
             fi
 
+            # Before anything is written or stopped. From here until the snapshot is complete, any
+            # failure undoes the reservation (and the stop, once reached).
+            reserve_upgrade_preserve
+            trap undo_failed_upgrade_preserve EXIT
+
             # environment configuration (original behavior, after hard-block checks)
             prepare_tmp_dir
             touch "${WAZUH_TMP_DIR}/rollback_prepared"
 
+            RESTART_WITH=""
             if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 && systemctl is-active --quiet wazuh-manager > /dev/null 2>&1; then
                 systemctl stop wazuh-manager.service > /dev/null 2>&1
                 touch ${WAZUH_TMP_DIR}/wazuh.restart
+                RESTART_WITH="systemctl"
             elif command -v service > /dev/null 2>&1 && running "$(service wazuh-manager status 2>/dev/null)"; then
                 service wazuh-manager stop > /dev/null 2>&1
                 touch ${WAZUH_TMP_DIR}/wazuh.restart
+                RESTART_WITH="service"
             elif running "$(${DIR}/bin/wazuh-manager-control status 2>/dev/null)"; then
                 touch ${WAZUH_TMP_DIR}/wazuh.restart
+                RESTART_WITH="control"
             fi
             if [ -x "${DIR}/bin/wazuh-manager-control" ]; then
                 ${DIR}/bin/wazuh-manager-control stop > /dev/null 2>&1
@@ -188,7 +226,19 @@ case "$1" in
                 kill -15 ${AUTHD_PIDS} > /dev/null 2>&1 || true
             fi
 
-            backup_upgrade_preserve
+            # A subshell on its own, with -e re-enabled inside: the shell ignores set -e within a
+            # command whose status is tested, so an if or || around the function would let a failed
+            # cp go on and report whatever the last command returned. The outer -e is suspended
+            # only around it, so the failure is reported before the trap undoes it.
+            set +e
+            ( set -e; backup_upgrade_preserve )
+            SNAPSHOT_STATUS=$?
+            set -e
+            if [ "${SNAPSHOT_STATUS}" -ne 0 ]; then
+                echo "ERROR: Could not prepare manager upgrade preserve backup at ${WAZUH_PRESERVE_DIR}." >&2
+                exit 1
+            fi
+            trap - EXIT
 
             # api/configuration/ is writable by ${GROUP}: a link there is not ours to back up, and
             # cp would carry its target's content into the restored file.

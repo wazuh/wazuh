@@ -272,18 +272,39 @@ fi
 
 # Stop the services to upgrade the package
 if [ "$1" -eq 2 ]; then
+  UPGRADE_PRESERVE_DIR="%{_localstatedir}/tmp/manager_upgrade_preserve"
+  # Refused, and the directory taken, while the manager is still running: a failed upgrade keeps
+  # this directory on purpose, so once one has failed every later attempt finds it, and refusing
+  # after the stop below would take the manager down and leave it down, since the wazuh.restart
+  # marker is only honoured by a %%posttrans that never runs after a failed %%pre. tmp/ is writable
+  # by wazuh-manager: a plain mkdir fails on anything already at that path, a link included, and
+  # once it has succeeded nothing can be planted there before the snapshot copies into it.
+  if [ -e "${UPGRADE_PRESERVE_DIR}" ]; then
+    echo "ERROR: Existing manager upgrade preserve backup found at ${UPGRADE_PRESERVE_DIR}." >&2
+    echo "ERROR: Recover or move this directory before retrying the upgrade." >&2
+    exit 1
+  fi
+  if ! mkdir -m 0700 "${UPGRADE_PRESERVE_DIR}"; then
+    echo "ERROR: Could not create the manager upgrade preserve backup at ${UPGRADE_PRESERVE_DIR}." >&2
+    exit 1
+  fi
+
   # tmp/ is writable by wazuh-manager and touch follows a link planted there, creating its target.
   # The marker is created with noclobber (O_EXCL), which fails on any link instead of following it.
   rm -f %{_localstatedir}/tmp/wazuh.restart
+  RESTART_WITH=""
   if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 && systemctl is-active --quiet wazuh-manager > /dev/null 2>&1; then
     systemctl stop wazuh-manager.service > /dev/null 2>&1
     ( set -C; : > %{_localstatedir}/tmp/wazuh.restart ) 2> /dev/null || true
+    RESTART_WITH="systemctl"
   # Check for SysV
   elif command -v service > /dev/null 2>&1 && running "$(service wazuh-manager status 2>/dev/null)"; then
     service wazuh-manager stop > /dev/null 2>&1
     ( set -C; : > %{_localstatedir}/tmp/wazuh.restart ) 2> /dev/null || true
+    RESTART_WITH="service"
   elif running "$(%{_localstatedir}/bin/wazuh-manager-control status 2>/dev/null)"; then
     ( set -C; : > %{_localstatedir}/tmp/wazuh.restart ) 2> /dev/null || true
+    RESTART_WITH="control"
   fi
   if [ -x %{_localstatedir}/bin/wazuh-manager-control ]; then
     %{_localstatedir}/bin/wazuh-manager-control stop > /dev/null 2>&1
@@ -293,35 +314,42 @@ if [ "$1" -eq 2 ]; then
     kill -15 ${AUTHD_PIDS} > /dev/null 2>&1 || true
   fi
 
-  UPGRADE_PRESERVE_DIR="%{_localstatedir}/tmp/manager_upgrade_preserve"
+  # A subshell on its own, not the left side of an || list: the shell ignores set -e inside a
+  # command whose failure is tested, so written that way a failed mkdir or cp would not stop the
+  # snapshot and its status would be whatever the last command returned.
   (
     set -e
-    if [ -e "${UPGRADE_PRESERVE_DIR}" ]; then
-      echo "ERROR: Existing manager upgrade preserve backup found at ${UPGRADE_PRESERVE_DIR}." >&2
-      echo "ERROR: Recover or move this directory before retrying the upgrade." >&2
-      exit 1
-    fi
-    # tmp/ is writable by wazuh-manager: a plain mkdir fails on anything created there since the
-    # check above, so the snapshot is always a directory root just made and only root can enter.
-    mkdir -m 0700 "${UPGRADE_PRESERVE_DIR}"
-
     if [ -d "${CONF_DIR}" ]; then
       mkdir "${UPGRADE_PRESERVE_DIR}/etc"
       cp -a "${CONF_DIR}/." "${UPGRADE_PRESERVE_DIR}/etc/"
     fi
 
     if [ -d "%{_localstatedir}/data" ]; then
-      mkdir -p "${UPGRADE_PRESERVE_DIR}/data"
+      mkdir "${UPGRADE_PRESERVE_DIR}/data"
       for DATA_ENTRY in "%{_localstatedir}/data/"* "%{_localstatedir}/data/."[!.]* "%{_localstatedir}/data/"..?*; do
         [ -e "${DATA_ENTRY}" ] || continue
         [ "${DATA_ENTRY##*/}" = "tzdb" ] && continue
         cp -a "${DATA_ENTRY}" "${UPGRADE_PRESERVE_DIR}/data/"
       done
     fi
-  ) || {
+  )
+  if [ $? -ne 0 ]; then
     echo "ERROR: Could not prepare manager upgrade preserve backup at ${UPGRADE_PRESERVE_DIR}." >&2
+    # Undone here: the directory this run reserved goes (its content is a partial copy of files
+    # still in place), and the manager is started again, through the same tool that found it
+    # running, if the stop above did. The marker goes too, since %%posttrans will not run after
+    # this %%pre fails.
+    rm -rf "${UPGRADE_PRESERVE_DIR}"
+    if [ -f %{_localstatedir}/tmp/wazuh.restart ]; then
+      rm -f %{_localstatedir}/tmp/wazuh.restart
+      case "${RESTART_WITH}" in
+        systemctl) systemctl start wazuh-manager.service > /dev/null 2>&1 ;;
+        service) service wazuh-manager start > /dev/null 2>&1 ;;
+        *) %{_localstatedir}/bin/wazuh-manager-control start > /dev/null 2>&1 ;;
+      esac || echo "WARNING: the manager could not be started again after the failed upgrade; start it by hand." >&2
+    fi
     exit 1
-  }
+  fi
 fi
 
 # Nothing is cleaned out of var/db/ here: it holds mitre.db and nothing else in
@@ -589,6 +617,9 @@ UPGRADE_PRESERVE_DIR="%{_localstatedir}/tmp/manager_upgrade_preserve"
 if [ -d "${UPGRADE_PRESERVE_DIR}" ]; then
   # The configuration directory and data/ are writable by wazuh-manager: --remove-destination
   # replaces a link planted at a destination instead of writing (and chowning, with -a) through it.
+  # A subshell on its own, not the left side of an || list: the shell ignores set -e inside a
+  # command whose failure is tested, and a failed copy would otherwise go unnoticed and the
+  # snapshot be deleted below.
   (
     set -e
     if [ -d "${UPGRADE_PRESERVE_DIR}/etc" ]; then
@@ -604,10 +635,11 @@ if [ -d "${UPGRADE_PRESERVE_DIR}" ]; then
         cp -a --remove-destination "${DATA_ENTRY}" "%{_localstatedir}/data/"
       done
     fi
-  ) || {
+  )
+  if [ $? -ne 0 ]; then
     echo "ERROR: Could not restore manager upgrade preserve backup; contents left at ${UPGRADE_PRESERVE_DIR}." >&2
     exit 1
-  }
+  fi
   rm -rf "${UPGRADE_PRESERVE_DIR}"
 fi
 
