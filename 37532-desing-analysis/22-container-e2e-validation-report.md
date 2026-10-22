@@ -669,6 +669,10 @@ hash-versus-oracle (acceptance item 40) · ConfigMap live-invisibility (4.9) · 
 observation in §22.9 · and the fix directions for §22.9.1 and §22.11.3, which are decisions rather
 than measurements.
 
+**Since done:** the RHEL-family leg. Every run in this report is on a kernel ≥ 5.15, and on 4.18
+the BPF object did not load at all — see doc 23 for the diagnosis, the fix and the end-to-end
+result on CentOS Stream 8. Amazon Linux 2 (4.14) is still not run; no such host exists here.
+
 ---
 
 ## 22.14 Incidents and deviations from the plan

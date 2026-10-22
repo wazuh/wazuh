@@ -173,7 +173,9 @@
 | [#37532](https://github.com/wazuh/wazuh/issues/37532) | Refreshed container inventory when a container appears or is removed rather than only on its scan interval. |
 | [#37532](https://github.com/wazuh/wazuh/issues/37532) | Inventoried only the containers that changed between full scans instead of every container each time. |
 | [#37203](https://github.com/wazuh/wazuh/issues/37203) | Reported when a host's legacy cgroup layout leaves container security unable to identify containers, which previously failed silently. |
-| [#37203](https://github.com/wazuh/wazuh/issues/37203) | Added container inventory and file monitoring on hosts using the legacy cgroup layout, such as RHEL 8 and Amazon Linux 2. |
+| [#37203](https://github.com/wazuh/wazuh/issues/37203) | Added container inventory on hosts using the legacy cgroup layout, such as RHEL 8. |
+| [#37203](https://github.com/wazuh/wazuh/issues/37203) | Added container file monitoring on hosts using the legacy cgroup layout, such as RHEL 8. |
+| [#37203](https://github.com/wazuh/wazuh/issues/37203) | Reported file changes inside containers on installed agents, which previously reported the feature as unavailable on every platform. |
 
 #### Removed
 

@@ -703,7 +703,12 @@ generation 1 in the high word, against `st_ino` 35. Hence the unconditional mask
 `kernfs_node_ino()` — safe everywhere, since a kernfs ino comes from a 32-bit IDR and never reaches
 the high word.
 
-**Not yet validated end to end.** The mask is measured right; no agent has been run on RHEL 8 or
-Amazon Linux 2 to confirm a container is listed, its processes attributed and a file change reported
-from inside it. `wazuh_agent_centos` is a genuine legacy-cgroup RHEL-family host and is the place to
-do it.
+**Validated end to end on 2026-10-22 — see doc 23.** A file created inside a Docker container on
+`wazuh_agent_centos` (CentOS Stream 8, 4.18.0-326) produced an event whose `cgroup_id` was exactly
+the container's memory-cgroup `st_ino` (6083), and distinct from the host's. Without this mask the
+value would have arrived as `(generation << 32) | 6083` and never matched.
+
+It could not be validated when this section was written because `rt_file.bpf.o` did not load on
+that kernel at all — the 320-iteration dentry walker, re-verified at each of the three call sites
+that reach it, exceeded the verifier's one-million-instruction budget. Doc 23 records the diagnosis
+and the fix. Amazon Linux 2 remains unverified: no 4.14 host exists here.
