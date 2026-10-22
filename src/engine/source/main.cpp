@@ -810,9 +810,10 @@ int main(int argc, char* argv[])
             const auto cmSyncRetryConfigured = confManager.get<std::size_t>(conf::key::CM_SYNC_RETRY_INTERVAL);
             if (cmSyncRetryConfigured > CM_SYNC_RETRY_INTERVAL_MAX)
             {
-                throw std::runtime_error(fmt::format("analysisd.cm_sync_retry_interval must be between 0 and {} (got {})",
-                                                     CM_SYNC_RETRY_INTERVAL_MAX,
-                                                     cmSyncRetryConfigured));
+                throw std::runtime_error(
+                    fmt::format("analysisd.cm_sync_retry_interval must be between 0 and {} (got {})",
+                                CM_SYNC_RETRY_INTERVAL_MAX,
+                                cmSyncRetryConfigured));
             }
             // While a space has no route (indexer failure, content not ready yet), the next run comes after the
             // shorter retry interval instead of the regular one, and never later than the regular one.
