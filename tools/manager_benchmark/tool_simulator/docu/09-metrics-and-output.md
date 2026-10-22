@@ -47,6 +47,10 @@ enroll_https_latency_ms_p50,enroll_https_latency_ms_p99
 - `sessions_noop` is a subset of `sessions_ok` (`{"status":"ok","noop":true}`).
 - `stateless_*` are the engine-stream counters ([13](13-engine-event-streams.md)); `events_sent` is
   the number of `E` lines shipped, distinct from `stateless_sent` (the number of batches).
+  `agent`-batching lanes add three counters to the summary's `stateless` block only (not to this
+  CSV): `retries` (re-sends of the same batch), `retries_exhausted` (flushes whose try budget ran out,
+  the batch staying buffered) and `events_dropped` (events refused by a full buffer); each event
+  counts once in `events_sent` however many times its batch is tried.
 - `scan_*` are the `POST /scan/vd` counters ([14](14-scan-vd.md)): the feed-update re-scan requests
   a `scan_vd` step sends. `scan_200` counts requests **recorded by VD as a `vd_scan` task** (the
   scan will run), not scans that ran yet — the manager answers at admission and scans afterward, so
@@ -125,7 +129,7 @@ fleet's detail lives — the CSV would be unreadable with a column per (fleet ×
                   "retries_exhausted": 0, "transport_errors": 0,
                   "bytes_sent": 3145728000, "documents_sent": 12000000 },
     "stateless": { "sent": 6000, "s202": 6000, "s400": 0, "s413": 0, "s503": 0, "other": 0,
-                   "events_sent": 1500000 },
+                   "events_sent": 1500000, "retries": 0, "retries_exhausted": 0, "events_dropped": 0 },
     "scan": { "sent": 100, "s200": 100, "s409": 0, "s503": 0, "other": 0 },
     "cacerts": { "sent": 100, "s200": 100, "s404": 0, "s503": 0, "s429": 0, "other": 0 },
     "enroll_https": { "sent": 100, "s200": 100, "s401": 0, "s403": 0, "s409": 0, "s429": 0, "other": 0 },

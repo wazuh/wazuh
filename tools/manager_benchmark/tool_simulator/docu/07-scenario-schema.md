@@ -105,7 +105,7 @@ independent.
 | `metadata` / `groups` | `MetadataDelta` / `GroupDelta` | Start-only; the loader requires `indices`. Set `global_version` too: the server needs it for these modes, but the loader does not check it. The `*Check` variants cannot be built from a scenario |
 | `full_resync` | Expands to `cleans` + `delta` | The D19 composition, as two sequential sessions on the same lane |
 | `delete_agent` | `POST /_internal/agents/delete` | `uds` mode only |
-| `engine` | An H/E event batch: `POST /stateless` (agent mode) or the engine's `POST /events/enriched` (uds mode) | Optional `header` block shapes the H line; see [13](13-engine-event-streams.md) |
+| `engine` | An H/E event batch: `POST /stateless` (agent mode) or the engine's `POST /events/enriched` (uds mode) | Optional `header` block shapes the H line; `batching: "agent"` (with `batch_size_bytes`, `batch_interval`, `retry_max_attempts`) groups and retries events as the agent does, and `start_jitter` staggers the fleet; see [13](13-engine-event-streams.md) |
 | `scan_vd` | A feed-update re-scan request to `POST /scan/vd` | `agent` mode only; takes ONLY `feed_offset` and the timing fields — no payload; see [14](14-scan-vd.md) |
 | `cacerts` | A body-less `GET /cacerts` (the CA that signs the listener certificate) | `agent` mode only; takes ONLY the timing fields (`repeat_count`, `repeat_delay`, `initial_delay`); see [15](15-cacerts.md) |
 | `enroll_https` | A `POST /enroll` of a FRESH agent name with the `wazuh-enroll+jwt` bearer of an enrollment token | `agent` mode only; takes ONLY the timing fields; the token comes from `--enroll-token-file` / `WAZUH_ENROLLMENT_TOKEN`, never from the scenario; see [16](16-enroll-https.md) |

@@ -290,3 +290,56 @@ func TestLoaderConstrainsHeaderSpec(t *testing.T) {
 		t.Fatalf("an agent-profile header must load: %v", err)
 	}
 }
+
+func TestLoaderConstrainsBatching(t *testing.T) {
+	agent := `, "batching": "agent", "events_per_second": 50`
+	for _, tc := range []struct{ body, field string }{
+		{sprintf(minimalUDS, engineStep(t, `, "batching": "bytes"`), ""), "batching must be"},
+		{sprintf(minimalUDS, engineStep(t, `, "batching": "agent"`), ""), "events_per_second > 0"},
+		{sprintf(minimalUDS, engineStep(t, agent+`, "events_per_batch": 100`), ""), "events_per_batch does not apply"},
+		{sprintf(minimalUDS, engineStep(t, `, "batch_size_bytes": 1024`), ""), "need batching"},
+		{sprintf(minimalUDS, engineStep(t, `, "batch_interval": "5s"`), ""), "need batching"},
+		{sprintf(minimalUDS, engineStep(t, `, "retry_max_attempts": 3`), ""), "need batching"},
+		{sprintf(minimalUDS, engineStep(t, agent+`, "batch_size_bytes": -1`), ""), "must not be negative"},
+		{sprintf(minimalUDS, engineStep(t, agent+`, "start_jitter": "-1s"`), ""), "start_jitter must not be negative"},
+		{sprintf(minimalUDS, `{"kind": "delta", "batching": "agent"}`, ""), "only apply to engine steps"},
+		{sprintf(minimalUDS, `{"kind": "delta", "start_jitter": "1s"}`, ""), "only apply to engine steps"},
+	} {
+		if _, err := loadFromLiteral(t, tc.body); err == nil || !strings.Contains(err.Error(), tc.field) {
+			t.Errorf("want an error naming %q, got %v\n%s", tc.field, err, tc.body)
+		}
+	}
+
+	scn, err := loadFromLiteral(t, sprintf(minimalUDS, engineStep(t, agent), ""))
+	if err != nil {
+		t.Fatalf("an agent-batching step must load: %v", err)
+	}
+	step := scn.Lanes["main"][0]
+	if !step.AgentBatching() || step.AgentBatchSizeBytes() != 1024*1024 || step.AgentBatchInterval() != 10*time.Second ||
+		step.AgentRetryMaxAttempts() != 5 || step.ResolvedStartJitter() != 10*time.Second {
+		t.Fatalf("agent defaults: size %d interval %v attempts %d jitter %v", step.AgentBatchSizeBytes(),
+			step.AgentBatchInterval(), step.AgentRetryMaxAttempts(), step.ResolvedStartJitter())
+	}
+
+	scn, err = loadFromLiteral(t, sprintf(minimalUDS, engineStep(t,
+		agent+`, "batch_size_bytes": 65536, "batch_interval": "2s", "retry_max_attempts": 1, "start_jitter": "0s"`), ""))
+	if err != nil {
+		t.Fatalf("explicit agent knobs must load: %v", err)
+	}
+	step = scn.Lanes["main"][0]
+	if step.AgentBatchSizeBytes() != 65536 || step.AgentBatchInterval() != 2*time.Second ||
+		step.AgentRetryMaxAttempts() != 1 || step.ResolvedStartJitter() != 0 {
+		t.Fatalf("explicit knobs not honoured: %+v", step)
+	}
+
+	scn, err = loadFromLiteral(t, sprintf(minimalUDS, engineStep(t, `, "events_per_batch": 100, "start_jitter": "3s"`), ""))
+	if err != nil {
+		t.Fatalf("a count step with start_jitter must load: %v", err)
+	}
+	if step = scn.Lanes["main"][0]; step.AgentBatching() || step.ResolvedStartJitter() != 3*time.Second {
+		t.Fatalf("count step: agent=%v jitter=%v", step.AgentBatching(), step.ResolvedStartJitter())
+	}
+	if _, err = loadFromLiteral(t, sprintf(minimalUDS, engineStep(t, `, "events_per_batch": 100`), "")); err != nil {
+		t.Fatalf("an existing count step must still load: %v", err)
+	}
+}

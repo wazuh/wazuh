@@ -35,6 +35,11 @@ type agent struct {
 	// profile H line, fixed for the run (agentHeaderInfo).
 	headerInfo engine.AgentInfo
 
+	// streams holds each engine lane's own state (start jitter, and the buffer
+	// of an "agent"-batching step), created on the lane's first pass.
+	streams   map[string]*engineStream
+	streamsMu sync.Mutex
+
 	// vdFeedOffset is the last vd_feed_offset a notify reported (agent mode
 	// only; stays 0 in uds mode, which has no /control to learn it from).
 	// Written by keepaliveLoop, read by the lane goroutines building

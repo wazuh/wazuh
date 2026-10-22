@@ -206,9 +206,16 @@ func (s *Scenario) validateStep(fleet, lane string, i int, step Step) error {
 		if err := s.validateHeader(where, fleet, step.Header); err != nil {
 			return err
 		}
+		if err := validateBatching(where, step); err != nil {
+			return err
+		}
 	}
 	if step.Kind != "engine" && step.Header != nil {
 		return fmt.Errorf("%s: header only applies to engine steps", where)
+	}
+	if step.Kind != "engine" && (step.Batching != "" || step.BatchSizeBytes != 0 || step.BatchInterval != 0 ||
+		step.RetryMaxAttempts != 0 || step.StartJitter != nil) {
+		return fmt.Errorf("%s: batching, batch_size_bytes, batch_interval, retry_max_attempts and start_jitter only apply to engine steps", where)
 	}
 	if step.Kind != "engine" && (step.EventsPerSecond != 0 || step.EventsPerBatch != 0) {
 		return fmt.Errorf("%s: events_per_second/events_per_batch only apply to engine steps", where)
@@ -284,4 +291,35 @@ func (s *Scenario) LaneOption(step Step) string {
 		return step.Option
 	}
 	return s.Defaults.Option
+}
+
+// validateBatching refuses an engine step's batching knobs that the run could
+// not honour: an unknown mode, a negative size, interval, budget or jitter, an
+// agent-only knob on a "count" step, or an events_per_batch on an "agent" step
+// (whose batches are sized by bytes, as the agent's are).
+func validateBatching(where string, step Step) error {
+	switch step.Batching {
+	case "", BatchingCount, BatchingAgent:
+	default:
+		return fmt.Errorf("%s: batching must be %q or %q, got %q", where, BatchingCount, BatchingAgent, step.Batching)
+	}
+	if step.BatchSizeBytes < 0 || step.BatchInterval < 0 || step.RetryMaxAttempts < 0 {
+		return fmt.Errorf("%s: batch_size_bytes, batch_interval and retry_max_attempts must not be negative", where)
+	}
+	if step.StartJitter != nil && *step.StartJitter < 0 {
+		return fmt.Errorf("%s: start_jitter must not be negative", where)
+	}
+	if step.AgentBatching() {
+		if step.EventsPerSecond <= 0 {
+			return fmt.Errorf("%s: %q batching needs events_per_second > 0: the buffer fills at that rate", where, BatchingAgent)
+		}
+		if step.EventsPerBatch != 0 {
+			return fmt.Errorf("%s: events_per_batch does not apply to %q batching, which flushes by batch_size_bytes or batch_interval", where, BatchingAgent)
+		}
+		return nil
+	}
+	if step.BatchSizeBytes != 0 || step.BatchInterval != 0 || step.RetryMaxAttempts != 0 {
+		return fmt.Errorf("%s: batch_size_bytes, batch_interval and retry_max_attempts need batching %q", where, BatchingAgent)
+	}
+	return nil
 }

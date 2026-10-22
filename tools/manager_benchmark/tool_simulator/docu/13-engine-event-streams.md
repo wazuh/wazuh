@@ -60,7 +60,7 @@ smaller set of codes than `/stateful`:
 | `202` | The engine enqueued the batch (empty body). NOT "fully processed" | Count as success; record latency and the event count (`stateless_*` has no byte counter) |
 | `400` | Invalid batch (missing/malformed `H` line, identity mismatch) | Count, then invalidate the run: no scenario sends a deliberately invalid batch, so it is a sender bug |
 | `413` | Batch over the body cap | Count; the sender **MUST** size batches under the cap: remoted's authenticated-body cap, `remoted.auth_max_body_size` (5 MiB default). Past the 10 MiB transport cap there is no `413`, only a closed connection (a transport error) |
-| `503` | Engine unreachable, downstream timeout, or a 5xx from it | Count as backpressure; **MUST NOT** retry |
+| `503` | Engine unreachable, downstream timeout, or a 5xx from it | Count as backpressure. Default (`count`) batching drops the batch without retrying; `agent` batching retries it as the agent does (see [Batching like the agent](#batching-like-the-agent)) |
 
 Note the success code is **`202`**, not `200`: the engine ingest is fire-and-forget from the agent's
 point of view, so a `202` says "accepted", and the sender **MUST** count it as its own success
@@ -90,6 +90,43 @@ Three rules keep an event lane honest:
   `repeat_until`), the same mechanism every other lane uses; the stream stops at drain with
   everything else.
 
+## Batching like the agent
+
+By default (`batching` absent or `count`) a lane sends `events_per_batch` events per request as
+fast as `events_per_second` allows, and drops a batch answered `503`. That keeps the event rate
+real but not the request rate: at 50 ev/s and 100 events per batch every agent posts every 2 s,
+all agents start in lockstep, and a rejected batch is simply lost.
+
+`"batching": "agent"` follows the 5.x agent's stateless stream instead
+(`src/client-agent/https_client/src/statelessStream.cpp`, `eventAccumulator.cpp`, `retrySender.cpp`):
+
+| Field | Agent counterpart | Default |
+|---|---|---|
+| `batch_size_bytes` | `<agent><batch><size>`: buffered `E`-line bytes that trigger a flush, and the most one request carries | 1048576 (1 MiB) |
+| `batch_interval` | `<agent><batch><interval>`: flush anyway this long after the previous send ended | `10s` |
+| `retry_max_attempts` | `statelessMaxAttempts`: tries per flush, the first included (`1` = no retry) | `5` |
+| `start_jitter` | The agent's own start time: each agent waits a random time in `[0, start_jitter)` before its first pass. Also accepted by `count` steps | `batch_interval` (`agent`), `0` (`count`) |
+
+- Events are produced at `events_per_second` (required, > 0) into a buffer that belongs to the
+  agent's lane and outlives the passes, as the agent's accumulator outlives its batches. A flush
+  sends the oldest buffered events up to `batch_size_bytes` (never fewer than one) and, while the
+  buffer stays over the size, the next flush follows at once. One request is in flight per agent
+  and lane.
+- The buffer is capped at 4 × `batch_size_bytes` (`bufferCapMultiplier`); past it the newest event is
+  dropped and counted in the summary's `stateless.events_dropped`.
+- A `503`, a 5xx or a transport failure is retried with the same bytes after the agent's full-jitter
+  backoff, uniform in `[0, min(60 s, 1 s × 2^attempt)]` and reset by a delivered batch; a longer
+  `Retry-After` wins. Re-sends are counted in `stateless.retries`, and `events_sent` counts each
+  event once. With the budget spent the batch stays buffered for the next flush
+  (`stateless.retries_exhausted`); another 4xx drops it; `400` still invalidates the run.
+- In agent mode the body is zstd-compressed when the run compresses (`defaults.compression` or
+  `--compression`), as the agent does by default.
+- The last pass of the run sends what is left, batch after batch, and stops at the first batch it
+  cannot deliver.
+- `events_per_batch` does not apply. With the sample `syslog.log` (about 110 bytes per `E` line) an
+  agent below ~950 ev/s never fills 1 MiB in 10 s, so the interval decides: one request every 10 s
+  carrying 10 s worth of events.
+
 ## Shaping the header
 
 By default the `H ` line is the minimal one above. An optional `header` block on the step shapes it,
@@ -113,5 +150,5 @@ metadata cache without pressuring its event queue.
 
 The step needs `engine` (the sample file, relative to the scenario file) and `location`;
 `events_per_second` and `events_per_batch` default to `0` (unlimited, and the whole file in one
-batch). A sample file that cannot be read sends nothing and is not reported, so check `events_sent`
+batch) under `count` batching; `agent` batching needs `events_per_second`. A sample file that cannot be read sends nothing and is not reported, so check `events_sent`
 (`--validate` does catch a path that does not exist).
