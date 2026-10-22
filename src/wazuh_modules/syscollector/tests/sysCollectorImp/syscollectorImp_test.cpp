@@ -878,7 +878,7 @@ TEST_F(SyscollectorImpTest, aLifecycleNotificationIsHonouredOnTheDefaultCoupledC
 
     EXPECT_GE(containerPasses, 1u)
             << "on the default cadence the notification must still bring the container pass forward; "
-               "the host interval is 100 s and scan_on_start is off, so nothing else could have run one";
+            "the host interval is 100 s and scan_on_start is off, so nothing else could have run one";
 
     // The other half of the fix: waking early serves the container without
     // dragging the host scan forward with it. A relative timeout would have
