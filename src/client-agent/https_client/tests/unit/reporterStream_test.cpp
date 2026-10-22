@@ -303,6 +303,61 @@ TEST_F(ReporterStreamTest, AgentMetadataIsReadFreshOnEveryPush)
     EXPECT_EQ(2, m_collectors.m_agentMetadataCalls);
 }
 
+TEST_F(ReporterStreamTest, AMetadataMissReusesTheLastGoodBlock)
+{
+    // The manager replaces the whole document: a report without the block would
+    // erase the groups it already holds.
+    m_collectors.m_agentMetadata = AGENT_METADATA;
+    const auto config = makeConfig(true, false);
+    ReporterStream reporter
+    {
+        config, m_performer, m_signer, m_clock, m_random, m_authGate, m_compressionGate, m_cluster, m_collectors};
+
+    EXPECT_TRUE(nlohmann::json::parse(tickAndCaptureBody(reporter)).contains("agent"));
+
+    const std::vector<std::string> misses {"", R"({"agent":{"groups":["torn)"};
+
+    for (const auto& miss : misses)
+    {
+        m_collectors.m_agentMetadata = miss;
+        m_clock.advance(std::chrono::seconds {60});
+        const auto body = nlohmann::json::parse(tickAndCaptureBody(reporter));
+        EXPECT_EQ(nlohmann::json::array({"default", "linux"}), body.at("agent").at("groups")) << miss;
+    }
+}
+
+TEST_F(ReporterStreamTest, AGroupChangePullsTheConfigReportIn)
+{
+    // A reload pulls /config in, but not every group change triggers one.
+    m_collectors.m_agentMetadata = R"({"agent":{"groups":["default"]}})";
+    const auto config = makeConfig(false, true);
+    ReporterStream reporter
+    {
+        config, m_performer, m_signer, m_clock, m_random, m_authGate, m_compressionGate, m_cluster, m_collectors};
+
+    tickAndCaptureBody(reporter); // Due at epoch.
+    EXPECT_EQ(1, m_collectors.m_configCalls);
+
+    // Same groups, far from the 3600 s interval: nothing to send.
+    m_clock.advance(std::chrono::seconds {60});
+    EXPECT_CALL(m_performer, perform(_)).Times(0);
+    reporter.tick(m_waiter, true);
+    EXPECT_EQ(1, m_collectors.m_configCalls);
+    ::testing::Mock::VerifyAndClearExpectations(&m_performer);
+
+    m_collectors.m_agentMetadata = R"({"agent":{"groups":["default","linux"]}})";
+    m_clock.advance(std::chrono::seconds {60});
+    const auto body = nlohmann::json::parse(tickAndCaptureBody(reporter));
+    EXPECT_EQ(2, m_collectors.m_configCalls);
+    EXPECT_EQ(nlohmann::json::array({"default", "linux"}), body.at("agent").at("groups"));
+
+    // Sent once per change, not on every tick after it.
+    m_clock.advance(std::chrono::seconds {60});
+    EXPECT_CALL(m_performer, perform(_)).Times(0);
+    reporter.tick(m_waiter, true);
+    EXPECT_EQ(2, m_collectors.m_configCalls);
+}
+
 TEST_F(ReporterStreamTest, NullCollectorReturnSkipsWithoutSending)
 {
     m_collectors.m_stats = std::nullopt;

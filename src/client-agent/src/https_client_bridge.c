@@ -1894,6 +1894,22 @@ static void bridge_on_collect_host(char *json_out, size_t cap, void *user_data)
     metadata_provider_free_metadata(&metadata);
 }
 
+/* Metadata strings are raw bytes: a hostname in a legacy code page, or a value
+ * cut mid-character into its char[256]. The module parses this JSON strictly,
+ * and one ill-formed byte would drop the whole block, groups included, so the
+ * bad bytes are removed here and only that value changes. */
+static cJSON *bridge_utf8_string(const char *value)
+{
+    if (w_utf8_valid(value)) {
+        return cJSON_CreateString(value);
+    }
+
+    char *filtered = w_utf8_filter(value, false);
+    cJSON *item = cJSON_CreateString(filtered);
+    os_free(filtered);
+    return item;
+}
+
 /* Host metadata source for the /stateless H line. Pulled fresh from the same
  * shared metadata_provider as bridge_on_collect_host() above, but as its own
  * callback (not a reuse) so this endpoint's shape can grow without touching
@@ -1941,17 +1957,17 @@ static void bridge_on_collect_stateless_host(char *json_out, size_t cap, void *u
     cJSON_AddItemToObject(root, "agent", agent);
 
     if (metadata.agent_name[0]) {
-        cJSON_AddStringToObject(agent, "name", metadata.agent_name);
+        cJSON_AddItemToObject(agent, "name", bridge_utf8_string(metadata.agent_name));
     }
     if (metadata.agent_version[0]) {
-        cJSON_AddStringToObject(agent, "version", metadata.agent_version);
+        cJSON_AddItemToObject(agent, "version", bridge_utf8_string(metadata.agent_version));
     }
 
     if (metadata.groups_count > 0 && metadata.groups != NULL) {
         cJSON *groups = cJSON_CreateArray();
         for (size_t i = 0; i < metadata.groups_count; i++) {
             if (metadata.groups[i] != NULL) {
-                cJSON_AddItemToArray(groups, cJSON_CreateString(metadata.groups[i]));
+                cJSON_AddItemToArray(groups, bridge_utf8_string(metadata.groups[i]));
             }
         }
         cJSON_AddItemToObject(agent, "groups", groups);
@@ -1961,30 +1977,30 @@ static void bridge_on_collect_stateless_host(char *json_out, size_t cap, void *u
     cJSON_AddItemToObject(agent, "host", host);
 
     if (metadata.architecture[0]) {
-        cJSON_AddStringToObject(host, "architecture", metadata.architecture);
+        cJSON_AddItemToObject(host, "architecture", bridge_utf8_string(metadata.architecture));
     }
     if (metadata.hostname[0]) {
-        cJSON_AddStringToObject(host, "hostname", metadata.hostname);
+        cJSON_AddItemToObject(host, "hostname", bridge_utf8_string(metadata.hostname));
     }
 
     cJSON *os = cJSON_CreateObject();
     if (metadata.os_name[0]) {
-        cJSON_AddStringToObject(os, "name", metadata.os_name);
+        cJSON_AddItemToObject(os, "name", bridge_utf8_string(metadata.os_name));
     }
     if (metadata.os_version[0]) {
-        cJSON_AddStringToObject(os, "version", metadata.os_version);
+        cJSON_AddItemToObject(os, "version", bridge_utf8_string(metadata.os_version));
     }
     if (metadata.os_platform[0]) {
-        cJSON_AddStringToObject(os, "platform", metadata.os_platform);
+        cJSON_AddItemToObject(os, "platform", bridge_utf8_string(metadata.os_platform));
     }
     if (metadata.os_type[0]) {
-        cJSON_AddStringToObject(os, "type", metadata.os_type);
+        cJSON_AddItemToObject(os, "type", bridge_utf8_string(metadata.os_type));
     }
     cJSON_AddItemToObject(host, "os", os);
 
     cJSON *cluster = cJSON_CreateObject();
     if (metadata.cluster_name[0]) {
-        cJSON_AddStringToObject(cluster, "name", metadata.cluster_name);
+        cJSON_AddItemToObject(cluster, "name", bridge_utf8_string(metadata.cluster_name));
     }
     cJSON_AddItemToObject(root, "cluster", cluster);
 

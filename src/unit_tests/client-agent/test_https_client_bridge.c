@@ -27,6 +27,7 @@
 #include "../wrappers/posix/time_wrappers.h"
 #include "ferror_wrapper.h"
 #include "sha256_op.h"
+#include "metadata_provider.h"
 
 /* hc_create/hc_start/hc_destroy mocks (no pre-existing wrapper for this ABI):
  * hc_create captures both the config and the callback table it was given, so
@@ -249,6 +250,42 @@ unsigned int g_populate_metadata_calls = 0;
 void __wrap_w_agentd_populate_metadata(void)
 {
     g_populate_metadata_calls++;
+}
+
+/* The metadata callbacks read the agent metadata shared memory; these hand out
+ * g_test_metadata instead, with its own copy of the groups so the bridge frees
+ * them as it does in production. g_test_metadata_result != 0 means "not available". */
+static agent_metadata_t g_test_metadata;
+static int g_test_metadata_result = -1;
+
+int __wrap_metadata_provider_get(agent_metadata_t *out_metadata)
+{
+    if (g_test_metadata_result != 0) {
+        return g_test_metadata_result;
+    }
+
+    *out_metadata = g_test_metadata;
+    out_metadata->groups = NULL;
+    out_metadata->groups_count = 0;
+
+    if (g_test_metadata.groups_count > 0) {
+        os_calloc(g_test_metadata.groups_count, sizeof(char *), out_metadata->groups);
+        for (size_t i = 0; i < g_test_metadata.groups_count; i++) {
+            os_strdup(g_test_metadata.groups[i], out_metadata->groups[i]);
+        }
+        out_metadata->groups_count = g_test_metadata.groups_count;
+    }
+
+    return 0;
+}
+
+void __wrap_metadata_provider_free_metadata(agent_metadata_t *metadata)
+{
+    for (size_t i = 0; i < metadata->groups_count; i++) {
+        os_free(metadata->groups[i]);
+    }
+    os_free(metadata->groups);
+    metadata->groups_count = 0;
 }
 
 /* bridge_build_config() reads the client-buffer occupancy options exactly as
@@ -538,6 +575,40 @@ static void test_module_fatal_is_exited_on_from_the_bridge_thread(void **state)
 
     expect_string(__wrap__merror_exit, formatted_msg, "https_client: the trust anchor could not be loaded. Exiting.");
     expect_assert_failure(bridge_fatal_exit_thread(NULL));
+
+    w_https_client_stop();
+}
+
+/* One ill-formed byte in a metadata string must cost only that byte: the module
+ * parses the block strictly and would otherwise drop it whole, groups included. */
+static void test_stateless_host_metadata_drops_ill_formed_utf8_bytes(void **state)
+{
+    (void)state;
+
+    expect_started_client();
+    assert_true(w_https_client_start());
+    assert_non_null(g_captured_callbacks.on_collect_stateless_host);
+
+    char group[] = "linux";
+    char *groups[] = {group};
+    memset(&g_test_metadata, 0, sizeof(g_test_metadata));
+    snprintf(g_test_metadata.hostname, sizeof(g_test_metadata.hostname), "%s", "web\xff-01");
+    snprintf(g_test_metadata.os_name, sizeof(g_test_metadata.os_name), "%s", "Ubuntu");
+    g_test_metadata.groups = groups;
+    g_test_metadata.groups_count = 1;
+    g_test_metadata_result = 0;
+
+    static char out[OS_SIZE_65536];
+    g_captured_callbacks.on_collect_stateless_host(out, sizeof(out), g_captured_callbacks.user_data);
+    g_test_metadata_result = -1;
+
+    assert_true(w_utf8_valid(out));
+    cJSON *root = cJSON_Parse(out);
+    assert_non_null(root);
+    cJSON *agent = cJSON_GetObjectItem(root, "agent");
+    assert_string_equal(cJSON_GetObjectItem(cJSON_GetObjectItem(agent, "host"), "hostname")->valuestring, "web-01");
+    assert_string_equal(cJSON_GetArrayItem(cJSON_GetObjectItem(agent, "groups"), 0)->valuestring, "linux");
+    cJSON_Delete(root);
 
     w_https_client_stop();
 }
@@ -3373,6 +3444,7 @@ int main(void)
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_full_verify_mode_and_ca_reach_the_module, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_module_fatal_is_exited_on_from_the_bridge_thread, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_stateless_host_metadata_drops_ill_formed_utf8_bytes, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_module_threads_start_with_stop_signals_blocked, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_certificate_verify_mode_maps_to_hc_verify_cert, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_none_verify_mode_maps_to_hc_verify_none, setup_test, teardown_test),
