@@ -294,7 +294,9 @@ Acquires shared lock, delegates to `IndexerConnectorAsync::indexDataStream()`. E
 **Otherwise** (no consumer validation):
 - Performs a direct search without PIT.
 
-Returns the hash and `enabled && hasIntegrations`.
+Returns the hash and `enabled && hasIntegrations && hasRootDecoder`: a policy with no integrations or no root decoder has
+nothing to build, so it is reported as disabled. `document.root_decoder` counts as present only when it is a non-empty
+string; a missing field, `null`, `""` or any other type counts as no root decoder and never throws.
 
 #### `streamIocsByType(iocType, batchSize, onIoc, consumerIdToValidate?)`
 

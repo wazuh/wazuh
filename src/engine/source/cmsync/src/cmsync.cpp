@@ -687,13 +687,14 @@ bool CMSync::synchronize()
             // 4. If the policy is enabled and the route/namespace exist, but the hash is different, we should
             // synchronize.
 
-            // Case 1: Policy disabled in indexer
+            // Case 1: Policy disabled in indexer, or with nothing to build (no integrations or no root decoder)
             if (!remoteEnabled)
             {
                 if (routeConfig.has_value())
                 {
                     const auto& [_ignore, nsId, routeHash] = *routeConfig;
-                    LOG_INFO("[{}] Policy for space '{}' is disabled in indexer, removing route and namespace",
+                    LOG_INFO("[{}] Policy for space '{}' is disabled in indexer or has nothing to build (no "
+                             "integrations or no root decoder), removing route and namespace",
                              LOG_MODULE_NAME,
                              nsState.getOriginSpace());
 
@@ -722,7 +723,8 @@ bool CMSync::synchronize()
                 }
                 else
                 {
-                    LOG_DEBUG("[{}] Policy for space '{}' is disabled in indexer and no route exists, skipping",
+                    LOG_DEBUG("[{}] Policy for space '{}' is disabled in indexer or has nothing to build (no "
+                              "integrations or no root decoder) and no route exists, skipping",
                               LOG_MODULE_NAME,
                               nsState.getOriginSpace());
                 }
