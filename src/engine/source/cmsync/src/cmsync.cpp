@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#include <algorithm>
 #include <ctime>
 #include <optional>
 #include <stdexcept>
@@ -69,7 +70,7 @@ CMSync::CMSync(const std::shared_ptr<cm::crud::ICrudService>& cmcrudPtr,
 
 CMSync::~CMSync() = default;
 
-void CMSync::synchronize()
+bool CMSync::synchronize()
 {
     std::lock_guard<std::mutex> lock {m_syncMutex};
     LOG_DEBUG("[{}] Checking for ruleset updates", COMPONENT_NAME);
@@ -97,6 +98,18 @@ void CMSync::synchronize()
             LOG_WARNING("[{}] Failed to persist the sync state: {}", COMPONENT_NAME, e.what());
         }
     }
+
+    if (m_shutdownRequested.load())
+    {
+        return false;
+    }
+    // No route and no policy read as disabled: the indexer failed, or the content is not published or the
+    // consumer not ready yet. All of these can clear before the next regular run. A space that keeps an older
+    // route does not count: that route still processes events.
+    return std::any_of(m_spaces.begin(),
+                       m_spaces.end(),
+                       [](const Space& space)
+                       { return !space.deployment.available && !(space.policyKnown && !space.enabled); });
 }
 
 bool CMSync::syncSpace(Space& space)
@@ -147,10 +160,14 @@ bool CMSync::syncSpace(Space& space)
     }
 
     space.deployment = space.sink->deployment();
-    if (space.deployment.enabled.has_value() && *space.deployment.enabled != space.enabled)
+    if (space.deployment.enabled.has_value())
     {
-        space.enabled = *space.deployment.enabled;
-        changed = true;
+        space.policyKnown = true;
+        if (*space.deployment.enabled != space.enabled)
+        {
+            space.enabled = *space.deployment.enabled;
+            changed = true;
+        }
     }
     return changed;
 }
@@ -196,6 +213,7 @@ void CMSync::loadState()
             if (const auto enabled = entry.getBool(JPATH_ENABLED); enabled.has_value())
             {
                 space.enabled = *enabled;
+                space.policyKnown = true;
             }
         }
     }
@@ -212,7 +230,11 @@ void CMSync::persistState()
         json::Json entry {};
         entry.setString(space.name, JPATH_ORIGIN);
         entry.setInt64(static_cast<int64_t>(space.lastSuccessfulUpdate), JPATH_LAST_SUCCESSFUL_UPDATE);
-        entry.setBool(space.enabled, JPATH_ENABLED);
+        // Only a policy read sets it: an unread policy is not a disabled one.
+        if (space.policyKnown)
+        {
+            entry.setBool(space.enabled, JPATH_ENABLED);
+        }
         doc.appendJson(entry);
     }
 

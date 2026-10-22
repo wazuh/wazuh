@@ -2063,6 +2063,20 @@ void test_OSX_ReleaseName(void **state) {
 
 #endif
 
+void test_win_processor_arch_to_machine(void **state)
+{
+    (void) state;
+
+    assert_string_equal(win_processor_arch_to_machine("AMD64"), "x86_64");
+    assert_string_equal(win_processor_arch_to_machine("IA64"), "x86_64");
+    assert_string_equal(win_processor_arch_to_machine("ARM64"), "arm64");
+    assert_string_equal(win_processor_arch_to_machine("x86"), "i686");
+    assert_null(win_processor_arch_to_machine("ARM"));
+    assert_null(win_processor_arch_to_machine("ARM64EC"));
+    assert_null(win_processor_arch_to_machine(""));
+    assert_null(win_processor_arch_to_machine(NULL));
+}
+
 void test_compare_wazuh_versions_equal_patch(void **state)
 {
     (void) state;
@@ -2368,6 +2382,7 @@ int main(void) {
             cmocka_unit_test_teardown(test_get_unix_version_zscaler, delete_os_info),
             cmocka_unit_test(test_OSX_ReleaseName),
 #endif
+            cmocka_unit_test(test_win_processor_arch_to_machine),
             // compare_wazuh_versions
             cmocka_unit_test(test_compare_wazuh_versions_equal_patch),
             cmocka_unit_test(test_compare_wazuh_versions_equal_minor),

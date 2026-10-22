@@ -3,6 +3,7 @@
 #define _CMSYNC_CMSYNC
 
 #include <atomic>
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <mutex>
@@ -21,6 +22,18 @@
 
 namespace cm::sync
 {
+
+/**
+ * @brief Delay before the next sync run while a space has no route.
+ *
+ * @param retryInterval `analysisd.cm_sync_retry_interval`; 0 disables the early retry.
+ * @param syncInterval `analysisd.cm_sync_interval`, the regular run.
+ * @return 0 when disabled (the regular run applies), otherwise the retry interval capped at the regular one.
+ */
+constexpr std::size_t earlyRetryInterval(std::size_t retryInterval, std::size_t syncInterval)
+{
+    return retryInterval < syncInterval ? retryInterval : syncInterval;
+}
 
 /**
  * @brief Keeps the `standard` and `custom` ruleset spaces in step with the indexer.
@@ -60,7 +73,7 @@ public:
     /**
      * @copydoc ICMSync::synchronize
      */
-    void synchronize() override;
+    bool synchronize() override;
 
     /**
      * @copydoc ICMSync::requestShutdown
@@ -84,6 +97,7 @@ private:
         base::SyncStatus status {base::SyncStatus::READY};
         std::uint32_t lastSuccessfulUpdate {0}; ///< Persisted.
         bool enabled {false};                   ///< Persisted.
+        bool policyKnown {false};               ///< `enabled` comes from a policy read (now or persisted).
     };
 
     /**

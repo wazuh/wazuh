@@ -112,6 +112,11 @@ void DBSyncImplementation::updateSnapshotData(const DBSYNC_HANDLE   handle,
     ctx->m_dbEngine->refreshTableData(json, callback, lock);
 }
 
+std::string DBSyncImplementation::recreateReason(const DBSYNC_HANDLE handle)
+{
+    return dbEngineContext(handle)->m_dbEngine->recreateReason();
+}
+
 std::shared_ptr<DBSyncImplementation::DbEngineContext> DBSyncImplementation::dbEngineContext(const DBSYNC_HANDLE handle)
 {
     std::lock_guard<std::mutex> lock{m_mutex};

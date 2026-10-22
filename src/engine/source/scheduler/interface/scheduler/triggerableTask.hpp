@@ -38,16 +38,20 @@ public:
      * @param interval Seconds between runs; 0 = only when triggered.
      * @param cpuPriority Nice value of the runs.
      * @param work What a run does. Exceptions are logged and do not stop later runs.
+     * @param nextInterval Optional; see TaskConfig::nextInterval. Consulted after the recurring runs only,
+     *        the ones @ref start schedules: a request run does not move the recurring cadence.
      */
     TriggerableTask(std::weak_ptr<IScheduler> scheduler,
                     std::string name,
                     std::size_t interval,
                     int cpuPriority,
-                    std::function<void()> work)
+                    std::function<void()> work,
+                    std::function<std::size_t()> nextInterval = {})
         : m_scheduler(std::move(scheduler))
         , m_state(std::make_shared<State>())
         , m_interval(interval)
         , m_cpuPriority(cpuPriority)
+        , m_nextInterval(std::move(nextInterval))
     {
         m_state->name = std::move(name);
         m_state->work = std::move(work);
@@ -57,15 +61,34 @@ public:
      * @brief Register the recurring task; its first run is one interval from now. A no-op without
      *        an interval. Call @ref trigger as well for a run right away.
      *
+     * @param runNow Make the first recurring run right away and put it at the front of the queue instead,
+     *        so that run is followed by @c nextInterval like every later one. Without an interval it
+     *        triggers a run.
      * @throws std::exception whatever the scheduler throws (e.g. a duplicate name).
      */
-    void start()
+    void start(bool runNow = false)
     {
         if (m_interval == 0)
         {
+            if (runNow)
+            {
+                trigger();
+            }
             return;
         }
-        lockScheduler()->scheduleTask(m_state->name, config(m_interval, false));
+        const auto scheduler = lockScheduler();
+        scheduler->scheduleTask(m_state->name, config(m_interval, runNow));
+        if (runNow)
+        {
+            try
+            {
+                scheduler->scheduleTaskFirst(m_state->name);
+            }
+            catch (const std::exception&)
+            {
+                // Already picked up by a worker: it runs now anyway.
+            }
+        }
     }
 
     /**
@@ -169,7 +192,12 @@ private:
 
     TaskConfig config(std::size_t interval, bool runImmediately) const
     {
-        return TaskConfig {interval, runImmediately, m_cpuPriority, [state = m_state]() { run(state); }};
+        // A request run is one-time: the scheduler never consults nextInterval for it.
+        return TaskConfig {interval,
+                           runImmediately,
+                           m_cpuPriority,
+                           [state = m_state]() { run(state); },
+                           interval > 0 ? m_nextInterval : std::function<std::size_t()> {}};
     }
 
     std::shared_ptr<IScheduler> lockScheduler() const
@@ -186,6 +214,7 @@ private:
     std::shared_ptr<State> m_state;
     std::size_t m_interval;
     int m_cpuPriority;
+    std::function<std::size_t()> m_nextInterval;
 };
 
 } // namespace scheduler

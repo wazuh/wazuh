@@ -1,3 +1,7 @@
+# The `# deps-recipe` blocks hold what reaches the external dependencies build and go into their pool keys
+# (packages/externals/deps.py); a setting that changes how the dependencies compile goes inside one. The Debug and
+# sanitizer flags stay out: the pool is always built in Release without them (packages/externals/build_external.sh).
+# deps-recipe: begin
 cmake_minimum_required(VERSION 3.12.4)
 
 # Force ranlib and windres for scan-build cross-compilation compatibility Must
@@ -34,17 +38,20 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 if(COVERITY)
   add_definitions(-D__GNUC__=8)
 endif(COVERITY)
+# deps-recipe: end
 
 # Compiler flags for Debug and Release builds
 if(NOT FSANITIZE)
   set(CMAKE_CXX_FLAGS_DEBUG "-g")
 endif()
 
+# deps-recipe: begin
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 else()
   set(CMAKE_CXX_FLAGS_RELEASE "-O3 -s")
 endif()
+# deps-recipe: end
 
 # Sanitizer flags (override DEBUG flags when enabled)
 if(FSANITIZE)
@@ -73,6 +80,7 @@ function(add_coverage_libraries target_name)
     endif()
   endif()
 endfunction()
+# deps-recipe: begin
 
 # SRC_FOLDER should point to the src/ directory Sub-modules will try to redefine
 # it, so we set a guard variable
@@ -83,8 +91,10 @@ set(WAZUH_MAIN_PROJECT
 
 # Shared CMake helpers
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+# deps-recipe: end
 include(WazuhRpath)
 include(WazuhJemalloc)
+# deps-recipe: begin
 
 # Define CLIENT for agent builds
 if("${TARGET}" STREQUAL "winagent" OR "${TARGET}" STREQUAL "agent")
@@ -115,6 +125,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set(CMAKE_CXX_USE_RESPONSE_FILE_FOR_INCLUDES OFF)
   set(CMAKE_C_USE_RESPONSE_FILE_FOR_INCLUDES OFF)
 endif()
+# deps-recipe: end
 # Set Wine as crosscompiling emulator for Windows unit tests
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows" AND UNIT_TEST)
   find_program(WINE "wine")
@@ -123,6 +134,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows" AND UNIT_TEST)
   endif()
   set(CMAKE_CROSSCOMPILING_EMULATOR wine)
 endif()
+# deps-recipe: begin
 
 # Read the VERSION JSON file
 file(READ "${SRC_FOLDER}/../VERSION.json" VERSION_JSON)
@@ -159,6 +171,7 @@ set(BENCHMARK_ENABLE_TESTING "OFF")
 link_directories(${SRC_FOLDER})
 link_directories(${SRC_FOLDER}/build/lib)
 
+# deps-recipe: end
 # Wazuh headers
 include_directories(${SRC_FOLDER}/shared/include)
 
@@ -226,6 +239,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
       psapi crypt32 shlwapi
       CACHE INTERNAL "Common Windows libraries for all executables")
 endif()
+# deps-recipe: begin
 
 # Helper variables
 set(IS_AGENT FALSE)
@@ -235,6 +249,7 @@ endif()
 
 # External dependencies
 add_subdirectory(external)
+# deps-recipe: end
 
 # Common modules (all targets)
 add_subdirectory(config)

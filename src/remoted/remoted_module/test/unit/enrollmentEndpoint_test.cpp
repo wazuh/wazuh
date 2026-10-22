@@ -394,6 +394,23 @@ TEST(EnrollmentEndpointTest, VersionTooNewIsRejectedWhenNotAllowed)
     EXPECT_EQ(response.status, 400);
 }
 
+TEST(EnrollmentEndpointTest, PatchAheadVersionIsAcceptedWhenNotAllowed)
+{
+    // Manager 5.0.0, allowHigherVersions=false: one patch ahead is not "newer" -- the same
+    // major.minor rule port 1515 applies (compare_wazuh_versions(..., false)).
+    auto stub = fixedAuthdServer(R"({"error":0,"data":{"id":"1","name":"agent1","ip":"any","key":"k"}})");
+    const auto response = run(openModeConfig(), R"({"name":"agent1","version":"v5.0.1"})", stub.path);
+    EXPECT_EQ(response.status, 200);
+}
+
+TEST(EnrollmentEndpointTest, MinorAheadVersionIsRejectedWhenNotAllowed)
+{
+    const auto response = run(openModeConfig(),
+                              R"({"name":"agent1","version":"v5.1.0"})",
+                              makeUniqueSocketPath("enrollment_endpoint_minor_ahead"));
+    EXPECT_EQ(response.status, 400);
+}
+
 TEST(EnrollmentEndpointTest, VersionTooNewIsAcceptedWhenAllowed)
 {
     Config config = openModeConfig();

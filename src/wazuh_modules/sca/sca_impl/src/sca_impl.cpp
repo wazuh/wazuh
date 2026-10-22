@@ -1558,7 +1558,7 @@ SnapshotSyncResult SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(
             // the DELTA sync failure below. (#36724, #38579)
             LoggingHelper::getInstance().log(
                 LOG_DEBUG, "Failed to clear SCA index before " + syncReason + "; will retry later");
-            return {dataCleanResult, false};
+            return {std::move(dataCleanResult), false};
         }
 
         for (const auto& check : checks)
@@ -1668,7 +1668,7 @@ SnapshotSyncResult SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(
             LoggingHelper::getInstance().log(LOG_DEBUG, "SCA " + syncReason + " failed");
         }
 
-        return {result, queued};
+        return {std::move(result), queued};
     }
     catch (const std::exception& err)
     {

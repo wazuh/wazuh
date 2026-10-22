@@ -19,6 +19,7 @@ constexpr std::string_view OUTPUTS_PATH = "analysisd.output_path";
 
 constexpr std::string_view CM_RULESET_PATH = "analysisd.cm_ruleset_path";
 constexpr std::string_view CM_SYNC_INTERVAL = "analysisd.cm_sync_interval";
+constexpr std::string_view CM_SYNC_RETRY_INTERVAL = "analysisd.cm_sync_retry_interval";
 
 constexpr std::string_view IOC_SYNC_INTERVAL = "analysisd.ioc_sync_interval";
 

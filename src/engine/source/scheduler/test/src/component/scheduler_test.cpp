@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <functional>
 #include <memory>
+#include <stdexcept>
 #include <thread>
 
 #include <gtest/gtest.h>
@@ -190,6 +191,63 @@ TEST_F(SchedulerTest, RunImmediately_ThenRecurresAtInterval)
     EXPECT_GE(executionCount.load(), 2); // at least one recurrence after interval
 
     EXPECT_EQ(scheduler->getActiveTasksCount(), 1); // task not removed (not one-time)
+
+    scheduler->stop();
+}
+
+TEST_F(SchedulerTest, NextInterval_OverridesIntervalForNextRun)
+{
+    std::atomic<int> executionCount {0};
+
+    scheduler::TaskConfig config;
+    config.interval = 60;
+    config.runImmediately = true;
+    config.CPUPriority = 0;
+    config.taskFunction = [&executionCount]()
+    {
+        executionCount.fetch_add(1);
+    };
+    // Short retry after the first run only, then back to the 60 s interval
+    config.nextInterval = [&executionCount]() -> std::size_t
+    {
+        return executionCount.load() < 2 ? 1 : 0;
+    };
+
+    scheduler->start();
+    scheduler->scheduleTask("nextIntervalTask", std::move(config));
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(1500));
+    EXPECT_EQ(executionCount.load(), 2); // immediate run + one run 1 s later instead of 60 s
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(1500));
+    EXPECT_EQ(executionCount.load(), 2); // nextInterval returned 0: next run falls back to 60 s
+
+    scheduler->stop();
+}
+
+TEST_F(SchedulerTest, NextInterval_ThrowFallsBackToInterval)
+{
+    std::atomic<int> executionCount {0};
+
+    scheduler::TaskConfig config;
+    config.interval = 1;
+    config.runImmediately = true;
+    config.CPUPriority = 0;
+    config.taskFunction = [&executionCount]()
+    {
+        executionCount.fetch_add(1);
+    };
+    config.nextInterval = []() -> std::size_t
+    {
+        throw std::runtime_error("nextInterval failure");
+    };
+
+    scheduler->start();
+    scheduler->scheduleTask("throwingNextIntervalTask", std::move(config));
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(1500));
+    EXPECT_GE(executionCount.load(), 2); // rescheduled at the regular 1 s interval, worker still alive
+    EXPECT_EQ(scheduler->getActiveTasksCount(), 1);
 
     scheduler->stop();
 }

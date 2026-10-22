@@ -44,6 +44,18 @@ namespace remoted::control
                  ///< recognise a clean-shutdown drain instead of a genuine transport failure.
     };
 
+    /// What the local wazuh-db said about an agent's group membership.
+    ///
+    /// `noRow` is an answer of its own: the local replica has no row for the agent (`ok []`), which
+    /// is not the same thing as a row with no groups. A worker whose replica has not received the
+    /// agent yet, or an agent deleted since it authenticated, lands here, and nothing that authorizes
+    /// a download may read it as membership of `default`.
+    struct AgentGroupsResult
+    {
+        bool noRow {false};
+        std::vector<std::string> groups; ///< wazuh-db order; empty when the row has no groups.
+    };
+
     struct HostInfo
     {
         std::string hostname;
@@ -90,50 +102,53 @@ namespace remoted::control
     }
 
     /**
-     * @brief Numeric-only comparison of MAJOR.MINOR.PATCH[.EXTRA] version strings.
+     * @brief Parses MAJOR.MINOR.PATCH[.EXTRA] into four integers.
      *
-     * Everything after '-'/'+' is discarded, matching the legacy behavior of
-     * compare_wazuh_versions(..., ignore_stage=false). Shared by /control (its own
-     * allow_higher_versions check) and /enroll (authd's local `add` path has no version check
-     * at all, so remoted enforces it itself) -- kept in one place so the two enrollment paths
-     * can never silently diverge on what "too new" means.
+     * A leading 'v'/'V' is stripped and everything after '-'/'+' (stage or build suffix) is
+     * discarded; each unparsed or missing part is 0.
+     */
+    inline std::array<int, 4> parseVersionParts(const std::string& v)
+    {
+        std::array<int, 4> parts {0, 0, 0, 0};
+        // Strip leading 'v' or 'V' if present
+        std::string version = v;
+        if (!version.empty() && (version[0] == 'v' || version[0] == 'V'))
+        {
+            version = version.substr(1);
+        }
+
+        size_t pos = version.find_first_of("+-");
+        std::string numericPart = (pos != std::string::npos) ? version.substr(0, pos) : version;
+
+        std::istringstream iss(numericPart);
+        std::string token;
+        int i = 0;
+        while (std::getline(iss, token, '.') && i < static_cast<int>(parts.size()))
+        {
+            try
+            {
+                parts[i++] = std::stoi(token);
+            }
+            catch (...)
+            {
+                break;
+            }
+        }
+        return parts;
+    }
+
+    /**
+     * @brief Generic numeric comparison of MAJOR.MINOR.PATCH[.EXTRA] version strings.
+     *
+     * Compares all four numeric parts; the suffix after '-'/'+' is ignored. This is an ordering,
+     * not the allow_higher_versions policy -- use isAgentVersionTooNew() for that.
      *
      * @return -1 if v1 < v2, 1 if v1 > v2, 0 if equal (each unparsed/missing part treated as 0).
      */
     inline int compareVersions(const std::string& v1, const std::string& v2)
     {
-        auto parseParts = [](const std::string& v) -> std::array<int, 4>
-        {
-            std::array<int, 4> parts {0, 0, 0, 0};
-            // Strip leading 'v' or 'V' if present
-            std::string version = v;
-            if (!version.empty() && (version[0] == 'v' || version[0] == 'V'))
-            {
-                version = version.substr(1);
-            }
-
-            size_t pos = version.find_first_of("+-");
-            std::string numericPart = (pos != std::string::npos) ? version.substr(0, pos) : version;
-
-            std::istringstream iss(numericPart);
-            std::string token;
-            int i = 0;
-            while (std::getline(iss, token, '.') && i < static_cast<int>(parts.size()))
-            {
-                try
-                {
-                    parts[i++] = std::stoi(token);
-                }
-                catch (...)
-                {
-                    break;
-                }
-            }
-            return parts;
-        };
-
-        auto p1 = parseParts(v1);
-        auto p2 = parseParts(v2);
+        const auto p1 = parseVersionParts(v1);
+        const auto p2 = parseVersionParts(v2);
 
         for (size_t i = 0; i < p1.size(); ++i)
         {
@@ -143,6 +158,26 @@ namespace remoted::control
                 return 1;
         }
         return 0;
+    }
+
+    /**
+     * @brief The allow_higher_versions policy: is the agent newer than the manager?
+     *
+     * "Newer" means a higher MAJOR or MINOR only -- an agent one patch release ahead is not too
+     * new. This is the rule of the legacy paths (port 1515 enrollment and the 1514 HC_STARTUP),
+     * which call compare_wazuh_versions(manager, agent, false) with compare_patch=false. Shared by
+     * /control and /enroll so one manager applies one rule whatever port the agent arrives on.
+     */
+    inline bool isAgentVersionTooNew(const std::string& managerVersion, const std::string& agentVersion)
+    {
+        const auto manager = parseVersionParts(managerVersion);
+        const auto agent = parseVersionParts(agentVersion);
+
+        if (agent[0] != manager[0])
+        {
+            return agent[0] > manager[0];
+        }
+        return agent[1] > manager[1];
     }
 
     struct Task

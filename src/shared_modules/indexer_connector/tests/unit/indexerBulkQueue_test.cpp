@@ -11,6 +11,7 @@
  */
 
 #include "indexerBulkQueue.hpp"
+#include "scopedLogCapture.hpp"
 #include <atomic>
 #include <chrono>
 #include <future>
@@ -416,4 +417,39 @@ TEST_F(IndexerBulkQueueTest, DestructorDoesNotHangWhileWaitingOutAnExternalBacko
     const auto elapsed = std::chrono::steady_clock::now() - start;
 
     EXPECT_LT(elapsed, std::chrono::seconds(5)) << "Destructor should not block for the full backoff delay";
+}
+
+// Events discarded after an indexer response (recordDiscarded) count in droppedEvents() but must stay out of the
+// overflow accounting: neither the overflow summary nor the "normalized" line may include them.
+TEST_F(IndexerBulkQueueTest, RecordDiscardedAddsToDroppedEventsOnly)
+{
+    constexpr size_t SMALL_MAX_BYTES {8};
+    constexpr size_t LARGE_BULK_BYTES {1024};
+    constexpr size_t SUMMARY_EVERY_OVERFLOW {0};
+    const std::string oversized(SMALL_MAX_BYTES + 1, 'x');
+
+    // Declared before the queue: its worker logs until ~IndexerBulkQueue.
+    ScopedLogCapture capture;
+
+    IndexerBulkQueue queue([](uint64_t /*sequence*/, std::vector<std::string>& /*batch*/) {},
+                           SMALL_MAX_BYTES,
+                           LARGE_BULK_BYTES,
+                           FLUSH_INTERVAL_SEC,
+                           RETRY_DELAY_SEC,
+                           MAX_RETRY_DELAY_SEC,
+                           {},
+                           SUMMARY_EVERY_OVERFLOW);
+
+    queue.recordDiscarded(5);
+    queue.push(std::string(oversized));
+    queue.push(std::string(oversized));
+    queue.push(std::string("fits"));
+
+    EXPECT_EQ(queue.droppedEvents(), 7U);
+    EXPECT_EQ(capture.countAtLevel(Log::LOGLEVEL_WARNING, "Starting to discard events"), 1U);
+    EXPECT_EQ(capture.countAtLevel(Log::LOGLEVEL_WARNING, "Queue overflow continues: 1 events discarded in the last"),
+              1U);
+    EXPECT_EQ(capture.countAtLevel(Log::LOGLEVEL_WARNING, "total discarded: 2)."), 1U);
+    EXPECT_FALSE(capture.contains("total discarded: 7"));
+    EXPECT_EQ(capture.countAtLevel(Log::LOGLEVEL_INFO, "Resuming event acceptance after 2 discarded events."), 1U);
 }

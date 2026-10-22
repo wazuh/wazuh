@@ -488,7 +488,7 @@ wazuh_modules.inventory_sync_server_indexer_sync_max_retry_attempts=5
 - **Note:** Failed attempts allowed to one connector operation (a bulk flush with its `413` split
   chunks, a delete-by-query, an update-by-query, a search) before it gives up and the session fails.
   Together with `max_retry_duration_seconds` below — whichever is spent first — this bounds the
-  retry loops that would otherwise let a persistent `429` or an unreachable indexer block the
+  retry loops that would otherwise let a persistent `429` (or `502`/`503`/`504` on a bulk flush), or an unreachable indexer, block the
   flushing worker, and the shard behind it, forever. `0` disables the attempts bound (retries are
   then limited only by `max_retry_duration_seconds`); setting both to `0` makes retries fully
   unbounded and logs a startup `WARNING`. Use `1` for a single attempt with no retry. This does not
