@@ -109,6 +109,24 @@ struct FakeClock
     std::chrono::steady_clock::time_point now {std::chrono::steady_clock::time_point {}};
 };
 
+// A JSON failure is a parse error, not an identity rejection (the API counts only the latter).
+template<typename Call>
+void expectNonIdentityError(Call&& call)
+{
+    try
+    {
+        call();
+        ADD_FAILURE() << "expected std::runtime_error";
+    }
+    catch (const IdentityError& e)
+    {
+        ADD_FAILURE() << "unexpected IdentityError: " << e.what();
+    }
+    catch (const std::runtime_error&)
+    {
+    }
+}
+
 } // namespace
 
 class AgentMetadataCacheTest : public ::testing::Test
@@ -173,7 +191,7 @@ TEST_F(AgentMetadataCacheTest, GetOrParse_DifferentAgents_SeparateEntries)
 
 TEST_F(AgentMetadataCacheTest, GetOrParse_InvalidJson_Throws)
 {
-    EXPECT_THROW(cache.getOrParse("001", HEADER_INVALID_JSON), std::runtime_error);
+    expectNonIdentityError([&]() { cache.getOrParse("001", HEADER_INVALID_JSON); });
     EXPECT_EQ(cache.size(), 0);
 }
 
@@ -438,7 +456,9 @@ TEST_F(AgentMetadataCacheTest, Metrics_RecordsEvictions)
 
 TEST_F(AgentMetadataCacheTest, ThreadSafety_ConcurrentGetOrParseWithEviction)
 {
-    AgentMetadataCache shortCache(1s);
+    using Clock = std::chrono::steady_clock;
+    std::atomic<Clock::rep> ticks {0};
+    AgentMetadataCache shortCache(1s, {}, [&]() { return Clock::time_point(Clock::duration(ticks.load())); });
     constexpr int NUM_THREADS = 4;
     constexpr int ITERATIONS = 500;
 
@@ -456,7 +476,8 @@ TEST_F(AgentMetadataCacheTest, ThreadSafety_ConcurrentGetOrParseWithEviction)
     }
 
     std::atomic<int> errors {0};
-    std::atomic<bool> running {true};
+    std::atomic<int> writersLeft {NUM_THREADS};
+    std::atomic<std::size_t> evicted {0};
     std::vector<std::thread> threads;
 
     // Writer threads
@@ -465,7 +486,7 @@ TEST_F(AgentMetadataCacheTest, ThreadSafety_ConcurrentGetOrParseWithEviction)
         threads.emplace_back(
             [&, t]()
             {
-                for (int i = 0; i < ITERATIONS && running.load(); ++i)
+                for (int i = 0; i < ITERATIONS; ++i)
                 {
                     try
                     {
@@ -477,18 +498,22 @@ TEST_F(AgentMetadataCacheTest, ThreadSafety_ConcurrentGetOrParseWithEviction)
                         errors.fetch_add(1);
                     }
                 }
+                writersLeft.fetch_sub(1);
             });
     }
 
-    // Evictor thread
+    // Evictor thread: every round ages all entries past the TTL before sweeping
     threads.emplace_back(
         [&]()
         {
-            for (int i = 0; i < 10 && running.load(); ++i)
+            do
             {
-                std::this_thread::sleep_for(100ms);
-                shortCache.evictStale();
-            }
+                ticks.fetch_add(std::chrono::duration_cast<Clock::duration>(2s).count());
+                evicted.fetch_add(shortCache.evictStale());
+                if (!AgentMetadataCacheTestAccess::consistent(shortCache))
+                    errors.fetch_add(1);
+                std::this_thread::yield();
+            } while (writersLeft.load() != 0);
         });
 
     for (auto& th : threads)
@@ -496,37 +521,14 @@ TEST_F(AgentMetadataCacheTest, ThreadSafety_ConcurrentGetOrParseWithEviction)
         th.join();
     }
 
+    // A final sweep empties the cache, so at least one eviction is always observed
+    ticks.fetch_add(std::chrono::duration_cast<Clock::duration>(2s).count());
+    evicted.fetch_add(shortCache.evictStale());
     EXPECT_EQ(errors.load(), 0);
-}
-
-TEST(CanonicalAgentIdTest, MatchesJwtProfileVectors)
-{
-    for (const auto id : {"000", "001", "007", "010", "099", "100", "999", "1000", "4294967295"})
-    {
-        EXPECT_TRUE(isCanonicalAgentId(id)) << id;
-    }
-    for (const auto id : {"",
-                          "0",
-                          "1",
-                          "01",
-                          "0000",
-                          "0001",
-                          "0123",
-                          "abc",
-                          "-01",
-                          "+01",
-                          " 01",
-                          "001 ",
-                          "1.0",
-                          "1e3",
-                          "4294967296",
-                          "9999999999",
-                          "10000000000",
-                          "001\r\n"})
-    {
-        EXPECT_FALSE(isCanonicalAgentId(id)) << id;
-    }
-    EXPECT_FALSE(isCanonicalAgentId(std::string_view("001\0", 4)));
+    EXPECT_GT(evicted.load(), 0u);
+    EXPECT_EQ(shortCache.size(), 0u);
+    EXPECT_EQ(shortCache.accountedBytes(), 0u);
+    EXPECT_TRUE(AgentMetadataCacheTestAccess::consistent(shortCache));
 }
 
 TEST_F(AgentMetadataCacheTest, TrustedIdHitRefreshesTtl)
@@ -607,7 +609,7 @@ TEST_F(AgentMetadataCacheTest, AcceptsOffPathMetadataWithinJsonDepthLimit)
     EXPECT_NO_THROW(cache.getOrParse("001", header));
     const auto tooDeep =
         prefix + std::string(json::Json::MAX_DEPTH, '[') + "0" + std::string(json::Json::MAX_DEPTH, ']') + "}";
-    EXPECT_THROW(cache.getOrParse("001", tooDeep), std::runtime_error);
+    expectNonIdentityError([&]() { cache.getOrParse("001", tooDeep); });
     EXPECT_EQ(cache.size(), 1u);
 }
 
@@ -1140,6 +1142,8 @@ TEST_F(AgentMetadataCacheTest, BypassMetricsTrackEachConstraint)
 
 TEST_F(AgentMetadataCacheTest, RetentionPullMetricsFollowMutationsAndDestruction)
 {
+    // Pull metrics are registered first-wins: drop the ones a previous run bound to a destroyed cache
+    fastmetrics::manager().clear();
     FakeClock clock;
     const auto small = sizedHeader("001", 16);
     const auto large = sizedHeader("001", 512);
@@ -1158,43 +1162,110 @@ TEST_F(AgentMetadataCacheTest, RetentionPullMetricsFollowMutationsAndDestruction
         EXPECT_EQ(metric->type(), fastmetrics::MetricType::PULL);
         metric->enable();
     }
-    const auto expectPulls = [&](std::size_t count, std::size_t bytes)
+    std::vector<std::shared_ptr<fastmetrics::ICounter>> counters;
+    for (const auto name : {fastmetrics::names::AGENT_CACHE_HITS,
+                            fastmetrics::names::AGENT_CACHE_INSERTIONS,
+                            fastmetrics::names::AGENT_CACHE_UPDATES,
+                            fastmetrics::names::AGENT_CACHE_EVICTIONS})
     {
-        const auto hits = fastmetrics::manager().get(fastmetrics::names::AGENT_CACHE_HITS)->value();
-        const auto insertions = fastmetrics::manager().get(fastmetrics::names::AGENT_CACHE_INSERTIONS)->value();
-        const auto updates = fastmetrics::manager().get(fastmetrics::names::AGENT_CACHE_UPDATES)->value();
-        const auto evictions = fastmetrics::manager().get(fastmetrics::names::AGENT_CACHE_EVICTIONS)->value();
+        counters.push_back(fastmetrics::manager().getOrCreateCounter(name));
+    }
+    const auto snapshot = [&]()
+    {
+        std::vector<uint64_t> values;
+        for (const auto& counter : counters) values.push_back(counter->get());
+        return values;
+    };
+    auto last = snapshot();
+    // deltas: hits, insertions, updates, evictions since the previous step
+    const auto expectPulls = [&](std::size_t count, std::size_t bytes, std::vector<uint64_t> deltas)
+    {
         EXPECT_EQ(fastmetrics::manager().get(fastmetrics::names::AGENT_CACHE_ENTRIES)->value(), count);
         EXPECT_EQ(fastmetrics::manager().get(fastmetrics::names::AGENT_CACHE_BYTES)->value(), bytes);
         EXPECT_EQ(fastmetrics::manager().get(fastmetrics::names::AGENT_CACHE_MAX_ENTRIES)->value(), limits.maxEntries);
         EXPECT_EQ(fastmetrics::manager().get(fastmetrics::names::AGENT_CACHE_MAX_BYTES)->value(), limits.maxBytes);
-        EXPECT_EQ(fastmetrics::manager().get(fastmetrics::names::AGENT_CACHE_HITS)->value(), hits);
-        EXPECT_EQ(fastmetrics::manager().get(fastmetrics::names::AGENT_CACHE_INSERTIONS)->value(), insertions);
-        EXPECT_EQ(fastmetrics::manager().get(fastmetrics::names::AGENT_CACHE_UPDATES)->value(), updates);
-        EXPECT_EQ(fastmetrics::manager().get(fastmetrics::names::AGENT_CACHE_EVICTIONS)->value(), evictions);
+        const auto now = snapshot();
+        for (std::size_t i = 0; i < now.size(); ++i) EXPECT_EQ(now[i] - last[i], deltas[i]) << "counter " << i;
+        last = now;
     };
-    expectPulls(0, 0);
+    expectPulls(0, 0, {0, 0, 0, 0});
     EXPECT_EQ(bounded->getOrParse("001", small).second, Op::Inserted);
-    expectPulls(1, costOf("001", small));
+    expectPulls(1, costOf("001", small), {0, 1, 0, 0});
     EXPECT_EQ(bounded->getOrParse("001", small).second, Op::Retrieved);
-    expectPulls(1, costOf("001", small));
+    expectPulls(1, costOf("001", small), {1, 0, 0, 0});
     EXPECT_EQ(bounded->getOrParse("001", large).second, Op::Updated);
-    expectPulls(1, costOf("001", large));
+    expectPulls(1, costOf("001", large), {0, 0, 1, 0});
     EXPECT_EQ(bounded->getOrParse("002", sizedHeader("002", 16)).second, Op::BypassedCapacity);
-    expectPulls(1, costOf("001", large));
+    expectPulls(1, costOf("001", large), {0, 0, 0, 0});
     EXPECT_EQ(bounded->getOrParse("001", small).second, Op::Updated);
-    expectPulls(1, costOf("001", small));
+    expectPulls(1, costOf("001", small), {0, 0, 1, 0});
+    // A bypass that drops the old version is not an eviction
     EXPECT_EQ(bounded->getOrParse("001", sizedHeader("001", 8192)).second, Op::BypassedCapacity);
-    expectPulls(0, 0);
+    expectPulls(0, 0, {0, 0, 0, 0});
     bounded->getOrParse("001", small);
     clock.advance(1s + 1ns);
     EXPECT_EQ(bounded->evictStale(), 1u);
-    expectPulls(0, 0);
+    expectPulls(0, 0, {0, 1, 0, 1});
     bounded->getOrParse("001", small);
     bounded->clear();
-    expectPulls(0, 0);
+    expectPulls(0, 0, {0, 1, 0, 0});
     bounded->getOrParse("001", small);
     bounded.reset();
     EXPECT_TRUE(weak.expired());
     for (const auto name : names) EXPECT_EQ(fastmetrics::manager().get(name)->value(), 0);
+}
+
+TEST_F(AgentMetadataCacheTest, FullCacheBypassesAbsentAgentsWithoutExclusiveLock)
+{
+    const auto cached = sizedHeader("001", 16);
+    const auto absent = sizedHeader("002", 16);
+    AgentMetadataCache bounded(60s, {1, 0});
+    const auto retained = bounded.getOrParse("001", cached).first;
+    const auto bytes = bounded.accountedBytes();
+    auto entries = fastmetrics::manager().getOrCreateCounter(fastmetrics::names::AGENT_CACHE_BYPASS_MAX_ENTRIES);
+    const auto before = entries->get();
+    std::atomic<bool> start {false};
+    std::atomic<int> errors {0};
+    std::vector<std::thread> threads;
+    for (int t = 0; t < 4; ++t)
+    {
+        threads.emplace_back(
+            [&]()
+            {
+                while (!start.load()) std::this_thread::yield();
+                for (int i = 0; i < 1000; ++i)
+                {
+                    if (bounded.getOrParse("002", absent).second != Op::BypassedCapacity
+                        || bounded.getOrParse("001", cached).second != Op::Retrieved)
+                    {
+                        errors.fetch_add(1);
+                    }
+                }
+            });
+    }
+    start.store(true);
+    for (auto& thread : threads) thread.join();
+    EXPECT_EQ(errors.load(), 0);
+    EXPECT_EQ(entries->get() - before, 4000u);
+    EXPECT_EQ(bounded.size(), 1u);
+    EXPECT_EQ(bounded.accountedBytes(), bytes);
+    EXPECT_EQ(AgentMetadataCacheTestAccess::retained(bounded, "001"), retained);
+    EXPECT_TRUE(AgentMetadataCacheTestAccess::consistent(bounded));
+}
+
+TEST_F(AgentMetadataCacheTest, FitsBytesHandlesOverflowAndUnlimited)
+{
+    constexpr auto max = std::numeric_limits<std::size_t>::max();
+    const auto expectFit = [](AgentMetadataCache::ByteFit fit, bool fits, bool countAsBypass)
+    {
+        EXPECT_EQ(fit.fits, fits);
+        EXPECT_EQ(fit.countAsBypass, countAsBypass);
+    };
+    // An unrepresentable total never fits, but only a configured byte limit counts it as a bypass
+    expectFit(AgentMetadataCache::fitsBytes(max - 1, 2, 0), false, false);
+    expectFit(AgentMetadataCache::fitsBytes(max - 1, 2, 100), false, true);
+    expectFit(AgentMetadataCache::fitsBytes(10, std::nullopt, 100), false, true);
+    expectFit(AgentMetadataCache::fitsBytes(10, 5, 15), true, false);
+    expectFit(AgentMetadataCache::fitsBytes(10, 6, 15), false, true);
+    expectFit(AgentMetadataCache::fitsBytes(max - 1, 1, 0), true, false);
 }

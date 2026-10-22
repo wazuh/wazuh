@@ -158,6 +158,33 @@ public:
      *         identity in the header. Existing entries remain unchanged.
      * @throws std::runtime_error On invalid JSON.
      */
+    /// Outcome of the byte-limit check for one admission.
+    struct ByteFit
+    {
+        bool fits;          ///< The candidate can be retained within the byte limit.
+        bool countAsBypass; ///< A refusal that agent.cache.bypass.max_bytes must count.
+    };
+
+    /**
+     * @brief Decide whether @p candidate more bytes fit next to @p retained under @p maxBytes (0 = unlimited).
+     *
+     * A total that cannot be represented never fits. It is counted as a byte-limit bypass only when a
+     * byte limit is configured, so the metric keeps meaning "refused because of max_bytes".
+     */
+    static ByteFit fitsBytes(std::size_t retained, std::optional<std::size_t> candidate, std::size_t maxBytes)
+    {
+        const auto total = candidate ? checkedAdd(retained, *candidate) : std::nullopt;
+        if (!total)
+        {
+            return {false, maxBytes != 0};
+        }
+        if (maxBytes == 0)
+        {
+            return {true, false};
+        }
+        return {*total <= maxBytes, *total > maxBytes};
+    }
+
     GetResult getOrParse(std::string_view trustedAgentId, std::string_view headerStr)
     {
         if (!isCanonicalAgentId(trustedAgentId))
@@ -190,6 +217,33 @@ public:
         }
 
         const auto candidateBytes = entryBytes(headerStr.size(), agentId.size(), parsed->getAllocatedMemory());
+
+        // An agent that is not cached cannot be admitted while the cache is full, and nothing would
+        // change: decide that under the shared lock, so the batches of agents left out do not serialise
+        // against every cache hit. The snapshot may be stale by the time the caller uses it; admission
+        // fairness is not guaranteed, and a later batch retries. A known agent takes the exclusive path,
+        // because its replacement releases its own bytes and may fit.
+        {
+            std::shared_lock lock(m_mutex);
+            if (m_byId.find(agentId) == m_byId.end())
+            {
+                const bool fitsEntries = m_limits.maxEntries == 0 || m_byId.size() < m_limits.maxEntries;
+                const auto byteFit = fitsBytes(m_accountedBytes, candidateBytes, m_limits.maxBytes);
+                if (!fitsEntries || !byteFit.fits)
+                {
+                    if (!fitsEntries)
+                    {
+                        m_bypassEntriesCounter->add(1);
+                    }
+                    if (byteFit.countAsBypass)
+                    {
+                        m_bypassBytesCounter->add(1);
+                    }
+                    return {std::move(parsed), Operation::BypassedCapacity};
+                }
+            }
+        }
+
         std::unique_lock lock(m_mutex);
         auto it = m_byId.find(agentId);
         // Another thread may have admitted the same pair while this call parsed it.
@@ -202,17 +256,16 @@ public:
         const bool agentExisted = it != m_byId.end();
         const auto retainedBytes = m_accountedBytes - (agentExisted ? it->second->accountedBytes : 0);
         const auto retainedEntries = m_byId.size() - (agentExisted ? 1 : 0);
-        const auto bytesAfter = candidateBytes ? checkedAdd(retainedBytes, *candidateBytes) : std::nullopt;
         const bool fitsEntries = retainedEntries < std::numeric_limits<std::size_t>::max()
                                  && (m_limits.maxEntries == 0 || retainedEntries < m_limits.maxEntries);
-        const bool fitsBytes = bytesAfter && (m_limits.maxBytes == 0 || *bytesAfter <= m_limits.maxBytes);
-        if (!fitsEntries || !fitsBytes)
+        const auto byteFit = fitsBytes(retainedBytes, candidateBytes, m_limits.maxBytes);
+        if (!fitsEntries || !byteFit.fits)
         {
             if (!fitsEntries)
             {
                 m_bypassEntriesCounter->add(1);
             }
-            if (!fitsBytes)
+            if (byteFit.countAsBypass)
             {
                 m_bypassBytesCounter->add(1);
             }
@@ -235,7 +288,7 @@ public:
         {
             m_byId.emplace(agentId, entry);
         }
-        m_accountedBytes = *bytesAfter;
+        m_accountedBytes = retainedBytes + *candidateBytes; // fits ⇒ representable (fitsBytes())
 
         if (agentExisted)
         {
