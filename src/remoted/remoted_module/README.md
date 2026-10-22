@@ -2986,7 +2986,7 @@ the target; a mismatch is a `404`); pass `/` to force the unprefixed paths.
 python3 tools/send_stateless.py            # one valid signed request -> 202
 python3 tools/send_stateless.py --tamper   # corrupted token signature -> 401 (invalid_signature)
 python3 tools/send_stateless.py --all      # every success/failure scenario with expected codes,
-                                            # incl. payload_agent_mismatch -> 400 (PayloadAgentMismatch)
+                                            # incl. payload_agent_mismatch -> 400 (engine identity check, relayed)
 # options: --url (default https://127.0.0.1:1517), --agent-id, --body, --client-keys, --global-prefix
 ```
 

@@ -346,7 +346,7 @@ paths:
                 unsupportedProtocolVersion:
                   value: { error: "Unsupported protocol-version", code: 400 }
                 invalidEventBatch:
-                  summary: Payload agent-id mismatch, OR the engine rejected the H/E batch
+                  summary: Missing `H ` prefix or oversized H line, OR the engine rejected the H/E batch (including its agent identity)
                   value: { error: "Invalid event batch", code: 400 }
                 malformedContentEncoding:
                   summary: "Content-Encoding: zstd set, but the body isn't a valid zstd frame"

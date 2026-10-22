@@ -40,10 +40,10 @@ E 1:/var/log/syslog:Oct  6 14:02:11 host sshd[2211]: Accepted publickey for root
 E 1:/var/log/syslog:Oct  6 14:02:12 host sudo: pam_unix(sudo:session): session opened
 ```
 
-- The **`H ` line** carries a JSON object whose `/wazuh/agent/id` remoted cross-checks against the
-  authenticated identity: a mismatch is `400`, exactly like a `/stateful` identity mismatch is
-  `403`. The sender **MUST** put the agent's own id there, or the batch is rejected before it
-  reaches the engine.
+- The **`H ` line** carries a JSON object whose `/wazuh/agent/id` must equal the authenticated
+  identity. remoted forwards it with that identity as `X-Wazuh-Agent-Id`, and the engine rejects a
+  mismatch; the agent sees `400`, as a `/stateful` identity mismatch is `403`. The sender **MUST**
+  put the agent's own id there, or the batch is rejected before any of its events is queued.
 - Each **`E ` line** is one event: `E <location-id>:<location>:<raw log line>`. The `<location>` is
   the source path the events belong to (`/var/log/syslog`, a Windows channel name, …), and the
   remainder is the raw line verbatim. A lane's engine source (a sample log file) provides these

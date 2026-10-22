@@ -47,7 +47,7 @@ ESCAPED_NUL = r"\u0000"  # two characters, not a NUL byte
 
 def default_body(agent_id: str) -> bytes:
     """One H line naming `agent_id` + one event. The H line MUST name the authenticated agent: the
-    manager answers 400 (payload_agent_mismatch) to a batch that claims another id."""
+    manager answers 400 to a batch that claims another id."""
     return b'H {"wazuh":{"agent":{"id":"' + agent_id.encode() + b'"}}}\nE 1:/var/log/syslog:hello from python'
 
 
@@ -129,9 +129,9 @@ def prefixed(path: str) -> str:
 # --- Scenarios -------------------------------------------------------------
 # Each returns (headers, body_to_send, target). Every distinct AuthError that
 # publicErrorFor() (authMiddleware.cpp) maps to a distinct status is covered
-# here, including PayloadAgentMismatch (400): /stateless cross-checks the H
-# line's wazuh.agent.id against the authenticated agent-id before forwarding
-# (statelessEndpoint.cpp). Also covers every transport-level limit RESTinio
+# here, plus an H line naming another agent (400): /stateless forwards it with
+# the authenticated id as X-Wazuh-Agent-Id, the engine rejects the mismatch and
+# remoted relays that 400. Also covers every transport-level limit RESTinio
 # itself enforces (RestinioHttpServer.cpp), which fail differently: see
 # CONN_CLOSED.
 
@@ -276,8 +276,8 @@ def scenario_too_many_headers(agent_id, agent_key):
 
 def scenario_payload_agent_mismatch(agent_id, agent_key):
     # The bearer token names the real agent; the H line's
-    # wazuh.agent.id claims a different one. statelessEndpoint.cpp rejects the mismatch with a
-    # plain 400 before ever forwarding the batch to the engine.
+    # wazuh.agent.id claims a different one. The engine rejects the mismatch against the
+    # X-Wazuh-Agent-Id remoted sets, and remoted relays it as a plain 400.
     target = prefixed("/stateless")
     claimed_id = str(int(agent_id) + 1)
     body = f'H {{"wazuh":{{"agent":{{"id":"{claimed_id}"}}}}}}\nE 1:/var/log/syslog:hello from python'.encode()

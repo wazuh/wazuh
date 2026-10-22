@@ -658,8 +658,9 @@ private:
             /*countAgainstBudget=*/false);
 
         // /stateless: the gateway runs the full bearer-token validation and only calls this handler once
-        // auth succeeds; makeHandler() then cross-checks the payload's claimed wazuh.agent.id against
-        // the authenticated agent id (400 PayloadAgentMismatch on mismatch/malformed header), and on
+        // auth succeeds; makeHandler() then only slices the H line (400 PayloadAgentMismatch when the
+        // `H ` prefix is missing or the slice exceeds its cap; the engine rejects an id other than the
+        // authenticated one, sent as X-Wazuh-Agent-Id, and that 400 is relayed), and on
         // success the forwarder acquires a deferred-work slot (plain 503 when full), forwards the H/E
         // batch to the engine's event ingress over UDS, and replies from the downstream result (202
         // accepted / 400 bad batch / 413 / 503). The payload + byte budget are freed once the send
