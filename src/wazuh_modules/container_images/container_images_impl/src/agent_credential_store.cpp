@@ -442,7 +442,18 @@ namespace containerimages
                 return RemoveOutcome::Failed;
             }
 
-            restrictPermissions(temporaryPath);
+            // Same rule as put(): the remaining credentials are not written into a file whose
+            // permissions could not be restricted, and the store is left as it was.
+            const auto restricted {restrictPermissions(temporaryPath)};
+
+            if (restricted)
+            {
+                file.close();
+                std::filesystem::remove(temporaryPath, error);
+                logWarn("The credential was not removed: the permissions of the credential store at '" + m_path +
+                        "' could not be restricted (" + restricted.message() + ").");
+                return RemoveOutcome::Failed;
+            }
 
             file << document.dump(2);
             file.flush();
