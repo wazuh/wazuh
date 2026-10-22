@@ -57,7 +57,7 @@ def test_a_report_without_metadata_has_no_groups_or_host(client, indexer, agent_
 
 @pytest.mark.parametrize("post,index,modules", REPORTS)
 def test_bad_metadata_is_left_empty_not_rejected(client, indexer, agent_id, post, index, modules):
-    bad = {"groups": ["default", ""], "host": {"hostname": 42, "architecture": "x86_64"}}
+    bad = {"groups": ["default", 1], "host": {"hostname": 42, "architecture": "x86_64"}}
     agent = _indexed_agent(client, indexer, post, index, {"modules": modules, "agent": bad}, agent_id)
 
     assert agent["groups"] == []

@@ -355,7 +355,7 @@ TEST(StatsEndpointTest, InvalidAgentMetadataIsLeftEmptyNotRejected)
 {
     const auto document =
         indexedDocument(R"({"modules":{"agent":{"messages":{"count":1}}},)"
-                        R"("agent":{"groups":["default",""],"host":{"hostname":42,"architecture":"x86_64"}}})",
+                        R"("agent":{"groups":["default",1],"host":{"hostname":42,"architecture":"x86_64"}}})",
                         "001");
 
     EXPECT_EQ(nlohmann::json::array(), document["/wazuh/agent/groups"_json_pointer]);
