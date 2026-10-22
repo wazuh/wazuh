@@ -411,6 +411,21 @@ INSTANTIATE_TEST_SUITE_P(
                getKVParser,
                {NAME, TARGET, {}, {"=", " ", "'", "\\"}}),
 
+        // The pointer escape ~0 is a literal '~'.
+        ParseT(SUCCESS,
+               R"(a~0b=v)",
+               j(fmt::format(R"({{"{}":{{"a~b":"v"}}}})", TARGET.substr(1))),
+               6,
+               getKVParser,
+               {NAME, TARGET, {}, {"=", " ", "'", "\\"}}),
+
+        // A '~' followed by anything but '0' or '1' is not a valid JSON Pointer: the parse fails, nothing throws.
+        ParseT(FAILURE, R"(a~2=1 b=2)", {}, 9, getKVParser, {NAME, TARGET, {}, {"=", " ", "'", "\\"}}),
+        ParseT(FAILURE, R"(b=2 a~2=1)", {}, 9, getKVParser, {NAME, TARGET, {}, {"=", " ", "'", "\\"}}),
+        ParseT(FAILURE, R"(a~=1)", {}, 4, getKVParser, {NAME, TARGET, {}, {"=", " ", "'", "\\"}}),
+        ParseT(FAILURE, R"(a~2=)", {}, 4, getKVParser, {NAME, TARGET, {}, {"=", " ", "'", "\\"}}),
+        ParseT(FAILURE, R"(a~.b=1)", {}, 6, getKVParser, {NAME, TARGET, {}, {"=", " ", "'", "\\"}}),
+
         // Depth limit: a key with 256 dots and a value is written to a path of 257 tokens.
         ParseT(FAILURE,
                deepKey(257, '.') + "=v",

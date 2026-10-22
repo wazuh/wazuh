@@ -14,6 +14,7 @@ metadata:
     This helper function is typically used in the map stage.
     Checks whether an input fits a keys-values list format and, if it does, such pairs of keys and values are stored as new fields of the event.
     Input nested deeper than 256 levels (json::Json::MAX_DEPTH) is rejected: the parser fails as on invalid input, the field is not set and nothing is logged; the nesting depth exceeds the limit (256) message names the cap in test traces.
+    Keys are written as JSON Pointer tokens: “~0” and “~1” are the pointer escapes (the key “a~1b” maps to the member “a/b”); a “~” followed by any other character, or at the end of the key, is not a valid pointer and the parser fails as on invalid input.
   keywords:
     - parser
 
@@ -124,3 +125,24 @@ test:
     target_field: any_value
     should_pass: false
     description: Failure when separator and delimiter are the same
+  - arguments:
+      input_field: "a~0b=1 c~1d=2"
+      sep_token: "="
+      delim_token: " "
+      quote_char: "'"
+      esc_char: "\\"
+    target_field: any_value
+    should_pass: true
+    expected:
+      a~b: "1"
+      c/d: "2"
+    description: Success with the JSON Pointer escapes ~0 and ~1 in the keys
+  - arguments:
+      input_field: "a~2=1 b=2"
+      sep_token: "="
+      delim_token: " "
+      quote_char: "'"
+      esc_char: "\\"
+    target_field: any_value
+    should_pass: false
+    description: Failure when a key has an invalid JSON Pointer escape

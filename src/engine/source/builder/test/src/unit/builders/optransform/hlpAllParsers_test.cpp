@@ -550,3 +550,29 @@ TEST_F(HlpDepthTest, KeyValueAtLimitIsMapped)
     auto op = buildInTestMode(keyValueParseBuilder, kvArgs());
     expectMapped(op, dottedKeyValue(DEPTH_LIMIT), repeatedPath("/target", "k", DEPTH_LIMIT));
 }
+
+TEST_F(HlpDepthTest, KeyValueInvalidPointerEscapeFailsWithTrace)
+{
+    auto op = buildInTestMode(keyValueParseBuilder, kvArgs());
+    auto event = sourceEvent("a~2=1 b=2");
+    const json::Json original {*event};
+
+    ASSERT_NO_THROW(op(event));
+    auto result = op(event);
+
+    EXPECT_FALSE(result.success());
+    EXPECT_THAT(result.trace(), testing::HasSubstr("key 'a~2' has an invalid JSON Pointer escape"));
+    EXPECT_FALSE(result.payload()->exists("/target"));
+    EXPECT_EQ(*result.payload(), original);
+}
+
+TEST_F(HlpDepthTest, KeyValuePointerEscapesAreMapped)
+{
+    auto op = buildInTestMode(keyValueParseBuilder, kvArgs());
+    auto result = op(sourceEvent("a~0b=1 c~1d=2"));
+
+    EXPECT_TRUE(result.success()) << result.trace();
+    // ~0 and ~1 are the JSON Pointer escapes: the members are "a~b" and "c/d"
+    EXPECT_TRUE(result.payload()->exists("/target/a~0b"));
+    EXPECT_TRUE(result.payload()->exists("/target/c~1d"));
+}

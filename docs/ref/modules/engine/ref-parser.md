@@ -2074,6 +2074,9 @@ nested delimiters or escape sequences.
   For every key, with or without a value, each `.` in the key creates one nested level in the output (`a.b=` maps to
   `{"a":{"b":null}}`), so the destination path has one level per `.` plus one and the limit counts those levels: a key
   with 255 dots is mapped, a key with 256 dots fails. The limit is fixed (not configurable) and is not an input-size limit; the event size is capped by remoted.
+- Keys are written as JSON Pointer tokens: `~0` and `~1` are the pointer escapes (`a~1b=v` maps to the member `a/b`).
+  A `~` followed by any other character, or at the end of the key, is not a valid pointer: the parser fails as on
+  invalid input and the field is not set.
 - It does not require an end token.
 
 ### Signature

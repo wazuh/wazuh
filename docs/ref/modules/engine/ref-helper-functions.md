@@ -19771,6 +19771,7 @@ The “escaping” character is used to escape the “quoting” characters that
 This helper function is typically used in the map stage.
 Checks whether an input fits a keys-values list format and, if it does, such pairs of keys and values are stored as new fields of the event.
 Input nested deeper than 256 levels (json::Json::MAX_DEPTH) is rejected: the parser fails as on invalid input, the field is not set and nothing is logged; the nesting depth exceeds the limit (256) message names the cap in test traces.
+Keys are written as JSON Pointer tokens: “~0” and “~1” are the pointer escapes (the key “a~1b” maps to the member “a/b”); a “~” followed by any other character, or at the end of the key, is not a valid pointer and the parser fails as on invalid input.
 
 
 ## Keywords
