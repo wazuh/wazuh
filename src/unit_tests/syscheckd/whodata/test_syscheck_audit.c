@@ -57,6 +57,11 @@ int __wrap_recv(int __fd, void *__buf, size_t __n, int __flags) {
     return ret;
 }
 
+int __wrap_close(int fd) {
+    check_expected(fd);
+    return 0;
+}
+
 FILE * tmpfile_with_content(const char *payload) {
     FILE *fp = tmpfile();
     assert_non_null(fp);
@@ -1091,6 +1096,7 @@ void test_audit_read_events_select_success_recv_error_audit_connection_closed(vo
     expect_value(__wrap_recv, __fd, *audit_sock);
     will_return(__wrap_recv, 0);
     expect_string(__wrap__mwarn, formatted_msg, "(6912): Audit: connection closed.");
+    expect_value(__wrap_close, fd, *audit_sock);
     expect_value(__wrap_sleep, seconds, 1);
     expect_string(__wrap__minfo, formatted_msg, "(6029): Audit: reconnecting... (1)");
 
@@ -1140,6 +1146,7 @@ void test_audit_read_events_select_success_recv_error_audit_reconnect(void **sta
     expect_value(__wrap_recv, __fd, *audit_sock);
     will_return(__wrap_recv, 0);
     expect_string(__wrap__mwarn, formatted_msg, "(6912): Audit: connection closed.");
+    expect_value(__wrap_close, fd, *audit_sock);
     expect_value(__wrap_sleep, seconds, 1);
     expect_string(__wrap__minfo, formatted_msg, "(6029): Audit: reconnecting... (1)");
 
@@ -1393,6 +1400,101 @@ void test_audit_read_events_select_success_recv_success_cache_boundary(void **st
     audit_read_events(audit_sock, &audit_thread_active);
 
     os_free(line2);
+}
+
+static char *audit_line(const char *header, size_t len) {
+    char *line;
+    os_malloc(len + 1, line);
+    memset(line, 'a', len - 1);
+    memcpy(line, header, strlen(header));
+    line[len - 1] = '\n';
+    line[len] = '\0';
+    return line;
+}
+
+static void expect_audit_batch(int audit_sock, const char *batch) {
+    will_return(__wrap_select, 1);
+    expect_value(__wrap_recv, __fd, audit_sock);
+    will_return(__wrap_recv, strlen(batch));
+    will_return(__wrap_recv, batch);
+}
+
+#define AUDIT_EVENT_B "type=SYSCALL msg=audit(1571914029.306:3004255): a\ntype=EOE msg=audit(1571914029.306:3004255):\n"
+
+void test_audit_read_events_too_long_keeps_next_event(void **state) {
+    int *audit_sock = *state;
+    w_queue_t *old_queue = audit_queue;
+    audit_queue = queue_init(8);
+
+    // A fills most of the cache, the next A line overflows it, then B arrives with more A lines and C
+    char *a1 = audit_line("type=SYSCALL msg=audit(1571914029.306:3004254): ", 60000);
+    char *a2 = audit_line("type=EXECVE msg=audit(1571914029.306:3004254): ", 8000);
+    char *batch3;
+    os_malloc(16000, batch3);
+    snprintf(batch3, 16000, "%s%stype=SYSCALL msg=audit(1571914029.306:3004256): c\n", a2, AUDIT_EVENT_B);
+
+    expect_value_count(__wrap_atomic_int_get, atomic, &audit_thread_active, 6);
+    will_return_count(__wrap_atomic_int_get, 1, 6);
+    expect_value(__wrap_atomic_int_get, atomic, &audit_thread_active);
+    will_return(__wrap_atomic_int_get, 0);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
+    expect_audit_batch(*audit_sock, a1);
+    expect_audit_batch(*audit_sock, a2);
+    expect_audit_batch(*audit_sock, batch3);
+
+    expect_string(__wrap__mwarn, formatted_msg, "(6929): Caching Audit message: event too long. Event with ID: '1571914029.306:3004254' will be discarded.");
+
+    audit_read_events(audit_sock, &audit_thread_active);
+
+    char *event = queue_pop(audit_queue);
+    assert_string_equal(event, AUDIT_EVENT_B);
+    assert_null(queue_pop(audit_queue));
+
+    os_free(event);
+    os_free(a1);
+    os_free(a2);
+    os_free(batch3);
+    queue_free(audit_queue);
+    audit_queue = old_queue;
+}
+
+void test_audit_read_events_too_long_not_pushed(void **state) {
+    int *audit_sock = *state;
+    w_queue_t *old_queue = audit_queue;
+    audit_queue = queue_init(8);
+
+    // The part of A that fit must not be pushed when B starts, and B must not be pushed twice
+    char *a1 = audit_line("type=SYSCALL msg=audit(1571914029.306:3004254): ", 60000);
+    char *a2 = audit_line("type=EXECVE msg=audit(1571914029.306:3004254): ", 8000);
+
+    expect_value_count(__wrap_atomic_int_get, atomic, &audit_thread_active, 8);
+    will_return_count(__wrap_atomic_int_get, 1, 8);
+    expect_value(__wrap_atomic_int_get, atomic, &audit_thread_active);
+    will_return(__wrap_atomic_int_get, 0);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
+    expect_audit_batch(*audit_sock, a1);
+    expect_audit_batch(*audit_sock, a2);
+    expect_audit_batch(*audit_sock, AUDIT_EVENT_B);
+    expect_audit_batch(*audit_sock, "no id\n");
+
+    expect_string(__wrap__mwarn, formatted_msg, "(6929): Caching Audit message: event too long. Event with ID: '1571914029.306:3004254' will be discarded.");
+    expect_string(__wrap__mwarn, formatted_msg, "(6928): Couldn't get event ID from Audit message. Line: 'no id'.");
+
+    audit_read_events(audit_sock, &audit_thread_active);
+
+    char *event = queue_pop(audit_queue);
+    assert_string_equal(event, AUDIT_EVENT_B);
+    assert_null(queue_pop(audit_queue));
+
+    os_free(event);
+    os_free(a1);
+    os_free(a2);
+    queue_free(audit_queue);
+    audit_queue = old_queue;
 }
 
 void test_audit_parse_thread(void **state) {
@@ -1790,6 +1892,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_audit_read_events_select_success_recv_success_no_id, test_audit_read_events_setup, test_audit_read_events_teardown),
         cmocka_unit_test_setup_teardown(test_audit_read_events_select_success_recv_success_too_long, test_audit_read_events_setup, test_audit_read_events_teardown),
         cmocka_unit_test_setup_teardown(test_audit_read_events_select_success_recv_success_cache_boundary, test_audit_read_events_setup, test_audit_read_events_teardown),
+        cmocka_unit_test_setup_teardown(test_audit_read_events_too_long_keeps_next_event, test_audit_read_events_setup, test_audit_read_events_teardown),
+        cmocka_unit_test_setup_teardown(test_audit_read_events_too_long_not_pushed, test_audit_read_events_setup, test_audit_read_events_teardown),
         cmocka_unit_test(test_audit_parse_thread),
         cmocka_unit_test_setup_teardown(test_audit_rules_to_realtime, setup_syscheck_dir_links, teardown_rules_to_realtime),
         cmocka_unit_test_setup_teardown(test_audit_rules_to_realtime_first_search_audit_rule_fail, setup_syscheck_dir_links, teardown_rules_to_realtime),
