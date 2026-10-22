@@ -569,6 +569,55 @@ TEST(ConfigEndpointTest, HandlerDoesNotHoldTheConnectorAliveAfterReturning)
         << "the handler (still alive) must not keep the connector alive -- see stop()'s phase 2";
 }
 
+/// The agent's groups and host land under `wazuh.agent`, next to the authenticated id and the
+/// configuration, and nothing else from the `agent` block follows them.
+TEST(ConfigEndpointTest, CopiesReportedGroupsAndHostUnderWazuhAgent)
+{
+    auto connector = std::make_shared<FakeAsyncConnector>();
+    const auto body = R"({"modules":{"fim":{"cpu":42}},)"
+                      R"("agent":{"id":"999","version":"v5.0.0","groups":["default"],)"
+                      R"("host":{"architecture":"aarch64","hostname":"db-01",)"
+                      R"("os":{"name":"Amazon Linux","platform":"amzn","type":"linux","version":"2023"}}}})";
+
+    ASSERT_EQ(200, run(makeRequest(body, "007"), connector).status);
+
+    const auto document = soleIndexedDocument(*connector);
+    const auto& agent = document["/wazuh/agent"_json_pointer];
+    EXPECT_EQ("007", agent.at("id").get<std::string>()) << "claimed 999";
+    EXPECT_EQ(nlohmann::json::parse(R"(["default"])"), agent.at("groups"));
+    EXPECT_EQ("aarch64", agent.at("host").at("architecture").get<std::string>());
+    EXPECT_EQ("amzn", agent.at("host").at("os").at("platform").get<std::string>());
+    EXPECT_FALSE(agent.contains("version"));
+    EXPECT_EQ(42, agent.at("configuration").at("content").at("fim").at("cpu").get<int>());
+}
+
+/// An agent that predates the metadata sends no `agent` block: no empty groups or host are made up.
+TEST(ConfigEndpointTest, AReportWithoutAgentMetadataIndexesNoGroupsOrHost)
+{
+    auto connector = std::make_shared<FakeAsyncConnector>();
+
+    ASSERT_EQ(200, run(makeRequest(R"({"modules":{"fim":{}}})", "001"), connector).status);
+
+    const auto document = soleIndexedDocument(*connector);
+    const auto& agent = document["/wazuh/agent"_json_pointer];
+    EXPECT_FALSE(agent.contains("groups"));
+    EXPECT_FALSE(agent.contains("host"));
+}
+
+/// Bad metadata is left empty, never a 400: the agent would resend it every cycle and stop reporting.
+TEST(ConfigEndpointTest, InvalidAgentMetadataIsLeftEmptyNotRejected)
+{
+    auto connector = std::make_shared<FakeAsyncConnector>();
+    const auto body = R"({"modules":{"fim":{}},"agent":{"groups":"default","host":{"os":{"version":2023}}}})";
+
+    ASSERT_EQ(200, run(makeRequest(body, "001"), connector).status);
+
+    const auto document = soleIndexedDocument(*connector);
+    EXPECT_EQ(nlohmann::json::array(), document["/wazuh/agent/groups"_json_pointer]);
+    EXPECT_EQ("", document["/wazuh/agent/host/os/version"_json_pointer].get<std::string>());
+    EXPECT_TRUE(document["/wazuh/agent/configuration/content"_json_pointer].contains("fim"));
+}
+
 /**
  * The cluster identity is injected at registration time (makeHandler()'s `cluster` parameter), not
  * read from anything the caller sends -- there is no per-request source for it in the new array body

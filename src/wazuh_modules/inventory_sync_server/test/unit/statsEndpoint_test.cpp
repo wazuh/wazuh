@@ -317,6 +317,62 @@ TEST(StatsEndpointTest, NothingTheAgentClaimsAboutItsIdentityIsIndexed)
 }
 
 /**
+ * The agent's groups and host are the one thing the report contributes beyond its statistics: they
+ * land under `wazuh.agent`, next to the authenticated id, and nothing else from the `agent` block
+ * follows them.
+ */
+TEST(StatsEndpointTest, CopiesReportedGroupsAndHostUnderWazuhAgent)
+{
+    const auto document =
+        indexedDocument(R"({"modules":{"agent":{"messages":{"count":1}}},"agent_id":"001",)"
+                        R"("agent":{"id":"999","name":"web-01","groups":["default","linux"],)"
+                        R"("host":{"architecture":"x86_64","hostname":"web-01",)"
+                        R"("os":{"name":"Ubuntu","platform":"ubuntu","type":"linux","version":"24.04"}}}})",
+                        "001");
+
+    const auto& agent = document["/wazuh/agent"_json_pointer];
+    EXPECT_EQ("001", agent.at("id").get<std::string>()) << "claimed 999";
+    EXPECT_EQ(nlohmann::json::parse(R"(["default","linux"])"), agent.at("groups"));
+    EXPECT_EQ("web-01", agent.at("host").at("hostname").get<std::string>());
+    EXPECT_EQ("24.04", agent.at("host").at("os").at("version").get<std::string>());
+    EXPECT_FALSE(agent.contains("name"));
+    EXPECT_EQ(1, agent.at("statistics").at("agent").at("messages").at("count").get<int>());
+    EXPECT_FALSE(document.contains("agent"));
+}
+
+/// An agent that predates the metadata sends no `agent` block: its document is indexed exactly as
+/// before, without empty groups or host standing in for values it never reported.
+TEST(StatsEndpointTest, AReportWithoutAgentMetadataIndexesNoGroupsOrHost)
+{
+    const auto document = indexedDocument(kAgentReport, "001");
+
+    EXPECT_FALSE(document["/wazuh/agent"_json_pointer].contains("groups"));
+    EXPECT_FALSE(document["/wazuh/agent"_json_pointer].contains("host"));
+}
+
+/// Bad metadata is left empty, never a 400: the agent would resend it every cycle and stop reporting.
+TEST(StatsEndpointTest, InvalidAgentMetadataIsLeftEmptyNotRejected)
+{
+    const auto document =
+        indexedDocument(R"({"modules":{"agent":{"messages":{"count":1}}},)"
+                        R"("agent":{"groups":["default",""],"host":{"hostname":42,"architecture":"x86_64"}}})",
+                        "001");
+
+    EXPECT_EQ(nlohmann::json::array(), document["/wazuh/agent/groups"_json_pointer]);
+    EXPECT_EQ("", document["/wazuh/agent/host/hostname"_json_pointer].get<std::string>());
+    EXPECT_EQ("x86_64", document["/wazuh/agent/host/architecture"_json_pointer].get<std::string>());
+    EXPECT_EQ(1, document["/wazuh/agent/statistics/agent/messages/count"_json_pointer].get<int>());
+}
+
+TEST(StatsEndpointTest, AnAgentBlockThatIsNotAnObjectStillIndexesTheReport)
+{
+    const auto document = indexedDocument(R"({"modules":{"agent":{"messages":{"count":1}}},"agent":["g"]})", "001");
+
+    EXPECT_FALSE(document["/wazuh/agent"_json_pointer].contains("groups"));
+    EXPECT_EQ(1, document["/wazuh/agent/statistics/agent/messages/count"_json_pointer].get<int>());
+}
+
+/**
  * The time field is `state.modified_at` and not `@timestamp`: this index follows the schema's
  * stateful convention, because the document id is stable and every push replaces the previous state.
  * Its shape is what makes the document indexable, so pin it rather than just its presence:

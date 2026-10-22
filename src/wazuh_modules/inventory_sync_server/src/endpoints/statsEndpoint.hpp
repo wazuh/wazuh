@@ -28,7 +28,8 @@ namespace invsync::endpoints::stats
      * The agent reports every module it can collect statistics from in one push, keyed by module:
      *
      * ```json
-     * {"modules": {"agent": {…}, "logcollector": {…}}}
+     * {"modules": {"agent": {…}, "logcollector": {…}},
+     *  "agent": {"groups": […], "host": {…}}}
      * ```
      *
      * This endpoint indexes one document per agent, whose id IS the agent id, so every push replaces
@@ -37,7 +38,8 @@ namespace invsync::endpoints::stats
      * ```json
      * {"state": {"modified_at": …, "document_version": 1},
      *  "wazuh": {"schema": {"version": "1.0"}, "cluster": {…},
-     *            "agent": {"id": …, "statistics": {"agent": {…}, …}}}}
+     *            "agent": {"id": …, "groups": […], "host": {…},
+     *                      "statistics": {"agent": {…}, …}}}}
      * ```
      *
      * `modules` moves under `wazuh.agent.statistics` untouched. Nothing here renames a metric or
@@ -53,7 +55,10 @@ namespace invsync::endpoints::stats
      *
      * The document is built from scratch rather than by stamping onto the agent's, so the `agent_id`
      * and `cluster` the agent's reporter writes at the root are dropped instead of ending up indexed
-     * next to the authoritative `wazuh.agent.id`.
+     * next to the authoritative `wazuh.agent.id`. The agent's groups and host are the exception:
+     * descriptive rather than identity, they are copied field by field into `wazuh.agent.groups` and
+     * `wazuh.agent.host` (stampReportedAgentMetadata()), and bad values are left empty rather than
+     * rejecting the report.
      *
      * A report is all or nothing: one malformed module rejects the whole thing with 400, rather than
      * indexing a partial report the agent has no way to tell apart from a complete one.

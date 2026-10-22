@@ -1435,7 +1435,20 @@ module's body, since only the agent knows which of its counters are cumulative.
 ```
 
 The `modules` object becomes `wazuh.agent.configuration.content`, with
-`wazuh.agent.configuration.modules` derived from its keys. Other root members are dropped.
+`wazuh.agent.configuration.modules` derived from its keys.
+
+On both routes the agent's reporter also writes `agent_id`, `cluster` and an `agent` object at the
+root. `agent` is the same block the `/stateless` header carries, with the agent's groups and host:
+
+```json
+{"agent": {"groups": ["default"],
+           "host": {"architecture": "x86_64", "hostname": "web-01",
+                    "os": {"name": "Ubuntu", "platform": "ubuntu", "type": "linux", "version": "24.04"}}}}
+```
+
+The sync server copies `agent.groups` and `agent.host` into `wazuh.agent.groups` and
+`wazuh.agent.host`, field by field; a value that fails validation is left empty instead of rejecting
+the report. Every other root member is dropped.
 
 A report is **all or nothing** on both routes: one malformed module rejects the whole document rather
 than indexing a partial report the agent could not tell apart from a complete one.
