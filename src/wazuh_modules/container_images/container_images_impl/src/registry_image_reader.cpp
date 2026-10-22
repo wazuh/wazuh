@@ -169,6 +169,13 @@ namespace containerimages
                 return true;
             }
 
+            // No response, and one that would fail the same way again: the retries would
+            // only spend their back-off on the same answer.
+            if (!answered && !response.retryable)
+            {
+                return false;
+            }
+
             const auto status {answered ? response.status : TRANSPORT_FAILURE};
             const auto decision {m_retryPolicy.evaluate(status, response.header("retry-after"), attemptNumber)};
 

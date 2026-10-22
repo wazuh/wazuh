@@ -327,6 +327,7 @@ TEST_F(RegistryTransportTest, WithoutACertificateBundleNothingIsRequested)
 
     EXPECT_FALSE(transport.get("https://ghcr.io/v2/", {}, response, error));
     EXPECT_EQ(response.status, 0);
+    EXPECT_FALSE(response.retryable);
     EXPECT_NE(error.find("certificate"), std::string::npos) << error;
 }
 
@@ -341,7 +342,22 @@ TEST_F(RegistryTransportTest, PlainHttpIsRefusedBeforeConnecting)
 
     EXPECT_FALSE(transport.get("http://ghcr.io/v2/", {}, response, error));
     EXPECT_EQ(response.status, 0);
+    EXPECT_FALSE(response.retryable) << "the same protocol is refused on every attempt";
     EXPECT_FALSE(error.empty());
+}
+
+TEST_F(RegistryTransportTest, AConnectionThatIsRefusedStaysRetryable)
+{
+    // Nothing listens on port 1 of the loopback interface, so the connection is refused
+    // before any certificate is looked at. That can clear up, unlike a verification error.
+    CurlRegistryTransport transport {verified()};
+
+    HttpResponse response;
+    std::string error;
+
+    EXPECT_FALSE(transport.get("https://127.0.0.1:1/v2/", {}, response, error));
+    EXPECT_EQ(response.status, 0);
+    EXPECT_TRUE(response.retryable) << error;
 }
 
 TEST_F(RegistryTransportTest, NonHttpSchemesAreRefused)
