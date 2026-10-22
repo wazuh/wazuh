@@ -7,6 +7,7 @@
  * Foundation.
  */
 
+#include <errno.h>
 #include <setjmp.h>
 #include <stdio.h>
 #include <cmocka.h>
@@ -782,11 +783,13 @@ void test_send_json_message_socket_error_connect(void **state) {
     socket_info->name = "fluentd_test";
     socket_info->location = SOCKET_PATH;
     socket_info->mode = IPPROTO_UDP;
-    socket_info->socket = 0;
+    /* A valid descriptor so the retry path close() succeeds and keeps errno */
+    int valid_fd = dup(STDOUT_FILENO);
+    socket_info->socket = valid_fd;
 
     OS_BindUnixDomain(SOCKET_PATH, SOCK_DGRAM, OS_MAXSTR);
 
-    expect_value(__wrap_OS_SendUnix, socket, 0);
+    expect_value(__wrap_OS_SendUnix, socket, valid_fd);
     expect_string(__wrap_OS_SendUnix, msg, json_msg);
     expect_value(__wrap_OS_SendUnix, size, strlen(json_msg));
     will_return(__wrap_OS_SendUnix, OS_SOCKTERR);
@@ -808,6 +811,7 @@ void test_send_json_message_socket_error_connect(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "Cannot send message to socket 'fluentd_test' due No such file or directory. (Abort).");
 
+    errno = ENOENT;
     SendJSONtoSCK(json_msg,socket_info);
 
     os_free(socket_info);
@@ -867,6 +871,7 @@ void test_send_json_message_socket_error_time_again(void **state) {
     will_return(__wrap_time, 1);
     expect_string(__wrap__mdebug2, formatted_msg, "Discarding event from analysisd due to connection issue with 'fluentd_test', No such file or directory. (Abort).");
 
+    errno = ENOENT;
     SendJSONtoSCK(json_msg,socket_info);
 
     os_free(socket_info);
