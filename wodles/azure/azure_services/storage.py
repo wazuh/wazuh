@@ -99,7 +99,8 @@ def start_storage(args):
 
     # Get the blobs
     for container in containers:
-        md5_hash = orm.create_pk(account=name, container=container)
+        # Blocks of the same container with another path or blob extension keep their own bookmark
+        md5_hash = orm.create_pk(account=name, container=container, prefix=args.prefix, blobs=args.blobs)
         offset = args.storage_time_offset
         try:
             item = orm.get_row(orm.Storage, md5=md5_hash)
@@ -263,11 +264,10 @@ def get_blobs(
                         if not isinstance(records, list):
                             logging.error(f'Storage: The records of the blob "{blob.name}" are not a list.')
                             continue
+                        skipped_records = 0
                         for log_record in records:
                             if not isinstance(log_record, dict):
-                                logging.warning(
-                                    f'Storage: Skipping a record of the blob "{blob.name}" that is not a JSON object.'
-                                )
+                                skipped_records += 1
                                 continue
                             # Add azure tags
                             log_record['azure_tag'] = 'azure-storage'
@@ -275,6 +275,11 @@ def get_blobs(
                                 log_record['azure_storage_tag'] = tag
                             logging.info('Storage: Sending event by socket.')
                             send_message(dumps(log_record))
+                        if skipped_records:
+                            logging.warning(
+                                f'Storage: Skipped records of the blob "{blob.name}" that are not JSON objects: '
+                                f'{skipped_records}.'
+                            )
                 # Process the data as plain text
                 else:
                     for line in [s for s in str(content).splitlines() if s]:

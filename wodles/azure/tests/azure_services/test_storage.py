@@ -92,6 +92,8 @@ def test_start_storage(
         account_key=key,
         container=container_name,
         storage_time_offset=offset,
+        prefix='prefix/',
+        blobs='.json',
     )
     mock_create.return_value = MagicMock(min_processed_date=PRESENT_DATE, max_processed_date=PRESENT_DATE)
     mock_auth.return_value = (name, key)
@@ -108,7 +110,7 @@ def test_start_storage(
         mock_auth.assert_not_called()
 
     container = listed_container.name if container_name == '*' else container_name
-    md5_hash = orm.create_pk(account=name, container=container)
+    md5_hash = orm.create_pk(account=name, container=container, prefix='prefix/', blobs='.json')
     mock_blob.assert_called_with(
         account_url=f'https://{name}.blob.core.windows.net/',
         credential={'account_name': name, 'account_key': key}
@@ -685,6 +687,8 @@ class FakeContainer:
     def list_blobs(self, name_starts_with=None):
         listed = []
         for name, blob in self.blobs.items():
+            if name_starts_with and not name.startswith(name_starts_with):
+                continue
             item = create_mocked_blob(name, last_modified=blob['last_modified'], content_length=len(blob['data']))
             item.blob_type = blob['type']
             item.creation_time = blob['creation_time']
@@ -716,18 +720,19 @@ def audit_records(*event_ids: str) -> str:
 
 
 def run_storage(container: FakeContainer, json_inline: bool = True, json_file: bool = False,
-                reparse: bool = False, container_name: str = 'insights-logs-auditlogs') -> list:
+                reparse: bool = False, container_name: str = 'insights-logs-auditlogs', prefix: str = None,
+                blobs: str = '.json') -> list:
     """Run the Storage integration once against the given container and return the ids of the events sent."""
     args = MagicMock(
         storage_auth_path='auth_path',
         container=container_name,
         storage_time_offset='24h',
-        prefix=None,
+        prefix=prefix,
         storage_tag='tag',
         reparse=reparse,
         json_file=json_file,
         json_inline=json_inline,
-        blobs='.json',
+        blobs=blobs,
     )
     service_client = MagicMock(name='service_client_mock')
     service_client.get_container_client.return_value = container
@@ -853,6 +858,21 @@ def test_containers_of_the_same_account_keep_their_own_bookmark(in_memory_db, bl
     assert run_storage(sign_in_logs, container_name='insights-logs-signinlogs') == ['S1']
 
 
+@pytest.mark.parametrize('first, second', [
+    ({'prefix': 'access/', 'blobs': '.json'}, {'prefix': 'firewall/', 'blobs': '.json'}),
+    ({'prefix': None, 'blobs': '.json'}, {'prefix': None, 'blobs': '.log'}),
+], ids=['path', 'blobs'])
+def test_blocks_of_a_container_with_other_filters_keep_their_own_bookmark(in_memory_db, first, second):
+    """Test the blobs of a container are not skipped because another block of the same container, with another path
+    or blob extension, sent newer ones first."""
+    container = FakeContainer()
+    container.write(f"{second['prefix'] or ''}PT1H{second['blobs']}", audit_records('S1'))
+    container.write(f"{first['prefix'] or ''}PT1H{first['blobs']}", audit_records('F1'))
+
+    assert run_storage(container, **first) == ['F1']
+    assert run_storage(container, **second) == ['S1']
+
+
 def test_append_blob_offsets_kept_after_upgrading(in_memory_db):
     """Test append blobs processed by previous versions, which stored their offsets under the storage account, only
     send what was appended since."""
@@ -867,12 +887,18 @@ def test_append_blob_offsets_kept_after_upgrading(in_memory_db):
 
 
 def test_json_file_records_that_are_not_objects_are_skipped(in_memory_db):
-    """Test the records of a JSON file that are not objects are skipped and the rest of the blob is sent once."""
+    """Test the records of a JSON file that are not objects are skipped with a single warning, and the rest of the
+    blob is sent once."""
     container = FakeContainer()
     records = [{'properties': {'id': 'E1'}}, 'E2', 3, None, ['E4'], {'properties': {'id': 'E5'}}]
     container.write(HOURLY_BLOB, json.dumps({'records': records}))
+    container.write(HOURLY_BLOB.replace('/h=08/', '/h=09/'), json.dumps({'records': [{'properties': {'id': 'E6'}}]}))
 
-    assert run_storage(container, json_inline=False, json_file=True) == ['E1', 'E5']
+    with patch('azure_services.storage.logging.warning') as mock_warning:
+        assert run_storage(container, json_inline=False, json_file=True) == ['E1', 'E5', 'E6']
+    mock_warning.assert_called_once_with(
+        f'Storage: Skipped records of the blob "{HOURLY_BLOB}" that are not JSON objects: 4.'
+    )
     assert run_storage(container, json_inline=False, json_file=True) == []
 
 
