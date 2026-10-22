@@ -474,7 +474,7 @@ get_wazuh_engine_pid()
     local ticks=0
     local pidfile
 
-    ${DIR}/bin/wazuh-manager-analysisd
+    ${DIR}/bin/wazuh-manager-analysisd ${DEBUG_CLI}
 
     while [ $ticks -lt $max_ticks ]; do
         for pidfile in ${DIR}/var/run/wazuh-manager-analysisd-*.pid; do
