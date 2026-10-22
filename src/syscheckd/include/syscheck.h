@@ -946,6 +946,11 @@ bool fim_shutdown_process_on();
  * @brief Initializes eBPF and does the healthcheck to check availability.
  */
 void check_ebpf_availability();
+
+/**
+ * @brief Sends the whodata directories to the eBPF programs so they drop events for other paths.
+ */
+void fim_ebpf_update_dirs();
 #endif /* ENABLE_AUDIT */
 #endif
 #endif /* SYSCHECK_H */
