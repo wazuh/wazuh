@@ -774,3 +774,142 @@ TEST_F(BulkTest, CompletionExceptionRequeues)
     EXPECT_EQ(exhausted->cause, ic::Cause::RetryExhausted);
     EXPECT_THAT(exhausted->reason, HasSubstr("bulk completion failed: injected"));
 }
+
+namespace
+{
+    /// The scheduler's posts once they stopped moving for 100 ms (a wake-up still on its way lands first).
+    std::uint64_t settledPosts(const std::shared_ptr<wr::Scheduler>& scheduler)
+    {
+        auto posts = scheduler->stats().posts;
+        for (int i = 0; i < 50; ++i)
+        {
+            std::this_thread::sleep_for(100ms);
+            const auto now = scheduler->stats().posts;
+            if (now == posts)
+            {
+                break;
+            }
+            posts = now;
+        }
+        return posts;
+    }
+} // namespace
+
+// CA-E6a-3 (D56a, I109/I109b): one wake-up of the scheduler per completion. One node, its whole window (4) of one-op
+// batches answered 503 and held, then released: each completion requeues its batch (a 3 s backoff, so nothing is
+// resent meanwhile) and posts exactly once (SchedulerStats::posts, counted before coalescing: N completions = N). The
+// passes follow (runs <= N + 1, a secondary bound). Mutant: the requeue's notify plus notifyAll per completion (2N).
+TEST_F(BulkTest, OneWakePerCompletion)
+{
+    const auto a = startNode();
+    for (std::uint32_t k = 0; k < kWindow; ++k)
+    {
+        a.bulk->push(BulkScript::serverError(503).held());
+    }
+    ASSERT_NO_FATAL_FAILURE(startOn({a.url()}));
+    const auto scheduler = m_path->scheduler();
+    ASSERT_NE(scheduler, nullptr);
+    auto c = client("c", {bucket("b", 1, std::nullopt, 3000, 3000)});
+    auto writer = c->writer("b");
+    auto results = Results::create();
+    for (std::uint64_t k = 0; k < kWindow; ++k)
+    {
+        ASSERT_TRUE(writer->submit(indexOp(id(k)), results->callback(k)).accepted);
+    }
+    ASSERT_TRUE(a.fake->waitHeld(kWindow, 3s));
+    const auto posts = settledPosts(scheduler);
+    const auto runs = scheduler->stats().runs;
+    const auto retries = wr::senderStats().retries;
+
+    a.fake->releaseHeld();
+    ASSERT_TRUE(eventually([&] { return wr::senderStats().retries == retries + kWindow; }, 3s))
+        << "the completions did not requeue";
+    EXPECT_TRUE(eventually([&] { return scheduler->stats().posts - posts >= kWindow; }, 1000ms));
+    EXPECT_FALSE(eventually([&] { return scheduler->stats().posts - posts > kWindow; }, 300ms))
+        << "more than one wake-up per completion";
+    EXPECT_EQ(scheduler->stats().posts - posts, kWindow);
+    EXPECT_LE(scheduler->stats().runs - runs, kWindow + 1u);
+    EXPECT_EQ(a.bulk->answered(), kWindow) << "resent inside the backoff";
+
+    ASSERT_TRUE(results->waitTotal(kWindow, 6s));
+    EXPECT_EQ(results->countWith(ic::Status::Ok, ic::Cause::None), kWindow);
+}
+
+// CA-E6a-3, variant with a pinned (ordered) bucket: wakePinned is folded into the completion's single wake-up. B is
+// Throttled (A takes everything while Available, B only gives the scheduler capacity). A holds three 503s of `u` and
+// cuts the answer of X (ordered `o`): X is pinned to A and A is Down; X meets the Down node and waits in A's
+// pinnedWaiting. The probe brings A back Throttled, which halves its window (4 -> 2) under the three held requests,
+// so A stays full and the probe's wake-up takes nothing. Released: the second completion frees A's slot and takes X
+// (pinnedNodeUsable), X goes to A and ends Ok. Four completions, four posts. Mutants: the pinned bucket notified on
+// its own (5); the requeue's notify plus notifyAll per completion (>= 7).
+TEST_F(BulkTest, OneWakePerCompletionWithPinned)
+{
+    constexpr std::uint64_t HELD = 3;
+    constexpr std::uint64_t PINNED = 100;
+    const auto cut = std::make_shared<std::atomic<bool>>(true);
+    const auto a = startNode(BulkScript::items(),
+                             "green",
+                             {},
+                             [cut](const httplib::Request& request, indexer_client::testing::Rule& reply)
+                             {
+                                 if (request.body.find(id(PINNED)) != std::string::npos && cut->exchange(false))
+                                 {
+                                     reply.cutAfter = 1; // A applied the bulk; its answer never arrives whole.
+                                 }
+                             });
+    for (std::uint64_t k = 0; k < HELD; ++k)
+    {
+        a.bulk->push(BulkScript::serverError(503).held());
+    }
+    const auto b = startNode();
+    const auto throttle = [](const bulk_component::Node& node)
+    {
+        node.fake->clearRules();
+        node.fake->addRule(indexer_client::testing::throttledRule(indexer_client::testing::Durability::Transient));
+        node.fake->addRule(indexer_client::testing::bulkRule(node.bulk));
+    };
+    throttle(b);
+    ASSERT_NO_FATAL_FAILURE(startOn({a.url(), b.url()}, 3600000ms, {{"ambiguous_retry_window_ms", "20000"}}));
+    ASSERT_EQ(nodeState(0), NodeState::Available);
+    ASSERT_EQ(nodeState(1), NodeState::Throttled);
+    const auto scheduler = m_path->scheduler();
+    ASSERT_NE(scheduler, nullptr);
+    auto ordered = bucket("o", 1);
+    ordered.ordered = true;
+    auto c = client("c", {bucket("u", 1, std::nullopt, 3000, 3000), ordered});
+    auto results = Results::create();
+    for (std::uint64_t k = 0; k < HELD; ++k)
+    {
+        ASSERT_TRUE(c->writer("u")->submit(indexOp(id(k)), results->callback(k)).accepted);
+    }
+    ASSERT_TRUE(a.fake->waitHeld(HELD, 3s));
+
+    ASSERT_TRUE(c->writer("o")->submit(indexOp(id(PINNED)), results->callback(PINNED)).accepted);
+    ASSERT_TRUE(eventually([this] { return stats("o").orderedAmbiguous == 1; }, 3s)) << describe(stats("o"));
+    ASSERT_TRUE(eventually([] { return senderNode(0).down; }, 3s));
+    std::this_thread::sleep_for(100ms); // X meets the Down node and goes back to wait in pinnedWaiting.
+    EXPECT_EQ(b.bulk->answered(), 0u) << "X left its pinned node";
+
+    throttle(a); // The cut rule goes with it: X's next answer is a plain success.
+    ASSERT_TRUE(probeNowAndWait());
+    ASSERT_EQ(nodeState(0), NodeState::Throttled);
+    ASSERT_TRUE(eventually([] { return !senderNode(0).down; }, 3s));
+    ASSERT_EQ(senderNode(0).window, 2.0) << "the Throttled transition did not halve A's window";
+    ASSERT_EQ(senderNode(0).inFlight, HELD);
+    const auto posts = settledPosts(scheduler);
+    EXPECT_EQ(results->total(), 0u) << "precondition: X still waits (A full)";
+
+    a.fake->releaseHeld();
+    ASSERT_TRUE(results->waitTotal(1, 3s)) << "the completion that freed A's slot did not wake the pinned X";
+    ASSERT_TRUE(results->result(PINNED).has_value());
+    EXPECT_EQ(results->result(PINNED)->status, ic::Status::Ok) << describe(results->result(PINNED));
+    EXPECT_TRUE(eventually([&] { return scheduler->stats().posts - posts >= HELD + 1; }, 1000ms));
+    EXPECT_FALSE(eventually([&] { return scheduler->stats().posts - posts > HELD + 1; }, 300ms))
+        << "more than one wake-up per completion";
+    EXPECT_EQ(scheduler->stats().posts - posts, HELD + 1);
+    EXPECT_EQ(b.bulk->answered(), 0u);
+
+    ASSERT_TRUE(results->waitTotal(HELD + 1, 6s));
+    EXPECT_EQ(results->countWith(ic::Status::Ok, ic::Cause::None), HELD + 1);
+    expectInvariants(stats("o"));
+}

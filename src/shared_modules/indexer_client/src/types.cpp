@@ -46,6 +46,7 @@ namespace indexer_client
             case Cause::InvalidArgument: return "invalid_argument";
             case Cause::InvalidState: return "invalid_state";
             case Cause::UsageError: return "usage_error";
+            case Cause::Ambiguous: return "ambiguous";
         }
         return "unknown";
     }

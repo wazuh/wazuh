@@ -260,7 +260,7 @@ TEST_F(ClientTest, MoveAssignment)
 TEST(TypesTest, CauseNamesStableAndUnique)
 {
     std::set<std::string> names;
-    const auto last = static_cast<int>(Cause::UsageError);
+    const auto last = static_cast<int>(Cause::Ambiguous);
     for (int i = 0; i <= last; ++i)
     {
         const std::string name = toString(static_cast<Cause>(i));
@@ -278,5 +278,6 @@ TEST(TypesTest, CauseNamesStableAndUnique)
     EXPECT_EQ(names.size(), static_cast<std::size_t>(last) + 1);
     EXPECT_STREQ(toString(Cause::None), "none");
     EXPECT_STREQ(toString(Cause::UsageError), "usage_error");
+    EXPECT_STREQ(toString(Cause::Ambiguous), "ambiguous");
     EXPECT_STREQ(toString(static_cast<Cause>(last + 1)), "unknown");
 }

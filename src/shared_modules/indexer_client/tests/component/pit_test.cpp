@@ -207,7 +207,8 @@ TEST_F(PitTest, TwoSlicesShareOnePit)
 // T19: slice 0 finished, slice 1 half way, slice 2 asleep in a 429's Retry-After (2 s). The fake expires the PIT: the
 // next page of slice 1 ⇒ PitExpired (one 404); slice 2 wakes ⇒ PitExpired without a request; afterwards next() and
 // Pit::search ⇒ PitExpired without a request; expired + 1. Mutant: only the call that saw the expiry fails (it is not
-// recorded on the shared PIT).
+// recorded on the shared PIT). Two nodes share the PIT: the 429 parks the node that sent it for every caller (I109), so
+// slice 1 sees the expiry on the other node while slice 2 sleeps.
 TEST_F(PitTest, PitExpiryReachesEveryCursor)
 {
     auto pits = std::make_shared<PitResponder>(30);
@@ -225,7 +226,12 @@ TEST_F(PitTest, PitExpiryReachesEveryCursor)
             return false;
         });
     const auto node = pitFake(pits);
-    ASSERT_NO_FATAL_FAILURE(start({node->baseUrl()}));
+    const auto other = pitFake(pits);
+    ASSERT_NO_FATAL_FAILURE(start({node->baseUrl(), other->baseUrl()}));
+    const auto searches = [&]
+    {
+        return pitSearches(*node).size() + pitSearches(*other).size();
+    };
     auto owner = client();
     const auto before = q::pitStats();
 
@@ -240,10 +246,13 @@ TEST_F(PitTest, PitExpiryReachesEveryCursor)
     const auto sliceTwo = [&]
     {
         std::size_t n = 0;
-        for (const auto& request : pitSearches(*node))
+        for (const auto* fake : {node.get(), other.get()})
         {
-            const auto body = parsed(request);
-            n += body.contains("slice") && body.at("slice").at("id") == 2 ? 1 : 0;
+            for (const auto& request : pitSearches(*fake))
+            {
+                const auto body = parsed(request);
+                n += body.contains("slice") && body.at("slice").at("id") == 2 ? 1 : 0;
+            }
         }
         return n;
     };
@@ -254,23 +263,23 @@ TEST_F(PitTest, PitExpiryReachesEveryCursor)
     ASSERT_TRUE(component::eventually([&] { return sliceTwo() == 1; }, scaled(5000ms)));
 
     pits->expireAll();
-    const auto searchesBefore = pitSearches(*node).size();
+    const auto searchesBefore = searches();
     auto seen = half.next(in(10s));
     EXPECT_EQ(seen.cause, ic::Cause::PitExpired) << seen.reason;
-    EXPECT_EQ(pitSearches(*node).size(), searchesBefore + 1) << "slice 1 saw the 404";
+    EXPECT_EQ(searches(), searchesBefore + 1) << "slice 1 saw the 404";
 
     ASSERT_TRUE(call.wait(scaled(5000ms))) << "the sleeping cursor never woke";
     EXPECT_EQ(slept->cause, ic::Cause::PitExpired) << slept->reason;
     EXPECT_GE(since(sleptAt), 1500ms) << "it woke before its Retry-After";
     EXPECT_EQ(sliceTwo(), 1u) << "the woken cursor sent a request on an expired PIT";
 
-    const auto searchesAfter = pitSearches(*node).size();
+    const auto searchesAfter = searches();
     EXPECT_EQ(half.next(in(5s)).cause, ic::Cause::PitExpired);
     EXPECT_EQ(sleeping->next(in(5s)).cause, ic::Cause::PitExpired);
     EXPECT_EQ(pit.search({{"query", {{"match_all", nlohmann::json::object()}}}}, in(5s)).cause, ic::Cause::PitExpired);
     auto fresh = pit.cursor(cursorQuery(4));
     EXPECT_EQ(fresh.next(in(5s)).cause, ic::Cause::PitExpired);
-    EXPECT_EQ(pitSearches(*node).size(), searchesAfter) << "no request on an expired PIT";
+    EXPECT_EQ(searches(), searchesAfter) << "no request on an expired PIT";
     EXPECT_EQ(pitDelta(before, q::pitStats()).expired, 1u);
 }
 
