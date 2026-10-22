@@ -4645,6 +4645,79 @@ void test_set_batch_identity_reports_a_reset_failure(void **state) {
     assert_int_equal(set_batch_identity(cli, "042"), -1);
 }
 
+/* flush_batch: a batch is sent only with its identity header; otherwise it is discarded and counted */
+
+static void fill_batch(dispatch_ctx_t *ctx, size_t events) {
+    bulk_init(&ctx->bulk, 256);
+    bulk_append_fmt(&ctx->bulk, "H {\"wazuh\":{\"agent\":{\"id\":\"007\"}}}\n");
+    for (size_t i = 0; i < events; i++) {
+        bulk_append_fmt(&ctx->bulk, "E event %zu\n", i);
+    }
+    ctx->events = events;
+    snprintf(ctx->canonical_id, sizeof(ctx->canonical_id), "%s", "007");
+}
+
+void test_flush_batch_sends_after_setting_the_identity_header(void **state) {
+    uhttp_client_t *cli = (uhttp_client_t *)0x1;
+    dispatch_ctx_t ctx = {.agent_id = "7"};
+    uhttp_result_t res = {0};
+    fill_batch(&ctx, 2);
+
+    expect_function_call(__wrap_uhttp_client_reset_headers);
+    will_return(__wrap_uhttp_client_reset_headers, 0);
+    expect_function_call(__wrap_uhttp_client_add_header);
+    expect_string(__wrap_uhttp_client_add_header, header_line, "X-Wazuh-Agent-Id: 007");
+    will_return(__wrap_uhttp_client_add_header, 0);
+    will_return(__wrap_uhttp_post, NULL);
+    will_return(__wrap_uhttp_post, 0);
+    will_return(__wrap_uhttp_post, 200);
+
+    assert_int_equal(flush_batch(cli, &ctx, &res), 0);
+    assert_int_equal(res.http_status, 200);
+    assert_int_equal(ctx.drop, 0);
+
+    bulk_free(&ctx.bulk);
+}
+
+void test_flush_batch_discards_and_counts_when_the_header_fails(void **state) {
+    uhttp_client_t *cli = (uhttp_client_t *)0x1;
+    dispatch_ctx_t ctx = {.agent_id = "7"};
+    uhttp_result_t res = {0};
+    fill_batch(&ctx, 3);
+    atomic_store(&s_last_identity_header_warn, 0);
+
+    expect_function_call(__wrap_uhttp_client_reset_headers);
+    will_return(__wrap_uhttp_client_reset_headers, 0);
+    expect_function_call(__wrap_uhttp_client_add_header);
+    expect_string(__wrap_uhttp_client_add_header, header_line, "X-Wazuh-Agent-Id: 007");
+    will_return(__wrap_uhttp_client_add_header, 1);
+    expect_function_call(__wrap_rem_inc_recv_events_failed);
+    expect_function_call(__wrap_rem_inc_recv_events_failed);
+    expect_function_call(__wrap_rem_inc_recv_events_failed);
+    expect_value(__wrap_time, time, 0);
+    will_return(__wrap_time, 1000);
+    expect_string(__wrap__mwarn, formatted_msg, "Discarding a batch of agent '7': unable to set its identity header.");
+    // No uhttp_post is queued: a call would fail the test.
+
+    assert_int_equal(flush_batch(cli, &ctx, &res), 0);
+    assert_int_equal(ctx.drop, 1);
+
+    bulk_free(&ctx.bulk);
+}
+
+void test_flush_batch_skips_a_dropped_batch(void **state) {
+    uhttp_client_t *cli = (uhttp_client_t *)0x1;
+    dispatch_ctx_t ctx = {.agent_id = "x1", .drop = 1};
+    uhttp_result_t res = {0};
+    bulk_init(&ctx.bulk, 64);
+    bulk_append_fmt(&ctx.bulk, "E stray\n");
+
+    // No header call and no post are queued: any of them would fail the test.
+    assert_int_equal(flush_batch(cli, &ctx, &res), 0);
+
+    bulk_free(&ctx.bulk);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -4771,6 +4844,9 @@ int main(void)
         cmocka_unit_test(test_set_batch_identity_resets_then_adds_the_header),
         cmocka_unit_test(test_set_batch_identity_resets_between_agents),
         cmocka_unit_test(test_set_batch_identity_reports_a_header_failure),
-        cmocka_unit_test(test_set_batch_identity_reports_a_reset_failure)};
+        cmocka_unit_test(test_set_batch_identity_reports_a_reset_failure),
+        cmocka_unit_test(test_flush_batch_sends_after_setting_the_identity_header),
+        cmocka_unit_test(test_flush_batch_discards_and_counts_when_the_header_fails),
+        cmocka_unit_test(test_flush_batch_skips_a_dropped_batch)};
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
