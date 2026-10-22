@@ -87,7 +87,9 @@ handler owns identity rejections. Call `registerCacheMetrics()` once after const
 shared cache to expose entries, accounted bytes and configured limits. Pull callbacks use weak
 pointers and return zero after destruction. Each failed capacity predicate increments its own
 counter; both can increment for one admission. Removing an obsolete entry on bypass is not a
-TTL eviction. See the [operator metric catalog](../../../../docs/ref/modules/engine/README.md#agent-cache-metrics).
+TTL eviction. A bypass also feeds a throttled warning (`reportBypass()`): at most one per 90 s, with
+the bypasses since the previous report, occupancy against the limits and the setting to raise. It
+uses the steady clock, not the injectable one, and never throws, so reporting cannot fail a batch. See the [operator metric catalog](../../../../docs/ref/modules/engine/README.md#agent-cache-metrics).
 
 ## Tests
 

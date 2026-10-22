@@ -2508,6 +2508,14 @@ request. Continued bypasses mean repeated parsing and validation for headers tha
 retained, trading CPU savings for bounded retention. Increase the corresponding limit when that
 tradeoff warrants more retained memory.
 
+While bypasses happen, the engine also logs at most one warning every 90 seconds, with the number of
+headers parsed without being retained since the previous report, the occupancy against both limits
+(`0` limits show as `unlimited`) and the setting that refused them:
+
+```text
+WARNING: [AgentMetadataCache] Cache full: 1532 agent header(s) parsed without being retained since the previous report (entries 50000/50000, accounted bytes 127550000/134217728). Each such batch parses and validates its header again. Consider raising 'analysisd.agent_metadata_cache_max_entries'.
+```
+
 ---
 
 ##### `agent.cache.hits`
@@ -2904,9 +2912,13 @@ batches whose event bodies later fail with HTTP 400 can therefore populate the c
 bound retained state only: queued events and callers can hold shared metadata beyond removal,
 and router queue-byte accounting counts raw events separately from these headers.
 
-The defaults were sized from measured real-agent entries of about 2.4 KiB: 50,000 such entries
-need about 120 MiB. Larger headers reach the byte limit sooner; this is a sizing rationale,
-not a guarantee of capacity for every 50,000-agent deployment. Use the
+The defaults were sized from measured real-agent headers (about 270–285 bytes): each entry accounts
+about 2,550 bytes, so 50,000 entries account about 128 MB, 95% of the byte limit. The process's
+memory grows by about 1.09 times the accounted bytes (allocator rounding and index buckets are not
+accounted), so a full cache adds about 140 MB to analysisd with real headers, and never more than
+about 148 MB with the default byte limit, whatever the header size. Larger headers reach the byte
+limit sooner; this is a sizing rationale, not a guarantee of capacity for every 50,000-agent
+deployment. Use the
 [cache metrics](#agent-cache-metrics) to observe usage and bypasses.
 
 ### Orchestrator
