@@ -25,8 +25,16 @@ add_executable(wazuh-agent-keystore main.cpp)
 # in, so this does not drag the inventory or DBSync into the binary.
 target_link_libraries(wazuh-agent-keystore PRIVATE ContainerImagesImpl wazuhext)
 
+# The libraries are installed in ../lib next to bin/. $ORIGIN is an ELF token that macOS
+# takes literally, so dyld there needs @executable_path instead.
+if(APPLE)
+  set(KEYSTORE_RPATH "@executable_path/../lib")
+else()
+  set(KEYSTORE_RPATH "$ORIGIN/../lib")
+endif()
+
 set_target_properties(
   wazuh-agent-keystore
   PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER}/build/bin
              BUILD_RPATH_USE_ORIGIN TRUE
-             BUILD_RPATH "$ORIGIN/../lib")
+             BUILD_RPATH "${KEYSTORE_RPATH}")
