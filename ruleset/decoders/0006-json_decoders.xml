@@ -16,7 +16,7 @@
 </decoder>
 
 <decoder name="json-security-lake">
-  <prematch>"category_uid":\.+"vendor_name": "AWS"|"vendor_name": "AWS"\.+"category_uid":</prematch>
+  <prematch>"vendor_name": "AWS"\.+"category_uid":|"category_uid":\.+"vendor_name": "AWS"</prematch>
   <plugin_decoder>JSON_Decoder</plugin_decoder>
   <json_null_field>discard</json_null_field>
 </decoder>
