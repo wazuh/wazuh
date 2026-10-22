@@ -137,11 +137,37 @@ namespace indexer_client::detail::write
 
             void run()
             {
+                // I99, the callback cutoff (writer.hpp «Close»): decided under completionsMutex, so once awaitClosed
+                // moved the cutoff under the same mutex no callback starts and callbacksRunning is exact.
+                bool started = true;
+                const auto runtimeCutoff = path ? path->callbackCutoff() : TimePoint::max();
+                if (client)
+                {
+                    std::lock_guard<std::mutex> lock(client->completionsMutex);
+                    const bool past =
+                        std::chrono::steady_clock::now() >= std::min(client->callbackCutoff, runtimeCutoff);
+                    seams::inCallbackGate(); // Between the comparison and the mark (CutoffGateHoldsAwaitClosed).
+                    if (past)
+                    {
+                        started = false;
+                        client->callbacksSkipped.fetch_add(1);
+                    }
+                    else
+                    {
+                        ++client->callbacksRunning;
+                    }
+                }
+                else
+                {
+                    started = std::chrono::steady_clock::now() < runtimeCutoff;
+                }
+
                 // Runs on every exit, a throwing callback included: the reserve is returned, then the completion is
                 // no longer outstanding (awaitClosed waits for exactly that).
                 struct Finish final
                 {
                     CallbackCompletion& self;
+                    bool started;
                     ~Finish()
                     {
                         if (self.releaseReserve && self.bucket)
@@ -153,16 +179,25 @@ namespace indexer_client::detail::write
                             {
                                 std::lock_guard<std::mutex> lock(self.client->completionsMutex);
                                 --self.client->outstandingCompletions;
+                                if (started)
+                                {
+                                    --self.client->callbacksRunning;
+                                }
                             }
                             self.client->completionsDone.notify_all();
                         }
                     }
-                } finish {*this};
+                } finish {*this, started};
 
                 if (ticket)
                 {
-                    ticket->complete(Outcome<OpResult>::success(result));
+                    ticket->complete(Outcome<OpResult>::success(result)); // Past the cutoff too (RF-6).
                 }
+                if (!started)
+                {
+                    return;
+                }
+                const auto begin = std::chrono::steady_clock::now();
                 try
                 {
                     callback(result);
@@ -170,6 +205,20 @@ namespace indexer_client::detail::write
                 catch (...)
                 {
                     // A consumer callback must never take a pool thread down (nor skip the accounting above).
+                }
+                if (client)
+                {
+                    // k4-1: every callback is timed (E5c publishes the overruns and the maximum).
+                    const auto took = std::chrono::steady_clock::now() - begin;
+                    const auto micros = std::chrono::duration_cast<std::chrono::microseconds>(took).count();
+                    if (took > client->callbackBudget)
+                    {
+                        client->callbackOverruns.fetch_add(1);
+                    }
+                    auto seen = client->callbackMaxDurationMicros.load();
+                    while (micros > seen && !client->callbackMaxDurationMicros.compare_exchange_weak(seen, micros))
+                    {
+                    }
                 }
             }
         };
@@ -271,15 +320,12 @@ namespace indexer_client::detail::write
 
                 std::optional<Cause> closedAtEnqueue;
                 const bool notify = m_bucket->enqueue(op, &closedAtEnqueue);
-                // A close or a shutdown that swept this bucket between the reservation and the enqueue did not see this
-                // op; the bucket took it anyway (bucket.hpp), so it is taken back and resolved here (SubmitRacesClose).
-                // Both sides order on the bucket's mutex: either the sweep returned it or closedCause() is set now.
+                // A close or a shutdown between the reservation and the enqueue (SubmitRacesClose): the bucket refused
+                // the op and took custody of its payload without queuing it (I99, N2), so only this op is resolved
+                // here; the rest of the bucket keeps draining. Both sides order on the bucket's mutex.
                 if (const auto& closed = closedAtEnqueue; closed)
                 {
-                    for (const auto& pending : m_bucket->close(*closed))
-                    {
-                        m_path->resolve(pending, dropped(*closed));
-                    }
+                    m_path->resolve(op, dropped(*closed)); // Not part of CloseReport::drained (a refusal).
                     return submit;
                 }
                 if (notify)
@@ -379,7 +425,7 @@ namespace indexer_client::detail::write
         created.reserve(client.buckets.size());
         for (const auto& spec : client.buckets)
         {
-            created.push_back(std::make_shared<Bucket>(client.consumer, spec, m_budget));
+            created.push_back(std::make_shared<Bucket>(client.consumer, spec, m_budget, weak_from_this()));
         }
         bool stopped = false;
         {
@@ -477,6 +523,39 @@ namespace indexer_client::detail::write
         {
             result.itemErrorType.resize(OpResult::MAX_ITEM_ERROR_TYPE);
         }
+        // I99 (writer.hpp «Close»): the client's accounting goes before the payload is released. Σ retained of the
+        // client reaches 0 only once every resolution of the drain is counted and its completion is outstanding, so
+        // awaitClosed's second wait (outstandingCompletions == 0) covers the callback of the last drained op.
+        const bool withCompletion = client && callback && !op->group;
+        if (withCompletion)
+        {
+            std::lock_guard<std::mutex> lock(client->completionsMutex);
+            ++client->outstandingCompletions;
+        }
+        bool closing = false;
+        if (client)
+        {
+            const bool sweptOrRefused = result.status == Status::Dropped &&
+                                        (result.cause == Cause::ClientClosed || result.cause == Cause::Shutdown);
+            if (result.status == Status::Dropped)
+            {
+                if (result.cause == Cause::ClientClosed)
+                {
+                    client->droppedClientClosed.fetch_add(1);
+                }
+                else if (result.cause == Cause::Shutdown)
+                {
+                    client->droppedShutdown.fetch_add(1);
+                }
+            }
+            closing = client->closeRequested.load();
+            if (closing && !sweptOrRefused)
+            {
+                // CloseReport::drained: resolved after requestClose() by the drain itself. A Dropped(ClientClosed)
+                // or Dropped(Shutdown) comes only from a sweep, a refusal or a requeue into a closed bucket.
+                client->drained.fetch_add(1);
+            }
+        }
         if (bucket)
         {
             // Once per op (the bucket tracks it); wakes blocked producers; frees the op's last-error strings under the
@@ -488,6 +567,7 @@ namespace indexer_client::detail::write
                 bucket->countCancelled(1); // I80: also under resolvedDropped.
             }
             bucket->releasePayload(*op);
+            seams::afterPayloadReleased(); // ResolutionOutstandingBeforeReleased.
         }
         else
         {
@@ -496,16 +576,13 @@ namespace indexer_client::detail::write
             std::string().swap(op->lastItemErrorType);
             std::string().swap(op->tag);
         }
-        if (client && result.status == Status::Dropped)
+        if (closing)
         {
-            if (result.cause == Cause::ClientClosed)
+            // After the release: awaitClosed's drain re-checks its predicate (Σ retained) under completionsMutex.
             {
-                client->droppedClientClosed.fetch_add(1);
+                std::lock_guard<std::mutex> lock(client->completionsMutex);
             }
-            else if (result.cause == Cause::Shutdown)
-            {
-                client->droppedShutdown.fetch_add(1);
-            }
+            client->drainDone.notify_all();
         }
 
         if (op->group)
@@ -536,12 +613,7 @@ namespace indexer_client::detail::write
         completion->client = client;
         completion->callback = std::move(callback);
         completion->result = std::move(result);
-        completion->releaseReserve = reserveCharged;
-        if (client)
-        {
-            std::lock_guard<std::mutex> lock(client->completionsMutex);
-            ++client->outstandingCompletions;
-        }
+        completion->releaseReserve = reserveCharged; // Already outstanding for its client (above).
         if (m_poolDetached.load() || !m_postToPool([completion]() { completion->run(); }))
         {
             completion->run(); // The pool no longer accepts: complete inline (I63).
@@ -557,15 +629,51 @@ namespace indexer_client::detail::write
         }
     }
 
-    void WritePath::closeClient(ClientState& client)
+    void WritePath::closeClient(ClientState& client, bool sweep)
     {
+        auto current = scheduler();
         for (const auto& bucket : client.bucketStates)
         {
-            sweepClosed(*bucket, Cause::ClientClosed);
+            if (sweep)
+            {
+                // A Client destroyed on a runtime thread: the old close, pending and lane resolved now; what is
+                // delivered keeps its course (a later requeue finds the bucket closed).
+                sweepClosed(*bucket, Cause::ClientClosed);
+                continue;
+            }
+            bucket->closeAdmission(Cause::ClientClosed);
+            if (current)
+            {
+                current->notify(bucket); // Everything pending is eligible now (flushSeq): the drain starts at once.
+            }
         }
     }
 
-    void WritePath::stop()
+    std::uint64_t WritePath::sweepClient(ClientState& client, bool cancelTransfers)
+    {
+        std::uint64_t won = 0;
+        auto current = cancelTransfers ? sink() : nullptr;
+        for (const auto& bucket : client.bucketStates)
+        {
+            for (const auto& op : bucket->close(Cause::ClientClosed))
+            {
+                won += resolve(op, dropped(Cause::ClientClosed)) ? 1 : 0;
+            }
+            bool any = false;
+            for (const auto& op : bucket->delivered())
+            {
+                any = true;
+                won += resolve(op, dropped(Cause::Shutdown)) ? 1 : 0;
+            }
+            if (any && current)
+            {
+                current->cancelBucket(*bucket); // After the resolutions: the sender's assembly skips claimed ops.
+            }
+        }
+        return won;
+    }
+
+    void WritePath::stop(std::optional<TimePoint> callbackCutoff)
     {
         std::shared_ptr<Scheduler> scheduler;
         std::shared_ptr<BatchSink> sink;
@@ -578,6 +686,11 @@ namespace indexer_client::detail::write
             m_stopped = true;
             scheduler = m_scheduler;
             sink = m_sink;
+        }
+        if (callbackCutoff)
+        {
+            // First: the completions this stop() posts, and those already queued, start no callback past it.
+            m_callbackCutoff.store(callbackCutoff->time_since_epoch().count());
         }
         // 1. Admission: every bucket closes (blocked producers wake with Shutdown) and its pending ops are dropped.
         forEachBucket([this](const std::shared_ptr<Bucket>& bucket) { sweepClosed(*bucket, Cause::Shutdown); });

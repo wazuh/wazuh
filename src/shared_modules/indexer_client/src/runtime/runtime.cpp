@@ -411,7 +411,8 @@ namespace indexer_client
                 queryGate->cv.notify_all();
                 if (writePath)
                 {
-                    writePath->stop();
+                    // I99: the completions still queued start no callback past stopDeadline - callbackBudget.
+                    writePath->stop(stopDeadline - config.callbackBudget);
                 }
                 if (pits)
                 {
@@ -640,6 +641,7 @@ namespace indexer_client
         clientState->drain = state->config.drain;
         clientState->queryGate = state->queryGate;
         clientState->requestTimeout = state->config.requestTimeout;
+        clientState->callbackBudget = state->config.callbackBudget;
         clientState->probeInterval = state->config.probeInterval;
         clientState->maxResponseBytes = state->config.maxResponseBytes;
         {

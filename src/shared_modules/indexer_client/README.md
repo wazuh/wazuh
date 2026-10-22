@@ -17,13 +17,13 @@ consumers of the indexer, one consumer at a time, with:
 
 The design is in `planes/18-indexer_connector_v2/03-diseno.md` §1–§4 (outside the repository).
 
-**Status: E5a — write admission, buckets and scheduling on top of the internal transport, the bulk-response classifier, the retry lane and the bulk sender with its [per-node load control](#load-control-e5a) (E5a), with the per-operation conflict policy, `ReplacePreserving`, confirmable groups, [`ordered` buckets](#ordered-buckets-e3c-2) and [`cancel(tag)`](#cancellation-e3c-2), plus the [queries](#queries-e4a) and the [managed point in time](#point-in-time-e4b): writes and reads reach the indexer.** The public headers, the
+**Status: E5b — write admission, buckets and scheduling on top of the internal transport, the bulk-response classifier, the retry lane and the bulk sender with its [per-node load control](#load-control-e5a) (E5a) and the [client close and shutdown](#closing-and-shutdown-e5b) that drain up to one deadline (E5b), with the per-operation conflict policy, `ReplacePreserving`, confirmable groups, [`ordered` buckets](#ordered-buckets-e3c-2) and [`cancel(tag)`](#cancellation-e3c-2), plus the [queries](#queries-e4a) and the [managed point in time](#point-in-time-e4b): writes and reads reach the indexer.** The public headers, the
 configuration schema, the runtime lifecycle (threads, owner thread, shutdown deadline), the test
 helpers, the internal curl [Transport](#transport-internal-e2a-1-and-e2a-2) (HTTP, HTTPS, credentials), the
 [node health probe](#node-health-e2b) and the [write path](#write-path-e3a) (encoding, quota charge, overflow policies, DRR scheduler,
 resolution) exist, the [response classifier and retry lane](#response-classification-and-retry-lane-e3b-1) are driven by the [bulk sender](#bulk-sender-e3b-2), and the transport has been [benchmarked against the v1](#benchmark). `Writer::submit` admits and schedules
 writes and the production sink sends them as `_bulk` requests, with a per-node adaptive window, a bulk-size target and pacing, failover and retry; `Client::query()` runs
-searches, by-query writes, index checks and PITs on the consumer's thread. See [What is not implemented yet](#what-is-not-implemented-yet).
+searches, by-query writes, index checks and PITs on the consumer's thread. `requestClose()` closes admission and the queued writes keep draining until `awaitClosed(deadline)`, which then resolves the rest and stops callbacks from starting. See [What is not implemented yet](#what-is-not-implemented-yet).
 `indexer_connector` keeps working untouched until each consumer migrates.
 
 Strict C++17: the target requires `cxx_std_17` publicly and is pinned to 17, so consumers built
@@ -71,15 +71,19 @@ reason of `encode` does; `QueueFull`, `PayloadTooLarge` and the rest carry their
 [`Group`](#groups-e3c-1). `Writer::cancel(tag)` returns a [`CancelTicket`](#cancellation-e3c-2). `Client::writer(bucket)` returns the writer bound to that bucket of
 the client; once the runtime is gone it returns the E1 stub writer, which answers `Unavailable`.
 
-`CloseReport` (from `Client::awaitClosed`) fills all three fields:
+`CloseReport` (from `Client::awaitClosed`); the fields are described in [Closing and shutdown](#closing-and-shutdown-e5b):
 
 | Field | Meaning |
 |---|---|
-| `callbacksInFlight` | Completions of this client (ticket completion plus callback) still outstanding when the deadline passed |
+| `callbacksInFlight` | Callbacks of this client started and not finished when `awaitClosed` returned |
 | `droppedClientClosed` | Operations of this client resolved `Dropped(ClientClosed)` |
 | `droppedShutdown` | Operations of this client resolved `Dropped(Shutdown)` |
+| `callbacksSkipped` | Completions past the callback cutoff: the `Ticket` is complete and the callback was not called |
+| `callbackOverruns` | Callbacks that took longer than `callback_budget_ms` |
+| `drained` | Operations resolved after `requestClose()` that are not `Dropped(ClientClosed)` or `Dropped(Shutdown)`: the drain's own results |
 
-Operations dropped by an overflow policy (`Dropped(QueueFull)`) are not part of the report; they are in the per-bucket counters.
+Operations dropped by an overflow policy (`Dropped(QueueFull)`) have no field of their own; they are in the per-bucket counters (one
+resolved after `requestClose()`, an eviction racing the close, counts in `drained`).
 
 Mocks of the interfaces (`tests/mocks/mockIndexerClient.hpp`) and an in-process fake indexer
 (`tests/fake/fakeIndexer.hpp`) are test helpers, not part of the installed API.
@@ -120,12 +124,14 @@ RuntimeOwner::shutdown()                  owner thread, joins every runtime thre
   in I/O or in a long callback can hang that `exit()`: the owner must call `shutdown()` before the
   process exits.
 - **`requestClose()` / `awaitClosed(deadline)`.** `Client::requestClose()` never blocks and is
-  valid from any thread. `Client::awaitClosed()` blocks and is for consumer threads only. The
-  `Client` destructor is `requestClose()` plus `awaitClosed()` with the shutdown deadline (or the
-  default). After `requestClose()`, `writer()` and `query()` return `nullptr`: a closing client
+  valid from any thread; it closes admission and the queued writes keep draining. `Client::awaitClosed()` blocks and is for consumer
+  threads only: it waits for the drain up to `deadline`, resolves what is left and returns a `CloseReport` (see
+  [Closing and shutdown](#closing-and-shutdown-e5b)). The `Client` destructor is `requestClose()` plus `awaitClosed()` with the
+  shutdown deadline (or the default). After `requestClose()`, `writer()` and `query()` return `nullptr`: a closing client
   hands out no new handles. Destroying a `Client` from a runtime thread is a usage error: it is
   logged to stderr, counted (`detail::testing::usageErrors()`) and turned into a non-blocking
-  `requestClose()`; it never aborts, not even in debug builds.
+  `requestClose()` plus an immediate sweep; it never aborts, not even in debug builds. That path does not release the consumer
+  name (only `awaitClosed()` does, or the client state's own destruction), so the name stays taken until the state dies.
 - **Reentrancy.** Every wait in the library (`Ticket::wait`, `GroupTicket::wait`,
   `CancelTicket::wait`, `PitSession::next`, blocking queries, `awaitClosed`) is the library's own
   and returns `Cause::Reentrancy` when called from a runtime thread. From a callback a consumer
@@ -649,23 +655,8 @@ inline. `Dropped(ClientClosed)` and `Dropped(Shutdown)` are also counted per cli
 
 ### Close and shutdown
 
-- **`requestClose()`** closes the client's buckets with `ClientClosed`: blocked producers wake and return `ClientClosed`, later
-  `submit` calls return `ClientClosed`, and the operations still pending resolve `Dropped(ClientClosed)`. Operations already
-  delivered to the sink keep their course. **Provisional (E3a):** the design (`requestClose()` stops admission and *starts
-  draining*) keeps the pending operations for E5's drain up to the `awaitClosed` deadline; dropping them here is E3a's stand-in
-  while there is no real sender (D43).
-- **`awaitClosed(deadline)`** does `requestClose()`, resolves what the client still retains in the sink `Dropped(ClientClosed)`
-  (E5 adds the drain up to the deadline before this point), then waits for the client's outstanding completions until the
-  deadline; whatever is left is `CloseReport.callbacksInFlight`. It returns the `CloseReport` described in [Public API](#public-api).
-- **Submit racing a close.** `submit` reserves, then enqueues. A close that swept the bucket between the two did not see the
-  operation, so after enqueuing the writer checks the bucket's close cause and, if closed, takes the operation back and resolves it
-  `Dropped`. Everything accepted is resolved once and nothing refused has a callback (`SubmitRacesClose`, using the seam
-  `afterAdmission`).
-- **Shutdown order** (`RuntimeState::stopAndJoin`): stop accepting clients, then `WritePath::stop()`: every bucket closes with
-  `Shutdown` (blocked producers wake) and its pending operations resolve `Dropped(Shutdown)` -> the scheduler stops (no pass,
-  batch or timer afterwards) -> `sink.stop()` -> every operation still unresolved, pending or delivered, resolves
-  `Dropped(Shutdown)` while the pool still accepts tasks. Only then the node-health prober, the transport, the loops and the
-  CPU pool stop, as described in [Node health](#node-health-e2b).
+The close of a client and the runtime shutdown are described in [Closing and shutdown](#closing-and-shutdown-e5b). Before E5b
+`requestClose()` dropped the pending operations at once (E3a's stand-in, D43); it no longer does.
 
 ### Response classification and retry lane (E3b-1)
 
@@ -993,6 +984,89 @@ only if it was sent after the last decrease and no decrease happened in the same
 **`senderStats()`.** Per node, besides the fields of the [bulk sender](#bulk-sender-e3b-2): `window` (real), `bulkTarget` (0 =
 uncapped), `nextSendAt` (only when in force), `p95` (0 below 8 samples), `decreases429`, `decreasesThrottled`, `decreasesLatency`,
 `increases` and `paceRelaxed`. They are internal: E5c publishes them as metrics.
+
+## Closing and shutdown (E5b)
+
+The normative text is the "Close" block of `src/write/writer.hpp`, the admission block of `src/write/bucket.hpp` and the close-order
+note of `include/indexer_client/client.hpp`; this section is the summary.
+
+**`requestClose()`** (D43) marks the client, wakes its queries and blocked producers (`ClientClosed`) and closes only the **admission**
+of its buckets (`Bucket::closeAdmission`): later `submit` calls return `ClientClosed`, `writer()` and `query()` return `nullptr`.
+What is already queued is not dropped: `flushSeq = nextSeq - 1` makes every pending operation eligible now, as a `commit()` does, the
+scheduler is notified, and the buckets stay in the DRR ring and keep draining. A requeue retries as usual (only `Bucket::close()` hands
+operations back as closed). It never blocks and is valid from any thread. A `submit` racing the close either was enqueued before it
+(and drains) or is refused: with the admission closed `enqueue` takes custody of the operation without queuing it and the writer
+resolves only that operation (`Dropped(ClientClosed)`); it never calls `close()`.
+
+**`awaitClosed(D)`** is for consumer threads (from a runtime thread it returns `Reentrancy` without draining). Calls are serialized
+per client: a concurrent call waits for the first one; a later one sweeps nothing, waits for the completions until its own `D`, moves
+the cutoff to now again and returns the live counters (`callbacksSkipped`, `callbackOverruns` and `drained` may have grown). With
+`left = max(0, D - now)` and `callbackBudget` = `callback_budget_ms`:
+
+| `left` | `drainEnd` (end of the drain) | `cutoff` (no callback starts after it) |
+|---|---|---|
+| `>= 2 * callbackBudget` | `D - 2 * callbackBudget` | `D - callbackBudget` |
+| otherwise (short or past deadline) | `now + left / 2` | `now + 3 * left / 4` |
+
+1. **Drain.** It waits until the client's buckets retain nothing (pending, retry lane and delivered all at 0) or `drainEnd`. The drain
+   honours the node pace, `notBefore` and the bucket backoff (CA-24): it sends nothing earlier than a normal send would.
+2. **Sweep at `drainEnd`.** The bucket is closed (`close(ClientClosed)`): what is still pending or in the retry lane resolves
+   `Dropped(ClientClosed)`, what was delivered to the sink resolves `Dropped(Shutdown)` — except a delivered operation whose answer
+   reaches the requeue between the close and the sweep's resolution of it: the bucket hands it back closed and it resolves
+   `Dropped(ClientClosed)` (first resolution wins; either way it is counted once). Outside a runtime shutdown the transfers of
+   those delivered operations are cancelled (`BatchSink::cancelBucket`); in a runtime shutdown `transport->stop` bounds them.
+   The sweep and `cancelBucket` run outside `ClientState::completionsMutex`.
+3. **Completions.** It then waits for the client's outstanding completions until `D`, and sets the client's callback cutoff to now.
+   A resolution counts in the client (`drained`, `dropped*`) and its completion is outstanding **before** its payload stops being
+   retained, so a drain that ends at zero retained never leaves the last completion out of this wait.
+
+**Callback boundary.** `CallbackCompletion::run` takes `ClientState::completionsMutex`, compares now with
+`min(client cutoff, WritePath::callbackCutoff())`, marks itself started or skipped and releases the mutex before calling the
+callback; `awaitClosed` moves the cutoff under the same mutex before it reads the count of started-and-not-finished callbacks, so no
+callback of the client starts after `awaitClosed` returns. Lock order: `completionsMutex`, then the bucket mutex.
+
+Past the cutoff the completion still completes the `Ticket` and counts the result in the bucket, but **the callback is not called**
+and `callbacksSkipped` grows. The contract for consumers: a consumer that needs every result at close keeps its `Ticket`, or reads
+`callbacksSkipped > 0` as "results unknown".
+
+**`CloseReport`** (counters are read live on each `awaitClosed`):
+
+| Field | Meaning |
+|---|---|
+| `callbacksInFlight` | Callbacks started and not finished when `awaitClosed` returned |
+| `droppedClientClosed`, `droppedShutdown` | Operations of the client resolved `Dropped(ClientClosed)` and `Dropped(Shutdown)` |
+| `callbacksSkipped` | Completions past the cutoff: `Ticket` complete, callback not called |
+| `callbackOverruns` | Callbacks whose duration exceeded `callbackBudget` |
+| `drained` | Operations resolved after `requestClose()` that are not `Dropped(ClientClosed)` or `Dropped(Shutdown)` (those come only from a sweep, a refused enqueue or a requeue into a closed bucket), so `drained + droppedClientClosed + droppedShutdown` covers every operation resolved after `requestClose()` |
+
+**Callback duration.** Every callback is timed; one longer than `callbackBudget` adds 1 to `callbackOverruns` and updates
+`ClientState::callbackMaxDurationMicros`. `callbackOverruns` is in the `CloseReport`; the maximum is only in `ClientState` (no
+`CloseReport` field, nothing reads it yet); E5c publishes both (histogram and log). `Dropped(QueueFull)` has no field of its own.
+
+**Destructor.** `~Client` on a consumer thread is `requestClose()` plus `awaitClosed()` with the shutdown deadline (or the default).
+On a runtime thread (also move-assignment over a live `Client` there) it keeps the pre-E5b behaviour: `requestClose()` plus the
+immediate sweep (`closeClient(client, true)`: `close(ClientClosed)` and pending and lane operations resolved `Dropped(ClientClosed)`;
+delivered ones keep their course), counted as a usage error, so a usage error never loses a result.
+
+**Runtime shutdown.** `RuntimeOwner::shutdown()` reaches `WritePath::stop(callbackCutoff)`: the runtime-wide callback cutoff
+(`stopDeadline - callbackBudget`) is set first, so the completions the pool still runs afterwards only complete tickets once past it,
+the common boundary above. During `stop()` every resolution is `Dropped(Shutdown)`: every bucket closes, the sweep of pending, lane
+and delivered operations and the requeues of a bucket that was draining all use `Bucket::sweepCause()`; the admission cause stays
+`ClientClosed` for `submit`. The order of the rest of the shutdown is unchanged (scheduler, `sink.stop()`, prober, transport, loops,
+CPU pool).
+
+**Close order of a process** (note in `client.hpp`), all on the owner thread:
+
+```text
+RuntimeOwner::beginShutdown(deadline)
+  each consumer's stop: Client::requestClose()   admission closed, the queue keeps draining
+                        join the consumer's own threads
+                        Client::awaitClosed(RuntimeRef::shutdownDeadline())
+RuntimeOwner::shutdown()
+```
+
+What is queued drains until `awaitClosed`'s deadline minus twice `callbackBudget`; past it the rest is dropped and no callback starts
+(the `CloseReport` tells how many were skipped).
 
 ## Queries (E4a)
 
@@ -1527,6 +1601,12 @@ test above).
 | `writeCancel_test.cpp` | `CancelPendingAndInFlight503`, `CancelInFlightOkStaysOk`, `CancelSlicedBeforeSubmitNotSent`, `CancelOtherTagsUntouched`, `CancelCommittedGroupOps`, `CancelIgnoresBuildingGroup`, `CancelTicketWaitsInFlightOnly`, `CancelFromCallbackReentrancy`, `TagValidation`, `CancelTwiceSameTag`, `CancelAfterTagReenqueued`, `CancelWakesOrderedBucket` |
 | `bulkFairness_test.cpp` | `ItemRejectionsDoNotStarveOtherBucket` (CA-3; about 21 s, about three times that under TSAN) |
 
+**E5b suite** (component, [Closing and shutdown](#closing-and-shutdown-e5b)).
+
+| File | Cases |
+|---|---|
+| `closeDrain_test.cpp` | `RequestCloseDrainsPending`, `CloseDrainRetriesDuringDrain`, `SubmitRacesCloseKeepsDrain`, `RuntimeThreadDestroyResolvesAll`, `AwaitClosedSweepsAtDrainEnd`, `CloseWithBackoffBeyondDrainEnd`, `StormWithSlowCallbackAtDeadline`, `ResolutionOutstandingBeforeReleased`, `CutoffGateHoldsAwaitClosed`, `AwaitClosedDeadlinePast`, `ShortDeadlineHalves`, `CallbackOverrunCounted`, `OneBeginShutdownThreeConsumersHealthy` (sized from the measured rate; about 7 s), `OneBeginShutdownThreeConsumersDown`, `SignalDuringActivityOwnerThread`, `BlockedProducerAndQueryUnblock`, `CallbackCloseAndDestroyK1`, `ShutdownCutsCallbacksOfLiveClients` |
+
 `ResultReserveMeasured` is re-run with `key`, `tag` and the pin in `OpState`; `RESULT_RESERVE` is raised if the measure x 1.25 exceeds it.
 
 The conflict, preservation and `Submit::reason` cases of `writeEncoding_test.cpp` are listed above.
@@ -1551,6 +1631,12 @@ build compiles both to nothing.
 reservation and the enqueue; in the test build `testing_hooks::setAfterAdmission(hook)` installs the hook (`resetAll()` clears it).
 `SubmitRacesClose` uses it to close the client or shut the runtime down exactly in that window; the production build compiles it
 to nothing.
+
+**Seams `afterPayloadReleased` and `inCallbackGate`** (G-diff E5b, `src/transport/seams.hpp`). The first runs in
+`WritePath::resolve` right after the operation's payload was released (`testing_hooks::setAfterPayloadReleased`; parking it proves
+the completion is already outstanding, `ResolutionOutstandingBeforeReleased`); the second runs in `CallbackCompletion::run` under
+`completionsMutex`, between the cutoff comparison and the started/skipped mark (`testing_hooks::setInCallbackGate`; parking it proves
+`awaitClosed` waits for the gate, `CutoffGateHoldsAwaitClosed`). The production build compiles both to nothing.
 
 The runtime starts the probe on its own. The test hook `testing_hooks::setProbeAutoStart(false)`
 (`src/testing/hooks.hpp`, test build only) creates the `NodeSet` and `Prober` without a first round or a timer, and `probeNow()`
@@ -1583,15 +1669,15 @@ transport [benchmark](#benchmark) (done; the `--path client` benchmark of the wh
 [write path](#write-path-e3a) up to the sink, E3b-1 the [response classifier and retry lane](#response-classification-and-retry-lane-e3b-1),
 E3b-2 the [bulk sender](#bulk-sender-e3b-2), E3c-1 the [per-operation conflict policy](#conflict-policy-e3c-1), `ReplacePreserving` and
 [groups](#groups-e3c-1), and E3c-2 [`ordered` buckets](#ordered-buckets-e3c-2) and [`cancel(tag)`](#cancellation-e3c-2): bulk writes
-reach the indexer, E4a the [queries](#queries-e4a) (`search`, `searchAfter`, `deleteByQuery`, `updateByQuery`, `indexExists`), E4b the managed [point in time](#point-in-time-e4b) and E5a the per-node [load control](#load-control-e5a) (adaptive window, bulk-size target and pacing). Not implemented, by stage:
+reach the indexer, E4a the [queries](#queries-e4a) (`search`, `searchAfter`, `deleteByQuery`, `updateByQuery`, `indexExists`), E4b the managed [point in time](#point-in-time-e4b), E5a the per-node [load control](#load-control-e5a) (adaptive window, bulk-size target and pacing) and E5b the [client close and shutdown](#closing-and-shutdown-e5b) (drain up to one deadline, callback boundary). Not implemented, by stage:
 
 | Area | Stage |
 |---|---|
-| The two-phase `stop()` for the drain up to the shutdown deadline (D43), one pass per completion, D44 (simdjson stage 2 in Release), public metrics (write counters, health metrics, `Retry-After` in passive signals) | E5 |
+| One pass per completion, D44 (simdjson stage 2 in Release), public metrics (write counters, health metrics, `Retry-After` in passive signals) | E5 |
 | Benchmark of the whole client (`--path client`) | E6 |
 | Metrics beyond the thread layout in `MetricsSnapshot` | E5 |
 | Behaviour against a real indexer (request headers without `Accept-Encoding`, D41; `Expect: 100-continue` cost), and the real Painless run of `ReplacePreserving` (D45) | E6 |
 | The consumer's sweep that closes the [ordered ambiguous window](#ordered-buckets-e3c-2) (inventory sync, delete by query) and its `ordered.ambiguous.residual` metric | E7 |
 | Migration of the four consumers off `indexer_connector` | later stages |
 
-Nothing public calls the transport directly. Traffic is the health probe, the bulk sender's `POST /_bulk` and the queries; `requestClose()` still drops the pending operations instead of draining them (E3a's stand-in, D43).
+Nothing public calls the transport directly. Traffic is the health probe, the bulk sender's `POST /_bulk` and the queries.

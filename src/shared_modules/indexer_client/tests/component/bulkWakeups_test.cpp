@@ -24,6 +24,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <functional>
+#include <future>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -371,36 +372,73 @@ TEST_F(BulkTest, NoUsableNodeWaitsThenSends)
     EXPECT_EQ(a.bulk->opCount() + b.bulk->opCount(), OPS);
 }
 
-// I66: requestClose() while a batch is in flight; its answer (503) sends it back to retry, the bucket is closed, so
-// the op ends Dropped(ClientClosed) exactly once and is never sent again. Mutant: the closed ops of a requeue are not
-// resolved.
+// I66, I99: requestClose() while a batch is in flight closes only the admission (D43): its answer (503) sends it back
+// to retry and the drain writes it (Ok, exactly once, sent twice). Once the bucket is SWEPT (a Client destroyed on a
+// runtime thread, obj. 3) the same answer finds it closed, so the op ends Dropped(ClientClosed) exactly once and is
+// never sent again. Mutant: the closed ops of a requeue are not resolved.
 TEST_F(BulkTest, CloseClientWhileInFlightRetry)
 {
     const auto a = startNode();
     a.bulk->push(BulkScript::serverError(503).held());
     ASSERT_NO_FATAL_FAILURE(startOn({a.url()}));
-    auto c = client("c", {bucket("b", 1)});
-    auto results = Results::create();
-    ASSERT_TRUE(c->writer("b")->submit(indexOp(id(0)), results->callback(0)).accepted);
-    ASSERT_TRUE(a.fake->waitHeld(1, 3s));
+    {
+        auto c = client("c", {bucket("b", 1)});
+        auto results = Results::create();
+        ASSERT_TRUE(c->writer("b")->submit(indexOp(id(0)), results->callback(0)).accepted);
+        ASSERT_TRUE(a.fake->waitHeld(1, 3s));
 
-    c->requestClose();
-    EXPECT_FALSE(eventually([&] { return results->total() > 0; }, 200ms)) << "the op in flight was resolved early";
-    a.fake->releaseHeld();
-    ASSERT_TRUE(results->waitTotal(1, 3s)) << "the retried op of a closed bucket was never resolved";
-    const auto result = results->result(0);
-    EXPECT_EQ(result->status, ic::Status::Dropped) << describe(result);
-    EXPECT_EQ(result->cause, ic::Cause::ClientClosed);
-    EXPECT_FALSE(eventually([&] { return results->total() > 1; }, 200ms)) << "a second result";
-    EXPECT_EQ(results->count(0), 1);
-    EXPECT_EQ(a.bulk->answered(), 1u) << "never sent again";
-    const auto report = c->awaitClosed(now() + 1s);
-    ASSERT_TRUE(report.ok());
-    EXPECT_EQ(report.value.droppedClientClosed, 1u);
-    EXPECT_EQ(report.value.droppedShutdown, 0u);
-    auto s = stats("b");
-    EXPECT_EQ(s.resolvedDropped, 1u);
-    expectInvariants(s);
+        c->requestClose();
+        EXPECT_FALSE(eventually([&] { return results->total() > 0; }, 200ms)) << "the op in flight was resolved early";
+        a.fake->releaseHeld();
+        ASSERT_TRUE(results->waitTotal(1, 3s)) << "the retried op of a draining bucket was never resolved";
+        const auto result = results->result(0);
+        EXPECT_EQ(result->status, ic::Status::Ok) << describe(result);
+        EXPECT_FALSE(eventually([&] { return results->total() > 1; }, 200ms)) << "a second result";
+        EXPECT_EQ(results->count(0), 1);
+        EXPECT_EQ(a.bulk->answered(), 2u) << "retried once during the drain";
+        const auto report = c->awaitClosed(now() + 1s);
+        ASSERT_TRUE(report.ok());
+        EXPECT_EQ(report.value.droppedClientClosed, 0u);
+        EXPECT_EQ(report.value.droppedShutdown, 0u);
+        EXPECT_EQ(report.value.drained, 1u);
+        auto s = stats("b");
+        EXPECT_EQ(s.resolvedOk, 1u);
+        EXPECT_EQ(s.resolvedDropped, 0u);
+        expectInvariants(s);
+    }
+    {
+        a.fake->rearmHold();
+        a.bulk->push(BulkScript::serverError(503).held());
+        const auto errorsBefore = ic::detail::testing::usageErrors();
+        auto owned = std::make_shared<std::shared_ptr<ic::Client>>(client("swept", {bucket("b", 1)}));
+        auto writer = (*owned)->writer("b"); // Keeps the bucket (and its counters) alive after the Client.
+        auto results = Results::create();
+        ASSERT_TRUE(writer->submit(indexOp(id(1)), results->callback(1)).accepted);
+        ASSERT_TRUE(a.fake->waitHeld(1, 3s));
+
+        auto destroyed = std::make_shared<std::promise<void>>();
+        auto destroyedFuture = destroyed->get_future();
+        ASSERT_TRUE(m_path->postToPool(
+            [owned, destroyed]
+            {
+                owned->reset(); // ~Client on a pool thread: requestClose() plus the immediate sweep.
+                destroyed->set_value();
+            }));
+        ASSERT_EQ(destroyedFuture.wait_for(3s), std::future_status::ready);
+        EXPECT_EQ(ic::detail::testing::usageErrors(), errorsBefore + 1);
+        EXPECT_FALSE(eventually([&] { return results->total() > 0; }, 200ms)) << "the op in flight was resolved early";
+        a.fake->releaseHeld();
+        ASSERT_TRUE(results->waitTotal(1, 3s)) << "the retried op of a closed bucket was never resolved";
+        const auto result = results->result(1);
+        EXPECT_EQ(result->status, ic::Status::Dropped) << describe(result);
+        EXPECT_EQ(result->cause, ic::Cause::ClientClosed);
+        EXPECT_FALSE(eventually([&] { return results->total() > 1; }, 200ms)) << "a second result";
+        EXPECT_EQ(results->count(1), 1);
+        EXPECT_EQ(a.bulk->answered(), 3u) << "never sent again";
+        auto s = stats("b", "swept");
+        EXPECT_EQ(s.resolvedDropped, 1u);
+        expectInvariants(s);
+    }
 }
 
 // I66: a retried op that comes due goes out before the pending ops: the batch after the retry takes the retry lane
@@ -672,9 +710,11 @@ TEST_F(BulkTest, StaleDownMirrorDoesNotSpin)
 
     gate->release();
     c->requestClose();
+    // I99: the node is still Down, so the drain cannot write them; awaitClosed's sweep (drainEnd = 600 ms) drops them.
+    EXPECT_FALSE(eventually([&] { return results->total() > 0; }, 200ms)) << "requestClose() swept (D43)";
+    ASSERT_TRUE(c->awaitClosed(now() + 1s).ok());
     ASSERT_TRUE(results->waitTotal(2, 3s));
     EXPECT_EQ(results->countWith(ic::Status::Dropped, ic::Cause::ClientClosed), 2u);
-    ASSERT_TRUE(c->awaitClosed(now() + 1s).ok());
 }
 
 // G-diff E3b-2 obj. 5: WritePath::setSink stops the bulk sender while a request is in flight; its cancelled

@@ -183,6 +183,12 @@ namespace indexer_client
 
     /// A consumer's handle on the process runtime (I37). Destruction = requestClose() + awaitClosed(shutdown deadline
     /// or the default); destroying it from a runtime thread is a usage error.
+    /// Close order of a process (E5b, I99): RuntimeOwner::beginShutdown(deadline) → each consumer's stop calls
+    /// requestClose() first, joins its own threads, then awaitClosed(shutdownDeadline()) → RuntimeOwner::shutdown(),
+    /// all on the owner thread. requestClose() only closes the admission: what is queued keeps draining until
+    /// awaitClosed's deadline (minus twice callbackBudget); past it the rest is Dropped and no callback starts
+    /// (CloseReport tells how many were skipped). awaitClosed from a runtime thread returns Reentrancy without
+    /// draining.
     class INDEXER_CLIENT_API Client final : public IClient
     {
     public:
