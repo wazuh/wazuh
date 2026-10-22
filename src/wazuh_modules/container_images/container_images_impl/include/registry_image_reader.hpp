@@ -26,6 +26,7 @@
 #include <functional>
 #include <memory>
 #include <map>
+#include <set>
 #include <string>
 
 namespace containerimages
@@ -51,14 +52,19 @@ namespace containerimages
         /// that every module shares, which starves the others.
         const std::atomic<bool>* stopRequested {nullptr};
 
-        /// @brief Hosts whose configured credential the registry refused earlier in this
-        /// scan, each with the reason it gave. Not owned.
+        /// @brief Hosts whose token endpoint refused the configured credential earlier in
+        /// this scan, each with the reason it gave. Not owned.
         ///
-        /// Shared across the references of a scan so a refused credential is reported
-        /// once per host, and so the later references on that host go straight to the
-        /// anonymous path instead of sending it again. The reason is what a private
+        /// Shared across the references of a scan so the later references on that host go
+        /// straight to the anonymous path instead of sending a credential that is bad. Only
+        /// the token endpoint answers for the credential itself: a refusal at a manifest
+        /// speaks for one repository, and is not recorded. The reason is what a private
         /// reference on that host reports.
         std::map<std::string, std::string>* refusedCredentialHosts {nullptr};
+
+        /// @brief Hosts whose refusal of the credential, at the token endpoint or at a
+        /// manifest, was already reported in this scan. Not owned.
+        std::set<std::string>* reportedRefusalHosts {nullptr};
     };
 
     /// @brief Reads an image, and the packages it contains, from a remote registry.
@@ -132,8 +138,13 @@ namespace containerimages
             /// Succeeds only when the registry then serves the manifest, and says so once per
             /// scan and host. Otherwise the token is dropped and @p error keeps the credential
             /// error it came in with.
+            ///
+            /// @param rememberHost True for a refusal at the token endpoint, which condemns the
+            ///                     credential for the host. False for one at the manifest, which
+            ///                     speaks for this repository only.
             bool readAnonymously(const std::string& url,
                                  const std::string& challengeHeader,
+                                 bool rememberHost,
                                  HttpResponse& response,
                                  std::string& error);
 
