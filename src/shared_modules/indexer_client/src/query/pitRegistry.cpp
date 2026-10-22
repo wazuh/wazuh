@@ -141,7 +141,7 @@ namespace indexer_client::detail::query
                     }
                     else
                     {
-                        finishLocked(false);
+                        finishLocked(false, id);
                     }
                 }
                 if (timeout)
@@ -157,7 +157,7 @@ namespace indexer_client::detail::query
                     if (m_draining)
                     {
                         // The runtime is going: no new request; keep_alive frees it.
-                        finishLocked(false);
+                        finishLocked(false, pit.id);
                         return;
                     }
                     if (!enqueueLocked(std::move(pit)))
@@ -240,7 +240,7 @@ namespace indexer_client::detail::query
                         {
                             toCancel.push_back(entry.transferId);
                         }
-                        finishLocked(false);
+                        finishLocked(false, id);
                     }
                     m_pending.clear();
                     m_drainDone = true;
@@ -252,6 +252,14 @@ namespace indexer_client::detail::query
                         transport->cancel(id);
                     }
                 }
+            }
+
+            ExpiredDeletes takeExpiredDeletes() override
+            {
+                ExpiredDeletes taken;
+                std::lock_guard<std::mutex> lock(m_mutex);
+                std::swap(taken, m_expiredLog);
+                return taken;
             }
 
             PitStats stats() override
@@ -315,14 +323,21 @@ namespace indexer_client::detail::query
             }
 
             /// Frees one open slot and counts the delete's end. The caller removes the entry and notifies m_cv after
-            /// unlocking.
-            void finishLocked(bool confirmed)
+            /// unlocking. E5c: an expired one also counts for the log summary, which keeps the first id.
+            void finishLocked(bool confirmed, const std::string& id)
             {
                 if (m_open > 0)
                 {
                     --m_open;
                 }
                 (confirmed ? g_deletesConfirmed : g_deletesExpired).fetch_add(1);
+                if (!confirmed)
+                {
+                    if (m_expiredLog.count++ == 0)
+                    {
+                        m_expiredLog.firstId = id.substr(0, EXPIRED_ID_LOG_MAX);
+                    }
+                }
             }
 
             bool enqueueLocked(Pending pit)
@@ -434,7 +449,7 @@ namespace indexer_client::detail::query
                         return;
                     }
                     m_pending.erase(it);
-                    finishLocked(false);
+                    finishLocked(false, id);
                 }
                 m_cv.notify_all();
             }
@@ -568,7 +583,7 @@ namespace indexer_client::detail::query
                     if (how == Settle::Confirmed || how == Settle::Expired || m_draining || now >= entry.expiresAt)
                     {
                         m_pending.erase(it);
-                        finishLocked(how == Settle::Confirmed);
+                        finishLocked(how == Settle::Confirmed, id);
                     }
                     else
                     {
@@ -613,8 +628,9 @@ namespace indexer_client::detail::query
             std::map<std::string, Entry> m_pending;
             std::optional<TimePoint> m_armedAt;
             bool m_draining {false};
-            bool m_drainDone {false}; ///< drain() gave up what was left: a later opened() counts it expired.
-            TimePoint m_drainEnd;     ///< drain()'s end, set when m_draining is.
+            bool m_drainDone {false};    ///< drain() gave up what was left: a later opened() counts it expired.
+            TimePoint m_drainEnd;        ///< drain()'s end, set when m_draining is.
+            ExpiredDeletes m_expiredLog; ///< E5c: expired since the last takeExpiredDeletes().
         };
 
         std::mutex g_liveMutex;

@@ -35,7 +35,7 @@ namespace
     constexpr const char* MODULESD = "wazuh_modules.indexer_client_";
     constexpr const char* MINIMAL_INDEXER = R"({"hosts":["https://127.0.0.1:9200"]})";
 
-    /// The 18 keys of the schema; a drift between this list and kSchema fails EveryKeyApplied.
+    /// The 19 keys of the schema; a drift between this list and kSchema fails EveryKeyApplied.
     const std::vector<std::string> SCHEMA_KEYS {"network_threads",
                                                 "cpu_threads",
                                                 "global_quota_bytes",
@@ -52,6 +52,7 @@ namespace
                                                 "retry_after_max_ms",
                                                 "callback_budget_ms",
                                                 "max_open_pits",
+                                                "log_summary_interval_ms",
                                                 "node_window_max",
                                                 "bulk_min_bytes"};
 
@@ -158,6 +159,21 @@ TEST(RuntimeConfigTest, OutOfRangeFails)
     expectInvalid(RecordingSource {{{key("bulk_min_bytes"), "33554433"}}}, key("bulk_min_bytes"));
 }
 
+TEST(RuntimeConfigTest, LogSummaryIntervalKey)
+{
+    // [1 000, 3 600 000] ms (I102): both bounds inclusive, one past each refused naming the key.
+    expectInvalid(RecordingSource {{{key("log_summary_interval_ms"), "999"}}}, key("log_summary_interval_ms"));
+    expectInvalid(RecordingSource {{{key("log_summary_interval_ms"), "3600001"}}}, key("log_summary_interval_ms"));
+    for (const auto& [value, expected] : {std::pair {"1000", 1000}, std::pair {"3600000", 3600000}})
+    {
+        SCOPED_TRACE(value);
+        const auto result =
+            RuntimeConfig::from(ProcessId::Analysisd, RecordingSource {{{key("log_summary_interval_ms"), value}}});
+        ASSERT_TRUE(result.ok()) << result.reason;
+        EXPECT_EQ(result.value.logSummaryInterval, Duration {expected});
+    }
+}
+
 TEST(RuntimeConfigTest, NegativeQueueBytesFails)
 {
     expectInvalid(RecordingSource {{{key("global_quota_bytes"), "-1"}}}, key("global_quota_bytes"));
@@ -205,9 +221,10 @@ TEST(RuntimeConfigTest, EveryKeyApplied)
     std::map<std::string, std::string> values;
     for (std::size_t i = 0; i < SCHEMA_KEYS.size(); ++i)
     {
-        // 3 + i is inside every range and differs from every default.
+        // 3 + i is inside every range and differs from every default, except log_summary_interval_ms (>= 1 s).
         values[key(SCHEMA_KEYS[i])] = std::to_string(3 + i);
     }
+    values[key("log_summary_interval_ms")] = "4321";
     const RecordingSource source {values};
     const auto result = RuntimeConfig::from(ProcessId::Analysisd, source);
     ASSERT_TRUE(result.ok()) << result.reason;
@@ -229,8 +246,10 @@ TEST(RuntimeConfigTest, EveryKeyApplied)
     EXPECT_EQ(c.retryAfterMax, Duration {16});
     EXPECT_EQ(c.callbackBudget, Duration {17});
     EXPECT_EQ(c.maxOpenPits, 18u);
-    EXPECT_EQ(c.nodeWindowMax, 19u);
-    EXPECT_EQ(c.bulkMinBytes, 20u);
+    EXPECT_EQ(c.logSummaryInterval, Duration {4321});
+    EXPECT_EQ(c.nodeWindowMax, 20u);
+    EXPECT_EQ(c.bulkMinBytes, 21u);
+    EXPECT_EQ(SCHEMA_KEYS.size(), 19u);
 
     for (const auto& name : SCHEMA_KEYS)
     {
@@ -288,6 +307,8 @@ TEST(RuntimeConfigTest, DefaultsWhenUnset)
     EXPECT_EQ(c.retryAfterMax, d.retryAfterMax);
     EXPECT_EQ(c.callbackBudget, d.callbackBudget);
     EXPECT_EQ(c.maxOpenPits, d.maxOpenPits);
+    EXPECT_EQ(c.logSummaryInterval, d.logSummaryInterval);
+    EXPECT_EQ(c.logSummaryInterval, Duration {60000});
     EXPECT_EQ(c.nodeWindowMax, d.nodeWindowMax);
     EXPECT_EQ(c.bulkMinBytes, d.bulkMinBytes);
     EXPECT_EQ(c.drrQuantumBytes, 1048576u);

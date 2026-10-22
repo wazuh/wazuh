@@ -276,6 +276,29 @@ namespace indexer_client
         return Outcome<CloseReport>::success(report);
     }
 
+    ClientMetrics Client::metrics() const
+    {
+        // metrics.hpp SCOPE: this consumer's buckets, each read under its own mutex; an empty or moved-from client
+        // gives an empty ClientMetrics (N27). The buckets outlive the runtime with the ClientState.
+        ClientMetrics metrics;
+        if (!m_state)
+        {
+            return metrics;
+        }
+        metrics.consumer = m_state->consumer;
+        metrics.buckets.reserve(m_state->bucketStates.size());
+        for (const auto& bucket : m_state->bucketStates)
+        {
+            metrics.buckets.push_back(bucket->metrics());
+        }
+        metrics.callbacksSkipped = m_state->callbacksSkipped.load();
+        metrics.callbackOverruns = m_state->callbackOverruns.load();
+        // Rounded up: a callback over its budget by less than a millisecond never reads as within it.
+        const auto micros = std::max<std::int64_t>(0, m_state->callbackMaxDurationMicros.load());
+        metrics.callbackMaxDurationMs = (static_cast<std::uint64_t>(micros) + 999) / 1000;
+        return metrics;
+    }
+
     bool Client::valid() const noexcept
     {
         return m_state != nullptr;

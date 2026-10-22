@@ -24,3 +24,13 @@ target_include_directories(
 target_compile_definitions(indexer_client_bench_v2 PRIVATE CPPHTTPLIB_OPENSSL_SUPPORT ASIO_STANDALONE)
 target_compile_features(indexer_client_bench_v2 PRIVATE cxx_std_17)
 target_link_libraries(indexer_client_bench_v2 PRIVATE wazuhext ext_asio Threads::Threads ${INDEXER_CLIENT_SIMDJSON})
+
+# D44 (plan 18, E5c): times classifyItems (simdjson ondemand) over synthetic 8 MiB bodies; no fake, no libwazuhext needed beyond the objects.
+add_executable(indexer_client_bench_classify benchClassify.cpp $<TARGET_OBJECTS:indexer_client_objects>)
+target_include_directories(
+  indexer_client_bench_classify
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../include ${CMAKE_CURRENT_SOURCE_DIR}/../src ${SRC_FOLDER}/external/nlohmann
+          ${SRC_FOLDER}/external/simdjson/include ${SRC_FOLDER})
+target_compile_definitions(indexer_client_bench_classify PRIVATE ASIO_STANDALONE)
+target_compile_features(indexer_client_bench_classify PRIVATE cxx_std_17)
+target_link_libraries(indexer_client_bench_classify PRIVATE wazuhext ext_asio Threads::Threads ${INDEXER_CLIENT_SIMDJSON})

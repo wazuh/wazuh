@@ -219,6 +219,11 @@ namespace indexer_client::detail::write
                     while (micros > seen && !client->callbackMaxDurationMicros.compare_exchange_weak(seen, micros))
                     {
                     }
+                    // E5c: the maximum of the current log summary interval (exchanged with 0 by the summary).
+                    seen = client->callbackIntervalMaxMicros.load();
+                    while (micros > seen && !client->callbackIntervalMaxMicros.compare_exchange_weak(seen, micros))
+                    {
+                    }
                 }
             }
         };
@@ -284,7 +289,7 @@ namespace indexer_client::detail::write
                     if (!withCallback)
                     {
                         // Nothing charged and no pool task: the ticket is completed here (I62).
-                        m_bucket->countResolved(Status::Dropped);
+                        m_bucket->countResolved(Status::Dropped, Cause::QueueFull);
                         ticket->complete(Outcome<OpResult>::success(dropped(Cause::QueueFull)));
                         return submit;
                     }
@@ -561,7 +566,7 @@ namespace indexer_client::detail::write
             // Once per op (the bucket tracks it); wakes blocked producers; frees the op's last-error strings under the
             // mutex a concurrent Bucket::requeue writes them with (nothing reads them after the claim: an exhausted
             // op's error was copied out by that requeue).
-            bucket->countResolved(result.status);
+            bucket->countResolved(result.status, result.cause, result.itemErrorType, result.reason);
             if (result.status == Status::Dropped && result.cause == Cause::Cancelled)
             {
                 bucket->countCancelled(1); // I80: also under resolvedDropped.
@@ -715,6 +720,13 @@ namespace indexer_client::detail::write
                 }
             });
         m_poolDetached.store(true);
+    }
+
+    std::uint64_t WritePath::retainedBytes() const
+    {
+        std::uint64_t bytes = 0;
+        forEachBucket([&bytes](const std::shared_ptr<Bucket>& bucket) { bytes += bucket->retainedBytes(); });
+        return bytes;
     }
 
     WriteStats WritePath::stats() const

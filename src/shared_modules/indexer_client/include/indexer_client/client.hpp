@@ -19,6 +19,7 @@
 #include <string_view>
 #include <vector>
 
+#include "metrics.hpp"
 #include "types.hpp"
 
 namespace indexer_client
@@ -179,6 +180,8 @@ namespace indexer_client
         virtual HealthView health() const = 0;
         virtual void requestClose() = 0;
         virtual Outcome<CloseReport> awaitClosed(Deadline deadline) = 0;
+        /// The metrics of this consumer's buckets (I101, metrics.hpp); empty for an empty or moved-from client.
+        virtual ClientMetrics metrics() const = 0;
     };
 
     /// A consumer's handle on the process runtime (I37). Destruction = requestClose() + awaitClosed(shutdown deadline
@@ -205,6 +208,7 @@ namespace indexer_client
         HealthView health() const override;
         void requestClose() override;                                 ///< Never blocks; valid from any thread.
         Outcome<CloseReport> awaitClosed(Deadline deadline) override; ///< Consumer threads only.
+        ClientMetrics metrics() const override;
         bool valid() const noexcept;
 
     private:

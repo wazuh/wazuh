@@ -109,6 +109,9 @@ namespace indexer_client::detail::query
     /// Text of the "no usable slot" refusal; the count is appended.
     constexpr const char* PIT_FULL = "too many open PITs";
 
+    /// E5c: bytes of a PIT id the log summary shows (an id is ~100+ bytes of base64; its head identifies it).
+    constexpr std::size_t EXPIRED_ID_LOG_MAX = 16;
+
     struct PitStats final
     {
         std::uint64_t open {0};
@@ -152,6 +155,15 @@ namespace indexer_client::detail::query
         virtual void drain(TimePoint drainEnd) = 0;
 
         virtual PitStats stats() = 0;
+
+        /// E5c (runtime/logSummary.hpp): the deletes given up (expired) since the previous call, with the first id
+        /// truncated to EXPIRED_ID_LOG_MAX bytes, for the log summary's WARN.
+        struct ExpiredDeletes final
+        {
+            std::uint64_t count {0};
+            std::string firstId;
+        };
+        virtual ExpiredDeletes takeExpiredDeletes() = 0;
     };
 
     /// What the runtime lends its registry (RuntimeOwner::start). Transport and NodeSet are weak: the registry never

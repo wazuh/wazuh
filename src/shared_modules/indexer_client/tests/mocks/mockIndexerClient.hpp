@@ -83,6 +83,7 @@ namespace indexer_client
         MOCK_METHOD(HealthView, health, (), (const, override));
         MOCK_METHOD(void, requestClose, (), (override));
         MOCK_METHOD(Outcome<CloseReport>, awaitClosed, (Deadline deadline), (override));
+        MOCK_METHOD(ClientMetrics, metrics, (), (const, override));
     };
 } // namespace indexer_client
 

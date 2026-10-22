@@ -47,6 +47,34 @@ namespace indexer_client::detail::query
         std::atomic<std::uint64_t> g_unavailable {0};
         std::atomic<std::uint64_t> g_tooLarge {0};
         std::atomic<std::uint64_t> g_conflictRetries {0};
+        /// D48 (metrics.hpp QUERIES): body bytes of the HttpResults delivered to the engine and not yet returned.
+        std::atomic<std::uint64_t> g_responseBytesInFlight {0};
+        std::atomic<std::uint64_t> g_peakResponseBytesInFlight {0};
+
+        /// Holds `bytes` in responseBytesInFlight (and raises its peak) for the life of one delivered HttpResult.
+        class ResponseBytesInFlight final
+        {
+        public:
+            explicit ResponseBytesInFlight(std::uint64_t bytes) noexcept
+                : m_bytes(bytes)
+            {
+                const auto now = g_responseBytesInFlight.fetch_add(m_bytes, std::memory_order_relaxed) + m_bytes;
+                auto peak = g_peakResponseBytesInFlight.load(std::memory_order_relaxed);
+                while (now > peak &&
+                       !g_peakResponseBytesInFlight.compare_exchange_weak(peak, now, std::memory_order_relaxed))
+                {
+                }
+            }
+            ~ResponseBytesInFlight()
+            {
+                g_responseBytesInFlight.fetch_sub(m_bytes, std::memory_order_relaxed);
+            }
+            ResponseBytesInFlight(const ResponseBytesInFlight&) = delete;
+            ResponseBytesInFlight& operator=(const ResponseBytesInFlight&) = delete;
+
+        private:
+            const std::uint64_t m_bytes;
+        };
 
         TimePoint now()
         {
@@ -473,6 +501,9 @@ namespace indexer_client::detail::query
                     return expired();
                 }
                 const HttpResult& r = *result;
+                // D48: from the delivery to the engine until this iteration ends (the response is returned or the
+                // loop goes on); the classification and its DOM happen meanwhile.
+                const ResponseBytesInFlight inFlight(r.body.size());
 
                 if (r.cause == TransportCause::Timeout && !configuredTimeout)
                 {
@@ -901,6 +932,8 @@ namespace indexer_client::detail::query
         stats.unavailable = g_unavailable.load(std::memory_order_relaxed);
         stats.tooLarge = g_tooLarge.load(std::memory_order_relaxed);
         stats.conflictRetries = g_conflictRetries.load(std::memory_order_relaxed);
+        stats.responseBytesInFlight = g_responseBytesInFlight.load(std::memory_order_relaxed);
+        stats.peakResponseBytesInFlight = g_peakResponseBytesInFlight.load(std::memory_order_relaxed);
         return stats;
     }
 } // namespace indexer_client::detail::query
