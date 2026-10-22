@@ -184,6 +184,8 @@ The same applies when the registry issues a token for the credential and then an
 
 If the anonymous attempt fails as well, as it does for a private repository, the reference is reported with the error the credential produced, for example `the token request failed: the registry answered 403`. Nothing else triggers the retry: an unreachable registry, throttling, a missing image and a platform mismatch are reported as they are. The anonymous token is used for that reference only and never for another one.
 
+Once the registry has refused the credential for a host, the later references on that host in the same scan are not sent it. They ask for an anonymous token straight away, so a scan of N public references costs N token requests instead of 2N. A private reference on that host is reported with the reason the registry gave when it refused the credential. The next scan sends the credential again.
+
 No credential value is written to the log at any level, and the configuration dump reports the key names only.
 
 #### What the credential store protects
@@ -225,11 +227,12 @@ A remote reference is bounded so one slow or hostile registry cannot hold the mo
 |-------|---------|------------------|
 | Bytes per image | 2 GiB | One reference cannot consume the whole scan. |
 | Bytes per scan | 8 GiB | Checked before a reference starts, so a scan stops taking on new work rather than abandoning an image half read. |
+| Decompressed bytes per layer | 8 GiB | The two ceilings above count compressed bytes, which a layer that expands a thousandfold barely moves. A layer that expands past this bound fails the reference, and the module logs one warning naming the layer and the bound. The previously stored inventory is kept. The bound is the one the archive reader applies to a saved layer. |
 | Time per metadata request | 30 s | A registry that accepts a connection and then says nothing. |
 | Time without progress per layer | 5 min | A registry that accepts a layer request and then stops sending. The wait restarts whenever bytes arrive and does not run while the transfer is suspended for the agent to catch up, so a large layer is bounded by its byte ceiling and not by the time it takes. A transfer that stays under 1 KiB/s for 30 s is ended earlier by the stall detector. |
 | Attempts per request | 4 | With a doubling back-off from one second, honouring `Retry-After` when the registry sends one. Applies to manifests, to the token exchange and to layers: a layer that fails after its transfer began is started again from its first byte, and the bytes each attempt delivered count against the image's byte ceiling. A transfer ended by a stop request, by the no-progress bound or by the byte ceiling is not retried. A layer whose size in the manifest exceeds what is left of the image's byte ceiling is not transferred: the reference fails at once, naming the layer size and the ceiling. A retry that would need more than what is left is not started, and the reference is reported with the cause of the failed attempt. |
 
-A scan that is asked to stop abandons what it is reading, including a layer transfer in progress. This matters because every module shares one shutdown budget: a reference that would not return would delay every other module's clean stop.
+A scan that is asked to stop abandons what it is reading, including a layer transfer in progress and a layer being decompressed. This matters because every module shares one shutdown budget: a reference that would not return would delay every other module's clean stop.
 
 ### Network Requirements
 
@@ -295,10 +298,14 @@ A layer blob is identified from its own first bytes rather than from the media t
 | none | Read as a plain tar. |
 | xz, bzip2, lz4 | Recognized, not supported. The layer is skipped and reported. |
 
-A layer using a compression that is recognized but not supported is skipped, and the image is inventoried with whatever its other layers hold:
+A layer using a compression that is recognized but not supported is skipped, and the image is inventoried with whatever its other layers hold. A remote reference is handled the same way and names the layer by its digest:
 
 ```sql
 wazuh-modulesd:container_images: WARNING: NOT IMPLEMENTED: layer 'blobs/sha256/<digest>' of '/var/tmp/images/myapp.tar' is xz compressed, which is recognized but not supported yet. Skipping it.
+```
+
+```sql
+wazuh-modulesd:container_images: WARNING: NOT IMPLEMENTED: layer 'sha256:<digest>' of 'ghcr.io/owner/app:1.0' is xz compressed, which is recognized but not supported yet. Skipping it.
 ```
 
 ---

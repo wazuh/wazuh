@@ -25,7 +25,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
-#include <set>
+#include <map>
 #include <string>
 
 namespace containerimages
@@ -51,13 +51,14 @@ namespace containerimages
         /// that every module shares, which starves the others.
         const std::atomic<bool>* stopRequested {nullptr};
 
-        /// @brief Hosts whose refused credential this scan has already warned about.
-        /// Not owned.
+        /// @brief Hosts whose configured credential the registry refused earlier in this
+        /// scan, each with the reason it gave. Not owned.
         ///
         /// Shared across the references of a scan so a refused credential is reported
-        /// once per host rather than once per reference. Without it each reference logs
-        /// the same warning.
-        std::set<std::string>* refusedCredentialHosts {nullptr};
+        /// once per host, and so the later references on that host go straight to the
+        /// anonymous path instead of sending it again. The reason is what a private
+        /// reference on that host reports.
+        std::map<std::string, std::string>* refusedCredentialHosts {nullptr};
     };
 
     /// @brief Reads an image, and the packages it contains, from a remote registry.
@@ -137,7 +138,13 @@ namespace containerimages
                                  std::string& error);
 
             /// @brief Fetch the manifest or index the reference points at.
-            bool fetchManifest(const std::string& identifier, nlohmann::json& document, std::string& error);
+            ///
+            /// @param digest Filled in with the digest of the manifest: the one the registry
+            ///               reports, else the one the request named, else that of the bytes served.
+            bool fetchManifest(const std::string& identifier,
+                               nlohmann::json& document,
+                               std::string& digest,
+                               std::string& error);
 
             /// @brief Read every layer of @p manifest and compose the package inventory.
             bool readLayers(const nlohmann::json& manifest, ImageReferenceRecord& record, std::string& error);
@@ -159,6 +166,10 @@ namespace containerimages
             /// request or at the manifest the token was issued for, after which this
             /// reference no longer sends it.
             bool m_credentialRefused {false};
+
+            /// @brief Why the registry refused the credential earlier in this scan, empty
+            /// when it did not. Set when this reference starts, so it never sent the credential.
+            std::string m_hostRefusal;
 
             /// @brief True when the last token request carried the configured credential.
             bool m_credentialSent {false};

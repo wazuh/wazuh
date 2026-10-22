@@ -85,6 +85,15 @@ namespace containerimages
         std::string passkeyKey;   ///< Keystore key holding the access token.
     };
 
+    /// @brief Ceiling on the decompressed bytes read out of one layer blob.
+    ///
+    /// LayerReader walks the full decompressed content of a layer, including the entries it
+    /// skips, so an attacker-controlled compression ratio otherwise bounds nothing: a few MiB
+    /// of gzip can expand past what the module could ever need to read in looking for a
+    /// package database. 8 GiB is comfortably above a real single-layer uncompressed size
+    /// while keeping the worst case bounded to a few seconds instead of hours.
+    constexpr std::uint64_t MAX_LAYER_DECOMPRESSED_SIZE {8ULL * 1024 * 1024 * 1024};
+
     /// @brief Bounds on what one scan may spend on remote references.
     struct RegistryLimits
     {
@@ -95,6 +104,11 @@ namespace containerimages
         /// reaches it stops starting new references rather than being cut off mid-image,
         /// so what it has already read stays usable.
         std::uint64_t maxScanBytes {8ULL * 1024 * 1024 * 1024};
+
+        /// Ceiling on the decompressed bytes of one layer. A layer that expands past it
+        /// fails the reference, since what lies beyond cannot be read. Not configurable:
+        /// a field only so that a test can lower it.
+        std::uint64_t maxLayerDecompressedBytes {MAX_LAYER_DECOMPRESSED_SIZE};
 
         long connectTimeoutMs {10000};  ///< Ceiling on establishing one connection.
         long requestTimeoutMs {30000};  ///< Ceiling on one metadata request, and the
