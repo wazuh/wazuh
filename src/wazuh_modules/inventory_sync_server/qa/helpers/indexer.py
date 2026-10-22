@@ -85,7 +85,14 @@ class Indexer:
         deadline = time.monotonic() + timeout
         docs = []
         while time.monotonic() < deadline:
-            docs = self.agent_docs(agent_id, index=index)
+            try:
+                docs = self.agent_docs(agent_id, index=index)
+            except requests.HTTPError as error:
+                # The first write of a test auto-creates an index the previous test deleted, and a
+                # search that lands while its primary shard is still being allocated answers 503.
+                if error.response is None or error.response.status_code != 503:
+                    raise
+                docs = []
             if len(docs) == count:
                 return docs
             time.sleep(0.2)
