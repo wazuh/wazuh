@@ -108,6 +108,34 @@ struct {
     __uint(max_entries, 1 << 14);
 } write_mnt_map SEC(".maps");
 
+/*
+* Directories FIM monitors with whodata, filled by user space. Events for
+* other paths are dropped before they reach the ring buffer. Prefixes are
+* truncated to the LPM trie key limit, so the match is a superset that
+* user space narrows down.
+*/
+#define MAX_DIR_PREFIX_LEN 256
+
+struct dir_prefix {
+    __u32 prefixlen;
+    char path[MAX_DIR_PREFIX_LEN];
+};
+
+struct {
+    __uint(type, BPF_MAP_TYPE_LPM_TRIE);
+    __type(key, struct dir_prefix);
+    __type(value, u8);
+    __uint(max_entries, 1 << 12);
+    __uint(map_flags, BPF_F_NO_PREALLOC);
+} monitored_dirs SEC(".maps");
+
+struct {
+    __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+    __type(key, u32);
+    __type(value, struct dir_prefix);
+    __uint(max_entries, 1);
+} dir_prefix_heap SEC(".maps");
+
 // Kernel version check
 extern int LINUX_KERNEL_VERSION __kconfig;
 
@@ -329,6 +357,21 @@ statfunc int get_task_cwd(char *dest, int size, struct task_struct *task) {
     return 0;
 }
 
+/* Returns true if filename starts with a monitored directory prefix. */
+statfunc bool is_monitored(const char *filename)
+{
+    struct dir_prefix *key = bpf_map_lookup_elem(&dir_prefix_heap, &(u32){0});
+    if (!key)
+        return false;
+
+    long len = bpf_probe_read_kernel_str(key->path, sizeof(key->path), filename);
+    if (len <= 0)
+        return false;
+
+    key->prefixlen = (len - 1) * 8;
+    return bpf_map_lookup_elem(&monitored_dirs, key) != NULL;
+}
+
 /*
 * Reserves space in the ring buffer for a file_event struct,
 * populates it with file info, and submits it to user space.
@@ -337,6 +380,9 @@ statfunc void submit_event(const char *filename,
                            __u64 ino,
                            __u64 dev)
 {
+    if (!is_monitored(filename))
+        return;
+
     struct file_event *evt = bpf_ringbuf_reserve(&rb, sizeof(*evt), 0);
     if (!evt)
         return;

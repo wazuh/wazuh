@@ -37,6 +37,10 @@ All notable changes to this project will be documented in this file.
 - Fixed a memory leak in `wazuh-modulesd` each time the `azure-logs` configuration was requested. ([#40579](https://github.com/wazuh/wazuh/pull/40579))
 - Fixed the Windows agent reporting the wrong release for builds 15063 and 16299 when the registry has no `ReleaseId`. ([#40489](https://github.com/wazuh/wazuh/pull/40489))
 
+#### Changed
+
+- FIM eBPF whodata now drops events for unmonitored paths in the kernel. ([#40633](https://github.com/wazuh/wazuh/pull/40633))
+
 ## [v4.14.10]
 
 ### Manager
