@@ -54,8 +54,9 @@ private:
     }
 
 protected:
-    std::string m_env;   ///< The environment variable where the configuration can be store
-    UnitConfType m_type; ///< The type of the configuration.
+    std::string m_env;       ///< The environment variable where the configuration can be store
+    UnitConfType m_type;     ///< The type of the configuration.
+    bool m_unsigned {false}; ///< INTEGER units only: the value is unsigned (size_t), so a sign is invalid.
 
 public:
     virtual ~BaseUnitConf() = default;
@@ -95,6 +96,11 @@ public:
     UnitConfType getType() const { return m_type; }
 
     /**
+     * @brief Whether this INTEGER unit holds an unsigned value (size_t): a negative value is invalid for it.
+     */
+    bool isUnsigned() const { return m_unsigned; }
+
+    /**
      * @brief Get the environment variable name.
      *
      * @return const std::string& The environment variable name.
@@ -124,6 +130,7 @@ private:
         if constexpr (std::is_same_v<T, int> || std::is_same_v<T, int64_t> || std::is_same_v<T, size_t>)
         {
             m_type = UnitConfType::INTEGER;
+            m_unsigned = std::is_same_v<T, size_t>;
         }
         else if constexpr (std::is_same_v<T, std::string>)
         {

@@ -473,8 +473,18 @@ TEST(ConfDropPrivileges, EnvOverride)
 
     unsetEnv("WAZUH_ENGINE_DROP_PRIVILEGES");
 }
+// Conf::load() reads the file only outside standalone mode, and that mode is cached for the whole
+// process on first use (logging::testInit() primes it to true). A test that needs the file must skip,
+// not fail, when an earlier step of this process already cached standalone mode.
+#define SKIP_UNLESS_FILE_IS_LOADED()                                                                                   \
+    if (base::process::isStandaloneModeEnable())                                                                       \
+    {                                                                                                                  \
+        GTEST_SKIP() << "standalone mode is cached for this process: the configuration file is not read";              \
+    }
+
 TEST(ConfTest, AgentCacheDefaultsAndOverrides)
 {
+    SKIP_UNLESS_FILE_IS_LOADED();
     logging::testInit();
     ScopedEnv entriesEnv("WAZUH_AGENT_METADATA_CACHE_MAX_ENTRIES");
     ScopedEnv bytesEnv("WAZUH_AGENT_METADATA_CACHE_MAX_BYTES");
@@ -498,6 +508,7 @@ TEST(ConfTest, AgentCacheDefaultsAndOverrides)
 
 TEST(ConfTest, AgentCacheZeroLimits)
 {
+    SKIP_UNLESS_FILE_IS_LOADED();
     logging::testInit();
     ScopedEnv entriesEnv("WAZUH_AGENT_METADATA_CACHE_MAX_ENTRIES");
     ScopedEnv bytesEnv("WAZUH_AGENT_METADATA_CACHE_MAX_BYTES");
@@ -522,22 +533,57 @@ TEST(ConfTest, AgentCacheZeroLimits)
 
 TEST(ConfTest, UnsignedFileRangeGuard)
 {
+    SKIP_UNLESS_FILE_IS_LOADED();
     logging::testInit();
     ScopedEnv env("TEST_ENV_UNSIGNED_FILE");
     const auto wide = std::numeric_limits<int64_t>::max();
-    for (const auto& value : {std::string("-1"), std::string("0"), std::to_string(wide)})
+    for (const auto& value : {std::string("0"), std::to_string(wide), std::string("18446744073709551615")})
     {
         SCOPED_TRACE(value);
         conf::Conf configured(conf::mocks::createMockFileLoader({{"analysisd.unsigned_file", value}}));
         configured.addUnit<size_t>("analysisd.unsigned_file", "TEST_ENV_UNSIGNED_FILE", 7);
-        configured.load();
-        const auto expected = value == "-1"  ? size_t {7}
-                              : value == "0" ? size_t {0}
-                              : static_cast<uint64_t>(wide) > std::numeric_limits<size_t>::max()
-                                  ? size_t {7}
-                                  : static_cast<size_t>(wide);
+        // The whole unsigned range validates (not only up to the signed maximum)...
+        ASSERT_NO_THROW(configured.load());
+        // ...and a value the platform's size_t cannot hold falls back to the default.
+        const auto parsed = std::stoull(value);
+        const auto expected = parsed > std::numeric_limits<size_t>::max() ? size_t {7} : static_cast<size_t>(parsed);
         EXPECT_EQ(configured.get<size_t>("analysisd.unsigned_file"), expected);
     }
+}
+
+// A negative value cannot mean anything for an unsigned setting: rather than falling back to the
+// default (so "-1" meant as "unlimited" silently became the default limit), the file is refused.
+TEST(ConfTest, NegativeUnsignedFileValueFailsValidation)
+{
+    SKIP_UNLESS_FILE_IS_LOADED();
+    logging::testInit();
+    for (const auto* value : {"-1", " -5", "-18446744073709551615"})
+    {
+        SCOPED_TRACE(value);
+        conf::Conf configured(
+            conf::mocks::createMockFileLoader({{std::string(conf::key::AGENT_METADATA_CACHE_MAX_BYTES), value}}));
+        try
+        {
+            configured.load();
+            ADD_FAILURE() << "load() accepted a negative unsigned value";
+        }
+        catch (const std::runtime_error& e)
+        {
+            EXPECT_THAT(e.what(), testing::HasSubstr("Unsigned value expected"));
+        }
+    }
+}
+
+// Signed settings keep accepting negative values in the file.
+TEST(ConfTest, NegativeSignedFileValueStillValidates)
+{
+    SKIP_UNLESS_FILE_IS_LOADED();
+    logging::testInit();
+    ScopedEnv env("TEST_ENV_SIGNED_FILE");
+    conf::Conf configured(conf::mocks::createMockFileLoader({{"analysisd.signed_file", "-3"}}));
+    configured.addUnit<int64_t>("analysisd.signed_file", "TEST_ENV_SIGNED_FILE", 7);
+    ASSERT_NO_THROW(configured.load());
+    EXPECT_EQ(configured.get<int64_t>("analysisd.signed_file"), -3);
 }
 
 TEST(ConfTest, InvalidUnsignedEnvironmentFallsBack)

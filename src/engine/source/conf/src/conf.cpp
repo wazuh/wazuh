@@ -176,7 +176,25 @@ void Conf::validate(const OptionMap& config) const
                 std::size_t pos = 0;
                 try
                 {
-                    auto v = std::stoll(valueStr, &pos);
+                    if (unit->isUnsigned())
+                    {
+                        // stoull accepts a leading '-' and wraps it ("-1" becomes SIZE_MAX), so a negative
+                        // value is refused first; then the full unsigned range is accepted, not only up to
+                        // LLONG_MAX.
+                        const auto first = valueStr.find_first_not_of(" \t\n\v\f\r");
+                        if (first != std::string::npos && valueStr[first] == '-')
+                        {
+                            throw std::runtime_error(fmt::format(
+                                "Invalid configuration type for key '{}'. Unsigned value expected, got '{}'.",
+                                key,
+                                valueStr));
+                        }
+                        [[maybe_unused]] auto u = std::stoull(valueStr, &pos);
+                    }
+                    else
+                    {
+                        [[maybe_unused]] auto v = std::stoll(valueStr, &pos);
+                    }
 
                     if (pos != valueStr.size())
                     {
