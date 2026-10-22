@@ -88,7 +88,7 @@
 // A 2xx of a request sent after the node's notBefore was last set counts a clean send; paceRelaxAfter clean sends halve
 // the pace (cleanSends = 0) and a pace below paceInitial becomes 0. A 2xx NEVER shortens a notBefore or a nextSendAt in
 // force. RequeueResult.exhausted ⇒
-// Failed(RetryExhausted) with the op's last error; RequeueResult.closed ⇒ Dropped(closedCause); RequeueResult.notify ⇒
+// Failed(RetryExhausted) with the op's last error; RequeueResult.closed ⇒ Dropped(sweepCause); RequeueResult.notify ⇒
 // Scheduler::notify(bucket). Every completion ⇒ WritePath::sinkReady().
 //
 // Ordered buckets and cancellation (E3c-2, I79/I80; the bucket side is in bucket.hpp):

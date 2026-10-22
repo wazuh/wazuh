@@ -34,6 +34,8 @@ namespace
     std::function<void()> g_beforeSenderMirror;
     std::function<void()> g_beforeAssembly;
     std::optional<std::int64_t> g_queryConflictBaseMs;
+    std::function<void()> g_inCallbackGate;
+    std::function<void()> g_afterPayloadReleased;
 
     template<class F>
     F copyOf(const F& hook)
@@ -139,6 +141,22 @@ namespace indexer_client::detail::seams
         std::lock_guard<std::mutex> lock(g_hooksMutex);
         return g_queryConflictBaseMs;
     }
+
+    void inCallbackGate()
+    {
+        if (auto hook = copyOf(g_inCallbackGate))
+        {
+            hook();
+        }
+    }
+
+    void afterPayloadReleased()
+    {
+        if (auto hook = copyOf(g_afterPayloadReleased))
+        {
+            hook();
+        }
+    }
 } // namespace indexer_client::detail::seams
 
 namespace indexer_client::testing_hooks
@@ -187,6 +205,14 @@ namespace indexer_client::testing_hooks
     {
         store(g_beforeAssembly, std::move(hook));
     }
+    void setInCallbackGate(std::function<void()> hook)
+    {
+        store(g_inCallbackGate, std::move(hook));
+    }
+    void setAfterPayloadReleased(std::function<void()> hook)
+    {
+        store(g_afterPayloadReleased, std::move(hook));
+    }
 
     void setQueryConflictBaseMs(std::optional<std::int64_t> milliseconds)
     {
@@ -209,6 +235,8 @@ namespace indexer_client::testing_hooks
             g_beforeSenderMirror = {};
             g_beforeAssembly = {};
             g_queryConflictBaseMs.reset();
+            g_inCallbackGate = {};
+            g_afterPayloadReleased = {};
         }
         setProbeAutoStart(true);
     }

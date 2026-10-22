@@ -346,9 +346,14 @@ namespace indexer_client
 
     struct CloseReport final
     {
-        std::size_t callbacksInFlight {0};
+        std::size_t callbacksInFlight {0}; ///< Callbacks started and not finished when awaitClosed returned.
         std::size_t droppedClientClosed {0};
         std::size_t droppedShutdown {0};
+        std::size_t callbacksSkipped {0}; ///< Completions past the cutoff: ticket completed, callback not called (E5b).
+        std::size_t callbackOverruns {0}; ///< Callbacks that took longer than callbackBudget (E5b).
+        /// Ops resolved after requestClose() that are not Dropped(ClientClosed) or Dropped(Shutdown) (E5b): the
+        /// drain's own results (Ok, Failed, any other Dropped). Sweeps and refusals are only in the two counters above.
+        std::size_t drained {0};
     };
 
     /// Snapshot of the runtime counters (I20). Grows stage by stage; E1 only reports the thread layout.

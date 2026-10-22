@@ -74,10 +74,14 @@ namespace indexer_client::detail::write
             std::uint64_t paceRelaxed {0};
         };
 
-        /// One request between its submit and its completion (for the cancellation of stop()).
+        /// One request between its submit and its completion (for the cancellation of stop() and cancelBucket()).
         struct Flight final
         {
             std::uint64_t transferId {0}; ///< 0 until Transport::submit returned.
+            /// I99 (N5): the batch's bucket (identity only; the Batch holds it strongly) and a cancelBucket() that ran
+            /// before the id was known (the task cancels it right after the submit, as cancelNow for stop()).
+            const Bucket* bucket {nullptr};
+            bool cancelRequested {false};
         };
 
         struct SenderShared final
@@ -466,7 +470,8 @@ namespace indexer_client::detail::write
                 }
                 if (!result.closed.empty())
                 {
-                    const auto cause = bucket->closedCause().value_or(Cause::Shutdown);
+                    // I99 (N1): the sweep's cause, so during stop() every resolution is Dropped(Shutdown).
+                    const auto cause = bucket->sweepCause().value_or(Cause::Shutdown);
                     for (const auto& op : result.closed)
                     {
                         path->resolve(op, droppedResult(cause));
@@ -871,7 +876,8 @@ namespace indexer_client::detail::write
                     }
                     else
                     {
-                        shared->flights.emplace(flight, Flight {}); // stop() cancels it once its id is known.
+                        // stop() and cancelBucket() cancel it once its id is known.
+                        shared->flights.emplace(flight, Flight {0, batch->bucket.get(), false});
                     }
                 }
                 if (stoppedBefore)
@@ -901,10 +907,12 @@ namespace indexer_client::detail::write
 
                 // I80 (sender.hpp): the ops cancel(tag) marked leave the batch (ops and bytes, so item i <-> op i
                 // still holds) and resolve Dropped(Cancelled); no op of a cancelled tag is sent after cancel().
+                // I99 (N5): so do the ops a sweep already resolved (claimed; awaitClosed's drain end), unresolved.
                 seams::beforeAssembly();
                 if (std::any_of(batch->ops.begin(),
                                 batch->ops.end(),
-                                [](const std::shared_ptr<OpState>& op) { return op->cancelled.load(); }))
+                                [](const std::shared_ptr<OpState>& op)
+                                { return op->cancelled.load() || op->claimed.load(); }))
                 {
                     std::vector<std::shared_ptr<OpState>> kept;
                     std::vector<std::shared_ptr<OpState>> cancelled;
@@ -912,6 +920,10 @@ namespace indexer_client::detail::write
                     std::uint64_t bytes = 0;
                     for (auto& op : batch->ops)
                     {
+                        if (op->claimed.load())
+                        {
+                            continue; // Resolved by a sweep: never sent.
+                        }
                         if (op->cancelled.load())
                         {
                             cancelled.push_back(std::move(op));
@@ -989,7 +1001,8 @@ namespace indexer_client::detail::write
                     if (auto it = shared->flights.find(flight); it != shared->flights.end())
                     {
                         it->second.transferId = admission.id;
-                        cancelNow = shared->stopped; // stop() ran before the id was known.
+                        // stop() or cancelBucket() ran before the id was known.
+                        cancelNow = shared->stopped || it->second.cancelRequested;
                     }
                 }
                 if (cancelNow)
@@ -1251,6 +1264,40 @@ namespace indexer_client::detail::write
                         return;
                     }
                     refused(shared, *held, *node, flight, "the CPU pool refused the bulk task");
+                }
+            }
+
+            void cancelBucket(const Bucket& bucket) override
+            {
+                std::vector<std::uint64_t> toCancel;
+                {
+                    std::lock_guard<std::mutex> lock(m_shared->mutex);
+                    if (m_shared->stopped)
+                    {
+                        return; // stop() cancelled everything already.
+                    }
+                    for (auto& [flight, state] : m_shared->flights)
+                    {
+                        if (state.bucket != &bucket)
+                        {
+                            continue;
+                        }
+                        if (state.transferId != 0)
+                        {
+                            toCancel.push_back(state.transferId);
+                        }
+                        else
+                        {
+                            state.cancelRequested = true; // The task cancels it right after its submit.
+                        }
+                    }
+                }
+                if (m_shared->transport)
+                {
+                    for (const auto id : toCancel)
+                    {
+                        m_shared->transport->cancel(id); // The completion is Ignore (Cancelled): the sweep resolved.
+                    }
                 }
             }
 
