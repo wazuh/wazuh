@@ -68,7 +68,7 @@ The agent wrapped each event in a JSON object containing a human-readable messag
 
 #### Wazuh 5.0
 
-The agent now forwards the native Windows Event XML exactly as returned by `EvtRender()`, matching the export format of Windows Event Viewer:
+The agent now forwards native Windows Event XML in the format returned by `EvtRender()`, matching the export format of Windows Event Viewer:
 
 ```xml
 <Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'>
@@ -94,6 +94,26 @@ Key differences from the previous format:
 - Namespaces and attributes are preserved exactly as provided by the EventChannel API.
 
 This change standardizes event data for downstream processing and makes forwarded events directly comparable to native Windows Event Viewer exports.
+
+### Member name enrichment
+
+Some Windows Security events provide a `MemberSid` but leave `MemberName` empty or set it to `-`. When the account can be resolved, the Windows agent adds the account name to `MemberName` before forwarding the event.
+
+Native Windows event:
+
+```xml
+<Data Name='MemberName'>-</Data>
+<Data Name='MemberSid'>S-1-5-21-3362136261-2111957958-1377730528-1006</Data>
+```
+
+Forwarded event:
+
+```xml
+<Data Name='MemberName'>DOMAIN\account</Data>
+<Data Name='MemberSid'>S-1-5-21-3362136261-2111957958-1377730528-1006</Data>
+```
+
+The event is forwarded unchanged if the SID is missing, invalid, unmapped, or cannot be resolved. Existing `MemberName` values are preserved.
 
 !!! note
     This change applies to **Windows agents only**. The `<log_format>eventchannel</log_format>` configuration is unchanged.
