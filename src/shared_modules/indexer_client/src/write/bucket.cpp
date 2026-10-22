@@ -19,13 +19,95 @@
 #include <utility>
 
 #include "indexer_client/runtime.hpp"
+#include "loggerHelper.h"
 #include "runtime/backoff.hpp"
+#include "runtime/logSummary.hpp"
 #include "runtime/runtimeInternal.hpp"
 #include "write/budget.hpp"
 #include "write/group.hpp"
 
 namespace indexer_client::detail::write
 {
+    namespace
+    {
+        constexpr const char* TAG = "indexer-client";
+
+        /// `percent` % of `value`, rounded down, without overflow.
+        constexpr std::uint64_t percentOf(std::uint64_t value, std::uint64_t percent) noexcept
+        {
+            return value / 100 * percent + value % 100 * percent / 100;
+        }
+
+        const char* overflowName(Overflow::Kind kind) noexcept
+        {
+            switch (kind)
+            {
+                case Overflow::Kind::Reject: return "reject";
+                case Overflow::Kind::Block: return "block";
+                case Overflow::Kind::DropNewest: return "drop_newest";
+                case Overflow::Kind::DropOldest: return "drop_oldest";
+            }
+            return "unknown";
+        }
+
+        /// E5c: emits a bucket's pending edge lines once the bucket mutex (declared after it) is dropped, whatever the
+        /// return path.
+        struct EmitPendingOnExit final
+        {
+            Bucket& bucket;
+            ~EmitPendingOnExit()
+            {
+                bucket.emitPendingLogs();
+            }
+        };
+
+        /// `text` cut to at most `max` bytes, never inside a UTF-8 sequence.
+        std::string truncateUtf8(std::string_view text, std::size_t max)
+        {
+            if (text.size() <= max)
+            {
+                return std::string(text);
+            }
+            std::size_t size = max;
+            while (size > 0 && (static_cast<unsigned char>(text[size]) & 0xC0U) == 0x80U)
+            {
+                --size;
+            }
+            return std::string(text.substr(0, size));
+        }
+
+        /// A refusal by a closed admission (E5c: the Shutdown part is kept apart for rejected[shutdown]).
+        void countClosedRefusal(BucketStats& stats, Cause cause) noexcept
+        {
+            ++stats.rejectedClosed;
+            if (cause == Cause::Shutdown)
+            {
+                ++stats.rejectedShutdown;
+            }
+        }
+
+        template<class E>
+        constexpr std::size_t at(E value) noexcept
+        {
+            return static_cast<std::size_t>(value);
+        }
+
+        /// The retries[] slot of an op's last error (metrics.hpp RetryCause; None and the rest count in other).
+        RetryCause retryCause(Cause cause) noexcept
+        {
+            switch (cause)
+            {
+                case Cause::ItemRetryable: return RetryCause::ItemRetryable;
+                case Cause::VersionConflict: return RetryCause::VersionConflict;
+                case Cause::Server5xx: return RetryCause::Server5xx;
+                case Cause::TransportTimeout:
+                case Cause::TransportConnect:
+                case Cause::TransportTls: return RetryCause::Transport;
+                default: return RetryCause::Other;
+            }
+        }
+    } // namespace
+
     std::uint64_t orderedKeyHash(std::string_view index, std::string_view id) noexcept
     {
         constexpr std::uint64_t OFFSET = 14695981039346656037ULL;
@@ -53,6 +135,8 @@ namespace indexer_client::detail::write
         , m_spec(std::move(spec))
         , m_budget(budget)
         , m_owner(std::move(owner))
+        , m_threshold80(percentOf(m_spec.quotaBytes, 80))
+        , m_threshold70(percentOf(m_spec.quotaBytes, 70))
     {
         m_stats.consumer = m_consumer;
         m_stats.bucket = m_spec.name;
@@ -137,23 +221,99 @@ namespace indexer_client::detail::write
         m_stats.peakCharge = std::max(m_stats.peakCharge, m_charge);
     }
 
-    bool Bucket::tryChargeLocked(std::uint64_t charge)
+    Bucket::Charge Bucket::tryChargeLocked(std::uint64_t charge)
     {
         if (charge > m_spec.quotaBytes || m_charge > m_spec.quotaBytes - charge)
         {
-            return false;
+            return Charge::BucketFull;
         }
         if (!m_budget.tryReserve(charge))
         {
-            return false;
+            return Charge::GlobalFull; // The global edge is claimed in tryReserve, not here.
         }
+        const auto before = m_charge;
         addChargeLocked(charge);
-        return true;
+        chargeMovedLocked(before);
+        return Charge::Ok;
+    }
+
+    void Bucket::chargeMovedLocked(std::uint64_t before)
+    {
+        if (m_charge > before)
+        {
+            if (m_armed80 && m_charge >= m_threshold80)
+            {
+                m_armed80 = false;
+                m_edgeLines.push_back(EdgeLine {Edge::Quota80, m_charge});
+                m_edgePending.store(true);
+            }
+        }
+        else if (before >= m_threshold70 && m_charge < m_threshold70)
+        {
+            // An edge, not a level: a QueueFull storm at a low charge never re-arms.
+            m_armed80 = true;
+            m_armedFull = true;
+        }
+    }
+
+    void Bucket::overflowLocked(Charge refused)
+    {
+        if (refused == Charge::BucketFull && m_armedFull)
+        {
+            m_armedFull = false;
+            m_edgeLines.push_back(EdgeLine {Edge::Full, m_charge});
+            m_edgePending.store(true);
+        }
+    }
+
+    void Bucket::emitPendingLogs() noexcept
+    {
+        try
+        {
+            if (m_edgePending.load())
+            {
+                std::vector<EdgeLine> lines;
+                {
+                    std::lock_guard<std::mutex> lock(m_mutex);
+                    lines.swap(m_edgeLines);
+                    m_edgePending.store(false);
+                }
+                // m_consumer and m_spec are immutable: read without the mutex.
+                for (const auto& line : lines)
+                {
+                    if (line.edge == Edge::Quota80)
+                    {
+                        logWarn(TAG,
+                                "Indexer client bucket '%s/%s' reached 80%% of its quota (%llu of %llu bytes charged).",
+                                m_consumer.c_str(),
+                                m_spec.name.c_str(),
+                                static_cast<unsigned long long>(line.charge),
+                                static_cast<unsigned long long>(m_spec.quotaBytes));
+                    }
+                    else
+                    {
+                        logWarn(TAG,
+                                "Indexer client bucket '%s/%s' has no room for new operations (%llu of %llu bytes "
+                                "charged): its overflow policy '%s' applies.",
+                                m_consumer.c_str(),
+                                m_spec.name.c_str(),
+                                static_cast<unsigned long long>(line.charge),
+                                static_cast<unsigned long long>(m_spec.quotaBytes),
+                                overflowName(m_spec.overflow.kind));
+                    }
+                }
+            }
+        }
+        catch (...)
+        {
+            // A log sink must never take a producer or a runtime thread down.
+        }
+        m_budget.emitPendingLogs();
     }
 
     void Bucket::dropNewestLocked(bool withCallback, Reservation& reservation)
     {
-        if (withCallback && !tryChargeLocked(RESULT_RESERVE))
+        if (withCallback && tryChargeLocked(RESULT_RESERVE) != Charge::Ok)
         {
             ++m_stats.rejectedQueueFull;
             reservation.cause = Cause::QueueFull;
@@ -193,6 +353,7 @@ namespace indexer_client::detail::write
             ++count;
         }
 
+        const auto before = m_charge;
         reservation.evicted.reserve(count);
         for (std::size_t i = 0; i < count; ++i)
         {
@@ -204,7 +365,9 @@ namespace indexer_client::detail::write
             reservation.evicted.push_back(std::move(op));
         }
         m_charge -= freed;
+        m_stats.retainedBytes -= freed;
         addChargeLocked(charge);
+        chargeMovedLocked(before);
         ++m_stats.accepted;
         m_stats.droppedOldest += count;
         return true;
@@ -215,12 +378,13 @@ namespace indexer_client::detail::write
         const std::uint64_t charge = payload + RESULT_RESERVE;
         Reservation reservation;
         std::uint64_t globalSurplus = 0;
+        const EmitPendingOnExit emit {*this}; // Destroyed after the lock below: no line under the bucket mutex.
         {
             std::unique_lock<std::mutex> lock(m_mutex);
             ++m_stats.submitted;
             if (m_admission)
             {
-                ++m_stats.rejectedClosed;
+                countClosedRefusal(m_stats, *m_admission);
                 reservation.cause = *m_admission;
                 return reservation;
             }
@@ -230,7 +394,8 @@ namespace indexer_client::detail::write
                 reservation.cause = Cause::PayloadTooLarge;
                 return reservation;
             }
-            if (tryChargeLocked(charge))
+            const auto refused = tryChargeLocked(charge);
+            if (refused == Charge::Ok)
             {
                 ++m_stats.accepted;
                 return reservation;
@@ -239,6 +404,7 @@ namespace indexer_client::detail::write
             switch (m_spec.overflow.kind)
             {
                 case Overflow::Kind::Reject:
+                    overflowLocked(refused);
                     ++m_stats.rejectedQueueFull;
                     reservation.cause = Cause::QueueFull;
                     break;
@@ -252,6 +418,7 @@ namespace indexer_client::detail::write
                         reservation.cause = Cause::Reentrancy;
                         break;
                     }
+                    overflowLocked(refused); // A Block that has to wait.
                     // Registered before the predicate's first re-check (see GlobalBudget::addWaiter).
                     if (m_waiting++ == 0)
                     {
@@ -266,7 +433,7 @@ namespace indexer_client::detail::write
                                           {
                                               return true;
                                           }
-                                          charged = tryChargeLocked(charge);
+                                          charged = tryChargeLocked(charge) == Charge::Ok;
                                           return charged;
                                       });
                     if (--m_waiting == 0)
@@ -279,7 +446,7 @@ namespace indexer_client::detail::write
                     }
                     else if (m_admission)
                     {
-                        ++m_stats.rejectedClosed;
+                        countClosedRefusal(m_stats, *m_admission);
                         reservation.cause = *m_admission;
                     }
                     else
@@ -290,9 +457,13 @@ namespace indexer_client::detail::write
                     break;
                 }
 
-                case Overflow::Kind::DropNewest: dropNewestLocked(withCallback, reservation); break;
+                case Overflow::Kind::DropNewest:
+                    overflowLocked(refused);
+                    dropNewestLocked(withCallback, reservation);
+                    break;
 
                 case Overflow::Kind::DropOldest:
+                    overflowLocked(refused);
                     if (!evictOldestLocked(charge, reservation, globalSurplus))
                     {
                         dropNewestLocked(withCallback, reservation);
@@ -309,12 +480,13 @@ namespace indexer_client::detail::write
         const std::uint64_t charge = payload + RESULT_RESERVE;
         Reservation reservation;
         bool charged = false;
+        const EmitPendingOnExit emit {*this}; // Destroyed after the lock below: no line under the bucket mutex.
         {
             std::unique_lock<std::mutex> lock(m_mutex);
             ++m_stats.submitted;
             if (m_admission)
             {
-                ++m_stats.rejectedClosed;
+                countClosedRefusal(m_stats, *m_admission);
                 reservation.cause = *m_admission;
                 return reservation;
             }
@@ -337,12 +509,14 @@ namespace indexer_client::detail::write
             {
                 return m_building > m_spec.quotaBytes - charge || m_budget.building() > m_budget.cap() - charge;
             };
-            charged = tryChargeLocked(charge);
+            const auto refused = tryChargeLocked(charge);
+            charged = refused == Charge::Ok;
             if (!charged)
             {
                 if (m_spec.overflow.kind != Overflow::Kind::Block)
                 {
                     // Reject, DropNewest and DropOldest alike (I70): nothing is dropped or evicted for a group op.
+                    overflowLocked(refused);
                     ++m_stats.rejectedQueueFull;
                     reservation.cause = Cause::QueueFull;
                     return reservation;
@@ -353,6 +527,7 @@ namespace indexer_client::detail::write
                     reservation.cause = Cause::Reentrancy;
                     return reservation;
                 }
+                overflowLocked(refused); // QueueFull at once or a Block that has to wait.
                 if (heldByGroups())
                 {
                     ++m_stats.rejectedQueueFull;
@@ -373,7 +548,7 @@ namespace indexer_client::detail::write
                                       {
                                           return true;
                                       }
-                                      charged = tryChargeLocked(charge);
+                                      charged = tryChargeLocked(charge) == Charge::Ok;
                                       if (charged)
                                       {
                                           return true;
@@ -389,7 +564,7 @@ namespace indexer_client::detail::write
                 {
                     if (m_admission)
                     {
-                        ++m_stats.rejectedClosed;
+                        countClosedRefusal(m_stats, *m_admission);
                         reservation.cause = *m_admission;
                     }
                     else if (held)
@@ -432,6 +607,7 @@ namespace indexer_client::detail::write
         op.payloadCharged = true;
         op.seq = m_nextSeq++;
         ++m_stats.retained;
+        m_stats.retainedBytes += op.payload;
     }
 
     std::optional<Cause> Bucket::refusalCauseLocked() const
@@ -515,7 +691,9 @@ namespace indexer_client::detail::write
     {
         {
             std::lock_guard<std::mutex> lock(m_mutex);
+            const auto before = m_charge;
             m_charge -= reserved;
+            chargeMovedLocked(before); // Only re-arms.
             m_building -= reserved;
             m_stats.groupBuilding -= ops;
             m_stats.groupAbandoned += ops;
@@ -950,8 +1128,11 @@ namespace indexer_client::detail::write
             {
                 op.payloadCharged = false;
                 released = op.payload;
+                const auto before = m_charge;
                 m_charge -= released;
+                chargeMovedLocked(before); // Only re-arms: a release never queues a line.
                 --m_stats.retained;
+                m_stats.retainedBytes -= released;
                 if (m_waiting != 0)
                 {
                     m_room.notify_all();
@@ -994,7 +1175,9 @@ namespace indexer_client::detail::write
         const std::uint64_t bytes = RESULT_RESERVE * count;
         {
             std::lock_guard<std::mutex> lock(m_mutex);
+            const auto before = m_charge;
             m_charge -= bytes;
+            chargeMovedLocked(before); // Only re-arms.
             if (m_waiting != 0)
             {
                 m_room.notify_all();
@@ -1085,14 +1268,84 @@ namespace indexer_client::detail::write
         m_room.notify_all();
     }
 
-    void Bucket::countResolved(Status status)
+    void Bucket::countResolved(Status status, Cause cause, std::string_view itemErrorType, std::string_view reason)
     {
         std::lock_guard<std::mutex> lock(m_mutex);
+        if (status != Status::Ok)
+        {
+            // E5c: the interval's (cause, itemErrorType) keys, first-come, at most SUMMARY_KEYS; the rest is `other`.
+            auto& keys = m_interval.keys;
+            const auto key = std::find_if(keys.begin(),
+                                          keys.end(),
+                                          [&](const LogInterval::Key& k)
+                                          { return k.cause == cause && k.itemErrorType == itemErrorType; });
+            if (key != keys.end())
+            {
+                ++key->count;
+            }
+            else if (keys.size() < logging::SUMMARY_KEYS)
+            {
+                keys.push_back(LogInterval::Key {cause, std::string(itemErrorType), 1});
+            }
+            else
+            {
+                ++m_interval.other;
+            }
+            if (m_interval.sampleReason.empty() && !reason.empty())
+            {
+                m_interval.sampleReason = truncateUtf8(reason, logging::SAMPLE_REASON_MAX);
+                m_interval.sampleCause = cause;
+                m_interval.sampleItemErrorType = std::string(itemErrorType);
+            }
+        }
         switch (status)
         {
             case Status::Ok: ++m_stats.resolvedOk; break;
-            case Status::Failed: ++m_stats.resolvedFailed; break;
-            case Status::Dropped: ++m_stats.resolvedDropped; break;
+            case Status::Failed:
+            {
+                ++m_stats.resolvedFailed;
+                FailCause slot = FailCause::InvalidState;
+                switch (cause)
+                {
+                    case Cause::ItemPermanent: slot = FailCause::ItemPermanent; break;
+                    case Cause::RetryExhausted: slot = FailCause::RetryExhausted; break;
+                    case Cause::Client4xx:
+                    case Cause::PayloadTooLarge: slot = FailCause::Client4xx; break; // A single-op 413.
+                    case Cause::Server5xx: slot = FailCause::Server5xx; break;
+                    case Cause::Unavailable: slot = FailCause::Unavailable; break;
+                    default: break;
+                }
+                ++m_stats.failed[at(slot)];
+                break;
+            }
+            case Status::Dropped:
+                ++m_stats.resolvedDropped;
+                switch (cause)
+                {
+                    case Cause::QueueFull: ++m_stats.dropped[at(DropCause::QueueFull)]; break;
+                    case Cause::ClientClosed: ++m_stats.dropped[at(DropCause::ClientClosed)]; break;
+                    case Cause::Shutdown: ++m_stats.dropped[at(DropCause::Shutdown)]; break;
+                    case Cause::Cancelled: ++m_stats.dropped[at(DropCause::Cancelled)]; break;
+                    default: break; // None reaches here (an abandoned group counts in cancelGroupReservation).
+                }
+                break;
+        }
+    }
+
+    void Bucket::countLate(std::uint64_t ops)
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_stats.lateResults += ops;
+    }
+
+    void Bucket::countBulk(std::uint64_t bytes, std::optional<std::uint64_t> latencyMicros)
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        ++m_stats.bulkRequests;
+        m_stats.bulkBytes += bytes;
+        if (latencyMicros)
+        {
+            m_stats.latency.observe(*latencyMicros);
         }
     }
 
@@ -1212,6 +1465,57 @@ namespace indexer_client::detail::write
         stats.charge = m_charge;
         return stats;
     }
+
+    BucketMetrics Bucket::metrics() const
+    {
+        BucketMetrics metrics;
+        metrics.consumer = m_consumer;
+        metrics.bucket = m_spec.name;
+        metrics.quotaBytes = m_spec.quotaBytes;
+        std::lock_guard<std::mutex> lock(m_mutex);
+        const auto& s = m_stats;
+        metrics.accepted = s.accepted;
+        metrics.rejected[at(RejectCause::QueueFull)] = s.rejectedQueueFull;
+        metrics.rejected[at(RejectCause::ClientClosed)] = s.rejectedClosed - s.rejectedShutdown;
+        metrics.rejected[at(RejectCause::Shutdown)] = s.rejectedShutdown;
+        metrics.rejected[at(RejectCause::SubmitTimeout)] = s.submitTimeout;
+        metrics.rejected[at(RejectCause::Reentrancy)] = s.reentrancy;
+        metrics.rejected[at(RejectCause::PayloadTooLarge)] = s.payloadTooLarge;
+        metrics.rejected[at(RejectCause::GroupTooLarge)] = s.rejectedGroupTooLarge;
+        metrics.rejected[at(RejectCause::InvalidArgument)] = s.invalidArgument;
+        metrics.dropped = s.dropped;
+        metrics.ok = s.resolvedOk;
+        metrics.failed = s.failed;
+        metrics.retries = s.retries;
+        metrics.lateResults = s.lateResults;
+        metrics.retainedBytes = s.retainedBytes;
+        metrics.charge = m_charge;
+        metrics.bulkRequests = s.bulkRequests;
+        metrics.bulkBytes = s.bulkBytes;
+        metrics.latency = s.latency;
+        return metrics;
+    }
+
+    std::uint64_t Bucket::retainedBytes() const
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return m_stats.retainedBytes;
+    }
+
+    LogInterval Bucket::takeLogInterval()
+    {
+        LogInterval interval;
+        std::lock_guard<std::mutex> lock(m_mutex);
+        interval = std::move(m_interval);
+        m_interval = LogInterval {};
+        interval.accepted = m_stats.accepted - m_logMark.accepted;
+        interval.ok = m_stats.resolvedOk - m_logMark.ok;
+        interval.failed = m_stats.resolvedFailed - m_logMark.failed;
+        interval.dropped = m_stats.resolvedDropped - m_logMark.dropped;
+        m_logMark = LogMark {m_stats.accepted, m_stats.resolvedOk, m_stats.resolvedFailed, m_stats.resolvedDropped};
+        return interval;
+    }
+
     void Bucket::insertLaneLocked(std::shared_ptr<OpState> op)
     {
         // After the last lane op due no later than this one (stable for ties). A toHead prefix with a later notBefore
@@ -1261,13 +1565,19 @@ namespace indexer_client::detail::write
         for (auto& entry : ops)
         {
             auto& op = entry.op;
-            if (!op || op->claimed.load())
+            if (!op)
             {
+                continue;
+            }
+            if (op->claimed.load())
+            {
+                ++result.skipped;
                 continue; // Resolved (or being resolved) by someone else.
             }
             const auto delivered = m_delivered.find(op.get());
             if (delivered == m_delivered.end())
             {
+                ++result.skipped;
                 continue; // Not delivered by this bucket (already resolved): nothing to requeue.
             }
             if (op->cancelled.load())
@@ -1332,6 +1642,10 @@ namespace indexer_client::detail::write
             {
                 op->pinNode.reset();
                 op->pinUntil = TimePoint {};
+            }
+            if (spec.countAttempt)
+            {
+                ++m_stats.retries[at(retryCause(op->lastCause))]; // E5c: back to the lane with a counted attempt.
             }
             m_delivered.erase(delivered);
             if (spec.toHead)

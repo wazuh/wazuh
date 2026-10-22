@@ -55,6 +55,7 @@ namespace indexer_client
         Duration retryAfterMax {Duration {60000}};        ///< > 0
         Duration callbackBudget {Duration {200}};         ///< > 0 (k4-1)
         std::uint32_t maxOpenPits {64};                   ///< > 0
+        Duration logSummaryInterval {Duration {60000}};   ///< [1 s, 1 h], periodic log summary (I102)
         std::uint32_t nodeWindowMax {4};                  ///< [1, 64], AIMD window cap and start (I96, I98)
         std::uint64_t bulkMinBytes {64u << 10};           ///< [1, 32 MiB], AIMD bulk target floor (I98)
 

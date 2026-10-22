@@ -355,14 +355,6 @@ namespace indexer_client
         /// drain's own results (Ok, Failed, any other Dropped). Sweeps and refusals are only in the two counters above.
         std::size_t drained {0};
     };
-
-    /// Snapshot of the runtime counters (I20). Grows stage by stage; E1 only reports the thread layout.
-    struct MetricsSnapshot final
-    {
-        std::uint32_t networkThreads {0};
-        std::uint32_t cpuThreads {0};
-        std::uint32_t clients {0};
-    };
 } // namespace indexer_client
 
 #endif // _INDEXER_CLIENT_TYPES_HPP

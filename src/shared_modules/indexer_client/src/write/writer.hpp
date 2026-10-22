@@ -147,6 +147,8 @@ namespace indexer_client::detail::write
         }
 
         WriteStats stats() const;
+        /// E5c: Σ BucketStats::retainedBytes of the live buckets (MetricsSnapshot::retainedBytes).
+        std::uint64_t retainedBytes() const;
 
     private:
         void forEachBucket(const std::function<void(const std::shared_ptr<Bucket>&)>& fn) const;

@@ -23,6 +23,7 @@
 
 #include "client.hpp"
 #include "iConfigSource.hpp"
+#include "metrics.hpp"
 #include "runtimeConfig.hpp"
 #include "types.hpp"
 
@@ -90,6 +91,9 @@ namespace indexer_client
         /// Process-wide count of usage errors the library detected and survived (e.g. a Client destroyed on a
         /// runtime thread: logged, counted, closed without waiting; never an abort, not even in debug builds).
         INDEXER_CLIENT_API std::uint64_t usageErrors();
+        /// E5c: runs the log summary's body now on network thread 0 and returns when it is done (its lines emitted);
+        /// false, without waiting, when no runtime runs, it stopped accepting work, or the caller is a runtime thread.
+        INDEXER_CLIENT_API bool flushLogSummary();
     } // namespace detail::testing
 } // namespace indexer_client
 

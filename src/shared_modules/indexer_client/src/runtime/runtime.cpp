@@ -17,6 +17,8 @@
 #include <condition_variable>
 #include <csignal>
 #include <deque>
+#include <future>
+#include <map>
 #include <mutex>
 #include <set>
 #include <string>
@@ -36,10 +38,13 @@
 #include "health/nodeSet.hpp"
 #include "health/prober.hpp"
 #include "query/pit.hpp"
+#include "query/query.hpp"
+#include "runtime/logSummary.hpp"
 #include "runtime/runtimeInternal.hpp"
 #include "transport/seams.hpp"
 #include "transport/transport.hpp"
 #include "write/encoding.hpp"
+#include "write/sender.hpp"
 #include "write/writer.hpp"
 
 #ifdef INDEXER_CLIENT_TESTING
@@ -362,7 +367,15 @@ namespace indexer_client
             std::mutex mutex; ///< Guards everything below.
             bool accepting {true};
             std::optional<TimePoint> shutdownDeadline;
-            std::set<std::string> clients;
+            /// The live consumers (E5c, N23): raw name -> the client, weakly, and its sanitized metric name. Written by
+            /// RuntimeRef::client() (which refuses a sanitized clash), erased by releaseClientName; read by
+            /// runtimeLiveClients() (the log summary's per-client overruns).
+            struct ClientEntry final
+            {
+                std::weak_ptr<ClientState> state;
+                std::string metricName;
+            };
+            std::map<std::string, ClientEntry> clients;
 
             /// Created by start() once every runtime thread exists; stopped first by stopAndJoin() (I22c, D28).
             std::shared_ptr<Transport> transport;
@@ -378,6 +391,10 @@ namespace indexer_client
             /// after the write path and before the transport; its timers live on loop 0 and stop after the drain.
             std::shared_ptr<LoopTimers> pitTimers;
             std::shared_ptr<query::PitRegistry> pits;
+            /// E5c (runtime/logSummary.hpp): the periodic log summary and its loop-0 timers, started last by start()
+            /// and disarmed by stopAndJoin before the write path; its final summary runs after the PIT drain.
+            std::shared_ptr<LoopTimers> summaryTimers;
+            std::shared_ptr<logging::LogSummary> logSummary;
 
             bool sameEpoch(std::uint64_t other) const
             {
@@ -392,7 +409,8 @@ namespace indexer_client
             /// and join the CPU pool. Never holds `mutex` while joining: a task may still need it (client registry,
             /// seams). The deadline (fixed here) is the shutdown deadline, else now + drain; the PIT drain (E4b, I93)
             /// runs after the write path and ends min(DRAIN_STOP_MARGIN, half of what is left) before it, then the
-            /// transport stops.
+            /// transport stops. E5c: the log summary's timer stops before the write path; its last summary runs right
+            /// after the PIT drain.
             void stopAndJoin()
             {
                 std::optional<TimePoint> deadline;
@@ -409,6 +427,14 @@ namespace indexer_client
                     queryGate->stopping = true;
                 }
                 queryGate->cv.notify_all();
+                if (logSummary)
+                {
+                    logSummary->stop(); // No re-arm afterwards; the final summary comes after the PIT drain.
+                }
+                if (summaryTimers)
+                {
+                    summaryTimers->stop();
+                }
                 if (writePath)
                 {
                     // I99: the completions still queued start no callback past stopDeadline - callbackBudget.
@@ -421,6 +447,12 @@ namespace indexer_client
                     const auto left = std::chrono::duration_cast<Duration>(
                         std::max(stopDeadline - std::chrono::steady_clock::now(), TimePoint::duration::zero()));
                     pits->drain(stopDeadline - std::min(query::DRAIN_STOP_MARGIN, left / 2));
+                }
+                if (logSummary)
+                {
+                    // The last summary, synchronous (runtime/logSummary.hpp): after the sweep's Dropped(Shutdown) and
+                    // the deletes the drain gave up. No mutex held; the loops still run, the timer is stopped.
+                    logSummary->finish();
                 }
                 if (pitTimers)
                 {
@@ -464,6 +496,34 @@ namespace indexer_client
                 return state->shutdownDeadline;
             }
             return std::nullopt;
+        }
+    } // namespace detail
+
+    namespace detail
+    {
+        std::vector<std::shared_ptr<ClientState>> runtimeLiveClients(const std::weak_ptr<RuntimeState>& runtime)
+        {
+            std::vector<std::weak_ptr<ClientState>> weak;
+            if (auto state = runtime.lock())
+            {
+                std::lock_guard<std::mutex> lock(state->mutex);
+                weak.reserve(state->clients.size());
+                for (const auto& entry : state->clients)
+                {
+                    weak.push_back(entry.second.state);
+                }
+            }
+            // Locked outside the runtime mutex: a client whose last reference dies here releases its name under it.
+            std::vector<std::shared_ptr<ClientState>> alive;
+            alive.reserve(weak.size());
+            for (const auto& entry : weak)
+            {
+                if (auto client = entry.lock())
+                {
+                    alive.push_back(std::move(client));
+                }
+            }
+            return alive;
         }
     } // namespace detail
 
@@ -619,6 +679,7 @@ namespace indexer_client
             return Result::failure(Cause::InvalidArgument, "consumer name must not be empty");
         }
         std::set<std::string_view> names;
+        std::map<std::string, std::size_t> metricNames; // E5c (metrics.hpp CATALOG): sanitized name -> first index.
         for (std::size_t i = 0; i < buckets.size(); ++i)
         {
             if (auto reason = validateBucket(buckets[i], i, state->config.globalQuotaBytes); !reason.empty())
@@ -631,7 +692,16 @@ namespace indexer_client
                                        "buckets[" + std::to_string(i) + "].name '" + buckets[i].name +
                                            "' is duplicated");
             }
+            const auto [clash, fresh] = metricNames.emplace(sanitizeMetricName(buckets[i].name), i);
+            if (!fresh)
+            {
+                return Result::failure(Cause::InvalidArgument,
+                                       "buckets[" + std::to_string(i) + "].name '" + buckets[i].name +
+                                           "' has the same metric name ('" + clash->first + "') as buckets[" +
+                                           std::to_string(clash->second) + "]");
+            }
         }
+        auto metricName = sanitizeMetricName(consumer);
 
         auto clientState = std::make_shared<detail::ClientState>();
         clientState->runtime = state;
@@ -651,12 +721,24 @@ namespace indexer_client
                 clientState->nameReleased = true;
                 return Result::failure(Cause::InvalidState, "the runtime is shutting down");
             }
-            if (!state->clients.insert(clientState->consumer).second)
+            if (state->clients.count(clientState->consumer) != 0)
             {
                 clientState->nameReleased = true;
                 return Result::failure(Cause::InvalidArgument,
                                        "consumer '" + clientState->consumer + "' already has a live client");
             }
+            for (const auto& [name, entry] : state->clients)
+            {
+                if (entry.metricName == metricName)
+                {
+                    clientState->nameReleased = true;
+                    return Result::failure(Cause::InvalidArgument,
+                                           "consumer '" + clientState->consumer + "' has the same metric name ('" +
+                                               metricName + "') as the live consumer '" + name + "'");
+                }
+            }
+            state->clients.emplace(clientState->consumer,
+                                   detail::RuntimeState::ClientEntry {clientState, std::move(metricName)});
             // Under the runtime mutex: stopAndJoin closes the admission under it before stopping the write path, so
             // a registered client is always seen by the shutdown sweep.
             if (state->writePath)
@@ -679,6 +761,29 @@ namespace indexer_client
     MetricsSnapshot RuntimeRef::snapshot() const
     {
         MetricsSnapshot snapshot;
+        // Process-wide (metrics.hpp SCOPE): read even without a runtime.
+        const auto queries = detail::query::queryStats();
+        snapshot.queries.requests = queries.requests;
+        snapshot.queries.failovers = queries.failovers;
+        snapshot.queries.throttles = queries.throttles;
+        snapshot.queries.unavailable = queries.unavailable;
+        snapshot.queries.tooLarge = queries.tooLarge;
+        snapshot.queries.conflictRetries = queries.conflictRetries;
+        snapshot.queries.responseBytesInFlight = queries.responseBytesInFlight;
+        snapshot.queries.peakResponseBytesInFlight = queries.peakResponseBytesInFlight;
+        const auto pits = detail::query::pitStats();
+        snapshot.pit.open = pits.open;
+        snapshot.pit.reserved = pits.reserved;
+        snapshot.pit.deletesPending = pits.deletesPending;
+        snapshot.pit.created = pits.created;
+        snapshot.pit.deletesConfirmed = pits.deletesConfirmed;
+        snapshot.pit.deletesExpired = pits.deletesExpired;
+        snapshot.pit.deleteRetries = pits.deleteRetries;
+        snapshot.pit.expired = pits.expired;
+        snapshot.pit.stale = pits.stale;
+        snapshot.pit.refusedFull = pits.refusedFull;
+        snapshot.usageErrors = g_usageErrors.load();
+
         auto state = m_state.lock();
         if (!state || !state->sameEpoch(m_epoch))
         {
@@ -686,8 +791,51 @@ namespace indexer_client
         }
         snapshot.networkThreads = state->networkThreads;
         snapshot.cpuThreads = state->cpuThreads;
-        std::lock_guard<std::mutex> lock(state->mutex);
-        snapshot.clients = static_cast<std::uint32_t>(state->clients.size());
+        {
+            std::lock_guard<std::mutex> lock(state->mutex);
+            snapshot.clients = static_cast<std::uint32_t>(state->clients.size());
+        }
+        // Set by start() before the RuntimeRef exists and never reset: read without the runtime mutex.
+        if (state->writePath)
+        {
+            snapshot.globalCharge = state->writePath->budget().charge();
+            snapshot.globalQuotaBytes = state->writePath->budget().cap();
+            snapshot.retainedBytes = state->writePath->retainedBytes();
+        }
+        if (state->nodes)
+        {
+            const auto view = state->nodes->view();
+            const auto sink = state->writePath
+                                  ? std::dynamic_pointer_cast<detail::write::BulkSink>(state->writePath->sink())
+                                  : nullptr;
+            const auto sender = sink ? sink->stats() : detail::write::SenderStats {};
+            snapshot.nodes.resize(state->nodes->size());
+            for (std::size_t i = 0; i < snapshot.nodes.size(); ++i)
+            {
+                auto& node = snapshot.nodes[i];
+                node.host = state->nodes->host(i);
+                if (i < view.nodes.size())
+                {
+                    node.state = view.nodes[i].state;
+                }
+                node.transitions = state->nodes->transitions(i);
+                if (i < sender.nodes.size())
+                {
+                    const auto& slot = sender.nodes[i];
+                    node.window = slot.window;
+                    node.bulkTarget = slot.bulkTarget;
+                    node.paceMs = static_cast<std::uint64_t>(slot.pace.count());
+                    node.requests = slot.requests;
+                    node.throttled = slot.throttled;
+                    node.server5xx = slot.server5xx;
+                    node.failures = slot.failures;
+                    node.decreases429 = slot.decreases429;
+                    node.decreasesThrottled = slot.decreasesThrottled;
+                    node.decreasesLatency = slot.decreasesLatency;
+                    node.latency = slot.latency;
+                }
+            }
+        }
         return snapshot;
     }
 
@@ -861,6 +1009,10 @@ namespace indexer_client
                 state->config.globalQuotaBytes,
                 [pool = &state->pool](std::function<void()> task) { return pool->post(std::move(task)); });
             state->writePath->start(state->loops.front()->context, state->config, state->nodes, state->transport);
+            // E5c: the log summary, after the write path, the NodeSet and the PIT registry; its timer on loop 0.
+            state->summaryTimers = std::make_shared<detail::LoopTimers>(state->loops.front()->context);
+            state->logSummary = detail::logging::makeLogSummary(state);
+            state->logSummary->start();
             // The first round is armed at once on loop 0.
 #ifdef INDEXER_CLIENT_TESTING
             if (g_probeAutoStart.load())
@@ -1015,6 +1167,27 @@ namespace indexer_client
             auto state = runtime.lock();
             return (state && state->sameEpoch(epoch)) ? state->pits : nullptr;
         }
+
+        std::optional<LogSummarySources> runtimeLogSummarySources(const std::weak_ptr<RuntimeState>& runtime)
+        {
+            auto state = runtime.lock();
+            if (!state)
+            {
+                return std::nullopt;
+            }
+            return LogSummarySources {state->config.logSummaryInterval, state->writePath, state->pits};
+        }
+
+        bool
+        runtimeLogSummaryAfter(const std::weak_ptr<RuntimeState>& runtime, Duration delay, std::function<void()> task)
+        {
+            std::shared_ptr<LoopTimers> timers;
+            if (auto state = runtime.lock())
+            {
+                timers = state->summaryTimers;
+            }
+            return timers && timers->after(delay, std::move(task));
+        }
     } // namespace detail
 
 #ifdef INDEXER_CLIENT_TESTING
@@ -1070,6 +1243,45 @@ namespace indexer_client
         std::uint64_t usageErrors()
         {
             return g_usageErrors.load();
+        }
+
+        bool flushLogSummary()
+        {
+            if (t_onRuntimeThread)
+            {
+                return false; // Waiting for loop 0 from a runtime thread could wait on itself.
+            }
+            auto state = current();
+            if (!state)
+            {
+                return false;
+            }
+            auto done = std::make_shared<std::promise<void>>();
+            auto future = done->get_future();
+            {
+                // Posted under the runtime mutex while accepting, as postToIoLoop: stopAndJoin clears `accepting`
+                // under it before the loops are joined, so the task runs before they exit.
+                std::lock_guard<std::mutex> lock(state->mutex);
+                if (!state->accepting || !state->logSummary || state->loops.empty())
+                {
+                    return false;
+                }
+                asio::post(state->loops.front()->context,
+                           [summary = state->logSummary, done]()
+                           {
+                               try
+                               {
+                                   summary->flush();
+                               }
+                               catch (...)
+                               {
+                                   // The seam still returns.
+                               }
+                               done->set_value();
+                           });
+            }
+            future.wait();
+            return true;
         }
     } // namespace detail::testing
 } // namespace indexer_client

@@ -49,6 +49,12 @@ namespace indexer_client::detail
     /// Releases a consumer name so that a later client may reuse it. No-op if the runtime is gone or restarted.
     void releaseClientName(const std::weak_ptr<RuntimeState>& runtime, std::uint64_t epoch, const std::string& name);
 
+    /// E5c (N23): the live clients of a runtime, from its weak registry (written by RuntimeRef::client(), erased by
+    /// releaseClientName), locked after the runtime mutex is dropped; empty once the runtime is gone. The caller may
+    /// end up holding a client's last reference: dropping it releases the name (takes the runtime mutex) and, on a
+    /// runtime thread, destroys its buckets there.
+    std::vector<std::shared_ptr<ClientState>> runtimeLiveClients(const std::weak_ptr<RuntimeState>& runtime);
+
     /// The runtime's shutdown deadline, if beginShutdown() fixed one and the runtime is still the same epoch.
     std::optional<TimePoint> runtimeShutdownDeadline(const std::weak_ptr<RuntimeState>& runtime, std::uint64_t epoch);
 
@@ -71,6 +77,19 @@ namespace indexer_client::detail
     /// The PIT registry of a client's runtime (E4b, I90): null once that runtime is gone or another epoch runs.
     std::shared_ptr<query::PitRegistry> runtimePitRegistry(const std::weak_ptr<RuntimeState>& runtime,
                                                            std::uint64_t epoch);
+
+    /// E5c (runtime/logSummary.hpp): what the log summary reads from its runtime; nullopt once the runtime is gone.
+    struct LogSummarySources final
+    {
+        Duration interval {Duration {60000}}; ///< RuntimeConfig::logSummaryInterval.
+        std::shared_ptr<write::WritePath> writePath;
+        std::shared_ptr<query::PitRegistry> pits;
+    };
+    std::optional<LogSummarySources> runtimeLogSummarySources(const std::weak_ptr<RuntimeState>& runtime);
+
+    /// E5c: runs `task` on loop 0 once `delay` has passed, with the log summary's own timers (LoopTimers); false once
+    /// they stopped (stopAndJoin, before the write path stops) or the runtime is gone.
+    bool runtimeLogSummaryAfter(const std::weak_ptr<RuntimeState>& runtime, Duration delay, std::function<void()> task);
 
     /// One-shot completion shared by every ticket kind: set once, waited on by consumer threads only.
     template<class T>
@@ -231,6 +250,10 @@ namespace indexer_client::detail
         std::atomic<std::uint64_t> callbacksSkipped {0};
         std::atomic<std::uint64_t> callbackOverruns {0};
         std::atomic<std::int64_t> callbackMaxDurationMicros {0};
+        /// E5c (runtime/logSummary.hpp): the maximum callback duration of the current log summary interval (the summary
+        /// exchanges it with 0) and the callbackOverruns the previous summary saw (under the summary's mutex).
+        std::atomic<std::int64_t> callbackIntervalMaxMicros {0};
+        std::uint64_t overrunsLogged {0};
         /// Ops of the client resolved after requestClose(), not Dropped(ClientClosed|Shutdown) (CloseReport::drained).
         std::atomic<std::uint64_t> drained {0};
         Duration callbackBudget {Duration {200}};

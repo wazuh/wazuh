@@ -49,6 +49,7 @@
 // tag adds a second waiter. A bucket destroyed with waiters fails them ClientClosed. Groups still Building are out of
 // reach (I76). Ops resolved Dropped(Cancelled) count in `cancelled` and in resolvedDropped.
 
+#include <array>
 #include <atomic>
 #include <condition_variable>
 #include <cstdint>
@@ -61,6 +62,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "indexer_client/metrics.hpp"
 #include "indexer_client/types.hpp"
 
 namespace indexer_client::detail
@@ -199,6 +201,9 @@ namespace indexer_client::detail::write
         std::vector<std::shared_ptr<OpState>> closed;
         /// Marked by cancel(tag) (I80): the caller resolves them Dropped(Cancelled). Still in the delivered set.
         std::vector<std::shared_ptr<OpState>> cancelled;
+        /// E5c: ops skipped because they were already claimed or no longer delivered (another resolution won them):
+        /// with `closed`, what a completion with an HTTP answer counts as late results (metrics.hpp LATE RESULTS).
+        std::uint64_t skipped {0};
     };
 
     /// Outcome of Bucket::cancel (I80).
@@ -263,6 +268,46 @@ namespace indexer_client::detail::write
         std::uint64_t retained {0}; ///< Pending + delivered to the sink, not yet resolved.
         std::uint64_t charge {0};   ///< Payload + reserves currently charged.
         std::uint64_t peakCharge {0};
+        // E5c (metrics.hpp). rejectedShutdown is the Shutdown part of rejectedClosed; the arrays count resolutions
+        // (countResolved) and requeues with a counted attempt (requeue) by cause.
+        std::uint64_t rejectedShutdown {0};
+        std::array<std::uint64_t, static_cast<std::size_t>(DropCause::Count)> dropped {};
+        std::array<std::uint64_t, static_cast<std::size_t>(FailCause::Count)> failed {};
+        std::array<std::uint64_t, static_cast<std::size_t>(RetryCause::Count)> retries {};
+        std::uint64_t lateResults {0};
+        std::uint64_t retainedBytes {0}; ///< Payload of the ops in custody (pending, lane, delivered).
+        std::uint64_t bulkRequests {0};  ///< Completions of bulk requests of this bucket (any outcome).
+        std::uint64_t bulkBytes {0};     ///< Their batches' bytes.
+        LatencyHistogram latency;        ///< timings.total of those with an HTTP answer.
+    };
+
+    /// E5c (runtime/logSummary.hpp PERIODIC SUMMARY): what one bucket did in one summary interval, swapped out by
+    /// Bucket::takeLogInterval().
+    struct LogInterval final
+    {
+        /// One (cause, itemErrorType) of the unsuccessful resolutions (Failed and Dropped), first-come.
+        struct Key final
+        {
+            Cause cause {Cause::None};
+            std::string itemErrorType;
+            std::uint64_t count {0};
+        };
+        std::vector<Key> keys;   ///< At most logging::SUMMARY_KEYS.
+        std::uint64_t other {0}; ///< Unsuccessful resolutions whose key did not fit.
+        std::uint64_t accepted {0};
+        std::uint64_t ok {0};
+        std::uint64_t failed {0};
+        std::uint64_t dropped {0};
+        /// The first non-empty reason of an unsuccessful resolution, truncated to logging::SAMPLE_REASON_MAX bytes
+        /// (DEBUG only), with its key.
+        std::string sampleReason;
+        Cause sampleCause {Cause::None};
+        std::string sampleItemErrorType;
+
+        bool active() const noexcept
+        {
+            return accepted != 0 || ok != 0 || failed != 0 || dropped != 0 || !keys.empty();
+        }
     };
 
     class Bucket final : public std::enable_shared_from_this<Bucket>
@@ -403,19 +448,54 @@ namespace indexer_client::detail::write
         /// Wakes the producers blocked in this bucket (called by GlobalBudget::wakeWaiters, holding no other lock).
         void wakeWaiters();
 
-        void countResolved(Status status);
+        /// One resolution (WritePath::resolve; the writer's DropNewest without callback): resolved* and, by `cause`,
+        /// failed[] / dropped[] (metrics.hpp; an unlisted Failed cause counts in invalid_state, Failed(PayloadTooLarge)
+        /// — a single-op 413 — in client_4xx). E5c: an unsuccessful one also counts in the interval's
+        /// (cause, itemErrorType) keys, and the first `reason` of the interval is kept as its DEBUG sample.
+        void
+        countResolved(Status status, Cause cause, std::string_view itemErrorType = {}, std::string_view reason = {});
         void countInvalidArgument();
+        /// E5c: `ops` ops of a completion with an HTTP answer resolved late (metrics.hpp LATE RESULTS).
+        void countLate(std::uint64_t ops);
+        /// E5c: one completed bulk request of this bucket (`bytes` of batch); `latencyMicros` only with an HTTP answer.
+        void countBulk(std::uint64_t bytes, std::optional<std::uint64_t> latencyMicros);
         BucketStats stats() const;
+        /// The metrics of this bucket (metrics.hpp BucketMetrics), read under the bucket mutex.
+        BucketMetrics metrics() const;
+        /// BucketStats::retainedBytes alone (RuntimeRef::snapshot()'s sum).
+        std::uint64_t retainedBytes() const;
+
+        // ---- E5c logs (runtime/logSummary.hpp)
+
+        /// The interval since the previous call (keys, totals, sample), reset under the bucket mutex.
+        LogInterval takeLogInterval();
+        /// Emits the quota-edge lines decided under the bucket mutex, then the global cap's
+        /// (GlobalBudget::emitPendingLogs). Never called with a bucket mutex held: reserve() and reserveForGroup()
+        /// call it once theirs is dropped, the log summary's timer drains it too. One atomic load when nothing waits.
+        void emitPendingLogs() noexcept;
 
     private:
+        /// What tryChargeLocked did: charged, or which cap refused (the bucket's quota is checked first).
+        enum class Charge : std::uint8_t
+        {
+            Ok,
+            BucketFull,
+            GlobalFull
+        };
         /// Charges `charge` locally and globally if both fit; m_mutex held.
-        bool tryChargeLocked(std::uint64_t charge);
+        Charge tryChargeLocked(std::uint64_t charge);
         /// The DropNewest treatment of a new op (also DropOldest's fallback); m_mutex held.
         void dropNewestLocked(bool withCallback, Reservation& reservation);
         /// DropOldest: evicts the fewest oldest pending ops that make room; false (nothing evicted) if none do.
         /// `globalSurplus` = evicted payload not reused by the new op, to release after the mutex is dropped.
         bool evictOldestLocked(std::uint64_t charge, Reservation& reservation, std::uint64_t& globalSurplus);
         void addChargeLocked(std::uint64_t bytes) noexcept;
+        /// E5c quota edges, m_mutex held: the 80 % edge when the charge reaches it armed, the re-arm when the charge
+        /// crosses 70 % downwards from `before` (chargeMovedLocked), and the full edge on an overflow (overflowLocked)
+        /// only when this bucket's quota refused (`refused` == BucketFull): a global-cap refusal is the global edge's
+        /// (GlobalBudget::tryReserve). A line is only queued (m_edgeLines); emitPendingLogs() writes it.
+        void chargeMovedLocked(std::uint64_t before);
+        void overflowLocked(Charge refused);
         /// The retry-lane head is due at `now`; m_mutex held.
         bool laneDueLocked(TimePoint now) const;
         /// min(oldest pending + maxAge, retry-lane head notBefore), TimePoint::min() for a committed group's head;
@@ -484,6 +564,33 @@ namespace indexer_client::detail::write
         };
         std::vector<CancelWaiter> m_cancelWaiters;
         BucketStats m_stats;
+
+        // E5c logs (runtime/logSummary.hpp), guarded by m_mutex except m_edgePending (set under it, read without it).
+        enum class Edge : std::uint8_t
+        {
+            Quota80,
+            Full
+        };
+        struct EdgeLine final
+        {
+            Edge edge {Edge::Quota80};
+            std::uint64_t charge {0};
+        };
+        const std::uint64_t m_threshold80; ///< 80 % and 70 % of quotaBytes, rounded down.
+        const std::uint64_t m_threshold70;
+        bool m_armed80 {true};
+        bool m_armedFull {true};
+        std::vector<EdgeLine> m_edgeLines;
+        std::atomic<bool> m_edgePending {false};
+        LogInterval m_interval; ///< Keys and sample of the current interval (totals come from m_logMark).
+        struct LogMark final
+        {
+            std::uint64_t accepted {0};
+            std::uint64_t ok {0};
+            std::uint64_t failed {0};
+            std::uint64_t dropped {0};
+        };
+        LogMark m_logMark; ///< The totals at the previous takeLogInterval().
     };
 } // namespace indexer_client::detail::write
 

@@ -33,6 +33,8 @@ set(INDEXER_CLIENT_SOURCES
     src/health/nodeSet.cpp
     src/health/prober.cpp
     src/log.cpp
+    src/metrics.cpp
+    src/runtime/logSummary.cpp
     src/write/encoding.cpp
     src/write/budget.cpp
     src/write/bucket.cpp
