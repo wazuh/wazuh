@@ -20,6 +20,10 @@
 #include "registry_byte_stream.hpp"
 #include "registry_reference.hpp"
 
+#include "hashHelper.h"
+#include "wazuhCommon.hpp"
+
+#include <atomic>
 #include <chrono>
 #include <exception>
 #include <optional>
@@ -65,6 +69,45 @@ namespace
         // A port is allowed only if it is the default one, which is to say absent.
         return authority == host;
     }
+
+    /// @brief The sha256 digest of @p content, in the `sha256:<hex>` form a registry uses.
+    std::string sha256Digest(const std::string& content)
+    {
+        Utils::HashData hash {Utils::HashType::Sha256};
+        hash.update(content.data(), content.size());
+        const auto digest {hash.hash()};
+
+        return "sha256:" + wazuh::hex_encode(digest.data(), digest.size());
+    }
+
+    /// @brief Ends a stream as soon as a stop is requested.
+    ///
+    /// The transfer polls the stop flag only when the decompressor runs out of compressed
+    /// bytes, which a layer that expands a lot does rarely. Polled here as well, on every
+    /// read of the decompressed bytes, so a stop does not wait for the layer to finish.
+    class StoppableByteStream final : public containerimages::IByteStream
+    {
+        public:
+            StoppableByteStream(containerimages::IByteStream& source, const std::atomic<bool>* stopRequested)
+                : m_source {source}
+                , m_stopRequested {stopRequested}
+            {
+            }
+
+            std::size_t read(char* buffer, const std::size_t size) override
+            {
+                if (m_stopRequested != nullptr && m_stopRequested->load())
+                {
+                    return 0;
+                }
+
+                return m_source.read(buffer, size);
+            }
+
+        private:
+            containerimages::IByteStream& m_source;
+            const std::atomic<bool>* m_stopRequested;
+    };
 
     /// @brief The media types a manifest request is willing to receive.
     std::string acceptHeader()
@@ -332,8 +375,10 @@ namespace containerimages
         {
             const auto* configured {m_context.config->credentialsFor(m_reference.registry)};
 
+            // The reason is kept with the host, so a private reference that follows it in
+            // this scan, and no longer sends the credential, can still say why.
             const auto firstReport {m_context.refusedCredentialHosts == nullptr ||
-                                    m_context.refusedCredentialHosts->insert(m_reference.registry).second};
+                                    m_context.refusedCredentialHosts->emplace(m_reference.registry, credentialError).second};
 
             if (firstReport)
             {
@@ -354,6 +399,7 @@ namespace containerimages
 
     bool RegistryImageReader::fetchManifest(const std::string& identifier,
                                             nlohmann::json& document,
+                                            std::string& digest,
                                             std::string& error)
     {
         const auto url {"https://" + m_reference.registry + "/v2/" + m_reference.repository + "/manifests/" +
@@ -373,8 +419,10 @@ namespace containerimages
             if (!authenticate(challengeHeader, error))
             {
                 // A credential the registry refused does not stop a public reference on the
-                // same host, so it is tried once without it.
-                if (!m_credentialRefused || !readAnonymously(url, challengeHeader, response, error))
+                // same host, so it is tried once without it. Not again for a host that
+                // already refused it in this scan: the anonymous attempt just failed.
+                if (!m_credentialRefused || !m_hostRefusal.empty() ||
+                        !readAnonymously(url, challengeHeader, response, error))
                 {
                     return false;
                 }
@@ -404,6 +452,14 @@ namespace containerimages
                 }
                 else if (!answered || unauthorized)
                 {
+                    // A private reference on a host whose credential was refused earlier in
+                    // this scan is refused here for want of it, and the reason worth giving
+                    // is the one the registry gave then.
+                    if (!m_hostRefusal.empty() && (unauthorized || forbidden))
+                    {
+                        error = m_hostRefusal;
+                    }
+
                     return false;
                 }
             }
@@ -415,6 +471,15 @@ namespace containerimages
         {
             error = "the registry returned a manifest that could not be parsed";
             return false;
+        }
+
+        // What the registry says it served, else the digest the request named, else the
+        // digest of the bytes as served. Metadata only, never part of an identity.
+        digest = response.header("docker-content-digest");
+
+        if (!oci::isSafeDigest(digest))
+        {
+            digest = oci::isSafeDigest(identifier) ? identifier : sha256Digest(response.body);
         }
 
         return true;
@@ -459,6 +524,7 @@ namespace containerimages
             // consumed snapshot is discarded with the stream that produced it.
             LayerSnapshot snapshot;
             std::string failedCause;
+            bool skipped {false};
 
             // The size the manifest declares, which is what the transfer will deliver.
             // Zero when the manifest does not say, which leaves the ceiling to decide.
@@ -503,14 +569,50 @@ namespace containerimages
 
                 const auto blob {openBlob(url, headers, remaining)};
                 LayerByteStream decompressed {*blob};
+                const auto supported {isCompressionSupported(decompressed.compression())};
 
-                snapshot = readLayerSnapshot(decompressed);
+                // Bounded like the archive reader bounds a layer: the byte ceiling counts
+                // compressed bytes, so a small blob can still expand without limit.
+                StoppableByteStream stoppable {decompressed, m_context.stopRequested};
+                BoundedByteStream bounded {stoppable, limits.maxLayerDecompressedBytes};
+
+                if (supported)
+                {
+                    snapshot = readLayerSnapshot(bounded);
+                }
 
                 m_imageBytes += blob->bytesDelivered();
 
                 if (m_context.scanBytes != nullptr)
                 {
                     *m_context.scanBytes += blob->bytesDelivered();
+                }
+
+                if (!supported)
+                {
+                    logWarn("NOT IMPLEMENTED: layer '" + digest.substr(0, 19) + "' of '" + m_location + "' is " +
+                            compressionName(decompressed.compression()) +
+                            " compressed, which is recognized but not supported yet. Skipping it.");
+                    skipped = true;
+                    break;
+                }
+
+                // Reaching the limit ends the read like a truncated layer does, which a layer
+                // of exactly that size does too. Only bytes still left past it tell them apart.
+                char beyond {};
+
+                if (bounded.remaining() == 0 && stoppable.read(&beyond, 1) > 0)
+                {
+                    error = "layer " + digest.substr(0, 19) + " expands to more than " +
+                            std::to_string(limits.maxLayerDecompressedBytes) + " decompressed bytes, which is the limit";
+                    return false;
+                }
+
+                if (!blob->failed() && !snapshot.complete && m_context.stopRequested != nullptr &&
+                        m_context.stopRequested->load())
+                {
+                    error = "the module was asked to stop";
+                    return false;
                 }
 
                 if (!blob->failed())
@@ -579,6 +681,11 @@ namespace containerimages
                 }
             }
 
+            if (skipped)
+            {
+                continue;
+            }
+
             if (!snapshot.complete)
             {
                 error = "layer " + digest.substr(0, 19) + " is malformed";
@@ -638,6 +745,21 @@ namespace containerimages
                 return ImageReadResult::failed();
             }
 
+            if (m_context.refusedCredentialHosts != nullptr)
+            {
+                const auto refused {m_context.refusedCredentialHosts->find(m_reference.registry)};
+
+                if (refused != m_context.refusedCredentialHosts->end())
+                {
+                    // Refused earlier in this scan: asking again would cost two token requests
+                    // per reference to hear the same answer.
+                    m_credentialRefused = true;
+                    m_hostRefusal = refused->second;
+                    logDebug("Reference '" + m_location + "': the credential for " + m_reference.registry +
+                             " was refused earlier in this scan, so it is not sent.");
+                }
+            }
+
             const auto bundle {resolveCaBundle(m_context.config->caBundle)};
 
             if (!bundle.found())
@@ -659,8 +781,9 @@ namespace containerimages
             }
 
             nlohmann::json document;
+            std::string manifestDigest;
 
-            if (!fetchManifest(m_reference.identifier(), document, error))
+            if (!fetchManifest(m_reference.identifier(), document, manifestDigest, error))
             {
                 logWarn("Reference '" + m_location + "' could not be resolved: " + error + ".");
                 return ImageReadResult::failed();
@@ -674,7 +797,9 @@ namespace containerimages
                 return ImageReadResult::failed();
             }
 
-            if (!selected.digest.empty() && !fetchManifest(selected.digest, document, error))
+            std::string selectedDigest;
+
+            if (!selected.digest.empty() && !fetchManifest(selected.digest, document, selectedDigest, error))
             {
                 logWarn("Reference '" + m_location + "' could not be resolved: " + error + ".");
                 return ImageReadResult::failed();
@@ -716,7 +841,9 @@ namespace containerimages
             }
 
             record.configDigest = configDigest;
-            record.manifestDigest = selected.digest;
+            // The entry of an index names its manifest. A reference that pointed straight at
+            // one has no entry, and the manifest it fetched is the one.
+            record.manifestDigest = selected.digest.empty() ? manifestDigest : selected.digest;
 
             // The configuration blob is the authority on the platform, which is why it is
             // read even for a reference that named its platform in an index entry.

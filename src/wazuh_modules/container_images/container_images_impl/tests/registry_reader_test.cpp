@@ -11,6 +11,7 @@
 #include "ci_logging_helper.hpp"
 #include "container_images_config.hpp"
 #include "credential_provider.hpp"
+#include "image_fixtures.hpp"
 #include "registry_byte_stream.hpp"
 #include "registry_image_reader.hpp"
 #include "registry_transport.hpp"
@@ -18,9 +19,11 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <map>
 #include <set>
 #include <string>
@@ -152,9 +155,11 @@ namespace
         std::uint64_t delivered {0}; ///< What bytesDelivered() reports, whatever was actually read.
         bool abortedLocally {false};
         std::string retryAfter;
+        std::string content;         ///< What the blob serves, an empty tar when left empty.
+        std::function<void()> onEnd; ///< Called once the last byte of @ref content was served.
     };
 
-    /// @brief A layer blob that needs no network: an empty tar, or a scripted failure.
+    /// @brief A layer blob that needs no network: an empty tar, a scripted body or a scripted failure.
     class ScriptedBlob final : public IBlobStream
     {
         public:
@@ -166,7 +171,28 @@ namespace
             std::size_t read(char* buffer, const std::size_t size) override
             {
                 // A failed transfer reads as empty, as the real one does.
-                if (m_outcome.failed || m_sent >= TAR_END_OF_ARCHIVE)
+                if (m_outcome.failed)
+                {
+                    return 0;
+                }
+
+                if (!m_outcome.content.empty())
+                {
+                    const auto left {m_outcome.content.size() - m_sent};
+                    const auto served {std::min(size, left)};
+
+                    std::copy_n(m_outcome.content.data() + m_sent, served, buffer);
+                    m_sent += served;
+
+                    if (served > 0 && m_sent == m_outcome.content.size() && m_outcome.onEnd)
+                    {
+                        m_outcome.onEnd();
+                    }
+
+                    return served;
+                }
+
+                if (m_sent >= TAR_END_OF_ARCHIVE)
                 {
                     return 0;
                 }
@@ -352,7 +378,7 @@ class RegistryReaderTest : public ::testing::Test
         std::unique_ptr<RegistryImageReader> reader(const std::string& location,
                                                     const std::string& knownDigest = {})
         {
-            const ReaderContext context {&m_config, &m_credentials, &m_scanBytes, nullptr, &m_refusedHosts};
+            const ReaderContext context {&m_config, &m_credentials, &m_scanBytes, &m_stop, &m_refusedHosts};
             auto instance {std::make_unique<RegistryImageReader>(location, knownDigest, context)};
             instance->setTransport(std::unique_ptr<IRegistryTransport>(m_transport));
 
@@ -373,7 +399,8 @@ class RegistryReaderTest : public ::testing::Test
         ContainerImagesConfig m_config;
         StubCredentials m_credentials;
         std::uint64_t m_scanBytes {0};
-        std::set<std::string> m_refusedHosts; ///< What one scan shares across its references.
+        std::map<std::string, std::string> m_refusedHosts; ///< What one scan shares across its references.
+        std::atomic<bool> m_stop {false};
         ScriptedTransport* m_transport {nullptr}; ///< Owned by the reader once injected.
 };
 
@@ -694,6 +721,87 @@ TEST_F(RegistryImageNameTest, ADigestOnItsOwnIsNamedByItsRepositoryAndDigest)
     EXPECT_TRUE(record.tags.empty());
 }
 
+// The manifest digest is metadata, and an image read by its manifest has no index entry to
+// take it from.
+class RegistryManifestDigestTest : public RegistryReaderTest
+{
+    protected:
+        /// A compact manifest, so the digest of its bytes is stated rather than computed here.
+        static constexpr auto BARE_MANIFEST =
+            R"({"mediaType":"application/vnd.oci.image.manifest.v1+json","config":{"digest":"sha256:cccc3333"},"layers":[]})";
+        static constexpr auto BARE_MANIFEST_SHA256 =
+            "sha256:b4bf1501963ec03e3ffcb408df4129ea9db23229c847d077be1f55e206850118";
+
+        ImageReferenceRecord discovered(const std::string& location, HttpResponse manifest)
+        {
+            m_transport->answers.push_back({"/manifests/", std::move(manifest)});
+            m_transport->answers.push_back({"/blobs/sha256:cccc3333", json(200, configBlob())});
+
+            const auto instance = reader(location);
+            auto result {instance->discover()};
+
+            EXPECT_EQ(result.status, ReadStatus::Success) << location;
+            EXPECT_EQ(result.records.size(), 1u) << location;
+
+            if (result.records.empty())
+            {
+                return {};
+            }
+
+            return result.records.front();
+        }
+};
+
+TEST_F(RegistryManifestDigestTest, AReferenceResolvedThroughAnIndexCarriesTheDigestOfItsEntry)
+{
+    m_transport->answers.push_back({"/manifests/sha256:aaaa1111", json(200, MANIFEST)});
+    m_transport->answers.push_back({"/manifests/", json(200, index())});
+    m_transport->answers.push_back({"/blobs/sha256:cccc3333", json(200, configBlob())});
+
+    const auto instance = reader("ghcr.io/owner/app:1.0");
+    const auto result {instance->discover()};
+
+    ASSERT_EQ(result.records.size(), 1u);
+    EXPECT_EQ(result.records.front().manifestDigest, "sha256:aaaa1111");
+}
+
+TEST_F(RegistryManifestDigestTest, ASingleManifestCarriesTheDigestTheRegistryReports)
+{
+    auto manifest {json(200, BARE_MANIFEST)};
+    manifest.headers["docker-content-digest"] = "sha256:5e5e5e5e";
+
+    EXPECT_EQ(discovered("ghcr.io/owner/app:1.0", manifest).manifestDigest, "sha256:5e5e5e5e");
+}
+
+TEST_F(RegistryManifestDigestTest, TheDigestAReferenceIsPinnedToIsUsedWhenTheRegistryReportsNone)
+{
+    const std::string pinned {"sha256:2f3a4b5c6d7e8f9001122334455667788"};
+
+    EXPECT_EQ(discovered("ghcr.io/owner/app@" + pinned, json(200, BARE_MANIFEST)).manifestDigest, pinned);
+}
+
+TEST_F(RegistryManifestDigestTest, TheHeaderWinsOverTheDigestAReferenceIsPinnedTo)
+{
+    auto manifest {json(200, BARE_MANIFEST)};
+    manifest.headers["docker-content-digest"] = "sha256:5e5e5e5e";
+
+    EXPECT_EQ(discovered("ghcr.io/owner/app@sha256:2f3a4b5c6d7e8f9001122334455667788", manifest).manifestDigest,
+              "sha256:5e5e5e5e");
+}
+
+TEST_F(RegistryManifestDigestTest, ATaggedSingleManifestWithNoHeaderIsHashedAsServed)
+{
+    EXPECT_EQ(discovered("ghcr.io/owner/app:1.0", json(200, BARE_MANIFEST)).manifestDigest, BARE_MANIFEST_SHA256);
+}
+
+TEST_F(RegistryManifestDigestTest, AHeaderThatIsNotADigestIsIgnored)
+{
+    auto manifest {json(200, BARE_MANIFEST)};
+    manifest.headers["docker-content-digest"] = "not a digest";
+
+    EXPECT_EQ(discovered("ghcr.io/owner/app:1.0", manifest).manifestDigest, BARE_MANIFEST_SHA256);
+}
+
 // The token exchange is a request like any other: the first one of every scan against a
 // private repository, and as exposed to throttling and resets as a manifest request.
 class RegistryTokenRetryTest : public RegistryReaderTest
@@ -824,6 +932,25 @@ class RegistryCredentialFallbackTest : public RegistryReaderTest
             m_transport->answers.push_back({"/manifests/1.0", challenge()});
             m_transport->sequences.push_back(
             {"/token", {credentialedAnswer, json(200, R"({"token":"anonymous-token"})")}, 0});
+        }
+
+        /// @brief A public reference on a host that refused the credential earlier in the scan:
+        /// no credential is presented, so the anonymous token is the only one asked for.
+        void scriptPublicReferenceWithoutCredential()
+        {
+            m_transport->sequences.push_back({"/manifests/1.0", {challenge(), json(200, MANIFEST)}, 0});
+            m_transport->answers.push_back({"/token", json(200, R"({"token":"anonymous-token"})")});
+            m_transport->answers.push_back({"/blobs/sha256:cccc3333", json(200, configBlob())});
+        }
+
+        std::size_t credentialedTokenCalls() const
+        {
+            return static_cast<std::size_t>(std::count_if(m_transport->calls.begin(),
+                                                          m_transport->calls.end(),
+                                                          [](const ScriptedTransport::Call & call)
+            {
+                return call.basic && call.url.find("/token") != std::string::npos;
+            }));
         }
 
         std::size_t anonymousTokenCalls() const
@@ -1091,7 +1218,7 @@ TEST_F(RegistryCredentialFallbackTest, TheRefusalIsReportedOncePerScanAndHost)
 
     // A second reference on the same host, in the same scan.
     m_transport = new ScriptedTransport();
-    scriptPublicReference(json(403, ""));
+    scriptPublicReferenceWithoutCredential();
 
     const auto second = reader("ghcr.io/owner/app:1.0");
 
@@ -1109,7 +1236,40 @@ TEST_F(RegistryCredentialFallbackTest, TheRefusalIsReportedOncePerScanAndHost)
     EXPECT_EQ(warningsMentioning("The credential configured for ghcr.io"), 2u);
 }
 
-TEST_F(RegistryCredentialFallbackTest, AnAnonymousFallbackDoesNotChangeHowTheNextReferenceAuthenticates)
+TEST_F(RegistryCredentialFallbackTest, ARefusedCredentialIsNotSentAgainToTheHostInTheSameScan)
+{
+    // Five public references on one host. Only the first one pays for the refusal, with one
+    // credentialed token request. Every other reference asks for its anonymous token only.
+    constexpr std::size_t REFERENCES {5};
+    std::size_t credentialed {0};
+    std::size_t anonymous {0};
+
+    for (std::size_t index = 0; index < REFERENCES; ++index)
+    {
+        m_transport = new ScriptedTransport();
+
+        if (index == 0)
+        {
+            scriptPublicReference(json(403, ""));
+        }
+        else
+        {
+            scriptPublicReferenceWithoutCredential();
+        }
+
+        const auto instance = reader("ghcr.io/owner/app:1.0");
+
+        EXPECT_EQ(instance->discover().status, ReadStatus::Success) << index;
+        credentialed += credentialedTokenCalls();
+        anonymous += anonymousTokenCalls();
+    }
+
+    EXPECT_EQ(credentialed, 1u);
+    EXPECT_EQ(anonymous, REFERENCES);
+    EXPECT_EQ(warningsMentioning("The credential configured for ghcr.io"), 1u);
+}
+
+TEST_F(RegistryCredentialFallbackTest, ThePresentedCredentialIsRememberedPerScanOnly)
 {
     scriptPublicReference(json(403, ""));
 
@@ -1118,7 +1278,8 @@ TEST_F(RegistryCredentialFallbackTest, AnAnonymousFallbackDoesNotChangeHowTheNex
         EXPECT_EQ(first->discover().status, ReadStatus::Success);
     }
 
-    // The next reference's credential is accepted, and it is the one presented.
+    // The next scan starts with nothing refused, so the credential is presented again.
+    m_refusedHosts.clear();
     m_transport = new ScriptedTransport();
     m_transport->sequences.push_back({"/manifests/1.0", {challenge(), json(200, MANIFEST)}, 0});
     m_transport->answers.push_back({"/token", json(200, R"({"token":"scripted-token"})")});
@@ -1127,13 +1288,12 @@ TEST_F(RegistryCredentialFallbackTest, AnAnonymousFallbackDoesNotChangeHowTheNex
     const auto second = reader("ghcr.io/owner/app:1.0");
 
     EXPECT_EQ(second->discover().status, ReadStatus::Success);
-    ASSERT_EQ(m_transport->countMatching("/token"), 1u);
+    ASSERT_EQ(credentialedTokenCalls(), 1u);
 
     for (const auto& call : m_transport->calls)
     {
         if (call.url.find("/token") != std::string::npos)
         {
-            EXPECT_TRUE(call.basic);
             EXPECT_EQ(call.user, USER);
         }
 
@@ -1142,6 +1302,59 @@ TEST_F(RegistryCredentialFallbackTest, AnAnonymousFallbackDoesNotChangeHowTheNex
             EXPECT_EQ(call.headers[1], "Authorization: Bearer scripted-token");
         }
     }
+}
+
+TEST_F(RegistryCredentialFallbackTest, APrivateReferenceAfterARefusalReportsTheOriginalReasonWithoutSendingTheCredential)
+{
+    scriptPublicReference(json(403, ""));
+
+    {
+        const auto first = reader("ghcr.io/owner/app:1.0");
+        ASSERT_EQ(first->discover().status, ReadStatus::Success);
+    }
+
+    // A private reference on the same host: the anonymous token is issued and does not open
+    // it, as on a first reference, and what the user is told is what the registry said of
+    // the credential.
+    m_warnings.clear();
+    m_transport = new ScriptedTransport();
+    scriptPrivateReference(json(200, R"({"token":"anonymous-token"})"));
+
+    const auto second = reader("ghcr.io/owner/private:1.0");
+
+    EXPECT_EQ(second->discover().status, ReadStatus::Failed);
+    EXPECT_EQ(credentialedTokenCalls(), 0u);
+    ASSERT_EQ(m_warnings.size(), 1u);
+    EXPECT_NE(m_warnings.front().find("could not be resolved: the token request failed: the registry answered 403."),
+              std::string::npos)
+            << m_warnings.front();
+}
+
+TEST_F(RegistryCredentialFallbackTest, ARefusalAtTheManifestIsTheReasonAPrivateReferenceAfterItReports)
+{
+    m_transport->sequences.push_back({"/manifests/1.0", {challenge(), json(401, ""), json(200, MANIFEST)}, 0});
+    m_transport->sequences.push_back(
+    {"/token", {json(200, R"({"token":"scoped-token"})"), json(200, R"({"token":"anonymous-token"})")}, 0});
+    m_transport->answers.push_back({"/blobs/sha256:cccc3333", json(200, configBlob())});
+
+    {
+        const auto first = reader("ghcr.io/owner/app:1.0");
+        ASSERT_EQ(first->discover().status, ReadStatus::Success);
+    }
+
+    m_warnings.clear();
+    m_transport = new ScriptedTransport();
+    m_transport->sequences.push_back({"/manifests/1.0", {challenge(), json(403, "")}, 0});
+    m_transport->answers.push_back({"/token", json(200, R"({"token":"anonymous-token"})")});
+
+    const auto second = reader("ghcr.io/owner/private:1.0");
+
+    EXPECT_EQ(second->discover().status, ReadStatus::Failed);
+    EXPECT_EQ(credentialedTokenCalls(), 0u);
+    ASSERT_EQ(m_warnings.size(), 1u);
+    EXPECT_NE(m_warnings.front().find("could not be resolved: the registry rejected the credential."),
+              std::string::npos)
+            << m_warnings.front();
 }
 
 // What a layer does when its transfer fails. The transfer is stood in for by a scripted
@@ -1458,4 +1671,197 @@ TEST_F(RegistryLayerRetryTest, ARefreshIsAttemptedOnlyOncePerReference)
 
     EXPECT_EQ(instance->discover().status, ReadStatus::Failed);
     EXPECT_EQ(m_transport->countMatching("/token"), 1u);
+}
+
+// What is done with the bytes of a layer once they have arrived. The compressed size is
+// bounded by the image allowance, and the decompressed size is bounded separately: a small
+// blob can expand into far more than anything the module could need to read.
+class RegistryLayerContentTest : public RegistryLayerRetryTest
+{
+    protected:
+        static constexpr auto MANIFEST_WITH_TWO_LAYERS = R"({"mediaType":"application/vnd.oci.image.manifest.v1+json",
+            "config":{"digest":"sha256:cccc3333"},"layers":[{"digest":"sha256:dddd4444"},{"digest":"sha256:eeee5555"}]})";
+
+        void SetUp() override
+        {
+            RegistryLayerRetryTest::SetUp();
+
+            LoggingHelper::setLogCallback([this](const modules_log_level_t level, const char* message)
+            {
+                if (level == LOG_WARNING)
+                {
+                    m_warnings.push_back(message);
+                }
+            });
+        }
+
+        void TearDown() override
+        {
+            LoggingHelper::setLogCallback({});
+            RegistryLayerRetryTest::TearDown();
+        }
+
+        /// @brief A layer outcome that serves @p content.
+        static BlobOutcome serving(const std::string& content)
+        {
+            BlobOutcome outcome;
+            outcome.content = content;
+            outcome.delivered = content.size();
+
+            return outcome;
+        }
+
+        /// @brief A layer holding one regular file of @p size zero bytes, which is all a
+        /// decompression bomb needs: a header that promises content, then the content.
+        static std::string tarOfZeros(const std::size_t size)
+        {
+            return imagefixtures::tarMember("bomb", std::string(size, '\0')) + imagefixtures::tarEnd();
+        }
+
+        static std::string layerWithOnePackage()
+        {
+            return imagefixtures::tarMember("var/lib/dpkg/status", imagefixtures::dpkgStanza("bash", "5.2.15")) +
+                   imagefixtures::tarEnd();
+        }
+
+        std::size_t warningsMentioning(const std::string& fragment) const
+        {
+            return static_cast<std::size_t>(std::count_if(m_warnings.begin(),
+                                                          m_warnings.end(),
+                                                          [&fragment](const std::string & line)
+            {
+                return line.find(fragment) != std::string::npos;
+            }));
+        }
+
+        std::vector<std::string> m_warnings;
+};
+
+TEST_F(RegistryLayerContentTest, ALayerThatExpandsPastTheLimitFailsTheReference)
+{
+    m_config.limits.maxLayerDecompressedBytes = 64 * 1024;
+
+    const auto bomb {tarOfZeros(1024 * 1024)};
+
+    const std::vector<std::string> blobs {imagefixtures::gzip(bomb), imagefixtures::zstd(bomb)};
+
+    for (const auto& blob : blobs)
+    {
+        m_warnings.clear();
+        m_transport = new ScriptedTransport();
+        m_transport->answers.push_back({"/token", json(200, R"({"token":"scripted-token"})")});
+        m_transport->answers.push_back({"/manifests/1.0", json(200, MANIFEST_WITH_A_LAYER)});
+        m_transport->answers.push_back({"/blobs/sha256:cccc3333", json(200, configBlob())});
+
+        // A compressed blob far below any allowance, so only the decompressed bound can stop it.
+        EXPECT_LT(blob.size(), 16u * 1024u);
+
+        const auto instance = layerReader({serving(blob)});
+        const auto result {instance->discover()};
+
+        EXPECT_EQ(result.status, ReadStatus::Failed);
+        EXPECT_TRUE(result.records.empty()) << "no inventory is produced for a failed reference";
+        EXPECT_EQ(m_attemptLimits.size() % 2, 1u) << "the layer was not retried";
+        ASSERT_EQ(m_warnings.size(), 1u);
+        EXPECT_NE(m_warnings.front().find("layer sha256:dddd4444 expands to more than 65536 decompressed bytes"),
+                  std::string::npos)
+                << m_warnings.front();
+        m_attemptLimits.clear();
+    }
+}
+
+TEST_F(RegistryLayerContentTest, ALayerThatIsExactlyTheLimitIsInventoried)
+{
+    const auto layer {layerWithOnePackage()};
+    m_config.limits.maxLayerDecompressedBytes = layer.size();
+
+    const auto instance = layerReader({serving(imagefixtures::gzip(layer))});
+    const auto result {instance->discover()};
+
+    ASSERT_EQ(result.status, ReadStatus::Success);
+    ASSERT_EQ(result.records.size(), 1u);
+    EXPECT_EQ(result.records.front().packages.size(), 1u);
+}
+
+TEST_F(RegistryLayerContentTest, ALayerOneByteOverTheLimitFailsTheReference)
+{
+    // The limit falls one byte short of the end of the file the layer holds, so the layer has
+    // bytes left past it that the parser needed.
+    const auto layer {layerWithOnePackage()};
+    m_config.limits.maxLayerDecompressedBytes = layer.size() - imagefixtures::tarEnd().size() - 1;
+
+    const auto instance = layerReader({serving(imagefixtures::gzip(layer))});
+
+    EXPECT_EQ(instance->discover().status, ReadStatus::Failed);
+}
+
+TEST_F(RegistryLayerContentTest, ALayerUnderTheProductionLimitIsInventoried)
+{
+    const auto instance = layerReader({serving(imagefixtures::gzip(layerWithOnePackage()))});
+    const auto result {instance->discover()};
+
+    EXPECT_EQ(m_config.limits.maxLayerDecompressedBytes, MAX_LAYER_DECOMPRESSED_SIZE);
+    EXPECT_EQ(MAX_LAYER_DECOMPRESSED_SIZE, 8ULL * 1024 * 1024 * 1024);
+    ASSERT_EQ(result.status, ReadStatus::Success);
+    ASSERT_EQ(result.records.size(), 1u);
+    EXPECT_EQ(result.records.front().packages.size(), 1u);
+}
+
+TEST_F(RegistryLayerContentTest, AStopDuringALongDecompressedReadEndsTheReferenceAtOnce)
+{
+    // The blob is delivered whole by its first refill, so the compressed input never runs
+    // out while the layer expands, and the transfer's own stop check is never reached.
+    auto blob {serving(imagefixtures::gzip(tarOfZeros(16 * 1024 * 1024)))};
+    blob.onEnd = [this]
+    {
+        m_stop = true;
+    };
+
+    const auto instance = layerReader({blob});
+    const auto result {instance->discover()};
+
+    EXPECT_EQ(result.status, ReadStatus::Failed);
+    EXPECT_EQ(warningsMentioning("could not be read: the module was asked to stop."), 1u);
+}
+
+TEST_F(RegistryLayerContentTest, AnUnsupportedCompressionIsReportedAndTheLayerSkipped)
+{
+    // An xz signature followed by what could be anything: not read as tar, not read as empty.
+    const auto xz {std::string {"\xfd\x37\x7a\x58\x5a\x00", 6} + " compressed bytes this reader cannot expand"};
+
+    m_transport->answers[1].second = json(200, MANIFEST_WITH_TWO_LAYERS);
+
+    const auto instance = layerReader({serving(xz), serving(imagefixtures::gzip(layerWithOnePackage()))});
+    const auto result {instance->discover()};
+
+    // The archive reader skips such a layer and goes on, and so does this one.
+    ASSERT_EQ(result.status, ReadStatus::Success);
+    ASSERT_EQ(result.records.size(), 1u);
+    EXPECT_EQ(result.records.front().packages.size(), 1u);
+    EXPECT_EQ(m_attemptLimits.size(), 2u);
+    ASSERT_EQ(warningsMentioning("NOT IMPLEMENTED: layer 'sha256:dddd4444'"), 1u);
+    EXPECT_EQ(warningsMentioning("is xz compressed"), 1u);
+}
+
+TEST_F(RegistryLayerContentTest, EachUnsupportedCompressionIsNamed)
+{
+    const std::vector<std::pair<std::string, std::string>> blobs
+    {
+        {std::string {"\x42\x5a\x68", 3} + "91AY&SY", "bzip2"},
+        {std::string {"\x04\x22\x4d\x18", 4} + " frame", "lz4"},
+    };
+
+    for (const auto& [content, name] : blobs)
+    {
+        m_warnings.clear();
+        m_transport = new ScriptedTransport();
+        m_transport->answers.push_back({"/token", json(200, R"({"token":"scripted-token"})")});
+        m_transport->answers.push_back({"/manifests/1.0", json(200, MANIFEST_WITH_A_LAYER)});
+        m_transport->answers.push_back({"/blobs/sha256:cccc3333", json(200, configBlob())});
+
+        const auto instance = layerReader({serving(content)});
+
+        EXPECT_EQ(instance->discover().status, ReadStatus::Success) << name;
+        EXPECT_EQ(warningsMentioning("is " + name + " compressed"), 1u) << name;
+    }
 }
