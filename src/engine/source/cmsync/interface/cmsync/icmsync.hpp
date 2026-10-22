@@ -32,8 +32,11 @@ public:
 
     /**
      * @brief Run one content cycle per tracked space and record what came of it.
+     *
+     * @return true if a space ended the run without a route although its policy is not known to be disabled
+     *         (indexer failure, content not published or consumer not ready yet), so an earlier run is worthwhile.
      */
-    virtual void synchronize() = 0;
+    virtual bool synchronize() = 0;
 
     /**
      * @brief Request graceful shutdown of in-flight synchronization operations.

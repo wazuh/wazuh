@@ -64,6 +64,47 @@ TEST_F(TriggerableTaskTest, StartRegistersARecurringTaskWithoutAnImmediateRun)
     EXPECT_EQ(runs, 1);
 }
 
+TEST_F(TriggerableTaskTest, StartCanRunTheFirstRecurringRunNowAtTheFront)
+{
+    scheduler::TriggerableTask task {m_scheduler, "task", 60, 0, []() {}};
+
+    recordSchedules();
+    EXPECT_CALL(*m_scheduler, scheduleTaskFirst(std::string_view {"task"}));
+    task.start(/*runNow=*/true);
+
+    ASSERT_EQ(m_names.size(), 1U);
+    EXPECT_EQ(m_names[0], "task") << "the recurring task itself, so nextInterval follows that first run";
+    EXPECT_EQ(m_configs[0].interval, 60U);
+    EXPECT_TRUE(m_configs[0].runImmediately);
+}
+
+TEST_F(TriggerableTaskTest, TheRecurringTaskCarriesNextIntervalAndRequestRunsDoNot)
+{
+    scheduler::TriggerableTask task {m_scheduler, "task", 60, 0, []() {}, []() -> std::size_t { return 5; }};
+
+    recordSchedules();
+    allowMovesToTheFront();
+    task.start();
+    task.trigger();
+
+    ASSERT_EQ(m_configs.size(), 2U);
+    ASSERT_TRUE(static_cast<bool>(m_configs[0].nextInterval));
+    EXPECT_EQ(m_configs[0].nextInterval(), 5U);
+    EXPECT_FALSE(static_cast<bool>(m_configs[1].nextInterval)) << "a request run is one-time";
+}
+
+TEST_F(TriggerableTaskTest, WithoutAnIntervalStartNowTriggersARun)
+{
+    scheduler::TriggerableTask task {m_scheduler, "task", 0, 0, []() {}};
+
+    recordSchedules();
+    EXPECT_CALL(*m_scheduler, scheduleTaskFirst(std::string_view {"task/request-1"}));
+    task.start(/*runNow=*/true);
+
+    ASSERT_EQ(m_names.size(), 1U);
+    EXPECT_EQ(m_names[0], "task/request-1");
+}
+
 TEST_F(TriggerableTaskTest, WithoutAnIntervalStartSchedulesNothing)
 {
     scheduler::TriggerableTask task {m_scheduler, "task", 0, 0, []() {}};

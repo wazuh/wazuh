@@ -312,10 +312,10 @@ os_info *get_win_version()
         if (dwRet != ERROR_SUCCESS) {
             merror("Error reading 'Architecture' from Windows registry. (Error %u)",(unsigned int)dwRet);
         } else {
-            if (!strncmp(arch, "AMD64", 5) || !strncmp(arch, "IA64", 4) || !strncmp(arch, "ARM64", 5)) {
-                info->machine = strdup("x86_64");
-            } else if (!strncmp(arch, "x86", 3)) {
-                info->machine = strdup("i686");
+            const char *machine = win_processor_arch_to_machine(arch);
+
+            if (machine) {
+                info->machine = strdup(machine);
             }
         }
         RegCloseKey(RegistryKey);
@@ -363,6 +363,8 @@ char *get_release_from_build(char *os_build) {
         } else if (!strcmp(os_build, "14393")) {
             os_strdup("1607", retval);
         } else if (!strcmp(os_build, "15063")) {
+            os_strdup("1703", retval);
+        } else if (!strcmp(os_build, "16299")) {
             os_strdup("1709", retval);
         } else if (!strcmp(os_build, "17134")) {
             os_strdup("1803", retval);
@@ -936,6 +938,23 @@ free_os_info:
 }
 
 #endif /* WIN32 */
+
+
+const char *win_processor_arch_to_machine(const char *processor_arch) {
+    if (!processor_arch) {
+        return NULL;
+    }
+
+    if (!strcmp(processor_arch, "AMD64") || !strcmp(processor_arch, "IA64")) {
+        return "x86_64";
+    } else if (!strcmp(processor_arch, "ARM64")) {
+        return "arm64";
+    } else if (!strcmp(processor_arch, "x86")) {
+        return "i686";
+    }
+
+    return NULL;
+}
 
 
 void free_osinfo(os_info * osinfo) {

@@ -42,6 +42,7 @@ on:
       # make deps / build (docker-entrypoint.sh:22-28); pins http-request (src/Makefile:98);
       # downloads tzdata, geo_db and the WCS flat files the package embeds
       - 'src/Makefile'
+      - 'src/deps.lock.mk'
       # Ref list for every ref-based `make deps` download (src/Makefile:708)
       - 'tools/get_git_refs.sh'
       # Submodule gitlink: urlrequest, linked by conf and geo (source/conf/CMakeLists.txt:13,

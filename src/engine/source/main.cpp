@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include <algorithm>
+#include <atomic>
 #include <csignal>
 #include <exception>
 #include <filesystem>
@@ -804,22 +805,44 @@ int main(int argc, char* argv[])
                 }
             };
 
-            cmSyncTask =
-                std::make_shared<scheduler::TriggerableTask>(scheduler,
-                                                             "cm-sync-task",
-                                                             confManager.get<std::size_t>(conf::key::CM_SYNC_INTERVAL),
-                                                             0,
-                                                             [reportRouteStatus, orchestrator, cmSyncService]()
-                                                             {
-                                                                 // Detects a route lost between runs (e.g. deleted by
-                                                                 // hand), then recovery.
-                                                                 reportRouteStatus();
-                                                                 // The full worker pool must exist before the first
-                                                                 // sync mutates it.
-                                                                 orchestrator->expandWorkerPool();
-                                                                 cmSyncService->synchronize();
-                                                                 reportRouteStatus();
-                                                             });
+            // 0 is legal and disables the early retry.
+            constexpr std::size_t CM_SYNC_RETRY_INTERVAL_MAX = 3600;
+            const auto cmSyncRetryConfigured = confManager.get<std::size_t>(conf::key::CM_SYNC_RETRY_INTERVAL);
+            if (cmSyncRetryConfigured > CM_SYNC_RETRY_INTERVAL_MAX)
+            {
+                throw std::runtime_error(
+                    fmt::format("analysisd.cm_sync_retry_interval must be between 0 and {} (got {})",
+                                CM_SYNC_RETRY_INTERVAL_MAX,
+                                cmSyncRetryConfigured));
+            }
+            // While a space has no route (indexer failure, content not ready yet), the next run comes after the
+            // shorter retry interval instead of the regular one, and never later than the regular one.
+            const auto cmSyncInterval = confManager.get<std::size_t>(conf::key::CM_SYNC_INTERVAL);
+            const auto cmSyncRetryInterval = cm::sync::earlyRetryInterval(cmSyncRetryConfigured, cmSyncInterval);
+            auto cmSyncPending = std::make_shared<std::atomic<bool>>(false);
+
+            cmSyncTask = std::make_shared<scheduler::TriggerableTask>(
+                scheduler,
+                "cm-sync-task",
+                cmSyncInterval,
+                0,
+                [reportRouteStatus, orchestrator, cmSyncService, cmSyncPending, cmSyncRetryInterval]()
+                {
+                    // Detects a route lost between runs (e.g. deleted by hand), then recovery.
+                    reportRouteStatus();
+                    // The full worker pool must exist before the first sync mutates it.
+                    orchestrator->expandWorkerPool();
+                    const bool pending = cmSyncService->synchronize();
+                    if (pending && !cmSyncPending->exchange(true) && cmSyncRetryInterval > 0)
+                    {
+                        LOG_INFO("[CMSync] A content space has no route yet, retrying every {} seconds until it loads",
+                                 cmSyncRetryInterval);
+                    }
+                    cmSyncPending->store(pending);
+                    reportRouteStatus();
+                },
+                [cmSyncPending, cmSyncRetryInterval]() -> std::size_t
+                { return cmSyncPending->load() ? cmSyncRetryInterval : 0; });
 
             const auto iocSyncInterval = confManager.get<std::size_t>(conf::key::IOC_SYNC_INTERVAL);
             iocSyncTask = std::make_shared<scheduler::TriggerableTask>(
@@ -1027,10 +1050,9 @@ int main(int argc, char* argv[])
                                                                }
                                                            }});
 
-            // The first ruleset sync runs before every other task: the last request queued is the
-            // first to run.
-            cmSyncTask->start();
-            cmSyncTask->trigger();
+            // The first ruleset sync runs before every other task: the last one moved to the front of the
+            // queue is the first to run. It is the recurring run itself, so the early retry can follow it.
+            cmSyncTask->start(/*runNow=*/true);
 
             scheduler->start();
             LOG_INFO("Scheduler started");

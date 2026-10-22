@@ -373,6 +373,140 @@ TEST_F(CMSyncTest, ShutdownStopsEveryTopicAndTheNextRun)
     EXPECT_EQ(topics.stopCount(topicOf(STANDARD)), 1U);
     EXPECT_EQ(topics.stopCount(topicOf(CUSTOM)), 1U);
 
-    sync->synchronize();
+    EXPECT_FALSE(sync->synchronize());
     EXPECT_TRUE(topics.calls().empty());
+}
+
+/*
+ * The early retry: synchronize() asks for an earlier run while a space has no route and its policy is
+ * not known to be disabled (indexer failure, content not published, consumer not ready yet).
+ */
+
+TEST_F(CMSyncTest, ASpaceWithoutRouteAsksForAnEarlyRetry)
+{
+    topics.scriptStatus(topicOf(STANDARD), content_manager::CycleStatus::SkippedConsumerNotReady);
+    topics.scriptStatus(topicOf(CUSTOM), content_manager::CycleStatus::Unchanged);
+    serve(CUSTOM, "ns_custom", "h");
+
+    const auto sync = build();
+
+    EXPECT_TRUE(sync->synchronize());
+}
+
+TEST_F(CMSyncTest, AnUnreachableIndexerOnAFirstStartAsksForAnEarlyRetry)
+{
+    topics.scriptStatus(topicOf(STANDARD), content_manager::CycleStatus::FailedTransport);
+    topics.scriptStatus(topicOf(CUSTOM), content_manager::CycleStatus::FailedTransport);
+
+    const auto sync = build();
+
+    EXPECT_TRUE(sync->synchronize());
+}
+
+TEST_F(CMSyncTest, EverySpaceServedNeedsNoEarlyRetry)
+{
+    serve(STANDARD, "ns_standard", "h");
+    serve(CUSTOM, "ns_custom", "h");
+    topics.scriptStatus(topicOf(STANDARD), content_manager::CycleStatus::Unchanged);
+    topics.scriptStatus(topicOf(CUSTOM), content_manager::CycleStatus::Unchanged);
+
+    const auto sync = build();
+
+    EXPECT_FALSE(sync->synchronize());
+}
+
+TEST_F(CMSyncTest, AnOlderRouteKeptAfterAFailureNeedsNoEarlyRetry)
+{
+    // The old route still processes events, so the regular run is soon enough.
+    serve(STANDARD, "ns_standard", "h");
+    serve(CUSTOM, "ns_custom", "h");
+    topics.scriptStatus(topicOf(STANDARD), content_manager::CycleStatus::FailedTransport);
+    topics.scriptStatus(topicOf(CUSTOM), content_manager::CycleStatus::Unchanged);
+
+    const auto sync = build();
+
+    EXPECT_FALSE(sync->synchronize());
+}
+
+TEST_F(CMSyncTest, ADisabledPolicyStaysOutOfTheEarlyRetryAlsoAfterAFailedCycle)
+{
+    serve(CUSTOM, "ns_custom", "h");
+    cmcontent::mocks::FakeTopicRegistry::Script disabled;
+    disabled.outcome.status = content_manager::CycleStatus::Unchanged;
+    disabled.driveSink = [](content_manager::IContentSink& sink)
+    {
+        EXPECT_EQ(sink.beginSession(sessionOf(content_manager::SessionKind::FullReload, false, "any")),
+                  content_manager::SessionDecision::Skip);
+    };
+    cmcontent::mocks::FakeTopicRegistry::Script failing;
+    failing.outcome.status = content_manager::CycleStatus::FailedTransport;
+    topics.script(topicOf(STANDARD), {disabled, failing});
+    topics.scriptStatus(topicOf(CUSTOM), content_manager::CycleStatus::Unchanged);
+
+    const auto sync = build();
+
+    EXPECT_FALSE(sync->synchronize()) << "no route by decision";
+    // The failed cycle never read the policy: the last decision stands.
+    EXPECT_FALSE(sync->synchronize());
+}
+
+TEST_F(CMSyncTest, APolicyPersistedAsDisabledStaysOutAfterARestart)
+{
+    json::Json state {};
+    state.setArray();
+    json::Json standard {};
+    standard.setString(std::string {STANDARD}, "/origin_space");
+    standard.setBool(false, "/enabled");
+    state.appendJson(standard);
+    ON_CALL(*store, existsDoc(STORE_NAME_CMSYNC)).WillByDefault(Return(true));
+    ON_CALL(*store, readDoc(STORE_NAME_CMSYNC)).WillByDefault(Return(store::mocks::storeReadDocResp(state)));
+    serve(CUSTOM, "ns_custom", "h");
+    topics.scriptStatus(topicOf(STANDARD), content_manager::CycleStatus::FailedTransport);
+    topics.scriptStatus(topicOf(CUSTOM), content_manager::CycleStatus::Unchanged);
+
+    const auto sync = build();
+
+    EXPECT_FALSE(sync->synchronize());
+}
+
+TEST_F(CMSyncTest, AnUnreadPolicyIsNotPersistedAsDisabled)
+{
+    // `custom` updates and is persisted; `standard` never got its policy read, so the record must not
+    // claim it disabled, or a restart would leave it out of the early retry.
+    cmcontent::mocks::FakeTopicRegistry::Script deployed;
+    deployed.outcome.status = content_manager::CycleStatus::Updated;
+    deployed.driveSink = [this](content_manager::IContentSink& sink)
+    {
+        ASSERT_EQ(sink.beginSession(sessionOf(content_manager::SessionKind::FullReload, true, "new-hash")),
+                  content_manager::SessionDecision::Proceed);
+        const auto hits = policyPage(CUSTOM, "new-hash");
+        content_manager::ContentPage page;
+        page.hits = &hits;
+        ASSERT_EQ(sink.acceptPage(page).status, content_manager::PageStatus::Accepted);
+        ASSERT_EQ(sink.commit({}).status, content_manager::CommitStatus::Committed);
+        serve(CUSTOM, "cmsync_custom_new", "new-hash");
+    };
+    topics.script(topicOf(CUSTOM), {deployed});
+    topics.scriptStatus(topicOf(STANDARD), content_manager::CycleStatus::FailedTransport);
+
+    const auto sync = build();
+    auto& persisted = capturePersisted();
+    EXPECT_TRUE(sync->synchronize());
+
+    ASSERT_TRUE(persisted.has_value());
+    const auto entries = persisted->getArray();
+    ASSERT_TRUE(entries.has_value());
+    for (const auto& entry : *entries)
+    {
+        std::string origin;
+        ASSERT_EQ(entry.getString(origin, std::string_view {"/origin_space"}), json::RetGet::Success);
+        EXPECT_EQ(entry.getBool(std::string_view {"/enabled"}).has_value(), origin == CUSTOM) << origin;
+    }
+}
+
+TEST(CMSyncEarlyRetryInterval, IsTheRetryIntervalCappedAtTheRegularOne)
+{
+    EXPECT_EQ(cm::sync::earlyRetryInterval(30, 120), 30U);
+    EXPECT_EQ(cm::sync::earlyRetryInterval(300, 120), 120U);
+    EXPECT_EQ(cm::sync::earlyRetryInterval(0, 120), 0U) << "0 disables it";
 }

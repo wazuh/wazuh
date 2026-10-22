@@ -20,6 +20,7 @@ using ::testing::_;
 using ::testing::Return;
 using ::testing::An;
 using ::testing::ByMove;
+using ::testing::Throw;
 
 static void initNoMetaDataMocks(std::unique_ptr<SQLiteDBEngine>& spEngine)
 {
@@ -98,7 +99,8 @@ TEST_F(DBEngineTest, InitializationSQLError)
     EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = truncate;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
-    EXPECT_CALL(*mockConnection, execute("PRAGMA user_version = 1;")).Times(1);
+    // The table was not created, so the database is left at version 0 to be created again.
+    EXPECT_CALL(*mockConnection, execute("PRAGMA user_version = 1;")).Times(0);
 
     EXPECT_THROW(std::make_unique<SQLiteDBEngine>(
                      mockFactory,
@@ -855,4 +857,249 @@ TEST_F(DBEngineTest, AddTableRelationshipNoMetadata)
     .WillOnce(Return(ByMove(std::move(mockStatement_2))));
 
     EXPECT_THROW(spEngine->addTableRelationship(relationshipJSON), dbengine_error);
+}
+
+TEST_F(DBEngineTest, UpgradeBumpsTheVersionBeforeCommitting)
+{
+    const auto& mockFactory { std::make_shared<MockSQLiteFactory>() };
+    const auto& mockConnection { std::make_shared<MockConnection>() };
+    auto upgradeTransaction { std::make_unique<MockTransaction>() };
+    auto* const upgradeTransactionRaw { upgradeTransaction.get() };
+    auto engineTransaction { std::make_unique<MockTransaction>() };
+
+    EXPECT_CALL(*mockFactory, createConnection(_)).WillOnce(Return(mockConnection));
+
+    auto versionColumn { std::make_unique<MockColumn>() };
+    EXPECT_CALL(*versionColumn, value(An<const int32_t&>())).WillOnce(Return(1));
+    auto versionStatement { std::make_unique<MockStatement>() };
+    EXPECT_CALL(*versionStatement, step()).WillOnce(Return(SQLITE_ROW));
+    EXPECT_CALL(*versionStatement, column(0)).WillOnce(Return(ByMove(std::move(versionColumn))));
+    EXPECT_CALL(*mockFactory, createStatement(_, "PRAGMA user_version;"))
+    .WillOnce(Return(ByMove(std::move(versionStatement))));
+
+    auto upgradeStatement { std::make_unique<MockStatement>() };
+    EXPECT_CALL(*upgradeStatement, step()).WillOnce(Return(SQLITE_DONE));
+    EXPECT_CALL(*mockFactory, createStatement(_, "UPGRADE_1"))
+    .WillOnce(Return(ByMove(std::move(upgradeStatement))));
+
+    EXPECT_CALL(*mockFactory, createTransaction(_))
+    .WillOnce(Return(ByMove(std::move(upgradeTransaction))))
+    .WillOnce(Return(ByMove(std::move(engineTransaction))));
+
+    // A restart between the two must not leave the upgraded schema at the old version.
+    {
+        ::testing::InSequence sequence;
+        EXPECT_CALL(*mockConnection, execute("PRAGMA user_version = 2;")).Times(1);
+        EXPECT_CALL(*upgradeTransactionRaw, commit()).Times(1);
+    }
+
+    EXPECT_NO_THROW(std::make_unique<SQLiteDBEngine>(mockFactory,
+                                                     "1",
+                                                     "NNN",
+                                                     DbManagement::PERSISTENT,
+                                                     std::vector<std::string> {"UPGRADE_1"}));
+}
+
+// Shared expectations: the persistent database at "1" reports the given version.
+static void expectStoredVersion(MockSQLiteFactory& factory, int32_t version)
+{
+    auto versionColumn { std::make_unique<MockColumn>() };
+    EXPECT_CALL(*versionColumn, value(An<const int32_t&>())).WillOnce(Return(version));
+    auto versionStatement { std::make_unique<MockStatement>() };
+    EXPECT_CALL(*versionStatement, step()).WillOnce(Return(SQLITE_ROW));
+    EXPECT_CALL(*versionStatement, column(0)).WillOnce(Return(ByMove(std::move(versionColumn))));
+    EXPECT_CALL(factory, createStatement(_, "PRAGMA user_version;"))
+    .WillOnce(Return(ByMove(std::move(versionStatement))));
+}
+
+// Shared expectations: the database is created again from "NNN", at version 2.
+static void expectRecreatedAtVersion2(MockSQLiteFactory& factory, MockConnection& connection)
+{
+    EXPECT_CALL(connection, execute("PRAGMA temp_store = memory;")).Times(1);
+    EXPECT_CALL(connection, execute("PRAGMA journal_mode = truncate;")).Times(1);
+    EXPECT_CALL(connection, execute("PRAGMA synchronous = OFF;")).Times(1);
+    EXPECT_CALL(connection, execute("PRAGMA user_version = 2;")).Times(1);
+
+    auto createStatement { std::make_unique<MockStatement>() };
+    EXPECT_CALL(*createStatement, step()).WillOnce(Return(SQLITE_DONE));
+    EXPECT_CALL(factory, createStatement(_, "NNN")).WillOnce(Return(ByMove(std::move(createStatement))));
+}
+
+TEST_F(DBEngineTest, FailedUpgradeRecreatesTheDatabase)
+{
+    const auto& mockFactory { std::make_shared<MockSQLiteFactory>() };
+    const auto& mockConnection { std::make_shared<MockConnection>() };
+    auto upgradeTransaction { std::make_unique<MockTransaction>() };
+    auto* const upgradeTransactionRaw { upgradeTransaction.get() };
+
+    // Opened once to read the version, and again once the old file is gone.
+    EXPECT_CALL(*mockFactory, createConnection(_)).Times(2).WillRepeatedly(Return(mockConnection));
+    expectStoredVersion(*mockFactory, 1);
+
+    auto upgradeStatement { std::make_unique<MockStatement>() };
+    EXPECT_CALL(*upgradeStatement, step()).WillOnce(Return(SQLITE_ERROR));
+    EXPECT_CALL(*mockFactory, createStatement(_, "UPGRADE_1"))
+    .WillOnce(Return(ByMove(std::move(upgradeStatement))));
+
+    EXPECT_CALL(*mockFactory, createTransaction(_))
+    .WillOnce(Return(ByMove(std::move(upgradeTransaction))))
+    .WillOnce(Return(ByMove(std::make_unique<MockTransaction>())));
+    EXPECT_CALL(*upgradeTransactionRaw, commit()).Times(0);
+
+    expectRecreatedAtVersion2(*mockFactory, *mockConnection);
+
+    EXPECT_NO_THROW(std::make_unique<SQLiteDBEngine>(mockFactory,
+                                                     "1",
+                                                     "NNN",
+                                                     DbManagement::PERSISTENT,
+                                                     std::vector<std::string> {"UPGRADE_1"}));
+}
+
+TEST_F(DBEngineTest, NewerDatabaseIsRecreated)
+{
+    const auto& mockFactory { std::make_shared<MockSQLiteFactory>() };
+    const auto& mockConnection { std::make_shared<MockConnection>() };
+
+    EXPECT_CALL(*mockFactory, createConnection(_)).Times(2).WillRepeatedly(Return(mockConnection));
+    expectStoredVersion(*mockFactory, 3);
+
+    // Nothing to upgrade from a version this code does not know.
+    EXPECT_CALL(*mockFactory, createStatement(_, "UPGRADE_1")).Times(0);
+    EXPECT_CALL(*mockFactory, createTransaction(_)).WillOnce(Return(ByMove(std::make_unique<MockTransaction>())));
+
+    expectRecreatedAtVersion2(*mockFactory, *mockConnection);
+
+    EXPECT_NO_THROW(std::make_unique<SQLiteDBEngine>(mockFactory,
+                                                     "1",
+                                                     "NNN",
+                                                     DbManagement::PERSISTENT,
+                                                     std::vector<std::string> {"UPGRADE_1"}));
+}
+
+// The real schema mismatch: SQLite rejects the RENAME when it prepares it ("no such column").
+TEST_F(DBEngineTest, UpgradeRejectedBySQLiteRecreatesTheDatabase)
+{
+    const auto& mockFactory { std::make_shared<MockSQLiteFactory>() };
+    const auto& mockConnection { std::make_shared<MockConnection>() };
+
+    EXPECT_CALL(*mockFactory, createConnection(_)).Times(2).WillRepeatedly(Return(mockConnection));
+    expectStoredVersion(*mockFactory, 1);
+
+    EXPECT_CALL(*mockFactory, createStatement(_, "UPGRADE_1"))
+    .WillOnce(Throw(SQLite::sqlite_error {std::make_pair(SQLITE_ERROR, "no such column: os_distribution_release")}));
+
+    EXPECT_CALL(*mockFactory, createTransaction(_))
+    .WillOnce(Return(ByMove(std::make_unique<MockTransaction>())))
+    .WillOnce(Return(ByMove(std::make_unique<MockTransaction>())));
+
+    expectRecreatedAtVersion2(*mockFactory, *mockConnection);
+
+    std::unique_ptr<SQLiteDBEngine> engine;
+    ASSERT_NO_THROW(engine = std::make_unique<SQLiteDBEngine>(mockFactory,
+                                                              "1",
+                                                              "NNN",
+                                                              DbManagement::PERSISTENT,
+                                                              std::vector<std::string> {"UPGRADE_1"}));
+    // Reported, so the owner can log why its database was emptied.
+    EXPECT_NE(std::string::npos, engine->recreateReason().find("could not be upgraded from version 1"));
+    EXPECT_NE(std::string::npos, engine->recreateReason().find("no such column: os_distribution_release"));
+}
+
+// A busy database is transient: the error reaches the owner and the database is kept for the
+// next start to upgrade.
+TEST_F(DBEngineTest, TransientUpgradeErrorKeepsTheDatabase)
+{
+    const auto& mockFactory { std::make_shared<MockSQLiteFactory>() };
+    const auto& mockConnection { std::make_shared<MockConnection>() };
+
+    EXPECT_CALL(*mockFactory, createConnection(_)).Times(1).WillOnce(Return(mockConnection));
+    expectStoredVersion(*mockFactory, 1);
+
+    EXPECT_CALL(*mockFactory, createStatement(_, "UPGRADE_1"))
+    .WillOnce(Throw(SQLite::sqlite_error {std::make_pair(SQLITE_BUSY, "database is locked")}));
+    EXPECT_CALL(*mockFactory, createTransaction(_)).WillOnce(Return(ByMove(std::make_unique<MockTransaction>())));
+
+    EXPECT_CALL(*mockConnection, execute("PRAGMA user_version = 2;")).Times(0);
+    EXPECT_CALL(*mockFactory, createStatement(_, "NNN")).Times(0);
+
+    EXPECT_THROW(std::make_unique<SQLiteDBEngine>(mockFactory,
+                                                  "1",
+                                                  "NNN",
+                                                  DbManagement::PERSISTENT,
+                                                  std::vector<std::string> {"UPGRADE_1"}),
+                 SQLite::sqlite_error);
+}
+
+TEST_F(DBEngineTest, UpToDateDatabaseHasNoRecreateReason)
+{
+    const auto& mockFactory { std::make_shared<MockSQLiteFactory>() };
+    const auto& mockConnection { std::make_shared<MockConnection>() };
+
+    EXPECT_CALL(*mockFactory, createConnection(_)).WillOnce(Return(mockConnection));
+    expectStoredVersion(*mockFactory, 2);
+    EXPECT_CALL(*mockFactory, createTransaction(_)).WillOnce(Return(ByMove(std::make_unique<MockTransaction>())));
+
+    std::unique_ptr<SQLiteDBEngine> engine;
+    ASSERT_NO_THROW(engine = std::make_unique<SQLiteDBEngine>(mockFactory,
+                                                              "1",
+                                                              "NNN",
+                                                              DbManagement::PERSISTENT,
+                                                              std::vector<std::string> {"UPGRADE_1"}));
+    EXPECT_TRUE(engine->recreateReason().empty());
+}
+
+// A table that fails to be created leaves the database at version 0, so the next start creates
+// it again instead of using it with that table missing.
+TEST_F(DBEngineTest, VersionIsStampedOnlyOnceEveryTableExists)
+{
+    const auto& mockFactory { std::make_shared<MockSQLiteFactory>() };
+    const auto& mockConnection { std::make_shared<MockConnection>() };
+
+    EXPECT_CALL(*mockFactory, createConnection(_)).Times(2).WillRepeatedly(Return(mockConnection));
+    expectStoredVersion(*mockFactory, 0);
+
+    EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = truncate;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA user_version = 2;")).Times(0);
+
+    auto createStatement { std::make_unique<MockStatement>() };
+    EXPECT_CALL(*createStatement, step()).WillOnce(Return(SQLITE_ERROR));
+    EXPECT_CALL(*mockFactory, createStatement(_, "NNN")).WillOnce(Return(ByMove(std::move(createStatement))));
+
+    EXPECT_THROW(std::make_unique<SQLiteDBEngine>(mockFactory,
+                                                  "1",
+                                                  "NNN",
+                                                  DbManagement::PERSISTENT,
+                                                  std::vector<std::string> {"UPGRADE_1"}),
+                 dbengine_error);
+}
+
+// Once the upgrade is committed, a failure opening the engine's own transaction is not a schema
+// problem: it reaches the owner and the upgraded database is kept.
+TEST_F(DBEngineTest, FailureAfterACommittedUpgradeKeepsTheDatabase)
+{
+    const auto& mockFactory { std::make_shared<MockSQLiteFactory>() };
+    const auto& mockConnection { std::make_shared<MockConnection>() };
+
+    EXPECT_CALL(*mockFactory, createConnection(_)).Times(1).WillOnce(Return(mockConnection));
+    expectStoredVersion(*mockFactory, 1);
+
+    auto upgradeStatement { std::make_unique<MockStatement>() };
+    EXPECT_CALL(*upgradeStatement, step()).WillOnce(Return(SQLITE_DONE));
+    EXPECT_CALL(*mockFactory, createStatement(_, "UPGRADE_1"))
+    .WillOnce(Return(ByMove(std::move(upgradeStatement))));
+    EXPECT_CALL(*mockConnection, execute("PRAGMA user_version = 2;")).Times(1);
+
+    EXPECT_CALL(*mockFactory, createTransaction(_))
+    .WillOnce(Return(ByMove(std::make_unique<MockTransaction>())))
+    .WillOnce(Throw(SQLite::sqlite_error {std::make_pair(SQLITE_ERROR, "cannot start a transaction")}));
+    EXPECT_CALL(*mockFactory, createStatement(_, "NNN")).Times(0);
+
+    EXPECT_THROW(std::make_unique<SQLiteDBEngine>(mockFactory,
+                                                  "1",
+                                                  "NNN",
+                                                  DbManagement::PERSISTENT,
+                                                  std::vector<std::string> {"UPGRADE_1"}),
+                 SQLite::sqlite_error);
 }

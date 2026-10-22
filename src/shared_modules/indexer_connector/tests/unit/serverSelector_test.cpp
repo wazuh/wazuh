@@ -246,7 +246,7 @@ TEST_F(ServerSelectorTest, TestGetNextBeforeAndAfterHealthCheck)
     }
 
     // After health check all servers are down
-    EXPECT_THROW(nextServer = selector->getNext(), std::runtime_error);
+    EXPECT_THROW(nextServer = selector->getNext(), IndexerConnectorException);
 
     phase = 3;
     callCount = 0;
@@ -283,8 +283,17 @@ TEST_F(ServerSelectorTest, TestGetNextWhenThereAreNoAvailableServers)
         selector = std::make_shared<TestServerSelector>(
             servers, SERVER_SELECTOR_HEALTH_CHECK_INTERVAL, SecureCommunication {}, m_mockHttpRequest.get()));
 
-    // Test that exception is thrown when no servers are available
-    EXPECT_THROW(selector->getNext(), std::runtime_error);
+    try
+    {
+        selector->getNext();
+        FAIL() << "getNext() returned with every server down";
+    }
+    catch (const IndexerConnectorException& e)
+    {
+        EXPECT_THAT(e.what(), ::testing::HasSubstr("No available server"));
+        EXPECT_THAT(e.what(), ::testing::HasSubstr(hostRedServer));
+        EXPECT_EQ(e.statusCode(), 0);
+    }
 }
 
 /**

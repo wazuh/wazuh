@@ -5,6 +5,18 @@
 
 #include "logging_helper.hpp"
 
+#include <stringHelper.h>
+
+namespace
+{
+    /// @brief The reason as a single log line, its line breaks written as "\n" like in JSON.
+    std::string OnOneLine(std::string reason)
+    {
+        Utils::replaceAll(reason, "\n", "\\n");
+        return reason;
+    }
+} // namespace
+
 SCAPolicy::SCAPolicy(std::string id, Check requirements, std::vector<Check> checks)
     : m_id(std::move(id))
     , m_requirements(std::move(requirements))
@@ -48,7 +60,7 @@ void SCAPolicy::Scan(
             }
 
             const auto ruleResult = rule->Evaluate();
-            resultEvaluator.AddResult(RuleEvaluationResult(ruleResult, rule->GetUnresolvedReason()));
+            resultEvaluator.AddResult(RuleEvaluationResult(ruleResult, rule->GetUnresolvedReason(), rule->GetContext().source));
         }
 
         requirementsOk = resultEvaluator.Result();
@@ -77,13 +89,11 @@ void SCAPolicy::Scan(
                 }
 
                 const auto ruleResult = rule->Evaluate();
-                resultEvaluator.AddResult(RuleEvaluationResult(ruleResult, rule->GetUnresolvedReason()));
+                resultEvaluator.AddResult(RuleEvaluationResult(ruleResult, rule->GetUnresolvedReason(), rule->GetContext().source));
             }
 
             const auto result = resultEvaluator.Result();
-            const auto& reason = (result == sca::CheckResult::NotApplicable || result == sca::CheckResult::NotRun)
-                                 ? resultEvaluator.GetUnresolvedReason()
-                                 : std::string{};
+            const auto reason = resultEvaluator.Reason();
 
             // NOLINTBEGIN(bugprone-unchecked-optional-access)
             LoggingHelper::getInstance().log(
@@ -94,7 +104,7 @@ void SCAPolicy::Scan(
                 m_id +
                 "\", result: " +
                 sca::CheckResultToString(result) +
-                (reason.empty() ? "" : ", reason: " + reason)
+                (reason.empty() ? "" : ", reason: " + OnOneLine(reason))
             );
 
             reportCheckResult({m_id, check.id.value(), sca::CheckResultToString(result), reason});

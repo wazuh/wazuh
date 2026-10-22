@@ -201,3 +201,157 @@ TEST(CheckConditionEvaluatorTest, ResolvedCheckHasNoReason)
     EXPECT_EQ(evaluator.Result(), sca::CheckResult::Passed);
     EXPECT_TRUE(evaluator.GetUnresolvedReason().empty());
 }
+
+TEST(CheckConditionEvaluatorTest, AllConditionReasonListsTheRuleThatWasNotSatisfied)
+{
+    auto evaluator = CheckConditionEvaluator::FromString("all");
+
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::Found, "", "f:/etc/ssh/sshd_config"));
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::NotFound, "", "c:sshd -T -> r:^maxauthtries\\s+[1-4]"));
+
+    EXPECT_EQ(evaluator.Result(), sca::CheckResult::Failed);
+    EXPECT_EQ(evaluator.Reason(),
+              "Rules not satisfied (condition 'all'):\n"
+              "c:sshd -T -> r:^maxauthtries\\s+[1-4]");
+}
+
+TEST(CheckConditionEvaluatorTest, AllConditionReasonListsUnsatisfiedRulesAfterTheVerdict)
+{
+    auto evaluator = CheckConditionEvaluator::FromString("all");
+
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::NotFound, "", "f:/etc/login.defs -> r:^PASS_MAX_DAYS\\s+365"));
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::Found, "", "f:/etc/login.defs"));
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::NotFound, "", "f:/etc/login.defs -> r:^PASS_MIN_DAYS\\s+1"));
+
+    EXPECT_EQ(evaluator.Result(), sca::CheckResult::Failed);
+    EXPECT_EQ(evaluator.Reason(),
+              "Rules not satisfied (condition 'all'):\n"
+              "f:/etc/login.defs -> r:^PASS_MAX_DAYS\\s+365\n"
+              "f:/etc/login.defs -> r:^PASS_MIN_DAYS\\s+1");
+}
+
+TEST(CheckConditionEvaluatorTest, NoneConditionReasonListsTheRulesThatWereSatisfied)
+{
+    auto evaluator = CheckConditionEvaluator::FromString("none");
+
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::NotFound, "", "p:avahi-daemon"));
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::Found, "", "p:telnetd"));
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::Found, "", "p:rshd"));
+
+    EXPECT_EQ(evaluator.Result(), sca::CheckResult::Failed);
+    EXPECT_EQ(evaluator.Reason(),
+              "Rules satisfied (condition 'none'):\n"
+              "p:telnetd\n"
+              "p:rshd");
+}
+
+TEST(CheckConditionEvaluatorTest, NotApplicableReasonIsTheUnresolvedReason)
+{
+    auto evaluator = CheckConditionEvaluator::FromString("all");
+
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::Found, "", "f:/etc/modprobe.d"));
+    evaluator.AddResult(RuleEvaluationResult(
+                            RuleResult::Invalid, "Command execution failed: modprobe -n -v cramfs", "c:modprobe -n -v cramfs -> r:install /bin/true"));
+
+    EXPECT_EQ(evaluator.Result(), sca::CheckResult::NotApplicable);
+    EXPECT_EQ(evaluator.Reason(), "Command execution failed: modprobe -n -v cramfs");
+
+    const auto noRules = CheckConditionEvaluator::FromString("all");
+
+    EXPECT_EQ(noRules.Result(), sca::CheckResult::NotApplicable);
+    EXPECT_EQ(noRules.Reason(), "None of the check's rules could be evaluated on this system");
+}
+
+TEST(CheckConditionEvaluatorTest, NotRunReasonIsTheUnresolvedReason)
+{
+    auto evaluator = CheckConditionEvaluator::FromString("any");
+
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::NotFound, "", "f:/etc/issue -> r:Authorized"));
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::NotRun, "Command timed out after 30 seconds: sleep 60", "c:sleep 60"));
+
+    EXPECT_EQ(evaluator.Result(), sca::CheckResult::NotRun);
+    EXPECT_EQ(evaluator.Reason(), "Command timed out after 30 seconds: sleep 60");
+}
+
+TEST(CheckConditionEvaluatorTest, FailedCheckWithoutRuleTextHasNoReason)
+{
+    auto evaluator = CheckConditionEvaluator::FromString("all");
+
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::NotFound));
+
+    EXPECT_EQ(evaluator.Result(), sca::CheckResult::Failed);
+    EXPECT_EQ(evaluator.Reason(), "");
+}
+
+TEST(CheckConditionEvaluatorTest, AnyConditionReasonListsEveryRuleWhenNoneIsSatisfied)
+{
+    auto evaluator = CheckConditionEvaluator::FromString("any");
+
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::NotFound, "", "f:/etc/issue -> r:Authorized uses only"));
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::NotFound, "", "f:/etc/issue.net -> r:Authorized uses only"));
+
+    EXPECT_EQ(evaluator.Result(), sca::CheckResult::Failed);
+    EXPECT_EQ(evaluator.Reason(),
+              "Rules not satisfied (condition 'any'):\n"
+              "f:/etc/issue -> r:Authorized uses only\n"
+              "f:/etc/issue.net -> r:Authorized uses only");
+}
+
+TEST(CheckConditionEvaluatorTest, PassedCheckHasNoReason)
+{
+    auto any = CheckConditionEvaluator::FromString("any");
+    any.AddResult(RuleEvaluationResult(RuleResult::NotFound, "", "f:/etc/issue -> r:Authorized"));
+    any.AddResult(RuleEvaluationResult(RuleResult::Found, "", "f:/etc/issue.net -> r:Authorized"));
+
+    auto all = CheckConditionEvaluator::FromString("all");
+    all.AddResult(RuleEvaluationResult(RuleResult::Found, "", "f:/etc/passwd"));
+
+    auto none = CheckConditionEvaluator::FromString("none");
+    none.AddResult(RuleEvaluationResult(RuleResult::NotFound, "", "p:telnetd"));
+
+    for (const auto* evaluator :
+            {
+                &any, &all, &none
+            })
+    {
+        EXPECT_EQ(evaluator->Result(), sca::CheckResult::Passed);
+        EXPECT_EQ(evaluator->Reason(), "");
+    }
+}
+
+TEST(CheckConditionEvaluatorTest, RepeatedFailingRuleIsListedOnce)
+{
+    auto evaluator = CheckConditionEvaluator::FromString("all");
+
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::NotFound, "", "c:sysctl net.ipv4.ip_forward -> r:= 0"));
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::NotFound, "", "c:sysctl net.ipv4.ip_forward -> r:= 0"));
+
+    EXPECT_EQ(evaluator.Reason(),
+              "Rules not satisfied (condition 'all'):\n"
+              "c:sysctl net.ipv4.ip_forward -> r:= 0");
+}
+
+TEST(CheckConditionEvaluatorTest, FailedCheckReasonLeavesOutRulesThatCouldNotBeEvaluated)
+{
+    auto evaluator = CheckConditionEvaluator::FromString("all");
+
+    evaluator.AddResult(RuleEvaluationResult(
+                            RuleResult::Invalid, "File '/etc/aide/aide.conf' does not exist or is not a regular file", "f:/etc/aide/aide.conf -> r:^/boot"));
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::NotFound, "", "c:dpkg -s aide -> r:install ok installed"));
+
+    EXPECT_EQ(evaluator.Result(), sca::CheckResult::Failed);
+    EXPECT_EQ(evaluator.Reason(),
+              "Rules not satisfied (condition 'all'):\n"
+              "c:dpkg -s aide -> r:install ok installed");
+}
+
+TEST(CheckConditionEvaluatorTest, RulesAfterTheVerdictLeaveTheUnresolvedReasonAlone)
+{
+    auto evaluator = CheckConditionEvaluator::FromString("all");
+
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::NotFound, "", "f:/etc/motd -> r:Authorized"));
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::Invalid, "Path '/etc/update-motd.d' does not exist", "d:/etc/update-motd.d"));
+
+    EXPECT_EQ(evaluator.Result(), sca::CheckResult::Failed);
+    EXPECT_EQ(evaluator.GetUnresolvedReason(), "");
+}

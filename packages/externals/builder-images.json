@@ -1,0 +1,19 @@
+{
+  "linux": {
+    "agent": {
+      "amd64": "ghcr.io/wazuh/pkg_rpm_agent_builder_amd64",
+      "arm64": "ghcr.io/wazuh/pkg_rpm_agent_builder_arm64"
+    },
+    "manager": {
+      "amd64": "ghcr.io/wazuh/pkg_rpm_manager_builder_amd64",
+      "arm64": "ghcr.io/wazuh/pkg_rpm_manager_builder_arm64"
+    }
+  },
+  "windows": {
+    "agent": "ghcr.io/wazuh/compile_windows_agent"
+  },
+  "darwin": {
+    "runners": ["macos-14", "macos-14-large"],
+    "xcode": "15.4"
+  }
+}

@@ -779,6 +779,7 @@ TEST_F(SysInfoParsersTest, MacOS)
     EXPECT_TRUE(parser.parseUname(MACOS_UNAME, output));
     EXPECT_EQ("10.14.6", output["os_version"]);
     EXPECT_EQ("macOS", output["os_name"]);
+    EXPECT_EQ("macOS 10.14.6 (18G103)", output["os_full"]);
     EXPECT_EQ("darwin", output["os_platform"]);
     EXPECT_EQ("18G103", output["os_build"]);
     EXPECT_EQ("Mojave", output["os_codename"]);
@@ -899,4 +900,60 @@ TEST_F(SysInfoParsersTest, MacOSOsDefaultName)
     EXPECT_EQ("10", output["os_major"]);
     EXPECT_EQ("14", output["os_minor"]);
     EXPECT_EQ("6", output["os_patch"]);
+}
+
+TEST_F(SysInfoParsersTest, SetOsFullJoinsNameAndVersion)
+{
+    nlohmann::json output
+    {
+        {"os_name", "Ubuntu"},
+        {"os_version", "22.04.3 LTS (Jammy Jellyfish)"}
+    };
+    setOsFull(output);
+    EXPECT_EQ("Ubuntu 22.04.3 LTS (Jammy Jellyfish)", output["os_full"]);
+}
+
+TEST_F(SysInfoParsersTest, SetOsFullWithUnknownVersion)
+{
+    nlohmann::json output
+    {
+        {"os_name", "Linux"},
+        {"os_version", " "}
+    };
+    setOsFull(output);
+    EXPECT_EQ("Linux", output["os_full"]);
+}
+
+TEST_F(SysInfoParsersTest, SetOsFullWithoutName)
+{
+    nlohmann::json output
+    {
+        {"os_version", "14.1-RELEASE"}
+    };
+    setOsFull(output);
+    EXPECT_FALSE(output.contains("os_full"));
+}
+
+TEST_F(SysInfoParsersTest, SetOsFullOnMacOS)
+{
+    nlohmann::json output
+    {
+        {"os_name", "macOS"},
+        {"os_version", "26.6.2"},
+        {"os_build", "25G83"}
+    };
+    setOsFull(output);
+    EXPECT_EQ("macOS 26.6.2", output["os_full"]);
+}
+
+TEST_F(SysInfoParsersTest, SetOsFullKeepsAnExistingValue)
+{
+    nlohmann::json output
+    {
+        {"os_name", "Ubuntu"},
+        {"os_version", "22.04.3 LTS (Jammy Jellyfish)"},
+        {"os_full", "Ubuntu 22.04"}
+    };
+    setOsFull(output);
+    EXPECT_EQ("Ubuntu 22.04", output["os_full"]);
 }

@@ -61,6 +61,21 @@ After each cycle the space's `available` and `hash` are read back from the sink'
 `analysisd.cmsync_indexer_connector_max_retries` attempts,
 `analysisd.cmsync_indexer_connector_retry_interval` seconds apart.
 
+### Early retry while a space has no route
+
+`synchronize()` returns `true` when a run ends with a space that has no route and whose policy is
+not known to be disabled (the indexer was unreachable, or the content is not published or the CTI
+consumer not ready yet). The `cm-sync-task` then runs the next cycle after
+`analysisd.cm_sync_retry_interval` seconds (default 30, `0` disables it, capped at
+`analysisd.cm_sync_interval`) instead of `analysisd.cm_sync_interval`, until every space has a route
+or a disabled policy. The task passes that choice to the scheduler through
+`TriggerableTask`'s `nextInterval`.
+
+"Disabled" comes only from a policy read, now or persisted in the record, so a cycle that fails
+before reading the policy does not change it, and an unread policy is never persisted as disabled.
+A space that keeps an older route after a failed cycle does not ask for the retry: that route keeps
+processing events. A run ended by `requestShutdown()` returns `false`.
+
 ### Startup
 
 The constructor builds one sink and one topic per tracked space, deletes the space's namespaces no
@@ -110,7 +125,7 @@ namespace cm::sync
 class ICMSync
 {
 public:
-    virtual void synchronize() = 0;                              // one cycle per tracked space
+    virtual bool synchronize() = 0;                              // one cycle per tracked space; true = early retry
     virtual void requestShutdown() = 0;                          // idempotent, thread-safe
     virtual std::vector<SpaceStatus> getSpacesStatus() const = 0; // wait-free snapshot
 };
