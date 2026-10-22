@@ -57,7 +57,6 @@ namespace
 
 // RNF-1: the library exports its API and nothing from its private dependencies: asio (ASIO_DISABLE_VISIBILITY +
 // -fvisibility=hidden), and libcurl, simdjson and OpenSSL once E2 links them (--exclude-libs,ALL).
-// I45b: the .so is the production compilation, so not even its local symbols carry the test seams or the hooks.
 TEST(VisibilityTest, ExportsApiAndNoAsio)
 {
     std::string output;
@@ -95,10 +94,20 @@ TEST(VisibilityTest, ExportsApiAndNoAsio)
     EXPECT_GT(startSymbols, 0u) << "indexer_client::RuntimeOwner::start is not exported";
     EXPECT_GT(setLogFunctionSymbols, 0u) << "indexer_client::setLogFunction is not exported (I56)";
     EXPECT_EQ(deniedLines, 0u);
+}
 
-    // Every symbol (local ones included, the .so is a Debug build): no seam and no testing hook.
+// I45b: the .so is the production compilation, so not even its local symbols carry the test seams or the hooks. It
+// needs the symbol table: the CI's coverage and ASAN jobs build Release `-O3 -s` (src/CMakeLists.txt:52), whose .so
+// has none, so there the case is skipped; the TSAN job (Debug) and local Debug builds run it.
+TEST(VisibilityTest, NoTestOnlySymbols)
+{
     std::string all;
     ASSERT_TRUE(nmOfLibrary("", all)) << "nm failed: " << all;
+    if (all.find(": no symbols") != std::string::npos)
+    {
+        GTEST_SKIP() << "stripped library (no symbol table): " << INDEXER_CLIENT_SO_PATH;
+    }
+    std::string line;
     const char* const testOnly[] = {"indexer_client::detail::seams", "indexer_client::testing_hooks"};
     std::size_t transportSymbols = 0;
     std::size_t testOnlyLines = 0;

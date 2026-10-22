@@ -72,6 +72,9 @@ namespace indexer_client::testing
         std::chrono::milliseconds latency {0};
         /// Value of the Retry-After response header; absent means no header.
         std::optional<std::string> retryAfter;
+        /// Extra response headers (name, value), sent as given with a fixed or a streamed body. The fake never encodes
+        /// the body itself: `Content-Encoding: gzip` needs a #body that is already gzip.
+        std::vector<std::pair<std::string, std::string>> headers;
         /// How many requests this rule answers before it stops matching; absent means unlimited.
         std::optional<std::size_t> times;
         /// Hold the response until FakeIndexer::releaseHeld() (or stop()). Applied before #latency.
@@ -711,6 +714,10 @@ namespace indexer_client::testing
             if (matched.retryAfter.has_value())
             {
                 res.set_header("Retry-After", *matched.retryAfter);
+            }
+            for (const auto& [name, value] : matched.headers)
+            {
+                res.set_header(name, value);
             }
             respond(matched, res);
         }

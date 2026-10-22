@@ -290,6 +290,9 @@ namespace indexer_client::detail
             set(curl_easy_setopt(easy, CURLOPT_PASSWORD, shared->credentials.password.c_str()));
             set(curl_easy_setopt(easy, CURLOPT_PROXY, "")); // Never a proxy from the environment.
             set(curl_easy_setopt(easy, CURLOPT_TCP_NODELAY, 1L));
+            // Responses may come gzip-compressed (I117, D41): only gzip is announced (not "", which would also offer
+            // deflate, br and zstd); curl decodes before writeCb, so the response cap counts decoded bytes.
+            set(curl_easy_setopt(easy, CURLOPT_ACCEPT_ENCODING, "gzip"));
             set(curl_easy_setopt(easy, CURLOPT_TIMEOUT_MS, static_cast<long>(state.timeout.count())));
             set(curl_easy_setopt(easy, CURLOPT_PRIVATE, &state));
             set(curl_easy_setopt(easy, CURLOPT_WRITEFUNCTION, &Impl::writeCb));
@@ -799,8 +802,9 @@ namespace indexer_client::detail
             return ::close(fd); // ...and closed exactly once, here.
         }
 
-        /// The response cap lives only here (no CURLOPT_MAXFILESIZE_LARGE, no CURLOPT_ACCEPT_ENCODING): crossing it
-        /// sets the flag and returns a short count, so curl fails with 23 and classify reports ResponseTooLarge.
+        /// The response cap lives only here (no CURLOPT_MAXFILESIZE_LARGE): crossing it sets the flag and returns a
+        /// short count, so curl fails with 23 and classify reports ResponseTooLarge. With CURLOPT_ACCEPT_ENCODING curl
+        /// hands this callback the decoded bytes, so the cap counts the decompressed body (a gzip bomb trips it too).
         static size_t writeCb(char* data, size_t size, size_t count, void* userdata) noexcept
         {
             auto* state = static_cast<TransferState*>(userdata);

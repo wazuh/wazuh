@@ -68,9 +68,10 @@ target_link_libraries(
 # this executable compiles them, so the unit suite never touches OpenSSL.
 target_compile_definitions(indexer_client_component_test PRIVATE CPPHTTPLIB_OPENSSL_SUPPORT)
 
+# zlib (transportGzip_test, E6b): the headers of the copy libwazuhext links, declared here rather than inherited.
 target_include_directories(
   indexer_client_component_test PRIVATE ${CMAKE_CURRENT_LIST_DIR}/fake ${CMAKE_CURRENT_LIST_DIR}/../src
-                                        ${SRC_FOLDER}/external/cpp-httplib)
+                                        ${SRC_FOLDER}/external/cpp-httplib ${SRC_FOLDER}/external/zlib)
 
 # -rdynamic lets the test executable interpose getaddrinfo for the hung-resolver case (T20); the link map proves that
 # no static copy of curl or OpenSSL entered the executable.
@@ -79,3 +80,29 @@ target_link_options(indexer_client_component_test PRIVATE -rdynamic
 
 add_test(NAME indexer_client_component_test COMMAND indexer_client_component_test)
 set_tests_properties(indexer_client_component_test PROPERTIES LABELS indexer_client_component_test)
+
+# Suite against a real OpenSearch (plan 18, E6b, I110): skipped without INDEXER_CLIENT_OPENSEARCH_URL, failed without it
+# under GITHUB_ACTIONS. It links the public .so like the unit suite; fake/ only for testTimeScale.hpp, ../src only for
+# the constant Painless sources of write/encoding.hpp, cpp-httplib for the raw requests.
+file(GLOB OPENSEARCH_SRC_FILES ${CMAKE_CURRENT_LIST_DIR}/opensearch/*.cpp)
+
+add_executable(indexer_client_opensearch_test ${OPENSEARCH_SRC_FILES})
+
+target_link_libraries(
+  indexer_client_opensearch_test
+  debug gtestd
+  debug gmockd
+  debug gtest_maind
+  optimized gtest
+  optimized gmock
+  optimized gtest_main
+  indexer_client
+  ext_httplib
+  Threads::Threads)
+
+target_include_directories(
+  indexer_client_opensearch_test PRIVATE ${CMAKE_CURRENT_LIST_DIR}/fake ${CMAKE_CURRENT_LIST_DIR}/../src
+                                         ${SRC_FOLDER}/external/cpp-httplib)
+
+add_test(NAME indexer_client_opensearch_test COMMAND indexer_client_opensearch_test)
+set_tests_properties(indexer_client_opensearch_test PROPERTIES LABELS indexer_client_opensearch_test)

@@ -20,11 +20,13 @@
 
 #include "componentFixture.hpp"
 #include "fakeIndexer.hpp"
+#include "testTimeScale.hpp"
 
 using namespace component;
 using indexer_client::testing::FakeIndexer;
 using indexer_client::testing::FakeIndexerOptions;
 using indexer_client::testing::Rule;
+using indexer_client::testing::scaled;
 namespace hooks = indexer_client::testing_hooks;
 
 namespace
@@ -260,8 +262,9 @@ TEST_F(TransportTest, ConcurrentStopsJoinOnce)
         std::unique_lock<std::mutex> lock(calls->mutex);
         ASSERT_TRUE(calls->cv.wait_for(lock, 5s, [&] { return calls->entered == 2; }));
     }
-    // Measured window: both callers are inside stop() and neither may come back while loop 0 cannot tear down.
-    std::this_thread::sleep_for(150ms);
+    // Observation window (measured, scaled()): both callers are inside stop() and neither may come back while loop 0
+    // cannot tear down.
+    std::this_thread::sleep_for(scaled(150ms));
     {
         std::lock_guard<std::mutex> lock(calls->mutex);
         EXPECT_EQ(calls->returned, 0u) << "a stop() returned before every loop was torn down";

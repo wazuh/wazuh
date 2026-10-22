@@ -25,6 +25,7 @@
 #include "componentFixture.hpp"
 #include "fakeIndexer.hpp"
 #include "rawTcpServer.hpp"
+#include "testTimeScale.hpp"
 #include "tlsMaterialFactory.hpp"
 
 using namespace component;
@@ -33,6 +34,7 @@ using indexer_client::Credentials;
 using indexer_client::testing::FakeIndexer;
 using indexer_client::testing::FakeIndexerOptions;
 using indexer_client::testing::FakeTlsOptions;
+using indexer_client::testing::scaled;
 using indexer_client::testing::SilentServer;
 using indexer_client::testing::TlsMaterialFactory;
 
@@ -417,7 +419,7 @@ TEST_F(TransportTlsTest, CancelDuringTlsHandshake)
 
     const auto eof = silent.waitForEof(0, 2s);
     ASSERT_TRUE(eof.has_value()) << "the silent server never saw the connection close";
-    EXPECT_LE(*eof - cancelledAt, 100ms)
+    EXPECT_LE(*eof - cancelledAt, scaled(100ms))
         << "EOF " << std::chrono::duration_cast<std::chrono::milliseconds>(*eof - cancelledAt).count()
         << " ms after cancel()";
 }
