@@ -31,12 +31,42 @@
 #define HALF_BUF_SIZE        (PERCPU_BUF_SIZE >> 1)
 #define LIMIT_HALF(x)        ((x) & (HALF_BUF_SIZE - 1))
 
-#define statfunc static inline
+/* Every helper is force-inlined, and exactly ONE function in this object is
+ * allowed to be a BPF-to-BPF subprogram: rt_walk_dentry, marked subprogfunc.
+ *
+ * Plain `static inline` left the choice of what to outline to clang, and that
+ * choice is what broke RHEL 8 / CentOS Stream 8 (4.18). Two things go wrong
+ * there, and only the second is fatal:
+ *
+ *   - A subprogram argument that is a pointer to a non-BTF type (char*,
+ *     unsigned char**, __u64*) is refused by btf_prepare_func_args() with
+ *     "Unrecognized arg#0 type PTR". For a STATIC subprogram that is only a
+ *     log line: the verifier falls back to walking into the callee.
+ *   - That fallback is the killer. The callee here is a 320-iteration unrolled
+ *     dentry walk, ~13,800 instructions, reachable three times per program, so
+ *     walking into it at every call site blew the verifier's budget outright:
+ *     "BPF program is too large. Processed 1000001 insn (limit 1000000)".
+ *
+ * A GLOBAL (external-linkage) noinline function with all-scalar arguments is
+ * verified once, on its own -- the log says "Validating rt_walk_dentry()
+ * func#1..." -- and each call site then costs only an argument check. That is
+ * why rt_walk_dentry is not static and why every one of its parameters is an
+ * integer. See the WHICH-HELPERS note above it. */
+#define statfunc    static __always_inline
+#define subprogfunc __attribute__((noinline))
 
 struct buffer
 {
     __u8 data[PERCPU_BUF_SIZE];
 };
+
+/* Which scratch slot of heaps_map a path walk writes into. Two distinct
+ * 32 KiB per-CPU regions, exactly as the two separate maps they replace were:
+ * the triggering hook's own walk must survive until submit_event() has copied
+ * it into evt->filename, and the cwd walks run from inside submit_event(). */
+#define RT_SLOT_EVENT 0
+#define RT_SLOT_CWD   1
+#define RT_SLOT_COUNT 2
 
 struct
 {
@@ -49,7 +79,7 @@ struct
     __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
     __type(key, __u32);
     __type(value, struct buffer);
-    __uint(max_entries, 1);
+    __uint(max_entries, RT_SLOT_COUNT);
 } heaps_map SEC(".maps");
 
 struct
@@ -60,18 +90,17 @@ struct
     __uint(max_entries, 1);
 } dpath_map SEC(".maps");
 
-/* Separate scratch buffer for cwd resolution (called from within
- * submit_event(), after the triggering hook's own path-walk buffer has
- * already been consumed into evt->filename) — mirrors modern.bpf.c's
- * cwd_heap, kept distinct from heaps_map out of the same caution rather
- * than relying on read-before-reuse ordering being safe. */
-struct
-{
-    __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-    __type(key, __u32);
-    __type(value, struct buffer);
-    __uint(max_entries, 1);
-} cwd_heap SEC(".maps");
+/* cwd resolution used to have its own map (cwd_heap, mirroring modern.bpf.c)
+ * kept distinct from heaps_map out of caution rather than relying on
+ * read-before-reuse ordering being safe. That caution is preserved exactly --
+ * RT_SLOT_CWD is a different 32 KiB region from RT_SLOT_EVENT -- but as a slot
+ * of ONE map rather than a second map.
+ *
+ * One map, not two, because the slot is now chosen inside rt_walk_dentry() and
+ * a map pointer cannot be passed to it. Selecting between two maps there would
+ * produce PTR_TO_MAP_VALUE registers with different map_ptr, which 4.18's
+ * regsafe() compares, so the two branches would never prune against each other
+ * and the verifier would walk the whole unrolled loop twice. */
 
 /* Single-slot drop counter (#37396 backpressure design): incremented every
  * time bpf_ringbuf_reserve() fails, read-and-reset into the next
@@ -372,8 +401,21 @@ statfunc __u32 take_drop_counter(void)
 
 /* Manual dentry/vfsmount walker for the kprobe attach path (bpf_d_path is
  * not callable from kprobe context). Ported verbatim from modern.bpf.c's
- * get_path_str_from_path(). */
-statfunc long get_path_str_from_path(unsigned char** path_str, struct path* path, struct buffer* out_buf)
+ * get_path_str_from_path().
+ *
+ * THE ONE SUBPROGRAM. Global linkage and all-scalar arguments are both load-
+ * bearing on 4.18 -- see the statfunc/subprogfunc note at the top of this file.
+ * The addresses arrive as __u64 and are cast back here; nothing is lost by
+ * that, because every dereference below is a bpf_probe_read_kernel via
+ * BPF_CORE_READ, so the pointer is an opaque address to the verifier either
+ * way. CO-RE relocations are emitted at the access sites inside this function,
+ * where the types are fully declared, so they are unaffected.
+ *
+ * Returns the byte offset into heaps_map[slot].data[] at which the
+ * NUL-terminated absolute path begins, or negative on failure. Callers must
+ * mask it with LIMIT_HALF() before indexing: to the verifier this is a value
+ * returned from a subprogram, with no bounds of its own. */
+subprogfunc long rt_walk_dentry(__u64 dentry_addr, __u64 vfsmnt_addr, __u32 slot)
 {
     long ret;
     struct dentry *dentry, *dentry_parent, *dentry_mnt;
@@ -382,8 +424,13 @@ statfunc long get_path_str_from_path(unsigned char** path_str, struct path* path
     const unsigned char* name;
     size_t name_len;
 
-    dentry = BPF_CORE_READ(path, dentry);
-    vfsmnt = BPF_CORE_READ(path, mnt);
+    __u32 slot_key = slot;
+    struct buffer* out_buf = bpf_map_lookup_elem(&heaps_map, &slot_key);
+    if (!out_buf)
+        return -1;
+
+    dentry = (struct dentry*)dentry_addr;
+    vfsmnt = (struct vfsmount*)vfsmnt_addr;
     mnt = container_of(vfsmnt, struct mount, mnt);
     mnt_parent = BPF_CORE_READ(mnt, mnt_parent);
 
@@ -443,8 +490,37 @@ statfunc long get_path_str_from_path(unsigned char** path_str, struct path* path
         out_buf->data[buf_off] = '/';
     }
     out_buf->data[HALF_BUF_SIZE - 1] = 0;
-    *path_str = &out_buf->data[buf_off];
-    return HALF_BUF_SIZE - buf_off - 1;
+    /* The OFFSET, not the length. Every call site only ever tested this
+     * against zero, so the change is invisible to them; buf_off is kept in
+     * [0, HALF_BUF_SIZE-1] by the LIMIT_HALF discipline above, so the caller's
+     * mask is provably a no-op on any real value. */
+    return (long)buf_off;
+}
+
+/* Typed facade, so call sites keep compile-time type checking. Must be
+ * force-inlined: its parameters are pointers, which is the shape that may not
+ * cross a subprogram boundary. */
+statfunc long rt_walk_path_at(struct dentry* dentry, struct vfsmount* mnt, __u32 slot)
+{
+    return rt_walk_dentry((__u64)(unsigned long)dentry, (__u64)(unsigned long)mnt, slot);
+}
+
+/* Re-derives the string from the (slot, offset) pair rt_walk_dentry returned.
+ * Also force-inlined -- it RETURNS a pointer, which is the same illegal shape
+ * as taking one. The LIMIT_HALF mask is what gives the verifier a bound on a
+ * value it got back from a subprogram; without it the indexing is rejected as
+ * unbounded. */
+statfunc const char* rt_slot_str(__u32 slot, long off)
+{
+    if (off < 0)
+        return NULL;
+
+    __u32 slot_key = slot;
+    struct buffer* buf = bpf_map_lookup_elem(&heaps_map, &slot_key);
+    if (!buf)
+        return NULL;
+
+    return (const char*)&buf->data[LIMIT_HALF((__u64)off)];
 }
 
 statfunc void get_inode_dev(struct inode* inode_ptr, __u64* inode, __u64* dev)
@@ -474,16 +550,20 @@ statfunc int get_task_cwd(char* dest, int size, struct task_struct* task)
     if (!fs)
         return -1;
 
-    struct path pwd = BPF_CORE_READ(fs, pwd);
-    struct buffer* buf = bpf_map_lookup_elem(&cwd_heap, &(__u32) {0});
-    if (!buf)
+    /* Two field reads rather than one 16-byte struct copy onto the BPF stack.
+     * The `struct path pwd` local is gone, and with it every question about
+     * whether a pointer to stack memory is an acceptable subprogram argument.
+     * The pair can in principle tear across the two reads if the task calls
+     * chdir() between them; that race is immaterial beside the one the
+     * 320-step walk below already has. */
+    struct dentry* pwd_dentry = BPF_CORE_READ(fs, pwd.dentry);
+    struct vfsmount* pwd_mnt = BPF_CORE_READ(fs, pwd.mnt);
+
+    const char* cwd_path = rt_slot_str(RT_SLOT_CWD, rt_walk_path_at(pwd_dentry, pwd_mnt, RT_SLOT_CWD));
+    if (!cwd_path)
         return -1;
 
-    unsigned char* cwd_path = NULL;
-    if (get_path_str_from_path(&cwd_path, &pwd, buf) < 0)
-        return -1;
-
-    bpf_probe_read_kernel_str(dest, size, (const char*)cwd_path);
+    bpf_probe_read_kernel_str(dest, size, cwd_path);
     return 0;
 }
 
@@ -620,16 +700,18 @@ int kprobe__vfs_open(struct pt_regs* ctx)
     if (!d_inode || !is_regular_file(d_inode))
         return 0;
 
-    struct buffer* buf = bpf_map_lookup_elem(&heaps_map, &(__u32) {0});
-    if (!buf)
+    struct vfsmount* mnt = NULL;
+    bpf_probe_read_kernel(&mnt, sizeof(mnt), &path->mnt);
+    if (!mnt)
         return 0;
-    unsigned char* full_path = NULL;
-    if (get_path_str_from_path(&full_path, path, buf) < 0)
+
+    const char* full_path = rt_slot_str(RT_SLOT_EVENT, rt_walk_path_at(dentry, mnt, RT_SLOT_EVENT));
+    if (!full_path)
         return 0;
 
     __u64 inode = 0, dev = 0;
     get_inode_dev(d_inode, &inode, &dev);
-    submit_event(RT_EV_FILE_OPEN, (const char*)full_path, inode, dev);
+    submit_event(RT_EV_FILE_OPEN, full_path, inode, dev);
     return 0;
 }
 
@@ -695,17 +777,13 @@ int kprobe__security_inode_setattr(struct pt_regs* ctx)
     if (!mnt)
         return 0;
 
-    struct path path = {.dentry = dentry, .mnt = mnt};
-    struct buffer* buf = bpf_map_lookup_elem(&heaps_map, &(__u32) {0});
-    if (!buf)
-        return 0;
-    unsigned char* full_path = NULL;
-    if (get_path_str_from_path(&full_path, &path, buf) < 0)
+    const char* full_path = rt_slot_str(RT_SLOT_EVENT, rt_walk_path_at(dentry, mnt, RT_SLOT_EVENT));
+    if (!full_path)
         return 0;
 
     __u64 inode = 0, dev = 0;
     get_inode_dev(d_inode, &inode, &dev);
-    submit_event(RT_EV_FILE_ATTR, (const char*)full_path, inode, dev);
+    submit_event(RT_EV_FILE_ATTR, full_path, inode, dev);
     return 0;
 }
 
@@ -743,17 +821,13 @@ int kprobe__vfs_unlink(struct pt_regs* ctx)
     if (!mnt)
         return 0;
 
-    struct path path = {.dentry = dentry, .mnt = mnt};
-    struct buffer* buf = bpf_map_lookup_elem(&heaps_map, &(__u32) {0});
-    if (!buf)
-        return 0;
-    unsigned char* full_path = NULL;
-    if (get_path_str_from_path(&full_path, &path, buf) < 0)
+    const char* full_path = rt_slot_str(RT_SLOT_EVENT, rt_walk_path_at(dentry, mnt, RT_SLOT_EVENT));
+    if (!full_path)
         return 0;
 
     __u64 inode = 0, dev = 0;
     get_inode_dev(d_inode, &inode, &dev);
-    submit_event(RT_EV_FILE_UNLINK, (const char*)full_path, inode, dev);
+    submit_event(RT_EV_FILE_UNLINK, full_path, inode, dev);
     return 0;
 }
 
@@ -835,14 +909,10 @@ int kprobe__vfs_rename(struct pt_regs* ctx)
     if (!mnt)
         return 0;
 
-    struct buffer* buf = bpf_map_lookup_elem(&heaps_map, &(__u32) {0});
-    if (!buf)
-        return 0;
-    struct path new_path = {.dentry = new_dentry, .mnt = mnt};
-    unsigned char* full_path = NULL;
-    if (get_path_str_from_path(&full_path, &new_path, buf) >= 0)
+    const char* full_path = rt_slot_str(RT_SLOT_EVENT, rt_walk_path_at(new_dentry, mnt, RT_SLOT_EVENT));
+    if (full_path)
     {
-        submit_event(RT_EV_FILE_RENAME, (const char*)full_path, inode, dev);
+        submit_event(RT_EV_FILE_RENAME, full_path, inode, dev);
     }
     return 0;
 }
