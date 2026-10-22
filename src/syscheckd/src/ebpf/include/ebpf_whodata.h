@@ -38,6 +38,13 @@ void fimebpf_initialize(bool (*fim_conf)(const char *),
                         unsigned int syscheckQueueSize);
 
 /**
+ * @brief Sets the directories the BPF programs report events for. Has no effect before the healthcheck loads them.
+ *
+ * @param paths NULL-terminated array of directory paths (may be NULL).
+ */
+void fimebpf_set_monitored_dirs(char **paths);
+
+/**
  * @brief eBPF whodata healthcheck
  *
  * @return err code.

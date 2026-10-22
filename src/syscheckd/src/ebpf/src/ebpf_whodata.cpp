@@ -17,6 +17,7 @@
 #include <iostream>
 #include <memory>
 #include <pwd.h>
+#include <set>
 
 #include <mutex>
 #include <string>
@@ -39,12 +40,23 @@
 #define LSM_LIST_FILE        "/sys/kernel/security/lsm"
 #define LIBBPF_DEBUG         2 // enum libbpf_print_level
 #define LIBBPF_LOG_MAX       4096
+#define MAX_DIR_PREFIX_LEN   256
 
 // Global
 volatile bool event_received = false;
 static bpf_object* global_obj = nullptr;
 static bool g_bpf_lsm_active = false;
 static std::vector<struct bpf_link*> global_links;
+
+/* Directories in the monitored_dirs map */
+static std::mutex g_dirs_mutex;
+static std::set<std::string> g_dirs_map;
+
+struct dir_prefix
+{
+    uint32_t prefixlen;
+    char path[MAX_DIR_PREFIX_LEN];
+};
 
 /*
  * Returns true if the running kernel has "bpf" in its active LSM list.
@@ -92,8 +104,48 @@ static void destroy_global_links()
     global_links.clear();
 }
 
+static int update_dir_prefix(int fd, const std::string& path, bool add)
+{
+    dir_prefix key {};
+    const uint8_t value = 1;
+
+    key.prefixlen = path.size() * 8;
+    memcpy(key.path, path.data(), path.size());
+    return add ? bpf_helpers->bpf_map_update_elem(fd, &key, &value, 0) : bpf_helpers->bpf_map_delete_elem(fd, &key);
+}
+
+static void sync_monitored_dirs(const std::set<std::string>& dirs)
+{
+    const std::lock_guard<std::mutex> lock(g_dirs_mutex);
+    const int fd = global_obj ? bpf_helpers->bpf_object_find_map_fd_by_name(global_obj, "monitored_dirs") : -1;
+    if (fd < 0)
+    {
+        return;
+    }
+
+    for (const auto& dir : dirs)
+    {
+        if (!g_dirs_map.count(dir) && update_dir_prefix(fd, dir, true) != 0)
+        {
+            fimebpf::instance().m_loggingFunction(LOG_WARNING, FIM_WARN_EBPF_DIRS_MAP_FULL);
+            break;
+        }
+    }
+
+    for (const auto& dir : g_dirs_map)
+    {
+        if (!dirs.count(dir))
+        {
+            update_dir_prefix(fd, dir, false);
+        }
+    }
+
+    g_dirs_map = dirs;
+}
+
 static void release_bpf()
 {
+    const std::lock_guard<std::mutex> lock(g_dirs_mutex);
     destroy_global_links();
     bpf_helpers->bpf_object_close(global_obj);
     global_obj = nullptr;
@@ -490,6 +542,10 @@ int init_libbpf(std::unique_ptr<DynamicLibraryWrapper> local_sym_load)
         (bpf_program__name_t)local_sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_program__name");
     bpf_helpers->libbpf_set_print =
         (libbpf_set_print_t)local_sym_load->getFunctionSymbol(bpf_helpers->module, "libbpf_set_print");
+    bpf_helpers->bpf_map_update_elem =
+        (bpf_map_update_elem_t)local_sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_map_update_elem");
+    bpf_helpers->bpf_map_delete_elem =
+        (bpf_map_delete_elem_t)local_sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_map_delete_elem");
 
     /* Load all required symbols (C++17 fold expression) */
     const auto all_loaded = [](auto... ptrs)
@@ -517,7 +573,9 @@ int init_libbpf(std::unique_ptr<DynamicLibraryWrapper> local_sym_load)
                     bpf_helpers->bpf_object_load_skeleton,
                     bpf_helpers->bpf_object_attach_skeleton,
                     bpf_helpers->bpf_object_detach_skeleton,
-                    bpf_helpers->libbpf_set_print))
+                    bpf_helpers->libbpf_set_print,
+                    bpf_helpers->bpf_map_update_elem,
+                    bpf_helpers->bpf_map_delete_elem))
     {
         logFn(LOG_ERROR, FIM_ERROR_EBPF_LIB_LOAD);
         local_sym_load->freeLibrary(bpf_helpers->module);
@@ -845,6 +903,21 @@ extern "C"
                                        syscheckQueueSize);
     }
 
+    void fimebpf_set_monitored_dirs(char** paths)
+    {
+        std::set<std::string> dirs;
+        for (size_t i = 0; paths && paths[i]; i++)
+        {
+            const std::string dir(paths[i], strnlen(paths[i], MAX_DIR_PREFIX_LEN - 1));
+            if (!dir.empty())
+            {
+                dirs.insert(dir);
+            }
+        }
+
+        sync_monitored_dirs(dirs);
+    }
+
     int ebpf_whodata_healthcheck()
     {
         ring_buffer* rb = nullptr;
@@ -883,6 +956,8 @@ extern "C"
 
         event_received = false;
         abspathFn(EBPF_HC_FILE, ebpf_hc_abs_path, sizeof(ebpf_hc_abs_path));
+
+        sync_monitored_dirs({ebpf_hc_abs_path});
 
         if (std::remove(ebpf_hc_abs_path) == 0)
         {
