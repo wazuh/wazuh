@@ -74,7 +74,7 @@ The `synchronize()` method iterates through all tracked spaces and handles four 
 
 | Case | Remote State | Local Route | Action |
 |---|---|---|---|
-| **1** | Policy **disabled** | Route exists | Delete route and namespace, set dummy ID |
+| **1** | Policy **disabled**, or with no integrations or no root decoder | Route exists | Delete route and namespace, set dummy ID |
 | **2** | Policy enabled, hash **unchanged** | Route enabled | Skip (no-op) |
 | **3** | Policy enabled | No route exists | Download → enrich → create route |
 | **4** | Policy enabled, hash **changed** | Route exists | Download → enrich → hot-swap → delete old NS |

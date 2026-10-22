@@ -79,13 +79,15 @@ public:
      *
      * Queries the wazuh-threatintel-policies index to retrieve the SHA-256 hash stored in
      * the space.hash.sha256 field and the enabled status from document.enabled
-     * for the given space name.
+     * for the given space name. The policy is reported as disabled when document.integrations
+     * is empty or document.root_decoder is not a non-empty string (nothing to build).
      *
      * @param space The name of the space to retrieve the information for
      * @param consumerIdToValidate Optional consumer document ID in `.wazuh-cti-consumers` to validate.
      *        When provided, a PIT will include `.wazuh-cti-consumers` and the consumer document
      *        will be verified as `ready` within the PIT snapshot to ensure consistency.
-     * @return An optional pair containing the SHA-256 hash and enabled status.
+     * @return An optional pair containing the SHA-256 hash and the enabled status
+     *         (document.enabled && non-empty integrations && root decoder set).
      *         Returns std::nullopt if the consumer is provided and is not ready.
      * @throws std::invalid_argument if the space name is empty
      * @throws IndexerConnectorException if the query returns zero or more than one result, or if required fields are
