@@ -221,9 +221,9 @@ jobs:
     # manifest.json of every ref in it (consolidate.sh). Output: externals-all.
     needs: [check, build-externals, build-ebpf]
     if: >-
-      always() && needs.check.result == 'success' &&
+      ${{ !cancelled() && needs.check.result == 'success' &&
       (needs.check.outputs.legs == 'true' || needs.check.outputs.ebpf == 'true') &&
-      !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
+      !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}
     runs-on: ubuntu-24.04
     permissions:
       id-token: write
@@ -282,8 +282,8 @@ jobs:
     # (externals-all) and the published pool; its own ref is left out of make deps.
     needs: [check, build-externals, build-ebpf, consolidate]
     if: >-
-      always() && needs.check.outputs.cpython == 'true' &&
-      !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
+      ${{ !cancelled() && needs.check.outputs.cpython == 'true' &&
+      !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}
     permissions:
       contents: read
       packages: read
@@ -365,8 +365,8 @@ jobs:
     # Every ref this run built, with its manifest.json: what smoke tests and publish uploads.
     needs: [check, build-externals, build-ebpf, consolidate, cpython]
     if: >-
-      always() && needs.check.result == 'success' && needs.check.outputs.missing != '' &&
-      !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
+      ${{ !cancelled() && needs.check.result == 'success' && needs.check.outputs.missing != '' &&
+      !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}
     runs-on: ubuntu-24.04
     permissions:
       id-token: write
@@ -449,7 +449,7 @@ jobs:
     # package, prepared like the package job and with the runner's default
     # Xcode, not the one the legs pin.
     needs: [check, pool]
-    if: always() && needs.pool.result == 'success'
+    if: ${{ !cancelled() && needs.pool.result == 'success' }}
     permissions:
       contents: read
       packages: read
@@ -606,7 +606,7 @@ jobs:
     # smoke_build.sh). cpython comes built from sources/ by design, and
     # libbpf-bootstrap has no sources/ and is skipped.
     needs: [check, pool]
-    if: always() && needs.pool.result == 'success'
+    if: ${{ !cancelled() && needs.pool.result == 'success' }}
     permissions:
       contents: read
       packages: read
@@ -701,11 +701,13 @@ jobs:
     # PR, this file included, at the SHA being published. Publishing is
     # idempotent per ref (publish_pool.sh), so runs queue instead of cancelling.
     needs: [check, pool, smoke-build, smoke-sources]
-    # always(): build-ebpf and cpython are skipped when their refs exist, and a skipped job anywhere
-    # upstream skips this one under the implicit success().
+    # !cancelled(): build-ebpf and cpython are skipped when their refs exist, and a skipped job anywhere
+    # upstream skips this one under the implicit success(); always() would also survive a cancel and hold
+    # the queue while it waits for approval. A cancel during the upload leaves a ref without manifest.json:
+    # rerun this run's publish, which uploads the same bytes.
     if: >-
-      always() && vars.DEPS_POOL_PUBLISH == 'true' && needs.pool.result == 'success' &&
-      needs.smoke-build.result == 'success' && needs.smoke-sources.result == 'success'
+      ${{ !cancelled() && vars.DEPS_POOL_PUBLISH == 'true' && needs.pool.result == 'success' &&
+      needs.smoke-build.result == 'success' && needs.smoke-sources.result == 'success' }}
     runs-on: ubuntu-24.04
     environment: deps-publish
     concurrency:
@@ -753,7 +755,7 @@ jobs:
 
   verify:
     needs: [pool, publish]
-    if: always() && needs.publish.result == 'success'
+    if: ${{ !cancelled() && needs.publish.result == 'success' }}
     runs-on: ubuntu-24.04
     permissions:
       id-token: write

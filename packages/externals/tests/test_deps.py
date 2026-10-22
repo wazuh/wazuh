@@ -2134,13 +2134,21 @@ def test_workflow_images_by_version_tag(tmp_path):
         assert github_env.read_text() == f"EARLIER=1\nBUILDER_TAG={'e' * 12}\nBUILDER_IMAGE={digest}\n"
 
 
+def test_job_conditions_honour_cancel():
+    # always() in a job condition survives a cancel: a publish waiting for approval then holds the queue.
+    text = EXTERNALS_WORKFLOW.read_text(encoding="utf-8")
+    conditions = re.findall(r"^    if: (>-\n(?:      .*\n)+|.*\n)", text, re.M)
+    assert len(conditions) >= 7
+    assert not [c for c in conditions if "always()" in c]
+
+
 def test_publish_gated():
     workflow = jobs(EXTERNALS_WORKFLOW.read_text(encoding="utf-8"))
     publish = workflow["publish"]
     # A skipped build-ebpf or cpython (their refs already exist) must not skip publish: the condition
-    # starts with always() and names the result of every job it waits for.
+    # starts with !cancelled() and names the result of every job it waits for.
     condition = " ".join(re.search(r"^    if: >-\n((?:      .*\n)+)", publish, re.M).group(1).split())
-    assert condition.startswith("always() && vars.DEPS_POOL_PUBLISH == 'true'")
+    assert condition.startswith("${{ !cancelled() && vars.DEPS_POOL_PUBLISH == 'true'")
     for need in ("pool", "smoke-build", "smoke-sources"):
         assert f"needs.{need}.result == 'success'" in condition
     assert re.search(r"^    environment: deps-publish$", publish, re.M)
@@ -2154,7 +2162,7 @@ def test_publish_gated():
     checks = [i for i, step in enumerate(steps) if step["run"] and "deps.py verify --lock" in step["run"]]
     assert len(checks) == 1 and checks[0] < role[0]
     assert job_needs(workflow["verify"]) == ["pool", "publish"]
-    assert re.search(r"^    if: always\(\) && needs\.publish\.result == 'success'$", workflow["verify"], re.M)
+    assert re.search(r"^    if: \$\{\{ !cancelled\(\) && needs\.publish\.result == 'success' \}\}$", workflow["verify"], re.M)
 
 
 def smoke_build_matrix():
