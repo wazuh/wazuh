@@ -4,18 +4,33 @@
 exists, in preference to compiling the object. This directory is the supply
 route for it, because the packaging pipeline cannot compile one:
 
-- `libbpf-bootstrap` is fetched as a **precompiled** external resource, so
-  `modern.bpf.o` arrives prebuilt and `external/CMakeLists.txt` short-circuits
-  its `ExternalProject` — which is also what leaves the vendored per-architecture
-  `vmlinux.h` absent.
-- The compile branch then needs `clang`, libbpf development headers, and either
-  that vendored `vmlinux.h` or a working `bpftool` plus `/sys/kernel/btf/vmlinux`.
-  A package-build container has none of those.
+- The compile branch needs `clang`, libbpf development headers, and a usable
+  `vmlinux.h`. The agent's package images are `centos:6` and `debian:7`, which
+  have no route to a clang new enough for CO-RE, so that branch can never run
+  there.
+- The vendored per-architecture `vmlinux.h` cannot stand in for a real one. It
+  is a **reduced** dump: it defines no cgroup types at all — no `struct cgroup`,
+  no `css_set`, no `cgroup_subsys_state` — and its `task_struct` has no
+  `cgroups` member, on `x86` and `arm64` alike. `rt_file.bpf.c` has therefore
+  never compiled against it on any architecture. (Beware a misleading grep:
+  `css_set *cgroups` *does* appear in that file, inside
+  `struct task_struct__safe_rcu`, not inside `task_struct`.) `CMakeLists.txt`
+  probes it for `struct css_set` rather than merely checking it exists, so this
+  corrects itself if the vendored header is ever fixed.
 
 Without an object here, `rt_open()` finds nothing on a packaged agent and the
 whole container FIM event path takes its "no eBPF engine" degradation. That is a
 warning in `ossec.log` since `c0e5f162bb`, but it is still the feature not
 running.
+
+Committing a binary to a source repository is not where this should end up. The
+better route is the one `modern.bpf.o` already takes: build it in the same
+out-of-repo image (clang-15, issue #28626) and ship it inside
+`libbpf-bootstrap.tar.gz`, so `external/CMakeLists.txt` finds it the same way.
+That needs a deps-pipeline change and a `DEPS_VERSION` bump, which cannot be
+done from this repository — hence the committed objects for now. `CMakeLists.txt`
+is deliberately left preferring a prebuilt over compiling, so a deps-shipped
+object can take over later without rearranging the gate.
 
 ## Directories
 
@@ -32,25 +47,56 @@ indistinguishable from "this host has no eBPF".
 
 ## Refreshing one
 
-On a host of the target architecture, with clang, libbpf headers and either the
-vendored `vmlinux.h` or a usable `bpftool`:
+**No toolchain for the target architecture is required.** A BPF object is
+architecture-independent ELF; the only arch-dependent inputs are
+`-D__TARGET_ARCH_<arch>` and which `vmlinux.h` is on the include path. So both
+objects can be produced from one machine, given each architecture's header.
+
+Getting a header needs a running host of that architecture, but nothing more
+than SSH: `/sys/kernel/btf/vmlinux` is world-readable and `bpftool btf dump`
+needs no root. BTF parsing is itself arch-independent, so a host of *either*
+architecture can dump a BTF blob copied from the other.
 
 ```sh
-cd src
-make deps TARGET=agent -j"$(nproc)"
-make build TARGET=agent -j"$(nproc)"
-cp build/lib/rt_file.bpf.o shared_modules/ebpf_provider/prebuilt/<arch>/
+# 1. one header per architecture, from a real host of that architecture
+ssh <x86_64-host>  'bpftool btf dump file /sys/kernel/btf/vmlinux format c' > x86/vmlinux.h
+ssh <aarch64-host> 'bpftool btf dump file /sys/kernel/btf/vmlinux format c' > arm64/vmlinux.h
+
+# 2. compile both, from anywhere with clang and libbpf headers
+clang -O2 -g -target bpf -D__TARGET_ARCH_x86   -Iinclude -Ix86   -c bpf/rt_file.bpf.c -o prebuilt/x86/rt_file.bpf.o
+clang -O2 -g -target bpf -D__TARGET_ARCH_arm64 -Iinclude -Iarm64 -c bpf/rt_file.bpf.c -o prebuilt/arm64/rt_file.bpf.o
+
+# 3. the invariant that decides whether it loads on a legacy kernel at all
+tools/check_bpf_symbols.sh prebuilt/x86/rt_file.bpf.o
+tools/check_bpf_symbols.sh prebuilt/arm64/rt_file.bpf.o
+
+# 4. record what they were built from, or CMake reports them stale
+for a in x86 arm64; do
+  printf '%s %s\n' "$(sha256sum bpf/rt_file.bpf.c | cut -d' ' -f1)" \
+                   "$(sha256sum include/rt_event_contract.h | cut -d' ' -f1)" \
+    > "prebuilt/$a/rt_file.bpf.o.sources.sha256"
+done
 ```
 
-Then confirm it actually loads (`test/rt_engine_open_test.c` and
-`rt_engine_filter_test.c` under `shared_modules/ebpf_provider`, which need root
-and a cgroup-v2 kernel), and update the four
-`.github/actions/check_files/*.csv` manifests in the same change — the checker
-exits non-zero both for an installed file no row lists and for a listed file the
-build did not produce, so the object and its rows have to land together. A row
-may carry `size_bytes=0`, which skips the size comparison while still asserting
-owner, group, mode and permissions.
+Prefer a **recent** kernel's header. CO-RE resolves field offsets against the
+running kernel at load time, so a newer header is the portable direction: the
+committed x86 object is built from a 6.6 header and verified to load on
+4.18 (CentOS Stream 8). A header older than the code needs can simply fail to
+compile.
 
-Rebuild whenever `bpf/rt_file.bpf.c` or `include/rt_event_contract.h` changes:
-nothing here detects a stale object, and a mismatched event ABI is refused at
-`rt_open()` by the guard in `1f6ecea90f`.
+Then **confirm each object actually loads** — `bpftool prog loadall <obj>
+/sys/fs/bpf/t` as root, which must exit 0 and pin all five programs — and update
+the four amd64/arm64 `.github/actions/check_files/*.csv` manifests in the same
+change. (There are six; the two i386 ones get no row, because `CMakeLists.txt`
+produces an object only for `x86_64` and `aarch64`.) The checker exits non-zero
+both for an installed file no row lists and for a listed file the build did not
+produce, so the object and its rows have to land together. The rows carry
+`size_bytes=0`, which skips the size comparison — `check_files.py` treats 0 as
+falsy — while still asserting owner, group, mode and permissions, so refreshing
+an object does not mean touching four manifests.
+
+Rebuild whenever `bpf/rt_file.bpf.c` or `include/rt_event_contract.h` changes.
+A mismatched event ABI is refused at `rt_open()` by the guard in `1f6ecea90f`,
+and a stale object is now reported at configure time by comparing the digest
+written in step 4 — but neither catches a *silently wrong* one, which is what
+step 3 is for.
