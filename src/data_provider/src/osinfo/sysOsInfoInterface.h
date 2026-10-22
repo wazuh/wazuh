@@ -14,6 +14,7 @@
 #include <string>
 #include <memory>
 #include "json.hpp"
+#include "stringHelper.h"
 
 class ISysOsInfoProvider
 {
@@ -42,14 +43,28 @@ class SysOsInfo
                               nlohmann::json& output)
         {
             const auto version = osInfoProvider->version();
-            output["os_name"] = osInfoProvider->name();
+            const auto name = osInfoProvider->name();
+            // DisplayVersion (20H2 onwards) wins over the release, because ReleaseId stays frozen at
+            // 2009 since 20H2. The release covers the older versions: ReleaseId, the build table or
+            // the service pack.
+            auto displayVersion = osInfoProvider->displayVersion();
+
+            if (displayVersion.empty())
+            {
+                displayVersion = Utils::trim(osInfoProvider->release());
+            }
+
+            // Trimmed like setOsFull() does on the other platforms.
+            const auto fullName = Utils::trim(name);
+
+            output["os_name"] = name;
             output["os_major"] = osInfoProvider->majorVersion();
             output["os_minor"] = osInfoProvider->minorVersion();
             output["os_build"] = osInfoProvider->build();
             output["os_version"] = version;
             output["hostname"] = osInfoProvider->nodeName();
-            output["os_distribution_release"] = osInfoProvider->release();
-            output["os_full"] = osInfoProvider->displayVersion();
+            output["os_display_version"] = displayVersion;
+            output["os_full"] = displayVersion.empty() ? fullName : fullName + " " + displayVersion;
             output["os_kernel_release"] = version;
             output["architecture"] = osInfoProvider->machine();
             output["os_platform"] = "windows";

@@ -486,12 +486,30 @@ TEST_F(WIndexerConnectorMockTest, ExistsIocDataIndexTrue)
     EXPECT_TRUE(connector->existsIocDataIndex());
 }
 
-TEST_F(WIndexerConnectorMockTest, ExistsIocDataIndexFalseOnException)
+TEST_F(WIndexerConnectorMockTest, ExistsIocDataIndexFalseOnNotFound)
 {
     EXPECT_CALL(*mock, search(An<std::string_view>(), 0U, _, _))
-        .WillOnce(Throw(IndexerConnectorException("index_not_found_exception")));
+        .WillOnce(Throw(
+            IndexerConnectorException("index_not_found_exception", IndexerConnectorException::Category::Other, 404)));
     auto connector = makeConnector();
     EXPECT_FALSE(connector->existsIocDataIndex());
+}
+
+TEST_F(WIndexerConnectorMockTest, ExistsIocDataIndexThrowsOnServerError)
+{
+    EXPECT_CALL(*mock, search(An<std::string_view>(), 0U, _, _))
+        .WillOnce(
+            Throw(IndexerConnectorException("Search request failed", IndexerConnectorException::Category::Other, 503)));
+    auto connector = makeConnector();
+    EXPECT_THROW(connector->existsIocDataIndex(), IndexerConnectorException);
+}
+
+TEST_F(WIndexerConnectorMockTest, ExistsIocDataIndexThrowsWhenNoServerIsAvailable)
+{
+    EXPECT_CALL(*mock, search(An<std::string_view>(), 0U, _, _))
+        .WillOnce(Throw(IndexerConnectorException("No available server")));
+    auto connector = makeConnector();
+    EXPECT_THROW(connector->existsIocDataIndex(), IndexerConnectorException);
 }
 
 TEST_F(WIndexerConnectorMockTest, ExistsIocDataIndexAfterShutdownThrows)
@@ -1069,11 +1087,38 @@ TEST_F(WIndexerConnectorMockTest, IsConsumerReadyForSyncReturnsFalseAfterShutdow
     EXPECT_FALSE(connector->isConsumerReadyForSync("my-consumer"));
 }
 
-TEST_F(WIndexerConnectorMockTest, IsConsumerReadyForSyncReturnsFalseOnException)
+TEST_F(WIndexerConnectorMockTest, IsConsumerReadyForSyncFalseWhenConsumersIndexIsMissing)
+{
+    EXPECT_CALL(*mock, search(An<std::string_view>(), 1U, _, _))
+        .WillOnce(Throw(
+            IndexerConnectorException("index_not_found_exception", IndexerConnectorException::Category::Other, 404)));
+    auto connector = makeConnector();
+    EXPECT_FALSE(connector->isConsumerReadyForSync("my-consumer"));
+}
+
+TEST_F(WIndexerConnectorMockTest, IsConsumerReadyForSyncThrowsOnServerError)
+{
+    EXPECT_CALL(*mock, search(An<std::string_view>(), 1U, _, _))
+        .WillOnce(
+            Throw(IndexerConnectorException("Search request failed", IndexerConnectorException::Category::Other, 503)));
+    auto connector = makeConnector();
+    EXPECT_THROW(connector->isConsumerReadyForSync("my-consumer"), IndexerConnectorException);
+}
+
+TEST_F(WIndexerConnectorMockTest, IsConsumerReadyForSyncThrowsOnAuthError)
+{
+    EXPECT_CALL(*mock, search(An<std::string_view>(), 1U, _, _))
+        .WillOnce(
+            Throw(IndexerConnectorException("Search request failed", IndexerConnectorException::Category::Other, 401)));
+    auto connector = makeConnector();
+    EXPECT_THROW(connector->isConsumerReadyForSync("my-consumer"), IndexerConnectorException);
+}
+
+TEST_F(WIndexerConnectorMockTest, IsConsumerReadyForSyncThrowsOnException)
 {
     EXPECT_CALL(*mock, search(An<std::string_view>(), 1U, _, _)).WillOnce(Throw(std::runtime_error("network error")));
     auto connector = makeConnector();
-    EXPECT_FALSE(connector->isConsumerReadyForSync("my-consumer"));
+    EXPECT_THROW(connector->isConsumerReadyForSync("my-consumer"), std::runtime_error);
 }
 
 /**************************

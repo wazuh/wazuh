@@ -13,6 +13,7 @@
 #ifndef _SERVER_SELECTOR_HPP
 #define _SERVER_SELECTOR_HPP
 
+#include "indexerConnector.hpp"
 #include "monitoring.hpp"
 #include "roundRobinSelector.hpp"
 #include "secureCommunication.hpp"
@@ -82,6 +83,7 @@ public:
      * single host this is the same as accepting anything that is not Down.
      *
      * @return std::string Server address.
+     * @throws IndexerConnectorException if every host is Down.
      */
     std::string_view getNext()
     {
@@ -100,8 +102,8 @@ public:
             } while (candidate.compare(initialValue) != 0);
         }
 
-        throw std::runtime_error("No available server. Unavailable nodes: " +
-                                 m_monitoring->getUnavailableServersDetails());
+        throw IndexerConnectorException("No available server. Unavailable nodes: " +
+                                        m_monitoring->getUnavailableServersDetails());
     }
 
     /**

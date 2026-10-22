@@ -541,6 +541,17 @@ int main(int argc, char* argv[])
                 }
                 jsonCnf.setUint64(monitoringInterval, "/monitoring_interval_seconds");
 
+                // 0 is legal and disables the early content-sync retry.
+                constexpr size_t CM_SYNC_RETRY_INTERVAL_MAX = 3600;
+                const auto cmSyncRetryInterval = confManager.get<size_t>(conf::key::CM_SYNC_RETRY_INTERVAL);
+                if (cmSyncRetryInterval > CM_SYNC_RETRY_INTERVAL_MAX)
+                {
+                    throw std::runtime_error(
+                        fmt::format("analysisd.cm_sync_retry_interval must be between 0 and {} (got {})",
+                                    CM_SYNC_RETRY_INTERVAL_MAX,
+                                    cmSyncRetryInterval));
+                }
+
                 const auto maxHitsPerRequest =
                     confManager.get<std::size_t>(conf::key::CMSYNC_INDEXER_CONNECTOR_SYNC_BATCH_SIZE);
 
@@ -987,13 +998,25 @@ int main(int argc, char* argv[])
                                                                }
                                                            }});
 
+            // While a space has no route (indexer failure, content not ready yet), the next cycle runs
+            // after the shorter retry interval instead of the regular one (never later than the regular one).
+            const auto cmSyncInterval = confManager.get<std::size_t>(conf::key::CM_SYNC_INTERVAL);
+            const auto cmSyncRetryInterval = cm::sync::earlyRetryInterval(
+                confManager.get<std::size_t>(conf::key::CM_SYNC_RETRY_INTERVAL), cmSyncInterval);
+            auto cmSyncPending = std::make_shared<std::atomic<bool>>(false);
+            const auto cmSyncNextInterval = [cmSyncPending, cmSyncRetryInterval]() -> std::size_t
+            {
+                return cmSyncPending->load() ? cmSyncRetryInterval : 0;
+            };
+
             // Async Synchronize on startup
             scheduler->scheduleTask(
                 "cm-sync-task",
-                scheduler::TaskConfig {.interval = confManager.get<std::size_t>(conf::key::CM_SYNC_INTERVAL),
+                scheduler::TaskConfig {.interval = cmSyncInterval,
                                        .runImmediately = true,
                                        .CPUPriority = 0,
-                                       .taskFunction = [=]()
+                                       .taskFunction =
+                                           [=]()
                                        {
                                            // Detect external loss of routes between sync runs
                                            // (e.g., manual route deletion).
@@ -1004,11 +1027,19 @@ int main(int argc, char* argv[])
                                            // mutates the complete worker pool instead of only the
                                            // primary worker.
                                            orchestrator->expandWorkerPool();
-                                           cmSyncService->synchronize();
+                                           const bool pending = cmSyncService->synchronize();
+                                           if (pending && !cmSyncPending->exchange(true) && cmSyncRetryInterval > 0)
+                                           {
+                                               LOG_INFO("[CMSync] A content space has no route yet, retrying every "
+                                                        "{} seconds until it loads",
+                                                        cmSyncRetryInterval);
+                                           }
+                                           cmSyncPending->store(pending);
 
                                            // Detect recovery (or re-loss) after sync.
                                            reportRouteStatus();
-                                       }});
+                                       },
+                                       .nextInterval = cmSyncNextInterval});
             scheduler->scheduleTaskFirst("cm-sync-task");
 
             scheduler->start();

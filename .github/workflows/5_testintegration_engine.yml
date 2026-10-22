@@ -34,6 +34,7 @@ on:
       # make deps / build; pins http-request (HTTP_REQUEST_BRANCH, src/Makefile:98) and tzdata,
       # which this lane uploads and the test jobs read
       - 'src/Makefile'
+      - 'src/deps.lock.mk'
       # Ref list for every ref-based `make deps` download (src/Makefile:708)
       - 'tools/get_git_refs.sh'
       # Submodule gitlink: urlrequest, linked by conf and geo (source/conf/CMakeLists.txt:13,

@@ -109,6 +109,9 @@ class TMonitoring final
     /// Touched only by the thread running a round (the constructor's, then the monitor's). Needs no
     /// synchronisation: no reader ever looks at it. A host with no entry counts as available.
     std::map<std::string, PreviousState, std::less<>> m_previousServerState;
+    /// Tag of the owning module, e.g. `wazuh-manager-modulesd:vulnerability-scanner(monitoring)`. Several modules
+    /// monitor the same hosts, so a bare `monitoring` tag made their identical lines look like duplicates.
+    LogFn m_logFn {makeLibLogFn(MONITOR_NAME)};
 
     /**
      * @brief Checks the health of a server.
@@ -185,7 +188,7 @@ class TMonitoring final
         };
 
         // On error callback
-        const auto onError = [&serverAddress, &unavailableReason, &throttleReason, &permanent, &state](
+        const auto onError = [this, &serverAddress, &unavailableReason, &throttleReason, &permanent, &state](
                                  const std::string& error, const long statusCode, const std::string& errorBody)
         {
             //  Try to extract error details from JSON
@@ -231,8 +234,8 @@ class TMonitoring final
                 {
                     throttleReason += " " + errorType + (errorReason.empty() ? "" : ": " + errorReason);
                 }
-                logDebug2(
-                    MONITOR_NAME, "Health check of '%s' throttled - %s", serverAddress.c_str(), throttleReason.c_str());
+                LOGFN_DEBUG2(
+                    m_logFn, "Health check of '%s' throttled - %s", serverAddress.c_str(), throttleReason.c_str());
                 return;
             }
             if (statusCode == 401)
@@ -267,8 +270,8 @@ class TMonitoring final
                 unavailableReason = error.empty() ? "status: " + std::to_string(statusCode) : error;
             }
 
-            logDebug2(
-                MONITOR_NAME, "Health check failed for '%s' - %s", serverAddress.c_str(), unavailableReason.c_str());
+            LOGFN_DEBUG2(
+                m_logFn, "Health check failed for '%s' - %s", serverAddress.c_str(), unavailableReason.c_str());
         };
 
         // Get the health of the server.
@@ -302,35 +305,35 @@ class TMonitoring final
 
         if (state == HostState::Down && previous.state != HostState::Down)
         {
-            logInfo(MONITOR_NAME,
-                    "Indexer node '%s' is no longer available. Reason: %s",
-                    serverAddress.c_str(),
-                    unavailableReason.c_str());
+            LOGFN_INFO(m_logFn,
+                       "Indexer node '%s' is no longer available. Reason: %s",
+                       serverAddress.c_str(),
+                       unavailableReason.c_str());
         }
         else if (state == HostState::Throttled && previous.state != HostState::Throttled)
         {
-            logInfo(MONITOR_NAME,
-                    "Indexer node '%s' is throttling requests (%s); it stays in rotation and requests back off.",
-                    serverAddress.c_str(),
-                    throttleReason.c_str());
+            LOGFN_INFO(m_logFn,
+                       "Indexer node '%s' is throttling requests (%s); it stays in rotation and requests back off.",
+                       serverAddress.c_str(),
+                       throttleReason.c_str());
         }
         else if (state == HostState::Available && previous.state == HostState::Throttled)
         {
-            logInfo(MONITOR_NAME, "Indexer node '%s' accepts requests again.", serverAddress.c_str());
+            LOGFN_INFO(m_logFn, "Indexer node '%s' accepts requests again.", serverAddress.c_str());
         }
         else if (state == HostState::Available && previous.state == HostState::Down)
         {
-            logInfo(MONITOR_NAME, "Indexer node '%s' is available again.", serverAddress.c_str());
+            LOGFN_INFO(m_logFn, "Indexer node '%s' is available again.", serverAddress.c_str());
         }
 
         if (state == HostState::Throttled && permanent &&
             !(previous.state == HostState::Throttled && previous.permanent))
         {
-            logWarn(MONITOR_NAME,
-                    "Indexer node '%s' reports a PERMANENT circuit breaker (%s): heap usage is above the breaker "
-                    "limit; check the indexer heap sizing.",
-                    serverAddress.c_str(),
-                    throttleReason.c_str());
+            LOGFN_WARN(m_logFn,
+                       "Indexer node '%s' reports a PERMANENT circuit breaker (%s): heap usage is above the breaker "
+                       "limit; check the indexer heap sizing.",
+                       serverAddress.c_str(),
+                       throttleReason.c_str());
         }
 
         m_previousServerState[serverAddress] = {state, state == HostState::Throttled && permanent};

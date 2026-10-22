@@ -62,12 +62,16 @@ private:
     bool m_enabled {false};   ///< Whether the space is enabled in the remote policy
     std::string m_hash;       ///< Hash of the deployed route/policy
 
+    bool m_disabledByPolicy {false}; ///< Last policy read was disabled: no route by decision (persisted)
+
     static constexpr std::string_view JPATH_ORIGIN = "/origin_space";       ///< JSON path for origin space
     static constexpr std::string_view JPATH_NAMESPACE_ID = "/namespace_id"; ///< JSON path for namespace ID
     static constexpr std::string_view JPATH_CONSUMER_ID = "/consumer_id";   ///< JSON path for consumer ID
     static constexpr std::string_view JPATH_LAST_SUCCESSFUL_UPDATE =
         "/last_successful_update";                                ///< JSON path for last successful update
     static constexpr std::string_view JPATH_ENABLED = "/enabled"; ///< JSON path for the remote-policy enabled flag
+    static constexpr std::string_view JPATH_DISABLED_BY_POLICY =
+        "/disabled_by_policy"; ///< JSON path for the disabled-by-policy flag
 
     /**
      * @brief Generate a route name for the given origin space
@@ -128,6 +132,8 @@ public:
     bool getAvailable() const { return m_available; }
     bool getEnabled() const { return m_enabled; }
     const std::string& getHash() const { return m_hash; }
+    bool getDisabledByPolicy() const { return m_disabledByPolicy; }
+    void setDisabledByPolicy(bool disabled) { m_disabledByPolicy = disabled; }
     /// Cache the router-derived state reported by the status endpoint.
     void setRouteState(bool available, bool enabled, std::string hash)
     {
@@ -154,6 +160,7 @@ public:
         // Persist only the remote-policy enabled flag. 'available'/'hash' are live state re-derived
         // from the router on the next sync, so they are intentionally NOT persisted.
         j.setBool(m_enabled, JPATH_ENABLED);
+        j.setBool(m_disabledByPolicy, JPATH_DISABLED_BY_POLICY);
         return j;
     }
 
@@ -195,6 +202,11 @@ public:
         if (const auto enabled = j.getBool(JPATH_ENABLED); enabled.has_value())
         {
             ns.setRouteState(false, *enabled, "");
+        }
+        // Absent in older state documents: not disabled by policy.
+        if (const auto disabled = j.getBool(JPATH_DISABLED_BY_POLICY); disabled.has_value())
+        {
+            ns.setDisabledByPolicy(*disabled);
         }
         return ns;
     }
@@ -524,7 +536,7 @@ void CMSync::dumpStateToStore()
     }
 }
 
-void CMSync::synchronize()
+bool CMSync::synchronize()
 {
 
     LOG_DEBUG("[{}] Checking for namespace updates to synchronize", LOG_MODULE_NAME);
@@ -552,7 +564,7 @@ void CMSync::synchronize()
         {
             LOG_INFO("[{}] Synchronization aborted during namespace iteration", LOG_MODULE_NAME);
             updateSpacesStatusSnapshot();
-            return;
+            return false;
         }
 
         try
@@ -585,7 +597,7 @@ void CMSync::synchronize()
                          LOG_MODULE_NAME,
                          nsState.getOriginSpace());
                 updateSpacesStatusSnapshot();
-                return;
+                return false;
             }
 
             // Pre-flight check: verify consumer is ready and has data (local_offset != 0)
@@ -624,6 +636,13 @@ void CMSync::synchronize()
                 continue;
             }
             const auto& [remoteHash, remoteEnabled] = *hashResult;
+
+            // Only a successful policy read changes it: a failed cycle keeps the last decision.
+            if (nsState.getDisabledByPolicy() == remoteEnabled)
+            {
+                nsState.setDisabledByPolicy(!remoteEnabled);
+                dumpAndLogFn();
+            }
 
             // Check the current route/ns configuration to avoid unnecessary synchronization.
             // Reuses routeExists from the up-front check above (no second existsEntry call).
@@ -744,7 +763,7 @@ void CMSync::synchronize()
                          nsState.getOriginSpace());
                 nsState.setSyncStatus(base::SyncStatus::READY);
                 updateSpacesStatusSnapshot();
-                return;
+                return false;
             }
 
             // Download and enrich the namespace (consumer validated again within PIT)
@@ -832,6 +851,13 @@ void CMSync::synchronize()
     LOG_DEBUG("[{}] Finished synchronization of spaces", LOG_MODULE_NAME);
 
     updateSpacesStatusSnapshot();
+
+    // A space with no route and no decision to have none: the indexer failed, or the content is not published or
+    // not ready yet. All of these can clear before the next regular cycle.
+    return std::any_of(m_namespacesState.begin(),
+                       m_namespacesState.end(),
+                       [](const SyncedNamespace& nsState)
+                       { return !nsState.getAvailable() && !nsState.getDisabledByPolicy(); });
 }
 
 void CMSync::requestShutdown()

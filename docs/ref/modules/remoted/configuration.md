@@ -137,7 +137,9 @@ Accept connections from agents running a Wazuh version higher than the manager.
 
 - **Default value:** `no`
 - **Allowed values:** `yes`, `no`
-- **Note:** Enable when upgrading agents before the manager
+- **Note:** "Higher" means a higher major or minor version: an agent one patch release ahead (5.0.1
+  against a 5.0.0 manager) is always accepted, on the HTTPS and the legacy paths alike. Enable when
+  upgrading agents to a new minor or major before the manager
 
 ### legacy.ipv6
 

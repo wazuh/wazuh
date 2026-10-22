@@ -78,6 +78,12 @@ add_test(NAME SCAUtilsTest COMMAND sca_utils_unit_test)
 
 set_tests_properties(SCAUtilsTest PROPERTIES LABELS "sca")
 
+add_executable(sca_reason_sanitizer_unit_test sca_reason_sanitizer_test.cpp)
+target_link_libraries(sca_reason_sanitizer_unit_test PRIVATE SCAImpl)
+add_test(NAME SCAReasonSanitizerTest COMMAND sca_reason_sanitizer_unit_test)
+
+set_tests_properties(SCAReasonSanitizerTest PROPERTIES LABELS "sca")
+
 add_executable(check_condition_evaluator_unit_test
                check_condition_evaluator_test.cpp)
 target_link_libraries(check_condition_evaluator_unit_test PRIVATE SCAImpl)
@@ -85,6 +91,12 @@ add_test(NAME CheckConditionEvaluatorTest
          COMMAND check_condition_evaluator_unit_test)
 
 set_tests_properties(CheckConditionEvaluatorTest PROPERTIES LABELS "sca")
+
+add_executable(unique_lines_unit_test unique_lines_test.cpp)
+target_link_libraries(unique_lines_unit_test PRIVATE SCAImpl)
+add_test(NAME UniqueLinesTest COMMAND unique_lines_unit_test)
+
+set_tests_properties(UniqueLinesTest PROPERTIES LABELS "sca")
 
 add_executable(rule_creation_unit_test rule_creation_test.cpp)
 target_link_libraries(rule_creation_unit_test PRIVATE SCAImpl)

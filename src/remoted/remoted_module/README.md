@@ -715,7 +715,8 @@ sequenceDiagram
 
 1. **`startup`** — agent sends on connect or after config reload
    - **Request**: `{"type":"startup","version":"5.0.0"}`
-   - Validates agent version (rejects if `< manager` when `allow_higher_versions=false`)
+   - Validates agent version (rejects a higher major or minor than the manager's when
+     `allow_higher_versions=false`; a higher patch is accepted, as on port 1514)
    - Marks agent as `pending` in wazuh-db (global.db); the first notify promotes it to `active`
    - Persists the accepted agent version and resets `status_code` (host/os data arrives later via notify)
    - Records connection timestamp
@@ -833,9 +834,11 @@ agent includes host metadata in the notify request; lightweight keepalives (`upd
 sent otherwise. Both respect the `keepaliveThrottleSec` window (default 60s), except the first
 host-carrying notify (`hostPersisted` in `AgentEntry`), which always triggers a full update.
 
-Version comparison uses `compareVersions()` (`control/controlTypes.hpp`, shared with `/enroll` -- see
-below) for semantic versioning (e.g., `"v5.0.0"` vs `"v4.9.2"`), stripping leading `v`/`V` and
-ignoring everything after `-` or `+`.
+The `allow_higher_versions` check uses `isAgentVersionTooNew()` (`control/controlTypes.hpp`, shared
+with `/enroll` -- see below): an agent is too new only on a higher **major or minor**, the rule of the
+legacy `compare_wazuh_versions(manager, agent, false)` on ports 1514 and 1515, so a 5.0.1 agent is
+accepted by a 5.0.0 manager. Parsing strips a leading `v`/`V` and ignores everything after `-` or `+`.
+`compareVersions()` beside it is the generic ordering over all four parts, not the policy.
 
 #### AgentRegistry (`agentRegistry.hpp/.cpp`)
 
@@ -1603,7 +1606,7 @@ response.
 | field | required | notes |
 |---|---|---|
 | `name` | yes | 2-128 chars, no leading `.`, charset `[A-Za-z0-9._-]` only -- byte-for-byte `OS_IsValidName()` (`shared/src/agent_validate_op.c`), the same rule the legacy port-1515 path applies, so both enrollment paths accept exactly the same set of names. authd's local socket (`local-server.c`) separately enforces a deliberately looser *storage-safety* floor for all of its callers (`is_storable_agent_name()`: no whitespace or control bytes, no leading `#`/`!`, non-empty, <=128 chars) -- historically it trusted every caller to have validated the name, which was never true for /enroll, but it cannot adopt `OS_IsValidName()` itself without breaking API-created names that predate this endpoint (`%`, single-character, leading `.`). /enroll therefore holds the tighter line here rather than relying on that floor |
-| `version` | yes | authd's local `add` path has no version check at all, so remoted enforces `allow_higher_versions` itself, reusing `compareVersions()` (`control/controlTypes.hpp`) rather than duplicating it |
+| `version` | yes | authd's local `add` path has no version check at all, so remoted enforces `allow_higher_versions` itself with `isAgentVersionTooNew()` (`control/controlTypes.hpp`), the major.minor rule shared with `/control` and port 1515; a rejection logs a throttled WARN |
 | `groups` | no | comma-separated string, passed through unchanged — matches authd's own wire format and `w_auth_validate_groups` with zero transformation |
 | `ip` | no | syntactic IPv4/IPv6/CIDR check, or one of two sentinels (`any`, `src`); see IP resolution below |
 | `key_hash` | no | opaque passthrough that drives authd's own force/key-mismatch decision |
@@ -2838,8 +2841,8 @@ answers `503` rather than silently falling back to "default"; every membership `
 stamped, so a `/download` lookup issued before a startup or notify read and answered after it answers
 with that read instead of overwriting it), `controlConfig_test.cpp` (non-positive
 values fall back instead of casting a negative into a huge unsigned; a malformed `limits_json`
-collapses to `{}`), `controlTypes_test.cpp` (the version grammar and `compareVersions` ordering
-shared with `/enroll`), `agentRegistry_test.cpp` (an updater returning null is a no-op that never
+collapses to `{}`), `controlTypes_test.cpp` (the version grammar, the `compareVersions` ordering and
+the major.minor `isAgentVersionTooNew` policy shared with `/enroll`), `agentRegistry_test.cpp` (an updater returning null is a no-op that never
 erases; eviction keys off `max(lastActivity, createdAt)`; concurrent refresh is tolerated; an evicted
 entry's groups stamp still refuses a lookup ticketed before it, so invalidate → evict → answer never
 caches the answer),

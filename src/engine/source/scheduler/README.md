@@ -52,13 +52,14 @@ Defined in `ischeduler.hpp`:
 | `runImmediately` | `bool` | If `true` and `interval > 0`, first execution happens immediately; then recurs at `interval`. No effect when `interval == 0` |
 | `CPUPriority` | `int` | Linux nice value (`-20` highest to `19` lowest). `0` = default |
 | `taskFunction` | `std::function<void()>` | The callable to execute |
+| `nextInterval` | `std::function<std::size_t()>` | Optional. Recurring tasks only: called after each run; a non-zero result replaces `interval` for the next run only (e.g. a shorter retry while a task's work is incomplete). If it throws, a warning is logged and `interval` applies |
 
 Fields must be specified in the order listed above when using C++20 designated initializers.
 
 ### One-Time vs Recurring Tasks
 
 - **One-time** (`interval = 0`): Scheduled for immediate execution (`nextRun = now()`). Automatically removed from the task map after completion. `runImmediately` has no additional effect.
-- **Recurring** (`interval > 0`, `runImmediately = false`): First execution occurs after `interval` seconds (`nextRun = now() + interval`). After each execution, rescheduled with `nextRun = now() + interval`.
+- **Recurring** (`interval > 0`, `runImmediately = false`): First execution occurs after `interval` seconds (`nextRun = now() + interval`). After each execution, rescheduled with `nextRun = now() + interval`, or `now() + nextInterval()` when `nextInterval` is set and returns a non-zero value.
 - **Recurring with immediate first run** (`interval > 0`, `runImmediately = true`): First execution is immediate (`nextRun = now()`). Subsequent executions recur at `interval` seconds.
 
 ### Task Queue (`TaskQueue`)
@@ -215,6 +216,8 @@ Use a real 2-thread scheduler with atomic counters and short sleeps to verify be
 | `ScheduleRecurringTask` | Executes at least once within interval window |
 | `RunImmediately_ExecutesOnFirstCycle` | `runImmediately=true` fires before one full interval elapses |
 | `RunImmediately_ThenRecurresAtInterval` | Immediate first fire, then normal recurring cadence, task not removed |
+| `NextInterval_OverridesIntervalForNextRun` | A non-zero `nextInterval` result reschedules sooner than `interval`; `0` falls back to `interval` |
+| `NextInterval_ThrowFallsBackToInterval` | A throwing `nextInterval` falls back to `interval` and the task keeps running |
 | `RunImmediately_NoEffectOnOneTimeTask` | `runImmediately=true` on one-time task: runs once, removed, no double execution |
 | `ScheduleTaskFirst_ExecutesBeforeOtherPendingTasks` | Task registered via `scheduleTaskFirst` runs before a previously registered one-time task |
 | `ScheduleTaskFirst_LastCallIsFirst` | Second `scheduleTaskFirst` call executes before first call |
@@ -230,7 +233,7 @@ The scheduler is instantiated once in `main.cpp` as `std::make_shared<scheduler:
 
 | Task Name | Interval | Method | Consumer | Purpose |
 |-----------|----------|--------|----------|---------|
-| `cm-sync-task` | `CM_SYNC_INTERVAL` | `scheduleTask` | Content Manager | Synchronizes content manager data |
+| `cm-sync-task` | `CM_SYNC_INTERVAL` (`CM_SYNC_RETRY_INTERVAL` via `nextInterval` while a space has no route) | `scheduleTask` | Content Manager | Synchronizes content manager data |
 | `ioc-sync-task` | `IOC_SYNC_INTERVAL` | `scheduleTask` | IOC Sync | Indicator of Compromise synchronization |
 | `geo-sync-task` | `GEO_SYNC_INTERVAL` | `scheduleTask` | Geo Manager | Updates GeoIP databases (GeoLite2-City, GeoLite2-ASN) |
 | `remote-conf-sync` | `REMOTE_CONF_SYNC_INTERVAL` | `scheduleTask` | Remote Config | Remote configuration synchronization |

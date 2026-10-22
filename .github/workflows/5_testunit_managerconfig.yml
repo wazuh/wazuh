@@ -48,6 +48,7 @@ on:
       # (action.yml:35-43, also configured at src/CMakeLists.txt:244). A submodule bump changes only
       # the gitlink path, which `http-request/**` would never match.
       - "src/Makefile"
+      - "src/deps.lock.mk"
       - "tools/get_git_refs.sh"
       - "src/shared_modules/http-request"
       # Result-affecting actions this workflow executes (reinstall_cmake runs the devContainer script,

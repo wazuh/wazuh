@@ -846,7 +846,7 @@ deliberately skips the check to keep the hot path fast. A rejection also writes
 | Cause | HTTP | wazuh-db `version` column |
 | --- | --- | --- |
 | Version is malformed (empty, over 64 characters, or not `[v]MAJOR[.MINOR[.PATCH[.EXTRA]]]` with an optional `+`/`-` suffix) | `400` | `N/A` sentinel — the framework's version parser raises on anything else, which would break the whole agent listing |
-| Version is well-formed but higher than the manager's, and `<remote><agents><allow_higher_versions>` is `no` | `409` | stored as reported |
+| Version is well-formed but has a higher major or minor than the manager's (a higher patch alone is accepted), and `<remote><agents><allow_higher_versions>` is `no` | `409` | stored as reported |
 
 The split matters to the agent: `400` is terminal, while `409` puts it in its `REJECTED` state,
 re-trying `startup` on a slow cadence — because a policy rejection can start succeeding with no
@@ -1335,7 +1335,7 @@ replay store either: a captured token could be replayed inside its window, bound
 | Field | Required | Notes |
 | --- | --- | --- |
 | `name` | yes | 2-128 chars, no leading `.`, charset `[A-Za-z0-9._-]` only — `OS_IsValidName()`, the same rule the legacy port-1515 path applies, so both enrollment paths accept exactly the same names. `authd`'s local socket separately enforces a looser *storage-safety* floor (no whitespace/control bytes, no leading `#`/`!`, ≤128 chars) for all of its callers, the API included; this endpoint holds the tighter line itself rather than relying on that floor. |
-| `version` | yes | Rejected if newer than the manager's unless `authd`'s own `<auth><agents><allow_higher_versions>` is `yes` (not `remote`'s, which governs `/control`; this keeps `/enroll` in step with port 1515) — `authd`'s local socket performs no version check of its own, so this endpoint enforces it. |
+| `version` | yes | Rejected if its major or minor is higher than the manager's (a higher patch alone is accepted, as on port 1515) unless `authd`'s own `<auth><agents><allow_higher_versions>` is `yes` (not `remote`'s, which governs `/control`; this keeps `/enroll` in step with port 1515) — `authd`'s local socket performs no version check of its own, so this endpoint enforces it. |
 | `groups` | no | Comma-separated, passed through unchanged. |
 | `ip` | no | Syntactic IPv4/IPv6/CIDR check, or one of two sentinels: `any` (no override), or `src` — mirrors legacy port 1515's own wire sentinel (an agent configured with its own client-side `use_source_ip` sends this instead of a literal address); see IP resolution below. |
 | `key_hash` | no | Opaque hash of the agent's current key, if it has one — drives `authd`'s force/key-mismatch decision, same as port 1515's `K:` field. |
@@ -1388,7 +1388,7 @@ master node's `authd` predates it.
 | `Content-Encoding` other than `zstd` | `415` | `{"error":{"code":0,"message":"Unsupported Content-Encoding"}}`. Checked after the credential, before the body is parsed. |
 | `Content-Encoding: zstd` but not a valid, complete frame | `400` | `{"error":{"code":0,"message":"Malformed compressed body"}}`. Same point as the `415`. |
 | Malformed body, missing `name`/`version`, invalid `ip` | `400` | Rejected before `authd` is ever contacted. |
-| Agent version newer than allowed | `400` | See `version` in the request table above. |
+| Agent version newer than allowed | `400` | See `version` in the request table above. The manager logs a throttled `WARNING` naming the agent, its address and both versions. |
 | `authd` bad function/args/name/ip/groups (9003–9006, 9014, 9017) | `400` | Passed through with `authd`'s own message. `9017` ("Invalid agent name") is unreachable from this endpoint in practice: `isValidName()` above is strictly tighter than the local socket's storage-safety floor, so any name `authd` would reject with `9017` was already refused locally with a `400`. It is mapped for completeness, not as a path clients should expect. |
 | `authd` duplicate ip/name/id (9007/9008/9012) | `409` | |
 | `authd` internal/parse/key-generation failure (9001/9002/9009) | `500` | |

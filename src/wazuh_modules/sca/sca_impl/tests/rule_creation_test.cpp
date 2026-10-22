@@ -140,3 +140,22 @@ TEST(RuleEvaluatorFactoryTest, NegatedFileRule_ParsesCorrectContext)
     EXPECT_FALSE(ctx.pattern.has_value());
     EXPECT_TRUE(ctx.isNegated);
 }
+
+TEST(RuleEvaluatorFactoryTest, ContextKeepsTheRuleAsWritten)
+{
+    const std::string rule = "not c:sshd -T -> r:^\\s*permitrootlogin\\s+yes";
+    auto evaluator = RuleEvaluatorFactory::CreateEvaluator(rule, 30, true, sca::RegexEngineType::PCRE2, nullptr, nullptr);
+    ASSERT_NE(evaluator, nullptr);
+
+    EXPECT_EQ(evaluator->GetContext().source, rule);
+}
+
+TEST(RuleEvaluatorFactoryTest, ContextKeepsTheRuleUntrimmedLikeThePolicyStoresIt)
+{
+    const std::string rule = "  f:/etc/motd  ";
+    auto evaluator = RuleEvaluatorFactory::CreateEvaluator(rule, 30, false, sca::RegexEngineType::PCRE2, nullptr, nullptr);
+    ASSERT_NE(evaluator, nullptr);
+
+    EXPECT_EQ(evaluator->GetContext().rule, "/etc/motd");
+    EXPECT_EQ(evaluator->GetContext().source, rule);
+}
