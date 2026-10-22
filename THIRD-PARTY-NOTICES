@@ -8,11 +8,11 @@ which artefact carries it.
 
 Contents
 
-  1. abseil-cpp LTS 20240116 (Apache-2.0)
+  1. abseil-cpp 20240116.3 (Apache-2.0)
   2. asio 1.38.2 (BSL-1.0)
   3. bzip2 1.0.8 (bzip2-1.0.6)
   4. cJSON 1.7.18 (MIT)
-  5. concurrentqueue unknown (BSD-2-Clause OR BSL-1.0)
+  5. concurrentqueue 1.0.4 (BSD-2-Clause OR BSL-1.0)
   6. cpp-httplib 0.25.0 (MIT)
   7. cPython 3.12.14 (PSF-2.0)
   8. aiohappyeyeballs 2.6.1 (PSF-2.0)
@@ -93,13 +93,13 @@ Contents
  83. Hinnant date 3.0.1 (MIT)
  84. IANA tzdata 2026a (LicenseRef-tzdata-public-domain)
  85. jemalloc 5.2.1 (BSD-2-Clause)
- 86. jwt-cpp 0.7.1 (MIT)
+ 86. jwt-cpp 0.7.2 (MIT)
  87. libffi 3.2.1 (MIT)
  88. libgcc_s GCC 14 (GPL-3.0-or-later WITH GCC-exception-3.1)
  89. libmaxminddb 1.9.1 (Apache-2.0)
  90. libpcre2 10.42 (BSD-3-Clause)
  91. libstdc++ GCC 14 (GPL-3.0-or-later WITH GCC-exception-3.1)
- 92. libYAML 0.1.7 (MIT)
+ 92. libYAML 0.2.1 (MIT)
  93. llhttp 9.4.2 (MIT)
  94. nlohmann 3.11.2 (MIT)
  95. OpenSSL 3.6.2 (Apache-2.0)
@@ -109,7 +109,7 @@ Contents
  99. RE2 2024-06-01 (BSD-3-Clause)
 100. RESTinio 0.7.10 (BSD-3-Clause AND BSL-1.0 AND MIT AND Zlib)
 101. RocksDB 8.3.2 (Apache-2.0 AND BSD-3-Clause)
-102. RxCpp unknown (Apache-2.0)
+102. RxCpp 4.1.1 (Apache-2.0)
 103. simdjson 3.13.0 (Apache-2.0 OR MIT)
 104. spdlog 1.14.1 (MIT)
 105. sqlite 3.53.1 (blessing)
@@ -119,7 +119,7 @@ Contents
 109. zstd 1.5.7 (BSD-3-Clause)
 
 ==============================================================================
-abseil-cpp LTS 20240116
+abseil-cpp 20240116.3
 ==============================================================================
 License:     Apache-2.0
 Homepage:    https://github.com/abseil/abseil-cpp
@@ -449,7 +449,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 ==============================================================================
-concurrentqueue unknown
+concurrentqueue 1.0.4
 ==============================================================================
 License:     BSD-2-Clause OR BSL-1.0
 Homepage:    https://github.com/cameron314/concurrentqueue
@@ -10546,7 +10546,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 --------------------------------------------------------------------------------
 
 ==============================================================================
-jwt-cpp 0.7.1
+jwt-cpp 0.7.2
 ==============================================================================
 License:     MIT
 Homepage:    https://github.com/Thalhammer/jwt-cpp
@@ -12467,7 +12467,7 @@ presumption that third-party software is unaffected by the copyleft
 requirements of the license of GCC.
 
 ==============================================================================
-libYAML 0.1.7
+libYAML 0.2.1
 ==============================================================================
 License:     MIT
 Homepage:    https://github.com/yaml/libyaml
@@ -12476,6 +12476,7 @@ Included in: manager, standalone
 ------------------------------------------------------------------------------
 [ libyaml/LICENSE ]
 ------------------------------------------------------------------------------
+Copyright (c) 2017-2018 Ingy döt Net
 Copyright (c) 2006-2016 Kirill Simonov
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -13365,7 +13366,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ==============================================================================
-RxCpp unknown
+RxCpp 4.1.1
 ==============================================================================
 License:     Apache-2.0
 Homepage:    https://github.com/ReactiveX/RxCpp

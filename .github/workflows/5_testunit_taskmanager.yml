@@ -48,6 +48,7 @@ on:
       # (action.yml:35-43), linked here as urlrequest. A submodule bump changes only the gitlink
       # path, which no '/**' pattern matches.
       - "src/Makefile"
+      - "src/deps.lock.mk"
       - "tools/get_git_refs.sh"
       - "src/shared_modules/http-request"
       # Result-affecting actions. upload_s3_artifact is left out on purpose: coverage_cpp calls it
