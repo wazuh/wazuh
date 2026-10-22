@@ -35,6 +35,10 @@ All notable changes to this project will be documented in this file.
 - Fixed the `azure-logs` configuration reported by the Server API leaving out the requests and containers of each source. ([#40579](https://github.com/wazuh/wazuh/pull/40579))
 - Fixed a memory leak in `wazuh-modulesd` each time the `azure-logs` configuration was requested. ([#40579](https://github.com/wazuh/wazuh/pull/40579))
 
+#### Changed
+
+- FIM eBPF whodata now drops events for unmonitored paths in the kernel. ([#40633](https://github.com/wazuh/wazuh/pull/40633))
+
 ## [v4.14.10]
 
 ### Manager
