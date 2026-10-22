@@ -249,7 +249,6 @@ namespace containerimages
 
         curl_easy_setopt(handle, CURLOPT_NOSIGNAL, 1L);
         curl_easy_setopt(handle, CURLOPT_USERAGENT, "Wazuh-Agent-ContainerImages");
-        curl_easy_setopt(handle, CURLOPT_ACCEPT_ENCODING, "");
 
         for (const auto& header : m_headers)
         {

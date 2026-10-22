@@ -271,6 +271,16 @@ namespace
         return response;
     }
 
+    /// @brief No response, and one that would fail the same way on every attempt.
+    HttpResponse permanentFailure()
+    {
+        HttpResponse response;
+        response.status = 0;
+        response.retryable = false;
+
+        return response;
+    }
+
     HttpResponse json(const long status, const std::string& body)
     {
         HttpResponse response;
@@ -883,6 +893,39 @@ TEST_F(RegistryTokenRetryTest, ARejectedCredentialIsNotRetried)
 
     EXPECT_EQ(instance->discover().status, ReadStatus::Failed);
     EXPECT_EQ(basicTokenCalls(), 1u);
+}
+
+// A failure that repeats the same way, as a certificate that does not verify or a response
+// over the size limit, is attempted once: the retries would only spend their back-off.
+TEST_F(RegistryTokenRetryTest, ATokenRequestThatFailsTheSameWayEveryTimeIsAttemptedOnce)
+{
+    m_transport->sequences.push_back({"/token", {permanentFailure(), json(200, R"({"token":"scripted-token"})")}, 0});
+
+    const auto instance = reader("ghcr.io/owner/app:1.0");
+
+    EXPECT_EQ(instance->discover().status, ReadStatus::Failed);
+    EXPECT_EQ(basicTokenCalls(), 1u);
+}
+
+TEST_F(RegistryReaderTest, AManifestRequestThatFailsTheSameWayEveryTimeIsAttemptedOnce)
+{
+    m_transport->sequences.push_back({"/manifests/1.0", {permanentFailure(), json(200, MANIFEST)}, 0});
+
+    const auto instance = reader("ghcr.io/owner/app:1.0");
+
+    EXPECT_EQ(instance->discover().status, ReadStatus::Failed);
+    EXPECT_EQ(m_transport->countMatching("/manifests/"), 1u);
+}
+
+TEST_F(RegistryReaderTest, AManifestRequestThatFailsOnTheNetworkIsStillRetried)
+{
+    m_transport->sequences.push_back({"/manifests/1.0", {json(0, ""), json(200, MANIFEST)}, 0});
+    m_transport->answers.push_back({"/blobs/sha256:cccc3333", json(200, configBlob())});
+
+    const auto instance = reader("ghcr.io/owner/app:1.0");
+
+    EXPECT_EQ(instance->discover().status, ReadStatus::Success);
+    EXPECT_EQ(m_transport->countMatching("/manifests/"), 2u);
 }
 
 // A credential the registry refuses at the token request must not cost the public

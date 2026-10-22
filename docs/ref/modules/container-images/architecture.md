@@ -97,6 +97,8 @@ The transport owns its own cURL handle rather than using the shared HTTP wrapper
 
 Its security posture is set explicitly in one place: the peer and the host name are verified against a resolved certificate bundle, only `https` is allowed for a request and for anything it is redirected to, and the access token is not carried across a redirect to another host. That last one matters because a layer request is redirected off the registry to a content host which neither needs the token nor should receive it.
 
+A request that produces no response is retried unless it would fail the same way again. The transport reports that on the response, and the reader attempts such a request once: peer verification and certificate bundle errors, a response over the size limit, a redirect loop and an unusable address or protocol. Every network-level failure stays retryable. A layer blob is requested as stored, with no content decoding by libcurl, so the bytes counted against the image ceiling are the bytes of the blob.
+
 ### **Registry Byte Stream**
 
 Bridges libcurl, which pushes received bytes into a callback, to the byte-stream interface, which is pulled by the layer reader. The cURL multi interface is driven from inside `read()`, and the write callback answers `CURL_WRITEFUNC_PAUSE` once its buffer is full, suspending the transfer until the caller drains it. Everything happens on the caller's thread: no second thread and no locking.

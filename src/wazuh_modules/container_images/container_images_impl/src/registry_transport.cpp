@@ -25,6 +25,34 @@ namespace
     constexpr auto ALLOWED_PROTOCOLS {"https"};
     constexpr auto USER_AGENT {"Wazuh-Agent-ContainerImages"};
 
+    /// @brief True for a libcurl failure that repeats identically on every attempt.
+    ///
+    /// The ones that depend on the local configuration or on what the server sends back,
+    /// not on the state of the network: a certificate that does not verify, a bundle that
+    /// cannot be loaded, an address that is not usable, a redirect loop. A connection that
+    /// is refused or reset, a failed lookup, a timeout and a truncated transfer are not in
+    /// this list, since each of those can clear up by itself.
+    bool repeatsTheSameWay(const CURLcode result)
+    {
+        switch (result)
+        {
+            case CURLE_PEER_FAILED_VERIFICATION:
+            case CURLE_SSL_CACERT_BADFILE:
+            case CURLE_SSL_CERTPROBLEM:
+            case CURLE_SSL_CRL_BADFILE:
+            case CURLE_SSL_ISSUER_ERROR:
+            case CURLE_SSL_INVALIDCERTSTATUS:
+            case CURLE_URL_MALFORMAT:
+            case CURLE_UNSUPPORTED_PROTOCOL:
+            case CURLE_TOO_MANY_REDIRECTS:
+            case CURLE_FILESIZE_EXCEEDED:
+                return true;
+
+            default:
+                return false;
+        }
+    }
+
     /// @brief Where a response body is accumulated, with its own ceiling.
     struct BodySink
     {
@@ -184,6 +212,7 @@ namespace containerimages
         if (m_handle == nullptr)
         {
             error = "the HTTP client could not be created";
+            response.retryable = false;
             return false;
         }
 
@@ -193,6 +222,7 @@ namespace containerimages
             // skipped the certificate resolution, and connecting anyway would silently
             // drop the guarantee the resolution exists to provide.
             error = "no certificate bundle is available, so the registry cannot be verified";
+            response.retryable = false;
             return false;
         }
 
@@ -283,6 +313,10 @@ namespace containerimages
             }
 
             response.status = 0;
+
+            // The size limit stops the transfer from the write callback, so libcurl reports
+            // it as a write error, which is also what a full disk would be.
+            response.retryable = !(sink.exceeded || repeatsTheSameWay(result));
 
             return false;
         }

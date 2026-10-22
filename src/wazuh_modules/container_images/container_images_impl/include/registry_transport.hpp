@@ -25,6 +25,11 @@ namespace containerimages
     struct HttpResponse
     {
         long status {0}; ///< HTTP status, or 0 when no response was produced.
+
+        /// @brief False when no response was produced and another attempt would fail the same
+        /// way, as with a certificate that does not verify or a response over the size limit.
+        /// Meaningful only when @ref status is 0.
+        bool retryable {true};
         std::string body;
         std::map<std::string, std::string> headers; ///< Names lower-cased.
 
