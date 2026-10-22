@@ -198,6 +198,21 @@ int main(int argc, char* argv[])
         return 1;
     }
 
+    // Made absolute before the directory changes below, so a relative -vp names the file
+    // next to the caller and not one under the installation directory.
+    if (!valuePath.empty())
+    {
+        try
+        {
+            valuePath = std::filesystem::absolute(valuePath).string();
+        }
+        catch (const std::exception& exception)
+        {
+            std::cerr << "Could not resolve " << valuePath << ": " << exception.what() << "\n";
+            return 1;
+        }
+    }
+
     // The store path is relative to the installation directory, which is what
     // wazuh-modulesd resolves it against because it chdirs there at startup. Without the
     // same step this tool would write the credential relative to wherever it was run
