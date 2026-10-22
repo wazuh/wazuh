@@ -1601,10 +1601,14 @@ the downstream body to a fixed local message.
 
 > **A `200` means accepted, not indexed.** The sync server answers before the indexer write completes
 > (the write is fire-and-forget), so an indexer-side rejection is **silent** to the agent, which
-> already has its `200`. Both `wazuh-agent-stats` and `wazuh-agent-config` are mapped `dynamic: true`,
-> so a module, metric or key the template does not declare is indexed like any other field with no
-> schema check: an agent-side addition needs no change to this endpoint, and none in the index
-> template. Watch the sync server's own metrics rather than the agent's response to confirm ingestion.
+> already has its `200`. Both `wazuh-agent-stats` and `wazuh-agent-config` are mapped
+> `dynamic: strict_allow_templates`. A module, metric or key the template does not declare under
+> `wazuh.agent.statistics` or `wazuh.agent.configuration.content` is mapped by a dynamic template from
+> the type of its first value (object, boolean, long, double, or `keyword` for a string), so an
+> agent-side addition needs no change to this endpoint, and none in the index template. A key outside
+> those paths, or a value whose type conflicts with the existing mapping, makes the indexer reject the
+> whole document, and the previous one stays. Watch the sync server's own metrics rather than the
+> agent's response to confirm ingestion.
 
 ### Error handling
 

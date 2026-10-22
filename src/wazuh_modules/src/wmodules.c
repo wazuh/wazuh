@@ -30,6 +30,7 @@ static gid_t wm_gid;               // Group ID.
 int wm_max_eps;             // Maximum events per second
 int wm_kill_timeout;        // Time for a process to quit before killing it
 int wm_socket_timeout;      // Longest a local client can stay silent, or not read the reply
+int wm_unmask_credentials;  // Module dumps report credentials in clear, not masked
 int wm_debug_level;
 #ifndef CLIENT
 // Manager configuration (/etc/wazuh-manager/wazuh-manager.conf), -c overrides it.
@@ -121,6 +122,7 @@ int wm_config() {
     // With a compiled-in default on both builds, so an agent that kept an internal_options.conf
     // from before this option existed still starts.
     wm_socket_timeout = getDefine_Int_default("wazuh_modules", "socket_timeout", 1, 60, 1);
+    wm_unmask_credentials = getDefine_Int_default("wazuh_modules", "unmask_credentials", 0, 1, 0);
 
     if(wm_initialize_default_modules(&wmodules) < 0) {
         return OS_INVALID;
@@ -723,6 +725,7 @@ cJSON *getModulesInternalOptions(void) {
     cJSON_AddNumberToObject(internals,"wazuh_modules.max_eps",wm_max_eps);
     cJSON_AddNumberToObject(internals,"wazuh_modules.kill_timeout",wm_kill_timeout);
     cJSON_AddNumberToObject(internals,"wazuh_modules.socket_timeout",wm_socket_timeout);
+    cJSON_AddNumberToObject(internals,"wazuh_modules.unmask_credentials",wm_unmask_credentials);
     cJSON_AddNumberToObject(internals,"wazuh_modules.debug",wm_debug_level);
 
     cJSON_AddItemToObject(root,"internal_options",internals);

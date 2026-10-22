@@ -249,9 +249,11 @@ static void test_get_modules_internal_options_reports_all_common_options(void **
     wm_max_eps = 250;
     wm_kill_timeout = 45;
     wm_socket_timeout = 9;
+    wm_unmask_credentials = 1;
     wm_debug_level = 2;
 
     cJSON * root = getModulesInternalOptions();
+    wm_unmask_credentials = 0;
     assert_non_null(root);
 
     cJSON * internals = cJSON_GetObjectItem(root, "internal_options");
@@ -272,6 +274,10 @@ static void test_get_modules_internal_options_reports_all_common_options(void **
     cJSON * socket_timeout = cJSON_GetObjectItem(internals, "wazuh_modules.socket_timeout");
     assert_non_null(socket_timeout);
     assert_int_equal(socket_timeout->valueint, 9);
+
+    cJSON * unmask_credentials = cJSON_GetObjectItem(internals, "wazuh_modules.unmask_credentials");
+    assert_non_null(unmask_credentials);
+    assert_int_equal(unmask_credentials->valueint, 1);
 
     cJSON * debug = cJSON_GetObjectItem(internals, "wazuh_modules.debug");
     assert_non_null(debug);
