@@ -116,7 +116,7 @@ block are not:
 
 | JSON pointer | Source | Accepted when |
 |---|---|---|
-| `/wazuh/agent/groups` | `agent.groups` | An array of at most 128 non-empty strings of up to 255 bytes each |
+| `/wazuh/agent/groups` | `agent.groups` | An array of at most 128 strings of up to 255 bytes each |
 | `/wazuh/agent/host/architecture` | `agent.host.architecture` | A string of up to 255 bytes |
 | `/wazuh/agent/host/hostname` | `agent.host.hostname` | Same |
 | `/wazuh/agent/host/os/name` | `agent.host.os.name` | Same |

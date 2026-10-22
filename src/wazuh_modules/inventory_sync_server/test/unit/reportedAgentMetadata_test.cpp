@@ -139,7 +139,6 @@ TEST(ReportedAgentMetadataTest, OneBadGroupEmptiesTheWholeList)
     const std::string tooLong(invsync::common::MAX_AGENT_GROUP_NAME_BYTES + 1, 'g');
 
     for (const auto& groups : {nlohmann::json {"default", tooLong},
-                               nlohmann::json::parse(R"(["default",""])"),
                                nlohmann::json::parse(R"(["default",1])"),
                                nlohmann::json::parse(R"(["default",null])"),
                                nlohmann::json::parse(R"(["default",["nested"]])"),
@@ -151,6 +150,14 @@ TEST(ReportedAgentMetadataTest, OneBadGroupEmptiesTheWholeList)
         EXPECT_EQ(nlohmann::json::array(), document["/wazuh/agent/groups"_json_pointer]) << groups.dump();
         EXPECT_EQ(emptyHost(), document["/wazuh/agent/host"_json_pointer]);
     }
+}
+
+TEST(ReportedAgentMetadataTest, AnEmptyGroupNameIsKeptLikeTheStatefulPath)
+{
+    const auto [document, dropped] = stamp(R"({"agent":{"groups":["default",""]}})");
+
+    EXPECT_EQ(0U, dropped);
+    EXPECT_EQ(nlohmann::json::parse(R"(["default",""])"), document["/wazuh/agent/groups"_json_pointer]);
 }
 
 TEST(ReportedAgentMetadataTest, EachBadHostStringIsEmptiedOnItsOwn)

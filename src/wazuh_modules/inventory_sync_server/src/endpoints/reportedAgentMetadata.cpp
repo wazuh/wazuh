@@ -87,8 +87,8 @@ namespace
 
         for (const auto& group : *it)
         {
-            if (!isBoundedString(group, invsync::common::MAX_AGENT_GROUP_NAME_BYTES) ||
-                group.get_ref<const std::string&>().empty())
+            // An empty name is kept, as the Start validation of /stateful keeps it.
+            if (!isBoundedString(group, invsync::common::MAX_AGENT_GROUP_NAME_BYTES))
             {
                 ++dropped;
                 return nlohmann::json::array();
