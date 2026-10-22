@@ -19,7 +19,10 @@ CLANG   ?= clang
 BPFTOOL ?= bpftool
 ARCH    := $(shell uname -m | sed 's/x86_64/x86/;s/aarch64/arm64/')
 
-INCLUDES := -Iinclude -Ibpf
+# ../common carries cgroup_host_mode.h, which rt_engine.c includes. The CMake
+# build supplies it globally; this standalone one has to name it, and without
+# it every target here fails to compile.
+INCLUDES := -Iinclude -Ibpf -I../common
 
 all: rt_engine_harness
 
