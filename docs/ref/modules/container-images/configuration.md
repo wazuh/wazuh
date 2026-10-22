@@ -184,7 +184,9 @@ The same applies when the registry issues a token for the credential and then an
 
 If the anonymous attempt fails as well, as it does for a private repository, the reference is reported with the error the credential produced, for example `the token request failed: the registry answered 403`. Nothing else triggers the retry: an unreachable registry, throttling, a missing image and a platform mismatch are reported as they are. The anonymous token is used for that reference only and never for another one.
 
-Once the registry has refused the credential for a host, the later references on that host in the same scan are not sent it. They ask for an anonymous token straight away, so a scan of N public references costs N token requests instead of 2N. A private reference on that host is reported with the reason the registry gave when it refused the credential. The next scan sends the credential again.
+Once the token endpoint has refused the credential for a host, the later references on that host in the same scan are not sent it. They ask for an anonymous token straight away, so a scan of N public references costs N token requests instead of 2N. A private reference on that host is reported with the reason the registry gave when it refused the credential. The next scan sends the credential again.
+
+A refusal at the manifest, after a token was issued for the credential, is not remembered. It speaks for that one repository, as it does when the credential is not authorized for the organization that owns it, and the same credential may read the other repositories on the host. Each reference on the host still sends the credential and, when its manifest is refused, is tried once more anonymously. The warning above is logged once per scan and host for either kind of refusal.
 
 No credential value is written to the log at any level, and the configuration dump reports the key names only.
 

@@ -378,7 +378,7 @@ class RegistryReaderTest : public ::testing::Test
         std::unique_ptr<RegistryImageReader> reader(const std::string& location,
                                                     const std::string& knownDigest = {})
         {
-            const ReaderContext context {&m_config, &m_credentials, &m_scanBytes, &m_stop, &m_refusedHosts};
+            const ReaderContext context {&m_config, &m_credentials, &m_scanBytes, &m_stop, &m_refusedHosts, &m_reportedHosts};
             auto instance {std::make_unique<RegistryImageReader>(location, knownDigest, context)};
             instance->setTransport(std::unique_ptr<IRegistryTransport>(m_transport));
 
@@ -400,6 +400,7 @@ class RegistryReaderTest : public ::testing::Test
         StubCredentials m_credentials;
         std::uint64_t m_scanBytes {0};
         std::map<std::string, std::string> m_refusedHosts; ///< What one scan shares across its references.
+        std::set<std::string> m_reportedHosts; ///< The hosts whose refusal the scan already reported.
         std::atomic<bool> m_stop {false};
         ScriptedTransport* m_transport {nullptr}; ///< Owned by the reader once injected.
 };
@@ -1106,6 +1107,7 @@ TEST_F(RegistryCredentialFallbackTest, AManifestRefusedAfterATokenWasIssuedStill
         m_warnings.clear();
         m_transport = new ScriptedTransport();
         m_refusedHosts.clear();
+        m_reportedHosts.clear();
 
         m_transport->sequences.push_back(
         {"/manifests/1.0", {challenge(), json(refusal, ""), json(200, MANIFEST)}, 0});
@@ -1227,6 +1229,7 @@ TEST_F(RegistryCredentialFallbackTest, TheRefusalIsReportedOncePerScanAndHost)
 
     // The next scan starts with a clean slate and says it again.
     m_refusedHosts.clear();
+    m_reportedHosts.clear();
     m_transport = new ScriptedTransport();
     scriptPublicReference(json(403, ""));
 
@@ -1280,6 +1283,7 @@ TEST_F(RegistryCredentialFallbackTest, ThePresentedCredentialIsRememberedPerScan
 
     // The next scan starts with nothing refused, so the credential is presented again.
     m_refusedHosts.clear();
+    m_reportedHosts.clear();
     m_transport = new ScriptedTransport();
     m_transport->sequences.push_back({"/manifests/1.0", {challenge(), json(200, MANIFEST)}, 0});
     m_transport->answers.push_back({"/token", json(200, R"({"token":"scripted-token"})")});
@@ -1330,7 +1334,73 @@ TEST_F(RegistryCredentialFallbackTest, APrivateReferenceAfterARefusalReportsTheO
             << m_warnings.front();
 }
 
-TEST_F(RegistryCredentialFallbackTest, ARefusalAtTheManifestIsTheReasonAPrivateReferenceAfterItReports)
+// A refusal at a manifest speaks for one repository, not for the credential, so it is not
+// remembered: a PAT that is not authorized for one organization still reads the others.
+TEST_F(RegistryCredentialFallbackTest, ARefusalAtTheManifestDoesNotStopThePrivateReferenceThatFollows)
+{
+    m_transport->sequences.push_back({"/manifests/1.0", {challenge(), json(403, ""), json(200, MANIFEST)}, 0});
+    m_transport->sequences.push_back(
+    {"/token", {json(200, R"({"token":"scoped-token"})"), json(200, R"({"token":"anonymous-token"})")}, 0});
+    m_transport->answers.push_back({"/blobs/sha256:cccc3333", json(200, configBlob())});
+
+    {
+        const auto first = reader("ghcr.io/orgx/public:1.0");
+        ASSERT_EQ(first->discover().status, ReadStatus::Success);
+    }
+
+    EXPECT_TRUE(m_refusedHosts.empty());
+
+    // The same credential reads the private repository of another owner.
+    m_warnings.clear();
+    m_transport = new ScriptedTransport();
+    m_transport->sequences.push_back({"/manifests/1.0", {challenge(), json(200, MANIFEST)}, 0});
+    m_transport->answers.push_back({"/token", json(200, R"({"token":"private-token"})")});
+    m_transport->answers.push_back({"/blobs/sha256:cccc3333", json(200, configBlob())});
+
+    const auto second = reader("ghcr.io/me/private:1.0");
+
+    EXPECT_EQ(second->discover().status, ReadStatus::Success);
+    EXPECT_EQ(credentialedTokenCalls(), 1u);
+    EXPECT_EQ(anonymousTokenCalls(), 0u);
+    EXPECT_TRUE(m_warnings.empty());
+
+    bool bearerSeen {false};
+
+    for (const auto& call : m_transport->calls)
+    {
+        if (call.url.find("/manifests/") != std::string::npos && call.headers.size() > 1)
+        {
+            bearerSeen = bearerSeen || call.headers[1] == "Authorization: Bearer private-token";
+        }
+    }
+
+    EXPECT_TRUE(bearerSeen);
+}
+
+TEST_F(RegistryCredentialFallbackTest, ARefusalAtTheManifestIsReportedOncePerScanAndHostAndNotRemembered)
+{
+    constexpr std::size_t REFERENCES {3};
+    std::size_t credentialed {0};
+
+    for (std::size_t index = 0; index < REFERENCES; ++index)
+    {
+        m_transport = new ScriptedTransport();
+        m_transport->sequences.push_back({"/manifests/1.0", {challenge(), json(403, ""), json(200, MANIFEST)}, 0});
+        m_transport->sequences.push_back(
+        {"/token", {json(200, R"({"token":"scoped-token"})"), json(200, R"({"token":"anonymous-token"})")}, 0});
+        m_transport->answers.push_back({"/blobs/sha256:cccc3333", json(200, configBlob())});
+
+        const auto instance = reader("ghcr.io/orgx/public:1.0");
+
+        EXPECT_EQ(instance->discover().status, ReadStatus::Success) << index;
+        credentialed += credentialedTokenCalls();
+    }
+
+    EXPECT_EQ(credentialed, REFERENCES) << "each reference still sends the credential once";
+    EXPECT_EQ(warningsMentioning("The credential configured for ghcr.io"), 1u);
+}
+
+TEST_F(RegistryCredentialFallbackTest, APrivateReferenceAfterAManifestRefusalKeepsItsOwnError)
 {
     m_transport->sequences.push_back({"/manifests/1.0", {challenge(), json(401, ""), json(200, MANIFEST)}, 0});
     m_transport->sequences.push_back(
@@ -1350,10 +1420,9 @@ TEST_F(RegistryCredentialFallbackTest, ARefusalAtTheManifestIsTheReasonAPrivateR
     const auto second = reader("ghcr.io/owner/private:1.0");
 
     EXPECT_EQ(second->discover().status, ReadStatus::Failed);
-    EXPECT_EQ(credentialedTokenCalls(), 0u);
+    EXPECT_EQ(credentialedTokenCalls(), 1u);
     ASSERT_EQ(m_warnings.size(), 1u);
-    EXPECT_NE(m_warnings.front().find("could not be resolved: the registry rejected the credential."),
-              std::string::npos)
+    EXPECT_NE(m_warnings.front().find("could not be resolved: the registry answered 403."), std::string::npos)
             << m_warnings.front();
 }
 

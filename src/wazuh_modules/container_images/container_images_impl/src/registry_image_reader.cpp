@@ -361,6 +361,7 @@ namespace containerimages
 
     bool RegistryImageReader::readAnonymously(const std::string& url,
                                               const std::string& challengeHeader,
+                                              bool rememberHost,
                                               HttpResponse& response,
                                               std::string& error)
     {
@@ -375,10 +376,17 @@ namespace containerimages
         {
             const auto* configured {m_context.config->credentialsFor(m_reference.registry)};
 
-            // The reason is kept with the host, so a private reference that follows it in
-            // this scan, and no longer sends the credential, can still say why.
-            const auto firstReport {m_context.refusedCredentialHosts == nullptr ||
-                                    m_context.refusedCredentialHosts->emplace(m_reference.registry, credentialError).second};
+            // The reason is kept with the host only when the token endpoint refused the
+            // credential: a private reference that follows it in this scan no longer sends it
+            // and can still say why. A refusal at a manifest speaks for this repository, so
+            // the next reference on the host sends the credential again.
+            if (rememberHost && m_context.refusedCredentialHosts != nullptr)
+            {
+                m_context.refusedCredentialHosts->emplace(m_reference.registry, credentialError);
+            }
+
+            const auto firstReport {m_context.reportedRefusalHosts == nullptr ||
+                                    m_context.reportedRefusalHosts->insert(m_reference.registry).second};
 
             if (firstReport)
             {
@@ -422,7 +430,7 @@ namespace containerimages
                 // same host, so it is tried once without it. Not again for a host that
                 // already refused it in this scan: the anonymous attempt just failed.
                 if (!m_credentialRefused || !m_hostRefusal.empty() ||
-                        !readAnonymously(url, challengeHeader, response, error))
+                        !readAnonymously(url, challengeHeader, true, response, error))
                 {
                     return false;
                 }
@@ -445,7 +453,7 @@ namespace containerimages
                 {
                     m_credentialRefused = true;
 
-                    if (!readAnonymously(url, challengeHeader, response, error))
+                    if (!readAnonymously(url, challengeHeader, false, response, error))
                     {
                         return false;
                     }
