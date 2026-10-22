@@ -1048,11 +1048,12 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
                  * says so arrives before anything is verified -- this is the trust bootstrap -- so
                  * it is not echoed into the log. Retrying with the same certificate cannot help. */
                 fetch_transient = false;
+                /* Kept under report->detail's size: that copy, not the log line, is what
+                 * wazuh-agent-auth prints. */
                 token_report_fail(report, "/cacerts forbidden -- the manager refused this "
-                       "connection before serving its certificate authority (HTTP 403). Under "
-                       "remote.https verification_mode 'full', the <agent><ssl> client certificate "
-                       "must list the address the manager sees this agent connect from (behind a "
-                       "proxy, the proxy's address).");
+                       "connection (HTTP 403). Under remote.https verification_mode 'full', the "
+                       "<agent><ssl> client certificate must list the address the manager sees this "
+                       "agent connect from (behind a proxy, the proxy's).");
             } else if (fetch_result.http_code == 503) {
                 fetch_transient = true;
                 token_report_fail(report, "/cacerts ca_mismatch -- the manager's configured "

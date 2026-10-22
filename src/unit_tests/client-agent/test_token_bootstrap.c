@@ -981,6 +981,11 @@ static void test_fetch_not_found_logs_named_error_and_writes_nothing(void **stat
     assert_int_not_equal(IsFile("etc/client.keys"), 0);
 }
 
+#define FETCH_FORBIDDEN_DETAIL                                                                     \
+    "/cacerts forbidden -- the manager refused this connection (HTTP 403). Under remote.https "    \
+    "verification_mode 'full', the <agent><ssl> client certificate must list the address the "     \
+    "manager sees this agent connect from (behind a proxy, the proxy's)."
+
 /* Without an embedded CA the first request is /cacerts, and verification_mode=full refuses it
  * before the route runs. The flat body is not echoed -- nothing is verified yet -- but the cause is
  * named, and it is permanent: the same certificate gets the same answer. */
@@ -993,17 +998,39 @@ static void test_fetch_forbidden_names_the_client_certificate(void **state) {
                 "{\"error\":\"Client certificate does not match the peer address\",\"code\":403}");
     will_return(__wrap_hc_fetch_cacerts, 1);
 
-    expect_string(__wrap__merror, formatted_msg,
-                  "/cacerts forbidden -- the manager refused this connection before serving its "
-                  "certificate authority (HTTP 403). Under remote.https verification_mode 'full', "
-                  "the <agent><ssl> client certificate must list the address the manager sees this "
-                  "agent connect from (behind a proxy, the proxy's address).");
+    expect_string(__wrap__merror, formatted_msg, FETCH_FORBIDDEN_DETAIL);
 
     assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_PERMANENT);
     assert_int_equal(g_fetch_call_count, 1);
     assert_int_equal(g_enroll_call_count, 0);
     assert_int_not_equal(IsFile("etc/certs/root-ca.pem"), 0);
     assert_int_equal(IsFile("etc/enrollment_token"), 0);
+}
+
+/* wazuh-agent-auth prints report.detail, not the log line: the cause must reach it whole, not
+ * cut at the field's size. */
+static void test_fetch_forbidden_detail_reaches_the_report_whole(void **state) {
+    (void) state;
+    w_token_enroll_opts_t opts = {0};
+    w_token_enroll_report_t report;
+    char *token = make_token(true, true, NULL);
+
+    opts.token_text = token;
+    opts.uid = -1;
+    opts.gid = -1;
+
+    will_return(__wrap_hc_fetch_cacerts, 403L);
+    will_return(__wrap_hc_fetch_cacerts,
+                "{\"error\":\"Client certificate does not match the peer address\",\"code\":403}");
+    will_return(__wrap_hc_fetch_cacerts, 1);
+    expect_string(__wrap__merror, formatted_msg, FETCH_FORBIDDEN_DETAIL);
+
+    assert_true(sizeof(FETCH_FORBIDDEN_DETAIL) <= sizeof(report.detail));
+    assert_int_equal(w_agent_token_enroll(&opts, &report), W_TOKEN_ENROLL_ERR_ANCHOR);
+    assert_string_equal(report.detail, FETCH_FORBIDDEN_DETAIL);
+    assert_false(report.transient);
+
+    os_free(token);
 }
 
 static void test_fetch_rate_limited_is_transient_and_writes_nothing(void **state) {
@@ -2615,6 +2642,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fetch_adr_unreachable_logs_named_error_and_writes_nothing, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_fetch_not_found_logs_named_error_and_writes_nothing, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_fetch_forbidden_names_the_client_certificate, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_fetch_forbidden_detail_reaches_the_report_whole, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_fetch_rate_limited_is_transient_and_writes_nothing, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_fetch_ca_mismatch_logs_named_error_and_writes_nothing, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_pin_mismatch_logs_named_error_and_writes_nothing, setup_test, teardown_test),
