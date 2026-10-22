@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Validates that `remediation:` fields in ruleset/sca/**/*.yml render the way the dashboard's
-// Markdown renderer (vendored in ./renderer.js) actually renders them, instead of relying on
+// Markdown renderer actually renders them — ./renderer.js fetches that renderer's real source at
+// run time (see dashboard-ref.js) rather than keeping a copy here — instead of relying on
 // authors/reviewers eyeballing raw Markdown for the known bug classes (stray `*`/`_` turning into
 // unintended emphasis, bare `----` turning into a <hr>, etc).
 //
@@ -13,7 +14,7 @@
 const fs = require('fs');
 const path = require('path');
 const yaml = require('js-yaml');
-const { renderRemediation, canonicalize } = require('./renderer');
+const { init, renderRemediation, canonicalize } = require('./renderer');
 
 function collectRemediationEntries(node, out) {
   if (Array.isArray(node)) {
@@ -121,11 +122,18 @@ function validateEntry(file, entry) {
   return { problems, warnings };
 }
 
-function main(argv) {
+async function main(argv) {
   const files = argv.slice(2);
   if (files.length === 0) {
     console.log('No SCA YAML files to validate.');
     return 0;
+  }
+
+  try {
+    await init();
+  } catch (err) {
+    console.error(`FAIL: could not initialize the dashboard's renderer — ${err.message}`);
+    return 1;
   }
 
   let totalChecked = 0;
@@ -176,4 +184,4 @@ function main(argv) {
   return 0;
 }
 
-process.exit(main(process.argv));
+main(process.argv).then(code => process.exit(code));

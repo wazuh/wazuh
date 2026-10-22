@@ -9,12 +9,21 @@ on:
       - "ruleset/sca/**/*.yml"
       - ".github/scripts/sca-remediation-markdown/**"
       - ".github/workflows/5_codequality_sca-remediation-markdown.yml"
+  # A change on the dashboard side (its renderer, or a markdown-it/dompurify bump) can't show up
+  # as a path change here, so a PR-only trigger would never notice it drifting. This re-runs a
+  # full sweep weekly against whatever dashboard-ref.js currently resolves to.
+  schedule:
+    - cron: "0 6 * * 1"
   workflow_dispatch:
     inputs:
       full-sweep:
         description: "Validate every ruleset/sca/**/*.yml file, not just ones changed in a PR"
         type: boolean
         default: false
+      dashboard-ref:
+        description: "Override the wazuh-dashboard-plugins ref to check against (branch, tag or commit)"
+        type: string
+        default: ""
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
@@ -30,6 +39,8 @@ jobs:
     defaults:
       run:
         working-directory: .github/scripts/sca-remediation-markdown
+    env:
+      DASHBOARD_REF: ${{ inputs.dashboard-ref }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -40,13 +51,16 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
 
       - name: Install validator dependencies
         run: npm ci
 
-      - name: Check vendored renderer is in sync with the dashboard
-        run: node check-renderer-sync.js
+      - name: Check dependency versions against the dashboard
+        run: node check-dependency-versions.js
+
+      - name: Self-test the renderer against known fixtures
+        run: node self-test.js
 
       - name: Determine changed SCA ruleset files
         if: github.event_name == 'pull_request' && inputs.full-sweep != true
@@ -66,7 +80,7 @@ jobs:
           fi
 
       - name: Full sweep file list
-        if: github.event_name == 'workflow_dispatch' && inputs.full-sweep == true
+        if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.full-sweep == true)
         id: full
         working-directory: .
         run: |
@@ -76,16 +90,22 @@ jobs:
       - name: Validate changed files
         if: github.event_name == 'pull_request' && inputs.full-sweep != true && steps.changed.outputs.count != '0'
         working-directory: .
+        env:
+          CHANGED_FILES: ${{ steps.changed.outputs.files }}
         run: |
           cd .github/scripts/sca-remediation-markdown
-          node validate.js $(echo "${{ steps.changed.outputs.files }}" | sed 's|^|../../../|')
+          mapfile -t files < <(printf '%s\n' "$CHANGED_FILES" | sed 's|^|../../../|')
+          node validate.js "${files[@]}"
 
-      - name: Validate full ruleset (manual sweep)
-        if: github.event_name == 'workflow_dispatch' && inputs.full-sweep == true
+      - name: Validate full ruleset
+        if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.full-sweep == true)
         working-directory: .
+        env:
+          SWEEP_FILES: ${{ steps.full.outputs.files }}
         run: |
           cd .github/scripts/sca-remediation-markdown
-          node validate.js $(echo "${{ steps.full.outputs.files }}" | sed 's|^|../../../|')
+          mapfile -t files < <(printf '%s\n' "$SWEEP_FILES" | sed 's|^|../../../|')
+          node validate.js "${files[@]}"
 
       - name: No SCA files changed
         if: github.event_name == 'pull_request' && inputs.full-sweep != true && steps.changed.outputs.count == '0'

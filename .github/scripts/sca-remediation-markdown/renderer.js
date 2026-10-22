@@ -1,31 +1,91 @@
-// Vendored from wazuh-dashboard-plugins, so this repo renders `remediation` exactly the way the
-// dashboard does. Source: plugins/main/public/components/common/util/markdown/markdown-renderer.ts,
-// the `mdWithCopyableCodeBlocks` instance (PR https://github.com/wazuh/wazuh-dashboard-plugins/pull/9381,
-// commit e7ca4c8). If the dashboard changes this config, `check-renderer-sync.js` is meant to catch the
-// drift — update PINNED_COMMIT there (and this file) together when it does.
+// Renders `remediation` text the way the dashboard actually does — by fetching the dashboard's
+// own markdown-renderer.ts at CI time (see dashboard-ref.js) and transpiling it with esbuild,
+// instead of keeping a hand-written copy here that can silently drift from the real one. Call
+// init() once (it does the network fetch) before using renderRemediation/canonicalize.
 'use strict';
 
-const MarkdownIt = require('markdown-it');
-const MarkdownItLinkAttributes = require('markdown-it-link-attributes');
+const path = require('path');
+const esbuild = require('esbuild');
 const { JSDOM } = require('jsdom');
 const createDOMPurify = require('dompurify');
+const { fetchRaw } = require('./fetch-raw');
+const { PLUGIN_REPO, pluginRef } = require('./dashboard-ref');
+
+const RENDERER_PATH =
+  'plugins/main/public/components/common/util/markdown/markdown-renderer.ts';
+const OSD_I18N_IMPORT_RE = /from\s+(['"])@osd\/i18n\1/g;
+
+// The fetched file is remote, third-party-controlled source run via new Function() below, not
+// require()'d normally — so it never gets the real `require` and can only reach the exact modules
+// markdown-renderer.ts is known to need. A require for anything else (fs, child_process, https, a
+// different package entirely) throws instead of silently succeeding.
+const ALLOWED_REQUIRES = new Set(['markdown-it', 'markdown-it-link-attributes', 'dompurify']);
+function restrictedRequire(request) {
+  if (ALLOWED_REQUIRES.has(request)) return require(request);
+  if (path.resolve(request) === path.join(__dirname, 'osd-i18n-stub.js')) return require(request);
+  throw new Error(
+    `The fetched dashboard renderer tried to require('${request}'), which isn't on the allowed ` +
+      `list — this tool only runs it enough to call renderMarkdown(), not with full require access.`,
+  );
+}
 
 const dom = new JSDOM('');
 const DOMPurify = createDOMPurify(dom.window);
+const scratch = dom.window.document.createElement('div');
 
-const mdWithCopyableCodeBlocks = new MarkdownIt({
-  html: false,
-  linkify: true,
-  breaks: true,
-  typographer: false,
-}).disable(['heading', 'lheading', 'escape']);
+let renderMarkdown = null;
 
-mdWithCopyableCodeBlocks.use(MarkdownItLinkAttributes, {
-  attrs: { target: '_blank', rel: 'noopener noreferrer' },
-});
+async function init() {
+  if (renderMarkdown) return;
+
+  const ref = pluginRef();
+  let source;
+  try {
+    source = await fetchRaw(PLUGIN_REPO, ref, RENDERER_PATH);
+  } catch (err) {
+    throw new Error(
+      `Could not fetch the dashboard's renderer from ${PLUGIN_REPO}@${ref}:${RENDERER_PATH} — ` +
+        `refusing to validate against a stale local copy. (${err.message})`,
+    );
+  }
+  if (!OSD_I18N_IMPORT_RE.test(source)) {
+    throw new Error(
+      `Fetched markdown-renderer.ts from ${PLUGIN_REPO}@${ref} but it no longer imports ` +
+        `'@osd/i18n' the way this tool expects — the stub substitution below needs updating.`,
+    );
+  }
+
+  const stubPath = path.join(__dirname, 'osd-i18n-stub.js').replace(/\\/g, '/');
+  const patched = source.replace(OSD_I18N_IMPORT_RE, (_m, quote) => `from ${quote}${stubPath}${quote}`);
+
+  let code;
+  try {
+    code = esbuild.transformSync(patched, { loader: 'ts', format: 'cjs', target: 'node22' }).code;
+  } catch (err) {
+    throw new Error(`Could not transpile the fetched markdown-renderer.ts: ${err.message}`);
+  }
+
+  const mod = { exports: {} };
+  const moduleFn = new Function('module', 'exports', 'require', '__dirname', '__filename', code);
+  moduleFn(mod, mod.exports, restrictedRequire, __dirname, path.join(__dirname, 'markdown-renderer.fetched.js'));
+
+  if (typeof mod.exports.renderMarkdown !== 'function') {
+    throw new Error(
+      `Fetched markdown-renderer.ts from ${PLUGIN_REPO}@${ref} transpiled, but didn't export a ` +
+        `'renderMarkdown' function — its public API may have changed.`,
+    );
+  }
+  renderMarkdown = mod.exports.renderMarkdown;
+}
 
 function renderRemediation(markdown) {
-  const html = mdWithCopyableCodeBlocks.render(markdown || '');
+  if (!renderMarkdown) {
+    throw new Error('renderer.js: init() must be awaited before renderRemediation()');
+  }
+  // Pass an identity "sanitizer" to get the raw render, then sanitize separately ourselves —
+  // renderMarkdown's third argument always runs, so this is how to see the pre-sanitize HTML too
+  // (canonicalize() below diffs the two to catch anything DOMPurify actually had to strip).
+  const html = renderMarkdown(markdown || '', { copyableCodeBlocks: true }, h => h);
   const sanitized = DOMPurify.sanitize(html);
   return { html, sanitized };
 }
@@ -37,8 +97,6 @@ function renderRemediation(markdown) {
 // actually removed), not serialization noise.
 // Reuses one scratch element (not a fresh JSDOM per call) — across a full-ruleset sweep
 // (~11k remediation fields) constructing a new JSDOM window per entry exhausts the heap.
-const scratch = dom.window.document.createElement('div');
-
 function canonicalize(htmlStr) {
   scratch.innerHTML = htmlStr;
 
@@ -58,4 +116,4 @@ function canonicalize(htmlStr) {
   return walk(scratch);
 }
 
-module.exports = { renderRemediation, canonicalize };
+module.exports = { init, renderRemediation, canonicalize };

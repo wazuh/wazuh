@@ -1,0 +1,42 @@
+[
+  {
+    "name": "list with bold and a fenced block",
+    "markdown": "If the module is available in the running kernel:\n\n- Unload the module.\n- Create a file ending in `.conf` with `install <module> /bin/false`.\n\n**WARNING:** this may be **FATAL**.\n\n```\n# modprobe -r gfs2\n```\n",
+    "expectedHtml": "<p>If the module is available in the running kernel:</p>\n<ul>\n<li>Unload the module.</li>\n<li>Create a file ending in <code>.conf</code> with <code>install &lt;module&gt; /bin/false</code>.</li>\n</ul>\n<p><strong>WARNING:</strong> this may be <strong>FATAL</strong>.</p>\n<div class=\"wz-markdown-code\"><button type=\"button\" class=\"wz-markdown-copy-button\" aria-label=\"Copy code\" title=\"Copy code\">Copy code</button><pre><code># modprobe -r gfs2\n</code></pre></div>\n"
+  },
+  {
+    "name": "bare asterisk and underscore, must stay literal inside code",
+    "markdown": "Add `* hard core 0` to `/etc/security/limits.conf` and set `remember=_<N>_` in the pam line.\n",
+    "expectedHtml": "<p>Add <code>* hard core 0</code> to <code>/etc/security/limits.conf</code> and set <code>remember=_&lt;N&gt;_</code> in the pam line.</p>\n"
+  },
+  {
+    "name": "bare four-hyphen divider, must stay literal inside a fence",
+    "markdown": "Example output:\n\n```\npg_reload_conf\n----------------\nt\n(1 row)\n```\n",
+    "expectedHtml": "<p>Example output:</p>\n<div class=\"wz-markdown-code\"><button type=\"button\" class=\"wz-markdown-copy-button\" aria-label=\"Copy code\" title=\"Copy code\">Copy code</button><pre><code>pg_reload_conf\n----------------\nt\n(1 row)\n</code></pre></div>\n"
+  },
+  {
+    "name": "leading hash is a shell comment, not a heading",
+    "markdown": "Run the following script:\n\n```\n# this is a comment, not a heading\necho hi\n```\n",
+    "expectedHtml": "<p>Run the following script:</p>\n<div class=\"wz-markdown-code\"><button type=\"button\" class=\"wz-markdown-copy-button\" aria-label=\"Copy code\" title=\"Copy code\">Copy code</button><pre><code># this is a comment, not a heading\necho hi\n</code></pre></div>\n"
+  },
+  {
+    "name": "backslash in a regex, must stay literal",
+    "markdown": "Run:\n\n```\ngrep -Pq -- '^\\h*password\\h+requisite\\h+pam_pwquality\\.so\\b'\n```\n",
+    "expectedHtml": "<p>Run:</p>\n<div class=\"wz-markdown-code\"><button type=\"button\" class=\"wz-markdown-copy-button\" aria-label=\"Copy code\" title=\"Copy code\">Copy code</button><pre><code>grep -Pq -- '^\\h*password\\h+requisite\\h+pam_pwquality\\.so\\b'\n</code></pre></div>\n"
+  },
+  {
+    "name": "angle-bracket placeholder, bare in prose",
+    "markdown": "Edit `visudo -f <PATH TO FILE>` and add the line.\n",
+    "expectedHtml": "<p>Edit <code>visudo -f &lt;PATH TO FILE&gt;</code> and add the line.</p>\n"
+  },
+  {
+    "name": "URL-like technical string, should not linkify when backticked",
+    "markdown": "Add `chacha20-poly1305@openssh.com` to the cipher list.\n",
+    "expectedHtml": "<p>Add <code>chacha20-poly1305@openssh.com</code> to the cipher list.</p>\n"
+  },
+  {
+    "name": "numbered steps",
+    "markdown": "1. Create the profile.\n2. Enable it with `pam-auth-update --enable <profile>`.\n3. Restart the service.\n",
+    "expectedHtml": "<ol>\n<li>Create the profile.</li>\n<li>Enable it with <code>pam-auth-update --enable &lt;profile&gt;</code>.</li>\n<li>Restart the service.</li>\n</ol>\n"
+  }
+]

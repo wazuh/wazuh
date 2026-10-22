@@ -6,13 +6,15 @@
   "type": "commonjs",
   "scripts": {
     "validate": "node validate.js",
-    "check-renderer-sync": "node check-renderer-sync.js"
+    "check-dependency-versions": "node check-dependency-versions.js",
+    "self-test": "node self-test.js"
   },
   "dependencies": {
-    "dompurify": "3.1.6",
+    "dompurify": "3.4.11",
+    "esbuild": "0.24.2",
     "js-yaml": "4.1.0",
     "jsdom": "24.1.1",
-    "markdown-it": "14.1.0",
+    "markdown-it": "14.1.1",
     "markdown-it-link-attributes": "4.0.1"
   }
 }
