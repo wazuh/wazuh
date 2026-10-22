@@ -375,7 +375,10 @@ TEST_F(WriteTest, AbandonedGroupReleases)
     EXPECT_EQ(s.resolvedDropped, 2u);
     expectInvariants(s);
 
-    c->requestClose(); // The new op resolves Dropped(ClientClosed); its reserve goes with its Ticket (TearDown).
+    // The new op resolves Dropped(ClientClosed); its reserve goes with its Ticket (TearDown). I99: with no sink
+    // capacity it stays queued until the sweep.
+    sink->setCapacity(0);
+    closeNow(*c);
     const auto closed = submit.ticket.wait(in(5s));
     ASSERT_TRUE(closed.ok());
     EXPECT_EQ(closed.value.cause, ic::Cause::ClientClosed);
@@ -583,7 +586,7 @@ TEST_F(BulkTest, GroupAcrossSplit413)
 TEST_F(WriteTest, GroupDropPoliciesRejectLikeReject)
 {
     ASSERT_NO_FATAL_FAILURE(start());
-    installSink();
+    auto sink = installSink();
     const std::uint64_t charge = wireSize(op(0)) + R;
     auto c = client("c",
                     {bucketSpec("dropNewest", 2 * charge, ic::Overflow::Kind::DropNewest),
@@ -612,7 +615,8 @@ TEST_F(WriteTest, GroupDropPoliciesRejectLikeReject)
         expectInvariants(s);
         EXPECT_EQ(results->total(), 0u) << "nothing resolved";
     }
-    c->requestClose();
+    sink->setCapacity(0); // I99: the pending ops stay queued until the sweep.
+    closeNow(*c);
     ASSERT_TRUE(results->waitTotal(4));
     EXPECT_EQ(results->countWith(ic::Status::Dropped, ic::Cause::ClientClosed), 4u);
 }
@@ -884,5 +888,5 @@ TEST_F(WriteTest, GroupLastAddReason)
     const auto ticket = group.commit(); // Held by the sink; the close below drops it.
     EXPECT_EQ(group.add(op(9)), ic::Cause::InvalidState);
     EXPECT_FALSE(group.lastAddReason().empty());
-    c->requestClose();
+    closeNow(*c);
 }

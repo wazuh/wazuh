@@ -152,14 +152,16 @@ TEST_F(BulkTest, CallbackBlockingCallsAreReentrancy)
     // From this (consumer) thread the same tickets complete normally.
     ASSERT_TRUE(groupTicket.wait(in(5s)).ok());
     ASSERT_TRUE(submit.ticket.wait(in(5s)).ok());
-    c->requestClose(); // Drops the pending op; the Building groups are abandoned below.
-    EXPECT_EQ(ticket.wait(in(5s)).value.cause, ic::Cause::ClientClosed);
+    c->requestClose(); // I99 (D43): the pending op drains (Ok); the Building groups are abandoned below.
+    const auto drained = ticket.wait(in(5s));
+    ASSERT_TRUE(drained.ok()) << ic::toString(drained.cause);
+    EXPECT_EQ(drained.value.status, ic::Status::Ok) << ic::toString(drained.value.cause);
 }
 
 // T18, I37: K = 1, M = 2, at most 8 ops pending. requestClose() from a callback of the same client returns in < 1 s
-// (it never waits for the drain the callback is part of) and its pending ops are dropped; two clients destroyed from
-// two callbacks running at the same time (one per pool thread) are two usage errors, each destructor returns at once
-// (no self-join, no deadlock).
+// (it never waits for the drain the callback is part of) and its pending ops drain (Ok, I99/D43); two clients destroyed
+// from two callbacks running at the same time (one per pool thread) are two usage errors, each destructor returns at
+// once (no self-join, no deadlock).
 TEST_F(BulkTest, CallbackRequestCloseAndClientDestroy)
 {
     const auto a = startNode();
@@ -189,9 +191,11 @@ TEST_F(BulkTest, CallbackRequestCloseAndClientDestroy)
     ASSERT_EQ(closeFuture.wait_for(5s), std::future_status::ready) << "requestClose() from a callback hung";
     EXPECT_LT(closeFuture.get(), 1s);
     ASSERT_TRUE(results->waitTotal(7));
-    EXPECT_EQ(results->countWith(ic::Status::Dropped, ic::Cause::ClientClosed), 7u);
+    EXPECT_EQ(results->countWith(ic::Status::Ok, ic::Cause::None), 7u) << "requestClose() drains (D43)";
     const auto report = closing->awaitClosed(in(5s));
     EXPECT_TRUE(report.ok()) << ic::toString(report.cause);
+    EXPECT_EQ(report.value.droppedClientClosed, 0u);
+    EXPECT_EQ(report.value.drained, 7u);
 
     // Two Clients destroyed from two callbacks at once.
     constexpr int PARTIES = 2;

@@ -265,13 +265,15 @@ namespace indexer_client::detail::write
         }
 
         std::optional<Cause> closedAtEnqueue;
-        const bool notify = bucket->enqueueGroup(std::move(ops), reserved, &closedAtEnqueue);
+        // A copy: on a refusal the ops come back to this caller (the bucket keeps none of them).
+        const bool notify = bucket->enqueueGroup(ops, reserved, &closedAtEnqueue);
         if (const auto& closed = closedAtEnqueue; closed)
         {
-            // As submit's closedAtEnqueue: the bucket took the ops anyway; take them back and resolve them.
-            for (const auto& pending : bucket->close(*closed))
+            // As submit's closedAtEnqueue (I99, N2): refused, in the bucket's custody but not queued; only this
+            // group's ops are resolved, the rest of the bucket keeps draining.
+            for (const auto& op : ops)
             {
-                path->resolve(pending, dropped(*closed));
+                path->resolve(op, dropped(*closed)); // Not part of CloseReport::drained (a refusal).
             }
             return GroupTicket(group);
         }

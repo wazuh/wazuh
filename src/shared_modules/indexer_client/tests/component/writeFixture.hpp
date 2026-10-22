@@ -486,6 +486,16 @@ protected:
         return m_path->stats().globalCharge;
     }
 
+    /// I99 (D43): requestClose() only closes the admission and the buckets keep draining; through a TestSink that
+    /// holds, or has no capacity, nothing drains. A case that needs the close to resolve what is queued closes with a
+    /// short deadline instead: at drainEnd (now + 600 ms for 1 s) the queued ops are Dropped(ClientClosed) and those
+    /// the sink holds Dropped(Shutdown).
+    void closeNow(indexer_client::Client& c, std::chrono::milliseconds deadline = std::chrono::milliseconds(1000))
+    {
+        const auto report = c.awaitClosed(std::chrono::steady_clock::now() + deadline);
+        EXPECT_TRUE(report.ok()) << indexer_client::toString(report.cause);
+    }
+
     indexer_client::RuntimeRef m_ref;
     std::shared_ptr<write_component::wr::WritePath> m_path;
     std::shared_ptr<write_component::TestSink> m_sink;

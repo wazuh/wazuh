@@ -40,6 +40,9 @@ namespace indexer_client::detail::write
         {
             return 0;
         }
+        /// E5b (I99): cancels the transfers in flight of `bucket`'s batches (awaitClosed's sweep outside a runtime
+        /// shutdown); their late results are Ignore. No-op by default.
+        virtual void cancelBucket(const Bucket& /*bucket*/) {}
         /// Takes the batch (loop 0). Every op is resolved exactly once through WritePath::resolve, from any thread.
         virtual void dispatch(Batch batch) = 0;
         /// After stop() no batch is accepted; batches the sink still holds are resolved Dropped(Shutdown) by the

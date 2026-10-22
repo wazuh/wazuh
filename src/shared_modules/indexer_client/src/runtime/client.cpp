@@ -65,6 +65,42 @@ namespace indexer_client
         };
     } // namespace
 
+    namespace
+    {
+        /// requestClose() (D43, I99): the flag, the queries and blocked producers woken (ClientClosed), the admission
+        /// of every bucket closed; the buckets keep draining. `sweep` (a Client destroyed on a runtime thread) also
+        /// resolves what is queued now (WritePath::closeClient). Never blocks; takes no close mutex.
+        void closeState(detail::ClientState& state, bool sweep)
+        {
+            // The flag first: a submit racing this close either is refused at its enqueue or was queued before.
+            state.closeRequested.store(true);
+            if (state.queryGate)
+            {
+                {
+                    // Under the gate's mutex: a query that checked the flag is already waiting, so it sees this notify.
+                    std::lock_guard<std::mutex> gate(state.queryGate->mutex);
+                }
+                state.queryGate->cv.notify_all(); // E4a: queries waiting on this client return ClientClosed.
+            }
+            if (auto path = state.writePath.lock())
+            {
+                path->closeClient(state, sweep);
+            }
+        }
+
+        /// Σ retained of the client's buckets (pending + lane + delivered; I99 N4). Called under completionsMutex
+        /// (lock order completionsMutex -> bucket mutex).
+        std::uint64_t retainedOf(const detail::ClientState& state)
+        {
+            std::uint64_t retained = 0;
+            for (const auto& bucket : state.bucketStates)
+            {
+                retained += bucket->retained();
+            }
+            return retained;
+        }
+    } // namespace
+
     namespace detail
     {
         std::shared_ptr<IWriter> makeStubWriter(std::shared_ptr<ClientState> client, std::string bucket)
@@ -106,7 +142,8 @@ namespace indexer_client
                          "indexer_client: usage error: client '%s' destroyed from a runtime thread; "
                          "requesting close without waiting\n",
                          m_state->consumer.c_str());
-            requestClose();
+            // I99 (obj. 3): the old close, with the immediate sweep, so a usage error never loses a result or charge.
+            closeState(*m_state, true);
             return;
         }
         requestClose();
@@ -164,20 +201,7 @@ namespace indexer_client
         {
             return;
         }
-        // The flag first: a submit racing this close either is swept here or sees the flag after its enqueue.
-        m_state->closeRequested.store(true);
-        if (m_state->queryGate)
-        {
-            {
-                // Under the gate's mutex: a query that checked the flag is already waiting, so it sees this notify.
-                std::lock_guard<std::mutex> gate(m_state->queryGate->mutex);
-            }
-            m_state->queryGate->cv.notify_all(); // E4a: queries waiting on this client return ClientClosed.
-        }
-        if (auto path = m_state->writePath.lock())
-        {
-            path->closeClient(*m_state); // Wakes blocked producers; pending ops resolve Dropped(ClientClosed).
-        }
+        closeState(*m_state, false);
     }
 
     Outcome<CloseReport> Client::awaitClosed(Deadline deadline)
@@ -191,33 +215,64 @@ namespace indexer_client
             return Outcome<CloseReport>::failure(Cause::InvalidState, "empty client handle");
         }
         requestClose();
-        // I63: what the client still retains (ops delivered to the sink and not resolved yet) is dropped now; E5
-        // adds the drain up to the deadline before this point.
-        if (auto path = m_state->writePath.lock())
+        auto& state = *m_state;
+        // I99 (write/writer.hpp «Close»): serialized per client; the first call drains and sweeps, a concurrent one
+        // waits for it and a later one only waits for the completions. The counters are read live every time (N3).
+        std::lock_guard<std::mutex> closeLock(state.closeMutex);
+        if (!state.closeReport)
         {
-            for (const auto& bucket : m_state->bucketStates)
+            const auto now = std::chrono::steady_clock::now();
+            const auto left = std::max(deadline - now, TimePoint::duration::zero());
+            const auto budget = std::chrono::duration_cast<TimePoint::duration>(state.callbackBudget);
+            TimePoint drainEnd;
+            TimePoint cutoff;
+            if (left >= 2 * budget)
             {
-                for (const auto& op : bucket->delivered())
+                drainEnd = deadline - 2 * budget;
+                cutoff = deadline - budget;
+            }
+            else
+            {
+                drainEnd = now + left / 2;
+                cutoff = now + 3 * left / 4;
+            }
+            auto path = state.writePath.lock();
+            {
+                std::unique_lock<std::mutex> lock(state.completionsMutex);
+                state.callbackCutoff = std::min(state.callbackCutoff, cutoff);
+                if (path)
                 {
-                    OpResult result;
-                    result.status = Status::Dropped;
-                    result.cause = Cause::ClientClosed;
-                    result.reason = "dropped: the client was closed";
-                    path->resolve(op, std::move(result));
+                    // Every resolution of one of its ops notifies drainDone (WritePath::resolve). The drain keeps the
+                    // node pace, notBefore and the bucket backoff: nothing here hurries it.
+                    state.drainDone.wait_until(lock, drainEnd, [&state] { return retainedOf(state) == 0; });
                 }
             }
+            if (path)
+            {
+                // Outside completionsMutex (an inline completion relocks it). Inside a runtime shutdown the transfers
+                // are bounded by transport->stop; outside one they are cancelled (N5).
+                const bool runtimeShutdown = detail::runtimeShutdownDeadline(state.runtime, state.epoch).has_value();
+                path->sweepClient(state, !runtimeShutdown); // Its Dropped are not part of `drained`.
+            }
+            state.closeReport = CloseReport {};
         }
+
         CloseReport report;
         {
-            std::unique_lock<std::mutex> lock(m_state->completionsMutex);
-            m_state->completionsDone.wait_until(
-                lock, deadline, [this] { return m_state->outstandingCompletions == 0; });
-            report.callbacksInFlight = static_cast<std::size_t>(m_state->outstandingCompletions);
+            std::unique_lock<std::mutex> lock(state.completionsMutex);
+            state.completionsDone.wait_until(lock, deadline, [&state] { return state.outstandingCompletions == 0; });
+            // No callback starts after this returns: the gate (CallbackCompletion::run) reads the cutoff under this
+            // mutex, so the callbacks that passed it are exactly those still running.
+            state.callbackCutoff = std::min(state.callbackCutoff, std::chrono::steady_clock::now());
+            report.callbacksInFlight = static_cast<std::size_t>(state.callbacksRunning);
         }
-        report.droppedClientClosed = static_cast<std::size_t>(m_state->droppedClientClosed.load());
-        report.droppedShutdown = static_cast<std::size_t>(m_state->droppedShutdown.load());
+        report.droppedClientClosed = static_cast<std::size_t>(state.droppedClientClosed.load());
+        report.droppedShutdown = static_cast<std::size_t>(state.droppedShutdown.load());
+        report.callbacksSkipped = static_cast<std::size_t>(state.callbacksSkipped.load());
+        report.callbackOverruns = static_cast<std::size_t>(state.callbackOverruns.load());
+        report.drained = static_cast<std::size_t>(state.drained.load());
         // Closing frees the consumer name.
-        m_state->releaseName();
+        state.releaseName();
         return Outcome<CloseReport>::success(report);
     }
 

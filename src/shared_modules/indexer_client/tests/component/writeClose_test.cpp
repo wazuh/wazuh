@@ -142,7 +142,9 @@ TEST_F(WriteTest, SubmitRacesClose)
         {
             producer.join();
         }
-        const auto report = c->awaitClosed(now() + 5s); // The ops delivered to the sink: Dropped(ClientClosed).
+        // I99: the held sink never answers, so nothing drains; at drainEnd the queued ops are Dropped(ClientClosed)
+        // and those delivered to the sink Dropped(Shutdown).
+        const auto report = c->awaitClosed(now() + 1s);
         ASSERT_TRUE(report.ok());
         std::size_t acceptedCount = 0;
         for (const auto& row : accepted)
@@ -160,7 +162,11 @@ TEST_F(WriteTest, SubmitRacesClose)
         // no-callback-when-refused properties are asserted; the seam blocks above pin the race deterministically.
         EXPECT_GT(acceptedCount, 0u);
         ASSERT_TRUE(results->waitTotal(acceptedCount, 5s));
-        sink->take(); // What the sink held was resolved by awaitClosed.
+        std::size_t delivered = 0;
+        for (const auto& batch : sink->take()) // What the sink held was resolved by awaitClosed.
+        {
+            delivered += batch.ops.size();
+        }
         for (std::size_t p = 0; p < PRODUCERS; ++p)
         {
             for (std::size_t i = 0; i < PER_PRODUCER; ++i)
@@ -170,7 +176,12 @@ TEST_F(WriteTest, SubmitRacesClose)
             }
         }
         EXPECT_EQ(results->total(), acceptedCount);
-        EXPECT_EQ(report.value.droppedClientClosed, acceptedCount) << "no sink resolution: every op was dropped";
+        EXPECT_EQ(report.value.droppedShutdown, delivered) << "every op delivered to the held sink";
+        EXPECT_EQ(report.value.droppedClientClosed, acceptedCount - delivered) << "every op still queued";
+        EXPECT_EQ(report.value.drained, 0u) << "no sink resolution: every op was dropped by the sweep";
+        EXPECT_EQ(results->countWith(ic::Status::Dropped, ic::Cause::ClientClosed) +
+                      results->countWith(ic::Status::Dropped, ic::Cause::Shutdown),
+                  acceptedCount);
         ASSERT_TRUE(eventually([this] { return globalCharge() == 0; }, 5s));
         expectInvariants(stats("b", "racing"));
     }
@@ -199,9 +210,10 @@ TEST_F(WriteTest, SubmitRacesClose)
     }
 }
 
-// I63: requestClose() + awaitClosed() resolve the client's retained ops (pending and delivered to the sink)
-// Dropped(ClientClosed) and report a callback still running as callbacksInFlight; shutdown() resolves another
-// client's retained ops Dropped(Shutdown). Charge 0, and the sink's late resolutions lose.
+// I63, I99: requestClose() + awaitClosed() resolve the client's retained ops at drainEnd (the held sink drains
+// nothing): pending Dropped(ClientClosed), delivered to the sink Dropped(Shutdown), and report a callback still running
+// as callbacksInFlight; shutdown() resolves another client's retained ops Dropped(Shutdown). Charge 0, and the sink's
+// late resolutions lose.
 TEST_F(WriteTest, CloseAndShutdownResolveRetained)
 {
     ASSERT_NO_FATAL_FAILURE(start());
@@ -238,15 +250,23 @@ TEST_F(WriteTest, CloseAndShutdownResolveRetained)
 
         c->requestClose();
         EXPECT_EQ(writer->submit(indexOp(id(99))).cause, ic::Cause::ClientClosed);
-        const auto report = c->awaitClosed(now() + 300ms);
+        EXPECT_EQ(stats("b").retained, 13u) << "requestClose() only closes the admission (D43)";
+        // A short deadline (300 ms < 2 x callbackBudget): drainEnd = now + 150 ms, cutoff = now + 225 ms.
+        const auto t0 = now();
+        const auto report = c->awaitClosed(t0 + 300ms);
+        const auto took = now() - t0;
         ASSERT_TRUE(report.ok());
+        EXPECT_GE(took, 150ms) << "swept before drainEnd";
         EXPECT_EQ(report.value.callbacksInFlight, 1u) << "the slow callback was still running";
-        EXPECT_EQ(report.value.droppedClientClosed, 13u);
-        EXPECT_EQ(report.value.droppedShutdown, 0u);
+        EXPECT_EQ(report.value.droppedClientClosed, 3u) << "pending";
+        EXPECT_EQ(report.value.droppedShutdown, 10u) << "delivered to the sink";
+        EXPECT_EQ(report.value.drained, 0u);
+        EXPECT_EQ(report.value.callbacksSkipped, 0u) << "every completion ran before the cutoff";
         EXPECT_EQ(stats("b").retained, 0u);
         gate->set_value();
         ASSERT_TRUE(results->waitTotal(13));
-        EXPECT_EQ(results->countWith(ic::Status::Dropped, ic::Cause::ClientClosed), 13u);
+        EXPECT_EQ(results->countWith(ic::Status::Dropped, ic::Cause::ClientClosed), 3u);
+        EXPECT_EQ(results->countWith(ic::Status::Dropped, ic::Cause::Shutdown), 10u);
         for (std::uint64_t k = 0; k < 13; ++k)
         {
             EXPECT_EQ(results->count(k), 1) << k;

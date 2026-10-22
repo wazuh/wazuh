@@ -44,6 +44,11 @@ namespace indexer_client::detail::seams
     void beforeAssembly();
     /// E4a: replaces the DBQ/UBQ conflict-retry base (I86) in milliseconds; nullopt keeps CONFLICT_BASE.
     std::optional<std::int64_t> queryConflictBaseMs();
+    /// G-diff E5b: in CallbackCompletion::run, under completionsMutex, between the cutoff comparison and the started
+    /// (or skipped) mark (may block: it holds the client's completionsMutex).
+    void inCallbackGate();
+    /// G-diff E5b: in WritePath::resolve, right after the op's payload was released (it is no longer retained).
+    void afterPayloadReleased();
 #else
     // always_inline: even at -O0 no out-of-line copy is emitted, so the .so carries no seams:: symbol (VisibilityTest).
     [[gnu::always_inline]] inline void afterAdmissionCheck() {}
@@ -72,6 +77,8 @@ namespace indexer_client::detail::seams
     {
         return std::nullopt;
     }
+    [[gnu::always_inline]] inline void inCallbackGate() {}
+    [[gnu::always_inline]] inline void afterPayloadReleased() {}
 #endif
 } // namespace indexer_client::detail::seams
 

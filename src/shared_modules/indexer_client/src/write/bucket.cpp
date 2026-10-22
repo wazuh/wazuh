@@ -13,6 +13,7 @@
 #include "write/bucket.hpp"
 
 #include <algorithm>
+#include <cassert>
 #include <chrono>
 #include <unordered_set>
 #include <utility>
@@ -21,6 +22,7 @@
 #include "runtime/backoff.hpp"
 #include "runtime/runtimeInternal.hpp"
 #include "write/budget.hpp"
+#include "write/group.hpp"
 
 namespace indexer_client::detail::write
 {
@@ -46,10 +48,11 @@ namespace indexer_client::detail::write
         return hash;
     }
 
-    Bucket::Bucket(std::string consumer, BucketSpec spec, GlobalBudget& budget)
+    Bucket::Bucket(std::string consumer, BucketSpec spec, GlobalBudget& budget, std::weak_ptr<WritePath> owner)
         : m_consumer(std::move(consumer))
         , m_spec(std::move(spec))
         , m_budget(budget)
+        , m_owner(std::move(owner))
     {
         m_stats.consumer = m_consumer;
         m_stats.bucket = m_spec.name;
@@ -57,7 +60,57 @@ namespace indexer_client::detail::write
 
     Bucket::~Bucket()
     {
-        // No other reference exists, so no lock: the waiters still registered can never reach 0 (I80).
+        // No other reference exists, so no lock.
+        // I99 (N6), the last net: with the close fixed (the racing enqueue refuses, a Client destroyed on a runtime
+        // thread sweeps) nothing is still queued here. A debug build asserts it; a release build completes what is
+        // left (ticket or group slot; the callback is not called) and returns its charge to the global cap while the
+        // write path, owner of that budget, is alive. Only the ops' own charge: a ticket's reserve handle and a
+        // GroupState return theirs.
+        const bool leftovers = !m_pending.empty() || !m_lane.empty();
+        assert(!leftovers && "a bucket destroyed with queued operations");
+        if (leftovers)
+        {
+            countUsageError();
+            auto owner = m_owner.lock();
+            std::uint64_t charge = 0;
+            for (auto* queue : {&m_lane, &m_pending})
+            {
+                for (const auto& op : *queue)
+                {
+                    if (!op || op->claimed.exchange(true))
+                    {
+                        continue;
+                    }
+                    if (op->payloadCharged)
+                    {
+                        op->payloadCharged = false;
+                        charge += op->payload;
+                    }
+                    if (op->callback && op->reserveCharged)
+                    {
+                        charge += RESULT_RESERVE; // No callback runs to return it.
+                    }
+                    OpResult result;
+                    result.status = Status::Dropped;
+                    result.cause = Cause::ClientClosed;
+                    result.reason = "dropped: the client was closed";
+                    if (op->group)
+                    {
+                        resolveInGroup(*op, std::move(result));
+                        op->group.reset();
+                    }
+                    else if (op->ticket)
+                    {
+                        op->ticket->complete(Outcome<OpResult>::success(std::move(result)));
+                    }
+                }
+            }
+            if (owner)
+            {
+                m_budget.release(charge);
+            }
+        }
+        // The cancel(tag) waiters still registered can never reach 0 (I80).
         for (auto& waiter : m_cancelWaiters)
         {
             if (waiter.ticket)
@@ -165,10 +218,10 @@ namespace indexer_client::detail::write
         {
             std::unique_lock<std::mutex> lock(m_mutex);
             ++m_stats.submitted;
-            if (m_closed)
+            if (m_admission)
             {
                 ++m_stats.rejectedClosed;
-                reservation.cause = *m_closed;
+                reservation.cause = *m_admission;
                 return reservation;
             }
             if (payload > m_spec.bulk.maxBytes || charge > m_spec.quotaBytes || charge > m_budget.cap())
@@ -209,7 +262,7 @@ namespace indexer_client::detail::write
                                       blockUntil,
                                       [&]
                                       {
-                                          if (m_closed)
+                                          if (m_admission)
                                           {
                                               return true;
                                           }
@@ -224,10 +277,10 @@ namespace indexer_client::detail::write
                     {
                         ++m_stats.accepted;
                     }
-                    else if (m_closed)
+                    else if (m_admission)
                     {
                         ++m_stats.rejectedClosed;
-                        reservation.cause = *m_closed;
+                        reservation.cause = *m_admission;
                     }
                     else
                     {
@@ -259,10 +312,10 @@ namespace indexer_client::detail::write
         {
             std::unique_lock<std::mutex> lock(m_mutex);
             ++m_stats.submitted;
-            if (m_closed)
+            if (m_admission)
             {
                 ++m_stats.rejectedClosed;
-                reservation.cause = *m_closed;
+                reservation.cause = *m_admission;
                 return reservation;
             }
             if (payload > m_spec.bulk.maxBytes || charge > m_spec.quotaBytes || charge > m_budget.cap())
@@ -316,7 +369,7 @@ namespace indexer_client::detail::write
                                   blockUntil,
                                   [&]
                                   {
-                                      if (m_closed)
+                                      if (m_admission)
                                       {
                                           return true;
                                       }
@@ -334,10 +387,10 @@ namespace indexer_client::detail::write
                 }
                 if (!charged)
                 {
-                    if (m_closed)
+                    if (m_admission)
                     {
                         ++m_stats.rejectedClosed;
-                        reservation.cause = *m_closed;
+                        reservation.cause = *m_admission;
                     }
                     else if (held)
                     {
@@ -366,28 +419,51 @@ namespace indexer_client::detail::write
         return reservation;
     }
 
+    void Bucket::takeCustodyLocked(OpState& op, TimePoint now)
+    {
+        if (op.firstSubmit == TimePoint {})
+        {
+            op.firstSubmit = now;
+        }
+        if (op.bucket.expired())
+        {
+            op.bucket = weak_from_this();
+        }
+        op.payloadCharged = true;
+        op.seq = m_nextSeq++;
+        ++m_stats.retained;
+    }
+
+    std::optional<Cause> Bucket::refusalCauseLocked() const
+    {
+        // The sweep's cause when there was one (during stop() everything is Shutdown), else the admission's.
+        return m_closed ? m_closed : m_admission;
+    }
+
     bool Bucket::enqueue(std::shared_ptr<OpState> op, std::optional<Cause>* closed)
     {
         std::lock_guard<std::mutex> lock(m_mutex);
+        const auto now = std::chrono::steady_clock::now();
+        if (m_admission)
+        {
+            // I99 (N2): refused, never queued. The payload passes to the bucket's custody exactly as an accepted op's
+            // (payloadCharged, retained), so the caller's WritePath::resolve releases it through releasePayload.
+            takeCustodyLocked(*op, now);
+            if (closed)
+            {
+                *closed = refusalCauseLocked();
+            }
+            return false;
+        }
         if (closed)
         {
-            *closed = m_closed;
+            closed->reset();
         }
         const bool wasEmpty = m_pending.empty();
         const std::uint64_t bytesBefore = m_pendingBytes;
         const std::size_t docsBefore = m_pending.size();
 
-        if (op->firstSubmit == TimePoint {})
-        {
-            op->firstSubmit = std::chrono::steady_clock::now();
-        }
-        if (op->bucket.expired())
-        {
-            op->bucket = weak_from_this();
-        }
-        op->payloadCharged = true;
-        op->seq = m_nextSeq++;
-        ++m_stats.retained;
+        takeCustodyLocked(*op, now);
         m_pendingBytes += op->lines.size();
         m_pending.push_back(std::move(op));
 
@@ -405,7 +481,7 @@ namespace indexer_client::detail::write
         std::lock_guard<std::mutex> lock(m_mutex);
         if (closed)
         {
-            *closed = m_closed;
+            *closed = m_admission ? refusalCauseLocked() : std::nullopt;
         }
         m_building -= reserved;
         m_budget.removeBuilding(reserved);
@@ -415,19 +491,18 @@ namespace indexer_client::detail::write
             return false; // Nothing to flush (commitGroup never calls it so).
         }
         const auto now = std::chrono::steady_clock::now();
+        if (m_admission)
+        {
+            // I99 (N2): as enqueue, custody without queuing; the `building` transfer above happened all the same.
+            for (auto& op : ops)
+            {
+                takeCustodyLocked(*op, now);
+            }
+            return false;
+        }
         for (auto& op : ops)
         {
-            if (op->firstSubmit == TimePoint {})
-            {
-                op->firstSubmit = now;
-            }
-            if (op->bucket.expired())
-            {
-                op->bucket = weak_from_this();
-            }
-            op->payloadCharged = true;
-            op->seq = m_nextSeq++;
-            ++m_stats.retained;
+            takeCustodyLocked(*op, now);
             m_pendingBytes += op->lines.size();
             m_pending.push_back(std::move(op));
         }
@@ -936,6 +1011,10 @@ namespace indexer_client::detail::write
         {
             m_closed = cause;
         }
+        if (!m_admission)
+        {
+            m_admission = cause; // One call closes both (registerClient after stop(), the runtime sweep).
+        }
         pending.reserve(m_lane.size() + m_pending.size());
         for (auto& op : m_lane)
         {
@@ -954,7 +1033,35 @@ namespace indexer_client::detail::write
         return pending;
     }
 
+    void Bucket::closeAdmission(Cause cause)
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        if (!m_admission)
+        {
+            m_admission = cause;
+        }
+        // Everything pending is eligible now, as a committed group's ops (nextDue = TimePoint::min()); nothing is
+        // enqueued afterwards, so the drain never waits for maxAge.
+        if (m_nextSeq > 1)
+        {
+            m_flushSeq = m_nextSeq - 1;
+        }
+        m_room.notify_all(); // Blocked producers see the admission closed.
+    }
+
+    std::uint64_t Bucket::retained() const
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return m_stats.retained;
+    }
+
     std::optional<Cause> Bucket::closedCause() const
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return m_admission; // close() sets it too: m_closed without m_admission does not exist.
+    }
+
+    std::optional<Cause> Bucket::sweepCause() const
     {
         std::lock_guard<std::mutex> lock(m_mutex);
         return m_closed;

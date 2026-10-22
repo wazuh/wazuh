@@ -74,6 +74,7 @@ namespace indexer_client::detail::write
 {
     class Bucket;
     class GlobalBudget;
+    class WritePath;
 
     /// Fixed per-operation result reserve (I62): internal Op state, ticket state, callback slot and an OpResult with
     /// its strings at their caps. Fixed by measurement (ResultReserveMeasured, its regression guard), x 1.25 rounded up
@@ -194,7 +195,7 @@ namespace indexer_client::detail::write
         /// exhaustedErrors[i] = exhausted[i]'s last error, copied under the bucket's mutex: a concurrent resolution
         /// (the shutdown sweep) frees OpState::last* under that mutex, so the caller never reads them unlocked.
         std::vector<LastError> exhaustedErrors;
-        /// The bucket is closed: the caller resolves them Dropped(closedCause()). Still in the delivered set.
+        /// The bucket is closed (swept): the caller resolves them Dropped(sweepCause()). Still in the delivered set.
         std::vector<std::shared_ptr<OpState>> closed;
         /// Marked by cancel(tag) (I80): the caller resolves them Dropped(Cancelled). Still in the delivered set.
         std::vector<std::shared_ptr<OpState>> cancelled;
@@ -267,8 +268,12 @@ namespace indexer_client::detail::write
     class Bucket final : public std::enable_shared_from_this<Bucket>
     {
     public:
-        Bucket(std::string consumer, BucketSpec spec, GlobalBudget& budget);
-        /// Fails the cancel(tag) waiters still registered with ClientClosed (I80).
+        /// `owner`: the write path that owns `budget` (WritePath::registerClient); the ~Bucket net (I99, N6) returns
+        /// charge only while it is alive. Empty for a bucket built directly (tests).
+        Bucket(std::string consumer, BucketSpec spec, GlobalBudget& budget, std::weak_ptr<WritePath> owner = {});
+        /// Fails the cancel(tag) waiters still registered with ClientClosed (I80). I99 (N6): asserts (debug) that
+        /// nothing is queued; in release completes what is (tickets / group slots, Dropped(ClientClosed), no callback),
+        /// returns its charge under `owner` and counts a usage error.
         ~Bucket();
         Bucket(const Bucket&) = delete;
         Bucket& operator=(const Bucket&) = delete;
@@ -290,9 +295,10 @@ namespace indexer_client::detail::write
 
         /// Appends an op already reserved; returns true when the scheduler must be told (the bucket went from empty to
         /// non-empty or crossed bulk.maxBytes / bulk.maxDocs, with >=) and the dedup flag was clear. Sets
-        /// `payloadCharged`, `bucket` (when unset) and `firstSubmit` (when unset, to now). A closed bucket still takes
-        /// the op (it is charged and must not be lost): the caller checks the close cause (`closed`, read under the
-        /// same lock, or closedCause()) and, if closed, calls close() again to take it back and resolve it.
+        /// `payloadCharged`, `bucket` (when unset) and `firstSubmit` (when unset, to now).
+        /// E5b (I99, N2): with the ADMISSION closed it refuses instead — takes custody without queuing (payloadCharged,
+        /// retained, seq) and sets `*closed` (the sweep's cause if close() ran, else the admission's); the caller
+        /// resolves only that op through WritePath::resolve, never close(). Every caller passes `closed`.
         bool enqueue(std::shared_ptr<OpState> op, std::optional<Cause>* closed = nullptr);
 
         /// Group::add (I74, group.hpp): charges `payload` + RESULT_RESERVE for an op of a Building group that already
@@ -382,8 +388,16 @@ namespace indexer_client::detail::write
         /// the caller to resolve Dropped(cause). Callable again: each call hands back what is queued then. Their
         /// payload stays charged until the resolution releases it.
         std::vector<std::shared_ptr<OpState>> close(Cause cause);
-        /// The close cause, or nullopt while the bucket admits.
+        /// E5b (I99): closes only the admission with `cause` (reserve / reserveForGroup / enqueue / enqueueGroup refuse
+        /// with it; blocked producers wake), sets flushSeq = nextSeq - 1 so every pending op is eligible now, and keeps
+        /// the bucket draining: requeue retries as usual. Idempotent (the first cause stays). close() also sets it.
+        void closeAdmission(Cause cause);
+        /// The admission cause (closeAdmission or close), or nullopt while the bucket admits (what submit reports).
         std::optional<Cause> closedCause() const;
+        /// The cause close() fixed (the sweep), or nullopt: RequeueResult::closed ops are resolved Dropped(sweepCause).
+        std::optional<Cause> sweepCause() const;
+        /// BucketStats::retained alone (awaitClosed's drain predicate, I99 N4).
+        std::uint64_t retained() const;
         /// Snapshot of the ops delivered to the sink and not yet resolved (the shutdown sweep resolves them).
         std::vector<std::shared_ptr<OpState>> delivered() const;
         /// Wakes the producers blocked in this bucket (called by GlobalBudget::wakeWaiters, holding no other lock).
@@ -407,6 +421,10 @@ namespace indexer_client::detail::write
         /// min(oldest pending + maxAge, retry-lane head notBefore), TimePoint::min() for a committed group's head;
         /// the ordered rules of the header comment when spec().ordered; m_mutex held.
         std::optional<TimePoint> nextDueLocked(TimePoint now) const;
+        /// Takes `op` into the bucket's custody (firstSubmit, bucket, payloadCharged, seq, retained); m_mutex held.
+        void takeCustodyLocked(OpState& op, TimePoint now);
+        /// What a refused enqueue reports: the sweep's cause if close() ran, else the admission's; m_mutex held.
+        std::optional<Cause> refusalCauseLocked() const;
         /// Inserts a non-toHead op into the retry lane by notBefore (stable); m_mutex held.
         void insertLaneLocked(std::shared_ptr<OpState> op);
 
@@ -435,6 +453,7 @@ namespace indexer_client::detail::write
         const std::string m_consumer;
         const BucketSpec m_spec;
         GlobalBudget& m_budget;
+        const std::weak_ptr<WritePath> m_owner; ///< Keeps m_budget alive for the ~Bucket net (N6).
 
         mutable std::mutex m_mutex;
         std::condition_variable m_room;
@@ -447,7 +466,8 @@ namespace indexer_client::detail::write
         std::uint64_t m_nextSeq {1};
         std::uint64_t m_flushSeq {0}; ///< The last op of the last committed group (I74).
         std::uint32_t m_waiting {0};
-        std::optional<Cause> m_closed;
+        std::optional<Cause> m_closed;    ///< close(): the sweep (requeue hands ops back as closed).
+        std::optional<Cause> m_admission; ///< closeAdmission() or close(): submit refuses (E5b, I99).
         std::atomic<bool> m_notified {false};
         /// Ordered buckets (I79): multiset of the lane ops' keys (hash -> count; ops without a key are not in it).
         std::unordered_map<std::uint64_t, std::uint32_t> m_laneKeys;

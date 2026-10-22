@@ -176,7 +176,7 @@ TEST_F(WriteTest, GlobalCapAcrossBuckets)
     EXPECT_EQ(stats("block").submitTimeout, 1u);
     EXPECT_LE(globalCharge(), cap);
 
-    c->requestClose(); // The pending ops of a and b: Dropped(ClientClosed).
+    closeNow(*c); // I99: the ops of a and b drain into the held sink, then the sweep drops them.
     for (const auto* name : {"a", "b", "dropNewest", "block"})
     {
         expectInvariants(stats(name));
@@ -215,7 +215,7 @@ TEST_F(WriteTest, OverflowReject)
     ASSERT_TRUE(results->waitTotal(3));
     ASSERT_TRUE(eventually([&] { return stats("b").charge == 0; }, 5s));
     EXPECT_TRUE(writer->submit(indexOp(id(4), 1000), results->callback(4)).accepted) << "room again";
-    c->requestClose();
+    closeNow(*c); // I99: the held sink never answers; the sweep resolves op 4.
     ASSERT_TRUE(results->waitTotal(4));
     EXPECT_EQ(results->count(3), 0) << "a refused submit never calls back";
     EXPECT_EQ(results->countWith(ic::Status::Ok, ic::Cause::None), 3u);
@@ -248,7 +248,7 @@ TEST_F(WriteTest, OverflowBlockTimeout)
     EXPECT_EQ(s.submitTimeout, 1u);
     EXPECT_EQ(s.rejectedQueueFull, 0u);
     EXPECT_EQ(s.accepted, 3u);
-    c->requestClose();
+    closeNow(*c);
     EXPECT_EQ(results->total(), 0u);
     expectInvariants(stats("b"));
 }
@@ -406,10 +406,12 @@ TEST_F(WriteTest, OverflowBlockWakes)
             << "ms until woken by the local release";
         EXPECT_EQ(*admitted, static_cast<int>(ic::Cause::None));
         m_path->resolve(batches[0].ops[1], TestSink::ok());
-        l->requestClose(); // The admitted op is still pending.
+        closeNow(*l); // The admitted op is still pending (I99: drained into the held sink, then swept).
+        sink->take(); // That batch, already resolved by the sweep.
         ASSERT_TRUE(eventually([&] { return globalCharge() == 0; }, 5s));
         expectInvariants(stats("local", "l"));
     }
+    const auto dispatchedBefore = sink->dispatched();
 
     // Global: the filler takes the cap; the waiter, with room in its own quota, blocks on the cap until a filler op
     // is resolved (a release in ANOTHER bucket).
@@ -419,7 +421,7 @@ TEST_F(WriteTest, OverflowBlockWakes)
         {
             ASSERT_TRUE(filler->submit(indexOp(id(10 + k), 1000)).accepted);
         }
-        ASSERT_TRUE(sink->waitDispatched(2));
+        ASSERT_TRUE(sink->waitDispatched(dispatchedBefore + 1));
         ASSERT_EQ(stats("filler", "g").rejectedQueueFull, 0u);
         auto waiter = g->writer("waiter");
         auto admitted = std::make_shared<std::atomic<int>>(-1);
@@ -440,7 +442,7 @@ TEST_F(WriteTest, OverflowBlockWakes)
             m_path->resolve(batches[0].ops[k], TestSink::ok());
         }
     }
-    g->requestClose(); // The waiter's op is still pending.
+    closeNow(*g); // The waiter's op is still pending (I99: drained into the held sink, then swept).
     expectInvariants(stats("filler", "g"));
     expectInvariants(stats("waiter", "g"));
 }
@@ -706,7 +708,7 @@ TEST_F(WriteTest, BlockFromRuntimeThreadIsReentrancy)
     auto s = stats("b");
     EXPECT_EQ(s.reentrancy, 2u);
     EXPECT_EQ(s.submitTimeout, 0u);
-    c->requestClose();
+    closeNow(*c);
     expectInvariants(stats("b"));
 }
 

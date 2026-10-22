@@ -148,7 +148,7 @@ TEST_F(WriteTest, DrrNoStarvation)
     }
     const auto total = shareOf(sink->log(), 0, WINDOWS * PER_WINDOW);
     EXPECT_GT(total.bytes.at("heavy"), 4 * total.bytes.at("light")) << "the weight still shows";
-    c->requestClose(); // The backlog left: Dropped(ClientClosed).
+    closeNow(*c); // The backlog left: Dropped(ClientClosed) at the sweep (the sink has no capacity).
     expectInvariants(stats("light"));
     expectInvariants(stats("heavy"));
 }
@@ -202,7 +202,7 @@ TEST_F(WriteTest, DrrShareByWeight)
             << "light " << share.bytes.at("light") << " heavy " << share.bytes.at("heavy");
         EXPECT_GT(stats("heavy", sc.consumer).retained, 4u) << "the backlog lasted the whole measurement";
         EXPECT_GT(stats("light", sc.consumer).retained, 4u);
-        c->requestClose();
+        closeNow(*c);
         expectInvariants(stats("light", sc.consumer));
         expectInvariants(stats("heavy", sc.consumer));
     }
@@ -329,7 +329,7 @@ TEST_F(WriteTest, DrrTinyQuantumFastForwards)
     ASSERT_EQ(share.bytes.size(), 2u);
     const double ratio = static_cast<double>(share.bytes.at("heavy")) / share.bytes.at("light");
     EXPECT_NEAR(ratio, 3.0, 0.3) << "light " << share.bytes.at("light") << " heavy " << share.bytes.at("heavy");
-    c->requestClose();
+    closeNow(*c);
 }
 
 namespace

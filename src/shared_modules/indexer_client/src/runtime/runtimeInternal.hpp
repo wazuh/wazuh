@@ -222,6 +222,22 @@ namespace indexer_client::detail
         /// E3a: ops of this client resolved Dropped(ClientClosed) / Dropped(Shutdown) (CloseReport).
         std::atomic<std::uint64_t> droppedClientClosed {0};
         std::atomic<std::uint64_t> droppedShutdown {0};
+        /// E5b (I99, write/writer.hpp «Close»). Under completionsMutex: the callback cutoff (max until awaitClosed sets
+        /// it), the callbacks started and not finished, and drainDone (notified by every resolution of one of the
+        /// client's ops after requestClose(), for awaitClosed's drain wait).
+        std::condition_variable drainDone;
+        TimePoint callbackCutoff {TimePoint::max()};
+        std::uint64_t callbacksRunning {0};
+        std::atomic<std::uint64_t> callbacksSkipped {0};
+        std::atomic<std::uint64_t> callbackOverruns {0};
+        std::atomic<std::int64_t> callbackMaxDurationMicros {0};
+        /// Ops of the client resolved after requestClose(), not Dropped(ClientClosed|Shutdown) (CloseReport::drained).
+        std::atomic<std::uint64_t> drained {0};
+        Duration callbackBudget {Duration {200}};
+        /// Serializes awaitClosed (only it takes this mutex); `closeReport` set ⇔ the first call drained and swept
+        /// (every call, that one included, reports the live counters).
+        std::mutex closeMutex;
+        std::optional<CloseReport> closeReport;
         /// E3a: the runtime's write path (set by RuntimeRef::client); weak, like `runtime`.
         std::weak_ptr<write::WritePath> writePath;
         Duration drain {Duration {10000}};
