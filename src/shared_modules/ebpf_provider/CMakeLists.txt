@@ -67,10 +67,19 @@ set_target_properties(rt_engine PROPERTIES POSITION_INDEPENDENT_CODE ON)
 # "eBPF unavailable at runtime", which the engine already handles (rt_open()
 # returns NULL); a failed configure degrades to nothing building at all.
 
+# Only the two architectures an object is actually produced for. This used to
+# map EVERYTHING that was not aarch64 to x86, which quietly handed a 32-bit
+# i386 build an object compiled with -D__TARGET_ARCH_x86 against an x86_64
+# vmlinux.h: wrong pt_regs offsets, so it would be installed and then fail to
+# load, and that failure is indistinguishable from "this host has no eBPF".
+# Anything else now gets no object at all, which is the honest outcome and the
+# one the engine already degrades to cleanly.
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
   set(RT_BPF_ARCH arm64)
-else()
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64|AMD64")
   set(RT_BPF_ARCH x86)
+else()
+  set(RT_BPF_ARCH "")
 endif()
 
 set(RT_BPF_OBJ ${CMAKE_BINARY_DIR}/lib/rt_file.bpf.o)
@@ -83,10 +92,15 @@ set(RT_BPF_OBJ ${CMAKE_BINARY_DIR}/lib/rt_file.bpf.o)
 # runtime failure looks exactly like "no eBPF here", which is the one thing
 # this path degrades to silently.
 #
-# To refresh one: build it on a host of that architecture with clang, libbpf
-# headers and either the vendored vmlinux.h or a usable bpftool (the elseif
-# branch below is what produces it, at build/lib/rt_file.bpf.o), then copy it
-# to prebuilt/${RT_BPF_ARCH}/. See 14-spike-integration-plan.md WP6.
+# To refresh one, see prebuilt/README.md. Note that NO arch toolchain is needed
+# for the other architecture: a BPF object is architecture-independent ELF, and
+# the only arch-dependent inputs are -D__TARGET_ARCH_<arch> and which vmlinux.h
+# is on the include path. What is needed is that architecture's vmlinux.h, and
+# the vendored one cannot supply it -- it defines no cgroup types at all, so
+# rt_file.bpf.c does not compile against it on either arch. Dump a real host's
+# BTF instead (`bpftool btf dump file /sys/kernel/btf/vmlinux format c`), which
+# needs no root and can even be done on a host of the *other* architecture,
+# since BTF parsing is itself arch-independent.
 set(RT_BPF_PREBUILT ${CMAKE_CURRENT_SOURCE_DIR}/prebuilt/${RT_BPF_ARCH}/rt_file.bpf.o)
 
 # The portable, per-architecture vmlinux.h the existing pipeline already uses
@@ -96,6 +110,25 @@ set(RT_BPF_PREBUILT ${CMAKE_CURRENT_SOURCE_DIR}/prebuilt/${RT_BPF_ARCH}/rt_file.
 # modern.bpf.o short-circuits that ExternalProject, which is the common case.
 set(RT_VMLINUX_VENDORED
     ${SRC_FOLDER}/external/libbpf-bootstrap/vmlinux.h/include/${RT_BPF_ARCH}/vmlinux.h)
+
+# Existing is not the same as usable. The vendored header is a REDUCED dump: it
+# defines no cgroup types at all -- no struct cgroup, no css_set, no
+# cgroup_subsys_state -- and its task_struct has no `cgroups` member, on x86 and
+# arm64 alike. rt_file.bpf.c cannot compile against it, so preferring it merely
+# because it is present guarantees a failed build on every host that has it.
+# (Beware a misleading grep: `css_set *cgroups` does appear in that file, but
+# inside struct task_struct__safe_rcu, not task_struct.)
+#
+# Probe for one type the program actually needs, so this corrects itself if the
+# vendored header is ever fixed, rather than staying hardcoded to today's fault.
+set(RT_VMLINUX_VENDORED_USABLE FALSE)
+if(RT_BPF_ARCH AND EXISTS ${RT_VMLINUX_VENDORED})
+  file(STRINGS ${RT_VMLINUX_VENDORED} RT_VMLINUX_CSS_SET
+       REGEX "^struct css_set \\{" LIMIT_COUNT 1)
+  if(RT_VMLINUX_CSS_SET)
+    set(RT_VMLINUX_VENDORED_USABLE TRUE)
+  endif()
+endif()
 
 find_program(BPFTOOL_EXECUTABLE bpftool)
 find_program(CLANG_EXECUTABLE clang)
@@ -121,7 +154,30 @@ if(BPFTOOL_EXECUTABLE AND EXISTS /sys/kernel/btf/vmlinux)
   endif()
 endif()
 
-if(EXISTS ${RT_BPF_PREBUILT})
+if(RT_BPF_ARCH AND EXISTS ${RT_BPF_PREBUILT})
+
+  # Nothing detects an object left behind by an earlier version of the source,
+  # and the prebuilt is PREFERRED over compiling -- so without this a developer
+  # editing rt_file.bpf.c would keep shipping the old binary and never be told.
+  # The digest covers the two files the object is built from.
+  file(SHA256 ${CMAKE_CURRENT_SOURCE_DIR}/bpf/rt_file.bpf.c RT_BPF_SRC_HASH)
+  file(SHA256 ${CMAKE_CURRENT_SOURCE_DIR}/include/rt_event_contract.h RT_BPF_ABI_HASH)
+  set(RT_BPF_SOURCES_DIGEST "${RT_BPF_SRC_HASH} ${RT_BPF_ABI_HASH}")
+  set(RT_BPF_DIGEST_FILE ${CMAKE_CURRENT_SOURCE_DIR}/prebuilt/${RT_BPF_ARCH}/rt_file.bpf.o.sources.sha256)
+
+  set(RT_BPF_RECORDED_DIGEST "")
+  if(EXISTS ${RT_BPF_DIGEST_FILE})
+    file(READ ${RT_BPF_DIGEST_FILE} RT_BPF_RECORDED_DIGEST)
+    string(STRIP "${RT_BPF_RECORDED_DIGEST}" RT_BPF_RECORDED_DIGEST)
+  endif()
+
+  if(NOT RT_BPF_RECORDED_DIGEST STREQUAL RT_BPF_SOURCES_DIGEST)
+    message(WARNING
+            "eBPF Module: prebuilt/${RT_BPF_ARCH}/rt_file.bpf.o is STALE -- it was built from a "
+            "different bpf/rt_file.bpf.c or include/rt_event_contract.h than the one in this tree, "
+            "and it is preferred over compiling, so that is the object that will ship. "
+            "Rebuild it and refresh the digest: see prebuilt/README.md.")
+  endif()
 
   message(STATUS "eBPF Module: using prebuilt ${RT_BPF_ARCH} rt_file.bpf.o")
   add_custom_command(
@@ -131,9 +187,9 @@ if(EXISTS ${RT_BPF_PREBUILT})
     COMMENT "Installing prebuilt rt_file.bpf.o")
   add_custom_target(rt_file_bpf_object ALL DEPENDS ${RT_BPF_OBJ})
 
-elseif(CLANG_EXECUTABLE AND RT_LIBBPF_HEADER_DIR AND (EXISTS ${RT_VMLINUX_VENDORED} OR RT_BPFTOOL_USABLE))
+elseif(RT_BPF_ARCH AND CLANG_EXECUTABLE AND RT_LIBBPF_HEADER_DIR AND (RT_VMLINUX_VENDORED_USABLE OR RT_BPFTOOL_USABLE))
 
-  if(EXISTS ${RT_VMLINUX_VENDORED})
+  if(RT_VMLINUX_VENDORED_USABLE)
     set(RT_VMLINUX_INCLUDE_DIR ${SRC_FOLDER}/external/libbpf-bootstrap/vmlinux.h/include/${RT_BPF_ARCH})
     set(RT_VMLINUX_H ${RT_VMLINUX_VENDORED})
     message(STATUS "eBPF Module: compiling rt_file.bpf.o against the vendored ${RT_BPF_ARCH} vmlinux.h")
@@ -143,7 +199,7 @@ elseif(CLANG_EXECUTABLE AND RT_LIBBPF_HEADER_DIR AND (EXISTS ${RT_VMLINUX_VENDOR
     # portability of a host-generated header is a real, separate concern.
     set(RT_VMLINUX_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR})
     set(RT_VMLINUX_H ${CMAKE_CURRENT_BINARY_DIR}/vmlinux.h)
-    message(STATUS "eBPF Module: vendored vmlinux.h absent; generating one from this host's kernel BTF")
+    message(STATUS "eBPF Module: no usable vendored vmlinux.h; generating one from this host's kernel BTF")
     add_custom_command(
       OUTPUT ${RT_VMLINUX_H}
       COMMAND ${BPFTOOL_EXECUTABLE} btf dump file /sys/kernel/btf/vmlinux format c > ${RT_VMLINUX_H}
@@ -158,8 +214,14 @@ elseif(CLANG_EXECUTABLE AND RT_LIBBPF_HEADER_DIR AND (EXISTS ${RT_VMLINUX_VENDOR
             -I${RT_VMLINUX_INCLUDE_DIR}
             -c ${CMAKE_CURRENT_SOURCE_DIR}/bpf/rt_file.bpf.c
             -o ${RT_BPF_OBJ}
+    # Asserts that clang inlined every helper and outlined only rt_walk_dentry.
+    # A build-time check and not a review item, because what it is checking is a
+    # compiler decision: get it wrong and the object loads everywhere except on
+    # a legacy RHEL-family kernel, which no CI job load-tests.
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/tools/check_bpf_symbols.sh ${RT_BPF_OBJ}
     DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/bpf/rt_file.bpf.c
             ${CMAKE_CURRENT_SOURCE_DIR}/include/rt_event_contract.h
+            ${CMAKE_CURRENT_SOURCE_DIR}/tools/check_bpf_symbols.sh
             ${RT_VMLINUX_H}
     COMMENT "Compiling rt_file.bpf.c (eBPF Module FILE event class hooks)")
   add_custom_target(rt_file_bpf_object ALL DEPENDS ${RT_BPF_OBJ})
@@ -170,14 +232,18 @@ else()
   # find no object at runtime and return NULL, which every caller must already
   # handle as "eBPF unavailable".
   set(RT_BPF_SKIP_REASON "")
+  if(NOT RT_BPF_ARCH)
+    string(APPEND RT_BPF_SKIP_REASON
+           " no BPF object is produced for ${CMAKE_SYSTEM_PROCESSOR} (only x86_64 and aarch64);")
+  endif()
   if(NOT CLANG_EXECUTABLE)
     string(APPEND RT_BPF_SKIP_REASON " clang not found;")
   endif()
   if(NOT RT_LIBBPF_HEADER_DIR)
     string(APPEND RT_BPF_SKIP_REASON " bpf/bpf_helpers.h not found (no libbpf headers);")
   endif()
-  if(NOT EXISTS ${RT_VMLINUX_VENDORED} AND NOT RT_BPFTOOL_USABLE)
-    string(APPEND RT_BPF_SKIP_REASON " no vendored vmlinux.h and no usable bpftool;")
+  if(NOT RT_VMLINUX_VENDORED_USABLE AND NOT RT_BPFTOOL_USABLE)
+    string(APPEND RT_BPF_SKIP_REASON " no usable vendored vmlinux.h (it defines no cgroup types) and no usable bpftool;")
   endif()
   string(APPEND RT_BPF_SKIP_REASON " no prebuilt at ${RT_BPF_PREBUILT};")
   message(STATUS "eBPF Module: skipping rt_file.bpf.o —${RT_BPF_SKIP_REASON} "
