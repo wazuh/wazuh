@@ -18144,6 +18144,7 @@ All the characters contained between the “quoting” characters will be consid
 even the “comma” character. If the quoting is not correctly balanced, the parser will fail.
 The “escaping” character is used to escape the “quoting” characters that are intended to be used as literal characters.
 This helper function is typically used in the map stage.
+Output names are JSON Pointer tokens: “~0” and “~1” are the only valid escapes after “~”; a name with any other escape is rejected when the asset is built.
 
 
 ## Keywords
@@ -18551,6 +18552,7 @@ All the characters contained between the “quoting” characters will be consid
 of  a single value, even the “delimiting” character. If the quoting is not correctly balanced, the parser will fail.
 The “escaping” character is used to escape the “quoting” characters that are intended to be used as literal characters.
 This helper function is typically used in the map stage.
+Output names are JSON Pointer tokens: “~0” and “~1” are the only valid escapes after “~”; a name with any other escape is rejected when the asset is built.
 
 
 ## Keywords

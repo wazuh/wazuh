@@ -1565,6 +1565,8 @@ CSV files or similar structured data streams.
 - Supports a wide range of delimiter characters, including commas, tabs, and custom characters.
 - Ensures all expected elements are present; fails if the count of extracted values does not match the expected number or if configuration errors occur.
 - Requires an end token to determine the boundary of parsing. If positioned at the end of a parser expression, the end of the string acts as the end token.
+- Output names are JSON Pointer tokens: `~0` and `~1` are the only valid escapes after `~`; a name with any other
+    escape is rejected when the asset is built.
 - Common Errors:
     - Unbalanced Quotes: Fails parsing if quotes enclosing fields are not properly closed, as it cannot accurately determine the boundaries of the quoted text.
     - Insufficient Values: Fails if the number of fields extracted is less than expected; no data is stored.
@@ -1672,6 +1674,8 @@ structured data streams.
 - Fails if quotes are unbalanced, fields are missing, or formatting errors occur.
 - Requires an end token to determine the boundary of parsing. If positioned at the end of a parser expression, the end of
     the string acts as the end token.
+- Output names are JSON Pointer tokens: `~0` and `~1` are the only valid escapes after `~`; a name with any other
+    escape is rejected when the asset is built.
 
 
 ### Signature
