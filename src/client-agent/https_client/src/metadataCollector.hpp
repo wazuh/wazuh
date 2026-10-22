@@ -13,8 +13,8 @@
 
 #include <cstddef>
 #include <functional>
+#include <memory>
 #include <string>
-#include <vector>
 
 /// Room for the agent metadata JSON at its worst case: 128 groups of 255 bytes
 /// plus the host block is about 36 KiB. The C callback writes with snprintf, so
@@ -31,7 +31,8 @@ constexpr std::size_t HOST_METADATA_JSON_MAX_BYTES = 4096;
  *        "no extra metadata" rather than a crash.
  *
  * The buffer lives on the heap: the pull-sources run on the module's worker
- * threads, and 64 KiB is too much for their stacks.
+ * threads, and 64 KiB is too much for their stacks. It is not zero-filled:
+ * the real JSON is a few hundred bytes, and only the two ends need a NUL.
  */
 inline std::function<std::string()> makeMetadataCollector(void (*fn)(char*, size_t, void*),
                                                           void* userData,
@@ -44,10 +45,12 @@ inline std::function<std::string()> makeMetadataCollector(void (*fn)(char*, size
             return {};
         }
 
-        std::vector<char> buffer(cap, '\0');
-        fn(buffer.data(), buffer.size(), userData);
-        buffer.back() = '\0';
-        return std::string(buffer.data());
+        std::unique_ptr<char[]> buffer {new char[cap]};
+        buffer[0] = '\0';
+        buffer[cap - 1] = '\0';
+        fn(buffer.get(), cap, userData);
+        buffer[cap - 1] = '\0';
+        return std::string(buffer.get());
     };
 }
 

@@ -12,8 +12,15 @@
 
 #include "external/nlohmann/json.hpp"
 
+#include <cstddef>
+
 namespace
 {
+    /// Mirrors remoted's kMaxHeaderLineJsonSize (statelessEndpoint.cpp): a larger
+    /// H-line JSON gets the whole batch rejected as permanent, so its events
+    /// would be dropped.
+    constexpr std::size_t HEADER_LINE_JSON_MAX_BYTES = 8 * 1024;
+
     /// Builds the H metadata line that opens every /stateless body (#37732).
     ///
     /// Always carries wazuh.agent.id -- statelessEndpoint.cpp's
@@ -73,7 +80,23 @@ namespace
 
         nlohmann::json header;
         header["wazuh"] = std::move(wazuh);
-        return "H " + header.dump() + "\n";
+        auto json = header.dump();
+
+        // A long group list can push the line past remoted's cap. Groups go first,
+        // then everything but the id: events without them still beat no events.
+        if (json.size() > HEADER_LINE_JSON_MAX_BYTES)
+        {
+            header["wazuh"]["agent"].erase("groups");
+            json = header.dump();
+        }
+
+        if (json.size() > HEADER_LINE_JSON_MAX_BYTES)
+        {
+            header["wazuh"]["agent"] = {{"id", agentId}};
+            json = header.dump();
+        }
+
+        return "H " + json + "\n";
     }
 } // namespace
 

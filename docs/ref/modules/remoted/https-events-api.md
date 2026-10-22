@@ -448,7 +448,8 @@ manager-local Unix socket (`GET /`, `GET /metrics`, `GET /status`, `GET /tls` on
   [CA certificate endpoint](#ca-certificate-endpoint-get-cacerts) below.
 - **`POST /stateless`** — authenticated event ingestion. Once the signature is verified, the module
   cross-checks the H line's `wazuh.agent.id` against the authenticated `agent-id` (**`400`** on a
-  missing/malformed header or a mismatch); only then does it forward the H/E batch to the engine's
+  missing/malformed header, an H-line JSON over 8 KiB, or a mismatch; the agent drops `groups` from
+  an H line that would exceed 8 KiB, and keeps only the id if it still does); only then does it forward the H/E batch to the engine's
   event ingress over a Unix-domain socket (`POST /events/enriched`) and reply from the downstream
   result: **`202 Accepted`** (engine enqueued the batch), **`400`** (engine rejected the batch),
   **`413`**, or **`503`** (out of capacity or the engine is unreachable/errored). Auth failures
