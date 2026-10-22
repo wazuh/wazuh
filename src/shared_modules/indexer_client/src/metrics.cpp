@@ -58,6 +58,7 @@ namespace indexer_client
             case FailCause::Server5xx: return "server_5xx";
             case FailCause::Unavailable: return "unavailable";
             case FailCause::InvalidState: return "invalid_state";
+            case FailCause::Ambiguous: return "ambiguous";
             default: return "unknown";
         }
     }

@@ -354,3 +354,45 @@ TEST_F(PitTest, ShutdownDeletesOpenPits)
     node->releaseHeld();
     one.reset();
 }
+
+// G-diff E6a obj. 8 (I109): the DELETE of a PIT whose only node is parked is rescheduled to the end of the park
+// (NodeSet::earliestNotBefore()), not to min(delete backoff, probe interval): one node, a PIT open, the node parked for
+// 300 ms by a 429 with Retry-After reported to the NodeSet (what a query's 429 does; a Retry-After header counts whole
+// seconds, which the 1 s ± 50 % delete backoff could not be told apart from), then the last handle goes ⇒ the one
+// DELETE arrives at the park's end, within a short margin, and is confirmed with no retry counted (a wait without a
+// usable node is no retry). Mutant: settle() without the `parked` cap (the DELETE waits the 500-1500 ms backoff).
+TEST_F(PitTest, DeleteWaitsForParkedNode)
+{
+    auto pits = std::make_shared<PitResponder>(10);
+    const auto node = pitFake(pits);
+    ASSERT_NO_FATAL_FAILURE(start({node->baseUrl()}));
+    auto owner = client();
+    auto created = owner->query()->pit({"idx"}, keepAlive(60s), fastOptions(), in(5s));
+    ASSERT_TRUE(created.ok()) << created.reason;
+    auto pit = std::make_unique<ic::Pit>(std::move(created.value));
+    const auto before = q::pitStats();
+
+    indexer_client::detail::HttpResult throttled;
+    throttled.cause = indexer_client::detail::TransportCause::None;
+    throttled.status = 429;
+    throttled.body = errorBody("rejected_execution_exception", "busy", 429);
+    throttled.retryAfter = ic::Duration {300};
+    const auto set = indexer_client::detail::runtimeNodeSet();
+    set->report(0, throttled);
+    const auto parkedUntil = set->notBefore(0);
+    ASSERT_GT(parkedUntil, now() + 200ms) << "the 429 did not park the node";
+    pit.reset(); // The last handle: the DELETE finds no node to choose.
+    ASSERT_LT(now(), parkedUntil - 100ms) << "precondition: the DELETE was attempted while the node was parked";
+
+    ASSERT_TRUE(whenStats([](const q::PitStats& s) { return s.deletesPending == 0 && s.open == 0; }, scaled(5000ms)))
+        << "the delete never settled";
+    const auto deletes = pitDeletes(*node);
+    ASSERT_EQ(deletes.size(), 1u);
+    EXPECT_GE(deletes[0].receivedAt, parkedUntil) << "the DELETE reached the parked node";
+    EXPECT_LT(deletes[0].receivedAt, parkedUntil + scaled(150ms)) << "the DELETE did not go when the park ended";
+    const auto d = pitDelta(before, q::pitStats());
+    EXPECT_EQ(d.deletesConfirmed, 1u);
+    EXPECT_EQ(d.deletesExpired, 0u);
+    EXPECT_EQ(d.deleteRetries, 0u) << "a wait without a usable node counted as a retry";
+    EXPECT_EQ(pits->deleted(), 1u);
+}

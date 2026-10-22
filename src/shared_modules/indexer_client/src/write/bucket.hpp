@@ -458,7 +458,14 @@ namespace indexer_client::detail::write
         /// E5c: `ops` ops of a completion with an HTTP answer resolved late (metrics.hpp LATE RESULTS).
         void countLate(std::uint64_t ops);
         /// E5c: one completed bulk request of this bucket (`bytes` of batch); `latencyMicros` only with an HTTP answer.
-        void countBulk(std::uint64_t bytes, std::optional<std::uint64_t> latencyMicros);
+        /// `success` (a 2xx answer) re-arms the ambiguous edge (I105).
+        void countBulk(std::uint64_t bytes, std::optional<std::uint64_t> latencyMicros, bool success);
+        /// I105: a bulk answered `httpStatus` (500/502/504) that the sender fails Ambiguous without resending
+        /// (onAmbiguous5xx = Fail); `ops` is how many of its ops it resolved Failed(Ambiguous) (never 0: the late ones,
+        /// won by another resolution, are not counted and a bulk whose ops were all late is not reported). The first
+        /// one after a 2xx bulk of this bucket (or since its creation) logs one WARN; the next 2xx re-arms it
+        /// (countBulk). Called with no lock held; emits the line itself.
+        void countAmbiguous(int httpStatus, std::uint64_t ops);
         BucketStats stats() const;
         /// The metrics of this bucket (metrics.hpp BucketMetrics), read under the bucket mutex.
         BucketMetrics metrics() const;
@@ -569,17 +576,20 @@ namespace indexer_client::detail::write
         enum class Edge : std::uint8_t
         {
             Quota80,
-            Full
+            Full,
+            Ambiguous ///< I105: `charge` holds the ops of the bulk, `httpStatus` its status.
         };
         struct EdgeLine final
         {
             Edge edge {Edge::Quota80};
             std::uint64_t charge {0};
+            int httpStatus {0};
         };
         const std::uint64_t m_threshold80; ///< 80 % and 70 % of quotaBytes, rounded down.
         const std::uint64_t m_threshold70;
         bool m_armed80 {true};
         bool m_armedFull {true};
+        bool m_armedAmbiguous {true}; ///< I105: cleared by countAmbiguous, set by a 2xx bulk (countBulk).
         std::vector<EdgeLine> m_edgeLines;
         std::atomic<bool> m_edgePending {false};
         LogInterval m_interval; ///< Keys and sample of the current interval (totals come from m_logMark).

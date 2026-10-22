@@ -339,7 +339,8 @@ TEST_F(MetricsTest, EveryCatalogCounterMoves)
                                                          {ic::Cause::Client4xx, "client_4xx"},
                                                          {ic::Cause::Server5xx, "server_5xx"},
                                                          {ic::Cause::Unavailable, "unavailable"},
-                                                         {ic::Cause::InvalidState, "invalid_state"}})
+                                                         {ic::Cause::InvalidState, "invalid_state"},
+                                                         {ic::Cause::Ambiguous, "ambiguous"}})
     {
         expectOnly(
             *c,
@@ -442,7 +443,7 @@ TEST_F(MetricsTest, EveryCatalogCounterMoves)
             members.insert(name.substr(name.find('.', b.size()) + 1));
         }
     }
-    EXPECT_EQ(members.size(), 8u + 4u + 6u + 5u);
+    EXPECT_EQ(members.size(), 8u + 4u + 7u + 5u);
     m_path.reset(); // Shut down above: nothing is left to drain.
 }
 
@@ -470,7 +471,9 @@ TEST_F(MetricsBulkTest, EveryCatalogCounterMoves)
     ASSERT_NO_FATAL_FAILURE(startOn(
         {a.url()}, std::chrono::milliseconds(3600000), {{"pace_initial_ms", "10"}, {"callback_budget_ms", "5"}}));
     auto results = Results::create();
-    auto c = client("c", {fast("b"), fast("one", 1, 1)});
+    auto ambiguous = fast("amb");
+    ambiguous.onAmbiguous5xx = ic::AmbiguousPolicy::Fail;
+    auto c = client("c", {fast("b"), fast("one", 1, 1), ambiguous});
     std::uint64_t key = 0;
     const auto all = [&]
     {
@@ -543,6 +546,15 @@ TEST_F(MetricsBulkTest, EveryCatalogCounterMoves)
              submitOne("one", indexOp("e"));
          },
          {"indexer_client.bucket.c.one.failed.retry_exhausted"});
+    step("ambiguous 502, not resent",
+         [&]
+         {
+             a.bulk->push(BulkScript::serverError(502));
+             submitOne("amb", indexOp("a"));
+         },
+         {"indexer_client.bucket.c.amb.failed.ambiguous",
+          "indexer_client.bucket.c.amb.bulk_requests",
+          n + "server_5xx"});
     step("callback overrun",
          [&]
          {
@@ -660,7 +672,7 @@ TEST_F(MetricsBulkTest, CatalogNamesAreSaneAndStable)
     ASSERT_NO_FATAL_FAILURE(startOn({a.url()}));
     auto c = client("VD-Scanner", {fast("states.v2"), fast("---")});
     const auto fresh = collect(c->metrics());
-    EXPECT_EQ(fresh.size(), 2u * 50u + 3u);
+    EXPECT_EQ(fresh.size(), 2u * 51u + 3u);
     EXPECT_EQ(get(fresh, "indexer_client.bucket.vd_scanner.states_v2.rejected.queue_full"), 0);
     EXPECT_EQ(get(fresh, "indexer_client.bucket.vd_scanner._.latency.le_32768"), 0);
     EXPECT_EQ(get(fresh, "indexer_client.client.vd_scanner.callback_overruns"), 0);

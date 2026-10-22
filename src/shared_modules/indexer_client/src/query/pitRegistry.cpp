@@ -12,6 +12,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <map>
 #include <mutex>
@@ -465,6 +466,8 @@ namespace indexer_client::detail::query
                 }
                 auto nodes = m_env.nodes.lock();
                 const auto node = nodes ? nodes->choose() : std::nullopt;
+                // I109: read before this registry's mutex (a leaf); a parked node shortens the NoNode retry below.
+                const auto parked = (!node && nodes) ? nodes->earliestNotBefore() : std::nullopt;
                 std::uint64_t token = 0;
                 {
                     std::lock_guard<std::mutex> lock(m_mutex);
@@ -482,7 +485,7 @@ namespace indexer_client::detail::query
                 }
                 if (!node)
                 {
-                    settle(id, token, Settle::NoNode, std::nullopt);
+                    settle(id, token, Settle::NoNode, std::nullopt, parked);
                     return;
                 }
 
@@ -567,8 +570,13 @@ namespace indexer_client::detail::query
                 }
             }
 
-            /// Settles the current send of `id` (`token`); stale tokens are ignored. `floor` = Retry-After.
-            void settle(const std::string& id, std::uint64_t token, Settle how, std::optional<Duration> floor)
+            /// Settles the current send of `id` (`token`); stale tokens are ignored. `floor` = Retry-After; `parked` =
+            /// NodeSet::earliestNotBefore() of a NoNode send (I109: retried when that node's wait ends, if sooner).
+            void settle(const std::string& id,
+                        std::uint64_t token,
+                        Settle how,
+                        std::optional<Duration> floor,
+                        std::optional<TimePoint> parked = std::nullopt)
             {
                 std::optional<Duration> rearm;
                 {
@@ -591,6 +599,11 @@ namespace indexer_client::detail::query
                         if (how == Settle::NoNode)
                         {
                             delay = std::min(delay, m_env.probeInterval);
+                            if (parked)
+                            {
+                                delay = std::min(
+                                    delay, std::max(Duration::zero(), std::chrono::ceil<Duration>(*parked - now)));
+                            }
                         }
                         else
                         {

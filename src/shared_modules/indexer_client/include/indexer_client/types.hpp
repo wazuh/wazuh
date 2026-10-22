@@ -87,7 +87,9 @@ namespace indexer_client
         InvalidConfig,
         InvalidArgument,
         InvalidState,
-        UsageError
+        UsageError,
+        /// A bulk answered 500/502/504 by the indexer, failed without resending (BucketSpec::onAmbiguous5xx = Fail).
+        Ambiguous
     };
 
     /// Stable, lowercase name of a cause (logs, metrics labels and test diagnostics).
@@ -232,6 +234,13 @@ namespace indexer_client
 
     using Callback = std::function<void(const OpResult&)>; ///< Runs on the CPU pool; must be short and never block.
 
+    /// What a bucket does with a `_bulk` answered 500, 502 or 504 (BucketSpec::onAmbiguous5xx).
+    enum class AmbiguousPolicy
+    {
+        Retry, ///< Requeue the batch with a counted attempt, as any other 5xx.
+        Fail   ///< Resolve every op Failed(Ambiguous) without resending it.
+    };
+
     /// A queue with its own policies, declared by a consumer (RF-2, I8).
     struct BucketSpec final
     {
@@ -246,6 +255,11 @@ namespace indexer_client
         /// the bucket keeps at most one bulk in flight, and an ambiguous failure (the node may have applied the bulk)
         /// pins the retry to that node for ambiguous_retry_window_ms. See README § Ordered buckets.
         bool ordered {false};
+        /// A `_bulk` answered 500, 502 or 504 may have been applied by the indexer: Retry resends it (a duplicate in an
+        /// index without `_id`), Fail resolves its ops Failed(Ambiguous) without resending them. A 503 is always
+        /// retried. A transport timeout after the request left stays Retry under both (known asymmetry: it may still
+        /// duplicate in buckets without `_id`).
+        AmbiguousPolicy onAmbiguous5xx {AmbiguousPolicy::Retry};
     };
 
     struct Slice final
