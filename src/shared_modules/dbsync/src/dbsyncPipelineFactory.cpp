@@ -58,7 +58,14 @@ namespace DbSync
 
                 try
                 {
-                    DBSyncImplementation::instance().closeTransaction(m_handle, m_txnContext);
+                    if (m_keepRowsOnClose)
+                    {
+                        DBSyncImplementation::instance().releaseTransaction(m_handle, m_txnContext);
+                    }
+                    else
+                    {
+                        DBSyncImplementation::instance().closeTransaction(m_handle, m_txnContext);
+                    }
                 }
                 catch (...)
                 {
@@ -98,6 +105,10 @@ namespace DbSync
                 }
 
                 DBSyncImplementation::instance().getDeleted(m_handle, m_txnContext, callback);
+            }
+            void keepRowsOnClose() override
+            {
+                m_keepRowsOnClose = true;
             }
 
         private:
@@ -139,6 +150,7 @@ namespace DbSync
             const unsigned int m_maxQueueSize;
             const ResultCallback m_callback;
             const std::shared_ptr<DispatchCallbackNode> m_spDispatchNode;
+            bool m_keepRowsOnClose {false};
     };
     //----------------------------------------------------------------------------------------
     PipelineFactory& PipelineFactory::instance() noexcept

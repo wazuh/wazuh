@@ -67,6 +67,9 @@ namespace DbSync
             void closeTransaction(const DBSYNC_HANDLE handle,
                                   const TXN_HANDLE txnHandle);
 
+            void releaseTransaction(const DBSYNC_HANDLE handle,
+                                    const TXN_HANDLE txnHandle);
+
             void getDeleted(const DBSYNC_HANDLE   handle,
                             const TXN_HANDLE      txnHandle,
                             const ResultCallback  callback);

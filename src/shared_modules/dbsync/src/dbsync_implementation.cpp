@@ -167,6 +167,15 @@ void DBSyncImplementation::closeTransaction(const DBSYNC_HANDLE handle,
     ctx->deleteTransactionContext(txn);
 }
 
+void DBSyncImplementation::releaseTransaction(const DBSYNC_HANDLE handle,
+                                              const TXN_HANDLE txnHandle)
+{
+    const auto& ctx{ dbEngineContext(handle) };
+
+    std::lock_guard<std::shared_timed_mutex> lock{ ctx->m_syncMutex };
+    ctx->deleteTransactionContext(txnHandle);
+}
+
 void DBSyncImplementation::getDeleted(const DBSYNC_HANDLE   handle,
                                       const TXN_HANDLE      txnHandle,
                                       const ResultCallback  callback)

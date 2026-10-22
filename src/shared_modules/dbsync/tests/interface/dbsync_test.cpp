@@ -145,6 +145,56 @@ TEST_F(DBSyncTest, closeTxnNullptr)
     ASSERT_NE(0, dbsync_close_txn(nullptr));
 }
 
+TEST_F(DBSyncTest, closeTxnKeepRowsNullptr)
+{
+    ASSERT_NE(0, dbsync_close_txn_keep_rows(nullptr));
+}
+
+static void closeTxnAfterSyncingOneRow(int (*closeTxn)(const TXN_HANDLE), const std::vector<std::string>& expectedRows)
+{
+    const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
+    const auto tables { R"({"table": "processes"})" };
+    const auto insertData{ R"({"table":"processes","data":[{"pid":4,"name":"System"},{"pid":7,"name":"Guake"}]})"};
+    const auto txnRow{ R"({"table":"processes","data":[{"pid":7,"name":"Guake"}]})"};
+    const auto selectData
+    {
+        R"({"table":"processes","query":{"column_list":["*"],"row_filter":"","distinct_opt":false,"order_by_opt":"pid","count_opt":100}})"
+    };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsTables { cJSON_Parse(tables) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInsert { cJSON_Parse(insertData) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsTxnRow { cJSON_Parse(txnRow) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsSelect { cJSON_Parse(selectData) };
+
+    CallbackMock wrapper;
+    callback_data_t callbackData { callback, &wrapper };
+
+    for (const auto& row : expectedRows)
+    {
+        EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(row))).Times(1);
+    }
+
+    const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
+    ASSERT_NE(nullptr, handle);
+    EXPECT_EQ(0, dbsync_insert_data(handle, jsInsert.get()));
+
+    const auto txn { dbsync_create_txn(handle, jsTables.get(), 0, 100, callbackData) };
+    ASSERT_NE(nullptr, txn);
+    EXPECT_EQ(0, dbsync_sync_txn_row(txn, jsTxnRow.get()));
+    EXPECT_EQ(0, closeTxn(txn));
+
+    EXPECT_EQ(0, dbsync_select_rows(handle, jsSelect.get(), callbackData));
+}
+
+TEST_F(DBSyncTest, closeTxnDeletesRowsNotSynced)
+{
+    closeTxnAfterSyncingOneRow(dbsync_close_txn, {R"({"pid":7,"name":"Guake"})"});
+}
+
+TEST_F(DBSyncTest, closeTxnKeepRowsKeepsRowsNotSynced)
+{
+    closeTxnAfterSyncingOneRow(dbsync_close_txn_keep_rows, {R"({"pid":4,"name":"System"})", R"({"pid":7,"name":"Guake"})"});
+}
+
 TEST_F(DBSyncTest, dbsyncAddTableRelationshipDummy)
 {
     ASSERT_EQ(-1, dbsync_add_table_relationship(nullptr, nullptr));

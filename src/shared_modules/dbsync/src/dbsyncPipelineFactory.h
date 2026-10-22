@@ -27,6 +27,7 @@ namespace DbSync
         // LCOV_EXCL_STOP
         virtual void syncRow(const nlohmann::json& syncJson) = 0;
         virtual void getDeleted(const ResultCallback callback) = 0;
+        virtual void keepRowsOnClose() = 0;
     };
 
     class PipelineFactory final
