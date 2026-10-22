@@ -69,7 +69,10 @@ raw header length + trusted ID length + Json::getAllocatedMemory() + fixed overh
 The fixed overhead is `sizeof(CacheEntry) + sizeof(json::Json) + sizeof(CacheMap::value_type)
 + 6 * sizeof(void*)`, estimating the map node and two shared-owner control blocks. Checked
 arithmetic prevents wrapping. A document's allocated pool capacity and saved cost are immutable;
-mutation of the index and running total shares one exclusive lock.
+mutation of the index and running total shares one exclusive lock. A new agent that cannot fit
+the current snapshot (entry limit reached, or bytes over the limit) bypasses under the shared lock,
+so a full cache does not serialise traffic from agents it will not retain; an agent that already
+has an entry always takes the exclusive path, because its replacement may fit.
 
 This models retained cache state. It excludes allocator rounding, spare string capacity, bucket
 arrays, JSON pool bookkeeping, transient parse candidates and documents kept alive by callers

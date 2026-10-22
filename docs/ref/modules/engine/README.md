@@ -2836,8 +2836,8 @@ output:
   the default apply.
 - The shipped file has no `analysisd.*` lines — every setting starts at its default until an operator adds one.
 - Boolean settings only accept `true`/`false` (case-insensitive). A value in the file that does not match the
-  setting's type (for example `analysisd.dumper_enabled=yes` or `analysisd.event_queue_size=10k`) stops the engine at
-  start-up; an invalid environment variable is logged as a warning and the file value or the default is used.
+  setting's type (for example `analysisd.dumper_enabled=yes`, `analysisd.event_queue_size=10k`, or a negative value
+  for an unsigned setting such as `analysisd.agent_metadata_cache_max_bytes=-1`) stops the engine at start-up; an invalid environment variable is logged as a warning and the file value or the default is used.
 - `Mode` tells where a setting is read: `both`, `manager` (only when the engine runs inside `wazuh-manager`) or
   `standalone` (only in standalone mode, so only its environment variable can set it).
 - `analysisd.indexer_username`/`analysisd.indexer_password` no longer exist — indexer credentials are stored in the

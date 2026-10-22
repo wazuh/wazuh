@@ -154,7 +154,8 @@ See the [engine settings](../../../../docs/ref/modules/engine/README.md#agent-me
 
 On `load()`, the file-loaded `OptionMap` is validated against the declared units. For each key present in the file:
 
-- **INTEGER**: parsed with `std::stoll`, checked for trailing characters
+- **INTEGER**: parsed with `std::stoll`, checked for trailing characters. Unsigned (`size_t`) units refuse a leading
+  `-` (after whitespace) and are parsed with `std::stoull`, so a negative file value stops start-up instead of wrapping
 - **STRING**: always valid
 - **STRING_LIST**: bracket notation `[...]` is rejected
 - **BOOL**: must be `"true"` or `"false"` (case-insensitive)
