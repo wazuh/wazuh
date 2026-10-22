@@ -10,7 +10,7 @@ import sys
 from datetime import datetime
 from hashlib import md5
 from os.path import abspath, dirname
-from typing import Optional
+from typing import Optional, Tuple
 
 from dateutil.parser import parse
 
@@ -69,6 +69,35 @@ def update_row_object(
             sys.exit(1)
 
 
+def lower_max_processed_date(table: orm.Base, md5_hash: str, max_date: str):
+    """Store the given date as the newest date processed if the one stored is later.
+
+    Parameters
+    ----------
+    table : orm.Base
+        Database table reference for the service.
+    md5_hash : str
+        md5 value used to search the query in the table.
+    max_date : str
+        Value to store if the one stored is later.
+    """
+    try:
+        row = orm.get_row(table=table, md5=md5_hash)
+    except orm.AzureORMError as e:
+        logging.error(f'Error trying to obtain row object from "{table.__tablename__}" using md5="{md5_hash}": {e}')
+        sys.exit(1)
+    if parse(row.max_processed_date, fuzzy=True) <= parse(max_date, fuzzy=True):
+        return
+    logging.debug(
+        f'Lowering the newest date processed for "{md5_hash}" from "{row.max_processed_date}" to "{max_date}"'
+    )
+    try:
+        orm.update_row(table=table, md5=md5_hash, min_date=row.min_processed_date, max_date=max_date)
+    except orm.AzureORMError as e:
+        logging.error(f'Error updating row object from {table.__tablename__}: {e}')
+        sys.exit(1)
+
+
 def create_new_row(table: orm.Base, md5_hash: str, query: str, offset: str) -> orm.Base:
     """Create a new row object for the given table, insert it into the database and return it.
 
@@ -113,6 +142,67 @@ def create_new_row(table: orm.Base, md5_hash: str, query: str, offset: str) -> o
         logging.error(f'Error inserting row object into {table.__tablename__}: {e}')
         sys.exit(1)
     return item
+
+
+def datetime_key(value: str) -> str:
+    """Comparable form of a datetime returned by Azure, with the fraction padded to the 7 digits it can have."""
+    whole, _, fraction = value.rstrip('Z').partition('.')
+    return f'{whole}.{fraction.ljust(7, "0")}'
+
+
+def get_ingestion_cursor(md5_hash: str) -> Optional[Tuple[str, str]]:
+    """Get the ingestion time and TimeGenerated of the last record processed for a Log Analytics query.
+
+    Parameters
+    ----------
+    md5_hash : str
+        md5 value of the workspace and query.
+
+    Returns
+    -------
+    Optional[Tuple[str, str]]
+        The ingestion time and TimeGenerated, or None if the query has none stored yet.
+    """
+    try:
+        row = orm.get_ingestion_cursor(md5=md5_hash)
+    except orm.AzureORMError as e:
+        logging.error(
+            f'Error trying to obtain the ingestion cursor from {orm.LogAnalyticsIngestion.__tablename__}: {e}'
+        )
+        sys.exit(1)
+    return (row.ingestion_time, row.time_generated) if row else None
+
+
+def update_ingestion_cursor(md5_hash: str, ingestion_times: list, times: list):
+    """Store the last of the given records, sorted by ingestion time and TimeGenerated, if it's after the one stored.
+
+    Parameters
+    ----------
+    md5_hash : str
+        md5 value of the workspace and query.
+    ingestion_times : list
+        Ingestion time of each record processed. Records without it are ignored.
+    times : list
+        TimeGenerated of each record processed.
+    """
+    records = [(ingestion_time, time) for ingestion_time, time in zip(ingestion_times, times) if ingestion_time]
+    if not records:
+        return
+
+    def key(record):
+        return datetime_key(record[0]), datetime_key(record[1])
+
+    last = max(records, key=key)
+    stored = get_ingestion_cursor(md5_hash)
+    if stored and key(stored) >= key(last):
+        return
+    logging.debug(f'Storing ingestion time "{last[0]}" and TimeGenerated "{last[1]}" as the last record processed '
+                  f'for "{md5_hash}"')
+    try:
+        orm.set_ingestion_cursor(md5=md5_hash, ingestion_time=last[0], time_generated=last[1])
+    except orm.AzureORMError as e:
+        logging.error(f'Error storing the ingestion cursor into {orm.LogAnalyticsIngestion.__tablename__}: {e}')
+        sys.exit(1)
 
 
 def get_processed_bytes(md5_hash: str, container: str, blob: str, creation_time: str) -> Optional[int]:

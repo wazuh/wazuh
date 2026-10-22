@@ -18,9 +18,12 @@ from azure_utils import DATETIME_MASK
 from db import orm
 from db.utils import (
     create_new_row,
+    get_ingestion_cursor,
     get_processed_bytes,
+    lower_max_processed_date,
     remove_stale_offsets,
     save_processed_bytes,
+    update_ingestion_cursor,
     update_row_object,
 )
 
@@ -161,5 +164,113 @@ def test_blob_offset_functions_ko(mock_get, mock_set, mock_delete, mock_logging,
     """Test the blob offset functions handle ORM errors as expected."""
     with pytest.raises(SystemExit) as err:
         function(*args)
+    assert err.value.code == 1
+    mock_logging.assert_called_once()
+
+
+IT_1 = '2026-10-07T08:42:43.6877773Z'
+IT_2 = '2026-10-07T08:45:55.7365454Z'
+TG_1 = '2026-10-07T08:40:20.5975486Z'
+TG_2 = '2026-10-07T08:40:20.7185586Z'
+IT_TRIMMED, IT_PADDED = '2026-10-07T08:41:46.5Z', '2026-10-07T08:41:46.5000001Z'
+TG_TRIMMED, TG_PADDED = '2026-10-07T08:40:20.5Z', '2026-10-07T08:40:20.5000001Z'
+
+
+@pytest.mark.parametrize(
+    'stored, ingestion_times, times, expected',
+    [
+        (None, [], [], None),
+        (None, [None, None], [TG_1, TG_2], None),
+        (None, [IT_1, IT_2, None], [TG_2, TG_1, TG_2], (IT_2, TG_1)),
+        # Records ingested at the same time are sorted by TimeGenerated
+        (None, [IT_1, IT_1], [TG_2, TG_1], (IT_1, TG_2)),
+        ((IT_1, TG_1), [IT_1], [TG_2], (IT_1, TG_2)),
+        # An earlier record doesn't move back the one stored
+        ((IT_2, TG_1), [IT_1], [TG_2], None),
+        ((IT_1, TG_2), [IT_1], [TG_1], None),
+        ((IT_1, TG_2), [IT_1], [TG_2], None),
+        # Azure trims the trailing zeros of the fraction
+        ((IT_TRIMMED, TG_1), [IT_PADDED], [TG_1], (IT_PADDED, TG_1)),
+        ((IT_PADDED, TG_1), [IT_TRIMMED, '2026-10-07T08:41:46Z'], [TG_2, TG_2], None),
+        ((IT_1, TG_TRIMMED), [IT_1], [TG_PADDED], (IT_1, TG_PADDED)),
+    ],
+)
+@patch('db.orm.set_ingestion_cursor')
+@patch('db.orm.get_ingestion_cursor')
+def test_update_ingestion_cursor(mock_get, mock_set, stored, ingestion_times, times, expected):
+    """Test update_ingestion_cursor only stores the last record, by ingestion time and TimeGenerated, if it's after
+    the one stored."""
+    mock_get.return_value = MagicMock(ingestion_time=stored[0], time_generated=stored[1]) if stored else None
+    update_ingestion_cursor(md5_hash='hash', ingestion_times=ingestion_times, times=times)
+    if expected:
+        mock_set.assert_called_once_with(md5='hash', ingestion_time=expected[0], time_generated=expected[1])
+    else:
+        mock_set.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    'row, expected', [(None, None), (MagicMock(ingestion_time=IT_1, time_generated=TG_1), (IT_1, TG_1))]
+)
+@patch('db.orm.get_ingestion_cursor')
+def test_get_ingestion_cursor(mock_get, row, expected):
+    """Test get_ingestion_cursor returns the ingestion time and TimeGenerated stored for the query."""
+    mock_get.return_value = row
+    assert get_ingestion_cursor(md5_hash='hash') == expected
+    mock_get.assert_called_once_with(md5='hash')
+
+
+@pytest.mark.parametrize(
+    'function, args',
+    [
+        (get_ingestion_cursor, ('hash',)),
+        (update_ingestion_cursor, ('hash', [IT_1], [TG_1])),
+    ],
+)
+@patch('azure_utils.logging.error')
+@patch('db.orm.set_ingestion_cursor', side_effect=orm.AzureORMError)
+@patch('db.orm.get_ingestion_cursor', side_effect=orm.AzureORMError)
+def test_ingestion_cursor_functions_ko(mock_get, mock_set, mock_logging, function, args):
+    """Test the ingestion cursor functions handle ORM errors as expected."""
+    with pytest.raises(SystemExit) as err:
+        function(*args)
+    assert err.value.code == 1
+    mock_logging.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    'stored_max, max_date, expected',
+    [
+        # A newest date stored ahead of the query time is lowered to it
+        ('2026-10-08T10:00:00.0000000Z', '2026-10-07T10:15:00.1234567Z', '2026-10-07T10:15:00.1234567Z'),
+        ('2026-10-07T10:00:00Z', '2026-10-07T10:15:00Z', None),
+        ('2026-10-07T10:15:00Z', '2026-10-07T10:15:00Z', None),
+    ],
+)
+@patch('db.orm.update_row')
+@patch('db.orm.get_row')
+def test_lower_max_processed_date(mock_get, mock_update, stored_max, max_date, expected):
+    """Test lower_max_processed_date only replaces the newest date stored when it's later than the given one."""
+    mock_get.return_value = MagicMock(min_processed_date=PAST_DATE, max_processed_date=stored_max)
+    lower_max_processed_date(table=orm.LogAnalytics, md5_hash='hash', max_date=max_date)
+    mock_get.assert_called_once_with(table=orm.LogAnalytics, md5='hash')
+    if expected:
+        mock_update.assert_called_once_with(table=orm.LogAnalytics, md5='hash', min_date=PAST_DATE, max_date=expected)
+    else:
+        mock_update.assert_not_called()
+
+
+@pytest.mark.parametrize('get_error, update_error', [(True, False), (False, True)])
+@patch('azure_utils.logging.error')
+@patch('db.orm.update_row')
+@patch('db.orm.get_row')
+def test_lower_max_processed_date_ko(mock_get, mock_update, mock_logging, get_error, update_error):
+    """Test lower_max_processed_date handles ORM errors as expected."""
+    mock_get.return_value = MagicMock(min_processed_date=PAST_DATE, max_processed_date=FUTURE_DATE)
+    if get_error:
+        mock_get.side_effect = orm.AzureORMError
+    if update_error:
+        mock_update.side_effect = orm.AzureORMError
+    with pytest.raises(SystemExit) as err:
+        lower_max_processed_date(table=orm.LogAnalytics, md5_hash='hash', max_date=PRESENT_DATE)
     assert err.value.code == 1
     mock_logging.assert_called_once()

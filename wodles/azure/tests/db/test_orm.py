@@ -48,6 +48,7 @@ def teardown_db():
         {
             'graph': ['md5', 'query', 'min_processed_date', 'max_processed_date'],
             'log_analytics': ['md5', 'query', 'min_processed_date', 'max_processed_date'],
+            'log_analytics_ingestion': ['md5', 'ingestion_time', 'time_generated'],
             'storage': ['md5', 'query', 'min_processed_date', 'max_processed_date'],
             'storage_blob_offset': ['md5', 'container', 'blob', 'creation_time', 'processed_bytes'],
         }
@@ -138,13 +139,17 @@ def test_update_row_ko(create_and_teardown_db):
 def test_create_db_adds_missing_tables(teardown_db):
     """Test create_db adds the tables missing from a database created by a previous version, keeping its rows."""
     orm.Storage.__table__.create(orm.engine)
+    orm.LogAnalytics.__table__.create(orm.engine)
     date = '2022-01-01T23:59:59.1234567Z'
     orm.add_row(row=orm.Storage(md5='md5', query='container', min_processed_date=date, max_processed_date=date))
+    orm.add_row(row=orm.LogAnalytics(md5='md5', query='query', min_processed_date=date, max_processed_date=date))
 
     orm.create_db()
 
-    assert 'storage_blob_offset' in inspect(orm.engine).get_table_names()
+    assert {'storage_blob_offset', 'log_analytics_ingestion'} <= set(inspect(orm.engine).get_table_names())
     assert orm.get_row(table=orm.Storage, md5='md5').max_processed_date == date
+    assert orm.get_row(table=orm.LogAnalytics, md5='md5').max_processed_date == date
+    assert orm.get_ingestion_cursor(md5='md5') is None
 
 
 def test_blob_offset(create_and_teardown_db):
@@ -388,3 +393,24 @@ def test_create_pk_empty():
     result = orm.create_pk()
     expected = hashlib.md5("".encode("utf-8")).hexdigest()
     assert result == expected
+
+
+def test_ingestion_cursor(create_and_teardown_db):
+    """Test the last record processed for a query can be stored, updated and retrieved."""
+    assert orm.get_ingestion_cursor(md5='md5') is None
+
+    orm.set_ingestion_cursor(md5='md5', ingestion_time='2022-01-01T23:59:59.1234567Z', time_generated='t1')
+    orm.set_ingestion_cursor(md5='md5', ingestion_time='2022-01-02T23:59:59.1234567Z', time_generated='t2')
+
+    row = orm.get_ingestion_cursor(md5='md5')
+    assert (row.ingestion_time, row.time_generated) == ('2022-01-02T23:59:59.1234567Z', 't2')
+    assert orm.get_ingestion_cursor(md5='other') is None
+
+
+def test_ingestion_cursor_ko(create_and_teardown_db):
+    """Ensure the ingestion cursor functions fail when using an invalid database."""
+    orm.Base.metadata.drop_all(orm.engine)
+    with pytest.raises(orm.AzureORMError):
+        orm.get_ingestion_cursor(md5='md5')
+    with pytest.raises(orm.AzureORMError):
+        orm.set_ingestion_cursor(md5='md5', ingestion_time='2022-01-01T23:59:59.1234567Z', time_generated='t1')

@@ -7,6 +7,7 @@
 
 import logging
 import sys
+from datetime import timedelta
 from json import dumps
 from os.path import abspath, dirname
 
@@ -25,9 +26,26 @@ from azure_utils import (
     send_message,
 )
 from db import orm
-from db.utils import create_new_row, update_row_object
+from db.utils import (
+    create_new_row,
+    datetime_key,
+    get_ingestion_cursor,
+    lower_max_processed_date,
+    update_ingestion_cursor,
+    update_row_object,
+)
 
 URL_ANALYTICS = 'https://api.loganalytics.io'
+# Columns added to the results with the ingestion time of each record and the time Azure ran the query. They're
+# removed before sending the events.
+INGESTION_TIME_COLUMN = 'wazuh_ingestion_time'
+QUERY_TIME_COLUMN = 'wazuh_query_time'
+# Records ingested at the same time can become queryable in any order, so only those ingested at least this long ago
+# are requested.
+INGESTION_DELAY = '2m'
+# Azure Monitor replaces any TimeGenerated more than two days older than the time it receives the record, so records
+# ingested after the last run aren't older than this. One hour of margin added.
+TIME_GENERATED_LOOKBACK = timedelta(days=2, hours=1)
 
 
 def start_log_analytics(args):
@@ -96,7 +114,8 @@ def start_log_analytics(args):
 def build_log_analytics_query(
         query: str, offset: str, reparse: bool, md5_hash: str
 ) -> dict:
-    """Prepare and make the request, building the query based on the time of event generation.
+    """Prepare and make the request, building the query based on the ingestion time of the records and their time
+    of generation.
 
     Parameters
     ----------
@@ -134,10 +153,35 @@ def build_log_analytics_query(
     desired_str = f'datetime({desired_datetime.strftime(DATETIME_MASK)})'
     min_str = f'datetime({min_str})'
     max_str = f'datetime({max_str})'
+    # A newest TimeGenerated stored ahead of the current time, as previous versions could, doesn't hold back the run
+    newest_str = f'min_of({max_str}, now())'
+    cursor = get_ingestion_cursor(md5_hash)
 
     # If reparse was provided, get the logs ignoring if they were already processed
     if reparse:
         filter_value = f'TimeGenerated >= {desired_str}'
+    # Get the records ingested after the last one processed. TimeGenerated alone would miss the records ingested
+    # after a run with an older TimeGenerated
+    elif cursor is not None:
+        ingestion_str, time_generated_str = (f'datetime({value})' for value in cursor)
+        lower_datetime = parse(cursor[0], fuzzy=True) - TIME_GENERATED_LOOKBACK
+        if offset:
+            lower_datetime = max(lower_datetime, desired_datetime)
+        # Records older than the oldest date processed are left to the time_offset backfill, which starts from it
+        lower_datetime = max(lower_datetime, min_datetime)
+        lower_str = f'datetime({lower_datetime.strftime(DATETIME_MASK)})'
+        logging.debug(f"Log Analytics: Making request for the records ingested after {ingestion_str} "
+                      f"generated from {lower_str}")
+        # Records ingested at the same time are told apart by TimeGenerated. Records without an ingestion time keep
+        # the TimeGenerated filter
+        filter_value = (
+            f'( TimeGenerated >= {lower_str} and ( {INGESTION_TIME_COLUMN} > {ingestion_str} or '
+            f'( {INGESTION_TIME_COLUMN} == {ingestion_str} and TimeGenerated > {time_generated_str} ) or '
+            f'( isnull({INGESTION_TIME_COLUMN}) and TimeGenerated > {newest_str} ) ) )'
+        )
+        if desired_datetime < min_datetime:
+            logging.debug(f"Log Analytics: Making request query also for the interval from {desired_str} to {min_str}")
+            filter_value += f' or ( TimeGenerated < {min_str} and TimeGenerated >= {desired_str})'
     # Build the filter taking into account the min and max values from the file
     else:
         # Build the filter taking into account the min and max values
@@ -146,16 +190,26 @@ def build_log_analytics_query(
                           f"from {desired_str} to {min_str} and from {max_str}")
             filter_value = (
                 f'( TimeGenerated < {min_str} and TimeGenerated >= {desired_str}) or '
-                f'( TimeGenerated > {max_str})'
+                f'( TimeGenerated > {newest_str})'
             )
         elif desired_datetime > max_datetime:
             logging.debug(f"Log Analytics: Making request for the following interval: from {desired_str}")
             filter_value = f'TimeGenerated >= {desired_str}'
         else:
             logging.debug(f"Log Analytics: Making request for the following interval: from {max_str}")
-            filter_value = f'TimeGenerated > {max_str}'
+            filter_value = f'TimeGenerated > {newest_str}'
 
-    query = f'{query} | order by TimeGenerated asc | where {filter_value} '
+    # The last ingestion time stored can't move past a record that isn't queryable yet
+    filter_value = (
+        f'( {filter_value} ) and '
+        f'( isnull({INGESTION_TIME_COLUMN}) or {INGESTION_TIME_COLUMN} <= ago({INGESTION_DELAY}) )'
+    )
+    # Sorted like the ingestion cursor, so results cut by the API limits continue from the last record returned
+    query = (
+        f'{query} | extend {INGESTION_TIME_COLUMN} = ingestion_time(), {QUERY_TIME_COLUMN} = now() '
+        f'| where {filter_value} '
+        f'| order by {INGESTION_TIME_COLUMN} asc, TimeGenerated asc '
+    )
     logging.debug(f'Log Analytics: The search starts for query: "{query}"')
     return {'query': query}
 
@@ -193,16 +247,33 @@ def get_log_analytics_events(
             if len(rows) == 0:
                 logging.info(f'Log Analytics: There are no new results for {tenant}')
             else:
+                ingestion_times = pop_column(columns, rows, INGESTION_TIME_COLUMN)
+                if ingestion_times and not any(ingestion_times):
+                    logging.debug(f'Log Analytics: The results of the query "{query}" have no ingestion time, so it '
+                                  f'keeps filtering by TimeGenerated and can miss the records ingested after a run.')
+                query_times = pop_column(columns, rows, QUERY_TIME_COLUMN)
                 time_position = get_time_position(columns)
                 if time_position is not None:
                     iter_log_analytics_events(columns, rows, tag)
+                    times = [row[time_position] for row in rows]
+                    newest = max(times, key=datetime_key)
+                    # No record is generated after the query runs, so a TimeGenerated set ahead isn't stored as the
+                    # newest one, as the next runs would skip the records generated until then
+                    if query_times and datetime_key(newest) > datetime_key(query_times[0]):
+                        newest = query_times[0]
                     update_row_object(
                         table=orm.LogAnalytics,
                         md5_hash=md5_hash,
-                        new_min=rows[0][time_position],
-                        new_max=rows[len(rows) - 1][time_position],
+                        new_min=min(times, key=datetime_key),
+                        new_max=newest,
                         query=query,
                     )
+                    # A newest date stored ahead of the query time, as previous versions could, would keep the queries
+                    # without an ingestion time from collecting anything until then
+                    if query_times:
+                        lower_max_processed_date(orm.LogAnalytics, md5_hash, query_times[0])
+                    # Stored after the events are sent: a failure in between resends them instead of losing them
+                    update_ingestion_cursor(md5_hash, ingestion_times, times)
                 else:
                     logging.error('No TimeGenerated field was found')
 
@@ -213,6 +284,30 @@ def get_log_analytics_events(
     else:
         logging.error(f"Error with Log Analytics request: {response.json()}")
         response.raise_for_status()
+
+
+def pop_column(columns: list, rows: list, name: str) -> list:
+    """Remove a column added by the module from the columns and rows.
+
+    Parameters
+    ----------
+    columns : list
+        List of columns of the log analytic logs.
+    rows : list
+        List of rows containing the values for each column.
+    name : str
+        Name of the column.
+
+    Returns
+    -------
+    list
+        The value of the column in each row, or an empty list if the column is not present.
+    """
+    for i, column in enumerate(columns):
+        if column['name'] == name:
+            columns.pop(i)
+            return [row.pop(i) for row in rows]
+    return []
 
 
 def get_time_position(columns: list):
