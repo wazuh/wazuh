@@ -3003,6 +3003,7 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& scan_lock)
                 runContainerBaselinePass(pass.delta_only);
             }
         }
+
         m_cv.notify_all();
         return;
     }
