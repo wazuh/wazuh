@@ -21,7 +21,7 @@ checks at the end of `Run()` in `internal/runner/runner.go`; setup errors return
 | Condition | Classification | Sender behavior | Invalidates the run? |
 |---|---|---|---|
 | Bad flag value (`--bootstrap`, `--compression`), missing `--scenario`, unreadable `--enroll-token-file` | Setup error | Refuse to start, naming it | **Yes**, before any traffic (exit `2`) |
-| Scenario validation error (unknown field or kind, bad mode/kind combination, missing referenced file, bad `expected` block) | Setup error | Refuse to start, naming the field | **Yes**, before any traffic (exit `2`) |
+| Scenario validation error (unknown field, kind or `option`, bad mode/kind combination, missing referenced file, bad `expected` block) | Setup error | Refuse to start, naming the field | **Yes**, before any traffic (exit `2`) |
 | No enrollment token when the run needs one, or a token that does not parse or carries no credential | Setup error | Refuse to start, saying how to get one | **Yes**, before any traffic (exit `2`) |
 | Enrollment refused (`POST /enroll` answered other than `200`, a `200` without the agent record, or authd's `ERROR` on 1515) | Setup error | Report the manager's own answer — with the remedy the status calls for — and abort before sending load | **Yes**, immediately (exit `2`) |
 | The readiness probe still answered `401` when its budget ran out, or answered anything else but `200` | Setup error | Abort, telling the operator to raise `--enroll-settle` (for the `401`) | **Yes** (exit `2`) |
@@ -29,7 +29,7 @@ checks at the end of `Run()` in `internal/runner/runner.go`; setup errors return
 | `401` on a measured `enroll_https` step | Result | Count `enroll_https_401` (an unknown, expired or revoked token is a contract outcome there) | No |
 | Any non-`200` from `/control` `startup` or `notify` (`400` subtypes, `409 invalid_version`, a wazuh-db `503`), a non-JSON `200`, or a transport error on `startup` | Sender bug or setup error | Abort with the status and body; a `startup` is counted in `control_startup_err`, a `notify` is not counted | **Yes** (exit `1`) |
 | Transport error on a `notify` | Result | Count `control_notify_err`, keep the loop running | No |
-| Any answer to `shutdown` | Result | Count `control_shutdown_ok`/`_err` | No |
+| Any answer to `shutdown` | Result | Count `control_shutdown_ok`/`_err`, latency in the `shutdown` histogram | No |
 | `400`/`403` from `/stateful` | Result (a sender bug on a normal step, the point of a `raw` step) | Count `sessions_400`/`sessions_403` and carry on; only an `expected` block can turn them into a failure | No |
 | `409` checksum mismatch (`ModuleCheck`) | Result | Count; no implicit resync | No |
 | `409` version_mismatch (VDFirst/VDSync, stale `feed_offset`) | Result | Count; no implicit re-request. A normal VD scenario run with a correct `--vd-feed-offset`/learned offset never produces this — only `contract_vd_version_mismatch` deliberately does | No |
@@ -83,8 +83,9 @@ SIGINT/SIGTERM, reaching `repeat_until`, and the first run-invalidating error al
 context and start the same drain ([06](06-agent-state-machine.md#drain)); a one-pass run whose
 agents all finish needs none:
 
-1. **Stop starting work**: every lane stops at its next step, repetition or delay; requests already
-   on the wire finish with their answer or `--timeout`.
+1. **Stop starting work**: no further agent is admitted (one still waiting for a
+   `concurrent_agents` slot never starts), and every lane stops at its next step, repetition or
+   delay; requests already on the wire finish with their answer or `--timeout`.
 2. **`shutdown` per agent** (`agent` mode with control), sent by each agent once its lanes have
    returned, after its keepalive loop stops; best-effort and counted. A failure here does not fail
    the run: the manager answers `200` before it updates state anyway.

@@ -2374,7 +2374,7 @@ field: ip_cidr_match(subnet, mask)
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
 | subnet | string | value | Any IP |
-| mask | string | value | Any IP |
+| mask | string | value | Dotted-decimal mask or prefix length (`0` to `32`) |
 
 
 ## Target Field
@@ -2390,8 +2390,8 @@ Checks if the IP address stored in field belongs to a given CIDR notation range.
 If they're not, the function evaluates to false. In case of error, the function will evaluate to false.
 IPv4: support address in dotted-decimal format, "ddd.ddd.ddd.ddd" where ddd is a decimal number of up
 to three digits in the range  0  to  255.
-Mask: Support “dd”  where ddd is a decimal number of up to 2 digits in the range  0  to  32 or “ddd.ddd.ddd.ddd"
-where ddd is a decimal number of up to three digits in the range  0  to  255.
+Mask: support a prefix length “dd” where dd is a decimal number of up to 2 digits in the range  0  to  32,
+or a dotted-decimal mask “ddd.ddd.ddd.ddd" where ddd is a decimal number of up to three digits in the range  0  to  255.
 This helper function is typically used in the check stage
 
 
@@ -17246,7 +17246,7 @@ field: parse_alphanumeric(field_to_parse)
 
 | Type | Possible values |
 | ---- | --------------- |
-| object | Any object |
+| string | Any string |
 
 
 ## Description
@@ -18061,7 +18061,7 @@ normalize:
 
 ```
 
-field: parse_csv(input_field, out1, out2, out3, [...])
+field: parse_csv(input_field, out1, out2, [...])
 ```
 
 ## Arguments
@@ -18071,7 +18071,6 @@ field: parse_csv(input_field, out1, out2, out3, [...])
 | input_field | string | reference | Any string |
 | out1 | string | value | Any string |
 | out2 | string | value | Any string |
-| out3 | string | value | Any string |
 
 
 ## Target Field
@@ -18467,7 +18466,7 @@ normalize:
 
 ```
 
-field: parse_dsv(input_field, delim_char, quote_char, esc_char, out, [...])
+field: parse_dsv(input_field, delim_char, quote_char, esc_char, out1, out2, [...])
 ```
 
 ## Arguments
@@ -18478,7 +18477,8 @@ field: parse_dsv(input_field, delim_char, quote_char, esc_char, out, [...])
 | delim_char | string | value | Any string |
 | quote_char | string | value | Any string |
 | esc_char | string | value | Any string |
-| out | string | value | Any string |
+| out1 | string | value | Any string |
+| out2 | string | value | Any string |
 
 
 ## Target Field

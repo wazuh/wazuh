@@ -7,8 +7,8 @@ metadata:
     If they're not, the function evaluates to false. In case of error, the function will evaluate to false.
     IPv4: support address in dotted-decimal format, "ddd.ddd.ddd.ddd" where ddd is a decimal number of up
     to three digits in the range  0  to  255.
-    Mask: Support “dd”  where ddd is a decimal number of up to 2 digits in the range  0  to  32 or “ddd.ddd.ddd.ddd"
-    where ddd is a decimal number of up to three digits in the range  0  to  255.
+    Mask: support a prefix length “dd” where dd is a decimal number of up to 2 digits in the range  0  to  32,
+    or a dotted-decimal mask “ddd.ddd.ddd.ddd" where ddd is a decimal number of up to three digits in the range  0  to  255.
     This helper function is typically used in the check stage
   keywords:
     - undefined
@@ -28,6 +28,7 @@ arguments:
     type: string
     generate: ip  # Expected type is string of type ip
     source: value # includes values
+    accepted_values: Dotted-decimal mask or prefix length (`0` to `32`)  # documentation only
 
 # IP address is not in CIDR
 skipped:

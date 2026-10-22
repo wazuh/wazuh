@@ -132,7 +132,8 @@ connects, each refusal exit 2: an empty `cluster.nodes` with no `--master` (`no 
 configured (/cluster/nodes is empty); pass --master <host>`), a host containing whitespace,
 a control character, `/`, `?`, `#`, `@` or `\`, or unbalanced brackets, and a port that is not
 a number in 1–65535. A bare IPv6 literal (`--master ::1`) is bracketed for the URL. A failed
-fetch names both overrides and the `scp` + `add` fallback in its message.
+fetch names both overrides and the copy-by-hand fallback in its message: `scp` the master's bundle
+over this node's, then `check` (not `add`, which a worker refuses, G7).
 
 ### `inspect` example
 
@@ -439,9 +440,9 @@ environment variable and no configuration option that relaxes it, and that is de
 The master's certificate is verified against this node's own CA bundle and nothing else: not the
 host's system store, not `SSL_CERT_FILE`/`SSL_CERT_DIR`, not a CA directory a distribution's curl
 build might have been pointed at, and not anything that arrives in the response. If the handshake
-fails, the honest fixes are to give this node the CA that signs the master's listener (`add`, then
-`check`) or to copy the bundle across by hand (`scp`, `add`, `check`) — both of which leave an
-operator in control of what this worker's agents will trust. The component test exercises each of
+fails, the honest fix is to copy the master's bundle — which carries the CA that signs its
+listener — over this node's by hand (`scp`, then `check`; `add` is refused on a worker, G7), which
+leaves an operator in control of what this worker's agents will trust. The component test exercises each of
 those refusals against a real server, so the answer cannot quietly stop being true.
 
 **Why is there no JSON output flag?** Deliberately deferred (D-5/D38): today's only consumer is a

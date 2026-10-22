@@ -384,8 +384,9 @@ int etoken_mint_prepare(const etoken_mint_request_t *req, etoken_mint_t *out, ch
         }
 
         if (strlen(out->ca_pem) > ETOKEN_CA_MAX_BYTES) {
+            /* The operator's file, not the manager, is what is wrong: a refusal with the reason */
             etoken_detail(detail, detail_size, "the ca_certificate '%s' is too large to embed", ca_certificate);
-            ret = -2;
+            ret = -1;
             goto end;
         }
     } else if (w_x509_spki_sha256(ca, out->pin) < 0) {

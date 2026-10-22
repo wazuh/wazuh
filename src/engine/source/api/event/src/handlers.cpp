@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include <api/event/handlers.hpp>
 #include <api/event/ndJsonParser.hpp>
+#include <base/json.hpp>
 #include <base/logging.hpp>
 
 #include <fastmetrics/registry.hpp>
@@ -64,7 +65,10 @@ adapter::RouteHandler pushEvent(const std::shared_ptr<::router::IRouterAPI>& orc
         {
             LOG_WARNING_L(lambdaName.c_str(), "[API::Event] Failed to parse request: '{}'", e.what());
             res.status = httplib::StatusCode::BadRequest_400;
-            res.set_content(fmt::format("{{\"error\": \"{}\", \"code\": 400}}", e.what()), "application/json");
+            json::Json body;
+            body.setString(e.what(), "/error");
+            body.setInt(400, "/code");
+            res.set_content(body.str(), "application/json");
             return;
         }
 

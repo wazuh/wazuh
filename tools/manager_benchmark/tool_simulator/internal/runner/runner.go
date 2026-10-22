@@ -190,23 +190,12 @@ func (r *Runner) Run(ctx context.Context) int {
 		defer timer.Stop()
 	}
 
-	sem := make(chan struct{}, r.concurrency(len(agents)))
 	var wg sync.WaitGroup
-	for i := range agents {
-		select {
-		case <-ctx.Done():
-		default:
-		}
-		sem <- struct{}{}
-		wg.Add(1)
-		go func(a *agent) {
-			defer wg.Done()
-			defer func() { <-sem }()
-			atomic.AddInt64(&r.agentsActive, 1)
-			defer atomic.AddInt64(&r.agentsActive, -1)
-			a.run(ctx)
-		}(agents[i])
-	}
+	admitAgents(ctx, len(agents), r.concurrency(len(agents)), &wg, func(i int) {
+		atomic.AddInt64(&r.agentsActive, 1)
+		defer atomic.AddInt64(&r.agentsActive, -1)
+		agents[i].run(ctx)
+	})
 
 	// A one-pass run ends when every agent finishes; a repeat/duration run ends
 	// when the context is cancelled (its timer or a signal), after which drain
@@ -237,6 +226,38 @@ func (r *Runner) Run(ctx context.Context) int {
 		return 1
 	}
 	return 0
+}
+
+// admitAgents starts run(0..n-1), each on its own goroutine tracked by wg, with
+// at most limit running at once. It stops admitting as soon as ctx is cancelled
+// (the run's deadline, a signal, or a run-invalidating error): an agent not yet
+// started never starts, so the drain covers only the agents already running.
+// It returns how many it started, once the last one has been started.
+func admitAgents(ctx context.Context, n, limit int, wg *sync.WaitGroup, run func(i int)) int {
+	sem := make(chan struct{}, limit)
+	for i := 0; i < n; i++ {
+		// Checked first: when a slot and the cancellation are both ready, select
+		// picks at random, and a cancelled run must not admit anyone.
+		if ctx.Err() != nil {
+			return i
+		}
+		select {
+		case <-ctx.Done():
+			return i
+		case sem <- struct{}{}:
+		}
+		if ctx.Err() != nil {
+			<-sem
+			return i
+		}
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			defer func() { <-sem }()
+			run(i)
+		}(i)
+	}
+	return n
 }
 
 // buildAgents enrolls (agent mode) or synthesizes (uds mode) every agent.
@@ -300,6 +321,19 @@ func (r *Runner) drainTimeout() time.Duration {
 }
 
 func (r *Runner) controlEnabled() bool { return r.scn.Defaults.Control.Enabled }
+
+// defaultKeepaliveInterval is the notify interval when the scenario sets none
+// (or a non-positive one): a real agent's.
+const defaultKeepaliveInterval = 10 * time.Second
+
+// keepaliveInterval is the interval the keepalive loop actually uses, and so
+// the one meta records.
+func (r *Runner) keepaliveInterval() time.Duration {
+	if d := r.scn.Defaults.Control.KeepaliveInterval.D(); d > 0 {
+		return d
+	}
+	return defaultKeepaliveInterval
+}
 
 // readinessBudget is how long an agent keeps retrying a 401'd startup while it
 // waits for remoted to load its key. It reuses the enroll-settle budget, with a
@@ -400,14 +434,13 @@ func (r *Runner) Meta() metrics.Meta {
 	if r.mode == "agent" {
 		bootstrap = r.cfg.Bootstrap
 	}
-	ki := r.scn.Defaults.Control.KeepaliveInterval.D()
 	return metrics.Meta{
 		ScenarioName: r.scn.Name, ScenarioPath: r.cfg.ScenarioPath, Mode: r.mode,
 		Manager: r.cfg.Manager, Port: r.cfg.Port, RegPort: r.cfg.RegPort, Target: target, GlobalPrefix: r.cfg.GlobalPrefix,
 		Bootstrap:   bootstrap,
 		ClusterName: r.clusterName(), AgentsRequested: requested, AgentsEnrolled: r.enrolled, AgentsFailed: r.failed,
 		ConcurrentAgents: r.scn.Pacing.ConcurrentAgents, RPSTarget: r.scn.Pacing.RequestsPerSecond,
-		KeepaliveInterval: ki.String(), ControlEnabled: r.controlEnabled(), ConnectionReuse: r.cfg.Reuse, Compression: r.compression(),
+		KeepaliveInterval: r.keepaliveInterval().String(), ControlEnabled: r.controlEnabled(), ConnectionReuse: r.cfg.Reuse, Compression: r.compression(),
 		DocumentSeed: r.seed, StartTime: r.start.UTC().Format(time.RFC3339), EndTime: end.UTC().Format(time.RFC3339),
 		DurationSec: end.Sub(r.start).Seconds(), SenderVersion: r.cfg.SenderVer, GoVersion: runtime.Version(),
 	}

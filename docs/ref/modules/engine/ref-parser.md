@@ -1263,8 +1263,10 @@ predefined, and locale-aware parsing. Automatically applied to schema fields def
 
 - Format Matching: Attempts to match the input date string against the specified format.
 - Missing year: when the format has no year, the current year is used.
-- Time zone: a numeric offset (`%z`, `%Ez`) is applied to convert the time to UTC; when the format carries no time zone
-  information, the time is taken as UTC.
+- Time zone: a numeric offset (`%z`, `%Ez`) is applied to convert the time to UTC; a time zone name (`%Z`, for example
+  `MST` or `UTC`, looked up in the time zone database) makes the time a local time in that zone, converted to UTC
+  (`15:04:05 MST` becomes `22:04:05Z`; a local time in a DST gap or overlap takes the earliest instant). When the
+  format carries no time zone information, the time is taken as UTC.
 - Standardization: Successfully parsed dates are written as `YYYY-MM-DDTHH:MM:SS.sssZ`.
 - Custom Field Applicability: Can be manually applied to temporary fields where specific date parsing is required.
 - Does not require a specific end token: it consumes what the format matches.

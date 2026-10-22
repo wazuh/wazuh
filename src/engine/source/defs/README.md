@@ -157,7 +157,7 @@ compact JSON text — and every `$` reference to another definition inside it is
 
 The algorithm uses `resolveDefinitionDFS()`:
 - Maintains a **visited set** and a **recursion stack** for cycle detection
-- If a definition references another, it recursively resolves the dependency first
+- If a definition references another, it recursively resolves the dependency first. A reference is the longest defined name that follows a `$` and is not followed by a letter, digit or `_` — the same rule `replace()` applies, so a name with characters such as `-` resolves inside another definition too
 - Resolved values are cached in `m_resolvedDefinitions`
 - Circular references (`a → b → a`) throw `std::runtime_error`
 - Each resolved definition records its nesting depth next to its cached value, so the depth check does not depend on the order in which definitions are visited

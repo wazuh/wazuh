@@ -67,10 +67,10 @@ The debug level of the running engine is therefore set only by `analysisd.debug`
 `wazuh-manager-control enable debug`.
 
 After launching it, `start` waits up to 10 seconds for the PID file
-`/var/wazuh-manager/var/run/wazuh-manager-analysisd-<pid>.pid`, then sends `POST /_internal/event-dumper/status` to
+`/var/wazuh-manager/var/run/wazuh-manager-analysisd-<pid>.pid`, then sends `GET /status` to
 `/var/wazuh-manager/queue/sockets/engine-api-http.sock` once per second, up to 120 times, until the engine answers
 with a status below `400`. On failure it prints `Failed to obtain PID for wazuh-manager-analysisd`,
-`wazuh-manager-analysisd died during event dumper check.` or
+`wazuh-manager-analysisd died during the readiness check.` or
 `wazuh-manager-analysisd did not respond correctly after 120 attempts.` (the last one also kills the engine), and
 the start fails with `wazuh-manager-analysisd did not start correctly.`
 
@@ -312,10 +312,10 @@ file.
 | Setting | Env var | Description | Default | Mode |
 |:--|:--|:--|:--:|:--:|
 | `analysisd.server_api_socket` | `WAZUH_SERVER_API_SOCKET` | Unix domain socket path for the engine's HTTP API server. Do not change it on a manager: the readiness probe of `wazuh-manager-control start` and the Server API use the fixed default path. | `/var/wazuh-manager/queue/sockets/engine-api-http.sock` | both |
-| `analysisd.server_api_timeout` | `WAZUH_SERVER_API_TIMEOUT` | Tester timeout in milliseconds. It is validated at start-up (a value below `1` stops the engine) and stored by the orchestrator, but no API request or test session is bounded by it in this version. | `5000` (5 s) | both |
+| `analysisd.server_api_timeout` | `WAZUH_SERVER_API_TIMEOUT` | Tester timeout in milliseconds: how long a test run (`/logtest`, `/_internal/tester/run/post`) waits for the event's result before answering `400` with `Timeout waiting for ingestTest`. A value below `1` stops the engine at start-up. | `5000` (5 s) | both |
 | `analysisd.server_api_payload_max_bytes` | `WAZUH_SERVER_API_PAYLOAD_MAX_BYTES` | Maximum request payload size in bytes for the engine's HTTP API server. `0` means unlimited. A negative value is clamped to `0` with a warning. | `0` | both |
 | `analysisd.server_enriched_events_socket` | `WAZUH_SERVER_ENRICHED_EVENTS_SOCKET` | Unix domain socket path for the engine's enriched-events HTTP ingest server (`POST /events/enriched`). Do not change it on a manager: `wazuh-manager-remoted` and the vulnerability scanner send events to the fixed default path. | `/var/wazuh-manager/queue/sockets/engine-ingest-http.sock` | both |
-| `analysisd.server_enable_event_processing` | `WAZUH_SERVER_ENABLE_EVENT_PROCESSING` | Master switch for the event-processing pipeline (indexer connector, stream loggers, raw-event indexer, remote-conf and CM/IOC sync, dumper, enriched-events HTTP server). Keep it `true` on a manager: with `false` there is no event dumper, the readiness probe of `wazuh-manager-control start` (`POST /_internal/event-dumper/status`) gets a `500`, and the start fails. | `true` | both |
+| `analysisd.server_enable_event_processing` | `WAZUH_SERVER_ENABLE_EVENT_PROCESSING` | Master switch for the event-processing pipeline (indexer connector, stream loggers, raw-event indexer, remote-conf and CM/IOC sync, dumper, enriched-events HTTP server). With `false` the manager starts but processes no events: there is no event dumper (its routes answer `500`), and `GET /status` — which the readiness probe of `wazuh-manager-control start` uses — answers with no `spaces` or `ioc` entries and `ready: false`. | `true` | both |
 | `analysisd.api_resource_payload_max_bytes` | `WAZUH_SERVER_API_MAX_RESOURCE_PAYLOAD_SIZE` | Maximum payload size in bytes accepted for a resource in the engine's HTTP API server. | `50000` | both |
 | `analysisd.api_resource_kvdb_payload_max_bytes` | `WAZUH_SERVER_API_MAX_RESOURCE_KVDB_PAYLOAD_SIZE` | Maximum payload size in bytes accepted for a KVDB resource in the engine's HTTP API server. | `100000` | both |
 

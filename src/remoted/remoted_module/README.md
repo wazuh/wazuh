@@ -659,10 +659,9 @@ src/endpoints/
   - **They differ from each other only in how a success is built — not in what the agent gets.**
     `/config`'s `postProcess` passes the downstream body through (`200` + modulesd's body), unlike
     `/stateless` which discards it; `/stats` answers a fixed `{}`, since the agent has nothing to read
-    back and a constant keeps an arbitrary downstream string off the wire. Today the sync server
-    itself answers both with `200 {}` (`inventory_sync_server/src/endpoints/configEndpoint.cpp`), so
-    on the wire both routes answer `200 {}`; `/config`'s pass-through (and its code comment about an
-    "enriched document") predates that. Failure statuses are collapsed to fixed local messages
+    back and a constant keeps an arbitrary downstream string off the wire. The sync server itself
+    answers both with `200 {}` (`inventory_sync_server/src/endpoints/configEndpoint.cpp`), so on the
+    wire both routes answer `200 {}`. Failure statuses are collapsed to fixed local messages
     on both, so an arbitrary downstream string is never reflected back to an agent either way.
   - **The only endpoint-level validation is "body is not empty" → `400`.** Parsing is modulesd's job;
     doing it on both sides would walk the payload twice on the hot path. Rejecting an empty body here
@@ -923,10 +922,12 @@ Internally:
   failed connect is retried every second
 - Request queue bounded by `maxQueueSize` (`remoted.control_wdb_max_queue_size`) — drops requests with `SocketError::QueueFull` when full
 - Per-request deadline (`deadlineMs`, `remoted.control_wdb_roundtrip_deadline`) — reports
-  `SocketError::Timeout` if wazuh-db doesn't respond. The deadline starts when the command is
-  **sent**: while `wdb.sock` cannot be reached at all, no worker dequeues, so a queued request waits
-  until wazuh-db comes back, the queue overflows (`QueueFull`) or the client stops (`wazuhDBClient.cpp`,
-  `workerLoop()`)
+  `SocketError::Timeout` if wazuh-db doesn't respond. On a connected worker the deadline runs from
+  when the command is **sent**. While `wdb.sock` cannot be reached at all no worker dequeues, so the
+  reconnect backoff also expires queued requests: each one carries enqueue time + `deadlineMs`, and a
+  request still queued past it fails with the same `Timeout` outcome (`wdb_error` counted, the same
+  throttled WARN) instead of waiting until wazuh-db comes back (`wazuhDBClient.cpp`,
+  `backoffExpiringQueued()`)
 - Uses `LogThrottle` to avoid flooding logs with repeated errors (connection failures, timeouts, queue full)
 
 #### TaskClient (`taskClient.hpp/.cpp`)
@@ -2767,11 +2768,9 @@ Transport, framing and shared plumbing: `authConfig_test.cpp` (C-ABI → `AuthCo
 struct yields the profile defaults, and `jwt_clock_skew_set` is what tells "zero tolerance" apart
 from "unset" — an explicitly set negative skew throws, as does an over-maximum value), `downstreamConfig_test.cpp` (default
 socket paths — the inventory-sync literal is pinned against modulesd's own copy — seconds→ms
-conversion, `/stateful`'s dedicated 20 s deadline, and the module's own 11 MiB response cap, chosen
-strictly above the 10 MiB request cap. **Caveat:** that C++ default is unreachable in a running
-manager — `secure.c` always supplies `remoted.downstream_max_response_body_size`, whose own default
-is 10 MiB, so the effective cap equals the request cap and the "strictly above" rationale does not
-hold at runtime. The test pins the constant, not the deployed value),
+conversion, `/stateful`'s dedicated 20 s deadline, and the module's own 10 MiB response-cap
+fallback — the same value as `remoted.downstream_max_response_body_size`'s default, which
+`secure.c` always supplies, so the fallback and the deployed cap cannot disagree),
 `headerUtils_test.cpp` (case-insensitive header lookup: the RFC-canonical `Authorization` the
 transport actually delivers is exactly what a naive exact `find()` misses), `authHeadersE2E_test.cpp`
 (over real TLS: a **duplicated** `Authorization` or `protocol-version` is refused rather than
@@ -2838,7 +2837,7 @@ aggregated into `remoted.control.rejected`), `controlHandler_test.cpp` (a malfor
 `400` *and* writes `status_code` with the version sentinelized; `config_token` is the wdb-ordered
 multigroup CSV naming the same `merged.mg` that `config_hash` was computed over; a wazuh-db failure
 answers `503 dependency_unavailable` naming `wazuh-db` rather than silently falling back to
-"default" — two of those cases still carry a `…Returns500…` name), `controlConfig_test.cpp` (non-positive
+"default"), `controlConfig_test.cpp` (non-positive
 values fall back instead of casting a negative into a huge unsigned; a malformed `limits_json`
 collapses to `{}`), `controlTypes_test.cpp` (the version grammar, the `compareVersions` ordering and
 the major.minor `isAgentVersionTooNew` policy shared with `/enroll`), `agentRegistry_test.cpp` (an updater returning null is a no-op that never

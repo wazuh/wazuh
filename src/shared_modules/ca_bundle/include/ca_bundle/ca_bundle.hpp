@@ -247,7 +247,7 @@ namespace ca_bundle
      * @brief The block's eight `##` lines, ready to be written above the certificates.
      *
      * Only `wazuh-manager-certs` writes these: neither remoted nor any other daemon stamps a
-     * bundle (RF-8). Round-trips through parseBundle().
+     * bundle (README, "Public API"). Round-trips through parseBundle().
      */
     std::string renderBlock(const PublicationBlock& block);
 

@@ -37,7 +37,7 @@ Built per session from the agent's identity, the step, `defaults` and the fleet'
 | `agentid` | The agent's id: the one enrollment returned in `agent` mode (it **MUST** equal the authenticated identity, or the answer is `403`), `first_id + i` in `uds` mode |
 | `cluster_name` | `--cluster`, else `defaults.cluster_name`. Both empty leaves the field out, and the server answers `400`; a foreign name is `403` |
 | `mode` | Set by the step kind (see the matrix below) |
-| `option` | The step's `option`, else `defaults.option`, else a dump's own: `VDFirst`/`vdfirst` and `VDSync`/`vdsync` select those, **any other value builds `Sync`**. This is what routes a data session to the scan lane |
+| `option` | The step's `option`, else `defaults.option`, else a dump's own: `VDFirst`/`vdfirst` and `VDSync`/`vdsync` select those, `Sync`/`sync` or absent builds `Sync`. The loader refuses any other value on a step or in `defaults`; a dump's own option is not checked at load, and an unrecognized one there builds `Sync`. This is what routes a data session to the scan lane |
 | `index` | The step's `indices`, else a dump's own; left out when neither has any. Required by the loader for the metadata/group modes, which have no payload |
 | `module` | The step's `module`, else `defaults.module`, else a dump's own — e.g. `syscollector`, `fim`, `sca` |
 

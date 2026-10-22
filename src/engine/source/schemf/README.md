@@ -209,7 +209,8 @@ Per-type validators in `valueValidators.hpp`:
 | Validator | Checks |
 |-----------|--------|
 | `getBoolValidator` | `json.isBool()` |
-| `getShortValidator` | `json.isInt()` and value in int8 range (used for both `BYTE` and `SHORT`) |
+| `getByteValidator` | `json.isInt()` and value in int8 range (`BYTE`) |
+| `getShortValidator` | `json.isInt()` and value in int16 range (`SHORT`) |
 | `getIntegerValidator` | `json.isInt()` |
 | `getLongValidator` | `json.isInt64()` |
 | `getFloatValidator` | `json.isFloat()` (`FLOAT`, `HALF_FLOAT`, `SCALED_FLOAT`) |

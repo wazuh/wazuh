@@ -139,7 +139,7 @@ class IController {
     virtual base::Event ingestGet(base::Event&& event) = 0;
 
     // Check whether the backend is available
-    virtual bool isAviable() const = 0;
+    virtual bool isAvailable() const = 0;
 
     // Start / stop the backend
     virtual void start() = 0;
@@ -167,7 +167,7 @@ How the two implementations fill the contract:
 | Method | `bk::rx::Controller` | `bk::taskf::Controller` |
 |---|---|---|
 | `ingest` / `ingestGet` | Pushes the event into the RxCpp subject; once `stop()` has completed the subject, `ingest` drops the event and `ingestGet` returns it unprocessed | Stores the event in `m_event` and runs the Taskflow graph, waiting for it |
-| `isAviable` | Always `true` | Always `true` |
+| `isAvailable` | Always `true` | Always `true` |
 | `start` | No-op | No-op |
 | `stop` | Completes the subject (also called by the destructor); the controller processes nothing afterwards | No-op |
 | `printGraph` | Returns the placeholder string `"TODO"` | `tf::Taskflow::dump()` (DOT) |
@@ -252,8 +252,9 @@ The tracing system allows observing the execution of specific tree nodes:
    per-asset traces
 ```
 
-The publisher is carried in the builders' shared `BuildParams` and is only replaced when the next traceable
-node is reached (`src/rx/exprBuilder.hpp`, `src/taskf/exprBuilder.hpp`).
+The publisher is carried in the builders' shared `BuildParams`: a traceable node replaces it for its own subtree,
+and the previous one is restored when the builder leaves that node, so the sibling nodes built after a traceable
+subtree keep publishing to their own ancestor's tracer (`src/rx/exprBuilder.hpp`, `src/taskf/exprBuilder.hpp`).
 
 ## Implementation: RxCpp (`bk::rx`)
 
@@ -290,7 +291,8 @@ Each node type is modeled with an `ITask` class that exposes:
 
 The event is a `base::Event` stored as a `Controller` member (`m_event`), shared across all tasks via a `void*`
 pointer. The graph runs on a `tf::Executor` with a single worker, and ends in an `output` task that runs the end
-callback when one was given. Unlike `bk::rx`, a Term does not catch exceptions thrown by its operation.
+callback when one was given. As in `bk::rx`, an exception thrown by a Term's operation is caught, logged as a
+warning and turned into a failure with the trace `[<name>] -> Failure: operation throw exception.`
 
 ## Usage from the Router
 

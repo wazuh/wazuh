@@ -319,6 +319,26 @@ TEST(DefsVariableNameParsingTest, VariableNameParsing)
     ASSERT_EQ(def.replace("$MixedCase.property"), "mixed.property");
 }
 
+// A definition name with characters outside [A-Za-z0-9_] resolves inside another definition as it does directly
+TEST(DefsVariableNameParsingTest, NonWordNameResolvesInsideDefinition)
+{
+    auto definitions = json::Json(R"({
+        "my-var": "dash",
+        "my": "short",
+        "uses_dash": "value $my-var end",
+        "uses_short": "value $my end",
+        "nested": "[$uses_dash]"
+    })");
+    auto def = defs::Definitions(definitions);
+
+    // Direct use
+    ASSERT_EQ(def.replace("$my-var"), "dash");
+    // Inside another definition: the longest matching name wins, as in replace()
+    ASSERT_EQ(def.replace("$uses_dash"), "value dash end");
+    ASSERT_EQ(def.replace("$uses_short"), "value short end");
+    ASSERT_EQ(def.replace("$nested"), "[value dash end]");
+}
+
 // Test error messages contain useful information
 TEST(DefsErrorMessagesTest, ErrorMessages)
 {

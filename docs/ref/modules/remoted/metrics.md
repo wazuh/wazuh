@@ -392,7 +392,7 @@ task-manager clients.
 | `remoted.control.notify` | counter | count | Keepalive messages handled | diagnostic — fleet size × keepalive cadence |
 | `remoted.control.shutdown` | counter | count | `{"type":"shutdown"}` messages handled | diagnostic |
 | `remoted.control.rejected` | counter | count | The endpoint's own 400s (invalid body/JSON/agent-id/type) — an agent/manager version-drift signal | [`agents.allow_higher_versions`](configuration.md#agentsallow_higher_versions) for version drift; otherwise diagnostic |
-| `remoted.control.wdb_error` | counter | count | wazuh-db round trips that failed (connect, timeout, queue full) | [`remoted.control_wdb_roundtrip_deadline`](configuration.md#remotedcontrol_wdb_roundtrip_deadline), [`remoted.control_wdb_max_queue_size`](configuration.md#remotedcontrol_wdb_max_queue_size) |
+| `remoted.control.wdb_error` | counter | count | wazuh-db round trips that failed: a timeout (including a request still queued past its deadline while `wdb.sock` cannot be reached), an I/O error, or a full queue | [`remoted.control_wdb_roundtrip_deadline`](configuration.md#remotedcontrol_wdb_roundtrip_deadline), [`remoted.control_wdb_max_queue_size`](configuration.md#remotedcontrol_wdb_max_queue_size) |
 | `remoted.control.wdb.latency` | histogram | microseconds | **Successful** wazuh-db round-trip time (timeouts are counted by `wdb_error`, never observed here — the histogram means "how long a healthy round trip takes") | [`remoted.control_wdb_roundtrip_deadline`](configuration.md#remotedcontrol_wdb_roundtrip_deadline), [`remoted.control_wdb_request_connections`](configuration.md#remotedcontrol_wdb_request_connections) |
 | `remoted.control.task_fetch` | counter | count | Pending-task fetches from the task manager that succeeded | — |
 | `remoted.control.task_fetch_error` | counter | count | Pending-task fetches that failed | [`remoted.control_tm_deadline`](configuration.md#remotedcontrol_tm_deadline), [`remoted.control_tm_concurrency`](configuration.md#remotedcontrol_tm_concurrency), [`remoted.control_tm_max_queue_size`](configuration.md#remotedcontrol_tm_max_queue_size) |
@@ -568,7 +568,7 @@ The group names map onto the catalog sections above one-for-one:
 |---|---|
 | `responses.<endpoint>` | [`remoted.http.<endpoint>.responses.<code>`](#request-outcomes--remotedhttpendpointresponsescode), plus a `total` rollup |
 | `latency.<endpoint>` | [`remoted.http.<endpoint>.latency`](#request-latency--remotedhttpendpointlatency) |
-| `auth_rejections` | [`remoted.auth.reject.*`](#authentication-rejections--remotedauthreject) except `agent_busy` and the three `token_*` causes, plus a `total` rollup of the projected causes |
+| `auth_rejections` | [`remoted.auth.reject.*`](#authentication-rejections--remotedauthreject), every cause, plus a `total` rollup of them |
 | `enrollment` | [`remoted.enroll.*`](#agent-enrollment--remotedenroll) outcome counters and `rate_limited`, with `remoted.enroll.authd.queue.*` under `authd_queue`, [`remoted.enroll.rate_limit.*`](#rate-limits--remotedendpointrate_limit) under `rate_limit` |
 | `control` | [`remoted.control.*`](#control-plane--remotedcontrol), with `registry.agents` as `registry_agents` and `wdb.latency` as `wdb_latency` |
 | `keystore` | [`remoted.auth.keystore.*`](#keystore-health--remotedauthkeystore) |
@@ -583,7 +583,6 @@ Conventions worth knowing before reading a response:
 
 - **Not projected:** `remoted.enroll.token.*`, `remoted.enroll.reenroll.*`,
   `remoted.enroll.token_store.*`, `remoted.enroll.unverified.rate_limit.*`,
-  `remoted.auth.reject.agent_busy`, `remoted.auth.reject.token_{unknown,expired,revoked}`,
   `remoted.server.connections.handshaking`, `remoted.server.handshake.*` and
   `remoted.download.denied` are served by the admin socket only.
 - **`remoted.admin.server.*` is deliberately not projected.** Those metrics

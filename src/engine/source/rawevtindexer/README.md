@@ -97,7 +97,7 @@ Each `index()` overload follows the same pattern:
 1. **Guard empty input** — `const char*` and `string_view` overloads return early on null/empty data.
 2. **Check enabled** — `m_enabled.load(memory_order_acquire)`. If disabled, return immediately.
 3. **Lock connector** — `m_connector.lock()`. If the connector has been destroyed, return silently.
-4. **Delegate** — Call `connector->index(m_indexName, data)`. There is no try/catch: an exception from the connector propagates to the caller, although the interface comments say errors are ignored. In the router worker it is caught by the per-event handler, which logs `Failed processing queued event in router worker: …` and skips routing that event.
+4. **Delegate** — Call `connector->index(m_indexName, data)`. There is no try/catch: an exception from the connector propagates to the caller. In the router worker it is caught by the per-event handler, which logs `Failed processing queued event in router worker: …` and skips routing that event.
 
 ### Hot Reload
 

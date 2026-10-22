@@ -51,7 +51,7 @@ public:
      *
      * @return true if the backend is available to ingest data. false otherwise.
      */
-    virtual bool isAviable() const = 0;
+    virtual bool isAvailable() const = 0;
 
     /**
      * @brief Start the backend.

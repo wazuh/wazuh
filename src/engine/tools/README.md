@@ -95,10 +95,10 @@ This module converts event files in EVTX format (used by Windows for event logs)
 - **Test Search Settings**: Allows you to specify the directory where to search for tests, exclude certain directories, and pass a gtest filter.
 - **Report Generation**: Writes the Valgrind output to a report file.
 
-The script expects an engine build tree in a `build` directory under `src/engine/` (with `source/` and a `main` binary), whatever
-`-t` says, and first requires every static library found there to be built with a sanitizer. The manager
-build puts the engine in `src/build/engine` (binary `wazuh-engine`), so on a manager build tree the script
-exits with `Build directory does not exist`.
+The script reads the engine build tree from `-b` (default `src/build/engine`, where the manager build
+configures the engine), which must hold `source/` and the `wazuh-engine` binary whatever `-t` says, and
+first requires every static library found there to be built with a sanitizer; a missing tree exits with
+`Build directory does not exist`.
 
 ### Usage
 ```bash
@@ -106,28 +106,29 @@ Usage: tools/check_Valgrind.sh [options] [arguments]
 
 Options:
   -h, --help          Show this help message
+  -b, --build-dir DIR Engine build directory (default: src/build/engine)
   -e, --exclude DIRS  Colon-separated list of directories to exclude
   -t, --test-dir DIR  Directory to search for tests (default: build directory)
   -r, --regex PATTERN Optional regular expression to filter tests (default: no filtering)
   -o, --output FILE   File to redirect output (default: ${SCRIPT_DIR}/valgrindReport.log)
 ```
 
-The help prints the `--output` default before it is set, as `/valgrindReport.log`; the actual default is
-`valgrindReport.log` next to the script. `-r` is passed to the test binaries as `--gtest_filter`.
+The `--output` default is `valgrindReport.log` next to the script. `-r` is passed to the test binaries as
+`--gtest_filter`.
 
 - **Run only the OrchestratorTest suite of the router component**:
 ```bash
-bash tools/check_Valgrind.sh -t build/source/router/ -r 'OrchestratorTest*'
+bash tools/check_Valgrind.sh -t ../build/engine/source/router/ -r 'OrchestratorTest*'
 ```
 
 - **Run all tests except those of the builder and kvdbstore**:
 ```bash
-bash tools/check_Valgrind.sh -e build/source/builder/:build/source/kvdbstore/
+bash tools/check_Valgrind.sh -e ../build/engine/source/builder/:../build/engine/source/kvdbstore/
 ```
 
 ## Check ASAN
 
-- **ASAN, TSAN, and MSAN check**: Checks that the test binaries, the static libraries and the `main` binary are compiled with AddressSanitizer, ThreadSanitizer, or MemorySanitizer, and stops at the first that is not.
+- **ASAN, TSAN, and MSAN check**: Checks that the test binaries, the static libraries and the `wazuh-engine` binary are compiled with AddressSanitizer, ThreadSanitizer, or MemorySanitizer, and stops at the first that is not.
 - **Test Execution**: Uses `ctest --output-on-failure -V` to run the tests in the specified directory and appends the results to a file if indicated.
 - **Flexible Configuration**: Allows you to specify the test directory, exclude certain directories, and filter tests with a `ctest --tests-regex`.
 
@@ -140,6 +141,7 @@ Usage: tools/check_ASAN.sh [options] [arguments]
 
 Options:
   -h, --help          Show this help message
+  -b, --build-dir DIR Engine build directory (default: src/build/engine)
   -e, --exclude DIRS  Colon-separated list of directories to exclude
   -t, --test-dir DIR  Directory to search for tests (default: build directory)
   -r, --regex PATTERN Optional regular expression to filter tests (default: no filtering)
@@ -147,9 +149,9 @@ Options:
 ```
 - **Run only the OrchestratorTest suite of the router component**:
 ```bash
-bash tools/check_ASAN.sh -t build/source/router/ --regex 'OrchestratorTest'
+bash tools/check_ASAN.sh -t ../build/engine/source/router/ --regex 'OrchestratorTest'
 ```
 - **Run all tests except those of the builder and kvdbstore**:
 ```bash
-bash tools/check_ASAN.sh -e build/source/builder/:build/source/kvdbstore/
+bash tools/check_ASAN.sh -e ../build/engine/source/builder/:../build/engine/source/kvdbstore/
 ```

@@ -502,8 +502,7 @@ class UnixConnection(http.client.HTTPConnection):
         self.sock.connect(sys.argv[1])
 try:
     connection = UnixConnection("localhost", timeout=5)
-    connection.request("POST", "/_internal/event-dumper/status", body="{}",
-                       headers={"Content-Type": "application/json"})
+    connection.request("GET", "/status")
     sys.exit(0 if connection.getresponse().status < 400 else 1)
 except Exception:
     sys.exit(1)'
@@ -527,7 +526,7 @@ wait_for_wazuh_engine_ready()
         fi
 
         if ! kill -0 "$ENGINE_PID" 2>/dev/null; then
-            echo "wazuh-manager-analysisd died during event dumper check."
+            echo "wazuh-manager-analysisd died during the readiness check."
             return 1
         fi
 

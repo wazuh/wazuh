@@ -220,5 +220,11 @@ without an `agent`. The per-agent codes:
 | 17 | 1827 | `Upgrade procedure could not start` — the answer to every agent while `<upgrade_enabled>` is `no`, and to an unexpected error while admitting the request |
 | 18 | 1828 | `The agent is below v5.0.0 and the manager's legacy delivery (remote.legacy.enabled) is disabled; …` |
 
+The Server API (`PUT /agents/upgrade`, `PUT /agents/upgrade_custom`) reports 6 to 16 and 18 per agent:
+each such agent is a failed item carrying the code and message above, and the agents whose task was
+created in the same answer stay in `affected_items`. The request-level and node-level codes — 1 to 3,
+error 2 for a request over `upgrade_max_agents`, 4 once the halve-and-retry is down to a single agent,
+and 17 — fail the whole request with a `500`.
+
 The flow is in [Agent upgrades](agent-upgrades.md); the options in
 [configuration](configuration.md#agent-upgrades).

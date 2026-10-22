@@ -36,8 +36,10 @@ TCP port on which the enrollment service listens.
 
 - **Default value:** `1515`
 - **Allowed values:** Integer from `1` to `65535`; the configuration is rejected otherwise.
-- **Note:** While authd is enabled, the port must differ from `remote.https.port`, `cluster.port`
-  and, when the legacy listener is enabled, `remote.legacy.port`.
+- **Note:** While port 1515's listener starts (see the table under
+  [`legacy_enrollment`](#legacy_enrollment)), the port must differ from `remote.https.port`, `cluster.port`
+  and, when the legacy listener is enabled, `remote.legacy.port`. When the listener does not start, the port
+  is left out of the distinct-ports check.
 - **Note:** The `-p` [command-line flag](README.md#command-line-options) overrides this value.
 
 ### ipv6
@@ -132,7 +134,7 @@ ports at once. An explicit `yes` or `no` always wins over the listener state.
 
 ### ciphers
 
-Colon-separated list of TLS 1.3 cipher suites accepted by the enrollment TLS session on port 1515 (applied via OpenSSL's `SSL_CTX_set_ciphersuites`). `wazuh-manager-authd` requires TLS 1.3 as the minimum protocol version, so this option only accepts TLS 1.3 cipher suite names — legacy OpenSSL cipher-list strings (e.g. `HIGH:!ADH:...`) are rejected by the configuration validator, which accepts any `TLS_…` name. A well-formed name outside the list below is refused when authd reads its configuration (`Invalid TLS 1.3 cipher suite '<name>' in 'ciphers' option`), so `wazuh-manager-control start` stops at authd's configuration test (`wazuh-manager-authd: Configuration error`) even when [`disabled`](#disabled) is `yes`.
+Colon-separated list of TLS 1.3 cipher suites accepted by the enrollment TLS session on port 1515 (applied via OpenSSL's `SSL_CTX_set_ciphersuites`). `wazuh-manager-authd` requires TLS 1.3 as the minimum protocol version, so this option only accepts the TLS 1.3 cipher suite names listed below — legacy OpenSSL cipher-list strings (e.g. `HIGH:!ADH:...`) and any other name are rejected by the configuration validator (`pattern` at `/auth/ciphers`).
 
 - **Default value:** `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256`
 - **Allowed values:** Colon-separated combination of `TLS_AES_128_GCM_SHA256`, `TLS_AES_256_GCM_SHA384`, `TLS_CHACHA20_POLY1305_SHA256`, `TLS_AES_128_CCM_SHA256`, `TLS_AES_128_CCM_8_SHA256`

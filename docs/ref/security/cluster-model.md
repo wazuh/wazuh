@@ -217,8 +217,19 @@ In practical terms:
 Independently of the trust model, the DAPI does enforce a small set of
 restrictions on operations between nodes:
 
-- **Local configuration**: a node will not accept remote modifications to its
-  local `wazuh-manager.conf`.
+- **Local configuration**: cluster file synchronization never replicates a
+  node's `wazuh-manager.conf`; it is on the cluster's excluded-files list, so
+  no node's copy overwrites another's. The file is changed remotely only
+  through the API: `PUT /cluster/{node_id}/configuration` on the master is
+  forwarded over the DAPI to the named node, which runs it only for a caller
+  holding the `cluster:update_config` RBAC action over that node. The node
+  checks the new text before writing it — XML syntax and schema; changes to
+  the `indexer` section or to `agents.allow_higher_versions` (under `auth` or
+  `remote`) are refused unless `upload_configuration` in `api.yaml` allows
+  them, which it does by default; and a change to the cluster key or to the
+  `indexer` section additionally requires `cluster:read_secrets` over the
+  node. The written file is then validated, and the previous file is restored
+  on any failure.
 - **Authority context boundary**: operations outside the scope of the Wazuh
   product (i.e. outside the Wazuh authority context) are not executed through
   the DAPI. A received request names the function to run; the node runs it

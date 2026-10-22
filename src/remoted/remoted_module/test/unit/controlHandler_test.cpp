@@ -435,7 +435,7 @@ TEST(ControlHandlerTest, StartupFallsBackToDefaultGroupOnEmptyWdbCsv)
     EXPECT_EQ(j["agent"]["groups"][0], "default");
 }
 
-TEST(ControlHandlerTest, StartupReturns500OnWdbProtocolError)
+TEST(ControlHandlerTest, StartupReturns503OnWdbProtocolError)
 {
     auto wdb = std::make_shared<WdbRouter>();
     wdb->onSelectAgentGroup([](const std::string&) { return "err some failure"; });
@@ -893,7 +893,7 @@ TEST(ControlHandlerTest, ShutdownTouchesRegistryLastActivity)
 // Downstream failures must not be reported as success
 // =============================================================================
 
-TEST(ControlHandlerTest, NotifyWithNoCachedGroupsReturns500OnWdbError)
+TEST(ControlHandlerTest, NotifyWithNoCachedGroupsReturns503OnWdbError)
 {
     // Nothing cached and wazuh-db down: "default" here would be a wrong answer served as
     // authoritative, which is what every agent gets after a restart with wazuh-db down.

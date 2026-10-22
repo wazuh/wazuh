@@ -83,6 +83,9 @@ class MarkdownGenerator(IExporter):
         (booleans and arrays included), so the subset only refines a number or a string.
         """
         arg_type, generate = info.arg_type, info.generate
+        # A documentation-only `accepted_values` text overrides the one derived from the type.
+        if getattr(info, "accepted_values", None):
+            return info.accepted_values
         if isinstance(arg_type, list):
             return "Any value of the listed types"
         if generate == "all":

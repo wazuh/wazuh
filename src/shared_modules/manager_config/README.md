@@ -55,10 +55,14 @@ credential resolver (`src/init/credentials/wazuh-manager-resolve-credentials.py`
   crash for those; there is no more general re-validation of the effective document.
 - **Defaults algorithm**: for every property of an object schema missing in the document, insert its
   `default` when declared (property or resolved `$ref`), else an empty object when it is an object schema; recurse into
-  object properties. Options without `default` (`remote.legacy.local_ip`, `remote.https.verification_mode`, `ciphers`,
-  `max_body_size`, `dual_stack`, `auth.legacy_enrollment`, `task-manager.wpk_repository`) stay absent: absence is
-  meaningful ("module default / inferred"); the required `cluster.key` and `indexer.hosts` have none either.
-- **Ports**: a disabled listener (`remote.legacy.enabled: no`, `auth.disabled: yes`) does not reserve its port;
+  object properties. Options without `default` (`remote.legacy.local_ip`, `remote.https.verification_mode`,
+  `auth.legacy_enrollment`, `task-manager.wpk_repository`) stay absent: absence is
+  meaningful ("module default / inferred"); the required `cluster.key` and `indexer.hosts` have none either. A
+  default the consuming module applies anyway is declared in the schema (`remote.https.ciphers`, `max_body_size`,
+  `dual_stack` carry remoted_module's built-in values), so the effective document shows what is in force.
+- **Ports**: a listener that binds nothing does not reserve its port: the legacy one unless
+  `remote.legacy.enabled`, and `auth.port` unless authd binds it — `auth.disabled: no`, `auth.remote_enrollment: yes`
+  and `auth.legacy_enrollment` (when unset, `remote.legacy.enabled`), the same condition authd applies.
   `remote.https.port` and `cluster.port` always do.
 - **Files**: `LoadOptions::checkFiles` (default on) resolves relative paths against `LoadOptions::home` and uses absolute
   ones as they are. The certificate/key defaults are absolute (`/etc/wazuh-manager/certs/...`, the fixed configuration

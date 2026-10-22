@@ -157,6 +157,7 @@ Abbreviated (`"..."` stands for keys left out):
     "stateless": { "count": 6000,   "p50": 2.0, "p90": 5.0, "p95": 8.0,  "p99": 20.0, "max": 90.0,  "avg": 3.1 },
     "notify":    { "count": 1500,   "p50": 1.2, "p90": 2.0, "p95": 3.0,  "p99": 5.5,  "max": 18.0,  "avg": 1.5 },
     "startup":   { "count": 100,    "p50": 2.0, "p90": 3.1, "p95": 4.0,  "p99": 6.0,  "max": 9.0,   "avg": 2.2 },
+    "shutdown":  { "count": 100,    "p50": 1.5, "p90": 2.4, "p95": 3.0,  "p99": 4.5,  "max": 7.0,   "avg": 1.7 },
     "scan":      { "count": 100,    "p50": 1.0, "p90": 1.8, "p95": 2.2,  "p99": 3.0,  "max": 5.0,   "avg": 1.1 },
     "cacerts":   { "count": 100,    "p50": 0.8, "p90": 1.2, "p95": 1.5,  "p99": 2.0,  "max": 4.0,   "avg": 0.9 },
     "enroll_https": { "count": 100, "p50": 6.0, "p90": 9.0, "p95": 11.0, "p99": 15.0, "max": 30.0,  "avg": 6.5 }
@@ -188,8 +189,8 @@ Abbreviated (`"..."` stands for keys left out):
   running.
 - `latency_ms` carries one histogram per request kind, never one merged number: a notify, a
   1000-document session and an engine batch belong to different distributions. The kinds are
-  `session`, `stateless`, `notify`, `startup`, `scan`, `cacerts` and `enroll_https` (no
-  `shutdown`), each `{count, p50, p90, p95, p99, max, avg}` in milliseconds, and a kind with no
+  `session`, `stateless`, `notify`, `startup`, `shutdown`, `scan`, `cacerts` and `enroll_https`,
+  each `{count, p50, p90, p95, p99, max, avg}` in milliseconds, and a kind with no
   sample is left out of that bucket. `throughput.sessions_per_second` counts `/stateful` attempts,
   and every `throughput` rate divides by `meta.duration_sec`.
 - `throughput.achieved_vs_target` is `null` when `requests_per_second: 0` (unlimited), since there
@@ -205,8 +206,8 @@ Abbreviated (`"..."` stands for keys left out):
   Notes on a few: `target` is the socket path in `uds` mode; `bootstrap` is `""` in `uds` mode;
   `agents_enrolled` counts identities obtained (synthesized ones in `uds` mode) and
   `agents_failed` is `0` or `1`, since the first failed enrollment aborts the run;
-  `keepalive_interval` echoes the scenario's value (`"0s"` when absent, although the loop then uses
-  10 s); `compression` is `"zstd"` or `""`; `sender_version` is `dev` unless the binary was built
+  `keepalive_interval` is the interval the keepalive loop uses — the scenario's value, `"10s"` when
+  it is absent or `0` (recorded even when no keepalive ran: see `control_enabled` and `mode`); `compression` is `"zstd"` or `""`; `sender_version` is `dev` unless the binary was built
   with `-ldflags "-X main.senderVersion=<version>"` (the Makefile's `build` target does not set
   it). `meta` does not record the VD worker count (the sender reads no server metric: state it in
   the report from the manager's configuration), `drain_timeout`, `repeat_until`, `--feed-timeout`

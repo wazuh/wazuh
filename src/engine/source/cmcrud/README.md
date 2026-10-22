@@ -243,7 +243,7 @@ No namespace is involved.
 1. **DECODER / FILTER**: adapt the payload, require `/id`, check the name prefix, call `validator->validateAssetShallow()`.
 2. **INTEGRATION**: `Integration::fromJson(…, requireUUID=true)` and a valid name part.
 3. **KVDB**: `KVDB::fromJson(…, requireUUID=true)` and a valid name part.
-4. Any other type (including **OUTPUT**) throws `Unsupported resource type`.
+4. Any other type (including **OUTPUT**) throws `Unsupported resource type`. The `POST /content/validate/resource` handler never reaches this case: it answers `Unsupported value for /type` for `output` as for an unknown type.
 
 ## CMake Targets
 

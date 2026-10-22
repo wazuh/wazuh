@@ -118,7 +118,9 @@ public:
      * @param integrations list of integration definitions in json format
      * @param policy policy definition in json format
      * @param softValidation if true, only check the most critical validations.
-     * @throws std::runtime_error on errors.
+     * @throws std::runtime_error on errors, including a failed asset, integration or policy validation when
+     * softValidation is false. The namespace is created before the resources, so on error the caller must
+     * delete it (cmsync does).
      */
     virtual void importNamespace(const cm::store::NamespaceId& nsId,
                                  const std::vector<json::Json>& kvdbs,

@@ -45,7 +45,9 @@ request per connection is the socket's contract), and `--no-reuse` turns it off 
 
 Load shape comes from independent knobs, and confusing them is the classic benchmark mistake:
 
-- **`concurrent_agents`** bounds how many agents are Active at once — the *concurrency*.
+- **`concurrent_agents`** bounds how many agents are Active at once — the *concurrency*. An agent
+  waiting for a slot is admitted when one frees up, unless the run has been cancelled by then: a
+  cancelled run admits no one else.
 - **`requests_per_second`** bounds the aggregate request rate through one shared leaky bucket
   (`golang.org/x/time/rate`, burst 1) — the *throughput target*. It charges `/stateful` sessions,
   deletes, `/scan/vd`, `/cacerts` and measured `/enroll` requests. One session = one token no matter

@@ -98,7 +98,7 @@ def constraints(node, required):
     if 'enum' in items:
         parts.append('items one of ' + ', '.join(f'`{value}`' for value in items['enum']))
     if 'pattern' in items:
-        parts.append('items match `' + items['pattern'].replace('|', '\\|') + '`')
+        parts.append('items match `' + items['pattern'] + '`')
     if items.get('minLength') == 1:
         parts.append('items not empty')
     elif 'minLength' in items:
@@ -118,7 +118,7 @@ def constraints(node, required):
     if node.get('uniqueItems'):
         parts.append('unique')
     if 'pattern' in node:
-        parts.append('`' + node['pattern'].replace('|', '\\|') + '`')
+        parts.append('`' + node['pattern'] + '`')
     if required:
         parts.append('**required**')
     return '; '.join(parts)

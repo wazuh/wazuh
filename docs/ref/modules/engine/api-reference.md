@@ -23,7 +23,7 @@ These apply to every route on `engine-api-http.sock`:
 - Request bodies are JSON. Unknown fields are ignored, and an empty body is read as an empty request.
   A body that does not parse is rejected with 400 and `Failed to parse protobuff json request: <details>`.
 - Responses carry a JSON body with a `status` field (`OK` or `ERROR`) and, on error, an `error` message.
-  The server labels these bodies `Content-Type: plain/text`, not `application/json`.
+  The server labels these bodies `Content-Type: application/json`.
 - Validation failures are 400. A handler whose backing component is gone answers 500 with
   `Error: Handler is not initialized`; an exception escaping a handler is answered 500 with the plain-text
   body `Internal server error`.

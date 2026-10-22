@@ -92,9 +92,10 @@ Specifies the port to use for cluster communications.
 - **Note:** The range is enforced by the configuration schema on every load,
   so a value outside it fails validation (`(1244): Invalid configuration at
   '/cluster/port'`) before any daemon starts. The port must also differ from the
-  other manager listener ports (`remote.https.port`, `auth.port` unless
-  `auth.disabled` is set, and `remote.legacy.port` when the legacy listener is
-  enabled); a collision fails validation at `'/cluster/port'` with `port <n> is
+  other manager listener ports (`remote.https.port`, `auth.port` while authd's
+  port-1515 listener starts — see
+  [`auth.legacy_enrollment`](../authd/configuration.md#legacy_enrollment) — and
+  `remote.legacy.port` when the legacy listener is enabled); a collision fails validation at `'/cluster/port'` with `port <n> is
   already used by <pointer>`. The master
   listens on it; workers connect to it.
 
@@ -205,7 +206,9 @@ The cluster daemon supports the following internal option:
 wazuh_clusterd.debug=0
 ```
 
-When it is non-zero it takes precedence over the daemon's `-d` flag.
+When it is non-zero it takes precedence over the daemon's `-d` flag; when it is absent or `0`, the `-d`
+level applies. A value that is not a digit or is outside `0`–`2` makes `wazuh-manager-clusterd` print
+an error and exit with status `1`, so `wazuh-manager-control start` refuses the configuration.
 
 ---
 

@@ -7,6 +7,7 @@
 #include <api/adapter/baseHandler_test.hpp>
 #include <api/event/handlers.hpp>
 #include <api/event/ndJsonParser.hpp>
+#include <base/json.hpp>
 #include <dumper/mockDumper.hpp>
 #include <fastmetrics/registry.hpp>
 #include <router/mockRouter.hpp>
@@ -34,6 +35,14 @@ std::shared_ptr<agentcache::AgentMetadataCache> makeAgentMetadataCache()
 
 // Build the same error JSON the handler builds, but without hardcoding the parser message.
 // This keeps the test resilient to tweaks in parseNDJson() error wording.
+std::string makeBadRequestBody(std::string_view message)
+{
+    json::Json body;
+    body.setString(message, "/error");
+    body.setInt(400, "/code");
+    return body.str();
+}
+
 std::string makeBadRequestBodyFromParser(std::string_view body)
 {
     try
@@ -43,15 +52,11 @@ std::string makeBadRequestBodyFromParser(std::string_view body)
         protocol::parseNDJson(body, noop, makeAgentMetadataCache());
 
         // If it didn't throw, this helper was used incorrectly for a "bad request" test.
-        return "{\"error\": \"Expected parser error but parseNDJson() succeeded\", \"code\": 400}";
+        return makeBadRequestBody("Expected parser error but parseNDJson() succeeded");
     }
     catch (const std::exception& e)
     {
-        std::string out;
-        out += "{\"error\": \"";
-        out += e.what();
-        out += "\", \"code\": 400}";
-        return out;
+        return makeBadRequestBody(e.what());
     }
 }
 } // namespace
@@ -237,3 +242,28 @@ INSTANTIATE_TEST_SUITE_P(Api,
                                      return res;
                                  },
                                  [](auto& mock) { EXPECT_CALL(mock, postEvent(testing::_)).Times(2); })));
+
+// The 400 body is valid JSON even when the error message contains a double quote
+TEST(EventHandlerErrorBodyTest, BadRequestBodyEscapesQuotes)
+{
+    auto orchestrator = std::make_shared<testing::NiceMock<MockRouterAPI>>();
+    EXPECT_CALL(*orchestrator, postEvent(testing::_))
+        .WillOnce(testing::Throw(std::runtime_error {"bad \"quoted\" value"}));
+    auto dumper = std::make_shared<testing::NiceMock<dumper::mocks::MockDumper>>();
+
+    auto handler = pushEvent(orchestrator, dumper, makeAgentMetadataCache());
+
+    httplib::Request req;
+    req.body = std::string("H ") + HDR1 + "\n" + "E " + EV1 + "\n";
+    httplib::Response res;
+    handler(req, res);
+
+    EXPECT_EQ(res.status, httplib::StatusCode::BadRequest_400);
+
+    json::Json body;
+    ASSERT_NO_THROW(body = json::Json {res.body.c_str()});
+    std::string error;
+    ASSERT_EQ(body.getString(error, "/error"), json::RetGet::Success);
+    EXPECT_NE(error.find("bad \"quoted\" value"), std::string::npos);
+    EXPECT_EQ(body.getInt("/code"), 400);
+}

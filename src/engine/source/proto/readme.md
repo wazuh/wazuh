@@ -168,7 +168,7 @@ cmake -DENGINE_GENERATE_PROTO=ON src/build
 cmake --build src/build --target generate_protobuf_code
 ```
 
-The option sticks in the CMake cache, and while it is `ON` every `eMessages` build regenerates the code first; reconfigure with `-DENGINE_GENERATE_PROTO=OFF` when done. There is no `CMakePresets.json` in the tree, so the `cmake --preset debug …` hint that `generateCode.sh` prints does not work.
+The option sticks in the CMake cache, and while it is `ON` every `eMessages` build regenerates the code first; reconfigure with `-DENGINE_GENERATE_PROTO=OFF` when done.
 
 Both the C++ `.pb.h/.pb.cc` files and Python `_pb2.py/.pyi` files **must be committed** to the repository after regeneration.
 

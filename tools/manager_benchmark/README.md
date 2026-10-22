@@ -224,11 +224,12 @@ policy it was installed with**. `prepare_manager.sh` does three things; the firs
 nothing, and the third removes a rate ceiling deliberately:
 
 1. makes remote enrollment reachable: `<auth>` gets `disabled=no`, `remote_enrollment=yes`. The
-   `/enroll` route is always registered, but it answers `403` unless both hold. Do not pass the
-   script's `--max-agents`: it writes an `<auth><max_agents>` element the configuration schema
-   rejects (`auth` allows no unknown option), so the next start refuses the configuration; the
-   enrollment cap is the internal option `authd.max_agents` in
-   `/etc/wazuh-manager/wazuh-manager-internal-options.conf`;
+   `/enroll` route is always registered, but it answers `403` unless both hold. `--max-agents N`
+   also sets the enrollment cap, which is not a configuration-file option: the script writes the
+   internal option `authd.max_agents=N` (an integer in `[0, 2147483647]`, `0` = no limit, the
+   default) to `/etc/wazuh-manager/wazuh-manager-internal-options.conf` (`--internal-options PATH`
+   names another file), replacing an earlier value, and removes a stale `<auth><max_agents>` element an earlier version of the script wrote
+   (the schema refuses it, so it would keep the manager from starting);
 2. mints **one multi-use enrollment token** for the fleet (`wazuh-manager-authd
    --create-enrollment-token`, authd's defaults: 30 days, unlimited uses) and writes it to
    `.enrollment_token` next to the script, which `run_benchmark.sh` picks up by itself;
@@ -271,20 +272,22 @@ runs are never confused for one another.
 ### The Server API password
 
 `cleanup_agents.sh` (which `run_benchmark.sh` and `run_matrix.sh` call before every agent-mode
-run) authenticates as `WAZUH_API_USER` (default `wazuh`) with `WAZUH_API_PASS`, whose default
-`wazuh` is not what a 5.x installation uses: the install generates the `wazuh` user's password and
-publishes it as `WAZUH_MANAGER_API_PASSWORD` in `/etc/wazuh-manager/export/credentials.env`
-(root-only; see
-[Credentials](../../docs/ref/getting-started/credentials.md)). Export it before running:
+run) authenticates as `WAZUH_API_USER` (default `wazuh`). Its password has no default, because a
+5.x installation generates the `wazuh` user's password and publishes it as
+`WAZUH_MANAGER_API_PASSWORD` in `/etc/wazuh-manager/export/credentials.env` (root-only; see
+[Credentials](../../docs/ref/getting-started/credentials.md)). The script takes the first of
+`WAZUH_API_PASS`, `WAZUH_MANAGER_API_PASSWORD`, and that file's line when the caller can read it
+(under `sudo`). For an unprivileged run, export it once:
 
 ```bash
 export WAZUH_API_PASS="$(sudo sed -n 's/^WAZUH_MANAGER_API_PASSWORD=//p' /etc/wazuh-manager/export/credentials.env)"
 ```
 
-Without it the pre-run cleanup prints `(skipped — API not reachable)` and the previous run's
-`bench-*` agents stay, so re-enrolling the same names fails with "Duplicate agent name" (authd's
-`<auth><force>` policy refuses to replace an agent registered less than `after_registration_time`,
-1 h by default, ago).
+Without a password, with one the API refuses (`401`), or with the API down, the script prints why
+and exits 1; `run_benchmark.sh` and `run_matrix.sh` then print a `WARNING: pre-run cleanup FAILED`
+on stderr and run anyway. The previous run's `bench-*` agents then stay, so re-enrolling the same
+names fails with "Duplicate agent name" (authd's `<auth><force>` policy refuses to replace an agent
+registered less than `after_registration_time`, 1 h by default, ago).
 
 ## Inspecting a run's indexed data (agent mode)
 
@@ -324,8 +327,8 @@ run exits. Pair it with `--keep-agents` so the documents survive after that too:
 | `run_benchmark.sh` | Orchestrates one run end to end (monitor + sender + summary + charts) |
 | `prepare_manager.sh` | Makes remote enrollment reachable, mints the fleet's enrollment token and clears the two unauthenticated routes' rate limits (idempotent); `--open-1515` for the legacy bootstrap, `--keep-rate-limits` to benchmark the limiter |
 | `scrape_metrics.sh` | Wrapper around `bench_collect.py`, the collector the monitor also runs — same loop, same validation, same lines. Only started automatically when the monitor cannot run (it needs psutil) |
-| `cleanup_agents.sh` | Deletes only `bench-*` agents via the Server API (never a real one); `--all` deletes every agent. Credentials come from `WAZUH_API_URL`, `WAZUH_API_USER` and `WAZUH_API_PASS` (see below) |
-| `indexer_control.sh` | Start/stop/health the local `wazuh-indexer` (e.g. an indexer-down scenario) |
+| `cleanup_agents.sh` | Deletes only `bench-*` agents via the Server API (never a real one); `--all` deletes every agent. Credentials come from `WAZUH_API_URL`, `WAZUH_API_USER` and `WAZUH_API_PASS` (or the published `WAZUH_MANAGER_API_PASSWORD`, see below); exits 1 when it cannot authenticate |
+| `indexer_control.sh` | Start/stop/health the local `wazuh-indexer`, by hand (no script calls it), e.g. to stop it during a run and observe the manager with the indexer down |
 | `result_summary.py` | Collates a run's artifacts into `summary.json` — every daemon's metric deltas, every process's resource aggregates, the scenario's verdict (descriptive only, no pass/fail) |
 | `run_matrix.sh` | Runs the whole matrix the load report is built from |
 | `make_report_tables.py` | Turns the resulting `results_*/` into the report's tables |

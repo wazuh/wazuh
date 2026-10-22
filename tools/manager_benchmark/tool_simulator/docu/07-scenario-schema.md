@@ -3,10 +3,10 @@
 A scenario is one JSON file: it fully determines a run, so a run is reproducible from the file plus
 the CLI overrides recorded with the artifacts. The sender validates it up front
 (`internal/scenario/loader.go`, plus `internal/verdict` for `expected`) and refuses to start (exit
-`2`) on an unknown field, an unknown step kind, an unknown `expected` counter or operator, or a
-referenced file that does not exist — a typo must not silently produce a different measurement.
-Values of the free-text fields (`module`, `option`, `checksum`, `raw`) are not checked; what an
-unrecognized one builds is said below.
+`2`) on an unknown field, an unknown step kind, an unknown `option`, an unknown `expected` counter
+or operator, or a referenced file that does not exist — a typo must not silently produce a
+different measurement. Values of the free-text fields (`module`, `checksum`, `raw`) are not checked;
+what an unrecognized one builds is said below.
 
 The model is **lanes and fleets**, so that a single run can put *heterogeneous* load on the manager
 at once — the realistic case, where a Windows fleet and a Linux fleet each run several modules in
@@ -78,7 +78,7 @@ production-shaped pressure.
 
 | Field | Meaning |
 |---|---|
-| `module`, `option` | Fallbacks for a step that leaves them unset ([05](05-flatbuffers-messages.md#start)) |
+| `module`, `option` | Fallbacks for a step that leaves them unset ([05](05-flatbuffers-messages.md#start)). `option`, here and on a step, is `Sync`, `VDFirst` or `VDSync` (lower case accepted) or absent; any other value is refused |
 | `cluster_name` | The cluster every session declares, unless `--cluster` overrides it (see the conventions) |
 | `documents` | `{count, size_bytes}` fallback for a step with no `documents` |
 | `control` | The `/control` traffic (agent mode only), below |
@@ -90,7 +90,7 @@ production-shaped pressure.
 | Field | Default | Meaning |
 |---|---|---|
 | `enabled` | `false` | Send `startup`, the `notify` keepalives and `shutdown` per agent. Off, an agent-mode run sends no control traffic beyond the readiness probe ([06](06-agent-state-machine.md)) |
-| `keepalive_interval` | `10s` (also for `0`) | Interval between one agent's notifies |
+| `keepalive_interval` | `10s` (also for `0`) | Interval between one agent's notifies; the effective value is what `meta.keepalive_interval` records ([09](09-metrics-and-output.md)) |
 | `send_host_info` | `false` | Add the `host` block to every notify (the expensive variant a real agent sends) |
 | `startup_version` | `5.0.0` | `version` of `startup`, and `agent.version` of every notify |
 
@@ -126,7 +126,7 @@ independent.
 
 | `kind` | Session built | Notes |
 |---|---|---|
-| `delta` | `ModuleDelta` + `SyncData` | `documents` (or `defaults.documents`) controls count and size, or a `dump` replays a capture (below); `checksum.hash.sha1` is always present — see the conventions; `contexts` **MAY** add VD context items; `option` picks `Sync`/`VDFirst`/`VDSync`; for `VDFirst`/`VDSync`, `feed_offset` **MAY** override `Start.feed_offset` (see [05](05-flatbuffers-messages.md)) |
+| `delta` | `ModuleDelta` + `SyncData` | `documents` (or `defaults.documents`) controls count and size, or a `dump` replays a capture (below); `checksum.hash.sha1` is always present — see the conventions; `contexts` **MAY** add VD context items; `option` picks `Sync`/`VDFirst`/`VDSync` (any other value is refused at load); for `VDFirst`/`VDSync`, `feed_offset` **MAY** override `Start.feed_offset` (see [05](05-flatbuffers-messages.md)) |
 | `cleans` | `ModuleDelta` + `Cleans` | Cleans the step's `indices`, else `wazuh-states-inventory-packages` |
 | `checksum` | `ModuleCheck` + `ChecksumModule` | On the step's first index (`wazuh-states-inventory-packages` by default). `checksum` is `"correct"` or absent (the aggregate over the documents a `delta` of the same lane, module and `documents` spec generates — so it matches when that is what the agent sent), `"mismatch"` (40 zeros), or any other string sent as is |
 | `metadata` / `groups` | `MetadataDelta` / `GroupDelta` | Start-only; the loader requires `indices`. Set `global_version` too: the server needs it for these modes, but the loader does not check it. The `*Check` variants cannot be built from a scenario |

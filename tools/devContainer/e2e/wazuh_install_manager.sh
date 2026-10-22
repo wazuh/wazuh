@@ -4,14 +4,15 @@
 # install/start logs, the certificates, and a parseable verification (wazuh_verify_manager.sh).
 #
 # DESTRUCTIVE: mode fresh stops and PURGES the manager at --dir (default /var/wazuh-manager) with
-# tools/purge_wazuh.sh; mode sandbox removes --dir. It refuses to run without --yes.
+# tools/purge_wazuh.sh (a custom --dir too, handed to it as WAZUH_HOME, and only when it holds a
+# manager installation or is empty); mode sandbox removes --dir. It refuses to run without --yes.
 #
 # Steps (each one is marked "=== <step> <ISO-8601>" in --out/install.log):
-#   0. provenance of the installed manager (/etc/wazuh-manager/.install-provenance) and, with --before-hook, that
+#   0. provenance of the installed manager (<dir>/.install-provenance) and, with --before-hook, that
 #      script run against it — the "before" of a before/after comparison; --snapshot tars bin/ lib/
 #   1. build-tree guard: src/build must not carry UNIT_TEST / ENGINE_ENABLE_*SAN / ENGINE_BUILD_TEST
 #      (a test or sanitizer tree is never what gets installed)
-#   2. stop + purge (fresh) or rm -rf of the sandbox dir (sandbox; never an existing dir)
+#   2. stop + purge (fresh) or rm -rf of an existing sandbox dir (sandbox)
 #   3. ./install.sh unattended (USER_* variables, stdin from /dev/null; binary-install with --skip-build)
 #   3b. the three manager credentials from the e2e .credentials.env exported to install.sh's environment
 #      (the package resolver validates and stores them; API+WUI published, indexer password keystore-only;
@@ -22,7 +23,9 @@
 #      e2e CA's certificate in ca/ and republishes it; init.sh also opens the remoted listeners to 0.0.0.0 for docker agents
 #   4b. indexer credential in the keystore: manual override only (INDEXER_USER/INDEXER_PASSWORD); the
 #      default path is 3b — the resolver stores the env-supplied WAZUH_INDEXER_MANAGER_PASSWORD itself
-#   5. /etc/wazuh-manager/.install-provenance written; start.mark = byte offset of the log before `start`
+#   5. <dir>/.install-provenance written -- a dev-only marker beside the binaries it describes, never
+#      part of a package's tree (manager_base.csv does not list it); start.mark = byte offset of the
+#      log before `start`
 #   6. wazuh-manager-control start, output to a FILE (never a pipe: the daemons inherit it)
 #   7. wazuh_verify_manager.sh, then --before-hook again as the "after"
 #   8. --out/manifest.md
@@ -41,10 +44,13 @@ Usage: sudo $0 --yes [--mode fresh|sandbox] [--dir DIR] [--out DIR] [--before-ho
                      [--https-port N] [--legacy-port N] [-h|--help]
 
   --yes               required: acknowledges that --dir will be purged (fresh) or removed (sandbox)
-  --mode fresh        purge + install into --dir (default /var/wazuh-manager), system service registered
+  --mode fresh        purge + install into --dir (default /var/wazuh-manager), system service registered;
+                      the purge (tools/purge_wazuh.sh) removes every Wazuh installation on the host,
+                      /etc/wazuh-manager and a custom --dir, which must be absent, empty or a manager
+                      installation (bin/wazuh-manager-control) -- anything else is refused
   --mode sandbox      install into --dir (default \$TMP_CLEAN_ENV/wazuh-manager) with USER_REGISTER_SERVICE=n;
-                      the basename MUST be wazuh-manager; the dir must NOT exist (reinstalling into an
-                      existing sandbox wipes the registered manager's framework/)
+                      the basename MUST be wazuh-manager; an existing dir is stopped and REMOVED first, so
+                      the install never takes install.sh's update path
   --dir DIR           installation directory (see --mode)
   --out DIR           evidence directory (default \$TMPDIR/wazuh-e2e-evidence/<timestamp>)
   --before-hook S     script run with WAZUH_MANAGER_HOME=DIR against the installed manager BEFORE the
@@ -99,6 +105,22 @@ case "$MODE" in
            [ "$DIR" != "/var/wazuh-manager" ] || die "sandbox mode cannot target /var/wazuh-manager (use --mode fresh)" ;;
   *) die "unknown --mode $MODE" ;;
 esac
+case "$DIR" in
+  /?*) ;;
+  *) die "--dir must be an absolute path other than /: $DIR" ;;
+esac
+# fresh: purge_wazuh.sh removes /var/wazuh-manager by itself; a custom --dir is purged only when it
+# is plainly a manager installation (or empty), so a typo never hands an unrelated tree to rm -rf.
+PURGE_HOME=""
+if [ "$MODE" = fresh ] && [ "$DIR" != "/var/wazuh-manager" ] && [ -e "$DIR" ]; then
+  if [ -x "$DIR/bin/wazuh-manager-control" ]; then
+    PURGE_HOME="$DIR"
+  elif [ -d "$DIR" ] && [ -z "$(ls -A "$DIR" 2>/dev/null)" ]; then
+    PURGE_HOME="$DIR"
+  else
+    die "--dir $DIR exists but is not a manager installation (no bin/wazuh-manager-control); refusing to purge it"
+  fi
+fi
 [ -f "$REPO_DIR/install.sh" ] || die "no install.sh in $REPO_DIR (set WAZUH_REPO)"
 [ -z "$HOOK" ] || [ -x "$HOOK" ] || die "--before-hook $HOOK is not executable"
 
@@ -129,9 +151,12 @@ log "# branch=$BRANCH head=$HEAD base=origin/$BASE merge_base=$MERGE_BASE out=$O
 # ---------------------------------------------------------------- 0. the "before"
 step "before"
 BEFORE_PROV="none (no manager at $DIR)"
+# A dev-only marker kept with the home it describes (not in /etc/wazuh-manager, which every
+# --dir shares, and which no package lists).
+PROV="$DIR/.install-provenance"
 if [ -x "$CTRL" ]; then
-  if [ -f "$CONF_DIR/.install-provenance" ]; then
-    BEFORE_PROV=$(tr '\n' ' ' < "$CONF_DIR/.install-provenance")
+  if [ -f "$PROV" ]; then
+    BEFORE_PROV=$(tr '\n' ' ' < "$PROV")
   else
     BEFORE_PROV="head=unknown installed=$(stat -c %y "$DIR/bin/wazuh-manager-remoted" 2>/dev/null | cut -d. -f1 | tr ' ' T) (no .install-provenance; NOT necessarily the merge-base)"
   fi
@@ -172,8 +197,14 @@ step "purge"
 if [ "$MODE" = fresh ]; then
   [ -x "$CTRL" ] && { "$CTRL" stop >>"$LOG" 2>&1 || true; }
   [ -x "$REPO_DIR/tools/purge_wazuh.sh" ] || die "tools/purge_wazuh.sh missing"
-  "$REPO_DIR/tools/purge_wazuh.sh" >>"$LOG" 2>&1
+  # WAZUH_HOME adds a custom --dir to the directories purge_wazuh.sh removes (validated above).
+  if [ -n "$PURGE_HOME" ]; then
+    WAZUH_HOME="$PURGE_HOME" "$REPO_DIR/tools/purge_wazuh.sh" >>"$LOG" 2>&1
+  else
+    "$REPO_DIR/tools/purge_wazuh.sh" >>"$LOG" 2>&1
+  fi
   log "purge rc=$?"
+  [ ! -e "$DIR" ] || log "WARNING: $DIR still exists after the purge (a mount point?); install.sh's USER_DELETE_DIR=y clears it"
 else
   if [ -d "$DIR" ]; then
     [ -x "$CTRL" ] && { "$CTRL" stop >>"$LOG" 2>&1 || true; }
@@ -263,7 +294,8 @@ chown -R wazuh-manager:wazuh-manager "$DIR/queue/keystore"
 
 # ---------------------------------------------------------------- 5. provenance + start mark
 step "provenance"
-PROV="$CONF_DIR/.install-provenance"
+# Where an earlier version of this script wrote it: shared by every --dir, so drop it.
+rm -f "$CONF_DIR/.install-provenance"
 {
   echo "head=$HEAD"; echo "branch=$BRANCH"; echo "merge_base=$MERGE_BASE"; echo "base=origin/$BASE"
   echo "date=$(now)"; echo "mode=$MODE"; echo "installer=wazuh_install_manager.sh"; echo "build_tree=src/build"

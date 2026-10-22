@@ -140,8 +140,13 @@ namespace remoted::control
                 }
                 else
                 {
-                    m_queue.push({command, std::move(callback)});
-                    m_cv.notify_one();
+                    m_queue.push({command,
+                                  std::move(callback),
+                                  std::chrono::steady_clock::now() + std::chrono::milliseconds(m_deadlineMs)});
+                    // notify_all, not notify_one: a worker in its reconnect backoff shares this
+                    // condition variable (it wakes to re-arm on the new request's deadline), so a
+                    // single wake-up could land on it and leave the connected workers asleep.
+                    m_cv.notify_all();
                 }
             }
             if (reject)
@@ -164,7 +169,71 @@ namespace remoted::control
         {
             std::string command;
             std::function<void(SocketError, const std::string&)> callback;
+            // Enqueue time + the round-trip deadline. Enforced only while wdb.sock is
+            // unreachable (see backoffExpiringQueued); a connected worker times the round trip
+            // from the send instead. The deadline is the same for every request, so the queue is
+            // ordered by it.
+            std::chrono::steady_clock::time_point expiresAt;
         };
+
+        void failWithTimeout(const std::function<void(SocketError, const std::string&)>& callback)
+        {
+            incWdbError(m_metrics);
+            if (const auto throttle = timeoutThrottle().record())
+            {
+                LOGFN_WARN(logFn(),
+                           "WazuhDB query timeout (deadline=%u ms): %llu timeout(s) in the last %d s.",
+                           m_deadlineMs,
+                           throttle.total,
+                           remoted::common::LogThrottle::kDefaultWindowSeconds);
+            }
+            callback(SocketError::Timeout, "");
+        }
+
+        // Fails every queued request whose deadline has passed, with the same outcome as a
+        // send-time timeout. Callbacks run outside the lock.
+        void expireQueued()
+        {
+            std::vector<std::function<void(SocketError, const std::string&)>> expired;
+            {
+                std::lock_guard<std::mutex> lock(m_mutex);
+                const auto now = std::chrono::steady_clock::now();
+                while (!m_queue.empty() && m_queue.front().expiresAt <= now)
+                {
+                    expired.push_back(std::move(m_queue.front().callback));
+                    m_queue.pop();
+                }
+            }
+            for (const auto& callback : expired)
+            {
+                failWithTimeout(callback);
+            }
+        }
+
+        // Reconnect backoff while wdb.sock is unreachable. Interruptible: wakes immediately on
+        // stop, and at each queued request's deadline, so a request does not wait for wazuh-db
+        // to come back (or for the queue to overflow) past its deadline.
+        void backoffExpiringQueued(std::chrono::steady_clock::time_point retryAt)
+        {
+            while (!m_stopping.load())
+            {
+                expireQueued();
+
+                std::unique_lock<std::mutex> lock(m_mutex);
+                if (m_stopping.load() || std::chrono::steady_clock::now() >= retryAt)
+                {
+                    return;
+                }
+                auto wakeAt = retryAt;
+                if (!m_queue.empty() && m_queue.front().expiresAt < wakeAt)
+                {
+                    wakeAt = m_queue.front().expiresAt;
+                }
+                // No predicate: a new request also wakes this wait, so the loop re-arms on its
+                // deadline.
+                m_cv.wait_until(lock, wakeAt);
+            }
+        }
 
         void workerLoop()
         {
@@ -215,9 +284,7 @@ namespace remoted::control
                 {
                     if (!connectClient())
                     {
-                        // Interruptible backoff: wake immediately on stop.
-                        std::unique_lock<std::mutex> lock(m_mutex);
-                        m_cv.wait_for(lock, std::chrono::seconds(1), [this] { return m_stopping.load(); });
+                        backoffExpiringQueued(std::chrono::steady_clock::now() + std::chrono::seconds(1));
                         continue;
                     }
                     needsReconnect = false;
@@ -267,16 +334,7 @@ namespace remoted::control
                     }
                     else
                     {
-                        incWdbError(m_metrics);
-                        if (const auto throttle = timeoutThrottle().record())
-                        {
-                            LOGFN_WARN(logFn(),
-                                       "WazuhDB query timeout (deadline=%u ms): %llu timeout(s) in the last %d s.",
-                                       m_deadlineMs,
-                                       throttle.total,
-                                       remoted::common::LogThrottle::kDefaultWindowSeconds);
-                        }
-                        req.callback(SocketError::Timeout, "");
+                        failWithTimeout(req.callback);
                         needsReconnect = true;
                     }
                 }

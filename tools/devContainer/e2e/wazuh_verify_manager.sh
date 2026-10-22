@@ -159,7 +159,7 @@ if [ "$WRITE_MANIFEST" -eq 1 ]; then
     echo "mode: verify"
     echo "manager.home: $HOME_DIR"
     echo "remoted.https: port=$PORT prefix=${PFX:-/}"
-    [ -f "$CONF_DIR/.install-provenance" ] && sed 's/^/installed./' "$CONF_DIR/.install-provenance"
+    [ -f "$HOME_DIR/.install-provenance" ] && sed 's/^/installed./' "$HOME_DIR/.install-provenance"
     echo
     echo "| # | check | verdict | got / reason |"
     echo "|---|---|---|---|"

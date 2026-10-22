@@ -112,8 +112,10 @@ options:
 
 `init` copies the configuration file into `<environment>/config.env` (replacing the path placeholder with
 the environment directory), seeds the enrichment and geo store documents, copies `testdb-asn.mmdb` and
-`testdb-city.mmdb` into `<environment>/geo/`, creates the test KVDB, and starts and stops the engine binary
-`<environment>/wazuh-engine` (placed there by `setupEnvironment.py`) once.
+`testdb-city.mmdb` into `<environment>/geo/`, writes the KVDB seed file `<environment>/tmp/kvdb_test.json`
+(`run` refuses to start without it; the KVDB resource the tests use is created through the API by `run`
+itself), and starts and stops the engine binary `<environment>/wazuh-engine` (placed there by
+`setupEnvironment.py`) once.
 
 ## validate
 
@@ -306,6 +308,20 @@ restrictions:
     - testing
     forbidden:
     - testing2
+```
+
+### Accepted values (documentation only)
+`generate-doc` fills an argument's "Accepted values" column from its `restrictions`, or else from its type
+and *generate* subset (`Any IP`, `Any string`, ...). When that text would be wrong because the generated
+values are only a subset of what the helper accepts, set `accepted_values` to the text to print. The test
+generator ignores it.
+
+```
+mask:
+    type: string
+    generate: ip
+    source: value
+    accepted_values: Dotted-decimal mask or prefix length (`0` to `32`)
 ```
 
 ## General restrictions property

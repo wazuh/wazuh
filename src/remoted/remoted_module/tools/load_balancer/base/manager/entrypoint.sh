@@ -23,18 +23,39 @@ echo "[entrypoint] $NODE_NAME ($NODE_TYPE), master at $MASTER_ADDR"
 # ---------------------------------------------------------------- certificates
 # Mounted read-only at /lab-certs by the compose file. Each node has its OWN leaf,
 # which is what a real deployment has: cluster.json does not replicate certs/.
-# Installed layout: dir root:wazuh-manager 0750, every PEM root:wazuh-manager 0640 (the
-# daemons read them through the group after dropping privileges).
+#
+# The package's credential resolver already ran at `dpkg -i` (image build): it minted a CA
+# of its own in ca/ and issued remoted/apid pairs from it. Every start then checks that
+# certs/root-ca.pem contains ca/root-ca.pem and that every pair chains to that CA, so the lab
+# PKI cannot just be copied over certs/ -- the start would be refused ("Invalid credentials").
+# Instead this follows the documented path for certificates issued elsewhere, when the install
+# minted a CA first (docs/ref/getting-started/installation.md#using-certificates-issued-elsewhere):
+#   - the minted CA's key and mint marker go, and the lab CA takes ca/root-ca.pem (root:root
+#     0644 in a root:root 0700 directory). Its key is not staged: nothing is issued on a node;
+#   - certs/root-ca.pem (the agents' bundle) is the lab CA;
+#   - remoted AND apid serve the node's lab leaf: the minted pairs no longer chain, and the
+#     resolver never reissues a pair outside an install.
+# Installed layout: certs/ root:wazuh-manager exactly 0750, every PEM root:wazuh-manager 0640
+# (the daemons read them through the group after dropping privileges). Re-run on every boot:
+# each step converges.
 CERTSRC="/lab-certs/$NODE_NAME"
 if [[ -d "$CERTSRC" ]]; then
+    install -d -m 700 -o root -g root "$CONF_DIR/ca"
+    rm -f "$CONF_DIR/ca/root-ca.key" "$CONF_DIR/ca/.wazuh-manager-bootstrap-ca"
+    install -o root -g root -m 644 "/lab-certs/root-ca.pem" "$CONF_DIR/ca/root-ca.pem"
+
     install -d -m 750 -o root -g wazuh-manager "$CONF_DIR/certs"
-    install -o root -g wazuh-manager -m 640 "$CERTSRC/node.pem"              "$CONF_DIR/certs/remoted.pem"
-    install -o root -g wazuh-manager -m 640 "$CERTSRC/node-key.pem"          "$CONF_DIR/certs/remoted-key.pem"
     install -o root -g wazuh-manager -m 640 "/lab-certs/root-ca.pem"         "$CONF_DIR/certs/root-ca.pem"
+    for pair in remoted apid; do
+        install -o root -g wazuh-manager -m 640 "$CERTSRC/node.pem"     "$CONF_DIR/certs/$pair.pem"
+        install -o root -g wazuh-manager -m 640 "$CERTSRC/node-key.pem" "$CONF_DIR/certs/$pair-key.pem"
+    done
+    echo "[entrypoint] lab CA staged in ca/ and certs/root-ca.pem; remoted and apid serve the node's leaf"
     echo "[entrypoint] listener certificate: $(openssl x509 -in "$CONF_DIR/certs/remoted.pem" -noout -subject | sed 's/.*CN *= *//')"
     echo "[entrypoint] SANs: $(openssl x509 -in "$CONF_DIR/certs/remoted.pem" -noout -ext subjectAltName | tail -1 | tr -s ' ')"
 else
-    echo "[entrypoint] !! no certificates at $CERTSRC" >&2
+    echo "[entrypoint] !! no certificates at $CERTSRC: the start will be refused (the image's minted pairs" \
+         "are kept, but nothing the lab front ends trust)" >&2
 fi
 
 # ---------------------------------------------------------------- cluster
@@ -74,29 +95,39 @@ if [[ "$INDEXER_HOST" == "none" ]]; then
 fi
 sed -i "s|<host>https://127.0.0.1:9200</host>|<host>${INDEXER_HOST}</host>|" "$CONF"
 
+# The indexer trust is CONSUMED, never generated: every start is refused until
+# certs/indexer-ca.pem, the indexer-connector pair and WAZUH_INDEXER_MANAGER_PASSWORD resolve
+# ("Unresolved credentials"). A single-host install imports all three from
+# /etc/wazuh-indexer/export/; the lab's indexer is another container, so they are staged here
+# under the names the generated <indexer><ssl> block already uses -- the operator-staged path
+# of docs/ref/getting-started/installation.md (no import marker: validated, never replaced).
+#
 # The indexer authenticates the manager by client certificate, with admin.pem -- its DN is
-# the one opensearch.yml pins as plugins.security.authcz.admin_dn. A single-host install
-# points <indexer><ssl> straight at /etc/wazuh-indexer/certs/{root-ca,admin,admin-key}.pem
-# because both services share the filesystem. Here they are separate containers, so the same
-# three files are copied into the manager's own certs/ and referenced from there.
+# the one opensearch.yml pins as plugins.security.authcz.admin_dn -- and the CA is the lab's.
 if [[ -d /lab-certs-indexer ]]; then
+    install -o root -g wazuh-manager -m 640 /lab-certs-indexer/root-ca.pem \
+        "$CONF_DIR/certs/indexer-ca.pem"
     install -o root -g wazuh-manager -m 640 /lab-certs-indexer/admin.pem \
         "$CONF_DIR/certs/indexer-connector.pem"
     install -o root -g wazuh-manager -m 640 /lab-certs-indexer/admin-key.pem \
         "$CONF_DIR/certs/indexer-connector-key.pem"
+else
+    echo "[entrypoint] !! no /lab-certs-indexer: certs/indexer-ca.pem and the indexer-connector pair" \
+         "are missing, so the start will be refused" >&2
 fi
 
-# The engine REFUSES TO START if the indexer's TLS material is missing, even when the
-# indexer itself is unreachable and every request to it is going to fail anyway:
-#   ERROR: Could not initialize Indexer Connector: The CA root certificate file:
-#          '/etc/wazuh-indexer/certs/root-ca.pem' does not exist.
-# and without the engine, wazuh-manager-control aborts the startup before remoted.
-# So the connector is pointed at this lab's own material, which exists. See FINDINGS.md L-03.
-sed -i "/<indexer>/,/<\/indexer>/{
-    s|<ca>.*</ca>|<ca>$CONF_DIR/certs/root-ca.pem</ca>|
-    s|<certificate>.*</certificate>|<certificate>$CONF_DIR/certs/indexer-connector.pem</certificate>|
-    s|<key>.*</key>|<key>$CONF_DIR/certs/indexer-connector-key.pem</key>|
-}" "$CONF"
+# The password of the indexer's wazuh-manager user, through local.env (root, 0600, one link):
+# the resolver stores it in the keystore at the first start that finds none there, and never
+# replaces it afterwards. The lab indexer authenticates the manager by its client certificate,
+# so the default only has to satisfy the password rule (12-64 characters, upper and lower case,
+# a digit and a symbol); set LAB_INDEXER_MANAGER_PASSWORD to the indexer's real one when it has
+# a wazuh-manager user. A local.env already present (staged by a scenario) is left alone.
+if [[ ! -e "$CONF_DIR/local.env" ]]; then
+    install -m 600 -o root -g root /dev/null "$CONF_DIR/local.env"
+    printf "WAZUH_INDEXER_MANAGER_PASSWORD='%s'\n" "${LAB_INDEXER_MANAGER_PASSWORD:-Lab.Indexer.Passw0rd}" \
+        > "$CONF_DIR/local.env"
+    echo "[entrypoint] local.env written with the indexer password"
+fi
 
 # ---------------------------------------------------------------- enrollment password
 # use_password is yes in the shipped configuration. authd.pass IS cluster-synchronised,
@@ -119,7 +150,11 @@ if [[ -d /lab-overrides ]]; then
     done
 fi
 
-"$DIR/bin/wazuh-manager-control" start || true
+# A refused start (exit 1) leaves no daemon running; the reason is in the log tailed below
+# ("wazuh-manager-control: ERROR: ..." plus the resolver's MISSING/INVALID/UNSAFE lines).
+if ! "$DIR/bin/wazuh-manager-control" start; then
+    echo "[entrypoint] !! the manager did not start; see the resolver lines in the log below" >&2
+fi
 
 echo "[entrypoint] ---- listening ----"
 ss -ltnp 2>/dev/null | grep -E ':(1514|1515|1516|1517|55000)' || true

@@ -1,7 +1,7 @@
 # Engine test utils
 
 A Python library with utilities for the engine test tools (`engine-it`, `engine-helper-test`) and
-`engine-bench`. Its main module, `engine_handler`, starts and stops an engine process configured from a
+`engine-bench`. Its module, `engine_handler`, starts and stops an engine process configured from a
 `.env` file.
 
 ## Installation
@@ -57,8 +57,3 @@ The variables the engine reads are registered in `Conf::Conf` in `src/engine/sou
 test suites ship their own (`test/integration_tests/configuration_files/config.env`,
 `test/helper_tests/configuration_files/config.env`), which their `init` subcommands copy into the test
 environment.
-
-## API utils
-
-The `api_utils` module (`src/api_utils/commands.py`) imports protobuf modules that `api-communication` no
-longer ships (`policy_pb2`, `catalog_pb2`), so importing it fails. No tool uses it.

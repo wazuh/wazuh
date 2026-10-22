@@ -65,9 +65,10 @@ INSTANTIATE_TEST_SUITE_P(
     DateParse,
     HlpParseTest,
     ::testing::Values(
+        // %Z: MST is UTC-07:00, so 15:04:05 MST is 15:04:05 + 7h = 22:04:05 UTC (UTC = local time - offset)
         ParseT(SUCCESS,
                "Monday, 02-Jan-06 15:04:05 MST ###123",
-               j(fmt::format(R"({{"{}": "2006-01-02T08:04:05.000Z"}})", TARGET.substr(1))),
+               j(fmt::format(R"({{"{}": "2006-01-02T22:04:05.000Z"}})", TARGET.substr(1))),
                30,
                initAndGetDateParser(),
                {NAME, TARGET, {}, {"%A, %d-%b-%y %T %Z", "C"}}),
@@ -122,7 +123,8 @@ INSTANTIATE_TEST_SUITE_P(
                {NAME, TARGET, {}, {"%a %b %d %T %Y", "C"}}),
         ParseT(SUCCESS,
                "Mon Dec 26 16:15:55.103 MST 2016",
-               j(fmt::format(R"({{"{}": "2016-12-26T09:15:55.103Z"}})", TARGET.substr(1))),
+               // MST is UTC-07:00: 16:15:55.103 MST = 23:15:55.103 UTC
+               j(fmt::format(R"({{"{}": "2016-12-26T23:15:55.103Z"}})", TARGET.substr(1))),
                32,
                initAndGetDateParser(),
                {NAME, TARGET, {}, {"%a %b %d %T %Z %Y", "C"}}),
@@ -178,7 +180,8 @@ INSTANTIATE_TEST_SUITE_P(
                {NAME, TARGET, {}, {"%a %b %d %T %z %Y"}}),
         ParseT(SUCCESS,
                "26 Dec 16 23:15 MST",
-               j(fmt::format(R"({{"{}": "2016-12-26T16:15:00.000Z"}})", TARGET.substr(1))),
+               // MST is UTC-07:00: 23:15 MST on Dec 26 = 06:15 UTC on Dec 27
+               j(fmt::format(R"({{"{}": "2016-12-27T06:15:00.000Z"}})", TARGET.substr(1))),
                strlen("26 Dec 16 23:15 MST"),
                initAndGetDateParser(),
                {NAME, TARGET, {}, {"%d %b %y %R %Z"}}),
@@ -194,7 +197,8 @@ INSTANTIATE_TEST_SUITE_P(
             FAILURE, "26 Dec 16 23:15 -0000", {}, 21, initAndGetDateParser(), {NAME, TARGET, {}, {"%d %b %y %R %Z"}}),
         ParseT(SUCCESS,
                "Monday, 26-Dec-16 16:16:55 MST",
-               j(fmt::format(R"({{"{}": "2016-12-26T09:16:55.000Z"}})", TARGET.substr(1))),
+               // MST is UTC-07:00: 16:16:55 MST = 23:16:55 UTC
+               j(fmt::format(R"({{"{}": "2016-12-26T23:16:55.000Z"}})", TARGET.substr(1))),
                strlen("Monday, 26-Dec-16 16:16:55 MST"),
                initAndGetDateParser(),
                {NAME, TARGET, {}, {"%A, %d-%b-%y %T %Z"}}),
@@ -218,7 +222,8 @@ INSTANTIATE_TEST_SUITE_P(
                {NAME, TARGET, {}, {"%A, %d-%b-%y %T %z"}}),
         ParseT(SUCCESS,
                "Mon, 26-Dec-16 16:16:55 MST",
-               j(fmt::format(R"({{"{}": "2016-12-26T09:16:55.000Z"}})", TARGET.substr(1))),
+               // MST is UTC-07:00: 16:16:55 MST = 23:16:55 UTC
+               j(fmt::format(R"({{"{}": "2016-12-26T23:16:55.000Z"}})", TARGET.substr(1))),
                strlen("Mon, 26-Dec-16 16:16:55 MST"),
                initAndGetDateParser(),
                {NAME, TARGET, {}, {"%a, %d-%b-%y %T %Z"}}),
@@ -309,7 +314,8 @@ INSTANTIATE_TEST_SUITE_P(
                {NAME, TARGET, {}, {"ANSIC"}}),
         ParseT(SUCCESS,
                "Mon Jan 2 15:04:05 MST 2006",
-               j(fmt::format(R"({{"{}": "2006-01-02T08:04:05.000Z"}})", TARGET.substr(1))),
+               // MST is UTC-07:00: 15:04:05 MST = 22:04:05 UTC
+               j(fmt::format(R"({{"{}": "2006-01-02T22:04:05.000Z"}})", TARGET.substr(1))),
                strlen("Mon Jan 2 15:04:05 MST 2006"),
                initAndGetDateParser(),
                {NAME, TARGET, {}, {"UnixDate"}}),
@@ -321,7 +327,8 @@ INSTANTIATE_TEST_SUITE_P(
                {NAME, TARGET, {}, {"RubyDate"}}),
         ParseT(SUCCESS,
                "02 Jan 06 15:04 MST",
-               j(fmt::format(R"({{"{}": "2006-01-02T08:04:00.000Z"}})", TARGET.substr(1))),
+               // MST is UTC-07:00: 15:04 MST = 22:04 UTC
+               j(fmt::format(R"({{"{}": "2006-01-02T22:04:00.000Z"}})", TARGET.substr(1))),
                strlen("02 Jan 06 15:04 MST"),
                initAndGetDateParser(),
                {NAME, TARGET, {}, {"RFC822"}}),
@@ -333,13 +340,15 @@ INSTANTIATE_TEST_SUITE_P(
                {NAME, TARGET, {}, {"RFC822Z"}}),
         ParseT(SUCCESS,
                "Monday, 02-Jan-06 15:04:05 MST",
-               j(fmt::format(R"({{"{}": "2006-01-02T08:04:05.000Z"}})", TARGET.substr(1))),
+               // MST is UTC-07:00: 15:04:05 MST = 22:04:05 UTC
+               j(fmt::format(R"({{"{}": "2006-01-02T22:04:05.000Z"}})", TARGET.substr(1))),
                strlen("Monday, 02-Jan-06 15:04:05 MST"),
                initAndGetDateParser(),
                {NAME, TARGET, {}, {"RFC850"}}),
         ParseT(SUCCESS,
                "Mon, 02 Jan 2006 15:04:05 MST",
-               j(fmt::format(R"({{"{}": "2006-01-02T08:04:05.000Z"}})", TARGET.substr(1))),
+               // MST is UTC-07:00: 15:04:05 MST = 22:04:05 UTC (same instant as the RFC1123Z case with -0700)
+               j(fmt::format(R"({{"{}": "2006-01-02T22:04:05.000Z"}})", TARGET.substr(1))),
                strlen("Mon, 02 Jan 2006 15:04:05 MST"),
                initAndGetDateParser(),
                {NAME, TARGET, {}, {"RFC1123"}}),

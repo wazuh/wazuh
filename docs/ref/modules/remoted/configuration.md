@@ -240,18 +240,17 @@ similar spelling: nothing on disk is looked up under it.
 Whether an IPv6 `bind_addr` (e.g. `::`) also accepts IPv4 clients on the same socket
 (the `IPV6_V6ONLY` socket option).
 
-- **Default value:** IPv6-only, the same as `no`. The schema gives this option no default; an absent
-  tag is left unset and the module treats it as `no`.
+- **Default value:** `no` (IPv6-only).
 - **Allowed values:** `yes` (force dual-stack on), `no` (force IPv6-only); any other value is
   rejected as a configuration error
-- **Note:** Only meaningful when `bind_addr` is IPv6; ignored (with a warning) for an IPv4
-  `bind_addr`. See [HTTPS Agent API: Bind address](https-events-api.md#bind-address-ipv4-ipv6-and-dual-stack).
+- **Note:** Only meaningful when `bind_addr` is IPv6; ignored for an IPv4 `bind_addr` (with a
+  warning when set to `yes`). See [HTTPS Agent API: Bind address](https-events-api.md#bind-address-ipv4-ipv6-and-dual-stack).
 
 ### https.certificate
 
 Path to the TLS certificate chain (PEM) presented by the server.
 
-- **Default value:** `/etc/wazuh-manager/certs/remoted.pem` (a relative path resolves against the manager's home, `/var/wazuh-manager`)
+- **Default value:** `/etc/wazuh-manager/certs/remoted.pem` (any other value must also be an absolute path directly in `/etc/wazuh-manager/certs`; see the credential note below)
 - **Note:** the manager issues this file at installation and never reissues it. To use your own PKI, overwrite it — a leaf of the CA in
   `ca_certificate`, issued by the installation assistant's `wazuh-certs-tool` — as
   `root:wazuh-manager 640` before the first start. Missing: `wazuh-manager-control start`
@@ -359,22 +358,18 @@ TLS 1.3 ciphersuite override for the HTTPS listener (`SSL_CTX_set_ciphersuites()
 scheme, e.g. `TLS_AES_256_GCM_SHA384`). The listener requires TLS 1.3 as its minimum
 protocol version.
 
-- **Default value:** `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256`.
-  The schema gives this option no default (the generated reference shows none); an absent tag is
-  left unset and the module applies this built-in list.
+- **Default value:** `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256`
 - **Allowed values:** colon-separated TLS 1.3 ciphersuite names, from `TLS_AES_128_GCM_SHA256`,
   `TLS_AES_256_GCM_SHA384`, `TLS_CHACHA20_POLY1305_SHA256`, `TLS_AES_128_CCM_SHA256` and
-  `TLS_AES_128_CCM_8_SHA256`; at most 255 characters. The value is validated at
-  configuration-parse time: a name that is not a TLS 1.3 suite (for example a TLS 1.2 string such
-  as `HIGH:!ADH`) is rejected so the config test catches it, instead of the listener failing to
-  start at runtime.
+  `TLS_AES_128_CCM_8_SHA256`; at most 255 characters. Any other name (for example a TLS 1.2 string
+  such as `HIGH:!ADH`) is rejected by the configuration validator, instead of the listener failing
+  to start at runtime.
 
 ### https.max_body_size
 
 Maximum accepted HTTP request body size, enforced by the transport.
 
-- **Default value:** `10M` (10 MiB). The schema gives this option no default (the generated
-  reference shows none); an absent tag is left unset and the module applies this built-in value.
+- **Default value:** `10M` (10 MiB)
 - **Allowed values:** Positive byte count with an optional single-letter suffix (`B`, `K`, `M`, `G`, case-insensitive). `K`/`M`/`G` are binary multiples; a bare number is bytes. Suffixes such as `MB` are rejected.
 - **Effect:** Raising the limit admits larger wire bodies and increases potential memory use per connection;
   lowering it rejects larger requests at the transport. The authentication and shared-memory limits still apply.
@@ -1407,7 +1402,9 @@ Milliseconds a single wazuh-db round-trip may take before the control handler gi
   `remoted.control.wdb_error` in
   [`GET /metrics`](metrics.md#control-plane--remotedcontrol). The healthy-round-trip
   distribution that sizes this deadline is `remoted.control.wdb.latency` (timeouts are
-  deliberately excluded from the histogram).
+  deliberately excluded from the histogram). The deadline also applies to a request still queued
+  while `wdb.sock` cannot be reached; it then fails as a timeout (503 on `/control`) instead of
+  waiting for wazuh-db.
 
 #### remoted.control_wdb_max_queue_size
 

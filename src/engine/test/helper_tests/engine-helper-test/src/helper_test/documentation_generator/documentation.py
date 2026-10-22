@@ -27,7 +27,8 @@ def parse_yaml_to_documentation(parser: Parser):
         parser.get_metadata()["keywords"])
 
     arguments = {name: Argument(parser.get_types()[index], parser.get_sources()[index], parser.get_subset(
-    )[index], parser.get_restrictions()[index], bool(arg_info.get("optional", False)))
+    )[index], parser.get_restrictions()[index], bool(arg_info.get("optional", False)),
+        arg_info.get("accepted_values"))
         for index, (name, arg_info) in enumerate(parser.get_arguments().items())}
 
     if parser.get_helper_type() == "map":

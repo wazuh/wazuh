@@ -64,7 +64,7 @@ Read operations (get asset, resolve UUID) acquire a shared lock. Write operation
 
 ### Namespaces
 
-A namespace is an isolated content partition on disk. Each namespace has its own directory containing subdirectories for each resource type plus a policy file and a UUID cache. A `NamespaceId` must be non-empty and contain only alphanumerics and `_` (`types.hpp`). Forbidden namespace names: `output`, `system`, `default` — rejected by create, delete and rename, and skipped when loading from disk.
+A namespace is an isolated content partition on disk. Each namespace has its own directory containing subdirectories for each resource type plus a policy file and a UUID cache. A `NamespaceId` must be non-empty and contain only alphanumerics and `_` (`types.hpp`). Forbidden namespace names: `output`, `system`, `default` — rejected by create, delete and rename, and skipped when loading from disk. A directory under the store path whose name is not a valid `NamespaceId` is skipped at load with a warning (`Ignoring directory '<path>': not a valid namespace name`) and left on disk.
 
 ### Resource Types
 

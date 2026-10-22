@@ -169,7 +169,7 @@ The module reads no setting; `main.cpp` passes the socket paths and the payload 
 `/var/wazuh-manager/queue/sockets/engine-ingest-http.sock` on a manager — are documented for operators in
 [Engine API server](../../../../docs/ref/modules/engine/configuration.md#engine-api-server).
 `analysisd.server_api_timeout` is not a server timeout: `main.cpp` passes it to the router orchestrator as
-the tester timeout.
+the tester timeout, which bounds how long the tester API handlers wait for a test result.
 
 ## Integration in `main.cpp`
 

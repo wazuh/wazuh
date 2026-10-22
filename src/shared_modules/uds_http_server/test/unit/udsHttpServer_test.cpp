@@ -232,6 +232,24 @@ TEST(UdsHttpServerTest, StartThrowsOnAnOverlongSocketPath)
     }
 }
 
+// Not left to bind(): Linux would autobind an unreachable abstract address and start() would succeed.
+TEST(UdsHttpServerTest, StartThrowsOnAnEmptySocketPath)
+{
+    auto server = makeUdsHttpServer();
+    server->addRoute(Method::Get, "/", echoHandler());
+
+    try
+    {
+        server->start(configFor(""));
+        FAIL() << "an empty socket path must be refused";
+    }
+    catch (const std::runtime_error& e)
+    {
+        const std::string message {e.what()};
+        EXPECT_NE(std::string::npos, message.find("socket path")) << message;
+    }
+}
+
 TEST(UdsHttpServerTest, StopUnlinksTheSocketFile)
 {
     const auto path = uniqueSocketPath("unlink");

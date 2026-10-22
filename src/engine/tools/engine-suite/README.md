@@ -42,8 +42,6 @@ Route management on the engine's router (`_internal/router/*` endpoints):
 - `update <route> --priority PRIORITY`: Change a route's priority (the only field it can update).
 - `reload <route>`: Rebuild a route.
 - `delete <route>`: Delete a route.
-- `ingest <event>`: Present in the parser, but `api-communication` maps no endpoint to its request
-  (`QueuePost_Request`), so it always fails.
 
 For more details, refer to [src/engine_router/README.md](src/engine_router/README.md).
 

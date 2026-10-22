@@ -43,7 +43,7 @@ The daemon runs these threads:
 | Dealer | Accepts connections on `wdb.sock` and hands each peer to the worker pool |
 | Worker pool (`wazuh_db.worker_pool_size`, 8 by default) | Reads one framed query from a peer, runs it, sends the framed answer |
 | HTTP server | Serves the REST routes on `wdb-http.sock` (see below) |
-| Garbage collector | Once a second: commits open transactions that have aged past `commit_time_min`/`commit_time_max`, runs the fragmentation check (and `VACUUM`) every `check_fragmentation_interval` seconds, and closes handles above `open_db_limit` (never `global.db`) |
+| Garbage collector | Once a second: commits open transactions that have aged past `commit_time_min`/`commit_time_max`, runs the fragmentation check (and `VACUUM`) every `check_fragmentation_interval` seconds (never on the read-only `mitre.db`), and closes handles above `open_db_limit` (never `global.db`) |
 | Backup | Started only when `wdb.backup.global.enabled` is true: writes periodic backups of `global.db` |
 
 An HTTP API (`queue/sockets/wdb-http.sock`) is also exposed for the framework and `clusterd`. If it
@@ -75,7 +75,9 @@ The text of a query is the target database, the command and its arguments:
 <database> <command> [<arguments>]
 ```
 
-`<database>` is `global` (every command below) or `mitre` (only `mitre sql <SELECT …>`). Responses are:
+`<database>` is `global` (every command below) or `mitre` (only `mitre sql <SELECT …>`; the database
+is opened read-only, so a statement that would modify it answers `err Cannot execute Mitre database
+query; attempt to write a readonly database`). Responses are:
 
 ```
 ok <JSON>
@@ -144,7 +146,7 @@ global backup restore {"snapshot":"global.db-backup-2026-09-30-03:00:00.gz","sav
 | Database | Path | Purpose |
 |----------|------|---------|
 | `global.db` | `queue/db/global.db` | Agent registry, groups, connection status. Created by the daemon on first use from `schemas/schema_global.sql`, owned by `wazuh-manager`, mode `0640` |
-| `mitre.db` | `var/db/mitre.db` | MITRE ATT&CK Enterprise reference data (ATT&CK v19.2), generated at install time from `ruleset/mitre/enterprise-attack.json` by `tools/mitre/mitredb.py` |
+| `mitre.db` | `var/db/mitre.db` | MITRE ATT&CK Enterprise reference data (ATT&CK v19.2), generated at install time from `ruleset/mitre/enterprise-attack.json` by `tools/mitre/mitredb.py`. The daemon opens it read-only |
 
 Only these two databases exist; the daemon accepts no other `<database>` target.
 

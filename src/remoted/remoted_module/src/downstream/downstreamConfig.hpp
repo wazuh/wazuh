@@ -48,10 +48,9 @@ namespace remoted::downstream
         int statefulRetryAfterSec {20};
         std::size_t ioThreads {1};          ///< Threads running the client's io_context.
         std::size_t postProcessThreads {4}; ///< Threads running the per-endpoint post-processors.
-        /// Cap on a downstream response body. Strictly larger than the 10 MiB agent-request cap:
-        /// /stats and /config echo the agent's document back ENRICHED, so a cap equal to the
-        /// request cap would turn a near-cap document into ResponseTooLarge -> 503.
-        std::size_t maxResponseBodySize {11U * 1024U * 1024U};
+        /// Cap on a downstream response body (see remoted.downstream_max_response_body_size, whose
+        /// 10 MiB default this mirrors).
+        std::size_t maxResponseBodySize {10U * 1024U * 1024U};
     };
 
     /**

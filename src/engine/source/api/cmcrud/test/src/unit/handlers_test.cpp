@@ -568,6 +568,23 @@ INSTANTIATE_TEST_SUITE_P(
             []() { return userErrorResponse<eEngine::GenericStatus_Response>(kTypeUnsupportedMsg); },
             [](auto&) {}),
 
+        /*** Output is a resource type but not validatable: same answer as an unknown type ***/
+        CmCrudHandlerT(
+            []()
+            {
+                eContent::resourceValidate_Request protoReq;
+                protoReq.set_type("output");
+
+                auto& fields = *protoReq.mutable_resource()->mutable_fields();
+                fields["id"].set_string_value("11111111-1111-4111-8111-111111111111");
+                fields["name"].set_string_value("output/test/0");
+
+                return createRequest<eContent::resourceValidate_Request>(protoReq);
+            },
+            [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return resourceValidate(crud, 20'000, 100'000); },
+            []() { return userErrorResponse<eEngine::GenericStatus_Response>(kTypeUnsupportedMsg); },
+            [](auto& mock) { EXPECT_CALL(mock, validateResource(::testing::_, ::testing::_)).Times(0); }),
+
         /*** Service throws -> user error ***/
         CmCrudHandlerT(
             []()

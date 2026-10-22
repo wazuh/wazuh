@@ -37,7 +37,7 @@ engine-router --version
 
 ```console
 
-usage: engine-router [-h] [--version] [--api-socket API_SOCKET] {get,delete,add,reload,update,list,ingest} ...
+usage: engine-router [-h] [--version] [--api-socket API_SOCKET] {get,delete,add,reload,update,list} ...
 
 options:
   -h, --help            show this help message and exit
@@ -46,19 +46,15 @@ options:
                         Path to the Wazuh API socket
 
 subcommands:
-  {get,delete,add,reload,update,list,ingest}
+  {get,delete,add,reload,update,list}
     get                 Get a route details
     delete              Delete a route
     add                 Add a route
     reload              Reload/rebuild a route
     update              Update a route. it only supports the update of the priority
     list                Get routes table
-    ingest              Ingest an event
 ```
 
 `--api-socket` defaults to `/var/wazuh-manager/queue/sockets/engine-api-http.sock`. The commands call the
 engine's `_internal/router/*` endpoints (`route/post`, `route/delete`, `route/get`, `route/reload`,
 `route/patchPriority`, `table/get`).
-
-`ingest` has no endpoint: `api-communication` maps no route for its request message (`QueuePost_Request`)
-and the engine registers none, so the command always exits with an error.

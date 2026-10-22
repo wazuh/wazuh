@@ -275,7 +275,7 @@ The `<vulnerability-detection>` section is preserved in 5.0 but the `<index-stat
 ```
 
 Remove the `<index-status>` element from your configuration: left in place it is an unknown option and
-the manager does not start. `<enabled>` and `<feed-update-interval>` carry over unchanged.
+the manager does not start. `<enabled>` and `<feed-update-interval>` carry over unchanged, except that an interval of zero (in any unit) is now rejected.
 
 ### `<indexer>` section
 

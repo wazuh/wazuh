@@ -38,7 +38,8 @@ For each requested thread count, `acceptance_test.sh` executes the following ste
    `LOCK` files under `<home>/engine` and `<home>/queue`.
 2. **Launch** `<home>/bin/wazuh-manager-analysisd` with `WAZUH_ORCHESTRATOR_THREADS=N`, after truncating
    `<home>/logs/wazuh-manager.log`.
-3. **Wait** until the engine is ready: a line matching `Engine started.` in `wazuh-manager.log`, then
+3. **Wait** until the engine is ready: a line ending in `Engine started` (or `Engine started in standalone mode`) in
+   `wazuh-manager.log`, then
    `POST /_internal/router/route/get` for the route (`--route`) on `engine-api-http.sock` via `curl`.
 4. **Start** `monitor.py` to sample CPU, memory, FDs and disk I/O every second.
 5. **Grace period** before the benchmark.

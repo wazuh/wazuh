@@ -432,7 +432,8 @@ Defined in `schemf/src/valueValidators.hpp`, each validator checks the concrete 
 | Validator | Checks |
 |-----------|--------|
 | `getBoolValidator()` | `value.isBool()` |
-| `getShortValidator()` | Is integer, fits in int8 range (used for both `SHORT` and `BYTE`) |
+| `getByteValidator()` | Is integer, fits in int8 range (used for `BYTE`) |
+| `getShortValidator()` | Is integer, fits in int16 range (used for `SHORT`) |
 | `getIntegerValidator()` | `value.isInt()` |
 | `getLongValidator()` | `value.isInt64()` |
 | `getUnsignedLongValidator()` | `value.isUint64()` (used for `UNSIGNED_LONG` and `TOKEN_COUNT`) |

@@ -178,7 +178,7 @@ namespace invsync::endpoints::vd_scan
                     // RouteClass::Control requires of a route that does real work. The lane counts
                     // the refusal itself (vd.capacity.503); this counts the response.
                     deps.requestCounters.count(503);
-                    responder->send(errorResponse(503, "Scan capacity exhausted"));
+                    responder->send(errorResponse(503, "scan capacity exhausted"));
                     return;
 
                 case invsync::vd::VdScanLane::Admission::Stopping:

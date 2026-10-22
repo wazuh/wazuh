@@ -33,7 +33,8 @@ groups at once, up to 128.
     └── agent.conf
 ```
 
-A group name may contain `a-z`, `A-Z`, `0-9`, `_`, `-` and `.`, up to 128 characters through the API;
+A group name may contain `a-z`, `A-Z`, `0-9`, `_`, `-` and `.`, up to 128 characters through the API
+and up to 255 with `agent_groups`;
 `.`, `..` and `all` are refused, and so is `default`, which always exists
 and cannot be deleted. A new group directory is created `wazuh-manager:wazuh-manager`, mode `0700`,
 with its `agent.conf` at mode `0660`.

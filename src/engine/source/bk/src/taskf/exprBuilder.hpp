@@ -9,6 +9,7 @@
 
 #include <base/baseTypes.hpp>
 #include <base/expression.hpp>
+#include <base/logging.hpp>
 
 #include "tracer.hpp"
 
@@ -50,6 +51,7 @@ class TaskTerm : public ITask
 private:
     tf::Task m_task;
     base::EngineOp m_op;
+    std::string m_name;
     Publisher m_publisher;
     void* m_data;
     tf::Taskflow& m_tf;
@@ -58,6 +60,7 @@ public:
     TaskTerm(base::EngineOp op, const std::string& name, Publisher publisher, void* data, tf::Taskflow& tf)
         : ITask()
         , m_op(op)
+        , m_name(name)
         , m_publisher(publisher)
         , m_data(data)
         , m_tf(tf)
@@ -71,10 +74,24 @@ public:
     {
         assertConnect();
         m_task.work(
-            [fn = m_op, publisher = m_publisher, data = m_data]()
+            [fn = m_op, name = m_name, publisher = m_publisher, data = m_data]()
             {
                 auto& event = *static_cast<base::Event*>(data);
-                auto res = fn(event);
+                // An exception thrown by the operation is a failure of the term, as in the rx backend
+                base::result::Result<base::Event> res;
+                try
+                {
+                    res = fn(event);
+                }
+                catch (const std::exception& e)
+                {
+                    LOG_WARNING("[BK::pipeline] Unexpected error processing term: {} in '{}' with {}",
+                                e.what(),
+                                name,
+                                event->str());
+                    res = base::result::makeFailure(
+                        event, fmt::format(R"([{}] -> Failure: operation throw exception.)", name));
+                }
                 if (publisher)
                 {
                     publisher(res.trace(), res.success());
@@ -358,6 +375,15 @@ private:
         {
             throw std::runtime_error {"Expression is null"};
         }
+
+        // Restore the inherited publisher when leaving this node: the publisher of a traceable subtree must not
+        // leak to the sibling nodes built after it
+        struct PublisherGuard
+        {
+            Publisher& current;
+            Publisher saved;
+            ~PublisherGuard() { current = std::move(saved); }
+        } publisherGuard {params.publisher, params.publisher};
 
         // Create traceable if found and get the publisher function
         auto traceIt = params.traceables.find(expression->getName());

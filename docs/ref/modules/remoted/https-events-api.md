@@ -66,9 +66,8 @@ with no extra configuration). A few things to know before choosing one:
   by default -- `::` alone does **not** accept IPv4 connections unless
   `<remote><https><dual_stack>yes</dual_stack>` is explicitly configured -- see
   [`https.dual_stack`](configuration.md#httpsdual_stack). It only applies when `bind_addr` is IPv6;
-  an explicit `yes` or `no` is ignored (with a warning) for an IPv4 `bind_addr`. Leaving
-  `<dual_stack>` unset never warns, even on an IPv4 `bind_addr` -- it produces the same effective
-  behavior as an explicit `no`, just without the warning.
+  an explicit `yes` is ignored, with a warning, for an IPv4 `bind_addr`; `no`, the default, never
+  warns.
 - **A specific literal** (`10.0.0.5`, `2001:db8::1`, ...) binds only that address/family, same as
   today.
 - Internally, an IPv4 client connecting through a dual-stack (`::`) socket is reported by the OS as
@@ -488,7 +487,7 @@ manager-local Unix socket (`GET /`, `GET /metrics`, `GET /status`, `GET /tls` on
   Returns **`200 OK`** with a fixed `{}`, **`400`** on an empty or rejected document, **`413`**, or
   **`503`**. See [Reporting endpoints](#reporting-endpoints-post-stats-and-post-config) below.
 - **`POST /config`** — authenticated ingestion of the configuration document an agent reports.
-  Same pipeline as `/stats`; differs in that a successful answer carries the enriched document back.
+  Same pipeline as `/stats`, and the same `200 OK` with `{}` on success.
   See [Reporting endpoints](#reporting-endpoints-post-stats-and-post-config) below.
 - **`POST /scan/vd`** — authenticated on-demand Vulnerability Detection re-scan request, sent by an
   agent once it notices (via `notify`'s `vd_feed_offset`) that this node's feed has moved past what

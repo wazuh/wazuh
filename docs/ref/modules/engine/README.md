@@ -1479,8 +1479,8 @@ This approach enables text reuse within an asset. Definitions are applied at bui
   with a definition `source`, `$source.ip` becomes the definition's value followed by `.ip`. In a helper argument, a
   `$reference` that names a definition takes the definition's typed value instead of the event field. Give
   definitions names that no field uses; write `\$name` to keep a literal `$name` in a substituted string.
-- **Chaining Definitions**: Definitions can use other definitions in their values, in any order of declaration; a
-  circular reference makes the asset fail to build.
+- **Chaining Definitions**: Definitions can use other definitions in their values, in any order of declaration, with
+  the same `$name` rule as in stages; a circular reference makes the asset fail to build.
 - **Context**: Definitions can only appear on the right side of operations, meaning we can't define the structure of the document with definitions or be used inside non operational stages.
 - **Scope**: Definitions are scoped to the asset where they are defined. They cannot be shared across assets.
 - **Limits**: A chain of definitions referencing definitions can be at most 256 deep, a definition can expand to at most 64 KiB once its references are replaced, and the text added by expanding definitions in one asset (in other definitions and in the stages that use them) can total at most 1 MiB. An asset beyond any of them fails to build, naming the definition and the limit. These are compile-time constants, not settings.

@@ -128,8 +128,9 @@ public:
      * @param consumerIdToValidate Optional consumer document ID in `.wazuh-cti-consumers` to validate.
      *        When provided, a PIT will include `.wazuh-cti-consumers` and the consumer document
      *        will be verified as `ready` within the PIT snapshot to ensure consistency.
-     * @return An optional map(type -> sha256 hash). Returns std::nullopt if the consumer is provided and is not ready.
-     * @throws IndexerConnectorException if the manifest is missing or invalid
+     * @return An optional map(type -> sha256 hash). Returns std::nullopt if the consumer is provided and is not ready,
+     * or if the manifest document does not exist.
+     * @throws IndexerConnectorException if the manifest is invalid
      */
     virtual std::optional<std::unordered_map<std::string, std::string>>
     getIocTypeHashes(const std::optional<std::string_view>& consumerIdToValidate = std::nullopt) = 0;

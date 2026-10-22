@@ -152,8 +152,9 @@ the certificate rather than a digest of its key, and needs nothing else to build
 What goes in is the **certificates** of
 [`remote.https.ca_certificate`](../remoted/configuration.md#httpsca_certificate), re-serialised
 rather than copied: a bundle travels as a bundle, and a private key that shares the file is never
-included. The re-serialised PEM bundle may not exceed 64 KiB when embedded; this is not a limit on
-the input CA file used for pinning.
+included. The re-serialised PEM bundle may not exceed 64 KiB when embedded — a larger one is
+refused with `9025` (`Enrollment token refused: the ca_certificate '…' is too large to embed`); this
+is not a limit on the input CA file used for pinning.
 
 Embedding increases the stored record by the size of the PEM bundle, including JSON escaping.
 The store's byte ceiling can therefore bind before its token-count ceiling. A pinned token instead

@@ -10,6 +10,8 @@ on:
       - "tools/devContainer/scripts/*.py"
       - "tools/devContainer/scripts/tests/**"
       - "tools/manager_benchmark/result_summary.py"
+      # test_scripts.py runs the shell helpers it covers.
+      - "tools/manager_benchmark/*.sh"
       - "tools/manager_benchmark/tests/**"
       # Dashboard capture tool: the tests read capture.py, capture_logic.py and views.json.
       - "tools/devContainer/e2e/dashboard/*.py"

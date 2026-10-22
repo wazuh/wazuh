@@ -102,6 +102,8 @@ Database updates are applied without restarting the engine:
 2. For each database type (City, then ASN):
    - Skip with a WARNING if the manifest has no `url`/`md5` for the type.
    - Skip if the stored hash equals the manifest MD5 **and** the stored file still exists (`needsUpdate()`).
+   - If the manifest has no integer `generated_at`, mark the type `FAILED` with a WARNING and skip it
+     (nothing is downloaded; a previously loaded version stays available).
    - Mark the type `UPDATING`, download the `.gz` and compare its MD5 with the manifest; a download error
      or a mismatch is retried, for **at most `MAX_RETRIES` = 3 attempts** in total.
    - Extract `.mmdb` from the gz (`Downloader` writes `tmp_download.mmdb.gz` next to the target and

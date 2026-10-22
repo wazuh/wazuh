@@ -26,8 +26,8 @@ skipped:
   - different_target_field_type # target_field not used
 
 target_field:
-  type: object
-  generate: object
+  type: string
+  generate: string
 
 test:
   - arguments:

@@ -140,6 +140,11 @@ TEST(Load, EffectiveDefaultsFromMinimalDocument)
     // option must arrive at remoted as a real value, never as "unlimited".
     EXPECT_EQ(rapidjson::Pointer("/remote/https/enroll_rate_limit").Get(effective)->GetInt(), 100);
     EXPECT_EQ(rapidjson::Pointer("/remote/https/cacerts_rate_limit").Get(effective)->GetInt(), 50);
+    // The values remoted_module applies anyway, declared so the effective document shows them.
+    EXPECT_STREQ(rapidjson::Pointer("/remote/https/ciphers").Get(effective)->GetString(),
+                 "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256");
+    EXPECT_STREQ(rapidjson::Pointer("/remote/https/max_body_size").Get(effective)->GetString(), "10M");
+    EXPECT_FALSE(rapidjson::Pointer("/remote/https/dual_stack").Get(effective)->GetBool());
     EXPECT_EQ(rapidjson::Pointer("/auth/port").Get(effective)->GetInt(), 1515);
     EXPECT_EQ(rapidjson::Pointer("/auth/legacy_enrollment").Get(effective), nullptr)
         << "no default: authd follows remote.legacy.enabled when unset";
@@ -176,9 +181,10 @@ TEST(Load, GeneratedManagerFileKeepsUserValuesAndFillsTheRest)
                  "/etc/wazuh-manager/certs/remoted.pem");
     EXPECT_STREQ(rapidjson::Pointer("/https/ca_certificate").Get(remote)->GetString(),
                  "/etc/wazuh-manager/certs/root-ca.pem");
-    EXPECT_EQ(remote["https"].MemberCount(), 9u) << "port, bind_addr, global_prefix, certificate, key, ca, "
-                                                    "ca_certificate and the two rate limits (the four "
-                                                    "no-default options stay absent)";
+    EXPECT_EQ(remote["https"].MemberCount(), 12u) << "port, bind_addr, global_prefix, certificate, key, ca, "
+                                                     "ca_certificate, ciphers, max_body_size, dual_stack and the "
+                                                     "two rate limits (verification_mode has no default and "
+                                                     "stays absent)";
     const auto auth = json(doc.sectionJson("auth"));
     EXPECT_TRUE(auth["purge"].GetBool());
     EXPECT_TRUE(auth["use_password"].GetBool());
@@ -252,6 +258,36 @@ TEST(Schema, YesNoIsBooleanAndTrueFalseIsRejected)
     EXPECT_EQ(error.pointer, "/auth/use_password");
     EXPECT_NE(error.message.find("type"), std::string::npos) << error.what();
     EXPECT_NE(error.message.find("booleans are yes/no"), std::string::npos) << error.what();
+}
+
+TEST(Schema, CiphersAcceptOnlyTheSuitesTheDaemonsAccept)
+{
+    // remoted and authd accept exactly these five TLS 1.3 suites; a well-formed name outside them must fail
+    // here, not at a daemon's configuration test.
+    parseOk(wrap("<auth><ciphers>TLS_AES_128_CCM_8_SHA256:TLS_AES_128_CCM_SHA256</ciphers></auth>"
+                 "<remote><https><ciphers>TLS_AES_128_GCM_SHA256</ciphers></https></remote>"));
+    for (const char* ciphers : {"TLS_SM4_GCM_SM3", "TLS_AES_128_GCM_SHA256:", "TLS_AES_128_GCM_SHA256X"})
+    {
+        const auto auth = parseKo(wrap(std::string("<auth><ciphers>") + ciphers + "</ciphers></auth>"));
+        EXPECT_EQ(auth.pointer, "/auth/ciphers") << ciphers;
+        EXPECT_NE(auth.message.find("pattern"), std::string::npos) << auth.what();
+        const auto remote =
+            parseKo(wrap(std::string("<remote><https><ciphers>") + ciphers + "</ciphers></https></remote>"));
+        EXPECT_EQ(remote.pointer, "/remote/https/ciphers") << ciphers;
+    }
+}
+
+TEST(Schema, FeedUpdateIntervalRejectsZeroInAnyUnit)
+{
+    EXPECT_EQ(parseKo(wrap("<vulnerability-detection><feed-update-interval>0m</feed-update-interval>"
+                           "</vulnerability-detection>"))
+                  .pointer,
+              "/vulnerability-detection/feed-update-interval");
+    EXPECT_EQ(parseKo(wrap("<vulnerability-detection><feed-update-interval>0</feed-update-interval>"
+                           "</vulnerability-detection>"))
+                  .pointer,
+              "/vulnerability-detection/feed-update-interval");
+    parseOk(wrap("<vulnerability-detection><feed-update-interval>1</feed-update-interval></vulnerability-detection>"));
 }
 
 TEST(Schema, RejectsUnknownKeyPointingAtTheKey)
@@ -399,6 +435,25 @@ TEST(Semantics, CertificateWithoutKeyAndPortCollisionsAndDotSegments)
     // a disabled listener does not reserve its port
     parseOk(wrap("<remote><legacy><enabled>no</enabled><port>1515</port></legacy></remote>"));
     parseOk(wrap("<auth><disabled>yes</disabled><port>1517</port></auth>"));
+}
+
+TEST(Semantics, AuthPortIsReservedOnlyWhileAuthdBindsIt)
+{
+    // authd binds auth.port only for legacy enrollment, which follows remote.legacy.enabled when unset.
+    parseOk(wrap("<auth><port>1517</port></auth>")); // no <legacy> block: legacy enrollment is off
+    parseOk(wrap("<remote><legacy><enabled>no</enabled></legacy></remote><auth><port>1517</port></auth>"));
+    EXPECT_EQ(
+        parseKo(wrap("<remote><legacy><port>1514</port></legacy></remote><auth><port>1517</port></auth>")).pointer,
+        "/auth/port")
+        << "legacy enabled: legacy enrollment follows it";
+    EXPECT_EQ(parseKo(wrap("<auth><legacy_enrollment>yes</legacy_enrollment><port>1517</port></auth>")).pointer,
+              "/auth/port")
+        << "an explicit legacy_enrollment wins over the absent <legacy> block";
+    parseOk(wrap("<remote><legacy><port>1514</port></legacy></remote>"
+                 "<auth><legacy_enrollment>no</legacy_enrollment><port>1517</port></auth>"));
+    parseOk(wrap("<remote><legacy><port>1514</port></legacy></remote>"
+                 "<auth><remote_enrollment>no</remote_enrollment><port>1517</port></auth>"));
+    parseOk(wrap("<auth><disabled>yes</disabled><legacy_enrollment>yes</legacy_enrollment><port>1517</port></auth>"));
 }
 
 TEST(Semantics, CheckFilesResolvesRelativeToHome)

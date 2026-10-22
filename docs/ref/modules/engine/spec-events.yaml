@@ -107,9 +107,8 @@ paths:
           description: Events accepted. (Empty body)
         "400":
           description: |
-            Invalid batch framing or header. The message is inserted into the body without JSON escaping, so a
-            message that contains a double quote (such as a JSON parse error of the header) yields a body that is
-            not valid JSON.
+            Invalid batch framing or header. The body is a JSON object whose `error` string carries the
+            parser message (JSON-escaped).
           content:
             application/json:
               schema:

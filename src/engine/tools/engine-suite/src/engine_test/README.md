@@ -76,7 +76,8 @@ subcommands:
 ```
 
 The default configuration file lives in `/etc/wazuh-manager` (root:wazuh-manager 0770), so writing it needs
-root or the `wazuh-manager` group; pass `-c` to use a file elsewhere.
+root or the `wazuh-manager` group. When it creates the default file, it sets mode 0640 and group
+`wazuh-manager` (only a warning if the group cannot be set); pass `-c` to use a file elsewhere.
 
 ## engine-test add
 

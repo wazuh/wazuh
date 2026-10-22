@@ -174,8 +174,8 @@ path — the notify-storm scenario **SHOULD** report both, and F9c-4 **MUST** st
    `startup` or `notify`);
 2. requires a `200` body to parse as JSON — a malformed body is a server regression, and for
    `startup`/`notify` it fails the run;
-3. records the response latency in the `startup` or `notify` histogram (a `shutdown`'s latency is
-   not kept, and no response size is recorded).
+3. records the response latency in the `startup`, `notify` or `shutdown` histogram (no response
+   size is recorded).
 
 And it **MUST NOT** use any field of the body to change what it does next, with exactly ONE
 exception: `limits` does not become a rate limit, `agent.groups` does not reach the sessions'

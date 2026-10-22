@@ -59,7 +59,7 @@ The return type of every parser. Wraps an optional value and a `Trace`:
 | Method | Description |
 |--------|-------------|
 | `success()` / `failure()` | Check outcome |
-| `value()` | Get the parsed value (const reference, or rvalue on a non-const `Result`). Precondition: `success()` — the header comment promises `std::bad_optional_access`, but the code dereferences the optional unchecked |
+| `value()` | Get the parsed value (const reference, or rvalue on a non-const `Result`). Precondition: `success()`; a result without a value throws `std::bad_optional_access` |
 | `error()` | Get the trace message. Precondition: `failure()`; a success result throws `std::bad_optional_access` only when it carries no message |
 | `index()` | Position after parsing (next unconsumed character) |
 | `trace()` | Full `Trace` object for debugging |

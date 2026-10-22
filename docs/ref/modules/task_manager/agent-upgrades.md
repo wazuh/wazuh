@@ -52,7 +52,10 @@ a single database transaction. A 500-agent request against one platform costs on
 download and one transaction — not 500 of each.
 
 **The response is a per-agent envelope**, so one agent failing its version check does not affect the
-rest of the request.
+rest of the request. The Server API keeps that shape: an agent refused with any per-agent verdict
+(errors 6 to 16, and 18) is a failed item in the response, while the agents whose task was created in
+the same answer are still reported as affected (see the
+[per-agent codes](api-reference.md#agent-upgrade-routes)).
 
 `wpk_version` is empty for a custom WPK, which the delivery side reads as a 5.x target.
 

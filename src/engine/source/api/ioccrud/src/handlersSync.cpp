@@ -485,7 +485,7 @@ adapter::RouteHandler getIocState(const std::shared_ptr<store::IStore>& store)
             if (std::holds_alternative<base::Error>(result))
             {
                 res.status = httplib::StatusCode::InternalServerError_500;
-                res.set_content("Failed to serialize response", "plain/text");
+                res.set_content("Failed to serialize response", "text/plain");
             }
             else
             {
@@ -522,7 +522,7 @@ adapter::RouteHandler getIocState(const std::shared_ptr<store::IStore>& store)
         if (std::holds_alternative<base::Error>(result))
         {
             res.status = httplib::StatusCode::InternalServerError_500;
-            res.set_content("Failed to serialize response", "plain/text");
+            res.set_content("Failed to serialize response", "text/plain");
         }
         else
         {

@@ -6,7 +6,7 @@ info:
 
     Every route is served on the engine API socket, `/var/wazuh-manager/queue/sockets/engine-api-http.sock`,
     and takes `POST`. Request bodies are JSON; unknown fields are ignored, and an empty body is read as an empty
-    request. Responses carry a JSON body although the server labels it `Content-Type: plain/text`.
+    request. Responses carry a JSON body labelled `Content-Type: application/json`.
   version: 1.0.0
 servers:
 - url: http+unix:/var/wazuh-manager/queue/sockets/engine-api-http.sock
@@ -472,7 +472,7 @@ paths:
       summary: Run a test in a session
       description: |
         Injects a single event into the engine using a previously created and loaded testing session.
-        The run times out after 5 seconds.
+        The run times out after `analysisd.server_api_timeout` milliseconds (default 5000).
 
         `event` uses the legacy wire format `<queue>:<location>:<message>`: the first byte is the queue (its
         byte value is stored in `wazuh.protocol.queue`, so `1` is `49`), and a `:` inside the location is escaped
@@ -606,7 +606,7 @@ paths:
                     status: ERROR
                     error: Asset decoder/unknown/0 not found in store
                 timeout:
-                  summary: The test run did not finish within 5 seconds
+                  summary: The test run did not finish within analysisd.server_api_timeout
                   value:
                     status: ERROR
                     error: Timeout waiting for ingestTest

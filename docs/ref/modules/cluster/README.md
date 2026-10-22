@@ -152,7 +152,8 @@ command-line options, for running it by hand:
 
 The debug level can also be set with the `wazuh_clusterd.debug` internal option (see
 [Internal Options](configuration.md#internal-options)); when it is non-zero it takes precedence over
-`-d`.
+`-d`. When the option is absent or `0`, the `-d` level applies, so `wazuh-manager-control enable debug`
+(which starts every daemon with `-d`) raises the cluster log to debug level 1.
 
 All cluster logs are written to `/var/wazuh-manager/logs/cluster.log`.
 

@@ -137,12 +137,14 @@ cancelled — `repeat_until` reached, SIGINT/SIGTERM, or the first run-invalidat
 bounded by the `--drain-timeout` flag when it is set (> 0), else by the scenario's
 `pacing.drain_timeout`, else by 60 s (`Run()` in `internal/runner/runner.go`):
 
-1. every lane stops at its next step, repetition or delay (a request already on the wire is not
+1. no further agent is admitted: one still waiting for a `concurrent_agents` slot never starts
+   (no `startup`, no lanes, no `shutdown`);
+2. every lane stops at its next step, repetition or delay (a request already on the wire is not
    interrupted; it ends with its answer or `--timeout`);
-2. each agent whose lanes have returned stops its keepalive loop and, in `agent` mode with control
-   enabled, sends `shutdown` (counted, never fatal);
-3. the runner waits for every agent to get there, up to the drain window;
-4. the artifacts are flushed and the summary printed.
+3. each agent whose lanes have returned stops its keepalive loop and, in `agent` mode with control
+   enabled, sends `shutdown` (counted, with its latency in the `shutdown` histogram; never fatal);
+4. the runner waits for every admitted agent to get there, up to the drain window;
+5. the artifacts are flushed and the summary printed.
 
 Requests (other than `/control`) still in flight when the window expires are counted as
 `abandoned_on_drain` (in the global totals only: at that point the sender knows how many are left,

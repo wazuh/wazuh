@@ -857,6 +857,35 @@ static void test_token_create_embed_ca_accepts_a_bundle_signed_by_its_second_cer
     os_free(bundle);
 }
 
+static void test_token_create_embed_ca_refuses_a_bundle_too_large_to_embed(void **state) {
+    (void)state;
+    EXPECT_LOG_WARN();
+    int before = etoken_store_count();
+
+    // A bundle past the 64 KiB ceiling: the operator's file is what is wrong, so the answer is the
+    // 9025 refusal with the reason -- not a 9001 "Internal error" blaming the manager.
+    size_t copies = (64 * 1024) / strlen(CA_PEM) + 2;
+    char *bundle = NULL;
+    os_calloc(copies * strlen(CA_PEM) + 1, sizeof(char), bundle);
+    for (size_t i = 0; i < copies; i++) {
+        strcat(bundle, CA_PEM);
+    }
+    write_file(CA_FILE, bundle);
+
+    expect_default_remote();
+    cJSON *response = dispatch("{\"function\":\"token_create\",\"arguments\":{\"address\":\"wazuh-1\",\"embed_ca\":true}}");
+    assert_int_equal(response_error(response), 9025);
+    cJSON *message = cJSON_GetObjectItem(response, "message");
+    assert_true(cJSON_IsString(message));
+    assert_non_null(strstr(message->valuestring, "Enrollment token refused: "));
+    assert_non_null(strstr(message->valuestring, "too large to embed"));
+    cJSON_Delete(response);
+    assert_int_equal(etoken_store_count(), before);
+
+    write_file(CA_FILE, CA_PEM);
+    os_free(bundle);
+}
+
 static void test_token_create_bad_arguments(void **state) {
     (void)state;
     EXPECT_LOG_ERROR();
@@ -2151,6 +2180,7 @@ int main(void) {
         cmocka_unit_test(test_token_create_embed_ca_no_credential),
         cmocka_unit_test(test_token_create_embed_ca_never_carries_a_private_key),
         cmocka_unit_test(test_token_create_embed_ca_accepts_a_bundle_signed_by_its_second_certificate),
+        cmocka_unit_test(test_token_create_embed_ca_refuses_a_bundle_too_large_to_embed),
         cmocka_unit_test(test_token_create_bad_arguments),
         cmocka_unit_test(test_token_create_refuses_a_lifetime_out_of_range),
         cmocka_unit_test(test_token_create_accepts_the_longest_lifetime),

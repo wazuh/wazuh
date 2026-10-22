@@ -25,8 +25,7 @@ The `engine-suite` Python package provides the command-line clients of the engin
   `ioc` (state, update) and `status` (engine readiness). Example: `engine-public status get`.
 - **engine-private**: commands on the internal API — namespace management, content-manager CRUD, GeoIP databases
   and the raw-event indexer status.
-- **engine-router**: route management (`add`, `delete`, `get`, `list`, `reload`, `update`) and event ingestion
-  (`ingest`).
+- **engine-router**: route management (`add`, `delete`, `get`, `list`, `reload`, `update`).
 - **engine-event-dumper**: the event-dumper routes.
 - **engine-test**: test sessions against a policy.
 

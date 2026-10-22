@@ -110,9 +110,16 @@ namespace manager_config::detail
                 ports.emplace_back(pointer, value->GetInt());
             }
         };
-        port("/remote/legacy/port", boolean(get(doc, "/remote/legacy/enabled"), false));
+        const bool legacyEnabled = boolean(get(doc, "/remote/legacy/enabled"), false);
+        // authd binds auth.port only for legacy enrollment: authd running, remote_enrollment on, and
+        // legacy_enrollment on -- which has no schema default and follows remote.legacy.enabled when unset
+        // (w_authd_resolve_legacy_enrollment()).
+        const bool legacyEnrollment = !boolean(get(doc, "/auth/disabled"), false) &&
+                                      boolean(get(doc, "/auth/remote_enrollment"), true) &&
+                                      boolean(get(doc, "/auth/legacy_enrollment"), legacyEnabled);
+        port("/remote/legacy/port", legacyEnabled);
         port("/remote/https/port", true);
-        port("/auth/port", !boolean(get(doc, "/auth/disabled"), false));
+        port("/auth/port", legacyEnrollment);
         port("/cluster/port", true);
         for (std::size_t i = 0; i < ports.size(); ++i)
         {

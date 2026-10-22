@@ -100,5 +100,6 @@ if(ENGINE_BUILD_TEST)
         fastmetrics::mocks
         rawevtindexer::mocks
     )
-    gtest_discover_tests(router_utest router_ctest)
+    gtest_discover_tests(router_utest)
+    gtest_discover_tests(router_ctest)
 endif(ENGINE_BUILD_TEST)

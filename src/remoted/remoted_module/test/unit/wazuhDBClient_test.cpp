@@ -516,6 +516,57 @@ TEST(WazuhDBClientTest, QueryTimeoutFailsWithTimeoutAndIncrementsMetric)
 }
 
 // -----------------------------------------------------------------------------
+// Unreachable wdb.sock: a request queued while the worker cannot connect must
+// still fail on its deadline, with the same outcome as a send-time timeout,
+// instead of waiting for wazuh-db to come back. The wait bound is under the
+// 1 s reconnect backoff, so the request cannot have been served by a retry.
+// -----------------------------------------------------------------------------
+TEST(WazuhDBClientTest, QueuedRequestTimesOutWhileSocketUnreachable)
+{
+    // No server ever listens on this path.
+    const auto path = remoted::test::makeUniqueSocketPath("wdb_down");
+
+    // A real manager-backed set (not the null object): this test asserts the count.
+    wazuh::metrics::Manager metricsManager;
+    ControlMetrics metrics {makeControlMetrics(metricsManager)};
+    WazuhDBClient client(path, /*poolSize*/ 1, /*deadlineMs*/ 100, /*maxQueueSize*/ 100, metrics);
+
+    // Let the worker fail its first connect and enter the backoff.
+    std::this_thread::sleep_for(50ms);
+
+    Waiter<SocketError> w;
+    const auto queuedAt = std::chrono::steady_clock::now();
+    client.query("global anything", [&](SocketError e, const std::string&) { w.complete(e); });
+    ASSERT_TRUE(w.wait(800ms));
+    EXPECT_EQ(w.value, SocketError::Timeout);
+    EXPECT_GE(std::chrono::steady_clock::now() - queuedAt, 100ms);
+    EXPECT_GE(metrics.wdbError->get(), 1U);
+    EXPECT_EQ(metrics.wdbLatency->snapshot().count, 0U);
+}
+
+// The deadline sweep must not fail a queued request early: one queued while
+// wdb.sock is unreachable, whose deadline outlasts the outage, is served once
+// the reconnect succeeds.
+TEST(WazuhDBClientTest, QueuedRequestServedWhenSocketReturnsBeforeDeadline)
+{
+    const auto path = remoted::test::makeUniqueSocketPath("wdb_back");
+
+    ControlMetrics metrics;
+    WazuhDBClient client(path, /*poolSize*/ 1, /*deadlineMs*/ 5000, /*maxQueueSize*/ 100, metrics);
+    std::this_thread::sleep_for(50ms);
+
+    Waiter<SocketError> w;
+    client.query("global anything", [&](SocketError e, const std::string&) { w.complete(e); });
+
+    // wazuh-db comes back; the worker reconnects on its next backoff tick (1 s).
+    std::this_thread::sleep_for(200ms);
+    FakeUdsServer server(path, [](const std::string&) -> std::string { return "ok"; });
+
+    ASSERT_TRUE(w.wait(4000ms));
+    EXPECT_EQ(w.value, SocketError::None);
+}
+
+// -----------------------------------------------------------------------------
 // Latency: one observation per SUCCESSFUL round trip -- the histogram is the
 // number that sizes wdbRoundtripDeadlineMs, so failures must never feed it.
 // -----------------------------------------------------------------------------

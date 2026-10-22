@@ -6,7 +6,7 @@ info:
 
     Every route is served on the engine API socket, `/var/wazuh-manager/queue/sockets/engine-api-http.sock`
     (`analysisd.server_api_socket`). Request bodies are JSON; unknown fields are ignored, and an empty body is
-    read as an empty request. Responses carry a JSON body although the server labels it `Content-Type: plain/text`.
+    read as an empty request. Responses carry a JSON body labelled `Content-Type: application/json`.
     A body larger than `analysisd.server_api_payload_max_bytes` (default `0`, unlimited) is answered with
     HTTP 413 and a plain-text message.
   version: 1.0.0
@@ -53,6 +53,10 @@ paths:
         - All enabled spaces have `available == true`
         - All IOC types have `available == true`
         - All geo databases have `available == true`
+
+        With `analysisd.server_enable_event_processing` set to `false` there is no content or IOC
+        synchronization: the route still answers `200`, with empty `spaces` and `ioc` maps and
+        `ready: false` (the engine processes no events).
       responses:
         '200':
           description: Status retrieved
@@ -410,7 +414,7 @@ paths:
 
         This endpoint **does not** validate policies and **does not** create sessions.
         It only validates request parameters, builds the event, and runs the test ingestion
-        against the session named by the `space` field. The run times out after 5 seconds.
+        against the session named by the `space` field. The run times out after `analysisd.server_api_timeout` milliseconds (default 5000).
 
         If tracing is enabled (`trace_level` other than `NONE`), the endpoint retrieves the list of policy assets
         from the testing session and traces all of them.
@@ -680,7 +684,7 @@ paths:
                     status: ERROR
                     error: 'Error parsing event: Invalid format: location cannot be empty'
                 timeout:
-                  summary: The test run did not finish within 5 seconds
+                  summary: The test run did not finish within analysisd.server_api_timeout
                   value:
                     status: ERROR
                     error: Timeout waiting for ingestTest
@@ -914,6 +918,9 @@ paths:
 
         A value of `0` means unlimited for that limit. A body over the limit for its type is rejected with
         HTTP 413 (when both limits are set, a body over the larger of the two is rejected before the type is read).
+
+        `type` must be `decoder`, `filter`, `integration` or `kvdb`; any other value (including `output`) is
+        rejected with 400 `Unsupported value for /type`.
 
         Per type:
         - **decoder**, **filter**: the asset name (`name`) must start with the type (`decoder/…`, `filter/…`) and
