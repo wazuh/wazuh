@@ -50,6 +50,12 @@ void fim_container_baseline_log_error(const char* message);
  * how ebpf_whodata.cpp names modern.bpf.o. */
 #define CB_RT_BPF_OBJECT_PATH "lib/rt_file.bpf.o"
 
+/* Install-relative location of the libbpf the agent ships. Named here for the
+ * same reason as the object above: without it the engine dlopen()s a bare
+ * soname and binds the HOST's libbpf, which on a legacy RHEL-family host is too
+ * old to carry the symbols the engine needs. */
+#define CB_RT_LIBBPF_PATH "lib/libbpf.so"
+
 /* Resolves an install-relative path against the agent's install directory.
  * Returns 0 on success and writes a NUL-terminated absolute path into `out`.
  *

@@ -710,6 +710,7 @@ bool ContainerEventDrain::start(const DrainConfig& config, ReconcileHandler hand
     std::memset(&filter, 0, sizeof(filter));
     filter.type_mask    = RT_FILE_ALL_BITS;
     filter.bpf_obj_path = config.bpf_object_path.empty() ? nullptr : config.bpf_object_path.c_str();
+    filter.libbpf_path  = config.libbpf_path.empty() ? nullptr : config.libbpf_path.c_str();
     filter.log          = &EngineLog;
     filter.log_user     = nullptr;
 

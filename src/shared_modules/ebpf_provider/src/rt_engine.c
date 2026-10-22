@@ -152,13 +152,17 @@ rt_log(const struct rt_log_target* target, int level, const char* fmt, ...)
         *(void**)(&g_libbpf.field) = dlsym(mod, sym);                                                               \
         if (!g_libbpf.field)                                                                                         \
         {                                                                                                            \
-            rt_log(log, RT_LOG_ERROR, "libbpf missing symbol '%s'", sym);                                            \
+            rt_log(log,                                                                                              \
+                   RT_LOG_ERROR,                                                                                     \
+                   "libbpf at '%s' is missing symbol '%s'; it is too old for this engine",                           \
+                   bound,                                                                                            \
+                   sym);                                                                                             \
             dlclose(mod);                                                                                           \
             return 0;                                                                                               \
         }                                                                                                            \
     } while (0)
 
-static int ensure_libbpf_loaded(const struct rt_log_target* log)
+static int ensure_libbpf_loaded(const struct rt_log_target* log, const char* libbpf_path)
 {
     if (g_libbpf_resolved)
     {
@@ -166,16 +170,43 @@ static int ensure_libbpf_loaded(const struct rt_log_target* log)
     }
     g_libbpf_resolved = 1;
 
-    void* mod = dlopen(LIBBPF_SONAME_PRIMARY, RTLD_NOW);
+    /* The caller's own copy first. A bare soname binds whatever the host has,
+     * and a host libbpf old enough to lack one of the symbols below fails the
+     * open outright — see rt_filter.libbpf_path. */
+    const char* bound = NULL;
+    void* mod = NULL;
+    if (libbpf_path && libbpf_path[0])
+    {
+        mod = dlopen(libbpf_path, RTLD_NOW);
+        if (mod)
+        {
+            bound = libbpf_path;
+        }
+        else
+        {
+            rt_log(log,
+                   RT_LOG_WARN,
+                   "dlopen('%s') failed (%s); falling back to the system libbpf, which may be too old",
+                   libbpf_path,
+                   dlerror());
+        }
+    }
+    if (!mod)
+    {
+        mod = dlopen(LIBBPF_SONAME_PRIMARY, RTLD_NOW);
+        bound = LIBBPF_SONAME_PRIMARY;
+    }
     if (!mod)
     {
         mod = dlopen(LIBBPF_SONAME_FALLBACK, RTLD_NOW);
+        bound = LIBBPF_SONAME_FALLBACK;
     }
     if (!mod)
     {
         rt_log(log, RT_LOG_ERROR, "dlopen(libbpf) failed: %s", dlerror());
         return 0;
     }
+    rt_log(log, RT_LOG_INFO, "libbpf bound from '%s'", bound);
 
     RT_RESOLVE_SYM(open_file, "bpf_object__open_file");
     RT_RESOLVE_SYM(load, "bpf_object__load");
@@ -422,7 +453,7 @@ rt_handle_t rt_open(const struct rt_filter* filter)
         return NULL;
     }
 
-    if (!ensure_libbpf_loaded(&log))
+    if (!ensure_libbpf_loaded(&log, filter->libbpf_path))
     {
         rt_log(&log, RT_LOG_ERROR, "libbpf unavailable — falling back is the caller's responsibility");
         return NULL;
