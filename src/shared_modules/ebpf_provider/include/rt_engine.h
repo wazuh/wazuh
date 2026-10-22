@@ -64,6 +64,20 @@ struct rt_filter
      * consumer-agnostic constraint. */
     const char* bpf_obj_path;
 
+    /* Absolute path to the libbpf shared object this engine should bind, or
+     * NULL to resolve the bare `libbpf.so.1` / `libbpf.so` sonames as before.
+     *
+     * The sonames alone are not enough for a packaged agent. No Wazuh binary
+     * carries an RPATH, so a bare dlopen() binds whatever libbpf the HOST
+     * happens to have — and on a legacy RHEL-family host that is libbpf 0.5.0,
+     * which predates bpf_program__set_autoload() and so fails this engine's
+     * mandatory symbol resolution. The agent ships its own libbpf precisely to
+     * avoid depending on the host's; it just was not being asked for.
+     *
+     * Kept as a caller-supplied path, like bpf_obj_path above, because the
+     * engine deliberately has no opinion on Wazuh's install-path layout. */
+    const char* libbpf_path;
+
     /* Optional diagnostics sink; NULL keeps the stderr behaviour. */
     rt_log_fn log;
     void* log_user;
