@@ -531,7 +531,6 @@ Periodic push of the agent's effective configuration to the manager's `/config` 
 - **`interval`** — Default `3600` seconds. Positive duration with the usual suffixes, up to one day (`86400`). `0` is rejected.
 - **Note:** The manager relies on this snapshot even when the configuration was never changed, which is why it ships enabled.
 - **Credentials:** The report keeps the key of an inline credential but shows its value as `*****`: `access_key` and `secret_key` (aws-s3), `api_token` (github), `client_secret` (office365), `secret_value` (ms-graph), `application_key` and `account_key` (azure-logs). A credential that is not set is left out. Paths to a file holding a credential, such as `client_secret_path`, `auth_path` or `credentials_file`, are reported as they are. Free-text options, such as a `command` line, are reported verbatim, so don't put credentials in them. To report the credentials in clear, set `wazuh_modules.unmask_credentials=1` in `local_internal_options.conf` (see [Common Internal Options](../../configuration/agent/README.md#common-internal-options)); the same values then also appear in the index.
-- **Note:** Pre-release 5.0.0 agents sent those credentials in clear, and the manager stored them in `wazuh-agent-config`. An upgraded agent's first report replaces its document; check that `state.modified_at` moved forward. Index snapshots or backups taken before that still hold the values, so treat those credentials as exposed and rotate them.
 
 ---
 
