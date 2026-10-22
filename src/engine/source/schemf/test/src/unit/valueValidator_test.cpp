@@ -243,7 +243,27 @@ TEST(ValueValidatorTest, Date_RejectsTrailingAndShortFields)
                               R"("2024-01-01T00:00:00Zul")",
                               R"("2024-01-01T00:00:00ZuluX")",
                               R"("2024-01-01T00:00:00ZULU")",
-                              R"("2024-01-01T00:00:00ZUTC")"})
+                              R"("2024-01-01T00:00:00ZUTC")",
+                              R"("2024-01-01T00:00:00+02:00x")",
+                              R"("2024-01-01T00:00:00+02:00Z")",
+                              R"("2024-01-01T00:00:00+2:00")",
+                              R"("2024-01-01T00:00:00+0200")",
+                              R"("2024-01-01T00:00:00+02")",
+                              R"("2024-01-01T00:00:00+02:0")",
+                              R"("2024-01-01T00:00:00+02:60")",
+                              R"("2024-01-01T00:00:00+15:00")",
+                              R"("2024-01-01T00:00:00 +02:00")",
+                              R"("2024-01-01T00:00:00.+02:00")",
+                              R"("2024-01-01T00:00:00.1234567890+02:00")",
+                              R"("2024-01-01x")",
+                              R"("2024-01-01Z")",
+                              R"("2024-01-01+02:00")",
+                              R"("2024-1-01")",
+                              R"("2024-01-1")",
+                              R"("2024-13-01")",
+                              R"("2024-02-30")",
+                              R"("2023-02-29")",
+                              R"("2024-01-00")"})
     {
         SCOPED_TRACE(value);
         auto res = v(json::Json {value});
@@ -259,7 +279,16 @@ TEST(ValueValidatorTest, Date_AcceptsValidForms)
                               R"("2024-01-01T00:00:00.123Z")",
                               R"("2024-01-01T00:00:00.123456789Z")",
                               R"("2024-01-01T00:00:00Zulu")",
-                              R"("2024-01-01T00:00:00.123Zulu")"})
+                              R"("2024-01-01T00:00:00.123Zulu")",
+                              R"("2024-01-01T00:00:00+02:00")",
+                              R"("2024-01-01T00:00:00-02:00")",
+                              R"("2024-01-01T00:00:00+00:00")",
+                              R"("2024-01-01T00:00:00+14:00")",
+                              R"("2024-01-01T00:00:00-12:30")",
+                              R"("2024-01-01T00:00:00.123+02:00")",
+                              R"("2024-01-01T00:00:00.123456789-05:30")",
+                              R"("2024-01-01")",
+                              R"("2024-02-29")"})
     {
         SCOPED_TRACE(value);
         EXPECT_FALSE(base::isError(v(json::Json {value})));
@@ -322,6 +351,49 @@ TEST(ValueValidatorTest, Ip_RejectsMalformed)
         SCOPED_TRACE(value);
         auto res = v(json::Json {value});
         ASSERT_TRUE(base::isError(res));
+    }
+}
+
+TEST(ValueValidatorTest, Ip_AcceptsZoneIds)
+{
+    auto v = getIpValidator();
+    for (const auto* value : {R"("fe80::1%eth0")",
+                              R"("fe80::1%0")",
+                              R"("fe80::1%15")",
+                              R"("fe80::1%ETH0")",
+                              R"("fe80::87a:f22b:64d4:824a%15")",
+                              R"("::%eth0")",
+                              R"("1:2:3:4:5:6:7:8%eth0")",
+                              R"("fe80::1%eth0%x")",
+                              R"("fe80::1%eth 0")",
+                              R"("fe80::1%a.b_c-d")"})
+    {
+        SCOPED_TRACE(value);
+        EXPECT_FALSE(base::isError(v(json::Json {value})));
+    }
+}
+
+TEST(ValueValidatorTest, Ip_RejectsMalformedZoneIds)
+{
+    auto v = getIpValidator();
+    for (const auto* value : {R"("fe80::1%")",
+                              R"("%eth0")",
+                              R"("%")",
+                              R"("1.2.3.4%eth0")",
+                              R"("1.2.3.4%")",
+                              R"("::ffff:1.2.3.4%eth0")",
+                              R"("fe80::g%eth0")",
+                              R"("fe80:::1%eth0")",
+                              R"("1:2:3:4:5:6:7:8:9%eth0")",
+                              R"("fe80::1/64%eth0")",
+                              R"("[fe80::1%eth0]")",
+                              R"(" fe80::1%eth0")",
+                              R"("fe80::1%eth0\u0000x")"})
+    {
+        SCOPED_TRACE(value);
+        auto res = v(json::Json {value});
+        ASSERT_TRUE(base::isError(res));
+        EXPECT_THAT(base::getError(res).message, HasSubstr("Invalid IP"));
     }
 }
 

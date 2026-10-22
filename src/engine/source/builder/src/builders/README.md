@@ -405,7 +405,7 @@ Defined in `schemf/src/valueValidators.hpp`, each validator checks the concrete 
 | `getDoubleValidator()` | `value.isDouble()` |
 | `getStringValidator()` | `value.isString()` |
 | `getDateValidator()` | Is string in the exact form `YYYY-MM-DDTHH:MM:SS[.fraction]Z` (two-digit fields, 1-9 fraction digits, zone `Z` or `Zulu` and nothing after it) that is a real calendar date and time (month 1-12, valid day of month, hour < 24, minute < 60, second < 60) |
-| `getIpValidator()` | Is string that `inet_pton` accepts as IPv4 or IPv6 (whole string; no embedded NUL, no zone id) |
+| `getIpValidator()` | Is string that `inet_pton` accepts as IPv4 or IPv6 (whole string; no embedded NUL), or an IPv6 address with no dots followed by `%` and a non-empty zone (zone not otherwise checked; none on IPv4 or an IPv4-embedded address). The `ip` parser still rejects a zone id |
 | `getBinaryValidator()` | Is string that is entirely Base64 (padding allowed, nothing after it) |
 | `getObjectValidator()` | `value.isObject()` |
 | `getIncompatibleValidator()` | Always fails (type cannot be used in helpers) |
