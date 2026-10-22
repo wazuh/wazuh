@@ -30,6 +30,7 @@
 #include "fakeIndexer.hpp"
 #include "indexer_client/keyValueConfigSource.hpp"
 #include "runtime/runtimeInternal.hpp"
+#include "testTimeScale.hpp"
 #include "transport/classify.hpp"
 #include "transport/retryAfter.hpp"
 
@@ -41,6 +42,7 @@ using indexer_client::detail::toString;
 using indexer_client::testing::FakeIndexer;
 using indexer_client::testing::FakeIndexerOptions;
 using indexer_client::testing::Rule;
+using indexer_client::testing::scaled;
 
 namespace
 {
@@ -550,6 +552,7 @@ TEST(TransportCoverageTest, CurlCodeTable)
                       {CURLE_SEND_ERROR, false, TransportCause::SendError},
                       {CURLE_GOT_NOTHING, false, TransportCause::RecvError},
                       {CURLE_RECV_ERROR, false, TransportCause::RecvError},
+                      {CURLE_BAD_CONTENT_ENCODING, false, TransportCause::RecvError},
                       {CURLE_PARTIAL_FILE, false, TransportCause::PartialResponse},
                       {CURLE_WRITE_ERROR, true, TransportCause::ResponseTooLarge},
                       {CURLE_WRITE_ERROR, false, TransportCause::LocalError},
@@ -650,7 +653,8 @@ TEST_F(TransportTest, LeastLoadedLoopWinsOverRoundRobin)
     FakeIndexer fake;
     Rule slow;
     slow.pathRegex = "/slow";
-    slow.latency = 2000ms;
+    // Window that makes the case (scaled()): /slow must still be in flight on loop 0 when /b and /c have completed.
+    slow.latency = scaled(2000ms);
     fake.addRule(slow);
     fake.start();
     auto transport = startRuntime(2, 1);
@@ -659,16 +663,16 @@ TEST_F(TransportTest, LeastLoadedLoopWinsOverRoundRobin)
 
     const auto a = submitTo(*transport, collector, request(HttpMethod::Get, fake.baseUrl() + "/slow")); // loop 0
     const auto b = submitTo(*transport, collector, request(HttpMethod::Get, fake.baseUrl() + "/b"));    // loop 1
-    ASSERT_TRUE(collector->waitKey(b.key, 10s));
+    ASSERT_TRUE(collector->waitKey(b.key, scaled(10000ms)));
     const auto c = submitTo(*transport, collector, request(HttpMethod::Get, fake.baseUrl() + "/c")); // round-robin: 0
-    ASSERT_TRUE(collector->waitKey(c.key, 10s));
+    ASSERT_TRUE(collector->waitKey(c.key, scaled(10000ms)));
     EXPECT_FALSE(collector->waitKey(a.key, 0ms));
     auto stats = transport->stats();
     ASSERT_EQ(stats.completedPerLoop.size(), 2u);
     EXPECT_EQ(stats.completedPerLoop[0], 0u);
     EXPECT_EQ(stats.completedPerLoop[1], 2u);
     EXPECT_EQ(stats.inFlightPerLoop[0], 1u);
-    ASSERT_TRUE(collector->waitKey(a.key, 10s));
+    ASSERT_TRUE(collector->waitKey(a.key, scaled(10000ms)));
     stats = transport->stats();
     EXPECT_EQ(stats.completedPerLoop[0], 1u);
 }

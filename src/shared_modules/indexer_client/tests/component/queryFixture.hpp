@@ -15,8 +15,8 @@
 
 // Shared by the query component suites (plan 18, plan-E4a §Tests): fakes that answer the health probe (green) plus
 // the case's rules, the runtime started on their hosts with the probe running (one round applied before the case),
-// a client without buckets and helpers over the recorded requests and detail::query::queryStats(). Time bounds are
-// multiplied by TIME_SCALE (3 under TSAN, as bulkFairness_test.cpp).
+// a client without buckets and helpers over the recorded requests and detail::query::queryStats(). Time bounds go
+// through scaled(), the module's single scale (testTimeScale.hpp).
 
 #include <chrono>
 #include <cstdint>
@@ -38,19 +38,8 @@
 #include "pitResponder.hpp"
 #include "query/pit.hpp"
 #include "query/query.hpp"
+#include "testTimeScale.hpp"
 #include "testing/hooks.hpp"
-
-#if defined(__SANITIZE_THREAD__)
-#define QUERY_TEST_TSAN 1
-#elif defined(__has_feature)
-#if __has_feature(thread_sanitizer)
-#define QUERY_TEST_TSAN 1
-#else
-#define QUERY_TEST_TSAN 0
-#endif
-#else
-#define QUERY_TEST_TSAN 0
-#endif
 
 namespace query_component
 {
@@ -63,13 +52,8 @@ namespace query_component
     using indexer_client::testing::Rule;
     using NodeState = indexer_client::HealthView::NodeState;
 
-    constexpr int TIME_SCALE = QUERY_TEST_TSAN ? 3 : 1;
-
-    /// A time bound of the plan («< 1 s», «+ margin»), x3 under TSAN.
-    inline std::chrono::milliseconds scaled(std::chrono::milliseconds bound)
-    {
-        return bound * TIME_SCALE;
-    }
+    /// A time bound of the plan («< 1 s», «+ margin»): the module's single scale (testTimeScale.hpp).
+    using indexer_client::testing::scaled;
 
     inline ic::TimePoint now()
     {

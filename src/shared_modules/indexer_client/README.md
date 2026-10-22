@@ -290,7 +290,7 @@ the runtime alive. The normative contract is `planes/18-indexer_connector_v2/ane
 | 28 | `Timeout` | yes |
 | 6, 7 | `Connect` | yes |
 | 55 | `SendError` | yes |
-| 56, 52 | `RecvError` | yes |
+| 56, 52, 61 (undecodable gzip body) | `RecvError` | yes |
 | 18 | `PartialResponse` | yes |
 | 23 with the response cap tripped | `ResponseTooLarge` | no |
 | 2, 27, a `curl_multi_socket_action` error, 23 without the cap flag, any other | `LocalError` | no |
@@ -303,8 +303,11 @@ the runtime alive. The normative contract is `planes/18-indexer_connector_v2/ane
   `CURLINFO_SIZE_UPLOAD_T`.
 - **Response cap.** `max_response_bytes` is enforced only in the write callback
   (`curlLoop.cpp:772`), which sets the cap flag and fails the transfer; `HttpResult.body` is never
-  larger than the cap. `CURLOPT_MAXFILESIZE_LARGE` is not used and `CURLOPT_ACCEPT_ENCODING` is not
-  enabled (if it ever is, the cap must count decoded bytes).
+  larger than the cap. `CURLOPT_MAXFILESIZE_LARGE` is not used. The transport sets
+  `CURLOPT_ACCEPT_ENCODING "gzip"` (gzip only, I117; `curlLoop.cpp:295`); curl decompresses before the write callback, so
+  `max_response_bytes` counts **decompressed** bytes (a gzip bomb yields `ResponseTooLarge`) and a corrupt gzip body (curl 61) is a
+  `RecvError`, attributable to the node. Measured against OpenSearch 3.6.0: bulk errors 363 594 to 13 217 B, a page of 1 000 hits
+  200 722 to 11 744 B.
 - **`Retry-After`** is parsed byte by byte (`src/transport/retryAfter.cpp`): no locale, no
   `strptime`/`mktime`, so neither the global locale nor `TZ` changes the result. The value is
   capped at `retry_after_max_ms` and parsed on the CPU pool.
@@ -1648,11 +1651,12 @@ requests and connections and keeps no bodies) and **the same `libwazuhext.so`**,
   `c` chains each keeping one `POST /_bulk` in flight; each result callback (on the CPU pool) submits the chain's next request.
 
 The load is one precomputed 4 MiB body, `POST /_bulk`, 60 s timeout. The normative comparison puts **identical headers on the
-wire**: the v1 sends the v2's set (`Content-Type: application/json`, an empty `Accept-Encoding:`, the same Basic auth) and both let
-curl add `Expect: 100-continue` ([finding below](#finding-expect-100-continue)). The v1 **as shipped** (`DEFAULT_HEADERS`,
-`Accept-Encoding: gzip`) is informative only. `--selfcheck` verifies the headers on the wire.
+wire**: the v1 sends the v2's set (`Content-Type: application/json`, `Accept-Encoding: gzip`, the same Basic auth) and both let
+curl add `Expect: 100-continue` ([finding below](#finding-expect-100-continue)). Both versions therefore send
+`Accept-Encoding: gzip` (the fake does not compress); `run.sh --selfcheck` requires it and verifies the headers on the wire. The v1 **as shipped**
+(`DEFAULT_HEADERS`) is informative only.
 
-**Build.** The target is off by default (`INDEXER_CLIENT_BENCH`, `CMakeLists.txt:90`); CI does not compile it yet. Build it in a
+**Build.** The target is off by default (`INDEXER_CLIENT_BENCH`, `CMakeLists.txt:90`); CI only compiles it (job `indexerclient-bench-build`, Release, `-DINDEXER_CLIENT_BENCH=ON`; see [Tests and CI](#tests-and-ci)). Build it in a
 **separate checkout or worktree**, never the development checkout: `wazuhext` is always written to `<checkout>/src/build/lib`
 whatever the build tree, and both binaries load it from there through their RPATH:
 
@@ -1903,29 +1907,73 @@ and, for TSAN, `-DTSANITIZE=ON`; for ASAN, the CI mechanism
 (`-DCMAKE_C_FLAGS`/`-DCMAKE_CXX_FLAGS="-g -fsanitize=address -fsanitize=undefined -fsanitize=leak"`,
 `.github/actions/build_target_cpp/action.yml`). Rebuild `wazuhext` there before each sanitized run, check
 with `readelf -d` that it needs `libasan` only in the ASAN tree, and prove the instrumentation with
-`nm -C <test binary> | grep -c __tsan` (or `__asan`). The CI workflow
-(`.github/workflows/5_testunit_indexer_client.yml`) builds and runs both suites in the normal job and
-in the ASAN job.
+`nm -C <test binary> | grep -c __tsan` (or `__asan`). The CI jobs are described in [Tests and CI](#tests-and-ci).
 
 Layout of `tests/`: `unit/` (config schema, key-value source, mocks, fake indexer), `component/`
 (transport over real sockets), `mocks/` (gmock mocks of the public interfaces), `fake/`
 (in-process fake indexer; `fake/pitResponder.hpp` is the programmable PIT responder of the PIT suites). `spike/` holds the E0 measurement code and is not part of the targets.
 
+## Tests and CI
+
+**Workflows.** `.github/workflows/5_testunit_indexer_client.yml` (its path filter includes `src/deps.lock.mk`):
+
+| Job | What it does |
+|---|---|
+| `indexerclient-modules` | unit + component suites in the coverage build. CI compiles Release `-O3 -s`, because `build_target_cpp` passes no build type (`src/CMakeLists.txt:24-30,52`) |
+| `indexerclient-asan` | ASAN + UBSAN + LSan, component suite without `*Long` |
+| `indexerclient-tsan` | Debug, `-fsanitize=thread`, `sudo sysctl -w vm.mmap_rnd_bits=28`, `TSAN_OPTIONS=halt_on_error=1 second_deadlock_stack=1`, component suite without `*Long` |
+| `indexerclient-bench-build` | only compiles `indexer_client_bench` in Release with `-DINDEXER_CLIENT_BENCH=ON` |
+
+The three test jobs set `INDEXER_CLIENT_TEST_TIME_SCALE: "2"`.
+
+`.github/workflows/5_testintegration_indexer_client.yml`: job `indexerclient-opensearch`, with a `services.opensearch` container
+`opensearchproject/opensearch:3.6.0` (single node, security off, `search.keep_alive_interval=1s`, `point_in_time.init.keep_alive=1s` — static: with
+its 30 s default a PIT requested at 1 s would live 30 s — and no disk threshold). It runs
+`ctest -L indexer_client_opensearch_test` with `INDEXER_CLIENT_OPENSEARCH_URL=http://localhost:9200`.
+
+**Time scale.** `tests/fake/testTimeScale.hpp`: `INDEXER_CLIENT_TEST_TIME_SCALE` is an integer 1-20 (empty means 1; an invalid value aborts), multiplied
+by 3 under TSAN; the variable is read on the first call. `scaled()` covers the limits that proved host-sensitive: the D35 margins of the transport
+suites, the latency cases of `bulkLimiter_test.cpp` (D57, the fake's latency and `latency_target_ms` scaled together), the query and close suites
+(`queryFixture.hpp`) and the windows the local CI reproduction caught (`LeastLoadedLoopWinsOverRoundRobin`, `SubmitRacesClose`). The other
+literal durations were not reviewed one by one: most are generous waits, and a few are race windows (`health_test.cpp`, `bulkOrdered_test.cpp`,
+`transportShutdown_test.cpp`) that passed every local run of the three jobs at 2 CPUs; a CI flake on any of them is scaled the same way (D35).
+
+**Real-OpenSearch suite** (`tests/opensearch/`, `indexer_client_opensearch_test`; links the public `.so` and cpp-httplib for raw requests). Without
+a URL the suite SKIPs, except under `GITHUB_ACTIONS`, where it FAILs; a URL that does not answer within `scaled(120 s)` FAILs, once per run (later cases fail at once). Its indices are `ic-e6b-<case>-<pid>`; the global
+setup **deletes every `ic-e6b-*` index** left by an earlier run, so never point it at a cluster where another run of the suite is active.
+13 cases:
+
+| Suite | Covers |
+|---|---|
+| `OpenSearchPreserve.*` | the real Painless of `ReplacePreserving`: nested paths, `noop` by version, `"upsert":{}` creates the same document as `"upsert":<doc>`, two conflicting clients with `Retry` without loss or duplicates |
+| `OpenSearchBulk.*` | per-item results with `errors:false`, deletes |
+| `OpenSearchPit.*` | real expiry yields `PitExpired` on a 404 `search_context_missing_exception`, confirmed delete, slices with the same id |
+| `OpenSearchSizes.*`, `OpenSearchLoad.*` | informative measurements |
+| `OpenSearchHealth.RequireClusterFailsFast` | the require-cluster case fails fast |
+
+Locally: start the container with those settings, then
+`INDEXER_CLIENT_OPENSEARCH_URL=http://localhost:<port> ctest --test-dir src/build -V -L indexer_client_opensearch_test`.
+
+**D54 result.** With OpenSearch 3.6.0 at 2 CPU, bulks totalling 256 MiB took 5.8 s with p95 <= 64-128 ms and no latency-driven window reduction, so
+`latency_target_ms` stays at 2 s.
+
 ## What is not implemented yet
 
 E1 delivered the skeleton, E2a-1 the internal `http` transport, E2a-2 TLS and credentials, E2b node health and logging, E2c the
-transport [benchmark](#benchmark) (done; the `--path client` benchmark of the whole client arrives with E6), E3a the
+transport [benchmark](#benchmark) (done; the `--path client` benchmark of the whole client arrives with E6c), E3a the
 [write path](#write-path-e3a) up to the sink, E3b-1 the [response classifier and retry lane](#response-classification-and-retry-lane-e3b-1),
 E3b-2 the [bulk sender](#bulk-sender-e3b-2), E3c-1 the [per-operation conflict policy](#conflict-policy-e3c-1), `ReplacePreserving` and
 [groups](#groups-e3c-1), and E3c-2 [`ordered` buckets](#ordered-buckets-e3c-2) and [`cancel(tag)`](#cancellation-e3c-2): bulk writes
-reach the indexer, E4a the [queries](#queries-e4a) (`search`, `searchAfter`, `deleteByQuery`, `updateByQuery`, `indexExists`), E4b the managed [point in time](#point-in-time-e4b), E5a the per-node [load control](#load-control-e5a) (adaptive window, bulk-size target and pacing), E5b the [client close and shutdown](#closing-and-shutdown-e5b) (drain up to one deadline, callback boundary) and E5c the [metrics](#metrics-e5c) and [logging](#logging-e5c), which complete E5, and E6a the [ambiguous 5xx policy](#ambiguous-5xx-e6a), the `Retry-After` parking of nodes (D56) and one scheduler wake per completion. Not implemented, by stage:
+reach the indexer, E4a the [queries](#queries-e4a) (`search`, `searchAfter`, `deleteByQuery`, `updateByQuery`, `indexExists`), E4b the managed [point in time](#point-in-time-e4b), E5a the per-node [load control](#load-control-e5a) (adaptive window, bulk-size target and pacing), E5b the [client close and shutdown](#closing-and-shutdown-e5b) (drain up to one deadline, callback boundary) and E5c the [metrics](#metrics-e5c) and [logging](#logging-e5c), which complete E5, E6a the [ambiguous 5xx policy](#ambiguous-5xx-e6a), the `Retry-After` parking of nodes (D56) and one scheduler wake per completion, and E6b the [CI, the TSAN job and the real-OpenSearch suite](#tests-and-ci) and gzip on the transport (I117). Not implemented, by stage:
 
 | Area | Stage |
 |---|---|
-| Benchmark of the whole client (`--path client`) | E6 |
+| Benchmark of the whole client (`--path client`) | E6c |
 | Registration of the catalog in `wazuh_metrics` / fastmetrics and the `GET /metrics` of each consumer | E7–E10 |
-| Behaviour against a real indexer (request headers without `Accept-Encoding`, D41; `Expect: 100-continue` cost), and the real Painless run of `ReplacePreserving` (D45) | E6 |
 | The consumer's sweep that closes the [ordered ambiguous window](#ordered-buckets-e3c-2) (inventory sync, delete by query) and its `ordered.ambiguous.residual` metric | E7 |
 | Migration of the four consumers off `indexer_connector` | later stages |
+
+Known defects E6b records and does not fix: a `CursorQuery` left at its default `{}` gets a 400 from OpenSearch 3.6 (D60); an average bulk of
+about 1 MiB with `bulk.maxBytes` at 4 MiB against a real OpenSearch (D61, measured in E6c).
 
 Nothing public calls the transport directly. Traffic is the health probe, the bulk sender's `POST /_bulk` and the queries.

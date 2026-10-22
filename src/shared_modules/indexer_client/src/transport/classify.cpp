@@ -59,7 +59,8 @@ namespace indexer_client::detail
             case 7: return TransportCause::Connect;          // CURLE_COULDNT_CONNECT
             case 55: return TransportCause::SendError;       // CURLE_SEND_ERROR
             case 52:                                         // CURLE_GOT_NOTHING
-            case 56: return TransportCause::RecvError;       // CURLE_RECV_ERROR
+            case 56:                                         // CURLE_RECV_ERROR
+            case 61: return TransportCause::RecvError;       // CURLE_BAD_CONTENT_ENCODING (undecodable body)
             case 18: return TransportCause::PartialResponse; // CURLE_PARTIAL_FILE
             case 23:                                         // CURLE_WRITE_ERROR: ours only if the cap fired
                 return capTripped ? TransportCause::ResponseTooLarge : TransportCause::LocalError;

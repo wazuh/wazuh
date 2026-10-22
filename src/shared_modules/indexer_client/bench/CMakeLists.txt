@@ -34,3 +34,7 @@ target_include_directories(
 target_compile_definitions(indexer_client_bench_classify PRIVATE ASIO_STANDALONE)
 target_compile_features(indexer_client_bench_classify PRIVATE cxx_std_17)
 target_link_libraries(indexer_client_bench_classify PRIVATE wazuhext ext_asio Threads::Threads ${INDEXER_CLIENT_SIMDJSON})
+
+# D40 (plan 18, E6b): one target that builds the three harnesses (the CI bench job builds this one).
+add_custom_target(indexer_client_bench DEPENDS indexer_client_bench_v1 indexer_client_bench_v2
+                                               indexer_client_bench_classify)
