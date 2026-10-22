@@ -684,6 +684,19 @@ static void test_process_response_403_flat_code_is_not_an_authd_code(void **stat
     assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_ERR_FORBIDDEN);
 }
 
+/* A nested 403 with a code this agent does not know is not "disabled" either, and the code is
+ * kept in the log: it is the one thing an operator can look up. */
+static void test_process_response_403_unknown_code_is_logged_with_it(void **state) {
+    (void)state;
+    hc_enroll_result_t result = {0};
+    result.http_code = 403;
+    snprintf(result.body, sizeof(result.body), "%s", "{\"error\":{\"code\":9099,\"message\":\"Refused\"}}");
+
+    expect_string(__wrap__merror, formatted_msg, "Enrollment rejected by the manager (HTTP 403, code 9099): Refused.");
+
+    assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_ERR_FORBIDDEN);
+}
+
 /* A prefix mismatch is reported here or nowhere: on a fresh install the /control
  * stream that reports it for every other endpoint never runs. */
 static void test_process_response_404_names_the_configured_path(void **state) {
@@ -697,6 +710,101 @@ static void test_process_response_404_names_the_configured_path(void **state) {
                   "the manager serves.");
 
     assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_ERR_SERVER);
+}
+
+/* The transport's own answer to an unknown route is a flat {"error":"not_found"}: a token, not a
+ * reason, so the line ends where the empty-body one does. */
+static void test_process_response_404_router_body_is_not_a_reason(void **state) {
+    (void)state;
+    hc_enroll_result_t result = {0};
+    result.http_code = 404;
+    snprintf(result.body, sizeof(result.body), "%s", "{\"error\":\"not_found\"}");
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "Enrollment rejected by the manager: it serves no /enroll route under the "
+                  "configured path '/'. The path in <endpoint> must match the global prefix "
+                  "the manager serves.");
+
+    assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_ERR_SERVER);
+}
+
+/* w_enrollment_parse_error() is what wazuh-agent-auth's "The manager said:" line comes from, so
+ * its reading of each envelope is pinned on its own, not only through the log lines above. */
+static void test_parse_error_flat_envelope_gives_the_message_only(void **state) {
+    (void)state;
+    hc_enroll_result_t result = {0};
+    w_enroll_error_t error;
+    result.http_code = 403;
+    snprintf(result.body, sizeof(result.body), "%s",
+             "{\"error\":\"Client certificate does not match the peer address\",\"code\":403}");
+
+    w_enrollment_parse_error(&result, &error);
+
+    assert_string_equal(error.message, "Client certificate does not match the peer address");
+    assert_string_equal(error.auth_class, "");
+    assert_int_equal(error.authd_code, 0);
+    assert_false(error.has_numeric_code);
+}
+
+static void test_parse_error_nested_numeric_code(void **state) {
+    (void)state;
+    hc_enroll_result_t result = {0};
+    w_enroll_error_t error;
+    result.http_code = 403;
+    snprintf(result.body, sizeof(result.body), "%s",
+             "{\"error\":{\"code\":0,\"message\":\"Enrollment is disabled on this manager\"}}");
+
+    w_enrollment_parse_error(&result, &error);
+
+    assert_string_equal(error.message, "Enrollment is disabled on this manager");
+    assert_string_equal(error.auth_class, "");
+    assert_int_equal(error.authd_code, 0);
+    assert_true(error.has_numeric_code);
+}
+
+static void test_parse_error_nested_class(void **state) {
+    (void)state;
+    hc_enroll_result_t result = {0};
+    w_enroll_error_t error;
+    result.http_code = 401;
+    snprintf(result.body, sizeof(result.body), "%s",
+             "{\"error\":{\"code\":\"token_unknown\",\"message\":\"Invalid client authentication\"}}");
+
+    w_enrollment_parse_error(&result, &error);
+
+    assert_string_equal(error.message, "Invalid client authentication");
+    assert_string_equal(error.auth_class, "token_unknown");
+    assert_false(error.has_numeric_code);
+}
+
+/* A flat 401's class sits in the top-level `code`. /enroll never answers that way; if it did, the
+ * class stays unread and the 401 is handled as one that names none: retried, credential kept. */
+static void test_parse_error_flat_401_class_is_not_read(void **state) {
+    (void)state;
+    hc_enroll_result_t result = {0};
+    w_enroll_error_t error;
+    result.http_code = 401;
+    snprintf(result.body, sizeof(result.body), "%s",
+             "{\"error\":\"Invalid client authentication\",\"code\":\"unknown_agent\"}");
+
+    w_enrollment_parse_error(&result, &error);
+
+    assert_string_equal(error.message, "Invalid client authentication");
+    assert_string_equal(error.auth_class, "");
+}
+
+static void test_parse_error_unreadable_body_is_empty(void **state) {
+    (void)state;
+    hc_enroll_result_t result = {0};
+    w_enroll_error_t error;
+    result.http_code = 403;
+    snprintf(result.body, sizeof(result.body), "%s", "<html>Forbidden</html>");
+
+    w_enrollment_parse_error(&result, &error);
+
+    assert_string_equal(error.message, "");
+    assert_string_equal(error.auth_class, "");
+    assert_false(error.has_numeric_code);
 }
 
 static void test_process_response_409_is_duplicate(void **state) {
@@ -1298,7 +1406,14 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_process_response_403_without_a_body_is_not_disabled, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_403_nested_without_a_code_is_not_disabled, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_403_flat_code_is_not_an_authd_code, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_process_response_403_unknown_code_is_logged_with_it, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_404_names_the_configured_path, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_process_response_404_router_body_is_not_a_reason, setup_test, teardown_test),
+        cmocka_unit_test(test_parse_error_flat_envelope_gives_the_message_only),
+        cmocka_unit_test(test_parse_error_nested_numeric_code),
+        cmocka_unit_test(test_parse_error_nested_class),
+        cmocka_unit_test(test_parse_error_flat_401_class_is_not_read),
+        cmocka_unit_test(test_parse_error_unreadable_body_is_empty),
         cmocka_unit_test_setup_teardown(test_process_response_409_is_duplicate, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_429_is_rate_limited_and_retryable, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_unrecognized_status_is_server_error, setup_test, teardown_test),

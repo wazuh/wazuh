@@ -1012,7 +1012,8 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
              * response at all, a 5xx, or a 429 -- the manager pacing a node-wide bucket, which a
              * single caller cannot drain on its own); not_found is the manager's settled answer --
              * it has no CA to serve, provisioned or not, and repeating the request cannot change
-             * that. */
+             * that. forbidden is settled too: the connection itself was refused, for a certificate
+             * that will not change between attempts. */
             bool fetch_transient;
             char tls_alert[96];
 
@@ -1040,6 +1041,18 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
                 fetch_transient = true;
                 token_report_fail(report, "/cacerts rate_limited -- the manager is serving the "
                        "certificate authority at its configured rate; retrying later.");
+            } else if (fetch_result.http_code == 403) {
+                /* /cacerts itself never answers 403; the HTTPS server does, under
+                 * verification_mode=full, to a connection whose client certificate does not list
+                 * the peer address (a proxy in between can too). Named here because the body that
+                 * says so arrives before anything is verified -- this is the trust bootstrap -- so
+                 * it is not echoed into the log. Retrying with the same certificate cannot help. */
+                fetch_transient = false;
+                token_report_fail(report, "/cacerts forbidden -- the manager refused this "
+                       "connection before serving its certificate authority (HTTP 403). Under "
+                       "remote.https verification_mode 'full', the <agent><ssl> client certificate "
+                       "must list the address the manager sees this agent connect from (behind a "
+                       "proxy, the proxy's address).");
             } else if (fetch_result.http_code == 503) {
                 fetch_transient = true;
                 token_report_fail(report, "/cacerts ca_mismatch -- the manager's configured "
@@ -1331,19 +1344,16 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
         report->http_code = enroll_result.http_code;
 
         if (enroll_result.http_code != 200) {
-            cJSON *body = cJSON_Parse(enroll_result.body);
-            cJSON *error = body ? cJSON_GetObjectItem(body, "error") : NULL;
-            const char *text = cJSON_GetStringValue(cJSON_GetObjectItem(error, "message"));
-            const char *code = cJSON_GetStringValue(cJSON_GetObjectItem(error, "code"));
+            /* The same reading w_enrollment_process_response() logs from, so the reason
+             * wazuh-agent-auth prints is the one in ossec.log, whichever envelope carried it. */
+            w_enroll_error_t error;
+            w_enrollment_parse_error(&enroll_result, &error);
 
-            if (text != NULL) {
-                strncpy(report->manager_message, text, sizeof(report->manager_message) - 1);
-            }
+            snprintf(report->manager_message, sizeof(report->manager_message), "%s", error.message);
 
-            report->pending = (enroll_result.http_code == 401 && code != NULL &&
-                               (strcmp(code, "token_unknown") == 0 || strcmp(code, "stale_token") == 0));
-
-            cJSON_Delete(body);
+            report->pending = (enroll_result.http_code == 401 &&
+                               (strcmp(error.auth_class, "token_unknown") == 0 ||
+                                strcmp(error.auth_class, "stale_token") == 0));
         }
     }
 
@@ -1357,10 +1367,11 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
 
     if (enroll_status != W_ENROLL_OK) {
         /* w_enrollment_process_response() already logged the specific reason. TRANSPORT/SERVER
-         * are the manager's or the network's problem and may clear on their own; the manager has
-         * already made a final decision about this exact request in every other case (malformed
-         * request, bad credential, enrollment disabled or refused with a 403, duplicate agent),
-         * and repeating it verbatim cannot change that -- except for report->pending, set above. */
+         * are the manager's or the network's problem and may clear on their own. Every other
+         * answer is one that repeating this exact request cannot change -- a malformed request, a
+         * bad credential, enrollment disabled, a duplicate agent, or a 403 refusing the connection
+         * itself (a client certificate that does not list the peer address stays that way until it
+         * is reissued) -- except for report->pending, set above. */
         if (report != NULL) {
             report->transient = (enroll_status == W_ENROLL_ERR_TRANSPORT ||
                                  enroll_status == W_ENROLL_ERR_SERVER);

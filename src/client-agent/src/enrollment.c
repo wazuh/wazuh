@@ -242,6 +242,60 @@ STATIC const char *w_enrollment_token_id_or_unknown(const char *enroll_kid) {
     return enroll_kid;
 }
 
+void w_enrollment_parse_error(const hc_enroll_result_t *result, w_enroll_error_t *out) {
+    assert(result != NULL);
+    assert(out != NULL);
+    memset(out, 0, sizeof(*out));
+
+    /* {"error":{"code":N,"message":"..."}} per the /enroll contract. /enroll nests its envelope,
+     * unlike every other route -- those use endpoints/endpoint.cpp's flat
+     * {"error":"<msg>","code":<status or class>} -- so `code` is read from inside the error object
+     * here. The VALUE vocabulary is shared: on a 401 it is the authentication failure class as a
+     * string, and on everything else authd's numeric code, or 0 when there is none.
+     *
+     * A request can still be answered in the flat shape before it reaches the /enroll handler: the
+     * HTTPS server's own rejections (a client certificate that does not match the peer address, an
+     * internal error, an exhausted in-flight budget) use it. Their message is kept so the operator
+     * learns why. Their top-level `code` is not: none of them is a 401, so it only repeats the HTTP
+     * status. A flat 401 would carry its failure class there, but /enroll never answers in that
+     * shape, and leaving the class unread then falls back to the fail-safe answer for a 401 that
+     * names none (w_enrollment_classify_auth_failure()): retry, keep the credential. */
+    cJSON *response = cJSON_Parse(result->body);
+    cJSON *error = response ? cJSON_GetObjectItem(response, "error") : NULL;
+    const char *message = NULL;
+
+    if (cJSON_IsObject(error)) {
+        cJSON *code = cJSON_GetObjectItem(error, "code");
+
+        message = cJSON_GetStringValue(cJSON_GetObjectItem(error, "message"));
+
+        /* The NULL test is redundant against cJSON -- cJSON_IsString()/cJSON_IsNumber() both
+         * return false for NULL -- but clang's analyser cannot see that: cJSON is a separate
+         * translation unit, so it treats the predicate as opaque and reaches `code->valuestring`
+         * on the path where the object had no code. Spelling the guard out keeps scan-build
+         * clean. */
+        if (code != NULL) {
+            if (cJSON_IsString(code)) {
+                snprintf(out->auth_class, sizeof(out->auth_class), "%s", code->valuestring);
+            } else if (cJSON_IsNumber(code)) {
+                out->authd_code = code->valueint;
+                out->has_numeric_code = true;
+            }
+        }
+    } else if (cJSON_IsString(error) && result->http_code != 404) {
+        /* Except on a 404: the transport answers an unknown route with a flat
+         * {"error":"not_found"}, a token rather than a reason, and the 404 message already says
+         * what is wrong. */
+        message = cJSON_GetStringValue(error);
+    }
+
+    if (message != NULL) {
+        snprintf(out->message, sizeof(out->message), "%s", message);
+    }
+
+    cJSON_Delete(response);
+}
+
 w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result, const char *enroll_kid) {
     assert(result != NULL);
 
@@ -312,46 +366,12 @@ w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result
         return W_ENROLL_OK;
     }
 
-    /* {"error":{"code":N,"message":"..."}} per the #38438 contract. /enroll nests its envelope,
-     * unlike every other route -- those use endpoints/endpoint.cpp's flat
-     * {"error":"<msg>","code":<class>} -- so `code` is read from inside the error object here. The
-     * VALUE vocabulary is shared: on a 401 it is the authentication failure class as a string
-     * (#39040), and on everything else authd's numeric code, or 0 when there is none.
-     *
-     * A request can still be answered in the flat shape before it reaches the /enroll handler: the
-     * HTTPS server's own rejections (a client certificate that does not match the peer address, an
-     * internal error, an exhausted in-flight budget) use it. Their message is read so the log says
-     * why; their top-level `code` is only the HTTP status repeated, never an authd code or a
-     * failure class, so it is ignored. */
-    const char *manager_message = NULL;
-    const char *auth_class = NULL;
-    int authd_code = 0;
-    bool nested_envelope = false;
-    cJSON *error_response = cJSON_Parse(result->body);
-    cJSON *error_obj = error_response ? cJSON_GetObjectItem(error_response, "error") : NULL;
-    cJSON *message = NULL;
-    cJSON *code = NULL;
+    w_enroll_error_t error;
+    w_enrollment_parse_error(result, &error);
 
-    if (cJSON_IsObject(error_obj)) {
-        nested_envelope = true;
-        message = cJSON_GetObjectItem(error_obj, "message");
-        code = cJSON_GetObjectItem(error_obj, "code");
-    } else if (cJSON_IsString(error_obj)) {
-        message = error_obj;
-    }
-    manager_message = cJSON_GetStringValue(message);
-
-    /* The NULL test is redundant against cJSON -- cJSON_IsString()/cJSON_IsNumber() both return
-     * false for NULL -- but clang's analyser cannot see that: cJSON is a separate translation unit,
-     * so it treats the predicate as opaque and reaches `code->valuestring` on the path where
-     * error_obj was NULL. Spelling the guard out costs nothing and keeps scan-build clean. */
-    if (code != NULL) {
-        if (cJSON_IsString(code)) {
-            auth_class = code->valuestring;
-        } else if (cJSON_IsNumber(code)) {
-            authd_code = code->valueint;
-        }
-    }
+    const char *manager_message = error.message[0] != '\0' ? error.message : NULL;
+    const char *auth_class = error.auth_class[0] != '\0' ? error.auth_class : NULL;
+    const int authd_code = error.authd_code;
 
     w_enroll_status_t status;
     switch (result->http_code) {
@@ -376,11 +396,11 @@ w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result
              *   waiting on.
              *
              *   anything else  -- refused before the /enroll handler ran (a client certificate
-             *   whose SAN does not list the peer address, a proxy in between), or a body that
-             *   could not be read. Saying "disabled" here would send the operator to the wrong
-             *   setting, so the manager's own reason is logged instead. Its own status, handled
-             *   like "disabled": the fix is on the manager or in the certificate, not in this
-             *   request, and an operator can make it. */
+             *   whose SAN does not list the peer address, a proxy in between), a code this agent
+             *   does not know, or a body that could not be read. Saying "disabled" here would send
+             *   the operator to the wrong setting, so the manager's own reason is logged instead.
+             *   Its own status, handled like "disabled": the fix is on the manager or in the
+             *   certificate, not in this request, and an operator can make it. */
             if (authd_code == 9022 || authd_code == 9023 || authd_code == 9024) {
                 /* Named with the token id (#39064: "surface 403 to operators with token ID"):
                  * the whole point of this message is that an operator has to mint a replacement,
@@ -393,12 +413,17 @@ w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result
                        w_enrollment_token_id_or_unknown(enroll_kid), authd_code,
                        manager_message ? ": " : "", manager_message ? manager_message : "");
                 status = W_ENROLL_ERR_AUTH_FATAL;
-            } else if (nested_envelope && cJSON_IsNumber(code) && authd_code == 0) {
-                /* Administratively disabled, not a transport hiccup -- the
-                 * caller must not blind-retry this the same way (#38465 R12). The manager's
-                 * message only restates it, so it is not appended. */
+            } else if (error.has_numeric_code && authd_code == 0) {
+                /* Administratively disabled, not a transport hiccup. The manager's message only
+                 * restates it, so it is not appended. */
                 minfo("Enrollment is disabled on the manager.");
                 status = W_ENROLL_ERR_DISABLED;
+            } else if (authd_code != 0) {
+                /* A code this agent does not know: still not "disabled", and the code is the one
+                 * thing an operator can look up, so it is kept. */
+                merror("Enrollment rejected by the manager (HTTP 403, code %d): %s.", authd_code,
+                       manager_message ? manager_message : "no reason given");
+                status = W_ENROLL_ERR_FORBIDDEN;
             } else {
                 merror("Enrollment rejected by the manager (HTTP 403): %s.",
                        manager_message ? manager_message : "no reason given");
@@ -439,10 +464,6 @@ w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result
                    manager_message ? " " : "", manager_message ? manager_message : "");
             status = W_ENROLL_ERR_SERVER;
             break;
-    }
-
-    if (error_response) {
-        cJSON_Delete(error_response);
     }
 
     return status;

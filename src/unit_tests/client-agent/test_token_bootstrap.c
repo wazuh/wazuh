@@ -981,6 +981,31 @@ static void test_fetch_not_found_logs_named_error_and_writes_nothing(void **stat
     assert_int_not_equal(IsFile("etc/client.keys"), 0);
 }
 
+/* Without an embedded CA the first request is /cacerts, and verification_mode=full refuses it
+ * before the route runs. The flat body is not echoed -- nothing is verified yet -- but the cause is
+ * named, and it is permanent: the same certificate gets the same answer. */
+static void test_fetch_forbidden_names_the_client_certificate(void **state) {
+    (void) state;
+    write_token_file(true, true, NULL);
+
+    will_return(__wrap_hc_fetch_cacerts, 403L);
+    will_return(__wrap_hc_fetch_cacerts,
+                "{\"error\":\"Client certificate does not match the peer address\",\"code\":403}");
+    will_return(__wrap_hc_fetch_cacerts, 1);
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "/cacerts forbidden -- the manager refused this connection before serving its "
+                  "certificate authority (HTTP 403). Under remote.https verification_mode 'full', "
+                  "the <agent><ssl> client certificate must list the address the manager sees this "
+                  "agent connect from (behind a proxy, the proxy's address).");
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_PERMANENT);
+    assert_int_equal(g_fetch_call_count, 1);
+    assert_int_equal(g_enroll_call_count, 0);
+    assert_int_not_equal(IsFile("etc/certs/root-ca.pem"), 0);
+    assert_int_equal(IsFile("etc/enrollment_token"), 0);
+}
+
 static void test_fetch_rate_limited_is_transient_and_writes_nothing(void **state) {
     (void) state;
     write_token_file(true, true, NULL);
@@ -1837,6 +1862,38 @@ static void test_enroll_tls_rejection_is_named_permanent_and_reported(void **sta
     os_free(token);
 }
 
+/* The reason wazuh-agent-auth prints ("The manager said: ...") comes from the report, and the
+ * Windows enrollment dialog reads it from there. A flat 403 must fill it like a nested one. */
+static void test_enroll_flat_403_reason_reaches_the_report(void **state) {
+    (void) state;
+    w_token_enroll_opts_t opts = {0};
+    w_token_enroll_report_t report;
+    char *token = make_token(false, true, "FAKE-EMBEDDED-CA");
+
+    opts.token_text = token;
+    opts.uid = -1;
+    opts.gid = -1;
+
+    will_return(__wrap_hc_enroll, 403L);
+    will_return(__wrap_hc_enroll,
+                "{\"error\":\"Client certificate does not match the peer address\",\"code\":403}");
+    will_return(__wrap_hc_enroll, 1);
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_any_always(__wrap__minfo, formatted_msg);
+    expect_string(__wrap__merror, formatted_msg,
+                  "Enrollment rejected by the manager (HTTP 403): Client certificate does not "
+                  "match the peer address.");
+
+    assert_int_equal(w_agent_token_enroll(&opts, &report), W_TOKEN_ENROLL_ERR_ENROLL);
+    assert_int_equal(report.http_code, 403);
+    assert_string_equal(report.manager_message, "Client certificate does not match the peer address");
+    assert_false(report.transient);
+    assert_false(report.token_rejected);
+    assert_false(report.pending);
+
+    os_free(token);
+}
+
 /* A transport failure on /enroll with no alert stays transient, and now also reaches the report. */
 static void test_enroll_transport_failure_stays_transient_and_is_reported(void **state) {
     (void) state;
@@ -2557,6 +2614,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_malformed_token_logs_named_error_and_writes_nothing, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_fetch_adr_unreachable_logs_named_error_and_writes_nothing, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_fetch_not_found_logs_named_error_and_writes_nothing, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_fetch_forbidden_names_the_client_certificate, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_fetch_rate_limited_is_transient_and_writes_nothing, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_fetch_ca_mismatch_logs_named_error_and_writes_nothing, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_pin_mismatch_logs_named_error_and_writes_nothing, setup_test, teardown_test),
@@ -2607,6 +2665,7 @@ int main(void) {
                                         teardown_test),
         cmocka_unit_test_setup_teardown(test_enroll_tls_rejection_is_named_permanent_and_reported, setup_test,
                                         teardown_test),
+        cmocka_unit_test_setup_teardown(test_enroll_flat_403_reason_reaches_the_report, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_enroll_transport_failure_stays_transient_and_is_reported,
                                         setup_test, teardown_test),
         cmocka_unit_test(test_tls_rejection_classifier),
