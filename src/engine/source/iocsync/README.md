@@ -54,7 +54,7 @@ The module runs as a periodic task and is designed so that readers of the IOC da
 ### Synchronization Flow
 
 1. **Lock resources**: Acquire `IKVDBManager` and `IWIndexerConnector` from weak pointers
-2. **Check remote index**: Verify the IOC data index exists in the Wazuh Indexer
+2. **Check remote index**: Verify the IOC data index exists in the Wazuh Indexer. A missing index (404) skips the cycle; any other error is retried and then fails the cycle
 3. **Fetch remote hashes**: Get per-type hash map from the indexer
 4. **For each IOC type**:
    - Compare remote hash against locally stored hash
@@ -76,14 +76,14 @@ To prevent data inconsistency when the wazuh-indexer is mid-update, `iocsync` im
 
 1. **Hash check phase**: `getRemoteHashesFromRemote()` passes `IOC_ENRICHMENT_CONSUMER_ID` to the indexer connector.
    - The connector creates a multi-index PIT (`wazuh-threatintel-enrichments` + `.wazuh-cti-consumers`).
-   - It validates the consumer is in the `idle` status within that PIT snapshot.
-   - If idle: returns the hashes (and the check is consistent).
-   - If not idle: returns `std::nullopt` → sync cycle is skipped.
+   - It validates the consumer is in the `ready` status within that PIT snapshot.
+   - If ready: returns the hashes (and the check is consistent).
+   - If not ready: returns `std::nullopt` → sync cycle is skipped.
 
 2. **Download phase**: `downloadAndPopulateDB()` passes the same consumer ID to `streamIocsByType()`.
-   - The connector again validates the consumer is idle within a NEW PIT snapshot.
-   - If idle: streams IOCs within that PIT snapshot.
-   - If not idle: returns `std::nullopt` → download is skipped, temp DB is rolled back.
+   - The connector again validates the consumer is ready within a NEW PIT snapshot.
+   - If ready: streams IOCs within that PIT snapshot.
+   - If not ready: returns `std::nullopt` → download is skipped, temp DB is rolled back.
 
 This two-phase validation ensures the indexer is NOT actively updating the IOCs before or during the download.
 
@@ -169,7 +169,7 @@ class IIocSync {
 
 **`syncIOCType()`**: Per-type logic — compares hashes, downloads to temp DB via `downloadAndPopulateDB()`, ensures target exists, performs `hotSwap()`, updates local hash. Returns `true` if the database was updated.
 
-**`downloadAndPopulateDB()`**: Streams IOC documents from the indexer in batches of 1000 via `streamIocsByType()`, passing `IOC_ENRICHMENT_CONSUMER_ID` for consumer validation. Returns `bool` (false if consumer not idle). Each document's key is normalized to lowercase. Values are stored via `ioc::kvdb::details::updateValueInDB()` which appends to arrays if the key already exists. On consumer-not-idle or download failure, rolls back the temp database.
+**`downloadAndPopulateDB()`**: Streams IOC documents from the indexer in batches of 1000 via `streamIocsByType()`, passing `IOC_ENRICHMENT_CONSUMER_ID` for consumer validation. Returns `bool` (false if consumer not ready). Each document's key is normalized to lowercase. Values are stored via `ioc::kvdb::details::updateValueInDB()` which appends to arrays if the key already exists. On consumer-not-ready or download failure, rolls back the temp database.
 
 ### `SyncedIOCDatabase` (internal class in iocsync.cpp)
 

@@ -302,6 +302,65 @@ void test_query_ex_retries_once_after_a_broken_pipe(void **state)
     assert_string_equal("ok {}", response);
 }
 
+static int teardown_clear_shutdown(void **state)
+{
+    w_shutdown_requested_set(false);
+    return 0;
+}
+
+void test_query_ex_does_not_reconnect_while_shutting_down(void **state)
+{
+    int wdb_sock = -1;
+    char *query = "global sql SELECT 1;";
+    char response[OS_SIZE_6144];
+
+    expect_string(__wrap_OS_ConnectUnixDomain, path, WDB_LOCAL_SOCK);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_SIZE_6144);
+    will_return(__wrap_OS_ConnectUnixDomain, 65555);
+    will_return(__wrap_OS_SetSendTimeout, 0);
+    will_return(__wrap_OS_SetRecvTimeout, 0);
+
+    expect_value(__wrap_OS_SendSecureTCP, sock, 65555);
+    expect_value(__wrap_OS_SendSecureTCP, size, strlen(query) + 1);
+    expect_string(__wrap_OS_SendSecureTCP, msg, query);
+    will_return(__wrap_OS_SendSecureTCP, 0);
+
+    // wazuh-db, stopped in the same pass as this daemon, closes with the query unread.
+    expect_value(__wrap_OS_RecvSecureTCP, sock, 65555);
+    expect_value(__wrap_OS_RecvSecureTCP, size, OS_SIZE_6144);
+    will_return(__wrap_OS_RecvSecureTCP, "");
+    will_return(__wrap_OS_RecvSecureTCP, -1);
+
+    // Both lines at debug, and no second OS_ConnectUnixDomain is queued: a reconnect attempt, or
+    // either line at ERROR, fails the test.
+    expect_any(__wrap__mdebug1, formatted_msg);
+    expect_string(__wrap__mdebug1, formatted_msg, "Connection with wazuh-manager-db lost while shutting down.");
+
+    w_shutdown_requested_set(true);
+    errno = ECONNRESET;
+
+    assert_int_equal(-1, wdbc_query_ex_timeout(&wdb_sock, query, response, OS_SIZE_6144, 10));
+    assert_int_equal(-1, wdb_sock);
+}
+
+void test_connect_gives_up_at_once_while_shutting_down(void **state)
+{
+    expect_string(__wrap_OS_ConnectUnixDomain, path, WDB_LOCAL_SOCK);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_SIZE_6144);
+    will_return(__wrap_OS_ConnectUnixDomain, -1);
+
+    // One attempt and out: no "Waiting N seconds" rung at INFO (unexpected here), no sleep (not
+    // wrapped here, so a second rung would stall the test), and the verdict at debug.
+    expect_string(__wrap__mdebug1, formatted_msg, "Unable to connect to socket '" WDB_LOCAL_SOCK "'.");
+
+    w_shutdown_requested_set(true);
+    errno = ENOENT;
+
+    assert_int_equal(-1, wdbc_connect());
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_ok_query),
@@ -313,6 +372,8 @@ int main(void) {
         cmocka_unit_test(test_query_ex_retries_once_after_a_connection_reset),
         cmocka_unit_test(test_query_ex_retries_once_after_a_broken_pipe),
         cmocka_unit_test(test_query_ex_zero_timeout_keeps_the_unbounded_path),
+        cmocka_unit_test_teardown(test_query_ex_does_not_reconnect_while_shutting_down, teardown_clear_shutdown),
+        cmocka_unit_test_teardown(test_connect_gives_up_at_once_while_shutting_down, teardown_clear_shutdown),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

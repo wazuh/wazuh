@@ -37,6 +37,21 @@ constexpr auto HTTP_NOT_FOUND {404};
 constexpr auto HTTP_VERSION_CONFLICT {409};
 constexpr auto HTTP_CONTENT_LENGTH {413};
 constexpr auto HTTP_TOO_MANY_REQUESTS {429};
+constexpr auto HTTP_BAD_GATEWAY {502};
+constexpr auto HTTP_SERVICE_UNAVAILABLE {503};
+constexpr auto HTTP_GATEWAY_TIMEOUT {504};
+
+// A proxy, load balancer or an overloaded node answering for the indexer: transient, retried
+// with backoff like 429. 500 is not here: it may be deterministic, and retrying it would only
+// burn the budget.
+constexpr bool isRetryableServerError(const long statusCode)
+{
+    return statusCode == HTTP_BAD_GATEWAY || statusCode == HTTP_SERVICE_UNAVAILABLE ||
+           statusCode == HTTP_GATEWAY_TIMEOUT;
+}
+static_assert(isRetryableServerError(502) && isRetryableServerError(503) && isRetryableServerError(504) &&
+                  !isRetryableServerError(500) && !isRetryableServerError(501) && !isRetryableServerError(505),
+              "only 502, 503 and 504 are retryable server errors");
 
 // JSON structure components for bulk operations
 constexpr auto INDEX_OPERATION_PREFIX {20};  // {"index":{"_index":"
@@ -712,6 +727,13 @@ class IndexerConnectorSyncImpl final
                              statusCode,
                              error.c_str());
             }
+            else if (isRetryableServerError(statusCode))
+            {
+                // A 502/504 request may have reached the indexer. Resending is idempotent because every
+                // production caller passes an _id; an id-less bulkIndex() is not, as on a transport retry.
+                needToRetry = true;
+                LOGFN_DEBUG2(m_logFn, "Server unavailable (HTTP %ld), retrying with exponential backoff.", statusCode);
+            }
             else
             {
                 LOGFN_WARN(m_logFn, "%s, status code: %ld.", error.c_str(), statusCode);
@@ -923,6 +945,13 @@ class IndexerConnectorSyncImpl final
                              "Transport-level failure, no HTTP status received (code %ld): %s. Retrying bulk chunk.",
                              statusCode,
                              error.c_str());
+            }
+            else if (isRetryableServerError(statusCode))
+            {
+                // Same as processBulk(): resending is idempotent for operations with an _id (every
+                // production caller passes one), and the chunk views stay valid across retries.
+                needToRetry = true;
+                LOGFN_DEBUG2(m_logFn, "Server unavailable (HTTP %ld). Retrying bulk chunk.", statusCode);
             }
             else
             {

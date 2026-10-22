@@ -2,10 +2,7 @@
   "components": [
     {
       "name": "abseil-cpp",
-      "version": "LTS 20240116",
-      "spdx": "Apache-2.0",
-      "author": "Google Inc.",
-      "homepage": "https://github.com/abseil/abseil-cpp",
+      "dependency": "abseil-cpp",
       "artefacts": [
         "manager",
         "standalone"
@@ -18,10 +15,7 @@
     },
     {
       "name": "asio",
-      "version": "1.38.2",
-      "spdx": "BSL-1.0",
-      "author": "Christopher M. Kohlhoff",
-      "homepage": "https://github.com/chriskohlhoff/asio",
+      "dependency": "asio",
       "artefacts": [
         "manager"
       ],
@@ -33,10 +27,7 @@
     },
     {
       "name": "bzip2",
-      "version": "1.0.8",
-      "spdx": "bzip2-1.0.6",
-      "author": "Julian Seward",
-      "homepage": "https://github.com/libarchive/bzip2",
+      "dependency": "bzip2",
       "artefacts": [
         "manager",
         "standalone"
@@ -49,10 +40,7 @@
     },
     {
       "name": "cJSON",
-      "version": "1.7.18",
-      "spdx": "MIT",
-      "author": "Dave Gamble",
-      "homepage": "https://github.com/DaveGamble/cJSON",
+      "dependency": "cJSON",
       "artefacts": [
         "manager",
         "standalone"
@@ -65,10 +53,7 @@
     },
     {
       "name": "concurrentqueue",
-      "version": "unknown",
-      "spdx": "BSD-2-Clause OR BSL-1.0",
-      "author": "Cameron Desrochers",
-      "homepage": "https://github.com/cameron314/concurrentqueue",
+      "dependency": "concurrentqueue",
       "artefacts": [
         "manager",
         "standalone"
@@ -81,10 +66,7 @@
     },
     {
       "name": "cpp-httplib",
-      "version": "0.25.0",
-      "spdx": "MIT",
-      "author": "yhirose",
-      "homepage": "https://github.com/yhirose/cpp-httplib",
+      "dependency": "cpp-httplib",
       "artefacts": [
         "manager",
         "standalone"
@@ -97,10 +79,7 @@
     },
     {
       "name": "cPython",
-      "version": "3.12.14",
-      "spdx": "PSF-2.0",
-      "author": "Guido van Rossum",
-      "homepage": "https://github.com/python/cpython",
+      "dependency": "cpython",
       "artefacts": [
         "manager"
       ],
@@ -116,10 +95,7 @@
     },
     {
       "name": "cURL",
-      "version": "8.20.0",
-      "spdx": "curl",
-      "author": "Daniel Stenberg",
-      "homepage": "https://github.com/curl/curl",
+      "dependency": "curl",
       "artefacts": [
         "manager",
         "standalone"
@@ -132,10 +108,7 @@
     },
     {
       "name": "dbus",
-      "version": "1.14.10",
-      "spdx": "GPL-2.0-only",
-      "author": "freedesktop.org",
-      "homepage": "https://gitlab.freedesktop.org/dbus/dbus",
+      "dependency": "dbus",
       "artefacts": [
         "agent"
       ],
@@ -143,10 +116,7 @@
     },
     {
       "name": "expected-lite",
-      "version": "0.10.0",
-      "spdx": "BSL-1.0",
-      "author": "Martin Moene",
-      "homepage": "https://github.com/martinmoene/expected-lite",
+      "dependency": "expected-lite",
       "artefacts": [
         "manager"
       ],
@@ -158,10 +128,7 @@
     },
     {
       "name": "fast_float",
-      "version": "6.1.4",
-      "spdx": "Apache-2.0 OR BSL-1.0 OR MIT",
-      "author": "Daniel Lemire et al.",
-      "homepage": "https://github.com/fastfloat/fast_float",
+      "dependency": "fast_float",
       "artefacts": [
         "manager",
         "standalone"
@@ -176,10 +143,7 @@
     },
     {
       "name": "Flatbuffers",
-      "version": "23.5.26",
-      "spdx": "Apache-2.0",
-      "author": "Google Inc.",
-      "homepage": "https://github.com/google/flatbuffers/",
+      "dependency": "flatbuffers",
       "artefacts": [
         "manager"
       ],
@@ -191,10 +155,7 @@
     },
     {
       "name": "fmt",
-      "version": "8.1.1",
-      "spdx": "MIT",
-      "author": "Victor Zverovich",
-      "homepage": "https://github.com/fmtlib/fmt",
+      "dependency": "fmt",
       "artefacts": [
         "manager",
         "standalone"
@@ -207,10 +168,7 @@
     },
     {
       "name": "Google Benchmark",
-      "version": "1.6.1",
-      "spdx": "Apache-2.0",
-      "author": "Google Inc.",
-      "homepage": "https://github.com/google/benchmark",
+      "dependency": "benchmark",
       "artefacts": [
         "readme-only"
       ],
@@ -218,10 +176,7 @@
     },
     {
       "name": "GoogleTest",
-      "version": "1.11.0",
-      "spdx": "BSD-3-Clause",
-      "author": "Google Inc.",
-      "homepage": "https://github.com/google/googletest",
+      "dependency": "googletest",
       "artefacts": [
         "readme-only"
       ],
@@ -229,10 +184,7 @@
     },
     {
       "name": "Hinnant date",
-      "version": "3.0.1",
-      "spdx": "MIT",
-      "author": "Howard Hinnant",
-      "homepage": "https://github.com/HowardHinnant/date",
+      "dependency": "date",
       "artefacts": [
         "manager",
         "standalone"
@@ -245,10 +197,7 @@
     },
     {
       "name": "jemalloc",
-      "version": "5.2.1",
-      "spdx": "BSD-2-Clause",
-      "author": "Jason Evans",
-      "homepage": "https://github.com/jemalloc/jemalloc",
+      "dependency": "jemalloc",
       "artefacts": [
         "manager",
         "standalone"
@@ -261,10 +210,7 @@
     },
     {
       "name": "jwt-cpp",
-      "version": "0.7.1",
-      "spdx": "MIT",
-      "author": "Dominik Thalhammer",
-      "homepage": "https://github.com/Thalhammer/jwt-cpp",
+      "dependency": "jwt-cpp",
       "artefacts": [
         "manager"
       ],
@@ -276,10 +222,7 @@
     },
     {
       "name": "libbpf",
-      "version": "1.7.0",
-      "spdx": "LGPL-2.1-only",
-      "author": "libbpf",
-      "homepage": "https://github.com/libbpf/libbpf",
+      "dependency": "libbpf-bootstrap",
       "artefacts": [
         "agent"
       ],
@@ -287,10 +230,7 @@
     },
     {
       "name": "libdb",
-      "version": "18.1.40",
-      "spdx": "AGPL-3.0-only",
-      "author": "Oracle Corporation",
-      "homepage": "https://github.com/yasuhirokimura/db18",
+      "dependency": "libdb",
       "artefacts": [
         "agent"
       ],
@@ -298,10 +238,7 @@
     },
     {
       "name": "libffi",
-      "version": "3.2.1",
-      "spdx": "MIT",
-      "author": "Anthony Green",
-      "homepage": "https://github.com/libffi/libffi",
+      "dependency": "libffi",
       "artefacts": [
         "manager",
         "standalone"
@@ -329,10 +266,7 @@
     },
     {
       "name": "libmaxminddb",
-      "version": "1.9.1",
-      "spdx": "Apache-2.0",
-      "author": "MaxMind, Inc.",
-      "homepage": "https://github.com/maxmind/libmaxminddb",
+      "dependency": "libmaxminddb",
       "artefacts": [
         "manager",
         "standalone"
@@ -346,10 +280,7 @@
     },
     {
       "name": "libpcre2",
-      "version": "10.42",
-      "spdx": "BSD-3-Clause",
-      "author": "Philip Hazel",
-      "homepage": "https://github.com/PCRE2Project/pcre2",
+      "dependency": "libpcre2",
       "artefacts": [
         "manager",
         "standalone"
@@ -362,10 +293,7 @@
     },
     {
       "name": "libplist",
-      "version": "2.2.0",
-      "spdx": "LGPL-2.1-only",
-      "author": "Aaron Burghardt et al.",
-      "homepage": "https://github.com/libimobiledevice/libplist",
+      "dependency": "libplist",
       "artefacts": [
         "agent"
       ],
@@ -389,10 +317,7 @@
     },
     {
       "name": "libYAML",
-      "version": "0.1.7",
-      "spdx": "MIT",
-      "author": "Kirill Simonov",
-      "homepage": "https://github.com/yaml/libyaml",
+      "dependency": "libyaml",
       "artefacts": [
         "manager",
         "standalone"
@@ -405,10 +330,7 @@
     },
     {
       "name": "Linux Audit userspace",
-      "version": "2.8.4",
-      "spdx": "LGPL-2.1-only",
-      "author": "Rik Faith",
-      "homepage": "https://github.com/linux-audit/audit-userspace",
+      "dependency": "audit-userspace",
       "artefacts": [
         "agent"
       ],
@@ -416,10 +338,7 @@
     },
     {
       "name": "llhttp",
-      "version": "9.4.2",
-      "spdx": "MIT",
-      "author": "Fedor Indutny",
-      "homepage": "https://github.com/nodejs/llhttp",
+      "dependency": "llhttp",
       "artefacts": [
         "manager"
       ],
@@ -432,10 +351,7 @@
     },
     {
       "name": "Lua",
-      "version": "5.4.8",
-      "spdx": "MIT",
-      "author": "PUC-Rio",
-      "homepage": "https://github.com/lua/lua",
+      "dependency": "lua",
       "artefacts": [
         "agent"
       ],
@@ -443,10 +359,7 @@
     },
     {
       "name": "nlohmann",
-      "version": "3.11.2",
-      "spdx": "MIT",
-      "author": "Niels Lohmann",
-      "homepage": "https://github.com/nlohmann/json",
+      "dependency": "nlohmann",
       "artefacts": [
         "manager",
         "standalone"
@@ -459,10 +372,7 @@
     },
     {
       "name": "OpenSSL",
-      "version": "3.6.2",
-      "spdx": "Apache-2.0",
-      "author": "OpenSSL Software Foundation",
-      "homepage": "https://github.com/openssl/openssl",
+      "dependency": "openssl",
       "artefacts": [
         "manager",
         "standalone"
@@ -475,10 +385,7 @@
     },
     {
       "name": "popt",
-      "version": "1.16",
-      "spdx": "MIT",
-      "author": "Jeff Johnson & Erik Troan",
-      "homepage": "https://github.com/rpm-software-management/popt",
+      "dependency": "popt",
       "artefacts": [
         "agent"
       ],
@@ -486,10 +393,7 @@
     },
     {
       "name": "procps",
-      "version": "2.8.3",
-      "spdx": "LGPL-2.0-only",
-      "author": "Brian Edmonds et al.",
-      "homepage": "https://gitlab.com/procps-ng/procps",
+      "dependency": "procps",
       "artefacts": [
         "agent"
       ],
@@ -497,10 +401,7 @@
     },
     {
       "name": "protobuf",
-      "version": "3.21.12",
-      "spdx": "BSD-3-Clause",
-      "author": "Google Inc.",
-      "homepage": "https://github.com/protocolbuffers/protobuf",
+      "dependency": "protobuf",
       "artefacts": [
         "manager",
         "standalone"
@@ -513,10 +414,7 @@
     },
     {
       "name": "pugixml",
-      "version": "1.15",
-      "spdx": "MIT",
-      "author": "Arseny Kapoulkine",
-      "homepage": "https://github.com/zeux/pugixml",
+      "dependency": "pugixml",
       "artefacts": [
         "manager",
         "standalone"
@@ -529,10 +427,7 @@
     },
     {
       "name": "RapidJSON",
-      "version": "1.1.0",
-      "spdx": "MIT",
-      "author": "THL A29 Limited and Milo Yip",
-      "homepage": "https://github.com/Tencent/rapidjson",
+      "dependency": "rapidjson",
       "artefacts": [
         "manager",
         "standalone"
@@ -545,10 +440,7 @@
     },
     {
       "name": "RE2",
-      "version": "2024-06-01",
-      "spdx": "BSD-3-Clause",
-      "author": "The RE2 Authors",
-      "homepage": "https://github.com/google/re2",
+      "dependency": "re2",
       "artefacts": [
         "manager",
         "standalone"
@@ -561,10 +453,7 @@
     },
     {
       "name": "RESTinio",
-      "version": "0.7.10",
-      "spdx": "BSD-3-Clause AND BSL-1.0 AND MIT AND Zlib",
-      "author": "Stiffstream",
-      "homepage": "https://github.com/Stiffstream/restinio",
+      "dependency": "restinio",
       "artefacts": [
         "manager"
       ],
@@ -580,10 +469,7 @@
     },
     {
       "name": "RocksDB",
-      "version": "8.3.2",
-      "spdx": "Apache-2.0 AND BSD-3-Clause",
-      "author": "Facebook Inc.",
-      "homepage": "https://github.com/facebook/rocksdb/",
+      "dependency": "rocksdb",
       "artefacts": [
         "manager",
         "standalone"
@@ -597,10 +483,7 @@
     },
     {
       "name": "rpm",
-      "version": "4.20.1",
-      "spdx": "GPL-2.0-only",
-      "author": "Marc Ewing & Erik Troan",
-      "homepage": "https://github.com/rpm-software-management/rpm",
+      "dependency": "rpm",
       "artefacts": [
         "agent"
       ],
@@ -608,10 +491,7 @@
     },
     {
       "name": "RxCpp",
-      "version": "unknown",
-      "spdx": "Apache-2.0",
-      "author": "RxCpp contributors",
-      "homepage": "https://github.com/ReactiveX/RxCpp",
+      "dependency": "RxCpp",
       "artefacts": [
         "manager",
         "standalone"
@@ -624,10 +504,7 @@
     },
     {
       "name": "simdjson",
-      "version": "3.13.0",
-      "spdx": "Apache-2.0 OR MIT",
-      "author": "Daniel Lemire",
-      "homepage": "https://github.com/simdjson/simdjson",
+      "dependency": "simdjson",
       "artefacts": [
         "manager",
         "standalone"
@@ -641,10 +518,7 @@
     },
     {
       "name": "spdlog",
-      "version": "1.14.1",
-      "spdx": "MIT",
-      "author": "Gabi Melman",
-      "homepage": "https://github.com/gabime/spdlog",
+      "dependency": "spdlog",
       "artefacts": [
         "manager",
         "standalone"
@@ -657,10 +531,7 @@
     },
     {
       "name": "sqlite",
-      "version": "3.53.1",
-      "spdx": "blessing",
-      "author": "D. Richard Hipp",
-      "homepage": "https://github.com/sqlite/sqlite",
+      "dependency": "sqlite",
       "artefacts": [
         "manager",
         "standalone"
@@ -673,10 +544,7 @@
     },
     {
       "name": "Taskflow",
-      "version": "3.7.0",
-      "spdx": "MIT",
-      "author": "Tsung-Wei Huang",
-      "homepage": "https://github.com/taskflow/taskflow",
+      "dependency": "taskflow",
       "artefacts": [
         "manager",
         "standalone"
@@ -689,10 +557,7 @@
     },
     {
       "name": "IANA tzdata",
-      "version": "2026a",
-      "spdx": "LicenseRef-tzdata-public-domain",
-      "author": "IANA / tz contributors",
-      "homepage": "https://data.iana.org/time-zones/",
+      "dependency": "tzdata",
       "artefacts": [
         "manager",
         "standalone"
@@ -705,10 +570,7 @@
     },
     {
       "name": "yaml-cpp",
-      "version": "0.8.0",
-      "spdx": "MIT",
-      "author": "Jesse Beder",
-      "homepage": "https://github.com/jbeder/yaml-cpp",
+      "dependency": "yaml-cpp",
       "artefacts": [
         "manager",
         "standalone"
@@ -721,10 +583,7 @@
     },
     {
       "name": "zlib",
-      "version": "1.3.1",
-      "spdx": "Zlib",
-      "author": "Jean-loup Gailly & Mark Adler",
-      "homepage": "https://github.com/madler/zlib",
+      "dependency": "zlib",
       "artefacts": [
         "manager",
         "standalone"
@@ -737,10 +596,7 @@
     },
     {
       "name": "zstd",
-      "version": "1.5.7",
-      "spdx": "BSD-3-Clause",
-      "author": "Meta Platforms, Inc. (Facebook)",
-      "homepage": "https://github.com/facebook/zstd",
+      "dependency": "zstd",
       "artefacts": [
         "manager"
       ],

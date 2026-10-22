@@ -49,18 +49,22 @@ The module persists its own state (which spaces are tracked and their current na
 
 ### Consumer Validation for Consistency
 
-To prevent partial policy downloads when the wazuh-indexer is mid-update, `CMSync` implements **consumer validation via Point-In-Time (PIT)**:
+To prevent partial policy downloads when the wazuh-indexer is mid-update, `CMSync` implements **consumer validation via Point-In-Time (PIT)**. The `ready`/`running`/`failed` status is the one the Content Manager plugin of the wazuh-indexer writes in `.wazuh-cti-consumers`.
+
+0. **Pre-flight check** (`standard` only): `isConsumerReadyForSync()` reads the consumer document directly and requires `status == "ready"` and `local_offset != 0` (at least one CTI update loaded). Otherwise the space is skipped with `Synchronization skipped for space '…' because wazuh-indexer consumer '…' is not ready for sync`.
+   - A missing consumer document, or a missing `.wazuh-cti-consumers` index (404 `index_not_found_exception`, a fresh indexer), also counts as "not ready", without retries.
+   - Any other error (transport, 429, 5xx, 401/403) is raised, so `executeWithRetry()` retries it and the real cause is logged.
 
 1. **Hash check phase**: `getPolicyHashAndEnabledFromRemote()` passes `STANDARD_RULESET_CONSUMER_ID` to the indexer connector.
    - The connector creates a multi-index PIT (policy indices + `.wazuh-cti-consumers`).
-   - It validates the consumer is in the `idle` status within that PIT snapshot.
-   - If idle: returns the hash and enabled status (and the check is consistent).
-   - If not idle: returns `std::nullopt` → sync cycle is skipped.
+   - It validates the consumer is in the `ready` status within that PIT snapshot.
+   - If ready: returns the hash and enabled status (and the check is consistent).
+   - If not ready: returns `std::nullopt` → sync cycle is skipped.
 
 2. **Download phase**: `downloadAndEnrichNamespace()` → `downloadNamespace()` calls `getPolicy()` with the same consumer ID.
-   - The connector again validates the consumer is idle within a NEW PIT snapshot.
-   - If idle: retrieves full policy resources within that PIT.
-   - If not idle: returns `std::nullopt` → download is skipped, partial namespace is rolled back.
+   - The connector again validates the consumer is ready within a NEW PIT snapshot.
+   - If ready: retrieves full policy resources within that PIT.
+   - If not ready: returns `std::nullopt` → download is skipped, partial namespace is rolled back.
 
 This two-phase validation ensures the indexer is NOT actively updating policy/decoder/KVDB assets before or during the download.
 
@@ -94,7 +98,7 @@ An internal class (defined in `cmsync.cpp`) that tracks the state of a single sy
 `downloadAndEnrichNamespace()` performs a two-phase operation with consumer validation:
 
 1. **Download** — fetches KVDBs, decoders, integrations, and the policy from the wazuh-indexer via `wiconnector::getPolicy(consumerIdToValidate=STANDARD_RULESET_CONSUMER_ID)`, then imports them into a new namespace via `cmcrud::importNamespace()` with `softValidation = true`.
-   - If the consumer is not idle (returns `std::nullopt`), download is skipped and `std::nullopt` is returned (sync cycle aborts gracefully).
+   - If the consumer is not ready (returns `std::nullopt`), download is skipped and `std::nullopt` is returned (sync cycle aborts gracefully).
 2. **Enrich** — placeholder for adding local-only assets (outputs, default filters) that don't come from the indexer.
 
 The target namespace gets a unique random ID (`cmsync_<space>_<hex4>`) to avoid collisions. On failure the namespace is rolled back.
@@ -109,6 +113,10 @@ The target namespace gets a unique random ID (`cmsync_<space>_<hex4>`) to avoid 
 ### Retry With Back-off
 
 Remote operations (`existsPolicy`, `getPolicy`, `getPolicyHashAndEnabled`) are wrapped in `base::utils::executeWithRetry()`, which retries up to `m_attempts` times with `m_waitSeconds` between each attempt. The shutdown flag `m_shutdownRequested` is passed to `executeWithRetry`, which checks it before each attempt and splits inter-retry sleep into 1-second chunks for responsive cancellation.
+
+### Early Retry While a Space Has No Route
+
+When a space ends a cycle without a route and its policy is not disabled (the indexer failed, or the content is not published or the CTI consumer not ready yet), `synchronize()` returns `true`. The `cm-sync-task` in `main.cpp` then runs the next cycle after `analysisd.cm_sync_retry_interval` seconds (default 30) instead of `analysisd.cm_sync_interval` (default 120), until every space has a route or a disabled policy. The retry interval is capped at `analysisd.cm_sync_interval`. "Disabled policy" is the last successful policy read (`disabled_by_policy` in the state document), so a cycle that fails before reading the policy does not change it. A space that keeps its previous route after a failed cycle does not trigger it: the old route keeps processing events.
 
 ### Graceful Shutdown
 
@@ -183,8 +191,10 @@ public:
      *
      * Iterates each tracked space, checks for remote changes, downloads
      * updated content, enriches it, and updates the router routes.
+     *
+     * @return true if a space is left without a route although its policy is not disabled.
      */
-    void synchronize();
+    bool synchronize();
 
     /**
      * @brief Signal the module to abort as soon as possible.
@@ -224,8 +234,8 @@ for each SyncedNamespace in m_namespacesState:
 | Method | Purpose |
 |---|---|
 | `existSpaceInRemote(space)` | Checks policy existence in indexer with retry |
-| `downloadNamespace(origin, dst)` | Downloads policy resources via `getPolicy(consumerIdToValidate)` and imports into namespace. Returns `bool` (false if consumer not idle). |
-| `getPolicyHashAndEnabledFromRemote(space)` | Gets SHA-256 hash and enabled flag with retry, passing consumer validation. Returns `std::optional` (nullopt if consumer not idle). |
+| `downloadNamespace(origin, dst)` | Downloads policy resources via `getPolicy(consumerIdToValidate)` and imports into namespace. Returns `bool` (false if consumer not ready). |
+| `getPolicyHashAndEnabledFromRemote(space)` | Gets SHA-256 hash and enabled flag with retry, passing consumer validation. Returns `std::optional` (nullopt if consumer not ready). |
 | `downloadAndEnrichNamespace(origin)` | Generates unique NS ID, downloads, enriches (placeholder), returns NS ID |
 | `syncNamespaceInRoute(nsState, newNsId)` | Hot-swaps or creates router route |
 | `addSpaceToSync(space)` | Adds a space to the tracked list |

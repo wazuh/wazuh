@@ -380,6 +380,8 @@ bool MacOsParser::parseSystemProfiler(const std::string& in, nlohmann::json& out
         if (Utils::findRegexInString(info["os_name"], match, pattern, 1))
         {
             output["os_name"] = std::move(match);
+            // The whole line, e.g. "macOS 26.6.2 (25G83)": setOsFull() keeps it.
+            output["os_full"] = Utils::trim(info["os_name"].get<std::string>());
         }
         else
         {

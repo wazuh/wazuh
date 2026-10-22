@@ -51,6 +51,7 @@ public:
      * @param retryDelaySec     Base delay in seconds for exponential backoff after failed processor calls.
      * @param maxRetryDelaySec  Maximum delay in seconds for exponential backoff.
      * @param pauseObserver     Optional test hook, see PauseObserver (empty in production).
+     * @param summaryIntervalSec  Minimum seconds between overflow summaries (test hook, 30 in production).
      */
     IndexerBulkQueue(Processor processor,
                      size_t maxBytes,
@@ -58,13 +59,15 @@ public:
                      size_t flushIntervalSec,
                      size_t retryDelaySec,
                      size_t maxRetryDelaySec,
-                     PauseObserver pauseObserver = {})
+                     PauseObserver pauseObserver = {},
+                     size_t summaryIntervalSec = 30)
         : m_processor(std::move(processor))
         , m_pauseObserver(std::move(pauseObserver))
         , m_maxBytes(maxBytes)
         , m_bulkMaxBytes(bulkMaxBytes)
         , m_flushInterval(flushIntervalSec)
         , m_backoff(std::chrono::seconds(retryDelaySec), std::chrono::seconds(maxRetryDelaySec))
+        , m_summaryInterval(summaryIntervalSec)
     {
         m_worker = std::thread(&IndexerBulkQueue::dispatch, this);
     }
@@ -90,6 +93,7 @@ public:
         {
             ++m_droppedCount;
             ++m_totalDroppedCount;
+            ++m_overflowDroppedTotal;
             logOverflow(dataSize);
             return;
         }
@@ -147,6 +151,13 @@ public:
     uint64_t droppedEvents() const
     {
         return m_totalDroppedCount.load();
+    }
+
+    /// Counts events the processor discarded after an indexer response (they never reached the
+    /// index). They add to droppedEvents() but not to the overflow accounting of push().
+    void recordDiscarded(size_t events)
+    {
+        m_totalDroppedCount += events;
     }
 
     /// Current bulk max bytes threshold.
@@ -327,14 +338,14 @@ private:
                     m_maxBytes,
                     m_summaryInterval);
             m_lastSummaryTime = now;
-            m_lastSummaryDropped = m_totalDroppedCount.load();
+            m_lastSummaryDropped = m_overflowDroppedTotal.load();
         }
         else
         {
             const auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - m_lastSummaryTime).count();
             if (elapsed >= static_cast<long long>(m_summaryInterval))
             {
-                const auto currentTotal = m_totalDroppedCount.load();
+                const auto currentTotal = m_overflowDroppedTotal.load();
                 logWarn(LOGGER_DEFAULT_TAG,
                         "Queue overflow continues: %zu events discarded in the last %lld seconds "
                         "(bytes: %llu, max: %zu, total discarded: %zu).",
@@ -380,11 +391,14 @@ private:
 
     // Overflow tracking
     std::atomic<size_t> m_droppedCount {0};
+    // Public total: overflow plus recordDiscarded(); see droppedEvents().
     std::atomic<size_t> m_totalDroppedCount {0};
+    // Overflow-only total, the one the overflow summaries in logOverflow() report.
+    std::atomic<size_t> m_overflowDroppedTotal {0};
     bool m_firstOverflowLogged {false};
     std::chrono::steady_clock::time_point m_lastSummaryTime;
     size_t m_lastSummaryDropped {0};
-    static constexpr size_t m_summaryInterval {30};
+    const size_t m_summaryInterval;
 };
 
 #endif // _INDEXER_BULK_QUEUE_HPP

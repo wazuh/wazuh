@@ -2354,7 +2354,7 @@ Current indexer output queue byte utilization as a percentage of the configured 
 
 ##### `indexer.events.dropped`
 
-Total number of events dropped in the indexer path.
+Total number of events dropped in the indexer path: events refused by a full queue, plus events of batches discarded after an indexer response for their `_bulk` status (500, 502, 504 or any other status the connector does not retry, or 503 retries exhausted). A `413` batch the async connector can no longer shrink (bulk threshold at its minimum), and failed items inside a successful response, are not counted.
 
 **Used for:** detecting loss conditions and overload situations.
 
@@ -2842,7 +2842,7 @@ reads); they must remain owned by `wazuh-manager` (see [Process Privileges](conf
 | `analysisd.indexer_flush_interval` | `WAZUH_INDEXER_FLUSH_INTERVAL` | Seconds between periodic flushes of the asynchronous indexer bulk buffer. Drives the background timer that forwards buffered events to `wazuh-indexer` when the byte threshold has not been reached. Allowed range: `1` to `3600`. | `20` | both |
 | `analysisd.indexer_logger_queue_size` | `WAZUH_INDEXER_LOGGER_QUEUE_SIZE` | Maximum number of `_bulk` responses (with their payloads) that can wait in the indexer error-logger queue. Only responses whose bulk reported item errors are queued; when the queue is full the error details are dropped and a warning is logged. Allowed range: `1` to `1024`. | `8` | both |
 | `analysisd.indexer_logger_threads` | `WAZUH_INDEXER_LOGGER_THREADS` | Number of worker threads that parse `_bulk` error responses to log per-item failures. Allowed range: `1` to `16`. | `1` | both |
-| `analysisd.indexer_max_retry_delay` | `WAZUH_INDEXER_MAX_RETRY_DELAY` | Maximum exponential-backoff delay in seconds between retries of a failed `_bulk` request (e.g. `429 Too Many Requests`, connection errors). See [Indexer Connector - Retry and backoff behavior](../indexer_connector/README.md#retry-and-backoff-behavior) for how the delay scales. Allowed range: `1` to `3600`. | `15` | both |
+| `analysisd.indexer_max_retry_delay` | `WAZUH_INDEXER_MAX_RETRY_DELAY` | Maximum exponential-backoff delay in seconds between retries of a failed `_bulk` request (e.g. `429 Too Many Requests`, `503 Service Unavailable`, connection errors). See [Indexer Connector - Retry and backoff behavior](../indexer_connector/README.md#retry-and-backoff-behavior) for how the delay scales. Allowed range: `1` to `3600`. | `15` | both |
 | `analysisd.indexer_request_timeout` | `WAZUH_INDEXER_REQUEST_TIMEOUT` | Upper bound in seconds for one data request against `wazuh-indexer`. Catches a host that accepted the connection and then never answers; a timed-out bulk request is retried with backoff, not discarded. Allowed range: `0` to `3600` (`0` disables the bound). | `60` | both |
 | `analysisd.indexer_monitoring_interval` | `WAZUH_INDEXER_MONITORING_INTERVAL` | Polling period in seconds of the indexer health monitor that marks each `wazuh-indexer` host as available or unavailable for the connector. Allowed range: `1` to `3600`. | `10` | both |
 
@@ -2867,6 +2867,7 @@ credentials from the keystore (see [Configuration sources](configuration.md#conf
 | `analysisd.remote_conf_indexer_connector_max_retries` | `WAZUH_REMOTE_CONF_INDEXER_CONNECTOR_MAX_RETRIES` | Maximum retry attempts for remote configuration requests to the Wazuh Indexer. | `3` | both |
 | `analysisd.remote_conf_indexer_connector_retry_interval` | `WAZUH_REMOTE_CONF_INDEXER_CONNECTOR_RETRY_INTERVAL` | Seconds between retry attempts for remote configuration synchronization. | `5` | both |
 | `analysisd.cm_sync_interval` | `WAZUH_CM_SYNC_INTERVAL` | Seconds between content synchronization cycles from the Wazuh Indexer. | `120` | both |
+| `analysisd.cm_sync_retry_interval` | `WAZUH_CM_SYNC_RETRY_INTERVAL` | Seconds until the next content synchronization cycle while a space has no route and its policy is not disabled (the indexer failed, or the content is not ready yet). Replaces `analysisd.cm_sync_interval` until every space is loaded, and is capped at it. `0` disables the early retry. | `30` | both |
 | `analysisd.cmsync_indexer_connector_sync_batch_size` | `WAZUH_CMSYNC_INDEXER_CONNECTOR_SYNC_BATCH_SIZE` | Maximum number of content documents requested per Wazuh Indexer page during content synchronization. | `100` | both |
 | `analysisd.cmsync_indexer_connector_max_retries` | `WAZUH_CMSYNC_INDEXER_CONNECTOR_MAX_RETRIES` | Maximum retry attempts for content synchronization requests to the Wazuh Indexer. | `3` | both |
 | `analysisd.cmsync_indexer_connector_retry_interval` | `WAZUH_CMSYNC_INDEXER_CONNECTOR_RETRY_INTERVAL` | Seconds between retry attempts for content synchronization. | `5` | both |

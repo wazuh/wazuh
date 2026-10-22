@@ -47,7 +47,7 @@ TEST_F(SysOsInfoTest, setOsInfoSchema)
     EXPECT_CALL(*pOsInfoProvider, majorVersion()).WillOnce(Return("10"));
     EXPECT_CALL(*pOsInfoProvider, minorVersion()).WillOnce(Return("0"));
     EXPECT_CALL(*pOsInfoProvider, build()).WillOnce(Return("18362"));
-    EXPECT_CALL(*pOsInfoProvider, release()).WillOnce(Return("1903"));
+    EXPECT_CALL(*pOsInfoProvider, release()).Times(0);
     EXPECT_CALL(*pOsInfoProvider, displayVersion()).WillOnce(Return("19H1"));
     EXPECT_CALL(*pOsInfoProvider, machine()).WillOnce(Return("x86_64"));
     EXPECT_CALL(*pOsInfoProvider, nodeName()).WillOnce(Return("DESKTOP-U7Q6UQV"));
@@ -58,8 +58,54 @@ TEST_F(SysOsInfoTest, setOsInfoSchema)
     EXPECT_EQ("10", output.at("os_major"));
     EXPECT_EQ("0", output.at("os_minor"));
     EXPECT_EQ("Microsoft Windows 10 Home", output.at("os_name"));
-    EXPECT_EQ("1903", output.at("os_distribution_release"));
-    EXPECT_EQ("19H1", output.at("os_full"));
+    EXPECT_EQ("19H1", output.at("os_display_version"));
+    EXPECT_EQ("Microsoft Windows 10 Home 19H1", output.at("os_full"));
+    EXPECT_FALSE(output.contains("os_distribution_release"));
     EXPECT_EQ("10.0.18362", output.at("os_version"));
     EXPECT_EQ("10.0.18362", output.at("os_kernel_release"));
+}
+
+static void expectCommonFields(SysOsInfoProviderWrapper& provider, const std::string& name)
+{
+    EXPECT_CALL(provider, name()).WillOnce(Return(name));
+    EXPECT_CALL(provider, version()).WillOnce(Return("10.0.14393"));
+    EXPECT_CALL(provider, majorVersion()).WillOnce(Return("10"));
+    EXPECT_CALL(provider, minorVersion()).WillOnce(Return("0"));
+    EXPECT_CALL(provider, build()).WillOnce(Return("14393"));
+    EXPECT_CALL(provider, machine()).WillOnce(Return("x86_64"));
+    EXPECT_CALL(provider, nodeName()).WillOnce(Return("DESKTOP-U7Q6UQV"));
+}
+
+// Windows 10 before 20H2 has no DisplayVersion: the release (ReleaseId, the build table or the
+// service pack) identifies the version instead.
+TEST_F(SysOsInfoTest, setOsInfoDisplayVersionFallsBackToRelease)
+{
+    nlohmann::json output;
+    const auto pOsInfoProvider{new SysOsInfoProviderWrapper};
+    const std::shared_ptr<ISysOsInfoProvider> spOsInfoProvider
+    {
+        pOsInfoProvider
+    };
+    expectCommonFields(*pOsInfoProvider, "Microsoft Windows 10 Pro");
+    EXPECT_CALL(*pOsInfoProvider, displayVersion()).WillOnce(Return(""));
+    EXPECT_CALL(*pOsInfoProvider, release()).WillOnce(Return("1607"));
+    SysOsInfo::setOsInfo(spOsInfoProvider, output);
+    EXPECT_EQ("1607", output.at("os_display_version"));
+    EXPECT_EQ("Microsoft Windows 10 Pro 1607", output.at("os_full"));
+}
+
+TEST_F(SysOsInfoTest, setOsInfoWithoutDisplayVersionOrRelease)
+{
+    nlohmann::json output;
+    const auto pOsInfoProvider{new SysOsInfoProviderWrapper};
+    const std::shared_ptr<ISysOsInfoProvider> spOsInfoProvider
+    {
+        pOsInfoProvider
+    };
+    expectCommonFields(*pOsInfoProvider, "Microsoft Windows Server 2012 R2 Standard");
+    EXPECT_CALL(*pOsInfoProvider, displayVersion()).WillOnce(Return(""));
+    EXPECT_CALL(*pOsInfoProvider, release()).WillOnce(Return(""));
+    SysOsInfo::setOsInfo(spOsInfoProvider, output);
+    EXPECT_EQ("", output.at("os_display_version"));
+    EXPECT_EQ("Microsoft Windows Server 2012 R2 Standard", output.at("os_full"));
 }

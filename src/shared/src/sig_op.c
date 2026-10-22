@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
+#include <stdatomic.h>
 #include <string.h>
 
 #include "shared.h"
@@ -26,6 +27,18 @@
 
 static const char *pidfile = NULL;
 
+// Lock-free, so the store below is async-signal-safe and the loads in other threads need no lock.
+// Relaxed is enough: the flag only ever goes false -> true and carries no other data.
+static _Atomic int shutdown_requested = 0;
+
+bool w_shutdown_requested(void) {
+    return atomic_load_explicit(&shutdown_requested, memory_order_relaxed) != 0;
+}
+
+void w_shutdown_requested_set(bool value) {
+    atomic_store_explicit(&shutdown_requested, value ? 1 : 0, memory_order_relaxed);
+}
+
 void HandleExit() {
     DeletePID(pidfile);
 
@@ -36,6 +49,10 @@ void HandleExit() {
 
 void HandleSIG(int sig)
 {
+    // Before anything else: exit() below runs the atexit handlers while the other threads are still
+    // live, and the wazuh-db client reads this flag to tell a peer stopped alongside from a lost one.
+    w_shutdown_requested_set(true);
+
     minfo(SIGNAL_RECV, sig, strsignal(sig));
 
     exit(1);

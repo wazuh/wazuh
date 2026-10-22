@@ -565,7 +565,16 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
                         const bool browserExtensions,
                         const bool notifyOnFirstScan)
 {
-    auto dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, dbPath, getCreateStatement(), DbManagement::PERSISTENT);
+    auto dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, dbPath, getCreateStatement(), DbManagement::PERSISTENT,
+                                           UPGRADE_SQL_STATEMENTS);
+
+    // Logged here, with this module's tag: a recreated database is why the next sync resends
+    // the whole inventory.
+    if (const auto recreateReason {dbSync->recreateReason()}; !recreateReason.empty() && logFunction)
+    {
+        logFunction(LOG_WARNING, recreateReason);
+    }
+
     auto normalizer = std::make_unique<SysNormalizer>(normalizerConfigPath, normalizerType);
 
     std::unique_lock<std::mutex> lock{m_scan_mutex};
@@ -1005,11 +1014,9 @@ nlohmann::json Syscollector::ecsSystemData(const nlohmann::json& originalData, b
     setJsonField(ret, originalData, "/host/hostname", "hostname", createFields);
     setJsonField(ret, originalData, "/host/os/build", "os_build", createFields);
     setJsonField(ret, originalData, "/host/os/codename", "os_codename", createFields);
-    setJsonField(ret, originalData, "/host/os/distribution/release", "os_distribution_release", createFields);
+    setJsonField(ret, originalData, "/host/os/display_version", "os_display_version", createFields);
     setJsonField(ret, originalData, "/host/os/full", "os_full", createFields);
-    setJsonField(ret, originalData, "/host/os/kernel/name", "os_kernel_name", createFields);
-    setJsonField(ret, originalData, "/host/os/kernel/release", "os_kernel_release", createFields);
-    setJsonField(ret, originalData, "/host/os/kernel/version", "os_kernel_version", createFields);
+    setJsonField(ret, originalData, "/host/os/kernel", "os_kernel_release", createFields);
     setJsonField(ret, originalData, "/host/os/major", "os_major", createFields);
     setJsonField(ret, originalData, "/host/os/minor", "os_minor", createFields);
     setJsonField(ret, originalData, "/host/os/name", "os_name", createFields);
@@ -1589,6 +1596,10 @@ nlohmann::json Syscollector::getOSData()
 {
     nlohmann::json ret;
     ret[0] = m_spInfo->os();
+    // Not sent since host.os.kernel became the release alone. Stored, a change in either (e.g. a
+    // rebuilt kernel with the same release) would report a modified row with nothing new in it.
+    ret[0].erase("os_kernel_name");
+    ret[0].erase("os_kernel_version");
     sanitizeJsonValue(ret[0]);
     ret[0]["checksum"] = getItemChecksum(ret[0]);
     return ret;

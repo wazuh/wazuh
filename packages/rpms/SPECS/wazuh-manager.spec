@@ -27,15 +27,13 @@ AutoReqProv: no
 #   coreutils  Every scriptlet and wazuh-manager-control (cp, mv, chown, chmod, mkdir, cat, head,
 #              od, tr, cut, date...). It also brings glibc, which the daemons and the bundled
 #              Python link and whose getent and ldconfig the scriptlets and the API call.
-#   zlib       Linked by the bundled Python's zlib and binascii modules, which the credential
-#              resolver, the cluster and the API import; not bundled in lib/.
 #
 # Requires(pre)/(postun) above cover the account tools. Not declared, on purpose: systemctl and
 # service (the init system the host runs, called only when present), /sbin/nologin (the service
 # account's shell, a path never executed) and ldconfig (part of glibc, above). The credential
 # resolver is Python run by the bundled interpreter and calls no host tool; libstdc++ and libgcc_s
-# ship in lib/.
-Requires: coreutils zlib
+# ship in lib/, and the interpreter's zlib and binascii modules take zlib from lib/libwazuhext.so.
+Requires: coreutils
 BuildRequires: coreutils glibc-devel automake autoconf libtool policycoreutils-python curl perl
 
 ExclusiveOS: linux

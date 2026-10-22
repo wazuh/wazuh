@@ -93,9 +93,14 @@ IMAGE_TRUST_CHECKS?=1
 CA_NAME?=Microsoft Identity Verification Root Certificate Authority 2020
 HTTP_REQUEST_BRANCH?=803cab4347fe8b7f5cdbfa69949c22bd1ae35c49
 
+# The `# deps-recipe` blocks hold what reaches the external dependencies build and go into their pool keys
+# (packages/externals/deps.py); an option that changes how the dependencies compile goes inside one. The test,
+# Debug and sanitizer options stay out: the pool is always built without them (packages/externals/build_external.sh).
+# deps-recipe: begin
 ifeq (${TARGET},winagent)
 CMAKE_OPTS=-DCMAKE_SYSTEM_NAME=Windows -DCMAKE_C_COMPILER=${MING_BASE}${CC}$(if $(filter gcc,${CC}),-posix) -DCMAKE_CXX_COMPILER=${MING_BASE}${CXX} -DEVENTCHANNEL_SUPPORT=ON
 endif
+# deps-recipe: end
 
 ifneq (,$(filter ${TEST},YES yes y Y 1))
 WAZUH_TEST=-DUNIT_TEST=ON
@@ -112,6 +117,9 @@ CMAKE_OPTS+=-DFSANITIZE=ON
 endif
 ifneq (,$(filter ${TSANITIZE},YES yes y Y 1))
 CMAKE_OPTS+=-DTSANITIZE=ON
+endif
+ifneq (,$(filter ${EXTERNAL_SANITIZE},YES yes y Y 1))
+CMAKE_OPTS+=-DEXTERNAL_SANITIZE=ON
 endif
 ifneq (,$(filter ${DISABLE_JEMALLOC},YES yes y Y 1))
 CMAKE_OPTS+=-DDISABLE_JEMALLOC=ON
@@ -158,6 +166,7 @@ endif
 ifeq (${TARGET},manager)
 override USE_SELINUX := no
 endif
+# deps-recipe: begin
 
 ifneq (${TARGET},winagent)
 ifeq (${uname_S},Linux)
@@ -187,6 +196,7 @@ ifneq (,$(SYMBOLS_IN_RELEASE))
 	CMAKE_OPTS+=-DCMAKE_SYMBOLS_IN_RELEASE=ON
 endif
 
+# deps-recipe: end
 MAKECOLOR="\033[32;1m"
 ENDCOLOR="\033[0m"
 
@@ -194,6 +204,7 @@ ifeq (,$(filter ${V},YES yes y Y 1))
 	QUIET_NOTICE  = @printf '%b' ${MAKECOLOR} 1>&2;
 	QUIET_ENDCOLOR= @printf '%b' ${ENDCOLOR} 1>&2;
 endif
+# deps-recipe: begin
 
 MING_BASE:=
 ifeq (${TARGET}, winagent)
@@ -230,6 +241,7 @@ endif
 endif
 endif
 endif #winagent
+# deps-recipe: end
 
 ####################
 #### Target ########
@@ -264,7 +276,7 @@ help: failtarget
 	@echo "   make V=yes                   						Display full compiler messages. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make DEBUG=yes               						Build with symbols and without optimization. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make INSTALLDIR=/path        						Wazuh's installation path. Mandatory when compiling the python interpreter from sources using PYTHON_SOURCE."
-	@echo "   make RESOURCES_URL           						Set the Wazuh resources URL"
+	@echo "   make DEPS_POOL_URL           						Set the URL of the dependency pool that the refs of deps.lock.mk are read from"
 	@echo "   make EXTERNAL_SRC_ONLY=yes   						Combined with 'deps', it downloads only the external source code to be compiled as part of Wazuh building."
 	@echo "   make USE_INOTIFY=yes         						Build with inotify support. Allowed values are auto, 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make USE_BIG_ENDIAN=yes      						Build with big endian support. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
@@ -292,7 +304,7 @@ settings:
 	@echo "    V:                  ${V}"
 	@echo "    DEBUG:              ${DEBUG}"
 	@echo "    INSTALLDIR:         ${INSTALLDIR}"
-	@echo "    RESOURCES_URL:      ${RESOURCES_URL}"
+	@echo "    DEPS_POOL_URL:      ${DEPS_POOL_URL}"
 	@echo "    EXTERNAL_SRC_ONLY:  ${EXTERNAL_SRC_ONLY}"
 	@echo "    HTTP_REQUEST_BRANCH:${HTTP_REQUEST_BRANCH}"
 	@echo "User settings:"
@@ -374,12 +386,14 @@ build_wazuh_cmake:
 #### External ######
 ####################
 
+# deps-recipe: begin
 # Build all external dependencies
 .PHONY: build-external
 build-external:
 	@echo "Building external dependencies for TARGET=${TARGET}..."
 	mkdir -p build && cd build && cmake .. -DTARGET=${TARGET} ${CMAKE_OPTS} ${WAZUH_RELEASE_TYPE} ${WAZUH_TEST} ${CMAKE_ENGINE_OPTS}
 	cd build/external && $(MAKE) all
+# deps-recipe: end
 
 # CPython build
 ifneq (${TARGET},winagent)
@@ -414,9 +428,19 @@ ifneq (,$(shell curl --help all 2>/dev/null | grep -F -- '--retry-all-errors'))
 	FETCH_CURL_FLAGS += --retry-all-errors
 endif
 FETCH_CURL := curl $(FETCH_CURL_FLAGS) -o
-DEPS_VERSION = 99-37702
-RESOURCES_URL_BASE := https://packages.wazuh.com/deps/
-RESOURCES_URL := $(RESOURCES_URL_BASE)$(DEPS_VERSION)
+# Curl for the dependency pool: it retries transient errors but not a 403/404, which is how a missing
+# precompiled tarball looks, so the fallback to the sources is immediate. A stalled transfer, not a
+# slow one, is what fails: the cpython sources are about 175 MB.
+POOL_CURL_FLAGS := -fsS --retry 5 --retry-delay 2 --connect-timeout 20 --speed-limit 1024 --speed-time 60
+ifneq (,$(shell curl --help all 2>/dev/null | grep -F -- '--retry-connrefused'))
+	POOL_CURL_FLAGS += --retry-connrefused
+endif
+POOL_CURL := curl $(POOL_CURL_FLAGS) -o
+# Every dependency is downloaded from $(DEPS_POOL_URL)/<ref>/, with its ref from deps.lock.mk.
+include $(dir $(lastword $(MAKEFILE_LIST)))deps.lock.mk
+DEPS_POOL_URL ?= https://packages.wazuh.com/deps/pool
+dep_url = $(DEPS_POOL_URL)/$(or $(DEP_REF_$(1)),$(error $(1): no DEP_REF_$(1) in deps.lock.mk; run packages/externals/deps.py lock))/$(2)
+dep_failed = { printf "\033[31m[-] Dependency %s failed installation\033[0m\n" "$(1)"; exit 1; }
 CPYTHON := cpython
 PYTHON_SOURCE := no
 
@@ -592,18 +616,18 @@ ifneq (,$(PRECOMPILED_RES))
 external/$(CPYTHON).tar.gz: external-precompiled/$(CPYTHON).tar.gz
 	 @echo "[-] Downloading dependency $(notdir $(patsubst %.tar.gz,%,$@)) ..."
 	@test -e $(patsubst %.gz,%,$@) ||\
-	($(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(CPYTHON_ARCHIVE).tar.gz &&\
+	(($(POOL_CURL) $@ $(call dep_url,cpython,sources/$(CPYTHON_ARCHIVE).tar.gz) || $(call dep_failed,cpython)) &&\
 	cd external && $(GUNZIP) $(patsubst external/%,%,$@) && $(TAR) $(patsubst external/%.gz,%,$@) && rm $(patsubst external/%.gz,%,$@))
 	@test -d $(patsubst %.tar.gz,%,$@) || (cd external && $(GZIP) $(patsubst external/%.gz,%,$@))
 	@printf "\033[32m[+] Dependency %s installed successfully\033[0m\n" "$(notdir $(patsubst %.tar.gz,%,$@))"
 
 external-precompiled/$(CPYTHON).tar.gz:
-	-@$(CURL) external/$(patsubst external-precompiled/%,%,$@) $(RESOURCES_URL)/libraries/$(PRECOMPILED_RES)/$(patsubst external-precompiled/%,%,$@) || true
+	-@$(POOL_CURL) external/$(patsubst external-precompiled/%,%,$@) $(call dep_url,cpython,$(PRECOMPILED_RES)/cpython.tar.gz) 2>/dev/null || true
 	-@cd external && [ -f $(patsubst external-precompiled/%,%,$@) ] && $(GUNZIP) $(patsubst external-precompiled/%,%,$@) || true
 else
 external/$(CPYTHON).tar.gz:
 	 @echo "[-] Downloading dependency $(notdir $(patsubst %.tar.gz,%,$@)) ..."
-	@$(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(CPYTHON_ARCHIVE).tar.gz || { printf "\033[31m[-] Dependency %s failed installation\033[0m\n" "$(notdir $(patsubst %.tar.gz,%,$@))"; exit 1; }
+	@$(POOL_CURL) $@ $(call dep_url,cpython,sources/$(CPYTHON_ARCHIVE).tar.gz) || $(call dep_failed,cpython)
 	 @cd external && $(GUNZIP) $(patsubst external/%,%,$@)
 	 @cd external && $(TAR) $(patsubst external/%.gz,%,$@)
 	 @rm $(patsubst %.gz,%,$@)
@@ -612,7 +636,7 @@ endif
 else
 external/$(CPYTHON).tar.gz:
 	 @echo "[-] Downloading dependency $(notdir $(patsubst %.tar.gz,%,$@)) ..."
-	@$(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(CPYTHON_ARCHIVE).tar.gz || { printf "\033[31m[-] Dependency %s failed installation\033[0m\n" "$(notdir $(patsubst %.tar.gz,%,$@))"; exit 1; }
+	@$(POOL_CURL) $@ $(call dep_url,cpython,sources/$(CPYTHON_ARCHIVE).tar.gz) || $(call dep_failed,cpython)
 	 @cd external && $(GUNZIP) $(patsubst external/%,%,$@)
 	 @cd external && $(TAR) $(patsubst external/%.gz,%,$@)
 	 @rm $(patsubst %.gz,%,$@)
@@ -622,22 +646,29 @@ endif
 # Explicit rule for tzdata - always download from sources URL
 external/tzdata.tar.gz:
 	test -d $(patsubst %.tar.gz,%,$@) ||\
-	($(TZDATA_CURL) $@ $(RESOURCES_URL)/libraries/sources/tzdata.tar.gz && \
+	($(TZDATA_CURL) $@ $(call dep_url,tzdata,sources/tzdata.tar.gz) && \
 	cd external && $(GUNZIP) $(patsubst external/%,%,$@) && $(TAR) $(patsubst external/%.gz,%,$@) && rm $(patsubst external/%.gz,%,$@))
 	rm -f external/tzdata/tzdata.tar.gz
+
+# libbpf-bootstrap has no sources/: build_ebpf.sh builds it outside the Wazuh build, so a sources-only
+# fetch skips it and the agent is installed without libbpf.so and modern.bpf.o (no eBPF whodata).
+ifeq (,$(PRECOMPILED_RES))
+external/libbpf-bootstrap.tar.gz:
+	@printf "\033[33m[!] Dependency libbpf-bootstrap skipped: it has no sources (built by build_ebpf.sh); the agent runs without eBPF\033[0m\n"
+endif
 
 # Remaining dependencies
 ifneq (,$(PRECOMPILED_RES))
 external/%.tar.gz: external-precompiled/%.tar.gz
 	 @echo "[-] Downloading dependency $(notdir $(patsubst %.tar.gz,%,$@)) ..."
 	@test -d $(patsubst %.tar.gz,%,$@) ||\
-	($(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(patsubst external/%,%,$@) &&\
+	(($(POOL_CURL) $@ $(call dep_url,$*,sources/$*.tar.gz) || $(call dep_failed,$*)) &&\
 	cd external && $(GUNZIP) $(patsubst external/%,%,$@) && $(TAR) $(patsubst external/%.gz,%,$@) && rm $(patsubst external/%.gz,%,$@))
 	@printf "\033[32m[+] Dependency %s installed successfully\033[0m\n" "$(notdir $(patsubst %.tar.gz,%,$@))"
 else
 external/%.tar.gz:
 	 @echo "[-] Downloading dependency $(notdir $(patsubst %.tar.gz,%,$@)) ..."
-	@$(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(patsubst external/%,%,$@) || { printf "\033[31m[-] Dependency %s failed installation\033[0m\n" "$(notdir $(patsubst %.tar.gz,%,$@))"; exit 1; }
+	@$(POOL_CURL) $@ $(call dep_url,$*,sources/$*.tar.gz) || $(call dep_failed,$*)
 	 @cd external && $(GUNZIP) $(patsubst external/%,%,$@)
 	 @cd external && $(TAR) $(patsubst external/%.gz,%,$@)
 	 @rm $(patsubst %.gz,%,$@)
@@ -645,11 +676,21 @@ external/%.tar.gz:
 endif
 
 ifneq (,$(PRECOMPILED_RES))
+# A dependency without a precompiled tarball for this platform (403 or 404, or a missing file in a file:// pool) is
+# built from sources silently; any other failure is reported, since it means the pool did not serve what it has.
+# A broken archive is built from sources: one that is not gzip leaves the tree as it was, and a tar that fails
+# partway removes the tree it wrote into, so the sources are downloaded again.
 external-precompiled/%.tar.gz:
-	-@$(CURL) external/$(patsubst external-precompiled/%,%,$@) $(RESOURCES_URL)/libraries/$(PRECOMPILED_RES)/$(patsubst external-precompiled/%,%,$@) || true
-	-@cd external && [ -f $(patsubst external-precompiled/%,%,$@) ] && $(GUNZIP) $(patsubst external-precompiled/%,%,$@) || true
-	-@cd external && [ -f $(patsubst external-precompiled/%.gz,%,$@) ] && $(TAR) $(patsubst external-precompiled/%.gz,%,$@) || true
-	-@[ -f external/$(patsubst external-precompiled/%.gz,%,$@) ] && rm external/$(patsubst external-precompiled/%.gz,%,$@) || true
+	-@f=$(patsubst external-precompiled/%,%,$@); broken=; \
+	code=$$($(POOL_CURL) external/$$f -w '%{http_code}' $(call dep_url,$*,$(PRECOMPILED_RES)/$*.tar.gz) 2>/dev/null); rc=$$?; \
+	if [ $$rc -eq 0 ]; then \
+	  if ! (cd external && $(GUNZIP) $$f) 2>/dev/null; then broken=yes; \
+	  elif ! (cd external && $(TAR) $${f%.gz}) 2>/dev/null; then rm -rf external/$*; broken=yes; fi; \
+	  [ -z "$$broken" ] || printf "\033[33m[!] Precompiled %s is not a valid archive: it is built from sources\033[0m\n" "$*"; \
+	elif [ $$rc -ne 37 ] && [ "$$code" != 403 ] && [ "$$code" != 404 ]; then \
+	  printf "\033[33m[!] Precompiled %s could not be downloaded (curl exit %s, HTTP %s): it is built from sources\033[0m\n" "$*" "$$rc" "$$code"; \
+	fi; \
+	rm -f external/$$f external/$${f%.gz}
 endif
 
 # Shared tools
@@ -746,6 +787,7 @@ $(WCS_FLAT_DIR)/wcs_flat.yml: | $(WCS_FLAT_DIR)
 #### Python ########
 ####################
 
+# cpython-recipe: begin
 WPYTHON_DIR := ${INSTALLDIR}/framework/python
 OPTIMIZE_CPYTHON?=no
 WPYTHON_TAR=cpython.tar.gz
@@ -769,6 +811,8 @@ ifeq (,$(wildcard ${EXTERNAL_CPYTHON}/python))
 	export LIBSQLITE3_LIBS="-L${ROUTE_PATH}/build/lib -lwazuhext -Wl,-rpath,'${WPATH_LIB}'" && \
 	export LIBFFI_CFLAGS="-I${ROUTE_PATH}/${EXTERNAL_LIBFFI}/include" && \
 	export LIBFFI_LIBS="-L${ROUTE_PATH}/build/lib -lwazuhext -Wl,-rpath,'${WPATH_LIB}'" && \
+	export ZLIB_CFLAGS="-I${ROUTE_PATH}/${EXTERNAL_ZLIB}" && \
+	export ZLIB_LIBS="-L${ROUTE_PATH}/build/lib -lwazuhext -Wl,-rpath,'${WPATH_LIB}'" && \
 	export CUSTOM_OPENSSL_INCLUDES="-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}/include" && \
 	export CUSTOM_OPENSSL_LIBS="-lwazuhext" && \
 	export CUSTOM_OPENSSL_LDFLAGS="-L${ROUTE_PATH}/build/lib -Wl,-rpath,'${WPATH_LIB}'" && \
@@ -798,6 +842,8 @@ ifneq (,$(wildcard ${EXTERNAL_CPYTHON}))
 	${WPYTHON_DIR}/bin/python3 -m pip install --upgrade pip --index-url=file://${ROUTE_PATH}/${EXTERNAL_CPYTHON}/Dependencies/simple
 	LD_LIBRARY_PATH="${INSTALLDIR}/lib" LDFLAGS="-L${INSTALLDIR}/lib" ${WPYTHON_DIR}/bin/pip3 install -r ../framework/${python_dependencies}  --index-url=file://${ROUTE_PATH}/${EXTERNAL_CPYTHON}/Dependencies/simple
 endif
+
+# cpython-recipe: end
 
 install_framework: install_python
 	cd ../framework && ${WPYTHON_DIR}/bin/python3 -m pip install . --use-pep517 --prefix=${WPYTHON_DIR} && rm -rf build/
@@ -859,6 +905,8 @@ ifneq ($(wildcard external/*/*),)
 	rm -rf $(EXTERNAL_POPT)build
 	rm -rf $(EXTERNAL_RPM)builddir
 	rm -rf $(EXTERNAL_LLHTTP)build
+	rm -rf external/zstd/build/cmake-build*
+	rm -rf ${EXTERNAL_DBUS}lib
 # Manually-compiled dependencies - remove object files and build artifacts
 	rm -f $(EXTERNAL_JSON)*.o $(EXTERNAL_JSON)*.a
 	rm -f $(EXTERNAL_SQLITE)*.o $(EXTERNAL_SQLITE)*.a

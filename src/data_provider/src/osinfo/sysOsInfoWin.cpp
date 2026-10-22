@@ -87,7 +87,8 @@ static std::string getRelease(const std::string& build)
         {"10240", "1507"},
         {"10586", "1511"},
         {"14393", "1607"},
-        {"15063", "1709"},
+        {"15063", "1703"},
+        {"16299", "1709"},
         {"17134", "1803"},
         {"17763", "1809"},
         {"18362", "1903"},
@@ -130,12 +131,9 @@ static std::string getDisplayVersion()
     std::string display_version;
     Utils::Registry currentVersion{HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)", KEY_READ | KEY_WOW64_64KEY};
 
-    if (!currentVersion.string("DisplayVersion", display_version))
-    {
-        display_version = UNKNOWN_VALUE;
-    }
+    currentVersion.string("DisplayVersion", display_version);
 
-    return display_version;
+    return Utils::trim(display_version);
 }
 
 static std::string getName()

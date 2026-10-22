@@ -21,6 +21,9 @@ struct TaskConfig
                                         ///< Has no effect when interval == 0 (one-time tasks always run immediately).
     int CPUPriority;                    ///< Process nice value for CPU priority. Range: -20 (highest) to 19 (lowest)
     std::function<void()> taskFunction; ///< The callable function/lambda to execute when the task runs
+    std::function<std::size_t()> nextInterval {}; ///< Optional, recurring tasks only: called after each run; a
+                                                  ///< non-zero result replaces interval for the next run only.
+                                                  ///< If it throws, interval applies.
 };
 
 /**

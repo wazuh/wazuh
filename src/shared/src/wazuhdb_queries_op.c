@@ -520,7 +520,7 @@ rb_tree* wdb_get_all_agents_rbtree(int *sock) {
     }
 
     if (status == WDBC_ERROR) {
-        merror("Error querying Wazuh DB to get agent's IDs.");
+        wdbc_fail("Error querying Wazuh DB to get agent's IDs.");
         rbtree_destroy(tree);
         tree = NULL;
     }
@@ -546,7 +546,7 @@ cJSON* wdb_get_agent_info(int id, int *sock) {
     }
 
     if (!root) {
-        merror("Error querying Wazuh DB to get the agent's %d information.", id);
+        wdbc_fail("Error querying Wazuh DB to get the agent's %d information.", id);
         return NULL;
     }
 
@@ -569,7 +569,7 @@ char* wdb_get_agent_group(int id, int *sock) {
     }
 
     if (!root) {
-        merror("Error querying Wazuh DB to get the agent's %d group.", id);
+        wdbc_fail("Error querying Wazuh DB to get the agent's %d group.", id);
         return NULL;
     }
 
@@ -598,7 +598,7 @@ int wdb_find_group(const char *name, int *sock) {
     }
 
     if (!root) {
-        merror("Error querying Wazuh DB to get the agent group id.");
+        wdbc_fail("Error querying Wazuh DB to get the agent group id.");
         return OS_INVALID;
     }
 
@@ -621,7 +621,7 @@ int wdb_update_groups(const char *dirname, int *sock) {
     root = wdbc_query_parse_json(sock?sock:&aux_sock, global_db_commands[WDB_SELECT_GROUPS], wdboutput, sizeof(wdboutput));
 
     if (!root) {
-        merror("Error querying Wazuh DB to update groups.");
+        wdbc_fail("Error querying Wazuh DB to update groups.");
         if (!sock) {
             wdbc_close(&aux_sock);
         }
@@ -1150,7 +1150,7 @@ cJSON* wdb_get_distinct_agent_groups(int *sock) {
     os_free(tmp_last_hash_group);
 
     if (status == WDBC_ERROR) {
-        merror("Error querying Wazuh DB to get agent's groups.");
+        wdbc_fail("Error querying Wazuh DB to get agent's groups.");
         cJSON_Delete(root);
         root = NULL;
     }

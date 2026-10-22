@@ -76,8 +76,8 @@ TEST(ControlTypesTest, IsValidVersionRejectsMalformed)
 // -----------------------------------------------------------------------------
 // compareVersions
 //
-// Shared by /control (allow_higher_versions) and /enroll (D8: reused, not
-// duplicated, since authd's own local `add` path performs no version check at all).
+// The generic ordering over all four parts; the allow_higher_versions policy is
+// isAgentVersionTooNew() below.
 // -----------------------------------------------------------------------------
 
 TEST(ControlTypesTest, CompareVersionsEqualIsZero)
@@ -104,6 +104,42 @@ TEST(ControlTypesTest, CompareVersionsIgnoresSuffix)
 TEST(ControlTypesTest, CompareVersionsTreatsUnparsablePartsAsZero)
 {
     EXPECT_EQ(compareVersions("not-a-version", "0.0.0"), 0);
+}
+
+// -----------------------------------------------------------------------------
+// isAgentVersionTooNew
+//
+// The allow_higher_versions policy of /control and /enroll: major.minor only, like the
+// legacy compare_wazuh_versions(manager, agent, false) on ports 1514 and 1515.
+// -----------------------------------------------------------------------------
+
+TEST(ControlTypesTest, AgentVersionTooNewIgnoresPatch)
+{
+    EXPECT_FALSE(isAgentVersionTooNew("5.0.0", "5.0.0"));
+    EXPECT_FALSE(isAgentVersionTooNew("5.0.0", "5.0.1"));
+    EXPECT_FALSE(isAgentVersionTooNew("v5.0.0", "v5.0.99"));
+    EXPECT_FALSE(isAgentVersionTooNew("5.0.0", "5.0.1.7"));
+}
+
+TEST(ControlTypesTest, AgentVersionTooNewOnHigherMajorOrMinor)
+{
+    EXPECT_TRUE(isAgentVersionTooNew("5.0.0", "5.1.0"));
+    EXPECT_TRUE(isAgentVersionTooNew("5.0.9", "5.1.0"));
+    EXPECT_TRUE(isAgentVersionTooNew("5.9.9", "6.0.0"));
+    EXPECT_TRUE(isAgentVersionTooNew("5.9.0", "5.10.0")); // per-component, not lexicographic
+}
+
+TEST(ControlTypesTest, AgentVersionOlderIsNeverTooNew)
+{
+    EXPECT_FALSE(isAgentVersionTooNew("5.0.0", "4.14.12"));
+    EXPECT_FALSE(isAgentVersionTooNew("5.1.0", "5.0.9"));
+    EXPECT_FALSE(isAgentVersionTooNew("5.0.1", "5.0.0"));
+}
+
+TEST(ControlTypesTest, AgentVersionTooNewIgnoresSuffix)
+{
+    EXPECT_FALSE(isAgentVersionTooNew("5.0.0-rc2", "5.0.1-alpha0"));
+    EXPECT_TRUE(isAgentVersionTooNew("5.0.0+build.42", "5.1.0-rc1"));
 }
 
 // -----------------------------------------------------------------------------
