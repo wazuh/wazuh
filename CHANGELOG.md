@@ -25,6 +25,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the vulnerability scanner reporting no OS vulnerabilities for Windows 10 agents older than 20H2, which have no display version. ([#40489](https://github.com/wazuh/wazuh/pull/40489))
 - Fixed the Azure Log Analytics integration never collecting the records ingested after a run with a `TimeGenerated` older than the newest record processed. ([#40538](https://github.com/wazuh/wazuh/pull/40538))
 - Fixed the Azure Log Analytics integration skipping new records for up to a day after reading a record with a `TimeGenerated` ahead of the current time. ([#40538](https://github.com/wazuh/wazuh/pull/40538))
+- Fixed the `ms-graph` configuration reported by the Server API leaving out the name of each resource and all its relationships but the last. `api_auth` is now an array with one item per block, and each resource lists its `name` and a `relationships` array. ([#40580](https://github.com/wazuh/wazuh/pull/40580))
 
 ### Agent
 
@@ -38,6 +39,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the `azure-logs` configuration reported by the Server API leaving out the requests and containers of each source. ([#40579](https://github.com/wazuh/wazuh/pull/40579))
 - Fixed a memory leak in `wazuh-modulesd` each time the `azure-logs` configuration was requested. ([#40579](https://github.com/wazuh/wazuh/pull/40579))
 - Fixed the Windows agent reporting the wrong release for builds 15063 and 16299 when the registry has no `ReleaseId`. ([#40489](https://github.com/wazuh/wazuh/pull/40489))
+- Fixed the `ms-graph` configuration reported by the Server API leaving out the name of each resource and all its relationships but the last. `api_auth` is now an array with one item per block, and each resource lists its `name` and a `relationships` array. ([#40580](https://github.com/wazuh/wazuh/pull/40580))
 
 ## [v4.14.10]
 
