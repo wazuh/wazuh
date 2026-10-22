@@ -288,6 +288,7 @@ int main(int argc, char* argv[])
     std::shared_ptr<cm::sync::CMSync> cmSyncService;
     std::shared_ptr<ioc::sync::IocSync> iocSyncService;
     std::shared_ptr<agentcache::AgentMetadataCache> agentMetadataCache;
+    std::size_t agentMetadataCacheCleanInterval {0}; // validated with the cache, before any event is accepted
     bool firstStart {false};
 
     try
@@ -908,6 +909,10 @@ int main(int argc, char* argv[])
         if (enableProcessing)
         {
             engineRemoteServer = std::make_shared<httpsrv::Server>("Event services", 0, false);
+            // Every cache setting is validated here, before the ingest server below starts listening: a
+            // bad value must stop start-up before any batch is accepted, not after.
+            agentMetadataCacheCleanInterval = agentcache::validateCleanInterval(
+                confManager.get<std::size_t>(conf::key::AGENT_METADATA_CACHE_CLEAN_INTERVAL));
             agentMetadataCache = std::make_shared<agentcache::AgentMetadataCache>(
                 std::chrono::seconds(confManager.get<std::size_t>(conf::key::AGENT_METADATA_CACHE_TTL)),
                 agentcache::Limits {confManager.get<std::size_t>(conf::key::AGENT_METADATA_CACHE_MAX_ENTRIES),
@@ -987,10 +992,8 @@ int main(int argc, char* argv[])
             // Async clean agent cache, safely evicting stale entries to avoid memory bloat. This is a best-effort
             // operation, so it is not critical if the cache is not cleaned on time. The number of evicted
             // entries is recorded by the cache itself (agent.cache.evictions).
-            const auto cacheCleanInterval = agentcache::validateCleanInterval(
-                confManager.get<std::size_t>(conf::key::AGENT_METADATA_CACHE_CLEAN_INTERVAL));
             scheduler->scheduleTask("clean-agent-cache",
-                                    scheduler::TaskConfig {.interval = cacheCleanInterval,
+                                    scheduler::TaskConfig {.interval = agentMetadataCacheCleanInterval,
                                                            .runImmediately = false,
                                                            .CPUPriority = 0,
                                                            .taskFunction = [agentMetadataCache]()
