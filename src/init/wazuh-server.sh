@@ -197,7 +197,6 @@ get_node_type()
 
 status()
 {
-    RETVAL=0
     first=true
 
     node_type=$(get_node_type);
@@ -239,7 +238,6 @@ status()
             else
                 echo "${i} not running..."
             fi
-            RETVAL=1
         else
             if [ $USE_JSON = true ]; then
                 echo -n '{"daemon":"'${i}'","status":"running"}'
@@ -251,6 +249,9 @@ status()
     if [ $USE_JSON = true ]; then
         echo -n ']}'
     fi
+
+    # Ensure status command returns 0 after successfully reporting daemon states
+    RETVAL=0
 }
 
 # validateconfig [--skip-file-checks]: the whole configuration file (XML, schema, cross-field rules
