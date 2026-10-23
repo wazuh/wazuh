@@ -4616,3 +4616,28 @@ TEST_F(JsonBase, GetUniqueStringRejectsWrongTypesAndMissingSteps)
         EXPECT_EQ(out, "unchanged");
     }
 }
+
+TEST(JsonMemberNames, VisitsOnlySelectedObjectNamesWithoutTruncatingThem)
+{
+    const Json value {R"({"a.b":null,"nested":{"key":1,"key":2,"key\u0000x":3,"\u0065scaped":4},"scalar":1})"};
+    std::vector<std::string> names;
+    EXPECT_FALSE(value.anyMemberName(
+        [&](std::string_view name)
+        {
+            names.emplace_back(name);
+            return false;
+        },
+        PointerPath {"/nested"}));
+    EXPECT_EQ(names, (std::vector<std::string> {"key", "key", std::string("key\0x", 5), "escaped"}));
+    int visited = 0;
+    EXPECT_TRUE(value.anyMemberName(
+        [&](std::string_view name)
+        {
+            ++visited;
+            return name == "a.b";
+        }));
+    EXPECT_EQ(visited, 1); // Stop at the first match; do not inspect values or nested objects.
+    EXPECT_FALSE(value.anyMemberName([](std::string_view) { return true; }, PointerPath {"/missing"}));
+    EXPECT_FALSE(value.anyMemberName([](std::string_view) { return true; }, PointerPath {"/scalar"}));
+    EXPECT_FALSE(Json {R"([])"}.anyMemberName([](std::string_view) { return true; }));
+}

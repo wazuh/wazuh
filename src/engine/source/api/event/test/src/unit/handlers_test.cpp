@@ -347,6 +347,37 @@ TEST_F(EventIdentityTest, RejectsAmbiguousOrMismatchedHeader)
     }
 }
 
+TEST_F(EventIdentityTest, RejectsDottedIdentityAliasesBeforeEnqueueing)
+{
+    EXPECT_CALL(*router, postEvent(testing::_)).Times(0);
+    for (const auto& limits : {agentcache::Limits {}, agentcache::Limits {1, 0}, agentcache::Limits {0, 1}})
+    {
+        cache = std::make_shared<agentcache::AgentMetadataCache>(std::chrono::seconds {300}, limits);
+        handler = pushEvent(router, {}, cache);
+        for (const bool warm : {false, true})
+        {
+            if (warm)
+            {
+                cache->getOrParse("001", R"({"wazuh":{"agent":{"id":"001"}}})");
+            }
+            for (const auto header : {R"({"wazuh":{"agent":{"id":"001"}},"wazuh.agent.id":"002"})",
+                                      R"({"wazuh":{"agent":{"id":"001"}},"wazuh.agent.id.":"002"})",
+                                      R"({"wazuh":{"agent":{"id":"001"},"agent.id..":"002"}})",
+                                      R"({"wazuh":{"agent":{"id":"001","id\u002e":"002"}}})",
+                                      R"({"wazuh.agent":{"id":"002"},"wazuh":{"agent":{"id":"001"}}})",
+                                      R"({"wazuh":{"agent":{"id":"001"},"agent.id":"002"}})",
+                                      R"({"wazuh":{"agent":{"id":"001"}},"wazuh\u002eagent\u002eid":["002"]})",
+                                      R"({"wazuh":{"agent\u002eid":"002","agent":{"id":"001"}}})",
+                                      R"({"wazuh":{"agent":{"id":"001"}},"wazuh.agent.id":"001"})"})
+            {
+                SCOPED_TRACE(header);
+                expectIdentityRejection({{"X-Wazuh-Agent-Id", "001"}},
+                                        std::string("H ") + header + "\nE 1:syslog:hello\n");
+            }
+        }
+    }
+}
+
 TEST_F(EventIdentityTest, CachedHeaderCannotBypassCarrierValidation)
 {
     EXPECT_CALL(*router, postEvent(testing::_)).Times(1);

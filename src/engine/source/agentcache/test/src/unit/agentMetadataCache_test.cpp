@@ -594,6 +594,92 @@ TEST_F(AgentMetadataCacheTest, TrustedIdRejectsInvalidIdentityPath)
     }
 }
 
+TEST_F(AgentMetadataCacheTest, RejectsDottedIdentityAliasesBeforeAdmission)
+{
+    // These are distinct JSON members, but the indexer resolves them to the same identity field.
+    const std::vector<std::string> headers {R"({"wazuh":{"agent":{"id":"001"}},"wazuh.agent.id":"002"})",
+                                            R"({"wazuh":{"agent":{"id":"001"}},"wazuh.agent.id.":"002"})",
+                                            R"({"wazuh":{"agent":{"id":"001"}},"wazuh.agent.id..":"002"})",
+                                            R"({"wazuh":{"agent":{"id":"001"}},"wazuh.agent.":{"id":"002"}})",
+                                            R"({"wazuh":{"agent":{"id":"001"}},"wazuh.":{"agent":{"id":"002"}}})",
+                                            R"({"wazuh":{"agent":{"id":"001"},"agent.id.":"002"}})",
+                                            R"({"wazuh":{"agent":{"id":"001"},"agent.":{"id":"002"}}})",
+                                            R"({"wazuh":{"agent":{"id":"001","id..":"002"}}})",
+                                            R"({"wazuh":{"agent":{"id":"001"}},"wazuh.agent.id\u002e":"002"})",
+                                            R"({"wazuh.agent.id":"002","wazuh":{"agent":{"id":"001"}}})",
+                                            R"({"wazuh":{"agent":{"id":"001"},"agent.id":"002"}})",
+                                            R"({"wazuh":{"agent.id":"002","agent":{"id":"001"}}})",
+                                            R"({"wazuh":{"agent":{"id":"001"}},"wazuh.agent":{"id":"002"}})",
+                                            R"({"wazuh.agent":{"id":"002"},"wazuh":{"agent":{"id":"001"}}})",
+                                            R"({"wazuh":{"agent":{"id":"001"}},"wazuh\u002eagent\u002eid":"002"})",
+                                            R"({"wazuh":{"agent":{"id":"001"},"agent\u002eid":"002"}})",
+                                            R"({"wazuh":{"agent":{"id":"001"}},"\u0077azuh.agent":{"id":"002"}})",
+                                            R"({"wazuh":{"agent":{"id":"001"}},"wazuh.agent.id":["001","002"]})",
+                                            R"({"wazuh":{"agent":{"id":"001"}},"wazuh.agent":[{"id":"002"}]})",
+                                            R"({"wazuh":{"agent":{"id":"001"},"agent.id":["002"]}})",
+                                            R"({"wazuh":{"agent":{"id":"001"}},"wazuh.agent.id":"001"})",
+                                            R"({"wazuh":{"agent":{"id":"001"}},"wazuh.agent.id":null})",
+                                            R"({"wazuh":{"agent":{"id":"001"}},"wazuh.agent":null})",
+                                            R"({"wazuh":{"agent":{"id":"001"},"agent.id":null}})"};
+    struct Scenario
+    {
+        const char* name;
+        Limits limits;
+        const char* seed;
+    };
+    for (const auto& scenario : {Scenario {"cold", {}, ""},
+                                 Scenario {"warm", {}, "001"},
+                                 Scenario {"entry capacity", {1, 0}, "002"},
+                                 Scenario {"byte capacity", {0, 1}, ""}})
+    {
+        SCOPED_TRACE(scenario.name);
+        AgentMetadataCache tested(300s, scenario.limits);
+        if (*scenario.seed)
+        {
+            tested.getOrParse(scenario.seed,
+                              scenario.seed == std::string_view("001") ? HEADER_AGENT_001 : HEADER_AGENT_002);
+        }
+        const auto size = tested.size();
+        const auto bytes = tested.accountedBytes();
+        const auto original = AgentMetadataCacheTestAccess::retained(tested, scenario.seed);
+        auto entryBypass =
+            fastmetrics::manager().getOrCreateCounter(fastmetrics::names::AGENT_CACHE_BYPASS_MAX_ENTRIES);
+        auto byteBypass = fastmetrics::manager().getOrCreateCounter(fastmetrics::names::AGENT_CACHE_BYPASS_MAX_BYTES);
+        const auto entryBypassBefore = entryBypass->get();
+        const auto byteBypassBefore = byteBypass->get();
+        for (const auto& header : headers)
+        {
+            SCOPED_TRACE(header);
+            // Repeat the exact bytes: a rejected alias must never become a reusable cache entry.
+            for (int attempt = 0; attempt < 2; ++attempt)
+            {
+                EXPECT_THROW(tested.getOrParse("001", header), IdentityError);
+                EXPECT_EQ(tested.size(), size);
+                EXPECT_EQ(tested.accountedBytes(), bytes);
+                EXPECT_EQ(AgentMetadataCacheTestAccess::retained(tested, scenario.seed), original);
+            }
+        }
+        EXPECT_EQ(entryBypass->get(), entryBypassBefore);
+        EXPECT_EQ(byteBypass->get(), byteBypassBefore);
+    }
+}
+
+TEST_F(AgentMetadataCacheTest, AcceptsDottedMetadataOutsideTheIdentityPath)
+{
+    const std::string header =
+        R"({"wazuh":{"agent":{"id":"001","id\u0000x":"002"},"agent.name":"label","agent.identifier":"002"},)"
+        R"("wazuh.agent.name":"label","wazuh.agent.identifier":"002","wazuh.agent.id\u0000x":"002",)"
+        R"("metadata":{"wazuh.agent.id":"002","wazuh":{"agent":{"id":"002"}}}})";
+    const auto first = cache.getOrParse("001", header);
+    EXPECT_EQ(first.second, Op::Inserted);
+    EXPECT_EQ(cache.getOrParse("001", header).second, Op::Retrieved);
+    std::string_view value;
+    ASSERT_EQ(first.first->getString(value, "/wazuh/agent/id"), json::RetGet::Success);
+    EXPECT_EQ(value, "001");
+    ASSERT_EQ(first.first->getString(value, "/metadata/wazuh.agent.id"), json::RetGet::Success);
+    EXPECT_EQ(value, "002");
+}
+
 TEST_F(AgentMetadataCacheTest, TrustedIdRejectsNoncanonicalId)
 {
     const auto first = cache.getOrParse("001", HEADER_AGENT_001);

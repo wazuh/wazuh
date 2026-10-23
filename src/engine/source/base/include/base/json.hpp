@@ -573,6 +573,15 @@ public:
     bool exists(std::string_view pointerPath) const;
 
     /**
+     * @brief Test decoded member names at one object without copying or traversing member values.
+     *
+     * Calls predicate with a length-aware view of each name, including repeated names, until it
+     * returns true. Views are valid while this document remains alive and unmodified.
+     * Returns false for an absent path, a non-object, or no match. Predicate exceptions propagate.
+     */
+    bool anyMemberName(const std::function<bool(std::string_view)>& predicate, const PointerPath& path = ROOT_PP) const;
+
+    /**
      * @brief Check if the Json contains a field with the given dot path, and if so, with
      * the given value.
      *

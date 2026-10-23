@@ -148,8 +148,9 @@ public:
      * @brief Look up or parse a header bound to a canonical, trusted agent ID.
      *
      * A hit requires the same ID and identical bytes. On a miss, the identity path must be unique
-     * and its string value must equal the trusted ID before anything is stored. Parsing and
-     * validation run outside the lock; admission is double-checked under the exclusive lock.
+     * and its string value must equal the trusted ID before anything is stored. Dotted aliases of
+     * that indexed identity path are rejected. Parsing and validation run outside the lock;
+     * admission is double-checked under the exclusive lock.
      *
      * @param trustedAgentId Canonical identity supplied by the authenticated or local producer.
      * @param headerStr Raw JSON after "H " in the NDJson batch.
@@ -215,6 +216,13 @@ public:
         if (headerId != trustedAgentId)
         {
             throw IdentityError("AgentMetadataCache: header agent ID does not match the trusted agent ID");
+        }
+
+        // JSON Pointer treats dots as literal bytes, but the indexer expands them into object paths.
+        // Refuse alternate identity spellings even when their values agree or are null.
+        if (hasDottedIdentityAlias(*parsed))
+        {
+            throw IdentityError("AgentMetadataCache: dotted alias of /wazuh/agent/id in header");
         }
 
         const auto candidateBytes = entryBytes(headerStr.size(), agentId.size(), parsed->getAllocatedMemory());
@@ -399,6 +407,37 @@ public:
     }
 
 private:
+    static bool hasDottedIdentityAlias(const json::Json& header)
+    {
+        // The indexer also accepts trailing dots on field names, so exact alias lookup is insufficient.
+        const auto trimTrailingDots = [](std::string_view name)
+        {
+            while (!name.empty() && name.back() == '.')
+            {
+                name.remove_suffix(1);
+            }
+            return name;
+        };
+        static const json::PointerPath wazuhPath {"/wazuh"};
+        static const json::PointerPath agentPath {"/wazuh/agent"};
+        return header.anyMemberName(
+                   [&](std::string_view name)
+                   {
+                       const auto trimmed = trimTrailingDots(name);
+                       return trimmed == "wazuh.agent" || trimmed == "wazuh.agent.id"
+                              || (trimmed == "wazuh" && trimmed != name);
+                   })
+               || header.anyMemberName(
+                   [&](std::string_view name)
+                   {
+                       const auto trimmed = trimTrailingDots(name);
+                       return trimmed == "agent.id" || (trimmed == "agent" && trimmed != name);
+                   },
+                   wazuhPath)
+               || header.anyMemberName(
+                   [&](std::string_view name) { return name != "id" && trimTrailingDots(name) == "id"; }, agentPath);
+    }
+
     /// Shortest gap between two capacity warnings.
     static constexpr std::chrono::seconds BYPASS_REPORT_INTERVAL {90};
 

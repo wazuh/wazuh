@@ -445,6 +445,23 @@ void Json::set(std::string_view basePtrPath, std::string_view referencePtrPath)
     }
 }
 
+bool Json::anyMemberName(const std::function<bool(std::string_view)>& predicate, const PointerPath& path) const
+{
+    const auto* value = path.getPointer().Get(m_document);
+    if (!value || !value->IsObject())
+    {
+        return false;
+    }
+    for (auto member = value->MemberBegin(); member != value->MemberEnd(); ++member)
+    {
+        if (predicate(std::string_view(member->name.GetString(), member->name.GetStringLength())))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 RetGet Json::getUniqueString(std::string_view& out, const PointerPath& path) const noexcept
 {
     const auto& pointer = path.getPointer();
