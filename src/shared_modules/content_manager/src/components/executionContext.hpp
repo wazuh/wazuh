@@ -120,7 +120,8 @@ private:
 
         // Create database columns if necessary.
         const std::vector<std::string> COLUMNS {Components::Columns::CURRENT_OFFSET,
-                                                Components::Columns::DOWNLOADED_FILE_HASH};
+                                                Components::Columns::DOWNLOADED_FILE_HASH,
+                                                Components::Columns::INITIAL_LOAD_PENDING};
         for (const auto& columnName : COLUMNS)
         {
             if (!context.spRocksDB->columnExists(columnName))

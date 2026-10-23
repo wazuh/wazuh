@@ -137,6 +137,32 @@ protected:
         return m_base->spRocksDB->getLastKeyValue(Components::Columns::CURRENT_OFFSET).second.ToString();
     }
 
+    void storeCursor(uint64_t offset) const
+    {
+        m_base->spRocksDB->put(Utils::getCompactTimestamp(std::time(nullptr)),
+                               std::to_string(offset),
+                               Components::Columns::CURRENT_OFFSET);
+    }
+
+    bool initialLoadPending() const
+    {
+        if (!m_base->spRocksDB->columnExists(Components::Columns::INITIAL_LOAD_PENDING))
+        {
+            return false;
+        }
+        std::string value;
+        return m_base->spRocksDB->get("pending", value, Components::Columns::INITIAL_LOAD_PENDING);
+    }
+
+    void setInitialLoadPending() const
+    {
+        if (!m_base->spRocksDB->columnExists(Components::Columns::INITIAL_LOAD_PENDING))
+        {
+            m_base->spRocksDB->createColumn(Components::Columns::INITIAL_LOAD_PENDING);
+        }
+        m_base->spRocksDB->put("pending", "1", Components::Columns::INITIAL_LOAD_PENDING);
+    }
+
     std::set<std::string> deliveredSet() const
     {
         return {m_delivered->ids.begin(), m_delivered->ids.end()};
@@ -251,4 +277,65 @@ TEST_F(IndexerDownloaderTest, ZeroDocumentsMeansIndexNotReadyAndRetries)
     EXPECT_EQ(m_delivered->completions, 1u);
     EXPECT_EQ(deliveredSet().size(), GLOBAL_DOCS + CVE_DOCS);
     EXPECT_EQ(m_index->pitsCreated, 2u) << "attempt 1 saw an empty index, attempt 2 loaded it";
+}
+
+TEST_F(IndexerDownloaderTest, RestartDuringInitialLoadResumesThroughTheInitialPath)
+{
+    // Run 1 is stopped after four pages (one flush): a safe cursor and the pending marker stay in the
+    // updater DB. Run 2 (a new downloader, same DB, as after a daemon restart) must continue the
+    // initial load from that cursor and clear the marker once the completion is accepted.
+    m_index->stopAtRequest = 5;
+    run(2);
+    ASSERT_TRUE(initialLoadPending());
+    const auto resumeCursor = storedCursor();
+    ASSERT_NE(resumeCursor, "0");
+    const auto deliveredBeforeRestart = m_delivered->ids.size();
+
+    m_index->stopAtRequest = 0;
+    m_stop->set(false);
+    run(2);
+
+    EXPECT_EQ(m_delivered->completions, 1u);
+    EXPECT_FALSE(initialLoadPending());
+    EXPECT_EQ(m_index->pitsCreated, 2u);
+    const auto& resumed = firstSearchOf("pit-2");
+    ASSERT_TRUE(resumed.query.contains("range")) << resumed.query.dump();
+    EXPECT_EQ(resumed.query.at("range").at("offset").at("gt").get<uint64_t>(), std::stoull(resumeCursor));
+    EXPECT_EQ(deliveredSet().size(), GLOBAL_DOCS + CVE_DOCS) << "nothing is lost across the restart";
+    EXPECT_GT(m_delivered->ids.size(), deliveredBeforeRestart);
+    EXPECT_EQ(storedCursor(), std::to_string(FIRST_CVE_OFFSET + CVE_DOCS - 1));
+}
+
+TEST_F(IndexerDownloaderTest, CompletedLoadWithPendingMarkerHealsItself)
+{
+    // The marker survived a crash between "completion accepted" and "marker cleared": the next run
+    // resumes from the final cursor, finds nothing, sends the completion again and clears the marker.
+    setInitialLoadPending();
+    storeCursor(FIRST_CVE_OFFSET + CVE_DOCS - 1);
+
+    run(2);
+
+    EXPECT_EQ(m_delivered->ids.size(), 0u);
+    EXPECT_EQ(m_delivered->completions, 1u);
+    EXPECT_FALSE(m_delivered->lastChanged);
+    EXPECT_FALSE(initialLoadPending());
+    EXPECT_EQ(m_context->data.at("cursor").get<std::string>(), std::to_string(FIRST_CVE_OFFSET + CVE_DOCS - 1));
+}
+
+TEST_F(IndexerDownloaderTest, StoredCursorWithoutMarkerTakesTheIncrementalPath)
+{
+    // A completed feed (cursor, no marker) keeps today's incremental update: one sequential PIT over
+    // the documents after the cursor, whatever numSlices says, and no marker is written.
+    storeCursor(FIRST_CVE_OFFSET + 499);
+
+    run(2);
+
+    EXPECT_EQ(m_delivered->completions, 1u);
+    EXPECT_EQ(m_index->pitsCreated, 1u);
+    const auto& first = firstSearchOf("pit-1");
+    ASSERT_TRUE(first.query.contains("range")) << first.query.dump();
+    EXPECT_EQ(first.query.at("range").at("offset").at("gt").get<uint64_t>(), FIRST_CVE_OFFSET + 499);
+    EXPECT_FALSE(first.slice.has_value());
+    EXPECT_EQ(m_delivered->ids.size(), CVE_DOCS - 500);
+    EXPECT_FALSE(initialLoadPending());
 }

@@ -791,6 +791,45 @@ private:
      *         database, i.e. it is now safe to persist a cursor up to and including this page.
      */
     /**
+     * @brief The initial-load marker: set while an initial load has started and its completion has not
+     *        been accepted, so that a restart in between resumes through the retrying initial-load
+     *        path from the persisted cursor instead of the incremental path (which does not retry).
+     */
+    static constexpr std::string_view INITIAL_LOAD_PENDING_KEY {"pending"};
+
+    bool isInitialLoadPending(const UpdaterContext& context) const
+    {
+        const auto& db = context.spUpdaterBaseContext->spRocksDB;
+        if (!db || !db->columnExists(Components::Columns::INITIAL_LOAD_PENDING))
+        {
+            return false;
+        }
+        std::string value;
+        return db->get(std::string {INITIAL_LOAD_PENDING_KEY}, value, Components::Columns::INITIAL_LOAD_PENDING);
+    }
+
+    void setInitialLoadPending(const UpdaterContext& context, const bool pending) const
+    {
+        const auto& db = context.spUpdaterBaseContext->spRocksDB;
+        if (!db)
+        {
+            return;
+        }
+        if (!db->columnExists(Components::Columns::INITIAL_LOAD_PENDING))
+        {
+            db->createColumn(Components::Columns::INITIAL_LOAD_PENDING);
+        }
+        if (pending)
+        {
+            db->put(std::string {INITIAL_LOAD_PENDING_KEY}, "1", Components::Columns::INITIAL_LOAD_PENDING);
+        }
+        else
+        {
+            db->delete_(std::string {INITIAL_LOAD_PENDING_KEY}, Components::Columns::INITIAL_LOAD_PENDING);
+        }
+    }
+
+    /**
      * @brief The stored cursor when it is a usable resume point (a positive integer), else empty.
      */
     std::string getResumeCursor(const UpdaterContext& context) const
@@ -1484,7 +1523,9 @@ public:
                 }
             }
 
-            const bool forceInitialLoad = lastCursor.empty();
+            // A pending marker means a previous initial load persisted a resume point and never had
+            // its completion accepted (stop, crash): continue it through the retrying path.
+            const bool forceInitialLoad = lastCursor.empty() || isInitialLoadPending(*context);
             if (!waitUntilConsumerReady(*context))
             {
                 break;
@@ -1498,6 +1539,7 @@ public:
             size_t totalProcessed = 0;
             if (forceInitialLoad)
             {
+                setInitialLoadPending(*context, true);
                 totalProcessed = initialLoad(*context);
             }
             else
@@ -1514,6 +1556,10 @@ public:
 
             if (sendCompletionSignal(*context, totalProcessed))
             {
+                if (forceInitialLoad)
+                {
+                    setInitialLoadPending(*context, false);
+                }
                 break;
             }
 
