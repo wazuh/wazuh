@@ -441,6 +441,29 @@ EXPORTED int fim_db_count_synced_container_docs(const char* container_id);
  */
 EXPORTED cJSON* fim_db_get_container_rows(const char* container_id, int sync);
 
+/**
+ * @brief Count one container's stored file rows, whatever their reporting state.
+ *
+ * What the per-container row ceiling is measured against.
+ *
+ * @param container_id The container whose rows to count. Must not be NULL or empty.
+ * @param path NULL to count every row of the container, or one logical path to
+ *             ask whether that row is stored (0 or 1).
+ * @return The count, or -1 on error.
+ */
+EXPORTED int fim_db_count_container_rows(const char* container_id, const char* path);
+
+/**
+ * @brief Read the logical paths one container has stored, and nothing else.
+ *
+ * Lets a baseline tell a refresh of a stored row from a new one without reading
+ * every column of every row.
+ *
+ * @param container_id The container whose paths to read. Must not be NULL or empty.
+ * @return A cJSON array of strings, or NULL on error. The caller owns it.
+ */
+EXPORTED cJSON* fim_db_get_container_paths(const char* container_id);
+
 EXPORTED cJSON* fim_db_get_documents_to_promote(char* table_name, int documents);
 
 EXPORTED cJSON* fim_db_get_documents_to_demote(char* table_name, int documents);
