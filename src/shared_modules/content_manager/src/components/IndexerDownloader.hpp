@@ -12,7 +12,7 @@
 #define _INDEXER_DOWNLOADER_HPP
 
 #include "componentsHelper.hpp"
-#include "indexerConnector.hpp"
+#include "indexerSearchClient.hpp"
 #include "sharedDefs.hpp"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
@@ -22,10 +22,12 @@
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <thread>
 #include <tuple>
+#include <utility>
 #include <vector>
 
 /**
@@ -72,12 +74,17 @@ private:
         Unknown
     };
 
-    static constexpr std::chrono::seconds INDEXER_RETRY_INTERVAL {30};
-
     /// Consecutive failures tolerated below WARNING before escalating (indexer settling after restart).
     static constexpr std::size_t INDEXER_WARN_AFTER_ATTEMPTS {3};
 
     nlohmann::json m_config;
+    IndexerSearchClientFactory m_clientFactory; ///< Builds the indexer client of every connection this component opens.
+    std::chrono::milliseconds m_retryInterval;  ///< Wait between initial-load attempts (30 s in production).
+
+    size_t retryIntervalSeconds() const
+    {
+        return static_cast<size_t>(std::chrono::duration_cast<std::chrono::seconds>(m_retryInterval).count());
+    }
     mutable std::mutex m_callbackMutex; ///< Serializes processPage calls across parallel slices.
 
     /**
@@ -361,7 +368,7 @@ private:
      *
      * @param outRawStatus If non-null, receives the raw status string for logging.
      */
-    ConsumerStatus readConsumerStatus(IndexerConnectorSync& syncConnector,
+    ConsumerStatus readConsumerStatus(IIndexerSearchClient& syncConnector,
                                       std::string_view consumerStatusIndex,
                                       std::string_view consumerStatusId,
                                       std::string* outRawStatus = nullptr) const
@@ -444,7 +451,8 @@ private:
             return false;
         }
 
-        IndexerConnectorSync syncConnector(m_config.at("indexer"), LoggingContext {WM_CONTENTUPDATER, {}});
+        const auto spClient = m_clientFactory(m_config.at("indexer"));
+        auto& syncConnector = *spClient;
 
         const auto pollSeconds = static_cast<size_t>(
             std::chrono::duration_cast<std::chrono::seconds>(CONSUMER_STATUS_POLL_INTERVAL).count());
@@ -589,7 +597,8 @@ private:
             nlohmann::json::array({"FEED-GLOBAL", "OSCPE-GLOBAL", "CNA-MAPPING-GLOBAL"});
 
         const auto& indexName = m_config.at("indexer").at("index").get_ref<const std::string&>();
-        IndexerConnectorSync syncConnector(m_config.at("indexer"), LoggingContext {WM_CONTENTUPDATER, {}});
+        const auto spClient = m_clientFactory(m_config.at("indexer"));
+        auto& syncConnector = *spClient;
 
         const auto pollSeconds =
             static_cast<size_t>(std::chrono::duration_cast<std::chrono::seconds>(POLL_INTERVAL).count());
@@ -863,10 +872,11 @@ private:
 
         const auto& sourceFilter = getSourceFilter();
 
-        IndexerConnectorSync syncConnector(m_config.at("indexer"), LoggingContext {WM_CONTENTUPDATER, {}});
+        const auto spClient = m_clientFactory(m_config.at("indexer"));
+        auto& syncConnector = *spClient;
 
         auto pit = syncConnector.createPointInTime({indexName}, PIT_KEEP_ALIVE);
-        auto pitGuard = std::unique_ptr<PointInTime, std::function<void(PointInTime*)>>(
+        auto pitGuard = std::unique_ptr<SearchPit, std::function<void(SearchPit*)>>(
             &pit,
             [&syncConnector, escalateLogs](auto* p)
             {
@@ -987,10 +997,11 @@ private:
 
         const auto& sourceFilter = getSourceFilter();
 
-        IndexerConnectorSync syncConnector(m_config.at("indexer"), LoggingContext {WM_CONTENTUPDATER, {}});
+        const auto spClient = m_clientFactory(m_config.at("indexer"));
+        auto& syncConnector = *spClient;
 
         auto pit = syncConnector.createPointInTime({indexName}, PIT_KEEP_ALIVE);
-        auto pitGuard = std::unique_ptr<PointInTime, std::function<void(PointInTime*)>>(
+        auto pitGuard = std::unique_ptr<SearchPit, std::function<void(SearchPit*)>>(
             &pit,
             [&syncConnector, escalateLogs](auto* p)
             {
@@ -1045,7 +1056,8 @@ private:
             try
             {
                 // Each slice gets its own connector to avoid sharing HTTP state across threads.
-                IndexerConnectorSync sliceConnector(m_config.at("indexer"), LoggingContext {WM_CONTENTUPDATER, {}});
+                const auto spSliceClient = m_clientFactory(m_config.at("indexer"));
+                auto& sliceConnector = *spSliceClient;
 
                 const nlohmann::json sliceParam = {{"id", sliceId}, {"max", numSlices}};
                 std::optional<nlohmann::json> searchAfter = std::nullopt;
@@ -1229,7 +1241,7 @@ private:
                     logWarn(WM_CONTENTUPDATER,
                             "IndexerDownloader: Initial load failed (%s) — retrying in %zus.",
                             e.what(),
-                            static_cast<size_t>(INDEXER_RETRY_INTERVAL.count()));
+                            retryIntervalSeconds());
                 }
                 else
                 {
@@ -1237,7 +1249,7 @@ private:
                               "IndexerDownloader: Indexer not available yet (%s) — retrying in %zus "
                               "(attempt %zu/%zu).",
                               e.what(),
-                              static_cast<size_t>(INDEXER_RETRY_INTERVAL.count()),
+                              retryIntervalSeconds(),
                               attempt + 1,
                               INDEXER_WARN_AFTER_ATTEMPTS);
                 }
@@ -1262,14 +1274,14 @@ private:
                 {
                     logWarn(WM_CONTENTUPDATER,
                             "IndexerDownloader: Indexer index not ready (0 documents) — retrying in %zus.",
-                            static_cast<size_t>(INDEXER_RETRY_INTERVAL.count()));
+                            retryIntervalSeconds());
                 }
                 else
                 {
                     logDebug2(WM_CONTENTUPDATER,
                               "IndexerDownloader: Indexer index not ready yet (0 documents) — retrying in %zus "
                               "(attempt %zu/%zu).",
-                              static_cast<size_t>(INDEXER_RETRY_INTERVAL.count()),
+                              retryIntervalSeconds(),
                               attempt + 1,
                               INDEXER_WARN_AFTER_ATTEMPTS);
                 }
@@ -1278,8 +1290,7 @@ private:
             ++attempt;
 
             // waitFor returns true when spStopCondition is set (agent shutdown).
-            if (context.spUpdaterBaseContext->spStopCondition->waitFor(
-                    std::chrono::duration_cast<std::chrono::milliseconds>(INDEXER_RETRY_INTERVAL)))
+            if (context.spUpdaterBaseContext->spStopCondition->waitFor(m_retryInterval))
             {
                 logInfo(WM_CONTENTUPDATER, "IndexerDownloader: Stop requested during initial load retry — aborting.");
                 return 0;
@@ -1316,10 +1327,20 @@ public:
      * @brief Construct a new IndexerDownloader.
      *
      * @param config Full updater config JSON (must contain an "indexer" sub-object).
+     * @param clientFactory Builds the indexer client for every connection (one per slice worker).
+     * @param retryInterval Wait between initial-load attempts; tests shorten it.
      */
-    explicit IndexerDownloader(const nlohmann::json& config)
+    explicit IndexerDownloader(const nlohmann::json& config,
+                               IndexerSearchClientFactory clientFactory,
+                               std::chrono::milliseconds retryInterval = std::chrono::seconds {30})
         : m_config(config)
+        , m_clientFactory(std::move(clientFactory))
+        , m_retryInterval(retryInterval)
     {
+        if (!m_clientFactory)
+        {
+            throw std::invalid_argument("IndexerDownloader: a search client factory is required");
+        }
     }
 
     /**
@@ -1400,20 +1421,19 @@ public:
                 logWarn(WM_CONTENTUPDATER,
                         "IndexerDownloader: downloaded feed is not ready after completion validation. "
                         "The stored cursor was invalidated and a full reload will be retried in %zus.",
-                        static_cast<size_t>(INDEXER_RETRY_INTERVAL.count()));
+                        retryIntervalSeconds());
             }
             else
             {
                 logDebug2(WM_CONTENTUPDATER,
                           "IndexerDownloader: downloaded feed not ready yet after completion validation — "
                           "invalidating cursor and retrying a full reload in %zus (attempt %zu/%zu).",
-                          static_cast<size_t>(INDEXER_RETRY_INTERVAL.count()),
+                          retryIntervalSeconds(),
                           completionFailures,
                           INDEXER_WARN_AFTER_ATTEMPTS);
             }
 
-            if (context->spUpdaterBaseContext->spStopCondition->waitFor(
-                    std::chrono::duration_cast<std::chrono::milliseconds>(INDEXER_RETRY_INTERVAL)))
+            if (context->spUpdaterBaseContext->spStopCondition->waitFor(m_retryInterval))
             {
                 logInfo(WM_CONTENTUPDATER,
                         "IndexerDownloader: Stop requested during completion validation retry — aborting.");
