@@ -14,7 +14,7 @@
 const fs = require('fs');
 const path = require('path');
 const yaml = require('js-yaml');
-const { init, renderRemediation, canonicalize } = require('./renderer');
+const { init, renderRemediation, canonicalize, shutdown } = require('./renderer');
 
 function collectRemediationEntries(node, out) {
   if (Array.isArray(node)) {
@@ -63,7 +63,7 @@ function isExactlyDoubled(md) {
   return body[half] === '\n' && body.slice(0, half) === body.slice(half + 1);
 }
 
-function validateEntry(file, entry) {
+async function validateEntry(file, entry) {
   const problems = [];
   const warnings = [];
   const label = `${file} [id ${entry.id ?? '?'}] "${entry.name}"`;
@@ -80,7 +80,7 @@ function validateEntry(file, entry) {
     });
   }
 
-  const { html, sanitized } = renderRemediation(entry.remediation);
+  const { html, sanitized } = await renderRemediation(entry.remediation);
 
   if (/<em[\s>]/.test(sanitized)) {
     problems.push({
@@ -136,52 +136,64 @@ async function main(argv) {
     return 1;
   }
 
-  let totalChecked = 0;
-  const allProblems = [];
-  const allWarnings = [];
+  try {
+    let totalChecked = 0;
+    const allProblems = [];
+    const allWarnings = [];
 
-  for (const file of files) {
-    const abs = path.resolve(file);
-    if (!fs.existsSync(abs)) {
-      console.warn(`Skipping ${file}: not found (likely deleted in this PR)`);
-      continue;
+    for (const file of files) {
+      const abs = path.resolve(file);
+      if (!fs.existsSync(abs)) {
+        console.warn(`Skipping ${file}: not found (likely deleted in this PR)`);
+        continue;
+      }
+      let doc;
+      try {
+        doc = yaml.load(fs.readFileSync(abs, 'utf8'));
+      } catch (err) {
+        allProblems.push({ label: file, rule: 'yaml-parse-error', detail: err.message });
+        continue;
+      }
+      const entries = [];
+      collectRemediationEntries(doc, entries);
+      for (const entry of entries) {
+        totalChecked += 1;
+        const { problems, warnings } = await validateEntry(file, entry);
+        allProblems.push(...problems);
+        allWarnings.push(...warnings);
+      }
     }
-    let doc;
-    try {
-      doc = yaml.load(fs.readFileSync(abs, 'utf8'));
-    } catch (err) {
-      allProblems.push({ label: file, rule: 'yaml-parse-error', detail: err.message });
-      continue;
+
+    console.log(`Checked ${totalChecked} remediation field(s) across ${files.length} file(s).`);
+
+    if (allWarnings.length > 0) {
+      console.log(`\n${allWarnings.length} warning(s) (non-blocking):`);
+      for (const w of allWarnings) {
+        console.log(`  WARN  ${w.label}\n        [${w.rule}] ${w.detail}`);
+      }
     }
-    const entries = [];
-    collectRemediationEntries(doc, entries);
-    for (const entry of entries) {
-      totalChecked += 1;
-      const { problems, warnings } = validateEntry(file, entry);
-      allProblems.push(...problems);
-      allWarnings.push(...warnings);
+
+    if (allProblems.length > 0) {
+      console.log(`\n${allProblems.length} FAILURE(S):`);
+      for (const p of allProblems) {
+        console.log(`  FAIL  ${p.label}\n        [${p.rule}] ${p.detail}`);
+      }
+      return 1;
     }
+
+    console.log('\nAll remediation fields render cleanly.');
+    return 0;
+  } finally {
+    // The renderer's child process holds an open IPC channel, which would otherwise keep this
+    // process alive indefinitely instead of exiting after the last await above.
+    shutdown();
   }
-
-  console.log(`Checked ${totalChecked} remediation field(s) across ${files.length} file(s).`);
-
-  if (allWarnings.length > 0) {
-    console.log(`\n${allWarnings.length} warning(s) (non-blocking):`);
-    for (const w of allWarnings) {
-      console.log(`  WARN  ${w.label}\n        [${w.rule}] ${w.detail}`);
-    }
-  }
-
-  if (allProblems.length > 0) {
-    console.log(`\n${allProblems.length} FAILURE(S):`);
-    for (const p of allProblems) {
-      console.log(`  FAIL  ${p.label}\n        [${p.rule}] ${p.detail}`);
-    }
-    return 1;
-  }
-
-  console.log('\nAll remediation fields render cleanly.');
-  return 0;
 }
 
-main(process.argv).then(code => process.exit(code));
+main(process.argv).then(
+  code => process.exit(code),
+  err => {
+    console.error(`FAIL: ${err.message}`);
+    process.exit(1);
+  },
+);

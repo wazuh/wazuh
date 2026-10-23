@@ -43,7 +43,7 @@ async function checkOne(check) {
   const result = await fetchRawWithFallback(check.repo, check.refs, check.path);
   const theirs = extractVersion(result.body, check.name);
   if (!theirs) {
-    throw new Error(`${check.name} not found in ${check.repo}@${result.ref}:${check.path}`);
+    throw new Error(`not found in ${check.repo}@${result.ref}:${check.path}`);
   }
   return { name: check.name, installed: installedVersion(check.name), theirs, ref: result.ref };
 }

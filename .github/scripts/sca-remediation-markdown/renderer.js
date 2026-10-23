@@ -2,10 +2,17 @@
 // own markdown-renderer.ts at CI time (see dashboard-ref.js) and transpiling it with esbuild,
 // instead of keeping a hand-written copy here that can silently drift from the real one. Call
 // init() once (it does the network fetch) before using renderRemediation/canonicalize.
+//
+// The fetched, transpiled code itself runs in renderer-child.js, in its own child process — see
+// that file for why vm.createContext() alone isn't a sufficient boundary, and why the actual
+// isolation here is the OS process, not the vm. This module owns the trusted side: fetching,
+// transpiling, talking to the child over IPC, enforcing a timeout per call, and the DOMPurify
+// sanitize + canonicalize steps (neither of which involve running the fetched code, so neither
+// needs to happen inside the sandbox).
 'use strict';
 
 const path = require('path');
-const vm = require('vm');
+const { fork } = require('child_process');
 const esbuild = require('esbuild');
 const { JSDOM } = require('jsdom');
 const createDOMPurify = require('dompurify');
@@ -15,95 +22,134 @@ const { PLUGIN_REPO, pluginRefCandidates } = require('./dashboard-ref');
 const RENDERER_PATH =
   'plugins/main/public/components/common/util/markdown/markdown-renderer.ts';
 const OSD_I18N_IMPORT_RE = /from\s+(['"])@osd\/i18n\1/g;
+const CHILD_PATH = path.join(__dirname, 'renderer-child.js');
+const CALL_TIMEOUT_MS = 10_000;
 
-// The fetched file is remote, third-party-controlled source run inside a fresh vm context below,
-// not require()'d normally — so it never gets the real `require` and can only reach the exact
-// modules markdown-renderer.ts is known to need. A require for anything else (fs, child_process,
-// https, a different package entirely) throws instead of silently succeeding. This matters because
-// a bare `new Function(...)` would NOT be enough on its own: it only creates a new function scope,
-// not a new realm, so the executed code would still close over the real `process`/`global`/`Buffer`
-// and could reach a real `require` through them (e.g. `process.mainModule.require(...)`) regardless
-// of what name we pass as the `require` parameter. Running it in a `vm.createContext()` instead
-// gives it its own global object with none of that — `process`, `global`, `Buffer`, `globalThis`
-// simply don't exist in there unless explicitly added, and they are not.
-const ALLOWED_REQUIRES = new Set(['markdown-it', 'markdown-it-link-attributes', 'dompurify']);
-function restrictedRequire(request) {
-  if (ALLOWED_REQUIRES.has(request)) return require(request);
-  if (path.resolve(request) === path.join(__dirname, 'osd-i18n-stub.js')) return require(request);
-  throw new Error(
-    `The fetched dashboard renderer tried to require('${request}'), which isn't on the allowed ` +
-      `list — this tool only runs it enough to call renderMarkdown(), not with full require access.`,
-  );
-}
+// Only pass through what a render actually needs (PATH to find node's own runtime bits, a locale/
+// timezone) — never whatever CI secrets happen to be in this job's environment. If the vm-sandboxed
+// fetched code in renderer-child.js ever escapes the vm (see that file), this is what keeps it from
+// reaching anything the CI job's own process can see.
+const CHILD_ENV_ALLOWLIST = ['PATH', 'HOME', 'LANG', 'LC_ALL', 'TZ'];
 
 const dom = new JSDOM('');
 const DOMPurify = createDOMPurify(dom.window);
 const scratch = dom.window.document.createElement('div');
 
-let renderMarkdown = null;
+let child = null;
+let nextRequestId = 1;
+const pending = new Map();
+let initPromise = null;
 
-async function init() {
-  if (renderMarkdown) return;
-
-  const candidates = pluginRefCandidates();
-  let source, ref;
-  try {
-    ({ body: source, ref } = await fetchRawWithFallback(PLUGIN_REPO, candidates, RENDERER_PATH));
-  } catch (err) {
-    throw new Error(
-      `Could not fetch the dashboard's renderer from ${PLUGIN_REPO}:${RENDERER_PATH} — ` +
-        `refusing to validate against a stale local copy. (${err.message})`,
-    );
+function spawnChild() {
+  const env = {};
+  for (const key of CHILD_ENV_ALLOWLIST) {
+    if (process.env[key] !== undefined) env[key] = process.env[key];
   }
-  console.log(`renderer.js: using ${PLUGIN_REPO}@${ref}`);
-  if (!OSD_I18N_IMPORT_RE.test(source)) {
-    throw new Error(
-      `Fetched markdown-renderer.ts from ${PLUGIN_REPO}@${ref} but it no longer imports ` +
-        `'@osd/i18n' the way this tool expects — the stub substitution below needs updating.`,
-    );
-  }
-
-  const stubPath = path.join(__dirname, 'osd-i18n-stub.js').replace(/\\/g, '/');
-  const patched = source.replace(OSD_I18N_IMPORT_RE, (_m, quote) => `from ${quote}${stubPath}${quote}`);
-
-  let code;
-  try {
-    code = esbuild.transformSync(patched, { loader: 'ts', format: 'cjs', target: 'node22' }).code;
-  } catch (err) {
-    throw new Error(`Could not transpile the fetched markdown-renderer.ts: ${err.message}`);
-  }
-
-  const filename = path.join(__dirname, 'markdown-renderer.fetched.js');
-  const mod = { exports: {} };
-  const sandbox = {
-    module: mod,
-    exports: mod.exports,
-    require: restrictedRequire,
-    __dirname,
-    __filename: filename,
-  };
-  const context = vm.createContext(sandbox);
-  vm.runInContext(code, context, { filename });
-
-  if (typeof mod.exports.renderMarkdown !== 'function') {
-    throw new Error(
-      `Fetched markdown-renderer.ts from ${PLUGIN_REPO}@${ref} transpiled, but didn't export a ` +
-        `'renderMarkdown' function — its public API may have changed.`,
-    );
-  }
-  renderMarkdown = mod.exports.renderMarkdown;
+  const c = fork(CHILD_PATH, [], { env, stdio: ['ignore', 'inherit', 'inherit', 'ipc'] });
+  c.on('message', msg => {
+    const entry = pending.get(msg.id);
+    if (!entry) return;
+    pending.delete(msg.id);
+    clearTimeout(entry.timer);
+    if (msg.error) entry.reject(new Error(msg.error));
+    else entry.resolve(msg.result);
+  });
+  c.on('exit', code => {
+    const err = new Error(`renderer child process exited unexpectedly (code ${code})`);
+    for (const entry of pending.values()) {
+      clearTimeout(entry.timer);
+      entry.reject(err);
+    }
+    pending.clear();
+    if (child === c) child = null;
+  });
+  return c;
 }
 
-function renderRemediation(markdown) {
-  if (!renderMarkdown) {
+function callChild(message) {
+  return new Promise((resolve, reject) => {
+    if (!child) {
+      reject(new Error('renderer.js: no renderer child process running — call init() first'));
+      return;
+    }
+    const id = nextRequestId++;
+    const timer = setTimeout(() => {
+      pending.delete(id);
+      // A hang here means the fetched code looped or blocked — kill it rather than let it block
+      // CI indefinitely. There's no way to interrupt synchronous JS execution in place; killing
+      // the process it runs in is the only way to actually stop it.
+      const hungChild = child;
+      child = null;
+      if (hungChild) hungChild.kill();
+      reject(new Error(`renderer child process did not respond within ${CALL_TIMEOUT_MS}ms for request ${id} — killed it`));
+    }, CALL_TIMEOUT_MS);
+    pending.set(id, { resolve, reject, timer });
+    child.send({ ...message, id });
+  });
+}
+
+async function init() {
+  if (initPromise) return initPromise;
+  initPromise = (async () => {
+    const candidates = pluginRefCandidates();
+    let source, ref;
+    try {
+      ({ body: source, ref } = await fetchRawWithFallback(PLUGIN_REPO, candidates, RENDERER_PATH));
+    } catch (err) {
+      throw new Error(
+        `Could not fetch the dashboard's renderer from ${PLUGIN_REPO}:${RENDERER_PATH} — ` +
+          `refusing to validate against a stale local copy. (${err.message})`,
+      );
+    }
+    console.log(`renderer.js: using ${PLUGIN_REPO}@${ref}`);
+    if (!OSD_I18N_IMPORT_RE.test(source)) {
+      throw new Error(
+        `Fetched markdown-renderer.ts from ${PLUGIN_REPO}@${ref} but it no longer imports ` +
+          `'@osd/i18n' the way this tool expects — the stub substitution below needs updating.`,
+      );
+    }
+
+    const stubPath = path.join(__dirname, 'osd-i18n-stub.js').replace(/\\/g, '/');
+    const patched = source.replace(OSD_I18N_IMPORT_RE, (_m, quote) => `from ${quote}${stubPath}${quote}`);
+
+    let code;
+    try {
+      code = esbuild.transformSync(patched, { loader: 'ts', format: 'cjs', target: 'node22' }).code;
+    } catch (err) {
+      throw new Error(`Could not transpile the fetched markdown-renderer.ts: ${err.message}`);
+    }
+
+    child = spawnChild();
+    const filename = path.join(__dirname, 'markdown-renderer.fetched.js');
+    const result = await callChild({ type: 'init', code, filename });
+    if (!result || !result.ok) {
+      throw new Error(
+        `Fetched markdown-renderer.ts from ${PLUGIN_REPO}@${ref} transpiled, but didn't export a ` +
+          `'renderMarkdown' function — its public API may have changed.`,
+      );
+    }
+  })();
+  return initPromise;
+}
+
+async function renderRemediation(markdown) {
+  if (!child) {
     throw new Error('renderer.js: init() must be awaited before renderRemediation()');
   }
-  // Pass an identity "sanitizer" to get the raw render, then sanitize separately ourselves —
-  // renderMarkdown's third argument always runs, so this is how to see the pre-sanitize HTML too
-  // (canonicalize() below diffs the two to catch anything DOMPurify actually had to strip).
-  const html = renderMarkdown(markdown || '', { copyableCodeBlocks: true }, h => h);
+  // The fetched renderMarkdown() runs in the sandboxed child (see renderer-child.js) and returns
+  // the raw, unsanitized HTML. Sanitizing it is OUR trusted code, not the fetched code, so it runs
+  // here, not in the child — canonicalize() below diffs the two to catch anything DOMPurify
+  // actually had to strip.
+  const { html } = await callChild({ type: 'render', markdown: markdown || '' });
   const sanitized = DOMPurify.sanitize(html);
   return { html, sanitized };
+}
+
+function shutdown() {
+  if (child) {
+    child.kill();
+    child = null;
+  }
 }
 
 // Structural comparison, not string equality: markdown-it and DOMPurify's DOM round-trip
@@ -132,4 +178,4 @@ function canonicalize(htmlStr) {
   return walk(scratch);
 }
 
-module.exports = { init, renderRemediation, canonicalize };
+module.exports = { init, renderRemediation, canonicalize, shutdown };

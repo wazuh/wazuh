@@ -9,34 +9,44 @@
 // change is caught with a clear diff instead of surfacing as confusing per-field failures.
 'use strict';
 
-const { init, renderRemediation } = require('./renderer');
+const { init, renderRemediation, shutdown } = require('./renderer');
 const fixtures = require('./fixtures.json');
 
 async function main() {
   await init();
 
-  let failures = 0;
-  for (const fixture of fixtures) {
-    const { sanitized } = renderRemediation(fixture.markdown);
-    if (sanitized !== fixture.expectedHtml) {
-      failures += 1;
-      console.error(`FAIL: ${fixture.name}`);
-      console.error(`  expected: ${JSON.stringify(fixture.expectedHtml)}`);
-      console.error(`  actual:   ${JSON.stringify(sanitized)}`);
+  try {
+    let failures = 0;
+    for (const fixture of fixtures) {
+      const { sanitized } = await renderRemediation(fixture.markdown);
+      if (sanitized !== fixture.expectedHtml) {
+        failures += 1;
+        console.error(`FAIL: ${fixture.name}`);
+        console.error(`  expected: ${JSON.stringify(fixture.expectedHtml)}`);
+        console.error(`  actual:   ${JSON.stringify(sanitized)}`);
+      }
     }
-  }
 
-  if (failures > 0) {
-    console.error(
-      `\n${failures}/${fixtures.length} fixture(s) failed. If this is an intentional upstream ` +
-        `renderer change, re-run the generator that produced fixtures.json's expectedHtml values ` +
-        `and review the diff before updating them.`,
-    );
-    return 1;
-  }
+    if (failures > 0) {
+      console.error(
+        `\n${failures}/${fixtures.length} fixture(s) failed. If this is an intentional upstream ` +
+          `renderer change, re-run the generator that produced fixtures.json's expectedHtml values ` +
+          `and review the diff before updating them.`,
+      );
+      return 1;
+    }
 
-  console.log(`All ${fixtures.length} fixtures render as expected.`);
-  return 0;
+    console.log(`All ${fixtures.length} fixtures render as expected.`);
+    return 0;
+  } finally {
+    shutdown();
+  }
 }
 
-main().then(code => process.exit(code));
+main().then(
+  code => process.exit(code),
+  err => {
+    console.error(`FAIL: ${err.message}`);
+    process.exit(1);
+  },
+);
