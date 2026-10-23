@@ -75,6 +75,21 @@ Dec  1 16:22:16 ip-10-0-0-220 gpasswd[3246]: user bart added by root to group su
     <order>dstuser,srcuser,group</order>
 </decoder>
 
+<!--
+Oct 20 10:00:00 authserv01 usermod[1457]: add 'monitor' to group 'sudo'
+Oct 20 10:00:00 authserv01 usermod[1457]: add 'monitor' to shadow group 'sudo'
+-->
+
+<decoder name="usermod">
+    <program_name>usermod</program_name>
+</decoder>
+
+<decoder name="usermod-fields">
+    <parent>usermod</parent>
+    <regex offset="after_parent">add '(\S+)' to \.*group '(\S+)'</regex>
+    <order>dstuser,group</order>
+</decoder>
+
 <decoder name="systemd">
     <program_name>systemd</program_name>
 </decoder>

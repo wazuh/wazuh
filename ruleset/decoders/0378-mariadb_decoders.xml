@@ -20,6 +20,11 @@
     <program_name>mysql</program_name>
 </decoder>
 
+<!-- MariaDB 10.5+ tags its syslog lines mariadbd instead of mysqld -->
+<decoder name="mariadb-syslog">
+    <program_name>mariadbd</program_name>
+</decoder>
+
 <!--
 May 24 11:51:30 mysql09a mysql-server_auditing:  mysql09a.local,ahc_shwb01_t,ahc-web29d.local,849705,0,DISCONNECT,ahc_shwb01_t,,0
 -->
