@@ -358,6 +358,43 @@ TEST_F(ReporterStreamTest, AGroupChangePullsTheConfigReportIn)
     EXPECT_EQ(2, m_collectors.m_configCalls);
 }
 
+TEST_F(ReporterStreamTest, AMissOnTheFirstReadIsMadeUpWithAConfigResend)
+{
+    // Nothing to fall back on yet: /config goes out without the block, and the
+    // first block that arrives must replace it instead of waiting an interval.
+    m_collectors.m_agentMetadata = "";
+    const auto config = makeConfig(false, true);
+    ReporterStream reporter
+    {
+        config, m_performer, m_signer, m_clock, m_random, m_authGate, m_compressionGate, m_cluster, m_collectors};
+
+    EXPECT_FALSE(nlohmann::json::parse(tickAndCaptureBody(reporter)).contains("agent"));
+
+    m_collectors.m_agentMetadata = AGENT_METADATA;
+    m_clock.advance(std::chrono::seconds {60});
+    const auto body = nlohmann::json::parse(tickAndCaptureBody(reporter));
+    EXPECT_EQ(2, m_collectors.m_configCalls);
+    EXPECT_EQ(nlohmann::json::array({"default", "linux"}), body.at("agent").at("groups"));
+}
+
+TEST_F(ReporterStreamTest, AReenrollDropsTheBlockReadUnderTheOldIdentity)
+{
+    m_collectors.m_agentMetadata = AGENT_METADATA;
+    const auto config = makeConfig(true, false);
+    ReporterStream reporter
+    {
+        config, m_performer, m_signer, m_clock, m_random, m_authGate, m_compressionGate, m_cluster, m_collectors};
+
+    EXPECT_TRUE(nlohmann::json::parse(tickAndCaptureBody(reporter)).contains("agent"));
+
+    m_signer.setAgentId("002");
+    m_collectors.m_agentMetadata = "";
+    m_clock.advance(std::chrono::seconds {60});
+    const auto body = nlohmann::json::parse(tickAndCaptureBody(reporter));
+    EXPECT_EQ("002", body.at("agent_id"));
+    EXPECT_FALSE(body.contains("agent"));
+}
+
 TEST_F(ReporterStreamTest, NullCollectorReturnSkipsWithoutSending)
 {
     m_collectors.m_stats = std::nullopt;

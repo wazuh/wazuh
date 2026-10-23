@@ -129,6 +129,7 @@ class ReporterStream final
         Path m_config_; ///< Trailing underscore: m_config is the ModuleConfig ref.
         std::optional<std::string> m_lastAgent;  ///< Reporter thread only.
         std::optional<std::string> m_seenGroups; ///< Reporter thread only.
+        std::string m_metadataAgentId;           ///< Identity m_lastAgent was read under.
 };
 
 #endif // _HC_REPORTER_STREAM_HPP

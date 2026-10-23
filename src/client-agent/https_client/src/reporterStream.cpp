@@ -250,7 +250,12 @@ std::optional<std::string> ReporterStream::stampedDocument(std::optional<std::st
 
     if (agent)
     {
-        document["agent"] = nlohmann::json::parse(*agent);
+        auto parsed = nlohmann::json::parse(*agent, nullptr, false);
+
+        if (parsed.is_object())
+        {
+            document["agent"] = std::move(parsed);
+        }
     }
 
     return document.dump();
@@ -258,6 +263,14 @@ std::optional<std::string> ReporterStream::stampedDocument(std::optional<std::st
 
 std::optional<std::string> ReporterStream::currentAgentMetadata()
 {
+    // A block read under another identity must not be stamped under this one.
+    if (auto agentId = m_signer.agentId(); agentId != m_metadataAgentId)
+    {
+        m_lastAgent.reset();
+        m_seenGroups.reset();
+        m_metadataAgentId = std::move(agentId);
+    }
+
     // Read fresh every time so a group change shows up in the next report. A miss falls
     // back to the last good block: the manager replaces the whole document, so a report
     // without one would erase the groups and host it already holds.
@@ -276,12 +289,20 @@ std::optional<std::string> ReporterStream::currentAgentMetadata()
 
 void ReporterStream::forceConfigReportOnGroupChange(const std::optional<std::string>& agent)
 {
-    if (!agent)
+    const auto parsed = agent ? nlohmann::json::parse(*agent, nullptr, false) : nlohmann::json {};
+
+    if (!parsed.is_object())
     {
+        // No block yet, so /config may go out without one. An empty marker, which no
+        // groups dump equals, makes the first block that arrives count as a change.
+        if (!m_seenGroups)
+        {
+            m_seenGroups.emplace();
+        }
+
         return;
     }
 
-    const auto parsed = nlohmann::json::parse(*agent);
     const auto it = parsed.find("groups");
     auto groups = it != parsed.end() ? it->dump() : std::string {"[]"};
 
