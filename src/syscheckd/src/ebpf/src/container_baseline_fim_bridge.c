@@ -788,6 +788,16 @@ int fim_persist_baseline_row(const char* id, int operation, const char* index, c
      * accounting reads, and normalisation reshapes the row for the schema. */
     const int sync_flag = container_row_sync_flag(msg, operation);
 
+    /* The integrity check compares the agent's checksum over the stored rows'
+     * "checksum" column with the manager's over each document's
+     * checksum.hash.sha1, so the document must carry the row checksum, as host
+     * FIM documents do. Normalisation deletes it, so keep a copy first. */
+    char* row_checksum = NULL;
+    const char* stored_checksum = cJSON_GetStringValue(cJSON_GetObjectItem(msg, "checksum"));
+    if (stored_checksum != NULL && *stored_checksum != '\0') {
+        os_strdup(stored_checksum, row_checksum);
+    }
+
     normalize_container_fim_row(msg);
 
     // Keep parity with host FIM stateful rows by adding checksum/state envelope
@@ -809,31 +819,12 @@ int fim_persist_baseline_row(const char* id, int operation, const char* index, c
             }
         }
 
-        if (hash_obj != NULL) {
-            const char* sha1_value = NULL;
-
-            cJSON* top_sha1 = cJSON_GetObjectItem(msg, "hash_sha1");
-            if (top_sha1 != NULL && cJSON_IsString(top_sha1) && top_sha1->valuestring != NULL) {
-                sha1_value = top_sha1->valuestring;
-            } else {
-                cJSON* file_obj = cJSON_GetObjectItem(msg, "file");
-                if (file_obj != NULL && cJSON_IsObject(file_obj)) {
-                    cJSON* file_hash_obj = cJSON_GetObjectItem(file_obj, "hash");
-                    if (file_hash_obj != NULL && cJSON_IsObject(file_hash_obj)) {
-                        cJSON* file_sha1 = cJSON_GetObjectItem(file_hash_obj, "sha1");
-                        if (file_sha1 != NULL && cJSON_IsString(file_sha1) && file_sha1->valuestring != NULL) {
-                            sha1_value = file_sha1->valuestring;
-                        }
-                    }
-                }
-            }
-
-            if (sha1_value != NULL) {
-                cJSON_DeleteItemFromObject(hash_obj, "sha1");
-                cJSON_AddStringToObject(hash_obj, "sha1", sha1_value);
-            }
+        if (hash_obj != NULL && row_checksum != NULL) {
+            cJSON_DeleteItemFromObject(hash_obj, "sha1");
+            cJSON_AddStringToObject(hash_obj, "sha1", row_checksum);
         }
     }
+    os_free(row_checksum);
 
     cJSON* state_obj = cJSON_GetObjectItem(msg, "state");
     if (state_obj == NULL || !cJSON_IsObject(state_obj)) {
