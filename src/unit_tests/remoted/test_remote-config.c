@@ -396,17 +396,17 @@ static void test_Read_Remote_JSON_effective_defaults(void **state) {
     test_state *ts = *state;
     /* What the loader returns for tests/vectors/valid/generated-manager.conf (E1a) */
     cJSON *remote = json_or_fail(
-        "{\"legacy\":{\"enabled\":true,\"port\":1514,\"protocol\":[\"tcp\"],\"ipv6\":false,\"local_ip\":\"127.0.0.1\","
-        "\"queue_size\":131072,\"rids_closing_time\":\"5m\",\"connection_overtake_time\":60},"
-        "\"https\":{\"port\":1517,\"bind_addr\":\"127.0.0.1\",\"global_prefix\":\"/wazuh-manager/\","
+        "{\"legacy\":{\"enabled\":true,\"ca_delivery\":true,\"port\":1514,\"protocol\":[\"tcp\"],\"ipv6\":false,"
+        "\"local_ip\":\"0.0.0.0\",\"queue_size\":131072,\"rids_closing_time\":\"5m\",\"connection_overtake_time\":60},"
+        "\"https\":{\"port\":1517,\"bind_addr\":\"0.0.0.0\",\"global_prefix\":\"/wazuh-manager/\","
         "\"certificate\":\"/etc/wazuh-manager/certs/remoted.pem\",\"key\":\"/etc/wazuh-manager/certs/remoted-key.pem\",\"ca\":\"\","
         "\"ca_certificate\":\"/etc/wazuh-manager/certs/root-ca.pem\","
         "\"ciphers\":\"TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256\","
         "\"max_body_size\":\"10M\",\"dual_stack\":false,\"enroll_rate_limit\":100,\"cacerts_rate_limit\":50},"
         "\"agents\":{\"allow_higher_versions\":false}}");
 
-    expect_valid_ip("127.0.0.1"); // legacy.local_ip
-    expect_valid_ip("127.0.0.1"); // https.bind_addr
+    expect_valid_ip("0.0.0.0"); // legacy.local_ip
+    expect_valid_ip("0.0.0.0"); // https.bind_addr
     /* No expect_string(__wrap__mwarn, ...): the schema-defaulted `dual_stack: false` on an IPv4 bind_addr
      * must not raise the "only applies to an IPv6 bind_addr" warning. */
 
@@ -416,12 +416,12 @@ static void test_Read_Remote_JSON_effective_defaults(void **state) {
     assert_int_equal(ts->logr->port, 1514);
     assert_int_equal(ts->logr->proto, REMOTED_NET_PROTOCOL_TCP);
     assert_int_equal(ts->logr->ipv6, 0);
-    assert_string_equal(ts->logr->lip, "127.0.0.1");
+    assert_string_equal(ts->logr->lip, "0.0.0.0");
     assert_int_equal(ts->logr->queue_size, 131072);
     assert_int_equal(ts->logr->rids_closing_time, 300);
     assert_int_equal(ts->logr->connection_overtake_time, 60);
     assert_int_equal(ts->logr->https.port, 1517);
-    assert_string_equal(ts->logr->https.bind_addr, "127.0.0.1");
+    assert_string_equal(ts->logr->https.bind_addr, "0.0.0.0");
     assert_string_equal(ts->logr->https.global_prefix, "/wazuh-manager/");
     assert_string_equal(ts->logr->https.certificate, "/etc/wazuh-manager/certs/remoted.pem");
     assert_string_equal(ts->logr->https.key, "/etc/wazuh-manager/certs/remoted-key.pem");
@@ -437,8 +437,7 @@ static void test_Read_Remote_JSON_effective_defaults(void **state) {
     assert_int_equal(ts->logr->https.enroll_rate_limit, 100);
     assert_int_equal(ts->logr->https.cacerts_rate_limit, 50);
     assert_false(ts->logr->allow_higher_versions);
-    /* Absent from this (schema-defaulted) document, and the reader still resolves it to true --
-     * the default that ships. */
+    /* Schema-defaulted to true (the omitted-key case is test_Read_Remote_JSON_ca_delivery's). */
     assert_true(ts->logr->legacy_ca_delivery);
 
     cJSON_Delete(remote);

@@ -1,6 +1,6 @@
 # Upgrade
 
-This guide provides instructions for upgrading the Wazuh manager from an earlier 5.x version, and Wazuh agents to 5.x. The upgrade process preserves the documented configuration and runtime paths while replacing package-managed files with the new version. A manager that was running when the upgrade started is restarted at its end; one that was stopped stays stopped.
+This guide provides instructions for upgrading the Wazuh manager from an earlier 5.x version, and Wazuh agents to 5.x. The upgrade installs the new version's files and then restores the whole previous `/etc/wazuh-manager` and every `data/*` entry except `data/tzdb` over them (see [File preservation](#file-preservation)). A **package** upgrade (DEB or RPM) restarts a manager that was running when it started and leaves a stopped one stopped: the packages never enable or start the service on their own. An **`install.sh`** update always starts the manager at its end, whether or not it was running before.
 
 **Important**: Upgrading the Wazuh **manager** from version 4.x to 5.x is **not supported**: the 5.x package (and `install.sh`) refuses to install over a 4.x manager, or beside one, with `ERROR: Upgrade from Wazuh manager versions prior to 5.x is not supported.` A 5.x manager is always a fresh installation; [Manager migration from 4.x to 5.0](../guide/migration/manager-4x-to-5x.md) describes how to carry agent keys, registry, groups and API users into it. Wazuh **agents** upgrade to 5.x from 4.14.0 or later, and a 4.x agent can connect to a 5.x manager through the legacy listener (see [Compatibility](compatibility.md)).
 
@@ -57,8 +57,8 @@ During a 5.x to 5.x upgrade, the package and source upgrade scripts apply a **pr
 
 | Path | Result after upgrade |
 |---|---|
-| `/etc/wazuh-manager` | Preserved from the previous installation. |
-| `data/*` (except `data/tzdb`) | Preserved from the previous installation. |
+| `/etc/wazuh-manager` | Preserved from the previous installation: the whole directory is copied back over the newly installed files. |
+| `data/*` (except `data/tzdb`) | Preserved from the previous installation: copied back over the newly installed files. |
 | `data/tzdb` | Not preserved by the upgrade backup/restore flow; updated from the new package or source timezone database. |
 | `bin/`, libraries, assets | Replaced by the new package. |
 
@@ -69,7 +69,7 @@ File contents are preserved for the paths listed above. Ownership and modes depe
 - **DEB and RPM** copy the preserved files back with `cp -a`, so their ownership and modes come back as they were. Both then re-own `data/ruleset/` and `data/kvdb-ioc/` to `wazuh-manager:wazuh-manager`, and the DEB `postinst` additionally re-applies the package's own ownership and modes to every path the package ships, with one script for the installation directory (`restore-permissions.sh`) and one for the configuration directory (`restore-permissions-conf.sh`). Below a directory `wazuh-manager` can write (such as `/etc/wazuh-manager`, `logs/` or `queue/`), a path that is, or passes through, a symbolic link is left untouched, and so is a file with a second hard link.
 - **Source** (`install.sh`) copies them back with `cp -R`, so the ownership and modes are the ones the installer assigns, not the ones the files had.
 
-**Seeing new defaults.** Because `/etc/wazuh-manager` is fully preserved, new default values shipped by the package are not automatically applied to existing files. On DEB manager upgrades a `wazuh-manager.conf.new` side-file is written alongside the live config so you can compare changes manually. On RPM no equivalent side-file is generated for the preserved paths; compare against the package defaults manually if needed.
+**Seeing new defaults.** Because `/etc/wazuh-manager` and `data/*` are restored after the new files are installed, a file the new version ships under them that the previous installation also had — the configuration with its new default values, the `wazuh-manager.schema.json` copy, the engine outputs under `outputs/default/`, the metrics templates under `indexer-plugins/`, the engine store documents under `data/store/` — comes back with its previous content, so a change to it reaches fresh installations only. On DEB manager upgrades a `wazuh-manager.conf.new` side-file is written alongside the live config so you can compare changes manually. On RPM no equivalent side-file is generated for the preserved paths; compare against the package defaults manually if needed.
 
 The `WAZUH_REMOTE_*` installation variables described in [Installation](getting-started/installation.md) also shape that `wazuh-manager.conf.new`, so an upgrade run with them exported produces a side-file that already carries those values. If one of them holds an invalid value the side-file is not written and the upgrade reports a warning and continues: the live configuration is preserved either way.
 

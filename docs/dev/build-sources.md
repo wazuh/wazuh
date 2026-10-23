@@ -89,7 +89,7 @@ After a successful build, the artifacts are located in the single CMake build tr
 
 These locations are fixed: the daemons, the CLIs, `libwazuh*.a` and `libwazuhext` go to `src/build/bin/` and `src/build/lib/` even when you configure another build directory with `cmake -B`, and `install.sh` installs only from there. A second build directory for another set of flags therefore overwrites part of the first one; switch flags in place instead (see [Build Options](#build-options)).
 
-A unit-test build (`TEST=1`, or `-DUNIT_TEST=ON`) defines no daemon executables (`wazuh-manager-db`, `-remoted`, `-authd`, `-modulesd`, `-keystore`): `No rule to make target` for one of them means the cached `UNIT_TEST=ON`, not your change. The engine, `wazuh-manager-conf` and `wazuh-manager-certs` are built in every mode.
+A unit-test build (`TEST=1`, or `-DUNIT_TEST=ON`) defines no daemon executables (`wazuh-manager-db`, `-remoted`, `-authd`, `-modulesd`, `-keystore`), and none of the `src/util/` tools either (`verify-agent-conf`, `wazuh-manager-service-control`: its `CMakeLists.txt` returns early under `UNIT_TEST`): `No rule to make target` for one of them means the cached `UNIT_TEST=ON`, not your change. The engine, `wazuh-manager-conf` and `wazuh-manager-certs` are built in every mode.
 
 ## Clean Build
 

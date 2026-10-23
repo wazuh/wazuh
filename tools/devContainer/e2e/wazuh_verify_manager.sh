@@ -9,8 +9,9 @@
 # --start-mark), manager-errors.log, verify-manager.log, manifest.md. Nothing secret is written: the
 # bundle served by GET /cacerts is public material.
 #
-# Used by the VS Code task "E2E Scripts: [Manager] Verify installed manager", by
-# wazuh_install_manager.sh after every install, and by the stack-env skill.
+# Used by the VS Code task "E2E Scripts: [Manager] Verify installed manager" and by
+# wazuh_install_manager.sh after every install (tools/devContainer/README.md, "wazuh_install_manager.sh /
+# wazuh_verify_manager.sh").
 set -u
 
 usage() {

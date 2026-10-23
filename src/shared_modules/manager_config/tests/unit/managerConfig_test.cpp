@@ -176,7 +176,8 @@ TEST(Load, GeneratedManagerFileKeepsUserValuesAndFillsTheRest)
     const auto doc = parseOk(slurp(VECTORS / "valid" / "generated-manager.conf"));
     const auto remote = json(doc.sectionJson("remote"));
     EXPECT_TRUE(rapidjson::Pointer("/legacy/enabled").Get(remote)->GetBool());
-    EXPECT_EQ(rapidjson::Pointer("/legacy/queue_size").Get(remote)->GetInt(), 131072) << "filled default";
+    EXPECT_EQ(rapidjson::Pointer("/legacy/queue_size").Get(remote)->GetInt(), 131072) << "written by the installer";
+    EXPECT_EQ(rapidjson::Pointer("/legacy/connection_overtake_time").Get(remote)->GetInt(), 60) << "filled default";
     EXPECT_STREQ(rapidjson::Pointer("/https/certificate").Get(remote)->GetString(),
                  "/etc/wazuh-manager/certs/remoted.pem");
     EXPECT_STREQ(rapidjson::Pointer("/https/ca_certificate").Get(remote)->GetString(),
@@ -192,6 +193,8 @@ TEST(Load, GeneratedManagerFileKeepsUserValuesAndFillsTheRest)
                                           "legacy_enrollment has no default)";
     const auto indexer = json(doc.sectionJson("indexer"));
     EXPECT_STREQ(rapidjson::Pointer("/hosts/0").Get(indexer)->GetString(), "https://127.0.0.1:9200");
+    EXPECT_STREQ(rapidjson::Pointer("/ssl/certificate_authorities/0").Get(indexer)->GetString(),
+                 "/etc/wazuh-manager/certs/indexer-ca.pem");
 }
 
 TEST(Load, EveryValidVectorLoads)
@@ -515,8 +518,12 @@ TEST(CApi, LoadSectionDocumentValidateFree)
 {
     const auto home = std::filesystem::temp_directory_path() / "manager_config_utest_capi";
     std::filesystem::create_directories(home / "etc" / "certs");
-    for (const char* name :
-         {"remoted.pem", "remoted-key.pem", "root-ca.pem", "indexer-connector.pem", "indexer-connector-key.pem"})
+    for (const char* name : {"remoted.pem",
+                             "remoted-key.pem",
+                             "root-ca.pem",
+                             "indexer-ca.pem",
+                             "indexer-connector.pem",
+                             "indexer-connector-key.pem"})
     {
         std::ofstream(home / "etc" / "certs" / name) << "x";
     }

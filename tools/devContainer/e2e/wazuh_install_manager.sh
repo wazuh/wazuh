@@ -30,8 +30,8 @@
 #   7. wazuh_verify_manager.sh, then --before-hook again as the "after"
 #   8. --out/manifest.md
 #
-# Used by the VS Code task "E2E Scripts: [Manager] Fresh install from branch (purge!)" and by the
-# stack-env skill (which asks the user before running it).
+# Used by the VS Code task "E2E Scripts: [Manager] Fresh install from branch (purge!)"; documented in
+# tools/devContainer/README.md, "wazuh_install_manager.sh / wazuh_verify_manager.sh".
 set -u
 
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)

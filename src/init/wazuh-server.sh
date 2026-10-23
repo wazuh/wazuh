@@ -51,9 +51,10 @@ SDAEMONS=$(reverse_list "${DAEMONS}")
 LOCK="${DIR}/var/start-script-lock"
 LOCK_PID="${LOCK}/pid"
 
-# Seconds the lock loop waits. Below the unit's TimeoutSec (45, which still bounds stop and reload;
-# start has TimeoutStartSec=180 for the engine readiness wait, templates/wazuh-manager.service), or
-# systemd reports a timeout instead of the real reason.
+# Seconds the lock loop waits. Below the unit's TimeoutSec (45, which bounds stop only; start and
+# reload both run under TimeoutStartSec=180 for the engine readiness wait, since systemd applies the
+# start timeout to ExecReload, templates/wazuh-manager.service), or systemd reports a timeout instead
+# of the real reason.
 MAX_ITERATION="40"
 
 MAX_KILL_TRIES=30

@@ -271,7 +271,7 @@ ever carries a secret.
 
 | Kind | Meaning | Examples |
 |------|---------|----------|
-| `MISSING` | something a start needs is absent; `--prestart` refuses, `--check` never says it | `MISSING WAZUH_INDEXER_MANAGER_PASSWORD: set it in /etc/wazuh-manager/local.env …` |
+| `MISSING` | something a start needs is absent; `--prestart` refuses, and `--check` reports it too for what `--prestart` could not complete either (`ca/root-ca.pem`, the agents' bundle, a server pair such as `certs/remoted.pem`, an indexer file with nothing in the export to import), but never for the indexer password, which only `--prestart` looks for | `MISSING WAZUH_INDEXER_MANAGER_PASSWORD: set it in /etc/wazuh-manager/local.env …` |
 | `INVALID` | something in place is wrong | `INVALID /etc/wazuh-manager/local.env:2: not a NAME=value line` · `INVALID WAZUH_INDEXER_MANAGER_PASSWORD: must be 12 to 64 characters (set in /etc/wazuh-manager/local.env:1)` · `INVALID /etc/wazuh-manager/certs/remoted.pem: expired` |
 | `UNSAFE` | an entry root may not trust: wrong owner or mode (a secret readable by others than root), a link, a directory where a file belongs | `UNSAFE /etc/wazuh-manager/local.env: group-writable` |
 | `WARNING` | indexer material that only the clock refuses: the indexer CA, a listed CA file, the client pair or a CA on its path is expired or not valid yet, and nothing else is wrong with it. It **does not** refuse the start; the indexer connection fails until the material is renewed or the clock is right | `resolve-credentials: WARNING: /etc/wazuh-manager/certs/indexer-connector.pem: expired on 2026-10-14 20:03:45 UTC; the indexer connection fails until it is renewed or the clock is right` |
