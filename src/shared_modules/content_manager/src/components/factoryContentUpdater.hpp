@@ -12,6 +12,7 @@
 #define _FACTORY_CONTENT_UPDATER_HPP
 
 #include "IndexerDownloader.hpp"
+#include "indexerConnectorSearchClient.hpp"
 #include "sharedDefs.hpp"
 #include "updateIndexerCursor.hpp"
 #include "updaterContext.hpp"
@@ -49,7 +50,7 @@ public:
     {
         logDebug1(WM_CONTENTUPDATER, "FactoryContentUpdater - Starting process");
 
-        auto indexerDownloader = std::make_shared<IndexerDownloader>(config);
+        auto indexerDownloader = std::make_shared<IndexerDownloader>(config, makeIndexerConnectorSearchClient);
         auto cursorUpdater = std::make_shared<UpdateIndexerCursor>();
 
         indexerDownloader->setNext(cursorUpdater);
