@@ -58,6 +58,7 @@ createPointInTime(index, "5m")
       search(pit, pageSize, query, sort, searchAfter, sourceFilter)
       → processPage() → fileProcessingCallback(json message)
       → if the callback answered "flushed": persistCursor(highestOffsetSeen)
+      → at most once a minute: INFO "Download in progress — <n> documents so far, cursor '<c>', <s>s elapsed"
   → deletePointInTime(pit)
 ```
 
@@ -74,6 +75,7 @@ createPointInTime(index, "5m")
           search(pit, pageSize, query, sort, searchAfter, sourceFilter, slice)
           → lock(m_callbackMutex)
           → processPage() → fileProcessingCallback(json message)
+          → at most once a minute per slice: INFO "Slice <i> (<i+1>/<n>) in progress — <n> documents so far, cursor '<c>', <s>s elapsed"
   → join all threads
   → if no slice failed and no stop was requested: persistCursor(max offset across all slices)
   → deletePointInTime(pit)
