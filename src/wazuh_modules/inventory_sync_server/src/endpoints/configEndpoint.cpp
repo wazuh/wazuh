@@ -12,6 +12,7 @@
 
 #include "common/agentId.hpp"
 #include "common/jsonNestingDepth.hpp"
+#include "endpoints/reportedAgentMetadata.hpp"
 #include "loggerHelper.h"
 #include "sync/stateIndexAllowlist.hpp" // AGENT_CONFIG_INDEX -- shared with the deletion scope
 #include "timeHelper.h"
@@ -132,6 +133,7 @@ namespace invsync::endpoints::config
             static wazuh::uds_http::LogThrottle acceptedThrottle;
             static wazuh::uds_http::LogThrottle goneThrottle;
             static wazuh::uds_http::LogThrottle unavailableThrottle;
+            static wazuh::uds_http::LogThrottle metadataThrottle;
 
             if (!request)
             {
@@ -225,6 +227,7 @@ namespace invsync::endpoints::config
             }
 
             std::string serializedDocument;
+            std::size_t droppedMetadata {0};
             try
             {
                 // `modules` lists exactly the keys `content` ends up with -- derived from it rather
@@ -237,11 +240,12 @@ namespace invsync::endpoints::config
                 }
 
                 // Shaped to match the wazuh-agent-config template: schema version, the
-                // authenticated id, this manager's own identity, the server's clock, and the
-                // sanitized configuration -- nothing else. The template is
+                // authenticated id, the agent's groups and host, this manager's own identity, the
+                // server's clock, and the sanitized configuration -- nothing else. The template is
                 // `dynamic: strict_allow_templates`: a key outside the mapped paths fails the write,
                 // and the write is fire-and-forget, so the failure is silent.
                 nlohmann::json indexedDocument;
+                droppedMetadata = invsync::endpoints::stampReportedAgentMetadata(document, indexedDocument);
                 indexedDocument["/wazuh/schema/version"_json_pointer] = WAZUH_SCHEMA_VERSION;
                 indexedDocument["/wazuh/agent/id"_json_pointer] = agentIdIt->second;
                 indexedDocument["/wazuh/agent/configuration/modules"_json_pointer] = modules;
@@ -260,6 +264,19 @@ namespace invsync::endpoints::config
                 LOGFN_DEBUG1(logFn(), "Could not build an agent config document: %s.", e.what());
                 responder->send(badRequest("Report holds bytes that are not valid UTF-8"));
                 return;
+            }
+
+            if (droppedMetadata > 0)
+            {
+                if (const auto decision = metadataThrottle.record())
+                {
+                    LOGFN_DEBUG1(logFn(),
+                                 "Accepted %llu agent config report(s) in the last %d s with reported groups or "
+                                 "host fields left empty because they failed validation (last from agent '%s').",
+                                 static_cast<unsigned long long>(decision.total),
+                                 wazuh::uds_http::LogThrottle::kDefaultWindowSeconds,
+                                 agentIdIt->second.c_str());
+                }
             }
 
             try

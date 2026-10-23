@@ -30,7 +30,8 @@
 /**
  * @brief The periodic /stats and /config reporter (#37843). One worker thread
  *        drives two independent cadences: each due path collects a snapshot,
- *        stamps agent_id + the manager-authoritative cluster, signs and POSTs.
+ *        stamps agent_id, the manager-authoritative cluster and the agent
+ *        metadata (groups, host), signs and POSTs.
  *        Only runs while Registered and not auth-paused; the drain skips it.
  */
 class ReporterStream final
@@ -88,7 +89,11 @@ class ReporterStream final
             mutable std::mutex mtx;
         };
 
-        void runPath(Path& path, Backoff& backoff, Waiter& waiter, std::optional<std::string> collected);
+        void runPath(Path& path,
+                     Backoff& backoff,
+                     Waiter& waiter,
+                     std::optional<std::string> collected,
+                     const std::optional<std::string>& agent);
 
         /// Commits `desired` to path.nextDue unless a concurrent forceConfigReportNow()
         /// already re-armed it -- see path.mtx's comment for why this needs that lock.
@@ -97,7 +102,16 @@ class ReporterStream final
         /// Reads path.nextDue under path.mtx, for callers that don't also need forcedSinceLastRun.
         std::chrono::steady_clock::rep loadNextDue(const Path& path) const;
 
-        std::optional<std::string> stampedDocument(std::optional<std::string> collected) const;
+        std::optional<std::string> stampedDocument(std::optional<std::string> collected,
+                                                   const std::optional<std::string>& agent) const;
+
+        /// The `agent` object of the metadata source, or the last good one when the
+        /// source has none right now (a writer holds it, or its output does not parse).
+        std::optional<std::string> currentAgentMetadata();
+
+        /// Pulls /config in when the groups differ from the ones last seen. A reload
+        /// already does it, but not every group change triggers one.
+        void forceConfigReportOnGroupChange(const std::optional<std::string>& agent);
         std::chrono::milliseconds sleepHint() const;
 
         const ModuleConfig& m_config;
@@ -113,6 +127,9 @@ class ReporterStream final
         Backoff m_configBackoff;
         Path m_stats;
         Path m_config_; ///< Trailing underscore: m_config is the ModuleConfig ref.
+        std::optional<std::string> m_lastAgent;  ///< Reporter thread only.
+        std::optional<std::string> m_seenGroups; ///< Reporter thread only.
+        std::string m_metadataAgentId;           ///< Identity m_lastAgent was read under.
 };
 
 #endif // _HC_REPORTER_STREAM_HPP

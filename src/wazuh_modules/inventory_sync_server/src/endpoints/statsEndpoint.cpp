@@ -12,6 +12,7 @@
 
 #include "common/agentId.hpp"
 #include "common/jsonNestingDepth.hpp"
+#include "endpoints/reportedAgentMetadata.hpp"
 #include "loggerHelper.h"
 #include "timeHelper.h"
 #include <uds_http_server/logThrottle.hpp>
@@ -106,6 +107,7 @@ namespace invsync::endpoints::stats
             static wazuh::uds_http::LogThrottle indexedThrottle;
             static wazuh::uds_http::LogThrottle goneThrottle;
             static wazuh::uds_http::LogThrottle unavailableThrottle;
+            static wazuh::uds_http::LogThrottle metadataThrottle;
 
             if (!request)
             {
@@ -197,11 +199,14 @@ namespace invsync::endpoints::stats
             }
 
             std::string serializedDocument;
+            std::size_t droppedMetadata {0};
             try
             {
                 // JSON pointers so `wazuh.agent.id` reads the way it is spelled everywhere else in
                 // the schema.
                 nlohmann::json document;
+                // Groups and host come from the agent; the id and the cluster below are this side's.
+                droppedMetadata = invsync::endpoints::stampReportedAgentMetadata(payload, document);
                 document["/state/modified_at"_json_pointer] = Utils::getCurrentISO8601();
                 document["/state/document_version"_json_pointer] = STATS_DOCUMENT_VERSION;
                 document["/wazuh/schema/version"_json_pointer] = STATS_SCHEMA_VERSION;
@@ -221,6 +226,19 @@ namespace invsync::endpoints::stats
                 LOGFN_DEBUG1(logFn(), "Could not serialize an agent stats document: %s.", e.what());
                 responder->send(badRequest("Report holds bytes that are not valid UTF-8"));
                 return;
+            }
+
+            if (droppedMetadata > 0)
+            {
+                if (const auto decision = metadataThrottle.record())
+                {
+                    LOGFN_DEBUG1(logFn(),
+                                 "Accepted %llu agent stats report(s) in the last %d s with reported groups or "
+                                 "host fields left empty because they failed validation (last from agent '%s').",
+                                 static_cast<unsigned long long>(decision.total),
+                                 wazuh::uds_http::LogThrottle::kDefaultWindowSeconds,
+                                 agentIdIt->second.c_str());
+                }
             }
 
             try
