@@ -853,27 +853,123 @@ bool fim_db_try_update_last_sync_time_value(const char* table_name, int64_t valu
     }
 }
 
-/// The row filter selecting one container's rows at one reporting state.
+/// Quotes a value spliced into a row filter.
 ///
 /// The SelectQuery builder takes a filter string rather than bound parameters, so
-/// the id is spliced in and its quotes are doubled here. Every caller that scopes a
+/// values are spliced in and their quotes are doubled here. Every caller that scopes a
 /// query to a single container goes through this, so there is one escaping rule in
 /// the file rather than one per call site.
-static std::string containerScopeFilter(const std::string& containerId, int sync)
+static std::string sqlQuoted(const std::string& value)
 {
-    std::string quotedId;
+    std::string quoted {"'"};
 
-    for (const char c : containerId)
+    for (const char c : value)
     {
-        quotedId += c;
+        quoted += c;
 
         if (c == '\'')
         {
-            quotedId += c;
+            quoted += c;
         }
     }
 
-    return "WHERE sync=" + std::to_string(sync) + " AND container_id='" + quotedId + "'";
+    return quoted + "'";
+}
+
+static std::string containerScopeFilter(const std::string& containerId, int sync)
+{
+    return "WHERE sync=" + std::to_string(sync) + " AND container_id=" + sqlQuoted(containerId);
+}
+
+int fim_db_count_container_rows(const char* container_id, const char* path)
+{
+    if (!container_id || !*container_id)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, "Missing container id when counting stored rows");
+        return -1;
+    }
+
+    std::string filter = "WHERE container_id=" + sqlQuoted(container_id);
+
+    if (path)
+    {
+        filter += " AND path=" + sqlQuoted(path);
+    }
+
+    try
+    {
+        int count = 0;
+        auto query = SelectQuery::builder()
+                         .table(FIMDB_FILE_TABLE_NAME)
+                         .columnList({"COUNT(*) AS count"})
+                         .rowFilter(filter)
+                         .build();
+        FIMDB::instance().executeQuery(query.query(),
+                                       [&count](ReturnTypeCallback type, const nlohmann::json& row)
+                                       {
+                                           if (type == SELECTED)
+                                           {
+                                               count = row.at("count").get<int>();
+                                           }
+                                       });
+        return count;
+    }
+    catch (const std::exception& ex)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, ex.what());
+        return -1;
+    }
+}
+
+cJSON* fim_db_get_container_paths(const char* container_id)
+{
+    if (!container_id || !*container_id)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, "Missing container id when reading stored paths");
+        return nullptr;
+    }
+
+    try
+    {
+        std::vector<std::string> paths;
+        auto query = SelectQuery::builder()
+                         .table(FIMDB_FILE_TABLE_NAME)
+                         .columnList({"path"})
+                         .rowFilter("WHERE container_id=" + sqlQuoted(container_id))
+                         .build();
+        FIMDB::instance().executeQuery(query.query(),
+                                       [&paths](ReturnTypeCallback type, const nlohmann::json& row)
+                                       {
+                                           const auto it = row.find("path");
+
+                                           if (type == SELECTED && it != row.end() && it->is_string())
+                                           {
+                                               paths.push_back(it->get<std::string>());
+                                           }
+                                       });
+
+        std::unique_ptr<cJSON, decltype(&cJSON_Delete)> result {cJSON_CreateArray(), cJSON_Delete};
+
+        for (const auto& path : paths)
+        {
+            cJSON* item = result ? cJSON_CreateString(path.c_str()) : nullptr;
+
+            if (!item)
+            {
+                FIMDB::instance().logFunction(LOG_ERROR, "Failed to build the stored path list");
+                return nullptr;
+            }
+
+            cJSON_AddItemToArray(result.get(), item);
+        }
+
+        return result.release();
+    }
+    catch (const std::exception& ex)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, ex.what());
+        return nullptr;
+    }
 }
 
 int fim_db_count_synced_container_docs(const char* container_id)

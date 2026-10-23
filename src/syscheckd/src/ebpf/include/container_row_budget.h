@@ -28,21 +28,29 @@
 /**
  * @brief Whether one more row may be stored for this container.
  *
- * @param limit  Rows this container may store; <= 0 means unlimited.
- * @param synced Rows it has stored in this baseline already.
+ * @param limit          Rows this container may store; <= 0 means unlimited.
+ * @param held           Rows this container would hold if its scan stopped now
+ *                       without delete detection: what it stored before the scan
+ *                       began, plus the NEW rows stored since.
+ * @param already_stored The row refreshes one the container holds already.
  *
- * A baseline rewrites a container's whole row set, so `synced` within one
- * transaction IS that container's row count. No persistent counter is needed
- * and none can drift.
+ * `held` cannot be "rows synced in this pass". A pass the ceiling cut short used
+ * to suppress delete detection, so the rows it did not refresh survived next to
+ * the ones it did, and the next pass stored up to `limit` again from zero: a
+ * container capped at L held L+1 rows after one new file, and more after each.
+ *
+ * A refresh never adds a row, so it is always admitted. Only a row the container
+ * does not hold yet can be refused, and that is what keeps delete detection safe
+ * after the ceiling bites -- see container_scan_is_partial().
  */
-static inline bool container_row_admitted(int limit, size_t synced)
+static inline bool container_row_admitted(int limit, size_t held, bool already_stored)
 {
-    if (limit <= 0)
+    if (limit <= 0 || already_stored)
     {
         return true;
     }
 
-    return synced < (size_t)limit;
+    return held < (size_t)limit;
 }
 
 /**
@@ -52,18 +60,21 @@ static inline bool container_row_admitted(int limit, size_t synced)
  *
  * `walker_partial` is the walker's own verdict, reached before a single row
  * touches the database: a row cap in the walk, an unreadable rootfs, a rejected
- * path. `refused` counts rows the DATABASE would not store, either because this
- * container reached its own ceiling or because the node-wide one was already
- * full.
+ * path. `unstored` counts rows the DATABASE failed to store -- the node-wide
+ * ceiling or an error -- which may include refreshes of rows already held.
  *
  * Both mean the stored row set is a subset of the container's real files, and a
  * delete detection over a subset deletes everything it cannot see. Until this
  * existed only the first was carried: measured on a real node, 8,643 rows were
  * refused while every scan in the window reported "0 partial scan(s)".
+ *
+ * Rows refused by the container's own ceiling are NOT counted here. That ceiling
+ * only ever refuses a row the container does not hold, so every row a delete
+ * detection removes afterwards is one the walker did not see at all.
  */
-static inline bool container_scan_is_partial(bool walker_partial, size_t refused)
+static inline bool container_scan_is_partial(bool walker_partial, size_t unstored)
 {
-    return walker_partial || refused > 0;
+    return walker_partial || unstored > 0;
 }
 
 #endif /* CONTAINER_ROW_BUDGET_H */
