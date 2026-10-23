@@ -70,10 +70,14 @@ if [ -f "${UPGRADE_FILE_FLAG}" ]; then
     fi
 fi
 
-# Default for all directories
+# Default for all directories.
+# This baseline walks the whole tree, parts of which (etc/, logs/, var/, tmp/, queue/ sub-dirs) the
+# wazuh account can write. A plain chmod -R / chown -R would act on a hard link that account planted
+# to a root-only file (macOS has no protected_hardlinks), changing that external inode. Set
+# directories and single-link files, and skip a symlink and a regular file with more than one link.
 echo "Seting permissions and ownership for directories and files"
-chmod -R 750 ${DIR}/
-chown -R root:${GROUP} ${DIR}/
+find ${DIR} ! -type l ! \( -type f ! -links 1 \) -exec chmod 750 {} +
+find ${DIR} ! -type l ! \( -type f ! -links 1 \) -exec chown root:${GROUP} {} +
 
 chown -R root:wheel ${DIR}/bin
 chown -R root:wheel ${DIR}/lib
