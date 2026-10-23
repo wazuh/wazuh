@@ -279,8 +279,12 @@ class WazuhException(Exception):
 
         1652: {'message': 'The command used is not defined in the configuration.',
                'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/capabilities/active-response/how-to-configure.html)'
+                              f'{DOCU_VERSION}/user-manual/capabilities/active-response/how-to-configure.html) '
                               'to get more information'
+               },
+        1653: {'message': 'The command used is defined by several active responses with different timeouts.',
+               'remediation': 'Please, use the full name of one of them, which is the command name followed by its '
+                              'timeout'
                },
 
         # Agents: 1700 - 1799
