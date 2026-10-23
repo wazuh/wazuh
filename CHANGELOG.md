@@ -120,6 +120,7 @@ All notable changes to this project will be documented in this file.
 - Fixed polarity and matching errors in the Debian 10, Ubuntu 20.04 and RHEL 10 SCA policies (AppArmor bootloader, audit at boot, audit backlog limit and sudo timeout checks), the `compare =>` operator in 16 SCA policies, and GRUB kernel-line matching (tab or mixed indentation, memtest86+ entries) in 10 SCA policies. ([#40102](https://github.com/wazuh/wazuh/pull/40102))
 - Fixed `gcp-bucket` storage log rule (`65075`) sitting below the default `log_alert_level`, and fixed its and the access log rule's (`65074`) descriptions, which referred to VPC. ([#40154](https://github.com/wazuh/wazuh/pull/40154))
 - Fixed the auditd decoders taking `audit.key`, `audit.list` and `audit.res` from another record of the same event or from `EXECVE` arguments, not decoding `audit.auid`, `audit.session` and `audit.op` on current `CONFIG_CHANGE` records, and including the `ENRICHED` interpreted fields in the last field of `CONFIG_CHANGE`, `LOGIN`, `ANOM_PROMISCUOUS` and `MAC_STATUS` records. ([#40196](https://github.com/wazuh/wazuh/pull/40196))
+- Updated rootcheck trojan signatures to avoid false positives on distributions shipping uutils coreutils (Ubuntu 25.10 and later). ([#32142](https://github.com/wazuh/wazuh/issues/32142))
 
 ### RESTful API
 
