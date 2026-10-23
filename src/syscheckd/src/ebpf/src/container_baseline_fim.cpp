@@ -45,21 +45,25 @@
 #include <climits>
 #include <cstdio>
 #include <cstdlib>
+#include <map>
 #include <memory>
+#include <mutex>
 #include <set>
 #include <string>
 #include <vector>
 
 namespace {
 
-/// Plain pass-through for a message that needs no formatting. Preferred over
-/// the templates below by overload resolution, so a literal message skips
-/// snprintf entirely — no 512-byte truncation, and no -Wformat-security
-/// diagnostic for a "format" string that was never a format string.
-void LogDebug(const char* msg)
-{
-    fim_container_baseline_log_debug(msg);
-}
+    std::recursive_mutex container_state_mutex;
+
+    /// Plain pass-through for a message that needs no formatting. Preferred over
+    /// the templates below by overload resolution, so a literal message skips
+    /// snprintf entirely — no 512-byte truncation, and no -Wformat-security
+    /// diagnostic for a "format" string that was never a format string.
+    void LogDebug(const char* msg)
+    {
+        fim_container_baseline_log_debug(msg);
+    }
 
 void LogWarn(const char* msg)
 {
@@ -100,7 +104,37 @@ struct ContainerTxnCtx {
     std::string container_id;
     /// cb_fim_origin_t: what the stateless alert reports as its "mode".
     int origin{CB_FIM_ORIGIN_SCAN};
+    std::map<std::string, std::pair<uint64_t, int>> pending_sync {};
 };
+
+void writeSyncFlag(const cJSON* row, int sync)
+{
+    pending_sync_item_t item {};
+    item.json = const_cast<cJSON*>(row);
+    item.sync_value = sync;
+    if (fim_db_set_sync_flag(const_cast<char*>(FIMDB_FILE_TABLE_NAME), &item, sync) != 0)
+    {
+        LogError("Container FIM: could not persist a reporting flag.");
+    }
+}
+
+void flushSyncFlags(ContainerTxnCtx& ctx)
+{
+    for (const auto& [path, update] : ctx.pending_sync)
+    {
+        const auto& [version, sync] = update;
+        std::unique_ptr<cJSON, decltype(&cJSON_Delete)> json {cJSON_CreateObject(), cJSON_Delete};
+        if (!json || !cJSON_AddStringToObject(json.get(), "path", path.c_str()) ||
+            !cJSON_AddStringToObject(json.get(), "container_id", ctx.container_id.c_str()) ||
+            !cJSON_AddNumberToObject(json.get(), "version", static_cast<double>(version)))
+        {
+            LogError("Container FIM: could not allocate a pending reporting flag.");
+            continue;
+        }
+        writeSyncFlag(json.get(), sync);
+    }
+    ctx.pending_sync.clear();
+}
 
 // C-compatible txn callback — called by DBSync for INSERTED / MODIFIED / DELETED.
 void container_txn_callback(ReturnTypeCallback result_type, const cJSON* result_json, void* user_data)
@@ -152,7 +186,18 @@ void container_txn_callback(ReturnTypeCallback result_type, const cJSON* result_
 
     char* row_str = cJSON_PrintUnformatted(row_data);
     if (!row_str) return;
-    fim_persist_baseline_row(id.c_str(), static_cast<int>(op), "wazuh-states-fim-files", row_str, version);
+    const int sync =
+        fim_persist_baseline_row(id.c_str(), static_cast<int>(op), "wazuh-states-fim-files", row_str, version);
+    const cJSON* stored_sync = cJSON_GetObjectItem(row_data, "sync");
+    const int previous_sync = cJSON_IsNumber(stored_sync) ? stored_sync->valueint : 0;
+    if (op != OPERATION_DELETE && sync >= 0 && sync != previous_sync)
+    {
+        ctx->pending_sync[cJSON_GetStringValue(path_json)] = {version, sync};
+    }
+    else if (op == OPERATION_DELETE)
+    {
+        ctx->pending_sync.erase(cJSON_GetStringValue(path_json));
+    }
     free(row_str);
 }
 
@@ -168,6 +213,7 @@ class ScopedContainerTxn {
         ScopedContainerTxn(const std::string& container_id, int origin)
             : m_ctx{container_id, origin}
         {
+            fim_container_doc_budget_initialize(container_id.c_str());
             nlohmann::json txn_json;
             txn_json["tables"] = nlohmann::json::array({"file_entry"});
             txn_json["scope"]  = {{"column", FIMDB_FILE_CONTAINER_ID_COLUMN},
@@ -190,6 +236,7 @@ class ScopedContainerTxn {
             if (m_txn) {
                 fim_db_transaction_close(m_txn);
                 m_txn = nullptr;
+                flushSyncFlags(m_ctx);
             }
         }
 
@@ -250,6 +297,7 @@ class ScopedContainerTxn {
             }
 
             m_txn = nullptr; // closed either way
+            flushSyncFlags(m_ctx);
         }
 
     private:
@@ -431,7 +479,10 @@ class BaselineDriver {
                     if (!cJSON_IsString(item) || !item->valuestring || item->valuestring[0] == '\0') continue;
 
                     const std::string id{item->valuestring};
-                    if (known.find(id) == known.end()) {
+                    // The listing precedes the walk; a container discovered
+                    // during it is still live even if absent from that snapshot.
+                    if (known.find(id) == known.end() && m_scanned.find(id) == m_scanned.end())
+                    {
                         stale.insert(id);
                     }
                 }
@@ -468,6 +519,7 @@ class BaselineDriver {
         {
             m_direct_ctx.container_id = container_id;
             m_direct_ctx.origin       = m_origin;
+            fim_container_doc_budget_initialize(container_id.c_str());
 
             if (fim_db_container_file_sync(row.dump().c_str(), container_txn_callback, &m_direct_ctx) != FIMDB_OK) {
                 LogDebug("Container FIM reconcile: failed to persist a row for container '%s'.",
@@ -475,6 +527,7 @@ class BaselineDriver {
                 return;
             }
 
+            flushSyncFlags(m_direct_ctx);
             ++m_rows;
         }
 
@@ -671,6 +724,7 @@ void DeleteUnlinkedPaths(const fim_container_events::ReconcileRequest& request,
 /// nothing here may throw out of it.
 void ReconcileBatch(const fim_container_events::ReconcileRequest& request)
 {
+    std::lock_guard<std::recursive_mutex> lock(container_state_mutex);
     using fim_container_events::ReconcileMode;
 
     if (request.mode == ReconcileMode::rebaselineAll) {
@@ -756,13 +810,86 @@ void ReconcileBatch(const fim_container_events::ReconcileRequest& request)
         LogError("Container FIM reconcile failed with an unknown error.");
     }
 
+    fim_container_doc_budget_report();
     fim_free_container_monitored_paths(paths);
 }
 
 } // namespace
 
+namespace
+{
+
+    using JsonPtr = std::unique_ptr<cJSON, decltype(&cJSON_Delete)>;
+
+    void updateContainerReporting(bool promote)
+    {
+        JsonPtr ids {fim_db_get_distinct_container_ids(FIMDB_FILE_TABLE_NAME), cJSON_Delete};
+        if (!ids)
+        {
+            LogError("Container FIM: could not read containers for reporting reconciliation.");
+            return;
+        }
+
+        const cJSON* id_json = nullptr;
+        cJSON_ArrayForEach(id_json, ids.get())
+        {
+            const char* container_id = cJSON_GetStringValue(id_json);
+            if (!container_id || !*container_id)
+                continue;
+            const bool admitted = fim_container_is_admitted(container_id) != 0;
+            if (admitted != promote)
+                continue;
+
+            fim_container_doc_budget_initialize(container_id);
+            JsonPtr rows {fim_db_get_container_rows(container_id, promote ? 0 : 1), cJSON_Delete};
+            if (!rows)
+            {
+                LogError("Container FIM: could not read reporting rows for container '%s'.", container_id);
+                continue;
+            }
+            const cJSON* row = nullptr;
+            cJSON_ArrayForEach(row, rows.get())
+            {
+                const char* path = cJSON_GetStringValue(cJSON_GetObjectItem(row, "path"));
+                if (!path)
+                {
+                    LogError("Container FIM: reporting row for '%s' has no path.", container_id);
+                    continue;
+                }
+                const auto version = static_cast<uint64_t>(cJSON_GetNumberValue(cJSON_GetObjectItem(row, "version")));
+                const std::string id = std::string(container_id) + ":" + path;
+                std::unique_ptr<char, decltype(&free)> plain {cJSON_PrintUnformatted(row), free};
+                if (!plain)
+                {
+                    LogError("Container FIM: could not serialize reporting row '%s'.", id.c_str());
+                    continue;
+                }
+                const int granted = fim_persist_baseline_row(id.c_str(),
+                                                             promote ? OPERATION_CREATE : OPERATION_DELETE,
+                                                             "wazuh-states-fim-files",
+                                                             plain.get(),
+                                                             version);
+                if (granted >= 0 && (!promote || granted > 0))
+                {
+                    writeSyncFlag(row, promote ? 1 : 0);
+                }
+            }
+            if (!promote)
+                fim_container_doc_budget_release(container_id);
+        }
+    }
+
+} // namespace
+
+extern "C" void fim_container_reconcile_admission(void)
+{
+    std::lock_guard<std::recursive_mutex> lock(container_state_mutex);
+    updateContainerReporting(false);
+}
+
 extern "C" void fim_run_container_baseline(void)
 {
+    std::lock_guard<std::recursive_mutex> lock(container_state_mutex);
     cb_monitored_path_t* paths = nullptr;
     size_t path_count = 0;
 
@@ -777,6 +904,20 @@ extern "C" void fim_run_container_baseline(void)
     // Nothing below may throw into main(): this runs on syscheckd's main
     // thread, which has no handler of its own.
     try {
+        ContainerListing listing;
+        const int listed = cbaseline_list_containers(CB_DEFAULT_CONNECTOR_SOCKET_PATH, container_id_sink, &listing);
+        const std::set<std::string>& known = listing.known;
+        if (listed >= 0)
+        {
+            std::vector<const char*> admitted;
+            admitted.reserve(listing.admitted.size());
+            for (const auto& id : listing.admitted)
+            {
+                admitted.push_back(id.c_str());
+            }
+            fim_container_set_admitted(admitted.data(), admitted.size());
+        }
+
         BaselineDriver driver;
 
         // check_max_fps() is FIM's own files-per-second token bucket, driven by
@@ -796,22 +937,6 @@ extern "C" void fim_run_container_baseline(void)
         // this distinction a container restart would delete all of its FIM
         // state and re-create it — a false-positive flood on exactly the event
         // that must be reported accurately.
-        ContainerListing listing;
-        const int listed = cbaseline_list_containers(CB_DEFAULT_CONNECTOR_SOCKET_PATH, container_id_sink, &listing);
-        const std::set<std::string>& known = listing.known;
-
-        // Only when the connector actually answered. A failed query reports no
-        // containers at all, and taking that as "nothing may report" would
-        // withhold every container's rows on a momentary blip.
-        if (listed >= 0) {
-            std::vector<const char*> admitted;
-            admitted.reserve(listing.admitted.size());
-            for (const auto& id : listing.admitted) {
-                admitted.push_back(id.c_str());
-            }
-            fim_container_set_admitted(admitted.data(), admitted.size());
-        }
-
         // A negative count means the connector never answered, so `known` is
         // empty for want of an answer rather than for want of containers.
         // Sweeping against it would delete every container's FIM state. Skip
@@ -824,6 +949,8 @@ extern "C" void fim_run_container_baseline(void)
         } else {
             driver.sweepStale(known);
         }
+
+        updateContainerReporting(true);
 
         if (driver.malformedRows() > 0) {
             LogDebug("Container FIM baseline: discarded %zu malformed row(s).", driver.malformedRows());
