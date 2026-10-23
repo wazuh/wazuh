@@ -56,6 +56,10 @@ uint64_t w_get_physical_memory(void) {
         return 0;
     }
 
+    if ((uint64_t)pages > UINT64_MAX / (uint64_t)page_size) {
+        return UINT64_MAX;
+    }
+
     return (uint64_t)pages * (uint64_t)page_size;
 }
 
