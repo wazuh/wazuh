@@ -416,6 +416,32 @@ EXPORTED int fim_db_set_sync_flag(char* table_name, pending_sync_item_t* item, i
  */
 EXPORTED int fim_db_count_synced_docs(const char* table_name);
 
+/**
+ * @brief Count one container's documents that have been reported to the manager.
+ *
+ * The container equivalent of fim_db_count_synced_docs(), and separate from it
+ * because the host and each container spend budgets of their own: counting them
+ * together would let a container's rows fill the endpoint's allowance.
+ *
+ * @param container_id The container whose reported documents to count. Must not
+ *                     be NULL or empty; the host is counted by
+ *                     fim_db_count_synced_docs() instead.
+ * @return The count of this container's rows where sync = 1, or -1 on error.
+ */
+EXPORTED int fim_db_count_synced_container_docs(const char* container_id);
+
+/**
+ * @brief Read one container's file rows at one reporting state.
+ *
+ * Exists so callers scoping a query to a single container do not each spell out
+ * the filter, and with it the escaping of an id that is spliced into SQL.
+ *
+ * @param container_id The container whose rows to read. Must not be NULL or empty.
+ * @param sync 1 for rows already reported to the manager, 0 for rows withheld.
+ * @return A cJSON array of rows, or NULL on error. The caller owns it.
+ */
+EXPORTED cJSON* fim_db_get_container_rows(const char* container_id, int sync);
+
 EXPORTED cJSON* fim_db_get_documents_to_promote(char* table_name, int documents);
 
 EXPORTED cJSON* fim_db_get_documents_to_demote(char* table_name, int documents);

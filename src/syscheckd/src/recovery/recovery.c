@@ -181,7 +181,14 @@ bool fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
         char* value = NULL;
 #endif
         if (strcmp(table_name, FIMDB_FILE_TABLE_NAME) == 0) {
-            id_str = strdup(path);
+            const char* container_id = cJSON_GetStringValue(cJSON_GetObjectItem(item_copy, "container_id"));
+            if (container_id && *container_id) {
+                size_t id_len = strlen(container_id) + strlen(path) + 2;
+                os_calloc(id_len, sizeof(char), id_str);
+                snprintf(id_str, id_len, "%s:%s", container_id, path);
+            } else {
+                id_str = strdup(path);
+            }
         }
 #ifdef WIN32
         else if (strcmp(table_name, FIMDB_REGISTRY_KEY_TABLENAME) == 0) {
