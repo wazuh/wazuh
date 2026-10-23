@@ -13,6 +13,7 @@
 #include <cstring>
 #include <thread>
 #include <atomic>
+#include <string>
 #include <vector>
 
 #ifndef _WIN32
@@ -331,6 +332,82 @@ TEST_F(MetadataProviderTest, ThreadSafetyConcurrentReads)
     }
 
     EXPECT_EQ(success_count, num_threads);
+}
+
+// A reader racing a writer gets one record or the other, never a mix of both, and never more
+// groups than it allocated for.
+TEST_F(MetadataProviderTest, ReadsNeverMixTwoConcurrentRecords)
+{
+    std::string groupA {"a"};
+    std::vector<std::string> groupsB(128, std::string(255, 'b'));
+    char* groupsAPtr[] = {groupA.data()};
+    std::vector<char*> groupsBPtr;
+
+    for (auto& group : groupsB)
+    {
+        groupsBPtr.push_back(group.data());
+    }
+
+    agent_metadata_t recordA = createSampleMetadata();
+    std::strncpy(recordA.hostname, "host-a", sizeof(recordA.hostname) - 1);
+    recordA.groups = groupsAPtr;
+    recordA.groups_count = 1;
+
+    agent_metadata_t recordB = createSampleMetadata();
+    std::strncpy(recordB.hostname, "host-b", sizeof(recordB.hostname) - 1);
+    recordB.groups = groupsBPtr.data();
+    recordB.groups_count = groupsBPtr.size();
+
+    ASSERT_EQ(metadata_provider_update(&recordA), 0);
+
+    std::atomic<bool> stop {false};
+    std::atomic<int> reads {0};
+    std::atomic<int> mixed {0};
+
+    auto reader = [&]()
+    {
+        while (!stop.load())
+        {
+            agent_metadata_t copy {};
+
+            if (metadata_provider_get(&copy) != 0)
+            {
+                continue;
+            }
+
+            reads++;
+            const bool isA = std::strcmp(copy.hostname, "host-a") == 0;
+            bool consistent = isA ? copy.groups_count == 1 && std::strcmp(copy.groups[0], "a") == 0
+                              : copy.groups_count == groupsB.size();
+
+            for (size_t i = 0; consistent && !isA && i < copy.groups_count; ++i)
+            {
+                consistent = groupsB[i] == copy.groups[i];
+            }
+
+            if (!consistent)
+            {
+                mixed++;
+            }
+
+            metadata_provider_free_metadata(&copy);
+        }
+    };
+
+    std::thread reader1(reader);
+    std::thread reader2(reader);
+
+    for (int i = 0; i < 5000; ++i)
+    {
+        metadata_provider_update(i % 2 == 0 ? &recordB : &recordA);
+    }
+
+    stop.store(true);
+    reader1.join();
+    reader2.join();
+
+    EXPECT_GT(reads.load(), 0);
+    EXPECT_EQ(mixed.load(), 0);
 }
 
 // Test large string values

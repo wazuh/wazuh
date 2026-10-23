@@ -416,9 +416,10 @@ typedef struct hc_callbacks_t
     /// risking the other's already-shipped contract. Write an empty string
     /// when metadata is not yet available; the H line then carries only
     /// agent.id, as it always has. Called on the stateless sender thread
-    /// before each flush and on the reporter thread before each /stats and
-    /// /config push (never the dispatcher), possibly at the same time, so it
-    /// must be a fast, non-blocking, thread-safe read. cap is large enough for
+    /// before each flush and on the reporter thread on every tick (never the
+    /// dispatcher), possibly at the same time, so it must be a fast,
+    /// non-blocking read that is safe on both threads and never returns a
+    /// record a writer was changing (write "" instead). cap is large enough for
     /// the maximum group list. Null means the H line carries only agent.id and
     /// the reports carry no "agent" object.
     void (*on_collect_stateless_host)(char* json_out, size_t cap, void* user_data);
