@@ -42,14 +42,25 @@ __attribute__((noreturn)) static void help_syscheckd()
 
 extern bool is_fim_shutdown;
 
-/* Shut down syscheckd properly */
-static void fim_shutdown(int sig)
+/* Written by fim_shutdown() to wake fim_shutdown_waiter() */
+static int fim_shutdown_pipe[2] = {-1, -1};
+static volatile sig_atomic_t fim_shutdown_sig = SIGTERM;
+
+/* Shut down syscheckd properly, outside signal context: the handler may have interrupted a thread that holds the FIMDB locks */
+static void *fim_shutdown_waiter(__attribute__((unused)) void *arg)
 {
+    char buf;
+
+    while (!fim_shutdown_process_on()) {
+        if (read(fim_shutdown_pipe[0], &buf, 1) < 0 && errno != EINTR) {
+            sleep(1);
+        }
+    }
+
     /* Close sync thread and release dbsync and rsync */
     minfo(SK_SHUTDOWN);
-    is_fim_shutdown = true;
 
-    /* The scan may still be running on another thread: don't free the database under it */
+    /* The scan may still be running: don't free the database under it */
     if (pthread_mutex_trylock(&syscheck.fim_scan_mutex) == 0) {
         fim_db_teardown();
     } else {
@@ -57,12 +68,29 @@ static void fim_shutdown(int sig)
     }
 
     /* Not HandleSIG(): exit() would run the atexit handlers and static destructors under the running threads */
-    minfo(SIGNAL_RECV, sig, strsignal(sig));
+    minfo(SIGNAL_RECV, (int)fim_shutdown_sig, strsignal((int)fim_shutdown_sig));
 #ifdef ENABLE_AUDIT
     clean_rules();
 #endif
-    DeletePID(ARGV0);
+    HandleExit();
     _exit(1);
+
+    return NULL;
+}
+
+/* Termination signal handler: only async-signal-safe work, fim_shutdown_waiter() does the rest */
+static void fim_shutdown(int sig)
+{
+    int saved_errno = errno;
+
+    fim_shutdown_sig = sig;
+    is_fim_shutdown = true;
+
+    if (fim_shutdown_pipe[1] >= 0) {
+        while (write(fim_shutdown_pipe[1], "", 1) < 0 && errno == EINTR) {}
+    }
+
+    errno = saved_errno;
 }
 
 /* Syscheck unix main */
@@ -186,6 +214,12 @@ int main(int argc, char **argv)
         nowDaemon();
         goDaemon();
     }
+
+    /* Start the shutdown waiter before the handler that wakes it */
+    if (pipe(fim_shutdown_pipe) < 0) {
+        merror_exit("Couldn't create the shutdown pipe: %s (%d)", strerror(errno), errno);
+    }
+    w_create_thread(fim_shutdown_waiter, NULL);
 
     /* Start signal handling */
     StartSIG2(ARGV0, fim_shutdown);
