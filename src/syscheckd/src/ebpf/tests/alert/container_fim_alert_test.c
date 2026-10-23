@@ -354,6 +354,8 @@ static void CaseRecoveryResendsContainerRow(void)
     const size_t persisted = g_persist_count;
     cJSON* row = Row("/etc/profile", 100, "aaa");
     cJSON_AddNumberToObject(row, "sync", 1);
+    cJSON_ReplaceItemInObject(row, "checksum", cJSON_CreateString("1111111111111111111111111111111111111111"));
+    cJSON_AddStringToObject(row, "hash_sha1", "2222222222222222222222222222222222222222");
     const int result = fim_container_recover_row(row);
     cJSON_Delete(row);
 
@@ -369,6 +371,10 @@ static void CaseRecoveryResendsContainerRow(void)
     cJSON* doc = cJSON_Parse(g_persisted_doc);
     Check(cJSON_IsObject(cJSON_GetObjectItem(doc, "container")), "document carries the container block");
     Check(cJSON_GetObjectItem(doc, "container_id") == NULL, "dbsync-only columns removed");
+    const char* doc_checksum = cJSON_GetStringValue(
+        cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(doc, "checksum"), "hash"), "sha1"));
+    Check(doc_checksum != NULL && strcmp(doc_checksum, "1111111111111111111111111111111111111111") == 0,
+          "checksum.hash.sha1 is the row checksum the integrity check hashes, not the content sha1");
     cJSON_Delete(doc);
     Check(g_sent_count == alerts, "no alert: recovery is not a file change");
 }
